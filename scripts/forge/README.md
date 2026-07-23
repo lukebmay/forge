@@ -73,7 +73,7 @@ re-restore theme (so `patchCss` cannot clobber colors).
 | --- | --- |
 | Lock screen | `Super+Delete` (Forge `prefs-lock-screen`) |
 | Close window | `Super+q` (GNOME) |
-| Toggle maximize | `Super+Return` (GNOME `toggle-maximized`) |
+| Toggle maximize | `Super+Return` (GNOME `toggle-maximized`; multi-tile full max → float so it sticks) |
 
 Forge clears GNOME `screensaver` on enable (frees `Super+l` for focus-right), so
 lock must use Forge’s binding, not Ubuntu’s Lock setting alone. Applied

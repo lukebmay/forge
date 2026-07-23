@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { WINDOW_MODES } from "../../lib/extension/window.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -17,7 +18,9 @@ import {
  *
  * Fix: when the *changed* window is a TILE window that was externally maximized/snapped
  * (any direction) AND it is not the sole tiled window on its monitor (so the legitimate
- * window-maximize-on-single case is preserved), unmaximize it and re-tile.
+ * window-maximize-on-single case is preserved):
+ *   - full maximize (both axes) → float the window so maximize can stick
+ *   - single-axis edge-snap → unmaximize and re-tile
  *
  * Note: native edge-snap maximizes only one axis, so the BOTH-only `isNotMaximized`
  * helper does not catch it — the reject check must look at any maximize direction.
@@ -44,7 +47,7 @@ describe("Bug #461: reject external maximize/edge-snap on a tiled window", () =>
 
   const wm = () => ctx.windowManager;
 
-  it("unmaximizes a fully-maximized tiled window that has tiled siblings", () => {
+  it("floats a fully-maximized tiled window that has tiled siblings (maximize sticks)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first, second] = createHorizontalLayout(ctx.tree, monitor, 2);
 
@@ -56,7 +59,9 @@ describe("Bug #461: reject external maximize/edge-snap on a tiled window", () =>
 
     wm().updateMetaPositionSize(maxed, "size-changed");
 
-    expect(maxed.is_maximized()).toBe(false); // Compat.unmaximize was applied
+    // Full maximize: pop out of the tile tree; do not snap back to the slot.
+    expect(maxed.is_maximized()).toBe(true);
+    expect(first.nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
     expect(renderSpy).toHaveBeenCalled();
   });
 
