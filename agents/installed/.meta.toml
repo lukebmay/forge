@@ -1,0 +1,210 @@
+schema = 1
+tool_version = "0.1.4"
+catalog_version = "0.1.3"
+composer_path = "agents.py"
+installed_at = "2026-07-18T00:41:08+00:00"
+updated_at = "2026-07-18T01:40:25+00:00"
+
+[[files]]
+id = "ansi-colors"
+path = "ansi-colors.md"
+version = "1.0.0"
+sha256 = "62485ce3ee130d8673d770a2e75671c7c7ffeca0607ccabfe06f144eef1e6f70"
+
+[[files]]
+id = "comments"
+path = "comments.md"
+version = "1.0.0"
+sha256 = "461df7ff7606ce982bee0894f43d036a2726a1973028eec15ae22222acc74ded"
+
+[[files]]
+id = "documentation"
+path = "documentation.md"
+version = "1.0.0"
+sha256 = "68f89ad65dd7a1a7a01a20986b7777b23ee3893daf39dea1e2fac65601c93420"
+
+[[files]]
+id = "general"
+path = "general.md"
+version = "1.0.1"
+sha256 = "aed9a8a06c158ff505a5c5113d9d2442ec9be5dfc5c3d55a2cd5846436580ed5"
+
+[[files]]
+id = "bash"
+path = "languages/bash.md"
+version = "1.0.0"
+sha256 = "79f2e9a804741b80174206fa0da8f313c76a022468e312ed7c1c54963b692fa9"
+
+[[files]]
+id = "c"
+path = "languages/c.md"
+version = "1.0.0"
+sha256 = "be08c16cc490d5a82c01ee43cca813c3d56327ddfa809b98779a0b7575c9078c"
+
+[[files]]
+id = "cpp"
+path = "languages/cpp.md"
+version = "1.0.0"
+sha256 = "54a1537753489865ea161dd11d7b992ca1ebcaf7d424fbfea6120634beac2dfb"
+
+[[files]]
+id = "css"
+path = "languages/css.md"
+version = "1.0.0"
+sha256 = "28e54d5135cdf2e0a8045f003ed07784418282dbdd4b4afe6058a4042ca3782d"
+
+[[files]]
+id = "docker"
+path = "languages/docker.md"
+version = "1.0.0"
+sha256 = "a70aac88d5f37340f6d5c0d2e7c66ea75a7c05596ce7cc5edf446bda8ede20ba"
+
+[[files]]
+id = "go"
+path = "languages/go.md"
+version = "1.0.0"
+sha256 = "1e8c216e5882210e9e73ec267391e7dfbf8a7df175a1800941bf9d95bbde7796"
+
+[[files]]
+id = "html"
+path = "languages/html.md"
+version = "1.0.0"
+sha256 = "0ba9c4be32003a262dc71796a64df6b5598c3a9c61930450d9326a5d46eaedd0"
+
+[[files]]
+id = "javascript"
+path = "languages/javascript.md"
+version = "1.0.0"
+sha256 = "681922ca276ae0d9e58b1b660b686cf975df89cd3c79b7bbe87ec1f9cf99d6a1"
+
+[[files]]
+id = "kubernetes"
+path = "languages/kubernetes.md"
+version = "1.0.0"
+sha256 = "e170fd20b54a0eef8d2af74836e7f0db38ec42965cd0a41ea845c3ea35d3614e"
+
+[[files]]
+id = "lua"
+path = "languages/lua.md"
+version = "1.0.0"
+sha256 = "625ab454a59a9854ee29d7151c9402989f0e5503146e576edf3d437dd412a6f9"
+
+[[files]]
+id = "mongodb"
+path = "languages/mongodb.md"
+version = "1.0.0"
+sha256 = "f53c4a6936b69b19565f792b89cf7ebbbb1b6cca9a4e7490ddbb12fbecb4622a"
+
+[[files]]
+id = "mysql"
+path = "languages/mysql.md"
+version = "1.0.0"
+sha256 = "424c43fb70423b590b17e55a15e430a1485361bbf24abd9d3b0a1bb2516b0372"
+
+[[files]]
+id = "podman"
+path = "languages/podman.md"
+version = "1.0.0"
+sha256 = "264a41b3a50192ba647e043f93eac4601741b778f9546b613240eec4206be4a9"
+
+[[files]]
+id = "postgres"
+path = "languages/postgres.md"
+version = "1.0.0"
+sha256 = "61bcff9701be39c50ac06b3aafc41e87c45ab7f8b1fd63ac9d6852abc53784be"
+
+[[files]]
+id = "python"
+path = "languages/python.md"
+version = "1.0.0"
+sha256 = "6179e5d42f18b46de75e400102dfac1289d7210a10f51fe88d218dcf262ee748"
+
+[[files]]
+id = "qemu"
+path = "languages/qemu.md"
+version = "1.0.0"
+sha256 = "4dc8a1cf72171271b70a2fb909a84f4d3277ab61f7bf90d43ac1eadc599d587b"
+
+[[files]]
+id = "react"
+path = "languages/react.md"
+version = "1.0.0"
+sha256 = "3e8971402643cfb2894c7f2c9c84c61c15acbb0db9e91fa956a473435db3cb8c"
+
+[[files]]
+id = "redis"
+path = "languages/redis.md"
+version = "1.0.0"
+sha256 = "522228b215bb53c25f12dd4ea1a32137afd2706e3288c8f08f38e4cb8181a6fb"
+
+[[files]]
+id = "rust"
+path = "languages/rust.md"
+version = "1.0.0"
+sha256 = "a94e49aecaf44dc9e9e9cb53f84165448377de37cac59d3705a6ab8b462b8c26"
+
+[[files]]
+id = "sqlite"
+path = "languages/sqlite.md"
+version = "1.0.0"
+sha256 = "adfa033f4b2b2f615c73e7bdbd6f6cdafde3ba6e34b617e3454d3334e5d51b28"
+
+[[files]]
+id = "typescript"
+path = "languages/typescript.md"
+version = "1.0.0"
+sha256 = "5696b9f8b2ce06dbef06686137324f8ea0ace45b860340fa5b4ae6708d0ef73e"
+
+[[files]]
+id = "web-backend"
+path = "languages/web-backend.md"
+version = "1.0.0"
+sha256 = "5aede3fec5e32dc3ae4515d0688eabfef1c01759f62e51960eccc43964a8327c"
+
+[[files]]
+id = "web-frontend"
+path = "languages/web-frontend.md"
+version = "1.0.0"
+sha256 = "461bf2cff8dc6baa466ff88cbacd59ca5be3a6ad6144b020656bbcb0091b8365"
+
+[[files]]
+id = "zig"
+path = "languages/zig.md"
+version = "1.0.0"
+sha256 = "1753665b1c87a76494b989490f2d9d823b114067a4e32f9e78a15b9b6b6e5679"
+
+[[files]]
+id = "zsh"
+path = "languages/zsh.md"
+version = "1.0.0"
+sha256 = "c64f194e12a0b69a104d16d3a12e147db468a00f1606cf2db245418c2fb7a60e"
+
+[[files]]
+id = "markdown"
+path = "markdown.md"
+version = "1.0.0"
+sha256 = "a9d2ad62b6341b0ee02289b15a7b5061ec12e16abcbcef5e4b77c0355b126247"
+
+[[files]]
+id = "nvim"
+path = "nvim.md"
+version = "1.0.0"
+sha256 = "92bca9ef3fd49e78ad602044fe92866b658d54c8ac68aafe56c5c843892fba81"
+
+[[files]]
+id = "scripting"
+path = "scripting.md"
+version = "1.0.0"
+sha256 = "c7ef4e040ea834d7a32f80ebaa795b917da25b2e089dea166b29d26bdd3be982"
+
+[[files]]
+id = "secrets"
+path = "secrets.md"
+version = "1.0.0"
+sha256 = "ee762019c61f81f847ec1646275980cdf0a93b9526afc34601fe1835ecd44f04"
+
+[[files]]
+id = "security"
+path = "security.md"
+version = "1.0.0"
+sha256 = "a570afc84814bd7889c2056fd9ce4376e3bf9f5b637f6e9cfcb3c8352ed1120a"

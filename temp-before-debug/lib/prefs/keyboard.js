@@ -1,0 +1,189 @@
+// Gnome imports
+import Adw from "gi://Adw";
+import GObject from "gi://GObject";
+import Gtk from "gi://Gtk";
+
+// Extension Imports
+import { gettext as _ } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
+
+// Prefs UI
+import { EntryRow, PreferencesPage, RadioRow } from "./widgets.js";
+import { accelStrvFromInput, findAccelConflicts } from "./keyboard-accel.js";
+import { Logger } from "../shared/logger.js";
+
+export class KeyboardPage extends PreferencesPage {
+  static {
+    GObject.registerClass(this);
+  }
+
+  constructor({ kbdSettings }) {
+    super({ title: _("Keyboard"), icon_name: "input-keyboard-symbolic" });
+    this.kbdSettings = kbdSettings;
+
+    this.add_group({
+      title: _("Drag-and-drop modifier key"),
+      description: _(
+        "Change the modifier key for tiling windows via drag-and-drop. Select 'None' to always tile"
+      ),
+      children: [
+        new RadioRow({
+          title: _("Modifier key"),
+          settings: kbdSettings,
+          bind: "mod-mask-mouse-tile",
+          options: {
+            Super: _("Super"),
+            Ctrl: _("Ctrl"),
+            Alt: _("Alt"),
+            Shift: _("Shift"),
+            None: _("None"),
+          },
+        }),
+      ],
+    });
+    this.add_group({
+      title: _("Shortcuts"),
+      description: _(
+        'Change the tiling shortcuts. To clear a shortcut clear the input field. To apply a shortcut press enter. <a href="https://github.com/jcrussell/forge/blob/main/docs/user/keybindings.md">Keyboard shortcuts guide</a>'
+      ),
+      children: Object.entries({
+        window: "Tiling shortcuts",
+        con: "Container shortcuts",
+        workspace: "Workspace shortcuts",
+        focus: "Appearance shortcuts",
+        prefs: "Other shortcuts",
+      }).map(([prefix, gettextKey]) =>
+        KeyboardPage.makeKeygroupExpander(prefix, gettextKey, kbdSettings)
+      ),
+    });
+    this.add_group({
+      title: _("Bulk Actions"),
+      description: _("Disable all shortcuts or restore default keybindings"),
+      children: [this._createBulkActionsRow()],
+    });
+  }
+
+  _createBulkActionsRow() {
+    const row = new Adw.ActionRow({
+      title: _("Manage all shortcuts"),
+      subtitle: _("Quickly disable all shortcuts or restore defaults"),
+    });
+
+    const buttonBox = new Gtk.Box({
+      orientation: Gtk.Orientation.HORIZONTAL,
+      spacing: 8,
+      valign: Gtk.Align.CENTER,
+    });
+
+    const disableAllButton = new Gtk.Button({
+      label: _("Disable All"),
+      css_classes: ["destructive-action"],
+    });
+    disableAllButton.connect("clicked", () => this._disableAllShortcuts());
+
+    const restoreDefaultsButton = new Gtk.Button({
+      label: _("Restore Defaults"),
+      css_classes: ["suggested-action"],
+    });
+    restoreDefaultsButton.connect("clicked", () => this._restoreAllDefaults());
+
+    buttonBox.append(disableAllButton);
+    buttonBox.append(restoreDefaultsButton);
+    row.add_suffix(buttonBox);
+
+    return row;
+  }
+
+  _disableAllShortcuts() {
+    const settings = this.kbdSettings;
+    const keys = settings.list_keys().filter((key) => {
+      // Only clear array-type keybindings (not mod-mask-mouse-tile which is a string)
+      const value = settings.get_value(key);
+      return value && value.get_type_string() === "as";
+    });
+    for (const key of keys) {
+      settings.set_strv(key, []);
+    }
+    Logger.info("Disabled all shortcuts");
+    const root = this.get_root();
+    if (root?.add_toast) {
+      root.add_toast(new Adw.Toast({ title: _("All shortcuts disabled"), timeout: 2 }));
+    }
+  }
+
+  _restoreAllDefaults() {
+    const settings = this.kbdSettings;
+    const keys = settings.list_keys().filter((key) => {
+      const value = settings.get_value(key);
+      return value && value.get_type_string() === "as";
+    });
+    for (const key of keys) {
+      settings.reset(key);
+    }
+    Logger.info("Restored all shortcuts to defaults");
+    const root = this.get_root();
+    if (root?.add_toast) {
+      root.add_toast(new Adw.Toast({ title: _("Shortcuts restored to defaults"), timeout: 2 }));
+    }
+  }
+
+  static makeKeygroupExpander(prefix, gettextKey, settings) {
+    const expander = new Adw.ExpanderRow({ title: _(gettextKey) });
+    KeyboardPage.createKeyList(settings, prefix).forEach((key) =>
+      expander.add_row(
+        new EntryRow({
+          title: key,
+          settings,
+          bind: key,
+          map: {
+            from(settings, bind) {
+              return settings.get_strv(bind).join(",");
+            },
+            to(settings, bind, value) {
+              const { valid, strv } = accelStrvFromInput(value, {
+                parse: Gtk.accelerator_parse,
+                valid: Gtk.accelerator_valid,
+                name: Gtk.accelerator_name,
+              });
+              if (!valid) return false;
+              Logger.info("setting", bind, "to", strv);
+              settings.set_strv(bind, strv);
+              return true;
+            },
+            warn(settings, bind) {
+              // Non-blocking conflict notice: the value is already saved by to();
+              // flag when the same chord is bound to another action (forge-cos).
+              // The keybindings schema also holds a non-array key
+              // (mod-mask-mouse-tile, type 's'); scan only string-array shortcut
+              // keys so get_strv() never trips over a wrong-typed key.
+              const shortcutKeys = settings
+                .list_keys()
+                .filter((key) => settings.get_default_value(key)?.get_type_string() === "as");
+              const conflicts = findAccelConflicts(settings.get_strv(bind), {
+                selfBind: bind,
+                keys: shortcutKeys,
+                getStrv: (key) => settings.get_strv(key),
+              });
+              if (conflicts.length === 0) return null;
+              const others = [...new Set(conflicts.map((c) => c.key))].join(", ");
+              return _("Shortcut also bound to:") + " " + others;
+            },
+          },
+        })
+      )
+    );
+    return expander;
+  }
+
+  static createKeyList(settings, categoryName) {
+    return settings
+      .list_keys()
+      .filter((keyName) => !!keyName && !!categoryName && keyName.startsWith(categoryName))
+      .sort((a, b) => {
+        const aUp = a.toUpperCase();
+        const bUp = b.toUpperCase();
+        if (aUp < bUp) return -1;
+        if (aUp > bUp) return 1;
+        return 0;
+      });
+  }
+}
