@@ -32,3 +32,18 @@ media) — or as a workaround for the vertical-monitor limitation below.
 Hot-plugging a monitor is handled (the tree adds/repairs monitor nodes on
 `monitors-changed`); if a layout looks wrong after a display change, reload with
 `Super+Shift+r` and see [troubleshooting.md](troubleshooting.md).
+
+## Blank / wake and display thrash
+
+After **idle auto-lock**, DPMS blank, or hybrid-GPU re-probe, GNOME can fire a
+burst of `workareas-changed` while Mutter briefly reassigns windows to the
+primary head. Forge **soft-rehomes** on a short settle: it maps each tiled window
+back to the monitor that best matches its last quiet geometry (intersection area)
+and re-parents tree nodes without a full wipe when structure is still consistent.
+
+If placement is still wrong after wake:
+
+1. Wait a moment for the settle (sub-second).
+2. Reload Forge config: `Super+Shift+r`.
+3. If connectors themselves are wrong (wrong primary, missing head), fix displays
+   first with shellrc `gdisplays load <scene>`, then retile.

@@ -5,7 +5,7 @@
 **Repo (this tree):** `~/dev/me/forge_jcrussell` → remote `jcrussell/forge`  
 **GNOME host:** `black`, **X11**, dual 4K, Shell **46**, uuid `forge@jmmaranan.com`  
 **After trial product plan:** [forge-harden-and-session.md](./forge-harden-and-session.md)  
-**Next task:** [forge-harden-and-session_soft-rehome.md](../tasks/forge-harden-and-session_soft-rehome.md)
+**Next:** H1 soft rehome **code done** — [completed task](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md); manual blank/wake on black
 
 **Completed:** Phase A comparison + import from shellrc  
 **Completed task files:** `agents/plans/forge-fork-eval/completed/` *(none yet — spike still open)*

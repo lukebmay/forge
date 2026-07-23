@@ -1,18 +1,21 @@
 # Plan: Forge harden + session scripting
 
-**Status:** Design locked — **execute H1 soft rehome next** (fork is daily-driving; overnight auto-lock repro confirmed)  
+**Status:** H1 soft rehome implemented — **manual blank/wake verify on black next**; then H2/resize/session  
 **Priority:** P1 product  
 **Base:** **this tree** (`jcrussell/forge`) — **not** `~/dev/me/forge_original`  
 **Upstream ref only:** `~/dev/me/forge_original` (`forge-ext/forge` @ `v49-89`)  
 **Host:** `black`, dual 4K, X11, Shell 46; hybrid AMD iGPU + NVIDIA; displays via shellrc `gdisplays`  
 **Related:** [forge-fork-eval.md](./forge-fork-eval.md) (install done), shellrc gdisplays v1  
-**Next task:** [forge-harden-and-session_soft-rehome.md](../tasks/forge-harden-and-session_soft-rehome.md)
+**Completed:** [soft-rehome](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md)  
+**Next:** Manual overnight/DPMS verify on black; Phase 1 H2–H4 or Phase 2 resize
 
 ### Session note (2026-07-23)
 
-Install trial on black: jcrussell live; scripts + host defaults + float-on-full-maximize shipped.  
-**Repro:** manual lock OK; **overnight GNOME auto-lock → wake → all windows one monitor.**  
-Only `n_monitors==0` guard on workareas today — need soft rehome (H1).
+**H1 soft rehome shipped:** workareas debounce + last-good geometry mapping + suppress
+window-entered-monitor during thrash; inconsistent scaffold → reloadTree + layout groups.
+Tests: `bug-h1-soft-rehome-workareas-thrash`, utils `bestMonitorIndexForRect`.
+Docs: monitors.md, troubleshooting, DESIGN.md.  
+**Still open:** live overnight auto-lock smoke on black after `make dev`.
 
 ---
 
@@ -307,7 +310,7 @@ Launch policy:
 
 | ID | Task | Outcome |
 | --- | --- | --- |
-| H1 | Soft rehome on workareas / monitors-changed | Windows stay on correct heads without full wipe when possible |
+| H1 | Soft rehome on workareas / monitors-changed | **Done** (unit/regression); manual black verify open |
 | H2 | Harden layout toggles after rehome | Retab never aborts shell (regression + manual) |
 | H3 | e2e thrash scenario | Virtual dual-head: geometry change → assert no crash + windows on both monitors |
 | H4 | Document recovery | User docs: blank/wake, Super+Shift+r, when to `gdisplays load` |
@@ -383,7 +386,7 @@ Quality gate before claiming “no crashes”: blank → wake → retab × N + j
 | ID | Task file | Status |
 | --- | --- | --- |
 | 0 | [forge-fork-eval_spike.md](../tasks/forge-fork-eval_spike.md) | Ready (Phase B) |
-| 1 | `forge-harden-and-session_h1-soft-rehome.md` | After Phase 0 |
+| 1 | [soft-rehome](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md) | **Done** |
 | 2 | `forge-harden-and-session_r-resize.md` | After H or parallel small fixes |
 | 3 | `forge-harden-and-session_s-apply-mvp.md` | After apply design review |
 | 4 | `forge-harden-and-session_s-dbus-cli.md` | After S apply core |
@@ -391,5 +394,7 @@ Quality gate before claiming “no crashes”: blank → wake → retab × N + j
 ---
 
 ## Session notes
+
+**2026-07-23:** H1 soft rehome implemented (see completed task). Manual blank/wake still to confirm on black.
 
 **2026-07-16:** Reanalyzed both trees + gdisplays boundary. Confirmed base = jcrussell. Upstream live mouse-resize is the only notable cherry-pick candidate. Session scripting requires new layout profiles + apply path + CLI; e2e bridge proves introspection shape. Plan filed; execution gated on install trial.

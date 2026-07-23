@@ -1,6 +1,6 @@
 # Task — Soft rehome on workareas thrash (blank / auto-lock / wake)
 
-**Status:** Ready (next session)  
+**Status:** Done (implementation + unit/regression; manual overnight on black still recommended)  
 **Plan:** [forge-harden-and-session.md](../plans/forge-harden-and-session.md)  
 **Priority:** P1 (P0 product for multi-mon daily driver)  
 **Kind:** Plan-linked  
@@ -56,12 +56,20 @@ Related: Phase C of [forge-fork-eval](../plans/forge-fork-eval.md); design slice
 
 ## Acceptance
 
-- [ ] Overnight-style thrash (or simulated) does not leave all tiles on one monitor when both heads are up  
-- [ ] Manual lock still fine  
-- [ ] Retab/stack after rehome does not crash Shell  
-- [ ] Unit/regression coverage for rehome mapping  
-- [ ] Harden plan + PRIORITY updated; brief DESIGN.md note if non-obvious  
+- [x] Overnight-style thrash (or simulated) does not leave all tiles on one monitor when both heads are up  
+- [x] Manual lock still fine (path unchanged; no eager rehome on thrash)  
+- [x] Retab/stack after rehome does not crash Shell (uses existing preserve-container + layout-group fallback)  
+- [x] Unit/regression coverage for rehome mapping  
+- [x] Harden plan + PRIORITY updated; brief DESIGN.md note if non-obvious  
+- [ ] Manual overnight verify on `black` (follow-up smoke)
 
 ## Session notes
 
-**2026-07-23 (prep):** Filed after install trial on black. Live: jcrussell daily-driving; auto-lock overnight clustered windows; manual lock OK. Next agent: implement H1 soft rehome, start here.  
+**2026-07-23 (implement):** H1 soft rehome shipped.
+
+- `utils.js`: `rectIntersectionArea`, `bestMonitorIndexForRect`
+- `window.js`: last-good WeakMap snapshot after quiet render; workareas debounce 200ms; suppress `_onWindowEnteredMonitor` while thrash pending; settle assigns `move_to_monitor` then `_reconcileWindowHomes` + render; missing dest → `reloadTree`
+- Tests: `bug-h1-soft-rehome-workareas-thrash.test.js`; updated bug-078 / n0s7; utils unit
+- Docs: `docs/user/monitors.md`, `troubleshooting.md`, `docs/DESIGN.md`
+
+Next: manual blank/wake on black; then H2/H3 or resize per plan.

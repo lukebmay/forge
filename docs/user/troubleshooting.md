@@ -23,6 +23,18 @@ Stacked and tabbed are **on by default**. If the shortcuts no-op, the modes were
 turned off — confirm `stacked-tiling-mode-enabled` / `tabbed-tiling-mode-enabled`
 are enabled in **Preferences → Tiling → Behavior**. See [layouts.md](layouts.md).
 
+## After lock / blank, all windows on one monitor
+
+Forge debounces workarea thrash and soft-rehomes from last known geometry (see
+[monitors.md](monitors.md)). If tiles stay piled on one head after both monitors
+are back:
+
+1. `Super+Shift+r` (config reload / re-render).
+2. Confirm both heads are live (`gdisplays` / Settings → Displays).
+3. If the layout is connector-level wrong, `gdisplays load <scene>` then retile.
+4. Retab/stack after rehome should not crash; if Shell aborts, capture journal
+   (`journalctl -e -u gnome-shell`) and file a bug.
+
 ## Enabling debug logs
 
 Logging is **off by default** and only active in development builds. Turn it on:

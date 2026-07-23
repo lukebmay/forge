@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { createEnum } from "../../../lib/extension/enum.js";
 import {
   rectContainsPoint,
+  rectIntersectionArea,
+  bestMonitorIndexForRect,
   resolveWidth,
   resolveHeight,
   orientationFromGrab,
@@ -90,6 +92,36 @@ describe("Utility Functions", () => {
       const rect = { x: -50, y: -50, width: 100, height: 100 };
       expect(rectContainsPoint(rect, [0, 0])).toBe(true);
       expect(rectContainsPoint(rect, [-100, 0])).toBe(false);
+    });
+  });
+
+  describe("rectIntersectionArea / bestMonitorIndexForRect", () => {
+    const dual = [
+      { x: 0, y: 0, width: 1920, height: 1080 },
+      { x: 1920, y: 0, width: 1920, height: 1080 },
+    ];
+
+    it("computes intersection area", () => {
+      expect(rectIntersectionArea(dual[0], { x: 100, y: 100, width: 50, height: 50 })).toBe(
+        50 * 50
+      );
+      expect(rectIntersectionArea(dual[0], dual[1])).toBe(0);
+    });
+
+    it("picks the monitor with max overlap", () => {
+      expect(bestMonitorIndexForRect({ x: 100, y: 100, width: 800, height: 600 }, dual)).toBe(0);
+      expect(bestMonitorIndexForRect({ x: 2000, y: 100, width: 800, height: 600 }, dual)).toBe(1);
+    });
+
+    it("falls back to center containment when no area overlap", () => {
+      // Zero-size point-like rect fully outside both rects but center in mon1.
+      const tiny = { x: 2500, y: 500, width: 0, height: 0 };
+      expect(bestMonitorIndexForRect(tiny, dual)).toBe(1);
+    });
+
+    it("returns -1 for empty geometry list", () => {
+      expect(bestMonitorIndexForRect({ x: 0, y: 0, width: 10, height: 10 }, [])).toBe(-1);
+      expect(bestMonitorIndexForRect(null, dual)).toBe(-1);
     });
   });
 

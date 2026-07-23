@@ -19,7 +19,7 @@ import { WINDOW_MODES } from "../../lib/extension/window.js";
  * (b) workspaceAdded/workspaceRemoved were only consumed inside
  * _onWorkareasChanged's tree-has-windows branch; a workspace change on an
  * empty tree left the flag set, making the NEXT unrelated workareas-changed
- * take the expensive trackCurrentWindows branch instead of a re-render.
+ * take the expensive trackCurrentWindows branch instead of soft rehome.
  */
 describe("forge-n0s7: source-id and flag hygiene", () => {
   let ctx;
@@ -55,7 +55,7 @@ describe("forge-n0s7: source-id and flag hygiene", () => {
   it("consumes workspaceAdded even when the tree has no windows", () => {
     const wm = ctx.windowManager;
     const trackSpy = vi.spyOn(wm, "trackCurrentWindows").mockImplementation(() => {});
-    const renderSpy = vi.spyOn(wm, "renderTree").mockImplementation(() => {});
+    const softSpy = vi.spyOn(wm, "_queueSoftRehomeOnWorkareas").mockImplementation(() => {});
 
     // Workspace added while the tree is empty: nothing to re-track, but the
     // flag must still be consumed.
@@ -63,8 +63,8 @@ describe("forge-n0s7: source-id and flag hygiene", () => {
     wm._onWorkareasChanged(ctx.display);
     expect(wm.workspaceAdded).toBe(false);
 
-    // The next workareas-changed with windows present must take the cheap
-    // re-render branch, not trackCurrentWindows.
+    // The next workareas-changed with windows present must take soft rehome,
+    // not trackCurrentWindows.
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const win = createMockWindow({ wm_class: "App" });
     const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win);
@@ -72,7 +72,7 @@ describe("forge-n0s7: source-id and flag hygiene", () => {
 
     wm._onWorkareasChanged(ctx.display);
     expect(trackSpy).not.toHaveBeenCalled();
-    expect(renderSpy).toHaveBeenCalledWith("workareas-changed");
+    expect(softSpy).toHaveBeenCalled();
   });
 
   it("still re-tracks when a workspace changed and windows exist", () => {

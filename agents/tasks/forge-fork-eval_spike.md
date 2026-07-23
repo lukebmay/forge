@@ -150,7 +150,7 @@ journalctl --user -b /usr/bin/gnome-shell -n 200 --no-pager
 
 ## Session notes
 
-**2026-07-23 (session wrap):** Daily-driving jcrussell. Manual lock keeps placement; **overnight auto-lock clustered all windows on one monitor** (workareas thrash / no soft rehome). Maximize: Super+Enter floats full max so it sticks. Next product work: **[soft-rehome task](./forge-harden-and-session_soft-rehome.md)** under harden plan. Spike not fully closed (smoke table incomplete) but install decision is stay-on-fork.
+**2026-07-23 (session wrap):** Daily-driving jcrussell. Manual lock keeps placement; **overnight auto-lock clustered all windows on one monitor** (workareas thrash / no soft rehome). Maximize: Super+Enter floats full max so it sticks. Soft rehome **implemented** — [completed](../plans/forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md); still needs live blank/wake verify. Spike not fully closed (smoke table incomplete) but install decision is stay-on-fork.
 
 **2026-07-22 (wrap):** Live jcrussell; scripts/forge suite; theme + host defaults.
 
