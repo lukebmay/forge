@@ -1,13 +1,11 @@
 # Plan: Evaluate Forge fork (quick wins, decide later fork)
 
-**Status:** Phase A done — **base = this fork**. Next session = Phase B/C install trial on `black`  
-**Priority:** P2 (daily UX; multi-monitor thrash after display blank)  
-**Repo (this tree):** `~/dev/me/forge_jcrussell` → remote `jcrussell/forge` @ `ad14e50` / `v49-90-beta.2`  
-**Upstream comparison clone:** `~/dev/me/forge_original` → remote `forge-ext/forge`  
-**GNOME host:** `black`, **X11**, dual 4K, Shell **46.0**, uuid `forge@jmmaranan.com`  
-**Related (shellrc):** `~/dev/me/shellrc/agents/plans/gdisplays-connector-identity.md` (v1 done)  
-**After trial product plan:** [forge-harden-and-session.md](./forge-harden-and-session.md) (multi-mon, resize, session/`workon`)  
-**Next task:** [forge-fork-eval_spike.md](../tasks/forge-fork-eval_spike.md) — start at **Phase B**
+**Status:** Phase B install done — **daily-driving jcrussell**. Phase C partial (overnight lock placement still fails).  
+**Priority:** P2 wrap; product P1 → soft rehome  
+**Repo (this tree):** `~/dev/me/forge_jcrussell` → remote `jcrussell/forge`  
+**GNOME host:** `black`, **X11**, dual 4K, Shell **46**, uuid `forge@jmmaranan.com`  
+**After trial product plan:** [forge-harden-and-session.md](./forge-harden-and-session.md)  
+**Next task:** [forge-harden-and-session_soft-rehome.md](../tasks/forge-harden-and-session_soft-rehome.md)
 
 **Completed:** Phase A comparison + import from shellrc  
 **Completed task files:** `agents/plans/forge-fork-eval/completed/` *(none yet — spike still open)*

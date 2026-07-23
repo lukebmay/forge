@@ -121,12 +121,12 @@ journalctl --user -b /usr/bin/gnome-shell -n 200 --no-pager
 - [x] Base recommendation: **jcrussell**  
 - [x] Trial defaults locked (make dev, UUID, X11)  
 - [x] Host inventory + backup/install/rollback commands  
-- [ ] Backup created (path: ________)  
-- [ ] Trial result (smoke table)  
+- [x] Backup created (path: `~/.local/share/forge-manage/backups/switch-jcrussell-manual-20260722-163828`)  
+- [ ] Trial result (smoke table) — partial; see notes  
 - [ ] Crash? journal excerpt if any  
-- [ ] Quick-win list  
-- [ ] Daily-driver recommendation after install  
-- [ ] Rollback verified **or** deliberately staying on fork  
+- [x] Quick-win list — host defaults, theme restore, float-on-maximize  
+- [x] Daily-driver recommendation after install — **staying on jcrussell**; multi-mon overnight still broken  
+- [x] Rollback verified **or** deliberately staying on fork — **staying on fork**
 
 ## Smoke results (fill next session)
 
@@ -150,7 +150,9 @@ journalctl --user -b /usr/bin/gnome-shell -n 200 --no-pager
 
 ## Session notes
 
-**2026-07-22 (wrap):** Live jcrussell `v49-90-beta.2`. Scripts under `scripts/forge/`: switch (build-before-uninstall), theme restore (defeat patchCss), host-defaults (lock Super+Delete, quit Super+q, maximize Super+Return). Colors restored from CSS backup. Next: Phase C blank/wake/retab smoke.
+**2026-07-23 (session wrap):** Daily-driving jcrussell. Manual lock keeps placement; **overnight auto-lock clustered all windows on one monitor** (workareas thrash / no soft rehome). Maximize: Super+Enter floats full max so it sticks. Next product work: **[soft-rehome task](./forge-harden-and-session_soft-rehome.md)** under harden plan. Spike not fully closed (smoke table incomplete) but install decision is stay-on-fork.
+
+**2026-07-22 (wrap):** Live jcrussell; scripts/forge suite; theme + host defaults.
 
 **2026-07-22 (manual switch):** EGO→jcrussell by hand; backup `switch-jcrussell-manual-20260722-163828`; settings preserved.
 
