@@ -734,5 +734,18 @@ describe("Tree Layout Algorithms", () => {
       // Sanity: the bar the icon must fit IS dpi-scaled to 70, proving 24 is deliberate.
       expect(ctx.tree.stackedBarHeight()).toBe(70); // 35 * 2
     });
+
+    // T1: null app must not throw — generic symbolic icon instead of create_icon_texture.
+    it("tolerates a null app with a fallback icon and label", () => {
+      const node = new Node(NODE_TYPES.CON, new St.Bin());
+      let result;
+      expect(() => {
+        result = node._buildTabBase(null, "x");
+      }).not.toThrow();
+      expect(result.tabContents).toBeTruthy();
+      expect(result.iconBin.child).toBeTruthy();
+      expect(result.iconBin.child.icon_name).toBe("application-x-executable-symbolic");
+      expect(result.titleButton.label).toBe("x");
+    });
   });
 });

@@ -7,16 +7,13 @@ import {
 } from "../mocks/helpers/index.js";
 
 /**
- * Bug forge-2uc0: a window whose Shell.WindowTracker app is null at map time
- * never gets a tab.
+ * Bug forge-2uc0 / T1: a window whose Shell.WindowTracker app is null at map time
+ * still gets a fallback tab; when wm_class lands, refreshApp upgrades to a real icon.
  *
- * Node.app is snapshotted once in _initMetaWindow() at construction, and
- * _createWindowTab() bails on !this.app (forge-v4u0). Apps that report wm_class
- * late (Anki, Opera, many Flatpaks) have a null app then, so they tile but never
- * gain a tab — the notify::wm-class handler only called renderTree, never
- * re-initialised the app. Node.refreshApp() re-runs the snapshot and (re)builds
- * the tab; _createWindowTab early-returns once this.tab exists so it only fills
- * the gap left by the earlier null app.
+ * Node.app is snapshotted once in _initMetaWindow() at construction. T1 builds a
+ * fallback tab when app is null (`_tabFallback`). Apps that report wm_class late
+ * (Anki, Opera, many Flatpaks) resolve later via notify::wm-class → refreshApp(),
+ * which re-snapshots the app and rebuilds the tab so the real app icon appears.
  */
 describe("Bug forge-2uc0: Node.refreshApp rebuilds app + tab when wm_class lands", () => {
   let ctx;
@@ -32,16 +29,17 @@ describe("Bug forge-2uc0: Node.refreshApp rebuilds app + tab when wm_class lands
     vi.restoreAllMocks();
   });
 
-  it("creates the missing tab after the app resolves", () => {
+  it("creates a fallback tab at map, then upgrades after the app resolves", () => {
     // App is null at map time (late wm_class apps).
     const spy = vi.spyOn(Shell.WindowTracker.prototype, "get_window_app").mockReturnValue(null);
 
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const { nodeWindow } = createWindowNode(ctx.tree, monitor);
 
-    // No app -> no tab, but the node is still a valid tiled window.
+    // Null app → fallback tab still present (T1); node remains a valid tiled window.
     expect(nodeWindow.app).toBeNull();
-    expect(nodeWindow.tab).toBeFalsy();
+    expect(nodeWindow.tab).toBeTruthy();
+    expect(nodeWindow._tabFallback).toBe(true);
 
     // wm_class lands: the tracker now resolves an app.
     const app = { get_name: () => "Late App", create_icon_texture: () => ({}) };
@@ -51,5 +49,6 @@ describe("Bug forge-2uc0: Node.refreshApp rebuilds app + tab when wm_class lands
 
     expect(nodeWindow.app).toBe(app);
     expect(nodeWindow.tab).toBeTruthy();
+    expect(nodeWindow._tabFallback).toBe(false);
   });
 });

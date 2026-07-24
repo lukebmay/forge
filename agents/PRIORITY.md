@@ -5,15 +5,14 @@
 
 ## Next session focus
 
-**P1 — Daily-driver T1 tab chrome** (empty gap / 1-of-N labels)
+**P2 — Daily-driver T2 layout debug overlay** (opt-in; sooner for human debug)
 
 | Doc | Role |
 | --- | --- |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | **Execution plan** (start here) |
-| [forge-layout-thrash-analysis.md](./plans/forge-layout-thrash-analysis.md) | Dual taskforce + product decisions |
-| Task | [t1](./tasks/forge-daily-driver_t1-tab-chrome.md) |
+| Task | [t2](./tasks/forge-daily-driver_t2-layout-debug-overlay.md) |
 
-**T0 done** (stack off + DND force tab). Then: [t2 overlay](./tasks/forge-daily-driver_t2-layout-debug-overlay.md) → [t3 blank/wake](./tasks/forge-daily-driver_t3-blank-wake-tabs.md) (includes h1-verify).
+**T0–T1 done.** Then: [t3 blank/wake](./tasks/forge-daily-driver_t3-blank-wake-tabs.md) (includes h1-verify).
 
 Default implement path: **A/B taskforce loop** (`agents/installed/general.md`).
 
@@ -22,8 +21,8 @@ Default implement path: **A/B taskforce loop** (`agents/installed/general.md`).
 | Pri | Item | Status |
 | --- | --- | --- |
 | P1 | Daily-driver T0 stack-off + DND tab | **Done** |
-| P1 | Daily-driver T1 tab chrome (empty gap / 1-of-N) | **Ready** (next) |
-| P2 | T2 layout debug overlay (opt-in, sooner) | After T1 |
+| P1 | Daily-driver T1 tab chrome (empty gap / 1-of-N) | **Done** |
+| P2 | T2 layout debug overlay (opt-in, sooner) | **Ready** (next) |
 | P1 | T3 blank/wake + tab survival (+ h1-verify) | After T1 install |
 | P2 | T4 sizing policy | After T3 |
 | P2 | T5 keybind system (safe defaults, presets, save/load) | First-class; after T3 or parallel UX |
@@ -34,6 +33,7 @@ Default implement path: **A/B taskforce loop** (`agents/installed/general.md`).
 
 ## Related completed
 
+- [T1 tab chrome](./plans/forge-daily-driver/completed/forge-daily-driver_t1-tab-chrome.md)
 - [T0 stack-off + DND tab](./plans/forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md)
 - [soft-rehome H1 code](./plans/forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md) — live verify still via T3/h1-verify
 

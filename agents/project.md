@@ -38,7 +38,7 @@ python3 agentsmd_build.py --preset=full
 | --- | --- | --- |
 | [forge-fork-eval](./plans/forge-fork-eval.md) | Phase A done — **use this fork as base** | Phase B/C install trial on `black` |
 | [spike task](./tasks/forge-fork-eval_spike.md) | Ready | Backup → Node 20 → `make dev` → smoke → blank/wake |
-| [forge-daily-driver](./plans/forge-daily-driver.md) | Ready | T0 stack-off → T1 tab chrome → overlay → blank/wake |
+| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T1 done | Next: T2 overlay → T3 blank/wake |
 | [forge-harden-and-session](./plans/forge-harden-and-session.md) | H1 code done | Live verify via daily-driver T3; then session/`workon` |
 
 **Host `black` (last inventory):** GNOME Shell 46.0, X11, EGO Forge **v89** still installed until trial.

@@ -10,14 +10,14 @@
 
 ### Session note (2026-07-24)
 
-**T0 done** — stack default off; DnD center forces TABBED when stack disabled
-(including convert STACKED parent → TABBED); STACKED disable → TABBED one-shot;
-bare Super+ audit in completed T0 note. Next: **T1** tab chrome reliability.
+**T1 done** (A/B AGREE) — tab chrome reliability: fallback labels when `!app`,
+self-heal on STACKED/TABBED process path, `refreshApp` upgrades fallback.
+Key: `lib/extension/tree.js`. Regression:
+`tests/regression/bug-t1-tab-chrome-null-app-multiwindow.test.js`.
+`npm test` 170/1618. Next: **T2** layout debug overlay.
 
-**Deferred nits (T0 verify):** leave until **T9 stack/tab full merge** (or earlier
-if they block users): `config/settings.schema.json` still defaults stack `true`;
-`docs/user/layouts.md` still says both modes on by default. Product GSettings
-default is already false in gschema.
+**T0 done** (earlier) — stack default off; DnD center forces TABBED when stack
+disabled. Deferred nits (schema/docs stack default wording) stay for T9.
 
 ---
 
@@ -91,7 +91,7 @@ T4 sizing policy (equalize / userSized)
 | ID | Task file | Status | Depends | Effort | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | **T0** | [completed/forge-daily-driver_t0-stack-off-dnd-tab.md](./forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md) | **Done** | — | S | Stack off; DND center always tabbed; no join-as-stack when stack disabled |
-| **T1** | [forge-daily-driver_t1-tab-chrome.md](../tasks/forge-daily-driver_t1-tab-chrome.md) | **Ready** (after T0 or same session) | T0 preferred | S–M | Never empty gap; N labels for N children; fallback without app |
+| **T1** | [completed/forge-daily-driver_t1-tab-chrome.md](./forge-daily-driver/completed/forge-daily-driver_t1-tab-chrome.md) | **Done** | T0 preferred | S–M | Never empty gap; N labels for N children; fallback without app |
 | **T2** | [forge-daily-driver_t2-layout-debug-overlay.md](../tasks/forge-daily-driver_t2-layout-debug-overlay.md) | Ready after T1 | T1 | S–M | Opt-in overlay: layout, %, auto/fixed, mon id — human + agent debug |
 | **T3** | [forge-daily-driver_t3-blank-wake-tabs.md](../tasks/forge-daily-driver_t3-blank-wake-tabs.md) | Ready after T1 | T1; uses [h1-verify](../tasks/forge-harden-and-session_h1-verify.md) | M | Live blank/wake OK; tab groups survive soft rehome |
 | **T4** | `agents/tasks/forge-daily-driver_t4-sizing-policy.md` | Create when T3 in progress / done | T1 | S–M | Equal until user resize; insert policy setting; min-size write-back |
