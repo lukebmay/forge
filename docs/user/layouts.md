@@ -11,7 +11,8 @@ bindings, and see [keybindings.md](keybindings.md) to customize them.
 New windows tile side-by-side. A container is either a **horizontal split**
 (windows left-to-right) or a **vertical split** (stacked top-to-bottom).
 
-- **Toggle a container's split direction** — `Super+g`.
+- **Toggle a container's split direction** — Safe default `Ctrl+Super+g` (Vim kit:
+  `Super+g`). Use the cheatsheet for your live chord.
 - Splits **nest**: split one pane vertically while its parent stays horizontal, and
   you get an L-shaped layout. This is how complex layouts are built.
 - New windows inherit the focused container's split. Enable **Auto Split /
@@ -22,9 +23,9 @@ New windows tile side-by-side. A container is either a **horizontal split**
 
 Instead of splitting space, a container can show one child at a time:
 
-- **Stacked** (`Super+Shift+s`) — children listed vertically; the focused one
+- **Stacked** (Safe: `Ctrl+Super+s`) — children listed vertically; the focused one
   expands (like a stack of title bars).
-- **Tabbed** (`Super+Shift+t`) — children shown as a tab strip; toggle the tab
+- **Tabbed** (Safe: `Ctrl+Super+t`) — children shown as a tab strip; toggle the tab
   decoration with the tab-decoration shortcut.
 - Both modes are **on by default** (`stacked-tiling-mode-enabled` /
   `tabbed-tiling-mode-enabled`, in Preferences → Tiling → Behavior). Turn a mode off
@@ -58,7 +59,7 @@ ratio, those tiles keep your proportions when new windows open (default).
 
 | Action | Default |
 | --- | --- |
-| Reset sibling sizes to equal | `Super+=` (`window-reset-sizes`) |
+| Reset sibling sizes to equal | `Ctrl+Super+=` (`window-reset-sizes`; Vim: `Super+=`) |
 | Golden-ratio resize | unbound by default (`window-golden-ratio`) |
 
 **New window size** (Preferences → Tiling → Behavior, `new-window-size-policy`):

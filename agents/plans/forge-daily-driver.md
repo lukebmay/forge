@@ -10,11 +10,14 @@
 
 ### Session note (2026-07-24)
 
-**T4 done** (A/B **AGREE**). `Node.userSized` + `new-window-size-policy`
-(`preserve`|`equalize`); equalize until user resize; min-size write-back without
-marking intent; Super+= clears. Completed:
+**T5 done** (+ follow-up grammar/kits). Safe = **Ctrl+Super** only (no bare Super+);
+kits **safe / vim / i3**; conflict scan + confirm; “Safe ≠ recommended” prefs copy;
+save/load your kits. Completed:
+[t5](./forge-daily-driver/completed/forge-daily-driver_t5-keybind-system.md).
+**Next:** **T6** full in-memory tree snapshot (or later T7–T9 per priority).
+
+**T4 done** (A/B **AGREE**). Completed:
 [t4](./forge-daily-driver/completed/forge-daily-driver_t4-sizing-policy.md).
-**Next:** **T5** keybind system.
 
 **T3 done** — blank/wake + tab survival (live black).  
 **T2 done** — layout debug overlay (`Ctrl+Super+d`).  
@@ -97,7 +100,7 @@ T4 sizing policy (equalize / userSized)
 | **T2** | [completed/forge-daily-driver_t2-layout-debug-overlay.md](./forge-daily-driver/completed/forge-daily-driver_t2-layout-debug-overlay.md) | **Done** | T1 | S–M | Opt-in overlay: layout, %, auto/fixed, mon id — human + agent debug |
 | **T3** | [completed/forge-daily-driver_t3-blank-wake-tabs.md](./forge-daily-driver/completed/forge-daily-driver_t3-blank-wake-tabs.md) | **Done** | T1; h1-verify | M | Live blank/wake OK; tab groups survive soft rehome |
 | **T4** | [completed/forge-daily-driver_t4-sizing-policy.md](./forge-daily-driver/completed/forge-daily-driver_t4-sizing-policy.md) | **Done** | T1 | S–M | Equal until user resize; insert policy setting; min-size write-back |
-| **T5** | `agents/tasks/forge-daily-driver_t5-keybind-system.md` | Create after T0 note; implement after T3 or parallel UX | — (soft) | M–L | Safe defaults; presets (vim / safe); save/load profiles |
+| **T5** | [completed/forge-daily-driver_t5-keybind-system.md](./forge-daily-driver/completed/forge-daily-driver_t5-keybind-system.md) | **Done** | — (soft) | M–L | Safe defaults; presets (vim / safe); save/load profiles |
 | **T6** | `agents/tasks/forge-daily-driver_t6-full-tree-snapshot.md` | Later | T3 | M | In-memory full tree for thrash restore |
 | **T7** | `agents/tasks/forge-daily-driver_t7-stable-outputs.md` | Later | T6 | M | Connector/stable keys; remap layer (gdisplays-inspired) |
 | **T8** | harden-and-session session API | Later | T6–T7 | L | Disk + `workon` apply |

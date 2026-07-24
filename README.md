@@ -183,7 +183,8 @@ Full docs live in [`docs/`](docs/):
 - **Developer reference** ([`docs/dev/`](docs/dev/)) — architecture, rendering
   pipeline, Mutter compatibility.
 - **Design notes** ([`docs/DESIGN.md`](docs/DESIGN.md)) — durable “why” decisions.
-- Press **`Super+Shift+/`** in-session for the keybinding cheatsheet.
+- Press the cheatsheet chord in-session (Safe default: **`Ctrl+Super+/`**; Vim kit:
+  **`Super+Shift+/`**) for live keybinding reference.
 
 ## Forge Override Paths
 

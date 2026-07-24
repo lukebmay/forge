@@ -51,9 +51,29 @@ Execution: [agents/plans/forge-daily-driver.md](../agents/plans/forge-daily-driv
 - **Sizing:** equal share until user resizes (flex-like *contract* later; no big-bang engine now).
   Implemented as `Node.userSized` + `new-window-size-policy` (`preserve`|`equalize`);
   min-size redistrib writes effective percents without marking user intent.
-- **Keybinds first-class:** bare Super+ is user-space; ship multi-modifier safe defaults;
-  one-click presets (safe / vim) + save/load — not one-key-at-a-time exploration.
+- **Keybinds first-class:** bare Super+ is user-space; Safe install defaults only;
+  recommended **kits** (vim / i3) + save your own — not one-key-at-a-time exploration.
 - **Debug overlay** opt-in, soon — for humans and agents; not permanent size chrome.
+
+## Keybind kits (T5 + grammar)
+
+**Problem:** Bare Super+ defaults steal launchers/GNOME; mixed Ctrl+Super vs
+Shift+Super with no grammar; Super+arrows still felt user-space; GNOME Settings
+never lists extension shortcuts.
+
+**Approach:**
+
+1. **Safe = install default only, not recommended.** Bare Super+ only for
+   **`Super+Delete` lock**. Primary **`Ctrl+Super`**; secondary
+   **`Ctrl+Shift+Super`** for twins.
+2. **Shared rare chords:** lock `Super+Delete`; border `Ctrl+Super+b`; tiling
+   master `Ctrl+Super+e`; always-float `Ctrl+Shift+Super+Space`. **Float:**
+   Safe/Vim `Ctrl+Super+Space` (Ctrl-primary); i3 `Shift+Super+Space` (i3).
+3. **Kits:** `safe` / `vim` / `i3`; apply → tweak → save under
+   `keybinding-profiles/`.
+4. **Conflict scan** + prefs banner; GNOME Settings never lists Forge binds.
+
+**Grammar rule:** change modifier families only when two actions share a base key.
 
 ## User stylesheet vs `make dev` (production flag)
 
