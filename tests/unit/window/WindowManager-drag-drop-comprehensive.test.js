@@ -739,6 +739,12 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
         if (key === "dnd-center-layout") return "STACKED";
         return "";
       });
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "stacked-tiling-mode-enabled") return true;
+        if (key === "tabbed-tiling-mode-enabled") return true;
+        if (key === "preview-hint-enabled") return true;
+        return key === "tiling-mode-enabled";
+      });
 
       const monitor = getMonitor();
       monitor.layout = LAYOUT_TYPES.HSPLIT;
@@ -815,6 +821,119 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       // Should be added to existing tabbed container
       expect(dragged.parentNode).toBe(container);
+      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+    });
+
+    it("stack mode off + dnd-center-layout stacked: center drop creates TABBED never STACKED", () => {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "stacked";
+        return "";
+      });
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "stacked-tiling-mode-enabled") return false;
+        if (key === "tabbed-tiling-mode-enabled") return true;
+        return key === "tiling-mode-enabled";
+      });
+
+      const monitor = getMonitor();
+      const { nodeWindow: target } = createWindowWithRect(monitor, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 0, y: 0, width: 1920, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      setPointer(960, 540);
+      wm().nodeWinAtPointer = target;
+      wm().moveWindowToPointer(dragged, false);
+
+      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(dragged.parentNode.layout).not.toBe(LAYOUT_TYPES.STACKED);
+    });
+
+    it("stack mode off: center drop onto STACKED parent converts to TABBED and joins", () => {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "stacked";
+        return "";
+      });
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "stacked-tiling-mode-enabled") return false;
+        if (key === "tabbed-tiling-mode-enabled") return true;
+        return key === "tiling-mode-enabled";
+      });
+
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const container = createContainer(monitor, LAYOUT_TYPES.STACKED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+
+      const metaWindow1 = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaWindow2 = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const target = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      target.mode = WINDOW_MODES.TILE;
+      const sibling = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      sibling.mode = WINDOW_MODES.TILE;
+
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 960, y: 0, width: 960, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      setPointer(480, 540);
+      wm().nodeWinAtPointer = target;
+      wm().moveWindowToPointer(dragged, false);
+
+      expect(dragged.parentNode).toBe(container);
+      expect(container.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(container.childNodes).toEqual(expect.arrayContaining([target, sibling, dragged]));
+      expect(container.childNodes).toHaveLength(3);
+    });
+
+    it("stack mode off + dnd-center-layout tabbed: center drop is TABBED", () => {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "tabbed";
+        return "";
+      });
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "stacked-tiling-mode-enabled") return false;
+        if (key === "tabbed-tiling-mode-enabled") return true;
+        return key === "tiling-mode-enabled";
+      });
+
+      const monitor = getMonitor();
+      const { nodeWindow: target } = createWindowWithRect(monitor, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 0, y: 0, width: 1920, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      setPointer(960, 540);
+      wm().nodeWinAtPointer = target;
+      wm().moveWindowToPointer(dragged, false);
+
       expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
     });
   });
@@ -1141,9 +1260,14 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
   // ============================================================================
 
   describe("Preview Hint Styling", () => {
-    function setupPreviewTest() {
+    function setupPreviewTest(extraBooleans = {}) {
       ctx.settings.get_boolean.mockImplementation((key) => {
         if (key === "preview-hint-enabled") return true;
+        if (key in extraBooleans) return extraBooleans[key];
+        // Keep layout modes on so STACKED/TABBED center previews exercise
+        // the enabled path unless a test overrides.
+        if (key === "stacked-tiling-mode-enabled") return true;
+        if (key === "tabbed-tiling-mode-enabled") return true;
         return key === "tiling-mode-enabled";
       });
     }

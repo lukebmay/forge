@@ -8,12 +8,9 @@ import {
 import { Bin } from "../mocks/gnome/St.js";
 
 /**
- * forge-at72: stacked/tabbed default ON, so disabling either mode in prefs is
- * the common opt-out and triggers WindowManager._handleLayoutModeToggle, which
- * rewrites every live STACKED/TABBED container back to a split (and restores
- * them when re-enabled). That path had no coverage. These tests assert the
- * round-trip converts containers without dropping windows or corrupting the
- * tree.
+ * forge-at72 / daily-driver T0: layout mode toggles rewrite live containers.
+ * - STACKED disable → TABBED (preserve group); re-enable restores STACKED via prevLayout.
+ * - TABBED disable → split; re-enable restores TABBED from splits with matching prevLayout.
  */
 describe("forge-at72: _handleLayoutModeToggle disable/enable round-trip", () => {
   let ctx;
@@ -52,19 +49,50 @@ describe("forge-at72: _handleLayoutModeToggle disable/enable round-trip", () => 
     return { con, windows };
   }
 
-  for (const [label, layoutType, settingName] of [
-    ["STACKED", LAYOUT_TYPES.STACKED, "stacked-tiling-mode-enabled"],
-    ["TABBED", LAYOUT_TYPES.TABBED, "tabbed-tiling-mode-enabled"],
-  ]) {
-    it(`converts a live ${label} container to a split when disabled, keeping every window`, () => {
+  describe("STACKED mode", () => {
+    const layoutType = LAYOUT_TYPES.STACKED;
+    const settingName = "stacked-tiling-mode-enabled";
+
+    it("converts a live STACKED container to TABBED when disabled, keeping every window", () => {
       const { con, windows } = buildGroup(layoutType, 3);
       expect(ctx.tree.getNodeByLayout(layoutType)).toHaveLength(1);
 
-      // User disables the mode in prefs.
       ctx.settings.set_boolean(settingName, false);
       wm()._handleLayoutModeToggle(settingName, layoutType);
 
-      // The container is now a split, remembers what it was, and kept its kids.
+      expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(con.prevLayout).toBe(layoutType);
+      expect(ctx.tree.getNodeByLayout(layoutType)).toHaveLength(0);
+      expect(con.childNodes).toHaveLength(3);
+      expect(con.childNodes.map((n) => n.nodeValue)).toEqual(windows);
+    });
+
+    it("restores the STACKED container when the mode is re-enabled", () => {
+      const { con } = buildGroup(layoutType, 2);
+
+      ctx.settings.set_boolean(settingName, false);
+      wm()._handleLayoutModeToggle(settingName, layoutType);
+      expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
+
+      ctx.settings.set_boolean(settingName, true);
+      wm()._handleLayoutModeToggle(settingName, layoutType);
+
+      expect(con.layout).toBe(layoutType);
+      expect(con.childNodes).toHaveLength(2);
+    });
+  });
+
+  describe("TABBED mode", () => {
+    const layoutType = LAYOUT_TYPES.TABBED;
+    const settingName = "tabbed-tiling-mode-enabled";
+
+    it("converts a live TABBED container to a split when disabled, keeping every window", () => {
+      const { con, windows } = buildGroup(layoutType, 3);
+      expect(ctx.tree.getNodeByLayout(layoutType)).toHaveLength(1);
+
+      ctx.settings.set_boolean(settingName, false);
+      wm()._handleLayoutModeToggle(settingName, layoutType);
+
       expect([LAYOUT_TYPES.HSPLIT, LAYOUT_TYPES.VSPLIT]).toContain(con.layout);
       expect(con.prevLayout).toBe(layoutType);
       expect(ctx.tree.getNodeByLayout(layoutType)).toHaveLength(0);
@@ -72,19 +100,18 @@ describe("forge-at72: _handleLayoutModeToggle disable/enable round-trip", () => 
       expect(con.childNodes.map((n) => n.nodeValue)).toEqual(windows);
     });
 
-    it(`restores the ${label} container when the mode is re-enabled`, () => {
+    it("restores the TABBED container when the mode is re-enabled", () => {
       const { con } = buildGroup(layoutType, 2);
 
       ctx.settings.set_boolean(settingName, false);
       wm()._handleLayoutModeToggle(settingName, layoutType);
       expect([LAYOUT_TYPES.HSPLIT, LAYOUT_TYPES.VSPLIT]).toContain(con.layout);
 
-      // User re-enables the mode: the split whose prevLayout matches is restored.
       ctx.settings.set_boolean(settingName, true);
       wm()._handleLayoutModeToggle(settingName, layoutType);
 
       expect(con.layout).toBe(layoutType);
       expect(con.childNodes).toHaveLength(2);
     });
-  }
+  });
 });

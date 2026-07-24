@@ -5,6 +5,7 @@ import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  createContainerNode,
   setPointer,
 } from "../../mocks/helpers/index.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
@@ -346,6 +347,12 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         if (key === "dnd-center-layout") return "STACKED";
         return "";
       });
+      // Product default is stack-off; enable for this STACKED-path test.
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "stacked-tiling-mode-enabled") return true;
+        if (key === "tabbed-tiling-mode-enabled") return true;
+        return key === "tiling-mode-enabled";
+      });
 
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
@@ -406,6 +413,89 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm().moveWindowToPointer(nodeWindow2, false);
 
       expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+    });
+  });
+
+  describe("moveWindowToPointer - CENTER Drop (stack mode disabled)", () => {
+    function disableStackMode(dndCenterLayout) {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return dndCenterLayout;
+        return "";
+      });
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "stacked-tiling-mode-enabled") return false;
+        if (key === "tabbed-tiling-mode-enabled") return true;
+        return key === "tiling-mode-enabled";
+      });
+    }
+
+    it("never creates STACKED when dnd-center-layout is stacked and stack mode is off", () => {
+      disableStackMode("stacked");
+
+      const metaWindow1 = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaWindow2 = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
+        workspace: workspace0(),
+      });
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      nodeWindow1.mode = WINDOW_MODES.TILE;
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
+
+      setPointer(960, 540);
+      wm().nodeWinAtPointer = nodeWindow1;
+      wm().moveWindowToPointer(nodeWindow2, false);
+
+      expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(nodeWindow2.parentNode.layout).not.toBe(LAYOUT_TYPES.STACKED);
+    });
+
+    it("converts existing STACKED parent to TABBED on center join when stack mode is off", () => {
+      disableStackMode("tabbed");
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const stackCon = createContainerNode(monitor, LAYOUT_TYPES.STACKED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+
+      const metaWindow1 = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaWindow2 = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const target = ctx.tree.createNode(stackCon.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      target.mode = WINDOW_MODES.TILE;
+      const sibling = ctx.tree.createNode(stackCon.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      sibling.mode = WINDOW_MODES.TILE;
+
+      const metaWindow3 = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const dragged = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow3);
+      dragged.mode = WINDOW_MODES.GRAB_TILE;
+
+      setPointer(480, 540);
+      wm().nodeWinAtPointer = target;
+      wm().moveWindowToPointer(dragged, false);
+
+      expect(dragged.parentNode).toBe(stackCon);
+      expect(stackCon.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(stackCon.childNodes).toEqual(expect.arrayContaining([target, sibling, dragged]));
+      expect(stackCon.childNodes).toHaveLength(3);
     });
   });
 

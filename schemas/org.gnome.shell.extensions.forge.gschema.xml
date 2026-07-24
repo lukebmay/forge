@@ -99,7 +99,7 @@
         </key>
 
         <key type="b" name="stacked-tiling-mode-enabled">
-            <default>true</default>
+            <default>false</default>
             <summary>Stacked tiling mode on/off</summary>
         </key>
 

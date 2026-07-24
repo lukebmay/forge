@@ -46,7 +46,8 @@ python3 agentsmd_build.py --preset=full
 | --- | --- | --- |
 | [forge-fork-eval](./plans/forge-fork-eval.md) | Phase A done — **use this fork as base** | Phase B/C install trial on `black` |
 | [spike task](./tasks/forge-fork-eval_spike.md) | Ready | Backup → Node 20 → `make dev` → smoke → blank/wake |
-| [forge-harden-and-session](./plans/forge-harden-and-session.md) | Design locked | Soft rehome → resize → layout API / `workon` |
+| [forge-daily-driver](./plans/forge-daily-driver.md) | Ready | T0 stack-off → T1 tab chrome → overlay → blank/wake |
+| [forge-harden-and-session](./plans/forge-harden-and-session.md) | H1 code done | Live verify via daily-driver T3; then session/`workon` |
 
 **Host `black` (last inventory):** GNOME Shell 46.0, X11, EGO Forge **v89** still installed until trial.
 
@@ -169,7 +170,11 @@ When code changes, ALWAYS update the plan with a brief note/summary on progress 
 
 #### Taskforce (plan via subagents, low token baggage)
 
-When the user wants a plan run with subagents (“taskforce”):
+**Default for development work** that changes code or has non-trivial acceptance
+criteria: use the **A/B implement–verify loop** below. Skip for pure docs,
+one-line fixes, or when the user asks for a single agent.
+
+##### Core rules
 
 | Rule | Detail |
 | --- | --- |
@@ -181,6 +186,36 @@ When the user wants a plan run with subagents (“taskforce”):
 | **Stop early** | After a task, if the next would exceed a lean context budget, **stop** and hand back to manual sessions. |
 
 Handoffs live in the plan/task docs so the next agent loads understanding without the previous agent’s token history.
+
+##### A/B implement–verify loop (default for dev)
+
+Worth the tokens when correctness and collateral matter: implementer and
+independent verifier catch control-flow bugs, missed call sites, and test gaps
+that a single agent often ships. Verifier passes are usually cheaper than
+implementation. Rubber-stamping is a failure mode — B must disagree when wrong.
+
+| Role | Job |
+| --- | --- |
+| **Task Force A** | Implement the task against acceptance; tests; session/plan notes. |
+| **Task Force B** | **Fresh** agent. Review diff, hunt collateral side effects, re-run tests. Does **not** re-implement from scratch. Verdict: **AGREE** or **DISAGREE** with numbered findings. |
+
+**Loop:**
+
+```text
+A implements → B verifies
+  B AGREE  → done (orchestrator wraps: notes, priority, commit if asked)
+  B DISAGREE → A fixes only listed findings (fresh A preferred) → B again
+  After 5 A/B rounds without AGREE → stop; report open issues to the user
+```
+
+| Rule | Detail |
+| --- | --- |
+| **Max rounds** | 5 full A→B cycles; then stop and escalate. |
+| **Fresh B each round** | New verifier; do not resume B’s transcript across rounds. |
+| **Fresh A on rework** | Prefer new A with B’s FAIL list only — not full prior A transcript. |
+| **B may fix small clear bugs** | One-liners / obvious brace mistakes OK; non-trivial redesign goes back to A. |
+| **Pause for user** | Ambiguous product calls, destructive ops, or SSH — ask before finishing. |
+| **Skip A/B when** | Docs-only, trivial rename/typo, user says “just do it”, or read-only research (use dual analysis taskforces only if the plan asks). |
 
 ---
 # installed/security.md
