@@ -172,4 +172,156 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(nodes[0].win.get_monitor()).toBe(1);
     expect(nodes[1].win.get_monitor()).toBe(1);
   });
+
+  it("keeps a TABBED group intact when one member's last-good frame is divergent", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon0.layout = LAYOUT_TYPES.HSPLIT;
+    mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+    const tabs = tree().createNode(mon1.nodeValue, NODE_TYPES.CON, "tabs-right");
+    tabs.layout = LAYOUT_TYPES.TABBED;
+
+    // Majority on mon1; one bogus frame on mon0 would peel the tab without align.
+    const specs = [
+      { id: "T0", frame: { x: 2000, y: 0, width: 900, height: 900 } },
+      { id: "T1", frame: { x: 2100, y: 50, width: 800, height: 800 } },
+      { id: "T2", frame: { x: 100, y: 100, width: 400, height: 400 } },
+    ];
+    const nodes = specs.map(({ id, frame }) => {
+      const win = createMockWindow({
+        id,
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        rect: frame,
+      });
+      const n = tree().createNode(tabs.nodeValue, NODE_TYPES.WINDOW, win);
+      n.mode = WINDOW_MODES.TILE;
+      n.rect = { ...frame };
+      return { win, n };
+    });
+
+    wm()._snapshotLastGoodHomes();
+
+    mon0.appendChild(tabs);
+    for (const { win } of nodes) win._monitor = 0;
+
+    wm()._softRehomeAfterWorkareas();
+
+    expect(mon1.contains(tabs)).toBe(true);
+    expect(tabs.layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(tabs.childNodes).toContain(nodes[0].n);
+    expect(tabs.childNodes).toContain(nodes[1].n);
+    expect(tabs.childNodes).toContain(nodes[2].n);
+    for (const { win } of nodes) {
+      expect(win.get_monitor()).toBe(1);
+    }
+  });
+
+  it("does not nest a second TABBED CON when the group already migrated intact", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon0.layout = LAYOUT_TYPES.HSPLIT;
+    mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+    const tabs = tree().createNode(mon1.nodeValue, NODE_TYPES.CON, "tabs-intact");
+    tabs.layout = LAYOUT_TYPES.TABBED;
+    const frames = [
+      { x: 2000, y: 0, width: 900, height: 900 },
+      { x: 2100, y: 50, width: 800, height: 800 },
+    ];
+    const nodes = frames.map((frame, i) => {
+      const win = createMockWindow({
+        id: `I${i}`,
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        rect: frame,
+      });
+      const n = tree().createNode(tabs.nodeValue, NODE_TYPES.WINDOW, win);
+      n.mode = WINDOW_MODES.TILE;
+      n.rect = { ...frame };
+      return { win, n };
+    });
+
+    wm()._snapshotLastGoodHomes();
+    mon0.appendChild(tabs);
+    for (const { win } of nodes) win._monitor = 0;
+
+    wm()._softRehomeAfterWorkareas();
+
+    expect(mon1.contains(tabs)).toBe(true);
+    expect(nodes[0].n.parentNode).toBe(tabs);
+    expect(nodes[1].n.parentNode).toBe(tabs);
+    // restore-if-unwrapped must not wrap tabs inside another TABBED CON.
+    expect(tabs.parentNode).toBe(mon1);
+    expect(tree().getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(1);
+  });
+
+  it("restoreLayoutGroupsIfUnwrapped re-wraps flat siblings and skips intact groups", () => {
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+    const tabs = tree().createNode(mon1.nodeValue, NODE_TYPES.CON, "tabs-snap");
+    tabs.layout = LAYOUT_TYPES.TABBED;
+    const wins = [0, 1].map((i) => {
+      const win = createMockWindow({
+        id: `S${i}`,
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        rect: { x: 2000, y: 0, width: 900, height: 900 },
+      });
+      const n = tree().createNode(tabs.nodeValue, NODE_TYPES.WINDOW, win);
+      n.mode = WINDOW_MODES.TILE;
+      return { win, n };
+    });
+
+    const snapshot = tree().snapshotLayoutGroups();
+    expect(snapshot).toHaveLength(1);
+
+    // Intact: no-op (would nest if restore always ran).
+    tree().restoreLayoutGroupsIfUnwrapped(snapshot);
+    expect(wins[0].n.parentNode).toBe(tabs);
+    expect(tree().getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(1);
+
+    // Flatten then restore.
+    mon1.appendChild(wins[0].n);
+    mon1.appendChild(wins[1].n);
+    tree().restoreLayoutGroupsIfUnwrapped(snapshot);
+
+    expect(wins[0].n.parentNode).toBe(wins[1].n.parentNode);
+    expect(wins[0].n.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(mon1.contains(wins[0].n)).toBe(true);
+  });
+
+  it("restoreLayoutGroupsIfUnwrapped rejoins a partial peel without nesting", () => {
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+    const tabs = tree().createNode(mon1.nodeValue, NODE_TYPES.CON, "tabs-peel");
+    tabs.layout = LAYOUT_TYPES.TABBED;
+    const wins = [0, 1, 2].map((i) => {
+      const win = createMockWindow({
+        id: `P${i}`,
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        rect: { x: 2000, y: 0, width: 900, height: 900 },
+      });
+      const n = tree().createNode(tabs.nodeValue, NODE_TYPES.WINDOW, win);
+      n.mode = WINDOW_MODES.TILE;
+      return { win, n };
+    });
+
+    const snapshot = tree().snapshotLayoutGroups();
+    // Peel one member flat under the monitor; two remain under tabs.
+    mon1.appendChild(wins[2].n);
+    expect(tabs.childNodes).toHaveLength(2);
+
+    tree().restoreLayoutGroupsIfUnwrapped(snapshot);
+
+    expect(wins[0].n.parentNode).toBe(tabs);
+    expect(wins[1].n.parentNode).toBe(tabs);
+    expect(wins[2].n.parentNode).toBe(tabs);
+    expect(tree().getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(1);
+    expect(tabs.parentNode).toBe(mon1);
+  });
 });

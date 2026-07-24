@@ -10,22 +10,17 @@
 
 ### Session note (2026-07-24)
 
-**T2 done** (A/B AGREE) — opt-in layout debug overlay. Setting
-`layout-debug-overlay-enabled` (default false); keybind
-`layout-debug-overlay-toggle` = `Ctrl+Super+d`; module
-`lib/extension/layout-debug-overlay.js` (St.Label per tiled WINDOW: layout,
-percent/`auto`, monWs, optional min). Render hook + settings toggle +
-`disable()` teardown. Prefs Debugging switch; troubleshooting + keybindings
-docs. Tests: `tests/unit/extension/layout-debug-overlay.test.js`.
-`npm test` 171/1631. Next: **T3** blank/wake + tab survival (+ h1-verify).
+**T3 done** (code B **AGREE** + live black idle+DPMS). Soft-rehome tab survival:
+majority-align STACKED/TABBED; `restoreLayoutGroupsIfUnwrapped`; dead siblings
+ignored; settle 300ms. Live: dual-head + tab pair survived idle+DPMS; retab after
+wake no Shell crash. Completed:
+[t3](./forge-daily-driver/completed/forge-daily-driver_t3-blank-wake-tabs.md),
+[h1-verify](./forge-harden-and-session/completed/forge-harden-and-session_h1-verify.md).
+**Next:** **T4** sizing policy.
 
-**T1 done** (A/B AGREE) — tab chrome reliability: fallback labels when `!app`,
-self-heal on STACKED/TABBED process path, `refreshApp` upgrades fallback.
-Key: `lib/extension/tree.js`. Regression:
-`tests/regression/bug-t1-tab-chrome-null-app-multiwindow.test.js`.
-
-**T0 done** (earlier) — stack default off; DnD center forces TABBED when stack
-disabled. Deferred nits (schema/docs stack default wording) stay for T9.
+**T2 done** — layout debug overlay (`Ctrl+Super+d`).  
+**T1 done** — tab chrome reliability.  
+**T0 done** — stack default off; DnD force tab.
 
 ---
 
@@ -101,7 +96,7 @@ T4 sizing policy (equalize / userSized)
 | **T0** | [completed/forge-daily-driver_t0-stack-off-dnd-tab.md](./forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md) | **Done** | — | S | Stack off; DND center always tabbed; no join-as-stack when stack disabled |
 | **T1** | [completed/forge-daily-driver_t1-tab-chrome.md](./forge-daily-driver/completed/forge-daily-driver_t1-tab-chrome.md) | **Done** | T0 preferred | S–M | Never empty gap; N labels for N children; fallback without app |
 | **T2** | [completed/forge-daily-driver_t2-layout-debug-overlay.md](./forge-daily-driver/completed/forge-daily-driver_t2-layout-debug-overlay.md) | **Done** | T1 | S–M | Opt-in overlay: layout, %, auto/fixed, mon id — human + agent debug |
-| **T3** | [forge-daily-driver_t3-blank-wake-tabs.md](../tasks/forge-daily-driver_t3-blank-wake-tabs.md) | Ready after T1 | T1; uses [h1-verify](../tasks/forge-harden-and-session_h1-verify.md) | M | Live blank/wake OK; tab groups survive soft rehome |
+| **T3** | [completed/forge-daily-driver_t3-blank-wake-tabs.md](./forge-daily-driver/completed/forge-daily-driver_t3-blank-wake-tabs.md) | **Done** | T1; h1-verify | M | Live blank/wake OK; tab groups survive soft rehome |
 | **T4** | `agents/tasks/forge-daily-driver_t4-sizing-policy.md` | Create when T3 in progress / done | T1 | S–M | Equal until user resize; insert policy setting; min-size write-back |
 | **T5** | `agents/tasks/forge-daily-driver_t5-keybind-system.md` | Create after T0 note; implement after T3 or parallel UX | — (soft) | M–L | Safe defaults; presets (vim / safe); save/load profiles |
 | **T6** | `agents/tasks/forge-daily-driver_t6-full-tree-snapshot.md` | Later | T3 | M | In-memory full tree for thrash restore |

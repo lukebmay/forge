@@ -5,17 +5,14 @@
 
 ## Next session focus
 
-**P1 — Daily-driver T3 blank/wake + tab survival** (includes h1-verify)
+**P2 — T4 sizing policy** (equal until user resize)
 
 | Doc | Role |
 | --- | --- |
-| [forge-daily-driver.md](./plans/forge-daily-driver.md) | **Execution plan** (start here) |
-| Task | [t3](./tasks/forge-daily-driver_t3-blank-wake-tabs.md) |
-| Related | [h1-verify](./tasks/forge-harden-and-session_h1-verify.md) |
+| [forge-daily-driver.md](./plans/forge-daily-driver.md) | Execution plan |
+| Task | create `agents/tasks/forge-daily-driver_t4-sizing-policy.md` |
 
-**T0–T2 done.** T3 needs live verify on `black` (or explicit SSH). Overlay (`Ctrl+Super+d`) helps debug ratios/mon homes during thrash.
-
-Default implement path: **A/B taskforce loop** (`agents/installed/general.md`).
+**T0–T3 done** (T3 live idle+DPMS on black 2026-07-24). Overlay: `Ctrl+Super+d`.
 
 ## Queue
 
@@ -24,8 +21,8 @@ Default implement path: **A/B taskforce loop** (`agents/installed/general.md`).
 | P1 | Daily-driver T0 stack-off + DND tab | **Done** |
 | P1 | Daily-driver T1 tab chrome (empty gap / 1-of-N) | **Done** |
 | P2 | T2 layout debug overlay (opt-in, sooner) | **Done** |
-| P1 | T3 blank/wake + tab survival (+ h1-verify) | **Ready** (next) |
-| P2 | T4 sizing policy | After T3 |
+| P1 | T3 blank/wake + tab survival (+ h1-verify) | **Done** (live black) |
+| P2 | T4 sizing policy | **Next** |
 | P2 | T5 keybind system (safe defaults, presets, save/load) | First-class; after T3 or parallel UX |
 | later | T6–T8 snapshot / stable mon / session | After thrash solid |
 | later | T9 multi-line tabs North Star (+ deferred T0 doc/schema nits) | After T1 proven |
@@ -37,7 +34,9 @@ Default implement path: **A/B taskforce loop** (`agents/installed/general.md`).
 - [T2 layout debug overlay](./plans/forge-daily-driver/completed/forge-daily-driver_t2-layout-debug-overlay.md)
 - [T1 tab chrome](./plans/forge-daily-driver/completed/forge-daily-driver_t1-tab-chrome.md)
 - [T0 stack-off + DND tab](./plans/forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md)
-- [soft-rehome H1 code](./plans/forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md) — live verify still via T3/h1-verify
+- [soft-rehome H1 code](./plans/forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md)
+- [T3 blank/wake + tabs](./plans/forge-daily-driver/completed/forge-daily-driver_t3-blank-wake-tabs.md)
+- [h1-verify live](./plans/forge-harden-and-session/completed/forge-harden-and-session_h1-verify.md)
 
 ## Do not
 

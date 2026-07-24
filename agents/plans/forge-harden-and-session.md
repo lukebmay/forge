@@ -9,14 +9,14 @@
 **Execution now:** [forge-daily-driver.md](./forge-daily-driver.md)  
 **Analysis:** [forge-layout-thrash-analysis.md](./forge-layout-thrash-analysis.md)  
 **Completed:** [soft-rehome](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md)  
-**Active (verify):** [h1-verify](../tasks/forge-harden-and-session_h1-verify.md) → folded into daily-driver **T3**  
+**Completed (verify):** [h1-verify](./forge-harden-and-session/completed/forge-harden-and-session_h1-verify.md) (via daily-driver T3)  
 **Next (this plan’s long arc):** after daily-driver T6–T8 → Phase 3 session / `workon`
 
 ### Session note (2026-07-24)
 
-Near-term path moved to **[forge-daily-driver.md](./forge-daily-driver.md)** (T0 stack-off → T1 tab chrome → T2 overlay → T3 blank/wake).  
-H1 soft rehome remains the thrash foundation; live verify still open under T3/h1-verify.  
-This plan keeps ownership of **session scripting / layout apply / workon** after durability work.
+Near-term path is **[forge-daily-driver.md](./forge-daily-driver.md)**.  
+T3 + h1-verify **done** on black (idle+DPMS dual-head + tab pair + retab safe).
+This plan keeps **session scripting / workon** after durability (T6–T8 path).
 ---
 
 ## Goal
@@ -387,7 +387,7 @@ Quality gate before claiming “no crashes”: blank → wake → retab × N + j
 | --- | --- | --- |
 | 0 | [forge-fork-eval_spike.md](../tasks/forge-fork-eval_spike.md) | Ready (Phase B) |
 | 1 | [soft-rehome](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md) | **Done** |
-| 1b | [h1-verify](../tasks/forge-harden-and-session_h1-verify.md) | Ready — live blank/wake + colors |
+| 1b | [h1-verify](./forge-harden-and-session/completed/forge-harden-and-session_h1-verify.md) | **Done** (via T3 live) |
 | 2 | `forge-harden-and-session_r-resize.md` | After H or parallel small fixes |
 | 3 | `forge-harden-and-session_s-apply-mvp.md` | After apply design review |
 | 4 | `forge-harden-and-session_s-dbus-cli.md` | After S apply core |
