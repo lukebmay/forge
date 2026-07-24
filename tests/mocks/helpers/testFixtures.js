@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS = {
   "focus-on-hover-enabled": false,
   "auto-split-enabled": false,
   "new-window-placement": "pointer",
+  "new-window-size-policy": "preserve",
 
   // Layouts
   "stacked-tiling-mode-enabled": true,

@@ -49,6 +49,8 @@ Execution: [agents/plans/forge-daily-driver.md](../agents/plans/forge-daily-driv
   without tab actors), not “stack looks different from tabs.”
 - **Stacking off by default;** tab-first; convert stack↔tab keeps the group; ungroup separate.
 - **Sizing:** equal share until user resizes (flex-like *contract* later; no big-bang engine now).
+  Implemented as `Node.userSized` + `new-window-size-policy` (`preserve`|`equalize`);
+  min-size redistrib writes effective percents without marking user intent.
 - **Keybinds first-class:** bare Super+ is user-space; ship multi-modifier safe defaults;
   one-click presets (safe / vim) + save/load — not one-key-at-a-time exploration.
 - **Debug overlay** opt-in, soon — for humans and agents; not permanent size chrome.

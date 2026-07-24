@@ -178,6 +178,19 @@
             <default>true</default>
             <summary>Disable GNOME's built-in edge/half-tiling while Forge is enabled</summary>
         </key>
+        <key type="s" name="new-window-size-policy">
+            <choices>
+                <choice value="preserve"/>
+                <choice value="equalize"/>
+            </choices>
+            <default>'preserve'</default>
+            <summary>
+                When a new tiled window is added and siblings already have
+                user-resized sizes: preserve keeps relative proportions
+                (carve 1/(n+1) for the newcomer); equalize re-equalizes all.
+                Until any sibling is user-resized, new windows always equalize.
+            </summary>
+        </key>
         <key type="s" name="new-window-placement">
             <choices>
                 <choice value="pointer"/>

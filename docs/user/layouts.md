@@ -50,6 +50,26 @@ Snap the focused window to a region without restructuring the tree (defaults use
 - Halves/thirds: snap 1/3 and 2/3 left/right (e.g. `Ctrl+Alt+d` = 1/3 left).
 - **Center** — `Ctrl+Alt+c`.
 
+## Tile sizes
+
+Splits share space by **percentage**. Until you resize a tile, siblings stay
+**equal**. After you resize with the mouse, keyboard expand/shrink, or golden
+ratio, those tiles keep your proportions when new windows open (default).
+
+| Action | Default |
+| --- | --- |
+| Reset sibling sizes to equal | `Super+=` (`window-reset-sizes`) |
+| Golden-ratio resize | unbound by default (`window-golden-ratio`) |
+
+**New window size** (Preferences → Tiling → Behavior, `new-window-size-policy`):
+
+- **Preserve resized proportions** (default) — after you have resized tiles, a
+  new window gets `1/(n+1)` and the others scale down, keeping their ratio.
+- **Equalize all tiles** — every new window re-equalizes the whole parent split.
+
+Until *any* sibling has been user-resized, new windows always equalize (automatic
+percents from min-size layout do not count as “you resized”).
+
 ## Float vs tile
 
 Any window can be pulled out of the tree to **float**, or floated for its whole app

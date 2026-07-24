@@ -13,11 +13,12 @@ import {
 } from "../../mocks/helpers/index.js";
 
 describe("formatLayoutDebugLabel", () => {
-  it("formats HSPLIT with percent and mon id", () => {
+  it("formats HSPLIT with user-sized percent and mon id", () => {
     expect(
       formatLayoutDebugLabel({
         parentLayout: LAYOUT_TYPES.HSPLIT,
         percent: 1 / 3,
+        userSized: true,
         monWsId: "mo0ws0",
       })
     ).toBe("HSPLIT 33% mo0ws0");
@@ -32,12 +33,36 @@ describe("formatLayoutDebugLabel", () => {
     );
   });
 
-  it("rounds percent to nearest whole percent", () => {
+  it("prefixes ~ for automatic non-zero percent (not user-sized)", () => {
     expect(
       formatLayoutDebugLabel({ parentLayout: "HSPLIT", percent: 0.5, monWsId: "mo0ws0" })
+    ).toBe("HSPLIT ~50% mo0ws0");
+    expect(
+      formatLayoutDebugLabel({
+        parentLayout: "HSPLIT",
+        percent: 0.618,
+        userSized: false,
+        monWsId: "mo0ws0",
+      })
+    ).toBe("HSPLIT ~62% mo0ws0");
+  });
+
+  it("rounds user-sized percent to nearest whole percent", () => {
+    expect(
+      formatLayoutDebugLabel({
+        parentLayout: "HSPLIT",
+        percent: 0.5,
+        userSized: true,
+        monWsId: "mo0ws0",
+      })
     ).toBe("HSPLIT 50% mo0ws0");
     expect(
-      formatLayoutDebugLabel({ parentLayout: "HSPLIT", percent: 0.618, monWsId: "mo0ws0" })
+      formatLayoutDebugLabel({
+        parentLayout: "HSPLIT",
+        percent: 0.618,
+        userSized: true,
+        monWsId: "mo0ws0",
+      })
     ).toBe("HSPLIT 62% mo0ws0");
   });
 
@@ -46,6 +71,7 @@ describe("formatLayoutDebugLabel", () => {
       formatLayoutDebugLabel({
         parentLayout: "VSPLIT",
         percent: 0.5,
+        userSized: true,
         monWsId: "mo0ws0",
         minW: 400,
         minH: 200,
@@ -58,6 +84,7 @@ describe("formatLayoutDebugLabel", () => {
       formatLayoutDebugLabel({
         parentLayout: "HSPLIT",
         percent: 1,
+        userSized: true,
         monWsId: "mo0ws0",
         minW: 0,
         minH: 0,
@@ -88,11 +115,13 @@ describe("layoutDebugInfoFromNode", () => {
       windowOverrides: { id: "w1" },
     });
     nodeWindow.percent = 0.5;
+    nodeWindow.userSized = true;
     nodeWindow.mode = WINDOW_MODES.TILE;
 
     const info = layoutDebugInfoFromNode(nodeWindow, ctx.tree);
     expect(info.parentLayout).toBe(LAYOUT_TYPES.HSPLIT);
     expect(info.percent).toBe(0.5);
+    expect(info.userSized).toBe(true);
     expect(info.monWsId).toBe(monitor.nodeValue);
   });
 });
@@ -136,6 +165,7 @@ describe("LayoutDebugOverlay", () => {
       mode: "TILE",
     });
     nodeWindow.percent = 0.5;
+    nodeWindow.userSized = true;
 
     const overlay = ctx.windowManager.layoutDebugOverlay;
     overlay.update();
@@ -144,6 +174,7 @@ describe("LayoutDebugOverlay", () => {
     const label = [...overlay._labels.values()][0];
     expect(label.get_text()).toContain("VSPLIT");
     expect(label.get_text()).toContain("50%");
+    expect(label.get_text()).not.toContain("~50%");
     expect(label.get_text()).toContain(monitor.nodeValue);
   });
 

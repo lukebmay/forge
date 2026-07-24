@@ -95,6 +95,12 @@
           "description": "Initial monitor for a new window: 'pointer' (active/pointer monitor) or 'window-actual' (the window's own monitor)",
           "enum": ["pointer", "window-actual"],
           "default": "pointer"
+        },
+        "new-window-size-policy": {
+          "type": "string",
+          "description": "When adding a tiled window after user resize: 'preserve' keeps relative proportions; 'equalize' re-equalizes all siblings. Always equalizes until any sibling is user-resized.",
+          "enum": ["preserve", "equalize"],
+          "default": "preserve"
         }
       },
       "additionalProperties": false

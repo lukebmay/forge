@@ -10,14 +10,13 @@
 
 ### Session note (2026-07-24)
 
-**T3 done** (code B **AGREE** + live black idle+DPMS). Soft-rehome tab survival:
-majority-align STACKED/TABBED; `restoreLayoutGroupsIfUnwrapped`; dead siblings
-ignored; settle 300ms. Live: dual-head + tab pair survived idle+DPMS; retab after
-wake no Shell crash. Completed:
-[t3](./forge-daily-driver/completed/forge-daily-driver_t3-blank-wake-tabs.md),
-[h1-verify](./forge-harden-and-session/completed/forge-harden-and-session_h1-verify.md).
-**Next:** **T4** sizing policy.
+**T4 done** (A/B **AGREE**). `Node.userSized` + `new-window-size-policy`
+(`preserve`|`equalize`); equalize until user resize; min-size write-back without
+marking intent; Super+= clears. Completed:
+[t4](./forge-daily-driver/completed/forge-daily-driver_t4-sizing-policy.md).
+**Next:** **T5** keybind system.
 
+**T3 done** — blank/wake + tab survival (live black).  
 **T2 done** — layout debug overlay (`Ctrl+Super+d`).  
 **T1 done** — tab chrome reliability.  
 **T0 done** — stack default off; DnD force tab.
@@ -97,7 +96,7 @@ T4 sizing policy (equalize / userSized)
 | **T1** | [completed/forge-daily-driver_t1-tab-chrome.md](./forge-daily-driver/completed/forge-daily-driver_t1-tab-chrome.md) | **Done** | T0 preferred | S–M | Never empty gap; N labels for N children; fallback without app |
 | **T2** | [completed/forge-daily-driver_t2-layout-debug-overlay.md](./forge-daily-driver/completed/forge-daily-driver_t2-layout-debug-overlay.md) | **Done** | T1 | S–M | Opt-in overlay: layout, %, auto/fixed, mon id — human + agent debug |
 | **T3** | [completed/forge-daily-driver_t3-blank-wake-tabs.md](./forge-daily-driver/completed/forge-daily-driver_t3-blank-wake-tabs.md) | **Done** | T1; h1-verify | M | Live blank/wake OK; tab groups survive soft rehome |
-| **T4** | `agents/tasks/forge-daily-driver_t4-sizing-policy.md` | Create when T3 in progress / done | T1 | S–M | Equal until user resize; insert policy setting; min-size write-back |
+| **T4** | [completed/forge-daily-driver_t4-sizing-policy.md](./forge-daily-driver/completed/forge-daily-driver_t4-sizing-policy.md) | **Done** | T1 | S–M | Equal until user resize; insert policy setting; min-size write-back |
 | **T5** | `agents/tasks/forge-daily-driver_t5-keybind-system.md` | Create after T0 note; implement after T3 or parallel UX | — (soft) | M–L | Safe defaults; presets (vim / safe); save/load profiles |
 | **T6** | `agents/tasks/forge-daily-driver_t6-full-tree-snapshot.md` | Later | T3 | M | In-memory full tree for thrash restore |
 | **T7** | `agents/tasks/forge-daily-driver_t7-stable-outputs.md` | Later | T6 | M | Connector/stable keys; remap layer (gdisplays-inspired) |

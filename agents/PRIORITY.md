@@ -5,14 +5,14 @@
 
 ## Next session focus
 
-**P2 — T4 sizing policy** (equal until user resize)
+**P2 — T5 keybind system** (safe defaults, presets, save/load)
 
 | Doc | Role |
 | --- | --- |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | Execution plan |
-| Task | create `agents/tasks/forge-daily-driver_t4-sizing-policy.md` |
+| Task | create `agents/tasks/forge-daily-driver_t5-keybind-system.md` |
 
-**T0–T3 done** (T3 live idle+DPMS on black 2026-07-24). Overlay: `Ctrl+Super+d`.
+**T0–T4 done.** Overlay: `Ctrl+Super+d`. Equalize: `Super+=`.
 
 ## Queue
 
@@ -22,8 +22,8 @@
 | P1 | Daily-driver T1 tab chrome (empty gap / 1-of-N) | **Done** |
 | P2 | T2 layout debug overlay (opt-in, sooner) | **Done** |
 | P1 | T3 blank/wake + tab survival (+ h1-verify) | **Done** (live black) |
-| P2 | T4 sizing policy | **Next** |
-| P2 | T5 keybind system (safe defaults, presets, save/load) | First-class; after T3 or parallel UX |
+| P2 | T4 sizing policy | **Done** |
+| P2 | T5 keybind system (safe defaults, presets, save/load) | **Next** |
 | later | T6–T8 snapshot / stable mon / session | After thrash solid |
 | later | T9 multi-line tabs North Star (+ deferred T0 doc/schema nits) | After T1 proven |
 | P2 | forge-fork-eval spike close-out | Partial — on jcrussell |
@@ -31,11 +31,12 @@
 
 ## Related completed
 
+- [T4 sizing policy](./plans/forge-daily-driver/completed/forge-daily-driver_t4-sizing-policy.md)
+- [T3 blank/wake + tabs](./plans/forge-daily-driver/completed/forge-daily-driver_t3-blank-wake-tabs.md)
 - [T2 layout debug overlay](./plans/forge-daily-driver/completed/forge-daily-driver_t2-layout-debug-overlay.md)
 - [T1 tab chrome](./plans/forge-daily-driver/completed/forge-daily-driver_t1-tab-chrome.md)
 - [T0 stack-off + DND tab](./plans/forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md)
 - [soft-rehome H1 code](./plans/forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md)
-- [T3 blank/wake + tabs](./plans/forge-daily-driver/completed/forge-daily-driver_t3-blank-wake-tabs.md)
 - [h1-verify live](./plans/forge-harden-and-session/completed/forge-harden-and-session_h1-verify.md)
 
 ## Do not
