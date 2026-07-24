@@ -148,7 +148,12 @@ fi
 
 if (( DO_INSTALL )); then
   if forge_confirm "Reinstall jcrussell from disk after update?"; then
-    "$SCRIPT_DIR/install-jcrussell.zsh" --force
+    # Prefer update path (build+install; user restarts Shell)
+    if [[ -x "$SCRIPT_DIR/update-jcrussell.zsh" ]]; then
+      "$SCRIPT_DIR/update-jcrussell.zsh" --force
+    else
+      "$SCRIPT_DIR/install-jcrussell.zsh" --force
+    fi
   fi
 fi
 

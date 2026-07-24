@@ -96,6 +96,37 @@ forge_session_type() {
   print -r -- "${XDG_SESSION_TYPE:-unknown}"
 }
 
+# Reload GNOME Shell so a replaced extension is actually loaded.
+# X11: killall -HUP. Wayland: cannot in-session restart — returns 2.
+# Returns 0 on HUP sent, 1 on failure, 2 if session needs logout.
+forge_restart_shell() {
+  local st
+  st=$(forge_session_type)
+  case "$st" in
+    x11)
+      if ! command -v killall >/dev/null 2>&1; then
+        forge_warn "killall not found; restart Shell manually (Alt+F2 → r)"
+        return 1
+      fi
+      forge_info "restarting GNOME Shell (X11 HUP)…"
+      if killall -HUP gnome-shell 2>/dev/null; then
+        sleep 2
+        return 0
+      fi
+      forge_warn "HUP failed — try Alt+F2 → r, or log out"
+      return 1
+      ;;
+    wayland)
+      forge_warn "Wayland: log out and back in to load the new extension code"
+      return 2
+      ;;
+    *)
+      forge_warn "session=$st: log out/in (or X11: killall -HUP gnome-shell) to load new code"
+      return 2
+      ;;
+  esac
+}
+
 forge_ext_installed() {
   [[ -d "$FORGE_EXT_DIR" && -f "$FORGE_EXT_DIR/metadata.json" ]]
 }
@@ -307,7 +338,7 @@ forge_print_deps_help() {
 Dependencies:
   hard: zsh, python3, dconf, gnome-extensions, gnome-shell
   install-ego: curl, unzip (or gnome-extensions install)
-  install-jcrussell: make, node (>=20), npm, gettext (msgfmt), glib-compile-schemas
+  install-jcrussell / update-jcrussell: make, node (>=20), npm, gettext (msgfmt), glib-compile-schemas
   check-updates: git, curl (for EGO)
 EOF
 }

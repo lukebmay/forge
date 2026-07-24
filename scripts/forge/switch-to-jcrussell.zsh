@@ -248,10 +248,10 @@ if [[ -f "$SCRIPT_DIR/host-defaults.conf" ]]; then
 fi
 
 if (( RESTART_SHELL )); then
-  if [[ "$(forge_session_type)" == "x11" ]] && command -v killall >/dev/null; then
-    forge_info "restarting GNOME Shell (X11 HUP)…"
-    killall -HUP gnome-shell 2>/dev/null || forge_warn "HUP failed"
-    sleep 3
+  rc=0
+  forge_restart_shell || rc=$?
+  if (( rc == 0 )); then
+    sleep 1
     gnome-extensions enable "$FORGE_UUID" 2>/dev/null || true
     # One more theme pass after HUP enable
     if (( ! SKIP_APPLY )); then
@@ -260,8 +260,8 @@ if (( RESTART_SHELL )); then
     if [[ -f "$SCRIPT_DIR/host-defaults.conf" ]]; then
       "$SCRIPT_DIR/apply-host-defaults.zsh" --force "$SCRIPT_DIR/host-defaults.conf"
     fi
-  else
-    forge_warn "--restart-shell only auto-runs on X11; log out/in on Wayland"
+  elif (( rc == 2 )); then
+    forge_warn "--restart-shell needs logout on this session type"
   fi
 else
   forge_warn "On X11, restart shell so Version/code fully reloads: killall -HUP gnome-shell"

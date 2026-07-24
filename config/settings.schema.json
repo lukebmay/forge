@@ -252,6 +252,11 @@
           "type": "boolean",
           "description": "Enable logging",
           "default": false
+        },
+        "layout-debug-overlay-enabled": {
+          "type": "boolean",
+          "description": "Show per-window layout debug overlay (parent layout, percent, monitor id)",
+          "default": false
         }
       },
       "additionalProperties": false

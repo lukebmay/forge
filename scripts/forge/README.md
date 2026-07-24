@@ -60,6 +60,23 @@ cd ~/dev/me/forge_jcrussell
 That one script: save → build → uninstall → install → apply dconf/CSS → enable →
 re-restore theme (so `patchCss` cannot clobber colors).
 
+### Already on jcrussell → pick up local tree changes (daily loop)
+
+```bash
+cd ~/dev/me/forge_jcrussell
+./scripts/forge/update-jcrussell.zsh
+# or: forge-ctl update --force
+# optional: --save  --reload-theme  --prod  --restart-shell
+```
+
+Builds this repo, replaces `~/.local/share/gnome-shell/extensions/forge@jmmaranan.com`,
+and enables. **Does not restart Shell by default** — reload yourself so new
+code/gschema keys load (X11: `Alt+F2` → `r`, or `killall -HUP gnome-shell`;
+Wayland: log out/in). Pass `--restart-shell` only if you want an automatic X11 HUP.
+
+If the install is still EGO, the script refuses and points at `switch-to-jcrussell`
+(or pass `--from-ego` to run that migrate path).
+
 ### Colors look wrong after an upgrade
 
 ```bash
@@ -118,6 +135,7 @@ automatically after `switch-to-jcrussell` / `install-jcrussell`; re-run anytime:
 | `install-ego.zsh` | Download+install from extensions.gnome.org |
 | `uninstall.zsh` | Remove user extension (keeps dconf by default) |
 | `install-jcrussell.zsh` | `npm install` + `make dev` from this repo |
+| `update-jcrussell.zsh` | Daily: build+install this tree (restart Shell yourself; optional `--restart-shell`) |
 | `check-updates.zsh` | `git fetch`/compare; optional `--ego` |
 | `switch-to-jcrussell.zsh` | save → uninstall → install-jcrussell → apply |
 | `switch-to-ego.zsh` | save → uninstall → install-ego → apply |

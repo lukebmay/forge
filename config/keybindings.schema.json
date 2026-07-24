@@ -253,6 +253,10 @@
         "prefs-lock-screen": {
           "$ref": "#/definitions/keybinding",
           "description": "Lock the screen"
+        },
+        "layout-debug-overlay-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle layout debug overlay"
         }
       },
       "additionalProperties": false

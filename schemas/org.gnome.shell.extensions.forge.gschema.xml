@@ -128,6 +128,11 @@
             <summary>Enable logging</summary>
         </key>
 
+        <key type="b" name="layout-debug-overlay-enabled">
+            <default>false</default>
+            <summary>Show per-window layout debug overlay (parent layout, percent, monitor id)</summary>
+        </key>
+
         <key type="s" name="css-updated">
             <default>''</default>
             <summary>Timestamp when css is last updated. Also triggers reload of St</summary>
@@ -536,6 +541,11 @@
         <key type="as" name="prefs-config-export">
             <default><![CDATA[[]]]></default>
             <summary>Export configuration</summary>
+        </key>
+
+        <key type="as" name="layout-debug-overlay-toggle">
+            <default><![CDATA[['<Ctrl><Super>d']]]></default>
+            <summary>Toggle layout debug overlay</summary>
         </key>
     </schema>
 </schemalist>

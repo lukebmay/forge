@@ -90,6 +90,7 @@ describe("Keybindings", () => {
         "prefs-app-launch",
         "prefs-cheatsheet-toggle",
         "prefs-lock-screen",
+        "layout-debug-overlay-toggle",
       ];
 
       for (const key of expectedKeys) {

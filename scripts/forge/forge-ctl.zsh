@@ -22,6 +22,7 @@ Atomic commands:
   install-ego            Install from extensions.gnome.org
   uninstall              Remove user extension (keeps dconf)
   install-jcrussell      Build+install this repo (make dev)
+  update                 Rebuild tree → live extension (restart Shell yourself)
   check-updates          Git (and optional --ego) update check
 
 Process flows:
@@ -34,6 +35,7 @@ Global options (after command): --force --color=auto|always|never -h
 Examples:
   forge-ctl status
   forge-ctl save
+  forge-ctl update --force
   forge-ctl switch-to-jcrussell --force
   forge-ctl check-updates --fetch --ego
   forge-ctl rollback ~/.local/share/forge-manage/backups/latest
@@ -61,6 +63,7 @@ case "$cmd" in
   install-ego) exec "$SCRIPT_DIR/install-ego.zsh" "$@" ;;
   uninstall) exec "$SCRIPT_DIR/uninstall.zsh" "$@" ;;
   install-jcrussell|install-dev) exec "$SCRIPT_DIR/install-jcrussell.zsh" "$@" ;;
+  update|update-jcrussell|reload-install) exec "$SCRIPT_DIR/update-jcrussell.zsh" "$@" ;;
   check-updates|check) exec "$SCRIPT_DIR/check-updates.zsh" "$@" ;;
   switch-to-jcrussell|to-jcrussell|to-dev) exec "$SCRIPT_DIR/switch-to-jcrussell.zsh" "$@" ;;
   switch-to-ego|to-ego) exec "$SCRIPT_DIR/switch-to-ego.zsh" "$@" ;;

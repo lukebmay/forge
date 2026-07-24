@@ -35,6 +35,15 @@
   border-radius: 14px;
 }
 
+.window-layout-debug-label {
+  font-family: monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(0, 0, 0, 0.72);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
 .window-split-border {
   border-width: 3px;
   border-color: rgba(255, 246, 108, 1);

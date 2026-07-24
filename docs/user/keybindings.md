@@ -27,6 +27,7 @@ also accept arrow keys.
 | Open preferences | `Super+Period` |
 | Reload config from disk | `Super+Shift+r` |
 | Toggle cheatsheet | `Super+Shift+/` |
+| Layout debug overlay | `Ctrl+Super+d` |
 | Lock screen | `Super+q` |
 
 Some actions ship **unbound** (e.g. workspace monocle) — assign them yourself.

@@ -360,6 +360,27 @@ describe("CommandHandler", () => {
     });
   });
 
+  describe("LayoutDebugOverlayToggle command", () => {
+    it("should toggle layout-debug-overlay-enabled setting", () => {
+      mockSettings.get_boolean.mockImplementation((key) => {
+        if (key === "layout-debug-overlay-enabled") return false;
+        return false;
+      });
+
+      commandHandler.execute({ name: "LayoutDebugOverlayToggle" });
+
+      expect(mockSettings.set_boolean).toHaveBeenCalledWith("layout-debug-overlay-enabled", true);
+    });
+
+    it("should flip enabled to disabled", () => {
+      mockSettings.get_boolean.mockImplementation((key) => key === "layout-debug-overlay-enabled");
+
+      commandHandler.execute({ name: "LayoutDebugOverlayToggle" });
+
+      expect(mockSettings.set_boolean).toHaveBeenCalledWith("layout-debug-overlay-enabled", false);
+    });
+  });
+
   describe("ShowTabDecorationToggle command", () => {
     beforeEach(() => {
       mockSettings.get_boolean.mockImplementation((key) => {

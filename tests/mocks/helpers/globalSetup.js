@@ -106,6 +106,20 @@ export function createMockWindowGroup() {
       const index = children.indexOf(sibling);
       children.splice(index === -1 ? children.length : index, 0, child);
     }),
+    insert_child_above: vi.fn((child, sibling) => {
+      if (children.includes(child)) {
+        const old = children.indexOf(child);
+        children.splice(old, 1);
+      }
+      const index = children.indexOf(sibling);
+      children.splice(index === -1 ? children.length : index + 1, 0, child);
+    }),
+    set_child_above_sibling: vi.fn((child, sibling) => {
+      if (!children.includes(child)) return;
+      children.splice(children.indexOf(child), 1);
+      const index = children.indexOf(sibling);
+      children.splice(index === -1 ? children.length : index + 1, 0, child);
+    }),
     remove_child: vi.fn((child) => {
       const index = children.indexOf(child);
       if (index !== -1) children.splice(index, 1);

@@ -57,6 +57,25 @@ installed with an older build that ignored the user CSS in debug mode, reinstall
 (`make dev` or `make prod`) once so the fixed theme loader is live, then
 `reload-theme.zsh`.
 
+## Layout debug overlay
+
+Opt-in labels on each **tiled** window show parent layout (`HSPLIT` / `VSPLIT` /
+`TABBED` / `STACKED`), sibling `percent` (or `auto` when unset), and the monitor
+workspace id (`mo0ws0`-style). Optional min-size from window size hints when
+present.
+
+**Off by default.** Toggle live (no reload):
+
+- **Shortcut:** `Ctrl+Super+d` (keybinding `layout-debug-overlay-toggle`)
+- **GSettings:**
+  ```bash
+  gsettings set org.gnome.shell.extensions.forge layout-debug-overlay-enabled true
+  ```
+- **Preferences → Settings → Debugging → Layout debug overlay**
+
+Use this to confirm 1:2 vs 50–50 shares and which `moNwsW` a window sits under
+after blank/wake. Disabling the extension removes all overlay actors.
+
 ## Enabling debug logs
 
 Logging is **off by default** and only active in development builds. Turn it on:
