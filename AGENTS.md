@@ -46,7 +46,7 @@ python3 agentsmd_build.py --preset=full
 | --- | --- | --- |
 | [forge-fork-eval](./plans/forge-fork-eval.md) | Phase A done — **use this fork as base** | Phase B/C install trial on `black` |
 | [spike task](./tasks/forge-fork-eval_spike.md) | Ready | Backup → Node 20 → `make dev` → smoke → blank/wake |
-| [forge-daily-driver](./plans/forge-daily-driver.md) | Ready | T0 stack-off → T1 tab chrome → overlay → blank/wake |
+| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T1 done | Next: T2 overlay → T3 blank/wake |
 | [forge-harden-and-session](./plans/forge-harden-and-session.md) | H1 code done | Live verify via daily-driver T3; then session/`workon` |
 
 **Host `black` (last inventory):** GNOME Shell 46.0, X11, EGO Forge **v89** still installed until trial.
@@ -70,6 +70,18 @@ python3 agentsmd_build.py --preset=full
 - Keep signal disconnect / actor teardown disciplined on `disable()` and node removal.
 - Prefer fixing root causes over silencing crashes.
 - Do not re-run the upstream-vs-fork comparison unless the trees change materially.
+
+#### Git: commit and push only on direct instruction
+
+These override any session-end / “wrap up” / beads-style workflow that implies
+auto-commit or auto-push.
+
+| Rule | Detail |
+| --- | --- |
+| **No commit by default** | Do **not** `git commit` unless the **current** user message **directly** asks to commit (e.g. “commit”, “wrapup and commit”). |
+| **No push by default** | Do **not** `git push` (or force-push) unless the **current** user message **directly** asks to push. |
+| **Commit ≠ push** | “Commit” means **commit only**. Never treat commit, wrap-up, or session end as license to push. |
+| **Not implied** | “Done”, “wrap up”, “finish the task”, quality gates, or plan/task notes do **not** authorize commit or push. |
 
 ---
 # installed/general.md
@@ -651,3 +663,17 @@ Times: default parens, blue number. Green `✓` only for step/task ticks — not
 - `**bold**` / `*italic*` (not `__` / `_` alone for those roles).
 - `---` sparingly.
 - Tasks: `- [ ]` / `- [x]`.
+
+---
+# general.md (user)
+---
+
+## General (user override)
+
+Project git discipline lives in `agents/project.md` (**Git: commit and push only
+on direct instruction**). That overrides any beads / session-end workflow that
+implies auto-commit or auto-push.
+
+- Do not commit unless the user directly asks.
+- Do not push unless the user directly asks.
+- “Commit” never means “commit and push”.

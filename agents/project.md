@@ -62,3 +62,15 @@ python3 agentsmd_build.py --preset=full
 - Keep signal disconnect / actor teardown disciplined on `disable()` and node removal.
 - Prefer fixing root causes over silencing crashes.
 - Do not re-run the upstream-vs-fork comparison unless the trees change materially.
+
+### Git: commit and push only on direct instruction
+
+These override any session-end / “wrap up” / beads-style workflow that implies
+auto-commit or auto-push.
+
+| Rule | Detail |
+| --- | --- |
+| **No commit by default** | Do **not** `git commit` unless the **current** user message **directly** asks to commit (e.g. “commit”, “wrapup and commit”). |
+| **No push by default** | Do **not** `git push` (or force-push) unless the **current** user message **directly** asks to push. |
+| **Commit ≠ push** | “Commit” means **commit only**. Never treat commit, wrap-up, or session end as license to push. |
+| **Not implied** | “Done”, “wrap up”, “finish the task”, quality gates, or plan/task notes do **not** authorize commit or push. |
