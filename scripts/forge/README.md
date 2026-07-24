@@ -25,7 +25,9 @@ in place**. Always backup first.
    `~/.config/forge/stylesheet/forge/stylesheet.css`. First enable can run
    `patchCss()` and overwrite that file when `css-last-update` ≠ `cssTag`.
    Switch/apply restore the backup stylesheet and stamp `css-last-update`
-   **after enable**. Manual fix: `./scripts/forge/restore-theme.zsh [backup]`.
+   **after enable**. Manual fix: `./scripts/forge/restore-theme.zsh [backup]`
+   then `./scripts/forge/reload-theme.zsh` (no reboot). `make dev` still loads
+   the user stylesheet (logging-only debug flag).
 7. **Rollback** — `$BACKUP/emergency-rollback.zsh` or `rollback.zsh`.
 8. **Shell reload** — on X11, `gnome-extensions info` may show a stale EGO
    Version until `killall -HUP gnome-shell` (or use `--restart-shell`).
@@ -62,7 +64,19 @@ re-restore theme (so `patchCss` cannot clobber colors).
 
 ```bash
 ./scripts/forge/restore-theme.zsh ~/.local/share/forge-manage/backups/latest
-# Super+Shift+r
+# live reload (no reboot):
+./scripts/forge/reload-theme.zsh
+# or Super+Shift+r
+```
+
+### Blank / wake test (soft rehome)
+
+Manual lock often keeps placement; idle auto-lock is what thrashs multi-mon:
+
+```bash
+./scripts/forge/trigger-idle-lock.zsh --idle-and-dpms --idle-delay=10
+# after unlock: both heads tiled? retab? journal clean?
+./scripts/forge/trigger-idle-lock.zsh --restore-only   # if you aborted
 ```
 
 ### Host keyboard defaults (lock / quit / maximize)
@@ -99,6 +113,8 @@ automatically after `switch-to-jcrussell` / `install-jcrussell`; re-run anytime:
 | `apply-settings.zsh` | Restore dconf (+ config + theme CSS); optional `--translate=` |
 | `translate-settings.zsh` | Drop/remap keys when schemas differ |
 | `restore-theme.zsh` | Restore stylesheet colors + stamp `css-last-update` |
+| `reload-theme.zsh` | Bump `css-updated` so a live Shell reloads user CSS |
+| `trigger-idle-lock.zsh` | Short idle / DPMS lock for blank/wake testing |
 | `install-ego.zsh` | Download+install from extensions.gnome.org |
 | `uninstall.zsh` | Remove user extension (keeps dconf by default) |
 | `install-jcrussell.zsh` | `npm install` + `make dev` from this repo |

@@ -16,6 +16,8 @@ Atomic commands:
   apply [backup]         Restore settings (optional --translate=)
   translate [in] [out]   Filter dconf dump to a target schema
   restore-theme [backup] Restore CSS colors + stamp css-last-update
+  reload-theme           Live-reload user stylesheet (css-updated)
+  idle-lock              Short idle/DPMS lock for blank/wake testing
   host-defaults          Apply host-defaults.conf (lock/quit/maximize chords)
   install-ego            Install from extensions.gnome.org
   uninstall              Remove user extension (keeps dconf)
@@ -53,6 +55,8 @@ case "$cmd" in
   apply|apply-settings) exec "$SCRIPT_DIR/apply-settings.zsh" "$@" ;;
   translate|translate-settings) exec "$SCRIPT_DIR/translate-settings.zsh" "$@" ;;
   restore-theme|theme) exec "$SCRIPT_DIR/restore-theme.zsh" "$@" ;;
+  reload-theme|reload-css) exec "$SCRIPT_DIR/reload-theme.zsh" "$@" ;;
+  idle-lock|trigger-idle-lock) exec "$SCRIPT_DIR/trigger-idle-lock.zsh" "$@" ;;
   host-defaults|defaults) exec "$SCRIPT_DIR/apply-host-defaults.zsh" "$@" ;;
   install-ego) exec "$SCRIPT_DIR/install-ego.zsh" "$@" ;;
   uninstall) exec "$SCRIPT_DIR/uninstall.zsh" "$@" ;;

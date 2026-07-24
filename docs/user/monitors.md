@@ -41,6 +41,26 @@ primary head. Forge **soft-rehomes** on a short settle: it maps each tiled windo
 back to the monitor that best matches its last quiet geometry (intersection area)
 and re-parents tree nodes without a full wipe when structure is still consistent.
 
+Manual lock (`Super+Delete` / lock now) often **does not** thrash the same way as
+overnight idle lock. To force the idle path for testing:
+
+```bash
+# Short idle → auto-lock (hands off keyboard/mouse ~15s), restores timers after unlock
+./scripts/forge/trigger-idle-lock.zsh --idle 15
+
+# Closest to overnight: idle lock then DPMS off (X11)
+./scripts/forge/trigger-idle-lock.zsh --idle-and-dpms --idle-delay=10
+
+# DPMS only / immediate lock (controls)
+./scripts/forge/trigger-idle-lock.zsh --dpms
+./scripts/forge/trigger-idle-lock.zsh --lock-now
+
+# If you interrupted mid-run:
+./scripts/forge/trigger-idle-lock.zsh --restore-only
+```
+
+Or via `./scripts/forge/forge-ctl.zsh idle-lock --idle 15`.
+
 If placement is still wrong after wake:
 
 1. Wait a moment for the settle (sub-second).

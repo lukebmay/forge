@@ -1,22 +1,22 @@
 # Plan: Forge harden + session scripting
 
-**Status:** H1 soft rehome implemented — **manual blank/wake verify on black next**; then H2/resize/session  
-**Priority:** P1 product  
+**Status:** H1 soft rehome **code done**; daily-driver execution owns near-term work  
+**Priority:** P1 product (session scripting later)  
 **Base:** **this tree** (`jcrussell/forge`) — **not** `~/dev/me/forge_original`  
 **Upstream ref only:** `~/dev/me/forge_original` (`forge-ext/forge` @ `v49-89`)  
 **Host:** `black`, dual 4K, X11, Shell 46; hybrid AMD iGPU + NVIDIA; displays via shellrc `gdisplays`  
-**Related:** [forge-fork-eval.md](./forge-fork-eval.md) (install done), shellrc gdisplays v1  
+**Related:** [forge-fork-eval.md](./forge-fork-eval.md), shellrc gdisplays v1  
+**Execution now:** [forge-daily-driver.md](./forge-daily-driver.md)  
+**Analysis:** [forge-layout-thrash-analysis.md](./forge-layout-thrash-analysis.md)  
 **Completed:** [soft-rehome](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md)  
-**Next:** Manual overnight/DPMS verify on black; Phase 1 H2–H4 or Phase 2 resize
+**Active (verify):** [h1-verify](../tasks/forge-harden-and-session_h1-verify.md) → folded into daily-driver **T3**  
+**Next (this plan’s long arc):** after daily-driver T6–T8 → Phase 3 session / `workon`
 
-### Session note (2026-07-23)
+### Session note (2026-07-24)
 
-**H1 soft rehome shipped:** workareas debounce + last-good geometry mapping + suppress
-window-entered-monitor during thrash; inconsistent scaffold → reloadTree + layout groups.
-Tests: `bug-h1-soft-rehome-workareas-thrash`, utils `bestMonitorIndexForRect`.
-Docs: monitors.md, troubleshooting, DESIGN.md.  
-**Still open:** live overnight auto-lock smoke on black after `make dev`.
-
+Near-term path moved to **[forge-daily-driver.md](./forge-daily-driver.md)** (T0 stack-off → T1 tab chrome → T2 overlay → T3 blank/wake).  
+H1 soft rehome remains the thrash foundation; live verify still open under T3/h1-verify.  
+This plan keeps ownership of **session scripting / layout apply / workon** after durability work.
 ---
 
 ## Goal
@@ -387,6 +387,7 @@ Quality gate before claiming “no crashes”: blank → wake → retab × N + j
 | --- | --- | --- |
 | 0 | [forge-fork-eval_spike.md](../tasks/forge-fork-eval_spike.md) | Ready (Phase B) |
 | 1 | [soft-rehome](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md) | **Done** |
+| 1b | [h1-verify](../tasks/forge-harden-and-session_h1-verify.md) | Ready — live blank/wake + colors |
 | 2 | `forge-harden-and-session_r-resize.md` | After H or parallel small fixes |
 | 3 | `forge-harden-and-session_s-apply-mvp.md` | After apply design review |
 | 4 | `forge-harden-and-session_s-dbus-cli.md` | After S apply core |

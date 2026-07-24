@@ -4,16 +4,10 @@ import { File } from "../../mocks/gnome/Gio.js";
 import { ExtensionThemeManager } from "../../../lib/extension/extension-theme-manager.js";
 import { Logger } from "../../../lib/shared/logger.js";
 
-// reloadStylesheet() branches on `production` (true = load the user's custom
-// stylesheet, false = the bundled default). The source's named import is a live
-// binding, so a getter lets each test pick the branch. The `mock` prefix opts the
-// holder past vitest's hoisted-factory variable restriction. PERMISSIONS_MODE is
-// re-exported because shared/theme.js (ThemeManagerBase) also imports it.
-let mockProduction = true;
+// production is still mocked for ThemeManagerBase / logger imports; stylesheet
+// load no longer branches on it (make dev must still use user colors).
 vi.mock("../../../lib/shared/settings.js", () => ({
-  get production() {
-    return mockProduction;
-  },
+  production: true,
   PERMISSIONS_MODE: 0o744,
 }));
 
@@ -102,7 +96,6 @@ describe("ExtensionThemeManager.reloadStylesheet", () => {
   let defaultStylesheetFile;
 
   beforeEach(() => {
-    mockProduction = true;
     theme = {
       load_stylesheet: vi.fn(),
       unload_stylesheet: vi.fn(),
@@ -127,8 +120,7 @@ describe("ExtensionThemeManager.reloadStylesheet", () => {
     vi.restoreAllMocks();
   });
 
-  it("loads the user's custom stylesheet in production", () => {
-    mockProduction = true;
+  it("loads the user's custom stylesheet when present", () => {
     mgr.reloadStylesheet();
 
     expect(theme.load_stylesheet).toHaveBeenCalledTimes(1);
@@ -136,8 +128,8 @@ describe("ExtensionThemeManager.reloadStylesheet", () => {
     expect(mgr.stylesheet).toBe(stylesheetFile);
   });
 
-  it("loads the bundled default stylesheet in development", () => {
-    mockProduction = false;
+  it("falls back to the bundled default when no user stylesheet exists", () => {
+    mgr.configMgr.stylesheetFile = null;
     mgr.reloadStylesheet();
 
     expect(theme.load_stylesheet).toHaveBeenCalledTimes(1);

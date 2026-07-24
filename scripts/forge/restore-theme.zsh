@@ -29,7 +29,8 @@ Options:
 
 Default backup: \$FORGE_BACKUP_ROOT/latest
 
-After restore, reload: Super+Shift+r  (or log out/in)
+After restore, the script bumps css-updated so a live extension reloads CSS.
+Fallback: Super+Shift+r (also reloads stylesheet) or log out/in.
 
 $(forge_print_deps_help)
 EOF
@@ -70,5 +71,8 @@ else
   forge_restore_theme_from_backup "$SRC"
 fi
 
-forge_ok "done — press Super+Shift+r to reload CSS (or restart shell)"
+if (( STAMP_ONLY )); then
+  forge_trigger_css_reload
+fi
+forge_ok "done — colors should apply live; Super+Shift+r also reloads CSS"
 print -r -- "$(forge_user_stylesheet_path)"

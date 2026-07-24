@@ -28,3 +28,31 @@ connector remap (shellrc), session layout apply.
 
 **Tests:** `tests/regression/bug-h1-soft-rehome-workareas-thrash.test.js`,
 utils `bestMonitorIndexForRect`.
+
+**Manual reproduce:** `scripts/forge/trigger-idle-lock.zsh` (short idle / DPMS);
+manual Super+Delete is a weak control path.
+
+## Daily-driver product locks (2026-07-24)
+
+Dual taskforce analysis + user lock: [agents/plans/forge-layout-thrash-analysis.md](../agents/plans/forge-layout-thrash-analysis.md).
+Execution: [agents/plans/forge-daily-driver.md](../agents/plans/forge-daily-driver.md).
+
+- **Tab chrome:** empty reserved bar with missing labels is a bug (geometry reserved
+  without tab actors), not “stack looks different from tabs.”
+- **Stacking off by default;** tab-first; convert stack↔tab keeps the group; ungroup separate.
+- **Sizing:** equal share until user resizes (flex-like *contract* later; no big-bang engine now).
+- **Keybinds first-class:** bare Super+ is user-space; ship multi-modifier safe defaults;
+  one-click presets (safe / vim) + save/load — not one-key-at-a-time exploration.
+- **Debug overlay** opt-in, soon — for humans and agents; not permanent size chrome.
+
+## User stylesheet vs `make dev` (production flag)
+
+**Problem:** `make dev` sets `production = false` for logging / DEV banner.
+Historically `ExtensionThemeManager` loaded only the **bundled** `stylesheet.css`
+in that mode, so `~/.config/forge/stylesheet/forge/stylesheet.css` (real colors)
+never applied after a debug install — looked like “need a reboot.”
+
+**Approach:** Always prefer the user profile stylesheet when present; keep
+`production` for logger level and prefs Logger group only. Live reload:
+`css-updated` gsettings, Super+Shift+r (`ConfigReload` re-imports CSS), or
+`scripts/forge/reload-theme.zsh`.

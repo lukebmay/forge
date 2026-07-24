@@ -35,6 +35,28 @@ are back:
 4. Retab/stack after rehome should not crash; if Shell aborts, capture journal
    (`journalctl -e -u gnome-shell`) and file a bug.
 
+To **reproduce** idle blank/wake without waiting overnight:
+
+```bash
+./scripts/forge/trigger-idle-lock.zsh --idle-and-dpms --idle-delay=10
+```
+
+## Focus borders / colors look stock after install
+
+jcrussell stores colors in `~/.config/forge/stylesheet/forge/stylesheet.css`, not
+only in gsettings. After `make dev` / switch scripts:
+
+```bash
+./scripts/forge/restore-theme.zsh ~/.local/share/forge-manage/backups/latest
+# or just re-apply the live file:
+./scripts/forge/reload-theme.zsh
+```
+
+No full reboot needed. `Super+Shift+r` also reloads the stylesheet. If Shell was
+installed with an older build that ignored the user CSS in debug mode, reinstall
+(`make dev` or `make prod`) once so the fixed theme loader is live, then
+`reload-theme.zsh`.
+
 ## Enabling debug logs
 
 Logging is **off by default** and only active in development builds. Turn it on:

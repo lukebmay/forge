@@ -28,7 +28,18 @@ Forge loads a user stylesheet from:
 ```
 
 It's seeded from the bundled default on first run (and re-synced by `patchCss` on
-update). Edit it and reload with **`Super+Shift+r`**, or log out/in.
+update). Edit it and reload with **`Super+Shift+r`** (re-imports the user file),
+or:
+
+```bash
+./scripts/forge/reload-theme.zsh          # bumps css-updated; no reboot
+./scripts/forge/restore-theme.zsh [bak]   # restore colors from backup + reload
+```
+
+A full computer restart is **not** required. On X11, if Shell still shows stock
+borders after a code reinstall, `Alt+F2` → `r` (or `make dev` then
+`reload-theme.zsh`). `make dev` keeps verbose logging but still uses this user
+stylesheet for colors.
 
 Selectors Forge exposes (see the bundled `stylesheet.css` for the full set):
 

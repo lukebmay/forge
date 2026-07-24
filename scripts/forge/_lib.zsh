@@ -345,6 +345,16 @@ forge_stamp_css_last_update() {
   forge_ok "css-last-update → $tag (prevents patchCss clobber)"
 }
 
+forge_trigger_css_reload() {
+  # Bump css-updated so a live extension reloads the user stylesheet (no reboot).
+  forge_need_cmd gsettings
+  local sd now
+  sd=$(forge_schema_dir) || forge_die "no schemas dir for css reload"
+  now=$(date +%s%3N 2>/dev/null || date +%s)
+  GSETTINGS_SCHEMA_DIR="$sd" gsettings set "$FORGE_SCHEMA_MAIN" css-updated "$now"
+  forge_ok "css-updated → $now (extension reloads stylesheet if enabled)"
+}
+
 forge_user_stylesheet_path() {
   print -r -- "$FORGE_CONFIG_DIR/stylesheet/forge/stylesheet.css"
 }
@@ -504,4 +514,5 @@ PY
 
   [[ -f "$dest" ]] || forge_warn "no stylesheet at $dest after restore"
   forge_stamp_css_last_update
+  forge_trigger_css_reload
 }
