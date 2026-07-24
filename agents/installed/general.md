@@ -1,6 +1,6 @@
 # General Agent Guidelines
 
-Follow `agents/` as needed. Do **not** load every file up front — the project composer (`agents.py` / `agents build`) assembles the stable core into root `AGENTS.md`. Examples of portable fragments: `security.md`, `scripting.md`, `comments.md`, `documentation.md`, `ansi-colors.md`, `markdown.md`. Interesting design decisions live in `docs/DESIGN.md` (see `documentation.md`).
+Follow `agents/` as needed. Do **not** load every file up front — the project composer (`agents.py` / `agents build`) assembles the stable core into root `AGENTS.md`. Examples of portable fragments: `security.md`, `git.md`, `scripting.md`, `comments.md`, `documentation.md`, `ansi-colors.md`, `markdown.md`. Interesting design decisions live in `docs/DESIGN.md` (see `documentation.md`).
 
 ## Installed vs user overrides (precedence)
 

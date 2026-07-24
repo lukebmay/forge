@@ -21,12 +21,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 AGENTS_DIR = PROJECT_ROOT / "agents"
 INSTALLED_DIR = AGENTS_DIR / "installed"
 
-__version__ = '0.1.4'
-# agents-tool-version: 0.1.4
+__version__ = '0.1.5'
+# agents-tool-version: 0.1.5
 
 CORE_INSTALLED_RELS = (
     "general.md",
     "security.md",
+    "git.md",
     "scripting.md",
     "comments.md",
     "documentation.md",
@@ -85,17 +86,6 @@ def bump_headings(text: str) -> str:
 
 def _rel_posix(base: Path, path: Path) -> str:
     return str(path.relative_to(base)).replace(os.sep, "/")
-
-
-def _add_unique(
-    result: List[Tuple[str, Path]],
-    seen: Set[str],
-    label: str,
-    path: Path,
-) -> None:
-    if label not in seen and path.is_file():
-        result.append((label, path))
-        seen.add(label)
 
 
 def _label_for(path: Path) -> str:

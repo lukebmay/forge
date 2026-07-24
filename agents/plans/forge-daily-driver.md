@@ -184,7 +184,7 @@ Implement as dedicated phase — do not half-fix by only changing two shortcuts.
 ```text
 1. Read this plan + forge-layout-thrash-analysis.md (skimming is OK for Round 1
    architecture if Round 2/3 + task table are loaded).
-2. Claim T0 (bd if used) or work agents/tasks/forge-daily-driver_t0-*.md.
+2. Work the next ready task under agents/tasks/ (or completed/ when done).
 3. Implement T0 → T1 with unit tests; npm test / make unit-test.
 4. Optionally T2 overlay if T1 done and thrash debug needed.
 5. Do not SSH to black without explicit user permission (AGENTS security).

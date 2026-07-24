@@ -1,15 +1,72 @@
-# Forge (maintained by Claude)
+# Forge (jcrussell fork)
 
 [![CI](https://github.com/jcrussell/forge/actions/workflows/testing.yml/badge.svg)](https://github.com/jcrussell/forge/actions/workflows/testing.yml)
 [![codecov](https://codecov.io/github/jcrussell/forge/graph/badge.svg?token=MFNOBH5D4L)](https://codecov.io/github/jcrussell/forge)
 
-An AI-maintained fork of [Forge](https://github.com/forge-ext/forge), the GNOME
-Shell extension that provides i3/sway-style tiling window management.
+An actively maintained fork of [Forge](https://github.com/forge-ext/forge), the
+GNOME Shell extension that provides i3/sway-style tiling window management.
 
 This fork addresses bugs and adds features while the upstream project seeks a
 new maintainer. Contributions here are intended to be upstreamed when possible.
 Thanks to [@jmmaranan](https://github.com/jmmaranan) and all original
 contributors for creating this excellent extension.
+
+## This tree (local / daily-driver work)
+
+| Fact | Value |
+| --- | --- |
+| Remote | [jcrussell/forge](https://github.com/jcrussell/forge) |
+| Local path (this clone) | `~/dev/me/forge_jcrussell` |
+| Upstream reference clone | `~/dev/me/forge_original` (**do not** start new work there) |
+| Extension UUID | `forge@jmmaranan.com` (installs **replace** the live extension) |
+| Target host | `black` — GNOME Shell **46**, **X11**, dual 4K, hybrid AMD+NVIDIA |
+| Displays | shellrc **`gdisplays`** (connector identity lives there, not in this repo) |
+
+### Fork decision (historical)
+
+Phase A of the fork eval compared **jcrussell/forge** vs upstream **forge-ext/forge**
+and locked this tree as the product base (not a greenfield rewrite, not
+`forge_original`). See [agents/plans/forge-fork-eval.md](agents/plans/forge-fork-eval.md).
+
+Daily pain that motivated the trial: multi-monitor after blank/reattach, tab/stack
+lifecycle thrash, and resize/session reliability. gdisplays v1 (shellrc) reduced
+connector-rename stress; Forge still must survive workarea thrash without
+crashing Shell.
+
+### Current plan focus
+
+Execution plan: **[agents/plans/forge-daily-driver.md](agents/plans/forge-daily-driver.md)**  
+Priorities: **[agents/PRIORITY.md](agents/PRIORITY.md)**
+
+| Slice | Status |
+| --- | --- |
+| **T0** stack off by default + DnD force tabbed | **Done** |
+| **T1** tab chrome reliability (no empty gap / N labels) | **Done** |
+| **T2** opt-in layout debug overlay | **Next** |
+| **T3** blank/wake + tab survival (+ H1 soft-rehome live verify) | After install / T2 |
+| **T4+** sizing policy, keybind system, snapshot/session | Later in plan |
+
+Related: [forge-harden-and-session](agents/plans/forge-harden-and-session.md)
+(H1 soft-rehome **code** done; live verify still open),
+[layout thrash analysis](agents/plans/forge-layout-thrash-analysis.md).
+
+Agent guidelines are composed with shellrc **`agents`** → root
+[AGENTS.md](AGENTS.md) (`agents build`). Session plans/tasks live under
+`agents/plans/` and `agents/tasks/`.
+
+### Install trial on `black` (safe path)
+
+UUID matches EGO Forge, so a trial **replaces** the installed extension. Prefer
+the helpers under [`scripts/forge/`](scripts/forge/README.md):
+
+```bash
+./scripts/forge/status.zsh
+./scripts/forge/switch-to-jcrussell.zsh   # backup → make dev → apply
+# log out / log in on X11, then:
+./scripts/forge/status.zsh
+```
+
+Do **not** skip backup. Rollback helpers are documented in `scripts/forge/`.
 
 ## Features
 
@@ -51,10 +108,12 @@ This fork includes significant improvements over the upstream version:
 - Preview hints and border rendering fixes
 - Cross-workspace window operations
 - Preferences saving and theme handling
+- Soft rehome after workarea thrash (H1 — live verify still open)
+- Tab chrome fallback when `Shell.App` is null (no empty tab strip)
 
 ### Code Quality
 
-- Comprehensive unit test suite (1,400+ tests, ~88% line coverage) plus a Dockerized E2E suite
+- Comprehensive unit test suite (1,600+ tests) plus a Dockerized E2E suite
 - Refactored architecture with focused, extracted managers (see [architecture docs](docs/dev/architecture.md))
 - Riskier options stay behind clearly-marked experimental toggles
 
@@ -62,6 +121,8 @@ This fork includes significant improvements over the upstream version:
 
 - Does not support dynamic workspaces
 - Does not support vertical monitor setup
+- Multi-monitor blank/wake tab survival still under live verification (T3)
+- Stack mode is **off by default** in this tree (tab-first; optional later)
 
 ## Installation
 
@@ -121,6 +182,7 @@ Full docs live in [`docs/`](docs/):
   [multi-monitor](docs/user/monitors.md), [troubleshooting](docs/user/troubleshooting.md).
 - **Developer reference** ([`docs/dev/`](docs/dev/)) — architecture, rendering
   pipeline, Mutter compatibility.
+- **Design notes** ([`docs/DESIGN.md`](docs/DESIGN.md)) — durable “why” decisions.
 - Press **`Super+Shift+/`** in-session for the keybinding cheatsheet.
 
 ## Forge Override Paths

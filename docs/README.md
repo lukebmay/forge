@@ -2,7 +2,8 @@
 
 Reference docs for [Forge](../README.md), an i3/sway-style tiling window manager
 for GNOME Shell. Start with the top-level [README](../README.md) (install,
-features) and [CLAUDE.md](../CLAUDE.md) (build commands, repo conventions); these
+features) and [CONTRIBUTING.md](../CONTRIBUTING.md) (build/test); agent
+conventions live in [AGENTS.md](../AGENTS.md) (composed from `agents/`). These
 pages go deeper.
 
 > These pages reference code by file and symbol name (e.g. `renderTree()` in

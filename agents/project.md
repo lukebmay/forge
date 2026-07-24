@@ -8,12 +8,16 @@ This tree is **jcrussell/forge** (community / AI-maintained fork). Upstream
 **forge-ext/forge** seeks a maintainer; local reference clone:
 `~/dev/me/forge_original`.
 
-Compose rules into root `AGENTS.md`:
+Compose rules into root `AGENTS.md` (shellrc `agents`):
 
 ```sh
-python3 agentsmd_build.py
-python3 agentsmd_build.py --preset=full
+agents build
+agents build --preset=full
+# or: python3 agents.py build
 ```
+
+Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
+`CLAUDE.md`, `.claude/`, or beads (`.beads` / `bd`) project files.
 
 ## Stack
 
@@ -22,6 +26,13 @@ python3 agentsmd_build.py --preset=full
 - Vitest unit tests + Dockerized E2E
 - Prettier (2-space, 100 cols); husky pre-commit
 - Build: **Node.js 20+**, gettext (`make check-deps`)
+
+## Branches
+
+| Branch | Role |
+| --- | --- |
+| `main` | GNOME 45+ — **this work** |
+| `legacy` / `gnome-3-36` | GNOME 3.36 — feature-frozen |
 
 ## Priorities for agents
 
@@ -50,11 +61,39 @@ python3 agentsmd_build.py --preset=full
 | `extension.js` / `prefs.js` | Shell lifecycle / prefs entry |
 | `lib/extension/` | Tree, WM, command/focus/decoration, keybindings |
 | `lib/shared/` | Settings, config-sync, theme, logger |
-| `lib/prefs/` | GTK4 prefs pages |
+| `lib/prefs/` | GTK4 prefs pages (**not** unit-tested) |
 | `docs/` | User + developer docs |
 | `tests/` | Unit (Vitest) + e2e + mocks |
 | `agents/plans/` | Plans |
 | `agents/tasks/` | Session tasks; done plan-linked → `plans/<plan>/completed/` |
+
+## Domain concepts (quick)
+
+| Concept | Detail |
+| --- | --- |
+| **Tiling tree** | i3/sway-style tree; H/V split, STACKED, TABBED |
+| **Window modes** | TILE (managed), FLOAT (unmanaged), GRAB_TILE (drag), DEFAULT |
+| **Session / lock** | On lock screen: disable keybindings; **keep tree in memory** so layout survives |
+| **GObject** | Core classes use `static { GObject.registerClass(this); }`; track signal IDs and disconnect on teardown / `disable()` |
+
+## Configuration paths
+
+| What | Where |
+| --- | --- |
+| GSettings schema | `org.gnome.shell.extensions.forge` |
+| Window overrides | `~/.config/forge/config/windows.json` |
+| Stylesheet overrides | `~/.config/forge/stylesheet/forge/stylesheet.css` |
+
+## Where to look (do not dump full docs here)
+
+| Need | Doc |
+| --- | --- |
+| Build / test / format | [CONTRIBUTING.md](../CONTRIBUTING.md), `make help` |
+| Architecture / render / Mutter | [docs/dev/](../docs/dev/) (`architecture.md`, `rendering.md`, `compat.md`) |
+| Unit / e2e tests | [tests/README.md](../tests/README.md), [tests/e2e/README.md](../tests/e2e/README.md) |
+| User behavior | [docs/user/](../docs/user/) |
+| Durable “why” | [docs/DESIGN.md](../docs/DESIGN.md) |
+| Priorities / plans | [PRIORITY.md](./PRIORITY.md), `agents/plans/` |
 
 ## Project-specific rules
 
@@ -63,14 +102,9 @@ python3 agentsmd_build.py --preset=full
 - Prefer fixing root causes over silencing crashes.
 - Do not re-run the upstream-vs-fork comparison unless the trees change materially.
 
-### Git: commit and push only on direct instruction
+### Git
 
-These override any session-end / “wrap up” / beads-style workflow that implies
-auto-commit or auto-push.
-
-| Rule | Detail |
-| --- | --- |
-| **No commit by default** | Do **not** `git commit` unless the **current** user message **directly** asks to commit (e.g. “commit”, “wrapup and commit”). |
-| **No push by default** | Do **not** `git push` (or force-push) unless the **current** user message **directly** asks to push. |
-| **Commit ≠ push** | “Commit” means **commit only**. Never treat commit, wrap-up, or session end as license to push. |
-| **Not implied** | “Done”, “wrap up”, “finish the task”, quality gates, or plan/task notes do **not** authorize commit or push. |
+Follow shellrc catalog **`git.md`** (composed into `AGENTS.md`): **no commit and no
+push** unless the current user message **directly** asks. “Commit” means commit
+only — never push unless they also asked to push. Session end / wrap-up does not
+authorize either.

@@ -82,5 +82,6 @@ Wayland. Mutter API differences belong in `lib/extension/compat.js`
 Maintainers: cutting a release and submitting to extensions.gnome.org is
 documented in [RELEASING.md](RELEASING.md).
 
-> Maintainers: this repo tracks work with **bd** (beads) and additional automation
-> conventions documented in [CLAUDE.md](CLAUDE.md).
+> Agent / session conventions: [AGENTS.md](AGENTS.md) (composed from `agents/`
+> via shellrc `agents build`). Plans and priorities live under `agents/plans/`
+> and `agents/PRIORITY.md`.
