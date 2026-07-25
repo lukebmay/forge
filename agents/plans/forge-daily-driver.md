@@ -10,10 +10,9 @@
 
 ### Session note (2026-07-25)
 
-**Session-layout v2 (live thrash on black).** v1 save-on-disable missed HUP and
-majority-cohort restore left flat piles. v2: debounced last-good + install
-flush (GetTree fallback) + strict mon rehome before apply. `npm test` 1851.
-**Next:** live `./install` proof; FC\* as needed.
+**Session-layout install survival:** last-good JSON + HUP flush + class/title
+match + strict rehome. Live dual-mon tab restore OK on black after `./install`.
+Cleanup commit ships. **Next:** FC\* as needed.
 
 **T0–T5 + OP1 + T6 + T7 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 ---

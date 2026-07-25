@@ -291,16 +291,10 @@ def _project_node_to_portable(node: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _write_session_layout_from_tree(forest: dict[str, Any]) -> dict[str, Any]:
-    """
-    Write ~/.config/forge/config/session-layout.json from a GetTree forest.
-    Works without SaveSessionLayout DBus (older extension builds).
-    """
-    monitors_in = forest.get("monitors") or []
+    """Write session-layout.json from a GetTree forest (DBus-less fallback)."""
     portable_mons: list[dict[str, Any]] = []
-    for m in monitors_in:
-        # Skip empty workspace scaffolds
-        kids = m.get("children") or []
-        if not kids:
+    for m in forest.get("monitors") or []:
+        if not (m.get("children") or []):
             continue
         pm = _project_node_to_portable(m)
         if pm:
@@ -308,12 +302,10 @@ def _write_session_layout_from_tree(forest: dict[str, Any]) -> dict[str, Any]:
     if not portable_mons:
         return {"ok": False, "error": "no non-empty monitors in tree"}
 
-    # Monotonic µs approx: time.monotonic_ns() // 1000 is fine for freshness.
-    mono_us = time.monotonic_ns() // 1000
     envelope = {
         "kind": "forge-session-layout",
         "sessionVersion": 1,
-        "savedMonotonicUs": mono_us,
+        "savedMonotonicUs": time.monotonic_ns() // 1000,
         "savedAtMs": int(time.time() * 1000),
         "forest": {"version": 1, "monitors": portable_mons},
     }
@@ -331,7 +323,6 @@ def _write_session_layout_from_tree(forest: dict[str, Any]) -> dict[str, Any]:
 
 def cmd_save_session_layout(backend: str, _args: argparse.Namespace) -> int:
     """Flush last-good tile topology before install / Shell reload."""
-    # Prefer in-extension flush (debounced save cancel + same code path).
     try:
         raw = call_method(backend, "SaveSessionLayout")
         data = json.loads(raw)
@@ -341,7 +332,6 @@ def cmd_save_session_layout(backend: str, _args: argparse.Namespace) -> int:
     except Exception:
         data = None
 
-    # Fallback: project GetTree → session-layout.json (works on older builds).
     try:
         raw = call_method(backend, "GetTree", "{}")
         forest = json.loads(raw)

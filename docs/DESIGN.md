@@ -46,37 +46,18 @@ utils `bestMonitorIndexForRect`.
 **Manual reproduce:** `scripts/forge/trigger-idle-lock.zsh` (short idle / DPMS);
 manual Super+Delete is a weak control path.
 
-## Session layout across install/update (disable→enable)
+## Session layout across install/update
 
-**Problem:** Reinstalling or updating the extension runs `disable()` then
-`enable()` — or more often on X11, **`killall -HUP gnome-shell`**, which may
-skip a clean `disable()`. That **destroys the in-memory tree**. Live T6
-snapshots key windows by `Meta.Window` object identity — those wrappers die —
-so enable re-tracks every app **flat**. Dual-head users see tabs/splits
-collapse; Mutter often piles survivors on one head as full-height strips.
+**Problem:** Shell HUP / extension reload wipes the in-memory tree. Flat
+re-track + Mutter pile-up → full-height columns, lost tabs.
 
-**v1 hole:** Save-only-on-disable + restore via majority-mon cohort failed in
-practice: HUP never wrote the file; even with a file, windows already under the
-wrong mon made `applyMonitorSnapshot` see empty cohorts → flat thrash.
+**Approach:** Portable forest at `~/.config/forge/config/session-layout.json`
+(id + wmClass/title leaves). Debounced last-good save; install flushes before
+HUP (`forge save-session-layout`). On enable: match ≥50% (id, else class+title),
+strict mon rehome, then topology restore. Richness guard + post-enable hold stop
+thrash-flat from overwriting a good file. Not full `workon` profiles.
 
-**Approach (still not full workon):**
-
-1. **Keep last-good on disk continuously** — debounced save after quiet render;
-   immediate flush on disable / `flushSessionLayout()` / DBus
-   `SaveSessionLayout` / `forge save-session-layout`.
-2. **Install scripts flush before HUP** (`forge_restart_shell`); CLI falls back
-   to projecting `GetTree` → `session-layout.json` if the DBus method is missing
-   (first upgrade over an older build).
-3. On enable → empty live snapshot → load file when **fresh** (same boot, ≤30m)
-   and **≥50%** ids match. **Do not clear** on match failure (retry next enable).
-4. **Strict rehome before topology:** `move_to_monitor` + reparent each window
-   onto its snapshot mon (id/stableKey only — **not** majority pile), then
-   `applyMonitorSnapshot` per mon.
-
-Portable leaves use Mutter `get_id()`. Full named session profiles remain the
-`workon` / forge-command path later.
-
-**Tests:** `tests/unit/extension/session-layout.test.js` (incl. pile-up dual-mon).
+**Tests:** `tests/unit/extension/session-layout.test.js`.
 
 ## Tab strip clickability
 
