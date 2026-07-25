@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-FORGE_VERSION = "fc3"
+FORGE_VERSION = "fc4"
 BUS_NAME = "org.gnome.Shell.Extensions.Forge"
 OBJECT_PATH = "/org/gnome/Shell/Extensions/Forge"
 INTERFACE = "org.gnome.Shell.Extensions.Forge"
@@ -31,7 +31,11 @@ _METHOD_IN_ARGS: dict[str, int] = {
     "SetSetting": 2,
     "SettingsSave": 1,
     "SettingsLoad": 1,
+    "RunSteps": 1,
 }
+
+# Ops executed only by this CLI (not extension RunSteps). Documented for scripts.
+CLI_ONLY_STEP_OPS = frozenset({"launch", "wait-window", "wait"})
 
 DEFAULT_LAUNCH_TIMEOUT_MS = 15000
 HARD_DEPS = ("python3", "PyGObject (gi.repository.Gio) or gdbus")
@@ -195,6 +199,9 @@ def _cmd_result(backend: str, method: str, *dbus_args: str, label: str) -> int:
             _print_json(data, compact=False)
         return 1
     _print_json(data, compact=False)
+    # RunSteps (and similar) use {ok:false, results:...} without top-level error.
+    if isinstance(data, dict) and data.get("ok") is False:
+        return 1
     if isinstance(data, dict) and data.get("ok") is True:
         return 0
     # Success payloads without ok (e.g. GetTree forest) already handled by callers
@@ -481,6 +488,97 @@ def cmd_settings(backend: str, args: argparse.Namespace) -> int:
     return _cmd_result(backend, method, name, label=f"settings {action}")
 
 
+def _load_steps_payload(raw: str) -> Any:
+    """Parse JSON steps payload (array or {steps,...})."""
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"invalid JSON: {e}") from e
+
+
+def _payload_has_cli_only(payload: Any) -> list[str]:
+    """Return CLI-only op names found in a steps payload (if any)."""
+    steps: list[Any]
+    if isinstance(payload, list):
+        steps = payload
+    elif isinstance(payload, dict) and isinstance(payload.get("steps"), list):
+        steps = payload["steps"]
+    else:
+        return []
+    found: list[str] = []
+    for s in steps:
+        if not isinstance(s, dict):
+            continue
+        op = s.get("op") or s.get("action") or s.get("type")
+        if op is None:
+            continue
+        name = str(op).strip().lower()
+        if name in CLI_ONLY_STEP_OPS and name not in found:
+            found.append(name)
+    return found
+
+
+def cmd_run_steps(backend: str, args: argparse.Namespace) -> int:
+    """
+    DBus RunSteps: freeze → extension ops → unfreeze + one render.
+
+    launch / wait-window / wait are CLI-only — rejected by the extension.
+    For mixed scripts use forge run after FC5 orchestration, or call
+    forge launch separately then forge run-steps for tree ops.
+    """
+    raw: Optional[str] = None
+    if getattr(args, "file", None):
+        path = Path(args.file).expanduser()
+        if not path.is_file():
+            _eprint(f"forge run-steps: file not found: {path}")
+            return 1
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except OSError as e:
+            _eprint(f"forge run-steps: cannot read {path}: {e}")
+            return 1
+    elif getattr(args, "json_arg", None) is not None:
+        raw = args.json_arg
+    else:
+        _eprint("forge run-steps: provide JSON string or --file PATH")
+        return 1
+
+    raw = (raw or "").strip()
+    if not raw:
+        _eprint("forge run-steps: empty payload")
+        return 1
+
+    try:
+        payload = _load_steps_payload(raw)
+    except ValueError as e:
+        _eprint(f"forge run-steps: {e}")
+        return 1
+
+    cli_ops = _payload_has_cli_only(payload)
+    if cli_ops:
+        _eprint(
+            "forge run-steps: launch/wait are CLI-only and not sent via DBus "
+            f"(found: {', '.join(cli_ops)}). Use `forge launch` separately, "
+            "or strip those steps from the payload."
+        )
+        return 1
+
+    # Re-serialize so bare arrays and objects round-trip cleanly.
+    steps_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+    return _cmd_result(backend, "RunSteps", steps_json, label="run-steps")
+
+
+def cmd_run(backend: str, args: argparse.Namespace) -> int:
+    """forge run <file.json> — same as run-steps --file (extension ops only)."""
+    path = Path(args.file).expanduser() if args.file else None
+    if not path:
+        _eprint("forge run: file required")
+        return 1
+    # Reuse run-steps with synthetic namespace
+    ns = argparse.Namespace(file=str(path), json_arg=None)
+    return cmd_run_steps(backend, ns)
+
+
 def cmd_launch(backend: str, args: argparse.Namespace) -> int:
     app = (args.app or "").strip()
     if not app:
@@ -763,6 +861,61 @@ def build_parser() -> argparse.ArgumentParser:
     )
     load_p.add_argument("name", help="Profile name (A-Za-z0-9_-)")
     load_p.set_defaults(func=cmd_settings)
+
+    _run_steps_help = (
+        "Batch extension ops via DBus RunSteps (freezeRender → ops → one render).\n"
+        "\n"
+        "Payload JSON: a steps array, or { \"steps\": [...], \"stopOnError\": true }.\n"
+        "Ops: ping, focus, swap, move, layout, place-next, set.\n"
+        "\n"
+        "CLI-only (not in RunSteps): launch, wait-window, wait — spawn/wait\n"
+        "out of process, then call run-steps for tree mutations. Example:\n"
+        '  forge launch ghostty --wm-class=... && forge run-steps \'[{"op":"focus",...}]\'\n'
+        "\n"
+        "Step shapes:\n"
+        '  {"op":"ping"}\n'
+        '  {"op":"focus","selector":"class:Foo"}\n'
+        '  {"op":"swap","a":"focus","b":"class:Bar"}\n'
+        '  {"op":"move","tile":"class:A","dest":"path:mo0ws0/0"}\n'
+        '  {"op":"layout","mode":"tabbed","selector":"focus"}\n'
+        '  {"op":"place-next","wmClass":"X","monitor":0}\n'
+        '  {"op":"set","key":"window-gap-size","value":8}\n'
+    )
+    run_steps = sub.add_parser(
+        "run-steps",
+        help="Run a JSON step batch on the extension (quiet render)",
+        description=_run_steps_help,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    run_steps.add_argument(
+        "json_arg",
+        nargs="?",
+        metavar="JSON",
+        help="Steps JSON string (array or {steps:...})",
+    )
+    run_steps.add_argument(
+        "--file",
+        "-f",
+        metavar="PATH",
+        help="Read steps JSON from file",
+    )
+    run_steps.set_defaults(func=cmd_run_steps)
+
+    run_p = sub.add_parser(
+        "run",
+        help="Run steps from a JSON file (alias for run-steps --file)",
+        description=(
+            "Read {steps} or a bare array from FILE and call DBus RunSteps.\n"
+            "Same as `forge run-steps --file FILE`. Launch/wait remain CLI-only."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    run_p.add_argument(
+        "file",
+        metavar="FILE",
+        help="Path to steps JSON ({steps:[...]} or bare array)",
+    )
+    run_p.set_defaults(func=cmd_run)
 
     return p
 

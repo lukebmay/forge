@@ -1,6 +1,6 @@
 # Plan: `forge` CLI + session scripting surface
 
-**Status:** FC0–FC3 **Done** — next FC4
+**Status:** FC0–FC4 **Done** — FC5 deferred
 **Priority:** P1 product (next after daily-driver Phase E)  
 **Base:** this tree (`jcrussell/forge`)  
 **Related:** [forge-daily-driver.md](./forge-daily-driver.md) (OP1, T6–T7 done),  
@@ -8,8 +8,10 @@
 
 ### Session note (2026-07-25)
 
-**FC3 Done (A/B AGREE).** Get/Set + settings save/load profiles; apiVersion 4;
-1813 tests. **Next: FC4** run-steps / freezeRender batch. FC5 workon deferred.
+**FC0–FC4 Done (A/B AGREE each).** DBus control plane + forge CLI: ping, tree,
+focus/swap/move, launch+PlaceNext, settings get/set/profiles, run-steps with
+freezeRender. apiVersion 5; ~1833 unit tests. **FC5 workon deferred design.**
+Live host smoke residual for all DBus methods.
 
 ---
 
@@ -147,7 +149,7 @@ FC5  workon composition  (DEFERRED design — after FC1–FC4 exist)
 | **FC1** | [completed/…](./forge-command/completed/forge-command_fc1-selectors-move-swap.md) | **Done** | FC0; T7 soft | M | Selectors; tree/focus/move/swap |
 | **FC2** | [completed/…](./forge-command/completed/forge-command_fc2-launch.md) | **Done** | FC1; OP1 | M | `forge launch` + wait/place |
 | **FC3** | [completed/…](./forge-command/completed/forge-command_fc3-settings.md) | **Done** | FC0 | S–M | get/set/save/load settings |
-| **FC4** | `agents/tasks/forge-command_fc4-run-steps.md` | **Next** | FC1–FC2 | M | Batched ops, quiet render |
+| **FC4** | [completed/…](./forge-command/completed/forge-command_fc4-run-steps.md) | **Done** | FC1–FC2 | M | Batched ops, quiet render |
 | **FC5** | `agents/tasks/forge-command_fc5-workon.md` | **Deferred design** | FC1–FC4 | S–M | `workon` wrapper syntax — design only after forge CLI is real |
 
 When creating task files, use daily-driver task structure (problem, goals,

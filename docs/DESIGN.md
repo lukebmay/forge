@@ -167,7 +167,7 @@ easy to poison with floats (Guake) and ignored per-monitor dock intent.
 `new-window-placement=window-actual` remains an escape hatch for restore geometry;
 default path is LFT policy. `lastFocusedWindow` still exists for pointer helpers.
 
-## Session DBus + `forge` CLI (FC0–FC3)
+## Session DBus + `forge` CLI (FC0–FC4)
 
 **Problem:** Scripts and future `workon` need a stable control plane. E2E’s
 `Shell.Eval` / `_forgeTestBridge` is fine for tests, not for production
@@ -185,15 +185,18 @@ scripting (Eval is disabled or unsafe on real sessions).
    **FC1:** `Focus(s)`, `Swap(s,s)`, `Move(s,s)` → `{ok:true}` or
    `{error, candidates?}`. **FC2:** `PlaceNext(options_json)` → one-shot
    place hint for the next matching map. **FC3:** `GetSetting` / `SetSetting`
-   / `SettingsSave` / `SettingsLoad` for portable config-sync keys. Never
-   throw across DBus.
+   / `SettingsSave` / `SettingsLoad` for portable config-sync keys.
+   **FC4:** `RunSteps(steps_json)` → freeze render, batch ops, one
+   `renderTree("run-steps")`. Never throw across DBus.
 3. **Pure projection** in `lib/extension/tree-query.js`; **selectors** in
    `lib/extension/tile-select.js`; **place hints** in `place-hint.js`;
-   **settings allowlist/coercion** in `settings-control.js` (unit-tested);
-   export glue in `session-api.js` + wire from `extension.js`.
+   **settings allowlist/coercion** in `settings-control.js`; **step schema
+   + dispatch** in `run-steps.js` (unit-tested); export glue in
+   `session-api.js` + wire from `extension.js`.
 4. **User CLI** `scripts/forge/forge` (`ping` / `tree` / `focus` / `swap` /
-   `move` / `launch` / `get` / `set` / `settings save|load`) talks DBus via
-   PyGObject or `gdbus` — distinct from `forge-ctl`.
+   `move` / `launch` / `get` / `set` / `settings save|load` / `run` /
+   `run-steps`) talks DBus via PyGObject or `gdbus` — distinct from
+   `forge-ctl`.
 
 ### Tile selector grammar (FC1)
 
@@ -231,9 +234,9 @@ no hint — OP1 LFT attach applies as usual.
 `PlaceNext` before spawn, then polls `GetTree` for `--wm-class` unless
 `--no-wait`. Already-mapped: `forge move` after wait (no PlaceNext).
 
-`apiVersion` in Ping is **4** once settings get/set/save/load exist (was 3
-with PlaceNext; `TREE_QUERY` stays 1 as `queryApiVersion`; tile-select
-grammar still version 2).
+`apiVersion` in Ping is **5** once RunSteps exists (was 4 with settings;
+was 3 with PlaceNext; `TREE_QUERY` stays 1 as `queryApiVersion`;
+tile-select grammar still version 2).
 
 ### Settings get/set + named profiles (FC3)
 
@@ -249,7 +252,29 @@ key errors with “use `settings:…` or `kbd:…`”.
 `applyPortableProps`, not a second settings store. Distinct from
 keybinding-only kits under `config/keybinding-profiles/`.
 
-Later FCs: RunSteps; no Shell.Eval in that path.
+### RunSteps + freezeRender (FC4)
+
+**Why batch:** Morning scripts (and future `workon`) issue many focus /
+move / layout / set ops. Per-op `renderTree` flickers and races. One
+freeze for the whole batch, one render at the end.
+
+**Payload:** JSON array of `{ "op": "…" , … }` or
+`{ "steps": [...], "stopOnError": true }`. `stopOnError` defaults true;
+on failure returns `{ ok:false, stoppedAt, results:[{ok|error,index}…] }`
+without throwing on DBus.
+
+**Extension ops:** `ping`, `focus`, `swap`, `move`, `layout`
+(absolute `tabbed|stacked|hsplit|vsplit`), `place-next`, `set`. Quiet
+cores skip mid-batch unfreeze/`renderTree(force)`.
+
+**CLI-only ops:** `launch`, `wait-window`, `wait` never enter the
+extension — process spawn and window-appear polling stay in
+`scripts/forge/forge`. `partitionMixedSteps` exists for a future
+interleaved `forge run`; today `forge run` / `run-steps` refuse
+CLI-only ops in the payload and document the split
+(`forge launch … && forge run-steps '…'`).
+
+Later: FC5 `workon` composition — not designed here.
 
 ## User stylesheet vs `make dev` (production flag)
 

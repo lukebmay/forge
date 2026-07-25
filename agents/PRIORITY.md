@@ -1,21 +1,21 @@
 # forge_jcrussell — active priorities
 
-**Updated:** 2026-07-25  
+**Updated:** 2026-07-25
 **Cross-repo:** shellrc gdisplays v1 done; Forge trial is independent.
 
 ## Next session focus
 
-**FC4 — `forge` CLI** (DBus control plane). See [forge-command.md](./plans/forge-command.md).
-FC0 Done. FC5 `workon` deferred until subcommands exist.
+**FC0–FC4 `forge` CLI done.** Live smoke on host + FC5 workon design when ready.
+See [forge-command.md](./plans/forge-command.md).
 
 | Doc | Role |
 | --- | --- |
-| [forge-command.md](./plans/forge-command.md) | **Next** — FC4 |
+| [forge-command.md](./plans/forge-command.md) | FC0–FC4 **Done**; FC5 deferred |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 done |
-| [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome done; batch runtime sketch |
-| Task | create `agents/tasks/forge-command_fc4-….md` per plan |
+| [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome done; batch via FC4 |
+| Optional | OP-opt tiny-pane; T9 multi-line tabs; fork-eval spike close-out |
 
-**T0–T5 + OP1 + T6 + T7 + FC0–FC3 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
+**T0–T7 + OP1 + FC0–FC4 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 
 ## Queue
 
@@ -29,7 +29,8 @@ FC0 Done. FC5 `workon` deferred until subcommands exist.
 | P1 | FC1 selectors + focus/move/swap | **Done** |
 | P1 | FC2 forge launch | **Done** |
 | P1 | FC3 settings get/set/save/load | **Done** |
-| **P1** | **FC4 forge run-steps** | **Next** |
+| P1 | FC4 run-steps | **Done** |
+| later | FC5 workon composition | **Deferred design** |
 | later | FC5 `workon` composition | **Deferred design** until forge CLI real |
 | optional | OP-opt tiny-pane tab fallback | After P1s; notes in daily-driver |
 | later | T9 multi-line tabs | After T1 proven |
@@ -38,6 +39,7 @@ FC0 Done. FC5 `workon` deferred until subcommands exist.
 
 ## Related completed
 
+- [FC4 run-steps](./plans/forge-command/completed/forge-command_fc4-run-steps.md)
 - [FC3 settings](./plans/forge-command/completed/forge-command_fc3-settings.md)
 - [FC2 forge launch](./plans/forge-command/completed/forge-command_fc2-launch.md)
 - [FC1 selectors + focus/move/swap](./plans/forge-command/completed/forge-command_fc1-selectors-move-swap.md)
