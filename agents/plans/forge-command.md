@@ -1,6 +1,6 @@
 # Plan: `forge` CLI + session scripting surface
 
-**Status:** FC0 **Done** — next FC1; OP1 + T6 + T7 foundation **done**  
+**Status:** FC0–FC1 **Done** — next FC2  
 **Priority:** P1 product (next after daily-driver Phase E)  
 **Base:** this tree (`jcrussell/forge`)  
 **Related:** [forge-daily-driver.md](./forge-daily-driver.md) (OP1, T6–T7 done),  
@@ -8,10 +8,11 @@
 
 ### Session note (2026-07-25)
 
-**FC0 Done (A/B AGREE).** DBus `org.gnome.Shell.Extensions.Forge` Ping +
-GetTree; pure `tree-query.js`; CLI `scripts/forge/forge ping|tree`;
-`npm test` 1751. Live host smoke residual. **Next: FC1** selectors +
-tree/focus/move/swap. `workon` still FC5.
+**FC1 Done (A/B AGREE).** Selectors + Focus/Swap/Move DBus/CLI; apiVersion 2;
+`npm test` 1772. **Next: FC2** `forge launch`. `workon` still FC5.
+
+**FC0 Done (A/B AGREE).** DBus Ping + GetTree; pure `tree-query.js`; CLI
+`ping|tree`.
 
 ---
 
@@ -146,7 +147,7 @@ FC5  workon composition  (DEFERRED design — after FC1–FC4 exist)
 | ID | Task file | Status | Depends | Effort | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | **FC0** | [completed/…](./forge-command/completed/forge-command_fc0-dbus-get-tree.md) | **Done** | T6 preferred | M | DBus Ping + GetTree; CLI stub |
-| **FC1** | `agents/tasks/forge-command_fc1-selectors-move-swap.md` | **Next** | FC0; T7 soft | M | Selectors; tree/focus/move/swap |
+| **FC1** | `agents/tasks/forge-command_fc1-selectors-move-swap.md` | **In progress (A done)** | FC0; T7 soft | M | Selectors; tree/focus/move/swap |
 | **FC2** | `agents/tasks/forge-command_fc2-launch.md` | Later | FC1; OP1 | M | `forge launch` + wait/place |
 | **FC3** | `agents/tasks/forge-command_fc3-settings.md` | Later | FC0 | S–M | get/set/save/load settings |
 | **FC4** | `agents/tasks/forge-command_fc4-run-steps.md` | Later | FC1–FC2 | M | Batched ops, quiet render |

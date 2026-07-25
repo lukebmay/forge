@@ -167,7 +167,7 @@ easy to poison with floats (Guake) and ignored per-monitor dock intent.
 `new-window-placement=window-actual` remains an escape hatch for restore geometry;
 default path is LFT policy. `lastFocusedWindow` still exists for pointer helpers.
 
-## Session DBus + `forge` CLI (FC0)
+## Session DBus + `forge` CLI (FC0–FC1)
 
 **Problem:** Scripts and future `workon` need a stable control plane. E2E’s
 `Shell.Eval` / `_forgeTestBridge` is fine for tests, not for production
@@ -180,14 +180,42 @@ scripting (Eval is disabled or unsafe on real sessions).
    - Bus name: `org.gnome.Shell.Extensions.Forge`
    - Path: `/org/gnome/Shell/Extensions/Forge`
    - Interface: `org.gnome.Shell.Extensions.Forge`
-2. **MVP methods:** `Ping()` health JSON (`ok`, uuid, versionName, apiVersion);
-   `GetTree(options_json)` → plain-JSON forest (no live `Meta.Window` refs).
-3. **Pure projection** in `lib/extension/tree-query.js` (unit-tested); export
-   glue in `lib/extension/session-api.js` + wire from `extension.js`.
-4. **User CLI** `scripts/forge/forge` (`ping` / `tree`) talks DBus via
-   PyGObject or `gdbus` — distinct from `forge-ctl` (install/migrate).
+2. **Methods:** `Ping()` health JSON (`ok`, uuid, versionName, `apiVersion`);
+   `GetTree(options_json)` → plain-JSON forest (no live `Meta.Window` refs);
+   **FC1:** `Focus(s)`, `Swap(s,s)`, `Move(s,s)` → `{ok:true}` or
+   `{error, candidates?}`. Never throw across DBus.
+3. **Pure projection** in `lib/extension/tree-query.js`; **selectors** in
+   `lib/extension/tile-select.js` (unit-tested); export glue in
+   `session-api.js` + wire from `extension.js`.
+4. **User CLI** `scripts/forge/forge` (`ping` / `tree` / `focus` / `swap` /
+   `move`) talks DBus via PyGObject or `gdbus` — distinct from `forge-ctl`.
 
-Later FCs add selectors, launch, settings, RunSteps; no Shell.Eval in that path.
+### Tile selector grammar (FC1)
+
+Shared by DBus + CLI (`parseSelector` / `matchWindows`):
+
+| Form | Meaning |
+| --- | --- |
+| `focus` / `lft` | Focused Meta.Window / global LFT node (via live ctx) |
+| `title:Exact` | Window title exact |
+| `title~=substr` | Substring |
+| `title~=/regex/flags?` | JS regex |
+| `class:WmClass` | `wm_class` exact |
+| `class:WmClass@mon` | Class on mon index / `moN` / `moNwsW` / stableKey / role |
+| `path:mo0ws0/0/1` | Mon then child indices (`cN`/`wN` ok) |
+| `id:N` | Meta window id |
+
+Options: plain string, or JSON `{"selector":"…","first":true}`. **N>1** →
+`error: ambiguous` + candidate list (title/class/path) unless `first`.
+
+**Move semantics:** source must be WINDOW. Dest WINDOW → reparent **after**
+dest in dest’s parent (not `swapPairs`). Dest CON/MONITOR (path) →
+`appendChild` + `resetSiblingPercent`. **Swap** always uses `tree.swapPairs`.
+
+`apiVersion` in Ping is **2** once Focus/Swap/Move exist (`TREE_QUERY` stays 1
+as `queryApiVersion`).
+
+Later FCs: launch, settings, RunSteps; no Shell.Eval in that path.
 
 ## User stylesheet vs `make dev` (production flag)
 

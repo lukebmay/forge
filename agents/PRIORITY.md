@@ -5,17 +5,17 @@
 
 ## Next session focus
 
-**FC1–FC4 — `forge` CLI** (DBus control plane). See [forge-command.md](./plans/forge-command.md).
+**FC2–FC4 — `forge` CLI** (DBus control plane). See [forge-command.md](./plans/forge-command.md).
 FC0 Done. FC5 `workon` deferred until subcommands exist.
 
 | Doc | Role |
 | --- | --- |
-| [forge-command.md](./plans/forge-command.md) | **Next** — FC1+ |
+| [forge-command.md](./plans/forge-command.md) | **Next** — FC2+ |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 done |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome done; batch runtime sketch |
-| Task | create `agents/tasks/forge-command_fc1-….md` per plan |
+| Task | create `agents/tasks/forge-command_fc2-….md` per plan |
 
-**T0–T5 + OP1 + T6 + T7 + FC0 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
+**T0–T5 + OP1 + T6 + T7 + FC0–FC1 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 
 ## Queue
 
@@ -26,7 +26,8 @@ FC0 Done. FC5 `workon` deferred until subcommands exist.
 | P1 | T6 full tree snapshot | **Done** |
 | P1 | T7 stable mon roles | **Done** |
 | P1 | FC0 DBus Ping + GetTree | **Done** |
-| **P1** | **FC1–FC4 `forge` CLI** | **Next** |
+| P1 | FC1 selectors + focus/move/swap | **Done** |
+| **P1** | **FC2–FC4 `forge` CLI** | **Next** |
 | later | FC5 `workon` composition | **Deferred design** until forge CLI real |
 | optional | OP-opt tiny-pane tab fallback | After P1s; notes in daily-driver |
 | later | T9 multi-line tabs | After T1 proven |
@@ -35,6 +36,7 @@ FC0 Done. FC5 `workon` deferred until subcommands exist.
 
 ## Related completed
 
+- [FC1 selectors + focus/move/swap](./plans/forge-command/completed/forge-command_fc1-selectors-move-swap.md)
 - [FC0 DBus Ping + GetTree](./plans/forge-command/completed/forge-command_fc0-dbus-get-tree.md)
 - [T7 stable mon roles](./plans/forge-daily-driver/completed/forge-daily-driver_t7-stable-outputs.md)
 - [T6 full tree snapshot](./plans/forge-daily-driver/completed/forge-daily-driver_t6-full-tree-snapshot.md)
