@@ -10,9 +10,11 @@
 
 ### Session note (2026-07-25)
 
-**Session-layout install survival:** last-good JSON + HUP flush + class/title
-match + strict rehome. Live dual-mon tab restore OK on black after `./install`.
-Cleanup commit ships. **Next:** FC\* as needed.
+**Session-layout:** last-good JSON + HUP flush + match/rehome largely works for
+tabs/dual-head. **Open:** Ghostty left/right (same pid, title churn) — still
+can hide left Ghostty under right after install.  
+**Next task:** [forge-daily-driver_session-layout-ghostty.md](../tasks/forge-daily-driver_session-layout-ghostty.md)  
+(A/B loop). Tip commits: `2df7002` and parents through `7911e1d`.
 
 **T0–T5 + OP1 + T6 + T7 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 ---

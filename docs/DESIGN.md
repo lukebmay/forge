@@ -58,6 +58,11 @@ class+title → class+geometry → unique class; strict mon rehome; raise tiles 
 none stay buried. Richness guard + post-enable hold protect last-good. Not full
 `workon` profiles.
 
+**Open residual:** multi-window **same-pid** apps (Ghostty): titles churn; after
+install the left Ghostty can still rehome wrong or sit **visually under** the
+right Ghostty. Follow-up task:
+[agents/tasks/forge-daily-driver_session-layout-ghostty.md](../agents/tasks/forge-daily-driver_session-layout-ghostty.md).
+
 **Tests:** `tests/unit/extension/session-layout.test.js`.
 
 ## Tab strip clickability

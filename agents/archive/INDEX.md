@@ -4,7 +4,7 @@ Searchable one-line summaries of finished work. Details in `entries/`.
 
 | Date | Slug | Tags | One-line |
 | --- | --- | --- | --- |
-| 2026-07-25 | [session-layout-tab-click](./entries/session-layout-tab-click.md) | tiling, install, tabs | Portable session-layout on disable→enable; tab strip restack + activate |
+| 2026-07-25 | [session-layout-tab-click](./entries/session-layout-tab-click.md) | tiling, install, tabs | Session-layout install survival + tab click; Ghostty residual → open task |
 | 2026-07-24 | [t5-keybind-system](./entries/t5-keybind-system.md) | tiling, keybinds, kits | Safe=Ctrl+Super only; vim/i3 kits; conflict scan; save your own kit |
 | 2026-07-24 | [t4-sizing-policy](./entries/t4-sizing-policy.md) | tiling, sizing, percent | Equal until `userSized`; preserve/equalize on new window; min-size write-back |
 | 2026-07-24 | [t2-layout-debug-overlay](./entries/t2-layout-debug-overlay.md) | tiling, debug, overlay | Opt-in per-window layout/%/mon labels (`Ctrl+Super+d`); default off |

@@ -14,10 +14,11 @@
 
 ### Session note (2026-07-25)
 
-**Session-layout slice shipped (not full Phase 3):** disable saves portable
-topology to `config/session-layout.json`; enable restores when fresh so
-install/update does not flatten dual-head tiles. Full `workon` profiles still
-later. Near-term CLI: **[forge-command.md](./forge-command.md)**.
+**Session-layout slice mostly shipped (not full Phase 3 / workon).** Install HUP
+path restores tabs + dual-head for most windows. **Residual:** multi-window
+same-pid apps (Ghostty) mon/stack after restore — open task  
+[forge-daily-driver_session-layout-ghostty.md](../tasks/forge-daily-driver_session-layout-ghostty.md).  
+CLI: **[forge-command.md](./forge-command.md)**.
 ---
 
 ## Goal
