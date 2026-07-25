@@ -1,6 +1,6 @@
 # Plan: `forge` CLI + session scripting surface
 
-**Status:** Ready to implement — OP1 + T6 + T7 foundation **done**  
+**Status:** FC0 **Done** — next FC1; OP1 + T6 + T7 foundation **done**  
 **Priority:** P1 product (next after daily-driver Phase E)  
 **Base:** this tree (`jcrussell/forge`)  
 **Related:** [forge-daily-driver.md](./forge-daily-driver.md) (OP1, T6–T7 done),  
@@ -8,11 +8,10 @@
 
 ### Session note (2026-07-25)
 
-**Foundation ready.** OP1 LFT/dock, T6 full forest snapshot, T7 stable mon
-keys landed on `main` (commits through `3abcb37`). Next implement **FC0**
-(IPC skeleton) then FC1–FC4. User locked Linux-y **`forge` multi-command CLI**;
-**`workon` deferred to FC5** — composes `forge` (+ optional gdisplays), no
-parallel DSL.
+**FC0 Done (A/B AGREE).** DBus `org.gnome.Shell.Extensions.Forge` Ping +
+GetTree; pure `tree-query.js`; CLI `scripts/forge/forge ping|tree`;
+`npm test` 1751. Live host smoke residual. **Next: FC1** selectors +
+tree/focus/move/swap. `workon` still FC5.
 
 ---
 
@@ -146,8 +145,8 @@ FC5  workon composition  (DEFERRED design — after FC1–FC4 exist)
 
 | ID | Task file | Status | Depends | Effort | Outcome |
 | --- | --- | --- | --- | --- | --- |
-| **FC0** | `agents/tasks/forge-command_fc0-dbus-get-tree.md` | Later | T6 preferred | M | DBus Ping + GetTree; CLI stub |
-| **FC1** | `agents/tasks/forge-command_fc1-selectors-move-swap.md` | Later | FC0; T7 soft | M | Selectors; tree/focus/move/swap |
+| **FC0** | [completed/…](./forge-command/completed/forge-command_fc0-dbus-get-tree.md) | **Done** | T6 preferred | M | DBus Ping + GetTree; CLI stub |
+| **FC1** | `agents/tasks/forge-command_fc1-selectors-move-swap.md` | **Next** | FC0; T7 soft | M | Selectors; tree/focus/move/swap |
 | **FC2** | `agents/tasks/forge-command_fc2-launch.md` | Later | FC1; OP1 | M | `forge launch` + wait/place |
 | **FC3** | `agents/tasks/forge-command_fc3-settings.md` | Later | FC0 | S–M | get/set/save/load settings |
 | **FC4** | `agents/tasks/forge-command_fc4-run-steps.md` | Later | FC1–FC2 | M | Batched ops, quiet render |

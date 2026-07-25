@@ -167,6 +167,28 @@ easy to poison with floats (Guake) and ignored per-monitor dock intent.
 `new-window-placement=window-actual` remains an escape hatch for restore geometry;
 default path is LFT policy. `lastFocusedWindow` still exists for pointer helpers.
 
+## Session DBus + `forge` CLI (FC0)
+
+**Problem:** Scripts and future `workon` need a stable control plane. E2E’s
+`Shell.Eval` / `_forgeTestBridge` is fine for tests, not for production
+scripting (Eval is disabled or unsafe on real sessions).
+
+**Approach:**
+
+1. **DBus on the session bus**, owned by the extension for its lifetime
+   (including unlock-dialog — same reason the tree stays loaded):
+   - Bus name: `org.gnome.Shell.Extensions.Forge`
+   - Path: `/org/gnome/Shell/Extensions/Forge`
+   - Interface: `org.gnome.Shell.Extensions.Forge`
+2. **MVP methods:** `Ping()` health JSON (`ok`, uuid, versionName, apiVersion);
+   `GetTree(options_json)` → plain-JSON forest (no live `Meta.Window` refs).
+3. **Pure projection** in `lib/extension/tree-query.js` (unit-tested); export
+   glue in `lib/extension/session-api.js` + wire from `extension.js`.
+4. **User CLI** `scripts/forge/forge` (`ping` / `tree`) talks DBus via
+   PyGObject or `gdbus` — distinct from `forge-ctl` (install/migrate).
+
+Later FCs add selectors, launch, settings, RunSteps; no Shell.Eval in that path.
+
 ## User stylesheet vs `make dev` (production flag)
 
 **Problem:** `make dev` sets `production = false` for logging / DEV banner.

@@ -1,0 +1,245 @@
+#!/usr/bin/env python3
+"""forge — tiling control CLI (DBus → Forge extension). Distinct from forge-ctl install manager."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+import sys
+from typing import Any, Optional
+
+FORGE_VERSION = "fc0"
+BUS_NAME = "org.gnome.Shell.Extensions.Forge"
+OBJECT_PATH = "/org/gnome/Shell/Extensions/Forge"
+INTERFACE = "org.gnome.Shell.Extensions.Forge"
+
+HARD_DEPS = ("python3", "PyGObject (gi.repository.Gio) or gdbus")
+
+
+def _eprint(*args: object) -> None:
+    print(*args, file=sys.stderr)
+
+
+def _check_deps() -> str:
+    """Return backend 'gi' or 'gdbus', or exit 127."""
+    try:
+        import gi  # noqa: F401
+
+        gi.require_version("Gio", "2.0")
+        from gi.repository import Gio  # noqa: F401
+
+        return "gi"
+    except Exception:
+        pass
+    if shutil.which("gdbus"):
+        return "gdbus"
+    _eprint("forge: missing DBus client (needed to talk to the extension)")
+    _eprint("Install: python3-gi  (preferred)")
+    _eprint("# fallback: gdbus (glib2 / libglib2.0-bin)")
+    _eprint("# Debian/Ubuntu: sudo apt install python3-gi")
+    sys.exit(127)
+
+
+def _call_gi(method: str, args: tuple = ()) -> str:
+    import gi
+
+    gi.require_version("Gio", "2.0")
+    from gi.repository import Gio, GLib
+
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    # Build variant tuple for in-args
+    if method == "Ping":
+        params = None
+    elif method == "GetTree":
+        options_json = args[0] if args else "{}"
+        params = GLib.Variant("(s)", (options_json,))
+    else:
+        raise ValueError(f"unknown method {method}")
+
+    try:
+        result = bus.call_sync(
+            BUS_NAME,
+            OBJECT_PATH,
+            INTERFACE,
+            method,
+            params,
+            GLib.VariantType("(s)"),
+            Gio.DBusCallFlags.NONE,
+            5000,
+            None,
+        )
+    except GLib.Error as e:
+        raise RuntimeError(str(e)) from e
+    return result.unpack()[0]
+
+
+def _call_gdbus(method: str, args: tuple = ()) -> str:
+    import subprocess
+
+    cmd = [
+        "gdbus",
+        "call",
+        "--session",
+        "--dest",
+        BUS_NAME,
+        "--object-path",
+        OBJECT_PATH,
+        "--method",
+        f"{INTERFACE}.{method}",
+    ]
+    if method == "GetTree":
+        options_json = args[0] if args else "{}"
+        cmd.append(options_json)
+    try:
+        proc = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=8)
+    except FileNotFoundError as e:
+        raise RuntimeError("gdbus not found") from e
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip() or f"exit {proc.returncode}"
+        raise RuntimeError(err)
+    # gdbus prints e.g. ('{"ok":true}',) or with newlines
+    out = (proc.stdout or "").strip()
+    if out.startswith("(") and out.endswith(")"):
+        # Single string arg: ('...',) — use ast for reliable parse when possible
+        try:
+            import ast
+
+            tup = ast.literal_eval(out)
+            if isinstance(tup, tuple) and len(tup) >= 1:
+                return str(tup[0])
+        except Exception:
+            pass
+        # Fallback: strip outer parens/quotes
+        inner = out[1:-1].strip().rstrip(",")
+        if inner.startswith("'") and inner.endswith("'"):
+            return inner[1:-1].encode("utf-8").decode("unicode_escape")
+        if inner.startswith('"') and inner.endswith('"'):
+            return json.loads(inner)
+    return out
+
+
+def call_method(backend: str, method: str, *args: str) -> str:
+    if backend == "gi":
+        return _call_gi(method, args)
+    return _call_gdbus(method, args)
+
+
+def _print_json(data: Any, compact: bool) -> None:
+    if compact:
+        print(json.dumps(data, separators=(",", ":"), ensure_ascii=False))
+    else:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+def cmd_ping(backend: str, _args: argparse.Namespace) -> int:
+    try:
+        raw = call_method(backend, "Ping")
+    except Exception as e:
+        _eprint(f"forge ping: bus call failed (is the extension enabled?): {e}")
+        return 1
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        print(raw)
+        return 1
+    _print_json(data, compact=False)
+    if isinstance(data, dict) and data.get("ok") is True:
+        return 0
+    return 1
+
+
+def cmd_tree(backend: str, args: argparse.Namespace) -> int:
+    options: dict[str, Any] = {}
+    if args.monitor is not None:
+        options["monitor"] = args.monitor
+    if args.workspace is not None:
+        options["workspace"] = args.workspace
+    if args.max_depth is not None:
+        options["maxDepth"] = args.max_depth
+    options_json = json.dumps(options)
+    try:
+        raw = call_method(backend, "GetTree", options_json)
+    except Exception as e:
+        _eprint(f"forge tree: bus call failed (is the extension enabled?): {e}")
+        return 1
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        print(raw)
+        return 1
+    if isinstance(data, dict) and data.get("error"):
+        _eprint(f"forge tree: {data['error']}")
+        _print_json(data, compact=args.compact)
+        return 1
+    _print_json(data, compact=args.compact)
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="forge",
+        description=(
+            "Forge tiling control CLI (DBus). Distinct from forge-ctl (install/migrate).\n"
+            "\n"
+            "Hard dependencies:\n"
+            "  - python3\n"
+            "  - python3-gi (PyGObject)  OR  gdbus\n"
+            "  - Forge extension enabled (org.gnome.Shell.Extensions.Forge on session bus)\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("--version", action="version", version=f"forge {FORGE_VERSION}")
+    sub = p.add_subparsers(dest="command", required=True)
+
+    ping = sub.add_parser("ping", help="Ping extension DBus; print health JSON")
+    ping.set_defaults(func=cmd_ping)
+
+    tree = sub.add_parser("tree", help="Dump tiling forest as JSON")
+    tree.add_argument(
+        "--monitor",
+        metavar="ID|INDEX",
+        help="Filter by monitor index, moNwsW id, or stableKey",
+    )
+    tree.add_argument(
+        "--workspace",
+        type=int,
+        metavar="N",
+        help="Filter by workspace index",
+    )
+    tree.add_argument(
+        "--max-depth",
+        type=int,
+        metavar="N",
+        dest="max_depth",
+        help="Cap tree projection depth",
+    )
+    tree.add_argument(
+        "--compact",
+        action="store_true",
+        help="Single-line JSON (default is pretty)",
+    )
+    tree.set_defaults(func=cmd_tree)
+
+    return p
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    # Allow `forge --help` without DBus deps
+    if not argv or argv[0] in ("-h", "--help", "--version"):
+        parser = build_parser()
+        if argv and argv[0] == "--version":
+            print(f"forge {FORGE_VERSION}")
+            return 0
+        parser.print_help()
+        return 0
+
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    backend = _check_deps()
+    return int(args.func(backend, args))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -38,6 +38,7 @@ import { Keybindings } from "./lib/extension/keybindings.js";
 import { WindowManager } from "./lib/extension/window.js";
 import { FeatureIndicator, FeatureMenuToggle } from "./lib/extension/indicator.js";
 import { ExtensionThemeManager } from "./lib/extension/extension-theme-manager.js";
+import { SessionApi } from "./lib/extension/session-api.js";
 
 // SETTINGS_OVERRIDES + shouldApplyOverride live in lib/shared/gnome-overrides.js
 // (GTK-free) so the gating policy is unit-testable.
@@ -98,6 +99,9 @@ export default class ForgeExtension extends Extension {
     this.theme.patchCss();
     this.theme.reloadStylesheet();
     this.extWm.enable();
+    // FC0: DBus Ping/GetTree; keep across unlock-dialog (tree stays loaded).
+    this.sessionApi = new SessionApi(this);
+    this.sessionApi.enable();
     Logger.info(`enable: finalized vars`);
   }
 
@@ -206,6 +210,8 @@ export default class ForgeExtension extends Extension {
     }
 
     this._removeIndicator();
+    this.sessionApi?.disable();
+    this.sessionApi = null;
     this.extWm?.disable();
     this.keybindings?.disable();
     this.cheatsheet?.destroy();

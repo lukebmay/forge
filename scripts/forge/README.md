@@ -4,6 +4,21 @@ Helpers to move between **extensions.gnome.org (EGO / SweetTooth)** Forge and
 this tree (**jcrussell/forge**), while keeping prefs, keybindings, window rules,
 and CSS.
 
+## Tiling control CLI (`forge`)
+
+User-facing control plane (FC0+). Talks to the **enabled** extension over DBus
+(`org.gnome.Shell.Extensions.Forge`). **Not** the same as `forge-ctl` (install /
+migrate).
+
+```bash
+./scripts/forge/forge ping          # health JSON; exit 0 if ok
+./scripts/forge/forge tree          # pretty JSON forest
+./scripts/forge/forge tree --monitor=0 --compact
+./scripts/forge/forge tree --workspace=0 --max-depth=3
+```
+
+Deps: `python3` + `python3-gi` (preferred) or `gdbus`. Extension must be enabled.
+
 Both builds share UUID `forge@jmmaranan.com`, so installs **replace each other
 in place**. Always backup first.
 
