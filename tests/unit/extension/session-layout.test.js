@@ -13,6 +13,9 @@ import {
   isPortableWindow,
   resolveStrictMonitor,
   planWindowMonitorHomes,
+  createWindowResolver,
+  matchStatsAgainstWindows,
+  forestRichness,
 } from "../../../lib/extension/session-layout.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { createTreeFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
@@ -29,9 +32,15 @@ describe("session-layout pure helpers", () => {
     expect(windowStableId(w)).toBe(42);
   });
 
-  it("isSessionLayoutFresh rejects reboot (monotonic regression)", () => {
-    const env = makeEnvelope({ version: 1, monitors: [] }, 1_000_000);
+  it("isSessionLayoutFresh rejects reboot (monotonic regression + old wall time)", () => {
+    const env = makeEnvelope({ version: 1, monitors: [] }, 1_000_000, Date.now() - 86_400_000);
     expect(isSessionLayoutFresh(env, 500_000)).toBe(false);
+  });
+
+  it("isSessionLayoutFresh accepts mono mismatch when wall age is still fresh (CLI stamp)", () => {
+    const env = makeEnvelope({ version: 1, monitors: [] }, 9_000_000_000, Date.now() - 1000);
+    // GLib mono lower than Python mono stamp, but wall age ~1s.
+    expect(isSessionLayoutFresh(env, 1_000_000)).toBe(true);
   });
 
   it("isSessionLayoutFresh rejects age beyond max", () => {
@@ -245,6 +254,85 @@ describe("session-layout portable round-trip", () => {
       [2, 1],
       [3, 1],
     ]);
+  });
+
+  it("createWindowResolver matches by class+title when ids churn after HUP", () => {
+    const wA = createMockWindow({
+      id: 9991,
+      wm_class: "Google-chrome",
+      title: "Gmail - Inbox",
+    });
+    const wB = createMockWindow({
+      id: 9992,
+      wm_class: "com.mitchellh.ghostty",
+      title: "term",
+    });
+    // Portable leaves still carry pre-HUP ids
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              id: 111,
+              wmClass: "Google-chrome",
+              title: "Gmail - Inbox",
+              percent: 0,
+              userSized: false,
+            },
+            {
+              id: 222,
+              wmClass: "com.mitchellh.ghostty",
+              title: "term",
+              percent: 0,
+              userSized: false,
+            },
+          ],
+        },
+      ],
+    };
+    const stats = matchStatsAgainstWindows(portable, [wA, wB]);
+    expect(stats).toEqual({ total: 2, matched: 2 });
+    const live = toLiveForest(portable, createWindowResolver([wA, wB]));
+    expect(live.monitors[0].children.map((c) => c.window)).toEqual([wA, wB]);
+  });
+
+  it("forestRichness ranks dual-mon tabs above flat pile", () => {
+    const flat = {
+      monitors: [
+        {
+          id: "mo1ws0",
+          children: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }, { id: 6 }, { id: 7 }],
+        },
+      ],
+    };
+    const rich = {
+      monitors: [
+        {
+          id: "mo0ws0",
+          children: [
+            {
+              layout: "TABBED",
+              children: [{ id: 1 }, { id: 2 }],
+            },
+            { id: 3 },
+          ],
+        },
+        {
+          id: "mo1ws0",
+          children: [
+            { id: 4 },
+            {
+              layout: "TABBED",
+              children: [{ id: 5 }, { id: 6 }, { id: 7 }],
+            },
+          ],
+        },
+      ],
+    };
+    expect(forestRichness(rich)).toBeGreaterThan(forestRichness(flat) + 5);
   });
 
   it("strict rehome then restore recovers dual-mon tabs from a pile-up", () => {
