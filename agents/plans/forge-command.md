@@ -1,17 +1,18 @@
 # Plan: `forge` CLI + session scripting surface
 
-**Status:** Design locked direction; implement after OP1 + T6/T7 foundation  
-**Priority:** P1–P2 product (after open-app policy + tree snapshot)  
+**Status:** Ready to implement — OP1 + T6 + T7 foundation **done**  
+**Priority:** P1 product (next after daily-driver Phase E)  
 **Base:** this tree (`jcrussell/forge`)  
-**Related:** [forge-daily-driver.md](./forge-daily-driver.md) (OP1, T6–T7),  
+**Related:** [forge-daily-driver.md](./forge-daily-driver.md) (OP1, T6–T7 done),  
 [forge-harden-and-session.md](./forge-harden-and-session.md) (DBus / apply runtime)
 
 ### Session note (2026-07-25)
 
-User locked a Linux-y **`forge` multi-command CLI** as the primary control
-plane for launch/place/swap/move and settings. **`workon` syntax deferred**
-until `forge` subcommands and tile selectors are real — `workon` will compose
-`forge` (and optional `gdisplays`), not invent a parallel language.
+**Foundation ready.** OP1 LFT/dock, T6 full forest snapshot, T7 stable mon
+keys landed on `main` (commits through `3abcb37`). Next implement **FC0**
+(IPC skeleton) then FC1–FC4. User locked Linux-y **`forge` multi-command CLI**;
+**`workon` deferred to FC5** — composes `forge` (+ optional gdisplays), no
+parallel DSL.
 
 ---
 
