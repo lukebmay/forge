@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-FORGE_VERSION = "fc2"
+FORGE_VERSION = "fc3"
 BUS_NAME = "org.gnome.Shell.Extensions.Forge"
 OBJECT_PATH = "/org/gnome/Shell/Extensions/Forge"
 INTERFACE = "org.gnome.Shell.Extensions.Forge"
@@ -27,6 +27,10 @@ _METHOD_IN_ARGS: dict[str, int] = {
     "Swap": 2,
     "Move": 2,
     "PlaceNext": 1,
+    "GetSetting": 1,
+    "SetSetting": 2,
+    "SettingsSave": 1,
+    "SettingsLoad": 1,
 }
 
 DEFAULT_LAUNCH_TIMEOUT_MS = 15000
@@ -441,6 +445,42 @@ def _baseline_window_ids(backend: str) -> set[str]:
     return ids
 
 
+def cmd_get(backend: str, args: argparse.Namespace) -> int:
+    key = (args.key or "").strip()
+    if not key:
+        _eprint("forge get: key required")
+        return 1
+    return _cmd_result(backend, "GetSetting", key, label="get")
+
+
+def cmd_set(backend: str, args: argparse.Namespace) -> int:
+    key = (args.key or "").strip()
+    if not key:
+        _eprint("forge set: key required")
+        return 1
+    # Join remaining tokens so `forge set key true` and `forge set key '["a"]'` work
+    value = args.value
+    if isinstance(value, list):
+        value = " ".join(value)
+    if value is None:
+        _eprint("forge set: value required")
+        return 1
+    return _cmd_result(backend, "SetSetting", key, str(value), label="set")
+
+
+def cmd_settings(backend: str, args: argparse.Namespace) -> int:
+    action = (args.settings_action or "").strip().lower()
+    name = (args.name or "").strip()
+    if action not in ("save", "load"):
+        _eprint("forge settings: action must be save or load")
+        return 1
+    if not name:
+        _eprint(f"forge settings {action}: name required")
+        return 1
+    method = "SettingsSave" if action == "save" else "SettingsLoad"
+    return _cmd_result(backend, method, name, label=f"settings {action}")
+
+
 def cmd_launch(backend: str, args: argparse.Namespace) -> int:
     app = (args.app or "").strip()
     if not app:
@@ -671,6 +711,58 @@ def build_parser() -> argparse.ArgumentParser:
         help="When waiting, accept first matching class if several",
     )
     launch.set_defaults(func=cmd_launch)
+
+    get_p = sub.add_parser(
+        "get",
+        help="Get a portable setting/keybinding (DBus GetSetting)",
+        description=(
+            "Read one allowlisted GSettings key via the extension.\n"
+            "Keys: portable settings (tiling-mode-enabled, …) or keybindings\n"
+            "(window-focus-left, …). Ambiguous names need a prefix:\n"
+            "  settings:focus-border-toggle  or  kbd:focus-border-toggle\n"
+            "Also: keybindings:KEY"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    get_p.add_argument("key", help="Setting or keybinding key (optional schema: prefix)")
+    get_p.set_defaults(func=cmd_get)
+
+    set_p = sub.add_parser(
+        "set",
+        help="Set a portable setting/keybinding (DBus SetSetting)",
+        description=(
+            "Write one allowlisted key. Value is JSON when possible, else plain text:\n"
+            '  forge set tiling-mode-enabled true\n'
+            '  forge set window-gap-size 8\n'
+            '  forge set kbd:window-focus-left \'["<Super>h"]\''
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    set_p.add_argument("key", help="Setting or keybinding key (optional schema: prefix)")
+    set_p.add_argument(
+        "value",
+        nargs="+",
+        help="Value (JSON or plain bool/number/string)",
+    )
+    set_p.set_defaults(func=cmd_set)
+
+    settings_p = sub.add_parser(
+        "settings",
+        help="Save/load named profiles under ~/.config/forge/profiles/<name>/",
+    )
+    settings_sub = settings_p.add_subparsers(dest="settings_action", required=True)
+    save_p = settings_sub.add_parser(
+        "save",
+        help="Export current GSettings to a named profile",
+    )
+    save_p.add_argument("name", help="Profile name (A-Za-z0-9_-)")
+    save_p.set_defaults(func=cmd_settings)
+    load_p = settings_sub.add_parser(
+        "load",
+        help="Import a named profile into live GSettings",
+    )
+    load_p.add_argument("name", help="Profile name (A-Za-z0-9_-)")
+    load_p.set_defaults(func=cmd_settings)
 
     return p
 

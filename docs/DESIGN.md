@@ -167,7 +167,7 @@ easy to poison with floats (Guake) and ignored per-monitor dock intent.
 `new-window-placement=window-actual` remains an escape hatch for restore geometry;
 default path is LFT policy. `lastFocusedWindow` still exists for pointer helpers.
 
-## Session DBus + `forge` CLI (FC0–FC2)
+## Session DBus + `forge` CLI (FC0–FC3)
 
 **Problem:** Scripts and future `workon` need a stable control plane. E2E’s
 `Shell.Eval` / `_forgeTestBridge` is fine for tests, not for production
@@ -184,13 +184,16 @@ scripting (Eval is disabled or unsafe on real sessions).
    `GetTree(options_json)` → plain-JSON forest (no live `Meta.Window` refs);
    **FC1:** `Focus(s)`, `Swap(s,s)`, `Move(s,s)` → `{ok:true}` or
    `{error, candidates?}`. **FC2:** `PlaceNext(options_json)` → one-shot
-   place hint for the next matching map. Never throw across DBus.
+   place hint for the next matching map. **FC3:** `GetSetting` / `SetSetting`
+   / `SettingsSave` / `SettingsLoad` for portable config-sync keys. Never
+   throw across DBus.
 3. **Pure projection** in `lib/extension/tree-query.js`; **selectors** in
-   `lib/extension/tile-select.js`; **place hints** in `place-hint.js`
-   (unit-tested); export glue in `session-api.js` + wire from `extension.js`.
+   `lib/extension/tile-select.js`; **place hints** in `place-hint.js`;
+   **settings allowlist/coercion** in `settings-control.js` (unit-tested);
+   export glue in `session-api.js` + wire from `extension.js`.
 4. **User CLI** `scripts/forge/forge` (`ping` / `tree` / `focus` / `swap` /
-   `move` / `launch`) talks DBus via PyGObject or `gdbus` — distinct from
-   `forge-ctl`.
+   `move` / `launch` / `get` / `set` / `settings save|load`) talks DBus via
+   PyGObject or `gdbus` — distinct from `forge-ctl`.
 
 ### Tile selector grammar (FC1)
 
@@ -228,10 +231,25 @@ no hint — OP1 LFT attach applies as usual.
 `PlaceNext` before spawn, then polls `GetTree` for `--wm-class` unless
 `--no-wait`. Already-mapped: `forge move` after wait (no PlaceNext).
 
-`apiVersion` in Ping is **3** once PlaceNext exists (`TREE_QUERY` stays 1 as
-`queryApiVersion`; tile-select grammar still version 2).
+`apiVersion` in Ping is **4** once settings get/set/save/load exist (was 3
+with PlaceNext; `TREE_QUERY` stays 1 as `queryApiVersion`; tile-select
+grammar still version 2).
 
-Later FCs: settings, RunSteps; no Shell.Eval in that path.
+### Settings get/set + named profiles (FC3)
+
+**Why not raw dconf:** Only portable keys from `SETTINGS_KEYS` /
+`KEYBINDING_KEYS` (+ string kbd keys) are scriptable — same surface as
+config-sync export/import. Unknown keys fail closed.
+
+**Ambiguous names:** `focus-border-toggle` exists on both schemas; plain
+key errors with “use `settings:…` or `kbd:…`”.
+
+**Profiles:** `~/.config/forge/profiles/<name>/{settings,keybindings}.json`
+— full portable snapshot via `ConfigSync.buildPortableProps` /
+`applyPortableProps`, not a second settings store. Distinct from
+keybinding-only kits under `config/keybinding-profiles/`.
+
+Later FCs: RunSteps; no Shell.Eval in that path.
 
 ## User stylesheet vs `make dev` (production flag)
 

@@ -537,4 +537,110 @@ describe("ConfigSync", () => {
       expect(configMgr.keybindingsProps).toBeNull();
     });
   });
+
+  describe("portable get/set (FC3)", () => {
+    it("gets and sets allowlisted settings by type", () => {
+      settings.set_boolean("tiling-mode-enabled", true);
+      settings.set_uint("window-gap-size", 8);
+
+      const got = configSync.getPortable("tiling-mode-enabled");
+      expect(got).toMatchObject({ ok: true, value: true, type: "b", schema: "settings" });
+
+      const set = configSync.setPortable("window-gap-size", 12);
+      expect(set.ok).toBe(true);
+      expect(settings.get_uint("window-gap-size")).toBe(12);
+    });
+
+    it("gets and sets keybinding strv and string keys", () => {
+      kbdSettings.set_strv("window-focus-left", ["<Super>h"]);
+      kbdSettings.set_string("mod-mask-mouse-tile", "Super");
+
+      expect(configSync.getPortable("window-focus-left")).toMatchObject({
+        ok: true,
+        value: ["<Super>h"],
+        type: "as",
+        schema: "keybindings",
+      });
+      expect(configSync.getPortable("mod-mask-mouse-tile")).toMatchObject({
+        ok: true,
+        value: "Super",
+        type: "s",
+      });
+
+      const set = configSync.setPortable("window-focus-left", ["<Super>Left"]);
+      expect(set.ok).toBe(true);
+      expect(kbdSettings.get_strv("window-focus-left")).toEqual(["<Super>Left"]);
+    });
+
+    it("rejects unknown keys", () => {
+      expect(configSync.getPortable("nope").ok).toBe(false);
+      expect(configSync.setPortable("nope", true).ok).toBe(false);
+    });
+
+    it("buildPortableProps + applyPortableProps round-trips", () => {
+      settings.set_boolean("tiling-mode-enabled", true);
+      settings.set_uint("window-gap-size", 9);
+      kbdSettings.set_string("mod-mask-mouse-tile", "Ctrl");
+      kbdSettings.set_strv("window-focus-left", ["<Super>h"]);
+
+      const snap = configSync.buildPortableProps();
+      expect(snap.settings.behavior["tiling-mode-enabled"]).toBe(true);
+      expect(snap.keybindings.bindings["window-focus-left"]).toEqual(["<Super>h"]);
+
+      settings.set_boolean("tiling-mode-enabled", false);
+      settings.set_uint("window-gap-size", 0);
+      kbdSettings.set_string("mod-mask-mouse-tile", "None");
+      kbdSettings.set_strv("window-focus-left", []);
+
+      const applied = configSync.applyPortableProps(snap.settings, snap.keybindings);
+      expect(applied.ok).toBe(true);
+      expect(settings.get_boolean("tiling-mode-enabled")).toBe(true);
+      expect(settings.get_uint("window-gap-size")).toBe(9);
+      expect(kbdSettings.get_string("mod-mask-mouse-tile")).toBe("Ctrl");
+      expect(kbdSettings.get_strv("window-focus-left")).toEqual(["<Super>h"]);
+    });
+
+    it("saveNamedProfile / loadNamedProfile via configMgr", () => {
+      const profiles = new Map();
+      configMgr.saveSettingsProfile = (name, settingsProps, keybindingsProps) => {
+        if (!/^[A-Za-z0-9_-]+$/.test(name)) {
+          return { ok: false, error: "invalid profile name" };
+        }
+        profiles.set(name, { settings: settingsProps, keybindings: keybindingsProps });
+        return { ok: true, path: `/mock/profiles/${name}` };
+      };
+      configMgr.loadSettingsProfile = (name) => {
+        const p = profiles.get(name);
+        if (!p) return { ok: false, error: `profile not found: ${name}` };
+        return {
+          ok: true,
+          settings: p.settings,
+          keybindings: p.keybindings,
+          path: `/mock/profiles/${name}`,
+        };
+      };
+
+      settings.set_boolean("tiling-mode-enabled", true);
+      settings.set_uint("window-gap-size", 4);
+      kbdSettings.set_string("mod-mask-mouse-tile", "Super");
+      kbdSettings.set_strv("window-focus-left", ["<Super>h"]);
+
+      const saved = configSync.saveNamedProfile("dev");
+      expect(saved).toMatchObject({ ok: true, name: "dev", path: "/mock/profiles/dev" });
+      expect(profiles.has("dev")).toBe(true);
+
+      settings.set_boolean("tiling-mode-enabled", false);
+      settings.set_uint("window-gap-size", 0);
+      kbdSettings.set_strv("window-focus-left", []);
+
+      const loaded = configSync.loadNamedProfile("dev");
+      expect(loaded.ok).toBe(true);
+      expect(settings.get_boolean("tiling-mode-enabled")).toBe(true);
+      expect(settings.get_uint("window-gap-size")).toBe(4);
+      expect(kbdSettings.get_strv("window-focus-left")).toEqual(["<Super>h"]);
+
+      expect(configSync.loadNamedProfile("missing").ok).toBe(false);
+      expect(configSync.saveNamedProfile("../evil").ok).toBe(false);
+    });
+  });
 });
