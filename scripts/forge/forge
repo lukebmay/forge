@@ -14,10 +14,20 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-FORGE_VERSION = "fc4"
+FORGE_VERSION = "fc4+install"
 BUS_NAME = "org.gnome.Shell.Extensions.Forge"
 OBJECT_PATH = "/org/gnome/Shell/Extensions/Forge"
 INTERFACE = "org.gnome.Shell.Extensions.Forge"
+
+# Durable stamp written by scripts/install.zsh (and install-jcrussell / switch).
+_DEFAULT_ORIGIN = Path.home() / ".local/share/forge-manage" / "install-origin.json"
+_EXT_ORIGIN = (
+    Path.home()
+    / ".local/share/gnome-shell/extensions/forge@jmmaranan.com"
+    / "install-origin.json"
+)
+# Subcommands that do not need a DBus session (extension may be offline).
+_NO_DBUS_COMMANDS = frozenset({"install"})
 
 # Methods that take string in-args (all return a single string).
 _METHOD_IN_ARGS: dict[str, int] = {
@@ -568,6 +578,188 @@ def cmd_run_steps(backend: str, args: argparse.Namespace) -> int:
     return _cmd_result(backend, "RunSteps", steps_json, label="run-steps")
 
 
+def _origin_paths() -> list[Path]:
+    paths: list[Path] = []
+    env = os.environ.get("FORGE_ORIGIN_PATH")
+    if env:
+        paths.append(Path(env).expanduser())
+    paths.append(_DEFAULT_ORIGIN)
+    paths.append(_EXT_ORIGIN)
+    return paths
+
+
+def _load_install_origin() -> Optional[dict[str, Any]]:
+    for p in _origin_paths():
+        if p.is_file():
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    data["_origin_path"] = str(p)
+                    return data
+            except (OSError, json.JSONDecodeError) as e:
+                _eprint(f"forge: warn: could not read {p}: {e}")
+    return None
+
+
+def _repo_from_this_cli() -> Optional[Path]:
+    """If this CLI lives under a forge git tree, return that repo root."""
+    # scripts/forge/forge → repo is parents[2]
+    here = Path(__file__).resolve()
+    if here.parent.name == "forge" and here.parent.parent.name == "scripts":
+        root = here.parent.parent.parent
+        if (root / "scripts" / "install.zsh").is_file() and (root / "metadata.json").is_file():
+            return root
+        if (root / "Makefile").is_file() and (root / "metadata.json").is_file():
+            return root
+    return None
+
+
+def _find_install_script(repo: Path, rel: str = "scripts/install.zsh") -> Optional[Path]:
+    """Return install script path under repo, or None if tree incomplete."""
+    for name in (
+        rel,
+        "scripts/install.zsh",
+        "scripts/forge/update-jcrussell.zsh",
+        "scripts/forge/install-jcrussell.zsh",
+    ):
+        p = repo / name
+        if p.is_file():
+            return p
+    return None
+
+
+def _resolve_install_script(origin: Optional[dict[str, Any]]) -> tuple[Path, Path]:
+    """
+    Return (repo, install_script_path).
+
+    Priority:
+      1. FORGE_REPO_ROOT env (explicit override)
+      2. install-origin.json (git) — **error if missing/incomplete** (no silent fallback)
+      3. CLI lives inside a forge tree (dev convenience when no stamp yet)
+    """
+    env_repo = os.environ.get("FORGE_REPO_ROOT")
+    if env_repo:
+        repo = Path(env_repo).expanduser().resolve()
+        script = _find_install_script(repo)
+        if script is not None:
+            return repo, script
+        raise FileNotFoundError(
+            f"FORGE_REPO_ROOT={repo} has no scripts/install.zsh (or forge install helpers)"
+        )
+
+    if origin is not None:
+        source = origin.get("source") or "unknown"
+        if source == "ego":
+            raise FileNotFoundError(
+                "install origin source is ego (extensions.gnome.org).\n"
+                "`forge install` for EGO reinstall is not implemented yet.\n"
+                "Use GNOME Extensions / scripts/forge/install-ego.zsh for now."
+            )
+        if source != "git":
+            raise FileNotFoundError(
+                f"install origin source={source!r} is not supported by `forge install` yet.\n"
+                "Re-run ./install from a git clone of this tree."
+            )
+        repo_raw = origin.get("repo") or ""
+        if not repo_raw:
+            raise FileNotFoundError(
+                "install origin has source=git but empty repo path.\n"
+                f"stamp: {origin.get('_origin_path', _DEFAULT_ORIGIN)}"
+            )
+        repo = Path(str(repo_raw)).expanduser()
+        # Do not resolve() if missing — resolve can still work on non-existing parents
+        if not repo.is_dir():
+            raise FileNotFoundError(
+                f"install origin git tree not found (removed or moved):\n"
+                f"  repo:   {repo}\n"
+                f"  stamp:  {origin.get('_origin_path', _DEFAULT_ORIGIN)}\n"
+                "Restore the clone or re-run ./install from a valid forge tree."
+            )
+        repo = repo.resolve()
+        rel = str(origin.get("install_script") or "scripts/install.zsh")
+        script = _find_install_script(repo, rel)
+        if script is None:
+            raise FileNotFoundError(
+                f"install origin tree is incomplete (install script missing):\n"
+                f"  repo:   {repo}\n"
+                f"  script: {rel}\n"
+                f"  stamp:  {origin.get('_origin_path', _DEFAULT_ORIGIN)}\n"
+                "Restore the full clone or re-run ./install from a valid forge tree."
+            )
+        return repo, script
+
+    # No origin stamp: allow CLI living inside a repo (first-time / dev path)
+    cli_repo = _repo_from_this_cli()
+    if cli_repo is not None:
+        script = _find_install_script(cli_repo)
+        if script is not None:
+            return cli_repo, script
+
+    raise FileNotFoundError(
+        "no install origin recorded and this CLI is not inside a forge repo.\n"
+        "Install once from a clone:\n"
+        "  cd /path/to/forge && ./install --force\n"
+        "That writes ~/.local/share/forge-manage/install-origin.json for later\n"
+        "`forge install` re-runs."
+    )
+
+
+def cmd_install(_backend: Optional[str], args: argparse.Namespace) -> int:
+    """Re-install from recorded git origin (or this CLI's tree). No DBus."""
+    origin = _load_install_origin()
+    try:
+        repo, script = _resolve_install_script(origin)
+    except FileNotFoundError as e:
+        _eprint(f"forge: {e}")
+        return 1
+
+    if origin:
+        _eprint(
+            f"forge: install origin source={origin.get('source')} "
+            f"repo={origin.get('repo')} (stamp {origin.get('_origin_path')})"
+        )
+    else:
+        _eprint(f"forge: no origin stamp; using CLI tree {repo}")
+
+    cmd = [str(script)]
+    # Forward known flags (restart is default in install.zsh; pass opt-outs only)
+    if getattr(args, "force", False):
+        cmd.append("--force")
+    if getattr(args, "prod", False):
+        cmd.append("--prod")
+    if getattr(args, "dev", False):
+        cmd.append("--dev")
+    if getattr(args, "save", False):
+        cmd.append("--save")
+    if getattr(args, "no_save", False):
+        cmd.append("--no-save")
+    if getattr(args, "no_restart", False):
+        cmd.append("--no-restart")
+    elif getattr(args, "restart_shell", False):
+        cmd.append("--restart-shell")
+    if getattr(args, "reload_theme", False):
+        cmd.append("--reload-theme")
+    if getattr(args, "skip_npm", False):
+        cmd.append("--skip-npm")
+    if getattr(args, "no_host_defaults", False):
+        cmd.append("--no-host-defaults")
+    if getattr(args, "extra", None):
+        cmd.extend(args.extra)
+
+    env = os.environ.copy()
+    env["FORGE_REPO_ROOT"] = str(repo)
+    if getattr(args, "force", False):
+        env["FORGE_FORCE"] = "1"
+
+    _eprint(f"forge: exec {' '.join(shlex.quote(c) for c in cmd)}")
+    try:
+        proc = subprocess.run(cmd, env=env, check=False)
+    except OSError as e:
+        _eprint(f"forge: failed to run install script: {e}")
+        return 127
+    return int(proc.returncode)
+
+
 def cmd_run(backend: str, args: argparse.Namespace) -> int:
     """forge run <file.json> — same as run-steps --file (extension ops only)."""
     path = Path(args.file).expanduser() if args.file else None
@@ -917,6 +1109,66 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_p.set_defaults(func=cmd_run)
 
+    install_p = sub.add_parser(
+        "install",
+        help="Re-install Forge from the recorded git tree (or this CLI's repo)",
+        description=(
+            "Origin-aware reinstall. Default: build → install → enable → reload Shell\n"
+            "(X11 HUP) so the new code is active. Same as ./install.\n"
+            "\n"
+            "After a successful install, install-origin.json records the repo path.\n"
+            "If that clone was deleted, errors clearly.\n"
+            "\n"
+            "Does not require extension DBus. --force only for pipes/CI."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    install_p.add_argument(
+        "--force",
+        action="store_true",
+        help="Non-interactive / CI only (not needed on a TTY)",
+    )
+    install_p.add_argument("--prod", action="store_true", help="Production build")
+    install_p.add_argument("--dev", action="store_true", help="Debug build (default)")
+    install_p.add_argument("--save", action="store_true", help="Backup before replace")
+    install_p.add_argument(
+        "--no-save",
+        action="store_true",
+        dest="no_save",
+        help="Skip backup when already jcrussell",
+    )
+    install_p.add_argument(
+        "--no-restart",
+        action="store_true",
+        dest="no_restart",
+        help="Do not HUP Shell (files only; code stays old until you reload)",
+    )
+    install_p.add_argument(
+        "--restart-shell",
+        action="store_true",
+        dest="restart_shell",
+        help="X11 HUP after install (default; explicit)",
+    )
+    install_p.add_argument(
+        "--reload-theme",
+        action="store_true",
+        dest="reload_theme",
+        help="Reload user stylesheet after install",
+    )
+    install_p.add_argument(
+        "--skip-npm",
+        action="store_true",
+        dest="skip_npm",
+        help="Skip npm install",
+    )
+    install_p.add_argument(
+        "--no-host-defaults",
+        action="store_true",
+        dest="no_host_defaults",
+        help="Skip host-defaults apply",
+    )
+    install_p.set_defaults(func=cmd_install)
+
     return p
 
 
@@ -954,6 +1206,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         args.first = True
     elif not hasattr(args, "first"):
         args.first = False
+
+    # install does not need DBus / extension online
+    cmd_name = getattr(args, "command", None) or ""
+    if cmd_name in _NO_DBUS_COMMANDS or getattr(args, "func", None) is cmd_install:
+        return int(args.func(None, args))
+
     backend = _check_deps()
     return int(args.func(backend, args))
 

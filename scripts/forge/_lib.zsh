@@ -10,6 +10,9 @@ FORGE_DCONF_PATH="${FORGE_DCONF_PATH:-/org/gnome/shell/extensions/forge/}"
 FORGE_EXT_DIR="${FORGE_EXT_DIR:-$HOME/.local/share/gnome-shell/extensions/$FORGE_UUID}"
 FORGE_CONFIG_DIR="${FORGE_CONFIG_DIR:-$HOME/.config/forge}"
 FORGE_BACKUP_ROOT="${FORGE_BACKUP_ROOT:-$HOME/.local/share/forge-manage/backups}"
+FORGE_MANAGE_DIR="${FORGE_MANAGE_DIR:-$HOME/.local/share/forge-manage}"
+# Survives extension replace; used by `forge install` to find the git tree.
+FORGE_ORIGIN_PATH="${FORGE_ORIGIN_PATH:-$FORGE_MANAGE_DIR/install-origin.json}"
 FORGE_EGO_UUID="${FORGE_EGO_UUID:-$FORGE_UUID}"
 FORGE_EGO_API="${FORGE_EGO_API:-https://extensions.gnome.org/extension-info/}"
 FORGE_EGO_BASE="${FORGE_EGO_BASE:-https://extensions.gnome.org}"
@@ -338,9 +341,116 @@ forge_print_deps_help() {
 Dependencies:
   hard: zsh, python3, dconf, gnome-extensions, gnome-shell
   install-ego: curl, unzip (or gnome-extensions install)
-  install-jcrussell / update-jcrussell: make, node (>=20), npm, gettext (msgfmt), glib-compile-schemas
+  install / install-jcrussell / update-jcrussell: make, node (>=20), npm, gettext (msgfmt), glib-compile-schemas
   check-updates: git, curl (for EGO)
 EOF
+}
+
+# --- Install origin (git tree awareness for forge install / reinstall) ---
+
+forge_write_install_origin() {
+  # Record where the live extension was installed from so `forge install`
+  # can re-run scripts/install.zsh after the CLI is on PATH.
+  # Optional $1 = repo root (default FORGE_REPO_ROOT).
+  local repo="${1:-$FORGE_REPO_ROOT}"
+  local source="${2:-git}"
+  [[ -n "$repo" ]] || forge_die "forge_write_install_origin: empty repo"
+  repo="${repo:A}"
+  mkdir -p "$FORGE_MANAGE_DIR"
+  python3 - "$repo" "$FORGE_ORIGIN_PATH" "$FORGE_EXT_DIR" "$source" "$FORGE_UUID" <<'PY'
+import json, os, subprocess, sys, time
+from pathlib import Path
+
+repo = Path(sys.argv[1]).resolve()
+origin_path = Path(sys.argv[2])
+ext_dir = Path(sys.argv[3])
+source = sys.argv[4]
+uuid = sys.argv[5]
+
+version_name = None
+meta = ext_dir / "metadata.json"
+if meta.is_file():
+    try:
+        version_name = json.loads(meta.read_text()).get("version-name")
+    except Exception:
+        pass
+
+git_describe = None
+git_remote = None
+if (repo / ".git").exists() or (repo / ".git").is_file():
+    try:
+        git_describe = subprocess.check_output(
+            ["git", "-C", str(repo), "describe", "--tags", "--always", "--dirty"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        pass
+    try:
+        git_remote = subprocess.check_output(
+            ["git", "-C", str(repo), "remote", "get-url", "origin"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        pass
+
+install_script = "scripts/install.zsh"
+if not (repo / install_script).is_file():
+    # Older trees may only have the forge/ helpers.
+    if (repo / "scripts/forge/update-jcrussell.zsh").is_file():
+        install_script = "scripts/forge/update-jcrussell.zsh"
+
+data = {
+    "source": source,  # git | ego (ego reserved for future)
+    "repo": str(repo),
+    "install_script": install_script,
+    "cli": "scripts/forge/forge",
+    "uuid": uuid,
+    "version-name": version_name,
+    "git_describe": git_describe,
+    "git_remote": git_remote,
+    "installed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    "host": os.uname().nodename if hasattr(os, "uname") else "",
+}
+origin_path.write_text(json.dumps(data, indent=2) + "\n")
+# Copy into extension tree when present (wiped on next replace; manage path is durable).
+if ext_dir.is_dir():
+    try:
+        (ext_dir / "install-origin.json").write_text(json.dumps(data, indent=2) + "\n")
+    except OSError:
+        pass
+print(origin_path)
+PY
+  forge_ok "install origin → $FORGE_ORIGIN_PATH (source=$source repo=$repo)"
+}
+
+forge_read_install_origin() {
+  # Print install-origin.json path if readable; else return 1.
+  local p="$FORGE_ORIGIN_PATH"
+  if [[ -f "$p" ]]; then
+    print -r -- "$p"
+    return 0
+  fi
+  if [[ -f "$FORGE_EXT_DIR/install-origin.json" ]]; then
+    print -r -- "$FORGE_EXT_DIR/install-origin.json"
+    return 0
+  fi
+  return 1
+}
+
+forge_origin_field() {
+  # $1 field name from install-origin.json
+  # Never name a local `path` — zsh ties path[] ↔ PATH.
+  local field="$1" origin_file
+  origin_file=$(forge_read_install_origin) || return 1
+  python3 -c '
+import json, sys
+from pathlib import Path
+d = json.loads(Path(sys.argv[1]).read_text())
+v = d.get(sys.argv[2])
+print("" if v is None else v)
+' "$origin_file" "$field"
 }
 
 # --- Theme / CSS (jcrussell stores colors in stylesheet, not gsettings) ---

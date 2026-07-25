@@ -5,22 +5,26 @@
 
 ## Next session focus
 
-**FC0–FC4 `forge` CLI done.** Live smoke on host + FC5 workon design when ready.
-See [forge-command.md](./plans/forge-command.md).
+**Official personal fork** — distinguish Luke’s tree from jcrussell.  
+Task: [forge-fork-eval_personal-fork.md](./tasks/forge-fork-eval_personal-fork.md).
+
+Also: live smoke of FC0–FC4 CLI after install; FC5 workon still deferred.
 
 | Doc | Role |
 | --- | --- |
+| [forge-fork-eval_personal-fork.md](./tasks/forge-fork-eval_personal-fork.md) | **Next** — GitHub fork + lineage identity |
 | [forge-command.md](./plans/forge-command.md) | FC0–FC4 **Done**; FC5 deferred |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 done |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome done; batch via FC4 |
-| Optional | OP-opt tiny-pane; T9 multi-line tabs; fork-eval spike close-out |
+| Optional | OP-opt; T9; fork-eval spike close-out |
 
-**T0–T7 + OP1 + FC0–FC4 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
+**T0–T7 + OP1 + FC0–FC4 done.** Product base still *code from* jcrussell; ownership not forked yet.
 
 ## Queue
 
 | Pri | Item | Status |
 | --- | --- | --- |
+| **P1** | **Official personal fork** (≠ jcrussell) | **Next** |
 | P1 | Daily-driver T0–T5 | **Done** |
 | P1 | OP1 open-app placement | **Done** |
 | P1 | T6 full tree snapshot | **Done** |

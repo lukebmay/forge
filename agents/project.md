@@ -4,9 +4,17 @@
 
 **Forge** — GNOME Shell extension for i3/sway-style tiling window management.
 
-This tree is **jcrussell/forge** (community / AI-maintained fork). Upstream
-**forge-ext/forge** seeks a maintainer; local reference clone:
-`~/dev/me/forge_original`.
+### Who owns what (do not collapse these)
+
+| Layer | Meaning |
+| --- | --- |
+| **EGO / forge-ext** | Upstream SweetTooth / `forge-ext/forge` (seeks maintainer) |
+| **jcrussell** | Community / AI-maintained fork on GitHub — **Phase A base** |
+| **This tree (Luke)** | Local product work on that base; **official personal GitHub fork not created yet** — see [forge-fork-eval_personal-fork](./tasks/forge-fork-eval_personal-fork.md) |
+
+Local path: `~/dev/me/forge_jcrussell` (name still says jcrussell; remotes may
+still point at jcrussell until the personal-fork task lands). Reference clone
+of upstream: `~/dev/me/forge_original`.
 
 Compose rules into root `AGENTS.md` (shellrc `agents`):
 

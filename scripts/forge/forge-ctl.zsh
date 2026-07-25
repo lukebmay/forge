@@ -19,6 +19,7 @@ Atomic commands:
   reload-theme           Live-reload user stylesheet (css-updated)
   idle-lock              Short idle/DPMS lock for blank/wake testing
   host-defaults          Apply host-defaults.conf (lock/quit/maximize chords)
+  install                Unified install from this tree (lineage-aware)
   install-ego            Install from extensions.gnome.org
   uninstall              Remove user extension (keeps dconf)
   install-jcrussell      Build+install this repo (make dev)
@@ -60,6 +61,7 @@ case "$cmd" in
   reload-theme|reload-css) exec "$SCRIPT_DIR/reload-theme.zsh" "$@" ;;
   idle-lock|trigger-idle-lock) exec "$SCRIPT_DIR/trigger-idle-lock.zsh" "$@" ;;
   host-defaults|defaults) exec "$SCRIPT_DIR/apply-host-defaults.zsh" "$@" ;;
+  install) exec "${SCRIPT_DIR:h}/install.zsh" "$@" ;;
   install-ego) exec "$SCRIPT_DIR/install-ego.zsh" "$@" ;;
   uninstall) exec "$SCRIPT_DIR/uninstall.zsh" "$@" ;;
   install-jcrussell|install-dev) exec "$SCRIPT_DIR/install-jcrussell.zsh" "$@" ;;

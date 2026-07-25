@@ -4,11 +4,38 @@ Helpers to move between **extensions.gnome.org (EGO / SweetTooth)** Forge and
 this tree (**jcrussell/forge**), while keeping prefs, keybindings, window rules,
 and CSS.
 
+## Install from this tree
+
+Project root **`./install`** (or `./install.zsh` / `scripts/install.zsh`) puts the
+**on-disk** repo live. It detects the current lineage:
+
+| Current install | What runs |
+| --- | --- |
+| none / unknown | build + install this tree |
+| jcrussell | in-place update from this tree |
+| EGO / SweetTooth | full migrate (`switch-to-jcrussell`: backup + translate settings) |
+
+After install, origin is stamped at
+`~/.local/share/forge-manage/install-origin.json` so later:
+
+```bash
+forge install --force          # re-runs that tree's scripts/install.zsh
+```
+
+If the clone was removed, `forge install` errors (no silent wrong tree). EGO
+reinstall via `forge install` is reserved for later.
+
+```bash
+./install                      # build → install → enable → reload Shell (X11)
+./install --no-restart         # files only; reload Shell yourself
+./scripts/forge/status.zsh     # shows install origin
+```
+
 ## Tiling control CLI (`forge`)
 
 User-facing control plane (FC0+). Talks to the **enabled** extension over DBus
 (`org.gnome.Shell.Extensions.Forge`). **Not** the same as `forge-ctl` (install /
-migrate).
+migrate) — except `forge install`, which is origin-aware reinstall (no DBus).
 
 ```bash
 ./scripts/forge/forge ping          # health JSON; exit 0 if ok
@@ -19,6 +46,7 @@ migrate).
 ./scripts/forge/forge launch google-chrome.desktop --wm-class=Google-chrome
 ./scripts/forge/forge launch ghostty --wm-class=com.mitchellh.ghostty --monitor=1
 ./scripts/forge/forge launch foo.desktop --wm-class=Foo --tree-path=mo0ws0/0 --timeout=20000
+./scripts/forge/forge install --force   # origin-aware reinstall (git tree)
 ```
 
 `launch` default placement: OP1 LFT attach (no PlaceNext). `--monitor` /
@@ -156,6 +184,7 @@ automatically after `switch-to-jcrussell` / `install-jcrussell`; re-run anytime:
 | `restore-theme.zsh` | Restore stylesheet colors + stamp `css-last-update` |
 | `reload-theme.zsh` | Bump `css-updated` so a live Shell reloads user CSS |
 | `trigger-idle-lock.zsh` | Short idle / DPMS lock for blank/wake testing |
+| `../install.zsh` (root `./install`) | **Preferred:** lineage-aware install from this tree + origin stamp |
 | `install-ego.zsh` | Download+install from extensions.gnome.org |
 | `uninstall.zsh` | Remove user extension (keeps dconf by default) |
 | `install-jcrussell.zsh` | `npm install` + `make dev` from this repo |

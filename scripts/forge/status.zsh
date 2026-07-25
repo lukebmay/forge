@@ -67,3 +67,13 @@ if [[ -d "$FORGE_REPO_ROOT/.git" ]]; then
   print -- "  describe:      ${c_blue}$(git -C "$FORGE_REPO_ROOT" describe --tags --always --dirty 2>/dev/null)${c_reset}"
   print -- "  remote:        $(git -C "$FORGE_REPO_ROOT" remote get-url origin 2>/dev/null || echo n/a)"
 fi
+
+if origin_path=$(forge_read_install_origin 2>/dev/null); then
+  print -- "Install origin:  ${c_cyan}$origin_path${c_reset}"
+  print -- "  source:        ${c_cyan}$(forge_origin_field source 2>/dev/null || echo n/a)${c_reset}"
+  print -- "  repo:          ${c_cyan}$(forge_origin_field repo 2>/dev/null || echo n/a)${c_reset}"
+  print -- "  install:       $(forge_origin_field install_script 2>/dev/null || echo n/a)"
+  print -- "  installed_at:  $(forge_origin_field installed_at 2>/dev/null || echo n/a)"
+else
+  print -- "Install origin:  ${c_yellow}(none — run ./install or scripts/install.zsh once)${c_reset}"
+fi

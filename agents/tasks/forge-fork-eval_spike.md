@@ -18,7 +18,7 @@ EGO upstream Forge (currently **v89** on `black`) is under-maintained; multi-mon
 | Install method | **`make dev`** from this tree |
 | UUID | Keep `forge@jmmaranan.com` (in-place replace) |
 | Session | **X11 only** for trial |
-| Personal fork | Not yet |
+| Personal fork | **Not yet** — tracked in [forge-fork-eval_personal-fork.md](./forge-fork-eval_personal-fork.md) |
 | gdisplays | Independent (v1 done in shellrc) |
 
 ## Host facts (2026-07-16)

@@ -166,6 +166,10 @@ forge_do_install() {
     "$SCRIPT_DIR/apply-host-defaults.zsh" --force "$SCRIPT_DIR/host-defaults.conf" || \
       forge_warn "host-defaults apply failed (non-fatal)"
   fi
+
+  # So `forge install` can find this tree later (also written by scripts/install.zsh).
+  forge_write_install_origin "$FORGE_REPO_ROOT" git || \
+    forge_warn "could not write install-origin (non-fatal)"
 }
 
 if (( BUILD_ONLY )); then

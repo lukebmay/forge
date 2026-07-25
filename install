@@ -1,0 +1,7 @@
+#!/usr/bin/env zsh
+# Project-root entry: install on-disk Forge from this clone.
+# Delegates to scripts/install.zsh (lineage-aware migrate / update).
+emulate -L zsh
+set -euo pipefail
+ROOT=${0:A:h}
+exec "$ROOT/scripts/install.zsh" "$@"

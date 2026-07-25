@@ -11,11 +11,10 @@ usage() {
 ${c_bold}update-jcrussell.zsh${c_reset} — install current repo into the running Forge extension
 
 Rebuilds this git tree (default: debug / make dev), replaces the user extension
-in place (same UUID), and enables it. Does ${c_bold}not${c_reset} restart GNOME Shell
-by default — reload Shell yourself so the new code and gschema keys load.
+in place (same UUID), enables it, and ${c_bold}reloads Shell on X11${c_reset} so the new
+code is active. Prefer root ${c_blue}./install${c_reset} (lineage-aware).
 
-Use this for day-to-day "I changed the tree; put it live." First time on EGO:
-  ${c_blue}./scripts/forge/switch-to-jcrussell.zsh${c_reset}
+First time on EGO: ${c_blue}./install${c_reset} or ${c_blue}switch-to-jcrussell.zsh${c_reset}.
 
 Usage:
   update-jcrussell.zsh [options]
@@ -25,24 +24,23 @@ Options:
   --prod              Release-style build (production=true); default is --dev
   --dev               Debug build (default)
   --save              Backup extension + dconf + config before replace
-  --restart-shell     On X11, killall -HUP gnome-shell after install
-  --no-restart        Do not HUP gnome-shell (default)
+  --restart-shell     X11 HUP after install (default)
+  --no-restart        Do not HUP gnome-shell (files only until you reload)
   --reload-theme      After install, stamp + bump css-updated (user stylesheet)
   --no-host-defaults  Skip apply-host-defaults.zsh
   --skip-npm          Pass through to install-jcrussell
   --from-ego          If installed lineage is EGO, run switch-to-jcrussell instead
-  --force             Non-interactive (required for pipes / CI)
+  --force             Non-interactive / CI (skip confirms)
   --color=auto|always|never
   -h, --help
 
 Examples:
+  ./install
   ./scripts/forge/update-jcrussell.zsh
-  ./scripts/forge/update-jcrussell.zsh --force --save
-  ./scripts/forge/update-jcrussell.zsh --force --restart-shell
+  ./scripts/forge/update-jcrussell.zsh --no-restart
   forge-ctl update
 
-After install, restart Shell (X11: Alt+F2 → r, or killall -HUP gnome-shell;
-Wayland: log out/in). Then new keys (e.g. layout-debug-overlay) are live.
+Wayland: in-session reload is unavailable — log out/in after install.
 Toggle layout overlay: ${c_blue}Ctrl+Super+d${c_reset}
 
 $(forge_print_deps_help)
@@ -51,8 +49,8 @@ EOF
 
 MODE="dev"
 DO_SAVE=0
-# Default: do not restart Shell; --restart-shell opts in.
-DO_RESTART=0
+# Default: reload Shell so the new build is active (opt out with --no-restart).
+DO_RESTART=1
 DO_RELOAD_THEME=0
 DO_HOST_DEFAULTS=1
 SKIP_NPM=0
@@ -71,7 +69,7 @@ while (( $# )); do
     --prod) MODE="prod"; shift ;;
     --dev) MODE="dev"; shift ;;
     --save) DO_SAVE=1; shift ;;
-    --no-restart) DO_RESTART=0; shift ;;
+    --no-restart|--no-restart-shell) DO_RESTART=0; shift ;;
     --restart-shell) DO_RESTART=1; shift ;;
     --reload-theme) DO_RELOAD_THEME=1; shift ;;
     --no-host-defaults) DO_HOST_DEFAULTS=0; shift ;;
@@ -174,20 +172,19 @@ if (( DO_RESTART )); then
     forge_warn "code is installed; log out/in so Shell loads it"
   fi
 else
-  forge_hdr "Restart GNOME Shell to load the new build"
+  forge_hdr "Shell not reloaded (--no-restart)"
   st=$(forge_session_type)
   if [[ "$st" == "x11" ]]; then
-    forge_warn "Extension files are updated, but Shell is still running the old code."
-    forge_warn "Restart Shell now: ${c_blue}Alt+F2${c_reset} → ${c_blue}r${c_reset} → Enter"
-    forge_warn "  or: ${c_blue}killall -HUP gnome-shell${c_reset}"
-    forge_warn "  or re-run with ${c_blue}--restart-shell${c_reset}"
+    forge_warn "Files updated; Shell still runs old code until you reload:"
+    forge_warn "  ${c_blue}Alt+F2${c_reset} → ${c_blue}r${c_reset}  or  ${c_blue}killall -HUP gnome-shell${c_reset}"
   else
-    forge_warn "Extension files are updated, but Shell is still running the old code."
-    forge_warn "Log out and back in (session=${c_cyan}$st${c_reset}) so the new build loads."
-    forge_warn "  or re-run with ${c_blue}--restart-shell${c_reset} (X11 only auto-HUPs)"
+    forge_warn "Files updated; log out/in (session=${c_cyan}$st${c_reset}) to load the new build."
   fi
 fi
 
+forge_write_install_origin "$FORGE_REPO_ROOT" git || \
+  forge_warn "could not write install-origin (non-fatal)"
 forge_ok "update complete (lineage=$(forge_detect_lineage))"
 forge_info "status: $SCRIPT_DIR/status.zsh"
+forge_info "reinstall: forge install  # or $FORGE_REPO_ROOT/install"
 print -r -- "$FORGE_EXT_DIR"

@@ -1,20 +1,36 @@
 # Plan: Evaluate Forge fork (quick wins, decide later fork)
 
-**Status:** Phase B install done — **daily-driving jcrussell**. Phase C partial (overnight lock placement still fails).  
-**Priority:** P2 wrap; product P1 → soft rehome  
-**Repo (this tree):** `~/dev/me/forge_jcrussell` → remote `jcrussell/forge`  
+**Status:** Phase B install done — daily-driving **jcrussell-based** tree.  
+**Priority:** P1 next = **official personal fork** (identity); spike wrap is P2  
+**Repo (this tree):** `~/dev/me/forge_jcrussell` → remote still `jcrussell/forge` (not Luke’s fork yet)  
 **GNOME host:** `black`, **X11**, dual 4K, Shell **46**, uuid `forge@jmmaranan.com`  
-**After trial product plan:** [forge-harden-and-session.md](./forge-harden-and-session.md)  
-**Next:** H1 soft rehome **code done** — [completed task](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md); manual blank/wake on black
+**After trial product plan:** [forge-harden-and-session.md](./forge-harden-and-session.md), [forge-command.md](./forge-command.md)  
+**Next:** [personal-fork task](../tasks/forge-fork-eval_personal-fork.md) — GitHub fork + lineage ≠ jcrussell
 
-**Completed:** Phase A comparison + import from shellrc  
+**Completed:** Phase A comparison + import from shellrc; product work on this tree  
 **Completed task files:** `agents/plans/forge-fork-eval/completed/` *(none yet — spike still open)*
+
+### Session note (2026-07-25)
+
+**Need official personal fork.** Tooling/docs still say “jcrussell” for Luke’s
+install path. Three-way map: EGO (`forge-ext`) / community **jcrussell** /
+**Luke** (this work, not forked on GitHub yet). Task:
+[forge-fork-eval_personal-fork.md](../tasks/forge-fork-eval_personal-fork.md).
 
 ---
 
 ## Next session (start here)
 
-**Goal:** Install this fork safely, smoke-test dual-head, stress blank/wake → retab, then pick daily driver.
+**Goal:** Official personal fork + lineage identity (not another Phase A).
+
+| Step | Action | Notes |
+| --- | --- | --- |
+| 0 | Read [personal-fork task](../tasks/forge-fork-eval_personal-fork.md) | Lock GitHub name + lineage id with Luke if needed |
+| 1 | Create GitHub fork; set `origin` / `upstream` | Push this `main` |
+| 2 | Lineage + install-origin distinguish Luke vs jcrussell vs EGO | Minimal script/doc pass |
+| 3 | Smoke status / install origin | Close task → completed/ |
+
+**Earlier goal (mostly done):** Install jcrussell-based tree, smoke dual-head, blank/wake.
 
 | Step | Action | Notes |
 | --- | --- | --- |
@@ -35,7 +51,8 @@
 3. **Session type:** X11 only for this trial (matches daily use).  
 4. **gdisplays:** keep using independently; v1 remap already shipped.
 
-**Do not:** re-compare to `forge_original`, start a personal fork, or open gdisplays v2 unless display pain is separate.
+**Do not:** re-compare to `forge_original`, or open gdisplays v2 unless display pain is separate.  
+**Do:** create the **personal fork** now ([task](../tasks/forge-fork-eval_personal-fork.md)) — Phase A “not yet” is obsolete.
 
 ---
 

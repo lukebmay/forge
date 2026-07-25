@@ -19,7 +19,9 @@ Pipeline (order matters):
   7. apply-settings --translate=jcrussell  (dconf + CSS + stamp css-last-update)
   8. enable
   9. restore-theme again (patchCss on first enable can clobber CSS — re-apply)
- 10. optional shell restart
+ 10. reload Shell on X11 (default) so the new build is active
+
+Prefer root ${c_blue}./install${c_reset} (same path when lineage is EGO).
 
 Usage:
   switch-to-jcrussell.zsh [options]
@@ -30,7 +32,8 @@ Options:
   --skip-save        Use latest backup
   --skip-apply       Leave dconf as-is after install
   --skip-build       Use existing repo temp/ (must already be built)
-  --restart-shell    On X11, killall -HUP gnome-shell after enable
+  --restart-shell    X11 HUP after enable (default)
+  --no-restart       Do not HUP gnome-shell
   --name=LABEL       Backup label
   --force            Non-interactive
   --color=auto|always|never
@@ -48,7 +51,7 @@ MODE_ARGS=()
 SKIP_SAVE=0
 SKIP_APPLY=0
 SKIP_BUILD=0
-RESTART_SHELL=0
+RESTART_SHELL=1
 NAME=""
 forge_parse_common_args "$@"
 if (( ${#FORGE_ARGS[@]} > 0 )); then
@@ -65,6 +68,7 @@ while (( $# )); do
     --skip-apply) SKIP_APPLY=1; shift ;;
     --skip-build) SKIP_BUILD=1; shift ;;
     --restart-shell) RESTART_SHELL=1; shift ;;
+    --no-restart|--no-restart-shell) RESTART_SHELL=0; shift ;;
     --name=*) NAME="${1#--name=}"; shift ;;
     --name) NAME="${2:?}"; shift 2 ;;
     -*) forge_die "unknown option: $1" ;;
@@ -264,12 +268,14 @@ if (( RESTART_SHELL )); then
     forge_warn "--restart-shell needs logout on this session type"
   fi
 else
-  forge_warn "On X11, restart shell so Version/code fully reloads: killall -HUP gnome-shell"
-  forge_warn "Or log out and log back in. Then: $SCRIPT_DIR/status.zsh"
+  forge_warn "Shell not reloaded (--no-restart). Files are installed; reload to activate."
+  forge_warn "X11: killall -HUP gnome-shell  |  Wayland: log out/in  |  $SCRIPT_DIR/status.zsh"
   forge_warn "If colors look stock: $SCRIPT_DIR/restore-theme.zsh $BACKUP && Super+Shift+r"
 fi
 
 rm -f "/tmp/forge-switch-live-$$.conf"
+forge_write_install_origin "$FORGE_REPO_ROOT" git || \
+  forge_warn "could not write install-origin (non-fatal)"
 forge_ok "switch-to-jcrussell complete (lineage=$(forge_detect_lineage))"
 forge_ok "backup + rollback: $BACKUP"
 print -r -- "$BACKUP"
