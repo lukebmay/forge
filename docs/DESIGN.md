@@ -197,6 +197,13 @@ scripting (Eval is disabled or unsafe on real sessions).
    `move` / `launch` / `get` / `set` / `settings save|load` / `run` /
    `run-steps`) talks DBus via PyGObject or `gdbus` — distinct from
    `forge-ctl`.
+5. **wm_class is case-insensitive** for `class:` selectors, PlaceNext match,
+   and `forge launch --wm-class` wait. Meta often reports `Eog` while desktop
+   ids look like `org.gnome.eog` / `eog` — exact match made PlaceNext miss and
+   the window fell through to LFT attach on the wrong head.
+6. **Launch wait annotates tree paths** in the CLI (`moNwsW/i/j…`). GetTree
+   projection does not carry path; wait walks the forest so the result JSON
+   can return `path` for scripts without a second Focus call.
 
 ### Tile selector grammar (FC1)
 

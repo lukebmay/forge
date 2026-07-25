@@ -10,8 +10,13 @@
 
 **FC0–FC4 Done (A/B AGREE each).** DBus control plane + forge CLI: ping, tree,
 focus/swap/move, launch+PlaceNext, settings get/set/profiles, run-steps with
-freezeRender. apiVersion 5; ~1833 unit tests. **FC5 workon deferred design.**
-Live host smoke residual for all DBus methods.
+freezeRender. apiVersion 5; ~1836 unit tests. **FC5 workon deferred design.**
+
+**Live smoke + follow-ups (2026-07-25):** ping/tree/focus/move/swap/get/set/
+settings save|load/run-steps **OK**. Fixed launch wait `path:null` (CLI path
+annotation), case-insensitive `wmClass` (CLI wait, place-hint, `class:`
+selectors), and human-friendly `forge launch` (short names, auto desktop +
+wm_class, `--path` alias). Install reloads Shell so extension casefold is live.
 
 ---
 

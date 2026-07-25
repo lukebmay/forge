@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   matchesPlaceHint,
   metaWmClass,
+  wmClassEqual,
   normalizePlaceHint,
   pruneExpiredPlaceHints,
   findMatchingPlaceHintIndex,
@@ -22,6 +23,15 @@ describe("metaWmClass", () => {
   });
 });
 
+describe("wmClassEqual", () => {
+  it("is case-insensitive", () => {
+    expect(wmClassEqual("Eog", "eog")).toBe(true);
+    expect(wmClassEqual("Google-chrome", "google-chrome")).toBe(true);
+    expect(wmClassEqual("A", "B")).toBe(false);
+    expect(wmClassEqual(null, "A")).toBe(false);
+  });
+});
+
 describe("matchesPlaceHint", () => {
   const now = 1_000_000;
 
@@ -29,6 +39,12 @@ describe("matchesPlaceHint", () => {
     const hint = { wmClass: "Google-chrome", expiresAt: now + 1000 };
     expect(matchesPlaceHint({ wm_class: "Google-chrome" }, hint, now)).toBe(true);
     expect(matchesPlaceHint({ get_wm_class: () => "Google-chrome" }, hint, now)).toBe(true);
+  });
+
+  it("matches wmClass case-insensitively", () => {
+    const hint = { wmClass: "eog", expiresAt: now + 1000 };
+    expect(matchesPlaceHint({ wm_class: "Eog" }, hint, now)).toBe(true);
+    expect(matchesPlaceHint({ get_wm_class: () => "EOG" }, hint, now)).toBe(true);
   });
 
   it("rejects class mismatch", () => {

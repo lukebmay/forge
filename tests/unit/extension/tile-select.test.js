@@ -194,6 +194,15 @@ describe("tile-select matchWindows", () => {
     expect(ghost[0].wmClass).toBe("Ghostty");
   });
 
+  it("matches class case-insensitively", () => {
+    const { forest } = sampleForest();
+    const lower = matchWindows(forest, "class:ghostty").matches;
+    expect(lower).toHaveLength(1);
+    expect(lower[0].wmClass).toBe("Ghostty");
+    const mixed = matchWindows(forest, "class:google-chrome@0").matches;
+    expect(mixed).toHaveLength(2);
+  });
+
   it("matches class@stableKey via liveMap", () => {
     const { forest } = sampleForest();
     const liveMap = {

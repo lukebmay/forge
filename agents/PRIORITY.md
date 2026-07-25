@@ -8,7 +8,8 @@
 **Official personal fork** — distinguish Luke’s tree from jcrussell.  
 Task: [forge-fork-eval_personal-fork.md](./tasks/forge-fork-eval_personal-fork.md).
 
-Also: live smoke of FC0–FC4 CLI after install; FC5 workon still deferred.
+Also: FC0–FC4 live smoke + path/casefold/friendly-launch fixes shipped
+(this commit); reinstall reloads Shell for extension half. FC5 deferred.
 
 | Doc | Role |
 | --- | --- |

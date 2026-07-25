@@ -39,19 +39,26 @@ migrate) — except `forge install`, which is origin-aware reinstall (no DBus).
 
 ```bash
 ./scripts/forge/forge ping          # health JSON; exit 0 if ok
-./scripts/forge/forge tree          # pretty JSON forest
+./scripts/forge/forge tree          # pretty JSON forest (paths = moNwsW/i/j…)
 ./scripts/forge/forge tree --monitor=0 --compact
-./scripts/forge/forge tree --workspace=0 --max-depth=3
 ./scripts/forge/forge focus 'class:Google-chrome'
-./scripts/forge/forge launch google-chrome.desktop --wm-class=Google-chrome
-./scripts/forge/forge launch ghostty --wm-class=com.mitchellh.ghostty --monitor=1
-./scripts/forge/forge launch foo.desktop --wm-class=Foo --tree-path=mo0ws0/0 --timeout=20000
+
+# Human-friendly launch: short name; auto desktop + wm_class; optional --path
+./scripts/forge/forge launch nautilus
+./scripts/forge/forge launch nautilus --path=mo1ws0/1/1
+./scripts/forge/forge launch nautilus --monitor=1
+./scripts/forge/forge launch calculator --path=mo0ws0
+./scripts/forge/forge launch ghostty --monitor=1
+
+# Explicit still works for scripts
+./scripts/forge/forge launch org.gnome.Nautilus.desktop --wm-class=org.gnome.Nautilus
 ./scripts/forge/forge install --force   # origin-aware reinstall (git tree)
 ```
 
-`launch` default placement: OP1 LFT attach (no PlaceNext). `--monitor` /
-`--tree-path` set a one-shot place hint before spawn. Wait needs `--wm-class`
-(or use `--no-wait`). Already-mapped windows: `forge move` after they appear.
+`launch` resolves short names via XDG `.desktop` files, infers `wm_class`, and
+waits for the new window (no `--wm-class` required). Default placement: OP1 LFT
+attach. `--path` / `--tree-path` and `--monitor` set PlaceNext. Path ids are OG
+Forge mon×ws keys (`mo0ws0`); see `forge launch -h`.
 
 Deps: `python3` + `python3-gi` (preferred) or `gdbus`; `gio` or `gtk-launch`
 for desktop ids. Extension must be enabled for DBus / wait / PlaceNext.

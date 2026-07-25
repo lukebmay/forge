@@ -293,31 +293,206 @@ def _xdg_data_dirs() -> list[str]:
     return dirs
 
 
+def parse_desktop_entry(path: str | Path) -> dict[str, str]:
+    """Parse [Desktop Entry] keys from a .desktop file (best-effort)."""
+    out: dict[str, str] = {}
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return out
+    in_entry = False
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_entry = line == "[Desktop Entry]"
+            continue
+        if not in_entry or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key = key.strip()
+        # First wins for plain keys (ignore Name[xx] localization for match later)
+        if "[" in key:
+            continue
+        if key and key not in out:
+            out[key] = val.strip()
+    return out
+
+
+def _exec_binary(exec_line: str) -> str:
+    """First argv token from Exec=, without field codes."""
+    if not exec_line:
+        return ""
+    cleaned = exec_line
+    for code in ("%f", "%F", "%u", "%U", "%i", "%c", "%k"):
+        cleaned = cleaned.replace(code, "")
+    try:
+        parts = shlex.split(cleaned)
+    except ValueError:
+        parts = cleaned.split()
+    if not parts:
+        return ""
+    return Path(parts[0]).name
+
+
+def _iter_desktop_files() -> list[Path]:
+    seen: set[str] = set()
+    files: list[Path] = []
+    for data in _xdg_data_dirs():
+        app_dir = Path(data) / "applications"
+        if not app_dir.is_dir():
+            continue
+        try:
+            for p in app_dir.glob("*.desktop"):
+                key = p.name.casefold()
+                # Prefer earlier XDG dirs (user over system)
+                if key in seen:
+                    continue
+                if not p.is_file():
+                    continue
+                seen.add(key)
+                files.append(p)
+        except OSError:
+            continue
+    return files
+
+
 def resolve_desktop_file(app: str) -> Optional[str]:
-    """Return absolute path to a .desktop file, or None."""
-    app = app.strip()
+    """
+    Return absolute path to a .desktop file, or None.
+
+    Accepts: absolute .desktop path, desktop id (org.foo.Bar[.desktop]),
+    short names (nautilus → org.gnome.Nautilus.desktop via Exec=/Name=).
+    """
+    app = app.strip().strip("'\"")
     if not app:
         return None
     p = Path(app).expanduser()
     if p.is_file() and p.suffix == ".desktop":
         return str(p.resolve())
 
+    # Exact id / basename
     name = app if app.endswith(".desktop") else f"{app}.desktop"
-    # Flatpak-style ids may include path segments; only basename search here.
     base = Path(name).name
     for data in _xdg_data_dirs():
         candidate = Path(data) / "applications" / base
         if candidate.is_file():
             return str(candidate.resolve())
-    return None
+
+    # Case-insensitive basename
+    base_cf = base.casefold()
+    for f in _iter_desktop_files():
+        if f.name.casefold() == base_cf:
+            return str(f.resolve())
+
+    # Fuzzy: short command / name (nautilus, calculator, eog, …)
+    q = app.casefold()
+    if q.endswith(".desktop"):
+        q = q[: -len(".desktop")]
+    # Drop reverse-DNS prefix for "files"-style queries? keep full q
+    candidates: list[tuple[int, str]] = []  # (score, path) lower is better
+    for f in _iter_desktop_files():
+        entry = parse_desktop_entry(f)
+        if entry.get("Type", "Application") not in ("Application", ""):
+            continue
+        if entry.get("NoDisplay", "").lower() in ("true", "1"):
+            # Still allow if Exec binary is exact match
+            pass
+        if entry.get("Hidden", "").lower() in ("true", "1"):
+            continue
+        stem = f.stem.casefold()
+        exec_bin = _exec_binary(entry.get("Exec", "")).casefold()
+        try_bin = (entry.get("TryExec") or "").casefold()
+        if try_bin:
+            try_bin = Path(try_bin).name.casefold()
+        startup = (entry.get("StartupWMClass") or "").casefold()
+        app_name = (entry.get("Name") or "").casefold()
+
+        score: Optional[int] = None
+        if exec_bin == q or try_bin == q:
+            score = 0
+        elif stem == q or stem.endswith("." + q):
+            score = 1
+        elif startup == q:
+            score = 2
+        elif app_name == q:
+            score = 3
+        elif q in stem.split("."):
+            score = 4
+        elif app_name.startswith(q) or q in app_name.split():
+            score = 5
+        if score is None:
+            continue
+        # Prefer visible apps
+        if entry.get("NoDisplay", "").lower() in ("true", "1"):
+            score += 10
+        candidates.append((score, str(f.resolve())))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda t: (t[0], len(t[1]), t[1]))
+    best_score = candidates[0][0]
+    top = [c for c in candidates if c[0] == best_score]
+    # Unique path; if several same score, prefer org.gnome.* then shorter stem
+    if len(top) == 1:
+        return top[0][1]
+
+    def rank_path(path: str) -> tuple:
+        stem = Path(path).stem
+        gnome = 0 if stem.startswith("org.gnome.") else 1
+        return (gnome, len(stem), stem.casefold())
+
+    top.sort(key=lambda t: rank_path(t[1]))
+    return top[0][1]
 
 
-def launch_app(app: str) -> subprocess.Popen:
+def infer_wm_class_hints(app: str, desktop: Optional[str] = None) -> list[str]:
+    """
+    Ordered candidate wm_class strings for wait / PlaceNext.
+    Does not require --wm-class from the user.
+    """
+    hints: list[str] = []
+
+    def add(v: Optional[str]) -> None:
+        if not v:
+            return
+        v = str(v).strip()
+        if not v:
+            return
+        if not any(_class_eq(v, h) for h in hints):
+            hints.append(v)
+
+    if desktop:
+        entry = parse_desktop_entry(desktop)
+        add(entry.get("StartupWMClass"))
+        stem = Path(desktop).stem
+        add(stem)
+        # Last DNS label often matches Meta class (Nautilus, Calculator)
+        if "." in stem:
+            add(stem.rsplit(".", 1)[-1])
+        add(_exec_binary(entry.get("Exec", "")))
+        te = entry.get("TryExec") or ""
+        if te:
+            add(Path(te).name)
+
+    raw = app.strip().strip("'\"")
+    if raw:
+        add(Path(raw).name)
+        if raw.endswith(".desktop"):
+            add(Path(raw).stem)
+        if "." in raw and not raw.endswith(".desktop"):
+            add(raw.rsplit(".", 1)[-1])
+    return hints
+
+
+def launch_app(app: str, desktop: Optional[str] = None) -> subprocess.Popen:
     """
     Start an app out-of-process.
     Prefer gio launch / gtk-launch for .desktop ids; else spawn argv.
     """
-    desktop = resolve_desktop_file(app)
+    if desktop is None:
+        desktop = resolve_desktop_file(app)
     if desktop:
         if shutil.which("gio"):
             return subprocess.Popen(
@@ -334,19 +509,18 @@ def launch_app(app: str) -> subprocess.Popen:
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
             )
-        # Last resort: desktop file path is not executable — try gtk-launch-less gio
         raise RuntimeError(
             f"found desktop file {desktop} but neither gio nor gtk-launch is on PATH"
         )
 
     # Executable on PATH or absolute path / shell-ish argv
-    argv = shlex.split(app)
+    argv = shlex.split(app.strip().strip("'\""))
     if not argv:
         raise RuntimeError("empty app command")
     exe = argv[0]
     if not os.path.isabs(exe) and not shutil.which(exe):
         raise RuntimeError(
-            f"app not found as desktop id or executable: {app!r} "
+            f"app not found as desktop id, short name, or executable: {app!r} "
             f"(tried *.desktop under XDG applications and PATH)"
         )
     return subprocess.Popen(
@@ -357,58 +531,118 @@ def launch_app(app: str) -> subprocess.Popen:
     )
 
 
+def _class_eq(a: Any, b: Any) -> bool:
+    """wm_class match; case-insensitive (GNOME classes often Title-Case)."""
+    if a is None or b is None:
+        return False
+    return str(a).casefold() == str(b).casefold()
+
+
 def _iter_tree_windows(node: Any) -> list[dict[str, Any]]:
-    """Collect WINDOW dicts from a GetTree forest/node."""
+    """
+    Collect WINDOW dicts from a GetTree forest/node.
+    Annotates each with path moNwsW/i/j… (does not mutate input nodes).
+    """
     out: list[dict[str, Any]] = []
 
-    def walk(n: Any) -> None:
+    def walk(n: Any, path: str) -> None:
         if not isinstance(n, dict):
             return
         ntype = n.get("nodeType") or n.get("type")
         if ntype == "WINDOW":
-            out.append(n)
+            w = dict(n)
+            if not w.get("path"):
+                w["path"] = path or None
+            out.append(w)
+            return
         kids = n.get("children") or n.get("childNodes") or []
-        if isinstance(kids, list):
-            for c in kids:
-                walk(c)
+        if not isinstance(kids, list):
+            return
+        mon_id = n.get("id") if ntype == "MONITOR" else None
+        for i, c in enumerate(kids):
+            if mon_id:
+                child_path = f"{mon_id}/{i}"
+            elif path:
+                child_path = f"{path}/{i}"
+            else:
+                child_path = str(i)
+            walk(c, child_path)
 
     if isinstance(node, dict):
         if "monitors" in node and isinstance(node["monitors"], list):
             for m in node["monitors"]:
-                walk(m)
+                walk(m, "")
         else:
-            walk(node)
+            walk(node, "")
     elif isinstance(node, list):
         for m in node:
-            walk(m)
+            walk(m, "")
     return out
 
 
-def _windows_matching_class(forest: Any, wm_class: str) -> list[dict[str, Any]]:
-    want = wm_class
+def _windows_matching_class(
+    forest: Any, wm_class: str | list[str] | None
+) -> list[dict[str, Any]]:
+    """Match one class, any of several classes, or all windows if wm_class is None."""
+    if wm_class is None:
+        return _iter_tree_windows(forest)
+    want_list = [wm_class] if isinstance(wm_class, str) else list(wm_class)
+    want_list = [w for w in want_list if w]
+    if not want_list:
+        return _iter_tree_windows(forest)
     hits = []
     for w in _iter_tree_windows(forest):
         cls = w.get("wmClass") or w.get("wm_class")
-        if cls == want:
+        if any(_class_eq(cls, want) for want in want_list):
             hits.append(w)
     return hits
 
 
+def _normalize_class_list(wm_class: str | list[str] | None) -> list[str]:
+    if wm_class is None:
+        return []
+    if isinstance(wm_class, str):
+        return [wm_class] if wm_class.strip() else []
+    return [str(x) for x in wm_class if x and str(x).strip()]
+
+
 def wait_for_wm_class(
     backend: str,
-    wm_class: str,
+    wm_class: str | list[str] | None,
     timeout_ms: int,
     *,
     first: bool,
     baseline_ids: Optional[set[str]] = None,
+    accept_any_new: bool = False,
 ) -> dict[str, Any]:
     """
-    Poll GetTree until a window with wmClass appears (or timeout).
-    Prefer windows whose windowId was not in baseline_ids when provided.
+    Poll GetTree until a matching window appears (or timeout).
+
+    Prefer windows whose windowId was not in baseline_ids.
+    wm_class may be one string, several candidates, or empty/None.
+    When class hints are set: match those first (case-insensitive).
+    When accept_any_new is True (default for launch without --wm-class): if the
+    timeout elapses with unmatched new windows, return the first new one.
+    While polling with no class hints, any new window wins immediately.
     """
     deadline = time.monotonic() + max(0, timeout_ms) / 1000.0
     baseline_ids = baseline_ids or set()
     last_err = "timeout"
+    seen_classes: set[str] = set()
+    class_list = _normalize_class_list(wm_class)
+    last_fresh: list[dict[str, Any]] = []
+
+    def _chosen(pool: list[dict[str, Any]], matched_by: str) -> dict[str, Any]:
+        c = pool[0]
+        return {
+            "ok": True,
+            "windowId": c.get("windowId"),
+            "title": c.get("title"),
+            "wmClass": c.get("wmClass"),
+            "path": c.get("path"),
+            "matchedBy": matched_by,
+        }
+
     while time.monotonic() <= deadline:
         try:
             raw = call_method(backend, "GetTree", "{}")
@@ -421,29 +655,55 @@ def wait_for_wm_class(
             last_err = str(data["error"])
             time.sleep(0.15)
             continue
-        hits = _windows_matching_class(data, wm_class)
-        # Prefer newly appeared ids
+        all_wins = _iter_tree_windows(data)
         fresh = [
-            h
-            for h in hits
-            if h.get("windowId") is None or str(h.get("windowId")) not in baseline_ids
+            w
+            for w in all_wins
+            if w.get("windowId") is None or str(w.get("windowId")) not in baseline_ids
         ]
-        pool = fresh if fresh else hits
-        if pool:
-            if len(pool) > 1 and not first:
-                # Still success for launch: pick first but note multi
-                chosen = pool[0]
-            else:
-                chosen = pool[0]
-            return {
-                "ok": True,
-                "windowId": chosen.get("windowId"),
-                "title": chosen.get("title"),
-                "wmClass": chosen.get("wmClass") or wm_class,
-                "path": chosen.get("path"),
-            }
+        for w in fresh:
+            cls = w.get("wmClass") or w.get("wm_class")
+            if cls:
+                seen_classes.add(str(cls))
+        if fresh:
+            last_fresh = fresh
+
+        if class_list:
+            hits = [
+                w
+                for w in fresh
+                if any(
+                    _class_eq(w.get("wmClass") or w.get("wm_class"), want)
+                    for want in class_list
+                )
+            ]
+            # Also allow class match on pre-existing if no baseline (rare)
+            if not hits and not baseline_ids:
+                hits = _windows_matching_class(data, class_list)
+            if hits:
+                return _chosen(hits, "wm-class")
+        else:
+            # No hints: first new window
+            if fresh:
+                return _chosen(fresh, "new-window")
+
         time.sleep(0.12)
-    return {"ok": False, "error": f"wait timeout after {timeout_ms}ms ({last_err})", "wmClass": wm_class}
+
+    # Class hints never matched — optionally take any new window that appeared
+    if accept_any_new and last_fresh:
+        return _chosen(last_fresh, "new-window")
+
+    out: dict[str, Any] = {
+        "ok": False,
+        "error": f"wait timeout after {timeout_ms}ms ({last_err})",
+    }
+    if len(class_list) == 1:
+        out["wmClass"] = class_list[0]
+    elif class_list:
+        out["wmClassCandidates"] = class_list
+    if seen_classes:
+        out["seenClasses"] = sorted(seen_classes)
+    return out
 
 
 def _baseline_window_ids(backend: str) -> set[str]:
@@ -772,25 +1032,41 @@ def cmd_run(backend: str, args: argparse.Namespace) -> int:
 
 
 def cmd_launch(backend: str, args: argparse.Namespace) -> int:
-    app = (args.app or "").strip()
+    app = (args.app or "").strip().strip("'\"")
     if not app:
         _eprint("forge launch: app required")
         return 1
 
-    wm_class = args.wm_class
     timeout_ms = int(args.timeout if args.timeout is not None else DEFAULT_LAUNCH_TIMEOUT_MS)
     no_wait = bool(args.no_wait)
     monitor = args.monitor
+    # --path and --tree-path share dest; either works
     tree_path = args.tree_path
     first = bool(getattr(args, "first", False))
+
+    desktop = resolve_desktop_file(app)
+    # Explicit --wm-class wins; else infer candidates; wait falls back to any new win
+    explicit_class = (args.wm_class or "").strip() or None
+    class_hints = infer_wm_class_hints(app, desktop)
+    if explicit_class:
+        wait_classes: str | list[str] | None = explicit_class
+        place_class = explicit_class
+    elif class_hints:
+        wait_classes = class_hints
+        # PlaceNext: omit class (wildcard) so wrong StartupWMClass cannot miss;
+        # wait still filters by hints then any-new fallback below.
+        place_class = None
+    else:
+        wait_classes = None
+        place_class = None
 
     place_opts: dict[str, Any] = {}
     if monitor is not None and str(monitor).strip() != "":
         place_opts["monitor"] = monitor
     if tree_path is not None and str(tree_path).strip() != "":
         place_opts["treePath"] = tree_path
-    if wm_class:
-        place_opts["wmClass"] = wm_class
+    if place_class:
+        place_opts["wmClass"] = place_class
     if first:
         place_opts["first"] = True
     # Align hint TTL with wait timeout when placing
@@ -813,37 +1089,50 @@ def cmd_launch(backend: str, args: argparse.Namespace) -> int:
 
     baseline: set[str] = set()
     if not no_wait:
-        if not wm_class:
-            _eprint(
-                "forge launch: --wm-class required when waiting "
-                "(or pass --no-wait). Example: --wm-class=Google-chrome"
-            )
-            return 1
         baseline = _baseline_window_ids(backend)
 
     try:
-        proc = launch_app(app)
+        proc = launch_app(app, desktop=desktop)
     except Exception as e:
         _eprint(f"forge launch: failed to start {app!r}: {e}")
         return 1
 
     if no_wait:
-        _print_json({"ok": True, "pid": proc.pid, "waited": False}, compact=False)
+        payload: dict[str, Any] = {
+            "ok": True,
+            "pid": proc.pid,
+            "waited": False,
+            "app": app,
+        }
+        if desktop:
+            payload["desktop"] = desktop
+        _print_json(payload, compact=False)
         return 0
 
+    # Class hints preferred; accept any new window if hints miss (human UX)
     result = wait_for_wm_class(
         backend,
-        wm_class,
+        wait_classes,
         timeout_ms,
         first=first,
         baseline_ids=baseline,
+        accept_any_new=explicit_class is None,
     )
+
     if not result.get("ok"):
         _eprint(f"forge launch: {result.get('error', 'wait failed')}")
+        if desktop:
+            result["desktop"] = desktop
+        if class_hints:
+            result.setdefault("wmClassCandidates", class_hints)
         _print_json(result, compact=False)
         return 1
+
     result["pid"] = proc.pid
     result["waited"] = True
+    result["app"] = app
+    if desktop:
+        result["desktop"] = desktop
     _print_json(result, compact=False)
     return 0
 
@@ -853,9 +1142,64 @@ Tile selectors:
   focus | lft
   title:Exact | title~=substr | title~=/regex/flags?
   class:WmClass | class:WmClass@mon
-  path:mo0ws0/0/1   (mon then child indices; cN/wN ok)
+  path:mo0ws0/0/1   (see Path grammar below)
   id:WINDOW_ID
   JSON: '{"selector":"class:Foo","first":true}'
+
+Path grammar (OG Forge mon ids + child indices):
+  path:moNwsW[/i[/j…]]
+    moN   = monitor index N   (mo0, mo1, …)
+    wsW   = workspace index W (ws0 = first workspace)
+    /i/j  = child indices under that monitor root (0-based)
+  Aliases: bare mo0ws0/0 (no path: prefix) on --tree-path; cN/wN same as N.
+  Discover live paths:  forge tree   (or forge focus class:App → candidate.path)
+
+Path examples (inspect with forge tree first):
+  path:mo0ws0          monitor 0, workspace 0 (root — append on empty/split)
+  path:mo1ws0          monitor 1, workspace 0
+  path:mo0ws0/0        first child of mon0 (window or CON)
+  path:mo0ws0/0/1      second child under that CON
+  path:mo0ws0/c0/w1    same as mo0ws0/0/1  (c/w labels optional)
+"""
+
+_LAUNCH_HELP = """\
+Launch an app by short name, desktop id, or command.
+
+  forge launch nautilus
+  forge launch nautilus --path=mo1ws0/1/1
+  forge launch calculator --monitor=1
+
+App resolution (in order):
+  1. .desktop path or id (org.gnome.Nautilus.desktop)
+  2. short name → XDG .desktop via Exec=/Name=/stem (nautilus, eog, …)
+  3. bare executable on PATH
+
+wm_class is optional. The CLI infers candidates from the .desktop file
+(StartupWMClass, id stem, Exec binary) and waits for a new window.
+Pass --wm-class only to force a specific class. --no-wait skips waiting.
+
+Placement:
+  default          after last focused tile (OP1; no PlaceNext)
+  --path PATH      PlaceNext attach (alias: --tree-path)
+  --monitor N      PlaceNext home monitor (0, 1, mo0, primary, …)
+
+Path is OG mon×ws + child indices (see forge --help). path: prefix optional.
+Discover paths:  forge tree
+
+Examples:
+  forge launch nautilus
+  forge launch nautilus --path=mo0ws0
+  forge launch nautilus --path=mo1ws0
+  forge launch nautilus --path=mo0ws0/0
+  forge launch nautilus --path=mo0ws0/0/1
+  forge launch nautilus --path=mo1ws0/1/1
+  forge launch nautilus --monitor=1
+  forge launch nautilus --monitor=1 --path=mo1ws0/0
+  forge launch calculator --path=mo0ws0
+  forge launch org.gnome.Nautilus.desktop --wm-class=org.gnome.Nautilus
+
+Deps: python3, python3-gi|gdbus; gio or gtk-launch for .desktop launch;
+extension enabled for PlaceNext / wait.
 """
 
 
@@ -946,26 +1290,18 @@ def build_parser() -> argparse.ArgumentParser:
     launch = sub.add_parser(
         "launch",
         help="Launch app (gio launch / spawn) and optionally PlaceNext + wait",
-        description=(
-            "Launch a desktop id or command. Default placement uses OP1 LFT "
-            "attach (no PlaceNext). Pass --monitor and/or --tree-path to set a "
-            "one-shot place hint before spawn. Already-mapped windows: use "
-            "`forge move` after wait instead of PlaceNext.\n"
-            "\n"
-            "Deps: python3, python3-gi|gdbus; gio or gtk-launch for .desktop; "
-            "extension enabled for PlaceNext/wait."
-        ),
+        description=_LAUNCH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     launch.add_argument(
         "app",
-        help="Desktop id (e.g. google-chrome.desktop / org.foo.Bar) or command",
+        help="Short name (nautilus), desktop id, or command on PATH",
     )
     launch.add_argument(
         "--wm-class",
         dest="wm_class",
         metavar="CLASS",
-        help="wm_class to match for wait / PlaceNext (required unless --no-wait)",
+        help="Force wm_class for wait/PlaceNext (optional; auto-detected)",
     )
     launch.add_argument(
         "--timeout",
@@ -982,13 +1318,14 @@ def build_parser() -> argparse.ArgumentParser:
     launch.add_argument(
         "--monitor",
         metavar="INDEX|moN|stableKey|primary",
-        help="Explicit home monitor for PlaceNext (optional)",
+        help="PlaceNext home monitor (0, 1, mo0, primary, …)",
     )
     launch.add_argument(
+        "--path",
         "--tree-path",
         dest="tree_path",
         metavar="PATH",
-        help="Attach path (path:mo0ws0/0 or mo0ws0/0) for PlaceNext",
+        help="PlaceNext path: mo1ws0/1/1 or path:mo0ws0/0 (see forge launch -h)",
     )
     launch.add_argument(
         "--last-focused",
