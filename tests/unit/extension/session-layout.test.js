@@ -16,6 +16,7 @@ import {
   createWindowResolver,
   matchStatsAgainstWindows,
   forestRichness,
+  frameDistanceScore,
 } from "../../../lib/extension/session-layout.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { createTreeFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
@@ -299,23 +300,23 @@ describe("session-layout portable round-trip", () => {
     expect(live.monitors[0].children.map((c) => c.window)).toEqual([wA, wB]);
   });
 
-  it("createWindowResolver matches two same-class windows by pid when titles churn", () => {
-    // Ghostty titles change every prompt; ids change on Shell HUP; pid is stable.
-    const left = createMockWindow({
+  it("matches two same-pid Ghosttys by frame distance after thrash pile", () => {
+    // Real Ghostty: one process, many windows; titles churn; both piled on mon1.
+    const leftLive = createMockWindow({
       id: 5001,
-      pid: 100,
+      pid: 4452,
       wm_class: "com.mitchellh.ghostty",
-      title: "new title left",
-      monitor: 1, // thrash-piled on right
-      rect: new Rectangle({ x: 5200, y: 0, width: 1000, height: 1000 }),
-    });
-    const right = createMockWindow({
-      id: 5002,
-      pid: 200,
-      wm_class: "com.mitchellh.ghostty",
-      title: "new title right",
+      title: "spinner left",
       monitor: 1,
-      rect: new Rectangle({ x: 6200, y: 0, width: 1000, height: 1000 }),
+      rect: new Rectangle({ x: 5212, y: 8, width: 2510, height: 2864 }),
+    });
+    const rightLive = createMockWindow({
+      id: 5002,
+      pid: 4452,
+      wm_class: "com.mitchellh.ghostty",
+      title: "spinner right",
+      monitor: 1,
+      rect: new Rectangle({ x: 7722, y: 8, width: 2510, height: 2864 }),
     });
     const portable = {
       version: 1,
@@ -326,11 +327,11 @@ describe("session-layout portable round-trip", () => {
           children: [
             {
               id: 1,
-              pid: 100,
+              pid: 4452,
               wmClass: "com.mitchellh.ghostty",
-              title: "old left title",
+              title: "old left",
               monitor: 0,
-              frame: { x: 100, y: 0, width: 2500, height: 2800 },
+              frame: { x: 2602, y: 72, width: 2510, height: 2800 },
               percent: 0,
               userSized: false,
             },
@@ -342,11 +343,11 @@ describe("session-layout portable round-trip", () => {
           children: [
             {
               id: 2,
-              pid: 200,
+              pid: 4452,
               wmClass: "com.mitchellh.ghostty",
-              title: "old right title",
+              title: "old right",
               monitor: 1,
-              frame: { x: 5200, y: 0, width: 2500, height: 2800 },
+              frame: { x: 5212, y: 8, width: 2510, height: 2864 },
               percent: 0,
               userSized: false,
             },
@@ -354,14 +355,16 @@ describe("session-layout portable round-trip", () => {
         },
       ],
     };
-    const resolve = createWindowResolver([left, right]);
-    const live = toLiveForest(portable, resolve);
+    expect(
+      frameDistanceScore(portable.monitors[0].children[0].frame, leftLive._rect)
+    ).toBeGreaterThan(frameDistanceScore(portable.monitors[0].children[0].frame, rightLive._rect));
+    const live = toLiveForest(portable, createWindowResolver([leftLive, rightLive]));
     expect(live.monitors).toHaveLength(2);
-    expect(live.monitors[0].children[0].window).toBe(left);
-    expect(live.monitors[1].children[0].window).toBe(right);
+    expect(live.monitors[0].children[0].window).toBe(leftLive);
+    expect(live.monitors[1].children[0].window).toBe(rightLive);
   });
 
-  it("createWindowResolver uses frame+monitor when pid missing and titles churn", () => {
+  it("createWindowResolver uses frame when pid missing and titles churn", () => {
     const left = createMockWindow({
       id: 6001,
       wm_class: "com.mitchellh.ghostty",
