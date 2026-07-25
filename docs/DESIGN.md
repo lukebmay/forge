@@ -52,10 +52,11 @@ manual Super+Delete is a weak control path.
 re-track + Mutter pile-up → full-height columns, lost tabs.
 
 **Approach:** Portable forest at `~/.config/forge/config/session-layout.json`
-(id + wmClass/title leaves). Debounced last-good save; install flushes before
-HUP (`forge save-session-layout`). On enable: match ≥50% (id, else class+title),
-strict mon rehome, then topology restore. Richness guard + post-enable hold stop
-thrash-flat from overwriting a good file. Not full `workon` profiles.
+(leaves: id, pid, wmClass/title, frame, monitor). Debounced last-good save;
+install flushes before HUP. On enable: match ≥50% in order id → pid →
+class+title → class+geometry → unique class; strict mon rehome; raise tiles so
+none stay buried. Richness guard + post-enable hold protect last-good. Not full
+`workon` profiles.
 
 **Tests:** `tests/unit/extension/session-layout.test.js`.
 

@@ -51,7 +51,13 @@ describe("tree-query projectRect / windowMetaFields", () => {
   it("windowMetaFields never returns the window object", () => {
     const win = mockWin({ title: "Hello", wmClass: "Foo", id: 42 });
     const f = windowMetaFields(win);
-    expect(f).toEqual({ wmClass: "Foo", title: "Hello", id: 42 });
+    expect(f).toEqual({
+      wmClass: "Foo",
+      title: "Hello",
+      id: 42,
+      pid: null,
+      monitor: null,
+    });
     expect(JSON.stringify(f)).toContain("Foo");
   });
 
@@ -67,7 +73,13 @@ describe("tree-query projectRect / windowMetaFields", () => {
         throw new Error("dead");
       },
     };
-    expect(windowMetaFields(win)).toEqual({ wmClass: null, title: null, id: null });
+    expect(windowMetaFields(win)).toEqual({
+      wmClass: null,
+      title: null,
+      id: null,
+      pid: null,
+      monitor: null,
+    });
   });
 });
 

@@ -256,6 +256,18 @@ def _project_node_to_portable(node: dict[str, Any]) -> dict[str, Any] | None:
             out["wmClass"] = node.get("wmClass")
         if node.get("title") is not None:
             out["title"] = node.get("title")
+        if node.get("pid"):
+            out["pid"] = node.get("pid")
+        if isinstance(node.get("monitor"), int) and node["monitor"] >= 0:
+            out["monitor"] = node["monitor"]
+        rect = node.get("rect")
+        if isinstance(rect, dict) and all(k in rect for k in ("x", "y", "width", "height")):
+            out["frame"] = {
+                "x": rect["x"],
+                "y": rect["y"],
+                "width": rect["width"],
+                "height": rect["height"],
+            }
         return out
     # CON / MONITOR children
     children_in = node.get("children") or []

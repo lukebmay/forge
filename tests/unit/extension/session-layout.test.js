@@ -299,6 +299,117 @@ describe("session-layout portable round-trip", () => {
     expect(live.monitors[0].children.map((c) => c.window)).toEqual([wA, wB]);
   });
 
+  it("createWindowResolver matches two same-class windows by pid when titles churn", () => {
+    // Ghostty titles change every prompt; ids change on Shell HUP; pid is stable.
+    const left = createMockWindow({
+      id: 5001,
+      pid: 100,
+      wm_class: "com.mitchellh.ghostty",
+      title: "new title left",
+      monitor: 1, // thrash-piled on right
+      rect: new Rectangle({ x: 5200, y: 0, width: 1000, height: 1000 }),
+    });
+    const right = createMockWindow({
+      id: 5002,
+      pid: 200,
+      wm_class: "com.mitchellh.ghostty",
+      title: "new title right",
+      monitor: 1,
+      rect: new Rectangle({ x: 6200, y: 0, width: 1000, height: 1000 }),
+    });
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              id: 1,
+              pid: 100,
+              wmClass: "com.mitchellh.ghostty",
+              title: "old left title",
+              monitor: 0,
+              frame: { x: 100, y: 0, width: 2500, height: 2800 },
+              percent: 0,
+              userSized: false,
+            },
+          ],
+        },
+        {
+          id: "mo1ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              id: 2,
+              pid: 200,
+              wmClass: "com.mitchellh.ghostty",
+              title: "old right title",
+              monitor: 1,
+              frame: { x: 5200, y: 0, width: 2500, height: 2800 },
+              percent: 0,
+              userSized: false,
+            },
+          ],
+        },
+      ],
+    };
+    const resolve = createWindowResolver([left, right]);
+    const live = toLiveForest(portable, resolve);
+    expect(live.monitors).toHaveLength(2);
+    expect(live.monitors[0].children[0].window).toBe(left);
+    expect(live.monitors[1].children[0].window).toBe(right);
+  });
+
+  it("createWindowResolver uses frame+monitor when pid missing and titles churn", () => {
+    const left = createMockWindow({
+      id: 6001,
+      wm_class: "com.mitchellh.ghostty",
+      title: "churn-a",
+      monitor: 0,
+      rect: new Rectangle({ x: 100, y: 50, width: 2400, height: 2700 }),
+    });
+    const right = createMockWindow({
+      id: 6002,
+      wm_class: "com.mitchellh.ghostty",
+      title: "churn-b",
+      monitor: 1,
+      rect: new Rectangle({ x: 5200, y: 50, width: 2400, height: 2700 }),
+    });
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          children: [
+            {
+              id: 9,
+              wmClass: "com.mitchellh.ghostty",
+              title: "was-left",
+              monitor: 0,
+              frame: { x: 90, y: 40, width: 2500, height: 2800 },
+            },
+          ],
+        },
+        {
+          id: "mo1ws0",
+          children: [
+            {
+              id: 10,
+              wmClass: "com.mitchellh.ghostty",
+              title: "was-right",
+              monitor: 1,
+              frame: { x: 5100, y: 40, width: 2500, height: 2800 },
+            },
+          ],
+        },
+      ],
+    };
+    const live = toLiveForest(portable, createWindowResolver([left, right]));
+    expect(live.monitors[0].children[0].window).toBe(left);
+    expect(live.monitors[1].children[0].window).toBe(right);
+  });
+
   it("forestRichness ranks dual-mon tabs above flat pile", () => {
     const flat = {
       monitors: [

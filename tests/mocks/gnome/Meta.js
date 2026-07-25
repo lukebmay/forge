@@ -50,6 +50,7 @@ export class Window extends withSignals() {
   constructor(params = {}) {
     super();
     this.id = params.id ?? Math.random();
+    this.pid = params.pid ?? params._pid ?? 0;
     this._rect = params.rect ?? new Rectangle();
     // Use 'in' operator to allow null/empty values to be explicitly set
     this.wm_class = "wm_class" in params ? params.wm_class : "MockApp";
@@ -253,6 +254,10 @@ export class Window extends withSignals() {
 
   get_id() {
     return this.id;
+  }
+
+  get_pid() {
+    return this.pid ?? this._pid ?? 0;
   }
 
   get_display() {
