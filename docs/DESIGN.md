@@ -46,6 +46,46 @@ utils `bestMonitorIndexForRect`.
 **Manual reproduce:** `scripts/forge/trigger-idle-lock.zsh` (short idle / DPMS);
 manual Super+Delete is a weak control path.
 
+## Session layout across install/update (disable→enable)
+
+**Problem:** Reinstalling or updating the extension runs `disable()` then
+`enable()`. That **destroys the in-memory tree**. Live T6 snapshots key windows
+by `Meta.Window` object identity — those wrappers die with the old instance —
+so enable re-tracks every app **flat** (equal H/V columns). Dual-head users see
+tabs/splits collapse and windows pile as full-height strips on one head.
+
+**Approach (not full session/workon yet):**
+
+1. On `disable()`, before dropping the tree, write a **portable** forest to
+   `~/.config/forge/config/session-layout.json`: same topology as T6, but window
+   leaves use Mutter `get_id()` (plus optional wm_class/title hints).
+2. On `enable` → `reloadTree`, after flat `trackCurrentWindows`, if the live
+   snapshot is empty, load the file when **fresh** (monotonic clock, same boot,
+   default max age 30m) and **≥50%** of ids still match open windows.
+3. Resolve ids → live `Meta.Window`, `restoreTree`, then **delete** the file.
+
+Stale/post-reboot/low-match files are discarded so a next-day enable does not
+resurrect an old topology. Full declarative session profiles remain the
+`workon` / forge-command path later.
+
+**Tests:** `tests/unit/extension/session-layout.test.js`.
+
+## Tab strip clickability
+
+**Problem:** Clicking group tabs sometimes did nothing until the user first
+clicked the active window’s content.
+
+**Cause:** `updateDecorationLayout` stacked each CON decoration
+`insert_child_below(global focus)`. When focus was elsewhere, the strip sat
+under other actors and missed pointer picks. Tab handlers also only called
+`activate()` without `lastTabFocus` / stacked restack.
+
+**Fix:** Restack each decoration **above that CON’s window actors**; make the
+decoration/tab reactive; `_activateFromTab` sets `lastTabFocus`, raises,
+activates, and calls `updateTabbedFocus` / `updateStackedFocus`.
+
+**Tests:** `tests/regression/bug-tab-click-activate.test.js`.
+
 ## Full in-memory tree snapshot (T6)
 
 **Problem:** Layout-group snapshot only kept outer STACKED/TABBED. Nested H/V
@@ -53,9 +93,9 @@ splits, sibling order, percents, and `userSized` died on `reloadTree` / thrash
 rebuild even when windows rehomed correctly.
 
 **Why full snapshot before disk:** Thrash recovery needs live `Meta.Window` refs
-and current `moNwsW` parents — not EDID keys or a session file. Disk/workon
-can version the same descriptor later; shipping disk first would freeze the
-wrong contract.
+and current `moNwsW` parents — not EDID keys or a long-lived session file.
+Portable session-layout.json is only for short-lived disable→enable; disk/workon
+profiles can version a richer contract later.
 
 **Approach:**
 

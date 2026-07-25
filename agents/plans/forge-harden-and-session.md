@@ -14,11 +14,10 @@
 
 ### Session note (2026-07-25)
 
-Near-term path is **[forge-daily-driver.md](./forge-daily-driver.md)** (OP1).  
-User-facing CLI + `workon` composition: **[forge-command.md](./forge-command.md)**  
-(`workon` design deferred to FC5 after `forge` subcommands exist).  
-Phase 3 below remains the in-process batch runtime sketch; command *shape*
-is owned by forge-command.
+**Session-layout slice shipped (not full Phase 3):** disable saves portable
+topology to `config/session-layout.json`; enable restores when fresh so
+install/update does not flatten dual-head tiles. Full `workon` profiles still
+later. Near-term CLI: **[forge-command.md](./forge-command.md)**.
 ---
 
 ## Goal

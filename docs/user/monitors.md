@@ -90,6 +90,15 @@ overnight idle lock. To force the idle path for testing:
 
 Or via `./scripts/forge/forge-ctl.zsh idle-lock --idle 15`.
 
+### Install / update (disable→enable)
+
+Reinstalling the extension is a different path from blank/wake: the process
+tears down the tree, then rebuilds it. Forge writes a **portable session layout**
+(window ids + splits/tabs/percents) on disable and re-applies it on enable when
+the stamp is still fresh. That keeps dual-head and tab groups from collapsing
+into full-height columns after `./install` while apps stay open. See
+[troubleshooting.md](troubleshooting.md) (“After install / update…”).
+
 If placement is still wrong after wake:
 
 1. Wait a moment for the settle (sub-second).

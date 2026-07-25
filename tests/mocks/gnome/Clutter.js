@@ -73,6 +73,10 @@ export const AnimationMode = {
 export const KEY_Escape = 0xff1b;
 export const EVENT_STOP = true;
 export const EVENT_PROPAGATE = false;
+// Pointer button constants (tab middle-click close, primary activate).
+export const BUTTON_PRIMARY = 1;
+export const BUTTON_MIDDLE = 2;
+export const BUTTON_SECONDARY = 3;
 
 // Import vi from vitest for spying
 import { vi } from "vitest";
@@ -112,6 +116,9 @@ export default {
   KEY_Escape,
   EVENT_STOP,
   EVENT_PROPAGATE,
+  BUTTON_PRIMARY,
+  BUTTON_MIDDLE,
+  BUTTON_SECONDARY,
   Seat,
   Backend,
   get_default_backend,

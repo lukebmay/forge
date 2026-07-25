@@ -41,6 +41,34 @@ To **reproduce** idle blank/wake without waiting overnight:
 ./scripts/forge/trigger-idle-lock.zsh --idle-and-dpms --idle-delay=10
 ```
 
+## After install / update, tiles flatten (full-height columns)
+
+Extension disable→enable used to wipe the in-memory tree and re-track every
+window flat. This fork **saves a short-lived session layout** on disable
+(`~/.config/forge/config/session-layout.json`, keyed by window id) and restores
+it on the next enable when the file is fresh (same boot, roughly ≤30 minutes)
+and most windows still match.
+
+- Keep apps open across install/update so ids still match.
+- A cold login / reboot correctly starts without that file (or rejects it as
+  stale) — that is intentional, not a failed restore.
+- Full named layouts / `workon` profiles are a separate path (CLI / session
+  scripting), not this auto-file.
+
+If restore did not apply, retile once; the next install while apps stay open
+should preserve topology.
+
+## Tab click does nothing until I focus the window first
+
+Group tab strips are restacked above that group's window actors and should
+activate on click without a prior click into the content. If a tab still ignores
+clicks:
+
+1. Confirm `showtab-decoration-enabled` and that the group is TABBED/STACKED.
+2. Toggle layout debug overlay (`Ctrl+Super+d`) to confirm which CON owns the strip.
+3. After a Shell reload, click the tab again; if it still fails, note whether
+   focus was on another monitor and capture `journalctl -e -u gnome-shell`.
+
 ## Focus borders / colors look stock after install
 
 jcrussell stores colors in `~/.config/forge/stylesheet/forge/stylesheet.css`, not

@@ -10,9 +10,10 @@
 
 ### Session note (2026-07-25)
 
-**T7 done (A/B AGREE).** `monitor-identity.js` fingerprints + live map; T6
-stableKey on monDesc; soft rehome key-first; snapshot before map refresh.
-`npm test` 1741. Phase E complete. **Next: FC\*** ([forge-command.md](./forge-command.md)).
+**Install thrash + tab click (A/B AGREE).** Portable session-layout.json on
+disable→enable (id-keyed forest, 30m / same-boot / ≥50% match); decoration
+restack above group actors; `_activateFromTab`. `npm test` 1848. DESIGN.md.
+**Next: FC\*** ([forge-command.md](./forge-command.md)); live verify on black.
 
 **T0–T5 + OP1 + T6 + T7 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 ---
