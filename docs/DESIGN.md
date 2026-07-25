@@ -167,7 +167,7 @@ easy to poison with floats (Guake) and ignored per-monitor dock intent.
 `new-window-placement=window-actual` remains an escape hatch for restore geometry;
 default path is LFT policy. `lastFocusedWindow` still exists for pointer helpers.
 
-## Session DBus + `forge` CLI (FC0–FC1)
+## Session DBus + `forge` CLI (FC0–FC2)
 
 **Problem:** Scripts and future `workon` need a stable control plane. E2E’s
 `Shell.Eval` / `_forgeTestBridge` is fine for tests, not for production
@@ -183,12 +183,14 @@ scripting (Eval is disabled or unsafe on real sessions).
 2. **Methods:** `Ping()` health JSON (`ok`, uuid, versionName, `apiVersion`);
    `GetTree(options_json)` → plain-JSON forest (no live `Meta.Window` refs);
    **FC1:** `Focus(s)`, `Swap(s,s)`, `Move(s,s)` → `{ok:true}` or
-   `{error, candidates?}`. Never throw across DBus.
+   `{error, candidates?}`. **FC2:** `PlaceNext(options_json)` → one-shot
+   place hint for the next matching map. Never throw across DBus.
 3. **Pure projection** in `lib/extension/tree-query.js`; **selectors** in
-   `lib/extension/tile-select.js` (unit-tested); export glue in
-   `session-api.js` + wire from `extension.js`.
+   `lib/extension/tile-select.js`; **place hints** in `place-hint.js`
+   (unit-tested); export glue in `session-api.js` + wire from `extension.js`.
 4. **User CLI** `scripts/forge/forge` (`ping` / `tree` / `focus` / `swap` /
-   `move`) talks DBus via PyGObject or `gdbus` — distinct from `forge-ctl`.
+   `move` / `launch`) talks DBus via PyGObject or `gdbus` — distinct from
+   `forge-ctl`.
 
 ### Tile selector grammar (FC1)
 
@@ -212,10 +214,24 @@ Options: plain string, or JSON `{"selector":"…","first":true}`. **N>1** →
 dest in dest’s parent (not `swapPairs`). Dest CON/MONITOR (path) →
 `appendChild` + `resetSiblingPercent`. **Swap** always uses `tree.swapPairs`.
 
-`apiVersion` in Ping is **2** once Focus/Swap/Move exist (`TREE_QUERY` stays 1
-as `queryApiVersion`).
+### Launch + PlaceNext (FC2)
 
-Later FCs: launch, settings, RunSteps; no Shell.Eval in that path.
+**Why a pre-map hint:** A CLI cannot reparent a window that does not exist
+yet. `PlaceNext` queues a one-shot `{ wmClass?, monitor?, treePath?,
+attachSelector?, expiresAt }` on the WindowManager. On `trackWindow`,
+`_planOpenAppPlacement` **consumes** a matching hint (exact `wm_class`) and
+overrides OP1 LFT home/attach. Default `forge launch` (no place flags) sets
+no hint — OP1 LFT attach applies as usual.
+
+**CLI:** `forge launch <app>` prefers `gio launch` / `gtk-launch` for
+`.desktop` ids, else spawns argv. With `--monitor` / `--tree-path`, calls
+`PlaceNext` before spawn, then polls `GetTree` for `--wm-class` unless
+`--no-wait`. Already-mapped: `forge move` after wait (no PlaceNext).
+
+`apiVersion` in Ping is **3** once PlaceNext exists (`TREE_QUERY` stays 1 as
+`queryApiVersion`; tile-select grammar still version 2).
+
+Later FCs: settings, RunSteps; no Shell.Eval in that path.
 
 ## User stylesheet vs `make dev` (production flag)
 

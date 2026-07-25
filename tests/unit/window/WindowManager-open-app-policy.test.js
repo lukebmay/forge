@@ -126,6 +126,89 @@ describe("OP1 open-app placement policy", () => {
     });
   });
 
+  describe("FC2 PlaceNext hint prefers over LFT", () => {
+    beforeEach(() => setup());
+
+    it("matching place hint homes to explicit monitor, not global LFT mon", () => {
+      const lft = tileOn(0, { id: "lft0" });
+      wm().movePointerWith(lft.nodeWindow);
+      expect(wm().lftMru.globalHead()).toBe(lft.nodeWindow);
+
+      const placed = wm().placeNext({
+        wmClass: "PlacedApp",
+        monitor: 1,
+        expiresAt: Date.now() + 60_000,
+      });
+      expect(placed.ok).toBe(true);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "placed-win",
+        wm_class: "PlacedApp",
+      });
+      wm().trackWindow(null, metaWindow);
+
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      // Hint consumed (one-shot)
+      expect(wm()._pendingPlaceHints.length).toBe(0);
+    });
+
+    it("mismatched class falls through to LFT", () => {
+      const lft = tileOn(1, { id: "lft1" });
+      wm().movePointerWith(lft.nodeWindow);
+
+      wm().placeNext({
+        wmClass: "OtherApp",
+        monitor: 0,
+        expiresAt: Date.now() + 60_000,
+      });
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "no-match",
+        wm_class: "NotOther",
+      });
+      wm().trackWindow(null, metaWindow);
+
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      expect(wm()._pendingPlaceHints.length).toBe(1);
+    });
+
+    it("treePath attach uses path window as insert target on that mon", () => {
+      const a = tileOn(1, { id: "path-a" });
+      tileOn(1, { id: "path-b" });
+      // Global LFT is mon 0 empty of focus — set LFT on mon 0 so default would differ
+      const other = tileOn(0, { id: "other" });
+      wm().movePointerWith(other.nodeWindow);
+
+      const mon1 = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
+      const monId = mon1.nodeValue; // mo1ws0
+      // children under mon: window a at 0, window b at 1
+      wm().placeNext({
+        wmClass: "PathApp",
+        treePath: `${monId}/0`,
+        expiresAt: Date.now() + 60_000,
+      });
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "path-new",
+        wm_class: "PathApp",
+      });
+      wm().trackWindow(null, metaWindow);
+
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      // Inserted after path target (sibling of a)
+      expect(node.parentNode).toBe(a.nodeWindow.parentNode);
+    });
+  });
+
   describe("dock sticky mon + LFT(m)", () => {
     beforeEach(() => setup());
 

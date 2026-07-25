@@ -15,9 +15,18 @@ migrate).
 ./scripts/forge/forge tree          # pretty JSON forest
 ./scripts/forge/forge tree --monitor=0 --compact
 ./scripts/forge/forge tree --workspace=0 --max-depth=3
+./scripts/forge/forge focus 'class:Google-chrome'
+./scripts/forge/forge launch google-chrome.desktop --wm-class=Google-chrome
+./scripts/forge/forge launch ghostty --wm-class=com.mitchellh.ghostty --monitor=1
+./scripts/forge/forge launch foo.desktop --wm-class=Foo --tree-path=mo0ws0/0 --timeout=20000
 ```
 
-Deps: `python3` + `python3-gi` (preferred) or `gdbus`. Extension must be enabled.
+`launch` default placement: OP1 LFT attach (no PlaceNext). `--monitor` /
+`--tree-path` set a one-shot place hint before spawn. Wait needs `--wm-class`
+(or use `--no-wait`). Already-mapped windows: `forge move` after they appear.
+
+Deps: `python3` + `python3-gi` (preferred) or `gdbus`; `gio` or `gtk-launch`
+for desktop ids. Extension must be enabled for DBus / wait / PlaceNext.
 
 Both builds share UUID `forge@jmmaranan.com`, so installs **replace each other
 in place**. Always backup first.

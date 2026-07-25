@@ -1,0 +1,139 @@
+import { describe, it, expect } from "vitest";
+import {
+  matchesPlaceHint,
+  metaWmClass,
+  normalizePlaceHint,
+  pruneExpiredPlaceHints,
+  findMatchingPlaceHintIndex,
+  consumePlaceHint,
+  enqueuePlaceHint,
+  resolvePlaceMonitorIndex,
+  PLACE_HINT_TTL_MS,
+  PLACE_HINT_MAX,
+} from "../../../lib/extension/place-hint.js";
+
+describe("metaWmClass", () => {
+  it("reads get_wm_class / wmClass / wm_class", () => {
+    expect(metaWmClass({ get_wm_class: () => "Foo" })).toBe("Foo");
+    expect(metaWmClass({ wmClass: "Bar" })).toBe("Bar");
+    expect(metaWmClass({ wm_class: "Baz" })).toBe("Baz");
+    expect(metaWmClass(null)).toBeNull();
+    expect(metaWmClass({})).toBeNull();
+  });
+});
+
+describe("matchesPlaceHint", () => {
+  const now = 1_000_000;
+
+  it("matches when wmClass exact and not expired", () => {
+    const hint = { wmClass: "Google-chrome", expiresAt: now + 1000 };
+    expect(matchesPlaceHint({ wm_class: "Google-chrome" }, hint, now)).toBe(true);
+    expect(matchesPlaceHint({ get_wm_class: () => "Google-chrome" }, hint, now)).toBe(true);
+  });
+
+  it("rejects class mismatch", () => {
+    const hint = { wmClass: "A", expiresAt: now + 1000 };
+    expect(matchesPlaceHint({ wm_class: "B" }, hint, now)).toBe(false);
+  });
+
+  it("wildcard (no wmClass) matches any", () => {
+    const hint = { monitor: 1, expiresAt: now + 1000 };
+    expect(matchesPlaceHint({ wm_class: "Anything" }, hint, now)).toBe(true);
+    expect(matchesPlaceHint({}, hint, now)).toBe(true);
+  });
+
+  it("rejects expired", () => {
+    const hint = { wmClass: "A", expiresAt: now - 1 };
+    expect(matchesPlaceHint({ wm_class: "A" }, hint, now)).toBe(false);
+  });
+
+  it("rejects null hint", () => {
+    expect(matchesPlaceHint({ wm_class: "A" }, null, now)).toBe(false);
+  });
+});
+
+describe("normalizePlaceHint", () => {
+  const now = 5_000;
+
+  it("requires placement field", () => {
+    const r = normalizePlaceHint({ wmClass: "X" }, now);
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/monitor|treePath|attachSelector/);
+  });
+
+  it("builds hint with ttl default", () => {
+    const r = normalizePlaceHint({ monitor: 1, wmClass: "X" }, now);
+    expect(r.ok).toBe(true);
+    expect(r.hint.monitor).toBe(1);
+    expect(r.hint.wmClass).toBe("X");
+    expect(r.hint.expiresAt).toBe(now + PLACE_HINT_TTL_MS);
+  });
+
+  it("strips path: prefix on treePath", () => {
+    const r = normalizePlaceHint({ treePath: "path:mo0ws0/0" }, now);
+    expect(r.ok).toBe(true);
+    expect(r.hint.treePath).toBe("mo0ws0/0");
+  });
+
+  it("honors expiresAt over ttl", () => {
+    const r = normalizePlaceHint({ monitor: 0, expiresAt: 999, ttlMs: 1 }, now);
+    expect(r.ok).toBe(true);
+    expect(r.hint.expiresAt).toBe(999);
+  });
+});
+
+describe("queue consume", () => {
+  const now = 10_000;
+
+  it("prune drops expired", () => {
+    const q = [
+      { monitor: 0, expiresAt: now - 1 },
+      { monitor: 1, expiresAt: now + 100 },
+    ];
+    pruneExpiredPlaceHints(q, now);
+    expect(q).toHaveLength(1);
+    expect(q[0].monitor).toBe(1);
+  });
+
+  it("prefer specific wmClass over wildcard (LIFO)", () => {
+    const q = [
+      { monitor: 0, expiresAt: now + 100 }, // wildcard older
+      { wmClass: "App", monitor: 1, expiresAt: now + 100 },
+    ];
+    const idx = findMatchingPlaceHintIndex(q, { wm_class: "App" }, now);
+    expect(idx).toBe(1);
+    const h = consumePlaceHint(q, { wm_class: "App" }, now);
+    expect(h.monitor).toBe(1);
+    expect(q).toHaveLength(1);
+    expect(q[0].monitor).toBe(0);
+  });
+
+  it("does not steal mismatched class for specific hints", () => {
+    const q = [{ wmClass: "A", monitor: 0, expiresAt: now + 100 }];
+    expect(consumePlaceHint(q, { wm_class: "B" }, now)).toBeNull();
+    expect(q).toHaveLength(1);
+  });
+
+  it("enqueue caps and prunes", () => {
+    const q = [];
+    for (let i = 0; i < PLACE_HINT_MAX + 3; i++) {
+      enqueuePlaceHint(q, { monitor: i, expiresAt: now + 1000 }, now);
+    }
+    expect(q.length).toBe(PLACE_HINT_MAX);
+    expect(q[0].monitor).toBe(3);
+  });
+});
+
+describe("resolvePlaceMonitorIndex", () => {
+  it("parses number, moN, moNwsW, primary, stableKey", () => {
+    expect(resolvePlaceMonitorIndex(2)).toBe(2);
+    expect(resolvePlaceMonitorIndex("1")).toBe(1);
+    expect(resolvePlaceMonitorIndex("mo3")).toBe(3);
+    expect(resolvePlaceMonitorIndex("mo2ws0")).toBe(2);
+    expect(resolvePlaceMonitorIndex("primary", { primaryMonitor: 1 })).toBe(1);
+    const byKey = new Map([["conn:DP-1", 0]]);
+    expect(resolvePlaceMonitorIndex("conn:DP-1", { liveMap: { byKey } })).toBe(0);
+    expect(resolvePlaceMonitorIndex("nope")).toBe(-1);
+    expect(resolvePlaceMonitorIndex(null)).toBe(-1);
+  });
+});
