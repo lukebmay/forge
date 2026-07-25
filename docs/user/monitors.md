@@ -48,13 +48,27 @@ Hot-plugging a monitor is handled (the tree adds/repairs monitor nodes on
 `monitors-changed`); if a layout looks wrong after a display change, reload with
 `Super+Shift+r` and see [troubleshooting.md](troubleshooting.md).
 
+## Identity boundary (gdisplays vs Forge)
+
+| Tool | Responsibility |
+| --- | --- |
+| **shellrc `gdisplays`** | Physical display config: connectors, modes, primary, arrangement (`monitors.xml`). Named scenes and EDID-style identity live there. |
+| **Forge** | Tiling **tree** per logical monitor. After thrash or index renumber, Forge remaps tree structure with best-effort **stable output keys** (connector name when Shell exposes it, else geometry). It does **not** call gdisplays or rewrite display config. |
+
+If heads themselves are wrong (missing monitor, wrong primary, swapped cables at
+the compositor level), fix with `gdisplays load <scene>` first, then retile
+(`Super+Shift+r` if needed). Forge cannot invent EDID identity that Mutter did
+not expose to GJS.
+
 ## Blank / wake and display thrash
 
 After **idle auto-lock**, DPMS blank, or hybrid-GPU re-probe, GNOME can fire a
 burst of `workareas-changed` while Mutter briefly reassigns windows to the
 primary head. Forge **soft-rehomes** on a short settle: it maps each tiled window
-back to the monitor that best matches its last quiet geometry (intersection area)
-and re-parents tree nodes without a full wipe when structure is still consistent.
+back using last-quiet **stable output keys** when available, then geometry
+intersection, and re-parents tree nodes without a full wipe when structure is
+still consistent. Forest snapshots tag monitors with those keys so restore
+survives Mutter index renumber of the same physical heads.
 
 Manual lock (`Super+Delete` / lock now) often **does not** thrash the same way as
 overnight idle lock. To force the idle path for testing:
@@ -81,4 +95,5 @@ If placement is still wrong after wake:
 1. Wait a moment for the settle (sub-second).
 2. Reload Forge config: `Super+Shift+r`.
 3. If connectors themselves are wrong (wrong primary, missing head), fix displays
-   first with shellrc `gdisplays load <scene>`, then retile.
+   first with shellrc `gdisplays load <scene>` (gdisplays owns that layer), then
+   retile in Forge.

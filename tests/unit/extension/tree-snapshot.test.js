@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   SNAPSHOT_VERSION,
   captureNode,
+  captureMonitor,
   collectWindows,
   rebuildNode,
   monitorTopologyMatches,
@@ -11,7 +12,9 @@ import {
   extractOuterLayoutGroups,
   resolveTargetMonitor,
   applyMonitorSnapshot,
+  restoreForestIfNeeded,
 } from "../../../lib/extension/tree-snapshot.js";
+import { buildLiveMap } from "../../../lib/extension/monitor-identity.js";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { createTreeFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
 import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
@@ -501,5 +504,181 @@ describe("tree-snapshot cross-mon soft-rehome recovery", () => {
     expect(monitor.childNodes).toHaveLength(1);
     expect(monitor.childNodes[0].nodeValue).toBe(w0);
     expect(monitor.childNodes[0].percent).toBeCloseTo(1);
+  });
+});
+
+/**
+ * T7: monDesc.stableKey survives index renumber when connectors flip.
+ */
+describe("tree-snapshot stableKey remap (T7)", () => {
+  let ctx;
+
+  const dualGeoms = [
+    { x: 0, y: 0, width: 1920, height: 1080 },
+    { x: 1920, y: 0, width: 1920, height: 1080 },
+  ];
+
+  beforeEach(() => {
+    ctx = createTreeFixture({
+      globals: {
+        display: {
+          monitorCount: 2,
+          monitorGeometries: dualGeoms,
+        },
+      },
+    });
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
+  });
+
+  function makeWindow(i, monIdx) {
+    return createMockWindow({
+      id: `t7-xmon-${i}`,
+      monitor: monIdx,
+      rect: new Rectangle({
+        x: monIdx * 1920,
+        y: 0,
+        width: 900,
+        height: 900,
+      }),
+    });
+  }
+
+  function createCon(parentValue, layout) {
+    const con = ctx.tree.createNode(parentValue, NODE_TYPES.CON, new Bin());
+    con.layout = layout;
+    return con;
+  }
+
+  it("captureMonitor includes stableKey from liveMap", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const w = makeWindow(0, 0);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, w);
+    const liveMap = buildLiveMap([
+      { index: 0, connector: "DP-1", x: 0, y: 0, width: 1920, height: 1080 },
+      { index: 1, connector: "HDMI-1", x: 1920, y: 0, width: 1920, height: 1080 },
+    ]);
+    const desc = captureMonitor(monitor, { liveMap });
+    expect(desc.id).toBe(monitor.nodeValue);
+    expect(desc.stableKey).toBe("conn:DP-1");
+  });
+
+  it("resolveTargetMonitor prefers stableKey when indices flip", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+
+    // Quiet: tabs on mon0 (DP-1)
+    const tabs = createCon(mon0.nodeValue, LAYOUT_TYPES.TABBED);
+    const w0 = makeWindow(0, 0);
+    const w1 = makeWindow(1, 0);
+    const n0 = ctx.tree.createNode(tabs.nodeValue, NODE_TYPES.WINDOW, w0);
+    const n1 = ctx.tree.createNode(tabs.nodeValue, NODE_TYPES.WINDOW, w1);
+
+    const monDesc = {
+      id: mon0.nodeValue, // mo0ws0 — stale after renumber
+      stableKey: "conn:DP-1",
+      layout: LAYOUT_TYPES.HSPLIT,
+      children: [
+        {
+          layout: LAYOUT_TYPES.TABBED,
+          percent: 0,
+          userSized: false,
+          children: [
+            { window: w0, percent: 0, userSized: false },
+            { window: w1, percent: 0, userSized: false },
+          ],
+        },
+      ],
+    };
+
+    // After renumber: DP-1 is index 1. Soft rehome moved windows to mon1.
+    mon1.appendChild(n0);
+    mon1.appendChild(n1);
+
+    const liveMap = buildLiveMap([
+      { index: 0, connector: "HDMI-1", x: 1920, y: 0, width: 1920, height: 1080 },
+      { index: 1, connector: "DP-1", x: 0, y: 0, width: 1920, height: 1080 },
+    ]);
+
+    const ctxSnap = {
+      findMonitor: (id) => ctx.tree.findNode(id),
+      findNode: (w) => ctx.tree.findNode(w),
+      findMonitorByStableKey: (stableKey, monDescId) => {
+        const idx = liveMap.byKey.get(stableKey);
+        if (idx === undefined) return null;
+        // workspace 0
+        return ctx.tree.findNode(`mo${idx}ws0`);
+      },
+    };
+
+    // mon0 still exists but is empty / wrong head; cohort lives under mon1.
+    expect(resolveTargetMonitor(monDesc, ctxSnap)).toBe(mon1);
+  });
+
+  it("restoreForestIfNeeded uses stableKey when monDesc.id is stale", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon0.layout = LAYOUT_TYPES.HSPLIT;
+    mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+    const tabs = createCon(mon0.nodeValue, LAYOUT_TYPES.TABBED);
+    const w0 = makeWindow(0, 0);
+    const w1 = makeWindow(1, 0);
+    const n0 = ctx.tree.createNode(tabs.nodeValue, NODE_TYPES.WINDOW, w0);
+    const n1 = ctx.tree.createNode(tabs.nodeValue, NODE_TYPES.WINDOW, w1);
+
+    const snap = {
+      version: SNAPSHOT_VERSION,
+      monitors: [
+        {
+          id: mon0.nodeValue,
+          stableKey: "conn:DP-1",
+          layout: LAYOUT_TYPES.HSPLIT,
+          children: [
+            {
+              layout: LAYOUT_TYPES.TABBED,
+              percent: 0,
+              userSized: false,
+              lastTabFocus: w0,
+              children: [
+                { window: w0, percent: 0, userSized: false },
+                { window: w1, percent: 0, userSized: false },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    // Flatten under mon1 (new index for DP-1 after renumber)
+    mon1.appendChild(n0);
+    mon1.appendChild(n1);
+
+    const liveMap = buildLiveMap([
+      { index: 0, connector: "HDMI-1" },
+      { index: 1, connector: "DP-1" },
+    ]);
+
+    restoreForestIfNeeded(snap, {
+      findMonitor: (id) => ctx.tree.findNode(id),
+      findNode: (w) => ctx.tree.findNode(w),
+      findMonitorByStableKey: (stableKey) => {
+        const idx = liveMap.byKey.get(stableKey);
+        return idx === undefined ? null : ctx.tree.findNode(`mo${idx}ws0`);
+      },
+      createCon: () => {
+        const c = new Node(NODE_TYPES.CON, new Bin());
+        c.settings = ctx.tree.settings;
+        return c;
+      },
+      tabbedLayout: LAYOUT_TYPES.TABBED,
+    });
+
+    const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
+    expect(tabbed).toHaveLength(1);
+    expect(tabbed[0].childNodes.map((c) => c.nodeValue)).toEqual([w0, w1]);
+    expect(mon1.contains(tabbed[0])).toBe(true);
   });
 });

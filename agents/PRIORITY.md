@@ -5,17 +5,17 @@
 
 ## Next session focus
 
-**T7 — stable mon roles / output keys** (connector remap for thrash). Then
-**forge-command** FC\*.
+**FC0–FC4 — `forge` CLI** (DBus control plane). See [forge-command.md](./plans/forge-command.md).
+FC5 `workon` deferred until subcommands exist.
 
 | Doc | Role |
 | --- | --- |
-| [forge-daily-driver.md](./plans/forge-daily-driver.md) | T7 next |
-| [forge-command.md](./plans/forge-command.md) | `forge` CLI; workon = FC5 deferred |
+| [forge-command.md](./plans/forge-command.md) | **Next** — FC0+ |
+| [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 done |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome done; batch runtime sketch |
-| Task | create `agents/tasks/forge-daily-driver_t7-stable-outputs.md` |
+| Task | create `agents/tasks/forge-command_fc0-….md` per plan |
 
-**T0–T5 + OP1 + T6 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
+**T0–T5 + OP1 + T6 + T7 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 
 ## Queue
 
@@ -24,8 +24,8 @@
 | P1 | Daily-driver T0–T5 | **Done** |
 | P1 | OP1 open-app placement | **Done** |
 | P1 | T6 full tree snapshot | **Done** |
-| **P1** | **T7 stable mon roles** | **Next** |
-| later | FC0–FC4 `forge` CLI | After T6/T7; see forge-command |
+| P1 | T7 stable mon roles | **Done** |
+| **P1** | **FC0–FC4 `forge` CLI** | **Next** |
 | later | FC5 `workon` composition | **Deferred design** until forge CLI real |
 | optional | OP-opt tiny-pane tab fallback | After P1s; notes in daily-driver |
 | later | T9 multi-line tabs | After T1 proven |
@@ -34,6 +34,7 @@
 
 ## Related completed
 
+- [T7 stable mon roles](./plans/forge-daily-driver/completed/forge-daily-driver_t7-stable-outputs.md)
 - [T6 full tree snapshot](./plans/forge-daily-driver/completed/forge-daily-driver_t6-full-tree-snapshot.md)
 - [OP1 open-app placement](./plans/forge-daily-driver/completed/forge-daily-driver_op1-open-app-policy.md)
 - [T5 keybind system](./plans/forge-daily-driver/completed/forge-daily-driver_t5-keybind-system.md)

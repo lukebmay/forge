@@ -12,24 +12,23 @@ piles under one monitor node and stays there after both heads return.
 
 **Approach:**
 
-1. On quiet renders, snapshot per-window **last-good** `{ monitorIndex, frame }`
-   from the tree (not thrashy Meta).
+1. On quiet renders, snapshot per-window **last-good**
+   `{ monitorIndex, stableKey?, frame }` from the tree (not thrashy Meta).
 2. On `workareas-changed` (with windows, no workspace add/remove), set a thrash
    pending flag and debounce (~300ms; hybrid GPU thrash often exceeds 200ms).
    While pending, ignore `window-entered-monitor` rehomes.
-3. On settle: resolve each window’s target monitor by **max intersection area**
-   of last-good frame with current monitor geometries.
+3. On settle: **snapshot forest first** (stableKeys from pre-refresh map), then
+   refresh the T7 identity map, then resolve each window’s target monitor by
+   **stableKey** → max intersection of last-good frame → remapped index → Meta.
 4. **Tab/stack survival (T3):** majority-align outermost STACKED/TABBED members
    onto one target so `_containerFullyMigrates` moves the CON as a unit; dead
    siblings no longer block full migration.
 5. **Full tree snapshot (T6):** before rehome, capture the forest (H/V + tabs +
-   order + percent/`userSized` + window refs). After reconcile,
-   `restoreTreeIfNeeded` — skip intact mon topology (re-apply percents only),
-   rebuild when flattened/peeled. Target mon is **remapped** to where the
-   surviving cohort currently lives (majority mon) so empty snapshot-mon
-   cohorts still regroup mon-agnostically (layout-group style). `reloadTree`
-   uses force `restoreTree` with a **fresh** snapshot around its own wipe —
-   not the soft-rehome capture.
+   order + percent/`userSized` + window refs + optional mon `stableKey`). After
+   reconcile, `restoreTreeIfNeeded` — skip intact mon topology (re-apply percents
+   only), rebuild when flattened/peeled. Target mon is **remapped** via stableKey
+   when `moN` is stale, else majority mon of survivors. `reloadTree` uses force
+   `restoreTree` with a **fresh** snapshot around its own wipe.
 6. `move_to_monitor` then one `_reconcileWindowHomes()` + restore + render.
 7. If a target `moNwsW` node is missing → fall back to `reloadTree` (fresh
    snapshot inside that path).
@@ -37,11 +36,12 @@ piles under one monitor node and stays there after both heads return.
 **Live proof (2026-07-24, black):** idle auto-lock + DPMS → unlock kept dual-head
 placement and a two-window tab pair; retab after wake did not abort Shell.
 
-**Not done here:** stable EDID/connector IDs (H2/M1 if still needed), gdisplays
-connector remap (shellrc), session layout apply / disk (T7).
+**Related:** T7 stable output keys (`monitor-identity.js`); gdisplays owns
+monitors.xml identity in shellrc — Forge does not import it.
 
 **Tests:** `tests/regression/bug-h1-soft-rehome-workareas-thrash.test.js`,
-`tests/unit/extension/tree-snapshot.test.js`, utils `bestMonitorIndexForRect`.
+`tests/unit/extension/tree-snapshot.test.js`, `monitor-identity.test.js`,
+utils `bestMonitorIndexForRect`.
 
 **Manual reproduce:** `scripts/forge/trigger-idle-lock.zsh` (short idle / DPMS);
 manual Super+Delete is a weak control path.
@@ -54,8 +54,8 @@ rebuild even when windows rehomed correctly.
 
 **Why full snapshot before disk:** Thrash recovery needs live `Meta.Window` refs
 and current `moNwsW` parents — not EDID keys or a session file. Disk/workon
-(T7+) can version the same descriptor later; shipping disk first would freeze
-the wrong contract.
+can version the same descriptor later; shipping disk first would freeze the
+wrong contract.
 
 **Approach:**
 
@@ -63,15 +63,51 @@ the wrong contract.
   descriptors → recursive CON/WINDOW). Tree thin-wraps (`snapshotTree` /
   `restoreTree` / `restoreTreeIfNeeded`); creates fresh `St.Bin` CONs on rebuild.
 - **Target mon remap:** `resolveTargetMonitor` prefers the snapshot mon when
-  survivors still live there; otherwise majority mon of survivors. Mixed mons
-  (foreign windows) rebuild only the cohort in place; pure mon full-replaces.
-  Empty CONs left on the abandoned mon are pruned.
+  survivors still live there; when `moN` is stale, **stableKey** (T7) before pure
+  majority; else majority mon of survivors. Mixed mons (foreign windows) rebuild
+  only the cohort in place; pure mon full-replaces. Empty CONs left on the
+  abandoned mon are pruned.
 - Cohort rule: only windows under the resolved target mon that appear in the
   monDesc. Missing windows collapse (no single-child CONs). Mon-level and CON
   percents renormalized after collapse. No blanket `resetSiblingPercent` wipe.
 - Layout-group APIs remain for forge-bqa callers; capture/rebuild share the pure
   helpers (descriptors now include percent/userSized).
 - LFT: after restore, re-touch focused tile when present.
+
+## Stable monitor output keys (T7)
+
+**Problem:** Tree nodes and forest snapshots key monitors as `mo${index}ws${ws}`.
+After hybrid thrash / connector renumber, the same physical head can get a new
+index → soft rehome and T6 restore attach structure to the wrong monitor.
+
+**Boundary (do not blur):**
+
+| Layer | Owns |
+| --- | --- |
+| **gdisplays** (shellrc) | monitors.xml, EDID/vendor/serial, named scenes, connector remap |
+| **Forge** | Window tree on **logical** outputs; best-effort stableKey → current index |
+
+Forge must **not** import Python, parse EDID, or write monitors.xml.
+
+**Approach:**
+
+1. Pure `lib/extension/monitor-identity.js`: fingerprint live monitor fields into
+   a stable string key; build `stableKey ↔ index` maps; remap old index through
+   previous fingerprints.
+2. **Key formats:** `conn:DP-1` (prefer connector from Shell layoutManager when
+   present) → `name:…` → `geom:x,y,w,h[#primary]` (index only for collisions).
+3. Thin capture via `MonitorManager.collectLiveMonitorsInfo` + optional
+   `Main.layoutManager.monitors` fields; refresh on enable, soft-rehome settle,
+   and `layoutManager::monitors-changed`.
+4. T6 mon descriptors keep `id: moNwsW` and add optional `stableKey`.
+   `resolveTargetMonitor` uses `findMonitorByStableKey` when index id is stale.
+5. Last-good homes store `stableKey` so soft rehome survives renumber even when
+   geometry intersection is ambiguous.
+
+**Not done:** full EDID parity with gdisplays; disk session profiles / workon.
+
+**Tests:** `tests/unit/extension/monitor-identity.test.js`, stableKey cases in
+`tree-snapshot.test.js`.
 
 ## Daily-driver product locks (2026-07-24)
 

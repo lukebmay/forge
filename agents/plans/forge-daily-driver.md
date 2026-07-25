@@ -10,12 +10,11 @@
 
 ### Session note (2026-07-25)
 
-**T6 done (A/B AGREE after rework).** Full forest snapshot
-(`lib/extension/tree-snapshot.js`); mon-agnostic remap for soft rehome;
-percents/`userSized` round-trip; layout-group APIs preserved. `npm test` 1725.
-**Next: T7** stable mon roles / output keys.
+**T7 done (A/B AGREE).** `monitor-identity.js` fingerprints + live map; T6
+stableKey on monDesc; soft rehome key-first; snapshot before map refresh.
+`npm test` 1741. Phase E complete. **Next: FC\*** ([forge-command.md](./forge-command.md)).
 
-**T0–T5 + OP1 + T6 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
+**T0–T5 + OP1 + T6 + T7 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 ---
 
 ## Goals
@@ -91,20 +90,20 @@ T4 sizing policy (equalize / userSized)
         ├──► OP1 open-app placement policy  [done]
         │         │
         │         ▼
-        ├──► T6 full in-memory tree snapshot  [A rework — B re-verify]
+        ├──► T6 full in-memory tree snapshot  [done]
         │         │
         │         ▼
-        │    T7 stable output keys / mon roles  ◄── NEXT after T6 AGREE
+        │    T7 stable output keys / mon roles  [done]
         │         │
         │         ▼
-        │    FC* forge CLI  (see forge-command.md)  then optional workon (FC5)
+        │    FC* forge CLI  (see forge-command.md)  ◄── NEXT
         │
         ├──► OP-opt tiny-pane / tab fallback  (optional; after P1s)
         │
         └──► T9 unified multi-line tabs  (after T1 solid; optional stack return)
 ```
 
-**Agent order:** T6 (B verify) → T7 → FC0… → (T9 / OP-opt anytime after higher pri).
+**Agent order:** FC0… (forge-command) → (T9 / OP-opt anytime after higher pri).
 ---
 
 ## Task table
@@ -119,8 +118,8 @@ T4 sizing policy (equalize / userSized)
 | **T5** | [completed/forge-daily-driver_t5-keybind-system.md](./forge-daily-driver/completed/forge-daily-driver_t5-keybind-system.md) | **Done** | — (soft) | M–L | Safe defaults; presets (vim / safe); save/load profiles |
 | **OP1** | [completed/forge-daily-driver_op1-open-app-policy.md](./forge-daily-driver/completed/forge-daily-driver_op1-open-app-policy.md) | **Done** | T4 | M | Dock sticky mon; global+per-mon LFT MRU; tab-after; aspect split; focus-on-create |
 | **T6** | [completed/forge-daily-driver_t6-full-tree-snapshot.md](./forge-daily-driver/completed/forge-daily-driver_t6-full-tree-snapshot.md) | **Done** | T3; OP1 preferred | M | In-memory full tree for thrash restore |
-| **T7** | `agents/tasks/forge-daily-driver_t7-stable-outputs.md` | **Next** | T6 | M | Connector/stable keys; remap layer (gdisplays-inspired) |
-| **FC\*** | [forge-command.md](./forge-command.md) | Later | OP1; T6–T7 | L | `forge` CLI + DBus; workon = FC5 deferred |
+| **T7** | [completed/forge-daily-driver_t7-stable-outputs.md](./forge-daily-driver/completed/forge-daily-driver_t7-stable-outputs.md) | **Done** | T6 | M | Connector/stable keys; remap layer (gdisplays-inspired) |
+| **FC\*** | [forge-command.md](./forge-command.md) | **Next** | OP1; T6–T7 | L | `forge` CLI + DBus; workon = FC5 deferred |
 | **OP-opt** | `agents/tasks/forge-daily-driver_op-opt-tiny-pane-tab.md` | Optional | after OP1 + P1s | S | Brainstorm/implement min-edge tab fallback (see notes) |
 | **T9** | multi-line tabs North Star | Later | T1 proven | L | One group chrome; max_tabs_per_line |
 
