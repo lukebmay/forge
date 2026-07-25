@@ -43,20 +43,25 @@ To **reproduce** idle blank/wake without waiting overnight:
 
 ## After install / update, tiles flatten (full-height columns)
 
-Extension disable→enable used to wipe the in-memory tree and re-track every
-window flat. This fork **saves a short-lived session layout** on disable
-(`~/.config/forge/config/session-layout.json`, keyed by window id) and restores
-it on the next enable when the file is fresh (same boot, roughly ≤30 minutes)
-and most windows still match.
+Extension reload wipes the in-memory tree. This fork keeps a **last-good**
+layout at `~/.config/forge/config/session-layout.json` (window ids + splits/tabs):
 
-- Keep apps open across install/update so ids still match.
-- A cold login / reboot correctly starts without that file (or rejects it as
-  stale) — that is intentional, not a failed restore.
-- Full named layouts / `workon` profiles are a separate path (CLI / session
-  scripting), not this auto-file.
+- Written after quiet renders (debounced) and flushed before Shell HUP by
+  `./install` / `forge save-session-layout`.
+- On enable, windows are moved back to their snapshot monitors, then groups
+  are rebuilt (so a Mutter pile-up on one head does not block restore).
+- Freshness: same boot, roughly ≤30 minutes, ≥50% of window ids still open.
 
-If restore did not apply, retile once; the next install while apps stay open
-should preserve topology.
+Tips:
+
+- Keep apps open across install so ids still match.
+- Cold login / reboot correctly starts without resurrecting an old file.
+- Full named layouts / `workon` are a separate path.
+
+If it still flattens: check that the file exists **before** reload
+(`ls ~/.config/forge/config/session-layout.json`), run
+`forge save-session-layout` manually, then reinstall. Journal lines mention
+`session-layout:`.
 
 ## Tab click does nothing until I focus the window first
 

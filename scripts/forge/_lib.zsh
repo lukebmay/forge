@@ -105,6 +105,12 @@ forge_session_type() {
 forge_restart_shell() {
   local st
   st=$(forge_session_type)
+  # Best-effort flush so install HUP can restore splits/tabs (disable may not run).
+  if [[ -x "${FORGE_SCRIPTS_DIR:-$SCRIPT_DIR}/forge" ]]; then
+    forge_info "flushing session layout before Shell reload…"
+    "${FORGE_SCRIPTS_DIR:-$SCRIPT_DIR}/forge" save-session-layout 2>/dev/null \
+      || forge_warn "session-layout flush skipped (extension offline or old build)"
+  fi
   case "$st" in
     x11)
       if ! command -v killall >/dev/null 2>&1; then

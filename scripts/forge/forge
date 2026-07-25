@@ -42,6 +42,7 @@ _METHOD_IN_ARGS: dict[str, int] = {
     "SettingsSave": 1,
     "SettingsLoad": 1,
     "RunSteps": 1,
+    "SaveSessionLayout": 0,
 }
 
 # Ops executed only by this CLI (not extension RunSteps). Documented for scripts.
@@ -235,6 +236,126 @@ def cmd_ping(backend: str, _args: argparse.Namespace) -> int:
     if isinstance(data, dict) and data.get("ok") is True:
         return 0
     return 1
+
+
+def _project_node_to_portable(node: dict[str, Any]) -> dict[str, Any] | None:
+    """Convert a GetTree node into session-layout portable form."""
+    if not isinstance(node, dict):
+        return None
+    ntype = node.get("nodeType")
+    if ntype == "WINDOW":
+        wid = node.get("windowId")
+        if wid is None:
+            return None
+        out: dict[str, Any] = {
+            "id": wid,
+            "percent": node.get("percent") or 0,
+            "userSized": bool(node.get("userSized")),
+        }
+        if node.get("wmClass") is not None:
+            out["wmClass"] = node.get("wmClass")
+        if node.get("title") is not None:
+            out["title"] = node.get("title")
+        return out
+    # CON / MONITOR children
+    children_in = node.get("children") or []
+    children: list[dict[str, Any]] = []
+    for ch in children_in:
+        p = _project_node_to_portable(ch)
+        if p:
+            children.append(p)
+    if not children and ntype != "MONITOR":
+        return None
+    layout = node.get("layout")
+    if ntype == "MONITOR":
+        mon_id = node.get("id")
+        if not mon_id or not children:
+            return None
+        mon: dict[str, Any] = {
+            "id": mon_id,
+            "layout": layout or "HSPLIT",
+            "children": children,
+        }
+        if node.get("stableKey"):
+            mon["stableKey"] = node["stableKey"]
+        return mon
+    # CON
+    if not layout or not children:
+        return None
+    return {
+        "layout": layout,
+        "percent": node.get("percent") or 0,
+        "userSized": bool(node.get("userSized")),
+        "children": children,
+    }
+
+
+def _write_session_layout_from_tree(forest: dict[str, Any]) -> dict[str, Any]:
+    """
+    Write ~/.config/forge/config/session-layout.json from a GetTree forest.
+    Works without SaveSessionLayout DBus (older extension builds).
+    """
+    monitors_in = forest.get("monitors") or []
+    portable_mons: list[dict[str, Any]] = []
+    for m in monitors_in:
+        # Skip empty workspace scaffolds
+        kids = m.get("children") or []
+        if not kids:
+            continue
+        pm = _project_node_to_portable(m)
+        if pm:
+            portable_mons.append(pm)
+    if not portable_mons:
+        return {"ok": False, "error": "no non-empty monitors in tree"}
+
+    # Monotonic µs approx: time.monotonic_ns() // 1000 is fine for freshness.
+    mono_us = time.monotonic_ns() // 1000
+    envelope = {
+        "kind": "forge-session-layout",
+        "sessionVersion": 1,
+        "savedMonotonicUs": mono_us,
+        "savedAtMs": int(time.time() * 1000),
+        "forest": {"version": 1, "monitors": portable_mons},
+    }
+    conf = Path.home() / ".config" / "forge" / "config"
+    conf.mkdir(parents=True, exist_ok=True)
+    path = conf / "session-layout.json"
+    path.write_text(json.dumps(envelope, indent=2) + "\n", encoding="utf-8")
+    return {
+        "ok": True,
+        "path": str(path),
+        "monitors": len(portable_mons),
+        "source": "GetTree",
+    }
+
+
+def cmd_save_session_layout(backend: str, _args: argparse.Namespace) -> int:
+    """Flush last-good tile topology before install / Shell reload."""
+    # Prefer in-extension flush (debounced save cancel + same code path).
+    try:
+        raw = call_method(backend, "SaveSessionLayout")
+        data = json.loads(raw)
+        if isinstance(data, dict) and data.get("ok") is True:
+            _print_json(data, compact=False)
+            return 0
+    except Exception:
+        data = None
+
+    # Fallback: project GetTree → session-layout.json (works on older builds).
+    try:
+        raw = call_method(backend, "GetTree", "{}")
+        forest = json.loads(raw)
+        if isinstance(forest, dict) and forest.get("error"):
+            _eprint(f"forge save-session-layout: {forest['error']}")
+            return 1
+        result = _write_session_layout_from_tree(forest)
+        _print_json(result, compact=False)
+        return 0 if result.get("ok") else 1
+    except Exception as e:
+        _eprint(f"forge save-session-layout: failed: {e}")
+        if data is not None:
+            _print_json(data, compact=False)
+        return 1
 
 
 def cmd_tree(backend: str, args: argparse.Namespace) -> int:
@@ -1228,6 +1349,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     ping = sub.add_parser("ping", help="Ping extension DBus; print health JSON")
     ping.set_defaults(func=cmd_ping)
+
+    save_layout = sub.add_parser(
+        "save-session-layout",
+        help="Flush last-good tile topology to disk (call before install/Shell HUP)",
+    )
+    save_layout.set_defaults(func=cmd_save_session_layout)
 
     tree = sub.add_parser("tree", help="Dump tiling forest as JSON")
     tree.add_argument(

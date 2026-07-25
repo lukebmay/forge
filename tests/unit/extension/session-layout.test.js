@@ -11,6 +11,8 @@ import {
   parseEnvelope,
   windowStableId,
   isPortableWindow,
+  resolveStrictMonitor,
+  planWindowMonitorHomes,
 } from "../../../lib/extension/session-layout.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { createTreeFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
@@ -201,5 +203,100 @@ describe("session-layout portable round-trip", () => {
     const parsed = parseEnvelope(JSON.parse(JSON.stringify(env)));
     expect(parsed.savedMonotonicUs).toBe(999_000);
     expect(isSessionLayoutFresh(parsed, 999_000 + 1000)).toBe(true);
+  });
+
+  it("resolveStrictMonitor prefers stableKey then id (not majority pile)", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    const ctxSnap = {
+      findMonitor: (id) => (id === mon0.nodeValue ? mon0 : id === mon1.nodeValue ? mon1 : null),
+      findMonitorByStableKey: (key) => (key === "conn:DP-2" ? mon1 : null),
+    };
+    expect(resolveStrictMonitor({ id: mon0.nodeValue, stableKey: "conn:DP-2" }, ctxSnap)).toBe(
+      mon1
+    );
+    expect(resolveStrictMonitor({ id: mon0.nodeValue }, ctxSnap)).toBe(mon0);
+  });
+
+  it("planWindowMonitorHomes maps windows to mon index from id", () => {
+    const live = {
+      monitors: [
+        {
+          id: "mo0ws0",
+          children: [{ window: { id: 1 }, percent: 0 }],
+        },
+        {
+          id: "mo1ws0",
+          children: [
+            {
+              layout: "TABBED",
+              children: [
+                { window: { id: 2 }, percent: 0 },
+                { window: { id: 3 }, percent: 0 },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const homes = planWindowMonitorHomes(live);
+    expect(homes.map((h) => [h.window.id, h.monIndex])).toEqual([
+      [1, 0],
+      [2, 1],
+      [3, 1],
+    ]);
+  });
+
+  it("strict rehome then restore recovers dual-mon tabs from a pile-up", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+
+    mon0.layout = LAYOUT_TYPES.HSPLIT;
+    const w0 = createMockWindow({ id: 100, monitor: 0 });
+    const w1 = createMockWindow({ id: 101, monitor: 0 });
+    ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, w0);
+    ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, w1);
+
+    const tab = createCon(mon1.nodeValue, LAYOUT_TYPES.TABBED);
+    const w2 = createMockWindow({ id: 200, monitor: 1 });
+    const w3 = createMockWindow({ id: 201, monitor: 1 });
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, w2);
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, w3);
+
+    const portable = toPortableForest(ctx.tree.snapshotTree());
+    const idMap = indexWindowsById([w0, w1, w2, w3]);
+    const liveForest = toLiveForest(portable, idMap);
+
+    // Simulate post-HUP pile: all windows flat under mon1 (right).
+    mon0.childNodes.length = 0;
+    mon1.childNodes.length = 0;
+    for (const w of [w0, w1, w2, w3]) {
+      ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w);
+      w._monitor = 1;
+    }
+    expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(0);
+
+    // Rehome like window.js: move to planned mons then strict apply
+    const homes = planWindowMonitorHomes(liveForest);
+    const snapCtx = ctx.tree._treeSnapshotCtx();
+    for (const { window: metaWin, monId } of homes) {
+      const mon = resolveStrictMonitor({ id: monId }, snapCtx);
+      const node = ctx.tree.findNode(metaWin);
+      if (mon && node && !mon.childNodes.includes(node)) {
+        mon.appendChild(node);
+      }
+    }
+    for (const monDesc of liveForest.monitors) {
+      const mon = resolveStrictMonitor(monDesc, snapCtx);
+      if (!mon) continue;
+      // use tree.restoreTree one mon at a time via full restore after rehome
+    }
+    // After rehome windows sit under correct mons; restoreTree majority works
+    ctx.tree.restoreTree(liveForest);
+
+    expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(1);
+    expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
+    const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)[0];
+    expect(tabbed.childNodes.map((n) => n.nodeValue)).toEqual([w2, w3]);
   });
 });

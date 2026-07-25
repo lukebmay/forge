@@ -13,22 +13,23 @@
 
 ## What shipped
 
-- Portable forest `session-layout.js` (Meta id leaves); save on disable, restore on
-  enable when same-boot / ≤30m / ≥50% match; clear after use
-- Config I/O: `~/.config/forge/config/session-layout.json`
-- Decoration restack above CON group actors; reactive tabs; `_activateFromTab`
-- User troubleshooting + DESIGN notes; unit/regression tests
+- Portable forest `session-layout.js` (Meta id leaves)
+- **v1:** save on disable only — **failed on black** (HUP skip + cohort empty)
+- **v2:** debounced last-good save; install flush (`SaveSessionLayout` + GetTree
+  fallback); strict mon rehome before apply; keep file on match miss
+- Tab restack / `_activateFromTab` (separate)
+- Tests + DESIGN + troubleshooting
 
 ## Not done
 
 - Full `workon` / named session profiles (forge-command FC5+)
-- Live install trial proof on host `black` (user)
+- Live proof that second install keeps dual-head tabs on `black`
 
 ## Key paths
 
 - `lib/extension/session-layout.js`
-- `lib/extension/window.js` — save/restore hooks
-- `lib/extension/decoration.js` — `_restackDecorationAboveGroup`
-- `lib/extension/tree.js` — `_activateFromTab`
+- `lib/extension/window.js` — save/restore + rehome
+- `lib/extension/session-api.js` — `SaveSessionLayout`
+- `scripts/forge/forge` — `save-session-layout` (GetTree fallback)
+- `scripts/forge/_lib.zsh` — flush before HUP
 - `tests/unit/extension/session-layout.test.js`
-- `tests/regression/bug-tab-click-activate.test.js`

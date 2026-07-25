@@ -49,26 +49,34 @@ manual Super+Delete is a weak control path.
 ## Session layout across install/update (disable→enable)
 
 **Problem:** Reinstalling or updating the extension runs `disable()` then
-`enable()`. That **destroys the in-memory tree**. Live T6 snapshots key windows
-by `Meta.Window` object identity — those wrappers die with the old instance —
-so enable re-tracks every app **flat** (equal H/V columns). Dual-head users see
-tabs/splits collapse and windows pile as full-height strips on one head.
+`enable()` — or more often on X11, **`killall -HUP gnome-shell`**, which may
+skip a clean `disable()`. That **destroys the in-memory tree**. Live T6
+snapshots key windows by `Meta.Window` object identity — those wrappers die —
+so enable re-tracks every app **flat**. Dual-head users see tabs/splits
+collapse; Mutter often piles survivors on one head as full-height strips.
 
-**Approach (not full session/workon yet):**
+**v1 hole:** Save-only-on-disable + restore via majority-mon cohort failed in
+practice: HUP never wrote the file; even with a file, windows already under the
+wrong mon made `applyMonitorSnapshot` see empty cohorts → flat thrash.
 
-1. On `disable()`, before dropping the tree, write a **portable** forest to
-   `~/.config/forge/config/session-layout.json`: same topology as T6, but window
-   leaves use Mutter `get_id()` (plus optional wm_class/title hints).
-2. On `enable` → `reloadTree`, after flat `trackCurrentWindows`, if the live
-   snapshot is empty, load the file when **fresh** (monotonic clock, same boot,
-   default max age 30m) and **≥50%** of ids still match open windows.
-3. Resolve ids → live `Meta.Window`, `restoreTree`, then **delete** the file.
+**Approach (still not full workon):**
 
-Stale/post-reboot/low-match files are discarded so a next-day enable does not
-resurrect an old topology. Full declarative session profiles remain the
+1. **Keep last-good on disk continuously** — debounced save after quiet render;
+   immediate flush on disable / `flushSessionLayout()` / DBus
+   `SaveSessionLayout` / `forge save-session-layout`.
+2. **Install scripts flush before HUP** (`forge_restart_shell`); CLI falls back
+   to projecting `GetTree` → `session-layout.json` if the DBus method is missing
+   (first upgrade over an older build).
+3. On enable → empty live snapshot → load file when **fresh** (same boot, ≤30m)
+   and **≥50%** ids match. **Do not clear** on match failure (retry next enable).
+4. **Strict rehome before topology:** `move_to_monitor` + reparent each window
+   onto its snapshot mon (id/stableKey only — **not** majority pile), then
+   `applyMonitorSnapshot` per mon.
+
+Portable leaves use Mutter `get_id()`. Full named session profiles remain the
 `workon` / forge-command path later.
 
-**Tests:** `tests/unit/extension/session-layout.test.js`.
+**Tests:** `tests/unit/extension/session-layout.test.js` (incl. pile-up dual-mon).
 
 ## Tab strip clickability
 

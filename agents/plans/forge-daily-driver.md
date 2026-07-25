@@ -10,10 +10,10 @@
 
 ### Session note (2026-07-25)
 
-**Install thrash + tab click (A/B AGREE).** Portable session-layout.json on
-disable→enable (id-keyed forest, 30m / same-boot / ≥50% match); decoration
-restack above group actors; `_activateFromTab`. `npm test` 1848. DESIGN.md.
-**Next: FC\*** ([forge-command.md](./forge-command.md)); live verify on black.
+**Session-layout v2 (live thrash on black).** v1 save-on-disable missed HUP and
+majority-cohort restore left flat piles. v2: debounced last-good + install
+flush (GetTree fallback) + strict mon rehome before apply. `npm test` 1851.
+**Next:** live `./install` proof; FC\* as needed.
 
 **T0–T5 + OP1 + T6 + T7 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 ---
