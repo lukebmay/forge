@@ -8,22 +8,16 @@
 **Related:** [forge-harden-and-session.md](./forge-harden-and-session.md) (H1 soft rehome code done; live verify still open)  
 **Completed (prior):** [soft-rehome](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md)
 
-### Session note (2026-07-24)
+### Session note (2026-07-25)
 
-**T5 done** (+ follow-up grammar/kits). Safe = **Ctrl+Super** only (no bare Super+);
-kits **safe / vim / i3**; conflict scan + confirm; “Safe ≠ recommended” prefs copy;
-save/load your kits. Completed:
-[t5](./forge-daily-driver/completed/forge-daily-driver_t5-keybind-system.md).
-**Next:** **T6** full in-memory tree snapshot (or later T7–T9 per priority).
+**Open-app product refined** (user follow-up). LFT = **Last Focused Tile**
+(MRU ring of tiled windows). Dock → sticky dock monitor; terminal/script
+without flags → **LFT only** (terminal location is not intent). Explicit
+place via future `forge launch`. Session/`workon` CLI lives under
+**[forge-command.md](./forge-command.md)** — design `workon` only after `forge`
+subcommands exist. Dev order: **OP1 → T6 → T7 → FC\*** (not premature T8 DSL).
 
-**T4 done** (A/B **AGREE**). Completed:
-[t4](./forge-daily-driver/completed/forge-daily-driver_t4-sizing-policy.md).
-
-**T3 done** — blank/wake + tab survival (live black).  
-**T2 done** — layout debug overlay (`Ctrl+Super+d`).  
-**T1 done** — tab chrome reliability.  
-**T0 done** — stack default off; DnD force tab.
-
+**T0–T5 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 ---
 
 ## Goals
@@ -32,10 +26,10 @@ save/load your kits. Completed:
 2. **Blank/wake multi-mon** — windows stay on correct heads; tab groups survive thrash.
 3. **Predictable tile sizing** — equal share by default until user sets size; clear policy (flex-like contract later).
 4. **First-class keybinds** — safe defaults (no bare Super+ letter grabs); layout presets (e.g. vim); save/load custom profiles.
-5. **Path to session scripting** — full in-memory layout snapshot → stable outputs → disk/`workon` later.
+5. **Predictable open-app placement** — dock sticky mon; else LFT attach; tab join + aspect split; new tile takes focus (becomes next LFT).
+6. **Path to `forge` CLI / scripting** — OP1 + snapshot → [forge-command](./forge-command.md) (launch/move/swap); `workon` later.
 
-**Non-goals (now):** full rewrite; rebase on upstream; gdisplays v2 in this repo; pin-to-tile constraints; full CSS flex engine; multi-line tab wrap (North Star only); always-on production size chrome.
-
+**Non-goals (now):** full rewrite; rebase on upstream; gdisplays v2 in this repo; pin-to-tile constraints; full CSS flex engine; multi-line tab wrap (North Star only); always-on production size chrome; full i3 IPC; inventing `workon` DSL before `forge` CLI.
 ---
 
 ## Locked product decisions
@@ -52,8 +46,28 @@ save/load your kits. Completed:
 | Multi-line tabs | North Star (`max_tabs_per_line=1` ≈ stack); after single-row reliable | Both TF + user |
 | Keybinds | **First-class:** bare Super+ is user-space; defaults use Shift/Alt/Ctrl+Super combos; presets + save/load | User 2026-07-24 — **agreed** |
 | gdisplays | Identity ideas only; no Python in Forge | Plan boundary |
-
+| **Open — dock** | Dock on mon M → sticky home to M (force Meta; no restore-geometry steal). Attach: LFT **on M** if any, else mon root. | User 2026-07-25 |
+| **Open — terminal / generic** | **LFT only** (global last focused tile). Terminal’s monitor is **not** intent. Optional explicit place later via `forge launch`. | User 2026-07-25 |
+| **Open — no LFT** | No tiled windows → mon 0 (first) for generic/script; dock still uses dock mon. | User 2026-07-25 |
+| **LFT definition** | Last Focused **Tile** (tiled mode only). Floats (Guake) never become LFT. New mapped tile takes focus → becomes LFT for next open. | User 2026-07-25 |
+| **LFT MRU** | **Global + per-monitor** MRU rings of tiled windows (one structure, ship together in OP1). Move-to-front on focus; drop on destroy. Dock attach uses **per-mon** head; terminal/generic uses **global** head. Close-focus restore keeps a tile focused when possible → LFT rarely empty. | User 2026-07-25 |
+| **Tab join** | If LFT in TABBED/STACKED → insert **after** LFT in that group. | User 2026-07-25 |
+| **Split orient** | Else LFT taller than wide → **VSPLIT**; else **HSPLIT**. | User 2026-07-25 |
+| **Tiny-pane fallback** | **V1: none** — allow split into small panes. Optional later brainstorm: **OP-opt** min-edge rule (not area %). | User 2026-07-25 |
+| **CLI / workon** | User-facing control plane = **`forge` CLI** ([forge-command](./forge-command.md)). `workon` deferred (FC5) until forge subcommands exist. | User 2026-07-25 |
 Full rationale and code citations: **[analysis](./forge-layout-thrash-analysis.md)**.
+Open-app detail: **OP1** phase below; session: [forge-harden-and-session.md](./forge-harden-and-session.md) Phase 3.
+
+### Reference daily layout (session profile target)
+
+User’s usual dual-head morning layout (roles via gdisplays, not raw indices long-term):
+
+| Monitor | Side | Content |
+| --- | --- | --- |
+| **left** | full left | Tab group: Chrome, Grok |
+| **left** | full right | Ghostty (often → tab group or VSPLIT with Nautilus / other) |
+| **right** | full left | Ghostty (often → tab group or VSPLIT) |
+| **right** | full right | Tab group: YouTube, email, Google Voice, calendar, … |
 
 ---
 
@@ -74,21 +88,25 @@ T3 H1 live verify + soft-rehome tab survival
         ▼
 T4 sizing policy (equalize / userSized)
         │
-        ├──► T5 keybind system (safe defaults + presets + save/load)
+        ├──► T5 keybind system (safe defaults + presets + save/load)  [done]
         │
+        ├──► OP1 open-app placement policy  ◄── NEXT for sequential agents
+        │         │
+        │         ▼
         ├──► T6 full in-memory tree snapshot
         │         │
         │         ▼
-        │    T7 stable output keys
+        │    T7 stable output keys / mon roles
         │         │
         │         ▼
-        │    T8 disk session / workon apply  (later; harden-and-session Phase 3)
+        │    FC* forge CLI  (see forge-command.md)  then optional workon (FC5)
+        │
+        ├──► OP-opt tiny-pane / tab fallback  (optional; after P1s)
         │
         └──► T9 unified multi-line tabs  (after T1 solid; optional stack return)
 ```
 
-**Parallelism:** T5 (keybinds) can run after T0 if a separate agent wants UX work, but **do not** block T1–T3 on full keybind redesign. Ship a **schema default audit** note in T0 (which bare Super+ chords exist today).
-
+**Agent order:** OP1 → T6 → T7 → FC0… → (T9 / OP-opt anytime after higher pri).
 ---
 
 ## Task table
@@ -101,12 +119,14 @@ T4 sizing policy (equalize / userSized)
 | **T3** | [completed/forge-daily-driver_t3-blank-wake-tabs.md](./forge-daily-driver/completed/forge-daily-driver_t3-blank-wake-tabs.md) | **Done** | T1; h1-verify | M | Live blank/wake OK; tab groups survive soft rehome |
 | **T4** | [completed/forge-daily-driver_t4-sizing-policy.md](./forge-daily-driver/completed/forge-daily-driver_t4-sizing-policy.md) | **Done** | T1 | S–M | Equal until user resize; insert policy setting; min-size write-back |
 | **T5** | [completed/forge-daily-driver_t5-keybind-system.md](./forge-daily-driver/completed/forge-daily-driver_t5-keybind-system.md) | **Done** | — (soft) | M–L | Safe defaults; presets (vim / safe); save/load profiles |
-| **T6** | `agents/tasks/forge-daily-driver_t6-full-tree-snapshot.md` | Later | T3 | M | In-memory full tree for thrash restore |
+| **OP1** | `agents/tasks/forge-daily-driver_op1-open-app-policy.md` | **Next** | T4 | M | Dock sticky mon; global+per-mon LFT MRU; tab-after; aspect split; focus-on-create |
+| **T6** | `agents/tasks/forge-daily-driver_t6-full-tree-snapshot.md` | Later | T3; OP1 preferred | M | In-memory full tree for thrash restore |
 | **T7** | `agents/tasks/forge-daily-driver_t7-stable-outputs.md` | Later | T6 | M | Connector/stable keys; remap layer (gdisplays-inspired) |
-| **T8** | harden-and-session session API | Later | T6–T7 | L | Disk + `workon` apply |
+| **FC\*** | [forge-command.md](./forge-command.md) | Later | OP1; T6–T7 | L | `forge` CLI + DBus; workon = FC5 deferred |
+| **OP-opt** | `agents/tasks/forge-daily-driver_op-opt-tiny-pane-tab.md` | Optional | after OP1 + P1s | S | Brainstorm/implement min-edge tab fallback (see notes) |
 | **T9** | multi-line tabs North Star | Later | T1 proven | L | One group chrome; max_tabs_per_line |
 
-When creating T4–T9 task files, copy the structure of T0–T3 (problem, goals, acceptance, code touch list, tests).
+When creating OP1/T6–T7/OP-opt task files, copy T0–T3 structure. FC\* tasks live under forge-command plan.
 
 ---
 
@@ -169,11 +189,77 @@ User wants this **sooner** for human debugging; agents benefit too.
 
 Implement as dedicated phase — do not half-fix by only changing two shortcuts. Schema migration: applying `safe` preset is the new default for fresh installs; existing users keep GSettings until they pick a preset.
 
-### Phase E — Layout durability (T6–T8)
+### Phase D2 — Open-app placement (OP1) — **next**
+
+Fixes dock wrong-monitor intermittency + “new app no longer joins selected tab.”
+
+#### Monitor + attach policy
+
+| Source | Monitor home | Attach |
+| --- | --- | --- |
+| **Dock** (when detectable) | Sticky **dock’s** monitor (force Meta; grace vs re-home) | LFT **on that mon** if any; else mon root |
+| **Terminal / generic / script without flags** | **LFT’s monitor** (not pointer, not terminal seat) | After LFT (tab / aspect) |
+| **No LFT** (no tiles left) | mon **0** (first) for generic; dock still dock mon | mon root |
+| **`forge launch` (later)** | Explicit `--monitor` / `--tree-path` or LFT default | Explicit or LFT |
+
+#### LFT MRU (Last Focused Tile) — global + per-monitor **together in OP1**
+
+Do **not** split global vs per-mon into separate tasks; one module, one review.
+
+| Ring | Structure | Used when |
+| --- | --- | --- |
+| **Global** | ordered list of tiled nodes | Terminal / generic / `forge launch` default |
+| **Per-monitor** | monIndex → ordered list of tiles on that mon | Dock sticky attach (“LFT on mon M”) |
+
+- **LFT** = head of global ring; **LFT(m)** = head of mon `m` ring.
+- On **tile** focus: move node to front of **global** and of **its monitor** ring.
+- On destroy / untrack: remove from global and that mon’s ring. On rehome,
+  drop from old mon ring and (on next focus) re-enter under live mon.
+- Close path already restores focus to sibling / same-workspace NORMAL when
+  possible (`_captureFocusRestore` / `_restoreFocusAfterWindowClosed`) → focus
+  signal refreshes MRU. If no tiles left → rings empty.
+- Floats (Guake) never enter either ring.
+- **New window takes focus** after map → front of global + its mon ring → next
+  open chains after it.
+- Replace single `lastFocusedWindow` with this structure; keep `attachNode` in
+  sync with the relevant head when practical. O(n) is fine for GUI window counts.
+
+#### Insert shape
+
+1. LFT parent TABBED/STACKED → insert **after** LFT in that CON.  
+2. Else aspect split: LFT `height > width` → VSPLIT pair; else HSPLIT.  
+3. **V1:** no auto-tab when small (see OP-opt).
+
+#### Prefs / tests
+
+- Clarify `new-window-placement` for dock sticky vs restore (`window-actual`).  
+- Docs: `docs/user/monitors.md`.  
+- Tests: dock sticky + no Meta flip; terminal uses **global LFT** mon not pointer;
+  Guake focus does not enter MRU; tab-after; aspect H/V; global + per-mon MRU
+  after close; focus-on-create chains opens; dock uses LFT(m) not other mon’s LFT.
+
+### Phase D2-opt — Tiny-pane tab fallback (**optional**, after P1s)
+
+**Status:** optional brainstorm/implement — **not** OP1 scope.  
+**Task (when opened):** `agents/tasks/forge-daily-driver_op-opt-tiny-pane-tab.md`
+
+**Recommendation (for later notes):** if we ever stop “split into oblivion,”
+prefer a **min edge** rule after the proposed 50/50 split of LFT’s rect:
+
+- each resulting width **and** height ≥ max(app min-size, setting ≈ 320px or
+  ~12% of monitor min(workarea edge));
+- else join/create TABBED instead of split.
+
+Do **not** use raw area fraction (e.g. 1/16 monitor) — fails on ultrawide
+(wide but short panes). Opt-in setting; default remains “allow small splits.”
+
+### Phase E — Layout durability (T6–T7) + CLI handoff
 
 - T6: serialize full tree in memory (layouts, order, size policy, window refs).
-- T7: stable output keys; remap on monitors-changed (ideas from gdisplays `identity.py`, not shellrc dependency).
-- T8: disk + session apply for `workon` (coordinate with harden-and-session Phase 3).
+- T7: stable output keys / roles; remap on monitors-changed (gdisplays-inspired,
+  not shellrc dependency).
+- **Session / `workon`:** owned by **[forge-command.md](./forge-command.md)**
+  (FC0–FC5). Do not invent workon DSL here.
 
 ### Phase F — Unified tabs (T9)
 
@@ -187,13 +273,11 @@ Implement as dedicated phase — do not half-fix by only changing two shortcuts.
 ## Next agent playbook
 
 ```text
-1. Read this plan + forge-layout-thrash-analysis.md (skimming is OK for Round 1
-   architecture if Round 2/3 + task table are loaded).
-2. Work the next ready task under agents/tasks/ (or completed/ when done).
-3. Implement T0 → T1 with unit tests; npm test / make unit-test.
-4. Optionally T2 overlay if T1 done and thrash debug needed.
+1. Read this plan (OP1 locks + LFT MRU) + forge-command.md for later CLI.
+2. Create + implement OP1 task if missing.
+3. Then T6 → T7 → FC* (forge-command). Skip OP-opt and FC5 workon until asked.
+4. npm test / make unit-test for logic changes.
 5. Do not SSH to black without explicit user permission (AGENTS security).
-   H1 verify: prepare commands; user runs on black or grants explicit SSH.
 6. Update this plan session note + task notes after each session.
 7. Do not start T9 flex engine rewrite or pin-to-tile.
 ```

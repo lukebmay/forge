@@ -12,11 +12,13 @@
 **Completed (verify):** [h1-verify](./forge-harden-and-session/completed/forge-harden-and-session_h1-verify.md) (via daily-driver T3)  
 **Next (this plan’s long arc):** after daily-driver T6–T8 → Phase 3 session / `workon`
 
-### Session note (2026-07-24)
+### Session note (2026-07-25)
 
-Near-term path is **[forge-daily-driver.md](./forge-daily-driver.md)**.  
-T3 + h1-verify **done** on black (idle+DPMS dual-head + tab pair + retab safe).
-This plan keeps **session scripting / workon** after durability (T6–T8 path).
+Near-term path is **[forge-daily-driver.md](./forge-daily-driver.md)** (OP1).  
+User-facing CLI + `workon` composition: **[forge-command.md](./forge-command.md)**  
+(`workon` design deferred to FC5 after `forge` subcommands exist).  
+Phase 3 below remains the in-process batch runtime sketch; command *shape*
+is owned by forge-command.
 ---
 
 ## Goal
@@ -24,7 +26,7 @@ This plan keeps **session scripting / workon** after durability (T6–T8 path).
 1. **Daily-drive multi-display** that survives blank/wake, mild topology thrash, and retab without shell crash or “all windows smooshed on one monitor.”  
 2. **Resize that feels predictable** — keyboard + mouse, multi-sibling, tabbed containers, min-size, no percent drift.  
 3. **No crashes** as a hard constraint (defensive path coverage + regression tests for every known abort class).  
-4. **`workon dev`-class session scripting** — declare apps, monitors, splits, tabs/order; one command opens and places everything.
+4. **`workon dev`-class session scripting** — launch + place via batched atomic ops (then optional declarative profiles); one command opens and arranges the morning layout.
 
 **Non-goals (for now):** full i3 IPC parity, EGO publish ownership, gdisplays v2, dynamic GNOME workspaces, perfect portrait multi-mon navigation.
 
@@ -193,95 +195,114 @@ North star:
 
 ```bash
 workon dev
-# → ensures display scene (optional)
+# → optional gdisplays load <scene>
 # → switches to workspace N
 # → launches apps if not running
-# → applies layout profile: splits, tabs, order, monitors
+# → applies layout via batched atomic ops (one quiet render)
 ```
 
-#### D.1 Layout profile format (declarative)
+Depends on daily-driver **OP1** (open-app policy) so interactive and scripted
+paths share the same monitor/attach rules when apps map “naturally.”
 
-Store under e.g. `~/.config/forge/layouts/dev.json` (or `~/.config/forge/sessions/dev.toml` — pick JSON first for consistency with windows.json):
+#### D.0 Procedural vs declarative (locked direction)
+
+| Approach | Pros | Cons |
+| --- | --- | --- |
+| **Procedural** (sequence of atomic ops = keybind command surface) | Each step is already tree-valid; easy to test; matches mental model of “what I would type” | Naive run = flicker; racey if render every step |
+| **Declarative** (JSON tree of monitors/splits/tabs/apps) | One-shot apply; good for save/round-trip; compact profiles | Validation surface; apply bugs leave half-trees; hard to debug |
+
+**Decision: hybrid with procedural as the runtime MVP.**
+
+1. **Author / execute** a **step script** (YAML/JSON list of actions).  
+2. Extension runs steps against the **same** `CommandHandler` / tree primitives
+   used by keybindings (`Split`, `LayoutToggle` tabbed, move/swap, focus, …)
+   plus `Launch` / `WaitFor` / `FocusMatch`.  
+3. **`freezeRender` (or equivalent) for the whole batch** → single
+   `renderTree("session-apply")` at end (or per-monitor checkpoints).  
+   That gives declarative *UX* (no flicker) without inventing a second layout
+   engine.  
+4. **Declarative profile** = optional **compile target**:  
+   - `save` walks tree → emits steps *or* nested JSON  
+   - nested JSON can compile → steps for apply  
+   - validation is “does compile succeed + dry-run on mock tree?”
+
+Why not pure declarative-first: user daily layout is simple HSPLIT+tabs, but
+edge cases (already-open windows, partial re-run, Guake open) are natural as
+steps (`focus mon left`, `launch chrome`, `wait`, `tab-join`, …). Atomic ops
+already exist; batching is the missing piece.
+
+**Anti-goals for MVP:** full i3 IPC; live GUI recorder (nice later).
+
+#### D.1 Step-script format (procedural MVP)
+
+Store under e.g. `~/.config/forge/sessions/dev.json`:
 
 ```json
 {
   "name": "dev",
   "displayScene": "default",
   "workspace": 0,
-  "monitors": [
-    {
-      "role": "left",
-      "match": { "index": 0 },
-      "root": {
-        "layout": "hsplit",
-        "children": [
-          {
-            "layout": "tabbed",
-            "percent": 0.55,
-            "tabs": [
-              { "app": "code", "wmClass": "Code", "titleContains": "forge" },
-              { "app": "ghostty", "wmClass": "com.mitchellh.ghostty" }
-            ]
-          },
-          {
-            "layout": "vsplit",
-            "percent": 0.45,
-            "children": [
-              { "app": "firefox", "wmClass": "firefox" },
-              { "app": "slack", "wmClass": "Slack" }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "role": "right",
-      "match": { "index": 1 },
-      "root": {
-        "layout": "tabbed",
-        "tabs": [
-          { "app": "spotify", "wmClass": "Spotify" },
-          { "wmClass": "org.gnome.Nautilus" }
-        ]
-      }
-    }
+  "steps": [
+    { "op": "focus-monitor", "role": "left" },
+    { "op": "launch", "app": "google-chrome", "wmClass": "Google-chrome" },
+    { "op": "wait-window", "wmClass": "Google-chrome", "timeoutMs": 15000 },
+    { "op": "launch", "app": "…grok…", "wmClass": "…" },
+    { "op": "wait-window", "wmClass": "…" },
+    { "op": "layout", "mode": "tabbed" },
+    { "op": "focus-monitor", "role": "left" },
+    { "op": "launch", "app": "ghostty", "wmClass": "com.mitchellh.ghostty" },
+    { "op": "split", "orientation": "horizontal" },
+    { "op": "focus-monitor", "role": "right" },
+    { "op": "launch", "app": "ghostty", "wmClass": "com.mitchellh.ghostty" },
+    { "op": "split", "orientation": "horizontal" },
+    { "op": "launch", "wmClass": "…", "app": "…" },
+    { "op": "layout", "mode": "tabbed" }
   ]
 }
 ```
 
-Matchers: `wmClass` (required for place), optional `titleContains` / `app` (desktop-id or command for launch). Tab **order** = array order; focus last or first via `"focus": "first"|"last"`.
+Ops map 1:1 to existing commands where possible. Monitors use **roles**
+(`left`/`right`) resolved via settings or gdisplays-aligned match (T7).
+
+Reference morning layout (user): left = tabs(Chrome,Grok) | Ghostty(+often
+VSPLIT/Nautilus); right = Ghostty | tabs(YouTube, mail, Voice, calendar, …).
+
+#### D.1b Declarative profile (later compile/save)
+
+Nested tree JSON (prior sketch) remains valid as a **save format** and as input
+to a compiler → steps. Matchers: `wmClass` (place), optional `titleContains` /
+`app` (launch). Not the first apply path.
 
 #### D.2 Extension API (minimal, testable)
 
-Expose **one** control plane (prefer **DBus** over relying on `Shell.Eval`, which is often locked down):
+Expose **one** control plane (prefer **DBus** over relying on `Shell.Eval`):
 
 | Method | Purpose |
 | --- | --- |
 | `GetTree(workspace?)` | JSON snapshot (reuse e2e bridge projection) |
-| `ApplyLayout(profileJson \| path)` | Build/move containers; assign windows by matcher |
-| `PlaceWindow(criteria, slot)` | Single-window placement |
+| `RunSteps(stepsJson \| path)` | Batched atomic ops; one quiet render |
+| `ApplyLayout(profileJson \| path)` | Later: compile declarative → `RunSteps` |
+| `PlaceWindow(criteria, slot)` | Single-window placement (also an op) |
 | `ReloadConfig()` | Existing Super+Shift+r semantics |
 | `Ping()` | Health |
 
 Implementation sketch:
 
-- New module `lib/extension/session-api.js` (or `layout-apply.js`) owned by `WindowManager`.  
-- Apply algorithm:  
-  1. Resolve monitor match → monitor node.  
-  2. For each leaf: find existing Meta.Window by class/title, else mark “pending launch”.  
-  3. Build CON tree skeleton with layouts + percents.  
-  4. Attach matched windows in **tab order**.  
-  5. `renderTree("session-apply", true)`.  
-  6. Return list of unmatched slots for the CLI to launch + retry.
-
-**Do not** require apps to open in the right place first — place **after** map (like i3 `for_window` + swallow, but batch).
+- `lib/extension/session-api.js` owned by `WindowManager`.  
+- `RunSteps`: freeze render → for each op dispatch command/tree helper → unfreeze
+  → one `renderTree`.  
+- Launch/wait may live in CLI (out of process) with extension only doing place
+  ops; or extension spawns via `Gio` — prefer **CLI launch + extension place**
+  to keep Shell light.  
+- Idempotent re-run: `wait-window` / matchers prefer existing windows.
 
 #### D.3 CLI / shellrc wrapper
 
 ```text
-forge-session apply dev          # apply layout only
-forge-session run dev            # apply + launch missing
-workon dev                       # shellrc alias: gdisplays + forge-session run
+forge-session run dev            # launch missing + RunSteps
+forge-session apply dev          # steps only (apps already up)
+forge-session get-tree           # debug
+workon dev                       # shellrc: gdisplays + forge-session run
 ```
 
 Launch policy:
@@ -292,8 +313,8 @@ Launch policy:
 
 #### D.4 Save current layout (stretch)
 
-`forge-session save dev` — walk tree, emit profile with `wmClass`/`title` of current windows (no autostart commands filled — user edits `app` fields). Enables “set up once, capture, tweak.”
-
+`forge-session save dev` — emit either step script (replayable) or nested
+declarative profile with `wmClass`/`title`. User fills `app` launch ids.
 ---
 
 ## Phased delivery
@@ -326,15 +347,19 @@ Launch policy:
 
 ### Phase 3 — Session scripting MVP
 
+**Superseded for user-facing CLI by [forge-command.md](./forge-command.md)**  
+(FC0–FC5). Keep this section as the **in-process** engine sketch; task IDs
+map roughly: S2/S3 → FC0/FC4, S4 → FC1–FC2, S5 → **FC5 deferred**, S6 stretch.
+
+Prerequisite: daily-driver **OP1** + **T6** + **T7**.
+
 | ID | Task | Outcome |
 | --- | --- | --- |
-| S1 | Profile schema + docs | JSON schema next to windows.schema.json |
-| S2 | In-process `applyLayout(profile)` | Unit tests with mocks (no DBus yet) |
-| S3 | DBus (or safe local IPC) surface | `GetTree` / `ApplyLayout` / `Ping` |
-| S4 | `forge-session` CLI in-repo or shellrc | `run` / `apply` / dry-run |
-| S5 | `workon` integration | `gdisplays load` + `forge-session run` |
-| S6 | Capture `save` (stretch) | Round-trip edit loop |
-
+| S1 | (optional) step-script schema | Prefer forge-command FC4 |
+| S2 | In-process `RunSteps` + freezeRender | Unit tests; quiet render |
+| S3 | DBus surface | Fold into FC0 |
+| S4–S5 | CLI + workon | **forge-command** FC1–FC5 |
+| S6 | Declarative compile + save | Stretch after FC4 |
 ### Phase 4 — Monitor identity (only if needed)
 
 | ID | Task | Outcome |
