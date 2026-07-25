@@ -30,8 +30,7 @@ See [forge-command.md](./plans/forge-command.md).
 | P1 | FC2 forge launch | **Done** |
 | P1 | FC3 settings get/set/save/load | **Done** |
 | P1 | FC4 run-steps | **Done** |
-| later | FC5 workon composition | **Deferred design** |
-| later | FC5 `workon` composition | **Deferred design** until forge CLI real |
+| later | FC5 `workon` composition | **Deferred design** until asked |
 | optional | OP-opt tiny-pane tab fallback | After P1s; notes in daily-driver |
 | later | T9 multi-line tabs | After T1 proven |
 | P2 | forge-fork-eval spike close-out | Partial |
