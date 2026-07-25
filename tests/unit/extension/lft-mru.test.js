@@ -1,0 +1,219 @@
+import { describe, it, expect, beforeEach } from "vitest";
+import {
+  LftMru,
+  aspectOrientationFromRect,
+  isTabOrStackParent,
+  resolveOpenAppPlacement,
+  matchPendingDockLaunch,
+  DOCK_LAUNCH_TTL_MS,
+} from "../../../lib/extension/lft-mru.js";
+
+describe("LftMru", () => {
+  /** @type {LftMru} */
+  let mru;
+  const a = { id: "a" };
+  const b = { id: "b" };
+  const c = { id: "c" };
+  const floaty = { id: "float" }; // never touched → never enters
+
+  beforeEach(() => {
+    mru = new LftMru();
+  });
+
+  it("touch moves node to front of global and mon rings", () => {
+    mru.touch(a, 0);
+    mru.touch(b, 0);
+    mru.touch(c, 1);
+
+    expect(mru.globalHead()).toBe(c);
+    expect(mru.globalOrder()).toEqual([c, b, a]);
+    expect(mru.monHead(0)).toBe(b);
+    expect(mru.monOrder(0)).toEqual([b, a]);
+    expect(mru.monHead(1)).toBe(c);
+  });
+
+  it("re-touch of existing node reorders without duplicates", () => {
+    mru.touch(a, 0);
+    mru.touch(b, 0);
+    mru.touch(a, 0);
+
+    expect(mru.globalOrder()).toEqual([a, b]);
+    expect(mru.monOrder(0)).toEqual([a, b]);
+  });
+
+  it("remove drops from global and mon rings", () => {
+    mru.touch(a, 0);
+    mru.touch(b, 1);
+    mru.remove(a);
+
+    expect(mru.globalHead()).toBe(b);
+    expect(mru.monHead(0)).toBeNull();
+    expect(mru.monHead(1)).toBe(b);
+  });
+
+  it("floats never enter unless touch is called (caller discipline)", () => {
+    mru.touch(a, 0);
+    // floaty never touched
+    expect(mru.globalOrder()).not.toContain(floaty);
+    expect(mru.monOrder(0)).not.toContain(floaty);
+  });
+
+  it("touch rehomes mon membership when monitor changes", () => {
+    mru.touch(a, 0);
+    mru.touch(a, 1);
+
+    expect(mru.monOrder(0)).toEqual([]);
+    expect(mru.monHead(1)).toBe(a);
+    expect(mru.globalHead()).toBe(a);
+  });
+
+  it("dropMonRings keeps global membership", () => {
+    mru.touch(a, 0);
+    mru.dropMonRings(a);
+    expect(mru.globalHead()).toBe(a);
+    expect(mru.monHead(0)).toBeNull();
+  });
+});
+
+describe("aspectOrientationFromRect", () => {
+  it("taller than wide → vertical (VSPLIT)", () => {
+    expect(aspectOrientationFromRect({ width: 400, height: 800 })).toBe("vertical");
+  });
+
+  it("wider or square → horizontal (HSPLIT)", () => {
+    expect(aspectOrientationFromRect({ width: 800, height: 400 })).toBe("horizontal");
+    expect(aspectOrientationFromRect({ width: 500, height: 500 })).toBe("horizontal");
+  });
+
+  it("null rect defaults to horizontal", () => {
+    expect(aspectOrientationFromRect(null)).toBe("horizontal");
+  });
+});
+
+describe("isTabOrStackParent", () => {
+  const LT = { TABBED: "TABBED", STACKED: "STACKED", HSPLIT: "HSPLIT" };
+
+  it("true for TABBED/STACKED", () => {
+    expect(isTabOrStackParent({ layout: "TABBED" }, LT)).toBe(true);
+    expect(isTabOrStackParent({ layout: "STACKED" }, LT)).toBe(true);
+  });
+
+  it("false for splits / missing", () => {
+    expect(isTabOrStackParent({ layout: "HSPLIT" }, LT)).toBe(false);
+    expect(isTabOrStackParent(null, LT)).toBe(false);
+  });
+});
+
+describe("resolveOpenAppPlacement", () => {
+  const lft0 = { id: "lft0" };
+  const lft1 = { id: "lft1" };
+
+  it("dock sticky mon + LFT(m)", () => {
+    const r = resolveOpenAppPlacement({
+      dockMonitor: 1,
+      monLft: lft1,
+      globalLft: lft0,
+      lftMonitor: 0,
+    });
+    expect(r.isDock).toBe(true);
+    expect(r.homeMonitor).toBe(1);
+    expect(r.attachLft).toBe(lft1);
+    expect(r.attachMode).toBe("after-lft");
+  });
+
+  it("dock with no tiles on mon → mon-root", () => {
+    const r = resolveOpenAppPlacement({
+      dockMonitor: 1,
+      monLft: null,
+      globalLft: lft0,
+      lftMonitor: 0,
+    });
+    expect(r.homeMonitor).toBe(1);
+    expect(r.attachMode).toBe("mon-root");
+    expect(r.attachLft).toBeNull();
+  });
+
+  it("generic uses global LFT mon not pointer/window mon", () => {
+    const r = resolveOpenAppPlacement({
+      dockMonitor: -1,
+      globalLft: lft0,
+      lftMonitor: 1,
+      windowMonitor: 0,
+      placement: "pointer",
+    });
+    expect(r.isDock).toBe(false);
+    expect(r.homeMonitor).toBe(1);
+    expect(r.attachLft).toBe(lft0);
+    expect(r.attachMode).toBe("after-lft");
+  });
+
+  it("no LFT → mon 0 root", () => {
+    const r = resolveOpenAppPlacement({
+      dockMonitor: -1,
+      globalLft: null,
+      lftMonitor: -1,
+    });
+    expect(r.homeMonitor).toBe(0);
+    expect(r.attachMode).toBe("mon-root");
+  });
+
+  it("window-actual homes to window mon; attach LFT only if same mon", () => {
+    const same = resolveOpenAppPlacement({
+      placement: "window-actual",
+      windowMonitor: 1,
+      globalLft: lft1,
+      lftMonitor: 1,
+    });
+    expect(same.homeMonitor).toBe(1);
+    expect(same.attachLft).toBe(lft1);
+
+    const other = resolveOpenAppPlacement({
+      placement: "window-actual",
+      windowMonitor: 0,
+      globalLft: lft1,
+      lftMonitor: 1,
+    });
+    expect(other.homeMonitor).toBe(0);
+    expect(other.attachMode).toBe("mon-root");
+  });
+
+  it("dock wins over window-actual", () => {
+    const r = resolveOpenAppPlacement({
+      dockMonitor: 0,
+      monLft: lft0,
+      placement: "window-actual",
+      windowMonitor: 1,
+      globalLft: lft1,
+      lftMonitor: 1,
+    });
+    expect(r.isDock).toBe(true);
+    expect(r.homeMonitor).toBe(0);
+    expect(r.attachLft).toBe(lft0);
+  });
+});
+
+describe("matchPendingDockLaunch", () => {
+  const now = 1_000_000;
+
+  it("matches appId when present", () => {
+    const pending = [
+      { monitor: 0, appId: "a.desktop", ts: now - 100 },
+      { monitor: 1, appId: "b.desktop", ts: now - 50 },
+    ];
+    const m = matchPendingDockLaunch(pending, { appId: "b.desktop", now });
+    expect(m).toEqual({ monitor: 1, index: 1 });
+  });
+
+  it("ignores expired entries", () => {
+    const pending = [{ monitor: 0, appId: "a.desktop", ts: now - DOCK_LAUNCH_TTL_MS - 1 }];
+    expect(matchPendingDockLaunch(pending, { appId: "a.desktop", now })).toBeNull();
+  });
+
+  it("without appId uses most recent unexpired", () => {
+    const pending = [
+      { monitor: 0, ts: now - 200 },
+      { monitor: 1, ts: now - 10 },
+    ];
+    expect(matchPendingDockLaunch(pending, { now }).monitor).toBe(1);
+  });
+});

@@ -75,6 +75,29 @@ never lists extension shortcuts.
 
 **Grammar rule:** change modifier families only when two actions share a base key.
 
+## Open-app placement: LFT MRU + dock sticky (OP1)
+
+**Problem:** New windows jumped monitors (dock vs pointer vs restore geometry)
+and stopped joining the selected tab group. A single `lastFocusedWindow` was
+easy to poison with floats (Guake) and ignored per-monitor dock intent.
+
+**Approach:**
+
+1. **LFT MRU** (`lib/extension/lft-mru.js`): global ordered list of **tiled**
+   nodes + per-monitor rings. Tile focus → move to front of both; destroy/float
+   → drop. Floats never enter.
+2. **Generic / terminal open:** home + attach from **global LFT** (not pointer).
+   No LFT → mon 0 root.
+3. **Dock open (when detectable):** sticky dock mon (`move_to_monitor` + short
+   grace against re-home races); attach **LFT(m)** else mon root. Detection:
+   `noteDockLaunch` / `_forgeDockMonitor`, plus best-effort `Shell.App`
+   activate/open_new_window hook (skips overview).
+4. **Insert:** LFT in TABBED/STACKED → insert after LFT; else aspect split of LFT
+   rect (taller → VSPLIT, else HSPLIT). No tiny-pane auto-tab in V1.
+
+`new-window-placement=window-actual` remains an escape hatch for restore geometry;
+default path is LFT policy. `lastFocusedWindow` still exists for pointer helpers.
+
 ## User stylesheet vs `make dev` (production flag)
 
 **Problem:** `make dev` sets `production = false` for logging / DEV banner.

@@ -92,7 +92,7 @@
         },
         "new-window-placement": {
           "type": "string",
-          "description": "Initial monitor for a new window: 'pointer' (active/pointer monitor) or 'window-actual' (the window's own monitor)",
+          "description": "Generic open monitor policy: 'pointer' means last-focused-tile mon (OP1 default; id kept for configs); 'window-actual' uses the window's own monitor. Dock sticky mon always wins when a dock launch is detected.",
           "enum": ["pointer", "window-actual"],
           "default": "pointer"
         },

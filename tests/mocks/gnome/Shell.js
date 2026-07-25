@@ -1,6 +1,6 @@
 // Mock Shell namespace
 
-class App {
+export class App {
   constructor(params = {}) {
     this.id = params.id || "mock.app";
     this.name = params.name || "Mock App";
@@ -12,6 +12,14 @@ class App {
 
   get_name() {
     return this.name;
+  }
+
+  activate() {
+    // GNOME Shell App.activate — dock hook may wrap this
+  }
+
+  open_new_window(_workspace) {
+    // GNOME Shell App.open_new_window
   }
 
   create_icon_texture(size) {
@@ -48,6 +56,7 @@ export const ActionMode = {
 };
 
 export default {
+  App,
   WindowTracker,
   ActionMode,
 };

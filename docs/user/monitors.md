@@ -6,14 +6,29 @@ vertically, landscape monitors split horizontally.
 
 ## Where new windows open
 
-`new-window-placement` (Preferences → general settings):
+Forge uses an **open-app placement policy** (LFT = last focused **tile**):
 
-- **`pointer`** (default) — a new window tiles on the monitor with the pointer /
-  active window.
-- **`window-actual`** — a new window tiles on the monitor it actually opened on
-  (respects app-restored geometry).
+| How the app opened | Monitor | Where it attaches |
+| --- | --- | --- |
+| **Dock / favorites** (when detected) | Sticky **dock’s** monitor | After last focused tile **on that monitor**, else empty monitor root |
+| **Terminal / generic** | **Last focused tile’s** monitor (not the pointer, not the terminal’s seat) | After that tile (join tab/stack group, or aspect split) |
+| **No tiles left** | Monitor **0** (first) for generic; dock still uses dock mon | Monitor root |
 
-If windows open on the "wrong" monitor, try switching this setting.
+Floats (e.g. Guake) never become the last focused tile.
+
+`new-window-placement` (Preferences → general settings) is a narrower knob:
+
+- **`pointer`** (default label; OP1 behavior) — for **generic** opens, home follows
+  **LFT’s monitor** as above (not the raw pointer monitor). Kept as the default
+  id for existing configs.
+- **`window-actual`** — home to the window’s own monitor (app-restored geometry).
+  Attach still follows LFT when that LFT is on the same monitor.
+
+Dock sticky homes always win when a dock launch is detected, regardless of this
+setting.
+
+If windows open on the "wrong" monitor: focus the tile you want as the parent
+first, or try `window-actual` for apps that restore geometry aggressively.
 
 ## Excluding a monitor from tiling
 

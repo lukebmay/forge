@@ -10,14 +10,12 @@
 
 ### Session note (2026-07-25)
 
-**Open-app product refined** (user follow-up). LFT = **Last Focused Tile**
-(MRU ring of tiled windows). Dock → sticky dock monitor; terminal/script
-without flags → **LFT only** (terminal location is not intent). Explicit
-place via future `forge launch`. Session/`workon` CLI lives under
-**[forge-command.md](./forge-command.md)** — design `workon` only after `forge`
-subcommands exist. Dev order: **OP1 → T6 → T7 → FC\*** (not premature T8 DSL).
+**OP1 done (A/B AGREE).** `lib/extension/lft-mru.js` + window/focus wiring;
+dock sticky best-effort; tab-after + aspect; floats out of MRU. B fixed attach
+precedence vs stale `attachNode` and disable/re-enable dock hook. `npm test`
+1706 green. **Next: T6** full tree snapshot.
 
-**T0–T5 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
+**T0–T5 + OP1 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 ---
 
 ## Goals
@@ -90,10 +88,10 @@ T4 sizing policy (equalize / userSized)
         │
         ├──► T5 keybind system (safe defaults + presets + save/load)  [done]
         │
-        ├──► OP1 open-app placement policy  ◄── NEXT for sequential agents
+        ├──► OP1 open-app placement policy  [done]
         │         │
         │         ▼
-        ├──► T6 full in-memory tree snapshot
+        ├──► T6 full in-memory tree snapshot  ◄── NEXT
         │         │
         │         ▼
         │    T7 stable output keys / mon roles
@@ -119,8 +117,8 @@ T4 sizing policy (equalize / userSized)
 | **T3** | [completed/forge-daily-driver_t3-blank-wake-tabs.md](./forge-daily-driver/completed/forge-daily-driver_t3-blank-wake-tabs.md) | **Done** | T1; h1-verify | M | Live blank/wake OK; tab groups survive soft rehome |
 | **T4** | [completed/forge-daily-driver_t4-sizing-policy.md](./forge-daily-driver/completed/forge-daily-driver_t4-sizing-policy.md) | **Done** | T1 | S–M | Equal until user resize; insert policy setting; min-size write-back |
 | **T5** | [completed/forge-daily-driver_t5-keybind-system.md](./forge-daily-driver/completed/forge-daily-driver_t5-keybind-system.md) | **Done** | — (soft) | M–L | Safe defaults; presets (vim / safe); save/load profiles |
-| **OP1** | `agents/tasks/forge-daily-driver_op1-open-app-policy.md` | **Next** | T4 | M | Dock sticky mon; global+per-mon LFT MRU; tab-after; aspect split; focus-on-create |
-| **T6** | `agents/tasks/forge-daily-driver_t6-full-tree-snapshot.md` | Later | T3; OP1 preferred | M | In-memory full tree for thrash restore |
+| **OP1** | [completed/forge-daily-driver_op1-open-app-policy.md](./forge-daily-driver/completed/forge-daily-driver_op1-open-app-policy.md) | **Done** | T4 | M | Dock sticky mon; global+per-mon LFT MRU; tab-after; aspect split; focus-on-create |
+| **T6** | `agents/tasks/forge-daily-driver_t6-full-tree-snapshot.md` | **Next** | T3; OP1 preferred | M | In-memory full tree for thrash restore |
 | **T7** | `agents/tasks/forge-daily-driver_t7-stable-outputs.md` | Later | T6 | M | Connector/stable keys; remap layer (gdisplays-inspired) |
 | **FC\*** | [forge-command.md](./forge-command.md) | Later | OP1; T6–T7 | L | `forge` CLI + DBus; workon = FC5 deferred |
 | **OP-opt** | `agents/tasks/forge-daily-driver_op-opt-tiny-pane-tab.md` | Optional | after OP1 + P1s | S | Brainstorm/implement min-edge tab fallback (see notes) |
@@ -189,7 +187,7 @@ User wants this **sooner** for human debugging; agents benefit too.
 
 Implement as dedicated phase — do not half-fix by only changing two shortcuts. Schema migration: applying `safe` preset is the new default for fresh installs; existing users keep GSettings until they pick a preset.
 
-### Phase D2 — Open-app placement (OP1) — **next**
+### Phase D2 — Open-app placement (OP1) — **done**
 
 Fixes dock wrong-monitor intermittency + “new app no longer joins selected tab.”
 

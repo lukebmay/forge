@@ -1,0 +1,403 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import {
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+  createMockWindow,
+  createWindowNode,
+} from "../../mocks/helpers/index.js";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import Shell from "../../mocks/gnome/Shell.js";
+
+/**
+ * OP1: open-app placement — LFT MRU, dock sticky mon, tab-after, aspect split.
+ */
+describe("OP1 open-app placement policy", () => {
+  let ctx;
+
+  function setup(options = {}) {
+    ctx = createWindowManagerFixture({
+      globals: { display: { monitorCount: 2 } },
+      settings: {
+        "auto-split-enabled": true,
+        "new-window-placement": "pointer",
+        ...options.settings,
+      },
+    });
+    // Default pointer on mon 0; tests assert LFT wins over pointer.
+    ctx.display.get_current_monitor.mockReturnValue(0);
+  }
+
+  afterEach(() => {
+    ctx.cleanup();
+  });
+
+  const wm = () => ctx.windowManager;
+
+  const monitorOf = (node) => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    if (mon1.contains(node)) return 1;
+    if (mon0.contains(node)) return 0;
+    return -1;
+  };
+
+  const tileOn = (monIndex, overrides = {}) => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, monIndex);
+    const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, monitor, {
+      mode: "TILE",
+      windowOverrides: {
+        workspace: ctx.workspaces[0],
+        monitor: monIndex,
+        rect: { x: monIndex * 1920, y: 0, width: 800, height: 600 },
+        ...overrides,
+      },
+    });
+    return { nodeWindow, metaWindow, monitor };
+  };
+
+  describe("LFT MRU via focus", () => {
+    beforeEach(() => setup());
+
+    it("tile focus moves to front of global + mon rings; float never enters", () => {
+      const a = tileOn(0, { id: "a" });
+      const b = tileOn(1, { id: "b" });
+      const f = tileOn(0, { id: "float" });
+      f.nodeWindow.mode = WINDOW_MODES.FLOAT;
+
+      wm().movePointerWith(a.nodeWindow);
+      expect(wm().lftMru.globalHead()).toBe(a.nodeWindow);
+      expect(wm().lftMru.monHead(0)).toBe(a.nodeWindow);
+
+      wm().movePointerWith(b.nodeWindow);
+      expect(wm().lftMru.globalHead()).toBe(b.nodeWindow);
+      expect(wm().lftMru.monHead(1)).toBe(b.nodeWindow);
+      expect(wm().lftMru.monHead(0)).toBe(a.nodeWindow);
+
+      wm().movePointerWith(f.nodeWindow);
+      expect(wm().lftMru.globalHead()).toBe(b.nodeWindow);
+      expect(wm().lftMru.globalOrder()).not.toContain(f.nodeWindow);
+    });
+
+    it("destroy removes from global and mon rings", () => {
+      const a = tileOn(0, { id: "a" });
+      const b = tileOn(0, { id: "b" });
+      wm().movePointerWith(a.nodeWindow);
+      wm().movePointerWith(b.nodeWindow);
+
+      const actor = a.metaWindow.get_compositor_private();
+      wm().windowDestroy(actor);
+
+      expect(wm().lftMru.globalOrder()).not.toContain(a.nodeWindow);
+      expect(wm().lftMru.monOrder(0)).not.toContain(a.nodeWindow);
+      expect(wm().lftMru.globalHead()).toBe(b.nodeWindow);
+    });
+  });
+
+  describe("generic open uses global LFT mon", () => {
+    beforeEach(() => setup());
+
+    it("homes to global LFT mon, not pointer mon", () => {
+      const lft = tileOn(1, { id: "lft" });
+      wm().movePointerWith(lft.nodeWindow);
+      // Pointer stays on mon 0
+      expect(ctx.display.get_current_monitor()).toBe(0);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "new-generic",
+      });
+      wm().trackWindow(null, metaWindow);
+
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+    });
+
+    it("no LFT → mon 0 root", () => {
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        id: "no-lft",
+      });
+      wm().trackWindow(null, metaWindow);
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(0);
+    });
+  });
+
+  describe("dock sticky mon + LFT(m)", () => {
+    beforeEach(() => setup());
+
+    it("dock path uses LFT on dock mon, not other mon's LFT", () => {
+      const on0 = tileOn(0, { id: "on0" });
+      const on1 = tileOn(1, { id: "on1" });
+      // Global LFT is mon 0
+      wm().movePointerWith(on1.nodeWindow);
+      wm().movePointerWith(on0.nodeWindow);
+      expect(wm().lftMru.globalHead()).toBe(on0.nodeWindow);
+      expect(wm().lftMru.monHead(1)).toBe(on1.nodeWindow);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "dock-app",
+      });
+      metaWindow._forgeDockMonitor = 1;
+
+      wm().trackWindow(null, metaWindow);
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      // Inserted after LFT(1)=on1, not after global LFT on0
+      expect(on1.monitor.contains(node)).toBe(true);
+      expect(metaWindow.get_monitor()).toBe(1);
+      expect(metaWindow._forgeDockStickyMon).toBe(1);
+    });
+
+    it("dock LFT(m) in TABBED wins over stale cross-mon attachNode", () => {
+      // Global focus/attachNode on mon 0; dock mon 1 has tabbed LFT mid-stack.
+      const on0 = tileOn(0, { id: "on0" });
+      const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+      const con = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, {});
+      con.layout = LAYOUT_TYPES.TABBED;
+      const first = createWindowNode(ctx.tree, con, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "tab-first",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 1920, y: 0, width: 800, height: 600 },
+        },
+      });
+      const mid = createWindowNode(ctx.tree, con, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "tab-mid",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 1920, y: 0, width: 800, height: 600 },
+        },
+      });
+      createWindowNode(ctx.tree, con, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "tab-last",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 1920, y: 0, width: 800, height: 600 },
+        },
+      });
+      // mon1 LFT = mid; then focus mon0 so attachNode is cross-mon stale.
+      wm().movePointerWith(mid.nodeWindow);
+      wm().movePointerWith(on0.nodeWindow);
+      expect(ctx.tree.attachNode).toBe(on0.nodeWindow);
+      expect(wm().lftMru.monHead(1)).toBe(mid.nodeWindow);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "dock-tab-after",
+      });
+      metaWindow._forgeDockMonitor = 1;
+      wm().trackWindow(null, metaWindow);
+      const node = wm().findNodeWindow(metaWindow);
+
+      expect(node.parentNode).toBe(con);
+      const kids = con.childNodes.filter((n) => n.isWindow());
+      expect(kids.indexOf(node)).toBe(kids.indexOf(mid.nodeWindow) + 1);
+      expect(first.nodeWindow.parentNode).toBe(con);
+    });
+
+    it("dock hook refreshes active WM after disable/re-enable cycle", () => {
+      // First manager installs the shared prototype hook.
+      wm()._tryInstallDockLaunchHook();
+      expect(Shell.App.prototype._forgeDockWm).toBe(wm());
+
+      // Simulate extension disable: WM disabled and pointer cleared.
+      wm().disabled = true;
+      if (Shell.App.prototype._forgeDockWm === wm()) {
+        Shell.App.prototype._forgeDockWm = null;
+      }
+
+      // Second manager (new enable) must re-bind the live pointer.
+      const ctx2 = createWindowManagerFixture({
+        globals: { display: { monitorCount: 2 } },
+        settings: { "auto-split-enabled": true, "new-window-placement": "pointer" },
+      });
+      try {
+        ctx2.windowManager._tryInstallDockLaunchHook();
+        expect(Shell.App.prototype._forgeDockWm).toBe(ctx2.windowManager);
+        expect(Shell.App.prototype._forgeDockLaunchHooked).toBe(true);
+
+        // Activating an app notes launch on the *live* WM only.
+        const app = new Shell.App({ id: "com.example.DockApp" });
+        ctx2.display.get_current_monitor.mockReturnValue(1);
+        app.activate();
+        expect(ctx2.windowManager._pendingDockLaunches.some((e) => e.monitor === 1)).toBe(true);
+        expect(wm()._pendingDockLaunches?.length ?? 0).toBe(0);
+      } finally {
+        ctx2.cleanup();
+        Shell.App.prototype._forgeDockWm = null;
+      }
+    });
+
+    it("dock sticky grace rejects re-home flip", () => {
+      tileOn(1, { id: "seed" });
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        id: "dock-flip",
+      });
+      metaWindow._forgeDockMonitor = 1;
+      wm().trackWindow(null, metaWindow);
+      expect(metaWindow.get_monitor()).toBe(1);
+
+      // Simulate restore-geometry race flipping Meta to mon 0
+      metaWindow.move_to_monitor(0);
+      wm().updateMetaWorkspaceMonitor("window-entered-monitor", 0, metaWindow);
+
+      expect(metaWindow.get_monitor()).toBe(1);
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+    });
+
+    it("noteDockLaunch is consumed by detectDockLaunchMonitor", () => {
+      wm().noteDockLaunch(1, { appId: "com.example.App" });
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "from-note",
+      });
+      metaWindow._forgeAppId = "com.example.App";
+      expect(wm().detectDockLaunchMonitor(metaWindow)).toBe(1);
+      // Consumed
+      expect(wm().detectDockLaunchMonitor(metaWindow)).toBe(-1);
+    });
+  });
+
+  describe("tab-after and aspect split", () => {
+    beforeEach(() => setup());
+
+    it("inserts after LFT when LFT parent is TABBED", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+      // Build TABBED CON with two windows
+      const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, {});
+      con.layout = LAYOUT_TYPES.TABBED;
+      const a = createWindowNode(ctx.tree, con, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "tab-a",
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          rect: { x: 0, y: 0, width: 800, height: 600 },
+        },
+      });
+      const b = createWindowNode(ctx.tree, con, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "tab-b",
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          rect: { x: 0, y: 0, width: 800, height: 600 },
+        },
+      });
+      // LFT = first tab
+      wm().movePointerWith(a.nodeWindow);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "tab-new",
+      });
+      wm().trackWindow(null, metaWindow);
+      const node = wm().findNodeWindow(metaWindow);
+
+      expect(node.parentNode).toBe(con);
+      expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
+      // createNode inserts after LFT (before nextSibling of a) → between a and b
+      const kids = con.childNodes.filter((n) => n.isWindow());
+      const idxNew = kids.indexOf(node);
+      const idxA = kids.indexOf(a.nodeWindow);
+      expect(idxNew).toBe(idxA + 1);
+      expect(b.nodeWindow); // still present
+    });
+
+    it("aspect: tall LFT → VSPLIT; wide LFT → HSPLIT", () => {
+      // Sole child on mon: split() toggles mon layout (no phantom single-child CON).
+      const tall = tileOn(0, {
+        id: "tall",
+        rect: { x: 0, y: 0, width: 400, height: 900 },
+      });
+      wm().movePointerWith(tall.nodeWindow);
+
+      const metaTall = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "after-tall",
+      });
+      wm().trackWindow(null, metaTall);
+      const nodeTall = wm().findNodeWindow(metaTall);
+      const parentTall = tall.nodeWindow.parentNode;
+      expect(parentTall.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentTall.contains(nodeTall)).toBe(true);
+
+      // Two existing tiles: aspect-split of LFT creates a real CON with HSPLIT.
+      ctx.cleanup();
+      setup();
+      const seed = tileOn(0, {
+        id: "seed",
+        rect: { x: 0, y: 0, width: 600, height: 600 },
+      });
+      const wide = tileOn(0, {
+        id: "wide",
+        rect: { x: 600, y: 0, width: 1200, height: 400 },
+      });
+      wm().movePointerWith(wide.nodeWindow);
+      const metaWide = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "after-wide",
+      });
+      wm().trackWindow(null, metaWide);
+      const parentWide = wide.nodeWindow.parentNode;
+      expect(parentWide.nodeType).toBe(NODE_TYPES.CON);
+      expect(parentWide.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(seed.nodeWindow.parentNode).toBeTruthy();
+    });
+  });
+
+  describe("focus-on-create chains next open", () => {
+    beforeEach(() => setup());
+
+    it("new tile that takes focus becomes LFT for the next open", () => {
+      const first = tileOn(0, { id: "first", rect: { x: 0, y: 0, width: 900, height: 500 } });
+      wm().movePointerWith(first.nodeWindow);
+
+      const meta2 = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "second",
+        rect: { x: 0, y: 0, width: 900, height: 500 },
+      });
+      wm().trackWindow(null, meta2);
+      const second = wm().findNodeWindow(meta2);
+      // Simulate focus-on-map then processFloats → tile
+      second.mode = WINDOW_MODES.TILE;
+      vi.spyOn(wm(), "focusMetaWindow", "get").mockReturnValue(meta2);
+      wm().movePointerWith(second);
+      expect(wm().lftMru.globalHead()).toBe(second);
+
+      const meta3 = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "third",
+      });
+      wm().trackWindow(null, meta3);
+      const third = wm().findNodeWindow(meta3);
+      // Attached relative to second (same parent CON after aspect split of second)
+      expect(second.parentNode.contains(third) || third.parentNode === second.parentNode).toBe(
+        true
+      );
+    });
+  });
+});
