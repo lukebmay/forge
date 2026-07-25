@@ -324,4 +324,91 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(tree().getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(1);
     expect(tabs.parentNode).toBe(mon1);
   });
+
+  it("soft rehome restores TABBED when thrash flattened under mon0 (cross-mon)", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon0.layout = LAYOUT_TYPES.HSPLIT;
+    mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+    const tabs = tree().createNode(mon1.nodeValue, NODE_TYPES.CON, "tabs-xmon");
+    tabs.layout = LAYOUT_TYPES.TABBED;
+    const frames = [
+      { x: 2000, y: 0, width: 900, height: 900 },
+      { x: 2100, y: 50, width: 800, height: 800 },
+    ];
+    const nodes = frames.map((frame, i) => {
+      const win = createMockWindow({
+        id: `X${i}`,
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        rect: frame,
+      });
+      const n = tree().createNode(tabs.nodeValue, NODE_TYPES.WINDOW, win);
+      n.mode = WINDOW_MODES.TILE;
+      n.rect = { ...frame };
+      return { win, n };
+    });
+
+    // Quiet last-good homes + full forest while structure is still on mon1.
+    wm()._workareasThrashPending = false;
+    wm()._snapshotLastGoodHomes();
+    const preThrashSnap = tree().snapshotTree();
+    // Soft rehome snapshots at settle time (after thrash). Feed the pre-thrash
+    // forest so restore sees mon1 TABBED while live windows may sit on mon0.
+    vi.spyOn(tree(), "snapshotTree").mockReturnValue(preThrashSnap);
+
+    // Thrash: unwrap TABBED and pile flat under mon0 (Meta + tree).
+    mon0.appendChild(nodes[0].n);
+    mon0.appendChild(nodes[1].n);
+    for (const { win } of nodes) win._monitor = 0;
+    expect(nodes[0].n.parentNode).toBe(mon0);
+    expect(nodes[1].n.parentNode).toBe(mon0);
+
+    wm()._softRehomeAfterWorkareas();
+
+    // Last-good frames rehome Meta + nodes to mon1; restore rebuilds one TABBED.
+    for (const { win } of nodes) {
+      expect(win.get_monitor()).toBe(1);
+    }
+    const tabbed = tree().getNodeByLayout(LAYOUT_TYPES.TABBED);
+    expect(tabbed).toHaveLength(1);
+    expect(tabbed[0].childNodes).toContain(nodes[0].n);
+    expect(tabbed[0].childNodes).toContain(nodes[1].n);
+    expect(mon1.contains(tabbed[0])).toBe(true);
+  });
+
+  it("restoreTreeIfNeeded regroups TABBED mon-agnostically when mon1 cohort is empty", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon0.layout = LAYOUT_TYPES.HSPLIT;
+    mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+    const tabs = tree().createNode(mon1.nodeValue, NODE_TYPES.CON, "tabs-agnostic");
+    tabs.layout = LAYOUT_TYPES.TABBED;
+    const nodes = [0, 1].map((i) => {
+      const win = createMockWindow({
+        id: `A${i}`,
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        rect: { x: 2000, y: 0, width: 900, height: 900 },
+      });
+      const n = tree().createNode(tabs.nodeValue, NODE_TYPES.WINDOW, win);
+      n.mode = WINDOW_MODES.TILE;
+      return { win, n };
+    });
+
+    const snap = tree().snapshotTree();
+    // Cohort lives on mon0; monDesc still keys mon1 → empty mon-keyed cohort.
+    mon0.appendChild(nodes[0].n);
+    mon0.appendChild(nodes[1].n);
+
+    tree().restoreTreeIfNeeded(snap);
+
+    const tabbed = tree().getNodeByLayout(LAYOUT_TYPES.TABBED);
+    expect(tabbed).toHaveLength(1);
+    expect(tabbed[0].childNodes).toContain(nodes[0].n);
+    expect(tabbed[0].childNodes).toContain(nodes[1].n);
+    expect(mon0.contains(tabbed[0])).toBe(true);
+  });
 });

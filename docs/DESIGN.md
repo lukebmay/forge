@@ -21,24 +21,57 @@ piles under one monitor node and stays there after both heads return.
    of last-good frame with current monitor geometries.
 4. **Tab/stack survival (T3):** majority-align outermost STACKED/TABBED members
    onto one target so `_containerFullyMigrates` moves the CON as a unit; dead
-   siblings no longer block full migration; snapshot layout groups before
-   reconcile and `restoreLayoutGroupsIfUnwrapped` after — skip intact groups,
-   rejoin partial peels into the existing CON, rebuild only when fully flat.
-5. `move_to_monitor` then one `_reconcileWindowHomes()` + render.
-6. If a target `moNwsW` node is missing → fall back to `reloadTree` + layout-group
-   restore (existing path).
+   siblings no longer block full migration.
+5. **Full tree snapshot (T6):** before rehome, capture the forest (H/V + tabs +
+   order + percent/`userSized` + window refs). After reconcile,
+   `restoreTreeIfNeeded` — skip intact mon topology (re-apply percents only),
+   rebuild when flattened/peeled. Target mon is **remapped** to where the
+   surviving cohort currently lives (majority mon) so empty snapshot-mon
+   cohorts still regroup mon-agnostically (layout-group style). `reloadTree`
+   uses force `restoreTree` with a **fresh** snapshot around its own wipe —
+   not the soft-rehome capture.
+6. `move_to_monitor` then one `_reconcileWindowHomes()` + restore + render.
+7. If a target `moNwsW` node is missing → fall back to `reloadTree` (fresh
+   snapshot inside that path).
 
 **Live proof (2026-07-24, black):** idle auto-lock + DPMS → unlock kept dual-head
 placement and a two-window tab pair; retab after wake did not abort Shell.
 
 **Not done here:** stable EDID/connector IDs (H2/M1 if still needed), gdisplays
-connector remap (shellrc), session layout apply.
+connector remap (shellrc), session layout apply / disk (T7).
 
 **Tests:** `tests/regression/bug-h1-soft-rehome-workareas-thrash.test.js`,
-utils `bestMonitorIndexForRect`.
+`tests/unit/extension/tree-snapshot.test.js`, utils `bestMonitorIndexForRect`.
 
 **Manual reproduce:** `scripts/forge/trigger-idle-lock.zsh` (short idle / DPMS);
 manual Super+Delete is a weak control path.
+
+## Full in-memory tree snapshot (T6)
+
+**Problem:** Layout-group snapshot only kept outer STACKED/TABBED. Nested H/V
+splits, sibling order, percents, and `userSized` died on `reloadTree` / thrash
+rebuild even when windows rehomed correctly.
+
+**Why full snapshot before disk:** Thrash recovery needs live `Meta.Window` refs
+and current `moNwsW` parents — not EDID keys or a session file. Disk/workon
+(T7+) can version the same descriptor later; shipping disk first would freeze
+the wrong contract.
+
+**Approach:**
+
+- Pure module `lib/extension/tree-snapshot.js` (`version: 1` forest of monitor
+  descriptors → recursive CON/WINDOW). Tree thin-wraps (`snapshotTree` /
+  `restoreTree` / `restoreTreeIfNeeded`); creates fresh `St.Bin` CONs on rebuild.
+- **Target mon remap:** `resolveTargetMonitor` prefers the snapshot mon when
+  survivors still live there; otherwise majority mon of survivors. Mixed mons
+  (foreign windows) rebuild only the cohort in place; pure mon full-replaces.
+  Empty CONs left on the abandoned mon are pruned.
+- Cohort rule: only windows under the resolved target mon that appear in the
+  monDesc. Missing windows collapse (no single-child CONs). Mon-level and CON
+  percents renormalized after collapse. No blanket `resetSiblingPercent` wipe.
+- Layout-group APIs remain for forge-bqa callers; capture/rebuild share the pure
+  helpers (descriptors now include percent/userSized).
+- LFT: after restore, re-touch focused tile when present.
 
 ## Daily-driver product locks (2026-07-24)
 

@@ -5,17 +5,17 @@
 
 ## Next session focus
 
-**T6 — full in-memory tree snapshot** (thrash restore foundation). Then T7 →
+**T7 — stable mon roles / output keys** (connector remap for thrash). Then
 **forge-command** FC\*.
 
 | Doc | Role |
 | --- | --- |
-| [forge-daily-driver.md](./plans/forge-daily-driver.md) | T6–T7 next |
+| [forge-daily-driver.md](./plans/forge-daily-driver.md) | T7 next |
 | [forge-command.md](./plans/forge-command.md) | `forge` CLI; workon = FC5 deferred |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome done; batch runtime sketch |
-| Task | create `agents/tasks/forge-daily-driver_t6-full-tree-snapshot.md` |
+| Task | create `agents/tasks/forge-daily-driver_t7-stable-outputs.md` |
 
-**T0–T5 + OP1 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
+**T0–T5 + OP1 + T6 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 
 ## Queue
 
@@ -23,8 +23,8 @@
 | --- | --- | --- |
 | P1 | Daily-driver T0–T5 | **Done** |
 | P1 | OP1 open-app placement | **Done** |
-| **P1** | **T6 full tree snapshot** | **Next** |
-| later | T7 stable mon roles | After T6 |
+| P1 | T6 full tree snapshot | **Done** |
+| **P1** | **T7 stable mon roles** | **Next** |
 | later | FC0–FC4 `forge` CLI | After T6/T7; see forge-command |
 | later | FC5 `workon` composition | **Deferred design** until forge CLI real |
 | optional | OP-opt tiny-pane tab fallback | After P1s; notes in daily-driver |
@@ -34,6 +34,7 @@
 
 ## Related completed
 
+- [T6 full tree snapshot](./plans/forge-daily-driver/completed/forge-daily-driver_t6-full-tree-snapshot.md)
 - [OP1 open-app placement](./plans/forge-daily-driver/completed/forge-daily-driver_op1-open-app-policy.md)
 - [T5 keybind system](./plans/forge-daily-driver/completed/forge-daily-driver_t5-keybind-system.md)
 - [T4 sizing policy](./plans/forge-daily-driver/completed/forge-daily-driver_t4-sizing-policy.md)
