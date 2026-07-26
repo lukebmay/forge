@@ -1,28 +1,67 @@
 {
   "version": 1,
-  "description": "Illustrative dual-launch morning profile (copy to ~/.config/forge/workon/dev.json)",
-  "displays": "rec",
+  "description": "Dual-mon: left Chrome(luke)+Grok | Ghostty; right Ghostty | YT+Gmail+Voice",
   "stopOnError": true,
   "steps": [
     {
       "op": "launch",
-      "app": "ghostty",
-      "monitor": "0"
-    },
-    {
-      "op": "launch",
       "app": "google-chrome",
-      "monitor": "1"
+      "monitor": "0",
+      "path": "mo0ws0",
+      "wmClass": "Google-chrome",
+      "timeout": 25000
     },
-    { "op": "wait", "ms": 200 },
+    { "op": "wait", "ms": 500 },
     {
       "op": "layout",
       "mode": "tabbed",
-      "selector": "class:com.mitchellh.ghostty"
+      "selector": "focus"
     },
     {
-      "op": "focus",
-      "selector": "class:com.mitchellh.ghostty"
+      "op": "launch",
+      "app": "Grok",
+      "wmClass": "Google-chrome",
+      "timeout": 25000
+    },
+    {
+      "op": "launch",
+      "app": "ghostty",
+      "monitor": "0",
+      "path": "mo0ws0",
+      "timeout": 15000
+    },
+    {
+      "op": "launch",
+      "app": "ghostty",
+      "monitor": "1",
+      "path": "mo1ws0",
+      "timeout": 15000
+    },
+    {
+      "op": "launch",
+      "app": "YouTube",
+      "monitor": "1",
+      "path": "mo1ws0",
+      "wmClass": "Google-chrome",
+      "timeout": 25000
+    },
+    { "op": "wait", "ms": 500 },
+    {
+      "op": "layout",
+      "mode": "tabbed",
+      "selector": "focus"
+    },
+    {
+      "op": "launch",
+      "app": "Gmail",
+      "wmClass": "Google-chrome",
+      "timeout": 25000
+    },
+    {
+      "op": "launch",
+      "app": "Google Voice",
+      "wmClass": "Google-chrome",
+      "timeout": 25000
     }
   ]
 }
