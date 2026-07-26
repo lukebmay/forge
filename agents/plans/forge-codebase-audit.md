@@ -1,8 +1,8 @@
 # Plan: Forge codebase efficiency & organization audit
 
-**Status:** in progress — **CA0–CA5 done** (A/B AGREE); paused before CA6 (token budget)
+**Status:** in progress — **CA0–CA6 done** (A/B AGREE); next **CA7**
 
-**Priority:** P1 tidy; resume at CA6  
+**Priority:** P1 tidy; next CA7  
 **Mode:** A/B implement–verify per task; serial; one concern per change  
 **Trigger:** thrash/session work layered safety nets without cleanup; user quality bar: clean code, files &lt;1K preferred, no rewrite  
 
@@ -361,7 +361,7 @@ Task IDs: **CA0…CA9**. Execute in order unless noted parallel-safe.
 | --- | --- |
 | **Goal** | Document one stacking policy; extract only **safe** shared raise helper if call sites are trivial duplicates |
 | **Primary files** | `docs/DESIGN.md` short section; optionally `focus.js` / tiny helper; **avoid** touching fullscreen demote paths without tests |
-| **Acceptance** | [ ] DESIGN lists: tab click, focus mgr, session raise, float-under-fullscreen exception [ ] No regression in `bug-tab-click-activate`, `bug-d5mm-focus-restack`, `bug-5l9b-raise-float-under-fullscreen`, `bug-jnfk-wayland-focus-stacking` [ ] If code DRY: ≤ one small helper; no behavior change |
+| **Acceptance** | [x] DESIGN lists: tab click, focus mgr, session raise, float-under-fullscreen exception [x] No regression in `bug-tab-click-activate`, `bug-d5mm-focus-restack`, `bug-5l9b-raise-float-under-fullscreen`, `bug-jnfk-wayland-focus-stacking` [x] If code DRY: ≤ one small helper; no behavior change (**docs-only**, no helper) |
 | **Risk** | med (stacking is brittle) |
 | **Test plan** | listed regressions + `npm test` |
 | **Out of scope** | rewriting Wayland stack timeouts; lastTabFocus id churn fix (product bug, not audit) |
@@ -441,25 +441,14 @@ Task IDs: **CA0…CA9**. Execute in order unless noted parallel-safe.
 
 ## Session note (handoff)
 
-**2026-07-25 (orchestrator stop):** Wave-1 partial ship CA0–CA5 (all A/B **AGREE**). Token budget reached; **stop before CA6**.
+**CA6 B (2026-07-26): AGREE.** Docs-only raise/restack policy in `docs/DESIGN.md`
+§ Raise / restack. B verified: no `lib/` diff; call-site table matches tree/focus/
+session-layout-restore/window (tab click, focus mgr, session DFS + `raiseWin`,
+5l9b float skip, Wayland 50ms pin); “stay separate” (demote / make_above /
+decoration) accurate; no shared helper (correct). Full `npm test` 184/**1868**
+passed. Sizes unchanged (`window.js` 4431; `tree.js` 2909).
 
-| ID | Result |
-| --- | --- |
-| CA0 | Recovery architecture in `docs/DESIGN.md` |
-| CA1 | Session traces → debug; one info per restore success |
-| CA2 | Deleted `temp-before-debug/`; single `_monitorIndexOfNode`; session-save timer teardown |
-| CA3 | `Utils.monoTimeUs()` DRY (8 call sites) |
-| CA4 | `session-layout-restore.js` (496); window.js −391 |
-| CA5 | `soft-rehome.js` (339); window.js −239 more |
+**Next:** **CA7** tree-layout extract. Move CA6 task →
+`agents/plans/forge-codebase-audit/completed/` when orchestrator wraps.
 
-**Sizes now:** `window.js` **4431** (was ~5061, **−630**); `tree.js` still **2909** (CA7 not started).
-
-**Tests:** 184 files / **1868** passed throughout.
-
-**Completed tasks:** `agents/plans/forge-codebase-audit/completed/ca0…ca5`.
-
-**Next session:** **CA6** raise/restack policy → CA7 tree-layout → CA8 dead debug → CA9 metrics. Backlog B1 DnD still high-ROI if window.js stays &gt;3.5k after CA7.
-
-**Risks remaining:** CA6 stacking brittleness; CA7 percent/`0=equal` semantics.
-
-**No commit** this session (user did not ask).
+**No commit** (orchestrator).

@@ -118,9 +118,46 @@ extracting soft-rehome / session-restore modules.
 
 ### Raise / restack
 
-Multiple raise paths (tab click, focus manager, session raise-after-restore,
-float-under-fullscreen exception, Wayland stack timeout). Do not unify blindly
-— see audit **CA6**.
+**Why this section exists:** Z-order is not one API. Tab click, focus manager,
+session restore, float-on-focus, and Wayland transient pins each solve a
+different “window is buried / wrong layer” failure. Collapsing them into one
+`raiseWindow(meta)` helper is an audit smell — fullscreen demotion and
+`make_above` pins must stay separate (see forge-5l9b, forge-zo4, forge-jnfk).
+
+**Rule for agents:** document call sites; at most a trivial `safeRaise(meta)`
+try/catch if needed. Do **not** unify restack order, demotion guards, or
+Wayland pin/unpin into that helper. Product bugs (e.g. `lastTabFocus` id
+churn) are not raise-path cleanup.
+
+#### Call sites (do not merge)
+
+| Path | Where | What it does |
+| --- | --- | --- |
+| **Tab click** | `Node._activateFromTab` (`tree.js`) | `lastTabFocus` ← meta; `raise` + `activate`; **immediately** `updateTabbedFocus` / `updateStackedFocus` (focus signal is deferred — waiting on it left stacks un-restacked) |
+| **Focus manager** | `FocusManager` (`focus.js`) | `updateStackedFocus`: append focused child in STACKED parent, raise all window siblings, queue render; `updateTabbedFocus`: raise focused leaf only when parent is TABBED; pointer hover (`_focusWindowUnderPointer`): `focus` + `raise` under cursor |
+| **Session raise-after-restore** | `SessionLayoutRestoreManager.raiseAfterSessionRestore` (`session-layout-restore.js`) | DFS walk restored forest: `raise` each leaf, then `lastTabFocus` per CON; finally raise focused meta + tab/stack update so nothing stays buried under a sibling after HUP match |
+| **Float under fullscreen** | `window.js` focus `raise-float` queue + untiled rehome float raise | Raise focused float above tiles **unless** `node._aboveDemotedForFullscreen` — bare `raise()` undoes `_reconcileFullscreenFloatDemotion`’s `lower()` without setting `is_above()`, so the next demote pass never re-lowers it (forge-5l9b) |
+| **Wayland stack timeout** | `Tree._activateWindowNode` (`tree.js`) | On Wayland, brief `make_above` + per-window **50ms** `_forgeStackTimeoutId` unpin so the window leaves the desktop layer; not a generic raise — keep cleanup on disable / destroy (forge-jnfk / forge-ph7f) |
+
+Also raise (not policy centers): directional/cyclic focus via `_activateWindowNode`,
+command keybinds (`command.js`), session DBus activate (`session-api.js`),
+post-close focus (`window.js`). Same rule: call `raise` + existing tab/stack
+helpers; do not invent a second restack pipeline.
+
+#### What must stay separate
+
+| Mechanism | Why not “just raise” |
+| --- | --- |
+| **Fullscreen float demote** (`_reconcileFullscreenFloatDemotion`) | `unmake_above` + `lower` + `_aboveDemotedForFullscreen`; raise-on-focus must skip demoted floats |
+| **`make_above` / always-on-top** | User pin vs Forge `_forgeSetAbove` vs Wayland **transient** pin (`_forgeTransientAbove`); suppress `notify::above` via `_withSuppressedAboveHandler` |
+| **Decoration restack** | Tab strip actors above that CON’s windows (pickability) — not Meta.Window Z-order |
+
+Local `raiseWin` in session restore is fine; optional shared `safeRaise` only
+for null-safe try/catch duplicates. **Never** fold demote / `make_above` /
+Wayland timeout into it.
+
+**Tests:** `bug-tab-click-activate`, `bug-d5mm-focus-restack`,
+`bug-5l9b-raise-float-under-fullscreen`, `bug-jnfk-wayland-focus-stacking`.
 
 ## Soft rehome on workareas thrash (H1)
 
