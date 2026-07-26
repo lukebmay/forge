@@ -487,5 +487,17 @@ Wave 1 **did** shrink the two offenders and carved thrash/session/layout into na
 | CA8 | Debug gate + comment trim |
 | CA9 | Metrics + backlog disposition |
 
-**Next:** product queue (personal fork / live smoke). Optional: wave 2 **B1** only if size still prioritized. No commit.
+**Next:** product queue (personal fork). Optional: wave 2 **B1** only if size still prioritized.
+
+### Live install smoke (2026-07-26 wrap-up)
+
+On host with dual displays active (X11):
+
+1. `forge settings save audit-wave1-smoke` — ok  
+2. `forge tree` before — mo0: TABBED(2 chrome)+ghostty; mo1: ghostty+TABBED(3 chrome); 7 tiles  
+3. `forge install` → `v49-90-beta.2-42-g24a6533`; Shell HUP  
+4. `forge ping` ok; `forge tree` after — **same topology / 7 windows** (session restore through install)  
+5. `npm test` — **184 / 1868** green  
+
+Wave 1 closed with live proof, not only unit tests.
 
