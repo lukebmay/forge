@@ -1,8 +1,9 @@
 # Plan: Forge codebase efficiency & organization audit
 
-**Status:** in progress — **CA0–CA6 done** (A/B AGREE); next **CA7**
+**Status:** in progress — **CA0–CA7 done** (A/B AGREE); next CA8
 
-**Priority:** P1 tidy; next CA7  
+**Priority:** P1 tidy; next CA8  
+
 **Mode:** A/B implement–verify per task; serial; one concern per change  
 **Trigger:** thrash/session work layered safety nets without cleanup; user quality bar: clean code, files &lt;1K preferred, no rewrite  
 
@@ -372,7 +373,7 @@ Task IDs: **CA0…CA9**. Execute in order unless noted parallel-safe.
 | --- | --- |
 | **Goal** | Move pure sizing/gap math out of `tree.js` |
 | **Primary files** | new `lib/extension/tree-layout.js`; `tree.js` imports |
-| **Acceptance** | [ ] `computeSizes` / min-size redistrib / gap math live outside tree.js [ ] tree.js line count drops (≥300 target) [ ] t4 sizing + s6g + nested resize regressions green [ ] `npm test` green |
+| **Acceptance** | [x] `computeSizes` / min-size redistrib / gap math live outside tree.js [x] tree.js line count drops (≥300 target: −332 → 2577) [x] t4 sizing + s6g + nested resize regressions green [x] `npm test` green (A/B AGREE) |
 | **Risk** | med |
 | **Test plan** | `npm test`; `t4-sizing-policy.test.js`, `bug-s6g-minsize-redistribution.test.js`, related resize bugs |
 | **Out of scope** | tab chrome extract; processNode St decoration |
@@ -441,14 +442,31 @@ Task IDs: **CA0…CA9**. Execute in order unless noted parallel-safe.
 
 ## Session note (handoff)
 
-**CA6 B (2026-07-26): AGREE.** Docs-only raise/restack policy in `docs/DESIGN.md`
-§ Raise / restack. B verified: no `lib/` diff; call-site table matches tree/focus/
-session-layout-restore/window (tab click, focus mgr, session DFS + `raiseWin`,
-5l9b float skip, Wayland 50ms pin); “stay separate” (demote / make_above /
-decoration) accurate; no shared helper (correct). Full `npm test` 184/**1868**
-passed. Sizes unchanged (`window.js` 4431; `tree.js` 2909).
+**CA7 B (2026-07-26): AGREE** — Independent verify; no findings; no code fixes.
 
-**Next:** **CA7** tree-layout extract. Move CA6 task →
-`agents/plans/forge-codebase-audit/completed/` when orchestrator wraps.
+- GRAB_TILE pure path `"GRAB_TILE"` ≡ `createEnum` / `Window.WINDOW_MODES.GRAB_TILE`
+- percent 0/missing equal share; grab skips min/percents; #330 remainder + T4 write-back OK
+- Decoration attach still on Tree; no import cycles
+- tree.js **2577** (−332); layout **413**
+- B re-ran focused sizing + full suite: **184/1868** green
 
-**No commit** (orchestrator).
+**Next:** **CA8**. No commit.
+
+---
+
+**CA7 A (2026-07-26):** New `lib/extension/tree-layout.js` (413 lines) — pure sizing/gap/
+split/stack content-rect math. Tree thin-wraps; St decoration attach stays on Tree.
+
+| File | Lines |
+| --- | ---: |
+| `tree.js` | 2909 → **2577** (−332) |
+| `tree-layout.js` | **413** (new) |
+
+**Exports:** `computeSizes`, `minSizeInOrientation`, `redistributeForMinSizes`,
+`mostShrinkableIndex`, `processGap`, `applyMargins`, `splitChildRect`,
+`decorationLayout`, `stackedChildRect`, `tabbedChildRect`, percent helpers
+(`resetSiblingPercent`, `insertChildPercent`, `redistributeSiblingPercent`).
+
+**Kept on Tree:** `processNode`, `_applyDecorationRect`, `_ensureDecoration`,
+render/apply/chrome; stacked/tabbed only attach after pure rect.
+
