@@ -12,13 +12,11 @@
 **Completed (verify):** [h1-verify](./forge-harden-and-session/completed/forge-harden-and-session_h1-verify.md) (via daily-driver T3)  
 **Next (this plan’s long arc):** after daily-driver T6–T8 → Phase 3 session / `workon`
 
-### Session note (2026-07-25)
+### Session note (2026-07-26)
 
-**Session-layout slice mostly shipped (not full Phase 3 / workon).** Install HUP
-path restores tabs + dual-head for most windows. **Residual:** multi-window
-same-pid apps (Ghostty) mon/stack after restore — open task  
-[forge-daily-driver_session-layout-ghostty.md](../tasks/forge-daily-driver_session-layout-ghostty.md).  
-CLI: **[forge-command.md](./forge-command.md)**.
+**Session-layout + dual-Ghostty install HUP: done** (archived under daily-driver
+`completed/`). Soft rehome H1 live. Phase 3 / **`workon`** remains the long-arc
+session scripting goal via **[forge-command.md](./forge-command.md) FC5**.
 ---
 
 ## Goal

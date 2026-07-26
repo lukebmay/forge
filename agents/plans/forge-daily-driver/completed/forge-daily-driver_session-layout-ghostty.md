@@ -4,9 +4,9 @@
 **Related plan:** [forge-harden-and-session.md](../plans/forge-harden-and-session.md)  
 **Design:** [docs/DESIGN.md](../../docs/DESIGN.md) — “Session layout across install/update”  
 **Archive (prior ship):** [session-layout-tab-click](../archive/entries/session-layout-tab-click.md)  
-**Status:** open — partial success; one residual class of bug  
+**Status:** **done** (live PASS thrice 2026-07-25; reconfirmed install smoke 2026-07-26)  
 **Host:** `black` — dual 4K, X11, Shell 46, hybrid AMD+NVIDIA  
-**Mode:** next session = **A/B implement–verify loop** (fresh agents; serial)
+**Mode:** closed — reopen only if dual-Ghostty install/HUP thrash regresses
 
 ---
 
@@ -251,22 +251,18 @@ Trace file (dev builds): `~/.config/forge/config/session-layout-trace.log`
 
 ### Next
 
-Move to plan `completed/` when archiving; commit on request.
+**Closed 2026-07-26.** Audit wave 1 (CA0–CA9) shipped separately. Reopen only on dual-Ghostty HUP regression.
 
 ### Acceptance checklist
 
 - [x] Match / seed / shield unit+regression
 - [x] `npm test` green (1868)
 - [x] Live install on black (agent autonomous, thrice PASS)
+- [x] Install smoke reconfirm 2026-07-26 (settings save → tree → install → tree; 7 tiles dual-head OK)
 
-### Audit / spaghetti debt → future task
+### Audit / spaghetti debt
 
-See [forge-codebase-audit.md](../plans/forge-codebase-audit.md) (stub). High-signal from this arc:
-
-| Concern | Notes |
-| --- | --- |
-| `window.js` ~4.7k lines | Session save/restore/rehome/raise live beside WM core |
-| Layered match history | id → pid → class+title → class; multi-phase thrash patches |
+Done as [forge-codebase-audit.md](../forge-codebase-audit.md) wave 1 (CA0–CA9).
 | Overlapping thrash nets | Soft rehome (H1), session-layout strict, majority restore, richness guard, 12s save hold |
 | Raise / focus restack | Tab click, focus mgr, session raise — multiple paths |
 | lastTabFocus after HUP | Meta-id only; null after id churn (pre-existing) |

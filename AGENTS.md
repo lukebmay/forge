@@ -12,9 +12,17 @@
 
 **Forge** — GNOME Shell extension for i3/sway-style tiling window management.
 
-This tree is **jcrussell/forge** (community / AI-maintained fork). Upstream
-**forge-ext/forge** seeks a maintainer; local reference clone:
-`~/dev/me/forge_original`.
+#### Who owns what (do not collapse these)
+
+| Layer | Meaning |
+| --- | --- |
+| **EGO / forge-ext** | Upstream SweetTooth / `forge-ext/forge` (seeks maintainer) |
+| **jcrussell** | Community / AI-maintained fork on GitHub — **Phase A base** |
+| **This tree (Luke)** | Local product work on that base; **official personal GitHub fork not created yet** — see [forge-fork-eval_personal-fork](./tasks/forge-fork-eval_personal-fork.md) |
+
+Local path: `~/dev/me/forge_jcrussell` (name still says jcrussell; remotes may
+still point at jcrussell until the personal-fork task lands). Reference clone
+of upstream: `~/dev/me/forge_original`.
 
 Compose rules into root `AGENTS.md` (shellrc `agents`):
 
@@ -55,12 +63,13 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 
 | Item | Status | Next |
 | --- | --- | --- |
-| [forge-fork-eval](./plans/forge-fork-eval.md) | Phase A done — **use this fork as base** | Phase B/C install trial on `black` |
-| [spike task](./tasks/forge-fork-eval_spike.md) | Ready | Backup → Node 20 → `make dev` → smoke → blank/wake |
-| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T1 done | Next: T2 overlay → T3 blank/wake |
-| [forge-harden-and-session](./plans/forge-harden-and-session.md) | H1 code done | Live verify via daily-driver T3; then session/`workon` |
+| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + session-layout **Done** | Live on it; open bugs only if thrash returns |
+| [forge-command](./plans/forge-command.md) | FC0–FC4 **Done** | **FC5 `workon`** when morning scripting wanted |
+| [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 **Done** | Optional B1 DnD extract only |
+| [personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership/remotes — low daily tiling impact |
 
-**Host `black` (last inventory):** GNOME Shell 46.0, X11, EGO Forge **v89** still installed until trial.
+**Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).  
+**Host `black`:** GNOME Shell 46, X11, dual 4K; **this tree** installed in place (not EGO v89).
 
 ### Layout
 
@@ -109,6 +118,26 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 - Keep signal disconnect / actor teardown disciplined on `disable()` and node removal.
 - Prefer fixing root causes over silencing crashes.
 - Do not re-run the upstream-vs-fork comparison unless the trees change materially.
+
+#### Dev testing (live install / Shell HUP)
+
+When agents run live tests that need install + Shell reload (`./install`,
+`forge save-session-layout`, dual-mon thrash):
+
+1. **Use a debug install** — `./install` / `make dev` set `production=false`.
+2. **Turn logging on** before the run (otherwise `Logger` stays silent):
+
+   ```sh
+   gsettings set org.gnome.shell.extensions.forge logging-enabled true
+   gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO
+   ```
+
+3. **Session-layout file trace** (debug builds only): append-only log at
+   `~/.config/forge/config/session-layout-trace.log` during restore / shield /
+   rehome. Prefer this over journal guessing after HUP.
+4. **Post-HUP collectors** must survive `killall -HUP gnome-shell` (`nohup` /
+   background script writing under `/tmp/...`), then compare `forge tree`.
+5. Do not rely on the user to re-layout windows for verification.
 
 #### Git
 

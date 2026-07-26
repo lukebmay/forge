@@ -8,15 +8,16 @@
 **Related:** [forge-harden-and-session.md](./forge-harden-and-session.md) (H1 soft rehome code done; live verify still open)  
 **Completed (prior):** [soft-rehome](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md)
 
-### Session note (2026-07-25)
+### Session note (2026-07-26)
 
-**Session-layout Ghostty:** Autonomous install **PASS** (dual Ghostty mon0+mon1,
-full widths). assignByScore + seed + shield + collapse/renormalize. Dev logging
-note in `agents/project.md`. Trace: `session-layout-trace.log` (debug builds).
-**Task:** [forge-daily-driver_session-layout-ghostty.md](../tasks/forge-daily-driver_session-layout-ghostty.md)  
-**Audit stub:** [forge-codebase-audit.md](./forge-codebase-audit.md)
+**Daily-driver product path complete for live use.** T0–T7 + OP1 + session-layout
+Ghostty **done** (task archived under `completed/`). Audit wave 1 also done.
+Live install smoke reconfirmed dual-head 7-tile restore.
 
-**T0–T5 + OP1 + T6 + T7 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
+**Next product with real day-to-day impact:** FC5 `workon` (forge-command) — only
+when you want one-shot morning layout. Else: use it and file regressions.
+
+Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 ---
 
 ## Goals

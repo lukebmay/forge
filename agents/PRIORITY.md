@@ -1,51 +1,91 @@
 # forge_jcrussell — active priorities
 
-**Updated:** 2026-07-26
-**Cross-repo:** shellrc gdisplays v1 done; Forge trial is independent.
+**Updated:** 2026-07-26  
+**Lens:** day-to-day impact on `black` (dual 4K, X11, Shell 46), not tidy purity.  
+**Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 ## Next session focus
 
-**Official personal fork** — distinguish Luke’s tree from jcrussell.  
-Task: [forge-fork-eval_personal-fork.md](./tasks/forge-fork-eval_personal-fork.md).
+**FC5 design only when you want morning one-shot layout** (`workon`-class).  
+Otherwise: **live on the fork** and open bugs only when layout pain returns.
 
-Also: FC0–FC4 live smoke + path/casefold/friendly-launch fixes shipped
-(this commit); reinstall reloads Shell for extension half. FC5 deferred.
+Product base is this tree (installed `v49-90-beta.2-42+`). Identity fork is
+useful later; it does **not** fix windows.
 
 | Doc | Role |
 | --- | --- |
-| [forge-fork-eval_personal-fork.md](./tasks/forge-fork-eval_personal-fork.md) | **Next** — GitHub fork + lineage identity |
-| [forge-command.md](./plans/forge-command.md) | FC0–FC4 **Done**; FC5 deferred |
-| [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 done |
-| [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome done; batch via FC4 |
-| [forge-codebase-audit.md](./plans/forge-codebase-audit.md) | **Wave 1 done** (CA0–CA9); optional B1 |
-| Optional | OP-opt; T9; fork-eval spike close-out |
+| [forge-command.md](./plans/forge-command.md) | FC0–FC4 **Done**; **FC5** = highest remaining *workflow* impact |
+| [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 + session-layout Ghostty **Done** |
+| [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome + install HUP path live |
+| [forge-codebase-audit.md](./plans/forge-codebase-audit.md) | Wave 1 **done**; B1 optional size only |
+| [forge-fork-eval_personal-fork.md](./tasks/forge-fork-eval_personal-fork.md) | Ownership / remotes — low daily tiling impact |
+| [forge-fork-eval_spike.md](./tasks/forge-fork-eval_spike.md) | Spike close-out docs — mostly historical |
 
-**T0–T7 + OP1 + FC0–FC4 done.** Audit wave 1 done. Product base still *code from* jcrussell; ownership not forked yet.
+---
 
-## Queue
+## Day-to-day impact ranking
 
-| Pri | Item | Status |
-| --- | --- | --- |
-| **P1** | **Official personal fork** (≠ jcrussell) | **Next** |
-| P1 | Daily-driver T0–T5 | **Done** |
-| P1 | OP1 open-app placement | **Done** |
-| P1 | T6 full tree snapshot | **Done** |
-| P1 | T7 stable mon roles | **Done** |
-| P1 | FC0 DBus Ping + GetTree | **Done** |
-| P1 | FC1 selectors + focus/move/swap | **Done** |
-| P1 | FC2 forge launch | **Done** |
-| P1 | FC3 settings get/set/save/load | **Done** |
-| P1 | FC4 run-steps | **Done** |
-| later | FC5 `workon` composition | **Deferred design** until asked |
-| optional | OP-opt tiny-pane tab fallback | After P1s; notes in daily-driver |
-| later | T9 multi-line tabs | After T1 proven |
-| **done** | [codebase audit wave 1](./plans/forge-codebase-audit.md) | **CA0–CA9 complete** — window 4431, tree 2572; targets not fully met |
-| optional | Audit **B1** DnD/grab extract | Wave 2 if size still wanted (window &gt;3.5k; high ROI) |
-| P2 | forge-fork-eval spike close-out | Partial |
-| later | gdisplays v2 | shellrc only |
+Ordered by **how often it hurts or helps when actually using the machine**.
+
+| Rank | Impact | Item | Why | Status |
+| ---: | --- | --- | --- | --- |
+| 1 | **Critical (shipped)** | Dual-head blank/wake + install HUP restore | Morning layout must survive lock/wake and `forge install` | **Done** — T3, T6, T7, session-layout + Ghostty |
+| 2 | **Critical (shipped)** | Tabs, stack-off, open-app LFT, keybinds, sizing | Core daily tiling feel | **Done** — T0–T5, OP1 |
+| 3 | **High (next product)** | **FC5 `workon` composition** | One command → displays + dual Ghostty + tabs morning layout | **Deferred design** — only remaining high-ROI *feature* |
+| 4 | **Medium (live)** | Regression watch: install/HUP, wake thrash, tab chrome | Still the failure modes that ruin a day if they return | **Monitor** — no open task; file bug when seen |
+| 5 | **Medium (QoL)** | OP-opt tiny-pane → tab fallback | Occasional “split into postage stamp” when opening apps | Optional |
+| 6 | **Low (meta)** | Personal GitHub fork + lineage id | Ownership, push target, mental model — not tiling | Ready when publishing |
+| 7 | **Low (meta)** | Fork-eval spike formal close-out | Already daily-driving this tree | Docs only |
+| 8 | **Low (code health)** | Audit B1 DnD extract | Shrinks `window.js`; zero user-visible win | Optional wave 2 |
+| 9 | **Later** | T9 multi-line tabs | Polish after single-row proven in real use | Later |
+| 10 | **Out of repo** | gdisplays v2 | shellrc only | — |
+
+**Rule of thumb:** prefer fixing a **layout regression you just hit** over meta/tidy.
+Do not start B1 or personal-fork work while a real thrash/tab bug is open.
+
+---
+
+## Queue (execution)
+
+| Pri | Item | Status | Day-to-day? |
+| --- | --- | --- | --- |
+| **P1** | Live daily-drive this install; report thrash/tab bugs | **Default** | Yes |
+| **P1** | [FC5 `workon`](./plans/forge-command.md) — design then implement | **Next feature** when wanted | **Yes** (morning setup) |
+| optional | OP-opt tiny-pane tab fallback | Notes in daily-driver | Mild QoL |
+| P2 | [Personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership only |
+| P2 | [Spike close-out](./tasks/forge-fork-eval_spike.md) | Partial | Docs |
+| later | T9 multi-line tabs | After T1 proven live | Polish |
+| later | Audit **B1** DnD extract | Optional | Maintainability |
+| later | gdisplays v2 | shellrc | Displays |
+
+### Done recently (not open work)
+
+| Item | Note |
+| --- | --- |
+| T0–T7 + OP1 | Daily-driver core |
+| FC0–FC4 | `forge` CLI control plane |
+| Session-layout Ghostty | [completed](./plans/forge-daily-driver/completed/forge-daily-driver_session-layout-ghostty.md) |
+| Soft rehome H1 | Harden path |
+| Audit CA0–CA9 | Wave 1 tidy/extract |
+
+---
+
+## Session wrap (2026-07-26)
+
+- Audit wave 1 **complete** (CA6–CA9 this session; CA0–CA5 prior).
+- Live smoke: `settings save` → `tree` → `install` → `tree` — **7 tiles dual-head preserved**.
+- Unit tests: **184 / 1868** green.
+- Installed: `v49-90-beta.2-42-g24a6533` (+ wrap-up commit).
+- Ghostty residual task **archived done**; personal fork demoted vs daily tiling.
+
+**No new tasks invented.** Next impactful *build* is FC5 only if you want scripted mornings.
+
+---
 
 ## Related completed
 
+- [session-layout Ghostty](./plans/forge-daily-driver/completed/forge-daily-driver_session-layout-ghostty.md)
+- [audit CA0–CA9](./plans/forge-codebase-audit.md)
 - [FC4 run-steps](./plans/forge-command/completed/forge-command_fc4-run-steps.md)
 - [FC3 settings](./plans/forge-command/completed/forge-command_fc3-settings.md)
 - [FC2 forge launch](./plans/forge-command/completed/forge-command_fc2-launch.md)
@@ -69,7 +109,8 @@ Also: FC0–FC4 live smoke + path/casefold/friendly-launch fixes shipped
 - Full rewrite / flex engine / pin-to-tile  
 - Skip backup before install (same UUID replaces live extension)  
 - Open gdisplays v2 from this repo  
-- Invent `workon` DSL before `forge` CLI (FC5 only after FC1–FC4)  
+- Invent `workon` DSL without a short FC5 design pass  
 - Full i3 IPC — MVP is forge subcommands + tree query  
 - SSH to black without **explicit** user permission (AGENTS security)  
 - OP-opt tiny-pane heuristics in OP1  
+- Prioritize audit B1 or personal-fork over a live thrash bug  

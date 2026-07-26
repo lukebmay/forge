@@ -55,12 +55,13 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 
 | Item | Status | Next |
 | --- | --- | --- |
-| [forge-fork-eval](./plans/forge-fork-eval.md) | Phase A done — **use this fork as base** | Phase B/C install trial on `black` |
-| [spike task](./tasks/forge-fork-eval_spike.md) | Ready | Backup → Node 20 → `make dev` → smoke → blank/wake |
-| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T1 done | Next: T2 overlay → T3 blank/wake |
-| [forge-harden-and-session](./plans/forge-harden-and-session.md) | H1 code done | Live verify via daily-driver T3; then session/`workon` |
+| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + session-layout **Done** | Live on it; open bugs only if thrash returns |
+| [forge-command](./plans/forge-command.md) | FC0–FC4 **Done** | **FC5 `workon`** when morning scripting wanted |
+| [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 **Done** | Optional B1 DnD extract only |
+| [personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership/remotes — low daily tiling impact |
 
-**Host `black` (last inventory):** GNOME Shell 46.0, X11, EGO Forge **v89** still installed until trial.
+**Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).  
+**Host `black`:** GNOME Shell 46, X11, dual 4K; **this tree** installed in place (not EGO v89).
 
 ## Layout
 

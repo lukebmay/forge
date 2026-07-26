@@ -1,7 +1,7 @@
 # Plan: `forge` CLI + session scripting surface
 
-**Status:** FC0–FC4 **Done** — FC5 deferred
-**Priority:** P1 product (next after daily-driver Phase E)  
+**Status:** FC0–FC4 **Done** — FC5 deferred design (highest remaining workflow impact)
+**Priority:** P1 product — **next feature when daily scripting wanted**  
 **Base:** this tree (`jcrussell/forge`)  
 **Related:** [forge-daily-driver.md](./forge-daily-driver.md) (OP1, T6–T7 done),  
 [forge-harden-and-session.md](./forge-harden-and-session.md) (DBus / apply runtime)

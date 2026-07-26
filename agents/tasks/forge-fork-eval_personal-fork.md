@@ -2,7 +2,7 @@
 
 **Status:** Ready  
 **Plan:** [forge-fork-eval.md](../plans/forge-fork-eval.md)  
-**Priority:** P1 (identity / ownership)  
+**Priority:** P2 (identity / ownership — low day-to-day tiling impact; see PRIORITY.md)  
 **Kind:** Plan-linked  
 **When done:** move to `agents/plans/forge-fork-eval/completed/`
 
