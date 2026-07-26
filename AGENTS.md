@@ -64,7 +64,8 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 | Item | Status | Next |
 | --- | --- | --- |
 | [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + session-layout **Done** | Live on it; open bugs only if thrash returns |
-| [forge-command](./plans/forge-command.md) | FC0–FC4 **Done** | **FC5 `workon`** when morning scripting wanted |
+| [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | Live-drive; file bugs |
+| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + OP-opt **Done** | T9 later |
 | [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 **Done** | Optional B1 DnD extract only |
 | [personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership/remotes — low daily tiling impact |
 

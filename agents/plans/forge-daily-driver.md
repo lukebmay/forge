@@ -1,23 +1,18 @@
 # Plan: Forge daily-driver path
 
-**Status:** Ready — analysis locked; implement in task order  
+**Status:** Core **Done** — T0–T7 + OP1 + OP-opt; live-drive + bugfixes  
 **Priority:** P1 product  
 **Base:** this tree (`jcrussell/forge`) — **not** `~/dev/me/forge_original`  
 **Host:** `black` (dual 4K, X11, Shell 46, hybrid AMD+NVIDIA; displays via shellrc `gdisplays`)  
 **Analysis (required reading):** [forge-layout-thrash-analysis.md](./forge-layout-thrash-analysis.md)  
-**Related:** [forge-harden-and-session.md](./forge-harden-and-session.md) (H1 soft rehome code done; live verify still open)  
+**Related:** [forge-harden-and-session.md](./forge-harden-and-session.md), [forge-command.md](./forge-command.md)  
 **Completed (prior):** [soft-rehome](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md)
 
 ### Session note (2026-07-26)
 
-**Daily-driver product path complete for live use.** T0–T7 + OP1 + session-layout
-Ghostty **done** (task archived under `completed/`). Audit wave 1 also done.
-Live install smoke reconfirmed dual-head 7-tile restore.
-
-**Next product with real day-to-day impact:** FC5 `workon` (forge-command) — only
-when you want one-shot morning layout. Else: use it and file regressions.
-
-Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
+**OP-opt Done (B AGREE)** — [completed task](./forge-daily-driver/completed/forge-daily-driver_op-opt-tiny-pane-tab.md).  
+Enable live: `gsettings set org.gnome.shell.extensions.forge tiny-pane-tab-fallback-enabled true`  
+T0–T7 + OP1 + OP-opt + FC0–FC5 done. Later: T9 multi-line tabs.
 ---
 
 ## Goals
@@ -122,8 +117,8 @@ T4 sizing policy (equalize / userSized)
 | **OP1** | [completed/forge-daily-driver_op1-open-app-policy.md](./forge-daily-driver/completed/forge-daily-driver_op1-open-app-policy.md) | **Done** | T4 | M | Dock sticky mon; global+per-mon LFT MRU; tab-after; aspect split; focus-on-create |
 | **T6** | [completed/forge-daily-driver_t6-full-tree-snapshot.md](./forge-daily-driver/completed/forge-daily-driver_t6-full-tree-snapshot.md) | **Done** | T3; OP1 preferred | M | In-memory full tree for thrash restore |
 | **T7** | [completed/forge-daily-driver_t7-stable-outputs.md](./forge-daily-driver/completed/forge-daily-driver_t7-stable-outputs.md) | **Done** | T6 | M | Connector/stable keys; remap layer (gdisplays-inspired) |
-| **FC\*** | [forge-command.md](./forge-command.md) | **Next** | OP1; T6–T7 | L | `forge` CLI + DBus; workon = FC5 deferred |
-| **OP-opt** | `agents/tasks/forge-daily-driver_op-opt-tiny-pane-tab.md` | Optional | after OP1 + P1s | S | Brainstorm/implement min-edge tab fallback (see notes) |
+| **FC\*** | [forge-command.md](./forge-command.md) | **Done** (FC0–FC5) | OP1; T6–T7 | L | `forge` CLI + DBus + workon |
+| **OP-opt** | [completed/…](./forge-daily-driver/completed/forge-daily-driver_op-opt-tiny-pane-tab.md) | **Done** | after OP1 + FC* | S | Min-edge tab fallback (default off) |
 | **T9** | multi-line tabs North Star | Later | T1 proven | L | One group chrome; max_tabs_per_line |
 
 When creating OP1/T6–T7/OP-opt task files, copy T0–T3 structure. FC\* tasks live under forge-command plan.
@@ -240,18 +235,13 @@ Do **not** split global vs per-mon into separate tasks; one module, one review.
 
 ### Phase D2-opt — Tiny-pane tab fallback (**optional**, after P1s)
 
-**Status:** optional brainstorm/implement — **not** OP1 scope.  
-**Task (when opened):** `agents/tasks/forge-daily-driver_op-opt-tiny-pane-tab.md`
+**Status:** B AGREE (default off).  
+**Task:** `agents/tasks/forge-daily-driver_op-opt-tiny-pane-tab.md` (ready complete)
 
-**Recommendation (for later notes):** if we ever stop “split into oblivion,”
-prefer a **min edge** rule after the proposed 50/50 split of LFT’s rect:
-
-- each resulting width **and** height ≥ max(app min-size, setting ≈ 320px or
-  ~12% of monitor min(workarea edge));
-- else join/create TABBED instead of split.
-
-Do **not** use raw area fraction (e.g. 1/16 monitor) — fails on ultrawide
-(wide but short panes). Opt-in setting; default remains “allow small splits.”
+**Shipped:** `shouldTabInsteadOfSplit` + `tiny-pane-tab-fallback-enabled` /
+`tiny-pane-min-edge` (320). Open-app path only: if proposed 50/50 half-edge
+&lt; max(min-edge, 12% workarea min, app min) → force TABBED CON around LFT.
+Not area fraction; not manual splits.
 
 ### Phase E — Layout durability (T6–T7) + CLI handoff
 

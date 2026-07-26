@@ -386,12 +386,24 @@ easy to poison with floats (Guake) and ignored per-monitor dock intent.
    `noteDockLaunch` / `_forgeDockMonitor`, plus best-effort `Shell.App`
    activate/open_new_window hook (skips overview).
 4. **Insert:** LFT in TABBED/STACKED → insert after LFT; else aspect split of LFT
-   rect (taller → VSPLIT, else HSPLIT). No tiny-pane auto-tab in V1.
+   rect (taller → VSPLIT, else HSPLIT).
+
+### Tiny-pane → tab fallback (OP-opt)
+
+**Problem:** Aspect-splitting a already-narrow LFT yields postage-stamp panes.
+
+**Rule (opt-in):** After proposed 50/50 of LFT along the aspect axis, each
+child’s width **and** height must be ≥
+`max(min-edge px, floor(0.12 * min(workarea)), app min on that axis)`. Else
+force-wrap LFT in a TABBED CON so the new window joins as a sibling tab.
+Default **off** (`tiny-pane-tab-fallback-enabled`); min-edge default **320**.
+Only on open-app aspect path — not manual split keybinds. Min-edge, not area
+fraction (ultrawide-safe). Pure helper: `shouldTabInsteadOfSplit` in `lft-mru.js`.
 
 `new-window-placement=window-actual` remains an escape hatch for restore geometry;
 default path is LFT policy. `lastFocusedWindow` still exists for pointer helpers.
 
-## Session DBus + `forge` CLI (FC0–FC4)
+## Session DBus + `forge` CLI (FC0–FC5)
 
 **Problem:** Scripts and future `workon` need a stable control plane. E2E’s
 `Shell.Eval` / `_forgeTestBridge` is fine for tests, not for production
@@ -419,8 +431,8 @@ scripting (Eval is disabled or unsafe on real sessions).
    `session-api.js` + wire from `extension.js`.
 4. **User CLI** `scripts/forge/forge` (`ping` / `tree` / `focus` / `swap` /
    `move` / `launch` / `get` / `set` / `settings save|load` / `run` /
-   `run-steps`) talks DBus via PyGObject or `gdbus` — distinct from
-   `forge-ctl`.
+   `run-steps` / **`workon`**) talks DBus via PyGObject or `gdbus` — distinct
+   from `forge-ctl`.
 5. **wm_class is case-insensitive** for `class:` selectors, PlaceNext match,
    and `forge launch --wm-class` wait. Meta often reports `Eog` while desktop
    ids look like `org.gnome.eog` / `eog` — exact match made PlaceNext miss and
@@ -500,12 +512,37 @@ cores skip mid-batch unfreeze/`renderTree(force)`.
 
 **CLI-only ops:** `launch`, `wait-window`, `wait` never enter the
 extension — process spawn and window-appear polling stay in
-`scripts/forge/forge`. `partitionMixedSteps` exists for a future
-interleaved `forge run`; today `forge run` / `run-steps` refuse
-CLI-only ops in the payload and document the split
-(`forge launch … && forge run-steps '…'`).
+`scripts/forge/forge`. `partitionMixedSteps` (JS) and
+`partition_mixed_steps` (Python) split scripts into extension vs CLI
+chunks. **`forge run-steps`** stays extension-only (rejects launch/wait).
+**`forge run`** and **`forge workon`** interleave: each CLI chunk runs
+in-process; each extension chunk is one DBus `RunSteps` (one freeze/render).
 
-Later: FC5 `workon` composition — not designed here.
+### Workon profiles (FC5)
+
+**Problem:** Morning setup is still glue (`gdisplays load` + several
+`forge launch` + layout/focus). FC0–FC4 are the primitives; FC5 is a
+**named profile** that composes them without a new DBus method.
+
+**Why not shellrc `workon`:** shellrc already owns `workon` for other
+domains (`t`/`e`). The tiling command is always **`forge workon`**.
+
+**Where:** `~/.config/forge/workon/<name>.json` (schema `version: 1`).
+Example only (not auto-installed): `scripts/forge/examples/workon-dev.json`.
+
+| Field | Role |
+| --- | --- |
+| `displays` | Optional string → `gdisplays load <name>` (hard fail + install hint if binary missing) |
+| `settings` | Optional string → DBus `SettingsLoad` |
+| `stopOnError` | Default **true** |
+| `steps` | Same ops as FC4 extension + CLI `launch` / `wait` / `wait-window` |
+
+**Order:** validate → displays → settings → partition steps → CLI/extension
+chunks. Pure helpers live in `scripts/forge/workon_lib.py` (unit-tested
+without Shell).
+
+**Non-goals:** full i3 layout restore, GUI recorder, disk session-layout as
+workon, shadowing shellrc `workon`.
 
 ## User stylesheet vs `make dev` (production flag)
 

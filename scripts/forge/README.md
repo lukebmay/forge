@@ -60,8 +60,32 @@ waits for the new window (no `--wm-class` required). Default placement: OP1 LFT
 attach. `--path` / `--tree-path` and `--monitor` set PlaceNext. Path ids are OG
 Forge mon×ws keys (`mo0ws0`); see `forge launch -h`.
 
+### Batch steps + workon (FC4–FC5)
+
+```bash
+# Extension-only batch (quiet render) — rejects launch/wait
+./scripts/forge/forge run-steps '[{"op":"focus","selector":"class:Foo"}]'
+
+# Mixed script file (launch + tree ops; CLI orchestrates chunks)
+./scripts/forge/forge run ./scripts/forge/examples/workon-dev.json
+
+# Named profile: ~/.config/forge/workon/<name>.json
+# (does NOT replace shellrc `workon` — always `forge workon`)
+cp ./scripts/forge/examples/workon-dev.json ~/.config/forge/workon/dev.json
+# edit displays/settings/steps as needed
+./scripts/forge/forge workon list
+./scripts/forge/forge workon show dev
+./scripts/forge/forge workon dev
+```
+
+Profile order: optional `gdisplays load` → optional `SettingsLoad` → mixed
+`steps` (CLI `launch`/`wait`/`wait-window` interleaved with extension
+RunSteps chunks). `stopOnError` defaults true. Schema and design notes:
+`docs/DESIGN.md` (FC5). Pure helpers: `scripts/forge/workon_lib.py`.
+
 Deps: `python3` + `python3-gi` (preferred) or `gdbus`; `gio` or `gtk-launch`
 for desktop ids. Extension must be enabled for DBus / wait / PlaceNext.
+Optional: `gdisplays` on PATH when a profile sets `displays`.
 
 Both builds share UUID `forge@jmmaranan.com`, so installs **replace each other
 in place**. Always backup first.

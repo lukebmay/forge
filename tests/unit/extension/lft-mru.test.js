@@ -3,6 +3,7 @@ import {
   LftMru,
   aspectOrientationFromRect,
   isTabOrStackParent,
+  shouldTabInsteadOfSplit,
   resolveOpenAppPlacement,
   matchPendingDockLaunch,
   DOCK_LAUNCH_TTL_MS,
@@ -101,6 +102,120 @@ describe("isTabOrStackParent", () => {
   it("false for splits / missing", () => {
     expect(isTabOrStackParent({ layout: "HSPLIT" }, LT)).toBe(false);
     expect(isTabOrStackParent(null, LT)).toBe(false);
+  });
+});
+
+describe("shouldTabInsteadOfSplit", () => {
+  // wa min 1080 → 12% floor = 129; minEdge 320 → base threshold 320
+  const base = {
+    workareaMinEdge: 1080,
+    minEdgePx: 320,
+    appMinW: 0,
+    appMinH: 0,
+    enabled: true,
+  };
+
+  it("disabled always false even when panes would be tiny", () => {
+    expect(
+      shouldTabInsteadOfSplit({
+        ...base,
+        enabled: false,
+        lftWidth: 400,
+        lftHeight: 600,
+        orientation: "horizontal",
+      })
+    ).toBe(false);
+  });
+
+  it("HSPLIT: half width below min-edge → tab", () => {
+    // halfW = 250 < 320
+    expect(
+      shouldTabInsteadOfSplit({
+        ...base,
+        lftWidth: 500,
+        lftHeight: 800,
+        orientation: "horizontal",
+      })
+    ).toBe(true);
+  });
+
+  it("HSPLIT: both half edges above threshold → split", () => {
+    // halfW = 600 >= 320, halfH = 800 >= 320
+    expect(
+      shouldTabInsteadOfSplit({
+        ...base,
+        lftWidth: 1200,
+        lftHeight: 800,
+        orientation: "horizontal",
+      })
+    ).toBe(false);
+  });
+
+  it("VSPLIT: half height below min-edge → tab", () => {
+    // halfH = 200 < 320
+    expect(
+      shouldTabInsteadOfSplit({
+        ...base,
+        lftWidth: 900,
+        lftHeight: 400,
+        orientation: "vertical",
+      })
+    ).toBe(true);
+  });
+
+  it("VSPLIT: both half edges above threshold → split", () => {
+    // halfH = 500 >= 320, halfW = 900 >= 320
+    expect(
+      shouldTabInsteadOfSplit({
+        ...base,
+        lftWidth: 900,
+        lftHeight: 1000,
+        orientation: "vertical",
+      })
+    ).toBe(false);
+  });
+
+  it("12% workarea can raise threshold above min-edge", () => {
+    // minEdge 100, wa 2000 → floor(0.12*2000)=240 → thresh 240
+    // halfW = 200 < 240
+    expect(
+      shouldTabInsteadOfSplit({
+        enabled: true,
+        minEdgePx: 100,
+        workareaMinEdge: 2000,
+        lftWidth: 400,
+        lftHeight: 1000,
+        orientation: "horizontal",
+        appMinW: 0,
+        appMinH: 0,
+      })
+    ).toBe(true);
+  });
+
+  it("app min on axis can force tab when base threshold would allow split", () => {
+    // halfW = 500 >= 320 base, but appMinW 600 → threshW 600 → tab
+    expect(
+      shouldTabInsteadOfSplit({
+        ...base,
+        lftWidth: 1000,
+        lftHeight: 800,
+        orientation: "horizontal",
+        appMinW: 600,
+        appMinH: 0,
+      })
+    ).toBe(true);
+  });
+
+  it("unsplit full edge also checked (height on HSPLIT)", () => {
+    // halfW ok, but full H below thresh
+    expect(
+      shouldTabInsteadOfSplit({
+        ...base,
+        lftWidth: 1000,
+        lftHeight: 200,
+        orientation: "horizontal",
+      })
+    ).toBe(true);
   });
 });
 

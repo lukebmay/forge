@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "description": "Illustrative dual-launch morning profile (copy to ~/.config/forge/workon/dev.json)",
+  "displays": "rec",
+  "stopOnError": true,
+  "steps": [
+    {
+      "op": "launch",
+      "app": "ghostty",
+      "monitor": "0"
+    },
+    {
+      "op": "launch",
+      "app": "google-chrome",
+      "monitor": "1"
+    },
+    { "op": "wait", "ms": 200 },
+    {
+      "op": "layout",
+      "mode": "tabbed",
+      "selector": "class:com.mitchellh.ghostty"
+    },
+    {
+      "op": "focus",
+      "selector": "class:com.mitchellh.ghostty"
+    }
+  ]
+}

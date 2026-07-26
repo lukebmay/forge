@@ -19,6 +19,8 @@ export const DEFAULT_SETTINGS = {
   "tiling-mode-enabled": true,
   "focus-on-hover-enabled": false,
   "auto-split-enabled": false,
+  "tiny-pane-tab-fallback-enabled": false,
+  "tiny-pane-min-edge": 320,
   "new-window-placement": "pointer",
   "new-window-size-policy": "preserve",
 

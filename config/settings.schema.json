@@ -38,6 +38,16 @@
           "description": "Enable quarter-tiling based on smaller side",
           "default": false
         },
+        "tiny-pane-tab-fallback-enabled": {
+          "type": "boolean",
+          "description": "On open-app aspect split, prefer tabs when panes would be too small",
+          "default": false
+        },
+        "tiny-pane-min-edge": {
+          "type": "integer",
+          "description": "Minimum pane edge in px before open-app prefers tabs (with 12% workarea)",
+          "default": 320
+        },
         "stacked-tiling-mode-enabled": {
           "type": "boolean",
           "description": "Enable stacked tiling layout",

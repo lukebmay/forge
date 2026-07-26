@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-FORGE_VERSION = "fc4+install"
+FORGE_VERSION = "fc5"
 BUS_NAME = "org.gnome.Shell.Extensions.Forge"
 OBJECT_PATH = "/org/gnome/Shell/Extensions/Forge"
 INTERFACE = "org.gnome.Shell.Extensions.Forge"
@@ -28,6 +28,7 @@ _EXT_ORIGIN = (
 )
 # Subcommands that do not need a DBus session (extension may be offline).
 _NO_DBUS_COMMANDS = frozenset({"install"})
+# workon list|show are offline; run is handled in main after parse.
 
 # Methods that take string in-args (all return a single string).
 _METHOD_IN_ARGS: dict[str, int] = {
@@ -50,6 +51,19 @@ CLI_ONLY_STEP_OPS = frozenset({"launch", "wait-window", "wait"})
 
 DEFAULT_LAUNCH_TIMEOUT_MS = 15000
 HARD_DEPS = ("python3", "PyGObject (gi.repository.Gio) or gdbus")
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from workon_lib import (  # noqa: E402
+    extract_steps_and_stop,
+    launch_fields_from_step,
+    list_profiles,
+    load_profile_file,
+    partition_mixed_steps,
+    profile_path,
+    validate_profile,
+)
 
 
 def _eprint(*args: object) -> None:
@@ -915,9 +929,8 @@ def cmd_run_steps(backend: str, args: argparse.Namespace) -> int:
     """
     DBus RunSteps: freeze → extension ops → unfreeze + one render.
 
-    launch / wait-window / wait are CLI-only — rejected by the extension.
-    For mixed scripts use forge run after FC5 orchestration, or call
-    forge launch separately then forge run-steps for tree ops.
+    launch / wait-window / wait are CLI-only — rejected here.
+    Mixed scripts: use `forge run` or `forge workon`.
     """
     raw: Optional[str] = None
     if getattr(args, "file", None):
@@ -951,14 +964,415 @@ def cmd_run_steps(backend: str, args: argparse.Namespace) -> int:
     if cli_ops:
         _eprint(
             "forge run-steps: launch/wait are CLI-only and not sent via DBus "
-            f"(found: {', '.join(cli_ops)}). Use `forge launch` separately, "
-            "or strip those steps from the payload."
+            f"(found: {', '.join(cli_ops)}). Use `forge run` / `forge workon` "
+            "for mixed scripts, or `forge launch` then run-steps for tree ops."
         )
         return 1
 
     # Re-serialize so bare arrays and objects round-trip cleanly.
     steps_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
     return _cmd_result(backend, "RunSteps", steps_json, label="run-steps")
+
+
+def do_launch(
+    backend: str,
+    *,
+    app: str,
+    wm_class: Optional[str] = None,
+    timeout: Optional[int] = None,
+    no_wait: bool = False,
+    monitor: Any = None,
+    tree_path: Optional[str] = None,
+    first: bool = False,
+    print_result: bool = True,
+) -> tuple[int, dict[str, Any]]:
+    """Shared launch path for `forge launch` and workon/run launch steps."""
+    app = (app or "").strip().strip("'\"")
+    if not app:
+        out = {"ok": False, "error": "app required", "op": "launch"}
+        if print_result:
+            _eprint("forge launch: app required")
+        return 1, out
+
+    timeout_ms = int(timeout if timeout is not None else DEFAULT_LAUNCH_TIMEOUT_MS)
+    desktop = resolve_desktop_file(app)
+    explicit_class = (wm_class or "").strip() or None
+    class_hints = infer_wm_class_hints(app, desktop)
+    if explicit_class:
+        wait_classes: str | list[str] | None = explicit_class
+        place_class = explicit_class
+    elif class_hints:
+        wait_classes = class_hints
+        place_class = None
+    else:
+        wait_classes = None
+        place_class = None
+
+    place_opts: dict[str, Any] = {}
+    if monitor is not None and str(monitor).strip() != "":
+        place_opts["monitor"] = monitor
+    if tree_path is not None and str(tree_path).strip() != "":
+        place_opts["treePath"] = tree_path
+    if place_class:
+        place_opts["wmClass"] = place_class
+    if first:
+        place_opts["first"] = True
+    if place_opts and ("monitor" in place_opts or "treePath" in place_opts):
+        place_opts["ttlMs"] = max(timeout_ms, DEFAULT_LAUNCH_TIMEOUT_MS)
+
+    if place_opts and ("monitor" in place_opts or "treePath" in place_opts):
+        try:
+            raw = call_method(backend, "PlaceNext", json.dumps(place_opts))
+            data = json.loads(raw)
+        except Exception as e:
+            out = {"ok": False, "error": f"PlaceNext failed: {e}", "op": "launch", "app": app}
+            if print_result:
+                _eprint(f"forge launch: PlaceNext failed (is the extension enabled?): {e}")
+            return 1, out
+        if not isinstance(data, dict) or data.get("ok") is not True:
+            err = data.get("error") if isinstance(data, dict) else raw
+            out = {"ok": False, "error": f"PlaceNext error: {err}", "op": "launch", "app": app}
+            if isinstance(data, dict):
+                out["placeNext"] = data
+            if print_result:
+                _eprint(f"forge launch: PlaceNext error: {err}")
+                if isinstance(data, dict):
+                    _print_json(data, compact=False)
+            return 1, out
+
+    baseline: set[str] = set()
+    if not no_wait:
+        baseline = _baseline_window_ids(backend)
+
+    try:
+        proc = launch_app(app, desktop=desktop)
+    except Exception as e:
+        out = {"ok": False, "error": str(e), "op": "launch", "app": app}
+        if print_result:
+            _eprint(f"forge launch: failed to start {app!r}: {e}")
+        return 1, out
+
+    if no_wait:
+        payload: dict[str, Any] = {
+            "ok": True,
+            "pid": proc.pid,
+            "waited": False,
+            "app": app,
+            "op": "launch",
+        }
+        if desktop:
+            payload["desktop"] = desktop
+        if print_result:
+            _print_json(payload, compact=False)
+        return 0, payload
+
+    result = wait_for_wm_class(
+        backend,
+        wait_classes,
+        timeout_ms,
+        first=first,
+        baseline_ids=baseline,
+        accept_any_new=explicit_class is None,
+    )
+    result = dict(result)
+    result["op"] = "launch"
+    result["pid"] = proc.pid
+    result["waited"] = True
+    result["app"] = app
+    if desktop:
+        result["desktop"] = desktop
+
+    if not result.get("ok"):
+        if class_hints:
+            result.setdefault("wmClassCandidates", class_hints)
+        if print_result:
+            _eprint(f"forge launch: {result.get('error', 'wait failed')}")
+            _print_json(result, compact=False)
+        return 1, result
+
+    if print_result:
+        _print_json(result, compact=False)
+    return 0, result
+
+
+def _run_cli_step(backend: str, step: dict[str, Any], *, print_result: bool = False) -> dict[str, Any]:
+    """Execute one CLI-only step; return result dict with ok bool."""
+    op_raw = step.get("op") or step.get("action") or step.get("type")
+    op = str(op_raw).strip().lower() if op_raw is not None else ""
+
+    if op == "launch":
+        fields = launch_fields_from_step(step)
+        _rc, result = do_launch(backend, print_result=print_result, **fields)
+        return result
+
+    if op == "wait":
+        ms = step.get("ms") if "ms" in step else step.get("timeout", 0)
+        try:
+            n = max(0, int(ms))
+        except (TypeError, ValueError):
+            return {"ok": False, "op": "wait", "error": f"invalid ms: {ms!r}"}
+        time.sleep(n / 1000.0)
+        return {"ok": True, "op": "wait", "ms": n}
+
+    if op == "wait-window":
+        wc = step.get("wmClass") or step.get("wm_class")
+        if wc is None or str(wc).strip() == "":
+            return {"ok": False, "op": "wait-window", "error": "wmClass required"}
+        timeout = step.get("timeout") if "timeout" in step else step.get("timeoutMs")
+        timeout_ms = int(timeout if timeout is not None else DEFAULT_LAUNCH_TIMEOUT_MS)
+        first = bool(step.get("first", False))
+        result = wait_for_wm_class(
+            backend,
+            str(wc).strip(),
+            timeout_ms,
+            first=first,
+            baseline_ids=None,
+            accept_any_new=False,
+        )
+        result = dict(result)
+        result["op"] = "wait-window"
+        return result
+
+    return {"ok": False, "op": op or None, "error": f"unknown CLI op: {op!r}"}
+
+
+def run_mixed_steps(
+    backend: str,
+    steps: list[Any],
+    *,
+    stop_on_error: bool = True,
+    print_each: bool = False,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Partition mixed steps; run CLI ops here, extension chunks via DBus RunSteps.
+    Returns (exit_code, aggregate JSON).
+    """
+    chunks = partition_mixed_steps(steps)
+    chunk_results: list[dict[str, Any]] = []
+    all_ok = True
+    step_index = 0
+
+    for chunk in chunks:
+        kind = chunk["kind"]
+        csteps = chunk["steps"]
+        if kind == "cli":
+            cli_out: list[dict[str, Any]] = []
+            for step in csteps:
+                if not isinstance(step, dict):
+                    r = {"ok": False, "error": "step must be an object", "index": step_index}
+                    cli_out.append(r)
+                    all_ok = False
+                    if stop_on_error:
+                        chunk_results.append({"kind": "cli", "ok": False, "results": cli_out})
+                        return 1, {
+                            "ok": False,
+                            "stoppedAt": step_index,
+                            "chunks": chunk_results,
+                        }
+                    step_index += 1
+                    continue
+                r = _run_cli_step(backend, step, print_result=print_each)
+                r = dict(r)
+                r.setdefault("index", step_index)
+                cli_out.append(r)
+                if not r.get("ok"):
+                    all_ok = False
+                    if stop_on_error:
+                        chunk_results.append({"kind": "cli", "ok": False, "results": cli_out})
+                        return 1, {
+                            "ok": False,
+                            "stoppedAt": step_index,
+                            "chunks": chunk_results,
+                        }
+                step_index += 1
+            chunk_results.append(
+                {"kind": "cli", "ok": all(x.get("ok") for x in cli_out), "results": cli_out}
+            )
+        else:
+            payload = {"steps": csteps, "stopOnError": stop_on_error}
+            steps_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+            try:
+                raw = call_method(backend, "RunSteps", steps_json)
+                data = json.loads(raw)
+            except Exception as e:
+                all_ok = False
+                chunk_results.append(
+                    {
+                        "kind": "extension",
+                        "ok": False,
+                        "error": str(e),
+                        "stepIndexBase": step_index,
+                    }
+                )
+                if stop_on_error:
+                    return 1, {
+                        "ok": False,
+                        "stoppedAt": step_index,
+                        "chunks": chunk_results,
+                    }
+                step_index += len(csteps)
+                continue
+
+            if not isinstance(data, dict):
+                data = {"ok": False, "error": "invalid RunSteps response", "raw": raw}
+            # Rebase indices for aggregate readability
+            ext_results = data.get("results")
+            if isinstance(ext_results, list):
+                for er in ext_results:
+                    if isinstance(er, dict) and isinstance(er.get("index"), int):
+                        er["index"] = step_index + int(er["index"])
+            ok = bool(data.get("ok"))
+            if not ok:
+                all_ok = False
+            entry: dict[str, Any] = {
+                "kind": "extension",
+                "ok": ok,
+                "results": ext_results if isinstance(ext_results, list) else [],
+            }
+            if "stoppedAt" in data and data["stoppedAt"] is not None:
+                try:
+                    entry["stoppedAt"] = step_index + int(data["stoppedAt"])
+                except (TypeError, ValueError):
+                    entry["stoppedAt"] = data["stoppedAt"]
+            if data.get("error"):
+                entry["error"] = data["error"]
+            chunk_results.append(entry)
+            if not ok and stop_on_error:
+                stopped = entry.get("stoppedAt", step_index)
+                return 1, {"ok": False, "stoppedAt": stopped, "chunks": chunk_results}
+            step_index += len(csteps)
+
+    return (0 if all_ok else 1), {"ok": all_ok, "chunks": chunk_results}
+
+
+def _load_gdisplays(scene: str) -> int:
+    """Shell out to gdisplays load <scene>. Exit ≠0 + install hint if missing."""
+    if not shutil.which("gdisplays"):
+        _eprint("forge workon: `gdisplays` not found (needed for profile displays)")
+        _eprint("Install: install-gdisplays  (shellrc) or ensure gdisplays is on PATH")
+        # fallback hint for distros without shellrc
+        _eprint("# fallback: ensure shellrc bin or your gdisplays package is installed")
+        return 127
+    cmd = ["gdisplays", "load", scene]
+    _eprint(f"forge workon: {' '.join(shlex.quote(c) for c in cmd)}")
+    try:
+        proc = subprocess.run(cmd, check=False)
+    except OSError as e:
+        _eprint(f"forge workon: gdisplays failed: {e}")
+        return 1
+    if proc.returncode != 0:
+        _eprint(f"forge workon: gdisplays load {scene!r} exit {proc.returncode}")
+    return int(proc.returncode)
+
+
+def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
+    """forge workon list | show <name> | <name>."""
+    tokens: list[str] = list(getattr(args, "workon_tokens", None) or [])
+    if not tokens:
+        _eprint("forge workon: need <name>, list, or show <name>")
+        return 1
+
+    head = tokens[0].strip()
+    if head == "list":
+        if len(tokens) > 1:
+            _eprint("forge workon list: unexpected arguments")
+            return 1
+        profiles = list_profiles()
+        if not profiles:
+            _eprint("forge workon: no profiles in ~/.config/forge/workon/")
+            print("[]")
+            return 0
+        rows = []
+        for p in profiles:
+            row = {"name": p["name"]}
+            if p.get("description"):
+                row["description"] = p["description"]
+            rows.append(row)
+            desc = f"  {p['description']}" if p.get("description") else ""
+            _eprint(f"{p['name']}{desc}")
+        _print_json(rows, compact=False)
+        return 0
+
+    if head == "show":
+        if len(tokens) != 2:
+            _eprint("forge workon show: need exactly one profile name")
+            return 1
+        name = tokens[1].strip()
+        try:
+            path = profile_path(name)
+        except ValueError as e:
+            _eprint(f"forge workon show: {e}")
+            return 1
+        try:
+            data = load_profile_file(path)
+            profile = validate_profile(data)
+        except FileNotFoundError as e:
+            _eprint(f"forge workon show: {e}")
+            return 1
+        except ValueError as e:
+            _eprint(f"forge workon show: {e}")
+            return 1
+        out = {"path": str(path), "profile": profile}
+        _print_json(out, compact=False)
+        return 0
+
+    # Run profile by name
+    if len(tokens) != 1:
+        _eprint("forge workon: use `forge workon <name>` (or list / show <name>)")
+        return 1
+    name = head
+    try:
+        path = profile_path(name)
+    except ValueError as e:
+        _eprint(f"forge workon: {e}")
+        return 1
+    try:
+        data = load_profile_file(path)
+        profile = validate_profile(data)
+    except FileNotFoundError as e:
+        _eprint(f"forge workon: {e}")
+        return 1
+    except ValueError as e:
+        _eprint(f"forge workon: {e}")
+        return 1
+
+    stop_on_error = bool(profile.get("stopOnError", True))
+
+    if profile.get("displays"):
+        rc = _load_gdisplays(str(profile["displays"]))
+        if rc != 0:
+            return rc
+
+    steps = profile.get("steps") or []
+    needs_dbus = bool(profile.get("settings")) or bool(steps)
+    if needs_dbus and backend is None:
+        backend = _check_deps()
+
+    if profile.get("settings"):
+        try:
+            raw = call_method(backend, "SettingsLoad", str(profile["settings"]))
+            data = json.loads(raw)
+        except Exception as e:
+            _eprint(f"forge workon: SettingsLoad failed: {e}")
+            return 1
+        if not isinstance(data, dict) or data.get("ok") is not True:
+            err = data.get("error") if isinstance(data, dict) else raw
+            _eprint(f"forge workon: SettingsLoad error: {err}")
+            if isinstance(data, dict):
+                _print_json(data, compact=False)
+            return 1
+
+    if not steps:
+        _print_json({"ok": True, "profile": name, "chunks": []}, compact=False)
+        return 0
+
+    rc, aggregate = run_mixed_steps(
+        backend, steps, stop_on_error=stop_on_error, print_each=False
+    )
+    aggregate["profile"] = name
+    aggregate["path"] = str(path)
+    _print_json(aggregate, compact=False)
+    return rc
 
 
 def _origin_paths() -> list[Path]:
@@ -1144,120 +1558,57 @@ def cmd_install(_backend: Optional[str], args: argparse.Namespace) -> int:
 
 
 def cmd_run(backend: str, args: argparse.Namespace) -> int:
-    """forge run <file.json> — same as run-steps --file (extension ops only)."""
+    """forge run <file.json> — mixed steps (CLI launch/wait + extension RunSteps)."""
     path = Path(args.file).expanduser() if args.file else None
     if not path:
         _eprint("forge run: file required")
         return 1
-    # Reuse run-steps with synthetic namespace
-    ns = argparse.Namespace(file=str(path), json_arg=None)
-    return cmd_run_steps(backend, ns)
+    if not path.is_file():
+        _eprint(f"forge run: file not found: {path}")
+        return 1
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as e:
+        _eprint(f"forge run: cannot read {path}: {e}")
+        return 1
+    raw = raw.strip()
+    if not raw:
+        _eprint("forge run: empty file")
+        return 1
+    try:
+        payload = _load_steps_payload(raw)
+        steps, stop_on_error = extract_steps_and_stop(payload)
+    except ValueError as e:
+        _eprint(f"forge run: {e}")
+        return 1
+
+    # Pure extension payload → single RunSteps (same as run-steps)
+    cli_ops = _payload_has_cli_only(payload if isinstance(payload, (list, dict)) else {"steps": steps})
+    if not cli_ops:
+        steps_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+        return _cmd_result(backend, "RunSteps", steps_json, label="run")
+
+    rc, aggregate = run_mixed_steps(
+        backend, steps, stop_on_error=stop_on_error, print_each=False
+    )
+    aggregate["file"] = str(path)
+    _print_json(aggregate, compact=False)
+    return rc
 
 
 def cmd_launch(backend: str, args: argparse.Namespace) -> int:
-    app = (args.app or "").strip().strip("'\"")
-    if not app:
-        _eprint("forge launch: app required")
-        return 1
-
-    timeout_ms = int(args.timeout if args.timeout is not None else DEFAULT_LAUNCH_TIMEOUT_MS)
-    no_wait = bool(args.no_wait)
-    monitor = args.monitor
-    # --path and --tree-path share dest; either works
-    tree_path = args.tree_path
-    first = bool(getattr(args, "first", False))
-
-    desktop = resolve_desktop_file(app)
-    # Explicit --wm-class wins; else infer candidates; wait falls back to any new win
-    explicit_class = (args.wm_class or "").strip() or None
-    class_hints = infer_wm_class_hints(app, desktop)
-    if explicit_class:
-        wait_classes: str | list[str] | None = explicit_class
-        place_class = explicit_class
-    elif class_hints:
-        wait_classes = class_hints
-        # PlaceNext: omit class (wildcard) so wrong StartupWMClass cannot miss;
-        # wait still filters by hints then any-new fallback below.
-        place_class = None
-    else:
-        wait_classes = None
-        place_class = None
-
-    place_opts: dict[str, Any] = {}
-    if monitor is not None and str(monitor).strip() != "":
-        place_opts["monitor"] = monitor
-    if tree_path is not None and str(tree_path).strip() != "":
-        place_opts["treePath"] = tree_path
-    if place_class:
-        place_opts["wmClass"] = place_class
-    if first:
-        place_opts["first"] = True
-    # Align hint TTL with wait timeout when placing
-    if place_opts and ("monitor" in place_opts or "treePath" in place_opts):
-        place_opts["ttlMs"] = max(timeout_ms, DEFAULT_LAUNCH_TIMEOUT_MS)
-
-    if place_opts and ("monitor" in place_opts or "treePath" in place_opts):
-        try:
-            raw = call_method(backend, "PlaceNext", json.dumps(place_opts))
-            data = json.loads(raw)
-        except Exception as e:
-            _eprint(f"forge launch: PlaceNext failed (is the extension enabled?): {e}")
-            return 1
-        if not isinstance(data, dict) or data.get("ok") is not True:
-            err = data.get("error") if isinstance(data, dict) else raw
-            _eprint(f"forge launch: PlaceNext error: {err}")
-            if isinstance(data, dict):
-                _print_json(data, compact=False)
-            return 1
-
-    baseline: set[str] = set()
-    if not no_wait:
-        baseline = _baseline_window_ids(backend)
-
-    try:
-        proc = launch_app(app, desktop=desktop)
-    except Exception as e:
-        _eprint(f"forge launch: failed to start {app!r}: {e}")
-        return 1
-
-    if no_wait:
-        payload: dict[str, Any] = {
-            "ok": True,
-            "pid": proc.pid,
-            "waited": False,
-            "app": app,
-        }
-        if desktop:
-            payload["desktop"] = desktop
-        _print_json(payload, compact=False)
-        return 0
-
-    # Class hints preferred; accept any new window if hints miss (human UX)
-    result = wait_for_wm_class(
+    rc, _result = do_launch(
         backend,
-        wait_classes,
-        timeout_ms,
-        first=first,
-        baseline_ids=baseline,
-        accept_any_new=explicit_class is None,
+        app=(args.app or "").strip().strip("'\""),
+        wm_class=(args.wm_class or "").strip() or None,
+        timeout=int(args.timeout if args.timeout is not None else DEFAULT_LAUNCH_TIMEOUT_MS),
+        no_wait=bool(args.no_wait),
+        monitor=args.monitor,
+        tree_path=args.tree_path,
+        first=bool(getattr(args, "first", False)),
+        print_result=True,
     )
-
-    if not result.get("ok"):
-        _eprint(f"forge launch: {result.get('error', 'wait failed')}")
-        if desktop:
-            result["desktop"] = desktop
-        if class_hints:
-            result.setdefault("wmClassCandidates", class_hints)
-        _print_json(result, compact=False)
-        return 1
-
-    result["pid"] = proc.pid
-    result["waited"] = True
-    result["app"] = app
-    if desktop:
-        result["desktop"] = desktop
-    _print_json(result, compact=False)
-    return 0
+    return rc
 
 
 _SELECTOR_HELP = """\
@@ -1521,14 +1872,13 @@ def build_parser() -> argparse.ArgumentParser:
     load_p.set_defaults(func=cmd_settings)
 
     _run_steps_help = (
-        "Batch extension ops via DBus RunSteps (freezeRender → ops → one render).\n"
+        "Batch **extension-only** ops via DBus RunSteps (freezeRender → ops → one render).\n"
         "\n"
         "Payload JSON: a steps array, or { \"steps\": [...], \"stopOnError\": true }.\n"
         "Ops: ping, focus, swap, move, layout, place-next, set.\n"
         "\n"
-        "CLI-only (not in RunSteps): launch, wait-window, wait — spawn/wait\n"
-        "out of process, then call run-steps for tree mutations. Example:\n"
-        '  forge launch ghostty --wm-class=... && forge run-steps \'[{"op":"focus",...}]\'\n'
+        "CLI-only ops (launch, wait-window, wait) are **rejected** here.\n"
+        "Use `forge run FILE` or `forge workon <name>` for mixed scripts.\n"
         "\n"
         "Step shapes:\n"
         '  {"op":"ping"}\n'
@@ -1541,7 +1891,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_steps = sub.add_parser(
         "run-steps",
-        help="Run a JSON step batch on the extension (quiet render)",
+        help="Run extension-only JSON step batch (quiet render)",
         description=_run_steps_help,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -1561,10 +1911,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_p = sub.add_parser(
         "run",
-        help="Run steps from a JSON file (alias for run-steps --file)",
+        help="Run mixed steps from a JSON file (CLI + extension)",
         description=(
-            "Read {steps} or a bare array from FILE and call DBus RunSteps.\n"
-            "Same as `forge run-steps --file FILE`. Launch/wait remain CLI-only."
+            "Read {steps} or a bare array from FILE.\n"
+            "CLI ops (launch, wait-window, wait) run here; extension ops go to\n"
+            "DBus RunSteps in contiguous chunks (one freeze/render per chunk).\n"
+            "For extension-only batches, same as run-steps. stopOnError defaults true."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -1574,6 +1926,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to steps JSON ({steps:[...]} or bare array)",
     )
     run_p.set_defaults(func=cmd_run)
+
+    _workon_help = (
+        "Named morning profiles under ~/.config/forge/workon/<name>.json\n"
+        "(does **not** shadow shellrc `workon` — use `forge workon` only).\n"
+        "\n"
+        "  forge workon <name>       # displays → settings → mixed steps\n"
+        "  forge workon list         # names (+ description)\n"
+        "  forge workon show <name>  # resolved path + validated profile\n"
+        "\n"
+        "Profile schema v1: version, description?, displays?, settings?,\n"
+        "stopOnError? (default true), steps[].\n"
+        "See scripts/forge/examples/workon-dev.json and docs/DESIGN.md (FC5)."
+    )
+    workon_p = sub.add_parser(
+        "workon",
+        help="Run/list/show named workon profiles (FC5)",
+        description=_workon_help,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    workon_p.add_argument(
+        "workon_tokens",
+        nargs="*",
+        metavar="ARG",
+        help="list | show <name> | <name>",
+    )
+    workon_p.set_defaults(func=cmd_workon)
 
     install_p = sub.add_parser(
         "install",
@@ -1673,10 +2051,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     elif not hasattr(args, "first"):
         args.first = False
 
-    # install does not need DBus / extension online
+    # install / workon list|show do not need DBus
     cmd_name = getattr(args, "command", None) or ""
     if cmd_name in _NO_DBUS_COMMANDS or getattr(args, "func", None) is cmd_install:
         return int(args.func(None, args))
+
+    if cmd_name == "workon":
+        tokens = list(getattr(args, "workon_tokens", None) or [])
+        head = tokens[0].strip() if tokens else ""
+        if head in ("list", "show") or not tokens:
+            return int(args.func(None, args))
+        backend = _check_deps()
+        return int(args.func(backend, args))
 
     backend = _check_deps()
     return int(args.func(backend, args))

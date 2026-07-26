@@ -449,6 +449,105 @@ describe("OP1 open-app placement policy", () => {
     });
   });
 
+  describe("OP-opt tiny-pane tab fallback", () => {
+    // Mock workarea 1920×1080 → min edge 1080; 12%→129; min-edge 320 → thresh 320.
+    // Small wide LFT 500×600 HSPLIT → halfW 250 < 320 → tab when enabled.
+
+    it("enabled + small LFT → TABBED CON, not H/V split", () => {
+      setup({
+        settings: {
+          "tiny-pane-tab-fallback-enabled": true,
+          "tiny-pane-min-edge": 320,
+        },
+      });
+      const seed = tileOn(0, {
+        id: "seed-large",
+        rect: { x: 0, y: 0, width: 1400, height: 600 },
+      });
+      // Wider than tall → would HSPLIT; halfW 250 < 320 → tab.
+      const small = tileOn(0, {
+        id: "small-lft",
+        rect: { x: 1400, y: 0, width: 500, height: 400 },
+      });
+      wm().movePointerWith(small.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "tiny-open",
+      });
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      const parent = small.nodeWindow.parentNode;
+
+      expect(parent.nodeType).toBe(NODE_TYPES.CON);
+      expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parent.contains(node)).toBe(true);
+      expect(parent.contains(small.nodeWindow)).toBe(true);
+      // Sibling seed stays outside the new tab group
+      expect(seed.nodeWindow.parentNode).not.toBe(parent);
+    });
+
+    it("enabled + large LFT → still aspect split", () => {
+      setup({
+        settings: {
+          "tiny-pane-tab-fallback-enabled": true,
+          "tiny-pane-min-edge": 320,
+        },
+      });
+      tileOn(0, {
+        id: "seed",
+        rect: { x: 0, y: 0, width: 600, height: 600 },
+      });
+      const large = tileOn(0, {
+        id: "large-lft",
+        rect: { x: 600, y: 0, width: 1200, height: 800 },
+      });
+      wm().movePointerWith(large.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "large-open",
+      });
+      wm().trackWindow(null, meta);
+      const parent = large.nodeWindow.parentNode;
+      expect(parent.nodeType).toBe(NODE_TYPES.CON);
+      expect(parent.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parent.layout).not.toBe(LAYOUT_TYPES.TABBED);
+    });
+
+    it("disabled (default) + small LFT → still aspect split (OP1)", () => {
+      setup({
+        settings: {
+          "tiny-pane-tab-fallback-enabled": false,
+          "tiny-pane-min-edge": 320,
+        },
+      });
+      tileOn(0, {
+        id: "seed",
+        rect: { x: 0, y: 0, width: 1400, height: 600 },
+      });
+      // Wider than tall → HSPLIT; halfW 250 would be under thresh if fallback on.
+      const small = tileOn(0, {
+        id: "small-lft",
+        rect: { x: 1400, y: 0, width: 500, height: 400 },
+      });
+      wm().movePointerWith(small.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "split-anyway",
+      });
+      wm().trackWindow(null, meta);
+      const parent = small.nodeWindow.parentNode;
+      expect(parent.nodeType).toBe(NODE_TYPES.CON);
+      expect(parent.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parent.layout).not.toBe(LAYOUT_TYPES.TABBED);
+    });
+  });
+
   describe("focus-on-create chains next open", () => {
     beforeEach(() => setup());
 
