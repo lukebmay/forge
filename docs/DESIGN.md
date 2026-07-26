@@ -544,6 +544,22 @@ without Shell).
 **Non-goals:** full i3 layout restore, GUI recorder, disk session-layout as
 workon, shadowing shellrc `workon`.
 
+### CLI on PATH (`~/.local/bin/forge`)
+
+**Problem:** Daily use of `forge tree` / `workon` / `install` should not require
+`cd` into the clone or PATH'ing `scripts/forge/`.
+
+**Approach:** `./install` (and any path that writes install-origin) symlinks
+`~/.local/bin/forge` → `$repo/scripts/forge/forge`. Source of truth stays in the
+git tree (`workon_lib.py` is a sibling import). Uninstall removes that path
+**only when forge-owned** (symlink into `…/scripts/forge/forge` or a marked
+wrapper) so a foreign `forge` binary is never deleted. Origin stamp is kept so
+`forge install` can reinstall after uninstall.
+
+**Why not copy into bin:** the CLI is a multi-file Python entry; a bare copy
+breaks imports. **Why not PATH the repo:** multiple clones and moves make that
+ambiguous; XDG user bin is the stable entry.
+
 ## User stylesheet vs `make dev` (production flag)
 
 **Problem:** `make dev` sets `production = false` for logging / DEV banner.

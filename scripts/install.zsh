@@ -38,6 +38,9 @@ Records install origin at:
   ${c_cyan}~/.local/share/forge-manage/install-origin.json${c_reset}
 so later ${c_blue}forge install${c_reset} re-runs this script from the same repo.
 
+Also symlinks the control CLI to ${c_cyan}~/.local/bin/forge${c_reset} (remove with
+${c_blue}forge uninstall${c_reset}).
+
 Usage:
   ./install
   ./install [options]
@@ -148,6 +151,7 @@ case "$lineage" in
     forge_write_install_origin "$FORGE_REPO_ROOT" git
     forge_ok "install complete (migrated from EGO)"
     forge_info "status: $SCRIPT_DIR/status.zsh"
+    forge_info "CLI: forge tree | forge uninstall | forge install"
     print -r -- "$FORGE_EXT_DIR"
     exit 0
     ;;
@@ -215,4 +219,5 @@ else
 fi
 forge_info "origin: $FORGE_ORIGIN_PATH"
 forge_info "reinstall later: forge install   # or: $FORGE_REPO_ROOT/install"
+forge_info "CLI: forge tree | forge uninstall | forge install"
 print -r -- "$FORGE_EXT_DIR"

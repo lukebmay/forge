@@ -13,6 +13,9 @@ FORGE_BACKUP_ROOT="${FORGE_BACKUP_ROOT:-$HOME/.local/share/forge-manage/backups}
 FORGE_MANAGE_DIR="${FORGE_MANAGE_DIR:-$HOME/.local/share/forge-manage}"
 # Survives extension replace; used by `forge install` to find the git tree.
 FORGE_ORIGIN_PATH="${FORGE_ORIGIN_PATH:-$FORGE_MANAGE_DIR/install-origin.json}"
+# User-facing CLI on PATH (XDG user bin).
+FORGE_CLI_BIN_DIR="${FORGE_CLI_BIN_DIR:-$HOME/.local/bin}"
+FORGE_CLI_BIN="${FORGE_CLI_BIN:-$FORGE_CLI_BIN_DIR/forge}"
 FORGE_EGO_UUID="${FORGE_EGO_UUID:-$FORGE_UUID}"
 FORGE_EGO_API="${FORGE_EGO_API:-https://extensions.gnome.org/extension-info/}"
 FORGE_EGO_BASE="${FORGE_EGO_BASE:-https://extensions.gnome.org}"
@@ -363,7 +366,7 @@ forge_write_install_origin() {
   [[ -n "$repo" ]] || forge_die "forge_write_install_origin: empty repo"
   repo="${repo:A}"
   mkdir -p "$FORGE_MANAGE_DIR"
-  python3 - "$repo" "$FORGE_ORIGIN_PATH" "$FORGE_EXT_DIR" "$source" "$FORGE_UUID" <<'PY'
+  FORGE_CLI_BIN="$FORGE_CLI_BIN" python3 - "$repo" "$FORGE_ORIGIN_PATH" "$FORGE_EXT_DIR" "$source" "$FORGE_UUID" <<'PY'
 import json, os, subprocess, sys, time
 from pathlib import Path
 
@@ -407,11 +410,13 @@ if not (repo / install_script).is_file():
     if (repo / "scripts/forge/update-jcrussell.zsh").is_file():
         install_script = "scripts/forge/update-jcrussell.zsh"
 
+cli_bin = os.environ.get("FORGE_CLI_BIN") or str(Path.home() / ".local/bin" / "forge")
 data = {
     "source": source,  # git | ego (ego reserved for future)
     "repo": str(repo),
     "install_script": install_script,
     "cli": "scripts/forge/forge",
+    "cli_bin": cli_bin,
     "uuid": uuid,
     "version-name": version_name,
     "git_describe": git_describe,
@@ -429,6 +434,103 @@ if ext_dir.is_dir():
 print(origin_path)
 PY
   forge_ok "install origin → $FORGE_ORIGIN_PATH (source=$source repo=$repo)"
+  # Place `forge` on PATH for daily use (symlink into ~/.local/bin).
+  forge_install_cli_bin || forge_warn "CLI bin not installed (non-fatal)"
+}
+
+# --- User CLI (~/.local/bin/forge) ---
+
+forge_cli_repo_path() {
+  # Absolute path to scripts/forge/forge under FORGE_REPO_ROOT.
+  print -r -- "${FORGE_REPO_ROOT:A}/scripts/forge/forge"
+}
+
+forge_cli_bin_is_ours() {
+  # True if $FORGE_CLI_BIN is a symlink (or wrapper) we installed.
+  local target="${1:-$FORGE_CLI_BIN}"
+  [[ -e "$target" || -L "$target" ]] || return 1
+
+  if [[ -L "$target" ]]; then
+    local link dest
+    link=$(readlink "$target" 2>/dev/null) || return 1
+    # Absolute or relative; dangling OK if path shape matches.
+    if [[ "$link" == /* ]]; then
+      dest="$link"
+    else
+      dest="${target:A:h}/$link"
+    fi
+    # Ours: …/scripts/forge/forge (even if clone moved later and link is stale).
+    [[ "$dest" == */scripts/forge/forge ]] && return 0
+    [[ "$link" == */scripts/forge/forge ]] && return 0
+    local expect
+    expect=$(forge_cli_repo_path)
+    [[ "$dest" == "$expect" || "$link" == "$expect" ]] && return 0
+    return 1
+  fi
+
+  # Thin wrapper we might install later (marker in file body).
+  if [[ -f "$target" ]] && grep -qE 'FORGE_CLI_WRAPPER=1|# forge-cli-wrapper' "$target" 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
+forge_install_cli_bin() {
+  # Symlink $FORGE_CLI_BIN → repo scripts/forge/forge. Refuses foreign files.
+  local src="${1:-}"
+  if [[ -z "$src" ]]; then
+    src=$(forge_cli_repo_path)
+  fi
+  src="${src:A}"
+  if [[ ! -f "$src" ]]; then
+    forge_warn "CLI source missing: $src"
+    return 1
+  fi
+  chmod +x "$src" 2>/dev/null || true
+
+  mkdir -p "$FORGE_CLI_BIN_DIR"
+  if [[ -e "$FORGE_CLI_BIN" || -L "$FORGE_CLI_BIN" ]]; then
+    if forge_cli_bin_is_ours; then
+      ln -sfn "$src" "$FORGE_CLI_BIN"
+    else
+      forge_warn "refusing to overwrite non-forge ${c_cyan}$FORGE_CLI_BIN${c_reset}"
+      forge_info "Remove it (or set FORGE_CLI_BIN) and re-run install"
+      return 1
+    fi
+  else
+    ln -sfn "$src" "$FORGE_CLI_BIN"
+  fi
+  forge_ok "CLI → ${c_cyan}$FORGE_CLI_BIN${c_reset} → ${c_cyan}$src${c_reset}"
+
+  # PATH / shadow hints (non-fatal).
+  if [[ ":$PATH:" != *":$FORGE_CLI_BIN_DIR:"* ]]; then
+    forge_warn "${c_blue}$FORGE_CLI_BIN_DIR${c_reset} is not on PATH"
+    forge_info "Add to shell rc: ${c_blue}export PATH=\"$FORGE_CLI_BIN_DIR:\$PATH\"${c_reset}"
+  elif command -v forge >/dev/null 2>&1; then
+    local resolved
+    resolved=$(command -v forge)
+    if [[ "$resolved" != "$FORGE_CLI_BIN" ]]; then
+      forge_warn "\`forge\` resolves to ${c_cyan}$resolved${c_reset}, not $FORGE_CLI_BIN"
+    else
+      forge_info "\`forge\` on PATH (${c_cyan}$FORGE_CLI_BIN${c_reset})"
+    fi
+  fi
+  return 0
+}
+
+forge_uninstall_cli_bin() {
+  # Remove $FORGE_CLI_BIN only when we own it.
+  if [[ ! -e "$FORGE_CLI_BIN" && ! -L "$FORGE_CLI_BIN" ]]; then
+    forge_info "no CLI at $FORGE_CLI_BIN"
+    return 0
+  fi
+  if forge_cli_bin_is_ours; then
+    rm -f "$FORGE_CLI_BIN"
+    forge_ok "removed ${c_cyan}$FORGE_CLI_BIN${c_reset}"
+  else
+    forge_warn "left ${c_cyan}$FORGE_CLI_BIN${c_reset} (not owned by forge install)"
+  fi
+  return 0
 }
 
 forge_read_install_origin() {

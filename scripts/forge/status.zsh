@@ -77,3 +77,29 @@ if origin_path=$(forge_read_install_origin 2>/dev/null); then
 else
   print -- "Install origin:  ${c_yellow}(none — run ./install or scripts/install.zsh once)${c_reset}"
 fi
+
+print -- "CLI bin:         ${c_cyan}$FORGE_CLI_BIN${c_reset}"
+if [[ -L "$FORGE_CLI_BIN" ]]; then
+  link=$(readlink "$FORGE_CLI_BIN" 2>/dev/null || true)
+  if forge_cli_bin_is_ours; then
+    print -- "  symlink:       ${c_green}ours${c_reset} → ${c_cyan}$link${c_reset}"
+  else
+    print -- "  symlink:       ${c_yellow}foreign${c_reset} → ${c_cyan}$link${c_reset}"
+  fi
+elif [[ -e "$FORGE_CLI_BIN" ]]; then
+  if forge_cli_bin_is_ours; then
+    print -- "  present:       ${c_green}ours${c_reset}"
+  else
+    print -- "  present:       ${c_yellow}foreign (not our install)${c_reset}"
+  fi
+else
+  print -- "  present:       ${c_yellow}no${c_reset} (run ./install)"
+fi
+if command -v forge >/dev/null 2>&1; then
+  print -- "  on PATH:       ${c_green}$(command -v forge)${c_reset}"
+else
+  print -- "  on PATH:       ${c_yellow}no${c_reset}"
+  if [[ ":$PATH:" != *":$FORGE_CLI_BIN_DIR:"* ]]; then
+    print -- "  hint:          add ${c_blue}$FORGE_CLI_BIN_DIR${c_reset} to PATH"
+  fi
+fi

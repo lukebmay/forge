@@ -22,13 +22,22 @@ After install, origin is stamped at
 forge install --force          # re-runs that tree's scripts/install.zsh
 ```
 
+Install also symlinks the control CLI to **`~/.local/bin/forge`** (XDG user
+bin). Uninstall removes that symlink only when it is forge-owned:
+
+```bash
+forge uninstall                # extension + CLI; keeps prefs
+forge uninstall --purge-config # also wipe ~/.config/forge
+```
+
 If the clone was removed, `forge install` errors (no silent wrong tree). EGO
 reinstall via `forge install` is reserved for later.
 
 ```bash
-./install                      # build → install → enable → reload Shell (X11)
+./install                      # build → install → enable → CLI → reload Shell (X11)
 ./install --no-restart         # files only; reload Shell yourself
-./scripts/forge/status.zsh     # shows install origin
+forge tree                     # once ~/.local/bin is on PATH
+./scripts/forge/status.zsh     # shows install origin + CLI bin
 ```
 
 ## Tiling control CLI (`forge`)
@@ -215,9 +224,9 @@ automatically after `switch-to-jcrussell` / `install-jcrussell`; re-run anytime:
 | `restore-theme.zsh` | Restore stylesheet colors + stamp `css-last-update` |
 | `reload-theme.zsh` | Bump `css-updated` so a live Shell reloads user CSS |
 | `trigger-idle-lock.zsh` | Short idle / DPMS lock for blank/wake testing |
-| `../install.zsh` (root `./install`) | **Preferred:** lineage-aware install from this tree + origin stamp |
+| `../install.zsh` (root `./install`) | **Preferred:** lineage-aware install from this tree + origin stamp + `~/.local/bin/forge` |
 | `install-ego.zsh` | Download+install from extensions.gnome.org |
-| `uninstall.zsh` | Remove user extension (keeps dconf by default) |
+| `uninstall.zsh` / `forge uninstall` | Remove extension + forge-owned CLI (keeps dconf by default) |
 | `install-jcrussell.zsh` | `npm install` + `make dev` from this repo |
 | `update-jcrussell.zsh` | Daily: build+install this tree (restart Shell yourself; optional `--restart-shell`) |
 | `check-updates.zsh` | `git fetch`/compare; optional `--ego` |

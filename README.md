@@ -59,25 +59,28 @@ Agent guidelines are composed with shellrc **`agents`** → root
 UUID matches EGO Forge, so a trial **replaces** the installed extension.
 
 **Preferred entry:** project-root `./install` (lineage-aware; migrates EGO
-settings when needed; stamps origin for later `forge install`):
+settings when needed; stamps origin for later `forge install`; puts the
+control CLI on PATH):
 
 ```bash
 ./install
+forge tree                     # ~/.local/bin/forge → this tree
 ./scripts/forge/status.zsh
 ```
 
-Default install: build → install → enable → **reload Shell on X11** so the new
-code is active. Opt out with `--no-restart`. `--force` is only for pipes/CI
-(not needed on a normal terminal). EGO → this tree still asks once (or needs
-`--force` when non-interactive) because it migrates settings.
+Default install: build → install → enable → symlink **`~/.local/bin/forge`** →
+**reload Shell on X11** so the new code is active. Opt out of Shell reload with
+`--no-restart`. `--force` is only for pipes/CI (not needed on a normal
+terminal). EGO → this tree still asks once (or needs `--force` when
+non-interactive) because it migrates settings.
+
+```bash
+forge install                  # re-install from stamped origin
+forge uninstall                # extension + forge-owned CLI; keeps prefs
+```
 
 Lower-level helpers still live under [`scripts/forge/`](scripts/forge/README.md).
 Rollback helpers are documented there.
-
-```bash
-# re-install from the same clone later (after origin stamp exists):
-./scripts/forge/forge install
-```
 
 ## Features
 

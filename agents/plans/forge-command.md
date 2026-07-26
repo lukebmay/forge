@@ -8,10 +8,11 @@
 
 ### Session note (2026-07-26)
 
-**FC5 B AGREE.** Re-ran 23 Python + 1868 npm; offline list/show; missing
-gdisplays → 127 + install hint; `run-steps` still rejects launch/wait; no new
-DBus. Nits only (deps always for workon run; list unvalidated names; timeout
-int edge). Ship when user wants commit; live morning smoke optional residual.
+**CLI on PATH.** `./install` / origin stamp now symlink
+`~/.local/bin/forge` → `scripts/forge/forge`. `forge uninstall` removes
+extension + forge-owned CLI (keeps prefs/origin). Ownership check refuses
+foreign files. status shows CLI bin. Docs: README, scripts/forge/README,
+DESIGN.
 
 ---
 
