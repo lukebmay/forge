@@ -110,6 +110,26 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 - Prefer fixing root causes over silencing crashes.
 - Do not re-run the upstream-vs-fork comparison unless the trees change materially.
 
+### Dev testing (live install / Shell HUP)
+
+When agents run live tests that need install + Shell reload (`./install`,
+`forge save-session-layout`, dual-mon thrash):
+
+1. **Use a debug install** — `./install` / `make dev` set `production=false`.
+2. **Turn logging on** before the run (otherwise `Logger` stays silent):
+
+   ```sh
+   gsettings set org.gnome.shell.extensions.forge logging-enabled true
+   gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO
+   ```
+
+3. **Session-layout file trace** (debug builds only): append-only log at
+   `~/.config/forge/config/session-layout-trace.log` during restore / shield /
+   rehome. Prefer this over journal guessing after HUP.
+4. **Post-HUP collectors** must survive `killall -HUP gnome-shell` (`nohup` /
+   background script writing under `/tmp/...`), then compare `forge tree`.
+5. Do not rely on the user to re-layout windows for verification.
+
 ### Git
 
 Follow shellrc catalog **`git.md`** (composed into `AGENTS.md`): **no commit and no

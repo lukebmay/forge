@@ -41,6 +41,16 @@ describe("tree-snapshot pure helpers", () => {
     expect(kids[1].percent).toBeCloseTo(0.4);
   });
 
+  it("renormalizeChildPercents equalizes when a non-userSized sibling has zero share", () => {
+    // Session-layout after bad collapse: ghostty percent=1, tabs percent=0.
+    const kids = [
+      { percent: 1, userSized: false },
+      { percent: 0, userSized: false },
+    ];
+    renormalizeChildPercents(kids);
+    expect(kids.map((k) => k.percent)).toEqual([0, 0]);
+  });
+
   it("renormalizeChildPercents equalizes when no weight and not userSized", () => {
     const kids = [
       { percent: 0, userSized: false },
@@ -204,6 +214,34 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.VSPLIT)).toHaveLength(0);
     expect(monitor.childNodes.map((n) => n.nodeValue)).toEqual([w0, w2]);
     expect(monitor.childNodes.every((n) => n.isWindow())).toBe(true);
+  });
+
+  it("collapsed single-child CON keeps CON percent not sole child percent=1", () => {
+    // Live Ghostty bug: mo1 = VSPLIT(ghostty percent=1) | TABBED → collapse stole full mon.
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const wrap = createCon(monitor.nodeValue, LAYOUT_TYPES.VSPLIT);
+    wrap.percent = 0;
+    wrap.userSized = false;
+    const ghost = makeWindow(0);
+    const nGhost = ctx.tree.createNode(wrap.nodeValue, NODE_TYPES.WINDOW, ghost);
+    nGhost.percent = 1;
+    nGhost.userSized = false;
+    const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
+    tab.percent = 0;
+    tab.userSized = false;
+    const chrome = makeWindow(1);
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, chrome);
+
+    const snap = ctx.tree.snapshotTree();
+    flattenUnderMonitor(monitor, [ghost, chrome]);
+    ctx.tree.restoreTree(snap);
+
+    expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.VSPLIT)).toHaveLength(0);
+    expect(monitor.childNodes).toHaveLength(2);
+    // Both mon-level siblings must be equal magic-zero, not ghostty=1 / tabs=0.
+    expect(monitor.childNodes[0].percent).toBe(0);
+    expect(monitor.childNodes[1].percent).toBe(0);
   });
 
   it("restoreTreeIfNeeded skips intact topology and re-applies percents", () => {

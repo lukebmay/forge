@@ -13,10 +13,13 @@ import {
   isPortableWindow,
   resolveStrictMonitor,
   planWindowMonitorHomes,
+  planLastGoodHomes,
   createWindowResolver,
   matchStatsAgainstWindows,
   forestRichness,
   frameDistanceScore,
+  geometryMatchScore,
+  assignByScore,
 } from "../../../lib/extension/session-layout.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { createTreeFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
@@ -257,6 +260,140 @@ describe("session-layout portable round-trip", () => {
     ]);
   });
 
+  it("planLastGoodHomes seeds mon + frame from live leaves (toLiveForest preserves portable)", () => {
+    const left = createMockWindow({
+      id: 9101,
+      pid: 4452,
+      wm_class: "com.mitchellh.ghostty",
+      title: "grok",
+      monitor: 1,
+    });
+    const right = createMockWindow({
+      id: 9102,
+      pid: 4452,
+      wm_class: "com.mitchellh.ghostty",
+      title: " me",
+      monitor: 1,
+    });
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          stableKey: "conn:DP-1",
+          children: [
+            {
+              id: 1,
+              pid: 4452,
+              wmClass: "com.mitchellh.ghostty",
+              title: "saved-left",
+              monitor: 0,
+              frame: { x: 100, y: 50, width: 2400, height: 2800 },
+            },
+          ],
+        },
+        {
+          id: "mo1ws0",
+          stableKey: "conn:DP-2",
+          children: [
+            {
+              id: 2,
+              pid: 4452,
+              wmClass: "com.mitchellh.ghostty",
+              title: "saved-right",
+              monitor: 1,
+              frame: { x: 5200, y: 50, width: 2500, height: 2800 },
+            },
+          ],
+        },
+      ],
+    };
+    const live = toLiveForest(portable, createWindowResolver([left, right], portable));
+    const seeds = planLastGoodHomes(live);
+    expect(seeds).toHaveLength(2);
+    const byWin = new Map(seeds.map((s) => [s.window, s]));
+    expect(byWin.get(left).monitorIndex).toBe(0);
+    expect(byWin.get(left).frame).toEqual({ x: 100, y: 50, width: 2400, height: 2800 });
+    expect(byWin.get(left).stableKey).toBe("conn:DP-1");
+    expect(byWin.get(right).monitorIndex).toBe(1);
+    expect(byWin.get(right).frame).toEqual({ x: 5200, y: 50, width: 2500, height: 2800 });
+    expect(byWin.get(right).stableKey).toBe("conn:DP-2");
+  });
+
+  it("planLastGoodHomes can enrich from portableForest when live leaves lack frames", () => {
+    const left = { id: "L" };
+    const right = { id: "R" };
+    const live = {
+      monitors: [
+        { id: "mo0ws0", children: [{ window: left, percent: 0 }] },
+        { id: "mo1ws0", children: [{ window: right, percent: 0 }] },
+      ],
+    };
+    // Without portable, frames null but mon from id still works.
+    const bare = planLastGoodHomes(live);
+    expect(bare.map((s) => [s.window.id, s.monitorIndex, s.frame])).toEqual([
+      ["L", 0, null],
+      ["R", 1, null],
+    ]);
+
+    // With portable + matching windows, frames fill in (via resolver on live wins).
+    const leftWin = createMockWindow({
+      id: 77,
+      pid: 9,
+      wm_class: "com.mitchellh.ghostty",
+      title: "L",
+      monitor: 1,
+    });
+    const rightWin = createMockWindow({
+      id: 78,
+      pid: 9,
+      wm_class: "com.mitchellh.ghostty",
+      title: "R",
+      monitor: 1,
+    });
+    const liveMatched = {
+      monitors: [
+        { id: "mo0ws0", children: [{ window: leftWin, percent: 0 }] },
+        { id: "mo1ws0", children: [{ window: rightWin, percent: 0 }] },
+      ],
+    };
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          children: [
+            {
+              id: 1,
+              pid: 9,
+              wmClass: "com.mitchellh.ghostty",
+              title: "L",
+              monitor: 0,
+              frame: { x: 10, y: 20, width: 100, height: 200 },
+            },
+          ],
+        },
+        {
+          id: "mo1ws0",
+          children: [
+            {
+              id: 2,
+              pid: 9,
+              wmClass: "com.mitchellh.ghostty",
+              title: "R",
+              monitor: 1,
+              frame: { x: 3000, y: 20, width: 100, height: 200 },
+            },
+          ],
+        },
+      ],
+    };
+    const enriched = planLastGoodHomes(liveMatched, portable);
+    const byWin = new Map(enriched.map((s) => [s.window, s]));
+    expect(byWin.get(leftWin).frame).toEqual({ x: 10, y: 20, width: 100, height: 200 });
+    expect(byWin.get(rightWin).frame).toEqual({ x: 3000, y: 20, width: 100, height: 200 });
+  });
+
   it("createWindowResolver matches by class+title when ids churn after HUP", () => {
     const wA = createMockWindow({
       id: 9991,
@@ -296,11 +433,11 @@ describe("session-layout portable round-trip", () => {
     };
     const stats = matchStatsAgainstWindows(portable, [wA, wB]);
     expect(stats).toEqual({ total: 2, matched: 2 });
-    const live = toLiveForest(portable, createWindowResolver([wA, wB]));
+    const live = toLiveForest(portable, createWindowResolver([wA, wB], portable));
     expect(live.monitors[0].children.map((c) => c.window)).toEqual([wA, wB]);
   });
 
-  it("matches two same-pid Ghosttys by frame distance after thrash pile", () => {
+  it("matches two same-pid Ghosttys by frame distance after thrash pile (side-by-side)", () => {
     // Real Ghostty: one process, many windows; titles churn; both piled on mon1.
     const leftLive = createMockWindow({
       id: 5001,
@@ -358,10 +495,104 @@ describe("session-layout portable round-trip", () => {
     expect(
       frameDistanceScore(portable.monitors[0].children[0].frame, leftLive._rect)
     ).toBeGreaterThan(frameDistanceScore(portable.monitors[0].children[0].frame, rightLive._rect));
-    const live = toLiveForest(portable, createWindowResolver([leftLive, rightLive]));
+    const stats = matchStatsAgainstWindows(portable, [leftLive, rightLive]);
+    expect(stats).toEqual({ total: 2, matched: 2 });
+    const live = toLiveForest(portable, createWindowResolver([leftLive, rightLive], portable));
     expect(live.monitors).toHaveLength(2);
     expect(live.monitors[0].children[0].window).toBe(leftLive);
     expect(live.monitors[1].children[0].window).toBe(rightLive);
+  });
+
+  it("matches both same-pid Ghosttys when thrash stacks identical frames", () => {
+    // Greedy pickByGeometry returned null on score ties → both unmatched.
+    const stackedRect = new Rectangle({ x: 5400, y: 10, width: 2500, height: 2800 });
+    const a = createMockWindow({
+      id: 7001,
+      pid: 9001,
+      wm_class: "com.mitchellh.ghostty",
+      title: "churn-a",
+      monitor: 1,
+      rect: stackedRect,
+    });
+    const b = createMockWindow({
+      id: 7002,
+      pid: 9001,
+      wm_class: "com.mitchellh.ghostty",
+      title: "churn-b",
+      monitor: 1,
+      rect: new Rectangle({ x: 5400, y: 10, width: 2500, height: 2800 }),
+    });
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              id: 1,
+              pid: 9001,
+              wmClass: "com.mitchellh.ghostty",
+              title: "old-left",
+              monitor: 0,
+              frame: { x: 2500, y: 50, width: 2500, height: 2800 },
+            },
+          ],
+        },
+        {
+          id: "mo1ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              id: 2,
+              pid: 9001,
+              wmClass: "com.mitchellh.ghostty",
+              title: "old-right",
+              monitor: 1,
+              frame: { x: 5200, y: 50, width: 2500, height: 2800 },
+            },
+          ],
+        },
+      ],
+    };
+    const leaf0 = portable.monitors[0].children[0];
+    const leaf1 = portable.monitors[1].children[0];
+    // Scores tie across candidates for each leaf (identical live frames).
+    expect(geometryMatchScore(leaf0, a)).toBe(geometryMatchScore(leaf0, b));
+    expect(geometryMatchScore(leaf1, a)).toBe(geometryMatchScore(leaf1, b));
+
+    const stats = matchStatsAgainstWindows(portable, [a, b]);
+    expect(stats).toEqual({ total: 2, matched: 2 });
+    const live = toLiveForest(portable, createWindowResolver([a, b], portable));
+    expect(live.monitors).toHaveLength(2);
+    const matched = new Set([
+      live.monitors[0].children[0].window,
+      live.monitors[1].children[0].window,
+    ]);
+    expect(matched.has(a)).toBe(true);
+    expect(matched.has(b)).toBe(true);
+    // Deterministic: walk order + stable x/y/id pairs lower id to earlier leaf when tied.
+    expect(live.monitors[0].children[0].window).toBe(a);
+    expect(live.monitors[1].children[0].window).toBe(b);
+  });
+
+  it("assignByScore prefers max total over greedy first-leaf pick", () => {
+    // leaf0 slightly closer to candB; leaf1 much closer to candB — greedy leaf0→B is wrong.
+    const leaves = [
+      { id: "L0", frame: { x: 0, y: 0, width: 100, height: 100 } },
+      { id: "L1", frame: { x: 1000, y: 0, width: 100, height: 100 } },
+    ];
+    const cA = createMockWindow({
+      id: 1,
+      rect: new Rectangle({ x: 50, y: 0, width: 100, height: 100 }),
+    });
+    const cB = createMockWindow({
+      id: 2,
+      rect: new Rectangle({ x: 980, y: 0, width: 100, height: 100 }),
+    });
+    const map = assignByScore(leaves, [cA, cB], geometryMatchScore);
+    expect(map.get(leaves[0])).toBe(cA);
+    expect(map.get(leaves[1])).toBe(cB);
   });
 
   it("createWindowResolver uses frame when pid missing and titles churn", () => {
@@ -408,9 +639,171 @@ describe("session-layout portable round-trip", () => {
         },
       ],
     };
-    const live = toLiveForest(portable, createWindowResolver([left, right]));
+    const live = toLiveForest(portable, createWindowResolver([left, right], portable));
     expect(live.monitors[0].children[0].window).toBe(left);
     expect(live.monitors[1].children[0].window).toBe(right);
+  });
+
+  it("rehome asserts Meta get_monitor after same-pid dual-mon thrash", () => {
+    // Good layout: mo0 Ghostty | mo1 Ghostty (same pid), different frames.
+    // Thrash: both flat under mon1, Meta mon=1, side-by-side pile.
+    const leftGhost = createMockWindow({
+      id: 8001,
+      pid: 4242,
+      wm_class: "com.mitchellh.ghostty",
+      title: "live-left",
+      monitor: 0,
+      rect: new Rectangle({ x: 2600, y: 50, width: 2500, height: 2800 }),
+    });
+    const rightGhost = createMockWindow({
+      id: 8002,
+      pid: 4242,
+      wm_class: "com.mitchellh.ghostty",
+      title: "live-right",
+      monitor: 1,
+      rect: new Rectangle({ x: 5200, y: 50, width: 2500, height: 2800 }),
+    });
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              id: 11,
+              pid: 4242,
+              wmClass: "com.mitchellh.ghostty",
+              title: "saved-left",
+              monitor: 0,
+              frame: { x: 2600, y: 50, width: 2500, height: 2800 },
+            },
+          ],
+        },
+        {
+          id: "mo1ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              id: 12,
+              pid: 4242,
+              wmClass: "com.mitchellh.ghostty",
+              title: "saved-right",
+              monitor: 1,
+              frame: { x: 5200, y: 50, width: 2500, height: 2800 },
+            },
+          ],
+        },
+      ],
+    };
+
+    // Thrash: both piled on mon1 with distinct x (side-by-side).
+    leftGhost._monitor = 1;
+    rightGhost._monitor = 1;
+    leftGhost._rect = new Rectangle({ x: 5300, y: 10, width: 2400, height: 2700 });
+    rightGhost._rect = new Rectangle({ x: 7700, y: 10, width: 2400, height: 2700 });
+
+    const resolve = createWindowResolver([leftGhost, rightGhost], portable);
+    const liveForest = toLiveForest(portable, resolve);
+    expect(liveForest.monitors).toHaveLength(2);
+    expect(liveForest.monitors[0].children[0].window).toBe(leftGhost);
+    expect(liveForest.monitors[1].children[0].window).toBe(rightGhost);
+
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon0.childNodes.length = 0;
+    mon1.childNodes.length = 0;
+    for (const w of [leftGhost, rightGhost]) {
+      ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w);
+    }
+
+    // Mirror window.js _rehomeWindowsForSessionForest
+    const homes = planWindowMonitorHomes(liveForest);
+    const snapCtx = ctx.tree._treeSnapshotCtx();
+    for (const { window: metaWin, monIndex, monId } of homes) {
+      if (metaWin.get_monitor() !== monIndex) metaWin.move_to_monitor(monIndex);
+      const node = ctx.tree.findNode(metaWin);
+      const mon = resolveStrictMonitor({ id: monId }, snapCtx);
+      if (mon && node && !mon.childNodes.includes(node)) mon.appendChild(node);
+    }
+
+    expect(leftGhost.get_monitor()).toBe(0);
+    expect(rightGhost.get_monitor()).toBe(1);
+    expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([leftGhost]);
+    expect(mon1.childNodes.map((n) => n.nodeValue)).toEqual([rightGhost]);
+  });
+
+  it("rehome Meta mon after identical stacked thrash frames", () => {
+    const a = createMockWindow({
+      id: 8101,
+      pid: 5151,
+      wm_class: "com.mitchellh.ghostty",
+      title: "a",
+      monitor: 1,
+      rect: new Rectangle({ x: 6000, y: 0, width: 2000, height: 2000 }),
+    });
+    const b = createMockWindow({
+      id: 8102,
+      pid: 5151,
+      wm_class: "com.mitchellh.ghostty",
+      title: "b",
+      monitor: 1,
+      rect: new Rectangle({ x: 6000, y: 0, width: 2000, height: 2000 }),
+    });
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          children: [
+            {
+              id: 1,
+              pid: 5151,
+              wmClass: "com.mitchellh.ghostty",
+              title: "L",
+              monitor: 0,
+              frame: { x: 100, y: 0, width: 2000, height: 2000 },
+            },
+          ],
+        },
+        {
+          id: "mo1ws0",
+          children: [
+            {
+              id: 2,
+              pid: 5151,
+              wmClass: "com.mitchellh.ghostty",
+              title: "R",
+              monitor: 1,
+              frame: { x: 5000, y: 0, width: 2000, height: 2000 },
+            },
+          ],
+        },
+      ],
+    };
+    const liveForest = toLiveForest(portable, createWindowResolver([a, b], portable));
+    expect(liveForest.monitors).toHaveLength(2);
+    const w0 = liveForest.monitors[0].children[0].window;
+    const w1 = liveForest.monitors[1].children[0].window;
+    expect(new Set([w0, w1])).toEqual(new Set([a, b]));
+
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon0.childNodes.length = 0;
+    mon1.childNodes.length = 0;
+    for (const w of [a, b]) ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w);
+
+    for (const { window: metaWin, monIndex, monId } of planWindowMonitorHomes(liveForest)) {
+      if (metaWin.get_monitor() !== monIndex) metaWin.move_to_monitor(monIndex);
+      const node = ctx.tree.findNode(metaWin);
+      const mon = resolveStrictMonitor({ id: monId }, ctx.tree._treeSnapshotCtx());
+      if (mon && node && !mon.childNodes.includes(node)) mon.appendChild(node);
+    }
+
+    expect(w0.get_monitor()).toBe(0);
+    expect(w1.get_monitor()).toBe(1);
+    expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([w0]);
+    expect(mon1.childNodes.map((n) => n.nodeValue)).toEqual([w1]);
   });
 
   it("forestRichness ranks dual-mon tabs above flat pile", () => {

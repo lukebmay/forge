@@ -59,21 +59,25 @@ Commits on `main` (local, ahead of origin; tip may move):
 ### Match order (createWindowResolver)
 
 1. Meta `get_id()` (often **changes** on Shell HUP)  
-2. `pid` — if **unique** among unmatched; if **multiple windows share pid** (Ghostty), rank by geometry among pid-mates  
+2. Same-pid cohort → **global** `assignByScore` (−d² + mon bonus)  
 3. Exact `wmClass` + `title` (Chrome titles stable; **Ghostty titles churn**)  
-4. Same class: mon match bonus + frame overlap + **frame center distance score**  
+4. Same-class cohort → global `assignByScore`  
 5. Unique remaining class member  
 
 ### Restore path (enable / empty live snapshot)
 
 ```text
-trackCurrentWindows (flat)
+_sessionLayoutRestoring = true
+→ trackCurrentWindows (flat)
 → match portable leaves → liveForest
-→ _rehomeWindowsForSessionForest (move_to_monitor + tree reparent)
+→ _rehomeWindowsForSessionForest (move_to_monitor + tree reparent + retry)
 → _restoreSessionForestStrict (resolveStrictMonitor + applyMonitorSnapshot)
-→ _raiseAfterSessionRestore (raise DFS + lastTabFocus + focus restack)
+→ _raiseAfterSessionRestore
+→ seed _lastGoodHomes from portable frames (so soft rehome does not thrash)
 → clear session-layout.json on success
+finally: _sessionLayoutRestoring = false
 → renderTree
+(window-entered-monitor / soft-rehome suppressed or deferred while restoring)
 ```
 
 ### Guards
@@ -207,4 +211,63 @@ python3 -c "import json;from pathlib import Path;print(Path.home().joinpath('.co
 
 ## Session note (handoff)
 
-**2026-07-25:** Session-layout install path largely works (tabs + dual-head). Residual: **Ghostty left/right identity + visibility** after HUP — same pid, title churn; frame-distance ranking shipped (`2df7002`) but user still sees left Ghostty **hidden under** right Ghostty (and earlier structural move to mo1). Next agents: A/B on rehome Meta mon + stacking/raise + match assignment; acceptance requires **both Ghosttys visible on correct monitors** after install from a known-good save.
+**2026-07-25 (agent live loop):** Ran save→tree→install→tree with file trace.
+
+### Proven live results
+
+1. **Match/rehome/shield:** 7/7 match; left Ghostty mon0 + right mon1 after restore
+   and shield reapply. Dual-mon Ghostty placement **PASS**.
+2. **Residual sizing:** mon1 Ghostty full width, chrome tabs width 0. Trace showed
+   portable leaf `ghostty percent=1` next to `TABBED percent=0` (from single-child
+   VSPLIT collapse promoting child percent=1). Fixed: collapse uses CON percent;
+   `renormalizeChildPercents` equalizes non-userSized when any sibling share is 0.
+3. **Re-run install:** both Ghosttys mon0/mon1, both w=2510, tabs w=2510 → **PASS**.
+
+Trace file (dev builds): `~/.config/forge/config/session-layout-trace.log`
+
+### Root cause (refined)
+
+1. Session restore can rebuild correctly (tabs prove it runs).
+2. After restore, Meta thrash peels left Ghostty to mon1; entered-monitor rehomes tree.
+3. Soft rehome `snapshotTree()` captures broken topology → freezes mo0 tabs-only + mon1 third Ghostty (width 0).
+4. Seeded last-good alone is not enough — soft rehome rebuilds thrash **structure**.
+
+### Shipped
+
+| Piece | Detail |
+| --- | --- |
+| `assignByScore` / seed last-good | Match + Meta mon targets |
+| `_sessionLayoutRestoring` + **shield** | Suppress entered-monitor; soft-rehome re-applies forest |
+| Collapse CON percent + renormalize | Single-child VSPLIT no longer steals full mon |
+| File trace (dev) | `~/.config/forge/config/session-layout-trace.log` |
+| Tests | Shield peel, collapse percent, renormalize 1+0 → equal |
+
+### Acceptance
+
+- [x] Live agent install (twice): dual Ghostty mon0+mon1, non-zero widths
+- [x] Final autonomous retest **PASS** (2026-07-25)
+- [x] Unit suite green (1868)
+- [x] Dev logging note in `agents/project.md`
+
+### Next
+
+Move to plan `completed/` when archiving; commit on request.
+
+### Acceptance checklist
+
+- [x] Match / seed / shield unit+regression
+- [x] `npm test` green (1868)
+- [x] Live install on black (agent autonomous, thrice PASS)
+
+### Audit / spaghetti debt → future task
+
+See [forge-codebase-audit.md](../plans/forge-codebase-audit.md) (stub). High-signal from this arc:
+
+| Concern | Notes |
+| --- | --- |
+| `window.js` ~4.7k lines | Session save/restore/rehome/raise live beside WM core |
+| Layered match history | id → pid → class+title → class; multi-phase thrash patches |
+| Overlapping thrash nets | Soft rehome (H1), session-layout strict, majority restore, richness guard, 12s save hold |
+| Raise / focus restack | Tab click, focus mgr, session raise — multiple paths |
+| lastTabFocus after HUP | Meta-id only; null after id churn (pre-existing) |
+| `tree.js` ~2.9k | Same size-pressure class as window.js |

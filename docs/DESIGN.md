@@ -58,12 +58,26 @@ class+title → class+geometry → unique class; strict mon rehome; raise tiles 
 none stay buried. Richness guard + post-enable hold protect last-good. Not full
 `workon` profiles.
 
-**Open residual:** multi-window **same-pid** apps (Ghostty): titles churn; after
-install the left Ghostty can still rehome wrong or sit **visually under** the
-right Ghostty. Follow-up task:
-[agents/tasks/forge-daily-driver_session-layout-ghostty.md](../agents/tasks/forge-daily-driver_session-layout-ghostty.md).
+**Same-pid multi-window (Ghostty):** titles churn; greedy leaf match could swap
+or drop both on tied frames. Fix: forest-aware **global assignment**
+(`assignByScore` + `geometryMatchScore` with −d²) in
+`session-layout.js`.
 
-**Tests:** `tests/unit/extension/session-layout.test.js`.
+**Post-restore soft-rehome race:** After HUP, `_lastGoodHomes` is empty (new
+`Meta.Window`s). Meta thrash can peel a window after a correct restore; soft
+rehome then `snapshotTree()` freezes broken topology. Fix: restore transaction +
+seed last-good + **session shield** (~3s sliding) re-applying the restored
+forest. Live agent loop confirmed dual Ghostty mon placement.
+
+**Collapse percent trap:** single-child CON (e.g. VSPLIT wrapping one Ghostty)
+must promote the **CON’s** mon-level percent on collapse; a sole child at
+`percent=1` next to `TABBED percent=0` makes the terminal full-width and tabs
+zero-width. `renormalizeChildPercents` also equalizes non-userSized siblings when
+any share is zero.
+
+**Tests:** `session-layout.test.js`, `tree-snapshot.test.js`, soft-rehome shield
+regression. Dev builds append
+`~/.config/forge/config/session-layout-trace.log` during restore.
 
 ## Tab strip clickability
 

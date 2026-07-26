@@ -115,6 +115,214 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
   });
 
+  it("suppresses window-entered-monitor rehome during session layout restore", () => {
+    const { win } = addTiled("S", 1, { x: 2000, y: 0, width: 400, height: 400 });
+    wm()._sessionLayoutRestoring = true;
+
+    const updateSpy = vi.spyOn(wm(), "updateMetaWorkspaceMonitor").mockImplementation(() => {});
+    wm()._onWindowEnteredMonitor(ctx.display, 0, win);
+    expect(updateSpy).not.toHaveBeenCalled();
+
+    wm()._sessionLayoutRestoring = false;
+    wm()._onWindowEnteredMonitor(ctx.display, 0, win);
+    expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
+  });
+
+  it("seeded last-good from session frames keeps dual Ghosttys on mon0+mon1 after soft rehome", () => {
+    // Mirrors HUP: thrash piles both on mon1; empty WeakMap would use thrash frames;
+    // seed from portable mon0/mon1 frames so soft rehome does not undo session restore.
+    const leftFrame = { x: 100, y: 50, width: 900, height: 1000 };
+    const rightFrame = { x: 2000, y: 50, width: 900, height: 1000 };
+    const thrashFrame = { x: 2100, y: 10, width: 800, height: 900 };
+
+    const { win: leftWin, node: leftNode } = addTiled("G0", 1, thrashFrame);
+    const { win: rightWin, node: rightNode } = addTiled("G1", 1, thrashFrame);
+    // Both Meta + tree on mon1 (post-HUP thrash pile).
+    leftWin._monitor = 1;
+    rightWin._monitor = 1;
+    leftNode.rect = { ...thrashFrame };
+    rightNode.rect = { ...thrashFrame };
+
+    // Empty last-good (new Meta.Window objects after HUP) → thrash frames win.
+    expect(wm()._lastGoodHomes.get(leftWin)).toBeUndefined();
+    const bareLeft = wm()._resolveSoftRehomeMonitor(leftNode, dualGeoms, 2);
+    const bareRight = wm()._resolveSoftRehomeMonitor(rightNode, dualGeoms, 2);
+    expect(bareLeft).toBe(1);
+    expect(bareRight).toBe(1);
+
+    // Session restore seeds saved frames (planLastGoodHomes path).
+    wm()._seedLastGoodHomesFromSession({
+      monitors: [
+        {
+          id: "mo0ws0",
+          children: [{ window: leftWin, frame: leftFrame, monitor: 0 }],
+        },
+        {
+          id: "mo1ws0",
+          children: [{ window: rightWin, frame: rightFrame, monitor: 1 }],
+        },
+      ],
+    });
+
+    expect(wm()._resolveSoftRehomeMonitor(leftNode, dualGeoms, 2)).toBe(0);
+    expect(wm()._resolveSoftRehomeMonitor(rightNode, dualGeoms, 2)).toBe(1);
+
+    wm()._softRehomeAfterWorkareas();
+
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    expect(mon0.contains(leftNode)).toBe(true);
+    expect(mon1.contains(rightNode)).toBe(true);
+    expect(leftWin.get_monitor()).toBe(0);
+    expect(rightWin.get_monitor()).toBe(1);
+  });
+
+  it("session-layout shield re-applies forest when soft rehome would freeze thrash tree", () => {
+    // Live bug: restore builds dual Ghostty; Meta thrash peels left Ghostty to mon1;
+    // soft rehome snapshotTree() freezes mo0=tabs-only + mo1=Ghostty|tabs|Ghostty(width0).
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon0.layout = LAYOUT_TYPES.HSPLIT;
+    mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+    const leftFrame = { x: 960, y: 50, width: 960, height: 1000 };
+    const rightFrame = { x: 1920, y: 50, width: 960, height: 1000 };
+    const thrashFrame = { x: 2100, y: 10, width: 800, height: 900 };
+
+    // Good topology: mo0 = VSPLIT(ghostty) sibling of a chrome window; mo1 = ghostty | chrome
+    const chromeL = createMockWindow({
+      id: "cL",
+      workspace: ctx.workspaces[0],
+      monitor: 0,
+      rect: { x: 0, y: 50, width: 960, height: 1000 },
+      wm_class: "Google-chrome",
+      title: "Grok",
+    });
+    const chromeR = createMockWindow({
+      id: "cR",
+      workspace: ctx.workspaces[0],
+      monitor: 1,
+      rect: { x: 2880, y: 50, width: 960, height: 1000 },
+      wm_class: "Google-chrome",
+      title: "Gmail",
+    });
+    const gLeft = createMockWindow({
+      id: "gL",
+      pid: 4452,
+      workspace: ctx.workspaces[0],
+      monitor: 0,
+      rect: leftFrame,
+      wm_class: "com.mitchellh.ghostty",
+      title: "grok",
+    });
+    const gRight = createMockWindow({
+      id: "gR",
+      pid: 4452,
+      workspace: ctx.workspaces[0],
+      monitor: 1,
+      rect: rightFrame,
+      wm_class: "com.mitchellh.ghostty",
+      title: " me",
+    });
+
+    const nChromeL = tree().createNode(mon0.nodeValue, NODE_TYPES.WINDOW, chromeL);
+    nChromeL.mode = WINDOW_MODES.TILE;
+    const vsplit = tree().createNode(mon0.nodeValue, NODE_TYPES.CON, "vsplit-g");
+    vsplit.layout = LAYOUT_TYPES.VSPLIT;
+    const nGLeft = tree().createNode(vsplit.nodeValue, NODE_TYPES.WINDOW, gLeft);
+    nGLeft.mode = WINDOW_MODES.TILE;
+    nGLeft.rect = { ...leftFrame };
+
+    const nGRight = tree().createNode(mon1.nodeValue, NODE_TYPES.WINDOW, gRight);
+    nGRight.mode = WINDOW_MODES.TILE;
+    nGRight.rect = { ...rightFrame };
+    const nChromeR = tree().createNode(mon1.nodeValue, NODE_TYPES.WINDOW, chromeR);
+    nChromeR.mode = WINDOW_MODES.TILE;
+
+    // Live forest as after successful session restore (VSPLIT-wrapped left Ghostty).
+    const liveForest = {
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              window: chromeL,
+              percent: 0,
+              frame: { x: 0, y: 50, width: 960, height: 1000 },
+              monitor: 0,
+            },
+            {
+              layout: "VSPLIT",
+              children: [{ window: gLeft, percent: 0, frame: leftFrame, monitor: 0 }],
+            },
+          ],
+        },
+        {
+          id: "mo1ws0",
+          layout: "HSPLIT",
+          children: [
+            { window: gRight, percent: 0.5, frame: rightFrame, monitor: 1 },
+            {
+              window: chromeR,
+              percent: 0.5,
+              frame: { x: 2880, y: 50, width: 960, height: 1000 },
+              monitor: 1,
+            },
+          ],
+        },
+      ],
+    };
+
+    wm()._seedLastGoodHomesFromSession(liveForest);
+    wm()._sessionLayoutShield = {
+      liveForest,
+      untilMonoUs:
+        (typeof GLib.get_monotonic_time === "function"
+          ? GLib.get_monotonic_time()
+          : Date.now() * 1000) + 5_000_000,
+    };
+
+    // Simulate Meta thrash peeling left Ghostty onto mon1 (entered-monitor path).
+    gLeft._monitor = 1;
+    gLeft._rect = thrashFrame;
+    nGLeft.rect = { ...thrashFrame };
+    mon1.appendChild(nGLeft);
+    // mo0 left with chrome only (empty VSPLIT may linger).
+    expect(mon0.contains(nGLeft)).toBe(false);
+    expect(mon1.contains(nGLeft)).toBe(true);
+
+    // Soft rehome during shield must re-apply forest — not freeze thrash snapshot.
+    wm()._softRehomeAfterWorkareas();
+
+    expect(mon0.contains(nGLeft)).toBe(true);
+    expect(mon1.contains(nGRight)).toBe(true);
+    expect(gLeft.get_monitor()).toBe(0);
+    expect(gRight.get_monitor()).toBe(1);
+    // No third Ghostty column on mon1.
+    const mon1Ghosttys = mon1
+      .getNodeByType(NODE_TYPES.WINDOW)
+      .filter((n) => n.nodeValue?.get_wm_class?.()?.includes("ghostty"));
+    expect(mon1Ghosttys.map((n) => n.nodeValue)).toEqual([gRight]);
+  });
+
+  it("suppresses window-entered-monitor while session-layout shield is active", () => {
+    const { win } = addTiled("sh", 1, { x: 2000, y: 0, width: 400, height: 400 });
+    wm()._sessionLayoutShield = {
+      liveForest: { monitors: [{ id: "mo0ws0", children: [] }] },
+      untilMonoUs:
+        (typeof GLib.get_monotonic_time === "function"
+          ? GLib.get_monotonic_time()
+          : Date.now() * 1000) + 5_000_000,
+    };
+    const updateSpy = vi.spyOn(wm(), "updateMetaWorkspaceMonitor").mockImplementation(() => {});
+    wm()._onWindowEnteredMonitor(ctx.display, 0, win);
+    expect(updateSpy).not.toHaveBeenCalled();
+    wm()._sessionLayoutShield = null;
+    wm()._onWindowEnteredMonitor(ctx.display, 0, win);
+    expect(updateSpy).toHaveBeenCalled();
+  });
+
   it("falls back to reloadTree when destination monitor node is missing", () => {
     const { win, node } = addTiled("orphan", 0, { x: 10, y: 10, width: 100, height: 100 });
     // Force last-good onto monitor 1, then remove mon1 node.

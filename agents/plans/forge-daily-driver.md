@@ -10,11 +10,11 @@
 
 ### Session note (2026-07-25)
 
-**Session-layout:** last-good JSON + HUP flush + match/rehome largely works for
-tabs/dual-head. **Open:** Ghostty left/right (same pid, title churn) — still
-can hide left Ghostty under right after install.  
-**Next task:** [forge-daily-driver_session-layout-ghostty.md](../tasks/forge-daily-driver_session-layout-ghostty.md)  
-(A/B loop). Tip commits: `2df7002` and parents through `7911e1d`.
+**Session-layout Ghostty:** Autonomous install **PASS** (dual Ghostty mon0+mon1,
+full widths). assignByScore + seed + shield + collapse/renormalize. Dev logging
+note in `agents/project.md`. Trace: `session-layout-trace.log` (debug builds).
+**Task:** [forge-daily-driver_session-layout-ghostty.md](../tasks/forge-daily-driver_session-layout-ghostty.md)  
+**Audit stub:** [forge-codebase-audit.md](./forge-codebase-audit.md)
 
 **T0–T5 + OP1 + T6 + T7 done.** Overlay: `Ctrl+Super+d`. Equalize: `Ctrl+Super+=` (Safe).
 ---
