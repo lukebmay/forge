@@ -38,7 +38,7 @@ Also: FC0–FC4 live smoke + path/casefold/friendly-launch fixes shipped
 | later | FC5 `workon` composition | **Deferred design** until asked |
 | optional | OP-opt tiny-pane tab fallback | After P1s; notes in daily-driver |
 | later | T9 multi-line tabs | After T1 proven |
-| **P1** | [codebase audit](./plans/forge-codebase-audit.md) | **In progress** — CA0–CA7 done; next CA8 |
+| **P1** | [codebase audit](./plans/forge-codebase-audit.md) | **In progress** — CA0–CA8 done; next CA9 |
 | P2 | forge-fork-eval spike close-out | Partial |
 | later | gdisplays v2 | shellrc only |
 

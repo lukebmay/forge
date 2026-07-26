@@ -1,8 +1,8 @@
 # Plan: Forge codebase efficiency & organization audit
 
-**Status:** in progress — **CA0–CA7 done** (A/B AGREE); next CA8
+**Status:** in progress — **CA0–CA8 done** (A/B AGREE); next CA9
 
-**Priority:** P1 tidy; next CA8  
+**Priority:** P1 tidy; next CA9 metrics
 
 **Mode:** A/B implement–verify per task; serial; one concern per change  
 **Trigger:** thrash/session work layered safety nets without cleanup; user quality bar: clean code, files &lt;1K preferred, no rewrite  
@@ -384,7 +384,7 @@ Task IDs: **CA0…CA9**. Execute in order unless noted parallel-safe.
 | --- | --- |
 | **Goal** | Remove unused debug-only tree helpers if nothing calls them; trim thrash-era verbose comments on files already touched in CA4–CA7 |
 | **Primary files** | `tree.js` debug*; recently extracted modules |
-| **Acceptance** | [ ] Grep shows no production callers of removed symbols [ ] comments.md style on touched blocks [ ] `npm test` green |
+| **Acceptance** | [x] Grep shows no production callers of removed symbols (none removed) [x] comments.md style on touched blocks [x] `npm test` green (A/B AGREE) |
 | **Risk** | low |
 | **Test plan** | `npm test` |
 | **Out of scope** | prefs experimental flags; mass comment rewrite across repo |
@@ -442,31 +442,17 @@ Task IDs: **CA0…CA9**. Execute in order unless noted parallel-safe.
 
 ## Session note (handoff)
 
-**CA7 B (2026-07-26): AGREE** — Independent verify; no findings; no code fixes.
+**CA8 B (2026-07-26):** **AGREE.** Gate mirrors `Logger.debug` (`#level > INFO`); no removed callers; policy comments retained (shield, strict mon, richness, majority-align, userSized); non-debug code paths comment-only. Tests 184/1868 green.
 
-- GRAB_TILE pure path `"GRAB_TILE"` ≡ `createEnum` / `Window.WINDOW_MODES.GRAB_TILE`
-- percent 0/missing equal share; grab skips min/percents; #330 remainder + T4 write-back OK
-- Decoration attach still on Tree; no import cycles
-- tree.js **2577** (−332); layout **413**
-- B re-ran focused sizing + full suite: **184/1868** green
+**CA8 A (2026-07-26):** Debug gate + comment hygiene (no behavior change).
 
-**Next:** **CA8**. No commit.
+| Change | Detail |
+| --- | --- |
+| Keep | `debugNode` / `debugParentNodes` — caller `focus.js` `movePointerWith` |
+| Gate | `Logger.isDebugEnabled()`; both helpers early-return when debug off (no ancestor walk on focus) |
+| Removed symbols | **none** (no other dead debug helpers on CA files) |
+| Comment trim | `soft-rehome.js`, `session-layout-restore.js`, `tree-layout.js`, thin `tree.js` JSDoc |
+| Tests | `npm test` **184/1868** green |
 
----
-
-**CA7 A (2026-07-26):** New `lib/extension/tree-layout.js` (413 lines) — pure sizing/gap/
-split/stack content-rect math. Tree thin-wraps; St decoration attach stays on Tree.
-
-| File | Lines |
-| --- | ---: |
-| `tree.js` | 2909 → **2577** (−332) |
-| `tree-layout.js` | **413** (new) |
-
-**Exports:** `computeSizes`, `minSizeInOrientation`, `redistributeForMinSizes`,
-`mostShrinkableIndex`, `processGap`, `applyMargins`, `splitChildRect`,
-`decorationLayout`, `stackedChildRect`, `tabbedChildRect`, percent helpers
-(`resetSiblingPercent`, `insertChildPercent`, `redistributeSiblingPercent`).
-
-**Kept on Tree:** `processNode`, `_applyDecorationRect`, `_ensureDecoration`,
-render/apply/chrome; stacked/tabbed only attach after pure rect.
+**Next:** **CA9** metrics. No commit.
 
