@@ -1,8 +1,8 @@
 # Plan: Forge codebase efficiency & organization audit
 
-**Status:** in progress — **CA0–CA8 done** (A/B AGREE); next CA9
+**Status:** **wave 1 complete** (CA0–CA9)
 
-**Priority:** P1 tidy; next CA9 metrics
+**Priority:** wave 1 done; optional wave 2 **B1** (DnD extract) if size still matters
 
 **Mode:** A/B implement–verify per task; serial; one concern per change  
 **Trigger:** thrash/session work layered safety nets without cleanup; user quality bar: clean code, files &lt;1K preferred, no rewrite  
@@ -395,27 +395,27 @@ Task IDs: **CA0…CA9**. Execute in order unless noted parallel-safe.
 | --- | --- |
 | **Goal** | Record post-wave sizes; decide if backlog DnD extract is worth a wave 2 |
 | **Primary files** | this plan session note; `agents/PRIORITY.md` only if queue changes |
-| **Acceptance** | [ ] Table of window.js / tree.js / new modules line counts [ ] window.js target aspirational &lt;4k (stretch &lt;3.5k); tree.js &lt;2.5k [ ] Backlog entries confirmed or dropped [ ] No required code if targets already met |
+| **Acceptance** | [x] Table of window.js / tree.js / new modules line counts [x] window.js target aspirational &lt;4k (stretch &lt;3.5k); tree.js &lt;2.5k — **report honest** [x] Backlog entries confirmed or dropped [x] No required code if targets already met |
 | **Risk** | low |
 | **Test plan** | none or full `npm test` smoke |
 | **Out of scope** | more extractions in same task |
 
 ---
 
-## Backlog (wave 2+ — not scheduled)
+## Backlog (wave 2+ — CA9 disposition)
 
-| ID | Idea | Why wait |
+| ID | Idea | Disposition (CA9) |
 | --- | --- | --- |
-| B1 | Extract DnD/grab cluster from window.js (~650–900 lines) | high ROI size; separate product risk — **next after wave 1 if window.js still >3.5k** |
-| B2 | Open-app / dock sticky glue module | lower pain than session/soft-rehome |
-| B3 | Node tab chrome extract | high Shell regression risk |
-| B4 | Split `session-api.js` if it grows past 1.2k | not blocking readability of thrash |
-| B5 | Unify leaf walk helpers session vs snapshot | micro |
-| B5b | Unify mon-ws id helpers (`Utils` ↔ `MonitorIdentity`) | one source of truth; low risk |
-| B6 | e2e thrash harness in Docker | expensive; live `black` remains gate |
-| B7 | lastTabFocus survive HUP id churn | product bug, not cleanup |
-| B8 | Merge shield reapply into single `applyRestoredForest` API | only after CA4/CA5 land |
-| B9 | Layout-group long-term: keep as test API or migrate H1/bqa tests to T6 and drop | decision only after CA0 docs |
+| **B1** | Extract DnD/grab cluster from window.js (~650–900 lines) | **Keep — high ROI / optional wave 2.** window.js still **4431** (&gt;3.5k stretch and &gt;4k aspirational). Best next size win; product risk separate from thrash recovery. |
+| B2 | Open-app / dock sticky glue module | **Keep low** — pain lower than DnD; only if open-app work touches that cluster |
+| B3 | Node tab chrome extract | **Keep deferred** — high Shell regression risk; not size-critical now |
+| B4 | Split `session-api.js` if it grows past 1.2k | **Keep parked** — still ~993; not blocking |
+| B5 | Unify leaf walk helpers session vs snapshot | **Drop or micro** — not worth a task alone |
+| B5b | Unify mon-ws id helpers (`Utils` ↔ `MonitorIdentity`) | **Keep micro** — opportunistically when mon code is open |
+| B6 | e2e thrash harness in Docker | **Keep later** — live `black` remains gate |
+| B7 | lastTabFocus survive HUP id churn | **Product bug** — not cleanup; track outside audit |
+| B8 | Merge shield reapply into single `applyRestoredForest` API | **Keep optional** — CA4/CA5 landed; DRY only if shield path is next touched |
+| B9 | Layout-group long-term: test API vs migrate H1 to T6 | **Keep decision-only** — CA0 docs done; no code urgency |
 
 ---
 
@@ -436,23 +436,56 @@ Task IDs: **CA0…CA9**. Execute in order unless noted parallel-safe.
 - [forge-daily-driver_session-layout-ghostty.md](../tasks/forge-daily-driver_session-layout-ghostty.md) — audit debt seed  
 - [forge-layout-thrash-analysis.md](./forge-layout-thrash-analysis.md) — recovery product history  
 - [docs/DESIGN.md](../../docs/DESIGN.md) — soft rehome, session layout, T6, T7  
-- [agents/PRIORITY.md](../PRIORITY.md) — queue (audit = later)
+- [agents/PRIORITY.md](../PRIORITY.md) — queue (wave 1 done; optional B1)
 
 ---
 
 ## Session note (handoff)
 
-**CA8 B (2026-07-26):** **AGREE.** Gate mirrors `Logger.debug` (`#level > INFO`); no removed callers; policy comments retained (shield, strict mon, richness, majority-align, userSized); non-debug code paths comment-only. Tests 184/1868 green.
+**CA9 A (2026-07-26):** Metrics + handoff only. No extractions. `npm test` **184/1868** green.
 
-**CA8 A (2026-07-26):** Debug gate + comment hygiene (no behavior change).
+**CA9 B (2026-07-26): AGREE.** Independent `wc -l` matches table; PRIORITY wave-1 done + B1 kept; git scope agents docs only; `npm test` 184/1868 green. No doc fixes needed.
 
-| Change | Detail |
+### Post–wave-1 line counts (2026-07-26)
+
+| File | Baseline (plan inventory) | Now | Δ |
+| --- | ---: | ---: | ---: |
+| `window.js` | ~5062 | **4431** | **−631** |
+| `tree.js` | ~2910 | **2572** | **−338** |
+| `session-layout-restore.js` | — (new CA4) | **477** | extract |
+| `soft-rehome.js` | — (new CA5) | **284** | extract |
+| `tree-layout.js` | — (new CA7) | **337** | extract |
+
+### Targets (honest pass/fail)
+
+| Target | Result |
 | --- | --- |
-| Keep | `debugNode` / `debugParentNodes` — caller `focus.js` `movePointerWith` |
-| Gate | `Logger.isDebugEnabled()`; both helpers early-return when debug off (no ancestor walk on focus) |
-| Removed symbols | **none** (no other dead debug helpers on CA files) |
-| Comment trim | `soft-rehome.js`, `session-layout-restore.js`, `tree-layout.js`, thin `tree.js` JSDoc |
-| Tests | `npm test` **184/1868** green |
+| `window.js` aspirational **&lt;4k** | **FAIL** (4431) |
+| `window.js` stretch **&lt;3.5k** | **FAIL** (4431) |
+| `tree.js` **&lt;2.5k** | **FAIL** by ~72 (2572) — close; layout extract did its job |
 
-**Next:** **CA9** metrics. No commit.
+Wave 1 **did** shrink the two offenders and carved thrash/session/layout into named modules. Ceiling goals for the two cores were **not** fully met; remaining bulk in `window.js` is largely **DnD/grab + open-app/track + core WM**.
+
+### Backlog recommendation
+
+- **Schedule optional wave 2 only for B1** (DnD/grab extract) if further size work is wanted — high ROI while window &gt;3.5k.
+- Do **not** open B3 (tab chrome) for tidy alone.
+- B2/B5/B5b/B8 only opportunistically; B6/B7 product/infra elsewhere.
+
+### Wave 1 summary (CA0–CA9)
+
+| Task | Outcome |
+| --- | --- |
+| CA0 | Recovery + timer doc in DESIGN |
+| CA1 | Session trace noise down |
+| CA2 | Residue / dead method / timer hygiene |
+| CA3 | `monoTimeUs()` DRY |
+| CA4 | `session-layout-restore.js` |
+| CA5 | `soft-rehome.js` + `safeMoveToMonitor` |
+| CA6 | Raise policy docs (no risky DRY) |
+| CA7 | `tree-layout.js` |
+| CA8 | Debug gate + comment trim |
+| CA9 | Metrics + backlog disposition |
+
+**Next:** product queue (personal fork / live smoke). Optional: wave 2 **B1** only if size still prioritized. No commit.
 

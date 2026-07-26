@@ -1,6 +1,6 @@
 # forge_jcrussell — active priorities
 
-**Updated:** 2026-07-25
+**Updated:** 2026-07-26
 **Cross-repo:** shellrc gdisplays v1 done; Forge trial is independent.
 
 ## Next session focus
@@ -17,9 +17,10 @@ Also: FC0–FC4 live smoke + path/casefold/friendly-launch fixes shipped
 | [forge-command.md](./plans/forge-command.md) | FC0–FC4 **Done**; FC5 deferred |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 done |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome done; batch via FC4 |
+| [forge-codebase-audit.md](./plans/forge-codebase-audit.md) | **Wave 1 done** (CA0–CA9); optional B1 |
 | Optional | OP-opt; T9; fork-eval spike close-out |
 
-**T0–T7 + OP1 + FC0–FC4 done.** Product base still *code from* jcrussell; ownership not forked yet.
+**T0–T7 + OP1 + FC0–FC4 done.** Audit wave 1 done. Product base still *code from* jcrussell; ownership not forked yet.
 
 ## Queue
 
@@ -38,7 +39,8 @@ Also: FC0–FC4 live smoke + path/casefold/friendly-launch fixes shipped
 | later | FC5 `workon` composition | **Deferred design** until asked |
 | optional | OP-opt tiny-pane tab fallback | After P1s; notes in daily-driver |
 | later | T9 multi-line tabs | After T1 proven |
-| **P1** | [codebase audit](./plans/forge-codebase-audit.md) | **In progress** — CA0–CA8 done; next CA9 |
+| **done** | [codebase audit wave 1](./plans/forge-codebase-audit.md) | **CA0–CA9 complete** — window 4431, tree 2572; targets not fully met |
+| optional | Audit **B1** DnD/grab extract | Wave 2 if size still wanted (window &gt;3.5k; high ROI) |
 | P2 | forge-fork-eval spike close-out | Partial |
 | later | gdisplays v2 | shellrc only |
 
