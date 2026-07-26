@@ -1,9 +1,9 @@
 schema = 1
 tool_version = "0.1.5"
-catalog_version = "0.1.6"
+catalog_version = "0.1.7"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-07-24T17:29:27+00:00"
+updated_at = "2026-07-26T16:30:30+00:00"
 
 [[files]]
 id = "ansi-colors"
@@ -26,8 +26,8 @@ sha256 = "68f89ad65dd7a1a7a01a20986b7777b23ee3893daf39dea1e2fac65601c93420"
 [[files]]
 id = "general"
 path = "general.md"
-version = "1.0.3"
-sha256 = "3fe6e3e7f78334190a8a2d461de0f8799ef1a48e68f322fa954b89e08713ada9"
+version = "1.0.4"
+sha256 = "10a135e82038f2aa075f29016cf0a9df3aeef3e8b7d9bbfacc3a0372e768aae2"
 
 [[files]]
 id = "git"
@@ -212,5 +212,5 @@ sha256 = "ee762019c61f81f847ec1646275980cdf0a93b9526afc34601fe1835ecd44f04"
 [[files]]
 id = "security"
 path = "security.md"
-version = "1.0.0"
-sha256 = "a570afc84814bd7889c2056fd9ce4376e3bf9f5b637f6e9cfcb3c8352ed1120a"
+version = "1.1.0"
+sha256 = "97f6f3841b46783c5bca3b4a697d476746deb8067308a5971538ae5aa426d413"

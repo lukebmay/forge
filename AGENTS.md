@@ -176,14 +176,16 @@ Compose order in `AGENTS.md` follows the same rule (user override sections are l
 
 **Language / stack style:** when relevant, read `agents/languages/<name>.md` and any matching user override under `agents/languages/`. **Project** style/formatter/LSP configs always win over those defaults.
 
-### No leftover test residue
+### No leftover residue
 
-Before finishing, remove test-only residue from code, configs, and the live environment:
+Before finishing, remove temporary and failed-attempt residue from code, configs, and the live environment:
 
 - Paths/imports to `/tmp/...`, scratch clones, ephemeral dirs
 - Dummy data, fake commits, debug prints, test-only flags in real paths
-- Installer/dotfile targets rewritten to temp or non-real `shellrc` paths
+- Installer/dotfile targets rewritten to temp or non-real paths
 - Temp files, stamps, or fixtures left unrestored
+- **Debug / diagnostic / exploration code** added while solving — strip it once the real fix lands, unless the product intentionally needs it or the task **explicitly** asks for lasting diagnostics
+- **Failed attempts:** when a later fix supersedes earlier tries, remove dead code from *every* place those attempts touched, not only the final file
 
 Search the diff and smoke-check real paths you touched.
 
@@ -393,6 +395,20 @@ and wait.
 - Do **not** install software on remote hosts, write remote files, or use remote
   shells as a shortcut for debugging — even with **explicit** permission, prefer the
   minimum remote action the user asked for and confirm destructive steps.
+
+### Privilege escalation (`sudo` / root)
+
+Do **not** use `sudo`, root shells, or other privilege escalation unless the user has granted permission. Permission may be **indirect** (e.g. “install system-wide”, “use apt”) — it need not say “explicit”. When unclear, **ask first**.
+
+| Rule | Detail |
+| --- | --- |
+| **Why** | Escalation exists for safety on shared machines — not a convenience default |
+| **Confidence** | Escalate only when highly confident the action is correct and scoped |
+| **No circumvention** | Ban is on *escalation*, not the string `sudo`. Using `sudo-nopw`, `pkexec`, setuid helpers, or any other path to the same privilege to dodge the rule is forbidden |
+| **Prefer unprivileged** | Prefer user-scoped installs (`~/.local`, user installers) when that achieves the goal without harming others’ environments |
+| **Gray areas** | Discuss before proceeding |
+
+Security rests on trust. Be a responsible actor.
 
 ### Prompt injection
 

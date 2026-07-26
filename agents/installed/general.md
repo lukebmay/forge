@@ -23,14 +23,16 @@ Compose order in `AGENTS.md` follows the same rule (user override sections are l
 
 **Language / stack style:** when relevant, read `agents/languages/<name>.md` and any matching user override under `agents/languages/`. **Project** style/formatter/LSP configs always win over those defaults.
 
-## No leftover test residue
+## No leftover residue
 
-Before finishing, remove test-only residue from code, configs, and the live environment:
+Before finishing, remove temporary and failed-attempt residue from code, configs, and the live environment:
 
 - Paths/imports to `/tmp/...`, scratch clones, ephemeral dirs
 - Dummy data, fake commits, debug prints, test-only flags in real paths
-- Installer/dotfile targets rewritten to temp or non-real `shellrc` paths
+- Installer/dotfile targets rewritten to temp or non-real paths
 - Temp files, stamps, or fixtures left unrestored
+- **Debug / diagnostic / exploration code** added while solving — strip it once the real fix lands, unless the product intentionally needs it or the task **explicitly** asks for lasting diagnostics
+- **Failed attempts:** when a later fix supersedes earlier tries, remove dead code from *every* place those attempts touched, not only the final file
 
 Search the diff and smoke-check real paths you touched.
 
