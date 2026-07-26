@@ -2,7 +2,130 @@
 
 Interesting “why” decisions for humans and agents. Not a changelog.
 
+## Recovery architecture
+
+**Why this section exists:** Overnight lock/wake thrash and extension HUP look
+like one “windows all piled on primary” bug. They are not. Each layer below
+catches a **different** failure mode. Stacking another debounce or second
+snapshot “just in case” is how `window.js` grew safety nets without a map.
+
+**Rule for agents:** document and extract (see codebase audit plan). Do **not**
+delete shield / hold / richness, and do **not** merge the two monitor-resolve
+policies, without a product redesign plus **live dual-head proof** on real
+hardware. Inventory + task order:
+[agents/plans/forge-codebase-audit.md](../agents/plans/forge-codebase-audit.md).
+
+Detail for each mechanism lives in the sections that follow (H1, session
+layout, T6, T7). This section is the **map** so those pieces stay complementary.
+
+### How the nets compose
+
+```text
+                    ┌─────────────────────────────────────┐
+  quiet render ──►  │ last-good homes WeakMap (frame+mon  │
+                    │ + stableKey)                        │
+                    └──────────────┬──────────────────────┘
+                                   │
+  workareas-changed ── debounce 300ms ──► soft rehome (H1)
+         │                                  │
+         │                         snapshotTree (T6) FIRST
+         │                                  │
+         │                         refresh T7 liveMap
+         │                                  │
+         │                         resolve mon: stableKey →
+         │                           frame ∩ → remapped idx
+         │                                  │
+         │                         majority-align tab/stack
+         │                                  │
+         │                         move_to_monitor + reconcile
+         │                                  │
+         │                         restoreTreeIfNeeded (T6)
+         │                           resolveTargetMonitor =
+         │                           stableKey / majority
+         │
+  install HUP ── flush session-layout.json (richness + hold)
+         │
+  enable ── flat track ── portable match ── session restore
+         │                    │
+         │              resolveStrictMonitor (NO majority)
+         │                    │
+         │              rehome Meta+tree (retry) → applySnapshot
+         │                    │
+         │              raise DFS + focus
+         │                    │
+         │              seed last-good + shield ~3s
+         │                    │
+         └──── while shield: soft rehome REAPPLIES forest
+               (does not snapshot thrash topology)
+```
+
+| Layer | Trigger | Policy | Why it stays |
+| --- | --- | --- | --- |
+| Last-good homes | quiet render | tree frame + mon + stableKey | H1 needs pre-thrash truth; Meta lies mid-burst |
+| Soft rehome (H1) | `workareas-changed` settle | last-good geometry + T6 | dual-head thrash without full disk restore |
+| T6 in-memory forest | soft rehome + `reloadTree` | full H/V/tabs/order/percents | topology survives rehome when Meta peels windows |
+| T7 stableKey | thrash / renumber | fingerprint → current index | `moN` ids go stale after hybrid GPU renumber |
+| Majority mon remap | **T6 only** (`resolveTargetMonitor`) | survivors’ mon / stableKey | rebuild cohort when `moN` is gone — **not** session |
+| Session-layout disk | disable / install flush | portable match + **strict** mon | HUP wipes memory; different failure than thrash |
+| Richness guard | save / flush | refuse thrash-flat overwrite | prevents last-good file becoming “all columns” |
+| 12s save hold | post-enable | suppress auto-save | thrash after enable must not clobber disk |
+| Session shield ~3s | post-restore | soft rehome **reapplies** forest | empty last-good + Meta peel after correct restore |
+| entered-monitor suppress | thrash pending / restore / shield | ignore Meta rehomes | Meta shoves windows; tree must not follow mid-flight |
+
+### Two monitor resolve policies (do not merge)
+
+| Function | Module | When | Behavior |
+| --- | --- | --- | --- |
+| `resolveTargetMonitor` | `tree-snapshot.js` | T6 restore after thrash / reload | Prefer snapshot mon if survivors live there; else **stableKey**; else **majority** mon of survivors |
+| `resolveStrictMonitor` | `session-layout.js` | session restore after HUP | Portable leaf → **exact** mon from disk match; **no majority** pile-up |
+
+Majority is correct when in-memory survivors still know where they belong but
+`moN` renumbered. Majority is **wrong** after HUP: Meta has already piled
+windows; “where most windows currently sit” re-implements the bug. Merging
+these into one helper without a product redesign will re-break one of the two
+paths. Keep the dual API; share only trivial geometry/fingerprint helpers.
+
+### Production path vs test/compat
+
+**Production soft rehome uses T6 only** (`snapshotTree` → rehome →
+`restoreTreeIfNeeded`). Layout-group snapshot APIs (outer STACKED/TABBED only)
+remain for forge-bqa / older callers — **test and compat**, not the live thrash
+path. Do not “simplify” soft rehome back onto layout-group.
+
+### Do not remove without live dual-head proof
+
+Shield, 12s save hold, and richness guard each closed a distinct race seen on
+real dual-head (lock/wake, HUP, thrash-flat save). Unit tests cannot fully
+substitute overnight hybrid-GPU thrash. Removing any of the three without
+**live dual-head proof** is a regression waiting to ship.
+
+### Timers / debounces (recovery-related)
+
+| Timer | MS / notes |
+| --- | --- |
+| workareas settle | **300ms** — hybrid thrash often &gt;200ms |
+| session-layout save debounce | 1500ms |
+| session-layout save hold | **12s** mono after enable |
+| session shield | **~3s** sliding; soft rehome reapplies forest |
+| entered-monitor / home reconcile | idle coalesce during thrash/restore/shield |
+| renderTree / reloadTree | idle coalesce / low |
+
+Full inventory (queue, workspace, Wayland stack, keyboard resize, …) and
+“justified?” notes:
+[forge-codebase-audit.md § Debounce / timers inventory](../agents/plans/forge-codebase-audit.md#debounce--timers-inventory-libextension).
+No orphan recovery timers found at audit time; keep teardown lists in sync when
+extracting soft-rehome / session-restore modules.
+
+### Raise / restack
+
+Multiple raise paths (tab click, focus manager, session raise-after-restore,
+float-under-fullscreen exception, Wayland stack timeout). Do not unify blindly
+— see audit **CA6**.
+
 ## Soft rehome on workareas thrash (H1)
+
+**Map:** [Recovery architecture](#recovery-architecture) — this is the live
+thrash path (T6 + last-good + entered-monitor suppress), not session disk.
 
 **Problem:** Overnight GNOME auto-lock → wake (especially dual 4K + hybrid GPU)
 fires a burst of `workareas-changed` while Mutter may shove windows onto the
@@ -33,6 +156,9 @@ piles under one monitor node and stays there after both heads return.
 7. If a target `moNwsW` node is missing → fall back to `reloadTree` (fresh
    snapshot inside that path).
 
+While a **session shield** is active, soft rehome **reapplies the restored
+forest** instead of snapshotting thrash topology (see session layout).
+
 **Live proof (2026-07-24, black):** idle auto-lock + DPMS → unlock kept dual-head
 placement and a two-window tab pair; retab after wake did not abort Shell.
 
@@ -48,15 +174,19 @@ manual Super+Delete is a weak control path.
 
 ## Session layout across install/update
 
+**Map:** [Recovery architecture](#recovery-architecture) — disk portable path +
+strict mon + richness/hold/shield; complementary to H1, not a replacement.
+
 **Problem:** Shell HUP / extension reload wipes the in-memory tree. Flat
 re-track + Mutter pile-up → full-height columns, lost tabs.
 
 **Approach:** Portable forest at `~/.config/forge/config/session-layout.json`
 (leaves: id, pid, wmClass/title, frame, monitor). Debounced last-good save;
 install flushes before HUP. On enable: match ≥50% in order id → pid →
-class+title → class+geometry → unique class; strict mon rehome; raise tiles so
-none stay buried. Richness guard + post-enable hold protect last-good. Not full
-`workon` profiles.
+class+title → class+geometry → unique class; **strict** mon rehome
+(`resolveStrictMonitor` — **not** T6 majority); raise tiles so none stay
+buried. Richness guard + post-enable **12s** save hold protect last-good. Not
+full `workon` profiles.
 
 **Same-pid multi-window (Ghostty):** titles churn; greedy leaf match could swap
 or drop both on tied frames. Fix: forest-aware **global assignment**
@@ -97,6 +227,9 @@ activates, and calls `updateTabbedFocus` / `updateStackedFocus`.
 
 ## Full in-memory tree snapshot (T6)
 
+**Map:** [Recovery architecture](#recovery-architecture) — production thrash
+backbone; mon resolve here is **majority/stableKey**, not session-strict.
+
 **Problem:** Layout-group snapshot only kept outer STACKED/TABBED. Nested H/V
 splits, sibling order, percents, and `userSized` died on `reloadTree` / thrash
 rebuild even when windows rehomed correctly.
@@ -115,15 +248,20 @@ profiles can version a richer contract later.
   survivors still live there; when `moN` is stale, **stableKey** (T7) before pure
   majority; else majority mon of survivors. Mixed mons (foreign windows) rebuild
   only the cohort in place; pure mon full-replaces. Empty CONs left on the
-  abandoned mon are pruned.
+  abandoned mon are pruned. **Do not** fold this into session
+  `resolveStrictMonitor`.
 - Cohort rule: only windows under the resolved target mon that appear in the
   monDesc. Missing windows collapse (no single-child CONs). Mon-level and CON
   percents renormalized after collapse. No blanket `resetSiblingPercent` wipe.
-- Layout-group APIs remain for forge-bqa callers; capture/rebuild share the pure
-  helpers (descriptors now include percent/userSized).
+- **Production soft rehome uses T6 only.** Layout-group APIs remain for
+  forge-bqa / test-compat; capture/rebuild share the pure helpers (descriptors
+  now include percent/userSized).
 - LFT: after restore, re-touch focused tile when present.
 
 ## Stable monitor output keys (T7)
+
+**Map:** [Recovery architecture](#recovery-architecture) — renumber survival for
+last-good and T6 mon descriptors; gdisplays still owns monitors.xml.
 
 **Problem:** Tree nodes and forest snapshots key monitors as `mo${index}ws${ws}`.
 After hybrid thrash / connector renumber, the same physical head can get a new
