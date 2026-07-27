@@ -9,7 +9,7 @@
 
 **Completed:** Phase A comparison + import from shellrc; product work on this tree;
 personal fork remotes + lineage id **`luke`**  
-**Completed task files:** `agents/plans/forge-fork-eval/completed/` *(none yet — spike still open)*
+**Completed task files:** `agents/plans/forge-fork-eval/completed/` — personal-fork + spike **Done**
 
 ### Session note (2026-07-27)
 

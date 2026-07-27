@@ -1,7 +1,7 @@
 # Task — Forge fork evaluation spike
 
-**Status:** Ready for Phase B (install trial)  
-**Plan:** [forge-fork-eval.md](../plans/forge-fork-eval.md)  
+**Status:** Done — daily-driving this tree; personal fork also Done  
+**Plan:** [forge-fork-eval.md](../../forge-fork-eval.md)  
 **Priority:** P2  
 **Kind:** Plan-linked  
 **When done:** move to `agents/plans/forge-fork-eval/completed/` (not `tasks/completed/`)
@@ -18,7 +18,7 @@ EGO upstream Forge (currently **v89** on `black`) is under-maintained; multi-mon
 | Install method | **`make dev`** from this tree |
 | UUID | Keep `forge@jmmaranan.com` (in-place replace) |
 | Session | **X11 only** for trial |
-| Personal fork | **Done** (pending B) — [lukebmay/forge](https://github.com/lukebmay/forge), lineage `luke`; [personal-fork task](./forge-fork-eval_personal-fork.md) |
+| Personal fork | **Done** — [lukebmay/forge](https://github.com/lukebmay/forge), lineage `luke`; [completed](./forge-fork-eval_personal-fork.md) |
 | gdisplays | Independent (v1 done in shellrc) |
 
 ## Host facts (2026-07-16)
@@ -160,3 +160,9 @@ journalctl --user -b /usr/bin/gnome-shell -n 200 --no-pager
 
 **2026-07-16:** Imported from shellrc; Phase A done; base = this fork. Host: Shell 46 / X11 / EGO v89 / Node 18 (needs 20) / no node_modules.  
 **2026-07-16 (prep):** Plan + this task updated for next session — start at Phase B backup; do not re-compare upstream.
+
+## Session note (2026-07-27 formal close)
+
+Phase B install trial **succeeded** long ago: product base is this tree on
+`black`. Personal fork identity also **Done**. Formal spike close-out only —
+no new product work. Moved to `agents/plans/forge-fork-eval/completed/`.

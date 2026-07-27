@@ -1,6 +1,6 @@
 # Task: Quiet `forge install` checklist UX
 
-**Status:** Verified (Task Force B AGREE; tiny soft-step/CLI checklist fixes)  
+**Status:** Done  
 **Priority:** P0 UX (user-requested this session)  
 **Scope:** install path output + prompts only (no tiling behavior change)
 
@@ -93,3 +93,5 @@ Optional verbose: `--verbose` / `FORGE_VERBOSE=1` restores detailed forge_info l
 - EGO migrate is one “Migrate” checklist unit; Reload shell ✓ after migrate is assumed from switch success (Wayland may still need logout).
 - `forge_warn` still prints in quiet mode (PATH hints after CLI, `--no-restart` note) — intentional for important warnings.
 - `forge_confirm` + `FORGE_FORCE` always yes even if `FORGE_CONFIRM_DEFAULT=no` (force semantics).
+
+**2026-07-27 close:** Already shipped + B AGREE. Moved to `agents/tasks/completed/`.

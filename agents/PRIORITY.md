@@ -13,7 +13,7 @@ Day-to-day: **regression watch** if thrash returns — plan
 | Order | ID | Task | Why first |
 | ---: | --- | --- | --- |
 | — | residual | mon1 tab `roleOrder` settle | Non-blocking; opened stays 0 |
-| — | meta | B1 DnD extract | Optional size only |
+| — | meta | B1 DnD extract (optional) | Size only — skip unless window.js pain |
 
 **WR1–WR9 + WR10–WR15 Done.**
 
@@ -47,7 +47,7 @@ Ordered by **how often it hurts or helps when actually using the machine**.
 | 5 | **Medium (live)** | Regression watch: install/HUP, wake thrash, tab chrome | Failure modes that ruin a day if they return | **Monitor** — file bug when seen; **outranks #3 if open** |
 | 6 | **Medium (QoL, shipped)** | OP-opt tiny-pane → tab fallback | Opt-in min-edge → tab instead of postage-stamp split | **Done** |
 | 7 | **Low (meta)** | Personal GitHub fork + lineage id | Ownership, push target — not tiling | **Done** — `lukebmay/forge`, lineage `luke` |
-| 8 | **Low (meta)** | Fork-eval spike formal close-out | Already daily-driving this tree | Docs only |
+| 8 | **Low (meta)** | Fork-eval spike formal close-out | Already daily-driving this tree | **Done** |
 | 9 | **Low (code health)** | Audit B1 DnD extract | Shrinks `window.js`; zero user-visible win | Optional |
 | 10 | **Later** | T9 multi-line tabs | Polish after single-row proven | Later |
 | 11 | **Out of repo** | gdisplays v2 | shellrc | Displays only |
