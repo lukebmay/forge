@@ -6,14 +6,16 @@
 
 ## Next session focus
 
-**Workon product polish** — plan
-[forge-workon-reconcile.md](./plans/forge-workon-reconcile.md).
+**Workon core reconcile accepted live (WR6).** Remaining polish is
+**WR7+** (capture / stableKey / env) or **regression watch** if thrash
+returns — plan [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md).
 
 | Order | ID | Task | Why first |
 | ---: | --- | --- | --- |
-| 1 | **WR6** | Live black trials | Full acceptance after WR15 |
+| 1 | **WR7** | `forge workon capture` (later) | Authoring assist after live accept |
+| — | residual | mon1 tab `roleOrder` settle | Non-blocking; opened stays 0 |
 
-**WR10–WR15 Done** (sugar, coexist, shellrc `dev`, docs, tab settle, `--clean`).
+**WR1–WR6 + WR10–WR15 Done** (planner through live black accept).
 
 Live thrash/tab bugs still **outrank** this queue if they return. Meta
 (personal fork) stays below.
@@ -23,7 +25,7 @@ useful later; it does **not** fix windows.
 
 | Doc | Role |
 | --- | --- |
-| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | **P1** — WR1–WR5 + WR10–15 Done; next **WR6** |
+| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | **P1** — WR1–WR6 + WR10–15 **Done**; next **WR7** later |
 | [forge-command.md](./plans/forge-command.md) | FC0–FC5 **Done** — imperative workon shipped |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 + session-layout Ghostty **Done** |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome + install HUP path live |
@@ -40,7 +42,7 @@ Ordered by **how often it hurts or helps when actually using the machine**.
 | ---: | --- | --- | --- | --- |
 | 1 | **Critical (shipped)** | Dual-head blank/wake + install HUP restore | Morning layout must survive lock/wake and `forge install` | **Done** — T3, T6, T7, session-layout + Ghostty |
 | 2 | **Critical (shipped)** | Tabs, stack-off, open-app LFT, keybinds, sizing | Core daily tiling feel | **Done** — T0–T5, OP1 |
-| 3 | **High (next product)** | **Idempotent `forge workon` + sugar + coexist** | Morning desk + lived-in companions + quick profiles | **WR1–WR5 + WR10–14 Done**; next **WR6** live |
+| 3 | **High (shipped core)** | **Idempotent `forge workon` + sugar + coexist** | Morning desk + lived-in companions + quick profiles | **WR1–WR6 + WR10–15 Done**; polish WR7+ later |
 | 4 | **High (shipped, incomplete UX)** | FC5 imperative `workon` | Command + steps exist; doubles windows if re-run | **Superseded default by #3** — keep as `--force-launch` / `mode: steps` |
 | 5 | **Medium (live)** | Regression watch: install/HUP, wake thrash, tab chrome | Failure modes that ruin a day if they return | **Monitor** — file bug when seen; **outranks #3 if open** |
 | 6 | **Medium (QoL, shipped)** | OP-opt tiny-pane → tab fallback | Opt-in min-edge → tab instead of postage-stamp split | **Done** |
@@ -62,7 +64,7 @@ the desk is stable.
 | Pri | Item | Status | Day-to-day? |
 | --- | --- | --- | --- |
 | **P0** | Live thrash/tab bugs (if any) | **Interrupt** | Yes |
-| **P1** | [workon](./plans/forge-workon-reconcile.md) **WR6** live trials | Ready | Yes |
+| **P1** | [workon](./plans/forge-workon-reconcile.md) core live **Done** (WR6) | Done | Yes |
 | P2 | Live daily-drive; report new bugs | Ongoing | Yes |
 | P3 | [Personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership only |
 | later | WR7 capture · WR8 stableKey · WR9 env | Later | Polish |
@@ -74,6 +76,7 @@ the desk is stable.
 
 | Item | Note |
 | --- | --- |
+| **WR6 live black** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr6-live.md) — chrome-luke `title~=` |
 | **WR15 `--clean`** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr15-clean.md) |
 | **WR14 tab settle** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr14-tab-settle.md) |
 | **WR13 docs/help** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr13-docs.md) |
@@ -95,14 +98,12 @@ the desk is stable.
 
 ## Session wrap (2026-07-27)
 
-- **Install UX:** quiet `forge install` checkmark checklist; no routine prompts;
-  `--verbose` for detail. Commit `feat(install): quiet checkmark UX…`.
-- **WR14 Done:** post-RunSteps tab settle (raise → chrome restack).
-- **WR15 Done:** `forge workon --clean` / `--clean --force` residual close
-  (Meta delete only); default park path unchanged.
+- **WR6 Done:** live black accept; chrome-luke `title~="Google Chrome"` (shellrc
+  + examples + docs); unit match test; offline empty/partial/messy via
+  `--tree-file`. Live opened 0 after fix; residual mon1.s0 roleOrder structure.
+- **WR14–WR15** already Done (tab settle, `--clean`).
 - **WR10–WR13** already Done (sugar, coexist, shellrc `dev`, docs).
-- **Next:** **WR6** live black trial (manual dual-mon acceptance).
-- Stopped new A/B after WR15 (token budget); WR6 is live-only.
+- **Next:** WR7 capture later; thrash/regression watch outranks polish.
 
 ---
 

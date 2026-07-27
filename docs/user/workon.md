@@ -86,7 +86,7 @@ title matchers:
       [
         {
           "id": "chrome-luke",
-          "match": { "class": "Google-chrome", "title": "Google Chrome" },
+          "match": { "class": "Google-chrome", "title~=": "Google Chrome" },
           "open": { "app": "google-chrome", "wmClass": "Google-chrome", "timeout": 25000 }
         },
         {

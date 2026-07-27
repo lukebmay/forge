@@ -41,7 +41,7 @@
       "id": "chrome-luke",
       "match": {
         "class": "Google-chrome",
-        "title": "Google Chrome"
+        "title~=": "Google Chrome"
       },
       "open": {
         "app": "google-chrome",

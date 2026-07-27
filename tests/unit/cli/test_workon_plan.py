@@ -419,6 +419,28 @@ class TestMatching(unittest.TestCase):
         self.assertTrue(window_matches(w, {"title~=": "Gmail"}))
         self.assertFalse(window_matches(w, {"title~=": "YouTube"}))
 
+    def test_title_substr_main_chrome_not_pwa(self):
+        """Main Chrome tabs end with ' - Google Chrome'; PWAs do not."""
+        m = {"class": "Google-chrome", "title~=": "Google Chrome"}
+        self.assertTrue(
+            window_matches(
+                {"wmClass": "Google-chrome", "title": "New Tab - Google Chrome"}, m
+            )
+        )
+        self.assertTrue(
+            window_matches(
+                {"wmClass": "Google-chrome", "title": "Google Chrome"}, m
+            )
+        )
+        self.assertFalse(
+            window_matches({"wmClass": "Google-chrome", "title": "Grok"}, m)
+        )
+        self.assertFalse(
+            window_matches(
+                {"wmClass": "Google-chrome", "title": "Gmail - Inbox - Gmail"}, m
+            )
+        )
+
     def test_title_regex(self):
         w = {"title": "Google Chrome"}
         self.assertTrue(window_matches(w, {"title~=": "/^Google Chrome$/"}))

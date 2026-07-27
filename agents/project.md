@@ -55,7 +55,7 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 
 | Item | Status | Next |
 | --- | --- | --- |
-| [forge-workon-reconcile](./plans/forge-workon-reconcile.md) | WR1–WR5 **Done** | **WR10** tiles sugar → WR11 coexist → WR12 shellrc (P1) |
+| [forge-workon-reconcile](./plans/forge-workon-reconcile.md) | WR1–WR6 + WR10–15 **Done** | **WR7** capture later (P1 polish) |
 | [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | FC6 via workon-reconcile plan |
 | [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + OP-opt **Done** | Live; thrash bugs interrupt; T9 later |
 | [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 **Done** | Optional B1 DnD extract only |
