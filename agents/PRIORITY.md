@@ -6,8 +6,7 @@
 
 ## Next session focus
 
-**P0 — Zero thrash (locked strategy):**  
-[forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md)
+**P0 — Zero thrash:** **shipped** ([plan](./plans/forge-workon-thrash-zero.md)); optional post-HUP smoke on black.
 
 | Order | ID | Task | Why first |
 | ---: | --- | --- | --- |
@@ -19,7 +18,7 @@
 | 6 | **TZ-matrix** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix lock |
 | 7 | **TZ-live** | [black checklist](./tasks/forge-workon-thrash-zero_tz-live.md) | **Next** — prove on daily driver |
 
-**Task force:** serial A → B per task. Next **TZ-live**.
+**Task force:** serial A → B per task. Thrash-zero complete (post-HUP smoke optional).
 
 **Mode A product:** tab **marginals** into the view area they occupy (not leave-alone).  
 **Mode B:** thrash → roles only + soft-park rest.  
@@ -58,7 +57,7 @@ Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 
 | Pri | Item | Status | Day-to-day? |
 | --- | --- | --- | --- |
-| **P0** | [thrash-zero](./plans/forge-workon-thrash-zero.md) TZ-detect → live | **Active** | Yes |
+| **P0** | [thrash-zero](./plans/forge-workon-thrash-zero.md) TZ1…TZ-live | **Complete** (post-HUP residual) | Yes |
 | P1 | workon reconcile WR1–WR16 | Done | Yes |
 | P2 | Live daily-drive; report bugs | Ongoing | Yes |
 | later | T9 multi-line tabs | After thrash-zero | Polish |

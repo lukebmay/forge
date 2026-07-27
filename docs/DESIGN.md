@@ -650,7 +650,9 @@ H/V→tab flattens lossily; tab→H/V makes slivers). **Sane desk:** re-seat rol
 and **tab marginals** (non-role windows) into the profile **view area** they
 overlap (partial → first view) so `workon` cleans the desk. **Detected thrash:**
 roles only + soft-park everything else on last mon last group — no archaeology.
-Tab ensure must yield TABBED, not nested HSPLIT. Plan:
+Tab ensure must yield TABBED, not nested HSPLIT (`_layoutOp` flattens nested
+CONs on TABBED/STACKED). CLI: `plan.thrashState` + stderr mode A/B; `--safe`
+is open+move only. Plan:
 [forge-workon-thrash-zero.md](../agents/plans/forge-workon-thrash-zero.md).
 
 **Quiet apply:** default `forge workon` prints human counts on stderr;

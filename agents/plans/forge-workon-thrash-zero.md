@@ -1,20 +1,26 @@
 # Plan: Zero thrash for `forge workon` (product gate)
 
-**Status:** Active — **P0** (TZ1…TZ-matrix **Done** A+B; next **TZ-live**)  
+**Status:** **Complete** (TZ1…TZ-live; residual: post-HUP interactive smoke)  
 **Priority:** **P0 product survival** (outranks polish, tidy, optional extracts)  
 **Base:** this tree  
 **Related:** [forge-workon-reconcile.md](./forge-workon-reconcile.md) WR11–WR16,
 session H1 soft-rehome (different thrash class — lock/wake Meta)
 
-### Session note (2026-07-27) — TZ-matrix B AGREE
+### Session note (2026-07-27) — thrash-zero closed
 
-**TZ-matrix Done (A+B):** `TestThrashModeMatrix` — five rows locked
-(thrashState + counts + action shapes). Fixtures:
-`tree-voice-mon-direct.json`, `tree-wrong-mon-roles.json` (new); perfect /
-thrash-nested / companions-direct (reuse). B: plan dumps match asserts;
-`pytest tests/unit/cli -q` → **188 passed**. No extension changes.
+**Shipped:** TZ-detect → recover → collect → tab-apply flatten → gate (`--safe`)
+→ matrix → live dry-run on black.
 
-**Next:** **TZ-live**.
+| Mode | Behavior |
+| --- | --- |
+| **A** | roles + tab marginals by view overlap (first view) |
+| **B** | roles only; soft-park non-roles (`destWindowId`) |
+| **safe** | open+move only |
+
+**Live black:** perfect desk nothingToDo Mode A; fixture dry-runs Mode A/B;
+extension installed with flatten (needs HUP to load). Click-focus unit green.
+
+**Residual:** post-HUP interactive FB/Chess apply if user wants; not a code gap.
 
 
 ---
@@ -165,9 +171,9 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | **TZ-tab-apply** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-tab-apply.md) | Tab structure apply yields TABBED not nested HSPLIT | M | **Done** A/B AGREE |
 | **TZ-gate** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-gate.md) | CLI: Mode A collect / Mode B recover; `--safe` / `--force` | S | **Done** A/B AGREE |
 | **TZ-matrix** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix lock table for A/B modes | M | **Done** A/B AGREE |
-| **TZ-live** | [task](../tasks/forge-workon-thrash-zero_tz-live.md) | Live black checklist (FB/Chess, Voice pull, thrash recover) | S | **Next** |
+| **TZ-live** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-live.md) | Live black checklist | S | **Done** dry-run + unit; residual post-HUP |
 
-**Next task:** **TZ-live**.
+**Next task:** none — plan complete (post-HUP optional smoke).
 
 ---
 
