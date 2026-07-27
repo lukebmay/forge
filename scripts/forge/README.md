@@ -26,7 +26,11 @@ After install, origin is stamped at
 
 ```bash
 forge install --force          # re-runs that tree's scripts/install.zsh
+forge update                   # clean master only: fetch → pull if new → install
 ```
+
+`forge update` refuses a dirty tree or any branch other than **`master`**. If
+`origin/master` has nothing new, it exits 0 without reinstalling.
 
 Install also symlinks the control CLI to **`~/.local/bin/forge`** (XDG user
 bin). Uninstall removes that symlink only when it is forge-owned:
@@ -74,6 +78,7 @@ migrate) — except `forge install`, which is origin-aware reinstall (no DBus).
 # Explicit still works for scripts
 ./scripts/forge/forge launch org.gnome.Nautilus.desktop --wm-class=org.gnome.Nautilus
 ./scripts/forge/forge install --force   # origin-aware reinstall (git tree)
+./scripts/forge/forge update            # fetch+pull master (clean) then install
 ```
 
 `launch` resolves short names via XDG `.desktop` files, infers `wm_class`, and

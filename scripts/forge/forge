@@ -27,7 +27,7 @@ _EXT_ORIGIN = (
     / "install-origin.json"
 )
 # Subcommands that do not need a DBus session (extension may be offline).
-_NO_DBUS_COMMANDS = frozenset({"install", "uninstall", "help"})
+_NO_DBUS_COMMANDS = frozenset({"install", "uninstall", "update", "help"})
 # workon list|show|help are offline; run is handled in main after parse.
 
 # Methods that take string in-args (all return a single string).
@@ -2006,6 +2006,42 @@ def _resolve_manage_script(
     return repo, script
 
 
+def _git(repo: Path, *git_args: str) -> subprocess.CompletedProcess[str]:
+    """Run git -C repo … (no exception on non-zero)."""
+    return subprocess.run(
+        ["git", "-C", str(repo), *git_args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _git_is_repo(repo: Path) -> bool:
+    r = _git(repo, "rev-parse", "--is-inside-work-tree")
+    return r.returncode == 0 and r.stdout.strip() == "true"
+
+
+def _git_update_preflight(repo: Path) -> Optional[str]:
+    """
+    Require clean tree on master. Return error message, or None if OK.
+    """
+    if not _git_is_repo(repo):
+        return "update failed: not a git repository"
+    branch = _git(repo, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+    if branch != "master":
+        return (
+            f"update failed: non-master branch ({branch!r}). "
+            "Checkout master (clean) and retry."
+        )
+    porcelain = _git(repo, "status", "--porcelain").stdout
+    if porcelain.strip():
+        return (
+            "update failed: dirty git tree. "
+            "Commit, stash, or discard local changes and retry."
+        )
+    return None
+
+
 def cmd_install(_backend: Optional[str], args: argparse.Namespace) -> int:
     """Re-install from recorded git origin (or this CLI's tree). No DBus."""
     origin = _load_install_origin()
@@ -2068,6 +2104,87 @@ def cmd_install(_backend: Optional[str], args: argparse.Namespace) -> int:
         _eprint(f"forge: failed to run install script: {e}")
         return 127
     return int(proc.returncode)
+
+
+def cmd_update(_backend: Optional[str], args: argparse.Namespace) -> int:
+    """
+    Fetch origin; if master has new commits, ff-pull and forge install.
+
+    Refuses dirty trees and non-master branches (clear error).
+    """
+    origin = _load_install_origin()
+    try:
+        repo, _script = _resolve_install_script(origin)
+    except FileNotFoundError as e:
+        _eprint(f"forge: {e}")
+        return 1
+
+    err = _git_update_preflight(repo)
+    if err:
+        _eprint(f"forge: {err}")
+        return 1
+
+    _eprint(f"forge: update repo {repo}")
+    fetch = _git(repo, "fetch", "origin")
+    if fetch.returncode != 0:
+        detail = (fetch.stderr or fetch.stdout or "").strip()
+        _eprint("forge: update failed: git fetch origin failed")
+        if detail:
+            _eprint(detail)
+        return 1
+
+    verify = _git(repo, "rev-parse", "--verify", "origin/master")
+    if verify.returncode != 0:
+        _eprint(
+            "forge: update failed: origin/master not found after fetch. "
+            "Set origin to lukebmay/forge (or a remote that publishes master)."
+        )
+        return 1
+
+    behind_s = _git(repo, "rev-list", "--count", "HEAD..origin/master").stdout.strip()
+    ahead_s = _git(repo, "rev-list", "--count", "origin/master..HEAD").stdout.strip()
+    try:
+        behind = int(behind_s or "0")
+        ahead = int(ahead_s or "0")
+    except ValueError:
+        _eprint("forge: update failed: could not compare HEAD to origin/master")
+        return 1
+
+    if behind == 0:
+        if ahead > 0:
+            _eprint(
+                f"forge: already up to date with origin/master "
+                f"(local master is ahead by {ahead} commit(s); nothing to pull)"
+            )
+        else:
+            _eprint("forge: already up to date with origin/master")
+        return 0
+
+    _eprint(f"forge: {behind} commit(s) on origin/master — pulling (ff-only)…")
+    pull = _git(repo, "pull", "--ff-only", "origin", "master")
+    if pull.returncode != 0:
+        detail = (pull.stderr or pull.stdout or "").strip()
+        _eprint("forge: update failed: git pull --ff-only origin master failed")
+        if detail:
+            _eprint(detail)
+        if ahead > 0:
+            _eprint(
+                f"hint: local master is also ahead by {ahead} commit(s); "
+                "ff-only cannot diverge — merge/rebase manually, then forge install"
+            )
+        return 1
+
+    # After pull, re-check clean master (should still be clean)
+    err2 = _git_update_preflight(repo)
+    if err2:
+        _eprint(f"forge: update failed after pull: {err2}")
+        return 1
+
+    _eprint("forge: pull ok — running install…")
+    # Non-interactive install path (same flags as forge install)
+    if not getattr(args, "force", False):
+        args.force = True
+    return cmd_install(_backend, args)
 
 
 def cmd_uninstall(_backend: Optional[str], args: argparse.Namespace) -> int:
@@ -2633,6 +2750,64 @@ def build_parser() -> argparse.ArgumentParser:
     )
     install_p.set_defaults(func=cmd_install)
 
+    update_p = sub.add_parser(
+        "update",
+        help="Fetch origin/master; if new commits, pull (ff-only) and install",
+        description=(
+            "Safe daily update from the recorded git tree (or this CLI's repo).\n"
+            "\n"
+            "Requires a clean working tree on branch master. Then:\n"
+            "  1. git fetch origin\n"
+            "  2. if HEAD is behind origin/master → git pull --ff-only origin master\n"
+            "  3. forge install (same build → enable → Shell reload path)\n"
+            "\n"
+            "Fails clearly if the tree is dirty or the branch is not master.\n"
+            "If already up to date with origin/master, exits 0 without reinstall.\n"
+            "\n"
+            "Does not require extension DBus."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    update_p.add_argument(
+        "--force",
+        action="store_true",
+        help="Non-interactive install after pull (default for update)",
+    )
+    update_p.add_argument("--prod", action="store_true", help="Production build")
+    update_p.add_argument("--dev", action="store_true", help="Debug build (default)")
+    update_p.add_argument("--save", action="store_true", help="Backup before replace")
+    update_p.add_argument(
+        "--no-restart",
+        action="store_true",
+        dest="no_restart",
+        help="Do not HUP Shell after install",
+    )
+    update_p.add_argument(
+        "--restart-shell",
+        action="store_true",
+        dest="restart_shell",
+        help="X11 HUP after install (default; explicit)",
+    )
+    update_p.add_argument(
+        "--skip-npm",
+        action="store_true",
+        dest="skip_npm",
+        help="Skip npm install",
+    )
+    update_p.add_argument(
+        "--no-host-defaults",
+        action="store_true",
+        dest="no_host_defaults",
+        help="Skip host-defaults apply",
+    )
+    update_p.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Detailed install logs after pull",
+    )
+    update_p.set_defaults(func=cmd_update)
+
     uninstall_p = sub.add_parser(
         "uninstall",
         help="Remove Forge extension and forge-owned ~/.local/bin/forge",
@@ -2726,10 +2901,11 @@ def main(argv: Optional[list[str]] = None) -> int:
             _eprint(f"forge: {e}")
             return 1
 
-    # install / uninstall / help / workon list|show|help do not need DBus
+    # install / update / uninstall / help / workon list|show|help do not need DBus
     cmd_name = getattr(args, "command", None) or ""
     if cmd_name in _NO_DBUS_COMMANDS or getattr(args, "func", None) in (
         cmd_install,
+        cmd_update,
         cmd_uninstall,
         cmd_help,
     ):

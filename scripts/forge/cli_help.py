@@ -37,6 +37,7 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
         ("ping", "Extension health"),
         ("save-session-layout", "Flush last-good topology before install/HUP"),
         ("install / uninstall", "Reinstall from git tree / remove extension"),
+        ("update", "Fetch origin/master; pull if new (clean master only) + install"),
         ("help", "This page (also: forge --help)"),
     ]
     for name, desc in rows:
