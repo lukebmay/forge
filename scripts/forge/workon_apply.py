@@ -107,11 +107,17 @@ def _move_step_from_action(a: dict[str, Any]) -> Optional[dict[str, Any]]:
     tile = window_tile_selector(a)
     if not tile:
         return None
-    slot = str(a.get("slot") or "mon0")
+    # Soft park: destWindowId → move onto that window (join group), not mon root.
+    dest_wid = a.get("destWindowId")
+    if dest_wid is not None and str(dest_wid).strip() != "":
+        dest = f"id:{dest_wid}"
+    else:
+        slot = str(a.get("slot") or "mon0")
+        dest = slot_to_monitor_path(slot)
     step: dict[str, Any] = {
         "op": "move",
         "tile": tile,
-        "dest": slot_to_monitor_path(slot),
+        "dest": dest,
     }
     # First mon-layout child (e.g. mon1.term) → prepend under MONITOR.
     pos = a.get("position")

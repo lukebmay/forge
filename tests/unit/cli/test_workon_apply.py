@@ -147,6 +147,23 @@ class TestActionMapping(unittest.TestCase):
             ],
         )
 
+    def test_soft_park_uses_dest_window_id(self):
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "park",
+                    "windowId": 602,
+                    "path": "mo1ws0/0",
+                    "slot": "mon0.overflow",
+                    "destWindowId": 601,
+                }
+            ]
+        )
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0]["op"], "move")
+        self.assertEqual(steps[0]["tile"], "id:602")
+        self.assertEqual(steps[0]["dest"], "id:601")
+
     def test_actions_to_extension_steps_close(self):
         steps = actions_to_extension_steps(
             [

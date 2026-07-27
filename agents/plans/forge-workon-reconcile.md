@@ -1,16 +1,20 @@
 # Plan: Idempotent `forge workon` (desired-state layout)
 
-**Status:** **Complete** (WR1–WR15 + WR6–WR9)
+**Status:** **Complete** (WR1–WR16 + WR6–WR9)  
 **Priority:** **P1 product** (day-to-day #3 after live regression watch)  
 **Base:** this tree; builds on [forge-command.md](./forge-command.md) FC0–FC5  
 **Related:** OP1 open-app, T6 GetTree, shellrc `gdisplays` host layout  
 
 ### Session note (2026-07-27)
 
-**WR9 verified Done** (shellrc `forge.zsh` already exports `FORGE_WORKON_DIR`).
-**Workon plan complete:** WR1–WR15 + WR6–WR9 all Done.
-Optional residual: mon1 tab roleOrder structure settle (opened stays 0).
-**Next:** regression watch; meta personal-fork / B1 only if prioritized.
+**WR16 Done (A/B AGREE):** Quiet apply by default; plan/apply JSON only with
+`--verbose` / `FORGE_VERBOSE=1` (always on dry-run/errors). Mon-child span
+keep: mon-direct companions (Facebook/Chess next to Ghostty) join preceding
+role mon-child → structure tab, not park thrash. Mon-level `ensure_layout`
+only on role open/move. Task:
+[completed/forge-workon-reconcile_wr16-quiet-park-thrash.md](./forge-workon-reconcile/completed/forge-workon-reconcile_wr16-quiet-park-thrash.md).
+**Next:** thrash strategy supersedes residual polish —
+[forge-workon-thrash-zero.md](./forge-workon-thrash-zero.md) (**P0**).
 
 
 ---
@@ -54,8 +58,8 @@ FC5 (`forge workon`) proved the command name and step engine. It is the
 | **Coexist by default** | Companions already in a workon slot stay; roles ordered first |
 | **Author by sketch** | Compact `tiles` sugar; engine expands to v2 IR |
 | **Opinionated defaults** | Split, tabbed, ids, marginal — omit noise |
-| **Visible plan** | `--dry-run` prints reused / open / move / park / kept before apply |
-| **Honest report** | JSON summary after run (counts + role → window) |
+| **Visible plan** | `--dry-run` prints reused / open / move / park / kept + plan JSON |
+| **Honest report** | Human counts always; full plan/apply JSON with `--verbose` / `FORGE_VERBOSE=1` (errors still dump) |
 | **Fast enough** | Sub-second plan; apply dominated by any needed launches |
 | **Host-aware configs** | Same profile *name* can differ per machine (mon count, apps) |
 | **One place for many machines** | Profiles versioned in shellrc; not only `~/.config` on one box |
@@ -385,6 +389,7 @@ forge workon <name> [--dry-run]
 | **WR13** | Docs/help/examples: sugar defaults, coexist, floating | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr13-docs.md) |
 | **WR14** | Post-`workon` **tab click / focus settle** | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr14-tab-settle.md) |
 | **WR15** | `--clean` / `--clean --force` (residuals only) | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr15-clean.md) |
+| **WR16** | Quiet apply + mon-child span keep (no park thrash) | **In progress** | S | [task](../tasks/forge-workon-reconcile_wr16-quiet-park-thrash.md) |
 | **WR6** | Live black: empty / perfect / messy + companions | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr6-live.md) |
 | **WR7** | `forge workon capture` sketch from tree | **Done** | M | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr7-capture.md) |
 | **WR8** | stableKey mon names (T7) in profiles | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr8-stablekey.md) |
@@ -395,8 +400,9 @@ forge workon <name> [--dry-run]
 | Task | Path |
 | --- | --- |
 | WR6–WR8, WR10–WR15 | [completed/](./forge-workon-reconcile/completed/) |
+| WR16 | [../tasks/forge-workon-reconcile_wr16-quiet-park-thrash.md](../tasks/forge-workon-reconcile_wr16-quiet-park-thrash.md) |
 
-**Next A/B:** none on this plan — complete. Residual roleOrder optional.
+**Next A/B:** WR16 Task Force B verify.
 
 ---
 

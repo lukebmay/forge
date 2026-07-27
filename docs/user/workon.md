@@ -5,8 +5,9 @@ each morning. It is **not** the shellrc `workon` command (shellrc owns `t`/`e`
 and other domains) — always use **`forge workon`**.
 
 Default behavior is **idempotent reconcile**: reuse windows that already match
-roles, open only gaps, keep companions already in a workon slot, park true
-residuals. Running twice should not double apps.
+roles, open only gaps, keep companions already in a workon slot, and **leave**
+true residuals where they are (no park thrash). Running twice should not
+double apps or rewrite the desk for leftovers.
 
 **Forge is app-agnostic.** Roles, match rules, and layout live only in your
 JSON (shellrc host tree or `~/.config/forge/workon/`). Nothing in the extension
@@ -45,8 +46,9 @@ Without `FORGE_WORKON_DIR`, only `FORGE_WORKON_PATH` (if set) and
 | `forge workon capture` | Sketch **tiles** sugar from the live tree (stdout JSON) |
 | `forge workon capture --tree-file F` | Offline capture from a GetTree forest file |
 | `forge workon capture --out PATH` | Also write PATH (parent dir must already exist) |
-| `forge workon <name> --dry-run` | Plan only; **no** launches or tree mutations |
-| `forge workon <name>` | Apply (reconcile or steps) |
+| `forge workon <name> --dry-run` | Plan only; human counts + plan JSON; **no** mutations |
+| `forge workon <name>` | Apply; short human summary on stderr (no plan JSON) |
+| `forge workon <name> --verbose` | Apply (or dry-run) with full plan/apply JSON on stdout; also `FORGE_VERBOSE=1` |
 | `forge workon <name> --force-launch` | Imperative `steps[]` only (errors if none) |
 
 ## Capture (authoring assist)
@@ -168,16 +170,19 @@ Prefer `{ "split", "content" }` when a nested array would be ambiguous.
 ### Companions (marginal coexist)
 
 By default, unclaimed windows **already in** a workon slot group stay
-(**kept**); role windows are ordered **first** in that group. True
-residuals park to overflow (`mon0.overflow` tabbed). Close is never
-default — use **`--clean`** only when you want residuals closed.
+(**kept**). True residuals are **left in place** (status `left`) so
+`forge workon` never cross-mon parks them. Opt-in soft park appends onto
+the last claimed role window (no mon-root dump). Close is never default —
+use **`--clean`** only when you want residuals closed.
 
 | Setting / flag | Default | Effect |
 | --- | --- | --- |
-| `marginal.mode` | `coexist` | Keep slot companions; park residuals |
-| `marginal.roleOrder` | `first` | Role windows prefix of the slot group |
-| `marginal.mode: "strict"` | — | Park **all** unclaimed (old blunt behavior) |
-| `--clean` | off | Close residuals (Meta delete) instead of park |
+| `marginal.mode` | `coexist` | Keep slot companions; residual policy separate |
+| `marginal.residual` | `leave` | Leave true residuals put (zero thrash) |
+| `marginal.residual: "park"` | — | Soft park onto last claimed role window |
+| `marginal.roleOrder` | `first` | Orders **new** groups only; never re-tab for order |
+| `marginal.mode: "strict"` | — | No keep; residual leave|park still applies |
+| `--clean` | off | Close residuals (Meta delete) instead of leave/park |
 | `--clean --force` | — | Stronger delete (skip `can_close` veto); **never** process-kill |
 
 Kept companions and claimed role windows are never closed.
@@ -190,7 +195,7 @@ Optional top-level `floating: []` is reserved (location later).
 | --- | --- |
 | `version` / `mode` | `2` / `reconcile` when roles or tiles present |
 | `overflow` | `mon0.overflow` + `tabbed` |
-| `marginal` | `{ "mode": "coexist", "roleOrder": "first" }` |
+| `marginal` | `{ "mode": "coexist", "roleOrder": "first", "residual": "leave" }` |
 | mon split | `hsplit` when ≥2 children |
 | multi-app pane | `tabbed` |
 | single-role pane id | that role id |
@@ -265,7 +270,8 @@ shell init when you want host profiles.
 
 - Always dry-run a new profile: `forge workon <name> --dry-run`.
 - Title matchers (`title~=`) disambiguate several windows of the same class.
-- Dry-run counts: `reused` / `opened` / `moved` / `kept` / `parked` (or `closed` with `--clean`).
+- Counts: `reused` / `opened` / `moved` / `kept` / `left` / `parked` / `structure` (or `closed` with `--clean`).
+- Default apply is quiet (stderr only); use `--verbose` or `FORGE_VERBOSE=1` for plan JSON.
 - Optional: `displays` → `gdisplays load`; `settings` → DBus SettingsLoad.
 - Offline plan: `--tree-file path/to/GetTree.json` with `--dry-run`.
 - Help color: `forge --color=always workon help` (or `never` / `auto`).

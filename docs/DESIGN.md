@@ -635,14 +635,27 @@ without a second schema.
 Sugar **desugars** into the existing v2 IR (`roles[]` + `layout`). One
 planner, two spellings — rehome/claim/structure repair stay on IR.
 
-**Marginal windows** default to **coexist**: companions already living in a
-workon slot stay; role windows are ordered **first** in that slot. True
-residuals go to overflow. Close is never default; opt-in
-`forge workon --clean` closes only true residuals (Meta delete, never
-process-kill; `--clean --force` skips can_close veto). Each
-slot is a **logical** group (planner membership set); the live tree still
+**Marginal windows** default to **coexist** + **leave residuals**: companions
+already living in a workon slot stay; true residuals **stay put** (no
+cross-mon park thrash). Opt-in `marginal.residual: "park"` soft-parks onto
+the last claimed role window (move onto that id — never mon0 root dump).
+Close is never default; opt-in `forge workon --clean` closes only true
+residuals (Meta delete, never process-kill; `--clean --force` skips
+can_close veto). Each slot is a **logical** group; the live tree still
 collapses single-child CONs, so a lone Ghostty is not forced into lonely
 tab chrome until a second member appears.
+
+**Zero thrash (P0):** Containers are **HSPLIT | VSPLIT | TABBED** (H/V nest;
+H/V→tab flattens lossily; tab→H/V makes slivers). **Sane desk:** re-seat roles
+and **tab marginals** (non-role windows) into the profile **view area** they
+overlap (partial → first view) so `workon` cleans the desk. **Detected thrash:**
+roles only + soft-park everything else on last mon last group — no archaeology.
+Tab ensure must yield TABBED, not nested HSPLIT. Plan:
+[forge-workon-thrash-zero.md](../agents/plans/forge-workon-thrash-zero.md).
+
+**Quiet apply:** default `forge workon` prints human counts on stderr;
+full plan/apply JSON only with `--verbose` / `FORGE_VERBOSE=1` (and on
+errors / `--dry-run`).
 
 Plan: [agents/plans/forge-workon-reconcile.md](../agents/plans/forge-workon-reconcile.md).
 

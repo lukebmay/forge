@@ -157,7 +157,11 @@ def normalize_profile(data: Any) -> dict[str, Any]:
         if "overflow" not in out:
             out["overflow"] = {"slot": "mon0.overflow", "layout": "tabbed"}
         if "marginal" not in out:
-            out["marginal"] = {"mode": "coexist", "roleOrder": "first"}
+            out["marginal"] = {
+                "mode": "coexist",
+                "roleOrder": "first",
+                "residual": "leave",
+            }
     return out
 
 
@@ -679,10 +683,14 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
             raise ValueError("settings must be a non-empty string")
         out["settings"] = settings.strip()
 
-    # marginal: omit-noise defaults coexist / first; reject unknown mode
+    # marginal: coexist / first / leave residuals (zero thrash default)
     marginal = data.get("marginal")
     if marginal is None:
-        out["marginal"] = {"mode": "coexist", "roleOrder": "first"}
+        out["marginal"] = {
+            "mode": "coexist",
+            "roleOrder": "first",
+            "residual": "leave",
+        }
     else:
         if not isinstance(marginal, dict):
             raise ValueError("marginal must be an object")
@@ -698,7 +706,19 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
         if role_order is None or str(role_order).strip() == "":
             role_order = "first"
         role_order = str(role_order).strip().lower()
-        out["marginal"] = {"mode": m_mode, "roleOrder": role_order}
+        residual = marginal.get("residual") or "leave"
+        if residual is None or str(residual).strip() == "":
+            residual = "leave"
+        residual = str(residual).strip().lower()
+        if residual not in ("leave", "park"):
+            raise ValueError(
+                f"marginal.residual: unsupported {residual!r} (want leave|park)"
+            )
+        out["marginal"] = {
+            "mode": m_mode,
+            "roleOrder": role_order,
+            "residual": residual,
+        }
 
     floating = data.get("floating")
     if floating is not None:
@@ -870,6 +890,7 @@ def plan_reconcile(
         "moved": 0,
         "parked": 0,
         "kept": 0,
+        "left": 0,
         "closed": 0,
         "structure": 0,
     }
@@ -877,11 +898,13 @@ def plan_reconcile(
 
     layout_slot_modes = _slot_layout_modes(prof)
     overflow_slot = prof["overflow"]["slot"]
-    overflow_layout = prof["overflow"]["layout"]
     parent_info = _window_parent_index(forest)
     marginal = prof.get("marginal") or {}
     marginal_mode = str(marginal.get("mode") or "coexist").strip().lower()
     role_order = str(marginal.get("roleOrder") or "first").strip().lower()
+    residual_mode = str(marginal.get("residual") or "leave").strip().lower()
+    if residual_mode not in ("leave", "park"):
+        residual_mode = "leave"
 
     for role in prof["roles"]:
         rid = role["id"]
@@ -947,8 +970,8 @@ def plan_reconcile(
                     slots_needing_layout[slot] = mode
         role_results.append(entry)
 
-    # Coexist: unclaimed already in a claimed role's slot CON → keep; else park
-    # (or close when clean=True). Strict: park/close all unclaimed (no keep).
+    # Coexist: unclaimed in slot set → keep. Else leave (default) / soft park / close.
+    # Strict: no keep; residual policy still leave|park|clean.
     slot_members = (
         _build_slot_membership(role_results, parent_info, windows)
         if marginal_mode != "strict"
@@ -959,7 +982,14 @@ def plan_reconcile(
         for k in keys:
             key_to_slot.setdefault(k, slot)
 
+    park_anchor = (
+        _soft_park_anchor(windows, parent_info, claimed)
+        if residual_mode == "park" and not clean
+        else None
+    )
+
     kept: list[dict[str, Any]] = []
+    left: list[dict[str, Any]] = []
     unclaimed: list[dict[str, Any]] = []
     for w in windows:
         if _window_key(w) in claimed:
@@ -986,24 +1016,36 @@ def plan_reconcile(
                     "path": w.get("path"),
                 }
             )
+        elif residual_mode == "leave":
+            entry = dict(summary)
+            entry["status"] = "left"
+            left.append(entry)
+            unclaimed.append(entry)
+            counts["left"] += 1
         else:
+            # Soft park: move onto last mon last group; never mon-root dump.
             entry = dict(summary)
             entry["status"] = "parked"
             unclaimed.append(entry)
             counts["parked"] += 1
-            actions.append(
-                {
-                    "op": "park",
-                    "windowId": w.get("windowId"),
-                    "path": w.get("path"),
-                    "slot": overflow_slot,
-                }
-            )
+            park_act: dict[str, Any] = {
+                "op": "park",
+                "windowId": w.get("windowId"),
+                "path": w.get("path"),
+                "slot": overflow_slot,
+            }
+            if park_anchor is not None:
+                awid = park_anchor.get("windowId")
+                if awid is not None and str(awid) != str(w.get("windowId")):
+                    park_act["destWindowId"] = awid
+                    mon_i = window_monitor_index(park_anchor)
+                    if mon_i is not None:
+                        park_act["slot"] = f"mon{mon_i}.overflow"
+            actions.append(park_act)
 
-    if counts["parked"] > 0:
-        slots_needing_layout[overflow_slot] = overflow_layout
+    # Soft park only: no overflow ensure_layout (avoids mon rewrite).
 
-    # Tabbed/stacked: repair when not co-grouped; roleOrder first → roles then keeps.
+    # Tabbed/stacked: repair when not co-grouped. Never thrash-reorder if shared.
     structure_slots: dict[str, dict[str, Any]] = {}
     slots_for_structure = set(layout_slot_modes.keys())
     for k in kept:
@@ -1021,32 +1063,30 @@ def plan_reconcile(
         if len(wids) < 2:
             continue
         share = _windows_share_group(wids, parent_info, mode)
-        order_ok = True
-        if role_order == "first" and share:
-            actual = _sibling_order_ids(wids, parent_info)
-            order_ok = [str(x) for x in actual] == [str(x) for x in wids]
-        if share and order_ok:
+        if share:
+            # Already co-grouped — roleOrder must not force re-tab thrash
             continue
         structure_slots[slot] = {"mode": mode, "windowIds": wids}
         slots_needing_layout[slot] = mode
 
     counts["structure"] = len(structure_slots)
 
-    # Keeps are no placement work. Closes are residual work but not placement
-    # (no overflow/mon rewrite for close-only plans).
-    has_placement = (
-        counts["opened"] > 0 or counts["moved"] > 0 or counts["parked"] > 0
-    )
+    # Role open/move rewrites mon splits. Park/close/structure alone must not
+    # thrash dual-mon hsplit (companions park used to force mon0+mon1 ensure).
+    has_role_placement = counts["opened"] > 0 or counts["moved"] > 0
     has_work = (
-        has_placement or counts["closed"] > 0 or counts["structure"] > 0
+        has_role_placement
+        or counts["parked"] > 0
+        or counts["closed"] > 0
+        or counts["structure"] > 0
     )
     ensure_actions: list[dict[str, Any]] = []
     if has_work:
-        # mon-level splits only when placement changes (avoid rewriting CON layout).
+        # mon-level splits only when role placement changes.
         # Anchor on mon-direct children (term slots), never tab-group members —
         # layout acts on the window's parent CON, so chrome in a tab would
         # demote TABBED → HSPLIT.
-        if has_placement:
+        if has_role_placement:
             for mon_key, mon_body in prof.get("layout", {}).items():
                 split = mon_body.get("split")
                 if split:
@@ -1087,6 +1127,7 @@ def plan_reconcile(
 
     final_actions = deduped_ensure + actions
     nothing = not has_work
+    thrash_risk = _compute_thrash_risk(final_actions, counts)
 
     return {
         "ok": True,
@@ -1095,8 +1136,10 @@ def plan_reconcile(
         "roles": role_results,
         "actions": final_actions,
         "kept": kept,
+        "left": left,
         "unclaimed": unclaimed,
         "clean": clean,
+        "thrashRisk": thrash_risk,
     }
 
 
@@ -1515,14 +1558,132 @@ def _role_window_ids_for_slot(
     return out
 
 
+def _mon_child_loc(path: Any) -> Optional[tuple[str, int]]:
+    """(mon_id, mon-level child index) from a tree path like mo1ws0/0 or mo1ws0/3/1."""
+    if path is None:
+        return None
+    parts = str(path).split("/")
+    if len(parts) < 2 or not parts[0]:
+        return None
+    try:
+        return parts[0], int(parts[1])
+    except ValueError:
+        return None
+
+
+def _soft_park_anchor(
+    windows: list[dict[str, Any]],
+    parent_info: dict[str, dict[str, Any]],
+    claimed: set[str],
+) -> Optional[dict[str, Any]]:
+    """
+    Soft park dump: last mon's last *claimed* role window.
+    Park moves onto this window id — no mon-root insert.
+    Falls back to any tiled window only if no claimed anchors exist.
+    """
+    pools = [
+        [w for w in windows if _window_key(w) in claimed],
+        list(windows),
+    ]
+    for pool in pools:
+        best: Optional[dict[str, Any]] = None
+        best_key: Optional[tuple] = None
+        for w in pool:
+            mon = window_monitor_index(w)
+            if mon is None:
+                continue
+            wid = w.get("windowId")
+            if wid is None:
+                continue
+            info = parent_info.get(str(wid)) or {}
+            path = str(info.get("path") or w.get("path") or "")
+            loc = _mon_child_loc(path)
+            child_i = loc[1] if loc else -1
+            try:
+                leaf = int(path.rsplit("/", 1)[-1])
+            except ValueError:
+                leaf = 0
+            key = (mon, child_i, leaf)
+            if best_key is None or key > best_key:
+                best_key = key
+                best = w
+        if best is not None:
+            return best
+    return None
+
+
+def _compute_thrash_risk(
+    actions: list[dict[str, Any]], counts: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Score how destructive a plan is (cross-mon moves, mon ensures, structure).
+    CLI may warn / refuse on high scores (TZ2).
+    """
+    cross_mon = 0
+    mon_ensures = 0
+    structure_groups = 0
+    parks = 0
+    reasons: list[str] = []
+    for a in actions:
+        if not isinstance(a, dict):
+            continue
+        op = str(a.get("op") or "").strip().lower()
+        if op == "park":
+            parks += 1
+            if a.get("destWindowId") is None:
+                reasons.append("hard-park-mon-root")
+            else:
+                reasons.append(f"soft-park→{a.get('destWindowId')}")
+        elif op == "move":
+            # role mon moves — count as placement risk
+            reasons.append(f"move:{a.get('role') or a.get('windowId')}")
+        elif op == "ensure_layout":
+            slot = str(a.get("slot") or "")
+            head = slot.split(".", 1)[0] if slot else ""
+            if head and "." not in slot:
+                mon_ensures += 1
+                reasons.append(f"mon-ensure:{slot}")
+            else:
+                structure_groups += 1
+                reasons.append(f"structure:{slot}")
+        elif op == "open":
+            reasons.append(f"open:{a.get('role')}")
+    # Cross-mon heuristic: park without destWindowId, or counts.moved
+    cross_mon = int(counts.get("moved") or 0)
+    if parks and any(r.startswith("hard-park") for r in reasons):
+        cross_mon += parks
+    score = (
+        3 * cross_mon
+        + 2 * mon_ensures
+        + 2 * structure_groups
+        + parks
+        + int(counts.get("closed") or 0)
+    )
+    # Dedup reasons while preserving order
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for r in reasons:
+        if r not in seen:
+            seen.add(r)
+            uniq.append(r)
+    return {
+        "score": score,
+        "crossMonMoves": cross_mon,
+        "monEnsures": mon_ensures,
+        "structureGroups": structure_groups,
+        "parks": parks,
+        "reasons": uniq,
+    }
+
+
 def _build_slot_membership(
     role_results: list[dict[str, Any]],
     parent_info: dict[str, dict[str, Any]],
     windows: list[dict[str, Any]],
 ) -> dict[str, set[str]]:
     """
-    Per slot: window keys in the claimed role's parent CON (siblings).
-    Bare tile under MONITOR → only the claimed role window (no companions).
+    Per slot: CON siblings of claimed roles, plus mon-direct windows in the
+    mon-child span of a preceding role-owned mon child (logical slot region).
     """
     by_parent: dict[str, list[str]] = {}
     for w in windows:
@@ -1539,6 +1700,8 @@ def _build_slot_membership(
         by_parent.setdefault(str(pp), []).append(_window_key(w))
 
     membership: dict[str, set[str]] = {}
+    # mon_id → mon-child index → primary slot owning that mon child
+    mon_owned: dict[str, dict[int, str]] = {}
     for r in role_results:
         wid = r.get("windowId")
         slot = r.get("slot")
@@ -1549,12 +1712,44 @@ def _build_slot_membership(
         info = parent_info.get(str(wid))
         if not info:
             continue
+        loc = _mon_child_loc(info.get("path"))
+        if loc:
+            mon_id, idx = loc
+            mon_owned.setdefault(mon_id, {}).setdefault(idx, str(slot))
         pt = str(info.get("parent_type") or "").upper()
         pp = info.get("parent_path")
         if not pp or pt == "MONITOR":
             continue
         for sib in by_parent.get(str(pp), []):
             membership[str(slot)].add(sib)
+
+    # Mon-direct unclaimed windows: nearest preceding role-owned mon-child span
+    already = set()
+    for keys in membership.values():
+        already |= keys
+    for w in windows:
+        key = _window_key(w)
+        if key in already:
+            continue
+        wid = w.get("windowId")
+        if wid is None:
+            continue
+        info = parent_info.get(str(wid))
+        if not info:
+            continue
+        if str(info.get("parent_type") or "").upper() != "MONITOR":
+            continue
+        loc = _mon_child_loc(info.get("path"))
+        if not loc:
+            continue
+        mon_id, i = loc
+        owned = mon_owned.get(mon_id) or {}
+        prior = [j for j in owned if j <= i]
+        if not prior:
+            continue
+        slot = owned[max(prior)]
+        membership.setdefault(slot, set()).add(key)
+        already.add(key)
     return membership
 
 
