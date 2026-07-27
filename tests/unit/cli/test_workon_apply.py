@@ -64,6 +64,18 @@ class TestDetectMode(unittest.TestCase):
         }
         self.assertEqual(detect_workon_mode(data), MODE_RECONCILE)
 
+    def test_tiles_without_roles(self):
+        self.assertEqual(
+            detect_workon_mode({"tiles": {"mon0": ["ghostty"]}}),
+            MODE_RECONCILE,
+        )
+
+    def test_tiles_with_version_2(self):
+        self.assertEqual(
+            detect_workon_mode({"version": 2, "tiles": {"mon0": ["a", "b"]}}),
+            MODE_RECONCILE,
+        )
+
     def test_force_launch_with_steps(self):
         self.assertEqual(
             detect_workon_mode(

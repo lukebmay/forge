@@ -90,9 +90,10 @@ export FORGE_WORKON_DIR=$shellrc/configs/forge/workon   # hosts/<host>/<name>.js
 ./scripts/forge/forge workon dev --force-launch  # imperative steps[] only
 ```
 
-Examples: `workon-dev.json` (v1 steps), `workon-dev-v2.json` (v2 reconcile —
-same schema as shellrc `hosts/black/dev.json`). Host profiles + resolve docs:
-`$shellrc/configs/forge/workon/README.md`.
+**Authoring:** prefer compact **`tiles`** sugar (desugars to v2 IR). Examples:
+`workon-tiles-minimal.json`, `workon-tiles-nested.json`, `workon-minimal.json`
+(IR), `workon-dev-v2.json` (richer IR sample). Host profiles + resolve docs:
+`$shellrc/configs/forge/workon/README.md` (black `dev` is sugar).
 
 **Profile path resolve** (list / show / run):
 
@@ -116,13 +117,15 @@ Forge does not hardcode shellrc paths.
 
 | Schema | Behavior |
 | --- | --- |
-| **v2 reconcile** (`roles` + layout) | GetTree → plan → open gaps, move/park; idempotent |
+| **v2 reconcile** (`tiles` or `roles` + layout) | GetTree → plan → open gaps, move/keep/park; idempotent |
 | **v1 steps** | optional `gdisplays` → `SettingsLoad` → mixed `steps` |
 | **`--dry-run` / `plan`** | print counts + plan JSON; no launch/RunSteps |
 | **`--force-launch`** | require `steps[]`; skip reconcile |
 | **`--tree-file PATH`** | offline forest for dry-run (no live GetTree) |
 
-Pure helpers: `workon_lib.py` (resolve), `workon_plan.py` (planner),
+Defaults: `marginal.mode=coexist` (slot companions **kept**), residuals
+park to overflow; `strict` parks all unclaimed. Pure helpers:
+`workon_lib.py` (resolve), `workon_plan.py` (normalize + planner),
 `workon_apply.py` (action→steps / mode). User guide: `docs/user/workon.md`.
 Design: `docs/DESIGN.md`.
 

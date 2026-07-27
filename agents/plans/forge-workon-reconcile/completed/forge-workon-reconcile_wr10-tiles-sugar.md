@@ -1,8 +1,8 @@
 # WR10 — Compact `tiles` sugar → v2 IR
 
 **Plan:** [forge-workon-reconcile.md](../plans/forge-workon-reconcile.md)  
-**Status:** Ready  
-**Priority:** P1 — **next A/B implement** (most useful remaining authoring win)  
+**Status:** Done (A/B AGREE 2026-07-27)  
+**Priority:** P1 — authoring win  
 **Repo:** this tree (`scripts/forge/`)
 
 ## Goal
@@ -75,4 +75,10 @@ existing v2 reconcile IR (`roles[]` + `layout` + defaults) before
 
 ## Session note
 
-(empty — fill after implement)
+**Done (A implement + B AGREE).** `normalize_profile()` desugars `tiles` →
+v2 IR (tabbed multi-app, hsplit default, id de-dupe, split aliases); defaults
+version/mode/overflow/marginal coexist+first; wired at start of
+`validate_reconcile_profile`. Nested layout IR + tiles mode detection.
+Examples: `workon-tiles-minimal.json`, `workon-tiles-nested.json`. CLI unit
+tests **112 passed**. B notes: nested intermediate splits validate but deep
+ensure_layout is planner-limited; s0/role id namespace edge. Next: **WR11**.

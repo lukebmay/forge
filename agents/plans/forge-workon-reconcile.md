@@ -1,23 +1,16 @@
 # Plan: Idempotent `forge workon` (desired-state layout)
 
-**Status:** WR1–WR5 **Done** — next **WR10** compact tiles sugar (A/B next session)  
+**Status:** WR1–WR5 + **WR10–WR13 Done** — next **WR14** tab settle / **WR6** live  
 **Priority:** **P1 product** (day-to-day #3 after live regression watch)  
 **Base:** this tree; builds on [forge-command.md](./forge-command.md) FC0–FC5  
 **Related:** OP1 open-app, T6 GetTree, shellrc `gdisplays` host layout  
 
 ### Session note (2026-07-27)
 
-**Product locks (sugar + marginal).** Human profiles should be a nested
-`tiles` sketch (arrays = mon panes; nested arrays = tab groups; bare string
-= single app). Split type inferred (wider-than-tall → h, else v); multi-app
-pane → tabbed; role ids auto-generated with de-dupe suffixes. Desugars to
-existing v2 IR — engine stays roles/slots/planner. Defaults:
-`marginal.mode=coexist`, `roleOrder=first` (omit-noise). Logical atomic
-slots (group-of-one in planner; physical CON only when 2+ members). Residual
-unclaimed → overflow; `--clean` later opt-in. **Next implement (usefulness
-order):** WR10 sugar → WR11 coexist → WR12 shellrc `dev` sugar → WR13 docs
-→ WR14 post-apply tab chrome → WR6 live trials → WR15 `--clean`. Live black
-apply already worked once (minor tab-click lag).
+**WR10–WR13 shipped this session (A/B for 10–12; docs for 13).**
+Tiles sugar normalize, coexist keep/park, shellrc black `dev` sugar
+(uncommitted), user docs + `forge workon help`. Tests: **122 passed**.
+**Next:** WR14 post-apply tab settle → WR6 live → WR15 `--clean`.
 
 ---
 
@@ -385,10 +378,10 @@ forge workon <name> [--dry-run]
 | ID | Task | Status | Effort | Why this order |
 | --- | --- | --- | --- | --- |
 | **WR0–WR5** | Locks, planner, resolve, apply, black v2, UX | **Done** | — | Shipped base |
-| **WR10** | Compact **tiles sugar** → normalize to v2 IR; unit tests; example | **Ready** | M | Biggest authoring win; unblocks friendly configs |
-| **WR11** | **Marginal coexist** + `roleOrder: first` + logical atomic slots | **Ready** | M | Lived-in desk; Nautilus/social keep; makes workon daily-usable |
-| **WR12** | shellrc `hosts/black/dev.json` → sugar + README | **Ready** | S | Real profile uses new UX (**shellrc repo**) |
-| **WR13** | Docs/help/examples: sugar defaults, coexist, floating | **Ready** | S | Discoverability |
+| **WR10** | Compact **tiles sugar** → normalize to v2 IR; unit tests; example | **Done** | M | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr10-tiles-sugar.md) |
+| **WR11** | **Marginal coexist** + `roleOrder: first` + logical atomic slots | **Done** | M | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr11-marginal-coexist.md) |
+| **WR12** | shellrc `hosts/black/dev.json` → sugar + README | **Done** (shellrc uncommitted) | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr12-shellrc-dev-sugar.md) |
+| **WR13** | Docs/help/examples: sugar defaults, coexist, floating | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr13-docs.md) |
 | **WR14** | Post-`workon` **tab click / focus settle** | **Ready** | S | Bug after successful apply |
 | **WR6** | Live black: empty / perfect / messy + companions | **Ready** | S | Acceptance after sugar+coexist |
 | **WR15** | `--clean` / `--clean --force` (residuals only) | Later | S | Escape hatch; not default path |
@@ -400,11 +393,9 @@ forge workon <name> [--dry-run]
 
 | Task | Path |
 | --- | --- |
-| WR10 | [forge-workon-reconcile_wr10-tiles-sugar.md](../tasks/forge-workon-reconcile_wr10-tiles-sugar.md) |
-| WR11 | [forge-workon-reconcile_wr11-marginal-coexist.md](../tasks/forge-workon-reconcile_wr11-marginal-coexist.md) |
-| WR12 | [forge-workon-reconcile_wr12-shellrc-dev-sugar.md](../tasks/forge-workon-reconcile_wr12-shellrc-dev-sugar.md) |
+| WR10–WR13 | [completed/](./forge-workon-reconcile/completed/) |
 
-**Next session A/B:** start **WR10**, then WR11, then WR12 (shellrc).
+**Next A/B:** **WR14** tab settle, then WR6 live.
 
 ---
 
@@ -491,6 +482,5 @@ WR13 docs/help ◄───────────────────┘
 
 ## Next task
 
-**WR10** — compact tiles sugar normalize (pure + tests).  
-Task: [../tasks/forge-workon-reconcile_wr10-tiles-sugar.md](../tasks/forge-workon-reconcile_wr10-tiles-sugar.md).  
-A/B loop next session.
+**WR14** — post-`workon` tab click / focus settle (no dedicated task file yet;
+create under `agents/tasks/` when starting).

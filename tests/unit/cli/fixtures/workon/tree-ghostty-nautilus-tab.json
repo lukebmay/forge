@@ -1,0 +1,40 @@
+{
+  "apiVersion": 2,
+  "monitors": [
+    {
+      "nodeType": "MONITOR",
+      "id": "mo0ws0",
+      "layout": "HSPLIT",
+      "children": [
+        {
+          "nodeType": "CON",
+          "layout": "TABBED",
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "windowId": 501,
+              "wmClass": "com.mitchellh.ghostty",
+              "title": "Ghostty",
+              "monitor": 0,
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "windowId": 502,
+              "wmClass": "org.gnome.Nautilus",
+              "title": "Home",
+              "monitor": 0,
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeType": "MONITOR",
+      "id": "mo1ws0",
+      "layout": "HSPLIT",
+      "children": []
+    }
+  ]
+}

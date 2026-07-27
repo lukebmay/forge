@@ -11,15 +11,11 @@
 
 | Order | ID | Task | Why first |
 | ---: | --- | --- | --- |
-| 1 | **WR10** | Compact `tiles` sugar → v2 IR | Authoring UX; unblocks friendly configs |
-| 2 | **WR11** | Marginal **coexist** + roleOrder first | Lived-in desk (keep Nautilus/social) |
-| 3 | **WR12** | shellrc `hosts/black/dev.json` sugar | Real daily profile (**shellrc repo**) |
-| 4 | **WR13** | Docs/help/examples | Discoverability |
-| 5 | **WR14** | Post-workon tab click/focus settle | Bug after successful apply |
-| 6 | **WR6** | Live black trials | Full acceptance |
-| 7 | **WR15** | `--clean` | Opt-in only |
+| 1 | **WR14** | Post-workon tab click/focus settle | Bug after successful apply |
+| 2 | **WR6** | Live black trials | Full acceptance |
+| 3 | **WR15** | `--clean` | Opt-in only |
 
-Task files: `agents/tasks/forge-workon-reconcile_wr10-*.md` (WR10–WR12).
+**WR10–WR13 Done** (sugar, coexist, shellrc `dev`, docs).
 
 Live thrash/tab bugs still **outrank** this queue if they return. Meta
 (personal fork) stays below.
@@ -46,7 +42,7 @@ Ordered by **how often it hurts or helps when actually using the machine**.
 | ---: | --- | --- | --- | --- |
 | 1 | **Critical (shipped)** | Dual-head blank/wake + install HUP restore | Morning layout must survive lock/wake and `forge install` | **Done** — T3, T6, T7, session-layout + Ghostty |
 | 2 | **Critical (shipped)** | Tabs, stack-off, open-app LFT, keybinds, sizing | Core daily tiling feel | **Done** — T0–T5, OP1 |
-| 3 | **High (next product)** | **Idempotent `forge workon` + sugar + coexist** | Morning desk + lived-in companions + quick profiles | **WR1–WR5 Done**; next **WR10→11→12** then WR6 |
+| 3 | **High (next product)** | **Idempotent `forge workon` + sugar + coexist** | Morning desk + lived-in companions + quick profiles | **WR1–WR5 + WR10–13 Done**; next **WR14 / WR6** |
 | 4 | **High (shipped, incomplete UX)** | FC5 imperative `workon` | Command + steps exist; doubles windows if re-run | **Superseded default by #3** — keep as `--force-launch` / `mode: steps` |
 | 5 | **Medium (live)** | Regression watch: install/HUP, wake thrash, tab chrome | Failure modes that ruin a day if they return | **Monitor** — file bug when seen; **outranks #3 if open** |
 | 6 | **Medium (QoL, shipped)** | OP-opt tiny-pane → tab fallback | Opt-in min-edge → tab instead of postage-stamp split | **Done** |
@@ -68,10 +64,8 @@ the desk is stable.
 | Pri | Item | Status | Day-to-day? |
 | --- | --- | --- | --- |
 | **P0** | Live thrash/tab bugs (if any) | **Interrupt** | Yes |
-| **P1** | [workon](./plans/forge-workon-reconcile.md) **WR10** tiles sugar | Ready — A/B next | Yes — authoring |
-| **P1** | WR11 marginal coexist | Ready after/with WR10 | Yes — lived-in desk |
-| **P1** | WR12 shellrc `dev` sugar | Ready after WR10 | Yes — daily profile |
-| P1 | WR13 docs · WR14 tab settle · WR6 live | Ready after above | Yes |
+| **P1** | [workon](./plans/forge-workon-reconcile.md) **WR14** tab settle | Ready — A/B next | Yes — post-apply bug |
+| P1 | WR6 live trials | Ready after/with WR14 | Yes |
 | P2 | WR15 `--clean` | Later | Occasional |
 | P2 | Live daily-drive; report new bugs | Ongoing | Yes |
 | P3 | [Personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership only |
@@ -84,6 +78,10 @@ the desk is stable.
 
 | Item | Note |
 | --- | --- |
+| **WR13 docs/help** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr13-docs.md) |
+| **WR12 shellrc dev sugar** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr12-shellrc-dev-sugar.md) (shellrc uncommitted) |
+| **WR11 marginal coexist** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr11-marginal-coexist.md) |
+| **WR10 tiles sugar** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr10-tiles-sugar.md) |
 | **WR1–WR5 workon reconcile** | Planner, resolve, executor, black profile, UX/docs |
 | **Cross-mon Move + structure repair** | Meta monitor + tab group ensure |
 | **CLI on PATH** | `~/.local/bin/forge` + `forge uninstall` |
@@ -99,11 +97,9 @@ the desk is stable.
 
 ## Session wrap (2026-07-27)
 
-- Live `forge workon dev` apply worked; minor post-apply tab click lag noted (WR14).
-- Product locks: **tiles sugar**, infer split/tabbed, **marginal coexist** +
-  roleOrder first, logical atomic slots, engine stays v2 IR.
-- Plan + tasks WR10–WR12 written; PRIORITY reordered by usefulness.
-- **Next session:** A/B **WR10** first.
+- **WR10–WR13 Done:** tiles sugar, coexist, shellrc `dev` sugar (uncommitted),
+  docs/help. CLI unit tests **122 passed**.
+- **Next:** A/B **WR14** tab settle → WR6 live.
 
 ---
 

@@ -17,7 +17,7 @@ def detect_workon_mode(data: Any, *, force_launch: bool = False) -> str:
 
     --force-launch → steps only when steps[] present; else error.
     mode: steps / version 1 / steps without roles → steps.
-    version 2 / roles / mode reconcile → reconcile.
+    version 2 / roles / tiles / mode reconcile → reconcile.
     """
     if not isinstance(data, dict):
         raise ValueError("profile must be a JSON object")
@@ -25,6 +25,8 @@ def detect_workon_mode(data: Any, *, force_launch: bool = False) -> str:
     has_steps = isinstance(data.get("steps"), list)
     roles = data.get("roles")
     has_roles = isinstance(roles, list) and len(roles) > 0
+    tiles = data.get("tiles")
+    has_tiles = isinstance(tiles, dict) and len(tiles) > 0
     mode_raw = data.get("mode")
     mode_s = str(mode_raw).strip().lower() if mode_raw is not None else None
     ver = data.get("version")
@@ -45,16 +47,16 @@ def detect_workon_mode(data: Any, *, force_launch: bool = False) -> str:
     if mode_s == MODE_RECONCILE:
         return MODE_RECONCILE
 
-    if ver in (2, "2") and has_roles:
+    if ver in (2, "2") and (has_roles or has_tiles):
         return MODE_RECONCILE
 
-    if has_roles and not has_steps:
+    if (has_roles or has_tiles) and not has_steps:
         return MODE_RECONCILE
 
-    if ver in (1, "1") or (has_steps and not has_roles):
+    if ver in (1, "1") or (has_steps and not has_roles and not has_tiles):
         return MODE_STEPS
 
-    if has_roles:
+    if has_roles or has_tiles:
         return MODE_RECONCILE
 
     if has_steps:
@@ -62,7 +64,7 @@ def detect_workon_mode(data: Any, *, force_launch: bool = False) -> str:
 
     raise ValueError(
         "cannot determine workon mode: need version 1 + steps[], "
-        "or version 2 + roles[] (mode: reconcile)"
+        "or version 2 + roles[] / tiles (mode: reconcile)"
     )
 
 

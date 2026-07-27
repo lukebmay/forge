@@ -5,7 +5,8 @@ each morning. It is **not** the shellrc `workon` command (shellrc owns `t`/`e`
 and other domains) — always use **`forge workon`**.
 
 Default behavior is **idempotent reconcile**: reuse windows that already match
-roles, open only gaps, park extras. Running twice should not double apps.
+roles, open only gaps, keep companions already in a workon slot, park true
+residuals. Running twice should not double apps.
 
 **Forge is app-agnostic.** Roles, match rules, and layout live only in your
 JSON (shellrc host tree or `~/.config/forge/workon/`). Nothing in the extension
@@ -40,14 +41,120 @@ Without `FORGE_WORKON_DIR`, only `FORGE_WORKON_PATH` (if set) and
 | --- | --- |
 | `forge workon help` | Colorized guide, defaults, minimal example |
 | `forge workon list` | Human lines on stderr; JSON array on **stdout** |
-| `forge workon show <name>` | Header + validated profile JSON |
+| `forge workon show <name>` | Header + validated (normalized) profile JSON |
 | `forge workon <name> --dry-run` | Plan only; **no** launches or tree mutations |
 | `forge workon <name>` | Apply (reconcile or steps) |
 | `forge workon <name> --force-launch` | Imperative `steps[]` only (errors if none) |
 
-## Minimal profile
+## Authoring: compact `tiles` sugar (preferred)
 
-Drop this at `~/.config/forge/workon/simple.json` (edit class/app names):
+Drop this at `~/.config/forge/workon/simple.json` (edit app names):
+
+```json
+{
+  "tiles": {
+    "mon0": [
+      ["firefox", "code"],
+      "ghostty"
+    ]
+  }
+}
+```
+
+| Sugar | Meaning |
+| --- | --- |
+| `monN: [ a, b ]` | Two mon children; default **hsplit** |
+| `["app1", "app2"]` | One pane, two roles, **tabbed** |
+| `"ghostty"` | One pane, one role (no lonely tab chrome) |
+| `"split": "h"` / `"v"` / `hsplit` / `vsplit` / `horizontal` / `vertical` | Override split |
+| `{ "split", "content": […] }` | Nested split node |
+| String cell | Role: `open` + best-effort `match`; id auto (de-dupe `app-2`) |
+| Rich object cell | Full `id` / `match` / `open` when titles or classes need care |
+
+Forge **normalizes** sugar to v2 IR (`roles[]` + `layout`) before planning.
+`forge workon show` prints the expanded profile.
+
+### Rich cells (Chrome / PWAs)
+
+String cells are fine for unique wmClasses. Several Chrome windows need
+title matchers:
+
+```json
+{
+  "tiles": {
+    "mon0": [
+      [
+        {
+          "id": "chrome-luke",
+          "match": { "class": "Google-chrome", "title": "Google Chrome" },
+          "open": { "app": "google-chrome", "wmClass": "Google-chrome", "timeout": 25000 }
+        },
+        {
+          "id": "grok",
+          "match": { "class": "Google-chrome", "title~=": "Grok" },
+          "open": { "app": "Grok", "wmClass": "Google-chrome", "timeout": 25000 }
+        }
+      ],
+      "ghostty"
+    ]
+  }
+}
+```
+
+### Nested split (explicit)
+
+```json
+{
+  "tiles": {
+    "mon1": {
+      "split": "h",
+      "content": [
+        "ghostty",
+        {
+          "split": "v",
+          "content": [
+            ["youtube", "gmail"],
+            "nautilus"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+Prefer `{ "split", "content" }` when a nested array would be ambiguous.
+
+### Companions (marginal coexist)
+
+By default, unclaimed windows **already in** a workon slot group stay
+(**kept**); role windows are ordered **first** in that group. True
+residuals park to overflow (`mon0.overflow` tabbed). Close is never
+default.
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `marginal.mode` | `coexist` | Keep slot companions; park residuals |
+| `marginal.roleOrder` | `first` | Role windows prefix of the slot group |
+| `marginal.mode: "strict"` | — | Park **all** unclaimed (old blunt behavior) |
+
+Optional top-level `floating: []` is reserved (location later).
+
+### Defaults (omit noise)
+
+| Omitted field | Default |
+| --- | --- |
+| `version` / `mode` | `2` / `reconcile` when roles or tiles present |
+| `overflow` | `mon0.overflow` + `tabbed` |
+| `marginal` | `{ "mode": "coexist", "roleOrder": "first" }` |
+| mon split | `hsplit` when ≥2 children |
+| multi-app pane | `tabbed` |
+| single-role pane id | that role id |
+| multi-role pane id | auto `s0`, `s1`, … |
+
+## Explicit IR (still valid)
+
+Full `roles[]` + `layout` remains the canonical engine form:
 
 ```json
 {
@@ -66,28 +173,14 @@ Drop this at `~/.config/forge/workon/simple.json` (edit class/app names):
 }
 ```
 
-Then `forge workon simple --dry-run` → `forge workon simple`.
-
-### Defaults (omit noise)
-
-| Omitted field | Default |
-| --- | --- |
-| `version` | `2` when `roles[]` present |
-| `mode` | `reconcile` when `roles[]` present |
-| `match: "WmClass"` | `{ "class": "WmClass" }` |
-| `open: "app"` | `{ "app": "app" }` |
-| `class` / `app` on role | fill `match` / `open` if those keys missing |
-| `layout.monN.split` | `hsplit` when ≥2 children |
-| child `layout` | `tabbed` when ≥2 roles in that pane |
-| child `id` | sole role id when `roles: ["one"]` |
-| role `slot` | from `layout` `roles:[]` listing |
-| `overflow` | `mon0.overflow` + `tabbed` |
+Sugar and IR may coexist in one file only via normalize-first: if `tiles` is
+present, it wins for structure.
 
 ## Reconcile vs steps
 
 | Schema | Behavior |
 | --- | --- |
-| **v2 reconcile** (`roles` + layout) | Snapshot tree → match roles → open gaps, move/park; second run ≈ no-op |
+| **v2 reconcile** (`tiles` or `roles` + layout) | Snapshot tree → match roles → open gaps, move/keep/park; second run ≈ no-op |
 | **v1 steps** (`version: 1` / `mode: "steps"` / `steps[]` without roles) | Replay launch + focus/layout ops (can double apps) |
 | **`--force-launch`** | Force the steps path even on a dual profile |
 
@@ -95,8 +188,12 @@ Prefer **v2 reconcile** for daily use.
 
 Examples in-tree:
 
-- `scripts/forge/examples/workon-minimal.json` — short generic sample  
-- `scripts/forge/examples/workon-dev-v2.json` — richer dual-mon sample (edit apps)
+- `scripts/forge/examples/workon-tiles-minimal.json` — dual-mon sugar  
+- `scripts/forge/examples/workon-tiles-nested.json` — nested splits  
+- `scripts/forge/examples/workon-minimal.json` — short IR  
+- `scripts/forge/examples/workon-dev-v2.json` — richer dual-mon IR sample  
+
+Host profile (shellrc): `$FORGE_WORKON_DIR/hosts/<host>/dev.json` (sugar on black).
 
 ## Where profiles live
 
@@ -123,6 +220,7 @@ shell init when you want host profiles.
 
 - Always dry-run a new profile: `forge workon <name> --dry-run`.
 - Title matchers (`title~=`) disambiguate several windows of the same class.
+- Dry-run counts: `reused` / `opened` / `moved` / `kept` / `parked`.
 - Optional: `displays` → `gdisplays load`; `settings` → DBus SettingsLoad.
 - Offline plan: `--tree-file path/to/GetTree.json` with `--dry-run`.
 - Help color: `forge --color=always workon help` (or `never` / `auto`).

@@ -1,0 +1,8 @@
+{
+  "description": "Compact tiles sugar — dual-mon sketch (edit app tokens for your desk)",
+  "tiles": {
+    "mon0": [["google-chrome", "grok"], "ghostty"],
+    "mon1": ["ghostty", ["youtube", "gmail", "voice"]]
+  },
+  "floating": []
+}

@@ -1,7 +1,7 @@
 # WR12 — shellrc black `dev` profile → tiles sugar
 
 **Plan:** [forge-workon-reconcile.md](../plans/forge-workon-reconcile.md)  
-**Status:** Ready  
+**Status:** Done (A/B AGREE 2026-07-27; shellrc uncommitted)  
 **Depends on:** **WR10** (normalize must accept sugar)  
 **Priority:** P1 — third slice (real daily profile)  
 **Repo:** **shellrc** (`~/dev/me/shellrc`), not forge git root  
@@ -84,4 +84,21 @@ so idempotent reuse does not regress.
 
 ## Session note
 
-(empty — fill after implement)
+**WR12 implement (Task Force A, 2026-07-27).** Shellrc only; no forge product code.
+
+| Path | Change |
+| --- | --- |
+| `shellrc/.../hosts/black/dev.json` | Full IR → compact `tiles` sugar; rich cells for Chrome/PWAs + Ghostty ids |
+| `shellrc/.../workon/README.md` | Sugar happy path first; rich-cell guidance for PWAs |
+
+**Validate** (`validate_reconcile_profile`): roles
+`chrome-luke, grok, ghostty-left, ghostty-right, youtube, gmail, voice`
+(same seven as pre-WR12); slots
+`mon0.s0, mon0.s0, mon0.ghostty-left, mon1.ghostty-right, mon1.s0×3`;
+layout mon0 hsplit tabbed[chrome,grok]|ghostty · mon1 hsplit
+ghostty|tabbed[yt,gmail,voice]; marginal coexist; overflow mon0.overflow.
+
+**Commit:** left **uncommitted** in shellrc (orchestrator: no commit unless user says commit).
+
+**B AGREE.** Slot names auto `s0` vs old left-tab/comms — equivalent intent.
+Next: **WR13** docs.

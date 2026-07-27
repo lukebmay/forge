@@ -1,7 +1,7 @@
 # WR11 — Marginal coexist + roleOrder first + logical slots
 
 **Plan:** [forge-workon-reconcile.md](../plans/forge-workon-reconcile.md)  
-**Status:** Ready  
+**Status:** Done (A/B AGREE 2026-07-27)  
 **Depends on:** WR10 nice-to-have (defaults can land without sugar)  
 **Priority:** P1 — second A/B after WR10 (highest *desk* usefulness)  
 **Repo:** this tree (`scripts/forge/workon_plan.py`, apply if needed)
@@ -40,4 +40,6 @@ Default lived-in desk behavior:
 
 ## Session note
 
-(empty — fill after implement)
+**Done (A/B AGREE).** Coexist: unclaimed in claimed role parent CON → keep;
+residuals park; strict = park-all. Counts `kept`/`parked`; roleOrder first
+via ensure windowIds. Tests **122 passed**. Next: **WR12** shellrc sugar.

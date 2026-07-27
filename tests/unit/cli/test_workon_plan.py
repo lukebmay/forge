@@ -17,6 +17,7 @@ if str(_FORGE_CLI) not in sys.path:
 from workon_plan import (  # noqa: E402
     collect_windows,
     mon_index_from_slot,
+    normalize_profile,
     plan_reconcile,
     validate_reconcile_profile,
     window_matches,
@@ -200,6 +201,207 @@ class TestValidateReconcileProfile(unittest.TestCase):
             }
         )
         self.assertEqual(p["roles"][0]["slot"], "mon0.term")
+
+
+class TestTilesNormalize(unittest.TestCase):
+    """WR10 compact tiles sugar → v2 IR."""
+
+    def test_dual_mon_happy_path(self):
+        raw = {
+            "tiles": {
+                "mon0": [["google-chrome", "grok"], "ghostty"],
+                "mon1": ["ghostty", ["youtube", "gmail", "voice"]],
+            }
+        }
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(p["version"], 2)
+        self.assertEqual(p["mode"], "reconcile")
+        self.assertEqual(p["overflow"]["slot"], "mon0.overflow")
+        self.assertEqual(p["overflow"]["layout"], "tabbed")
+        self.assertEqual(p["marginal"]["mode"], "coexist")
+        self.assertEqual(p["marginal"]["roleOrder"], "first")
+
+        self.assertEqual(p["layout"]["mon0"]["split"], "hsplit")
+        self.assertEqual(p["layout"]["mon1"]["split"], "hsplit")
+
+        m0 = p["layout"]["mon0"]["children"]
+        self.assertEqual(m0[0]["id"], "s0")
+        self.assertEqual(m0[0]["layout"], "tabbed")
+        self.assertEqual(m0[0]["roles"], ["google-chrome", "grok"])
+        self.assertEqual(m0[1]["id"], "ghostty")
+        self.assertEqual(m0[1]["roles"], ["ghostty"])
+
+        m1 = p["layout"]["mon1"]["children"]
+        self.assertEqual(m1[0]["id"], "ghostty-2")
+        self.assertEqual(m1[0]["roles"], ["ghostty-2"])
+        self.assertEqual(m1[1]["id"], "s0")
+        self.assertEqual(m1[1]["layout"], "tabbed")
+        self.assertEqual(m1[1]["roles"], ["youtube", "gmail", "voice"])
+
+        by_id = {r["id"]: r for r in p["roles"]}
+        self.assertEqual(len(by_id), 7)
+        self.assertEqual(by_id["ghostty"]["slot"], "mon0.ghostty")
+        self.assertEqual(by_id["ghostty-2"]["slot"], "mon1.ghostty-2")
+        self.assertEqual(by_id["google-chrome"]["slot"], "mon0.s0")
+        self.assertEqual(by_id["youtube"]["slot"], "mon1.s0")
+        self.assertEqual(by_id["ghostty"]["open"]["app"], "ghostty")
+        self.assertEqual(by_id["ghostty"]["match"]["class"], "ghostty")
+
+    def test_nested_split_explicit(self):
+        raw = {
+            "tiles": {
+                "mon0": ["term"],
+                "mon1": {
+                    "split": "h",
+                    "content": [
+                        "ghostty",
+                        {
+                            "split": "v",
+                            "content": [["youtube", "gmail"], "nautilus"],
+                        },
+                    ],
+                },
+            }
+        }
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(p["layout"]["mon1"]["split"], "hsplit")
+        kids = p["layout"]["mon1"]["children"]
+        self.assertEqual(kids[0]["roles"], ["ghostty"])
+        nested = kids[1]
+        self.assertEqual(nested["split"], "vsplit")
+        self.assertEqual(nested["children"][0]["layout"], "tabbed")
+        self.assertEqual(nested["children"][0]["roles"], ["youtube", "gmail"])
+        self.assertEqual(nested["children"][1]["id"], "nautilus")
+        by_id = {r["id"]: r for r in p["roles"]}
+        self.assertEqual(by_id["youtube"]["slot"], f"mon1.{nested['id']}.{nested['children'][0]['id']}")
+        self.assertEqual(by_id["nautilus"]["slot"], f"mon1.{nested['id']}.nautilus")
+
+    def test_nested_array_form(self):
+        raw = {
+            "tiles": {
+                "mon0": [
+                    "a",
+                    [["b", "c"], "d"],
+                ]
+            }
+        }
+        p = validate_reconcile_profile(raw)
+        kids = p["layout"]["mon0"]["children"]
+        self.assertEqual(kids[0]["id"], "a")
+        self.assertIn("children", kids[1])
+        self.assertEqual(kids[1]["split"], "hsplit")
+        self.assertEqual(kids[1]["children"][0]["layout"], "tabbed")
+        self.assertEqual(kids[1]["children"][1]["id"], "d")
+
+    def test_id_dedupe(self):
+        raw = {"tiles": {"mon0": ["ghostty", "ghostty", "ghostty"]}}
+        p = validate_reconcile_profile(raw)
+        ids = [r["id"] for r in p["roles"]]
+        self.assertEqual(ids, ["ghostty", "ghostty-2", "ghostty-3"])
+        self.assertEqual(len(set(ids)), 3)
+
+    def test_split_aliases(self):
+        for alias, want in (
+            ("h", "hsplit"),
+            ("horizontal", "hsplit"),
+            ("hsplit", "hsplit"),
+            ("v", "vsplit"),
+            ("vertical", "vsplit"),
+            ("vsplit", "vsplit"),
+        ):
+            p = validate_reconcile_profile(
+                {"tiles": {"mon0": {"split": alias, "content": ["a", "b"]}}}
+            )
+            self.assertEqual(p["layout"]["mon0"]["split"], want, alias)
+
+    def test_rich_object_cell(self):
+        raw = {
+            "tiles": {
+                "mon0": [
+                    {
+                        "id": "grok",
+                        "match": {"class": "Google-chrome", "title~=": "Grok"},
+                        "open": {"app": "Grok", "wmClass": "Google-chrome"},
+                    },
+                    "ghostty",
+                ]
+            }
+        }
+        p = validate_reconcile_profile(raw)
+        by_id = {r["id"]: r for r in p["roles"]}
+        self.assertEqual(by_id["grok"]["match"]["title~="], "Grok")
+        self.assertEqual(by_id["grok"]["open"]["wmClass"], "Google-chrome")
+        self.assertEqual(by_id["ghostty"]["open"]["app"], "ghostty")
+
+    def test_ir_passthrough_no_regression(self):
+        raw = _load("profile-dev-v2.json")
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(len(p["roles"]), 7)
+        self.assertIn("mon0", p["layout"])
+        self.assertEqual(p["layout"]["mon0"]["children"][0]["id"], "left-tab")
+        # normalize is idempotent on IR
+        n1 = normalize_profile(raw)
+        n2 = normalize_profile(n1)
+        self.assertEqual(n1["roles"], n2["roles"])
+        self.assertEqual(n1["layout"], n2["layout"])
+        self.assertEqual(n2["marginal"]["mode"], "coexist")
+
+    def test_example_tiles_minimal_file(self):
+        path = _FORGE_CLI / "examples" / "workon-tiles-minimal.json"
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(len(p["roles"]), 7)
+        self.assertEqual(p["floating"], [])
+        self.assertEqual(p["layout"]["mon0"]["split"], "hsplit")
+
+    def test_example_tiles_nested_file(self):
+        path = _FORGE_CLI / "examples" / "workon-tiles-nested.json"
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        p = validate_reconcile_profile(raw)
+        self.assertGreaterEqual(len(p["roles"]), 7)
+        self.assertEqual(p["layout"]["mon1"]["split"], "hsplit")
+
+    def test_single_item_list_like_string(self):
+        p = validate_reconcile_profile({"tiles": {"mon0": [["ghostty"]]}})
+        self.assertEqual(p["roles"][0]["id"], "ghostty")
+        self.assertEqual(p["layout"]["mon0"]["children"][0]["id"], "ghostty")
+
+    def test_nested_ir_validate(self):
+        raw = {
+            "version": 2,
+            "roles": [
+                {
+                    "id": "a",
+                    "match": "A",
+                    "open": "a",
+                    "slot": "mon0.s0.a",
+                },
+                {
+                    "id": "b",
+                    "match": "B",
+                    "open": "b",
+                    "slot": "mon0.s0.b",
+                },
+            ],
+            "layout": {
+                "mon0": {
+                    "split": "hsplit",
+                    "children": [
+                        {
+                            "id": "s0",
+                            "split": "vsplit",
+                            "children": [
+                                {"id": "a", "roles": ["a"]},
+                                {"id": "b", "roles": ["b"]},
+                            ],
+                        }
+                    ],
+                }
+            },
+        }
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(p["layout"]["mon0"]["children"][0]["split"], "vsplit")
+        self.assertEqual(p["roles"][0]["slot"], "mon0.s0.a")
 
 
 class TestMatching(unittest.TestCase):
@@ -478,16 +680,41 @@ class TestPlanDoubled(unittest.TestCase):
         self.assertEqual(len(claimed_ids), 7)
         # no double-open
         self.assertFalse(any(a["op"] == "open" for a in plan["actions"]))
-        # extras parked
-        self.assertGreater(plan["counts"]["parked"], 0)
+        # coexist: tab-CON extras kept; bare residuals parked
+        self.assertGreater(plan["counts"]["parked"] + plan["counts"]["kept"], 0)
         parks = [a for a in plan["actions"] if a["op"] == "park"]
         self.assertEqual(len(parks), plan["counts"]["parked"])
         for p in parks:
             self.assertEqual(p["slot"], "mon0.overflow")
             self.assertNotIn(p["windowId"], claimed_ids)
-        # windows total = claimed + unclaimed
+        for k in plan["kept"]:
+            self.assertEqual(k["status"], "kept")
+            self.assertNotIn(k["windowId"], claimed_ids)
         wins = collect_windows(forest)
-        self.assertEqual(len(wins), plan["counts"]["reused"] + plan["counts"]["moved"] + plan["counts"]["parked"])
+        self.assertEqual(
+            len(wins),
+            plan["counts"]["reused"]
+            + plan["counts"]["moved"]
+            + plan["counts"]["parked"]
+            + plan["counts"]["kept"],
+        )
+
+    def test_doubled_strict_parks_all_extras(self):
+        forest = _load("tree-doubled-black.json")
+        profile = _load("profile-dev-v2.json")
+        profile["marginal"] = {"mode": "strict"}
+        plan = plan_reconcile(forest, profile)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertGreater(plan["counts"]["parked"], 0)
+        parks = [a for a in plan["actions"] if a["op"] == "park"]
+        self.assertEqual(len(parks), plan["counts"]["parked"])
+        wins = collect_windows(forest)
+        self.assertEqual(
+            len(wins),
+            plan["counts"]["reused"]
+            + plan["counts"]["moved"]
+            + plan["counts"]["parked"],
+        )
 
     def test_ghostty_prefers_slot_mon(self):
         forest = _load("tree-doubled-black.json")
@@ -644,6 +871,259 @@ class TestEnsureLayout(unittest.TestCase):
         self.assertIn("mon1", slots)
         self.assertIn("mon0.left-tab", slots)
         self.assertIn("mon1.comms", slots)
+
+
+class TestMarginalCoexist(unittest.TestCase):
+    """WR11: coexist keep companions; strict parks all unclaimed."""
+
+    def _ghostty_profile(self, **marginal_extra):
+        prof = {
+            "version": 2,
+            "mode": "reconcile",
+            "overflow": {"slot": "mon0.overflow", "layout": "tabbed"},
+            "layout": {
+                "mon0": {
+                    "split": "hsplit",
+                    "children": [{"id": "term", "roles": ["ghostty"]}],
+                }
+            },
+            "roles": [
+                {
+                    "id": "ghostty",
+                    "match": {"class": "com.mitchellh.ghostty"},
+                    "open": {"app": "ghostty"},
+                    "slot": "mon0.term",
+                }
+            ],
+        }
+        if marginal_extra:
+            prof["marginal"] = marginal_extra
+        return prof
+
+    def test_validate_marginal_defaults(self):
+        p = validate_reconcile_profile(_load("profile-dev-v2.json"))
+        self.assertEqual(p["marginal"]["mode"], "coexist")
+        self.assertEqual(p["marginal"]["roleOrder"], "first")
+
+    def test_validate_marginal_strict(self):
+        raw = _load("profile-dev-v2.json")
+        raw["marginal"] = {"mode": "strict"}
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(p["marginal"]["mode"], "strict")
+        self.assertEqual(p["marginal"]["roleOrder"], "first")
+
+    def test_reject_unknown_marginal_mode(self):
+        raw = _load("profile-dev-v2.json")
+        raw["marginal"] = {"mode": "yeet"}
+        with self.assertRaisesRegex(ValueError, "marginal.mode"):
+            validate_reconcile_profile(raw)
+
+    def test_nautilus_tabbed_with_ghostty_kept(self):
+        forest = _load("tree-ghostty-nautilus-tab.json")
+        plan = plan_reconcile(forest, self._ghostty_profile())
+        self.assertEqual(plan["counts"]["reused"], 1)
+        self.assertEqual(plan["counts"]["kept"], 1)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertTrue(plan["nothingToDo"])
+        self.assertEqual(plan["actions"], [])
+        self.assertEqual(len(plan["kept"]), 1)
+        k = plan["kept"][0]
+        self.assertEqual(k["windowId"], 502)
+        self.assertEqual(k["status"], "kept")
+        self.assertEqual(k["slot"], "mon0.term")
+        self.assertEqual(k["wmClass"], "org.gnome.Nautilus")
+        # roleOrder first: Ghostty before Nautilus in membership (already so)
+        self.assertFalse(any(a["op"] == "park" for a in plan["actions"]))
+
+    def test_nautilus_wrong_order_role_first_structure(self):
+        """Companion before role → ensure_layout windowIds roles then companions."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 502,
+                                    "wmClass": "org.gnome.Nautilus",
+                                    "title": "Home",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 501,
+                                    "wmClass": "com.mitchellh.ghostty",
+                                    "title": "Ghostty",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+        plan = plan_reconcile(forest, self._ghostty_profile())
+        self.assertEqual(plan["counts"]["kept"], 1)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertGreaterEqual(plan["counts"]["structure"], 1)
+        ensures = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") == "mon0.term"
+        ]
+        self.assertEqual(len(ensures), 1)
+        self.assertEqual(ensures[0]["windowIds"], [501, 502])
+        self.assertEqual(ensures[0]["mode"], "tabbed")
+
+    def test_stray_wrong_mon_parked(self):
+        forest = _load("tree-stray-wrong-mon.json")
+        plan = plan_reconcile(forest, self._ghostty_profile())
+        self.assertEqual(plan["counts"]["reused"], 1)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["parked"], 2)
+        park_ids = {a["windowId"] for a in plan["actions"] if a["op"] == "park"}
+        self.assertEqual(park_ids, {602, 603})
+        self.assertEqual(plan["kept"], [])
+
+    def test_extra_role_copy_not_in_slot_parked(self):
+        forest = _load("tree-extra-role-copy.json")
+        profile = {
+            "version": 2,
+            "layout": {
+                "mon0": {
+                    "split": "hsplit",
+                    "children": [
+                        {
+                            "id": "left-tab",
+                            "layout": "tabbed",
+                            "roles": ["chrome-luke", "grok"],
+                        }
+                    ],
+                }
+            },
+            "roles": [
+                {
+                    "id": "chrome-luke",
+                    "match": {"class": "Google-chrome", "title": "Google Chrome"},
+                    "open": {"app": "google-chrome"},
+                    "slot": "mon0.left-tab",
+                },
+                {
+                    "id": "grok",
+                    "match": {"class": "Google-chrome", "title~=": "Grok"},
+                    "open": {"app": "Grok"},
+                    "slot": "mon0.left-tab",
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, profile)
+        self.assertEqual(plan["counts"]["reused"], 2)
+        # 703 is extra chrome not in left-tab CON → residual park
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["parked"], 1)
+        parks = [a for a in plan["actions"] if a["op"] == "park"]
+        self.assertEqual(len(parks), 1)
+        self.assertEqual(parks[0]["windowId"], 703)
+
+    def test_extra_in_slot_con_kept(self):
+        """Extra matcher copy already in role's tab CON → companion keep."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 801,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Chrome",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 802,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Grok",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 803,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Grok",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+        profile = {
+            "version": 2,
+            "layout": {
+                "mon0": {
+                    "children": [
+                        {
+                            "id": "left-tab",
+                            "layout": "tabbed",
+                            "roles": ["chrome-luke", "grok"],
+                        }
+                    ]
+                }
+            },
+            "roles": [
+                {
+                    "id": "chrome-luke",
+                    "match": {"class": "Google-chrome", "title": "Google Chrome"},
+                    "open": {"app": "google-chrome"},
+                    "slot": "mon0.left-tab",
+                },
+                {
+                    "id": "grok",
+                    "match": {"class": "Google-chrome", "title~=": "Grok"},
+                    "open": {"app": "Grok"},
+                    "slot": "mon0.left-tab",
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, profile)
+        self.assertEqual(plan["counts"]["reused"], 2)
+        self.assertEqual(plan["counts"]["kept"], 1)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["kept"][0]["windowId"], 803)
+        self.assertTrue(plan["nothingToDo"])
+
+    def test_strict_parks_all_unclaimed(self):
+        forest = _load("tree-ghostty-nautilus-tab.json")
+        plan = plan_reconcile(
+            forest, self._ghostty_profile(mode="strict", roleOrder="first")
+        )
+        self.assertEqual(plan["counts"]["reused"], 1)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["parked"], 1)
+        parks = [a for a in plan["actions"] if a["op"] == "park"]
+        self.assertEqual(len(parks), 1)
+        self.assertEqual(parks[0]["windowId"], 502)
+        self.assertEqual(plan["kept"], [])
 
 
 if __name__ == "__main__":

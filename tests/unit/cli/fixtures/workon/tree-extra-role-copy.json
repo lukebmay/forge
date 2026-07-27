@@ -1,0 +1,48 @@
+{
+  "apiVersion": 2,
+  "monitors": [
+    {
+      "nodeType": "MONITOR",
+      "id": "mo0ws0",
+      "layout": "HSPLIT",
+      "children": [
+        {
+          "nodeType": "CON",
+          "layout": "TABBED",
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "windowId": 701,
+              "wmClass": "Google-chrome",
+              "title": "Google Chrome",
+              "monitor": 0,
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "windowId": 702,
+              "wmClass": "Google-chrome",
+              "title": "Grok",
+              "monitor": 0,
+              "children": []
+            }
+          ]
+        },
+        {
+          "nodeType": "WINDOW",
+          "windowId": 703,
+          "wmClass": "Google-chrome",
+          "title": "Google Chrome",
+          "monitor": 0,
+          "children": []
+        }
+      ]
+    },
+    {
+      "nodeType": "MONITOR",
+      "id": "mo1ws0",
+      "layout": "HSPLIT",
+      "children": []
+    }
+  ]
+}

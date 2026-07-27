@@ -130,7 +130,7 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
         ("forge workon help", "This guide"),
         ("forge workon list", "Profiles (stderr human; stdout JSON)"),
         ("forge workon show <name>", "Resolved path + validated profile"),
-        ("forge workon <name> --dry-run", "Plan only (reused/open/move/park)"),
+        ("forge workon <name> --dry-run", "Plan only (reused/open/move/kept/park)"),
         ("forge workon <name>", "Apply reconcile (or steps)"),
         ("forge workon <name> --force-launch", "Imperative steps[] only (escape hatch)"),
     ):
@@ -154,21 +154,15 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
     )
     _blank(s)
 
-    _out(s, heading("Minimal profile", **kw), " ", dim("(generic - any apps)", **kw))
+    _out(s, heading("Minimal profile", **kw), " ", dim("(tiles sugar - preferred)", **kw))
     _out(s, dim("  ~/.config/forge/workon/simple.json", **kw))
     code = """\
 {
-  "roles": [
-    { "id": "browser", "match": "Firefox", "open": "firefox" },
-    { "id": "term", "match": "com.mitchellh.ghostty", "open": "ghostty" }
-  ],
-  "layout": {
-    "mon0": {
-      "children": [
-        { "id": "main", "roles": ["browser"] },
-        { "roles": ["term"] }
-      ]
-    }
+  "tiles": {
+    "mon0": [
+      ["firefox", "code"],
+      "ghostty"
+    ]
   }
 }"""
     for line in code.splitlines():
@@ -177,18 +171,29 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  Then: ", cmd("forge workon simple --dry-run", **kw), "  ->  ", cmd("forge workon simple", **kw))
     _blank(s)
 
+    _out(s, heading("tiles sugar", **kw), " ", dim("(desugars to roles + layout)", **kw))
+    for line, desc in (
+        ('monN: [ a, b ]', "panes L→R (hsplit default)"),
+        ('["app1", "app2"]', "one tabbed pane"),
+        ('"ghostty"', "single-app pane"),
+        ('split: "h"/"v"/hsplit/…', "override split"),
+        ('{ split, content }', "nested split"),
+        ("string cell", "open + best-effort match; id auto"),
+        ("rich object cell", "id / match / open (PWAs need title~=)"),
+    ):
+        _out(s, "  ", cyan(line, **kw), "  ", desc)
+    _blank(s)
+
     _out(s, heading("Defaults", **kw), " ", dim("(omit noise; Forge fills these in)", **kw))
     defaults = [
-        ("version", "2 when roles[] present"),
-        ("mode", "reconcile when roles[] present"),
-        ('match: "WmClass"', 'same as { "class": "WmClass" }'),
-        ('open: "app"', 'same as { "app": "app" }'),
-        ("role.class / role.app", "shortcuts if match/open omitted"),
-        ("layout.monN.split", "hsplit when ≥2 children"),
-        ("child.layout", "tabbed when ≥2 roles in that pane"),
-        ("child.id", "defaults to sole role id when roles:[one]"),
-        ("role.slot", "from layout children roles:[] listing"),
+        ("version / mode", "2 / reconcile when tiles or roles present"),
+        ("marginal", 'coexist + roleOrder first (companions kept)'),
         ("overflow", "mon0.overflow + tabbed"),
+        ("mon split", "hsplit when ≥2 children"),
+        ("multi-app pane", "tabbed"),
+        ("role ids", "from open token; de-dupe app-2"),
+        ('match: "WmClass"', 'same as { "class": "WmClass" } (IR)'),
+        ('open: "app"', 'same as { "app": "app" } (IR)'),
     ]
     for k, v in defaults:
         _out(s, "  ", cyan(k, **kw), "  ", v)
@@ -196,19 +201,9 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
 
     _out(s, heading("Dual-monitor sketch", **kw))
     sketch = """\
-"layout": {
-  "mon0": {
-    "children": [
-      { "id": "left", "layout": "tabbed", "roles": ["a", "b"] },
-      { "roles": ["term-left"] }
-    ]
-  },
-  "mon1": {
-    "children": [
-      { "roles": ["term-right"] },
-      { "id": "comms", "roles": ["mail", "chat"] }
-    ]
-  }
+"tiles": {
+  "mon0": [ ["a", "b"], "term-left" ],
+  "mon1": [ "term-right", ["mail", "chat"] ]
 }"""
     for line in sketch.splitlines():
         _out(s, "  ", cyan(line, **kw))
@@ -220,18 +215,21 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
     _blank(s)
 
     _out(s, heading("Reconcile vs steps", **kw))
-    _out(s, "  ", bold("v2 roles + layout", **kw), "  reconcile (daily default; idempotent)")
+    _out(s, "  ", bold("v2 tiles or roles+layout", **kw), "  reconcile (daily default; idempotent)")
     _out(s, "  ", bold("v1 steps[]", **kw), "         imperative replay (can double apps)")
     _out(s, "  ", bold("--force-launch", **kw), "      force steps[] path for debug")
+    _out(s, "  ", bold("marginal.mode=strict", **kw), "  park all unclaimed (no companion keep)")
     _blank(s)
 
     _out(s, heading("Tips", **kw))
     _out(s, "  • Always dry-run a new profile first.")
     _out(s, "  • Match titles with ", cyan('title~="substr"', **kw), " when several windows share a class.")
+    _out(s, "  • Counts: reused / opened / moved / kept / parked.")
     _out(s, "  • Optional: ", cyan('"displays": "scene"', **kw), " -> gdisplays load; ", cyan('"settings": "name"', **kw), " -> SettingsLoad.")
     _out(s, "  • Offline plan: ", cmd("forge workon name --dry-run --tree-file forest.json", **kw))
-    _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/workon-minimal.json", **kw))
-    _out(s, "                    ", cyan("scripts/forge/examples/workon-dev-v2.json", **kw), dim(" (richer sample)", **kw))
+    _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/workon-tiles-minimal.json", **kw))
+    _out(s, "                    ", cyan("scripts/forge/examples/workon-tiles-nested.json", **kw))
+    _out(s, "                    ", cyan("scripts/forge/examples/workon-minimal.json", **kw), dim(" (IR)", **kw))
     _blank(s)
 
     _out(s, dim("Docs: docs/user/workon.md · design: docs/DESIGN.md", **kw))
