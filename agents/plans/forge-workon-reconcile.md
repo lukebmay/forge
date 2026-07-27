@@ -1,16 +1,17 @@
 # Plan: Idempotent `forge workon` (desired-state layout)
 
-**Status:** WR1–WR8 + **WR10–WR15 Done** — next **WR9** later polish  
+**Status:** **Complete** (WR1–WR15 + WR6–WR9)
 **Priority:** **P1 product** (day-to-day #3 after live regression watch)  
 **Base:** this tree; builds on [forge-command.md](./forge-command.md) FC0–FC5  
 **Related:** OP1 open-app, T6 GetTree, shellrc `gdisplays` host layout  
 
 ### Session note (2026-07-27)
 
-**WR8 Done (A).** Profile mon keys may be T7 `stableKey` or
-`monitors` aliases; `plan_reconcile` rewrites to `monN` via forest
-stableKeys. mon0/mon1 unchanged. Docs + help. CLI unit **157** green.
-**Next:** WR9 env snippet — or regression watch if thrash.
+**WR9 verified Done** (shellrc `forge.zsh` already exports `FORGE_WORKON_DIR`).
+**Workon plan complete:** WR1–WR15 + WR6–WR9 all Done.
+Optional residual: mon1 tab roleOrder structure settle (opened stays 0).
+**Next:** regression watch; meta personal-fork / B1 only if prioritized.
+
 
 ---
 
@@ -387,7 +388,7 @@ forge workon <name> [--dry-run]
 | **WR6** | Live black: empty / perfect / messy + companions | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr6-live.md) |
 | **WR7** | `forge workon capture` sketch from tree | **Done** | M | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr7-capture.md) |
 | **WR8** | stableKey mon names (T7) in profiles | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr8-stablekey.md) |
-| **WR9** | shellrc env snippet `FORGE_WORKON_DIR` | Later | S | Out of critical path |
+| **WR9** | shellrc env snippet `FORGE_WORKON_DIR` | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr9-env.md) |
 
 **Active task files:**
 
@@ -395,7 +396,7 @@ forge workon <name> [--dry-run]
 | --- | --- |
 | WR6–WR8, WR10–WR15 | [completed/](./forge-workon-reconcile/completed/) |
 
-**Next A/B:** **WR9** later polish — core reconcile + capture + stableKey mons shipped.
+**Next A/B:** none on this plan — complete. Residual roleOrder optional.
 
 ---
 
@@ -482,4 +483,5 @@ WR13 docs/help ◄───────────────────┘
 
 ## Next task
 
-**WR9** — shellrc env snippet `FORGE_WORKON_DIR` (later polish).
+**None** — plan complete. Optional residual: mon1 tab `roleOrder` settle.
+Regression watch outranks polish if thrash returns.
