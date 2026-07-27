@@ -518,7 +518,7 @@ chunks. **`forge run-steps`** stays extension-only (rejects launch/wait).
 **`forge run`** and **`forge workon`** interleave: each CLI chunk runs
 in-process; each extension chunk is one DBus `RunSteps` (one freeze/render).
 
-### Workon profiles (FC5)
+### Workon profiles (FC5 → FC6 reconcile)
 
 **Problem:** Morning setup is still glue (`gdisplays load` + several
 `forge launch` + layout/focus). FC0–FC4 are the primitives; FC5 is a
@@ -527,22 +527,34 @@ in-process; each extension chunk is one DBus `RunSteps` (one freeze/render).
 **Why not shellrc `workon`:** shellrc already owns `workon` for other
 domains (`t`/`e`). The tiling command is always **`forge workon`**.
 
-**Where:** `~/.config/forge/workon/<name>.json` (schema `version: 1`).
-Example only (not auto-installed): `scripts/forge/examples/workon-dev.json`.
+**FC5 (shipped):** `~/.config/forge/workon/<name>.json` schema `version: 1`
+imperative `steps[]`. Fine for one-shot scripts; **wrong daily default** —
+re-running doubles apps (trial on `black`, 2026-07-26).
 
-| Field | Role |
+**FC6 (planned):** desired-state **reconcile** — roles + layout shape;
+match/claim existing tiles; launch only gaps; park overflow; no kill.
+Host-scoped profiles in **shellrc** user-space (like gdisplays):
+
+```text
+$shellrc/configs/forge/workon/hosts/<hostname>/<name>.json
+$shellrc/configs/forge/workon/common/<name>.json
+~/.config/forge/workon/<name>.json          # XDG fallback
+```
+
+Plan + UX: [agents/plans/forge-workon-reconcile.md](../agents/plans/forge-workon-reconcile.md).
+
+| Field (v1 steps) | Role |
 | --- | --- |
 | `displays` | Optional string → `gdisplays load <name>` (hard fail + install hint if binary missing) |
 | `settings` | Optional string → DBus `SettingsLoad` |
 | `stopOnError` | Default **true** |
 | `steps` | Same ops as FC4 extension + CLI `launch` / `wait` / `wait-window` |
 
-**Order:** validate → displays → settings → partition steps → CLI/extension
-chunks. Pure helpers live in `scripts/forge/workon_lib.py` (unit-tested
-without Shell).
+**Order (v1):** validate → displays → settings → partition steps → CLI/extension
+chunks. Pure helpers: `scripts/forge/workon_lib.py`.
 
 **Non-goals:** full i3 layout restore, GUI recorder, disk session-layout as
-workon, shadowing shellrc `workon`.
+workon, shadowing shellrc `workon`, killing surplus windows (park only).
 
 ### CLI on PATH (`~/.local/bin/forge`)
 

@@ -1,18 +1,18 @@
 # Plan: `forge` CLI + session scripting surface
 
-**Status:** FC0–FC5 **Done** (B AGREE)
-**Priority:** P1 product — morning one-shot layout  
+**Status:** FC0–FC5 **Done** (B AGREE). **FC6 →** [forge-workon-reconcile.md](./forge-workon-reconcile.md)
+**Priority:** FC5 complete; morning UX continues as **idempotent workon** (P1)
 **Base:** this tree (`jcrussell/forge`)  
 **Related:** [forge-daily-driver.md](./forge-daily-driver.md) (OP1, T6–T7 done),  
-[forge-harden-and-session.md](./forge-harden-and-session.md) (DBus / apply runtime)
+[forge-harden-and-session.md](./forge-harden-and-session.md) (DBus / apply runtime),  
+[forge-workon-reconcile.md](./forge-workon-reconcile.md) (desired-state workon)
 
 ### Session note (2026-07-26)
 
-**CLI on PATH.** `./install` / origin stamp now symlink
-`~/.local/bin/forge` → `scripts/forge/forge`. `forge uninstall` removes
-extension + forge-owned CLI (keeps prefs/origin). Ownership check refuses
-foreign files. status shows CLI bin. Docs: README, scripts/forge/README,
-DESIGN.
+**FC5 trial + FC6 plan.** Imperative `workon dev` doubled apps on a non-empty
+tree. Follow-on plan locks **reconcile / roles / host configs in shellrc** —
+see [forge-workon-reconcile.md](./forge-workon-reconcile.md). FC0–FC5 remain
+the primitive stack; FC5 steps stay as escape hatch.
 
 ---
 

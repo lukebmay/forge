@@ -6,21 +6,23 @@
 
 ## Next session focus
 
-**Live on the fork** — open bugs only when layout pain returns.  
-OP-opt tiny-pane tab fallback **Done** (opt-in gsettings).  
-Identity/personal-fork is meta only (needs GitHub name/lineage decisions).
+**FC6 / WR1 — idempotent `forge workon`** (desired-state layout).  
+Plan: [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md).
 
-Product base is this tree (installed `v49-90-beta.2-42+`). Identity fork is
+Live thrash/tab bugs still outrank this if they return. Meta (personal fork)
+stays below.
+
+Product base is this tree (installed `v49-90-beta.2-47+`). Identity fork is
 useful later; it does **not** fix windows.
 
 | Doc | Role |
 | --- | --- |
-| [forge-command.md](./plans/forge-command.md) | FC0–FC5 **Done** — `forge workon` shipped |
+| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | **P1 next** — reconcile roles; host configs in shellrc |
+| [forge-command.md](./plans/forge-command.md) | FC0–FC5 **Done** — imperative workon shipped |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 + session-layout Ghostty **Done** |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome + install HUP path live |
 | [forge-codebase-audit.md](./plans/forge-codebase-audit.md) | Wave 1 **done**; B1 optional size only |
 | [forge-fork-eval_personal-fork.md](./tasks/forge-fork-eval_personal-fork.md) | Ownership / remotes — low daily tiling impact |
-| [forge-fork-eval_spike.md](./tasks/forge-fork-eval_spike.md) | Spike close-out docs — mostly historical |
 
 ---
 
@@ -32,17 +34,19 @@ Ordered by **how often it hurts or helps when actually using the machine**.
 | ---: | --- | --- | --- | --- |
 | 1 | **Critical (shipped)** | Dual-head blank/wake + install HUP restore | Morning layout must survive lock/wake and `forge install` | **Done** — T3, T6, T7, session-layout + Ghostty |
 | 2 | **Critical (shipped)** | Tabs, stack-off, open-app LFT, keybinds, sizing | Core daily tiling feel | **Done** — T0–T5, OP1 |
-| 3 | **High (shipped)** | **FC5 `workon` composition** | One command → displays + dual Ghostty + tabs morning layout | **Done** — A/B AGREE |
-| 4 | **Medium (live)** | Regression watch: install/HUP, wake thrash, tab chrome | Still the failure modes that ruin a day if they return | **Monitor** — no open task; file bug when seen |
-| 5 | **Medium (QoL, shipped)** | OP-opt tiny-pane → tab fallback | Opt-in min-edge → tab instead of postage-stamp split | **Done** — A/B AGREE; default off |
-| 6 | **Low (meta)** | Personal GitHub fork + lineage id | Ownership, push target, mental model — not tiling | Ready when publishing |
-| 7 | **Low (meta)** | Fork-eval spike formal close-out | Already daily-driving this tree | Docs only |
-| 8 | **Low (code health)** | Audit B1 DnD extract | Shrinks `window.js`; zero user-visible win | Optional wave 2 |
-| 9 | **Later** | T9 multi-line tabs | Polish after single-row proven in real use | Later |
-| 10 | **Out of repo** | gdisplays v2 | shellrc only | — |
+| 3 | **High (next product)** | **Idempotent `forge workon` (reconcile)** | Morning “desk looks like *dev*” without doubling apps | **Plan ready** — [forge-workon-reconcile](./plans/forge-workon-reconcile.md); next WR1 |
+| 4 | **High (shipped, incomplete UX)** | FC5 imperative `workon` | Command + steps exist; doubles windows if re-run | **Superseded default by #3** — keep as `--force-launch` / `mode: steps` |
+| 5 | **Medium (live)** | Regression watch: install/HUP, wake thrash, tab chrome | Failure modes that ruin a day if they return | **Monitor** — file bug when seen; **outranks #3 if open** |
+| 6 | **Medium (QoL, shipped)** | OP-opt tiny-pane → tab fallback | Opt-in min-edge → tab instead of postage-stamp split | **Done** |
+| 7 | **Low (meta)** | Personal GitHub fork + lineage id | Ownership, push target — not tiling | Ready when publishing |
+| 8 | **Low (meta)** | Fork-eval spike formal close-out | Already daily-driving this tree | Docs only |
+| 9 | **Low (code health)** | Audit B1 DnD extract | Shrinks `window.js`; zero user-visible win | Optional |
+| 10 | **Later** | T9 multi-line tabs | Polish after single-row proven | Later |
+| 11 | **Out of repo** | gdisplays v2; shellrc workon host tree wiring | shellrc | Parallel to WR2/WR4 |
 
 **Rule of thumb:** prefer fixing a **layout regression you just hit** over meta/tidy.
 Do not start B1 or personal-fork work while a real thrash/tab bug is open.
+Idempotent workon is the top **new** product work when the desk is stable.
 
 ---
 
@@ -50,9 +54,10 @@ Do not start B1 or personal-fork work while a real thrash/tab bug is open.
 
 | Pri | Item | Status | Day-to-day? |
 | --- | --- | --- | --- |
-| **P1** | Live daily-drive this install; report thrash/tab bugs | **Default** | Yes |
-| P2 | [Personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready (needs name/lineage) | Ownership only |
-| P2 | [Spike close-out](./tasks/forge-fork-eval_spike.md) | Partial | Docs |
+| **P0** | Live thrash/tab bugs (if any) | **Interrupt** | Yes |
+| **P1** | [Idempotent workon](./plans/forge-workon-reconcile.md) WR1→WR6 | **Next** | Yes — morning layout |
+| P2 | Live daily-drive; report new bugs | Ongoing | Yes |
+| P3 | [Personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership only |
 | later | T9 multi-line tabs | After T1 proven live | Polish |
 | later | Audit **B1** DnD extract | Optional | Maintainability |
 | later | gdisplays v2 | shellrc | Displays |
@@ -61,6 +66,7 @@ Do not start B1 or personal-fork work while a real thrash/tab bug is open.
 
 | Item | Note |
 | --- | --- |
+| **CLI on PATH** | `~/.local/bin/forge` + `forge uninstall` |
 | **OP-opt tiny-pane** | [completed](./plans/forge-daily-driver/completed/forge-daily-driver_op-opt-tiny-pane-tab.md) |
 | **FC5 workon** | [completed](./plans/forge-command/completed/forge-command_fc5-workon.md) |
 | T0–T7 + OP1 | Daily-driver core |
@@ -73,13 +79,11 @@ Do not start B1 or personal-fork work while a real thrash/tab bug is open.
 
 ## Session wrap (2026-07-26)
 
-- **FC5 Done (A/B AGREE):** `forge workon` / mixed `forge run`; 23 pure Python tests.
-- **OP-opt Done (A/B AGREE):** tiny-pane tab fallback (default off); npm **1879**.
-- Stopped further task init: remaining queue is meta (personal fork needs Luke
-  decisions) or docs-only spike close-out.
-- **No commit** this session unless asked.
-
-**Default next:** live-drive + file bugs; personal fork when publishing wanted.
+- Installed latest; `forge` on PATH; first `workon dev` trial **doubled** apps.
+- Product direction locked: **desired-state reconcile**, host profiles in
+  shellrc (`configs/forge/workon/hosts/<host>/`).
+- Plan: [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md).
+- **Next:** WR1 pure planner + fixtures (not while thrash is open).
 
 ---
 
@@ -115,3 +119,4 @@ Do not start B1 or personal-fork work while a real thrash/tab bug is open.
 - Full i3 IPC — MVP is forge subcommands + tree query  
 - SSH to black without **explicit** user permission (AGENTS security)  
 - Prioritize audit B1 or personal-fork over a live thrash bug  
+- Ship imperative-only workon as the long-term morning UX  
