@@ -248,6 +248,10 @@ When code changes, ALWAYS update the plan with a brief note/summary on progress 
 
 #### Taskforce (plan via subagents, low token baggage)
 
+**The entire point of taskforces is to reduce token usage.** Fresh agents and
+lean handoffs avoid carrying prior transcripts; serial A/B work keeps context
+focused on one task. Spend tokens only while there is clear, valuable work.
+
 **Default for development work** that changes code or has non-trivial acceptance
 criteria: use the **A/B implement–verify loop** below. Skip for pure docs,
 one-line fixes, or when the user asks for a single agent.
@@ -261,7 +265,9 @@ one-line fixes, or when the user asks for a single agent.
 | **Scope** | Spin as many agents as that task would normally need — still one taskforce per task. |
 | **Handoff** | Each taskforce finishes the task, then **overwrites** a short plan session note (and task note): what shipped, key APIs/paths, next-agent bullets only. |
 | **Orchestrator** | Parent keeps only plan next-task + handoff; do not paste prior taskforce transcripts into the next prompt. |
-| **Stop early** | After a task, if the next would exceed a lean context budget, **stop** and hand back to manual sessions. |
+| **Token budget** | Run taskforce A/B until a session token limit is reached (usually **~300–400K**). Finish the **current** task, then **stop starting new ones**. |
+| **Stop when done** | If all plan/tasks are complete, **stop** — do not keep spending tokens. |
+| **Stop when low value** | No clear direction, or only minimally valuable tasks left → **stop** using tokens. Hand back rather than inventing busywork. |
 
 Handoffs live in the plan/task docs so the next agent loads understanding without the previous agent’s token history.
 

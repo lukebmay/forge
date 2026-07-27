@@ -3,7 +3,7 @@ tool_version = "0.1.5"
 catalog_version = "0.1.7"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-07-26T16:30:30+00:00"
+updated_at = "2026-07-27T00:51:16+00:00"
 
 [[files]]
 id = "ansi-colors"
@@ -26,8 +26,8 @@ sha256 = "68f89ad65dd7a1a7a01a20986b7777b23ee3893daf39dea1e2fac65601c93420"
 [[files]]
 id = "general"
 path = "general.md"
-version = "1.0.4"
-sha256 = "10a135e82038f2aa075f29016cf0a9df3aeef3e8b7d9bbfacc3a0372e768aae2"
+version = "1.0.5"
+sha256 = "f11eab9c2ae22588aa630e2eac64395d4d562a0b309ad183dff0f63b4b4deb21"
 
 [[files]]
 id = "git"
