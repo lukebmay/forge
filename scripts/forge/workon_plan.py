@@ -697,24 +697,33 @@ def _normalize_match(match: dict[str, Any], where: str) -> dict[str, Any]:
     return out
 
 
-def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
+def plan_reconcile(
+    forest: dict, profile: dict, *, clean: bool = False
+) -> dict[str, Any]:
     """
     Build a reconcile plan from a GetTree forest + validated (or raw) v2 profile.
+
+    clean=True: residuals that would park become close (Meta delete path);
+    claimed roles and kept companions are never closed.
 
     Returns:
       {
         "ok": True,
         "nothingToDo": bool,
-        "counts": {"reused": N, "opened": N, "moved": N, "parked": N, "kept": N},
+        "counts": {
+          "reused", "opened", "moved", "parked", "kept", "closed", "structure"
+        },
         "roles": [...],
         "actions": [...],
         "kept": [...],
         "unclaimed": [...],
+        "clean": bool,
       }
     """
     if not isinstance(forest, dict):
         raise ValueError("forest must be a JSON object")
     prof = validate_reconcile_profile(profile)
+    clean = bool(clean)
 
     windows = collect_windows(forest)
     claimed: set[str] = set()  # windowId keys
@@ -727,6 +736,7 @@ def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
         "moved": 0,
         "parked": 0,
         "kept": 0,
+        "closed": 0,
         "structure": 0,
     }
     slots_needing_layout: dict[str, str] = {}  # slot → mode
@@ -803,8 +813,8 @@ def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
                     slots_needing_layout[slot] = mode
         role_results.append(entry)
 
-    # Coexist: unclaimed already in a claimed role's slot CON → keep; else park.
-    # Strict: park all unclaimed (legacy park-all).
+    # Coexist: unclaimed already in a claimed role's slot CON → keep; else park
+    # (or close when clean=True). Strict: park/close all unclaimed (no keep).
     slot_members = (
         _build_slot_membership(role_results, parent_info, windows)
         if marginal_mode != "strict"
@@ -830,6 +840,18 @@ def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
             kept.append(entry)
             unclaimed.append(entry)
             counts["kept"] += 1
+        elif clean:
+            entry = dict(summary)
+            entry["status"] = "closed"
+            unclaimed.append(entry)
+            counts["closed"] += 1
+            actions.append(
+                {
+                    "op": "close",
+                    "windowId": w.get("windowId"),
+                    "path": w.get("path"),
+                }
+            )
         else:
             entry = dict(summary)
             entry["status"] = "parked"
@@ -876,9 +898,14 @@ def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
 
     counts["structure"] = len(structure_slots)
 
-    # Keeps are no placement work
-    has_placement = counts["opened"] > 0 or counts["moved"] > 0 or counts["parked"] > 0
-    has_work = has_placement or counts["structure"] > 0
+    # Keeps are no placement work. Closes are residual work but not placement
+    # (no overflow/mon rewrite for close-only plans).
+    has_placement = (
+        counts["opened"] > 0 or counts["moved"] > 0 or counts["parked"] > 0
+    )
+    has_work = (
+        has_placement or counts["closed"] > 0 or counts["structure"] > 0
+    )
     ensure_actions: list[dict[str, Any]] = []
     if has_work:
         # mon-level splits only when placement changes (avoid rewriting CON layout).
@@ -935,6 +962,7 @@ def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
         "actions": final_actions,
         "kept": kept,
         "unclaimed": unclaimed,
+        "clean": clean,
     }
 
 

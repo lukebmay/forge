@@ -11,10 +11,9 @@
 
 | Order | ID | Task | Why first |
 | ---: | --- | --- | --- |
-| 1 | **WR6** | Live black trials | Full acceptance after WR14 |
-| 2 | **WR15** | `--clean` | Opt-in only |
+| 1 | **WR6** | Live black trials | Full acceptance after WR15 |
 
-**WR10–WR14 Done** (sugar, coexist, shellrc `dev`, docs, tab settle).
+**WR10–WR15 Done** (sugar, coexist, shellrc `dev`, docs, tab settle, `--clean`).
 
 Live thrash/tab bugs still **outrank** this queue if they return. Meta
 (personal fork) stays below.
@@ -24,7 +23,7 @@ useful later; it does **not** fix windows.
 
 | Doc | Role |
 | --- | --- |
-| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | **P1** — WR1–WR5 + WR10–14 Done; next **WR6** |
+| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | **P1** — WR1–WR5 + WR10–15 Done; next **WR6** |
 | [forge-command.md](./plans/forge-command.md) | FC0–FC5 **Done** — imperative workon shipped |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 + session-layout Ghostty **Done** |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome + install HUP path live |
@@ -64,7 +63,6 @@ the desk is stable.
 | --- | --- | --- | --- |
 | **P0** | Live thrash/tab bugs (if any) | **Interrupt** | Yes |
 | **P1** | [workon](./plans/forge-workon-reconcile.md) **WR6** live trials | Ready | Yes |
-| P2 | WR15 `--clean` | Later | Occasional |
 | P2 | Live daily-drive; report new bugs | Ongoing | Yes |
 | P3 | [Personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership only |
 | later | WR7 capture · WR8 stableKey · WR9 env | Later | Polish |
@@ -76,6 +74,7 @@ the desk is stable.
 
 | Item | Note |
 | --- | --- |
+| **WR15 `--clean`** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr15-clean.md) |
 | **WR14 tab settle** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr14-tab-settle.md) |
 | **WR13 docs/help** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr13-docs.md) |
 | **WR12 shellrc dev sugar** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr12-shellrc-dev-sugar.md) (shellrc uncommitted) |
@@ -96,10 +95,14 @@ the desk is stable.
 
 ## Session wrap (2026-07-27)
 
-- **WR14 Done (A/B AGREE):** post-`RunSteps` tab settle + focus-update chrome
-  order; idle cleared on disable.
+- **Install UX:** quiet `forge install` checkmark checklist; no routine prompts;
+  `--verbose` for detail. Commit `feat(install): quiet checkmark UX…`.
+- **WR14 Done:** post-RunSteps tab settle (raise → chrome restack).
+- **WR15 Done:** `forge workon --clean` / `--clean --force` residual close
+  (Meta delete only); default park path unchanged.
 - **WR10–WR13** already Done (sugar, coexist, shellrc `dev`, docs).
-- **Next:** **WR6** live black trial → WR15 `--clean`.
+- **Next:** **WR6** live black trial (manual dual-mon acceptance).
+- Stopped new A/B after WR15 (token budget); WR6 is live-only.
 
 ---
 

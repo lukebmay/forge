@@ -127,6 +127,8 @@ Forge does not hardcode shellrc paths.
 | **v1 steps** | optional `gdisplays` → `SettingsLoad` → mixed `steps` |
 | **`--dry-run` / `plan`** | print counts + plan JSON; no launch/RunSteps |
 | **`--force-launch`** | require `steps[]`; skip reconcile |
+| **`--clean`** | close residuals (Meta delete) instead of park; roles/keeps stay |
+| **`--clean --force`** | stronger delete (skip can_close); never process-kill |
 | **`--tree-file PATH`** | offline forest for dry-run (no live GetTree) |
 
 Defaults: `marginal.mode=coexist` (slot companions **kept**), residuals

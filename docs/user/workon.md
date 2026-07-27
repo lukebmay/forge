@@ -130,13 +130,17 @@ Prefer `{ "split", "content" }` when a nested array would be ambiguous.
 By default, unclaimed windows **already in** a workon slot group stay
 (**kept**); role windows are ordered **first** in that group. True
 residuals park to overflow (`mon0.overflow` tabbed). Close is never
-default.
+default — use **`--clean`** only when you want residuals closed.
 
-| Setting | Default | Effect |
+| Setting / flag | Default | Effect |
 | --- | --- | --- |
 | `marginal.mode` | `coexist` | Keep slot companions; park residuals |
 | `marginal.roleOrder` | `first` | Role windows prefix of the slot group |
 | `marginal.mode: "strict"` | — | Park **all** unclaimed (old blunt behavior) |
+| `--clean` | off | Close residuals (Meta delete) instead of park |
+| `--clean --force` | — | Stronger delete (skip `can_close` veto); **never** process-kill |
+
+Kept companions and claimed role windows are never closed.
 
 Optional top-level `floating: []` is reserved (location later).
 
@@ -181,6 +185,7 @@ present, it wins for structure.
 | Schema | Behavior |
 | --- | --- |
 | **v2 reconcile** (`tiles` or `roles` + layout) | Snapshot tree → match roles → open gaps, move/keep/park; second run ≈ no-op |
+| **`--clean`** | Residuals close via Meta delete (not park); roles + keeps untouched |
 | **v1 steps** (`version: 1` / `mode: "steps"` / `steps[]` without roles) | Replay launch + focus/layout ops (can double apps) |
 | **`--force-launch`** | Force the steps path even on a dual profile |
 
@@ -220,7 +225,7 @@ shell init when you want host profiles.
 
 - Always dry-run a new profile: `forge workon <name> --dry-run`.
 - Title matchers (`title~=`) disambiguate several windows of the same class.
-- Dry-run counts: `reused` / `opened` / `moved` / `kept` / `parked`.
+- Dry-run counts: `reused` / `opened` / `moved` / `kept` / `parked` (or `closed` with `--clean`).
 - Optional: `displays` → `gdisplays load`; `settings` → DBus SettingsLoad.
 - Offline plan: `--tree-file path/to/GetTree.json` with `--dry-run`.
 - Help color: `forge --color=always workon help` (or `never` / `auto`).

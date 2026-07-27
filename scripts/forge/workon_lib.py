@@ -16,7 +16,7 @@ DEFAULT_CONFIG_ROOT = Path.home() / ".config" / "forge"
 
 CLI_ONLY_OPS = frozenset({"launch", "wait-window", "wait"})
 EXTENSION_OPS = frozenset(
-    {"ping", "focus", "swap", "move", "layout", "place-next", "set"}
+    {"ping", "focus", "swap", "move", "layout", "place-next", "set", "close"}
 )
 
 _NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")

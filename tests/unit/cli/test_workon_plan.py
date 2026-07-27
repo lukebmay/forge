@@ -1030,6 +1030,7 @@ class TestMarginalCoexist(unittest.TestCase):
         # 703 is extra chrome not in left-tab CON → residual park
         self.assertEqual(plan["counts"]["kept"], 0)
         self.assertEqual(plan["counts"]["parked"], 1)
+        self.assertEqual(plan["counts"].get("closed", 0), 0)
         parks = [a for a in plan["actions"] if a["op"] == "park"]
         self.assertEqual(len(parks), 1)
         self.assertEqual(parks[0]["windowId"], 703)
@@ -1124,6 +1125,92 @@ class TestMarginalCoexist(unittest.TestCase):
         self.assertEqual(len(parks), 1)
         self.assertEqual(parks[0]["windowId"], 502)
         self.assertEqual(plan["kept"], [])
+
+
+class TestCleanResiduals(unittest.TestCase):
+    """WR15: --clean closes residuals that would otherwise park."""
+
+    def _ghostty_profile(self, mode="coexist"):
+        return {
+            "version": 2,
+            "marginal": {"mode": mode, "roleOrder": "first"},
+            "layout": {
+                "mon0": {
+                    "children": [
+                        {"id": "term", "roles": ["ghostty"]},
+                    ]
+                }
+            },
+            "roles": [
+                {
+                    "id": "ghostty",
+                    "match": {"class": "com.mitchellh.ghostty"},
+                    "open": {"app": "ghostty"},
+                    "slot": "mon0.term",
+                }
+            ],
+        }
+
+    def test_default_parks_strays(self):
+        forest = _load("tree-stray-wrong-mon.json")
+        plan = plan_reconcile(forest, self._ghostty_profile())
+        self.assertFalse(plan.get("clean"))
+        self.assertEqual(plan["counts"]["parked"], 2)
+        self.assertEqual(plan["counts"]["closed"], 0)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertTrue(any(a["op"] == "park" for a in plan["actions"]))
+        self.assertFalse(any(a["op"] == "close" for a in plan["actions"]))
+
+    def test_clean_closes_strays_not_roles(self):
+        forest = _load("tree-stray-wrong-mon.json")
+        plan = plan_reconcile(forest, self._ghostty_profile(), clean=True)
+        self.assertTrue(plan["clean"])
+        self.assertEqual(plan["counts"]["reused"], 1)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["closed"], 2)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        closes = [a for a in plan["actions"] if a["op"] == "close"]
+        self.assertEqual(len(closes), 2)
+        self.assertEqual({c["windowId"] for c in closes}, {602, 603})
+        self.assertFalse(any(a["op"] == "park" for a in plan["actions"]))
+        # role window not closed
+        role_ids = {
+            r.get("windowId") for r in plan["roles"] if r.get("windowId") is not None
+        }
+        for c in closes:
+            self.assertNotIn(c["windowId"], role_ids)
+
+    def test_clean_keeps_companions(self):
+        forest = _load("tree-ghostty-nautilus-tab.json")
+        plan = plan_reconcile(forest, self._ghostty_profile(), clean=True)
+        self.assertEqual(plan["counts"]["reused"], 1)
+        self.assertEqual(plan["counts"]["kept"], 1)
+        self.assertEqual(plan["counts"]["closed"], 0)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertFalse(any(a["op"] == "close" for a in plan["actions"]))
+        self.assertEqual(plan["kept"][0]["windowId"], 502)
+
+    def test_clean_strict_closes_companions(self):
+        forest = _load("tree-ghostty-nautilus-tab.json")
+        plan = plan_reconcile(
+            forest, self._ghostty_profile(mode="strict"), clean=True
+        )
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["closed"], 1)
+        closes = [a for a in plan["actions"] if a["op"] == "close"]
+        self.assertEqual(len(closes), 1)
+        self.assertEqual(closes[0]["windowId"], 502)
+
+    def test_clean_no_overflow_ensure(self):
+        forest = _load("tree-stray-wrong-mon.json")
+        plan = plan_reconcile(forest, self._ghostty_profile(), clean=True)
+        overflow_ensures = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and "overflow" in str(a.get("slot", ""))
+        ]
+        self.assertEqual(overflow_ensures, [])
 
 
 if __name__ == "__main__":

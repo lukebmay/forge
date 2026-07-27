@@ -147,6 +147,52 @@ class TestActionMapping(unittest.TestCase):
             ],
         )
 
+    def test_actions_to_extension_steps_close(self):
+        steps = actions_to_extension_steps(
+            [
+                {"op": "close", "windowId": 42, "path": "mo0ws0/2"},
+                {"op": "open", "role": "x", "open": {"app": "x"}, "slot": "mon0.a"},
+            ]
+        )
+        self.assertEqual(steps, [{"op": "close", "selector": "id:42"}])
+
+    def test_actions_to_extension_steps_close_force(self):
+        steps = actions_to_extension_steps(
+            [{"op": "close", "windowId": 7}],
+            force_close=True,
+        )
+        self.assertEqual(
+            steps, [{"op": "close", "selector": "id:7", "force": True}]
+        )
+
+    def test_clean_plan_maps_to_close_steps(self):
+        plan = plan_reconcile(
+            _load("tree-stray-wrong-mon.json"),
+            {
+                "version": 2,
+                "layout": {
+                    "mon0": {
+                        "children": [{"id": "term", "roles": ["ghostty"]}]
+                    }
+                },
+                "roles": [
+                    {
+                        "id": "ghostty",
+                        "match": {"class": "com.mitchellh.ghostty"},
+                        "open": {"app": "ghostty"},
+                        "slot": "mon0.term",
+                    }
+                ],
+            },
+            clean=True,
+        )
+        steps = actions_to_extension_steps(plan["actions"])
+        close_sels = {
+            s["selector"] for s in steps if s.get("op") == "close"
+        }
+        self.assertEqual(close_sels, {"id:602", "id:603"})
+        self.assertFalse(any(s.get("op") == "move" and "overflow" in str(s) for s in steps))
+
     def test_ensure_layout_skipped_without_window(self):
         # Empty desk: layout not feasible until something is open
         steps = actions_to_extension_steps(

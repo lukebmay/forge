@@ -130,9 +130,11 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
         ("forge workon help", "This guide"),
         ("forge workon list", "Profiles (stderr human; stdout JSON)"),
         ("forge workon show <name>", "Resolved path + validated profile"),
-        ("forge workon <name> --dry-run", "Plan only (reused/open/move/kept/park)"),
+        ("forge workon <name> --dry-run", "Plan only (reused/open/move/kept/park|close)"),
         ("forge workon <name>", "Apply reconcile (or steps)"),
         ("forge workon <name> --force-launch", "Imperative steps[] only (escape hatch)"),
+        ("forge workon <name> --clean", "Close residuals (Meta delete; not park)"),
+        ("forge workon <name> --clean --force", "Stronger delete; never process-kill"),
     ):
         _out(s, "  ", cmd(line, **kw))
         _out(s, "      ", dim(desc, **kw))
@@ -218,13 +220,16 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  ", bold("v2 tiles or roles+layout", **kw), "  reconcile (daily default; idempotent)")
     _out(s, "  ", bold("v1 steps[]", **kw), "         imperative replay (can double apps)")
     _out(s, "  ", bold("--force-launch", **kw), "      force steps[] path for debug")
+    _out(s, "  ", bold("--clean", **kw), "            close residuals (default parks to overflow)")
+    _out(s, "  ", bold("--clean --force", **kw), "     stronger Meta delete; never process-kill")
     _out(s, "  ", bold("marginal.mode=strict", **kw), "  park all unclaimed (no companion keep)")
     _blank(s)
 
     _out(s, heading("Tips", **kw))
     _out(s, "  • Always dry-run a new profile first.")
     _out(s, "  • Match titles with ", cyan('title~="substr"', **kw), " when several windows share a class.")
-    _out(s, "  • Counts: reused / opened / moved / kept / parked.")
+    _out(s, "  • Counts: reused / opened / moved / kept / parked (or closed with --clean).")
+    _out(s, "  • Default never closes windows; role windows and kept companions stay.")
     _out(s, "  • Optional: ", cyan('"displays": "scene"', **kw), " -> gdisplays load; ", cyan('"settings": "name"', **kw), " -> SettingsLoad.")
     _out(s, "  • Offline plan: ", cmd("forge workon name --dry-run --tree-file forest.json", **kw))
     _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/workon-tiles-minimal.json", **kw))

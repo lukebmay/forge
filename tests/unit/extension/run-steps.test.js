@@ -105,6 +105,21 @@ describe("run-steps pure helpers (FC4)", () => {
     it("lists extension ops", () => {
       expect(EXTENSION_OPS).toContain("layout");
       expect(EXTENSION_OPS).toContain("place-next");
+      expect(EXTENSION_OPS).toContain("close");
+    });
+
+    it("normalizes close with optional force", () => {
+      expect(validateStep({ op: "close", selector: "id:9" })).toEqual({
+        ok: true,
+        step: { op: "close", selector: "id:9" },
+      });
+      expect(validateStep({ op: "close", tile: "id:1", force: true }).step).toMatchObject({
+        op: "close",
+        selector: "id:1",
+        force: true,
+      });
+      expect(validateStep({ op: "close" }).ok).toBe(false);
+      expect(validateStep({ op: "close" }).error).toMatch(/selector/);
     });
   });
 
@@ -201,6 +216,14 @@ describe("run-steps pure helpers (FC4)", () => {
       );
       expect(r.ok).toBe(true);
       expect(r.results[1].mode).toBe("HSPLIT");
+    });
+
+    it("dispatches close", () => {
+      const r = runStepsDispatch([{ op: "close", selector: "id:3", force: true }], {
+        close: (s) => ({ ok: true, closed: true, force: !!s.force }),
+      });
+      expect(r.ok).toBe(true);
+      expect(r.results[0]).toMatchObject({ closed: true, force: true });
     });
 
     it("catches handler throws", () => {

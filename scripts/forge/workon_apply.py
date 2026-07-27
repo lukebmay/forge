@@ -122,16 +122,21 @@ def _move_step_from_action(a: dict[str, Any]) -> Optional[dict[str, Any]]:
     return step
 
 
-def actions_to_extension_steps(actions: Any) -> list[dict[str, Any]]:
+def actions_to_extension_steps(
+    actions: Any, *, force_close: bool = False
+) -> list[dict[str, Any]]:
     """
-    Map plan actions to extension RunSteps (move / layout).
+    Map plan actions to extension RunSteps (move / layout / close).
     Skips open (CLI launch).
 
     layout needs a WINDOW selector (session-api _layoutOp → matchWindows).
     mon path:moNws0 is valid move dest only — not layout selector.
 
-    Order: placement moves/parks first, then ensure_layout (so mon-level
-    layout selectors run after windows are on the target monitor).
+    Order: placement moves/parks and residual closes first, then
+    ensure_layout (so mon-level layout selectors run after windows are on
+    the target monitor).
+
+    close → {op: close, selector: id:…} (+ force when force_close).
 
     ensure_layout with windowIds (structure repair):
       - tabbed/stacked: layout on first id, then move remaining ids into it
@@ -141,6 +146,7 @@ def actions_to_extension_steps(actions: Any) -> list[dict[str, Any]]:
     """
     if not isinstance(actions, list):
         return []
+    force_close = bool(force_close)
 
     # First pass: window id per mon from move/park (fallback for mon splits)
     window_by_mon: dict[int, str] = {}
@@ -169,6 +175,15 @@ def actions_to_extension_steps(actions: Any) -> list[dict[str, Any]]:
             step = _move_step_from_action(a)
             if step:
                 place_steps.append(step)
+            continue
+        if op == "close":
+            tile = window_tile_selector(a)
+            if not tile:
+                continue
+            close_step: dict[str, Any] = {"op": "close", "selector": tile}
+            if force_close or a.get("force"):
+                close_step["force"] = True
+            place_steps.append(close_step)
             continue
         if op != "ensure_layout":
             continue

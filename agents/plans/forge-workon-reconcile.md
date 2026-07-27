@@ -1,15 +1,16 @@
 # Plan: Idempotent `forge workon` (desired-state layout)
 
-**Status:** WR1–WR5 + **WR10–WR14 Done** — next **WR6** live  
+**Status:** WR1–WR5 + **WR10–WR15 Done** — next **WR6** live  
 **Priority:** **P1 product** (day-to-day #3 after live regression watch)  
 **Base:** this tree; builds on [forge-command.md](./forge-command.md) FC0–FC5  
 **Related:** OP1 open-app, T6 GetTree, shellrc `gdisplays` host layout  
 
 ### Session note (2026-07-27)
 
-**WR14 A/B AGREE.** Post-`RunSteps` settle (raise tab/stack then chrome) +
-focus-update raise→decoration order. B: idle source cleared on disable.
-**Next:** WR6 live black trial → WR15 `--clean`.
+**WR15 implemented (A).** `plan_reconcile(clean=)` closes residuals;
+RunSteps `close` = Meta.delete only; CLI `--clean` / `--clean --force`.
+Default park path unchanged. Unit tests green.
+**Next:** WR6 live black trial (then WR7 capture / polish).
 
 ---
 
@@ -382,8 +383,8 @@ forge workon <name> [--dry-run]
 | **WR12** | shellrc `hosts/black/dev.json` → sugar + README | **Done** (shellrc uncommitted) | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr12-shellrc-dev-sugar.md) |
 | **WR13** | Docs/help/examples: sugar defaults, coexist, floating | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr13-docs.md) |
 | **WR14** | Post-`workon` **tab click / focus settle** | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr14-tab-settle.md) |
+| **WR15** | `--clean` / `--clean --force` (residuals only) | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr15-clean.md) |
 | **WR6** | Live black: empty / perfect / messy + companions | **Ready** | S | Acceptance after sugar+coexist |
-| **WR15** | `--clean` / `--clean --force` (residuals only) | Later | S | Escape hatch; not default path |
 | **WR7** | `forge workon capture` sketch from tree | Later | M | Authoring assist after sugar lands |
 | **WR8** | stableKey mon names (T7) in profiles | Later | S | Multi-host polish |
 | **WR9** | shellrc env snippet `FORGE_WORKON_DIR` | Later | S | Out of critical path |
@@ -392,9 +393,9 @@ forge workon <name> [--dry-run]
 
 | Task | Path |
 | --- | --- |
-| WR10–WR14 | [completed/](./forge-workon-reconcile/completed/) |
+| WR10–WR15 | [completed/](./forge-workon-reconcile/completed/) |
 
-**Next A/B:** **WR6** live black trial (then WR15).
+**Next A/B:** **WR6** live black trial.
 
 ---
 
@@ -481,5 +482,4 @@ WR13 docs/help ◄───────────────────┘
 
 ## Next task
 
-**WR14** — post-`workon` tab click / focus settle (no dedicated task file yet;
-create under `agents/tasks/` when starting).
+**WR6** — live black: empty / perfect / messy + companions (acceptance).

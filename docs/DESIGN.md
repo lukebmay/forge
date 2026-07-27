@@ -619,7 +619,9 @@ planner, two spellings — rehome/claim/structure repair stay on IR.
 
 **Marginal windows** default to **coexist**: companions already living in a
 workon slot stay; role windows are ordered **first** in that slot. True
-residuals go to overflow. Close is never default (`--clean` later). Each
+residuals go to overflow. Close is never default; opt-in
+`forge workon --clean` closes only true residuals (Meta delete, never
+process-kill; `--clean --force` skips can_close veto). Each
 slot is a **logical** group (planner membership set); the live tree still
 collapses single-child CONs, so a lone Ghostty is not forced into lonely
 tab chrome until a second member appears.
