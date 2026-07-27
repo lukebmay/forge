@@ -1128,6 +1128,7 @@ def plan_reconcile(
     final_actions = deduped_ensure + actions
     nothing = not has_work
     thrash_risk = _compute_thrash_risk(final_actions, counts)
+    thrash_state = detect_thrash(forest, prof)
 
     return {
         "ok": True,
@@ -1140,6 +1141,7 @@ def plan_reconcile(
         "unclaimed": unclaimed,
         "clean": clean,
         "thrashRisk": thrash_risk,
+        "thrashState": thrash_state,
     }
 
 
@@ -1963,6 +1965,191 @@ def _windows_share_group(
         if got != want:
             return False
     return True
+
+
+# Strong thrash: any reason → thrashed; score is severity for later gates.
+_THRASH_SCORE_THRESHOLD = 3
+_THRASH_WRONG_MON_K = 2
+
+
+def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
+    """
+    Pure thrash detector over GetTree forest + v2 profile.
+
+    Returns { thrashed, score, reasons[] }. Does not plan actions.
+    Accepts raw or validated/resolved profile (re-validates + mon-key resolve).
+    """
+    if not isinstance(forest, dict):
+        raise ValueError("forest must be a JSON object")
+    prof = validate_reconcile_profile(profile)
+    prof = resolve_profile_mon_keys(prof, forest)
+
+    windows = collect_windows(forest)
+    parent_info = _window_parent_index(forest)
+    layout_slot_modes = _slot_layout_modes(prof)
+    role_results = _claim_roles_for_detect(prof, windows)
+
+    score = 0
+    reasons: list[str] = []
+
+    # ≥K roles on wrong monitor
+    wrong_mon = 0
+    for r in role_results:
+        if r.get("windowId") is None:
+            continue
+        desired = mon_index_from_slot(str(r.get("slot") or ""))
+        win_mon = r.get("monitor")
+        if desired is not None and win_mon is not None and int(win_mon) != int(desired):
+            wrong_mon += 1
+    if wrong_mon >= _THRASH_WRONG_MON_K:
+        score += 2 * wrong_mon
+        reasons.append(f"roles-wrong-mon:{wrong_mon}")
+
+    # Multi-role tabbed slots: claimed roles must share one TABBED CON
+    for slot, mode in sorted(layout_slot_modes.items()):
+        if mode != "tabbed":
+            continue
+        if str(slot).endswith(".overflow"):
+            continue
+        wids = _role_window_ids_for_slot(role_results, slot)
+        if len(wids) < 2:
+            continue
+        if not _windows_share_group(wids, parent_info, "tabbed"):
+            score += 3
+            reasons.append(f"tabbed-roles-not-grouped:{slot}")
+
+    # Mon structure: excess mon-level kids; nested H/V under a role view
+    for mon_key, mon_body in sorted((prof.get("layout") or {}).items()):
+        if not isinstance(mon_body, dict):
+            continue
+        mon_idx = mon_index_from_slot(mon_key)
+        if mon_idx is None:
+            continue
+        mon_node = _monitor_for_index(forest, mon_idx)
+        if mon_node is None:
+            continue
+        live_kids = mon_node.get("children") or []
+        if not isinstance(live_kids, list):
+            live_kids = []
+        expected = mon_body.get("children") or []
+        if not isinstance(expected, list):
+            expected = []
+        n_exp = len(expected)
+        n_live = len(live_kids)
+        # ≫ N mon-level children (e.g. 5 vs 2); 4 vs 2 alone is not thrash
+        if n_exp > 0 and n_live > max(n_exp + 1, n_exp * 2):
+            score += 3
+            reasons.append(f"mon-children-excess:mon{mon_idx}:{n_live}>{n_exp}")
+
+        for view in expected:
+            if not isinstance(view, dict) or not view.get("id"):
+                continue
+            view_id = str(view["id"])
+            slot = f"{mon_key}.{view_id}"
+            wids = [
+                r["windowId"]
+                for r in role_results
+                if r.get("windowId") is not None
+                and (
+                    str(r.get("slot") or "") == slot
+                    or str(r.get("slot") or "").startswith(slot + ".")
+                )
+            ]
+            if not wids:
+                continue
+            info = parent_info.get(str(wids[0])) or {}
+            loc = _mon_child_loc(info.get("path"))
+            if not loc:
+                continue
+            _mon_id, child_i = loc
+            if child_i < 0 or child_i >= n_live:
+                continue
+            child_node = live_kids[child_i]
+            if not isinstance(child_node, dict):
+                continue
+            # Nested H/V under mon-child (term was HSPLIT(ghostty, HSPLIT(fb,chess)))
+            if _node_has_nested_hv_split(child_node):
+                score += 4
+                reasons.append(f"nested-split-view:{slot}")
+
+    # Dedup reasons
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for r in reasons:
+        if r not in seen:
+            seen.add(r)
+            uniq.append(r)
+
+    thrashed = bool(uniq) or score >= _THRASH_SCORE_THRESHOLD
+    return {
+        "thrashed": thrashed,
+        "score": score,
+        "reasons": uniq,
+    }
+
+
+def _claim_roles_for_detect(
+    prof: dict[str, Any], windows: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Claim windows for roles (same preference as plan_reconcile)."""
+    claimed: set[str] = set()
+    results: list[dict[str, Any]] = []
+    for role in prof.get("roles") or []:
+        rid = role.get("id")
+        slot = str(role.get("slot") or "")
+        desired_mon = mon_index_from_slot(slot)
+        pref_mon = _match_mon_pref(role.get("match") or {}, desired_mon)
+        candidates = [
+            w
+            for w in windows
+            if _window_key(w) not in claimed
+            and window_matches(w, role.get("match") or {})
+        ]
+        chosen = _pick_window(candidates, pref_mon)
+        entry: dict[str, Any] = {"id": rid, "slot": slot}
+        if chosen is None:
+            entry["status"] = "open"
+        else:
+            claimed.add(_window_key(chosen))
+            entry["windowId"] = chosen.get("windowId")
+            entry["path"] = chosen.get("path")
+            entry["monitor"] = window_monitor_index(chosen)
+            entry["status"] = "claimed"
+        results.append(entry)
+    return results
+
+
+def _monitor_for_index(forest: Any, mon_idx: int) -> Optional[dict[str, Any]]:
+    """First ws-ordered MONITOR node for mon index."""
+    for m in _iter_forest_monitors(forest):
+        if not isinstance(m, dict):
+            continue
+        if _monitor_node_index(m) == mon_idx:
+            return m
+    return None
+
+
+def _node_has_nested_hv_split(node: dict[str, Any]) -> bool:
+    """True if this CON is H/V and contains a nested H/V CON (sliver thrash)."""
+    ntype = str(node.get("nodeType") or node.get("type") or "").upper()
+    if ntype == "WINDOW":
+        return False
+    layout = str(node.get("layout") or "").upper()
+    kids = node.get("children") or node.get("childNodes") or []
+    if not isinstance(kids, list) or layout not in ("HSPLIT", "VSPLIT"):
+        return False
+    for c in kids:
+        if not isinstance(c, dict):
+            continue
+        ct = str(c.get("nodeType") or c.get("type") or "").upper()
+        if ct == "WINDOW":
+            continue
+        cl = str(c.get("layout") or "").upper()
+        if cl in ("HSPLIT", "VSPLIT"):
+            return True
+        if _node_has_nested_hv_split(c):
+            return True
+    return False
 
 
 def _parse_regex_literal(body: str) -> tuple[str, str]:

@@ -16,6 +16,7 @@ if str(_FORGE_CLI) not in sys.path:
 
 from workon_plan import (  # noqa: E402
     collect_windows,
+    detect_thrash,
     forest_stable_key_map,
     mon_head_and_rest,
     mon_index_from_slot,
@@ -491,6 +492,54 @@ class TestPlanPerfect(unittest.TestCase):
         self.assertEqual(plan["counts"]["reused"], 7)
         self.assertEqual(plan["actions"], [])
         self.assertTrue(all(r["status"] == "reused" for r in plan["roles"]))
+
+
+class TestDetectThrash(unittest.TestCase):
+    """TZ-detect: desk thrash vs sane (plan.thrashState)."""
+
+    def test_detect_thrash_nested_hsplit_mon1(self):
+        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        profile = _load("profile-dev-v2.json")
+        state = detect_thrash(forest, profile)
+        self.assertTrue(state["thrashed"])
+        self.assertGreaterEqual(state["score"], 3)
+        blob = " ".join(state["reasons"]).lower()
+        self.assertTrue(
+            any(
+                k in blob
+                for k in (
+                    "nested-split",
+                    "term",
+                    "structure",
+                    "mon1.term",
+                )
+            ),
+            f"reasons should mention nested/term structure: {state['reasons']}",
+        )
+
+    def test_detect_thrash_perfect_false(self):
+        forest = _load("tree-perfect.json")
+        profile = _load("profile-dev-v2.json")
+        state = detect_thrash(forest, profile)
+        self.assertFalse(state["thrashed"])
+        self.assertEqual(state["score"], 0)
+        self.assertEqual(state["reasons"], [])
+
+    def test_plan_reconcile_thrash_state_on_thrash_fixture(self):
+        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertIn("thrashState", plan)
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertGreaterEqual(plan["thrashState"]["score"], 3)
+
+    def test_plan_reconcile_thrash_state_on_perfect(self):
+        forest = _load("tree-perfect.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertIn("thrashState", plan)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["thrashState"]["score"], 0)
 
 
 class TestPlanStructureRepair(unittest.TestCase):

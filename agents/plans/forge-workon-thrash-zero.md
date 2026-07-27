@@ -1,28 +1,32 @@
 # Plan: Zero thrash for `forge workon` (product gate)
 
-**Status:** Active — **P0 next session** (TZ1 shipped; strategy locked 2026-07-27)  
+**Status:** Active — **P0** (TZ1 + TZ-detect shipped; next TZ-recover)  
 **Priority:** **P0 product survival** (outranks polish, tidy, optional extracts)  
 **Base:** this tree  
 **Related:** [forge-workon-reconcile.md](./forge-workon-reconcile.md) WR11–WR16,
 session H1 soft-rehome (different thrash class — lock/wake Meta)
 
-### Session note (2026-07-27)
+### Session note (2026-07-27) — TZ-detect shipped (A)
 
-**Product locks (user, wrap-up):**
+**TZ-detect Done (implementer):** `detect_thrash(forest, profile)` →
+`{ thrashed, score, reasons[] }` on every `plan_reconcile` as `plan.thrashState`.
+No Mode B park/recover yet; residual leave/park unchanged.
+
+| API | Detail |
+| --- | --- |
+| `detect_thrash` | `scripts/forge/workon_plan.py` — pure; validates + mon-key resolve |
+| Signals | tabbed roles not co-grouped; mon-children ≫ N; nested H/V under role mon-child; ≥2 wrong-mon roles |
+| Fixture | `tree-thrash-mon1-nested-hsplit.json` (live mon1 shape) |
+| Tests | `TestDetectThrash` — thrash/perfect detect + plan thrashState (79 plan tests green) |
+
+**Product locks (unchanged):**
 
 | Mode | Behavior |
 | --- | --- |
-| **A — sane desk** | Re-seat **roles**; **tab marginals into the view area they sit in** (wholly or partially → first overlapping view). Not “leave them alone.” |
-| **B — thrash** | Re-seat **roles only**; soft-park all other tiled windows to last mon last group. No marginal archaeology. |
+| **A — sane desk** | Re-seat **roles**; **tab marginals into the view area they sit in** |
+| **B — thrash** | Roles only; soft-park other tiles to last mon last group |
 
-“Residual / leave” (TZ1 default) was a thrash brake — **superseded for Mode A.**
-`forge workon dev` must clean up to a sane starting desk.
-
-Container model: **HSPLIT | VSPLIT | TABBED** (H/V nest; tab flatten is lossy).
-
-**Live evidence:** mon1 nested HSPLIT(ghostty, HSPLIT(fb,chess)) | TABBED chrome.
-
-**Next session:** TZ-detect → TZ-recover + TZ-collect → TZ-tab-apply → TZ-gate.
+**Next:** **TZ-recover** (Mode B using `thrashState`) → TZ-collect → TZ-tab-apply → TZ-gate.
 
 
 ---
@@ -167,7 +171,7 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | ID | Task file | Goal | Size | Depends |
 | --- | --- | --- | --- | --- |
 | **TZ1** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz1-leave-soft-park.md) | Leave residual + soft park + thrashRisk | — | **Done** |
-| **TZ-detect** | [task](../tasks/forge-workon-thrash-zero_tz-detect.md) | `detect_thrash` + fixture from live mon1 dump | M | TZ1 |
+| **TZ-detect** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-detect.md) | `detect_thrash` + fixture from live mon1 dump | M | **Done** A/B AGREE |
 | **TZ-recover** | [task](../tasks/forge-workon-thrash-zero_tz-recover.md) | Mode B: roles only + park non-roles to safe dump | M | TZ-detect |
 | **TZ-collect** | [task](../tasks/forge-workon-thrash-zero_tz-collect.md) | Mode A: tab marginals into overlapping view areas | M | TZ-detect (+ views geometry) |
 | **TZ-tab-apply** | [task](../tasks/forge-workon-thrash-zero_tz-tab-apply.md) | Tab structure apply yields TABBED not nested HSPLIT | M | can parallel after TZ-detect analysis |
@@ -175,7 +179,7 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | **TZ-matrix** | [task](../tasks/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix + dry-run goldens for A/B modes | M | TZ-recover + TZ-tab-apply |
 | **TZ-live** | [task](../tasks/forge-workon-thrash-zero_tz-live.md) | Live black checklist (FB/Chess, Voice pull, thrash recover) | S | TZ-gate |
 
-**Next task for next session:** **TZ-detect** → TZ-recover + TZ-collect → TZ-tab-apply.
+**Next task:** **TZ-recover** (after B agrees TZ-detect) → TZ-collect → TZ-tab-apply.
 
 ---
 

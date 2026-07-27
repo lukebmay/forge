@@ -11,15 +11,15 @@
 
 | Order | ID | Task | Why first |
 | ---: | --- | --- | --- |
-| 1 | **TZ-detect** | [detect thrash](./tasks/forge-workon-thrash-zero_tz-detect.md) | Gate Mode A vs B |
-| 2 | **TZ-recover** | [roles + park dump](./tasks/forge-workon-thrash-zero_tz-recover.md) | Thrash recovery |
+| 1 | **TZ-detect** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-detect.md) | Gate Mode A vs B |
+| 2 | **TZ-recover** | [roles + park dump](./tasks/forge-workon-thrash-zero_tz-recover.md) | **Next** thrash recovery |
 | 3 | **TZ-collect** | [tab marginals into views](./tasks/forge-workon-thrash-zero_tz-collect.md) | Mode A cleanup (not leave) |
 | 4 | **TZ-tab-apply** | [TABBED not nested HSPLIT](./tasks/forge-workon-thrash-zero_tz-tab-apply.md) | Structure apply truth |
 | 5 | **TZ-gate** | [CLI A/B + --safe](./tasks/forge-workon-thrash-zero_tz-gate.md) | Wire product path |
 | 6 | **TZ-matrix** | [fixtures](./tasks/forge-workon-thrash-zero_tz-matrix.md) | Lock regressions |
 | 7 | **TZ-live** | [black checklist](./tasks/forge-workon-thrash-zero_tz-live.md) | Prove on daily driver |
 
-**Task force:** serial A → B per task. Start **TZ-detect**.
+**Task force:** serial A → B per task. Next **TZ-recover**.
 
 **Mode A product:** tab **marginals** into the view area they occupy (not leave-alone).  
 **Mode B:** thrash → roles only + soft-park rest.  
