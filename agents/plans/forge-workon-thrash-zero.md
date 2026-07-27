@@ -1,37 +1,28 @@
 # Plan: Zero thrash for `forge workon` (product gate)
 
-**Status:** Active — **P0** (TZ1 + TZ-detect + TZ-recover + TZ-collect shipped; next TZ-tab-apply)  
+**Status:** Active — **P0** (TZ1…TZ-tab-apply shipped A; next TZ-gate after B)  
 **Priority:** **P0 product survival** (outranks polish, tidy, optional extracts)  
 **Base:** this tree  
 **Related:** [forge-workon-reconcile.md](./forge-workon-reconcile.md) WR11–WR16,
 session H1 soft-rehome (different thrash class — lock/wake Meta)
 
-### Session note (2026-07-27) — TZ-collect shipped (A)
+### Session note (2026-07-27) — TZ-tab-apply shipped (A)
 
-**TZ-collect Done (implementer):** Mode A when not thrashed — build profile view
-regions (equal splits of mon rect / `geom:` stableKey); assign each marginal by
-rect overlap (partial/multi → **first** profile view); CON-sibling coexist +
-mon-direct span fallback when no rect; structure `windowIds` = roles + kept
-tabbed. Mode B unchanged (no collect). residual leave supersedes passive leave
-for assignable marginals (they keep + structure, not `left`).
+**TZ-tab-apply Done (implementer):** `_layoutOp` H/V→TABBED|STACKED **flattens**
+nested CON descendants into window leaves (`_flattenLayoutParentToWindows`)
+before setting layout / `lastTabFocus`. Mon-wrap before tab unchanged; quiet
+batch unchanged. CLI still: layout anchor then move remaining windowIds
+(mon-direct siblings join bag). No dual-mon rewrite; no tab-click/focus path.
 
-| Mode | Behavior now |
+| Case | Result |
 | --- | --- |
-| **A — not thrashed** | roles; collect marginals into views → tab structure; unassigned leave/park |
-| **B — thrashed** | roles open/move/structure; unclaimed → soft park; kept=0 |
+| Nested HSPLIT(Ghostty, HSPLIT(FB,Chess)) + layout tabbed | flat TABBED ×3 |
+| mon-direct G\|F\|C + layout + moves | CON TABBED with all three |
+| layout HSPLIT | nested CONs kept (no flatten) |
 
-| Fixture | Result |
-| --- | --- |
-| companions-direct | mon1.term tab [201,301,302]; no park; no mon ensure |
-| chrome-half (rects) | FB → mon1.comms tab [202,203,204,301] |
-| straddle (rects) | FB → mon1.term first [201,301] |
-| already tabbed | nothingToDo |
-| thrash nested | Mode B parks 301+302 |
-| perfect | nothingToDo |
+**Tests:** `bug-tz-tab-apply-flatten` 3; `bug-tab-click-activate` 5; cli pytest 179.
 
-**Tests:** `TestModeACollect` + prior; `tests/unit/cli/` 178 green.
-
-**Next:** **TZ-tab-apply** → TZ-gate.
+**Next:** B verify TZ-tab-apply → **TZ-gate**.
 
 
 ---
@@ -179,12 +170,12 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | **TZ-detect** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-detect.md) | `detect_thrash` + fixture from live mon1 dump | M | **Done** A/B AGREE |
 | **TZ-recover** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-recover.md) | Mode B: roles only + park non-roles to safe dump | M | **Done** A/B AGREE |
 | **TZ-collect** | [task](../tasks/forge-workon-thrash-zero_tz-collect.md) | Mode A: tab marginals into overlapping view areas | M | **Done** A (B verify) |
-| **TZ-tab-apply** | [task](../tasks/forge-workon-thrash-zero_tz-tab-apply.md) | Tab structure apply yields TABBED not nested HSPLIT | M | can parallel after TZ-detect analysis |
+| **TZ-tab-apply** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-tab-apply.md) | Tab structure apply yields TABBED not nested HSPLIT | M | **Done** A/B AGREE |
 | **TZ-gate** | [task](../tasks/forge-workon-thrash-zero_tz-gate.md) | CLI: Mode A collect / Mode B recover; `--safe` / `--force` | S | TZ-recover + TZ-collect |
 | **TZ-matrix** | [task](../tasks/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix + dry-run goldens for A/B modes | M | TZ-recover + TZ-tab-apply |
 | **TZ-live** | [task](../tasks/forge-workon-thrash-zero_tz-live.md) | Live black checklist (FB/Chess, Voice pull, thrash recover) | S | TZ-gate |
 
-**Next task:** **TZ-tab-apply** → TZ-gate.
+**Next task:** B verify **TZ-tab-apply** → **TZ-gate**.
 
 ---
 

@@ -423,6 +423,30 @@ class TestPlanToStepsFixture(unittest.TestCase):
             ],
         )
 
+    def test_ensure_layout_tabbed_multi_window_order(self):
+        """layout on anchor first (flatten + mon-wrap), then move others in."""
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "ensure_layout",
+                    "slot": "mon1.term",
+                    "mode": "tabbed",
+                    "windowIds": [201, 301, 302],
+                }
+            ]
+        )
+        self.assertEqual(
+            steps,
+            [
+                {"op": "layout", "mode": "tabbed", "selector": "id:201"},
+                {"op": "move", "tile": "id:301", "dest": "id:201"},
+                {"op": "move", "tile": "id:302", "dest": "id:201"},
+            ],
+        )
+        # layout must precede moves so mon-direct windows get a CON wrap first
+        self.assertEqual(steps[0]["op"], "layout")
+        self.assertTrue(all(s["op"] == "move" for s in steps[1:]))
+
     def test_move_position_start_from_plan(self):
         steps = actions_to_extension_steps(
             [

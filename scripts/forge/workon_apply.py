@@ -211,7 +211,8 @@ def actions_to_extension_steps(
                 id_sels.append(f"id:{wid}")
 
         if mode in ("tabbed", "stacked") and id_sels:
-            # Wrap first window in CON (when under mon) then fold siblings in.
+            # layout first: mon-wrap + H/V→tab flatten in extension _layoutOp;
+            # then move remaining ids onto anchor so mon-direct siblings join the bag.
             anchor = id_sels[0]
             layout_steps.append({"op": "layout", "mode": mode, "selector": anchor})
             for sel in id_sels[1:]:
