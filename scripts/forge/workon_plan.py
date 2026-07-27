@@ -879,6 +879,10 @@ def plan_reconcile(
     prof = resolve_profile_mon_keys(prof, forest)
     clean = bool(clean)
 
+    # Mode B gate — once; reused for residual policy + plan.thrashState.
+    thrash_state = detect_thrash(forest, prof)
+    thrashed = bool(thrash_state.get("thrashed"))
+
     windows = collect_windows(forest)
     claimed: set[str] = set()  # windowId keys
     role_results: list[dict[str, Any]] = []
@@ -905,6 +909,8 @@ def plan_reconcile(
     residual_mode = str(marginal.get("residual") or "leave").strip().lower()
     if residual_mode not in ("leave", "park"):
         residual_mode = "leave"
+    # Mode B: soft-park every non-role (clean still closes). Mode A residual unchanged.
+    force_park_residuals = thrashed and not clean
 
     for role in prof["roles"]:
         rid = role["id"]
@@ -970,11 +976,10 @@ def plan_reconcile(
                     slots_needing_layout[slot] = mode
         role_results.append(entry)
 
-    # Coexist: unclaimed in slot set → keep. Else leave (default) / soft park / close.
-    # Strict: no keep; residual policy still leave|park|clean.
+    # Coexist keep only when sane (Mode A). Thrash: never mon-child span keep of chaos.
     slot_members = (
         _build_slot_membership(role_results, parent_info, windows)
-        if marginal_mode != "strict"
+        if marginal_mode != "strict" and not thrashed
         else {}
     )
     key_to_slot: dict[str, str] = {}
@@ -984,7 +989,7 @@ def plan_reconcile(
 
     park_anchor = (
         _soft_park_anchor(windows, parent_info, claimed)
-        if residual_mode == "park" and not clean
+        if (residual_mode == "park" or force_park_residuals) and not clean
         else None
     )
 
@@ -996,7 +1001,7 @@ def plan_reconcile(
             continue
         summary = _window_summary(w)
         key = _window_key(w)
-        keep_slot = key_to_slot.get(key) if marginal_mode != "strict" else None
+        keep_slot = key_to_slot.get(key) if key_to_slot else None
         if keep_slot is not None:
             entry = dict(summary)
             entry["status"] = "kept"
@@ -1016,7 +1021,7 @@ def plan_reconcile(
                     "path": w.get("path"),
                 }
             )
-        elif residual_mode == "leave":
+        elif residual_mode == "leave" and not force_park_residuals:
             entry = dict(summary)
             entry["status"] = "left"
             left.append(entry)
@@ -1046,6 +1051,7 @@ def plan_reconcile(
     # Soft park only: no overflow ensure_layout (avoids mon rewrite).
 
     # Tabbed/stacked: repair when not co-grouped. Never thrash-reorder if shared.
+    # Mode B: kept empty → structure windowIds are roles only.
     structure_slots: dict[str, dict[str, Any]] = {}
     slots_for_structure = set(layout_slot_modes.keys())
     for k in kept:
@@ -1128,7 +1134,6 @@ def plan_reconcile(
     final_actions = deduped_ensure + actions
     nothing = not has_work
     thrash_risk = _compute_thrash_risk(final_actions, counts)
-    thrash_state = detect_thrash(forest, prof)
 
     return {
         "ok": True,

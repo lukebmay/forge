@@ -1,32 +1,33 @@
 # Plan: Zero thrash for `forge workon` (product gate)
 
-**Status:** Active — **P0** (TZ1 + TZ-detect shipped; next TZ-recover)  
+**Status:** Active — **P0** (TZ1 + TZ-detect + TZ-recover shipped; next TZ-collect)  
 **Priority:** **P0 product survival** (outranks polish, tidy, optional extracts)  
 **Base:** this tree  
 **Related:** [forge-workon-reconcile.md](./forge-workon-reconcile.md) WR11–WR16,
 session H1 soft-rehome (different thrash class — lock/wake Meta)
 
-### Session note (2026-07-27) — TZ-detect shipped (A)
+### Session note (2026-07-27) — TZ-recover shipped (A)
 
-**TZ-detect Done (implementer):** `detect_thrash(forest, profile)` →
-`{ thrashed, score, reasons[] }` on every `plan_reconcile` as `plan.thrashState`.
-No Mode B park/recover yet; residual leave/park unchanged.
+**TZ-recover Done (implementer):** Mode B when `thrashState.thrashed` — roles as
+usual; every non-role soft-parked (`destWindowId` via `_soft_park_anchor`); no
+mon-child span keep; no mon ensure for parks only. `detect_thrash` called once
+early and reused for gate + `plan.thrashState`.
 
-| API | Detail |
+| Mode | Behavior now |
 | --- | --- |
-| `detect_thrash` | `scripts/forge/workon_plan.py` — pure; validates + mon-key resolve |
-| Signals | tabbed roles not co-grouped; mon-children ≫ N; nested H/V under role mon-child; ≥2 wrong-mon roles |
-| Fixture | `tree-thrash-mon1-nested-hsplit.json` (live mon1 shape) |
-| Tests | `TestDetectThrash` — thrash/perfect detect + plan thrashState (79 plan tests green) |
+| **A — not thrashed** | residual leave/park/keep as TZ1 (collect = TZ-collect) |
+| **B — thrashed** | roles open/move/structure; unclaimed → soft park; kept=0 |
 
-**Product locks (unchanged):**
-
-| Mode | Behavior |
+| Fixture | Result |
 | --- | --- |
-| **A — sane desk** | Re-seat **roles**; **tab marginals into the view area they sit in** |
-| **B — thrash** | Roles only; soft-park other tiles to last mon last group |
+| thrash mon1 nested | 7 reused; parked 301+302 → dest 204; no mon ensure |
+| perfect | nothingToDo; parked=0; thrashed false |
+| companions-direct | not thrashed → still keep 301/302 |
+| doubled-black | thrashed (mon-children-excess) → Mode B parks extras |
 
-**Next:** **TZ-recover** (Mode B using `thrashState`) → TZ-collect → TZ-tab-apply → TZ-gate.
+**Tests:** `TestModeBThrashRecover` + plan/apply fixture updates; `tests/unit/cli/` 172 green.
+
+**Next:** **TZ-collect** (Mode A tab marginals into views) → TZ-tab-apply → TZ-gate.
 
 
 ---
@@ -172,14 +173,14 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | --- | --- | --- | --- | --- |
 | **TZ1** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz1-leave-soft-park.md) | Leave residual + soft park + thrashRisk | — | **Done** |
 | **TZ-detect** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-detect.md) | `detect_thrash` + fixture from live mon1 dump | M | **Done** A/B AGREE |
-| **TZ-recover** | [task](../tasks/forge-workon-thrash-zero_tz-recover.md) | Mode B: roles only + park non-roles to safe dump | M | TZ-detect |
+| **TZ-recover** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-recover.md) | Mode B: roles only + park non-roles to safe dump | M | **Done** A/B AGREE |
 | **TZ-collect** | [task](../tasks/forge-workon-thrash-zero_tz-collect.md) | Mode A: tab marginals into overlapping view areas | M | TZ-detect (+ views geometry) |
 | **TZ-tab-apply** | [task](../tasks/forge-workon-thrash-zero_tz-tab-apply.md) | Tab structure apply yields TABBED not nested HSPLIT | M | can parallel after TZ-detect analysis |
 | **TZ-gate** | [task](../tasks/forge-workon-thrash-zero_tz-gate.md) | CLI: Mode A collect / Mode B recover; `--safe` / `--force` | S | TZ-recover + TZ-collect |
 | **TZ-matrix** | [task](../tasks/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix + dry-run goldens for A/B modes | M | TZ-recover + TZ-tab-apply |
 | **TZ-live** | [task](../tasks/forge-workon-thrash-zero_tz-live.md) | Live black checklist (FB/Chess, Voice pull, thrash recover) | S | TZ-gate |
 
-**Next task:** **TZ-recover** (after B agrees TZ-detect) → TZ-collect → TZ-tab-apply.
+**Next task:** **TZ-collect** → TZ-tab-apply → TZ-gate.
 
 ---
 

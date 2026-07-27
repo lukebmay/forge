@@ -542,6 +542,70 @@ class TestDetectThrash(unittest.TestCase):
         self.assertEqual(plan["thrashState"]["score"], 0)
 
 
+class TestModeBThrashRecover(unittest.TestCase):
+    """TZ-recover: Mode B parks non-roles when thrashState.thrashed."""
+
+    def test_thrash_fixture_parks_fb_chess_roles_reused(self):
+        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"])
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertFalse(plan["nothingToDo"])
+        # All 7 roles on correct mons → reuse; FB 301 + Chess 302 soft-park
+        self.assertEqual(plan["counts"]["reused"], 7)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["parked"], 2)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["left"], 0)
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["youtube"]["status"], "reused")
+        self.assertEqual(by_id["gmail"]["status"], "reused")
+        self.assertEqual(by_id["voice"]["status"], "reused")
+        self.assertEqual(by_id["ghostty-right"]["status"], "reused")
+        parks = [a for a in plan["actions"] if a.get("op") == "park"]
+        self.assertEqual(len(parks), 2)
+        park_ids = {p["windowId"] for p in parks}
+        self.assertEqual(park_ids, {301, 302})
+        for p in parks:
+            self.assertIsNotNone(p.get("destWindowId"), f"soft park needs dest: {p}")
+            # Dump: last mon last claimed role (voice 204 on mon1.comms)
+            self.assertEqual(p["destWindowId"], 204)
+        # No mon-level ensure solely for parks
+        mon_ensures = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+        ]
+        self.assertEqual(mon_ensures, [])
+        self.assertFalse(any(u.get("status") == "kept" for u in plan["unclaimed"]))
+
+    def test_perfect_still_nothing_to_do_no_mass_park(self):
+        forest = _load("tree-perfect.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["nothingToDo"])
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["structure"], 0)
+        self.assertEqual(plan["actions"], [])
+        self.assertEqual(plan["thrashRisk"]["score"], 0)
+
+    def test_companions_direct_not_thrashed_still_keep(self):
+        """Mode A: mon-direct companions kept (not mass-parked) when not thrashed."""
+        forest = _load("tree-mon1-companions-direct.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["kept"], 2)
+        keep_ids = {k["windowId"] for k in plan["kept"]}
+        self.assertEqual(keep_ids, {301, 302})
+        self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
+
+
 class TestPlanStructureRepair(unittest.TestCase):
     def test_mon_split_anchors_skip_tab_members(self):
         """Mon hsplit ensure anchors on term tiles, not chrome inside tabs."""
@@ -784,9 +848,11 @@ class TestPlanDoubled(unittest.TestCase):
         profile["marginal"] = {"mode": "strict", "residual": "leave"}
         plan = plan_reconcile(forest, profile)
         self.assertEqual(plan["counts"]["kept"], 0)
-        self.assertEqual(plan["counts"]["parked"], 0)
-        self.assertGreater(plan["counts"]["left"], 0)
-        self.assertFalse(any(a["op"] == "park" for a in plan["actions"]))
+        # Fixture is thrashed (mon-children-excess) → Mode B parks even residual leave.
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertGreater(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["left"], 0)
+        self.assertTrue(any(a["op"] == "park" for a in plan["actions"]))
 
     def test_doubled_strict_park_soft_parks_extras(self):
         forest = _load("tree-doubled-black.json")

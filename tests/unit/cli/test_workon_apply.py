@@ -284,17 +284,24 @@ class TestPlanToStepsFixture(unittest.TestCase):
         plan = plan_reconcile(
             _load("tree-doubled-black.json"), _load("profile-dev-v2.json")
         )
+        # Fixture is thrashed → Mode B soft-parks non-roles (no mon structure ensure).
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertGreater(plan["counts"]["parked"], 0)
         steps = actions_to_extension_steps(plan["actions"])
         ops = [s["op"] for s in steps]
-        self.assertIn("layout", ops)
         self.assertIn("move", ops)
+        # Parks become moves onto dest id; layout only if structure/mon ensure present.
         for s in steps:
             if s["op"] == "move":
                 self.assertTrue(s["tile"].startswith("id:"))
-                # mon/overflow parks use path:mo…; tab fold uses dest id:anchor
+                # soft park: dest id:anchor (not mon-root path)
                 self.assertTrue(
                     s["dest"].startswith("path:mo") or s["dest"].startswith("id:"),
                     f"unexpected move dest {s['dest']!r}",
+                )
+                self.assertTrue(
+                    s["dest"].startswith("id:"),
+                    f"Mode B soft park should dest id:, got {s['dest']!r}",
                 )
             if s["op"] == "layout":
                 # must be window selector, not mon path
