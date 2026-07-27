@@ -1,36 +1,30 @@
 # Plan: Zero thrash for `forge workon` (product gate)
 
-**Status:** **Shipped** TZ1…TZ-live; **open residual** Mode A nested companions  
+**Status:** **Shipped** TZ1…TZ-live + **TZ-mode-a-nested** (planner; live re-run optional)  
 **Priority:** **P0 product survival** (outranks polish, tidy, optional extracts)  
 **Base:** this tree  
 **Related:** [forge-workon-reconcile.md](./forge-workon-reconcile.md) WR11–WR16,
 session H1 soft-rehome (different thrash class — lock/wake Meta)
 
-### Session note (2026-07-27) — live residual (Mode B fallback OK)
+### Session note (2026-07-27) — TZ-mode-a-nested A/B AGREE
 
-**Shipped:** TZ-detect → recover → collect → tab-apply flatten → gate (`--safe`)
-→ matrix → live dry-run on black.
+**Root cause:** `nested-split-view` thrash fired for **single-role** term mon-children
+with nested H/V companions → false Mode B park dump.
+
+**Fix (pure planner):**
+- `detect_thrash`: nested-split only for **multi-role tabbed** views
+- `_build_slot_membership`: **mon-child containment** for nested CON companions
+- Fixtures/tests: nested term → Mode A; true thrash → Mode B
+  (`tree-thrash-mode-b-companions.json`, `tree-thrash-comms-nested-hsplit.json`)
+- Tests: `pytest tests/unit/cli/test_workon_plan.py -q` → 104; full CLI 195
 
 | Mode | Behavior |
 | --- | --- |
-| **A** | roles + tab marginals by view overlap (first view) |
+| **A** | roles + tab marginals (sibling / mon-child / rect / mon-direct) |
 | **B** | roles only; soft-park non-roles (`destWindowId`) |
 | **safe** | open+move only |
 
-**Live black (interactive, user):** perfect `dev` → Nautilus under left Ghostty →
-FB+Chess under right Ghostty → `workon dev`:
-
-| | Result |
-| --- | --- |
-| Ideal Mode A | **Missed** (should tab Nautilus→left term, FB/Chess→right term) |
-| Mode B fallback | **Worked** — all three soft-parked to mon1 last TABBED (chrome bag) |
-
-Post tree + reconstructed pre: fixtures
-`tree-live-mode-b-park-after-nested.json`,
-`tree-live-pre-nested-companions.json`.
-
-**Next session:** [TZ-mode-a-nested](../tasks/forge-workon-thrash-zero_tz-mode-a-nested.md)
-— do not treat role+VSPLIT companions as thrash; Mode A collect into that view.
+**Next:** none for thrash-zero (plan complete). Live black re-run optional user.
 
 
 ---
@@ -177,14 +171,14 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | **TZ1** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz1-leave-soft-park.md) | Leave residual + soft park + thrashRisk | — | **Done** |
 | **TZ-detect** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-detect.md) | `detect_thrash` + fixture from live mon1 dump | M | **Done** A/B AGREE |
 | **TZ-recover** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-recover.md) | Mode B: roles only + park non-roles to safe dump | M | **Done** A/B AGREE |
-| **TZ-collect** | [task](../tasks/forge-workon-thrash-zero_tz-collect.md) | Mode A: tab marginals into overlapping view areas | M | **Done** A (B verify) |
+| **TZ-collect** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-collect.md) | Mode A: tab marginals into overlapping view areas | M | **Done** |
 | **TZ-tab-apply** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-tab-apply.md) | Tab structure apply yields TABBED not nested HSPLIT | M | **Done** A/B AGREE |
 | **TZ-gate** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-gate.md) | CLI: Mode A collect / Mode B recover; `--safe` / `--force` | S | **Done** A/B AGREE |
 | **TZ-matrix** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix lock table for A/B modes | M | **Done** A/B AGREE |
 | **TZ-live** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-live.md) | Live black checklist | S | **Done** + interactive residual filed |
-| **TZ-mode-a-nested** | [task](../tasks/forge-workon-thrash-zero_tz-mode-a-nested.md) | Mode A when marginals under role VSPLIT (not Mode B dump) | M | **Next** — live residual |
+| **TZ-mode-a-nested** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-mode-a-nested.md) | Mode A when marginals under role VSPLIT (not Mode B dump) | M | **Done** A/B AGREE |
 
-**Next task:** **TZ-mode-a-nested**.
+**Next task:** none (plan complete; live re-run optional).
 
 ---
 
@@ -200,7 +194,7 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | T9 | Focus after batch | WR14 |
 | T10 | Session H1 | out of scope |
 | **T12** | Mode B recover | **TZ-recover** |
-| **T13** | Nested VSPLIT companions → false thrash / wrong bag | **TZ-mode-a-nested** (open) |
+| **T13** | Nested VSPLIT companions → false thrash / wrong bag | **TZ-mode-a-nested** Done (live re-run optional) |
 
 ---
 

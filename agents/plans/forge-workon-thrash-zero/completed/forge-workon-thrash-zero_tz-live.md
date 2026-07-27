@@ -43,12 +43,11 @@ killing live Grok/tiling mid-run). Flatten applies after next HUP/`make restart`
 
 1. **Interactive Mode A miss (filed):** user ran Nautilus under left Ghostty +
    FB/Chess under right → Mode B park dump (fallback OK). Follow-up:
-   [TZ-mode-a-nested](../../../tasks/forge-workon-thrash-zero_tz-mode-a-nested.md).
+   [TZ-mode-a-nested](./forge-workon-thrash-zero_tz-mode-a-nested.md) (Done).
 2. Fixtures: `tree-live-pre-nested-companions.json` (reconstructed),
    `tree-live-mode-b-park-after-nested.json` (post-apply live dump).
 3. Click-to-focus: regression green; no focus path edits after TZ-tab-apply.
 
 ### Next agent bullets
 
-- Start **TZ-mode-a-nested**; repro with black host `dev.json` not only
-  `profile-dev-v2` (test profile already Mode A on reconstructed pre).  
+- TZ-mode-a-nested shipped (A/B AGREE). Live re-run optional.  

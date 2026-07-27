@@ -213,11 +213,9 @@ Human stderr (dry-run and apply) includes:
 Default product path **auto recovers** with Mode B when thrashed (no refuse gate).
 `--safe` still reports Mode A/B but only emits open/move actions.
 
-**Known residual:** stacking companions under a role with VSPLIT (e.g. a file
-manager under a terminal pane that also holds other apps) may still trip
-**Mode B** and soft-park into the last mon last group instead of tabbing into
-that term view (Mode A). Fallback is safe; ideal collect is tracked in
-[TZ-mode-a-nested](../../agents/tasks/forge-workon-thrash-zero_tz-mode-a-nested.md).
+Companions stacked under a role with VSPLIT/HSPLIT (including nested CONs)
+stay **Mode A**: they tab into that view. Only true thrash (wrong mon, excess
+mon children, multi-role tab groups broken) uses Mode B park.
 
 Optional top-level `floating: []` is reserved (location later).
 

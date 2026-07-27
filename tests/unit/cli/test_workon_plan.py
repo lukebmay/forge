@@ -517,29 +517,44 @@ class TestThrashModeMatrix(unittest.TestCase):
         self.assertEqual(plan["actions"], [])
         self.assertEqual(plan["counts"]["reused"], 7)
 
-    def test_thrash_mon1_nested_hsplit_mode_b_park(self):
-        """thrash mon1 nested HSPLIT → Mode B: roles reused + park FB/Chess."""
+    def test_nested_term_hsplit_mode_a_collect(self):
+        """Companion under term nested HSPLIT → Mode A tab, not Mode B park."""
         plan = self._plan("tree-thrash-mon1-nested-hsplit.json")
         self.assertTrue(plan["ok"])
-        self.assertTrue(plan["thrashState"]["thrashed"])
-        self.assertGreaterEqual(plan["thrashState"]["score"], 3)
+        self.assertFalse(plan["thrashState"]["thrashed"])
         self.assertFalse(plan["nothingToDo"])
         self.assertEqual(plan["counts"]["reused"], 7)
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["kept"], 2)
+        keep_ids = {k["windowId"] for k in plan["kept"]}
+        self.assertEqual(keep_ids, {301, 302})
+        for k in plan["kept"]:
+            self.assertEqual(k["slot"], "mon1.term")
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertIn("mon1.term", ensures)
+        self.assertEqual(ensures["mon1.term"]["mode"], "tabbed")
+        self.assertEqual(ensures["mon1.term"]["windowIds"], [201, 301, 302])
+        self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
+
+    def test_mode_b_wrong_mon_companions_park(self):
+        """True thrash (≥2 wrong mon) + companions → Mode B park FB/Chess."""
+        plan = self._plan("tree-thrash-mode-b-companions.json")
+        self.assertTrue(plan["ok"])
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertGreaterEqual(plan["thrashState"]["score"], 3)
+        self.assertFalse(plan["nothingToDo"])
         self.assertEqual(plan["counts"]["parked"], 2)
         self.assertEqual(plan["counts"]["kept"], 0)
         parks = [a for a in plan["actions"] if a.get("op") == "park"]
         self.assertEqual({p["windowId"] for p in parks}, {301, 302})
         for p in parks:
             self.assertIsNotNone(p.get("destWindowId"))
-        # No mon-root ensure for park dump
-        mon_ensures = [
-            a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
-        ]
-        self.assertEqual(mon_ensures, [])
 
     def test_voice_mon_direct_structure_comms_only(self):
         """voice mon-direct out of tab → structure mon1.comms only; no term thrash."""
@@ -632,8 +647,21 @@ class TestThrashModeMatrix(unittest.TestCase):
 class TestDetectThrash(unittest.TestCase):
     """TZ-detect: desk thrash vs sane (plan.thrashState)."""
 
-    def test_detect_thrash_nested_hsplit_mon1(self):
+    def test_detect_thrash_term_nested_companions_false(self):
+        """Single-role term + nested companions is not thrash (Mode A)."""
         forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        profile = _load("profile-dev-v2.json")
+        state = detect_thrash(forest, profile)
+        self.assertFalse(state["thrashed"])
+        self.assertEqual(state["score"], 0)
+        self.assertFalse(
+            any("nested-split" in r for r in state["reasons"]),
+            f"single-role nested companions must not thrash: {state['reasons']}",
+        )
+
+    def test_detect_thrash_comms_nested_hsplit(self):
+        """Multi-role tabbed view as nested HSPLIT → thrash."""
+        forest = _load("tree-thrash-comms-nested-hsplit.json")
         profile = _load("profile-dev-v2.json")
         state = detect_thrash(forest, profile)
         self.assertTrue(state["thrashed"])
@@ -644,12 +672,11 @@ class TestDetectThrash(unittest.TestCase):
                 k in blob
                 for k in (
                     "nested-split",
-                    "term",
-                    "structure",
-                    "mon1.term",
+                    "tabbed-roles-not-grouped",
+                    "mon1.comms",
                 )
             ),
-            f"reasons should mention nested/term structure: {state['reasons']}",
+            f"reasons should mention comms structure: {state['reasons']}",
         )
 
     def test_detect_thrash_perfect_false(self):
@@ -661,7 +688,7 @@ class TestDetectThrash(unittest.TestCase):
         self.assertEqual(state["reasons"], [])
 
     def test_plan_reconcile_thrash_state_on_thrash_fixture(self):
-        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        forest = _load("tree-thrash-mode-b-companions.json")
         profile = _load("profile-dev-v2.json")
         plan = plan_reconcile(forest, profile)
         self.assertIn("thrashState", plan)
@@ -681,24 +708,24 @@ class TestModeBThrashRecover(unittest.TestCase):
     """TZ-recover: Mode B parks non-roles when thrashState.thrashed."""
 
     def test_thrash_fixture_parks_fb_chess_roles_reused(self):
-        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        forest = _load("tree-thrash-mode-b-companions.json")
         profile = _load("profile-dev-v2.json")
         plan = plan_reconcile(forest, profile)
         self.assertTrue(plan["ok"])
         self.assertTrue(plan["thrashState"]["thrashed"])
         self.assertFalse(plan["nothingToDo"])
-        # All 7 roles on correct mons → reuse; FB 301 + Chess 302 soft-park
-        self.assertEqual(plan["counts"]["reused"], 7)
+        # Wrong mon roles move; rest reuse; FB 301 + Chess 302 soft-park
+        self.assertEqual(plan["counts"]["reused"] + plan["counts"]["moved"], 7)
         self.assertEqual(plan["counts"]["opened"], 0)
-        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["moved"], 2)
         self.assertEqual(plan["counts"]["parked"], 2)
         self.assertEqual(plan["counts"]["kept"], 0)
         self.assertEqual(plan["counts"]["left"], 0)
         by_id = {r["id"]: r for r in plan["roles"]}
-        self.assertEqual(by_id["youtube"]["status"], "reused")
         self.assertEqual(by_id["gmail"]["status"], "reused")
         self.assertEqual(by_id["voice"]["status"], "reused")
-        self.assertEqual(by_id["ghostty-right"]["status"], "reused")
+        self.assertEqual(by_id["ghostty-right"]["status"], "move")
+        self.assertEqual(by_id["youtube"]["status"], "move")
         parks = [a for a in plan["actions"] if a.get("op") == "park"]
         self.assertEqual(len(parks), 2)
         park_ids = {p["windowId"] for p in parks}
@@ -707,13 +734,6 @@ class TestModeBThrashRecover(unittest.TestCase):
             self.assertIsNotNone(p.get("destWindowId"), f"soft park needs dest: {p}")
             # Dump: last mon last claimed role (voice 204 on mon1.comms)
             self.assertEqual(p["destWindowId"], 204)
-        # No mon-level ensure solely for parks
-        mon_ensures = [
-            a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
-        ]
-        self.assertEqual(mon_ensures, [])
         self.assertFalse(any(u.get("status") == "kept" for u in plan["unclaimed"]))
 
     def test_perfect_still_nothing_to_do_no_mass_park(self):
@@ -745,7 +765,7 @@ class TestSafeMode(unittest.TestCase):
     """TZ-gate: --safe open+move only (no park/structure/ensure)."""
 
     def test_safe_on_thrash_skips_park_and_ensure(self):
-        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        forest = _load("tree-thrash-mode-b-companions.json")
         profile = _load("profile-dev-v2.json")
         plan = plan_reconcile(forest, profile, safe=True)
         self.assertTrue(plan["ok"])
@@ -753,18 +773,20 @@ class TestSafeMode(unittest.TestCase):
         # Detection still reports Mode B
         self.assertTrue(plan["thrashState"]["thrashed"])
         self.assertGreaterEqual(plan["thrashState"]["score"], 3)
-        # No residual mutations
+        # No residual mutations; role moves still allowed
         self.assertEqual(plan["counts"]["parked"], 0)
         self.assertEqual(plan["counts"]["kept"], 0)
         self.assertEqual(plan["counts"]["structure"], 0)
         self.assertEqual(plan["counts"]["closed"], 0)
         self.assertEqual(plan["counts"]["left"], 2)
+        self.assertEqual(plan["counts"]["moved"], 2)
         ops = {a.get("op") for a in plan["actions"]}
         self.assertNotIn("park", ops)
         self.assertNotIn("ensure_layout", ops)
         self.assertNotIn("close", ops)
+        self.assertIn("move", ops)
         # Roles still claimed
-        self.assertEqual(plan["counts"]["reused"], 7)
+        self.assertEqual(plan["counts"]["reused"] + plan["counts"]["moved"], 7)
 
     def test_safe_on_mode_a_skips_collect_structure(self):
         forest = _load("tree-mon1-companions-direct.json")
@@ -818,7 +840,7 @@ class TestSafeMode(unittest.TestCase):
         self.assertEqual(plan_clean["counts"]["left"], 2)
 
     def test_safe_clean_does_not_close(self):
-        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        forest = _load("tree-thrash-mode-b-companions.json")
         profile = _load("profile-dev-v2.json")
         plan = plan_reconcile(forest, profile, safe=True, clean=True)
         self.assertTrue(plan["safe"])
@@ -1017,7 +1039,7 @@ class TestModeACollect(unittest.TestCase):
         self.assertEqual(plan["actions"], [])
 
     def test_thrash_still_mode_b_parks(self):
-        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        forest = _load("tree-thrash-mode-b-companions.json")
         profile = _load("profile-dev-v2.json")
         plan = plan_reconcile(forest, profile)
         self.assertTrue(plan["thrashState"]["thrashed"])
@@ -1035,6 +1057,270 @@ class TestModeACollect(unittest.TestCase):
         self.assertFalse(plan["thrashState"]["thrashed"])
         self.assertTrue(plan["nothingToDo"])
         self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["actions"], [])
+
+
+class TestModeANestedCompanions(unittest.TestCase):
+    """TZ-mode-a-nested: companions under role VSPLIT/HSPLIT → Mode A collect."""
+
+    def test_flat_pre_nested_companions_mode_a(self):
+        forest = _load("tree-live-pre-nested-companions.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["kept"], 3)
+        by_slot = {}
+        for k in plan["kept"]:
+            by_slot.setdefault(k["slot"], set()).add(k["windowId"])
+        self.assertEqual(by_slot.get("mon0.term"), {901})
+        self.assertEqual(by_slot.get("mon1.term"), {301, 302})
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertEqual(ensures["mon0.term"]["mode"], "tabbed")
+        self.assertEqual(ensures["mon0.term"]["windowIds"], [103, 901])
+        self.assertEqual(ensures["mon1.term"]["mode"], "tabbed")
+        self.assertEqual(ensures["mon1.term"]["windowIds"], [201, 301, 302])
+
+    def test_nested_con_companions_mode_a(self):
+        forest = _load("tree-live-pre-nested-con-companions.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["kept"], 3)
+        keep_ids = {k["windowId"] for k in plan["kept"]}
+        self.assertEqual(keep_ids, {901, 301, 302})
+        for k in plan["kept"]:
+            if k["windowId"] == 901:
+                self.assertEqual(k["slot"], "mon0.term")
+            else:
+                self.assertEqual(k["slot"], "mon1.term")
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertEqual(ensures["mon0.term"]["windowIds"], [103, 901])
+        self.assertEqual(ensures["mon1.term"]["windowIds"], [201, 301, 302])
+        self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
+
+    def test_sugar_tiles_nested_con_mode_a(self):
+        """Black-style tiles sugar: mon0.ghostty-left / mon1.ghostty-right slots."""
+        forest = _load("tree-live-pre-nested-con-companions.json")
+        sugar = {
+            "tiles": {
+                "mon0": [
+                    [
+                        {
+                            "id": "chrome-luke",
+                            "match": {
+                                "class": "Google-chrome",
+                                "title~=": "Google Chrome",
+                            },
+                            "open": {"app": "google-chrome"},
+                        },
+                        {
+                            "id": "grok",
+                            "match": {"class": "Google-chrome", "title~=": "Grok"},
+                            "open": {"app": "Grok"},
+                        },
+                    ],
+                    {
+                        "id": "ghostty-left",
+                        "match": {"class": "com.mitchellh.ghostty"},
+                        "open": {"app": "ghostty"},
+                    },
+                ],
+                "mon1": [
+                    {
+                        "id": "ghostty-right",
+                        "match": {"class": "com.mitchellh.ghostty"},
+                        "open": {"app": "ghostty"},
+                    },
+                    [
+                        {
+                            "id": "youtube",
+                            "match": {
+                                "class": "Google-chrome",
+                                "title~=": "YouTube",
+                            },
+                            "open": {"app": "YouTube"},
+                        },
+                        {
+                            "id": "gmail",
+                            "match": {"class": "Google-chrome", "title~=": "Gmail"},
+                            "open": {"app": "Gmail"},
+                        },
+                        {
+                            "id": "voice",
+                            "match": {"class": "Google-chrome", "title~=": "Voice"},
+                            "open": {"app": "Google Voice"},
+                        },
+                    ],
+                ],
+            }
+        }
+        plan = plan_reconcile(forest, sugar)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["kept"], 3)
+        by_slot = {}
+        for k in plan["kept"]:
+            by_slot.setdefault(k["slot"], set()).add(k["windowId"])
+        self.assertEqual(by_slot.get("mon0.ghostty-left"), {901})
+        self.assertEqual(by_slot.get("mon1.ghostty-right"), {301, 302})
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertEqual(ensures["mon0.ghostty-left"]["windowIds"], [103, 901])
+        self.assertEqual(
+            ensures["mon1.ghostty-right"]["windowIds"], [201, 301, 302]
+        )
+
+    def test_true_thrash_still_mode_b(self):
+        forest = _load("tree-thrash-mode-b-companions.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["parked"], 2)
+        self.assertEqual(plan["counts"]["kept"], 0)
+
+    def test_post_tab_nothing_to_do(self):
+        """Already tabbed role+companions → second plan nothingToDo."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 101,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Chrome",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 102,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Grok",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 103,
+                                    "wmClass": "com.mitchellh.ghostty",
+                                    "title": "Ghostty",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 901,
+                                    "wmClass": "org.gnome.Nautilus",
+                                    "title": "Home",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 201,
+                                    "wmClass": "com.mitchellh.ghostty",
+                                    "title": "Ghostty",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 301,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Facebook",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 302,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Chess.com",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail - Inbox - Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Voice - Messages",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["structure"], 0)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertTrue(plan["nothingToDo"])
         self.assertEqual(plan["actions"], [])
 
 

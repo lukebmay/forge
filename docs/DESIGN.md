@@ -652,11 +652,11 @@ overlap (partial → first view) so `workon` cleans the desk. **Detected thrash:
 roles only + soft-park everything else on last mon last group — no archaeology.
 Tab ensure must yield TABBED, not nested HSPLIT (`_layoutOp` flattens nested
 CONs on TABBED/STACKED). CLI: `plan.thrashState` + stderr mode A/B; `--safe`
-is open+move only. **Live residual:** role+VSPLIT companions (Nautilus under
-Ghostty, FB/Chess under Ghostty) still sometimes Mode B park-dump instead of
-Mode A term tabs — fallback works; fix
-[TZ-mode-a-nested](../agents/tasks/forge-workon-thrash-zero_tz-mode-a-nested.md).
-Plan: [forge-workon-thrash-zero.md](../agents/plans/forge-workon-thrash-zero.md).
+is open+move only. **Single-role view + nested H/V companions** (Ghostty with
+Nautilus/FB/Chess under VSPLIT or nested CON) is **Mode A** — not thrash;
+collect by mon-child containment + tab the view. Nested-split thrash only for
+**multi-role tabbed** views. Plan:
+[forge-workon-thrash-zero.md](../agents/plans/forge-workon-thrash-zero.md).
 
 **Quiet apply:** default `forge workon` prints human counts on stderr;
 full plan/apply JSON only with `--verbose` / `FORGE_VERBOSE=1` (and on

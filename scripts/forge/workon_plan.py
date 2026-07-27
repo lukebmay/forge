@@ -1885,8 +1885,9 @@ def _build_slot_membership(
     Mode A collect: map unclaimed windows → view slots.
 
     1. CON siblings of claimed roles (in-group companions)
-    2. Rect overlap vs profile view regions (partial → first view)
-    3. Mon-direct span: nearest preceding role-owned mon child
+    2. Mon-child containment: unclaimed under a role-owned mon-child
+    3. Rect overlap vs profile view regions (partial → first view)
+    4. Mon-direct span: nearest preceding role-owned mon child
     """
     by_parent: dict[str, list[str]] = {}
     for w in windows:
@@ -1931,6 +1932,27 @@ def _build_slot_membership(
     already = set(claimed_keys)
     for keys in membership.values():
         already |= keys
+
+    # Nested under a mon-child already owned by a claimed role (VSPLIT companions)
+    for w in windows:
+        key = _window_key(w)
+        if key in already:
+            continue
+        wid = w.get("windowId")
+        if wid is None:
+            continue
+        info = parent_info.get(str(wid))
+        if not info:
+            continue
+        loc = _mon_child_loc(info.get("path"))
+        if not loc:
+            continue
+        mon_id, idx = loc
+        slot = (mon_owned.get(mon_id) or {}).get(idx)
+        if not slot:
+            continue
+        membership.setdefault(slot, set()).add(key)
+        already.add(key)
 
     # Rect overlap collect (profile equal-split view geometry)
     views: list[dict[str, Any]] = []
@@ -2271,6 +2293,13 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
                 continue
             view_id = str(view["id"])
             slot = f"{mon_key}.{view_id}"
+            # Nested H/V under a mon-child is thrash only for multi-role tabbed
+            # views (wanted TABBED, got nested splits). Single-role term +
+            # companions under VSPLIT/HSPLIT is Mode A collect, not thrash.
+            view_roles = view.get("roles") or []
+            mode = layout_slot_modes.get(slot)
+            if mode != "tabbed" or len(view_roles) < 2:
+                continue
             wids = [
                 r["windowId"]
                 for r in role_results
@@ -2292,7 +2321,6 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
             child_node = live_kids[child_i]
             if not isinstance(child_node, dict):
                 continue
-            # Nested H/V under mon-child (term was HSPLIT(ghostty, HSPLIT(fb,chess)))
             if _node_has_nested_hv_split(child_node):
                 score += 4
                 reasons.append(f"nested-split-view:{slot}")
