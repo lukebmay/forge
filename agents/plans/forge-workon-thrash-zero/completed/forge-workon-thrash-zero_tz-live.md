@@ -39,16 +39,16 @@
 `_flattenLayoutParentToWindows`). **Shell not HUPed** this session (avoid
 killing live Grok/tiling mid-run). Flatten applies after next HUP/`make restart`.
 
-### Residuals (not blockers for plan close)
+### Residuals
 
-1. **Interactive apply** of items 2–4 on the live desk was **not** run (desk was
-   already perfect; rearranging would thrash the working session). Fixtures +
-   unit matrix lock the planner; post-HUP user can re-run apply once.
-2. **Manual click-to-focus** on live tabs after HUP not re-clicked this session;
-   regression suite green; TZ-tab-apply did not touch activate/focus handlers.
+1. **Interactive Mode A miss (filed):** user ran Nautilus under left Ghostty +
+   FB/Chess under right → Mode B park dump (fallback OK). Follow-up:
+   [TZ-mode-a-nested](../../../tasks/forge-workon-thrash-zero_tz-mode-a-nested.md).
+2. Fixtures: `tree-live-pre-nested-companions.json` (reconstructed),
+   `tree-live-mode-b-park-after-nested.json` (post-apply live dump).
+3. Click-to-focus: regression green; no focus path edits after TZ-tab-apply.
 
 ### Next agent bullets
 
-- After user-approved HUP: re-smoke (1) + optional FB/Chess apply (2).  
-- If live thrash returns: capture tree JSON → new fixture under matrix.  
-- Plan may mark **complete** with residual “post-HUP smoke optional”.  
+- Start **TZ-mode-a-nested**; repro with black host `dev.json` not only
+  `profile-dev-v2` (test profile already Mode A on reconstructed pre).  

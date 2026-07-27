@@ -6,30 +6,31 @@
 
 ## Next session focus
 
-**P0 — Zero thrash:** **shipped** ([plan](./plans/forge-workon-thrash-zero.md)); optional post-HUP smoke on black.
+**P0 residual — Mode A nested companions:**  
+[TZ-mode-a-nested](./tasks/forge-workon-thrash-zero_tz-mode-a-nested.md) on
+[forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md)
+
+Live black: Nautilus under left Ghostty + FB/Chess under right → `workon dev`
+took **Mode B park** (fallback OK) instead of **Mode A term tabs**. Fix detect
+and/or collect so role+VSPLIT companions stay Mode A.
 
 | Order | ID | Task | Why first |
 | ---: | --- | --- | --- |
-| 1 | **TZ-detect** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-detect.md) | Gate Mode A vs B |
-| 2 | **TZ-recover** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-recover.md) | Mode B park non-roles |
-| 3 | **TZ-collect** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-collect.md) | Mode A tab marginals |
-| 4 | **TZ-tab-apply** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-tab-apply.md) | TABBED flatten |
-| 5 | **TZ-gate** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-gate.md) | CLI A/B + --safe |
-| 6 | **TZ-matrix** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix lock |
-| 7 | **TZ-live** | [black checklist](./tasks/forge-workon-thrash-zero_tz-live.md) | **Next** — prove on daily driver |
+| 1 | **TZ-mode-a-nested** | [Mode A under role VSPLIT](./tasks/forge-workon-thrash-zero_tz-mode-a-nested.md) | Ideal collect missed live |
+| — | thrash-zero core | TZ-detect…TZ-live **Done** | Mode B fallback proven |
 
-**Task force:** serial A → B per task. Thrash-zero complete (post-HUP smoke optional).
+**Task force:** serial A → B. Start **TZ-mode-a-nested**.
 
-**Mode A product:** tab **marginals** into the view area they occupy (not leave-alone).  
-**Mode B:** thrash → roles only + soft-park rest.  
-**TZ1 leave** was a brake; superseded for daily `workon dev` cleanup.
+**Mode A product:** tab **marginals** into the view they occupy (incl. under
+nested VSPLIT with a role).  
+**Mode B:** true thrash → roles only + soft-park rest (keep).
 
 Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 **`luke`**).
 
 | Doc | Role |
 | --- | --- |
-| [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | **P0 active** — thrash detect + Mode B recover |
+| [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | **P0** — residual Mode A nested |
 | [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | Complete WR1–WR16 |
 | [forge-command.md](./plans/forge-command.md) | FC0–FC5 Done |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 Done |
@@ -42,14 +43,15 @@ Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 
 | Rank | Impact | Item | Why | Status |
 | ---: | --- | --- | --- | --- |
-| 1 | **Critical (open)** | **Zero thrash `workon`** | Thrash = product DOA | **P0** — thrash-zero plan |
-| 2 | **Critical (shipped)** | Dual-head blank/wake + install HUP | Morning layout survives | **Done** |
-| 3 | **Critical (shipped)** | Tabs, stack-off, LFT, keybinds, sizing | Daily tiling feel | **Done** |
-| 4 | **High (shipped)** | Idempotent workon + sugar + coexist | Morning desk | WR1–WR16 + TZ1 |
-| 5 | **Medium (live)** | Regression watch HUP/wake/tabs | Day ruined if back | Monitor |
-| 6 | **Low (meta)** | Personal fork / audit B1 | Not tiling | Fork done; B1 skip |
+| 1 | **High (open)** | **Mode A nested companions** | Morning cleanup dumps to chrome bag | **P0 residual** |
+| 2 | **Critical (shipped)** | Mode B thrash recover + detect | Fallback works live | Done |
+| 3 | **Critical (shipped)** | Dual-head blank/wake + install HUP | Morning layout survives | Done |
+| 4 | **Critical (shipped)** | Tabs, stack-off, LFT, keybinds, sizing | Daily tiling feel | Done |
+| 5 | **High (shipped)** | Idempotent workon + sugar + coexist | Morning desk | WR1–WR16 + TZ |
+| 6 | **Medium (live)** | Regression watch HUP/wake/tabs | Day ruined if back | Monitor |
+| 7 | **Low (meta)** | Personal fork / audit B1 | Not tiling | Fork done; B1 skip |
 
-**Rule:** do not start B1 while thrash-zero is open.
+**Rule:** do not start B1 while Mode A residual is open.
 
 ---
 
@@ -57,16 +59,19 @@ Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 
 | Pri | Item | Status | Day-to-day? |
 | --- | --- | --- | --- |
-| **P0** | [thrash-zero](./plans/forge-workon-thrash-zero.md) TZ1…TZ-live | **Complete** (post-HUP residual) | Yes |
+| **P0** | [TZ-mode-a-nested](./tasks/forge-workon-thrash-zero_tz-mode-a-nested.md) | **Next** | Yes |
+| P0 | [thrash-zero](./plans/forge-workon-thrash-zero.md) core TZ1…TZ-live | Shipped | Yes |
 | P1 | workon reconcile WR1–WR16 | Done | Yes |
 | P2 | Live daily-drive; report bugs | Ongoing | Yes |
-| later | T9 multi-line tabs | After thrash-zero | Polish |
+| later | T9 multi-line tabs | After Mode A residual | Polish |
 | later | Audit B1 DnD extract | Optional | Maintainability |
 
 ### Done recently (not open work)
 
 | Item | Note |
 | --- | --- |
+| **TZ-live + interactive residual filed** | Mode B fallback OK; Mode A miss → TZ-mode-a-nested |
+| **TZ-detect…TZ-matrix** | thrash-zero core |
 | **TZ1 leave + soft park** | [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz1-leave-soft-park.md) |
 | **WR16 quiet + mon-span** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr16-quiet-park-thrash.md) |
 | **WR15 `--clean`** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr15-clean.md) |

@@ -1,0 +1,166 @@
+{
+  "apiVersion": 2,
+  "description": "Live black 2026-07-27 after workon Mode B park fallback. Pre: Nautilus under left Ghostty, FB+Chess under right Ghostty. Post: all three soft-parked into mon1 chrome TABBED (last mon last group). Ideal Mode A would tab into term views — residual TZ-mode-a-nested.",
+  "monitors": [
+    {
+      "nodeType": "MONITOR",
+      "layout": "HSPLIT",
+      "rect": { "x": 92, "y": 72, "width": 5020, "height": 2800 },
+      "percent": 0,
+      "userSized": false,
+      "children": [
+        {
+          "nodeType": "CON",
+          "layout": "TABBED",
+          "rect": { "x": 92, "y": 72, "width": 2510, "height": 2800 },
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "jcrussell/forge: Forge - Tiling and Window Manager for Gnome-Shell - Google Chrome",
+              "windowId": 3048523903,
+              "pid": 5984,
+              "monitor": 0,
+              "mode": "TILE",
+              "rect": { "x": 92, "y": 142, "width": 2510, "height": 2730 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Grok - 2001 GMC Sonoma 4.3L Lower Intake Gasket Replacement - Grok",
+              "windowId": 3048523905,
+              "pid": 5984,
+              "monitor": 0,
+              "mode": "TILE",
+              "rect": { "x": 92, "y": 142, "width": 2510, "height": 2730 },
+              "children": []
+            }
+          ]
+        },
+        {
+          "nodeType": "CON",
+          "layout": "VSPLIT",
+          "rect": { "x": 2602, "y": 72, "width": 2510, "height": 2800 },
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "com.mitchellh.ghostty",
+              "title": "THRASH Prevention A/B Tasks Click-Focus - grok",
+              "windowId": 3048523901,
+              "pid": 4804,
+              "monitor": 0,
+              "mode": "TILE",
+              "rect": { "x": 2602, "y": 72, "width": 2510, "height": 2800 },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "id": "mo0ws0",
+      "stableKey": "geom:0,0,5120,2880#primary"
+    },
+    {
+      "nodeType": "MONITOR",
+      "layout": "HSPLIT",
+      "rect": { "x": 5212, "y": 8, "width": 5020, "height": 2864 },
+      "percent": 0,
+      "userSized": false,
+      "children": [
+        {
+          "nodeType": "CON",
+          "layout": "VSPLIT",
+          "rect": { "x": 5212, "y": 8, "width": 2510, "height": 2864 },
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "com.mitchellh.ghostty",
+              "title": " shellrc",
+              "windowId": 3048523907,
+              "pid": 4804,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 5212, "y": 8, "width": 2510, "height": 2864 },
+              "children": []
+            }
+          ]
+        },
+        {
+          "nodeType": "CON",
+          "layout": "TABBED",
+          "rect": { "x": 7722, "y": 8, "width": 2510, "height": 2864 },
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Gmail - Inbox (590) - lukebmay@gmail.com - Gmail",
+              "windowId": 3048523902,
+              "pid": 5984,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 7722, "y": 78, "width": 2510, "height": 2794 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Google Voice - Voice - Messages",
+              "windowId": 3048523904,
+              "pid": 5984,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 7722, "y": 78, "width": 2510, "height": 2794 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "YouTube - Democrats IMPLODING, DNC Head SMASHES PHONE In RAGE As Democrats TO LOSE - YouTube",
+              "windowId": 3048523906,
+              "pid": 5984,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 7722, "y": 78, "width": 2510, "height": 2794 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Chess - Play & Learn - Home - Chess.com",
+              "windowId": 3048523914,
+              "pid": 5984,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 7722, "y": 78, "width": 2510, "height": 2794 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Facebook",
+              "windowId": 3048523913,
+              "pid": 5984,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 7722, "y": 78, "width": 2510, "height": 2794 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "org.gnome.Nautilus",
+              "title": "Home",
+              "windowId": 3048523912,
+              "pid": 117926,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 7722, "y": 78, "width": 2510, "height": 2794 },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "id": "mo1ws0",
+      "stableKey": "geom:5120,0,5120,2880"
+    }
+  ]
+}

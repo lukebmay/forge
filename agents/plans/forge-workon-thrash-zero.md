@@ -1,12 +1,12 @@
 # Plan: Zero thrash for `forge workon` (product gate)
 
-**Status:** **Complete** (TZ1…TZ-live; residual: post-HUP interactive smoke)  
+**Status:** **Shipped** TZ1…TZ-live; **open residual** Mode A nested companions  
 **Priority:** **P0 product survival** (outranks polish, tidy, optional extracts)  
 **Base:** this tree  
 **Related:** [forge-workon-reconcile.md](./forge-workon-reconcile.md) WR11–WR16,
 session H1 soft-rehome (different thrash class — lock/wake Meta)
 
-### Session note (2026-07-27) — thrash-zero closed
+### Session note (2026-07-27) — live residual (Mode B fallback OK)
 
 **Shipped:** TZ-detect → recover → collect → tab-apply flatten → gate (`--safe`)
 → matrix → live dry-run on black.
@@ -17,10 +17,20 @@ session H1 soft-rehome (different thrash class — lock/wake Meta)
 | **B** | roles only; soft-park non-roles (`destWindowId`) |
 | **safe** | open+move only |
 
-**Live black:** perfect desk nothingToDo Mode A; fixture dry-runs Mode A/B;
-extension installed with flatten (needs HUP to load). Click-focus unit green.
+**Live black (interactive, user):** perfect `dev` → Nautilus under left Ghostty →
+FB+Chess under right Ghostty → `workon dev`:
 
-**Residual:** post-HUP interactive FB/Chess apply if user wants; not a code gap.
+| | Result |
+| --- | --- |
+| Ideal Mode A | **Missed** (should tab Nautilus→left term, FB/Chess→right term) |
+| Mode B fallback | **Worked** — all three soft-parked to mon1 last TABBED (chrome bag) |
+
+Post tree + reconstructed pre: fixtures
+`tree-live-mode-b-park-after-nested.json`,
+`tree-live-pre-nested-companions.json`.
+
+**Next session:** [TZ-mode-a-nested](../tasks/forge-workon-thrash-zero_tz-mode-a-nested.md)
+— do not treat role+VSPLIT companions as thrash; Mode A collect into that view.
 
 
 ---
@@ -171,9 +181,10 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | **TZ-tab-apply** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-tab-apply.md) | Tab structure apply yields TABBED not nested HSPLIT | M | **Done** A/B AGREE |
 | **TZ-gate** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-gate.md) | CLI: Mode A collect / Mode B recover; `--safe` / `--force` | S | **Done** A/B AGREE |
 | **TZ-matrix** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix lock table for A/B modes | M | **Done** A/B AGREE |
-| **TZ-live** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-live.md) | Live black checklist | S | **Done** dry-run + unit; residual post-HUP |
+| **TZ-live** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-live.md) | Live black checklist | S | **Done** + interactive residual filed |
+| **TZ-mode-a-nested** | [task](../tasks/forge-workon-thrash-zero_tz-mode-a-nested.md) | Mode A when marginals under role VSPLIT (not Mode B dump) | M | **Next** — live residual |
 
-**Next task:** none — plan complete (post-HUP optional smoke).
+**Next task:** **TZ-mode-a-nested**.
 
 ---
 
@@ -189,6 +200,7 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | T9 | Focus after batch | WR14 |
 | T10 | Session H1 | out of scope |
 | **T12** | Mode B recover | **TZ-recover** |
+| **T13** | Nested VSPLIT companions → false thrash / wrong bag | **TZ-mode-a-nested** (open) |
 
 ---
 

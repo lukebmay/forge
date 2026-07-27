@@ -213,6 +213,12 @@ Human stderr (dry-run and apply) includes:
 Default product path **auto recovers** with Mode B when thrashed (no refuse gate).
 `--safe` still reports Mode A/B but only emits open/move actions.
 
+**Known residual (black live):** stacking companions under a role with
+VSPLIT (e.g. Nautilus under left Ghostty, Facebook/Chess under right Ghostty)
+may still trip **Mode B** and soft-park into the last mon last group instead of
+tabbing into that term view (Mode A). Fallback is safe; ideal collect is
+[TZ-mode-a-nested](../../agents/tasks/forge-workon-thrash-zero_tz-mode-a-nested.md).
+
 Optional top-level `floating: []` is reserved (location later).
 
 ### Defaults (omit noise)

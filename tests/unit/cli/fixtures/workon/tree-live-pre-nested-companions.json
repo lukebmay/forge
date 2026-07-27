@@ -1,0 +1,152 @@
+{
+  "apiVersion": 2,
+  "description": "Reconstructed pre-workon black 2026-07-27: perfect roles + Nautilus VSPLIT under mon0 Ghostty + FB/Chess under mon1 Ghostty. Ideal Mode A: tab Nautilus→mon0 term, FB+Chess→mon1 term. Live run took Mode B park instead (see tree-live-mode-b-park-after-nested.json). TZ-mode-a-nested.",
+  "monitors": [
+    {
+      "nodeType": "MONITOR",
+      "layout": "HSPLIT",
+      "rect": { "x": 92, "y": 72, "width": 5020, "height": 2800 },
+      "id": "mo0ws0",
+      "stableKey": "geom:0,0,5120,2880#primary",
+      "children": [
+        {
+          "nodeType": "CON",
+          "layout": "TABBED",
+          "rect": { "x": 92, "y": 72, "width": 2510, "height": 2800 },
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Google Chrome",
+              "windowId": 101,
+              "monitor": 0,
+              "mode": "TILE",
+              "rect": { "x": 92, "y": 142, "width": 2510, "height": 2730 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Grok",
+              "windowId": 102,
+              "monitor": 0,
+              "mode": "TILE",
+              "rect": { "x": 92, "y": 142, "width": 2510, "height": 2730 },
+              "children": []
+            }
+          ]
+        },
+        {
+          "nodeType": "CON",
+          "layout": "VSPLIT",
+          "rect": { "x": 2602, "y": 72, "width": 2510, "height": 2800 },
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "com.mitchellh.ghostty",
+              "title": "Ghostty",
+              "windowId": 103,
+              "monitor": 0,
+              "mode": "TILE",
+              "rect": { "x": 2602, "y": 72, "width": 2510, "height": 1400 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "org.gnome.Nautilus",
+              "title": "Home",
+              "windowId": 901,
+              "monitor": 0,
+              "mode": "TILE",
+              "rect": { "x": 2602, "y": 1472, "width": 2510, "height": 1400 },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeType": "MONITOR",
+      "layout": "HSPLIT",
+      "rect": { "x": 5212, "y": 8, "width": 5020, "height": 2864 },
+      "id": "mo1ws0",
+      "stableKey": "geom:5120,0,5120,2880",
+      "children": [
+        {
+          "nodeType": "CON",
+          "layout": "VSPLIT",
+          "rect": { "x": 5212, "y": 8, "width": 2510, "height": 2864 },
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "com.mitchellh.ghostty",
+              "title": "Ghostty",
+              "windowId": 201,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 5212, "y": 8, "width": 2510, "height": 954 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Facebook",
+              "windowId": 301,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 5212, "y": 962, "width": 2510, "height": 954 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Chess.com",
+              "windowId": 302,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 5212, "y": 1916, "width": 2510, "height": 956 },
+              "children": []
+            }
+          ]
+        },
+        {
+          "nodeType": "CON",
+          "layout": "TABBED",
+          "rect": { "x": 7722, "y": 8, "width": 2510, "height": 2864 },
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "YouTube",
+              "windowId": 202,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 7722, "y": 78, "width": 2510, "height": 2794 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Gmail - Inbox - Gmail",
+              "windowId": 203,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 7722, "y": 78, "width": 2510, "height": 2794 },
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "Google-chrome",
+              "title": "Google Voice - Messages",
+              "windowId": 204,
+              "monitor": 1,
+              "mode": "TILE",
+              "rect": { "x": 7722, "y": 78, "width": 2510, "height": 2794 },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
