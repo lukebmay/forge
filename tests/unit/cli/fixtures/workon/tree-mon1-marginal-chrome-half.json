@@ -1,0 +1,110 @@
+{
+  "apiVersion": 2,
+  "monitors": [
+    {
+      "nodeType": "MONITOR",
+      "id": "mo0ws0",
+      "layout": "HSPLIT",
+      "stableKey": "geom:0,0,5120,2880#primary",
+      "rect": { "x": 0, "y": 0, "width": 5120, "height": 2880 },
+      "children": [
+        {
+          "nodeType": "CON",
+          "layout": "TABBED",
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "windowId": 101,
+              "wmClass": "Google-chrome",
+              "title": "Google Chrome",
+              "monitor": 0,
+              "mode": "TILE",
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "windowId": 102,
+              "wmClass": "Google-chrome",
+              "title": "Grok",
+              "monitor": 0,
+              "mode": "TILE",
+              "children": []
+            }
+          ]
+        },
+        {
+          "nodeType": "WINDOW",
+          "windowId": 103,
+          "wmClass": "com.mitchellh.ghostty",
+          "title": "Ghostty",
+          "monitor": 0,
+          "mode": "TILE",
+          "children": []
+        }
+      ]
+    },
+    {
+      "nodeType": "MONITOR",
+      "id": "mo1ws0",
+      "layout": "HSPLIT",
+      "stableKey": "geom:5120,0,5120,2880",
+      "rect": { "x": 5120, "y": 0, "width": 5120, "height": 2880 },
+      "children": [
+        {
+          "nodeType": "WINDOW",
+          "windowId": 201,
+          "wmClass": "com.mitchellh.ghostty",
+          "title": "Ghostty",
+          "monitor": 1,
+          "mode": "TILE",
+          "rect": { "x": 5120, "y": 0, "width": 2560, "height": 2880 },
+          "children": []
+        },
+        {
+          "nodeType": "WINDOW",
+          "windowId": 301,
+          "wmClass": "Google-chrome",
+          "title": "Facebook",
+          "monitor": 1,
+          "mode": "TILE",
+          "rect": { "x": 7800, "y": 200, "width": 800, "height": 600 },
+          "children": []
+        },
+        {
+          "nodeType": "CON",
+          "layout": "TABBED",
+          "rect": { "x": 7680, "y": 0, "width": 2560, "height": 2880 },
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "windowId": 202,
+              "wmClass": "Google-chrome",
+              "title": "YouTube",
+              "monitor": 1,
+              "mode": "TILE",
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "windowId": 203,
+              "wmClass": "Google-chrome",
+              "title": "Gmail - Inbox - Gmail",
+              "monitor": 1,
+              "mode": "TILE",
+              "children": []
+            },
+            {
+              "nodeType": "WINDOW",
+              "windowId": 204,
+              "wmClass": "Google-chrome",
+              "title": "Google Voice - Messages",
+              "monitor": 1,
+              "mode": "TILE",
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

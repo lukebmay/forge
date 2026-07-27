@@ -1,33 +1,37 @@
 # Plan: Zero thrash for `forge workon` (product gate)
 
-**Status:** Active — **P0** (TZ1 + TZ-detect + TZ-recover shipped; next TZ-collect)  
+**Status:** Active — **P0** (TZ1 + TZ-detect + TZ-recover + TZ-collect shipped; next TZ-tab-apply)  
 **Priority:** **P0 product survival** (outranks polish, tidy, optional extracts)  
 **Base:** this tree  
 **Related:** [forge-workon-reconcile.md](./forge-workon-reconcile.md) WR11–WR16,
 session H1 soft-rehome (different thrash class — lock/wake Meta)
 
-### Session note (2026-07-27) — TZ-recover shipped (A)
+### Session note (2026-07-27) — TZ-collect shipped (A)
 
-**TZ-recover Done (implementer):** Mode B when `thrashState.thrashed` — roles as
-usual; every non-role soft-parked (`destWindowId` via `_soft_park_anchor`); no
-mon-child span keep; no mon ensure for parks only. `detect_thrash` called once
-early and reused for gate + `plan.thrashState`.
+**TZ-collect Done (implementer):** Mode A when not thrashed — build profile view
+regions (equal splits of mon rect / `geom:` stableKey); assign each marginal by
+rect overlap (partial/multi → **first** profile view); CON-sibling coexist +
+mon-direct span fallback when no rect; structure `windowIds` = roles + kept
+tabbed. Mode B unchanged (no collect). residual leave supersedes passive leave
+for assignable marginals (they keep + structure, not `left`).
 
 | Mode | Behavior now |
 | --- | --- |
-| **A — not thrashed** | residual leave/park/keep as TZ1 (collect = TZ-collect) |
+| **A — not thrashed** | roles; collect marginals into views → tab structure; unassigned leave/park |
 | **B — thrashed** | roles open/move/structure; unclaimed → soft park; kept=0 |
 
 | Fixture | Result |
 | --- | --- |
-| thrash mon1 nested | 7 reused; parked 301+302 → dest 204; no mon ensure |
-| perfect | nothingToDo; parked=0; thrashed false |
-| companions-direct | not thrashed → still keep 301/302 |
-| doubled-black | thrashed (mon-children-excess) → Mode B parks extras |
+| companions-direct | mon1.term tab [201,301,302]; no park; no mon ensure |
+| chrome-half (rects) | FB → mon1.comms tab [202,203,204,301] |
+| straddle (rects) | FB → mon1.term first [201,301] |
+| already tabbed | nothingToDo |
+| thrash nested | Mode B parks 301+302 |
+| perfect | nothingToDo |
 
-**Tests:** `TestModeBThrashRecover` + plan/apply fixture updates; `tests/unit/cli/` 172 green.
+**Tests:** `TestModeACollect` + prior; `tests/unit/cli/` 178 green.
 
-**Next:** **TZ-collect** (Mode A tab marginals into views) → TZ-tab-apply → TZ-gate.
+**Next:** **TZ-tab-apply** → TZ-gate.
 
 
 ---
@@ -174,13 +178,13 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | **TZ1** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz1-leave-soft-park.md) | Leave residual + soft park + thrashRisk | — | **Done** |
 | **TZ-detect** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-detect.md) | `detect_thrash` + fixture from live mon1 dump | M | **Done** A/B AGREE |
 | **TZ-recover** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-recover.md) | Mode B: roles only + park non-roles to safe dump | M | **Done** A/B AGREE |
-| **TZ-collect** | [task](../tasks/forge-workon-thrash-zero_tz-collect.md) | Mode A: tab marginals into overlapping view areas | M | TZ-detect (+ views geometry) |
+| **TZ-collect** | [task](../tasks/forge-workon-thrash-zero_tz-collect.md) | Mode A: tab marginals into overlapping view areas | M | **Done** A (B verify) |
 | **TZ-tab-apply** | [task](../tasks/forge-workon-thrash-zero_tz-tab-apply.md) | Tab structure apply yields TABBED not nested HSPLIT | M | can parallel after TZ-detect analysis |
 | **TZ-gate** | [task](../tasks/forge-workon-thrash-zero_tz-gate.md) | CLI: Mode A collect / Mode B recover; `--safe` / `--force` | S | TZ-recover + TZ-collect |
 | **TZ-matrix** | [task](../tasks/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix + dry-run goldens for A/B modes | M | TZ-recover + TZ-tab-apply |
 | **TZ-live** | [task](../tasks/forge-workon-thrash-zero_tz-live.md) | Live black checklist (FB/Chess, Voice pull, thrash recover) | S | TZ-gate |
 
-**Next task:** **TZ-collect** → TZ-tab-apply → TZ-gate.
+**Next task:** **TZ-tab-apply** → TZ-gate.
 
 ---
 

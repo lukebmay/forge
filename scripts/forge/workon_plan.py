@@ -909,7 +909,7 @@ def plan_reconcile(
     residual_mode = str(marginal.get("residual") or "leave").strip().lower()
     if residual_mode not in ("leave", "park"):
         residual_mode = "leave"
-    # Mode B: soft-park every non-role (clean still closes). Mode A residual unchanged.
+    # Mode B: soft-park every non-role (clean still closes). Mode A: collect then residual.
     force_park_residuals = thrashed and not clean
 
     for role in prof["roles"]:
@@ -976,9 +976,9 @@ def plan_reconcile(
                     slots_needing_layout[slot] = mode
         role_results.append(entry)
 
-    # Coexist keep only when sane (Mode A). Thrash: never mon-child span keep of chaos.
+    # Mode A collect: assign marginals to views (coexist). Mode B: never keep chaos.
     slot_members = (
-        _build_slot_membership(role_results, parent_info, windows)
+        _build_slot_membership(role_results, parent_info, windows, prof, forest)
         if marginal_mode != "strict" and not thrashed
         else {}
     )
@@ -1168,6 +1168,9 @@ def collect_windows(forest: Any) -> list[dict[str, Any]]:
                 "mode": n.get("mode"),
                 "pid": n.get("pid"),
             }
+            rect = n.get("rect")
+            if isinstance(rect, dict):
+                w["rect"] = rect
             if w["windowId"] is None and not w.get("path"):
                 return
             out.append(w)
@@ -1683,14 +1686,197 @@ def _compute_thrash_risk(
     }
 
 
+def _as_rect(raw: Any) -> Optional[dict[str, float]]:
+    if not isinstance(raw, dict):
+        return None
+    try:
+        x = float(raw["x"])
+        y = float(raw["y"])
+        w = float(raw["width"])
+        h = float(raw["height"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if w <= 0 or h <= 0:
+        return None
+    return {"x": x, "y": y, "width": w, "height": h}
+
+
+_GEOM_SK_RE = re.compile(
+    r"^geom:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)"
+)
+
+
+def _mon_node_rect(mon_node: dict[str, Any]) -> Optional[dict[str, float]]:
+    r = _as_rect(mon_node.get("rect"))
+    if r:
+        return r
+    sk = mon_node.get("stableKey")
+    if not isinstance(sk, str):
+        return None
+    m = _GEOM_SK_RE.match(sk.strip())
+    if not m:
+        return None
+    return {
+        "x": float(m.group(1)),
+        "y": float(m.group(2)),
+        "width": float(m.group(3)),
+        "height": float(m.group(4)),
+    }
+
+
+def _split_rect(
+    parent: dict[str, float], n: int, split: str
+) -> list[dict[str, float]]:
+    if n <= 0:
+        return []
+    if n == 1:
+        return [dict(parent)]
+    split_l = str(split or "hsplit").strip().lower()
+    out: list[dict[str, float]] = []
+    if split_l in ("vsplit", "v", "vertical"):
+        h = parent["height"] / n
+        for i in range(n):
+            out.append(
+                {
+                    "x": parent["x"],
+                    "y": parent["y"] + i * h,
+                    "width": parent["width"],
+                    "height": h,
+                }
+            )
+    else:
+        w = parent["width"] / n
+        for i in range(n):
+            out.append(
+                {
+                    "x": parent["x"] + i * w,
+                    "y": parent["y"],
+                    "width": w,
+                    "height": parent["height"],
+                }
+            )
+    return out
+
+
+def _rect_overlap_area(a: dict[str, float], b: dict[str, float]) -> float:
+    ax2 = a["x"] + a["width"]
+    ay2 = a["y"] + a["height"]
+    bx2 = b["x"] + b["width"]
+    by2 = b["y"] + b["height"]
+    ix1 = max(a["x"], b["x"])
+    iy1 = max(a["y"], b["y"])
+    ix2 = min(ax2, bx2)
+    iy2 = min(ay2, by2)
+    if ix2 <= ix1 or iy2 <= iy1:
+        return 0.0
+    return (ix2 - ix1) * (iy2 - iy1)
+
+
+def _build_view_regions(
+    prof: dict[str, Any], forest: Any
+) -> list[dict[str, Any]]:
+    """
+    Profile mon-child / nested pane regions in profile order.
+    Equal splits of mon rect (tree rect or geom: stableKey; synthetic fallback).
+    """
+    views: list[dict[str, Any]] = []
+    order = 0
+
+    def walk(
+        nodes: list[Any],
+        parent_rect: dict[str, float],
+        prefix: str,
+        split_mode: str,
+        mon_idx: int,
+    ) -> None:
+        nonlocal order
+        rects = _split_rect(parent_rect, len(nodes), split_mode)
+        for i, ch in enumerate(nodes):
+            if not isinstance(ch, dict) or not ch.get("id"):
+                continue
+            full = f"{prefix}.{ch['id']}"
+            r = rects[i] if i < len(rects) else dict(parent_rect)
+            nested = ch.get("children")
+            if isinstance(nested, list) and nested:
+                nest_split = str(
+                    ch.get("split") or ch.get("layout") or "hsplit"
+                ).strip().lower()
+                if nest_split in ("tabbed", "stacked"):
+                    views.append(
+                        {
+                            "slot": full,
+                            "mon_idx": mon_idx,
+                            "rect": r,
+                            "order": order,
+                        }
+                    )
+                    order += 1
+                else:
+                    walk(nested, r, full, nest_split, mon_idx)
+            else:
+                views.append(
+                    {
+                        "slot": full,
+                        "mon_idx": mon_idx,
+                        "rect": r,
+                        "order": order,
+                    }
+                )
+                order += 1
+
+    for mon_key, mon_body in (prof.get("layout") or {}).items():
+        if not isinstance(mon_body, dict):
+            continue
+        mon_idx = mon_index_from_slot(mon_key)
+        if mon_idx is None:
+            continue
+        mon_node = _monitor_for_index(forest, mon_idx)
+        mon_rect = _mon_node_rect(mon_node) if mon_node else None
+        if mon_rect is None:
+            mon_rect = {
+                "x": float(mon_idx) * 10000.0,
+                "y": 0.0,
+                "width": 1000.0,
+                "height": 1000.0,
+            }
+        children = mon_body.get("children") or []
+        if not isinstance(children, list) or not children:
+            continue
+        split = str(mon_body.get("split") or "hsplit").strip().lower()
+        walk(children, mon_rect, mon_key, split, mon_idx)
+    return views
+
+
+def _assign_view_by_overlap(
+    win_rect: dict[str, float],
+    mon_idx: int,
+    views: list[dict[str, Any]],
+) -> Optional[str]:
+    """First profile-order view on mon with positive rect overlap (partial → first)."""
+    for v in sorted(views, key=lambda x: int(x.get("order") or 0)):
+        if int(v.get("mon_idx", -1)) != int(mon_idx):
+            continue
+        vr = v.get("rect")
+        if not isinstance(vr, dict):
+            continue
+        if _rect_overlap_area(win_rect, vr) > 0:
+            return str(v["slot"])
+    return None
+
+
 def _build_slot_membership(
     role_results: list[dict[str, Any]],
     parent_info: dict[str, dict[str, Any]],
     windows: list[dict[str, Any]],
+    prof: Optional[dict[str, Any]] = None,
+    forest: Any = None,
 ) -> dict[str, set[str]]:
     """
-    Per slot: CON siblings of claimed roles, plus mon-direct windows in the
-    mon-child span of a preceding role-owned mon child (logical slot region).
+    Mode A collect: map unclaimed windows → view slots.
+
+    1. CON siblings of claimed roles (in-group companions)
+    2. Rect overlap vs profile view regions (partial → first view)
+    3. Mon-direct span: nearest preceding role-owned mon child
     """
     by_parent: dict[str, list[str]] = {}
     for w in windows:
@@ -1709,12 +1895,14 @@ def _build_slot_membership(
     membership: dict[str, set[str]] = {}
     # mon_id → mon-child index → primary slot owning that mon child
     mon_owned: dict[str, dict[int, str]] = {}
+    claimed_keys: set[str] = set()
     for r in role_results:
         wid = r.get("windowId")
         slot = r.get("slot")
         if wid is None or not slot:
             continue
         key = f"id:{wid}"
+        claimed_keys.add(key)
         membership.setdefault(str(slot), set()).add(key)
         info = parent_info.get(str(wid))
         if not info:
@@ -1730,10 +1918,32 @@ def _build_slot_membership(
         for sib in by_parent.get(str(pp), []):
             membership[str(slot)].add(sib)
 
-    # Mon-direct unclaimed windows: nearest preceding role-owned mon-child span
-    already = set()
+    already = set(claimed_keys)
     for keys in membership.values():
         already |= keys
+
+    # Rect overlap collect (profile equal-split view geometry)
+    views: list[dict[str, Any]] = []
+    if prof is not None and forest is not None:
+        views = _build_view_regions(prof, forest)
+    if views:
+        for w in windows:
+            key = _window_key(w)
+            if key in already:
+                continue
+            wr = _as_rect(w.get("rect"))
+            if not wr:
+                continue
+            mon = window_monitor_index(w)
+            if mon is None:
+                continue
+            slot = _assign_view_by_overlap(wr, mon, views)
+            if not slot:
+                continue
+            membership.setdefault(slot, set()).add(key)
+            already.add(key)
+
+    # Mon-direct unclaimed: nearest preceding role-owned mon-child span
     for w in windows:
         key = _window_key(w)
         if key in already:

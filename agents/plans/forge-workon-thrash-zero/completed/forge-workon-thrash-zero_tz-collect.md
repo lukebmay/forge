@@ -1,7 +1,7 @@
 # TZ-collect — Mode A: tab marginals into view areas
 
 **Plan:** [forge-workon-thrash-zero.md](../plans/forge-workon-thrash-zero.md)  
-**Status:** Ready (after TZ-detect; with or after TZ-recover)  
+**Status:** Done (A/B AGREE)
 **Priority:** P0  
 **Depends:** TZ-detect (view geometry helpers shared with thrash detect)  
 **Task force:** A implement → B verify  
@@ -29,11 +29,11 @@ When thrashed: **do not** run Mode A collect — TZ-recover parks non-roles.
 
 ## Acceptance
 
-- [ ] Fixture: perfect mon1 + mon-direct FB/Chess in ghostty half → collect to mon1.term tab; no park  
-- [ ] Fixture: marginal only overlapping chrome half → mon1.comms tab  
-- [ ] Partial straddle → first view  
-- [ ] Second plan after collect → nothingToDo / no thrash  
-- [ ] tests green; plan + task notes  
+- [x] Fixture: perfect mon1 + mon-direct FB/Chess in ghostty half → collect to mon1.term tab; no park  
+- [x] Fixture: marginal only overlapping chrome half → mon1.comms tab  
+- [x] Partial straddle → first view  
+- [x] Second plan after collect → nothingToDo / no thrash  
+- [x] tests green; plan + task notes  
 
 ## Non-goals
 
@@ -42,4 +42,20 @@ When thrashed: **do not** run Mode A collect — TZ-recover parks non-roles.
 
 ## Session note
 
-(next agent fills)
+**TZ-collect Done (A):** Mode A assign marginals via
+`_build_view_regions` (equal splits of mon rect / geom stableKey) +
+rect overlap (partial → first profile view) + mon-direct span fallback +
+CON-sibling coexist. Structure ensure_layout windowIds = roles + kept.
+Mode B unchanged (no collect when thrashed). residual leave → collect when
+assignable (not passive leave for mon-direct companions).
+
+| Path | Role |
+| --- | --- |
+| `scripts/forge/workon_plan.py` | view regions, overlap assign, membership |
+| `tree-mon1-marginal-chrome-half.json` | FB rect right half → mon1.comms |
+| `tree-mon1-marginal-straddle.json` | straddle → mon1.term first |
+| `TestModeACollect` | acceptance 1–6 |
+
+**Tests:** `tests/unit/cli/` 178 green.
+
+**Next:** TZ-tab-apply (ensure tabbed apply yields TABBED not nested HSPLIT).

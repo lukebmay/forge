@@ -606,6 +606,216 @@ class TestModeBThrashRecover(unittest.TestCase):
         self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
 
 
+class TestModeACollect(unittest.TestCase):
+    """TZ-collect: Mode A tabs marginals into overlapping view areas."""
+
+    def test_companions_direct_collect_term_tab_no_park(self):
+        forest = _load("tree-mon1-companions-direct.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["left"], 0)
+        self.assertEqual(plan["counts"]["kept"], 2)
+        keep_ids = {k["windowId"] for k in plan["kept"]}
+        self.assertEqual(keep_ids, {301, 302})
+        for k in plan["kept"]:
+            self.assertEqual(k["slot"], "mon1.term")
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertNotIn("mon0", ensures)
+        self.assertNotIn("mon1", ensures)
+        self.assertIn("mon1.term", ensures)
+        self.assertEqual(ensures["mon1.term"]["mode"], "tabbed")
+        self.assertEqual(ensures["mon1.term"]["windowIds"], [201, 301, 302])
+        self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
+
+    def test_chrome_half_collect_to_comms(self):
+        """Marginal rect only on chrome half → mon1.comms (not mon-span term)."""
+        forest = _load("tree-mon1-marginal-chrome-half.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["kept"], 1)
+        self.assertEqual(plan["kept"][0]["windowId"], 301)
+        self.assertEqual(plan["kept"][0]["slot"], "mon1.comms")
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertNotIn("mon0", ensures)
+        self.assertNotIn("mon1", ensures)
+        self.assertIn("mon1.comms", ensures)
+        self.assertEqual(ensures["mon1.comms"]["mode"], "tabbed")
+        self.assertEqual(
+            ensures["mon1.comms"]["windowIds"], [202, 203, 204, 301]
+        )
+        self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
+
+    def test_partial_straddle_first_view(self):
+        """Rect straddling term|comms → first profile view mon1.term."""
+        forest = _load("tree-mon1-marginal-straddle.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["kept"], 1)
+        self.assertEqual(plan["kept"][0]["windowId"], 301)
+        self.assertEqual(plan["kept"][0]["slot"], "mon1.term")
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertIn("mon1.term", ensures)
+        self.assertEqual(ensures["mon1.term"]["mode"], "tabbed")
+        self.assertEqual(ensures["mon1.term"]["windowIds"], [201, 301])
+
+    def test_already_tabbed_collect_nothing_to_do(self):
+        """Second plan after collect: forest already tabbed → nothingToDo."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 101,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Chrome",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 102,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Grok",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 103,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 201,
+                                    "wmClass": "com.mitchellh.ghostty",
+                                    "title": "Ghostty",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 301,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Facebook",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 302,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Chess.com",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail - Inbox - Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Voice - Messages",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["structure"], 0)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertTrue(plan["nothingToDo"])
+        self.assertEqual(plan["actions"], [])
+
+    def test_thrash_still_mode_b_parks(self):
+        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["parked"], 2)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        park_ids = {
+            a["windowId"] for a in plan["actions"] if a.get("op") == "park"
+        }
+        self.assertEqual(park_ids, {301, 302})
+
+    def test_perfect_still_nothing_to_do(self):
+        forest = _load("tree-perfect.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertTrue(plan["nothingToDo"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["actions"], [])
+
+
 class TestPlanStructureRepair(unittest.TestCase):
     def test_mon_split_anchors_skip_tab_members(self):
         """Mon hsplit ensure anchors on term tiles, not chrome inside tabs."""
