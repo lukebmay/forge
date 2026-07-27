@@ -75,6 +75,11 @@ from workon_lib import (  # noqa: E402
     validate_profile,
 )
 from workon_plan import plan_reconcile, validate_reconcile_profile  # noqa: E402
+from workon_capture import (  # noqa: E402
+    capture_tiles_profile,
+    format_capture_stderr,
+    profile_for_output,
+)
 from cli_ansi import parse_color_flag, set_color_mode  # noqa: E402
 from cli_help import print_forge_help, print_workon_help  # noqa: E402
 
@@ -1284,7 +1289,7 @@ def _workon_parse_tokens(
     """
     Parse workon positional tokens + flags.
     Returns (action, name, dry_run, force_launch, clean, force_close).
-    action: list | show | run | help
+    action: list | show | run | help | capture
     """
     dry_run = bool(getattr(args, "dry_run", False))
     force_launch = bool(getattr(args, "force_launch", False))
@@ -1301,6 +1306,10 @@ def _workon_parse_tokens(
     if head == "show":
         name = tokens[1].strip() if len(tokens) >= 2 else None
         return "show", name, dry_run, force_launch, clean, force_close
+    if head == "capture":
+        # Optional name → description only (never auto-writes host profiles)
+        name = tokens[1].strip() if len(tokens) >= 2 else None
+        return "capture", name, dry_run, force_launch, clean, force_close
     return "run", head, dry_run, force_launch, clean, force_close
 
 
@@ -1648,8 +1657,58 @@ def _workon_run_reconcile(
     return 0
 
 
+def _workon_run_capture(
+    backend: Optional[str],
+    *,
+    tree_file: Optional[str],
+    out_path: Optional[str],
+    description: Optional[str],
+) -> int:
+    """Snapshot GetTree → tiles sugar JSON on stdout (optional --out)."""
+    try:
+        forest = _workon_load_tree(backend, tree_file)
+    except FileNotFoundError as e:
+        _eprint(f"forge workon capture: {e}")
+        return 1
+    except (ValueError, RuntimeError, json.JSONDecodeError, OSError) as e:
+        _eprint(f"forge workon capture: {e}")
+        return 1
+
+    desc = None
+    if description:
+        desc = f"captured sketch ({description})"
+    try:
+        profile = capture_tiles_profile(forest, description=desc)
+    except ValueError as e:
+        _eprint(f"forge workon capture: {e}")
+        return 1
+
+    _eprint(format_capture_stderr(profile))
+    payload = profile_for_output(profile)
+    text = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+
+    if out_path:
+        dest = Path(out_path).expanduser()
+        parent = dest.parent
+        if str(parent) not in ("", ".") and not parent.is_dir():
+            _eprint(
+                f"forge workon capture: parent directory missing: {parent}"
+            )
+            return 1
+        try:
+            dest.write_text(text, encoding="utf-8")
+        except OSError as e:
+            _eprint(f"forge workon capture: write failed: {e}")
+            return 1
+        _eprint(f"forge workon capture: wrote {dest}")
+
+    # Always print JSON on stdout (even with --out) for piping
+    sys.stdout.write(text)
+    return 0
+
+
 def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
-    """forge workon list | show <name> | <name> [--dry-run] [--clean]."""
+    """forge workon list | show | capture | <name> [--dry-run] [--clean]."""
     tokens: list[str] = list(getattr(args, "workon_tokens", None) or [])
     action, name, dry_run, force_launch, clean, force_close = _workon_parse_tokens(
         tokens, args
@@ -1729,11 +1788,19 @@ def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
         _print_json(out, compact=False)
         return 0
 
+    if action == "capture":
+        return _workon_run_capture(
+            backend,
+            tree_file=tree_file,
+            out_path=getattr(args, "out", None),
+            description=name,
+        )
+
     if action == "run":
         if not name or len(tokens) != 1:
             _eprint(
                 "forge workon: use `forge workon <name>` "
-                "(or list / show <name>)"
+                "(or list / show <name> / capture)"
             )
             return 1
     else:
@@ -2435,6 +2502,9 @@ def build_parser() -> argparse.ArgumentParser:
         "  forge workon <name> --dry-run # print plan only (no launch/RunSteps)\n"
         "  forge workon list             # host + source + short path (JSON on stdout)\n"
         "  forge workon show <name>      # header + validated profile JSON\n"
+        "  forge workon capture          # sketch tiles sugar from current tree\n"
+        "  forge workon capture --tree-file F  # offline capture from forest JSON\n"
+        "  forge workon capture --out PATH     # also write file (parent must exist)\n"
         "  forge workon <name> --force-launch  # imperative steps[] only\n"
         "  forge workon <name> --clean   # close residuals (Meta delete; not park)\n"
         "  forge workon <name> --clean --force  # stronger delete; never process-kill\n"
@@ -2462,7 +2532,7 @@ def build_parser() -> argparse.ArgumentParser:
         "workon_tokens",
         nargs="*",
         metavar="ARG",
-        help="help | list | show <name> | <name>",
+        help="help | list | show <name> | capture | <name>",
     )
     workon_p.add_argument(
         "--dry-run",
@@ -2487,7 +2557,12 @@ def build_parser() -> argparse.ArgumentParser:
     workon_p.add_argument(
         "--tree-file",
         metavar="PATH",
-        help="GetTree forest JSON file (offline dry-run / tests; no DBus tree)",
+        help="GetTree forest JSON file (offline dry-run / capture / tests; no DBus tree)",
+    )
+    workon_p.add_argument(
+        "--out",
+        metavar="PATH",
+        help="With capture: write profile JSON to PATH (parent dir must exist)",
     )
     workon_p.set_defaults(func=cmd_workon)
 
@@ -2667,7 +2742,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         tree_file = getattr(args, "tree_file", None)
         if head in ("list", "show", "help", "-h", "--help") or not tokens:
             return int(args.func(None, args))
-        # Offline dry-run when forest is provided on disk
+        # Offline: capture / dry-run when forest is on disk
+        if head == "capture" and tree_file:
+            return int(args.func(None, args))
         if dry and tree_file:
             return int(args.func(None, args))
         backend = _check_deps()

@@ -91,6 +91,9 @@ export FORGE_WORKON_DIR=$shellrc/configs/forge/workon   # hosts/<host>/<name>.js
 ./scripts/forge/forge workon help             # colorized guide + defaults
 ./scripts/forge/forge workon list
 ./scripts/forge/forge workon show dev
+./scripts/forge/forge workon capture          # tiles sugar sketch from tree (stdout)
+./scripts/forge/forge workon capture --tree-file forest.json
+./scripts/forge/forge workon capture --out ~/.config/forge/workon/sketch.json
 ./scripts/forge/forge workon dev              # v1 steps or v2 reconcile
 ./scripts/forge/forge workon dev --dry-run    # plan only (no mutations)
 ./scripts/forge/forge workon dev --force-launch  # imperative steps[] only
@@ -134,7 +137,8 @@ Forge does not hardcode shellrc paths.
 Defaults: `marginal.mode=coexist` (slot companions **kept**), residuals
 park to overflow; `strict` parks all unclaimed. Pure helpers:
 `workon_lib.py` (resolve), `workon_plan.py` (normalize + planner),
-`workon_apply.py` (action→steps / mode). User guide: `docs/user/workon.md`.
+`workon_apply.py` (action→steps / mode), `workon_capture.py` (tree → tiles
+sugar). User guide: `docs/user/workon.md`.
 Design: `docs/DESIGN.md`.
 
 Deps: `python3` + `python3-gi` (preferred) or `gdbus`; `gio` or `gtk-launch`

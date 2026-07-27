@@ -1,16 +1,16 @@
 # Plan: Idempotent `forge workon` (desired-state layout)
 
-**Status:** WR1–WR6 + **WR10–WR15 Done** — next **WR7** capture (later)  
+**Status:** WR1–WR7 + **WR10–WR15 Done** — next **WR8/WR9** later polish  
 **Priority:** **P1 product** (day-to-day #3 after live regression watch)  
 **Base:** this tree; builds on [forge-command.md](./forge-command.md) FC0–FC5  
 **Related:** OP1 open-app, T6 GetTree, shellrc `gdisplays` host layout  
 
 ### Session note (2026-07-27)
 
-**WR6 Done (A).** Live black accept + chrome-luke `title~="Google Chrome"`.
-Live: opened 0 after fix; apply structure-only; residual mon1.s0 roleOrder
-may re-plan. Offline empty/partial/messy OK. CLI unit **131** green.
-**Next:** WR7 capture (later) / polish — or regression watch if thrash.
+**WR7 Done (A).** `forge workon capture` → tiles sugar from GetTree.
+Pure `workon_capture.py`; CLI `--tree-file` / `--out`; round-trip
+`tree-perfect` opened=0 (7 roles). Docs/help/README. CLI unit **144** green.
+**Next:** WR8 stableKey mons / WR9 env — or regression watch if thrash.
 
 ---
 
@@ -385,7 +385,7 @@ forge workon <name> [--dry-run]
 | **WR14** | Post-`workon` **tab click / focus settle** | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr14-tab-settle.md) |
 | **WR15** | `--clean` / `--clean --force` (residuals only) | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr15-clean.md) |
 | **WR6** | Live black: empty / perfect / messy + companions | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr6-live.md) |
-| **WR7** | `forge workon capture` sketch from tree | Later | M | Authoring assist after sugar lands |
+| **WR7** | `forge workon capture` sketch from tree | **Done** | M | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr7-capture.md) |
 | **WR8** | stableKey mon names (T7) in profiles | Later | S | Multi-host polish |
 | **WR9** | shellrc env snippet `FORGE_WORKON_DIR` | Later | S | Out of critical path |
 
@@ -393,9 +393,9 @@ forge workon <name> [--dry-run]
 
 | Task | Path |
 | --- | --- |
-| WR6, WR10–WR15 | [completed/](./forge-workon-reconcile/completed/) |
+| WR6–WR7, WR10–WR15 | [completed/](./forge-workon-reconcile/completed/) |
 
-**Next A/B:** **WR7** capture (later) — core reconcile path accepted live.
+**Next A/B:** **WR8** / **WR9** later polish — core reconcile + capture shipped.
 
 ---
 
@@ -482,4 +482,4 @@ WR13 docs/help ◄───────────────────┘
 
 ## Next task
 
-**WR7** — `forge workon capture` sketch from tree (later / polish).
+**WR8** — stableKey mon names in profiles (later), or **WR9** shellrc env.

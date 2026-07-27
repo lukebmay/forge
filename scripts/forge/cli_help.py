@@ -130,6 +130,9 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
         ("forge workon help", "This guide"),
         ("forge workon list", "Profiles (stderr human; stdout JSON)"),
         ("forge workon show <name>", "Resolved path + validated profile"),
+        ("forge workon capture", "Sketch tiles sugar from current tree (stdout)"),
+        ("forge workon capture --tree-file F", "Offline capture from GetTree JSON"),
+        ("forge workon capture --out PATH", "Also write file (parent dir must exist)"),
         ("forge workon <name> --dry-run", "Plan only (reused/open/move/kept/park|close)"),
         ("forge workon <name>", "Apply reconcile (or steps)"),
         ("forge workon <name> --force-launch", "Imperative steps[] only (escape hatch)"),
@@ -232,6 +235,7 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  • Default never closes windows; role windows and kept companions stay.")
     _out(s, "  • Optional: ", cyan('"displays": "scene"', **kw), " -> gdisplays load; ", cyan('"settings": "name"', **kw), " -> SettingsLoad.")
     _out(s, "  • Offline plan: ", cmd("forge workon name --dry-run --tree-file forest.json", **kw))
+    _out(s, "  • Capture sketch: ", cmd("forge workon capture", **kw), "  then edit match/open; never auto-installs")
     _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/workon-tiles-minimal.json", **kw))
     _out(s, "                    ", cyan("scripts/forge/examples/workon-tiles-nested.json", **kw))
     _out(s, "                    ", cyan("scripts/forge/examples/workon-minimal.json", **kw), dim(" (IR)", **kw))

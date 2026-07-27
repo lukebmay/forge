@@ -42,9 +42,35 @@ Without `FORGE_WORKON_DIR`, only `FORGE_WORKON_PATH` (if set) and
 | `forge workon help` | Colorized guide, defaults, minimal example |
 | `forge workon list` | Human lines on stderr; JSON array on **stdout** |
 | `forge workon show <name>` | Header + validated (normalized) profile JSON |
+| `forge workon capture` | Sketch **tiles** sugar from the live tree (stdout JSON) |
+| `forge workon capture --tree-file F` | Offline capture from a GetTree forest file |
+| `forge workon capture --out PATH` | Also write PATH (parent dir must already exist) |
 | `forge workon <name> --dry-run` | Plan only; **no** launches or tree mutations |
 | `forge workon <name>` | Apply (reconcile or steps) |
 | `forge workon <name> --force-launch` | Imperative `steps[]` only (errors if none) |
+
+## Capture (authoring assist)
+
+Lay out the desk by hand once, then sketch a profile:
+
+```bash
+forge workon capture > ~/.config/forge/workon/mydesk.json
+# or:
+forge workon capture --out ~/.config/forge/workon/mydesk.json
+forge workon mydesk --dry-run
+```
+
+| Detail | Behavior |
+| --- | --- |
+| Shape | Compact **`tiles` sugar** (mons → panes; tab groups as nested lists) |
+| Match | Best-effort `class` + `title~=` when several windows share a class; main Chrome → `title~="Google Chrome"` when the title contains that product name |
+| Open | Best-effort `{ "app": … }` from class stem — **edit** PWAs / argv |
+| Floating | `floating: []` when none; float role-ish objects when cheap |
+| Install | **Never** writes shellrc host profiles unless you pass **`--out`** |
+| Counts | stderr one-liner: `mon0=… mon1=… windows=…` |
+
+Capture is a **starting point**, not a perfect profile. Refine `match` /
+`open` for Chrome PWAs, then dry-run.
 
 ## Authoring: compact `tiles` sugar (preferred)
 
