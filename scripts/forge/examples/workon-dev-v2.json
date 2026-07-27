@@ -1,0 +1,128 @@
+{
+  "version": 2,
+  "mode": "reconcile",
+  "description": "Example dual-mon morning (matches black hosts/dev.json schema)",
+  "overflow": {
+    "slot": "mon0.overflow",
+    "layout": "tabbed"
+  },
+  "layout": {
+    "mon0": {
+      "split": "hsplit",
+      "children": [
+        {
+          "id": "left-tab",
+          "layout": "tabbed",
+          "roles": ["chrome-luke", "grok"]
+        },
+        {
+          "id": "term",
+          "roles": ["ghostty-left"]
+        }
+      ]
+    },
+    "mon1": {
+      "split": "hsplit",
+      "children": [
+        {
+          "id": "term",
+          "roles": ["ghostty-right"]
+        },
+        {
+          "id": "comms",
+          "layout": "tabbed",
+          "roles": ["youtube", "gmail", "voice"]
+        }
+      ]
+    }
+  },
+  "roles": [
+    {
+      "id": "chrome-luke",
+      "match": {
+        "class": "Google-chrome",
+        "title": "Google Chrome"
+      },
+      "open": {
+        "app": "google-chrome",
+        "wmClass": "Google-chrome",
+        "timeout": 25000
+      },
+      "slot": "mon0.left-tab"
+    },
+    {
+      "id": "grok",
+      "match": {
+        "class": "Google-chrome",
+        "title~=": "Grok"
+      },
+      "open": {
+        "app": "Grok",
+        "wmClass": "Google-chrome",
+        "timeout": 25000
+      },
+      "slot": "mon0.left-tab"
+    },
+    {
+      "id": "ghostty-left",
+      "match": {
+        "class": "com.mitchellh.ghostty"
+      },
+      "open": {
+        "app": "ghostty",
+        "timeout": 15000
+      },
+      "slot": "mon0.term"
+    },
+    {
+      "id": "ghostty-right",
+      "match": {
+        "class": "com.mitchellh.ghostty"
+      },
+      "open": {
+        "app": "ghostty",
+        "timeout": 15000
+      },
+      "slot": "mon1.term"
+    },
+    {
+      "id": "youtube",
+      "match": {
+        "class": "Google-chrome",
+        "title~=": "YouTube"
+      },
+      "open": {
+        "app": "YouTube",
+        "wmClass": "Google-chrome",
+        "timeout": 25000
+      },
+      "slot": "mon1.comms"
+    },
+    {
+      "id": "gmail",
+      "match": {
+        "class": "Google-chrome",
+        "title~=": "Gmail"
+      },
+      "open": {
+        "app": "Gmail",
+        "wmClass": "Google-chrome",
+        "timeout": 25000
+      },
+      "slot": "mon1.comms"
+    },
+    {
+      "id": "voice",
+      "match": {
+        "class": "Google-chrome",
+        "title~=": "Voice"
+      },
+      "open": {
+        "app": "Google Voice",
+        "wmClass": "Google-chrome",
+        "timeout": 25000
+      },
+      "slot": "mon1.comms"
+    }
+  ]
+}

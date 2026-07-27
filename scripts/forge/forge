@@ -55,15 +55,26 @@ HARD_DEPS = ("python3", "PyGObject (gi.repository.Gio) or gdbus")
 _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
+from workon_apply import (  # noqa: E402
+    MODE_RECONCILE,
+    MODE_STEPS,
+    actions_to_extension_steps,
+    detect_workon_mode,
+    open_action_to_launch_fields,
+    partition_plan_actions,
+)
 from workon_lib import (  # noqa: E402
     extract_steps_and_stop,
+    format_profile_list_line,
+    format_short_path,
     launch_fields_from_step,
-    list_profiles,
+    list_profiles_resolved,
     load_profile_file,
     partition_mixed_steps,
-    profile_path,
+    resolve_profile,
     validate_profile,
 )
+from workon_plan import plan_reconcile, validate_reconcile_profile  # noqa: E402
 
 
 def _eprint(*args: object) -> None:
@@ -1265,90 +1276,103 @@ def _load_gdisplays(scene: str) -> int:
     return int(proc.returncode)
 
 
-def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
-    """forge workon list | show <name> | <name>."""
-    tokens: list[str] = list(getattr(args, "workon_tokens", None) or [])
+def _workon_parse_tokens(
+    tokens: list[str], args: argparse.Namespace
+) -> tuple[str, Optional[str], bool, bool]:
+    """
+    Parse workon positional tokens + flags.
+    Returns (action, name, dry_run, force_launch).
+    action: list | show | run
+    """
+    dry_run = bool(getattr(args, "dry_run", False))
+    force_launch = bool(getattr(args, "force_launch", False))
     if not tokens:
-        _eprint("forge workon: need <name>, list, or show <name>")
-        return 1
+        return "help", None, dry_run, force_launch
 
     head = tokens[0].strip()
     if head == "list":
-        if len(tokens) > 1:
-            _eprint("forge workon list: unexpected arguments")
-            return 1
-        profiles = list_profiles()
-        if not profiles:
-            _eprint("forge workon: no profiles in ~/.config/forge/workon/")
-            print("[]")
-            return 0
-        rows = []
-        for p in profiles:
-            row = {"name": p["name"]}
-            if p.get("description"):
-                row["description"] = p["description"]
-            rows.append(row)
-            desc = f"  {p['description']}" if p.get("description") else ""
-            _eprint(f"{p['name']}{desc}")
-        _print_json(rows, compact=False)
-        return 0
-
+        return "list", None, dry_run, force_launch
     if head == "show":
-        if len(tokens) != 2:
-            _eprint("forge workon show: need exactly one profile name")
-            return 1
-        name = tokens[1].strip()
-        try:
-            path = profile_path(name)
-        except ValueError as e:
-            _eprint(f"forge workon show: {e}")
-            return 1
-        try:
-            data = load_profile_file(path)
-            profile = validate_profile(data)
-        except FileNotFoundError as e:
-            _eprint(f"forge workon show: {e}")
-            return 1
-        except ValueError as e:
-            _eprint(f"forge workon show: {e}")
-            return 1
-        out = {"path": str(path), "profile": profile}
-        _print_json(out, compact=False)
+        name = tokens[1].strip() if len(tokens) >= 2 else None
+        return "show", name, dry_run, force_launch
+    return "run", head, dry_run, force_launch
+
+
+def _workon_load_tree(
+    backend: Optional[str], tree_file: Optional[str]
+) -> dict[str, Any]:
+    if tree_file:
+        p = Path(tree_file).expanduser()
+        if not p.is_file():
+            raise FileNotFoundError(f"tree file not found: {p}")
+        data = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("tree file must be a JSON object (GetTree forest)")
+        return data
+    if backend is None:
+        raise RuntimeError("DBus backend required (or pass --tree-file)")
+    raw = call_method(backend, "GetTree", "{}")
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError("GetTree returned non-object")
+    if data.get("error"):
+        raise RuntimeError(str(data["error"]))
+    return data
+
+
+def _workon_print_header(resolved: dict[str, Any], name: str) -> None:
+    """Consistent human header: host, profile, source, short path."""
+    path = resolved.get("path")
+    short = format_short_path(path) if path else ""
+    _eprint(
+        f"forge workon: host={resolved.get('host')} profile={name} "
+        f"source={resolved.get('source')}"
+        + (f" path={short}" if short else "")
+    )
+
+
+def _workon_print_counts(counts: dict[str, Any]) -> None:
+    _eprint(
+        f"  reused  {counts.get('reused', 0)}   "
+        f"opened  {counts.get('opened', 0)}   "
+        f"moved  {counts.get('moved', 0)}   "
+        f"parked  {counts.get('parked', 0)}"
+    )
+
+
+def _workon_plan_meta(
+    resolved: dict[str, Any],
+    name: str,
+    plan: dict[str, Any],
+    *,
+    dry_run: bool,
+) -> dict[str, Any]:
+    out = dict(plan)
+    out["name"] = name
+    out["path"] = str(resolved.get("path") or "")
+    out["source"] = resolved.get("source")
+    out["host"] = resolved.get("host")
+    out["dryRun"] = dry_run
+    out["mode"] = MODE_RECONCILE
+    return out
+
+
+def _workon_optional_preamble(
+    backend: Optional[str],
+    profile: dict[str, Any],
+    *,
+    dry_run: bool,
+) -> int:
+    """displays + settings. Skip mutations on dry-run."""
+    if dry_run:
         return 0
-
-    # Run profile by name
-    if len(tokens) != 1:
-        _eprint("forge workon: use `forge workon <name>` (or list / show <name>)")
-        return 1
-    name = head
-    try:
-        path = profile_path(name)
-    except ValueError as e:
-        _eprint(f"forge workon: {e}")
-        return 1
-    try:
-        data = load_profile_file(path)
-        profile = validate_profile(data)
-    except FileNotFoundError as e:
-        _eprint(f"forge workon: {e}")
-        return 1
-    except ValueError as e:
-        _eprint(f"forge workon: {e}")
-        return 1
-
-    stop_on_error = bool(profile.get("stopOnError", True))
-
     if profile.get("displays"):
         rc = _load_gdisplays(str(profile["displays"]))
         if rc != 0:
             return rc
-
-    steps = profile.get("steps") or []
-    needs_dbus = bool(profile.get("settings")) or bool(steps)
-    if needs_dbus and backend is None:
-        backend = _check_deps()
-
     if profile.get("settings"):
+        if backend is None:
+            backend = _check_deps()
         try:
             raw = call_method(backend, "SettingsLoad", str(profile["settings"]))
             data = json.loads(raw)
@@ -1361,18 +1385,370 @@ def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
             if isinstance(data, dict):
                 _print_json(data, compact=False)
             return 1
+    return 0
 
-    if not steps:
-        _print_json({"ok": True, "profile": name, "chunks": []}, compact=False)
+
+def _workon_run_steps(
+    backend: Optional[str],
+    resolved: dict[str, Any],
+    data: dict[str, Any],
+    *,
+    dry_run: bool,
+    force_launch: bool,
+) -> int:
+    name = resolved["name"]
+    path = resolved["path"]
+    try:
+        # mode: steps / --force-launch may select steps on dual v2 profiles;
+        # validate_profile is v1-only — normalize version, keep steps[] body.
+        data_v1 = dict(data)
+        data_v1["version"] = 1
+        if not isinstance(data_v1.get("steps"), list):
+            raise ValueError("steps path requires steps[] array")
+        profile = validate_profile(data_v1)
+    except ValueError as e:
+        _eprint(f"forge workon: {e}")
+        return 1
+
+    if dry_run:
+        _workon_print_header(resolved, name)
+        _eprint(
+            f"  mode=steps steps={len(profile.get('steps') or [])}"
+            f"{' force-launch' if force_launch else ''} (dry-run, no changes)"
+        )
+        _print_json(
+            {
+                "ok": True,
+                "dryRun": True,
+                "mode": MODE_STEPS,
+                "name": name,
+                "path": str(path),
+                "source": resolved.get("source"),
+                "host": resolved.get("host"),
+                "steps": profile.get("steps") or [],
+                "stopOnError": bool(profile.get("stopOnError", True)),
+            },
+            compact=False,
+        )
         return 0
 
+    _workon_print_header(resolved, name)
+    stop_on_error = bool(profile.get("stopOnError", True))
+    rc = _workon_optional_preamble(backend, profile, dry_run=False)
+    if rc != 0:
+        return rc
+
+    steps = profile.get("steps") or []
+    if not steps:
+        _eprint("  mode=steps steps=0")
+        _print_json(
+            {
+                "ok": True,
+                "profile": name,
+                "path": str(path),
+                "source": resolved.get("source"),
+                "host": resolved.get("host"),
+                "mode": MODE_STEPS,
+                "chunks": [],
+            },
+            compact=False,
+        )
+        return 0
+
+    if backend is None:
+        backend = _check_deps()
+
+    _eprint(
+        f"  mode=steps steps={len(steps)}"
+        f"{' force-launch' if force_launch else ''}"
+    )
     rc, aggregate = run_mixed_steps(
         backend, steps, stop_on_error=stop_on_error, print_each=False
     )
     aggregate["profile"] = name
+    aggregate["name"] = name
     aggregate["path"] = str(path)
+    aggregate["source"] = resolved.get("source")
+    aggregate["host"] = resolved.get("host")
+    aggregate["mode"] = MODE_STEPS
+    aggregate["dryRun"] = False
+    if rc == 0:
+        _eprint("  ok")
     _print_json(aggregate, compact=False)
     return rc
+
+
+def _workon_run_reconcile(
+    backend: Optional[str],
+    resolved: dict[str, Any],
+    data: dict[str, Any],
+    *,
+    dry_run: bool,
+    tree_file: Optional[str],
+) -> int:
+    name = resolved["name"]
+    try:
+        profile = validate_reconcile_profile(data)
+    except ValueError as e:
+        _eprint(f"forge workon: {e}")
+        return 1
+
+    rc = _workon_optional_preamble(backend, profile, dry_run=dry_run)
+    if rc != 0:
+        return rc
+
+    needs_bus = not tree_file
+    if needs_bus and backend is None:
+        backend = _check_deps()
+
+    try:
+        forest = _workon_load_tree(backend, tree_file)
+    except Exception as e:
+        _eprint(f"forge workon: GetTree failed: {e}")
+        return 1
+
+    try:
+        plan = plan_reconcile(forest, profile)
+    except ValueError as e:
+        _eprint(f"forge workon: plan failed: {e}")
+        return 1
+
+    _workon_print_header(resolved, name)
+    counts = plan.get("counts") or {}
+    _workon_print_counts(counts)
+
+    if plan.get("nothingToDo"):
+        n = int(counts.get("reused") or 0)
+        _eprint(f"forge workon: nothing to do ({n} roles satisfied)")
+        _print_json(
+            _workon_plan_meta(resolved, name, plan, dry_run=dry_run),
+            compact=False,
+        )
+        return 0
+
+    if dry_run:
+        _eprint("  dry-run (no changes)")
+        _print_json(
+            _workon_plan_meta(resolved, name, plan, dry_run=True),
+            compact=False,
+        )
+        return 0
+
+    if backend is None:
+        backend = _check_deps()
+
+    ext_actions, open_actions = partition_plan_actions(plan.get("actions"))
+    apply_log: dict[str, Any] = {
+        "extension": None,
+        "opens": [],
+        "followUp": None,
+    }
+
+    # 1) Moves / parks / ensure_layout for existing windows
+    ext_steps = actions_to_extension_steps(ext_actions)
+    if ext_steps:
+        rc, agg = run_mixed_steps(
+            backend, ext_steps, stop_on_error=True, print_each=False
+        )
+        apply_log["extension"] = agg
+        if rc != 0:
+            _eprint("forge workon: extension steps failed")
+            out = _workon_plan_meta(resolved, name, plan, dry_run=False)
+            out["ok"] = False
+            out["apply"] = apply_log
+            _print_json(out, compact=False)
+            return rc
+
+    # 2) Opens (launch + wait)
+    for oa in open_actions:
+        fields = open_action_to_launch_fields(oa)
+        role = oa.get("role")
+        _rc, result = do_launch(backend, print_result=False, **fields)
+        entry = dict(result)
+        if role is not None:
+            entry["role"] = role
+        apply_log["opens"].append(entry)
+        if not result.get("ok"):
+            _eprint(
+                f"forge workon: open failed role={role!r}: "
+                f"{result.get('error', 'unknown')}"
+            )
+            out = _workon_plan_meta(resolved, name, plan, dry_run=False)
+            out["ok"] = False
+            out["apply"] = apply_log
+            _print_json(out, compact=False)
+            return 1
+
+    # 3) After opens: re-tree + re-plan; apply residual move/park/layout
+    if open_actions:
+        try:
+            forest2 = _workon_load_tree(backend, None)
+            plan2 = plan_reconcile(forest2, profile)
+        except Exception as e:
+            _eprint(f"forge workon: re-plan after open failed: {e}")
+            out = _workon_plan_meta(resolved, name, plan, dry_run=False)
+            out["ok"] = False
+            out["error"] = str(e)
+            out["apply"] = apply_log
+            _print_json(out, compact=False)
+            return 1
+        residual_ext, residual_open = partition_plan_actions(plan2.get("actions"))
+        if residual_open:
+            still = [a.get("role") for a in residual_open]
+            _eprint(f"forge workon: still missing roles after open: {still}")
+            out = _workon_plan_meta(resolved, name, plan2, dry_run=False)
+            out["ok"] = False
+            out["error"] = f"roles still missing after launch: {still}"
+            out["apply"] = apply_log
+            _print_json(out, compact=False)
+            return 1
+        follow_steps = actions_to_extension_steps(residual_ext)
+        if follow_steps:
+            rc, agg = run_mixed_steps(
+                backend, follow_steps, stop_on_error=True, print_each=False
+            )
+            apply_log["followUp"] = agg
+            if rc != 0:
+                _eprint("forge workon: follow-up steps failed")
+                out = _workon_plan_meta(resolved, name, plan2, dry_run=False)
+                out["ok"] = False
+                out["apply"] = apply_log
+                _print_json(out, compact=False)
+                return rc
+        plan = plan2
+
+    _eprint("  ok")
+    out = _workon_plan_meta(resolved, name, plan, dry_run=False)
+    out["apply"] = apply_log
+    _print_json(out, compact=False)
+    return 0
+
+
+def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
+    """forge workon list | show <name> | <name> [--dry-run]."""
+    tokens: list[str] = list(getattr(args, "workon_tokens", None) or [])
+    action, name, dry_run, force_launch = _workon_parse_tokens(tokens, args)
+    tree_file = getattr(args, "tree_file", None)
+
+    if action == "help":
+        _eprint(
+            "forge workon: need <name>, list, or show <name> "
+            "[--dry-run] [--force-launch]"
+        )
+        return 1
+
+    if action == "list":
+        if len(tokens) > 1:
+            _eprint("forge workon list: unexpected arguments")
+            return 1
+        profiles = list_profiles_resolved()
+        if not profiles:
+            _eprint(
+                "forge workon: no profiles "
+                "(FORGE_WORKON_DIR hosts/common or ~/.config/forge/workon/)"
+            )
+            print("[]")
+            return 0
+        rows = []
+        for p in profiles:
+            row = {
+                "name": p["name"],
+                "source": p["source"],
+                "path": p["path"],
+                "host": p["host"],
+            }
+            if p.get("description"):
+                row["description"] = p["description"]
+            rows.append(row)
+            # Human lines on stderr; full JSON on stdout (script contract)
+            _eprint(format_profile_list_line(p))
+        _print_json(rows, compact=False)
+        return 0
+
+    if action == "show":
+        if not name or len(tokens) != 2:
+            _eprint("forge workon show: need exactly one profile name")
+            return 1
+        try:
+            resolved = resolve_profile(name)
+        except ValueError as e:
+            _eprint(f"forge workon show: {e}")
+            return 1
+        if not resolved["found"] or resolved["path"] is None:
+            _eprint(f"forge workon show: profile not found: {name}")
+            return 1
+        path = resolved["path"]
+        try:
+            data = load_profile_file(path)
+            mode = detect_workon_mode(data, force_launch=False)
+            if mode == MODE_RECONCILE:
+                profile = validate_reconcile_profile(data)
+            else:
+                profile = validate_profile(data)
+        except FileNotFoundError as e:
+            _eprint(f"forge workon show: {e}")
+            return 1
+        except ValueError as e:
+            _eprint(f"forge workon show: {e}")
+            return 1
+        _workon_print_header(resolved, name)
+        _eprint(f"  mode={mode}")
+        out = {
+            "path": str(path),
+            "source": resolved["source"],
+            "host": resolved["host"],
+            "mode": mode,
+            "profile": profile,
+        }
+        _print_json(out, compact=False)
+        return 0
+
+    if action == "run":
+        if not name or len(tokens) != 1:
+            _eprint(
+                "forge workon: use `forge workon <name>` "
+                "(or list / show <name>)"
+            )
+            return 1
+    else:
+        _eprint(f"forge workon: unknown action {action!r}")
+        return 1
+
+    try:
+        resolved = resolve_profile(name)
+    except ValueError as e:
+        _eprint(f"forge workon: {e}")
+        return 1
+    if not resolved["found"] or resolved["path"] is None:
+        _eprint(f"forge workon: profile not found: {name}")
+        return 1
+
+    path = resolved["path"]
+    try:
+        data = load_profile_file(path)
+        mode = detect_workon_mode(data, force_launch=force_launch)
+    except FileNotFoundError as e:
+        _eprint(f"forge workon: {e}")
+        return 1
+    except ValueError as e:
+        _eprint(f"forge workon: {e}")
+        return 1
+
+    if mode == MODE_STEPS:
+        return _workon_run_steps(
+            backend,
+            resolved,
+            data,
+            dry_run=dry_run,
+            force_launch=force_launch,
+        )
+    return _workon_run_reconcile(
+        backend,
+        resolved,
+        data,
+        dry_run=dry_run,
+        tree_file=tree_file,
+    )
 
 
 def _origin_paths() -> list[Path]:
@@ -1993,20 +2369,30 @@ def build_parser() -> argparse.ArgumentParser:
     run_p.set_defaults(func=cmd_run)
 
     _workon_help = (
-        "Named morning profiles under ~/.config/forge/workon/<name>.json\n"
-        "(does **not** shadow shellrc `workon` — use `forge workon` only).\n"
+        "Named morning profiles (does **not** shadow shellrc `workon` —\n"
+        "use `forge workon` only).\n"
         "\n"
-        "  forge workon <name>       # displays → settings → mixed steps\n"
-        "  forge workon list         # names (+ description)\n"
-        "  forge workon show <name>  # resolved path + validated profile\n"
+        "  forge workon <name>           # reconcile (v2) or steps (v1)\n"
+        "  forge workon <name> --dry-run # print plan only (no launch/RunSteps)\n"
+        "  forge workon list             # host + source + short path (JSON on stdout)\n"
+        "  forge workon show <name>      # header + validated profile JSON\n"
+        "  forge workon <name> --force-launch  # imperative steps[] only\n"
         "\n"
-        "Profile schema v1: version, description?, displays?, settings?,\n"
-        "stopOnError? (default true), steps[].\n"
-        "See scripts/forge/examples/workon-dev.json and docs/DESIGN.md (FC5)."
+        "Resolve order: FORGE_WORKON_PATH →\n"
+        "  $FORGE_WORKON_DIR/hosts/<host>/<name>.json →\n"
+        "  $FORGE_WORKON_DIR/hosts/<host>/<name>/profile.json →\n"
+        "  $FORGE_WORKON_DIR/common/<name>.json →\n"
+        "  ~/.config/forge/workon/<name>.json\n"
+        "Host: FORGE_HOST or short hostname. Export FORGE_WORKON_DIR from shellrc.\n"
+        "\n"
+        "v2 reconcile (default when roles present): GetTree → plan → open gaps,\n"
+        "move/park via RunSteps; second run is a no-op when already perfect.\n"
+        "v1 steps: version 1 / mode: steps / --force-launch with steps[].\n"
+        "User guide: docs/user/workon.md. Design: docs/DESIGN.md."
     )
     workon_p = sub.add_parser(
         "workon",
-        help="Run/list/show named workon profiles (FC5)",
+        help="Run/list/show named workon profiles (reconcile or steps)",
         description=_workon_help,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -2015,6 +2401,21 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="*",
         metavar="ARG",
         help="list | show <name> | <name>",
+    )
+    workon_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print reconcile plan (or steps summary); no mutations",
+    )
+    workon_p.add_argument(
+        "--force-launch",
+        action="store_true",
+        help="Force v1 imperative steps[] (error if profile has no steps)",
+    )
+    workon_p.add_argument(
+        "--tree-file",
+        metavar="PATH",
+        help="GetTree forest JSON file (offline dry-run / tests; no DBus tree)",
     )
     workon_p.set_defaults(func=cmd_workon)
 
@@ -2166,7 +2567,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     if cmd_name == "workon":
         tokens = list(getattr(args, "workon_tokens", None) or [])
         head = tokens[0].strip() if tokens else ""
+        dry = bool(getattr(args, "dry_run", False))
+        tree_file = getattr(args, "tree_file", None)
         if head in ("list", "show") or not tokens:
+            return int(args.func(None, args))
+        # Offline dry-run when forest is provided on disk
+        if dry and tree_file:
             return int(args.func(None, args))
         backend = _check_deps()
         return int(args.func(backend, args))

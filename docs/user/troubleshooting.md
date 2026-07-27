@@ -56,7 +56,8 @@ Tips:
 
 - Keep apps open across install so ids still match.
 - Cold login / reboot correctly starts without resurrecting an old file.
-- Full named layouts / `workon` are a separate path.
+- Full named layouts / `forge workon` are a separate path (see
+  [workon.md](workon.md)).
 
 If it still flattens: check that the file exists **before** reload
 (`ls ~/.config/forge/config/session-layout.json`), run

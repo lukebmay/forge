@@ -16,6 +16,8 @@ if str(_FORGE_CLI) not in sys.path:
 
 from workon_lib import (  # noqa: E402
     extract_steps_and_stop,
+    format_profile_list_line,
+    format_short_path,
     launch_fields_from_step,
     list_profiles,
     load_profile_file,
@@ -200,6 +202,53 @@ class TestListLoadProfiles(unittest.TestCase):
     def test_missing_file(self):
         with self.assertRaises(FileNotFoundError):
             load_profile_file("/tmp/does-not-exist-forge-workon-xyz.json")
+
+
+class TestFormatShortPath(unittest.TestCase):
+    def test_short_unchanged(self):
+        self.assertEqual(format_short_path("/tmp/dev.json"), "/tmp/dev.json")
+
+    def test_home_tilde(self):
+        home = str(Path.home())
+        got = format_short_path(f"{home}/.config/forge/workon/dev.json")
+        self.assertTrue(got.startswith("~/.config/"), got)
+
+    def test_long_ellipsis_at_slash(self):
+        long = (
+            "/home/user/dev/me/shellrc/configs/forge/workon/"
+            "hosts/black/dev.json"
+        )
+        got = format_short_path(long, max_len=28)
+        self.assertTrue(got.startswith("…/"), got)
+        self.assertIn("hosts/black/dev.json", got)
+        self.assertLessEqual(len(got), 28)
+
+    def test_default_keeps_host_tail(self):
+        long = (
+            "/home/user/dev/me/shellrc/configs/forge/workon/"
+            "hosts/black/dev.json"
+        )
+        got = format_short_path(long)
+        self.assertEqual(got, "…/forge/workon/hosts/black/dev.json")
+
+    def test_list_line_host_path_desc(self):
+        line = format_profile_list_line(
+            {
+                "name": "dev",
+                "source": "host",
+                "host": "black",
+                "path": (
+                    "/home/user/dev/me/shellrc/configs/forge/workon/"
+                    "hosts/black/dev.json"
+                ),
+                "description": "Dual-mon morning layout on black workstation",
+            },
+            desc_max=12,
+        )
+        self.assertTrue(line.startswith("dev  [host] black"), line)
+        self.assertIn("dev.json", line)
+        self.assertIn("Dual-mon", line)
+        self.assertTrue(line.endswith("…") or "…" in line)
 
 
 if __name__ == "__main__":

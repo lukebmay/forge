@@ -31,6 +31,8 @@ pages go deeper.
 - **[rules.md](user/rules.md)** — per-window/per-class float & tile overrides.
 - **[config.md](user/config.md)** — portable config: backup, sync, move between machines.
 - **[monitors.md](user/monitors.md)** — multi-monitor placement and limitations.
+- **[workon.md](user/workon.md)** — `forge workon` morning profiles (reconcile,
+  dry-run, host resolve, `FORGE_WORKON_DIR`).
 - **[troubleshooting.md](user/troubleshooting.md)** — reloading, debug logs, common issues.
 
 Contributing? See [CONTRIBUTING.md](../CONTRIBUTING.md).

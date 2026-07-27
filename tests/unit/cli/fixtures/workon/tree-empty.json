@@ -1,0 +1,35 @@
+{
+  "apiVersion": 2,
+  "monitors": [
+    {
+      "nodeType": "MONITOR",
+      "layout": "HSPLIT",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1000,
+        "height": 1000
+      },
+      "percent": 0,
+      "userSized": false,
+      "children": [],
+      "id": "mo0ws0",
+      "stableKey": "geom:0,0,5120,2880#primary"
+    },
+    {
+      "nodeType": "MONITOR",
+      "layout": "HSPLIT",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1000,
+        "height": 1000
+      },
+      "percent": 0,
+      "userSized": false,
+      "children": [],
+      "id": "mo1ws0",
+      "stableKey": "geom:5120,0,5120,2880"
+    }
+  ]
+}

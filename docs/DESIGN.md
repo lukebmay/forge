@@ -531,7 +531,7 @@ domains (`t`/`e`). The tiling command is always **`forge workon`**.
 imperative `steps[]`. Fine for one-shot scripts; **wrong daily default** —
 re-running doubles apps (trial on `black`, 2026-07-26).
 
-**FC6 (planned):** desired-state **reconcile** — roles + layout shape;
+**FC6 / WR1–WR3:** desired-state **reconcile** — roles + layout shape;
 match/claim existing tiles; launch only gaps; park overflow; no kill.
 Host-scoped profiles in **shellrc** user-space (like gdisplays):
 
@@ -541,7 +541,34 @@ $shellrc/configs/forge/workon/common/<name>.json
 ~/.config/forge/workon/<name>.json          # XDG fallback
 ```
 
-Plan + UX: [agents/plans/forge-workon-reconcile.md](../agents/plans/forge-workon-reconcile.md).
+**Why a pure planner first:** Shell thrash and launch side effects make
+round-trip testing expensive. `workon_plan.py` takes a GetTree forest +
+v2 profile → actions with **no DBus**, so doubled/empty/perfect cases are
+plain unit fixtures. Claim set is global (one window per role); extras
+park, never kill. MVP “home” for a role is **correct monitor index** for
+its slot — executor moves to `path:moNws0` (tab-CON polish later).
+
+**Executor (WR3):** `forge workon <name>` resolves host path, branches
+schema, then either imperative steps or reconcile:
+
+| Mode | When |
+| --- | --- |
+| **reconcile** | `version: 2` + `roles[]`, or `mode: reconcile` |
+| **steps** | `version: 1`, `mode: steps`, or `steps[]` without roles |
+| **force** | `--force-launch` → steps only (errors if no `steps[]`) |
+
+Reconcile apply: optional displays/settings → GetTree → `plan_reconcile` →
+extension `move`/`layout` for existing tiles → `launch` gaps → re-tree +
+residual moves. `--dry-run` prints counts + plan JSON (`dryRun: true`) with
+no mutations. `--tree-file` feeds a forest offline for dry-run tests. Pure
+apply helpers: `workon_apply.py`.
+
+**CLI UX (WR5):** `list` prints host + source + short path on stderr (JSON
+array still on stdout). dry-run / apply / show share
+`host=… profile=… source=… path=…` headers. User guide:
+[docs/user/workon.md](user/workon.md).
+
+Plan: [agents/plans/forge-workon-reconcile.md](../agents/plans/forge-workon-reconcile.md).
 
 | Field (v1 steps) | Role |
 | --- | --- |

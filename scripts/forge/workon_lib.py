@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import socket
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 PROFILE_VERSION = 1
 WORKON_DIR_NAME = "workon"
@@ -19,25 +21,38 @@ EXTENSION_OPS = frozenset(
 
 _NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
+# resolve_profile / list_profiles_resolved source tags
+SOURCE_ENV_PATH = "env-path"
+SOURCE_HOST = "host"
+SOURCE_HOST_DIR = "host-dir"
+SOURCE_COMMON = "common"
+SOURCE_XDG = "xdg"
+SOURCE_NOT_FOUND = "not-found"
+
 
 def workon_dir(config_root: Optional[Path] = None) -> Path:
     root = Path(config_root) if config_root is not None else DEFAULT_CONFIG_ROOT
     return root / WORKON_DIR_NAME
 
 
-def profile_path(name: str, config_root: Optional[Path] = None) -> Path:
-    """Resolve ~/.config/forge/workon/<name>.json (no existence check)."""
+def _normalize_profile_name(name: str) -> str:
     if not name or not isinstance(name, str):
         raise ValueError("profile name required")
     name = name.strip()
     if not _NAME_RE.match(name):
         raise ValueError("invalid profile name (use A-Za-z0-9_-)")
+    return name
+
+
+def profile_path(name: str, config_root: Optional[Path] = None) -> Path:
+    """Resolve ~/.config/forge/workon/<name>.json (no existence check)."""
+    name = _normalize_profile_name(name)
     return workon_dir(config_root) / f"{name}.json"
 
 
 def list_profiles(config_root: Optional[Path] = None) -> list[dict[str, Any]]:
     """
-    List profiles on disk: [{name, path, description?}…], sorted by name.
+    List XDG profiles: [{name, path, description?}…], sorted by name.
     Skips unreadable / non-object JSON; still returns name+path for those.
     """
     d = workon_dir(config_root)
@@ -49,16 +64,242 @@ def list_profiles(config_root: Optional[Path] = None) -> list[dict[str, Any]]:
         if not _NAME_RE.match(name):
             continue
         entry: dict[str, Any] = {"name": name, "path": str(p)}
-        try:
-            data = json.loads(p.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                desc = data.get("description")
-                if isinstance(desc, str) and desc.strip():
-                    entry["description"] = desc.strip()
-        except (OSError, json.JSONDecodeError, UnicodeError):
-            pass
+        _maybe_add_description(entry, p)
         out.append(entry)
     return out
+
+
+def resolve_host(env: Optional[Mapping[str, str]] = None) -> str:
+    """FORGE_HOST if set, else short hostname (strip domain)."""
+    e = env if env is not None else os.environ
+    raw = e.get("FORGE_HOST")
+    if raw is not None and str(raw).strip():
+        return str(raw).strip()
+    return socket.gethostname().split(".")[0]
+
+
+def _env_workon_dir(
+    env: Mapping[str, str],
+    workon_dir_env: Optional[Path] = None,
+) -> Optional[Path]:
+    if workon_dir_env is not None:
+        return Path(workon_dir_env).expanduser()
+    raw = env.get("FORGE_WORKON_DIR")
+    if raw is not None and str(raw).strip():
+        return Path(str(raw).strip()).expanduser()
+    return None
+
+
+def _profile_candidates(
+    name: str,
+    host: str,
+    *,
+    config_root: Optional[Path],
+    wdir: Optional[Path],
+    env: Mapping[str, str],
+) -> list[tuple[Path, str]]:
+    """Ordered (path, source) candidates for first-hit resolve."""
+    out: list[tuple[Path, str]] = []
+    path_env = env.get("FORGE_WORKON_PATH")
+    if path_env is not None and str(path_env).strip():
+        out.append((Path(str(path_env).strip()).expanduser(), SOURCE_ENV_PATH))
+    if wdir is not None:
+        root = Path(wdir)
+        out.append((root / "hosts" / host / f"{name}.json", SOURCE_HOST))
+        out.append((root / "hosts" / host / name / "profile.json", SOURCE_HOST_DIR))
+        out.append((root / "common" / f"{name}.json", SOURCE_COMMON))
+    out.append((profile_path(name, config_root=config_root), SOURCE_XDG))
+    return out
+
+
+def resolve_profile(
+    name: str,
+    *,
+    config_root: Optional[Path] = None,
+    workon_dir_env: Optional[Path] = None,
+    env: Optional[Mapping[str, str]] = None,
+) -> dict[str, Any]:
+    """
+    Host-aware profile path resolve (first hit wins).
+
+    Order: FORGE_WORKON_PATH (stem must match name + file exists) →
+    FORGE_WORKON_DIR/hosts/<host>/<name>.json →
+    …/hosts/<host>/<name>/profile.json →
+    …/common/<name>.json →
+    XDG ~/.config/forge/workon/<name>.json
+
+    When FORGE_WORKON_DIR is unset, only PATH + XDG apply (no shellrc hardcode).
+    """
+    name = _normalize_profile_name(name)
+    e = env if env is not None else os.environ
+    host = resolve_host(e)
+    wdir = _env_workon_dir(e, workon_dir_env)
+    candidates = _profile_candidates(
+        name, host, config_root=config_root, wdir=wdir, env=e
+    )
+    candidate_paths = [str(p) for p, _ in candidates]
+
+    for path, source in candidates:
+        if source == SOURCE_ENV_PATH:
+            if path.is_file() and path.stem == name:
+                return {
+                    "name": name,
+                    "host": host,
+                    "path": path,
+                    "found": True,
+                    "source": source,
+                    "candidates": candidate_paths,
+                }
+            continue
+        if path.is_file():
+            return {
+                "name": name,
+                "host": host,
+                "path": path,
+                "found": True,
+                "source": source,
+                "candidates": candidate_paths,
+            }
+
+    return {
+        "name": name,
+        "host": host,
+        "path": None,
+        "found": False,
+        "source": SOURCE_NOT_FOUND,
+        "candidates": candidate_paths,
+    }
+
+
+def list_profiles_resolved(
+    *,
+    config_root: Optional[Path] = None,
+    workon_dir_env: Optional[Path] = None,
+    env: Optional[Mapping[str, str]] = None,
+) -> list[dict[str, Any]]:
+    """
+    Union of profile names under env-dir hosts/<host>, common, and XDG.
+    Each entry: name, path, source, host, description? — winning path by resolve order.
+    """
+    e = env if env is not None else os.environ
+    host = resolve_host(e)
+    wdir = _env_workon_dir(e, workon_dir_env)
+    names: set[str] = set()
+
+    if wdir is not None:
+        host_dir = Path(wdir) / "hosts" / host
+        if host_dir.is_dir():
+            for p in host_dir.glob("*.json"):
+                if _NAME_RE.match(p.stem):
+                    names.add(p.stem)
+            for p in host_dir.glob("*/profile.json"):
+                n = p.parent.name
+                if _NAME_RE.match(n):
+                    names.add(n)
+        common_dir = Path(wdir) / "common"
+        if common_dir.is_dir():
+            for p in common_dir.glob("*.json"):
+                if _NAME_RE.match(p.stem):
+                    names.add(p.stem)
+
+    xdg = workon_dir(config_root)
+    if xdg.is_dir():
+        for p in xdg.glob("*.json"):
+            if _NAME_RE.match(p.stem):
+                names.add(p.stem)
+
+    # One-shot PATH: include stem if file exists and name is valid
+    path_env = e.get("FORGE_WORKON_PATH")
+    if path_env is not None and str(path_env).strip():
+        p = Path(str(path_env).strip()).expanduser()
+        if p.is_file() and _NAME_RE.match(p.stem):
+            names.add(p.stem)
+
+    out: list[dict[str, Any]] = []
+    for name in sorted(names):
+        resolved = resolve_profile(
+            name,
+            config_root=config_root,
+            workon_dir_env=workon_dir_env,
+            env=e,
+        )
+        if not resolved["found"] or resolved["path"] is None:
+            continue
+        entry: dict[str, Any] = {
+            "name": name,
+            "path": str(resolved["path"]),
+            "source": resolved["source"],
+            "host": resolved["host"],
+        }
+        _maybe_add_description(entry, Path(resolved["path"]))
+        out.append(entry)
+    return out
+
+
+def _maybe_add_description(entry: dict[str, Any], path: Path) -> None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            desc = data.get("description")
+            if isinstance(desc, str) and desc.strip():
+                entry["description"] = desc.strip()
+    except (OSError, json.JSONDecodeError, UnicodeError):
+        pass
+
+
+def format_short_path(path: Path | str, *, max_len: int = 36) -> str:
+    """Human path: ~ for $HOME; drop leading components with … when long."""
+    s = str(path)
+    try:
+        home = str(Path.home())
+        if s == home or s.startswith(home + os.sep):
+            s = "~" + s[len(home) :]
+    except (OSError, RuntimeError):
+        pass
+    if len(s) <= max_len:
+        return s
+    # Drop whole components from the left: …/hosts/black/dev.json
+    body = s[2:] if s.startswith("~/") else (s[1:] if s.startswith("/") else s)
+    parts = [p for p in body.split("/") if p]
+    if not parts:
+        return "…" + s[-(max(1, max_len - 1)) :]
+    for i in range(len(parts)):
+        candidate = "…/" + "/".join(parts[i:])
+        if len(candidate) <= max_len:
+            return candidate
+    last = parts[-1]
+    if len(last) + 1 <= max_len:
+        return "…" + last[-(max_len - 1) :] if len(last) >= max_len else "…/" + last
+    return "…" + last[-(max_len - 1) :]
+
+
+def format_profile_list_line(
+    entry: Mapping[str, Any], *, desc_max: int = 40
+) -> str:
+    """
+    One human list line, e.g.
+    dev  [host] black  …/hosts/black/dev.json  Dual-mon morning…
+    """
+    name = str(entry.get("name") or "?")
+    source = str(entry.get("source") or "?")
+    host = str(entry.get("host") or "")
+    path = entry.get("path") or ""
+    short = format_short_path(path) if path else ""
+    # e.g. dev  [host] black  …/hosts/black/dev.json  Dual-mon…
+    head = f"{name}  [{source}]"
+    if host:
+        head = f"{head} {host}"
+    parts = [head]
+    if short:
+        parts.append(short)
+    line = "  ".join(parts)
+    desc = entry.get("description")
+    if isinstance(desc, str) and desc.strip():
+        d = desc.strip()
+        if len(d) > desc_max:
+            d = d[: max(1, desc_max - 1)] + "…"
+        line = f"{line}  {d}"
+    return line
 
 
 def load_profile_file(path: Path | str) -> dict[str, Any]:

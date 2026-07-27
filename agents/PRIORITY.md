@@ -6,8 +6,9 @@
 
 ## Next session focus
 
-**FC6 / WR1 — idempotent `forge workon`** (desired-state layout).  
-Plan: [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md).
+**WR6 — live black trials** for idempotent `forge workon` (empty / perfect /
+messy desk). Plan: [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md).  
+WR1–WR5 **Done** (planner → resolve → executor → shellrc profile → UX/docs).
 
 Live thrash/tab bugs still outrank this if they return. Meta (personal fork)
 stays below.
@@ -17,7 +18,7 @@ useful later; it does **not** fix windows.
 
 | Doc | Role |
 | --- | --- |
-| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | **P1 next** — reconcile roles; host configs in shellrc |
+| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | **P1** — WR1–WR5 Done; next WR6 live |
 | [forge-command.md](./plans/forge-command.md) | FC0–FC5 **Done** — imperative workon shipped |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 + session-layout Ghostty **Done** |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome + install HUP path live |
@@ -34,7 +35,7 @@ Ordered by **how often it hurts or helps when actually using the machine**.
 | ---: | --- | --- | --- | --- |
 | 1 | **Critical (shipped)** | Dual-head blank/wake + install HUP restore | Morning layout must survive lock/wake and `forge install` | **Done** — T3, T6, T7, session-layout + Ghostty |
 | 2 | **Critical (shipped)** | Tabs, stack-off, open-app LFT, keybinds, sizing | Core daily tiling feel | **Done** — T0–T5, OP1 |
-| 3 | **High (next product)** | **Idempotent `forge workon` (reconcile)** | Morning “desk looks like *dev*” without doubling apps | **Plan ready** — [forge-workon-reconcile](./plans/forge-workon-reconcile.md); next WR1 |
+| 3 | **High (next product)** | **Idempotent `forge workon` (reconcile)** | Morning “desk looks like *dev*” without doubling apps | **WR1–WR5 Done** — [forge-workon-reconcile](./plans/forge-workon-reconcile.md); next **WR6** live |
 | 4 | **High (shipped, incomplete UX)** | FC5 imperative `workon` | Command + steps exist; doubles windows if re-run | **Superseded default by #3** — keep as `--force-launch` / `mode: steps` |
 | 5 | **Medium (live)** | Regression watch: install/HUP, wake thrash, tab chrome | Failure modes that ruin a day if they return | **Monitor** — file bug when seen; **outranks #3 if open** |
 | 6 | **Medium (QoL, shipped)** | OP-opt tiny-pane → tab fallback | Opt-in min-edge → tab instead of postage-stamp split | **Done** |
@@ -42,7 +43,7 @@ Ordered by **how often it hurts or helps when actually using the machine**.
 | 8 | **Low (meta)** | Fork-eval spike formal close-out | Already daily-driving this tree | Docs only |
 | 9 | **Low (code health)** | Audit B1 DnD extract | Shrinks `window.js`; zero user-visible win | Optional |
 | 10 | **Later** | T9 multi-line tabs | Polish after single-row proven | Later |
-| 11 | **Out of repo** | gdisplays v2; shellrc workon host tree wiring | shellrc | Parallel to WR2/WR4 |
+| 11 | **Out of repo** | gdisplays v2; shellrc workon env snippet (WR9) | shellrc | Host tree shipped (WR4); env auto-wire later |
 
 **Rule of thumb:** prefer fixing a **layout regression you just hit** over meta/tidy.
 Do not start B1 or personal-fork work while a real thrash/tab bug is open.
@@ -55,7 +56,7 @@ Idempotent workon is the top **new** product work when the desk is stable.
 | Pri | Item | Status | Day-to-day? |
 | --- | --- | --- | --- |
 | **P0** | Live thrash/tab bugs (if any) | **Interrupt** | Yes |
-| **P1** | [Idempotent workon](./plans/forge-workon-reconcile.md) WR1→WR6 | **Next** | Yes — morning layout |
+| **P1** | [Idempotent workon](./plans/forge-workon-reconcile.md) WR6 live | **WR1–WR5 Done; next WR6** | Yes — morning layout |
 | P2 | Live daily-drive; report new bugs | Ongoing | Yes |
 | P3 | [Personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership only |
 | later | T9 multi-line tabs | After T1 proven live | Polish |
@@ -66,6 +67,7 @@ Idempotent workon is the top **new** product work when the desk is stable.
 
 | Item | Note |
 | --- | --- |
+| **WR1–WR5 workon reconcile** | Planner, resolve, executor, black profile, UX/docs |
 | **CLI on PATH** | `~/.local/bin/forge` + `forge uninstall` |
 | **OP-opt tiny-pane** | [completed](./plans/forge-daily-driver/completed/forge-daily-driver_op-opt-tiny-pane-tab.md) |
 | **FC5 workon** | [completed](./plans/forge-command/completed/forge-command_fc5-workon.md) |
@@ -79,11 +81,13 @@ Idempotent workon is the top **new** product work when the desk is stable.
 
 ## Session wrap (2026-07-26)
 
-- Installed latest; `forge` on PATH; first `workon dev` trial **doubled** apps.
-- Product direction locked: **desired-state reconcile**, host profiles in
-  shellrc (`configs/forge/workon/hosts/<host>/`).
+- **WR1–WR5 Done (A/B AGREE each):** pure planner → host resolve → dry-run/apply
+  executor → shellrc `hosts/black/dev.json` → list/UX + `docs/user/workon.md`.
+- Live **dry-run only** on black: `forge workon dev --dry-run` → reused 6,
+  open 1 (`chrome-luke` exact-title miss), park 2. No apply that session
+  (avoids desk thrash). CLI dry-run is **only** `--dry-run` (no `plan` alias).
 - Plan: [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md).
-- **Next:** WR1 pure planner + fixtures (not while thrash is open).
+- **Next:** WR6 live apply trials (empty / perfect / messy) when ready to move windows.
 
 ---
 

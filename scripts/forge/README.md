@@ -69,7 +69,7 @@ waits for the new window (no `--wm-class` required). Default placement: OP1 LFT
 attach. `--path` / `--tree-path` and `--monitor` set PlaceNext. Path ids are OG
 Forge mon×ws keys (`mo0ws0`); see `forge launch -h`.
 
-### Batch steps + workon (FC4–FC5)
+### Batch steps + workon (FC4–FC6)
 
 ```bash
 # Extension-only batch (quiet render) — rejects launch/wait
@@ -78,19 +78,52 @@ Forge mon×ws keys (`mo0ws0`); see `forge launch -h`.
 # Mixed script file (launch + tree ops; CLI orchestrates chunks)
 ./scripts/forge/forge run ./scripts/forge/examples/workon-dev.json
 
-# Named profile: ~/.config/forge/workon/<name>.json
-# (does NOT replace shellrc `workon` — always `forge workon`)
-cp ./scripts/forge/examples/workon-dev.json ~/.config/forge/workon/dev.json
-# edit displays/settings/steps as needed
+# Named profile (does NOT replace shellrc `workon` — always `forge workon`)
+# Prefer shellrc host tree (multi-machine); XDG is the local fallback:
+export FORGE_WORKON_DIR=$shellrc/configs/forge/workon   # hosts/<host>/<name>.json
+# or: cp ./scripts/forge/examples/workon-dev-v2.json ~/.config/forge/workon/dev.json
 ./scripts/forge/forge workon list
 ./scripts/forge/forge workon show dev
-./scripts/forge/forge workon dev
+./scripts/forge/forge workon dev              # v1 steps or v2 reconcile
+./scripts/forge/forge workon dev --dry-run    # plan only (no mutations)
+./scripts/forge/forge workon dev --force-launch  # imperative steps[] only
 ```
 
-Profile order: optional `gdisplays load` → optional `SettingsLoad` → mixed
-`steps` (CLI `launch`/`wait`/`wait-window` interleaved with extension
-RunSteps chunks). `stopOnError` defaults true. Schema and design notes:
-`docs/DESIGN.md` (FC5). Pure helpers: `scripts/forge/workon_lib.py`.
+Examples: `workon-dev.json` (v1 steps), `workon-dev-v2.json` (v2 reconcile —
+same schema as shellrc `hosts/black/dev.json`). Host profiles + resolve docs:
+`$shellrc/configs/forge/workon/README.md`.
+
+**Profile path resolve** (list / show / run):
+
+```text
+1. FORGE_WORKON_PATH                         # if set, exists, stem == name
+2. $FORGE_WORKON_DIR/hosts/<host>/<name>.json
+3. $FORGE_WORKON_DIR/hosts/<host>/<name>/profile.json
+4. $FORGE_WORKON_DIR/common/<name>.json
+5. ~/.config/forge/workon/<name>.json        # XDG
+```
+
+`FORGE_HOST` overrides hostname (else short hostname). When `FORGE_WORKON_DIR`
+is unset, only PATH + XDG apply — export from shellrc:
+
+```bash
+export FORGE_WORKON_DIR=$shellrc/configs/forge/workon
+# export FORGE_HOST=black   # optional override
+```
+
+Forge does not hardcode shellrc paths.
+
+| Schema | Behavior |
+| --- | --- |
+| **v2 reconcile** (`roles` + layout) | GetTree → plan → open gaps, move/park; idempotent |
+| **v1 steps** | optional `gdisplays` → `SettingsLoad` → mixed `steps` |
+| **`--dry-run` / `plan`** | print counts + plan JSON; no launch/RunSteps |
+| **`--force-launch`** | require `steps[]`; skip reconcile |
+| **`--tree-file PATH`** | offline forest for dry-run (no live GetTree) |
+
+Pure helpers: `workon_lib.py` (resolve), `workon_plan.py` (planner),
+`workon_apply.py` (action→steps / mode). User guide: `docs/user/workon.md`.
+Design: `docs/DESIGN.md`.
 
 Deps: `python3` + `python3-gi` (preferred) or `gdbus`; `gio` or `gtk-launch`
 for desktop ids. Extension must be enabled for DBus / wait / PlaceNext.

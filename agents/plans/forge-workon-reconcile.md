@@ -1,16 +1,17 @@
 # Plan: Idempotent `forge workon` (desired-state layout)
 
-**Status:** Ready — planning only (no code yet)  
+**Status:** WR1–WR5 **Done** — next **WR6** live black trials  
 **Priority:** **P1 product** (day-to-day #3 after live regression watch)  
 **Base:** this tree; builds on [forge-command.md](./forge-command.md) FC0–FC5  
 **Related:** OP1 open-app, T6 GetTree, shellrc `gdisplays` host layout  
 
 ### Session note (2026-07-26)
 
-Plan authored after first `workon dev` trial on `black`. Imperative FC5
-doubled Chrome/Ghostty/PWA windows on a non-empty tree. Product lock:
-**reconcile to roles**, not re-run launches. Host-scoped profiles live in
-**shellrc user-space** (mirror `configs/displays/hosts/<host>/`).
+**WR1–WR5 Done (A/B AGREE).** Live dry-run on black (no apply):
+`forge workon dev --dry-run` → reused 6 / opened 1 (`chrome-luke` exact
+title miss) / parked 2. WR6 still needs live apply accept (empty / perfect /
+messy). Chrome matcher may need WR4 follow-up during WR6. CLI: dry-run is
+**only** `--dry-run` (no `workon plan` alias).
 
 ---
 
@@ -94,7 +95,7 @@ They declare **roles + shape**; the planner owns structure repair.
 | Non-role windows | **Park** per overflow policy (never kill in v1) |
 | Already perfect | No spawn; minimal or zero tree mutations |
 | Overflow default | Tabbed **overflow** group on primary monitor (rightmost sibling) — revisit if bad |
-| Dry-run | `--dry-run` / `forge workon plan <name>` |
+| Dry-run | `--dry-run` |
 | Force old behavior | `--force-launch` or profile `mode: "steps"` |
 
 ---
@@ -276,11 +277,11 @@ Reuse FC1 selectors and FC4 RunSteps. Prefer **no new Mutter API** for the MVP.
 | ID | Task | Status | Effort | Outcome |
 | --- | --- | --- | --- | --- |
 | **WR0** | Product locks + schema sketch in DESIGN; overflow default | **Done** (this plan) | S | Shared language |
-| **WR1** | Pure planner: match/claim/diff → actions; fixtures from real trees | Ready | M | `workon_plan.py` + tests |
-| **WR2** | Profile resolve: host/common/XDG + `FORGE_WORKON_DIR` / `FORGE_HOST` | Ready | S | list/show show path source |
-| **WR3** | Executor: apply plan (launch gaps + RunSteps); dry-run | Ready | M | `forge workon` reconcile path |
-| **WR4** | Migrate `dev` to v2 roles; shellrc `hosts/black/dev.json` + README | Ready | S | Real daily profile |
-| **WR5** | UX: human summary, dry-run, list/show host tags; docs | Ready | S | Morning-proof CLI |
+| **WR1** | Pure planner: match/claim/diff → actions; fixtures from real trees | **Done** | M | `workon_plan.py` + tests |
+| **WR2** | Profile resolve: host/common/XDG + `FORGE_WORKON_DIR` / `FORGE_HOST` | **Done** | S | list/show show path source |
+| **WR3** | Executor: apply plan (launch gaps + RunSteps); dry-run | **Done** | M | `forge workon` reconcile path |
+| **WR4** | Migrate `dev` to v2 roles; shellrc `hosts/black/dev.json` + README | **Done** | S | Real daily profile |
+| **WR5** | UX: human summary, dry-run, list/show host tags; docs | **Done** | S | Morning-proof CLI |
 | **WR6** | Live on black: empty + already-perfect + messy tree trials | Ready | S | Acceptance |
 
 Optional later:
@@ -365,5 +366,5 @@ WR2 path resolve ────────┤
 
 ## Next task
 
-**WR1** — pure planner + unit fixtures (including a “doubled black tree” snapshot).  
-Do not start while a live thrash/tab regression is open.
+**WR6** — live accept on black (empty / already-perfect / messy). Do not
+start while thrash is open.
