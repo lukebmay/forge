@@ -1,7 +1,7 @@
 {
   "version": 2,
   "mode": "reconcile",
-  "description": "Example dual-mon morning (matches black hosts/dev.json schema)",
+  "description": "Richer dual-mon sample (edit apps/titles for your desk; not host-specific)",
   "overflow": {
     "slot": "mon0.overflow",
     "layout": "tabbed"

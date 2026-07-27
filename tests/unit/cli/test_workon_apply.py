@@ -125,13 +125,13 @@ class TestActionMapping(unittest.TestCase):
             {"op": "park", "windowId": 3, "slot": "mon0.overflow"},
         ]
         steps = actions_to_extension_steps(actions)
-        # layout uses window id on same mon (park id:3 → mon0); mon path is move dest only
+        # Placement moves first; layout uses park id:3 on mon0 after moves.
         self.assertEqual(
             steps,
             [
-                {"op": "layout", "mode": "hsplit", "selector": "id:3"},
                 {"op": "move", "tile": "id:9", "dest": "path:mo1ws0"},
                 {"op": "move", "tile": "id:3", "dest": "path:mo0ws0"},
+                {"op": "layout", "mode": "hsplit", "selector": "id:3"},
             ],
         )
 
@@ -338,6 +338,31 @@ class TestPlanToStepsFixture(unittest.TestCase):
             [
                 {"op": "layout", "mode": "tabbed", "selector": "id:10"},
                 {"op": "move", "tile": "id:11", "dest": "id:10"},
+            ],
+        )
+
+    def test_move_position_start_from_plan(self):
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "move",
+                    "role": "ghostty-right",
+                    "windowId": 88,
+                    "slot": "mon1.term",
+                    "position": "start",
+                    "childIndex": 0,
+                }
+            ]
+        )
+        self.assertEqual(
+            steps,
+            [
+                {
+                    "op": "move",
+                    "tile": "id:88",
+                    "dest": "path:mo1ws0",
+                    "position": "start",
+                }
             ],
         )
 

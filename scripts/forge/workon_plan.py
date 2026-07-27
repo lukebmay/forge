@@ -19,18 +19,35 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
     """
     Validate version-2 reconcile profile; return normalized dict.
     Raises ValueError with a clear message.
+
+    Human-friendly defaults (no app-specific hardcoding in Forge):
+      - version omitted + roles[] → 2
+      - mode omitted + roles[] → reconcile
+      - match string → {class: …}; open string → {app: …}
+      - role.class / role.app shortcuts when match/open omitted
+      - layout mon split omitted + ≥2 children → hsplit
+      - child layout omitted + ≥2 roles → tabbed
+      - child id omitted + single role → that role id
+      - overflow omitted → mon0.overflow tabbed
+      - role.slot from layout.roles listing when omitted
     """
     if not isinstance(data, dict):
         raise ValueError("profile must be a JSON object")
 
+    has_roles = isinstance(data.get("roles"), list) and len(data.get("roles") or []) > 0
+
     if "version" not in data:
-        raise ValueError("profile version required (want version: 2)")
-    ver = data["version"]
-    if ver != PROFILE_VERSION and ver != str(PROFILE_VERSION):
-        raise ValueError(f"unsupported profile version: {ver!r} (want {PROFILE_VERSION})")
+        if not has_roles:
+            raise ValueError("profile version required (want version: 2) or provide roles[]")
+        ver = PROFILE_VERSION
+    else:
+        ver = data["version"]
+        if ver != PROFILE_VERSION and ver != str(PROFILE_VERSION):
+            raise ValueError(
+                f"unsupported profile version: {ver!r} (want {PROFILE_VERSION})"
+            )
 
     mode = data.get("mode")
-    has_roles = isinstance(data.get("roles"), list)
     if mode is None:
         if not has_roles:
             raise ValueError("mode required (want mode: reconcile) or provide roles")
@@ -65,12 +82,6 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
             raise ValueError(f"layout key {mon_key!r}: want monN or primary")
         if not isinstance(mon_body, dict):
             raise ValueError(f"layout.{mon_key}: must be an object")
-        split = mon_body.get("split")
-        if split is not None:
-            split_s = str(split).strip().lower()
-            if split_s not in ("hsplit", "vsplit", "tabbed", "stacked"):
-                raise ValueError(f"layout.{mon_key}.split: unsupported {split!r}")
-            split = split_s
         children_in = mon_body.get("children")
         if children_in is None:
             children_in = []
@@ -80,9 +91,28 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
         for i, ch in enumerate(children_in):
             if not isinstance(ch, dict):
                 raise ValueError(f"layout.{mon_key}.children[{i}]: must be an object")
+            roles_list = ch.get("roles")
+            if roles_list is not None:
+                if not isinstance(roles_list, list) or not all(
+                    isinstance(r, str) and r.strip() for r in roles_list
+                ):
+                    raise ValueError(
+                        f"layout.{mon_key}.children[{i}].roles must be a string array"
+                    )
+                roles_list = [str(r).strip() for r in roles_list]
+            else:
+                roles_list = None
+
             cid = ch.get("id")
             if cid is None or str(cid).strip() == "":
-                raise ValueError(f"layout.{mon_key}.children[{i}]: id required")
+                # Single-role child: id defaults to that role id
+                if roles_list and len(roles_list) == 1:
+                    cid = roles_list[0]
+                else:
+                    raise ValueError(
+                        f"layout.{mon_key}.children[{i}]: id required "
+                        "(or single roles:[id] to default id)"
+                    )
             cid = str(cid).strip()
             if not _NAME_RE.match(cid):
                 raise ValueError(
@@ -94,6 +124,8 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
             slot_ids.add(full_slot)
             child: dict[str, Any] = {"id": cid}
             lay = ch.get("layout")
+            if lay is None and roles_list and len(roles_list) >= 2:
+                lay = "tabbed"  # multi-role pane → tab group
             if lay is not None:
                 lay_s = str(lay).strip().lower()
                 if lay_s not in ("tabbed", "stacked", "hsplit", "vsplit"):
@@ -101,20 +133,22 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
                         f"layout.{mon_key}.children[{i}].layout: unsupported {lay!r}"
                     )
                 child["layout"] = lay_s
-            roles_list = ch.get("roles")
             if roles_list is not None:
-                if not isinstance(roles_list, list) or not all(
-                    isinstance(r, str) and r.strip() for r in roles_list
-                ):
-                    raise ValueError(
-                        f"layout.{mon_key}.children[{i}].roles must be a string array"
-                    )
-                child["roles"] = [str(r).strip() for r in roles_list]
+                child["roles"] = roles_list
                 for rid in child["roles"]:
                     if rid in mon_role_map:
                         raise ValueError(f"role {rid!r} listed in multiple layout slots")
                     mon_role_map[rid] = full_slot
             children.append(child)
+
+        split = mon_body.get("split")
+        if split is None and len(children) >= 2:
+            split = "hsplit"  # dual-pane mon default
+        if split is not None:
+            split_s = str(split).strip().lower()
+            if split_s not in ("hsplit", "vsplit", "tabbed", "stacked"):
+                raise ValueError(f"layout.{mon_key}.split: unsupported {split!r}")
+            split = split_s
         entry: dict[str, Any] = {"children": children}
         if split is not None:
             entry["split"] = split
@@ -155,15 +189,29 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
         seen_ids.add(rid)
 
         match = role.get("match")
+        if match is None and role.get("class") is not None:
+            match = {"class": role.get("class")}
+        if isinstance(match, str) and match.strip():
+            match = {"class": match.strip()}
         if not isinstance(match, dict) or not match:
-            raise ValueError(f"roles[{i}] ({rid}): match object required")
+            raise ValueError(
+                f"roles[{i}] ({rid}): match object required "
+                '(or match:"WmClass" / class:"WmClass")'
+            )
         norm_match = _normalize_match(match, f"roles[{i}].match")
 
         open_spec = role.get("open")
+        if open_spec is None and role.get("app") is not None:
+            open_spec = {"app": role.get("app")}
+        if isinstance(open_spec, str) and open_spec.strip():
+            open_spec = {"app": open_spec.strip()}
         if open_spec is None:
-            raise ValueError(f"roles[{i}] ({rid}): open object required")
+            raise ValueError(
+                f"roles[{i}] ({rid}): open object required "
+                '(or open:"app" / app:"app")'
+            )
         if not isinstance(open_spec, dict):
-            raise ValueError(f"roles[{i}] ({rid}): open must be an object")
+            raise ValueError(f"roles[{i}] ({rid}): open must be an object or string")
         app = open_spec.get("app") or open_spec.get("desktop") or open_spec.get("command")
         if app is None or str(app).strip() == "":
             raise ValueError(f"roles[{i}] ({rid}): open.app required")
@@ -350,15 +398,20 @@ def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
             else:
                 entry["status"] = "move"
                 counts["moved"] += 1
-                actions.append(
-                    {
-                        "op": "move",
-                        "role": rid,
-                        "windowId": chosen.get("windowId"),
-                        "path": chosen.get("path"),
-                        "slot": slot,
-                    }
-                )
+                move_act: dict[str, Any] = {
+                    "op": "move",
+                    "role": rid,
+                    "windowId": chosen.get("windowId"),
+                    "path": chosen.get("path"),
+                    "slot": slot,
+                }
+                # First mon-layout child → prepend under MONITOR (term | tabs).
+                child_i = _slot_mon_child_index(prof, slot)
+                if child_i is not None:
+                    move_act["childIndex"] = child_i
+                    if child_i == 0:
+                        move_act["position"] = "start"
+                actions.append(move_act)
                 mode = layout_slot_modes.get(slot)
                 if mode:
                     slots_needing_layout[slot] = mode
@@ -404,7 +457,10 @@ def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
     has_work = has_placement or counts["structure"] > 0
     ensure_actions: list[dict[str, Any]] = []
     if has_work:
-        # mon-level splits only when placement changes (avoid rewriting CON layout)
+        # mon-level splits only when placement changes (avoid rewriting CON layout).
+        # Anchor on mon-direct children (term slots), never tab-group members —
+        # layout acts on the window's parent CON, so chrome in a tab would
+        # demote TABBED → HSPLIT.
         if has_placement:
             for mon_key, mon_body in prof.get("layout", {}).items():
                 split = mon_body.get("split")
@@ -414,7 +470,9 @@ def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
                             "op": "ensure_layout",
                             "slot": mon_key,
                             "mode": split,
-                            "windowIds": _role_window_ids_for_mon(role_results, mon_key),
+                            "windowIds": _mon_split_anchor_ids(
+                                role_results, mon_key, prof
+                            ),
                         }
                     )
         for slot, mode in sorted(slots_needing_layout.items()):
@@ -704,6 +762,59 @@ def _role_window_ids_for_mon(
             continue
         out.append(wid)
     return out
+
+
+def _mon_split_anchor_ids(
+    role_results: list[dict[str, Any]], mon_key: str, prof: dict[str, Any]
+) -> list[Any]:
+    """
+    Window ids for mon-level hsplit/vsplit ensure.
+
+    Prefer roles in mon children that are *not* tabbed/stacked groups (direct
+    tiles like mon0.term). Layout rewrites the selected window's parent, so
+    using a tab member would convert the tab CON to HSPLIT.
+    """
+    by_id = {str(r.get("id")): r for r in role_results if r.get("id") is not None}
+    mon_body = (prof.get("layout") or {}).get(mon_key)
+    out: list[Any] = []
+    if isinstance(mon_body, dict):
+        for ch in mon_body.get("children") or []:
+            if not isinstance(ch, dict):
+                continue
+            lay = str(ch.get("layout") or "").strip().lower()
+            if lay in ("tabbed", "stacked"):
+                continue
+            for rid in ch.get("roles") or []:
+                r = by_id.get(str(rid))
+                if not r:
+                    continue
+                wid = r.get("windowId")
+                if wid is None or str(wid).strip() == "":
+                    continue
+                out.append(wid)
+    if out:
+        return out
+    return _role_window_ids_for_mon(role_results, mon_key)
+
+
+def _slot_mon_child_index(prof: dict[str, Any], slot: str) -> Optional[int]:
+    """
+    Index of slot among mon layout children (0 = first / left in hsplit).
+    mon1.term with children [term, comms] → 0. mon0.term with [left-tab, term] → 1.
+    """
+    if not slot or "." not in slot:
+        return None
+    mon_key, child_id = slot.split(".", 1)
+    mon_body = (prof.get("layout") or {}).get(mon_key)
+    if not isinstance(mon_body, dict):
+        return None
+    children = mon_body.get("children") or []
+    if not isinstance(children, list):
+        return None
+    for i, ch in enumerate(children):
+        if isinstance(ch, dict) and ch.get("id") == child_id:
+            return i
+    return None
 
 
 def _window_parent_index(forest: Any) -> dict[str, dict[str, Any]]:

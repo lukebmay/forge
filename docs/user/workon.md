@@ -7,17 +7,28 @@ and other domains) — always use **`forge workon`**.
 Default behavior is **idempotent reconcile**: reuse windows that already match
 roles, open only gaps, park extras. Running twice should not double apps.
 
+**Forge is app-agnostic.** Roles, match rules, and layout live only in your
+JSON (shellrc host tree or `~/.config/forge/workon/`). Nothing in the extension
+or CLI hardcodes Ghostty, Chrome, hostnames, or a “dev” desk.
+
+Interactive guide (colorized):
+
+```bash
+forge workon help
+forge help            # acronyms (LFT, …) + all commands
+```
+
 ## Quick start
 
 ```bash
 # Point at shellrc host profiles (multi-machine tree)
 export FORGE_WORKON_DIR=$shellrc/configs/forge/workon
-# optional: export FORGE_HOST=black
+# optional: export FORGE_HOST=$(hostname -s)
 
 forge workon list
-forge workon show dev
-forge workon dev --dry-run     # print plan only
-forge workon dev               # apply
+forge workon show mydesk
+forge workon mydesk --dry-run     # print plan only
+forge workon mydesk               # apply
 ```
 
 Without `FORGE_WORKON_DIR`, only `FORGE_WORKON_PATH` (if set) and
@@ -27,39 +38,65 @@ Without `FORGE_WORKON_DIR`, only `FORGE_WORKON_PATH` (if set) and
 
 | Command | What it does |
 | --- | --- |
-| `forge workon list` | Human lines on stderr (name, source, host, short path); JSON array on **stdout** |
+| `forge workon help` | Colorized guide, defaults, minimal example |
+| `forge workon list` | Human lines on stderr; JSON array on **stdout** |
 | `forge workon show <name>` | Header + validated profile JSON |
-| `forge workon <name> --dry-run` | Print counts + plan JSON; **no** launches or tree mutations |
+| `forge workon <name> --dry-run` | Plan only; **no** launches or tree mutations |
 | `forge workon <name>` | Apply (reconcile or steps) |
-| `forge workon <name> --force-launch` | Escape hatch: run imperative `steps[]` only (errors if none) |
+| `forge workon <name> --force-launch` | Imperative `steps[]` only (errors if none) |
 
-Dry-run / apply / show share a header on stderr:
+## Minimal profile
 
-```text
-forge workon: host=black profile=dev source=host path=…/hosts/black/dev.json
-  reused  6   opened  0   moved  1   parked  2
-  ok
+Drop this at `~/.config/forge/workon/simple.json` (edit class/app names):
+
+```json
+{
+  "roles": [
+    { "id": "browser", "match": "Firefox", "open": "firefox" },
+    { "id": "term", "match": "com.mitchellh.ghostty", "open": "ghostty" }
+  ],
+  "layout": {
+    "mon0": {
+      "children": [
+        { "id": "main", "roles": ["browser"] },
+        { "roles": ["term"] }
+      ]
+    }
+  }
+}
 ```
 
-Already perfect:
+Then `forge workon simple --dry-run` → `forge workon simple`.
 
-```text
-forge workon: nothing to do (6 roles satisfied)
-```
+### Defaults (omit noise)
+
+| Omitted field | Default |
+| --- | --- |
+| `version` | `2` when `roles[]` present |
+| `mode` | `reconcile` when `roles[]` present |
+| `match: "WmClass"` | `{ "class": "WmClass" }` |
+| `open: "app"` | `{ "app": "app" }` |
+| `class` / `app` on role | fill `match` / `open` if those keys missing |
+| `layout.monN.split` | `hsplit` when ≥2 children |
+| child `layout` | `tabbed` when ≥2 roles in that pane |
+| child `id` | sole role id when `roles: ["one"]` |
+| role `slot` | from `layout` `roles:[]` listing |
+| `overflow` | `mon0.overflow` + `tabbed` |
 
 ## Reconcile vs steps
 
 | Schema | Behavior |
 | --- | --- |
-| **v2 reconcile** (`roles` + layout, or `mode: "reconcile"`) | Snapshot tree → match roles → open gaps, move/park; second run ≈ no-op |
+| **v2 reconcile** (`roles` + layout) | Snapshot tree → match roles → open gaps, move/park; second run ≈ no-op |
 | **v1 steps** (`version: 1` / `mode: "steps"` / `steps[]` without roles) | Replay launch + focus/layout ops (can double apps) |
 | **`--force-launch`** | Force the steps path even on a dual profile |
 
-Prefer **v2 reconcile** for daily use. Keep `steps[]` for debug scripts or when
-you deliberately want a one-shot launch sequence.
+Prefer **v2 reconcile** for daily use.
 
-Examples in-tree: `scripts/forge/examples/workon-dev-v2.json` (reconcile),
-`workon-dev.json` (steps).
+Examples in-tree:
+
+- `scripts/forge/examples/workon-minimal.json` — short generic sample  
+- `scripts/forge/examples/workon-dev-v2.json` — richer dual-mon sample (edit apps)
 
 ## Where profiles live
 
@@ -79,27 +116,16 @@ Search order (**first hit wins**):
 | `FORGE_HOST` | Override short hostname (else `hostname` without domain) |
 | `FORGE_WORKON_PATH` | One-shot absolute profile path |
 
-Typical shellrc layout:
-
-```text
-$shellrc/configs/forge/workon/
-  hosts/
-    black/dev.json
-  common/
-    …
-```
-
 Forge does **not** hardcode shellrc paths — export `FORGE_WORKON_DIR` from your
 shell init when you want host profiles.
 
 ## Tips
 
-- Always dry-run a new profile: `forge workon dev --dry-run`.
-- Chrome / PWA matching is title-sensitive; tweak `match` if the wrong window
-  is claimed (see profile comments / shellrc README).
-- Optional profile fields: `displays` (runs `gdisplays load`), `settings`
-  (DBus SettingsLoad).
-- Offline plan tests: `--tree-file path/to/GetTree.json` with `--dry-run`.
+- Always dry-run a new profile: `forge workon <name> --dry-run`.
+- Title matchers (`title~=`) disambiguate several windows of the same class.
+- Optional: `displays` → `gdisplays load`; `settings` → DBus SettingsLoad.
+- Offline plan: `--tree-file path/to/GetTree.json` with `--dry-run`.
+- Help color: `forge --color=always workon help` (or `never` / `auto`).
 
-More detail: [scripts/forge/README.md](../../scripts/forge/README.md),
-design notes in [DESIGN.md](../DESIGN.md).
+More: [scripts/forge/README.md](../../scripts/forge/README.md),
+[DESIGN.md](../DESIGN.md).

@@ -7,15 +7,14 @@
 
 ### Session note (2026-07-27)
 
-**Structure repair shipped (WR6 progress).** After reboot, `forge workon dev`
-opened apps but left **flat HSPLIT** (no tab groups). Root cause: residual
-replan treated same-mon windows as perfect and `ensure_layout` had no window
-selectors without move/park. Fix: detect ungrouped multi-role tabbed slots →
-`structure` count + `windowIds` on ensure_layout → layout first + move fold.
-Also prefer **path mon** over lagging meta `monitor` after Move. Live black:
-grouped Chrome|Grok + mon1 comms tabs; second dry-run **nothing to do**.
-WR6 empty-desk still worth one more cold trial; mon child order (term left vs
-right) not yet enforced.
+**Cross-mon placement + generic UX.** Move now calls `move_to_monitor`; mon
+child order via `position: start`; mon hsplit anchors skip tab members.
+**Generics:** no app/host hardcoding in Forge — profiles are pure JSON.
+Human defaults: omit version/mode; string match/open; mon hsplit; multi-role
+tabbed; child id from sole role. **Help:** colorized `forge help` (acronyms
+LFT/OP1/…) and `forge workon help` (minimal example + defaults). Example:
+`scripts/forge/examples/workon-minimal.json`. Live black desk still green;
+WR6 empty-desk cold trial optional.
 
 ---
 

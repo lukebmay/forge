@@ -100,6 +100,26 @@ def window_tile_selector(action: dict[str, Any]) -> Optional[str]:
     return f"path:{s}"
 
 
+def _move_step_from_action(a: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """Build a move RunStep from plan move/park action (None if incomplete)."""
+    tile = window_tile_selector(a)
+    if not tile:
+        return None
+    slot = str(a.get("slot") or "mon0")
+    step: dict[str, Any] = {
+        "op": "move",
+        "tile": tile,
+        "dest": slot_to_monitor_path(slot),
+    }
+    # First mon-layout child (e.g. mon1.term) → prepend under MONITOR.
+    pos = a.get("position")
+    if pos is None and a.get("childIndex") == 0:
+        pos = "start"
+    if pos is not None and str(pos).strip() != "":
+        step["position"] = pos if isinstance(pos, str) else str(pos)
+    return step
+
+
 def actions_to_extension_steps(actions: Any) -> list[dict[str, Any]]:
     """
     Map plan actions to extension RunSteps (move / layout).
@@ -107,6 +127,9 @@ def actions_to_extension_steps(actions: Any) -> list[dict[str, Any]]:
 
     layout needs a WINDOW selector (session-api _layoutOp → matchWindows).
     mon path:moNws0 is valid move dest only — not layout selector.
+
+    Order: placement moves/parks first, then ensure_layout (so mon-level
+    layout selectors run after windows are on the target monitor).
 
     ensure_layout with windowIds (structure repair):
       - tabbed/stacked: layout on first id, then move remaining ids into it
@@ -133,54 +156,51 @@ def actions_to_extension_steps(actions: Any) -> list[dict[str, Any]]:
             mon = 0
         window_by_mon.setdefault(mon, tile)
 
-    steps: list[dict[str, Any]] = []
+    place_steps: list[dict[str, Any]] = []
+    layout_steps: list[dict[str, Any]] = []
+
     for a in actions:
         if not isinstance(a, dict):
             continue
         op = str(a.get("op") or "").strip().lower()
-        if op == "ensure_layout":
-            mode_raw = a.get("mode")
-            if mode_raw is None or str(mode_raw).strip() == "":
-                continue
-            mode = str(mode_raw).strip().lower()
-            slot = str(a.get("slot") or "mon0")
-            mon = mon_index_from_slot(slot)
-            if mon is None:
-                mon = 0
+        if op in ("move", "park"):
+            step = _move_step_from_action(a)
+            if step:
+                place_steps.append(step)
+            continue
+        if op != "ensure_layout":
+            continue
+        mode_raw = a.get("mode")
+        if mode_raw is None or str(mode_raw).strip() == "":
+            continue
+        mode = str(mode_raw).strip().lower()
+        slot = str(a.get("slot") or "mon0")
+        mon = mon_index_from_slot(slot)
+        if mon is None:
+            mon = 0
 
-            wids = a.get("windowIds")
-            id_sels: list[str] = []
-            if isinstance(wids, list):
-                for wid in wids:
-                    if wid is None or str(wid).strip() == "":
-                        continue
-                    id_sels.append(f"id:{wid}")
+        wids = a.get("windowIds")
+        id_sels: list[str] = []
+        if isinstance(wids, list):
+            for wid in wids:
+                if wid is None or str(wid).strip() == "":
+                    continue
+                id_sels.append(f"id:{wid}")
 
-            if mode in ("tabbed", "stacked") and id_sels:
-                # Wrap first window in CON (when under mon) then fold siblings in.
-                anchor = id_sels[0]
-                steps.append({"op": "layout", "mode": mode, "selector": anchor})
-                for sel in id_sels[1:]:
-                    steps.append({"op": "move", "tile": sel, "dest": anchor})
-                continue
+        if mode in ("tabbed", "stacked") and id_sels:
+            # Wrap first window in CON (when under mon) then fold siblings in.
+            anchor = id_sels[0]
+            layout_steps.append({"op": "layout", "mode": mode, "selector": anchor})
+            for sel in id_sels[1:]:
+                layout_steps.append({"op": "move", "tile": sel, "dest": anchor})
+            continue
 
-            sel = id_sels[0] if id_sels else window_by_mon.get(mon)
-            if not sel:
-                continue
-            steps.append({"op": "layout", "mode": mode, "selector": sel})
-        elif op in ("move", "park"):
-            tile = window_tile_selector(a)
-            if not tile:
-                continue
-            slot = str(a.get("slot") or "mon0")
-            steps.append(
-                {
-                    "op": "move",
-                    "tile": tile,
-                    "dest": slot_to_monitor_path(slot),
-                }
-            )
-    return steps
+        sel = id_sels[0] if id_sels else window_by_mon.get(mon)
+        if not sel:
+            continue
+        layout_steps.append({"op": "layout", "mode": mode, "selector": sel})
+
+    return place_steps + layout_steps
 
 
 def open_action_to_launch_fields(action: dict[str, Any]) -> dict[str, Any]:

@@ -1,0 +1,20 @@
+{
+  "description": "Minimal dual-pane mon0 example (generic apps — edit class/open)",
+  "roles": [
+    {
+      "id": "browser",
+      "match": "Firefox",
+      "open": "firefox"
+    },
+    {
+      "id": "term",
+      "match": "com.mitchellh.ghostty",
+      "open": "ghostty"
+    }
+  ],
+  "layout": {
+    "mon0": {
+      "children": [{ "id": "main", "roles": ["browser"] }, { "roles": ["term"] }]
+    }
+  }
+}

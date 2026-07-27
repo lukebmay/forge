@@ -27,8 +27,8 @@ _EXT_ORIGIN = (
     / "install-origin.json"
 )
 # Subcommands that do not need a DBus session (extension may be offline).
-_NO_DBUS_COMMANDS = frozenset({"install", "uninstall"})
-# workon list|show are offline; run is handled in main after parse.
+_NO_DBUS_COMMANDS = frozenset({"install", "uninstall", "help"})
+# workon list|show|help are offline; run is handled in main after parse.
 
 # Methods that take string in-args (all return a single string).
 _METHOD_IN_ARGS: dict[str, int] = {
@@ -75,6 +75,8 @@ from workon_lib import (  # noqa: E402
     validate_profile,
 )
 from workon_plan import plan_reconcile, validate_reconcile_profile  # noqa: E402
+from cli_ansi import parse_color_flag, set_color_mode  # noqa: E402
+from cli_help import print_forge_help, print_workon_help  # noqa: E402
 
 
 def _eprint(*args: object) -> None:
@@ -1282,7 +1284,7 @@ def _workon_parse_tokens(
     """
     Parse workon positional tokens + flags.
     Returns (action, name, dry_run, force_launch).
-    action: list | show | run
+    action: list | show | run | help
     """
     dry_run = bool(getattr(args, "dry_run", False))
     force_launch = bool(getattr(args, "force_launch", False))
@@ -1290,6 +1292,8 @@ def _workon_parse_tokens(
         return "help", None, dry_run, force_launch
 
     head = tokens[0].strip()
+    if head in ("help", "-h", "--help"):
+        return "help", None, dry_run, force_launch
     if head == "list":
         return "list", None, dry_run, force_launch
     if head == "show":
@@ -1634,11 +1638,8 @@ def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
     tree_file = getattr(args, "tree_file", None)
 
     if action == "help":
-        _eprint(
-            "forge workon: need <name>, list, or show <name> "
-            "[--dry-run] [--force-launch]"
-        )
-        return 1
+        print_workon_help()
+        return 0
 
     if action == "list":
         if len(tokens) > 1:
@@ -2121,11 +2122,18 @@ extension enabled for PlaceNext / wait.
 """
 
 
+def cmd_help(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Colorized top-level help (acronyms + commands)."""
+    print_forge_help()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="forge",
         description=(
             "Forge tiling control CLI (DBus). Distinct from forge-ctl (install/migrate).\n"
+            "Colorized overview: forge help   |   workon guide: forge workon help\n"
             "\n"
             "Hard dependencies:\n"
             "  - python3\n"
@@ -2135,14 +2143,27 @@ def build_parser() -> argparse.ArgumentParser:
             f"{_SELECTOR_HELP}"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=True,
     )
     p.add_argument("--version", action="version", version=f"forge {FORGE_VERSION}")
+    p.add_argument(
+        "--color",
+        choices=("auto", "always", "never"),
+        default=None,
+        help="ANSI color for help (default: auto)",
+    )
     p.add_argument(
         "--first",
         action="store_true",
         help="On ambiguous match, use the first candidate (also per-subcommand)",
     )
     sub = p.add_subparsers(dest="command", required=True)
+
+    help_p = sub.add_parser(
+        "help",
+        help="Colorized overview (commands, acronyms, selectors)",
+    )
+    help_p.set_defaults(func=cmd_help)
 
     ping = sub.add_parser("ping", help="Ping extension DBus; print health JSON")
     ping.set_defaults(func=cmd_ping)
@@ -2373,8 +2394,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     _workon_help = (
         "Named morning profiles (does **not** shadow shellrc `workon` —\n"
-        "use `forge workon` only).\n"
+        "use `forge workon` only). Profiles are user JSON; Forge is app-agnostic.\n"
         "\n"
+        "  forge workon help             # colorized guide + minimal example\n"
         "  forge workon <name>           # reconcile (v2) or steps (v1)\n"
         "  forge workon <name> --dry-run # print plan only (no launch/RunSteps)\n"
         "  forge workon list             # host + source + short path (JSON on stdout)\n"
@@ -2391,7 +2413,7 @@ def build_parser() -> argparse.ArgumentParser:
         "v2 reconcile (default when roles present): GetTree → plan → open gaps,\n"
         "move/park via RunSteps; second run is a no-op when already perfect.\n"
         "v1 steps: version 1 / mode: steps / --force-launch with steps[].\n"
-        "User guide: docs/user/workon.md. Design: docs/DESIGN.md."
+        "Defaults: see forge workon help. Docs: docs/user/workon.md."
     )
     workon_p = sub.add_parser(
         "workon",
@@ -2403,7 +2425,7 @@ def build_parser() -> argparse.ArgumentParser:
         "workon_tokens",
         nargs="*",
         metavar="ARG",
-        help="list | show <name> | <name>",
+        help="help | list | show <name> | <name>",
     )
     workon_p.add_argument(
         "--dry-run",
@@ -2526,13 +2548,23 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[list[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    # Allow `forge --help` without DBus deps
-    if not argv or argv[0] in ("-h", "--help", "--version"):
-        parser = build_parser()
-        if argv and argv[0] == "--version":
-            print(f"forge {FORGE_VERSION}")
-            return 0
-        parser.print_help()
+    argv, color_mode = parse_color_flag(argv)
+    if color_mode is not None:
+        try:
+            set_color_mode(color_mode)
+        except ValueError as e:
+            _eprint(f"forge: {e}")
+            return 1
+
+    # Allow `forge --help` / bare `forge` without DBus deps (colorized)
+    if not argv or argv[0] in ("-h", "--help"):
+        print_forge_help()
+        return 0
+    if argv[0] == "--version":
+        print(f"forge {FORGE_VERSION}")
+        return 0
+    if argv[0] == "help":
+        print_forge_help()
         return 0
 
     # Global --first before subcommand: forge --first focus 'class:Foo'
@@ -2558,12 +2590,19 @@ def main(argv: Optional[list[str]] = None) -> int:
         args.first = True
     elif not hasattr(args, "first"):
         args.first = False
+    if getattr(args, "color", None):
+        try:
+            set_color_mode(args.color)
+        except ValueError as e:
+            _eprint(f"forge: {e}")
+            return 1
 
-    # install / uninstall / workon list|show do not need DBus
+    # install / uninstall / help / workon list|show|help do not need DBus
     cmd_name = getattr(args, "command", None) or ""
     if cmd_name in _NO_DBUS_COMMANDS or getattr(args, "func", None) in (
         cmd_install,
         cmd_uninstall,
+        cmd_help,
     ):
         return int(args.func(None, args))
 
@@ -2572,7 +2611,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         head = tokens[0].strip() if tokens else ""
         dry = bool(getattr(args, "dry_run", False))
         tree_file = getattr(args, "tree_file", None)
-        if head in ("list", "show") or not tokens:
+        if head in ("list", "show", "help", "-h", "--help") or not tokens:
             return int(args.func(None, args))
         # Offline dry-run when forest is provided on disk
         if dry and tree_file:

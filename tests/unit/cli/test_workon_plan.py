@@ -42,6 +42,57 @@ class TestValidateReconcileProfile(unittest.TestCase):
         p = validate_reconcile_profile(raw)
         self.assertEqual(p["mode"], "reconcile")
 
+    def test_version_default_when_roles(self):
+        raw = {
+            "roles": [
+                {
+                    "id": "term",
+                    "match": "com.mitchellh.ghostty",
+                    "open": "ghostty",
+                    "slot": "mon0.term",
+                }
+            ],
+            "layout": {
+                "mon0": {"children": [{"roles": ["term"]}]}
+            },
+        }
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(p["version"], 2)
+        self.assertEqual(p["mode"], "reconcile")
+        self.assertEqual(p["roles"][0]["match"]["class"], "com.mitchellh.ghostty")
+        self.assertEqual(p["roles"][0]["open"]["app"], "ghostty")
+        self.assertEqual(p["roles"][0]["slot"], "mon0.term")
+        self.assertEqual(p["layout"]["mon0"]["children"][0]["id"], "term")
+
+    def test_split_and_tabbed_defaults(self):
+        raw = {
+            "roles": [
+                {"id": "a", "class": "Foo", "app": "foo"},
+                {"id": "b", "class": "Bar", "app": "bar"},
+                {"id": "t", "match": "Term", "open": "term"},
+            ],
+            "layout": {
+                "mon0": {
+                    "children": [
+                        {"id": "tabs", "roles": ["a", "b"]},
+                        {"roles": ["t"]},
+                    ]
+                }
+            },
+        }
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(p["layout"]["mon0"]["split"], "hsplit")
+        self.assertEqual(p["layout"]["mon0"]["children"][0]["layout"], "tabbed")
+        self.assertEqual(p["roles"][0]["slot"], "mon0.tabs")
+        self.assertEqual(p["roles"][2]["slot"], "mon0.t")
+
+    def test_minimal_example_file(self):
+        path = _FORGE_CLI / "examples" / "workon-minimal.json"
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(len(p["roles"]), 2)
+        self.assertEqual(p["layout"]["mon0"]["split"], "hsplit")
+
     def test_reject_v1(self):
         with self.assertRaisesRegex(ValueError, "unsupported profile version"):
             validate_reconcile_profile({"version": 1, "roles": []})
@@ -214,6 +265,108 @@ class TestPlanPerfect(unittest.TestCase):
 
 
 class TestPlanStructureRepair(unittest.TestCase):
+    def test_mon_split_anchors_skip_tab_members(self):
+        """Mon hsplit ensure anchors on term tiles, not chrome inside tabs."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 101,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Chrome",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 102,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Grok",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 103,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "A",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 104,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "B",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 201,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Voice",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        }
+                    ],
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
+        self.assertEqual(plan["counts"]["moved"], 1)
+        by_slot = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+        }
+        self.assertEqual(by_slot["mon0"]["windowIds"], [103])
+        self.assertEqual(by_slot["mon1"]["windowIds"], [104])
+        move = next(a for a in plan["actions"] if a.get("op") == "move")
+        self.assertEqual(move.get("position"), "start")
+        self.assertEqual(move.get("childIndex"), 0)
+
     def test_flat_same_mon_needs_structure(self):
         """Windows on correct mons but not tabbed → structure repair, not open."""
         forest = {
@@ -432,6 +585,9 @@ class TestClaimExclusivity(unittest.TestCase):
         by_id = {r["id"]: r for r in plan["roles"]}
         self.assertEqual(by_id["ghostty-left"]["status"], "reused")
         self.assertEqual(by_id["ghostty-right"]["status"], "move")
+        moves = [a for a in plan["actions"] if a.get("op") == "move"]
+        self.assertEqual(len(moves), 1)
+        self.assertEqual(moves[0].get("slot"), "mon1.term")
 
     def test_single_window_second_role_opens(self):
         forest = {

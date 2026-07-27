@@ -556,6 +556,15 @@ cold open, apps land flat under the mon → residual replan used to say
 (wraps under mon) + `move` siblings into it. Prefer **path mon** over
 lagging meta `monitor` after Move.
 
+**Cross-mon Move must touch Meta (2026-07-27):** session-api `Move` used to
+only reparent the tree. Dual Ghostties planned “move mon1” but both stayed
+visually on mon0 because `get_monitor()` never changed. After reparent,
+call `safeMoveToMonitor` so Mutter agrees; optional `position: start`
+prepends under a MONITOR (profile mon1.term left of comms). Apply runs
+placement moves **before** mon-level ensure_layout. Mon hsplit anchors are
+**term tiles only** — selecting chrome inside a tab CON rewrote that CON
+to HSPLIT and broke groups.
+
 **Executor (WR3):** `forge workon <name>` resolves host path, branches
 schema, then either imperative steps or reconcile:
 
@@ -571,9 +580,13 @@ residual moves/structure. `--dry-run` prints counts + plan JSON (`dryRun: true`)
 no mutations. `--tree-file` feeds a forest offline for dry-run tests. Pure
 apply helpers: `workon_apply.py`.
 
-**CLI UX (WR5):** `list` prints host + source + short path on stderr (JSON
+**CLI UX (WR5+):** `list` prints host + source + short path on stderr (JSON
 array still on stdout). dry-run / apply / show share
-`host=… profile=… source=… path=…` headers. User guide:
+`host=… profile=… source=… path=…` headers. Colorized
+`forge help` / `forge workon help` explain acronyms and profile defaults.
+Profiles are user JSON only — no app/host hardcoding in Forge. Human
+shorthands: string `match`/`open`, default mon `hsplit`, multi-role
+`tabbed`, omit `version`/`mode` when `roles[]` present. User guide:
 [docs/user/workon.md](user/workon.md).
 
 Plan: [agents/plans/forge-workon-reconcile.md](../agents/plans/forge-workon-reconcile.md).

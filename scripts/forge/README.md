@@ -82,6 +82,7 @@ Forge mon×ws keys (`mo0ws0`); see `forge launch -h`.
 # Prefer shellrc host tree (multi-machine); XDG is the local fallback:
 export FORGE_WORKON_DIR=$shellrc/configs/forge/workon   # hosts/<host>/<name>.json
 # or: cp ./scripts/forge/examples/workon-dev-v2.json ~/.config/forge/workon/dev.json
+./scripts/forge/forge workon help             # colorized guide + defaults
 ./scripts/forge/forge workon list
 ./scripts/forge/forge workon show dev
 ./scripts/forge/forge workon dev              # v1 steps or v2 reconcile
