@@ -1925,13 +1925,16 @@ def cmd_install(_backend: Optional[str], args: argparse.Namespace) -> int:
         _eprint(f"forge: {e}")
         return 1
 
-    if origin:
-        _eprint(
-            f"forge: install origin source={origin.get('source')} "
-            f"repo={origin.get('repo')} (stamp {origin.get('_origin_path')})"
-        )
-    else:
-        _eprint(f"forge: no origin stamp; using CLI tree {repo}")
+    verbose = bool(getattr(args, "verbose", False) or os.environ.get("FORGE_VERBOSE") == "1")
+
+    if verbose:
+        if origin:
+            _eprint(
+                f"forge: install origin source={origin.get('source')} "
+                f"repo={origin.get('repo')} (stamp {origin.get('_origin_path')})"
+            )
+        else:
+            _eprint(f"forge: no origin stamp; using CLI tree {repo}")
 
     cmd = [str(script)]
     # Forward known flags (restart is default in install.zsh; pass opt-outs only)
@@ -1955,6 +1958,8 @@ def cmd_install(_backend: Optional[str], args: argparse.Namespace) -> int:
         cmd.append("--skip-npm")
     if getattr(args, "no_host_defaults", False):
         cmd.append("--no-host-defaults")
+    if verbose:
+        cmd.append("--verbose")
     if getattr(args, "extra", None):
         cmd.extend(args.extra)
 
@@ -1962,8 +1967,11 @@ def cmd_install(_backend: Optional[str], args: argparse.Namespace) -> int:
     env["FORGE_REPO_ROOT"] = str(repo)
     if getattr(args, "force", False):
         env["FORGE_FORCE"] = "1"
+    if verbose:
+        env["FORGE_VERBOSE"] = "1"
 
-    _eprint(f"forge: exec {' '.join(shlex.quote(c) for c in cmd)}")
+    if verbose:
+        _eprint(f"forge: exec {' '.join(shlex.quote(c) for c in cmd)}")
     try:
         proc = subprocess.run(cmd, env=env, check=False)
     except OSError as e:
@@ -2451,20 +2459,21 @@ def build_parser() -> argparse.ArgumentParser:
         "install",
         help="Re-install Forge from the recorded git tree (or this CLI's repo)",
         description=(
-            "Origin-aware reinstall. Default: build → install → enable → reload Shell\n"
-            "(X11 HUP) so the new code is active. Same as ./install.\n"
+            "Origin-aware reinstall. Quiet checklist by default (no prompts for\n"
+            "routine paths). Same as ./install: build → install → enable → reload\n"
+            "Shell on X11 so the new code is active.\n"
             "\n"
             "After a successful install, install-origin.json records the repo path.\n"
             "If that clone was deleted, errors clearly.\n"
             "\n"
-            "Does not require extension DBus. --force only for pipes/CI."
+            "Does not require extension DBus."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     install_p.add_argument(
         "--force",
         action="store_true",
-        help="Non-interactive / CI only (not needed on a TTY)",
+        help="Non-interactive (default for install; kept for CI flags)",
     )
     install_p.add_argument("--prod", action="store_true", help="Production build")
     install_p.add_argument("--dev", action="store_true", help="Debug build (default)")
@@ -2504,6 +2513,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         dest="no_host_defaults",
         help="Skip host-defaults apply",
+    )
+    install_p.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Detailed install logs (make/npm/gsettings)",
     )
     install_p.set_defaults(func=cmd_install)
 

@@ -34,11 +34,17 @@ If the clone was removed, `forge install` errors (no silent wrong tree). EGO
 reinstall via `forge install` is reserved for later.
 
 ```bash
-./install                      # build → install → enable → CLI → reload Shell (X11)
+./install                      # quiet checklist; no prompts for routine paths
 ./install --no-restart         # files only; reload Shell yourself
+./install --verbose            # full make/npm/gsettings chatter
 forge tree                     # once ~/.local/bin is on PATH
 ./scripts/forge/status.zsh     # shows install origin + CLI bin
 ```
+
+Default install output is a short ✓/✗ checklist (Build, Install extension,
+Enable, Host defaults, CLI, Reload shell). Nested tools are silenced unless a
+step fails (then the log tail is shown). Use `--verbose` or `FORGE_VERBOSE=1`
+for the old detailed logs. EGO → this tree migrates with auto-backup (no Y/n).
 
 ## Tiling control CLI (`forge`)
 

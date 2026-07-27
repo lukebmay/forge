@@ -31,6 +31,7 @@ Options:
   --skip-npm          Pass through to install-jcrussell
   --from-ego          If installed lineage is EGO, run switch-to-jcrussell instead
   --force             Non-interactive / CI (skip confirms)
+  --verbose, -v       Detailed build/install logs
   --color=auto|always|never
   -h, --help
 

@@ -23,6 +23,7 @@ Options:
   --no-enable      Do not run gnome-extensions enable after install
   --no-host-defaults  Skip apply-host-defaults.zsh after install
   --force          Non-interactive replace of current install
+  --verbose, -v    Detailed build/install logs
   --color=auto|always|never
   -h, --help
 

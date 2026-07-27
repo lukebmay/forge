@@ -26,13 +26,12 @@ usage() {
   cat <<EOF
 ${c_bold}install${c_reset} — install on-disk Forge from this git tree
 
-Default (no flags): build this tree → install extension → enable → reload Shell
-on X11 so the new code is ${c_bold}active${c_reset}. Settings are preserved (EGO → full
-migrate with backup; already on this lineage → in-place replace).
+Default (no flags): build → install → enable → host defaults → CLI → reload
+Shell on X11. Quiet checklist UX (no prompts for routine paths).
 
   none / unknown   → build + install this tree
   jcrussell        → rebuild this tree over the live extension
-  ego (SweetTooth) → migrate with settings backup (switch-to-jcrussell)
+  ego (SweetTooth) → migrate with auto-backup (switch-to-jcrussell)
 
 Records install origin at:
   ${c_cyan}~/.local/share/forge-manage/install-origin.json${c_reset}
@@ -57,15 +56,19 @@ Options:
   --reload-theme      Stamp/reload user stylesheet after install
   --skip-npm          Skip npm install if node_modules missing
   --no-host-defaults  Skip apply-host-defaults.zsh
-  --force             Non-interactive / CI only (skip confirms; not needed on a TTY)
+  --force             Non-interactive (default for this script; kept for CI flags)
+  --verbose, -v       Detailed logs (make/npm/gsettings chatter)
   --color=auto|always|never
   -h, --help
+
+Env:
+  FORGE_VERBOSE=1     Same as --verbose
 
 Examples:
   ./install
   ./install --no-restart          # copy files only; reload Shell yourself
+  ./install --verbose             # full build chatter
   forge install                   # re-run from install-origin
-  ./install --force               # pipes / CI
 
 $(forge_print_deps_help)
 EOF
@@ -113,111 +116,153 @@ if forge_ext_installed; then
   lineage=$(forge_detect_lineage)
 fi
 
-forge_hdr "Forge install (from disk)"
-forge_info "repo:     $FORGE_REPO_ROOT"
-forge_info "lineage:  $lineage"
-forge_info "session:  $(forge_session_type)"
-forge_info "mode:     $MODE"
-if [[ -d "$FORGE_REPO_ROOT/.git" ]]; then
-  forge_info "git:      $(git -C "$FORGE_REPO_ROOT" describe --tags --always --dirty 2>/dev/null || echo n/a)"
+# Routine install is non-interactive (safe defaults always accepted).
+export FORGE_FORCE=1
+if forge_is_verbose; then
+  export FORGE_VERBOSE=1
+else
+  export FORGE_INSTALL_QUIET=1
 fi
 
-# Whether the user passed --force (common args). Needed before we force children.
-_USER_FORCE="${FORGE_FORCE:-0}"
+# Run a named checklist step; abort on failure (log dumped by forge_run_quiet).
+_install_step() {
+  local name="$1"
+  shift
+  if forge_run_quiet "$@"; then
+    forge_step_ok "$name"
+    return 0
+  fi
+  forge_step_fail "$name"
+  exit 1
+}
+
+_install_done() {
+  local vn st
+  vn=$(forge_metadata_field version-name 2>/dev/null || print "n/a")
+  print -u2 -- "${c_green}done${c_reset}  ${c_blue}${vn}${c_reset}  (${c_cyan}${FORGE_EXT_DIR}${c_reset})"
+  if (( ! DO_RESTART )); then
+    forge_warn "Shell not reloaded (--no-restart); reload to activate new code"
+  else
+    st=$(forge_session_type)
+    if [[ "$st" != "x11" ]]; then
+      forge_warn "session=$st: log out/in if code looks stale"
+    fi
+  fi
+  print -r -- "$FORGE_EXT_DIR"
+}
+
+print -u2 -- "${c_bold}forge install${c_reset}"
 
 case "$lineage" in
   ego)
-    forge_info "path: EGO/SweetTooth → switch-to-jcrussell (backup + migrate settings)"
-    # Only prompt for EGO migrate (settings path). TTY: ask; non-TTY: need --force.
-    if [[ "$_USER_FORCE" != "1" ]]; then
-      if forge_is_tty; then
-        if ! forge_confirm "Migrate EGO Forge → this tree (backup, build, replace, re-apply settings)?"; then
-          forge_die "aborted"
-        fi
-      else
-        forge_die "non-interactive EGO migrate needs --force (will backup + replace extension)"
-      fi
-    fi
-    # Child helpers still call forge_confirm — skip nested prompts after the one above.
-    export FORGE_FORCE=1
-    args=()
+    print -u2 -- "  ${c_cyan}note:${c_reset} migrating EGO → this tree (auto-backup)"
+    args=(--force)
     [[ "$MODE" == "prod" ]] && args+=(--prod)
     if (( DO_RESTART )); then
       args+=(--restart-shell)
     else
       args+=(--no-restart)
     fi
-    "$SCRIPT_DIR/switch-to-jcrussell.zsh" --force "${args[@]}"
-    forge_write_install_origin "$FORGE_REPO_ROOT" git
-    forge_ok "install complete (migrated from EGO)"
-    forge_info "status: $SCRIPT_DIR/status.zsh"
-    forge_info "CLI: forge tree | forge uninstall | forge install"
-    print -r -- "$FORGE_EXT_DIR"
+    _install_step "Migrate" "$SCRIPT_DIR/switch-to-jcrussell.zsh" "${args[@]}"
+    forge_write_install_origin "$FORGE_REPO_ROOT" git >/dev/null || true
+    if [[ -f "$FORGE_ORIGIN_PATH" ]] && forge_cli_bin_is_ours; then
+      forge_step_ok "CLI"
+    else
+      forge_step_warn "CLI (non-fatal)"
+    fi
+    if (( DO_RESTART )); then
+      forge_step_ok "Reload shell"
+    else
+      forge_step_skip "Reload shell"
+    fi
+    _install_done
     exit 0
     ;;
 
   jcrussell)
-    forge_info "path: already jcrussell → update in place from this tree"
-    # Default: no full dconf backup every day; opt in with --save
     [[ -z "$DO_SAVE" ]] && DO_SAVE=0
     ;;
 
   none)
-    forge_info "path: no extension installed → fresh install from this tree"
     [[ -z "$DO_SAVE" ]] && DO_SAVE=0
     ;;
 
   unknown|*)
-    forge_warn "lineage=$lineage — treating as in-place replace from this tree"
     # Safer default: backup unknown installs
     [[ -z "$DO_SAVE" ]] && DO_SAVE=1
     ;;
 esac
 
-# In-place / fresh install is intentional; skip nested confirms in helpers.
-export FORGE_FORCE=1
+# --- jcrussell / none / unknown: granular checklist ---
 
-# jcrussell / none / unknown → update-jcrussell or install-jcrussell
-args=(--force)
-[[ "$MODE" == "prod" ]] && args+=(--prod) || args+=(--dev)
-(( SKIP_NPM )) && args+=(--skip-npm)
-(( ! DO_HOST_DEFAULTS )) && args+=(--no-host-defaults)
-if (( DO_RESTART )); then
-  args+=(--restart-shell)
-else
-  args+=(--no-restart)
-fi
-(( DO_RELOAD_THEME )) && args+=(--reload-theme)
-(( DO_SAVE )) && args+=(--save)
-
-if [[ -f "$SCRIPT_DIR/update-jcrussell.zsh" ]]; then
-  "$SCRIPT_DIR/update-jcrussell.zsh" "${args[@]}"
-else
-  install_args=(--force)
-  [[ "$MODE" == "prod" ]] && install_args+=(--prod) || install_args+=(--dev)
-  (( SKIP_NPM )) && install_args+=(--skip-npm)
-  (( ! DO_HOST_DEFAULTS )) && install_args+=(--no-host-defaults)
-  (( DO_SAVE )) && "$SCRIPT_DIR/save-settings.zsh" --force || true
-  "$SCRIPT_DIR/install-jcrussell.zsh" "${install_args[@]}"
-  if (( DO_RESTART )); then
-    forge_restart_shell || true
-    gnome-extensions enable "$FORGE_UUID" 2>/dev/null || true
-  fi
+if (( DO_SAVE )); then
+  _install_step "Backup" "$SCRIPT_DIR/save-settings.zsh" --force
 fi
 
-forge_write_install_origin "$FORGE_REPO_ROOT" git
-forge_ok "install complete (lineage=$(forge_detect_lineage))"
+build_args=(--force --build-only)
+[[ "$MODE" == "prod" ]] && build_args+=(--prod) || build_args+=(--dev)
+(( SKIP_NPM )) && build_args+=(--skip-npm)
+_install_step "Build" "$SCRIPT_DIR/install-jcrussell.zsh" "${build_args[@]}"
+
+install_args=(--force --install-only --no-enable --no-host-defaults)
+_install_step "Install extension" "$SCRIPT_DIR/install-jcrussell.zsh" "${install_args[@]}"
+
+# Enable: soft when we will HUP (often fails until reload); hard otherwise.
 if (( DO_RESTART )); then
-  st=$(forge_session_type)
-  if [[ "$st" == "x11" ]]; then
-    forge_ok "Shell reloaded (X11) — extension should be running the new build"
+  if forge_run_capture gnome-extensions enable "$FORGE_UUID"; then
+    forge_step_ok "Enable"
   else
-    forge_warn "session=$st: if code looks stale, log out/in (in-session reload not available)"
+    forge_step_warn "Enable (will retry after reload)"
   fi
 else
-  forge_warn "files installed; Shell not reloaded (--no-restart). Reload to activate."
+  _install_step "Enable" gnome-extensions enable "$FORGE_UUID"
 fi
-forge_info "origin: $FORGE_ORIGIN_PATH"
-forge_info "reinstall later: forge install   # or: $FORGE_REPO_ROOT/install"
-forge_info "CLI: forge tree | forge uninstall | forge install"
-print -r -- "$FORGE_EXT_DIR"
+
+if (( DO_HOST_DEFAULTS )) && [[ -f "$SCRIPT_DIR/host-defaults.conf" ]]; then
+  if forge_run_capture "$SCRIPT_DIR/apply-host-defaults.zsh" --force "$SCRIPT_DIR/host-defaults.conf"; then
+    forge_step_ok "Host defaults"
+  else
+    forge_step_warn "Host defaults (non-fatal)"
+  fi
+else
+  forge_step_skip "Host defaults"
+fi
+
+# Origin + ~/.local/bin/forge (chatter already quiet via FORGE_INSTALL_QUIET).
+# write_origin soft-fails CLI conflict; checklist must reflect real symlink.
+forge_write_install_origin "$FORGE_REPO_ROOT" git >/dev/null || true
+if [[ -f "$FORGE_ORIGIN_PATH" ]] && forge_cli_bin_is_ours; then
+  forge_step_ok "CLI"
+else
+  forge_step_warn "CLI (non-fatal)"
+fi
+
+if (( DO_RELOAD_THEME )) && [[ -f "$SCRIPT_DIR/reload-theme.zsh" ]]; then
+  if forge_run_capture "$SCRIPT_DIR/reload-theme.zsh" --force; then
+    forge_step_ok "Reload theme"
+  else
+    forge_step_warn "Reload theme (non-fatal)"
+  fi
+fi
+
+if (( DO_RESTART )); then
+  rc=0
+  forge_restart_shell || rc=$?
+  if (( rc == 0 )); then
+    sleep 1
+    gnome-extensions enable "$FORGE_UUID" 2>/dev/null || true
+    if (( DO_RELOAD_THEME )) && [[ -f "$SCRIPT_DIR/reload-theme.zsh" ]]; then
+      "$SCRIPT_DIR/reload-theme.zsh" --force >/dev/null 2>&1 || true
+    fi
+    forge_step_ok "Reload shell"
+  elif (( rc == 2 )); then
+    forge_step_warn "Reload shell (log out/in required)"
+  else
+    forge_step_fail "Reload shell"
+    forge_die "Shell reload failed"
+  fi
+else
+  forge_step_skip "Reload shell"
+fi
+
+_install_done

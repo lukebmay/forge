@@ -52,19 +52,90 @@ else
   c_reset= c_bold= c_red= c_green= c_yellow= c_blue= c_magenta= c_cyan=
 fi
 
+forge_is_verbose() { [[ "${FORGE_VERBOSE:-0}" == "1" ]]; }
+
+# Checklist mode: children suppress chatter (set by scripts/install.zsh).
+forge_is_quiet() {
+  [[ "${FORGE_INSTALL_QUIET:-0}" == "1" ]] && ! forge_is_verbose
+}
+
 forge_die() { print -u2 -- "${c_red}forge: $*${c_reset}"; exit 1; }
 forge_warn() { print -u2 -- "${c_yellow}forge: $*${c_reset}"; }
-forge_info() { print -u2 -- "${c_cyan}forge: $*${c_reset}"; }
-forge_ok() { print -u2 -- "${c_green}forge: $*${c_reset}"; }
-forge_hdr() { print -u2 -- "${c_magenta}${c_bold}$*${c_reset}"; }
+forge_info() {
+  forge_is_quiet && return 0
+  print -u2 -- "${c_cyan}forge: $*${c_reset}"
+}
+forge_ok() {
+  forge_is_quiet && return 0
+  print -u2 -- "${c_green}forge: $*${c_reset}"
+}
+forge_hdr() {
+  forge_is_quiet && return 0
+  print -u2 -- "${c_magenta}${c_bold}$*${c_reset}"
+}
+
+# Install checklist lines (always print; independent of quiet chatter).
+forge_step_ok() { print -u2 -- "  ${c_green}✓${c_reset} $*"; }
+forge_step_fail() { print -u2 -- "  ${c_red}✗${c_reset} $*"; }
+forge_step_skip() { print -u2 -- "  ${c_yellow}–${c_reset} $*"; }
+forge_step_warn() { print -u2 -- "  ${c_yellow}!${c_reset} $*"; }
+
+forge_log_tail() {
+  local log="$1" n="${2:-40}"
+  [[ -f "$log" && -s "$log" ]] || return 0
+  print -u2 -- "${c_yellow}---- log (last ${n} lines) ----${c_reset}"
+  tail -n "$n" "$log" >&2 2>/dev/null || true
+  print -u2 -- "${c_yellow}---- end log ----${c_reset}"
+}
+
+# Run command; silence stdout/stderr unless verbose. On failure: error + log tail.
+forge_run_quiet() {
+  local log rc=0
+  if forge_is_verbose; then
+    "$@"
+    return $?
+  fi
+  log=$(mktemp "${TMPDIR:-/tmp}/forge-step.XXXXXX") || forge_die "mktemp failed"
+  set +e
+  "$@" >"$log" 2>&1
+  rc=$?
+  set -e
+  if (( rc == 0 )); then
+    rm -f "$log"
+    return 0
+  fi
+  print -u2 -- "${c_red}error: failed (exit $rc): $*${c_reset}"
+  forge_log_tail "$log"
+  rm -f "$log"
+  return $rc
+}
+
+# Like forge_run_quiet but never prints (soft steps; caller decides ok/warn).
+forge_run_capture() {
+  local log rc=0
+  if forge_is_verbose; then
+    "$@"
+    return $?
+  fi
+  log=$(mktemp "${TMPDIR:-/tmp}/forge-step.XXXXXX") || forge_die "mktemp failed"
+  set +e
+  "$@" >"$log" 2>&1
+  rc=$?
+  set -e
+  rm -f "$log"
+  return $rc
+}
 
 forge_is_tty() { [[ -t 0 && -t 1 ]]; }
 
 forge_confirm() {
   # $1 prompt; default yes unless FORGE_CONFIRM_DEFAULT=no
   local prompt="$1" def="${FORGE_CONFIRM_DEFAULT:-yes}" ans
+  # Quiet install / --force: accept without prompting.
+  if [[ "${FORGE_FORCE:-0}" == "1" ]] || forge_is_quiet; then
+    return 0
+  fi
   if ! forge_is_tty; then
-    [[ "${FORGE_FORCE:-0}" == "1" ]] && return 0
     forge_die "non-interactive; pass --force or set FORGE_FORCE=1 ($prompt)"
   fi
   local hint="[Y/n]"
@@ -323,6 +394,7 @@ forge_parse_common_args() {
       -h|--help) FORGE_WANT_HELP=1; shift ;;
       -V|--version) print -r -- "forge-manage $FORGE_VERSION"; exit 0 ;;
       --force) FORGE_FORCE=1; shift ;;
+      --verbose|-v) FORGE_VERBOSE=1; shift ;;
       --color=*) FORGE_COLOR="${1#--color=}"; shift ;;
       --color)
         [[ -n "${2:-}" ]] || forge_die "--color needs a value"
