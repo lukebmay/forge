@@ -6,16 +6,15 @@
 
 ## Next session focus
 
-**A/B loop on workon product polish** — plan
+**Workon product polish** — plan
 [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md).
 
 | Order | ID | Task | Why first |
 | ---: | --- | --- | --- |
-| 1 | **WR14** | Post-workon tab click/focus settle | Bug after successful apply |
-| 2 | **WR6** | Live black trials | Full acceptance |
-| 3 | **WR15** | `--clean` | Opt-in only |
+| 1 | **WR6** | Live black trials | Full acceptance after WR14 |
+| 2 | **WR15** | `--clean` | Opt-in only |
 
-**WR10–WR13 Done** (sugar, coexist, shellrc `dev`, docs).
+**WR10–WR14 Done** (sugar, coexist, shellrc `dev`, docs, tab settle).
 
 Live thrash/tab bugs still **outrank** this queue if they return. Meta
 (personal fork) stays below.
@@ -25,7 +24,7 @@ useful later; it does **not** fix windows.
 
 | Doc | Role |
 | --- | --- |
-| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | **P1** — WR1–WR5 Done; next **WR10→WR11→WR12** |
+| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | **P1** — WR1–WR5 + WR10–14 Done; next **WR6** |
 | [forge-command.md](./plans/forge-command.md) | FC0–FC5 **Done** — imperative workon shipped |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 + session-layout Ghostty **Done** |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome + install HUP path live |
@@ -42,7 +41,7 @@ Ordered by **how often it hurts or helps when actually using the machine**.
 | ---: | --- | --- | --- | --- |
 | 1 | **Critical (shipped)** | Dual-head blank/wake + install HUP restore | Morning layout must survive lock/wake and `forge install` | **Done** — T3, T6, T7, session-layout + Ghostty |
 | 2 | **Critical (shipped)** | Tabs, stack-off, open-app LFT, keybinds, sizing | Core daily tiling feel | **Done** — T0–T5, OP1 |
-| 3 | **High (next product)** | **Idempotent `forge workon` + sugar + coexist** | Morning desk + lived-in companions + quick profiles | **WR1–WR5 + WR10–13 Done**; next **WR14 / WR6** |
+| 3 | **High (next product)** | **Idempotent `forge workon` + sugar + coexist** | Morning desk + lived-in companions + quick profiles | **WR1–WR5 + WR10–14 Done**; next **WR6** live |
 | 4 | **High (shipped, incomplete UX)** | FC5 imperative `workon` | Command + steps exist; doubles windows if re-run | **Superseded default by #3** — keep as `--force-launch` / `mode: steps` |
 | 5 | **Medium (live)** | Regression watch: install/HUP, wake thrash, tab chrome | Failure modes that ruin a day if they return | **Monitor** — file bug when seen; **outranks #3 if open** |
 | 6 | **Medium (QoL, shipped)** | OP-opt tiny-pane → tab fallback | Opt-in min-edge → tab instead of postage-stamp split | **Done** |
@@ -64,8 +63,7 @@ the desk is stable.
 | Pri | Item | Status | Day-to-day? |
 | --- | --- | --- | --- |
 | **P0** | Live thrash/tab bugs (if any) | **Interrupt** | Yes |
-| **P1** | [workon](./plans/forge-workon-reconcile.md) **WR14** tab settle | Ready — A/B next | Yes — post-apply bug |
-| P1 | WR6 live trials | Ready after/with WR14 | Yes |
+| **P1** | [workon](./plans/forge-workon-reconcile.md) **WR6** live trials | Ready | Yes |
 | P2 | WR15 `--clean` | Later | Occasional |
 | P2 | Live daily-drive; report new bugs | Ongoing | Yes |
 | P3 | [Personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership only |
@@ -78,6 +76,7 @@ the desk is stable.
 
 | Item | Note |
 | --- | --- |
+| **WR14 tab settle** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr14-tab-settle.md) |
 | **WR13 docs/help** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr13-docs.md) |
 | **WR12 shellrc dev sugar** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr12-shellrc-dev-sugar.md) (shellrc uncommitted) |
 | **WR11 marginal coexist** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr11-marginal-coexist.md) |
@@ -97,9 +96,10 @@ the desk is stable.
 
 ## Session wrap (2026-07-27)
 
-- **WR10–WR13 Done:** tiles sugar, coexist, shellrc `dev` sugar (uncommitted),
-  docs/help. CLI unit tests **122 passed**.
-- **Next:** A/B **WR14** tab settle → WR6 live.
+- **WR14 Done (A/B AGREE):** post-`RunSteps` tab settle + focus-update chrome
+  order; idle cleared on disable.
+- **WR10–WR13** already Done (sugar, coexist, shellrc `dev`, docs).
+- **Next:** **WR6** live black trial → WR15 `--clean`.
 
 ---
 

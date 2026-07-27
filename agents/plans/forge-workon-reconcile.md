@@ -1,16 +1,15 @@
 # Plan: Idempotent `forge workon` (desired-state layout)
 
-**Status:** WR1–WR5 + **WR10–WR13 Done** — next **WR14** tab settle / **WR6** live  
+**Status:** WR1–WR5 + **WR10–WR14 Done** — next **WR6** live  
 **Priority:** **P1 product** (day-to-day #3 after live regression watch)  
 **Base:** this tree; builds on [forge-command.md](./forge-command.md) FC0–FC5  
 **Related:** OP1 open-app, T6 GetTree, shellrc `gdisplays` host layout  
 
 ### Session note (2026-07-27)
 
-**WR10–WR13 shipped this session (A/B for 10–12; docs for 13).**
-Tiles sugar normalize, coexist keep/park, shellrc black `dev` sugar
-(uncommitted), user docs + `forge workon help`. Tests: **122 passed**.
-**Next:** WR14 post-apply tab settle → WR6 live → WR15 `--clean`.
+**WR14 A/B AGREE.** Post-`RunSteps` settle (raise tab/stack then chrome) +
+focus-update raise→decoration order. B: idle source cleared on disable.
+**Next:** WR6 live black trial → WR15 `--clean`.
 
 ---
 
@@ -382,7 +381,7 @@ forge workon <name> [--dry-run]
 | **WR11** | **Marginal coexist** + `roleOrder: first` + logical atomic slots | **Done** | M | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr11-marginal-coexist.md) |
 | **WR12** | shellrc `hosts/black/dev.json` → sugar + README | **Done** (shellrc uncommitted) | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr12-shellrc-dev-sugar.md) |
 | **WR13** | Docs/help/examples: sugar defaults, coexist, floating | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr13-docs.md) |
-| **WR14** | Post-`workon` **tab click / focus settle** | **Ready** | S | Bug after successful apply |
+| **WR14** | Post-`workon` **tab click / focus settle** | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr14-tab-settle.md) |
 | **WR6** | Live black: empty / perfect / messy + companions | **Ready** | S | Acceptance after sugar+coexist |
 | **WR15** | `--clean` / `--clean --force` (residuals only) | Later | S | Escape hatch; not default path |
 | **WR7** | `forge workon capture` sketch from tree | Later | M | Authoring assist after sugar lands |
@@ -393,9 +392,9 @@ forge workon <name> [--dry-run]
 
 | Task | Path |
 | --- | --- |
-| WR10–WR13 | [completed/](./forge-workon-reconcile/completed/) |
+| WR10–WR14 | [completed/](./forge-workon-reconcile/completed/) |
 
-**Next A/B:** **WR14** tab settle, then WR6 live.
+**Next A/B:** **WR6** live black trial (then WR15).
 
 ---
 

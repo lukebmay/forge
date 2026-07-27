@@ -136,6 +136,7 @@ churn) are not raise-path cleanup.
 | **Tab click** | `Node._activateFromTab` (`tree.js`) | `lastTabFocus` ← meta; `raise` + `activate`; **immediately** `updateTabbedFocus` / `updateStackedFocus` (focus signal is deferred — waiting on it left stacks un-restacked) |
 | **Focus manager** | `FocusManager` (`focus.js`) | `updateStackedFocus`: append focused child in STACKED parent, raise all window siblings, queue render; `updateTabbedFocus`: raise focused leaf only when parent is TABBED; pointer hover (`_focusWindowUnderPointer`): `focus` + `raise` under cursor |
 | **Session raise-after-restore** | `SessionLayoutRestoreManager.raiseAfterSessionRestore` (`session-layout-restore.js`) | DFS walk restored forest: `raise` each leaf, then `lastTabFocus` per CON; finally raise focused meta + tab/stack update so nothing stays buried under a sibling after HUP match |
+| **RunSteps settle (WR14)** | `SessionApi._settleAfterRunSteps` (`session-api.js`) | After quiet batch render idle: `updateTabbedFocus` / `updateStackedFocus` per TABBED/STACKED CON (`lastTabFocus` or first tiled), then `updateDecorationLayout` so tab strips stay pickable after mass move/layout |
 | **Float under fullscreen** | `window.js` focus `raise-float` queue + untiled rehome float raise | Raise focused float above tiles **unless** `node._aboveDemotedForFullscreen` — bare `raise()` undoes `_reconcileFullscreenFloatDemotion`’s `lower()` without setting `is_above()`, so the next demote pass never re-lowers it (forge-5l9b) |
 | **Wayland stack timeout** | `Tree._activateWindowNode` (`tree.js`) | On Wayland, brief `make_above` + per-window **50ms** `_forgeStackTimeoutId` unpin so the window leaves the desktop layer; not a generic raise — keep cleanup on disable / destroy (forge-jnfk / forge-ph7f) |
 
@@ -143,6 +144,9 @@ Also raise (not policy centers): directional/cyclic focus via `_activateWindowNo
 command keybinds (`command.js`), session DBus activate (`session-api.js`),
 post-close focus (`window.js`). Same rule: call `raise` + existing tab/stack
 helpers; do not invent a second restack pipeline.
+
+**Focus deferred queue:** `focus-update` raises stack/tab **then** restacks
+decoration/border (never decoration-first — a later `meta.raise()` buries chrome).
 
 #### What must stay separate
 

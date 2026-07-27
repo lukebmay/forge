@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
+import { SessionApi } from "../../lib/extension/session-api.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
@@ -134,5 +135,71 @@ describe("decoration restack above group (not global focus)", () => {
     const bIdx = children.indexOf(actorB);
     expect(decoIdx).toBeGreaterThan(aIdx);
     expect(decoIdx).toBeGreaterThan(bIdx);
+  });
+
+  it("RunSteps settle restacks chrome after tab raise (WR14)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const con = ctx.windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.TABBED;
+
+    const wA = createMockWindow({ id: "sa" });
+    const wB = createMockWindow({ id: "sb" });
+    const nA = ctx.windowManager.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = ctx.windowManager.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, wB);
+    con.lastTabFocus = wB;
+
+    const actorA = { name: "actorA" };
+    const actorB = { name: "actorB" };
+    wA.get_compositor_private = () => actorA;
+    wB.get_compositor_private = () => actorB;
+    wB.raise = vi.fn(() => {
+      // Simulate Meta.raise burying chrome under the window actor.
+      const wg = global.window_group;
+      if (wg.contains(actorB)) wg.remove_child(actorB);
+      wg.add_child(actorB);
+    });
+
+    const deco = { name: "deco", show: vi.fn(), hide: vi.fn() };
+    con.decoration = deco;
+
+    const wg = global.window_group;
+    wg.add_child(actorA);
+    wg.add_child(deco);
+    wg.add_child(actorB); // window above chrome (broken post-batch state)
+
+    const api = new SessionApi({
+      extWm: ctx.windowManager,
+      settings: ctx.settings,
+    });
+    // Scope settle to this CON (avoid whole-tree decoration hide).
+    vi.spyOn(ctx.windowManager, "updateDecorationLayout").mockImplementation(() => {
+      const tiled = ctx.windowManager.tree.getTiledChildren(con.childNodes);
+      ctx.windowManager.decorationManager._restackDecorationAboveGroup(con, tiled);
+    });
+    vi.spyOn(ctx.windowManager, "updateBorderLayout").mockImplementation(() => {});
+
+    api._settleAfterRunSteps(ctx.windowManager);
+
+    expect(wB.raise).toHaveBeenCalled();
+    const children = wg.get_children();
+    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorA));
+    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorB));
+    expect(nA).toBeTruthy();
+    expect(nB).toBeTruthy();
+  });
+
+  it("RunSteps schedules settle after successful batch (WR14)", () => {
+    const api = new SessionApi({
+      extWm: ctx.windowManager,
+      settings: ctx.settings,
+    });
+    const settleSpy = vi.spyOn(api, "_settleAfterRunSteps").mockImplementation(() => {});
+    const scheduleSpy = vi.spyOn(api, "_scheduleRunStepsSettle");
+
+    const out = JSON.parse(api.RunSteps(JSON.stringify([{ op: "ping" }])));
+    expect(out.ok).toBe(true);
+    expect(scheduleSpy).toHaveBeenCalled();
+    // GLib.idle_add mock runs callbacks immediately.
+    expect(settleSpy).toHaveBeenCalledWith(ctx.windowManager);
   });
 });
