@@ -5,13 +5,17 @@
 **Base:** this tree; builds on [forge-command.md](./forge-command.md) FC0–FC5  
 **Related:** OP1 open-app, T6 GetTree, shellrc `gdisplays` host layout  
 
-### Session note (2026-07-26)
+### Session note (2026-07-27)
 
-**WR1–WR5 Done (A/B AGREE).** Live dry-run on black (no apply):
-`forge workon dev --dry-run` → reused 6 / opened 1 (`chrome-luke` exact
-title miss) / parked 2. WR6 still needs live apply accept (empty / perfect /
-messy). Chrome matcher may need WR4 follow-up during WR6. CLI: dry-run is
-**only** `--dry-run` (no `workon plan` alias).
+**Structure repair shipped (WR6 progress).** After reboot, `forge workon dev`
+opened apps but left **flat HSPLIT** (no tab groups). Root cause: residual
+replan treated same-mon windows as perfect and `ensure_layout` had no window
+selectors without move/park. Fix: detect ungrouped multi-role tabbed slots →
+`structure` count + `windowIds` on ensure_layout → layout first + move fold.
+Also prefer **path mon** over lagging meta `monitor` after Move. Live black:
+grouped Chrome|Grok + mon1 comms tabs; second dry-run **nothing to do**.
+WR6 empty-desk still worth one more cold trial; mon child order (term left vs
+right) not yet enforced.
 
 ---
 

@@ -546,7 +546,15 @@ round-trip testing expensive. `workon_plan.py` takes a GetTree forest +
 v2 profile → actions with **no DBus**, so doubled/empty/perfect cases are
 plain unit fixtures. Claim set is global (one window per role); extras
 park, never kill. MVP “home” for a role is **correct monitor index** for
-its slot — executor moves to `path:moNws0` (tab-CON polish later).
+its slot — executor moves to `path:moNws0`.
+
+**Structure repair (2026-07-27):** same-mon is not enough. Multi-role
+`tabbed`/`stacked` slots must share a CON parent with that layout. After a
+cold open, apps land flat under the mon → residual replan used to say
+“nothing to do.” Planner now counts `structure`, attaches `windowIds` to
+`ensure_layout`, and apply folds them: `layout tabbed` on the anchor
+(wraps under mon) + `move` siblings into it. Prefer **path mon** over
+lagging meta `monitor` after Move.
 
 **Executor (WR3):** `forge workon <name>` resolves host path, branches
 schema, then either imperative steps or reconcile:
@@ -559,7 +567,7 @@ schema, then either imperative steps or reconcile:
 
 Reconcile apply: optional displays/settings → GetTree → `plan_reconcile` →
 extension `move`/`layout` for existing tiles → `launch` gaps → re-tree +
-residual moves. `--dry-run` prints counts + plan JSON (`dryRun: true`) with
+residual moves/structure. `--dry-run` prints counts + plan JSON (`dryRun: true`) with
 no mutations. `--tree-file` feeds a forest offline for dry-run tests. Pure
 apply helpers: `workon_apply.py`.
 

@@ -106,14 +106,18 @@ def actions_to_extension_steps(actions: Any) -> list[dict[str, Any]]:
     Skips open (CLI launch).
 
     layout needs a WINDOW selector (session-api _layoutOp → matchWindows).
-    mon path:moNws0 is valid move dest only — not layout selector. Prefer
-    id: from a move/park on the same mon; skip ensure_layout when none
+    mon path:moNws0 is valid move dest only — not layout selector.
+
+    ensure_layout with windowIds (structure repair):
+      - tabbed/stacked: layout on first id, then move remaining ids into it
+      - hsplit/vsplit: layout on first available id
+    Fallback when no windowIds: id from move/park on same mon; skip if none
     (empty desk: open first; residual replan may layout after).
     """
     if not isinstance(actions, list):
         return []
 
-    # First pass: window id per mon from move/park (for layout feasibility)
+    # First pass: window id per mon from move/park (fallback for mon splits)
     window_by_mon: dict[int, str] = {}
     for a in actions:
         if not isinstance(a, dict):
@@ -135,23 +139,35 @@ def actions_to_extension_steps(actions: Any) -> list[dict[str, Any]]:
             continue
         op = str(a.get("op") or "").strip().lower()
         if op == "ensure_layout":
-            mode = a.get("mode")
-            if mode is None or str(mode).strip() == "":
+            mode_raw = a.get("mode")
+            if mode_raw is None or str(mode_raw).strip() == "":
                 continue
+            mode = str(mode_raw).strip().lower()
             slot = str(a.get("slot") or "mon0")
             mon = mon_index_from_slot(slot)
             if mon is None:
                 mon = 0
-            sel = window_by_mon.get(mon)
+
+            wids = a.get("windowIds")
+            id_sels: list[str] = []
+            if isinstance(wids, list):
+                for wid in wids:
+                    if wid is None or str(wid).strip() == "":
+                        continue
+                    id_sels.append(f"id:{wid}")
+
+            if mode in ("tabbed", "stacked") and id_sels:
+                # Wrap first window in CON (when under mon) then fold siblings in.
+                anchor = id_sels[0]
+                steps.append({"op": "layout", "mode": mode, "selector": anchor})
+                for sel in id_sels[1:]:
+                    steps.append({"op": "move", "tile": sel, "dest": anchor})
+                continue
+
+            sel = id_sels[0] if id_sels else window_by_mon.get(mon)
             if not sel:
                 continue
-            steps.append(
-                {
-                    "op": "layout",
-                    "mode": str(mode).strip().lower(),
-                    "selector": sel,
-                }
-            )
+            steps.append({"op": "layout", "mode": mode, "selector": sel})
         elif op in ("move", "park"):
             tile = window_tile_selector(a)
             if not tile:

@@ -297,12 +297,13 @@ def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
     role_results: list[dict[str, Any]] = []
     actions: list[dict[str, Any]] = []
 
-    counts = {"reused": 0, "opened": 0, "moved": 0, "parked": 0}
+    counts = {"reused": 0, "opened": 0, "moved": 0, "parked": 0, "structure": 0}
     slots_needing_layout: dict[str, str] = {}  # slot → mode
 
     layout_slot_modes = _slot_layout_modes(prof)
     overflow_slot = prof["overflow"]["slot"]
     overflow_layout = prof["overflow"]["layout"]
+    parent_info = _window_parent_index(forest)
 
     for role in prof["roles"]:
         rid = role["id"]
@@ -382,30 +383,54 @@ def plan_reconcile(forest: dict, profile: dict) -> dict[str, Any]:
     if counts["parked"] > 0:
         slots_needing_layout[overflow_slot] = overflow_layout
 
-    # ensure_layout only when there is real work (not already-perfect)
-    has_work = counts["opened"] > 0 or counts["moved"] > 0 or counts["parked"] > 0
+    # Multi-role tabbed/stacked slots: repair when claimed windows are not co-grouped.
+    structure_slots: dict[str, dict[str, Any]] = {}
+    for slot, mode in layout_slot_modes.items():
+        if mode not in ("tabbed", "stacked"):
+            continue
+        wids = _role_window_ids_for_slot(role_results, slot)
+        if len(wids) < 2:
+            # Single claimed window (or none): no group to form yet.
+            # Still mark layout needed when opens/moves already require it.
+            continue
+        if _windows_share_group(wids, parent_info, mode):
+            continue
+        structure_slots[slot] = {"mode": mode, "windowIds": wids}
+        slots_needing_layout[slot] = mode
+
+    counts["structure"] = len(structure_slots)
+
+    has_placement = counts["opened"] > 0 or counts["moved"] > 0 or counts["parked"] > 0
+    has_work = has_placement or counts["structure"] > 0
     ensure_actions: list[dict[str, Any]] = []
     if has_work:
-        # mon-level splits
-        for mon_key, mon_body in prof.get("layout", {}).items():
-            split = mon_body.get("split")
-            if split:
-                ensure_actions.append(
-                    {"op": "ensure_layout", "slot": mon_key, "mode": split}
-                )
-        for slot, mode in sorted(slots_needing_layout.items()):
-            ensure_actions.append({"op": "ensure_layout", "slot": slot, "mode": mode})
-        # also ensure tabbed multi-role slots that only have reused roles when
-        # other work exists (structure repair still useful)
-        for slot, mode in layout_slot_modes.items():
-            if slot not in slots_needing_layout and mode in ("tabbed", "stacked"):
-                # if any role targets this slot, ensure once
-                if any(r.get("slot") == slot for r in role_results):
+        # mon-level splits only when placement changes (avoid rewriting CON layout)
+        if has_placement:
+            for mon_key, mon_body in prof.get("layout", {}).items():
+                split = mon_body.get("split")
+                if split:
                     ensure_actions.append(
-                        {"op": "ensure_layout", "slot": slot, "mode": mode}
+                        {
+                            "op": "ensure_layout",
+                            "slot": mon_key,
+                            "mode": split,
+                            "windowIds": _role_window_ids_for_mon(role_results, mon_key),
+                        }
                     )
+        for slot, mode in sorted(slots_needing_layout.items()):
+            wids = structure_slots.get(slot, {}).get("windowIds")
+            if wids is None:
+                wids = _role_window_ids_for_slot(role_results, slot)
+            entry: dict[str, Any] = {
+                "op": "ensure_layout",
+                "slot": slot,
+                "mode": mode,
+            }
+            if wids:
+                entry["windowIds"] = wids
+            ensure_actions.append(entry)
 
-    # de-dupe ensure by slot (last mode wins; first mon split kept)
+    # de-dupe ensure by slot (first wins — mon splits already prepended)
     seen_ensure: set[str] = set()
     deduped_ensure: list[dict[str, Any]] = []
     for a in ensure_actions:
@@ -523,15 +548,16 @@ def mon_index_from_slot(slot: str) -> Optional[int]:
 
 
 def window_monitor_index(w: dict[str, Any]) -> Optional[int]:
-    mon = w.get("monitor")
-    if isinstance(mon, int) and mon >= 0:
-        return mon
+    # Tree path is authoritative after Move (meta monitor can lag).
     path = w.get("path") or ""
     if isinstance(path, str) and path:
         first = path.split("/")[0]
         parsed = _parse_mon_id(first)
         if parsed:
             return parsed[0]
+    mon = w.get("monitor")
+    if isinstance(mon, int) and mon >= 0:
+        return mon
     return None
 
 
@@ -643,6 +669,124 @@ def _slot_layout_modes(prof: dict[str, Any]) -> dict[str, str]:
     if overflow.get("slot") and overflow.get("layout"):
         modes.setdefault(overflow["slot"], overflow["layout"])
     return modes
+
+
+def _role_window_ids_for_slot(
+    role_results: list[dict[str, Any]], slot: str
+) -> list[Any]:
+    """Ordered windowIds for claimed roles targeting slot (profile order)."""
+    out: list[Any] = []
+    for r in role_results:
+        if r.get("slot") != slot:
+            continue
+        wid = r.get("windowId")
+        if wid is None or str(wid).strip() == "":
+            continue
+        out.append(wid)
+    return out
+
+
+def _role_window_ids_for_mon(
+    role_results: list[dict[str, Any]], mon_key: str
+) -> list[Any]:
+    """WindowIds for roles whose slot is on mon_key (mon0 / mon1 / primary)."""
+    out: list[Any] = []
+    for r in role_results:
+        slot = str(r.get("slot") or "")
+        head = slot.split(".", 1)[0] if slot else ""
+        if mon_key == "primary":
+            if head not in ("primary", "mon0"):
+                continue
+        elif head != mon_key:
+            continue
+        wid = r.get("windowId")
+        if wid is None or str(wid).strip() == "":
+            continue
+        out.append(wid)
+    return out
+
+
+def _window_parent_index(forest: Any) -> dict[str, dict[str, Any]]:
+    """
+    Map windowId string → parent path/layout/type for structure checks.
+    Keys are str(windowId).
+    """
+    out: dict[str, dict[str, Any]] = {}
+
+    def walk(
+        n: Any,
+        path: str,
+        parent_path: Optional[str],
+        parent_layout: Any,
+        parent_type: Optional[str],
+    ) -> None:
+        if not isinstance(n, dict):
+            return
+        ntype = n.get("nodeType") or n.get("type")
+        if ntype == "WINDOW":
+            wid = n.get("windowId")
+            if wid is not None:
+                out[str(wid)] = {
+                    "path": path,
+                    "parent_path": parent_path,
+                    "parent_layout": parent_layout,
+                    "parent_type": parent_type,
+                }
+            return
+        kids = n.get("children") or n.get("childNodes") or []
+        if not isinstance(kids, list):
+            return
+        mon_id = n.get("id") if ntype == "MONITOR" else None
+        lay = n.get("layout")
+        for i, c in enumerate(kids):
+            if mon_id:
+                child_path = f"{mon_id}/{i}"
+            elif path:
+                child_path = f"{path}/{i}"
+            else:
+                child_path = str(i)
+            walk(c, child_path, path if path else mon_id, lay, ntype)
+
+    if isinstance(forest, dict):
+        mons = forest.get("monitors")
+        if isinstance(mons, list):
+            for m in _order_monitors(mons):
+                walk(m, str(m.get("id") or "") if isinstance(m, dict) else "", None, None, None)
+        else:
+            walk(forest, "", None, None, None)
+    elif isinstance(forest, list):
+        for m in _order_monitors(forest):
+            walk(m, str(m.get("id") or "") if isinstance(m, dict) else "", None, None, None)
+    return out
+
+
+def _windows_share_group(
+    window_ids: list[Any], parent_info: dict[str, dict[str, Any]], mode: str
+) -> bool:
+    """
+    True when all windows share one CON parent with the desired tab/stack layout.
+    Fewer than two windows always "share" (nothing to group).
+    """
+    if len(window_ids) < 2:
+        return True
+    want = "TABBED" if mode == "tabbed" else "STACKED" if mode == "stacked" else None
+    infos: list[dict[str, Any]] = []
+    for wid in window_ids:
+        info = parent_info.get(str(wid))
+        if not info:
+            return False
+        infos.append(info)
+    parents = {i.get("parent_path") for i in infos}
+    if len(parents) != 1 or None in parents or "" in parents:
+        return False
+    # Must be under a CON (not flat siblings on the monitor)
+    if any(str(i.get("parent_type") or "").upper() == "MONITOR" for i in infos):
+        return False
+    if want:
+        got = str(infos[0].get("parent_layout") or "").upper()
+        if got != want:
+            return False
+    return True
 
 
 def _parse_regex_literal(body: str) -> tuple[str, str]:

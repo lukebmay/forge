@@ -1332,11 +1332,14 @@ def _workon_print_header(resolved: dict[str, Any], name: str) -> None:
 
 
 def _workon_print_counts(counts: dict[str, Any]) -> None:
+    struct = counts.get("structure", 0)
+    struct_bit = f"   structure  {struct}" if struct else ""
     _eprint(
         f"  reused  {counts.get('reused', 0)}   "
         f"opened  {counts.get('opened', 0)}   "
         f"moved  {counts.get('moved', 0)}   "
         f"parked  {counts.get('parked', 0)}"
+        f"{struct_bit}"
     )
 
 

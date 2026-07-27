@@ -207,9 +207,106 @@ class TestPlanPerfect(unittest.TestCase):
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(plan["counts"]["moved"], 0)
         self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"].get("structure", 0), 0)
         self.assertEqual(plan["counts"]["reused"], 7)
         self.assertEqual(plan["actions"], [])
         self.assertTrue(all(r["status"] == "reused" for r in plan["roles"]))
+
+
+class TestPlanStructureRepair(unittest.TestCase):
+    def test_flat_same_mon_needs_structure(self):
+        """Windows on correct mons but not tabbed → structure repair, not open."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 101,
+                            "wmClass": "Google-chrome",
+                            "title": "Google Chrome",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 102,
+                            "wmClass": "Google-chrome",
+                            "title": "Grok",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 103,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 201,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 202,
+                            "wmClass": "Google-chrome",
+                            "title": "YouTube",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 203,
+                            "wmClass": "Google-chrome",
+                            "title": "Gmail",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 204,
+                            "wmClass": "Google-chrome",
+                            "title": "Voice",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                    ],
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
+        self.assertFalse(plan["nothingToDo"])
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["reused"], 7)
+        self.assertEqual(plan["counts"]["structure"], 2)
+        ensures = [a for a in plan["actions"] if a["op"] == "ensure_layout"]
+        by_slot = {a["slot"]: a for a in ensures}
+        self.assertIn("mon0.left-tab", by_slot)
+        self.assertEqual(by_slot["mon0.left-tab"]["mode"], "tabbed")
+        self.assertEqual(by_slot["mon0.left-tab"]["windowIds"], [101, 102])
+        self.assertIn("mon1.comms", by_slot)
+        self.assertEqual(by_slot["mon1.comms"]["windowIds"], [202, 203, 204])
+        # mon-level ensure omitted when only structure work
+        self.assertNotIn("mon0", by_slot)
+        self.assertNotIn("mon1", by_slot)
 
 
 class TestPlanDoubled(unittest.TestCase):

@@ -216,13 +216,130 @@ class TestPlanToStepsFixture(unittest.TestCase):
         for s in steps:
             if s["op"] == "move":
                 self.assertTrue(s["tile"].startswith("id:"))
-                self.assertTrue(s["dest"].startswith("path:mo"))
+                # mon/overflow parks use path:mo…; tab fold uses dest id:anchor
+                self.assertTrue(
+                    s["dest"].startswith("path:mo") or s["dest"].startswith("id:"),
+                    f"unexpected move dest {s['dest']!r}",
+                )
             if s["op"] == "layout":
                 # must be window selector, not mon path
                 self.assertTrue(
                     s["selector"].startswith("id:"),
                     f"layout selector must be id:, got {s['selector']!r}",
                 )
+
+    def test_structure_repair_tab_fold_steps(self):
+        """Flat same-mon windows → layout + move-into-group (no open)."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 101,
+                            "wmClass": "Google-chrome",
+                            "title": "Google Chrome",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 102,
+                            "wmClass": "Google-chrome",
+                            "title": "Grok",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 103,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 201,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 202,
+                            "wmClass": "Google-chrome",
+                            "title": "YouTube",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 203,
+                            "wmClass": "Google-chrome",
+                            "title": "Gmail",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 204,
+                            "wmClass": "Google-chrome",
+                            "title": "Voice",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                    ],
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
+        self.assertFalse(plan["nothingToDo"])
+        self.assertGreater(plan["counts"]["structure"], 0)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        steps = actions_to_extension_steps(plan["actions"])
+        self.assertIn(
+            {"op": "layout", "mode": "tabbed", "selector": "id:101"},
+            steps,
+        )
+        self.assertIn({"op": "move", "tile": "id:102", "dest": "id:101"}, steps)
+        self.assertIn(
+            {"op": "layout", "mode": "tabbed", "selector": "id:202"},
+            steps,
+        )
+        self.assertIn({"op": "move", "tile": "id:203", "dest": "id:202"}, steps)
+        self.assertIn({"op": "move", "tile": "id:204", "dest": "id:202"}, steps)
+
+    def test_ensure_layout_with_window_ids_no_move(self):
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "ensure_layout",
+                    "slot": "mon0.left-tab",
+                    "mode": "tabbed",
+                    "windowIds": [10, 11],
+                }
+            ]
+        )
+        self.assertEqual(
+            steps,
+            [
+                {"op": "layout", "mode": "tabbed", "selector": "id:10"},
+                {"op": "move", "tile": "id:11", "dest": "id:10"},
+            ],
+        )
 
 
 if __name__ == "__main__":
