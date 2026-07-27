@@ -1369,6 +1369,26 @@ def _workon_print_counts(counts: dict[str, Any]) -> None:
     )
 
 
+def _workon_print_thrash_mode(plan: dict[str, Any], *, safe: bool = False) -> None:
+    """Human Mode A/B line from thrashState (always on reconcile dry-run/apply)."""
+    state = plan.get("thrashState")
+    thrashed = isinstance(state, dict) and bool(state.get("thrashed"))
+    label = "B thrash-recover" if thrashed else "A collect"
+    safe_bit = "  safe=true (open+move only)" if safe else ""
+    _eprint(f"  mode={label}{safe_bit}")
+
+
+def _workon_print_thrash_state(plan: dict[str, Any]) -> None:
+    """One thrashState line when desk is thrashed."""
+    state = plan.get("thrashState")
+    if not isinstance(state, dict) or not state.get("thrashed"):
+        return
+    score = int(state.get("score") or 0)
+    reasons = state.get("reasons") or []
+    reasons_bit = f" reasons={','.join(str(r) for r in reasons[:4])}" if reasons else ""
+    _eprint(f"  thrashState  thrashed score={score}{reasons_bit}")
+
+
 def _workon_print_thrash_risk(plan: dict[str, Any]) -> None:
     risk = plan.get("thrashRisk")
     if not isinstance(risk, dict):
@@ -1543,6 +1563,7 @@ def _workon_run_reconcile(
     tree_file: Optional[str],
     clean: bool = False,
     force_close: bool = False,
+    safe: bool = False,
     verbose: bool = False,
 ) -> int:
     name = resolved["name"]
@@ -1567,17 +1588,24 @@ def _workon_run_reconcile(
         return 1
 
     try:
-        plan = plan_reconcile(forest, profile, clean=clean)
+        plan = plan_reconcile(forest, profile, clean=clean, safe=safe)
     except ValueError as e:
         _eprint(f"forge workon: plan failed: {e}")
         return 1
 
     _workon_print_header(resolved, name)
+    _workon_print_thrash_mode(plan, safe=safe)
     if clean:
         force_bit = " --force" if force_close else ""
-        _eprint(f"  clean=true{force_bit} (residuals close, not park)")
+        if safe:
+            _eprint(
+                f"  clean=true{force_bit} (ignored with --safe; residuals left)"
+            )
+        else:
+            _eprint(f"  clean=true{force_bit} (residuals close, not park)")
     counts = plan.get("counts") or {}
     _workon_print_counts(counts)
+    _workon_print_thrash_state(plan)
     _workon_print_thrash_risk(plan)
 
     if plan.get("nothingToDo"):
@@ -1651,7 +1679,7 @@ def _workon_run_reconcile(
     if open_actions:
         try:
             forest2 = _workon_load_tree(backend, None)
-            plan2 = plan_reconcile(forest2, profile, clean=clean)
+            plan2 = plan_reconcile(forest2, profile, clean=clean, safe=safe)
         except Exception as e:
             _eprint(f"forge workon: re-plan after open failed: {e}")
             out = _workon_plan_meta(resolved, name, plan, dry_run=False)
@@ -1745,13 +1773,14 @@ def _workon_run_capture(
 
 
 def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
-    """forge workon list | show | capture | <name> [--dry-run] [--clean]."""
+    """forge workon list | show | capture | <name> [--dry-run] [--clean] [--safe]."""
     tokens: list[str] = list(getattr(args, "workon_tokens", None) or [])
     action, name, dry_run, force_launch, clean, force_close = _workon_parse_tokens(
         tokens, args
     )
     tree_file = getattr(args, "tree_file", None)
     verbose = _workon_is_verbose(args)
+    safe = bool(getattr(args, "safe", False))
     if force_close and not clean:
         _eprint("forge workon: --force only applies with --clean (ignored)")
         force_close = False
@@ -1868,6 +1897,8 @@ def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
     if mode == MODE_STEPS:
         if clean:
             _eprint("forge workon: --clean applies to reconcile only (steps mode)")
+        if safe:
+            _eprint("forge workon: --safe applies to reconcile only (steps mode)")
         return _workon_run_steps(
             backend,
             resolved,
@@ -1884,6 +1915,7 @@ def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
         tree_file=tree_file,
         clean=clean,
         force_close=force_close,
+        safe=safe,
         verbose=verbose,
     )
 
@@ -2664,6 +2696,7 @@ def build_parser() -> argparse.ArgumentParser:
         "  forge workon capture --tree-file F  # offline capture from forest JSON\n"
         "  forge workon capture --out PATH     # also write file (parent must exist)\n"
         "  forge workon <name> --force-launch  # imperative steps[] only\n"
+        "  forge workon <name> --safe    # open+move roles only (no park/structure)\n"
         "  forge workon <name> --clean   # close residuals (Meta delete; not park)\n"
         "  forge workon <name> --clean --force  # stronger delete; never process-kill\n"
         "\n"
@@ -2675,8 +2708,9 @@ def build_parser() -> argparse.ArgumentParser:
         "Host: FORGE_HOST or short hostname. Export FORGE_WORKON_DIR from shellrc.\n"
         "\n"
         "v2 reconcile (default when roles present): GetTree → plan → open gaps,\n"
-        "move/park via RunSteps; second run is a no-op when already perfect.\n"
+        "move/park via RunSteps; Mode A collects marginals, Mode B parks on thrash.\n"
         "Default never closes windows; --clean closes true residuals only.\n"
+        "--safe: open missing roles + move wrong-mon roles only (no park/structure).\n"
         "v1 steps: version 1 / mode: steps / --force-launch with steps[].\n"
         "Defaults: see forge workon help. Docs: docs/user/workon.md."
     )
@@ -2707,6 +2741,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--force-launch",
         action="store_true",
         help="Force v1 imperative steps[] (error if profile has no steps)",
+    )
+    workon_p.add_argument(
+        "--safe",
+        action="store_true",
+        help="Open missing roles + move wrong-mon roles only (no park/structure/ensure)",
     )
     workon_p.add_argument(
         "--clean",

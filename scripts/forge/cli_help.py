@@ -134,10 +134,11 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
         ("forge workon capture", "Sketch tiles sugar from current tree (stdout)"),
         ("forge workon capture --tree-file F", "Offline capture from GetTree JSON"),
         ("forge workon capture --out PATH", "Also write file (parent dir must exist)"),
-        ("forge workon <name> --dry-run", "Plan only (human + plan JSON)"),
+        ("forge workon <name> --dry-run", "Plan only (human + plan JSON; mode A/B)"),
         ("forge workon <name>", "Apply; short human summary (stderr)"),
         ("forge workon <name> --verbose", "Also dump plan/apply JSON (or FORGE_VERBOSE=1)"),
         ("forge workon <name> --force-launch", "Imperative steps[] only (escape hatch)"),
+        ("forge workon <name> --safe", "Open+move roles only (no park/structure/ensure)"),
         ("forge workon <name> --clean", "Close residuals (Meta delete; not park)"),
         ("forge workon <name> --clean --force", "Stronger delete; never process-kill"),
     ):
@@ -226,9 +227,18 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  ", bold("v2 tiles or roles+layout", **kw), "  reconcile (daily default; idempotent)")
     _out(s, "  ", bold("v1 steps[]", **kw), "         imperative replay (can double apps)")
     _out(s, "  ", bold("--force-launch", **kw), "      force steps[] path for debug")
-    _out(s, "  ", bold("--clean", **kw), "            close residuals (default parks to overflow)")
+    _out(s, "  ", bold("--safe", **kw), "             open+move roles only (no park/structure/ensure)")
+    _out(s, "  ", bold("--clean", **kw), "            close residuals (default leave; Mode B parks)")
     _out(s, "  ", bold("--clean --force", **kw), "     stronger Meta delete; never process-kill")
-    _out(s, "  ", bold("marginal.mode=strict", **kw), "  park all unclaimed (no companion keep)")
+    _out(s, "  ", bold("marginal.mode=strict", **kw), "  no companion keep; residual leave|park still applies")
+    _blank(s)
+
+    _out(s, heading("Thrash modes", **kw), " ", dim("(auto; stderr on dry-run/apply)", **kw))
+    _out(s, "  ", bold("mode=A collect", **kw), "       desk sane: open gaps, move roles, tab marginals into views")
+    _out(s, "  ", bold("mode=B thrash-recover", **kw), " desk wrong: roles only + soft-park other tiles")
+    _out(s, "  ", bold("thrashState", **kw), "            one line when thrashed (score + reasons)")
+    _out(s, "  ", bold("thrashRisk", **kw), "             plan risk when score > 0 (structure/moves)")
+    _out(s, "  ", bold("--safe", **kw), "                 skips park/structure; still reports A/B detection")
     _blank(s)
 
     _out(s, heading("Tips", **kw))
@@ -236,6 +246,7 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  • Match titles with ", cyan('title~="substr"', **kw), " when several windows share a class.")
     _out(s, "  • Counts: reused / opened / moved / kept / parked (or closed with --clean).")
     _out(s, "  • Default never closes windows; role windows and kept companions stay.")
+    _out(s, "  • Thrashed desk: default auto Mode B recover (prefer over refuse).")
     _out(s, "  • Optional: ", cyan('"displays": "scene"', **kw), " -> gdisplays load; ", cyan('"settings": "name"', **kw), " -> SettingsLoad.")
     _out(s, "  • Offline plan: ", cmd("forge workon name --dry-run --tree-file forest.json", **kw))
     _out(s, "  • Capture sketch: ", cmd("forge workon capture", **kw), "  then edit match/open; never auto-installs")

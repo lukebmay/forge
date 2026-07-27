@@ -15,11 +15,11 @@
 | 2 | **TZ-recover** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-recover.md) | Mode B park non-roles |
 | 3 | **TZ-collect** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-collect.md) | Mode A tab marginals |
 | 4 | **TZ-tab-apply** | Done — [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-tab-apply.md) | TABBED flatten |
-| 5 | **TZ-gate** | [CLI A/B + --safe](./tasks/forge-workon-thrash-zero_tz-gate.md) | **Next** Wire product path |
-| 6 | **TZ-matrix** | [fixtures](./tasks/forge-workon-thrash-zero_tz-matrix.md) | Lock regressions |
+| 5 | **TZ-gate** | [CLI A/B + --safe](./tasks/forge-workon-thrash-zero_tz-gate.md) | **Done A** — B verify |
+| 6 | **TZ-matrix** | [fixtures](./tasks/forge-workon-thrash-zero_tz-matrix.md) | **Next** Lock regressions |
 | 7 | **TZ-live** | [black checklist](./tasks/forge-workon-thrash-zero_tz-live.md) | Prove on daily driver |
 
-**Task force:** serial A → B per task. Next **TZ-gate**.
+**Task force:** serial A → B per task. Next B verify **TZ-gate**.
 
 **Mode A product:** tab **marginals** into the view area they occupy (not leave-alone).  
 **Mode B:** thrash → roles only + soft-park rest.  

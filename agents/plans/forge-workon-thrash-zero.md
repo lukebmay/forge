@@ -1,28 +1,25 @@
 # Plan: Zero thrash for `forge workon` (product gate)
 
-**Status:** Active — **P0** (TZ1…TZ-tab-apply shipped A; next TZ-gate after B)  
+**Status:** Active — **P0** (TZ1…TZ-gate shipped A; next B verify → TZ-matrix)  
 **Priority:** **P0 product survival** (outranks polish, tidy, optional extracts)  
 **Base:** this tree  
 **Related:** [forge-workon-reconcile.md](./forge-workon-reconcile.md) WR11–WR16,
 session H1 soft-rehome (different thrash class — lock/wake Meta)
 
-### Session note (2026-07-27) — TZ-tab-apply shipped (A)
+### Session note (2026-07-27) — TZ-gate shipped (A)
 
-**TZ-tab-apply Done (implementer):** `_layoutOp` H/V→TABBED|STACKED **flattens**
-nested CON descendants into window leaves (`_flattenLayoutParentToWindows`)
-before setting layout / `lastTabFocus`. Mon-wrap before tab unchanged; quiet
-batch unchanged. CLI still: layout anchor then move remaining windowIds
-(mon-direct siblings join bag). No dual-mon rewrite; no tab-click/focus path.
+**TZ-gate Done (implementer):** CLI surfaces Mode A/B + thrashState/thrashRisk.
+`--safe` = open+move roles only (`plan_reconcile(..., safe=True)`). No refuse-on-
+high-risk gate (auto Mode B preferred). `--force` stays clean force_close only.
 
-| Case | Result |
+| Surface | Behavior |
 | --- | --- |
-| Nested HSPLIT(Ghostty, HSPLIT(FB,Chess)) + layout tabbed | flat TABBED ×3 |
-| mon-direct G\|F\|C + layout + moves | CON TABBED with all three |
-| layout HSPLIT | nested CONs kept (no flatten) |
+| stderr | `mode=A collect` / `mode=B thrash-recover`; `thrashState` if thrashed; `thrashRisk` if score&gt;0 |
+| `--safe` | no park/close/collect/structure/ensure; thrashState still set |
+| Docs | `cli_help.py`, `docs/user/workon.md` |
+| Tests | `TestSafeMode` (+ prior thrash suite); cli pytest 183 |
 
-**Tests:** `bug-tz-tab-apply-flatten` 3; `bug-tab-click-activate` 5; cli pytest 179.
-
-**Next:** B verify TZ-tab-apply → **TZ-gate**.
+**Next:** B verify **TZ-gate** → **TZ-matrix** / **TZ-live**.
 
 
 ---
@@ -171,11 +168,11 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | **TZ-recover** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-recover.md) | Mode B: roles only + park non-roles to safe dump | M | **Done** A/B AGREE |
 | **TZ-collect** | [task](../tasks/forge-workon-thrash-zero_tz-collect.md) | Mode A: tab marginals into overlapping view areas | M | **Done** A (B verify) |
 | **TZ-tab-apply** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-tab-apply.md) | Tab structure apply yields TABBED not nested HSPLIT | M | **Done** A/B AGREE |
-| **TZ-gate** | [task](../tasks/forge-workon-thrash-zero_tz-gate.md) | CLI: Mode A collect / Mode B recover; `--safe` / `--force` | S | TZ-recover + TZ-collect |
+| **TZ-gate** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-gate.md) | CLI: Mode A collect / Mode B recover; `--safe` / `--force` | S | **Done** A/B AGREE |
 | **TZ-matrix** | [task](../tasks/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix + dry-run goldens for A/B modes | M | TZ-recover + TZ-tab-apply |
 | **TZ-live** | [task](../tasks/forge-workon-thrash-zero_tz-live.md) | Live black checklist (FB/Chess, Voice pull, thrash recover) | S | TZ-gate |
 
-**Next task:** B verify **TZ-tab-apply** → **TZ-gate**.
+**Next task:** B verify **TZ-gate** → **TZ-matrix**.
 
 ---
 

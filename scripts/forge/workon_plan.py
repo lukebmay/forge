@@ -850,13 +850,17 @@ def _normalize_match(match: dict[str, Any], where: str) -> dict[str, Any]:
 
 
 def plan_reconcile(
-    forest: dict, profile: dict, *, clean: bool = False
+    forest: dict, profile: dict, *, clean: bool = False, safe: bool = False
 ) -> dict[str, Any]:
     """
     Build a reconcile plan from a GetTree forest + validated (or raw) v2 profile.
 
     clean=True: residuals that would park become close (Meta delete path);
     claimed roles and kept companions are never closed.
+
+    safe=True: open missing roles + move roles to correct mon only;
+    no park/close, no collect keep, no structure, no mon ensure.
+    thrashState still reported (Mode A/B detection); Mode B park skipped.
 
     Returns:
       {
@@ -870,6 +874,7 @@ def plan_reconcile(
         "kept": [...],
         "unclaimed": [...],
         "clean": bool,
+        "safe": bool,
       }
     """
     if not isinstance(forest, dict):
@@ -878,6 +883,7 @@ def plan_reconcile(
     # Rewrite mon keys (stableKey / alias / primary) → monN using live forest.
     prof = resolve_profile_mon_keys(prof, forest)
     clean = bool(clean)
+    safe = bool(safe)
 
     # Mode B gate — once; reused for residual policy + plan.thrashState.
     thrash_state = detect_thrash(forest, prof)
@@ -910,7 +916,8 @@ def plan_reconcile(
     if residual_mode not in ("leave", "park"):
         residual_mode = "leave"
     # Mode B: soft-park every non-role (clean still closes). Mode A: collect then residual.
-    force_park_residuals = thrashed and not clean
+    # --safe: never park/close residuals (open+move only).
+    force_park_residuals = thrashed and not clean and not safe
 
     for role in prof["roles"]:
         rid = role["id"]
@@ -939,7 +946,7 @@ def plan_reconcile(
                 }
             )
             mode = layout_slot_modes.get(slot)
-            if mode:
+            if mode and not safe:
                 slots_needing_layout[slot] = mode
         else:
             claimed.add(_window_key(chosen))
@@ -972,14 +979,14 @@ def plan_reconcile(
                         move_act["position"] = "start"
                 actions.append(move_act)
                 mode = layout_slot_modes.get(slot)
-                if mode:
+                if mode and not safe:
                     slots_needing_layout[slot] = mode
         role_results.append(entry)
 
-    # Mode A collect: assign marginals to views (coexist). Mode B: never keep chaos.
+    # Mode A collect: assign marginals to views (coexist). Mode B / --safe: skip.
     slot_members = (
         _build_slot_membership(role_results, parent_info, windows, prof, forest)
-        if marginal_mode != "strict" and not thrashed
+        if marginal_mode != "strict" and not thrashed and not safe
         else {}
     )
     key_to_slot: dict[str, str] = {}
@@ -989,7 +996,7 @@ def plan_reconcile(
 
     park_anchor = (
         _soft_park_anchor(windows, parent_info, claimed)
-        if (residual_mode == "park" or force_park_residuals) and not clean
+        if (residual_mode == "park" or force_park_residuals) and not clean and not safe
         else None
     )
 
@@ -1009,7 +1016,7 @@ def plan_reconcile(
             kept.append(entry)
             unclaimed.append(entry)
             counts["kept"] += 1
-        elif clean:
+        elif clean and not safe:
             entry = dict(summary)
             entry["status"] = "closed"
             unclaimed.append(entry)
@@ -1021,7 +1028,7 @@ def plan_reconcile(
                     "path": w.get("path"),
                 }
             )
-        elif residual_mode == "leave" and not force_park_residuals:
+        elif safe or (residual_mode == "leave" and not force_park_residuals):
             entry = dict(summary)
             entry["status"] = "left"
             left.append(entry)
@@ -1051,34 +1058,36 @@ def plan_reconcile(
     # Soft park only: no overflow ensure_layout (avoids mon rewrite).
 
     # Tabbed/stacked: repair when not co-grouped. Never thrash-reorder if shared.
-    # Mode B: kept empty → structure windowIds are roles only.
+    # Mode B: kept empty → structure windowIds are roles only. --safe: skip.
     structure_slots: dict[str, dict[str, Any]] = {}
-    slots_for_structure = set(layout_slot_modes.keys())
-    for k in kept:
-        if k.get("slot"):
-            slots_for_structure.add(str(k["slot"]))
+    if not safe:
+        slots_for_structure = set(layout_slot_modes.keys())
+        for k in kept:
+            if k.get("slot"):
+                slots_for_structure.add(str(k["slot"]))
 
-    for slot in slots_for_structure:
-        mode = layout_slot_modes.get(slot)
-        if mode not in ("tabbed", "stacked", None):
-            continue
-        if mode is None:
-            # Single-role slot with companions → treat as tabbed bag
-            mode = "tabbed"
-        wids = _ordered_slot_window_ids(role_results, slot, kept, role_order)
-        if len(wids) < 2:
-            continue
-        share = _windows_share_group(wids, parent_info, mode)
-        if share:
-            # Already co-grouped — roleOrder must not force re-tab thrash
-            continue
-        structure_slots[slot] = {"mode": mode, "windowIds": wids}
-        slots_needing_layout[slot] = mode
+        for slot in slots_for_structure:
+            mode = layout_slot_modes.get(slot)
+            if mode not in ("tabbed", "stacked", None):
+                continue
+            if mode is None:
+                # Single-role slot with companions → treat as tabbed bag
+                mode = "tabbed"
+            wids = _ordered_slot_window_ids(role_results, slot, kept, role_order)
+            if len(wids) < 2:
+                continue
+            share = _windows_share_group(wids, parent_info, mode)
+            if share:
+                # Already co-grouped — roleOrder must not force re-tab thrash
+                continue
+            structure_slots[slot] = {"mode": mode, "windowIds": wids}
+            slots_needing_layout[slot] = mode
 
     counts["structure"] = len(structure_slots)
 
     # Role open/move rewrites mon splits. Park/close/structure alone must not
     # thrash dual-mon hsplit (companions park used to force mon0+mon1 ensure).
+    # --safe: open+move only (no mon/slot ensure_layout).
     has_role_placement = counts["opened"] > 0 or counts["moved"] > 0
     has_work = (
         has_role_placement
@@ -1087,7 +1096,7 @@ def plan_reconcile(
         or counts["structure"] > 0
     )
     ensure_actions: list[dict[str, Any]] = []
-    if has_work:
+    if has_work and not safe:
         # mon-level splits only when role placement changes.
         # Anchor on mon-direct children (term slots), never tab-group members —
         # layout acts on the window's parent CON, so chrome in a tab would
@@ -1145,6 +1154,7 @@ def plan_reconcile(
         "left": left,
         "unclaimed": unclaimed,
         "clean": clean,
+        "safe": safe,
         "thrashRisk": thrash_risk,
         "thrashState": thrash_state,
     }

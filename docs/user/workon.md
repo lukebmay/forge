@@ -49,6 +49,9 @@ Without `FORGE_WORKON_DIR`, only `FORGE_WORKON_PATH` (if set) and
 | `forge workon <name> --dry-run` | Plan only; human counts + plan JSON; **no** mutations |
 | `forge workon <name>` | Apply; short human summary on stderr (no plan JSON) |
 | `forge workon <name> --verbose` | Apply (or dry-run) with full plan/apply JSON on stdout; also `FORGE_VERBOSE=1` |
+| `forge workon <name> --safe` | Open missing roles + move wrong-mon roles only (no park / structure / mon ensure) |
+| `forge workon <name> --clean` | Close residuals (Meta delete) instead of leave/park |
+| `forge workon <name> --clean --force` | Stronger Meta delete; **never** process-kill |
 | `forge workon <name> --force-launch` | Imperative `steps[]` only (errors if none) |
 
 ## Capture (authoring assist)
@@ -182,10 +185,33 @@ use **`--clean`** only when you want residuals closed.
 | `marginal.residual: "park"` | — | Soft park onto last claimed role window |
 | `marginal.roleOrder` | `first` | Orders **new** groups only; never re-tab for order |
 | `marginal.mode: "strict"` | — | No keep; residual leave|park still applies |
+| `--safe` | off | Open missing roles + move wrong-mon roles only; leave everything else |
 | `--clean` | off | Close residuals (Meta delete) instead of leave/park |
 | `--clean --force` | — | Stronger delete (skip `can_close` veto); **never** process-kill |
 
 Kept companions and claimed role windows are never closed.
+
+### Thrash modes (auto)
+
+Every reconcile plan detects desk health (`plan.thrashState`) and picks a mode:
+
+| Mode | When | Behavior |
+| --- | --- | --- |
+| **A collect** | Desk looks sane | Open gaps, move wrong-mon roles, tab marginals into overlapping views |
+| **B thrash-recover** | Thrash detected | Place roles only; soft-park every other tiled window to last mon last group |
+
+Human stderr (dry-run and apply) includes:
+
+```text
+  mode=A collect
+  # or:
+  mode=B thrash-recover
+  thrashState  thrashed score=N reasons=...
+  thrashRisk  N (…optional plan-risk reasons when score > 0)
+```
+
+Default product path **auto recovers** with Mode B when thrashed (no refuse gate).
+`--safe` still reports Mode A/B but only emits open/move actions.
 
 Optional top-level `floating: []` is reserved (location later).
 

@@ -606,6 +606,93 @@ class TestModeBThrashRecover(unittest.TestCase):
         self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
 
 
+class TestSafeMode(unittest.TestCase):
+    """TZ-gate: --safe open+move only (no park/structure/ensure)."""
+
+    def test_safe_on_thrash_skips_park_and_ensure(self):
+        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile, safe=True)
+        self.assertTrue(plan["ok"])
+        self.assertTrue(plan["safe"])
+        # Detection still reports Mode B
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertGreaterEqual(plan["thrashState"]["score"], 3)
+        # No residual mutations
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["structure"], 0)
+        self.assertEqual(plan["counts"]["closed"], 0)
+        self.assertEqual(plan["counts"]["left"], 2)
+        ops = {a.get("op") for a in plan["actions"]}
+        self.assertNotIn("park", ops)
+        self.assertNotIn("ensure_layout", ops)
+        self.assertNotIn("close", ops)
+        # Roles still claimed
+        self.assertEqual(plan["counts"]["reused"], 7)
+
+    def test_safe_on_mode_a_skips_collect_structure(self):
+        forest = _load("tree-mon1-companions-direct.json")
+        profile = _load("profile-dev-v2.json")
+        full = plan_reconcile(forest, profile)
+        self.assertFalse(full["thrashState"]["thrashed"])
+        self.assertEqual(full["counts"]["kept"], 2)
+        self.assertGreater(full["counts"]["structure"], 0)
+
+        plan = plan_reconcile(forest, profile, safe=True)
+        self.assertTrue(plan["safe"])
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["structure"], 0)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["left"], 2)
+        self.assertEqual(plan["actions"], [])
+        self.assertTrue(plan["nothingToDo"])
+
+    def test_safe_still_moves_wrong_mon_roles(self):
+        forest = _load("tree-stray-wrong-mon.json")
+        # ghostty role on mon0; stray windows left. Use a role that needs move.
+        # Prefer thrash fixture roles with wrong mon if available; else construct.
+        profile = {
+            "version": 2,
+            "mode": "reconcile",
+            "overflow": {"slot": "mon0.overflow", "layout": "tabbed"},
+            "marginal": {"mode": "coexist", "roleOrder": "first", "residual": "leave"},
+            "layout": {
+                "mon0": {"children": [{"id": "term", "roles": ["ghostty"]}]},
+            },
+            "roles": [
+                {
+                    "id": "ghostty",
+                    "match": {"class": "com.mitchellh.ghostty"},
+                    "open": {"app": "ghostty"},
+                    "slot": "mon0.term",
+                }
+            ],
+        }
+        # Baseline: ghostty reused; strays left
+        plan0 = plan_reconcile(forest, profile, safe=True)
+        self.assertTrue(plan0["safe"])
+        self.assertEqual(plan0["counts"]["reused"], 1)
+        self.assertEqual(plan0["counts"]["moved"], 0)
+        self.assertEqual(plan0["counts"]["left"], 2)
+        self.assertFalse(any(a.get("op") == "close" for a in plan0["actions"]))
+        # clean ignored under safe
+        plan_clean = plan_reconcile(forest, profile, safe=True, clean=True)
+        self.assertEqual(plan_clean["counts"]["closed"], 0)
+        self.assertEqual(plan_clean["counts"]["left"], 2)
+
+    def test_safe_clean_does_not_close(self):
+        forest = _load("tree-thrash-mon1-nested-hsplit.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile, safe=True, clean=True)
+        self.assertTrue(plan["safe"])
+        self.assertTrue(plan["clean"])
+        self.assertEqual(plan["counts"]["closed"], 0)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertFalse(any(a.get("op") in ("close", "park", "ensure_layout") for a in plan["actions"]))
+
+
 class TestModeACollect(unittest.TestCase):
     """TZ-collect: Mode A tabs marginals into overlapping view areas."""
 
