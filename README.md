@@ -1,32 +1,48 @@
-# Forge (jcrussell fork)
+# Forge (lukebmay product tree)
 
 [![CI](https://github.com/jcrussell/forge/actions/workflows/testing.yml/badge.svg)](https://github.com/jcrussell/forge/actions/workflows/testing.yml)
 [![codecov](https://codecov.io/github/jcrussell/forge/graph/badge.svg?token=MFNOBH5D4L)](https://codecov.io/github/jcrussell/forge)
 
-An actively maintained fork of [Forge](https://github.com/forge-ext/forge), the
-GNOME Shell extension that provides i3/sway-style tiling window management.
+Product work on a fork of [Forge](https://github.com/forge-ext/forge), the GNOME
+Shell extension that provides i3/sway-style tiling window management. Phase A
+chose the community [jcrussell/forge](https://github.com/jcrussell/forge) base;
+this tree is Luke’s product fork on top of that base.
 
-This fork addresses bugs and adds features while the upstream project seeks a
-new maintainer. Contributions here are intended to be upstreamed when possible.
-Thanks to [@jmmaranan](https://github.com/jmmaranan) and all original
-contributors for creating this excellent extension.
+Thanks to [@jmmaranan](https://github.com/jmmaranan), [@jcrussell](https://github.com/jcrussell),
+and all original contributors.
+
+## Who owns what
+
+| Layer | GitHub / store | Role |
+| --- | --- | --- |
+| **EGO / forge-ext** | [forge-ext/forge](https://github.com/forge-ext/forge), SweetTooth | Upstream (seeks maintainer) |
+| **jcrussell** | [jcrussell/forge](https://github.com/jcrussell/forge) | Community / AI-maintained base (Phase A) |
+| **luke (this tree)** | [lukebmay/forge](https://github.com/lukebmay/forge) | Product work; lineage id **`luke`** |
+
+Install tooling keeps historical script names (`install-jcrussell`,
+`switch-to-jcrussell`); lineage (`ego` \| `jcrussell` \| `luke`) distinguishes
+which non-EGO tree is live.
 
 ## This tree (local / daily-driver work)
 
 | Fact | Value |
 | --- | --- |
-| Remote | [jcrussell/forge](https://github.com/jcrussell/forge) |
-| Local path (this clone) | `~/dev/me/forge_jcrussell` |
+| Origin (push) | [lukebmay/forge](https://github.com/lukebmay/forge) (`master`) |
+| Upstream (pull) | [jcrussell/forge](https://github.com/jcrussell/forge) (`upstream`) |
+| Local path (this clone) | `~/dev/me/forge` |
 | Upstream reference clone | `~/dev/me/forge_original` (**do not** start new work there) |
 | Extension UUID | `forge@jmmaranan.com` (installs **replace** the live extension) |
+| Lineage id | `luke` (stamped in `install-origin.json`) |
 | Target host | `black` — GNOME Shell **46**, **X11**, dual 4K, hybrid AMD+NVIDIA |
 | Displays | shellrc **`gdisplays`** (connector identity lives there, not in this repo) |
 
 ### Fork decision (historical)
 
 Phase A of the fork eval compared **jcrussell/forge** vs upstream **forge-ext/forge**
-and locked this tree as the product base (not a greenfield rewrite, not
-`forge_original`). See [agents/plans/forge-fork-eval.md](agents/plans/forge-fork-eval.md).
+and locked jcrussell as the **code base** (not a greenfield rewrite, not
+`forge_original`). The personal fork ([lukebmay/forge](https://github.com/lukebmay/forge))
+is the long-term identity for this product tree. See
+[agents/plans/forge-fork-eval.md](agents/plans/forge-fork-eval.md).
 
 Daily pain that motivated the trial: multi-monitor after blank/reattach, tab/stack
 lifecycle thrash, and resize/session reliability. gdisplays v1 (shellrc) reduced

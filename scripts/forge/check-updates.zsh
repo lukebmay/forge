@@ -112,9 +112,10 @@ if forge_ext_installed; then
   inst_vn=$(forge_metadata_field version-name 2>/dev/null || true)
   inst_v=$(forge_metadata_field version 2>/dev/null || true)
   forge_info "installed: lineage=${c_cyan}$lineage${c_reset} version-name=${c_blue}${inst_vn:-n/a}${c_reset} version=${inst_v:-n/a}"
-  if [[ "$lineage" == "jcrussell" && -n "$inst_vn" && "$inst_vn" != "$local_desc" ]]; then
+  if [[ "$lineage" == "jcrussell" || "$lineage" == "luke" ]] \
+    && [[ -n "$inst_vn" && "$inst_vn" != "$local_desc" ]]; then
     # dirty suffix may differ
-    forge_warn "installed version-name ($inst_vn) ≠ repo describe ($local_desc) — re-run install-jcrussell?"
+    forge_warn "installed version-name ($inst_vn) ≠ repo describe ($local_desc) — re-run ./install?"
     avail=1
   fi
 else

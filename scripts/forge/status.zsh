@@ -71,6 +71,7 @@ fi
 if origin_path=$(forge_read_install_origin 2>/dev/null); then
   print -- "Install origin:  ${c_cyan}$origin_path${c_reset}"
   print -- "  source:        ${c_cyan}$(forge_origin_field source 2>/dev/null || echo n/a)${c_reset}"
+  print -- "  lineage:       ${c_cyan}$(forge_origin_field lineage 2>/dev/null || echo n/a)${c_reset}"
   print -- "  repo:          ${c_cyan}$(forge_origin_field repo 2>/dev/null || echo n/a)${c_reset}"
   print -- "  install:       $(forge_origin_field install_script 2>/dev/null || echo n/a)"
   print -- "  installed_at:  $(forge_origin_field installed_at 2>/dev/null || echo n/a)"

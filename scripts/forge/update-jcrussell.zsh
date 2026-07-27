@@ -103,8 +103,8 @@ fi
 
 if [[ "$lineage" == "none" ]]; then
   forge_info "no extension installed yet — will install fresh from this tree"
-elif [[ "$lineage" != "jcrussell" && "$lineage" != "unknown" ]]; then
-  forge_warn "lineage=$lineage (expected jcrussell); continuing with in-place replace"
+elif [[ "$lineage" != "jcrussell" && "$lineage" != "luke" && "$lineage" != "unknown" ]]; then
+  forge_warn "lineage=$lineage (expected luke/jcrussell); continuing with in-place replace"
 fi
 
 forge_hdr "Update live Forge from $FORGE_REPO_ROOT"

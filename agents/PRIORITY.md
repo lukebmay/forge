@@ -1,4 +1,4 @@
-# forge_jcrussell — active priorities
+# forge (lukebmay) — active priorities
 
 **Updated:** 2026-07-27  
 **Lens:** day-to-day impact on `black` (dual 4K, X11, Shell 46), not tidy purity.  
@@ -13,16 +13,15 @@ Day-to-day: **regression watch** if thrash returns — plan
 | Order | ID | Task | Why first |
 | ---: | --- | --- | --- |
 | — | residual | mon1 tab `roleOrder` settle | Non-blocking; opened stays 0 |
-| — | meta | personal fork / B1 | Only if publishing / size work |
+| — | meta | B1 DnD extract | Optional size only |
 
 **WR1–WR9 + WR10–WR15 Done.**
 
 
-Live thrash/tab bugs still **outrank** this queue if they return. Meta
-(personal fork) stays below.
+Live thrash/tab bugs still **outrank** this queue if they return.
 
-Product base is this tree (installed `v49-90-beta.2-47+`). Identity fork is
-useful later; it does **not** fix windows.
+Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
+**`luke`**). Personal fork identity is wired; it does **not** fix windows.
 
 | Doc | Role |
 | --- | --- |
@@ -31,7 +30,7 @@ useful later; it does **not** fix windows.
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 + session-layout Ghostty **Done** |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome + install HUP path live |
 | [forge-codebase-audit.md](./plans/forge-codebase-audit.md) | Wave 1 **done**; B1 optional size only |
-| [forge-fork-eval_personal-fork.md](./tasks/forge-fork-eval_personal-fork.md) | Ownership / remotes — low daily tiling impact |
+| [personal-fork Done](./plans/forge-fork-eval/completed/forge-fork-eval_personal-fork.md) | lukebmay/forge · lineage `luke` · master |
 
 ---
 
@@ -47,16 +46,15 @@ Ordered by **how often it hurts or helps when actually using the machine**.
 | 4 | **High (shipped, incomplete UX)** | FC5 imperative `workon` | Command + steps exist; doubles windows if re-run | **Superseded default by #3** — keep as `--force-launch` / `mode: steps` |
 | 5 | **Medium (live)** | Regression watch: install/HUP, wake thrash, tab chrome | Failure modes that ruin a day if they return | **Monitor** — file bug when seen; **outranks #3 if open** |
 | 6 | **Medium (QoL, shipped)** | OP-opt tiny-pane → tab fallback | Opt-in min-edge → tab instead of postage-stamp split | **Done** |
-| 7 | **Low (meta)** | Personal GitHub fork + lineage id | Ownership, push target — not tiling | Ready when publishing |
+| 7 | **Low (meta)** | Personal GitHub fork + lineage id | Ownership, push target — not tiling | **Done** — `lukebmay/forge`, lineage `luke` |
 | 8 | **Low (meta)** | Fork-eval spike formal close-out | Already daily-driving this tree | Docs only |
 | 9 | **Low (code health)** | Audit B1 DnD extract | Shrinks `window.js`; zero user-visible win | Optional |
 | 10 | **Later** | T9 multi-line tabs | Polish after single-row proven | Later |
 | 11 | **Out of repo** | gdisplays v2 | shellrc | Displays only |
 
 **Rule of thumb:** prefer fixing a **layout regression you just hit** over meta/tidy.
-Do not start B1 or personal-fork work while a real thrash/tab bug is open.
-Idempotent workon polish (sugar + coexist) is the top **new** product work when
-the desk is stable.
+Do not start B1 while a real thrash/tab bug is open. Personal fork identity is
+done; regression watch outranks tidy.
 
 ---
 
@@ -67,7 +65,7 @@ the desk is stable.
 | **P0** | Live thrash/tab bugs (if any) | **Interrupt** | Yes |
 | **P1** | [workon](./plans/forge-workon-reconcile.md) plan **Complete** | Done | Yes |
 | P2 | Live daily-drive; report new bugs | Ongoing | Yes |
-| P3 | [Personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership only |
+| P3 | [Personal fork](./plans/forge-fork-eval/completed/forge-fork-eval_personal-fork.md) | **Done** | Ownership |
 | later | (workon polish complete) | Done | — |
 | later | T9 multi-line tabs | After T1 proven live | Polish |
 | later | Audit **B1** DnD extract | Optional | Maintainability |
@@ -102,13 +100,9 @@ the desk is stable.
 
 ## Session wrap (2026-07-27)
 
-- **WR9 Done (verify):** shellrc `forge.zsh` already exports `FORGE_WORKON_DIR`.
-- **WR8 Done:** stableKey / mon aliases at plan time (longest-prefix heads).
-- **WR7 Done:** `forge workon capture` tiles sugar sketch.
-- **WR6 Done:** live black accept; chrome-luke `title~=`.
+- **Personal fork Done:** `lukebmay/forge`, `origin`/`upstream`, lineage **`luke`**, default **`master`**.
 - **Workon plan complete** (WR1–WR15 + WR6–WR9).
-- **Next:** regression watch; personal-fork / B1 only if prioritized.
-  Residual mon1 tab roleOrder structure non-blocking.
+- **Next:** regression watch; B1 optional only. Residual mon1 tab roleOrder non-blocking.
 
 
 ---

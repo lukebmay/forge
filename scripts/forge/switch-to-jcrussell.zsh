@@ -172,9 +172,12 @@ fi
 # --- Install pre-built temp/ ---
 "$SCRIPT_DIR/install-jcrussell.zsh" --force --install-only --no-enable "${MODE_ARGS[@]:-}"
 
-if [[ "$(forge_detect_lineage)" != "jcrussell" ]]; then
-  forge_warn "lineage not detected as jcrussell after install — check $FORGE_EXT_DIR/metadata.json"
-fi
+case "$(forge_detect_lineage)" in
+  jcrussell|luke) ;;
+  *)
+    forge_warn "lineage not luke/jcrussell after install — check $FORGE_EXT_DIR/metadata.json"
+    ;;
+esac
 
 if (( ! SKIP_APPLY )); then
   "$SCRIPT_DIR/apply-settings.zsh" --force --translate=jcrussell "$BACKUP"

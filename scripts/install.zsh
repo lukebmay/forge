@@ -29,9 +29,9 @@ ${c_bold}install${c_reset} — install on-disk Forge from this git tree
 Default (no flags): build → install → enable → host defaults → CLI → reload
 Shell on X11. Quiet checklist UX (no prompts for routine paths).
 
-  none / unknown   → build + install this tree
-  jcrussell        → rebuild this tree over the live extension
-  ego (SweetTooth) → migrate with auto-backup (switch-to-jcrussell)
+  none / unknown     → build + install this tree
+  luke / jcrussell   → rebuild this tree over the live extension
+  ego (SweetTooth)   → migrate with auto-backup (switch-to-jcrussell)
 
 Records install origin at:
   ${c_cyan}~/.local/share/forge-manage/install-origin.json${c_reset}
@@ -50,7 +50,7 @@ Options:
   --prod              Production build (default: dev/debug)
   --dev               Debug build (default)
   --save              Backup before replace (always on for EGO migrate)
-  --no-save           Skip pre-update backup when already jcrussell
+  --no-save           Skip pre-update backup when already luke/jcrussell
   --no-restart        Do not HUP/reload Shell (files only; code stays old until you reload)
   --restart-shell     Same as default (explicit)
   --reload-theme      Stamp/reload user stylesheet after install
@@ -179,7 +179,7 @@ case "$lineage" in
     exit 0
     ;;
 
-  jcrussell)
+  luke|jcrussell)
     [[ -z "$DO_SAVE" ]] && DO_SAVE=0
     ;;
 
@@ -193,7 +193,7 @@ case "$lineage" in
     ;;
 esac
 
-# --- jcrussell / none / unknown: granular checklist ---
+# --- luke / jcrussell / none / unknown: granular checklist ---
 
 if (( DO_SAVE )); then
   _install_step "Backup" "$SCRIPT_DIR/save-settings.zsh" --force

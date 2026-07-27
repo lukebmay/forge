@@ -2593,7 +2593,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-save",
         action="store_true",
         dest="no_save",
-        help="Skip backup when already jcrussell",
+        help="Skip backup when already luke/jcrussell",
     )
     install_p.add_argument(
         "--no-restart",

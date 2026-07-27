@@ -1,6 +1,6 @@
 # Task — Official personal fork (distinct from jcrussell)
 
-**Status:** Ready  
+**Status:** Done  
 **Plan:** [forge-fork-eval.md](../plans/forge-fork-eval.md)  
 **Priority:** P2 (identity / ownership — low day-to-day tiling impact; see PRIORITY.md)  
 **Kind:** Plan-linked  
@@ -16,12 +16,9 @@ That confuses three different things:
 | --- | --- | --- |
 | **Upstream EGO** | `forge-ext/forge` / SweetTooth | Upstream (seeks maintainer) |
 | **jcrussell** | Community / AI-maintained fork on GitHub | **jcrussell** |
-| **This work** | Local tree `~/dev/me/forge_jcrussell` with Luke’s product work (daily-driver, CLI, thrash, …) | **Luke** — not yet an official fork |
+| **This work** | Local tree `~/dev/me/forge` with Luke’s product work | **Luke** — **lukebmay/forge**, lineage **`luke`** |
 
 Phase A chose jcrussell as **code base**, not as Luke’s long-term identity.
-There is **no official personal GitHub fork yet**. Install origin, lineage
-detection, and mental model all say “jcrussell,” which will hurt when
-publishing, reviewing remotes, or explaining “our fork” vs upstream.
 
 ## Goals
 
@@ -44,24 +41,26 @@ publishing, reviewing remotes, or explaining “our fork” vs upstream.
 6. **Do not** rewrite history or renumber commits; thin rename + remote +
    branding pass after fork exists.
 
-## Decisions to lock in this task (ask Luke if blocked)
+## Decisions locked
 
-| Topic | Options / notes |
+| Topic | Decision |
 | --- | --- |
-| GitHub repo name | e.g. `luke/forge`, `…/forge-tiling`, keep `forge` |
-| Lineage string | Prefer short stable id used in `forge_detect_lineage` + origin JSON |
-| Local dir rename | Keep `forge_jcrussell` for a while **or** rename once remote exists |
-| Upstream tracking | Default pull-from `jcrussell` vs also track `forge-ext` |
-| Script renames | Optional: `install-jcrussell` → keep as “base” helper + new `install` already lineage-aware; avoid big bang |
+| GitHub repo | `lukebmay/forge` (name `forge`) |
+| Default branch | `master` |
+| Lineage id | **`luke`** |
+| UUID | keep `forge@jmmaranan.com` |
+| Local path | `~/dev/me/forge` |
+| Upstream tracking | `upstream` = jcrussell; optional `ego` remote not required |
+| Script renames | Keep `install-jcrussell` / `switch-to-jcrussell` (historical non-EGO family) |
 
 ## Acceptance
 
-- [ ] Personal GitHub fork exists; `origin` points at it with push access
-- [ ] `upstream` (or documented remote) points at jcrussell and/or forge-ext
-- [ ] Written three-way map in README or DESIGN (EGO / jcrussell / Luke)
-- [ ] Lineage / install-origin distinguish **Luke tree** from **jcrussell** and **EGO**
-- [ ] `./install` / `forge install` still work; status shows correct source
-- [ ] PRIORITY + this plan session note updated; spike “Personal fork: Not yet” flipped
+- [x] Personal GitHub fork exists; `origin` points at it with push access
+- [x] `upstream` (or documented remote) points at jcrussell and/or forge-ext
+- [x] Written three-way map in README or DESIGN (EGO / jcrussell / Luke)
+- [x] Lineage / install-origin distinguish **Luke tree** from **jcrussell** and **EGO**
+- [x] `./install` / `forge install` still work; status shows correct source
+- [x] PRIORITY + this plan session note updated; spike “Personal fork: Not yet” flipped
 
 ## Out of scope
 
@@ -83,5 +82,6 @@ publishing, reviewing remotes, or explaining “our fork” vs upstream.
 
 ## Session note
 
-**2026-07-25:** Task filed. User needs official fork; tooling still says
-jcrussell. Next session: create GitHub fork + lock lineage name.
+**2026-07-27:** Done. A/B **AGREE**. Parent smoke: `zsh -n` OK; `forge_detect_lineage` → `luke`.
+Remotes: origin=`lukebmay/forge`, upstream=`jcrussell/forge`. Lineage stamp on next `./install`.
+Moved to `agents/plans/forge-fork-eval/completed/`.

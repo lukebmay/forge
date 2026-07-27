@@ -2,6 +2,24 @@
 
 Interesting “why” decisions for humans and agents. Not a changelog.
 
+## Fork identity (EGO / jcrussell / luke)
+
+Three layers that must not collapse:
+
+| Layer | Meaning |
+| --- | --- |
+| **EGO / forge-ext** | Upstream SweetTooth install (`forge-ext/forge`) |
+| **jcrussell** | Community base chosen in Phase A (`jcrussell/forge`) |
+| **luke** | This product tree (`lukebmay/forge`, local `~/dev/me/forge`) |
+
+UUID stays `forge@jmmaranan.com` so installs replace in place. Lineage id
+`luke` is stamped in `install-origin.json` and returned by
+`forge_detect_lineage` when origin/git remote is lukebmay; version-name alone
+still means “non-EGO git build,” with old stamps defaulting to `jcrussell`.
+Script names `install-jcrussell` / `switch-to-jcrussell` remain as historical
+“non-EGO family” helpers — not a claim that Luke’s install *is* the community
+fork.
+
 ## Recovery architecture
 
 **Why this section exists:** Overnight lock/wake thrash and extension HUP look

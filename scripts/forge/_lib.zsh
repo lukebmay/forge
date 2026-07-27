@@ -240,15 +240,52 @@ else:
 ' "$meta" "$field"
 }
 
+forge_remote_lineage() {
+  # Map a git remote URL → luke | jcrussell | "" (unknown).
+  # luke = lukebmay product tree; jcrussell = community base.
+  local url="${1:-}"
+  [[ -n "$url" ]] || return 0
+  if [[ "$url" == *lukebmay* ]]; then
+    print -r -- "luke"
+  elif [[ "$url" == *jcrussell* ]]; then
+    print -r -- "jcrussell"
+  fi
+}
+
+forge_repo_origin_url() {
+  # origin URL for $1 (default FORGE_REPO_ROOT); empty if unavailable.
+  local repo="${1:-$FORGE_REPO_ROOT}"
+  [[ -n "$repo" ]] || return 0
+  git -C "$repo" remote get-url origin 2>/dev/null || true
+}
+
 forge_detect_lineage() {
-  # ego | jcrussell | unknown
-  # Prefer version-name (git describe stamped by this tree's make build).
+  # ego | jcrussell | luke | none | unknown
+  # Prefer version-name (git describe stamped by non-EGO make build).
   # EGO/SweetTooth stamps numeric "version" and often "_generated".
   # Note: both trees may have lib/extension — do not use layout alone.
   local meta="$FORGE_EXT_DIR/metadata.json" version_name version
+  local stamped remote_url
   forge_ext_installed || { print -r -- "none"; return 0; }
   version_name=$(forge_metadata_field version-name "$meta" 2>/dev/null || true)
   if [[ -n "$version_name" ]]; then
+    # Prefer install-origin lineage (manage path survives extension replace).
+    stamped=$(forge_origin_field lineage 2>/dev/null || true)
+    if [[ "$stamped" == "luke" || "$stamped" == "jcrussell" ]]; then
+      print -r -- "$stamped"
+      return 0
+    fi
+    # lukebmay in origin stamp or current repo → luke; else community default.
+    remote_url=$(forge_origin_field git_remote 2>/dev/null || true)
+    if [[ "$(forge_remote_lineage "$remote_url")" == "luke" ]]; then
+      print -r -- "luke"
+      return 0
+    fi
+    remote_url=$(forge_repo_origin_url "$FORGE_REPO_ROOT")
+    if [[ "$(forge_remote_lineage "$remote_url")" == "luke" ]]; then
+      print -r -- "luke"
+      return 0
+    fi
     print -r -- "jcrussell"
     return 0
   fi
@@ -477,6 +514,13 @@ if (repo / ".git").exists() or (repo / ".git").is_file():
     except Exception:
         pass
 
+# luke = lukebmay product tree; jcrussell = community base / unknown git origin
+lineage = "jcrussell"
+if git_remote and "lukebmay" in git_remote:
+    lineage = "luke"
+elif git_remote and "jcrussell" in git_remote:
+    lineage = "jcrussell"
+
 install_script = "scripts/install.zsh"
 if not (repo / install_script).is_file():
     # Older trees may only have the forge/ helpers.
@@ -494,6 +538,7 @@ data = {
     "version-name": version_name,
     "git_describe": git_describe,
     "git_remote": git_remote,
+    "lineage": lineage,
     "installed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
     "host": os.uname().nodename if hasattr(os, "uname") else "",
 }

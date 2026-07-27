@@ -1,8 +1,14 @@
 # Forge install / settings migration scripts
 
 Helpers to move between **extensions.gnome.org (EGO / SweetTooth)** Forge and
-this tree (**jcrussell/forge**), while keeping prefs, keybindings, window rules,
-and CSS.
+this product tree ([lukebmay/forge](https://github.com/lukebmay/forge), lineage
+`luke`; Phase A base was **jcrussell/forge**), while keeping prefs, keybindings,
+window rules, and CSS.
+
+Script names `install-jcrussell` / `switch-to-jcrussell` / `update-jcrussell`
+are historical: they mean **non-EGO / this-family tree**, not “community only.”
+Lineage id (`ego` | `jcrussell` | `luke` | `none` | `unknown`) distinguishes
+installs.
 
 ## Install from this tree
 
@@ -12,7 +18,7 @@ Project root **`./install`** (or `./install.zsh` / `scripts/install.zsh`) puts t
 | Current install | What runs |
 | --- | --- |
 | none / unknown | build + install this tree |
-| jcrussell | in-place update from this tree |
+| luke / jcrussell | in-place update from this tree |
 | EGO / SweetTooth | full migrate (`switch-to-jcrussell`: backup + translate settings) |
 
 After install, origin is stamped at
@@ -179,20 +185,20 @@ border still looks stock).
 
 ## Quick start
 
-### Fresh machine → jcrussell from this tree (no prior Forge)
+### Fresh machine → this tree (no prior Forge)
 
 ```bash
-cd ~/dev/me/forge_jcrussell   # clone first if needed
+cd ~/dev/me/forge   # lukebmay/forge (or your clone)
 ./scripts/forge/install-jcrussell.zsh   # npm + make dev/install
 # log out/in (or X11: killall -HUP gnome-shell)
 gnome-extensions enable forge@jmmaranan.com
-./scripts/forge/status.zsh
+./scripts/forge/status.zsh   # lineage=luke when origin is lukebmay
 ```
 
-### EGO/SweetTooth already installed → jcrussell (keep settings + colors)
+### EGO/SweetTooth already installed → this tree (keep settings + colors)
 
 ```bash
-cd ~/dev/me/forge_jcrussell
+cd ~/dev/me/forge
 ./scripts/forge/switch-to-jcrussell.zsh --force --restart-shell
 # or interactive without --force
 ./scripts/forge/status.zsh
@@ -201,10 +207,10 @@ cd ~/dev/me/forge_jcrussell
 That one script: save → build → uninstall → install → apply dconf/CSS → enable →
 re-restore theme (so `patchCss` cannot clobber colors).
 
-### Already on jcrussell → pick up local tree changes (daily loop)
+### Already on luke/jcrussell → pick up local tree changes (daily loop)
 
 ```bash
-cd ~/dev/me/forge_jcrussell
+cd ~/dev/me/forge
 ./scripts/forge/update-jcrussell.zsh
 # or: forge-ctl update --force
 # optional: --save  --reload-theme  --prod  --restart-shell
