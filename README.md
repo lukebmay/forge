@@ -1,249 +1,270 @@
-# Forge (lukebmay product tree)
+# Forge
 
 [![CI](https://github.com/jcrussell/forge/actions/workflows/testing.yml/badge.svg)](https://github.com/jcrussell/forge/actions/workflows/testing.yml)
-[![codecov](https://codecov.io/github/jcrussell/forge/graph/badge.svg?token=MFNOBH5D4L)](https://codecov.io/github/jcrussell/forge)
 
-Product work on a fork of [Forge](https://github.com/forge-ext/forge), the GNOME
-Shell extension that provides i3/sway-style tiling window management. Phase A
-chose the community [jcrussell/forge](https://github.com/jcrussell/forge) base;
-this tree is Luke’s product fork on top of that base.
+**Forge** is a GNOME Shell extension that brings i3/sway-style tiling window
+management to GNOME. This repository ([lukebmay/forge](https://github.com/lukebmay/forge))
+is a product fork focused on multi-monitor reliability, tabbed layouts, a
+`forge` control CLI, and a daily-driver workflow.
+
+Works on **GNOME 45+** (X11 and Wayland). Extension UUID:
+`forge@jmmaranan.com` (same as upstream — installs **replace** each other in
+place).
 
 Thanks to [@jmmaranan](https://github.com/jmmaranan), [@jcrussell](https://github.com/jcrussell),
 and all original contributors.
 
-## Who owns what
+---
 
-| Layer | GitHub / store | Role |
+## Lineage
+
+| Layer | Repository | Role |
 | --- | --- | --- |
-| **EGO / forge-ext** | [forge-ext/forge](https://github.com/forge-ext/forge), SweetTooth | Upstream (seeks maintainer) |
-| **jcrussell** | [jcrussell/forge](https://github.com/jcrussell/forge) | Community / AI-maintained base (Phase A) |
-| **luke (this tree)** | [lukebmay/forge](https://github.com/lukebmay/forge) | Product work; lineage id **`luke`** |
+| **Upstream (EGO)** | [forge-ext/forge](https://github.com/forge-ext/forge) | Original Forge; listed on extensions.gnome.org |
+| **Community base** | [jcrussell/forge](https://github.com/jcrussell/forge) | AI-maintained fork with tests, prefs, and many fixes |
+| **This project** | [lukebmay/forge](https://github.com/lukebmay/forge) | Product work on the jcrussell base (`master` branch) |
 
-Install tooling keeps historical script names (`install-jcrussell`,
-`switch-to-jcrussell`); lineage (`ego` \| `jcrussell` \| `luke`) distinguishes
-which non-EGO tree is live.
+Upstream EGO is lightly maintained and has sought a new maintainer. The
+community fork is the better code base for modern GNOME; this tree builds on
+that base for reliability and scripting.
 
-## This tree (local / daily-driver work)
+Pull community updates with the `upstream` remote (`upstream/main`); day-to-day
+development and installs stay on **this** repo.
 
-| Fact | Value |
-| --- | --- |
-| Origin (push) | [lukebmay/forge](https://github.com/lukebmay/forge) (`master`) |
-| Upstream (pull) | [jcrussell/forge](https://github.com/jcrussell/forge) (`upstream`) |
-| Local path (this clone) | `~/dev/me/forge` |
-| Upstream reference clone | `~/dev/me/forge_original` (**do not** start new work there) |
-| Extension UUID | `forge@jmmaranan.com` (installs **replace** the live extension) |
-| Lineage id | `luke` (stamped in `install-origin.json`) |
-| Target host | `black` — GNOME Shell **46**, **X11**, dual 4K, hybrid AMD+NVIDIA |
-| Displays | shellrc **`gdisplays`** (connector identity lives there, not in this repo) |
-
-### Fork decision (historical)
-
-Phase A of the fork eval compared **jcrussell/forge** vs upstream **forge-ext/forge**
-and locked jcrussell as the **code base** (not a greenfield rewrite, not
-`forge_original`). The personal fork ([lukebmay/forge](https://github.com/lukebmay/forge))
-is the long-term identity for this product tree. See
-[agents/plans/forge-fork-eval.md](agents/plans/forge-fork-eval.md).
-
-Daily pain that motivated the trial: multi-monitor after blank/reattach, tab/stack
-lifecycle thrash, and resize/session reliability. gdisplays v1 (shellrc) reduced
-connector-rename stress; Forge still must survive workarea thrash without
-crashing Shell.
-
-### Current plan focus
-
-Execution plan: **[agents/plans/forge-daily-driver.md](agents/plans/forge-daily-driver.md)**  
-Priorities: **[agents/PRIORITY.md](agents/PRIORITY.md)**
-
-| Slice | Status |
-| --- | --- |
-| **T0** stack off by default + DnD force tabbed | **Done** |
-| **T1** tab chrome reliability (no empty gap / N labels) | **Done** |
-| **T2** opt-in layout debug overlay | **Next** |
-| **T3** blank/wake + tab survival (+ H1 soft-rehome live verify) | After install / T2 |
-| **T4+** sizing policy, keybind system, snapshot/session | Later in plan |
-
-Related: [forge-harden-and-session](agents/plans/forge-harden-and-session.md)
-(H1 soft-rehome **code** done; live verify still open),
-[layout thrash analysis](agents/plans/forge-layout-thrash-analysis.md).
-
-Agent guidelines are composed with shellrc **`agents`** → root
-[AGENTS.md](AGENTS.md) (`agents build`). Session plans/tasks live under
-`agents/plans/` and `agents/tasks/`.
-
-### Install trial on `black` (safe path)
-
-UUID matches EGO Forge, so a trial **replaces** the installed extension.
-
-**Preferred entry:** project-root `./install` (lineage-aware; migrates EGO
-settings when needed; stamps origin for later `forge install`; puts the
-control CLI on PATH):
-
-```bash
-./install
-forge tree                     # ~/.local/bin/forge → this tree
-./scripts/forge/status.zsh
-```
-
-Default install: build → install → enable → symlink **`~/.local/bin/forge`** →
-**reload Shell on X11** so the new code is active. Opt out of Shell reload with
-`--no-restart`. `--force` is only for pipes/CI (not needed on a normal
-terminal). EGO → this tree still asks once (or needs `--force` when
-non-interactive) because it migrates settings.
-
-```bash
-forge install                  # re-install from stamped origin
-forge uninstall                # extension + forge-owned CLI; keeps prefs
-```
-
-Lower-level helpers still live under [`scripts/forge/`](scripts/forge/README.md).
-Rollback helpers are documented there.
+---
 
 ## Features
 
-- Works on GNOME 45+ (X11 and Wayland)
-- Tree-based tiling with vertical and horizontal split containers similar to i3-wm and sway-wm
-- Vim-like keybindings for navigation/swapping windows/moving windows in the containers
-- Drag and drop tiling
-- Support for floating windows, smart gaps and focus hint
+### Core (from original Forge)
+
+- Tree-based tiling with horizontal and vertical splits (i3/sway-like)
+- Vim-style navigation, swap, and move keybindings
+- Drag-and-drop tiling with preview hints
+- Floating windows, smart gaps, and focus borders
+- Stacked and tabbed container layouts; workspace monocle
+- Per-workspace tiling; multi-monitor support
+- Window resize via keyboard; auto-split / quarter tiling
 - Customizable shortcuts in extension preferences
-- Some support for multi-display
-- Tiling support per workspace
-- Update hint color scheme from preferences
-- Stacked and tabbed tiling layouts, plus workspace monocle
-- Swap current window with the last active window
-- Auto Split or Quarter Tiling
-- Show/hide tab decoration via keybinding
-- Window resize using keyboard shortcuts
 
-## Fork Improvements
+### From the community base (jcrussell)
 
-This fork includes significant improvements over the upstream version:
+Improvements that land in this tree via the jcrussell lineage:
 
-### New Features
+**Features**
 
-- **Keybindings cheatsheet overlay** - Quick reference for all shortcuts (`Super+Shift+/`)
-- **Portable config sync** - Export/import settings and keybindings for backup or sharing
-- **Arrow key navigation** - Arrow keys work alongside vim-style hjkl bindings
-- **Floating window rules UI** - Manage floating window rules directly in preferences
-- **Screen edge margins** - Configurable gaps for compatibility with panels/docks
-- **Additional keybindings** - Config reload, evenly distribute windows, workspace monocle, and more
-- **More customization** - Border radius, tab margins, default layout, adjustable gap limits
-- **Monitor exclusion** - Option to exclude specific monitors from tiling
+- Keybindings cheatsheet overlay
+- Portable config sync (export/import settings and keybindings)
+- Arrow-key navigation alongside hjkl
+- Floating window rules UI in preferences
+- Screen edge margins (panels/docks)
+- Extra bindings: config reload, evenly distribute, workspace monocle, …
+- More appearance options (border radius, tab margins, gap limits, default layout)
+- Monitor exclusion from tiling
 
-### Bug Fixes
+**Bug fixes**
 
-- Window resize and focus navigation fixes
-- App-specific fixes for Chrome, Brave, Steam, Blender, ddterm, and others
-- Stacked/tabbed container behavior improvements
-- Preview hints and border rendering fixes
+- Resize and focus navigation reliability
+- App-specific fixes (Chrome, Brave, Steam, Blender, ddterm, …)
+- Stacked/tabbed container behavior
+- Preview hints and border rendering
 - Cross-workspace window operations
-- Preferences saving and theme handling
-- Soft rehome after workarea thrash (H1 — live verify still open)
-- Tab chrome fallback when `Shell.App` is null (no empty tab strip)
+- Preferences save and theme handling
 
-### Code Quality
+**Engineering**
 
-- Comprehensive unit test suite (1,600+ tests) plus a Dockerized E2E suite
-- Refactored architecture with focused, extracted managers (see [architecture docs](docs/dev/architecture.md))
-- Riskier options stay behind clearly-marked experimental toggles
+- Large unit-test suite (1,600+ tests) and Dockerized E2E
+- Refactored managers and clearer architecture
+  ([docs/dev/architecture.md](docs/dev/architecture.md))
+- Riskier options behind experimental toggles
 
-## Known Issues / Limitations
+### Added in this project (lukebmay/forge)
 
-- Does not support dynamic workspaces
-- Does not support vertical monitor setup
-- Multi-monitor blank/wake tab survival still under live verification (T3)
-- Stack mode is **off by default** in this tree (tab-first; optional later)
+Product work aimed at surviving real multi-monitor sessions and scripting the desk:
 
-## Installation
+| Area | What & why |
+| --- | --- |
+| **Soft rehome** | After lock/blank/wake, workarea thrash no longer piles all tiles onto the primary monitor. Debounced rehome from last-known geometry. |
+| **Session layout** | Last-good tree snapshot (`session-layout.json`) so install/HUP reload can restore splits and tabs instead of flattening to columns. |
+| **Tab chrome** | Tab/stack labels always show for every window in the group (no empty gap when `Shell.App` is missing). |
+| **Tab-first DnD** | Stack mode **off by default**; drag-and-drop prefers tabbed groups. |
+| **Sizing policy** | Equal shares until you resize; preserve vs equalize when a new window joins. |
+| **Keybind kits** | Safe defaults (no bare Super+letter grabs); vim/i3 kits; conflict scan; save your own kit. |
+| **Open-app placement** | Last Focused Tile (LFT) attach; dock-sticky monitor; optional tiny-pane → tab fallback. |
+| **Layout debug overlay** | Opt-in labels for layout type, percent, and mon-ws id (`Ctrl+Super+d`). |
+| **`forge` CLI** | DBus control plane: tree, focus, swap, move, launch, settings, session-layout flush. |
+| **`forge workon`** | Named morning layout profiles — idempotent reconcile (open gaps, move mismatches, leave companions). |
+| **Install tooling** | `./install` + `forge install` / `update` / `uninstall`; settings-safe migrate from EGO. |
 
-### From extensions.gnome.org
+---
 
-_Listing pending review — this fork is not yet published on extensions.gnome.org._
-Once it is, install it from the [GNOME Extensions](https://extensions.gnome.org)
-website (with the browser integration) or the **Extensions** / **Extension Manager**
-app by searching for "Forge".
+## Getting started
 
-### From a pre-built release
+### Requirements
 
-Download `forge@jmmaranan.com.zip` from the
-[latest release](https://github.com/jcrussell/forge/releases/latest), then:
+- GNOME Shell **45+**
+- To build from source: **Node.js 20+**, `npm`, `make`, gettext (`msgfmt`),
+  `glib-compile-schemas`
 
-```bash
-# (optional) verify the checksum and build provenance
-sha256sum -c SHA256SUMS
-gh attestation verify forge@jmmaranan.com.zip --repo jcrussell/forge
-
-# install
-gnome-extensions install --force forge@jmmaranan.com.zip
-
-# then log out and back in (X11: Alt+F2, then r) so the shell picks it up
-
-# ...and enable
-gnome-extensions enable forge@jmmaranan.com
-```
-
-`enable` fails with "does not exist" until the shell has re-scanned — that's why the
-log-out/restart step comes between install and enable, not after.
-
-### Build from source
+### Install from this repository
 
 ```bash
-# Install dependencies (Node.js 20+ and gettext required)
-npm install
-
-# Development build: compile and install to ~/.local/share/gnome-shell/extensions/
-make dev
-
-# Production build: compile, install, enable extension, restart shell
-make prod
+git clone https://github.com/lukebmay/forge.git
+cd forge
+./install
 ```
 
-After installation, log out and log back in (or restart GNOME Shell on X11 with `Alt+F2`, then `r`).
+That builds the extension, installs it under
+`~/.local/share/gnome-shell/extensions/forge@jmmaranan.com`, enables it, puts
+the **`forge`** CLI on `~/.local/bin/forge`, and reloads GNOME Shell on X11.
 
-![image](https://user-images.githubusercontent.com/348125/146386593-8f53ea8b-2cf3-4d44-a613-bbcaf89f9d4a.png)
+```bash
+# after install (ensure ~/.local/bin is on PATH)
+forge ping
+forge tree
+forge help
+```
 
-## Documentation
+**Already on extensions.gnome.org Forge?** `./install` migrates with an automatic
+settings backup (dconf + `~/.config/forge`). Prefs and keybindings are kept when
+the schemas allow.
 
-Full docs live in [`docs/`](docs/):
+**Daily reinstall after pulling code:**
 
-- **User guide** ([`docs/user/`](docs/user/)) — [layouts & tiling](docs/user/layouts.md),
-  [keybindings](docs/user/keybindings.md), [theming](docs/user/theming.md),
-  [window rules](docs/user/rules.md), [portable config](docs/user/config.md),
-  [multi-monitor](docs/user/monitors.md), [troubleshooting](docs/user/troubleshooting.md).
-- **Developer reference** ([`docs/dev/`](docs/dev/)) — architecture, rendering
-  pipeline, Mutter compatibility.
-- **Design notes** ([`docs/DESIGN.md`](docs/DESIGN.md)) — durable “why” decisions.
-- Press the cheatsheet chord in-session (Safe default: **`Ctrl+Super+/`**; Vim kit:
-  **`Super+Shift+/`**) for live keybinding reference.
+```bash
+git pull
+forge install          # or: ./install
+# or: forge update     # clean master only: fetch → pull if new → install
+```
 
-## Forge Override Paths
+**Remove (keeps prefs):**
 
-- Window rules: `$HOME/.config/forge/config/windows.json` — see [window rules](docs/user/rules.md) and [portable config](docs/user/config.md)
-- Stylesheet: `$HOME/.config/forge/stylesheet/forge/stylesheet.css` — see [theming](docs/user/theming.md)
+```bash
+forge uninstall
+# wipe config too:
+forge uninstall --purge-config
+```
 
-## GNOME Defaults
+### Other install options
 
-GNOME Shell has built in support for workspace management and seems to work well - so Forge will not touch those.
+| Method | Status |
+| --- | --- |
+| extensions.gnome.org | This fork is **not** published there yet |
+| Pre-built zip from community releases | [jcrussell/forge releases](https://github.com/jcrussell/forge/releases) (community base, not this product tree) |
+| `make dev` / `make prod` | Developer install — see [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-User is encouraged to bind the following:
-- Switching/moving windows to different workspaces
-- Switching to numbered, previous or next workspace
+After any install that does not reload Shell: on **X11** use `Alt+F2` → `r`, or
+`killall -HUP gnome-shell`; on **Wayland**, log out and back in.
 
-## Local Development Setup
+![Forge tiling screenshot](https://user-images.githubusercontent.com/348125/146386593-8f53ea8b-2cf3-4d44-a613-bbcaf89f9d4a.png)
 
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** for environment setup, build/test commands, and code style. Run `make help` for the full list of targets.
+---
+
+## Using Forge
+
+### In-session basics
+
+- **Cheatsheet:** Safe kit default `Ctrl+Super+/` (Vim kit: `Super+Shift+/`)
+- **Reload config / theme:** `Super+Shift+r` (or your kit’s reload chord)
+- **Layout debug overlay:** `Ctrl+Super+d`
+- **Preferences:** Extensions app → Forge, or `gnome-extensions prefs forge@jmmaranan.com`
+
+User guide:
+
+| Topic | Doc |
+| --- | --- |
+| Layouts & tiling | [docs/user/layouts.md](docs/user/layouts.md) |
+| Keybindings | [docs/user/keybindings.md](docs/user/keybindings.md) |
+| Theming | [docs/user/theming.md](docs/user/theming.md) |
+| Window rules | [docs/user/rules.md](docs/user/rules.md) |
+| Portable config | [docs/user/config.md](docs/user/config.md) |
+| Multi-monitor | [docs/user/monitors.md](docs/user/monitors.md) |
+| Morning profiles | [docs/user/workon.md](docs/user/workon.md) |
+| Troubleshooting | [docs/user/troubleshooting.md](docs/user/troubleshooting.md) |
+
+### Control CLI (`forge`)
+
+Talks to the **enabled** extension over DBus. Install also places it at
+`~/.local/bin/forge`.
+
+```bash
+forge help
+forge tree                              # tiling forest (JSON)
+forge tree --monitor=0 --compact
+forge focus 'class:firefox'
+forge launch nautilus                   # resolve .desktop + place after LFT
+forge launch ghostty --monitor=1
+forge launch nautilus --path=mo1ws0/1/1
+
+# Batch / morning desk
+forge workon help
+forge workon list
+forge workon capture > ~/.config/forge/workon/mydesk.json
+forge workon mydesk --dry-run
+forge workon mydesk
+
+# Install helpers (no DBus)
+forge install
+forge update
+forge uninstall
+```
+
+Full install/migrate script reference: [scripts/forge/README.md](scripts/forge/README.md).
+
+### Config paths
+
+| What | Where |
+| --- | --- |
+| Window rules | `~/.config/forge/config/windows.json` |
+| User stylesheet | `~/.config/forge/stylesheet/forge/stylesheet.css` |
+| Workon profiles | `~/.config/forge/workon/<name>.json` (or `$FORGE_WORKON_DIR`) |
+| Session layout snapshot | `~/.config/forge/config/session-layout.json` |
+| Install origin stamp | `~/.local/share/forge-manage/install-origin.json` |
+| Settings backups | `~/.local/share/forge-manage/backups/` |
+
+GNOME still owns workspaces. Bind workspace switch/move in GNOME Settings as you
+prefer; Forge does not replace that.
+
+---
+
+## Known limitations
+
+- No dynamic workspaces
+- Limited vertical-monitor support
+- Multi-monitor blank/wake is much more robust than stock, but edge thrash cases
+  can still need a config reload (`Super+Shift+r`) or a retab
+- Stack mode is **off by default** (tab-first; enable in prefs if you want it)
+
+---
+
+## Documentation map
+
+| Need | Where |
+| --- | --- |
+| This overview + install | [README.md](README.md) (you are here) |
+| User behavior | [docs/user/](docs/user/) |
+| Architecture / Mutter / render | [docs/dev/](docs/dev/) |
+| Design “why” | [docs/DESIGN.md](docs/DESIGN.md) |
+| Build, test, contribute | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Install scripts | [scripts/forge/README.md](scripts/forge/README.md) |
+| Unit / E2E tests | [tests/README.md](tests/README.md), [tests/e2e/README.md](tests/e2e/README.md) |
+
+---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, and code style, and the
-[upstream discussion](https://github.com/orgs/forge-ext/discussions/501) about the
-path to merging this fork back into the main project.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Branch off `master`. Prefer small, tested
+patches (`npm test` / `make unit-test`).
+
+Issues for **this** fork: <https://github.com/lukebmay/forge/issues>  
+Community base: <https://github.com/jcrussell/forge/issues>  
+Original project discussion on maintainership:
+[forge-ext discussion #501](https://github.com/orgs/forge-ext/discussions/501).
+
+---
 
 ## Credits
 
-Thank you to:
-
-- **The original Forge developers** - [@jmmaranan](https://github.com/jmmaranan) and all [upstream contributors](https://github.com/forge-ext/forge) who created this extension
-- Michael Stapelberg/contributors for i3
-- System76/contributors for pop-shell
-- ReworkCSS/contributors for css-parse/css-stringify
+- **Original Forge** — [@jmmaranan](https://github.com/jmmaranan) and
+  [upstream contributors](https://github.com/forge-ext/forge)
+- **Community fork** — [@jcrussell](https://github.com/jcrussell) and contributors
+- Michael Stapelberg / i3; System76 / pop-shell; ReworkCSS css-parse/stringify

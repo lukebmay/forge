@@ -9,16 +9,16 @@ Three layers that must not collapse:
 | Layer | Meaning |
 | --- | --- |
 | **EGO / forge-ext** | Upstream SweetTooth install (`forge-ext/forge`) |
-| **jcrussell** | Community base chosen in Phase A (`jcrussell/forge`) |
-| **luke** | This product tree (`lukebmay/forge`, local `~/dev/me/forge`) |
+| **jcrussell** | Community base (`jcrussell/forge`) |
+| **luke** | This product tree (`lukebmay/forge`) |
 
 UUID stays `forge@jmmaranan.com` so installs replace in place. Lineage id
 `luke` is stamped in `install-origin.json` and returned by
 `forge_detect_lineage` when origin/git remote is lukebmay; version-name alone
 still means “non-EGO git build,” with old stamps defaulting to `jcrussell`.
-Script names `install-jcrussell` / `switch-to-jcrussell` remain as historical
-“non-EGO family” helpers — not a claim that Luke’s install *is* the community
-fork.
+
+Preferred install path: `./install` / `forge install`. Low-level helpers:
+`build-install.zsh`, `rebuild.zsh`, `migrate-from-ego.zsh`.
 
 ## Recovery architecture
 
@@ -186,7 +186,7 @@ Wayland timeout into it.
 **Map:** [Recovery architecture](#recovery-architecture) — this is the live
 thrash path (T6 + last-good + entered-monitor suppress), not session disk.
 
-**Problem:** Overnight GNOME auto-lock → wake (especially dual 4K + hybrid GPU)
+**Problem:** Overnight GNOME auto-lock → wake (especially multi-monitor + GPU re-probe)
 fires a burst of `workareas-changed` while Mutter may shove windows onto the
 primary. Tree keys are `mo${index}ws${ws}`; if Forge eagerly follows
 `window-entered-monitor` / `Meta.Window.get_monitor()` mid-thrash, every tile
@@ -218,7 +218,7 @@ piles under one monitor node and stays there after both heads return.
 While a **session shield** is active, soft rehome **reapplies the restored
 forest** instead of snapshotting thrash topology (see session layout).
 
-**Live proof (2026-07-24, black):** idle auto-lock + DPMS → unlock kept dual-head
+**Live proof (2026-07-24):** idle auto-lock + DPMS → unlock kept dual-head
 placement and a two-window tab pair; retab after wake did not abort Shell.
 
 **Related:** T7 stable output keys (`monitor-identity.js`); gdisplays owns
@@ -551,7 +551,7 @@ domains (`t`/`e`). The tiling command is always **`forge workon`**.
 
 **FC5 (shipped):** `~/.config/forge/workon/<name>.json` schema `version: 1`
 imperative `steps[]`. Fine for one-shot scripts; **wrong daily default** —
-re-running doubles apps (trial on `black`, 2026-07-26).
+re-running doubles apps (live trial, 2026-07-26).
 
 **FC6 / WR1–WR3:** desired-state **reconcile** — roles + layout shape;
 match/claim existing tiles; launch only gaps; park overflow; no kill.

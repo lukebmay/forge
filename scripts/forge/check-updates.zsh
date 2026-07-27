@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# Check for updates: jcrussell git remote and/or EGO.
+# Check for updates: this tree git remote and/or EGO.
 # Usage: check-updates.zsh [--ego] [--fetch] [--pull]
 emulate -L zsh
 set -euo pipefail
@@ -8,7 +8,7 @@ source "$SCRIPT_DIR/_lib.zsh"
 
 usage() {
   cat <<EOF
-${c_bold}check-updates.zsh${c_reset} — check jcrussell git and/or EGO for newer Forge
+${c_bold}check-updates.zsh${c_reset} — check this tree git and/or EGO for newer Forge
 
 Usage:
   check-updates.zsh [options]
@@ -18,7 +18,7 @@ Options:
   --ego         Also query extensions.gnome.org for latest SweetTooth version
   --fetch       git fetch origin before comparing
   --pull        git pull --ff-only (implies --fetch); does not reinstall
-  --install     After pull, run install-jcrussell.zsh (implies --pull)
+  --install     After pull, run build-install.zsh (implies --pull)
   --force       Non-interactive for --pull/--install
   --color=auto|always|never
   -h, --help
@@ -61,7 +61,7 @@ forge_need_cmd git
 cd "$FORGE_REPO_ROOT"
 avail=0
 
-forge_hdr "jcrussell repo: $FORGE_REPO_ROOT"
+forge_hdr "repo: $FORGE_REPO_ROOT"
 
 local_desc=$(git describe --tags --always --dirty 2>/dev/null || git rev-parse --short HEAD)
 branch=$(git rev-parse --abbrev-ref HEAD)
@@ -154,12 +154,12 @@ if (( DO_PULL )); then
 fi
 
 if (( DO_INSTALL )); then
-  if forge_confirm "Reinstall jcrussell from disk after update?"; then
+  if forge_confirm "Reinstall Forge from disk after update?"; then
     # Prefer update path (build+install; user restarts Shell)
-    if [[ -x "$SCRIPT_DIR/update-jcrussell.zsh" ]]; then
-      "$SCRIPT_DIR/update-jcrussell.zsh" --force
+    if [[ -x "$SCRIPT_DIR/rebuild.zsh" ]]; then
+      "$SCRIPT_DIR/rebuild.zsh" --force
     else
-      "$SCRIPT_DIR/install-jcrussell.zsh" --force
+      "$SCRIPT_DIR/build-install.zsh" --force
     fi
   fi
 fi

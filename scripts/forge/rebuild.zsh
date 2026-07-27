@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
-# Rebuild this tree into the live extension and reload Shell (daily-driver loop).
-# For EGO → jcrussell first install, use switch-to-jcrussell.zsh instead.
+# Rebuild this tree into the live extension and reload Shell.
+# For EGO → this tree first install, use migrate-from-ego.zsh (or ./install).
 emulate -L zsh
 set -euo pipefail
 SCRIPT_DIR=${0:A:h}
@@ -8,16 +8,17 @@ source "$SCRIPT_DIR/_lib.zsh"
 
 usage() {
   cat <<EOF
-${c_bold}update-jcrussell.zsh${c_reset} — install current repo into the running Forge extension
+${c_bold}rebuild.zsh${c_reset} — install current repo into the running Forge extension
 
 Rebuilds this git tree (default: debug / make dev), replaces the user extension
 in place (same UUID), enables it, and ${c_bold}reloads Shell on X11${c_reset} so the new
-code is active. Prefer root ${c_blue}./install${c_reset} (lineage-aware).
+code is active. Prefer root ${c_blue}./install${c_reset} or ${c_blue}forge install${c_reset}.
 
-First time on EGO: ${c_blue}./install${c_reset} or ${c_blue}switch-to-jcrussell.zsh${c_reset}.
+First time from extensions.gnome.org: ${c_blue}./install${c_reset} or
+${c_blue}migrate-from-ego.zsh${c_reset}.
 
 Usage:
-  update-jcrussell.zsh [options]
+  rebuild.zsh [options]
 
 Options:
   --repo=PATH         Repo root (default: $FORGE_REPO_ROOT)
@@ -28,8 +29,8 @@ Options:
   --no-restart        Do not HUP gnome-shell (files only until you reload)
   --reload-theme      After install, stamp + bump css-updated (user stylesheet)
   --no-host-defaults  Skip apply-host-defaults.zsh
-  --skip-npm          Pass through to install-jcrussell
-  --from-ego          If installed lineage is EGO, run switch-to-jcrussell instead
+  --skip-npm          Pass through to build-install
+  --from-ego          If installed lineage is EGO, run migrate-from-ego instead
   --force             Non-interactive / CI (skip confirms)
   --verbose, -v       Detailed build/install logs
   --color=auto|always|never
@@ -37,9 +38,9 @@ Options:
 
 Examples:
   ./install
-  ./scripts/forge/update-jcrussell.zsh
-  ./scripts/forge/update-jcrussell.zsh --no-restart
-  forge-ctl update
+  forge install
+  ./scripts/forge/rebuild.zsh
+  ./scripts/forge/rebuild.zsh --no-restart
 
 Wayland: in-session reload is unavailable — log out/in after install.
 Toggle layout overlay: ${c_blue}Ctrl+Super+d${c_reset}
@@ -91,14 +92,15 @@ fi
 
 if [[ "$lineage" == "ego" ]]; then
   if (( FROM_EGO )); then
-    forge_warn "installed lineage is EGO — running switch-to-jcrussell (full migrate)"
+    forge_warn "installed lineage is EGO — running migrate-from-ego (full migrate)"
     args=(--force)
     (( DO_RESTART )) && args+=(--restart-shell)
-    exec "$SCRIPT_DIR/switch-to-jcrussell.zsh" "${args[@]}"
+    exec "$SCRIPT_DIR/migrate-from-ego.zsh" "${args[@]}"
   fi
   forge_die "installed Forge is EGO/SweetTooth. First migrate with:
-  $SCRIPT_DIR/switch-to-jcrussell.zsh
-or re-run this script with --from-ego"
+  $SCRIPT_DIR/migrate-from-ego.zsh
+or re-run this script with --from-ego
+or use: ./install"
 fi
 
 if [[ "$lineage" == "none" ]]; then
@@ -133,7 +135,7 @@ install_args=(--force)
 (( ! DO_HOST_DEFAULTS )) && install_args+=(--no-host-defaults)
 
 forge_hdr "Build + install"
-"$SCRIPT_DIR/install-jcrussell.zsh" "${install_args[@]}"
+"$SCRIPT_DIR/build-install.zsh" "${install_args[@]}"
 
 after_vn=$(forge_metadata_field version-name 2>/dev/null || print "n/a")
 forge_ok "installed version-name: ${c_blue}$after_vn${c_reset}"
@@ -185,7 +187,7 @@ fi
 
 forge_write_install_origin "$FORGE_REPO_ROOT" git || \
   forge_warn "could not write install-origin (non-fatal)"
-forge_ok "update complete (lineage=$(forge_detect_lineage))"
+forge_ok "rebuild complete (lineage=$(forge_detect_lineage))"
 forge_info "status: $SCRIPT_DIR/status.zsh"
 forge_info "reinstall: forge install  # or $FORGE_REPO_ROOT/install"
 print -r -- "$FORGE_EXT_DIR"

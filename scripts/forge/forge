@@ -19,7 +19,7 @@ BUS_NAME = "org.gnome.Shell.Extensions.Forge"
 OBJECT_PATH = "/org/gnome/Shell/Extensions/Forge"
 INTERFACE = "org.gnome.Shell.Extensions.Forge"
 
-# Durable stamp written by scripts/install.zsh (and install-jcrussell / switch).
+# Durable stamp written by scripts/install.zsh (and build-install / migrate).
 _DEFAULT_ORIGIN = Path.home() / ".local/share/forge-manage" / "install-origin.json"
 _EXT_ORIGIN = (
     Path.home()
@@ -1961,8 +1961,8 @@ def _find_install_script(repo: Path, rel: str = "scripts/install.zsh") -> Option
     for name in (
         rel,
         "scripts/install.zsh",
-        "scripts/forge/update-jcrussell.zsh",
-        "scripts/forge/install-jcrussell.zsh",
+        "scripts/forge/rebuild.zsh",
+        "scripts/forge/build-install.zsh",
     ):
         p = repo / name
         if p.is_file():

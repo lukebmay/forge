@@ -387,7 +387,7 @@ def _title_match_fragment(
         return None
     chrome = _is_chrome_like(cls)
     if chrome and "Google Chrome" in title:
-        # Product main window — stable matcher used by black dev profile
+        # Product main window — stable matcher for typical browser profiles
         if not _title_has_other_known(title, "Google Chrome"):
             return "Google Chrome"
     cls_key = (cls or "").strip().lower()

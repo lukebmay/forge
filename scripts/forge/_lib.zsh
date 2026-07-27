@@ -460,7 +460,7 @@ forge_print_deps_help() {
 Dependencies:
   hard: zsh, python3, dconf, gnome-extensions, gnome-shell
   install-ego: curl, unzip (or gnome-extensions install)
-  install / install-jcrussell / update-jcrussell: make, node (>=20), npm, gettext (msgfmt), glib-compile-schemas
+  install / build-install / rebuild: make, node (>=20), npm, gettext (msgfmt), glib-compile-schemas
   check-updates: git, curl (for EGO)
 EOF
 }
@@ -524,8 +524,8 @@ elif git_remote and "jcrussell" in git_remote:
 install_script = "scripts/install.zsh"
 if not (repo / install_script).is_file():
     # Older trees may only have the forge/ helpers.
-    if (repo / "scripts/forge/update-jcrussell.zsh").is_file():
-        install_script = "scripts/forge/update-jcrussell.zsh"
+    if (repo / "scripts/forge/rebuild.zsh").is_file():
+        install_script = "scripts/forge/rebuild.zsh"
 
 cli_bin = os.environ.get("FORGE_CLI_BIN") or str(Path.home() / ".local/bin" / "forge")
 data = {

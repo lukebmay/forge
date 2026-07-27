@@ -1,8 +1,8 @@
 # Contributing to Forge
 
-Thanks for helping out! This is an AI-maintained fork of
-[Forge](https://github.com/forge-ext/forge); fixes here are intended to be
-upstreamed when possible.
+Thanks for helping out! This is the [lukebmay/forge](https://github.com/lukebmay/forge)
+product tree, based on the community [jcrussell/forge](https://github.com/jcrussell/forge)
+fork of upstream [Forge](https://github.com/forge-ext/forge).
 
 ## Prerequisites
 

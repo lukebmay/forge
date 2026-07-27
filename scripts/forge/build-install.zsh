@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# Build and/or install this repo (jcrussell/forge).
+# Build and/or install this repo into the live Forge extension.
 # Prefer: build while old extension still installed, then install-only after uninstall.
 emulate -L zsh
 set -euo pipefail
@@ -8,10 +8,13 @@ source "$SCRIPT_DIR/_lib.zsh"
 
 usage() {
   cat <<EOF
-${c_bold}install-jcrussell.zsh${c_reset} — build/install jcrussell Forge from local git tree
+${c_bold}build-install.zsh${c_reset} — build/install Forge from this git tree
+
+Prefer root ${c_blue}./install${c_reset} or ${c_blue}forge install${c_reset} for the full path.
+This helper is the low-level build + copy step.
 
 Usage:
-  install-jcrussell.zsh [options]
+  build-install.zsh [options]
 
 Options:
   --repo=PATH      Repo root (default: $FORGE_REPO_ROOT)
@@ -27,10 +30,10 @@ Options:
   --color=auto|always|never
   -h, --help
 
-Safe switch order:
-  1. install-jcrussell.zsh --build-only     # old Forge still running
-  2. uninstall.zsh                         # removes code only
-  3. install-jcrussell.zsh --install-only   # copies verified temp/
+Safe migrate order (EGO → this tree):
+  1. build-install.zsh --build-only     # old Forge still running
+  2. uninstall.zsh                      # removes code only
+  3. build-install.zsh --install-only   # copies verified temp/
 
 Requirements:
   • Node.js 20+
@@ -95,10 +98,10 @@ forge_do_build() {
   local node_major
   node_major=$(node -p "process.versions.node.split('.')[0]" 2>/dev/null || print 0)
   if (( node_major < 20 )); then
-    forge_die "Node.js 20+ required (found $(node -v)). Use nvm/n/fnm or install-node."
+    forge_die "Node.js 20+ required (found $(node -v)). Use nvm/n/fnm or install Node 20+."
   fi
 
-  forge_hdr "Build jcrussell Forge in $FORGE_REPO_ROOT"
+  forge_hdr "Build Forge in $FORGE_REPO_ROOT"
   forge_info "mode: $MODE | node $(node -v)"
 
   cd "$FORGE_REPO_ROOT"
@@ -187,7 +190,7 @@ if (( INSTALL_ONLY )); then
   exit 0
 fi
 
-# Full path: build then install (legacy convenience; switch script prefers split)
+# Full path: build then install (legacy convenience; migrate script prefers split)
 forge_do_build
 if [[ "$MODE" == "prod" && $DO_ENABLE -eq 1 ]]; then
   # make prod also restarts shell — keep parity only when full prod requested without split

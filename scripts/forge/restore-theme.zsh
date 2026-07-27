@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 # Restore Forge colors/stylesheet from a backup and stamp css-last-update
-# so jcrussell enable()/patchCss does not overwrite with defaults.
+# so enable()/patchCss does not overwrite with defaults.
 emulate -L zsh
 set -euo pipefail
 SCRIPT_DIR=${0:A:h}
@@ -11,7 +11,7 @@ usage() {
 ${c_bold}restore-theme.zsh${c_reset} — restore border/theme CSS from a forge-manage backup
 
 Why this exists:
-  jcrussell stores focus/split colors in
+  This tree stores focus/split colors in
   ~/.config/forge/stylesheet/forge/stylesheet.css
   EGO also had gsettings focus-border-color / split-border-color.
 

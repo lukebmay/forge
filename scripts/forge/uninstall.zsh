@@ -27,7 +27,7 @@ Notes:
   • Removes ${c_cyan}$FORGE_CLI_BIN${c_reset} only when it is our symlink/wrapper.
   • Does not touch backups under $FORGE_BACKUP_ROOT
   • Keeps install-origin.json so ${c_blue}forge install${c_reset} can reinstall.
-  • EGO and jcrussell share UUID $FORGE_UUID — this removes whichever is installed.
+  • EGO and this tree share UUID $FORGE_UUID — this removes whichever is installed.
 
 $(forge_print_deps_help)
 EOF

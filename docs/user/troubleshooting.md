@@ -77,8 +77,8 @@ clicks:
 
 ## Focus borders / colors look stock after install
 
-jcrussell stores colors in `~/.config/forge/stylesheet/forge/stylesheet.css`, not
-only in gsettings. After `make dev` / switch scripts:
+This fork stores colors in `~/.config/forge/stylesheet/forge/stylesheet.css`, not
+only in gsettings. After `make dev` / `./install` / migrate scripts:
 
 ```bash
 ./scripts/forge/restore-theme.zsh ~/.local/share/forge-manage/backups/latest
@@ -135,7 +135,7 @@ journalctl -e -u gnome-shell        # jump to the end (Wayland)
 
 Include your GNOME version (`gnome-shell --version`), session type (X11/Wayland),
 the steps to reproduce, and any relevant `journalctl` output. File issues against
-the fork: <https://github.com/jcrussell/forge/issues>.
+this project: <https://github.com/lukebmay/forge/issues>.
 
 ## Known limitations
 

@@ -62,7 +62,7 @@ not expose to GJS.
 
 ## Blank / wake and display thrash
 
-After **idle auto-lock**, DPMS blank, or hybrid-GPU re-probe, GNOME can fire a
+After **idle auto-lock**, DPMS blank, or GPU/connector re-probe, GNOME can fire a
 burst of `workareas-changed` while Mutter briefly reassigns windows to the
 primary head. Forge **soft-rehomes** on a short settle: it maps each tiled window
 back using last-quiet **stable output keys** when available, then geometry
@@ -88,7 +88,7 @@ overnight idle lock. To force the idle path for testing:
 ./scripts/forge/trigger-idle-lock.zsh --restore-only
 ```
 
-Or via `./scripts/forge/forge-ctl.zsh idle-lock --idle 15`.
+Or via `./scripts/forge/trigger-idle-lock.zsh --idle 15`.
 
 ### Install / update (disable→enable)
 

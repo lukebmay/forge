@@ -258,7 +258,7 @@ def format_short_path(path: Path | str, *, max_len: int = 36) -> str:
         pass
     if len(s) <= max_len:
         return s
-    # Drop whole components from the left: …/hosts/black/dev.json
+    # Drop whole components from the left: …/hosts/<host>/dev.json
     body = s[2:] if s.startswith("~/") else (s[1:] if s.startswith("/") else s)
     parts = [p for p in body.split("/") if p]
     if not parts:
@@ -278,14 +278,14 @@ def format_profile_list_line(
 ) -> str:
     """
     One human list line, e.g.
-    dev  [host] black  …/hosts/black/dev.json  Dual-mon morning…
+    dev  [host] laptop  …/hosts/laptop/dev.json  Dual-mon morning…
     """
     name = str(entry.get("name") or "?")
     source = str(entry.get("source") or "?")
     host = str(entry.get("host") or "")
     path = entry.get("path") or ""
     short = format_short_path(path) if path else ""
-    # e.g. dev  [host] black  …/hosts/black/dev.json  Dual-mon…
+    # e.g. dev  [host] laptop  …/hosts/laptop/dev.json  Dual-mon…
     head = f"{name}  [{source}]"
     if host:
         head = f"{head} {host}"

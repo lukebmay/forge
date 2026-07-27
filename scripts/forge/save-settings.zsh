@@ -27,7 +27,7 @@ What is saved:
   config/              copy of ~/.config/forge (windows.json, CSS colors, …)
   extension/           full installed extension (for rollback)
   gsettings-*.txt      human dump when schemas resolve
-  colors-ego.txt       EGO border color keys if present (for jcrussell CSS migrate)
+  colors-ego.txt       EGO border color keys if present (for CSS migrate to this tree)
   meta.json            host / version / lineage
 
 $(forge_print_deps_help)
@@ -113,7 +113,7 @@ else
   forge_info "no config dir (skipped)"
 fi
 
-# EGO-only color keys (for migrate → jcrussell CSS when stylesheet was stock)
+# EGO-only color keys (for migrate → this-tree CSS when stylesheet was stock)
 if [[ -f "$DEST/gsettings-forge.txt" ]]; then
   if grep -qE 'focus-border-color|split-border-color|focus-border-size' "$DEST/gsettings-forge.txt" 2>/dev/null; then
     grep -E 'focus-border-color|split-border-color|focus-border-size' "$DEST/gsettings-forge.txt" \

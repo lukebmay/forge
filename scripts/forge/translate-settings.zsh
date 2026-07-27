@@ -22,9 +22,9 @@ Options:
   -h, --help
 
 Notes:
-  • Same UUID is used by EGO and jcrussell; only the *schema keys* differ.
+  • Same UUID is used by EGO and this tree; only the *schema keys* differ.
   • EGO-only keys (focus-border-color/size, split-border-color, primary-layout-mode)
-    are dropped when targeting jcrussell (appearance moved to CSS / new prefs).
+    are dropped when targeting this tree (schema family) (appearance moved to CSS / new prefs).
   • Unknown keys left in dconf are usually harmless; translate keeps dumps clean.
   • Keybindings under [keybindings] are filtered against the same schema file.
 

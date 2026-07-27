@@ -213,10 +213,10 @@ Human stderr (dry-run and apply) includes:
 Default product path **auto recovers** with Mode B when thrashed (no refuse gate).
 `--safe` still reports Mode A/B but only emits open/move actions.
 
-**Known residual (black live):** stacking companions under a role with
-VSPLIT (e.g. Nautilus under left Ghostty, Facebook/Chess under right Ghostty)
-may still trip **Mode B** and soft-park into the last mon last group instead of
-tabbing into that term view (Mode A). Fallback is safe; ideal collect is
+**Known residual:** stacking companions under a role with VSPLIT (e.g. a file
+manager under a terminal pane that also holds other apps) may still trip
+**Mode B** and soft-park into the last mon last group instead of tabbing into
+that term view (Mode A). Fallback is safe; ideal collect is tracked in
 [TZ-mode-a-nested](../../agents/tasks/forge-workon-thrash-zero_tz-mode-a-nested.md).
 
 Optional top-level `floating: []` is reserved (location later).
@@ -270,12 +270,13 @@ Prefer **v2 reconcile** for daily use.
 
 Examples in-tree:
 
-- `scripts/forge/examples/workon-tiles-minimal.json` — dual-mon sugar  
+- `scripts/forge/examples/workon-tiles-minimal.json` — dual-monitor sugar  
 - `scripts/forge/examples/workon-tiles-nested.json` — nested splits  
 - `scripts/forge/examples/workon-minimal.json` — short IR  
-- `scripts/forge/examples/workon-dev-v2.json` — richer dual-mon IR sample  
+- `scripts/forge/examples/workon-dev-v2.json` — richer dual-monitor IR sample  
 
-Host profile (shellrc): `$FORGE_WORKON_DIR/hosts/<host>/dev.json` (sugar on black).
+Host profiles (optional multi-machine tree):
+`$FORGE_WORKON_DIR/hosts/<host>/<name>.json`.
 
 ## Where profiles live
 

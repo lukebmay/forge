@@ -1,10 +1,9 @@
 # Forge documentation
 
-Reference docs for [Forge](../README.md), an i3/sway-style tiling window manager
-for GNOME Shell. Start with the top-level [README](../README.md) (install,
-features) and [CONTRIBUTING.md](../CONTRIBUTING.md) (build/test); agent
-conventions live in [AGENTS.md](../AGENTS.md) (composed from `agents/`). These
-pages go deeper.
+Reference docs for [Forge](../README.md) ([lukebmay/forge](https://github.com/lukebmay/forge)),
+an i3/sway-style tiling window manager for GNOME Shell. Start with the top-level
+[README](../README.md) (lineage, features, install, `forge` CLI) and
+[CONTRIBUTING.md](../CONTRIBUTING.md) (build/test). These pages go deeper.
 
 > These pages reference code by file and symbol name (e.g. `renderTree()` in
 > `window.js`) rather than line numbers, so `grep`/your editor's symbol search is

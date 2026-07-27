@@ -22,7 +22,7 @@ Options:
   -h, --help
 
 Notes:
-  • UUID is always $FORGE_UUID (same as jcrussell) — this *replaces* the live extension.
+  • UUID is always $FORGE_UUID (same as this tree) — this *replaces* the live extension.
   • Save settings first: save-settings.zsh
   • After install: log out/in (X11: Alt+F2 r may work), then:
       gnome-extensions enable $FORGE_UUID

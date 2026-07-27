@@ -29,7 +29,7 @@ Options:
 
 Notes:
   • dconf is the live source of truth for Forge prefs/keybindings.
-  • Colors live in ~/.config/forge/stylesheet/forge/stylesheet.css (jcrussell).
+  • Colors live in ~/.config/forge/stylesheet/forge/stylesheet.css  (this tree).
   • After EGO→jcrussell, apply restores CSS and stamps css-last-update so
     enable()/patchCss does not replace your theme with defaults.
   • After switching EGO → jcrussell, prefer --translate=jcrussell.

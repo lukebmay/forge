@@ -1,12 +1,16 @@
 #!/usr/bin/env zsh
-# Multi-command front-end for scripts/forge/*.zsh
+# Multi-command front-end for scripts/forge/*.zsh (install / backup / migrate).
+# Day-to-day tiling control is `forge` (DBus), not forge-ctl.
 emulate -L zsh
 set -euo pipefail
 SCRIPT_DIR=${0:A:h}
 
 usage() {
   cat <<EOF
-forge-ctl — manage EGO ↔ jcrussell Forge installs
+forge-ctl — install, backup, and migrate helpers
+
+Day-to-day tiling: forge (tree, focus, launch, workon, …).
+This entry point is for build/install/settings tooling under scripts/forge/.
 
 Usage: forge-ctl <command> [args…]
 
@@ -22,12 +26,12 @@ Atomic commands:
   install                Unified install from this tree (lineage-aware)
   install-ego            Install from extensions.gnome.org
   uninstall              Remove user extension (keeps dconf)
-  install-jcrussell      Build+install this repo (make dev)
-  update                 Rebuild tree → live extension (restart Shell yourself)
+  build-install          Build+install this repo (make dev)
+  rebuild                Rebuild tree → live extension
   check-updates          Git (and optional --ego) update check
 
 Process flows:
-  switch-to-jcrussell    save → uninstall → install-jcrussell → apply
+  migrate-from-ego       save → uninstall → build-install → apply
   switch-to-ego          save → uninstall → install-ego → apply
   rollback [backup]      Restore extension/ from a backup
 
@@ -36,10 +40,13 @@ Global options (after command): --force --color=auto|always|never -h
 Examples:
   forge-ctl status
   forge-ctl save
-  forge-ctl update --force
-  forge-ctl switch-to-jcrussell --force
+  forge-ctl rebuild --force
+  forge-ctl migrate-from-ego --force
   forge-ctl check-updates --fetch --ego
   forge-ctl rollback ~/.local/share/forge-manage/backups/latest
+
+Preferred user path:
+  ./install              # or: forge install / forge update
 
 Env:
   FORGE_BACKUP_ROOT   default ~/.local/share/forge-manage/backups
@@ -64,11 +71,11 @@ case "$cmd" in
   install) exec "${SCRIPT_DIR:h}/install.zsh" "$@" ;;
   install-ego) exec "$SCRIPT_DIR/install-ego.zsh" "$@" ;;
   uninstall) exec "$SCRIPT_DIR/uninstall.zsh" "$@" ;;
-  install-jcrussell|install-dev) exec "$SCRIPT_DIR/install-jcrussell.zsh" "$@" ;;
-  update|update-jcrussell|reload-install) exec "$SCRIPT_DIR/update-jcrussell.zsh" "$@" ;;
+  build-install) exec "$SCRIPT_DIR/build-install.zsh" "$@" ;;
+  rebuild|update) exec "$SCRIPT_DIR/rebuild.zsh" "$@" ;;
   check-updates|check) exec "$SCRIPT_DIR/check-updates.zsh" "$@" ;;
-  switch-to-jcrussell|to-jcrussell|to-dev) exec "$SCRIPT_DIR/switch-to-jcrussell.zsh" "$@" ;;
-  switch-to-ego|to-ego) exec "$SCRIPT_DIR/switch-to-ego.zsh" "$@" ;;
+  migrate-from-ego) exec "$SCRIPT_DIR/migrate-from-ego.zsh" "$@" ;;
+  switch-to-ego) exec "$SCRIPT_DIR/switch-to-ego.zsh" "$@" ;;
   rollback) exec "$SCRIPT_DIR/rollback.zsh" "$@" ;;
   *)
     print -u2 "forge-ctl: unknown command: $cmd"

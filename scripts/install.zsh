@@ -31,7 +31,7 @@ Shell on X11. Quiet checklist UX (no prompts for routine paths).
 
   none / unknown     → build + install this tree
   luke / jcrussell   → rebuild this tree over the live extension
-  ego (SweetTooth)   → migrate with auto-backup (switch-to-jcrussell)
+  ego (SweetTooth)   → migrate with auto-backup (migrate-from-ego)
 
 Records install origin at:
   ${c_cyan}~/.local/share/forge-manage/install-origin.json${c_reset}
@@ -108,7 +108,7 @@ done
 
 [[ -f "$FORGE_REPO_ROOT/Makefile" && -f "$FORGE_REPO_ROOT/metadata.json" ]] \
   || forge_die "not a forge repo: $FORGE_REPO_ROOT"
-[[ -x "$SCRIPT_DIR/install-jcrussell.zsh" || -f "$SCRIPT_DIR/install-jcrussell.zsh" ]] \
+[[ -x "$SCRIPT_DIR/build-install.zsh" || -f "$SCRIPT_DIR/build-install.zsh" ]] \
   || forge_die "missing install helpers under $SCRIPT_DIR"
 
 lineage="none"
@@ -163,7 +163,7 @@ case "$lineage" in
     else
       args+=(--no-restart)
     fi
-    _install_step "Migrate" "$SCRIPT_DIR/switch-to-jcrussell.zsh" "${args[@]}"
+    _install_step "Migrate" "$SCRIPT_DIR/migrate-from-ego.zsh" "${args[@]}"
     forge_write_install_origin "$FORGE_REPO_ROOT" git >/dev/null || true
     if [[ -f "$FORGE_ORIGIN_PATH" ]] && forge_cli_bin_is_ours; then
       forge_step_ok "CLI"
@@ -202,10 +202,10 @@ fi
 build_args=(--force --build-only)
 [[ "$MODE" == "prod" ]] && build_args+=(--prod) || build_args+=(--dev)
 (( SKIP_NPM )) && build_args+=(--skip-npm)
-_install_step "Build" "$SCRIPT_DIR/install-jcrussell.zsh" "${build_args[@]}"
+_install_step "Build" "$SCRIPT_DIR/build-install.zsh" "${build_args[@]}"
 
 install_args=(--force --install-only --no-enable --no-host-defaults)
-_install_step "Install extension" "$SCRIPT_DIR/install-jcrussell.zsh" "${install_args[@]}"
+_install_step "Install extension" "$SCRIPT_DIR/build-install.zsh" "${install_args[@]}"
 
 # Enable: soft when we will HUP (often fails until reload); hard otherwise.
 if (( DO_RESTART )); then

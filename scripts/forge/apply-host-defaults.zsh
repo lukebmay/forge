@@ -9,7 +9,7 @@ usage() {
   cat <<EOF
 ${c_bold}apply-host-defaults.zsh${c_reset} — apply scripts/forge/host-defaults.conf
 
-Sets Forge + GNOME keybindings that should survive a jcrussell install.
+Sets Forge + GNOME keybindings that should survive a Forge install.
 Notably: lock on Super+Delete via Forge (GNOME screensaver is cleared by
 Forge enable to free Super+l for focus-right).
 
