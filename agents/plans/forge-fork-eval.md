@@ -26,7 +26,7 @@ install path. Three-way map: EGO (`forge-ext`) / community **jcrussell** /
 | Step | Action | Notes |
 | --- | --- | --- |
 | 0 | Read [personal-fork task](../tasks/forge-fork-eval_personal-fork.md) | Lock GitHub name + lineage id with Luke if needed |
-| 1 | Create GitHub fork; set `origin` / `upstream` | Push this `main` |
+| 1 | Create GitHub fork; set `origin` / `upstream` | Push this `master` |
 | 2 | Lineage + install-origin distinguish Luke vs jcrussell vs EGO | Minimal script/doc pass |
 | 3 | Smoke status / install origin | Close task → completed/ |
 

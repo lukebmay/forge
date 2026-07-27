@@ -69,7 +69,7 @@ Full workflow: [docs/dev/translations.md](docs/dev/translations.md).
 
 ## Submitting changes
 
-1. Branch off `main`.
+1. Branch off `master` (this fork’s default; upstream community repos use `main`).
 2. Make the change with a test; run `npm test` and `npm run lint`.
 3. Open a PR with a clear description of the problem and the fix.
 

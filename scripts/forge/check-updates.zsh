@@ -65,7 +65,7 @@ forge_hdr "jcrussell repo: $FORGE_REPO_ROOT"
 
 local_desc=$(git describe --tags --always --dirty 2>/dev/null || git rev-parse --short HEAD)
 branch=$(git rev-parse --abbrev-ref HEAD)
-remote=$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null || print "origin/main")
+remote=$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null || print "origin/master")
 forge_info "HEAD ${c_blue}$local_desc${c_reset} on ${c_cyan}$branch${c_reset} (upstream $remote)"
 
 if (( DO_FETCH )); then
@@ -85,15 +85,21 @@ if git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
     forge_ok "git branch is up to date with $remote (ahead=$ahead)"
   fi
 else
-  # fall back to origin/main
-  if git rev-parse origin/main >/dev/null 2>&1; then
-    behind=$(git rev-list --count HEAD..origin/main 2>/dev/null || print 0)
+  # fall back to origin default (this fork: master; older clones: main)
+  fb=""
+  if git rev-parse origin/master >/dev/null 2>&1; then
+    fb=origin/master
+  elif git rev-parse origin/main >/dev/null 2>&1; then
+    fb=origin/main
+  fi
+  if [[ -n "$fb" ]]; then
+    behind=$(git rev-list --count HEAD.."$fb" 2>/dev/null || print 0)
     if (( behind > 0 )); then
-      forge_warn "$behind commit(s) behind origin/main"
-      git log --oneline HEAD..origin/main | head -15
+      forge_warn "$behind commit(s) behind $fb"
+      git log --oneline "HEAD..$fb" | head -15
       avail=1
     else
-      forge_ok "in sync with origin/main"
+      forge_ok "in sync with $fb"
     fi
   else
     forge_warn "no upstream tracking branch; run with --fetch after git remote is set"

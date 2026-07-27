@@ -73,7 +73,7 @@ publishing, reviewing remotes, or explaining “our fork” vs upstream.
 ## Suggested implementation order
 
 1. Create GitHub fork + set remotes on this clone.  
-2. Push current `main` (or agreed branch) to personal origin.  
+2. Push current `master` (default on lukebmay/forge) to personal origin.  
 3. Pick lineage id; extend `forge_detect_lineage` + origin stamp (`source` /
    `lineage` fields).  
 4. Minimal script/doc renames so “jcrussell” means the **upstream community

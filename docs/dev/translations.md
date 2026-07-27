@@ -79,7 +79,8 @@ edit the `.po` files directly. Once Weblate is wired up, **don't hand-edit
 The plan is to crowd-source translations via [Hosted Weblate](https://hosted.weblate.org)
 (free for libre projects). Weblate watches the repo, detects template changes,
 propagates new strings into every `po/<lang>.po`, and opens **pull requests against
-`main`** with translator contributions. Adding a new language is done entirely in
+the default branch** (`master` on `lukebmay/forge`; `main` on jcrussell/forge-ext)
+with translator contributions. Adding a new language is done entirely in
 Weblate — it creates `po/<lang>.po`, which the Makefile's `wildcard po/*.po` picks
 up automatically (no `LINGUAS` file needed).
 
@@ -101,7 +102,8 @@ This is a manual, human-only step (cannot be scripted):
 3. Enable add-ons: *Update PO files to match POT (msgmerge)*, *Squash Git commits*,
    *Cleanup translation files*.
 4. Set the version control to **GitHub pull request** and connect Weblate's GitHub
-   integration, so writeback opens PRs from a `weblate/*` branch against `main`.
+   integration, so writeback opens PRs from a `weblate/*` branch against the
+   repo default (`master` here; `main` upstream).
 
 > Note: Weblate stamps `POT-Creation-Date` in the `.po` files it commits
 > ([weblate#5071](https://github.com/WeblateOrg/weblate/issues/5071)). That churn is

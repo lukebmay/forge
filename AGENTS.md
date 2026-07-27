@@ -18,11 +18,9 @@
 | --- | --- |
 | **EGO / forge-ext** | Upstream SweetTooth / `forge-ext/forge` (seeks maintainer) |
 | **jcrussell** | Community / AI-maintained fork on GitHub — **Phase A base** |
-| **This tree (Luke)** | Local product work on that base; **official personal GitHub fork not created yet** — see [forge-fork-eval_personal-fork](./tasks/forge-fork-eval_personal-fork.md) |
+| **This tree (Luke)** | Product work on jcrussell base; GitHub **`lukebmay/forge`** — see [forge-fork-eval_personal-fork](./tasks/forge-fork-eval_personal-fork.md) |
 
-Local path: `~/dev/me/forge_jcrussell` (name still says jcrussell; remotes may
-still point at jcrussell until the personal-fork task lands). Reference clone
-of upstream: `~/dev/me/forge_original`.
+Local path: `~/dev/me/forge`. Reference clone of upstream: `~/dev/me/forge_original`.
 
 Compose rules into root `AGENTS.md` (shellrc `agents`):
 
@@ -47,7 +45,8 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 
 | Branch | Role |
 | --- | --- |
-| `main` | GNOME 45+ — **this work** |
+| `master` | GNOME 45+ — **this work** (`lukebmay/forge` default) |
+| `main` | Upstream default on **jcrussell** / **forge-ext** (pull via `upstream/main`) |
 | `legacy` / `gnome-3-36` | GNOME 3.36 — feature-frozen |
 
 ### Priorities for agents
@@ -67,7 +66,7 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 | [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | FC6 via workon-reconcile plan |
 | [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + OP-opt **Done** | Live; thrash bugs interrupt; T9 later |
 | [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 **Done** | Optional B1 DnD extract only |
-| [personal fork](./tasks/forge-fork-eval_personal-fork.md) | Ready | Ownership/remotes — low daily tiling impact |
+| [personal fork](./tasks/forge-fork-eval_personal-fork.md) | In progress | Remotes live; lineage/docs remaining |
 
 **Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).  
 **Host `black`:** GNOME Shell 46, X11, dual 4K; **this tree** installed in place (not EGO v89).
