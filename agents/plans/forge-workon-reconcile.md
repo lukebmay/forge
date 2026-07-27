@@ -1,20 +1,23 @@
 # Plan: Idempotent `forge workon` (desired-state layout)
 
-**Status:** WR1–WR5 **Done** — next **WR6** live black trials  
+**Status:** WR1–WR5 **Done** — next **WR10** compact tiles sugar (A/B next session)  
 **Priority:** **P1 product** (day-to-day #3 after live regression watch)  
 **Base:** this tree; builds on [forge-command.md](./forge-command.md) FC0–FC5  
 **Related:** OP1 open-app, T6 GetTree, shellrc `gdisplays` host layout  
 
 ### Session note (2026-07-27)
 
-**Cross-mon placement + generic UX.** Move now calls `move_to_monitor`; mon
-child order via `position: start`; mon hsplit anchors skip tab members.
-**Generics:** no app/host hardcoding in Forge — profiles are pure JSON.
-Human defaults: omit version/mode; string match/open; mon hsplit; multi-role
-tabbed; child id from sole role. **Help:** colorized `forge help` (acronyms
-LFT/OP1/…) and `forge workon help` (minimal example + defaults). Example:
-`scripts/forge/examples/workon-minimal.json`. Live black desk still green;
-WR6 empty-desk cold trial optional.
+**Product locks (sugar + marginal).** Human profiles should be a nested
+`tiles` sketch (arrays = mon panes; nested arrays = tab groups; bare string
+= single app). Split type inferred (wider-than-tall → h, else v); multi-app
+pane → tabbed; role ids auto-generated with de-dupe suffixes. Desugars to
+existing v2 IR — engine stays roles/slots/planner. Defaults:
+`marginal.mode=coexist`, `roleOrder=first` (omit-noise). Logical atomic
+slots (group-of-one in planner; physical CON only when 2+ members). Residual
+unclaimed → overflow; `--clean` later opt-in. **Next implement (usefulness
+order):** WR10 sugar → WR11 coexist → WR12 shellrc `dev` sugar → WR13 docs
+→ WR14 post-apply tab chrome → WR6 live trials → WR15 `--clean`. Live black
+apply already worked once (minor tab-click lag).
 
 ---
 
@@ -43,7 +46,9 @@ FC5 (`forge workon`) proved the command name and step engine. It is the
 > Sitting down (or returning from chaos), I run one command. Without
 > thinking about what is already open, I get **the same comfortable dual-mon
 > layout**. Running it twice does **nothing harmful**. Extra windows are
-> parked, not destroyed. I never babysit tiles for ten minutes.
+> kept when they already live in a workon slot, otherwise parked — not
+> destroyed. I never babysit tiles for ten minutes. Writing a profile is a
+> five-line nested list of apps, not a roles+layout essay.
 
 ### UX principles
 
@@ -51,37 +56,41 @@ FC5 (`forge workon`) proved the command name and step engine. It is the
 | --- | --- |
 | **Idempotent by default** | Second `forge workon dev` ≈ no-op if already satisfied |
 | **Reuse before open** | Match existing tiles; launch only gaps |
-| **Never surprise-kill** | Surplus → park (overflow), not close |
-| **Visible plan** | `--dry-run` prints reused / open / move / park before apply |
+| **Never surprise-kill** | Residuals park (overflow); close only with `--clean` |
+| **Coexist by default** | Companions already in a workon slot stay; roles ordered first |
+| **Author by sketch** | Compact `tiles` sugar; engine expands to v2 IR |
+| **Opinionated defaults** | Split, tabbed, ids, marginal — omit noise |
+| **Visible plan** | `--dry-run` prints reused / open / move / park / kept before apply |
 | **Honest report** | JSON summary after run (counts + role → window) |
 | **Fast enough** | Sub-second plan; apply dominated by any needed launches |
 | **Host-aware configs** | Same profile *name* can differ per machine (mon count, apps) |
 | **One place for many machines** | Profiles versioned in shellrc; not only `~/.config` on one box |
 | **Discoverable** | `forge workon list` shows host + which file won |
 | **Escape hatch** | `--force-launch` keeps imperative FC5 path for debug |
+| **Full schema remains** | Explicit `roles` + `layout` always valid (canonical IR) |
 
 ### Feel of a good morning
 
 ```text
 $ forge workon dev
 forge workon: host=black profile=dev
-  reused  6   opened  0   moved  1   parked  2
+  reused  6   opened  0   moved  1   kept  2   parked  0
   ok
 
 $ forge workon dev          # already perfect
 forge workon: nothing to do (6 roles satisfied)
 ```
 
-Bad morning (today): double Grok, double Gmail, four Ghostties, path soup.
-
 ### What humans should *not* need to know
 
 - Tree path indices (`mo0ws0/1/0`)
-- Whether a PWA reports `crx_*` vs `Google-chrome`
+- Whether a PWA reports `crx_*` vs `Google-chrome` (until match fails)
 - Whether Chrome profile dir is `Default`
 - Order of aspect-split vs tab layout ops
+- Explicit `layout: tabbed` / `split: hsplit` for the common case
 
-They declare **roles + shape**; the planner owns structure repair.
+They declare **apps in places** (sugar) or **roles + shape** (IR); the
+planner owns structure repair, claim, and companions.
 
 ---
 
@@ -91,15 +100,158 @@ They declare **roles + shape**; the planner owns structure repair.
 | --- | --- |
 | Default mode | **Reconcile** (desired state), not imperative steps |
 | FC5 steps | Still supported (`version: 1` / `mode: steps`) for scripts |
-| Schema | `version: 2` + `mode: "reconcile"` (or omit mode → reconcile when `roles` present) |
+| Canonical IR | v2: `roles[]` + `layout` (or desugared equivalent) |
+| Authoring UX | **Compact `tiles` sugar** (preferred); desugars → IR before plan |
 | Matching | Role matchers claim **at most one** window each (global claim set) |
 | Missing role | Launch via existing `open` / `app` once, then place |
-| Extra copies of a role | First claim wins; extras → unclaimed → overflow |
-| Non-role windows | **Park** per overflow policy (never kill in v1) |
-| Already perfect | No spawn; minimal or zero tree mutations |
-| Overflow default | Tabbed **overflow** group on primary monitor (rightmost sibling) — revisit if bad |
+| Extra copies of a role | First claim wins; extras → residual (not auto-companion unless already in slot CON) |
+| **Marginal default** | `marginal.mode = "coexist"` (omit-noise) |
+| **roleOrder default** | `"first"` — role windows prefix of slot membership |
+| Coexist | Unclaimed already in a workon **slot set** → **keep** after roles |
+| Residuals | Not in any slot set → **overflow** (default `mon0.overflow` tabbed) |
+| Close | **Never** default; `--clean` / profile opt-in later (WR15) |
+| Slot model | Every named slot is a **logical group**; physical CON only when 2+ members (tree collapses 1-child CONs) |
+| Multi-app pane | Infer **tabbed** from ≥2 apps/roles (override: stacked / explicit split) |
+| Mon split | Infer from geometry (wider-than-tall → **h**, else **v**); override `split: "h"` / `"v"` / `"hsplit"` / … |
+| Nested splits | Nested arrays / `{ split, content }` in sugar → nested layout IR |
+| Role ids | Auto from open token; de-dupe with `-2`, `-3`, … or mon/slot suffix |
+| Floating | Top-level `floating: []` (not mon-owned); location later |
 | Dry-run | `--dry-run` |
 | Force old behavior | `--force-launch` or profile `mode: "steps"` |
+| Nearest-slot residual | **Not default** — later opt-in only |
+
+---
+
+## Compact sugar (authoring)
+
+### Happy path (most desks)
+
+Root key **`tiles`** (preferred short name; `layout` still accepted as IR /
+explicit form). Array under `monN` = left→right (or top→bottom if v-split)
+panes. Nested array = tab group. Bare string = single app in that pane.
+
+```json
+{
+  "tiles": {
+    "mon0": [
+      ["google-chrome …", "grok …"],
+      "ghostty"
+    ],
+    "mon1": [
+      "ghostty",
+      ["youtube …", "gmail …", "voice …"]
+    ]
+  },
+  "floating": []
+}
+```
+
+| Sugar | Meaning |
+| --- | --- |
+| `monN: [ a, b ]` | Two mon children; **split inferred** (dual 4K → usually `h`) |
+| `["app1", "app2"]` | One slot, two roles, **tabbed** |
+| `"ghostty"` | One slot, one role (logical group of 1; no lonely tab chrome) |
+| `["ghostty"]` | Same as bare string |
+| Nested deeper | Nested split node (see below) |
+| String cell | Role: open (+ best-effort match); id auto |
+| Rich object cell | Full role fields when match needs titles / class |
+
+**Top-level `tiles` vs bare mon map:** Prefer `"tiles": { "mon0": … }`.
+A bare `{ "mon0": … }` only if unambiguous (no clash with other keys).
+Do **not** require a redundant `"layout"` wrapper for sugar — `tiles` *is*
+the human layout. Canonical IR may still use `layout` after normalize.
+
+### Explicit split override + nested
+
+```json
+{
+  "tiles": {
+    "mon0": [
+      ["google-chrome …", "grok …"],
+      "ghostty"
+    ],
+    "mon1": {
+      "split": "h",
+      "content": [
+        "ghostty",
+        {
+          "split": "v",
+          "content": [
+            ["youtube …", "gmail …", "voice …"],
+            "nautilus"
+          ]
+        }
+      ]
+    }
+  },
+  "floating": []
+}
+```
+
+Array-only form can nest arrays for the same structure when unambiguous
+(e.g. mon1 right child is `[ [yt, gmail, voice], "nautilus" ]` with inferred
+v-split on that node by aspect). Prefer explicit `{ "split": "v", "content": … }`
+when the nest would be ambiguous.
+
+### Split aliases
+
+| Write | Normalized |
+| --- | --- |
+| `h`, `horizontal`, `hsplit` | `hsplit` |
+| `v`, `vertical`, `vsplit` | `vsplit` |
+| omit | geometry: width ≥ height → h, else v (per mon or node rect when known; dual-mon desk default h for top-level mon) |
+
+### Desugar pipeline
+
+```text
+profile JSON
+  → detect sugar (tiles / nested arrays / string cells)
+  → normalize_profile() → canonical v2 { roles[], layout, marginal, overflow, … }
+  → plan_reconcile(forest, ir)   # existing pure planner
+```
+
+One planner. Two spellings. Dry-run may show expanded role ids + slots.
+
+### Cell → role defaults
+
+| Cell | id | open | match |
+| --- | --- | --- | --- |
+| `"ghostty"` | `ghostty` (then `ghostty-2` …) | app/command token | best-effort class / desktop id |
+| `"google-chrome …"` | stem of command | full open argv/app | weak until refined |
+| `{ "id", "match", "open" }` | as given | as given | as given |
+
+Duplicate open tokens across slots (two Ghostties) → distinct ids;
+claim still prefers mon/slot order.
+
+---
+
+## Marginal apps + atomic slots
+
+### Defaults (omit-noise)
+
+```json
+"marginal": { "mode": "coexist", "roleOrder": "first" }
+```
+
+Only write when different (`strict` park-all unclaimed, later `clean`).
+
+### Logical slot = membership set
+
+| Layer | Rule |
+| --- | --- |
+| **Planner** | Every named slot is an atomic bag: roles (ordered) + companions |
+| **Tree** | 1 member → bare tile (collapse OK). 2+ → tabbed/stacked CON |
+| **Coexist** | Unclaimed already in slot set → keep after roles |
+| **Residual** | Not in any slot set → overflow |
+| **Promote** | Companion join on singleton → create tab CON; roles first |
+
+### `--clean` (WR15, not default)
+
+| Flag | Behavior |
+| --- | --- |
+| default | coexist + park residuals |
+| `--clean` | close residuals only (after claim + keep); respect close veto |
+| `--clean --force` | stronger close where API allows — never process-kill |
 
 ---
 
@@ -119,92 +271,50 @@ Mirror **gdisplays**: app code in Forge; **user data in shellrc**.
 
 | Piece | Owner |
 | --- | --- |
-| Planner + executor | **Forge** (`scripts/forge/`, pure lib + CLI) |
+| Planner + executor + sugar normalize | **Forge** (`scripts/forge/`) |
 | Profile JSON per host | **shellrc** `configs/forge/workon/hosts/<host>/` |
 | Shared templates | shellrc `configs/forge/workon/common/` |
 | Env | `FORGE_WORKON_DIR`, `FORGE_HOST` (like `GDISPLAYS_HOST`) |
 
-### shellrc layout (proposed)
-
-```text
-~/dev/me/shellrc/configs/forge/workon/
-  README.md
-  common/
-    dev.json                 # optional shared baseline
-  hosts/
-    black/
-      dev.json               # dual 4K morning layout
-      rec.json               # optional recording layout
-    green/                   # another machine
-      dev.json               # different mon count / apps
-```
-
-**Why hostname folders**
-
-- One git repo for all machines (like displays).
-- `dev` on `black` ≠ `dev` on a laptop.
-- Copy/adapt profiles without polluting live `~/.config` until loaded.
-
-**Install / discover**
-
-- shellrc may export `FORGE_WORKON_DIR=$shellrc/configs/forge/workon` from a small
-  `shell-sources` snippet (same pattern as gdisplays).
-- Without shellrc, XDG `~/.config/forge/workon/` still works (FC5 compat).
-
-**Not in this plan’s critical path:** auto-sync or install hooks — document
-env + layout; shellrc wires env when convenient.
-
 ---
 
-## Desired-state model (roles + shape)
+## Desired-state model (canonical IR)
+
+Still the engine target. Sugar expands into this.
 
 ### Role
 
 ```json
 {
   "id": "grok",
-  "match": {
-    "class": "Google-chrome",
-    "title~=": "Grok"
-  },
-  "open": {
-    "app": "Grok",
-    "wmClass": "Google-chrome",
-    "timeout": 25000
-  },
+  "match": { "class": "Google-chrome", "title~=": "Grok" },
+  "open": { "app": "Grok", "wmClass": "Google-chrome", "timeout": 25000 },
   "slot": "mon0.left-tab"
 }
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `id` | Stable name for reports |
-| `match` | Selector grammar subset (class, title, title~=, class@mon, …) |
-| `open` | Same as today’s launch fields; used only if no match |
-| `slot` | Named place in `layout` |
-
 ### Layout shape (slots)
+
+Explicit IR (also what dry-run expansion may show):
 
 ```json
 {
   "version": 2,
-  "mode": "reconcile",
-  "description": "Dual-mon morning on black",
-  "displays": "default",
+  "marginal": { "mode": "coexist", "roleOrder": "first" },
   "overflow": { "slot": "mon0.overflow", "layout": "tabbed" },
   "layout": {
     "mon0": {
       "split": "hsplit",
       "children": [
-        { "id": "left-tab", "layout": "tabbed", "roles": ["chrome-luke", "grok"] },
-        { "id": "term", "roles": ["ghostty-left"] }
+        { "id": "s0", "layout": "tabbed", "roles": ["chrome-luke", "grok"] },
+        { "id": "s1", "roles": ["ghostty"] }
       ]
     },
     "mon1": {
       "split": "hsplit",
       "children": [
-        { "id": "term", "roles": ["ghostty-right"] },
-        { "id": "comms", "layout": "tabbed", "roles": ["youtube", "gmail", "voice"] }
+        { "id": "s0", "roles": ["ghostty-2"] },
+        { "id": "s1", "layout": "tabbed", "roles": ["youtube", "gmail", "voice"] }
       ]
     }
   },
@@ -212,17 +322,16 @@ env + layout; shellrc wires env when convenient.
 }
 ```
 
-Monitor keys: `mon0` / `mon1` / `primary` / later T7 stableKey aliases.
-
 ### Black `dev` (target)
 
 | Slot | Roles |
 | --- | --- |
-| mon0 left tab | Chrome (lukebmay / main browser), Grok PWA |
+| mon0 left tab | Chrome (main), Grok PWA |
 | mon0 right | Ghostty |
 | mon1 left | Ghostty |
 | mon1 right tab | YouTube, Gmail, Google Voice PWAs |
-| overflow | Everything else |
+| companions | e.g. Nautilus with Ghostty, social in left tab — **kept** under coexist |
+| overflow | True residuals only |
 
 ---
 
@@ -230,24 +339,20 @@ Monitor keys: `mon0` / `mon1` / `primary` / later T7 stableKey aliases.
 
 ```text
 1. Resolve profile path (host search order)
-2. Optional: gdisplays load (displays field) — same as FC5
-3. GetTree snapshot
-4. Match + claim roles (each window ≤ 1 role)
-5. Diff slots vs claimed homes → plan:
+2. normalize_profile (sugar → IR; fill marginal/split/tabbed/ids defaults)
+3. Optional: gdisplays load (displays field)
+4. GetTree snapshot
+5. Match + claim roles (each window ≤ 1 role)
+6. Diff slots vs claimed homes → plan:
      - open missing
      - move wrong mon/group
-     - ensure tabbed/hsplit structure
-     - park unclaimed into overflow
-6. If --dry-run: print plan; exit
-7. Apply:
-     - launches (CLI) then wait
-     - batch move/layout via RunSteps (freeze once where possible)
-8. Report counts + per-role outcome
+     - ensure tabbed/hsplit structure (logical slots)
+     - keep coexist companions (roleOrder first)
+     - park residuals into overflow
+7. If --dry-run: print plan; exit
+8. Apply (+ optional settle focus / tab chrome)
+9. Report counts + per-role outcome
 ```
-
-**Complexity:** O(windows × roles) — fine for tens of windows.  
-**Hard parts:** Chrome multi-window match quality; tab CON repair; two Ghostties
-(claim set). Not hard: runtime cost.
 
 ---
 
@@ -260,62 +365,72 @@ shellrc configs/forge/workon/hosts/<host>/<name>.json
 forge workon <name> [--dry-run]
         │
         ├─ resolve profile (host → common → XDG)
-        ├─ workon_plan.py (pure): tree + profile → actions[]
+        ├─ normalize (sugar → v2 IR)          # WR10
+        ├─ workon_plan.py (pure): tree + IR → actions[]
         ├─ execute: launch gaps | RunSteps moves/layouts
         └─ report JSON + human stderr lines
 ```
 
 | Layer | Owns |
 | --- | --- |
-| Pure planner | Match, claim, structure diff, overflow — **unit tests, no Shell** |
+| Pure normalize | Tiles sugar, defaults, id de-dupe — **unit tests** |
+| Pure planner | Match, claim, structure, coexist, overflow — **unit tests** |
 | CLI | Resolve paths, displays, dry-run, apply, report |
-| Extension | Existing Focus/Move/Layout/RunSteps/PlaceNext only — **no new DBus in v1** if possible |
-
-Reuse FC1 selectors and FC4 RunSteps. Prefer **no new Mutter API** for the MVP.
+| Extension | Focus/Move/Layout/RunSteps — no new DBus unless required |
 
 ---
 
-## Task table
+## Task table (by usefulness — implement this order)
 
-| ID | Task | Status | Effort | Outcome |
+| ID | Task | Status | Effort | Why this order |
 | --- | --- | --- | --- | --- |
-| **WR0** | Product locks + schema sketch in DESIGN; overflow default | **Done** (this plan) | S | Shared language |
-| **WR1** | Pure planner: match/claim/diff → actions; fixtures from real trees | **Done** | M | `workon_plan.py` + tests |
-| **WR2** | Profile resolve: host/common/XDG + `FORGE_WORKON_DIR` / `FORGE_HOST` | **Done** | S | list/show show path source |
-| **WR3** | Executor: apply plan (launch gaps + RunSteps); dry-run | **Done** | M | `forge workon` reconcile path |
-| **WR4** | Migrate `dev` to v2 roles; shellrc `hosts/black/dev.json` + README | **Done** | S | Real daily profile |
-| **WR5** | UX: human summary, dry-run, list/show host tags; docs | **Done** | S | Morning-proof CLI |
-| **WR6** | Live on black: empty + already-perfect + messy tree trials | Ready | S | Acceptance |
+| **WR0–WR5** | Locks, planner, resolve, apply, black v2, UX | **Done** | — | Shipped base |
+| **WR10** | Compact **tiles sugar** → normalize to v2 IR; unit tests; example | **Ready** | M | Biggest authoring win; unblocks friendly configs |
+| **WR11** | **Marginal coexist** + `roleOrder: first` + logical atomic slots | **Ready** | M | Lived-in desk; Nautilus/social keep; makes workon daily-usable |
+| **WR12** | shellrc `hosts/black/dev.json` → sugar + README | **Ready** | S | Real profile uses new UX (**shellrc repo**) |
+| **WR13** | Docs/help/examples: sugar defaults, coexist, floating | **Ready** | S | Discoverability |
+| **WR14** | Post-`workon` **tab click / focus settle** | **Ready** | S | Bug after successful apply |
+| **WR6** | Live black: empty / perfect / messy + companions | **Ready** | S | Acceptance after sugar+coexist |
+| **WR15** | `--clean` / `--clean --force` (residuals only) | Later | S | Escape hatch; not default path |
+| **WR7** | `forge workon capture` sketch from tree | Later | M | Authoring assist after sugar lands |
+| **WR8** | stableKey mon names (T7) in profiles | Later | S | Multi-host polish |
+| **WR9** | shellrc env snippet `FORGE_WORKON_DIR` | Later | S | Out of critical path |
 
-Optional later:
+**Active task files:**
 
-| ID | Idea |
+| Task | Path |
 | --- | --- |
-| WR7 | `forge workon capture dev` — sketch roles from current tree (assist authoring) |
-| WR8 | stableKey mon names from T7 in profiles |
-| WR9 | shellrc install env snippet + `agents` docs cross-link |
+| WR10 | [forge-workon-reconcile_wr10-tiles-sugar.md](../tasks/forge-workon-reconcile_wr10-tiles-sugar.md) |
+| WR11 | [forge-workon-reconcile_wr11-marginal-coexist.md](../tasks/forge-workon-reconcile_wr11-marginal-coexist.md) |
+| WR12 | [forge-workon-reconcile_wr12-shellrc-dev-sugar.md](../tasks/forge-workon-reconcile_wr12-shellrc-dev-sugar.md) |
+
+**Next session A/B:** start **WR10**, then WR11, then WR12 (shellrc).
 
 ---
 
-## Acceptance (done when)
+## Acceptance (done when — full plan)
 
 1. **Empty workspace:** `forge workon dev` builds dual-mon target layout.  
 2. **Already perfect:** second run opens **0** apps; report “nothing to do” / only no-ops.  
 3. **Partial:** missing Grok only → one launch; existing tiles reused.  
-4. **Messy / doubled:** extras parked; roles filled without a third Gmail if two exist.  
-5. **Host resolve:** profile from shellrc `hosts/black/dev.json` when env pointed there.  
-6. **`--dry-run`:** shows plan; no mutations.  
-7. Unit tests for planner without Shell; smoke on live install.
+4. **Messy / doubled:** extras residual-parked or kept; roles filled without third Gmail if two exist.  
+5. **Companions:** Nautilus in Ghostty slot / social in left tab **kept** under default coexist.  
+6. **Sugar profile:** black `dev` expressible as short `tiles` JSON; desugars equal to prior IR intent.  
+7. **Host resolve:** profile from shellrc `hosts/black/dev.json` when env pointed there.  
+8. **`--dry-run`:** shows plan; no mutations.  
+9. Unit tests for normalize + planner without Shell; smoke on live install.
 
 ---
 
-## Non-goals (v1)
+## Non-goals (near term)
 
-- Closing or killing windows  
+- Closing/killing as default  
+- Spatial nearest-slot residual as default  
 - Full session-layout / pixel restore of every window  
 - GUI profile editor  
 - i3-level marks/scratchpads  
 - Replacing shellrc `workon` name (always **`forge workon`**)  
+- Process-kill or “windows without processes” heuristics  
 - New DBus methods unless Move/Layout prove insufficient  
 
 ---
@@ -323,17 +438,21 @@ Optional later:
 ## Dependency graph
 
 ```text
-FC0–FC5 (shipped)
+WR1–WR5 (shipped)
     │
     ▼
-WR1 pure planner ──► WR3 executor
-    │                    │
-WR2 path resolve ────────┤
-                         ▼
-              WR4 black dev profile + shellrc tree
-                         │
-                         ▼
-              WR5 UX/docs ──► WR6 live accept
+WR10 tiles sugar normalize ──► WR12 shellrc dev sugar
+    │                              │
+    ▼                              │
+WR11 marginal coexist ─────────────┤
+    │                              │
+    ▼                              ▼
+WR13 docs/help ◄───────────────────┘
+    │
+    ├─► WR14 tab settle (can parallel if repro)
+    └─► WR6 live accept
+              │
+              └─► WR15 --clean (optional)
 ```
 
 ---
@@ -342,32 +461,36 @@ WR2 path resolve ────────┤
 
 | Risk | Mitigation |
 | --- | --- |
-| Chrome windows hard to tell apart | Prefer PWA titles; main browser = “Chrome” title / not PWA titles; document matchers |
-| Structure repair wrong (tab whole mon) | Planner builds explicit tab CONs; tests from messy-tree fixtures |
-| gdisplays load disruptive | Keep optional; default profiles may omit `displays` |
-| Host mismatch (`black` vs container) | `FORGE_HOST` override; list shows resolved host |
+| Chrome windows hard to tell apart | Sugar allows rich cells; prefer PWA titles; refine matchers live |
+| Sugar ambiguous nests | Prefer explicit `{ split, content }` when array nest unclear |
+| Weak match from open token only | Dry-run shows match; document rich object escape |
+| Structure repair thrash with coexist | Reorder-in-place; promote singleton carefully |
+| Tab chrome dead after mass move | WR14 settle pass |
+| shellrc vs forge split | WR12 in shellrc; forge tests use in-tree examples |
 
 ---
 
 ## Docs to update when implementing
 
-- `docs/DESIGN.md` — durable “why reconcile”  
-- `docs/user/` — short workon UX page  
-- `scripts/forge/README.md` — resolve order + flags  
-- shellrc `configs/forge/workon/README.md` — host layout (shellrc commit separate)  
-- `agents/PRIORITY.md` — keep this as P1 until WR6 done  
+- `docs/DESIGN.md` — sugar + coexist durable why  
+- `docs/user/workon.md` — authoring sketch first  
+- `scripts/forge/README.md` + `forge workon help`  
+- shellrc `configs/forge/workon/README.md` + `hosts/black/dev.json`  
+- `agents/PRIORITY.md`  
 
 ---
 
-## Open product choices (defaults above; change only if wrong)
+## Open product choices (mostly locked)
 
-1. **Overflow:** tabbed group on primary vs spare workspace vs float — **default: primary tabbed overflow**.  
-2. **Two Ghostties:** roles `ghostty-left` / `ghostty-right` same match class, claim order by current mon preference then any.  
-3. **Main Chrome:** match non-PWA Chrome on Default profile heuristic vs explicit title list — refine in WR4 with live titles.
+1. **Overflow:** primary tabbed overflow — keep.  
+2. **Two Ghostties:** claim by mon preference — keep.  
+3. **Root key name:** `tiles` preferred for sugar; IR uses `layout` after normalize.  
+4. **Nearest residual / process heuristics:** deferred.  
 
 ---
 
 ## Next task
 
-**WR6** — live accept on black (empty / already-perfect / messy). Do not
-start while thrash is open.
+**WR10** — compact tiles sugar normalize (pure + tests).  
+Task: [../tasks/forge-workon-reconcile_wr10-tiles-sugar.md](../tasks/forge-workon-reconcile_wr10-tiles-sugar.md).  
+A/B loop next session.

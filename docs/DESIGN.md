@@ -589,6 +589,37 @@ shorthands: string `match`/`open`, default mon `hsplit`, multi-role
 `tabbed`, omit `version`/`mode` when `roles[]` present. User guide:
 [docs/user/workon.md](user/workon.md).
 
+**Compact tiles sugar + marginal coexist (product locks 2026-07-27):**
+
+Humans should not write a roles essay for a morning desk. Preferred
+authoring is a nested **`tiles`** sketch:
+
+```json
+{
+  "tiles": {
+    "mon0": [ ["chrome", "grok"], "ghostty" ],
+    "mon1": [ "ghostty", ["youtube", "gmail", "voice"] ]
+  }
+}
+```
+
+Arrays under a mon are panes (order = spatial order). Nested arrays are
+tab groups. Bare strings are single-app panes. **Split** is inferred
+(wider-than-tall → horizontal; override `"split": "h"` / `"v"`). **Tabbed**
+is inferred when a pane has ≥2 apps. Role ids auto-de-dupe. Nested
+`{ split, content }` (or nested arrays) cover a v-split under an h-split
+without a second schema.
+
+Sugar **desugars** into the existing v2 IR (`roles[]` + `layout`). One
+planner, two spellings — rehome/claim/structure repair stay on IR.
+
+**Marginal windows** default to **coexist**: companions already living in a
+workon slot stay; role windows are ordered **first** in that slot. True
+residuals go to overflow. Close is never default (`--clean` later). Each
+slot is a **logical** group (planner membership set); the live tree still
+collapses single-child CONs, so a lone Ghostty is not forced into lonely
+tab chrome until a second member appears.
+
 Plan: [agents/plans/forge-workon-reconcile.md](../agents/plans/forge-workon-reconcile.md).
 
 | Field (v1 steps) | Role |
