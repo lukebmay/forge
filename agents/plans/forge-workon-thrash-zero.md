@@ -1,25 +1,20 @@
 # Plan: Zero thrash for `forge workon` (product gate)
 
-**Status:** Active — **P0** (TZ1…TZ-gate shipped A; next B verify → TZ-matrix)  
+**Status:** Active — **P0** (TZ1…TZ-matrix **Done** A+B; next **TZ-live**)  
 **Priority:** **P0 product survival** (outranks polish, tidy, optional extracts)  
 **Base:** this tree  
 **Related:** [forge-workon-reconcile.md](./forge-workon-reconcile.md) WR11–WR16,
 session H1 soft-rehome (different thrash class — lock/wake Meta)
 
-### Session note (2026-07-27) — TZ-gate shipped (A)
+### Session note (2026-07-27) — TZ-matrix B AGREE
 
-**TZ-gate Done (implementer):** CLI surfaces Mode A/B + thrashState/thrashRisk.
-`--safe` = open+move roles only (`plan_reconcile(..., safe=True)`). No refuse-on-
-high-risk gate (auto Mode B preferred). `--force` stays clean force_close only.
+**TZ-matrix Done (A+B):** `TestThrashModeMatrix` — five rows locked
+(thrashState + counts + action shapes). Fixtures:
+`tree-voice-mon-direct.json`, `tree-wrong-mon-roles.json` (new); perfect /
+thrash-nested / companions-direct (reuse). B: plan dumps match asserts;
+`pytest tests/unit/cli -q` → **188 passed**. No extension changes.
 
-| Surface | Behavior |
-| --- | --- |
-| stderr | `mode=A collect` / `mode=B thrash-recover`; `thrashState` if thrashed; `thrashRisk` if score&gt;0 |
-| `--safe` | no park/close/collect/structure/ensure; thrashState still set |
-| Docs | `cli_help.py`, `docs/user/workon.md` |
-| Tests | `TestSafeMode` (+ prior thrash suite); cli pytest 183 |
-
-**Next:** B verify **TZ-gate** → **TZ-matrix** / **TZ-live**.
+**Next:** **TZ-live**.
 
 
 ---
@@ -169,10 +164,10 @@ Serial A implement → B verify; max 5 rounds; fresh agents per task.
 | **TZ-collect** | [task](../tasks/forge-workon-thrash-zero_tz-collect.md) | Mode A: tab marginals into overlapping view areas | M | **Done** A (B verify) |
 | **TZ-tab-apply** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-tab-apply.md) | Tab structure apply yields TABBED not nested HSPLIT | M | **Done** A/B AGREE |
 | **TZ-gate** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-gate.md) | CLI: Mode A collect / Mode B recover; `--safe` / `--force` | S | **Done** A/B AGREE |
-| **TZ-matrix** | [task](../tasks/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix + dry-run goldens for A/B modes | M | TZ-recover + TZ-tab-apply |
-| **TZ-live** | [task](../tasks/forge-workon-thrash-zero_tz-live.md) | Live black checklist (FB/Chess, Voice pull, thrash recover) | S | TZ-gate |
+| **TZ-matrix** | [completed](./forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-matrix.md) | Fixture matrix lock table for A/B modes | M | **Done** A/B AGREE |
+| **TZ-live** | [task](../tasks/forge-workon-thrash-zero_tz-live.md) | Live black checklist (FB/Chess, Voice pull, thrash recover) | S | **Next** |
 
-**Next task:** B verify **TZ-gate** → **TZ-matrix**.
+**Next task:** **TZ-live**.
 
 ---
 

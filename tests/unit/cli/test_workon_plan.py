@@ -494,6 +494,141 @@ class TestPlanPerfect(unittest.TestCase):
         self.assertTrue(all(r["status"] == "reused" for r in plan["roles"]))
 
 
+class TestThrashModeMatrix(unittest.TestCase):
+    """TZ-matrix: lock table for Mode A/B thrash plans (regression).
+
+    One fixture row per thrash class — asserts thrashState + counts + key
+    action shapes. Detailed Mode A/B behavior stays in sibling classes.
+    """
+
+    def _plan(self, forest_name: str):
+        return plan_reconcile(_load(forest_name), _load("profile-dev-v2.json"))
+
+    def test_perfect_dual_mon_nothing_to_do(self):
+        """perfect dual-mon → nothingToDo / not thrashed."""
+        plan = self._plan("tree-perfect.json")
+        self.assertTrue(plan["ok"])
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["thrashState"]["score"], 0)
+        self.assertTrue(plan["nothingToDo"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["structure"], 0)
+        self.assertEqual(plan["actions"], [])
+        self.assertEqual(plan["counts"]["reused"], 7)
+
+    def test_thrash_mon1_nested_hsplit_mode_b_park(self):
+        """thrash mon1 nested HSPLIT → Mode B: roles reused + park FB/Chess."""
+        plan = self._plan("tree-thrash-mon1-nested-hsplit.json")
+        self.assertTrue(plan["ok"])
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertGreaterEqual(plan["thrashState"]["score"], 3)
+        self.assertFalse(plan["nothingToDo"])
+        self.assertEqual(plan["counts"]["reused"], 7)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["parked"], 2)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        parks = [a for a in plan["actions"] if a.get("op") == "park"]
+        self.assertEqual({p["windowId"] for p in parks}, {301, 302})
+        for p in parks:
+            self.assertIsNotNone(p.get("destWindowId"))
+        # No mon-root ensure for park dump
+        mon_ensures = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+        ]
+        self.assertEqual(mon_ensures, [])
+
+    def test_voice_mon_direct_structure_comms_only(self):
+        """voice mon-direct out of tab → structure mon1.comms only; no term thrash."""
+        plan = self._plan("tree-voice-mon-direct.json")
+        self.assertTrue(plan["ok"])
+        # Grouping signal may mark Mode B; either mode is fine if scope stays comms
+        self.assertFalse(plan["nothingToDo"])
+        self.assertEqual(plan["counts"]["reused"], 7)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertIn("mon1.comms", ensures)
+        self.assertEqual(ensures["mon1.comms"]["mode"], "tabbed")
+        self.assertEqual(ensures["mon1.comms"]["windowIds"], [202, 203, 204])
+        # No nested-term / mon-level rewrite; no park of non-roles (none present)
+        self.assertNotIn("mon1.term", ensures)
+        self.assertNotIn("mon0", ensures)
+        self.assertNotIn("mon1", ensures)
+        self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
+        # Structure work is only the comms rejoin (count may be 1)
+        self.assertGreaterEqual(plan["counts"]["structure"], 1)
+        self.assertEqual(
+            {a["slot"] for a in plan["actions"] if a.get("op") == "ensure_layout"},
+            {"mon1.comms"},
+        )
+
+    def test_mon_direct_companions_mode_a_structure_tab(self):
+        """mon-direct companions on sane mon → Mode A collect into term tab."""
+        plan = self._plan("tree-mon1-companions-direct.json")
+        self.assertTrue(plan["ok"])
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertFalse(plan["nothingToDo"])
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(plan["counts"]["kept"], 2)
+        self.assertEqual(plan["counts"]["left"], 0)
+        keep_ids = {k["windowId"] for k in plan["kept"]}
+        self.assertEqual(keep_ids, {301, 302})
+        for k in plan["kept"]:
+            self.assertEqual(k["slot"], "mon1.term")
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertIn("mon1.term", ensures)
+        self.assertEqual(ensures["mon1.term"]["mode"], "tabbed")
+        self.assertEqual(ensures["mon1.term"]["windowIds"], [201, 301, 302])
+        self.assertNotIn("mon0", ensures)
+        self.assertNotIn("mon1", ensures)
+        self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
+
+    def test_wrong_mon_roles_moves_not_dual_park(self):
+        """wrong-mon roles → moves + structure; not dual-mon park thrash."""
+        plan = self._plan("tree-wrong-mon-roles.json")
+        self.assertTrue(plan["ok"])
+        self.assertTrue(plan["thrashState"]["thrashed"])  # roles-wrong-mon signal
+        self.assertFalse(plan["nothingToDo"])
+        self.assertEqual(plan["counts"]["moved"], 2)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        self.assertEqual(
+            plan["counts"]["reused"] + plan["counts"]["moved"], 7
+        )
+        moves = [a for a in plan["actions"] if a.get("op") == "move"]
+        move_ids = {m["windowId"] for m in moves}
+        self.assertEqual(move_ids, {201, 202})
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["ghostty-right"]["status"], "move")
+        self.assertEqual(by_id["youtube"]["status"], "move")
+        self.assertEqual(by_id["ghostty-right"]["windowId"], 201)
+        self.assertEqual(by_id["youtube"]["windowId"], 202)
+        # No mass residual park (no FB/Chess style dual dump)
+        self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
+        # Comms still tabbed after youtube returns
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertIn("mon1.comms", ensures)
+        self.assertEqual(ensures["mon1.comms"]["mode"], "tabbed")
+        self.assertEqual(ensures["mon1.comms"]["windowIds"], [202, 203, 204])
+
+
 class TestDetectThrash(unittest.TestCase):
     """TZ-detect: desk thrash vs sane (plan.thrashState)."""
 

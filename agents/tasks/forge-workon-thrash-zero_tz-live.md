@@ -1,9 +1,9 @@
 # TZ-live — Live black acceptance checklist
 
 **Plan:** [forge-workon-thrash-zero.md](../plans/forge-workon-thrash-zero.md)  
-**Status:** Ready (after TZ-gate)  
+**Status:** Ready (after TZ-matrix)  
 **Priority:** P0  
-**Depends:** TZ-gate  
+**Depends:** TZ-matrix (and prior TZ-* Done)  
 **Task force:** optional dual smoke; user on black  
 
 ## Checklist
