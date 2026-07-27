@@ -5,15 +5,18 @@ from __future__ import annotations
 
 import copy
 import re
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 PROFILE_VERSION = 2
 MODE_RECONCILE = "reconcile"
 
+# monN / primary slots (post-resolve). Pre-resolve also allows stableKey / alias heads.
 _SLOT_RE = re.compile(r"^(mon\d+|primary)(?:\.(.+))?$")
 _MON_KEY_RE = re.compile(r"^mon(\d+)$")
 _MON_ID_RE = re.compile(r"^mo(\d+)ws(\d+)$")
 _NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+# T7 stableKey prefixes (see lib/extension/monitor-identity.js)
+_STABLE_KEY_RE = re.compile(r"^(?:geom:|conn:|name:).+")
 _SPLIT_ALIASES = {
     "h": "hsplit",
     "horizontal": "hsplit",
@@ -24,6 +27,109 @@ _SPLIT_ALIASES = {
     "tabbed": "tabbed",
     "stacked": "stacked",
 }
+
+
+def _is_stable_key(key: str) -> bool:
+    return bool(key) and bool(_STABLE_KEY_RE.match(key))
+
+
+def _is_builtin_mon_key(key: str) -> bool:
+    return key == "primary" or bool(_MON_KEY_RE.match(key))
+
+
+def mon_head_and_rest(
+    slot: str,
+    known_heads: Optional[Iterable[str]] = None,
+) -> tuple[str, Optional[str]]:
+    """Split slot into mon head + optional path rest (monN, primary, stableKey, alias).
+
+    When known_heads is set, use longest-prefix match so dotted stableKeys
+    (e.g. name:Dell.U2720Q.path) are not split on the first '.'.
+    """
+    if not slot:
+        return "", None
+    m = _SLOT_RE.match(slot)
+    if m:
+        return m.group(1), m.group(2)
+
+    if known_heads is not None:
+        best: Optional[str] = None
+        for h in known_heads:
+            if not isinstance(h, str) or not h:
+                continue
+            if slot == h or slot.startswith(h + "."):
+                if best is None or len(h) > len(best):
+                    best = h
+        if best is not None:
+            if slot == best:
+                return best, None
+            rest = slot[len(best) + 1 :]
+            return best, rest if rest != "" else None
+        return slot, None
+
+    if "." in slot:
+        head, rest = slot.split(".", 1)
+        return head, rest if rest != "" else None
+    return slot, None
+
+
+def _validate_monitors_aliases(raw: Any) -> dict[str, str]:
+    """Top-level monitors: { alias: monN|primary|stableKey }."""
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError(
+            "monitors must be an object (alias → monN | primary | stableKey)"
+        )
+    out: dict[str, str] = {}
+    for k, v in raw.items():
+        if not isinstance(k, str) or not k.strip():
+            raise ValueError("monitors keys must be non-empty strings")
+        alias = k.strip()
+        if not _NAME_RE.match(alias):
+            raise ValueError(f"monitors alias {alias!r}: use A-Za-z0-9_-")
+        if _is_builtin_mon_key(alias):
+            raise ValueError(f"monitors alias {alias!r}: reserved (monN / primary)")
+        if _is_stable_key(alias):
+            raise ValueError(f"monitors alias {alias!r}: use a short name, not a stableKey")
+        if not isinstance(v, str) or not str(v).strip():
+            raise ValueError(f"monitors.{alias}: target must be a non-empty string")
+        target = str(v).strip()
+        if not (
+            _is_builtin_mon_key(target)
+            or _is_stable_key(target)
+        ):
+            raise ValueError(
+                f"monitors.{alias}: target want monN, primary, or stableKey "
+                f"(got {target!r})"
+            )
+        out[alias] = target
+    return out
+
+
+def _mon_key_ok(key: str, aliases: dict[str, str]) -> bool:
+    if _is_builtin_mon_key(key) or _is_stable_key(key):
+        return True
+    return key in aliases
+
+
+def _mon_key_error(key: str, where: str, aliases: dict[str, str]) -> ValueError:
+    parts = ["monN", "primary", "stableKey (geom:|conn:|name:…)"]
+    if aliases:
+        parts.append("or alias " + ", ".join(sorted(repr(a) for a in aliases)))
+    return ValueError(f"{where} {key!r}: want {' / '.join(parts)}")
+
+
+def _slot_ok(slot: str, aliases: dict[str, str], layout_keys: set[str]) -> bool:
+    known = set(layout_keys) | set(aliases.keys())
+    head, _rest = mon_head_and_rest(slot, known_heads=known)
+    if not head:
+        return False
+    if _is_builtin_mon_key(head):
+        return True
+    if head in aliases or head in layout_keys:
+        return True
+    return False
 
 
 def normalize_profile(data: Any) -> dict[str, Any]:
@@ -63,10 +169,20 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
 
     for mon_key, mon_body in tiles.items():
         if not isinstance(mon_key, str) or not mon_key.strip():
-            raise ValueError("tiles keys must be non-empty strings (mon0, mon1, …)")
+            raise ValueError(
+                "tiles keys must be non-empty strings "
+                "(monN, primary, stableKey, or monitors alias)"
+            )
         mon_key = mon_key.strip()
-        if mon_key != "primary" and not _MON_KEY_RE.match(mon_key):
-            raise ValueError(f"tiles key {mon_key!r}: want monN or primary")
+        # Full alias check needs top-level monitors map (validate_reconcile_profile).
+        if not (
+            _is_builtin_mon_key(mon_key)
+            or _is_stable_key(mon_key)
+            or _NAME_RE.match(mon_key)
+        ):
+            raise ValueError(
+                f"tiles key {mon_key!r}: want monN, primary, stableKey, or alias name"
+            )
 
         split_override: Optional[str] = None
         content: Any
@@ -369,6 +485,8 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
     if len(roles_in) == 0:
         raise ValueError("profile roles must be non-empty")
 
+    aliases = _validate_monitors_aliases(data.get("monitors"))
+
     layout_in = data.get("layout")
     if layout_in is None:
         layout_in = {}
@@ -377,14 +495,18 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
 
     layout: dict[str, Any] = {}
     slot_ids: set[str] = set()
-    mon_role_map: dict[str, str] = {}  # role_id → monN.childId or deeper
+    mon_role_map: dict[str, str] = {}  # role_id → monKey.childId or deeper
+    layout_keys: set[str] = set()
 
     for mon_key, mon_body in layout_in.items():
         if not isinstance(mon_key, str) or not mon_key.strip():
-            raise ValueError("layout keys must be non-empty strings (mon0, mon1, …)")
+            raise ValueError(
+                "layout keys must be non-empty strings "
+                "(monN, primary, stableKey, or monitors alias)"
+            )
         mon_key = mon_key.strip()
-        if mon_key != "primary" and not _MON_KEY_RE.match(mon_key):
-            raise ValueError(f"layout key {mon_key!r}: want monN or primary")
+        if not _mon_key_ok(mon_key, aliases):
+            raise _mon_key_error(mon_key, "layout key", aliases)
         if not isinstance(mon_body, dict):
             raise ValueError(f"layout.{mon_key}: must be an object")
         children_in = mon_body.get("children")
@@ -413,6 +535,7 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
         if split is not None:
             entry["split"] = split
         layout[mon_key] = entry
+        layout_keys.add(mon_key)
 
     overflow_in = data.get("overflow")
     overflow: dict[str, Any]
@@ -425,8 +548,11 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
         if oslot is None or str(oslot).strip() == "":
             raise ValueError("overflow.slot required")
         oslot = str(oslot).strip()
-        if not _SLOT_RE.match(oslot):
-            raise ValueError(f"overflow.slot invalid: {oslot!r}")
+        if not _slot_ok(oslot, aliases, layout_keys):
+            raise ValueError(
+                f"overflow.slot invalid: {oslot!r} "
+                "(want monN|primary|stableKey|alias . path)"
+            )
         olayout = overflow_in.get("layout", "tabbed")
         olayout_s = str(olayout).strip().lower()
         if olayout_s not in ("tabbed", "stacked", "hsplit", "vsplit"):
@@ -501,8 +627,11 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
             if not isinstance(slot, str) or not slot.strip():
                 raise ValueError(f"roles[{i}] ({rid}): slot must be a non-empty string")
             slot = slot.strip()
-            if not _SLOT_RE.match(slot):
-                raise ValueError(f"roles[{i}] ({rid}): invalid slot {slot!r}")
+            if not _slot_ok(slot, aliases, layout_keys):
+                raise ValueError(
+                    f"roles[{i}] ({rid}): invalid slot {slot!r} "
+                    "(want monN|primary|stableKey|alias . path)"
+                )
         elif rid in mon_role_map:
             slot = mon_role_map[rid]
         else:
@@ -576,6 +705,9 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
         if not isinstance(floating, list):
             raise ValueError("floating must be an array")
         out["floating"] = floating
+
+    if aliases:
+        out["monitors"] = aliases
 
     return out
 
@@ -723,6 +855,8 @@ def plan_reconcile(
     if not isinstance(forest, dict):
         raise ValueError("forest must be a JSON object")
     prof = validate_reconcile_profile(profile)
+    # Rewrite mon keys (stableKey / alias / primary) → monN using live forest.
+    prof = resolve_profile_mon_keys(prof, forest)
     clean = bool(clean)
 
     windows = collect_windows(forest)
@@ -1045,19 +1179,187 @@ def _parse_mon_id(mon_id: str) -> Optional[tuple[int, int]]:
 
 
 def mon_index_from_slot(slot: str) -> Optional[int]:
-    """mon0.left-tab → 0; mon1 → 1; primary → 0."""
+    """mon0.left-tab → 0; mon1 → 1; primary → 0. (stableKey/alias resolved pre-plan)."""
     if not slot:
         return None
-    m = _SLOT_RE.match(slot)
-    if not m:
+    head, _rest = mon_head_and_rest(slot)
+    if not head:
         return None
-    head = m.group(1)
     if head == "primary":
         return 0
     mm = _MON_KEY_RE.match(head)
     if mm:
         return int(mm.group(1))
     return None
+
+
+def forest_stable_key_map(forest: Any) -> dict[str, int]:
+    """stableKey → mon index from GetTree forest (ws0 preferred when duplicate)."""
+    out: dict[str, int] = {}
+    for m in _iter_forest_monitors(forest):
+        if not isinstance(m, dict):
+            continue
+        sk = m.get("stableKey")
+        if not isinstance(sk, str) or not sk.strip():
+            continue
+        sk = sk.strip()
+        idx = _monitor_node_index(m)
+        if idx is None:
+            continue
+        if sk not in out:
+            out[sk] = idx
+    return out
+
+
+def _iter_forest_monitors(forest: Any) -> list[Any]:
+    if isinstance(forest, dict):
+        mons = forest.get("monitors")
+        if isinstance(mons, list):
+            return _order_monitors(mons)
+        return [forest]
+    if isinstance(forest, list):
+        return _order_monitors(forest)
+    return []
+
+
+def _monitor_node_index(m: dict[str, Any]) -> Optional[int]:
+    mid = m.get("id")
+    if isinstance(mid, str):
+        parsed = _parse_mon_id(mid)
+        if parsed is not None:
+            return parsed[0]
+    mon = m.get("monitor")
+    if isinstance(mon, int) and mon >= 0:
+        return mon
+    return None
+
+
+def _primary_mon_index(forest: Any) -> int:
+    for m in _iter_forest_monitors(forest):
+        if not isinstance(m, dict):
+            continue
+        sk = m.get("stableKey") or ""
+        if m.get("isPrimary") is True or (
+            isinstance(sk, str) and "#primary" in sk
+        ):
+            idx = _monitor_node_index(m)
+            if idx is not None:
+                return idx
+    return 0
+
+
+def resolve_mon_key(
+    key: str,
+    forest: Any,
+    aliases: Optional[dict[str, str]] = None,
+) -> int:
+    """
+    Resolve monN / primary / stableKey / profile alias → monitor index.
+    Raises ValueError listing available stableKeys when unknown.
+    """
+    if not key or not str(key).strip():
+        raise ValueError("empty monitor key")
+    key = str(key).strip()
+    aliases = aliases or {}
+
+    if key == "primary":
+        return _primary_mon_index(forest)
+
+    mm = _MON_KEY_RE.match(key)
+    if mm:
+        return int(mm.group(1))
+
+    if key in aliases:
+        return resolve_mon_key(aliases[key], forest, aliases={})
+
+    sk_map = forest_stable_key_map(forest)
+    if key in sk_map:
+        return sk_map[key]
+
+    available = ", ".join(sorted(sk_map.keys())) or "(none)"
+    alias_hint = ""
+    if aliases:
+        alias_hint = f"; profile aliases: {', '.join(sorted(aliases))}"
+    raise ValueError(
+        f"monitor key {key!r} not in forest "
+        f"(available stableKeys: {available}{alias_hint}; also monN / primary)"
+    )
+
+
+def resolve_mon_key_to_monN(
+    key: str,
+    forest: Any,
+    aliases: Optional[dict[str, str]] = None,
+) -> str:
+    return f"mon{resolve_mon_key(key, forest, aliases)}"
+
+
+def _rewrite_slot_mon(
+    slot: str,
+    forest: Any,
+    aliases: dict[str, str],
+    cache: dict[str, str],
+    known_heads: Iterable[str],
+) -> str:
+    head, rest = mon_head_and_rest(slot, known_heads=known_heads)
+    if not head:
+        return slot
+    if head not in cache:
+        cache[head] = resolve_mon_key_to_monN(head, forest, aliases)
+    mon_n = cache[head]
+    if rest is None or rest == "":
+        return mon_n
+    return f"{mon_n}.{rest}"
+
+
+def resolve_profile_mon_keys(profile: dict[str, Any], forest: Any) -> dict[str, Any]:
+    """
+    Deep-copy profile and rewrite layout keys / role slots / overflow to monN
+    using forest stableKeys and optional profile monitors aliases.
+    """
+    out = copy.deepcopy(profile)
+    aliases_raw = out.get("monitors") if isinstance(out.get("monitors"), dict) else {}
+    aliases = {str(k): str(v) for k, v in aliases_raw.items()}
+    cache: dict[str, str] = {}
+    sk_map = forest_stable_key_map(forest)
+    known_heads = set(sk_map.keys()) | set(aliases.keys())
+    if isinstance(out.get("layout"), dict):
+        known_heads |= {str(k) for k in out["layout"].keys()}
+
+    layout_in = out.get("layout")
+    if isinstance(layout_in, dict):
+        new_layout: dict[str, Any] = {}
+        for mon_key, mon_body in layout_in.items():
+            mon_n = cache.get(str(mon_key)) or resolve_mon_key_to_monN(
+                str(mon_key), forest, aliases
+            )
+            cache[str(mon_key)] = mon_n
+            if mon_n in new_layout:
+                raise ValueError(
+                    f"monitor keys {mon_key!r} and another key both resolve to {mon_n}"
+                )
+            new_layout[mon_n] = mon_body
+        out["layout"] = new_layout
+
+    for role in out.get("roles") or []:
+        if not isinstance(role, dict):
+            continue
+        slot = role.get("slot")
+        if isinstance(slot, str) and slot.strip():
+            role["slot"] = _rewrite_slot_mon(
+                slot.strip(), forest, aliases, cache, known_heads
+            )
+
+    overflow = out.get("overflow")
+    if isinstance(overflow, dict):
+        oslot = overflow.get("slot")
+        if isinstance(oslot, str) and oslot.strip():
+            overflow["slot"] = _rewrite_slot_mon(
+                oslot.strip(), forest, aliases, cache, known_heads
+            )
+
+    out.pop("monitors", None)
+    return out
 
 
 def window_monitor_index(w: dict[str, Any]) -> Optional[int]:

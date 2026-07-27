@@ -97,6 +97,20 @@ Drop this at `~/.config/forge/workon/simple.json` (edit app names):
 | String cell | Role: `open` + best-effort `match`; id auto (de-dupe `app-2`) |
 | Rich object cell | Full `id` / `match` / `open` when titles or classes need care |
 
+### Monitor keys (stable across renumber)
+
+Prefer **`mon0` / `mon1` / `primary`** for everyday authoring (capture emits these).
+For multi-host or hybrid-GPU renumber, tiles/layout keys may also be:
+
+| Form | Example |
+| --- | --- |
+| Full T7 `stableKey` | `"geom:0,0,5120,2880#primary": [ … ]` (from `forge tree`) |
+| Short alias | Top-level `"monitors": { "left": "geom:…#primary", "right": "geom:…" }` then tiles use `"left"` / `"right"` |
+
+At plan time Forge resolves keys to mon **index** via the live tree’s `stableKey`s
+(rewrites the IR to `monN` before placing windows). Unknown keys error with the
+available stableKeys listed.
+
 Forge **normalizes** sugar to v2 IR (`roles[]` + `layout`) before planning.
 `forge workon show` prints the expanded profile.
 

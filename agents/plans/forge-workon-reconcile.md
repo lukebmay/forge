@@ -1,16 +1,16 @@
 # Plan: Idempotent `forge workon` (desired-state layout)
 
-**Status:** WR1–WR7 + **WR10–WR15 Done** — next **WR8/WR9** later polish  
+**Status:** WR1–WR8 + **WR10–WR15 Done** — next **WR9** later polish  
 **Priority:** **P1 product** (day-to-day #3 after live regression watch)  
 **Base:** this tree; builds on [forge-command.md](./forge-command.md) FC0–FC5  
 **Related:** OP1 open-app, T6 GetTree, shellrc `gdisplays` host layout  
 
 ### Session note (2026-07-27)
 
-**WR7 Done (A).** `forge workon capture` → tiles sugar from GetTree.
-Pure `workon_capture.py`; CLI `--tree-file` / `--out`; round-trip
-`tree-perfect` opened=0 (7 roles). Docs/help/README. CLI unit **144** green.
-**Next:** WR8 stableKey mons / WR9 env — or regression watch if thrash.
+**WR8 Done (A).** Profile mon keys may be T7 `stableKey` or
+`monitors` aliases; `plan_reconcile` rewrites to `monN` via forest
+stableKeys. mon0/mon1 unchanged. Docs + help. CLI unit **157** green.
+**Next:** WR9 env snippet — or regression watch if thrash.
 
 ---
 
@@ -386,16 +386,16 @@ forge workon <name> [--dry-run]
 | **WR15** | `--clean` / `--clean --force` (residuals only) | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr15-clean.md) |
 | **WR6** | Live black: empty / perfect / messy + companions | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr6-live.md) |
 | **WR7** | `forge workon capture` sketch from tree | **Done** | M | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr7-capture.md) |
-| **WR8** | stableKey mon names (T7) in profiles | Later | S | Multi-host polish |
+| **WR8** | stableKey mon names (T7) in profiles | **Done** | S | [completed](./forge-workon-reconcile/completed/forge-workon-reconcile_wr8-stablekey.md) |
 | **WR9** | shellrc env snippet `FORGE_WORKON_DIR` | Later | S | Out of critical path |
 
 **Active task files:**
 
 | Task | Path |
 | --- | --- |
-| WR6–WR7, WR10–WR15 | [completed/](./forge-workon-reconcile/completed/) |
+| WR6–WR8, WR10–WR15 | [completed/](./forge-workon-reconcile/completed/) |
 
-**Next A/B:** **WR8** / **WR9** later polish — core reconcile + capture shipped.
+**Next A/B:** **WR9** later polish — core reconcile + capture + stableKey mons shipped.
 
 ---
 
@@ -482,4 +482,4 @@ WR13 docs/help ◄───────────────────┘
 
 ## Next task
 
-**WR8** — stableKey mon names in profiles (later), or **WR9** shellrc env.
+**WR9** — shellrc env snippet `FORGE_WORKON_DIR` (later polish).

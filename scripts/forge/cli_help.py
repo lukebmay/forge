@@ -179,6 +179,7 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
     _out(s, heading("tiles sugar", **kw), " ", dim("(desugars to roles + layout)", **kw))
     for line, desc in (
         ('monN: [ a, b ]', "panes L→R (hsplit default)"),
+        ('stableKey / monitors alias', "multi-host mon keys (T7; plan resolves to monN)"),
         ('["app1", "app2"]', "one tabbed pane"),
         ('"ghostty"', "single-app pane"),
         ('split: "h"/"v"/hsplit/…', "override split"),

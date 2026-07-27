@@ -16,9 +16,13 @@ if str(_FORGE_CLI) not in sys.path:
 
 from workon_plan import (  # noqa: E402
     collect_windows,
+    forest_stable_key_map,
+    mon_head_and_rest,
     mon_index_from_slot,
     normalize_profile,
     plan_reconcile,
+    resolve_mon_key,
+    resolve_profile_mon_keys,
     validate_reconcile_profile,
     window_matches,
 )
@@ -1233,6 +1237,201 @@ class TestCleanResiduals(unittest.TestCase):
             if a.get("op") == "ensure_layout" and "overflow" in str(a.get("slot", ""))
         ]
         self.assertEqual(overflow_ensures, [])
+
+
+_SK0 = "geom:0,0,5120,2880#primary"
+_SK1 = "geom:5120,0,5120,2880"
+
+
+class TestStableKeyMonitors(unittest.TestCase):
+    """WR8: tiles/layout mon keys via T7 stableKey or monitors aliases."""
+
+    def test_forest_stable_key_map(self):
+        forest = _load("tree-empty.json")
+        m = forest_stable_key_map(forest)
+        self.assertEqual(m[_SK0], 0)
+        self.assertEqual(m[_SK1], 1)
+
+    def test_resolve_mon_key_raw_stable(self):
+        forest = _load("tree-empty.json")
+        self.assertEqual(resolve_mon_key(_SK0, forest), 0)
+        self.assertEqual(resolve_mon_key(_SK1, forest), 1)
+        self.assertEqual(resolve_mon_key("mon1", forest), 1)
+        self.assertEqual(resolve_mon_key("primary", forest), 0)
+
+    def test_resolve_unknown_lists_available(self):
+        forest = _load("tree-empty.json")
+        with self.assertRaisesRegex(ValueError, r"available stableKeys:.*geom:"):
+            resolve_mon_key("geom:9,9,1,1", forest)
+
+    def test_validate_raw_stable_key_layout(self):
+        raw = {
+            "tiles": {
+                _SK0: ["ghostty"],
+                _SK1: ["firefox"],
+            }
+        }
+        p = validate_reconcile_profile(raw)
+        self.assertIn(_SK0, p["layout"])
+        self.assertIn(_SK1, p["layout"])
+        self.assertEqual(p["roles"][0]["slot"], f"{_SK0}.ghostty")
+
+    def test_validate_alias_map(self):
+        raw = {
+            "monitors": {"left": _SK0, "right": _SK1},
+            "tiles": {
+                "left": ["ghostty"],
+                "right": ["firefox"],
+            },
+        }
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(p["monitors"]["left"], _SK0)
+        self.assertIn("left", p["layout"])
+        self.assertEqual(p["roles"][0]["slot"], "left.ghostty")
+
+    def test_validate_rejects_unknown_alias(self):
+        raw = {"tiles": {"sideways": ["ghostty"]}}
+        with self.assertRaisesRegex(ValueError, r"layout key 'sideways'"):
+            validate_reconcile_profile(raw)
+
+    def test_plan_raw_stable_key_empty(self):
+        forest = _load("tree-empty.json")
+        profile = {
+            "tiles": {
+                _SK0: ["ghostty"],
+                _SK1: ["firefox"],
+            }
+        }
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"])
+        self.assertEqual(plan["counts"]["opened"], 2)
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["ghostty"]["slot"], "mon0.ghostty")
+        self.assertEqual(by_id["firefox"]["slot"], "mon1.firefox")
+        opens = {a["role"]: a for a in plan["actions"] if a["op"] == "open"}
+        self.assertEqual(opens["ghostty"]["slot"], "mon0.ghostty")
+        self.assertEqual(opens["firefox"]["slot"], "mon1.firefox")
+
+    def test_plan_alias_map_empty(self):
+        forest = _load("tree-empty.json")
+        profile = {
+            "monitors": {"left": _SK0, "right": _SK1},
+            "tiles": {
+                "left": ["ghostty"],
+                "right": ["firefox"],
+            },
+        }
+        plan = plan_reconcile(forest, profile)
+        self.assertEqual(plan["counts"]["opened"], 2)
+        slots = {r["id"]: r["slot"] for r in plan["roles"]}
+        self.assertEqual(slots["ghostty"], "mon0.ghostty")
+        self.assertEqual(slots["firefox"], "mon1.firefox")
+
+    def test_plan_stable_key_perfect_reuse(self):
+        """Same roles as mon0/mon1 profile, keys = forest stableKeys → nothingToDo."""
+        forest = _load("tree-perfect.json")
+        mon0_profile = _load("profile-dev-v2.json")
+        # Rewrite mon0/mon1 → stableKeys in a shallow copy of layout + slots
+        raw = json.loads(json.dumps(mon0_profile))
+        layout = raw["layout"]
+        raw["layout"] = {_SK0: layout["mon0"], _SK1: layout["mon1"]}
+        for role in raw["roles"]:
+            slot = role["slot"]
+            if slot.startswith("mon0."):
+                role["slot"] = _SK0 + slot[4:]
+            elif slot.startswith("mon1."):
+                role["slot"] = _SK1 + slot[4:]
+        plan = plan_reconcile(forest, raw)
+        self.assertTrue(plan["nothingToDo"])
+        self.assertEqual(plan["counts"]["reused"], 7)
+        self.assertTrue(all(r["slot"].startswith("mon") for r in plan["roles"]))
+
+    def test_plan_alias_perfect_reuse(self):
+        forest = _load("tree-perfect.json")
+        mon0_profile = _load("profile-dev-v2.json")
+        raw = json.loads(json.dumps(mon0_profile))
+        layout = raw["layout"]
+        raw["monitors"] = {"left": _SK0, "right": _SK1}
+        raw["layout"] = {"left": layout["mon0"], "right": layout["mon1"]}
+        for role in raw["roles"]:
+            slot = role["slot"]
+            if slot.startswith("mon0."):
+                role["slot"] = "left" + slot[4:]
+            elif slot.startswith("mon1."):
+                role["slot"] = "right" + slot[4:]
+        plan = plan_reconcile(forest, raw)
+        self.assertTrue(plan["nothingToDo"])
+        self.assertEqual(plan["counts"]["reused"], 7)
+
+    def test_resolve_profile_rewrites_to_monN(self):
+        forest = _load("tree-empty.json")
+        prof = validate_reconcile_profile(
+            {
+                "monitors": {"left": _SK0},
+                "tiles": {"left": ["ghostty"]},
+            }
+        )
+        resolved = resolve_profile_mon_keys(prof, forest)
+        self.assertIn("mon0", resolved["layout"])
+        self.assertNotIn("left", resolved["layout"])
+        self.assertNotIn("monitors", resolved)
+        self.assertEqual(resolved["roles"][0]["slot"], "mon0.ghostty")
+
+    def test_mon0_regression_still_plans(self):
+        forest = _load("tree-empty.json")
+        plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
+        self.assertEqual(plan["counts"]["opened"], 7)
+        plan2 = plan_reconcile(_load("tree-perfect.json"), _load("profile-dev-v2.json"))
+        self.assertTrue(plan2["nothingToDo"])
+
+    def test_dotted_name_stable_key_longest_prefix(self):
+        """name:Dell.U2720Q must not split on first '.' (validate + resolve agree)."""
+        sk_dotted = "name:Dell.U2720Q"
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "stableKey": sk_dotted,
+                    "children": [],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "stableKey": "geom:5120,0,5120,2880",
+                    "children": [],
+                },
+            ],
+        }
+        # mon_head_and_rest: longest-prefix, not first-dot
+        head, rest = mon_head_and_rest(
+            f"{sk_dotted}.ghostty", known_heads={sk_dotted}
+        )
+        self.assertEqual(head, sk_dotted)
+        self.assertEqual(rest, "ghostty")
+        # first-dot fallback would wrongly yield name:Dell
+        bad_head, _ = mon_head_and_rest(f"{sk_dotted}.ghostty")
+        self.assertEqual(bad_head, "name:Dell")
+
+        # tiles key = dotted stableKey
+        profile = {"tiles": {sk_dotted: ["ghostty"]}}
+        p = validate_reconcile_profile(profile)
+        self.assertIn(sk_dotted, p["layout"])
+        self.assertEqual(p["roles"][0]["slot"], f"{sk_dotted}.ghostty")
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"])
+        self.assertEqual(plan["roles"][0]["slot"], "mon0.ghostty")
+        self.assertEqual(plan["counts"]["opened"], 1)
+
+        # alias → dotted stableKey
+        profile_alias = {
+            "monitors": {"desk": sk_dotted},
+            "tiles": {"desk": ["ghostty"]},
+        }
+        plan_a = plan_reconcile(forest, profile_alias)
+        self.assertEqual(plan_a["roles"][0]["slot"], "mon0.ghostty")
+        self.assertEqual(plan_a["counts"]["opened"], 1)
 
 
 if __name__ == "__main__":
