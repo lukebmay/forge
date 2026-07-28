@@ -68,6 +68,7 @@ from layout_lib import (  # noqa: E402
     format_profile_list_line,
     format_short_path,
     launch_fields_from_step,
+    layout_tree_root,
     list_profiles_resolved,
     load_profile_file,
     partition_mixed_steps,
@@ -1758,11 +1759,7 @@ def _layout_run_reconcile(
 def _layout_profile_write_path(name: str) -> Path:
     """Host profile path for layout save (creates under hosts/<host>/)."""
     host = resolve_host()
-    raw = os.environ.get("FORGE_LAYOUT_DIR")
-    if raw is not None and str(raw).strip():
-        root = Path(str(raw).strip()).expanduser()
-    else:
-        root = Path.home() / ".config" / "forge" / "layout"
+    root = layout_tree_root()
     return root / "hosts" / host / f"{name}.json"
 
 
@@ -2792,7 +2789,8 @@ def build_parser() -> argparse.ArgumentParser:
         "  $FORGE_LAYOUT_DIR/hosts/<host>/<name>/profile.json →\n"
         "  $FORGE_LAYOUT_DIR/common/<name>.json →\n"
         "  ~/.config/forge/layout/<name>.json\n"
-        "Save writes: $FORGE_LAYOUT_DIR/hosts/<host>/<name>.json (or XDG layout/hosts/…).\n"
+        "Save/list tree root: $FORGE_LAYOUT_DIR if set, else ~/.config/forge/layout.\n"
+        "Save writes: <root>/hosts/<host>/<name>.json (list scans the same tree).\n"
         "Host: FORGE_HOST or short hostname. Export FORGE_LAYOUT_DIR from shellrc.\n"
         "\n"
         "v2 reconcile (default when roles present): GetTree → plan → open gaps,\n"

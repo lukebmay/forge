@@ -276,6 +276,45 @@ class TestListProfilesResolved(unittest.TestCase):
             self.assertEqual(listed[0]["source"], SOURCE_XDG)
             self.assertEqual(listed[0]["name"], "a")
 
+    def test_xdg_hosts_listed_without_forge_layout_dir(self):
+        """Save writes hosts/<host>/ under XDG when env unset — list must see it."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            host_p = _write(
+                root / "layout" / "hosts" / "black" / "dev.json",
+                {"version": 1, "description": "from-save", "steps": []},
+            )
+            listed = list_profiles_resolved(
+                config_root=root, env={"FORGE_HOST": "black"}
+            )
+            self.assertEqual(len(listed), 1)
+            self.assertEqual(listed[0]["name"], "dev")
+            self.assertEqual(listed[0]["source"], SOURCE_HOST)
+            self.assertEqual(listed[0]["path"], str(host_p))
+            self.assertEqual(listed[0]["description"], "from-save")
+            r = resolve_profile("dev", config_root=root, env={"FORGE_HOST": "black"})
+            self.assertTrue(r["found"])
+            self.assertEqual(r["source"], SOURCE_HOST)
+            self.assertEqual(r["path"], host_p)
+
+    def test_forge_layout_dir_env_wins_for_list(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            wdir = root / "shellrc-layout"
+            _write(
+                wdir / "hosts" / "black" / "dev.json",
+                {"version": 1, "description": "env-host", "steps": []},
+            )
+            _write(
+                root / "layout" / "hosts" / "black" / "dev.json",
+                {"version": 1, "description": "xdg-host", "steps": []},
+            )
+            env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
+            listed = list_profiles_resolved(config_root=root, env=env)
+            self.assertEqual(len(listed), 1)
+            self.assertEqual(listed[0]["description"], "env-host")
+            self.assertEqual(listed[0]["source"], SOURCE_HOST)
+
     def test_invalid_names_skipped_in_list(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

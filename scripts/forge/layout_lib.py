@@ -78,16 +78,35 @@ def resolve_host(env: Optional[Mapping[str, str]] = None) -> str:
     return socket.gethostname().split(".")[0]
 
 
+def layout_tree_root(
+    env: Optional[Mapping[str, str]] = None,
+    *,
+    config_root: Optional[Path] = None,
+    layout_dir_env: Optional[Path] = None,
+) -> Path:
+    """
+    Root for hosts/ + common/ trees (same as layout save).
+
+    Prefer FORGE_LAYOUT_DIR (or layout_dir_env override); else XDG
+    ~/.config/forge/layout (or config_root/layout).
+    """
+    e = env if env is not None else os.environ
+    if layout_dir_env is not None:
+        return Path(layout_dir_env).expanduser()
+    raw = e.get("FORGE_LAYOUT_DIR") if e is not None else None
+    if raw is not None and str(raw).strip():
+        return Path(str(raw).strip()).expanduser()
+    return layout_dir(config_root)
+
+
 def _env_layout_dir(
     env: Mapping[str, str],
     layout_dir_env: Optional[Path] = None,
-) -> Optional[Path]:
-    if layout_dir_env is not None:
-        return Path(layout_dir_env).expanduser()
-    raw = env.get("FORGE_LAYOUT_DIR")
-    if raw is not None and str(raw).strip():
-        return Path(str(raw).strip()).expanduser()
-    return None
+    *,
+    config_root: Optional[Path] = None,
+) -> Path:
+    """Alias for layout_tree_root (always a path; never None)."""
+    return layout_tree_root(env, config_root=config_root, layout_dir_env=layout_dir_env)
 
 
 def _profile_candidates(
@@ -95,7 +114,7 @@ def _profile_candidates(
     host: str,
     *,
     config_root: Optional[Path],
-    wdir: Optional[Path],
+    wdir: Path,
     env: Mapping[str, str],
 ) -> list[tuple[Path, str]]:
     """Ordered (path, source) candidates for first-hit resolve."""
@@ -103,12 +122,16 @@ def _profile_candidates(
     path_env = env.get("FORGE_LAYOUT_PATH")
     if path_env is not None and str(path_env).strip():
         out.append((Path(str(path_env).strip()).expanduser(), SOURCE_ENV_PATH))
-    if wdir is not None:
-        root = Path(wdir)
-        out.append((root / "hosts" / host / f"{name}.json", SOURCE_HOST))
-        out.append((root / "hosts" / host / name / "profile.json", SOURCE_HOST_DIR))
-        out.append((root / "common" / f"{name}.json", SOURCE_COMMON))
-    out.append((profile_path(name, config_root=config_root), SOURCE_XDG))
+    root = Path(wdir)
+    out.append((root / "hosts" / host / f"{name}.json", SOURCE_HOST))
+    out.append((root / "hosts" / host / name / "profile.json", SOURCE_HOST_DIR))
+    out.append((root / "common" / f"{name}.json", SOURCE_COMMON))
+    # Flat drop-in next to hosts/ (tree root) and, if different, XDG layout/
+    flat_tree = root / f"{name}.json"
+    out.append((flat_tree, SOURCE_XDG))
+    flat_xdg = profile_path(name, config_root=config_root)
+    if flat_xdg != flat_tree:
+        out.append((flat_xdg, SOURCE_XDG))
     return out
 
 
@@ -123,17 +146,18 @@ def resolve_profile(
     Host-aware profile path resolve (first hit wins).
 
     Order: FORGE_LAYOUT_PATH (stem must match name + file exists) →
-    FORGE_LAYOUT_DIR/hosts/<host>/<name>.json →
-    …/hosts/<host>/<name>/profile.json →
-    …/common/<name>.json →
-    XDG ~/.config/forge/layout/<name>.json
+    <tree>/hosts/<host>/<name>.json →
+    <tree>/hosts/<host>/<name>/profile.json →
+    <tree>/common/<name>.json →
+    flat <tree or XDG>/<name>.json
 
-    When FORGE_LAYOUT_DIR is unset, only PATH + XDG apply (no shellrc hardcode).
+    Tree root = FORGE_LAYOUT_DIR if set, else ~/.config/forge/layout
+    (same root layout save uses).
     """
     name = _normalize_profile_name(name)
     e = env if env is not None else os.environ
     host = resolve_host(e)
-    wdir = _env_layout_dir(e, layout_dir_env)
+    wdir = layout_tree_root(e, config_root=config_root, layout_dir_env=layout_dir_env)
     candidates = _profile_candidates(
         name, host, config_root=config_root, wdir=wdir, env=e
     )
@@ -178,33 +202,36 @@ def list_profiles_resolved(
     env: Optional[Mapping[str, str]] = None,
 ) -> list[dict[str, Any]]:
     """
-    Union of profile names under env-dir hosts/<host>, common, and XDG.
+    Union of profile names under tree hosts/<host>, common, and flat layout/.
+
+    Tree root matches save: FORGE_LAYOUT_DIR if set, else XDG layout/.
     Each entry: name, path, source, host, description? — winning path by resolve order.
     """
     e = env if env is not None else os.environ
     host = resolve_host(e)
-    wdir = _env_layout_dir(e, layout_dir_env)
+    wdir = layout_tree_root(e, config_root=config_root, layout_dir_env=layout_dir_env)
     names: set[str] = set()
 
-    if wdir is not None:
-        host_dir = Path(wdir) / "hosts" / host
-        if host_dir.is_dir():
-            for p in host_dir.glob("*.json"):
-                if _NAME_RE.match(p.stem):
-                    names.add(p.stem)
-            for p in host_dir.glob("*/profile.json"):
-                n = p.parent.name
-                if _NAME_RE.match(n):
-                    names.add(n)
-        common_dir = Path(wdir) / "common"
-        if common_dir.is_dir():
-            for p in common_dir.glob("*.json"):
-                if _NAME_RE.match(p.stem):
-                    names.add(p.stem)
+    host_dir = Path(wdir) / "hosts" / host
+    if host_dir.is_dir():
+        for p in host_dir.glob("*.json"):
+            if _NAME_RE.match(p.stem):
+                names.add(p.stem)
+        for p in host_dir.glob("*/profile.json"):
+            n = p.parent.name
+            if _NAME_RE.match(n):
+                names.add(n)
+    common_dir = Path(wdir) / "common"
+    if common_dir.is_dir():
+        for p in common_dir.glob("*.json"):
+            if _NAME_RE.match(p.stem):
+                names.add(p.stem)
 
-    xdg = layout_dir(config_root)
-    if xdg.is_dir():
-        for p in xdg.glob("*.json"):
+    # Flat files under tree root and (if different) XDG layout/
+    for d in (Path(wdir), layout_dir(config_root)):
+        if not d.is_dir():
+            continue
+        for p in d.glob("*.json"):
             if _NAME_RE.match(p.stem):
                 names.add(p.stem)
 
