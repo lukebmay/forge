@@ -302,8 +302,8 @@ def format_profile_list_line(
     return line
 
 
-def load_profile_file(path: Path | str) -> dict[str, Any]:
-    """Read JSON object from path; raise ValueError on bad JSON / non-object."""
+def load_profile_file(path: Path | str) -> Any:
+    """Read JSON object or bare array from path; raise ValueError on bad JSON/type."""
     p = Path(path).expanduser()
     if not p.is_file():
         raise FileNotFoundError(f"profile not found: {p}")
@@ -315,8 +315,8 @@ def load_profile_file(path: Path | str) -> dict[str, Any]:
         data = json.loads(raw)
     except json.JSONDecodeError as e:
         raise ValueError(f"invalid JSON: {e}") from e
-    if not isinstance(data, dict):
-        raise ValueError("profile must be a JSON object")
+    if not isinstance(data, (dict, list)):
+        raise ValueError("profile must be a JSON object or array")
     return data
 
 

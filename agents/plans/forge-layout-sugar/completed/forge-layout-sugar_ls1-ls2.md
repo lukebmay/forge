@@ -1,8 +1,8 @@
 # Task: LS1 + LS2 — bare array normalize + string-cell match inference
 
-**Plan:** [forge-layout-sugar.md](../plans/forge-layout-sugar.md)  
-**Status:** ready  
-**Pri:** P0 next session
+**Plan:** [forge-layout-sugar.md](../../forge-layout-sugar.md)  
+**Status:** done (A/B AGREE)  
+**Pri:** P0
 
 ## Scope
 
@@ -24,4 +24,11 @@
 
 ## Session note
 
-(overwrite when implementing)
+**Done — A implement / B AGREE (2026-07-28).**
+
+- `load_profile_file` accepts JSON object **or** bare array (`Any`).
+- `normalize_profile` wraps bare list → `{tiles: …}`; `tiles` may be mon map **or** array.
+- Multi-mon: ≥2 top-level mon-bodies → `mon0`…`monN`; else all panes on `mon0`.
+- String inference: chrome launchers / known PWAs / Title-Case → `Google-chrome` + `title~=`; else class stem (`ghostty` ↔ reverse-DNS).
+- Fixtures + unit tests; layout suite 221 OK.
+- B nits only: aggressive PWA map for short tokens (non-blocking).

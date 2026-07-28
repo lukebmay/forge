@@ -8,7 +8,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **layout-sugar** | Bare-array sugar + app inference + auto description | [forge-layout-sugar.md](./plans/forge-layout-sugar.md); tasks LS1–2 then LS7–8 |
+| **1** | **layout-sugar** | Auto description + save UX; then bare save | [forge-layout-sugar.md](./plans/forge-layout-sugar.md); LS1–2 **done**; next LS7–8 |
 | 2 | **stacks** | STACKED as supported product path | Some users want stacks |
 | 3 | layout polish | Live-drive `forge layout` | Day-to-day |
 
@@ -37,7 +37,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [layout-sugar](./plans/forge-layout-sugar.md) | **Next** — [LS1–2](./tasks/forge-layout-sugar_ls1-ls2.md), [LS7–8 desc](./tasks/forge-layout-sugar_ls7-ls8-description.md) |
+| **P0** | [layout-sugar](./plans/forge-layout-sugar.md) | LS1–2 **done**; **next** [LS7–8 desc](./tasks/forge-layout-sugar_ls7-ls8-description.md) |
 | P1 | [stacked](./plans/forge-stacked-layouts.md) | Queued |
 | P2 | Live layout daily-drive | Ongoing |
 
@@ -45,6 +45,8 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Item | Note |
 | --- | --- |
+| layout-sugar LS1–2 | bare array + string/PWA inference; A/B AGREE |
+| `forge update` always install | even when git already current |
 | layout mon + tab order | ensure_order; live black OK |
 | workon → layout rename | no BC |
 | interim sugar / save compact | flat cells; string ghostty |

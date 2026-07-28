@@ -1,8 +1,13 @@
 # Plan: Dead-simple layout sugar
 
-**Status:** Queued (next implement)  
+**Status:** Active — LS1+LS2 done; next LS7–LS8  
 **Updated:** 2026-07-28  
 **Goal:** A layout config so simple you could write it by accident and it still works.
+
+### Session note (overwrite)
+
+LS1+LS2 **done** (A/B AGREE): bare array + string inference; 221 layout unit tests OK.  
+Next: [LS7–LS8 description](../tasks/forge-layout-sugar_ls7-ls8-description.md); then LS4 save bare array / LS5 docs.
 
 ## Product target
 
@@ -192,8 +197,8 @@ with optional one-line auto description for discoverability.
 
 | ID | Work | Notes |
 | --- | --- | --- |
-| **LS1** | `normalize_profile`: accept bare top-level array → internal tiles IR | mon count from forest at plan time or from array shape |
-| **LS2** | String-cell match inference (desktop Name / chrome heuristics) | may need desktop resolve at normalize **or** pure heuristics + optional CLI enrich |
+| **LS1** | `normalize_profile`: accept bare top-level array → internal tiles IR | **Done** — shape-only multi vs mon0 |
+| **LS2** | String-cell match inference (desktop Name / chrome heuristics) | **Done** — pure heuristics + PWA map |
 | **LS3** | Best-effort parse + park leftovers | no hard fail on weird JSON shape |
 | **LS4** | `layout save` emits bare array when possible | no `floating: []`, no mon keys if index order is enough |
 | **LS5** | Docs + black `dev.json` rewrite to bare array | shellrc example is the demo |
@@ -232,4 +237,6 @@ cells keep working as supersets.
 
 ## Next task
 
-[forge-layout-sugar_ls1-ls2.md](../tasks/forge-layout-sugar_ls1-ls2.md) — parse + inference first; LS7–LS8 description with save UX in a following task.
+[forge-layout-sugar_ls7-ls8-description.md](../tasks/forge-layout-sugar_ls7-ls8-description.md) — auto description + interactive save UX.
+
+Completed: [LS1–LS2](./forge-layout-sugar/completed/forge-layout-sugar_ls1-ls2.md).

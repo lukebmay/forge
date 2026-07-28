@@ -28,6 +28,49 @@ _SPLIT_ALIASES = {
     "stacked": "stacked",
 }
 
+# String-cell open.app → Chrome class (casefold keys).
+_CHROME_LAUNCHERS = frozenset(
+    {
+        "google-chrome",
+        "google-chrome-stable",
+        "google-chrome-beta",
+        "google-chrome-unstable",
+        "chromium",
+        "chromium-browser",
+        "chrome",
+        "brave",
+        "brave-browser",
+    }
+)
+_CHROME_CLASS = "Google-chrome"
+# Known PWA / product names → title~= fragment (casefold keys).
+_KNOWN_PWA_TITLE = {
+    "grok": "Grok",
+    "youtube": "YouTube",
+    "gmail": "Gmail",
+    "google voice": "Voice",
+    "voice": "Voice",
+    "google calendar": "Calendar",
+    "calendar": "Calendar",
+    "google drive": "Drive",
+    "drive": "Drive",
+    "google docs": "Docs",
+    "docs": "Docs",
+    "google sheets": "Sheets",
+    "sheets": "Sheets",
+    "google slides": "Slides",
+    "slides": "Slides",
+    "google meet": "Meet",
+    "meet": "Meet",
+    "google maps": "Maps",
+    "maps": "Maps",
+    "google chat": "Chat",
+    "chat": "Chat",
+    "discord": "Discord",
+    "slack": "Slack",
+    "spotify": "Spotify",
+}
+
 
 def _is_stable_key(key: str) -> bool:
     return bool(key) and bool(_STABLE_KEY_RE.match(key))
@@ -135,17 +178,23 @@ def _slot_ok(slot: str, aliases: dict[str, str], layout_keys: set[str]) -> bool:
 def normalize_profile(data: Any) -> dict[str, Any]:
     """
     Desugar tiles sugar → v2 IR and fill omit-noise defaults.
+    Accepts bare top-level array or tiles as object/array.
     Idempotent on pure IR (pass-through + setdefault only).
     """
+    # Bare JSON array = dual-mon list or single-mon panes (see _bare_array_to_mon_tiles).
+    if isinstance(data, list):
+        data = {"tiles": data}
     if not isinstance(data, dict):
-        raise ValueError("profile must be a JSON object")
+        raise ValueError("profile must be a JSON object or array")
 
     out = copy.deepcopy(data)
     had_tiles = "tiles" in out
     if had_tiles:
         tiles = out.pop("tiles")
+        if isinstance(tiles, list):
+            tiles = _bare_array_to_mon_tiles(tiles)
         if not isinstance(tiles, dict):
-            raise ValueError("tiles must be an object")
+            raise ValueError("tiles must be an object or array")
         roles, layout = _desugar_tiles(tiles)
         out["roles"] = roles
         out["layout"] = layout
@@ -163,6 +212,32 @@ def normalize_profile(data: Any) -> dict[str, Any]:
                 "residual": "leave",
             }
     return out
+
+
+def _looks_like_mon_body(item: Any) -> bool:
+    """List or {split,content} — not a bare string / flat role object."""
+    if isinstance(item, list):
+        return True
+    if not isinstance(item, dict):
+        return False
+    if item.get("open") is not None or item.get("match") is not None or item.get("app") is not None:
+        return False
+    return "split" in item or "content" in item or "children" in item
+
+
+def _bare_array_to_mon_tiles(items: list[Any]) -> dict[str, Any]:
+    """
+    Shape → mon map (no live mon count at normalize time).
+
+    ≥2 top-level items that each look like mon bodies (list / split object)
+    → mon0, mon1, …. Otherwise all panes on mon0 (ambiguous flat cells stay mon0).
+    """
+    if (
+        len(items) >= 2
+        and all(_looks_like_mon_body(x) for x in items)
+    ):
+        return {f"mon{i}": body for i, body in enumerate(items)}
+    return {"mon0": items}
 
 
 def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -354,13 +429,9 @@ def _cell_to_role(cell: Any, used_ids: set[str], where: str) -> dict[str, Any]:
         token = cell.strip()
         if not token:
             raise ValueError(f"{where}: empty string cell")
-        stem = token.split()[0]
-        rid = _alloc_role_id(_stem_to_id(stem), used_ids)
-        return {
-            "id": rid,
-            "match": {"class": stem},
-            "open": {"app": stem if len(token.split()) == 1 else token},
-        }
+        open_spec, match = _infer_open_and_match(token)
+        rid = _alloc_role_id(_stem_to_id(token), used_ids)
+        return {"id": rid, "match": match, "open": open_spec}
 
     if not isinstance(cell, dict):
         raise ValueError(f"{where}: role cell must be string or object")
@@ -409,12 +480,62 @@ def _cell_to_role(cell: Any, used_ids: set[str], where: str) -> dict[str, Any]:
     if match is None and cell.get("class") is not None:
         match = {"class": cell.get("class")}
     if match is None:
-        match = {"class": app_stem or rid}
+        # Same inference as bare string cells when match not overridden.
+        _open_i, match = _infer_open_and_match(app_full or app_stem or rid)
+        # Keep author open as written; only fill wmClass when chrome-inferred and unset.
+        if (
+            match.get("class") == _CHROME_CLASS
+            and open_spec.get("wmClass") is None
+            and open_spec.get("wm_class") is None
+        ):
+            open_spec = dict(open_spec)
+            open_spec["wmClass"] = _CHROME_CLASS
 
     role: dict[str, Any] = {"id": rid, "match": match, "open": open_spec}
     if cell.get("slot") is not None:
         role["slot"] = cell["slot"]
     return role
+
+
+def _infer_open_and_match(token: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """
+    Infer open + match from an app string (no live desktop DB).
+
+    chrome launchers → Google-chrome + title~= Google Chrome
+    known / Title-Case / multi-word PWA-like → Google-chrome + title~=
+    else stem class (reverse-DNS sugar via _class_eq at match time)
+    """
+    token = token.strip()
+    open_spec: dict[str, Any] = {"app": token}
+    key = token.casefold()
+
+    if key in _CHROME_LAUNCHERS or key.replace("_", "-") in _CHROME_LAUNCHERS:
+        open_spec["wmClass"] = _CHROME_CLASS
+        return open_spec, {"class": _CHROME_CLASS, "title~=": "Google Chrome"}
+
+    pwa_title = _KNOWN_PWA_TITLE.get(key)
+    if pwa_title is not None:
+        open_spec["wmClass"] = _CHROME_CLASS
+        return open_spec, {"class": _CHROME_CLASS, "title~=": pwa_title}
+
+    if _looks_like_chrome_pwa_token(token):
+        open_spec["wmClass"] = _CHROME_CLASS
+        return open_spec, {"class": _CHROME_CLASS, "title~=": token}
+
+    stem = token.split()[0]
+    return open_spec, {"class": stem}
+
+
+def _looks_like_chrome_pwa_token(token: str) -> bool:
+    """Multi-word or Capitalized product name (not desktop-id / hyphen style)."""
+    if not token:
+        return False
+    if " " in token:
+        return True
+    if "." in token or "-" in token or "_" in token:
+        return False
+    # Grok, YouTube — leading capital + some lower (not SCREAMING / all-lower)
+    return token[0].isupper() and any(c.islower() for c in token[1:])
 
 
 def _open_stem(open_spec: Any) -> str:

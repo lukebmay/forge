@@ -199,6 +199,24 @@ class TestListLoadProfiles(unittest.TestCase):
             p = validate_profile(data)
             self.assertEqual(p["description"], "hello")
 
+    def test_bare_array_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            d = layout_dir(root)
+            d.mkdir(parents=True)
+            body = [["ghostty"], ["firefox", "code"]]
+            (d / "bare.json").write_text(json.dumps(body), encoding="utf-8")
+            data = load_profile_file(d / "bare.json")
+            self.assertIsInstance(data, list)
+            self.assertEqual(data[0], ["ghostty"])
+
+    def test_reject_scalar_json(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "bad.json"
+            p.write_text('"just-a-string"', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "object or array"):
+                load_profile_file(p)
+
     def test_missing_file(self):
         with self.assertRaises(FileNotFoundError):
             load_profile_file("/tmp/does-not-exist-forge-workon-xyz.json")

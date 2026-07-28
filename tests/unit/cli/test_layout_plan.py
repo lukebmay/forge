@@ -410,6 +410,163 @@ class TestTilesNormalize(unittest.TestCase):
         self.assertEqual(p["roles"][0]["slot"], "mon0.s0.a")
 
 
+class TestBareArrayNormalize(unittest.TestCase):
+    """LS1: top-level bare JSON array → mon tiles IR."""
+
+    def test_dual_mon_fixture(self):
+        raw = _load("profile-bare-dual-mon.json")
+        self.assertIsInstance(raw, list)
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(p["version"], 2)
+        self.assertIn("mon0", p["layout"])
+        self.assertIn("mon1", p["layout"])
+        self.assertEqual(p["layout"]["mon0"]["split"], "hsplit")
+        self.assertEqual(p["layout"]["mon1"]["split"], "hsplit")
+        self.assertEqual(len(p["roles"]), 7)
+        by_id = {r["id"]: r for r in p["roles"]}
+        self.assertEqual(by_id["ghostty"]["slot"], "mon0.ghostty")
+        self.assertEqual(by_id["ghostty-2"]["slot"], "mon1.ghostty-2")
+        self.assertEqual(by_id["Grok"]["slot"], "mon0.s0")
+        self.assertEqual(by_id["YouTube"]["slot"], "mon1.s0")
+
+    def test_single_mon_fixture(self):
+        raw = _load("profile-bare-single-mon.json")
+        p = validate_reconcile_profile(raw)
+        self.assertIn("mon0", p["layout"])
+        self.assertNotIn("mon1", p["layout"])
+        self.assertEqual(p["layout"]["mon0"]["split"], "hsplit")
+        kids = p["layout"]["mon0"]["children"]
+        self.assertEqual(kids[0]["layout"], "tabbed")
+        self.assertEqual(kids[0]["roles"], ["firefox", "code"])
+        self.assertEqual(kids[1]["id"], "ghostty")
+
+    def test_flat_strings_stay_mon0(self):
+        p = validate_reconcile_profile(["firefox", "ghostty"])
+        self.assertIn("mon0", p["layout"])
+        self.assertNotIn("mon1", p["layout"])
+        self.assertEqual(len(p["roles"]), 2)
+
+    def test_mixed_top_level_not_mon_list(self):
+        # Tab group + string → single mon panes (not mon0/mon1).
+        p = validate_reconcile_profile([["a", "b"], "c"])
+        self.assertNotIn("mon1", p["layout"])
+        kids = p["layout"]["mon0"]["children"]
+        self.assertEqual(kids[0]["layout"], "tabbed")
+        self.assertEqual(kids[1]["id"], "c")
+
+    def test_tiles_array_key(self):
+        raw = {
+            "description": "with tiles array",
+            "tiles": [
+                [["google-chrome", "Grok"], "ghostty"],
+                ["ghostty", ["YouTube", "Gmail"]],
+            ],
+            "floating": [],
+        }
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(p["description"], "with tiles array")
+        self.assertEqual(p["floating"], [])
+        self.assertIn("mon0", p["layout"])
+        self.assertIn("mon1", p["layout"])
+        self.assertEqual(len(p["roles"]), 6)
+
+    def test_existing_monn_object_still_works(self):
+        raw = {
+            "tiles": {
+                "mon0": [["google-chrome", "Grok"], "ghostty"],
+                "mon1": ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
+            }
+        }
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(len(p["roles"]), 7)
+        self.assertIn("mon0", p["layout"])
+        self.assertIn("mon1", p["layout"])
+
+
+class TestStringCellInference(unittest.TestCase):
+    """LS2: string cells infer open + match (chrome PWA / stem)."""
+
+    def test_grok_is_chrome_pwa(self):
+        p = validate_reconcile_profile({"tiles": {"mon0": ["Grok"]}})
+        r = p["roles"][0]
+        self.assertEqual(r["open"]["app"], "Grok")
+        self.assertEqual(r["match"]["class"], "Google-chrome")
+        self.assertEqual(r["match"]["title~="], "Grok")
+
+    def test_ghostty_stem_class(self):
+        p = validate_reconcile_profile({"tiles": {"mon0": ["ghostty"]}})
+        r = p["roles"][0]
+        self.assertEqual(r["open"]["app"], "ghostty")
+        self.assertEqual(r["match"]["class"], "ghostty")
+        self.assertNotIn("title~=", r["match"])
+
+    def test_google_chrome_launcher(self):
+        p = validate_reconcile_profile({"tiles": {"mon0": ["google-chrome"]}})
+        r = p["roles"][0]
+        self.assertEqual(r["open"]["app"], "google-chrome")
+        self.assertEqual(r["match"]["class"], "Google-chrome")
+        self.assertEqual(r["match"]["title~="], "Google Chrome")
+
+    def test_youtube_known_pwa(self):
+        p = validate_reconcile_profile({"tiles": {"mon0": ["YouTube"]}})
+        r = p["roles"][0]
+        self.assertEqual(r["match"]["class"], "Google-chrome")
+        self.assertEqual(r["match"]["title~="], "YouTube")
+
+    def test_google_voice_multiword(self):
+        p = validate_reconcile_profile({"tiles": {"mon0": ["Google Voice"]}})
+        r = p["roles"][0]
+        self.assertEqual(r["open"]["app"], "Google Voice")
+        self.assertEqual(r["match"]["class"], "Google-chrome")
+        self.assertEqual(r["match"]["title~="], "Voice")
+        self.assertEqual(r["id"], "Google-Voice")
+
+    def test_explicit_object_overrides(self):
+        p = validate_reconcile_profile(
+            {
+                "tiles": {
+                    "mon0": [
+                        {
+                            "app": "Grok",
+                            "class": "Custom-Class",
+                            "title~=": "MyGrok",
+                        }
+                    ]
+                }
+            }
+        )
+        r = p["roles"][0]
+        self.assertEqual(r["match"]["class"], "Custom-Class")
+        self.assertEqual(r["match"]["title~="], "MyGrok")
+        self.assertEqual(r["open"]["app"], "Grok")
+
+    def test_grok_claims_window(self):
+        w = {"wmClass": "Google-chrome", "title": "Grok"}
+        p = validate_reconcile_profile({"tiles": {"mon0": ["Grok"]}})
+        self.assertTrue(window_matches(w, p["roles"][0]["match"]))
+        self.assertFalse(
+            window_matches(
+                {"wmClass": "Google-chrome", "title": "Gmail - Inbox"},
+                p["roles"][0]["match"],
+            )
+        )
+
+    def test_ghostty_claims_reverse_dns(self):
+        w = {"wmClass": "com.mitchellh.ghostty", "title": "Ghostty"}
+        p = validate_reconcile_profile({"tiles": {"mon0": ["ghostty"]}})
+        self.assertTrue(window_matches(w, p["roles"][0]["match"]))
+
+    def test_bare_dual_plans_perfect_tree(self):
+        forest = _load("tree-perfect.json")
+        profile = _load("profile-bare-dual-mon.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"])
+        self.assertTrue(plan["nothingToDo"], plan)
+        self.assertEqual(plan["counts"]["reused"], 7)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+
+
 class TestMatching(unittest.TestCase):
     def test_class_case_insensitive(self):
         w = {"wmClass": "Google-chrome", "title": "Grok"}

@@ -76,6 +76,18 @@ class TestDetectMode(unittest.TestCase):
             MODE_RECONCILE,
         )
 
+    def test_bare_array(self):
+        self.assertEqual(
+            detect_layout_mode([["ghostty"], ["firefox"]]),
+            MODE_RECONCILE,
+        )
+
+    def test_tiles_array_key(self):
+        self.assertEqual(
+            detect_layout_mode({"tiles": [["a", "b"], ["c"]]}),
+            MODE_RECONCILE,
+        )
+
     def test_force_launch_with_steps(self):
         self.assertEqual(
             detect_layout_mode(
