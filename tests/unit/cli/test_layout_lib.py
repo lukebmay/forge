@@ -74,6 +74,20 @@ class TestValidateProfile(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown op"):
             validate_profile({"version": 1, "steps": [{"op": "teleport"}]})
 
+    def test_phase1_layout_ops_accepted(self):
+        p = validate_profile(
+            {
+                "version": 1,
+                "steps": [
+                    {"op": "layout-cycle", "axis": "group"},
+                    {"op": "merge-group", "selector": "focus", "with": "id:2"},
+                    {"op": "float", "selector": "focus", "scope": "window"},
+                    {"op": "order", "windowIds": ["id:1", "id:2"]},
+                ],
+            }
+        )
+        self.assertEqual(len(p["steps"]), 4)
+
     def test_launch_requires_app(self):
         with self.assertRaisesRegex(ValueError, "launch requires app"):
             validate_profile({"version": 1, "steps": [{"op": "launch"}]})

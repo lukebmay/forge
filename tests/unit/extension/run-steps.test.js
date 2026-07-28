@@ -104,9 +104,46 @@ describe("run-steps pure helpers (FC4)", () => {
 
     it("lists extension ops", () => {
       expect(EXTENSION_OPS).toContain("layout");
+      expect(EXTENSION_OPS).toContain("layout-cycle");
+      expect(EXTENSION_OPS).toContain("merge-group");
+      expect(EXTENSION_OPS).toContain("float");
       expect(EXTENSION_OPS).toContain("order");
       expect(EXTENSION_OPS).toContain("place-next");
       expect(EXTENSION_OPS).toContain("close");
+    });
+
+    it("normalizes layout-cycle / merge-group / float", () => {
+      expect(validateStep({ op: "layout-cycle" }).step).toMatchObject({
+        op: "layout-cycle",
+        axis: "group",
+      });
+      expect(validateStep({ op: "layout-cycle", axis: "split", selector: "focus" }).step).toEqual({
+        op: "layout-cycle",
+        axis: "split",
+        selector: "focus",
+      });
+      expect(validateStep({ op: "layout-cycle", axis: "diagonal" }).ok).toBe(false);
+
+      expect(validateStep({ op: "merge-group", selector: "focus", with: "id:2" }).step).toEqual({
+        op: "merge-group",
+        selector: "focus",
+        with: "id:2",
+      });
+      expect(validateStep({ op: "merge-group", partner: "class:X" }).step).toMatchObject({
+        op: "merge-group",
+        with: "class:X",
+      });
+
+      expect(validateStep({ op: "float" }).step).toEqual({
+        op: "float",
+        scope: "window",
+      });
+      expect(validateStep({ op: "float", selector: "focus", scope: "class" }).step).toEqual({
+        op: "float",
+        selector: "focus",
+        scope: "class",
+      });
+      expect(validateStep({ op: "float", scope: "all" }).ok).toBe(false);
     });
 
     it("normalizes order with windowIds (≥2)", () => {

@@ -362,13 +362,46 @@ Execution: [agents/plans/forge-daily-driver.md](../agents/plans/forge-daily-driv
 
 - **Tab chrome:** empty reserved bar with missing labels is a bug (geometry reserved
   without tab actors), not “stack looks different from tabs.”
-- **Stacking off by default;** tab-first; convert stack↔tab keeps the group; ungroup separate.
+- **Stack mode available by default;** **tabbed** remains the default group type
+  (DnD center, bare-array sugar `["a","b"]`, merge-group). Stacks use object sugar
+  `{layout:stacked,content:[…]}` or stack↔tab / stack toggles.
 - **Sizing:** equal share until user resizes (flex-like *contract* later; no big-bang engine now).
   Implemented as `Node.userSized` + `new-window-size-policy` (`preserve`|`equalize`);
   min-size redistrib writes effective percents without marking user intent.
 - **Keybinds first-class:** bare Super+ is user-space; Safe install defaults only;
   recommended **kits** (vim / i3) + save your own — not one-key-at-a-time exploration.
 - **Debug overlay** opt-in, soon — for humans and agents; not permanent size chrome.
+
+## Layout reshape phases (2026-07-28)
+
+**Problem:** Full keyboard tiling needs split↔group conversion, nested structure,
+and move-into-group — but H/V trees are visually ambiguous
+(`hsplit(vsplit(A,B), vsplit(C,D))` vs `vsplit(hsplit(A,C), hsplit(B,D))`), and
+casual “groupify this parent” dissolves nested units.
+
+**Phase 1 (shipped / shipping):**
+
+| Verb | Safe | Vim | Behavior |
+| --- | --- | --- | --- |
+| Group chrome cycle | `Ctrl+Super+g` | `Shift+Super+n` | **TABBED ↔ STACKED only**; no-op on H/V |
+| Split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` | H ↔ V only (no group exit yet) |
+| Merge two windows | `Ctrl+Super+m` | `Shift+Super+m` | Last-active (or sibling) → tabbed group |
+| Tab force (to/from split) | `Ctrl+Super+t` | `Shift+Super+t` | Existing LayoutTabbedToggle |
+
+Groups today are **window-leaf bags** — chrome flip is lossless. CLI parity via
+RunSteps: `layout-cycle` (axis `group`|`split`), `merge-group`, `float`.
+
+**Phase 2 (later):** shallow groupify of **consecutive window units** in a split
+(bookended by nested CONs or ends); single window between two groups → absorb
+into neighbor; explicit flatten for ensure/scripts only.
+
+**Phase 3 (container rethink):** groups-of-groups, visible H/V group chrome,
+sibling move (`Shift+Super+hjkl`) vs enter/exit group (`Ctrl+Shift+hjkl`),
+separate flatten. Until then, accepting that H↔V on nested splits is lossy is OK
+for a first pass if we ever flip group→split via keys.
+
+**Float:** mode on the tree node (keeps slot). Re-tile = same parent. If parent
+gone / invalid: park at end of last monitor (same soft-park policy as layout).
 
 ## Keybind kits (T5 + grammar)
 

@@ -213,6 +213,92 @@ describe("Tree Operations", () => {
     });
   });
 
+  describe("mergeWindowsIntoGroup", () => {
+    it("should convert a two-window HSPLIT CON to TABBED in place", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      con.layout = LAYOUT_TYPES.HSPLIT;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const node1 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, window2);
+      node1.mode = WINDOW_MODES.TILE;
+      node2.mode = WINDOW_MODES.TILE;
+
+      const group = ctx.tree.mergeWindowsIntoGroup(node1, node2, LAYOUT_TYPES.TABBED);
+
+      expect(group).toBe(con);
+      expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(con.lastTabFocus).toBe(window1);
+      expect(node1.parentNode).toBe(con);
+      expect(node2.parentNode).toBe(con);
+    });
+
+    it("should wrap two of three split siblings into a new TABBED CON", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      con.layout = LAYOUT_TYPES.HSPLIT;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const window3 = createMockWindow();
+      const node1 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, window2);
+      const node3 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, window3);
+      node1.mode = WINDOW_MODES.TILE;
+      node2.mode = WINDOW_MODES.TILE;
+      node3.mode = WINDOW_MODES.TILE;
+
+      const group = ctx.tree.mergeWindowsIntoGroup(node1, node2, LAYOUT_TYPES.TABBED);
+
+      expect(group).not.toBe(con);
+      expect(group.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(node1.parentNode).toBe(group);
+      expect(node2.parentNode).toBe(group);
+      expect(node3.parentNode).toBe(con);
+      expect(group.parentNode).toBe(con);
+    });
+
+    it("should merge windows from different parents", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const left = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      const right = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      left.layout = LAYOUT_TYPES.HSPLIT;
+      right.layout = LAYOUT_TYPES.HSPLIT;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const node1 = ctx.tree.createNode(left.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = ctx.tree.createNode(right.nodeValue, NODE_TYPES.WINDOW, window2);
+      node1.mode = WINDOW_MODES.TILE;
+      node2.mode = WINDOW_MODES.TILE;
+
+      const group = ctx.tree.mergeWindowsIntoGroup(node1, node2, LAYOUT_TYPES.TABBED);
+
+      expect(group.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(node1.parentNode).toBe(group);
+      expect(node2.parentNode).toBe(group);
+      expect(group.parentNode).toBe(left);
+    });
+
+    it("should no-op when already co-grouped", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      con.layout = LAYOUT_TYPES.TABBED;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const node1 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, window2);
+
+      const group = ctx.tree.mergeWindowsIntoGroup(node1, node2, LAYOUT_TYPES.TABBED);
+
+      expect(group).toBe(con);
+      expect(con.childNodes.length).toBe(2);
+    });
+  });
+
   describe("swapPairs", () => {
     it("should swap two windows in same parent", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);

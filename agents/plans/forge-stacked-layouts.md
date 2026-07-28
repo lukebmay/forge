@@ -1,12 +1,13 @@
 # Plan: STACKED layouts as a supported product path
 
-**Status:** SL4 done — next SL5 live (ops, optional)  
+**Status:** defaults + keybinds done — next SL5 live (ops, optional)  
 **Updated:** 2026-07-28  
 **Spike task:** [completed/forge-stacked-layouts_spike.md](./forge-stacked-layouts/completed/forge-stacked-layouts_spike.md)  
 **SL0 task:** [completed/forge-stacked-layouts_sl0-docs-schema.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl0-docs-schema.md)  
 **SL1 task:** [completed/forge-stacked-layouts_sl1-save-roundtrip.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl1-save-roundtrip.md)  
 **SL3 task:** [completed/forge-stacked-layouts_sl3-thrash-parity.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl3-thrash-parity.md)  
-**SL4 task:** [completed/forge-stacked-layouts_sl4-regression.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl4-regression.md)
+**SL4 task:** [completed/forge-stacked-layouts_sl4-regression.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl4-regression.md)  
+**Defaults/keybinds:** [completed/forge-stacked-layouts_defaults-keybinds.md](./forge-stacked-layouts/completed/forge-stacked-layouts_defaults-keybinds.md)
 
 ## Why
 
@@ -32,22 +33,16 @@ should be a deliberate, documented mode — not half-broken residue.
 
 | Choice | Recommendation |
 | --- | --- |
-| **`stacked-tiling-mode-enabled`** | **Keep opt-in (`false`)** — do not ship stack-on as global default |
-| **`dnd-center-layout`** | Keep **`tabbed`** |
-| **`default-window-layout`** | Keep **`tiled`** (split); stacked only when user chooses |
+| **`stacked-tiling-mode-enabled`** | **`true`** — mode available; stack keybinds and STACKED profiles work |
+| **`dnd-center-layout`** | Keep **`tabbed`** (default group type) |
+| **`default-window-layout`** | Keep **`tiled`** (split) |
+| **Layout sugar** | Bare arrays → **tabbed**; stacks → object form `{layout:stacked,content}` |
 
-**Rationale**
+**Rationale (updated 2026-07-28)**
 
-- Engine already implements STACKED well when the flag is on; T0 deliberately made
-  stacks opt-in so center-drop / join never invents accidental stacks on black.
-- Luke’s daily path is tab-first; “supported product path” means **first-class when
-  enabled**, not forced on every user.
-- Opt-in avoids reopening DnD thrash and un-doing daily-driver T0.
-- Profile / docs work should make stacks **discoverable and round-trippable**, not
-  ambient.
-
-If product later wants stack-on for a kit or niche users: expose via prefs + docs,
-not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
+- Allow stacks without making them the ambient group type.
+- Tab-first DnD / bare-array sugar stay tabbed so daily-driver thrash stays calm.
+- Explicit product call: enable mode; keep tabbed as default container/group.
 
 ---
 
@@ -186,22 +181,29 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 
 ## Next task
 
-→ **`SL5`** (ops, optional) — live black opt-in verify (stack mode on; toggle / DnD / layout profile / soft rehome).  
-SL0–SL4 product/CLI path done. SL6 polish only if product wants.
+→ **`SL5`** live verify on black (optional).  
+SL0–SL4 + defaults/keybinds done. SL6 polish only if product wants.
 
 ## Related
 
-- [forge-daily-driver](./forge-daily-driver.md) T0 stack-off
+- [forge-daily-driver](./forge-daily-driver.md) T0 stack-off (historical; product default revised)
 - [docs/user/layout.md](../../docs/user/layout.md)
 - [docs/user/layouts.md](../../docs/user/layouts.md)
 - T0 completed: [forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md](./forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md)
 
 ## Session note
 
-**2026-07-28 SL4 (Task Force A)**
+**2026-07-28 P1b (extension handlers)**
 
-- Audit SL1/SL3: sugar desugar, thrash detect (not-grouped / grouped / nested HSPLIT), partial save round-trip already present.
-- Gaps filled in `test_layout_plan.py`: tabbed→ensure stacked; flat→ensure stacked; stacked pair nothingToDo.
-- `test_layout_save.py` round-trip tightened: nothingToDo / structure 0 / empty actions.
-- `pytest` layout unit: 229 passed. No product code changes.
-- Next: **SL5** live optional.
+- Shipped: `LayoutStackTabToggle`, `WindowMergeGroup`, `mergeWindowsIntoGroup`,
+  RunSteps `layout-cycle` / `merge-group` / `float` (handlers + **EXTENSION_OPS** validation).
+- Stack mode default on; tabbed remains default group type.
+- Active task: [forge-stacked-layouts_phase1-keys.md](../tasks/forge-stacked-layouts_phase1-keys.md) → **P1c** install/live wrapup.
+- Completed defaults task: [completed/forge-stacked-layouts_defaults-keybinds.md](./forge-stacked-layouts/completed/forge-stacked-layouts_defaults-keybinds.md)
+
+**2026-07-28 defaults + keybinds**
+
+- `stacked-tiling-mode-enabled` default **true**; tabbed stays default group (DnD, bare sugar, merge).
+- New: `LayoutStackTabToggle` (`con-stack-tab-layout-toggle`), `WindowMergeGroup` (`window-merge-group`).
+- Tree: `mergeWindowsIntoGroup`; kits Safe/Vim/i3; docs layouts/keybindings/README/DESIGN.
+- Next: unit tests green → install/live; SL5 optional thrash pass.

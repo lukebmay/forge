@@ -50,8 +50,8 @@
         },
         "stacked-tiling-mode-enabled": {
           "type": "boolean",
-          "description": "Enable stacked tiling layout",
-          "default": false
+          "description": "Enable stacked tiling layout (available; tabbed remains the default group type)",
+          "default": true
         },
         "tabbed-tiling-mode-enabled": {
           "type": "boolean",

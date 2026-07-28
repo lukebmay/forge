@@ -86,7 +86,7 @@ Product work aimed at surviving real multi-monitor sessions and scripting the de
 | **Soft rehome** | After lock/blank/wake, workarea thrash no longer piles all tiles onto the primary monitor. Debounced rehome from last-known geometry. |
 | **Session layout** | Last-good tree snapshot (`session-layout.json`) so install/HUP reload can restore splits and tabs instead of flattening to columns. |
 | **Tab chrome** | Tab/stack labels always show for every window in the group (no empty gap when `Shell.App` is missing). |
-| **Tab-first DnD** | Stack mode **off by default**; drag-and-drop prefers tabbed groups. |
+| **Tab-first groups** | Stack mode **on** (available); **tabbed** remains the default group type for DnD center, bare-array sugar, and merge-group. |
 | **Sizing policy** | Equal shares until you resize; preserve vs equalize when a new window joins. |
 | **Keybind kits** | Safe defaults (no bare Super+letter grabs); vim/i3 kits; conflict scan; save your own kit. |
 | **Open-app placement** | Last Focused Tile (LFT) attach; dock-sticky monitor; optional tiny-pane → tab fallback. |

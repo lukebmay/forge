@@ -2732,6 +2732,9 @@ def build_parser() -> argparse.ArgumentParser:
         '  {"op":"swap","a":"focus","b":"class:Bar"}\n'
         '  {"op":"move","tile":"class:A","dest":"path:mo0ws0/0"}\n'
         '  {"op":"layout","mode":"tabbed","selector":"focus"}\n'
+        '  {"op":"layout-cycle","axis":"group","selector":"focus"}\n'
+        '  {"op":"merge-group","selector":"focus","with":"id:2"}\n'
+        '  {"op":"float","selector":"focus","scope":"window"}\n'
         '  {"op":"place-next","wmClass":"X","monitor":0}\n'
         '  {"op":"set","key":"window-gap-size","value":8}\n'
     )

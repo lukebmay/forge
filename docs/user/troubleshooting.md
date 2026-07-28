@@ -19,11 +19,12 @@ It probably matches a rule. Check **Preferences → Windows** and
 
 ## Stacked / tabbed shortcuts do nothing
 
-- **Tabbed** mode is on by default; **stacked** is opt-in (`false` by default).
+- **Tabbed** and **stacked** modes are both **on** by default. Tabbed remains the
+  default **group** type (DnD center, bare-array sugar, merge-group).
 - If a toggle no-ops, confirm the matching flag in **Preferences → Tiling →
   Behavior**: `tabbed-tiling-mode-enabled` / `stacked-tiling-mode-enabled`.
-- Stack toggle always no-ops until you enable stacked tiling. See
-  [layouts.md](layouts.md#stacked-vs-tabbed).
+- Existing installs keep prior dconf values until you reset or re-apply defaults.
+  See [layouts.md](layouts.md#stacked-vs-tabbed).
 
 ## After lock / blank, all windows on one monitor
 

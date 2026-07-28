@@ -294,6 +294,127 @@ describe("CommandHandler", () => {
     });
   });
 
+  describe("LayoutStackTabToggle command", () => {
+    beforeEach(() => {
+      mockSettings.get_boolean.mockImplementation((key) => {
+        if (key === "stacked-tiling-mode-enabled") return true;
+        if (key === "tabbed-tiling-mode-enabled") return true;
+        return false;
+      });
+    });
+
+    it("should switch STACKED to TABBED", () => {
+      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.STACKED;
+
+      commandHandler.execute({ name: "LayoutStackTabToggle" });
+
+      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(mockNodeWindow.parentNode.lastTabFocus).toBe(mockMetaWindow);
+    });
+
+    it("should switch TABBED to STACKED", () => {
+      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.TABBED;
+      mockNodeWindow.parentNode.lastTabFocus = mockMetaWindow;
+      mockNodeWindow.parentNode.lastChild = mockNodeWindow;
+
+      commandHandler.execute({ name: "LayoutStackTabToggle" });
+
+      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.STACKED);
+      expect(mockNodeWindow.parentNode.lastTabFocus).toBeNull();
+    });
+
+    it("should no-op on split (groupify is a later op)", () => {
+      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.HSPLIT;
+
+      commandHandler.execute({ name: "LayoutStackTabToggle" });
+
+      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(mockWm.renderTree).not.toHaveBeenCalled();
+    });
+
+    it("should no-op on VSPLIT", () => {
+      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.VSPLIT;
+
+      commandHandler.execute({ name: "LayoutStackTabToggle" });
+
+      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(mockWm.renderTree).not.toHaveBeenCalled();
+    });
+
+    it("should do nothing if both modes disabled", () => {
+      mockSettings.get_boolean.mockReturnValue(false);
+      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.TABBED;
+
+      commandHandler.execute({ name: "LayoutStackTabToggle" });
+
+      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+    });
+  });
+
+  describe("WindowMergeGroup command", () => {
+    let partnerMeta;
+    let partnerNode;
+
+    beforeEach(() => {
+      mockSettings.get_boolean.mockImplementation((key) => {
+        if (key === "tabbed-tiling-mode-enabled") return true;
+        return false;
+      });
+      partnerMeta = createMockWindow({ wm_class: "Partner", title: "Partner" });
+      partnerNode = createMockNodeWindow(partnerMeta);
+      partnerNode.parentNode = mockNodeWindow.parentNode;
+      mockNodeWindow.parentNode.childNodes = [mockNodeWindow, partnerNode];
+      mockTree.findNode.mockImplementation((win) => {
+        if (win === partnerMeta) return partnerNode;
+        if (win === mockMetaWindow) return mockNodeWindow;
+        return null;
+      });
+      mockTree.mergeWindowsIntoGroup = vi.fn(() => mockNodeWindow.parentNode);
+      mockTree.getTiledChildren.mockReturnValue([mockNodeWindow, partnerNode]);
+      ctx.display.get_tab_next = vi.fn(() => partnerMeta);
+    });
+
+    it("should merge focus with last-active into a tabbed group", () => {
+      commandHandler.execute({ name: "WindowMergeGroup" });
+
+      expect(mockTree.mergeWindowsIntoGroup).toHaveBeenCalledWith(
+        mockNodeWindow,
+        partnerNode,
+        LAYOUT_TYPES.TABBED
+      );
+      expect(mockWm.renderTree).toHaveBeenCalledWith("window-merge-group");
+    });
+
+    it("should fall back to tiled sibling when last-active missing", () => {
+      ctx.display.get_tab_next = vi.fn(() => null);
+
+      commandHandler.execute({ name: "WindowMergeGroup" });
+
+      expect(mockTree.mergeWindowsIntoGroup).toHaveBeenCalledWith(
+        mockNodeWindow,
+        partnerNode,
+        LAYOUT_TYPES.TABBED
+      );
+    });
+
+    it("should do nothing if tabbed mode disabled", () => {
+      mockSettings.get_boolean.mockReturnValue(false);
+
+      commandHandler.execute({ name: "WindowMergeGroup" });
+
+      expect(mockTree.mergeWindowsIntoGroup).not.toHaveBeenCalled();
+    });
+
+    it("should do nothing if no partner", () => {
+      ctx.display.get_tab_next = vi.fn(() => null);
+      mockTree.getTiledChildren.mockReturnValue([mockNodeWindow]);
+
+      commandHandler.execute({ name: "WindowMergeGroup" });
+
+      expect(mockTree.mergeWindowsIntoGroup).not.toHaveBeenCalled();
+    });
+  });
+
   describe("ConfigReload command", () => {
     it("should call reloadWindowOverrides", () => {
       commandHandler.execute({ name: "ConfigReload" });

@@ -1,7 +1,7 @@
 # Task: Phase 1 layout keys + portable keybind profiles
 
 **Plan:** forge-stacked-layouts  
-**Status:** in progress (P1a done → P1b)
+**Status:** in progress (P1a + P1b done → P1c)
 
 ## Acceptance
 
@@ -17,9 +17,18 @@
 
 | ID | Work | Commit |
 | --- | --- | --- |
-| P1a | Env var + shellrc + backup + apply Vim | yes — this session |
-| P1b | Phase 1 verify / fix gaps (A/B) | yes |
-| P1c | Docs/help wrapup + tests + final commit | yes |
+| P1a | Env var + shellrc + backup + apply Vim | yes — done |
+| P1b | Phase 1 verify / fix gaps (A/B) | yes — this session |
+| P1c | Docs/help wrapup + install/HUP verify + final | pending |
+
+## Session note (P1b)
+
+- **Handlers:** `LayoutStackTabToggle` (TABBED↔STACKED only), `WindowMergeGroup` (last-active / sibling → tabbed via `tree.mergeWindowsIntoGroup`).
+- **Keybinds** registered; stack mode default **true**; tabbed remains default group (DnD / bare sugar / merge).
+- **Gap fixed:** RunSteps validation — `layout-cycle`, `merge-group`, `float` (+ `order` on Python side) added to `EXTENSION_OPS` / `validateStep` (`run-steps.js`, `layout_lib.py`). Handlers alone were unreachable via DBus/CLI validation.
+- **session-api:** Meta import; float uses `DEFAULT_FLOAT_LAYOUT` fields; ops wired in `_runStepHandlers`.
+- **Tests:** command / tree / keybindings / run-steps / session-api layout-cycle+merge / layout_lib — green.
+- **Follow-up P1c:** install/HUP so Shell loads schema keys; live verify stack-tab toggle + merge; docs polish if any leftover.
 
 ## Session note (P1a)
 
@@ -28,4 +37,3 @@
 - **shellrc** `forge.zsh`: export + mkdir + safe XDG → shellrc symlink/migrate.
 - **Backup:** `$shellrc/configs/forge/keybinding-profiles/backup-before-vim-20260728.json`
 - **Live:** Vim kit applied (incl. `con-stack-tab-layout-toggle` / `window-merge-group`).
-- **Follow-up P1b:** extension handlers for new keys still uncommitted (command/tree/session-api); install/HUP so GNOME loads new schema keys from extension path; verify stack-tab toggle + merge live.

@@ -8,7 +8,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **stacks** | STACKED product path — SL4 done; **next SL5** live optional | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| **1** | **stacks** | STACKED defaults + stack↔tab / merge keybinds shipping; then SL5 live | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 | 2 | layout polish | Live-drive bare-array `forge layout` | Day-to-day on black |
 | 3 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
 
@@ -42,7 +42,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [stacked](./plans/forge-stacked-layouts.md) | SL4 **done** — next **SL5** live optional |
+| **P0** | [stacked](./plans/forge-stacked-layouts.md) | Mode on by default; tabbed still default group; stack↔tab + merge binds |
 | P1 | Live layout daily-drive | Bare-array sugar live on black |
 | P2 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
 

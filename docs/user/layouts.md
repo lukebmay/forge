@@ -28,28 +28,43 @@ Instead of splitting space, a container can show one child at a time.
 | | **Tabbed** | **Stacked** |
 | --- | --- | --- |
 | Chrome | Horizontal tab strip (default daily path) | Vertical title-bar column (i3-like) |
-| Toggle | Safe: `Ctrl+Super+t` | Safe: `Ctrl+Super+s` |
-| Mode flag | `tabbed-tiling-mode-enabled` — **on** by default | `stacked-tiling-mode-enabled` — **off** by default (opt-in) |
+| Group chrome cycle | Safe: `Ctrl+Super+g` · Vim: `Shift+Super+n` | same (TABBED ↔ STACKED) |
+| Toggle to/from split | Safe: `Ctrl+Super+t` (tabbed) | Vim/i3 still have dedicated stack binds |
+| Mode flag | `tabbed-tiling-mode-enabled` — **on** | `stacked-tiling-mode-enabled` — **on** |
 
-**Tabbed** is the default group layout: center-drop, layout profiles that use a
-bare multi-app array (`["app1", "app2"]`), and monocle all prefer tabs.
+**Tabbed** is the default **group** type: center-drop (`dnd-center-layout`),
+layout-profile bare arrays (`["app1", "app2"]`), merge-group, and monocle all
+prefer tabs. Stacks are available; they are not the ambient default.
 
-**Stacked** is opt-in via Preferences → Tiling → Behavior (or gsettings
-`stacked-tiling-mode-enabled`). When stack mode is **off**:
+**Phase 1:** group chrome cycle only flips an **existing** tab/stack container
+(window-leaf bag). It does **not** groupify an H/V split (that path dissolves
+nested structure and is deferred).
 
-- Center DnD stays **tabbed** (even if `dnd-center-layout` is set to stacked).
-- The stack toggle keybind no-ops.
+### Creating / reshaping groups from the keyboard
 
-When stack mode is **on**:
+| Goal | Safe | Vim |
+| --- | --- | --- |
+| Flip tab ↔ stack on current group | `Ctrl+Super+g` | `Shift+Super+n` |
+| Merge focus + last-active → tabbed group | `Ctrl+Super+m` | `Shift+Super+m` |
+| Make parent tabbed / back to split | `Ctrl+Super+t` | `Shift+Super+t` |
+| H ↔ V split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` |
+| Center-drop onto another window | DnD center (default **tabbed**) | same |
 
-- The stack toggle keybind works.
-- DnD center drop can create/join stacked groups if `dnd-center-layout` is
-  `stacked`.
+CLI / DBus parity (RunSteps): `layout-cycle` (`axis: group|split`),
+`merge-group`, `float` (`scope: window|class`), plus absolute `layout`.
 
-Layout profiles: multi-app bare arrays still deserialize as **tabbed**. Author a
-stack with `{ "layout": "stacked", "content": ["app1", "app2"] }` (or IR
-`layout: "stacked"` on a multi-role leaf). `forge layout save` emits that object
-for live STACKED groups so they round-trip (not bare-array tab sugar).
+Move windows into or out of an existing group with the usual move/swap binds.
+
+### Layout profiles (sugar)
+
+| Form | Result |
+| --- | --- |
+| Bare multi-app array `["app1", "app2"]` | **Tabbed** group |
+| `{ "layout": "stacked", "content": ["app1", "app2"] }` | **Stacked** group |
+| IR `layout: "stacked"` on a multi-role leaf | **Stacked** |
+
+`forge layout save` emits object form for live STACKED groups so they round-trip
+(not bare-array tab sugar).
 
 Other settings:
 
