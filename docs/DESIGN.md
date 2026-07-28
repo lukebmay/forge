@@ -631,8 +631,8 @@ Object `tiles` / `floating` only when needed. Malformed structure: load what
 you can, park leftovers safely. **Description** is optional cosmetics:
 auto one-liner (`mon0 (hsplit): tabgroup, ghostty. …`) for `list` when
 missing; interactive save: no menu if no existing (edit prefilled with
-default); if existing, Keep / Default / Edit with Edit prefilled from
-**existing** — never required to load.
+auto default); if existing, Keep / Default / Edit — Default prefills auto,
+Edit prefills existing; Enter accepts buffer — never required to load.
 
 Arrays under a mon are panes (order = spatial order). Nested arrays are
 tab groups. Bare strings are single-app panes. **Split** is inferred

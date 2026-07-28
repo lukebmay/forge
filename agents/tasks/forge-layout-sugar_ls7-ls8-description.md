@@ -26,7 +26,10 @@
 | File state | UX |
 | --- | --- |
 | **No existing description** | No K/D/E menu. One line edit **pre-filled with auto default**; Enter accepts. |
-| **Exists + description** | **[K]eep current** (Enter default) / **[D]efault** (write auto) / **[E]dit** (line edit **pre-filled with existing**, not default) |
+| **Exists + description** | **[K]eep current** (Enter = K, no edit step) / **[D]efault** (line edit **pre-filled with auto**) / **[E]dit** (line edit **pre-filled with existing**) |
+
+Default and Edit both open the same single-line editor; only the prefill
+differs. Enter accepts the buffer (so Default + Enter = pure auto one-liner).
 
 **Non-interactive:** no prompts — keep existing description if any; else write auto. Escapes: `--description TEXT`, `--no-description`.
 
@@ -36,9 +39,10 @@ Keep the flow dead simple — no `$EDITOR`, no multi-page wizard.
 
 1. Profile without `description` loads and lists with auto one-liner.
 2. No existing desc → no Keep/Default/Edit menu; prefill default only.
-3. Edit prefill = **existing**; Default = auto one-liner; Keep = unchanged.
-4. Non-interactive save never blocks; never drops a custom description without a flag when re-saving.
-5. Tests for format helper; optional CLI prompt tests with mocked stdin.
+3. Edit prefill = **existing**; Default prefill = **auto**; Keep = unchanged (no edit).
+4. Default + Enter writes auto without extra typing.
+5. Non-interactive save never blocks; never drops a custom description without a flag when re-saving.
+6. Tests for format helper; optional CLI prompt tests with mocked stdin.
 
 ## Session note
 

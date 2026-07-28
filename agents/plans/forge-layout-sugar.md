@@ -147,21 +147,20 @@ No multi-option prompt when there is nothing to “keep.”
    [K]eep current  [D]efault  [E]dit  — default K
    ```
 
-3. **Keep (k):** retain file’s description (Enter = K).
-4. **Default (d):** use auto-generated string as-is (no further edit unless they
-   pick Edit next — d alone writes default).
+3. **Keep (k):** retain file’s description (Enter = K). No further prompt.
+4. **Default (d):** single-line edit **pre-filled with the auto-generated
+   one-liner**. Enter accepts default as-is; user may tweak first.
 5. **Edit (e):** single-line edit **pre-filled with the existing (current)
-   description** — not the auto default. User may clear and rewrite; Enter
-   accepts buffer.
+   description**. Enter accepts; user may clear and rewrite.
 
 Summary:
 
-| Choice | Prefill / result |
+| Choice | Behavior |
 | --- | --- |
-| Keep | existing text unchanged |
-| Default | auto-generated one-liner |
-| Edit | buffer starts as **existing** |
-| No existing | skip menu; buffer starts as **default** |
+| Keep | existing text unchanged (no edit step) |
+| Default | edit buffer starts as **auto default**; Enter accepts |
+| Edit | edit buffer starts as **existing**; Enter accepts |
+| No existing | skip menu; edit buffer starts as **auto default** |
 
 ### Non-interactive
 
