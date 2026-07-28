@@ -602,8 +602,8 @@ residual moves/structure. `--dry-run` prints counts + plan JSON (`dryRun: true`)
 no mutations. `--tree-file` feeds a forest offline for dry-run tests. Pure
 apply helpers: `layout_apply.py`.
 
-**CLI UX (WR5+):** `list` prints host + source + short path on stderr (JSON
-array still on stdout). dry-run / apply / show share
+**CLI UX (WR5+):** `list` is this-host only (Name + Description table on TTY;
+JSON `[{name,description}]` when piped). dry-run / apply / show share
 `host=… profile=… source=… path=…` headers. Colorized
 `forge help` / `forge layout help` explain acronyms and profile defaults.
 Profiles are user JSON only — no app/host hardcoding in Forge. Human

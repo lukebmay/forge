@@ -22,6 +22,7 @@ from layout_lib import (  # noqa: E402
     SOURCE_HOST_DIR,
     SOURCE_NOT_FOUND,
     SOURCE_XDG,
+    host_profiles_only,
     list_profiles_resolved,
     resolve_host,
     resolve_profile,
@@ -296,6 +297,36 @@ class TestListProfilesResolved(unittest.TestCase):
             self.assertTrue(r["found"])
             self.assertEqual(r["source"], SOURCE_HOST)
             self.assertEqual(r["path"], host_p)
+
+    def test_list_host_only_without_forge_layout_dir(self):
+        """CLI list path: tree root = XDG layout; host filter drops common/flat."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            layout = root / "layout"
+            _write(
+                layout / "hosts" / "black" / "dev.json",
+                {"version": 1, "description": "host-desk", "steps": []},
+            )
+            _write(
+                layout / "common" / "shared.json",
+                {"version": 1, "description": "common-desk", "steps": []},
+            )
+            _write(
+                layout / "flat.json",
+                {"version": 1, "description": "flat-desk", "steps": []},
+            )
+            env = {"FORGE_HOST": "black"}
+            all_listed = list_profiles_resolved(config_root=root, env=env)
+            self.assertEqual(
+                {e["name"] for e in all_listed}, {"dev", "shared", "flat"}
+            )
+            host_only = host_profiles_only(all_listed)
+            self.assertEqual([e["name"] for e in host_only], ["dev"])
+            self.assertEqual(host_only[0]["description"], "host-desk")
+            # resolve still finds common when asked by name
+            r = resolve_profile("shared", config_root=root, env=env)
+            self.assertTrue(r["found"])
+            self.assertEqual(r["source"], SOURCE_COMMON)
 
     def test_forge_layout_dir_env_wins_for_list(self):
         with tempfile.TemporaryDirectory() as td:

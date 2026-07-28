@@ -45,6 +45,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Item | Note |
 | --- | --- |
+| layout list docs/tests | host-only table UX + tree-root; A/B AGREE |
 | layout-sugar LS4–5 | bare save + docs/examples; A/B AGREE |
 | layout-sugar LS7–8 | auto description + save K/D/E UX; A/B AGREE |
 | layout-sugar LS1–2 | bare array + string/PWA inference; A/B AGREE |

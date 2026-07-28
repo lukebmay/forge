@@ -21,7 +21,7 @@ forge help            # acronyms (LFT, …) + all commands
 ## Quick start
 
 ```bash
-# Point at shellrc host profiles (multi-machine tree)
+# Optional: point at a shellrc multi-machine tree
 export FORGE_LAYOUT_DIR=$shellrc/configs/forge/layout
 # optional: export FORGE_HOST=$(hostname -s)
 
@@ -31,15 +31,16 @@ forge layout mydesk --dry-run     # print plan only
 forge layout mydesk               # apply
 ```
 
-Without `FORGE_LAYOUT_DIR`, only `FORGE_LAYOUT_PATH` (if set) and
-`~/.config/forge/layout/<name>.json` are searched.
+Tree root for `hosts/` + `common/` is `FORGE_LAYOUT_DIR` when set, else
+`~/.config/forge/layout` (same root `layout save` uses). Apply/show still
+resolve common/flat after host (see search order below). **`list` is host-only.**
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
 | `forge layout help` | Colorized guide, defaults, minimal example |
-| `forge layout list` | Human lines on stderr; JSON array on **stdout** |
+| `forge layout list` | **This host only:** Name + Description table (TTY); `[{name,description}]` JSON when stdout is piped |
 | `forge layout show <name>` | Header + validated (normalized) profile JSON |
 | `forge layout save <name>` | Snapshot tree → host profile file (creates dirs; **overwrites**) |
 | `forge layout save <name> --stdout` | Print JSON only (no write) |
@@ -293,29 +294,49 @@ Examples in-tree:
 - `scripts/forge/examples/layout-minimal.json` — short IR  
 - `scripts/forge/examples/layout-dev-v2.json` — richer dual-monitor IR sample  
 
-Host profiles (optional multi-machine tree):
-`$FORGE_LAYOUT_DIR/hosts/<host>/<name>.json`.
+Host profiles: `<tree>/hosts/<host>/<name>.json` (`FORGE_LAYOUT_DIR` or
+`~/.config/forge/layout`).
 
 ## Where profiles live
 
-Search order (**first hit wins**):
+**Tree root** (`layout_tree_root`): `FORGE_LAYOUT_DIR` if set, else
+`~/.config/forge/layout`. List, resolve, and save all share this root for
+`hosts/` + `common/`.
+
+Search order for **show / apply** (**first hit wins**):
 
 ```text
-1. FORGE_LAYOUT_PATH                         # stem must match name
-2. $FORGE_LAYOUT_DIR/hosts/<host>/<name>.json
-3. $FORGE_LAYOUT_DIR/hosts/<host>/<name>/profile.json
-4. $FORGE_LAYOUT_DIR/common/<name>.json
-5. ~/.config/forge/layout/<name>.json        # XDG
+1. FORGE_LAYOUT_PATH                         # stem must match name + file exists
+2. <tree>/hosts/<host>/<name>.json
+3. <tree>/hosts/<host>/<name>/profile.json
+4. <tree>/common/<name>.json
+5. <tree>/<name>.json                        # flat next to hosts/
+6. ~/.config/forge/layout/<name>.json        # flat XDG (if tree root differs)
 ```
+
+`<host>` is `FORGE_HOST` or the short hostname. Save always writes
+`<tree>/hosts/<host>/<name>.json` (creates dirs; overwrites).
+
+### `forge layout list`
+
+| Mode | Output |
+| --- | --- |
+| **TTY** | Two-column table: **Name** + **Description** (no path/source clutter) |
+| **Piped / non-TTY** | JSON array of `{ "name", "description" }` on stdout |
+
+Only profiles under **this host** (`hosts/<host>/…`) appear. Common, flat XDG,
+and `FORGE_LAYOUT_PATH` entries are omitted from the list (they still resolve
+for `show` / apply). Description is the file’s `description` when set, else an
+auto one-liner from structure (same as `show`).
 
 | Env | Role |
 | --- | --- |
-| `FORGE_LAYOUT_DIR` | Root of the shellrc-style tree (`hosts/`, `common/`) |
+| `FORGE_LAYOUT_DIR` | Optional override of tree root (`hosts/`, `common/`) |
 | `FORGE_HOST` | Override short hostname (else `hostname` without domain) |
-| `FORGE_LAYOUT_PATH` | One-shot absolute profile path |
+| `FORGE_LAYOUT_PATH` | One-shot absolute profile path (resolve only; not in `list`) |
 
 Forge does **not** hardcode shellrc paths — export `FORGE_LAYOUT_DIR` from your
-shell init when you want host profiles.
+shell init when you keep a multi-machine tree outside XDG.
 
 ## Tips
 

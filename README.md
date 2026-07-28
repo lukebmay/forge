@@ -216,7 +216,7 @@ Full install/migrate script reference: [scripts/forge/README.md](scripts/forge/R
 | --- | --- |
 | Window rules | `~/.config/forge/config/windows.json` |
 | User stylesheet | `~/.config/forge/stylesheet/forge/stylesheet.css` |
-| Layout profiles | `$FORGE_LAYOUT_DIR/hosts/<host>/<name>.json` or `~/.config/forge/layout/` |
+| Layout profiles | `<tree>/hosts/<host>/<name>.json` (`FORGE_LAYOUT_DIR` or `~/.config/forge/layout`) |
 | Session layout snapshot | `~/.config/forge/config/session-layout.json` |
 | Install origin stamp | `~/.local/share/forge-manage/install-origin.json` |
 | Settings backups | `~/.local/share/forge-manage/backups/` |

@@ -27,7 +27,9 @@ from layout_lib import (  # noqa: E402
     profile_path,
     validate_profile,
     layout_dir,
+    SOURCE_ENV_PATH,
     SOURCE_HOST,
+    SOURCE_HOST_DIR,
     SOURCE_COMMON,
     SOURCE_XDG,
 )
@@ -311,15 +313,37 @@ class TestFormatShortPath(unittest.TestCase):
         self.assertIn("Editor + term", lines[2])
         # Name column padded to widest name
         self.assertTrue(lines[1].startswith("dev "))
+        # Exactly two header columns (Name + Description)
+        self.assertEqual(len(lines[0].split()), 2)
+        # No source/path columns in header
+        self.assertNotIn("source", lines[0].lower())
+        self.assertNotIn("path", lines[0].lower())
+
+    def test_list_table_empty_and_missing_desc(self):
+        empty = format_profile_list_table([], color=False)
+        self.assertEqual(empty.splitlines()[0].split(), ["Name", "Description"])
+        self.assertEqual(len(empty.splitlines()), 1)
+        one = format_profile_list_table(
+            [{"name": "solo"}],
+            color=False,
+        )
+        self.assertIn("solo", one.splitlines()[1])
+        self.assertTrue(one.splitlines()[1].startswith("solo"))
 
     def test_host_profiles_only_filters(self):
         rows = [
             {"name": "dev", "source": SOURCE_HOST},
+            {"name": "nested", "source": SOURCE_HOST_DIR},
             {"name": "shared", "source": SOURCE_COMMON},
             {"name": "flat", "source": SOURCE_XDG},
+            {"name": "oneshot", "source": SOURCE_ENV_PATH},
         ]
         got = host_profiles_only(rows)
-        self.assertEqual([r["name"] for r in got], ["dev"])
+        self.assertEqual([r["name"] for r in got], ["dev", "nested"])
+        self.assertEqual(
+            {r["source"] for r in got},
+            {SOURCE_HOST, SOURCE_HOST_DIR},
+        )
 
 
 if __name__ == "__main__":

@@ -71,16 +71,23 @@ waits for the new window. Default placement: LFT attach (see product docs).
 
 ### Layout profiles
 
+**Tree root:** `FORGE_LAYOUT_DIR` if set, else `~/.config/forge/layout`
+(same as `layout save`). `FORGE_HOST` overrides the short hostname.
+
+Resolve order (show / apply — first hit wins):
+
 ```text
 1. FORGE_LAYOUT_PATH                         # if set, exists, stem == name
-2. $FORGE_LAYOUT_DIR/hosts/<host>/<name>.json
-3. $FORGE_LAYOUT_DIR/hosts/<host>/<name>/profile.json
-4. $FORGE_LAYOUT_DIR/common/<name>.json
-5. ~/.config/forge/layout/<name>.json        # XDG
+2. <tree>/hosts/<host>/<name>.json
+3. <tree>/hosts/<host>/<name>/profile.json
+4. <tree>/common/<name>.json
+5. <tree>/<name>.json                        # flat
+6. ~/.config/forge/layout/<name>.json        # flat XDG when tree root differs
 ```
 
-`FORGE_HOST` overrides the short hostname used in host paths. When
-`FORGE_LAYOUT_DIR` is unset, only PATH + XDG apply.
+`forge layout list` is **this host only** (`hosts/<host>/…`): Name + Description
+table on a TTY; JSON `[{name,description}]` when stdout is piped. Description is
+file text or an auto one-liner. Common/flat/env-path profiles are not listed.
 
 | Schema | Behavior |
 | --- | --- |
@@ -271,5 +278,5 @@ is also supported; these scripts use **dconf** so EGO migrate works too.
 | `FORGE_FORCE` | `0` — set `1` for non-interactive yes |
 | `FORGE_COLOR` | `auto` |
 | `FORGE_VERBOSE` | `0` — set `1` for detailed install logs |
-| `FORGE_LAYOUT_DIR` | unset — root for host/common layout profiles |
+| `FORGE_LAYOUT_DIR` | unset → `~/.config/forge/layout`; else tree root for hosts/common |
 | `FORGE_HOST` | short hostname for host profile paths |

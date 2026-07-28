@@ -227,4 +227,6 @@ cells keep working as supersets.
 
 Optional: **LS3** best-effort park / **LS6** broader fixtures — or stop if product bar met.
 
+Follow-up done: [layout list docs/tests](./forge-layout-sugar/completed/forge-layout-list-docs-tests.md) (host-only table + tree-root; A/B AGREE).
+
 Completed: [LS1–LS2](./forge-layout-sugar/completed/forge-layout-sugar_ls1-ls2.md), [LS4–LS5](./forge-layout-sugar/completed/forge-layout-sugar_ls4-ls5-save-docs.md), [LS7–LS8](./forge-layout-sugar/completed/forge-layout-sugar_ls7-ls8-description.md).
