@@ -6,66 +6,45 @@
 
 ## Next session focus
 
-**No open planner tasks.** Thrash-zero, Mode A nested, audit B1, and T9
-multi-line tabs v1 all shipped (A/B AGREE). Live-drive + report bugs as needed.
-
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| — | thrash-zero | TZ1…TZ-mode-a-nested **Done** | Morning workon gate |
-| — | **B1** | DnD extract **Done** | window.js size |
-| — | **T9** | Multi-line tabs v1 **Done** | Opt-in wrap chrome |
+| **1** | **layout-sugar** | Dead-simple bare-array layout sugar + app match inference | Authoring UX; plan [forge-layout-sugar.md](./plans/forge-layout-sugar.md) |
+| 2 | **stacks** | STACKED as supported product path | Some users want stacks |
+| 3 | layout polish | Live-drive `forge layout` | Day-to-day |
 
-Optional later: B2 open-app extract; STACKED deprecate; live smoke T9.
-
-Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
-**`luke`**).
-
-| Doc | Role |
-| --- | --- |
-| [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | **Shipped** TZ1…TZ-mode-a-nested |
-| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | Complete WR1–WR16 |
-| [forge-command.md](./plans/forge-command.md) | FC0–FC5 Done |
-| [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 + **T9 Done** |
-| [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome + HUP |
-| [forge-codebase-audit.md](./plans/forge-codebase-audit.md) | Wave 1 + **B1 Done** |
-
----
-
-## Day-to-day impact ranking
-
-| Rank | Impact | Item | Why | Status |
-| ---: | --- | --- | --- | --- |
-| 1 | **Critical (shipped)** | Mode A nested companions | Morning cleanup into term views | Done |
-| 2 | **Critical (shipped)** | Mode B thrash recover + detect | Fallback works live | Done |
-| 3 | **Critical (shipped)** | Dual-head blank/wake + install HUP | Morning layout survives | Done |
-| 4 | **Critical (shipped)** | Tabs, stack-off, LFT, keybinds, sizing | Daily tiling feel | Done |
-| 5 | **High (shipped)** | Idempotent workon + sugar + coexist | Morning desk | WR1–WR16 + TZ |
-| 6 | **Medium (live)** | Regression watch HUP/wake/tabs | Day ruined if back | Monitor |
-| 7 | **Low (shipped)** | Audit B1 + T9 multi-line | Size + polish | Done |
-
----
-
-## Queue (execution)
-
-| Pri | Item | Status | Day-to-day? |
-| --- | --- | --- | --- |
-| P0 | [thrash-zero](./plans/forge-workon-thrash-zero.md) TZ1…TZ-mode-a-nested | **Shipped** | Yes |
-| P1 | workon reconcile WR1–WR16 | Done | Yes |
-| P2 | Live daily-drive; report bugs | Ongoing | Yes |
-| later | T9 multi-line tabs v1 | **Done** A/B AGREE | Polish |
-| later | Audit B1 DnD extract | **Done** A/B AGREE | Maintainability |
-
-### Done recently (not open work)
+**Shipped this session**
 
 | Item | Note |
 | --- | --- |
-| **T9 multi-line tabs v1** | `max-tabs-per-line` default 0; wrap hosts; [completed](./plans/forge-daily-driver/completed/forge-daily-driver_t9-multiline-tabs.md) A/B AGREE |
-| **B1 DnD extract** | `drag-drop.js`; window.js 4487→3985; [completed](./plans/forge-codebase-audit/completed/forge-codebase-audit_b1-dnd-extract.md) A/B AGREE |
-| **TZ-mode-a-nested** | Single-role nested companions → Mode A; [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-mode-a-nested.md) |
-| **TZ-live** | Mode B fallback OK; residual fixed above |
-| **TZ-detect…TZ-matrix** | thrash-zero core |
-| **TZ1 leave + soft park** | [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz1-leave-soft-park.md) |
-| **WR16 quiet + mon-span** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr16-quiet-park-thrash.md) |
-| **WR15 `--clean`** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr15-clean.md) |
-| **WR14 tab settle** | [completed](./plans/forge-workon-reconcile/completed/forge-workon-reconcile_wr14-tab-settle.md) |
-| **WR1–WR13 + WR6–WR9** | reconcile plan complete |
+| Mon L/R + tab group order | `ensure_order` mon + in-tab |
+| `workon` → `layout` | Full rename; `layout save` host-aware |
+| Interim flat Chrome cells + class stem | Toward sugar plan LS* |
+| agents general no-BC-in-dev | shellrc catalog |
+
+Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
+
+| Doc | Role |
+| --- | --- |
+| [forge-layout-sugar.md](./plans/forge-layout-sugar.md) | **Next** — bare array + infer match |
+| [docs/user/layout.md](../docs/user/layout.md) | Layout profiles (current) |
+| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED product |
+| [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | Historical thrash-zero |
+| [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | Historical reconcile |
+
+---
+
+## Queue
+
+| Pri | Item | Status |
+| --- | --- | --- |
+| **P0** | [layout-sugar](./plans/forge-layout-sugar.md) LS1–LS5 | **Next** |
+| P1 | [stacked](./plans/forge-stacked-layouts.md) | Queued |
+| P2 | Live layout daily-drive | Ongoing |
+
+### Done recently
+
+| Item | Note |
+| --- | --- |
+| layout mon + tab order | ensure_order; live black OK |
+| workon → layout rename | no BC |
+| interim sugar / save compact | flat cells; string ghostty |

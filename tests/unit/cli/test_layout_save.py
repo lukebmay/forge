@@ -1,28 +1,30 @@
 #!/usr/bin/env python3
-"""Unit tests for scripts/forge/workon_capture.py (WR7)."""
+"""Unit tests for scripts/forge/layout_save.py (WR7) + layout save CLI."""
 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _REPO = Path(__file__).resolve().parents[3]
 _FORGE_CLI = _REPO / "scripts" / "forge"
 _FORGE_BIN = _FORGE_CLI / "forge"
-_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "workon"
+_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "layout"
 if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
-from workon_capture import (  # noqa: E402
+from layout_save import (  # noqa: E402
     capture_tiles_profile,
     format_capture_stderr,
     profile_for_output,
 )
-from workon_plan import (  # noqa: E402
+from layout_plan import (  # noqa: E402
     normalize_profile,
     plan_reconcile,
     validate_reconcile_profile,
@@ -39,7 +41,8 @@ class TestCaptureTilesProfile(unittest.TestCase):
         raw = capture_tiles_profile(forest)
         profile = profile_for_output(raw)
         self.assertIn("tiles", profile)
-        self.assertEqual(profile.get("floating"), [])
+        # Empty floating omitted (max sugar)
+        self.assertNotIn("floating", profile)
         tiles = profile["tiles"]
         self.assertIn("mon0", tiles)
         self.assertIn("mon1", tiles)
@@ -47,22 +50,29 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertEqual(len(tiles["mon0"]), 2)
         self.assertIsInstance(tiles["mon0"][0], list)
         self.assertEqual(len(tiles["mon0"][0]), 2)
-        self.assertIsInstance(tiles["mon0"][1], dict)
         # mon1: ghostty + tabbed triple
         self.assertEqual(len(tiles["mon1"]), 2)
-        self.assertIsInstance(tiles["mon1"][0], dict)
         self.assertIsInstance(tiles["mon1"][1], list)
         self.assertEqual(len(tiles["mon1"][1]), 3)
+        # mon1 tabs in tree order: youtube, gmail, voice
+        mon1_tabs = tiles["mon1"][1]
+        titles = [
+            c.get("title~=") if isinstance(c, dict) else None for c in mon1_tabs
+        ]
+        self.assertEqual(titles, ["YouTube", "Gmail", "Voice"])
 
     def test_chrome_product_title_match(self):
         forest = _load("tree-perfect.json")
         profile = profile_for_output(capture_tiles_profile(forest))
         cells = profile["tiles"]["mon0"][0]
         main = cells[0]
-        self.assertEqual(main["match"]["class"], "Google-chrome")
-        self.assertEqual(main["match"].get("title~="), "Google Chrome")
+        # Flat sugar: app + class + title~= (no nested match)
+        self.assertEqual(main.get("class"), "Google-chrome")
+        self.assertEqual(main.get("title~="), "Google Chrome")
+        self.assertEqual(main.get("app"), "google-chrome")
         grok = cells[1]
-        self.assertEqual(grok["match"].get("title~="), "Grok")
+        self.assertEqual(grok.get("title~="), "Grok")
+        self.assertEqual(grok.get("app"), "Grok")
 
     def test_validates_sugar(self):
         forest = _load("tree-perfect.json")
@@ -83,9 +93,16 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertEqual(len(mon0), 1)
         self.assertIsInstance(mon0[0], list)
         self.assertEqual(len(mon0[0]), 2)
-        ids = {c["id"] for c in mon0[0]}
-        self.assertIn("ghostty", ids)
-        self.assertIn("nautilus", ids)
+        # String sugar when class is unique / no title need
+        cells = mon0[0]
+        stems = []
+        for c in cells:
+            if isinstance(c, str):
+                stems.append(c)
+            elif isinstance(c, dict):
+                stems.append(c.get("app") or c.get("id") or "")
+        self.assertTrue(any("ghostty" in s for s in stems))
+        self.assertTrue(any("nautilus" in s for s in stems))
 
     def test_empty_raises(self):
         with self.assertRaisesRegex(ValueError, "no tiled windows"):
@@ -102,15 +119,27 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_id_dedupe_two_ghostty(self):
         forest = _load("tree-perfect.json")
         profile = profile_for_output(capture_tiles_profile(forest))
-        ids = []
+        labels = []
         for mon in ("mon0", "mon1"):
             for pane in profile["tiles"][mon]:
                 if isinstance(pane, list):
-                    ids.extend(c["id"] for c in pane)
-                else:
-                    ids.append(pane["id"])
-        self.assertIn("ghostty", ids)
-        self.assertIn("ghostty-2", ids)
+                    for c in pane:
+                        if isinstance(c, str):
+                            labels.append(c)
+                        elif isinstance(c, dict):
+                            labels.append(c.get("app") or c.get("id") or "")
+                elif isinstance(pane, str):
+                    labels.append(pane)
+                elif isinstance(pane, dict):
+                    labels.append(pane.get("app") or pane.get("id") or "")
+        # Two ghostties → ghostty + ghostty-2 after normalize; sugar may be
+        # plain "ghostty" twice until desugar allocates -2.
+        ghost = [x for x in labels if "ghostty" in str(x).lower()]
+        self.assertGreaterEqual(len(ghost), 2)
+        ir = normalize_profile(profile)
+        gids = [r["id"] for r in ir["roles"] if "ghostty" in r["id"]]
+        self.assertIn("ghostty", gids)
+        self.assertTrue(any(x.startswith("ghostty") and x != "ghostty" for x in gids))
 
 
 class TestCaptureRoundTrip(unittest.TestCase):
@@ -130,7 +159,6 @@ class TestCaptureRoundTrip(unittest.TestCase):
                 msg=f"role {r['id']} status={r['status']}",
             )
             self.assertNotEqual(r["status"], "open")
-        # Prefer pure reuse on already-perfect layout (no wrong mon)
         self.assertEqual(plan["counts"]["opened"], 0)
         missing = [r for r in roles if r["status"] == "open"]
         self.assertEqual(missing, [])
@@ -143,15 +171,17 @@ class TestCaptureRoundTrip(unittest.TestCase):
         self.assertEqual(len(plan["roles"]), 2)
 
 
-class TestCaptureCli(unittest.TestCase):
-    def test_tree_file_stdout(self):
+class TestSaveCli(unittest.TestCase):
+    def test_stdout_only(self):
         tree = _FIXTURES / "tree-perfect.json"
         proc = subprocess.run(
             [
                 sys.executable,
                 str(_FORGE_BIN),
-                "workon",
-                "capture",
+                "layout",
+                "save",
+                "mydesk",
+                "--stdout",
                 "--tree-file",
                 str(tree),
             ],
@@ -163,55 +193,71 @@ class TestCaptureCli(unittest.TestCase):
         data = json.loads(proc.stdout)
         self.assertIn("tiles", data)
         self.assertIn("mon0", data["tiles"])
-        self.assertIn("forge workon capture:", proc.stderr)
+        self.assertIn("forge layout save:", proc.stderr)
         self.assertIn("windows=7", proc.stderr)
+        self.assertIn("stdout only", proc.stderr)
+        self.assertIn("name=mydesk", proc.stderr)
 
-    def test_out_writes_file(self):
+    def test_write_host_path(self):
         tree = _FIXTURES / "tree-perfect.json"
         with tempfile.TemporaryDirectory() as td:
-            out = Path(td) / "sketch.json"
+            root = Path(td)
+            env = {
+                **os.environ,
+                "FORGE_LAYOUT_DIR": str(root),
+                "FORGE_HOST": "testhost",
+            }
             proc = subprocess.run(
                 [
                     sys.executable,
                     str(_FORGE_BIN),
-                    "workon",
-                    "capture",
+                    "layout",
+                    "save",
+                    "mydesk",
                     "--tree-file",
                     str(tree),
-                    "--out",
-                    str(out),
                 ],
                 capture_output=True,
                 text=True,
                 check=False,
+                env=env,
             )
             self.assertEqual(proc.returncode, 0, proc.stderr)
-            self.assertTrue(out.is_file())
-            disk = json.loads(out.read_text(encoding="utf-8"))
-            stdout = json.loads(proc.stdout)
-            self.assertEqual(disk["tiles"].keys(), stdout["tiles"].keys())
+            dest = root / "hosts" / "testhost" / "mydesk.json"
+            self.assertTrue(dest.is_file(), proc.stderr)
+            disk = json.loads(dest.read_text(encoding="utf-8"))
+            self.assertIn("tiles", disk)
+            self.assertEqual(proc.stdout.strip(), "")
+            self.assertIn(str(dest), proc.stderr)
+            self.assertIn("host=testhost", proc.stderr)
+            self.assertIn("name=mydesk", proc.stderr)
 
-    def test_out_missing_parent_errors(self):
+    def test_save_requires_name(self):
         tree = _FIXTURES / "tree-perfect.json"
-        with tempfile.TemporaryDirectory() as td:
-            out = Path(td) / "nope" / "sketch.json"
-            proc = subprocess.run(
-                [
-                    sys.executable,
-                    str(_FORGE_BIN),
-                    "workon",
-                    "capture",
-                    "--tree-file",
-                    str(tree),
-                    "--out",
-                    str(out),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            self.assertNotEqual(proc.returncode, 0)
-            self.assertIn("parent directory missing", proc.stderr)
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(_FORGE_BIN),
+                "layout",
+                "save",
+                "--tree-file",
+                str(tree),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("need profile name", proc.stderr)
+
+    def test_workon_command_gone(self):
+        proc = subprocess.run(
+            [sys.executable, str(_FORGE_BIN), "workon", "list"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(proc.returncode, 0)
 
 
 if __name__ == "__main__":

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Pure workon capture: GetTree forest → tiles sugar sketch (WR7)."""
+"""Pure layout save: GetTree forest → tiles sugar sketch (WR7)."""
 
 from __future__ import annotations
 
 import re
 from typing import Any, Optional
 
-from workon_plan import (
+from layout_plan import (
     _alloc_role_id,
     _order_monitors,
     _parse_mon_id,
@@ -102,10 +102,10 @@ def capture_tiles_profile(
     out: dict[str, Any] = {}
     if description:
         out["description"] = description
-    else:
-        out["description"] = "captured tiles sketch (edit match/open as needed)"
     out["tiles"] = tiles
-    out["floating"] = floating
+    # Omit empty floating for max sugar (defaults to none on load).
+    if floating:
+        out["floating"] = floating
 
     validate_reconcile_profile(out)
     out["_stats"] = {
@@ -128,7 +128,7 @@ def format_capture_stderr(profile: dict[str, Any]) -> str:
     parts = [f"{k}={n}" for k, n in sorted(mons.items())]
     mon_bit = " ".join(parts) if parts else "mons=0"
     return (
-        f"forge workon capture: {mon_bit} "
+        f"forge layout save: {mon_bit} "
         f"windows={stats.get('windows', 0)}"
         + (
             f" floating={stats['floating']}"
@@ -278,7 +278,15 @@ def _capture_pane(
     kids = _ordered_children(node)
 
     if layout in ("TABBED", "STACKED"):
-        wins = [w for w in _window_leaves(node) if not _is_float_window(w)]
+        # Prefer direct children order (tab bar L→R / stack order).
+        wins = [
+            c
+            for c in kids
+            if (c.get("nodeType") or c.get("type")) == "WINDOW"
+            and not _is_float_window(c)
+        ]
+        if not wins:
+            wins = [w for w in _window_leaves(node) if not _is_float_window(w)]
         if not wins:
             return None, 0
         if len(wins) == 1:
@@ -332,30 +340,61 @@ def _capture_pane(
 
 def _role_cell(
     w: dict[str, Any], used_ids: set[str], class_counts: dict[str, int]
-) -> Optional[dict[str, Any]]:
+) -> Optional[Any]:
+    """Compact sugar cell: string when possible, else flat {app,class,title~=}."""
     cls = _wm_class(w)
     title = w.get("title")
     title_s = str(title) if title is not None else ""
-    app = _class_to_app_stem(cls) if cls else "app"
-    rid = _alloc_role_id(_role_id_base(cls, title_s, app), used_ids)
+    stem = _class_to_app_stem(cls) if cls else "app"
+    open_app = _open_app_for_window(cls, title_s, stem)
+    rid = _alloc_role_id(_role_id_base(cls, title_s, stem), used_ids)
+    # Keep used_ids consistent even when we omit id from sugar.
+    _ = rid
 
-    match: dict[str, Any] = {}
-    if cls:
-        match["class"] = cls
     title_sub = _title_match_fragment(cls, title_s, class_counts)
-    if title_sub:
-        match["title~="] = title_sub
-    if not match:
-        if title_s:
-            match["title~="] = _short_title_frag(title_s)
-        else:
-            match["class"] = app
+    if not title_sub and not cls and title_s:
+        title_sub = _short_title_frag(title_s)
 
-    return {
-        "id": rid,
-        "match": match,
-        "open": {"app": app},
-    }
+    # No title need → bare string (stem matches reverse-DNS class).
+    if not title_sub:
+        return open_app if open_app else stem
+
+    # Chrome / titled: flat object (no nested match/open, no id).
+    cell: dict[str, Any] = {"app": open_app}
+    if cls:
+        # Prefer short class when reverse-DNS stem equals open stem.
+        short = cls.rsplit(".", 1)[-1] if "." in cls else cls
+        cell["class"] = short if short.casefold() == stem.casefold() else cls
+    if title_sub:
+        cell["title~="] = title_sub
+    return cell
+
+
+def _open_app_for_window(cls: str, title: str, stem: str) -> str:
+    """Best-effort desktop/app name for open (PWA titles → desktop id)."""
+    if _is_chrome_like(cls):
+        frag = _short_title_frag(title) if title else ""
+        pwa = {
+            "YouTube": "YouTube",
+            "Gmail": "Gmail",
+            "Grok": "Grok",
+            "Voice": "Google Voice",
+            "Calendar": "Google Calendar",
+            "Drive": "Google Drive",
+            "Docs": "Google Docs",
+            "Sheets": "Google Sheets",
+            "Slides": "Google Slides",
+            "Meet": "Google Meet",
+            "Maps": "Google Maps",
+            "Chat": "Google Chat",
+            "Google Chrome": "google-chrome",
+        }
+        if frag in pwa:
+            return pwa[frag]
+        if frag and frag not in ("Google", "Chrome"):
+            return frag
+        return "google-chrome"
+    return stem
 
 
 def _role_id_base(cls: str, title: str, app: str) -> str:
@@ -390,10 +429,17 @@ def _title_match_fragment(
         # Product main window — stable matcher for typical browser profiles
         if not _title_has_other_known(title, "Google Chrome"):
             return "Google Chrome"
-    cls_key = (cls or "").strip().lower()
-    multi = class_counts.get(cls_key, 0) > 1
-    if chrome or multi:
-        return _short_title_frag(title)
+    # Known product frags only (avoid volatile terminal titles for multi ghostty).
+    known = _short_title_frag(title)
+    stem = _class_to_app_stem(cls) if cls else ""
+    if known in _KNOWN_TITLE_FRAGS:
+        # Skip redundant "Ghostty" title on a ghostty window — bare class sugar.
+        if known.casefold() == stem.casefold():
+            return None
+        return known
+    # Chrome multi still needs some title~= when unknown product name.
+    if chrome:
+        return known if known else None
     return None
 
 

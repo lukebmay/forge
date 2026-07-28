@@ -92,7 +92,7 @@ Product work aimed at surviving real multi-monitor sessions and scripting the de
 | **Open-app placement** | Last Focused Tile (LFT) attach; dock-sticky monitor; optional tiny-pane → tab fallback. |
 | **Layout debug overlay** | Opt-in labels for layout type, percent, and mon-ws id (`Ctrl+Super+d`). |
 | **`forge` CLI** | DBus control plane: tree, focus, swap, move, launch, settings, session-layout flush. |
-| **`forge workon`** | Named morning layout profiles — idempotent reconcile (open gaps, move mismatches, leave companions). |
+| **`forge layout`** | Named layout profiles — idempotent reconcile (open gaps, move mismatches, leave companions). |
 | **Install tooling** | `./install` + `forge install` / `update` / `uninstall`; settings-safe migrate from EGO. |
 
 ---
@@ -178,7 +178,7 @@ User guide:
 | Window rules | [docs/user/rules.md](docs/user/rules.md) |
 | Portable config | [docs/user/config.md](docs/user/config.md) |
 | Multi-monitor | [docs/user/monitors.md](docs/user/monitors.md) |
-| Morning profiles | [docs/user/workon.md](docs/user/workon.md) |
+| Layout profiles | [docs/user/layout.md](docs/user/layout.md) |
 | Troubleshooting | [docs/user/troubleshooting.md](docs/user/troubleshooting.md) |
 
 ### Control CLI (`forge`)
@@ -195,12 +195,12 @@ forge launch nautilus                   # resolve .desktop + place after LFT
 forge launch ghostty --monitor=1
 forge launch nautilus --path=mo1ws0/1/1
 
-# Batch / morning desk
-forge workon help
-forge workon list
-forge workon capture > ~/.config/forge/workon/mydesk.json
-forge workon mydesk --dry-run
-forge workon mydesk
+# Named layout profiles
+forge layout help
+forge layout list
+forge layout save mydesk
+forge layout mydesk --dry-run
+forge layout mydesk
 
 # Install helpers (no DBus)
 forge install
@@ -216,7 +216,7 @@ Full install/migrate script reference: [scripts/forge/README.md](scripts/forge/R
 | --- | --- |
 | Window rules | `~/.config/forge/config/windows.json` |
 | User stylesheet | `~/.config/forge/stylesheet/forge/stylesheet.css` |
-| Workon profiles | `~/.config/forge/workon/<name>.json` (or `$FORGE_WORKON_DIR`) |
+| Layout profiles | `$FORGE_LAYOUT_DIR/hosts/<host>/<name>.json` or `~/.config/forge/layout/` |
 | Session layout snapshot | `~/.config/forge/config/session-layout.json` |
 | Install origin stamp | `~/.local/share/forge-manage/install-origin.json` |
 | Settings backups | `~/.local/share/forge-manage/backups/` |

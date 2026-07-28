@@ -9,7 +9,7 @@ usage() {
   cat <<EOF
 forge-ctl — install, backup, and migrate helpers
 
-Day-to-day tiling: forge (tree, focus, launch, workon, …).
+Day-to-day tiling: forge (tree, focus, launch, layout, …).
 This entry point is for build/install/settings tooling under scripts/forge/.
 
 Usage: forge-ctl <command> [args…]

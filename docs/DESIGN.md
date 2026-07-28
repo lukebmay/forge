@@ -245,7 +245,7 @@ install flushes before HUP. On enable: match ≥50% in order id → pid →
 class+title → class+geometry → unique class; **strict** mon rehome
 (`resolveStrictMonitor` — **not** T6 majority); raise tiles so none stay
 buried. Richness guard + post-enable **12s** save hold protect last-good. Not
-full `workon` profiles.
+full `layout` profiles.
 
 **Same-pid multi-window (Ghostty):** titles churn; greedy leaf match could swap
 or drop both on tied frames. Fix: forest-aware **global assignment**
@@ -295,7 +295,7 @@ rebuild even when windows rehomed correctly.
 
 **Why full snapshot before disk:** Thrash recovery needs live `Meta.Window` refs
 and current `moNwsW` parents — not EDID keys or a long-lived session file.
-Portable session-layout.json is only for short-lived disable→enable; disk/workon
+Portable session-layout.json is only for short-lived disable→enable; disk/layout
 profiles can version a richer contract later.
 
 **Approach:**
@@ -350,7 +350,7 @@ Forge must **not** import Python, parse EDID, or write monitors.xml.
 5. Last-good homes store `stableKey` so soft rehome survives renumber even when
    geometry intersection is ambiguous.
 
-**Not done:** full EDID parity with gdisplays; disk session profiles / workon.
+**Not done:** full EDID parity with gdisplays; disk session profiles / layout.
 
 **Tests:** `tests/unit/extension/monitor-identity.test.js`, stableKey cases in
 `tree-snapshot.test.js`.
@@ -427,7 +427,7 @@ default path is LFT policy. `lastFocusedWindow` still exists for pointer helpers
 
 ## Session DBus + `forge` CLI (FC0–FC5)
 
-**Problem:** Scripts and future `workon` need a stable control plane. E2E’s
+**Problem:** Scripts and `layout` need a stable control plane. E2E’s
 `Shell.Eval` / `_forgeTestBridge` is fine for tests, not for production
 scripting (Eval is disabled or unsafe on real sessions).
 
@@ -453,7 +453,7 @@ scripting (Eval is disabled or unsafe on real sessions).
    `session-api.js` + wire from `extension.js`.
 4. **User CLI** `scripts/forge/forge` (`ping` / `tree` / `focus` / `swap` /
    `move` / `launch` / `get` / `set` / `settings save|load` / `run` /
-   `run-steps` / **`workon`**) talks DBus via PyGObject or `gdbus` — distinct
+   `run-steps` / **`layout`**) talks DBus via PyGObject or `gdbus` — distinct
    from `forge-ctl`.
 5. **wm_class is case-insensitive** for `class:` selectors, PlaceNext match,
    and `forge launch --wm-class` wait. Meta often reports `Eog` while desktop
@@ -519,7 +519,7 @@ keybinding-only kits under `config/keybinding-profiles/`.
 
 ### RunSteps + freezeRender (FC4)
 
-**Why batch:** Morning scripts (and future `workon`) issue many focus /
+**Why batch:** Scripts (and `layout`) issue many focus /
 move / layout / set ops. Per-op `renderTree` flickers and races. One
 freeze for the whole batch, one render at the end.
 
@@ -537,19 +537,19 @@ extension — process spawn and window-appear polling stay in
 `scripts/forge/forge`. `partitionMixedSteps` (JS) and
 `partition_mixed_steps` (Python) split scripts into extension vs CLI
 chunks. **`forge run-steps`** stays extension-only (rejects launch/wait).
-**`forge run`** and **`forge workon`** interleave: each CLI chunk runs
+**`forge run`** and **`forge layout`** interleave: each CLI chunk runs
 in-process; each extension chunk is one DBus `RunSteps` (one freeze/render).
 
-### Workon profiles (FC5 → FC6 reconcile)
+### Layout profiles (FC5 → FC6 reconcile; was workon)
 
 **Problem:** Morning setup is still glue (`gdisplays load` + several
 `forge launch` + layout/focus). FC0–FC4 are the primitives; FC5 is a
 **named profile** that composes them without a new DBus method.
 
-**Why not shellrc `workon`:** shellrc already owns `workon` for other
-domains (`t`/`e`). The tiling command is always **`forge workon`**.
+**Why not shellrc domain `workon`:** shellrc already owns `workon` for other
+domains (`t`/`e`). The tiling command is always **`forge layout`**.
 
-**FC5 (shipped):** `~/.config/forge/workon/<name>.json` schema `version: 1`
+**FC5 (shipped):** `~/.config/forge/layout/<name>.json` schema `version: 1`
 imperative `steps[]`. Fine for one-shot scripts; **wrong daily default** —
 re-running doubles apps (live trial, 2026-07-26).
 
@@ -558,13 +558,13 @@ match/claim existing tiles; launch only gaps; park overflow; no kill.
 Host-scoped profiles in **shellrc** user-space (like gdisplays):
 
 ```text
-$shellrc/configs/forge/workon/hosts/<hostname>/<name>.json
-$shellrc/configs/forge/workon/common/<name>.json
-~/.config/forge/workon/<name>.json          # XDG fallback
+$shellrc/configs/forge/layout/hosts/<hostname>/<name>.json
+$shellrc/configs/forge/layout/common/<name>.json
+~/.config/forge/layout/<name>.json          # XDG fallback
 ```
 
 **Why a pure planner first:** Shell thrash and launch side effects make
-round-trip testing expensive. `workon_plan.py` takes a GetTree forest +
+round-trip testing expensive. `layout_plan.py` takes a GetTree forest +
 v2 profile → actions with **no DBus**, so doubled/empty/perfect cases are
 plain unit fixtures. Claim set is global (one window per role); extras
 park, never kill. MVP “home” for a role is **correct monitor index** for
@@ -587,7 +587,7 @@ placement moves **before** mon-level ensure_layout. Mon hsplit anchors are
 **term tiles only** — selecting chrome inside a tab CON rewrote that CON
 to HSPLIT and broke groups.
 
-**Executor (WR3):** `forge workon <name>` resolves host path, branches
+**Executor (WR3):** `forge layout <name>` resolves host path, branches
 schema, then either imperative steps or reconcile:
 
 | Mode | When |
@@ -600,30 +600,35 @@ Reconcile apply: optional displays/settings → GetTree → `plan_reconcile` →
 extension `move`/`layout` for existing tiles → `launch` gaps → re-tree +
 residual moves/structure. `--dry-run` prints counts + plan JSON (`dryRun: true`) with
 no mutations. `--tree-file` feeds a forest offline for dry-run tests. Pure
-apply helpers: `workon_apply.py`.
+apply helpers: `layout_apply.py`.
 
 **CLI UX (WR5+):** `list` prints host + source + short path on stderr (JSON
 array still on stdout). dry-run / apply / show share
 `host=… profile=… source=… path=…` headers. Colorized
-`forge help` / `forge workon help` explain acronyms and profile defaults.
+`forge help` / `forge layout help` explain acronyms and profile defaults.
 Profiles are user JSON only — no app/host hardcoding in Forge. Human
 shorthands: string `match`/`open`, default mon `hsplit`, multi-role
 `tabbed`, omit `version`/`mode` when `roles[]` present. User guide:
-[docs/user/workon.md](user/workon.md).
+[docs/user/layout.md](user/layout.md).
 
 **Compact tiles sugar + marginal coexist (product locks 2026-07-27):**
 
-Humans should not write a roles essay for a morning desk. Preferred
-authoring is a nested **`tiles`** sketch:
+Humans should not write a roles essay for a named desk. Preferred
+authoring is nested lists of app names. **Interim** form still uses
+`tiles` + `monN` keys and optional flat Chrome cells; **target** is a bare
+array (no `tiles` / no `mon0`) so a dual-mon desk is just:
 
 ```json
-{
-  "tiles": {
-    "mon0": [ ["chrome", "grok"], "ghostty" ],
-    "mon1": [ "ghostty", ["youtube", "gmail", "voice"] ]
-  }
-}
+[
+  [ ["google-chrome", "Grok"], "ghostty" ],
+  [ "ghostty", ["YouTube", "Gmail", "Google Voice"] ]
+]
 ```
+
+String cells: open by desktop/PATH; match inferred from app Name / chrome
+heuristics (plan: [forge-layout-sugar.md](../agents/plans/forge-layout-sugar.md)).
+Object `tiles` / `floating` only when needed. Malformed structure: load what
+you can, park leftovers safely.
 
 Arrays under a mon are panes (order = spatial order). Nested arrays are
 tab groups. Bare strings are single-app panes. **Split** is inferred
@@ -636,10 +641,10 @@ Sugar **desugars** into the existing v2 IR (`roles[]` + `layout`). One
 planner, two spellings — rehome/claim/structure repair stay on IR.
 
 **Marginal windows** default to **coexist** + **leave residuals**: companions
-already living in a workon slot stay; true residuals **stay put** (no
+already living in a layout slot stay; true residuals **stay put** (no
 cross-mon park thrash). Opt-in `marginal.residual: "park"` soft-parks onto
 the last claimed role window (move onto that id — never mon0 root dump).
-Close is never default; opt-in `forge workon --clean` closes only true
+Close is never default; opt-in `forge layout --clean` closes only true
 residuals (Meta delete, never process-kill; `--clean --force` skips
 can_close veto). Each slot is a **logical** group; the live tree still
 collapses single-child CONs, so a lone Ghostty is not forced into lonely
@@ -648,7 +653,7 @@ tab chrome until a second member appears.
 **Zero thrash (P0):** Containers are **HSPLIT | VSPLIT | TABBED** (H/V nest;
 H/V→tab flattens lossily; tab→H/V makes slivers). **Sane desk:** re-seat roles
 and **tab marginals** (non-role windows) into the profile **view area** they
-overlap (partial → first view) so `workon` cleans the desk. **Detected thrash:**
+overlap (partial → first view) so `layout` cleans the desk. **Detected thrash:**
 roles only + soft-park everything else on last mon last group — no archaeology.
 Tab ensure must yield TABBED, not nested HSPLIT (`_layoutOp` flattens nested
 CONs on TABBED/STACKED). CLI: `plan.thrashState` + stderr mode A/B; `--safe`
@@ -658,7 +663,7 @@ collect by mon-child containment + tab the view. Nested-split thrash only for
 **multi-role tabbed** views. Plan:
 [forge-workon-thrash-zero.md](../agents/plans/forge-workon-thrash-zero.md).
 
-**Quiet apply:** default `forge workon` prints human counts on stderr;
+**Quiet apply:** default `forge layout` prints human counts on stderr;
 full plan/apply JSON only with `--verbose` / `FORGE_VERBOSE=1` (and on
 errors / `--dry-run`).
 
@@ -672,19 +677,19 @@ Plan: [agents/plans/forge-workon-reconcile.md](../agents/plans/forge-workon-reco
 | `steps` | Same ops as FC4 extension + CLI `launch` / `wait` / `wait-window` |
 
 **Order (v1):** validate → displays → settings → partition steps → CLI/extension
-chunks. Pure helpers: `scripts/forge/workon_lib.py`.
+chunks. Pure helpers: `scripts/forge/layout_lib.py`.
 
 **Non-goals:** full i3 layout restore, GUI recorder, disk session-layout as
-workon, shadowing shellrc `workon`, killing surplus windows (park only).
+layout profiles, shadowing shellrc domain tools, killing surplus windows (park only).
 
 ### CLI on PATH (`~/.local/bin/forge`)
 
-**Problem:** Daily use of `forge tree` / `workon` / `install` should not require
+**Problem:** Daily use of `forge tree` / `layout` / `install` should not require
 `cd` into the clone or PATH'ing `scripts/forge/`.
 
 **Approach:** `./install` (and any path that writes install-origin) symlinks
 `~/.local/bin/forge` → `$repo/scripts/forge/forge`. Source of truth stays in the
-git tree (`workon_lib.py` is a sibling import). Uninstall removes that path
+git tree (`layout_lib.py` is a sibling import). Uninstall removes that path
 **only when forge-owned** (symlink into `…/scripts/forge/forge` or a marked
 wrapper) so a foreign `forge` binary is never deleted. Origin stamp is kept so
 `forge install` can reinstall after uninstall.

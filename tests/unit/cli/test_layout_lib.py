@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for scripts/forge/workon_lib.py (FC5 pure helpers)."""
+"""Unit tests for scripts/forge/layout_lib.py (FC5 pure helpers)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ _FORGE_CLI = _REPO / "scripts" / "forge"
 if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
-from workon_lib import (  # noqa: E402
+from layout_lib import (  # noqa: E402
     extract_steps_and_stop,
     format_profile_list_line,
     format_short_path,
@@ -24,14 +24,14 @@ from workon_lib import (  # noqa: E402
     partition_mixed_steps,
     profile_path,
     validate_profile,
-    workon_dir,
+    layout_dir,
 )
 
 
 class TestProfilePath(unittest.TestCase):
     def test_name_ok(self):
         p = profile_path("dev", config_root=Path("/tmp/forge-cfg"))
-        self.assertEqual(p, Path("/tmp/forge-cfg/workon/dev.json"))
+        self.assertEqual(p, Path("/tmp/forge-cfg/layout/dev.json"))
 
     def test_invalid_name(self):
         with self.assertRaises(ValueError):
@@ -179,7 +179,7 @@ class TestListLoadProfiles(unittest.TestCase):
     def test_list_and_load(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            d = workon_dir(root)
+            d = layout_dir(root)
             d.mkdir(parents=True)
             body = {
                 "version": 1,
@@ -210,12 +210,12 @@ class TestFormatShortPath(unittest.TestCase):
 
     def test_home_tilde(self):
         home = str(Path.home())
-        got = format_short_path(f"{home}/.config/forge/workon/dev.json")
+        got = format_short_path(f"{home}/.config/forge/layout/dev.json")
         self.assertTrue(got.startswith("~/.config/"), got)
 
     def test_long_ellipsis_at_slash(self):
         long = (
-            "/home/user/dev/me/shellrc/configs/forge/workon/"
+            "/home/user/dev/me/shellrc/configs/forge/layout/"
             "hosts/black/dev.json"
         )
         got = format_short_path(long, max_len=28)
@@ -225,11 +225,11 @@ class TestFormatShortPath(unittest.TestCase):
 
     def test_default_keeps_host_tail(self):
         long = (
-            "/home/user/dev/me/shellrc/configs/forge/workon/"
+            "/home/user/dev/me/shellrc/configs/forge/layout/"
             "hosts/black/dev.json"
         )
         got = format_short_path(long)
-        self.assertEqual(got, "…/forge/workon/hosts/black/dev.json")
+        self.assertEqual(got, "…/forge/layout/hosts/black/dev.json")
 
     def test_list_line_host_path_desc(self):
         line = format_profile_list_line(
@@ -238,7 +238,7 @@ class TestFormatShortPath(unittest.TestCase):
                 "source": "host",
                 "host": "black",
                 "path": (
-                    "/home/user/dev/me/shellrc/configs/forge/workon/"
+                    "/home/user/dev/me/shellrc/configs/forge/layout/"
                     "hosts/black/dev.json"
                 ),
                 "description": "Dual-mon morning layout on black workstation",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for scripts/forge/workon_apply.py (WR3 pure apply helpers)."""
+"""Unit tests for scripts/forge/layout_apply.py (WR3 pure apply helpers)."""
 
 from __future__ import annotations
 
@@ -10,22 +10,22 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[3]
 _FORGE_CLI = _REPO / "scripts" / "forge"
-_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "workon"
+_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "layout"
 if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
-from workon_apply import (  # noqa: E402
+from layout_apply import (  # noqa: E402
     MODE_RECONCILE,
     MODE_STEPS,
     actions_to_extension_steps,
-    detect_workon_mode,
+    detect_layout_mode,
     open_action_to_launch_fields,
     partition_plan_actions,
     slot_to_monitor_path,
     slot_to_tree_path,
     window_tile_selector,
 )
-from workon_plan import plan_reconcile  # noqa: E402
+from layout_plan import plan_reconcile  # noqa: E402
 
 
 def _load(name: str):
@@ -35,19 +35,19 @@ def _load(name: str):
 class TestDetectMode(unittest.TestCase):
     def test_v1_steps(self):
         self.assertEqual(
-            detect_workon_mode({"version": 1, "steps": []}),
+            detect_layout_mode({"version": 1, "steps": []}),
             MODE_STEPS,
         )
 
     def test_v2_roles(self):
         self.assertEqual(
-            detect_workon_mode(_load("profile-dev-v2.json")),
+            detect_layout_mode(_load("profile-dev-v2.json")),
             MODE_RECONCILE,
         )
 
     def test_mode_steps(self):
         self.assertEqual(
-            detect_workon_mode({"version": 2, "mode": "steps", "steps": [{"op": "ping"}]}),
+            detect_layout_mode({"version": 2, "mode": "steps", "steps": [{"op": "ping"}]}),
             MODE_STEPS,
         )
 
@@ -62,23 +62,23 @@ class TestDetectMode(unittest.TestCase):
                 }
             ]
         }
-        self.assertEqual(detect_workon_mode(data), MODE_RECONCILE)
+        self.assertEqual(detect_layout_mode(data), MODE_RECONCILE)
 
     def test_tiles_without_roles(self):
         self.assertEqual(
-            detect_workon_mode({"tiles": {"mon0": ["ghostty"]}}),
+            detect_layout_mode({"tiles": {"mon0": ["ghostty"]}}),
             MODE_RECONCILE,
         )
 
     def test_tiles_with_version_2(self):
         self.assertEqual(
-            detect_workon_mode({"version": 2, "tiles": {"mon0": ["a", "b"]}}),
+            detect_layout_mode({"version": 2, "tiles": {"mon0": ["a", "b"]}}),
             MODE_RECONCILE,
         )
 
     def test_force_launch_with_steps(self):
         self.assertEqual(
-            detect_workon_mode(
+            detect_layout_mode(
                 {"version": 2, "roles": [{"id": "x"}], "steps": [{"op": "ping"}]},
                 force_launch=True,
             ),
@@ -87,19 +87,19 @@ class TestDetectMode(unittest.TestCase):
 
     def test_force_launch_roles_only_errors(self):
         with self.assertRaisesRegex(ValueError, "force-launch"):
-            detect_workon_mode(_load("profile-dev-v2.json"), force_launch=True)
+            detect_layout_mode(_load("profile-dev-v2.json"), force_launch=True)
 
     def test_mode_steps_without_steps_errors(self):
         with self.assertRaisesRegex(ValueError, "steps"):
-            detect_workon_mode({"mode": "steps"})
+            detect_layout_mode({"mode": "steps"})
 
     def test_empty_object_errors(self):
         with self.assertRaisesRegex(ValueError, "cannot determine"):
-            detect_workon_mode({})
+            detect_layout_mode({})
 
     def test_version_1_implies_steps(self):
         # validate_profile still requires steps[]; mode only selects path
-        self.assertEqual(detect_workon_mode({"version": 1}), MODE_STEPS)
+        self.assertEqual(detect_layout_mode({"version": 1}), MODE_STEPS)
 
 
 class TestSlotPaths(unittest.TestCase):
@@ -446,6 +446,44 @@ class TestPlanToStepsFixture(unittest.TestCase):
         # layout must precede moves so mon-direct windows get a CON wrap first
         self.assertEqual(steps[0]["op"], "layout")
         self.assertTrue(all(s["op"] == "move" for s in steps[1:]))
+
+    def test_ensure_order_maps_to_order_step(self):
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "ensure_order",
+                    "slot": "mon0",
+                    "mode": "hsplit",
+                    "windowIds": [101, 103],
+                }
+            ]
+        )
+        self.assertEqual(
+            steps,
+            [{"op": "order", "windowIds": ["id:101", "id:103"]}],
+        )
+
+    def test_ensure_order_after_layout_and_placement(self):
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "ensure_order",
+                    "slot": "mon0",
+                    "mode": "hsplit",
+                    "windowIds": [101, 103],
+                },
+                {
+                    "op": "ensure_layout",
+                    "slot": "mon0.left-tab",
+                    "mode": "tabbed",
+                    "windowIds": [101, 102],
+                },
+                {"op": "move", "windowId": 9, "slot": "mon1.comms"},
+            ]
+        )
+        self.assertEqual(steps[0]["op"], "move")
+        self.assertEqual(steps[1]["op"], "layout")
+        self.assertEqual(steps[-1], {"op": "order", "windowIds": ["id:101", "id:103"]})
 
     def test_move_position_start_from_plan(self):
         steps = actions_to_extension_steps(

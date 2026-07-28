@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pure workon reconcile planner (WR1). No DBus / subprocess / network."""
+"""Pure layout reconcile planner (WR1). No DBus / subprocess / network."""
 
 from __future__ import annotations
 
@@ -370,11 +370,21 @@ def _cell_to_role(cell: Any, used_ids: set[str], where: str) -> dict[str, Any]:
         open_spec = cell.get("app")
     if open_spec is None:
         raise ValueError(f"{where}: open (or app) required on role object")
+    if isinstance(open_spec, str) and open_spec.strip():
+        open_spec = {"app": open_spec.strip()}
+    if not isinstance(open_spec, dict):
+        raise ValueError(f"{where}: open must be an object or string")
 
     app_stem = _open_stem(open_spec)
+    app_full = ""
+    for k in ("app", "desktop", "command"):
+        if open_spec.get(k) is not None and str(open_spec.get(k)).strip():
+            app_full = str(open_spec.get(k)).strip()
+            break
     rid_raw = cell.get("id")
     if rid_raw is None or str(rid_raw).strip() == "":
-        rid = _alloc_role_id(_stem_to_id(app_stem or "app"), used_ids)
+        # Full app token → id ("Google Voice" → Google-Voice), not first word only
+        rid = _alloc_role_id(_stem_to_id(app_full or app_stem or "app"), used_ids)
     else:
         rid = str(rid_raw).strip()
         if not _NAME_RE.match(rid):
@@ -384,7 +394,18 @@ def _cell_to_role(cell: Any, used_ids: set[str], where: str) -> dict[str, Any]:
         else:
             used_ids.add(rid)
 
+    # Flat sugar: class / title~= / title on the cell (no nested match{}).
     match = cell.get("match")
+    if match is None:
+        flat: dict[str, Any] = {}
+        if cell.get("class") is not None:
+            flat["class"] = cell.get("class")
+        if cell.get("title~=") is not None:
+            flat["title~="] = cell.get("title~=")
+        elif cell.get("title") is not None:
+            flat["title"] = cell.get("title")
+        if flat:
+            match = flat
     if match is None and cell.get("class") is not None:
         match = {"class": cell.get("class")}
     if match is None:
@@ -867,7 +888,8 @@ def plan_reconcile(
         "ok": True,
         "nothingToDo": bool,
         "counts": {
-          "reused", "opened", "moved", "parked", "kept", "closed", "structure"
+          "reused", "opened", "moved", "parked", "kept", "closed",
+          "structure", "ordered"
         },
         "roles": [...],
         "actions": [...],
@@ -903,6 +925,7 @@ def plan_reconcile(
         "left": 0,
         "closed": 0,
         "structure": 0,
+        "ordered": 0,
     }
     slots_needing_layout: dict[str, str] = {}  # slot → mode
 
@@ -1057,9 +1080,10 @@ def plan_reconcile(
 
     # Soft park only: no overflow ensure_layout (avoids mon rewrite).
 
-    # Tabbed/stacked: repair when not co-grouped. Never thrash-reorder if shared.
+    # Tabbed/stacked: repair when not co-grouped; fix sibling order when shared.
     # Mode B: kept empty → structure windowIds are roles only. --safe: skip.
     structure_slots: dict[str, dict[str, Any]] = {}
+    slot_order_actions: list[dict[str, Any]] = []
     if not safe:
         slots_for_structure = set(layout_slot_modes.keys())
         for k in kept:
@@ -1078,12 +1102,31 @@ def plan_reconcile(
                 continue
             share = _windows_share_group(wids, parent_info, mode)
             if share:
-                # Already co-grouped — roleOrder must not force re-tab thrash
+                # Co-grouped: still repair role sibling order (YT→Gmail→Voice).
+                role_wids = _role_window_ids_for_slot(role_results, slot)
+                if len(role_wids) >= 2 and not _sibling_order_matches(
+                    role_wids, parent_info
+                ):
+                    slot_order_actions.append(
+                        {
+                            "op": "ensure_order",
+                            "slot": slot,
+                            "mode": mode,
+                            "windowIds": role_wids,
+                        }
+                    )
                 continue
             structure_slots[slot] = {"mode": mode, "windowIds": wids}
             slots_needing_layout[slot] = mode
 
     counts["structure"] = len(structure_slots)
+
+    # Mon-level L/R (hsplit/vsplit) + in-group role order vs profile.
+    order_actions: list[dict[str, Any]] = []
+    if not safe:
+        order_actions = _mon_order_actions(role_results, parent_info, prof)
+        order_actions.extend(slot_order_actions)
+    counts["ordered"] = len(order_actions)
 
     # Role open/move rewrites mon splits. Park/close/structure alone must not
     # thrash dual-mon hsplit (companions park used to force mon0+mon1 ensure).
@@ -1094,6 +1137,7 @@ def plan_reconcile(
         or counts["parked"] > 0
         or counts["closed"] > 0
         or counts["structure"] > 0
+        or counts["ordered"] > 0
     )
     ensure_actions: list[dict[str, Any]] = []
     if has_work and not safe:
@@ -1140,7 +1184,8 @@ def plan_reconcile(
         seen_ensure.add(key)
         deduped_ensure.append(a)
 
-    final_actions = deduped_ensure + actions
+    # ensure_layout (structure) then ensure_order (after groups exist in apply)
+    final_actions = deduped_ensure + order_actions + actions
     nothing = not has_work
     thrash_risk = _compute_thrash_risk(final_actions, counts)
 
@@ -1509,9 +1554,19 @@ def _pick_window(
 
 
 def _class_eq(a: Any, b: Any) -> bool:
+    """Casefold equality, plus reverse-DNS stem sugar (ghostty ↔ com.mitchellh.ghostty)."""
     if a is None or b is None:
         return False
-    return str(a).strip().lower() == str(b).strip().lower()
+    sa = str(a).strip().casefold()
+    sb = str(b).strip().casefold()
+    if not sa or not sb:
+        return False
+    if sa == sb:
+        return True
+    # Sugar stem: "ghostty" matches "com.mitchellh.ghostty" (either side).
+    if sa.endswith("." + sb) or sb.endswith("." + sa):
+        return True
+    return False
 
 
 def _window_key(w: dict[str, Any]) -> str:
@@ -1591,6 +1646,105 @@ def _mon_child_loc(path: Any) -> Optional[tuple[str, int]]:
         return None
 
 
+def _first_role_ids_in_layout_node(node: dict[str, Any]) -> list[str]:
+    """Depth-first first non-empty roles[] under a mon layout child."""
+    if not isinstance(node, dict):
+        return []
+    roles = node.get("roles")
+    if isinstance(roles, list) and roles:
+        return [str(x) for x in roles]
+    for sub in node.get("children") or []:
+        if isinstance(sub, dict):
+            found = _first_role_ids_in_layout_node(sub)
+            if found:
+                return found
+    return []
+
+
+def _mon_child_reps(
+    role_results: list[dict[str, Any]], prof: dict[str, Any], mon_key: str
+) -> list[Any]:
+    """
+    One claimed windowId per mon layout child in profile order.
+    First role under that child that has a windowId (tabs → first tab role).
+    """
+    by_id = {str(r.get("id")): r for r in role_results if r.get("id") is not None}
+    mon_body = (prof.get("layout") or {}).get(mon_key)
+    if not isinstance(mon_body, dict):
+        return []
+    out: list[Any] = []
+    for ch in mon_body.get("children") or []:
+        if not isinstance(ch, dict):
+            continue
+        for rid in _first_role_ids_in_layout_node(ch):
+            r = by_id.get(rid)
+            if not r:
+                continue
+            wid = r.get("windowId")
+            if wid is None or str(wid).strip() == "":
+                continue
+            out.append(wid)
+            break
+    return out
+
+
+def _mon_order_matches(
+    parent_info: dict[str, dict[str, Any]], reps: list[Any]
+) -> bool:
+    """
+    True when reps share one mon and mon-level child indices are strictly
+    increasing (profile order already matches live L→R / T→B).
+    """
+    if len(reps) < 2:
+        return True
+    indices: list[int] = []
+    mon_id: Optional[str] = None
+    for wid in reps:
+        info = parent_info.get(str(wid)) or {}
+        path = info.get("path")
+        loc = _mon_child_loc(path)
+        if loc is None:
+            return False
+        if mon_id is None:
+            mon_id = loc[0]
+        elif loc[0] != mon_id:
+            return False
+        indices.append(loc[1])
+    return all(indices[i] < indices[i + 1] for i in range(len(indices) - 1))
+
+
+def _mon_order_actions(
+    role_results: list[dict[str, Any]],
+    parent_info: dict[str, dict[str, Any]],
+    prof: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """ensure_order actions for mons whose hsplit/vsplit children are reversed."""
+    actions: list[dict[str, Any]] = []
+    for mon_key, mon_body in (prof.get("layout") or {}).items():
+        if not isinstance(mon_body, dict):
+            continue
+        split = str(mon_body.get("split") or "").strip().lower()
+        if split not in ("hsplit", "vsplit"):
+            continue
+        children = mon_body.get("children") or []
+        if not isinstance(children, list) or len(children) < 2:
+            continue
+        reps = _mon_child_reps(role_results, prof, mon_key)
+        if len(reps) < 2:
+            continue
+        if _mon_order_matches(parent_info, reps):
+            continue
+        actions.append(
+            {
+                "op": "ensure_order",
+                "slot": mon_key,
+                "mode": split,
+                "windowIds": reps,
+            }
+        )
+    return actions
+
+
 def _soft_park_anchor(
     windows: list[dict[str, Any]],
     parent_info: dict[str, dict[str, Any]],
@@ -1666,17 +1820,21 @@ def _compute_thrash_risk(
             else:
                 structure_groups += 1
                 reasons.append(f"structure:{slot}")
+        elif op == "ensure_order":
+            reasons.append(f"order:{a.get('slot')}")
         elif op == "open":
             reasons.append(f"open:{a.get('role')}")
     # Cross-mon heuristic: park without destWindowId, or counts.moved
     cross_mon = int(counts.get("moved") or 0)
     if parks and any(r.startswith("hard-park") for r in reasons):
         cross_mon += parks
+    ordered = int(counts.get("ordered") or 0)
     score = (
         3 * cross_mon
         + 2 * mon_ensures
         + 2 * structure_groups
         + parks
+        + ordered
         + int(counts.get("closed") or 0)
     )
     # Dedup reasons while preserving order
@@ -2041,6 +2199,16 @@ def _sibling_order_ids(
         return (idx, str(wid))
 
     return sorted(window_ids, key=sort_key)
+
+
+def _sibling_order_matches(
+    window_ids: list[Any], parent_info: dict[str, dict[str, Any]]
+) -> bool:
+    """True when window_ids are already in live sibling order (profile order)."""
+    if len(window_ids) < 2:
+        return True
+    live = _sibling_order_ids(window_ids, parent_info)
+    return [str(x) for x in live] == [str(x) for x in window_ids]
 
 
 def _role_window_ids_for_mon(

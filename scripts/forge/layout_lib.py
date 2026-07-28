@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pure helpers for forge workon profiles (FC5). No DBus / process spawn."""
+"""Pure helpers for forge layout profiles (FC5). No DBus / process spawn."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Mapping, Optional
 
 PROFILE_VERSION = 1
-WORKON_DIR_NAME = "workon"
+LAYOUT_DIR_NAME = "layout"
 DEFAULT_CONFIG_ROOT = Path.home() / ".config" / "forge"
 
 CLI_ONLY_OPS = frozenset({"launch", "wait-window", "wait"})
@@ -30,9 +30,9 @@ SOURCE_XDG = "xdg"
 SOURCE_NOT_FOUND = "not-found"
 
 
-def workon_dir(config_root: Optional[Path] = None) -> Path:
+def layout_dir(config_root: Optional[Path] = None) -> Path:
     root = Path(config_root) if config_root is not None else DEFAULT_CONFIG_ROOT
-    return root / WORKON_DIR_NAME
+    return root / LAYOUT_DIR_NAME
 
 
 def _normalize_profile_name(name: str) -> str:
@@ -45,9 +45,9 @@ def _normalize_profile_name(name: str) -> str:
 
 
 def profile_path(name: str, config_root: Optional[Path] = None) -> Path:
-    """Resolve ~/.config/forge/workon/<name>.json (no existence check)."""
+    """Resolve ~/.config/forge/layout/<name>.json (no existence check)."""
     name = _normalize_profile_name(name)
-    return workon_dir(config_root) / f"{name}.json"
+    return layout_dir(config_root) / f"{name}.json"
 
 
 def list_profiles(config_root: Optional[Path] = None) -> list[dict[str, Any]]:
@@ -55,7 +55,7 @@ def list_profiles(config_root: Optional[Path] = None) -> list[dict[str, Any]]:
     List XDG profiles: [{name, path, description?}…], sorted by name.
     Skips unreadable / non-object JSON; still returns name+path for those.
     """
-    d = workon_dir(config_root)
+    d = layout_dir(config_root)
     if not d.is_dir():
         return []
     out: list[dict[str, Any]] = []
@@ -78,13 +78,13 @@ def resolve_host(env: Optional[Mapping[str, str]] = None) -> str:
     return socket.gethostname().split(".")[0]
 
 
-def _env_workon_dir(
+def _env_layout_dir(
     env: Mapping[str, str],
-    workon_dir_env: Optional[Path] = None,
+    layout_dir_env: Optional[Path] = None,
 ) -> Optional[Path]:
-    if workon_dir_env is not None:
-        return Path(workon_dir_env).expanduser()
-    raw = env.get("FORGE_WORKON_DIR")
+    if layout_dir_env is not None:
+        return Path(layout_dir_env).expanduser()
+    raw = env.get("FORGE_LAYOUT_DIR")
     if raw is not None and str(raw).strip():
         return Path(str(raw).strip()).expanduser()
     return None
@@ -100,7 +100,7 @@ def _profile_candidates(
 ) -> list[tuple[Path, str]]:
     """Ordered (path, source) candidates for first-hit resolve."""
     out: list[tuple[Path, str]] = []
-    path_env = env.get("FORGE_WORKON_PATH")
+    path_env = env.get("FORGE_LAYOUT_PATH")
     if path_env is not None and str(path_env).strip():
         out.append((Path(str(path_env).strip()).expanduser(), SOURCE_ENV_PATH))
     if wdir is not None:
@@ -116,24 +116,24 @@ def resolve_profile(
     name: str,
     *,
     config_root: Optional[Path] = None,
-    workon_dir_env: Optional[Path] = None,
+    layout_dir_env: Optional[Path] = None,
     env: Optional[Mapping[str, str]] = None,
 ) -> dict[str, Any]:
     """
     Host-aware profile path resolve (first hit wins).
 
-    Order: FORGE_WORKON_PATH (stem must match name + file exists) →
-    FORGE_WORKON_DIR/hosts/<host>/<name>.json →
+    Order: FORGE_LAYOUT_PATH (stem must match name + file exists) →
+    FORGE_LAYOUT_DIR/hosts/<host>/<name>.json →
     …/hosts/<host>/<name>/profile.json →
     …/common/<name>.json →
-    XDG ~/.config/forge/workon/<name>.json
+    XDG ~/.config/forge/layout/<name>.json
 
-    When FORGE_WORKON_DIR is unset, only PATH + XDG apply (no shellrc hardcode).
+    When FORGE_LAYOUT_DIR is unset, only PATH + XDG apply (no shellrc hardcode).
     """
     name = _normalize_profile_name(name)
     e = env if env is not None else os.environ
     host = resolve_host(e)
-    wdir = _env_workon_dir(e, workon_dir_env)
+    wdir = _env_layout_dir(e, layout_dir_env)
     candidates = _profile_candidates(
         name, host, config_root=config_root, wdir=wdir, env=e
     )
@@ -174,7 +174,7 @@ def resolve_profile(
 def list_profiles_resolved(
     *,
     config_root: Optional[Path] = None,
-    workon_dir_env: Optional[Path] = None,
+    layout_dir_env: Optional[Path] = None,
     env: Optional[Mapping[str, str]] = None,
 ) -> list[dict[str, Any]]:
     """
@@ -183,7 +183,7 @@ def list_profiles_resolved(
     """
     e = env if env is not None else os.environ
     host = resolve_host(e)
-    wdir = _env_workon_dir(e, workon_dir_env)
+    wdir = _env_layout_dir(e, layout_dir_env)
     names: set[str] = set()
 
     if wdir is not None:
@@ -202,14 +202,14 @@ def list_profiles_resolved(
                 if _NAME_RE.match(p.stem):
                     names.add(p.stem)
 
-    xdg = workon_dir(config_root)
+    xdg = layout_dir(config_root)
     if xdg.is_dir():
         for p in xdg.glob("*.json"):
             if _NAME_RE.match(p.stem):
                 names.add(p.stem)
 
     # One-shot PATH: include stem if file exists and name is valid
-    path_env = e.get("FORGE_WORKON_PATH")
+    path_env = e.get("FORGE_LAYOUT_PATH")
     if path_env is not None and str(path_env).strip():
         p = Path(str(path_env).strip()).expanduser()
         if p.is_file() and _NAME_RE.match(p.stem):
@@ -220,7 +220,7 @@ def list_profiles_resolved(
         resolved = resolve_profile(
             name,
             config_root=config_root,
-            workon_dir_env=workon_dir_env,
+            layout_dir_env=layout_dir_env,
             env=e,
         )
         if not resolved["found"] or resolved["path"] is None:
@@ -278,7 +278,7 @@ def format_profile_list_line(
 ) -> str:
     """
     One human list line, e.g.
-    dev  [host] laptop  …/hosts/laptop/dev.json  Dual-mon morning…
+    dev  [host] laptop  …/hosts/laptop/dev.json  Dual-mon desk…
     """
     name = str(entry.get("name") or "?")
     source = str(entry.get("source") or "?")
@@ -322,7 +322,7 @@ def load_profile_file(path: Path | str) -> dict[str, Any]:
 
 def validate_profile(data: Any) -> dict[str, Any]:
     """
-    Validate workon profile schema v1.
+    Validate layout profile schema v1.
     Returns normalized dict: version, description?, displays?, settings?,
     stopOnError (bool), steps (list).
     Raises ValueError with a clear message.

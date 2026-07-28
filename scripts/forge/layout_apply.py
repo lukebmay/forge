@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Pure helpers for workon reconcile apply (WR3). No DBus / subprocess."""
+"""Pure helpers for layout reconcile apply (WR3). No DBus / subprocess."""
 
 from __future__ import annotations
 
 from typing import Any, Optional
 
-from workon_plan import mon_index_from_slot
+from layout_plan import mon_index_from_slot
 
 MODE_STEPS = "steps"
 MODE_RECONCILE = "reconcile"
 
 
-def detect_workon_mode(data: Any, *, force_launch: bool = False) -> str:
+def detect_layout_mode(data: Any, *, force_launch: bool = False) -> str:
     """
     Choose steps vs reconcile path.
 
@@ -63,7 +63,7 @@ def detect_workon_mode(data: Any, *, force_launch: bool = False) -> str:
         return MODE_STEPS
 
     raise ValueError(
-        "cannot determine workon mode: need version 1 + steps[], "
+        "cannot determine layout mode: need version 1 + steps[], "
         "or version 2 + roles[] / tiles (mode: reconcile)"
     )
 
@@ -128,19 +128,35 @@ def _move_step_from_action(a: dict[str, Any]) -> Optional[dict[str, Any]]:
     return step
 
 
+def _window_ids_to_selectors(wids: Any) -> list[str]:
+    """Raw ids or id: selectors → list of id:N strings."""
+    if not isinstance(wids, list):
+        return []
+    out: list[str] = []
+    for wid in wids:
+        if wid is None or str(wid).strip() == "":
+            continue
+        s = str(wid).strip()
+        if s.startswith("id:"):
+            out.append(s)
+        else:
+            out.append(f"id:{s}")
+    return out
+
+
 def actions_to_extension_steps(
     actions: Any, *, force_close: bool = False
 ) -> list[dict[str, Any]]:
     """
-    Map plan actions to extension RunSteps (move / layout / close).
+    Map plan actions to extension RunSteps (move / layout / order / close).
     Skips open (CLI launch).
 
     layout needs a WINDOW selector (session-api _layoutOp → matchWindows).
     mon path:moNws0 is valid move dest only — not layout selector.
 
     Order: placement moves/parks and residual closes first, then
-    ensure_layout (so mon-level layout selectors run after windows are on
-    the target monitor).
+    ensure_layout (structure after windows on target mon), then
+    ensure_order (mon-level L/R after groups exist).
 
     close → {op: close, selector: id:…} (+ force when force_close).
 
@@ -149,6 +165,8 @@ def actions_to_extension_steps(
       - hsplit/vsplit: layout on first available id
     Fallback when no windowIds: id from move/park on same mon; skip if none
     (empty desk: open first; residual replan may layout after).
+
+    ensure_order → {op: order, windowIds: [id:…, …]} (mon child reorder).
     """
     if not isinstance(actions, list):
         return []
@@ -172,6 +190,7 @@ def actions_to_extension_steps(
 
     place_steps: list[dict[str, Any]] = []
     layout_steps: list[dict[str, Any]] = []
+    order_steps: list[dict[str, Any]] = []
 
     for a in actions:
         if not isinstance(a, dict):
@@ -191,6 +210,13 @@ def actions_to_extension_steps(
                 close_step["force"] = True
             place_steps.append(close_step)
             continue
+        if op == "ensure_order":
+            id_sels = _window_ids_to_selectors(
+                a.get("windowIds") if a.get("windowIds") is not None else a.get("selectors")
+            )
+            if len(id_sels) >= 2:
+                order_steps.append({"op": "order", "windowIds": id_sels})
+            continue
         if op != "ensure_layout":
             continue
         mode_raw = a.get("mode")
@@ -202,13 +228,7 @@ def actions_to_extension_steps(
         if mon is None:
             mon = 0
 
-        wids = a.get("windowIds")
-        id_sels: list[str] = []
-        if isinstance(wids, list):
-            for wid in wids:
-                if wid is None or str(wid).strip() == "":
-                    continue
-                id_sels.append(f"id:{wid}")
+        id_sels = _window_ids_to_selectors(a.get("windowIds"))
 
         if mode in ("tabbed", "stacked") and id_sels:
             # layout first: mon-wrap + H/V→tab flatten in extension _layoutOp;
@@ -224,7 +244,7 @@ def actions_to_extension_steps(
             continue
         layout_steps.append({"op": "layout", "mode": mode, "selector": sel})
 
-    return place_steps + layout_steps
+    return place_steps + layout_steps + order_steps
 
 
 def open_action_to_launch_fields(action: dict[str, Any]) -> dict[str, Any]:

@@ -104,8 +104,24 @@ describe("run-steps pure helpers (FC4)", () => {
 
     it("lists extension ops", () => {
       expect(EXTENSION_OPS).toContain("layout");
+      expect(EXTENSION_OPS).toContain("order");
       expect(EXTENSION_OPS).toContain("place-next");
       expect(EXTENSION_OPS).toContain("close");
+    });
+
+    it("normalizes order with windowIds (≥2)", () => {
+      expect(validateStep({ op: "order", windowIds: ["id:1", "id:2"] })).toEqual({
+        ok: true,
+        step: { op: "order", windowIds: ["id:1", "id:2"] },
+      });
+      expect(validateStep({ op: "order", selectors: ["id:10", 11] }).step).toMatchObject({
+        op: "order",
+        windowIds: ["id:10", "11"],
+      });
+      expect(validateStep({ op: "order" }).ok).toBe(false);
+      expect(validateStep({ op: "order", windowIds: ["id:1"] }).error).toMatch(
+        /windowIds|selectors/
+      );
     });
 
     it("normalizes close with optional force", () => {

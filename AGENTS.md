@@ -53,7 +53,7 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 
 1. **Install trial** of this fork on `black` (gate for daily driver).
 2. **Multi-monitor / tab-stack lifecycle** — blank/thrash + retab must not crash Shell.
-3. **Resize predictability** and **session scripting** (`workon dev`) — see harden plan.
+3. **Resize predictability** and **session scripting** (`layout dev`) — see harden plan.
 4. Prefer small, tested patches; `npm test` / `make unit-test` for logic changes.
 5. UUID `forge@jmmaranan.com` — installs **replace** the live extension in place.
 6. gdisplays / connector identity lives in **shellrc**, not here.
@@ -62,10 +62,12 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 
 | Item | Status | Next |
 | --- | --- | --- |
-| [forge-workon-reconcile](./plans/forge-workon-reconcile.md) | **Complete** WR1–WR15 + WR6–WR9 | residual roleOrder optional |
-| [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | FC6 via workon-reconcile plan |
-| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + OP-opt **Done** | Live; thrash bugs interrupt; T9 later |
-| [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 **Done** | Optional B1 DnD extract only |
+| **STACKED layouts** | **Next major** | Product path for users who want stacks (see PRIORITY) |
+| `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive |
+| [forge-workon-reconcile](./plans/forge-workon-reconcile.md) | **Complete** (historical name) | — |
+| [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | — |
+| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + T9 **Done** | Live |
+| [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 + B1 **Done** | B2 optional |
 | [personal fork](./plans/forge-fork-eval/completed/forge-fork-eval_personal-fork.md) | **Done** | lukebmay/forge · lineage `luke` · master |
 
 **Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).  
@@ -187,6 +189,16 @@ Before finishing, remove temporary and failed-attempt residue from code, configs
 - **Failed attempts:** when a later fix supersedes earlier tries, remove dead code from *every* place those attempts touched, not only the final file
 
 Search the diff and smoke-check real paths you touched.
+
+### Backwards compatibility (while in development)
+
+Do **not** preserve backwards compatibility by default during active
+development. Rename APIs, flip defaults, and drop shims freely unless there
+is a clear reason to keep the old surface — primarily **real-world users**
+already depending on a released version. Pre-release / private / “we have not
+shipped this publicly” work does **not** need compatibility with its own prior
+experiments (names, flags, config paths, schemas). Prefer a clean break over
+dual paths and deprecation theater.
 
 ### Tasks
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for host-aware workon profile resolve (WR2)."""
+"""Unit tests for host-aware layout profile resolve (WR2)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ _FORGE_CLI = _REPO / "scripts" / "forge"
 if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
-from workon_lib import (  # noqa: E402
+from layout_lib import (  # noqa: E402
     SOURCE_COMMON,
     SOURCE_ENV_PATH,
     SOURCE_HOST,
@@ -41,11 +41,11 @@ class TestResolveHost(unittest.TestCase):
         self.assertEqual(resolve_host({"FORGE_HOST": "  green  "}), "green")
 
     def test_hostname_short(self):
-        with patch("workon_lib.socket.gethostname", return_value="black.lan"):
+        with patch("layout_lib.socket.gethostname", return_value="black.lan"):
             self.assertEqual(resolve_host({}), "black")
 
     def test_empty_forge_host_falls_back(self):
-        with patch("workon_lib.socket.gethostname", return_value="box"):
+        with patch("layout_lib.socket.gethostname", return_value="box"):
             self.assertEqual(resolve_host({"FORGE_HOST": "  "}), "box")
 
 
@@ -54,7 +54,7 @@ class TestResolveProfile(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             xdg = _write(
-                root / "workon" / "dev.json",
+                root / "layout" / "dev.json",
                 {"version": 1, "description": "xdg", "steps": []},
             )
             r = resolve_profile("dev", config_root=root, env={})
@@ -76,10 +76,10 @@ class TestResolveProfile(unittest.TestCase):
                 {"version": 1, "description": "common", "steps": []},
             )
             _write(
-                root / "xdg" / "workon" / "dev.json",
+                root / "xdg" / "layout" / "dev.json",
                 {"version": 1, "description": "xdg", "steps": []},
             )
-            env = {"FORGE_WORKON_DIR": str(wdir), "FORGE_HOST": "black"}
+            env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
             r = resolve_profile("dev", config_root=root / "xdg", env=env)
             self.assertTrue(r["found"])
             self.assertEqual(r["source"], SOURCE_HOST)
@@ -95,10 +95,10 @@ class TestResolveProfile(unittest.TestCase):
                 {"version": 1, "description": "common", "steps": []},
             )
             _write(
-                root / "xdg" / "workon" / "dev.json",
+                root / "xdg" / "layout" / "dev.json",
                 {"version": 1, "description": "xdg", "steps": []},
             )
-            env = {"FORGE_WORKON_DIR": str(wdir), "FORGE_HOST": "black"}
+            env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
             r = resolve_profile("dev", config_root=root / "xdg", env=env)
             self.assertTrue(r["found"])
             self.assertEqual(r["source"], SOURCE_COMMON)
@@ -112,7 +112,7 @@ class TestResolveProfile(unittest.TestCase):
                 wdir / "hosts" / "black" / "dev" / "profile.json",
                 {"version": 1, "description": "host-dir", "steps": []},
             )
-            env = {"FORGE_WORKON_DIR": str(wdir), "FORGE_HOST": "black"}
+            env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
             r = resolve_profile("dev", config_root=root / "xdg", env=env)
             self.assertTrue(r["found"])
             self.assertEqual(r["source"], SOURCE_HOST_DIR)
@@ -124,7 +124,7 @@ class TestResolveProfile(unittest.TestCase):
             wdir = root / "wdir"
             host_file = _write(wdir / "hosts" / "black" / "dev.json")
             _write(wdir / "hosts" / "black" / "dev" / "profile.json")
-            env = {"FORGE_WORKON_DIR": str(wdir), "FORGE_HOST": "black"}
+            env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
             r = resolve_profile("dev", config_root=root, env=env)
             self.assertEqual(r["source"], SOURCE_HOST)
             self.assertEqual(r["path"], host_file)
@@ -135,17 +135,17 @@ class TestResolveProfile(unittest.TestCase):
             wdir = root / "wdir"
             green = _write(wdir / "hosts" / "green" / "dev.json")
             _write(wdir / "hosts" / "black" / "dev.json")
-            with patch("workon_lib.socket.gethostname", return_value="black"):
+            with patch("layout_lib.socket.gethostname", return_value="black"):
                 r = resolve_profile(
                     "dev",
                     config_root=root,
-                    env={"FORGE_WORKON_DIR": str(wdir), "FORGE_HOST": "green"},
+                    env={"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "green"},
                 )
             self.assertEqual(r["host"], "green")
             self.assertEqual(r["path"], green)
             self.assertEqual(r["source"], SOURCE_HOST)
 
-    def test_forge_workon_path_stem_match(self):
+    def test_forge_layout_path_stem_match(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             special = _write(
@@ -154,34 +154,34 @@ class TestResolveProfile(unittest.TestCase):
             )
             _write(root / "wdir" / "common" / "dev.json")
             env = {
-                "FORGE_WORKON_PATH": str(special),
-                "FORGE_WORKON_DIR": str(root / "wdir"),
+                "FORGE_LAYOUT_PATH": str(special),
+                "FORGE_LAYOUT_DIR": str(root / "wdir"),
                 "FORGE_HOST": "black",
             }
             r = resolve_profile("dev", config_root=root / "xdg", env=env)
             self.assertEqual(r["source"], SOURCE_ENV_PATH)
             self.assertEqual(r["path"], special)
 
-    def test_forge_workon_path_stem_mismatch_continues(self):
+    def test_forge_layout_path_stem_mismatch_continues(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             other = _write(root / "elsewhere" / "other.json")
-            xdg = _write(root / "workon" / "dev.json")
-            env = {"FORGE_WORKON_PATH": str(other)}
+            xdg = _write(root / "layout" / "dev.json")
+            env = {"FORGE_LAYOUT_PATH": str(other)}
             r = resolve_profile("dev", config_root=root, env=env)
             self.assertEqual(r["source"], SOURCE_XDG)
             self.assertEqual(r["path"], xdg)
 
-    def test_forge_workon_path_missing_file_continues(self):
+    def test_forge_layout_path_missing_file_continues(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            xdg = _write(root / "workon" / "dev.json")
-            env = {"FORGE_WORKON_PATH": str(root / "nope" / "dev.json")}
+            xdg = _write(root / "layout" / "dev.json")
+            env = {"FORGE_LAYOUT_PATH": str(root / "nope" / "dev.json")}
             r = resolve_profile("dev", config_root=root, env=env)
             self.assertEqual(r["source"], SOURCE_XDG)
             self.assertEqual(r["path"], xdg)
 
-    def test_workon_dir_env_param(self):
+    def test_layout_dir_env_param(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             wdir = root / "wdir"
@@ -189,7 +189,7 @@ class TestResolveProfile(unittest.TestCase):
             r = resolve_profile(
                 "dev",
                 config_root=root,
-                workon_dir_env=wdir,
+                layout_dir_env=wdir,
                 env={"FORGE_HOST": "black"},
             )
             self.assertEqual(r["path"], host_p)
@@ -212,12 +212,12 @@ class TestResolveProfile(unittest.TestCase):
         with self.assertRaises(ValueError):
             resolve_profile("", env={})
 
-    def test_no_workon_dir_skips_host_common(self):
+    def test_no_layout_dir_skips_host_common(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             # Would win if DIR set — must be ignored
             _write(root / "fake" / "hosts" / "black" / "dev.json")
-            xdg = _write(root / "workon" / "dev.json")
+            xdg = _write(root / "layout" / "dev.json")
             r = resolve_profile("dev", config_root=root, env={"FORGE_HOST": "black"})
             self.assertEqual(r["source"], SOURCE_XDG)
             self.assertEqual(r["path"], xdg)
@@ -240,11 +240,11 @@ class TestListProfilesResolved(unittest.TestCase):
             # same name in common + host → host wins
             _write(wdir / "common" / "dev.json")
             _write(
-                xdg_root / "workon" / "local.json",
+                xdg_root / "layout" / "local.json",
                 {"version": 1, "description": "xdg-local", "steps": []},
             )
             # xdg only for name only on xdg
-            env = {"FORGE_WORKON_DIR": str(wdir), "FORGE_HOST": "black"}
+            env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
             listed = list_profiles_resolved(config_root=xdg_root, env=env)
             by_name = {e["name"]: e for e in listed}
             self.assertEqual(set(by_name), {"dev", "shared", "local"})
@@ -261,7 +261,7 @@ class TestListProfilesResolved(unittest.TestCase):
             _write(wdir / "hosts" / "black" / "rec" / "profile.json")
             listed = list_profiles_resolved(
                 config_root=root / "empty",
-                env={"FORGE_WORKON_DIR": str(wdir), "FORGE_HOST": "black"},
+                env={"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"},
             )
             self.assertEqual(len(listed), 1)
             self.assertEqual(listed[0]["name"], "rec")
@@ -270,7 +270,7 @@ class TestListProfilesResolved(unittest.TestCase):
     def test_xdg_only_when_no_env(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            _write(root / "workon" / "a.json")
+            _write(root / "layout" / "a.json")
             listed = list_profiles_resolved(config_root=root, env={})
             self.assertEqual(len(listed), 1)
             self.assertEqual(listed[0]["source"], SOURCE_XDG)
@@ -279,8 +279,8 @@ class TestListProfilesResolved(unittest.TestCase):
     def test_invalid_names_skipped_in_list(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            _write(root / "workon" / "good.json")
-            bad = root / "workon" / "has space.json"
+            _write(root / "layout" / "good.json")
+            bad = root / "layout" / "has space.json"
             bad.write_text("{}", encoding="utf-8")
             listed = list_profiles_resolved(config_root=root, env={})
             self.assertEqual([e["name"] for e in listed], ["good"])

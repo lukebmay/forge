@@ -55,32 +55,32 @@ forge launch nautilus
 forge launch nautilus --path=mo1ws0/1/1
 forge launch ghostty --monitor=1
 
-# Batch steps + morning profiles
+# Batch steps + named layouts
 forge run-steps '[{"op":"focus","selector":"class:Foo"}]'
-forge run ./scripts/forge/examples/workon-dev.json
-forge workon help
-forge workon list
-forge workon capture > ~/.config/forge/workon/mydesk.json
-forge workon mydesk --dry-run
-forge workon mydesk
+forge run ./scripts/forge/examples/layout-dev.json
+forge layout help
+forge layout list
+forge layout save mydesk
+forge layout mydesk --dry-run
+forge layout mydesk
 ```
 
 `launch` resolves short names via XDG `.desktop` files, infers `wm_class`, and
 waits for the new window. Default placement: LFT attach (see product docs).
 `--path` / `--monitor` set PlaceNext. Path ids are mon×ws keys (`mo0ws0`).
 
-### Workon profiles
+### Layout profiles
 
 ```text
-1. FORGE_WORKON_PATH                         # if set, exists, stem == name
-2. $FORGE_WORKON_DIR/hosts/<host>/<name>.json
-3. $FORGE_WORKON_DIR/hosts/<host>/<name>/profile.json
-4. $FORGE_WORKON_DIR/common/<name>.json
-5. ~/.config/forge/workon/<name>.json        # XDG
+1. FORGE_LAYOUT_PATH                         # if set, exists, stem == name
+2. $FORGE_LAYOUT_DIR/hosts/<host>/<name>.json
+3. $FORGE_LAYOUT_DIR/hosts/<host>/<name>/profile.json
+4. $FORGE_LAYOUT_DIR/common/<name>.json
+5. ~/.config/forge/layout/<name>.json        # XDG
 ```
 
 `FORGE_HOST` overrides the short hostname used in host paths. When
-`FORGE_WORKON_DIR` is unset, only PATH + XDG apply.
+`FORGE_LAYOUT_DIR` is unset, only PATH + XDG apply.
 
 | Schema | Behavior |
 | --- | --- |
@@ -90,8 +90,8 @@ waits for the new window. Default placement: LFT attach (see product docs).
 | **`--force-launch`** | require `steps[]`; skip reconcile |
 | **`--clean`** | close residuals (Meta delete) instead of leave/park |
 
-Examples: `examples/workon-tiles-minimal.json`, `workon-tiles-nested.json`,
-`workon-minimal.json`, `workon-dev-v2.json`. User guide: [docs/user/workon.md](../../docs/user/workon.md).
+Examples: `examples/layout-tiles-minimal.json`, `layout-tiles-nested.json`,
+`layout-minimal.json`, `layout-dev-v2.json`. User guide: [docs/user/layout.md](../../docs/user/layout.md).
 
 Deps: `python3` + `python3-gi` (preferred) or `gdbus`; `gio` or `gtk-launch`
 for desktop ids. Extension must be enabled for DBus ops.
@@ -208,7 +208,7 @@ Applied automatically after install/migrate; re-run anytime:
 | `check-updates.zsh` | `git fetch`/compare; optional `--ego` |
 | `rollback.zsh` | Restore `extension/` from a backup |
 | `forge-ctl.zsh` | Multi-command front-end for the zsh helpers above |
-| `forge` | **Tiling** control CLI (DBus + workon + install) |
+| `forge` | **Tiling** control CLI (DBus + layout + install) |
 
 All scripts support `-h` / `--help`, `--force` (non-interactive), and
 `--color=auto|always|never`.
@@ -271,5 +271,5 @@ is also supported; these scripts use **dconf** so EGO migrate works too.
 | `FORGE_FORCE` | `0` — set `1` for non-interactive yes |
 | `FORGE_COLOR` | `auto` |
 | `FORGE_VERBOSE` | `0` — set `1` for detailed install logs |
-| `FORGE_WORKON_DIR` | unset — root for host/common workon profiles |
+| `FORGE_LAYOUT_DIR` | unset — root for host/common layout profiles |
 | `FORGE_HOST` | short hostname for host profile paths |

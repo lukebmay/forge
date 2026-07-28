@@ -28,7 +28,7 @@ _EXT_ORIGIN = (
 )
 # Subcommands that do not need a DBus session (extension may be offline).
 _NO_DBUS_COMMANDS = frozenset({"install", "uninstall", "update", "help"})
-# workon list|show|help are offline; run is handled in main after parse.
+# layout list|show|help|save(--stdout/--tree-file) are offline; apply needs DBus.
 
 # Methods that take string in-args (all return a single string).
 _METHOD_IN_ARGS: dict[str, int] = {
@@ -55,15 +55,15 @@ HARD_DEPS = ("python3", "PyGObject (gi.repository.Gio) or gdbus")
 _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
-from workon_apply import (  # noqa: E402
+from layout_apply import (  # noqa: E402
     MODE_RECONCILE,
     MODE_STEPS,
     actions_to_extension_steps,
-    detect_workon_mode,
+    detect_layout_mode,
     open_action_to_launch_fields,
     partition_plan_actions,
 )
-from workon_lib import (  # noqa: E402
+from layout_lib import (  # noqa: E402
     extract_steps_and_stop,
     format_profile_list_line,
     format_short_path,
@@ -71,17 +71,19 @@ from workon_lib import (  # noqa: E402
     list_profiles_resolved,
     load_profile_file,
     partition_mixed_steps,
+    resolve_host,
     resolve_profile,
     validate_profile,
+    _normalize_profile_name,
 )
-from workon_plan import plan_reconcile, validate_reconcile_profile  # noqa: E402
-from workon_capture import (  # noqa: E402
+from layout_plan import plan_reconcile, validate_reconcile_profile  # noqa: E402
+from layout_save import (  # noqa: E402
     capture_tiles_profile,
     format_capture_stderr,
     profile_for_output,
 )
 from cli_ansi import parse_color_flag, set_color_mode  # noqa: E402
-from cli_help import print_forge_help, print_workon_help  # noqa: E402
+from cli_help import print_forge_help, print_layout_help  # noqa: E402
 
 
 def _eprint(*args: object) -> None:
@@ -948,7 +950,7 @@ def cmd_run_steps(backend: str, args: argparse.Namespace) -> int:
     DBus RunSteps: freeze → extension ops → unfreeze + one render.
 
     launch / wait-window / wait are CLI-only — rejected here.
-    Mixed scripts: use `forge run` or `forge workon`.
+    Mixed scripts: use `forge run` or `forge layout`.
     """
     raw: Optional[str] = None
     if getattr(args, "file", None):
@@ -982,7 +984,7 @@ def cmd_run_steps(backend: str, args: argparse.Namespace) -> int:
     if cli_ops:
         _eprint(
             "forge run-steps: launch/wait are CLI-only and not sent via DBus "
-            f"(found: {', '.join(cli_ops)}). Use `forge run` / `forge workon` "
+            f"(found: {', '.join(cli_ops)}). Use `forge run` / `forge layout` "
             "for mixed scripts, or `forge launch` then run-steps for tree ops."
         )
         return 1
@@ -1004,7 +1006,7 @@ def do_launch(
     first: bool = False,
     print_result: bool = True,
 ) -> tuple[int, dict[str, Any]]:
-    """Shared launch path for `forge launch` and workon/run launch steps."""
+    """Shared launch path for `forge launch` and layout/run launch steps."""
     app = (app or "").strip().strip("'\"")
     if not app:
         out = {"ok": False, "error": "app required", "op": "launch"}
@@ -1266,30 +1268,30 @@ def run_mixed_steps(
 def _load_gdisplays(scene: str) -> int:
     """Shell out to gdisplays load <scene>. Exit ≠0 + install hint if missing."""
     if not shutil.which("gdisplays"):
-        _eprint("forge workon: `gdisplays` not found (needed for profile displays)")
+        _eprint("forge layout: `gdisplays` not found (needed for profile displays)")
         _eprint("Install: install-gdisplays  (shellrc) or ensure gdisplays is on PATH")
         # fallback hint for distros without shellrc
         _eprint("# fallback: ensure shellrc bin or your gdisplays package is installed")
         return 127
     cmd = ["gdisplays", "load", scene]
-    _eprint(f"forge workon: {' '.join(shlex.quote(c) for c in cmd)}")
+    _eprint(f"forge layout: {' '.join(shlex.quote(c) for c in cmd)}")
     try:
         proc = subprocess.run(cmd, check=False)
     except OSError as e:
-        _eprint(f"forge workon: gdisplays failed: {e}")
+        _eprint(f"forge layout: gdisplays failed: {e}")
         return 1
     if proc.returncode != 0:
-        _eprint(f"forge workon: gdisplays load {scene!r} exit {proc.returncode}")
+        _eprint(f"forge layout: gdisplays load {scene!r} exit {proc.returncode}")
     return int(proc.returncode)
 
 
-def _workon_parse_tokens(
+def _layout_parse_tokens(
     tokens: list[str], args: argparse.Namespace
 ) -> tuple[str, Optional[str], bool, bool, bool, bool]:
     """
-    Parse workon positional tokens + flags.
+    Parse layout positional tokens + flags.
     Returns (action, name, dry_run, force_launch, clean, force_close).
-    action: list | show | run | help | capture
+    action: list | show | run | help | save
     """
     dry_run = bool(getattr(args, "dry_run", False))
     force_launch = bool(getattr(args, "force_launch", False))
@@ -1306,14 +1308,13 @@ def _workon_parse_tokens(
     if head == "show":
         name = tokens[1].strip() if len(tokens) >= 2 else None
         return "show", name, dry_run, force_launch, clean, force_close
-    if head == "capture":
-        # Optional name → description only (never auto-writes host profiles)
+    if head == "save":
         name = tokens[1].strip() if len(tokens) >= 2 else None
-        return "capture", name, dry_run, force_launch, clean, force_close
+        return "save", name, dry_run, force_launch, clean, force_close
     return "run", head, dry_run, force_launch, clean, force_close
 
 
-def _workon_load_tree(
+def _layout_load_tree(
     backend: Optional[str], tree_file: Optional[str]
 ) -> dict[str, Any]:
     if tree_file:
@@ -1335,18 +1336,18 @@ def _workon_load_tree(
     return data
 
 
-def _workon_print_header(resolved: dict[str, Any], name: str) -> None:
+def _layout_print_header(resolved: dict[str, Any], name: str) -> None:
     """Consistent human header: host, profile, source, short path."""
     path = resolved.get("path")
     short = format_short_path(path) if path else ""
     _eprint(
-        f"forge workon: host={resolved.get('host')} profile={name} "
+        f"forge layout: host={resolved.get('host')} profile={name} "
         f"source={resolved.get('source')}"
         + (f" path={short}" if short else "")
     )
 
 
-def _workon_print_counts(counts: dict[str, Any]) -> None:
+def _layout_print_counts(counts: dict[str, Any]) -> None:
     struct = counts.get("structure", 0)
     struct_bit = f"   structure  {struct}" if struct else ""
     kept = counts.get("kept", 0)
@@ -1369,7 +1370,7 @@ def _workon_print_counts(counts: dict[str, Any]) -> None:
     )
 
 
-def _workon_print_thrash_mode(plan: dict[str, Any], *, safe: bool = False) -> None:
+def _layout_print_thrash_mode(plan: dict[str, Any], *, safe: bool = False) -> None:
     """Human Mode A/B line from thrashState (always on reconcile dry-run/apply)."""
     state = plan.get("thrashState")
     thrashed = isinstance(state, dict) and bool(state.get("thrashed"))
@@ -1378,7 +1379,7 @@ def _workon_print_thrash_mode(plan: dict[str, Any], *, safe: bool = False) -> No
     _eprint(f"  mode={label}{safe_bit}")
 
 
-def _workon_print_thrash_state(plan: dict[str, Any]) -> None:
+def _layout_print_thrash_state(plan: dict[str, Any]) -> None:
     """One thrashState line when desk is thrashed."""
     state = plan.get("thrashState")
     if not isinstance(state, dict) or not state.get("thrashed"):
@@ -1389,7 +1390,7 @@ def _workon_print_thrash_state(plan: dict[str, Any]) -> None:
     _eprint(f"  thrashState  thrashed score={score}{reasons_bit}")
 
 
-def _workon_print_thrash_risk(plan: dict[str, Any]) -> None:
+def _layout_print_thrash_risk(plan: dict[str, Any]) -> None:
     risk = plan.get("thrashRisk")
     if not isinstance(risk, dict):
         return
@@ -1401,7 +1402,7 @@ def _workon_print_thrash_risk(plan: dict[str, Any]) -> None:
     _eprint(f"  thrashRisk  {score}{hint}")
 
 
-def _workon_plan_meta(
+def _layout_plan_meta(
     resolved: dict[str, Any],
     name: str,
     plan: dict[str, Any],
@@ -1418,7 +1419,7 @@ def _workon_plan_meta(
     return out
 
 
-def _workon_optional_preamble(
+def _layout_optional_preamble(
     backend: Optional[str],
     profile: dict[str, Any],
     *,
@@ -1438,30 +1439,30 @@ def _workon_optional_preamble(
             raw = call_method(backend, "SettingsLoad", str(profile["settings"]))
             data = json.loads(raw)
         except Exception as e:
-            _eprint(f"forge workon: SettingsLoad failed: {e}")
+            _eprint(f"forge layout: SettingsLoad failed: {e}")
             return 1
         if not isinstance(data, dict) or data.get("ok") is not True:
             err = data.get("error") if isinstance(data, dict) else raw
-            _eprint(f"forge workon: SettingsLoad error: {err}")
+            _eprint(f"forge layout: SettingsLoad error: {err}")
             if isinstance(data, dict):
                 _print_json(data, compact=False)
             return 1
     return 0
 
 
-def _workon_is_verbose(args: argparse.Namespace) -> bool:
+def _layout_is_verbose(args: argparse.Namespace) -> bool:
     return bool(
         getattr(args, "verbose", False) or os.environ.get("FORGE_VERBOSE") == "1"
     )
 
 
-def _workon_maybe_print_json(data: Any, *, verbose: bool, force: bool = False) -> None:
+def _layout_maybe_print_json(data: Any, *, verbose: bool, force: bool = False) -> None:
     """Stdout plan/apply JSON only when verbose, dry-run, or error (force)."""
     if verbose or force:
         _print_json(data, compact=False)
 
 
-def _workon_run_steps(
+def _layout_run_steps(
     backend: Optional[str],
     resolved: dict[str, Any],
     data: dict[str, Any],
@@ -1481,16 +1482,16 @@ def _workon_run_steps(
             raise ValueError("steps path requires steps[] array")
         profile = validate_profile(data_v1)
     except ValueError as e:
-        _eprint(f"forge workon: {e}")
+        _eprint(f"forge layout: {e}")
         return 1
 
     if dry_run:
-        _workon_print_header(resolved, name)
+        _layout_print_header(resolved, name)
         _eprint(
             f"  mode=steps steps={len(profile.get('steps') or [])}"
             f"{' force-launch' if force_launch else ''} (dry-run, no changes)"
         )
-        _workon_maybe_print_json(
+        _layout_maybe_print_json(
             {
                 "ok": True,
                 "dryRun": True,
@@ -1507,16 +1508,16 @@ def _workon_run_steps(
         )
         return 0
 
-    _workon_print_header(resolved, name)
+    _layout_print_header(resolved, name)
     stop_on_error = bool(profile.get("stopOnError", True))
-    rc = _workon_optional_preamble(backend, profile, dry_run=False)
+    rc = _layout_optional_preamble(backend, profile, dry_run=False)
     if rc != 0:
         return rc
 
     steps = profile.get("steps") or []
     if not steps:
         _eprint("  mode=steps steps=0")
-        _workon_maybe_print_json(
+        _layout_maybe_print_json(
             {
                 "ok": True,
                 "profile": name,
@@ -1550,11 +1551,11 @@ def _workon_run_steps(
     if rc == 0:
         _eprint("  ok")
     # Always dump on failure; success only when verbose
-    _workon_maybe_print_json(aggregate, verbose=verbose, force=rc != 0)
+    _layout_maybe_print_json(aggregate, verbose=verbose, force=rc != 0)
     return rc
 
 
-def _workon_run_reconcile(
+def _layout_run_reconcile(
     backend: Optional[str],
     resolved: dict[str, Any],
     data: dict[str, Any],
@@ -1570,10 +1571,10 @@ def _workon_run_reconcile(
     try:
         profile = validate_reconcile_profile(data)
     except ValueError as e:
-        _eprint(f"forge workon: {e}")
+        _eprint(f"forge layout: {e}")
         return 1
 
-    rc = _workon_optional_preamble(backend, profile, dry_run=dry_run)
+    rc = _layout_optional_preamble(backend, profile, dry_run=dry_run)
     if rc != 0:
         return rc
 
@@ -1582,19 +1583,19 @@ def _workon_run_reconcile(
         backend = _check_deps()
 
     try:
-        forest = _workon_load_tree(backend, tree_file)
+        forest = _layout_load_tree(backend, tree_file)
     except Exception as e:
-        _eprint(f"forge workon: GetTree failed: {e}")
+        _eprint(f"forge layout: GetTree failed: {e}")
         return 1
 
     try:
         plan = plan_reconcile(forest, profile, clean=clean, safe=safe)
     except ValueError as e:
-        _eprint(f"forge workon: plan failed: {e}")
+        _eprint(f"forge layout: plan failed: {e}")
         return 1
 
-    _workon_print_header(resolved, name)
-    _workon_print_thrash_mode(plan, safe=safe)
+    _layout_print_header(resolved, name)
+    _layout_print_thrash_mode(plan, safe=safe)
     if clean:
         force_bit = " --force" if force_close else ""
         if safe:
@@ -1604,25 +1605,25 @@ def _workon_run_reconcile(
         else:
             _eprint(f"  clean=true{force_bit} (residuals close, not park)")
     counts = plan.get("counts") or {}
-    _workon_print_counts(counts)
-    _workon_print_thrash_state(plan)
-    _workon_print_thrash_risk(plan)
+    _layout_print_counts(counts)
+    _layout_print_thrash_state(plan)
+    _layout_print_thrash_risk(plan)
 
     if plan.get("nothingToDo"):
         n = int(counts.get("reused") or 0)
         left_n = int(counts.get("left") or 0)
         left_bit = f", {left_n} residual left in place" if left_n else ""
-        _eprint(f"forge workon: nothing to do ({n} roles satisfied{left_bit})")
-        _workon_maybe_print_json(
-            _workon_plan_meta(resolved, name, plan, dry_run=dry_run),
+        _eprint(f"forge layout: nothing to do ({n} roles satisfied{left_bit})")
+        _layout_maybe_print_json(
+            _layout_plan_meta(resolved, name, plan, dry_run=dry_run),
             verbose=verbose,
         )
         return 0
 
     if dry_run:
         _eprint("  dry-run (no changes)")
-        _workon_maybe_print_json(
-            _workon_plan_meta(resolved, name, plan, dry_run=True),
+        _layout_maybe_print_json(
+            _layout_plan_meta(resolved, name, plan, dry_run=True),
             verbose=verbose,
             force=True,
         )
@@ -1648,11 +1649,11 @@ def _workon_run_reconcile(
         )
         apply_log["extension"] = agg
         if rc != 0:
-            _eprint("forge workon: extension steps failed")
-            out = _workon_plan_meta(resolved, name, plan, dry_run=False)
+            _eprint("forge layout: extension steps failed")
+            out = _layout_plan_meta(resolved, name, plan, dry_run=False)
             out["ok"] = False
             out["apply"] = apply_log
-            _workon_maybe_print_json(out, verbose=verbose, force=True)
+            _layout_maybe_print_json(out, verbose=verbose, force=True)
             return rc
 
     # 2) Opens (launch + wait)
@@ -1666,37 +1667,37 @@ def _workon_run_reconcile(
         apply_log["opens"].append(entry)
         if not result.get("ok"):
             _eprint(
-                f"forge workon: open failed role={role!r}: "
+                f"forge layout: open failed role={role!r}: "
                 f"{result.get('error', 'unknown')}"
             )
-            out = _workon_plan_meta(resolved, name, plan, dry_run=False)
+            out = _layout_plan_meta(resolved, name, plan, dry_run=False)
             out["ok"] = False
             out["apply"] = apply_log
-            _workon_maybe_print_json(out, verbose=verbose, force=True)
+            _layout_maybe_print_json(out, verbose=verbose, force=True)
             return 1
 
     # 3) After opens: re-tree + re-plan; apply residual move/park/close/layout
     if open_actions:
         try:
-            forest2 = _workon_load_tree(backend, None)
+            forest2 = _layout_load_tree(backend, None)
             plan2 = plan_reconcile(forest2, profile, clean=clean, safe=safe)
         except Exception as e:
-            _eprint(f"forge workon: re-plan after open failed: {e}")
-            out = _workon_plan_meta(resolved, name, plan, dry_run=False)
+            _eprint(f"forge layout: re-plan after open failed: {e}")
+            out = _layout_plan_meta(resolved, name, plan, dry_run=False)
             out["ok"] = False
             out["error"] = str(e)
             out["apply"] = apply_log
-            _workon_maybe_print_json(out, verbose=verbose, force=True)
+            _layout_maybe_print_json(out, verbose=verbose, force=True)
             return 1
         residual_ext, residual_open = partition_plan_actions(plan2.get("actions"))
         if residual_open:
             still = [a.get("role") for a in residual_open]
-            _eprint(f"forge workon: still missing roles after open: {still}")
-            out = _workon_plan_meta(resolved, name, plan2, dry_run=False)
+            _eprint(f"forge layout: still missing roles after open: {still}")
+            out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
             out["ok"] = False
             out["error"] = f"roles still missing after launch: {still}"
             out["apply"] = apply_log
-            _workon_maybe_print_json(out, verbose=verbose, force=True)
+            _layout_maybe_print_json(out, verbose=verbose, force=True)
             return 1
         follow_steps = actions_to_extension_steps(
             residual_ext, force_close=force_close
@@ -1707,97 +1708,112 @@ def _workon_run_reconcile(
             )
             apply_log["followUp"] = agg
             if rc != 0:
-                _eprint("forge workon: follow-up steps failed")
-                out = _workon_plan_meta(resolved, name, plan2, dry_run=False)
+                _eprint("forge layout: follow-up steps failed")
+                out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
                 out["ok"] = False
                 out["apply"] = apply_log
-                _workon_maybe_print_json(out, verbose=verbose, force=True)
+                _layout_maybe_print_json(out, verbose=verbose, force=True)
                 return rc
         plan = plan2
 
     _eprint("  ok")
-    out = _workon_plan_meta(resolved, name, plan, dry_run=False)
+    out = _layout_plan_meta(resolved, name, plan, dry_run=False)
     out["apply"] = apply_log
-    _workon_maybe_print_json(out, verbose=verbose)
+    _layout_maybe_print_json(out, verbose=verbose)
     return 0
 
 
-def _workon_run_capture(
+def _layout_profile_write_path(name: str) -> Path:
+    """Host profile path for layout save (creates under hosts/<host>/)."""
+    host = resolve_host()
+    raw = os.environ.get("FORGE_LAYOUT_DIR")
+    if raw is not None and str(raw).strip():
+        root = Path(str(raw).strip()).expanduser()
+    else:
+        root = Path.home() / ".config" / "forge" / "layout"
+    return root / "hosts" / host / f"{name}.json"
+
+
+def _layout_run_save(
     backend: Optional[str],
     *,
+    name: str,
     tree_file: Optional[str],
-    out_path: Optional[str],
-    description: Optional[str],
+    stdout_only: bool,
+    quiet: bool = False,
 ) -> int:
-    """Snapshot GetTree → tiles sugar JSON on stdout (optional --out)."""
+    """Snapshot GetTree → tiles sugar; write host profile or print with --stdout."""
     try:
-        forest = _workon_load_tree(backend, tree_file)
+        name = _normalize_profile_name(name)
+    except ValueError as e:
+        _eprint(f"forge layout save: {e}")
+        return 1
+
+    try:
+        forest = _layout_load_tree(backend, tree_file)
     except FileNotFoundError as e:
-        _eprint(f"forge workon capture: {e}")
+        _eprint(f"forge layout save: {e}")
         return 1
     except (ValueError, RuntimeError, json.JSONDecodeError, OSError) as e:
-        _eprint(f"forge workon capture: {e}")
+        _eprint(f"forge layout save: {e}")
         return 1
 
-    desc = None
-    if description:
-        desc = f"captured sketch ({description})"
     try:
-        profile = capture_tiles_profile(forest, description=desc)
+        profile = capture_tiles_profile(forest, description=name)
     except ValueError as e:
-        _eprint(f"forge workon capture: {e}")
+        _eprint(f"forge layout save: {e}")
         return 1
 
-    _eprint(format_capture_stderr(profile))
     payload = profile_for_output(profile)
-    text = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+    body = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+    host = resolve_host()
 
-    if out_path:
-        dest = Path(out_path).expanduser()
-        parent = dest.parent
-        if str(parent) not in ("", ".") and not parent.is_dir():
-            _eprint(
-                f"forge workon capture: parent directory missing: {parent}"
-            )
-            return 1
-        try:
-            dest.write_text(text, encoding="utf-8")
-        except OSError as e:
-            _eprint(f"forge workon capture: write failed: {e}")
-            return 1
-        _eprint(f"forge workon capture: wrote {dest}")
+    if stdout_only:
+        if not quiet:
+            _eprint(format_capture_stderr(profile))
+            _eprint(f"forge layout save: stdout only host={host} name={name}")
+        sys.stdout.write(body)
+        return 0
 
-    # Always print JSON on stdout (even with --out) for piping
-    sys.stdout.write(text)
+    dest = _layout_profile_write_path(name)
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(body, encoding="utf-8")
+    except OSError as e:
+        _eprint(f"forge layout save: write failed: {e}")
+        return 1
+    if not quiet:
+        _eprint(format_capture_stderr(profile))
+        _eprint(f"forge layout save: wrote {dest} host={host} name={name}")
     return 0
 
 
-def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
-    """forge workon list | show | capture | <name> [--dry-run] [--clean] [--safe]."""
-    tokens: list[str] = list(getattr(args, "workon_tokens", None) or [])
-    action, name, dry_run, force_launch, clean, force_close = _workon_parse_tokens(
+def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
+    """forge layout list | show | save | <name> [--dry-run] [--clean] [--safe]."""
+    tokens: list[str] = list(getattr(args, "layout_tokens", None) or [])
+    action, name, dry_run, force_launch, clean, force_close = _layout_parse_tokens(
         tokens, args
     )
     tree_file = getattr(args, "tree_file", None)
-    verbose = _workon_is_verbose(args)
+    verbose = _layout_is_verbose(args)
     safe = bool(getattr(args, "safe", False))
     if force_close and not clean:
-        _eprint("forge workon: --force only applies with --clean (ignored)")
+        _eprint("forge layout: --force only applies with --clean (ignored)")
         force_close = False
 
     if action == "help":
-        print_workon_help()
+        print_layout_help()
         return 0
 
     if action == "list":
         if len(tokens) > 1:
-            _eprint("forge workon list: unexpected arguments")
+            _eprint("forge layout list: unexpected arguments")
             return 1
         profiles = list_profiles_resolved()
         if not profiles:
             _eprint(
-                "forge workon: no profiles "
-                "(FORGE_WORKON_DIR hosts/common or ~/.config/forge/workon/)"
+                "forge layout: no profiles "
+                "(FORGE_LAYOUT_DIR hosts/common or ~/.config/forge/layout/)"
             )
             print("[]")
             return 0
@@ -1819,31 +1835,31 @@ def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
 
     if action == "show":
         if not name or len(tokens) != 2:
-            _eprint("forge workon show: need exactly one profile name")
+            _eprint("forge layout show: need exactly one profile name")
             return 1
         try:
             resolved = resolve_profile(name)
         except ValueError as e:
-            _eprint(f"forge workon show: {e}")
+            _eprint(f"forge layout show: {e}")
             return 1
         if not resolved["found"] or resolved["path"] is None:
-            _eprint(f"forge workon show: profile not found: {name}")
+            _eprint(f"forge layout show: profile not found: {name}")
             return 1
         path = resolved["path"]
         try:
             data = load_profile_file(path)
-            mode = detect_workon_mode(data, force_launch=False)
+            mode = detect_layout_mode(data, force_launch=False)
             if mode == MODE_RECONCILE:
                 profile = validate_reconcile_profile(data)
             else:
                 profile = validate_profile(data)
         except FileNotFoundError as e:
-            _eprint(f"forge workon show: {e}")
+            _eprint(f"forge layout show: {e}")
             return 1
         except ValueError as e:
-            _eprint(f"forge workon show: {e}")
+            _eprint(f"forge layout show: {e}")
             return 1
-        _workon_print_header(resolved, name)
+        _layout_print_header(resolved, name)
         _eprint(f"  mode={mode}")
         out = {
             "path": str(path),
@@ -1855,51 +1871,59 @@ def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
         _print_json(out, compact=False)
         return 0
 
-    if action == "capture":
-        return _workon_run_capture(
+    if action == "save":
+        if not name:
+            _eprint("forge layout save: need profile name (`forge layout save <name>`)")
+            return 1
+        if len(tokens) > 2:
+            _eprint("forge layout save: unexpected extra arguments")
+            return 1
+        stdout_only = bool(getattr(args, "stdout", False))
+        return _layout_run_save(
             backend,
+            name=name,
             tree_file=tree_file,
-            out_path=getattr(args, "out", None),
-            description=name,
+            stdout_only=stdout_only,
+            quiet=bool(getattr(args, "quiet", False)),
         )
 
     if action == "run":
         if not name or len(tokens) != 1:
             _eprint(
-                "forge workon: use `forge workon <name>` "
-                "(or list / show <name> / capture)"
+                "forge layout: use `forge layout <name>` "
+                "(or list / show <name> / save <name>)"
             )
             return 1
     else:
-        _eprint(f"forge workon: unknown action {action!r}")
+        _eprint(f"forge layout: unknown action {action!r}")
         return 1
 
     try:
         resolved = resolve_profile(name)
     except ValueError as e:
-        _eprint(f"forge workon: {e}")
+        _eprint(f"forge layout: {e}")
         return 1
     if not resolved["found"] or resolved["path"] is None:
-        _eprint(f"forge workon: profile not found: {name}")
+        _eprint(f"forge layout: profile not found: {name}")
         return 1
 
     path = resolved["path"]
     try:
         data = load_profile_file(path)
-        mode = detect_workon_mode(data, force_launch=force_launch)
+        mode = detect_layout_mode(data, force_launch=force_launch)
     except FileNotFoundError as e:
-        _eprint(f"forge workon: {e}")
+        _eprint(f"forge layout: {e}")
         return 1
     except ValueError as e:
-        _eprint(f"forge workon: {e}")
+        _eprint(f"forge layout: {e}")
         return 1
 
     if mode == MODE_STEPS:
         if clean:
-            _eprint("forge workon: --clean applies to reconcile only (steps mode)")
+            _eprint("forge layout: --clean applies to reconcile only (steps mode)")
         if safe:
-            _eprint("forge workon: --safe applies to reconcile only (steps mode)")
-        return _workon_run_steps(
+            _eprint("forge layout: --safe applies to reconcile only (steps mode)")
+        return _layout_run_steps(
             backend,
             resolved,
             data,
@@ -1907,7 +1931,7 @@ def cmd_workon(backend: Optional[str], args: argparse.Namespace) -> int:
             force_launch=force_launch,
             verbose=verbose,
         )
-    return _workon_run_reconcile(
+    return _layout_run_reconcile(
         backend,
         resolved,
         data,
@@ -2423,7 +2447,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="forge",
         description=(
             "Forge tiling control CLI (DBus). Distinct from forge-ctl (install/migrate).\n"
-            "Colorized overview: forge help   |   workon guide: forge workon help\n"
+            "Colorized overview: forge help   |   layout guide: forge layout help\n"
             "\n"
             "Hard dependencies:\n"
             "  - python3\n"
@@ -2633,7 +2657,7 @@ def build_parser() -> argparse.ArgumentParser:
         "Ops: ping, focus, swap, move, layout, place-next, set.\n"
         "\n"
         "CLI-only ops (launch, wait-window, wait) are **rejected** here.\n"
-        "Use `forge run FILE` or `forge workon <name>` for mixed scripts.\n"
+        "Use `forge run FILE` or `forge layout <name>` for mixed scripts.\n"
         "\n"
         "Step shapes:\n"
         '  {"op":"ping"}\n'
@@ -2682,92 +2706,99 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_p.set_defaults(func=cmd_run)
 
-    _workon_help = (
-        "Named morning profiles (does **not** shadow shellrc `workon` —\n"
-        "use `forge workon` only). Profiles are user JSON; Forge is app-agnostic.\n"
+    _layout_help = (
+        "Named layout profiles (desired-state desks). Profiles are user JSON;\n"
+        "Forge is app-agnostic. Distinct from shellrc domain tools.\n"
         "\n"
-        "  forge workon help             # colorized guide + minimal example\n"
-        "  forge workon <name>           # reconcile (v2) or steps (v1); quiet by default\n"
-        "  forge workon <name> --dry-run # print plan only (no launch/RunSteps)\n"
-        "  forge workon <name> --verbose # full plan/apply JSON on stdout\n"
-        "  forge workon list             # host + source + short path (JSON on stdout)\n"
-        "  forge workon show <name>      # header + validated profile JSON\n"
-        "  forge workon capture          # sketch tiles sugar from current tree\n"
-        "  forge workon capture --tree-file F  # offline capture from forest JSON\n"
-        "  forge workon capture --out PATH     # also write file (parent must exist)\n"
-        "  forge workon <name> --force-launch  # imperative steps[] only\n"
-        "  forge workon <name> --safe    # open+move roles only (no park/structure)\n"
-        "  forge workon <name> --clean   # close residuals (Meta delete; not park)\n"
-        "  forge workon <name> --clean --force  # stronger delete; never process-kill\n"
+        "  forge layout help             # colorized guide + minimal example\n"
+        "  forge layout <name>           # reconcile (v2) or steps (v1); quiet by default\n"
+        "  forge layout <name> --dry-run # print plan only (no launch/RunSteps)\n"
+        "  forge layout <name> --verbose # full plan/apply JSON on stdout\n"
+        "  forge layout list             # host + source + short path (JSON on stdout)\n"
+        "  forge layout show <name>      # header + validated profile JSON\n"
+        "  forge layout save <name>      # snapshot tree → host profile file (overwrite)\n"
+        "  forge layout save <name> --stdout  # print JSON only (no write)\n"
+        "  forge layout save <name> --tree-file F  # offline from forest JSON\n"
+        "  forge layout <name> --force-launch  # imperative steps[] only\n"
+        "  forge layout <name> --safe    # open+move roles only (no park/structure)\n"
+        "  forge layout <name> --clean   # close residuals (Meta delete; not park)\n"
+        "  forge layout <name> --clean --force  # stronger delete; never process-kill\n"
         "\n"
-        "Resolve order: FORGE_WORKON_PATH →\n"
-        "  $FORGE_WORKON_DIR/hosts/<host>/<name>.json →\n"
-        "  $FORGE_WORKON_DIR/hosts/<host>/<name>/profile.json →\n"
-        "  $FORGE_WORKON_DIR/common/<name>.json →\n"
-        "  ~/.config/forge/workon/<name>.json\n"
-        "Host: FORGE_HOST or short hostname. Export FORGE_WORKON_DIR from shellrc.\n"
+        "Resolve order: FORGE_LAYOUT_PATH →\n"
+        "  $FORGE_LAYOUT_DIR/hosts/<host>/<name>.json →\n"
+        "  $FORGE_LAYOUT_DIR/hosts/<host>/<name>/profile.json →\n"
+        "  $FORGE_LAYOUT_DIR/common/<name>.json →\n"
+        "  ~/.config/forge/layout/<name>.json\n"
+        "Save writes: $FORGE_LAYOUT_DIR/hosts/<host>/<name>.json (or XDG layout/hosts/…).\n"
+        "Host: FORGE_HOST or short hostname. Export FORGE_LAYOUT_DIR from shellrc.\n"
         "\n"
         "v2 reconcile (default when roles present): GetTree → plan → open gaps,\n"
         "move/park via RunSteps; Mode A collects marginals, Mode B parks on thrash.\n"
         "Default never closes windows; --clean closes true residuals only.\n"
         "--safe: open missing roles + move wrong-mon roles only (no park/structure).\n"
         "v1 steps: version 1 / mode: steps / --force-launch with steps[].\n"
-        "Defaults: see forge workon help. Docs: docs/user/workon.md."
+        "Defaults: see forge layout help. Docs: docs/user/layout.md."
     )
-    workon_p = sub.add_parser(
-        "workon",
-        help="Run/list/show named workon profiles (reconcile or steps)",
-        description=_workon_help,
+    layout_p = sub.add_parser(
+        "layout",
+        help="Run/list/show/save named layout profiles (reconcile or steps)",
+        description=_layout_help,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    workon_p.add_argument(
-        "workon_tokens",
+    layout_p.add_argument(
+        "layout_tokens",
         nargs="*",
         metavar="ARG",
-        help="help | list | show <name> | capture | <name>",
+        help="help | list | show <name> | save <name> | <name>",
     )
-    workon_p.add_argument(
+    layout_p.add_argument(
         "--dry-run",
         action="store_true",
         help="Print reconcile plan (or steps summary); no mutations",
     )
-    workon_p.add_argument(
+    layout_p.add_argument(
         "--verbose",
         "-v",
         action="store_true",
         help="Print full plan/apply JSON on stdout (also FORGE_VERBOSE=1)",
     )
-    workon_p.add_argument(
+    layout_p.add_argument(
         "--force-launch",
         action="store_true",
         help="Force v1 imperative steps[] (error if profile has no steps)",
     )
-    workon_p.add_argument(
+    layout_p.add_argument(
         "--safe",
         action="store_true",
         help="Open missing roles + move wrong-mon roles only (no park/structure/ensure)",
     )
-    workon_p.add_argument(
+    layout_p.add_argument(
         "--clean",
         action="store_true",
         help="Close residual windows (Meta delete) instead of parking to overflow",
     )
-    workon_p.add_argument(
+    layout_p.add_argument(
         "--force",
         action="store_true",
         help="With --clean: stronger Meta delete (skip can_close veto); never process-kill",
     )
-    workon_p.add_argument(
+    layout_p.add_argument(
         "--tree-file",
         metavar="PATH",
-        help="GetTree forest JSON file (offline dry-run / capture / tests; no DBus tree)",
+        help="GetTree forest JSON file (offline dry-run / save / tests; no DBus tree)",
     )
-    workon_p.add_argument(
-        "--out",
-        metavar="PATH",
-        help="With capture: write profile JSON to PATH (parent dir must exist)",
+    layout_p.add_argument(
+        "--stdout",
+        action="store_true",
+        help="With save: print profile JSON to stdout and skip writing a file",
     )
-    workon_p.set_defaults(func=cmd_workon)
+    layout_p.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="With save: suppress human confirmation on stderr",
+    )
+    layout_p.set_defaults(func=cmd_layout)
 
     install_p = sub.add_parser(
         "install",
@@ -2987,7 +3018,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             _eprint(f"forge: {e}")
             return 1
 
-    # install / update / uninstall / help / workon list|show|help do not need DBus
+    # install / update / uninstall / help / layout list|show|help do not need DBus
     cmd_name = getattr(args, "command", None) or ""
     if cmd_name in _NO_DBUS_COMMANDS or getattr(args, "func", None) in (
         cmd_install,
@@ -2997,15 +3028,15 @@ def main(argv: Optional[list[str]] = None) -> int:
     ):
         return int(args.func(None, args))
 
-    if cmd_name == "workon":
-        tokens = list(getattr(args, "workon_tokens", None) or [])
+    if cmd_name == "layout":
+        tokens = list(getattr(args, "layout_tokens", None) or [])
         head = tokens[0].strip() if tokens else ""
         dry = bool(getattr(args, "dry_run", False))
         tree_file = getattr(args, "tree_file", None)
         if head in ("list", "show", "help", "-h", "--help") or not tokens:
             return int(args.func(None, args))
-        # Offline: capture / dry-run when forest is on disk
-        if head == "capture" and tree_file:
+        # Offline: save / dry-run when forest is on disk
+        if head == "save" and tree_file:
             return int(args.func(None, args))
         if dry and tree_file:
             return int(args.func(None, args))

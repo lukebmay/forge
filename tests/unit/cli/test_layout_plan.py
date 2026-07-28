@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for scripts/forge/workon_plan.py (WR1 pure reconcile planner)."""
+"""Unit tests for scripts/forge/layout_plan.py (WR1 pure reconcile planner)."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[3]
 _FORGE_CLI = _REPO / "scripts" / "forge"
-_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "workon"
+_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "layout"
 if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
-from workon_plan import (  # noqa: E402
+from layout_plan import (  # noqa: E402
     collect_windows,
     detect_thrash,
     forest_stable_key_map,
@@ -93,7 +93,7 @@ class TestValidateReconcileProfile(unittest.TestCase):
         self.assertEqual(p["roles"][2]["slot"], "mon0.t")
 
     def test_minimal_example_file(self):
-        path = _FORGE_CLI / "examples" / "workon-minimal.json"
+        path = _FORGE_CLI / "examples" / "layout-minimal.json"
         raw = json.loads(path.read_text(encoding="utf-8"))
         p = validate_reconcile_profile(raw)
         self.assertEqual(len(p["roles"]), 2)
@@ -353,7 +353,7 @@ class TestTilesNormalize(unittest.TestCase):
         self.assertEqual(n2["marginal"]["mode"], "coexist")
 
     def test_example_tiles_minimal_file(self):
-        path = _FORGE_CLI / "examples" / "workon-tiles-minimal.json"
+        path = _FORGE_CLI / "examples" / "layout-tiles-minimal.json"
         raw = json.loads(path.read_text(encoding="utf-8"))
         p = validate_reconcile_profile(raw)
         self.assertEqual(len(p["roles"]), 7)
@@ -361,7 +361,7 @@ class TestTilesNormalize(unittest.TestCase):
         self.assertEqual(p["layout"]["mon0"]["split"], "hsplit")
 
     def test_example_tiles_nested_file(self):
-        path = _FORGE_CLI / "examples" / "workon-tiles-nested.json"
+        path = _FORGE_CLI / "examples" / "layout-tiles-nested.json"
         raw = json.loads(path.read_text(encoding="utf-8"))
         p = validate_reconcile_profile(raw)
         self.assertGreaterEqual(len(p["roles"]), 7)
@@ -489,9 +489,83 @@ class TestPlanPerfect(unittest.TestCase):
         self.assertEqual(plan["counts"]["moved"], 0)
         self.assertEqual(plan["counts"]["parked"], 0)
         self.assertEqual(plan["counts"].get("structure", 0), 0)
+        self.assertEqual(plan["counts"].get("ordered", 0), 0)
         self.assertEqual(plan["counts"]["reused"], 7)
         self.assertEqual(plan["actions"], [])
         self.assertTrue(all(r["status"] == "reused" for r in plan["roles"]))
+        self.assertFalse(any(a.get("op") == "ensure_order" for a in plan["actions"]))
+
+
+class TestMonOrder(unittest.TestCase):
+    """Mon-level L/R pane order vs profile (ensure_order)."""
+
+    def test_mon0_reversed_emits_ensure_order(self):
+        """[ghostty, TABBED chrome|grok] + all roles reused → ensure_order mon0."""
+        forest = _load("tree-mon0-reversed.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"])
+        self.assertFalse(plan["nothingToDo"])
+        self.assertEqual(plan["counts"]["reused"], 7)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"].get("structure", 0), 0)
+        self.assertEqual(plan["counts"]["ordered"], 1)
+        orders = [a for a in plan["actions"] if a.get("op") == "ensure_order"]
+        self.assertEqual(len(orders), 1)
+        o = orders[0]
+        self.assertEqual(o["slot"], "mon0")
+        self.assertEqual(o["mode"], "hsplit")
+        # Profile mon0: left-tab (chrome) then term (ghostty)
+        self.assertEqual(o["windowIds"], [101, 103])
+        # No mon ensure_layout thrash — order only
+        self.assertFalse(
+            any(
+                a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+                for a in plan["actions"]
+            )
+        )
+
+    def test_perfect_order_no_ensure_order(self):
+        forest = _load("tree-perfect.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["nothingToDo"])
+        self.assertEqual(plan["counts"].get("ordered", 0), 0)
+        self.assertFalse(any(a.get("op") == "ensure_order" for a in plan["actions"]))
+
+
+class TestTabRoleOrder(unittest.TestCase):
+    """In-group tab order (profile roles[] order) when already co-tabbed."""
+
+    def test_reversed_tabs_emit_ensure_order(self):
+        # mon1.comms desired youtube→gmail→voice; live is voice→gmail→youtube
+        forest = _load("tree-perfect.json")
+        mon1 = forest["monitors"][1]
+        tab = mon1["children"][1]
+        self.assertEqual(tab.get("layout"), "TABBED")
+        # Reverse tab children: voice, gmail, youtube (ids 204, 203, 202)
+        kids = list(tab["children"])
+        tab["children"] = list(reversed(kids))
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan["nothingToDo"])
+        orders = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_order" and a.get("slot") == "mon1.comms"
+        ]
+        self.assertEqual(len(orders), 1)
+        # Desired: youtube, gmail, voice
+        self.assertEqual(orders[0]["windowIds"], [202, 203, 204])
+        self.assertEqual(plan["counts"].get("structure", 0), 0)
+
+    def test_class_stem_matches_reverse_dns(self):
+        from layout_plan import window_matches
+
+        w = {"wmClass": "com.mitchellh.ghostty", "title": "Ghostty"}
+        self.assertTrue(window_matches(w, {"class": "ghostty"}))
+        self.assertTrue(window_matches(w, {"class": "com.mitchellh.ghostty"}))
 
 
 class TestThrashModeMatrix(unittest.TestCase):

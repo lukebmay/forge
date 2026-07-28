@@ -30,8 +30,8 @@ an i3/sway-style tiling window manager for GNOME Shell. Start with the top-level
 - **[rules.md](user/rules.md)** — per-window/per-class float & tile overrides.
 - **[config.md](user/config.md)** — portable config: backup, sync, move between machines.
 - **[monitors.md](user/monitors.md)** — multi-monitor placement and limitations.
-- **[workon.md](user/workon.md)** — `forge workon` morning profiles (reconcile,
-  dry-run, host resolve, `FORGE_WORKON_DIR`).
+- **[layout.md](user/layout.md)** — `forge layout` named profiles (reconcile,
+  dry-run, host resolve, `FORGE_LAYOUT_DIR`).
 - **[troubleshooting.md](user/troubleshooting.md)** — reloading, debug logs, common issues.
 
 Contributing? See [CONTRIBUTING.md](../CONTRIBUTING.md).

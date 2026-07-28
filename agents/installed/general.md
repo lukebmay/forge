@@ -36,6 +36,16 @@ Before finishing, remove temporary and failed-attempt residue from code, configs
 
 Search the diff and smoke-check real paths you touched.
 
+## Backwards compatibility (while in development)
+
+Do **not** preserve backwards compatibility by default during active
+development. Rename APIs, flip defaults, and drop shims freely unless there
+is a clear reason to keep the old surface — primarily **real-world users**
+already depending on a released version. Pre-release / private / “we have not
+shipped this publicly” work does **not** need compatibility with its own prior
+experiments (names, flags, config paths, schemas). Prefer a clean break over
+dual paths and deprecation theater.
+
 ## Tasks
 
 Session-sized work lives in `agents/tasks/`. Prefer one completable session. Tasks often implement one slice of a plan.

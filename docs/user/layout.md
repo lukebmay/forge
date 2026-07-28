@@ -1,22 +1,20 @@
-# Workon: morning layout profiles
+# Layout profiles
 
-`forge workon` applies a **named layout profile** so your desk looks the same
-each morning. It is **not** the shellrc `workon` command (shellrc owns `t`/`e`
-and other domains) — always use **`forge workon`**.
+`forge layout` applies a **named layout profile** — a named desk you can restore
+anytime (not morning-only). Desired-state reconcile: reuse matching windows,
+open only gaps, keep companions already in a layout slot, and **leave** true
+residuals where they are. Running twice should not double apps.
 
-Default behavior is **idempotent reconcile**: reuse windows that already match
-roles, open only gaps, keep companions already in a workon slot, and **leave**
-true residuals where they are (no park thrash). Running twice should not
-double apps or rewrite the desk for leftovers.
+Profiles are **user JSON** (shellrc host tree or `~/.config/forge/layout/`).
 
 **Forge is app-agnostic.** Roles, match rules, and layout live only in your
-JSON (shellrc host tree or `~/.config/forge/workon/`). Nothing in the extension
-or CLI hardcodes Ghostty, Chrome, hostnames, or a “dev” desk.
+JSON. Nothing in the extension or CLI hardcodes Ghostty, Chrome, hostnames,
+or a “dev” desk.
 
 Interactive guide (colorized):
 
 ```bash
-forge workon help
+forge layout help
 forge help            # acronyms (LFT, …) + all commands
 ```
 
@@ -24,45 +22,56 @@ forge help            # acronyms (LFT, …) + all commands
 
 ```bash
 # Point at shellrc host profiles (multi-machine tree)
-export FORGE_WORKON_DIR=$shellrc/configs/forge/workon
+export FORGE_LAYOUT_DIR=$shellrc/configs/forge/layout
 # optional: export FORGE_HOST=$(hostname -s)
 
-forge workon list
-forge workon show mydesk
-forge workon mydesk --dry-run     # print plan only
-forge workon mydesk               # apply
+forge layout list
+forge layout show mydesk
+forge layout mydesk --dry-run     # print plan only
+forge layout mydesk               # apply
 ```
 
-Without `FORGE_WORKON_DIR`, only `FORGE_WORKON_PATH` (if set) and
-`~/.config/forge/workon/<name>.json` are searched.
+Without `FORGE_LAYOUT_DIR`, only `FORGE_LAYOUT_PATH` (if set) and
+`~/.config/forge/layout/<name>.json` are searched.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `forge workon help` | Colorized guide, defaults, minimal example |
-| `forge workon list` | Human lines on stderr; JSON array on **stdout** |
-| `forge workon show <name>` | Header + validated (normalized) profile JSON |
-| `forge workon capture` | Sketch **tiles** sugar from the live tree (stdout JSON) |
-| `forge workon capture --tree-file F` | Offline capture from a GetTree forest file |
-| `forge workon capture --out PATH` | Also write PATH (parent dir must already exist) |
-| `forge workon <name> --dry-run` | Plan only; human counts + plan JSON; **no** mutations |
-| `forge workon <name>` | Apply; short human summary on stderr (no plan JSON) |
-| `forge workon <name> --verbose` | Apply (or dry-run) with full plan/apply JSON on stdout; also `FORGE_VERBOSE=1` |
-| `forge workon <name> --safe` | Open missing roles + move wrong-mon roles only (no park / structure / mon ensure) |
-| `forge workon <name> --clean` | Close residuals (Meta delete) instead of leave/park |
-| `forge workon <name> --clean --force` | Stronger Meta delete; **never** process-kill |
-| `forge workon <name> --force-launch` | Imperative `steps[]` only (errors if none) |
+| `forge layout help` | Colorized guide, defaults, minimal example |
+| `forge layout list` | Human lines on stderr; JSON array on **stdout** |
+| `forge layout show <name>` | Header + validated (normalized) profile JSON |
+| `forge layout save <name>` | Snapshot tree → host profile file (creates dirs; **overwrites**) |
+| `forge layout save <name> --stdout` | Print JSON only (no write) |
+| `forge layout save <name> --tree-file F` | Offline save from a GetTree forest file |
+| `forge layout <name> --dry-run` | Plan only; human counts + plan JSON; **no** mutations |
+| `forge layout <name>` | Apply; short human summary on stderr (no plan JSON) |
+| `forge layout <name> --verbose` | Apply (or dry-run) with full plan/apply JSON on stdout; also `FORGE_VERBOSE=1` |
+| `forge layout <name> --safe` | Open missing roles + move wrong-mon roles only (no park / structure / mon ensure) |
+| `forge layout <name> --clean` | Close residuals (Meta delete) instead of leave/park |
+| `forge layout <name> --clean --force` | Stronger Meta delete; **never** process-kill |
+| `forge layout <name> --force-launch` | Imperative `steps[]` only (errors if none) |
 
-## Capture (authoring assist)
+## Save (authoring assist)
 
-Lay out the desk by hand once, then sketch a profile:
+Lay out the desk by hand once, then snapshot a profile:
 
 ```bash
-forge workon capture > ~/.config/forge/workon/mydesk.json
-# or:
-forge workon capture --out ~/.config/forge/workon/mydesk.json
-forge workon mydesk --dry-run
+export FORGE_LAYOUT_DIR=$shellrc/configs/forge/layout   # optional host tree
+forge layout save mydesk
+# offline / tests:
+forge layout save mydesk --tree-file forest.json
+# pipe only (no write):
+forge layout save mydesk --stdout > /tmp/mydesk.json
+forge layout mydesk --dry-run
+```
+
+Write path (overwrites if present):
+
+```text
+$FORGE_LAYOUT_DIR/hosts/<host>/<name>.json
+# or without FORGE_LAYOUT_DIR:
+~/.config/forge/layout/hosts/<host>/<name>.json
 ```
 
 | Detail | Behavior |
@@ -71,15 +80,15 @@ forge workon mydesk --dry-run
 | Match | Best-effort `class` + `title~=` when several windows share a class; main Chrome → `title~="Google Chrome"` when the title contains that product name |
 | Open | Best-effort `{ "app": … }` from class stem — **edit** PWAs / argv |
 | Floating | `floating: []` when none; float role-ish objects when cheap |
-| Install | **Never** writes shellrc host profiles unless you pass **`--out`** |
-| Counts | stderr one-liner: `mon0=… mon1=… windows=…` |
+| Write | Host path above; creates parent dirs; **overwrites** existing file |
+| Counts | stderr: mon counts + wrote path / host / name |
 
-Capture is a **starting point**, not a perfect profile. Refine `match` /
+Save is a **starting point**, not a perfect profile. Refine `match` /
 `open` for Chrome PWAs, then dry-run.
 
 ## Authoring: compact `tiles` sugar (preferred)
 
-Drop this at `~/.config/forge/workon/simple.json` (edit app names):
+Drop this at `~/.config/forge/layout/simple.json` (edit app names):
 
 ```json
 {
@@ -94,13 +103,15 @@ Drop this at `~/.config/forge/workon/simple.json` (edit app names):
 
 | Sugar | Meaning |
 | --- | --- |
-| `monN: [ a, b ]` | Two mon children; default **hsplit** |
-| `["app1", "app2"]` | One pane, two roles, **tabbed** |
-| `"ghostty"` | One pane, one role (no lonely tab chrome) |
-| `"split": "h"` / `"v"` / `hsplit` / `vsplit` / `horizontal` / `vertical` | Override split |
+| `monN: [ a, b ]` | Two mon children; default **hsplit**; **array order = L→R** |
+| `["app1", "app2"]` | One pane, multi-role, **tabbed**; **array order = tab order** |
+| `"ghostty"` | One pane, one role; class stem matches reverse-DNS wmClass |
+| Flat object | `{ "app", "class", "title~=" }` for Chrome/PWAs (no nested match/open) |
+| `"split": "h"` / `"v"` / … | Override split |
 | `{ "split", "content": […] }` | Nested split node |
-| String cell | Role: `open` + best-effort `match`; id auto (de-dupe `app-2`) |
-| Rich object cell | Full `id` / `match` / `open` when titles or classes need care |
+
+`forge layout save` writes this compact form (tab order included). Load respects
+mon L/R and in-group tab order.
 
 ### Monitor keys (stable across renumber)
 
@@ -117,7 +128,7 @@ At plan time Forge resolves keys to mon **index** via the live tree’s `stableK
 available stableKeys listed.
 
 Forge **normalizes** sugar to v2 IR (`roles[]` + `layout`) before planning.
-`forge workon show` prints the expanded profile.
+`forge layout show` prints the expanded profile.
 
 ### Rich cells (Chrome / PWAs)
 
@@ -172,9 +183,9 @@ Prefer `{ "split", "content" }` when a nested array would be ambiguous.
 
 ### Companions (marginal coexist)
 
-By default, unclaimed windows **already in** a workon slot group stay
+By default, unclaimed windows **already in** a layout slot group stay
 (**kept**). True residuals are **left in place** (status `left`) so
-`forge workon` never cross-mon parks them. Opt-in soft park appends onto
+`forge layout` never cross-mon parks them. Opt-in soft park appends onto
 the last claimed role window (no mon-root dump). Close is never default —
 use **`--clean`** only when you want residuals closed.
 
@@ -268,44 +279,44 @@ Prefer **v2 reconcile** for daily use.
 
 Examples in-tree:
 
-- `scripts/forge/examples/workon-tiles-minimal.json` — dual-monitor sugar  
-- `scripts/forge/examples/workon-tiles-nested.json` — nested splits  
-- `scripts/forge/examples/workon-minimal.json` — short IR  
-- `scripts/forge/examples/workon-dev-v2.json` — richer dual-monitor IR sample  
+- `scripts/forge/examples/layout-tiles-minimal.json` — dual-monitor sugar  
+- `scripts/forge/examples/layout-tiles-nested.json` — nested splits  
+- `scripts/forge/examples/layout-minimal.json` — short IR  
+- `scripts/forge/examples/layout-dev-v2.json` — richer dual-monitor IR sample  
 
 Host profiles (optional multi-machine tree):
-`$FORGE_WORKON_DIR/hosts/<host>/<name>.json`.
+`$FORGE_LAYOUT_DIR/hosts/<host>/<name>.json`.
 
 ## Where profiles live
 
 Search order (**first hit wins**):
 
 ```text
-1. FORGE_WORKON_PATH                         # stem must match name
-2. $FORGE_WORKON_DIR/hosts/<host>/<name>.json
-3. $FORGE_WORKON_DIR/hosts/<host>/<name>/profile.json
-4. $FORGE_WORKON_DIR/common/<name>.json
-5. ~/.config/forge/workon/<name>.json        # XDG
+1. FORGE_LAYOUT_PATH                         # stem must match name
+2. $FORGE_LAYOUT_DIR/hosts/<host>/<name>.json
+3. $FORGE_LAYOUT_DIR/hosts/<host>/<name>/profile.json
+4. $FORGE_LAYOUT_DIR/common/<name>.json
+5. ~/.config/forge/layout/<name>.json        # XDG
 ```
 
 | Env | Role |
 | --- | --- |
-| `FORGE_WORKON_DIR` | Root of the shellrc-style tree (`hosts/`, `common/`) |
+| `FORGE_LAYOUT_DIR` | Root of the shellrc-style tree (`hosts/`, `common/`) |
 | `FORGE_HOST` | Override short hostname (else `hostname` without domain) |
-| `FORGE_WORKON_PATH` | One-shot absolute profile path |
+| `FORGE_LAYOUT_PATH` | One-shot absolute profile path |
 
-Forge does **not** hardcode shellrc paths — export `FORGE_WORKON_DIR` from your
+Forge does **not** hardcode shellrc paths — export `FORGE_LAYOUT_DIR` from your
 shell init when you want host profiles.
 
 ## Tips
 
-- Always dry-run a new profile: `forge workon <name> --dry-run`.
+- Always dry-run a new profile: `forge layout <name> --dry-run`.
 - Title matchers (`title~=`) disambiguate several windows of the same class.
 - Counts: `reused` / `opened` / `moved` / `kept` / `left` / `parked` / `structure` (or `closed` with `--clean`).
 - Default apply is quiet (stderr only); use `--verbose` or `FORGE_VERBOSE=1` for plan JSON.
 - Optional: `displays` → `gdisplays load`; `settings` → DBus SettingsLoad.
 - Offline plan: `--tree-file path/to/GetTree.json` with `--dry-run`.
-- Help color: `forge --color=always workon help` (or `never` / `auto`).
+- Help color: `forge --color=always layout help` (or `never` / `auto`).
 
 More: [scripts/forge/README.md](../../scripts/forge/README.md),
 [DESIGN.md](../DESIGN.md).

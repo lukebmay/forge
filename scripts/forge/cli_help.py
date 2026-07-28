@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Colorized human help for forge / forge workon (stdout)."""
+"""Colorized human help for forge / forge layout (stdout)."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
 
     _out(s, heading("Commands", **kw))
     rows = [
-        ("workon", "Named morning layouts - idempotent reconcile (preferred)"),
+        ("layout", "Named layout profiles - idempotent reconcile (preferred)"),
         ("tree", "Dump tiling forest as JSON"),
         ("focus / swap / move", "Tile ops by selector"),
         ("launch", "Start app; place after LFT (or PlaceNext path/monitor)"),
@@ -45,10 +45,10 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
     _blank(s)
 
     _out(s, heading("Quick start", **kw))
-    _out(s, "  ", cmd("forge workon help", **kw), "   ", dim("# full workon guide + minimal config", **kw))
-    _out(s, "  ", cmd("forge workon list", **kw))
-    _out(s, "  ", cmd("forge workon mydesk --dry-run", **kw))
-    _out(s, "  ", cmd("forge workon mydesk", **kw))
+    _out(s, "  ", cmd("forge layout help", **kw), "   ", dim("# full layout guide + minimal config", **kw))
+    _out(s, "  ", cmd("forge layout list", **kw))
+    _out(s, "  ", cmd("forge layout mydesk --dry-run", **kw))
+    _out(s, "  ", cmd("forge layout mydesk", **kw))
     _out(s, "  ", cmd("forge tree", **kw))
     _out(s, "  ", cmd("forge launch nautilus", **kw))
     _blank(s)
@@ -62,7 +62,7 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
         ("TABBED / STACKED", "Tab strip / stack of windows sharing one pane"),
         ("PlaceNext", "One-shot attach hint for the next matching window (monitor / tree path)"),
         ("RunSteps", "Batched extension ops (freeze -> ops -> one render)"),
-        ("reconcile", "Desired-state workon: match roles, open gaps, move/park - not a launch script"),
+        ("reconcile", "Desired-state layout: match roles, open gaps, move/park - not a launch script"),
         ("slot", "Home for a role, e.g. mon0.term or mon1.comms (monitor + layout child id)"),
         ("moNwsW", "Monitor N, workspace W tree id (mo0ws0 = primary-ish mon 0, workspace 0)"),
         ("HUP", "Shell reload on X11 (killall -HUP gnome-shell) after install"),
@@ -96,20 +96,20 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
     _blank(s)
 
     _out(s, dim("Per-command flags: forge <command> -h", **kw))
-    _out(s, dim("Workon guide:      forge workon help", **kw))
-    _out(s, dim("User docs:         docs/user/workon.md", **kw))
+    _out(s, dim("Layout guide:      forge layout help", **kw))
+    _out(s, dim("User docs:         docs/user/layout.md", **kw))
 
 
-def print_workon_help(*, stream: TextIO | None = None) -> None:
-    """`forge workon help` - generic profiles, defaults, examples."""
+def print_layout_help(*, stream: TextIO | None = None) -> None:
+    """`forge layout help` - generic profiles, defaults, examples."""
     s = stream if stream is not None else sys.stdout
     kw = {"stream": s}
 
-    _out(s, heading("forge workon", **kw), " - named morning layouts (desired state)")
+    _out(s, heading("forge layout", **kw), " - named layout profiles (desired state)")
     _out(
         s,
         dim(
-            "Not shellrc `workon` (t/e domains). Always use the forge prefix.",
+            "Named desks anytime — not morning-only. Profiles are user JSON.",
             **kw,
         ),
     )
@@ -128,19 +128,19 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
 
     _out(s, heading("Commands", **kw))
     for line, desc in (
-        ("forge workon help", "This guide"),
-        ("forge workon list", "Profiles (stderr human; stdout JSON)"),
-        ("forge workon show <name>", "Resolved path + validated profile"),
-        ("forge workon capture", "Sketch tiles sugar from current tree (stdout)"),
-        ("forge workon capture --tree-file F", "Offline capture from GetTree JSON"),
-        ("forge workon capture --out PATH", "Also write file (parent dir must exist)"),
-        ("forge workon <name> --dry-run", "Plan only (human + plan JSON; mode A/B)"),
-        ("forge workon <name>", "Apply; short human summary (stderr)"),
-        ("forge workon <name> --verbose", "Also dump plan/apply JSON (or FORGE_VERBOSE=1)"),
-        ("forge workon <name> --force-launch", "Imperative steps[] only (escape hatch)"),
-        ("forge workon <name> --safe", "Open+move roles only (no park/structure/ensure)"),
-        ("forge workon <name> --clean", "Close residuals (Meta delete; not park)"),
-        ("forge workon <name> --clean --force", "Stronger delete; never process-kill"),
+        ("forge layout help", "This guide"),
+        ("forge layout list", "Profiles (stderr human; stdout JSON)"),
+        ("forge layout show <name>", "Resolved path + validated profile"),
+        ("forge layout save <name>", "Snapshot tree → host profile file (overwrite)"),
+        ("forge layout save <name> --tree-file F", "Offline save from GetTree JSON"),
+        ("forge layout save <name> --stdout", "Print JSON only (no write)"),
+        ("forge layout <name> --dry-run", "Plan only (human + plan JSON; mode A/B)"),
+        ("forge layout <name>", "Apply; short human summary (stderr)"),
+        ("forge layout <name> --verbose", "Also dump plan/apply JSON (or FORGE_VERBOSE=1)"),
+        ("forge layout <name> --force-launch", "Imperative steps[] only (escape hatch)"),
+        ("forge layout <name> --safe", "Open+move roles only (no park/structure/ensure)"),
+        ("forge layout <name> --clean", "Close residuals (Meta delete; not park)"),
+        ("forge layout <name> --clean --force", "Stronger delete; never process-kill"),
     ):
         _out(s, "  ", cmd(line, **kw))
         _out(s, "      ", dim(desc, **kw))
@@ -148,22 +148,22 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
 
     _out(s, heading("Where profiles live", **kw), " ", dim("(first hit wins)", **kw))
     for line in (
-        "FORGE_WORKON_PATH                         # one-shot file",
-        "$FORGE_WORKON_DIR/hosts/<host>/<name>.json",
-        "$FORGE_WORKON_DIR/hosts/<host>/<name>/profile.json",
-        "$FORGE_WORKON_DIR/common/<name>.json",
-        "~/.config/forge/workon/<name>.json        # XDG local",
+        "FORGE_LAYOUT_PATH                         # one-shot file",
+        "$FORGE_LAYOUT_DIR/hosts/<host>/<name>.json",
+        "$FORGE_LAYOUT_DIR/hosts/<host>/<name>/profile.json",
+        "$FORGE_LAYOUT_DIR/common/<name>.json",
+        "~/.config/forge/layout/<name>.json        # XDG local",
     ):
         _out(s, "  ", cyan(line, **kw))
     _out(
         s,
         "  ",
-        dim("Export FORGE_WORKON_DIR from shellrc for multi-machine trees. Host: FORGE_HOST or hostname.", **kw),
+        dim("Export FORGE_LAYOUT_DIR from shellrc for multi-machine trees. Host: FORGE_HOST or hostname.", **kw),
     )
     _blank(s)
 
     _out(s, heading("Minimal profile", **kw), " ", dim("(tiles sugar - preferred)", **kw))
-    _out(s, dim("  ~/.config/forge/workon/simple.json", **kw))
+    _out(s, dim("  ~/.config/forge/layout/simple.json", **kw))
     code = """\
 {
   "tiles": {
@@ -176,7 +176,7 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
     for line in code.splitlines():
         _out(s, "  ", cyan(line, **kw))
     _blank(s)
-    _out(s, "  Then: ", cmd("forge workon simple --dry-run", **kw), "  ->  ", cmd("forge workon simple", **kw))
+    _out(s, "  Then: ", cmd("forge layout simple --dry-run", **kw), "  ->  ", cmd("forge layout simple", **kw))
     _blank(s)
 
     _out(s, heading("tiles sugar", **kw), " ", dim("(desugars to roles + layout)", **kw))
@@ -248,11 +248,11 @@ def print_workon_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  • Default never closes windows; role windows and kept companions stay.")
     _out(s, "  • Thrashed desk: default auto Mode B recover (prefer over refuse).")
     _out(s, "  • Optional: ", cyan('"displays": "scene"', **kw), " -> gdisplays load; ", cyan('"settings": "name"', **kw), " -> SettingsLoad.")
-    _out(s, "  • Offline plan: ", cmd("forge workon name --dry-run --tree-file forest.json", **kw))
-    _out(s, "  • Capture sketch: ", cmd("forge workon capture", **kw), "  then edit match/open; never auto-installs")
-    _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/workon-tiles-minimal.json", **kw))
-    _out(s, "                    ", cyan("scripts/forge/examples/workon-tiles-nested.json", **kw))
-    _out(s, "                    ", cyan("scripts/forge/examples/workon-minimal.json", **kw), dim(" (IR)", **kw))
+    _out(s, "  • Offline plan: ", cmd("forge layout name --dry-run --tree-file forest.json", **kw))
+    _out(s, "  • Save sketch: ", cmd("forge layout save mydesk", **kw), "  then edit match/open")
+    _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/layout-tiles-minimal.json", **kw))
+    _out(s, "                    ", cyan("scripts/forge/examples/layout-tiles-nested.json", **kw))
+    _out(s, "                    ", cyan("scripts/forge/examples/layout-minimal.json", **kw), dim(" (IR)", **kw))
     _blank(s)
 
-    _out(s, dim("Docs: docs/user/workon.md · design: docs/DESIGN.md", **kw))
+    _out(s, dim("Docs: docs/user/layout.md · design: docs/DESIGN.md", **kw))

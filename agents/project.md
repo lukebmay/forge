@@ -45,7 +45,7 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 
 1. **Install trial** of this fork on `black` (gate for daily driver).
 2. **Multi-monitor / tab-stack lifecycle** — blank/thrash + retab must not crash Shell.
-3. **Resize predictability** and **session scripting** (`workon dev`) — see harden plan.
+3. **Resize predictability** and **session scripting** (`layout dev`) — see harden plan.
 4. Prefer small, tested patches; `npm test` / `make unit-test` for logic changes.
 5. UUID `forge@jmmaranan.com` — installs **replace** the live extension in place.
 6. gdisplays / connector identity lives in **shellrc**, not here.
@@ -54,10 +54,12 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 
 | Item | Status | Next |
 | --- | --- | --- |
-| [forge-workon-reconcile](./plans/forge-workon-reconcile.md) | **Complete** WR1–WR15 + WR6–WR9 | residual roleOrder optional |
-| [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | FC6 via workon-reconcile plan |
-| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + OP-opt + T9 **Done** (A) | Live; T9 B verify / smoke optional |
-| [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 + B1 **Done** | Residual size optional (B2…) |
+| **STACKED layouts** | **Next major** | Product path for users who want stacks (see PRIORITY) |
+| `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive |
+| [forge-workon-reconcile](./plans/forge-workon-reconcile.md) | **Complete** (historical name) | — |
+| [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | — |
+| [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + T9 **Done** | Live |
+| [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 + B1 **Done** | B2 optional |
 | [personal fork](./plans/forge-fork-eval/completed/forge-fork-eval_personal-fork.md) | **Done** | lukebmay/forge · lineage `luke` · master |
 
 **Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).  
