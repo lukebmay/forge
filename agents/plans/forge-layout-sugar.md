@@ -121,32 +121,23 @@ Do **not** force writers to invent a description. Bare array files stay valid.
 ## Save UX — description (interactive only)
 
 `forge layout save <name>` on a **TTY** should make description a 5-second
-choice, not a project. Non-interactive / `--force` / pipe: write auto default
-(or keep existing if present and no flag — document one rule; prefer **auto
-overwrite only when no prior description**, keep prior when non-interactive
-re-save unless `--description=…` / `--force-description`).
+choice, not a project. Non-interactive: no prompts (rules below).
 
 ### Interactive flows
 
-**A. New file (no existing profile)**
+**A. No existing description** (new file, or file without `description`)
+
+Do **not** offer Keep / Default / Edit menu. One step only:
 
 1. Compute **default** auto description from the snapshot about to be written.
-2. Prompt (simple):
+2. Single-line edit **pre-filled with that default**.
+3. User presses Enter to accept, or edits/clears and types their own.
 
-   ```text
-   Description: mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.
-   [K]eep default  [E]dit  — default K
-   ```
-
-   Or: offer **Keep (k) / Edit (e)** with default **K** on Enter.
-
-3. **Edit:** open a single-line edit buffer **pre-filled with the default**;
-   user can press Enter to accept as-is, or clear/type their own. No multi-step
-   wizard.
+No multi-option prompt when there is nothing to “keep.”
 
 **B. Existing file with a description**
 
-1. Show current description and the new auto default.
+1. Show current + auto default (short).
 2. Prompt:
 
    ```text
@@ -156,23 +147,28 @@ re-save unless `--description=…` / `--force-description`).
    [K]eep current  [D]efault  [E]dit  — default K
    ```
 
-3. **Keep (k):** retain file’s description (Enter default).
-4. **Default (d):** use auto-generated string.
-5. **Edit (e):** pre-fill with **default** (not current — user asked default as
-   starting point when customizing; if they wanted current they hit K). Allow
-   clear + free text; Enter accepts buffer.
+3. **Keep (k):** retain file’s description (Enter = K).
+4. **Default (d):** use auto-generated string as-is (no further edit unless they
+   pick Edit next — d alone writes default).
+5. **Edit (e):** single-line edit **pre-filled with the existing (current)
+   description** — not the auto default. User may clear and rewrite; Enter
+   accepts buffer.
 
-**C. Existing file without description**
+Summary:
 
-Treat like new: default auto; K keep default / E edit pre-filled default.
+| Choice | Prefill / result |
+| --- | --- |
+| Keep | existing text unchanged |
+| Default | auto-generated one-liner |
+| Edit | buffer starts as **existing** |
+| No existing | skip menu; buffer starts as **default** |
 
 ### Non-interactive
 
 | Case | Description written |
 | --- | --- |
-| New file | auto default |
+| New file / no description | auto default |
 | Exists + has description | **keep** existing (no prompt) |
-| Exists + no description | write auto default |
 | `--description TEXT` | use TEXT (escape hatch) |
 | `--no-description` | omit key (bare array purity) |
 

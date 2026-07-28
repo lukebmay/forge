@@ -630,8 +630,9 @@ heuristics (plan: [forge-layout-sugar.md](../agents/plans/forge-layout-sugar.md)
 Object `tiles` / `floating` only when needed. Malformed structure: load what
 you can, park leftovers safely. **Description** is optional cosmetics:
 auto one-liner (`mon0 (hsplit): tabgroup, ghostty. …`) for `list` when
-missing; interactive save uses Keep / Default / Edit (prefill default) —
-never required to load.
+missing; interactive save: no menu if no existing (edit prefilled with
+default); if existing, Keep / Default / Edit with Edit prefilled from
+**existing** — never required to load.
 
 Arrays under a mon are panes (order = spatial order). Nested arrays are
 tab groups. Bare strings are single-app panes. **Split** is inferred
