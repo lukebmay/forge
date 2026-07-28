@@ -1,6 +1,6 @@
 # Plan: Dead-simple layout sugar
 
-**Status:** Queued (implement next after wrap of rename / order)  
+**Status:** Queued (next implement)  
 **Updated:** 2026-07-28  
 **Goal:** A layout config so simple you could write it by accident and it still works.
 
@@ -41,14 +41,15 @@ policy), never crash the planner.
 
 ```json
 {
-  "description": "optional",
+  "description": "optional — never required to load",
   "tiles": { ... } | [ ... ],
   "floating": [ ... ]
 }
 ```
 
 - Prefer bare array file when there is no floating and no extra metadata.
-- `tiles` key only if mixing with `floating` / `description` / advanced IR.
+- `tiles` key only if mixing with `floating` / advanced IR.
+- Stored `description` is optional cosmetics for `list` / humans.
 - `mon0` / `mon1` keys remain valid **advanced** sugar (stableKey / alias later);
   not required for the happy path.
 
@@ -70,12 +71,129 @@ Save (`forge layout save`) should emit the **simplest** form that round-trips:
 prefer bare array + string cells; only add objects / `tiles` / titles when
 needed for fidelity.
 
+---
+
+## Auto description (always available, never required)
+
+**Load does not need `description`.** Apply/plan/show structure work without it.
+
+Whenever a human-facing description is needed and the profile has none (or we
+are generating a default), **auto-build a dead-simple one-liner** from the
+normalized layout:
+
+```text
+mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.
+```
+
+### Generator rules (keep boring)
+
+| Pane shape | Token |
+| --- | --- |
+| string / single app | app id or open stem (`ghostty`, `Grok`) |
+| tabbed multi-role | `tabgroup` (or `tabgroup(a,b,c)` if short — prefer plain `tabgroup` first) |
+| nested h/v split | `hsplit` / `vsplit` with child tokens |
+| mon split omitted | infer `hsplit` when ≥2 panes (same as sugar defaults) |
+
+Format sketch:
+
+```text
+mon{N} ({split}): {pane}, {pane}, …. mon{N+1} ({split}): …
+```
+
+- One line; no prose essay.
+- Stable enough for `forge layout list` columns.
+- Pure function: profile IR → string (unit-testable). No GetTree required once
+  IR exists; save can run on captured sugar after normalize.
+
+### When to use auto vs stored
+
+| Situation | Behavior |
+| --- | --- |
+| `list` / list line | Use stored `description` if non-empty; else **auto** |
+| `show` header | Same |
+| Load / apply / plan | Ignore description entirely |
+| Save write | See interactive UX below |
+
+Do **not** force writers to invent a description. Bare array files stay valid.
+
+---
+
+## Save UX — description (interactive only)
+
+`forge layout save <name>` on a **TTY** should make description a 5-second
+choice, not a project. Non-interactive / `--force` / pipe: write auto default
+(or keep existing if present and no flag — document one rule; prefer **auto
+overwrite only when no prior description**, keep prior when non-interactive
+re-save unless `--description=…` / `--force-description`).
+
+### Interactive flows
+
+**A. New file (no existing profile)**
+
+1. Compute **default** auto description from the snapshot about to be written.
+2. Prompt (simple):
+
+   ```text
+   Description: mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.
+   [K]eep default  [E]dit  — default K
+   ```
+
+   Or: offer **Keep (k) / Edit (e)** with default **K** on Enter.
+
+3. **Edit:** open a single-line edit buffer **pre-filled with the default**;
+   user can press Enter to accept as-is, or clear/type their own. No multi-step
+   wizard.
+
+**B. Existing file with a description**
+
+1. Show current description and the new auto default.
+2. Prompt:
+
+   ```text
+   Description for "dev":
+     current: Dual-mon: Chrome+Grok | Ghostty …
+     default: mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.
+   [K]eep current  [D]efault  [E]dit  — default K
+   ```
+
+3. **Keep (k):** retain file’s description (Enter default).
+4. **Default (d):** use auto-generated string.
+5. **Edit (e):** pre-fill with **default** (not current — user asked default as
+   starting point when customizing; if they wanted current they hit K). Allow
+   clear + free text; Enter accepts buffer.
+
+**C. Existing file without description**
+
+Treat like new: default auto; K keep default / E edit pre-filled default.
+
+### Non-interactive
+
+| Case | Description written |
+| --- | --- |
+| New file | auto default |
+| Exists + has description | **keep** existing (no prompt) |
+| Exists + no description | write auto default |
+| `--description TEXT` | use TEXT (escape hatch) |
+| `--no-description` | omit key (bare array purity) |
+
+No prompts when stdin/stdout not a TTY (scripting.md interactive vs script).
+
+### Implementation notes
+
+- Pure: `format_layout_description(prof) -> str` in `layout_plan` or `layout_save`.
+- CLI only: prompt helpers in `forge` layout save path; respect `agents/scripting.md` TTY rules.
+- `list` already has description field — fill from auto when missing after load/normalize.
+- Unit tests for generator; light CLI tests with mocked TTY optional.
+
+---
+
 ## Why this is the bar
 
 Current black `dev` is already flatter than v2 IR, but still teaches
-`tiles` + `monN` + Chrome object cells. Target: **lists and names only**.
+`tiles` + `monN` + Chrome object cells. Target: **lists and names only**,
+with optional one-line auto description for discoverability.
 
-## Implementation slices (suggested)
+## Implementation slices
 
 | ID | Work | Notes |
 | --- | --- | --- |
@@ -85,6 +203,8 @@ Current black `dev` is already flatter than v2 IR, but still teaches
 | **LS4** | `layout save` emits bare array when possible | no `floating: []`, no mon keys if index order is enough |
 | **LS5** | Docs + black `dev.json` rewrite to bare array | shellrc example is the demo |
 | **LS6** | Tests: 1-mon, 2-mon, ambiguous, chrome PWA inference | fixtures |
+| **LS7** | `format_layout_description` + list/show fallback | pure; unit tests |
+| **LS8** | Interactive save description UX (K/D/E + non-interactive rules) | TTY only |
 
 No backwards compatibility required (pre-release). Old `tiles.monN` and rich
 cells keep working as supersets.
@@ -93,9 +213,11 @@ cells keep working as supersets.
 
 1. File that is **only** the dual-mon array above loads on black and plans correctly.
 2. Single-mon array of panes works without wrapping in `[[...]]` mon layer when one mon.
-3. `forge layout save dev` (or equivalent) can rewrite to bare array + strings when safe.
-4. Missing/inferable class/title not required for Grok/YouTube/Gmail/Voice/ghostty on a typical Chrome+PWA desk.
-5. Unit tests green; live black smoke.
+3. `forge layout save` can rewrite to bare array + strings when safe.
+4. Missing/inferable class/title not required for typical Chrome+PWA desk.
+5. No `description` required to load; `list` still shows a useful one-liner (auto or stored).
+6. Interactive save: K/D/E (or K/E on new) is obvious; non-interactive never hangs.
+7. Unit tests green; live black smoke.
 
 ## Related shipped
 
@@ -111,7 +233,8 @@ cells keep working as supersets.
 
 - STACKED product path → [forge-stacked-layouts.md](./forge-stacked-layouts.md)
 - Full gdisplays-level monitor identity in bare arrays (mon index order is enough for v1)
+- Fancy multi-line description editors / `$EDITOR` (single-line prefill is enough)
 
 ## Next task
 
-Implement **LS1 + LS2** first (parse + inference), then black rewrite + save (LS4–LS5).
+[forge-layout-sugar_ls1-ls2.md](../tasks/forge-layout-sugar_ls1-ls2.md) — parse + inference first; LS7–LS8 description with save UX in a following task.
