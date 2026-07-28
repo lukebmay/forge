@@ -1,7 +1,8 @@
 # Plan: STACKED layouts as a supported product path
 
-**Status:** Queued (next major after layout rename + mon order)  
-**Updated:** 2026-07-28
+**Status:** Spike complete — awaiting acceptance  
+**Updated:** 2026-07-28  
+**Spike task:** [forge-stacked-layouts_spike.md](../tasks/forge-stacked-layouts_spike.md)
 
 ## Why
 
@@ -11,32 +12,195 @@ should be a deliberate, documented mode — not half-broken residue.
 
 ## Goals (draft)
 
-1. **On by default or clear opt-in** — decide product default vs gsettings flag.
-2. **Layout profiles** can express `stacked` cells (tiles sugar + ensure).
-3. **Keybinds / DnD / chrome** behave predictably for STACKED (not only TABBED).
+1. **Clear opt-in** (recommended) or on-by-default — decide product default.
+2. **Layout profiles** can express and round-trip `stacked` cells (tiles sugar + ensure).
+3. **Keybinds / DnD / chrome** behave predictably for STACKED when mode is on.
 4. **No thrash** with mon order, soft rehome, or session restore.
-5. Docs: when to use stacked vs tabbed.
+5. Docs: when to use stacked vs tabbed; defaults match schema.
 
 ## Non-goals (v1)
 
 - Replacing tabbed as Luke’s personal default on black.
 - Full i3 feature parity for every stack edge case.
+- Flipping product default to stack-on for all installs without an explicit product call.
 
-## Entry points
+## Recommended product default
 
-| Area | Notes |
+| Choice | Recommendation |
 | --- | --- |
-| gsettings | `stacked-tiling-mode-enabled` (exists) |
-| layout plan | `ensure_layout` already knows stacked modes |
-| decoration | stack chrome vs tab chrome |
-| daily-driver T0 | stack-off was intentional — revisit |
+| **`stacked-tiling-mode-enabled`** | **Keep opt-in (`false`)** — do not ship stack-on as global default |
+| **`dnd-center-layout`** | Keep **`tabbed`** |
+| **`default-window-layout`** | Keep **`tiled`** (split); stacked only when user chooses |
+
+**Rationale**
+
+- Engine already implements STACKED well when the flag is on; T0 deliberately made
+  stacks opt-in so center-drop / join never invents accidental stacks on black.
+- Luke’s daily path is tab-first; “supported product path” means **first-class when
+  enabled**, not forced on every user.
+- Opt-in avoids reopening DnD thrash and un-doing daily-driver T0.
+- Profile / docs work should make stacks **discoverable and round-trippable**, not
+  ambient.
+
+If product later wants stack-on for a kit or niche users: expose via prefs + docs,
+not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
+
+---
+
+## Spike inventory (2026-07-28)
+
+### 1. Settings / defaults
+
+| Item | Current |
+| --- | --- |
+| GSchema `stacked-tiling-mode-enabled` | **`false`** — `schemas/org.gnome.shell.extensions.forge.gschema.xml` ~L101–104 |
+| GSchema `tabbed-tiling-mode-enabled` | `true` |
+| GSchema `dnd-center-layout` | `'tabbed'` (~L145–150); enum tabbed\|stacked (prefs also offers swap) |
+| GSchema `default-window-layout` | `'tiled'` (tiled\|tabbed\|stacked) |
+| Prefs UI | Switch “Stacked tiling” binds flag — `lib/prefs/settings.js` ~L107–111; DnD dropdown includes Stacked ~L170–180 |
+| `config/settings.schema.json` | **`stacked-tiling-mode-enabled` default `true`** — **stale vs gschema** (~L51–54) |
+| Daily-driver T0 | Done: stack-off + DnD force-tab; STACKED→TABBED on disable preserve children — `agents/plans/forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md` |
+| Mode toggle handler | `_handleLayoutModeToggle` — STACKED off → TABBED; re-enable restores `prevLayout === STACKED` — `lib/extension/window.js` ~L1124–1155 |
+
+### 2. Keybinds
+
+| Item | Current |
+| --- | --- |
+| Toggle stack | `con-stacked-layout-toggle` → `LayoutStackedToggle` — no-ops if flag false (`command.js` ~L320–347) |
+| Safe default chord | `<Ctrl><Super>s` (gschema); kits: Vim `<Shift><Super>s`, i3-ish `<Super>s` — `keybind-presets.js` |
+| Toggle tabbed | `con-tabbed-layout-toggle` (symmetric; tabbed flag) |
+| Focus / cycle in stack | No dedicated “cycle stack” binding. STACKED is **VERTICAL** (`utils.js` / `tree-layout.js`); focus **up/down** walks siblings; enter/exit left/right (`Tree-operations` tests) |
+| Restack on focus | `FocusManager.updateStackedFocus` appends focused child + raise siblings (`focus.js` ~L113–128); also tab-click / move / run-steps settle |
+| Session API | `_layoutOp("STACKED")` refuses if flag false (`session-api.js` ~L1168–1171); flattens nested CONs like TABBED |
+
+### 3. DnD
+
+| Item | Current |
+| --- | --- |
+| Center layout resolve | `_resolveDndCenterLayout` forces TABBED when stack mode off — `drag-drop.js` ~L320–331 |
+| Center drop create | Uses `LAYOUT_TYPES[centerLayout]` when creating CON |
+| Join existing STACKED | If effective center is TABBED → convert parent STACKED→TABBED (~L160–163) |
+| Post-drop guard | Center drop never leaves STACKED when flag off (~L166–176) |
+| Preview class | Stacked preview only when stack mode on — else tabbed hint (~L253–265) |
+| Tests | Unit: STACKED path with flag on + stack-off force tab — `tests/unit/window/WindowManager-drag-drop.test.js` |
+
+### 4. Decoration / chrome
+
+| Item | Current |
+| --- | --- |
+| Layout math | `stackedChildRect` — N bars × height; focused content fills rest — `tree-layout.js` ~L120–135 |
+| Render | `processStacked`: VERTICAL decoration column, `tabExpand=true` — `tree.js` ~L2491–2506 |
+| Shared with tabs | Same tab actors / `showtab-decoration-enabled` / `stacked-tab-bar-height` / tab position top\|bottom |
+| Borders | `window-stacked-border` vs `window-tabbed-border` — `decoration.js` ~L143–157 |
+| Theme | `.window-stacked-border`, `.window-tilepreview-stacked`, palette `.stacked` |
+| Difference vs TABBED | Tabbed = horizontal strip (+ multi-row T9); stacked = full-width title-bar column (i3-like). Shared host code path |
+
+### 5. Layout profiles / sugar
+
+| Item | Current |
+| --- | --- |
+| IR modes | `tabbed` \| `stacked` \| hsplit \| vsplit accepted in `layout_plan.py` (aliases, overflow, children) |
+| Multi-role default | Child with ≥2 roles → **`layout: "tabbed"` only** — `_desugar_role_pane` ~L521; validate defaults ~L701 |
+| Bare sugar | `["app1","app2"]` → **always tabbed** — `docs/user/layout.md` table; no stacked sugar |
+| `ensure_layout` | Emits/applies `mode: stacked` when profile says so; apply folds ids into group (`layout_apply.py` ~L176, ~L245) |
+| `layout save` | TABBED **and** STACKED both serialize as multi-cell **array** sugar — `layout_save.py` ~L668–692 — round-trip → **tabbed**, not stacked |
+| Thrash scoring | Multi-role “not co-grouped” thrash check is **`mode == "tabbed"` only** — `layout_plan.py` ~L2649–2660; stacked multi-role not scored the same |
+| CLI unit tests | **No** `stacked` cases in `tests/unit/cli/test_layout_plan.py` (grep empty) |
+
+### 6. Session / rehome
+
+| Item | Current |
+| --- | --- |
+| Full forest snapshot | CON `layout` includes STACKED — `tree-snapshot.js` |
+| Layout-group snapshot | Outer STACKED+TABBED — `tree.snapshotLayoutGroups` / `restoreLayoutGroups` / `restoreLayoutGroupsIfUnwrapped` — `tree.js` ~L1097–1200 |
+| Soft rehome | `alignSoftRehomeGroupTargets` majority-aligns outermost STACKED **and** TABBED — `soft-rehome.js` ~L182–211 |
+| Session-layout disk | Portable forest restore preserves group layouts when match quality OK — same path as tabs |
+| Known risks | Nested stack/tab under splits historically fragile (forge-4y80, gdsz); thrash “stacked thrash” tie-break in session-layout pairing (~L153 comment). **No open code bug found this spike**; treat as regression-sensitive |
+| Rendering note | `docs/dev/rendering.md`: plain reload without snapshot loses STACKED/TABBED (expected; session-layout / snapshotTree mitigates) |
+
+### 7. Tests (existing STACKED coverage)
+
+| Layer | Coverage |
+| --- | --- |
+| Unit tree | Focus/nav, move into stack, swap, cleanup decoration, layout rects — `Tree-operations`, `Tree-cleanup`, `Tree-layout` |
+| Unit DnD | Stack on + stack-off — `WindowManager-drag-drop.test.js` |
+| Unit command | `LayoutStackedToggle` — `CommandHandler.test.js` (fixtures often force stack mode on) |
+| Regression | decoration off overlap (5qp1), flatten nested stack (gdsz), middle-child resize (ox8), tab activate restack, etc. |
+| E2E bridge | Integrity allows STACKED; focused child last-in-STACKED invariant — `tests/e2e/framework/bridge.js` ~L1493+ |
+| CLI layout | **Gap:** no profile ensure/thrash tests for `stacked` |
+| Test fixtures | `stacked-tiling-mode-enabled: true` in mocks (tests enable stacks; product default is off) |
+
+### 8. Docs (stale vs product)
+
+| Doc | Issue |
+| --- | --- |
+| `docs/user/layouts.md` ~L30–32 | Claims **both modes on by default** — wrong (stack off) |
+| `docs/user/troubleshooting.md` ~L22–24 | Same “on by default” claim |
+| `README.md` | Correctly states stack off + tab-first DnD |
+| `docs/user/layout.md` | Sugar is tab-centric; no stacked recipe |
+| daily-driver plan | Deferred doc/schema nits still open (~L261–262) |
+
+---
+
+## Gap inventory
+
+| Area | Current | Gap | Severity |
+| --- | --- | --- | --- |
+| Core tree / focus / restack | STACKED first-class in engine | None for v1 when mode on | — |
+| GSchema default | Stack **off** | Align product messaging; keep opt-in | Low (intentional) |
+| `config/settings.schema.json` | default **true** | Match gschema `false` | **Med** (agent/tooling footgun) |
+| Prefs | Full UI for flag + DnD + default layout | Optional: disable Stacked DnD choice when flag off (UX polish) | Low |
+| Keybinds | Toggle + focus U/D | No dedicated “cycle stack”; optional only | Low |
+| DnD when mode on | Creates/joins STACKED per `dnd-center-layout` | Confirm live on black when opting in; covered by unit | Low |
+| DnD when mode off | Forced tabbed | Matches T0; keep | — |
+| Chrome | Vertical stack bars shared with tab machinery | None critical; shared `showtab` toggle | Low |
+| Layout IR | `layout: "stacked"` works end-to-end if written | Bare sugar / multi-role default never produces stacked | **High** (product goal #2) |
+| `layout save` | STACKED → bare array | Round-trip becomes **tabbed** | **High** |
+| Thrash / verify | Tabbed multi-role checked | Stacked multi-role thrash not scored | **Med** |
+| Session / rehome | Same path as TABBED | Needs explicit STACKED regression if not already e2e | Med |
+| Unit/e2e engine | Strong | — | — |
+| CLI / profile tests | Missing stacked | Add with sugar work | Med |
+| User docs | Partially wrong defaults; no stacked-vs-tabbed guide | Fix + when-to-use | **Med** |
+
+---
+
+## Task breakdown
+
+| ID | Work | Depends | Size |
+| --- | --- | --- | --- |
+| **SL0** | **Docs + schema hygiene:** set `config/settings.schema.json` stack default `false`; fix `layouts.md` / `troubleshooting.md` “on by default”; README already OK; short “stacked vs tabbed” in `layouts.md` | Accept plan | **S** |
+| **SL1** | **Profile IR + save round-trip:** `layout save` emit stacked groups as IR `layout: "stacked"` (or sugar that desugars to stacked); ensure bare multi-app array stays tabbed; tests in `test_layout_*` | Accept | **M** |
+| **SL2** | **Tiles sugar for stacked (optional syntax):** e.g. `{ "layout": "stacked", "content": [...] }` / documented IR-only path; keep default multi-role → tabbed | SL1 | **S–M** |
+| **SL3** | **Thrash / ensure parity:** multi-role `stacked` slots get same co-group thrash + ensure behavior as tabbed | SL1 | **S** |
+| **SL4** | **Regression pack:** unit CLI + any missing DnD/toggle; optional e2e smoke with flag on (STACKED toggle + focus restack already partly in bridge) | SL1 | **S–M** |
+| **SL5** | **Live verify on black (opt-in):** enable stack mode; toggle / DnD stacked / layout profile with stacked cell; soft rehome dual-mon; no Shell thrash | SL0–SL1 preferred | **S** (ops) |
+| **SL6** | **Polish (optional):** prefs graying of DnD=stacked when flag off; cycle-stack keybind; auto-exit-stacked symmetry — only if product wants | SL0 | **S–M** |
+
+**Out of scope unless requested:** flip default to stack-on; replace tabbed daily driver; nested stack redesign.
+
+---
 
 ## Next task
 
-Spike: inventory current STACKED support gaps (keybind, DnD, layout sugar,
-session) → task breakdown. Do not implement until spike accepted.
+After Luke accepts this breakdown:
+
+→ **`SL0`** — docs + `config/settings.schema.json` default alignment (smallest ship; unblocks honest messaging).  
+Then **`SL1`** — first real product slice (stacked layout profile round-trip).
+
+Do **not** start SL0/SL1 until acceptance.
 
 ## Related
 
 - [forge-daily-driver](./forge-daily-driver.md) T0 stack-off
 - [docs/user/layout.md](../../docs/user/layout.md)
+- [docs/user/layouts.md](../../docs/user/layouts.md)
+- T0 completed: [forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md](./forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md)
+
+## Session note (spike)
+
+**2026-07-28 Task Force A — spike only (no product code).**
+
+- STACKED is **implemented** in the tiling engine (tree layout, focus restack, decoration column, keybind toggle, session/forest snapshot, soft-rehome majority align). Product default remains **opt-in / off** after T0.
+- Real product gaps: **layout sugar/save always tab-ifies multi-window groups**, thrash checks tab-only, **docs + config JSON schema claim stack-on**, CLI tests omit stacked.
+- Recommend **keep flag off**; ship SL0→SL1 after acceptance.
+- Next agent: wait for accept; start **SL0** then **SL1** without re-spiking.

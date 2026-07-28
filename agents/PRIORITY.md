@@ -8,7 +8,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **stacks** | STACKED as supported product path | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| **1** | **stacks** | STACKED product path — spike done; accept → SL0/SL1 | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 | 2 | layout polish | Live-drive bare-array `forge layout` | Day-to-day on black |
 | 3 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
 
@@ -16,6 +16,7 @@
 
 | Item | Note |
 | --- | --- |
+| STACKED spike inventory | Gaps + SL0–SL6 breakdown; recommend keep opt-in |
 | Mon L/R + tab group order | `ensure_order` mon + in-tab |
 | `workon` → `layout` | Full rename; `layout save` host-aware |
 | Interim flat Chrome cells + class stem | Toward sugar plan LS* |
@@ -37,7 +38,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [stacked](./plans/forge-stacked-layouts.md) | **Next** product path |
+| **P0** | [stacked](./plans/forge-stacked-layouts.md) | Spike **done** — accept → SL0 docs/schema, SL1 save round-trip |
 | P1 | Live layout daily-drive | Bare-array sugar live on black |
 | P2 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
 
