@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pure layout save: GetTree forest → tiles sugar sketch (WR7)."""
+"""Pure layout save: GetTree forest → bare-array / tiles sugar sketch."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Any, Callable, Optional, TextIO
 
 from layout_plan import (
     _alloc_role_id,
+    _infer_open_and_match,
     _order_monitors,
     _parse_mon_id,
     _stem_to_id,
@@ -47,9 +48,10 @@ def capture_tiles_profile(
     forest: Any, *, description: Optional[str] = None
 ) -> dict[str, Any]:
     """
-    Snapshot a GetTree forest into compact tiles sugar.
+    Snapshot a GetTree forest into internal tiles mon-map sugar.
 
-    Output validates via normalize_profile + validate_reconcile_profile.
+    Call profile_for_output() for bare-array JSON write form.
+    Validates via normalize_profile + validate_reconcile_profile.
     """
     if not isinstance(forest, dict):
         raise ValueError("forest must be a JSON object")
@@ -118,10 +120,229 @@ def capture_tiles_profile(
     return out
 
 
-def profile_for_output(profile: dict[str, Any]) -> dict[str, Any]:
-    """Drop internal keys before JSON print/write."""
+def profile_for_output(profile: dict[str, Any]) -> Any:
+    """
+    Drop internal keys and emit simplest sugar for JSON print/write.
+
+    Prefer bare top-level array + string cells when mon0..monN order is enough
+    and no floating / custom metadata. Pure-auto description is omitted (list/show
+    recompute). Custom description forces object form with tiles array when possible.
+    """
     out = {k: v for k, v in profile.items() if not k.startswith("_")}
-    return out
+    tiles = out.get("tiles")
+    if isinstance(tiles, dict):
+        out["tiles"] = _compact_tiles_tree(tiles)
+    elif isinstance(tiles, list):
+        out["tiles"] = _compact_pane_list(tiles)
+
+    floating = out.get("floating")
+    if not (isinstance(floating, list) and floating):
+        out.pop("floating", None)
+        floating = None
+
+    # Extra top-level keys force object form (roles/layout/monitors/…).
+    sugar_keys = {"description", "tiles", "floating"}
+    extra = [k for k in out if k not in sugar_keys]
+    if extra:
+        return out
+
+    bare = _tiles_to_bare_array(out.get("tiles"))
+    if bare is None:
+        return out
+
+    desc = out.get("description")
+    desc_s = desc.strip() if isinstance(desc, str) and desc.strip() else None
+    auto = format_layout_description(bare).strip()
+    # Pure auto / empty → bare array purity (list/show compute description).
+    if desc_s is None or (auto and desc_s == auto):
+        if floating:
+            return {"tiles": bare, "floating": floating}
+        return bare
+
+    wrapped: dict[str, Any] = {"description": desc_s, "tiles": bare}
+    if floating:
+        wrapped["floating"] = floating
+    return wrapped
+
+
+def _tiles_to_bare_array(tiles: Any) -> Optional[list[Any]]:
+    """mon0..monN-1 consecutive map → mon bodies list; single mon → panes list."""
+    if isinstance(tiles, list):
+        return tiles
+    if not isinstance(tiles, dict) or not tiles:
+        return None
+    n = len(tiles)
+    expected = [f"mon{i}" for i in range(n)]
+    if set(tiles.keys()) != set(expected):
+        return None
+    bodies = [tiles[f"mon{i}"] for i in range(n)]
+    if n == 1:
+        body = bodies[0]
+        return body if isinstance(body, list) else [body]
+    return bodies
+
+
+def _compact_tiles_tree(tiles: dict[str, Any]) -> dict[str, Any]:
+    return {k: _compact_pane_node(v) for k, v in tiles.items()}
+
+
+def _compact_pane_list(items: list[Any]) -> list[Any]:
+    return [_compact_pane_node(x) for x in items]
+
+
+def _compact_pane_node(node: Any) -> Any:
+    if isinstance(node, list):
+        return _compact_pane_list(node)
+    if isinstance(node, dict):
+        if "content" in node or "children" in node or (
+            "split" in node and node.get("app") is None and node.get("open") is None
+        ):
+            out = dict(node)
+            if isinstance(out.get("content"), list):
+                out["content"] = _compact_pane_list(out["content"])
+            if isinstance(out.get("children"), list):
+                out["children"] = _compact_pane_list(out["children"])
+            return out
+        return _maybe_string_cell(node)
+    return node
+
+
+def _maybe_string_cell(cell: dict[str, Any]) -> Any:
+    """Promote flat role object to string when open+match re-infer identically."""
+    allowed = {
+        "app",
+        "class",
+        "title~=",
+        "title",
+        "open",
+        "id",
+        "wmClass",
+        "wm_class",
+        "match",
+    }
+    if any(k not in allowed for k in cell):
+        return cell
+
+    app = _cell_app_token(cell)
+    if not app:
+        return cell
+
+    open_i, match_i = _infer_open_and_match(app)
+    cell_match = _cell_match_dict(cell)
+    if cell_match is None:
+        return cell
+    if cell_match and not _match_re_inferable(cell_match, match_i):
+        return cell
+
+    if not _open_re_inferable(cell, open_i, app):
+        return cell
+
+    # Explicit id that would not be the natural stem keeps object form.
+    rid = cell.get("id")
+    if rid is not None and str(rid).strip():
+        natural = _stem_to_id(app)
+        if str(rid).strip() != natural:
+            return cell
+
+    return app
+
+
+def _cell_app_token(cell: dict[str, Any]) -> Optional[str]:
+    if cell.get("app") is not None and str(cell.get("app")).strip():
+        return str(cell["app"]).strip()
+    open_spec = cell.get("open")
+    if isinstance(open_spec, str) and open_spec.strip():
+        return open_spec.strip()
+    if isinstance(open_spec, dict):
+        for k in ("app", "desktop", "command"):
+            if open_spec.get(k) is not None and str(open_spec.get(k)).strip():
+                return str(open_spec[k]).strip()
+    return None
+
+
+def _cell_match_dict(cell: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """Effective match fields, or None if nested match is not a dict we can check."""
+    match = cell.get("match")
+    if match is not None:
+        if isinstance(match, str) and match.strip():
+            return {"class": match.strip()}
+        if isinstance(match, dict):
+            return dict(match)
+        return None
+    flat: dict[str, Any] = {}
+    if cell.get("class") is not None:
+        flat["class"] = cell.get("class")
+    if cell.get("title~=") is not None:
+        flat["title~="] = cell.get("title~=")
+    elif cell.get("title") is not None:
+        flat["title"] = cell.get("title")
+    return flat
+
+
+def _match_re_inferable(cell_match: dict[str, Any], inferred: dict[str, Any]) -> bool:
+    """True when cell match is the same constraint set as string inference."""
+    # Normalize title keys
+    c = dict(cell_match)
+    if "title" in c and "title~=" not in c:
+        c["title~="] = c.pop("title")
+    i = dict(inferred)
+    if "title" in i and "title~=" not in i:
+        i["title~="] = i.pop("title")
+
+    c_class = c.get("class")
+    i_class = i.get("class")
+    if c_class is not None or i_class is not None:
+        if not _class_token_equiv(c_class, i_class):
+            return False
+    c_title = c.get("title~=")
+    i_title = i.get("title~=")
+    if (c_title is None) != (i_title is None):
+        return False
+    if c_title is not None and str(c_title) != str(i_title):
+        return False
+    # Reject unknown match keys that inference does not produce.
+    for k in c:
+        if k not in ("class", "title~=", "title"):
+            return False
+    return True
+
+
+def _class_token_equiv(a: Any, b: Any) -> bool:
+    if a is None or b is None:
+        return a is None and b is None
+    sa, sb = str(a).strip(), str(b).strip()
+    if sa.casefold() == sb.casefold():
+        return True
+    # reverse-DNS stem vs short class
+    stem_a = sa.rsplit(".", 1)[-1]
+    stem_b = sb.rsplit(".", 1)[-1]
+    return stem_a.casefold() == stem_b.casefold()
+
+
+def _open_re_inferable(cell: dict[str, Any], open_i: dict[str, Any], app: str) -> bool:
+    open_spec = cell.get("open")
+    if open_spec is None:
+        return True
+    if isinstance(open_spec, str):
+        return open_spec.strip() == app
+    if not isinstance(open_spec, dict):
+        return False
+    # Extra open fields (timeout, argv, …) need object form.
+    allowed_open = {"app", "desktop", "command", "wmClass", "wm_class"}
+    if any(k not in allowed_open for k in open_spec):
+        return False
+    for k in ("app", "desktop", "command"):
+        if open_spec.get(k) is not None and str(open_spec.get(k)).strip():
+            if str(open_spec[k]).strip() != app:
+                return False
+            break
+    for wk in ("wmClass", "wm_class"):
+        if open_spec.get(wk) is None:
+            continue
+        inf = open_i.get("wmClass") or open_i.get("wm_class")
+        if inf is None or not _class_token_equiv(open_spec.get(wk), inf):
+            return False
+    return True
 
 
 def is_interactive_tty(

@@ -1,17 +1,13 @@
-{
-  "description": "Tiles sugar with explicit nested splits (h + v aliases)",
-  "tiles": {
-    "mon0": [["google-chrome", "grok"], "ghostty"],
-    "mon1": {
-      "split": "h",
-      "content": [
-        "ghostty",
-        {
-          "split": "v",
-          "content": [["youtube", "gmail", "voice"], "nautilus"]
-        }
-      ]
-    }
-  },
-  "floating": []
-}
+[
+  [["google-chrome", "Grok"], "ghostty"],
+  {
+    "split": "h",
+    "content": [
+      "ghostty",
+      {
+        "split": "v",
+        "content": [["youtube", "gmail", "voice"], "nautilus"]
+      }
+    ]
+  }
+]

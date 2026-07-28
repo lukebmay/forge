@@ -1,13 +1,13 @@
 # Plan: Dead-simple layout sugar
 
-**Status:** Active — LS1+LS2+LS7+LS8 done; next LS4/LS5  
+**Status:** Product bar met — LS1–2, LS4–5, LS7–8 done (A/B AGREE); LS3/LS6 optional  
 **Updated:** 2026-07-28  
 **Goal:** A layout config so simple you could write it by accident and it still works.
 
 ### Session note (overwrite)
 
-LS7–LS8 **B AGREE** (2026-07-28): auto description + save UX verified; 242 layout tests OK; no findings.  
-Next: LS4 save bare array / LS5 docs.
+LS4+LS5 **B AGREE** (2026-07-28): bare save + docs; 245 layout tests OK.  
+Main sugar path shipped. Optional LS3/LS6; next product priority is stacks.
 
 ## Product target
 
@@ -200,8 +200,8 @@ with optional one-line auto description for discoverability.
 | **LS1** | `normalize_profile`: accept bare top-level array → internal tiles IR | **Done** — shape-only multi vs mon0 |
 | **LS2** | String-cell match inference (desktop Name / chrome heuristics) | **Done** — pure heuristics + PWA map |
 | **LS3** | Best-effort parse + park leftovers | no hard fail on weird JSON shape |
-| **LS4** | `layout save` emits bare array when possible | no `floating: []`, no mon keys if index order is enough |
-| **LS5** | Docs + black `dev.json` rewrite to bare array | shellrc example is the demo |
+| **LS4** | `layout save` emits bare array when possible | **Done** — no `floating: []`, no mon keys if index order is enough |
+| **LS5** | Docs + examples rewrite to bare array | **Done** (in-tree examples; live host profiles not rewritten) |
 | **LS6** | Tests: 1-mon, 2-mon, ambiguous, chrome PWA inference | fixtures |
 | **LS7** | `format_layout_description` + list/show fallback | **Done** (B AGREE) |
 | **LS8** | Interactive save description UX (K/D/E + non-interactive rules) | **Done** (B AGREE) |
@@ -237,6 +237,6 @@ cells keep working as supersets.
 
 ## Next task
 
-LS4 save bare array / LS5 docs (no active task file yet).
+Optional: **LS3** best-effort park / **LS6** broader fixtures — or stop if product bar met.
 
-Completed: [LS1–LS2](./forge-layout-sugar/completed/forge-layout-sugar_ls1-ls2.md), [LS7–LS8](./forge-layout-sugar/completed/forge-layout-sugar_ls7-ls8-description.md).
+Completed: [LS1–LS2](./forge-layout-sugar/completed/forge-layout-sugar_ls1-ls2.md), [LS4–LS5](./forge-layout-sugar/completed/forge-layout-sugar_ls4-ls5-save-docs.md), [LS7–LS8](./forge-layout-sugar/completed/forge-layout-sugar_ls7-ls8-description.md).

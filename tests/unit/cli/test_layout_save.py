@@ -42,39 +42,29 @@ class TestCaptureTilesProfile(unittest.TestCase):
         forest = _load("tree-perfect.json")
         raw = capture_tiles_profile(forest)
         profile = profile_for_output(raw)
-        self.assertIn("tiles", profile)
-        # Empty floating omitted (max sugar)
-        self.assertNotIn("floating", profile)
-        tiles = profile["tiles"]
-        self.assertIn("mon0", tiles)
-        self.assertIn("mon1", tiles)
+        # Bare dual-mon array (no tiles wrapper / mon keys / empty floating)
+        self.assertIsInstance(profile, list)
+        self.assertEqual(len(profile), 2)
+        mon0, mon1 = profile
         # mon0: tabbed pair + ghostty
-        self.assertEqual(len(tiles["mon0"]), 2)
-        self.assertIsInstance(tiles["mon0"][0], list)
-        self.assertEqual(len(tiles["mon0"][0]), 2)
+        self.assertEqual(len(mon0), 2)
+        self.assertIsInstance(mon0[0], list)
+        self.assertEqual(len(mon0[0]), 2)
         # mon1: ghostty + tabbed triple
-        self.assertEqual(len(tiles["mon1"]), 2)
-        self.assertIsInstance(tiles["mon1"][1], list)
-        self.assertEqual(len(tiles["mon1"][1]), 3)
-        # mon1 tabs in tree order: youtube, gmail, voice
-        mon1_tabs = tiles["mon1"][1]
-        titles = [
-            c.get("title~=") if isinstance(c, dict) else None for c in mon1_tabs
-        ]
-        self.assertEqual(titles, ["YouTube", "Gmail", "Voice"])
+        self.assertEqual(len(mon1), 2)
+        self.assertIsInstance(mon1[1], list)
+        self.assertEqual(len(mon1[1]), 3)
+        # mon1 tabs: strings when PWA inference is enough
+        mon1_tabs = mon1[1]
+        self.assertEqual(mon1_tabs, ["YouTube", "Gmail", "Google Voice"])
 
-    def test_chrome_product_title_match(self):
+    def test_chrome_string_cells_when_inferable(self):
         forest = _load("tree-perfect.json")
         profile = profile_for_output(capture_tiles_profile(forest))
-        cells = profile["tiles"]["mon0"][0]
-        main = cells[0]
-        # Flat sugar: app + class + title~= (no nested match)
-        self.assertEqual(main.get("class"), "Google-chrome")
-        self.assertEqual(main.get("title~="), "Google Chrome")
-        self.assertEqual(main.get("app"), "google-chrome")
-        grok = cells[1]
-        self.assertEqual(grok.get("title~="), "Grok")
-        self.assertEqual(grok.get("app"), "Grok")
+        cells = profile[0][0]
+        # Inference re-derives class + title~= from the app string
+        self.assertEqual(cells[0], "google-chrome")
+        self.assertEqual(cells[1], "Grok")
 
     def test_validates_sugar(self):
         forest = _load("tree-perfect.json")
@@ -86,17 +76,18 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_skips_empty_workspace_copies(self):
         forest = _load("tree-perfect.json")
         profile = profile_for_output(capture_tiles_profile(forest))
-        self.assertEqual(set(profile["tiles"].keys()), {"mon0", "mon1"})
+        self.assertIsInstance(profile, list)
+        self.assertEqual(len(profile), 2)
 
     def test_tabbed_ghostty_nautilus(self):
         forest = _load("tree-ghostty-nautilus-tab.json")
         profile = profile_for_output(capture_tiles_profile(forest))
-        mon0 = profile["tiles"]["mon0"]
-        self.assertEqual(len(mon0), 1)
-        self.assertIsInstance(mon0[0], list)
-        self.assertEqual(len(mon0[0]), 2)
-        # String sugar when class is unique / no title need
-        cells = mon0[0]
+        # Single mon → top-level panes (not mon wrapper)
+        self.assertIsInstance(profile, list)
+        self.assertEqual(len(profile), 1)
+        self.assertIsInstance(profile[0], list)
+        self.assertEqual(len(profile[0]), 2)
+        cells = profile[0]
         stems = []
         for c in cells:
             if isinstance(c, str):
@@ -122,8 +113,8 @@ class TestCaptureTilesProfile(unittest.TestCase):
         forest = _load("tree-perfect.json")
         profile = profile_for_output(capture_tiles_profile(forest))
         labels = []
-        for mon in ("mon0", "mon1"):
-            for pane in profile["tiles"][mon]:
+        for mon_body in profile:
+            for pane in mon_body:
                 if isinstance(pane, list):
                     for c in pane:
                         if isinstance(c, str):
@@ -142,6 +133,34 @@ class TestCaptureTilesProfile(unittest.TestCase):
         gids = [r["id"] for r in ir["roles"] if "ghostty" in r["id"]]
         self.assertIn("ghostty", gids)
         self.assertTrue(any(x.startswith("ghostty") and x != "ghostty" for x in gids))
+
+    def test_custom_description_wraps_tiles_array(self):
+        forest = _load("tree-perfect.json")
+        raw = capture_tiles_profile(forest)
+        apply_description(raw, "My custom desk")
+        profile = profile_for_output(raw)
+        self.assertIsInstance(profile, dict)
+        self.assertEqual(profile.get("description"), "My custom desk")
+        self.assertIsInstance(profile.get("tiles"), list)
+        self.assertEqual(len(profile["tiles"]), 2)
+        self.assertNotIn("mon0", profile)
+
+    def test_auto_description_omitted_for_bare_array(self):
+        forest = _load("tree-perfect.json")
+        raw = capture_tiles_profile(forest)
+        from layout_save import auto_description_for_profile
+
+        auto = auto_description_for_profile(raw)
+        apply_description(raw, auto)
+        profile = profile_for_output(raw)
+        self.assertIsInstance(profile, list)
+
+    def test_internal_tiles_map_still_validates(self):
+        """capture_tiles_profile keeps mon map until profile_for_output."""
+        forest = _load("tree-perfect.json")
+        raw = capture_tiles_profile(forest)
+        self.assertIn("mon0", raw["tiles"])
+        self.assertIn("mon1", raw["tiles"])
 
 
 class TestCaptureRoundTrip(unittest.TestCase):
@@ -305,13 +324,11 @@ class TestSaveCli(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         data = json.loads(proc.stdout)
-        self.assertIn("tiles", data)
-        self.assertIn("mon0", data["tiles"])
-        # Non-interactive: auto description when none existing
-        self.assertEqual(
-            data.get("description"),
-            "mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.",
-        )
+        # Bare dual-mon array; pure-auto description omitted
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 2)
+        self.assertEqual(data[0][0], ["google-chrome", "Grok"])
+        self.assertEqual(data[0][1], "ghostty")
         self.assertIn("forge layout save:", proc.stderr)
         self.assertIn("windows=7", proc.stderr)
         self.assertIn("stdout only", proc.stderr)
@@ -339,6 +356,8 @@ class TestSaveCli(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         data = json.loads(proc.stdout)
         self.assertEqual(data.get("description"), "Custom desk")
+        self.assertIsInstance(data.get("tiles"), list)
+        self.assertEqual(len(data["tiles"]), 2)
 
     def test_stdout_no_description(self):
         tree = _FIXTURES / "tree-perfect.json"
@@ -360,7 +379,8 @@ class TestSaveCli(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         data = json.loads(proc.stdout)
-        self.assertNotIn("description", data)
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 2)
 
     def test_write_host_path(self):
         tree = _FIXTURES / "tree-perfect.json"
@@ -390,8 +410,8 @@ class TestSaveCli(unittest.TestCase):
             dest = root / "hosts" / "testhost" / "mydesk.json"
             self.assertTrue(dest.is_file(), proc.stderr)
             disk = json.loads(dest.read_text(encoding="utf-8"))
-            self.assertIn("tiles", disk)
-            self.assertTrue(disk.get("description"))
+            self.assertIsInstance(disk, list)
+            self.assertEqual(len(disk), 2)
             self.assertEqual(proc.stdout.strip(), "")
             self.assertIn(str(dest), proc.stderr)
             self.assertIn("host=testhost", proc.stderr)
@@ -430,6 +450,7 @@ class TestSaveCli(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, proc.stderr)
             disk = json.loads(dest.read_text(encoding="utf-8"))
             self.assertEqual(disk.get("description"), "Keep me")
+            self.assertIsInstance(disk.get("tiles"), list)
 
     def test_save_requires_name(self):
         tree = _FIXTURES / "tree-perfect.json"

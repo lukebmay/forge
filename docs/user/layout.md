@@ -76,50 +76,72 @@ $FORGE_LAYOUT_DIR/hosts/<host>/<name>.json
 
 | Detail | Behavior |
 | --- | --- |
-| Shape | Compact **`tiles` sugar** (mons → panes; tab groups as nested lists) |
-| Match | Best-effort `class` + `title~=` when several windows share a class; main Chrome → `title~="Google Chrome"` when the title contains that product name |
-| Open | Best-effort `{ "app": … }` from class stem — **edit** PWAs / argv |
-| Floating | `floating: []` when none; float role-ish objects when cheap |
+| Shape | **Bare JSON array** when possible (string cells + tab lists); object form only when needed |
+| Strings | App token is both open target and match seed (`google-chrome`, `Grok`, `ghostty`) |
+| Description | Optional; pure auto one-liners are omitted on save (`list`/`show` recompute). Custom text is kept |
+| Floating | Omitted when empty; present only if float windows were captured |
 | Write | Host path above; creates parent dirs; **overwrites** existing file |
 | Counts | stderr: mon counts + wrote path / host / name |
 
-Save is a **starting point**, not a perfect profile. Refine `match` /
-`open` for Chrome PWAs, then dry-run.
+Save is a **starting point**. Override with a flat object cell only when inference
+is wrong, then dry-run.
 
-## Authoring: compact `tiles` sugar (preferred)
+## Authoring: bare array (preferred)
 
 Drop this at `~/.config/forge/layout/simple.json` (edit app names):
 
+**Single monitor** — top-level is panes L→R:
+
 ```json
-{
-  "tiles": {
-    "mon0": [
-      ["firefox", "code"],
-      "ghostty"
-    ]
-  }
-}
+[ ["firefox", "code"], "ghostty" ]
+```
+
+**Dual monitor** — top-level length = mon count; each item is that mon’s panes:
+
+```json
+[
+  [ ["google-chrome", "Grok"], "ghostty" ],
+  [ "ghostty", ["YouTube", "Gmail", "Google Voice"] ]
+]
 ```
 
 | Sugar | Meaning |
 | --- | --- |
-| `monN: [ a, b ]` | Two mon children; default **hsplit**; **array order = L→R** |
+| Top-level mon list | `mon0`, `mon1`, … in order (when ≥2 items look like mon bodies) |
+| Top-level panes | Single mon (or flat cells) → all on mon0 |
+| `[ a, b ]` mon body | Two mon children; default **hsplit**; **array order = L→R** |
 | `["app1", "app2"]` | One pane, multi-role, **tabbed**; **array order = tab order** |
 | `"ghostty"` | One pane, one role; class stem matches reverse-DNS wmClass |
-| Flat object | `{ "app", "class", "title~=" }` for Chrome/PWAs (no nested match/open) |
+| `"Grok"` / `"YouTube"` | Chrome PWA-ish: class + `title~=` inferred from the string |
+| Flat object | `{ "app", "class", "title~=" }` override when inference is not enough |
 | `"split": "h"` / `"v"` / … | Override split |
 | `{ "split", "content": […] }` | Nested split node |
 
-`forge layout save` writes this compact form (tab order included). Load respects
-mon L/R and in-group tab order.
+`forge layout save` writes the bare array when mon index order is enough and
+there is no custom description / floating. Load respects mon L/R and tab order.
+
+### Object form (when you need more)
+
+```json
+{
+  "description": "optional — never required to load",
+  "tiles": [ ["firefox", "code"], "ghostty" ],
+  "floating": [ … ]
+}
+```
+
+- `description` — cosmetics for `list` / humans (auto one-liner if omitted).
+- `tiles` as mon map (`mon0` / `mon1` / `primary` / stableKey) remains valid **advanced** sugar.
+- `floating` only when you have float roles.
 
 ### Monitor keys (stable across renumber)
 
-Prefer **`mon0` / `mon1` / `primary`** for everyday authoring (capture emits these).
-For multi-host or hybrid-GPU renumber, tiles/layout keys may also be:
+Everyday bare arrays use index order. For multi-host or hybrid-GPU renumber,
+tiles/layout keys may also be:
 
 | Form | Example |
 | --- | --- |
+| `monN` / `primary` | `"mon0": [ … ]` inside a `tiles` object |
 | Full T7 `stableKey` | `"geom:0,0,5120,2880#primary": [ … ]` (from `forge tree`) |
 | Short alias | Top-level `"monitors": { "left": "geom:…#primary", "right": "geom:…" }` then tiles use `"left"` / `"right"` |
 
@@ -130,56 +152,42 @@ available stableKeys listed.
 Forge **normalizes** sugar to v2 IR (`roles[]` + `layout`) before planning.
 `forge layout show` prints the expanded profile.
 
-### Rich cells (Chrome / PWAs)
+### Rich cells (overrides only)
 
-String cells are fine for unique wmClasses. Several Chrome windows need
-title matchers:
+Prefer strings. Use a rich object when you need timeout, custom id, or a match
+that inference cannot rebuild:
 
 ```json
-{
-  "tiles": {
-    "mon0": [
-      [
-        {
-          "id": "chrome-luke",
-          "match": { "class": "Google-chrome", "title~=": "Google Chrome" },
-          "open": { "app": "google-chrome", "wmClass": "Google-chrome", "timeout": 25000 }
-        },
-        {
-          "id": "grok",
-          "match": { "class": "Google-chrome", "title~=": "Grok" },
-          "open": { "app": "Grok", "wmClass": "Google-chrome", "timeout": 25000 }
-        }
-      ],
-      "ghostty"
-    ]
-  }
-}
+[
+  [
+    {
+      "id": "chrome-luke",
+      "match": { "class": "Google-chrome", "title~=": "Google Chrome" },
+      "open": { "app": "google-chrome", "wmClass": "Google-chrome", "timeout": 25000 }
+    },
+    "Grok"
+  ],
+  "ghostty"
+]
 ```
 
 ### Nested split (explicit)
 
 ```json
-{
-  "tiles": {
-    "mon1": {
-      "split": "h",
-      "content": [
-        "ghostty",
-        {
-          "split": "v",
-          "content": [
-            ["youtube", "gmail"],
-            "nautilus"
-          ]
-        }
-      ]
-    }
+[
+  "ghostty",
+  {
+    "split": "v",
+    "content": [
+      ["youtube", "gmail"],
+      "nautilus"
+    ]
   }
-}
+]
 ```
 
-Prefer `{ "split", "content" }` when a nested array would be ambiguous.
+Or under a mon map / dual-mon bare array. Prefer `{ "split", "content" }` when a
+nested array would be ambiguous.
 
 ### Companions (marginal coexist)
 
@@ -228,13 +236,14 @@ Companions stacked under a role with VSPLIT/HSPLIT (including nested CONs)
 stay **Mode A**: they tab into that view. Only true thrash (wrong mon, excess
 mon children, multi-role tab groups broken) uses Mode B park.
 
-Optional top-level `floating: []` is reserved (location later).
+Optional top-level `floating` is reserved for float roles (omit when empty).
 
 ### Defaults (omit noise)
 
 | Omitted field | Default |
 | --- | --- |
 | `version` / `mode` | `2` / `reconcile` when roles or tiles present |
+| `description` | auto one-liner from structure (`list` / `show`) |
 | `overflow` | `mon0.overflow` + `tabbed` |
 | `marginal` | `{ "mode": "coexist", "roleOrder": "first", "residual": "leave" }` |
 | mon split | `hsplit` when ≥2 children |
@@ -263,14 +272,14 @@ Full `roles[]` + `layout` remains the canonical engine form:
 }
 ```
 
-Sugar and IR may coexist in one file only via normalize-first: if `tiles` is
-present, it wins for structure.
+Sugar and IR may coexist in one file only via normalize-first: if `tiles` (or a
+bare array) is present, it wins for structure.
 
 ## Reconcile vs steps
 
 | Schema | Behavior |
 | --- | --- |
-| **v2 reconcile** (`tiles` or `roles` + layout) | Snapshot tree → match roles → open gaps, move/keep/park; second run ≈ no-op |
+| **v2 reconcile** (bare array, `tiles`, or `roles` + layout) | Snapshot tree → match roles → open gaps, move/keep/park; second run ≈ no-op |
 | **`--clean`** | Residuals close via Meta delete (not park); roles + keeps untouched |
 | **v1 steps** (`version: 1` / `mode: "steps"` / `steps[]` without roles) | Replay launch + focus/layout ops (can double apps) |
 | **`--force-launch`** | Force the steps path even on a dual profile |
@@ -279,7 +288,7 @@ Prefer **v2 reconcile** for daily use.
 
 Examples in-tree:
 
-- `scripts/forge/examples/layout-tiles-minimal.json` — dual-monitor sugar  
+- `scripts/forge/examples/layout-tiles-minimal.json` — dual-mon bare array  
 - `scripts/forge/examples/layout-tiles-nested.json` — nested splits  
 - `scripts/forge/examples/layout-minimal.json` — short IR  
 - `scripts/forge/examples/layout-dev-v2.json` — richer dual-monitor IR sample  

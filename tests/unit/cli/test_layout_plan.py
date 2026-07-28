@@ -356,14 +356,16 @@ class TestTilesNormalize(unittest.TestCase):
     def test_example_tiles_minimal_file(self):
         path = _FORGE_CLI / "examples" / "layout-tiles-minimal.json"
         raw = json.loads(path.read_text(encoding="utf-8"))
+        self.assertIsInstance(raw, list)  # bare dual-mon array
         p = validate_reconcile_profile(raw)
         self.assertEqual(len(p["roles"]), 7)
-        self.assertEqual(p["floating"], [])
         self.assertEqual(p["layout"]["mon0"]["split"], "hsplit")
+        self.assertEqual(p["layout"]["mon1"]["split"], "hsplit")
 
     def test_example_tiles_nested_file(self):
         path = _FORGE_CLI / "examples" / "layout-tiles-nested.json"
         raw = json.loads(path.read_text(encoding="utf-8"))
+        self.assertIsInstance(raw, list)
         p = validate_reconcile_profile(raw)
         self.assertGreaterEqual(len(p["roles"]), 7)
         self.assertEqual(p["layout"]["mon1"]["split"], "hsplit")

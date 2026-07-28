@@ -164,33 +164,26 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     )
     _blank(s)
 
-    _out(s, heading("Minimal profile", **kw), " ", dim("(tiles sugar - preferred)", **kw))
+    _out(s, heading("Minimal profile", **kw), " ", dim("(bare array - preferred)", **kw))
     _out(s, dim("  ~/.config/forge/layout/simple.json", **kw))
     code = """\
-{
-  "tiles": {
-    "mon0": [
-      ["firefox", "code"],
-      "ghostty"
-    ]
-  }
-}"""
+[ ["firefox", "code"], "ghostty" ]"""
     for line in code.splitlines():
         _out(s, "  ", cyan(line, **kw))
     _blank(s)
     _out(s, "  Then: ", cmd("forge layout simple --dry-run", **kw), "  ->  ", cmd("forge layout simple", **kw))
     _blank(s)
 
-    _out(s, heading("tiles sugar", **kw), " ", dim("(desugars to roles + layout)", **kw))
+    _out(s, heading("Layout sugar", **kw), " ", dim("(desugars to roles + layout)", **kw))
     for line, desc in (
-        ('monN: [ a, b ]', "panes L→R (hsplit default)"),
-        ('stableKey / monitors alias', "multi-host mon keys (T7; plan resolves to monN)"),
+        ("bare dual-mon array", "[[panes…], [panes…]] → mon0, mon1, …"),
+        ("bare single-mon panes", "[ pane, pane ] → mon0"),
         ('["app1", "app2"]', "one tabbed pane"),
-        ('"ghostty"', "single-app pane"),
+        ('"ghostty" / "Grok"', "string = open + inferred match"),
+        ('monN / stableKey / alias', "advanced tiles object keys (T7)"),
         ('split: "h"/"v"/hsplit/…', "override split"),
         ('{ split, content }', "nested split"),
-        ("string cell", "open + best-effort match; id auto"),
-        ("rich object cell", "id / match / open (PWAs need title~=)"),
+        ("rich object cell", "override when inference is not enough"),
     ):
         _out(s, "  ", cyan(line, **kw), "  ", desc)
     _blank(s)
@@ -198,6 +191,7 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     _out(s, heading("Defaults", **kw), " ", dim("(omit noise; Forge fills these in)", **kw))
     defaults = [
         ("version / mode", "2 / reconcile when tiles or roles present"),
+        ("description", "auto one-liner on list/show when omitted"),
         ("marginal", 'coexist + roleOrder first (companions kept)'),
         ("overflow", "mon0.overflow + tabbed"),
         ("mon split", "hsplit when ≥2 children"),
@@ -212,10 +206,10 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
 
     _out(s, heading("Dual-monitor sketch", **kw))
     sketch = """\
-"tiles": {
-  "mon0": [ ["a", "b"], "term-left" ],
-  "mon1": [ "term-right", ["mail", "chat"] ]
-}"""
+[
+  [ ["a", "b"], "term-left" ],
+  [ "term-right", ["mail", "chat"] ]
+]"""
     for line in sketch.splitlines():
         _out(s, "  ", cyan(line, **kw))
     _out(
@@ -226,7 +220,7 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     _blank(s)
 
     _out(s, heading("Reconcile vs steps", **kw))
-    _out(s, "  ", bold("v2 tiles or roles+layout", **kw), "  reconcile (daily default; idempotent)")
+    _out(s, "  ", bold("v2 bare array / tiles / roles+layout", **kw), "  reconcile (daily default)")
     _out(s, "  ", bold("v1 steps[]", **kw), "         imperative replay (can double apps)")
     _out(s, "  ", bold("--force-launch", **kw), "      force steps[] path for debug")
     _out(s, "  ", bold("--safe", **kw), "             open+move roles only (no park/structure/ensure)")
@@ -251,8 +245,8 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  • Thrashed desk: default auto Mode B recover (prefer over refuse).")
     _out(s, "  • Optional: ", cyan('"displays": "scene"', **kw), " -> gdisplays load; ", cyan('"settings": "name"', **kw), " -> SettingsLoad.")
     _out(s, "  • Offline plan: ", cmd("forge layout name --dry-run --tree-file forest.json", **kw))
-    _out(s, "  • Save sketch: ", cmd("forge layout save mydesk", **kw), "  then edit match/open")
-    _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/layout-tiles-minimal.json", **kw))
+    _out(s, "  • Save sketch: ", cmd("forge layout save mydesk", **kw), "  (bare array when possible)")
+    _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/layout-tiles-minimal.json", **kw), dim(" (bare)", **kw))
     _out(s, "                    ", cyan("scripts/forge/examples/layout-tiles-nested.json", **kw))
     _out(s, "                    ", cyan("scripts/forge/examples/layout-minimal.json", **kw), dim(" (IR)", **kw))
     _blank(s)

@@ -8,9 +8,9 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **layout-sugar** | Bare save + docs rewrite | [forge-layout-sugar.md](./plans/forge-layout-sugar.md); LS1–2+LS7–8 **done**; next LS4–5 |
-| 2 | **stacks** | STACKED as supported product path | Some users want stacks |
-| 3 | layout polish | Live-drive `forge layout` | Day-to-day |
+| **1** | **stacks** | STACKED as supported product path | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| 2 | layout polish | Live-drive bare-array `forge layout` | Day-to-day on black |
+| 3 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
 
 **Shipped this session**
 
@@ -37,14 +37,15 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [layout-sugar](./plans/forge-layout-sugar.md) | LS1–2+LS7–8 **done**; **next** LS4 bare save / LS5 docs |
-| P1 | [stacked](./plans/forge-stacked-layouts.md) | Queued |
-| P2 | Live layout daily-drive | Ongoing |
+| **P0** | [stacked](./plans/forge-stacked-layouts.md) | **Next** product path |
+| P1 | Live layout daily-drive | Bare-array sugar live on black |
+| P2 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
 
 ### Done recently
 
 | Item | Note |
 | --- | --- |
+| layout-sugar LS4–5 | bare save + docs/examples; A/B AGREE |
 | layout-sugar LS7–8 | auto description + save K/D/E UX; A/B AGREE |
 | layout-sugar LS1–2 | bare array + string/PWA inference; A/B AGREE |
 | `forge update` always install | even when git already current |

@@ -1,7 +1,7 @@
 # Task: LS4 + LS5 — save bare array + docs/demo rewrite
 
 **Plan:** [forge-layout-sugar.md](../plans/forge-layout-sugar.md)  
-**Status:** ready  
+**Status:** done  
 **Pri:** P0 layout-sugar track
 
 ## Scope
@@ -36,4 +36,9 @@
 
 ## Session note
 
-(overwrite when implementing)
+LS4+LS5 **shipped** (2026-07-28):
+
+- `profile_for_output` → bare dual-mon array / single-mon panes; string cells when `_infer_open_and_match` round-trips; pure-auto description omitted; custom desc → `{description, tiles: [...]}`.
+- Capture still mon map internally; compact at output.
+- Docs `layout.md`, `cli_help.py`, examples `layout-tiles-minimal.json` / nested → bare array.
+- 245 layout tests OK. No live host profile rewrite.
