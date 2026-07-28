@@ -1,6 +1,6 @@
 # Plan: Forge daily-driver path
 
-**Status:** Core **Done** — T0–T7 + OP1 + OP-opt; live-drive + bugfixes  
+**Status:** Core **Done** — T0–T7 + OP1 + OP-opt + **T9**; live-drive + bugfixes  
 **Priority:** P1 product  
 **Base:** this tree (`jcrussell/forge`) — **not** `~/dev/me/forge_original`  
 **Host:** `black` (dual 4K, X11, Shell 46, hybrid AMD+NVIDIA; displays via shellrc `gdisplays`)  
@@ -122,7 +122,7 @@ T4 sizing policy (equalize / userSized)
 | **T7** | [completed/forge-daily-driver_t7-stable-outputs.md](./forge-daily-driver/completed/forge-daily-driver_t7-stable-outputs.md) | **Done** | T6 | M | Connector/stable keys; remap layer (gdisplays-inspired) |
 | **FC\*** | [forge-command.md](./forge-command.md) | **Done** (FC0–FC5) | OP1; T6–T7 | L | `forge` CLI + DBus + workon |
 | **OP-opt** | [completed/…](./forge-daily-driver/completed/forge-daily-driver_op-opt-tiny-pane-tab.md) | **Done** | after OP1 + FC* | S | Min-edge tab fallback (default off) |
-| **T9** | [completed/forge-daily-driver_t9-multiline-tabs.md](./forge-daily-driver/completed/forge-daily-driver_t9-multiline-tabs.md) | **Done** (A; B verify) | T1 proven | L | One group chrome; max-tabs-per-line wrap |
+| **T9** | [completed/forge-daily-driver_t9-multiline-tabs.md](./forge-daily-driver/completed/forge-daily-driver_t9-multiline-tabs.md) | **Done** A/B AGREE | T1 proven | L | One group chrome; max-tabs-per-line wrap |
 
 When creating OP1/T6–T7/OP-opt task files, copy T0–T3 structure. FC\* tasks live under forge-command plan.
 
