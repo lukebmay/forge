@@ -66,6 +66,14 @@
           "$ref": "#/definitions/keybinding",
           "description": "Toggle tabbed layout"
         },
+        "con-stack-tab-layout-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle container between stacked and tabbed"
+        },
+        "window-merge-group": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Merge focused and last-active windows into a tabbed group"
+        },
         "con-tabbed-showtab-decoration-toggle": {
           "$ref": "#/definitions/keybinding",
           "description": "Toggle tab decoration visibility"

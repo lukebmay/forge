@@ -99,7 +99,7 @@
         </key>
 
         <key type="b" name="stacked-tiling-mode-enabled">
-            <default>false</default>
+            <default>true</default>
             <summary>Stacked tiling mode on/off</summary>
         </key>
 
@@ -303,8 +303,8 @@
         </key>
 
         <key type="as" name="con-split-layout-toggle">
-            <default><![CDATA[['<Ctrl><Super>g']]]></default>
-            <summary>Toggle split direction</summary>
+            <default><![CDATA[['<Ctrl><Super>s']]]></default>
+            <summary>Toggle split direction (H/V)</summary>
         </key>
 
         <key type="as" name="con-split-horizontal">
@@ -318,13 +318,23 @@
         </key>
 
         <key type="as" name="con-stacked-layout-toggle">
-            <default><![CDATA[['<Ctrl><Super>s']]]></default>
-            <summary>Toggle stacked layout</summary>
+            <default><![CDATA[[]]]></default>
+            <summary>Toggle stacked layout (to/from split)</summary>
         </key>
 
         <key type="as" name="con-tabbed-layout-toggle">
             <default><![CDATA[['<Ctrl><Super>t']]]></default>
-            <summary>Toggle tabbed layout</summary>
+            <summary>Toggle tabbed layout (to/from split)</summary>
+        </key>
+
+        <key type="as" name="con-stack-tab-layout-toggle">
+            <default><![CDATA[['<Ctrl><Super>g']]]></default>
+            <summary>Toggle group chrome between stacked and tabbed (group containers only)</summary>
+        </key>
+
+        <key type="as" name="window-merge-group">
+            <default><![CDATA[['<Ctrl><Super>m']]]></default>
+            <summary>Merge focused and last-active windows into a tabbed group</summary>
         </key>
 
         <key type="as" name="con-tabbed-showtab-decoration-toggle">

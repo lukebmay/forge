@@ -27,7 +27,7 @@ _EXT_ORIGIN = (
     / "install-origin.json"
 )
 # Subcommands that do not need a DBus session (extension may be offline).
-_NO_DBUS_COMMANDS = frozenset({"install", "uninstall", "update", "help"})
+_NO_DBUS_COMMANDS = frozenset({"install", "uninstall", "update", "help", "keybind"})
 # layout list|show|help|save(--stdout/--tree-file) are offline; apply needs DBus.
 
 # Methods that take string in-args (all return a single string).
@@ -95,6 +95,7 @@ from layout_save import (  # noqa: E402
 )
 from cli_ansi import parse_color_flag, set_color_mode  # noqa: E402
 from cli_help import print_forge_help, print_layout_help  # noqa: E402
+from keybind_kit import build_keybind_subparser  # noqa: E402
 
 
 def _eprint(*args: object) -> None:
@@ -2713,11 +2714,14 @@ def build_parser() -> argparse.ArgumentParser:
     load_p.add_argument("name", help="Profile name (A-Za-z0-9_-)")
     load_p.set_defaults(func=cmd_settings)
 
+    build_keybind_subparser(sub)
+
     _run_steps_help = (
         "Batch **extension-only** ops via DBus RunSteps (freezeRender → ops → one render).\n"
         "\n"
         "Payload JSON: a steps array, or { \"steps\": [...], \"stopOnError\": true }.\n"
-        "Ops: ping, focus, swap, move, layout, place-next, set.\n"
+        "Ops: ping, focus, swap, move, layout, layout-cycle, merge-group, float,\n"
+        "     place-next, set, order, close.\n"
         "\n"
         "CLI-only ops (launch, wait-window, wait) are **rejected** here.\n"
         "Use `forge run FILE` or `forge layout <name>` for mixed scripts.\n"

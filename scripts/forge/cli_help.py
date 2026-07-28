@@ -34,6 +34,7 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
         ("launch", "Start app; place after LFT (or PlaceNext path/monitor)"),
         ("run / run-steps", "JSON step scripts (mixed CLI+ext / ext-only)"),
         ("get / set / settings", "Portable GSettings / named profiles"),
+        ("keybind", "Backup/apply keybind kits (vim|safe|i3; no DBus)"),
         ("ping", "Extension health"),
         ("save-session-layout", "Flush last-good topology before install/HUP"),
         ("install / uninstall", "Reinstall from git tree / remove extension"),
@@ -93,6 +94,12 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  ", cyan("--color=auto|always|never", **kw), "  ", dim("default auto (TTY on)", **kw))
     _out(s, "  ", cyan("--first", **kw), "                 ", dim("ambiguous match -> first candidate", **kw))
     _out(s, "  ", cyan("--version", **kw))
+    _blank(s)
+
+    _out(s, heading("Keybind kits", **kw))
+    _out(s, "  ", cmd("forge keybind backup [name]", **kw), "  ", dim("# live → profile JSON", **kw))
+    _out(s, "  ", cmd("forge keybind apply vim", **kw), "       ", dim("# built-in kit → gsettings", **kw))
+    _out(s, "  ", cmd("forge keybind list", **kw), "            ", dim("# FORGE_KEYBIND_PROFILES_DIR", **kw))
     _blank(s)
 
     _out(s, dim("Per-command flags: forge <command> -h", **kw))

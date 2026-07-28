@@ -57,9 +57,11 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Swap h/j/k/l | `Ctrl+Super+h/j/k/l` |
 | Toggle float | `Ctrl+Super+Space` |
 | Always-float (app) | `Ctrl+Shift+Super+Space` |
-| Toggle split direction | `Ctrl+Super+g` |
-| Split H / V | `Ctrl+Super+z` / `Ctrl+Super+v` |
-| Stacked / tabbed | `Ctrl+Super+s` / `Ctrl+Super+t` |
+| Group chrome (tab ↔ stack) | `Ctrl+Super+g` |
+| Split orientation (H ↔ V) | `Ctrl+Super+s` |
+| Split H / V (force) | `Ctrl+Super+z` / `Ctrl+Super+v` |
+| Tabbed to/from split | `Ctrl+Super+t` |
+| Merge into tabbed group | `Ctrl+Super+m` |
 | Toggle tab decoration | `Ctrl+Shift+Super+t` |
 | Focus border | `Ctrl+Super+b` (**b**order; rare) |
 | Toggle tiling mode | `Ctrl+Super+e` (**e**nable tiling; rare) |
@@ -94,9 +96,11 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Swap h/j/k/l | `Ctrl+Super+h/j/k/l` |
 | Toggle float | `Ctrl+Super+Space` (Ctrl-primary kits; i3 uses Shift+Space) |
 | Always-float (app) | `Ctrl+Shift+Super+Space` |
-| Toggle split direction | `Super+g` |
-| Split H / V | `Super+z` / `Super+v` |
-| Stacked / tabbed | `Shift+Super+s` / `Shift+Super+t` |
+| Group chrome (tab ↔ stack) | `Shift+Super+n` (**n**ode layout) |
+| Split orientation (H ↔ V) | `Ctrl+Super+n` |
+| Split H / V (force) | `Super+z` / `Super+v` |
+| Stacked / tabbed (to/from split) | `Shift+Super+s` / `Shift+Super+t` |
+| Merge into tabbed group | `Shift+Super+m` |
 | Tab decoration | `Ctrl+Alt+y` |
 | Focus border | `Ctrl+Super+b` |
 | Toggle tiling | `Ctrl+Super+e` |
@@ -130,7 +134,9 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | Float | `Shift+Super+Space` (i3 tradition; Safe/Vim use `Ctrl+Super+Space`) |
 | Always-float | `Ctrl+Shift+Super+Space` |
 | Split toggle / H / V | `Super+e` / `Super+b` / `Super+v` |
-| Stacked / tabbed | `Super+s` / `Super+w` |
+| Stacked / tabbed (to/from split) | `Super+s` / `Super+w` |
+| Group chrome (tab ↔ stack) | `Shift+Super+n` |
+| Merge into tabbed group | `Shift+Super+m` |
 | Tab decoration | `Shift+Super+w` |
 | “Fullscreen-ish” snap center | `Super+f` |
 | Launch app | `Super+Enter` |
@@ -160,7 +166,11 @@ when GNOME or other Forge actions share a chord.
 
 **Your kits:** name → Save / Load under
 
-`~/.config/forge/config/keybinding-profiles/<name>.json`
+`FORGE_KEYBIND_PROFILES_DIR` when set (shellrc exports
+`$shellrc/configs/forge/keybinding-profiles`), else
+`~/.config/forge/config/keybinding-profiles/<name>.json`.
+
+CLI: `forge keybind backup [name]`, `forge keybind apply vim|safe|i3`.
 
 Same shape as portable `keybindings.json`.
 

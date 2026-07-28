@@ -65,6 +65,45 @@ describe("ConfigManager", () => {
     });
   });
 
+  describe("keybindingProfilesDir", () => {
+    // settings.js uses `import GLib from "gi://GLib"` → mock default export object
+    /** @type {import("vitest").MockInstance | undefined} */
+    let getenvSpy;
+
+    afterEach(() => {
+      getenvSpy?.mockRestore();
+      getenvSpy = undefined;
+    });
+
+    async function spyGetenv(impl) {
+      const mod = await import("../../mocks/gnome/GLib.js");
+      const target = mod.default ?? mod;
+      getenvSpy = vi.spyOn(target, "getenv").mockImplementation(impl);
+      return target;
+    }
+
+    it("defaults to confDir/config/keybinding-profiles", async () => {
+      await spyGetenv(() => null);
+      expect(configManager.keybindingProfilesDir).toBe(
+        `${configManager.confDir}/config/keybinding-profiles`
+      );
+    });
+
+    it("uses FORGE_KEYBIND_PROFILES_DIR when set", async () => {
+      await spyGetenv((k) =>
+        k === "FORGE_KEYBIND_PROFILES_DIR" ? "/tmp/shellrc-kbd-profiles" : null
+      );
+      expect(configManager.keybindingProfilesDir).toBe("/tmp/shellrc-kbd-profiles");
+    });
+
+    it("ignores empty / whitespace FORGE_KEYBIND_PROFILES_DIR", async () => {
+      await spyGetenv((k) => (k === "FORGE_KEYBIND_PROFILES_DIR" ? "   " : null));
+      expect(configManager.keybindingProfilesDir).toBe(
+        `${configManager.confDir}/config/keybinding-profiles`
+      );
+    });
+  });
+
   describe("defaultStylesheetFile", () => {
     it("should return file when stylesheet exists", () => {
       const file = configManager.defaultStylesheetFile;
