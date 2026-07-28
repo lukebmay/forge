@@ -556,7 +556,7 @@ describe("Tree Operations", () => {
       expect(result).toBe(node2);
     });
 
-    it("should swap with last window in stacked container", () => {
+    it("should swap with first window in stacked container when lastTabFocus unset", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
@@ -575,9 +575,33 @@ describe("Tree Operations", () => {
       node2.mode = WINDOW_MODES.TILE;
       node3.mode = WINDOW_MODES.TILE;
 
+      // Stable chrome: no lastTabFocus → first label in order.
       const result = ctx.tree.swap(node1, MotionDirection.RIGHT);
+      expect(result).toBe(node2);
+      expect(node3).toBeTruthy();
+    });
 
-      // Should swap with last window in stacked container
+    it("should swap with lastTabFocus window in stacked container when set", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const window1 = createMockWindow();
+      const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
+      node1.mode = WINDOW_MODES.TILE;
+
+      const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = LAYOUT_TYPES.STACKED;
+
+      const window2 = createMockWindow();
+      const window3 = createMockWindow();
+      const node2 = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window2);
+      const node3 = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window3);
+
+      node2.mode = WINDOW_MODES.TILE;
+      node3.mode = WINDOW_MODES.TILE;
+      container.lastTabFocus = window3;
+
+      const result = ctx.tree.swap(node1, MotionDirection.RIGHT);
       expect(result).toBe(node3);
     });
 

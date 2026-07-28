@@ -2,6 +2,15 @@
 
 **Status:** defaults + keybinds done — next SL5 live (ops, optional)  
 **Updated:** 2026-07-28  
+
+**Session note:** Live STACKED on black (Shell 46):
+
+1. **Horizontal chrome** — `Compat.setBoxOrientation` (`.vertical` pre-48).
+2. **Bar height** — pin `set_height(stackedHeight)`; no column `y_expand`. Scale:
+   gdisplays 1.5 + X 2× fb; `dpi()`=St.scale_factor is correct once (not ×1.5 again).
+3. **Stable labels** — `updateStackedFocus` no longer `appendChild`s focused to
+   end (that shuffled chrome on every click). Raise + `lastTabFocus` only;
+   `stackedFocusWindow()` for enter-stack focus.  
 **Spike task:** [completed/forge-stacked-layouts_spike.md](./forge-stacked-layouts/completed/forge-stacked-layouts_spike.md)  
 **SL0 task:** [completed/forge-stacked-layouts_sl0-docs-schema.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl0-docs-schema.md)  
 **SL1 task:** [completed/forge-stacked-layouts_sl1-save-roundtrip.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl1-save-roundtrip.md)  

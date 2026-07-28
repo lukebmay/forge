@@ -193,3 +193,50 @@ describe("compat (Mutter 48 branch)", () => {
     });
   });
 });
+
+describe("compat setBoxOrientation (Shell 46 / pre-orientation)", () => {
+  let Compat;
+  beforeEach(async () => {
+    Compat = await loadCompat("46.0");
+  });
+
+  it("exposes IS_ST_ORIENTATION = false", () => {
+    expect(Compat.IS_ST_ORIENTATION).toBe(false);
+  });
+
+  it("sets .vertical for STACKED column (not orientation alone)", () => {
+    const box = { vertical: false, orientation: 0 };
+    Compat.setBoxOrientation(box, 1); // Clutter.Orientation.VERTICAL
+    expect(box.vertical).toBe(true);
+    // Pre-48 path must not rely on orientation driving layout.
+    expect(box.orientation).toBe(0);
+  });
+
+  it("clears .vertical for horizontal tab strip", () => {
+    const box = { vertical: true, orientation: 1 };
+    Compat.setBoxOrientation(box, 0); // HORIZONTAL
+    expect(box.vertical).toBe(false);
+  });
+
+  it("no-ops on null box", () => {
+    expect(() => Compat.setBoxOrientation(null, 1)).not.toThrow();
+  });
+});
+
+describe("compat setBoxOrientation (Shell 48+ orientation)", () => {
+  let Compat;
+  beforeEach(async () => {
+    Compat = await loadCompat("48.0");
+  });
+
+  it("exposes IS_ST_ORIENTATION = true", () => {
+    expect(Compat.IS_ST_ORIENTATION).toBe(true);
+  });
+
+  it("sets .orientation and leaves .vertical alone", () => {
+    const box = { vertical: false, orientation: 0 };
+    Compat.setBoxOrientation(box, 1);
+    expect(box.orientation).toBe(1);
+    expect(box.vertical).toBe(false);
+  });
+});

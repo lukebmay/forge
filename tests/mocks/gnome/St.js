@@ -65,6 +65,14 @@ export class Widget extends withSignals() {
     this.height = height;
   }
 
+  set_height(height) {
+    this.height = height;
+  }
+
+  set_width(width) {
+    this.width = width;
+  }
+
   set_position(x, y) {
     this.x = x;
     this.y = y;
@@ -133,19 +141,27 @@ export class BoxLayout extends Widget {
   constructor(params = {}) {
     super(params);
     this.children = [];
-    // Model Clutter orientation (0 = HORIZONTAL, 1 = VERTICAL). St.BoxLayout
-    // defaults to HORIZONTAL; the legacy `vertical` boolean prop was removed on
-    // GNOME 50, so production code sets `orientation` directly.
-    this.orientation = params.orientation ?? 0;
+    // Dual API: GNOME 45–47 use `.vertical`; GNOME 48+ use `.orientation`.
+    // Keep both in sync so Compat.setBoxOrientation branches and direct tests work.
+    const fromParams =
+      params.orientation !== undefined ? params.orientation : params.vertical ? 1 : 0;
+    this._orientation = fromParams ?? 0;
   }
 
-  // Read-only `vertical` getter mirroring GNOME 50, where St.BoxLayout.vertical
-  // was REMOVED: code must set `orientation`. There is deliberately no setter, so
-  // a legacy `decoration.vertical = true` write is a dead no-op (it lands on a
-  // throwaway own property and never changes the layout) — the same failure mode
-  // as on real GNOME 50.
+  get orientation() {
+    return this._orientation;
+  }
+
+  set orientation(value) {
+    this._orientation = value;
+  }
+
   get vertical() {
-    return this.orientation === 1;
+    return this._orientation === 1;
+  }
+
+  set vertical(value) {
+    this._orientation = value ? 1 : 0;
   }
 
   add_child(child) {

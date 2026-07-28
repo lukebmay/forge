@@ -1487,25 +1487,12 @@
       }
     },
 
-    // Focus-correctness probe (Angle 3). The original spec (focusMetaWindow vs
-    // get_focus_window) was a tautology — focusMetaWindow IS get_focus_window (window.js:951).
-    // Instead: after the tree settles, Mutter's focused window must be the tree's "active/
-    // visible child" of its STACKED parent, i.e. the restack updateStackedFocus (focus.js:111)
-    // is supposed to perform on every focus — it appendChild()s the focused node to LAST and
-    // raises the stack in order. A divergence is the forge-d5mm class (click/alt-tab focus
-    // failing to re-stack a STACKED container).
+    // Focus-correctness probe (Angle 3). STACKED chrome order is stable; the
+    // focused leaf is tracked as parent.lastTabFocus (not last child). After
+    // settle, Mutter's focus_window must match lastTabFocus when set.
     //
-    // ONLY the STACKED case is asserted, deliberately: it is a PURELY STRUCTURAL tree fact
-    // (child order), unperturbed by Wayland stacking. A TABBED variant via Mutter's
-    // sort_windows_by_stacking was prototyped and FALSE-POSITIVED on clean runs (focus-raise
-    // races the settle, and transient _forgeTransientAbove make_above pins leave another window
-    // on top) — a noisy focus oracle is worse than none, so it was dropped.
-    //
-    // CONSERVATIVE: a transient/ambiguous state is NON-violating — null focus (between windows),
-    // a window mid-close, a focused window not yet in the tree (fresh spawn / dialog), or a
-    // parent with < 2 tiled children. We only ever assert a positive structural fact.
-    // Re-readable (flows through check_with_retry's transient guard).
-    // Returns {violations:[{rule,detail,path}]}.
+    // CONSERVATIVE: null focus, mid-close, untracked window, or <2 tiled kids
+    // are non-violating. Returns {violations:[{rule,detail,path}]}.
     fuzzFocusMismatch() {
       try {
         const r = root();
@@ -1522,9 +1509,6 @@
         const node = firstMatch(r, (n) => n.nodeValue === fw);
         if (!node || !node.parentNode) return JSON.stringify({ violations: [] }); // untracked yet
         const parent = node.parentNode;
-        // Only assert the stacked-container invariant on a real CON: a MONITOR/WORKSPACE node
-        // may legitimately carry a STACKED layout (flat trees with AUTOSPLIT off), and is out
-        // of scope here. nodeType is a string enum (cf. n.nodeType === "WINDOW" above).
         if (parent.nodeType !== "CON" || parent.layout !== "STACKED")
           return JSON.stringify({ violations: [] });
         let tiled;
@@ -1533,23 +1517,20 @@
         } catch (e) {
           tiled = [];
         }
-        // node must be a tiled child of this STACKED parent, and order only matters with >= 2.
         if (tiled.indexOf(node) < 0 || tiled.length < 2) {
           return JSON.stringify({ violations: [] });
         }
         const violations = [];
-        // updateStackedFocus appendChild()s the focused node to LAST and raises in order, so
-        // after settle the focused node must be the last (top-of-stack) tiled child.
-        if (tiled[tiled.length - 1] !== node) {
+        // lastTabFocus is the stable "which is visible" pointer (no child reorder).
+        if (parent.lastTabFocus && parent.lastTabFocus !== fw) {
           violations.push({
             rule: "focus-mismatch",
-            detail: "focused window is not the top (last) child of its STACKED container",
+            detail: "focused window is not lastTabFocus of its STACKED container",
             path: "stacked",
           });
         }
         return JSON.stringify({ violations });
       } catch (e) {
-        // Never let the probe itself fail a session — a thrown probe is not a Forge bug.
         return JSON.stringify({ violations: [] });
       }
     },

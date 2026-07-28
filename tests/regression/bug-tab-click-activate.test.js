@@ -64,24 +64,30 @@ describe("tab click activates associated window", () => {
     expect(nA).toBeTruthy();
   });
 
-  it("stacked focus path re-appends via updateStackedFocus after tab activate", () => {
+  it("stacked focus path raises without reordering chrome labels", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const stack = createCon(monitor.nodeValue, LAYOUT_TYPES.STACKED);
     const wA = createMockWindow({ id: "sa", wm_class: "A" });
     const wB = createMockWindow({ id: "sb", wm_class: "B" });
     const wC = createMockWindow({ id: "sc", wm_class: "C" });
     const nA = wm().tree.createNode(stack.nodeValue, NODE_TYPES.WINDOW, wA);
-    wm().tree.createNode(stack.nodeValue, NODE_TYPES.WINDOW, wB);
-    wm().tree.createNode(stack.nodeValue, NODE_TYPES.WINDOW, wC);
+    const nB = wm().tree.createNode(stack.nodeValue, NODE_TYPES.WINDOW, wB);
+    const nC = wm().tree.createNode(stack.nodeValue, NODE_TYPES.WINDOW, wC);
 
     wA.raise = vi.fn();
     wA.activate = vi.fn();
+    const orderBefore = stack.childNodes.slice();
     expect(stack.lastChild).not.toBe(nA);
 
     nA._activateFromTab(wA);
 
-    // updateStackedFocus appends focused window to end of STACKED container
-    expect(stack.lastChild).toBe(nA);
+    // Chrome order stays [A,B,C]; focus is lastTabFocus + raise only.
+    expect(stack.childNodes).toEqual(orderBefore);
+    expect(stack.childNodes[0]).toBe(nA);
+    expect(stack.childNodes[1]).toBe(nB);
+    expect(stack.childNodes[2]).toBe(nC);
+    expect(stack.lastTabFocus).toBe(wA);
+    expect(wA.raise).toHaveBeenCalled();
     expect(wA.activate).toHaveBeenCalled();
   });
 });

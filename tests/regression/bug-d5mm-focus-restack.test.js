@@ -55,7 +55,7 @@ describe("forge-d5mm: focus handler re-stacks the focused window", () => {
     expect(tabbedSpy).toHaveBeenCalledWith(node);
   });
 
-  it("re-appends the focused window to the end of its STACKED container", () => {
+  it("raises focused STACKED window without reordering childNodes (stable labels)", () => {
     const winA = createMockWindow({ wm_class: "A", workspace: ctx.workspaces[0] });
     const winB = createMockWindow({ wm_class: "B", workspace: ctx.workspaces[0] });
     const winC = createMockWindow({ wm_class: "C", workspace: ctx.workspaces[0] });
@@ -67,11 +67,15 @@ describe("forge-d5mm: focus handler re-stacks the focused window", () => {
     monitor.layout = LAYOUT_TYPES.STACKED;
     const nodeA = wm().tree.findNode(winA);
     expect(nodeA.parentNode).toBe(monitor);
-    expect(monitor.lastChild).not.toBe(nodeA); // A starts above the stack
+    const orderBefore = monitor.childNodes.slice();
+    expect(monitor.lastChild).not.toBe(nodeA);
 
-    // Focus A (the bottom-most, index 0): it should be raised to the stack end.
+    winA.raise = vi.fn();
     fireFocusAndGetUpdate(winA)();
 
-    expect(monitor.lastChild).toBe(nodeA);
+    // Labels stay put; focus is lastTabFocus + raise only.
+    expect(monitor.childNodes).toEqual(orderBefore);
+    expect(monitor.lastTabFocus).toBe(winA);
+    expect(winA.raise).toHaveBeenCalled();
   });
 });

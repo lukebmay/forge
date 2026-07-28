@@ -27,6 +27,22 @@ and self-documents which API landed where.
 | `unmaximize(w)` | `unmaximize(BOTH)` | `set_unmaximize_flags(BOTH)` + `unmaximize()` |
 | `getMaximizeFlags` | `get_maximized()` | `get_maximize_flags()` |
 
+| Shim | Shell ≤ 47 | Shell ≥ 48 |
+| --- | --- | --- |
+| `setBoxOrientation(box, orient)` | `box.vertical = (orient === VERTICAL)` | `box.orientation = orient` |
+
+`setBoxOrientation` is St, not Meta: on GNOME 45–47, assigning `.orientation` is a
+silent JS no-op, so STACKED decorations stayed a horizontal strip at N× bar height
+(“tabbed but taller”). Prefer this helper over raw property writes.
+
+## HiDPI note (not a version shim)
+
+`Utils.dpi()` returns `St.ThemeContext.scale_factor` for converting **logical** UI
+settings into **Meta/stage** coordinates. On X11 fractional scaling (e.g. monitor
+scale 1.5 with a 2× framebuffer), `scale_factor` is typically **2** and Meta rects
+are already in that X space — use `dpi()` once; do not also multiply by Mutter
+monitor scale from gdisplays.
+
 ## Drift map (reference)
 
 `meta_window_*` across the tags Forge supports:

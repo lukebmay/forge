@@ -343,6 +343,14 @@ describe("Tree Layout Algorithms", () => {
       expect(container.decoration.orientation).toBe(Clutter.Orientation.VERTICAL);
       expect(container.decoration.visible).toBe(true);
       expect(container.decoration.height).toBe(totalBars);
+
+      // Each title bar is one strip height — not the full column (N×) via y_expand.
+      [child1, child2, child3].forEach((child) => {
+        if (child.tab) {
+          expect(child.tab.height).toBe(stackHeight);
+          expect(child.tab.y_expand).toBe(false);
+        }
+      });
     });
 
     it("should respect container offset", () => {

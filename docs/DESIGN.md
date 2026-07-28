@@ -152,7 +152,7 @@ churn) are not raise-path cleanup.
 | Path | Where | What it does |
 | --- | --- | --- |
 | **Tab click** | `Node._activateFromTab` (`tree.js`) | `lastTabFocus` ← meta; `raise` + `activate`; **immediately** `updateTabbedFocus` / `updateStackedFocus` (focus signal is deferred — waiting on it left stacks un-restacked) |
-| **Focus manager** | `FocusManager` (`focus.js`) | `updateStackedFocus`: append focused child in STACKED parent, raise all window siblings, queue render; `updateTabbedFocus`: raise focused leaf only when parent is TABBED; pointer hover (`_focusWindowUnderPointer`): `focus` + `raise` under cursor |
+| **Focus manager** | `FocusManager` (`focus.js`) | `updateStackedFocus`: set `lastTabFocus` + **raise focused only** (stable `childNodes` / label order — no `appendChild` reordering); `updateTabbedFocus`: raise focused leaf when parent is TABBED; pointer hover: `focus` + `raise` under cursor |
 | **Session raise-after-restore** | `SessionLayoutRestoreManager.raiseAfterSessionRestore` (`session-layout-restore.js`) | DFS walk restored forest: `raise` each leaf, then `lastTabFocus` per CON; finally raise focused meta + tab/stack update so nothing stays buried under a sibling after HUP match |
 | **RunSteps settle (WR14)** | `SessionApi._settleAfterRunSteps` (`session-api.js`) | After quiet batch render idle: `updateTabbedFocus` / `updateStackedFocus` per TABBED/STACKED CON (`lastTabFocus` or first tiled), then `updateDecorationLayout` so tab strips stay pickable after mass move/layout |
 | **Float under fullscreen** | `window.js` focus `raise-float` queue + untiled rehome float raise | Raise focused float above tiles **unless** `node._aboveDemotedForFullscreen` — bare `raise()` undoes `_reconcileFullscreenFloatDemotion`’s `lower()` without setting `is_above()`, so the next demote pass never re-lowers it (forge-5l9b) |
@@ -365,6 +365,21 @@ Execution: [agents/plans/forge-daily-driver.md](../agents/plans/forge-daily-driv
 - **Stack mode available by default;** **tabbed** remains the default group type
   (DnD center, bare-array sugar `["a","b"]`, merge-group). Stacks use object sugar
   `{layout:stacked,content:[…]}` or stack↔tab / stack toggles.
+- **STACKED chrome on GNOME 45–47:** `St.BoxLayout` only honored `.vertical`.
+  Writing `.orientation` was a silent no-op, so stack title bars laid out as a
+  **horizontal** strip at N× bar height (“tabbed but taller”). Fix:
+  `Compat.setBoxOrientation` (`.vertical` pre-48, `.orientation` on 48+).
+- **STACKED bar height:** each title is `stacked-tab-bar-height` (same as the
+  tab strip), pinned with `set_height` — not `y_expand` over the full column
+  (which could make every bar N× too tall).
+- **STACKED label order is stable:** focus/click must not `appendChild` the
+  focused leaf to the end (that shuffled chrome every time). Z-order is
+  `raise()` + `lastTabFocus`; tree order is user/move order only.
+- **HiDPI / fractional scale (black):** gdisplays scale **1.5** (3840→2560
+  logical) with X11 framebuffer **2×** logical (5120). Meta rects are in that
+  X space; `Utils.dpi()` = `St.ThemeContext.scale_factor` (**2**) converts logical
+  settings (e.g. tab bar 35) → stage pixels. Do **not** multiply again by
+  monitor scale 1.5 — that would double-count relative to Meta coordinates.
 - **Sizing:** equal share until user resizes (flex-like *contract* later; no big-bang engine now).
   Implemented as `Node.userSized` + `new-window-size-policy` (`preserve`|`equalize`);
   min-size redistrib writes effective percents without marking user intent.

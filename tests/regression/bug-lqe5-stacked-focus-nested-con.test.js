@@ -17,7 +17,8 @@ import { Bin } from "../mocks/gnome/St.js";
  * is an St.Bin; the caller then crashed on `metaWindow.raise()`. It also
  * returned minimized windows the method's own filter had just excluded.
  *
- * Fix: for STACKED, return the last eligible WINDOW in the subtree.
+ * Fix: for STACKED, return lastTabFocus (or first eligible WINDOW), never a
+ * bare CON lastChild. Order is stable — focus does not reorder children.
  */
 describe("forge-lqe5: directional focus into a stacked container", () => {
   let ctx;
@@ -68,28 +69,39 @@ describe("forge-lqe5: directional focus into a stacked container", () => {
 
     const result = ctx.tree.focus(nodeA, MotionDirection.RIGHT);
 
-    // Pre-fix: TypeError (St.Bin has no raise). Post-fix: the last eligible
-    // window in the stack's subtree.
-    expect(result).toBe(nodeD);
-  });
-
-  it("returns the top eligible window when the stack ends in a minimized window", () => {
-    const nodeB = windowNode("B");
-    const nodeC = windowNode("C", { minimized: true });
-    addStackedContainer([nodeB, nodeC]);
-
-    const result = ctx.tree.focus(nodeA, MotionDirection.RIGHT);
-
+    // Pre-fix: TypeError (St.Bin has no raise). Post-fix: first eligible
+    // tiled window in stable order (B), not the nested CON.
     expect(result).toBe(nodeB);
   });
 
-  it("still focuses the top (last) window of a plain stack", () => {
-    const nodeB = windowNode("B");
+  it("skips minimized when picking default stack focus", () => {
+    const nodeB = windowNode("B", { minimized: true });
     const nodeC = windowNode("C");
     addStackedContainer([nodeB, nodeC]);
 
     const result = ctx.tree.focus(nodeA, MotionDirection.RIGHT);
 
     expect(result).toBe(nodeC);
+  });
+
+  it("prefers lastTabFocus over tree order when entering a stack", () => {
+    const nodeB = windowNode("B");
+    const nodeC = windowNode("C");
+    const stack = addStackedContainer([nodeB, nodeC]);
+    stack.lastTabFocus = nodeC.nodeValue;
+
+    const result = ctx.tree.focus(nodeA, MotionDirection.RIGHT);
+
+    expect(result).toBe(nodeC);
+  });
+
+  it("uses first eligible window when lastTabFocus is unset (stable labels)", () => {
+    const nodeB = windowNode("B");
+    const nodeC = windowNode("C");
+    addStackedContainer([nodeB, nodeC]);
+
+    const result = ctx.tree.focus(nodeA, MotionDirection.RIGHT);
+
+    expect(result).toBe(nodeB);
   });
 });
