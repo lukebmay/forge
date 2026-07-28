@@ -4,13 +4,15 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+import sys
+from typing import Any, Callable, Optional, TextIO
 
 from layout_plan import (
     _alloc_role_id,
     _order_monitors,
     _parse_mon_id,
     _stem_to_id,
+    format_layout_description,
     validate_reconcile_profile,
 )
 
@@ -120,6 +122,154 @@ def profile_for_output(profile: dict[str, Any]) -> dict[str, Any]:
     """Drop internal keys before JSON print/write."""
     out = {k: v for k, v in profile.items() if not k.startswith("_")}
     return out
+
+
+def is_interactive_tty(
+    stdin: Optional[TextIO] = None,
+    stdout: Optional[TextIO] = None,
+) -> bool:
+    """True when both stdin and stdout are TTYs (scripting.md)."""
+    inn = stdin if stdin is not None else sys.stdin
+    out = stdout if stdout is not None else sys.stdout
+    try:
+        return bool(inn.isatty() and out.isatty())
+    except Exception:
+        return False
+
+
+def read_existing_description(path: Any) -> Optional[str]:
+    """Stored description from an existing profile file, or None."""
+    from pathlib import Path
+    import json
+
+    p = Path(path)
+    if not p.is_file():
+        return None
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    desc = data.get("description")
+    if isinstance(desc, str) and desc.strip():
+        return desc.strip()
+    return None
+
+
+def edit_line_prefilled(
+    prompt: str,
+    prefill: str = "",
+    *,
+    input_fn: Optional[Callable[[str], str]] = None,
+) -> str:
+    """Single-line edit with optional buffer prefill (readline when available)."""
+    if input_fn is not None:
+        # Tests: call with (prompt) only; prefill handled by caller mock if needed.
+        return input_fn(prompt)
+
+    prefill = prefill if prefill is not None else ""
+    try:
+        import readline
+
+        def _hook() -> None:
+            readline.insert_text(prefill)
+            try:
+                readline.redisplay()
+            except Exception:
+                pass
+
+        readline.set_startup_hook(_hook)
+        try:
+            return input(prompt)
+        finally:
+            readline.set_startup_hook()
+    except Exception:
+        # No readline: show default; empty Enter keeps prefill.
+        shown = f"{prompt}[{prefill}] " if prefill else prompt
+        raw = input(shown)
+        if raw == "" and prefill:
+            return prefill
+        return raw
+
+
+def resolve_save_description(
+    *,
+    auto: str,
+    existing: Optional[str] = None,
+    description_flag: Optional[str] = None,
+    no_description: bool = False,
+    interactive: bool = False,
+    profile_name: str = "",
+    input_fn: Optional[Callable[[str], str]] = None,
+    edit_line_fn: Optional[Callable[[str, str], str]] = None,
+    print_fn: Optional[Callable[..., None]] = None,
+) -> Optional[str]:
+    """
+    Choose description for layout save.
+
+    Non-interactive: keep existing if any; else auto; flags override.
+    Interactive: no existing → prefilled edit(auto); else K/D/E menu.
+    Returns None to omit the description key.
+    """
+    if no_description:
+        return None
+    if description_flag is not None:
+        s = str(description_flag)
+        return s if s.strip() else None
+
+    auto_s = (auto or "").strip()
+    existing_s = existing.strip() if isinstance(existing, str) and existing.strip() else None
+
+    if not interactive:
+        return existing_s if existing_s is not None else (auto_s or None)
+
+    _print = print_fn if print_fn is not None else print
+    _edit = edit_line_fn
+    if _edit is None:
+
+        def _edit(prompt: str, prefill: str) -> str:
+            return edit_line_prefilled(prompt, prefill, input_fn=input_fn)
+
+    if existing_s is None:
+        got = _edit("Description: ", auto_s)
+        got_s = got.strip() if isinstance(got, str) else ""
+        return got_s or None
+
+    label = f'"{profile_name}"' if profile_name else "profile"
+    _print(f"Description for {label}:")
+    _print(f"  current: {existing_s}")
+    _print(f"  default: {auto_s or '(none)'}")
+    _print("[K]eep current  [D]efault  [E]dit  — default K")
+    raw_choice = ""
+    if input_fn is not None:
+        raw_choice = input_fn("Choice [K/D/E]: ")
+    else:
+        raw_choice = input("Choice [K/D/E]: ")
+    choice = (raw_choice or "k").strip().lower() or "k"
+    if choice.startswith("d"):
+        got = _edit("Description: ", auto_s)
+        got_s = got.strip() if isinstance(got, str) else ""
+        return got_s or None
+    if choice.startswith("e"):
+        got = _edit("Description: ", existing_s)
+        got_s = got.strip() if isinstance(got, str) else ""
+        return got_s or None
+    return existing_s
+
+
+def apply_description(profile: dict[str, Any], description: Optional[str]) -> dict[str, Any]:
+    """Set or clear description on a capture profile (mutates and returns)."""
+    if description is None or not str(description).strip():
+        profile.pop("description", None)
+    else:
+        profile["description"] = str(description).strip()
+    return profile
+
+
+def auto_description_for_profile(profile: dict[str, Any]) -> str:
+    """format_layout_description on output-shaped sugar (no _stats)."""
+    return format_layout_description(profile_for_output(profile))
 
 
 def format_capture_stderr(profile: dict[str, Any]) -> str:

@@ -210,6 +210,36 @@ class TestListLoadProfiles(unittest.TestCase):
             self.assertIsInstance(data, list)
             self.assertEqual(data[0], ["ghostty"])
 
+    def test_list_auto_description_when_missing(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            d = layout_dir(root)
+            d.mkdir(parents=True)
+            body = [
+                [["google-chrome", "Grok"], "ghostty"],
+                ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
+            ]
+            (d / "bare.json").write_text(json.dumps(body), encoding="utf-8")
+            listed = list_profiles(root)
+            self.assertEqual(len(listed), 1)
+            self.assertEqual(
+                listed[0].get("description"),
+                "mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.",
+            )
+
+    def test_list_prefers_stored_description(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            d = layout_dir(root)
+            d.mkdir(parents=True)
+            body = {
+                "description": "My custom",
+                "tiles": {"mon0": ["ghostty", "firefox"]},
+            }
+            (d / "x.json").write_text(json.dumps(body), encoding="utf-8")
+            listed = list_profiles(root)
+            self.assertEqual(listed[0].get("description"), "My custom")
+
     def test_reject_scalar_json(self):
         with tempfile.TemporaryDirectory() as td:
             p = Path(td) / "bad.json"

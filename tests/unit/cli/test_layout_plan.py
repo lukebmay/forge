@@ -18,6 +18,7 @@ from layout_plan import (  # noqa: E402
     collect_windows,
     detect_thrash,
     forest_stable_key_map,
+    format_layout_description,
     mon_head_and_rest,
     mon_index_from_slot,
     normalize_profile,
@@ -2738,6 +2739,57 @@ class TestStableKeyMonitors(unittest.TestCase):
         plan_a = plan_reconcile(forest, profile_alias)
         self.assertEqual(plan_a["roles"][0]["slot"], "mon0.ghostty")
         self.assertEqual(plan_a["counts"]["opened"], 1)
+
+
+class TestFormatLayoutDescription(unittest.TestCase):
+    def test_bare_dual_mon(self):
+        bare = _load("profile-bare-dual-mon.json")
+        desc = format_layout_description(bare)
+        self.assertEqual(
+            desc,
+            "mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.",
+        )
+
+    def test_ir_ignores_stored_description(self):
+        ir = _load("profile-dev-v2.json")
+        self.assertIn("description", ir)
+        desc = format_layout_description(ir)
+        self.assertEqual(
+            desc,
+            "mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.",
+        )
+
+    def test_single_mon_panes(self):
+        bare = _load("profile-bare-single-mon.json")
+        desc = format_layout_description(bare)
+        self.assertTrue(desc.startswith("mon0"), desc)
+        self.assertIn("ghostty", desc)
+
+    def test_nested_hsplit_token(self):
+        sugar = {
+            "tiles": {
+                "mon0": [
+                    {"split": "h", "content": ["ghostty", "firefox"]},
+                    "code",
+                ]
+            }
+        }
+        desc = format_layout_description(sugar)
+        self.assertEqual(desc, "mon0 (hsplit): hsplit(ghostty, firefox), code.")
+
+    def test_empty_or_steps_profile(self):
+        self.assertEqual(format_layout_description({"version": 1, "steps": []}), "")
+        self.assertEqual(format_layout_description({}), "")
+
+    def test_split_inferred_when_omitted(self):
+        sugar = {"tiles": {"mon0": ["ghostty", "firefox"]}}
+        desc = format_layout_description(sugar)
+        self.assertEqual(desc, "mon0 (hsplit): ghostty, firefox.")
+
+    def test_single_pane_no_split(self):
+        sugar = {"tiles": {"mon0": ["ghostty"]}}
+        desc = format_layout_description(sugar)
+        self.assertEqual(desc, "mon0: ghostty.")
 
 
 if __name__ == "__main__":

@@ -239,11 +239,22 @@ def list_profiles_resolved(
 def _maybe_add_description(entry: dict[str, Any], path: Path) -> None:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(data, dict):
-            desc = data.get("description")
-            if isinstance(desc, str) and desc.strip():
-                entry["description"] = desc.strip()
     except (OSError, json.JSONDecodeError, UnicodeError):
+        return
+    if not isinstance(data, (dict, list)):
+        return
+    if isinstance(data, dict):
+        desc = data.get("description")
+        if isinstance(desc, str) and desc.strip():
+            entry["description"] = desc.strip()
+            return
+    try:
+        from layout_plan import format_layout_description
+
+        auto = format_layout_description(data)
+        if auto:
+            entry["description"] = auto
+    except (ValueError, TypeError, ImportError):
         pass
 
 

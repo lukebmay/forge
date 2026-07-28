@@ -214,6 +214,111 @@ def normalize_profile(data: Any) -> dict[str, Any]:
     return out
 
 
+def format_layout_description(profile: Any) -> str:
+    """
+    Auto one-liner from profile sugar or IR (roles+layout).
+
+    Example:
+      mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.
+    """
+    try:
+        data = normalize_profile(profile)
+    except (ValueError, TypeError):
+        return ""
+    layout = data.get("layout")
+    if not isinstance(layout, dict) or not layout:
+        return ""
+
+    roles_by_id: dict[str, dict[str, Any]] = {}
+    for r in data.get("roles") or []:
+        if isinstance(r, dict) and r.get("id") is not None:
+            roles_by_id[str(r["id"])] = r
+
+    parts: list[str] = []
+    for mon_key in sorted(layout.keys(), key=_layout_mon_sort_key):
+        mon_body = layout[mon_key]
+        if not isinstance(mon_body, dict):
+            continue
+        children = mon_body.get("children")
+        if not isinstance(children, list) or not children:
+            continue
+        tokens = [
+            t
+            for c in children
+            if (t := _format_desc_child(c, roles_by_id))
+        ]
+        if not tokens:
+            continue
+        split = mon_body.get("split")
+        if split is None and len(children) >= 2:
+            split = "hsplit"
+        if split is not None:
+            split_s = str(split).strip().lower()
+            parts.append(f"{mon_key} ({split_s}): {', '.join(tokens)}")
+        else:
+            parts.append(f"{mon_key}: {', '.join(tokens)}")
+    if not parts:
+        return ""
+    return ". ".join(parts) + "."
+
+
+def _layout_mon_sort_key(key: str) -> tuple:
+    m = _MON_KEY_RE.match(str(key))
+    if m:
+        return (0, int(m.group(1)), "")
+    if key == "primary":
+        return (1, 0, "")
+    return (2, 0, str(key))
+
+
+def _format_desc_child(child: Any, roles_by_id: dict[str, dict[str, Any]]) -> str:
+    if not isinstance(child, dict):
+        return ""
+    nested = child.get("children")
+    if isinstance(nested, list) and nested:
+        kids = [
+            t
+            for c in nested
+            if (t := _format_desc_child(c, roles_by_id))
+        ]
+        if not kids:
+            return ""
+        split = child.get("split")
+        if split is None and len(kids) >= 2:
+            split = "hsplit"
+        if split is not None:
+            return f"{str(split).strip().lower()}({', '.join(kids)})"
+        return ", ".join(kids)
+
+    roles = child.get("roles")
+    if isinstance(roles, list) and len(roles) >= 2:
+        return "tabgroup"
+    if isinstance(roles, list) and len(roles) == 1:
+        return _role_desc_token(roles[0], roles_by_id)
+    rid = child.get("id")
+    if rid is not None:
+        return _role_desc_token(rid, roles_by_id)
+    return ""
+
+
+def _role_desc_token(rid: Any, roles_by_id: dict[str, dict[str, Any]]) -> str:
+    key = str(rid)
+    r = roles_by_id.get(key)
+    if not r:
+        return key
+    open_spec = r.get("open")
+    if isinstance(open_spec, dict):
+        app = open_spec.get("app") or open_spec.get("desktop") or open_spec.get("command")
+        if app is not None and str(app).strip():
+            return str(app).strip()
+    elif isinstance(open_spec, str) and open_spec.strip():
+        return open_spec.strip()
+    app = r.get("app")
+    if app is not None and str(app).strip():
+        return str(app).strip()
+    return key
+
+
 def _looks_like_mon_body(item: Any) -> bool:
     """List or {split,content} — not a bare string / flat role object."""
     if isinstance(item, list):

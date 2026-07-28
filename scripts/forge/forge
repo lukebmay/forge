@@ -76,11 +76,20 @@ from layout_lib import (  # noqa: E402
     validate_profile,
     _normalize_profile_name,
 )
-from layout_plan import plan_reconcile, validate_reconcile_profile  # noqa: E402
+from layout_plan import (  # noqa: E402
+    format_layout_description,
+    plan_reconcile,
+    validate_reconcile_profile,
+)
 from layout_save import (  # noqa: E402
+    apply_description,
+    auto_description_for_profile,
     capture_tiles_profile,
     format_capture_stderr,
+    is_interactive_tty,
     profile_for_output,
+    read_existing_description,
+    resolve_save_description,
 )
 from cli_ansi import parse_color_flag, set_color_mode  # noqa: E402
 from cli_help import print_forge_help, print_layout_help  # noqa: E402
@@ -1336,8 +1345,13 @@ def _layout_load_tree(
     return data
 
 
-def _layout_print_header(resolved: dict[str, Any], name: str) -> None:
-    """Consistent human header: host, profile, source, short path."""
+def _layout_print_header(
+    resolved: dict[str, Any],
+    name: str,
+    *,
+    description: Optional[str] = None,
+) -> None:
+    """Consistent human header: host, profile, source, short path [, description]."""
     path = resolved.get("path")
     short = format_short_path(path) if path else ""
     _eprint(
@@ -1345,6 +1359,24 @@ def _layout_print_header(resolved: dict[str, Any], name: str) -> None:
         f"source={resolved.get('source')}"
         + (f" path={short}" if short else "")
     )
+    if isinstance(description, str) and description.strip():
+        _eprint(f"  {description.strip()}")
+
+
+def _layout_display_description(data: Any, profile: Optional[dict[str, Any]] = None) -> str:
+    """Stored description if non-empty; else auto one-liner from layout IR/sugar."""
+    if isinstance(profile, dict):
+        desc = profile.get("description")
+        if isinstance(desc, str) and desc.strip():
+            return desc.strip()
+    if isinstance(data, dict):
+        desc = data.get("description")
+        if isinstance(desc, str) and desc.strip():
+            return desc.strip()
+    try:
+        return format_layout_description(data if data is not None else profile) or ""
+    except (ValueError, TypeError):
+        return ""
 
 
 def _layout_print_counts(counts: dict[str, Any]) -> None:
@@ -1741,12 +1773,18 @@ def _layout_run_save(
     tree_file: Optional[str],
     stdout_only: bool,
     quiet: bool = False,
+    description_flag: Optional[str] = None,
+    no_description: bool = False,
 ) -> int:
     """Snapshot GetTree → tiles sugar; write host profile or print with --stdout."""
     try:
         name = _normalize_profile_name(name)
     except ValueError as e:
         _eprint(f"forge layout save: {e}")
+        return 1
+
+    if no_description and description_flag is not None:
+        _eprint("forge layout save: use only one of --description / --no-description")
         return 1
 
     try:
@@ -1759,10 +1797,29 @@ def _layout_run_save(
         return 1
 
     try:
-        profile = capture_tiles_profile(forest, description=name)
+        profile = capture_tiles_profile(forest)
     except ValueError as e:
         _eprint(f"forge layout save: {e}")
         return 1
+
+    dest = _layout_profile_write_path(name)
+    existing = None if stdout_only else read_existing_description(dest)
+    auto = auto_description_for_profile(profile)
+    interactive = is_interactive_tty() and not quiet
+    try:
+        desc = resolve_save_description(
+            auto=auto,
+            existing=existing,
+            description_flag=description_flag,
+            no_description=no_description,
+            interactive=interactive,
+            profile_name=name,
+            print_fn=_eprint,
+        )
+    except (EOFError, KeyboardInterrupt):
+        _eprint("forge layout save: cancelled")
+        return 130
+    apply_description(profile, desc)
 
     payload = profile_for_output(profile)
     body = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
@@ -1775,7 +1832,6 @@ def _layout_run_save(
         sys.stdout.write(body)
         return 0
 
-    dest = _layout_profile_write_path(name)
     try:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(body, encoding="utf-8")
@@ -1859,7 +1915,8 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         except ValueError as e:
             _eprint(f"forge layout show: {e}")
             return 1
-        _layout_print_header(resolved, name)
+        show_desc = _layout_display_description(data, profile if isinstance(profile, dict) else None)
+        _layout_print_header(resolved, name, description=show_desc or None)
         _eprint(f"  mode={mode}")
         out = {
             "path": str(path),
@@ -1879,12 +1936,16 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
             _eprint("forge layout save: unexpected extra arguments")
             return 1
         stdout_only = bool(getattr(args, "stdout", False))
+        desc_flag = getattr(args, "description", None)
+        no_desc = bool(getattr(args, "no_description", False))
         return _layout_run_save(
             backend,
             name=name,
             tree_file=tree_file,
             stdout_only=stdout_only,
             quiet=bool(getattr(args, "quiet", False)),
+            description_flag=desc_flag,
+            no_description=no_desc,
         )
 
     if action == "run":
@@ -2799,6 +2860,17 @@ def build_parser() -> argparse.ArgumentParser:
         "-q",
         action="store_true",
         help="With save: suppress human confirmation on stderr",
+    )
+    layout_p.add_argument(
+        "--description",
+        metavar="TEXT",
+        default=None,
+        help="With save: set description TEXT (non-interactive escape)",
+    )
+    layout_p.add_argument(
+        "--no-description",
+        action="store_true",
+        help="With save: omit description key from written profile",
     )
     layout_p.set_defaults(func=cmd_layout)
 

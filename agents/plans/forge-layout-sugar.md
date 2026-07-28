@@ -1,13 +1,13 @@
 # Plan: Dead-simple layout sugar
 
-**Status:** Active — LS1+LS2 done; next LS7–LS8  
+**Status:** Active — LS1+LS2+LS7+LS8 done; next LS4/LS5  
 **Updated:** 2026-07-28  
 **Goal:** A layout config so simple you could write it by accident and it still works.
 
 ### Session note (overwrite)
 
-LS1+LS2 **done** (A/B AGREE): bare array + string inference; 221 layout unit tests OK.  
-Next: [LS7–LS8 description](../tasks/forge-layout-sugar_ls7-ls8-description.md); then LS4 save bare array / LS5 docs.
+LS7–LS8 **B AGREE** (2026-07-28): auto description + save UX verified; 242 layout tests OK; no findings.  
+Next: LS4 save bare array / LS5 docs.
 
 ## Product target
 
@@ -203,8 +203,8 @@ with optional one-line auto description for discoverability.
 | **LS4** | `layout save` emits bare array when possible | no `floating: []`, no mon keys if index order is enough |
 | **LS5** | Docs + black `dev.json` rewrite to bare array | shellrc example is the demo |
 | **LS6** | Tests: 1-mon, 2-mon, ambiguous, chrome PWA inference | fixtures |
-| **LS7** | `format_layout_description` + list/show fallback | pure; unit tests |
-| **LS8** | Interactive save description UX (K/D/E + non-interactive rules) | TTY only |
+| **LS7** | `format_layout_description` + list/show fallback | **Done** (B AGREE) |
+| **LS8** | Interactive save description UX (K/D/E + non-interactive rules) | **Done** (B AGREE) |
 
 No backwards compatibility required (pre-release). Old `tiles.monN` and rich
 cells keep working as supersets.
@@ -237,6 +237,6 @@ cells keep working as supersets.
 
 ## Next task
 
-[forge-layout-sugar_ls7-ls8-description.md](../tasks/forge-layout-sugar_ls7-ls8-description.md) — auto description + interactive save UX.
+LS4 save bare array / LS5 docs (no active task file yet).
 
-Completed: [LS1–LS2](./forge-layout-sugar/completed/forge-layout-sugar_ls1-ls2.md).
+Completed: [LS1–LS2](./forge-layout-sugar/completed/forge-layout-sugar_ls1-ls2.md), [LS7–LS8](./forge-layout-sugar/completed/forge-layout-sugar_ls7-ls8-description.md).

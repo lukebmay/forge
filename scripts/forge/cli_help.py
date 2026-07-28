@@ -134,6 +134,8 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
         ("forge layout save <name>", "Snapshot tree → host profile file (overwrite)"),
         ("forge layout save <name> --tree-file F", "Offline save from GetTree JSON"),
         ("forge layout save <name> --stdout", "Print JSON only (no write)"),
+        ("forge layout save <name> --description T", "Set description (no prompt)"),
+        ("forge layout save <name> --no-description", "Omit description key"),
         ("forge layout <name> --dry-run", "Plan only (human + plan JSON; mode A/B)"),
         ("forge layout <name>", "Apply; short human summary (stderr)"),
         ("forge layout <name> --verbose", "Also dump plan/apply JSON (or FORGE_VERBOSE=1)"),

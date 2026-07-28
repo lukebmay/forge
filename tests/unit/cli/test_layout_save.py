@@ -20,9 +20,11 @@ if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
 from layout_save import (  # noqa: E402
+    apply_description,
     capture_tiles_profile,
     format_capture_stderr,
     profile_for_output,
+    resolve_save_description,
 )
 from layout_plan import (  # noqa: E402
     normalize_profile,
@@ -171,6 +173,118 @@ class TestCaptureRoundTrip(unittest.TestCase):
         self.assertEqual(len(plan["roles"]), 2)
 
 
+class TestResolveSaveDescription(unittest.TestCase):
+    def test_noninteractive_new_uses_auto(self):
+        got = resolve_save_description(
+            auto="mon0: ghostty.",
+            existing=None,
+            interactive=False,
+        )
+        self.assertEqual(got, "mon0: ghostty.")
+
+    def test_noninteractive_keeps_existing(self):
+        got = resolve_save_description(
+            auto="mon0: ghostty.",
+            existing="My custom desk",
+            interactive=False,
+        )
+        self.assertEqual(got, "My custom desk")
+
+    def test_flag_description_wins(self):
+        got = resolve_save_description(
+            auto="auto",
+            existing="old",
+            description_flag="from-flag",
+            interactive=False,
+        )
+        self.assertEqual(got, "from-flag")
+
+    def test_no_description_omits(self):
+        got = resolve_save_description(
+            auto="auto",
+            existing="old",
+            no_description=True,
+            interactive=True,
+        )
+        self.assertIsNone(got)
+
+    def test_interactive_no_existing_prefill_auto(self):
+        edits: list[tuple[str, str]] = []
+
+        def edit(prompt: str, prefill: str) -> str:
+            edits.append((prompt, prefill))
+            return prefill  # Enter accepts default
+
+        got = resolve_save_description(
+            auto="mon0 (hsplit): a, b.",
+            existing=None,
+            interactive=True,
+            edit_line_fn=edit,
+            print_fn=lambda *a, **k: None,
+        )
+        self.assertEqual(got, "mon0 (hsplit): a, b.")
+        self.assertEqual(len(edits), 1)
+        self.assertEqual(edits[0][1], "mon0 (hsplit): a, b.")
+
+    def test_interactive_keep(self):
+        def boom(prompt: str, prefill: str) -> str:
+            raise AssertionError("edit should not run on Keep")
+
+        got = resolve_save_description(
+            auto="auto-line",
+            existing="keep-me",
+            interactive=True,
+            profile_name="dev",
+            input_fn=lambda _p: "",  # Enter → K
+            edit_line_fn=boom,
+            print_fn=lambda *a, **k: None,
+        )
+        self.assertEqual(got, "keep-me")
+
+    def test_interactive_default_prefill_auto(self):
+        edits: list[str] = []
+
+        def edit(_prompt: str, prefill: str) -> str:
+            edits.append(prefill)
+            return prefill
+
+        got = resolve_save_description(
+            auto="auto-line",
+            existing="old-custom",
+            interactive=True,
+            input_fn=lambda _p: "d",
+            edit_line_fn=edit,
+            print_fn=lambda *a, **k: None,
+        )
+        self.assertEqual(got, "auto-line")
+        self.assertEqual(edits, ["auto-line"])
+
+    def test_interactive_edit_prefill_existing(self):
+        edits: list[str] = []
+
+        def edit(_prompt: str, prefill: str) -> str:
+            edits.append(prefill)
+            return prefill + "!"
+
+        got = resolve_save_description(
+            auto="auto-line",
+            existing="old-custom",
+            interactive=True,
+            input_fn=lambda _p: "e",
+            edit_line_fn=edit,
+            print_fn=lambda *a, **k: None,
+        )
+        self.assertEqual(got, "old-custom!")
+        self.assertEqual(edits, ["old-custom"])
+
+    def test_apply_description(self):
+        p = {"tiles": {}}
+        apply_description(p, "hello")
+        self.assertEqual(p["description"], "hello")
+        apply_description(p, None)
+        self.assertNotIn("description", p)
+
+
 class TestSaveCli(unittest.TestCase):
     def test_stdout_only(self):
         tree = _FIXTURES / "tree-perfect.json"
@@ -193,10 +307,60 @@ class TestSaveCli(unittest.TestCase):
         data = json.loads(proc.stdout)
         self.assertIn("tiles", data)
         self.assertIn("mon0", data["tiles"])
+        # Non-interactive: auto description when none existing
+        self.assertEqual(
+            data.get("description"),
+            "mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.",
+        )
         self.assertIn("forge layout save:", proc.stderr)
         self.assertIn("windows=7", proc.stderr)
         self.assertIn("stdout only", proc.stderr)
         self.assertIn("name=mydesk", proc.stderr)
+
+    def test_stdout_description_flag(self):
+        tree = _FIXTURES / "tree-perfect.json"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(_FORGE_BIN),
+                "layout",
+                "save",
+                "mydesk",
+                "--stdout",
+                "--tree-file",
+                str(tree),
+                "--description",
+                "Custom desk",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data.get("description"), "Custom desk")
+
+    def test_stdout_no_description(self):
+        tree = _FIXTURES / "tree-perfect.json"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(_FORGE_BIN),
+                "layout",
+                "save",
+                "mydesk",
+                "--stdout",
+                "--tree-file",
+                str(tree),
+                "--no-description",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertNotIn("description", data)
 
     def test_write_host_path(self):
         tree = _FIXTURES / "tree-perfect.json"
@@ -227,10 +391,45 @@ class TestSaveCli(unittest.TestCase):
             self.assertTrue(dest.is_file(), proc.stderr)
             disk = json.loads(dest.read_text(encoding="utf-8"))
             self.assertIn("tiles", disk)
+            self.assertTrue(disk.get("description"))
             self.assertEqual(proc.stdout.strip(), "")
             self.assertIn(str(dest), proc.stderr)
             self.assertIn("host=testhost", proc.stderr)
             self.assertIn("name=mydesk", proc.stderr)
+
+    def test_rewrite_keeps_custom_description(self):
+        tree = _FIXTURES / "tree-perfect.json"
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            dest = root / "hosts" / "testhost" / "mydesk.json"
+            dest.parent.mkdir(parents=True)
+            dest.write_text(
+                json.dumps({"description": "Keep me", "tiles": {"mon0": ["x"]}}),
+                encoding="utf-8",
+            )
+            env = {
+                **os.environ,
+                "FORGE_LAYOUT_DIR": str(root),
+                "FORGE_HOST": "testhost",
+            }
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(_FORGE_BIN),
+                    "layout",
+                    "save",
+                    "mydesk",
+                    "--tree-file",
+                    str(tree),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                env=env,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            disk = json.loads(dest.read_text(encoding="utf-8"))
+            self.assertEqual(disk.get("description"), "Keep me")
 
     def test_save_requires_name(self):
         tree = _FIXTURES / "tree-perfect.json"

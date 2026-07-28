@@ -1,13 +1,12 @@
 # Task: LS7 + LS8 — auto description + interactive save UX
 
 **Plan:** [forge-layout-sugar.md](../plans/forge-layout-sugar.md)  
-**Status:** ready (after LS1–LS2; can parallel LS4–LS5 if normalize exists)  
+**Status:** done (B AGREE)  
 **Pri:** P0 layout-sugar track
 
 ## Scope
 
 ### LS7 — auto description
-
 - Pure `format_layout_description(profile_ir) -> str`.
 - Shape (example):
 
@@ -37,13 +36,17 @@ Keep the flow dead simple — no `$EDITOR`, no multi-page wizard.
 
 ## Acceptance
 
-1. Profile without `description` loads and lists with auto one-liner.
-2. No existing desc → no Keep/Default/Edit menu; prefill default only.
-3. Edit prefill = **existing**; Default prefill = **auto**; Keep = unchanged (no edit).
-4. Default + Enter writes auto without extra typing.
-5. Non-interactive save never blocks; never drops a custom description without a flag when re-saving.
-6. Tests for format helper; optional CLI prompt tests with mocked stdin.
+1. Profile without `description` loads and lists with auto one-liner. **✓**
+2. No existing desc → no Keep/Default/Edit menu; prefill default only. **✓**
+3. Edit prefill = **existing**; Default prefill = **auto**; Keep = unchanged (no edit). **✓**
+4. Default + Enter writes auto without extra typing. **✓**
+5. Non-interactive save never blocks; never drops a custom description without a flag when re-saving. **✓**
+6. Tests for format helper; optional CLI prompt tests with mocked stdin. **✓**
 
 ## Session note
 
-(overwrite when implementing)
+**B verify 2026-07-28 — AGREE.**
+
+- Diff + key paths reviewed; **242** layout unit tests re-run OK.
+- Spot-check: bare dual-mon / single-mon / v2 IR format strings; non-interactive keep/auto/flags; capture no longer uses name as description; list auto on bare arrays; load still description-optional.
+- No blocking findings; no code changes.
