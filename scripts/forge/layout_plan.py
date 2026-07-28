@@ -2678,18 +2678,18 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
         score += 2 * wrong_mon
         reasons.append(f"roles-wrong-mon:{wrong_mon}")
 
-    # Multi-role tabbed slots: claimed roles must share one TABBED CON
+    # Multi-role tabbed/stacked slots: claimed roles must share one CON of that mode
     for slot, mode in sorted(layout_slot_modes.items()):
-        if mode != "tabbed":
+        if mode not in ("tabbed", "stacked"):
             continue
         if str(slot).endswith(".overflow"):
             continue
         wids = _role_window_ids_for_slot(role_results, slot)
         if len(wids) < 2:
             continue
-        if not _windows_share_group(wids, parent_info, "tabbed"):
+        if not _windows_share_group(wids, parent_info, mode):
             score += 3
-            reasons.append(f"tabbed-roles-not-grouped:{slot}")
+            reasons.append(f"{mode}-roles-not-grouped:{slot}")
 
     # Mon structure: excess mon-level kids; nested H/V under a role view
     for mon_key, mon_body in sorted((prof.get("layout") or {}).items()):
@@ -2719,12 +2719,12 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
                 continue
             view_id = str(view["id"])
             slot = f"{mon_key}.{view_id}"
-            # Nested H/V under a mon-child is thrash only for multi-role tabbed
-            # views (wanted TABBED, got nested splits). Single-role term +
-            # companions under VSPLIT/HSPLIT is Mode A collect, not thrash.
+            # Nested H/V under a mon-child is thrash only for multi-role
+            # tabbed/stacked views (wanted group, got nested splits).
+            # Single-role term + companions under VSPLIT/HSPLIT is Mode A.
             view_roles = view.get("roles") or []
             mode = layout_slot_modes.get(slot)
-            if mode != "tabbed" or len(view_roles) < 2:
+            if mode not in ("tabbed", "stacked") or len(view_roles) < 2:
                 continue
             wids = [
                 r["windowId"]

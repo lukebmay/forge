@@ -1,10 +1,11 @@
 # Plan: STACKED layouts as a supported product path
 
-**Status:** SL1 done — next SL3 (thrash) / SL4  
+**Status:** SL3 done — next SL4 (optional regression) / SL5 live  
 **Updated:** 2026-07-28  
 **Spike task:** [completed/forge-stacked-layouts_spike.md](./forge-stacked-layouts/completed/forge-stacked-layouts_spike.md)  
 **SL0 task:** [completed/forge-stacked-layouts_sl0-docs-schema.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl0-docs-schema.md)  
-**SL1 task:** [completed/forge-stacked-layouts_sl1-save-roundtrip.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl1-save-roundtrip.md)
+**SL1 task:** [completed/forge-stacked-layouts_sl1-save-roundtrip.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl1-save-roundtrip.md)  
+**SL3 task:** [completed/forge-stacked-layouts_sl3-thrash-parity.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl3-thrash-parity.md)
 
 ## Why
 
@@ -106,7 +107,7 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | Bare sugar | `["app1","app2"]` → **always tabbed**; stacked = `{ "layout": "stacked", "content": […] }` |
 | `ensure_layout` | Emits/applies `mode: stacked` when profile says so; apply folds ids into group (`layout_apply.py` ~L176, ~L245) |
 | `layout save` | **SL1:** TABBED → bare list; STACKED → `{layout:stacked, content}` — round-trips |
-| Thrash scoring | Multi-role “not co-grouped” thrash check is **`mode == "tabbed"` only** — stacked multi-role not scored the same (**SL3**) |
+| Thrash scoring | Multi-role tabbed **and** stacked co-group + nested-split thrash (**SL3**) |
 | CLI unit tests | SL1: stacked save + desugar cases in `test_layout_save` / `test_layout_plan` |
 
 ### 6. Session / rehome
@@ -158,7 +159,7 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | Chrome | Vertical stack bars shared with tab machinery | None critical; shared `showtab` toggle | Low |
 | Layout IR | multi-role `layout: "stacked"` + sugar | — (SL1) | — |
 | `layout save` | STACKED → stacked object sugar | — (SL1) | — |
-| Thrash / verify | Tabbed multi-role checked | Stacked multi-role thrash not scored | **Med** (SL3) |
+| Thrash / verify | Tabbed + stacked multi-role co-group + nested-split | — (SL3) | — |
 | Session / rehome | Same path as TABBED | Needs explicit STACKED regression if not already e2e | Med |
 | Unit/e2e engine | Strong | — | — |
 | CLI / profile tests | Missing stacked | Add with sugar work | Med |
@@ -173,7 +174,7 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | **SL0** | **Docs + schema hygiene:** set `config/settings.schema.json` stack default `false`; fix `layouts.md` / `troubleshooting.md` “on by default”; README already OK; short “stacked vs tabbed” in `layouts.md` | Accept plan | **S** — **done** |
 | **SL1** | **Profile IR + save round-trip:** `layout save` emit stacked groups as IR `layout: "stacked"` (or sugar that desugars to stacked); ensure bare multi-app array stays tabbed; tests in `test_layout_*` | Accept | **M** — **done** |
 | **SL2** | **Tiles sugar for stacked:** `{ "layout": "stacked", "content": [...] }` + docs | SL1 | **S** — **done with SL1** |
-| **SL3** | **Thrash / ensure parity:** multi-role `stacked` slots get same co-group thrash + ensure behavior as tabbed | SL1 | **S** |
+| **SL3** | **Thrash / ensure parity:** multi-role `stacked` slots get same co-group thrash + ensure behavior as tabbed | SL1 | **S** — **done** |
 | **SL4** | **Regression pack:** unit CLI + any missing DnD/toggle; optional e2e smoke with flag on (STACKED toggle + focus restack already partly in bridge) | SL1 | **S–M** |
 | **SL5** | **Live verify on black (opt-in):** enable stack mode; toggle / DnD stacked / layout profile with stacked cell; soft rehome dual-mon; no Shell thrash | SL0–SL1 preferred | **S** (ops) |
 | **SL6** | **Polish (optional):** prefs graying of DnD=stacked when flag off; cycle-stack keybind; auto-exit-stacked symmetry — only if product wants | SL0 | **S–M** |
@@ -184,8 +185,8 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 
 ## Next task
 
-→ **`SL3`** — thrash/ensure parity for multi-role stacked slots (same co-group checks as tabbed).  
-SL1–SL2 sugar/save done.
+→ **`SL4`** (optional) — regression pack / missing DnD-toggle coverage.  
+SL3 thrash parity done. SL5 = live black opt-in verify.
 
 ## Related
 
@@ -196,10 +197,9 @@ SL1–SL2 sugar/save done.
 
 ## Session note
 
-**2026-07-28 SL1 (Task Force A)**
+**2026-07-28 SL3 (Task Force A)**
 
-- Save: STACKED multi-window → `{"layout":"stacked","content":[…]}`; TABBED stays bare list.
-- Desugar: `_desugar_role_pane(..., mode=)`; early path for layout/split tabbed|stacked + all role cells → multi-role leaf (not nested CON).
-- Tests: `tree-stacked-pair.json`; save shape + plan sugar; 165 green.
-- Docs: `layout.md` authoring table; `layouts.md` save/author pointer.
-- SL2 sugar landed with SL1. Next: **SL3** thrash parity.
+- `detect_thrash`: multi-role co-group loop + nested H/V mon-child check cover `tabbed` and `stacked`.
+- Reasons: `{mode}-roles-not-grouped:{slot}`; `_windows_share_group(..., mode)` already STACKED-aware.
+- Structure ensure: no gap (SL1). Tests: not-grouped / grouped OK / stacked nested HSPLIT; 136 pass.
+- Next: **SL4** optional.

@@ -959,6 +959,119 @@ class TestDetectThrash(unittest.TestCase):
         self.assertEqual(state["score"], 0)
         self.assertEqual(state["reasons"], [])
 
+    def _stacked_pair_profile(self):
+        """Minimal multi-role stacked profile for mon0.stack (ghostty + nautilus)."""
+        return {
+            "version": 2,
+            "mode": "reconcile",
+            "layout": {
+                "mon0": {
+                    "split": "hsplit",
+                    "children": [
+                        {
+                            "id": "stack",
+                            "layout": "stacked",
+                            "roles": ["ghostty", "nautilus"],
+                        }
+                    ],
+                }
+            },
+            "roles": [
+                {
+                    "id": "ghostty",
+                    "match": {"class": "com.mitchellh.ghostty"},
+                    "open": {"app": "ghostty"},
+                    "slot": "mon0.stack",
+                },
+                {
+                    "id": "nautilus",
+                    "match": {"class": "org.gnome.Nautilus"},
+                    "open": {"app": "nautilus"},
+                    "slot": "mon0.stack",
+                },
+            ],
+        }
+
+    def test_detect_thrash_stacked_roles_not_grouped(self):
+        """Multi-role stacked slot with flat mon children → stacked-roles-not-grouped."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 601,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 602,
+                            "wmClass": "org.gnome.Nautilus",
+                            "title": "Home",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                    ],
+                }
+            ],
+        }
+        state = detect_thrash(forest, self._stacked_pair_profile())
+        self.assertTrue(state["thrashed"])
+        self.assertGreaterEqual(state["score"], 3)
+        self.assertTrue(
+            any(r == "stacked-roles-not-grouped:mon0.stack" for r in state["reasons"]),
+            f"expected stacked-roles-not-grouped:mon0.stack in {state['reasons']}",
+        )
+
+    def test_detect_thrash_stacked_roles_grouped_ok(self):
+        """Already co-grouped under STACKED → no stacked-roles-not-grouped thrash."""
+        forest = _load("tree-stacked-pair.json")
+        state = detect_thrash(forest, self._stacked_pair_profile())
+        self.assertFalse(
+            any("stacked-roles-not-grouped" in r for r in state["reasons"]),
+            f"co-grouped STACKED must not thrash: {state['reasons']}",
+        )
+        self.assertFalse(state["thrashed"])
+        self.assertEqual(state["score"], 0)
+
+    def test_detect_thrash_stacked_comms_nested_hsplit(self):
+        """Multi-role stacked view as nested HSPLIT → thrash (parity with tabbed)."""
+        forest = _load("tree-thrash-comms-nested-hsplit.json")
+        profile = _load("profile-dev-v2.json")
+        # Flip comms to stacked; same broken forest should still thrash.
+        for ch in profile["layout"]["mon1"]["children"]:
+            if ch.get("id") == "comms":
+                ch["layout"] = "stacked"
+                break
+        state = detect_thrash(forest, profile)
+        self.assertTrue(state["thrashed"])
+        self.assertGreaterEqual(state["score"], 3)
+        blob = " ".join(state["reasons"]).lower()
+        self.assertTrue(
+            any(
+                k in blob
+                for k in (
+                    "nested-split",
+                    "stacked-roles-not-grouped",
+                    "mon1.comms",
+                )
+            ),
+            f"reasons should mention stacked/comms structure: {state['reasons']}",
+        )
+        self.assertFalse(
+            any("tabbed-roles-not-grouped:mon1.comms" in r for r in state["reasons"]),
+            f"stacked slot must not use tabbed reason: {state['reasons']}",
+        )
+
     def test_plan_reconcile_thrash_state_on_thrash_fixture(self):
         forest = _load("tree-thrash-mode-b-companions.json")
         profile = _load("profile-dev-v2.json")
