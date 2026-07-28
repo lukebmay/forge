@@ -25,9 +25,9 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Doc | Role |
 | --- | --- |
-| [forge-layout-sugar.md](./plans/forge-layout-sugar.md) | **Next** — bare array + infer match |
-| [docs/user/layout.md](../docs/user/layout.md) | Layout profiles (current) |
-| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED product |
+| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | **Next** — STACKED product path |
+| [forge-layout-sugar.md](./plans/forge-layout-sugar.md) | Main path **done** (LS1–2,4–5,7–8) |
+| [docs/user/layout.md](../docs/user/layout.md) | Layout profiles (bare array first) |
 | [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | Historical thrash-zero |
 | [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | Historical reconcile |
 
