@@ -16,7 +16,7 @@ extension in place — backup first if you care about a previous build.
 forge ping
 forge tree
 forge install             # re-run from stamped install origin
-forge update              # clean master: fetch → pull if new → install
+forge update              # clean master: fetch → pull if new → always install
 forge uninstall           # extension + forge-owned CLI; keeps prefs
 ```
 

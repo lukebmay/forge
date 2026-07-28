@@ -2204,9 +2204,10 @@ def cmd_install(_backend: Optional[str], args: argparse.Namespace) -> int:
 
 def cmd_update(_backend: Optional[str], args: argparse.Namespace) -> int:
     """
-    Fetch origin; if master has new commits, ff-pull and forge install.
+    Fetch origin; ff-pull when behind; always forge install so live code matches tree.
 
-    Refuses dirty trees and non-master branches (clear error).
+    Repo may already match origin/master while the extension install is stale —
+    update still rebuilds and installs. Refuses dirty trees and non-master branches.
     """
     origin = _load_install_origin()
     try:
@@ -2246,38 +2247,39 @@ def cmd_update(_backend: Optional[str], args: argparse.Namespace) -> int:
         _eprint("forge: update failed: could not compare HEAD to origin/master")
         return 1
 
-    if behind == 0:
-        if ahead > 0:
-            _eprint(
-                f"forge: already up to date with origin/master "
-                f"(local master is ahead by {ahead} commit(s); nothing to pull)"
-            )
-        else:
-            _eprint("forge: already up to date with origin/master")
-        return 0
+    if behind > 0:
+        _eprint(f"forge: {behind} commit(s) on origin/master — pulling (ff-only)…")
+        pull = _git(repo, "pull", "--ff-only", "origin", "master")
+        if pull.returncode != 0:
+            detail = (pull.stderr or pull.stdout or "").strip()
+            _eprint("forge: update failed: git pull --ff-only origin master failed")
+            if detail:
+                _eprint(detail)
+            if ahead > 0:
+                _eprint(
+                    f"hint: local master is also ahead by {ahead} commit(s); "
+                    "ff-only cannot diverge — merge/rebase manually, then forge install"
+                )
+            return 1
 
-    _eprint(f"forge: {behind} commit(s) on origin/master — pulling (ff-only)…")
-    pull = _git(repo, "pull", "--ff-only", "origin", "master")
-    if pull.returncode != 0:
-        detail = (pull.stderr or pull.stdout or "").strip()
-        _eprint("forge: update failed: git pull --ff-only origin master failed")
-        if detail:
-            _eprint(detail)
-        if ahead > 0:
-            _eprint(
-                f"hint: local master is also ahead by {ahead} commit(s); "
-                "ff-only cannot diverge — merge/rebase manually, then forge install"
-            )
-        return 1
+        err2 = _git_update_preflight(repo)
+        if err2:
+            _eprint(f"forge: update failed after pull: {err2}")
+            return 1
+        _eprint("forge: pull ok — running install…")
+    elif ahead > 0:
+        _eprint(
+            f"forge: git already up to date with origin/master "
+            f"(local master is ahead by {ahead} commit(s); nothing to pull) "
+            "— installing so live extension matches this tree…"
+        )
+    else:
+        _eprint(
+            "forge: git already up to date with origin/master "
+            "— installing so live extension matches this tree…"
+        )
 
-    # After pull, re-check clean master (should still be clean)
-    err2 = _git_update_preflight(repo)
-    if err2:
-        _eprint(f"forge: update failed after pull: {err2}")
-        return 1
-
-    _eprint("forge: pull ok — running install…")
-    # Non-interactive install path (same flags as forge install)
+    # Always install: tree may be current while extension files are stale.
     if not getattr(args, "force", False):
         args.force = True
     return cmd_install(_backend, args)
@@ -2869,17 +2871,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     update_p = sub.add_parser(
         "update",
-        help="Fetch origin/master; if new commits, pull (ff-only) and install",
+        help="Fetch origin/master; pull if new; always install (even if git is current)",
         description=(
             "Safe daily update from the recorded git tree (or this CLI's repo).\n"
             "\n"
             "Requires a clean working tree on branch master. Then:\n"
             "  1. git fetch origin\n"
             "  2. if HEAD is behind origin/master → git pull --ff-only origin master\n"
-            "  3. forge install (same build → enable → Shell reload path)\n"
+            "  3. always forge install so the live extension matches the tree\n"
+            "     (even when git is already up to date — install may be stale)\n"
             "\n"
             "Fails clearly if the tree is dirty or the branch is not master.\n"
-            "If already up to date with origin/master, exits 0 without reinstall.\n"
             "\n"
             "Does not require extension DBus."
         ),
@@ -2888,7 +2890,7 @@ def build_parser() -> argparse.ArgumentParser:
     update_p.add_argument(
         "--force",
         action="store_true",
-        help="Non-interactive install after pull (default for update)",
+        help="Non-interactive install (default for update)",
     )
     update_p.add_argument("--prod", action="store_true", help="Production build")
     update_p.add_argument("--dev", action="store_true", help="Debug build (default)")
@@ -2921,7 +2923,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--verbose",
         "-v",
         action="store_true",
-        help="Detailed install logs after pull",
+        help="Detailed install logs",
     )
     update_p.set_defaults(func=cmd_update)
 

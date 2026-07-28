@@ -133,7 +133,7 @@ the schemas allow.
 ```bash
 git pull
 forge install          # or: ./install
-# or: forge update     # clean master only: fetch → pull if new → install
+# or: forge update     # clean master: fetch → pull if new → always install
 ```
 
 **Remove (keeps prefs):**
