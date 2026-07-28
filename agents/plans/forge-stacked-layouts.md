@@ -193,12 +193,20 @@ SL0–SL4 + defaults/keybinds done. SL6 polish only if product wants.
 
 ## Session note
 
+**2026-07-28 P1c (docs/help + install wrapup)**
+
+- Phase 1 keys task **done** — docs/help consistency, install with new schema keys,
+  Vim kit re-apply, unit suite, final commit.
+- Fixed stale layouts.md split chords; troubleshooting reload/merge notes;
+  config/README/cli_help/DESIGN polish.
+- **Next product:** SL5 live verify on black (optional thrash); do **not** start Phase 2.
+- Task file: [completed/forge-stacked-layouts_phase1-keys.md](./forge-stacked-layouts/completed/forge-stacked-layouts_phase1-keys.md)
+
 **2026-07-28 P1b (extension handlers)**
 
 - Shipped: `LayoutStackTabToggle`, `WindowMergeGroup`, `mergeWindowsIntoGroup`,
   RunSteps `layout-cycle` / `merge-group` / `float` (handlers + **EXTENSION_OPS** validation).
 - Stack mode default on; tabbed remains default group type.
-- Active task: [forge-stacked-layouts_phase1-keys.md](../tasks/forge-stacked-layouts_phase1-keys.md) → **P1c** install/live wrapup.
 - Completed defaults task: [completed/forge-stacked-layouts_defaults-keybinds.md](./forge-stacked-layouts/completed/forge-stacked-layouts_defaults-keybinds.md)
 
 **2026-07-28 defaults + keybinds**
@@ -206,4 +214,3 @@ SL0–SL4 + defaults/keybinds done. SL6 polish only if product wants.
 - `stacked-tiling-mode-enabled` default **true**; tabbed stays default group (DnD, bare sugar, merge).
 - New: `LayoutStackTabToggle` (`con-stack-tab-layout-toggle`), `WindowMergeGroup` (`window-merge-group`).
 - Tree: `mergeWindowsIntoGroup`; kits Safe/Vim/i3; docs layouts/keybindings/README/DESIGN.
-- Next: unit tests green → install/live; SL5 optional thrash pass.

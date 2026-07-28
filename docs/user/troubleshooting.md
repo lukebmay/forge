@@ -23,7 +23,14 @@ It probably matches a rule. Check **Preferences → Windows** and
   default **group** type (DnD center, bare-array sugar, merge-group).
 - If a toggle no-ops, confirm the matching flag in **Preferences → Tiling →
   Behavior**: `tabbed-tiling-mode-enabled` / `stacked-tiling-mode-enabled`.
-- Existing installs keep prior dconf values until you reset or re-apply defaults.
+- **Group chrome cycle** (`con-stack-tab-layout-toggle`: Safe `Ctrl+Super+g`,
+  Vim `Shift+Super+n`) only flips an **existing** tab/stack group — no-op on a
+  plain H/V split. Use **merge** (`window-merge-group`: Safe `Ctrl+Super+m`,
+  Vim `Shift+Super+m`) to make a tabbed group first, or DnD center-drop.
+- After installing a build that adds keys, reload Shell (X11: `Alt+F2` → `r`, or
+  `killall -HUP gnome-shell`) so the extension re-registers bindings; then
+  `forge keybind apply vim` (or Safe/i3) if dconf still lacks the new chords.
+- Existing installs keep prior dconf values until you reset or re-apply a kit.
   See [layouts.md](layouts.md#stacked-vs-tabbed).
 
 ## After lock / blank, all windows on one monitor

@@ -11,8 +11,8 @@ bindings, and see [keybindings.md](keybindings.md) to customize them.
 New windows tile side-by-side. A container is either a **horizontal split**
 (windows left-to-right) or a **vertical split** (stacked top-to-bottom).
 
-- **Toggle a container's split direction** — Safe default `Ctrl+Super+g` (Vim kit:
-  `Super+g`). Use the cheatsheet for your live chord.
+- **Toggle a container's split direction (H ↔ V)** — Safe default `Ctrl+Super+s`
+  (Vim kit: `Ctrl+Super+n`). Use the cheatsheet for your live chord.
 - Splits **nest**: split one pane vertically while its parent stays horizontal, and
   you get an L-shaped layout. This is how complex layouts are built.
 - New windows inherit the focused container's split. Enable **Auto Split /

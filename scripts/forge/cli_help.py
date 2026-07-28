@@ -100,6 +100,14 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  ", cmd("forge keybind backup [name]", **kw), "  ", dim("# live → profile JSON", **kw))
     _out(s, "  ", cmd("forge keybind apply vim", **kw), "       ", dim("# built-in kit → gsettings", **kw))
     _out(s, "  ", cmd("forge keybind list", **kw), "            ", dim("# FORGE_KEYBIND_PROFILES_DIR", **kw))
+    _out(
+        s,
+        "  ",
+        dim(
+            "Vim Phase 1: Shift+Super+n = tab↔stack chrome; Shift+Super+m = merge→tabbed.",
+            **kw,
+        ),
+    )
     _blank(s)
 
     _out(s, dim("Per-command flags: forge <command> -h", **kw))
@@ -185,7 +193,8 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     for line, desc in (
         ("bare dual-mon array", "[[panes…], [panes…]] → mon0, mon1, …"),
         ("bare single-mon panes", "[ pane, pane ] → mon0"),
-        ('["app1", "app2"]', "one tabbed pane"),
+        ('["app1", "app2"]', "one tabbed pane (default group)"),
+        ('{ "layout": "stacked", "content": […] }', "stacked pane (mode on by default)"),
         ('"ghostty" / "Grok"', "string = open + inferred match"),
         ('monN / stableKey / alias', "advanced tiles object keys (T7)"),
         ('split: "h"/"v"/hsplit/…', "override split"),

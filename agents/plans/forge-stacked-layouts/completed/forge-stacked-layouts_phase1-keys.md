@@ -1,7 +1,7 @@
 # Task: Phase 1 layout keys + portable keybind profiles
 
 **Plan:** forge-stacked-layouts  
-**Status:** in progress (P1a + P1b done → P1c)
+**Status:** **done** (P1a + P1b + P1c)
 
 ## Acceptance
 
@@ -18,8 +18,15 @@
 | ID | Work | Commit |
 | --- | --- | --- |
 | P1a | Env var + shellrc + backup + apply Vim | yes — done |
-| P1b | Phase 1 verify / fix gaps (A/B) | yes — this session |
-| P1c | Docs/help wrapup + install/HUP verify + final | pending |
+| P1b | Phase 1 verify / fix gaps (A/B) | yes — done |
+| P1c | Docs/help wrapup + install + final | yes — this session |
+
+## Session note (P1c)
+
+- **Docs:** fixed layouts.md H↔V chords (`Ctrl+Super+s` / Vim `Ctrl+Super+n`); troubleshooting stack/tab no-op + reload/apply kit; config.md keybind profiles dir; README Phase 1 chords + `forge keybind`; DESIGN Phase 1 **shipped**; cli_help stacked sugar + Vim n/m note.
+- **Install:** `./install --no-restart` so schemas include `con-stack-tab-layout-toggle` / `window-merge-group` without HUP; re-apply Vim kit; live gsettings chords verified under extension schema dir.
+- **Tests:** full unit suite; fix only failures from this work if any.
+- **Live keys:** Shell must reload (X11 HUP / Alt+F2 r) before new binds fire in-session.
 
 ## Session note (P1b)
 

@@ -379,7 +379,7 @@ and move-into-group — but H/V trees are visually ambiguous
 (`hsplit(vsplit(A,B), vsplit(C,D))` vs `vsplit(hsplit(A,C), hsplit(B,D))`), and
 casual “groupify this parent” dissolves nested units.
 
-**Phase 1 (shipped / shipping):**
+**Phase 1 (shipped):**
 
 | Verb | Safe | Vim | Behavior |
 | --- | --- | --- | --- |
@@ -390,6 +390,7 @@ casual “groupify this parent” dissolves nested units.
 
 Groups today are **window-leaf bags** — chrome flip is lossless. CLI parity via
 RunSteps: `layout-cycle` (axis `group`|`split`), `merge-group`, `float`.
+Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind backup|apply`.
 
 **Phase 2 (later):** shallow groupify of **consecutive window units** in a split
 (bookended by nested CONs or ends); single window between two groups → absorb

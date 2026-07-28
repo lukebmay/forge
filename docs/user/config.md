@@ -9,10 +9,17 @@ them up, version-control them, or copy them to another machine.
 ~/.config/forge/config/
 ├── settings.json       # mirror of Forge GSettings (appearance, behavior, …)
 ├── keybindings.json    # mirror of keybindings
+├── keybinding-profiles/  # named kits (or FORGE_KEYBIND_PROFILES_DIR)
 └── windows.json        # float/tile window rules (see rules.md)
 ```
 
 GSettings remains the live source of truth; these files are an import/export layer.
+
+**Keybind kits:** `forge keybind backup|apply|list` writes/reads profiles under
+`FORGE_KEYBIND_PROFILES_DIR` when set (shellrc often exports
+`$shellrc/configs/forge/keybinding-profiles`), else
+`~/.config/forge/config/keybinding-profiles/`. See
+[keybindings.md](keybindings.md#keybind-kits-in-preferences).
 
 ## Export / import
 

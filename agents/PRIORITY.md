@@ -8,7 +8,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **stacks** | STACKED defaults + stack↔tab / merge keybinds shipping; then SL5 live | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| **1** | **stacks SL5** | Live verify stack↔tab / merge / stacked profiles on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 | 2 | layout polish | Live-drive bare-array `forge layout` | Day-to-day on black |
 | 3 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
 
@@ -16,6 +16,7 @@
 
 | Item | Note |
 | --- | --- |
+| STACKED Phase 1 keys | Stack mode on; tab↔stack + merge binds; kits + `forge keybind`; RunSteps parity; docs/install |
 | STACKED SL4 | CLI regression: ensure stacked on tabbed/flat; nothingToDo on pair; save RT |
 | STACKED SL3 | thrash: stacked multi-role co-group + nested-split parity with tabbed |
 | STACKED SL1 | save STACKED→`{layout:stacked,content}`; desugar multi-role stacked; tests/docs |
@@ -42,7 +43,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [stacked](./plans/forge-stacked-layouts.md) | Mode on by default; tabbed still default group; stack↔tab + merge binds |
+| **P0** | [stacked](./plans/forge-stacked-layouts.md) | Phase 1 **done**; next SL5 live verify (optional SL6 polish) |
 | P1 | Live layout daily-drive | Bare-array sugar live on black |
 | P2 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
 
