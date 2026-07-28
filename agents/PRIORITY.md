@@ -6,15 +6,14 @@
 
 ## Next session focus
 
-**No open P0 planner work.** Thrash-zero + Mode A nested residual shipped
-(A/B AGREE). Optional live black re-run: Nautilus under left Ghostty +
-FB/Chess under right → `workon dev` should term-tab (Mode A), not chrome park.
+**No open P0 planner work.** Thrash-zero + Mode A nested + audit **B1** DnD
+extract shipped (A/B AGREE). Next polish: T9 multi-line tabs when wanted.
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
 | — | thrash-zero | TZ1…TZ-mode-a-nested **Done** | Morning workon gate |
+| — | **B1** | [DnD extract](./plans/forge-codebase-audit/completed/forge-codebase-audit_b1-dnd-extract.md) | **Done** A/B AGREE |
 | later | T9 multi-line tabs | Polish only | After daily drive stable |
-| later | Audit B1 DnD extract | Optional | Maintainability |
 
 **Mode A product:** tab **marginals** into the view they occupy (incl. under
 nested VSPLIT with a role).  
@@ -30,7 +29,7 @@ Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 | [forge-command.md](./plans/forge-command.md) | FC0–FC5 Done |
 | [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 Done |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome + HUP |
-| [forge-codebase-audit.md](./plans/forge-codebase-audit.md) | Wave 1 done; B1 optional |
+| [forge-codebase-audit.md](./plans/forge-codebase-audit.md) | Wave 1 + **B1 Done** |
 
 ---
 
@@ -44,7 +43,7 @@ Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 | 4 | **Critical (shipped)** | Tabs, stack-off, LFT, keybinds, sizing | Daily tiling feel | Done |
 | 5 | **High (shipped)** | Idempotent workon + sugar + coexist | Morning desk | WR1–WR16 + TZ |
 | 6 | **Medium (live)** | Regression watch HUP/wake/tabs | Day ruined if back | Monitor |
-| 7 | **Low (meta)** | Personal fork / audit B1 | Not tiling | Fork done; B1 skip |
+| 7 | **Low (meta)** | Personal fork / audit B1 | Not tiling | Fork done; B1 Done |
 
 ---
 
@@ -56,12 +55,12 @@ Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 | P1 | workon reconcile WR1–WR16 | Done | Yes |
 | P2 | Live daily-drive; report bugs | Ongoing | Yes |
 | later | T9 multi-line tabs | Polish | Later |
-| later | Audit B1 DnD extract | Optional | Maintainability |
 
 ### Done recently (not open work)
 
 | Item | Note |
 | --- | --- |
+| **B1 DnD extract** | `drag-drop.js`; window.js 4487→3985; [completed](./plans/forge-codebase-audit/completed/forge-codebase-audit_b1-dnd-extract.md) A/B AGREE |
 | **TZ-mode-a-nested** | Single-role nested companions → Mode A; [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-mode-a-nested.md) |
 | **TZ-live** | Mode B fallback OK; residual fixed above |
 | **TZ-detect…TZ-matrix** | thrash-zero core |

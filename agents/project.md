@@ -57,7 +57,7 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 | [forge-workon-reconcile](./plans/forge-workon-reconcile.md) | **Complete** WR1–WR15 + WR6–WR9 | residual roleOrder optional |
 | [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | FC6 via workon-reconcile plan |
 | [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + OP-opt **Done** | Live; thrash bugs interrupt; T9 later |
-| [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 **Done** | Optional B1 DnD extract only |
+| [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 + B1 **Done** | Residual size optional (B2…) |
 | [personal fork](./plans/forge-fork-eval/completed/forge-fork-eval_personal-fork.md) | **Done** | lukebmay/forge · lineage `luke` · master |
 
 **Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).  

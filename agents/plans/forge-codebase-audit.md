@@ -1,8 +1,8 @@
 # Plan: Forge codebase efficiency & organization audit
 
-**Status:** **wave 1 complete** (CA0–CA9)
+**Status:** **wave 1 complete** (CA0–CA9); **B1 Done** (DnD extract)
 
-**Priority:** wave 1 done; optional wave 2 **B1** (DnD extract) if size still matters
+**Priority:** wave 1 + B1 done; residual size optional (open-app cluster B2, etc.)
 
 **Mode:** A/B implement–verify per task; serial; one concern per change  
 **Trigger:** thrash/session work layered safety nets without cleanup; user quality bar: clean code, files &lt;1K preferred, no rewrite  
@@ -406,7 +406,7 @@ Task IDs: **CA0…CA9**. Execute in order unless noted parallel-safe.
 
 | ID | Idea | Disposition (CA9) |
 | --- | --- | --- |
-| **B1** | Extract DnD/grab cluster from window.js (~650–900 lines) | **Keep — high ROI / optional wave 2.** window.js still **4431** (&gt;3.5k stretch and &gt;4k aspirational). Best next size win; product risk separate from thrash recovery. |
+| **B1** | Extract DnD/grab cluster from window.js (~650–900 lines) | **Done (2026-07-27).** `drag-drop.js` + thin WM wrappers; window.js **3985** (−502). |
 | B2 | Open-app / dock sticky glue module | **Keep low** — pain lower than DnD; only if open-app work touches that cluster |
 | B3 | Node tab chrome extract | **Keep deferred** — high Shell regression risk; not size-critical now |
 | B4 | Split `session-api.js` if it grows past 1.2k | **Keep parked** — still ~993; not blocking |
@@ -442,62 +442,46 @@ Task IDs: **CA0…CA9**. Execute in order unless noted parallel-safe.
 
 ## Session note (handoff)
 
-**CA9 A (2026-07-26):** Metrics + handoff only. No extractions. `npm test` **184/1868** green.
+**B1 A (2026-07-27):** Extract DnD/grab → `lib/extension/drag-drop.js` (`DragDropManager`).
+Thin WM wrappers; grab state stays on WM. Resize path left on WM.
 
-**CA9 B (2026-07-26): AGREE.** Independent `wc -l` matches table; PRIORITY wave-1 done + B1 kept; git scope agents docs only; `npm test` 184/1868 green. No doc fixes needed.
+| File | Before B1 | After B1 | Δ |
+| --- | ---: | ---: | ---: |
+| `window.js` | 4487 | **3985** | **−502** |
+| `drag-drop.js` | — | **638** | new |
 
-### Post–wave-1 line counts (2026-07-26)
+**Tests:** drag-drop unit 69; grab regressions 13; `npm test` **185 / 1886** green.
+
+**Task file:** `agents/plans/forge-codebase-audit/completed/forge-codebase-audit_b1-dnd-extract.md`
+
+**Next for B:** independent verify (AGREE/DISAGREE). Residual size still &gt;3.5k stretch;
+next size candidate is B2 open-app/track if wanted — not required.
+
+### Post–wave-1 + B1 line counts
 
 | File | Baseline (plan inventory) | Now | Δ |
 | --- | ---: | ---: | ---: |
-| `window.js` | ~5062 | **4431** | **−631** |
+| `window.js` | ~5062 | **3985** | **−1077** (wave1+B1) |
 | `tree.js` | ~2910 | **2572** | **−338** |
-| `session-layout-restore.js` | — (new CA4) | **477** | extract |
-| `soft-rehome.js` | — (new CA5) | **284** | extract |
-| `tree-layout.js` | — (new CA7) | **337** | extract |
+| `session-layout-restore.js` | — (CA4) | ~477 | extract |
+| `soft-rehome.js` | — (CA5) | ~284 | extract |
+| `tree-layout.js` | — (CA7) | ~337 | extract |
+| `drag-drop.js` | — (B1) | **638** | extract |
 
 ### Targets (honest pass/fail)
 
 | Target | Result |
 | --- | --- |
-| `window.js` aspirational **&lt;4k** | **FAIL** (4431) |
-| `window.js` stretch **&lt;3.5k** | **FAIL** (4431) |
-| `tree.js` **&lt;2.5k** | **FAIL** by ~72 (2572) — close; layout extract did its job |
+| `window.js` aspirational **&lt;4k** | **PASS** (3985) after B1 |
+| `window.js` stretch **&lt;3.5k** | **FAIL** (3985) |
+| `tree.js` **&lt;2.5k** | **FAIL** by ~72 (2572) |
 
-Wave 1 **did** shrink the two offenders and carved thrash/session/layout into named modules. Ceiling goals for the two cores were **not** fully met; remaining bulk in `window.js` is largely **DnD/grab + open-app/track + core WM**.
-
-### Backlog recommendation
-
-- **Schedule optional wave 2 only for B1** (DnD/grab extract) if further size work is wanted — high ROI while window &gt;3.5k.
-- Do **not** open B3 (tab chrome) for tidy alone.
-- B2/B5/B5b/B8 only opportunistically; B6/B7 product/infra elsewhere.
-
-### Wave 1 summary (CA0–CA9)
+### Wave 1 + B1 summary
 
 | Task | Outcome |
 | --- | --- |
-| CA0 | Recovery + timer doc in DESIGN |
-| CA1 | Session trace noise down |
-| CA2 | Residue / dead method / timer hygiene |
-| CA3 | `monoTimeUs()` DRY |
-| CA4 | `session-layout-restore.js` |
-| CA5 | `soft-rehome.js` + `safeMoveToMonitor` |
-| CA6 | Raise policy docs (no risky DRY) |
-| CA7 | `tree-layout.js` |
-| CA8 | Debug gate + comment trim |
-| CA9 | Metrics + backlog disposition |
+| CA0–CA9 | Wave 1 complete (see prior session) |
+| **B1** | `drag-drop.js` — grab-tile / drop cluster |
 
-**Next:** product queue (personal fork). Optional: wave 2 **B1** only if size still prioritized.
-
-### Live install smoke (2026-07-26 wrap-up)
-
-On host with dual displays active (X11):
-
-1. `forge settings save audit-wave1-smoke` — ok  
-2. `forge tree` before — mo0: TABBED(2 chrome)+ghostty; mo1: ghostty+TABBED(3 chrome); 7 tiles  
-3. `forge install` → `v49-90-beta.2-42-g24a6533`; Shell HUP  
-4. `forge ping` ok; `forge tree` after — **same topology / 7 windows** (session restore through install)  
-5. `npm test` — **184 / 1868** green  
-
-Wave 1 closed with live proof, not only unit tests.
+**Next:** none required. Optional B2 open-app extract or T9 multi-line tabs.
 
