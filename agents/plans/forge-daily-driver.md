@@ -8,11 +8,14 @@
 **Related:** [forge-harden-and-session.md](./forge-harden-and-session.md), [forge-command.md](./forge-command.md)  
 **Completed (prior):** [soft-rehome](./forge-harden-and-session/completed/forge-harden-and-session_soft-rehome.md)
 
-### Session note (2026-07-26)
+### Session note (2026-07-28)
 
-**OP-opt Done (B AGREE)** — [completed task](./forge-daily-driver/completed/forge-daily-driver_op-opt-tiny-pane-tab.md).  
-Enable live: `gsettings set org.gnome.shell.extensions.forge tiny-pane-tab-fallback-enabled true`  
-T0–T7 + OP1 + OP-opt + FC0–FC5 done. Later: T9 multi-line tabs.
+**T9 multi-line tabs v1 Done (A/B AGREE)** —
+[completed task](./forge-daily-driver/completed/forge-daily-driver_t9-multiline-tabs.md).  
+`max-tabs-per-line` default **0** (single row unchanged). Opt-in wrap: content
+inset = rows × `stacked-tab-bar-height`; multi-row = vertical outer + horizontal
+row hosts. Pure: `planTabRows` / `tabbedBarHeight`.  
+Prior: OP-opt Done; T0–T7 + OP1 + FC0–FC5 + thrash-zero done.
 ---
 
 ## Goals
@@ -119,7 +122,7 @@ T4 sizing policy (equalize / userSized)
 | **T7** | [completed/forge-daily-driver_t7-stable-outputs.md](./forge-daily-driver/completed/forge-daily-driver_t7-stable-outputs.md) | **Done** | T6 | M | Connector/stable keys; remap layer (gdisplays-inspired) |
 | **FC\*** | [forge-command.md](./forge-command.md) | **Done** (FC0–FC5) | OP1; T6–T7 | L | `forge` CLI + DBus + workon |
 | **OP-opt** | [completed/…](./forge-daily-driver/completed/forge-daily-driver_op-opt-tiny-pane-tab.md) | **Done** | after OP1 + FC* | S | Min-edge tab fallback (default off) |
-| **T9** | multi-line tabs North Star | Later | T1 proven | L | One group chrome; max_tabs_per_line |
+| **T9** | [completed/forge-daily-driver_t9-multiline-tabs.md](./forge-daily-driver/completed/forge-daily-driver_t9-multiline-tabs.md) | **Done** (A; B verify) | T1 proven | L | One group chrome; max-tabs-per-line wrap |
 
 When creating OP1/T6–T7/OP-opt task files, copy T0–T3 structure. FC\* tasks live under forge-command plan.
 

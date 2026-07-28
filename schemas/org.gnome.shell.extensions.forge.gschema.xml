@@ -239,6 +239,11 @@
             <summary>Height of each stacked/tabbed title bar (pixels). Minimum 1; 0 would collide with the hidden-decoration path.</summary>
         </key>
 
+        <key type="u" name="max-tabs-per-line">
+            <default>0</default>
+            <summary>Max tab labels per row in tabbed mode (0 = unlimited single row; wrap into more rows when set).</summary>
+        </key>
+
         <key type="s" name="tab-position">
             <choices>
                 <choice value="top"/>

@@ -1,23 +1,21 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-07-27  
+**Updated:** 2026-07-28  
 **Lens:** day-to-day impact on `black` (dual 4K, X11, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 ## Next session focus
 
-**No open P0 planner work.** Thrash-zero + Mode A nested + audit **B1** DnD
-extract shipped (A/B AGREE). Next polish: T9 multi-line tabs when wanted.
+**No open planner tasks.** Thrash-zero, Mode A nested, audit B1, and T9
+multi-line tabs v1 all shipped (A/B AGREE). Live-drive + report bugs as needed.
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
 | — | thrash-zero | TZ1…TZ-mode-a-nested **Done** | Morning workon gate |
-| — | **B1** | [DnD extract](./plans/forge-codebase-audit/completed/forge-codebase-audit_b1-dnd-extract.md) | **Done** A/B AGREE |
-| later | T9 multi-line tabs | Polish only | After daily drive stable |
+| — | **B1** | DnD extract **Done** | window.js size |
+| — | **T9** | Multi-line tabs v1 **Done** | Opt-in wrap chrome |
 
-**Mode A product:** tab **marginals** into the view they occupy (incl. under
-nested VSPLIT with a role).  
-**Mode B:** true thrash → roles only + soft-park rest (keep).
+Optional later: B2 open-app extract; STACKED deprecate; live smoke T9.
 
 Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 **`luke`**).
@@ -27,7 +25,7 @@ Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 | [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | **Shipped** TZ1…TZ-mode-a-nested |
 | [forge-workon-reconcile.md](./plans/forge-workon-reconcile.md) | Complete WR1–WR16 |
 | [forge-command.md](./plans/forge-command.md) | FC0–FC5 Done |
-| [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 Done |
+| [forge-daily-driver.md](./plans/forge-daily-driver.md) | T0–T7 + OP1 + **T9 Done** |
 | [forge-harden-and-session.md](./plans/forge-harden-and-session.md) | Soft rehome + HUP |
 | [forge-codebase-audit.md](./plans/forge-codebase-audit.md) | Wave 1 + **B1 Done** |
 
@@ -43,7 +41,7 @@ Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 | 4 | **Critical (shipped)** | Tabs, stack-off, LFT, keybinds, sizing | Daily tiling feel | Done |
 | 5 | **High (shipped)** | Idempotent workon + sugar + coexist | Morning desk | WR1–WR16 + TZ |
 | 6 | **Medium (live)** | Regression watch HUP/wake/tabs | Day ruined if back | Monitor |
-| 7 | **Low (meta)** | Personal fork / audit B1 | Not tiling | Fork done; B1 Done |
+| 7 | **Low (shipped)** | Audit B1 + T9 multi-line | Size + polish | Done |
 
 ---
 
@@ -54,12 +52,14 @@ Product base is this tree (`~/dev/me/forge`, origin **lukebmay/forge**, lineage
 | P0 | [thrash-zero](./plans/forge-workon-thrash-zero.md) TZ1…TZ-mode-a-nested | **Shipped** | Yes |
 | P1 | workon reconcile WR1–WR16 | Done | Yes |
 | P2 | Live daily-drive; report bugs | Ongoing | Yes |
-| later | T9 multi-line tabs | Polish | Later |
+| later | T9 multi-line tabs v1 | **Done** A/B AGREE | Polish |
+| later | Audit B1 DnD extract | **Done** A/B AGREE | Maintainability |
 
 ### Done recently (not open work)
 
 | Item | Note |
 | --- | --- |
+| **T9 multi-line tabs v1** | `max-tabs-per-line` default 0; wrap hosts; [completed](./plans/forge-daily-driver/completed/forge-daily-driver_t9-multiline-tabs.md) A/B AGREE |
 | **B1 DnD extract** | `drag-drop.js`; window.js 4487→3985; [completed](./plans/forge-codebase-audit/completed/forge-codebase-audit_b1-dnd-extract.md) A/B AGREE |
 | **TZ-mode-a-nested** | Single-role nested companions → Mode A; [completed](./plans/forge-workon-thrash-zero/completed/forge-workon-thrash-zero_tz-mode-a-nested.md) |
 | **TZ-live** | Mode B fallback OK; residual fixed above |

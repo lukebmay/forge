@@ -2,6 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import St, { __setScaleFactor, __resetScaleFactor } from "gi://St";
 import Clutter from "gi://Clutter";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import {
+  planTabRows,
+  tabbedBarHeight,
+  tabbedChildRect,
+} from "../../../lib/extension/tree-layout.js";
 import { createTreeFixture } from "../../mocks/helpers/index.js";
 
 /**
@@ -10,6 +15,45 @@ import { createTreeFixture } from "../../mocks/helpers/index.js";
  * Tests the core tiling algorithms: processSplit, processStacked, processTabbed, computeSizes
  * These are the heart of the i3-like window management system.
  */
+describe("planTabRows / tabbedBarHeight (T9 pure)", () => {
+  it("max=0 (or unset) yields a single unlimited row", () => {
+    expect(planTabRows(5, 0)).toEqual({ rows: [[0, 1, 2, 3, 4]], rowCount: 1 });
+    expect(planTabRows(5, -1)).toEqual({ rows: [[0, 1, 2, 3, 4]], rowCount: 1 });
+    expect(tabbedBarHeight(35, 5, 0)).toBe(35);
+  });
+
+  it("max=N wraps after N tabs", () => {
+    expect(planTabRows(5, 3)).toEqual({
+      rows: [
+        [0, 1, 2],
+        [3, 4],
+      ],
+      rowCount: 2,
+    });
+    expect(tabbedBarHeight(35, 5, 3)).toBe(70);
+  });
+
+  it("max=1 yields one row per tab (stack-like height)", () => {
+    expect(planTabRows(4, 1)).toEqual({
+      rows: [[0], [1], [2], [3]],
+      rowCount: 4,
+    });
+    expect(tabbedBarHeight(35, 4, 1)).toBe(140);
+  });
+
+  it("empty count is zero rows / zero height", () => {
+    expect(planTabRows(0, 3)).toEqual({ rows: [], rowCount: 0 });
+    expect(tabbedBarHeight(35, 0, 3)).toBe(0);
+  });
+
+  it("tabbedChildRect insets content by total multi-row bar height", () => {
+    const rect = { x: 0, y: 10, width: 1000, height: 800 };
+    const laid = tabbedChildRect(rect, 70, "top", true);
+    expect(laid.y).toBe(80);
+    expect(laid.height).toBe(730);
+  });
+});
+
 describe("Tree Layout Algorithms", () => {
   let ctx;
 
@@ -480,6 +524,110 @@ describe("Tree Layout Algorithms", () => {
 
       expect(child.rect.x).toBe(200);
       expect(child.rect.y).toBe(100);
+    });
+
+    // T9: multi-line tabs when max-tabs-per-line >= 1
+    it("max=3 with 5 tabs: content inset by 2× row height and outer is vertical", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.TABBED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 800 };
+
+      const kids = Array.from({ length: 5 }, () => new Node(NODE_TYPES.CON, new St.Bin()));
+      kids.forEach((c) => {
+        c.tab = new St.Bin();
+        c._createWindowTab = vi.fn();
+        c._ensureConTab = vi.fn();
+      });
+      container.childNodes = kids;
+
+      const stackedHeight = 35;
+      const params = {
+        stackedHeight,
+        tiledChildren: kids,
+        maxTabsPerLine: 3,
+      };
+
+      kids.forEach((child, i) => ctx.tree.processTabbed(container, child, params, i));
+
+      const totalBar = stackedHeight * 2;
+      kids.forEach((child) => {
+        expect(child.rect.y).toBe(totalBar);
+        expect(child.rect.height).toBe(800 - totalBar);
+      });
+      expect(container.decoration.orientation).toBe(Clutter.Orientation.VERTICAL);
+      expect(container.decoration.height).toBe(totalBar);
+      expect(container._tabRowHosts).toHaveLength(2);
+      expect(container._tabRowHosts[0].children).toHaveLength(3);
+      expect(container._tabRowHosts[1].children).toHaveLength(2);
+    });
+
+    it("max=1 with K tabs: K bar rows (stack-like height) still TABBED", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.TABBED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 800 };
+
+      const kids = Array.from({ length: 4 }, () => new Node(NODE_TYPES.CON, new St.Bin()));
+      kids.forEach((c) => {
+        c.tab = new St.Bin();
+        c._createWindowTab = vi.fn();
+        c._ensureConTab = vi.fn();
+      });
+      container.childNodes = kids;
+
+      const stackedHeight = 35;
+      const params = {
+        stackedHeight,
+        tiledChildren: kids,
+        maxTabsPerLine: 1,
+      };
+
+      kids.forEach((child, i) => ctx.tree.processTabbed(container, child, params, i));
+
+      const totalBar = stackedHeight * 4;
+      kids.forEach((child) => {
+        expect(child.rect.y).toBe(totalBar);
+        expect(child.rect.height).toBe(800 - totalBar);
+      });
+      expect(container.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(container._tabRowHosts).toHaveLength(4);
+      container._tabRowHosts.forEach((row) => {
+        expect(row.children).toHaveLength(1);
+      });
+    });
+
+    it("max=0 keeps single-row horizontal host (default unchanged)", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.TABBED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 800 };
+
+      const kids = Array.from({ length: 5 }, () => new Node(NODE_TYPES.CON, new St.Bin()));
+      kids.forEach((c) => {
+        c.tab = new St.Bin();
+        c._createWindowTab = vi.fn();
+        c._ensureConTab = vi.fn();
+      });
+      container.childNodes = kids;
+
+      const stackedHeight = 35;
+      const params = {
+        stackedHeight,
+        tiledChildren: kids,
+        maxTabsPerLine: 0,
+      };
+
+      kids.forEach((child, i) => ctx.tree.processTabbed(container, child, params, i));
+
+      kids.forEach((child) => {
+        expect(child.rect.y).toBe(stackedHeight);
+        expect(child.rect.height).toBe(800 - stackedHeight);
+      });
+      expect(container.decoration.orientation).toBe(Clutter.Orientation.HORIZONTAL);
+      expect(container.decoration.height).toBe(stackedHeight);
+      expect(container._tabRowHosts).toBeFalsy();
+      // Tabs attach directly to the outer decoration.
+      expect(
+        container.decoration.children.filter((c) => kids.some((k) => k.tab === c))
+      ).toHaveLength(5);
     });
   });
 

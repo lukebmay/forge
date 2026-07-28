@@ -4,6 +4,7 @@ Searchable one-line summaries of finished work. Details in `entries/`.
 
 | Date | Slug | Tags | One-line |
 | --- | --- | --- | --- |
+| 2026-07-27 | [t9-multiline-tabs](./entries/t9-multiline-tabs.md) | tiling, tabs, decoration | `max-tabs-per-line` wrap; default 0; multi-row hosts + total bar height |
 | 2026-07-27 | [b1-dnd-extract](./entries/b1-dnd-extract.md) | audit, extract, dnd | DnD/grab cluster → `drag-drop.js`; window.js 4487→3985; thin WM wrappers |
 | 2026-07-27 | [tz-mode-a-nested](./entries/tz-mode-a-nested.md) | workon, thrash, Mode A | Nested companions under role term → Mode A collect, not Mode B park |
 | 2026-07-26 | [op-opt-tiny-pane-tab](./entries/op-opt-tiny-pane-tab.md) | tiling, open-app, tabs | Opt-in min-edge → tab instead of postage-stamp split |

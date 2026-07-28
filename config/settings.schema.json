@@ -217,6 +217,13 @@
           "maximum": 200,
           "default": 35
         },
+        "max-tabs-per-line": {
+          "type": "integer",
+          "description": "Max tab labels per row in tabbed mode (0 = unlimited single row)",
+          "minimum": 0,
+          "maximum": 50,
+          "default": 0
+        },
         "tab-position": {
           "type": "string",
           "description": "Position of the stacked/tabbed title bar within its container (top or bottom)",
