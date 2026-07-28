@@ -227,23 +227,27 @@ class TestResolveSaveDescription(unittest.TestCase):
         )
         self.assertIsNone(got)
 
-    def test_interactive_no_existing_prefill_auto(self):
-        edits: list[tuple[str, str]] = []
+    def test_interactive_no_existing_keep_uses_auto(self):
+        def boom(_prompt: str, prefill: str) -> str:
+            raise AssertionError("edit should not run on Keep")
 
-        def edit(prompt: str, prefill: str) -> str:
-            edits.append((prompt, prefill))
-            return prefill  # Enter accepts default
+        lines: list[str] = []
+
+        def pr(*a, **_k):
+            lines.append(" ".join(str(x) for x in a))
 
         got = resolve_save_description(
             auto="mon0 (hsplit): a, b.",
             existing=None,
             interactive=True,
-            edit_line_fn=edit,
-            print_fn=lambda *a, **k: None,
+            input_fn=lambda _p: "",  # Enter → Keep
+            edit_line_fn=boom,
+            print_fn=pr,
         )
         self.assertEqual(got, "mon0 (hsplit): a, b.")
-        self.assertEqual(len(edits), 1)
-        self.assertEqual(edits[0][1], "mon0 (hsplit): a, b.")
+        self.assertTrue(any("Current Description:" in ln for ln in lines))
+        # Value must not include the word Description (label is separate).
+        self.assertNotIn("Description: mon0", got)
 
     def test_interactive_keep(self):
         def boom(prompt: str, prefill: str) -> str:
@@ -254,13 +258,40 @@ class TestResolveSaveDescription(unittest.TestCase):
             existing="keep-me",
             interactive=True,
             profile_name="dev",
-            input_fn=lambda _p: "",  # Enter → K
+            input_fn=lambda _p: "",  # Enter → Keep
             edit_line_fn=boom,
             print_fn=lambda *a, **k: None,
         )
         self.assertEqual(got, "keep-me")
 
-    def test_interactive_default_prefill_auto(self):
+    def test_interactive_edit_prefill_current_existing(self):
+        edits: list[tuple[str, str]] = []
+
+        def edit(prompt: str, prefill: str) -> str:
+            edits.append((prompt, prefill))
+            return prefill + "!"
+
+        def choose(prompt: str) -> str:
+            self.assertIn("Keep, Edit", prompt)
+            self.assertTrue(prompt.endswith(" ") or prompt.rstrip() != prompt)
+            return "e"
+
+        got = resolve_save_description(
+            auto="auto-line",
+            existing="old-custom",
+            interactive=True,
+            input_fn=choose,
+            edit_line_fn=edit,
+            print_fn=lambda *a, **k: None,
+        )
+        self.assertEqual(got, "old-custom!")
+        self.assertEqual(len(edits), 1)
+        self.assertIn("New Description:", edits[0][0])
+        self.assertEqual(edits[0][1], "old-custom")
+        # Prefill is value-only — no label word.
+        self.assertFalse(edits[0][1].lower().startswith("description"))
+
+    def test_interactive_edit_prefill_auto_when_new(self):
         edits: list[str] = []
 
         def edit(_prompt: str, prefill: str) -> str:
@@ -268,33 +299,15 @@ class TestResolveSaveDescription(unittest.TestCase):
             return prefill
 
         got = resolve_save_description(
-            auto="auto-line",
-            existing="old-custom",
-            interactive=True,
-            input_fn=lambda _p: "d",
-            edit_line_fn=edit,
-            print_fn=lambda *a, **k: None,
-        )
-        self.assertEqual(got, "auto-line")
-        self.assertEqual(edits, ["auto-line"])
-
-    def test_interactive_edit_prefill_existing(self):
-        edits: list[str] = []
-
-        def edit(_prompt: str, prefill: str) -> str:
-            edits.append(prefill)
-            return prefill + "!"
-
-        got = resolve_save_description(
-            auto="auto-line",
-            existing="old-custom",
+            auto="mon0 (hsplit): tabgroup, ghostty.",
+            existing=None,
             interactive=True,
             input_fn=lambda _p: "e",
             edit_line_fn=edit,
             print_fn=lambda *a, **k: None,
         )
-        self.assertEqual(got, "old-custom!")
-        self.assertEqual(edits, ["old-custom"])
+        self.assertEqual(got, "mon0 (hsplit): tabgroup, ghostty.")
+        self.assertEqual(edits, ["mon0 (hsplit): tabgroup, ghostty."])
 
     def test_apply_description(self):
         p = {"tiles": {}}

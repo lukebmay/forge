@@ -384,7 +384,12 @@ def edit_line_prefilled(
     *,
     input_fn: Optional[Callable[[str], str]] = None,
 ) -> str:
-    """Single-line edit with optional buffer prefill (readline when available)."""
+    """
+    Single-line edit with optional buffer prefill (readline when available).
+
+    Prefill is value-only — never include the label word "Description" in prefill.
+    Do not call readline.redisplay() in the startup hook (duplicates the line).
+    """
     if input_fn is not None:
         # Tests: call with (prompt) only; prefill handled by caller mock if needed.
         return input_fn(prompt)
@@ -394,11 +399,8 @@ def edit_line_prefilled(
         import readline
 
         def _hook() -> None:
+            # insert_text only — redisplay() here double-draws prompt+buffer
             readline.insert_text(prefill)
-            try:
-                readline.redisplay()
-            except Exception:
-                pass
 
         readline.set_startup_hook(_hook)
         try:
@@ -412,6 +414,16 @@ def edit_line_prefilled(
         if raw == "" and prefill:
             return prefill
         return raw
+
+
+def _save_label(text: str, *, stream: Optional[TextIO] = None) -> str:
+    """Magenta label for layout-save prompts (ansi-colors headings/labels)."""
+    try:
+        from cli_ansi import magenta
+
+        return magenta(text, stream=stream)
+    except Exception:
+        return text
 
 
 def resolve_save_description(
@@ -430,9 +442,13 @@ def resolve_save_description(
     Choose description for layout save.
 
     Non-interactive: keep existing if any; else auto; flags override.
-    Interactive: no existing → prefilled edit(auto); else K/D/E menu.
+    Interactive:
+      Current Description: <existing or auto>
+      Keep, Edit (K/e):     # default Keep (Enter)
+      Edit → New Description: <prefill of that current value>
     Returns None to omit the description key.
     """
+    _ = profile_name  # kept for API stability / future labeling
     if no_description:
         return None
     if description_flag is not None:
@@ -441,42 +457,43 @@ def resolve_save_description(
 
     auto_s = (auto or "").strip()
     existing_s = existing.strip() if isinstance(existing, str) and existing.strip() else None
+    # Prefer stored custom; else auto one-liner (never the word "Description").
+    current = existing_s if existing_s is not None else (auto_s or "")
 
     if not interactive:
-        return existing_s if existing_s is not None else (auto_s or None)
+        return current or None
 
     _print = print_fn if print_fn is not None else print
+    # Labels on stderr when print_fn is _eprint; color against stderr.
+    label_stream = sys.stderr if print_fn is not None else sys.stdout
+    # input() draws its prompt on stdout — color against stdout for that path.
+    prompt_stream = sys.stdout
+
     _edit = edit_line_fn
     if _edit is None:
 
         def _edit(prompt: str, prefill: str) -> str:
             return edit_line_prefilled(prompt, prefill, input_fn=input_fn)
 
-    if existing_s is None:
-        got = _edit("Description: ", auto_s)
+    cur_label = _save_label("Current Description:", stream=label_stream)
+    shown = current if current else "(none)"
+    _print(f"{cur_label} {shown}")
+
+    choice_prompt = _save_label("Keep, Edit (K/e):", stream=prompt_stream) + " "
+    if input_fn is not None:
+        raw_choice = input_fn(choice_prompt)
+    else:
+        raw_choice = input(choice_prompt)
+    choice = (raw_choice or "k").strip().lower() or "k"
+
+    if choice.startswith("e"):
+        new_prompt = _save_label("New Description:", stream=prompt_stream) + " "
+        got = _edit(new_prompt, current)
         got_s = got.strip() if isinstance(got, str) else ""
         return got_s or None
 
-    label = f'"{profile_name}"' if profile_name else "profile"
-    _print(f"Description for {label}:")
-    _print(f"  current: {existing_s}")
-    _print(f"  default: {auto_s or '(none)'}")
-    _print("[K]eep current  [D]efault  [E]dit  — default K")
-    raw_choice = ""
-    if input_fn is not None:
-        raw_choice = input_fn("Choice [K/D/E]: ")
-    else:
-        raw_choice = input("Choice [K/D/E]: ")
-    choice = (raw_choice or "k").strip().lower() or "k"
-    if choice.startswith("d"):
-        got = _edit("Description: ", auto_s)
-        got_s = got.strip() if isinstance(got, str) else ""
-        return got_s or None
-    if choice.startswith("e"):
-        got = _edit("Description: ", existing_s)
-        got_s = got.strip() if isinstance(got, str) else ""
-        return got_s or None
-    return existing_s
+    # Keep (default) — including empty Enter / "k"
+    return current or None
 
 
 def apply_description(profile: dict[str, Any], description: Optional[str]) -> dict[str, Any]:

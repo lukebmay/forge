@@ -6,8 +6,9 @@
 
 ### Session note (overwrite)
 
-LS4+LS5 **B AGREE** (2026-07-28): bare save + docs; 245 layout tests OK.  
-Main sugar path shipped. Optional LS3/LS6; next product priority is stacks.
+Save description UX polish: Keep/Edit (K/e) with magenta labels; fixed
+readline prefill duplication (no redisplay in startup hook). Prefill is
+value-only (never contains the word Description).
 
 ## Product target
 
@@ -128,44 +129,31 @@ Do **not** force writers to invent a description. Bare array files stay valid.
 `forge layout save <name>` on a **TTY** should make description a 5-second
 choice, not a project. Non-interactive: no prompts (rules below).
 
-### Interactive flows
+### Interactive flow (always)
 
-**A. No existing description** (new file, or file without `description`)
+**Current** = stored description if any, else auto one-liner. The value never
+includes the label word “Description”.
 
-Do **not** offer Keep / Default / Edit menu. One step only:
+```text
+Current Description: mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.
+Keep, Edit (K/e): 
+```
 
-1. Compute **default** auto description from the snapshot about to be written.
-2. Single-line edit **pre-filled with that default**.
-3. User presses Enter to accept, or edits/clears and types their own.
+- Labels magenta; values default/normal color.
+- **Keep (k / Enter):** write that current value (no further prompt).
+- **Edit (e):**
 
-No multi-option prompt when there is nothing to “keep.”
+  ```text
+  New Description: mon0 (hsplit): tabgroup, ghostty. …
+  ```
 
-**B. Existing file with a description**
-
-1. Show current + auto default (short).
-2. Prompt:
-
-   ```text
-   Description for "dev":
-     current: Dual-mon: Chrome+Grok | Ghostty …
-     default: mon0 (hsplit): tabgroup, ghostty. mon1 (hsplit): ghostty, tabgroup.
-   [K]eep current  [D]efault  [E]dit  — default K
-   ```
-
-3. **Keep (k):** retain file’s description (Enter = K). No further prompt.
-4. **Default (d):** single-line edit **pre-filled with the auto-generated
-   one-liner**. Enter accepts default as-is; user may tweak first.
-5. **Edit (e):** single-line edit **pre-filled with the existing (current)
-   description**. Enter accepts; user may clear and rewrite.
-
-Summary:
+  Prefill = current value only (readline insert_text; no redisplay hook).
+  Enter accepts the buffer.
 
 | Choice | Behavior |
 | --- | --- |
-| Keep | existing text unchanged (no edit step) |
-| Default | edit buffer starts as **auto default**; Enter accepts |
-| Edit | edit buffer starts as **existing**; Enter accepts |
-| No existing | skip menu; edit buffer starts as **auto default** |
+| Keep | current unchanged (existing custom, or auto if new) |
+| Edit | buffer starts as **current**; Enter accepts |
 
 ### Non-interactive
 
@@ -204,7 +192,7 @@ with optional one-line auto description for discoverability.
 | **LS5** | Docs + examples rewrite to bare array | **Done** (in-tree examples; live host profiles not rewritten) |
 | **LS6** | Tests: 1-mon, 2-mon, ambiguous, chrome PWA inference | fixtures |
 | **LS7** | `format_layout_description` + list/show fallback | **Done** (B AGREE) |
-| **LS8** | Interactive save description UX (K/D/E + non-interactive rules) | **Done** (B AGREE) |
+| **LS8** | Interactive save description UX (Keep/Edit + non-interactive rules) | **Done** (Keep/Edit polish) |
 
 No backwards compatibility required (pre-release). Old `tiles.monN` and rich
 cells keep working as supersets.
@@ -216,7 +204,7 @@ cells keep working as supersets.
 3. `forge layout save` can rewrite to bare array + strings when safe.
 4. Missing/inferable class/title not required for typical Chrome+PWA desk.
 5. No `description` required to load; `list` still shows a useful one-liner (auto or stored).
-6. Interactive save: K/D/E (or K/E on new) is obvious; non-interactive never hangs.
+6. Interactive save: Keep/Edit (K/e) is obvious; non-interactive never hangs.
 7. Unit tests green; live black smoke.
 
 ## Related shipped

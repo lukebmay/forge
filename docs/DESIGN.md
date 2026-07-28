@@ -630,9 +630,10 @@ heuristics (plan: [forge-layout-sugar.md](../agents/plans/forge-layout-sugar.md)
 Object `tiles` / `floating` only when needed. Malformed structure: load what
 you can, park leftovers safely. **Description** is optional cosmetics:
 auto one-liner (`mon0 (hsplit): tabgroup, ghostty. …`) for `list` when
-missing; interactive save: no menu if no existing (edit prefilled with
-auto default); if existing, Keep / Default / Edit — Default prefills auto,
-Edit prefills existing; Enter accepts buffer — never required to load.
+missing; interactive save shows magenta **Current Description:** (value
+only, never the word “Description” in the value) then **Keep, Edit (K/e):**
+(default Keep). Edit opens **New Description:** with that current value
+prefilled — never required to load.
 
 Arrays under a mon are panes (order = spatial order). Nested arrays are
 tab groups. Bare strings are single-app panes. **Split** is inferred
