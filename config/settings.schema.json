@@ -51,7 +51,7 @@
         "stacked-tiling-mode-enabled": {
           "type": "boolean",
           "description": "Enable stacked tiling layout",
-          "default": true
+          "default": false
         },
         "tabbed-tiling-mode-enabled": {
           "type": "boolean",

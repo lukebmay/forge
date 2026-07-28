@@ -21,15 +21,38 @@ New windows tile side-by-side. A container is either a **horizontal split**
 
 ## Stacked and tabbed
 
-Instead of splitting space, a container can show one child at a time:
+Instead of splitting space, a container can show one child at a time.
 
-- **Stacked** (Safe: `Ctrl+Super+s`) — children listed vertically; the focused one
-  expands (like a stack of title bars).
-- **Tabbed** (Safe: `Ctrl+Super+t`) — children shown as a tab strip; toggle the tab
-  decoration with the tab-decoration shortcut.
-- Both modes are **on by default** (`stacked-tiling-mode-enabled` /
-  `tabbed-tiling-mode-enabled`, in Preferences → Tiling → Behavior). Turn a mode off
-  and its toggle shortcut does nothing.
+### Stacked vs tabbed
+
+| | **Tabbed** | **Stacked** |
+| --- | --- | --- |
+| Chrome | Horizontal tab strip (default daily path) | Vertical title-bar column (i3-like) |
+| Toggle | Safe: `Ctrl+Super+t` | Safe: `Ctrl+Super+s` |
+| Mode flag | `tabbed-tiling-mode-enabled` — **on** by default | `stacked-tiling-mode-enabled` — **off** by default (opt-in) |
+
+**Tabbed** is the default group layout: center-drop, layout profiles that use a
+bare multi-app array (`["app1", "app2"]`), and monocle all prefer tabs.
+
+**Stacked** is opt-in via Preferences → Tiling → Behavior (or gsettings
+`stacked-tiling-mode-enabled`). When stack mode is **off**:
+
+- Center DnD stays **tabbed** (even if `dnd-center-layout` is set to stacked).
+- The stack toggle keybind no-ops.
+
+When stack mode is **on**:
+
+- The stack toggle keybind works.
+- DnD center drop can create/join stacked groups if `dnd-center-layout` is
+  `stacked`.
+
+Layout profiles: multi-app bare arrays still deserialize as **tabbed**. Explicit
+`layout: "stacked"` in IR works when mode is on; save round-trip for stacked
+groups is planned (see stacked-layouts work) and may still write tab sugar today.
+
+Other settings:
+
+- Turn a mode off and its toggle shortcut does nothing.
 - `auto-exit-tabbed` (on by default) drops a container back to a split when only one
   tab remains.
 - `default-window-layout` (`tiled` | `tabbed` | `stacked`) sets the layout a newly
@@ -82,6 +105,7 @@ window keeps its place in the tree and re-tiles when you toggle it back.
 
 Drag a window over another and Forge shows a **preview hint** (left / right / top /
 bottom / center) of where it will land; drop to tile it there. A center drop creates
-a tabbed or stacked container (`dnd-center-layout`, default `tabbed`). Whether you
-must hold a modifier while dragging is set by the drag mask — see
+a tabbed or stacked container (`dnd-center-layout`, default `tabbed`). With stack
+mode off, center drop is forced to **tabbed** regardless of that setting. Whether
+you must hold a modifier while dragging is set by the drag mask — see
 [keybindings.md](keybindings.md#drag-to-tile).

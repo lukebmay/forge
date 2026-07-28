@@ -1,8 +1,9 @@
 # Plan: STACKED layouts as a supported product path
 
-**Status:** Spike complete — awaiting acceptance  
+**Status:** SL0 done — next SL1  
 **Updated:** 2026-07-28  
-**Spike task:** [forge-stacked-layouts_spike.md](../tasks/forge-stacked-layouts_spike.md)
+**Spike task:** [completed/forge-stacked-layouts_spike.md](./forge-stacked-layouts/completed/forge-stacked-layouts_spike.md)  
+**SL0 task:** [completed/forge-stacked-layouts_sl0-docs-schema.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl0-docs-schema.md)
 
 ## Why
 
@@ -58,7 +59,7 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | GSchema `dnd-center-layout` | `'tabbed'` (~L145–150); enum tabbed\|stacked (prefs also offers swap) |
 | GSchema `default-window-layout` | `'tiled'` (tiled\|tabbed\|stacked) |
 | Prefs UI | Switch “Stacked tiling” binds flag — `lib/prefs/settings.js` ~L107–111; DnD dropdown includes Stacked ~L170–180 |
-| `config/settings.schema.json` | **`stacked-tiling-mode-enabled` default `true`** — **stale vs gschema** (~L51–54) |
+| `config/settings.schema.json` | **`stacked-tiling-mode-enabled` default `false`** — matches gschema (SL0) |
 | Daily-driver T0 | Done: stack-off + DnD force-tab; STACKED→TABBED on disable preserve children — `agents/plans/forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md` |
 | Mode toggle handler | `_handleLayoutModeToggle` — STACKED off → TABBED; re-enable restores `prevLayout === STACKED` — `lib/extension/window.js` ~L1124–1155 |
 
@@ -134,11 +135,11 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 
 | Doc | Issue |
 | --- | --- |
-| `docs/user/layouts.md` ~L30–32 | Claims **both modes on by default** — wrong (stack off) |
-| `docs/user/troubleshooting.md` ~L22–24 | Same “on by default” claim |
+| `docs/user/layouts.md` | **SL0 fixed** — stacked vs tabbed; stack opt-in |
+| `docs/user/troubleshooting.md` | **SL0 fixed** — stack opt-in, not both-on |
 | `README.md` | Correctly states stack off + tab-first DnD |
-| `docs/user/layout.md` | Sugar is tab-centric; no stacked recipe |
-| daily-driver plan | Deferred doc/schema nits still open (~L261–262) |
+| `docs/user/layout.md` | Sugar is tab-centric; no stacked recipe (SL1/SL2) |
+| daily-driver plan | Doc/schema nits closed by SL0 |
 
 ---
 
@@ -148,7 +149,7 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | --- | --- | --- | --- |
 | Core tree / focus / restack | STACKED first-class in engine | None for v1 when mode on | — |
 | GSchema default | Stack **off** | Align product messaging; keep opt-in | Low (intentional) |
-| `config/settings.schema.json` | default **true** | Match gschema `false` | **Med** (agent/tooling footgun) |
+| `config/settings.schema.json` | default **false** (SL0) | — | — |
 | Prefs | Full UI for flag + DnD + default layout | Optional: disable Stacked DnD choice when flag off (UX polish) | Low |
 | Keybinds | Toggle + focus U/D | No dedicated “cycle stack”; optional only | Low |
 | DnD when mode on | Creates/joins STACKED per `dnd-center-layout` | Confirm live on black when opting in; covered by unit | Low |
@@ -160,7 +161,7 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | Session / rehome | Same path as TABBED | Needs explicit STACKED regression if not already e2e | Med |
 | Unit/e2e engine | Strong | — | — |
 | CLI / profile tests | Missing stacked | Add with sugar work | Med |
-| User docs | Partially wrong defaults; no stacked-vs-tabbed guide | Fix + when-to-use | **Med** |
+| User docs | SL0: defaults + stacked-vs-tabbed | — | — |
 
 ---
 
@@ -168,7 +169,7 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 
 | ID | Work | Depends | Size |
 | --- | --- | --- | --- |
-| **SL0** | **Docs + schema hygiene:** set `config/settings.schema.json` stack default `false`; fix `layouts.md` / `troubleshooting.md` “on by default”; README already OK; short “stacked vs tabbed” in `layouts.md` | Accept plan | **S** |
+| **SL0** | **Docs + schema hygiene:** set `config/settings.schema.json` stack default `false`; fix `layouts.md` / `troubleshooting.md` “on by default”; README already OK; short “stacked vs tabbed” in `layouts.md` | Accept plan | **S** — **done** |
 | **SL1** | **Profile IR + save round-trip:** `layout save` emit stacked groups as IR `layout: "stacked"` (or sugar that desugars to stacked); ensure bare multi-app array stays tabbed; tests in `test_layout_*` | Accept | **M** |
 | **SL2** | **Tiles sugar for stacked (optional syntax):** e.g. `{ "layout": "stacked", "content": [...] }` / documented IR-only path; keep default multi-role → tabbed | SL1 | **S–M** |
 | **SL3** | **Thrash / ensure parity:** multi-role `stacked` slots get same co-group thrash + ensure behavior as tabbed | SL1 | **S** |
@@ -182,12 +183,8 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 
 ## Next task
 
-After Luke accepts this breakdown:
-
-→ **`SL0`** — docs + `config/settings.schema.json` default alignment (smallest ship; unblocks honest messaging).  
-Then **`SL1`** — first real product slice (stacked layout profile round-trip).
-
-Do **not** start SL0/SL1 until acceptance.
+→ **`SL1`** — profile IR + save round-trip for stacked groups (first real product slice).  
+SL0 done: schema JSON + user docs aligned with stack opt-in.
 
 ## Related
 
@@ -196,11 +193,11 @@ Do **not** start SL0/SL1 until acceptance.
 - [docs/user/layouts.md](../../docs/user/layouts.md)
 - T0 completed: [forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md](./forge-daily-driver/completed/forge-daily-driver_t0-stack-off-dnd-tab.md)
 
-## Session note (spike)
+## Session note
 
-**2026-07-28 Task Force A — spike only (no product code).**
+**2026-07-28 SL0 (Task Force A)**
 
-- STACKED is **implemented** in the tiling engine (tree layout, focus restack, decoration column, keybind toggle, session/forest snapshot, soft-rehome majority align). Product default remains **opt-in / off** after T0.
-- Real product gaps: **layout sugar/save always tab-ifies multi-window groups**, thrash checks tab-only, **docs + config JSON schema claim stack-on**, CLI tests omit stacked.
-- Recommend **keep flag off**; ship SL0→SL1 after acceptance.
-- Next agent: wait for accept; start **SL0** then **SL1** without re-spiking.
+- `config/settings.schema.json` stack default **false** (matches gschema; no gschema flip).
+- User docs: `layouts.md` stacked-vs-tabbed + DnD/keybind opt-in; `troubleshooting.md` no longer “both on by default”.
+- Docs gap closed; remaining product gap is **layout save → tab sugar** (SL1).
+- Next: **SL1** only.

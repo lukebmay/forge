@@ -19,9 +19,11 @@ It probably matches a rule. Check **Preferences → Windows** and
 
 ## Stacked / tabbed shortcuts do nothing
 
-Stacked and tabbed are **on by default**. If the shortcuts no-op, the modes were
-turned off — confirm `stacked-tiling-mode-enabled` / `tabbed-tiling-mode-enabled`
-are enabled in **Preferences → Tiling → Behavior**. See [layouts.md](layouts.md).
+- **Tabbed** mode is on by default; **stacked** is opt-in (`false` by default).
+- If a toggle no-ops, confirm the matching flag in **Preferences → Tiling →
+  Behavior**: `tabbed-tiling-mode-enabled` / `stacked-tiling-mode-enabled`.
+- Stack toggle always no-ops until you enable stacked tiling. See
+  [layouts.md](layouts.md#stacked-vs-tabbed).
 
 ## After lock / blank, all windows on one monitor
 
