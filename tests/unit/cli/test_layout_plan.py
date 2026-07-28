@@ -1072,6 +1072,87 @@ class TestDetectThrash(unittest.TestCase):
             f"stacked slot must not use tabbed reason: {state['reasons']}",
         )
 
+    def test_plan_stacked_on_tabbed_emits_ensure_stacked(self):
+        """Stacked multi-role profile + TABBED forest → ensure_layout mode stacked."""
+        forest = _load("tree-ghostty-nautilus-tab.json")
+        plan = plan_reconcile(forest, self._stacked_pair_profile())
+        self.assertTrue(plan["ok"])
+        self.assertFalse(plan["nothingToDo"])
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertIn("mon0.stack", ensures)
+        self.assertEqual(ensures["mon0.stack"]["mode"], "stacked")
+        self.assertEqual(ensures["mon0.stack"]["windowIds"], [501, 502])
+        self.assertEqual(plan["counts"]["structure"], 1)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertIn(
+            "stacked-roles-not-grouped:mon0.stack",
+            plan["thrashState"]["reasons"],
+        )
+
+    def test_plan_stacked_on_flat_emits_ensure_stacked(self):
+        """Stacked multi-role profile + flat mon siblings → ensure_layout stacked."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 601,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 602,
+                            "wmClass": "org.gnome.Nautilus",
+                            "title": "Home",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                    ],
+                }
+            ],
+        }
+        plan = plan_reconcile(forest, self._stacked_pair_profile())
+        self.assertTrue(plan["ok"])
+        ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+        }
+        self.assertIn("mon0.stack", ensures)
+        self.assertEqual(ensures["mon0.stack"]["mode"], "stacked")
+        self.assertEqual(ensures["mon0.stack"]["windowIds"], [601, 602])
+        self.assertGreaterEqual(plan["counts"]["structure"], 1)
+
+    def test_plan_stacked_pair_nothing_to_do(self):
+        """Already STACKED forest + stacked profile → no structure thrash."""
+        forest = _load("tree-stacked-pair.json")
+        plan = plan_reconcile(forest, self._stacked_pair_profile())
+        self.assertTrue(plan["ok"])
+        self.assertTrue(plan["nothingToDo"], plan)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["thrashState"]["score"], 0)
+        self.assertEqual(plan["counts"]["structure"], 0)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["actions"], [])
+        self.assertFalse(
+            any(a.get("op") == "ensure_layout" for a in plan["actions"]),
+        )
+
     def test_plan_reconcile_thrash_state_on_thrash_fixture(self):
         forest = _load("tree-thrash-mode-b-companions.json")
         profile = _load("profile-dev-v2.json")

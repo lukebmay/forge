@@ -228,15 +228,18 @@ class TestCaptureRoundTrip(unittest.TestCase):
         plan = plan_reconcile(forest, sugar)
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(len(plan["roles"]), 2)
+        # save → normalize → plan on same forest: structure empty / nothingToDo
+        self.assertTrue(plan["nothingToDo"], plan)
+        self.assertEqual(plan["counts"].get("structure", 0), 0)
+        self.assertEqual(plan["actions"], [])
+        self.assertFalse(plan.get("thrashState", {}).get("thrashed", False))
         ensures = [
             a
             for a in plan.get("actions") or []
             if a.get("op") == "ensure_layout"
             and a.get("mode") in ("tabbed", "stacked")
         ]
-        # Already STACKED → no tabbed ensure for the multi-role slot
-        for a in ensures:
-            self.assertEqual(a.get("mode"), "stacked")
+        self.assertEqual(ensures, [])
 
 
 class TestResolveSaveDescription(unittest.TestCase):

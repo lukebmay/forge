@@ -1,11 +1,12 @@
 # Plan: STACKED layouts as a supported product path
 
-**Status:** SL3 done — next SL4 (optional regression) / SL5 live  
+**Status:** SL4 done — next SL5 live (ops, optional)  
 **Updated:** 2026-07-28  
 **Spike task:** [completed/forge-stacked-layouts_spike.md](./forge-stacked-layouts/completed/forge-stacked-layouts_spike.md)  
 **SL0 task:** [completed/forge-stacked-layouts_sl0-docs-schema.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl0-docs-schema.md)  
 **SL1 task:** [completed/forge-stacked-layouts_sl1-save-roundtrip.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl1-save-roundtrip.md)  
-**SL3 task:** [completed/forge-stacked-layouts_sl3-thrash-parity.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl3-thrash-parity.md)
+**SL3 task:** [completed/forge-stacked-layouts_sl3-thrash-parity.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl3-thrash-parity.md)  
+**SL4 task:** [completed/forge-stacked-layouts_sl4-regression.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl4-regression.md)
 
 ## Why
 
@@ -130,7 +131,7 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | Unit command | `LayoutStackedToggle` — `CommandHandler.test.js` (fixtures often force stack mode on) |
 | Regression | decoration off overlap (5qp1), flatten nested stack (gdsz), middle-child resize (ox8), tab activate restack, etc. |
 | E2E bridge | Integrity allows STACKED; focused child last-in-STACKED invariant — `tests/e2e/framework/bridge.js` ~L1493+ |
-| CLI layout | **Gap:** no profile ensure/thrash tests for `stacked` |
+| CLI layout | **SL1–SL4:** save/desugar + thrash + ensure stacked + nothingToDo RT |
 | Test fixtures | `stacked-tiling-mode-enabled: true` in mocks (tests enable stacks; product default is off) |
 
 ### 8. Docs (stale vs product)
@@ -162,7 +163,7 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | Thrash / verify | Tabbed + stacked multi-role co-group + nested-split | — (SL3) | — |
 | Session / rehome | Same path as TABBED | Needs explicit STACKED regression if not already e2e | Med |
 | Unit/e2e engine | Strong | — | — |
-| CLI / profile tests | Missing stacked | Add with sugar work | Med |
+| CLI / profile tests | SL1–SL4 unit coverage | — | — |
 | User docs | SL0: defaults + stacked-vs-tabbed | — | — |
 
 ---
@@ -175,7 +176,7 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | **SL1** | **Profile IR + save round-trip:** `layout save` emit stacked groups as IR `layout: "stacked"` (or sugar that desugars to stacked); ensure bare multi-app array stays tabbed; tests in `test_layout_*` | Accept | **M** — **done** |
 | **SL2** | **Tiles sugar for stacked:** `{ "layout": "stacked", "content": [...] }` + docs | SL1 | **S** — **done with SL1** |
 | **SL3** | **Thrash / ensure parity:** multi-role `stacked` slots get same co-group thrash + ensure behavior as tabbed | SL1 | **S** — **done** |
-| **SL4** | **Regression pack:** unit CLI + any missing DnD/toggle; optional e2e smoke with flag on (STACKED toggle + focus restack already partly in bridge) | SL1 | **S–M** |
+| **SL4** | **Regression pack:** unit CLI + any missing DnD/toggle; optional e2e smoke with flag on (STACKED toggle + focus restack already partly in bridge) | SL1 | **S–M** — **done** |
 | **SL5** | **Live verify on black (opt-in):** enable stack mode; toggle / DnD stacked / layout profile with stacked cell; soft rehome dual-mon; no Shell thrash | SL0–SL1 preferred | **S** (ops) |
 | **SL6** | **Polish (optional):** prefs graying of DnD=stacked when flag off; cycle-stack keybind; auto-exit-stacked symmetry — only if product wants | SL0 | **S–M** |
 
@@ -185,8 +186,8 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 
 ## Next task
 
-→ **`SL4`** (optional) — regression pack / missing DnD-toggle coverage.  
-SL3 thrash parity done. SL5 = live black opt-in verify.
+→ **`SL5`** (ops, optional) — live black opt-in verify (stack mode on; toggle / DnD / layout profile / soft rehome).  
+SL0–SL4 product/CLI path done. SL6 polish only if product wants.
 
 ## Related
 
@@ -197,9 +198,10 @@ SL3 thrash parity done. SL5 = live black opt-in verify.
 
 ## Session note
 
-**2026-07-28 SL3 (Task Force A)**
+**2026-07-28 SL4 (Task Force A)**
 
-- `detect_thrash`: multi-role co-group loop + nested H/V mon-child check cover `tabbed` and `stacked`.
-- Reasons: `{mode}-roles-not-grouped:{slot}`; `_windows_share_group(..., mode)` already STACKED-aware.
-- Structure ensure: no gap (SL1). Tests: not-grouped / grouped OK / stacked nested HSPLIT; 136 pass.
-- Next: **SL4** optional.
+- Audit SL1/SL3: sugar desugar, thrash detect (not-grouped / grouped / nested HSPLIT), partial save round-trip already present.
+- Gaps filled in `test_layout_plan.py`: tabbed→ensure stacked; flat→ensure stacked; stacked pair nothingToDo.
+- `test_layout_save.py` round-trip tightened: nothingToDo / structure 0 / empty actions.
+- `pytest` layout unit: 229 passed. No product code changes.
+- Next: **SL5** live optional.
