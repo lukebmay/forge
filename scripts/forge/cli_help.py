@@ -129,7 +129,7 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     _out(s, heading("Commands", **kw))
     for line, desc in (
         ("forge layout help", "This guide"),
-        ("forge layout list", "Profiles (stderr human; stdout JSON)"),
+        ("forge layout list", "This host: Name + Description table (JSON when piped)"),
         ("forge layout show <name>", "Resolved path + validated profile"),
         ("forge layout save <name>", "Snapshot tree → host profile file (overwrite)"),
         ("forge layout save <name> --tree-file F", "Offline save from GetTree JSON"),

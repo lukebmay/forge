@@ -314,30 +314,72 @@ def format_short_path(path: Path | str, *, max_len: int = 36) -> str:
 def format_profile_list_line(
     entry: Mapping[str, Any], *, desc_max: int = 40
 ) -> str:
-    """
-    One human list line, e.g.
-    dev  [host] laptop  …/hosts/laptop/dev.json  Dual-mon desk…
-    """
+    """Legacy one-line form (name + desc); prefer format_profile_list_table."""
     name = str(entry.get("name") or "?")
-    source = str(entry.get("source") or "?")
-    host = str(entry.get("host") or "")
-    path = entry.get("path") or ""
-    short = format_short_path(path) if path else ""
-    # e.g. dev  [host] laptop  …/hosts/laptop/dev.json  Dual-mon…
-    head = f"{name}  [{source}]"
-    if host:
-        head = f"{head} {host}"
-    parts = [head]
-    if short:
-        parts.append(short)
-    line = "  ".join(parts)
     desc = entry.get("description")
+    d = ""
     if isinstance(desc, str) and desc.strip():
         d = desc.strip()
         if len(d) > desc_max:
             d = d[: max(1, desc_max - 1)] + "…"
-        line = f"{line}  {d}"
-    return line
+    return f"{name}  {d}".rstrip()
+
+
+def host_profiles_only(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep profiles from hosts/<host>/ (host file or host-dir form)."""
+    return [
+        e
+        for e in entries
+        if e.get("source") in (SOURCE_HOST, SOURCE_HOST_DIR)
+    ]
+
+
+def format_profile_list_table(
+    entries: list[Mapping[str, Any]],
+    *,
+    stream: Any = None,
+    color: Optional[bool] = None,
+) -> str:
+    """
+    Two-column human table: Name (cyan) | Description (default).
+    Header labels magenta when color is on.
+    """
+    try:
+        from cli_ansi import color_enabled, cyan, magenta
+    except ImportError:
+        color_enabled = None  # type: ignore
+        cyan = magenta = None  # type: ignore
+
+    use_color = color
+    if use_color is None:
+        if color_enabled is not None:
+            use_color = color_enabled(stream)
+        else:
+            use_color = False
+
+    names = [str(e.get("name") or "") for e in entries]
+    descs: list[str] = []
+    for e in entries:
+        d = e.get("description")
+        descs.append(d.strip() if isinstance(d, str) and d.strip() else "")
+
+    name_w = max([len("Name")] + [len(n) for n in names], default=4)
+
+    def _hdr(label: str) -> str:
+        if use_color and magenta is not None:
+            return magenta(label, stream=stream)
+        return label
+
+    def _name_cell(n: str) -> str:
+        pad = " " * max(0, name_w - len(n))
+        if use_color and cyan is not None and n:
+            return f"{cyan(n, stream=stream)}{pad}"
+        return f"{n}{pad}"
+
+    lines = [f"{_hdr('Name')}{' ' * max(0, name_w - len('Name'))}  {_hdr('Description')}"]
+    for n, d in zip(names, descs):
+        lines.append(f"{_name_cell(n)}  {d}")
+    return "\n".join(lines)
 
 
 def load_profile_file(path: Path | str) -> Any:

@@ -65,8 +65,9 @@ from layout_apply import (  # noqa: E402
 )
 from layout_lib import (  # noqa: E402
     extract_steps_and_stop,
-    format_profile_list_line,
+    format_profile_list_table,
     format_short_path,
+    host_profiles_only,
     launch_fields_from_step,
     layout_tree_root,
     list_profiles_resolved,
@@ -1862,28 +1863,30 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         if len(tokens) > 1:
             _eprint("forge layout list: unexpected arguments")
             return 1
-        profiles = list_profiles_resolved()
+        host = resolve_host()
+        # Default: this host only (hosts/<host>/…); not common/XDG flat.
+        profiles = host_profiles_only(list_profiles_resolved())
         if not profiles:
-            _eprint(
-                "forge layout: no profiles "
-                "(FORGE_LAYOUT_DIR hosts/common or ~/.config/forge/layout/)"
-            )
+            _eprint(f"forge layout: no profiles for host {host}")
             print("[]")
             return 0
         rows = []
         for p in profiles:
-            row = {
-                "name": p["name"],
-                "source": p["source"],
-                "path": p["path"],
-                "host": p["host"],
-            }
+            row: dict[str, Any] = {"name": p["name"]}
             if p.get("description"):
                 row["description"] = p["description"]
+            else:
+                row["description"] = ""
             rows.append(row)
-            # Human lines on stderr; full JSON on stdout (script contract)
-            _eprint(format_profile_list_line(p))
-        _print_json(rows, compact=False)
+        # TTY: Name/Description table only. Non-TTY: JSON name+description for scripts.
+        try:
+            tty = bool(sys.stdout.isatty())
+        except Exception:
+            tty = False
+        if tty:
+            print(format_profile_list_table(profiles, stream=sys.stdout))
+        else:
+            _print_json(rows, compact=False)
         return 0
 
     if action == "show":
@@ -2774,7 +2777,7 @@ def build_parser() -> argparse.ArgumentParser:
         "  forge layout <name>           # reconcile (v2) or steps (v1); quiet by default\n"
         "  forge layout <name> --dry-run # print plan only (no launch/RunSteps)\n"
         "  forge layout <name> --verbose # full plan/apply JSON on stdout\n"
-        "  forge layout list             # host + source + short path (JSON on stdout)\n"
+        "  forge layout list             # this host: Name + Description (JSON on stdout)\n"
         "  forge layout show <name>      # header + validated profile JSON\n"
         "  forge layout save <name>      # snapshot tree → host profile file (overwrite)\n"
         "  forge layout save <name> --stdout  # print JSON only (no write)\n"

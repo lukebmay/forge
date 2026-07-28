@@ -17,7 +17,9 @@ if str(_FORGE_CLI) not in sys.path:
 from layout_lib import (  # noqa: E402
     extract_steps_and_stop,
     format_profile_list_line,
+    format_profile_list_table,
     format_short_path,
+    host_profiles_only,
     launch_fields_from_step,
     list_profiles,
     load_profile_file,
@@ -25,6 +27,9 @@ from layout_lib import (  # noqa: E402
     profile_path,
     validate_profile,
     layout_dir,
+    SOURCE_HOST,
+    SOURCE_COMMON,
+    SOURCE_XDG,
 )
 
 
@@ -279,24 +284,42 @@ class TestFormatShortPath(unittest.TestCase):
         got = format_short_path(long)
         self.assertEqual(got, "…/forge/layout/hosts/black/dev.json")
 
-    def test_list_line_host_path_desc(self):
+    def test_list_line_name_desc(self):
         line = format_profile_list_line(
             {
                 "name": "dev",
-                "source": "host",
-                "host": "black",
-                "path": (
-                    "/home/user/dev/me/shellrc/configs/forge/layout/"
-                    "hosts/black/dev.json"
-                ),
                 "description": "Dual-mon morning layout on black workstation",
             },
             desc_max=12,
         )
-        self.assertTrue(line.startswith("dev  [host] black"), line)
-        self.assertIn("dev.json", line)
-        self.assertIn("Dual-mon", line)
-        self.assertTrue(line.endswith("…") or "…" in line)
+        self.assertTrue(line.startswith("dev  Dual-mon"), line)
+        self.assertIn("…", line)
+
+    def test_list_table_two_columns(self):
+        table = format_profile_list_table(
+            [
+                {"name": "dev", "description": "Dual-mon desk"},
+                {"name": "code", "description": "Editor + term"},
+            ],
+            color=False,
+        )
+        lines = table.splitlines()
+        self.assertEqual(lines[0].split(), ["Name", "Description"])
+        self.assertIn("dev", lines[1])
+        self.assertIn("Dual-mon desk", lines[1])
+        self.assertIn("code", lines[2])
+        self.assertIn("Editor + term", lines[2])
+        # Name column padded to widest name
+        self.assertTrue(lines[1].startswith("dev "))
+
+    def test_host_profiles_only_filters(self):
+        rows = [
+            {"name": "dev", "source": SOURCE_HOST},
+            {"name": "shared", "source": SOURCE_COMMON},
+            {"name": "flat", "source": SOURCE_XDG},
+        ]
+        got = host_profiles_only(rows)
+        self.assertEqual([r["name"] for r in got], ["dev"])
 
 
 if __name__ == "__main__":
