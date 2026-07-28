@@ -97,6 +97,35 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertTrue(any("ghostty" in s for s in stems))
         self.assertTrue(any("nautilus" in s for s in stems))
 
+    def test_stacked_pair_emits_layout_object(self):
+        forest = _load("tree-stacked-pair.json")
+        profile = profile_for_output(capture_tiles_profile(forest))
+        self.assertIsInstance(profile, list)
+        self.assertEqual(len(profile), 1)
+        pane = profile[0]
+        self.assertIsInstance(pane, dict)
+        self.assertEqual(pane.get("layout"), "stacked")
+        self.assertIsInstance(pane.get("content"), list)
+        self.assertEqual(len(pane["content"]), 2)
+        # Not bare multi-cell list (that would desugar as tabbed)
+        self.assertNotIsInstance(pane, list)
+
+    def test_stacked_save_desugars_to_stacked_mode(self):
+        forest = _load("tree-stacked-pair.json")
+        sugar = profile_for_output(capture_tiles_profile(forest))
+        ir = validate_reconcile_profile(sugar)
+        kids = ir["layout"]["mon0"]["children"]
+        self.assertEqual(len(kids), 1)
+        self.assertEqual(kids[0]["layout"], "stacked")
+        self.assertEqual(len(kids[0]["roles"]), 2)
+        # Tabbed fixture still bare list → tabbed
+        tab_sugar = profile_for_output(
+            capture_tiles_profile(_load("tree-ghostty-nautilus-tab.json"))
+        )
+        self.assertIsInstance(tab_sugar[0], list)
+        tab_ir = validate_reconcile_profile(tab_sugar)
+        self.assertEqual(tab_ir["layout"]["mon0"]["children"][0]["layout"], "tabbed")
+
     def test_empty_raises(self):
         with self.assertRaisesRegex(ValueError, "no tiled windows"):
             capture_tiles_profile(_load("tree-empty.json"))
@@ -190,6 +219,24 @@ class TestCaptureRoundTrip(unittest.TestCase):
         plan = plan_reconcile(forest, sugar)
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(len(plan["roles"]), 2)
+
+    def test_stacked_fixture_round_trip(self):
+        forest = _load("tree-stacked-pair.json")
+        sugar = profile_for_output(capture_tiles_profile(forest))
+        ir = normalize_profile(sugar)
+        self.assertEqual(ir["layout"]["mon0"]["children"][0]["layout"], "stacked")
+        plan = plan_reconcile(forest, sugar)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(len(plan["roles"]), 2)
+        ensures = [
+            a
+            for a in plan.get("actions") or []
+            if a.get("op") == "ensure_layout"
+            and a.get("mode") in ("tabbed", "stacked")
+        ]
+        # Already STACKED → no tabbed ensure for the multi-role slot
+        for a in ensures:
+            self.assertEqual(a.get("mode"), "stacked")
 
 
 class TestResolveSaveDescription(unittest.TestCase):

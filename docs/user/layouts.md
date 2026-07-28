@@ -46,9 +46,10 @@ When stack mode is **on**:
 - DnD center drop can create/join stacked groups if `dnd-center-layout` is
   `stacked`.
 
-Layout profiles: multi-app bare arrays still deserialize as **tabbed**. Explicit
-`layout: "stacked"` in IR works when mode is on; save round-trip for stacked
-groups is planned (see stacked-layouts work) and may still write tab sugar today.
+Layout profiles: multi-app bare arrays still deserialize as **tabbed**. Author a
+stack with `{ "layout": "stacked", "content": ["app1", "app2"] }` (or IR
+`layout: "stacked"` on a multi-role leaf). `forge layout save` emits that object
+for live STACKED groups so they round-trip (not bare-array tab sugar).
 
 Other settings:
 

@@ -300,6 +300,44 @@ class TestTilesNormalize(unittest.TestCase):
         self.assertEqual(kids[1]["children"][0]["layout"], "tabbed")
         self.assertEqual(kids[1]["children"][1]["id"], "d")
 
+    def test_stacked_layout_content_sugar(self):
+        """{layout: stacked, content: roles} → multi-role leaf layout stacked."""
+        raw = {
+            "tiles": {
+                "mon0": [
+                    {"layout": "stacked", "content": ["ghostty", "nautilus"]},
+                    "firefox",
+                ]
+            }
+        }
+        p = validate_reconcile_profile(raw)
+        kids = p["layout"]["mon0"]["children"]
+        self.assertEqual(kids[0]["layout"], "stacked")
+        self.assertEqual(kids[0]["roles"], ["ghostty", "nautilus"])
+        self.assertNotIn("children", kids[0])
+        self.assertEqual(kids[1]["roles"], ["firefox"])
+        by_id = {r["id"]: r for r in p["roles"]}
+        self.assertEqual(by_id["ghostty"]["slot"], f"mon0.{kids[0]['id']}")
+        self.assertEqual(by_id["nautilus"]["slot"], f"mon0.{kids[0]['id']}")
+
+    def test_stacked_split_alias_role_content(self):
+        """split: stacked with only role cells also desugars to stacked leaf."""
+        raw = {
+            "tiles": {
+                "mon0": [{"split": "stacked", "content": ["a", "b"]}],
+            }
+        }
+        p = validate_reconcile_profile(raw)
+        kids = p["layout"]["mon0"]["children"]
+        self.assertEqual(len(kids), 1)
+        self.assertEqual(kids[0]["layout"], "stacked")
+        self.assertEqual(kids[0]["roles"], ["a", "b"])
+
+    def test_bare_multi_cell_still_tabbed(self):
+        raw = {"tiles": {"mon0": [["a", "b"]]}}
+        p = validate_reconcile_profile(raw)
+        self.assertEqual(p["layout"]["mon0"]["children"][0]["layout"], "tabbed")
+
     def test_id_dedupe(self):
         raw = {"tiles": {"mon0": ["ghostty", "ghostty", "ghostty"]}}
         p = validate_reconcile_profile(raw)

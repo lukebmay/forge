@@ -8,7 +8,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **stacks** | STACKED product path — SL0 done; **next SL1** save round-trip | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| **1** | **stacks** | STACKED product path — SL1 done; **next SL3** thrash parity | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 | 2 | layout polish | Live-drive bare-array `forge layout` | Day-to-day on black |
 | 3 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
 
@@ -16,6 +16,7 @@
 
 | Item | Note |
 | --- | --- |
+| STACKED SL1 | save STACKED→`{layout:stacked,content}`; desugar multi-role stacked; tests/docs |
 | STACKED SL0 | settings.schema.json stack default false; layouts/troubleshooting docs |
 | STACKED spike inventory | Gaps + SL0–SL6 breakdown; recommend keep opt-in |
 | Mon L/R + tab group order | `ensure_order` mon + in-tab |
@@ -39,7 +40,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [stacked](./plans/forge-stacked-layouts.md) | SL0 **done** — next **SL1** save round-trip |
+| **P0** | [stacked](./plans/forge-stacked-layouts.md) | SL1 **done** — next **SL3** thrash parity |
 | P1 | Live layout daily-drive | Bare-array sugar live on black |
 | P2 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
 

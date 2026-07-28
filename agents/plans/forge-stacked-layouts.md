@@ -1,9 +1,10 @@
 # Plan: STACKED layouts as a supported product path
 
-**Status:** SL0 done — next SL1  
+**Status:** SL1 done — next SL3 (thrash) / SL4  
 **Updated:** 2026-07-28  
 **Spike task:** [completed/forge-stacked-layouts_spike.md](./forge-stacked-layouts/completed/forge-stacked-layouts_spike.md)  
-**SL0 task:** [completed/forge-stacked-layouts_sl0-docs-schema.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl0-docs-schema.md)
+**SL0 task:** [completed/forge-stacked-layouts_sl0-docs-schema.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl0-docs-schema.md)  
+**SL1 task:** [completed/forge-stacked-layouts_sl1-save-roundtrip.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl1-save-roundtrip.md)
 
 ## Why
 
@@ -101,12 +102,12 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | Item | Current |
 | --- | --- |
 | IR modes | `tabbed` \| `stacked` \| hsplit \| vsplit accepted in `layout_plan.py` (aliases, overflow, children) |
-| Multi-role default | Child with ≥2 roles → **`layout: "tabbed"` only** — `_desugar_role_pane` ~L521; validate defaults ~L701 |
-| Bare sugar | `["app1","app2"]` → **always tabbed** — `docs/user/layout.md` table; no stacked sugar |
+| Multi-role default | Bare list / omitted layout → **tabbed**; explicit mode via `_desugar_role_pane(..., mode=)` |
+| Bare sugar | `["app1","app2"]` → **always tabbed**; stacked = `{ "layout": "stacked", "content": […] }` |
 | `ensure_layout` | Emits/applies `mode: stacked` when profile says so; apply folds ids into group (`layout_apply.py` ~L176, ~L245) |
-| `layout save` | TABBED **and** STACKED both serialize as multi-cell **array** sugar — `layout_save.py` ~L668–692 — round-trip → **tabbed**, not stacked |
-| Thrash scoring | Multi-role “not co-grouped” thrash check is **`mode == "tabbed"` only** — `layout_plan.py` ~L2649–2660; stacked multi-role not scored the same |
-| CLI unit tests | **No** `stacked` cases in `tests/unit/cli/test_layout_plan.py` (grep empty) |
+| `layout save` | **SL1:** TABBED → bare list; STACKED → `{layout:stacked, content}` — round-trips |
+| Thrash scoring | Multi-role “not co-grouped” thrash check is **`mode == "tabbed"` only** — stacked multi-role not scored the same (**SL3**) |
+| CLI unit tests | SL1: stacked save + desugar cases in `test_layout_save` / `test_layout_plan` |
 
 ### 6. Session / rehome
 
@@ -155,9 +156,9 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | DnD when mode on | Creates/joins STACKED per `dnd-center-layout` | Confirm live on black when opting in; covered by unit | Low |
 | DnD when mode off | Forced tabbed | Matches T0; keep | — |
 | Chrome | Vertical stack bars shared with tab machinery | None critical; shared `showtab` toggle | Low |
-| Layout IR | `layout: "stacked"` works end-to-end if written | Bare sugar / multi-role default never produces stacked | **High** (product goal #2) |
-| `layout save` | STACKED → bare array | Round-trip becomes **tabbed** | **High** |
-| Thrash / verify | Tabbed multi-role checked | Stacked multi-role thrash not scored | **Med** |
+| Layout IR | multi-role `layout: "stacked"` + sugar | — (SL1) | — |
+| `layout save` | STACKED → stacked object sugar | — (SL1) | — |
+| Thrash / verify | Tabbed multi-role checked | Stacked multi-role thrash not scored | **Med** (SL3) |
 | Session / rehome | Same path as TABBED | Needs explicit STACKED regression if not already e2e | Med |
 | Unit/e2e engine | Strong | — | — |
 | CLI / profile tests | Missing stacked | Add with sugar work | Med |
@@ -170,8 +171,8 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 | ID | Work | Depends | Size |
 | --- | --- | --- | --- |
 | **SL0** | **Docs + schema hygiene:** set `config/settings.schema.json` stack default `false`; fix `layouts.md` / `troubleshooting.md` “on by default”; README already OK; short “stacked vs tabbed” in `layouts.md` | Accept plan | **S** — **done** |
-| **SL1** | **Profile IR + save round-trip:** `layout save` emit stacked groups as IR `layout: "stacked"` (or sugar that desugars to stacked); ensure bare multi-app array stays tabbed; tests in `test_layout_*` | Accept | **M** |
-| **SL2** | **Tiles sugar for stacked (optional syntax):** e.g. `{ "layout": "stacked", "content": [...] }` / documented IR-only path; keep default multi-role → tabbed | SL1 | **S–M** |
+| **SL1** | **Profile IR + save round-trip:** `layout save` emit stacked groups as IR `layout: "stacked"` (or sugar that desugars to stacked); ensure bare multi-app array stays tabbed; tests in `test_layout_*` | Accept | **M** — **done** |
+| **SL2** | **Tiles sugar for stacked:** `{ "layout": "stacked", "content": [...] }` + docs | SL1 | **S** — **done with SL1** |
 | **SL3** | **Thrash / ensure parity:** multi-role `stacked` slots get same co-group thrash + ensure behavior as tabbed | SL1 | **S** |
 | **SL4** | **Regression pack:** unit CLI + any missing DnD/toggle; optional e2e smoke with flag on (STACKED toggle + focus restack already partly in bridge) | SL1 | **S–M** |
 | **SL5** | **Live verify on black (opt-in):** enable stack mode; toggle / DnD stacked / layout profile with stacked cell; soft rehome dual-mon; no Shell thrash | SL0–SL1 preferred | **S** (ops) |
@@ -183,8 +184,8 @@ not a silent schema flip, unless Luke explicitly accepts the DnD side effects.
 
 ## Next task
 
-→ **`SL1`** — profile IR + save round-trip for stacked groups (first real product slice).  
-SL0 done: schema JSON + user docs aligned with stack opt-in.
+→ **`SL3`** — thrash/ensure parity for multi-role stacked slots (same co-group checks as tabbed).  
+SL1–SL2 sugar/save done.
 
 ## Related
 
@@ -195,9 +196,10 @@ SL0 done: schema JSON + user docs aligned with stack opt-in.
 
 ## Session note
 
-**2026-07-28 SL0 (Task Force A)**
+**2026-07-28 SL1 (Task Force A)**
 
-- `config/settings.schema.json` stack default **false** (matches gschema; no gschema flip).
-- User docs: `layouts.md` stacked-vs-tabbed + DnD/keybind opt-in; `troubleshooting.md` no longer “both on by default”.
-- Docs gap closed; remaining product gap is **layout save → tab sugar** (SL1).
-- Next: **SL1** only.
+- Save: STACKED multi-window → `{"layout":"stacked","content":[…]}`; TABBED stays bare list.
+- Desugar: `_desugar_role_pane(..., mode=)`; early path for layout/split tabbed|stacked + all role cells → multi-role leaf (not nested CON).
+- Tests: `tree-stacked-pair.json`; save shape + plan sugar; 165 green.
+- Docs: `layout.md` authoring table; `layouts.md` save/author pointer.
+- SL2 sugar landed with SL1. Next: **SL3** thrash parity.

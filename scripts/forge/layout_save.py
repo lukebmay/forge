@@ -689,6 +689,9 @@ def _capture_pane(
             return None, 0
         if len(cells) == 1:
             return cells[0], 1
+        # TABBED → bare multi-cell list; STACKED → explicit layout sugar
+        if layout == "STACKED":
+            return {"layout": "stacked", "content": cells}, len(cells)
         return cells, len(cells)
 
     if layout in ("HSPLIT", "VSPLIT") and kids:

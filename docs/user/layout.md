@@ -112,6 +112,7 @@ Drop this at `~/.config/forge/layout/simple.json` (edit app names):
 | Top-level panes | Single mon (or flat cells) → all on mon0 |
 | `[ a, b ]` mon body | Two mon children; default **hsplit**; **array order = L→R** |
 | `["app1", "app2"]` | One pane, multi-role, **tabbed**; **array order = tab order** |
+| `{ "layout": "stacked", "content": […] }` | One pane, multi-role, **stacked** (i3-style); needs stack mode on |
 | `"ghostty"` | One pane, one role; class stem matches reverse-DNS wmClass |
 | `"Grok"` / `"YouTube"` | Chrome PWA-ish: class + `title~=` inferred from the string |
 | Flat object | `{ "app", "class", "title~=" }` override when inference is not enough |
@@ -248,7 +249,8 @@ Optional top-level `floating` is reserved for float roles (omit when empty).
 | `overflow` | `mon0.overflow` + `tabbed` |
 | `marginal` | `{ "mode": "coexist", "roleOrder": "first", "residual": "leave" }` |
 | mon split | `hsplit` when ≥2 children |
-| multi-app pane | `tabbed` |
+| multi-app bare array | `tabbed` |
+| multi-app `{ "layout": "stacked", … }` | `stacked` |
 | single-role pane id | that role id |
 | multi-role pane id | auto `s0`, `s1`, … |
 

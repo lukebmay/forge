@@ -427,6 +427,34 @@ def _desugar_pane(
     used_ids: set[str],
     s_next: list[int],
 ) -> dict[str, Any]:
+    # Multi-role group sugar: {layout|split: tabbed|stacked, content: [roles]}
+    if isinstance(item, dict):
+        mode_raw = item.get("layout")
+        if mode_raw is None:
+            mode_raw = item.get("split")
+        if mode_raw is not None:
+            mode_key = str(mode_raw).strip().lower()
+            mode_norm = _SPLIT_ALIASES.get(mode_key, mode_key)
+            if mode_norm in ("tabbed", "stacked"):
+                content = item.get("content")
+                if content is None:
+                    content = item.get("children")
+                if (
+                    isinstance(content, list)
+                    and len(content) > 0
+                    and all(_is_role_cell(x) for x in content)
+                ):
+                    return _desugar_role_pane(
+                        content,
+                        mon_key,
+                        path_prefix,
+                        where,
+                        roles,
+                        used_ids,
+                        s_next,
+                        mode=mode_norm,
+                    )
+
     # Nested split object
     if isinstance(item, dict) and ("split" in item or "content" in item or "children" in item):
         if "roles" in item and item.get("content") is None and item.get("children") is None:
@@ -505,6 +533,7 @@ def _desugar_role_pane(
     roles: list[dict[str, Any]],
     used_ids: set[str],
     s_next: list[int],
+    mode: str = "tabbed",
 ) -> dict[str, Any]:
     role_ids: list[str] = []
     for j, cell in enumerate(cells):
@@ -518,7 +547,10 @@ def _desugar_role_pane(
     else:
         cid = f"s{s_next[0]}"
         s_next[0] += 1
-        child = {"id": cid, "layout": "tabbed", "roles": role_ids}
+        mode_s = str(mode).strip().lower()
+        if mode_s not in ("tabbed", "stacked"):
+            mode_s = "tabbed"
+        child = {"id": cid, "layout": mode_s, "roles": role_ids}
 
     full_slot = f"{path_prefix}.{cid}"
     for rid in role_ids:
