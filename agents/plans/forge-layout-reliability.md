@@ -105,7 +105,7 @@ Operator must click the **dock item** first; after that, tab focus works again.
 
 ## Non-goals
 
-- STACKED product polish (SL5) — lower priority while LF1/LF2 open.
+- STACKED product polish (SL5) — lower priority until live LF re-verify.
 - Redesigning bare-array sugar syntax.
 - Full thrash Mode B rewrite (already shipped).
 
@@ -114,7 +114,7 @@ Operator must click the **dock item** first; after that, tab focus works again.
 | ID | Task | Status |
 | --- | --- | --- |
 | LF1 | [completed/…_lf1-partial-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf1-partial-reopen.md) | **done** (A/B AGREE; live optional) |
-| **LF2** | [forge-layout-reliability_lf2-tab-click-focus](../tasks/forge-layout-reliability_lf2-tab-click-focus.md) | **implemented** (await B) |
+| LF2 | [completed/…_lf2-tab-click-focus](./forge-layout-reliability/completed/forge-layout-reliability_lf2-tab-click-focus.md) | **done** (A/B AGREE; live optional) |
 
 ## Prior work feeding LF1
 
