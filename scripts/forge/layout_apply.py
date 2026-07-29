@@ -446,3 +446,115 @@ def residual_follow_up(
     steps = actions_to_extension_steps(ext, force_close=force_close)
     still = [a.get("role") for a in opens if isinstance(a, dict)]
     return steps, still
+
+
+# --- LF5: settle-before-move (pure predicates; CLI poll uses these) ---
+
+# GetTree WINDOW.mode after processFloats first pass. FLOAT = not yet tiled.
+SETTLED_MODES = frozenset({"TILE", "tile"})
+# Mid-drag is rare for layout open; treat as settled enough to Move.
+SETTLED_MODES_LOOSE = frozenset({"TILE", "tile", "GRAB_TILE", "grab_tile"})
+
+
+def _rect_is_reasonable(rect: Any) -> bool:
+    """True when rect missing (optional) or has positive finite size."""
+    if rect is None:
+        return True
+    if not isinstance(rect, dict):
+        return False
+    try:
+        w = float(rect.get("width"))
+        h = float(rect.get("height"))
+    except (TypeError, ValueError):
+        return False
+    return w > 0 and h > 0 and all(
+        isinstance(rect.get(k), (int, float)) or rect.get(k) is None
+        for k in ("x", "y")
+    )
+
+
+def window_is_settled(
+    win: Any,
+    *,
+    require_tile: bool = True,
+    allow_grab: bool = True,
+) -> bool:
+    """
+    Whether a GetTree WINDOW leaf is ready for layout Move / residual rehome.
+
+    Settled means:
+      1. Present with windowId
+      2. mode is TILE (default) — FLOAT means still in window-create-queue /
+         pre-processFloats; Move often no-ops or Meta snaps back
+      3. If rect exported: positive width/height (zero rect = unprocessed)
+      4. If monitor exported: >= 0 (Mutter has assigned a display)
+
+    require_tile=False: only id + geometry checks (class appear without tile).
+    allow_grab: GRAB_TILE counts as settled when require_tile.
+    """
+    if not isinstance(win, dict):
+        return False
+    wid = win.get("windowId")
+    if wid is None or str(wid).strip() == "":
+        return False
+
+    if require_tile:
+        mode = win.get("mode")
+        modes = SETTLED_MODES_LOOSE if allow_grab else SETTLED_MODES
+        if mode is None or str(mode) not in modes:
+            return False
+
+    if not _rect_is_reasonable(win.get("rect")):
+        return False
+
+    mon = win.get("monitor")
+    if mon is not None:
+        try:
+            if int(mon) < 0:
+                return False
+        except (TypeError, ValueError):
+            return False
+
+    return True
+
+
+def find_settled_window(
+    windows: Any,
+    *,
+    window_id: Any = None,
+    require_tile: bool = True,
+) -> Optional[dict[str, Any]]:
+    """First settled window in list; optional windowId filter."""
+    if not isinstance(windows, list):
+        return None
+    want = str(window_id).strip() if window_id is not None else None
+    for w in windows:
+        if not isinstance(w, dict):
+            continue
+        if want is not None and str(w.get("windowId")) != want:
+            continue
+        if window_is_settled(w, require_tile=require_tile):
+            return w
+    return None
+
+
+def move_step_window_ids(steps: Any) -> list[str]:
+    """Collect id:N targets from move/park steps (for settle-before-move)."""
+    out: list[str] = []
+    if not isinstance(steps, list):
+        return out
+    for s in steps:
+        if not isinstance(s, dict):
+            continue
+        op = str(s.get("op") or "").strip().lower()
+        if op not in ("move", "park"):
+            continue
+        tile = s.get("tile") or s.get("selector")
+        if tile is None:
+            continue
+        t = str(tile).strip()
+        if t.startswith("id:"):
+            wid = t[3:].strip()
+            if wid and wid not in out:
+                out.append(wid)
+    return out

@@ -1,27 +1,31 @@
 # Plan: Layout reliability (tab focus + partial reopen)
 
-**Status:** **code complete** (SI1+LF4 A/B AGREE); live re-verify  
+**Status:** active — **LF5 + OP2 A done (await B)**  
 **Priority:** **P0** daily-driver on `black`  
 **Updated:** 2026-07-29  
 **Related:** [forge-workon-thrash-zero.md](./forge-workon-thrash-zero.md) (historical),
 [layout-mon-claim-order](../tasks/layout-mon-claim-order.md) (superseded by LF1),
 tab chrome / session focus archive entries
 
-### Session note (2026-07-29)
+### Session note (2026-07-29 Task Force A — LF5 + OP2)
 
-**SI1 + LF4 shipped (A/B AGREE)** after live feedback that LF3 was insufficient.
-
-| Issue | Fix |
+| Issue | Status |
 | --- | --- |
-| Install activated Grok while browsing Chrome | Sync `lastTabFocus` from Mutter focus **before** session save; restore focus last |
-| Install product rule | **Tree snapshot only** — never layout profiles |
-| 2 Ghosttys on mon0 after close chrome+right Ghostty | Open Ghostty with `--gtk-single-instance=false` (stock desktop forces true); residual + belt moves |
+| SI1 install snapshot focus | shipped (A/B) |
+| LF4 multi-instance Ghostty open | shipped; live still needed settle |
+| **LF5** settle before layout move | **A done** — await B |
+| **OP2** dock second Ghostty tile | **A done** — await B |
 
-**Live re-verify** after `./install` on black (both SI1 and LF4 need extension + CLI).
+**LF5 root:** open wait returned on class appear while still FLOAT; residual Move
+too early. **Fix:** `window_is_settled` + settle poll in `wait_for_wm_class` and
+before residual/belt moves.
 
-**LF4 implement (A):** `launch_app` / layout open spawn
-`ghostty --gtk-single-instance=false` (never gio stock desktop); residual + belt
-move kept. CLI unit **298** green. No commit until B.
+**OP2 root:** dock appId `.desktop` mismatch; firstRender skipped by lone-max
+apply filter; long FLOAT gap. **Fix:** normalize dock app ids; always place
+firstRender; dock create queue 50ms.
+
+**Tests:** pytest cli **307**; vitest extension/window/tree **934**. No commit
+until B. Live re-verify on black after install.
 
 ---
 
@@ -114,9 +118,13 @@ Operator must click the **dock item** first; after that, tab focus works again.
 | --- | --- | --- |
 | LF1 | [completed/…_lf1-partial-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf1-partial-reopen.md) | **done** (A/B AGREE) |
 | LF2 | [completed/…_lf2-tab-click-focus](./forge-layout-reliability/completed/forge-layout-reliability_lf2-tab-click-focus.md) | **done** (A/B AGREE) |
-| LF3 | [completed/…_lf3-mon1-ghostty-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf3-mon1-ghostty-reopen.md) | unit done; **live fail → LF4** |
-| **SI1** | [forge-layout-reliability_si1-install-snapshot-focus](../tasks/forge-layout-reliability_si1-install-snapshot-focus.md) | **A done** (await B) |
-| LF4 | [completed/…_lf4-ghostty-open-mon](./forge-layout-reliability/completed/forge-layout-reliability_lf4-ghostty-open-mon.md) | **done** (A/B AGREE; live re-verify) |
+| LF3 | [completed/…_lf3-mon1-ghostty-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf3-mon1-ghostty-reopen.md) | unit; live → LF4/LF5 |
+| SI1 | [completed/…_si1-install-snapshot-focus](./forge-layout-reliability/completed/forge-layout-reliability_si1-install-snapshot-focus.md) | **done** (A/B) |
+| LF4 | [completed/…_lf4-ghostty-open-mon](./forge-layout-reliability/completed/forge-layout-reliability_lf4-ghostty-open-mon.md) | unit; **live fail → LF5** |
+| LF5 | [completed/…_lf5-settle-before-move](./forge-layout-reliability/completed/forge-layout-reliability_lf5-settle-before-move.md) | **done** (A/B; live re-verify) |
+| OP2 | [completed/…_op2-dock-second-tile](./forge-layout-reliability/completed/forge-layout-reliability_op2-dock-second-tile.md) | **done** (A/B; live re-verify) |
+| **LF5** | [forge-layout-reliability_lf5-settle-before-move](../tasks/forge-layout-reliability_lf5-settle-before-move.md) | **A done** (await B) |
+| **OP2** | [forge-layout-reliability_op2-dock-second-tile](../tasks/forge-layout-reliability_op2-dock-second-tile.md) | **A done** (await B) |
 
 ## Prior work feeding LF1
 

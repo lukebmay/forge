@@ -6,6 +6,7 @@ import {
   shouldTabInsteadOfSplit,
   resolveOpenAppPlacement,
   matchPendingDockLaunch,
+  normalizeDockAppId,
   DOCK_LAUNCH_TTL_MS,
 } from "../../../lib/extension/lft-mru.js";
 
@@ -317,6 +318,18 @@ describe("matchPendingDockLaunch", () => {
     ];
     const m = matchPendingDockLaunch(pending, { appId: "b.desktop", now });
     expect(m).toEqual({ monitor: 1, index: 1 });
+  });
+
+  it("normalizes .desktop suffix (OP2 Ghostty dock id drift)", () => {
+    expect(normalizeDockAppId("com.mitchellh.ghostty.desktop")).toBe("com.mitchellh.ghostty");
+    expect(normalizeDockAppId("Com.Mitchellh.Ghostty")).toBe("com.mitchellh.ghostty");
+    const pending = [{ monitor: 1, appId: "com.mitchellh.ghostty.desktop", ts: now - 20 }];
+    // WindowTracker may omit .desktop while Shell.App.get_id includes it.
+    const m = matchPendingDockLaunch(pending, {
+      appId: "com.mitchellh.ghostty",
+      now,
+    });
+    expect(m).toEqual({ monitor: 1, index: 0 });
   });
 
   it("ignores expired entries", () => {

@@ -60,11 +60,14 @@ from layout_apply import (  # noqa: E402
     MODE_STEPS,
     actions_to_extension_steps,
     detect_layout_mode,
+    find_settled_window,
     ghostty_multi_instance_argv,
     is_ghostty_launch_target,
+    move_step_window_ids,
     open_action_to_launch_fields,
     partition_plan_actions,
     residual_follow_up,
+    window_is_settled,
 )
 from layout_lib import (  # noqa: E402
     extract_steps_and_stop,
@@ -867,6 +870,7 @@ def wait_for_wm_class(
     first: bool,
     baseline_ids: Optional[set[str]] = None,
     accept_any_new: bool = False,
+    require_settled: bool = True,
 ) -> dict[str, Any]:
     """
     Poll GetTree until a matching window appears (or timeout).
@@ -877,6 +881,10 @@ def wait_for_wm_class(
     When accept_any_new is True (default for launch without --wm-class): if the
     timeout elapses with unmatched new windows, return the first new one.
     While polling with no class hints, any new window wins immediately.
+
+    LF5: when require_settled (default), do not return on mere class appear —
+    wait until window_is_settled (TILE + id + reasonable rect). Unsettled hits
+    are remembered; on timeout still return the hit so callers can try moves.
     """
     deadline = time.monotonic() + max(0, timeout_ms) / 1000.0
     baseline_ids = baseline_ids or set()
@@ -884,6 +892,7 @@ def wait_for_wm_class(
     seen_classes: set[str] = set()
     class_list = _normalize_class_list(wm_class)
     last_fresh: list[dict[str, Any]] = []
+    pending_unsettled: Optional[dict[str, Any]] = None
 
     def _chosen(pool: list[dict[str, Any]], matched_by: str) -> dict[str, Any]:
         c = pool[0]
@@ -893,8 +902,27 @@ def wait_for_wm_class(
             "title": c.get("title"),
             "wmClass": c.get("wmClass"),
             "path": c.get("path"),
+            "mode": c.get("mode"),
             "matchedBy": matched_by,
+            "settled": window_is_settled(c),
         }
+
+    def _pick_settled_or_note(
+        hits: list[dict[str, Any]], matched_by: str
+    ) -> Optional[dict[str, Any]]:
+        nonlocal pending_unsettled
+        if not hits:
+            return None
+        if not require_settled:
+            return _chosen(hits, matched_by)
+        settled = [w for w in hits if window_is_settled(w)]
+        if settled:
+            return _chosen(settled, matched_by)
+        # Remember first appear; keep polling for TILE / rect.
+        if pending_unsettled is None:
+            pending_unsettled = _chosen(hits, matched_by)
+            pending_unsettled["settled"] = False
+        return None
 
     while time.monotonic() <= deadline:
         try:
@@ -933,18 +961,42 @@ def wait_for_wm_class(
             # Also allow class match on pre-existing if no baseline (rare)
             if not hits and not baseline_ids:
                 hits = _windows_matching_class(data, class_list)
-            if hits:
-                return _chosen(hits, "wm-class")
+            picked = _pick_settled_or_note(hits, "wm-class")
+            if picked:
+                return picked
         else:
-            # No hints: first new window
-            if fresh:
-                return _chosen(fresh, "new-window")
+            # No hints: first new window (optionally settled)
+            picked = _pick_settled_or_note(fresh, "new-window")
+            if picked:
+                return picked
+
+        # If we already have an id, re-check that leaf in the live tree for settle.
+        if require_settled and pending_unsettled and pending_unsettled.get("windowId") is not None:
+            wid = pending_unsettled["windowId"]
+            live = find_settled_window(all_wins, window_id=wid)
+            if live:
+                out = _chosen([live], pending_unsettled.get("matchedBy") or "wm-class")
+                out["settled"] = True
+                return out
 
         time.sleep(0.12)
 
     # Class hints never matched — optionally take any new window that appeared
     if accept_any_new and last_fresh:
+        picked = _pick_settled_or_note(last_fresh, "new-window")
+        if picked:
+            return picked
+        # Unsettled new window is better than total failure for pin.
+        if pending_unsettled:
+            pending_unsettled["settleTimeout"] = True
+            return pending_unsettled
         return _chosen(last_fresh, "new-window")
+
+    # Appeared but never TILE within timeout: return unsettled so residual can still try.
+    if pending_unsettled:
+        pending_unsettled["settleTimeout"] = True
+        pending_unsettled["ok"] = True
+        return pending_unsettled
 
     out: dict[str, Any] = {
         "ok": False,
@@ -957,6 +1009,53 @@ def wait_for_wm_class(
     if seen_classes:
         out["seenClasses"] = sorted(seen_classes)
     return out
+
+
+def wait_for_window_ids_settled(
+    backend: str,
+    window_ids: list[str] | set[str],
+    timeout_ms: int = 3000,
+) -> dict[str, Any]:
+    """
+    Poll until every windowId is settled (TILE) or timeout.
+
+    Used before residual/belt Move so Meta rehome sticks (LF5).
+    """
+    ids = [str(x).strip() for x in window_ids if x is not None and str(x).strip()]
+    if not ids:
+        return {"ok": True, "settled": [], "pending": []}
+    deadline = time.monotonic() + max(0, timeout_ms) / 1000.0
+    pending = set(ids)
+    settled: list[str] = []
+    last_err = "timeout"
+    while time.monotonic() <= deadline and pending:
+        try:
+            raw = call_method(backend, "GetTree", "{}")
+            data = json.loads(raw)
+        except Exception as e:
+            last_err = str(e)
+            time.sleep(0.12)
+            continue
+        if isinstance(data, dict) and data.get("error"):
+            last_err = str(data["error"])
+            time.sleep(0.12)
+            continue
+        wins = _iter_tree_windows(data)
+        still: set[str] = set()
+        for wid in pending:
+            if find_settled_window(wins, window_id=wid):
+                settled.append(wid)
+            else:
+                still.add(wid)
+        pending = still
+        if pending:
+            time.sleep(0.12)
+    return {
+        "ok": len(pending) == 0,
+        "settled": settled,
+        "pending": sorted(pending),
+        "error": None if not pending else f"settle timeout ({last_err})",
+    }
 
 
 def _baseline_window_ids(backend: str) -> set[str]:
@@ -1841,6 +1940,22 @@ def _layout_run_reconcile(
         if still_open:
             _eprint(f"forge layout: still missing roles after open: {still_open}")
         if follow_steps:
+            # LF5: residual Move before TILE settle no-ops / Meta snaps back.
+            settle_ids = move_step_window_ids(follow_steps)
+            # Also wait just-opened pins even if residual used path selectors.
+            for _role, pin_wid in (role_pins or {}).items():
+                if pin_wid is not None and str(pin_wid) not in settle_ids:
+                    settle_ids.append(str(pin_wid))
+            if settle_ids:
+                settle_info = wait_for_window_ids_settled(
+                    backend, settle_ids, timeout_ms=4000
+                )
+                apply_log["followUpSettle"] = settle_info
+                if settle_info.get("pending"):
+                    _eprint(
+                        "forge layout: residual targets not fully settled: "
+                        f"{settle_info['pending']} (moving anyway)"
+                    )
             rc, agg = run_mixed_steps(
                 backend, follow_steps, stop_on_error=True, print_each=False
             )
@@ -1884,6 +1999,12 @@ def _layout_run_reconcile(
                 ]
                 belt_steps, _ = residual_follow_up(belt_moves, [], force_close=force_close)
                 if belt_steps:
+                    belt_ids = move_step_window_ids(belt_steps)
+                    if belt_ids:
+                        belt_settle = wait_for_window_ids_settled(
+                            backend, belt_ids, timeout_ms=2500
+                        )
+                        apply_log["beltSettle"] = belt_settle
                     rc, agg = run_mixed_steps(
                         backend, belt_steps, stop_on_error=True, print_each=False
                     )

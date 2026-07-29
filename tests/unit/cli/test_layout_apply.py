@@ -20,14 +20,17 @@ from layout_apply import (  # noqa: E402
     MODE_STEPS,
     actions_to_extension_steps,
     detect_layout_mode,
+    find_settled_window,
     ghostty_multi_instance_argv,
     is_ghostty_launch_target,
+    move_step_window_ids,
     open_action_to_launch_fields,
     partition_plan_actions,
     residual_follow_up,
     rewrite_ghostty_launch_app,
     slot_to_monitor_path,
     slot_to_tree_path,
+    window_is_settled,
     window_tile_selector,
 )
 from layout_plan import plan_reconcile  # noqa: E402
@@ -390,6 +393,70 @@ class TestGhosttyMultiInstanceLaunch(unittest.TestCase):
         s = rewrite_ghostty_launch_app("ghostty")
         self.assertEqual(s, f"ghostty {GHOSTTY_MULTI_INSTANCE_FLAG}")
         self.assertEqual(rewrite_ghostty_launch_app("firefox"), "firefox")
+
+
+class TestWindowSettledLf5(unittest.TestCase):
+    """LF5: settle predicate before residual/layout Move."""
+
+    def test_float_not_settled(self):
+        w = {
+            "windowId": 10,
+            "mode": "FLOAT",
+            "rect": {"x": 0, "y": 0, "width": 800, "height": 600},
+            "monitor": 0,
+        }
+        self.assertFalse(window_is_settled(w))
+
+    def test_tile_settled(self):
+        w = {
+            "windowId": 11,
+            "mode": "TILE",
+            "rect": {"x": 0, "y": 0, "width": 960, "height": 1080},
+            "monitor": 1,
+        }
+        self.assertTrue(window_is_settled(w))
+
+    def test_missing_id_not_settled(self):
+        self.assertFalse(window_is_settled({"mode": "TILE", "rect": {"width": 1, "height": 1}}))
+
+    def test_zero_rect_not_settled(self):
+        w = {
+            "windowId": 12,
+            "mode": "TILE",
+            "rect": {"x": 0, "y": 0, "width": 0, "height": 100},
+        }
+        self.assertFalse(window_is_settled(w))
+
+    def test_missing_rect_ok_when_tiled(self):
+        # Older GetTree fixtures may omit rect; mode TILE is enough.
+        self.assertTrue(window_is_settled({"windowId": 13, "mode": "TILE"}))
+
+    def test_negative_monitor_not_settled(self):
+        w = {"windowId": 14, "mode": "TILE", "monitor": -1}
+        self.assertFalse(window_is_settled(w))
+
+    def test_require_tile_false(self):
+        w = {"windowId": 15, "mode": "FLOAT"}
+        self.assertTrue(window_is_settled(w, require_tile=False))
+
+    def test_find_settled_window(self):
+        wins = [
+            {"windowId": 1, "mode": "FLOAT"},
+            {"windowId": 2, "mode": "TILE", "rect": {"width": 100, "height": 100}},
+        ]
+        hit = find_settled_window(wins)
+        self.assertEqual(hit["windowId"], 2)
+        self.assertIsNone(find_settled_window(wins, window_id=1))
+        self.assertEqual(find_settled_window(wins, window_id=2)["windowId"], 2)
+
+    def test_move_step_window_ids(self):
+        steps = [
+            {"op": "move", "tile": "id:501", "dest": "path:mo1ws0"},
+            {"op": "layout", "mode": "hsplit", "selector": "id:501"},
+            {"op": "move", "tile": "path:mo0ws0/0", "dest": "path:mo0ws0"},
+            {"op": "park", "tile": "id:99", "dest": "id:1"},
+        ]
+        self.assertEqual(move_step_window_ids(steps), ["501", "99"])
 
 
 class TestPlanToStepsFixture(unittest.TestCase):

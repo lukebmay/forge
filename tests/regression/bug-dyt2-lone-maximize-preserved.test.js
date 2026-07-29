@@ -83,4 +83,24 @@ describe("forge-dyt2: tree.apply preserves a lone tiled window's maximize", () =
     ctx.tree.apply(ctx.tree);
     expect(win1.is_maximized()).toBe(false);
   });
+
+  it("OP2: firstRender lone max still places once (dock/new map)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+    const { metaWindow, node } = tileWindow(monitor, 7201);
+    // Drifted Meta frame (restore-geometry / wrong mon size) while maximized alone.
+    metaWindow.maximize();
+    metaWindow.move_resize_frame(false, 100, 100, 400, 300);
+    metaWindow.firstRender = true;
+    node.renderRect = { x: 0, y: 0, width: 1920, height: 1080 };
+
+    expect(ctx.windowManager._isLoneMaximizedTile(node)).toBe(true);
+    ctx.tree.apply(ctx.tree);
+    // First placement must run even for lone max; move() unmaximizes.
+    expect(metaWindow.firstRender).toBe(false);
+    const frame = metaWindow.get_frame_rect();
+    expect(frame.width).toBe(1920);
+    expect(frame.height).toBe(1080);
+  });
 });

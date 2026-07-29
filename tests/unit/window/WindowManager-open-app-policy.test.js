@@ -356,6 +356,50 @@ describe("OP1 open-app placement policy", () => {
       // Consumed
       expect(wm().detectDockLaunchMonitor(metaWindow)).toBe(-1);
     });
+
+    it("OP2: second dock Ghostty on mon1 tiles without drag", () => {
+      // mon0 already has Ghostty (global LFT); dock open on mon1 must home mon1.
+      const mon0Term = tileOn(0, {
+        id: "ghostty-mon0",
+        wm_class: "com.mitchellh.ghostty",
+        rect: { x: 0, y: 0, width: 900, height: 600 },
+      });
+      wm().movePointerWith(mon0Term.nodeWindow);
+      expect(wm().lftMru.globalHead()).toBe(mon0Term.nodeWindow);
+
+      // Dock notes .desktop id; WindowTracker may return bare app id.
+      wm().noteDockLaunch(1, { appId: "com.mitchellh.ghostty.desktop" });
+      const meta2 = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0, // Meta maps wrong mon; dock sticky rehomes
+        id: "ghostty-dock-mon1",
+        wm_class: "com.mitchellh.ghostty",
+        rect: { x: 50, y: 50, width: 400, height: 300 },
+      });
+      meta2._forgeAppId = "com.mitchellh.ghostty";
+
+      wm().trackWindow(null, meta2);
+      const node2 = wm().findNodeWindow(meta2);
+      expect(node2).toBeTruthy();
+      expect(monitorOf(node2)).toBe(1);
+      expect(meta2.get_monitor()).toBe(1);
+      expect(meta2.firstRender).toBe(true);
+
+      // FLOAT until processFloats; first create render tiles + places.
+      expect(node2.mode).toBe(WINDOW_MODES.FLOAT);
+      wm().processFloats();
+      expect(node2.mode).toBe(WINDOW_MODES.TILE);
+      // Assign mon1 work-area rect and apply first placement (no user drag).
+      const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+      mon1.rect = { x: 1920, y: 0, width: 1920, height: 1080 };
+      node2.rect = { x: 1920, y: 0, width: 960, height: 1080 };
+      node2.renderRect = { x: 1920, y: 0, width: 960, height: 1080 };
+      ctx.tree.apply(ctx.tree);
+      expect(meta2.firstRender).toBe(false);
+      const frame = meta2.get_frame_rect();
+      expect(frame.x).toBe(1920);
+      expect(frame.width).toBe(960);
+    });
   });
 
   describe("tab-after and aspect split", () => {
