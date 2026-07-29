@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-07-28  
+**Updated:** 2026-07-29  
 **Lens:** day-to-day impact on `black` (dual 4K, X11, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -16,6 +16,7 @@
 
 | Item | Note |
 | --- | --- |
+| Tab/stack order+open on install | title-before-geo match; lastTabFocus on tab focus; raise all groups; CLI portable flush |
 | Install focus preserve | focusWindowId survives id churn + shield thrash; idle re-activate |
 | STACKED Phase 1 keys | Stack mode on; tab↔stack + merge binds; kits + `forge keybind`; RunSteps parity; docs/install |
 | STACKED SL4 | CLI regression: ensure stacked on tabbed/flat; nothingToDo on pair; save RT |

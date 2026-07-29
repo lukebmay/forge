@@ -245,11 +245,19 @@ restores.
 (leaves: id, pid, wmClass/title, frame, monitor; CONs keep `lastTabFocusId`).
 Envelope also stores **`focusWindowId`** (the focused window at flush time).
 Debounced last-good save; install flushes before HUP. On enable: match ≥50% in
-order id → pid → class+title → class+geometry → unique class; **strict** mon
-rehome (`resolveStrictMonitor` — **not** T6 majority); raise tiles so none stay
-buried; **activate** the resolved `focusWindowId` so keyboard focus survives
+order id → **unique class+title** → pid cohort (geometry + title boost) →
+class cohort → unique class; **strict** mon rehome (`resolveStrictMonitor` —
+**not** T6 majority). Child order in the portable forest is the tab/stack
+chrome order; raise each CON’s `lastTabFocus` so the open leaf stays on top;
+**activate** the resolved `focusWindowId` so keyboard focus survives
 install/update. Richness guard + post-enable **12s** save hold protect
 last-good. Not full `layout` profiles.
+
+**Tab/stack after install:** sibling order is forest `children[]` order (not
+geometry rank). Matching must not scramble co-framed tabs — title-before-pid
+geometry plus title boost on ties. `updateTabbedFocus` records `lastTabFocus`
+(same as stacks) so the open item is current at flush. CLI GetTree fallback
+also writes `lastTabFocusId` / `focusWindowId`.
 
 **Focus must survive id churn + thrash shield:** Topology match uses full leaf
 metadata, but `focusWindowId` / `lastTabFocusId` resolve via synthetic

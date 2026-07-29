@@ -340,12 +340,17 @@ def _project_node_to_portable(node: dict[str, Any]) -> dict[str, Any] | None:
     # CON
     if not layout or not children:
         return None
-    return {
+    out_con: dict[str, Any] = {
         "layout": layout,
         "percent": node.get("percent") or 0,
         "userSized": bool(node.get("userSized")),
         "children": children,
     }
+    # Which tab/stack leaf is open — required for install/update restore.
+    ltf = node.get("lastTabFocusId")
+    if ltf is not None:
+        out_con["lastTabFocusId"] = ltf
+    return out_con
 
 
 def _write_session_layout_from_tree(forest: dict[str, Any]) -> dict[str, Any]:
@@ -360,13 +365,16 @@ def _write_session_layout_from_tree(forest: dict[str, Any]) -> dict[str, Any]:
     if not portable_mons:
         return {"ok": False, "error": "no non-empty monitors in tree"}
 
-    envelope = {
+    envelope: dict[str, Any] = {
         "kind": "forge-session-layout",
         "sessionVersion": 1,
         "savedMonotonicUs": time.monotonic_ns() // 1000,
         "savedAtMs": int(time.time() * 1000),
         "forest": {"version": 1, "monitors": portable_mons},
     }
+    fw = forest.get("focusWindowId")
+    if fw is not None:
+        envelope["focusWindowId"] = fw
     conf = Path.home() / ".config" / "forge" / "config"
     conf.mkdir(parents=True, exist_ok=True)
     path = conf / "session-layout.json"

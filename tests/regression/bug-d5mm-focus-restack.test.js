@@ -78,4 +78,23 @@ describe("forge-d5mm: focus handler re-stacks the focused window", () => {
     expect(monitor.lastTabFocus).toBe(winA);
     expect(winA.raise).toHaveBeenCalled();
   });
+
+  it("records lastTabFocus on TABBED focus so install flush keeps open tab", () => {
+    const winA = createMockWindow({ wm_class: "A", workspace: ctx.workspaces[0] });
+    const winB = createMockWindow({ wm_class: "B", workspace: ctx.workspaces[0] });
+    wm().trackWindow(null, winA);
+    wm().trackWindow(null, winB);
+
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.TABBED;
+    monitor.lastTabFocus = winA;
+    const orderBefore = monitor.childNodes.slice();
+
+    winB.raise = vi.fn();
+    fireFocusAndGetUpdate(winB)();
+
+    expect(monitor.childNodes).toEqual(orderBefore);
+    expect(monitor.lastTabFocus).toBe(winB);
+    expect(winB.raise).toHaveBeenCalled();
+  });
 });

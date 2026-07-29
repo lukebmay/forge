@@ -512,6 +512,156 @@ describe("session-layout portable round-trip", () => {
     expect(tab.children.map((c) => c.window)).toEqual([wFocus, wOther]);
   });
 
+  it("preserves tab sibling order + open leaf when same-pid frames match (install HUP)", () => {
+    // Chrome tabs: one pid, identical frames; ids churn; titles stay unique.
+    // Live candidate order is reversed vs forest children — title match must win.
+    const sameFrame = new Rectangle({ x: 100, y: 150, width: 2494, height: 2714 });
+    const wGmail = createMockWindow({
+      id: 8002,
+      pid: 6139,
+      wm_class: "Google-chrome",
+      title: "Gmail - Inbox",
+      monitor: 0,
+      rect: sameFrame,
+    });
+    const wGrok = createMockWindow({
+      id: 8001,
+      pid: 6139,
+      wm_class: "Google-chrome",
+      title: "Grok - chat",
+      monitor: 0,
+      rect: sameFrame,
+    });
+    const wVoice = createMockWindow({
+      id: 8003,
+      pid: 6139,
+      wm_class: "Google-chrome",
+      title: "Google Voice",
+      monitor: 0,
+      rect: sameFrame,
+    });
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              layout: "TABBED",
+              lastTabFocusId: 11,
+              percent: 1,
+              userSized: false,
+              children: [
+                {
+                  id: 10,
+                  pid: 6139,
+                  wmClass: "Google-chrome",
+                  title: "Grok - chat",
+                  monitor: 0,
+                  frame: { x: 100, y: 150, width: 2494, height: 2714 },
+                  percent: 0,
+                  userSized: false,
+                },
+                {
+                  id: 11,
+                  pid: 6139,
+                  wmClass: "Google-chrome",
+                  title: "Gmail - Inbox",
+                  monitor: 0,
+                  frame: { x: 100, y: 150, width: 2494, height: 2714 },
+                  percent: 0,
+                  userSized: false,
+                },
+                {
+                  id: 12,
+                  pid: 6139,
+                  wmClass: "Google-chrome",
+                  title: "Google Voice",
+                  monitor: 0,
+                  frame: { x: 100, y: 150, width: 2494, height: 2714 },
+                  percent: 0,
+                  userSized: false,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    // Candidates listed out of forest order intentionally.
+    const resolve = createWindowResolver([wVoice, wGmail, wGrok], portable);
+    const live = toLiveForest(portable, resolve);
+    const tab = live.monitors[0].children[0];
+    expect(tab.children.map((c) => c.window)).toEqual([wGrok, wGmail, wVoice]);
+    expect(tab.lastTabFocus).toBe(wGmail);
+  });
+
+  it("preserves STACKED sibling order + open leaf after id churn", () => {
+    const sameFrame = new Rectangle({ x: 200, y: 80, width: 2000, height: 2500 });
+    const wA = createMockWindow({
+      id: 9001,
+      pid: 100,
+      wm_class: "App",
+      title: "Alpha",
+      monitor: 0,
+      rect: sameFrame,
+    });
+    const wB = createMockWindow({
+      id: 9002,
+      pid: 100,
+      wm_class: "App",
+      title: "Beta",
+      monitor: 0,
+      rect: sameFrame,
+    });
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              layout: "STACKED",
+              lastTabFocusId: 2,
+              percent: 1,
+              userSized: false,
+              children: [
+                {
+                  id: 1,
+                  pid: 100,
+                  wmClass: "App",
+                  title: "Alpha",
+                  monitor: 0,
+                  frame: { x: 200, y: 80, width: 2000, height: 2500 },
+                  percent: 0,
+                  userSized: false,
+                },
+                {
+                  id: 2,
+                  pid: 100,
+                  wmClass: "App",
+                  title: "Beta",
+                  monitor: 0,
+                  frame: { x: 200, y: 80, width: 2000, height: 2500 },
+                  percent: 0,
+                  userSized: false,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const resolve = createWindowResolver([wB, wA], portable);
+    const live = toLiveForest(portable, resolve);
+    const stack = live.monitors[0].children[0];
+    expect(stack.layout).toBe("STACKED");
+    expect(stack.children.map((c) => c.window)).toEqual([wA, wB]);
+    expect(stack.lastTabFocus).toBe(wB);
+  });
+
   it("matches two same-pid Ghosttys by frame distance after thrash pile (side-by-side)", () => {
     // Real Ghostty: one process, many windows; titles churn; both piled on mon1.
     const leftLive = createMockWindow({
