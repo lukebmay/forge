@@ -40,7 +40,7 @@ describe("tab click activates associated window", () => {
     return con;
   }
 
-  it("_activateFromTab raises, activates, sets lastTabFocus, restacks", () => {
+  it("_activateFromTab raises, focuses, activates, sets lastTabFocus, restacks", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
     const wA = createMockWindow({ id: "a", wm_class: "A" });
@@ -50,17 +50,25 @@ describe("tab click activates associated window", () => {
     tab.lastTabFocus = wA;
 
     wB.raise = vi.fn();
+    wB.focus = vi.fn();
     wB.activate = vi.fn();
     const tabbedSpy = vi.spyOn(wm(), "updateTabbedFocus");
     const stackedSpy = vi.spyOn(wm(), "updateStackedFocus");
+    const decoSpy = vi.spyOn(wm(), "updateDecorationLayout");
+    const borderSpy = vi.spyOn(wm(), "updateBorderLayout");
 
     nB._activateFromTab(wB);
 
     expect(tab.lastTabFocus).toBe(wB);
     expect(wB.raise).toHaveBeenCalled();
+    // LF2: focus+activate (keyboard path); activate-only failed on X11 after multi-mon.
+    expect(wB.focus).toHaveBeenCalled();
     expect(wB.activate).toHaveBeenCalled();
     expect(tabbedSpy).toHaveBeenCalledWith(nB);
     expect(stackedSpy).toHaveBeenCalledWith(nB);
+    // Raise buries chrome; restack immediately (do not wait for focus-update queue).
+    expect(decoSpy).toHaveBeenCalled();
+    expect(borderSpy).toHaveBeenCalled();
     expect(nA).toBeTruthy();
   });
 
@@ -75,6 +83,7 @@ describe("tab click activates associated window", () => {
     const nC = wm().tree.createNode(stack.nodeValue, NODE_TYPES.WINDOW, wC);
 
     wA.raise = vi.fn();
+    wA.focus = vi.fn();
     wA.activate = vi.fn();
     const orderBefore = stack.childNodes.slice();
     expect(stack.lastChild).not.toBe(nA);
@@ -88,7 +97,75 @@ describe("tab click activates associated window", () => {
     expect(stack.childNodes[2]).toBe(nC);
     expect(stack.lastTabFocus).toBe(wA);
     expect(wA.raise).toHaveBeenCalled();
+    expect(wA.focus).toHaveBeenCalled();
     expect(wA.activate).toHaveBeenCalled();
+  });
+
+  it("tab click restacks chrome above group after raise buries it (LF2)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
+    const wA = createMockWindow({ id: "lf2a", wm_class: "A" });
+    const wB = createMockWindow({ id: "lf2b", wm_class: "B" });
+    const nA = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wB);
+    tab.lastTabFocus = wA;
+
+    const actorA = { name: "actorA" };
+    const actorB = { name: "actorB" };
+    wA.get_compositor_private = () => actorA;
+    wB.get_compositor_private = () => actorB;
+    wB.raise = vi.fn(() => {
+      const wg = global.window_group;
+      if (wg.contains(actorB)) wg.remove_child(actorB);
+      wg.add_child(actorB);
+    });
+    wB.focus = vi.fn();
+    wB.activate = vi.fn();
+
+    const deco = { name: "deco", show: vi.fn(), hide: vi.fn() };
+    tab.decoration = deco;
+    const wg = global.window_group;
+    wg.add_child(actorA);
+    wg.add_child(actorB);
+    wg.add_child(deco);
+
+    // Real decoration restack (not a no-op spy).
+    vi.spyOn(wm(), "updateDecorationLayout").mockImplementation(() => {
+      const tiled = wm().tree.getTiledChildren(tab.childNodes);
+      wm().decorationManager._restackDecorationAboveGroup(tab, tiled);
+    });
+    vi.spyOn(wm(), "updateBorderLayout").mockImplementation(() => {});
+
+    nB._activateFromTab(wB);
+
+    const children = wg.get_children();
+    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorA));
+    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorB));
+    expect(nA).toBeTruthy();
+  });
+
+  it("unfreezes render so tab restack is not a freeze no-op (LF2)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
+    const wA = createMockWindow({ id: "fz-a" });
+    const wB = createMockWindow({ id: "fz-b" });
+    wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wB);
+
+    wm().freezeRender();
+    expect(wm()._freezeRender).toBe(true);
+
+    wB.raise = vi.fn();
+    wB.focus = vi.fn();
+    wB.activate = vi.fn();
+    const tabbedSpy = vi.spyOn(wm(), "updateTabbedFocus");
+    const decoSpy = vi.spyOn(wm(), "updateDecorationLayout");
+
+    nB._activateFromTab(wB);
+
+    expect(wm()._freezeRender).toBe(false);
+    expect(tabbedSpy).toHaveBeenCalledWith(nB);
+    expect(decoSpy).toHaveBeenCalled();
   });
 });
 
@@ -207,5 +284,51 @@ describe("decoration restack above group (not global focus)", () => {
     expect(scheduleSpy).toHaveBeenCalled();
     // GLib.idle_add mock runs callbacks immediately.
     expect(settleSpy).toHaveBeenCalledWith(ctx.windowManager);
+  });
+});
+
+describe("hover focus does not bury tab chrome (LF2)", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      settings: {
+        "tiling-mode-enabled": true,
+        "focus-on-hover-enabled": true,
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    ctx.cleanup();
+  });
+
+  it("does not re-raise when pointer window is already focused", () => {
+    const win = createMockWindow({ id: "hover-a" });
+    win.focus = vi.fn();
+    win.raise = vi.fn();
+    ctx.display.get_focus_window.mockReturnValue(win);
+    vi.spyOn(ctx.windowManager, "_getMetaWindowAtPointer").mockReturnValue(win);
+    ctx.windowManager.shouldFocusOnHover = true;
+
+    const cont = ctx.windowManager._focusWindowUnderPointer();
+    expect(cont).toBe(true);
+    expect(win.focus).not.toHaveBeenCalled();
+    expect(win.raise).not.toHaveBeenCalled();
+  });
+
+  it("focuses and raises when pointer window differs from focus", () => {
+    const focused = createMockWindow({ id: "hover-f" });
+    const under = createMockWindow({ id: "hover-u" });
+    under.focus = vi.fn();
+    under.raise = vi.fn();
+    ctx.display.get_focus_window.mockReturnValue(focused);
+    vi.spyOn(ctx.windowManager, "_getMetaWindowAtPointer").mockReturnValue(under);
+    ctx.windowManager.shouldFocusOnHover = true;
+
+    ctx.windowManager._focusWindowUnderPointer();
+    expect(under.focus).toHaveBeenCalled();
+    expect(under.raise).toHaveBeenCalled();
   });
 });

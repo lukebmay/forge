@@ -151,7 +151,7 @@ churn) are not raise-path cleanup.
 
 | Path | Where | What it does |
 | --- | --- | --- |
-| **Tab click** | `Node._activateFromTab` (`tree.js`) | `lastTabFocus` ← meta; `raise` + `activate`; **immediately** `updateTabbedFocus` / `updateStackedFocus` (focus signal is deferred — waiting on it left stacks un-restacked) |
+| **Tab click** | `Node._activateFromTab` (`tree.js`) | `lastTabFocus` ← meta; `raise` + **`focus` + `activate`** (same as keyboard; activate-only failed on X11 after multi-mon); **immediately** `updateTabbedFocus` / `updateStackedFocus` + **`updateDecorationLayout`** (raise buries chrome; focus-update queue is deferred ~220ms and skips when focus did not change) |
 | **Focus manager** | `FocusManager` (`focus.js`) | `updateStackedFocus`: set `lastTabFocus` + **raise focused only** (stable `childNodes` / label order — no `appendChild` reordering); `updateTabbedFocus`: raise focused leaf when parent is TABBED; pointer hover: `focus` + `raise` under cursor |
 | **Session raise-after-restore** | `SessionLayoutRestoreManager.raiseAfterSessionRestore` (`session-layout-restore.js`) | DFS walk restored forest: `raise` each leaf, then `lastTabFocus` per CON; finally raise focused meta + tab/stack update so nothing stays buried under a sibling after HUP match |
 | **RunSteps settle (WR14)** | `SessionApi._settleAfterRunSteps` (`session-api.js`) | After quiet batch render idle: `updateTabbedFocus` / `updateStackedFocus` per TABBED/STACKED CON (`lastTabFocus` or first tiled), then `updateDecorationLayout` so tab strips stay pickable after mass move/layout |
@@ -317,14 +317,29 @@ regression. Dev builds append
 **Problem:** Clicking group tabs sometimes did nothing until the user first
 clicked the active window’s content.
 
-**Cause:** `updateDecorationLayout` stacked each CON decoration
+**Cause (historical):** `updateDecorationLayout` stacked each CON decoration
 `insert_child_below(global focus)`. When focus was elsewhere, the strip sat
 under other actors and missed pointer picks. Tab handlers also only called
 `activate()` without `lastTabFocus` / stacked restack.
 
-**Fix:** Restack each decoration **above that CON’s window actors**; make the
-decoration/tab reactive; `_activateFromTab` sets `lastTabFocus`, raises,
-activates, and calls `updateTabbedFocus` / `updateStackedFocus`.
+**Fix (restack + reactive):** Restack each decoration **above that CON’s window
+actors**; make the decoration/tab reactive; `_activateFromTab` sets
+`lastTabFocus`, raises, activates, and calls `updateTabbedFocus` /
+`updateStackedFocus`.
+
+**LF2 residual (2026-07-29):** After layout apply / multi-mon focus, tab click
+sometimes still did nothing until a **dock** click. Two holes:
+
+1. Tab path used **`activate` without `focus`** while keyboard
+   `_activateWindowNode` uses raise→focus→activate (needed on X11 stacking).
+2. Tab path raised the window **without restacking chrome**; deferred
+   focus-update (~220ms) never runs when focus did not change, so the strip
+   stayed under the window actor. Hover also re-raised the already-focused
+   window every ~16ms and re-buried chrome.
+
+**LF2 fix:** `_activateFromTab` does focus+activate, unfreezes, restacks
+decoration/border immediately; hover only focus/raises when the under-pointer
+window differs from desk focus.
 
 **Tests:** `tests/regression/bug-tab-click-activate.test.js`.
 

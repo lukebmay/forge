@@ -1,7 +1,7 @@
 # Plan: Layout reliability (tab focus + partial reopen)
 
-**Status:** active — next LF2 (LF1 A/B AGREE; live black optional)  
-**Priority:** **P0** daily-driver on `black`  
+**Status:** **code complete** (LF1+LF2 A/B AGREE); live black optional  
+**Priority:** **P0** daily-driver on `black` (live re-verify remaining)  
 **Updated:** 2026-07-29  
 **Related:** [forge-workon-thrash-zero.md](./forge-workon-thrash-zero.md) (historical),
 [layout-mon-claim-order](../tasks/layout-mon-claim-order.md) (superseded by LF1),
@@ -9,17 +9,20 @@ tab chrome / session focus archive entries
 
 ### Session note (2026-07-29)
 
-**LF1 shipped (A/B AGREE)** on `plan/forge-layout-reliability`:
+**LF1 + LF2 shipped (A/B AGREE)** on `plan/forge-layout-reliability`.
 
-| Root cause | Fix |
+| Issue | Fix |
 | --- | --- |
-| Mon ensure on peer mons during mon0 open | mon ensure only for mons with open/move |
-| Residual abort: chrome title ≠ `Google Chrome` | `role_pins` from launch windowId |
-| Grok not open leaf (no profile active) | survivor focus when companions join |
-| PlaceNext ghostty wildcard | place_class = first inferred class hint |
+| LF1 mon ensure peer thrash | mon ensure only mons with open/move |
+| LF1 residual chrome title lag | `role_pins` from launch windowId |
+| LF1 Grok not open leaf | survivor focus when companions join |
+| LF1 PlaceNext wildcard | first class hint on PlaceNext |
+| LF2 tab activate-only (X11) | `_activateFromTab` raise→focus→activate |
+| LF2 chrome buried under raise | immediate decoration restack after tab click |
+| LF2 hover re-bury strip | hover only when under-pointer ≠ focus |
 
-Unit CLI **287 passed**. Live black re-verify still operator after install.
-**Next:** LF2 tab-click focus.
+**B fix:** focus resolve `get_focus_window() ?? focus_window` (modal dialog guards).
+**Live black** re-verify after install still operator.
 
 ---
 
@@ -92,11 +95,11 @@ Operator must click the **dock item** first; after that, tab focus works again.
 
 **Acceptance (LF2):**
 
-- [ ] Tab primary-click activates + focuses the leaf without a prior dock/content
-      click (including after layout apply / multi-mon focus elsewhere).
-- [ ] Root cause documented (actor stacking, frozen render, focus signal race,
+- [x] Tab primary-click activates + focuses the leaf without a prior dock/content
+      click (including after layout apply / multi-mon focus elsewhere). *(unit)*
+- [x] Root cause documented (actor stacking, frozen render, focus signal race,
       unmapped meta, etc.) with a regression test or minimal e2e/unit where possible.
-- [ ] Troubleshooting note updated only if user-facing behavior changes.
+- [x] Troubleshooting note updated only if user-facing behavior changes. *(no change)*
 
 ---
 
@@ -111,7 +114,7 @@ Operator must click the **dock item** first; after that, tab focus works again.
 | ID | Task | Status |
 | --- | --- | --- |
 | LF1 | [completed/…_lf1-partial-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf1-partial-reopen.md) | **done** (A/B AGREE; live optional) |
-| **LF2** | [forge-layout-reliability_lf2-tab-click-focus](../tasks/forge-layout-reliability_lf2-tab-click-focus.md) | **next** |
+| **LF2** | [forge-layout-reliability_lf2-tab-click-focus](../tasks/forge-layout-reliability_lf2-tab-click-focus.md) | **implemented** (await B) |
 
 ## Prior work feeding LF1
 
