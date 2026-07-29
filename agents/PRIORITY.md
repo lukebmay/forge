@@ -16,6 +16,7 @@
 
 | Item | Note |
 | --- | --- |
+| Install focus preserve | focusWindowId survives id churn + shield thrash; idle re-activate |
 | STACKED Phase 1 keys | Stack mode on; tab↔stack + merge binds; kits + `forge keybind`; RunSteps parity; docs/install |
 | STACKED SL4 | CLI regression: ensure stacked on tabbed/flat; nothingToDo on pair; save RT |
 | STACKED SL3 | thrash: stacked multi-role co-group + nested-split parity with tabbed |

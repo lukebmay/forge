@@ -456,6 +456,62 @@ describe("session-layout portable round-trip", () => {
     expect(live.monitors[0].children.map((c) => c.window)).toEqual([wA, wB]);
   });
 
+  it("resolves focusWindowId / lastTabFocusId after Meta id churn (install HUP)", () => {
+    // Pre-HUP ids 111/222; post-HUP live windows have new ids 9991/9992.
+    const wFocus = createMockWindow({
+      id: 9991,
+      wm_class: "Google-chrome",
+      title: "Grok",
+    });
+    const wOther = createMockWindow({
+      id: 9992,
+      wm_class: "Google-chrome",
+      title: "Gmail",
+    });
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              layout: "TABBED",
+              lastTabFocusId: 111,
+              percent: 1,
+              userSized: false,
+              children: [
+                {
+                  id: 111,
+                  wmClass: "Google-chrome",
+                  title: "Grok",
+                  percent: 0,
+                  userSized: false,
+                },
+                {
+                  id: 222,
+                  wmClass: "Google-chrome",
+                  title: "Gmail",
+                  percent: 0,
+                  userSized: false,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const resolve = createWindowResolver([wFocus, wOther], portable);
+    // Synthetic leaf must hit leafAssign (not byId — live ids differ).
+    expect(resolve({ id: 111 })).toBe(wFocus);
+    expect(resolve({ id: 222 })).toBe(wOther);
+    expect(resolve({ id: "111" })).toBe(wFocus);
+    const live = toLiveForest(portable, resolve);
+    const tab = live.monitors[0].children[0];
+    expect(tab.lastTabFocus).toBe(wFocus);
+    expect(tab.children.map((c) => c.window)).toEqual([wFocus, wOther]);
+  });
+
   it("matches two same-pid Ghosttys by frame distance after thrash pile (side-by-side)", () => {
     // Real Ghostty: one process, many windows; titles churn; both piled on mon1.
     const leftLive = createMockWindow({

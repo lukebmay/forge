@@ -251,6 +251,15 @@ buried; **activate** the resolved `focusWindowId` so keyboard focus survives
 install/update. Richness guard + post-enable **12s** save hold protect
 last-good. Not full `layout` profiles.
 
+**Focus must survive id churn + thrash shield:** Topology match uses full leaf
+metadata, but `focusWindowId` / `lastTabFocusId` resolve via synthetic
+`{ id }` leaves. After HUP, Meta ids often change — resolver looks up the
+already-matched portable leaf with that *saved* id (`leafAssign`), not only
+`byId`. Shield stores `focusMeta` and re-activates it on thrash reapply (not
+Mutter’s post-HUP pick). Activate uses `get_current_time_roundtrip` +
+`workspace.activate_with_focus` when available, then an idle retry after
+`renderTree` so workareas thrash cannot keep the wrong tile.
+
 ## Layout profile focus + active tab/stack
 
 **Problem:** `forge layout save` / apply restored structure (tab/stack groups,
