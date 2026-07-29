@@ -1,6 +1,6 @@
 # Plan: Layout reliability (tab focus + partial reopen)
 
-**Status:** active — **SI1 + LF4** (LF1–LF3 insufficient live)  
+**Status:** **code complete** (SI1+LF4 A/B AGREE); live re-verify  
 **Priority:** **P0** daily-driver on `black`  
 **Updated:** 2026-07-29  
 **Related:** [forge-workon-thrash-zero.md](./forge-workon-thrash-zero.md) (historical),
@@ -20,7 +20,13 @@ tab chrome / session focus archive entries
 | --- | --- |
 | LF1–LF3 unit | shipped; **live mon still broken** until LF4 install |
 | LF4 ghostty multi-instance open | **implemented** (await B + live re-verify) |
-| SI1 install snapshot focus/active | **next** (separate) |
+| SI1 install snapshot focus/active | **A implement done** (await B) |
+
+**SI1 implement (A):** Save flush syncs TABBED/STACKED `lastTabFocus` from Mutter
+focus before portable write; `focusWindowId` from same meta; restore activates
+focus last + re-pins open leaf. Install path = `save-session-layout` only.
+Unit: `session-layout` 33 + extension suite 263 green. Docs: DESIGN +
+troubleshooting. Branch `plan/forge-layout-reliability`. No commit (taskforce).
 
 **LF4 implement (A):** `launch_app` / layout open spawn
 `ghostty --gtk-single-instance=false` (never gio stock desktop); residual + belt
@@ -118,7 +124,7 @@ Operator must click the **dock item** first; after that, tab focus works again.
 | LF1 | [completed/…_lf1-partial-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf1-partial-reopen.md) | **done** (A/B AGREE) |
 | LF2 | [completed/…_lf2-tab-click-focus](./forge-layout-reliability/completed/forge-layout-reliability_lf2-tab-click-focus.md) | **done** (A/B AGREE) |
 | LF3 | [completed/…_lf3-mon1-ghostty-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf3-mon1-ghostty-reopen.md) | unit done; **live fail → LF4** |
-| **SI1** | [forge-layout-reliability_si1-install-snapshot-focus](../tasks/forge-layout-reliability_si1-install-snapshot-focus.md) | **next** |
+| **SI1** | [forge-layout-reliability_si1-install-snapshot-focus](../tasks/forge-layout-reliability_si1-install-snapshot-focus.md) | **A done** (await B) |
 | LF4 | [completed/…_lf4-ghostty-open-mon](./forge-layout-reliability/completed/forge-layout-reliability_lf4-ghostty-open-mon.md) | **done** (A/B AGREE; live re-verify) |
 
 ## Prior work feeding LF1

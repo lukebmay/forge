@@ -54,19 +54,23 @@ To **reproduce** idle blank/wake without waiting overnight:
 ## After install / update, tiles flatten (full-height columns)
 
 Extension reload wipes the in-memory tree. This fork keeps a **last-good**
-layout at `~/.config/forge/config/session-layout.json` (window ids + splits/tabs):
+**exact tree snapshot** at `~/.config/forge/config/session-layout.json`
+(window ids + splits/tabs + open leaf + keyboard focus) — **not** a named
+`forge layout` profile:
 
 - Written after quiet renders (debounced) and flushed before Shell HUP by
-  `./install` / `forge save-session-layout`.
+  `./install` / `forge save-session-layout` only (install never runs
+  `forge layout`).
 - On enable, windows are moved back to their snapshot monitors, then groups
   are rebuilt (so a Mutter pile-up on one head does not block restore).
+- Open tab/stack leaf and keyboard focus are restored from that snapshot.
 - Freshness: same boot, roughly ≤30 minutes, ≥50% of window ids still open.
 
 Tips:
 
 - Keep apps open across install so ids still match.
 - Cold login / reboot correctly starts without resurrecting an old file.
-- Full named layouts / `forge layout` are a separate path (see
+- Named profiles / `forge layout` are a separate, explicit path (see
   [layout.md](layout.md)).
 
 If it still flattens: check that the file exists **before** reload

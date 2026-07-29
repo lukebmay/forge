@@ -251,13 +251,19 @@ class cohort → unique class; **strict** mon rehome (`resolveStrictMonitor` —
 chrome order; raise each CON’s `lastTabFocus` so the open leaf stays on top;
 **activate** the resolved `focusWindowId` so keyboard focus survives
 install/update. Richness guard + post-enable **12s** save hold protect
-last-good. Not full `layout` profiles.
+last-good. **Install/update is tree snapshot only** — never named `forge layout`
+profiles. `./install` / `forge save-session-layout` only flush
+`session-layout.json`.
 
 **Tab/stack after install:** sibling order is forest `children[]` order (not
 geometry rank). Matching must not scramble co-framed tabs — title-before-pid
 geometry plus title boost on ties. `updateTabbedFocus` records `lastTabFocus`
-(same as stacks) so the open item is current at flush. CLI GetTree fallback
-also writes `lastTabFocusId` / `focusWindowId`.
+(same as stacks) so the open item is current at flush. Because the focus-update
+queue is deferred (~220ms), save/flush also **synchronously** pins each
+focused window’s TABBED/STACKED parent `lastTabFocus` from Mutter focus before
+portable serialize (SI1 — stale open leaf was Grok while Chrome had keyboard
+focus). CLI GetTree fallback does the same, then writes `lastTabFocusId` /
+`focusWindowId`.
 
 **Focus must survive id churn + thrash shield:** Topology match uses full leaf
 metadata, but `focusWindowId` / `lastTabFocusId` resolve via synthetic

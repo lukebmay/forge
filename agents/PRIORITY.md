@@ -8,9 +8,8 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **SI1** | Install/update = exact tree snapshot; restore open leaf + focus (not layouts) | [forge-layout-reliability.md](./plans/forge-layout-reliability.md) |
-| **2** | **LF4** | Ghostty open mon (single-instance desktop); close chrome+right Ghostty | same plan |
-| 3 | stacks SL5 | Live verify stack↔tab / merge on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| **1** | **live** | Install + re-verify SI1 (Chrome focus) and LF4 (close chrome+right Ghostty) | [forge-layout-reliability.md](./plans/forge-layout-reliability.md) |
+| 2 | stacks SL5 | Live verify stack↔tab / merge on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 | 3 | layout polish | Live-drive bare-array `forge layout` | Day-to-day once live OK |
 | 4 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
 
@@ -21,6 +20,8 @@
 | **LF1** partial reopen | mon ensure scope; role_pins residual; survivor focus |
 | **LF2** tab click focus | raise→focus→activate; chrome restack; hover no re-bury |
 | **LF3** mon1 Ghostty reopen | PlaceNext reverse-DNS stem; residual moves before still-open fail |
+| **LF4** Ghostty multi-instance open | no single-instance desktop; belt mon move |
+| **SI1** install snapshot focus | sync lastTabFocus from focus before save |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 

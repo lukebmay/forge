@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   SESSION_LAYOUT_VERSION,
   toPortableForest,
@@ -20,9 +20,15 @@ import {
   frameDistanceScore,
   geometryMatchScore,
   assignByScore,
+  syncLastTabFocusFromFocus,
+  resolveFocusMetaForSessionSave,
 } from "../../../lib/extension/session-layout.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { createTreeFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
+import {
+  createTreeFixture,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../../mocks/helpers/index.js";
 import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 import { Bin } from "../../mocks/gnome/St.js";
@@ -101,6 +107,26 @@ describe("session-layout pure helpers", () => {
     });
     expect(env.focusWindowId).toBeUndefined();
   });
+
+  it("resolveFocusMetaForSessionSave prefers Mutter focus over LFT", () => {
+    const chrome = { id: 10 };
+    const grok = { id: 11 };
+    const wm = {
+      focusMetaWindow: chrome,
+      lastFocusedWindow: { nodeValue: grok },
+      lftMru: { globalHead: () => ({ nodeValue: grok }) },
+    };
+    expect(resolveFocusMetaForSessionSave(wm)).toBe(chrome);
+  });
+
+  it("resolveFocusMetaForSessionSave falls back to LFT when focus null", () => {
+    const grok = { id: 11 };
+    const wm = {
+      focusMetaWindow: null,
+      lastFocusedWindow: { nodeValue: grok },
+    };
+    expect(resolveFocusMetaForSessionSave(wm)).toBe(grok);
+  });
 });
 
 describe("session-layout portable round-trip", () => {
@@ -136,6 +162,38 @@ describe("session-layout portable round-trip", () => {
     monitor.childNodes.length = 0;
     return windows.map((meta) => ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta));
   }
+
+  it("syncLastTabFocusFromFocus corrects stale lastTabFocus before portable save", () => {
+    // Live bug: browsing Chrome while lastTabFocus still Grok (deferred focus-update).
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
+    const wGrok = createMockWindow({ id: 1, title: "Grok", wm_class: "Google-chrome" });
+    const wChrome = createMockWindow({ id: 2, title: "Docs", wm_class: "Google-chrome" });
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wGrok);
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wChrome);
+    tab.lastTabFocus = wGrok;
+
+    expect(syncLastTabFocusFromFocus(ctx.tree, wChrome)).toBe(true);
+    expect(tab.lastTabFocus).toBe(wChrome);
+
+    const portable = toPortableForest(ctx.tree.snapshotTree());
+    const tabPortable = portable.monitors[0].children[0];
+    expect(tabPortable.lastTabFocusId).toBe(2);
+    const env = makeEnvelope(portable, 1, Date.now(), { focusWindowId: 2 });
+    expect(env.focusWindowId).toBe(2);
+    expect(env.forest.monitors[0].children[0].lastTabFocusId).toBe(2);
+  });
+
+  it("syncLastTabFocusFromFocus is no-op when focus not in tree", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
+    const w0 = createMockWindow({ id: 1 });
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, w0);
+    tab.lastTabFocus = w0;
+    const orphan = createMockWindow({ id: 99 });
+    expect(syncLastTabFocusFromFocus(ctx.tree, orphan)).toBe(false);
+    expect(tab.lastTabFocus).toBe(w0);
+  });
 
   it("toPortableForest → toLiveForest preserves multi-mon topology and lastTabFocus", () => {
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
@@ -1118,5 +1176,63 @@ describe("session-layout portable round-trip", () => {
     expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)[0];
     expect(tabbed.childNodes.map((n) => n.nodeValue)).toEqual([w2, w3]);
+  });
+});
+
+describe("session-layout raise prefers focusWindowId over stale lastTab", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture();
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
+  });
+
+  it("activateSessionFocus / raiseAfterSessionRestore activates focusMeta last", () => {
+    const wm = ctx.windowManager;
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const ws = ctx.workspaces[0];
+    const wGrok = createMockWindow({ id: 1, title: "Grok", workspace: ws });
+    const wChrome = createMockWindow({ id: 2, title: "Docs", workspace: ws });
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wGrok);
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wChrome);
+    // Stale open leaf (pre-SI1 bug): group thinks Grok is open while focus is Chrome.
+    tab.lastTabFocus = wGrok;
+
+    const focusChrome = vi.spyOn(wChrome, "focus");
+    const raiseChrome = vi.spyOn(wChrome, "raise");
+    const raiseGrok = vi.spyOn(wGrok, "raise");
+    const awf = vi.spyOn(ws, "activate_with_focus");
+
+    const liveForest = {
+      monitors: [
+        {
+          id: monitor.nodeValue,
+          layout: "HSPLIT",
+          children: [
+            {
+              layout: "TABBED",
+              lastTabFocus: wGrok,
+              children: [{ window: wGrok }, { window: wChrome }],
+            },
+          ],
+        },
+      ],
+    };
+
+    wm._raiseAfterSessionRestore(liveForest, { focusMeta: wChrome });
+
+    // Keyboard focus window becomes the open leaf (not stale Grok).
+    expect(tab.lastTabFocus).toBe(wChrome);
+    expect(awf).toHaveBeenCalledWith(wChrome, expect.anything());
+    expect(focusChrome).toHaveBeenCalled();
+    // Focus raise runs after group open-leaf raises (Grok then Chrome).
+    const lastChromeRaise = raiseChrome.mock.invocationCallOrder.at(-1);
+    const lastGrokRaise = raiseGrok.mock.invocationCallOrder.at(-1);
+    expect(lastChromeRaise).toBeGreaterThan(lastGrokRaise);
   });
 });
