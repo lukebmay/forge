@@ -1,32 +1,23 @@
 # Plan: Layout reliability (tab focus + partial reopen)
 
-**Status:** active — **LF5 + OP2 A done (await B)**  
+**Status:** **code complete** (LF5+OP2 A/B AGREE); live re-verify  
 **Priority:** **P0** daily-driver on `black`  
 **Updated:** 2026-07-29  
 **Related:** [forge-workon-thrash-zero.md](./forge-workon-thrash-zero.md) (historical),
 [layout-mon-claim-order](../tasks/layout-mon-claim-order.md) (superseded by LF1),
 tab chrome / session focus archive entries
 
-### Session note (2026-07-29 Task Force A — LF5 + OP2)
+### Session note (2026-07-29)
 
-| Issue | Status |
+**LF5 + OP2 shipped (A/B AGREE)** · commit `3c26f78`.
+
+| Issue | Fix |
 | --- | --- |
-| SI1 install snapshot focus | shipped (A/B) |
-| LF4 multi-instance Ghostty open | shipped; live still needed settle |
-| **LF5** settle before layout move | **A done** — await B |
-| **OP2** dock second Ghostty tile | **A done** — await B |
+| Layout move before settle | Wait until TILE settled before residual/belt Move |
+| Dock 2nd Ghostty float until drag | dock appId normalize; firstRender always places; dock create 50ms |
 
-**LF5 root:** open wait returned on class appear while still FLOAT; residual Move
-too early. **Fix:** `window_is_settled` + settle poll in `wait_for_wm_class` and
-before residual/belt moves.
-
-**OP2 root:** dock appId `.desktop` mismatch; firstRender skipped by lone-max
-apply filter; long FLOAT gap. **Fix:** normalize dock app ids; always place
-firstRender; dock create queue 50ms.
-
-**Tests:** pytest cli **307**; vitest extension/window/tree **934**. No commit
-until B. Live re-verify on black after install.
-
+**Settle:** windowId + mode TILE|GRAB_TILE + reasonable rect + mon≥0 if present.  
+**Live after install:** close chrome+right Ghostty → layout dev; dock Ghostty mon1.
 ---
 
 ## Why
