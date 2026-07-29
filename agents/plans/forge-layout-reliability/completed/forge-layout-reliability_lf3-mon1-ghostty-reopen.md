@@ -1,7 +1,7 @@
 # forge-layout-reliability_lf3-mon1-ghostty-reopen
 
-**Status:** B AGREE (await wrap-up)  
-**Plan:** [forge-layout-reliability.md](../plans/forge-layout-reliability.md)  
+**Status:** done (A/B AGREE)  
+**Plan:** [forge-layout-reliability.md](../../forge-layout-reliability.md)  
 **Branch:** `plan/forge-layout-reliability`  
 **Updated:** 2026-07-29
 

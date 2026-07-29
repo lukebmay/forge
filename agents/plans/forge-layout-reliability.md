@@ -1,7 +1,7 @@
 # Plan: Layout reliability (tab focus + partial reopen)
 
-**Status:** active — **LF3 implement done** (await B verify)  
-**Priority:** **P0** daily-driver on `black`  
+**Status:** **code complete** (LF1–LF3 A/B AGREE); live black re-verify  
+**Priority:** **P0** daily-driver on `black` (install trial)  
 **Updated:** 2026-07-29  
 **Related:** [forge-workon-thrash-zero.md](./forge-workon-thrash-zero.md) (historical),
 [layout-mon-claim-order](../tasks/layout-mon-claim-order.md) (superseded by LF1),
@@ -9,19 +9,17 @@ tab chrome / session focus archive entries
 
 ### Session note (2026-07-29)
 
-**LF3 Task Force A — implement.** Root: (1) PlaceNext exact class missed reverse-DNS
-stem; (2) residual abort on still-open skipped mon1 Ghostty move. Fixes in place-hint
-`wmClassEqual`, forge residual follow-up after moves, match.class→open.wmClass, forge
-wait `_class_eq` stem. Unit green (292 CLI + place-hint). Awaiting B.
+**LF1–LF3 shipped (A/B AGREE)** on `plan/forge-layout-reliability`.
 
-| Issue | Fix / status |
+| Issue | Fix |
 | --- | --- |
-| LF1 mon ensure peer thrash | shipped |
-| LF1 residual chrome title lag | shipped (pins) |
-| LF1 survivor focus | shipped (tabs/active OK in live) |
-| LF1 PlaceNext class | **LF3** reverse-DNS stem in place-hint |
-| LF2 tab click | shipped |
-| **LF3 mon1 Ghostty reopen** | **A implement done** — residual moves before fail-open |
+| LF1 mon ensure / pins / survivor | shipped |
+| LF2 tab click focus | shipped |
+| LF3 PlaceNext exact class (`ghostty` vs reverse-DNS) | stem equality in `place-hint.js` |
+| LF3 residual abort before mon move | apply follow-up moves **then** fail still-open |
+| LF3 open.wmClass from match.class | sugar terms pass class to PlaceNext/wait |
+
+**Live:** install + re-verify close left chrome + right Ghostty → one Ghostty per mon.
 
 ---
 
@@ -114,7 +112,7 @@ Operator must click the **dock item** first; after that, tab focus works again.
 | --- | --- | --- |
 | LF1 | [completed/…_lf1-partial-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf1-partial-reopen.md) | **done** (A/B AGREE) |
 | LF2 | [completed/…_lf2-tab-click-focus](./forge-layout-reliability/completed/forge-layout-reliability_lf2-tab-click-focus.md) | **done** (A/B AGREE) |
-| **LF3** | [forge-layout-reliability_lf3-mon1-ghostty-reopen](../tasks/forge-layout-reliability_lf3-mon1-ghostty-reopen.md) | **A done / B next** |
+| LF3 | [completed/…_lf3-mon1-ghostty-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf3-mon1-ghostty-reopen.md) | **done** (A/B AGREE; live re-verify) |
 
 ## Prior work feeding LF1
 
