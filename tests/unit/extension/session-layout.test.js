@@ -82,6 +82,25 @@ describe("session-layout pure helpers", () => {
     expect(parsed).toBeTruthy();
     expect(parsed.sessionVersion).toBe(SESSION_LAYOUT_VERSION);
   });
+
+  it("makeEnvelope stores focusWindowId for install/update refocus", () => {
+    const env = makeEnvelope(
+      { version: 1, monitors: [{ id: "mo0ws0", layout: "HSPLIT", children: [] }] },
+      123,
+      Date.now(),
+      { focusWindowId: 42 }
+    );
+    expect(env.focusWindowId).toBe(42);
+    const parsed = parseEnvelope(env);
+    expect(parsed.focusWindowId).toBe(42);
+  });
+
+  it("makeEnvelope omits empty focusWindowId", () => {
+    const env = makeEnvelope({ version: 1, monitors: [] }, 1, Date.now(), {
+      focusWindowId: null,
+    });
+    expect(env.focusWindowId).toBeUndefined();
+  });
 });
 
 describe("session-layout portable round-trip", () => {

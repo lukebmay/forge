@@ -117,6 +117,9 @@ mon’s pane list (apply uses GetTree mon count):
 | `{ "monitors": [ […], […] ] }` | **Explicit mon list** (same no-fold rule) |
 | `{ "tab": ["a","b"] }` | Tabbed pane (also `t` / `tabbed`) |
 | `{ "stack": ["a","b"] }` | Stacked pane (also `s` / `stacked`) |
+| `{ "tab": […], "active": "Grok" }` | Tab/stack open leaf (first match in group) |
+| `{ "tab": […], "active": 1 }` | Open 2nd child in the group (0-based) |
+| `{ "tab": […], "active": ["Grok", 1] }` | 2nd Grok match **in this group** |
 | `{ "hsplit": [ … ] }` / `{ "vsplit": [ … ] }` | Split CON (also `h`/`horizontal`, `v`/`vertical`) |
 | Untyped pane list of apps | Still **tabbed** (legacy); save emits `{ "tab": … }` |
 | Untyped list of panes | **hsplit** of children |
@@ -126,19 +129,34 @@ mon’s pane list (apply uses GetTree mon count):
 
 **Save:** `forge layout save <name>` writes bare arrays with medium keys
 (`tab`, `stack`, `hsplit`, `vsplit`). Pass **`--monitors`** to emit explicit
-`mon0` / `mon1` / … keys instead (no mon fold on mismatch).
+`mon0` / `mon1` / … keys instead (no mon fold on mismatch). When a tab/stack
+has a non-default open leaf, save emits `"active"`. When a window is focused,
+save wraps with `"focus"` (object form).
 
 ### Object form (when you need more)
 
 ```json
 {
   "description": "optional — never required to load",
-  "tiles": [ ["firefox", "code"], "ghostty" ],
+  "focus": "Grok",
+  "tiles": [
+    { "tab": ["google-chrome", "Grok"], "active": "Grok" },
+    "ghostty"
+  ],
   "floating": [ … ]
 }
 ```
 
 - `description` — cosmetics for `list` / humans (auto one-liner if omitted).
+- `focus` — keyboard focus after load (desk-wide). Forms (all **0-based**):
+  - `"Grok"` ≡ `["Grok", 0]` — first matching role in profile roles order
+  - `["Grok", 1]` — 2nd Grok role desk-wide
+  - `"Grok-2"` — explicit role id
+  - `1` — 2nd role in profile roles order
+- `active` on `{ "tab" | "stack": […] }` — which member is open **in that group**
+  (does not reorder the tab strip; L→R order stays as listed). Same sugar:
+  token, `n` index into the group content, or `[token, n]` among matches in the
+  group only. Save emits `[token, n]` when two leaves share a token (e.g. dual Grok).
 - `tiles` as mon map (`mon0` / `mon1` / `primary` / stableKey) remains valid **advanced** sugar.
 - `floating` only when you have float roles.
 

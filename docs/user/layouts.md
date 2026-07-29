@@ -64,6 +64,7 @@ Move windows into or out of an existing group with the usual move/swap binds.
 | IR `layout: "stacked"` on a multi-role leaf | **Stacked** |
 
 `forge layout save` emits object form for live STACKED groups so they round-trip
+(with optional `"active"` for the open leaf, and top-level `"focus"` for keyboard focus)
 (not bare-array tab sugar).
 
 Other settings:

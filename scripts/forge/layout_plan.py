@@ -219,6 +219,8 @@ def normalize_profile(
         raise ValueError("profile must be a JSON object or array")
 
     out = copy.deepcopy(data)
+    # Preserve focus token before tiles extraction mutates keys.
+    focus_raw = out.get("focus")
     tiles, mon_explicit, from_sugar = _extract_tiles_from_profile(out, mon_count=mon_count)
     had_sugar = from_sugar
 
@@ -243,6 +245,24 @@ def normalize_profile(
                 "roleOrder": "first",
                 "residual": "leave",
             }
+
+    # Top-level focus: string | int | [token, n] → role id when roles exist.
+    if _role_ref_present(focus_raw):
+        if has_roles:
+            rid = _resolve_role_ref(focus_raw, out.get("roles") or [])
+            if rid is not None:
+                out["focus"] = rid
+            elif isinstance(focus_raw, str):
+                out["focus"] = focus_raw.strip()
+            else:
+                out["focus"] = focus_raw
+        else:
+            out["focus"] = (
+                focus_raw.strip() if isinstance(focus_raw, str) else focus_raw
+            )
+    elif "focus" in out:
+        out.pop("focus", None)
+
     return out
 
 
@@ -289,6 +309,7 @@ def _extract_tiles_from_profile(
             "monExplicit",
             "displays",
             "settings",
+            "focus",
         )
     ]
     # monN keys only when value looks like mon body (list or split object), not strings
@@ -449,11 +470,12 @@ def _tagged_container_mode(item: dict[str, Any]) -> Optional[str]:
     if item.get("open") is not None or item.get("match") is not None or item.get("app") is not None:
         return None
     tags = [k for k in item.keys() if str(k).strip().lower() in _CONTAINER_TAG_KEYS]
-    # Allow optional id alongside the tag
+    # Allow optional id / active (which tab|stack leaf is open) alongside the tag
     other = [
         k
         for k in item.keys()
-        if str(k).strip().lower() not in _CONTAINER_TAG_KEYS and k != "id"
+        if str(k).strip().lower() not in _CONTAINER_TAG_KEYS
+        and str(k).strip().lower() not in ("id", "active")
     ]
     if len(tags) != 1 or other:
         return None
@@ -647,7 +669,7 @@ def _desugar_pane(
                     break
             if not isinstance(content, list) or len(content) == 0:
                 raise ValueError(f"{where}: {tag_mode} needs a non-empty content array")
-            return _desugar_tagged_container(
+            child = _desugar_tagged_container(
                 tag_mode,
                 content,
                 mon_key,
@@ -658,6 +680,9 @@ def _desugar_pane(
                 s_next,
                 item.get("id"),
             )
+            if tag_mode in ("tabbed", "stacked"):
+                _apply_active_to_child(child, item.get("active"), roles)
+            return child
 
     # Multi-role group sugar: {layout|split: tabbed|stacked, content: [roles]}
     if isinstance(item, dict):
@@ -676,7 +701,7 @@ def _desugar_pane(
                     and len(content) > 0
                     and all(_is_role_cell(x) for x in content)
                 ):
-                    return _desugar_role_pane(
+                    child = _desugar_role_pane(
                         content,
                         mon_key,
                         path_prefix,
@@ -686,6 +711,8 @@ def _desugar_pane(
                         s_next,
                         mode=mode_norm,
                     )
+                    _apply_active_to_child(child, item.get("active"), roles)
+                    return child
             if mode_norm in ("hsplit", "vsplit"):
                 content = item.get("content")
                 if content is None:
@@ -720,9 +747,11 @@ def _desugar_pane(
             split = "hsplit"
         if split in ("tabbed", "stacked"):
             if content and all(_is_role_cell(x) for x in content):
-                return _desugar_role_pane(
+                child = _desugar_role_pane(
                     content, mon_key, path_prefix, where, roles, used_ids, s_next, mode=split
                 )
+                _apply_active_to_child(child, item.get("active"), roles)
+                return child
             raise ValueError(f"{where}: tabbed/stacked content must be role cells")
         return _desugar_split_node(
             split,
@@ -872,6 +901,202 @@ def _desugar_role_pane(
                 r["slot"] = full_slot
                 break
     return child
+
+
+def _role_ref_present(raw: Any) -> bool:
+    """True when active/focus sugar is non-empty (int 0 is valid)."""
+    if raw is None or isinstance(raw, bool):
+        return False
+    if isinstance(raw, int):
+        return True
+    if isinstance(raw, list):
+        return len(raw) > 0
+    if isinstance(raw, str):
+        return bool(raw.strip())
+    return bool(str(raw).strip())
+
+
+def _role_matches_token(token: str, role: dict[str, Any]) -> bool:
+    """Whether one role matches a sugar token (id / open / title / class)."""
+    t = str(token).strip()
+    if not t:
+        return False
+    t_cf = t.casefold()
+    rid = role.get("id")
+    if rid is not None:
+        if str(rid) == t or str(rid).casefold() == t_cf:
+            return True
+    open_spec = role.get("open") if isinstance(role.get("open"), dict) else {}
+    for k in ("app", "desktop", "command"):
+        v = open_spec.get(k)
+        if v is not None and str(v).strip().casefold() == t_cf:
+            return True
+    match = role.get("match") if isinstance(role.get("match"), dict) else {}
+    for mk in ("title~=", "title", "class", "wmClass", "wm_class"):
+        v = match.get(mk)
+        if v is not None and str(v).strip().casefold() == t_cf:
+            return True
+        if mk == "title~=" and v is not None and t_cf in str(v).casefold():
+            return True
+    return False
+
+
+def _match_role_token_nth(
+    token: str, roles: list[dict[str, Any]], n: int = 0
+) -> Optional[str]:
+    """Nth (0-based) role id matching token among roles list order."""
+    if not isinstance(n, int) or isinstance(n, bool) or n < 0:
+        return None
+    matches: list[str] = []
+    for r in roles:
+        rid = r.get("id")
+        if rid is None:
+            continue
+        if _role_matches_token(token, r):
+            matches.append(str(rid))
+    if n < len(matches):
+        return matches[n]
+    return None
+
+
+def _match_role_token(token: str, roles: list[dict[str, Any]]) -> Optional[str]:
+    """Map focus/active sugar token → first matching role id."""
+    return _match_role_token_nth(token, roles, 0)
+
+
+def _check_role_ref_shape(raw: Any, where: str) -> None:
+    """Raise ValueError if active/focus sugar is malformed."""
+    if isinstance(raw, bool):
+        raise ValueError(f"{where}: must be string, int index, or [token, index]")
+    if isinstance(raw, int):
+        if raw < 0:
+            raise ValueError(f"{where}: index must be >= 0 (0-based)")
+        return
+    if isinstance(raw, list):
+        if len(raw) != 2:
+            raise ValueError(f"{where}: want [token, index] (0-based occurrence)")
+        tok, n = raw[0], raw[1]
+        if not str(tok).strip():
+            raise ValueError(f"{where}: token must be non-empty")
+        if not isinstance(n, int) or isinstance(n, bool) or n < 0:
+            raise ValueError(f"{where}: index must be int >= 0 (0-based)")
+        return
+    if isinstance(raw, str):
+        return
+    raise ValueError(f"{where}: must be string, int index, or [token, index]")
+
+
+def _resolve_role_ref(ref: Any, roles: list[dict[str, Any]]) -> Optional[str]:
+    """
+    Resolve focus/active sugar → role id.
+
+    - int → roles[n].id (0-based index into this roles list)
+    - str → first match (id / open / title)
+    - [token, n] → nth match among roles (0-based)
+    """
+    if not _role_ref_present(ref):
+        return None
+    if isinstance(ref, int) and not isinstance(ref, bool):
+        if 0 <= ref < len(roles):
+            rid = roles[ref].get("id")
+            return str(rid) if rid is not None else None
+        return None
+    if isinstance(ref, list):
+        if len(ref) != 2:
+            return None
+        tok, n = ref[0], ref[1]
+        if not isinstance(n, int) or isinstance(n, bool):
+            return None
+        return _match_role_token_nth(str(tok), roles, n)
+    return _match_role_token(str(ref).strip(), roles)
+
+
+def _resolve_active_ref(
+    ref: Any, role_ids: list[str], group_roles: list[dict[str, Any]]
+) -> Optional[str]:
+    """Resolve active sugar against a group's ordered role ids / role objects."""
+    if not _role_ref_present(ref):
+        return None
+    # Bare index: 2nd child = roles[1] in this group.
+    if isinstance(ref, int) and not isinstance(ref, bool):
+        if 0 <= ref < len(role_ids):
+            return str(role_ids[ref])
+        return None
+    rid = _resolve_role_ref(ref, group_roles)
+    if rid is not None:
+        return rid
+    if isinstance(ref, str):
+        token = ref.strip()
+        for cr in role_ids:
+            if str(cr).casefold() == token.casefold():
+                return str(cr)
+    return None
+
+
+def _apply_active_to_child(
+    child: dict[str, Any], active_raw: Any, roles: list[dict[str, Any]]
+) -> None:
+    """Set child.active to a role id when active sugar matches a group role."""
+    if not _role_ref_present(active_raw):
+        return
+    child_roles = child.get("roles") or []
+    if not isinstance(child_roles, list) or not child_roles:
+        return
+    role_ids = [str(rid) for rid in child_roles]
+    by_id = {
+        str(r.get("id")): r for r in roles if r.get("id") is not None
+    }
+    group_roles = [by_id[rid] for rid in role_ids if rid in by_id]
+    rid = _resolve_active_ref(active_raw, role_ids, group_roles)
+    if rid is not None:
+        child["active"] = rid
+
+
+def _resolve_profile_focus_active(prof: dict[str, Any]) -> None:
+    """Desugar layout active + top-level focus to role id strings in IR."""
+    roles = prof.get("roles") or []
+    if not isinstance(roles, list):
+        return
+    by_id = {str(r.get("id")): r for r in roles if r.get("id") is not None}
+
+    def walk(children: Any) -> None:
+        if not isinstance(children, list):
+            return
+        for ch in children:
+            if not isinstance(ch, dict):
+                continue
+            nested = ch.get("children")
+            if isinstance(nested, list) and nested:
+                walk(nested)
+            active = ch.get("active")
+            if not _role_ref_present(active):
+                ch.pop("active", None)
+                continue
+            role_ids = [str(r) for r in (ch.get("roles") or [])]
+            group_roles = [by_id[rid] for rid in role_ids if rid in by_id]
+            rid = _resolve_active_ref(active, role_ids, group_roles)
+            if rid is not None:
+                ch["active"] = rid
+            elif isinstance(active, str) and active.strip():
+                ch["active"] = active.strip()
+            else:
+                ch.pop("active", None)
+
+    for mon_body in (prof.get("layout") or {}).values():
+        if isinstance(mon_body, dict):
+            walk(mon_body.get("children"))
+
+    focus = prof.get("focus")
+    if not _role_ref_present(focus):
+        prof.pop("focus", None)
+        return
+    rid = _resolve_role_ref(focus, roles)
+    if rid is not None:
+        prof["focus"] = rid
+    elif isinstance(focus, str) and focus.strip():
+        prof["focus"] = focus.strip()
+    else:
+        prof.pop("focus", None)
 
 
 def _cell_to_role(cell: Any, used_ids: set[str], where: str) -> dict[str, Any]:
@@ -1323,8 +1548,16 @@ def validate_reconcile_profile(
             raise ValueError("floating must be an array")
         out["floating"] = floating
 
+    focus = data.get("focus")
+    if _role_ref_present(focus):
+        _check_role_ref_shape(focus, "focus")
+        out["focus"] = focus
+
     if aliases:
         out["monitors"] = aliases
+
+    # active / focus sugar → role id strings for plan/apply.
+    _resolve_profile_focus_active(out)
 
     return out
 
@@ -1412,6 +1645,12 @@ def _validate_layout_children(
                     if rid in mon_role_map:
                         raise ValueError(f"role {rid!r} listed in multiple layout slots")
                     mon_role_map[rid] = full_slot
+            active = ch.get("active")
+            if _role_ref_present(active):
+                _check_role_ref_shape(active, f"{ch_where}.active")
+                # Resolve to role id after roles[] is normalized (see
+                # _resolve_profile_focus_active).
+                child["active"] = active
 
         children.append(child)
     return children
@@ -1506,6 +1745,7 @@ def plan_reconcile(
         "closed": 0,
         "structure": 0,
         "ordered": 0,
+        "focused": 0,
     }
     slots_needing_layout: dict[str, str] = {}  # slot → mode
 
@@ -1764,8 +2004,15 @@ def plan_reconcile(
         seen_ensure.add(key)
         deduped_ensure.append(a)
 
+    # Active tab/stack + profile focus → focus ops after structure settles.
+    focus_actions = _focus_actions_from_profile(prof, role_results)
+    counts["focused"] = len(focus_actions)
+    if focus_actions:
+        has_work = True
+
     # ensure_layout (structure) then ensure_order (after groups exist in apply)
-    final_actions = deduped_ensure + order_actions + actions
+    # then focus (last so keyboard + lastTabFocus win).
+    final_actions = deduped_ensure + order_actions + actions + focus_actions
     nothing = not has_work
     thrash_risk = _compute_thrash_risk(final_actions, counts)
 
@@ -2167,6 +2414,74 @@ def _window_summary(w: dict[str, Any]) -> dict[str, Any]:
     if mon is not None:
         out["monitor"] = mon
     return out
+
+
+def _focus_actions_from_profile(
+    prof: dict[str, Any], role_results: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """
+    Emit focus ops for tab/stack active leaves, then profile-level focus.
+
+    Order: group actives first (sets lastTabFocus), then profile focus (keyboard).
+    Skips roles still opening (no windowId yet) — follow-up replan covers them.
+    """
+    by_id = {
+        str(r.get("id")): r
+        for r in role_results
+        if r.get("id") is not None
+    }
+    actions: list[dict[str, Any]] = []
+    seen_sels: set[str] = set()
+
+    def add_role_focus(rid: Any, *, reason: str) -> None:
+        if rid is None:
+            return
+        key = str(rid)
+        r = by_id.get(key)
+        if not r:
+            return
+        wid = r.get("windowId")
+        if wid is None or wid == "":
+            return
+        sel = f"id:{wid}"
+        if sel in seen_sels:
+            return
+        seen_sels.add(sel)
+        actions.append(
+            {
+                "op": "focus",
+                "selector": sel,
+                "role": key,
+                "reason": reason,
+            }
+        )
+
+    def walk(children: Any) -> None:
+        if not isinstance(children, list):
+            return
+        for ch in children:
+            if not isinstance(ch, dict):
+                continue
+            nested = ch.get("children")
+            if isinstance(nested, list) and nested:
+                walk(nested)
+            active = ch.get("active")
+            if active is not None and str(active).strip():
+                lay = str(ch.get("layout") or "").strip().lower()
+                if lay in ("tabbed", "stacked") or (
+                    isinstance(ch.get("roles"), list) and len(ch.get("roles") or []) >= 2
+                ):
+                    add_role_focus(str(active).strip(), reason="active")
+
+    for mon_body in (prof.get("layout") or {}).values():
+        if isinstance(mon_body, dict):
+            walk(mon_body.get("children"))
+
+    focus = prof.get("focus")
+    if focus is not None and str(focus).strip():
+        add_role_focus(str(focus).strip(), reason="profile")
+
+    return actions
 
 
 def _slot_layout_modes(prof: dict[str, Any]) -> dict[str, str]:

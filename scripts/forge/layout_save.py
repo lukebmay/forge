@@ -123,6 +123,10 @@ def capture_tiles_profile(
     if floating:
         out["floating"] = floating
 
+    focus_token = _focus_token_from_forest(forest, mons)
+    if focus_token is not None:
+        out["focus"] = focus_token
+
     validate_reconcile_profile(out)
     out["_stats"] = {
         "mons": mon_window_counts,
@@ -161,7 +165,7 @@ def profile_for_output(
         floating = None
 
     # Extra top-level keys force object form (roles/layout/alias monitors/…).
-    sugar_keys = {"description", "tiles", "floating"}
+    sugar_keys = {"description", "tiles", "floating", "focus"}
     extra = [k for k in out if k not in sugar_keys]
     if extra:
         return out
@@ -172,6 +176,24 @@ def profile_for_output(
 
     desc = out.get("description")
     desc_s = desc.strip() if isinstance(desc, str) and desc.strip() else None
+    focus_out = _focus_for_output(out.get("focus"))
+
+    def _attach_focus_float(result: Any) -> Any:
+        """Wrap bare list when focus/floating need object form; never re-add auto desc."""
+        if focus_out is None and not floating:
+            return result
+        if isinstance(result, list):
+            body: dict[str, Any] = {"tiles": result}
+        elif isinstance(result, dict):
+            body = dict(result)
+        else:
+            return result
+        if focus_out is not None:
+            body["focus"] = focus_out
+        if floating:
+            body["floating"] = floating
+        return body
+
     # Build sugar for description compare
     if monitors:
         mon_map = _tiles_to_mon_key_map(tiles_out)
@@ -179,14 +201,10 @@ def profile_for_output(
             return out
         auto = format_layout_description({"tiles": mon_map}).strip()
         if desc_s is None or (auto and desc_s == auto):
-            result: dict[str, Any] = dict(mon_map)
-            if floating:
-                result["floating"] = floating
-            return result
-        result = {"description": desc_s, **mon_map}
-        if floating:
-            result["floating"] = floating
-        return result
+            result_m: dict[str, Any] = dict(mon_map)
+            return _attach_focus_float(result_m)
+        result_m = {"description": desc_s, **mon_map}
+        return _attach_focus_float(result_m)
 
     bare = _tiles_to_bare_array(tiles_out)
     if bare is None:
@@ -196,21 +214,15 @@ def profile_for_output(
             wrapped: dict[str, Any] = {"tiles": mon_map}
             if desc_s:
                 wrapped["description"] = desc_s
-            if floating:
-                wrapped["floating"] = floating
-            return wrapped
+            return _attach_focus_float(wrapped)
         return out
 
     auto = format_layout_description(bare).strip()
     if desc_s is None or (auto and desc_s == auto):
-        if floating:
-            return {"tiles": bare, "floating": floating}
-        return bare
+        return _attach_focus_float(bare)
 
     wrapped = {"description": desc_s, "tiles": bare}
-    if floating:
-        wrapped["floating"] = floating
-    return wrapped
+    return _attach_focus_float(wrapped)
 
 
 def _tiles_to_bare_array(tiles: Any) -> Optional[list[Any]]:
@@ -276,6 +288,9 @@ def _compact_pane_node(node: Any) -> Any:
                 out_tag: dict[str, Any] = {medium: content}
                 if node.get("id") is not None:
                     out_tag["id"] = node["id"]
+                active_out = _active_for_output(node.get("active"))
+                if active_out is not None:
+                    out_tag["active"] = active_out
                 return out_tag
         # { layout|split: mode, content: [...] }
         mode_raw = node.get("layout")
@@ -814,18 +829,24 @@ def _capture_pane(
             cell = _role_cell(wins[0], used_ids, class_counts)
             return cell, 1 if cell is not None else 0
         cells = []
+        cell_wins: list[dict[str, Any]] = []
         for w in wins:
             cell = _role_cell(w, used_ids, class_counts)
             if cell is not None:
                 cells.append(cell)
+                cell_wins.append(w)
         if not cells:
             return None, 0
         if len(cells) == 1:
             return cells[0], 1
         # Medium sugar keys: tab / stack
-        if layout == "STACKED":
-            return {SUGAR_STACK: cells}, len(cells)
-        return {SUGAR_TAB: cells}, len(cells)
+        group: dict[str, Any] = (
+            {SUGAR_STACK: cells} if layout == "STACKED" else {SUGAR_TAB: cells}
+        )
+        active = _active_token_for_group(node, cell_wins, cells)
+        if active is not None:
+            group["active"] = active
+        return group, len(cells)
 
     if layout in ("HSPLIT", "VSPLIT") and kids:
         content: list[Any] = []
@@ -860,6 +881,129 @@ def _capture_pane(
     if len(cells) == 1:
         return cells[0], 1
     return {SUGAR_TAB: cells}, len(cells)
+
+
+def _focus_for_output(focus: Any) -> Any:
+    """Normalize focus for JSON output (string | int | [token, n])."""
+    if focus is None or isinstance(focus, bool):
+        return None
+    if isinstance(focus, int):
+        return focus
+    if isinstance(focus, list) and len(focus) == 2:
+        return focus
+    if isinstance(focus, str) and focus.strip():
+        return focus.strip()
+    return None
+
+
+def _active_for_output(active: Any) -> Any:
+    """Normalize active for JSON output (string | int | [token, n])."""
+    if active is None or isinstance(active, bool):
+        return None
+    if isinstance(active, int):
+        return active
+    if isinstance(active, list) and len(active) == 2:
+        return active
+    if isinstance(active, str) and active.strip():
+        return active.strip()
+    return None
+
+
+def _token_key(token: Any) -> Optional[str]:
+    if token is None:
+        return None
+    s = str(token).strip()
+    return s.casefold() if s else None
+
+
+def _disambiguate_token(
+    token: Optional[str], tokens: list[Optional[str]], index: int
+) -> Any:
+    """
+    Unique token → bare string; colliding token → [token, n] (0-based among matches).
+    No token → bare index into tokens.
+    """
+    if token is None or not str(token).strip():
+        return index
+    key = _token_key(token)
+    matches = [
+        i
+        for i, t in enumerate(tokens)
+        if _token_key(t) is not None and _token_key(t) == key
+    ]
+    if len(matches) <= 1:
+        return token
+    n = matches.index(index) if index in matches else 0
+    return [token, n]
+
+
+def _focus_token_from_forest(
+    forest: dict[str, Any], mons: list[dict[str, Any]]
+) -> Any:
+    """Map forest.focusWindowId → sugar token / [token, n] when captured."""
+    fid = forest.get("focusWindowId")
+    if fid is None or fid == "":
+        return None
+    entries: list[tuple[str, Optional[str]]] = []
+    for mon in mons:
+        for w in _window_leaves(mon):
+            if w.get("windowId") is None:
+                continue
+            entries.append((str(w.get("windowId")), _window_sugar_token(w)))
+    for i, (wid, tok) in enumerate(entries):
+        if wid != str(fid):
+            continue
+        tokens = [t for _, t in entries]
+        return _disambiguate_token(tok, tokens, i)
+    return None
+
+
+def _active_token_for_group(
+    node: dict[str, Any],
+    wins: list[dict[str, Any]],
+    cells: list[Any],
+) -> Any:
+    """Which tab/stack member is open (lastTabFocusId), as sugar token / index."""
+    tf = node.get("lastTabFocusId")
+    if tf is None or tf == "":
+        return None
+    focus_idx: Optional[int] = None
+    for i, w in enumerate(wins):
+        if w.get("windowId") is None:
+            continue
+        if str(w.get("windowId")) == str(tf):
+            focus_idx = i
+            break
+    if focus_idx is None:
+        return None
+    tokens = [
+        _cell_sugar_token(cell, w) for w, cell in zip(wins, cells)
+    ]
+    token = tokens[focus_idx] if focus_idx < len(tokens) else None
+    return _disambiguate_token(token, tokens, focus_idx)
+
+
+def _window_sugar_token(w: dict[str, Any]) -> Optional[str]:
+    """Best single-string token for focus/active (app stem / PWA title)."""
+    cls = _wm_class(w)
+    title = w.get("title")
+    title_s = str(title) if title is not None else ""
+    stem = _class_to_app_stem(cls) if cls else "app"
+    open_app = _open_app_for_window(cls, title_s, stem)
+    return open_app if open_app else stem
+
+
+def _cell_sugar_token(cell: Any, w: dict[str, Any]) -> Optional[str]:
+    if isinstance(cell, str) and cell.strip():
+        return cell.strip()
+    if isinstance(cell, dict):
+        app = _cell_app_token(cell)
+        if app:
+            return app
+        rid = cell.get("id")
+        if rid is not None and str(rid).strip():
+            return str(rid).strip()
+    return _window_sugar_token(w)
 
 
 def _role_cell(

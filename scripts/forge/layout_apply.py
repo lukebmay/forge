@@ -168,7 +168,8 @@ def actions_to_extension_steps(
 
     Order: placement moves/parks and residual closes first, then
     ensure_layout (structure after windows on target mon), then
-    ensure_order (mon-level L/R after groups exist).
+    ensure_order (mon-level L/R after groups exist), then focus
+    (active tab/stack + profile focus).
 
     close → {op: close, selector: id:…} (+ force when force_close).
 
@@ -179,6 +180,7 @@ def actions_to_extension_steps(
     (empty desk: open first; residual replan may layout after).
 
     ensure_order → {op: order, windowIds: [id:…, …]} (mon child reorder).
+    focus → {op: focus, selector: id:…} (lastTabFocus + keyboard).
     """
     if not isinstance(actions, list):
         return []
@@ -203,6 +205,7 @@ def actions_to_extension_steps(
     place_steps: list[dict[str, Any]] = []
     layout_steps: list[dict[str, Any]] = []
     order_steps: list[dict[str, Any]] = []
+    focus_steps: list[dict[str, Any]] = []
 
     for a in actions:
         if not isinstance(a, dict):
@@ -221,6 +224,16 @@ def actions_to_extension_steps(
             if force_close or a.get("force"):
                 close_step["force"] = True
             place_steps.append(close_step)
+            continue
+        if op == "focus":
+            sel = a.get("selector")
+            if sel is None or str(sel).strip() == "":
+                wid = a.get("windowId")
+                if wid is not None and str(wid).strip() != "":
+                    s = str(wid).strip()
+                    sel = s if s.startswith("id:") else f"id:{s}"
+            if sel is not None and str(sel).strip() != "":
+                focus_steps.append({"op": "focus", "selector": str(sel).strip()})
             continue
         if op == "ensure_order":
             id_sels = _window_ids_to_selectors(
@@ -256,7 +269,8 @@ def actions_to_extension_steps(
             continue
         layout_steps.append({"op": "layout", "mode": mode, "selector": sel})
 
-    return place_steps + layout_steps + order_steps
+    # Focus last so lastTabFocus + keyboard focus stick after structure/order.
+    return place_steps + layout_steps + order_steps + focus_steps
 
 
 def open_action_to_launch_fields(action: dict[str, Any]) -> dict[str, Any]:

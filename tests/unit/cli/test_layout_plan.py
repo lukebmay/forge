@@ -2979,6 +2979,168 @@ class TestStableKeyMonitors(unittest.TestCase):
         self.assertEqual(plan_a["counts"]["opened"], 1)
 
 
+class TestFocusAndActive(unittest.TestCase):
+    def test_profile_focus_and_tab_active_emit_focus_actions(self):
+        forest = _load("tree-perfect.json")
+        profile = {
+            "focus": "Grok",
+            "tiles": {
+                "mon0": [
+                    {"tab": ["google-chrome", "Grok"], "active": "Grok"},
+                    "ghostty",
+                ],
+                "mon1": [
+                    "ghostty",
+                    {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                ],
+            },
+        }
+        ir = validate_reconcile_profile(profile, mon_count=2)
+        self.assertEqual(ir.get("focus"), "Grok")
+        tab0 = ir["layout"]["mon0"]["children"][0]
+        self.assertEqual(tab0.get("layout"), "tabbed")
+        self.assertEqual(tab0.get("active"), "Grok")
+
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"])
+        focus_ops = [a for a in plan["actions"] if a.get("op") == "focus"]
+        self.assertGreaterEqual(len(focus_ops), 1, plan["actions"])
+        # Profile focus is Grok (windowId 102 on mon0 tab)
+        sels = [a.get("selector") for a in focus_ops]
+        self.assertIn("id:102", sels)
+        self.assertGreaterEqual(plan["counts"].get("focused", 0), 1)
+
+    def test_focus_only_is_work(self):
+        forest = _load("tree-perfect.json")
+        profile = {
+            "focus": "Grok",
+            "tiles": {
+                "mon0": [
+                    {"tab": ["google-chrome", "Grok"]},
+                    "ghostty",
+                ],
+                "mon1": [
+                    "ghostty",
+                    {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                ],
+            },
+        }
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan["nothingToDo"])
+        self.assertTrue(any(a.get("op") == "focus" for a in plan["actions"]))
+
+    def _dual_grok_forest(self):
+        forest = _load("tree-perfect.json")
+        mon0_tab = forest["monitors"][0]["children"][0]
+        first = dict(mon0_tab["children"][0])
+        first["title"] = "Grok"
+        first["wmClass"] = "Google-chrome"
+        mon0_tab["children"][0] = first
+        mon0_tab["children"][1]["title"] = "Grok"
+        return forest
+
+    def test_dual_grok_active_second_plans_second_window(self):
+        forest = self._dual_grok_forest()
+        profile = {
+            "tiles": {
+                "mon0": [
+                    {"tab": ["Grok", "Grok"], "active": ["Grok", 1]},
+                    "ghostty",
+                ],
+                "mon1": [
+                    "ghostty",
+                    {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                ],
+            },
+        }
+        ir = validate_reconcile_profile(profile, mon_count=2)
+        tab0 = ir["layout"]["mon0"]["children"][0]
+        self.assertEqual(tab0.get("active"), "Grok-2")
+        plan = plan_reconcile(forest, profile)
+        focus_ops = [a for a in plan["actions"] if a.get("op") == "focus"]
+        self.assertTrue(any(a.get("selector") == "id:102" for a in focus_ops), focus_ops)
+        self.assertTrue(
+            any(a.get("role") == "Grok-2" and a.get("reason") == "active" for a in focus_ops)
+        )
+
+    def test_focus_nth_grok_desk_wide(self):
+        forest = self._dual_grok_forest()
+        profile = {
+            "focus": ["Grok", 1],
+            "tiles": {
+                "mon0": [
+                    {"tab": ["Grok", "Grok"]},
+                    "ghostty",
+                ],
+                "mon1": [
+                    "ghostty",
+                    {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                ],
+            },
+        }
+        ir = validate_reconcile_profile(profile, mon_count=2)
+        self.assertEqual(ir.get("focus"), "Grok-2")
+        plan = plan_reconcile(forest, profile)
+        focus_ops = [a for a in plan["actions"] if a.get("op") == "focus"]
+        self.assertTrue(
+            any(
+                a.get("selector") == "id:102" and a.get("reason") == "profile"
+                for a in focus_ops
+            ),
+            focus_ops,
+        )
+
+    def test_active_bare_index_zero_and_one(self):
+        forest = self._dual_grok_forest()
+        for idx, expect_role, expect_wid in (
+            (0, "Grok", 101),
+            (1, "Grok-2", 102),
+        ):
+            profile = {
+                "tiles": {
+                    "mon0": [
+                        {"tab": ["Grok", "Grok"], "active": idx},
+                        "ghostty",
+                    ],
+                    "mon1": [
+                        "ghostty",
+                        {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                    ],
+                },
+            }
+            ir = validate_reconcile_profile(profile, mon_count=2)
+            tab0 = ir["layout"]["mon0"]["children"][0]
+            self.assertEqual(tab0.get("active"), expect_role, f"active={idx}")
+            plan = plan_reconcile(forest, profile)
+            focus_ops = [a for a in plan["actions"] if a.get("op") == "focus"]
+            self.assertTrue(
+                any(a.get("selector") == f"id:{expect_wid}" for a in focus_ops),
+                (idx, focus_ops),
+            )
+
+    def test_focus_explicit_role_id_still_works(self):
+        forest = self._dual_grok_forest()
+        profile = {
+            "focus": "Grok-2",
+            "tiles": {
+                "mon0": [{"tab": ["Grok", "Grok"]}, "ghostty"],
+                "mon1": [
+                    "ghostty",
+                    {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                ],
+            },
+        }
+        ir = validate_reconcile_profile(profile, mon_count=2)
+        self.assertEqual(ir.get("focus"), "Grok-2")
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(
+            any(
+                a.get("op") == "focus" and a.get("selector") == "id:102"
+                for a in plan["actions"]
+            )
+        )
+
+
 class TestFormatLayoutDescription(unittest.TestCase):
     def test_bare_dual_mon(self):
         bare = _load("profile-bare-dual-mon.json")

@@ -237,15 +237,42 @@ manual Super+Delete is a weak control path.
 strict mon + richness/hold/shield; complementary to H1, not a replacement.
 
 **Problem:** Shell HUP / extension reload wipes the in-memory tree. Flat
-re-track + Mutter pile-up → full-height columns, lost tabs.
+re-track + Mutter pile-up → full-height columns, lost tabs. After install HUP,
+Mutter may also leave keyboard focus on the wrong window even when topology
+restores.
 
 **Approach:** Portable forest at `~/.config/forge/config/session-layout.json`
-(leaves: id, pid, wmClass/title, frame, monitor). Debounced last-good save;
-install flushes before HUP. On enable: match ≥50% in order id → pid →
-class+title → class+geometry → unique class; **strict** mon rehome
-(`resolveStrictMonitor` — **not** T6 majority); raise tiles so none stay
-buried. Richness guard + post-enable **12s** save hold protect last-good. Not
-full `layout` profiles.
+(leaves: id, pid, wmClass/title, frame, monitor; CONs keep `lastTabFocusId`).
+Envelope also stores **`focusWindowId`** (the focused window at flush time).
+Debounced last-good save; install flushes before HUP. On enable: match ≥50% in
+order id → pid → class+title → class+geometry → unique class; **strict** mon
+rehome (`resolveStrictMonitor` — **not** T6 majority); raise tiles so none stay
+buried; **activate** the resolved `focusWindowId` so keyboard focus survives
+install/update. Richness guard + post-enable **12s** save hold protect
+last-good. Not full `layout` profiles.
+
+## Layout profile focus + active tab/stack
+
+**Problem:** `forge layout save` / apply restored structure (tab/stack groups,
+mon order) but not *which* tab was open or which app should hold keyboard focus.
+Users re-clicked the right tab after every load.
+
+**Approach:** GetTree exports `lastTabFocusId` per CON and top-level
+`focusWindowId`. Save emits optional sugar:
+
+- `{ "tab"|"stack": […], "active": "Grok" }` — open leaf in that group
+- top-level `{ "focus": "Grok" }` — keyboard focus after apply
+
+**Multi-instance sugar (0-based):** bare token = first match; `n` = index into
+the group content (active) or profile roles (focus); `["Grok", 1]` = 2nd token
+match — **container-local** for `active`, **desk-wide** for `focus`. Explicit
+role ids (`"Grok-2"`) still work. Save emits `[token, n]` when the open/focused
+leaf’s token collides with a sibling (or another desk window for focus).
+Normalize/validate desugar both to role id strings in IR so plan focus ops stay simple.
+
+Plan appends `focus` actions (group actives first, then profile focus). Apply
+maps them to RunSteps `focus` last so structure/order settle first. Tokens match
+role id / open app / title fragment (same as cells).
 
 **Same-pid multi-window (Ghostty):** titles churn; greedy leaf match could swap
 or drop both on tied frames. Fix: forest-aware **global assignment**

@@ -109,6 +109,63 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertEqual(len(pane["stack"]), 2)
         self.assertNotIsInstance(pane, list)
 
+    def test_tab_active_and_profile_focus(self):
+        forest = _load("tree-perfect.json")
+        # mon0 tab: chrome(101) + Grok(102); make Grok active + focused
+        mon0_tab = forest["monitors"][0]["children"][0]
+        mon0_tab["lastTabFocusId"] = 102
+        forest["focusWindowId"] = 102
+        profile = profile_for_output(capture_tiles_profile(forest))
+        self.assertIsInstance(profile, dict)
+        self.assertEqual(profile.get("focus"), "Grok")
+        tiles = profile.get("tiles")
+        self.assertIsInstance(tiles, list)
+        tab = tiles[0][0]
+        self.assertIn("tab", tab)
+        self.assertEqual(tab.get("active"), "Grok")
+
+        ir = validate_reconcile_profile(profile, mon_count=2)
+        self.assertEqual(ir.get("focus"), "Grok")
+        kids = ir["layout"]["mon0"]["children"]
+        tab_child = next(c for c in kids if c.get("layout") == "tabbed")
+        self.assertEqual(tab_child.get("active"), "Grok")
+
+    def test_dual_grok_active_and_focus_indexed(self):
+        """Two Grok leaves → save emits [token, n]; plan focuses second windowId."""
+        forest = _load("tree-perfect.json")
+        mon0_tab = forest["monitors"][0]["children"][0]
+        first = dict(mon0_tab["children"][0])
+        first["title"] = "Grok"
+        first["wmClass"] = "Google-chrome"
+        mon0_tab["children"][0] = first
+        mon0_tab["children"][1]["title"] = "Grok"
+        mon0_tab["lastTabFocusId"] = 102
+        forest["focusWindowId"] = 102
+
+        profile = profile_for_output(capture_tiles_profile(forest))
+        self.assertIsInstance(profile, dict)
+        self.assertEqual(profile.get("focus"), ["Grok", 1])
+        tab = profile["tiles"][0][0]
+        self.assertEqual(tab.get("active"), ["Grok", 1])
+        self.assertEqual(tab.get("tab"), ["Grok", "Grok"])
+
+        ir = validate_reconcile_profile(profile, mon_count=2)
+        self.assertEqual(ir.get("focus"), "Grok-2")
+        tab_child = next(
+            c for c in ir["layout"]["mon0"]["children"] if c.get("layout") == "tabbed"
+        )
+        self.assertEqual(tab_child.get("active"), "Grok-2")
+        self.assertEqual(tab_child.get("roles"), ["Grok", "Grok-2"])
+
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"])
+        focus_ops = [a for a in plan["actions"] if a.get("op") == "focus"]
+        sels = [a.get("selector") for a in focus_ops]
+        self.assertIn("id:102", sels)
+        by_role = {r["id"]: r.get("windowId") for r in plan["roles"]}
+        self.assertEqual(by_role.get("Grok"), 101)
+        self.assertEqual(by_role.get("Grok-2"), 102)
+
     def test_stacked_save_desugars_to_stacked_mode(self):
         forest = _load("tree-stacked-pair.json")
         sugar = profile_for_output(capture_tiles_profile(forest))

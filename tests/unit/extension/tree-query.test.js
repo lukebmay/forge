@@ -33,6 +33,7 @@ function node(partial) {
     isWindow: partial.isWindow,
     isMonitor: partial.isMonitor,
     stableKey: partial.stableKey,
+    lastTabFocus: partial.lastTabFocus,
   };
 }
 
@@ -192,6 +193,26 @@ describe("tree-query projectForest / monitorMatches", () => {
     expect(forest.monitors).toHaveLength(2);
     expect(forest.monitors[0].id).toBe("mo0ws0");
     expect(forest.monitors[0].children[0].title).toBe("A");
+  });
+
+  it("projectForest includes focusWindowId when provided", () => {
+    const forest = projectForest([mon0], { focusWindowId: 99 });
+    expect(forest.focusWindowId).toBe(99);
+  });
+
+  it("projectNode exports lastTabFocusId for tab/stack CONs", () => {
+    const wFocus = mockWin({ title: "Grok", id: 7 });
+    const tab = node({
+      nodeType: "CON",
+      layout: "TABBED",
+      lastTabFocus: wFocus,
+      childNodes: [
+        node({ nodeType: "WINDOW", nodeValue: mockWin({ title: "A", id: 6 }), mode: "TILE" }),
+        node({ nodeType: "WINDOW", nodeValue: wFocus, mode: "TILE" }),
+      ],
+    });
+    const proj = projectNode(tab);
+    expect(proj.lastTabFocusId).toBe(7);
   });
 
   it("filters by monitor index and workspace", () => {

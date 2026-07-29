@@ -176,6 +176,27 @@ class TestActionMapping(unittest.TestCase):
         self.assertEqual(steps[0]["tile"], "id:602")
         self.assertEqual(steps[0]["dest"], "id:601")
 
+    def test_focus_actions_last(self):
+        steps = actions_to_extension_steps(
+            [
+                {"op": "focus", "selector": "id:102", "reason": "profile"},
+                {
+                    "op": "move",
+                    "windowId": 9,
+                    "slot": "mon0.term",
+                },
+                {"op": "focus", "selector": "id:101", "reason": "active"},
+            ]
+        )
+        self.assertEqual(
+            steps,
+            [
+                {"op": "move", "tile": "id:9", "dest": "path:mo0ws0"},
+                {"op": "focus", "selector": "id:102"},
+                {"op": "focus", "selector": "id:101"},
+            ],
+        )
+
     def test_actions_to_extension_steps_close(self):
         steps = actions_to_extension_steps(
             [
