@@ -403,10 +403,14 @@ class TestTilesNormalize(unittest.TestCase):
     def test_example_tiles_nested_file(self):
         path = _FORGE_CLI / "examples" / "layout-tiles-nested.json"
         raw = json.loads(path.read_text(encoding="utf-8"))
-        self.assertIsInstance(raw, list)
+        # Explicit mon0/mon1 (mon1 body is tagged hsplit, not a bare list)
+        self.assertIsInstance(raw, dict)
+        self.assertIn("mon0", raw)
+        self.assertIn("mon1", raw)
         p = validate_reconcile_profile(raw)
         self.assertGreaterEqual(len(p["roles"]), 7)
         self.assertEqual(p["layout"]["mon1"]["split"], "hsplit")
+        self.assertTrue(p.get("monExplicit"))
 
     def test_single_item_list_like_string(self):
         p = validate_reconcile_profile({"tiles": {"mon0": [["ghostty"]]}})

@@ -1,4 +1,4 @@
 [
-  [["google-chrome", "Grok"], "ghostty"],
-  ["ghostty", ["YouTube", "Gmail", "Google Voice"]]
+  [{ "tab": ["google-chrome", "Grok"] }, "ghostty"],
+  ["ghostty", { "tab": ["YouTube", "Gmail", "Google Voice"] }]
 ]

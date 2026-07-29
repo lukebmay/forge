@@ -237,8 +237,8 @@ class TestListLoadProfiles(unittest.TestCase):
             d = layout_dir(root)
             d.mkdir(parents=True)
             body = [
-                [["google-chrome", "Grok"], "ghostty"],
-                ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
+                [{"tab": ["google-chrome", "Grok"]}, "ghostty"],
+                ["ghostty", {"tab": ["YouTube", "Gmail", "Google Voice"]}],
             ]
             (d / "bare.json").write_text(json.dumps(body), encoding="utf-8")
             listed = list_profiles(root)

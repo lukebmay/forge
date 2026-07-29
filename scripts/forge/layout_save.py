@@ -8,6 +8,10 @@ import sys
 from typing import Any, Callable, Optional, TextIO
 
 from layout_plan import (
+    SUGAR_HSPLIT,
+    SUGAR_STACK,
+    SUGAR_TAB,
+    SUGAR_VSPLIT,
     _alloc_role_id,
     _infer_open_and_match,
     _order_monitors,
@@ -71,19 +75,27 @@ def capture_tiles_profile(
         mon_key = f"mon{mon_i}"
         panes: list[Any] = []
         win_n = 0
-        for child in _ordered_children(mon):
-            if _is_float_window(child):
-                cell = _role_cell(child, used_ids, class_counts)
-                if cell is not None:
-                    floating.append(cell)
-                    wid = child.get("windowId")
-                    if wid is not None:
-                        seen_float_ids.add(str(wid))
-                continue
-            pane, n = _capture_pane(child, used_ids, class_counts)
+        mon_layout = str(mon.get("layout") or "").upper()
+        # Whole-mon tab/stack → one pane (not N mon children).
+        if mon_layout in ("TABBED", "STACKED"):
+            pane, n = _capture_pane(mon, used_ids, class_counts)
             if pane is not None:
                 panes.append(pane)
                 win_n += n
+        else:
+            for child in _ordered_children(mon):
+                if _is_float_window(child):
+                    cell = _role_cell(child, used_ids, class_counts)
+                    if cell is not None:
+                        floating.append(cell)
+                        wid = child.get("windowId")
+                        if wid is not None:
+                            seen_float_ids.add(str(wid))
+                    continue
+                pane, n = _capture_pane(child, used_ids, class_counts)
+                if pane is not None:
+                    panes.append(pane)
+                    win_n += n
         if panes:
             tiles[mon_key] = panes
             mon_window_counts[mon_key] = win_n
@@ -120,15 +132,23 @@ def capture_tiles_profile(
     return out
 
 
-def profile_for_output(profile: dict[str, Any]) -> Any:
+def profile_for_output(
+    profile: dict[str, Any], *, monitors: bool = False
+) -> Any:
     """
     Drop internal keys and emit simplest sugar for JSON print/write.
 
-    Prefer bare top-level array + string cells when mon0..monN order is enough
-    and no floating / custom metadata. Pure-auto description is omitted (list/show
-    recompute). Custom description forces object form with tiles array when possible.
+    Default: bare top-level array (implicit mons via live mon_count on load).
+    monitors=True: explicit mon0/mon1/… keys (no fold on mon mismatch).
+
+    Medium container keys on write: tab, stack, hsplit, vsplit.
+    Pure-auto description omitted (list/show recompute).
     """
-    out = {k: v for k, v in profile.items() if not k.startswith("_")}
+    out = {
+        k: v
+        for k, v in profile.items()
+        if not k.startswith("_") and k not in ("monExplicit",)
+    }
     tiles = out.get("tiles")
     if isinstance(tiles, dict):
         out["tiles"] = _compact_tiles_tree(tiles)
@@ -140,26 +160,54 @@ def profile_for_output(profile: dict[str, Any]) -> Any:
         out.pop("floating", None)
         floating = None
 
-    # Extra top-level keys force object form (roles/layout/monitors/…).
+    # Extra top-level keys force object form (roles/layout/alias monitors/…).
     sugar_keys = {"description", "tiles", "floating"}
     extra = [k for k in out if k not in sugar_keys]
     if extra:
         return out
 
-    bare = _tiles_to_bare_array(out.get("tiles"))
-    if bare is None:
+    tiles_out = out.get("tiles")
+    if not isinstance(tiles_out, dict):
         return out
 
     desc = out.get("description")
     desc_s = desc.strip() if isinstance(desc, str) and desc.strip() else None
+    # Build sugar for description compare
+    if monitors:
+        mon_map = _tiles_to_mon_key_map(tiles_out)
+        if mon_map is None:
+            return out
+        auto = format_layout_description({"tiles": mon_map}).strip()
+        if desc_s is None or (auto and desc_s == auto):
+            result: dict[str, Any] = dict(mon_map)
+            if floating:
+                result["floating"] = floating
+            return result
+        result = {"description": desc_s, **mon_map}
+        if floating:
+            result["floating"] = floating
+        return result
+
+    bare = _tiles_to_bare_array(tiles_out)
+    if bare is None:
+        # Non-consecutive mon keys → keep mon map object under tiles
+        mon_map = _tiles_to_mon_key_map(tiles_out)
+        if mon_map is not None:
+            wrapped: dict[str, Any] = {"tiles": mon_map}
+            if desc_s:
+                wrapped["description"] = desc_s
+            if floating:
+                wrapped["floating"] = floating
+            return wrapped
+        return out
+
     auto = format_layout_description(bare).strip()
-    # Pure auto / empty → bare array purity (list/show compute description).
     if desc_s is None or (auto and desc_s == auto):
         if floating:
             return {"tiles": bare, "floating": floating}
         return bare
 
-    wrapped: dict[str, Any] = {"description": desc_s, "tiles": bare}
+    wrapped = {"description": desc_s, "tiles": bare}
     if floating:
         wrapped["floating"] = floating
     return wrapped
@@ -182,6 +230,18 @@ def _tiles_to_bare_array(tiles: Any) -> Optional[list[Any]]:
     return bodies
 
 
+def _tiles_to_mon_key_map(tiles: Any) -> Optional[dict[str, Any]]:
+    """Compact mon map for --monitors save (mon0, mon1, …)."""
+    if not isinstance(tiles, dict) or not tiles:
+        return None
+    out: dict[str, Any] = {}
+    for k, v in tiles.items():
+        if not isinstance(k, str):
+            continue
+        out[k] = v if not isinstance(v, list) else _compact_pane_list(v)
+    return out if out else None
+
+
 def _compact_tiles_tree(tiles: dict[str, Any]) -> dict[str, Any]:
     return {k: _compact_pane_node(v) for k, v in tiles.items()}
 
@@ -192,8 +252,52 @@ def _compact_pane_list(items: list[Any]) -> list[Any]:
 
 def _compact_pane_node(node: Any) -> Any:
     if isinstance(node, list):
+        # Keep lists as lists (mon body / nested panes = hsplit default).
+        # Tab groups are already { "tab": [...] } from capture.
         return _compact_pane_list(node)
     if isinstance(node, dict):
+        # Already tagged medium/short/long container
+        for raw_key, medium in (
+            ("tab", SUGAR_TAB),
+            ("t", SUGAR_TAB),
+            ("tabbed", SUGAR_TAB),
+            ("stack", SUGAR_STACK),
+            ("s", SUGAR_STACK),
+            ("stacked", SUGAR_STACK),
+            ("hsplit", SUGAR_HSPLIT),
+            ("h", SUGAR_HSPLIT),
+            ("horizontal", SUGAR_HSPLIT),
+            ("vsplit", SUGAR_VSPLIT),
+            ("v", SUGAR_VSPLIT),
+            ("vertical", SUGAR_VSPLIT),
+        ):
+            if raw_key in node and isinstance(node[raw_key], list):
+                content = _compact_pane_list(node[raw_key])
+                out_tag: dict[str, Any] = {medium: content}
+                if node.get("id") is not None:
+                    out_tag["id"] = node["id"]
+                return out_tag
+        # { layout|split: mode, content: [...] }
+        mode_raw = node.get("layout")
+        if mode_raw is None:
+            mode_raw = node.get("split")
+        if mode_raw is not None and (
+            "content" in node or "children" in node
+        ):
+            mode_s = str(mode_raw).strip().lower()
+            content = node.get("content")
+            if content is None:
+                content = node.get("children")
+            if isinstance(content, list):
+                content_c = _compact_pane_list(content)
+                if mode_s in ("tabbed", "tab", "t"):
+                    return {SUGAR_TAB: content_c}
+                if mode_s in ("stacked", "stack", "s"):
+                    return {SUGAR_STACK: content_c}
+                if mode_s in ("hsplit", "h", "horizontal"):
+                    return {SUGAR_HSPLIT: content_c}
+                if mode_s in ("vsplit", "v", "vertical"):
+                    return {SUGAR_VSPLIT: content_c}
         if "content" in node or "children" in node or (
             "split" in node and node.get("app") is None and node.get("open") is None
         ):
@@ -205,6 +309,35 @@ def _compact_pane_node(node: Any) -> Any:
             return out
         return _maybe_string_cell(node)
     return node
+
+
+def _is_compact_role_cell(x: Any) -> bool:
+    if isinstance(x, str):
+        return True
+    if not isinstance(x, dict):
+        return False
+    # Role-ish object, not a container
+    if any(
+        k in x
+        for k in (
+            "tab",
+            "t",
+            "tabbed",
+            "stack",
+            "s",
+            "stacked",
+            "hsplit",
+            "h",
+            "vsplit",
+            "v",
+            "content",
+            "children",
+            "split",
+            "layout",
+        )
+    ):
+        return False
+    return True
 
 
 def _maybe_string_cell(cell: dict[str, Any]) -> Any:
@@ -689,10 +822,10 @@ def _capture_pane(
             return None, 0
         if len(cells) == 1:
             return cells[0], 1
-        # TABBED → bare multi-cell list; STACKED → explicit layout sugar
+        # Medium sugar keys: tab / stack
         if layout == "STACKED":
-            return {"layout": "stacked", "content": cells}, len(cells)
-        return cells, len(cells)
+            return {SUGAR_STACK: cells}, len(cells)
+        return {SUGAR_TAB: cells}, len(cells)
 
     if layout in ("HSPLIT", "VSPLIT") and kids:
         content: list[Any] = []
@@ -706,8 +839,8 @@ def _capture_pane(
             return None, 0
         if len(content) == 1:
             return content[0], total
-        split = "h" if layout == "HSPLIT" else "v"
-        return {"split": split, "content": content}, total
+        key = SUGAR_HSPLIT if layout == "HSPLIT" else SUGAR_VSPLIT
+        return {key: content}, total
 
     # Generic CON / unknown: unwrap single child or tab-style multi-window
     wins = [w for w in _window_leaves(node) if not _is_float_window(w)]
@@ -716,7 +849,7 @@ def _capture_pane(
     if len(wins) == 1:
         cell = _role_cell(wins[0], used_ids, class_counts)
         return cell, 1 if cell is not None else 0
-    # Multiple windows without TABBED — still emit nested list (tab-ish)
+    # Multiple windows without TABBED — still emit tab group
     cells = []
     for w in wins:
         cell = _role_cell(w, used_ids, class_counts)
@@ -726,7 +859,7 @@ def _capture_pane(
         return None, 0
     if len(cells) == 1:
         return cells[0], 1
-    return cells, len(cells)
+    return {SUGAR_TAB: cells}, len(cells)
 
 
 def _role_cell(

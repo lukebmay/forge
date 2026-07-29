@@ -1603,6 +1603,8 @@ def _layout_run_reconcile(
     verbose: bool = False,
 ) -> int:
     name = resolved["name"]
+    # Early validate for preamble / shape errors. Final IR uses mon_count from
+    # GetTree inside plan_reconcile (bare tab|split must not become dual mon).
     try:
         profile = validate_reconcile_profile(data)
     except ValueError as e:
@@ -1624,7 +1626,8 @@ def _layout_run_reconcile(
         return 1
 
     try:
-        plan = plan_reconcile(forest, profile, clean=clean, safe=safe)
+        # Pass raw sugar so mon_count can re-desugar; pre-validated IR loses tiles.
+        plan = plan_reconcile(forest, data, clean=clean, safe=safe)
     except ValueError as e:
         _eprint(f"forge layout: plan failed: {e}")
         return 1
@@ -1715,7 +1718,7 @@ def _layout_run_reconcile(
     if open_actions:
         try:
             forest2 = _layout_load_tree(backend, None)
-            plan2 = plan_reconcile(forest2, profile, clean=clean, safe=safe)
+            plan2 = plan_reconcile(forest2, data, clean=clean, safe=safe)
         except Exception as e:
             _eprint(f"forge layout: re-plan after open failed: {e}")
             out = _layout_plan_meta(resolved, name, plan, dry_run=False)
@@ -1774,6 +1777,7 @@ def _layout_run_save(
     quiet: bool = False,
     description_flag: Optional[str] = None,
     no_description: bool = False,
+    monitors: bool = False,
 ) -> int:
     """Snapshot GetTree → tiles sugar; write host profile or print with --stdout."""
     try:
@@ -1820,7 +1824,7 @@ def _layout_run_save(
         return 130
     apply_description(profile, desc)
 
-    payload = profile_for_output(profile)
+    payload = profile_for_output(profile, monitors=bool(monitors))
     body = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
     host = resolve_host()
 
@@ -1906,8 +1910,17 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         try:
             data = load_profile_file(path)
             mode = detect_layout_mode(data, force_launch=False)
+            mon_count = None
             if mode == MODE_RECONCILE:
-                profile = validate_reconcile_profile(data)
+                # Prefer live mon count so bare tab|split is not dual-mon on 1-mon.
+                try:
+                    from layout_plan import forest_physical_mon_count
+
+                    forest = _layout_load_tree(None, None)
+                    mon_count = forest_physical_mon_count(forest)
+                except Exception:
+                    mon_count = None
+                profile = validate_reconcile_profile(data, mon_count=mon_count)
             else:
                 profile = validate_profile(data)
         except FileNotFoundError as e:
@@ -1947,6 +1960,7 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
             quiet=bool(getattr(args, "quiet", False)),
             description_flag=desc_flag,
             no_description=no_desc,
+            monitors=bool(getattr(args, "monitors", False)),
         )
 
     if action == "run":
@@ -2879,6 +2893,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-description",
         action="store_true",
         help="With save: omit description key from written profile",
+    )
+    layout_p.add_argument(
+        "--monitors",
+        action="store_true",
+        help=(
+            "With save: emit explicit mon0/mon1/… keys (no mon fold on mismatch). "
+            "Default save is bare array (implicit mons via live monitor count)"
+        ),
     )
     layout_p.set_defaults(func=cmd_layout)
 

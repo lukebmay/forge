@@ -1,13 +1,11 @@
-[
-  [["google-chrome", "Grok"], "ghostty"],
-  {
-    "split": "h",
-    "content": [
+{
+  "mon0": [{ "tab": ["google-chrome", "Grok"] }, "ghostty"],
+  "mon1": {
+    "hsplit": [
       "ghostty",
       {
-        "split": "v",
-        "content": [["youtube", "gmail", "voice"], "nautilus"]
+        "vsplit": [{ "tab": ["youtube", "gmail", "voice"] }, "nautilus"]
       }
     ]
   }
-]
+}

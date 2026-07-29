@@ -182,7 +182,7 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     _out(s, heading("Minimal profile", **kw), " ", dim("(bare array - preferred)", **kw))
     _out(s, dim("  ~/.config/forge/layout/simple.json", **kw))
     code = """\
-[ ["firefox", "code"], "ghostty" ]"""
+[ { "tab": ["firefox", "code"] }, "ghostty" ]"""
     for line in code.splitlines():
         _out(s, "  ", cyan(line, **kw))
     _blank(s)
@@ -191,14 +191,15 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
 
     _out(s, heading("Layout sugar", **kw), " ", dim("(desugars to roles + layout)", **kw))
     for line, desc in (
-        ("bare dual-mon array", "[[panes…], [panes…]] → mon0, mon1, …"),
-        ("bare single-mon panes", "[ pane, pane ] → mon0"),
-        ('["app1", "app2"]', "one tabbed pane (default group)"),
-        ('{ "layout": "stacked", "content": […] }', "stacked pane (mode on by default)"),
+        ("bare dual-mon array", "[[panes…], [panes…]] when len==live mon count"),
+        ("bare single-mon panes", "[ pane, pane ] → mon0 (default mon split hsplit)"),
+        ('{ "tab": ["a","b"] }', "tabbed pane (also t / tabbed); save uses tab"),
+        ('{ "stack": ["a","b"] }', "stacked (also s / stacked)"),
+        ('{ "hsplit"|"vsplit": […] }', "split CON (also h/horizontal, v/vertical)"),
         ('"ghostty" / "Grok"', "string = open + inferred match"),
-        ('monN / stableKey / alias', "advanced tiles object keys (T7)"),
-        ('split: "h"/"v"/hsplit/…', "override split"),
-        ('{ split, content }', "nested split"),
+        ("mon0/mon1 keys", "explicit mons — no fold when a head is missing"),
+        ("monitors: [[…],[…]]", "explicit mon list (same no-fold)"),
+        ("save --monitors", "write mon0/mon1 keys instead of bare array"),
         ("rich object cell", "override when inference is not enough"),
     ):
         _out(s, "  ", cyan(line, **kw), "  ", desc)

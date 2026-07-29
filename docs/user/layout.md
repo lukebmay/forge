@@ -91,36 +91,42 @@ is wrong, then dry-run.
 
 Drop this at `~/.config/forge/layout/simple.json` (edit app names):
 
-**Single monitor** — top-level is panes L→R:
-
-```json
-[ ["firefox", "code"], "ghostty" ]
-```
-
-**Dual monitor** — top-level length = mon count; each item is that mon’s panes:
+**Single monitor** — top-level is panes L→R (default mon split = **hsplit**):
 
 ```json
 [
-  [ ["google-chrome", "Grok"], "ghostty" ],
-  [ "ghostty", ["YouTube", "Gmail", "Google Voice"] ]
+  { "tab": ["firefox", "code"] },
+  "ghostty"
+]
+```
+
+**Dual monitor** — top-level length equals live mon count; each item is that
+mon’s pane list (apply uses GetTree mon count):
+
+```json
+[
+  [ { "tab": ["google-chrome", "Grok"] }, "ghostty" ],
+  [ "ghostty", { "tab": ["YouTube", "Gmail", "Google Voice"] } ]
 ]
 ```
 
 | Sugar | Meaning |
 | --- | --- |
-| Top-level mon list | `mon0`, `mon1`, … in order (when ≥2 items look like mon bodies) |
-| Top-level panes | Single mon (or flat cells) → all on mon0 |
-| `[ a, b ]` mon body | Two mon children; default **hsplit**; **array order = L→R** |
-| `["app1", "app2"]` | One pane, multi-role, **tabbed**; **array order = tab order** |
-| `{ "layout": "stacked", "content": […] }` | One pane, multi-role, **stacked** (i3-style); needs stack mode on |
+| Bare top-level array | **Implicit mons:** if `len == live mon count` and each item is a mon body list → one mon each; else all panes on mon0. Offline (no tree): dual only when every top-level item is a **list** |
+| `{ "mon0": […], "mon1": […] }` | **Explicit mon keys** — never fold mon1→mon0 when a head is missing |
+| `{ "monitors": [ […], […] ] }` | **Explicit mon list** (same no-fold rule) |
+| `{ "tab": ["a","b"] }` | Tabbed pane (also `t` / `tabbed`) |
+| `{ "stack": ["a","b"] }` | Stacked pane (also `s` / `stacked`) |
+| `{ "hsplit": [ … ] }` / `{ "vsplit": [ … ] }` | Split CON (also `h`/`horizontal`, `v`/`vertical`) |
+| Untyped pane list of apps | Still **tabbed** (legacy); save emits `{ "tab": … }` |
+| Untyped list of panes | **hsplit** of children |
 | `"ghostty"` | One pane, one role; class stem matches reverse-DNS wmClass |
 | `"Grok"` / `"YouTube"` | Chrome PWA-ish: class + `title~=` inferred from the string |
 | Flat object | `{ "app", "class", "title~=" }` override when inference is not enough |
-| `"split": "h"` / `"v"` / … | Override split |
-| `{ "split", "content": […] }` | Nested split node |
 
-`forge layout save` writes the bare array when mon index order is enough and
-there is no custom description / floating. Load respects mon L/R and tab order.
+**Save:** `forge layout save <name>` writes bare arrays with medium keys
+(`tab`, `stack`, `hsplit`, `vsplit`). Pass **`--monitors`** to emit explicit
+`mon0` / `mon1` / … keys instead (no mon fold on mismatch).
 
 ### Object form (when you need more)
 

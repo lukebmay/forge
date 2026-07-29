@@ -17,6 +17,7 @@ _MON_ID_RE = re.compile(r"^mo(\d+)ws(\d+)$")
 _NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 # T7 stableKey prefixes (see lib/extension/monitor-identity.js)
 _STABLE_KEY_RE = re.compile(r"^(?:geom:|conn:|name:).+")
+# Container mode aliases (load accepts all; save emits medium keys — see SUGAR_*).
 _SPLIT_ALIASES = {
     "h": "hsplit",
     "horizontal": "hsplit",
@@ -24,9 +25,20 @@ _SPLIT_ALIASES = {
     "v": "vsplit",
     "vertical": "vsplit",
     "vsplit": "vsplit",
+    "t": "tabbed",
+    "tab": "tabbed",
     "tabbed": "tabbed",
+    "s": "stacked",
+    "stack": "stacked",
     "stacked": "stacked",
 }
+# Medium-length keys written by layout save (not short t/h/s, not long tabbed/…).
+SUGAR_TAB = "tab"
+SUGAR_STACK = "stack"
+SUGAR_HSPLIT = "hsplit"
+SUGAR_VSPLIT = "vsplit"
+# Dict key on a pane object → canonical mode (value is content array).
+_CONTAINER_TAG_KEYS = frozenset(_SPLIT_ALIASES.keys())
 
 # String-cell open.app → Chrome class (casefold keys).
 _CHROME_LAUNCHERS = frozenset(
@@ -117,12 +129,20 @@ def mon_head_and_rest(
 
 
 def _validate_monitors_aliases(raw: Any) -> dict[str, str]:
-    """Top-level monitors: { alias: monN|primary|stableKey }."""
+    """
+    Top-level monitors as alias map: { alias: monN|primary|stableKey }.
+
+    monitors as a list of mon bodies is handled in normalize_profile (not here).
+    """
     if raw is None:
+        return {}
+    if isinstance(raw, list):
+        # Body list already desugared to tiles; nothing left to alias.
         return {}
     if not isinstance(raw, dict):
         raise ValueError(
-            "monitors must be an object (alias → monN | primary | stableKey)"
+            "monitors must be an array of mon bodies or an object "
+            "(alias → monN | primary | stableKey)"
         )
     out: dict[str, str] = {}
     for k, v in raw.items():
@@ -175,32 +195,44 @@ def _slot_ok(slot: str, aliases: dict[str, str], layout_keys: set[str]) -> bool:
     return False
 
 
-def normalize_profile(data: Any) -> dict[str, Any]:
+def normalize_profile(
+    data: Any, *, mon_count: Optional[int] = None
+) -> dict[str, Any]:
     """
     Desugar tiles sugar → v2 IR and fill omit-noise defaults.
-    Accepts bare top-level array or tiles as object/array.
-    Idempotent on pure IR (pass-through + setdefault only).
+
+    Accepts:
+      - bare top-level array (implicit mons: live mon_count decides)
+      - { tiles: array|mon-map }
+      - { mon0: …, mon1: … } explicit mon keys (no fold on mon mismatch)
+      - { monitors: [ monBody, … ] } explicit mon list (no fold)
+      - { monitors: { alias: monN|stableKey } } alias map (with tiles/mon keys)
+      - pure roles+layout IR (pass-through + defaults)
+
+    mon_count: physical outputs from GetTree; required for bare dual-mon.
+    Offline (None): bare arrays always desugar as mon0 panes (use mon keys /
+    monitors[] for multi-mon without a live forest).
     """
-    # Bare JSON array = dual-mon list or single-mon panes (see _bare_array_to_mon_tiles).
     if isinstance(data, list):
         data = {"tiles": data}
     if not isinstance(data, dict):
         raise ValueError("profile must be a JSON object or array")
 
     out = copy.deepcopy(data)
-    had_tiles = "tiles" in out
-    if had_tiles:
-        tiles = out.pop("tiles")
-        if isinstance(tiles, list):
-            tiles = _bare_array_to_mon_tiles(tiles)
+    tiles, mon_explicit, from_sugar = _extract_tiles_from_profile(out, mon_count=mon_count)
+    had_sugar = from_sugar
+
+    if tiles is not None:
         if not isinstance(tiles, dict):
-            raise ValueError("tiles must be an object or array")
+            raise ValueError("tiles must resolve to a mon map object")
         roles, layout = _desugar_tiles(tiles)
         out["roles"] = roles
         out["layout"] = layout
+        if mon_explicit:
+            out["monExplicit"] = True
 
     has_roles = isinstance(out.get("roles"), list) and len(out.get("roles") or []) > 0
-    if has_roles or had_tiles:
+    if has_roles or had_sugar:
         out.setdefault("version", PROFILE_VERSION)
         out.setdefault("mode", MODE_RECONCILE)
         if "overflow" not in out:
@@ -212,6 +244,80 @@ def normalize_profile(data: Any) -> dict[str, Any]:
                 "residual": "leave",
             }
     return out
+
+
+def _extract_tiles_from_profile(
+    out: dict[str, Any], *, mon_count: Optional[int]
+) -> tuple[Optional[dict[str, Any]], bool, bool]:
+    """
+    Pull tiles sugar out of profile dict (mutates out: pops consumed keys).
+
+    Returns (tiles_mon_map|None, mon_explicit, had_sugar).
+    """
+    # 1) Explicit monitors: [ monBody, … ]
+    monitors_raw = out.get("monitors")
+    if isinstance(monitors_raw, list):
+        out.pop("monitors", None)
+        if "tiles" in out:
+            raise ValueError("profile: use monitors[] or tiles, not both")
+        tiles = {
+            f"mon{i}": body for i, body in enumerate(monitors_raw)
+        }
+        return tiles, True, True
+
+    # 2) Top-level monN / primary / stableKey bodies (no tiles wrapper)
+    top_mon_keys = [
+        k
+        for k in list(out.keys())
+        if isinstance(k, str)
+        and (
+            _is_builtin_mon_key(k.strip())
+            or _is_stable_key(k.strip())
+        )
+        and k
+        not in (
+            "version",
+            "mode",
+            "roles",
+            "layout",
+            "overflow",
+            "marginal",
+            "floating",
+            "description",
+            "tiles",
+            "monitors",
+            "monExplicit",
+            "displays",
+            "settings",
+        )
+    ]
+    # monN keys only when value looks like mon body (list or split object), not strings
+    top_mon_keys = [
+        k
+        for k in top_mon_keys
+        if _is_builtin_mon_key(str(k).strip()) or _is_stable_key(str(k).strip())
+    ]
+    if top_mon_keys and "tiles" not in out and "roles" not in out:
+        tiles = {}
+        for k in top_mon_keys:
+            tiles[str(k).strip()] = out.pop(k)
+        return tiles, True, True
+
+    # 3) tiles: array (implicit) or mon map (explicit if mon keys)
+    if "tiles" not in out:
+        return None, False, False
+
+    tiles_in = out.pop("tiles")
+    if isinstance(tiles_in, list):
+        return (
+            _bare_array_to_mon_tiles(tiles_in, mon_count=mon_count),
+            False,
+            True,
+        )
+    if isinstance(tiles_in, dict):
+        # mon map under tiles is explicit binding
+        return tiles_in, True, True
+    raise ValueError("tiles must be an object or array")
 
 
 def format_layout_description(profile: Any) -> str:
@@ -320,29 +426,114 @@ def _role_desc_token(rid: Any, roles_by_id: dict[str, dict[str, Any]]) -> str:
 
 
 def _looks_like_mon_body(item: Any) -> bool:
-    """List or {split,content} — not a bare string / flat role object."""
+    """List or container object — not a bare string / flat role object."""
     if isinstance(item, list):
         return True
     if not isinstance(item, dict):
         return False
     if item.get("open") is not None or item.get("match") is not None or item.get("app") is not None:
         return False
-    return "split" in item or "content" in item or "children" in item
+    if _tagged_container_mode(item) is not None:
+        return True
+    return "split" in item or "layout" in item or "content" in item or "children" in item
 
 
-def _bare_array_to_mon_tiles(items: list[Any]) -> dict[str, Any]:
+def _tagged_container_mode(item: dict[str, Any]) -> Optional[str]:
     """
-    Shape → mon map (no live mon count at normalize time).
+    { tab|stack|hsplit|vsplit|t|h|…: content } → canonical mode, else None.
 
-    ≥2 top-level items that each look like mon bodies (list / split object)
-    → mon0, mon1, …. Otherwise all panes on mon0 (ambiguous flat cells stay mon0).
+    Ignores role objects (open/match/app) and multi-key IR-ish nodes.
     """
-    if (
-        len(items) >= 2
-        and all(_looks_like_mon_body(x) for x in items)
-    ):
+    if not isinstance(item, dict):
+        return None
+    if item.get("open") is not None or item.get("match") is not None or item.get("app") is not None:
+        return None
+    tags = [k for k in item.keys() if str(k).strip().lower() in _CONTAINER_TAG_KEYS]
+    # Allow optional id alongside the tag
+    other = [
+        k
+        for k in item.keys()
+        if str(k).strip().lower() not in _CONTAINER_TAG_KEYS and k != "id"
+    ]
+    if len(tags) != 1 or other:
+        return None
+    mode = _SPLIT_ALIASES.get(str(tags[0]).strip().lower())
+    content = item.get(tags[0])
+    if not isinstance(content, list):
+        return None
+    return mode
+
+
+def _mon_body_as_pane_list(body: Any) -> list[Any]:
+    """Normalize a mon body value to a list of panes (for fold onto mon0)."""
+    if isinstance(body, list):
+        return body
+    if isinstance(body, dict):
+        if "content" in body and isinstance(body["content"], list):
+            return body["content"]
+        if "children" in body and isinstance(body["children"], list):
+            return body["children"]
+        tag = _tagged_container_mode(body)
+        if tag is not None:
+            for k, v in body.items():
+                if str(k).strip().lower() in _CONTAINER_TAG_KEYS and isinstance(v, list):
+                    # Whole mon is one tagged container → single pane
+                    return [body]
+        return [body]
+    return [body]
+
+
+def _bare_array_to_mon_tiles(
+    items: list[Any], *, mon_count: Optional[int] = None
+) -> dict[str, Any]:
+    """
+    Implicit bare array → mon map.
+
+    Live mon_count == len(items) and each item is mon-body-shaped → mon0..monN-1.
+    mon_count <= 1 with multiple mon-body-looking items → fold all panes onto mon0
+    (temporary second head gone). Offline (mon_count None) → always mon0 panes
+    (multi-mon offline needs mon0/mon1 or monitors[]).
+    """
+    if mon_count is not None:
+        try:
+            n = int(mon_count)
+        except (TypeError, ValueError):
+            n = 0
+        if n <= 1:
+            if len(items) >= 2 and all(_looks_like_mon_body(x) for x in items):
+                # Dual bare on 1-output desk: fold mon bodies into mon0 panes
+                panes: list[Any] = []
+                for body in items:
+                    panes.extend(_mon_body_as_pane_list(body))
+                return {"mon0": panes}
+            return {"mon0": items}
+        if (
+            n >= 2
+            and len(items) == n
+            and all(_looks_like_mon_body(x) for x in items)
+        ):
+            return {f"mon{i}": body for i, body in enumerate(items)}
+        # mon count known but not a dual bare match → single-mon pane list
+        return {"mon0": items}
+
+    # Offline: dual mon only when every top-level item is a list (mon body =
+    # pane list). Tagged panes like {tab:…}/{vsplit:…} stay mon0 (green).
+    # Explicit mon0/mon1 or monitors[] when offline dual must be unambiguous.
+    if len(items) >= 2 and all(isinstance(x, list) for x in items):
         return {f"mon{i}": body for i, body in enumerate(items)}
     return {"mon0": items}
+
+
+def forest_physical_mon_count(forest: Any) -> int:
+    """Unique physical mon indices in a GetTree forest (workspaces share monN)."""
+    idxs: set[int] = set()
+    for m in _iter_forest_monitors(forest):
+        if not isinstance(m, dict):
+            continue
+        idx = _monitor_node_index(m)
+        if idx is not None:
+            idxs.add(idx)
+    return max(1, len(idxs))
 
 
 def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -373,15 +564,33 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
         if isinstance(mon_body, list):
             content = mon_body
         elif isinstance(mon_body, dict):
-            split_override = _normalize_split_alias(mon_body.get("split"), f"tiles.{mon_key}")
-            if "content" in mon_body:
-                content = mon_body["content"]
-            elif "children" in mon_body:
-                content = mon_body["children"]
+            tag = _tagged_container_mode(mon_body)
+            if tag in ("hsplit", "vsplit"):
+                split_override = tag
+                for k, v in mon_body.items():
+                    if str(k).strip().lower() in _CONTAINER_TAG_KEYS:
+                        content = v
+                        break
+            elif tag in ("tabbed", "stacked"):
+                # Whole mon is one tab/stack group
+                content = [mon_body]
             else:
-                raise ValueError(f"tiles.{mon_key}: need content array (or bare array)")
+                split_override = _normalize_split_alias(
+                    mon_body.get("split"), f"tiles.{mon_key}"
+                )
+                if "content" in mon_body:
+                    content = mon_body["content"]
+                elif "children" in mon_body:
+                    content = mon_body["children"]
+                else:
+                    raise ValueError(
+                        f"tiles.{mon_key}: need content array, bare array, "
+                        f"or {{hsplit|vsplit|tab|stack: […]}}"
+                    )
         else:
-            raise ValueError(f"tiles.{mon_key}: want array or {{split, content}}")
+            raise ValueError(
+                f"tiles.{mon_key}: want array or {{split|hsplit|vsplit|tab, content}}"
+            )
 
         if not isinstance(content, list):
             raise ValueError(f"tiles.{mon_key}.content must be an array")
@@ -427,6 +636,29 @@ def _desugar_pane(
     used_ids: set[str],
     s_next: list[int],
 ) -> dict[str, Any]:
+    # Tagged container: { tab|stack|hsplit|vsplit|t|h|…: content }
+    if isinstance(item, dict):
+        tag_mode = _tagged_container_mode(item)
+        if tag_mode is not None:
+            content = None
+            for k, v in item.items():
+                if str(k).strip().lower() in _CONTAINER_TAG_KEYS:
+                    content = v
+                    break
+            if not isinstance(content, list) or len(content) == 0:
+                raise ValueError(f"{where}: {tag_mode} needs a non-empty content array")
+            return _desugar_tagged_container(
+                tag_mode,
+                content,
+                mon_key,
+                path_prefix,
+                where,
+                roles,
+                used_ids,
+                s_next,
+                item.get("id"),
+            )
+
     # Multi-role group sugar: {layout|split: tabbed|stacked, content: [roles]}
     if isinstance(item, dict):
         mode_raw = item.get("layout")
@@ -454,11 +686,26 @@ def _desugar_pane(
                         s_next,
                         mode=mode_norm,
                     )
+            if mode_norm in ("hsplit", "vsplit"):
+                content = item.get("content")
+                if content is None:
+                    content = item.get("children")
+                if isinstance(content, list):
+                    return _desugar_split_node(
+                        mode_norm,
+                        content,
+                        mon_key,
+                        path_prefix,
+                        where,
+                        roles,
+                        used_ids,
+                        s_next,
+                        item.get("id"),
+                    )
 
-    # Nested split object
+    # Nested split object { split, content } / { content } default hsplit
     if isinstance(item, dict) and ("split" in item or "content" in item or "children" in item):
         if "roles" in item and item.get("content") is None and item.get("children") is None:
-            # role object that happened to use reserved keys — treat as role if open/match
             if item.get("open") is not None or item.get("match") is not None or item.get("app") is not None:
                 return _desugar_role_pane(
                     [item], mon_key, path_prefix, where, roles, used_ids, s_next
@@ -469,24 +716,27 @@ def _desugar_pane(
             content = item.get("children")
         if not isinstance(content, list):
             raise ValueError(f"{where}: nested split needs content array")
-        cid = item.get("id")
-        if cid is None or str(cid).strip() == "":
-            cid = f"s{s_next[0]}"
-            s_next[0] += 1
-        else:
-            cid = str(cid).strip()
-            if not _NAME_RE.match(cid):
-                raise ValueError(f"{where}.id: invalid {cid!r} (use A-Za-z0-9_-)")
-        slot_path = f"{path_prefix}.{cid}"
-        kids = _desugar_panes(content, mon_key, slot_path, roles, used_ids, s_next)
-        node: dict[str, Any] = {"id": cid, "children": kids}
-        if split is None and len(kids) >= 2:
+        if split is None:
             split = "hsplit"
-        if split is not None:
-            node["split"] = split
-        return node
+        if split in ("tabbed", "stacked"):
+            if content and all(_is_role_cell(x) for x in content):
+                return _desugar_role_pane(
+                    content, mon_key, path_prefix, where, roles, used_ids, s_next, mode=split
+                )
+            raise ValueError(f"{where}: tabbed/stacked content must be role cells")
+        return _desugar_split_node(
+            split,
+            content,
+            mon_key,
+            path_prefix,
+            where,
+            roles,
+            used_ids,
+            s_next,
+            item.get("id"),
+        )
 
-    # List: tab group of role cells, or nested split if mixed structure
+    # List: tab group of role cells, or nested hsplit if mixed structure
     if isinstance(item, list):
         if len(item) == 0:
             raise ValueError(f"{where}: empty pane")
@@ -494,15 +744,18 @@ def _desugar_pane(
             return _desugar_role_pane(
                 item, mon_key, path_prefix, where, roles, used_ids, s_next
             )
-        # Nested split (prefer explicit {{split, content}} when ambiguous)
-        cid = f"s{s_next[0]}"
-        s_next[0] += 1
-        slot_path = f"{path_prefix}.{cid}"
-        kids = _desugar_panes(item, mon_key, slot_path, roles, used_ids, s_next)
-        node = {"id": cid, "children": kids}
-        if len(kids) >= 2:
-            node["split"] = "hsplit"
-        return node
+        # Nested panes → default hsplit
+        return _desugar_split_node(
+            "hsplit",
+            item,
+            mon_key,
+            path_prefix,
+            where,
+            roles,
+            used_ids,
+            s_next,
+            None,
+        )
 
     # Bare string / rich role object → single-role pane
     if _is_role_cell(item):
@@ -510,7 +763,63 @@ def _desugar_pane(
             [item], mon_key, path_prefix, where, roles, used_ids, s_next
         )
 
-    raise ValueError(f"{where}: want string, role object, array, or {{split, content}}")
+    raise ValueError(
+        f"{where}: want string, role object, array, or "
+        f"{{tab|stack|hsplit|vsplit|split, content}}"
+    )
+
+
+def _desugar_tagged_container(
+    mode: str,
+    content: list[Any],
+    mon_key: str,
+    path_prefix: str,
+    where: str,
+    roles: list[dict[str, Any]],
+    used_ids: set[str],
+    s_next: list[int],
+    cid_raw: Any,
+) -> dict[str, Any]:
+    if mode in ("tabbed", "stacked"):
+        if not all(_is_role_cell(x) for x in content):
+            raise ValueError(f"{where}: {mode} content must be role cells (strings/objects)")
+        return _desugar_role_pane(
+            content, mon_key, path_prefix, where, roles, used_ids, s_next, mode=mode
+        )
+    if mode in ("hsplit", "vsplit"):
+        return _desugar_split_node(
+            mode, content, mon_key, path_prefix, where, roles, used_ids, s_next, cid_raw
+        )
+    raise ValueError(f"{where}: unsupported container mode {mode!r}")
+
+
+def _desugar_split_node(
+    split: str,
+    content: list[Any],
+    mon_key: str,
+    path_prefix: str,
+    where: str,
+    roles: list[dict[str, Any]],
+    used_ids: set[str],
+    s_next: list[int],
+    cid_raw: Any,
+) -> dict[str, Any]:
+    cid: str
+    if cid_raw is None or str(cid_raw).strip() == "":
+        cid = f"s{s_next[0]}"
+        s_next[0] += 1
+    else:
+        cid = str(cid_raw).strip()
+        if not _NAME_RE.match(cid):
+            raise ValueError(f"{where}.id: invalid {cid!r} (use A-Za-z0-9_-)")
+    slot_path = f"{path_prefix}.{cid}"
+    kids = _desugar_panes(content, mon_key, slot_path, roles, used_ids, s_next)
+    node: dict[str, Any] = {"id": cid, "children": kids}
+    if split:
+        node["split"] = split
+    elif len(kids) >= 2:
+        node["split"] = "hsplit"
+    return node
 
 
 def _is_role_cell(x: Any) -> bool:
@@ -518,7 +827,11 @@ def _is_role_cell(x: Any) -> bool:
         return True
     if not isinstance(x, dict):
         return False
+    if _tagged_container_mode(x) is not None:
+        return False
     if "content" in x or "children" in x:
+        return False
+    if "layout" in x and x.get("open") is None and x.get("match") is None and x.get("app") is None:
         return False
     if "split" in x and x.get("open") is None and x.get("match") is None and x.get("app") is None:
         return False
@@ -717,12 +1030,15 @@ def _normalize_split_alias(val: Any, where: str) -> Optional[str]:
     return _SPLIT_ALIASES[s]
 
 
-def validate_reconcile_profile(data: Any) -> dict[str, Any]:
+def validate_reconcile_profile(
+    data: Any, *, mon_count: Optional[int] = None
+) -> dict[str, Any]:
     """
     Validate version-2 reconcile profile; return normalized dict.
     Raises ValueError with a clear message.
 
     Runs normalize_profile first (tiles sugar → IR + defaults).
+    mon_count is forwarded for bare-array dual vs single mon disambiguation.
 
     Human-friendly defaults (no app-specific hardcoding in Forge):
       - version omitted + roles[] → 2
@@ -736,7 +1052,7 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
       - marginal omitted → coexist / first (via normalize)
       - role.slot from layout.roles listing when omitted
     """
-    data = normalize_profile(data)
+    data = normalize_profile(data, mon_count=mon_count)
 
     has_roles = isinstance(data.get("roles"), list) and len(data.get("roles") or []) > 0
 
@@ -943,6 +1259,8 @@ def validate_reconcile_profile(data: Any) -> dict[str, Any]:
         "layout": layout,
         "overflow": overflow,
     }
+    if data.get("monExplicit"):
+        out["monExplicit"] = True
 
     desc = data.get("description")
     if desc is not None:
@@ -1159,7 +1477,11 @@ def plan_reconcile(
     """
     if not isinstance(forest, dict):
         raise ValueError("forest must be a JSON object")
-    prof = validate_reconcile_profile(profile)
+    # mon_count so bare sugar tab|split stays mon0 on single-output desks
+    # (shape heuristic alone misreads as dual mon — green save round-trip).
+    prof = validate_reconcile_profile(
+        profile, mon_count=forest_physical_mon_count(forest)
+    )
     # Rewrite mon keys (stableKey / alias / primary) → monN using live forest.
     prof = resolve_profile_mon_keys(prof, forest)
     clean = bool(clean)

@@ -46,22 +46,20 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertIsInstance(profile, list)
         self.assertEqual(len(profile), 2)
         mon0, mon1 = profile
-        # mon0: tabbed pair + ghostty
+        # mon0: tabbed pair + ghostty (medium tab key)
         self.assertEqual(len(mon0), 2)
-        self.assertIsInstance(mon0[0], list)
-        self.assertEqual(len(mon0[0]), 2)
+        self.assertIsInstance(mon0[0], dict)
+        self.assertIn("tab", mon0[0])
+        self.assertEqual(len(mon0[0]["tab"]), 2)
         # mon1: ghostty + tabbed triple
         self.assertEqual(len(mon1), 2)
-        self.assertIsInstance(mon1[1], list)
-        self.assertEqual(len(mon1[1]), 3)
-        # mon1 tabs: strings when PWA inference is enough
-        mon1_tabs = mon1[1]
-        self.assertEqual(mon1_tabs, ["YouTube", "Gmail", "Google Voice"])
+        self.assertIsInstance(mon1[1], dict)
+        self.assertEqual(mon1[1].get("tab"), ["YouTube", "Gmail", "Google Voice"])
 
     def test_chrome_string_cells_when_inferable(self):
         forest = _load("tree-perfect.json")
         profile = profile_for_output(capture_tiles_profile(forest))
-        cells = profile[0][0]
+        cells = profile[0][0]["tab"]
         # Inference re-derives class + title~= from the app string
         self.assertEqual(cells[0], "google-chrome")
         self.assertEqual(cells[1], "Grok")
@@ -69,7 +67,7 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_validates_sugar(self):
         forest = _load("tree-perfect.json")
         profile = profile_for_output(capture_tiles_profile(forest))
-        ir = validate_reconcile_profile(profile)
+        ir = validate_reconcile_profile(profile, mon_count=2)
         self.assertEqual(ir["version"], 2)
         self.assertEqual(len(ir["roles"]), 7)
 
@@ -82,12 +80,14 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_tabbed_ghostty_nautilus(self):
         forest = _load("tree-ghostty-nautilus-tab.json")
         profile = profile_for_output(capture_tiles_profile(forest))
-        # Single mon → top-level panes (not mon wrapper)
+        # Single mon → top-level panes (not mon wrapper); tab is medium-tagged
         self.assertIsInstance(profile, list)
         self.assertEqual(len(profile), 1)
-        self.assertIsInstance(profile[0], list)
-        self.assertEqual(len(profile[0]), 2)
-        cells = profile[0]
+        pane = profile[0]
+        self.assertIsInstance(pane, dict)
+        self.assertIn("tab", pane)
+        cells = pane["tab"]
+        self.assertEqual(len(cells), 2)
         stems = []
         for c in cells:
             if isinstance(c, str):
@@ -104,10 +104,9 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertEqual(len(profile), 1)
         pane = profile[0]
         self.assertIsInstance(pane, dict)
-        self.assertEqual(pane.get("layout"), "stacked")
-        self.assertIsInstance(pane.get("content"), list)
-        self.assertEqual(len(pane["content"]), 2)
-        # Not bare multi-cell list (that would desugar as tabbed)
+        self.assertIn("stack", pane)
+        self.assertIsInstance(pane["stack"], list)
+        self.assertEqual(len(pane["stack"]), 2)
         self.assertNotIsInstance(pane, list)
 
     def test_stacked_save_desugars_to_stacked_mode(self):
@@ -118,13 +117,93 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertEqual(len(kids), 1)
         self.assertEqual(kids[0]["layout"], "stacked")
         self.assertEqual(len(kids[0]["roles"]), 2)
-        # Tabbed fixture still bare list → tabbed
         tab_sugar = profile_for_output(
             capture_tiles_profile(_load("tree-ghostty-nautilus-tab.json"))
         )
-        self.assertIsInstance(tab_sugar[0], list)
+        self.assertIn("tab", tab_sugar[0])
         tab_ir = validate_reconcile_profile(tab_sugar)
         self.assertEqual(tab_ir["layout"]["mon0"]["children"][0]["layout"], "tabbed")
+
+    def test_single_mon_tab_plus_vsplit_not_dual_mon_roundtrip(self):
+        """Green desk: tab | vsplit — bare array stays mon0 (not dual mon)."""
+        intended = {
+            "tiles": {
+                "mon0": [
+                    {"tab": ["Grok", "google-chrome"]},
+                    {
+                        "vsplit": [
+                            "ghostty",
+                            {
+                                "app": "gnome-terminal",
+                                "class": "Gnome-terminal",
+                                "title~=": "Terminal",
+                            },
+                        ],
+                    },
+                ]
+            }
+        }
+        sugar = profile_for_output(intended)
+        # Tagged panes: bare array is fine; offline still mon0
+        self.assertIsInstance(sugar, list)
+        self.assertEqual(len(sugar), 2)
+        self.assertIn("tab", sugar[0])
+        self.assertIn("vsplit", sugar[1])
+
+        ir = validate_reconcile_profile(sugar)
+        self.assertEqual(set(ir["layout"].keys()), {"mon0"})
+        kids = ir["layout"]["mon0"]["children"]
+        self.assertEqual(len(kids), 2)
+        self.assertEqual(kids[0].get("layout"), "tabbed")
+        self.assertEqual(kids[0].get("roles"), ["Grok", "google-chrome"])
+        self.assertEqual(kids[1].get("split"), "vsplit")
+
+        ir1 = validate_reconcile_profile(sugar, mon_count=1)
+        self.assertEqual(set(ir1["layout"].keys()), {"mon0"})
+
+        # Explicit mon keys never fold
+        explicit = {"mon0": sugar[0:1], "mon1": [sugar[1]]}
+        ir_ex = validate_reconcile_profile(explicit, mon_count=1)
+        self.assertIn("mon0", ir_ex["layout"])
+        self.assertIn("mon1", ir_ex["layout"])
+        self.assertTrue(ir_ex.get("monExplicit"))
+
+    def test_save_monitors_flag_emits_mon_keys(self):
+        forest = _load("tree-perfect.json")
+        raw = capture_tiles_profile(forest)
+        out = profile_for_output(raw, monitors=True)
+        self.assertIsInstance(out, dict)
+        self.assertIn("mon0", out)
+        self.assertIn("mon1", out)
+        self.assertNotIn("tiles", out)
+
+    def test_container_aliases_load(self):
+        for sugar in (
+            {"t": ["a", "b"]},
+            {"tab": ["a", "b"]},
+            {"tabbed": ["a", "b"]},
+            {"layout": "tab", "content": ["a", "b"]},
+        ):
+            ir = validate_reconcile_profile([sugar])
+            self.assertEqual(ir["layout"]["mon0"]["children"][0]["layout"], "tabbed")
+        for sugar in (
+            {"s": ["a", "b"]},
+            {"stack": ["a", "b"]},
+            {"stacked": ["a", "b"]},
+        ):
+            ir = validate_reconcile_profile([sugar])
+            self.assertEqual(ir["layout"]["mon0"]["children"][0]["layout"], "stacked")
+        for sugar in (
+            {"h": ["ghostty", "firefox"]},
+            {"hsplit": ["ghostty", "firefox"]},
+            {"horizontal": ["ghostty", "firefox"]},
+            {"v": ["ghostty", "firefox"]},
+            {"vsplit": ["ghostty", "firefox"]},
+        ):
+            ir = validate_reconcile_profile([sugar])
+            kids = ir["layout"]["mon0"]["children"]
+            self.assertEqual(len(kids), 1)
+            self.assertIn(kids[0].get("split"), ("hsplit", "vsplit"))
 
     def test_empty_raises(self):
         with self.assertRaisesRegex(ValueError, "no tiled windows"):
@@ -141,24 +220,25 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_id_dedupe_two_ghostty(self):
         forest = _load("tree-perfect.json")
         profile = profile_for_output(capture_tiles_profile(forest))
-        labels = []
-        for mon_body in profile:
-            for pane in mon_body:
-                if isinstance(pane, list):
-                    for c in pane:
-                        if isinstance(c, str):
-                            labels.append(c)
-                        elif isinstance(c, dict):
-                            labels.append(c.get("app") or c.get("id") or "")
-                elif isinstance(pane, str):
-                    labels.append(pane)
-                elif isinstance(pane, dict):
-                    labels.append(pane.get("app") or pane.get("id") or "")
-        # Two ghostties → ghostty + ghostty-2 after normalize; sugar may be
-        # plain "ghostty" twice until desugar allocates -2.
+
+        def _collect(node, labels: list) -> None:
+            if isinstance(node, str):
+                labels.append(node)
+            elif isinstance(node, list):
+                for x in node:
+                    _collect(x, labels)
+            elif isinstance(node, dict):
+                for k in ("tab", "stack", "hsplit", "vsplit", "content", "children"):
+                    if k in node:
+                        _collect(node[k], labels)
+                if node.get("app"):
+                    labels.append(str(node["app"]))
+
+        labels: list = []
+        _collect(profile, labels)
         ghost = [x for x in labels if "ghostty" in str(x).lower()]
         self.assertGreaterEqual(len(ghost), 2)
-        ir = normalize_profile(profile)
+        ir = normalize_profile(profile, mon_count=2)
         gids = [r["id"] for r in ir["roles"] if "ghostty" in r["id"]]
         self.assertIn("ghostty", gids)
         self.assertTrue(any(x.startswith("ghostty") and x != "ghostty" for x in gids))
@@ -387,10 +467,10 @@ class TestSaveCli(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         data = json.loads(proc.stdout)
-        # Bare dual-mon array; pure-auto description omitted
+        # Bare dual-mon array; pure-auto description omitted; medium tab key
         self.assertIsInstance(data, list)
         self.assertEqual(len(data), 2)
-        self.assertEqual(data[0][0], ["google-chrome", "Grok"])
+        self.assertEqual(data[0][0], {"tab": ["google-chrome", "Grok"]})
         self.assertEqual(data[0][1], "ghostty")
         self.assertIn("forge layout save:", proc.stderr)
         self.assertIn("windows=7", proc.stderr)
