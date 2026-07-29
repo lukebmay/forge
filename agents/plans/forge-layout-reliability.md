@@ -9,24 +9,15 @@ tab chrome / session focus archive entries
 
 ### Session note (2026-07-29)
 
-**Live feedback after LF1–LF3:**
+**SI1 + LF4 shipped (A/B AGREE)** after live feedback that LF3 was insufficient.
 
-1. **Install focus wrong** — browsing Chrome, install activated Grok. Product:
-   install/update = **exact tree snapshot only** (no layout profiles). → **SI1**
-2. **LF3 still fails live** — close left chrome + right Ghostty → 2 Ghosttys mon0.
-   Stock Ghostty desktop forces `--gtk-single-instance=true`. → **LF4**
-
-| Issue | Status |
+| Issue | Fix |
 | --- | --- |
-| LF1–LF3 unit | shipped; **live mon still broken** until LF4 install |
-| LF4 ghostty multi-instance open | **implemented** (await B + live re-verify) |
-| SI1 install snapshot focus/active | **A implement done** (await B) |
+| Install activated Grok while browsing Chrome | Sync `lastTabFocus` from Mutter focus **before** session save; restore focus last |
+| Install product rule | **Tree snapshot only** — never layout profiles |
+| 2 Ghosttys on mon0 after close chrome+right Ghostty | Open Ghostty with `--gtk-single-instance=false` (stock desktop forces true); residual + belt moves |
 
-**SI1 implement (A):** Save flush syncs TABBED/STACKED `lastTabFocus` from Mutter
-focus before portable write; `focusWindowId` from same meta; restore activates
-focus last + re-pins open leaf. Install path = `save-session-layout` only.
-Unit: `session-layout` 33 + extension suite 263 green. Docs: DESIGN +
-troubleshooting. Branch `plan/forge-layout-reliability`. No commit (taskforce).
+**Live re-verify** after `./install` on black (both SI1 and LF4 need extension + CLI).
 
 **LF4 implement (A):** `launch_app` / layout open spawn
 `ghostty --gtk-single-instance=false` (never gio stock desktop); residual + belt

@@ -27,7 +27,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Doc | Role |
 | --- | --- |
-| [forge-layout-reliability.md](./plans/forge-layout-reliability.md) | LF1–LF3 **code done** — live verify next |
+| [forge-layout-reliability.md](./plans/forge-layout-reliability.md) | LF1–LF4 + SI1 **code done** — live verify next |
 | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED product path (after live) |
 | [forge-layout-sugar.md](./plans/forge-layout-sugar.md) | Main path **done** (LS1–2,4–5,7–8) |
 | [docs/user/layout.md](../docs/user/layout.md) | Layout profiles + survivor open-leaf rule |
