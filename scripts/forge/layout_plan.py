@@ -1762,19 +1762,14 @@ def plan_reconcile(
     # --safe: never park/close residuals (open+move only).
     force_park_residuals = thrashed and not clean and not safe
 
-    for role in prof["roles"]:
+    # Two-pass claim: same-mon first so earlier roles do not steal later mons'
+    # only matching window (e.g. mon0.ghostty vs mon1.ghostty-2).
+    role_windows = _two_pass_claim_windows(prof["roles"], windows)
+
+    for role, chosen in zip(prof["roles"], role_windows):
         rid = role["id"]
         slot = role["slot"]
         desired_mon = mon_index_from_slot(slot)
-        pref_mon = _match_mon_pref(role["match"], desired_mon)
-
-        candidates = [
-            w
-            for w in windows
-            if _window_key(w) not in claimed and window_matches(w, role["match"])
-        ]
-        # Prefer preferred mon, then any
-        chosen = _pick_window(candidates, pref_mon)
 
         entry: dict[str, Any] = {"id": rid, "slot": slot}
         if chosen is None:
@@ -1968,17 +1963,19 @@ def plan_reconcile(
         if has_role_placement:
             for mon_key, mon_body in prof.get("layout", {}).items():
                 split = mon_body.get("split")
-                if split:
-                    ensure_actions.append(
-                        {
-                            "op": "ensure_layout",
-                            "slot": mon_key,
-                            "mode": split,
-                            "windowIds": _mon_split_anchor_ids(
-                                role_results, mon_key, prof
-                            ),
-                        }
-                    )
+                if not split:
+                    continue
+                anchors = _mon_split_anchor_ids(role_results, mon_key, prof)
+                if not anchors:
+                    continue
+                ensure_actions.append(
+                    {
+                        "op": "ensure_layout",
+                        "slot": mon_key,
+                        "mode": split,
+                        "windowIds": anchors,
+                    }
+                )
         for slot, mode in sorted(slots_needing_layout.items()):
             wids = structure_slots.get(slot, {}).get("windowIds")
             if wids is None:
@@ -2369,7 +2366,10 @@ def _match_mon_pref(match: dict[str, Any], slot_mon: Optional[int]) -> Optional[
 
 
 def _pick_window(
-    candidates: list[dict[str, Any]], pref_mon: Optional[int]
+    candidates: list[dict[str, Any]],
+    pref_mon: Optional[int],
+    *,
+    mon_only: bool = False,
 ) -> Optional[dict[str, Any]]:
     if not candidates:
         return None
@@ -2377,7 +2377,53 @@ def _pick_window(
         on_mon = [w for w in candidates if window_monitor_index(w) == pref_mon]
         if on_mon:
             return on_mon[0]
+        if mon_only:
+            return None
+    elif mon_only:
+        return None
     return candidates[0]
+
+
+def _two_pass_claim_windows(
+    roles: list[dict[str, Any]], windows: list[dict[str, Any]]
+) -> list[Optional[dict[str, Any]]]:
+    """
+    Assign windows to roles without earlier slots stealing later mons.
+
+    Pass 1: claim only candidates already on preferred mon.
+    Pass 2: fill remaining roles from leftover candidates (any mon), else None.
+    """
+    claimed: set[str] = set()
+    chosen: list[Optional[dict[str, Any]]] = [None] * len(roles)
+
+    def free_matches(role: dict[str, Any]) -> list[dict[str, Any]]:
+        match = role.get("match") or {}
+        return [
+            w
+            for w in windows
+            if _window_key(w) not in claimed and window_matches(w, match)
+        ]
+
+    def pref_for(role: dict[str, Any]) -> Optional[int]:
+        slot = str(role.get("slot") or "")
+        desired_mon = mon_index_from_slot(slot)
+        return _match_mon_pref(role.get("match") or {}, desired_mon)
+
+    for i, role in enumerate(roles):
+        pick = _pick_window(free_matches(role), pref_for(role), mon_only=True)
+        if pick is not None:
+            chosen[i] = pick
+            claimed.add(_window_key(pick))
+
+    for i, role in enumerate(roles):
+        if chosen[i] is not None:
+            continue
+        pick = _pick_window(free_matches(role), pref_for(role), mon_only=False)
+        if pick is not None:
+            chosen[i] = pick
+            claimed.add(_window_key(pick))
+
+    return chosen
 
 
 def _class_eq(a: Any, b: Any) -> bool:
@@ -3167,9 +3213,9 @@ def _mon_split_anchor_ids(
                     continue
                 out.append(wid)
                 break
-    if out:
-        return out
-    return _role_window_ids_for_mon(role_results, mon_key)
+    # Never fall back to tab/stack bag members — layout rewrites the selected
+    # window's parent CON and would demote TABBED/STACKED → HSPLIT/VSPLIT.
+    return out
 
 
 def _slot_mon_child_index(prof: dict[str, Any], slot: str) -> Optional[int]:
@@ -3407,26 +3453,17 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
 def _claim_roles_for_detect(
     prof: dict[str, Any], windows: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    """Claim windows for roles (same preference as plan_reconcile)."""
-    claimed: set[str] = set()
+    """Claim windows for roles (same two-pass preference as plan_reconcile)."""
+    roles = list(prof.get("roles") or [])
+    picks = _two_pass_claim_windows(roles, windows)
     results: list[dict[str, Any]] = []
-    for role in prof.get("roles") or []:
+    for role, chosen in zip(roles, picks):
         rid = role.get("id")
         slot = str(role.get("slot") or "")
-        desired_mon = mon_index_from_slot(slot)
-        pref_mon = _match_mon_pref(role.get("match") or {}, desired_mon)
-        candidates = [
-            w
-            for w in windows
-            if _window_key(w) not in claimed
-            and window_matches(w, role.get("match") or {})
-        ]
-        chosen = _pick_window(candidates, pref_mon)
         entry: dict[str, Any] = {"id": rid, "slot": slot}
         if chosen is None:
             entry["status"] = "open"
         else:
-            claimed.add(_window_key(chosen))
             entry["windowId"] = chosen.get("windowId")
             entry["path"] = chosen.get("path")
             entry["monitor"] = window_monitor_index(chosen)

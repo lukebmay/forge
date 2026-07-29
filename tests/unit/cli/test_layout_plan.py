@@ -28,6 +28,7 @@ from layout_plan import (  # noqa: E402
     validate_reconcile_profile,
     window_matches,
 )
+from layout_plan import _mon_split_anchor_ids  # noqa: E402
 
 
 def _load(name: str):
@@ -735,6 +736,160 @@ class TestMonOrder(unittest.TestCase):
         self.assertTrue(plan["nothingToDo"])
         self.assertEqual(plan["counts"].get("ordered", 0), 0)
         self.assertFalse(any(a.get("op") == "ensure_order" for a in plan["actions"]))
+
+
+class TestTwoPassMonClaim(unittest.TestCase):
+    """Same-class dual-mon roles must not steal the only on-mon window."""
+
+    def test_mon0_ghostty_missing_does_not_steal_mon1(self):
+        """mon0 empty of ghostty, mon1 has one → mon1 reused, mon0 open (not move)."""
+        profile = [
+            [["google-chrome", "Grok"], "ghostty"],
+            ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
+        ]
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 201,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Voice",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, profile)
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["ghostty"]["status"], "open")
+        self.assertNotIn("windowId", by_id["ghostty"])
+        self.assertEqual(by_id["ghostty-2"]["status"], "reused")
+        self.assertEqual(by_id["ghostty-2"]["windowId"], 201)
+        moves = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "move" and a.get("windowId") == 201
+        ]
+        self.assertEqual(moves, [])
+
+    def test_mon_ensure_skips_when_only_tab_members_have_ids(self):
+        """Term role open + only tab windows live → no mon hsplit on tab leaves."""
+        profile = [
+            [["google-chrome", "Grok"], "ghostty"],
+            ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
+        ]
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Voice",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        }
+                    ],
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, profile)
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["ghostty"]["status"], "open")
+        self.assertEqual(by_id["ghostty-2"]["status"], "open")
+        mon_ensures = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+        ]
+        for a in mon_ensures:
+            wids = a.get("windowIds") or []
+            self.assertFalse(
+                set(wids) & {202, 203, 204},
+                f"mon ensure must not select tab members: {a}",
+            )
+        # Direct unit: term open → no safe anchors for mon1
+        prof = validate_reconcile_profile(profile, mon_count=2)
+        role_results = plan["roles"]
+        anchors = _mon_split_anchor_ids(role_results, "mon1", prof)
+        self.assertEqual(anchors, [])
 
 
 class TestTabRoleOrder(unittest.TestCase):
@@ -2205,8 +2360,9 @@ class TestEnsureLayout(unittest.TestCase):
         plan = plan_reconcile(forest, profile)
         ensures = [a for a in plan["actions"] if a["op"] == "ensure_layout"]
         slots = {a["slot"] for a in ensures}
-        self.assertIn("mon0", slots)
-        self.assertIn("mon1", slots)
+        # Empty forest: no window anchors → skip mon-level ensure (would demote tabs)
+        self.assertNotIn("mon0", slots)
+        self.assertNotIn("mon1", slots)
         self.assertIn("mon0.left-tab", slots)
         self.assertIn("mon1.comms", slots)
 
