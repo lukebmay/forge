@@ -1131,6 +1131,331 @@ class TestPartialReopenLF1(unittest.TestCase):
         )
 
 
+class TestPartialReopenLF3(unittest.TestCase):
+    """
+    LF3: close mon0 chrome + mon1 Ghostty; mon0 Ghostty stays.
+    Plan1: mon0 ghostty reused, mon1 ghostty-2 open (no mon0 steal).
+    Residual: both Ghosttys on mon0 → move mon1 role to mon1.
+    """
+
+    PROFILE = [
+        [["google-chrome", "Grok"], "ghostty"],
+        ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
+    ]
+
+    def _forest_chrome_and_mon1_term_closed(self):
+        """mon0: Grok | ghostty. mon1: tabs only."""
+        return {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "lastTabFocusId": 101,
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 101,
+                            "wmClass": "Google-chrome",
+                            "title": "Grok",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 102,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Voice",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+
+    def test_plan1_reuse_mon0_ghostty_open_mon1(self):
+        plan = plan_reconcile(self._forest_chrome_and_mon1_term_closed(), self.PROFILE)
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["ghostty"]["status"], "reused")
+        self.assertEqual(by_id["ghostty"]["windowId"], 102)
+        self.assertEqual(by_id["ghostty-2"]["status"], "open")
+        self.assertEqual(by_id["google-chrome"]["status"], "open")
+        self.assertEqual(by_id["Grok"]["status"], "reused")
+        # mon0 term must not be stolen for mon1
+        self.assertNotEqual(by_id["ghostty-2"].get("windowId"), 102)
+        opens = [a for a in plan["actions"] if a.get("op") == "open"]
+        open_roles = {a.get("role") for a in opens}
+        self.assertIn("ghostty-2", open_roles)
+        self.assertIn("google-chrome", open_roles)
+        self.assertNotIn("ghostty", open_roles)
+
+    def test_profile_ghostty_open_gets_wmclass_from_match(self):
+        p = validate_reconcile_profile(self.PROFILE)
+        by_id = {r["id"]: r for r in p["roles"]}
+        self.assertEqual(by_id["ghostty"]["match"]["class"], "ghostty")
+        self.assertEqual(by_id["ghostty"]["open"].get("wmClass"), "ghostty")
+        self.assertEqual(by_id["ghostty-2"]["open"].get("wmClass"), "ghostty")
+
+    def test_residual_two_ghosttys_on_mon0_move_mon1(self):
+        """New mon1 Ghostty landed mon0; residual moves ghostty-2 to mon1."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 101,
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 301,
+                                    "wmClass": "Google-chrome",
+                                    "title": "New Tab",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 101,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Grok",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 102,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 501,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Voice",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+        plan = plan_reconcile(
+            forest,
+            self.PROFILE,
+            role_pins={"google-chrome": 301, "ghostty-2": 501},
+            just_opened_roles={"google-chrome", "ghostty-2"},
+        )
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["ghostty"]["status"], "reused")
+        self.assertEqual(by_id["ghostty"]["windowId"], 102)
+        self.assertEqual(by_id["ghostty-2"]["status"], "move")
+        self.assertEqual(by_id["ghostty-2"]["windowId"], 501)
+        self.assertEqual(by_id["google-chrome"]["status"], "reused")
+        self.assertEqual(by_id["google-chrome"]["windowId"], 301)
+        moves = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "move" and a.get("windowId") == 501
+        ]
+        self.assertEqual(len(moves), 1)
+        self.assertEqual(moves[0].get("slot"), "mon1.ghostty-2")
+        self.assertEqual(
+            [a for a in plan["actions"] if a.get("op") == "open"],
+            [],
+        )
+
+    def test_residual_without_chrome_pin_still_plans_ghostty_move(self):
+        """Chrome title lag → open; ghostty-2 still planned as move (apply must run)."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 101,
+                            "wmClass": "Google-chrome",
+                            "title": "Grok",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 102,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 501,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            # Unmatched new chrome (title not Google Chrome / pin miss)
+                            "nodeType": "WINDOW",
+                            "windowId": 301,
+                            "wmClass": "Google-chrome",
+                            "title": "New Tab",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Voice",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+        # Pin only ghostty-2 (chrome pin missing / title lag)
+        plan = plan_reconcile(
+            forest,
+            self.PROFILE,
+            role_pins={"ghostty-2": 501},
+            just_opened_roles={"ghostty-2"},
+        )
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["ghostty"]["windowId"], 102)
+        self.assertEqual(by_id["ghostty-2"]["status"], "move")
+        self.assertEqual(by_id["ghostty-2"]["windowId"], 501)
+        from layout_apply import partition_plan_actions, residual_follow_up
+
+        residual_ext, residual_open = partition_plan_actions(plan["actions"])
+        steps, still = residual_follow_up(residual_ext, residual_open)
+        move_tiles = [s["tile"] for s in steps if s.get("op") == "move"]
+        self.assertIn("id:501", move_tiles)
+        # chrome may still be open — must not suppress moves
+        if by_id["google-chrome"]["status"] == "open":
+            self.assertIn("google-chrome", still)
+
+
 class TestTabRoleOrder(unittest.TestCase):
     """In-group tab order (profile roles[] order) when already co-tabbed."""
 

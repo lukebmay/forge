@@ -1429,6 +1429,10 @@ def validate_reconcile_profile(
         wc = open_spec.get("wmClass") or open_spec.get("wm_class")
         if wc is not None and str(wc).strip() != "":
             norm_open["wmClass"] = str(wc).strip()
+        elif norm_match.get("class"):
+            # PlaceNext / wait: sugar match.class when open omits wmClass
+            # (ghostty ↔ com.mitchellh.ghostty via stem class equality).
+            norm_open["wmClass"] = str(norm_match["class"]).strip()
         if "timeout" in open_spec and open_spec["timeout"] is not None:
             try:
                 norm_open["timeout"] = int(open_spec["timeout"])

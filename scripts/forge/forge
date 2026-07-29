@@ -62,6 +62,7 @@ from layout_apply import (  # noqa: E402
     detect_layout_mode,
     open_action_to_launch_fields,
     partition_plan_actions,
+    residual_follow_up,
 )
 from layout_lib import (  # noqa: E402
     extract_steps_and_stop,
@@ -709,10 +710,18 @@ def launch_app(app: str, desktop: Optional[str] = None) -> subprocess.Popen:
 
 
 def _class_eq(a: Any, b: Any) -> bool:
-    """wm_class match; case-insensitive (GNOME classes often Title-Case)."""
+    """Casefold equality + reverse-DNS stem (ghostty ↔ com.mitchellh.ghostty)."""
     if a is None or b is None:
         return False
-    return str(a).casefold() == str(b).casefold()
+    sa = str(a).strip().casefold()
+    sb = str(b).strip().casefold()
+    if not sa or not sb:
+        return False
+    if sa == sb:
+        return True
+    if sa.endswith("." + sb) or sb.endswith("." + sa):
+        return True
+    return False
 
 
 def _iter_tree_windows(node: Any) -> list[dict[str, Any]]:
@@ -1750,18 +1759,13 @@ def _layout_run_reconcile(
             _layout_maybe_print_json(out, verbose=verbose, force=True)
             return 1
         residual_ext, residual_open = partition_plan_actions(plan2.get("actions"))
-        if residual_open:
-            still = [a.get("role") for a in residual_open]
-            _eprint(f"forge layout: still missing roles after open: {still}")
-            out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
-            out["ok"] = False
-            out["error"] = f"roles still missing after launch: {still}"
-            out["apply"] = apply_log
-            _layout_maybe_print_json(out, verbose=verbose, force=True)
-            return 1
-        follow_steps = actions_to_extension_steps(
-            residual_ext, force_close=force_close
+        # Apply residual moves/layout even when some roles still need open
+        # (e.g. chrome title pin lag). Missing roles fail *after* mon fixes.
+        follow_steps, still_open = residual_follow_up(
+            residual_ext, residual_open, force_close=force_close
         )
+        if still_open:
+            _eprint(f"forge layout: still missing roles after open: {still_open}")
         if follow_steps:
             rc, agg = run_mixed_steps(
                 backend, follow_steps, stop_on_error=True, print_each=False
@@ -1772,9 +1776,21 @@ def _layout_run_reconcile(
                 out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
                 out["ok"] = False
                 out["apply"] = apply_log
+                if still_open:
+                    out["error"] = (
+                        f"follow-up failed; roles still missing after launch: "
+                        f"{still_open}"
+                    )
                 _layout_maybe_print_json(out, verbose=verbose, force=True)
                 return rc
         plan = plan2
+        if still_open:
+            out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
+            out["ok"] = False
+            out["error"] = f"roles still missing after launch: {still_open}"
+            out["apply"] = apply_log
+            _layout_maybe_print_json(out, verbose=verbose, force=True)
+            return 1
 
     _eprint("  ok")
     out = _layout_plan_meta(resolved, name, plan, dry_run=False)

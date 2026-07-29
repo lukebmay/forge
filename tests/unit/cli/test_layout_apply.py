@@ -21,6 +21,7 @@ from layout_apply import (  # noqa: E402
     detect_layout_mode,
     open_action_to_launch_fields,
     partition_plan_actions,
+    residual_follow_up,
     slot_to_monitor_path,
     slot_to_tree_path,
     window_tile_selector,
@@ -265,6 +266,32 @@ class TestActionMapping(unittest.TestCase):
         self.assertEqual(len(ext), 2)
         self.assertEqual(len(opens), 1)
         self.assertEqual(opens[0]["role"], "a")
+
+    def test_residual_follow_up_moves_despite_residual_open(self):
+        """LF3: residual open (chrome lag) must not drop mon-fix moves."""
+        residual_ext = [
+            {
+                "op": "move",
+                "role": "ghostty-2",
+                "windowId": 501,
+                "slot": "mon1.ghostty-2",
+            },
+            {"op": "ensure_layout", "slot": "mon1", "mode": "hsplit"},
+        ]
+        residual_open = [
+            {
+                "op": "open",
+                "role": "google-chrome",
+                "open": {"app": "google-chrome"},
+                "slot": "mon0.s0",
+            }
+        ]
+        steps, still = residual_follow_up(residual_ext, residual_open)
+        self.assertEqual(still, ["google-chrome"])
+        move = [s for s in steps if s.get("op") == "move"]
+        self.assertEqual(len(move), 1)
+        self.assertEqual(move[0]["tile"], "id:501")
+        self.assertEqual(move[0]["dest"], "path:mo1ws0")
 
     def test_open_action_to_launch_fields(self):
         fields = open_action_to_launch_fields(

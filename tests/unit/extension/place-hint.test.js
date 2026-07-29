@@ -30,6 +30,16 @@ describe("wmClassEqual", () => {
     expect(wmClassEqual("A", "B")).toBe(false);
     expect(wmClassEqual(null, "A")).toBe(false);
   });
+
+  it("matches reverse-DNS stem either side", () => {
+    expect(wmClassEqual("ghostty", "com.mitchellh.ghostty")).toBe(true);
+    expect(wmClassEqual("com.mitchellh.ghostty", "ghostty")).toBe(true);
+    expect(wmClassEqual("Ghostty", "com.mitchellh.Ghostty")).toBe(true);
+    expect(wmClassEqual("nautilus", "org.gnome.Nautilus")).toBe(true);
+    expect(wmClassEqual("ghostty", "com.mitchellh.ghostty.extra")).toBe(false);
+    expect(wmClassEqual("tty", "com.mitchellh.ghostty")).toBe(false);
+    expect(wmClassEqual("firefox", "com.mitchellh.ghostty")).toBe(false);
+  });
 });
 
 describe("matchesPlaceHint", () => {
@@ -45,6 +55,12 @@ describe("matchesPlaceHint", () => {
     const hint = { wmClass: "eog", expiresAt: now + 1000 };
     expect(matchesPlaceHint({ wm_class: "Eog" }, hint, now)).toBe(true);
     expect(matchesPlaceHint({ get_wm_class: () => "EOG" }, hint, now)).toBe(true);
+  });
+
+  it("matches reverse-DNS stem for PlaceNext", () => {
+    const hint = { wmClass: "ghostty", monitor: 1, expiresAt: now + 1000 };
+    expect(matchesPlaceHint({ wm_class: "com.mitchellh.ghostty" }, hint, now)).toBe(true);
+    expect(matchesPlaceHint({ get_wm_class: () => "com.mitchellh.ghostty" }, hint, now)).toBe(true);
   });
 
   it("rejects class mismatch", () => {

@@ -1,7 +1,7 @@
 # Plan: Layout reliability (tab focus + partial reopen)
 
-**Status:** **code complete** (LF1+LF2 A/B AGREE); live black optional  
-**Priority:** **P0** daily-driver on `black` (live re-verify remaining)  
+**Status:** active — **LF3 implement done** (await B verify)  
+**Priority:** **P0** daily-driver on `black`  
 **Updated:** 2026-07-29  
 **Related:** [forge-workon-thrash-zero.md](./forge-workon-thrash-zero.md) (historical),
 [layout-mon-claim-order](../tasks/layout-mon-claim-order.md) (superseded by LF1),
@@ -9,20 +9,19 @@ tab chrome / session focus archive entries
 
 ### Session note (2026-07-29)
 
-**LF1 + LF2 shipped (A/B AGREE)** on `plan/forge-layout-reliability`.
+**LF3 Task Force A — implement.** Root: (1) PlaceNext exact class missed reverse-DNS
+stem; (2) residual abort on still-open skipped mon1 Ghostty move. Fixes in place-hint
+`wmClassEqual`, forge residual follow-up after moves, match.class→open.wmClass, forge
+wait `_class_eq` stem. Unit green (292 CLI + place-hint). Awaiting B.
 
-| Issue | Fix |
+| Issue | Fix / status |
 | --- | --- |
-| LF1 mon ensure peer thrash | mon ensure only mons with open/move |
-| LF1 residual chrome title lag | `role_pins` from launch windowId |
-| LF1 Grok not open leaf | survivor focus when companions join |
-| LF1 PlaceNext wildcard | first class hint on PlaceNext |
-| LF2 tab activate-only (X11) | `_activateFromTab` raise→focus→activate |
-| LF2 chrome buried under raise | immediate decoration restack after tab click |
-| LF2 hover re-bury strip | hover only when under-pointer ≠ focus |
-
-**B fix:** focus resolve `get_focus_window() ?? focus_window` (modal dialog guards).
-**Live black** re-verify after install still operator.
+| LF1 mon ensure peer thrash | shipped |
+| LF1 residual chrome title lag | shipped (pins) |
+| LF1 survivor focus | shipped (tabs/active OK in live) |
+| LF1 PlaceNext class | **LF3** reverse-DNS stem in place-hint |
+| LF2 tab click | shipped |
+| **LF3 mon1 Ghostty reopen** | **A implement done** — residual moves before fail-open |
 
 ---
 
@@ -113,8 +112,9 @@ Operator must click the **dock item** first; after that, tab focus works again.
 
 | ID | Task | Status |
 | --- | --- | --- |
-| LF1 | [completed/…_lf1-partial-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf1-partial-reopen.md) | **done** (A/B AGREE; live optional) |
-| LF2 | [completed/…_lf2-tab-click-focus](./forge-layout-reliability/completed/forge-layout-reliability_lf2-tab-click-focus.md) | **done** (A/B AGREE; live optional) |
+| LF1 | [completed/…_lf1-partial-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf1-partial-reopen.md) | **done** (A/B AGREE) |
+| LF2 | [completed/…_lf2-tab-click-focus](./forge-layout-reliability/completed/forge-layout-reliability_lf2-tab-click-focus.md) | **done** (A/B AGREE) |
+| **LF3** | [forge-layout-reliability_lf3-mon1-ghostty-reopen](../tasks/forge-layout-reliability_lf3-mon1-ghostty-reopen.md) | **A done / B next** |
 
 ## Prior work feeding LF1
 

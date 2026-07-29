@@ -323,3 +323,23 @@ def partition_plan_actions(
         else:
             ext.append(a)
     return ext, opens
+
+
+def residual_follow_up(
+    residual_ext: Any,
+    residual_open: Any,
+    *,
+    force_close: bool = False,
+) -> tuple[list[dict[str, Any]], list[Any]]:
+    """
+    Map residual extension actions to RunSteps; report still-open roles.
+
+    Moves/layout always map even when residual_open is non-empty so apply can
+    rehome claimed roles (e.g. mon1 Ghostty landed on mon0) before failing on
+    lagging open roles (chrome title pin miss).
+    """
+    ext = residual_ext if isinstance(residual_ext, list) else []
+    opens = residual_open if isinstance(residual_open, list) else []
+    steps = actions_to_extension_steps(ext, force_close=force_close)
+    still = [a.get("role") for a in opens if isinstance(a, dict)]
+    return steps, still
