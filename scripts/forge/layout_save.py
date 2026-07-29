@@ -17,6 +17,7 @@ from layout_plan import (
     _order_monitors,
     _parse_mon_id,
     _stem_to_id,
+    _tagged_container_mode,
     format_layout_description,
     validate_reconcile_profile,
 )
@@ -97,7 +98,12 @@ def capture_tiles_profile(
                     panes.append(pane)
                     win_n += n
         if panes:
-            tiles[mon_key] = panes
+            # Mon-root VSPLIT is not default; bare lists desugar as hsplit.
+            # Nested VSPLIT CON panes already emit {vsplit:…} via _capture_pane.
+            if mon_layout == "VSPLIT" and len(panes) >= 2:
+                tiles[mon_key] = {SUGAR_VSPLIT: panes}
+            else:
+                tiles[mon_key] = panes
             mon_window_counts[mon_key] = win_n
 
     for w in _all_windows(forest):
@@ -226,7 +232,13 @@ def profile_for_output(
 
 
 def _tiles_to_bare_array(tiles: Any) -> Optional[list[Any]]:
-    """mon0..monN-1 consecutive map → mon bodies list; single mon → panes list."""
+    """mon0..monN-1 consecutive map → mon bodies list; single mon → panes list.
+
+    Single-mon mon-level {hsplit|vsplit: …} is not folded to a bare
+    [{split:…}] pane list — that would desugar as one nested child and lose
+    mon0.split for ensure_layout. Dual-mon keeps mon bodies (including tagged
+    vsplit) as a top-level array for live mon_count disambiguation.
+    """
     if isinstance(tiles, list):
         return tiles
     if not isinstance(tiles, dict) or not tiles:
@@ -238,7 +250,14 @@ def _tiles_to_bare_array(tiles: Any) -> Optional[list[Any]]:
     bodies = [tiles[f"mon{i}"] for i in range(n)]
     if n == 1:
         body = bodies[0]
-        return body if isinstance(body, list) else [body]
+        if isinstance(body, list):
+            return body
+        # Mon-level hsplit/vsplit → mon map form (see profile_for_output).
+        if isinstance(body, dict):
+            tag = _tagged_container_mode(body)
+            if tag in ("hsplit", "vsplit"):
+                return None
+        return [body]
     return bodies
 
 

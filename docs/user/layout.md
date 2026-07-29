@@ -131,7 +131,9 @@ mon’s pane list (apply uses GetTree mon count):
 (`tab`, `stack`, `hsplit`, `vsplit`). Pass **`--monitors`** to emit explicit
 `mon0` / `mon1` / … keys instead (no mon fold on mismatch). When a tab/stack
 has a non-default open leaf, save emits `"active"`. When a window is focused,
-save wraps with `"focus"` (object form).
+save wraps with `"focus"` (object form). **Mon-root VSPLIT** (e.g. app under
+another on the same head) is saved as `{ "vsplit": [ … ] }` for that mon body —
+a bare pane list always means **hsplit** on load.
 
 ### Object form (when you need more)
 

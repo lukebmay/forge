@@ -9,6 +9,12 @@ tab chrome / session focus archive entries
 
 ### Session note (2026-07-29)
 
+**LF7 done (A/B AGREE):** mon-root VSPLIT save emits `{vsplit: panes}`; bare pane
+lists stay hsplit. Single-mon mon-level split uses tiles mon map so
+`ensure_layout` keeps vsplit. Unit 194 pass. Live optional: re-save with
+Nautilus under Ghostty, close, restore. See
+[completed/…_lf7-vsplit-save](./forge-layout-reliability/completed/forge-layout-reliability_lf7-vsplit-save.md).
+
 **LF6 live OK (user 2026-07-29):** open all → whole-tree stable → residual rehome
 batch works for close chrome + right Ghostty. Jumpiness remains → new plan
 [forge-layout-settle-pure.md](./forge-layout-settle-pure.md) (D0 discussion).
@@ -112,6 +118,7 @@ Operator must click the **dock item** first; after that, tab focus works again.
 | LF5 | [completed/…_lf5-settle-before-move](./forge-layout-reliability/completed/forge-layout-reliability_lf5-settle-before-move.md) | **done** (A/B; live re-verify) |
 | OP2 | [completed/…_op2-dock-second-tile](./forge-layout-reliability/completed/forge-layout-reliability_op2-dock-second-tile.md) | **done** (A/B; live re-verify) |
 | LF6 | [completed/…_lf6-open-then-stable-rehome](./forge-layout-reliability/completed/forge-layout-reliability_lf6-open-then-stable-rehome.md) | **done** (A/B; live re-verify) |
+| LF7 | [completed/…_lf7-vsplit-save](./forge-layout-reliability/completed/forge-layout-reliability_lf7-vsplit-save.md) | **done** (A/B AGREE) |
 
 ## Prior work feeding LF1
 

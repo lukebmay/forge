@@ -328,6 +328,246 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertIn("mon0", raw["tiles"])
         self.assertIn("mon1", raw["tiles"])
 
+    def test_mon_vsplit_saves_tagged_not_bare_hsplit(self):
+        """Mon-root VSPLIT [ghostty, nautilus] must not desugar as hsplit."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "VSPLIT",
+                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 1,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "rect": {
+                                "x": 0,
+                                "y": 0,
+                                "width": 1000,
+                                "height": 500,
+                            },
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 2,
+                            "wmClass": "org.gnome.Nautilus",
+                            "title": "Home",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "rect": {
+                                "x": 0,
+                                "y": 500,
+                                "width": 1000,
+                                "height": 500,
+                            },
+                            "children": [],
+                        },
+                    ],
+                }
+            ],
+        }
+        raw = capture_tiles_profile(forest)
+        self.assertEqual(raw["tiles"]["mon0"], {"vsplit": ["ghostty", "nautilus"]})
+        sugar = profile_for_output(raw)
+        # Single mon: mon map (not bare [{vsplit}] nested-only pane list).
+        self.assertIsInstance(sugar, dict)
+        mon_body = sugar.get("tiles", sugar).get("mon0")
+        self.assertEqual(mon_body, {"vsplit": ["ghostty", "nautilus"]})
+
+        ir = validate_reconcile_profile(sugar, mon_count=1)
+        self.assertEqual(ir["layout"]["mon0"].get("split"), "vsplit")
+        kids = ir["layout"]["mon0"]["children"]
+        self.assertEqual(len(kids), 2)
+        self.assertEqual(kids[0].get("roles"), ["ghostty"])
+        self.assertEqual(kids[1].get("roles"), ["nautilus"])
+
+    def test_mon_vsplit_reopen_plan_ensure_vsplit(self):
+        """After closing nautilus, plan ensure_layout mode=vsplit (not hsplit)."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "VSPLIT",
+                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 1,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "rect": {
+                                "x": 0,
+                                "y": 0,
+                                "width": 1000,
+                                "height": 500,
+                            },
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 2,
+                            "wmClass": "org.gnome.Nautilus",
+                            "title": "Home",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "rect": {
+                                "x": 0,
+                                "y": 500,
+                                "width": 1000,
+                                "height": 500,
+                            },
+                            "children": [],
+                        },
+                    ],
+                }
+            ],
+        }
+        sugar = profile_for_output(capture_tiles_profile(forest))
+        live = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 1,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "rect": {
+                                "x": 0,
+                                "y": 0,
+                                "width": 1000,
+                                "height": 1000,
+                            },
+                            "children": [],
+                        }
+                    ],
+                }
+            ],
+        }
+        plan = plan_reconcile(live, sugar)
+        self.assertTrue(plan["ok"])
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["ghostty"]["status"], "reused")
+        self.assertEqual(by_id["nautilus"]["status"], "open")
+        ensures = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") == "mon0"
+        ]
+        self.assertTrue(ensures, plan["actions"])
+        self.assertEqual(ensures[0].get("mode"), "vsplit")
+        self.assertNotEqual(ensures[0].get("mode"), "hsplit")
+
+    def test_dual_mon_vsplit_bare_preserves_mon_split(self):
+        """Dual bare [{vsplit:…}, mon1Body] + mon_count=2 → mon0.split=vsplit."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "VSPLIT",
+                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 1,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "rect": {
+                                "x": 0,
+                                "y": 0,
+                                "width": 1000,
+                                "height": 500,
+                            },
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 2,
+                            "wmClass": "org.gnome.Nautilus",
+                            "title": "Home",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "rect": {
+                                "x": 0,
+                                "y": 500,
+                                "width": 1000,
+                                "height": 500,
+                            },
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "rect": {"x": 1000, "y": 0, "width": 1000, "height": 1000},
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 3,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 1,
+                            "mode": "TILE",
+                            "rect": {
+                                "x": 1000,
+                                "y": 0,
+                                "width": 1000,
+                                "height": 1000,
+                            },
+                            "children": [],
+                        }
+                    ],
+                },
+            ],
+        }
+        sugar = profile_for_output(capture_tiles_profile(forest))
+        self.assertIsInstance(sugar, list)
+        self.assertEqual(len(sugar), 2)
+        self.assertEqual(sugar[0], {"vsplit": ["ghostty", "nautilus"]})
+        self.assertEqual(sugar[1], ["ghostty"])
+
+        ir = validate_reconcile_profile(sugar, mon_count=2)
+        self.assertEqual(ir["layout"]["mon0"].get("split"), "vsplit")
+        self.assertEqual(len(ir["layout"]["mon0"]["children"]), 2)
+        self.assertIn("mon1", ir["layout"])
+
+    def test_dual_mon_hsplit_tree_perfect_unchanged(self):
+        """Tree-perfect dual HSPLIT still bare array with mon split hsplit."""
+        forest = _load("tree-perfect.json")
+        sugar = profile_for_output(capture_tiles_profile(forest))
+        self.assertIsInstance(sugar, list)
+        self.assertEqual(len(sugar), 2)
+        # mon bodies remain bare pane lists (default hsplit), not {vsplit:…}
+        self.assertIsInstance(sugar[0], list)
+        self.assertIsInstance(sugar[1], list)
+        ir = validate_reconcile_profile(sugar, mon_count=2)
+        self.assertEqual(ir["layout"]["mon0"].get("split"), "hsplit")
+        self.assertEqual(ir["layout"]["mon1"].get("split"), "hsplit")
+
 
 class TestCaptureRoundTrip(unittest.TestCase):
     def test_perfect_forest_reuses_all(self):
