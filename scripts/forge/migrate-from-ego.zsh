@@ -131,7 +131,7 @@ forge_ok "preflight OK: backup $bak_keys keys → translate keeps $pre_keys"
 # --- Build FIRST (old extension still installed) ---
 if (( ! SKIP_BUILD )); then
   forge_hdr "Build this tree (before uninstall — safe if build fails)"
-  "$SCRIPT_DIR/build-install.zsh" --force --build-only --no-enable "${MODE_ARGS[@]:-}"
+  "$SCRIPT_DIR/build-install.zsh" --force --build-only --no-enable "${MODE_ARGS[@]}"
 else
   forge_info "skip-build: verifying existing temp/"
   [[ -f "$FORGE_REPO_ROOT/temp/extension.js" ]] || forge_die "no temp/ build; omit --skip-build"
@@ -170,7 +170,7 @@ if (( live_keys > 0 && mid_keys == 0 )); then
 fi
 
 # --- Install pre-built temp/ ---
-"$SCRIPT_DIR/build-install.zsh" --force --install-only --no-enable "${MODE_ARGS[@]:-}"
+"$SCRIPT_DIR/build-install.zsh" --force --install-only --no-enable "${MODE_ARGS[@]}"
 
 case "$(forge_detect_lineage)" in
   jcrussell|luke) ;;

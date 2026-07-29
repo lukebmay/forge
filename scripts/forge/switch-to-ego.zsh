@@ -74,7 +74,7 @@ else
 fi
 
 "$SCRIPT_DIR/uninstall.zsh" --force
-"$SCRIPT_DIR/install-ego.zsh" --force "${EGO_ARGS[@]:-}"
+"$SCRIPT_DIR/install-ego.zsh" --force "${EGO_ARGS[@]}"
 
 if (( ! SKIP_APPLY )); then
   # Translate toward ego schema so jcrussell-only keys are dropped
