@@ -60,6 +60,8 @@ from layout_apply import (  # noqa: E402
     MODE_STEPS,
     actions_to_extension_steps,
     detect_layout_mode,
+    ghostty_multi_instance_argv,
+    is_ghostty_launch_target,
     open_action_to_launch_fields,
     partition_plan_actions,
     residual_follow_up,
@@ -664,13 +666,78 @@ def infer_wm_class_hints(app: str, desktop: Optional[str] = None) -> list[str]:
     return hints
 
 
+def _ghostty_exe_from_desktop(desktop: Optional[str]) -> Optional[str]:
+    """TryExec/Exec binary path from a Ghostty .desktop, if absolute and present."""
+    if not desktop:
+        return None
+    try:
+        entry = parse_desktop_entry(desktop)
+    except Exception:
+        return None
+    for key in ("TryExec", "Exec"):
+        raw = entry.get(key) or ""
+        if not raw:
+            continue
+        if key == "Exec":
+            token = _exec_binary_path(raw)
+        else:
+            token = str(raw).strip()
+        if token and os.path.isabs(token) and os.path.isfile(token):
+            return token
+        if token and shutil.which(token):
+            return shutil.which(token)
+    return None
+
+
+def _exec_binary_path(exec_line: str) -> str:
+    """First argv token from Exec= (path or name), without field codes."""
+    if not exec_line:
+        return ""
+    cleaned = exec_line
+    for code in ("%f", "%F", "%u", "%U", "%i", "%c", "%k"):
+        cleaned = cleaned.replace(code, "")
+    try:
+        parts = shlex.split(cleaned)
+    except ValueError:
+        parts = cleaned.split()
+    if not parts:
+        return ""
+    return parts[0]
+
+
 def launch_app(app: str, desktop: Optional[str] = None) -> subprocess.Popen:
     """
     Start an app out-of-process.
     Prefer gio launch / gtk-launch for .desktop ids; else spawn argv.
+
+    Ghostty: never gio the stock single-instance desktop — spawn argv with
+    --gtk-single-instance=false so a second terminal can PlaceNext onto mon1.
     """
     if desktop is None:
+        # Multi-instance argv string still resolves desktop via bare stem for hints
+        # callers that already resolved; bare resolve here uses full app.
         desktop = resolve_desktop_file(app)
+        if desktop is None and is_ghostty_launch_target(app):
+            desktop = resolve_desktop_file("ghostty") or resolve_desktop_file(
+                "com.mitchellh.ghostty"
+            )
+
+    if is_ghostty_launch_target(app, desktop):
+        exe = _ghostty_exe_from_desktop(desktop)
+        argv = ghostty_multi_instance_argv(app, desktop=desktop, exe_path=exe)
+        exe0 = argv[0]
+        if not os.path.isabs(exe0) and not shutil.which(exe0):
+            raise RuntimeError(
+                f"ghostty multi-instance launch: executable not found: {exe0!r} "
+                f"(app={app!r})"
+            )
+        return subprocess.Popen(
+            argv,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+
     if desktop:
         if shutil.which("gio"):
             return subprocess.Popen(
@@ -1045,8 +1112,15 @@ def do_launch(
 
     timeout_ms = int(timeout if timeout is not None else DEFAULT_LAUNCH_TIMEOUT_MS)
     desktop = resolve_desktop_file(app)
+    # Rewritten multi-instance argv still needs desktop for StartupWMClass hints.
+    if desktop is None and is_ghostty_launch_target(app):
+        desktop = resolve_desktop_file("ghostty") or resolve_desktop_file(
+            "com.mitchellh.ghostty"
+        )
     explicit_class = (wm_class or "").strip() or None
     class_hints = infer_wm_class_hints(app, desktop)
+    if not class_hints and is_ghostty_launch_target(app, desktop):
+        class_hints = infer_wm_class_hints("ghostty", desktop)
     if explicit_class:
         wait_classes: str | list[str] | None = explicit_class
         place_class = explicit_class
@@ -1784,6 +1858,45 @@ def _layout_run_reconcile(
                 _layout_maybe_print_json(out, verbose=verbose, force=True)
                 return rc
         plan = plan2
+
+        # Belt: just_opened role still on wrong mon after residual → one more move pass.
+        if role_pins and not still_open:
+            try:
+                forest3 = _layout_load_tree(backend, None)
+                plan3 = plan_reconcile(
+                    forest3,
+                    data,
+                    clean=clean,
+                    safe=safe,
+                    role_pins=role_pins,
+                    just_opened_roles=set(role_pins.keys()),
+                )
+            except Exception as e:
+                _eprint(f"forge layout: belt re-plan after residual failed: {e}")
+            else:
+                belt_ext, _belt_open = partition_plan_actions(plan3.get("actions"))
+                belt_moves = [
+                    a
+                    for a in belt_ext
+                    if isinstance(a, dict)
+                    and str(a.get("op") or "").strip().lower() == "move"
+                    and str(a.get("role") or "") in role_pins
+                ]
+                belt_steps, _ = residual_follow_up(belt_moves, [], force_close=force_close)
+                if belt_steps:
+                    rc, agg = run_mixed_steps(
+                        backend, belt_steps, stop_on_error=True, print_each=False
+                    )
+                    apply_log["beltFollowUp"] = agg
+                    if rc != 0:
+                        _eprint("forge layout: belt follow-up moves failed")
+                        out = _layout_plan_meta(resolved, name, plan3, dry_run=False)
+                        out["ok"] = False
+                        out["apply"] = apply_log
+                        _layout_maybe_print_json(out, verbose=verbose, force=True)
+                        return rc
+                    plan = plan3
+
         if still_open:
             out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
             out["ok"] = False

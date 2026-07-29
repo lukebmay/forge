@@ -15,13 +15,17 @@ if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
 from layout_apply import (  # noqa: E402
+    GHOSTTY_MULTI_INSTANCE_FLAG,
     MODE_RECONCILE,
     MODE_STEPS,
     actions_to_extension_steps,
     detect_layout_mode,
+    ghostty_multi_instance_argv,
+    is_ghostty_launch_target,
     open_action_to_launch_fields,
     partition_plan_actions,
     residual_follow_up,
+    rewrite_ghostty_launch_app,
     slot_to_monitor_path,
     slot_to_tree_path,
     window_tile_selector,
@@ -322,6 +326,70 @@ class TestActionMapping(unittest.TestCase):
         )
         self.assertEqual(fields["tree_path"], "mo0ws0/1")
         self.assertEqual(fields["monitor"], 0)
+        # LF4: bare ghostty → multi-instance argv (not stock single-instance desktop)
+        self.assertIn(GHOSTTY_MULTI_INSTANCE_FLAG, fields["app"].split())
+        self.assertTrue(fields["app"].startswith("ghostty"))
+
+    def test_open_ghostty_desktop_id_rewrites_multi_instance(self):
+        fields = open_action_to_launch_fields(
+            {
+                "op": "open",
+                "role": "ghostty-2",
+                "slot": "mon1.ghostty-2",
+                "open": {
+                    "app": "com.mitchellh.ghostty",
+                    "wmClass": "com.mitchellh.ghostty",
+                },
+            }
+        )
+        self.assertEqual(fields["monitor"], 1)
+        self.assertEqual(fields["wm_class"], "com.mitchellh.ghostty")
+        parts = fields["app"].split()
+        self.assertEqual(parts[0], "ghostty")
+        self.assertEqual(parts[1], GHOSTTY_MULTI_INSTANCE_FLAG)
+        self.assertNotIn("--gtk-single-instance=true", fields["app"])
+
+
+class TestGhosttyMultiInstanceLaunch(unittest.TestCase):
+    """LF4: Ghostty layout open must not use single-instance desktop default."""
+
+    def test_is_ghostty_targets(self):
+        self.assertTrue(is_ghostty_launch_target("ghostty"))
+        self.assertTrue(is_ghostty_launch_target("Ghostty"))
+        self.assertTrue(is_ghostty_launch_target("com.mitchellh.ghostty"))
+        self.assertTrue(is_ghostty_launch_target("com.mitchellh.ghostty.desktop"))
+        self.assertTrue(
+            is_ghostty_launch_target(
+                "ghostty", desktop="/usr/share/applications/com.mitchellh.ghostty.desktop"
+            )
+        )
+        self.assertTrue(
+            is_ghostty_launch_target("ghostty --gtk-single-instance=false")
+        )
+        self.assertTrue(is_ghostty_launch_target("/usr/bin/ghostty"))
+        self.assertFalse(is_ghostty_launch_target("firefox"))
+        self.assertFalse(is_ghostty_launch_target("google-chrome"))
+        self.assertFalse(is_ghostty_launch_target(""))
+
+    def test_multi_instance_argv(self):
+        argv = ghostty_multi_instance_argv("ghostty")
+        self.assertEqual(argv, ["ghostty", GHOSTTY_MULTI_INSTANCE_FLAG])
+        argv2 = ghostty_multi_instance_argv(
+            "ghostty --gtk-single-instance=true --foo=1"
+        )
+        self.assertEqual(argv2[0], "ghostty")
+        self.assertEqual(argv2[1], GHOSTTY_MULTI_INSTANCE_FLAG)
+        self.assertIn("--foo=1", argv2)
+        self.assertNotIn("--gtk-single-instance=true", argv2)
+        argv3 = ghostty_multi_instance_argv(
+            "com.mitchellh.ghostty", exe_path="/usr/bin/ghostty"
+        )
+        self.assertEqual(argv3, ["/usr/bin/ghostty", GHOSTTY_MULTI_INSTANCE_FLAG])
+
+    def test_rewrite_app_string(self):
+        s = rewrite_ghostty_launch_app("ghostty")
+        self.assertEqual(s, f"ghostty {GHOSTTY_MULTI_INSTANCE_FLAG}")
+        self.assertEqual(rewrite_ghostty_launch_app("firefox"), "firefox")
 
 
 class TestPlanToStepsFixture(unittest.TestCase):
@@ -569,6 +637,73 @@ class TestPlanToStepsFixture(unittest.TestCase):
                 }
             ],
         )
+
+
+class TestLaunchAppGhostty(unittest.TestCase):
+    """LF4: forge.launch_app must not gio-launch single-instance Ghostty desktop."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+
+        bin_path = _REPO / "scripts" / "forge" / "forge"
+        name = "forge_cli_lf4_launch"
+        loader = importlib.machinery.SourceFileLoader(name, str(bin_path))
+        spec = importlib.util.spec_from_loader(name, loader)
+        assert spec and spec.loader
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+        cls.forge = mod
+
+    def test_launch_app_ghostty_spawns_multi_instance_not_gio(self):
+        from unittest import mock
+
+        fake = mock.Mock()
+        fake.pid = 4242
+        with mock.patch.object(self.forge.subprocess, "Popen", return_value=fake) as popen:
+            with mock.patch.object(
+                self.forge,
+                "resolve_desktop_file",
+                return_value="/usr/share/applications/com.mitchellh.ghostty.desktop",
+            ):
+                with mock.patch.object(
+                    self.forge,
+                    "parse_desktop_entry",
+                    return_value={
+                        "Exec": "/usr/bin/ghostty --gtk-single-instance=true",
+                        "TryExec": "/usr/bin/ghostty",
+                        "StartupWMClass": "com.mitchellh.ghostty",
+                    },
+                ):
+                    with mock.patch.object(self.forge.os.path, "isfile", return_value=True):
+                        with mock.patch.object(
+                            self.forge.shutil, "which", side_effect=lambda x: x if x == "ghostty" else None
+                        ):
+                            proc = self.forge.launch_app("ghostty")
+        self.assertIs(proc, fake)
+        self.assertEqual(popen.call_count, 1)
+        argv = popen.call_args[0][0]
+        self.assertNotEqual(argv[0], "gio")
+        self.assertNotEqual(argv[0], "gtk-launch")
+        self.assertEqual(argv[0], "/usr/bin/ghostty")
+        self.assertEqual(argv[1], GHOSTTY_MULTI_INSTANCE_FLAG)
+        self.assertNotIn("--gtk-single-instance=true", argv)
+
+    def test_launch_app_ghostty_argv_already_multi(self):
+        from unittest import mock
+
+        fake = mock.Mock()
+        fake.pid = 1
+        app = f"ghostty {GHOSTTY_MULTI_INSTANCE_FLAG}"
+        with mock.patch.object(self.forge.subprocess, "Popen", return_value=fake) as popen:
+            with mock.patch.object(self.forge, "resolve_desktop_file", return_value=None):
+                with mock.patch.object(
+                    self.forge.shutil, "which", side_effect=lambda x: "/usr/bin/ghostty" if x == "ghostty" else None
+                ):
+                    self.forge.launch_app(app)
+        argv = popen.call_args[0][0]
+        self.assertEqual(argv, ["ghostty", GHOSTTY_MULTI_INSTANCE_FLAG])
 
 
 if __name__ == "__main__":

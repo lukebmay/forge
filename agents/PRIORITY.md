@@ -8,8 +8,9 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **live** | Install + re-verify LF1–LF3 on black (esp. close left chrome + right Ghostty) | [forge-layout-reliability.md](./plans/forge-layout-reliability.md) |
-| 2 | stacks SL5 | Live verify stack↔tab / merge / stacked profiles on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| **1** | **SI1** | Install/update = exact tree snapshot; restore open leaf + focus (not layouts) | [forge-layout-reliability.md](./plans/forge-layout-reliability.md) |
+| **2** | **LF4** | Ghostty open mon (single-instance desktop); close chrome+right Ghostty | same plan |
+| 3 | stacks SL5 | Live verify stack↔tab / merge on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 | 3 | layout polish | Live-drive bare-array `forge layout` | Day-to-day once live OK |
 | 4 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
 

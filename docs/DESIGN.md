@@ -607,6 +607,16 @@ no hint — OP1 LFT attach applies as usual.
 `PlaceNext` before spawn, then polls `GetTree` for `--wm-class` unless
 `--no-wait`. Already-mapped: `forge move` after wait (no PlaceNext).
 
+**Ghostty exception (LF4):** Stock
+`com.mitchellh.ghostty.desktop` runs
+`ghostty --gtk-single-instance=true`. A second `gio launch` reuses that
+process and often maps the new window onto mon0 next to the existing
+instance — PlaceNext stem match alone cannot fix it. Layout open and
+`launch_app` therefore spawn `ghostty --gtk-single-instance=false`
+(argv) for Ghostty targets, still using the desktop only for
+StartupWMClass wait hints. Residual move + optional belt re-plan remain
+the safety net if Meta mon is still wrong.
+
 `apiVersion` in Ping is **5** once RunSteps exists (was 4 with settings;
 was 3 with PlaceNext; `TREE_QUERY` stays 1 as `queryApiVersion`;
 tile-select grammar still version 2).

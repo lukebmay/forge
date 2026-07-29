@@ -3,12 +3,20 @@
 
 from __future__ import annotations
 
+import shlex
+from pathlib import Path
 from typing import Any, Optional
 
 from layout_plan import mon_index_from_slot
 
 MODE_STEPS = "steps"
 MODE_RECONCILE = "reconcile"
+
+# Stock Ghostty .desktop uses --gtk-single-instance=true; gio launch reuses the
+# existing process and often maps the new window onto mon0. Layout open must
+# spawn multi-instance so PlaceNext + residual mon moves can stick.
+GHOSTTY_MULTI_INSTANCE_FLAG = "--gtk-single-instance=false"
+_GHOSTTY_STEMS = frozenset({"ghostty", "com.mitchellh.ghostty"})
 
 
 def detect_layout_mode(data: Any, *, force_launch: bool = False) -> str:
@@ -273,12 +281,107 @@ def actions_to_extension_steps(
     return place_steps + layout_steps + order_steps + focus_steps
 
 
+def _ghostty_stem(token: str) -> str:
+    """Basename / reverse-DNS last label, casefolded."""
+    t = str(token or "").strip().strip("'\"")
+    if not t:
+        return ""
+    # desktop id or path → stem
+    name = Path(t).name
+    if name.casefold().endswith(".desktop"):
+        name = name[: -len(".desktop")]
+    cf = name.casefold()
+    if "." in cf:
+        return cf.rsplit(".", 1)[-1]
+    return cf
+
+
+def is_ghostty_launch_target(app: str, desktop: Optional[str] = None) -> bool:
+    """
+    True when launch target is Ghostty (short name, desktop id, or argv0).
+
+    Used to bypass stock single-instance .desktop Exec for layout/PlaceNext.
+    """
+    if desktop:
+        stem = Path(str(desktop)).stem.casefold()
+        if stem in _GHOSTTY_STEMS or stem.endswith(".ghostty") or _ghostty_stem(stem) == "ghostty":
+            return True
+    raw = (app or "").strip().strip("'\"")
+    if not raw:
+        return False
+    # Bare id / desktop path
+    if _ghostty_stem(raw) == "ghostty":
+        return True
+    # Argv form: "ghostty …" or "/usr/bin/ghostty …"
+    try:
+        parts = shlex.split(raw)
+    except ValueError:
+        parts = raw.split()
+    if not parts:
+        return False
+    return _ghostty_stem(parts[0]) == "ghostty"
+
+
+def _is_ghostty_executable_token(token: str) -> bool:
+    """True if token is ghostty binary path/name (not reverse-DNS desktop id)."""
+    t = str(token or "").strip()
+    if not t or t.casefold().endswith(".desktop"):
+        return False
+    return Path(t).name.casefold() == "ghostty"
+
+
+def ghostty_multi_instance_argv(
+    app: str = "ghostty",
+    *,
+    desktop: Optional[str] = None,
+    exe_path: Optional[str] = None,
+) -> list[str]:
+    """
+    Argv for a multi-instance Ghostty process (not gio of stock .desktop).
+
+    Prefer explicit exe_path, else first token of app if it is a ghostty binary,
+    else bare `ghostty` (PATH). Always forces --gtk-single-instance=false.
+    Desktop ids (com.mitchellh.ghostty) never become argv0.
+    """
+    del desktop  # reserved for callers; Exec path comes via exe_path
+    exe = (exe_path or "").strip() or None
+    raw = (app or "").strip().strip("'\"")
+    extra: list[str] = []
+    if raw:
+        try:
+            parts = shlex.split(raw)
+        except ValueError:
+            parts = raw.split()
+        if parts and _ghostty_stem(parts[0]) == "ghostty":
+            if exe is None and _is_ghostty_executable_token(parts[0]):
+                exe = parts[0]
+            # Drop any prior single-instance flag; keep other user args.
+            for p in parts[1:]:
+                if str(p).startswith("--gtk-single-instance="):
+                    continue
+                extra.append(p)
+    if not exe:
+        exe = "ghostty"
+    return [exe, GHOSTTY_MULTI_INSTANCE_FLAG, *extra]
+
+
+def rewrite_ghostty_launch_app(app: str) -> str:
+    """Map ghostty app/desktop sugar to multi-instance argv string; else unchanged."""
+    if not is_ghostty_launch_target(app):
+        return (app or "").strip()
+    return shlex.join(ghostty_multi_instance_argv(app))
+
+
 def open_action_to_launch_fields(action: dict[str, Any]) -> dict[str, Any]:
     """Map plan open action → do_launch kwargs (+ role for reports)."""
     open_spec = action.get("open") if isinstance(action.get("open"), dict) else {}
     app = open_spec.get("app") or open_spec.get("desktop") or open_spec.get("command")
+    app_s = str(app).strip() if app is not None else ""
+    # Ghostty: never hand bare id through to gio launch of single-instance desktop.
+    if is_ghostty_launch_target(app_s):
+        app_s = rewrite_ghostty_launch_app(app_s)
     fields: dict[str, Any] = {
-        "app": str(app).strip() if app is not None else "",
+        "app": app_s,
     }
     wc = open_spec.get("wmClass") or open_spec.get("wm_class")
     if wc is not None and str(wc).strip() != "":

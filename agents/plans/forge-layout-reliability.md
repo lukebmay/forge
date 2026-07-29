@@ -1,7 +1,7 @@
 # Plan: Layout reliability (tab focus + partial reopen)
 
-**Status:** **code complete** (LF1–LF3 A/B AGREE); live black re-verify  
-**Priority:** **P0** daily-driver on `black` (install trial)  
+**Status:** active — **SI1 + LF4** (LF1–LF3 insufficient live)  
+**Priority:** **P0** daily-driver on `black`  
 **Updated:** 2026-07-29  
 **Related:** [forge-workon-thrash-zero.md](./forge-workon-thrash-zero.md) (historical),
 [layout-mon-claim-order](../tasks/layout-mon-claim-order.md) (superseded by LF1),
@@ -9,17 +9,22 @@ tab chrome / session focus archive entries
 
 ### Session note (2026-07-29)
 
-**LF1–LF3 shipped (A/B AGREE)** on `plan/forge-layout-reliability`.
+**Live feedback after LF1–LF3:**
 
-| Issue | Fix |
+1. **Install focus wrong** — browsing Chrome, install activated Grok. Product:
+   install/update = **exact tree snapshot only** (no layout profiles). → **SI1**
+2. **LF3 still fails live** — close left chrome + right Ghostty → 2 Ghosttys mon0.
+   Stock Ghostty desktop forces `--gtk-single-instance=true`. → **LF4**
+
+| Issue | Status |
 | --- | --- |
-| LF1 mon ensure / pins / survivor | shipped |
-| LF2 tab click focus | shipped |
-| LF3 PlaceNext exact class (`ghostty` vs reverse-DNS) | stem equality in `place-hint.js` |
-| LF3 residual abort before mon move | apply follow-up moves **then** fail still-open |
-| LF3 open.wmClass from match.class | sugar terms pass class to PlaceNext/wait |
+| LF1–LF3 unit | shipped; **live mon still broken** until LF4 install |
+| LF4 ghostty multi-instance open | **implemented** (await B + live re-verify) |
+| SI1 install snapshot focus/active | **next** (separate) |
 
-**Live:** install + re-verify close left chrome + right Ghostty → one Ghostty per mon.
+**LF4 implement (A):** `launch_app` / layout open spawn
+`ghostty --gtk-single-instance=false` (never gio stock desktop); residual + belt
+move kept. CLI unit **298** green. No commit until B.
 
 ---
 
@@ -112,7 +117,9 @@ Operator must click the **dock item** first; after that, tab focus works again.
 | --- | --- | --- |
 | LF1 | [completed/…_lf1-partial-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf1-partial-reopen.md) | **done** (A/B AGREE) |
 | LF2 | [completed/…_lf2-tab-click-focus](./forge-layout-reliability/completed/forge-layout-reliability_lf2-tab-click-focus.md) | **done** (A/B AGREE) |
-| LF3 | [completed/…_lf3-mon1-ghostty-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf3-mon1-ghostty-reopen.md) | **done** (A/B AGREE; live re-verify) |
+| LF3 | [completed/…_lf3-mon1-ghostty-reopen](./forge-layout-reliability/completed/forge-layout-reliability_lf3-mon1-ghostty-reopen.md) | unit done; **live fail → LF4** |
+| **SI1** | [forge-layout-reliability_si1-install-snapshot-focus](../tasks/forge-layout-reliability_si1-install-snapshot-focus.md) | **next** |
+| LF4 | [completed/…_lf4-ghostty-open-mon](./forge-layout-reliability/completed/forge-layout-reliability_lf4-ghostty-open-mon.md) | **done** (A/B AGREE; live re-verify) |
 
 ## Prior work feeding LF1
 
