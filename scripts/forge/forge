@@ -56,8 +56,14 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 from layout_apply import (  # noqa: E402
+    BELT_STABLE_POLL_MS,
+    BELT_STABLE_SAMPLES,
+    BELT_STABLE_TIMEOUT_MS,
     MODE_RECONCILE,
     MODE_STEPS,
+    TREE_STABLE_POLL_MS,
+    TREE_STABLE_SAMPLES,
+    TREE_STABLE_TIMEOUT_MS,
     actions_to_extension_steps,
     detect_layout_mode,
     find_settled_window,
@@ -67,6 +73,7 @@ from layout_apply import (  # noqa: E402
     open_action_to_launch_fields,
     partition_plan_actions,
     residual_follow_up,
+    wait_for_tree_stable,
     window_is_settled,
 )
 from layout_lib import (  # noqa: E402
@@ -1911,10 +1918,34 @@ def _layout_run_reconcile(
         if role is not None and result.get("windowId") is not None:
             role_pins[str(role)] = result["windowId"]
 
-    # 3) After opens: re-tree + re-plan; apply residual move/park/close/layout
+    # 3) After opens: wait whole GetTree stable, then one residual rehome batch.
+    # LF6: do not residual-move just-opened windows while Ghostty/self-place churns.
+    # Plan1 extension steps above only touch already-present tiles.
     if open_actions:
+
+        def _load_live_forest() -> dict[str, Any]:
+            return _layout_load_tree(backend, None)
+
+        # Open-all already pinned; wait until forest fingerprint holds N samples.
+        stable_info = wait_for_tree_stable(
+            _load_live_forest,
+            timeout_ms=TREE_STABLE_TIMEOUT_MS,
+            poll_ms=TREE_STABLE_POLL_MS,
+            stable_samples=TREE_STABLE_SAMPLES,
+        )
+        apply_log["treeStable"] = {
+            k: v for k, v in stable_info.items() if k != "forest"
+        }
+        if not stable_info.get("ok"):
+            _eprint(
+                "forge layout: tree not fully stable after opens "
+                f"(proceeding: {stable_info.get('error')})"
+            )
+
         try:
-            forest2 = _layout_load_tree(backend, None)
+            forest2 = stable_info.get("forest")
+            if not isinstance(forest2, dict):
+                forest2 = _load_live_forest()
             plan2 = plan_reconcile(
                 forest2,
                 data,
@@ -1940,15 +1971,14 @@ def _layout_run_reconcile(
         if still_open:
             _eprint(f"forge layout: still missing roles after open: {still_open}")
         if follow_steps:
-            # LF5: residual Move before TILE settle no-ops / Meta snaps back.
+            # LF5 belt: per-id settle is usually a no-op after tree-stable wait.
             settle_ids = move_step_window_ids(follow_steps)
-            # Also wait just-opened pins even if residual used path selectors.
             for _role, pin_wid in (role_pins or {}).items():
                 if pin_wid is not None and str(pin_wid) not in settle_ids:
                     settle_ids.append(str(pin_wid))
             if settle_ids:
                 settle_info = wait_for_window_ids_settled(
-                    backend, settle_ids, timeout_ms=4000
+                    backend, settle_ids, timeout_ms=2000
                 )
                 apply_log["followUpSettle"] = settle_info
                 if settle_info.get("pending"):
@@ -1974,10 +2004,21 @@ def _layout_run_reconcile(
                 return rc
         plan = plan2
 
-        # Belt: just_opened role still on wrong mon after residual → one more move pass.
+        # Belt: short second stable wait, then one more move pass if wrong mon.
         if role_pins and not still_open:
+            belt_stable = wait_for_tree_stable(
+                _load_live_forest,
+                timeout_ms=BELT_STABLE_TIMEOUT_MS,
+                poll_ms=BELT_STABLE_POLL_MS,
+                stable_samples=BELT_STABLE_SAMPLES,
+            )
+            apply_log["beltTreeStable"] = {
+                k: v for k, v in belt_stable.items() if k != "forest"
+            }
             try:
-                forest3 = _layout_load_tree(backend, None)
+                forest3 = belt_stable.get("forest")
+                if not isinstance(forest3, dict):
+                    forest3 = _load_live_forest()
                 plan3 = plan_reconcile(
                     forest3,
                     data,
@@ -1997,12 +2038,14 @@ def _layout_run_reconcile(
                     and str(a.get("op") or "").strip().lower() == "move"
                     and str(a.get("role") or "") in role_pins
                 ]
-                belt_steps, _ = residual_follow_up(belt_moves, [], force_close=force_close)
+                belt_steps, _ = residual_follow_up(
+                    belt_moves, [], force_close=force_close
+                )
                 if belt_steps:
                     belt_ids = move_step_window_ids(belt_steps)
                     if belt_ids:
                         belt_settle = wait_for_window_ids_settled(
-                            backend, belt_ids, timeout_ms=2500
+                            backend, belt_ids, timeout_ms=1500
                         )
                         apply_log["beltSettle"] = belt_settle
                     rc, agg = run_mixed_steps(

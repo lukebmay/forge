@@ -8,7 +8,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **live** | Install + re-verify LF5 settle move + OP2 dock second tile | [forge-layout-reliability.md](./plans/forge-layout-reliability.md) |
+| **1** | **live** | Install + re-verify LF6 open-then-stable-rehome | [forge-layout-reliability.md](./plans/forge-layout-reliability.md) |
 | 2 | stacks SL5 | Live verify stack↔tab / merge on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 | 3 | layout polish | Live-drive bare-array `forge layout` | Day-to-day once live OK |
 | 4 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
@@ -24,6 +24,7 @@
 | **SI1** install snapshot focus | sync lastTabFocus from focus before save |
 | **LF5** settle before layout move | wait TILE before residual Move |
 | **OP2** dock second tile | dock appId normalize + firstRender place |
+| **LF6** open-then-stable-rehome | whole-tree stable before residual rehome |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 

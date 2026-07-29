@@ -21,6 +21,7 @@ from layout_apply import (  # noqa: E402
     actions_to_extension_steps,
     detect_layout_mode,
     find_settled_window,
+    forest_stability_fingerprint,
     ghostty_multi_instance_argv,
     is_ghostty_launch_target,
     move_step_window_ids,
@@ -30,6 +31,7 @@ from layout_apply import (  # noqa: E402
     rewrite_ghostty_launch_app,
     slot_to_monitor_path,
     slot_to_tree_path,
+    wait_for_tree_stable,
     window_is_settled,
     window_tile_selector,
 )
@@ -457,6 +459,188 @@ class TestWindowSettledLf5(unittest.TestCase):
             {"op": "park", "tile": "id:99", "dest": "id:1"},
         ]
         self.assertEqual(move_step_window_ids(steps), ["501", "99"])
+
+
+class TestForestStabilityLf6(unittest.TestCase):
+    """LF6: whole-tree fingerprint + stable wait before residual rehome."""
+
+    def test_fingerprint_stable_on_same_forest(self):
+        forest = _load("tree-perfect.json")
+        a = forest_stability_fingerprint(forest)
+        b = forest_stability_fingerprint(forest)
+        self.assertEqual(a, b)
+        self.assertIn("W id=", a)
+        self.assertIn("id=101", a)
+        self.assertIn("mode=TILE", a)
+
+    def test_fingerprint_changes_on_monitor_move(self):
+        forest = _load("tree-perfect.json")
+        base = forest_stability_fingerprint(forest)
+        # Move mon0 ghostty (103) meta monitor to 1 → fingerprint must change.
+        mon0 = forest["monitors"][0]
+        for node in mon0["children"]:
+            if node.get("windowId") == 103:
+                node["monitor"] = 1
+                break
+        else:
+            self.fail("window 103 not found")
+        moved = forest_stability_fingerprint(forest)
+        self.assertNotEqual(base, moved)
+
+    def test_fingerprint_includes_con_layout_and_focus(self):
+        forest = {
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 42,
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 42,
+                                    "mode": "TILE",
+                                    "monitor": 0,
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 43,
+                                    "mode": "FLOAT",
+                                    "monitor": 0,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        fp = forest_stability_fingerprint(forest)
+        self.assertIn("layout=TABBED", fp)
+        self.assertIn("focus=42", fp)
+        self.assertIn("mode=FLOAT", fp)
+        self.assertIn("id=42", fp)
+        # Deterministic sort: second call identical.
+        self.assertEqual(fp, forest_stability_fingerprint(forest))
+
+    def test_fingerprint_empty_forest(self):
+        self.assertEqual(forest_stability_fingerprint({}), "")
+        self.assertEqual(forest_stability_fingerprint({"monitors": []}), "")
+
+    def test_wait_for_tree_stable_ok_after_n_samples(self):
+        forest = _load("tree-perfect.json")
+        calls = {"n": 0}
+        sleeps: list[float] = []
+
+        def load():
+            calls["n"] += 1
+            return forest
+
+        def sleep_fn(s: float) -> None:
+            sleeps.append(s)
+
+        # Fake clock: advance slightly each sleep so loop can run.
+        t = {"v": 0.0}
+
+        def mono() -> float:
+            return t["v"]
+
+        real_sleep = sleep_fn
+
+        def sleep_and_tick(s: float) -> None:
+            real_sleep(s)
+            t["v"] += s
+
+        out = wait_for_tree_stable(
+            load,
+            timeout_ms=5000,
+            poll_ms=100,
+            stable_samples=3,
+            sleep_fn=sleep_and_tick,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["samples"], 3)
+        self.assertEqual(out["polls"], 3)
+        self.assertEqual(out["fingerprint"], forest_stability_fingerprint(forest))
+        self.assertIs(out["forest"], forest)
+        self.assertIsNone(out["error"])
+        # Two sleeps between three samples.
+        self.assertEqual(len(sleeps), 2)
+
+    def test_wait_for_tree_stable_timeout_when_churning(self):
+        forests = [
+            {
+                "monitors": [
+                    {
+                        "nodeType": "MONITOR",
+                        "id": "mo0ws0",
+                        "layout": "HSPLIT",
+                        "children": [
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 1,
+                                "mode": "TILE",
+                                "monitor": 0,
+                            }
+                        ],
+                    }
+                ]
+            },
+            {
+                "monitors": [
+                    {
+                        "nodeType": "MONITOR",
+                        "id": "mo0ws0",
+                        "layout": "HSPLIT",
+                        "children": [
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 1,
+                                "mode": "TILE",
+                                "monitor": 1,  # thrash
+                            }
+                        ],
+                    }
+                ]
+            },
+        ]
+        i = {"n": 0}
+        t = {"v": 0.0}
+
+        def load():
+            f = forests[i["n"] % 2]
+            i["n"] += 1
+            return f
+
+        def mono() -> float:
+            return t["v"]
+
+        def sleep_fn(s: float) -> None:
+            t["v"] += s
+
+        out = wait_for_tree_stable(
+            load,
+            timeout_ms=400,
+            poll_ms=100,
+            stable_samples=3,
+            sleep_fn=sleep_fn,
+            monotonic_fn=mono,
+        )
+        self.assertFalse(out["ok"])
+        self.assertIsNotNone(out["error"])
+        self.assertLess(out["samples"], 3)
+        self.assertGreaterEqual(out["polls"], 2)
+
+    def test_open_then_stable_rehome_order_doc(self):
+        """Residual rehome is after wait_for_tree_stable (LF6 product order)."""
+        # Documented in wait_for_tree_stable docstring; keep API surface stable.
+        doc = wait_for_tree_stable.__doc__ or ""
+        self.assertIn("open all", doc.lower())
+        self.assertIn("plan", doc.lower())
 
 
 class TestPlanToStepsFixture(unittest.TestCase):

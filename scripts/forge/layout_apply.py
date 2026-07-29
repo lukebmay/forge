@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import shlex
+import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from layout_plan import mon_index_from_slot
 
@@ -558,3 +559,191 @@ def move_step_window_ids(steps: Any) -> list[str]:
             if wid and wid not in out:
                 out.append(wid)
     return out
+
+
+# --- LF6: open-all → whole-tree stable → residual rehome ---
+
+# Defaults for post-open stability wait (Ghostty may self-move after TILE).
+TREE_STABLE_TIMEOUT_MS = 7000
+TREE_STABLE_POLL_MS = 180
+TREE_STABLE_SAMPLES = 3
+BELT_STABLE_TIMEOUT_MS = 2500
+BELT_STABLE_POLL_MS = 150
+BELT_STABLE_SAMPLES = 2
+
+
+def _stability_focus_id(node: dict[str, Any]) -> str:
+    """lastTabFocusId or windowId from lastTabFocus dict/scalar."""
+    fid = node.get("lastTabFocusId")
+    if fid is not None and str(fid).strip() != "":
+        return str(fid).strip()
+    lt = node.get("lastTabFocus")
+    if isinstance(lt, dict):
+        wid = lt.get("windowId")
+        if wid is not None and str(wid).strip() != "":
+            return str(wid).strip()
+    if lt is not None and not isinstance(lt, (dict, list)) and str(lt).strip() != "":
+        return str(lt).strip()
+    return ""
+
+
+def _stability_walk_lines(
+    n: Any, path: str, mon_idx: Optional[int], lines: list[str]
+) -> None:
+    if not isinstance(n, dict):
+        return
+    ntype = str(n.get("nodeType") or n.get("type") or "").strip().upper()
+    kids = n.get("children") if n.get("children") is not None else n.get("childNodes")
+    if not isinstance(kids, list):
+        kids = []
+
+    cur_mon = mon_idx
+    mon_id = n.get("id") if ntype == "MONITOR" else None
+    if ntype == "MONITOR" and isinstance(mon_id, str) and mon_id:
+        # moNwsW → N
+        m = mon_id
+        if m.startswith("mo") and "ws" in m:
+            try:
+                cur_mon = int(m[2 : m.index("ws")])
+            except ValueError:
+                pass
+        elif n.get("monitor") is not None:
+            try:
+                cur_mon = int(n["monitor"])
+            except (TypeError, ValueError):
+                pass
+
+    if ntype == "WINDOW":
+        wid = n.get("windowId")
+        mode = n.get("mode") if n.get("mode") is not None else ""
+        mon = n.get("monitor") if isinstance(n.get("monitor"), int) else cur_mon
+        if mon is None and n.get("monitor") is not None:
+            try:
+                mon = int(n["monitor"])
+            except (TypeError, ValueError):
+                mon = cur_mon
+        p = path or (str(n.get("path") or "").strip())
+        lines.append(f"W id={wid}|mode={mode}|mon={mon}|path={p}")
+        return
+
+    # CON / MONITOR structural lines (layouts + tab focus drive rehome plan).
+    if ntype in ("CON", "CONTAINER", "MONITOR", "WORKSPACE", "ROOT"):
+        layout = n.get("layout")
+        layout_s = "" if layout is None else str(layout)
+        focus = _stability_focus_id(n)
+        nid = n.get("id")
+        nid_s = "" if nid is None else str(nid)
+        # Skip empty interior noise: no layout, no focus, not MONITOR id.
+        if layout_s or focus or (ntype == "MONITOR" and nid_s):
+            lines.append(
+                f"C type={ntype}|layout={layout_s}|focus={focus}|id={nid_s}|path={path}"
+            )
+
+    for i, c in enumerate(kids):
+        if isinstance(mon_id, str) and mon_id:
+            child_path = f"{mon_id}/{i}"
+        elif path:
+            child_path = f"{path}/{i}"
+        else:
+            child_path = str(i)
+        _stability_walk_lines(c, child_path, cur_mon, lines)
+
+
+def forest_stability_fingerprint(forest: Any) -> str:
+    """
+    Deterministic fingerprint of GetTree forest for thrash-stability waits.
+
+    Includes: every WINDOW (windowId, mode, monitor, path), key CON/MONITOR
+    layouts + lastTabFocusId, sorted so walk order does not matter beyond path.
+    """
+    lines: list[str] = []
+    if isinstance(forest, dict):
+        mons = forest.get("monitors")
+        if isinstance(mons, list):
+            for m in mons:
+                _stability_walk_lines(m, "", None, lines)
+        else:
+            _stability_walk_lines(forest, "", None, lines)
+    elif isinstance(forest, list):
+        for m in forest:
+            _stability_walk_lines(m, "", None, lines)
+    lines.sort()
+    return "\n".join(lines)
+
+
+def wait_for_tree_stable(
+    load_forest: Callable[[], Any],
+    *,
+    timeout_ms: int = TREE_STABLE_TIMEOUT_MS,
+    poll_ms: int = TREE_STABLE_POLL_MS,
+    stable_samples: int = TREE_STABLE_SAMPLES,
+    sleep_fn: Optional[Callable[[float], None]] = None,
+    monotonic_fn: Optional[Callable[[], float]] = None,
+) -> dict[str, Any]:
+    """
+    Poll load_forest until fingerprint is unchanged for stable_samples polls.
+
+    Pure of DBus: inject load_forest (+ optional sleep/monotonic for tests).
+    On timeout: ok=false, last fingerprint/forest still returned.
+
+    Residual rehome order (LF6): open all → wait_for_tree_stable → plan + apply.
+    """
+    sleep = sleep_fn if sleep_fn is not None else time.sleep
+    mono = monotonic_fn if monotonic_fn is not None else time.monotonic
+    samples_need = max(1, int(stable_samples))
+    poll_s = max(0, int(poll_ms)) / 1000.0
+    deadline = mono() + max(0, int(timeout_ms)) / 1000.0
+    t0 = mono()
+
+    last_fp: Optional[str] = None
+    last_forest: Any = None
+    streak = 0
+    polls = 0
+    last_err: Optional[str] = None
+
+    while True:
+        try:
+            forest = load_forest()
+            fp = forest_stability_fingerprint(forest)
+            last_forest = forest
+            last_err = None
+        except Exception as e:
+            last_err = str(e)
+            fp = None
+            forest = None
+
+        polls += 1
+        if fp is None:
+            streak = 0
+        elif fp == last_fp:
+            streak += 1
+        else:
+            last_fp = fp
+            streak = 1
+
+        if streak >= samples_need and last_fp is not None:
+            return {
+                "ok": True,
+                "fingerprint": last_fp,
+                "samples": streak,
+                "polls": polls,
+                "elapsed_ms": int((mono() - t0) * 1000),
+                "forest": last_forest,
+                "error": None,
+            }
+
+        if mono() > deadline:
+            break
+        if poll_s > 0:
+            sleep(poll_s)
+
+    return {
+        "ok": False,
+        "fingerprint": last_fp,
+        "samples": streak,
+        "polls": polls,
+        "elapsed_ms": int((mono() - t0) * 1000),
+        "forest": last_forest,
+        "error": last_err
+        or f"tree not stable after {timeout_ms}ms (need {samples_need} equal samples)",
+    }

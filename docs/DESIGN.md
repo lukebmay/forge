@@ -623,6 +623,24 @@ instance — PlaceNext stem match alone cannot fix it. Layout open and
 StartupWMClass wait hints. Residual move + optional belt re-plan remain
 the safety net if Meta mon is still wrong.
 
+**Open-then-stable-rehome (LF6):** Per-window TILE settle (LF5) is not
+enough when Ghostty (or Meta) **moves itself** after first tile.
+Reconcile apply when roles need open:
+
+1. Extension steps for **already-present** tiles only.
+2. **Open all** missing apps (launch + pin windowIds); no residual Move mid-open.
+3. Wait until **GetTree fingerprint** is unchanged for N consecutive polls
+   (`forest_stability_fingerprint` / `wait_for_tree_stable` in
+   `layout_apply.py` — windowIds, modes, monitors, paths, CON layouts,
+   `lastTabFocusId`).
+4. **Then** re-plan with `role_pins` and apply residual moves/layout/order/focus
+   in one batch.
+5. Optional short second stable wait + belt move pass if just_opened still
+   wrong mon.
+
+Fingerprint thrash, not wall-clock alone, is the gate: rehome only after
+the forest stops changing.
+
 `apiVersion` in Ping is **5** once RunSteps exists (was 4 with settings;
 was 3 with PlaceNext; `TREE_QUERY` stays 1 as `queryApiVersion`;
 tile-select grammar still version 2).
@@ -721,10 +739,11 @@ schema, then either imperative steps or reconcile:
 | **force** | `--force-launch` → steps only (errors if no `steps[]`) |
 
 Reconcile apply: optional displays/settings → GetTree → `plan_reconcile` →
-extension `move`/`layout` for existing tiles → `launch` gaps → re-tree +
-residual moves/structure. `--dry-run` prints counts + plan JSON (`dryRun: true`) with
-no mutations. `--tree-file` feeds a forest offline for dry-run tests. Pure
-apply helpers: `layout_apply.py`.
+extension `move`/`layout` for existing tiles → **open all** gaps → wait
+**tree stable** (LF6 fingerprint) → residual rehome batch (+ optional belt).
+`--dry-run` prints counts + plan JSON (`dryRun: true`) with no mutations.
+`--tree-file` feeds a forest offline for dry-run tests. Pure apply helpers:
+`layout_apply.py`.
 
 **CLI UX (WR5+):** `list` is this-host only (Name + Description table on TTY;
 JSON `[{name,description}]` when piped). dry-run / apply / show share

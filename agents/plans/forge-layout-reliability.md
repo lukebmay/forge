@@ -1,6 +1,6 @@
 # Plan: Layout reliability (tab focus + partial reopen)
 
-**Status:** **code complete** (LF5+OP2 A/B AGREE); live re-verify  
+**Status:** **code complete** (LF6 A/B AGREE); live re-verify  
 **Priority:** **P0** daily-driver on `black`  
 **Updated:** 2026-07-29  
 **Related:** [forge-workon-thrash-zero.md](./forge-workon-thrash-zero.md) (historical),
@@ -9,16 +9,15 @@ tab chrome / session focus archive entries
 
 ### Session note (2026-07-29)
 
-**LF5 + OP2 shipped (A/B AGREE)** · commit `3c26f78`.
+**LF6 shipped (A/B AGREE):** open all → whole-tree stable → residual rehome batch
+(+ optional belt second stable). Ghostty self-move mitigated by waiting for forest
+fingerprint (windowId/mode/mon/path + CON layout/lastTabFocus).
 
-| Issue | Fix |
-| --- | --- |
-| Layout move before settle | Wait until TILE settled before residual/belt Move |
-| Dock 2nd Ghostty float until drag | dock appId normalize; firstRender always places; dock create 50ms |
+**Live:** install + close left chrome + right Ghostty → `forge layout dev`.
 
-**Settle:** windowId + mode TILE|GRAB_TILE + reasonable rect + mon≥0 if present.  
-**Live after install:** close chrome+right Ghostty → layout dev; dock Ghostty mon1.
+
 ---
+
 
 ## Why
 
@@ -114,8 +113,7 @@ Operator must click the **dock item** first; after that, tab focus works again.
 | LF4 | [completed/…_lf4-ghostty-open-mon](./forge-layout-reliability/completed/forge-layout-reliability_lf4-ghostty-open-mon.md) | unit; **live fail → LF5** |
 | LF5 | [completed/…_lf5-settle-before-move](./forge-layout-reliability/completed/forge-layout-reliability_lf5-settle-before-move.md) | **done** (A/B; live re-verify) |
 | OP2 | [completed/…_op2-dock-second-tile](./forge-layout-reliability/completed/forge-layout-reliability_op2-dock-second-tile.md) | **done** (A/B; live re-verify) |
-| **LF5** | [forge-layout-reliability_lf5-settle-before-move](../tasks/forge-layout-reliability_lf5-settle-before-move.md) | **A done** (await B) |
-| **OP2** | [forge-layout-reliability_op2-dock-second-tile](../tasks/forge-layout-reliability_op2-dock-second-tile.md) | **A done** (await B) |
+| LF6 | [completed/…_lf6-open-then-stable-rehome](./forge-layout-reliability/completed/forge-layout-reliability_lf6-open-then-stable-rehome.md) | **done** (A/B; live re-verify) |
 
 ## Prior work feeding LF1
 
