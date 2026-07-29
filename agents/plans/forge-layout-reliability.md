@@ -1,7 +1,7 @@
 # Plan: Layout reliability (tab focus + partial reopen)
 
-**Status:** **code complete** (LF6 A/B AGREE); live re-verify  
-**Priority:** **P0** daily-driver on `black`  
+**Status:** **shipped** (LF6 live OK on black)  
+**Priority:** historical / keep LF6 until [settle-pure](./forge-layout-settle-pure.md)  
 **Updated:** 2026-07-29  
 **Related:** [forge-workon-thrash-zero.md](./forge-workon-thrash-zero.md) (historical),
 [layout-mon-claim-order](../tasks/layout-mon-claim-order.md) (superseded by LF1),
@@ -9,11 +9,9 @@ tab chrome / session focus archive entries
 
 ### Session note (2026-07-29)
 
-**LF6 shipped (A/B AGREE):** open all → whole-tree stable → residual rehome batch
-(+ optional belt second stable). Ghostty self-move mitigated by waiting for forest
-fingerprint (windowId/mode/mon/path + CON layout/lastTabFocus).
-
-**Live:** install + close left chrome + right Ghostty → `forge layout dev`.
+**LF6 live OK (user 2026-07-29):** open all → whole-tree stable → residual rehome
+batch works for close chrome + right Ghostty. Jumpiness remains → new plan
+[forge-layout-settle-pure.md](./forge-layout-settle-pure.md) (D0 discussion).
 
 
 ---

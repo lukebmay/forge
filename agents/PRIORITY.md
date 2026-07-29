@@ -8,9 +8,9 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **live** | Install + re-verify LF6 open-then-stable-rehome | [forge-layout-reliability.md](./plans/forge-layout-reliability.md) |
+| **1** | **D0** | Discussion: pure settle / low-jump rehome (settleTimes, batch vs serial) | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
 | 2 | stacks SL5 | Live verify stack↔tab / merge on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
-| 3 | layout polish | Live-drive bare-array `forge layout` | Day-to-day once live OK |
+| 3 | layout polish | Live-drive bare-array `forge layout` | Day-to-day |
 | 4 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
 
 **Shipped this session**
@@ -30,8 +30,9 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Doc | Role |
 | --- | --- |
-| [forge-layout-reliability.md](./plans/forge-layout-reliability.md) | LF1–LF4 + SI1 **code done** — live verify next |
-| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED product path (after live) |
+| [forge-layout-reliability.md](./plans/forge-layout-reliability.md) | LF1–LF6 **live OK** — keep open-then-stable-rehome |
+| [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) | **Next design** — low-jump pure settle (D0 discussion) |
+| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED product path |
 | [forge-layout-sugar.md](./plans/forge-layout-sugar.md) | Main path **done** (LS1–2,4–5,7–8) |
 | [docs/user/layout.md](../docs/user/layout.md) | Layout profiles + survivor open-leaf rule |
 | [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | Historical thrash-zero |
@@ -42,8 +43,8 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [layout reliability](./plans/forge-layout-reliability.md) live verify | Code **done**; install + black repro |
-| P1 | [stacked](./plans/forge-stacked-layouts.md) | Phase 1 **done**; SL5 live after LF* live |
+| P1 | [layout settle pure](./plans/forge-layout-settle-pure.md) D0 | Discussion only; LF6 stays until design lock |
+| P1 | [stacked](./plans/forge-stacked-layouts.md) | Phase 1 **done**; SL5 live |
 | P2 | Live layout daily-drive | Bare-array sugar live on black |
 | P3 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
 
