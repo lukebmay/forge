@@ -17,15 +17,15 @@
 
 | Item | Note |
 | --- | --- |
-| **LF1** partial reopen | mon ensure scope; role_pins residual; survivor focus; PlaceNext class |
+| **LF1** partial reopen | mon ensure scope; role_pins residual; survivor focus |
 | **LF2** tab click focus | raise→focus→activate; chrome restack; hover no re-bury |
-| Two-pass mon claim | Planner unit (earlier); live path closed by LF1 |
+| **LF3** mon1 Ghostty reopen | PlaceNext reverse-DNS stem; residual moves before still-open fail |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Doc | Role |
 | --- | --- |
-| [forge-layout-reliability.md](./plans/forge-layout-reliability.md) | LF1+LF2 **code done** — live verify next |
+| [forge-layout-reliability.md](./plans/forge-layout-reliability.md) | LF1–LF3 **code done** — live verify next |
 | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED product path (after live) |
 | [forge-layout-sugar.md](./plans/forge-layout-sugar.md) | Main path **done** (LS1–2,4–5,7–8) |
 | [docs/user/layout.md](../docs/user/layout.md) | Layout profiles + survivor open-leaf rule |
