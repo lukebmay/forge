@@ -1,7 +1,9 @@
 # layout-mon-claim-order
 
-**Status:** verified  
-**Updated:** 2026-07-29
+**Status:** incomplete vs live — superseded by LF1  
+**Updated:** 2026-07-29  
+**Follow-up:** [forge-layout-reliability_lf1-partial-reopen](./forge-layout-reliability_lf1-partial-reopen.md)
+(user still sees mon1 3-unit Ghostty thrash after close mon0 Ghostty + Chrome)
 
 ## Problem
 

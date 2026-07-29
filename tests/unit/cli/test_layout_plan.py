@@ -892,6 +892,245 @@ class TestTwoPassMonClaim(unittest.TestCase):
         self.assertEqual(anchors, [])
 
 
+class TestPartialReopenLF1(unittest.TestCase):
+    """
+    LF1: close mon0 Ghostty + chrome, keep Grok + mon1 desk; forge layout dev.
+    mon0 ghostty open (not steal mon1); Grok stays open leaf; residual pins.
+    """
+
+    PROFILE = [
+        [["google-chrome", "Grok"], "ghostty"],
+        ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
+    ]
+
+    def _forest_repro(self):
+        """mon0: Grok only. mon1: ghostty | tab(YT,Gmail,Voice)."""
+        return {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "lastTabFocusId": 101,
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 101,
+                            "wmClass": "Google-chrome",
+                            "title": "Grok",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 201,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Voice",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+
+    def test_plan1_open_mon0_term_reuse_mon1_focus_grok(self):
+        plan = plan_reconcile(self._forest_repro(), self.PROFILE)
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["ghostty"]["status"], "open")
+        self.assertEqual(by_id["ghostty-2"]["status"], "reused")
+        self.assertEqual(by_id["ghostty-2"]["windowId"], 201)
+        self.assertEqual(by_id["google-chrome"]["status"], "open")
+        self.assertEqual(by_id["Grok"]["status"], "reused")
+        # Peer mon ensure must not thrash mon1 when only mon0 places.
+        mon1_ensures = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") == "mon1"
+        ]
+        self.assertEqual(mon1_ensures, [])
+        focus = [a for a in plan["actions"] if a.get("op") == "focus"]
+        self.assertTrue(
+            any(
+                a.get("role") == "Grok" and a.get("reason") == "survivor"
+                for a in focus
+            ),
+            focus,
+        )
+        self.assertTrue(
+            any(a.get("op") == "open" and a.get("role") == "ghostty" for a in plan["actions"])
+        )
+
+    def test_residual_pin_chrome_title_mismatch_move_ghostty_focus_grok(self):
+        """After open: chrome title misses match; ghostty on wrong mon; pins fix."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 301,
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 301,
+                                    "wmClass": "Google-chrome",
+                                    "title": "New Tab",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 101,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Grok",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 201,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Voice",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 401,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 1,
+                            "children": [],
+                        },
+                    ],
+                },
+            ],
+        }
+        plan = plan_reconcile(
+            forest,
+            self.PROFILE,
+            role_pins={"google-chrome": 301, "ghostty": 401},
+            just_opened_roles={"google-chrome", "ghostty"},
+        )
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["google-chrome"]["status"], "reused")
+        self.assertEqual(by_id["google-chrome"]["windowId"], 301)
+        self.assertEqual(by_id["ghostty"]["status"], "move")
+        self.assertEqual(by_id["ghostty"]["windowId"], 401)
+        self.assertEqual(by_id["ghostty-2"]["windowId"], 201)
+        self.assertEqual(by_id["Grok"]["status"], "reused")
+        opens = [a for a in plan["actions"] if a.get("op") == "open"]
+        self.assertEqual(opens, [])
+        moves = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "move" and a.get("windowId") == 401
+        ]
+        self.assertEqual(len(moves), 1)
+        self.assertEqual(moves[0].get("slot"), "mon0.ghostty")
+        focus = [a for a in plan["actions"] if a.get("op") == "focus"]
+        self.assertTrue(
+            any(
+                a.get("role") == "Grok"
+                and a.get("reason") == "survivor"
+                and a.get("selector") == "id:101"
+                for a in focus
+            ),
+            focus,
+        )
+        # mon1 already correct — no mon1 ensure thrash
+        self.assertFalse(
+            any(
+                a.get("op") == "ensure_layout" and a.get("slot") == "mon1"
+                for a in plan["actions"]
+            ),
+            plan["actions"],
+        )
+
+
 class TestTabRoleOrder(unittest.TestCase):
     """In-group tab order (profile roles[] order) when already co-tabbed."""
 
@@ -2046,7 +2285,8 @@ class TestPlanStructureRepair(unittest.TestCase):
             for a in plan["actions"]
             if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
         }
-        self.assertEqual(by_slot["mon0"]["windowIds"], [103])
+        # Only mons with role open/move get mon ensure (avoid peer thrash / LFT steal).
+        self.assertNotIn("mon0", by_slot)
         self.assertEqual(by_slot["mon1"]["windowIds"], [104])
         move = next(a for a in plan["actions"] if a.get("op") == "move")
         self.assertEqual(move.get("position"), "start")

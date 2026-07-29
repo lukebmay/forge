@@ -157,6 +157,14 @@ save wraps with `"focus"` (object form).
   (does not reorder the tab strip; L→R order stays as listed). Same sugar:
   token, `n` index into the group content, or `[token, n]` among matches in the
   group only. Save emits `[token, n]` when two leaves share a token (e.g. dual Grok).
+- **Open leaf when `active` is omitted (reopen):** if a tab/stack already has a
+  surviving member and layout **opens** a companion into that group, Forge keeps
+  the open leaf on the **survivor** (prefers live `lastTabFocus` among survivors,
+  else the first surviving role in profile order). Newly opened windows do **not**
+  steal the open tab. Set `"active"` when you always want a specific member (e.g.
+  always Grok after load). Bare dual-mon arrays without `active` use this survivor
+  rule — useful after closing chrome and re-running `forge layout dev` with Grok
+  still on the desk.
 - `tiles` as mon map (`mon0` / `mon1` / `primary` / stableKey) remains valid **advanced** sugar.
 - `floating` only when you have float roles.
 

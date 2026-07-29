@@ -1686,7 +1686,13 @@ def _normalize_match(match: dict[str, Any], where: str) -> dict[str, Any]:
 
 
 def plan_reconcile(
-    forest: dict, profile: dict, *, clean: bool = False, safe: bool = False
+    forest: dict,
+    profile: dict,
+    *,
+    clean: bool = False,
+    safe: bool = False,
+    role_pins: Optional[dict[str, Any]] = None,
+    just_opened_roles: Optional[Iterable[str]] = None,
 ) -> dict[str, Any]:
     """
     Build a reconcile plan from a GetTree forest + validated (or raw) v2 profile.
@@ -1697,6 +1703,12 @@ def plan_reconcile(
     safe=True: open missing roles + move roles to correct mon only;
     no park/close, no collect keep, no structure, no mon ensure.
     thrashState still reported (Mode A/B detection); Mode B park skipped.
+
+    role_pins: optional role id → windowId from a successful launch (residual
+    replan after open). Pins claim by id when title match still fails.
+
+    just_opened_roles: role ids launched this apply (residual). Survivor tab
+    focus prefers pre-existing group members over these.
 
     Returns:
       {
@@ -1725,6 +1737,12 @@ def plan_reconcile(
     prof = resolve_profile_mon_keys(prof, forest)
     clean = bool(clean)
     safe = bool(safe)
+    pins = _normalize_role_pins(role_pins)
+    opened_roles = {
+        str(x).strip()
+        for x in (just_opened_roles or [])
+        if x is not None and str(x).strip()
+    }
 
     # Mode B gate — once; reused for residual policy + plan.thrashState.
     thrash_state = detect_thrash(forest, prof)
@@ -1748,6 +1766,7 @@ def plan_reconcile(
         "focused": 0,
     }
     slots_needing_layout: dict[str, str] = {}  # slot → mode
+    mons_with_placement: set[str] = set()
 
     layout_slot_modes = _slot_layout_modes(prof)
     overflow_slot = prof["overflow"]["slot"]
@@ -1765,6 +1784,8 @@ def plan_reconcile(
     # Two-pass claim: same-mon first so earlier roles do not steal later mons'
     # only matching window (e.g. mon0.ghostty vs mon1.ghostty-2).
     role_windows = _two_pass_claim_windows(prof["roles"], windows)
+    # Launch pins (by windowId) fill roles title match still misses after open.
+    role_windows = _apply_role_pins(prof["roles"], windows, role_windows, pins)
 
     for role, chosen in zip(prof["roles"], role_windows):
         rid = role["id"]
@@ -1783,6 +1804,9 @@ def plan_reconcile(
                     "slot": slot,
                 }
             )
+            mon_head = _slot_mon_key(slot)
+            if mon_head:
+                mons_with_placement.add(mon_head)
             mode = layout_slot_modes.get(slot)
             if mode and not safe:
                 slots_needing_layout[slot] = mode
@@ -1802,6 +1826,9 @@ def plan_reconcile(
             else:
                 entry["status"] = "move"
                 counts["moved"] += 1
+                mon_head = _slot_mon_key(slot)
+                if mon_head:
+                    mons_with_placement.add(mon_head)
                 move_act: dict[str, Any] = {
                     "op": "move",
                     "role": rid,
@@ -1956,12 +1983,15 @@ def plan_reconcile(
     )
     ensure_actions: list[dict[str, Any]] = []
     if has_work and not safe:
-        # mon-level splits only when role placement changes.
+        # mon-level splits only for mons that actually open/move roles.
+        # Touching peer mons steals LFT/focus and can derail PlaceNext.
         # Anchor on mon-direct children (term slots), never tab-group members —
         # layout acts on the window's parent CON, so chrome in a tab would
         # demote TABBED → HSPLIT.
         if has_role_placement:
             for mon_key, mon_body in prof.get("layout", {}).items():
+                if mon_key not in mons_with_placement:
+                    continue
                 split = mon_body.get("split")
                 if not split:
                     continue
@@ -2002,7 +2032,13 @@ def plan_reconcile(
         deduped_ensure.append(a)
 
     # Active tab/stack + profile focus → focus ops after structure settles.
-    focus_actions = _focus_actions_from_profile(prof, role_results)
+    # Survivor open-leaf when profile omits active (bare-array reopen).
+    focus_actions = _focus_actions_from_profile(
+        prof,
+        role_results,
+        forest=forest,
+        just_opened_roles=opened_roles,
+    )
     counts["focused"] = len(focus_actions)
     if focus_actions:
         has_work = True
@@ -2426,6 +2462,77 @@ def _two_pass_claim_windows(
     return chosen
 
 
+def _normalize_role_pins(role_pins: Optional[dict[str, Any]]) -> dict[str, Any]:
+    """role id → windowId (skip empty)."""
+    if not isinstance(role_pins, dict):
+        return {}
+    out: dict[str, Any] = {}
+    for rid, wid in role_pins.items():
+        if rid is None or wid is None or str(wid).strip() == "":
+            continue
+        key = str(rid).strip()
+        if key:
+            out[key] = wid
+    return out
+
+
+def _apply_role_pins(
+    roles: list[dict[str, Any]],
+    windows: list[dict[str, Any]],
+    chosen: list[Optional[dict[str, Any]]],
+    role_pins: dict[str, Any],
+) -> list[Optional[dict[str, Any]]]:
+    """
+    Force-claim windows by id for roles still unclaimed after match-based claim.
+
+    Used after open: chrome may map with title "New Tab" while match wants
+    title~= Google Chrome — pin from launch wait still binds the role.
+    """
+    if not role_pins:
+        return chosen
+    by_wid: dict[str, dict[str, Any]] = {}
+    for w in windows:
+        wid = w.get("windowId")
+        if wid is not None and str(wid).strip() != "":
+            by_wid[str(wid)] = w
+    claimed: set[str] = set()
+    for w in chosen:
+        if w is not None:
+            claimed.add(_window_key(w))
+    out = list(chosen)
+    for i, role in enumerate(roles):
+        if out[i] is not None:
+            continue
+        rid = role.get("id")
+        if rid is None:
+            continue
+        pin = role_pins.get(str(rid))
+        if pin is None:
+            continue
+        w = by_wid.get(str(pin))
+        if w is None:
+            continue
+        key = _window_key(w)
+        if key in claimed:
+            continue
+        out[i] = w
+        claimed.add(key)
+    return out
+
+
+def _slot_mon_key(slot: Any) -> Optional[str]:
+    """mon0.s0 → mon0; mon1 → mon1."""
+    if slot is None:
+        return None
+    s = str(slot).strip()
+    if not s:
+        return None
+    head = s.split(".", 1)[0]
+    if _MON_KEY_RE.match(head) or head == "primary":
+        return head
+    return None
+
+
 def _class_eq(a: Any, b: Any) -> bool:
     """Casefold equality, plus reverse-DNS stem sugar (ghostty ↔ com.mitchellh.ghostty)."""
     if a is None or b is None:
@@ -2463,12 +2570,23 @@ def _window_summary(w: dict[str, Any]) -> dict[str, Any]:
 
 
 def _focus_actions_from_profile(
-    prof: dict[str, Any], role_results: list[dict[str, Any]]
+    prof: dict[str, Any],
+    role_results: list[dict[str, Any]],
+    *,
+    forest: Any = None,
+    just_opened_roles: Optional[set[str]] = None,
 ) -> list[dict[str, Any]]:
     """
     Emit focus ops for tab/stack active leaves, then profile-level focus.
 
-    Order: group actives first (sets lastTabFocus), then profile focus (keyboard).
+    Order: group actives first (sets lastTabFocus), then survivor open-leaf
+    when profile omits active, then profile focus (keyboard).
+
+    Survivor rule (bare-array reopen): when a tab/stack has no profile
+    `active`, keep the open leaf on a pre-existing group member rather than
+    a role just opened into the group. Prefer live lastTabFocus among
+    survivors; else the sole survivor; else first survivor in profile order.
+
     Skips roles still opening (no windowId yet) — follow-up replan covers them.
     """
     by_id = {
@@ -2478,6 +2596,8 @@ def _focus_actions_from_profile(
     }
     actions: list[dict[str, Any]] = []
     seen_sels: set[str] = set()
+    opened = just_opened_roles or set()
+    last_tab_by_wid = _last_tab_focus_window_ids(forest) if forest is not None else set()
 
     def add_role_focus(rid: Any, *, reason: str) -> None:
         if rid is None:
@@ -2511,13 +2631,21 @@ def _focus_actions_from_profile(
             nested = ch.get("children")
             if isinstance(nested, list) and nested:
                 walk(nested)
+            lay = str(ch.get("layout") or "").strip().lower()
+            roles_list = ch.get("roles") if isinstance(ch.get("roles"), list) else []
+            is_group = lay in ("tabbed", "stacked") or len(roles_list) >= 2
+            if not is_group:
+                continue
             active = ch.get("active")
             if active is not None and str(active).strip():
-                lay = str(ch.get("layout") or "").strip().lower()
-                if lay in ("tabbed", "stacked") or (
-                    isinstance(ch.get("roles"), list) and len(ch.get("roles") or []) >= 2
-                ):
-                    add_role_focus(str(active).strip(), reason="active")
+                add_role_focus(str(active).strip(), reason="active")
+                continue
+            # No profile active: preserve survivor open leaf when companions join.
+            survivor = _pick_survivor_open_role(
+                roles_list, by_id, opened, last_tab_by_wid
+            )
+            if survivor is not None:
+                add_role_focus(survivor, reason="survivor")
 
     for mon_body in (prof.get("layout") or {}).values():
         if isinstance(mon_body, dict):
@@ -2528,6 +2656,81 @@ def _focus_actions_from_profile(
         add_role_focus(str(focus).strip(), reason="profile")
 
     return actions
+
+
+def _last_tab_focus_window_ids(forest: Any) -> set[str]:
+    """Collect lastTabFocusId values from CON/MONITOR nodes in a forest."""
+    out: set[str] = set()
+
+    def walk(n: Any) -> None:
+        if not isinstance(n, dict):
+            return
+        tf = n.get("lastTabFocusId")
+        if tf is not None and str(tf).strip() != "":
+            out.add(str(tf))
+        for c in n.get("children") or n.get("childNodes") or []:
+            walk(c)
+
+    if isinstance(forest, dict):
+        mons = forest.get("monitors")
+        if isinstance(mons, list):
+            for m in mons:
+                walk(m)
+        else:
+            walk(forest)
+    elif isinstance(forest, list):
+        for m in forest:
+            walk(m)
+    return out
+
+
+def _pick_survivor_open_role(
+    role_ids: list[Any],
+    by_id: dict[str, dict[str, Any]],
+    just_opened: set[str],
+    last_tab_focus_wids: set[str],
+) -> Optional[str]:
+    """
+    Role id to keep open when profile has no active and companions (re)join.
+
+    Survivors = claimed roles not in just_opened and not still open-without-id.
+    Only emits when at least one companion is joining (open status or just_opened).
+    """
+    members: list[dict[str, Any]] = []
+    for rid in role_ids:
+        if rid is None:
+            continue
+        r = by_id.get(str(rid))
+        if r:
+            members.append(r)
+    if len(members) < 2:
+        return None
+
+    joining = False
+    survivors: list[dict[str, Any]] = []
+    for r in members:
+        rid = str(r.get("id"))
+        status = str(r.get("status") or "")
+        is_open_status = status == "open"
+        is_just_opened = rid in just_opened
+        if is_open_status or is_just_opened:
+            joining = True
+        wid = r.get("windowId")
+        if wid is None or str(wid).strip() == "":
+            continue
+        if is_open_status or is_just_opened:
+            continue
+        survivors.append(r)
+
+    if not joining or not survivors:
+        return None
+
+    # Prefer live lastTabFocus when it still names a survivor.
+    for r in survivors:
+        if str(r.get("windowId")) in last_tab_focus_wids:
+            return str(r.get("id"))
+    # Sole survivor, else first in profile order.
+    return str(survivors[0].get("id"))
 
 
 def _slot_layout_modes(prof: dict[str, Any]) -> dict[str, str]:

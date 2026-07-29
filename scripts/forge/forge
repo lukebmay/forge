@@ -1043,7 +1043,9 @@ def do_launch(
         place_class = explicit_class
     elif class_hints:
         wait_classes = class_hints
-        place_class = None
+        # Class-specific PlaceNext so a peer open cannot steal a wildcard hint
+        # (e.g. mon0 ghostty after chrome on the same apply).
+        place_class = class_hints[0]
     else:
         wait_classes = None
         place_class = None
@@ -1703,6 +1705,7 @@ def _layout_run_reconcile(
             return rc
 
     # 2) Opens (launch + wait)
+    role_pins: dict[str, Any] = {}
     for oa in open_actions:
         fields = open_action_to_launch_fields(oa)
         role = oa.get("role")
@@ -1721,12 +1724,23 @@ def _layout_run_reconcile(
             out["apply"] = apply_log
             _layout_maybe_print_json(out, verbose=verbose, force=True)
             return 1
+        # Pin launched windowId so residual claim works when title match lags
+        # (e.g. chrome "New Tab" vs title~= Google Chrome).
+        if role is not None and result.get("windowId") is not None:
+            role_pins[str(role)] = result["windowId"]
 
     # 3) After opens: re-tree + re-plan; apply residual move/park/close/layout
     if open_actions:
         try:
             forest2 = _layout_load_tree(backend, None)
-            plan2 = plan_reconcile(forest2, data, clean=clean, safe=safe)
+            plan2 = plan_reconcile(
+                forest2,
+                data,
+                clean=clean,
+                safe=safe,
+                role_pins=role_pins or None,
+                just_opened_roles=set(role_pins.keys()) if role_pins else None,
+            )
         except Exception as e:
             _eprint(f"forge layout: re-plan after open failed: {e}")
             out = _layout_plan_meta(resolved, name, plan, dry_run=False)

@@ -8,32 +8,31 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **stacks SL5** | Live verify stack↔tab / merge / stacked profiles on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
-| 2 | layout polish | Live-drive bare-array `forge layout` | Day-to-day on black |
-| 3 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
+| **1** | **LF2** | Tab click sometimes needs dock prime before focus works | [forge-layout-reliability.md](./plans/forge-layout-reliability.md) |
+| 2 | LF1 live | Operator re-verify partial reopen on black after install | same plan (code done) |
+| 3 | stacks SL5 | Live verify stack↔tab / merge / stacked profiles on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| 4 | layout polish | Live-drive bare-array `forge layout` | Day-to-day once LF* green |
+| 5 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
 
-**Shipped this session**
+**Shipped this session / recently**
 
 | Item | Note |
 | --- | --- |
-| Tab/stack order+open on install | title-before-geo match; lastTabFocus on tab focus; raise all groups; CLI portable flush |
-| Install focus preserve | focusWindowId survives id churn + shield thrash; idle re-activate |
-| STACKED Phase 1 keys | Stack mode on; tab↔stack + merge binds; kits + `forge keybind`; RunSteps parity; docs/install |
-| STACKED SL4 | CLI regression: ensure stacked on tabbed/flat; nothingToDo on pair; save RT |
-| STACKED SL3 | thrash: stacked multi-role co-group + nested-split parity with tabbed |
-| STACKED SL1 | save STACKED→`{layout:stacked,content}`; desugar multi-role stacked; tests/docs |
-| STACKED SL0 | settings.schema.json stack default false; layouts/troubleshooting docs |
-| STACKED spike inventory | Gaps + SL0–SL6 breakdown; recommend keep opt-in |
+| Two-pass mon claim | Planner unit OK; **live LF1 still open** |
+| Tab/stack order+open on install | title-before-geo match; lastTabFocus on tab focus; raise all groups |
+| Install focus preserve | focusWindowId survives id churn + shield thrash |
+| STACKED Phase 1 keys | Stack mode on; tab↔stack + merge binds |
+| STACKED SL0–SL4 | schema, save RT, thrash parity, CLI regression |
 | Mon L/R + tab group order | `ensure_order` mon + in-tab |
-| `workon` → `layout` | Full rename; `layout save` host-aware |
-| Interim flat Chrome cells + class stem | Toward sugar plan LS* |
-| agents general no-BC-in-dev | shellrc catalog |
+| `workon` → `layout` | Full rename; host-aware save |
+| layout-sugar LS1–2,4–5,7–8 | Main path done |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Doc | Role |
 | --- | --- |
-| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | **Next** — STACKED product path |
+| [forge-layout-reliability.md](./plans/forge-layout-reliability.md) | **Next** — tab focus + partial reopen thrash |
+| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED product path (after LF*) |
 | [forge-layout-sugar.md](./plans/forge-layout-sugar.md) | Main path **done** (LS1–2,4–5,7–8) |
 | [docs/user/layout.md](../docs/user/layout.md) | Layout profiles (bare array first) |
 | [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | Historical thrash-zero |
@@ -45,14 +44,16 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [stacked](./plans/forge-stacked-layouts.md) | Phase 1 **done**; next SL5 live verify (optional SL6 polish) |
-| P1 | Live layout daily-drive | Bare-array sugar live on black |
-| P2 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
+| **P0** | [layout reliability](./plans/forge-layout-reliability.md) LF2 | **Active** — tab focus; LF1 code done (live optional) |
+| P1 | [stacked](./plans/forge-stacked-layouts.md) | Phase 1 **done**; SL5 live verify after LF* |
+| P2 | Live layout daily-drive | Bare-array sugar live on black |
+| P3 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
 
 ### Done recently
 
 | Item | Note |
 | --- | --- |
+| layout two-pass mon claim | unit green; live still filed as LF1 |
 | layout list docs/tests | host-only table UX + tree-root; A/B AGREE |
 | layout-sugar LS4–5 | bare save + docs/examples; A/B AGREE |
 | layout-sugar LS7–8 | auto description + save K/D/E UX; A/B AGREE |
