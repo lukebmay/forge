@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-07-29  
+**Updated:** 2026-07-30  
 **Lens:** day-to-day impact on `black` (dual 4K, X11, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -8,38 +8,26 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **D0 settle** | Discussion: pure settle / low-jump rehome | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
-| 2 | stacks SL5 | Live verify stack↔tab / merge on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
-| 3 | resize/autotile | Discussion (human): yuiop + auto-tile | [forge-resize-and-autotile.md](./plans/forge-resize-and-autotile.md) · [blocker](./blockers/resize-autotile-design.md) |
-
-**Shipped this session (layout sizes)**
-
-| Item | Note |
-| --- | --- |
-| **SZ1–SZ3** | Custom `share` on layout sugar; save/load/apply; install track; live black |
+| **1** | **D0 settle** | **User lock** on pure settle hybrid (draft in plan) | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
+| 2 | resize/autotile | Discussion (human): yuiop + auto-tile | [forge-resize-and-autotile.md](./plans/forge-resize-and-autotile.md) · [blocker](./blockers/resize-autotile-design.md) |
+| 3 | stacks SL6 | Optional polish (float residual in stack ensure) | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 
 **Shipped this session**
 
 | Item | Note |
 | --- | --- |
-| **LF1** partial reopen | mon ensure scope; role_pins residual; survivor focus |
-| **LF2** tab click focus | raise→focus→activate; chrome restack; hover no re-bury |
-| **LF3** mon1 Ghostty reopen | PlaceNext reverse-DNS stem; residual moves before still-open fail |
-| **LF4** Ghostty multi-instance open | no single-instance desktop; belt mon move |
-| **SI1** install snapshot focus | sync lastTabFocus from focus before save |
-| **LF5** settle before layout move | wait TILE before residual Move |
-| **OP2** dock second tile | dock appId normalize + firstRender place |
-| **LF6** open-then-stable-rehome | whole-tree stable before residual rehome |
+| **SZ1–SZ3** | Custom `share` — **merged to master** + installed on black |
+| **SL5** | STACKED live verify on black (toggle/save/rehome; Ghostty kept) |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Doc | Role |
 | --- | --- |
 | [forge-layout-reliability.md](./plans/forge-layout-reliability.md) | LF1–LF6 **live OK** — keep open-then-stable-rehome |
-| [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) | **Next design** — low-jump pure settle (D0 discussion) |
-| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED product path |
+| [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) | **D0 draft ready** — hybrid settle; needs user lock |
+| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED **SL0–SL5 done**; SL6 optional |
 | [forge-layout-sugar.md](./plans/forge-layout-sugar.md) | Main path **done** (LS1–2,4–5,7–8) |
-| [forge-layout-sizes.md](./plans/forge-layout-sizes.md) | Custom `share` **done** (SZ1–SZ3) on `plan/forge-layout-sizes` |
+| [forge-layout-sizes.md](./plans/forge-layout-sizes.md) | Custom `share` **done** (SZ1–SZ3) — **merged master** |
 | [docs/user/layout.md](../docs/user/layout.md) | Layout profiles + share sugar + survivor open-leaf |
 | [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | Historical thrash-zero |
 
@@ -49,8 +37,8 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| P1 | [layout settle pure](./plans/forge-layout-settle-pure.md) D0 | Discussion only; LF6 stays until design lock |
-| P1 | [stacked](./plans/forge-stacked-layouts.md) | Phase 1 **done**; SL5 live |
+| P1 | [layout settle pure](./plans/forge-layout-settle-pure.md) D0 | Draft hybrid ready; **user lock** then PS1 |
+| P1 | [stacked](./plans/forge-stacked-layouts.md) | SL0–SL5 **done**; SL6 optional |
 | P2 | Live layout daily-drive | Bare-array sugar live on black |
 | P3 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
 

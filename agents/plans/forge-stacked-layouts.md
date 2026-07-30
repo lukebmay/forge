@@ -1,9 +1,15 @@
 # Plan: STACKED layouts as a supported product path
 
-**Status:** defaults + keybinds done — next SL5 live (ops, optional)  
-**Updated:** 2026-07-28  
+**Status:** Phase 1 + SL5 live **done** — SL6 polish optional  
+**Updated:** 2026-07-30  
 
-**Session note:** Live STACKED on black (Shell 46):
+**Session note (2026-07-30 SL5):** Live verify on black **passed** — TABBED↔STACKED
+cycle, absolute stacked layout, save `{stack:[…]}` sugar, soft rehome no open/move,
+Ghostty survived install HUP, no Shell thrash. Edge: float residual absorbed into
+stack bag on structure ensure (peeled with mon-root move). Task:
+[completed/forge-stacked-layouts_sl5-live.md](./forge-stacked-layouts/completed/forge-stacked-layouts_sl5-live.md)
+
+**Session note (earlier):** Live STACKED on black (Shell 46):
 
 1. **Horizontal chrome** — `Compat.setBoxOrientation` (`.vertical` pre-48).
 2. **Bar height** — pin `set_height(stackedHeight)`; no column `y_expand`. Scale:
@@ -181,8 +187,8 @@ should be a deliberate, documented mode — not half-broken residue.
 | **SL2** | **Tiles sugar for stacked:** `{ "layout": "stacked", "content": [...] }` + docs | SL1 | **S** — **done with SL1** |
 | **SL3** | **Thrash / ensure parity:** multi-role `stacked` slots get same co-group thrash + ensure behavior as tabbed | SL1 | **S** — **done** |
 | **SL4** | **Regression pack:** unit CLI + any missing DnD/toggle; optional e2e smoke with flag on (STACKED toggle + focus restack already partly in bridge) | SL1 | **S–M** — **done** |
-| **SL5** | **Live verify on black (opt-in):** enable stack mode; toggle / DnD stacked / layout profile with stacked cell; soft rehome dual-mon; no Shell thrash | SL0–SL1 preferred | **S** (ops) |
-| **SL6** | **Polish (optional):** prefs graying of DnD=stacked when flag off; cycle-stack keybind; auto-exit-stacked symmetry — only if product wants | SL0 | **S–M** |
+| **SL5** | **Live verify on black (opt-in):** enable stack mode; toggle / DnD stacked / layout profile with stacked cell; soft rehome dual-mon; no Shell thrash | SL0–SL1 preferred | **S** (ops) — **done** |
+| **SL6** | **Polish (optional):** prefs graying of DnD=stacked when flag off; cycle-stack keybind; auto-exit-stacked symmetry; float residuals not absorbed into stack ensure — only if product wants | SL0 | **S–M** |
 
 **Out of scope unless requested:** flip default to stack-on; replace tabbed daily driver; nested stack redesign.
 
@@ -190,8 +196,8 @@ should be a deliberate, documented mode — not half-broken residue.
 
 ## Next task
 
-→ **`SL5`** live verify on black (optional).  
-SL0–SL4 + defaults/keybinds done. SL6 polish only if product wants.
+→ **SL6 polish optional** (or stop — product path usable).  
+SL0–SL5 done.
 
 ## Related
 

@@ -1,18 +1,17 @@
 # Plan: Custom tile sizes in layout sugar + tree track
 
-**Status:** Complete (SZ1–SZ3) — merge when ready  
-**Updated:** 2026-07-29  
-**Branch:** `plan/forge-layout-sizes`  
+**Status:** Complete (SZ1–SZ3) — **merged to master**  
+**Updated:** 2026-07-30  
+**Branch:** `plan/forge-layout-sizes` (merged → `master` @ `05f944f`)  
 **Goal:** Custom widths/heights (sibling `percent` + `userSized`) are preserved
 wherever we track the tree: install/update session restore, layout save, layout
 load/apply — with dead-simple sugar.
 
 ### Session note (overwrite)
 
-**SZ1–SZ3 done (A/B AGREE on SZ1+SZ2; SZ3 docs).** Share sugar save/load/apply +
-RunSteps `size`; live black 0.67/0.33 round-trip; session-layout percent/userSized
-OK. Fixes: userSized skip min-size write-back; suppress entered-monitor rehome
-during `tree.apply`. Wrap-up local commit on plan branch (no push).
+**Merged to master 2026-07-30** (fast-forward `05f944f`). SZ1–SZ3 done:
+share sugar save/load/apply + RunSteps `size`; live black 0.67/0.33; install track.
+No push.
 
 ## Product target
 

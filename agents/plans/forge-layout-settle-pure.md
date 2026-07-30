@@ -1,15 +1,16 @@
 # Plan: Pure layout settle / low-jump rehome
 
-**Status:** draft — **D0 discussion only** (no implement yet)  
+**Status:** draft — **D0 awaiting user lock** (recommendation drafted)  
 **Priority:** P1 (after daily-driver LF6 works; polish jumpiness)  
-**Updated:** 2026-07-29  
+**Updated:** 2026-07-30  
 **Base:** this tree (`lukebmay/forge`)  
 **Related:** [forge-layout-reliability.md](./forge-layout-reliability.md) (LF1–LF6 shipped; **keep current open-then-stable-rehome for now**)
 
-### Session note
+### Session note (overwrite)
 
-Plan opened after LF6 **worked live** on black, but apply still feels jumpy.
-Product keeps LF6 behavior until a purer design lands. First task = discussion.
+**D0 draft recommendation ready for user lock (2026-07-30).** LF6 stays
+production until an implement slice ships. See **Recommended product path**
+below; discussion task still open until human locks.
 
 ---
 
@@ -152,11 +153,48 @@ Define success as e.g.:
 
 ---
 
+## Recommended product path (draft — needs user lock)
+
+**Keep LF6** as the correctness backstop. First pure-settle slice is **hybrid**,
+not a full rewrite to serial-only.
+
+| Layer | Choice | Why |
+| --- | --- | --- |
+| **1. Place-at-map** | Keep PlaceNext + Ghostty multi-instance open (LF3/LF4) | Cheap right-first placement |
+| **2. Per-app settle** | Optional sugar `settleMs` map (stem / reverse-DNS); built-in default for `ghostty` ~1200–1500 ms after **open only** | Stops residual Move while app self-rehomes |
+| **3. Targeted residual** | After open settle: replan, but **Move only wrong mon / wrong parent** roles (not full desk equalize) | Cuts desk-wide snap |
+| **4. Batch fallback** | If thrash score high, cold desk, or many opens: keep LF6 whole-tree stable → batch rehome | Correctness when hybrid is insufficient |
+| **5. Signals (later)** | Extension settle token (no Meta configure N ms) before a window is “movable” — after sugar defaults | Better than fingerprint alone; bigger change |
+
+### Explicit non-choices (for now)
+
+| Idea | Verdict |
+| --- | --- |
+| Pure serial open-one-rehome-one always | Too slow; plan drift; skip as default |
+| Rect in fingerprint for all windows | Resize noise; only if gated per-app |
+| Hardcode only Ghostty in core forever | Prefer sugar + small built-in default table |
+
+### Proposed jumpiness budget (acceptance for implement slices)
+
+1. After a single-role open (e.g. mon1 ghostty), wrong-mon visible **&lt; 500 ms** once TILE.
+2. Residual apply with one open does **not** rewrite mon structure for already-correct mons.
+3. Cold empty dual-mon `forge layout dev` still ends correct (LF6 fallback OK if jumpy once).
+
+### Suggested implement queue (only after lock)
+
+| ID | Work |
+| --- | --- |
+| **PS1** | `settleMs` desugar + planner waits per opened role (open path only); default ghostty |
+| **PS2** | Targeted residual moves (wrong mon/parent only); keep LF6 batch when thrash high |
+| **PS3** | Optional extension settle token / WaitSettled (if PS1–2 still jumpy) |
+
+---
+
 ## Task queue
 
 | ID | Task | Status |
 | --- | --- | --- |
-| **D0** | [forge-layout-settle-pure_d0-discussion](../tasks/forge-layout-settle-pure_d0-discussion.md) | **next** — discussion + further planning only |
+| **D0** | [forge-layout-settle-pure_d0-discussion](../tasks/forge-layout-settle-pure_d0-discussion.md) | **awaiting user lock** on recommended path |
 
 No implementation tasks until D0 produces an agreed approach (user lock).
 

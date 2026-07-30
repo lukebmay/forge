@@ -46,6 +46,8 @@ See plan for full table. Short list:
 
 ## Session note
 
-*(overwrite when discussion happens)*
+**2026-07-30:** Draft recommendation written into plan (hybrid: PlaceNext +
+per-app `settleMs` + targeted residual Moves + LF6 batch fallback). Awaiting
+**user lock** before PS1/PS2 implement tasks. No code.
 
 Filed 2026-07-29 after LF6 live OK; plan for pure low-jump path.
