@@ -161,6 +161,25 @@ describe("run-steps pure helpers (FC4)", () => {
       );
     });
 
+    it("normalizes size with windowIds + shares", () => {
+      expect(validateStep({ op: "size", windowIds: ["id:1", "id:2"], shares: [2, 1] })).toEqual({
+        ok: true,
+        step: { op: "size", windowIds: ["id:1", "id:2"], shares: [2, 1] },
+      });
+      expect(EXTENSION_OPS).toContain("size");
+      expect(validateStep({ op: "size", windowIds: ["id:1"] }).ok).toBe(false);
+      expect(validateStep({ op: "size", windowIds: ["id:1", "id:2"], shares: [1] }).error).toMatch(
+        /shares/
+      );
+      expect(
+        validateStep({
+          op: "size",
+          windowIds: ["id:1", "id:2"],
+          shares: [1, 0],
+        }).error
+      ).toMatch(/positive/);
+    });
+
     it("normalizes close with optional force", () => {
       expect(validateStep({ op: "close", selector: "id:9" })).toEqual({
         ok: true,

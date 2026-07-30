@@ -103,6 +103,24 @@ describe("T4 sizing policy", () => {
       expect(children[0].percent).toBe(0.7);
       expect(children[1].percent).toBe(0.3);
     });
+
+    it("preserves intentional shares when any sibling is userSized", () => {
+      const { con, children } = buildSplit(
+        LAYOUT_TYPES.HSPLIT,
+        { x: 0, y: 0, width: 1800, height: 1080 },
+        [{ percent: 0.67, min_width: 900 }, { percent: 0.33 }]
+      );
+      children[0].userSized = true;
+      children[1].userSized = true;
+
+      const sizes = ctx.tree.computeSizes(con, children);
+      expect(sizes.reduce((a, b) => a + b, 0)).toBe(1800);
+      // Min paint may grow child0, but stored shares stay user intent.
+      expect(children[0].percent).toBe(0.67);
+      expect(children[1].percent).toBe(0.33);
+      expect(children[0].userSized).toBe(true);
+      expect(children[1].userSized).toBe(true);
+    });
   });
 
   describe("user resize marks userSized", () => {

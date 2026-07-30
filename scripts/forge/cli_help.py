@@ -201,6 +201,7 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
         ('"focus": "Grok"', "keyboard focus (1st match desk-wide)"),
         ('"focus": ["Grok", 1]', "2nd Grok desk-wide (0-based)"),
         ('{ "hsplit"|"vsplit": […] }', "split CON (also h/horizontal, v/vertical)"),
+        ('{ "hsplit": […], "share": [0.67, 0.33] }', "custom widths (ratio OK: [2,1])"),
         ('"ghostty" / "Grok"', "string = open + inferred match"),
         ("mon0/mon1 keys", "explicit mons — no fold when a head is missing"),
         ("monitors: [[…],[…]]", "explicit mon list (same no-fold)"),

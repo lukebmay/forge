@@ -8,10 +8,15 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **D0** | Discussion: pure settle / low-jump rehome (settleTimes, batch vs serial) | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
+| **1** | **D0 settle** | Discussion: pure settle / low-jump rehome | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
 | 2 | stacks SL5 | Live verify stack↔tab / merge on black | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
-| 3 | layout polish | Live-drive bare-array `forge layout` | Day-to-day |
-| 4 | layout-sugar LS3/LS6 | Optional park + broader fixtures | Product bar already met |
+| 3 | resize/autotile | Discussion (human): yuiop + auto-tile | [forge-resize-and-autotile.md](./plans/forge-resize-and-autotile.md) · [blocker](./blockers/resize-autotile-design.md) |
+
+**Shipped this session (layout sizes)**
+
+| Item | Note |
+| --- | --- |
+| **SZ1–SZ3** | Custom `share` on layout sugar; save/load/apply; install track; live black |
 
 **Shipped this session**
 
@@ -34,7 +39,8 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) | **Next design** — low-jump pure settle (D0 discussion) |
 | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED product path |
 | [forge-layout-sugar.md](./plans/forge-layout-sugar.md) | Main path **done** (LS1–2,4–5,7–8) |
-| [docs/user/layout.md](../docs/user/layout.md) | Layout profiles + survivor open-leaf rule |
+| [forge-layout-sizes.md](./plans/forge-layout-sizes.md) | Custom `share` **done** (SZ1–SZ3) on `plan/forge-layout-sizes` |
+| [docs/user/layout.md](../docs/user/layout.md) | Layout profiles + share sugar + survivor open-leaf |
 | [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | Historical thrash-zero |
 
 ---

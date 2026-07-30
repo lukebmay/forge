@@ -1025,5 +1025,60 @@ class TestLaunchAppGhostty(unittest.TestCase):
         self.assertEqual(argv, ["ghostty", GHOSTTY_MULTI_INSTANCE_FLAG])
 
 
+class TestEnsureSizesApply(unittest.TestCase):
+    def test_ensure_sizes_maps_to_size_step(self):
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "ensure_sizes",
+                    "slot": "mon0",
+                    "windowIds": [101, 103],
+                    "shares": [0.7, 0.3],
+                }
+            ]
+        )
+        self.assertEqual(
+            steps,
+            [
+                {
+                    "op": "size",
+                    "windowIds": ["id:101", "id:103"],
+                    "shares": [0.7, 0.3],
+                }
+            ],
+        )
+
+    def test_ensure_sizes_after_order(self):
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "ensure_sizes",
+                    "slot": "mon0",
+                    "windowIds": [101, 103],
+                    "shares": [2, 1],
+                },
+                {
+                    "op": "ensure_order",
+                    "slot": "mon0",
+                    "mode": "hsplit",
+                    "windowIds": [101, 103],
+                },
+                {
+                    "op": "ensure_layout",
+                    "slot": "mon0",
+                    "mode": "hsplit",
+                    "windowIds": [101, 103],
+                },
+                {"op": "move", "windowId": 9, "slot": "mon1"},
+            ]
+        )
+        ops = [s["op"] for s in steps]
+        self.assertEqual(ops[0], "move")
+        self.assertEqual(ops[1], "layout")
+        self.assertEqual(ops[2], "order")
+        self.assertEqual(ops[3], "size")
+        self.assertEqual(steps[3]["shares"], [2.0, 1.0])
+
+
 if __name__ == "__main__":
     unittest.main()

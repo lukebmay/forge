@@ -447,7 +447,14 @@ Execution: [agents/plans/forge-daily-driver.md](../agents/plans/forge-daily-driv
   monitor scale 1.5 — that would double-count relative to Meta coordinates.
 - **Sizing:** equal share until user resizes (flex-like *contract* later; no big-bang engine now).
   Implemented as `Node.userSized` + `new-window-size-policy` (`preserve`|`equalize`);
-  min-size redistrib writes effective percents without marking user intent.
+  min-size redistrib writes effective percents without marking user intent **unless**
+  any sibling is already `userSized` (then stored percents stay put for save/load).
+- **Layout sugar shares:** profiles carry optional `share` / `ratio` on
+  `{hsplit|vsplit:…}`; save emits shares only for user-sized / unequal splits;
+  apply runs RunSteps `size` after structure/order (moves reset sibling percents).
+  Mid-paint `tree.apply` suppresses `window-entered-monitor` rehome so
+  `move_resize_frame` does not redistribute a mon child to `percent=1` and
+  corrupt intentional shares.
 - **Keybinds first-class:** bare Super+ is user-space; Safe install defaults only;
   recommended **kits** (vim / i3) + save your own — not one-key-at-a-time exploration.
 - **Debug overlay** opt-in, soon — for humans and agents; not permanent size chrome.

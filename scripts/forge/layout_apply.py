@@ -169,7 +169,7 @@ def actions_to_extension_steps(
     actions: Any, *, force_close: bool = False
 ) -> list[dict[str, Any]]:
     """
-    Map plan actions to extension RunSteps (move / layout / order / close).
+    Map plan actions to extension RunSteps (move / layout / order / size / close).
     Skips open (CLI launch).
 
     layout needs a WINDOW selector (session-api _layoutOp → matchWindows).
@@ -177,7 +177,8 @@ def actions_to_extension_steps(
 
     Order: placement moves/parks and residual closes first, then
     ensure_layout (structure after windows on target mon), then
-    ensure_order (mon-level L/R after groups exist), then focus
+    ensure_order (mon-level L/R after groups exist), then
+    ensure_sizes (sibling percent shares), then focus
     (active tab/stack + profile focus).
 
     close → {op: close, selector: id:…} (+ force when force_close).
@@ -190,6 +191,7 @@ def actions_to_extension_steps(
     (empty desk: open first; residual replan may layout after).
 
     ensure_order → {op: order, windowIds: [id:…, …]} (mon child reorder).
+    ensure_sizes → {op: size, windowIds: [id:…], shares: […]} (sibling percents).
     focus → {op: focus, selector: id:…} (lastTabFocus + keyboard).
     """
     if not isinstance(actions, list):
@@ -215,6 +217,7 @@ def actions_to_extension_steps(
     place_steps: list[dict[str, Any]] = []
     layout_steps: list[dict[str, Any]] = []
     order_steps: list[dict[str, Any]] = []
+    size_steps: list[dict[str, Any]] = []
     focus_steps: list[dict[str, Any]] = []
 
     for a in actions:
@@ -251,6 +254,28 @@ def actions_to_extension_steps(
             )
             if len(id_sels) >= 2:
                 order_steps.append({"op": "order", "windowIds": id_sels})
+            continue
+        if op == "ensure_sizes":
+            id_sels = _window_ids_to_selectors(
+                a.get("windowIds") if a.get("windowIds") is not None else a.get("selectors")
+            )
+            raw_shares = a.get("shares") if a.get("shares") is not None else a.get("share")
+            shares: list[float] = []
+            if isinstance(raw_shares, list):
+                for s in raw_shares:
+                    try:
+                        f = float(s)
+                    except (TypeError, ValueError):
+                        shares = []
+                        break
+                    if f <= 0:
+                        shares = []
+                        break
+                    shares.append(f)
+            if len(id_sels) >= 2 and len(shares) == len(id_sels):
+                size_steps.append(
+                    {"op": "size", "windowIds": id_sels, "shares": shares}
+                )
             continue
         if op != "ensure_layout":
             continue
@@ -293,8 +318,8 @@ def actions_to_extension_steps(
             continue
         layout_steps.append({"op": "layout", "mode": mode, "selector": sel})
 
-    # Focus last so lastTabFocus + keyboard focus stick after structure/order.
-    return place_steps + layout_steps + order_steps + focus_steps
+    # Focus last so lastTabFocus + keyboard focus stick after structure/order/size.
+    return place_steps + layout_steps + order_steps + size_steps + focus_steps
 
 
 def _ghostty_stem(token: str) -> str:

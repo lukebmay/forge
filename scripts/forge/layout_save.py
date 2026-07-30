@@ -19,6 +19,7 @@ from layout_plan import (
     _stem_to_id,
     _tagged_container_mode,
     format_layout_description,
+    normalize_shares,
     validate_reconcile_profile,
 )
 
@@ -77,6 +78,7 @@ def capture_tiles_profile(
         panes: list[Any] = []
         win_n = 0
         mon_layout = str(mon.get("layout") or "").upper()
+        mon_sized_kids: list[dict[str, Any]] = []
         # Whole-mon tab/stack → one pane (not N mon children).
         if mon_layout in ("TABBED", "STACKED"):
             pane, n = _capture_pane(mon, used_ids, class_counts)
@@ -96,12 +98,22 @@ def capture_tiles_profile(
                 pane, n = _capture_pane(child, used_ids, class_counts)
                 if pane is not None:
                     panes.append(pane)
+                    mon_sized_kids.append(child)
                     win_n += n
         if panes:
             # Mon-root VSPLIT is not default; bare lists desugar as hsplit.
             # Nested VSPLIT CON panes already emit {vsplit:…} via _capture_pane.
+            # Custom mon child sizes → wrap {hsplit|vsplit: panes, share: […]}.
+            shares = None
+            if len(panes) >= 2 and mon_layout not in ("TABBED", "STACKED"):
+                shares = _emit_share_for_siblings(mon_sized_kids)
             if mon_layout == "VSPLIT" and len(panes) >= 2:
-                tiles[mon_key] = {SUGAR_VSPLIT: panes}
+                body: Any = {SUGAR_VSPLIT: panes}
+                if shares is not None:
+                    body["share"] = shares
+                tiles[mon_key] = body
+            elif shares is not None and len(panes) >= 2:
+                tiles[mon_key] = {SUGAR_HSPLIT: panes, "share": shares}
             else:
                 tiles[mon_key] = panes
             mon_window_counts[mon_key] = win_n
@@ -310,6 +322,10 @@ def _compact_pane_node(node: Any) -> Any:
                 active_out = _active_for_output(node.get("active"))
                 if active_out is not None:
                     out_tag["active"] = active_out
+                share_out = _share_for_output(node)
+                if share_out is not None and medium in (SUGAR_HSPLIT, SUGAR_VSPLIT):
+                    if len(share_out) == len(content):
+                        out_tag["share"] = share_out
                 return out_tag
         # { layout|split: mode, content: [...] }
         mode_raw = node.get("layout")
@@ -328,10 +344,16 @@ def _compact_pane_node(node: Any) -> Any:
                     return {SUGAR_TAB: content_c}
                 if mode_s in ("stacked", "stack", "s"):
                     return {SUGAR_STACK: content_c}
+                out_split: Optional[dict[str, Any]] = None
                 if mode_s in ("hsplit", "h", "horizontal"):
-                    return {SUGAR_HSPLIT: content_c}
+                    out_split = {SUGAR_HSPLIT: content_c}
                 if mode_s in ("vsplit", "v", "vertical"):
-                    return {SUGAR_VSPLIT: content_c}
+                    out_split = {SUGAR_VSPLIT: content_c}
+                if out_split is not None:
+                    share_out = _share_for_output(node)
+                    if share_out is not None and len(share_out) == len(content_c):
+                        out_split["share"] = share_out
+                    return out_split
         if "content" in node or "children" in node or (
             "split" in node and node.get("app") is None and node.get("open") is None
         ):
@@ -818,6 +840,76 @@ def _ordered_children(node: dict[str, Any]) -> list[dict[str, Any]]:
     return [c for _, c in indexed]
 
 
+def _node_size_weight(node: dict[str, Any]) -> float:
+    """Percent if positive, else equal weight 1.0."""
+    p = node.get("percent")
+    try:
+        pf = float(p) if p is not None else 0.0
+    except (TypeError, ValueError):
+        pf = 0.0
+    if pf > 0:
+        return pf
+    return 1.0
+
+
+def _shares_from_sibling_nodes(nodes: list[dict[str, Any]]) -> Optional[list[float]]:
+    if len(nodes) < 2:
+        return None
+    return normalize_shares([_node_size_weight(n) for n in nodes])
+
+
+def _should_emit_share(nodes: list[dict[str, Any]]) -> bool:
+    """
+    Emit share when custom sizing is meaningful.
+
+    - Drop pure equal (~1/n) always (bare list stays sugar).
+    - Emit if any sibling userSized, or all percents positive and unequal ±1%.
+    """
+    if len(nodes) < 2:
+        return False
+    shares = _shares_from_sibling_nodes(nodes)
+    if shares is None:
+        return False
+    n = len(shares)
+    equal = 1.0 / n
+    if all(abs(s - equal) <= 0.01 + 1e-9 for s in shares):
+        return False
+    if any(bool(n.get("userSized")) for n in nodes):
+        return True
+    percents: list[float] = []
+    for node in nodes:
+        p = node.get("percent")
+        try:
+            pf = float(p) if p is not None else 0.0
+        except (TypeError, ValueError):
+            pf = 0.0
+        percents.append(pf)
+    if all(p > 0 for p in percents):
+        return True
+    return False
+
+
+def _emit_share_for_siblings(nodes: list[dict[str, Any]]) -> Optional[list[float]]:
+    if not _should_emit_share(nodes):
+        return None
+    return _shares_from_sibling_nodes(nodes)
+
+
+def _share_for_output(node: dict[str, Any]) -> Optional[list[float]]:
+    """Normalize existing share/ratio on a sugar node for write."""
+    raw = node.get("share")
+    if raw is None:
+        raw = node.get("ratio")
+    shares = normalize_shares(raw)
+    if shares is None:
+        return None
+    n = len(shares)
+    equal = 1.0 / n
+    if all(abs(s - equal) <= 0.01 + 1e-9 for s in shares):
+        return None
+    return shares
+
+
 def _capture_pane(
     node: dict[str, Any], used_ids: set[str], class_counts: dict[str, int]
 ) -> tuple[Any, int]:
@@ -869,18 +961,24 @@ def _capture_pane(
 
     if layout in ("HSPLIT", "VSPLIT") and kids:
         content: list[Any] = []
+        sized_kids: list[dict[str, Any]] = []
         total = 0
         for k in kids:
             pane, n = _capture_pane(k, used_ids, class_counts)
             if pane is not None:
                 content.append(pane)
+                sized_kids.append(k)
                 total += n
         if not content:
             return None, 0
         if len(content) == 1:
             return content[0], total
         key = SUGAR_HSPLIT if layout == "HSPLIT" else SUGAR_VSPLIT
-        return {key: content}, total
+        out: dict[str, Any] = {key: content}
+        shares = _emit_share_for_siblings(sized_kids)
+        if shares is not None:
+            out["share"] = shares
+        return out, total
 
     # Generic CON / unknown: unwrap single child or tab-style multi-window
     wins = [w for w in _window_leaves(node) if not _is_float_window(w)]

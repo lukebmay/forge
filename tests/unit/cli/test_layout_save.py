@@ -920,5 +920,101 @@ class TestSaveCli(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0)
 
 
+class TestShareCapture(unittest.TestCase):
+    """SZ1: custom mon/split shares round-trip via save sugar."""
+
+    def _mon_forest(self, *, p0=0.0, p1=0.0, u0=False, u1=False):
+        return {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "percent": 0,
+                    "userSized": False,
+                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 1,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "percent": p0,
+                            "userSized": u0,
+                            "rect": {
+                                "x": 0,
+                                "y": 0,
+                                "width": 700,
+                                "height": 1000,
+                            },
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 2,
+                            "wmClass": "org.gnome.Nautilus",
+                            "title": "Home",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "percent": p1,
+                            "userSized": u1,
+                            "rect": {
+                                "x": 700,
+                                "y": 0,
+                                "width": 300,
+                                "height": 1000,
+                            },
+                            "children": [],
+                        },
+                    ],
+                }
+            ],
+        }
+
+    def test_user_sized_emits_share(self):
+        forest = self._mon_forest(p0=0.7, p1=0.3, u0=True, u1=True)
+        raw = capture_tiles_profile(forest)
+        mon0 = raw["tiles"]["mon0"]
+        self.assertIsInstance(mon0, dict)
+        self.assertIn("hsplit", mon0)
+        self.assertIn("share", mon0)
+        self.assertEqual(mon0["share"], [0.7, 0.3])
+
+        sugar = profile_for_output(raw)
+        # Single mon with mon-level hsplit+share stays mon-map (not bare panes).
+        if isinstance(sugar, dict) and "tiles" in sugar:
+            body = sugar["tiles"]
+            if isinstance(body, dict):
+                mon_body = body.get("mon0")
+            else:
+                mon_body = body
+        elif isinstance(sugar, dict) and "mon0" in sugar:
+            mon_body = sugar["mon0"]
+        else:
+            mon_body = sugar
+        self.assertIsInstance(mon_body, dict)
+        self.assertIn("share", mon_body)
+        self.assertEqual(mon_body["share"], [0.7, 0.3])
+
+    def test_equal_percent_no_share(self):
+        forest = self._mon_forest(p0=0, p1=0, u0=False, u1=False)
+        sugar = profile_for_output(capture_tiles_profile(forest))
+        # Bare panes list — no share key
+        self.assertIsInstance(sugar, list)
+        self.assertEqual(len(sugar), 2)
+        self.assertTrue(all(not isinstance(x, dict) or "share" not in x for x in sugar))
+
+    def test_roundtrip_normalize_keeps_share(self):
+        forest = self._mon_forest(p0=0.7, p1=0.3, u0=True, u1=True)
+        sugar = profile_for_output(capture_tiles_profile(forest))
+        ir = normalize_profile(sugar, mon_count=1)
+        mon = ir["layout"]["mon0"]
+        self.assertEqual(mon.get("share"), [0.7, 0.3])
+        self.assertEqual(len(mon["children"]), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

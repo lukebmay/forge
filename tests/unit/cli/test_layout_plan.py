@@ -22,6 +22,7 @@ from layout_plan import (  # noqa: E402
     mon_head_and_rest,
     mon_index_from_slot,
     normalize_profile,
+    normalize_shares,
     plan_reconcile,
     resolve_mon_key,
     resolve_profile_mon_keys,
@@ -4236,6 +4237,106 @@ class TestLf8NestedVsplitApply(unittest.TestCase):
         }
         # mon0 has no open/move → no mon0 ensure; mon1 open with no mon-direct anchor
         self.assertNotIn("mon0", mon_ensures)
+
+
+class TestShareSugar(unittest.TestCase):
+    """SZ1: share/ratio desugar + ensure_sizes plan."""
+
+    def test_normalize_shares_weights(self):
+        self.assertEqual(normalize_shares([2, 1]), [0.667, 0.333])
+        self.assertEqual(normalize_shares([0.7, 0.3]), [0.7, 0.3])
+        self.assertIsNone(normalize_shares([]))
+        self.assertIsNone(normalize_shares([1]))
+        self.assertIsNone(normalize_shares([1, 0]))
+        self.assertIsNone(normalize_shares([-1, 1]))
+
+    def test_desugar_hsplit_share_weights(self):
+        sugar = {"hsplit": ["a", "b"], "share": [2, 1]}
+        ir = normalize_profile({"tiles": {"mon0": sugar}})
+        mon = ir["layout"]["mon0"]
+        self.assertEqual(mon.get("split"), "hsplit")
+        self.assertEqual(mon.get("share"), [0.667, 0.333])
+        self.assertEqual(len(mon["children"]), 2)
+
+    def test_desugar_ratio_alias(self):
+        sugar = {"hsplit": ["ghostty", "nautilus"], "ratio": [3, 1]}
+        ir = normalize_profile({"tiles": {"mon0": sugar}})
+        self.assertEqual(ir["layout"]["mon0"].get("share"), [0.75, 0.25])
+
+    def test_desugar_nested_share(self):
+        sugar = {
+            "tiles": {
+                "mon0": [
+                    {"hsplit": ["ghostty", "firefox"], "share": [2, 1]},
+                    "code",
+                ]
+            }
+        }
+        ir = normalize_profile(sugar)
+        kids = ir["layout"]["mon0"]["children"]
+        nested = next(c for c in kids if c.get("split") == "hsplit")
+        self.assertEqual(nested.get("share"), [0.667, 0.333])
+        self.assertNotIn("share", ir["layout"]["mon0"])
+
+    def test_bare_list_no_share(self):
+        ir = normalize_profile({"tiles": {"mon0": ["ghostty", "nautilus"]}})
+        self.assertNotIn("share", ir["layout"]["mon0"])
+
+    def test_plan_ensure_sizes_when_claimed(self):
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 1,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "percent": 0.5,
+                            "userSized": False,
+                            "children": [],
+                            "path": "mo0ws0/0",
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 2,
+                            "wmClass": "org.gnome.Nautilus",
+                            "title": "Home",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "percent": 0.5,
+                            "userSized": False,
+                            "children": [],
+                            "path": "mo0ws0/1",
+                        },
+                    ],
+                }
+            ],
+        }
+        # Paths on forest walk: collect_windows builds path; parent_info needs
+        # tree structure with path via walk. Use real nested forest paths.
+        profile = {
+            "tiles": {
+                "mon0": {
+                    "hsplit": ["ghostty", "nautilus"],
+                    "share": [0.7, 0.3],
+                }
+            }
+        }
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"])
+        size_ops = [a for a in plan["actions"] if a.get("op") == "ensure_sizes"]
+        self.assertEqual(len(size_ops), 1)
+        self.assertEqual(size_ops[0]["slot"], "mon0")
+        self.assertEqual(size_ops[0]["shares"], [0.7, 0.3])
+        self.assertEqual(size_ops[0]["windowIds"], [1, 2])
+        self.assertEqual(plan["counts"].get("sized"), 1)
 
 
 if __name__ == "__main__":

@@ -121,11 +121,19 @@ mon’s pane list (apply uses GetTree mon count):
 | `{ "tab": […], "active": 1 }` | Open 2nd child in the group (0-based) |
 | `{ "tab": […], "active": ["Grok", 1] }` | 2nd Grok match **in this group** |
 | `{ "hsplit": [ … ] }` / `{ "vsplit": [ … ] }` | Split CON (also `h`/`horizontal`, `v`/`vertical`) |
+| `{ "hsplit": […], "share": [0.67, 0.33] }` | Custom sibling shares (width on hsplit, height on vsplit) |
+| `{ "hsplit": […], "ratio": [2, 1] }` | Same as `share` with unnormalized weights |
 | Untyped pane list of apps | Still **tabbed** (legacy); save emits `{ "tab": … }` |
-| Untyped list of panes | **hsplit** of children |
+| Untyped list of panes | **hsplit** of children (equal shares) |
 | `"ghostty"` | One pane, one role; class stem matches reverse-DNS wmClass |
 | `"Grok"` / `"YouTube"` | Chrome PWA-ish: class + `title~=` inferred from the string |
 | Flat object | `{ "app", "class", "title~=" }` override when inference is not enough |
+
+**Tile sizes (share):** siblings of an h/v split take space by fraction along the
+split axis. Omit `share` for equal panes. Weights may be fractions or ratios
+(`[2,1]` → about ⅔ / ⅓); Forge renormalizes to sum 1. Load re-applies shares
+after structure (so moves that reset percents do not stick). Session install
+restore also keeps `percent` + `userSized` on the live tree.
 
 **Save:** `forge layout save <name>` writes bare arrays with medium keys
 (`tab`, `stack`, `hsplit`, `vsplit`). Pass **`--monitors`** to emit explicit
@@ -133,7 +141,9 @@ mon’s pane list (apply uses GetTree mon count):
 has a non-default open leaf, save emits `"active"`. When a window is focused,
 save wraps with `"focus"` (object form). **Mon-root VSPLIT** (e.g. app under
 another on the same head) is saved as `{ "vsplit": [ … ] }` for that mon body —
-a bare pane list always means **hsplit** on load.
+a bare pane list always means **hsplit** on load. After you **resize** tiles
+(`userSized`), save wraps that mon/split with `"share": […]`; equal desks stay
+bare (no share noise).
 
 ### Object form (when you need more)
 

@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import copy
+import math
 import re
 from typing import Any, Iterable, Optional
 
 PROFILE_VERSION = 2
 MODE_RECONCILE = "reconcile"
+# Optional keys allowed on tagged sugar {hsplit|vsplit|tab|…: content, …}.
+_TAG_OPTIONAL_KEYS = frozenset({"id", "active", "share", "ratio"})
 
 # monN / primary slots (post-resolve). Pre-resolve also allows stableKey / alias heads.
 _SLOT_RE = re.compile(r"^(mon\d+|primary)(?:\.(.+))?$")
@@ -82,6 +85,49 @@ _KNOWN_PWA_TITLE = {
     "slack": "Slack",
     "spotify": "Spotify",
 }
+
+
+def normalize_shares(weights: Any) -> Optional[list[float]]:
+    """
+    Positive weights → fractions that sum to 1.0 (3 decimal places).
+
+    Accepts unnormalized weights ([2, 1] → [0.667, 0.333]) or fractions.
+    Returns None for empty, length < 2, non-numeric, or non-positive values.
+    Malformed input is ignored by callers (equal siblings).
+    """
+    if not isinstance(weights, list) or len(weights) < 2:
+        return None
+    nums: list[float] = []
+    for w in weights:
+        try:
+            f = float(w)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(f) or f <= 0:
+            return None
+        nums.append(f)
+    total = sum(nums)
+    if total <= 0:
+        return None
+    fracs = [x / total for x in nums]
+    rounded = [round(f, 3) for f in fracs]
+    head = sum(rounded[:-1])
+    last = round(1.0 - head, 3)
+    if last <= 0:
+        # Degenerate after rounding — keep plain rounded fracs (sum may drift).
+        return rounded
+    rounded[-1] = last
+    return rounded
+
+
+def _share_weights_from_obj(obj: Any) -> Optional[list[float]]:
+    """Read share or ratio from a sugar/IR object; normalize or None."""
+    if not isinstance(obj, dict):
+        return None
+    raw = obj.get("share")
+    if raw is None:
+        raw = obj.get("ratio")
+    return normalize_shares(raw)
 
 
 def _is_stable_key(key: str) -> bool:
@@ -463,6 +509,7 @@ def _tagged_container_mode(item: dict[str, Any]) -> Optional[str]:
     """
     { tab|stack|hsplit|vsplit|t|h|…: content } → canonical mode, else None.
 
+    Optional: id, active (tab/stack), share|ratio (hsplit/vsplit weights).
     Ignores role objects (open/match/app) and multi-key IR-ish nodes.
     """
     if not isinstance(item, dict):
@@ -470,12 +517,12 @@ def _tagged_container_mode(item: dict[str, Any]) -> Optional[str]:
     if item.get("open") is not None or item.get("match") is not None or item.get("app") is not None:
         return None
     tags = [k for k in item.keys() if str(k).strip().lower() in _CONTAINER_TAG_KEYS]
-    # Allow optional id / active (which tab|stack leaf is open) alongside the tag
+    # Allow id / active / share|ratio alongside the tag
     other = [
         k
         for k in item.keys()
         if str(k).strip().lower() not in _CONTAINER_TAG_KEYS
-        and str(k).strip().lower() not in ("id", "active")
+        and str(k).strip().lower() not in _TAG_OPTIONAL_KEYS
     ]
     if len(tags) != 1 or other:
         return None
@@ -583,9 +630,11 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
 
         split_override: Optional[str] = None
         content: Any
+        mon_share_src: Any = None
         if isinstance(mon_body, list):
             content = mon_body
         elif isinstance(mon_body, dict):
+            mon_share_src = mon_body
             tag = _tagged_container_mode(mon_body)
             if tag in ("hsplit", "vsplit"):
                 split_override = tag
@@ -596,6 +645,7 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
             elif tag in ("tabbed", "stacked"):
                 # Whole mon is one tab/stack group
                 content = [mon_body]
+                mon_share_src = None
             else:
                 split_override = _normalize_split_alias(
                     mon_body.get("split"), f"tiles.{mon_key}"
@@ -627,6 +677,9 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
             split = "hsplit"
         if split is not None:
             entry["split"] = split
+        shares = _share_weights_from_obj(mon_share_src)
+        if shares is not None and len(shares) == len(children) and len(children) >= 2:
+            entry["share"] = shares
         layout[mon_key] = entry
 
     return roles, layout
@@ -679,6 +732,7 @@ def _desugar_pane(
                 used_ids,
                 s_next,
                 item.get("id"),
+                share_src=item if tag_mode in ("hsplit", "vsplit") else None,
             )
             if tag_mode in ("tabbed", "stacked"):
                 _apply_active_to_child(child, item.get("active"), roles)
@@ -728,6 +782,7 @@ def _desugar_pane(
                         used_ids,
                         s_next,
                         item.get("id"),
+                        share_src=item,
                     )
 
     # Nested split object { split, content } / { content } default hsplit
@@ -763,6 +818,7 @@ def _desugar_pane(
             used_ids,
             s_next,
             item.get("id"),
+            share_src=item,
         )
 
     # List: tab group of role cells, or nested hsplit if mixed structure
@@ -808,6 +864,7 @@ def _desugar_tagged_container(
     used_ids: set[str],
     s_next: list[int],
     cid_raw: Any,
+    share_src: Any = None,
 ) -> dict[str, Any]:
     if mode in ("tabbed", "stacked"):
         if not all(_is_role_cell(x) for x in content):
@@ -817,7 +874,16 @@ def _desugar_tagged_container(
         )
     if mode in ("hsplit", "vsplit"):
         return _desugar_split_node(
-            mode, content, mon_key, path_prefix, where, roles, used_ids, s_next, cid_raw
+            mode,
+            content,
+            mon_key,
+            path_prefix,
+            where,
+            roles,
+            used_ids,
+            s_next,
+            cid_raw,
+            share_src=share_src,
         )
     raise ValueError(f"{where}: unsupported container mode {mode!r}")
 
@@ -832,6 +898,7 @@ def _desugar_split_node(
     used_ids: set[str],
     s_next: list[int],
     cid_raw: Any,
+    share_src: Any = None,
 ) -> dict[str, Any]:
     cid: str
     if cid_raw is None or str(cid_raw).strip() == "":
@@ -848,6 +915,9 @@ def _desugar_split_node(
         node["split"] = split
     elif len(kids) >= 2:
         node["split"] = "hsplit"
+    shares = _share_weights_from_obj(share_src)
+    if shares is not None and len(shares) == len(kids) and len(kids) >= 2:
+        node["share"] = shares
     return node
 
 
@@ -1358,6 +1428,11 @@ def validate_reconcile_profile(
         entry: dict[str, Any] = {"children": children}
         if split is not None:
             entry["split"] = split
+        shares = normalize_shares(mon_body.get("share"))
+        if shares is None:
+            shares = normalize_shares(mon_body.get("ratio"))
+        if shares is not None and len(shares) == len(children) and len(children) >= 2:
+            entry["share"] = shares
         layout[mon_key] = entry
         layout_keys.add(mon_key)
 
@@ -1634,6 +1709,11 @@ def _validate_layout_children(
                 if split_s not in ("hsplit", "vsplit", "tabbed", "stacked"):
                     raise ValueError(f"{ch_where}.split: unsupported {split!r}")
                 child["split"] = split_s
+            shares = normalize_shares(ch.get("share"))
+            if shares is None:
+                shares = normalize_shares(ch.get("ratio"))
+            if shares is not None and len(shares) == len(nested) and len(nested) >= 2:
+                child["share"] = shares
         else:
             lay = ch.get("layout")
             if lay is None and roles_list and len(roles_list) >= 2:
@@ -1767,6 +1847,7 @@ def plan_reconcile(
         "closed": 0,
         "structure": 0,
         "ordered": 0,
+        "sized": 0,
         "focused": 0,
     }
     slots_needing_layout: dict[str, str] = {}  # slot → mode
@@ -2015,6 +2096,12 @@ def plan_reconcile(
         order_actions.extend(slot_order_actions)
     counts["ordered"] = len(order_actions)
 
+    # Sibling percent shares after structure/order (Move resets percents).
+    size_actions: list[dict[str, Any]] = []
+    if not safe:
+        size_actions = _size_actions(role_results, prof)
+    counts["sized"] = len(size_actions)
+
     # Role open/move rewrites mon splits. Park/close/structure alone must not
     # thrash dual-mon hsplit (companions park used to force mon0+mon1 ensure).
     # --safe: open+move only (no mon/slot ensure_layout).
@@ -2025,6 +2112,7 @@ def plan_reconcile(
         or counts["closed"] > 0
         or counts["structure"] > 0
         or counts["ordered"] > 0
+        or counts["sized"] > 0
     )
     ensure_actions: list[dict[str, Any]] = []
     if has_work and not safe:
@@ -2093,9 +2181,11 @@ def plan_reconcile(
     if focus_actions:
         has_work = True
 
-    # ensure_layout (structure) then ensure_order (after groups exist in apply)
-    # then focus (last so keyboard + lastTabFocus win).
-    final_actions = deduped_ensure + order_actions + actions + focus_actions
+    # ensure_layout → ensure_order → ensure_sizes (after structure/order) →
+    # placement actions → focus last.
+    final_actions = (
+        deduped_ensure + order_actions + size_actions + actions + focus_actions
+    )
     nothing = not has_work
     thrash_risk = _compute_thrash_risk(final_actions, counts)
 
@@ -3031,6 +3121,82 @@ def _mon_order_actions(
     return actions
 
 
+def _layout_node_child_reps(
+    role_results: list[dict[str, Any]], node: dict[str, Any]
+) -> list[Any]:
+    """One claimed windowId per layout child (profile order); skip unclaimed."""
+    by_id = {str(r.get("id")): r for r in role_results if r.get("id") is not None}
+    out: list[Any] = []
+    for ch in node.get("children") or []:
+        if not isinstance(ch, dict):
+            continue
+        found = False
+        for rid in _first_role_ids_in_layout_node(ch):
+            r = by_id.get(rid)
+            if not r:
+                continue
+            wid = r.get("windowId")
+            if wid is None or str(wid).strip() == "":
+                continue
+            out.append(wid)
+            found = True
+            break
+        if not found:
+            # Incomplete claim for this sibling — size requires all children.
+            return []
+    return out
+
+
+def _size_actions(
+    role_results: list[dict[str, Any]],
+    prof: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """
+    ensure_sizes for layout nodes that carry share[] (mon or nested split).
+
+    Emits only when every profile child under that node has a claimed window
+    and len(windowIds) matches len(share) (≥2).
+    """
+    actions: list[dict[str, Any]] = []
+
+    def visit(node: Any, slot: str) -> None:
+        if not isinstance(node, dict):
+            return
+        children = node.get("children")
+        shares = normalize_shares(node.get("share"))
+        if (
+            shares is not None
+            and isinstance(children, list)
+            and len(children) >= 2
+            and len(shares) == len(children)
+        ):
+            reps = _layout_node_child_reps(role_results, node)
+            if len(reps) >= 2 and len(reps) == len(shares):
+                actions.append(
+                    {
+                        "op": "ensure_sizes",
+                        "slot": slot,
+                        "windowIds": reps,
+                        "shares": shares,
+                    }
+                )
+        if isinstance(children, list):
+            for ch in children:
+                if not isinstance(ch, dict):
+                    continue
+                cid = ch.get("id")
+                if cid is None or str(cid).strip() == "":
+                    continue
+                child_slot = f"{slot}.{cid}" if slot else str(cid)
+                visit(ch, child_slot)
+
+    for mon_key, mon_body in (prof.get("layout") or {}).items():
+        if not isinstance(mon_body, dict):
+            continue
+        visit(mon_body, str(mon_key))
+    return actions
+
+
 def _soft_park_anchor(
     windows: list[dict[str, Any]],
     parent_info: dict[str, dict[str, Any]],
@@ -3108,6 +3274,8 @@ def _compute_thrash_risk(
                 reasons.append(f"structure:{slot}")
         elif op == "ensure_order":
             reasons.append(f"order:{a.get('slot')}")
+        elif op == "ensure_sizes":
+            reasons.append(f"size:{a.get('slot')}")
         elif op == "open":
             reasons.append(f"open:{a.get('role')}")
     # Cross-mon heuristic: park without destWindowId, or counts.moved

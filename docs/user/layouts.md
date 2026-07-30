@@ -97,6 +97,11 @@ Splits share space by **percentage**. Until you resize a tile, siblings stay
 **equal**. After you resize with the mouse, keyboard expand/shrink, or golden
 ratio, those tiles keep your proportions when new windows open (default).
 
+**Named layouts** (`forge layout save` / load) remember custom shares as
+`"share": [0.67, 0.33]` on `{ "hsplit" | "vsplit": … }` when any sibling was
+user-resized. Equal desks stay bare lists. Install/update session restore also
+keeps `percent` + `userSized` on the tree. See [layout.md](./layout.md).
+
 | Action | Default |
 | --- | --- |
 | Reset sibling sizes to equal | `Ctrl+Super+=` (`window-reset-sizes`; Vim: `Super+=`) |
