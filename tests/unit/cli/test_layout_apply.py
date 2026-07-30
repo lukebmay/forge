@@ -826,6 +826,74 @@ class TestPlanToStepsFixture(unittest.TestCase):
         self.assertEqual(steps[0]["op"], "layout")
         self.assertTrue(all(s["op"] == "move" for s in steps[1:]))
 
+    def test_ensure_layout_nested_vsplit_joins_like_tabbed(self):
+        """LF8: nested h/v with ≥2 windowIds → layout first + move rest onto first."""
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "ensure_layout",
+                    "slot": "mon0.s1",
+                    "mode": "vsplit",
+                    "windowIds": [103, 301],
+                }
+            ]
+        )
+        self.assertEqual(
+            steps,
+            [
+                {"op": "layout", "mode": "vsplit", "selector": "id:103"},
+                {"op": "move", "tile": "id:301", "dest": "id:103"},
+            ],
+        )
+
+    def test_ensure_layout_mon_level_hsplit_no_join(self):
+        """Mon-level hsplit must not join anchors under one CON."""
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "ensure_layout",
+                    "slot": "mon0",
+                    "mode": "hsplit",
+                    "windowIds": [103, 201],
+                }
+            ]
+        )
+        self.assertEqual(
+            steps,
+            [{"op": "layout", "mode": "hsplit", "selector": "id:103"}],
+        )
+
+    def test_move_dest_window_id_maps_to_id_dest(self):
+        """LF8 residual join: destWindowId → dest id:… not path:moNwsW."""
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "move",
+                    "role": "nautilus",
+                    "windowId": 301,
+                    "slot": "mon0.s1.nautilus",
+                    "destWindowId": 103,
+                }
+            ]
+        )
+        self.assertEqual(
+            steps,
+            [{"op": "move", "tile": "id:301", "dest": "id:103"}],
+        )
+
+    def test_open_action_passes_attach_selector_from_dest(self):
+        fields = open_action_to_launch_fields(
+            {
+                "op": "open",
+                "role": "nautilus",
+                "slot": "mon0.s1.nautilus",
+                "open": {"app": "nautilus", "wmClass": "nautilus"},
+                "destWindowId": 103,
+            }
+        )
+        self.assertEqual(fields.get("attach_selector"), "id:103")
+        self.assertEqual(fields.get("monitor"), 0)
+
     def test_ensure_order_maps_to_order_step(self):
         steps = actions_to_extension_steps(
             [

@@ -1205,6 +1205,7 @@ def do_launch(
     no_wait: bool = False,
     monitor: Any = None,
     tree_path: Optional[str] = None,
+    attach_selector: Optional[str] = None,
     first: bool = False,
     print_result: bool = True,
 ) -> tuple[int, dict[str, Any]]:
@@ -1244,14 +1245,22 @@ def do_launch(
         place_opts["monitor"] = monitor
     if tree_path is not None and str(tree_path).strip() != "":
         place_opts["treePath"] = tree_path
+    # Nested join (e.g. open nautilus under mon0.s1 ghostty) — PlaceNext attachSelector.
+    attach = (attach_selector or "").strip() if attach_selector is not None else ""
+    if attach:
+        place_opts["attachSelector"] = attach
     if place_class:
         place_opts["wmClass"] = place_class
     if first:
         place_opts["first"] = True
-    if place_opts and ("monitor" in place_opts or "treePath" in place_opts):
+    if place_opts and (
+        "monitor" in place_opts or "treePath" in place_opts or "attachSelector" in place_opts
+    ):
         place_opts["ttlMs"] = max(timeout_ms, DEFAULT_LAUNCH_TIMEOUT_MS)
 
-    if place_opts and ("monitor" in place_opts or "treePath" in place_opts):
+    if place_opts and (
+        "monitor" in place_opts or "treePath" in place_opts or "attachSelector" in place_opts
+    ):
         try:
             raw = call_method(backend, "PlaceNext", json.dumps(place_opts))
             data = json.loads(raw)

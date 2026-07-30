@@ -184,7 +184,8 @@ def actions_to_extension_steps(
 
     ensure_layout with windowIds (structure repair):
       - tabbed/stacked: layout on first id, then move remaining ids into it
-      - hsplit/vsplit: layout on first available id
+      - nested hsplit/vsplit (slot has '.'): same join as tabbed
+      - mon-level hsplit/vsplit: layout on first available id only
     Fallback when no windowIds: id from move/park on same mon; skip if none
     (empty desk: open first; residual replan may layout after).
 
@@ -267,6 +268,20 @@ def actions_to_extension_steps(
         if mode in ("tabbed", "stacked") and id_sels:
             # layout first: mon-wrap + H/V→tab flatten in extension _layoutOp;
             # then move remaining ids onto anchor so mon-direct siblings join the bag.
+            anchor = id_sels[0]
+            layout_steps.append({"op": "layout", "mode": mode, "selector": anchor})
+            for sel in id_sels[1:]:
+                layout_steps.append({"op": "move", "tile": sel, "dest": anchor})
+            continue
+
+        # Nested h/v split structure: join members onto first id (like tabbed).
+        # Mon-level (slot mon0/mon1) only rewrites MONITOR layout — never join.
+        if (
+            mode in ("hsplit", "vsplit")
+            and id_sels
+            and len(id_sels) >= 2
+            and "." in slot
+        ):
             anchor = id_sels[0]
             layout_steps.append({"op": "layout", "mode": mode, "selector": anchor})
             for sel in id_sels[1:]:
@@ -408,6 +423,11 @@ def open_action_to_launch_fields(action: dict[str, Any]) -> dict[str, Any]:
         fields["monitor"] = mon
     if tree is not None and str(tree).strip() != "":
         fields["tree_path"] = str(tree).strip()
+    # Nested split open: Prefer attach next to claimed sibling when plan set it.
+    attach = action.get("attachSelector") or action.get("destWindowId")
+    if attach is not None and str(attach).strip() != "":
+        s = str(attach).strip()
+        fields["attach_selector"] = s if s.startswith("id:") else f"id:{s}"
     return fields
 
 

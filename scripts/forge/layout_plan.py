@@ -1800,20 +1800,31 @@ def plan_reconcile(
         if chosen is None:
             entry["status"] = "open"
             counts["opened"] += 1
-            actions.append(
-                {
-                    "op": "open",
-                    "role": rid,
-                    "open": dict(role["open"]),
-                    "slot": slot,
-                }
-            )
+            open_act: dict[str, Any] = {
+                "op": "open",
+                "role": rid,
+                "open": dict(role["open"]),
+                "slot": slot,
+            }
+            # Nested split: attach next to claimed sibling when known (PlaceNext).
+            if not safe:
+                join_wid = _nested_split_join_dest(
+                    prof["roles"],
+                    role_windows,
+                    slot,
+                    layout_slot_modes,
+                    rid,
+                )
+                if join_wid is not None:
+                    open_act["destWindowId"] = join_wid
+            actions.append(open_act)
             mon_head = _slot_mon_key(slot)
             if mon_head:
                 mons_with_placement.add(mon_head)
-            mode = layout_slot_modes.get(slot)
-            if mode and not safe:
-                slots_needing_layout[slot] = mode
+            if not safe:
+                _mark_layout_slots_for_role(
+                    slot, layout_slot_modes, slots_needing_layout
+                )
         else:
             claimed.add(_window_key(chosen))
             entry["windowId"] = chosen.get("windowId")
@@ -1846,10 +1857,21 @@ def plan_reconcile(
                     move_act["childIndex"] = child_i
                     if child_i == 0:
                         move_act["position"] = "start"
+                # Nested h/v: join onto claimed sibling (ghostty), not mon root.
+                join_wid = _nested_split_join_dest(
+                    prof["roles"],
+                    role_windows,
+                    slot,
+                    layout_slot_modes,
+                    rid,
+                )
+                if join_wid is not None:
+                    move_act["destWindowId"] = join_wid
                 actions.append(move_act)
-                mode = layout_slot_modes.get(slot)
-                if mode and not safe:
-                    slots_needing_layout[slot] = mode
+                if not safe:
+                    _mark_layout_slots_for_role(
+                        slot, layout_slot_modes, slots_needing_layout
+                    )
         role_results.append(entry)
 
     # Mode A collect: assign marginals to views (coexist). Mode B / --safe: skip.
@@ -1926,7 +1948,7 @@ def plan_reconcile(
 
     # Soft park only: no overflow ensure_layout (avoids mon rewrite).
 
-    # Tabbed/stacked: repair when not co-grouped; fix sibling order when shared.
+    # Tabbed/stacked + nested h/v: repair when not co-grouped; order when shared.
     # Mode B: kept empty → structure windowIds are roles only. --safe: skip.
     structure_slots: dict[str, dict[str, Any]] = {}
     slot_order_actions: list[dict[str, Any]] = []
@@ -1938,6 +1960,25 @@ def plan_reconcile(
 
         for slot in slots_for_structure:
             mode = layout_slot_modes.get(slot)
+            # Nested hsplit/vsplit: roles live under mon0.s1.* not exact mon0.s1.
+            if mode in ("hsplit", "vsplit"):
+                wids = _role_window_ids_for_slot_prefix(role_results, slot)
+                if len(wids) < 2:
+                    continue
+                if _windows_share_group(wids, parent_info, mode):
+                    if not _sibling_order_matches(wids, parent_info):
+                        slot_order_actions.append(
+                            {
+                                "op": "ensure_order",
+                                "slot": slot,
+                                "mode": mode,
+                                "windowIds": wids,
+                            }
+                        )
+                    continue
+                structure_slots[slot] = {"mode": mode, "windowIds": wids}
+                slots_needing_layout[slot] = mode
+                continue
             if mode not in ("tabbed", "stacked", None):
                 continue
             if mode is None:
@@ -2013,9 +2054,14 @@ def plan_reconcile(
         for slot, mode in sorted(slots_needing_layout.items()):
             wids = structure_slots.get(slot, {}).get("windowIds")
             if wids is None:
-                wids = _ordered_slot_window_ids(
-                    role_results, slot, kept, role_order
-                )
+                mode_l = str(mode or "").strip().lower()
+                if mode_l in ("hsplit", "vsplit"):
+                    # Nested split: collect mon0.s1 + mon0.s1.* role leaves.
+                    wids = _role_window_ids_for_slot_prefix(role_results, slot)
+                else:
+                    wids = _ordered_slot_window_ids(
+                        role_results, slot, kept, role_order
+                    )
             entry: dict[str, Any] = {
                 "op": "ensure_layout",
                 "slot": slot,
@@ -2738,7 +2784,7 @@ def _pick_survivor_open_role(
 
 
 def _slot_layout_modes(prof: dict[str, Any]) -> dict[str, str]:
-    """Map full slot (mon0.left-tab) → layout mode when specified."""
+    """Map full slot (mon0.left-tab / mon0.s1) → layout mode when specified."""
     modes: dict[str, str] = {}
 
     def walk(children: Any, prefix: str) -> None:
@@ -2750,6 +2796,10 @@ def _slot_layout_modes(prof: dict[str, Any]) -> dict[str, str]:
             full = f"{prefix}.{ch['id']}"
             nested = ch.get("children")
             if isinstance(nested, list) and nested:
+                # Nested h/v split container (not only leaf tab/stack bags).
+                split = str(ch.get("split") or "").strip().lower()
+                if split in ("hsplit", "vsplit"):
+                    modes[full] = split
                 walk(nested, full)
                 continue
             if ch.get("layout"):
@@ -2779,6 +2829,94 @@ def _role_window_ids_for_slot(
             continue
         out.append(wid)
     return out
+
+
+def _role_window_ids_for_slot_prefix(
+    role_results: list[dict[str, Any]], slot_prefix: str
+) -> list[Any]:
+    """
+    Claimed role windowIds under slot or any nested leaf (mon0.s1 → ghostty,
+    nautilus under mon0.s1.*). Profile order.
+    """
+    out: list[Any] = []
+    prefix = str(slot_prefix or "")
+    if not prefix:
+        return out
+    for r in role_results:
+        s = str(r.get("slot") or "")
+        if s != prefix and not s.startswith(prefix + "."):
+            continue
+        wid = r.get("windowId")
+        if wid is None or str(wid).strip() == "":
+            continue
+        out.append(wid)
+    return out
+
+
+def _parent_hv_split_slot(
+    slot: str, layout_slot_modes: dict[str, str]
+) -> Optional[str]:
+    """Nearest ancestor (incl. self) with hsplit/vsplit mode; None if none."""
+    if not slot or "." not in slot:
+        return None
+    parts = str(slot).split(".")
+    # mon0.s1.nautilus → try mon0.s1.nautilus, mon0.s1 (not bare mon0)
+    for i in range(len(parts), 1, -1):
+        cand = ".".join(parts[:i])
+        mode = str(layout_slot_modes.get(cand) or "").strip().lower()
+        if mode in ("hsplit", "vsplit"):
+            return cand
+    return None
+
+
+def _mark_layout_slots_for_role(
+    slot: str,
+    layout_slot_modes: dict[str, str],
+    slots_needing_layout: dict[str, str],
+) -> None:
+    """Mark exact slot mode + parent nested h/v split containers for open/move."""
+    if not slot:
+        return
+    mode = layout_slot_modes.get(slot)
+    if mode:
+        slots_needing_layout[slot] = mode
+    parent = _parent_hv_split_slot(slot, layout_slot_modes)
+    if parent:
+        pmode = layout_slot_modes.get(parent)
+        if pmode:
+            slots_needing_layout[parent] = pmode
+
+
+def _nested_split_join_dest(
+    roles: list[dict[str, Any]],
+    role_windows: list[Optional[dict[str, Any]]],
+    slot: str,
+    layout_slot_modes: dict[str, str],
+    exclude_role_id: Any,
+) -> Optional[Any]:
+    """
+    Claimed sibling windowId under the same nested h/v split parent.
+
+    Used as move destWindowId so rehome joins under ghostty, not mon root.
+    """
+    parent = _parent_hv_split_slot(slot, layout_slot_modes)
+    if not parent:
+        return None
+    exclude = str(exclude_role_id) if exclude_role_id is not None else ""
+    for role, win in zip(roles, role_windows):
+        if not isinstance(role, dict) or win is None:
+            continue
+        rid = role.get("id")
+        if rid is not None and str(rid) == exclude:
+            continue
+        rslot = str(role.get("slot") or "")
+        if rslot != parent and not rslot.startswith(parent + "."):
+            continue
+        wid = win.get("windowId")
+        if wid is None or str(wid).strip() == "":
+            continue
+        return wid
+    return None
 
 
 def _mon_child_loc(path: Any) -> Optional[tuple[str, int]]:
@@ -3379,16 +3517,29 @@ def _role_window_ids_for_mon(
     return out
 
 
+def _is_mon_direct_path(path: Any) -> bool:
+    """True when path is mon-child WINDOW (moNwsW/i), not nested (moNwsW/i/j…)."""
+    if path is None:
+        return False
+    parts = str(path).strip().split("/")
+    if len(parts) != 2 or not parts[0]:
+        return False
+    try:
+        int(parts[1])
+    except ValueError:
+        return False
+    return True
+
+
 def _mon_split_anchor_ids(
     role_results: list[dict[str, Any]], mon_key: str, prof: dict[str, Any]
 ) -> list[Any]:
     """
     Window ids for mon-level hsplit/vsplit ensure.
 
-    Prefer roles in mon children that are *not* tabbed/stacked groups (direct
-    tiles like mon0.term). Layout rewrites the selected window's parent, so
-    using a tab member would convert the tab CON to HSPLIT.
-    Nested mon children: walk first leaf role under each non-tab top child.
+    Only mon-direct windows (path moNwsW/<i>, parent MONITOR). Nested leaves
+    under tab/stack/vsplit CONs must not be anchors — layout rewrites the
+    selected window's parent and would demote nested VSPLIT/TABBED → mon mode.
     """
     by_id = {str(r.get("id")): r for r in role_results if r.get("id") is not None}
     mon_body = (prof.get("layout") or {}).get(mon_key)
@@ -3411,12 +3562,19 @@ def _mon_split_anchor_ids(
             lay = str(ch.get("layout") or "").strip().lower()
             if lay in ("tabbed", "stacked"):
                 continue
+            # Nested mon-child split: first leaf is under CON, not mon-direct.
+            split = str(ch.get("split") or "").strip().lower()
+            if split in ("hsplit", "vsplit") and ch.get("children"):
+                continue
             for rid in first_role_ids(ch):
                 r = by_id.get(rid)
                 if not r:
                     continue
                 wid = r.get("windowId")
                 if wid is None or str(wid).strip() == "":
+                    continue
+                # Live path must be mon-direct (skip nested ghostty under VSPLIT).
+                if not _is_mon_direct_path(r.get("path")):
                     continue
                 out.append(wid)
                 break
@@ -3505,12 +3663,20 @@ def _windows_share_group(
     window_ids: list[Any], parent_info: dict[str, dict[str, Any]], mode: str
 ) -> bool:
     """
-    True when all windows share one CON parent with the desired tab/stack layout.
-    Fewer than two windows always "share" (nothing to group).
+    True when all windows share one CON parent with the desired layout.
+
+    Supports tabbed/stacked and nested hsplit/vsplit. Fewer than two windows
+    always "share" (nothing to group).
     """
     if len(window_ids) < 2:
         return True
-    want = "TABBED" if mode == "tabbed" else "STACKED" if mode == "stacked" else None
+    mode_l = str(mode or "").strip().lower()
+    want = {
+        "tabbed": "TABBED",
+        "stacked": "STACKED",
+        "hsplit": "HSPLIT",
+        "vsplit": "VSPLIT",
+    }.get(mode_l)
     infos: list[dict[str, Any]] = []
     for wid in window_ids:
         info = parent_info.get(str(wid))

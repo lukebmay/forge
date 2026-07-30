@@ -3913,5 +3913,330 @@ class TestFormatLayoutDescription(unittest.TestCase):
         self.assertEqual(desc, "mon0: ghostty.")
 
 
+# --- LF8: nested VSPLIT apply (t1-shaped mon0 hsplit | vsplit) ---
+
+_T1_PROFILE = {
+    "tiles": [
+        [
+            {"tab": ["google-chrome", "Grok"], "active": "Grok"},
+            {"vsplit": ["ghostty", "nautilus"]},
+        ],
+        [
+            "ghostty",
+            {
+                "tab": ["YouTube", "Gmail", "Google Voice"],
+                "active": "YouTube",
+            },
+        ],
+    ],
+}
+
+
+def _t1_forest_missing_nautilus(*, nautilus_on_mon1: bool = False):
+    """
+    Live-like tree after close nautilus: mon0 still has VSPLIT CON with ghostty.
+    Optional residual: nautilus landed on mon1 (wrong mon).
+    """
+    mon0_kids = [
+        {
+            "nodeType": "CON",
+            "layout": "TABBED",
+            "children": [
+                {
+                    "nodeType": "WINDOW",
+                    "windowId": 101,
+                    "wmClass": "Google-chrome",
+                    "title": "Google Chrome",
+                    "monitor": 0,
+                    "mode": "TILE",
+                    "children": [],
+                },
+                {
+                    "nodeType": "WINDOW",
+                    "windowId": 102,
+                    "wmClass": "Google-chrome",
+                    "title": "Grok",
+                    "monitor": 0,
+                    "mode": "TILE",
+                    "children": [],
+                },
+            ],
+        },
+        {
+            "nodeType": "CON",
+            "layout": "VSPLIT",
+            "children": [
+                {
+                    "nodeType": "WINDOW",
+                    "windowId": 103,
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "Ghostty",
+                    "monitor": 0,
+                    "mode": "TILE",
+                    "children": [],
+                },
+            ],
+        },
+    ]
+    mon1_kids = [
+        {
+            "nodeType": "WINDOW",
+            "windowId": 201,
+            "wmClass": "com.mitchellh.ghostty",
+            "title": "Ghostty",
+            "monitor": 1,
+            "mode": "TILE",
+            "children": [],
+        },
+        {
+            "nodeType": "CON",
+            "layout": "TABBED",
+            "children": [
+                {
+                    "nodeType": "WINDOW",
+                    "windowId": 202,
+                    "wmClass": "Google-chrome",
+                    "title": "YouTube",
+                    "monitor": 1,
+                    "mode": "TILE",
+                    "children": [],
+                },
+                {
+                    "nodeType": "WINDOW",
+                    "windowId": 203,
+                    "wmClass": "Google-chrome",
+                    "title": "Gmail",
+                    "monitor": 1,
+                    "mode": "TILE",
+                    "children": [],
+                },
+                {
+                    "nodeType": "WINDOW",
+                    "windowId": 204,
+                    "wmClass": "Google-chrome",
+                    "title": "Voice",
+                    "monitor": 1,
+                    "mode": "TILE",
+                    "children": [],
+                },
+            ],
+        },
+    ]
+    if nautilus_on_mon1:
+        mon1_kids.append(
+            {
+                "nodeType": "WINDOW",
+                "windowId": 301,
+                "wmClass": "org.gnome.Nautilus",
+                "title": "Home",
+                "monitor": 1,
+                "mode": "TILE",
+                "children": [],
+            }
+        )
+    return {
+        "apiVersion": 2,
+        "monitors": [
+            {
+                "nodeType": "MONITOR",
+                "id": "mo0ws0",
+                "layout": "HSPLIT",
+                "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                "stableKey": "geom:0,0,5120,2880#primary",
+                "children": mon0_kids,
+            },
+            {
+                "nodeType": "MONITOR",
+                "id": "mo1ws0",
+                "layout": "HSPLIT",
+                "rect": {"x": 1000, "y": 0, "width": 1000, "height": 1000},
+                "stableKey": "geom:5120,0,5120,2880",
+                "children": mon1_kids,
+            },
+        ],
+    }
+
+
+class TestLf8NestedVsplitApply(unittest.TestCase):
+    """LF8: nested mon0.s1 vsplit must not demote via mon hsplit on ghostty."""
+
+    def test_slot_modes_record_nested_vsplit(self):
+        from layout_plan import _slot_layout_modes
+
+        prof = validate_reconcile_profile(_T1_PROFILE, mon_count=2)
+        modes = _slot_layout_modes(prof)
+        self.assertEqual(modes.get("mon0.s0"), "tabbed")
+        self.assertEqual(modes.get("mon0.s1"), "vsplit")
+        self.assertEqual(modes.get("mon1.s0"), "tabbed")
+
+    def test_missing_nautilus_no_mon0_hsplit_on_nested_ghostty(self):
+        forest = _t1_forest_missing_nautilus()
+        plan = plan_reconcile(forest, _T1_PROFILE)
+        mon0_ensures = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") == "mon0"
+        ]
+        # Nested ghostty must not anchor mon0 hsplit (would demote VSPLIT CON).
+        self.assertEqual(
+            mon0_ensures,
+            [],
+            f"must not ensure mon0 hsplit on nested ghostty: {mon0_ensures}",
+        )
+        for a in mon0_ensures:
+            self.assertNotIn(103, a.get("windowIds") or [])
+
+        opens = [a for a in plan["actions"] if a.get("op") == "open"]
+        self.assertTrue(
+            any(a.get("role") == "nautilus" for a in opens),
+            f"expected open nautilus: {opens}",
+        )
+        # Nested vsplit ensure and/or open dest onto ghostty.
+        nest_ensures = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+            and a.get("mode") == "vsplit"
+            and str(a.get("slot") or "").startswith("mon0.s1")
+        ]
+        open_naut = next(a for a in opens if a.get("role") == "nautilus")
+        self.assertTrue(
+            nest_ensures or open_naut.get("destWindowId") == 103,
+            f"need nested vsplit ensure or dest→ghostty; "
+            f"ensures={nest_ensures} open={open_naut}",
+        )
+        if nest_ensures:
+            self.assertIn(103, nest_ensures[0].get("windowIds") or [])
+
+    def test_residual_nautilus_on_mon1_joins_ghostty(self):
+        """Nautilus on mon1 → move destWindowId=ghostty (not mon root only)."""
+        forest = _t1_forest_missing_nautilus(nautilus_on_mon1=True)
+        plan = plan_reconcile(forest, _T1_PROFILE)
+        moves = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "move" and a.get("role") == "nautilus"
+        ]
+        self.assertEqual(len(moves), 1, plan["actions"])
+        move = moves[0]
+        self.assertEqual(
+            move.get("destWindowId"),
+            103,
+            f"residual join must target nested ghostty: {move}",
+        )
+        self.assertEqual(move.get("windowId"), 301)
+        # Still no mon0 hsplit demote via nested leaf.
+        mon0_hsplit = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout"
+            and a.get("slot") == "mon0"
+            and a.get("mode") == "hsplit"
+        ]
+        self.assertEqual(mon0_hsplit, [])
+
+    def test_tree_perfect_still_nothing_to_do(self):
+        """Existing dual-mon perfect profile stays quiet."""
+        forest = _load("tree-perfect.json")
+        plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
+        self.assertTrue(plan["nothingToDo"])
+        self.assertEqual(plan["actions"], [])
+
+    def test_mon_direct_term_still_anchors_mon_hsplit(self):
+        """Mon-direct ghostty (not nested) remains valid mon ensure anchor."""
+        # mon1: ghostty mon-direct moved? use thrash-ish: mon1 only has tabs
+        # so mon1 placement needs mon-direct... profile-dev mon1 term is mon-direct
+        # when present. Use forest with mon0 ghostty mon-direct + open on mon1.
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 101,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Chrome",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 102,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Grok",
+                                    "monitor": 0,
+                                    "children": [],
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 103,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "A",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Voice",
+                                    "monitor": 1,
+                                    "children": [],
+                                },
+                            ],
+                        }
+                    ],
+                },
+            ],
+        }
+        # ghostty-2 is on mon0 as 104-less; 103 is mon0 ghostty. mon1 term missing
+        # → open. mon_split anchors for mon1 empty (no mon-direct). mon0 no placement.
+        plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
+        mon_ensures = {
+            a["slot"]: a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+        }
+        # mon0 has no open/move → no mon0 ensure; mon1 open with no mon-direct anchor
+        self.assertNotIn("mon0", mon_ensures)
+
+
 if __name__ == "__main__":
     unittest.main()
