@@ -1,6 +1,6 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** implementing — **C0–C1 done**; next **C2** / **R1**  
+**Status:** implementing — **C0–C1 + R1 done**; next **C2** (group/ungroup)  
 **Updated:** 2026-07-31  
 **Branch:** `plan/forge-first-class-containers`  
 **Kind:** Core product architecture → phased implement  
@@ -9,13 +9,13 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
-**C0–C1 done** (A/B AGREE) on `plan/forge-first-class-containers`.
+**C0–C1 + R1 done** (A/B AGREE) on `plan/forge-first-class-containers`.
 
-- C0: monocle deleted; inventory L1–L19; `layout-unit.js` spine.
-- C1: non-destructive `setLayout` on toggles + session layout/cycle; no silent
-  flatten or percent wipe on mode change; I1 tests green.
-- REG-lossy-tab-toggle **DONE**; REG-auto-exit-tabbed (L8/L9) deferred.
-- **Next:** C2 explicit group/ungroup; R1 owning-split resize can interleave.
+- C0: monocle deleted; lossy inventory; `layout-unit.js`
+- C1: I1 `setLayout` toggles + session layout (no silent flatten/percent wipe)
+- R1: `layout-resize.js` owning-split; expand/shrink dual-axis; I3 tests
+- Residual: keyboard edge `resize()` + mouse still Meta/grab (later wire)
+- **Next:** C2 explicit group/ungroup; optional edge/mouse onto resolver
 
 ---
 
@@ -116,7 +116,7 @@ Update rows when a slice actually drops or restores something.
 | **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1 — DONE (layout set/toggle)** | never as silent behavior; percent policy explicit | **C1:** L1/L2/L3/L5/L7 via `setLayout`; no silent flatten from `_layoutOp`; no percent wipe on mode change. `_flattenLayoutParentToWindows` kept unused for C2 ungroup. |
 | **REG-auto-exit-tabbed** | `auto-exit-tabbed` dissolving single-child tab CONs | **C1–C2** evaluate | optional later | Implicit structure change; may keep if it only flattens *empty* chrome, not user groups. Decide in C1 inventory. |
 | **REG-ensure-flatten** | Layout ensure / thrash paths that collapse nested H/V into tab bags | **C0–C5** inventory; strip where not required for profiles | only as explicit `forge layout` repair flag | Profile apply may still reshape; user toggles must not. |
-| **REG-expand-dual-axis** | Current `[`/`]` grow both axes via child+parent without clear docs | **R1–R2** | **R2** as documented Size step | Not deleted forever — re-specified as dual owning-split steps. |
+| **REG-expand-dual-axis** | `[`/`]` grow both axes | **R1 — re-specified** | **R2** cheatsheet/Size naming | **R1:** dual **owning-split** steps (H then V via `resolveOwningSplitsBothAxes`); not parent+grandparent-only. R2 docs/Size label. |
 | **REG-snap-as-fullscreen-ish** | Teaching snap-center as “fullscreen-ish” (docs/kits) | **Z** | n/a | Snaps stay as snaps; zoom owns peek. |
 | **REG-golden-ratio** | `window-golden-ratio` (already unbound) | keep unbound through C | **R3** optional | Low priority ratio preset. |
 | **REG-ratio-yuiop** | Proposed yuiop ratio keys | never ship in C | [resize-autotile](./forge-resize-and-autotile.md) optional | Not a regression of existing product; parked. |
@@ -291,7 +291,7 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 
 | ID | Work | Done when | Clean / tests |
 | --- | --- | --- | --- |
-| **R1** | Single owning-split resolver; wire keyboard + mouse | Nested off-axis edge resizes ancestor | **Test I3** (tree percent math pure) |
+| **R1** | Single owning-split resolver; wire expand/shrink | **Done** (expand/shrink + pure tests; edge/mouse residual) | **Test I3** |
 | **R2** | Prefs/cheatsheet: Resize vs Size; shrink/grow order | Sane grouping | No empty snapshot tests |
 | **R3** (optional later) | Ratio-step / yuiop | Only if still wanted | See resize-autotile plan |
 
