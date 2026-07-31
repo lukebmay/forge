@@ -21,8 +21,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 AGENTS_DIR = PROJECT_ROOT / "agents"
 INSTALLED_DIR = AGENTS_DIR / "installed"
 
-__version__ = '0.1.8'
-# agents-tool-version: 0.1.8
+__version__ = '0.1.9'
+# agents-tool-version: 0.1.9
 
 CORE_INSTALLED_RELS = (
     "general.md",
