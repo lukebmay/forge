@@ -183,6 +183,47 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(n.parentNode).toBe(monitor);
   });
 
+  it("move-out lifts window without dissolving CON", () => {
+    const { con, n1, n2 } = twoWindowTabbed();
+    const mon = con.parentNode;
+    const out = api()._moveOutOp("id:11", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(out.changed).toBe(true);
+    expect(n1.parentNode).toBe(mon);
+    expect(n2.parentNode).toBe(con);
+    expect(con.parentNode).toBe(mon);
+  });
+
+  it("move-in reparents into sibling CON", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const left = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    left.layout = LAYOUT_TYPES.HSPLIT;
+    const wL = createMockWindow({ id: 71 });
+    const nL = wm().tree.createNode(left.nodeValue, NODE_TYPES.WINDOW, wL);
+    nL.mode = WINDOW_MODES.TILE;
+    const w = createMockWindow({ id: 72 });
+    const nW = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, w);
+    nW.mode = WINDOW_MODES.TILE;
+    const right = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    right.layout = LAYOUT_TYPES.TABBED;
+    const wR = createMockWindow({ id: 73 });
+    const nR = wm().tree.createNode(right.nodeValue, NODE_TYPES.WINDOW, wR);
+    nR.mode = WINDOW_MODES.TILE;
+
+    const out = api()._moveInOp("id:72", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(out.changed).toBe(true);
+    expect(nW.parentNode).toBe(right);
+  });
+
+  it("focus-parent sets attachNode to parent CON", () => {
+    const { con } = twoWindowTabbed();
+    const out = api()._focusParentOp("id:11", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(out.changed).toBe(true);
+    expect(wm().tree.attachNode).toBe(con);
+  });
+
   it("group alias uses merge-group path", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const con = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());

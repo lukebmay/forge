@@ -5,6 +5,12 @@ import {
   LAYOUT_MODES,
   resolveUngroupTarget,
   isUngroupCon,
+  resolveFocusParent,
+  resolveFocusChild,
+  resolveRepresentativeWindow,
+  resolveMoveUnit,
+  resolveMoveOut,
+  resolveMoveInSibling,
 } from "../../../lib/extension/layout-unit.js";
 
 describe("layout-unit (I1 setLayout spine)", () => {
@@ -103,5 +109,104 @@ describe("layout-unit resolveUngroupTarget (I2)", () => {
     const inner = { nodeType: "CON", parentNode: outer };
     const win = { nodeType: "WINDOW", parentNode: inner };
     expect(resolveUngroupTarget(win)).toBe(inner);
+  });
+});
+
+describe("layout-unit resolveFocusParent / Child (C4)", () => {
+  it("resolveFocusParent returns nearest parent CON", () => {
+    const mon = { nodeType: "MONITOR" };
+    const outer = { nodeType: "CON", parentNode: mon };
+    const win = { nodeType: "WINDOW", parentNode: outer };
+    expect(resolveFocusParent(win)).toBe(outer);
+  });
+
+  it("resolveFocusParent no-ops at monitor root", () => {
+    const mon = { nodeType: "MONITOR" };
+    const win = { nodeType: "WINDOW", parentNode: mon };
+    expect(resolveFocusParent(win)).toBeNull();
+  });
+
+  it("resolveFocusParent walks from CON node to its parent CON", () => {
+    const mon = { nodeType: "MONITOR" };
+    const outer = { nodeType: "CON", parentNode: mon };
+    const inner = { nodeType: "CON", parentNode: outer };
+    expect(resolveFocusParent(inner)).toBe(outer);
+    expect(resolveFocusParent(outer)).toBeNull();
+  });
+
+  it("resolveFocusChild prefers lastChildHint then lastTabFocus then first", () => {
+    const a = { id: "a", nodeType: "WINDOW", nodeValue: "meta-a" };
+    const b = { id: "b", nodeType: "WINDOW", nodeValue: "meta-b" };
+    const con = { nodeType: "CON", childNodes: [a, b], lastTabFocus: "meta-b" };
+    expect(resolveFocusChild(con, a)).toBe(a);
+    expect(resolveFocusChild(con)).toBe(b);
+    con.lastTabFocus = null;
+    expect(resolveFocusChild(con)).toBe(a);
+  });
+
+  it("resolveFocusChild no-ops on non-CON", () => {
+    expect(resolveFocusChild({ nodeType: "MONITOR", childNodes: [] })).toBeNull();
+    expect(resolveFocusChild(null)).toBeNull();
+  });
+
+  it("resolveRepresentativeWindow prefers current focus under con", () => {
+    const metaA = { id: 1 };
+    const metaB = { id: 2 };
+    const a = { nodeType: "WINDOW", nodeValue: metaA };
+    const b = { nodeType: "WINDOW", nodeValue: metaB };
+    const con = {
+      nodeType: "CON",
+      childNodes: [a, b],
+      lastTabFocus: metaB,
+      contains: (n) => n === a || n === b,
+    };
+    a.parentNode = con;
+    b.parentNode = con;
+    expect(resolveRepresentativeWindow(con, a)).toBe(a);
+    expect(resolveRepresentativeWindow(con, null)).toBe(b);
+  });
+});
+
+describe("layout-unit resolveMoveOut / MoveIn (C4)", () => {
+  it("resolveMoveUnit prefers attach CON over window", () => {
+    const win = { nodeType: "WINDOW" };
+    const bag = {
+      nodeType: "CON",
+      contains: (n) => n === win,
+    };
+    expect(resolveMoveUnit(bag, win)).toBe(bag);
+    expect(resolveMoveUnit(null, win)).toBe(win);
+    expect(resolveMoveUnit(win, win)).toBe(win);
+  });
+
+  it("resolveMoveOut lifts unit when parent is CON under grandparent", () => {
+    const mon = { nodeType: "MONITOR" };
+    const con = { nodeType: "CON", parentNode: mon };
+    const win = { nodeType: "WINDOW", parentNode: con };
+    mon.childNodes = [con];
+    con.childNodes = [win];
+    const r = resolveMoveOut(win);
+    expect(r).toEqual({ unit: win, parent: con, grandparent: mon });
+  });
+
+  it("resolveMoveOut no-ops under MONITOR", () => {
+    const mon = { nodeType: "MONITOR" };
+    const win = { nodeType: "WINDOW", parentNode: mon };
+    expect(resolveMoveOut(win)).toBeNull();
+  });
+
+  it("resolveMoveInSibling prefers next then prev CON sibling", () => {
+    const mon = { nodeType: "MONITOR" };
+    const left = { nodeType: "CON", parentNode: mon };
+    const win = { nodeType: "WINDOW", parentNode: mon };
+    const right = { nodeType: "CON", parentNode: mon };
+    mon.childNodes = [left, win, right];
+    expect(resolveMoveInSibling(win)).toEqual({ unit: win, targetCon: right });
+
+    mon.childNodes = [left, win];
+    expect(resolveMoveInSibling(win)).toEqual({ unit: win, targetCon: left });
+
+    mon.childNodes = [win, { nodeType: "WINDOW" }];
+    expect(resolveMoveInSibling(win)).toBeNull();
   });
 });

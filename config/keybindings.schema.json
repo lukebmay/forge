@@ -78,6 +78,22 @@
           "$ref": "#/definitions/keybinding",
           "description": "Dissolve nearest parent container one level (lift children)"
         },
+        "window-focus-parent": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Focus parent container (i3 focus parent)"
+        },
+        "window-focus-child": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Focus preferred child under current container"
+        },
+        "window-move-out": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Move unit out of parent container (does not dissolve CON)"
+        },
+        "window-move-in": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Move unit into adjacent sibling container"
+        },
         "con-tabbed-showtab-decoration-toggle": {
           "$ref": "#/definitions/keybinding",
           "description": "Toggle tab decoration visibility"

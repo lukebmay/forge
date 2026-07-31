@@ -108,6 +108,10 @@ describe("run-steps pure helpers (FC4)", () => {
       expect(EXTENSION_OPS).toContain("merge-group");
       expect(EXTENSION_OPS).toContain("group");
       expect(EXTENSION_OPS).toContain("ungroup");
+      expect(EXTENSION_OPS).toContain("focus-parent");
+      expect(EXTENSION_OPS).toContain("focus-child");
+      expect(EXTENSION_OPS).toContain("move-out");
+      expect(EXTENSION_OPS).toContain("move-in");
       expect(EXTENSION_OPS).toContain("float");
       expect(EXTENSION_OPS).toContain("order");
       expect(EXTENSION_OPS).toContain("place-next");
@@ -145,6 +149,17 @@ describe("run-steps pure helpers (FC4)", () => {
         op: "ungroup",
         selector: "focus",
       });
+
+      expect(validateStep({ op: "focus-parent" }).step).toEqual({ op: "focus-parent" });
+      expect(validateStep({ op: "focus-child", selector: "focus" }).step).toEqual({
+        op: "focus-child",
+        selector: "focus",
+      });
+      expect(validateStep({ op: "move-out", selector: "id:1" }).step).toEqual({
+        op: "move-out",
+        selector: "id:1",
+      });
+      expect(validateStep({ op: "move-in" }).step).toEqual({ op: "move-in" });
 
       expect(validateStep({ op: "float" }).step).toEqual({
         op: "float",

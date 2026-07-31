@@ -347,6 +347,26 @@
             <summary>Ungroup: dissolve nearest parent container one level</summary>
         </key>
 
+        <key type="as" name="window-focus-parent">
+            <default><![CDATA[[]]]></default>
+            <summary>Focus parent container (i3 focus parent; sets open/split attach)</summary>
+        </key>
+
+        <key type="as" name="window-focus-child">
+            <default><![CDATA[[]]]></default>
+            <summary>Focus into preferred child of current container</summary>
+        </key>
+
+        <key type="as" name="window-move-out">
+            <default><![CDATA[[]]]></default>
+            <summary>Move layout unit out of parent container one level (does not dissolve CON)</summary>
+        </key>
+
+        <key type="as" name="window-move-in">
+            <default><![CDATA[[]]]></default>
+            <summary>Move layout unit into adjacent sibling container</summary>
+        </key>
+
         <key type="as" name="con-tabbed-showtab-decoration-toggle">
             <default><![CDATA[['<Ctrl><Shift><Super>t']]]></default>
             <summary>Toggle tab decoration</summary>

@@ -61,6 +61,10 @@ nested structure and is deferred).
 | Flip tab ↔ stack on current group | `Ctrl+Super+g` | `Shift+Super+n` |
 | Merge focus + last-active → tabbed group | `Ctrl+Super+m` | `Shift+Super+m` |
 | Ungroup (dissolve nearest parent CON one level) | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` |
+| Focus parent CON (attach for open/split) | unbound (i3 kit: `Super+a`) | unbound (i3: `Super+a`) |
+| Focus child of attach/parent CON | unbound | unbound |
+| Move unit out one level (parent CON stays) | unbound | unbound |
+| Move unit into adjacent sibling CON | unbound | unbound |
 | Make parent tabbed / back to split (mode only) | `Ctrl+Super+t` | `Shift+Super+t` |
 | H ↔ V split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` |
 | Center-drop onto another window | DnD center (default **tabbed**) | same |
@@ -71,11 +75,16 @@ keyboard op that **dissolves** a CON: it lifts that container’s children into
 the grandparent and removes the empty CON. Nested child CONs stay containers
 (one level per press). Layout mode toggles (tab/stack/H/V) do **not** ungroup.
 
-CLI / DBus parity (RunSteps): `layout-cycle` (`axis: group|split`),
-`merge-group` / `group`, `ungroup`, `float` (`scope: window|class`), plus
-absolute `layout`.
+**Focus parent / child** (i3 `$mod+a` class) select the container for
+open/split attach without the debug overlay. **Move-out** lifts the focused
+window one level (former parent CON stays with remaining siblings). After
+**focus parent**, move-out lifts that selected CON instead. **Move-in**
+reparents into an adjacent sibling CON (next, else previous); no sibling CON
+→ no-op (does not invent structure).
 
-Move windows into or out of an existing group with the usual move/swap binds.
+CLI / DBus parity (RunSteps): `layout-cycle` (`axis: group|split`),
+`merge-group` / `group`, `ungroup`, `focus-parent`, `focus-child`,
+`move-out`, `move-in`, `float` (`scope: window|class`), plus absolute `layout`.
 
 ### Layout profiles (sugar)
 

@@ -63,6 +63,8 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Tabbed to/from split | `Ctrl+Super+t` |
 | Merge into tabbed group | `Ctrl+Super+m` |
 | Ungroup (one-level CON dissolve) | `Ctrl+Shift+Super+m` |
+| Focus parent / child CON | unbound |
+| Move unit out / into sibling CON | unbound |
 | Toggle tab decoration | `Ctrl+Shift+Super+t` |
 | Focus border | `Ctrl+Super+b` (**b**order; rare) |
 | Toggle tiling mode | `Ctrl+Super+e` (**e**nable tiling; rare) |
@@ -104,6 +106,8 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Stacked / tabbed (to/from split) | `Shift+Super+s` / `Shift+Super+t` |
 | Merge into tabbed group | `Shift+Super+m` |
 | Ungroup (one-level CON dissolve) | `Ctrl+Shift+Super+m` |
+| Focus parent / child CON | unbound |
+| Move unit out / into sibling CON | unbound |
 | Tab decoration | `Ctrl+Alt+y` |
 | Focus border | `Ctrl+Super+b` |
 | Toggle tiling | `Ctrl+Super+e` |
@@ -141,6 +145,8 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | Group chrome (tab ↔ stack) | `Shift+Super+n` |
 | Merge into tabbed group | `Shift+Super+m` |
 | Ungroup (one-level CON dissolve) | `Ctrl+Shift+Super+m` |
+| Focus parent CON | `Super+a` (i3 `$mod+a`) |
+| Focus child / move-out / move-in | unbound |
 | Tab decoration | `Shift+Super+w` |
 | “Fullscreen-ish” snap center | `Super+f` |
 | Launch app | `Super+Enter` |

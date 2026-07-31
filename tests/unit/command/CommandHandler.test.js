@@ -474,6 +474,61 @@ describe("CommandHandler", () => {
     });
   });
 
+  describe("FocusParent / FocusChild (C4)", () => {
+    it("FocusParent sets attachNode to parent CON", () => {
+      const con = mockNodeWindow.parentNode;
+      con.nodeType = NODE_TYPES.CON;
+      con.isCon = () => true;
+      con.contains = (n) => n === mockNodeWindow;
+      con.childNodes = [mockNodeWindow];
+      const mon = { nodeType: NODE_TYPES.MONITOR };
+      con.parentNode = mon;
+      mockNodeWindow.nodeValue.activate = vi.fn();
+      mockNodeWindow.nodeValue.raise = vi.fn();
+      mockTree.findNode = vi.fn();
+
+      commandHandler.execute({ name: "FocusParent" });
+
+      expect(mockTree.attachNode).toBe(con);
+      expect(mockNodeWindow.nodeValue.activate).toHaveBeenCalled();
+    });
+
+    it("FocusParent no-ops under MONITOR", () => {
+      mockNodeWindow.parentNode = {
+        nodeType: NODE_TYPES.MONITOR,
+        isCon: () => false,
+        isMonitor: () => true,
+      };
+      mockTree.attachNode = undefined;
+
+      commandHandler.execute({ name: "FocusParent" });
+
+      expect(mockTree.attachNode).toBeUndefined();
+    });
+  });
+
+  describe("WindowMoveOut / WindowMoveIn (C4)", () => {
+    it("WindowMoveOut calls tree.moveUnitOut", () => {
+      const mon = { nodeType: NODE_TYPES.MONITOR };
+      mockTree.moveUnitOut = vi.fn(() => mon);
+
+      commandHandler.execute({ name: "WindowMoveOut" });
+
+      expect(mockTree.moveUnitOut).toHaveBeenCalledWith(mockNodeWindow);
+      expect(mockWm.renderTree).toHaveBeenCalledWith("window-move-out");
+    });
+
+    it("WindowMoveIn calls tree.moveUnitIn", () => {
+      const target = { nodeType: NODE_TYPES.CON };
+      mockTree.moveUnitIn = vi.fn(() => target);
+
+      commandHandler.execute({ name: "WindowMoveIn" });
+
+      expect(mockTree.moveUnitIn).toHaveBeenCalledWith(mockNodeWindow);
+      expect(mockWm.renderTree).toHaveBeenCalledWith("window-move-in");
+    });
+  });
+
   describe("ConfigReload command", () => {
     it("should call reloadWindowOverrides", () => {
       commandHandler.execute({ name: "ConfigReload" });

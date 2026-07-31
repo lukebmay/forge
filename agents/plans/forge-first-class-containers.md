@@ -1,6 +1,6 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** implementing — **C0–C3 + R1 done**; next **C4**  
+**Status:** implementing — **C0–C4 + R1 done**; next **C5**
 **Updated:** 2026-07-31  
 **Branch:** `plan/forge-first-class-containers`  
 **Kind:** Core product architecture → phased implement  
@@ -9,15 +9,11 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
-**C0–C3 + R1 done** (C3 A/B AGREE + live smoke) on
-`plan/forge-first-class-containers`.
+**C0–C4 + R1 done** (C4 A/B AGREE + live) on `plan/forge-first-class-containers`.
 
-- C0 monocle; C1 setLayout I1; R1 owning-split; C2 ungroup I2
-- **C3:** `layout-chrome.js` + multi split borders; `split-chrome-show-all`;
-  drag force show-all; I5 progress
-- Live: install HUP, setting toggle, Ghostty kept
-- Residual: same-axis edge overlap; show-all paints leaves not CON frames
-- **Next:** C4 focus parent/child + move-in/out
+- C0–C3 as prior; **C4:** focus parent/child + move-in/out; REG-focus-parent added
+- Live: move-out lifts unit, keeps CON; Ghostty OK
+- **Next:** C5 kits/docs polish; residual edge/mouse resize
 
 ---
 
@@ -122,7 +118,7 @@ Update rows when a slice actually drops or restores something.
 | **REG-snap-as-fullscreen-ish** | Teaching snap-center as “fullscreen-ish” (docs/kits) | **Z** | n/a | Snaps stay as snaps; zoom owns peek. |
 | **REG-golden-ratio** | `window-golden-ratio` (already unbound) | keep unbound through C | **R3** optional | Low priority ratio preset. |
 | **REG-ratio-yuiop** | Proposed yuiop ratio keys | never ship in C | [resize-autotile](./forge-resize-and-autotile.md) optional | Not a regression of existing product; parked. |
-| **REG-focus-parent** | *(missing today — not a regression)* | — | **C4** add | Listed so we don’t ship C without a restore path for tree navigation. |
+| **REG-focus-parent** | focus parent/child + move-in/out | — | **C4 — ADDED** | **C4:** `window-focus-parent` / `window-focus-child` / `window-move-out` / `window-move-in`; i3 kit `Super+a` → parent; Safe/Vim unbound. RunSteps `focus-parent`/`focus-child`/`move-out`/`move-in`. |
 
 ### Kit / chord impact summary (at C0)
 
@@ -286,7 +282,7 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 | **C1** | Non-destructive layout transitions (H/V/tab/stack) — i3 `layout toggle` class | **Done** (A/B AGREE) | **Test I1** |
 | **C2** | Explicit `group` / `ungroup` + CLI/RunSteps; cut silent CON invent where safe | **Done** (A/B AGREE + live) | **Test I2** |
 | **C3** | Split chrome: focus ancestry; show-all; drag show-all (i3 indicator language) | **Done** (A/B AGREE + live smoke) | Pure + decoration tests |
-| **C4** | Move into/out of group + **focus parent/child** | Tree navigation without debug overlay | Test focus target + reparent ids |
+| **C4** | Move into/out of group + **focus parent/child** | **Done** (A implementing; B pending) | Pure resolve + tree reparent id tests |
 | **C5** | Kits, docs, DESIGN; REG restore notes; strip residual lossy toggles | Docs + kits match; REG table current | Docs + smoke |
 
 ### Wave R — Resize (interleaved with C1–C3)

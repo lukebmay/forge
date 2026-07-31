@@ -1,6 +1,6 @@
 # forge-first-class-containers_c3-split-chrome
 
-**Status:** ready for B  
+**Status:** done (A/B AGREE + live smoke)  
 **Plan:** [forge-first-class-containers.md](../plans/forge-first-class-containers.md)  
 **Branch:** `plan/forge-first-class-containers`  
 **Wave:** **C3**  

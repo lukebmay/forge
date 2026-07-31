@@ -358,6 +358,76 @@ describe("Tree Operations", () => {
     });
   });
 
+  describe("moveUnitOut / moveUnitIn (C4)", () => {
+    it("moveUnitOut lifts window after parent CON without dissolving siblings", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      con.layout = LAYOUT_TYPES.HSPLIT;
+      const w1 = createMockWindow();
+      const w2 = createMockWindow();
+      const n1 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w1);
+      const n2 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w2);
+      n1.mode = WINDOW_MODES.TILE;
+      n2.mode = WINDOW_MODES.TILE;
+
+      const gp = ctx.tree.moveUnitOut(n1);
+
+      expect(gp).toBe(monitor);
+      expect(n1.parentNode).toBe(monitor);
+      expect(n2.parentNode).toBe(con);
+      expect(con.parentNode).toBe(monitor);
+      expect(con.childNodes).toContain(n2);
+      expect(con.childNodes).not.toContain(n1);
+      // unit sits after former parent among mon children
+      expect(n1.index).toBeGreaterThan(con.index);
+      expect(ctx.tree.attachNode).toBe(monitor);
+    });
+
+    it("moveUnitOut no-ops when unit is direct under MONITOR", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const win = createMockWindow();
+      const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win);
+      node.mode = WINDOW_MODES.TILE;
+      expect(ctx.tree.moveUnitOut(node)).toBeNull();
+      expect(node.parentNode).toBe(monitor);
+    });
+
+    it("moveUnitIn reparents into next sibling CON", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const left = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      left.layout = LAYOUT_TYPES.HSPLIT;
+      const win = createMockWindow();
+      const nWin = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win);
+      nWin.mode = WINDOW_MODES.TILE;
+      const right = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      right.layout = LAYOUT_TYPES.TABBED;
+      const wR = createMockWindow();
+      const nR = ctx.tree.createNode(right.nodeValue, NODE_TYPES.WINDOW, wR);
+      nR.mode = WINDOW_MODES.TILE;
+
+      const target = ctx.tree.moveUnitIn(nWin);
+
+      expect(target).toBe(right);
+      expect(nWin.parentNode).toBe(right);
+      expect(right.childNodes).toContain(nWin);
+      expect(right.childNodes).toContain(nR);
+      expect(monitor.childNodes).not.toContain(nWin);
+      expect(ctx.tree.attachNode).toBe(right);
+    });
+
+    it("moveUnitIn no-ops without CON sibling", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const w1 = createMockWindow();
+      const w2 = createMockWindow();
+      const n1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, w1);
+      const n2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, w2);
+      n1.mode = WINDOW_MODES.TILE;
+      n2.mode = WINDOW_MODES.TILE;
+      expect(ctx.tree.moveUnitIn(n1)).toBeNull();
+      expect(n1.parentNode).toBe(monitor);
+    });
+  });
+
   describe("swapPairs", () => {
     it("should swap two windows in same parent", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
