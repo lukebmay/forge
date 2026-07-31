@@ -478,14 +478,19 @@ casual “groupify this parent” dissolves nested units.
 
 Explicit **group** / **ungroup** invent or dissolve CONs (I2); layout mode
 toggles stay non-destructive (I1). CLI parity via RunSteps: `layout-cycle`
-(axis `group`|`split`), `merge-group` / `group`, `ungroup`, `float`.
-Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind backup|apply`.
+(axis `group`|`split`), `merge-group` / `group`, `ungroup`, `focus-parent` /
+`focus-child`, `move-out` / `move-in`, `float`. Portable kits:
+`FORGE_KEYBIND_PROFILES_DIR` + `forge keybind backup|apply`.
 
-**First-class containers (active plan):** C0–C3 + R1 — non-destructive layout
-cycle, explicit group/ungroup, owning-split resize, monocle **removed**, split
-chrome (focus ancestry / show-all / drag force-all via
-`collectSplitChromeTargets` + multi-actor `.window-split-*`). Next: focus
-parent/child, zoom + floating groups later. No BC obligation. Plan:
+**First-class containers (C0–C5 + R1 done):** I1–I3 + I5 in product surface —
+non-destructive `setLayout` (no silent nest flatten / percent wipe on mode
+change), explicit **group** / **ungroup** (I2), owning-split expand/shrink
+(R1; edge/mouse residual), monocle **removed** (no resurrection; Super+m free
+for zoom later), split chrome (focus ancestry / show-all / drag force-all via
+`collectSplitChromeTargets` + multi-actor `.window-split-*`), **focus
+parent/child** + **move-in/out** (C4; i3 kit `Super+a` = focus parent). Kits +
+CLI help match. Optional next: R2 prefs naming, Z0 zoom design — not mid-C
+zoom. No BC obligation. Plan:
 [agents/plans/forge-first-class-containers.md](../agents/plans/forge-first-class-containers.md).
 
 **Float:** mode on the tree node (keeps slot). Re-tile = same parent. If parent

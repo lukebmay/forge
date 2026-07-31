@@ -119,6 +119,7 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Equalize / expand / shrink | `Super+=` / `]` / `[` |
 | Swap last active | `Super+Enter` |
 | Layout debug | `Ctrl+Super+d` |
+| Show-all split chrome | unbound by default (`split-chrome-show-all-toggle`) |
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Snaps (center / thirds) | `Ctrl+Alt+c` / `d/e/g/t` |
 | Edge resize | same family as Safe (`Ctrl+Super` y/u/i/o + Shift twins) |
@@ -148,15 +149,19 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | Focus parent CON | `Super+a` (i3 `$mod+a`) |
 | Focus child / move-out / move-in | unbound |
 | Tab decoration | `Shift+Super+w` |
-| “Fullscreen-ish” snap center | `Super+f` |
+| “Fullscreen-ish” snap center | `Super+f` (not zoom; see REG-i3-super-f) |
 | Launch app | `Super+Enter` |
 | Lock | `Super+Delete` |
 | Cheatsheet / reload | `Shift+Super+/` / `Shift+Super+r` |
 | Focus border / tiling master | `Ctrl+Super+b` / `Ctrl+Super+e` (shared; rare) |
+| Show-all split chrome | unbound by default (`split-chrome-show-all-toggle`) |
+| Expand / shrink | `Super+]` / `Super+[` |
+| `Super+m` | **free** — reserved for zoom full later (monocle removed) |
 
 **Why this shape:** i3 users expect Super+hjkl and Shift to move containers.
-`Super+b/v/e` and `s/w` mirror common i3 split/layout keys. Where Forge actions
-have no i3 twin, we pick free Super+ keys or keep Forge’s Ctrl+Super swap row.
+`Super+b/v/e` and `s/w` mirror common i3 split/layout keys. `Super+a` is focus
+parent (i3). Where Forge actions have no i3 twin, we pick free Super+ keys or
+keep Forge’s Ctrl+Super swap row.
 
 ---
 

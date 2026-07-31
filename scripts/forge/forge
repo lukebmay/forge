@@ -3059,7 +3059,8 @@ def build_parser() -> argparse.ArgumentParser:
         "\n"
         "Payload JSON: a steps array, or { \"steps\": [...], \"stopOnError\": true }.\n"
         "Ops: ping, focus, swap, move, layout, layout-cycle, merge-group, group,\n"
-        "     ungroup, float, place-next, set, order, close.\n"
+        "     ungroup, focus-parent, focus-child, move-out, move-in, float, size,\n"
+        "     place-next, set, order, close.\n"
         "\n"
         "CLI-only ops (launch, wait-window, wait) are **rejected** here.\n"
         "Use `forge run FILE` or `forge layout <name>` for mixed scripts.\n"
@@ -3073,7 +3074,11 @@ def build_parser() -> argparse.ArgumentParser:
         '  {"op":"layout-cycle","axis":"group","selector":"focus"}\n'
         '  {"op":"merge-group","selector":"focus","with":"id:2"}\n'
         '  {"op":"group","selector":"focus","with":"id:2"}  # alias of merge-group\n'
-        '  {"op":"ungroup","selector":"focus"}  # dissolve nearest parent CON\n'
+        '  {"op":"ungroup","selector":"focus"}  # dissolve nearest parent CON (one level)\n'
+        '  {"op":"focus-parent","selector":"focus"}  # attach/focus parent CON\n'
+        '  {"op":"focus-child","selector":"focus"}  # focus child of attach/parent CON\n'
+        '  {"op":"move-out","selector":"focus"}  # lift unit one level (CON stays)\n'
+        '  {"op":"move-in","selector":"focus"}  # reparent into adjacent sibling CON\n'
         '  {"op":"float","selector":"focus","scope":"window"}\n'
         '  {"op":"place-next","wmClass":"X","monitor":0}\n'
         '  {"op":"set","key":"window-gap-size","value":8}\n'

@@ -8,7 +8,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **containers** | First-class CONs (+ resize); zoom/float later | [forge-first-class-containers.md](./plans/forge-first-class-containers.md) — **C0–C4 + R1 done**; next **C5** |
+| **1** | **containers** | First-class CONs (+ resize); zoom/float later | [forge-first-class-containers.md](./plans/forge-first-class-containers.md) — **C0–C5 + R1 done** (primary wave complete); optional R2/Z0 |
 | 2 | **D0 settle** | **User lock** on pure settle hybrid (draft in plan) | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
 | 3 | resize ratio/autotile | Optional yuiop + auto-tile (not structural resize) | [forge-resize-and-autotile.md](./plans/forge-resize-and-autotile.md) · [blocker](./blockers/resize-autotile-design.md) |
 | 4 | stacks SL6 | Optional polish (float residual in stack ensure) | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
@@ -17,6 +17,7 @@
 
 | Item | Note |
 | --- | --- |
+| **C5** | Kits/docs/REG polish; containers primary wave complete |
 | **C4** | Focus parent/child + move-in/out; live OK |
 | **C3** | Split chrome ancestry/show-all/drag; live smoke OK |
 | **C2** | Explicit group/ungroup (I2); live black OK; Ghostty kept |

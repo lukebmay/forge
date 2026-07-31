@@ -29,6 +29,9 @@ It probably matches a rule. Check **Preferences → Windows** and
   Vim `Shift+Super+m`) to make a tabbed group first, or DnD center-drop.
   **Ungroup** (`window-ungroup`: `Ctrl+Shift+Super+m` on Safe/Vim/i3) dissolves
   the nearest parent container one level — not a layout-mode toggle.
+  **Focus parent** (i3: `Super+a`; Safe/Vim unbound) selects the CON for
+  open/split attach; **move-out** / **move-in** reparent the unit (unbound by
+  default).
 - After installing a build that adds keys, reload Shell (X11: `Alt+F2` → `r`, or
   `killall -HUP gnome-shell`) so the extension re-registers bindings; then
   `forge keybind apply vim` (or Safe/i3) if dconf still lacks the new chords.

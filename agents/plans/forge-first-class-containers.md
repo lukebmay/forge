@@ -1,6 +1,6 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** implementing — **C0–C4 + R1 done**; next **C5**
+**Status:** primary C wave **done** — **C0–C5 + R1**; next optional **R2** or **Z0**
 **Updated:** 2026-07-31  
 **Branch:** `plan/forge-first-class-containers`  
 **Kind:** Core product architecture → phased implement  
@@ -9,11 +9,14 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
-**C0–C4 + R1 done** (C4 A/B AGREE + live) on `plan/forge-first-class-containers`.
+**C0–C5 + R1 done** on `plan/forge-first-class-containers`.
 
-- C0–C3 as prior; **C4:** focus parent/child + move-in/out; REG-focus-parent added
-- Live: move-out lifts unit, keeps CON; Ghostty OK
-- **Next:** C5 kits/docs polish; residual edge/mouse resize
+- C0–C4 as prior; **C5:** kits/docs/DESIGN/REG/inventory + CLI run-steps help for
+  group/ungroup/focus-parent|child/move-in|out; residual silent layout-set
+  flatten none; L14 cleanTree + L16 mode-flag **kept** (hygiene / prefs)
+- Residual: R1 edge/mouse resize; optional R2 Size naming; do **not** start zoom
+  without Z0 lock
+- **Next:** optional R2 or Z0 discussion — not auto-start zoom
 
 ---
 
@@ -113,20 +116,23 @@ Update rows when a slice actually drops or restores something.
 | **REG-i3-super-f** | i3 kit `<Super>f` → **snap center** (not fullscreen) | optional C5/Z | **Z** map to zoom full | i3 users expect fullscreen; current mapping is already non-i3. Fix when zoom lands, not with monocle. |
 | **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1 — DONE (layout set/toggle)** | never as silent behavior; percent policy explicit | **C1:** L1/L2/L3/L5/L7 via `setLayout`; no silent flatten from `_layoutOp`; no percent wipe on mode change. Deep peel removed; C2 ungroup is explicit one-level only. |
 | **REG-auto-exit-tabbed** | `auto-exit-tabbed` / `resetLayoutSingleChild` single-child tab/stack | **C2 — KEEP mode-only** | optional later if full kill | **C2:** mode-only chrome cleanup (TABBED/STACKED → split layout); does **not** dissolve the CON. Explicit ungroup owns structure dissolve. |
-| **REG-ensure-flatten** | Layout ensure / thrash paths that collapse nested H/V into tab bags | **C0–C5** inventory; strip where not required for profiles | only as explicit `forge layout` repair flag | Profile apply may still reshape; user toggles must not. |
+| **REG-ensure-flatten** | Layout ensure / thrash paths that collapse nested H/V into tab bags | **C0–C5** inventory; user toggles clean (I1); `cleanTree` single-child peel **kept** (L14) | only as explicit `forge layout` repair flag | Profile apply may still reshape; user toggles must not. C5: no silent layout-set reparent left. |
 | **REG-expand-dual-axis** | `[`/`]` grow both axes | **R1 — re-specified** | **R2** cheatsheet/Size naming | **R1:** dual **owning-split** steps (H then V via `resolveOwningSplitsBothAxes`); not parent+grandparent-only. R2 docs/Size label. |
-| **REG-snap-as-fullscreen-ish** | Teaching snap-center as “fullscreen-ish” (docs/kits) | **Z** | n/a | Snaps stay as snaps; zoom owns peek. |
+| **REG-snap-as-fullscreen-ish** | Teaching snap-center as “fullscreen-ish” (docs/kits) | **Z** | n/a | Snaps stay as snaps; zoom owns peek. Docs note Super+f = snap until Z. |
 | **REG-golden-ratio** | `window-golden-ratio` (already unbound) | keep unbound through C | **R3** optional | Low priority ratio preset. |
 | **REG-ratio-yuiop** | Proposed yuiop ratio keys | never ship in C | [resize-autotile](./forge-resize-and-autotile.md) optional | Not a regression of existing product; parked. |
-| **REG-focus-parent** | focus parent/child + move-in/out | — | **C4 — ADDED** | **C4:** `window-focus-parent` / `window-focus-child` / `window-move-out` / `window-move-in`; i3 kit `Super+a` → parent; Safe/Vim unbound. RunSteps `focus-parent`/`focus-child`/`move-out`/`move-in`. |
+| **REG-focus-parent** | focus parent/child + move-in/out | — | **C4 — ADDED** | **C4:** `window-focus-parent` / `window-focus-child` / `window-move-out` / `window-move-in`; i3 kit `Super+a` → parent; Safe/Vim unbound. RunSteps `focus-parent`/`focus-child`/`move-out`/`move-in`. **C5:** kits tables + CLI help document all four. |
 
-### Kit / chord impact summary (at C0)
+### Kit / chord impact summary (through C5)
 
-| Kit | Chord | Pre-C0 | After C0 (**done**) |
+| Kit | Chord | Pre-C0 | After C5 (**done**) |
 | --- | --- | --- | --- |
-| i3 | `Super+m` | monocle | **gone** — key deleted from presets (REG-i3-super-m) |
-| i3 | `Super+f` | snap center | unchanged until Z (then prefer zoom) |
+| i3 | `Super+m` | monocle | **gone** — key deleted from presets (REG-i3-super-m); free for zoom full at Z |
+| i3 | `Super+a` | (unused / other) | **focus parent** (C4) |
+| i3 | `Super+f` | snap center | unchanged until Z (then prefer zoom; REG-i3-super-f) |
 | Safe / Vim | monocle | unbound | key deleted (was empty) |
+| All | ungroup | — | `Ctrl+Shift+Super+m` (C2) |
+| All | focus child / move-in / move-out / show-all chrome | — | **unbound** by design (keys exist; C5 docs list them) |
 | All | monocle command / schema | existed | **removed** |
 
 ### Restore policy (FIRM for implementers)
@@ -282,8 +288,8 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 | **C1** | Non-destructive layout transitions (H/V/tab/stack) — i3 `layout toggle` class | **Done** (A/B AGREE) | **Test I1** |
 | **C2** | Explicit `group` / `ungroup` + CLI/RunSteps; cut silent CON invent where safe | **Done** (A/B AGREE + live) | **Test I2** |
 | **C3** | Split chrome: focus ancestry; show-all; drag show-all (i3 indicator language) | **Done** (A/B AGREE + live smoke) | Pure + decoration tests |
-| **C4** | Move into/out of group + **focus parent/child** | **Done** (A implementing; B pending) | Pure resolve + tree reparent id tests |
-| **C5** | Kits, docs, DESIGN; REG restore notes; strip residual lossy toggles | Docs + kits match; REG table current | Docs + smoke |
+| **C4** | Move into/out of group + **focus parent/child** | **Done** (A/B AGREE + live) | Pure resolve + tree reparent id tests |
+| **C5** | Kits, docs, DESIGN; REG restore notes; strip residual lossy toggles | **Done** (kits tables, CLI help, DESIGN, REG, inventory) | Docs + residual grep |
 
 ### Wave R — Resize (interleaved with C1–C3)
 

@@ -50,24 +50,25 @@ Instead of splitting space, a container can show one child at a time.
 layout-profile bare arrays (`["app1", "app2"]`), and merge-group all prefer
 tabs. Stacks are available; they are not the ambient default.
 
-**Phase 1:** group chrome cycle only flips an **existing** tab/stack container
-(window-leaf bag). It does **not** groupify an H/V split (that path dissolves
-nested structure and is deferred).
+**Group chrome cycle** only flips an **existing** tab/stack container
+(window-leaf bag). It does **not** groupify an H/V split — use **merge** /
+**ungroup** for structure.
 
 ### Creating / reshaping groups from the keyboard
 
-| Goal | Safe | Vim |
-| --- | --- | --- |
-| Flip tab ↔ stack on current group | `Ctrl+Super+g` | `Shift+Super+n` |
-| Merge focus + last-active → tabbed group | `Ctrl+Super+m` | `Shift+Super+m` |
-| Ungroup (dissolve nearest parent CON one level) | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` |
-| Focus parent CON (attach for open/split) | unbound (i3 kit: `Super+a`) | unbound (i3: `Super+a`) |
-| Focus child of attach/parent CON | unbound | unbound |
-| Move unit out one level (parent CON stays) | unbound | unbound |
-| Move unit into adjacent sibling CON | unbound | unbound |
-| Make parent tabbed / back to split (mode only) | `Ctrl+Super+t` | `Shift+Super+t` |
-| H ↔ V split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` |
-| Center-drop onto another window | DnD center (default **tabbed**) | same |
+| Goal | Safe | Vim | i3 |
+| --- | --- | --- | --- |
+| Flip tab ↔ stack on current group | `Ctrl+Super+g` | `Shift+Super+n` | `Shift+Super+n` |
+| Merge focus + last-active → tabbed group | `Ctrl+Super+m` | `Shift+Super+m` | `Shift+Super+m` |
+| Ungroup (dissolve nearest parent CON one level) | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` |
+| Focus parent CON (attach for open/split) | unbound | unbound | `Super+a` |
+| Focus child of attach/parent CON | unbound | unbound | unbound |
+| Move unit out one level (parent CON stays) | unbound | unbound | unbound |
+| Move unit into adjacent sibling CON | unbound | unbound | unbound |
+| Show-all split chrome | unbound | unbound | unbound |
+| Make parent tabbed / back to split (mode only) | `Ctrl+Super+t` | `Shift+Super+t` | `Super+w` |
+| H ↔ V split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` | `Super+e` |
+| Center-drop onto another window | DnD center (default **tabbed**) | same | same |
 
 **Group** invents structure: merge (or DnD center) wraps two windows into a
 tabbed CON (or flips a two-window split in place). **Ungroup** is the only

@@ -4,7 +4,12 @@
 **Wave:** C0 (inventory only; no non-destructive rewrite yet)  
 **Invariants:** **I1** = `setLayout(con, L)` never reparents/flattens; **I2** = flatten/ungroup is explicit only.
 
-Tag legend: **C1** non-destructive layout cycle · **C2** group/ungroup · **C5** residual strip / kits.
+Tag legend: **C1** non-destructive layout cycle · **C2** group/ungroup · **C5** residual strip / kits · **keep** intentional hygiene.
+
+**C5 residual grep (2026-07-31):** no silent `_flatten*` / layout-set reparent
+left. User layout toggles go through `setLayout` (I1). Explicit ungroup =
+`Tree.ungroupContainer`. `cleanTree` single-child CON peel is thrash hygiene
+only (not a toggle path).
 
 ---
 
@@ -25,9 +30,9 @@ Tag legend: **C1** non-destructive layout cycle · **C2** group/ungroup · **C5*
 | L11 | `lib/extension/tree.js` → `mergeWindowsIntoGroup` | Two siblings in split → **flip parent layout** + percent reset; else **new CON**, reparent both windows, percent reset; may **`resetLayoutSingleChild`** on partner's old parent. | **C2 ✓** explicit group | reparent path is structure op | **OK** |
 | L12 | `lib/extension/drag-drop.js` | After DnD reparent, **`previousParent.resetLayoutSingleChild()`**. | **C2** | via L8 | via L8 |
 | L13 | `lib/extension/session-api.js` move/rehome (~936, ~962) | **`resetLayoutSingleChild`** + percent on prior parent after reparent. | **C2** / session | via L8 | via L8 |
-| L14 | `lib/extension/tree.js` → `cleanTree` | Orphan CON removal; **flatten nested single-child CON chains** (grandchildren → parent, inherit layout). Structural thrash hygiene. | **C5** evaluate | reparent | implicit flatten — only empty/degenerate nests if correct |
+| L14 | `lib/extension/tree.js` → `cleanTree` | Orphan CON removal; **flatten nested single-child CON chains** (grandchildren → parent, inherit layout). Structural thrash hygiene only — not layout toggle. | **C5 keep** (deferred redesign; REG-ensure-flatten) | reparent hygiene | implicit only for degenerate single-child CON nests |
 | L15 | `lib/extension/window.js` → `applyDefaultLayoutToContainer` | Stamps default tabbed/stacked on **new** CON after split. Mode only; no reparent. | **C1** optional `setLayout` | OK if new empty CON | OK |
-| L16 | `lib/extension/window.js` → `_handleLayoutModeToggle` | Mode-flag disable: STACKED→TABBED or →split for all nodes of layout; restore on re-enable. Workspace-wide mode stamp. | **C5** | mode-only mostly | bulk mode change |
+| L16 | `lib/extension/window.js` → `_handleLayoutModeToggle` | Mode-flag disable: STACKED→TABBED or →split for all nodes of layout; restore on re-enable. Workspace-wide **mode stamp only** (no CON dissolve). | **C5 keep** (deferred; prefs mode flags) | mode-only bulk | **OK** (no reparent) |
 | L17 | `lib/extension/window.js` → tiny-pane tab fallback / open policy | May **`tree.split(..., true)`** then force TABBED (creates CON). | **C2** / open policy | invents structure | OK if policy |
 | L18 | `lib/extension/command.js` → `WindowMergeGroup` / `WindowUngroup` | Group = merge; ungroup = `ungroupContainer` one level. | **C2 ✓** | as L11 / L6 | **OK** |
 | L19 | ~~`toggleWorkspaceMonocle`~~ | **Deleted at C0** (REG-monocle). Was full-workspace gather + reparent into one TABBED CON + prune empties + percent reset. | **C0 done** | was max I1 violation | was max I2 violation |

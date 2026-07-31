@@ -167,6 +167,8 @@ After any install that does not reload Shell: on **X11** use `Alt+F2` → `r`, o
 - **Reload config / theme:** `Super+Shift+r` (or your kit’s reload chord)
 - **Group chrome (tab ↔ stack):** Safe `Ctrl+Super+g` · Vim `Shift+Super+n`
 - **Merge into tabbed group:** Safe `Ctrl+Super+m` · Vim `Shift+Super+m`
+- **Ungroup (one-level CON dissolve):** `Ctrl+Shift+Super+m` (Safe/Vim/i3)
+- **Focus parent CON:** i3 kit `Super+a` (Safe/Vim unbound)
 - **Layout debug overlay:** `Ctrl+Super+d`
 - **Preferences:** Extensions app → Forge, or `gnome-extensions prefs forge@jmmaranan.com`
 - **Keybind kits CLI:** `forge keybind apply vim` (also `safe` / `i3`; backup/list)
