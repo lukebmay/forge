@@ -1,19 +1,21 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** discussion locked enough to implement — **container-first**  
+**Status:** implementing — **C0 done**; next **C1**  
 **Updated:** 2026-07-31  
-**Branch:** `plan/forge-first-class-containers` (create on first code task)  
+**Branch:** `plan/forge-first-class-containers`  
 **Kind:** Core product architecture → phased implement  
 **Compatibility:** **No backwards-compat obligation.** Prefer clean breaks over
 shims. May diverge hard from classic Forge surface if that yields a simpler core.
 
 ### Session note (overwrite)
 
-User lock + i3 research (2026-07-31): containers first; no BC; monocle
-**remove**; split chrome focus-only + show-all + drag show-all; resize
-interleaved; float+placeholder zoom rejected. Added **i3 lessons** and
-**deferred regression registry** (surface we intentionally drop, restore after
-core is solid). Implementation branch still starts at first code task.
+**C0 done** (A/B AGREE) on `plan/forge-first-class-containers`.
+
+- Monocle deleted (API/command/schema/presets/docs/tests); REG-monocle + REG-i3-super-m **DROPPED**.
+- Inventory: [c0-lossy-inventory.md](./forge-first-class-containers/c0-lossy-inventory.md) (L1–L19).
+- Spine: `lib/extension/layout-unit.js` (`setLayout`, I1); wired `LayoutStackTabToggle`.
+- `npm test` green (186 files / 1953). Task → [completed/…](./forge-first-class-containers/completed/forge-first-class-containers_c0-inventory-monocle.md).
+- **Next:** **C1** non-destructive layout transitions (I1) — priority L5/L6, L1/L2, L7.
 
 ---
 
@@ -108,8 +110,8 @@ Update rows when a slice actually drops or restores something.
 
 | ID | Surface | Drop when | Restore when | Notes |
 | --- | --- | --- | --- | --- |
-| **REG-monocle** | `workspace-monocle-toggle` + `toggleWorkspaceMonocle` + docs | **C0** | **Z** (only if still wanted; prefer zoom full) | Structure-destroying tab-all. **i3 kit `Super+m`** unbound until restore. |
-| **REG-i3-super-m** | i3 kit chord `<Super>m` → monocle | **C0** | **Z** (map to zoom full) | Explicit kit regression; document in kit changelog. |
+| **REG-monocle** | `workspace-monocle-toggle` + `toggleWorkspaceMonocle` + docs | **C0 — DROPPED** | **Z** (only if still wanted; prefer zoom full) | **Dropped C0:** API, command, schema key, docs, tests removed. Chord free for zoom. |
+| **REG-i3-super-m** | i3 kit chord `<Super>m` → monocle | **C0 — DROPPED** | **Z** (map to zoom full) | **Dropped C0:** key removed from presets (not unbound stub). Restore maps Super+m → zoom full. |
 | **REG-i3-super-f** | i3 kit `<Super>f` → **snap center** (not fullscreen) | optional C5/Z | **Z** map to zoom full | i3 users expect fullscreen; current mapping is already non-i3. Fix when zoom lands, not with monocle. |
 | **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1** | never as silent behavior; percent policy explicit | Replacement: non-destructive `setLayout` + explicit ungroup. |
 | **REG-auto-exit-tabbed** | `auto-exit-tabbed` dissolving single-child tab CONs | **C1–C2** evaluate | optional later | Implicit structure change; may keep if it only flattens *empty* chrome, not user groups. Decide in C1 inventory. |
@@ -122,12 +124,12 @@ Update rows when a slice actually drops or restores something.
 
 ### Kit / chord impact summary (at C0)
 
-| Kit | Chord | Today | After C0 |
+| Kit | Chord | Pre-C0 | After C0 (**done**) |
 | --- | --- | --- | --- |
-| i3 | `Super+m` | monocle | **unbound** (REG-i3-super-m) |
+| i3 | `Super+m` | monocle | **gone** — key deleted from presets (REG-i3-super-m) |
 | i3 | `Super+f` | snap center | unchanged until Z (then prefer zoom) |
-| Safe / Vim | monocle | unbound | stays unbound |
-| All | monocle command | exists | **removed** |
+| Safe / Vim | monocle | unbound | key deleted (was empty) |
+| All | monocle command / schema | existed | **removed** |
 
 ### Restore policy (FIRM for implementers)
 
@@ -278,7 +280,7 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 
 | ID | Work | Done when | Clean / tests |
 | --- | --- | --- | --- |
-| **C0** | Inventory lossy paths; **delete monocle** (REG-monocle, REG-i3-super-m); sketch `setLayout` + unit helpers | Monocle gone; REG table updated; flatten call-site list | Delete monocle-only tests; no BC shims |
+| **C0** | Inventory lossy paths; **delete monocle** (REG-monocle, REG-i3-super-m); sketch `setLayout` + unit helpers | **Done** (A/B AGREE) | Delete monocle-only tests; no BC shims |
 | **C1** | Non-destructive layout transitions (H/V/tab/stack) — i3 `layout toggle` class | Cycle keeps child node identity | **Test I1** |
 | **C2** | Explicit `group` / `ungroup` + CLI/RunSteps; cut silent CON invent where safe | Ungroup only dissolves CON | **Test I2** |
 | **C3** | Split chrome: focus ancestry; show-all; drag show-all (i3 indicator language) | Visible H vs V under focus | Manual/live; pure helpers tested if extracted |

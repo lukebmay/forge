@@ -13,7 +13,7 @@ msgstr ""
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #: lib/extension/cheatsheet.js
@@ -74,6 +74,10 @@ msgstr ""
 
 #: lib/extension/cheatsheet.js lib/prefs/appearance.js
 msgid "Appearance"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Layout Debug"
 msgstr ""
 
 #: lib/extension/cheatsheet.js
@@ -265,6 +269,14 @@ msgid "Height of each stacked/tabbed title bar (pixels)"
 msgstr ""
 
 #: lib/prefs/appearance.js
+msgid "Max tabs per line"
+msgstr ""
+
+#: lib/prefs/appearance.js
+msgid "Wrap tab labels after N (0 = single row, unlimited)"
+msgstr ""
+
+#: lib/prefs/appearance.js
 msgid "Tab bar position"
 msgstr ""
 
@@ -359,6 +371,36 @@ msgid "Keyboard"
 msgstr ""
 
 #: lib/prefs/keyboard.js
+msgid "About defaults"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid ""
+"Install defaults use the Safe kit only so Forge does not steal Super+ "
+"shortcuts from launchers or GNOME. Safe is not the recommended power-user "
+"map — load a kit (Vim, i3), tweak chords below, then save your own kit. "
+"Keybinds are the main way to drive a tiling WM; experiment freely."
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Shortcut conflicts"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Scanning…"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Conflicts"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid ""
+"Forge shortcuts live in this extension (not GNOME Settings → Keyboard). This "
+"list checks Forge vs itself and vs GNOME/wm/shell bindings."
+msgstr ""
+
+#: lib/prefs/keyboard.js
 msgid "Drag-and-drop modifier key"
 msgstr ""
 
@@ -393,14 +435,35 @@ msgid "None"
 msgstr ""
 
 #: lib/prefs/keyboard.js
+msgid "Keybind kits"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid ""
+"Built-in full maps. Safe = install default (not recommended). Vim and i3 use "
+"Super+ (user space) and may conflict — you will be warned."
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Your kits"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid ""
+"Load a built-in kit, adjust shortcuts, then save under a name. Files: %s "
+"(override with FORGE_KEYBIND_PROFILES_DIR)"
+msgstr ""
+
+#: lib/prefs/keyboard.js
 msgid "Shortcuts"
 msgstr ""
 
 #: lib/prefs/keyboard.js
 msgid ""
-"Change the tiling shortcuts. To clear a shortcut clear the input field. To "
-"apply a shortcut press enter. <a href=\"https://github.com/jcrussell/forge/"
-"blob/main/docs/user/keybindings.md\">Keyboard shortcuts guide</a>"
+"Change individual shortcuts. Clear the field to unbind; press Enter to "
+"apply. <a href=\"https://github.com/jcrussell/forge/blob/main/docs/user/"
+"keybindings.md\">Keyboard shortcuts guide</a>"
 msgstr ""
 
 #: lib/prefs/keyboard.js
@@ -408,7 +471,146 @@ msgid "Bulk Actions"
 msgstr ""
 
 #: lib/prefs/keyboard.js
-msgid "Disable all shortcuts or restore default keybindings"
+msgid "Disable all shortcuts or restore Safe install defaults"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid "Custom: %s"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "No conflicts detected"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Forge chords do not overlap each other or scanned GNOME shortcuts."
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid "%d conflict(s)"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid " … +%d more"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Conflict scan unavailable"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Apply a built-in kit"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Overwrites all Forge shortcuts with that kit’s map"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Unknown kit"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Recommended power-user kit — not the Safe install default."
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Uses bare Super+ chords (user space for launchers and GNOME)."
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid "Conflicts (%d):"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid "… and %d more"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Apply, then tweak and save as your own kit if you like."
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid "Apply “%s” kit?"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Cancel"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Apply kit"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid "Applied “%s” kit"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Failed to apply kit"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Saved kit name"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "my-kit"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Save"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Load"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Saved kits unavailable"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "No saved kits yet — apply a kit, tweak, then Save"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid "Saved: %s"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Invalid name (letters, numbers, - or _)"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid "Saved kit “%s”"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Failed to save kit"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid "Kit “%s” not found"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+#, javascript-format
+msgid "Loaded kit “%s”"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Failed to load kit"
 msgstr ""
 
 #: lib/prefs/keyboard.js
@@ -416,7 +618,7 @@ msgid "Manage all shortcuts"
 msgstr ""
 
 #: lib/prefs/keyboard.js
-msgid "Quickly disable all shortcuts or restore defaults"
+msgid "Disable all, or restore Safe install defaults"
 msgstr ""
 
 #: lib/prefs/keyboard.js
@@ -424,7 +626,7 @@ msgid "Disable All"
 msgstr ""
 
 #: lib/prefs/keyboard.js
-msgid "Restore Defaults"
+msgid "Restore Safe defaults"
 msgstr ""
 
 #: lib/prefs/keyboard.js
@@ -432,7 +634,7 @@ msgid "All shortcuts disabled"
 msgstr ""
 
 #: lib/prefs/keyboard.js
-msgid "Shortcuts restored to defaults"
+msgid "Restored Safe install defaults"
 msgstr ""
 
 #: lib/prefs/keyboard.js
@@ -630,6 +832,15 @@ msgid "Places new windows in a clock-wise fashion"
 msgstr ""
 
 #: lib/prefs/settings.js
+msgid "Tiny-pane tab fallback"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid ""
+"When quarter tiling would make panes too small, open as tabs instead (opt-in)"
+msgstr ""
+
+#: lib/prefs/settings.js
 msgid "Disable GNOME edge-tiling"
 msgstr ""
 
@@ -642,7 +853,7 @@ msgid "Stacked tiling"
 msgstr ""
 
 #: lib/prefs/settings.js
-msgid "Stacks windows on top of each other while still tiling them"
+msgid "Allow stacked (i3-style) groups; tabbed remains the default group type"
 msgstr ""
 
 #: lib/prefs/settings.js
@@ -650,7 +861,7 @@ msgid "Tabbed tiling"
 msgstr ""
 
 #: lib/prefs/settings.js
-msgid "Groups windows as tabs"
+msgid "Allow tabbed groups (default for DnD center and layout sugar)"
 msgstr ""
 
 #: lib/prefs/settings.js
@@ -687,15 +898,36 @@ msgid "New window placement"
 msgstr ""
 
 #: lib/prefs/settings.js
-msgid "Which monitor a new window initially homes to"
+msgid ""
+"Generic opens follow the last focused tile’s monitor (default). Window’s own "
+"monitor respects app-restored geometry. Dock launches always stick to the "
+"dock’s monitor when detected."
 msgstr ""
 
 #: lib/prefs/settings.js
-msgid "Pointer / active monitor"
+msgid "Last focused tile (default)"
 msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Window's own monitor"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "New window size"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid ""
+"After you resize tiles: keep their proportions or re-equalize when a new "
+"window opens"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "Preserve resized proportions"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "Equalize all tiles"
 msgstr ""
 
 #: lib/prefs/settings.js
@@ -753,6 +985,22 @@ msgid "Command (e.g., gnome-terminal)"
 msgstr ""
 
 #: lib/prefs/settings.js
+msgid "Debugging"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "Layout overlay for diagnosing tile ratios and monitor homes"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "Layout debug overlay"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "Show parent layout, percent, and monitor id on each tiled window"
+msgstr ""
+
+#: lib/prefs/settings.js
 msgid "Logger"
 msgstr ""
 
@@ -788,14 +1036,6 @@ msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "Show window border on focused window"
-msgstr ""
-
-#: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "The focused border's current thickness"
-msgstr ""
-
-#: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "The focused border's current color"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
@@ -836,10 +1076,6 @@ msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "Maximize window when it is the only one on workspace"
-msgstr ""
-
-#: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "Layout modes: stacking, tiling"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
@@ -885,6 +1121,11 @@ msgid "Enable logging"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"Show per-window layout debug overlay (parent layout, percent, monitor id)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "Timestamp when css is last updated. Also triggers reload of St"
 msgstr ""
 
@@ -924,13 +1165,44 @@ msgid "Enable auto split or quarter-tiling based based on smaller side"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "On open-app aspect split, join as tabs when panes would be too small"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"When auto-split is on, if a 50/50 split of the last focused tile would make "
+"either child narrower or shorter than the min-edge threshold, create or join "
+"a tab group instead. Off by default."
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Minimum pane edge (px) before open-app prefers tabs over split"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+#, javascript-format
+msgid ""
+"Used with ~12% of the monitor workarea min edge and app min-size. Only "
+"applies when tiny-pane-tab-fallback-enabled is on."
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "Disable GNOME's built-in edge/half-tiling while Forge is enabled"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid ""
-"Initial monitor for a new window: 'pointer' (active/pointer monitor) or "
-"'window-actual' (the window's own monitor)"
+"When a new tiled window is added and siblings already have user-resized "
+"sizes: preserve keeps relative proportions (carve 1/(n+1) for the newcomer); "
+"equalize re-equalizes all. Until any sibling is user-resized, new windows "
+"always equalize."
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"Generic open monitor: 'pointer' follows last focused tile (OP1; id kept for "
+"configs); 'window-actual' uses the window's own monitor. Dock sticky mon "
+"wins when a dock launch is detected."
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
@@ -957,6 +1229,12 @@ msgstr ""
 msgid ""
 "Height of each stacked/tabbed title bar (pixels). Minimum 1; 0 would collide "
 "with the hidden-decoration path."
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"Max tab labels per row in tabbed mode (0 = unlimited single row; wrap into "
+"more rows when set)."
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
@@ -1002,7 +1280,7 @@ msgid "Decrease gap size"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "Toggle split direction"
+msgid "Toggle split direction (H/V)"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
@@ -1014,11 +1292,19 @@ msgid "Split vertical"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "Toggle stacked layout"
+msgid "Toggle stacked layout (to/from split)"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "Toggle tabbed layout"
+msgid "Toggle tabbed layout (to/from split)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle group chrome between stacked and tabbed (group containers only)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Merge focused and last-active windows into a tabbed group"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
@@ -1188,10 +1474,6 @@ msgid "Move pointer to focus"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "Toggle monocle mode"
-msgstr ""
-
-#: schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "Expand window"
 msgstr ""
 
@@ -1213,4 +1495,8 @@ msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "Export configuration"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle layout debug overlay"
 msgstr ""

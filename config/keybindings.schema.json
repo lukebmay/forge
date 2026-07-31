@@ -238,10 +238,6 @@
           "$ref": "#/definitions/keybinding",
           "description": "Move pointer to focused window"
         },
-        "workspace-monocle-toggle": {
-          "$ref": "#/definitions/keybinding",
-          "description": "Toggle monocle mode (tab all windows)"
-        },
         "window-expand": {
           "$ref": "#/definitions/keybinding",
           "description": "Expand window in all directions"

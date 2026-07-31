@@ -546,11 +546,6 @@
             <summary>Move pointer to focus</summary>
         </key>
 
-        <key type="as" name="workspace-monocle-toggle">
-            <default><![CDATA[[]]]></default>
-            <summary>Toggle monocle mode</summary>
-        </key>
-
         <key type="as" name="window-expand">
             <default><![CDATA[['<Ctrl><Super>bracketright']]]></default>
             <summary>Expand window</summary>

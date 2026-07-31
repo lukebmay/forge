@@ -766,7 +766,7 @@ class ShellProxy:
 
     def fuzz_reset_node_layouts(self) -> str:
         """Revert STACKED/TABBED layout left on MONITOR/WORKSPACE nodes back to the natural
-        per-monitor split default, so a flat-workspace stacked/monocle toggle doesn't BLEED
+        per-monitor split default, so a flat-workspace stacked/tabbed toggle doesn't BLEED
         into the next seed in a CONTINUE run. Returns the count reset. See
         bridge.fuzzResetNodeLayouts.
         """

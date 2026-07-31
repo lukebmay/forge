@@ -33,8 +33,8 @@ Instead of splitting space, a container can show one child at a time.
 | Mode flag | `tabbed-tiling-mode-enabled` — **on** | `stacked-tiling-mode-enabled` — **on** |
 
 **Tabbed** is the default **group** type: center-drop (`dnd-center-layout`),
-layout-profile bare arrays (`["app1", "app2"]`), merge-group, and monocle all
-prefer tabs. Stacks are available; they are not the ambient default.
+layout-profile bare arrays (`["app1", "app2"]`), and merge-group all prefer
+tabs. Stacks are available; they are not the ambient default.
 
 **Phase 1:** group chrome cycle only flips an **existing** tab/stack container
 (window-leaf bag). It does **not** groupify an H/V split (that path dissolves
@@ -74,14 +74,6 @@ Other settings:
   tab remains.
 - `default-window-layout` (`tiled` | `tabbed` | `stacked`) sets the layout a newly
   *split* container starts in.
-
-## Monocle
-
-Monocle gathers **all** of the workspace's tiled windows into a single **tabbed**
-container — you see one window at a time and switch with the tab strip, a focus mode
-for a busy workspace. Toggle again to return to your previous split layout. Bind it
-yourself: **`workspace-monocle-toggle` has no default chord** (set one in
-Preferences → Keyboard).
 
 ## Snap / quarter presets
 

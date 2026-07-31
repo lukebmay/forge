@@ -78,7 +78,7 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Edge resize (grow) | `Ctrl+Super+y/u/i/o` (left/bottom/top/right) |
 | Edge resize (shrink) | `Ctrl+Shift+Super+o/i/u/y` |
-| Snaps / monocle / cyclic focus | unbound |
+| Snaps / cyclic focus | unbound |
 
 Forge still frees a few GNOME defaults while enabled (edge-tile keys, maximize,
 etc. — see `gnome-overrides`). Those restore on disable.
@@ -140,7 +140,6 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | Tab decoration | `Shift+Super+w` |
 | “Fullscreen-ish” snap center | `Super+f` |
 | Launch app | `Super+Enter` |
-| Monocle | `Super+m` |
 | Lock | `Super+Delete` |
 | Cheatsheet / reload | `Shift+Super+/` / `Shift+Super+r` |
 | Focus border / tiling master | `Ctrl+Super+b` / `Ctrl+Super+e` (shared; rare) |

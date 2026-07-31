@@ -23,7 +23,7 @@ an i3/sway-style tiling window manager for GNOME Shell. Start with the top-level
 ## User guide (`docs/user/`)
 
 - **[layouts.md](user/layouts.md)** — how tiling works: splits, stacked, tabbed,
-  monocle, snap presets, float vs tile, drag-to-tile.
+  snap presets, float vs tile, drag-to-tile.
 - **[keybindings.md](user/keybindings.md)** — the in-app cheatsheet, common
   defaults, customizing, the drag modifier mask.
 - **[theming.md](user/theming.md)** — appearance settings, gaps, and custom CSS.

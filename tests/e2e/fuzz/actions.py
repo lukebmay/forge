@@ -90,12 +90,11 @@ TILING_ACTIONS = [
     _action("FloatToggle", 3, lambda r: dict(DEFAULT_FLOAT_LAYOUT)),
     _action("FloatNonPersistentToggle", 2, lambda r: dict(DEFAULT_FLOAT_LAYOUT)),
     # Workspace-level toggles (forge-cnrc): wholesale state churn across the WHOLE active
-    # workspace, not a single window — float/unfloat every window (ActiveTileToggle) or flip
-    # the monocle layout (MonocleToggle). Exercises mass float/decoration/tree-rebuild paths
-    # the per-window actions never hit. No params; focus is irrelevant (they act on the active
-    # workspace). ActiveTileToggle persists `workspace-skip-tile` → reset in _reset_workspace.
+    # workspace — float/unfloat every window (ActiveTileToggle). Exercises mass float/
+    # decoration/tree-rebuild paths the per-window actions never hit. No params; focus is
+    # irrelevant (acts on the active workspace). ActiveTileToggle persists
+    # `workspace-skip-tile` → reset in _reset_workspace.
     _action("WorkspaceActiveTileToggle", 2, lambda r: {}),
-    _action("WorkspaceMonocleToggle", 2, lambda r: {}),
     # TilingModeToggle flips tiling-mode-enabled GLOBALLY: floatAllWindows()/unfloatAllWindows()
     # across every workspace while preserving the tree (forge-cnrc). Biggest mass float/unfloat
     # churn available — reset tiling-mode-enabled to its True default in _reset_workspace, else a
