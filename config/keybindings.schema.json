@@ -74,6 +74,10 @@
           "$ref": "#/definitions/keybinding",
           "description": "Merge focused and last-active windows into a tabbed group"
         },
+        "window-ungroup": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Dissolve nearest parent container one level (lift children)"
+        },
         "con-tabbed-showtab-decoration-toggle": {
           "$ref": "#/definitions/keybinding",
           "description": "Toggle tab decoration visibility"

@@ -473,16 +473,18 @@ casual “groupify this parent” dissolves nested units.
 | Group chrome cycle | `Ctrl+Super+g` | `Shift+Super+n` | **TABBED ↔ STACKED only**; no-op on H/V |
 | Split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` | H ↔ V only (no group exit yet) |
 | Merge two windows | `Ctrl+Super+m` | `Shift+Super+m` | Last-active (or sibling) → tabbed group |
-| Tab force (to/from split) | `Ctrl+Super+t` | `Shift+Super+t` | Existing LayoutTabbedToggle |
+| Ungroup (one-level CON dissolve) | `Ctrl+Shift+Super+m` | same | Lift children; nested CONs stay |
+| Tab force (to/from split) | `Ctrl+Super+t` | `Shift+Super+t` | Mode only (I1) — does not ungroup |
 
-Groups today are **window-leaf bags** — chrome flip is lossless. CLI parity via
-RunSteps: `layout-cycle` (axis `group`|`split`), `merge-group`, `float`.
+Explicit **group** / **ungroup** invent or dissolve CONs (I2); layout mode
+toggles stay non-destructive (I1). CLI parity via RunSteps: `layout-cycle`
+(axis `group`|`split`), `merge-group` / `group`, `ungroup`, `float`.
 Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind backup|apply`.
 
-**Phase 2–3 (active plan):** first-class containers — non-destructive layout
-cycle, explicit group/ungroup, split chrome (focus ancestry + show-all + drag),
-owning-split resize, monocle **removed**. Zoom + floating groups designed in,
-built after. No BC obligation. Plan:
+**First-class containers (active plan):** C0–C2 + R1 done — non-destructive
+layout cycle, explicit group/ungroup, owning-split resize, monocle **removed**.
+Next: split chrome, focus parent, zoom + floating groups later. No BC
+obligation. Plan:
 [agents/plans/forge-first-class-containers.md](../agents/plans/forge-first-class-containers.md).
 
 **Float:** mode on the tree node (keeps slot). Re-tile = same parent. If parent
@@ -811,8 +813,8 @@ tab chrome until a second member appears.
 
 **Zero thrash (P0):** Containers are **HSPLIT | VSPLIT | TABBED | STACKED**
 (H/V nest). Mode change is **non-destructive** (`setLayout` / I1): no silent
-flatten of nested CONs, no percent wipe on toggle (C1; explicit ungroup is
-C2). **Sane desk:** re-seat roles and **tab marginals** (non-role windows)
+flatten of nested CONs, no percent wipe on toggle. Explicit **ungroup** is
+one-level CON dissolve only (`Tree.ungroupContainer`). **Sane desk:** re-seat roles and **tab marginals** (non-role windows)
 into the profile **view area** they overlap (partial → first view) so
 `layout` cleans the desk. **Detected thrash:** roles only + soft-park
 everything else on last mon last group — no archaeology. Profile ensure may

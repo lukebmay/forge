@@ -46,12 +46,20 @@ nested structure and is deferred).
 | --- | --- | --- |
 | Flip tab ↔ stack on current group | `Ctrl+Super+g` | `Shift+Super+n` |
 | Merge focus + last-active → tabbed group | `Ctrl+Super+m` | `Shift+Super+m` |
-| Make parent tabbed / back to split | `Ctrl+Super+t` | `Shift+Super+t` |
+| Ungroup (dissolve nearest parent CON one level) | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` |
+| Make parent tabbed / back to split (mode only) | `Ctrl+Super+t` | `Shift+Super+t` |
 | H ↔ V split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` |
 | Center-drop onto another window | DnD center (default **tabbed**) | same |
 
+**Group** invents structure: merge (or DnD center) wraps two windows into a
+tabbed CON (or flips a two-window split in place). **Ungroup** is the only
+keyboard op that **dissolves** a CON: it lifts that container’s children into
+the grandparent and removes the empty CON. Nested child CONs stay containers
+(one level per press). Layout mode toggles (tab/stack/H/V) do **not** ungroup.
+
 CLI / DBus parity (RunSteps): `layout-cycle` (`axis: group|split`),
-`merge-group`, `float` (`scope: window|class`), plus absolute `layout`.
+`merge-group` / `group`, `ungroup`, `float` (`scope: window|class`), plus
+absolute `layout`.
 
 Move windows into or out of an existing group with the usual move/swap binds.
 
@@ -70,8 +78,9 @@ Move windows into or out of an existing group with the usual move/swap binds.
 Other settings:
 
 - Turn a mode off and its toggle shortcut does nothing.
-- `auto-exit-tabbed` (on by default) drops a container back to a split when only one
-  tab remains.
+- `auto-exit-tabbed` (on by default) switches a single-child tab/stack CON to a
+  **split layout mode** when only one tab remains — it does **not** dissolve the
+  CON (use **ungroup** for that).
 - `default-window-layout` (`tiled` | `tabbed` | `stacked`) sets the layout a newly
   *split* container starts in.
 

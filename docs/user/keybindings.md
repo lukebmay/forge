@@ -62,6 +62,7 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Split H / V (force) | `Ctrl+Super+z` / `Ctrl+Super+v` |
 | Tabbed to/from split | `Ctrl+Super+t` |
 | Merge into tabbed group | `Ctrl+Super+m` |
+| Ungroup (one-level CON dissolve) | `Ctrl+Shift+Super+m` |
 | Toggle tab decoration | `Ctrl+Shift+Super+t` |
 | Focus border | `Ctrl+Super+b` (**b**order; rare) |
 | Toggle tiling mode | `Ctrl+Super+e` (**e**nable tiling; rare) |
@@ -101,6 +102,7 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Split H / V (force) | `Super+z` / `Super+v` |
 | Stacked / tabbed (to/from split) | `Shift+Super+s` / `Shift+Super+t` |
 | Merge into tabbed group | `Shift+Super+m` |
+| Ungroup (one-level CON dissolve) | `Ctrl+Shift+Super+m` |
 | Tab decoration | `Ctrl+Alt+y` |
 | Focus border | `Ctrl+Super+b` |
 | Toggle tiling | `Ctrl+Super+e` |
@@ -137,6 +139,7 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | Stacked / tabbed (to/from split) | `Super+s` / `Super+w` |
 | Group chrome (tab ↔ stack) | `Shift+Super+n` |
 | Merge into tabbed group | `Shift+Super+m` |
+| Ungroup (one-level CON dissolve) | `Ctrl+Shift+Super+m` |
 | Tab decoration | `Shift+Super+w` |
 | “Fullscreen-ish” snap center | `Super+f` |
 | Launch app | `Super+Enter` |

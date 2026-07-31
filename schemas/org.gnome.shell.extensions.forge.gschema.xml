@@ -337,6 +337,11 @@
             <summary>Merge focused and last-active windows into a tabbed group</summary>
         </key>
 
+        <key type="as" name="window-ungroup">
+            <default><![CDATA[['<Ctrl><Shift><Super>m']]]></default>
+            <summary>Ungroup: dissolve nearest parent container one level</summary>
+        </key>
+
         <key type="as" name="con-tabbed-showtab-decoration-toggle">
             <default><![CDATA[['<Ctrl><Shift><Super>t']]]></default>
             <summary>Toggle tab decoration</summary>

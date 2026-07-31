@@ -444,6 +444,36 @@ describe("CommandHandler", () => {
     });
   });
 
+  describe("WindowUngroup command", () => {
+    it("should ungroup nearest parent CON", () => {
+      const con = mockNodeWindow.parentNode;
+      con.nodeType = NODE_TYPES.CON;
+      con.isCon = () => true;
+      const mon = { nodeType: NODE_TYPES.MONITOR, layout: LAYOUT_TYPES.HSPLIT };
+      con.parentNode = mon;
+      mockTree.ungroupContainer = vi.fn(() => mon);
+
+      commandHandler.execute({ name: "WindowUngroup" });
+
+      expect(mockTree.ungroupContainer).toHaveBeenCalledWith(con);
+      expect(mockWm.renderTree).toHaveBeenCalledWith("window-ungroup");
+    });
+
+    it("should no-op when focus has no CON parent", () => {
+      mockNodeWindow.parentNode = {
+        nodeType: NODE_TYPES.MONITOR,
+        isCon: () => false,
+        isMonitor: () => true,
+        childNodes: [mockNodeWindow],
+      };
+      mockTree.ungroupContainer = vi.fn();
+
+      commandHandler.execute({ name: "WindowUngroup" });
+
+      expect(mockTree.ungroupContainer).not.toHaveBeenCalled();
+    });
+  });
+
   describe("ConfigReload command", () => {
     it("should call reloadWindowOverrides", () => {
       commandHandler.execute({ name: "ConfigReload" });

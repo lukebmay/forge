@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { setLayout, isLayoutMode, LAYOUT_MODES } from "../../../lib/extension/layout-unit.js";
+import {
+  setLayout,
+  isLayoutMode,
+  LAYOUT_MODES,
+  resolveUngroupTarget,
+  isUngroupCon,
+} from "../../../lib/extension/layout-unit.js";
 
 describe("layout-unit (I1 setLayout spine)", () => {
   it("exports the four CON layout modes", () => {
@@ -67,5 +73,35 @@ describe("layout-unit (I1 setLayout spine)", () => {
       expect(nested.percent).toBe(0.4);
       expect(nested.layout).toBe("HSPLIT");
     }
+  });
+});
+
+describe("layout-unit resolveUngroupTarget (I2)", () => {
+  it("isUngroupCon only for CON", () => {
+    expect(isUngroupCon({ nodeType: "CON" })).toBe(true);
+    expect(isUngroupCon({ isCon: () => true })).toBe(true);
+    expect(isUngroupCon({ nodeType: "MONITOR" })).toBe(false);
+    expect(isUngroupCon(null)).toBe(false);
+  });
+
+  it("returns nearest parent CON", () => {
+    const mon = { nodeType: "MONITOR" };
+    const outer = { nodeType: "CON", parentNode: mon };
+    const win = { nodeType: "WINDOW", parentNode: outer };
+    expect(resolveUngroupTarget(win)).toBe(outer);
+  });
+
+  it("no-op when parent is MONITOR only", () => {
+    const mon = { nodeType: "MONITOR" };
+    const win = { nodeType: "WINDOW", parentNode: mon };
+    expect(resolveUngroupTarget(win)).toBeNull();
+  });
+
+  it("prefers nearest CON over outer nest", () => {
+    const mon = { nodeType: "MONITOR" };
+    const outer = { nodeType: "CON", parentNode: mon };
+    const inner = { nodeType: "CON", parentNode: outer };
+    const win = { nodeType: "WINDOW", parentNode: inner };
+    expect(resolveUngroupTarget(win)).toBe(inner);
   });
 });

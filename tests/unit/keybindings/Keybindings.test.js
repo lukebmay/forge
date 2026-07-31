@@ -57,6 +57,7 @@ describe("Keybindings", () => {
         "con-tabbed-layout-toggle",
         "con-stack-tab-layout-toggle",
         "window-merge-group",
+        "window-ungroup",
         "con-tabbed-showtab-decoration-toggle",
         "focus-border-toggle",
         "prefs-tiling-toggle",

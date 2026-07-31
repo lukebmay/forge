@@ -17,19 +17,19 @@ Tag legend: **C1** non-destructive layout cycle · **C2** group/ungroup · **C5*
 | L3 | `lib/extension/command.js` → `LayoutToggle` | **C1 done:** H↔V via `setLayout`. | **C1 ✓** | **OK (I1)** | OK |
 | L4 | `lib/extension/command.js` → `LayoutStackTabToggle` | STACKED↔TABBED via `setLayout` (C0). | **C1 ✓** | **OK (I1)** | OK |
 | L5 | `lib/extension/session-api.js` → `_layoutOp` | **C1 done:** `setLayout` only; no flatten; no percent wipe. MONITOR wrap for tab/stack kept. | **C1 ✓** | **OK (I1)** | OK |
-| L6 | `lib/extension/session-api.js` → `_flattenLayoutParentToWindows` | DFS peel nested CONs. **Unused from layout set (C1)**; reserved for explicit ungroup (C2). | **C2** | n/a | OK if only explicit ungroup |
+| L6 | ~~`_flattenLayoutParentToWindows`~~ → **`Tree.ungroupContainer`** + `resolveUngroupTarget` | **C2 done:** one-level CON dissolve (explicit). Deep peel deleted; not used from layout set. | **C2 ✓** | n/a | **OK (I2)** |
 | L7 | `lib/extension/session-api.js` → `_layoutCycleOp` | **C1 done:** group + split via `setLayout`; no percent wipe on split flip. | **C1 ✓** | **OK (I1)** | OK |
-| L8 | `lib/extension/tree.js` → `Node.resetLayoutSingleChild` | If stacked/tabbed and ≤1 child → force **HSPLIT**. Implicit mode change. | **C1–C2** (REG-auto-exit-tabbed adjacent) | soft I1 (mode without reparent) | **violates I2** if user group |
-| L9 | `lib/extension/tree.js` → remove/close path + `auto-exit-tabbed` | Single remaining tab → layout = split (`determineSplitLayout` / reorient) + **`resetSiblingPercent`** + clear `lastTabFocus`. | **C1–C2** | percent + mode | **violates I2** when dissolving user tab bag |
+| L8 | `lib/extension/tree.js` → `Node.resetLayoutSingleChild` | If stacked/tabbed and ≤1 child → force **HSPLIT**. **Mode only** — does not dissolve CON. | **C2 keep** (REG-auto-exit-tabbed) | soft I1 (mode without reparent) | **OK** (no reparent) |
+| L9 | `lib/extension/tree.js` → remove/close path + `auto-exit-tabbed` | Single remaining tab → layout = split + **`resetSiblingPercent`** + clear `lastTabFocus`. **Mode only** — CON stays. | **C2 keep** | percent + mode | **OK** (no dissolve) |
 | L10 | `lib/extension/tree.js` → `_finishMove` | After structural move: **`resetSiblingPercent`** on both parents + **`resetLayoutSingleChild`** on source. | **C2** / move epilogue | percent policy | via L8 |
-| L11 | `lib/extension/tree.js` → `mergeWindowsIntoGroup` | Two siblings in split → **flip parent layout** + percent reset; else **new CON**, reparent both windows, percent reset; may **`resetLayoutSingleChild`** on partner's old parent. | **C2** | reparent path is structure op (OK if explicit group) | explicit group = OK for I2 |
+| L11 | `lib/extension/tree.js` → `mergeWindowsIntoGroup` | Two siblings in split → **flip parent layout** + percent reset; else **new CON**, reparent both windows, percent reset; may **`resetLayoutSingleChild`** on partner's old parent. | **C2 ✓** explicit group | reparent path is structure op | **OK** |
 | L12 | `lib/extension/drag-drop.js` | After DnD reparent, **`previousParent.resetLayoutSingleChild()`**. | **C2** | via L8 | via L8 |
 | L13 | `lib/extension/session-api.js` move/rehome (~936, ~962) | **`resetLayoutSingleChild`** + percent on prior parent after reparent. | **C2** / session | via L8 | via L8 |
 | L14 | `lib/extension/tree.js` → `cleanTree` | Orphan CON removal; **flatten nested single-child CON chains** (grandchildren → parent, inherit layout). Structural thrash hygiene. | **C5** evaluate | reparent | implicit flatten — only empty/degenerate nests if correct |
 | L15 | `lib/extension/window.js` → `applyDefaultLayoutToContainer` | Stamps default tabbed/stacked on **new** CON after split. Mode only; no reparent. | **C1** optional `setLayout` | OK if new empty CON | OK |
 | L16 | `lib/extension/window.js` → `_handleLayoutModeToggle` | Mode-flag disable: STACKED→TABBED or →split for all nodes of layout; restore on re-enable. Workspace-wide mode stamp. | **C5** | mode-only mostly | bulk mode change |
 | L17 | `lib/extension/window.js` → tiny-pane tab fallback / open policy | May **`tree.split(..., true)`** then force TABBED (creates CON). | **C2** / open policy | invents structure | OK if policy |
-| L18 | `lib/extension/command.js` → `WindowMergeGroup` | Calls `mergeWindowsIntoGroup` (L11). | **C2** | as L11 | explicit |
+| L18 | `lib/extension/command.js` → `WindowMergeGroup` / `WindowUngroup` | Group = merge; ungroup = `ungroupContainer` one level. | **C2 ✓** | as L11 / L6 | **OK** |
 | L19 | ~~`toggleWorkspaceMonocle`~~ | **Deleted at C0** (REG-monocle). Was full-workspace gather + reparent into one TABBED CON + prune empties + percent reset. | **C0 done** | was max I1 violation | was max I2 violation |
 
 ---
@@ -38,11 +38,11 @@ Tag legend: **C1** non-destructive layout cycle · **C2** group/ungroup · **C5*
 
 ```
 resetLayoutSingleChild
-_flattenLayoutParentToWindows
+ungroupContainer / resolveUngroupTarget
 applyDefaultLayoutToContainer
 LayoutTabbedToggle / LayoutStackedToggle / LayoutToggle / LayoutStackTabToggle
 _layoutOp / _layoutCycleOp
-mergeWindowsIntoGroup
+mergeWindowsIntoGroup / WindowUngroup
 auto-exit-tabbed
 cleanTree
 resetSiblingPercent  (on layout exit paths — not all resize)

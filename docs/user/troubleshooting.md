@@ -27,6 +27,8 @@ It probably matches a rule. Check **Preferences → Windows** and
   Vim `Shift+Super+n`) only flips an **existing** tab/stack group — no-op on a
   plain H/V split. Use **merge** (`window-merge-group`: Safe `Ctrl+Super+m`,
   Vim `Shift+Super+m`) to make a tabbed group first, or DnD center-drop.
+  **Ungroup** (`window-ungroup`: `Ctrl+Shift+Super+m` on Safe/Vim/i3) dissolves
+  the nearest parent container one level — not a layout-mode toggle.
 - After installing a build that adds keys, reload Shell (X11: `Alt+F2` → `r`, or
   `killall -HUP gnome-shell`) so the extension re-registers bindings; then
   `forge keybind apply vim` (or Safe/i3) if dconf still lacks the new chords.

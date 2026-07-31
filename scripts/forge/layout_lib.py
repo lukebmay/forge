@@ -24,6 +24,8 @@ EXTENSION_OPS = frozenset(
         "layout",
         "layout-cycle",
         "merge-group",
+        "group",
+        "ungroup",
         "float",
         "order",
         "place-next",

@@ -159,4 +159,44 @@ describe("SessionApi layout-cycle / merge-group", () => {
     const out = api()._mergeGroupOp("id:51", null, { quiet: true });
     expect(out.error).toMatch(/no merge partner/);
   });
+
+  it("ungroup dissolves one CON level", () => {
+    const { con, n1, n2 } = twoWindowTabbed();
+    const mon = con.parentNode;
+    const out = api()._ungroupOp("id:11", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(out.changed).toBe(true);
+    expect(n1.parentNode).toBe(mon);
+    expect(n2.parentNode).toBe(mon);
+    expect(mon.childNodes).not.toContain(con);
+  });
+
+  it("ungroup no-ops when window is direct under MONITOR", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const w = createMockWindow({ id: 61 });
+    const n = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, w);
+    n.mode = WINDOW_MODES.TILE;
+
+    const out = api()._ungroupOp("id:61", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(out.changed).toBe(false);
+    expect(n.parentNode).toBe(monitor);
+  });
+
+  it("group alias uses merge-group path", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const con = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.HSPLIT;
+    const w1 = createMockWindow({ id: 71 });
+    const w2 = createMockWindow({ id: 72 });
+    const n1 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w1);
+    const n2 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w2);
+    n1.mode = WINDOW_MODES.TILE;
+    n2.mode = WINDOW_MODES.TILE;
+
+    const handlers = api()._runStepHandlers();
+    const out = handlers.group({ selector: "id:71", with: "id:72" });
+    expect(out.ok).toBe(true);
+    expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
+  });
 });

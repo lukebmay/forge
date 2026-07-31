@@ -106,13 +106,15 @@ describe("run-steps pure helpers (FC4)", () => {
       expect(EXTENSION_OPS).toContain("layout");
       expect(EXTENSION_OPS).toContain("layout-cycle");
       expect(EXTENSION_OPS).toContain("merge-group");
+      expect(EXTENSION_OPS).toContain("group");
+      expect(EXTENSION_OPS).toContain("ungroup");
       expect(EXTENSION_OPS).toContain("float");
       expect(EXTENSION_OPS).toContain("order");
       expect(EXTENSION_OPS).toContain("place-next");
       expect(EXTENSION_OPS).toContain("close");
     });
 
-    it("normalizes layout-cycle / merge-group / float", () => {
+    it("normalizes layout-cycle / merge-group / group / ungroup / float", () => {
       expect(validateStep({ op: "layout-cycle" }).step).toMatchObject({
         op: "layout-cycle",
         axis: "group",
@@ -132,6 +134,16 @@ describe("run-steps pure helpers (FC4)", () => {
       expect(validateStep({ op: "merge-group", partner: "class:X" }).step).toMatchObject({
         op: "merge-group",
         with: "class:X",
+      });
+      expect(validateStep({ op: "group", selector: "focus", with: "id:2" }).step).toEqual({
+        op: "group",
+        selector: "focus",
+        with: "id:2",
+      });
+      expect(validateStep({ op: "ungroup" }).step).toEqual({ op: "ungroup" });
+      expect(validateStep({ op: "ungroup", selector: "focus" }).step).toEqual({
+        op: "ungroup",
+        selector: "focus",
       });
 
       expect(validateStep({ op: "float" }).step).toEqual({
