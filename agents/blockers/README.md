@@ -2,7 +2,7 @@
 
 Work that **only a human** can do. Not every open question is a blocker.
 
-## Hard vs soft (project rule)
+## Hard vs soft (project + catalog)
 
 | Severity | Field | Agent behavior |
 | --- | --- | --- |
@@ -17,6 +17,7 @@ Work that **only a human** can do. Not every open question is a blocker.
 | Agents | Do **not** implement hard blockers. Soft: implement only if the task is finalized and in scope. |
 | Humans | Check boxes / mark `**Status:** done` or **parked** and move to `completed/` when finished. |
 | CLI | `agents blockers` · `agents priorities` |
+| Dates | Set **Created** on open; bump **Updated** on material edits. |
 
 See catalog `general.md` (Human blockers) for kinds (design, permission, verify, …).
 
@@ -32,6 +33,8 @@ Template:
 **Plan:** (none) | plan-id
 **Unblocks:** agents/tasks/some-task.md
 **Priority:** P0
+**Created:** YYYY-MM-DD
+**Updated:** YYYY-MM-DD
 
 ## What the human must do
 - [ ] …
