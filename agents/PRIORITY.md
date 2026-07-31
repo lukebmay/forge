@@ -8,7 +8,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **containers** | First-class CONs (+ resize); zoom/float later | [forge-first-class-containers.md](./plans/forge-first-class-containers.md) — **C0–C5 + R1 done** (primary wave complete); optional R2/Z0 |
+| **1** | **containers** | First-class CONs (+ resize); zoom/float later | [forge-first-class-containers.md](./plans/forge-first-class-containers.md) — **C0–C5 + R1 + R1b done**; mouse residual; optional R2/Z0 |
 | 2 | **D0 settle** | **User lock** on pure settle hybrid (draft in plan) | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
 | 3 | resize ratio/autotile | Optional yuiop + auto-tile (parked; no hard blocker) | [forge-resize-and-autotile.md](./plans/forge-resize-and-autotile.md) |
 | 4 | stacks SL6 | Optional polish (float residual in stack ensure) | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
@@ -17,6 +17,7 @@
 
 | Item | Note |
 | --- | --- |
+| **R1b** | Keyboard edge resize → owning-split (A/B AGREE); mouse residual |
 | **C5** | Kits/docs/REG polish; containers primary wave complete |
 | **C4** | Focus parent/child + move-in/out; live OK |
 | **C3** | Split chrome ancestry/show-all/drag; live smoke OK |
@@ -43,7 +44,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 | Pri | Item | Status |
 | --- | --- | --- |
 | P1 | [layout settle pure](./plans/forge-layout-settle-pure.md) D0 | Draft hybrid ready; **user lock** then PS1 |
-| P0 | [first-class containers](./plans/forge-first-class-containers.md) | **C0–C4 + R1** (C4 A done, B pending); next **C5** |
+| P0 | [first-class containers](./plans/forge-first-class-containers.md) | **C0–C5 + R1 + R1b done**; optional R2 / Z0; mouse residual |
 | P1 | [stacked](./plans/forge-stacked-layouts.md) | SL0–SL5 **done**; SL6 optional |
 | P2 | Live layout daily-drive | Bare-array sugar live on black |
 | P3 | [resize ratio/autotile](./plans/forge-resize-and-autotile.md) | Optional/parked; design blocker closed — not a hard gate |

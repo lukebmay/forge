@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
 import {
@@ -9,51 +9,22 @@ import {
 import { Rectangle, GrabOp } from "../mocks/gnome/Meta.js";
 
 /**
- * forge-5v6 (#532): holding the keyboard resize shortcut only resized one step.
+ * forge-5v6 (#532) + R1b:
  *
- * Each key auto-repeat calls resize(), which used to enqueue a one-shot
- * grab-end on the shared event queue. The grab (and its frozen initRect) tore
- * down between repeats, so the resize never accumulated. The fix restarts a
- * single debounced grab-end on each call, keeping the grab open for the whole
- * hold so the resize accumulates and settles once on release.
+ * Originally: holding keyboard resize only resized one step because each
+ * auto-repeat tore down the grab (frozen initRect) via a one-shot grab-end.
+ * Debounced grab-end fixed float/Meta path accumulation.
  *
- * NOTE: the GLib timeout mock does not fire, so this asserts the debounce
- * MECHANISM (the grab stays open and accumulates across rapid calls). The
- * end-to-end "continuous resize" behaviour is covered by the e2e gate.
+ * R1b: tiled keyboard edge bypasses grab and applies owning-split percent
+ * deltas per press — accumulation is natural (no grab). Float path still uses
+ * the debounced grab mechanism.
  */
-describe("Bug #532: held resize keeps the grab open and accumulates", () => {
+describe("Bug #532: held resize accumulates (tiled owning-split + float grab)", () => {
   let ctx;
-  let win1;
-  let node1;
 
   beforeEach(() => {
     ctx = createWindowManagerFixture();
     global.Meta = { ...(global.Meta || {}), GrabOp };
-
-    const { monitor } = getWorkspaceAndMonitor(ctx);
-    monitor.layout = LAYOUT_TYPES.HSPLIT;
-
-    win1 = createMockWindow({
-      id: 5001,
-      title: "Left",
-      allows_resize: true,
-      rect: new Rectangle({ x: 0, y: 0, width: 300, height: 600 }),
-    });
-    const win2 = createMockWindow({
-      id: 5002,
-      title: "Right",
-      allows_resize: true,
-      rect: new Rectangle({ x: 300, y: 0, width: 300, height: 600 }),
-    });
-    node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win1);
-    const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win2);
-    node1.mode = WINDOW_MODES.TILE;
-    node2.mode = WINDOW_MODES.TILE;
-    node1.percent = 0.5;
-    node2.percent = 0.5;
-
-    ctx.display.get_focus_window.mockReturnValue(win1);
-    // Bypass monitor/workspace plumbing not under test here.
     ctx.windowManager.trackCurrentMonWs = () => {};
   });
 
@@ -62,32 +33,108 @@ describe("Bug #532: held resize keeps the grab open and accumulates", () => {
     delete global.Meta;
   });
 
-  it("does not end the grab between rapid repeats (single frozen initRect)", () => {
-    const amount = 10;
-    ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
-    const firstInit = node1.initRect;
-    expect(firstInit).toBeTruthy();
+  describe("tiled (R1b owning-split)", () => {
+    let win1;
+    let node1;
+    let node2;
 
-    ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
-    ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+    beforeEach(() => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      monitor.rect = { x: 0, y: 0, width: 600, height: 600 };
 
-    // The grab is still open: initRect is preserved (same object), not reset.
-    expect(node1.initRect).toBe(firstInit);
-    // A single debounced grab-end is pending (the fix), and the shared event
-    // queue is NOT used per-repeat (the old behaviour).
-    expect(ctx.windowManager._manualResizeEndId).toBeTruthy();
-    expect(ctx.windowManager.eventQueue.length).toBe(0);
+      win1 = createMockWindow({
+        id: 5001,
+        title: "Left",
+        allows_resize: true,
+        rect: new Rectangle({ x: 0, y: 0, width: 300, height: 600 }),
+      });
+      const win2 = createMockWindow({
+        id: 5002,
+        title: "Right",
+        allows_resize: true,
+        rect: new Rectangle({ x: 300, y: 0, width: 300, height: 600 }),
+      });
+      node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win1);
+      node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win2);
+      node1.mode = WINDOW_MODES.TILE;
+      node2.mode = WINDOW_MODES.TILE;
+      node1.percent = 0.5;
+      node2.percent = 0.5;
+      node1.rect = { x: 0, y: 0, width: 300, height: 600 };
+      node2.rect = { x: 300, y: 0, width: 300, height: 600 };
+
+      ctx.display.get_focus_window.mockReturnValue(win1);
+    });
+
+    it("accumulates percent across rapid repeats without grab machinery", () => {
+      vi.spyOn(ctx.windowManager, "renderTree").mockImplementation(() => {});
+      const amount = 30; // 30/600 = 5% per press
+
+      ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+      ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+      ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+
+      // Three presses: 0.5 + 3*0.05 = 0.65
+      expect(node1.percent).toBeCloseTo(0.65, 5);
+      expect(node2.percent).toBeCloseTo(0.35, 5);
+      expect(node1.initRect).toBeFalsy();
+      expect(ctx.windowManager._manualResizeEndId).toBeFalsy();
+      expect(ctx.windowManager.eventQueue.length).toBe(0);
+    });
   });
 
-  it("accumulates the resize across repeats instead of one step", () => {
-    const amount = 10;
-    const startWidth = win1.get_frame_rect().width;
+  describe("float (Meta grab debounce)", () => {
+    let win1;
+    let node1;
 
-    ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
-    ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
-    ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+    beforeEach(() => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
 
-    // Three presses grew the window by 3 steps, not one.
-    expect(win1.get_frame_rect().width).toBe(startWidth + 3 * amount);
+      win1 = createMockWindow({
+        id: 5001,
+        title: "FloatA",
+        allows_resize: true,
+        rect: new Rectangle({ x: 0, y: 0, width: 300, height: 600 }),
+      });
+      const win2 = createMockWindow({
+        id: 5002,
+        title: "FloatB",
+        allows_resize: true,
+        rect: new Rectangle({ x: 300, y: 0, width: 300, height: 600 }),
+      });
+      node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win1);
+      const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win2);
+      node1.mode = WINDOW_MODES.FLOAT;
+      node2.mode = WINDOW_MODES.FLOAT;
+
+      ctx.display.get_focus_window.mockReturnValue(win1);
+    });
+
+    it("does not end the grab between rapid repeats (single frozen initRect)", () => {
+      const amount = 10;
+      ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+      const firstInit = node1.initRect;
+      expect(firstInit).toBeTruthy();
+
+      ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+      ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+
+      expect(node1.initRect).toBe(firstInit);
+      expect(ctx.windowManager._manualResizeEndId).toBeTruthy();
+      expect(ctx.windowManager.eventQueue.length).toBe(0);
+    });
+
+    it("accumulates the Meta frame resize across repeats", () => {
+      const amount = 10;
+      const startWidth = win1.get_frame_rect().width;
+
+      ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+      ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+      ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_E, amount);
+
+      expect(win1.get_frame_rect().width).toBe(startWidth + 3 * amount);
+    });
   });
 });

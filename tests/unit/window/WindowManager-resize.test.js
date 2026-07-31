@@ -6,6 +6,7 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
+  createContainerNode,
 } from "../../mocks/helpers/index.js";
 import { Rectangle, GrabOp, MotionDirection } from "../../mocks/gnome/Meta.js";
 
@@ -477,6 +478,7 @@ describe("WindowManager - Resize Operations", () => {
     });
 
     it("flushes a pending grab-end for a DIFFERENT window before resizing (forge-h6z9)", () => {
+      // Float path still uses Meta grab debounce; tiled uses owning-split (R1b).
       const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       // Bypass monitor/workspace plumbing not under test here.
@@ -494,8 +496,8 @@ describe("WindowManager - Resize Operations", () => {
       });
       const nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
       const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
-      nodeA.mode = WINDOW_MODES.TILE;
-      nodeB.mode = WINDOW_MODES.TILE;
+      nodeA.mode = WINDOW_MODES.FLOAT;
+      nodeB.mode = WINDOW_MODES.FLOAT;
 
       // Arm the debounced grab-end for window A.
       ctx.display.get_focus_window.mockReturnValue(winA);
@@ -506,7 +508,7 @@ describe("WindowManager - Resize Operations", () => {
       const cleanupSpy = vi.spyOn(wm(), "_grabCleanup");
 
       // Focus drifts to B; a resize within the debounce must flush A's grab first
-      // (window.js ~706-714) so A's node isn't stranded with grabMode/initRect.
+      // so A's node isn't stranded with grabMode/initRect.
       ctx.display.get_focus_window.mockReturnValue(winB);
       wm().resize(GrabOp.KEYBOARD_RESIZING_E, 10);
 
@@ -515,6 +517,171 @@ describe("WindowManager - Resize Operations", () => {
       expect(nodeA.initRect).toBeNull();
       // The pending end now belongs to B.
       expect(wm()._manualResizeEndWindow).toBe(winB);
+    });
+  });
+
+  /**
+   * R1b: tiled keyboard edge resize uses resolveOwningSplit + percent delta
+   * (one axis). Positive amount grows focused layout-unit share; L and R share
+   * the same sign (no edge-direction flip). Grab/Meta path is bypassed.
+   */
+  describe("resize() - tiled owning-split (R1b)", () => {
+    function build2x2() {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+
+      const colL = createContainerNode(monitor, LAYOUT_TYPES.VSPLIT, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      colL.percent = 0.5;
+      const colR = createContainerNode(monitor, LAYOUT_TYPES.VSPLIT, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      colR.percent = 0.5;
+
+      const mkWin = (parent, rect, id) => {
+        const meta = createMockWindow({ id, workspace: ctx.workspaces[0] });
+        const node = ctx.tree.createNode(parent.nodeValue, NODE_TYPES.WINDOW, meta);
+        node.mode = WINDOW_MODES.TILE;
+        node.percent = 0.5;
+        node.rect = rect;
+        return node;
+      };
+
+      const tl = mkWin(colL, { x: 0, y: 0, width: 960, height: 540 }, "TL");
+      const bl = mkWin(colL, { x: 0, y: 540, width: 960, height: 540 }, "BL");
+      const tr = mkWin(colR, { x: 960, y: 0, width: 960, height: 540 }, "TR");
+      const br = mkWin(colR, { x: 960, y: 540, width: 960, height: 540 }, "BR");
+      return { tl, bl, tr, br, colL, colR, monitor };
+    }
+
+    it("horizontal edge grows focused column share (nested H-in-V off-axis walk)", () => {
+      const { tl, bl, colL, colR } = build2x2();
+      vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+      const moveSpy = vi.spyOn(wm(), "move");
+      const beginSpy = vi.spyOn(wm(), "_handleGrabOpBegin");
+      ctx.display.get_focus_window.mockReturnValue(tl.nodeValue);
+
+      // 96px of 1920 monitor width = 5% → colL 0.55 / colR 0.45
+      wm().resize(GrabOp.KEYBOARD_RESIZING_E, 96);
+
+      expect(colL.percent).toBeCloseTo(0.55, 5);
+      expect(colR.percent).toBeCloseTo(0.45, 5);
+      // Vertical siblings unchanged (one axis only — not dual expand).
+      expect(tl.percent).toBe(0.5);
+      expect(bl.percent).toBe(0.5);
+      expect(moveSpy).not.toHaveBeenCalled();
+      expect(beginSpy).not.toHaveBeenCalled();
+      expect(wm()._manualResizeEndId).toBeFalsy();
+    });
+
+    it("WindowResizeLeft uses same sign as Right (no L/R flip; grows focused share)", () => {
+      const { tl, colL, colR } = build2x2();
+      vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+      ctx.display.get_focus_window.mockReturnValue(tl.nodeValue);
+
+      wm().resize(GrabOp.KEYBOARD_RESIZING_W, 96);
+
+      expect(colL.percent).toBeCloseTo(0.55, 5);
+      expect(colR.percent).toBeCloseTo(0.45, 5);
+    });
+
+    it("vertical edge grows focused row share within column", () => {
+      const { tl, bl, colL, colR } = build2x2();
+      vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+      ctx.display.get_focus_window.mockReturnValue(tl.nodeValue);
+
+      // 54px of 1080 column height = 5%
+      wm().resize(GrabOp.KEYBOARD_RESIZING_S, 54);
+
+      expect(tl.percent).toBeCloseTo(0.55, 5);
+      expect(bl.percent).toBeCloseTo(0.45, 5);
+      // Horizontal columns unchanged.
+      expect(colL.percent).toBe(0.5);
+      expect(colR.percent).toBe(0.5);
+    });
+
+    it("negative amount shrinks focused share", () => {
+      const { tl, bl } = build2x2();
+      vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+      ctx.display.get_focus_window.mockReturnValue(tl.nodeValue);
+
+      wm().resize(GrabOp.KEYBOARD_RESIZING_S, -54);
+
+      expect(tl.percent).toBeCloseTo(0.45, 5);
+      expect(bl.percent).toBeCloseTo(0.55, 5);
+    });
+
+    it("no-op when no owning split on that axis (does not thrash Meta)", () => {
+      // Flat VSPLIT only — horizontal edge has no ancestor pair.
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.VSPLIT;
+      monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+
+      const mkWin = (parent, rect, id) => {
+        const meta = createMockWindow({ id, workspace: ctx.workspaces[0] });
+        const node = ctx.tree.createNode(parent.nodeValue, NODE_TYPES.WINDOW, meta);
+        node.mode = WINDOW_MODES.TILE;
+        node.percent = 0.5;
+        node.rect = rect;
+        return node;
+      };
+      const a = mkWin(monitor, { x: 0, y: 0, width: 1920, height: 540 }, "A");
+      mkWin(monitor, { x: 0, y: 540, width: 1920, height: 540 }, "B");
+
+      vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+      const moveSpy = vi.spyOn(wm(), "move");
+      const beginSpy = vi.spyOn(wm(), "_handleGrabOpBegin");
+      ctx.display.get_focus_window.mockReturnValue(a.nodeValue);
+
+      const aPct = a.percent;
+      wm().resize(GrabOp.KEYBOARD_RESIZING_E, 50);
+
+      expect(a.percent).toBe(aPct);
+      expect(moveSpy).not.toHaveBeenCalled();
+      expect(beginSpy).not.toHaveBeenCalled();
+    });
+
+    it("tab bag is the layout unit (edge resizes bag vs split pair)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+
+      const bag = createContainerNode(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      bag.percent = 0.5;
+      const otherMeta = createMockWindow({ id: "other", workspace: ctx.workspaces[0] });
+      const other = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, otherMeta);
+      other.mode = WINDOW_MODES.TILE;
+      other.percent = 0.5;
+      other.rect = { x: 960, y: 0, width: 960, height: 1080 };
+
+      const w1Meta = createMockWindow({ id: "w1", workspace: ctx.workspaces[0] });
+      const w1 = ctx.tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, w1Meta);
+      w1.mode = WINDOW_MODES.TILE;
+      w1.percent = 1;
+      w1.rect = { x: 0, y: 0, width: 960, height: 1080 };
+
+      vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+      ctx.display.get_focus_window.mockReturnValue(w1Meta);
+
+      wm().resize(GrabOp.KEYBOARD_RESIZING_E, 96);
+
+      expect(bag.percent).toBeCloseTo(0.55, 5);
+      expect(other.percent).toBeCloseTo(0.45, 5);
+      // Leaf inside bag is not the resize target.
+      expect(w1.percent).toBe(1);
     });
   });
 });

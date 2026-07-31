@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import GLib from "gi://GLib";
-import { GRAB_TYPES } from "../../lib/extension/window.js";
+import { GRAB_TYPES, WINDOW_MODES } from "../../lib/extension/window.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
@@ -18,14 +18,14 @@ import { Rectangle, GrabOp, MotionDirection } from "../mocks/gnome/Meta.js";
  * was said to _grabCleanup the NEW node and strand the ORIGINAL with
  * grabMode=RESIZING / initRect set forever.
  *
- * Investigation (forge-9fwj close) found this cannot happen: _handleGrabOpBegin
- * records the arming node in this._draggedNodeWindow (Bug #433), and
- * _handleGrabOpEnd cleans it via
+ * Investigation found this cannot happen: _handleGrabOpBegin records the arming
+ * node in this._draggedNodeWindow (Bug #433), and _handleGrabOpEnd cleans it via
  *   if (this._draggedNodeWindow && this._draggedNodeWindow !== focusNodeWindow)
  *     this._grabCleanup(this._draggedNodeWindow)
  * so the arming node is released on every timer fire regardless of focus drift.
- * The bead's proposed "clean the captured node instead" would REGRESS by dropping
- * grabOp=null + renderTree. So: no code change; this test locks the behavior in.
+ *
+ * R1b: tiled keyboard edge bypasses grab. This guard uses FLOAT windows so the
+ * Meta debounce path still exercises the cleanup.
  */
 describe("Bug forge-9fwj: keyboard-resize debounce cleans the arming node on focus drift", () => {
   let ctx;
@@ -48,7 +48,6 @@ describe("Bug forge-9fwj: keyboard-resize debounce cleans the arming node on foc
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const workspace = ctx.workspaces[0];
 
-    // Two tiled windows A and B in the tree.
     const { nodeWindow: nodeA, metaWindow: winA } = createWindowNode(ctx.tree, monitor, {
       windowOverrides: {
         id: "win-A",
@@ -63,6 +62,9 @@ describe("Bug forge-9fwj: keyboard-resize debounce cleans the arming node on foc
         rect: new Rectangle({ x: 800, y: 0, width: 800, height: 600 }),
       },
     });
+    // Float path still arms Meta grab debounce (tiled R1b does not).
+    nodeA.mode = WINDOW_MODES.FLOAT;
+    nodeB.mode = WINDOW_MODES.FLOAT;
 
     // Capture the 120ms debounced grab-end callback instead of letting it fire on a timer.
     let endCb = null;

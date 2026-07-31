@@ -1,6 +1,6 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** primary C wave **done** — **C0–C5 + R1**; next optional **R2** or **Z0**
+**Status:** primary C wave **done** — **C0–C5 + R1 + R1b keyboard edge**; next optional **R2** or **Z0**; mouse resize residual
 **Updated:** 2026-07-31  
 **Branch:** `plan/forge-first-class-containers`  
 **Kind:** Core product architecture → phased implement  
@@ -9,14 +9,12 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
-**C0–C5 + R1 done** on `plan/forge-first-class-containers`.
+**C0–C5 + R1 + R1b done** on `plan/forge-first-class-containers` (A/B AGREE).
 
-- C0–C4 as prior; **C5:** kits/docs/DESIGN/REG/inventory + CLI run-steps help for
-  group/ungroup/focus-parent|child/move-in|out; residual silent layout-set
-  flatten none; L14 cleanTree + L16 mode-flag **kept** (hygiene / prefs)
-- Residual: R1 edge/mouse resize; optional R2 Size naming; do **not** start zoom
-  without Z0 lock
-- **Next:** optional R2 or Z0 discussion — not auto-start zoom
+- R1b: tiled `wm.resize(edge)` → `resolveOwningSplit` + `_applyOwningSplitDelta`;
+  one axis; bag unit; grab bypass; float Meta path kept; 188/2023
+- **Residual:** mouse `_handleResizing` still Meta/grab
+- **Next:** optional R2 Size naming or Z0 — do **not** start zoom without Z0 lock
 
 ---
 
@@ -295,8 +293,9 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 
 | ID | Work | Done when | Clean / tests |
 | --- | --- | --- | --- |
-| **R1** | Single owning-split resolver; wire expand/shrink | **Done** (expand/shrink + pure tests; edge/mouse residual) | **Test I3** |
-| **R2** | Prefs/cheatsheet: Resize vs Size; shrink/grow order | Sane grouping | No empty snapshot tests |
+| **R1** | Single owning-split resolver; wire expand/shrink | **Done** (expand/shrink + pure tests) | **Test I3** |
+| **R1b** | Keyboard edge `resize` via owning-split | **Done** (A/B AGREE; mouse residual) | WM resize tests |
+| **R2** | Prefs/cheatsheet: Resize vs Size; shrink/grow order | Optional | No empty snapshot tests |
 | **R3** (optional later) | Ratio-step / yuiop | Only if still wanted | See resize-autotile plan |
 
 **Interleave:** ship R1 in the same stretch as C1–C2 (resolver needs stable units).

@@ -21,8 +21,10 @@ import { Rectangle, GrabOp } from "../mocks/gnome/Meta.js";
  *
  * Fix: track which window the pending end belongs to, flush the prior window's
  * grab on a cross-window re-arm, and cancel the pending timer in
- * _handleGrabOpBegin. The same-window key-repeat path (forge-5v6) must keep
- * accumulating (covered by bug-532).
+ * _handleGrabOpBegin.
+ *
+ * R1b: tiled keyboard edge uses owning-split (no grab). This suite covers the
+ * float/Meta path that still arms _manualResizeEndId.
  */
 describe("forge-h6z9: manual resize debounce scoped to its window/grab", () => {
   let ctx;
@@ -52,10 +54,9 @@ describe("forge-h6z9: manual resize debounce scoped to its window/grab", () => {
     });
     nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
     nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
-    nodeA.mode = WINDOW_MODES.TILE;
-    nodeB.mode = WINDOW_MODES.TILE;
-    nodeA.percent = 0.5;
-    nodeB.percent = 0.5;
+    // Float: Meta grab path (tiled R1b bypasses grab).
+    nodeA.mode = WINDOW_MODES.FLOAT;
+    nodeB.mode = WINDOW_MODES.FLOAT;
 
     // Bypass monitor/workspace plumbing not under test here.
     ctx.windowManager.trackCurrentMonWs = () => {};
