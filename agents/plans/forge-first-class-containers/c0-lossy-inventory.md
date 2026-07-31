@@ -12,13 +12,13 @@ Tag legend: **C1** non-destructive layout cycle · **C2** group/ungroup · **C5*
 
 | ID | Path | What it does | Wave | I1 | I2 |
 | --- | --- | --- | --- | --- | --- |
-| L1 | `lib/extension/command.js` → `LayoutTabbedToggle` | Tab↔split: on exit to split, **`resetSiblingPercent(parent)`**; may **`tree.split(..., true)`** if parent is MONITOR (creates CON). Mode assign is direct (`parent.layout = …`). Nested CON children kept but percents wiped on exit. | **C1** | **violates** (percent wipe; split invent on monitor) | soft — no explicit flatten of nest |
-| L2 | `lib/extension/command.js` → `LayoutStackedToggle` | Stack↔split: same pattern as L1 (`resetSiblingPercent` on exit; force-split on MONITOR). TABBED→STACKED clears `lastTabFocus`. | **C1** | **violates** (percent wipe; split invent) | soft |
-| L3 | `lib/extension/command.js` → `LayoutToggle` | H↔V only: mode flip, **no** reparent, **no** percent reset. Closest to I1 today. | **C1** | mostly OK; should go through `setLayout` | OK |
-| L4 | `lib/extension/command.js` → `LayoutStackTabToggle` | STACKED↔TABBED only; **wired via `setLayout` (C0)**. No reparent. Activate last child on →STACKED (presentation). | **C1** polish | **OK (I1)** | OK |
-| L5 | `lib/extension/session-api.js` → `_layoutOp` | Absolute layout set. **H/V → TABBED\|STACKED calls `_flattenLayoutParentToWindows(parent)`** (peels nested CONs). H/V also **`resetSiblingPercent`**. MONITOR parent → `tree.split` first for tab/stack. | **C1** | **violates** (flatten + percent) | **violates** (silent flatten) |
-| L6 | `lib/extension/session-api.js` → `_flattenLayoutParentToWindows` | DFS peel nested CON children until window leaves only. Used by L5. | **C1** / **C2** | n/a (is the flatten) | **violates** if used from toggle; OK if only explicit ungroup |
-| L7 | `lib/extension/session-api.js` → `_layoutCycleOp` | `layout-cycle` axis `group`/`split`. Group: mode only. Split: mode + **`resetSiblingPercent`**. | **C1** | split axis **violates** percent; group OK | OK |
+| L1 | `lib/extension/command.js` → `LayoutTabbedToggle` | **C1 done:** `setLayout`; no percent wipe on exit; MONITOR force-split kept. | **C1 ✓** | **OK (I1)** | OK |
+| L2 | `lib/extension/command.js` → `LayoutStackedToggle` | **C1 done:** same as L1 via `setLayout`. | **C1 ✓** | **OK (I1)** | OK |
+| L3 | `lib/extension/command.js` → `LayoutToggle` | **C1 done:** H↔V via `setLayout`. | **C1 ✓** | **OK (I1)** | OK |
+| L4 | `lib/extension/command.js` → `LayoutStackTabToggle` | STACKED↔TABBED via `setLayout` (C0). | **C1 ✓** | **OK (I1)** | OK |
+| L5 | `lib/extension/session-api.js` → `_layoutOp` | **C1 done:** `setLayout` only; no flatten; no percent wipe. MONITOR wrap for tab/stack kept. | **C1 ✓** | **OK (I1)** | OK |
+| L6 | `lib/extension/session-api.js` → `_flattenLayoutParentToWindows` | DFS peel nested CONs. **Unused from layout set (C1)**; reserved for explicit ungroup (C2). | **C2** | n/a | OK if only explicit ungroup |
+| L7 | `lib/extension/session-api.js` → `_layoutCycleOp` | **C1 done:** group + split via `setLayout`; no percent wipe on split flip. | **C1 ✓** | **OK (I1)** | OK |
 | L8 | `lib/extension/tree.js` → `Node.resetLayoutSingleChild` | If stacked/tabbed and ≤1 child → force **HSPLIT**. Implicit mode change. | **C1–C2** (REG-auto-exit-tabbed adjacent) | soft I1 (mode without reparent) | **violates I2** if user group |
 | L9 | `lib/extension/tree.js` → remove/close path + `auto-exit-tabbed` | Single remaining tab → layout = split (`determineSplitLayout` / reorient) + **`resetSiblingPercent`** + clear `lastTabFocus`. | **C1–C2** | percent + mode | **violates I2** when dissolving user tab bag |
 | L10 | `lib/extension/tree.js` → `_finishMove` | After structural move: **`resetSiblingPercent`** on both parents + **`resetLayoutSingleChild`** on source. | **C2** / move epilogue | percent policy | via L8 |

@@ -204,6 +204,20 @@ describe("CommandHandler", () => {
       commandHandler.execute({ name: "LayoutStackedToggle" });
 
       expect(mockWm.determineSplitLayout).toHaveBeenCalled();
+      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+    });
+
+    it("should not resetSiblingPercent when exiting STACKED (I1)", () => {
+      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.STACKED;
+      mockNodeWindow.parentNode.childNodes = [
+        { id: "a", percent: 0.6 },
+        { id: "b", percent: 0.4 },
+      ];
+
+      commandHandler.execute({ name: "LayoutStackedToggle" });
+
+      expect(mockTree.resetSiblingPercent).not.toHaveBeenCalled();
+      expect(mockNodeWindow.parentNode.childNodes[0].percent).toBe(0.6);
     });
 
     it("should split first if parent is monitor", () => {
@@ -282,6 +296,22 @@ describe("CommandHandler", () => {
 
       expect(mockWm.determineSplitLayout).toHaveBeenCalled();
       expect(mockNodeWindow.parentNode.lastTabFocus).toBeNull();
+      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+    });
+
+    it("should not resetSiblingPercent when exiting TABBED (I1)", () => {
+      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.TABBED;
+      mockNodeWindow.parentNode.lastTabFocus = mockMetaWindow;
+      mockNodeWindow.parentNode.childNodes = [
+        { id: "a", percent: 0.25 },
+        { id: "nested", percent: 0.75 },
+      ];
+
+      commandHandler.execute({ name: "LayoutTabbedToggle" });
+
+      expect(mockTree.resetSiblingPercent).not.toHaveBeenCalled();
+      expect(mockNodeWindow.parentNode.childNodes).toHaveLength(2);
+      expect(mockNodeWindow.parentNode.childNodes[1].percent).toBe(0.75);
     });
 
     it("should do nothing if tabbed mode disabled", () => {

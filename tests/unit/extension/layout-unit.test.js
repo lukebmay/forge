@@ -49,4 +49,23 @@ describe("layout-unit (I1 setLayout spine)", () => {
     expect(setLayout({}, "ROOT")).toBe(false);
     expect(setLayout({ layout: "HSPLIT" }, "nope")).toBe(false);
   });
+
+  // I1: mode cycle must keep nested CON identity and sibling percents.
+  it("mode cycle keeps nested CON identity and percents (I1)", () => {
+    const nested = { id: "nested-con", layout: "HSPLIT", percent: 0.4, childNodes: [] };
+    const win = { id: "w1", percent: 0.6, userSized: true };
+    const con = { layout: "HSPLIT", childNodes: [win, nested] };
+    const modes = ["VSPLIT", "TABBED", "STACKED", "HSPLIT", "TABBED", "VSPLIT", "STACKED"];
+    for (const m of modes) {
+      expect(setLayout(con, m)).toBe(true);
+      expect(con.layout).toBe(m);
+      expect(con.childNodes).toHaveLength(2);
+      expect(con.childNodes[0]).toBe(win);
+      expect(con.childNodes[1]).toBe(nested);
+      expect(win.percent).toBe(0.6);
+      expect(win.userSized).toBe(true);
+      expect(nested.percent).toBe(0.4);
+      expect(nested.layout).toBe("HSPLIT");
+    }
+  });
 });

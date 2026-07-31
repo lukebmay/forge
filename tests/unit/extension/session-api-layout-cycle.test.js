@@ -102,6 +102,32 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(con.layout).toBe(LAYOUT_TYPES.VSPLIT);
   });
 
+  it("layout-cycle split does not wipe sibling percents (I1)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const con = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.HSPLIT;
+    const w1 = createMockWindow({ id: 32 });
+    const w2 = createMockWindow({ id: 33 });
+    const n1 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w1);
+    const n2 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w2);
+    n1.percent = 0.7;
+    n1.userSized = true;
+    n2.percent = 0.3;
+    const nested = wm().tree.createNode(con.nodeValue, NODE_TYPES.CON, new Bin());
+    nested.layout = LAYOUT_TYPES.VSPLIT;
+    nested.percent = 0.0;
+
+    const resetSpy = vi.spyOn(wm().tree, "resetSiblingPercent");
+    const out = api()._layoutCycleOp("split", "id:32", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(con.layout).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(n1.percent).toBe(0.7);
+    expect(n1.userSized).toBe(true);
+    expect(n2.percent).toBe(0.3);
+    expect(nested.parentNode).toBe(con);
+    expect(resetSpy).not.toHaveBeenCalled();
+  });
+
   it("merge-group with explicit partner wraps into TABBED", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const con = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());

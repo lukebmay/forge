@@ -809,18 +809,20 @@ can_close veto). Each slot is a **logical** group; the live tree still
 collapses single-child CONs, so a lone Ghostty is not forced into lonely
 tab chrome until a second member appears.
 
-**Zero thrash (P0):** Containers are **HSPLIT | VSPLIT | TABBED** (H/V nest;
-H/V→tab flattens lossily; tab→H/V makes slivers). **Sane desk:** re-seat roles
-and **tab marginals** (non-role windows) into the profile **view area** they
-overlap (partial → first view) so `layout` cleans the desk. **Detected thrash:**
-roles only + soft-park everything else on last mon last group — no archaeology.
-Tab ensure must yield TABBED, not nested HSPLIT (`_layoutOp` flattens nested
-CONs on TABBED/STACKED). CLI: `plan.thrashState` + stderr mode A/B; `--safe`
-is open+move only. **Single-role view + nested H/V companions** (Ghostty with
-Nautilus/FB/Chess under VSPLIT or nested CON) is **Mode A** — not thrash;
-collect by mon-child containment + tab the view. Nested-split thrash only for
-**multi-role tabbed** views. Plan:
-[forge-workon-thrash-zero.md](../agents/plans/forge-workon-thrash-zero.md).
+**Zero thrash (P0):** Containers are **HSPLIT | VSPLIT | TABBED | STACKED**
+(H/V nest). Mode change is **non-destructive** (`setLayout` / I1): no silent
+flatten of nested CONs, no percent wipe on toggle (C1; explicit ungroup is
+C2). **Sane desk:** re-seat roles and **tab marginals** (non-role windows)
+into the profile **view area** they overlap (partial → first view) so
+`layout` cleans the desk. **Detected thrash:** roles only + soft-park
+everything else on last mon last group — no archaeology. Profile ensure may
+still reshape structure deliberately; user toggles must not. CLI:
+`plan.thrashState` + stderr mode A/B; `--safe` is open+move only.
+**Single-role view + nested H/V companions** (Ghostty with Nautilus/FB/Chess
+under VSPLIT or nested CON) is **Mode A** — not thrash; collect by mon-child
+containment + tab the view. Nested-split thrash only for **multi-role
+tabbed** views. Plans: thrash-zero (historical) +
+[first-class containers](../agents/plans/forge-first-class-containers.md).
 
 **Quiet apply:** default `forge layout` prints human counts on stderr;
 full plan/apply JSON only with `--verbose` / `FORGE_VERBOSE=1` (and on

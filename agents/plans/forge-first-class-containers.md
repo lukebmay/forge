@@ -1,6 +1,6 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** implementing — **C0 done**; next **C1**  
+**Status:** implementing — **C0–C1 done**; next **C2** / **R1**  
 **Updated:** 2026-07-31  
 **Branch:** `plan/forge-first-class-containers`  
 **Kind:** Core product architecture → phased implement  
@@ -9,13 +9,13 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
-**C0 done** (A/B AGREE) on `plan/forge-first-class-containers`.
+**C0–C1 done** (A/B AGREE) on `plan/forge-first-class-containers`.
 
-- Monocle deleted (API/command/schema/presets/docs/tests); REG-monocle + REG-i3-super-m **DROPPED**.
-- Inventory: [c0-lossy-inventory.md](./forge-first-class-containers/c0-lossy-inventory.md) (L1–L19).
-- Spine: `lib/extension/layout-unit.js` (`setLayout`, I1); wired `LayoutStackTabToggle`.
-- `npm test` green (186 files / 1953). Task → [completed/…](./forge-first-class-containers/completed/forge-first-class-containers_c0-inventory-monocle.md).
-- **Next:** **C1** non-destructive layout transitions (I1) — priority L5/L6, L1/L2, L7.
+- C0: monocle deleted; inventory L1–L19; `layout-unit.js` spine.
+- C1: non-destructive `setLayout` on toggles + session layout/cycle; no silent
+  flatten or percent wipe on mode change; I1 tests green.
+- REG-lossy-tab-toggle **DONE**; REG-auto-exit-tabbed (L8/L9) deferred.
+- **Next:** C2 explicit group/ungroup; R1 owning-split resize can interleave.
 
 ---
 
@@ -113,7 +113,7 @@ Update rows when a slice actually drops or restores something.
 | **REG-monocle** | `workspace-monocle-toggle` + `toggleWorkspaceMonocle` + docs | **C0 — DROPPED** | **Z** (only if still wanted; prefer zoom full) | **Dropped C0:** API, command, schema key, docs, tests removed. Chord free for zoom. |
 | **REG-i3-super-m** | i3 kit chord `<Super>m` → monocle | **C0 — DROPPED** | **Z** (map to zoom full) | **Dropped C0:** key removed from presets (not unbound stub). Restore maps Super+m → zoom full. |
 | **REG-i3-super-f** | i3 kit `<Super>f` → **snap center** (not fullscreen) | optional C5/Z | **Z** map to zoom full | i3 users expect fullscreen; current mapping is already non-i3. Fix when zoom lands, not with monocle. |
-| **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1** | never as silent behavior; percent policy explicit | Replacement: non-destructive `setLayout` + explicit ungroup. |
+| **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1 — DONE (layout set/toggle)** | never as silent behavior; percent policy explicit | **C1:** L1/L2/L3/L5/L7 via `setLayout`; no silent flatten from `_layoutOp`; no percent wipe on mode change. `_flattenLayoutParentToWindows` kept unused for C2 ungroup. |
 | **REG-auto-exit-tabbed** | `auto-exit-tabbed` dissolving single-child tab CONs | **C1–C2** evaluate | optional later | Implicit structure change; may keep if it only flattens *empty* chrome, not user groups. Decide in C1 inventory. |
 | **REG-ensure-flatten** | Layout ensure / thrash paths that collapse nested H/V into tab bags | **C0–C5** inventory; strip where not required for profiles | only as explicit `forge layout` repair flag | Profile apply may still reshape; user toggles must not. |
 | **REG-expand-dual-axis** | Current `[`/`]` grow both axes via child+parent without clear docs | **R1–R2** | **R2** as documented Size step | Not deleted forever — re-specified as dual owning-split steps. |
@@ -281,7 +281,7 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 | ID | Work | Done when | Clean / tests |
 | --- | --- | --- | --- |
 | **C0** | Inventory lossy paths; **delete monocle** (REG-monocle, REG-i3-super-m); sketch `setLayout` + unit helpers | **Done** (A/B AGREE) | Delete monocle-only tests; no BC shims |
-| **C1** | Non-destructive layout transitions (H/V/tab/stack) — i3 `layout toggle` class | Cycle keeps child node identity | **Test I1** |
+| **C1** | Non-destructive layout transitions (H/V/tab/stack) — i3 `layout toggle` class | **Done** (A/B AGREE) | **Test I1** |
 | **C2** | Explicit `group` / `ungroup` + CLI/RunSteps; cut silent CON invent where safe | Ungroup only dissolves CON | **Test I2** |
 | **C3** | Split chrome: focus ancestry; show-all; drag show-all (i3 indicator language) | Visible H vs V under focus | Manual/live; pure helpers tested if extracted |
 | **C4** | Move into/out of group + **focus parent/child** | Tree navigation without debug overlay | Test focus target + reparent ids |

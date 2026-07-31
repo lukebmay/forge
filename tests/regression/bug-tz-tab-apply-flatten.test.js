@@ -9,22 +9,13 @@ import {
 import { Bin } from "../mocks/gnome/St.js";
 
 /**
- * TZ-tab-apply: H/V → TABBED must flatten nested CONs into one window bag.
+ * C1 / I1: absolute layout set is non-destructive.
  *
- * Live thrash shape after structure ensure without flatten:
- *   CON HSPLIT
- *     Ghostty
- *     CON HSPLIT
- *       Facebook
- *       Chess
- * wanted:
- *   CON TABBED  Ghostty | Facebook | Chess
- *
- * Repro (CLI workon ensure_layout windowIds):
- *   layout tabbed on first id → _layoutOp flattens then sets TABBED
- *   move remaining ids onto first (mon-direct siblings join the bag)
+ * Pre-C1 (TZ-tab-apply): H/V → TABBED flattened nested CONs into a window bag.
+ * C1: layout mode only — nested CON identity and percents stay. Explicit
+ * ungroup (C2) owns flatten.
  */
-describe("TZ-tab-apply: layout tabbed flattens nested HSPLIT", () => {
+describe("C1: layout set is non-destructive (I1)", () => {
   let ctx;
 
   beforeEach(() => {
@@ -58,13 +49,16 @@ describe("TZ-tab-apply: layout tabbed flattens nested HSPLIT", () => {
     });
   }
 
-  it("nested HSPLIT → TABBED bag with all window leaves", () => {
+  it("TABBED on nested HSPLIT keeps nested CON children", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const outer = createCon(monitor.nodeValue, LAYOUT_TYPES.HSPLIT);
     const wGhost = createMockWindow({ id: 201, wm_class: "Ghostty" });
     const nGhost = wm().tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, wGhost);
+    nGhost.percent = 0.55;
+    nGhost.userSized = true;
 
     const inner = createCon(outer.nodeValue, LAYOUT_TYPES.HSPLIT);
+    inner.percent = 0.45;
     const wFb = createMockWindow({ id: 301, wm_class: "Facebook" });
     const wChess = createMockWindow({ id: 302, wm_class: "Chess" });
     const nFb = wm().tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, wFb);
@@ -77,13 +71,16 @@ describe("TZ-tab-apply: layout tabbed flattens nested HSPLIT", () => {
     expect(out.ok).toBe(true);
     expect(out.mode).toBe(LAYOUT_TYPES.TABBED);
 
-    expect(nGhost.parentNode).toBe(outer);
-    expect(nFb.parentNode).toBe(outer);
-    expect(nChess.parentNode).toBe(outer);
     expect(outer.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(outer.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
-    expect(outer.childNodes).toHaveLength(3);
-    expect(outer.childNodes.map((c) => c.nodeValue)).toEqual([wGhost, wFb, wChess]);
+    expect(outer.childNodes).toHaveLength(2);
+    expect(nGhost.parentNode).toBe(outer);
+    expect(inner.parentNode).toBe(outer);
+    expect(outer.childNodes[1]).toBe(inner);
+    expect(nFb.parentNode).toBe(inner);
+    expect(nChess.parentNode).toBe(inner);
+    expect(nGhost.percent).toBe(0.55);
+    expect(nGhost.userSized).toBe(true);
+    expect(inner.percent).toBe(0.45);
     expect(outer.lastTabFocus).toBe(wGhost);
   });
 
@@ -120,12 +117,15 @@ describe("TZ-tab-apply: layout tabbed flattens nested HSPLIT", () => {
     expect(bag.childNodes).toHaveLength(3);
   });
 
-  it("layout HSPLIT does not flatten nested CONs", () => {
+  it("layout HSPLIT does not flatten nested CONs or wipe percents", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const outer = createCon(monitor.nodeValue, LAYOUT_TYPES.VSPLIT);
     const wA = createMockWindow({ id: 1 });
-    wm().tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nA = wm().tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, wA);
+    nA.percent = 0.3;
+    nA.userSized = true;
     const inner = createCon(outer.nodeValue, LAYOUT_TYPES.HSPLIT);
+    inner.percent = 0.7;
     wm().tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, createMockWindow({ id: 2 }));
 
     const out = api()._layoutOp("HSPLIT", "id:1", { quiet: true });
@@ -133,5 +133,9 @@ describe("TZ-tab-apply: layout tabbed flattens nested HSPLIT", () => {
     expect(outer.layout).toBe(LAYOUT_TYPES.HSPLIT);
     expect(outer.childNodes).toHaveLength(2);
     expect(outer.childNodes[1].nodeType).toBe(NODE_TYPES.CON);
+    expect(outer.childNodes[1]).toBe(inner);
+    expect(nA.percent).toBe(0.3);
+    expect(nA.userSized).toBe(true);
+    expect(inner.percent).toBe(0.7);
   });
 });
