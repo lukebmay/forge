@@ -8,9 +8,10 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **D0 settle** | **User lock** on pure settle hybrid (draft in plan) | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
-| 2 | resize/autotile | Discussion (human): yuiop + auto-tile | [forge-resize-and-autotile.md](./plans/forge-resize-and-autotile.md) · [blocker](./blockers/resize-autotile-design.md) |
-| 3 | stacks SL6 | Optional polish (float residual in stack ensure) | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| **1** | **containers** | First-class CONs (+ resize); zoom/float later | [forge-first-class-containers.md](./plans/forge-first-class-containers.md) — **locked container-first** |
+| 2 | **D0 settle** | **User lock** on pure settle hybrid (draft in plan) | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
+| 3 | resize ratio/autotile | Optional yuiop + auto-tile (not structural resize) | [forge-resize-and-autotile.md](./plans/forge-resize-and-autotile.md) · [blocker](./blockers/resize-autotile-design.md) |
+| 4 | stacks SL6 | Optional polish (float residual in stack ensure) | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 
 **Shipped this session**
 
@@ -38,8 +39,10 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 | Pri | Item | Status |
 | --- | --- | --- |
 | P1 | [layout settle pure](./plans/forge-layout-settle-pure.md) D0 | Draft hybrid ready; **user lock** then PS1 |
+| P0 | [first-class containers](./plans/forge-first-class-containers.md) | **Locked:** C then R interleaved; monocle remove; zoom/float after |
 | P1 | [stacked](./plans/forge-stacked-layouts.md) | SL0–SL5 **done**; SL6 optional |
 | P2 | Live layout daily-drive | Bare-array sugar live on black |
+| P3 | [resize ratio/autotile](./plans/forge-resize-and-autotile.md) | Optional only; structural resize lives in containers plan |
 | P3 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
 
 ### Done recently

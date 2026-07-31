@@ -479,14 +479,11 @@ Groups today are **window-leaf bags** — chrome flip is lossless. CLI parity vi
 RunSteps: `layout-cycle` (axis `group`|`split`), `merge-group`, `float`.
 Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind backup|apply`.
 
-**Phase 2 (later):** shallow groupify of **consecutive window units** in a split
-(bookended by nested CONs or ends); single window between two groups → absorb
-into neighbor; explicit flatten for ensure/scripts only.
-
-**Phase 3 (container rethink):** groups-of-groups, visible H/V group chrome,
-sibling move (`Shift+Super+hjkl`) vs enter/exit group (`Ctrl+Shift+hjkl`),
-separate flatten. Until then, accepting that H↔V on nested splits is lossy is OK
-for a first pass if we ever flip group→split via keys.
+**Phase 2–3 (active plan):** first-class containers — non-destructive layout
+cycle, explicit group/ungroup, split chrome (focus ancestry + show-all + drag),
+owning-split resize, monocle **removed**. Zoom + floating groups designed in,
+built after. No BC obligation. Plan:
+[agents/plans/forge-first-class-containers.md](../agents/plans/forge-first-class-containers.md).
 
 **Float:** mode on the tree node (keeps slot). Re-tile = same parent. If parent
 gone / invalid: park at end of last monitor (same soft-park policy as layout).

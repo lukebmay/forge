@@ -1,10 +1,15 @@
 # Discussion plan: Resize sugar keys + auto-tiling
 
 **Status:** Discussion / draft (no implement until product lock)  
-**Updated:** 2026-07-29  
+**Updated:** 2026-07-31  
 **Branch:** (none yet — discussion only)  
 **Kind:** Product discussion → later tasks  
-**Unrelated to:** [forge-layout-sizes.md](./forge-layout-sizes.md) (custom share preserve)
+**Unrelated to:** [forge-layout-sizes.md](./forge-layout-sizes.md) (custom share preserve)  
+**Scope cut (2026-07-31):** **Structural** resize (owning-split edge resolver,
+Size vs Resize naming) is **in**
+[forge-first-class-containers.md](./forge-first-class-containers.md) Wave R —
+interleaved with container work. **This plan only keeps** ratio-step (yuiop) +
+auto-tile algorithms (optional, not critical path).
 
 ### Session note (overwrite)
 
