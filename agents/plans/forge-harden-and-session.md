@@ -329,7 +329,7 @@ declarative profile with `wmClass`/`title`. User fills `app` launch ids.
 
 | ID | Task | Outcome |
 | --- | --- | --- |
-| H1 | Soft rehome on workareas / monitors-changed | **Done** (unit/regression); manual black verify open |
+| H1 | Soft rehome on workareas / monitors-changed | **Done** (unit/regression + T3/h1-verify live); black session blocker closed 2026-07-31 |
 | H2 | Harden layout toggles after rehome | Retab never aborts shell (regression + manual) |
 | H3 | e2e thrash scenario | Virtual dual-head: geometry change → assert no crash + windows on both monitors |
 | H4 | Document recovery | User docs: blank/wake, Super+Shift+r, when to `gdisplays load` |

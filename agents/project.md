@@ -65,6 +65,8 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 **Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).  
 **Host `black`:** GNOME Shell 46, X11, dual 4K; **this tree** installed in place (not EGO v89).
 
+**Blockers:** hard vs soft — see [blockers/README.md](./blockers/README.md). Hard = required path stopped; soft = optional product/ops. Do not leave parked design as open hard gates.
+
 ## Layout
 
 | Path | Purpose |

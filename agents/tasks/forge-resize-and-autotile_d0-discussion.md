@@ -1,10 +1,11 @@
 # Task — D0: Discussion lock for resize keys + auto-tile
 
-**Status:** draft  
+**Status:** draft (optional — no hard blocker)  
 **Plan:** [forge-resize-and-autotile.md](../plans/forge-resize-and-autotile.md)  
 **Priority:** P3  
 **Kind:** Plan-linked discussion (human)  
-**Owner:** human (+ agent notes)
+**Owner:** human (+ agent notes)  
+**Blocker:** none (former design item [parked](../blockers/completed/resize-autotile-design.md))
 
 ## What to decide
 
@@ -16,8 +17,7 @@
 ## Done when
 
 - Decisions written into the plan “Proposed product path” as locked
-- Optional: `agents/blockers/` design item closed
-- Follow-up implement tasks R1/R2/A0 can be finalized (status ready)
+- Follow-up implement tasks can be finalized (status ready) only if product wants this wave
 
 ## Session note
 

@@ -111,9 +111,12 @@ Optional “smart place” when opening windows or on demand:
 - Replacing layout profiles with always-on auto-tile
 - Pixel-perfect i3 `resize set` IPC
 
-## Human blockers
+## Human decisions (soft / parked)
+
+Not hard agent blockers. Optional product lock when interest returns.
+Former open file: [blockers/completed/resize-autotile-design.md](../blockers/completed/resize-autotile-design.md) (**parked** 2026-07-31).
 
 | Item | Kind |
 | --- | --- |
-| Lock yuiop semantics + mod keys | design |
-| Choose auto-tile shortlist | design |
+| Lock yuiop semantics + mod keys | design (soft) |
+| Choose auto-tile shortlist | design (soft) |
