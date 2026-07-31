@@ -1,6 +1,6 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** implementing — **C0–C2 + R1 done**; next **C3** (split chrome)  
+**Status:** implementing — **C0–C3 + R1 done**; next **C4**  
 **Updated:** 2026-07-31  
 **Branch:** `plan/forge-first-class-containers`  
 **Kind:** Core product architecture → phased implement  
@@ -9,18 +9,15 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
-**C0–C2 + R1 done** (C2 A/B AGREE + live black) on
+**C0–C3 + R1 done** (C3 A/B AGREE + live smoke) on
 `plan/forge-first-class-containers`.
 
-- C0: monocle deleted; lossy inventory; `layout-unit.js`
-- C1: I1 `setLayout` toggles + session layout (no silent flatten/percent wipe)
-- R1: `layout-resize.js` owning-split; expand/shrink dual-axis; I3 tests
-- **C2:** one-level ungroup (`resolveUngroupTarget`, `Tree.ungroupContainer`,
-  `WindowUngroup`, `window-ungroup` / `Ctrl+Shift+Super+m`, RunSteps `ungroup` +
-  `group` alias); merge stays explicit group; deleted `_flattenLayoutParentToWindows`
-- **REG-auto-exit-tabbed:** mode-only (no CON dissolve)
-- Live: nested ungroup one-level; layout-cycle kept mon1 bag; Ghostty OK
-- Residual: edge/mouse resize Meta/grab; **Next C3** split chrome
+- C0 monocle; C1 setLayout I1; R1 owning-split; C2 ungroup I2
+- **C3:** `layout-chrome.js` + multi split borders; `split-chrome-show-all`;
+  drag force show-all; I5 progress
+- Live: install HUP, setting toggle, Ghostty kept
+- Residual: same-axis edge overlap; show-all paints leaves not CON frames
+- **Next:** C4 focus parent/child + move-in/out
 
 ---
 
@@ -288,7 +285,7 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 | **C0** | Inventory lossy paths; **delete monocle** (REG-monocle, REG-i3-super-m); sketch `setLayout` + unit helpers | **Done** (A/B AGREE) | Delete monocle-only tests; no BC shims |
 | **C1** | Non-destructive layout transitions (H/V/tab/stack) — i3 `layout toggle` class | **Done** (A/B AGREE) | **Test I1** |
 | **C2** | Explicit `group` / `ungroup` + CLI/RunSteps; cut silent CON invent where safe | **Done** (A/B AGREE + live) | **Test I2** |
-| **C3** | Split chrome: focus ancestry; show-all; drag show-all (i3 indicator language) | Visible H vs V under focus | Manual/live; pure helpers tested if extracted |
+| **C3** | Split chrome: focus ancestry; show-all; drag show-all (i3 indicator language) | **Done** (A/B AGREE + live smoke) | Pure + decoration tests |
 | **C4** | Move into/out of group + **focus parent/child** | Tree navigation without debug overlay | Test focus target + reparent ids |
 | **C5** | Kits, docs, DESIGN; REG restore notes; strip residual lossy toggles | Docs + kits match; REG table current | Docs + smoke |
 

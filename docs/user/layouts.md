@@ -19,6 +19,20 @@ New windows tile side-by-side. A container is either a **horizontal split**
   Quarter Tiling** (`auto-split-enabled`, off by default) to alternate the split
   direction automatically based on the focused pane's shape.
 
+### Reading nested splits (split chrome)
+
+Forge draws a thin **split direction hint** (yellow edge: right for H-split,
+bottom for V-split) using the same language as the focus border
+(`.window-split-border`). Modes:
+
+| Mode | Behavior |
+| --- | --- |
+| **Focus ancestry** (default) | H/V indicators for every split container on the focused unit’s parent chain (so a nest shows both axes) |
+| **Show all** | Indicators on every H/V split on the monitor (`split-chrome-show-all`, prefs Appearance, or keybind `split-chrome-show-all-toggle` — unbound by default) |
+| **While dragging** | Temporarily forces show-all for the grab, then restores your setting |
+
+Requires `split-border-toggle` and `focus-border-toggle` (both on by default).
+
 ## Stacked and tabbed
 
 Instead of splitting space, a container can show one child at a time.

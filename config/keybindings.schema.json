@@ -265,6 +265,10 @@
         "layout-debug-overlay-toggle": {
           "$ref": "#/definitions/keybinding",
           "description": "Toggle layout debug overlay"
+        },
+        "split-chrome-show-all-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle show-all split chrome (every H/V split vs focus ancestry)"
         }
       },
       "additionalProperties": false

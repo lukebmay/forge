@@ -93,6 +93,7 @@ describe("Keybindings", () => {
         "prefs-cheatsheet-toggle",
         "prefs-lock-screen",
         "layout-debug-overlay-toggle",
+        "split-chrome-show-all-toggle",
       ];
 
       for (const key of expectedKeys) {

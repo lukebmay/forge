@@ -76,6 +76,7 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Expand / shrink | `Ctrl+Super+]` / `Ctrl+Super+[` |
 | Swap last active | `Ctrl+Super+Enter` |
 | Layout debug overlay | `Ctrl+Super+d` |
+| Show-all split chrome | unbound by default (`split-chrome-show-all-toggle`) |
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Edge resize (grow) | `Ctrl+Super+y/u/i/o` (left/bottom/top/right) |
 | Edge resize (shrink) | `Ctrl+Shift+Super+o/i/u/y` |

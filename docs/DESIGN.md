@@ -481,10 +481,11 @@ toggles stay non-destructive (I1). CLI parity via RunSteps: `layout-cycle`
 (axis `group`|`split`), `merge-group` / `group`, `ungroup`, `float`.
 Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind backup|apply`.
 
-**First-class containers (active plan):** C0–C2 + R1 done — non-destructive
-layout cycle, explicit group/ungroup, owning-split resize, monocle **removed**.
-Next: split chrome, focus parent, zoom + floating groups later. No BC
-obligation. Plan:
+**First-class containers (active plan):** C0–C3 + R1 — non-destructive layout
+cycle, explicit group/ungroup, owning-split resize, monocle **removed**, split
+chrome (focus ancestry / show-all / drag force-all via
+`collectSplitChromeTargets` + multi-actor `.window-split-*`). Next: focus
+parent/child, zoom + floating groups later. No BC obligation. Plan:
 [agents/plans/forge-first-class-containers.md](../agents/plans/forge-first-class-containers.md).
 
 **Float:** mode on the tree node (keeps slot). Re-tile = same parent. If parent

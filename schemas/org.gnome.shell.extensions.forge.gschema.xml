@@ -12,6 +12,11 @@
             <summary>Show split direction border on focused window</summary>
         </key>
 
+        <key type="b" name="split-chrome-show-all">
+            <default>false</default>
+            <summary>Show H/V split indicators on every split container (not only focus ancestry)</summary>
+        </key>
+
         <key type="u" name="window-gap-size">
             <default>4</default>
             <summary>
@@ -584,6 +589,11 @@
         <key type="as" name="layout-debug-overlay-toggle">
             <default><![CDATA[['<Ctrl><Super>d']]]></default>
             <summary>Toggle layout debug overlay</summary>
+        </key>
+
+        <key type="as" name="split-chrome-show-all-toggle">
+            <default><![CDATA[[]]]></default>
+            <summary>Toggle show-all split chrome (every H/V split vs focus ancestry)</summary>
         </key>
     </schema>
 </schemalist>

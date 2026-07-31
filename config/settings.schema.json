@@ -136,6 +136,11 @@
           "description": "Show split direction border on focused window",
           "default": true
         },
+        "split-chrome-show-all": {
+          "type": "boolean",
+          "description": "Show H/V split indicators on every split container (not only focus ancestry)",
+          "default": false
+        },
         "window-gap-size": {
           "type": "integer",
           "description": "Gap size between windows in pixels",
