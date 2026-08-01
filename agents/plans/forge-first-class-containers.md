@@ -1,7 +1,8 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** primary C wave **done** — **C0–C5 + R1 + R1b + R2 naming**; next optional **Z0** or mouse residual / R3
-**Updated:** 2026-07-31  
+**Status:** primary C/R wave **done** — **C0–C5 + R1 + R1b + R2**; next product design
+→ [forge-container-selection.md](./forge-container-selection.md) (selection / nest)
+**Updated:** 2026-08-01  
 **Branch:** `plan/forge-first-class-containers`  
 **Kind:** Core product architecture → phased implement  
 **Compatibility:** **No backwards-compat obligation.** Prefer clean breaks over
@@ -11,11 +12,10 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 **C0–C5 + R1 + R1b + R2 done**; pair-cannibalization **locked**.
 
-- R1b keyboard edge owning-split shipped; mouse residual remains
-- Locked: pair-only debit; group to fight many; proportional nested re-layout
-- **R2:** cheatsheet folds expand/shrink/golden/reset under **Resize**
-  (order: edges → expand → shrink → golden → reset); GSchema tile-share
-  summaries; user docs pair-only + group note; pure `cheatsheet-group.js` + tests
+- Spine complete for structure + keyboard owning-split resize + naming
+- **Residual:** mouse `_handleResizing`; optional Z0 zoom (after selection design)
+- **Handoff:** selection / nesting / ops-target design is **top priority** —
+  [forge-container-selection.md](./forge-container-selection.md)
 
 ---
 
@@ -336,6 +336,7 @@ R2 can ride C5 docs pass.
 
 | Plan | Action |
 | --- | --- |
+| [forge-container-selection.md](./forge-container-selection.md) | **Next P0** — CON vs leaf selection, nest policy, ops matrix |
 | [DESIGN.md reshape phases](../../docs/DESIGN.md) | This plan **is** Phase 2–3 + zoom; update DESIGN when C ships |
 | [forge-resize-and-autotile](./forge-resize-and-autotile.md) | Structural resize → **here**. Ratio/auto-tile remain discussion/optional |
 | [forge-stacked-layouts](./forge-stacked-layouts.md) | STACKED chrome lessons; no conflict |

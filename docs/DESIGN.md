@@ -489,12 +489,14 @@ toggles stay non-destructive (I1). CLI parity via RunSteps: `layout-cycle`
 `focus-child`, `move-out` / `move-in`, `float`. Portable kits:
 `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind backup|apply`.
 
-**First-class containers (C0–C5 + R1 + R1b; R2 naming):** I1–I3 + I5 in product
-surface — non-destructive `setLayout`, explicit **group** / **ungroup** (I2),
+**First-class containers (C0–C5 + R1 + R1b + R2):** I1–I3 + I5 in product surface
+— non-destructive `setLayout`, explicit **group** / **ungroup** (I2),
 owning-split expand/shrink + keyboard edge (R1/R1b; mouse residual), monocle
 **removed**, split chrome, **focus parent/child** + **move-in/out** (C4; i3
-`Super+a` = focus parent). Pair-cannibalization locked (not full-split rebalance).
-Optional next: Z0 zoom design. No BC obligation. Plan:
+`Super+a` = focus parent). Pair-cannibalization locked. Next product gap is
+**selection** (operate on CON vs leaf) and nest policy — design plan:
+[agents/plans/forge-container-selection.md](../agents/plans/forge-container-selection.md).
+No BC obligation. Spine plan:
 [agents/plans/forge-first-class-containers.md](../agents/plans/forge-first-class-containers.md).
 
 **Float:** mode on the tree node (keeps slot). Re-tile = same parent. If parent
