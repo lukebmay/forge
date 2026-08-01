@@ -74,14 +74,14 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Reload config | `Ctrl+Super+r` |
 | Cheatsheet | `Ctrl+Super+/` |
 | Launch app | `Ctrl+Shift+Super+Enter` |
-| Equalize sizes | `Ctrl+Super+=` |
-| Expand / shrink | `Ctrl+Super+]` / `Ctrl+Super+[` |
+| Resize — edge grow | `Ctrl+Super+y/u/i/o` (left/bottom/top/right) |
+| Resize — edge shrink | `Ctrl+Shift+Super+o/i/u/y` |
+| Resize — expand / shrink tile share | `Ctrl+Super+]` / `Ctrl+Super+[` |
+| Resize — equalize sibling shares | `Ctrl+Super+=` |
 | Swap last active | `Ctrl+Super+Enter` |
 | Layout debug overlay | `Ctrl+Super+d` |
 | Show-all split chrome | unbound by default (`split-chrome-show-all-toggle`) |
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
-| Edge resize (grow) | `Ctrl+Super+y/u/i/o` (left/bottom/top/right) |
-| Edge resize (shrink) | `Ctrl+Shift+Super+o/i/u/y` |
 | Snaps / cyclic focus | unbound |
 
 Forge still frees a few GNOME defaults while enabled (edge-tile keys, maximize,
@@ -116,7 +116,7 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Lock screen | `Super+Delete` |
 | Reload / cheatsheet | `Shift+Super+r` / `Shift+Super+/` |
 | Launch app | `Shift+Super+Enter` |
-| Equalize / expand / shrink | `Super+=` / `]` / `[` |
+| Resize equalize / expand / shrink | `Super+=` / `]` / `[` |
 | Swap last active | `Super+Enter` |
 | Layout debug | `Ctrl+Super+d` |
 | Show-all split chrome | unbound by default (`split-chrome-show-all-toggle`) |

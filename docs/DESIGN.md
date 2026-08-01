@@ -449,6 +449,13 @@ Execution: [agents/plans/forge-daily-driver.md](../agents/plans/forge-daily-driv
   Implemented as `Node.userSized` + `new-window-size-policy` (`preserve`|`equalize`);
   min-size redistrib writes effective percents without marking user intent **unless**
   any sibling is already `userSized` (then stored percents stay put for save/load).
+- **Resize is pair-cannibalization (locked):** edge / expand / shrink debit only the
+  owning-split **pair** (next tiled sibling, or previous if last) — never re-equalize
+  the whole parent’s remaining children. Other siblings keep their percents /
+  `userSized`. To fight many windows as one unit: **group** them into a CON, then
+  resize against that CON; interior children re-layout **proportionally** from
+  stored shares when the bag’s rect changes (`computeSizes` on render), not a
+  structural rebuild. Equal shares only via **reset sizes** or new-window equalize.
 - **Layout sugar shares:** profiles carry optional `share` / `ratio` on
   `{hsplit|vsplit:…}`; save emits shares only for user-sized / unequal splits;
   apply runs RunSteps `size` after structure/order (moves reset sibling percents).
@@ -482,15 +489,12 @@ toggles stay non-destructive (I1). CLI parity via RunSteps: `layout-cycle`
 `focus-child`, `move-out` / `move-in`, `float`. Portable kits:
 `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind backup|apply`.
 
-**First-class containers (C0–C5 + R1 done):** I1–I3 + I5 in product surface —
-non-destructive `setLayout` (no silent nest flatten / percent wipe on mode
-change), explicit **group** / **ungroup** (I2), owning-split expand/shrink
-(R1; edge/mouse residual), monocle **removed** (no resurrection; Super+m free
-for zoom later), split chrome (focus ancestry / show-all / drag force-all via
-`collectSplitChromeTargets` + multi-actor `.window-split-*`), **focus
-parent/child** + **move-in/out** (C4; i3 kit `Super+a` = focus parent). Kits +
-CLI help match. Optional next: R2 prefs naming, Z0 zoom design — not mid-C
-zoom. No BC obligation. Plan:
+**First-class containers (C0–C5 + R1 + R1b; R2 naming):** I1–I3 + I5 in product
+surface — non-destructive `setLayout`, explicit **group** / **ungroup** (I2),
+owning-split expand/shrink + keyboard edge (R1/R1b; mouse residual), monocle
+**removed**, split chrome, **focus parent/child** + **move-in/out** (C4; i3
+`Super+a` = focus parent). Pair-cannibalization locked (not full-split rebalance).
+Optional next: Z0 zoom design. No BC obligation. Plan:
 [agents/plans/forge-first-class-containers.md](../agents/plans/forge-first-class-containers.md).
 
 **Float:** mode on the tree node (keeps slot). Re-tile = same parent. If parent

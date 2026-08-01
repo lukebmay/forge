@@ -119,13 +119,19 @@ Snap the focused window to a region without restructuring the tree (defaults use
 ## Tile sizes
 
 Splits share space by **percentage**. Until you resize a tile, siblings stay
-**equal**. After you resize with the mouse, keyboard expand/shrink, or golden
-ratio, those tiles keep your proportions when new windows open (default).
+**equal**. After you resize with the mouse, keyboard edge/expand/shrink, or
+golden ratio, those tiles keep your proportions when new windows open (default).
+
+**Resize is pair-only:** grow/shrink and edge keys debit only the **pair** in the
+owning split (the next tiled sibling, or the previous if you are last) — other
+siblings keep their shares. To resize against many windows as one unit, **group**
+them into a container first; children re-layout proportionally inside the bag.
+Use **equalize sibling tile shares** (`window-reset-sizes`) when you want equal
+shares again on the whole parent.
 
 **Layout mode toggles** (tab ↔ split, stack ↔ split, H ↔ V orientation, and the
 absolute `layout` / `layout-cycle` CLI ops) change only the container’s layout
 mode. Nested groups stay nested, and sibling percentages are **not** reset.
-Use **Reset sibling sizes** when you want equal shares again.
 
 **Named layouts** (`forge layout save` / load) remember custom shares as
 `"share": [0.67, 0.33]` on `{ "hsplit" | "vsplit": … }` when any sibling was
@@ -134,8 +140,9 @@ keeps `percent` + `userSized` on the tree. See [layout.md](./layout.md).
 
 | Action | Default |
 | --- | --- |
-| Reset sibling sizes to equal | `Ctrl+Super+=` (`window-reset-sizes`; Vim: `Super+=`) |
-| Golden-ratio resize | unbound by default (`window-golden-ratio`) |
+| Equalize sibling tile shares | `Ctrl+Super+=` (`window-reset-sizes`; Vim: `Super+=`) |
+| Expand / shrink tile share (both axes) | `Ctrl+Super+]` / `[` (`window-expand` / `window-shrink`) |
+| Golden-ratio tile share | unbound by default (`window-golden-ratio`) |
 
 **New window size** (Preferences → Tiling → Behavior, `new-window-size-policy`):
 

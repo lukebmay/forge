@@ -1,6 +1,6 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** primary C wave **done** — **C0–C5 + R1 + R1b keyboard edge**; next optional **R2** or **Z0**; mouse resize residual
+**Status:** primary C wave **done** — **C0–C5 + R1 + R1b + R2 naming**; next optional **Z0** or mouse residual / R3
 **Updated:** 2026-07-31  
 **Branch:** `plan/forge-first-class-containers`  
 **Kind:** Core product architecture → phased implement  
@@ -9,12 +9,13 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
-**C0–C5 + R1 + R1b done** on `plan/forge-first-class-containers` (A/B AGREE).
+**C0–C5 + R1 + R1b + R2 done**; pair-cannibalization **locked**.
 
-- R1b: tiled `wm.resize(edge)` → `resolveOwningSplit` + `_applyOwningSplitDelta`;
-  one axis; bag unit; grab bypass; float Meta path kept; 188/2023
-- **Residual:** mouse `_handleResizing` still Meta/grab
-- **Next:** optional R2 Size naming or Z0 — do **not** start zoom without Z0 lock
+- R1b keyboard edge owning-split shipped; mouse residual remains
+- Locked: pair-only debit; group to fight many; proportional nested re-layout
+- **R2:** cheatsheet folds expand/shrink/golden/reset under **Resize**
+  (order: edges → expand → shrink → golden → reset); GSchema tile-share
+  summaries; user docs pair-only + group note; pure `cheatsheet-group.js` + tests
 
 ---
 
@@ -115,7 +116,7 @@ Update rows when a slice actually drops or restores something.
 | **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1 — DONE (layout set/toggle)** | never as silent behavior; percent policy explicit | **C1:** L1/L2/L3/L5/L7 via `setLayout`; no silent flatten from `_layoutOp`; no percent wipe on mode change. Deep peel removed; C2 ungroup is explicit one-level only. |
 | **REG-auto-exit-tabbed** | `auto-exit-tabbed` / `resetLayoutSingleChild` single-child tab/stack | **C2 — KEEP mode-only** | optional later if full kill | **C2:** mode-only chrome cleanup (TABBED/STACKED → split layout); does **not** dissolve the CON. Explicit ungroup owns structure dissolve. |
 | **REG-ensure-flatten** | Layout ensure / thrash paths that collapse nested H/V into tab bags | **C0–C5** inventory; user toggles clean (I1); `cleanTree` single-child peel **kept** (L14) | only as explicit `forge layout` repair flag | Profile apply may still reshape; user toggles must not. C5: no silent layout-set reparent left. |
-| **REG-expand-dual-axis** | `[`/`]` grow both axes | **R1 — re-specified** | **R2** cheatsheet/Size naming | **R1:** dual **owning-split** steps (H then V via `resolveOwningSplitsBothAxes`); not parent+grandparent-only. R2 docs/Size label. |
+| **REG-expand-dual-axis** | `[`/`]` grow both axes | **R1 — re-specified** | **R2 — DONE** (cheatsheet/docs Size→Resize) | **R1:** dual **owning-split** steps (H then V via `resolveOwningSplitsBothAxes`). **R2:** no separate Window Size bucket; tile-share wording in schema/docs. |
 | **REG-snap-as-fullscreen-ish** | Teaching snap-center as “fullscreen-ish” (docs/kits) | **Z** | n/a | Snaps stay as snaps; zoom owns peek. Docs note Super+f = snap until Z. |
 | **REG-golden-ratio** | `window-golden-ratio` (already unbound) | keep unbound through C | **R3** optional | Low priority ratio preset. |
 | **REG-ratio-yuiop** | Proposed yuiop ratio keys | never ship in C | [resize-autotile](./forge-resize-and-autotile.md) optional | Not a regression of existing product; parked. |
@@ -208,13 +209,26 @@ parent split axis, nest depth cue), don’t invent a second chrome system.
 resize(edge):
   unit = focused layout unit (window, or tab/stack bag if inside)
   axis = axis of edge
-  target = lowest ancestor of unit that is H/V split on `axis` and has a tiled pair
+  target = lowest ancestor of unit that is H/V split on `axis` with a tiled pair
   if no target: no-op
-  else: adjust target percent vs pair; userSized; normalize
+  else: adjust target percent vs pair only; userSized; normalize sum to 1
 ```
 
 Keyboard edge resize, mouse edge drag, and grow/shrink must share this resolver
 (grow/shrink may still step both axes by applying the rule twice).
+
+**Pair cannibalization (locked 2026-07-31):**
+
+| Rule | Detail |
+| --- | --- |
+| **Debit who** | Only the **pair** (next tiled sibling, or previous when unit is last) |
+| **Not** | Re-equalize / spread remaining space across all other siblings |
+| **Why** | Predictable one-boundary move; keeps other `userSized` / layout `share` intact; cheaper than full-split rebalance |
+| **Fight many** | Explicit **group** them into a CON, then resize the unit vs that CON — interior children re-layout **proportionally** from stored percents (no re-equalize) |
+| **Equal again** | Explicit **reset sibling sizes** (or new-window equalize policy) — never an edge-move side effect |
+| **Normalize** | `_normalizeSiblingPercents` only scales so percents sum to 1; it does not re-equalize |
+
+i3-like; matches R1/R1b and custom share (SZ).
 
 ### 5. Zoom — design now, build later
 
@@ -295,7 +309,7 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 | --- | --- | --- | --- |
 | **R1** | Single owning-split resolver; wire expand/shrink | **Done** (expand/shrink + pure tests) | **Test I3** |
 | **R1b** | Keyboard edge `resize` via owning-split | **Done** (A/B AGREE; mouse residual) | WM resize tests |
-| **R2** | Prefs/cheatsheet: Resize vs Size; shrink/grow order | Optional | No empty snapshot tests |
+| **R2** | Prefs/cheatsheet: Resize vs Size; shrink/grow order | **Done** (naming + order + docs) | Pure `cheatsheet-group` unit tests |
 | **R3** (optional later) | Ratio-step / yuiop | Only if still wanted | See resize-autotile plan |
 
 **Interleave:** ship R1 in the same stretch as C1–C2 (resolver needs stable units).

@@ -240,11 +240,11 @@
         },
         "window-reset-sizes": {
           "$ref": "#/definitions/keybinding",
-          "description": "Reset window sizes to equal distribution"
+          "description": "Equalize sibling tile shares"
         },
         "window-golden-ratio": {
           "$ref": "#/definitions/keybinding",
-          "description": "Golden ratio resize"
+          "description": "Golden-ratio tile share"
         },
         "prefs-config-reload": {
           "$ref": "#/definitions/keybinding",
@@ -260,11 +260,11 @@
         },
         "window-expand": {
           "$ref": "#/definitions/keybinding",
-          "description": "Expand window in all directions"
+          "description": "Grow tile share (both axes)"
         },
         "window-shrink": {
           "$ref": "#/definitions/keybinding",
-          "description": "Shrink window in all directions"
+          "description": "Shrink tile share (both axes)"
         },
         "prefs-app-launch": {
           "$ref": "#/definitions/keybinding",

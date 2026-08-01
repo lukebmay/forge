@@ -195,6 +195,29 @@ describe("Cheatsheet", () => {
       ]);
     });
 
+    it("folds expand/shrink/golden/reset into Resize in edge→expand→shrink→golden→reset order", () => {
+      mockExt.kbdSettings.list_keys = vi.fn(() => [
+        "window-reset-sizes",
+        "window-expand",
+        "window-resize-left-increase",
+        "window-golden-ratio",
+        "window-shrink",
+      ]);
+      mockExt.kbdSettings.get_strv = vi.fn(() => ["<Super>x"]);
+
+      const groups = new Map(cheatsheet._getGroupedKeybindings());
+
+      expect(groups.has("Window Size")).toBe(false);
+      expect(groups.has("Window Reset")).toBe(false);
+      expect(groups.get("Resize")?.map((b) => b.description)).toEqual([
+        "summary:window-resize-left-increase",
+        "summary:window-expand",
+        "summary:window-shrink",
+        "summary:window-golden-ratio",
+        "summary:window-reset-sizes",
+      ]);
+    });
+
     it("skips non-'as' keys so get_strv never trips a GLib CRITICAL (forge-u7t0)", () => {
       mockExt.kbdSettings.list_keys = vi.fn(() => ["window-focus-left", "mod-mask-mouse-tile"]);
       // mod-mask-mouse-tile is type "s"; every other shortcut key is "as".

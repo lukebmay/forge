@@ -558,12 +558,12 @@
 
         <key type="as" name="window-reset-sizes">
             <default><![CDATA[['<Ctrl><Super>equal']]]></default>
-            <summary>Reset window sizes</summary>
+            <summary>Equalize sibling tile shares</summary>
         </key>
 
         <key type="as" name="window-golden-ratio">
             <default><![CDATA[[]]]></default>
-            <summary>Golden ratio resize</summary>
+            <summary>Golden-ratio tile share</summary>
         </key>
 
         <key type="as" name="prefs-config-reload">
@@ -578,12 +578,12 @@
 
         <key type="as" name="window-expand">
             <default><![CDATA[['<Ctrl><Super>bracketright']]]></default>
-            <summary>Expand window</summary>
+            <summary>Grow tile share (both axes)</summary>
         </key>
 
         <key type="as" name="window-shrink">
             <default><![CDATA[['<Ctrl><Super>bracketleft']]]></default>
-            <summary>Shrink window</summary>
+            <summary>Shrink tile share (both axes)</summary>
         </key>
 
         <key type="as" name="prefs-app-launch">
