@@ -168,7 +168,7 @@ These labels are **not** style fluff. Use them to decide when judgment is allowe
 
 If a rule is not labeled, treat security, git commit/push, secrets, and SSH rules as **FIRM**; treat process and style defaults as **GUIDELINE**.
 
-Follow `agents/` as needed. Do **not** load every file up front — the project composer (`agents.py` / `agents build`) assembles the stable core into root `AGENTS.md`. Examples of portable fragments: `security.md`, `git.md`, `scripting.md`, `comments.md`, `documentation.md`, `ansi-colors.md`, `markdown.md`. Interesting design decisions live in `docs/DESIGN.md` (see `documentation.md`).
+Follow `agents/` as needed. Do **not** load every file up front — the project composer (`agents.py` / `agents build`) assembles the stable core into root `AGENTS.md`. Examples of portable fragments: `security.md`, `git.md`, `scripting.md`, `comments.md`, `documentation.md`, `testing.md`, `ansi-colors.md`, `markdown.md`. Design narrative: `docs/DESIGN.md`. Compact decision log (retros): `docs/DECISIONS.md` — see `documentation.md`.
 
 #### AGENTS.md must auto-load (FIRM for project setup)
 
@@ -275,7 +275,23 @@ Cross-repo priorities: `~/dev/me/life/agents/PRIORITY-BOARD.md`.
 
 ### Human blockers
 
-**Purpose:** a clear, portable queue of work that **only a human** can do, and that **blocks** agent tasks until finished. This is for open-source / multi-user projects — do **not** hardcode a personal name; use **human** / **operator**.
+**Purpose:** a clear, portable queue of work that **only a human** can do.
+Not every open question is a blocker. Prefer plan “open decisions” when nothing
+is waiting on a required path. This is for open-source / multi-user projects —
+do **not** hardcode a personal name; use **human** / **operator**.
+
+#### Hard vs soft (FIRM for agents)
+
+| Severity | Field | Agent behavior |
+| --- | --- | --- |
+| **hard** | `**Severity:** hard` (or **omit** — default) | Required path stopped. Task must be `**Status:** blocked` + linked. Taskforces **skip** that task. Orchestrator reports hard open items at stop. |
+| **soft** | `**Severity:** soft` | Optional product/design/ops reminder. Does **not** stop the whole queue. Skip only work that *depends* on the decision; continue other eligible tasks. |
+
+| Rule | Detail |
+| --- | --- |
+| **Hard only when required** | File hard only if an agent **must not** proceed alone on a *required* path. |
+| **Soft is optional** | Soft items must not look like P0 gates. Prefer soft (or no file) for “someday design.” |
+| **Park, don’t fake-block** | Optional work with no near-term intent → `**Status:** parked` or `done` and move to `completed/`, not leave open soft forever. |
 
 #### Layout
 
@@ -317,11 +333,14 @@ Put an item in blockers **only** if an agent **must not** do it alone:
 # B-short-id — Title
 
 **Status:** open
+**Severity:** hard | soft
 **Owner:** human
 **Kind:** design | permission | verify | credentials | physical | expensive-test | other
 **Plan:** (none) | plan-id
 **Unblocks:** agents/tasks/some-task.md
 **Priority:** P0
+**Created:** YYYY-MM-DD
+**Updated:** YYYY-MM-DD
 
 ## What the human must do
 - [ ] …
@@ -330,15 +349,22 @@ Put an item in blockers **only** if an agent **must not** do it alone:
 …
 ```
 
+| Field | Notes |
+| --- | --- |
+| **Severity** | Default **hard** if missing (legacy). Prefer explicit. |
+| **Created** | Date the file was first opened (YYYY-MM-DD). |
+| **Updated** | Bump when status, severity, checklist, or unblocks change. |
+
 #### Agent rules
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
-| Create when blocked | **FIRM** | If work cannot proceed without a human, write/update `agents/blockers/<id>.md` and set the agent task `**Status:** blocked` + `**Blocker:** agents/blockers/<id>.md`. |
+| Create when blocked | **FIRM** | If a **required** path cannot proceed without a human, write/update a **hard** blocker and set the agent task `**Status:** blocked` + `**Blocker:** agents/blockers/<id>.md`. Soft items do **not** require task `blocked`. |
 | Do not fake human steps | **FIRM** | Never mark a human blocker done, never invent “operator approved,” never SSH/sudo past permission rules. |
-| Skip blocked tasks | **FIRM** | Taskforces do not implement tasks blocked on open human work (see eligibility). |
+| Skip blocked tasks | **FIRM** | Taskforces skip tasks with `**Status:** blocked` or linked **hard** open blockers (see eligibility). Soft open blockers alone do not block unrelated tasks. |
 | Dual queue | **GUIDELINE** | Prefer `agents/blockers/` for new portable projects. Keep using root `human-tasks/` where it already exists; CLI lists both. |
-| Close blockers | **GUIDELINE** | Human sets `**Status:** done` and/or moves file to `blockers/completed/`. Agent may move only when the human explicitly said the blocker is done. |
+| Close blockers | **GUIDELINE** | Human sets `**Status:** done` / `parked` and/or moves file to `blockers/completed/`. Agent may move only when the human explicitly said the blocker is done or parked. |
+| Dates | **GUIDELINE** | Set **Created** on open; bump **Updated** on material edits. |
 
 ### Plans
 
@@ -375,7 +401,7 @@ Plans live in `agents/plans/` as kebab-case **files** (`agents/plans/<plan>.md`)
 | **FIRM** Depth limit | **Only the top-level session** may call `spawn_subagent`. Subagents **cannot** spawn children (depth = 1). |
 | **FIRM** Who spawns | The **orchestrator** (parent) spawns Task Force A, waits, then spawns Task Force B, etc. Never instruct A to spawn B. |
 | **FIRM** AGENTS.md inheritance | Children get a **compacted** form of **already-loaded** project instructions. If root `AGENTS.md` is gitignored or missing, children get **no** auto rules. |
-| **FIRM** Prompt safety net | Every taskforce spawn prompt **must** include: (1) task path + acceptance criteria, (2) paths in scope + **git branch** (see `git.md`), (3) restatement of **FIRM** rules (no push unless asked; no SSH without **explicit**; no secrets in output; design-flaw stop), (4) handoff file paths to overwrite, (5) **high reasoning** unless the user told the orchestrator otherwise. |
+| **FIRM** Prompt safety net | Every taskforce spawn prompt **must** include: (1) task path + acceptance criteria, (2) paths in scope + **git branch** (see `git.md`), (3) restatement of **FIRM** rules (no push unless asked; no SSH without **explicit**; no secrets in output; design-flaw stop; **no live mutate of important data** — backup first or **dry-run** only; see `security.md` “Testing tools that touch important live data”), (4) handoff file paths to overwrite, (5) **high reasoning** unless the user told the orchestrator otherwise. |
 | **GUIDELINE** Extra detail | If the task needs build/test/script standards not in the compacted core, paste the relevant bullets into the prompt or point at `agents/installed/<file>.md` to read. |
 
 ##### Core rules
@@ -404,7 +430,7 @@ Plans live in `agents/plans/` as kebab-case **files** (`agents/plans/<plan>.md`)
 | Design-flaw | **FIRM** | Stop that task; design discussion (see below). Do not auto-jump to unrelated tasks to “use the budget.” |
 | User stop / criteria met | **FIRM** | Honor extra stop criteria the user gave this session (time, “only P0”, “one task only”, etc.). |
 | No eligible tasks left | **FIRM** | Stop even if under 300K. Do not pull optional/unfinalized work just to fill the budget. |
-| End-of-work blockers report | **FIRM** | When the orchestrator stops (budget, plan done, hand-back, or design-flaw), **list open human blockers relevant to this session’s plans/tasks** (path, title, what the human must do, what they unblock). Prefer `agents blockers` output. Do not bury this only inside a long transcript. |
+| End-of-work blockers report | **FIRM** | When the orchestrator stops (budget, plan done, hand-back, or design-flaw), **list open human blockers relevant to this session’s plans/tasks** (path, title, severity, what the human must do, what they unblock). Prefer `agents blockers` output. Lead with **hard**; soft optional. Do not bury this only inside a long transcript. |
 
 ##### Which tasks are eligible (default)
 
@@ -416,7 +442,7 @@ If the user does **not** specify a custom filter for this loop:
 | Named by the user this request | **Yes** | Explicitly in scope for this session. |
 | **Optional** | **No** | Labeled optional, nice-to-have, stretch, backlog-optional, or “if time.” Skip unless the user asked for optional work or high-value-only **includes** it. |
 | **Unfinalized** | **No** | Draft, WIP plan slice, “TBD acceptance,” blocked on design, or incomplete task doc. Skip until finalized or user forces it. |
-| Blocked / open human blocker | **No** | Task `**Status:** blocked` or linked open `agents/blockers/` / `human-tasks/` item. Continue to next eligible task if any. |
+| Blocked / open **hard** human blocker | **No** | Task `**Status:** blocked` or linked open **hard** `agents/blockers/` / `human-tasks/` item (missing severity = hard). Soft open blockers alone do **not** make unrelated tasks ineligible. Continue to next eligible task if any. |
 | Minimally valuable / chore-only | **No** (default) | Unless it is on the plan’s required path or the user included it. |
 
 **User overrides (GUIDELINE examples):** “high-value tasks only,” “P0 only,” “only tasks tagged X,” “include optional,” “finalize draft tasks first.” Apply the override for that session; otherwise use the table above.
@@ -658,6 +684,87 @@ Security rests on trust. Be a responsible actor.
 | Test credentials | **FIRM** | For tests needing auth, ask how to supply credentials; do not use discovered secrets. |
 | Demos | **GUIDELINE** | Contextual name + clear placeholder only. |
 
+### Testing tools that touch important live data (FIRM)
+
+**This rule exists because agents have already hurt real setups** (e.g. running a
+live Dropbox/Maestral uninstall + reinstall during a “smoke test,” which re-applied
+selective-sync exclusions and made most of `~/Dropbox` disappear **locally**).
+That class of mistake is **unacceptable**. Treat it like SSH blast-radius.
+
+#### What counts as “important live data”
+
+Anything whose wrong change costs real time, money, or irreplaceable state — not
+a disposable temp fixture:
+
+| Class | Examples |
+| --- | --- |
+| Cloud sync / file bags | Dropbox, Maestral, Syncthing, Nextcloud clients; `~/Dropbox` and siblings |
+| Secrets / identity | `~/.ssh`, age identities, password stores, keyrings, vault dirs |
+| Mail / chat / browsers | Thunderbird profiles, browser profiles, chat DBs |
+| System install state | package managers’ live trees, display/GDM configs on the daily machine |
+| Large personal trees | `~/dev` monorepos only when the test would rewrite or delete them in place |
+| Production / shared hosts | any non-temp path on a machine the human uses daily |
+
+If unsure whether a path is “important,” **assume it is**.
+
+#### Default: do **not** run live mutating tests on real data
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Prefer isolated tests | **FIRM** | Unit/smoke tests use **temp dirs**, fake identities, mocked network, or throwaway accounts — **never** the human’s real Dropbox/SSH/secrets tree unless the **current** user request clearly asks for a live exercise. |
+| Help / syntax only is OK | **GUIDELINE** | `--help`, `--version`, `zsh -n`, dry parsers, and offline unit tests need no backup. |
+| Live install/uninstall on real tools | **FIRM** | Do **not** run `install-* --uninstall`, live reinstall, selective-sync changes, or similar against the **real** client just to “verify the installer,” unless the user **explicitly** asked for that live test **in the current message**. |
+
+#### When a live test is required: backup **or** dry-run (no exceptions)
+
+Before **any** agent-run command that can create, delete, move, re-encrypt, re-exclude,
+reinstall, or rewrite important live data:
+
+##### Path A — backup first (preferred when cheap)
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Backup before mutate | **FIRM** | Copy or snapshot everything the test might change to a **safe location outside the tool’s reach** (e.g. timestamped dir under `/tmp` only if small; better: external disk / offline media for large trees). |
+| Know restore | **FIRM** | Document in the session note **exactly** how to restore before running the mutator. |
+| Scope the backup | **FIRM** | Config + state + any local data the tool deletes or rewrites (not only the binary). |
+
+##### Path B — dry-run architecture (required when full backup is impractical)
+
+**Dropbox-class example (extremely clear):**
+
+You often **cannot** duplicate multi‑GB / multi‑TB cloud trees onto the same disk
+just to test an installer. In that case **do not** invent a “small live poke.”
+You **must** use a **dry-run architecture** instead:
+
+| Requirement | Kind | Detail |
+| --- | --- | --- |
+| Implement `--dry-run` (or equivalent) | **FIRM** | The tool prints every destructive/mutating step it **would** take (paths, excludes, package ops, uninstall targets) and **exits without changing** live state. |
+| Tests assert dry-run output | **FIRM** | Agent verification compares **actual dry-run output** to **expected** steps (golden string, structured plan, or checklist in the test). Pass = plan matches; **not** “I ran uninstall on the real client and it exited 0.” |
+| No silent partial mutate | **FIRM** | Dry-run must not half-apply (no “delete then dry-run the rest”). Zero writes to important paths. |
+| Temp-tree substitute OK | **GUIDELINE** | If useful, run the real code paths against a **fake** `HOME` / `XDG_*` / store root with tiny fixtures — still not the real `~/Dropbox`. |
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Cannot backup and no dry-run | **FIRM** | **Stop.** Implement dry-run (or an isolated fixture harness) **before** claiming the feature is tested. Do **not** “just try it” on live data. |
+| User-ordered live fire drill | **FIRM** | Only when the **current** user message clearly requests a live install/uninstall on the real system: still prefer backup of **config/state** (small); for huge data dirs, confirm the user accepts cloud re-download risk; then proceed narrowly. |
+
+#### Dropbox / Maestral (concrete)
+
+| Do | Do not |
+| --- | --- |
+| `install-dropbox --help` / `--dry-run` | `install-dropbox --uninstall` on the daily machine “for smoke” |
+| Assert dry-run lists exclusion adds/removes | Re-run default install and hope exclusions stay put |
+| Temp `HOME` + fake maestral stub if needed | Assume “~/Dropbox is never deleted” means local folders are safe — **selective sync removes local copies** |
+
+**Remember:** cloud may still hold files after a bad local exclusion; recovery can take hours and looks like “half my Dropbox is gone.” Treat exclusion / reinstall tests as **high blast radius**.
+
+#### Taskforce / verifier prompts
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Restate in A/B spawns | **FIRM** | Orchestrator spawn prompts for installers, sync tools, secrets, or any live-data mutator **must** restate: no live uninstall/reinstall on real data; backup or dry-run; compare dry-run to expected. |
+| Verifier (B) same bar | **FIRM** | B must **not** “prove” installers by mutating the operator’s real Dropbox/SSH/secrets. Re-run isolated/dry-run tests only. |
+
 ### Storage
 
 | Rule | Kind | Detail |
@@ -718,18 +825,43 @@ When a task **successfully** completes (taskforce A/B **AGREE**, or equivalent s
 
 ### Branch strategy (plans and tasks)
 
-Goal: keep `main`/`master` stable; land plan work on a long-lived plan branch; merge when the **plan** is complete (not after every task).
+Goal: keep `main`/`master` stable for integration; implement on long-lived plan branches; **never strand the agent queue on a side branch**.
+
+#### Agent queue is default-branch canon (FIRM)
+
+These paths are the **project queue**. Their source of truth is the **default branch** (`main` / `master`):
+
+| Path | Role |
+| --- | --- |
+| `agents/PRIORITY.md` | Ordered next work |
+| `agents/HANDOFF.md` | Short cross-session handoff (when used) |
+| `agents/plans/` | Plan docs + `completed/` task archive |
+| `agents/tasks/` | Active session tasks |
+| `agents/blockers/` | Human blockers |
+| `agents/archive/` | Searchable ship summaries (when used) |
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Queue lives on default | **FIRM** | Do **not** leave the only up-to-date PRIORITY / plan tables / completed-task moves on a plan branch. After wrap-up, get queue updates onto the default branch. |
+| Pull before work | **FIRM** | Before implementing on `plan/<plan>` or `task/<name>`, **merge (or rebase) the default branch into the feature branch** so queue docs and other foundations are current. |
+| Pull after others land | **FIRM** | When another plan’s work merges to default, active plan/task branches should merge default again before the next implement round (same session if parallel plans moved). |
+| No long-lived queue fork | **FIRM** | Never maintain a divergent “private” PRIORITY/plans tree on a feature branch as the real queue. Feature branches may edit queue files during a task, then **propagate via merge to default**. |
+| How to propagate | **GUIDELINE** | Prefer **merge the plan/task branch → default** when the shipped code is safe to integrate (finished task, tests green). If code must stay isolated longer, still land **queue-only** updates on default (merge with care, or a short default-branch commit that only updates `agents/` queue paths) so other branches can pull. |
+| Merge ≠ push | **FIRM** | Local merge does not authorize `git push`. Push only if the user asked. |
+
+**Why:** Parallel plan branches that each rewrite PRIORITY/HANDOFF without merging default become unmergeable fiction. Default branch is the single queue other agents and humans read.
 
 #### Plan-linked work
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
 | One branch per plan | **FIRM** | For plan `agents/plans/<plan>.md`, use branch `plan/<plan>` (kebab-case plan id, e.g. `plan/shellrc-startup`). |
-| Create if missing | **FIRM** | When starting the first task for that plan, create `plan/<plan>` from up-to-date `main`/`master` (or the repo’s default branch) if it does not exist. |
+| Create if missing | **FIRM** | When starting the first task for that plan, create `plan/<plan>` from **up-to-date** default branch if it does not exist (fetch/merge default first). |
 | Switch before implement | **FIRM** | Orchestrator and taskforces **must** be on `plan/<plan>` before Task Force A writes code for a plan-linked task. |
-| Stay on plan branch | **FIRM** | All tasks for that plan commit to `plan/<plan>` until the plan is complete. |
-| Merge when plan complete | **FIRM** | Merge `plan/<plan>` → default branch only when the **plan** is complete (or the user asks to merge earlier). Do **not** merge after each task by default. |
-| Merge ≠ push | **FIRM** | Local merge does not authorize `git push`. Push only if the user asked. |
+| Stay on plan branch for code | **FIRM** | Implementation commits for that plan stay on `plan/<plan>` (not random feature branches). |
+| Integrate finished work | **GUIDELINE** | After a **successful task** wrap-up (A/B AGREE or equivalent), prefer merging `plan/<plan>` → default when the change is integration-safe (foundations, green tests). Do **not** wait for the entire multi-task plan if waiting would strand the queue or block other plans. |
+| Whole-plan merge still OK | **MAY** | Keep unfinished WIP on the plan branch; merge only the completed task slice (or merge default←plan when the user wants a larger batch). |
+| User override | **FIRM** | If the user asks to merge earlier, later, or only queue docs — follow that. |
 | Plan rename | **GUIDELINE** | If the plan id changes, rename the branch or open a new `plan/<new>` and note it in the plan doc. |
 
 #### Standalone tasks (no plan)
@@ -738,21 +870,24 @@ Goal: keep `main`/`master` stable; land plan work on a long-lived plan branch; m
 | --- | --- | --- |
 | Branch for non-trivial work | **GUIDELINE** | Use `task/<task-name>` (kebab-case, from the task file stem) for standalone tasks that change code. |
 | Skip branch | **MAY** | Trivial one-liner / docs-only / user said “commit on main” → work on default branch is OK. |
-| Merge when task done | **GUIDELINE** | After wrap-up commit on `task/<name>`, merge to default branch when the standalone task is complete (still no push unless asked). |
+| Merge when task done | **GUIDELINE** | After wrap-up commit on `task/<name>`, merge to default branch when the standalone task is complete (still no push unless asked). Same **pull default first** rule as plan branches. |
 
 #### Taskforce obligations
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
 | Check branch first | **FIRM** | Before implementing, `git branch --show-current` (or equivalent). If wrong, switch/create the plan or task branch — do not implement on the wrong branch. |
-| State branch in handoff | **FIRM** | Handoff notes include branch name and whether wrap-up commit was made. |
+| Default is current | **FIRM** | Before A implements: feature branch includes latest default (merge/rebase). After wrap-up: queue (+ usually code) headed for default. |
+| State branch in handoff | **FIRM** | Handoff notes include branch name, whether wrap-up commit was made, and whether default was merged / needs merge. |
 | No branch roulette | **FIRM** | Do not create random feature branches per A/B round. One plan branch (or one task branch) for the whole taskforce. |
 
 #### Defaults summary
 
 ```text
-plan work:    checkout plan/<plan> → A/B tasks → commits on plan branch → merge when plan done
-standalone:   checkout task/<task> (non-trivial) → work → commit → merge when task done
+queue canon:  agents/{PRIORITY,HANDOFF,plans,tasks,blockers,archive} on default branch
+start work:   merge default → plan/<plan> (or task/<name>) → implement
+wrap-up:      commit on plan/task branch → merge to default when safe (prefer per finished task)
+other plans:  after default moves, merge default → their plan branch before next round
 always:       push only if user asked
 design flaw:  stop; no wrap-up commit
 ```
@@ -965,38 +1100,91 @@ When touching old verbose comments, trim them in the same change.
 
 ## Documentation
 
-### Design decisions → `docs/DESIGN.md`
+### Design decisions → durable “why”
 
-Record **interesting design decisions** in project-root
-`docs/DESIGN.md` (create the file if missing).
+Record **interesting design decisions** so humans and agents can onboard, and so
+you can generate **retrospectives** for colleagues or clients without replaying
+chat logs.
 
-| Put it in DESIGN.md when… | Keep it out when… |
+#### Two layers (GUIDELINE)
+
+| Doc | Role | Token stance |
+| --- | --- | --- |
+| **`docs/DESIGN.md`** | Architecture narrative, metaphors, how the system fits together | Readable prose; keep current |
+| **`docs/DECISIONS.md`** | **Append-friendly decision log** — compact, categorized, importance-tagged | **Minimal tokens**; default place for meeting outcomes |
+
+Create either file if missing. Prefer updating **DECISIONS** when a choice is made;
+expand **DESIGN** when the reader needs the full picture.
+
+| Put it in DESIGN / DECISIONS when… | Keep it out when… |
 | --- | --- |
-| A future reader would ask *why* we did it this way | Pure task checklist / session scratch |
-| Tradeoffs, rejected alternatives, funny constraints | Volatile “next commit” TODOs |
-| Architecture metaphors that unlock the codebase | API laundry lists better as code |
+| A future reader would ask *why* | Pure task checklist / session scratch |
+| Tradeoffs, rejected alternatives | Volatile “next commit” TODOs |
+| Architecture constraints that unlock the codebase | API laundry lists better as code |
 | Lessons from production bugs | Secrets, deploy hosts, private URLs |
 
-Tone: **interesting and entertaining for developers** — clear, opinionated,
-light wit OK. Not a marketing page; not a changelog dump.
+Tone in DESIGN: clear, opinionated, light wit OK.  
+Tone in DECISIONS: **telegraphic** — one line why; link out if needed.
+
+#### DECISIONS.md format (FIRM shape when the file exists)
+
+Keep one file (or `docs/decisions/INDEX.md` + rare long entries). Default:
+
+```markdown
+# Design decisions
+
+**How to use:** scan by Topic / Imp. Update in place when a decision changes;
+set Status=`superseded` and add a new row (do not rewrite history silently).
+
+| ID | Date | Topic | Imp | Status | Decision | Why |
+| --- | --- | --- | --- | --- | --- | --- |
+| D001 | 2026-08-01 | deploy | P0 | active | All-in-one process default | Zero-config campus run |
+```
+
+| Field | Rules |
+| --- | --- |
+| **ID** | Stable `D###` (or `D-topic-###`); never reuse for a different decision |
+| **Date** | ISO date of decision (or last material change) |
+| **Topic** | Short kebab or word: `deploy`, `auth`, `api`, `testing`, `modules`, … |
+| **Imp** | `P0` architecture / security · `P1` product default · `P2` implementation · `P3` note |
+| **Status** | `active` \| `superseded` \| `rejected` |
+| **Decision** | What we chose (≤ ~12 words) |
+| **Why** | One line; no essay |
+
+Optional: `Supersedes` column or `see D014` in Why.  
+Long rationale only when needed: `docs/decisions/D001-short-slug.md` and link from the row.
+
+#### Retrospectives (GUIDELINE)
+
+To share with colleagues/clients, filter DECISIONS:
+
+```text
+Topic in {deploy,auth,api} AND Imp ≤ P1 AND Status=active
+```
+
+Emit a short markdown summary (table or bullets). Do **not** paste agent transcripts.
+Agents: when asked for a retrospective, **read DECISIONS (+ DESIGN headings)** only
+unless the user asks for plan/archive detail.
 
 #### What goes where
 
 | Doc | Role |
 | --- | --- |
-| **`docs/DESIGN.md`** | Durable “why” for humans (and agents onboarding) |
+| **`docs/DESIGN.md`** | Durable narrative “why” |
+| **`docs/DECISIONS.md`** | Compact decision log (retro source) |
 | **`agents/plans/`** | Execution plans, task tables, session handoffs |
 | **`agents/tasks/`** | Session-sized work; acceptance; short notes |
-| **`agents/archive/`** | Searchable summaries after ship (when the project uses it) |
+| **`agents/archive/`** | Searchable summaries after ship (when used) |
 | **Source comments** | Minimal *why* only — see `comments.md` |
 
-When a task ships a non-obvious choice, **update DESIGN.md in the same
-change** (or the wrap-up commit). Do not leave the only explanation in chat
-or a completed task file.
+When a task ships a non-obvious choice, **add/update a DECISIONS row** (and DESIGN
+if the narrative changed) in the same change or wrap-up commit. Do not leave the
+only explanation in chat or a completed task file.
 
 #### Hygiene
 
-- Prefer short titled sections over one giant essay.
+- Prefer short titled sections in DESIGN over one giant essay.
+- DECISIONS stays table-first; archive superseded rows, don’t delete without reason.
 - Link to tasks/archive when useful; do not duplicate full task checklists.
 - Update or delete stale claims when code changes.
 - No secrets; no real credentials (see `security.md`).
