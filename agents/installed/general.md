@@ -245,7 +245,7 @@ Plans live in `agents/plans/` as kebab-case **files** (`agents/plans/<plan>.md`)
 | **FIRM** Depth limit | **Only the top-level session** may call `spawn_subagent`. Subagents **cannot** spawn children (depth = 1). |
 | **FIRM** Who spawns | The **orchestrator** (parent) spawns Task Force A, waits, then spawns Task Force B, etc. Never instruct A to spawn B. |
 | **FIRM** AGENTS.md inheritance | Children get a **compacted** form of **already-loaded** project instructions. If root `AGENTS.md` is gitignored or missing, children get **no** auto rules. |
-| **FIRM** Prompt safety net | Every taskforce spawn prompt **must** include: (1) task path + acceptance criteria, (2) paths in scope + **git branch** (see `git.md`), (3) restatement of **FIRM** rules (commit/push feature by discretion; merge default only with gates; **never** auto-merge/push `prod`; no SSH without **explicit**; no secrets in output; design-flaw stop; **no live mutate of important data** — backup first or **dry-run** only; see `security.md` “Testing tools that touch important live data”), (4) handoff file paths to overwrite, (5) **high reasoning** unless the user told the orchestrator otherwise. |
+| **FIRM** Prompt safety net | Every taskforce spawn prompt **must** include: (1) task path + acceptance criteria, (2) paths in scope + **git branch** (see `git.md`), (3) restatement of **FIRM** rules (commit/push feature by discretion **if origin works**; merge master only with gates; **never** auto-promote `test`/`prod`; no SSH without **explicit**; no secrets in output; design-flaw stop; **no live mutate of important data** — backup first or **dry-run** only; see `security.md` “Testing tools that touch important live data”), (4) handoff file paths to overwrite, (5) **high reasoning** unless the user told the orchestrator otherwise. |
 | **GUIDELINE** Extra detail | If the task needs build/test/script standards not in the compacted core, paste the relevant bullets into the prompt or point at `agents/installed/<file>.md` to read. |
 
 #### Core rules
@@ -350,8 +350,8 @@ When a task **successfully** completes (A/B **AGREE**, or single-agent done with
 | 3. Docs / help | **GUIDELINE** | Update user-facing docs, README, `--help`, man-ish comments where the change warrants it. |
 | 4. Code comments | **GUIDELINE** | Only where non-obvious; follow `comments.md` — no essay comments. |
 | 5. Tests | **FIRM** where applicable | Add or update tests for the behavior shipped; run the relevant suite. |
-| 6. Commit + push feature | **FIRM** / **GUIDELINE** | Commit on the plan/task branch (see `git.md`). **Push the feature branch** by default after wrap-up. |
-| 7. Merge default | **FIRM** default when gates pass | Merge feature → default only when complete, default already merged into feature, tested, no doubt/interference; then **push default**. Never auto-merge **`prod`**. |
+| 6. Commit + push feature | **FIRM** / **GUIDELINE** | Commit on the plan/task branch (see `git.md`). **Push feature** by default if `origin` works; **skip push** if no remote. |
+| 7. Merge master (dev) | **FIRM** default when gates pass | Merge feature → master when complete, master-in-feature, tested, no doubt/interference; push master if origin works. Never auto-promote **`test`** or **`prod`**. |
 | 8. Skip commit | **MAY** | Skip only if the user said not to commit, nothing to commit, or secrets would be at risk. |
 
 Orchestrator (or final A if still in-process) owns wrap-up. B’s job is verify, not own the release commit, unless the orchestrator asks B to check the wrap-up diff.
