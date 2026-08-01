@@ -9,8 +9,10 @@ Related: `html.md`, `css.md`, `javascript.md`, `typescript.md`, `react.md`.
 - **Users first:** clarity, speed, accessibility over clever UI
 - **Progressive enhancement:** core content usable without perfect JS when feasible
 - **Least power:** HTML/CSS before JS; browser APIs before heavy libraries
+- **Styling (GUIDELINE):** prefer **Tailwind** (or the project utility system) over large hand-rolled CSS; allow raw CSS / CSS variables for themes and escape hatches (host may gate “hardcore CSS” via admin)
 - **Predictable UI:** obvious navigation, stable layout, clear loading/error/empty states
 - **Performance budgets:** ship less JS/CSS; measure LCP/INP/CLS when changing UX
+- **Contracts:** consume shared API types/schemas from an isomorphic package — do not redefine server DTOs in the client
 
 ## Structure
 

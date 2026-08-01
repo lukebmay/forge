@@ -12,7 +12,7 @@ These labels are **not** style fluff. Use them to decide when judgment is allowe
 
 If a rule is not labeled, treat security, git commit/push, secrets, and SSH rules as **FIRM**; treat process and style defaults as **GUIDELINE**.
 
-Follow `agents/` as needed. Do **not** load every file up front — the project composer (`agents.py` / `agents build`) assembles the stable core into root `AGENTS.md`. Examples of portable fragments: `security.md`, `git.md`, `scripting.md`, `comments.md`, `documentation.md`, `ansi-colors.md`, `markdown.md`. Interesting design decisions live in `docs/DESIGN.md` (see `documentation.md`).
+Follow `agents/` as needed. Do **not** load every file up front — the project composer (`agents.py` / `agents build`) assembles the stable core into root `AGENTS.md`. Examples of portable fragments: `security.md`, `git.md`, `scripting.md`, `comments.md`, `documentation.md`, `testing.md`, `ansi-colors.md`, `markdown.md`. Design narrative: `docs/DESIGN.md`. Compact decision log (retros): `docs/DECISIONS.md` — see `documentation.md`.
 
 ### AGENTS.md must auto-load (FIRM for project setup)
 
@@ -119,7 +119,23 @@ Cross-repo priorities: `~/dev/me/life/agents/PRIORITY-BOARD.md`.
 
 ## Human blockers
 
-**Purpose:** a clear, portable queue of work that **only a human** can do, and that **blocks** agent tasks until finished. This is for open-source / multi-user projects — do **not** hardcode a personal name; use **human** / **operator**.
+**Purpose:** a clear, portable queue of work that **only a human** can do.
+Not every open question is a blocker. Prefer plan “open decisions” when nothing
+is waiting on a required path. This is for open-source / multi-user projects —
+do **not** hardcode a personal name; use **human** / **operator**.
+
+### Hard vs soft (FIRM for agents)
+
+| Severity | Field | Agent behavior |
+| --- | --- | --- |
+| **hard** | `**Severity:** hard` (or **omit** — default) | Required path stopped. Task must be `**Status:** blocked` + linked. Taskforces **skip** that task. Orchestrator reports hard open items at stop. |
+| **soft** | `**Severity:** soft` | Optional product/design/ops reminder. Does **not** stop the whole queue. Skip only work that *depends* on the decision; continue other eligible tasks. |
+
+| Rule | Detail |
+| --- | --- |
+| **Hard only when required** | File hard only if an agent **must not** proceed alone on a *required* path. |
+| **Soft is optional** | Soft items must not look like P0 gates. Prefer soft (or no file) for “someday design.” |
+| **Park, don’t fake-block** | Optional work with no near-term intent → `**Status:** parked` or `done` and move to `completed/`, not leave open soft forever. |
 
 ### Layout
 
@@ -161,11 +177,14 @@ Put an item in blockers **only** if an agent **must not** do it alone:
 # B-short-id — Title
 
 **Status:** open
+**Severity:** hard | soft
 **Owner:** human
 **Kind:** design | permission | verify | credentials | physical | expensive-test | other
 **Plan:** (none) | plan-id
 **Unblocks:** agents/tasks/some-task.md
 **Priority:** P0
+**Created:** YYYY-MM-DD
+**Updated:** YYYY-MM-DD
 
 ## What the human must do
 - [ ] …
@@ -174,15 +193,22 @@ Put an item in blockers **only** if an agent **must not** do it alone:
 …
 ```
 
+| Field | Notes |
+| --- | --- |
+| **Severity** | Default **hard** if missing (legacy). Prefer explicit. |
+| **Created** | Date the file was first opened (YYYY-MM-DD). |
+| **Updated** | Bump when status, severity, checklist, or unblocks change. |
+
 ### Agent rules
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
-| Create when blocked | **FIRM** | If work cannot proceed without a human, write/update `agents/blockers/<id>.md` and set the agent task `**Status:** blocked` + `**Blocker:** agents/blockers/<id>.md`. |
+| Create when blocked | **FIRM** | If a **required** path cannot proceed without a human, write/update a **hard** blocker and set the agent task `**Status:** blocked` + `**Blocker:** agents/blockers/<id>.md`. Soft items do **not** require task `blocked`. |
 | Do not fake human steps | **FIRM** | Never mark a human blocker done, never invent “operator approved,” never SSH/sudo past permission rules. |
-| Skip blocked tasks | **FIRM** | Taskforces do not implement tasks blocked on open human work (see eligibility). |
+| Skip blocked tasks | **FIRM** | Taskforces skip tasks with `**Status:** blocked` or linked **hard** open blockers (see eligibility). Soft open blockers alone do not block unrelated tasks. |
 | Dual queue | **GUIDELINE** | Prefer `agents/blockers/` for new portable projects. Keep using root `human-tasks/` where it already exists; CLI lists both. |
-| Close blockers | **GUIDELINE** | Human sets `**Status:** done` and/or moves file to `blockers/completed/`. Agent may move only when the human explicitly said the blocker is done. |
+| Close blockers | **GUIDELINE** | Human sets `**Status:** done` / `parked` and/or moves file to `blockers/completed/`. Agent may move only when the human explicitly said the blocker is done or parked. |
+| Dates | **GUIDELINE** | Set **Created** on open; bump **Updated** on material edits. |
 
 ## Plans
 
@@ -219,7 +245,7 @@ Plans live in `agents/plans/` as kebab-case **files** (`agents/plans/<plan>.md`)
 | **FIRM** Depth limit | **Only the top-level session** may call `spawn_subagent`. Subagents **cannot** spawn children (depth = 1). |
 | **FIRM** Who spawns | The **orchestrator** (parent) spawns Task Force A, waits, then spawns Task Force B, etc. Never instruct A to spawn B. |
 | **FIRM** AGENTS.md inheritance | Children get a **compacted** form of **already-loaded** project instructions. If root `AGENTS.md` is gitignored or missing, children get **no** auto rules. |
-| **FIRM** Prompt safety net | Every taskforce spawn prompt **must** include: (1) task path + acceptance criteria, (2) paths in scope + **git branch** (see `git.md`), (3) restatement of **FIRM** rules (no push unless asked; no SSH without **explicit**; no secrets in output; design-flaw stop), (4) handoff file paths to overwrite, (5) **high reasoning** unless the user told the orchestrator otherwise. |
+| **FIRM** Prompt safety net | Every taskforce spawn prompt **must** include: (1) task path + acceptance criteria, (2) paths in scope + **git branch** (see `git.md`), (3) restatement of **FIRM** rules (no push unless asked; no SSH without **explicit**; no secrets in output; design-flaw stop; **no live mutate of important data** — backup first or **dry-run** only; see `security.md` “Testing tools that touch important live data”), (4) handoff file paths to overwrite, (5) **high reasoning** unless the user told the orchestrator otherwise. |
 | **GUIDELINE** Extra detail | If the task needs build/test/script standards not in the compacted core, paste the relevant bullets into the prompt or point at `agents/installed/<file>.md` to read. |
 
 #### Core rules
@@ -248,7 +274,7 @@ Plans live in `agents/plans/` as kebab-case **files** (`agents/plans/<plan>.md`)
 | Design-flaw | **FIRM** | Stop that task; design discussion (see below). Do not auto-jump to unrelated tasks to “use the budget.” |
 | User stop / criteria met | **FIRM** | Honor extra stop criteria the user gave this session (time, “only P0”, “one task only”, etc.). |
 | No eligible tasks left | **FIRM** | Stop even if under 300K. Do not pull optional/unfinalized work just to fill the budget. |
-| End-of-work blockers report | **FIRM** | When the orchestrator stops (budget, plan done, hand-back, or design-flaw), **list open human blockers relevant to this session’s plans/tasks** (path, title, what the human must do, what they unblock). Prefer `agents blockers` output. Do not bury this only inside a long transcript. |
+| End-of-work blockers report | **FIRM** | When the orchestrator stops (budget, plan done, hand-back, or design-flaw), **list open human blockers relevant to this session’s plans/tasks** (path, title, severity, what the human must do, what they unblock). Prefer `agents blockers` output. Lead with **hard**; soft optional. Do not bury this only inside a long transcript. |
 
 #### Which tasks are eligible (default)
 
@@ -260,7 +286,7 @@ If the user does **not** specify a custom filter for this loop:
 | Named by the user this request | **Yes** | Explicitly in scope for this session. |
 | **Optional** | **No** | Labeled optional, nice-to-have, stretch, backlog-optional, or “if time.” Skip unless the user asked for optional work or high-value-only **includes** it. |
 | **Unfinalized** | **No** | Draft, WIP plan slice, “TBD acceptance,” blocked on design, or incomplete task doc. Skip until finalized or user forces it. |
-| Blocked / open human blocker | **No** | Task `**Status:** blocked` or linked open `agents/blockers/` / `human-tasks/` item. Continue to next eligible task if any. |
+| Blocked / open **hard** human blocker | **No** | Task `**Status:** blocked` or linked open **hard** `agents/blockers/` / `human-tasks/` item (missing severity = hard). Soft open blockers alone do **not** make unrelated tasks ineligible. Continue to next eligible task if any. |
 | Minimally valuable / chore-only | **No** (default) | Unless it is on the plan’s required path or the user included it. |
 
 **User overrides (GUIDELINE examples):** “high-value tasks only,” “P0 only,” “only tasks tagged X,” “include optional,” “finalize draft tasks first.” Apply the override for that session; otherwise use the table above.
