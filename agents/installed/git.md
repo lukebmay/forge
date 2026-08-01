@@ -6,109 +6,185 @@ Rule vocabulary matches `general.md`: **FIRM** / **GUIDELINE** / **MAY**.
 
 | Word | Means |
 | --- | --- |
-| **commit** | Create a **local** commit only |
-| **push** | Push to remote (only when the user says push) |
-| **commit and push** | Both — never invent the push half |
+| **commit** | Create a **local** commit |
+| **push** | Update the remote branch (`git push`) |
+| **merge to default** | Merge plan/task branch → `main`/`master` (integration line) |
+| **prod** | Production deploy line — **not** automatic; human promotes `master` → `prod` |
 
-## Push — only when told (FIRM)
+Default branch name is whatever the repo uses (`master` or `main`). Below, **default** means that branch. **`prod`** is the deploy branch when the project uses one.
+
+---
+
+## Agent discretion — commit and push (GUIDELINE / FIRM bounds)
+
+Agents **should** commit and push when it is the obvious next step. Do not wait for ritual “please commit and push” when wrap-up is clearly done and the change is safe.
+
+| Situation | Commit? | Push? |
+| --- | --- | --- |
+| Successful task / plan-slice wrap-up (tests green, docs ok) | **Yes** (local) | **Yes** — push the **plan/task branch** (and default after merge — see below) |
+| Mid-task checkpoint that keeps history clear | **Yes** if useful | **Yes** on the feature branch if others need it or the machine is disposable |
+| User said don’t commit / don’t push / wait | **No** | **No** |
+| Secrets, credentials, or private keys in the diff | **No** | **No** — stop (see `security.md`) |
+| Design-flaw stop / A/B not finished | **No** wrap-up commit | **No** |
+| Doubt whether the change is ready or would break others | **Local commit OK** to save work | **Do not push default**; ask if unsure |
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
-| No unsolicited push | **FIRM** | Do not run `git push` (or force-push) unless the **current** user request clearly asks to push. |
-| Commit ≠ push | **FIRM** | “Commit” never implies push. |
-| No rewrite published history | **FIRM** | No force-push or amend of **published** history unless the current request clearly asks for that action. |
-| No secret push | **FIRM** | Never commit or push secrets, credentials, or private keys (see `security.md`). |
+| Discretion is default | **GUIDELINE** | Prefer shipping finished work (commit + push feature branch + merge default when rules below are met) over leaving it only on one laptop. |
+| User veto wins | **FIRM** | Explicit “don’t commit”, “don’t push”, “no merge”, or “wait” overrides discretion. |
+| No secret push | **FIRM** | Never commit or push secrets (see `security.md`). |
+| No force-push of published history | **FIRM** | No `--force` / amend of **published** commits unless the user clearly asks. |
+| Prefer non-destructive recovery | **GUIDELINE** | If history rewrite seems needed, ask first. |
 
-## Commit policy
+**Still obvious without magic words:** successful acceptance + wrap-up → commit on the correct branch → push that branch → when merge rules are met, merge to default and push default.
+
+---
+
+## Merge to default (`master` / `main`) — higher bar (FIRM)
+
+Merging into the default branch is a **bigger deal** than commit/push on a feature branch. Default is the integration line other work pulls from.
+
+### When plans merge to default (automatic when ready)
+
+**Plan branches should merge into default when the feature (or finished plan slice that is integration-safe) is complete** — agents do this by default; the user need not say “merge” each time if all gates pass.
+
+| Gate | Required |
+| --- | --- |
+| **Feature / slice complete** | Acceptance met; not half-done WIP that would break default |
+| **Default merged into feature first** | `merge default → plan/<plan>` (or rebase if the project prefers) so the branch is up to date |
+| **Tested** | Relevant tests run and green (or explicit reason tests cannot run) |
+| **No serious doubt** | Agent is confident the merge is correct |
+| **No interference** | Merge is unlikely to block or corrupt **other active branches’** work or the agent queue |
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Plans auto-merge when gates pass | **FIRM** default | After successful plan-slice wrap-up, merge `plan/<plan>` → default when the table above is satisfied, then **push default**. |
+| Whole plan not required | **GUIDELINE** | Prefer merging finished, tested slices rather than waiting for a multi-month plan end — unless the slice is unsafe alone. |
+| Doubt → do not merge default | **FIRM** | If unsure, stop after pushing the **feature branch**; report and ask. **Do not** merge or push default. |
+| Interference → do not merge default | **FIRM** | If the merge would likely conflict with or break in-flight work on other branches, **do not** merge to default; push feature branch only and note the conflict risk. |
+| Standalone tasks | **GUIDELINE** | Same gates for `task/<name>` → default when the task is complete. |
+
+### Order of operations (happy path)
+
+```text
+1. On plan/<plan> (or task/<name>): merge default → feature (up to date)
+2. Implement + test
+3. Commit on feature branch
+4. Push feature branch
+5. When complete + tested + no doubt/interference:
+     merge feature → default
+     push default
+6. Other open plan/task branches: merge default into them before next work
+```
+
+---
+
+## `prod` branch — production deploys (FIRM)
+
+| Branch | Role |
+| --- | --- |
+| **default** (`master`/`main`) | Integration: finished plans/tasks land here after gates |
+| **`prod`** | **Production deploy line** — what is actually released/installed in production |
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Agents do **not** auto-merge to `prod` | **FIRM** | Never merge default → `prod` (or push `prod`) unless the **user explicitly** asks to promote/deploy to production. |
+| Human promotes | **FIRM** | Operator chooses when default is stable enough: merge **default → `prod`**, test, deploy from `prod`. |
+| Create if missing | **GUIDELINE** | On first production policy setup, create `prod` from a known-good default commit and push it once. |
+| Hotfix on prod | **MAY** | Only if the user directs; prefer fix on default then promote. |
+
+```text
+feature → (gates) → default (master) → [human] → prod → deploy
+```
+
+---
+
+## Commit policy (detail)
 
 ### Default after successful task wrap-up (FIRM)
 
-When a task **successfully** completes (taskforce A/B **AGREE**, or equivalent single-agent success) and wrap-up (docs/tests/comments as applicable) is done:
-
 | Rule | Kind | Detail |
 | --- | --- | --- |
-| Commit by default | **FIRM** | Create a **local** commit on the correct plan/task branch. This is authorized by these agents rules — the user does **not** need to say “commit” each time for that wrap-up commit. |
-| Still no push | **FIRM** | Wrap-up commit does **not** authorize push. |
-| User opt-out | **FIRM** | If the user said “don’t commit”, “no commit”, or “wait before committing”, do **not** commit. |
-| Nothing to commit | **GUIDELINE** | If the working tree is clean after wrap-up, skip commit and note that in the handoff. |
-| Design-flaw stop | **FIRM** | Do **not** wrap-up-commit when stopping for a design discussion (see `general.md`). Commit WIP only if the user asks. |
-| Mid-task commits | **MAY** | Extra local commits during a long task are fine when they keep history clear; still no push. |
-| Explicit commit request | **FIRM** | If the user says “commit” mid-session, commit as asked (still no push unless they also said push). |
+| Commit by default | **FIRM** | Local commit on the correct plan/task branch after successful wrap-up. |
+| Push feature by default | **GUIDELINE** | After that commit, **push the feature branch** unless user veto, secrets risk, or no remote. |
+| Merge default when gates pass | **FIRM** default | See “Merge to default” above — then push default. |
+| User opt-out | **FIRM** | Honor don’t-commit / don’t-push / don’t-merge. |
+| Nothing to commit | **GUIDELINE** | Clean tree → skip commit; note in handoff. |
+| Design-flaw stop | **FIRM** | No wrap-up commit/merge; WIP commit only if user asks. |
+| Mid-task commits | **MAY** | Fine for clarity; push feature branch if useful. |
 
-### What is **not** a commit signal
+### What is **not** alone a merge-to-default signal
 
-| Phrase / event | Commit? |
+| Phrase / event | Merge default? |
 | --- | --- |
-| “ship it” / “wrap up” / “done” (without task success wrap-up) | Not by itself — finish acceptance first |
-| A/B **DISAGREE** or in-progress rounds | No wrap-up commit yet |
-| **DESIGN-FLAW** stop | No wrap-up commit |
-| “push” alone | Push only if clearly requested; still need something to push |
+| “ship it” / “wrap up” mid-task | Not until acceptance + tests |
+| A/B **DISAGREE** | No |
+| **DESIGN-FLAW** | No |
+| “push” alone | Push current branch if clear; still need merge gates for default |
+
+---
 
 ## Branch strategy (plans and tasks)
 
-Goal: keep `main`/`master` stable for integration; implement on long-lived plan branches; **never strand the agent queue on a side branch**.
+Goal: default stays the integration line; **`prod` stays deploy**; agents never strand the queue on a side branch.
 
 ### Agent queue is default-branch canon (FIRM)
-
-These paths are the **project queue**. Their source of truth is the **default branch** (`main` / `master`):
 
 | Path | Role |
 | --- | --- |
 | `agents/PRIORITY.md` | Ordered next work |
-| `agents/HANDOFF.md` | Short cross-session handoff (when used) |
-| `agents/plans/` | Plan docs + `completed/` task archive |
-| `agents/tasks/` | Active session tasks |
+| `agents/HANDOFF.md` | Cross-session handoff (when used) |
+| `agents/plans/` | Plans + `completed/` |
+| `agents/tasks/` | Active tasks |
 | `agents/blockers/` | Human blockers |
-| `agents/archive/` | Searchable ship summaries (when used) |
+| `agents/archive/` | Ship summaries (when used) |
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
-| Queue lives on default | **FIRM** | Do **not** leave the only up-to-date PRIORITY / plan tables / completed-task moves on a plan branch. After wrap-up, get queue updates onto the default branch. |
-| Pull before work | **FIRM** | Before implementing on `plan/<plan>` or `task/<name>`, **merge (or rebase) the default branch into the feature branch** so queue docs and other foundations are current. |
-| Pull after others land | **FIRM** | When another plan’s work merges to default, active plan/task branches should merge default again before the next implement round (same session if parallel plans moved). |
-| No long-lived queue fork | **FIRM** | Never maintain a divergent “private” PRIORITY/plans tree on a feature branch as the real queue. Feature branches may edit queue files during a task, then **propagate via merge to default**. |
-| How to propagate | **GUIDELINE** | Prefer **merge the plan/task branch → default** when the shipped code is safe to integrate (finished task, tests green). If code must stay isolated longer, still land **queue-only** updates on default (merge with care, or a short default-branch commit that only updates `agents/` queue paths) so other branches can pull. |
-| Merge ≠ push | **FIRM** | Local merge does not authorize `git push`. Push only if the user asked. |
-
-**Why:** Parallel plan branches that each rewrite PRIORITY/HANDOFF without merging default become unmergeable fiction. Default branch is the single queue other agents and humans read.
+| Queue lives on default | **FIRM** | Do not leave the only up-to-date queue only on a plan branch. |
+| Pull before work | **FIRM** | Merge default → feature before implementing. |
+| Pull after default moves | **FIRM** | Active plan/task branches merge default again before the next implement round. |
+| No long-lived queue fork | **FIRM** | No private divergent PRIORITY as the real queue. |
+| Propagate | **GUIDELINE** | Prefer merge feature → default when gates pass; else queue-only update on default if code must stay isolated. |
 
 ### Plan-linked work
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
-| One branch per plan | **FIRM** | For plan `agents/plans/<plan>.md`, use branch `plan/<plan>` (kebab-case plan id, e.g. `plan/shellrc-startup`). |
-| Create if missing | **FIRM** | When starting the first task for that plan, create `plan/<plan>` from **up-to-date** default branch if it does not exist (fetch/merge default first). |
-| Switch before implement | **FIRM** | Orchestrator and taskforces **must** be on `plan/<plan>` before Task Force A writes code for a plan-linked task. |
-| Stay on plan branch for code | **FIRM** | Implementation commits for that plan stay on `plan/<plan>` (not random feature branches). |
-| Integrate finished work | **GUIDELINE** | After a **successful task** wrap-up (A/B AGREE or equivalent), prefer merging `plan/<plan>` → default when the change is integration-safe (foundations, green tests). Do **not** wait for the entire multi-task plan if waiting would strand the queue or block other plans. |
-| Whole-plan merge still OK | **MAY** | Keep unfinished WIP on the plan branch; merge only the completed task slice (or merge default←plan when the user wants a larger batch). |
-| User override | **FIRM** | If the user asks to merge earlier, later, or only queue docs — follow that. |
-| Plan rename | **GUIDELINE** | If the plan id changes, rename the branch or open a new `plan/<new>` and note it in the plan doc. |
+| One branch per plan | **FIRM** | `plan/<plan>` (kebab-case plan id). |
+| Create if missing | **FIRM** | From up-to-date default. |
+| Switch before implement | **FIRM** | On `plan/<plan>` before Task Force A writes plan code. |
+| Stay on plan branch for code | **FIRM** | Implementation commits on `plan/<plan>`. |
+| Auto-merge when complete | **FIRM** default | Gates above; then push default. |
+| User override | **FIRM** | Honor explicit earlier/later/only-queue instructions. |
 
-### Standalone tasks (no plan)
+### Standalone tasks
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
-| Branch for non-trivial work | **GUIDELINE** | Use `task/<task-name>` (kebab-case, from the task file stem) for standalone tasks that change code. |
-| Skip branch | **MAY** | Trivial one-liner / docs-only / user said “commit on main” → work on default branch is OK. |
-| Merge when task done | **GUIDELINE** | After wrap-up commit on `task/<name>`, merge to default branch when the standalone task is complete (still no push unless asked). Same **pull default first** rule as plan branches. |
+| Branch | **GUIDELINE** | `task/<task-name>` for non-trivial work. |
+| Skip branch | **MAY** | Trivial / docs-only / user said work on default. |
+| Merge when done | **GUIDELINE** | Same gates as plan slices. |
 
 ### Taskforce obligations
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
-| Check branch first | **FIRM** | Before implementing, `git branch --show-current` (or equivalent). If wrong, switch/create the plan or task branch — do not implement on the wrong branch. |
-| Default is current | **FIRM** | Before A implements: feature branch includes latest default (merge/rebase). After wrap-up: queue (+ usually code) headed for default. |
-| State branch in handoff | **FIRM** | Handoff notes include branch name, whether wrap-up commit was made, and whether default was merged / needs merge. |
-| No branch roulette | **FIRM** | Do not create random feature branches per A/B round. One plan branch (or one task branch) for the whole taskforce. |
+| Check branch first | **FIRM** | Correct plan/task branch before implement. |
+| Default is current | **FIRM** | Feature includes latest default before A implements. |
+| State in handoff | **FIRM** | Branch, commits, pushes, whether default was merged, whether `prod` was **not** touched. |
+| No branch roulette | **FIRM** | One plan/task branch per taskforce, not per A/B round. |
+| Spawn prompt safety | **FIRM** | Restate: commit/push feature by discretion; merge default only with gates; **never** auto-merge/push `prod`; no secrets; no SSH without **explicit**. |
 
 ### Defaults summary
 
 ```text
-queue canon:  agents/{PRIORITY,HANDOFF,plans,tasks,blockers,archive} on default branch
-start work:   merge default → plan/<plan> (or task/<name>) → implement
-wrap-up:      commit on plan/task branch → merge to default when safe (prefer per finished task)
-other plans:  after default moves, merge default → their plan branch before next round
-always:       push only if user asked
-design flaw:  stop; no wrap-up commit
+queue canon:     agents/{PRIORITY,HANDOFF,plans,tasks,blockers,archive} on default
+start work:      merge default → plan/<plan> → implement → commit → push feature
+plan complete:   default already in feature + tested + no doubt
+                 → merge plan → default → push default
+other plans:     merge default → their branch before next round
+prod:            human only: merge default → prod when deploying
+never auto:      force-push published history; secrets; prod promote
+doubt/interfere: push feature only; do NOT merge/push default
 ```
