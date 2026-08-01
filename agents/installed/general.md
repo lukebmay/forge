@@ -84,8 +84,27 @@ Session-sized work lives in `agents/tasks/`. Prefer one completable session. Tas
 | **GUIDELINE** Standalone name | No plan prefix required (e.g. `scripts-agentsmd.md`) |
 | **FIRM** Done (plan-linked) | Move to `agents/plans/<plan>/completed/` — **not** `agents/tasks/completed/` |
 | **FIRM** Done (standalone) | Move to `agents/tasks/completed/` only when the task has **no** plan |
-| **GUIDELINE** Status in task/plan | Label clearly: `ready` / `in progress` / `blocked` / `optional` / `draft` (unfinalized). Taskforces skip `optional` and `draft` unless the user says otherwise (see Taskforce eligibility). |
+| **GUIDELINE** Status in task/plan | Label clearly: `ready` / `next` / `in progress` / `blocked` / `optional` / `draft`. See **Status vocabulary** below. Taskforces skip **`optional`** and **`blocked`** only (not `draft`). |
 | **FIRM** Human blockers | When agent work needs a human first, create/link `agents/blockers/` (see **Human blockers**). Do not only write “blocked” prose in the task. |
+
+#### Status vocabulary (FIRM meaning)
+
+| Status | Means | Agent default |
+| --- | --- | --- |
+| **ready** / **next** / **in progress** | Do this work | Eligible |
+| **optional** | Nice-to-have / stretch / “if time” | **Skip** unless user includes optional |
+| **blocked** | Waiting on a **hard** human blocker (linked) | **Skip** until blocker closed |
+| **draft** | Queue shorthand: slice named in a plan, task file may not exist yet, acceptance may still be written from plan scope | **Not a stop.** If it is the next **required** slice and the plan has enough scope to write acceptance without inventing product decisions → write the task file and implement. |
+| **done** | Finished; file under `completed/` | Ignore |
+
+**Binary rule (FIRM):** either you need a **human decision** (open/link a hard blocker and stop that path) **or** you **do not** — then proceed. Do **not** invent a third gate (“wait for human to finalize draft”) when the plan already describes the next slice.
+
+| Situation | Do |
+| --- | --- |
+| Next required plan slice, scope clear enough for acceptance | Write `agents/tasks/…`, set ready/in progress, implement |
+| Cannot write honest acceptance without a product/ops call only a human can make | Hard blocker + task `blocked` — ask the human |
+| Labeled **optional** | Skip unless user asked for optional |
+| Soft reminder only | Soft blocker; do **not** stall unrelated required work |
 
 Examples:
 
@@ -273,7 +292,7 @@ Plans live in `agents/plans/` as kebab-case **files** (`agents/plans/<plan>.md`)
 | Plan / request complete | **FIRM** | All **eligible** required work done → wrap last task, hand back. Do not invent more work. |
 | Design-flaw | **FIRM** | Stop that task; design discussion (see below). Do not auto-jump to unrelated tasks to “use the budget.” |
 | User stop / criteria met | **FIRM** | Honor extra stop criteria the user gave this session (time, “only P0”, “one task only”, etc.). |
-| No eligible tasks left | **FIRM** | Stop even if under 300K. Do not pull optional/unfinalized work just to fill the budget. |
+| No eligible tasks left | **FIRM** | Stop even if under 300K. Do not pull **optional** or out-of-queue work just to fill the budget. |
 | End-of-work blockers report | **FIRM** | When the orchestrator stops (budget, plan done, hand-back, or design-flaw), **list open human blockers relevant to this session’s plans/tasks** (path, title, severity, what the human must do, what they unblock). Prefer `agents blockers` output. Lead with **hard**; soft optional. Do not bury this only inside a long transcript. |
 
 #### Which tasks are eligible (default)
@@ -282,16 +301,16 @@ If the user does **not** specify a custom filter for this loop:
 
 | Task kind | Eligible by default? | Detail |
 | --- | --- | --- |
-| Required + ready / finalized | **Yes** | Clear acceptance criteria; status is ready, next, in progress, or equivalent. |
+| Required + next in PRIORITY / plan queue | **Yes** | Status ready, next, in progress, **or plan-table `draft` / “later” for the next required slice** with enough plan scope to write acceptance. Agent may create the task file. |
 | Named by the user this request | **Yes** | Explicitly in scope for this session. |
 | **Optional** | **No** | Labeled optional, nice-to-have, stretch, backlog-optional, or “if time.” Skip unless the user asked for optional work or high-value-only **includes** it. |
-| **Unfinalized** | **No** | Draft, WIP plan slice, “TBD acceptance,” blocked on design, or incomplete task doc. Skip until finalized or user forces it. |
+| Needs human product/ops call | **No** | Cannot write honest acceptance without inventing a decision → open **hard** blocker; do not fake “draft” as the stop. |
 | Blocked / open **hard** human blocker | **No** | Task `**Status:** blocked` or linked open **hard** `agents/blockers/` / `human-tasks/` item (missing severity = hard). Soft open blockers alone do **not** make unrelated tasks ineligible. Continue to next eligible task if any. |
 | Minimally valuable / chore-only | **No** (default) | Unless it is on the plan’s required path or the user included it. |
 
-**User overrides (GUIDELINE examples):** “high-value tasks only,” “P0 only,” “only tasks tagged X,” “include optional,” “finalize draft tasks first.” Apply the override for that session; otherwise use the table above.
+**User overrides (GUIDELINE examples):** “high-value tasks only,” “P0 only,” “only tasks tagged X,” “include optional.” Apply the override for that session; otherwise use the table above.
 
-**FIRM:** Do **not** start optional or unfinalized tasks just because budget remains under 300K.
+**FIRM:** Do **not** start **optional** or out-of-queue work just because budget remains under 300K. Do **not** treat plan-table **`draft`** as “wait for human.”
 
 Handoffs live in the plan/task docs so the next agent loads understanding without the previous agent’s token history.
 
@@ -402,6 +421,6 @@ Orchestrator (or final A if still in-process) owns wrap-up. B’s job is verify,
 When the user says **Begin** (or equivalent) without naming a task:
 
 1. Read `agents/PRIORITY.md` (if present) and run `agents blockers` / list open blockers.
-2. Pick the highest-priority **eligible** agent task (not optional, not draft, not blocked).
+2. Pick the highest-priority **eligible** required work (not optional, not hard-blocked). Plan-table **`draft`** for the next required slice is eligible — write the task file if needed, then implement. Only stop that path if a real human decision is required (hard blocker).
 3. Ensure plan/task branch; run A/B taskforces per rules until ~300K or no eligible work left.
 4. End with wrap-up + **open blockers report** for anything the human still owns.
