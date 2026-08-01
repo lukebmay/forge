@@ -117,6 +117,87 @@ Security rests on trust. Be a responsible actor.
 | Test credentials | **FIRM** | For tests needing auth, ask how to supply credentials; do not use discovered secrets. |
 | Demos | **GUIDELINE** | Contextual name + clear placeholder only. |
 
+## Testing tools that touch important live data (FIRM)
+
+**This rule exists because agents have already hurt real setups** (e.g. running a
+live Dropbox/Maestral uninstall + reinstall during a “smoke test,” which re-applied
+selective-sync exclusions and made most of `~/Dropbox` disappear **locally**).
+That class of mistake is **unacceptable**. Treat it like SSH blast-radius.
+
+### What counts as “important live data”
+
+Anything whose wrong change costs real time, money, or irreplaceable state — not
+a disposable temp fixture:
+
+| Class | Examples |
+| --- | --- |
+| Cloud sync / file bags | Dropbox, Maestral, Syncthing, Nextcloud clients; `~/Dropbox` and siblings |
+| Secrets / identity | `~/.ssh`, age identities, password stores, keyrings, vault dirs |
+| Mail / chat / browsers | Thunderbird profiles, browser profiles, chat DBs |
+| System install state | package managers’ live trees, display/GDM configs on the daily machine |
+| Large personal trees | `~/dev` monorepos only when the test would rewrite or delete them in place |
+| Production / shared hosts | any non-temp path on a machine the human uses daily |
+
+If unsure whether a path is “important,” **assume it is**.
+
+### Default: do **not** run live mutating tests on real data
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Prefer isolated tests | **FIRM** | Unit/smoke tests use **temp dirs**, fake identities, mocked network, or throwaway accounts — **never** the human’s real Dropbox/SSH/secrets tree unless the **current** user request clearly asks for a live exercise. |
+| Help / syntax only is OK | **GUIDELINE** | `--help`, `--version`, `zsh -n`, dry parsers, and offline unit tests need no backup. |
+| Live install/uninstall on real tools | **FIRM** | Do **not** run `install-* --uninstall`, live reinstall, selective-sync changes, or similar against the **real** client just to “verify the installer,” unless the user **explicitly** asked for that live test **in the current message**. |
+
+### When a live test is required: backup **or** dry-run (no exceptions)
+
+Before **any** agent-run command that can create, delete, move, re-encrypt, re-exclude,
+reinstall, or rewrite important live data:
+
+#### Path A — backup first (preferred when cheap)
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Backup before mutate | **FIRM** | Copy or snapshot everything the test might change to a **safe location outside the tool’s reach** (e.g. timestamped dir under `/tmp` only if small; better: external disk / offline media for large trees). |
+| Know restore | **FIRM** | Document in the session note **exactly** how to restore before running the mutator. |
+| Scope the backup | **FIRM** | Config + state + any local data the tool deletes or rewrites (not only the binary). |
+
+#### Path B — dry-run architecture (required when full backup is impractical)
+
+**Dropbox-class example (extremely clear):**
+
+You often **cannot** duplicate multi‑GB / multi‑TB cloud trees onto the same disk
+just to test an installer. In that case **do not** invent a “small live poke.”
+You **must** use a **dry-run architecture** instead:
+
+| Requirement | Kind | Detail |
+| --- | --- | --- |
+| Implement `--dry-run` (or equivalent) | **FIRM** | The tool prints every destructive/mutating step it **would** take (paths, excludes, package ops, uninstall targets) and **exits without changing** live state. |
+| Tests assert dry-run output | **FIRM** | Agent verification compares **actual dry-run output** to **expected** steps (golden string, structured plan, or checklist in the test). Pass = plan matches; **not** “I ran uninstall on the real client and it exited 0.” |
+| No silent partial mutate | **FIRM** | Dry-run must not half-apply (no “delete then dry-run the rest”). Zero writes to important paths. |
+| Temp-tree substitute OK | **GUIDELINE** | If useful, run the real code paths against a **fake** `HOME` / `XDG_*` / store root with tiny fixtures — still not the real `~/Dropbox`. |
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Cannot backup and no dry-run | **FIRM** | **Stop.** Implement dry-run (or an isolated fixture harness) **before** claiming the feature is tested. Do **not** “just try it” on live data. |
+| User-ordered live fire drill | **FIRM** | Only when the **current** user message clearly requests a live install/uninstall on the real system: still prefer backup of **config/state** (small); for huge data dirs, confirm the user accepts cloud re-download risk; then proceed narrowly. |
+
+### Dropbox / Maestral (concrete)
+
+| Do | Do not |
+| --- | --- |
+| `install-dropbox --help` / `--dry-run` | `install-dropbox --uninstall` on the daily machine “for smoke” |
+| Assert dry-run lists exclusion adds/removes | Re-run default install and hope exclusions stay put |
+| Temp `HOME` + fake maestral stub if needed | Assume “~/Dropbox is never deleted” means local folders are safe — **selective sync removes local copies** |
+
+**Remember:** cloud may still hold files after a bad local exclusion; recovery can take hours and looks like “half my Dropbox is gone.” Treat exclusion / reinstall tests as **high blast radius**.
+
+### Taskforce / verifier prompts
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Restate in A/B spawns | **FIRM** | Orchestrator spawn prompts for installers, sync tools, secrets, or any live-data mutator **must** restate: no live uninstall/reinstall on real data; backup or dry-run; compare dry-run to expected. |
+| Verifier (B) same bar | **FIRM** | B must **not** “prove” installers by mutating the operator’s real Dropbox/SSH/secrets. Re-run isolated/dry-run tests only. |
+
 ## Storage
 
 | Rule | Kind | Detail |

@@ -245,7 +245,7 @@ Plans live in `agents/plans/` as kebab-case **files** (`agents/plans/<plan>.md`)
 | **FIRM** Depth limit | **Only the top-level session** may call `spawn_subagent`. Subagents **cannot** spawn children (depth = 1). |
 | **FIRM** Who spawns | The **orchestrator** (parent) spawns Task Force A, waits, then spawns Task Force B, etc. Never instruct A to spawn B. |
 | **FIRM** AGENTS.md inheritance | Children get a **compacted** form of **already-loaded** project instructions. If root `AGENTS.md` is gitignored or missing, children get **no** auto rules. |
-| **FIRM** Prompt safety net | Every taskforce spawn prompt **must** include: (1) task path + acceptance criteria, (2) paths in scope + **git branch** (see `git.md`), (3) restatement of **FIRM** rules (no push unless asked; no SSH without **explicit**; no secrets in output; design-flaw stop), (4) handoff file paths to overwrite, (5) **high reasoning** unless the user told the orchestrator otherwise. |
+| **FIRM** Prompt safety net | Every taskforce spawn prompt **must** include: (1) task path + acceptance criteria, (2) paths in scope + **git branch** (see `git.md`), (3) restatement of **FIRM** rules (no push unless asked; no SSH without **explicit**; no secrets in output; design-flaw stop; **no live mutate of important data** — backup first or **dry-run** only; see `security.md` “Testing tools that touch important live data”), (4) handoff file paths to overwrite, (5) **high reasoning** unless the user told the orchestrator otherwise. |
 | **GUIDELINE** Extra detail | If the task needs build/test/script standards not in the compacted core, paste the relevant bullets into the prompt or point at `agents/installed/<file>.md` to read. |
 
 #### Core rules
