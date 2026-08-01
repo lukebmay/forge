@@ -170,7 +170,7 @@ These labels are **not** style fluff. Use them to decide when judgment is allowe
 
 If a rule is not labeled, treat security, git commit/push, secrets, and SSH rules as **FIRM**; treat process and style defaults as **GUIDELINE**.
 
-Follow `agents/` as needed. Do **not** load every file up front — the project composer (`agents.py` / `agents build`) assembles the stable core into root `AGENTS.md`. Examples of portable fragments: `security.md`, `git.md`, `scripting.md`, `comments.md`, `documentation.md`, `ansi-colors.md`, `markdown.md`. Interesting design decisions live in `docs/DESIGN.md` (see `documentation.md`).
+Follow `agents/` as needed. Do **not** load every file up front — the project composer (`agents.py` / `agents build`) assembles the stable core into root `AGENTS.md`. Examples of portable fragments: `security.md`, `git.md`, `scripting.md`, `comments.md`, `documentation.md`, `testing.md`, `ansi-colors.md`, `markdown.md`. Design narrative: `docs/DESIGN.md`. Compact decision log (retros): `docs/DECISIONS.md` — see `documentation.md`.
 
 #### AGENTS.md must auto-load (FIRM for project setup)
 
@@ -1074,41 +1074,172 @@ When touching old verbose comments, trim them in the same change.
 
 ## Documentation
 
-### Design decisions → `docs/DESIGN.md`
+### Design decisions → durable “why”
 
-Record **interesting design decisions** in project-root
-`docs/DESIGN.md` (create the file if missing).
+Record **interesting design decisions** so humans and agents can onboard, and so
+you can generate **retrospectives** for colleagues or clients without replaying
+chat logs.
 
-| Put it in DESIGN.md when… | Keep it out when… |
+#### Two layers (GUIDELINE)
+
+| Doc | Role | Token stance |
+| --- | --- | --- |
+| **`docs/DESIGN.md`** | Architecture narrative, metaphors, how the system fits together | Readable prose; keep current |
+| **`docs/DECISIONS.md`** | **Append-friendly decision log** — compact, categorized, importance-tagged | **Minimal tokens**; default place for meeting outcomes |
+
+Create either file if missing. Prefer updating **DECISIONS** when a choice is made;
+expand **DESIGN** when the reader needs the full picture.
+
+| Put it in DESIGN / DECISIONS when… | Keep it out when… |
 | --- | --- |
-| A future reader would ask *why* we did it this way | Pure task checklist / session scratch |
-| Tradeoffs, rejected alternatives, funny constraints | Volatile “next commit” TODOs |
-| Architecture metaphors that unlock the codebase | API laundry lists better as code |
+| A future reader would ask *why* | Pure task checklist / session scratch |
+| Tradeoffs, rejected alternatives | Volatile “next commit” TODOs |
+| Architecture constraints that unlock the codebase | API laundry lists better as code |
 | Lessons from production bugs | Secrets, deploy hosts, private URLs |
 
-Tone: **interesting and entertaining for developers** — clear, opinionated,
-light wit OK. Not a marketing page; not a changelog dump.
+Tone in DESIGN: clear, opinionated, light wit OK.  
+Tone in DECISIONS: **telegraphic** — one line why; link out if needed.
+
+#### DECISIONS.md format (FIRM shape when the file exists)
+
+Keep one file (or `docs/decisions/INDEX.md` + rare long entries). Default:
+
+```markdown
+# Design decisions
+
+**How to use:** scan by Topic / Imp. Update in place when a decision changes;
+set Status=`superseded` and add a new row (do not rewrite history silently).
+
+| ID | Date | Topic | Imp | Status | Decision | Why |
+| --- | --- | --- | --- | --- | --- | --- |
+| D001 | 2026-08-01 | deploy | P0 | active | All-in-one process default | Zero-config campus run |
+```
+
+| Field | Rules |
+| --- | --- |
+| **ID** | Stable `D###` (or `D-topic-###`); never reuse for a different decision |
+| **Date** | ISO date of decision (or last material change) |
+| **Topic** | Short kebab or word: `deploy`, `auth`, `api`, `testing`, `modules`, … |
+| **Imp** | `P0` architecture / security · `P1` product default · `P2` implementation · `P3` note |
+| **Status** | `active` \| `superseded` \| `rejected` |
+| **Decision** | What we chose (≤ ~12 words) |
+| **Why** | One line; no essay |
+
+Optional: `Supersedes` column or `see D014` in Why.  
+Long rationale only when needed: `docs/decisions/D001-short-slug.md` and link from the row.
+
+#### Retrospectives (GUIDELINE)
+
+To share with colleagues/clients, filter DECISIONS:
+
+```text
+Topic in {deploy,auth,api} AND Imp ≤ P1 AND Status=active
+```
+
+Emit a short markdown summary (table or bullets). Do **not** paste agent transcripts.
+Agents: when asked for a retrospective, **read DECISIONS (+ DESIGN headings)** only
+unless the user asks for plan/archive detail.
 
 #### What goes where
 
 | Doc | Role |
 | --- | --- |
-| **`docs/DESIGN.md`** | Durable “why” for humans (and agents onboarding) |
+| **`docs/DESIGN.md`** | Durable narrative “why” |
+| **`docs/DECISIONS.md`** | Compact decision log (retro source) |
 | **`agents/plans/`** | Execution plans, task tables, session handoffs |
 | **`agents/tasks/`** | Session-sized work; acceptance; short notes |
-| **`agents/archive/`** | Searchable summaries after ship (when the project uses it) |
+| **`agents/archive/`** | Searchable summaries after ship (when used) |
 | **Source comments** | Minimal *why* only — see `comments.md` |
 
-When a task ships a non-obvious choice, **update DESIGN.md in the same
-change** (or the wrap-up commit). Do not leave the only explanation in chat
-or a completed task file.
+When a task ships a non-obvious choice, **add/update a DECISIONS row** (and DESIGN
+if the narrative changed) in the same change or wrap-up commit. Do not leave the
+only explanation in chat or a completed task file.
 
 #### Hygiene
 
-- Prefer short titled sections over one giant essay.
+- Prefer short titled sections in DESIGN over one giant essay.
+- DECISIONS stays table-first; archive superseded rows, don’t delete without reason.
 - Link to tasks/archive when useful; do not duplicate full task checklists.
 - Update or delete stale claims when code changes.
 - No secrets; no real credentials (see `security.md`).
+
+---
+# installed/testing.md
+---
+
+## Testing
+
+Rule vocabulary: **FIRM** / **GUIDELINE** / **MAY** (see `general.md`).
+
+### Goal
+
+Catch real bugs and regressions **without** making change expensive. Tests serve the product; the product does not serve the test suite.
+
+### Pyramid (GUIDELINE)
+
+| Layer | When | Cost bar |
+| --- | --- | --- |
+| **Unit** | Pure logic, parsers, migrators, authz, graders, validators | Cheap — **be comprehensive** once a unit’s contract is clear |
+| **Integration** | Critical paths + known gotchas (auth → write → read; multi-doc commands; boot) | Expensive — **few, high value** |
+| **E2E / manual smoke** | Full UI loops when automation ROI is clear | Rarest |
+
+Do **not** test for the sake of coverage numbers. Prefer one test that would have caught a real bug over five that only assert mocks called.
+
+### Feature lifecycle (FIRM-ish default)
+
+| Phase | Testing stance |
+| --- | --- |
+| **Exploratory / shape still moving** | Sparse tests; favor unit on stable pure helpers only |
+| **Contract locked** | Build unit suite out; add integration for critical paths |
+| **Bug found** | Prefer a regression test when cheap and non-brittle (**GUIDELINE**) |
+
+Changing product code must not routinely cost more time updating tests than implementing the fix. If it does, tests are too brittle or too early — fix the tests’ design, not only the product.
+
+### What to test
+
+**Do**
+
+- Boundaries: parse, validate, migrate, authorize, grade, serialize  
+- Invariants: “never send keys to client,” atomic write, fail-closed authz  
+- Critical user paths once stable (login → save → submit)  
+- Regression cases for bugs that escaped (when a focused test is easy)
+
+**Don’t**
+
+- Assert internal call order / private structure that will churn  
+- Mirror implementation line-by-line  
+- Duplicate framework behavior  
+- Freeze experimental APIs with a wall of tests mid-design  
+
+### TDD (GUIDELINE)
+
+- **Often good** for pure units with a clear contract (parser, migrator step, permission check).  
+- **Often poor** for UI/integration while UX is still moving — spike first, then lock tests.  
+- Use judgment; TDD is a tool, not a religion.
+
+### Brittleness
+
+| Prefer | Avoid |
+| --- | --- |
+| Observable outputs and public contracts | Snapshot noise for whole pages without need |
+| Stable fixtures with explicit intent | Goldens that rewrite every cosmetic change |
+| Time/random injected | Real clock/sleep flakiness |
+| Temp dirs / fake FS | Mutating important live data (see `security.md`) |
+
+### Shared contracts (GUIDELINE)
+
+When client and server share schemas/types/validators (see `languages/rest-api.md`), test those **once** in the shared package — not separately with drift-prone copies.
+
+### Naming & layout (GUIDELINE)
+
+- Colocate `*.test.ts` / `test_*.py` with code, or mirror tree under `tests/` — match the repo.  
+- Name tests by **behavior**: `rejects unknown schemaVersion`, not `test1`.  
+- One conceptual assertion cluster per test; multi-assert OK when same scenario.
+
+### CI (GUIDELINE)
+
+- Unit suite green on every change when the project has CI.  
+- Integration optional/nightly if slow — but critical-path integration should not be “never run.”
 
 ---
 # installed/ansi-colors.md

@@ -12,7 +12,7 @@ These labels are **not** style fluff. Use them to decide when judgment is allowe
 
 If a rule is not labeled, treat security, git commit/push, secrets, and SSH rules as **FIRM**; treat process and style defaults as **GUIDELINE**.
 
-Follow `agents/` as needed. Do **not** load every file up front — the project composer (`agents.py` / `agents build`) assembles the stable core into root `AGENTS.md`. Examples of portable fragments: `security.md`, `git.md`, `scripting.md`, `comments.md`, `documentation.md`, `ansi-colors.md`, `markdown.md`. Interesting design decisions live in `docs/DESIGN.md` (see `documentation.md`).
+Follow `agents/` as needed. Do **not** load every file up front — the project composer (`agents.py` / `agents build`) assembles the stable core into root `AGENTS.md`. Examples of portable fragments: `security.md`, `git.md`, `scripting.md`, `comments.md`, `documentation.md`, `testing.md`, `ansi-colors.md`, `markdown.md`. Design narrative: `docs/DESIGN.md`. Compact decision log (retros): `docs/DECISIONS.md` — see `documentation.md`.
 
 ### AGENTS.md must auto-load (FIRM for project setup)
 

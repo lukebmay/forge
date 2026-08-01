@@ -14,11 +14,13 @@ Related: language guides, `postgres.md` / other DB notes, `docker.md`.
 
 ## API design
 
+- Default **HTTP + JSON** resources; use **command POSTs** for multi-document workflows — see `rest-api.md`
+- **Share** isomorphic types/schemas/validators with the client (`packages/shared` etc.); never share client-only or server-only code across that boundary
 - Stable contracts; version or expand carefully (don’t break clients silently)
 - Consistent error shape; safe messages to clients, detail in logs
 - Pagination/filtering/sorting as first-class when lists can grow
 - Authn then authz on every protected route; never “hidden” URL security
-- Prefer clear resource models over kitchen-sink endpoints
+- Prefer clear resource models over kitchen-sink endpoints; one server command owns consistency
 
 ## Trust & validation
 
@@ -47,6 +49,15 @@ Related: language guides, `postgres.md` / other DB notes, `docker.md`.
 - Avoid N+1; batch when the data layer supports it
 - Cache with explicit TTL/invalidation — not “forever” by accident
 - Cheap handlers stay cheap; push heavy work to async workers
+
+## Logging & debugging (GUIDELINE)
+
+- Prefer **structured logs** (JSON lines) early; filesystem sink is fine before a UI
+- Levels: debug/info/warn/error; default info in prod; debug opt-in
+- Correlate requests with a request/trace id when the service is multi-step
+- Never log secrets, passwords, tokens, or full auth headers
+- First-class logging before large feature surface area; UI log browser can wait
+- Pick a maintained logger (e.g. pino in Node) over ad-hoc `console.log` soup — see project DECISIONS for the chosen lib
 
 ## Ops handoff
 

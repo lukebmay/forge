@@ -1,9 +1,9 @@
 schema = 1
-tool_version = "0.1.9"
-catalog_version = "0.1.14"
+tool_version = "0.1.10"
+catalog_version = "0.2.0"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-01T00:16:37+00:00"
+updated_at = "2026-08-01T16:47:45+00:00"
 
 [[files]]
 id = "ansi-colors"
@@ -20,14 +20,14 @@ sha256 = "461df7ff7606ce982bee0894f43d036a2726a1973028eec15ae22222acc74ded"
 [[files]]
 id = "documentation"
 path = "documentation.md"
-version = "1.0.0"
-sha256 = "68f89ad65dd7a1a7a01a20986b7777b23ee3893daf39dea1e2fac65601c93420"
+version = "1.0.1"
+sha256 = "4e919508fca04a3a8c27a838d341a9450e210ff01b4a293621eebb31186c1d54"
 
 [[files]]
 id = "general"
 path = "general.md"
-version = "1.5.0"
-sha256 = "2491c3e8203da28f6460821bb6915edc49cecae6999563f75cc4ccf5534261a0"
+version = "1.5.1"
+sha256 = "f15df9648953367c12d64ef12051307eea4b78823d60a4b2825ea1071252978a"
 
 [[files]]
 id = "git"
@@ -144,6 +144,12 @@ version = "1.0.0"
 sha256 = "522228b215bb53c25f12dd4ea1a32137afd2706e3288c8f08f38e4cb8181a6fb"
 
 [[files]]
+id = "rest-api"
+path = "languages/rest-api.md"
+version = "1.0.0"
+sha256 = "ebe61beb99a0db0e716417fd4a1ee14075f83f46fd8cda82920a7ce88f60a14b"
+
+[[files]]
 id = "rust"
 path = "languages/rust.md"
 version = "1.0.0"
@@ -158,20 +164,20 @@ sha256 = "adfa033f4b2b2f615c73e7bdbd6f6cdafde3ba6e34b617e3454d3334e5d51b28"
 [[files]]
 id = "typescript"
 path = "languages/typescript.md"
-version = "1.0.0"
-sha256 = "5696b9f8b2ce06dbef06686137324f8ea0ace45b860340fa5b4ae6708d0ef73e"
+version = "1.0.1"
+sha256 = "d89b04f33458ab28591b97e442ab5eef09a23d274e829887f91d8ce0c099822d"
 
 [[files]]
 id = "web-backend"
 path = "languages/web-backend.md"
-version = "1.0.0"
-sha256 = "5aede3fec5e32dc3ae4515d0688eabfef1c01759f62e51960eccc43964a8327c"
+version = "1.0.1"
+sha256 = "492b54af080fd467a0b1e3cd1f063efbac9205a8fd3382e0d47c9ce176661c97"
 
 [[files]]
 id = "web-frontend"
 path = "languages/web-frontend.md"
-version = "1.0.0"
-sha256 = "461bf2cff8dc6baa466ff88cbacd59ca5be3a6ad6144b020656bbcb0091b8365"
+version = "1.0.1"
+sha256 = "b5c45e834284a6281b7fa8688199ac648dd03866a31decb81381b67322022f4a"
 
 [[files]]
 id = "zig"
@@ -214,3 +220,9 @@ id = "security"
 path = "security.md"
 version = "1.3.0"
 sha256 = "b4e2a2decb24383c6bde960d656b11432046d1ae8efa02a747a56df01ec4d1fe"
+
+[[files]]
+id = "testing"
+path = "testing.md"
+version = "1.0.0"
+sha256 = "7355d6eb493eb53fd13f1fa882e99ce60202045224bc6f25c296d1e71dd50f0f"
