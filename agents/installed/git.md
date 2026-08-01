@@ -46,18 +46,43 @@ When a task **successfully** completes (taskforce A/B **AGREE**, or equivalent s
 
 ## Branch strategy (plans and tasks)
 
-Goal: keep `main`/`master` stable; land plan work on a long-lived plan branch; merge when the **plan** is complete (not after every task).
+Goal: keep `main`/`master` stable for integration; implement on long-lived plan branches; **never strand the agent queue on a side branch**.
+
+### Agent queue is default-branch canon (FIRM)
+
+These paths are the **project queue**. Their source of truth is the **default branch** (`main` / `master`):
+
+| Path | Role |
+| --- | --- |
+| `agents/PRIORITY.md` | Ordered next work |
+| `agents/HANDOFF.md` | Short cross-session handoff (when used) |
+| `agents/plans/` | Plan docs + `completed/` task archive |
+| `agents/tasks/` | Active session tasks |
+| `agents/blockers/` | Human blockers |
+| `agents/archive/` | Searchable ship summaries (when used) |
+
+| Rule | Kind | Detail |
+| --- | --- | --- |
+| Queue lives on default | **FIRM** | Do **not** leave the only up-to-date PRIORITY / plan tables / completed-task moves on a plan branch. After wrap-up, get queue updates onto the default branch. |
+| Pull before work | **FIRM** | Before implementing on `plan/<plan>` or `task/<name>`, **merge (or rebase) the default branch into the feature branch** so queue docs and other foundations are current. |
+| Pull after others land | **FIRM** | When another plan’s work merges to default, active plan/task branches should merge default again before the next implement round (same session if parallel plans moved). |
+| No long-lived queue fork | **FIRM** | Never maintain a divergent “private” PRIORITY/plans tree on a feature branch as the real queue. Feature branches may edit queue files during a task, then **propagate via merge to default**. |
+| How to propagate | **GUIDELINE** | Prefer **merge the plan/task branch → default** when the shipped code is safe to integrate (finished task, tests green). If code must stay isolated longer, still land **queue-only** updates on default (merge with care, or a short default-branch commit that only updates `agents/` queue paths) so other branches can pull. |
+| Merge ≠ push | **FIRM** | Local merge does not authorize `git push`. Push only if the user asked. |
+
+**Why:** Parallel plan branches that each rewrite PRIORITY/HANDOFF without merging default become unmergeable fiction. Default branch is the single queue other agents and humans read.
 
 ### Plan-linked work
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
 | One branch per plan | **FIRM** | For plan `agents/plans/<plan>.md`, use branch `plan/<plan>` (kebab-case plan id, e.g. `plan/shellrc-startup`). |
-| Create if missing | **FIRM** | When starting the first task for that plan, create `plan/<plan>` from up-to-date `main`/`master` (or the repo’s default branch) if it does not exist. |
+| Create if missing | **FIRM** | When starting the first task for that plan, create `plan/<plan>` from **up-to-date** default branch if it does not exist (fetch/merge default first). |
 | Switch before implement | **FIRM** | Orchestrator and taskforces **must** be on `plan/<plan>` before Task Force A writes code for a plan-linked task. |
-| Stay on plan branch | **FIRM** | All tasks for that plan commit to `plan/<plan>` until the plan is complete. |
-| Merge when plan complete | **FIRM** | Merge `plan/<plan>` → default branch only when the **plan** is complete (or the user asks to merge earlier). Do **not** merge after each task by default. |
-| Merge ≠ push | **FIRM** | Local merge does not authorize `git push`. Push only if the user asked. |
+| Stay on plan branch for code | **FIRM** | Implementation commits for that plan stay on `plan/<plan>` (not random feature branches). |
+| Integrate finished work | **GUIDELINE** | After a **successful task** wrap-up (A/B AGREE or equivalent), prefer merging `plan/<plan>` → default when the change is integration-safe (foundations, green tests). Do **not** wait for the entire multi-task plan if waiting would strand the queue or block other plans. |
+| Whole-plan merge still OK | **MAY** | Keep unfinished WIP on the plan branch; merge only the completed task slice (or merge default←plan when the user wants a larger batch). |
+| User override | **FIRM** | If the user asks to merge earlier, later, or only queue docs — follow that. |
 | Plan rename | **GUIDELINE** | If the plan id changes, rename the branch or open a new `plan/<new>` and note it in the plan doc. |
 
 ### Standalone tasks (no plan)
@@ -66,21 +91,24 @@ Goal: keep `main`/`master` stable; land plan work on a long-lived plan branch; m
 | --- | --- | --- |
 | Branch for non-trivial work | **GUIDELINE** | Use `task/<task-name>` (kebab-case, from the task file stem) for standalone tasks that change code. |
 | Skip branch | **MAY** | Trivial one-liner / docs-only / user said “commit on main” → work on default branch is OK. |
-| Merge when task done | **GUIDELINE** | After wrap-up commit on `task/<name>`, merge to default branch when the standalone task is complete (still no push unless asked). |
+| Merge when task done | **GUIDELINE** | After wrap-up commit on `task/<name>`, merge to default branch when the standalone task is complete (still no push unless asked). Same **pull default first** rule as plan branches. |
 
 ### Taskforce obligations
 
 | Rule | Kind | Detail |
 | --- | --- | --- |
 | Check branch first | **FIRM** | Before implementing, `git branch --show-current` (or equivalent). If wrong, switch/create the plan or task branch — do not implement on the wrong branch. |
-| State branch in handoff | **FIRM** | Handoff notes include branch name and whether wrap-up commit was made. |
+| Default is current | **FIRM** | Before A implements: feature branch includes latest default (merge/rebase). After wrap-up: queue (+ usually code) headed for default. |
+| State branch in handoff | **FIRM** | Handoff notes include branch name, whether wrap-up commit was made, and whether default was merged / needs merge. |
 | No branch roulette | **FIRM** | Do not create random feature branches per A/B round. One plan branch (or one task branch) for the whole taskforce. |
 
 ### Defaults summary
 
 ```text
-plan work:    checkout plan/<plan> → A/B tasks → commits on plan branch → merge when plan done
-standalone:   checkout task/<task> (non-trivial) → work → commit → merge when task done
+queue canon:  agents/{PRIORITY,HANDOFF,plans,tasks,blockers,archive} on default branch
+start work:   merge default → plan/<plan> (or task/<name>) → implement
+wrap-up:      commit on plan/task branch → merge to default when safe (prefer per finished task)
+other plans:  after default moves, merge default → their plan branch before next round
 always:       push only if user asked
 design flaw:  stop; no wrap-up commit
 ```
