@@ -15,9 +15,9 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 - Spine complete for structure + keyboard owning-split resize + naming
 - **Residual:** mouse `_handleResizing`; optional Z0 zoom (after selection)
 - **Selection S0 + S1 done** (2026-08-03) — ops target + bag chrome; next S2
-  move/swap on [forge-container-selection.md](./forge-container-selection.md)
+  [task](../tasks/forge-container-selection_s2-ops-matrix.md) · [HANDOFF](../HANDOFF.md)
 - **Merge:** primary wave complete enough for master when smoke OK; selection
-  continues as follow-on (same branch or new plan branch after merge)
+  continues as follow-on (same branch); master not merged this handoff
 
 ---
 

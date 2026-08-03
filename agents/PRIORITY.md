@@ -18,8 +18,9 @@
 
 | Item | Note |
 | --- | --- |
-| **Selection S1** | Ops target API + `.window-selection-border` bag chrome; clear unbound |
+| **Selection S1** | Ops target API + `.window-selection-border` bag chrome; clear unbound — `f61e69d` |
 | **Selection S0** | Design locked (prior): sticky unit, bag ≠ focus, BackSpace family |
+| **Handoff** | [HANDOFF.md](./HANDOFF.md) · S2 task ready |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 

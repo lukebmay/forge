@@ -4,6 +4,7 @@ Searchable one-line summaries of finished work. Details in `entries/`.
 
 | Date | Slug | Tags | One-line |
 | --- | --- | --- | --- |
+| 2026-08-03 | [selection-s1-bag-chrome](./entries/selection-s1-bag-chrome.md) | tiling, containers, selection | Ops target API + `.window-selection-border` bag chrome; clear unbound |
 | 2026-07-28 | [stacked-phase1-keys](./entries/stacked-phase1-keys.md) | tiling, stacks, keybinds | Stack mode on; tab↔stack + merge; kits + `forge keybind`; RunSteps parity |
 | 2026-07-27 | [t9-multiline-tabs](./entries/t9-multiline-tabs.md) | tiling, tabs, decoration | `max-tabs-per-line` wrap; default 0; multi-row hosts + total bar height |
 | 2026-07-27 | [b1-dnd-extract](./entries/b1-dnd-extract.md) | audit, extract, dnd | DnD/grab cluster → `drag-drop.js`; window.js 4487→3985; thin WM wrappers |

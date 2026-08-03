@@ -8,14 +8,13 @@
 
 ### Session note (overwrite)
 
-**S1 done 2026-08-03** — selection state + loud bag chrome shipped.
+**Handoff 2026-08-03** — S1 shipped; next agent starts **S2**.
 
-- Pure ops target: `resolveOpsTarget` / `isElevatedSelection` / `clearOpsTarget` /
-  `resolveAttachOnFocusChange` (`layout-unit.js`)
-- Focus-parent elevates after activate; Meta focus change to **other** window resets
-- `.window-selection-border` (lime) on full CON rect; focus purple/red unchanged
-- Clear API: command + `window-selection-clear` (unbound) + RunStep `clear-selection`
-- Unit suite green; **next:** S2 move/swap/layout honor elevated unit
+- Tip: `f61e69d` on `plan/forge-first-class-containers` (pushed); master **not** merged
+- Cross-session: [agents/HANDOFF.md](../HANDOFF.md)
+- **Next task:** [forge-container-selection_s2-ops-matrix.md](../tasks/forge-container-selection_s2-ops-matrix.md)
+- S1 completed: [completed/…](./forge-container-selection/completed/forge-container-selection_s1-state-chrome.md)
+- Pure ops target + bag chrome + clear API (unbound); full suite green at ship
 
 ---
 
@@ -376,11 +375,11 @@ keeping target; clear still resets. Not in S1–S3 scope.
 
 ## First next session step
 
-1. Implement **S2** — move/swap/layout/ungroup honor elevated CON (task file next).  
+1. Implement **S2** — [forge-container-selection_s2-ops-matrix.md](../tasks/forge-container-selection_s2-ops-matrix.md).  
 2. **S3** Vim `Super+p` + BackSpace clear multi-bind + docs.  
 3. Operator live QA checklist A–G + elevate → move bag → clear (S5).
 
-### Soft leftovers (do **not** block S1)
+### Soft leftovers (do **not** block S2)
 
 | Item | When |
 | --- | --- |
