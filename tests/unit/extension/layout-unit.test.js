@@ -11,6 +11,10 @@ import {
   resolveMoveUnit,
   resolveMoveOut,
   resolveMoveInSibling,
+  isElevatedSelection,
+  resolveOpsTarget,
+  clearOpsTarget,
+  resolveAttachOnFocusChange,
 } from "../../../lib/extension/layout-unit.js";
 
 describe("layout-unit (I1 setLayout spine)", () => {
@@ -164,6 +168,82 @@ describe("layout-unit resolveFocusParent / Child (C4)", () => {
     b.parentNode = con;
     expect(resolveRepresentativeWindow(con, a)).toBe(a);
     expect(resolveRepresentativeWindow(con, null)).toBe(b);
+  });
+});
+
+describe("layout-unit ops target / selection (S1)", () => {
+  function nest() {
+    const mon = { nodeType: "MONITOR" };
+    const outer = { nodeType: "CON", parentNode: mon, childNodes: [] };
+    const inner = { nodeType: "CON", parentNode: outer, childNodes: [] };
+    const win = { nodeType: "WINDOW", parentNode: inner, nodeValue: { id: "w1" } };
+    const win2 = { nodeType: "WINDOW", parentNode: outer, nodeValue: { id: "w2" } };
+    outer.childNodes = [inner, win2];
+    inner.childNodes = [win];
+    outer.contains = (n) => n === win || n === win2 || n === inner || nodeUnder(n, outer);
+    inner.contains = (n) => n === win || nodeUnder(n, inner);
+    return { mon, outer, inner, win, win2 };
+  }
+
+  function nodeUnder(n, anc) {
+    let p = n;
+    while (p) {
+      if (p === anc) return true;
+      p = p.parentNode;
+    }
+    return false;
+  }
+
+  it("isElevatedSelection only when attach is CON above focus", () => {
+    const { outer, inner, win } = nest();
+    expect(isElevatedSelection(null, win)).toBe(false);
+    expect(isElevatedSelection(win, win)).toBe(false);
+    expect(isElevatedSelection(inner, win)).toBe(true);
+    expect(isElevatedSelection(outer, win)).toBe(true);
+    expect(isElevatedSelection({ nodeType: "MONITOR" }, win)).toBe(false);
+  });
+
+  it("resolveOpsTarget returns elevated CON or focus leaf", () => {
+    const { outer, win } = nest();
+    expect(resolveOpsTarget(null, win)).toBe(win);
+    expect(resolveOpsTarget(win, win)).toBe(win);
+    expect(resolveOpsTarget(outer, win)).toBe(outer);
+    expect(resolveOpsTarget(null, null)).toBeNull();
+  });
+
+  it("clearOpsTarget snaps to focus leaf", () => {
+    const { win } = nest();
+    expect(clearOpsTarget(win)).toBe(win);
+    expect(clearOpsTarget(null)).toBeNull();
+  });
+
+  it("multi-parent elevate: ops target walks outer then clears", () => {
+    const { outer, inner, win } = nest();
+    expect(resolveOpsTarget(inner, win)).toBe(inner);
+    expect(resolveOpsTarget(outer, win)).toBe(outer);
+    expect(resolveOpsTarget(clearOpsTarget(win), win)).toBe(win);
+  });
+
+  it("resolveAttachOnFocusChange resets on different window", () => {
+    const { outer, win, win2 } = nest();
+    // Elevated then user focuses sibling window → leaf
+    expect(resolveAttachOnFocusChange(win, win2, outer)).toBe(win2);
+  });
+
+  it("resolveAttachOnFocusChange keeps elevated CON on same-window re-focus", () => {
+    const { outer, win } = nest();
+    expect(resolveAttachOnFocusChange(win, win, outer)).toBe(outer);
+    // Same Meta identity via nodeValue
+    const winAgain = { nodeType: "WINDOW", parentNode: win.parentNode, nodeValue: win.nodeValue };
+    outer.contains = (n) => n === win || n === winAgain || nodeUnder(n, outer);
+    expect(resolveAttachOnFocusChange(win, winAgain, outer)).toBe(outer);
+  });
+
+  it("resolveAttachOnFocusChange drops stale elevated CON", () => {
+    const { outer, win } = nest();
+    // Same window but attach no longer contains focus → leaf
+    const orphan = { nodeType: "CON", contains: () => false };
+    expect(resolveAttachOnFocusChange(win, win, orphan)).toBe(win);
   });
 });
 

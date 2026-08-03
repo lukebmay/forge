@@ -60,6 +60,7 @@ describe("Keybindings", () => {
         "window-ungroup",
         "window-focus-parent",
         "window-focus-child",
+        "window-selection-clear",
         "window-move-out",
         "window-move-in",
         "con-tabbed-showtab-decoration-toggle",

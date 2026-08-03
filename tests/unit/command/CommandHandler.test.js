@@ -474,8 +474,8 @@ describe("CommandHandler", () => {
     });
   });
 
-  describe("FocusParent / FocusChild (C4)", () => {
-    it("FocusParent sets attachNode to parent CON", () => {
+  describe("FocusParent / FocusChild / ClearSelection (C4/S1)", () => {
+    it("FocusParent sets attachNode to parent CON after activate", () => {
       const con = mockNodeWindow.parentNode;
       con.nodeType = NODE_TYPES.CON;
       con.isCon = () => true;
@@ -486,11 +486,13 @@ describe("CommandHandler", () => {
       mockNodeWindow.nodeValue.activate = vi.fn();
       mockNodeWindow.nodeValue.raise = vi.fn();
       mockTree.findNode = vi.fn();
+      mockWm.updateBorderLayout = vi.fn();
 
       commandHandler.execute({ name: "FocusParent" });
 
       expect(mockTree.attachNode).toBe(con);
       expect(mockNodeWindow.nodeValue.activate).toHaveBeenCalled();
+      expect(mockWm.updateBorderLayout).toHaveBeenCalled();
     });
 
     it("FocusParent no-ops under MONITOR", () => {
@@ -504,6 +506,20 @@ describe("CommandHandler", () => {
       commandHandler.execute({ name: "FocusParent" });
 
       expect(mockTree.attachNode).toBeUndefined();
+    });
+
+    it("ClearSelection snaps attachNode to focused leaf", () => {
+      const con = mockNodeWindow.parentNode;
+      con.nodeType = NODE_TYPES.CON;
+      con.isCon = () => true;
+      con.contains = (n) => n === mockNodeWindow;
+      mockTree.attachNode = con;
+      mockWm.updateBorderLayout = vi.fn();
+
+      commandHandler.execute({ name: "ClearSelection" });
+
+      expect(mockTree.attachNode).toBe(mockNodeWindow);
+      expect(mockWm.updateBorderLayout).toHaveBeenCalled();
     });
   });
 

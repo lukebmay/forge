@@ -109,6 +109,7 @@ describe("run-steps pure helpers (FC4)", () => {
       expect(EXTENSION_OPS).toContain("group");
       expect(EXTENSION_OPS).toContain("ungroup");
       expect(EXTENSION_OPS).toContain("focus-parent");
+      expect(EXTENSION_OPS).toContain("clear-selection");
       expect(EXTENSION_OPS).toContain("focus-child");
       expect(EXTENSION_OPS).toContain("move-out");
       expect(EXTENSION_OPS).toContain("move-in");

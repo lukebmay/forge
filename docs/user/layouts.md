@@ -76,16 +76,20 @@ keyboard op that **dissolves** a CON: it lifts that container’s children into
 the grandparent and removes the empty CON. Nested child CONs stay containers
 (one level per press). Layout mode toggles (tab/stack/H/V) do **not** ungroup.
 
-**Focus parent / child** (i3 `$mod+a` class) select the container for
-open/split attach without the debug overlay. **Move-out** lifts the focused
-window one level (former parent CON stays with remaining siblings). After
-**focus parent**, move-out lifts that selected CON instead. **Move-in**
-reparents into an adjacent sibling CON (next, else previous); no sibling CON
-→ no-op (does not invent structure).
+**Focus parent / child** (i3 `$mod+a` class) elevate or descend the **ops
+target** (container selection) for open/split attach without the debug overlay.
+When elevated, a distinct **selection bag** border paints the full CON rect;
+the focus border stays on the focused window. **Clear selection** snaps the
+target back to the focused leaf (Meta focus change to another window does the
+same). **Move-out** lifts the focused window one level (former parent CON stays
+with remaining siblings). After **focus parent**, move-out lifts that selected
+CON instead. **Move-in** reparents into an adjacent sibling CON (next, else
+previous); no sibling CON → no-op (does not invent structure).
 
 CLI / DBus parity (RunSteps): `layout-cycle` (`axis: group|split`),
 `merge-group` / `group`, `ungroup`, `focus-parent`, `focus-child`,
-`move-out`, `move-in`, `float` (`scope: window|class`), plus absolute `layout`.
+`clear-selection`, `move-out`, `move-in`, `float` (`scope: window|class`), plus
+absolute `layout`.
 
 ### Layout profiles (sugar)
 

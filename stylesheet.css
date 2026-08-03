@@ -28,6 +28,13 @@
   opacity: 1;
 }
 
+/* Elevated CON ops target (S1) — distinct from focus purple/red */
+.selection {
+  color: rgba(80, 220, 100, 1);
+  border-width: 3px;
+  opacity: 1;
+}
+
 .window-tiled-border {
   border-width: 3px;
   border-color: rgba(236, 94, 94, 1);
@@ -119,6 +126,14 @@
 .window-floated-border {
   border-width: 3px;
   border-color: rgba(180, 167, 214, 1);
+  border-style: solid;
+  border-radius: 14px;
+}
+
+/* Full CON rect when focus-parent elevates selection (focus border stays on window) */
+.window-selection-border {
+  border-width: 3px;
+  border-color: rgba(80, 220, 100, 1);
   border-style: solid;
   border-radius: 14px;
 }

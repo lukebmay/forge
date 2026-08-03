@@ -1,6 +1,6 @@
 # Plan: Container selection, nesting & ops target
 
-**Status:** S0 **locked** — implement S1+ next  
+**Status:** S0 locked · **S1 done** — implement S2 next  
 **Updated:** 2026-08-03  
 **Branch:** `plan/forge-first-class-containers` (or new `plan/forge-container-selection` after containers merge)  
 **Kind:** Product design → implement tasks  
@@ -8,17 +8,14 @@
 
 ### Session note (overwrite)
 
-**S0 locked 2026-08-03** — design meeting **closed**. Ready for implement.
+**S1 done 2026-08-03** — selection state + loud bag chrome shipped.
 
-- Sticky unit selection; focus chrome always on; separate selection bag border
-- Vim: Super+right-hand parent (`Super+p` candidate); clear = BackSpace family
-  multi-bind trial; no dual left mods for frequent parent
-- Move/swap use elevated CON (S2); kits (S3); nested tabs discouraged until QA
-- **Next task:** [forge-container-selection_s1-state-chrome.md](../tasks/forge-container-selection_s1-state-chrome.md)
-
-**Also this session (context, not this plan):** display sleep fixed; wake thrash
-to left mon residual — soft-rehome harden later (orthogonal to containers).
-Containers spine C0–C5+R* **done**; merge to master reasonable when smoke OK.
+- Pure ops target: `resolveOpsTarget` / `isElevatedSelection` / `clearOpsTarget` /
+  `resolveAttachOnFocusChange` (`layout-unit.js`)
+- Focus-parent elevates after activate; Meta focus change to **other** window resets
+- `.window-selection-border` (lime) on full CON rect; focus purple/red unchanged
+- Clear API: command + `window-selection-clear` (unbound) + RunStep `clear-selection`
+- Unit suite green; **next:** S2 move/swap/layout honor elevated unit
 
 ---
 
@@ -328,8 +325,8 @@ keeping target; clear still resets. Not in S1–S3 scope.
 | ID | Work | Status |
 | --- | --- | --- |
 | **S0** | Design locks (this section) | **Done** 2026-08-03 |
-| **S1** | Selection state machine + **loud** bag chrome (CSS class, theme docs) | **Next** |
-| **S2** | Ops matrix: move/swap/layout/ungroup honor elevated target; unit tests | After S1 |
+| **S1** | Selection state machine + **loud** bag chrome (CSS class, theme docs) | **Done** 2026-08-03 |
+| **S2** | Ops matrix: move/swap/layout/ungroup honor elevated target; unit tests | **Next** |
 | **S3** | Kit bindings (Vim right-hand Super+…; i3 Super+a; clear) + cheatsheet/docs | With S2 |
 | **S4** | Nested tab/stack product policy (only if needed) | Optional |
 | **S5** | Live black QA (checklist A–G + selection elevate/move/clear) | After S2–S3 |
@@ -379,10 +376,9 @@ keeping target; clear still resets. Not in S1–S3 scope.
 
 ## First next session step
 
-1. Implement **S1** — [forge-container-selection_s1-state-chrome.md](../tasks/forge-container-selection_s1-state-chrome.md).  
-2. Then **S2** wire move/swap to elevated unit.  
-3. **S3** Vim `Super+p` + BackSpace clear multi-bind + docs.  
-4. Operator live QA checklist A–G + elevate → move bag → clear (S5).
+1. Implement **S2** — move/swap/layout/ungroup honor elevated CON (task file next).  
+2. **S3** Vim `Super+p` + BackSpace clear multi-bind + docs.  
+3. Operator live QA checklist A–G + elevate → move bag → clear (S5).
 
 ### Soft leftovers (do **not** block S1)
 

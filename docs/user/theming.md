@@ -45,13 +45,16 @@ Selectors Forge exposes (see the bundled `stylesheet.css` for the full set):
 
 | Selector | What it styles |
 | --- | --- |
-| `.window-tiled-border` | Border of a tiled window |
+| `.window-tiled-border` | Border of a tiled window (keyboard **focus**) |
 | `.window-split-border` | Split-container border |
 | `.window-stacked-border` / `.window-tabbed-border` | Stacked / tabbed container border |
 | `.window-floated-border` | Floating-window border |
+| `.window-selection-border` | Elevated **container selection** bag (ops target after focus-parent). Full CON rect; stock lime/green — distinct from focus purple/red. Hidden when selection is just the focused leaf. |
 | `.window-tabbed-tab`, `.window-tabbed-tab-active`, `.window-tabbed-tab-icon`, `.window-tabbed-tab-close` | Tab strip elements |
 | `.window-tilepreview-tiled` / `-stacked` / `-tabbed` / `-swap` | Drag/drop preview hints |
-| `.tiled`, `.split`, `.stacked`, `.tabbed`, `.floated` | Palette classes (color/opacity) |
+| `.tiled`, `.split`, `.stacked`, `.tabbed`, `.floated`, `.selection` | Palette classes (color/opacity) |
+
+**Focus vs selection:** focus border always paints on the focused Meta window. Selection bag chrome only appears when the ops target is an elevated container (not the leaf). Do not recolor the focus border to mean “parent selected.”
 
 Border width, color, radius, and opacity are plain CSS properties; colors accept
 `rgba(...)` or hex.

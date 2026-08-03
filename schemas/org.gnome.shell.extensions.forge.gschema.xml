@@ -357,6 +357,11 @@
             <summary>Focus into preferred child of current container</summary>
         </key>
 
+        <key type="as" name="window-selection-clear">
+            <default><![CDATA[[]]]></default>
+            <summary>Clear elevated container selection (ops target back to focused window)</summary>
+        </key>
+
         <key type="as" name="window-move-out">
             <default><![CDATA[[]]]></default>
             <summary>Move layout unit out of parent container one level (does not dissolve CON)</summary>
