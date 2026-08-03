@@ -8,19 +8,19 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **CON selection S2** | Move/swap/layout honor elevated ops target | [plan](./plans/forge-container-selection.md) S1 done |
-| 2 | **CON selection S3** | Vim Super+p + BackSpace clear multi-bind + cheatsheet | After S2 |
-| 3 | **D0 settle** | **User lock** on pure settle hybrid (draft in plan) | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
-| 4 | containers residual | Mouse resize / optional Z0 after selection | [forge-first-class-containers.md](./plans/forge-first-class-containers.md) |
-| 5 | stacks SL6 | Optional polish | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| **1** | **CON selection S3** | Vim Super+p + BackSpace clear multi-bind + cheatsheet | [plan](./plans/forge-container-selection.md) S2 done |
+| 2 | **D0 settle** | **User lock** on pure settle hybrid (draft in plan) | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
+| 3 | containers residual | Mouse resize / optional Z0 after selection | [forge-first-class-containers.md](./plans/forge-first-class-containers.md) |
+| 4 | stacks SL6 | Optional polish | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
+| 5 | Live QA S5 | Checklist A–G + elevate → move bag → clear | After S3 |
 
 **Shipped this session**
 
 | Item | Note |
 | --- | --- |
-| **Selection S1** | Ops target API + `.window-selection-border` bag chrome; clear unbound — `f61e69d` |
-| **Selection S0** | Design locked (prior): sticky unit, bag ≠ focus, BackSpace family |
-| **Handoff** | [HANDOFF.md](./HANDOFF.md) · S2 task ready |
+| **Selection S2** | Elevated move/swap/layout/ungroup/resize; `swapUnits` for CON units |
+| **Selection S1** | Ops target API + bag chrome (prior) |
+| **Handoff** | [HANDOFF.md](./HANDOFF.md) · S3 task ready |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
@@ -40,7 +40,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [container selection / nesting](./plans/forge-container-selection.md) | **S1 done** — S2 elevated move/swap next; live QA A–G with S5 |
+| **P0** | [container selection / nesting](./plans/forge-container-selection.md) | **S2 done** — S3 kit binds next; live QA A–G with S5 |
 | P1 | [layout settle pure](./plans/forge-layout-settle-pure.md) D0 | Draft hybrid ready; **user lock** then PS1 |
 | P1 | [first-class containers](./plans/forge-first-class-containers.md) | C0–C5 + R1/R1b + R2 **done**; residual mouse / Z0 after selection |
 | P1 | [stacked](./plans/forge-stacked-layouts.md) | SL0–SL5 **done**; SL6 optional |

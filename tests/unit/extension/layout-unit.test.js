@@ -15,6 +15,9 @@ import {
   resolveOpsTarget,
   clearOpsTarget,
   resolveAttachOnFocusChange,
+  resolveLayoutOpsTarget,
+  resolveUngroupOpsTarget,
+  resolveResizeOpsSeed,
 } from "../../../lib/extension/layout-unit.js";
 
 describe("layout-unit (I1 setLayout spine)", () => {
@@ -288,5 +291,52 @@ describe("layout-unit resolveMoveOut / MoveIn (C4)", () => {
 
     mon.childNodes = [win, { nodeType: "WINDOW" }];
     expect(resolveMoveInSibling(win)).toBeNull();
+  });
+});
+
+describe("layout-unit S2 ops matrix targets", () => {
+  function nest() {
+    const mon = { nodeType: "MONITOR" };
+    const outer = { nodeType: "CON", parentNode: mon, layout: "HSPLIT" };
+    const bag = { nodeType: "CON", parentNode: outer, layout: "TABBED" };
+    const win = { nodeType: "WINDOW", parentNode: bag };
+    const sibling = { nodeType: "WINDOW", parentNode: outer };
+    mon.childNodes = [outer];
+    outer.childNodes = [bag, sibling];
+    bag.childNodes = [win];
+    outer.contains = (n) => n === bag || n === win || n === sibling;
+    bag.contains = (n) => n === win;
+    return { mon, outer, bag, win, sibling };
+  }
+
+  it("resolveLayoutOpsTarget uses elevated CON else focus parent", () => {
+    const { outer, bag, win } = nest();
+    expect(resolveLayoutOpsTarget(outer, win)).toBe(outer);
+    expect(resolveLayoutOpsTarget(bag, win)).toBe(bag);
+    expect(resolveLayoutOpsTarget(null, win)).toBe(bag);
+    expect(resolveLayoutOpsTarget(win, win)).toBe(bag);
+    expect(resolveLayoutOpsTarget(null, null)).toBeNull();
+  });
+
+  it("resolveUngroupOpsTarget dissolves elevated CON else nearest parent", () => {
+    const { outer, bag, win } = nest();
+    expect(resolveUngroupOpsTarget(outer, win)).toBe(outer);
+    expect(resolveUngroupOpsTarget(bag, win)).toBe(bag);
+    // Leaf path: nearest parent CON of focus
+    expect(resolveUngroupOpsTarget(null, win)).toBe(bag);
+    expect(resolveUngroupOpsTarget(win, win)).toBe(bag);
+  });
+
+  it("resolveResizeOpsSeed matches ops target (elevated or leaf)", () => {
+    const { outer, win } = nest();
+    expect(resolveResizeOpsSeed(outer, win)).toBe(outer);
+    expect(resolveResizeOpsSeed(null, win)).toBe(win);
+    expect(resolveResizeOpsSeed(win, win)).toBe(win);
+  });
+
+  it("resolveMoveUnit aligns with resolveOpsTarget for directional move/swap", () => {
+    const { outer, win } = nest();
+    expect(resolveMoveUnit(outer, win)).toBe(resolveOpsTarget(outer, win));
+    expect(resolveMoveUnit(null, win)).toBe(resolveOpsTarget(null, win));
   });
 });

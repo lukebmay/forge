@@ -766,9 +766,84 @@ describe("Tree Operations", () => {
 
       expect(result).toBeUndefined();
     });
+
+    it("S2: CON unit swaps with adjacent WINDOW sibling (structural)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const bag = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      bag.layout = LAYOUT_TYPES.TABBED;
+      bag.percent = 0.6;
+      const wInBag = createMockWindow();
+      const nBag = ctx.tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, wInBag);
+      nBag.mode = WINDOW_MODES.TILE;
+
+      const wSib = createMockWindow();
+      const nSib = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wSib);
+      nSib.mode = WINDOW_MODES.TILE;
+      nSib.percent = 0.4;
+
+      expect(bag.index).toBe(0);
+      expect(nSib.index).toBe(1);
+
+      const result = ctx.tree.swap(bag, MotionDirection.RIGHT);
+      expect(result).toBe(nSib);
+      expect(bag.index).toBe(1);
+      expect(nSib.index).toBe(0);
+      expect(bag.percent).toBe(0.4);
+      expect(nSib.percent).toBe(0.6);
+      // CON path is structural — no Meta move on bag contents required pre-render
+      expect(nBag.parentNode).toBe(bag);
+    });
+
+    it("S2: CON unit swaps with adjacent CON sibling", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const left = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      left.layout = LAYOUT_TYPES.HSPLIT;
+      left.percent = 0.5;
+      const wl = createMockWindow();
+      const nl = ctx.tree.createNode(left.nodeValue, NODE_TYPES.WINDOW, wl);
+      nl.mode = WINDOW_MODES.TILE;
+
+      const right = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      right.layout = LAYOUT_TYPES.VSPLIT;
+      right.percent = 0.5;
+      const wr = createMockWindow();
+      const nr = ctx.tree.createNode(right.nodeValue, NODE_TYPES.WINDOW, wr);
+      nr.mode = WINDOW_MODES.TILE;
+
+      ctx.tree.swap(left, MotionDirection.RIGHT);
+      expect(left.index).toBe(1);
+      expect(right.index).toBe(0);
+      expect(nl.parentNode).toBe(left);
+      expect(nr.parentNode).toBe(right);
+    });
   });
 
   describe("move", () => {
+    it("S2: moving elevated CON swaps with adjacent sibling unit", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const bag = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      bag.layout = LAYOUT_TYPES.TABBED;
+      const wIn = createMockWindow();
+      const nIn = ctx.tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, wIn);
+      nIn.mode = WINDOW_MODES.TILE;
+
+      const wSib = createMockWindow();
+      const nSib = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wSib);
+      nSib.mode = WINDOW_MODES.TILE;
+
+      const moved = ctx.tree.move(bag, MotionDirection.RIGHT);
+      expect(moved).toBe(true);
+      expect(bag.index).toBe(1);
+      expect(nSib.index).toBe(0);
+      expect(nIn.parentNode).toBe(bag);
+    });
+
     it("should move window to the right", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;

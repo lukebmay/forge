@@ -1,6 +1,6 @@
 # Plan: Container selection, nesting & ops target
 
-**Status:** S0 locked · **S1 done** — implement S2 next  
+**Status:** S0 locked · S1–**S2 done** — implement S3 next  
 **Updated:** 2026-08-03  
 **Branch:** `plan/forge-first-class-containers` (or new `plan/forge-container-selection` after containers merge)  
 **Kind:** Product design → implement tasks  
@@ -8,13 +8,14 @@
 
 ### Session note (overwrite)
 
-**Handoff 2026-08-03** — S1 shipped; next agent starts **S2**.
+**Handoff 2026-08-03** — S2 shipped; next agent starts **S3**.
 
-- Tip: `f61e69d` on `plan/forge-first-class-containers` (pushed); master **not** merged
+- Branch: `plan/forge-first-class-containers` (master **not** merged; selection mid-wave)
 - Cross-session: [agents/HANDOFF.md](../HANDOFF.md)
-- **Next task:** [forge-container-selection_s2-ops-matrix.md](../tasks/forge-container-selection_s2-ops-matrix.md)
-- S1 completed: [completed/…](./forge-container-selection/completed/forge-container-selection_s1-state-chrome.md)
-- Pure ops target + bag chrome + clear API (unbound); full suite green at ship
+- **Next:** S3 kit bindings (Vim Super+p + BackSpace clear multi-bind + cheatsheet)
+- S2 completed: [completed/forge-container-selection_s2-ops-matrix.md](./forge-container-selection/completed/forge-container-selection_s2-ops-matrix.md)
+- **Next task:** [forge-container-selection_s3-kit-bindings.md](../tasks/forge-container-selection_s3-kit-bindings.md)
+- Elevated move/swap/layout/ungroup/resize; `swapUnits`; full suite **2053** green
 
 ---
 
@@ -325,8 +326,8 @@ keeping target; clear still resets. Not in S1–S3 scope.
 | --- | --- | --- |
 | **S0** | Design locks (this section) | **Done** 2026-08-03 |
 | **S1** | Selection state machine + **loud** bag chrome (CSS class, theme docs) | **Done** 2026-08-03 |
-| **S2** | Ops matrix: move/swap/layout/ungroup honor elevated target; unit tests | **Next** |
-| **S3** | Kit bindings (Vim right-hand Super+…; i3 Super+a; clear) + cheatsheet/docs | With S2 |
+| **S2** | Ops matrix: move/swap/layout/ungroup honor elevated target; unit tests | **Done** 2026-08-03 |
+| **S3** | Kit bindings (Vim right-hand Super+…; i3 Super+a; clear) + cheatsheet/docs | **Next** |
 | **S4** | Nested tab/stack product policy (only if needed) | Optional |
 | **S5** | Live black QA (checklist A–G + selection elevate/move/clear) | After S2–S3 |
 
@@ -375,11 +376,11 @@ keeping target; clear still resets. Not in S1–S3 scope.
 
 ## First next session step
 
-1. Implement **S2** — [forge-container-selection_s2-ops-matrix.md](../tasks/forge-container-selection_s2-ops-matrix.md).  
-2. **S3** Vim `Super+p` + BackSpace clear multi-bind + docs.  
-3. Operator live QA checklist A–G + elevate → move bag → clear (S5).
+1. Implement **S3** — Vim `Super+p` + BackSpace clear multi-bind + cheatsheet/docs.  
+2. Operator live QA checklist A–G + elevate → move bag → clear (S5).  
+3. Soft: containers → master merge after smoke.
 
-### Soft leftovers (do **not** block S2)
+### Soft leftovers (do **not** block S3)
 
 | Item | When |
 | --- | --- |

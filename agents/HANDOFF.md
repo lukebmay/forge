@@ -11,50 +11,42 @@
 | --- | --- |
 | Containers spine C0–C5 + R1/R1b + R2 | **Done** (pair-cannibalization locked) |
 | Selection **S0** design | **Locked** 2026-08-03 |
-| Selection **S1** state + bag chrome | **Done** — tip `f61e69d` |
-| Selection **S2** elevated move/swap/layout | **Next** |
-| Selection **S3** kit chords | After S2 |
-| Live QA S5 + checklist A–G | After S2–S3 |
+| Selection **S1** state + bag chrome | **Done** |
+| Selection **S2** elevated move/swap/layout | **Done** |
+| Selection **S3** kit chords | **Next** |
+| Live QA S5 + checklist A–G | After S3 |
 
-**Tip commits (selection path):**
-
-- `f61e69d` — `feat(selection): S1 ops target state and bag chrome`
-- `261ec83` — S0 design lock + S1 task handoff
-
-**Tests:** full unit suite green at S1 ship (**2040**).
+**Tests:** full unit suite green at S2 ship (**2053**).
 
 ## Next agent — do this first
 
-1. Stay on **`plan/forge-first-class-containers`** (or split `plan/forge-container-selection` only after containers→master).
+1. Stay on **`plan/forge-first-class-containers`**.
 2. Merge **`master` → feature** before coding if master moved.
-3. Implement **[S2](./tasks/forge-container-selection_s2-ops-matrix.md)** — move/swap/layout/ungroup honor elevated CON.
-4. Do **not** start S3 kit binds until S2 acceptance is green (or same PR only if tightly scoped).
+3. Implement **[S3](./tasks/forge-container-selection_s3-kit-bindings.md)** — Vim Super+p, BackSpace clear multi-bind, cheatsheet.
+4. Conflict-scan Super+p / BackSpace family against GNOME + kits.
 
-### S2 acceptance (summary)
+### S2 shipped (summary)
 
-See task file. Matrix from S0:
-
-| Op | Elevated CON target |
+| Op | Elevated CON |
 | --- | --- |
-| Move / swap directional | **Whole CON** as unit |
-| Layout cycle / setLayout | Selected CON |
-| Ungroup | Selected CON if CON |
-| Resize expand/edge | Prefer selected CON if elevated; else layoutUnit |
+| Move / swap directional (+ SwapNext/Prev) | Whole CON via `resolveMoveUnit` + `swapUnits` |
+| Layout cycle / setLayout | Selected CON via `resolveLayoutOpsTarget` |
+| Ungroup | Selected CON via `resolveUngroupOpsTarget` |
+| Resize expand/edge | Seed via `resolveResizeOpsSeed` → owning-split |
 
-Use existing `resolveOpsTarget` / `resolveMoveUnit` / `isElevatedSelection` — do not invent a second selection store.
+WINDOW → adjacent CON still **enters** the container (leaf path). CON → adjacent CON **swaps** bags.
 
-## Key code map (S1)
+## Key code map
 
 | Concern | Path |
 | --- | --- |
-| Pure ops target | `lib/extension/layout-unit.js` — `resolveOpsTarget`, `isElevatedSelection`, `clearOpsTarget`, `resolveAttachOnFocusChange` |
-| Commands | `lib/extension/command.js` — FocusParent/Child (attach **after** activate), ClearSelection |
-| Focus reset | `lib/extension/window.js` — Meta focus → `resolveAttachOnFocusChange` + `_lastFocusNodeWindow` |
-| Bag chrome | `lib/extension/decoration.js` — `_paintSelectionBorder`, `.window-selection-border` |
-| Theme | `stylesheet.css` + cssTag **39** in `lib/shared/theme.js` |
-| Clear key (unbound) | schema `window-selection-clear`; kits leave `[]` |
-| RunStep | `clear-selection` in `run-steps.js` + `session-api.js` |
-| Tests | `tests/unit/extension/layout-unit.test.js` (S1 block), CommandHandler ClearSelection |
+| Pure ops target | `layout-unit.js` — S1 + S2 helpers |
+| Commands | `command.js` — Move/Swap/Layout*/Ungroup |
+| Tree units | `tree.js` — `swapUnits`, `_unitSwappable`, CON move |
+| Resize | `window.js` — expand/resize seed |
+| Session API | `session-api.js` — layout / ungroup attach |
+| Bag chrome | `decoration.js` — `.window-selection-border` |
+| Clear key (unbound) | schema `window-selection-clear` — **S3 binds** |
 
 ## Design locks (do not re-litigate)
 
@@ -62,8 +54,8 @@ Full table: [forge-container-selection.md](./plans/forge-container-selection.md)
 
 - Sticky unit selection; **not** mode-first  
 - Focus border **always** on Meta window; selection = **separate** bag class  
-- Meta focus to **other** window resets selection; same-window re-focus keeps elevated CON  
-- Vim parent candidate `Super+p`; clear = BackSpace family multi-bind (S3)  
+- Meta focus to **other** window resets selection  
+- Vim parent candidate `Super+p`; clear = BackSpace family multi-bind  
 - Nested TABBED: allow, **discourage** promote  
 
 ## Soft leftovers (not blockers)
@@ -78,25 +70,15 @@ Full table: [forge-container-selection.md](./plans/forge-container-selection.md)
 
 ## Human blockers
 
-None hard for selection path. Soft/parked items: see `agents/blockers/` if any open.
-
-## Install smoke (optional before S2)
-
-```sh
-# on plan branch
-./install   # or make dev
-gsettings set org.gnome.shell.extensions.forge logging-enabled true
-gsettings set org.gnome.shell.extensions.forge log-level 4
-# i3 kit: Super+a = focus-parent → lime bag; focus another window → bag off
-```
+None hard for selection path.
 
 ## Plans
 
 | Plan | Next |
 | --- | --- |
-| [forge-container-selection.md](./plans/forge-container-selection.md) | S2 |
+| [forge-container-selection.md](./plans/forge-container-selection.md) | S3 |
 | [forge-first-class-containers.md](./plans/forge-first-class-containers.md) | residual mouse / Z0 after selection |
 | [PRIORITY.md](./PRIORITY.md) | queue |
 
-Completed S1 task:  
-`agents/plans/forge-container-selection/completed/forge-container-selection_s1-state-chrome.md`
+Completed S2:  
+`agents/plans/forge-container-selection/completed/forge-container-selection_s2-ops-matrix.md`

@@ -472,6 +472,73 @@ describe("CommandHandler", () => {
 
       expect(mockTree.ungroupContainer).not.toHaveBeenCalled();
     });
+
+    it("S2: ungroup dissolves elevated CON when selected", () => {
+      const mon = { nodeType: NODE_TYPES.MONITOR, isMonitor: () => true, isCon: () => false };
+      const outer = {
+        nodeType: NODE_TYPES.CON,
+        isCon: () => true,
+        parentNode: mon,
+        contains: (n) => n === mockNodeWindow || n === mockNodeWindow.parentNode,
+        childNodes: [mockNodeWindow.parentNode],
+      };
+      const bag = mockNodeWindow.parentNode;
+      bag.nodeType = NODE_TYPES.CON;
+      bag.isCon = () => true;
+      bag.parentNode = outer;
+      bag.contains = (n) => n === mockNodeWindow;
+      mockTree.attachNode = outer;
+      mockTree.ungroupContainer = vi.fn(() => mon);
+
+      commandHandler.execute({ name: "WindowUngroup" });
+
+      expect(mockTree.ungroupContainer).toHaveBeenCalledWith(outer);
+    });
+  });
+
+  describe("S2 elevated Move / Swap / Layout", () => {
+    function elevateParent() {
+      const con = mockNodeWindow.parentNode;
+      con.nodeType = NODE_TYPES.CON;
+      con.isCon = () => true;
+      con.contains = (n) => n === mockNodeWindow;
+      con.layout = LAYOUT_TYPES.HSPLIT;
+      mockTree.attachNode = con;
+      return con;
+    }
+
+    it("Move uses elevated CON unit", () => {
+      const con = elevateParent();
+      commandHandler.execute({ name: "Move", direction: "right" });
+      expect(mockTree.move).toHaveBeenCalledWith(con, expect.anything());
+    });
+
+    it("Move uses focus leaf when not elevated", () => {
+      mockTree.attachNode = mockNodeWindow;
+      commandHandler.execute({ name: "Move", direction: "left" });
+      expect(mockTree.move).toHaveBeenCalledWith(mockNodeWindow, expect.anything());
+    });
+
+    it("Swap uses elevated CON unit", () => {
+      const con = elevateParent();
+      commandHandler.execute({ name: "Swap", direction: "right" });
+      expect(mockTree.swap).toHaveBeenCalledWith(con, expect.anything());
+    });
+
+    it("LayoutToggle toggles elevated CON layout", () => {
+      const con = elevateParent();
+      con.layout = LAYOUT_TYPES.HSPLIT;
+      commandHandler.execute({ name: "LayoutToggle" });
+      expect(con.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(mockTree.attachNode).toBe(con);
+    });
+
+    it("LayoutToggle leaf path still uses parent", () => {
+      mockTree.attachNode = mockNodeWindow;
+      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.HSPLIT;
+      commandHandler.execute({ name: "LayoutToggle" });
+      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+    });
   });
 
   describe("FocusParent / FocusChild / ClearSelection (C4/S1)", () => {
