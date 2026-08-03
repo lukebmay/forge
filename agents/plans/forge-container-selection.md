@@ -1,17 +1,24 @@
 # Plan: Container selection, nesting & ops target
 
-**Status:** design / discussion — **top priority** (human lock before more CON ops)
-**Updated:** 2026-08-01  
-**Branch:** discussion may start on `master` or stay on `plan/forge-first-class-containers`; implement slices open a branch after locks  
-**Kind:** Product design → then implement tasks  
+**Status:** S0 **locked** — implement S1+ next  
+**Updated:** 2026-08-03  
+**Branch:** `plan/forge-first-class-containers` (or new `plan/forge-container-selection` after containers merge)  
+**Kind:** Product design → implement tasks  
 **Depends on:** [forge-first-class-containers.md](./forge-first-class-containers.md) C0–C5 + R1/R1b + R2 (spine done)
 
 ### Session note (overwrite)
 
-Opened 2026-08-01 after primary container wave. Code has focus-parent/child +
-move-in/out + layout cycle + group/ungroup, but **selection model** and
-**nested tab/stack policy** are underspecified for daily use. Next session:
-human design discussion → lock table → implement slices (not code first).
+**S0 locked 2026-08-03** — design meeting **closed**. Ready for implement.
+
+- Sticky unit selection; focus chrome always on; separate selection bag border
+- Vim: Super+right-hand parent (`Super+p` candidate); clear = BackSpace family
+  multi-bind trial; no dual left mods for frequent parent
+- Move/swap use elevated CON (S2); kits (S3); nested tabs discouraged until QA
+- **Next task:** [forge-container-selection_s1-state-chrome.md](../tasks/forge-container-selection_s1-state-chrome.md)
+
+**Also this session (context, not this plan):** display sleep fixed; wake thrash
+to left mon residual — soft-rehome harden later (orthogonal to containers).
+Containers spine C0–C5+R* **done**; merge to master reasonable when smoke OK.
 
 ---
 
@@ -182,49 +189,179 @@ Do **not** invent chords in this design pass without conflict scan.
 
 ---
 
-## Recommended product direction (draft — unlock with human)
+## Locked product direction (S0 — 2026-08-03)
 
-1. **Selection first, nested tabs second.** Make CON selection visible and bind focus-parent/child on at least one daily kit before inventing tab-in-tab UX.  
-2. **Ops target matrix** (lock table): each command lists target = leaf | layoutUnit | selection | parent.  
-3. **Nested TABBED allowed by engine** but **not** promoted in sugar until chrome + selection pass live QA. Prefer nested H/V + one tab bag for daily profiles.  
-4. **move-in stays sibling-only** until selection is trustworthy; then consider directional.  
-5. **Visual language:** extend split chrome / focus border for “selected CON,” not a second decoration system.
+### One-sentence model
 
----
+> **Focus is where you type; selection is what tiling ops move. Default
+> selection follows focus; parent elevates it; clear restores the default.**
 
-## Phases (after locks)
+### Primary model: sticky unit selection (not mode-first)
 
-| ID | Work | When |
+| State | Ops target |
+| --- | --- |
+| **Default** | Focused window leaf |
+| **After focus-parent** | Parent CON (multi-press walks up; stop at mon/ws) |
+| **After focus-child** | Prefer child / lastTabFocus (may be nested CON) |
+| **Clear** | Snap target back to focused window |
+
+**No selection mode in v1** (no rebinding Super+hjkl). Optional later: select-mode
+as a **navigator only** over the same sticky target — no confirm/lock-in step.
+
+**No lock-in on exit** if mode is added later: cursor *is* selection; exit keeps
+or clears by one rule only.
+
+### Persistence / clear
+
+| Trigger | Behavior |
+| --- | --- |
+| Explicit **clear** key | Target → focused window |
+| **Meta focus** to another window | Target → that window (reset) |
+| Timeout | **No** |
+| Sticky bag while focusing leaves inside | **Not v1** |
+
+### Visual: focus stays; selection is separate and loud
+
+| Indicator | When | Style |
 | --- | --- | --- |
-| **S0** | Design session: fill lock table below; kit binding shortlist | Human + agent notes |
-| **S1** | Selection state machine + visuals (persist rules, representative window) | After S0 |
-| **S2** | Ops target audit: wire move/layout/resize to matrix; unit tests | After S1 |
-| **S3** | Kit bindings + docs/cheatsheet for selection ops | With S2 |
-| **S4** | Nested tab/stack policy: allow / limit / sugar (only if S0 wants it) | Optional |
-| **S5** | Live black QA of nested reparent + thrash | After S2–S3 |
+| **Focus border** (user purple / `.window-tiled-border` etc.) | Always on focused Meta window | **Unchanged** — never replaced by selection |
+| **Selection bag chrome** | Only when target is an elevated CON (target ≠ focus leaf) | **Distinct** class + color; full CON rect |
+| Default (target = focus leaf) | Everyday | Focus only — **no double paint** |
+
+**Do not** recolor the focus border to mean "parent selected." Two meanings, two
+layers. Selection color must read at a glance as "ops unit," not "keyboard focus."
+
+Default stock palette (themeable via CSS, same as other borders):
+
+| Role | Suggested default | Notes |
+| --- | --- | --- |
+| Focus (tiled) | Existing red/user purple | Keep user CSS |
+| Selection CON | **New** e.g. `.window-selection-border` — high contrast vs focus (stock: green/lime or strong amber distinct from split yellow) | User overrides in profile stylesheet |
+| Optional depth | Slightly thicker border and/or dim non-selected siblings | Prefer border first; dim is polish |
+
+Reuse decoration pipeline (St border actor on CON rect) — **not** a second overlay system.
+New selector documented in theming + bundled `stylesheet.css`.
+
+### Ops target matrix (v1)
+
+| Op family | Default (leaf target) | Elevated CON target |
+| --- | --- | --- |
+| **Move / swap** directional | Focused window | **Whole CON** as unit |
+| **Layout cycle / setLayout** | layoutUnit / parent as today | Selected CON |
+| **Ungroup** | Nearest parent CON of focus | Selected CON if CON |
+| **move-out / move-in** | Window unit (existing) | Selected CON (existing resolveMoveUnit) |
+| **Open / split attach** | attachNode (selection) | Same |
+| **Resize expand/edge** | **layoutUnit bag** (current automatic) until selection-aware polish | Prefer selected CON if elevated; else layoutUnit |
+| **Focus hjkl** | Always Meta focus; resets selection | Never moves selection in v1 |
+
+No automatic "tab bag is always move unit without parent press" in v1 (avoids
+nested surprises). Explicit elevate only.
+
+### Kit bindings
+
+#### Constraint (Vim / operator)
+
+- Prefer chords on the **right side of the keyboard**.
+- **Avoid dual left-hand mods** (e.g. left Ctrl + left Super) — most boards have
+  no right Super; left hand should not pin two modifiers for a frequent action.
+- Prefer **`Super` + right-hand key** (same family as Vim focus Super+hjkl).
+
+#### Chord shortlist (bind in S3; conflict-scan before ship)
+
+| Action | Vim (preferred) | i3 | Safe |
+| --- | --- | --- | --- |
+| focus-parent | **`Super+p`** (p = parent, right hand) — *candidate* | keep **`Super+a`** | **`Ctrl+Super+p`** OK (Safe already multi-mod primary) or unbound until QA |
+| focus-child | **`Super+n`** or **`Super+.`** — TBD conflict scan | unbound or pair | TBD |
+| clear selection | **BackSpace family (multi-bind trial)** — see below | same set or subset | same idea under Safe multi-mod grammar |
+| move-in / move-out | **Unbound** v1 (CLI ok) until chrome + clear feel solid | unbound | unbound |
+
+**Clear selection — BackSpace family (try-out; lock one later):**
+
+Ship **all** of these on Vim (and optionally i3) so the operator can feel which
+fits; GSettings arrays allow multiple accelerators per action. Later S3/S5 trim
+to one primary if desired.
+
+| Chord | Notes |
+| --- | --- |
+| **`Super+BackSpace`** | Bare Super + right key; lightest |
+| **`Shift+Super+BackSpace`** | Same hand family as Vim move (Shift+Super+hjkl) |
+| **`Ctrl+Super+BackSpace`** | Same family as Vim swap (Ctrl+Super+hjkl) |
+| **`Ctrl+Shift+Super+BackSpace`** | Full twin; heaviest, least accidental |
+
+No need to pick a winner in S0 — **product lock after live use**.
+
+**Rejected for Vim parent:** `Ctrl+Super+p` (dual left mods).  
+**Rejected for Vim parent:** `Shift+Super+p` (Shift family = move, wrong mnemonic).  
+**Rejected for clear:** `Super+Escape` (awkward reach; Esc = cancel-mode muscle).  
+**Rejected for clear:** `Ctrl+Super+Return` / Enter family (crowded; Super+Return stays swap-last on Vim).  
+**Do not steal for clear:** `Super+Return` — Vim = **swap last active** today; leave free for future zoom/maximize stories on other kits (`Super+m` already reserved for zoom full).
+
+**Why BackSpace for clear:** “back out” of elevated selection → default focus unit;
+semantic fit > Enter. Modifier variants exist only to find a comfortable chord.
+
+Bare `Super+p` / bare `Super+BackSpace` acceptable on **Vim kit only** (power map
+already uses bare Super); Safe uses multi-mod variants if bound. Conflict scan at
+S3 (GNOME / other Super+BackSpace users).
+
+### Nested TABBED
+
+| Decision | Detail |
+| --- | --- |
+| Engine | Allow (already) |
+| Product / sugar | **Discourage / do not promote** until selection chrome + move unit pass live QA |
+| Daily profiles | Nested **H/V** + **one** tab bag preferred |
+
+### move-in policy
+
+Sibling-only until selection trustworthy; no invent. Revisit after S2–S5.
+
+### Selection mode (deferred)
+
+Optional v2 navigator only if sticky parent/child fails live QA. Same sticky
+target underneath; focus chords move cursor only while mode active; Esc exits
+keeping target; clear still resets. Not in S1–S3 scope.
 
 ---
 
-## Lock table (fill in S0)
+## Phases
 
-| Topic | Options | Decision | Date |
-| --- | --- | --- | --- |
-| CON selection persistence | until focus-child / window click / timeout | | |
-| CON selection visual | bag border / chrome pulse / overlay label | | |
-| focus-parent on Safe/Vim | bind / leave unbound / kit-only | | |
-| move-in/out default chords | yes kit / CLI-only for now | | |
-| Nested TABBED product | promote / allow silent / discourage | | |
-| Ops target default for move | leaf only / layoutUnit bag / selection | | |
-| Resize target | always layoutUnit bag (current) / selection-aware | | |
+| ID | Work | Status |
+| --- | --- | --- |
+| **S0** | Design locks (this section) | **Done** 2026-08-03 |
+| **S1** | Selection state machine + **loud** bag chrome (CSS class, theme docs) | **Next** |
+| **S2** | Ops matrix: move/swap/layout/ungroup honor elevated target; unit tests | After S1 |
+| **S3** | Kit bindings (Vim right-hand Super+…; i3 Super+a; clear) + cheatsheet/docs | With S2 |
+| **S4** | Nested tab/stack product policy (only if needed) | Optional |
+| **S5** | Live black QA (checklist A–G + selection elevate/move/clear) | After S2–S3 |
+
+---
+
+## Lock table (S0 filled)
+
+| Topic | Decision | Date |
+| --- | --- | --- |
+| Primary model | Sticky unit selection; **not** mode-first | 2026-08-03 |
+| CON selection persistence | Until clear key or Meta focus change; no timeout | 2026-08-03 |
+| CON selection visual | **Separate** bag border (new CSS class); focus purple/red **always remains** | 2026-08-03 |
+| focus-parent Vim | Bind Super+right-hand (**`Super+p` candidate**); no dual left mods | 2026-08-03 |
+| focus-parent i3 | Keep `Super+a` | 2026-08-03 |
+| focus-parent Safe | Optional `Ctrl+Super+p` or unbound until QA | 2026-08-03 |
+| clear selection | Explicit key + focus change resets; Vim **BackSpace family** multi-bind (Super / Shift+Super / Ctrl+Super / Ctrl+Shift+Super) — lock one after live | 2026-08-03 |
+| move-in/out default chords | CLI / unbound v1 | 2026-08-03 |
+| Nested TABBED product | Allow silent; **discourage** promote | 2026-08-03 |
+| Ops target for move/swap | Elevated **selection** CON; else leaf | 2026-08-03 |
+| Resize target | layoutUnit default; selection-aware when elevated | 2026-08-03 |
+| Selection mode | Deferred v2 | 2026-08-03 |
 
 ---
 
 ## Success metrics
 
-1. User can select a CON, **know** it is selected, and move/resize/layout that unit without surprise leaf reparent.  
-2. Nested H/V daily driver stays calm; nested tab bags either work or are explicitly out of product.  
-3. Unbound C4 keys either get kits or are documented as advanced/CLI.  
-4. No return of silent flatten / monocle-class “gather everything.”
+1. User can select a CON, **know** it is selected (distinct chrome + focus still visible), and move/swap that unit without surprise leaf reparent.  
+2. Clear and focus-change return to "focus is selection" with no sticky confusion.  
+3. Nested H/V daily driver stays calm; nested tab bags either work or stay unpromoted.  
+4. Vim parent/clear usable without dual left-hand modifier chords.  
+5. No return of silent flatten / monocle-class "gather everything."
 
 ---
 
@@ -234,6 +371,7 @@ Do **not** invent chords in this design pass without conflict scan.
 | --- | --- |
 | [forge-first-class-containers.md](./forge-first-class-containers.md) | Spine C/R; pair resize locked |
 | [docs/user/layouts.md](../../docs/user/layouts.md) | User-facing group/focus/move |
+| [docs/user/theming.md](../../docs/user/theming.md) | CSS selectors (add selection border) |
 | [docs/DESIGN.md](../../docs/DESIGN.md) | Durable why |
 | [forge-layout-settle-pure.md](./forge-layout-settle-pure.md) | Separate P1 settle jumpiness |
 
@@ -241,7 +379,17 @@ Do **not** invent chords in this design pass without conflict scan.
 
 ## First next session step
 
-1. Read this plan + live checklist § human verification.  
-2. Operator walks **A–G** on black (or subset); notes fail/surprise.  
-3. Fill **Lock table** (S0).  
-4. Only then open implement tasks S1+.
+1. Implement **S1** — [forge-container-selection_s1-state-chrome.md](../tasks/forge-container-selection_s1-state-chrome.md).  
+2. Then **S2** wire move/swap to elevated unit.  
+3. **S3** Vim `Super+p` + BackSpace clear multi-bind + docs.  
+4. Operator live QA checklist A–G + elevate → move bag → clear (S5).
+
+### Soft leftovers (do **not** block S1)
+
+| Item | When |
+| --- | --- |
+| focus-child exact chord (`Super+n` vs `.`) | S3 conflict scan |
+| Which BackSpace clear chord “wins” | After live try-out |
+| Safe parent bind | Optional / S3 |
+| Containers → master merge | When operator smoke OK (spine already done) |
+| Wake mon thrash harden | Separate plan; not selection |

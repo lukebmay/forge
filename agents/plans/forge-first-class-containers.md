@@ -1,8 +1,8 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** primary C/R wave **done** — **C0–C5 + R1 + R1b + R2**; next product design
-→ [forge-container-selection.md](./forge-container-selection.md) (selection / nest)
-**Updated:** 2026-08-01  
+**Status:** primary C/R wave **done** — **C0–C5 + R1 + R1b + R2**; selection S0 locked
+→ implement [forge-container-selection.md](./forge-container-selection.md) S1+
+**Updated:** 2026-08-03  
 **Branch:** `plan/forge-first-class-containers`  
 **Kind:** Core product architecture → phased implement  
 **Compatibility:** **No backwards-compat obligation.** Prefer clean breaks over
@@ -13,9 +13,12 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 **C0–C5 + R1 + R1b + R2 done**; pair-cannibalization **locked**.
 
 - Spine complete for structure + keyboard owning-split resize + naming
-- **Residual:** mouse `_handleResizing`; optional Z0 zoom (after selection design)
-- **Handoff:** selection / nesting / ops-target design is **top priority** —
-  [forge-container-selection.md](./forge-container-selection.md)
+- **Residual:** mouse `_handleResizing`; optional Z0 zoom (after selection)
+- **Selection S0 locked** (2026-08-03) — implement S1+ on
+  [forge-container-selection.md](./forge-container-selection.md);
+  task [forge-container-selection_s1-state-chrome.md](../tasks/forge-container-selection_s1-state-chrome.md)
+- **Merge:** primary wave complete enough for master when smoke OK; selection
+  continues as follow-on (same branch or new plan branch after merge)
 
 ---
 
