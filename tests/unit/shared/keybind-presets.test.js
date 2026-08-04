@@ -92,14 +92,14 @@ describe("keybind kits", () => {
   });
 
   describe("safe kit invariant", () => {
-    it("only bare Super accel is Super+Delete lock", () => {
+    it("safe kit has no bare Super accels (lock is GNOME Super+Delete)", () => {
       const bare = [];
       for (const [key, accels] of Object.entries(KITS.safe.bindings)) {
         for (const accel of accels) {
           if (isBareSuperAccel(accel)) bare.push(`${key}: ${accel}`);
         }
       }
-      expect(bare).toEqual(["prefs-lock-screen: <Super>Delete"]);
+      expect(bare).toEqual([]);
     });
 
     it("uses primary Ctrl+Super for focus arrows", () => {
@@ -128,9 +128,9 @@ describe("keybind kits", () => {
   });
 
   describe("shared low-frequency chords", () => {
-    it("all kits lock with Super+Delete", () => {
+    it("all kits leave prefs-lock-screen unbound (GNOME owns Super+Delete)", () => {
       for (const id of ["safe", "vim", "i3"]) {
-        expect(KITS[id].bindings["prefs-lock-screen"]).toEqual(["<Super>Delete"]);
+        expect(KITS[id].bindings["prefs-lock-screen"]).toEqual([]);
       }
     });
 
@@ -141,7 +141,7 @@ describe("keybind kits", () => {
         expect(KITS[id].bindings["window-toggle-always-float"]).toEqual([
           "<Ctrl><Shift><Super>space",
         ]);
-        expect(KITS[id].bindings["prefs-lock-screen"]).toEqual(["<Super>Delete"]);
+        expect(KITS[id].bindings["prefs-lock-screen"]).toEqual([]);
       }
       expect(KITS.safe.bindings["window-toggle-float"]).toEqual(["<Ctrl><Super>space"]);
       expect(KITS.vim.bindings["window-toggle-float"]).toEqual(["<Ctrl><Super>space"]);
@@ -185,12 +185,12 @@ describe("keybind kits", () => {
       kbd = createMockKbdSettings();
     });
 
-    it("applyKit safe sets Ctrl+Super focus and Super+Delete lock", () => {
+    it("applyKit safe sets Ctrl+Super focus; lock unbound", () => {
       expect(applyKit(kbd, "safe")).toBe(true);
       expect(kbd.set_string).toHaveBeenCalledWith("mod-mask-mouse-tile", "None");
       expect(kbd.set_strv).toHaveBeenCalledWith("window-focus-left", ["<Ctrl><Super>Left"]);
       expect(kbd.set_strv).toHaveBeenCalledWith("window-toggle-float", ["<Ctrl><Super>space"]);
-      expect(kbd.set_strv).toHaveBeenCalledWith("prefs-lock-screen", ["<Super>Delete"]);
+      expect(kbd.set_strv).toHaveBeenCalledWith("prefs-lock-screen", []);
       expect(kbd.set_strv).toHaveBeenCalledWith("focus-border-toggle", ["<Ctrl><Super>b"]);
       expect(kbd.set_strv).toHaveBeenCalledWith("prefs-tiling-toggle", ["<Ctrl><Super>e"]);
     });
@@ -199,7 +199,7 @@ describe("keybind kits", () => {
       expect(applyPreset(kbd, "vim")).toBe(true);
       expect(kbd.set_strv).toHaveBeenCalledWith("window-focus-left", ["<Super>h", "<Super>Left"]);
       expect(kbd.set_strv).toHaveBeenCalledWith("window-toggle-float", ["<Ctrl><Super>space"]);
-      expect(kbd.set_strv).toHaveBeenCalledWith("prefs-lock-screen", ["<Super>Delete"]);
+      expect(kbd.set_strv).toHaveBeenCalledWith("prefs-lock-screen", []);
     });
 
     it("applyKit returns false for unknown id", () => {

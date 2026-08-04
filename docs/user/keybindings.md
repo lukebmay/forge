@@ -21,7 +21,7 @@ lists GNOME/custom entries.
 | **Bare `Super+…` is user space** | Launchers, GNOME, and desktop custom binds almost always live on Super. Shipping a tiling WM that grabs `Super+h/j/k/l` by default surprises most GNOME users. |
 | **Safe ≠ recommended** | Install must not stomp. Daily tiling wants denser Super+ maps — those are **opt-in kits**, not the schema default. |
 | **One primary modifier family** | Safe uses **`Ctrl+Super`** for almost everything so the map is learnable. **`Ctrl+Shift+Super`** only for *twins* of the same key (move vs focus, always-float vs float). Random mix of Shift+Super vs Ctrl+Super without a rule was accidental legacy. |
-| **Lock = `Super+Delete` (all kits)** | Rare global action; keeps letter keys free. (Historical `Super+q` was a launcher collision.) |
+| **Lock = GNOME `Super+Delete`** | While Forge is enabled, GNOME screensaver moves from Super+L → Super+Delete so Super+L is free for focus-right. GNOME owns lock + panel sleep; Forge does not force DPMS. |
 | **Float = Space under the kit’s primary mod** | **Safe / Vim:** `Ctrl+Super+Space` (Ctrl is the multi-mod family). **i3:** `Shift+Super+Space` (i3 tradition). Always-float twin: `Ctrl+Shift+Super+Space`. Old `Super+c` had no mnemonic. |
 | **Rare chrome off bare Super+** | **Focus border** and **tiling master toggle** almost never fire — multi-mod only. |
 | **Border = `Ctrl+Super+b`** | **b**order. (Legacy `Super+x` / `Ctrl+Super+x` was arbitrary.) |

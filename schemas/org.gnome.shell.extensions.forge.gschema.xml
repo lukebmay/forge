@@ -602,8 +602,8 @@
         </key>
 
         <key type="as" name="prefs-lock-screen">
-            <default><![CDATA[['<Super>Delete']]]></default>
-            <summary>Lock screen</summary>
+            <default><![CDATA[[]]]></default>
+            <summary>Lock screen (optional; GNOME screensaver Super+Delete while Forge enabled)</summary>
         </key>
 
         <key type="as" name="prefs-config-export">

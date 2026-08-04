@@ -207,9 +207,9 @@ piles under one monitor node and stays there after both heads return.
    queues settle from pre-lock homes. After settle, thrash pending stays true
    for a **sliding post-rehome cooldown (~3s)** (also on late workareas), and
    settle **re-arms** if the monitor geometry fingerprint still moved during
-   the debounce. Zero monitors never clears thrash pending. Product
-   `Super+Delete` forces X11 DPMS off after `loginctl lock-session` so lock
-   means sleep (not dim-only).
+   the debounce. Zero monitors never clears thrash pending. **Lock ownership:**
+   GNOME `media-keys.screensaver` is rebound to `Super+Delete` (Super+L free
+   for focus-right); Forge does **not** force DPMS — Mutter/gsd blank on lock.
 4. On settle: **snapshot forest first** (stableKeys from pre-refresh map), then
    refresh the T7 identity map, then resolve each window’s target monitor by
    **stableKey** → max intersection of last-good frame → remapped index → Meta.
