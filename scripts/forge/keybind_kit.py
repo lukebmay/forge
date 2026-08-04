@@ -428,6 +428,36 @@ def _schema_has_key(schema_dir: Path, key: str) -> bool:
     return key in gsettings_list_keys(schema_dir)
 
 
+def desktop_lock_accels_for_kit(kit_id: str) -> list[str]:
+    """GNOME media-keys screensaver chords for kit (manage only; KB0)."""
+    kid = (kit_id or "").strip().lower()
+    if kid in ("vim", "i3"):
+        return ["<Super>Delete"]
+    return ["<Super>l", "<Super>Delete"]
+
+
+def apply_gnome_desktop_lock_for_kit(kit_id: str, *, dry_run: bool = False) -> list[str]:
+    """Write org.gnome.settings-daemon.plugins.media-keys screensaver for kit."""
+    accels = desktop_lock_accels_for_kit(kit_id)
+    if dry_run:
+        return accels
+    r = subprocess.run(
+        [
+            "gsettings",
+            "set",
+            "org.gnome.settings-daemon.plugins.media-keys",
+            "screensaver",
+            format_strv(accels),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode != 0:
+        err = (r.stderr or r.stdout or "").strip()
+        raise RuntimeError(f"gsettings set screensaver: {err or 'failed'}")
+    return accels
+
+
 def apply_kit(
     kit_id: str,
     *,
@@ -438,6 +468,11 @@ def apply_kit(
     # drop helper field
     props.pop("keys", None)
     applied = apply_profile_props(props, schema_dir=schema_dir, dry_run=dry_run)
+    # Kit-aware GNOME lock chords (Safe dual Super+L; Vim/i3 free Super+L).
+    try:
+        apply_gnome_desktop_lock_for_kit(kit_id, dry_run=dry_run)
+    except Exception as e:
+        _eprint(f"forge keybind: desktop lock chords skipped: {e}")
     return props, applied
 
 

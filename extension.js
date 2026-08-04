@@ -30,6 +30,8 @@ import {
   shouldApplyOverride,
   overridesGatedBy,
   reconcileAction,
+  desktopLockAccelsForFocusRight,
+  screensaverOverrideDesc,
 } from "./lib/shared/gnome-overrides.js";
 
 // Application imports
@@ -87,6 +89,13 @@ export default class ForgeExtension extends Extension {
     });
     this.configSync.init();
 
+    // After config sync: kit-aware GNOME lock (Safe keeps Super+L; Vim/i3 free it).
+    try {
+      this._applyDesktopLockOverride(true);
+    } catch (e) {
+      Logger.warn(`Failed to apply GNOME lock chords: ${e}`);
+    }
+
     this.theme = new ExtensionThemeManager(this);
     this.extWm = new WindowManager(this);
     this.keybindings = new Keybindings(this);
@@ -136,6 +145,35 @@ export default class ForgeExtension extends Extension {
       original,
       setter,
     });
+  }
+
+  /**
+   * Manage GNOME lock chords only (no Forge lock action).
+   * Safe / no bare Super+L on focus-right: Super+L + Super+Delete.
+   * Power kits with Super+L focus-right: Super+Delete only.
+   * @param {boolean} saveOriginal - first enable: save for disable restore
+   */
+  _applyDesktopLockOverride(saveOriginal = false) {
+    if (!this.kbdSettings || !this._savedSettings) return;
+    let focusRight = [];
+    try {
+      focusRight = this.kbdSettings.get_strv("window-focus-right") || [];
+    } catch (_e) {
+      focusRight = [];
+    }
+    const accels = desktopLockAccelsForFocusRight(focusRight);
+    const desc = screensaverOverrideDesc(accels);
+    if (this._isOverrideSaved(desc)) {
+      // Kit switch: update chord only; keep original for disable().
+      try {
+        const gsettings = this._gnomeSettings.get(desc.schemaId);
+        if (gsettings) gsettings.set_strv(desc.key, desc.newValue);
+      } catch (e) {
+        Logger.warn(`Failed to update GNOME screensaver chords: ${e}`);
+      }
+      return;
+    }
+    if (saveOriginal) this._applyOverride(desc);
   }
 
   /**

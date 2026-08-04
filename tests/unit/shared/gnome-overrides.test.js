@@ -4,6 +4,11 @@ import {
   shouldApplyOverride,
   overridesGatedBy,
   reconcileAction,
+  isBareSuperL,
+  desktopLockAccelsForKit,
+  desktopLockAccelsForFocusRight,
+  DESKTOP_LOCK_SAFE,
+  DESKTOP_LOCK_POWER,
 } from "../../../lib/shared/gnome-overrides.js";
 
 // Minimal fake exposing only get_boolean, like Forge's Gio.Settings.
@@ -51,6 +56,38 @@ describe("shouldApplyOverride (forge-9fo, forge-abk)", () => {
   it("leaves every override except edge-tiling ungated", () => {
     const gated = SETTINGS_OVERRIDES.filter((d) => d.gatedBy);
     expect(gated).toEqual([edgeTiling]);
+  });
+
+  it("does not hardcode screensaver in static SETTINGS_OVERRIDES (kit-aware)", () => {
+    expect(SETTINGS_OVERRIDES.find((d) => d.key === "screensaver")).toBeUndefined();
+  });
+});
+
+describe("desktop lock chords (KB0)", () => {
+  it("isBareSuperL accepts only Super+L", () => {
+    expect(isBareSuperL("<Super>l")).toBe(true);
+    expect(isBareSuperL("<Super>L")).toBe(true);
+    expect(isBareSuperL("<Ctrl><Super>l")).toBe(false);
+    expect(isBareSuperL("<Super>Right")).toBe(false);
+    expect(isBareSuperL("")).toBe(false);
+  });
+
+  it("Safe kit keeps Super+L and adds Super+Delete", () => {
+    expect(desktopLockAccelsForKit("safe")).toEqual(DESKTOP_LOCK_SAFE);
+    expect(desktopLockAccelsForKit("safe")).toEqual(["<Super>l", "<Super>Delete"]);
+  });
+
+  it("Vim and i3 free Super+L (Delete only)", () => {
+    expect(desktopLockAccelsForKit("vim")).toEqual(DESKTOP_LOCK_POWER);
+    expect(desktopLockAccelsForKit("i3")).toEqual(["<Super>Delete"]);
+  });
+
+  it("infers power lock from bare Super+L on focus-right", () => {
+    expect(desktopLockAccelsForFocusRight(["<Super>l", "<Super>Right"])).toEqual(
+      DESKTOP_LOCK_POWER
+    );
+    expect(desktopLockAccelsForFocusRight(["<Ctrl><Super>Right"])).toEqual(DESKTOP_LOCK_SAFE);
+    expect(desktopLockAccelsForFocusRight([])).toEqual(DESKTOP_LOCK_SAFE);
   });
 });
 

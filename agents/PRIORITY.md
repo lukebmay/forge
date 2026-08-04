@@ -22,9 +22,8 @@
 | **1** | **Wayland thrash** | Lock Super+Delete → unlock; `forge tree` dual-head; journal guard | [HANDOFF](./HANDOFF.md) |
 | **2** | **Wayland selection smoke** | RunSteps elevate + layout-cycle; optional i3 Super+a | After thrash OK |
 | **3** | **CON selection S3** | Vim Super+p + BackSpace clear multi-bind + cheatsheet | [plan](./plans/forge-container-selection.md) |
-| **4** | **KB0** | Safe kit-aware GNOME lock (Super+L keep + Super+Delete) | [desktop-keybinds](./plans/forge-desktop-keybinds.md) |
+| **4** | **KB1+** | Open GNOME Keyboard button; conflict offer (KB2); desktop section | after S3; [desktop-keybinds](./plans/forge-desktop-keybinds.md) KB0 **done** |
 | 5 | S5 live QA | Checklist A–G after S3 | selection plan |
-| 6 | KB1–KB4 | GNOME Keyboard button, conflict offer, desktop section, docs | after S3 |
 
 **Shipped recently**
 
@@ -33,7 +32,8 @@
 | Soft-rehome lock+DPMS | Guard + sliding cooldown + fingerprint re-arm; X11 product GNOME lock OK |
 | GNOME owns Super+Delete lock | Forge does not force DPMS; `prefs-lock-screen` unbound |
 | Selection S1–S2 | Elevated ops + bag chrome |
-| **Plan** desktop keybinds | [forge-desktop-keybinds.md](./plans/forge-desktop-keybinds.md) |
+| **KB0** kit-aware GNOME lock | Safe Super+L+Delete; Vim/i3 Delete only |
+| Desktop keybinds plan | [forge-desktop-keybinds.md](./plans/forge-desktop-keybinds.md) — KB1 next |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
@@ -53,7 +53,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 | --- | --- | --- |
 | **P0** | Wayland thrash + selection smoke | **Next when on Wayland** — [HANDOFF](./HANDOFF.md) |
 | **P0** | [container selection](./plans/forge-container-selection.md) | **S2 done** — S3 next (after or parallel if X11) |
-| **P1** | [desktop keybinds](./plans/forge-desktop-keybinds.md) | **Plan ready** — KB0 after S3 (or small anytime); KB1–4 after |
+| **P1** | [desktop keybinds](./plans/forge-desktop-keybinds.md) | **KB0 done** — KB1–4 after S3 |
 | P1 | [layout settle pure](./plans/forge-layout-settle-pure.md) D0 | Draft hybrid; **user lock** then PS1 |
 | P1 | [first-class containers](./plans/forge-first-class-containers.md) residual | Mouse resize / Z0 after selection |
 | P1 | [stacked](./plans/forge-stacked-layouts.md) | SL0–SL5 **done**; SL6 optional |

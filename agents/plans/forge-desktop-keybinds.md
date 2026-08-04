@@ -8,12 +8,12 @@
 
 ### Session note (overwrite)
 
-**2026-08-04** — Plan created from product lock discussion. Not started.
+**2026-08-04** — **KB0 shipped** (kit-aware GNOME lock). Next: KB1 (open GNOME Keyboard).
 
-- Priority order (global): see [PRIORITY.md](../PRIORITY.md)  
-- Cross-session: [HANDOFF.md](../HANDOFF.md)  
-- **Next task when this plan is active:** KB0 (Safe kit-aware screensaver)  
-- Related thrash work already on `plan/forge-first-class-containers` (soft-rehome + GNOME Super+Delete today)
+- Safe: screensaver `Super+L` + `Super+Delete`; Vim/i3: `Super+Delete` only  
+- Wired: enable (infer from focus-right), prefs kit apply, `forge keybind apply`  
+- Unit tests in `gnome-overrides.test.js`  
+- **Next:** KB1 when this plan is next in PRIORITY (after Wayland + S3)
 
 ---
 
@@ -71,7 +71,7 @@ Users should not juggle **Forge prefs**, **GNOME Settings → Keyboard**, and **
 
 | ID | Task | Status | Acceptance (summary) |
 | --- | --- | --- | --- |
-| **KB0** | Kit-aware GNOME lock chords | **next** | Safe: Super+L + Super+Delete; Vim/i3: Super+Delete only; apply on kit apply + enable reconcile; unit tests; docs table “Ubuntu shortcuts we change” |
+| **KB0** | Kit-aware GNOME lock chords | **done** | Safe: Super+L + Super+Delete; Vim/i3: Super+Delete only; enable + kit apply + CLI; unit tests; docs |
 | **KB1** | Open GNOME Keyboard from Forge | draft | Button on Keyboard prefs: launch GNOME Settings Shortcuts (or best-effort `gnome-control-center keyboard` / panel URI); works on Ubuntu 24; docs one-liner |
 | **KB2** | Conflict offer when binding Forge chord | draft | On capture/save that collides with GNOME: dialog **Cancel** / **Clear GNOME binding** / **Keep both (warn)**; optional “rebind GNOME action…” later; pure helper testable without GTK where possible |
 | **KB3** | Desktop shortcuts section (curated manage list) | draft | Prefs group: lock, close, maximize, half-tile L/R, minimize, message-tray — edit writes GNOME GSettings; restore-on-disable; not a full catalog |

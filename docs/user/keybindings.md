@@ -21,7 +21,7 @@ lists GNOME/custom entries.
 | **Bare `Super+…` is user space** | Launchers, GNOME, and desktop custom binds almost always live on Super. Shipping a tiling WM that grabs `Super+h/j/k/l` by default surprises most GNOME users. |
 | **Safe ≠ recommended** | Install must not stomp. Daily tiling wants denser Super+ maps — those are **opt-in kits**, not the schema default. |
 | **One primary modifier family** | Safe uses **`Ctrl+Super`** for almost everything so the map is learnable. **`Ctrl+Shift+Super`** only for *twins* of the same key (move vs focus, always-float vs float). Random mix of Shift+Super vs Ctrl+Super without a rule was accidental legacy. |
-| **Lock = GNOME `Super+Delete`** | While Forge is enabled, GNOME screensaver moves from Super+L → Super+Delete so Super+L is free for focus-right. GNOME owns lock + panel sleep; Forge does not force DPMS. |
+| **Lock = GNOME (managed chords)** | Forge writes GNOME `media-keys.screensaver` only — does not implement lock. **Safe:** keep Super+L and add Super+Delete. **Vim/i3:** Super+Delete only so Super+L is free for focus-right. |
 | **Float = Space under the kit’s primary mod** | **Safe / Vim:** `Ctrl+Super+Space` (Ctrl is the multi-mod family). **i3:** `Shift+Super+Space` (i3 tradition). Always-float twin: `Ctrl+Shift+Super+Space`. Old `Super+c` had no mnemonic. |
 | **Rare chrome off bare Super+** | **Focus border** and **tiling master toggle** almost never fire — multi-mod only. |
 | **Border = `Ctrl+Super+b`** | **b**order. (Legacy `Super+x` / `Ctrl+Super+x` was arbitrary.) |
@@ -70,7 +70,7 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Toggle tiling mode | `Ctrl+Super+e` (**e**nable tiling; rare) |
 | Toggle workspace tiling | `Ctrl+Shift+Super+w` |
 | Open preferences | `Ctrl+Super+.` |
-| Lock screen | `Super+Delete` (all kits) |
+| Lock screen (GNOME) | `Super+L` and `Super+Delete` (Safe dual-bind) |
 | Reload config | `Ctrl+Super+r` |
 | Cheatsheet | `Ctrl+Super+/` |
 | Launch app | `Ctrl+Shift+Super+Enter` |
@@ -84,8 +84,24 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Snaps / cyclic focus | unbound |
 
+### Ubuntu / GNOME shortcuts Forge manages (not owns)
+
+While enabled, Forge may **write GNOME GSettings** so tiling kits work. Behavior
+stays GNOME’s (e.g. lock still blanks via ScreenShield). On disable, originals
+restore (enable-time snapshot).
+
+| GNOME action | Safe / install | Vim / i3 |
+| --- | --- | --- |
+| **Lock screen** | Super+L **and** Super+Delete | Super+Delete only |
+| Half-tile L/R (Mutter) | unbound while Forge tiling on | same |
+| Maximize / unmaximize / minimize | unbound (use Forge or GNOME toggle-maximized) | same |
+| Message tray Super+M style | may be cleared | same |
+
 Forge still frees a few GNOME defaults while enabled (edge-tile keys, maximize,
 etc. — see `gnome-overrides`). Those restore on disable.
+
+**More:** Preferences → Keyboard will gain “Open GNOME keyboard shortcuts” and
+conflict prompts (plan `forge-desktop-keybinds`).
 
 ---
 
@@ -113,7 +129,7 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Toggle tiling | `Ctrl+Super+e` |
 | Workspace tiling | `Shift+Super+w` |
 | Preferences | `Super+.` |
-| Lock screen | `Super+Delete` |
+| Lock screen (GNOME) | `Super+Delete` only (Super+L = focus-right) |
 | Reload / cheatsheet | `Shift+Super+r` / `Shift+Super+/` |
 | Launch app | `Shift+Super+Enter` |
 | Resize equalize / expand / shrink | `Super+=` / `]` / `[` |
@@ -151,7 +167,7 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | Tab decoration | `Shift+Super+w` |
 | “Fullscreen-ish” snap center | `Super+f` (not zoom; see REG-i3-super-f) |
 | Launch app | `Super+Enter` |
-| Lock | `Super+Delete` |
+| Lock (GNOME) | `Super+Delete` only (Super+L = focus-right) |
 | Cheatsheet / reload | `Shift+Super+/` / `Shift+Super+r` |
 | Focus border / tiling master | `Ctrl+Super+b` / `Ctrl+Super+e` (shared; rare) |
 | Show-all split chrome | unbound by default (`split-chrome-show-all-toggle`) |
