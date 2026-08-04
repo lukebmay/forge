@@ -199,20 +199,27 @@ piles under one monitor node and stays there after both heads return.
 2. On `workareas-changed` (with windows, no workspace add/remove), set a thrash
    pending flag and debounce (~300ms; hybrid GPU thrash often exceeds 200ms).
    While pending, ignore `window-entered-monitor` rehomes.
-3. On settle: **snapshot forest first** (stableKeys from pre-refresh map), then
+3. **Lock-screen thrash guard (2026-08-04):** on `unlock-dialog`, hold thrash
+   pending and **do not settle** until user session returns. Mid-lock DPMS can
+   clear thrash pending after 300ms while Meta still peels windows;
+   `window-entered-monitor` then rehomes into the pile and the next quiet
+   `renderTree` **poisons last-good**. Unlock queues one settle from pre-lock
+   homes. After any settle, **post-rehome cooldown (~2.5s)** still blocks
+   entered-monitor and last-good snapshots.
+4. On settle: **snapshot forest first** (stableKeys from pre-refresh map), then
    refresh the T7 identity map, then resolve each window’s target monitor by
    **stableKey** → max intersection of last-good frame → remapped index → Meta.
-4. **Tab/stack survival (T3):** majority-align outermost STACKED/TABBED members
+5. **Tab/stack survival (T3):** majority-align outermost STACKED/TABBED members
    onto one target so `_containerFullyMigrates` moves the CON as a unit; dead
    siblings no longer block full migration.
-5. **Full tree snapshot (T6):** before rehome, capture the forest (H/V + tabs +
+6. **Full tree snapshot (T6):** before rehome, capture the forest (H/V + tabs +
    order + percent/`userSized` + window refs + optional mon `stableKey`). After
    reconcile, `restoreTreeIfNeeded` — skip intact mon topology (re-apply percents
    only), rebuild when flattened/peeled. Target mon is **remapped** via stableKey
    when `moN` is stale, else majority mon of survivors. `reloadTree` uses force
    `restoreTree` with a **fresh** snapshot around its own wipe.
-6. `move_to_monitor` then one `_reconcileWindowHomes()` + restore + render.
-7. If a target `moNwsW` node is missing → fall back to `reloadTree` (fresh
+7. `move_to_monitor` then one `_reconcileWindowHomes()` + restore + render.
+8. If a target `moNwsW` node is missing → fall back to `reloadTree` (fresh
    snapshot inside that path).
 
 While a **session shield** is active, soft rehome **reapplies the restored
@@ -221,6 +228,10 @@ forest** instead of snapshotting thrash topology (see session layout).
 **Live proof (2026-07-24):** idle auto-lock + DPMS → unlock kept dual-head
 placement and a two-window tab pair; retab after wake did not abort Shell.
 
+**Live proof (2026-08-04):** Super+Delete / `loginctl lock-session` +
+`xset dpms force off` on dual 5K previously piled mon1 tabs onto mon0 (tree
+wins 6|1). After lock guard + cooldown: topology unchanged (3|4, both TABBED).
+
 **Related:** T7 stable output keys (`monitor-identity.js`); gdisplays owns
 monitors.xml identity in shellrc — Forge does not import it.
 
@@ -228,8 +239,8 @@ monitors.xml identity in shellrc — Forge does not import it.
 `tests/unit/extension/tree-snapshot.test.js`, `monitor-identity.test.js`,
 utils `bestMonitorIndexForRect`.
 
-**Manual reproduce:** `scripts/forge/trigger-idle-lock.zsh` (short idle / DPMS);
-manual Super+Delete is a weak control path.
+**Manual reproduce:** `scripts/forge/trigger-idle-lock.zsh --idle-and-dpms`
+or lock + `DISPLAY=:1 xset dpms force off` (idle dim alone is **not** thrash).
 
 ## Session layout across install/update
 

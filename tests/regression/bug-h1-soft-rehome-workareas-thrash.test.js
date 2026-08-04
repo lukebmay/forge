@@ -115,6 +115,70 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
   });
 
+  it("defers soft rehome settle while lock-screen thrash guard is on", () => {
+    const leftFrame = { x: 100, y: 100, width: 800, height: 600 };
+    const rightFrame = { x: 2000, y: 100, width: 800, height: 600 };
+    const { win: leftWin, node: leftNode } = addTiled("L", 0, leftFrame);
+    const { win: rightWin, node: rightNode } = addTiled("R", 1, rightFrame);
+    wm()._workareasThrashPending = false;
+    wm()._snapshotLastGoodHomes();
+
+    wm().setLockScreenThrashGuard(true);
+    expect(wm()._lockScreenThrashGuard).toBe(true);
+    expect(wm()._workareasThrashPending).toBe(true);
+
+    // Mid-lock DPMS workareas must not clear thrash pending or rehome.
+    wm()._onWorkareasChanged(ctx.display);
+    expect(settleCallbacks.length).toBe(0);
+    expect(wm()._workareasThrashPending).toBe(true);
+
+    leftWin._monitor = 0;
+    rightWin._monitor = 0;
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    mon0.appendChild(rightNode);
+
+    const updateSpy = vi.spyOn(wm(), "updateMetaWorkspaceMonitor").mockImplementation(() => {});
+    wm()._onWindowEnteredMonitor(ctx.display, 0, rightWin);
+    expect(updateSpy).not.toHaveBeenCalled();
+
+    // Unlock → queue settle; after settle dual-head restored from last-good.
+    wm().setLockScreenThrashGuard(false);
+    expect(wm()._lockScreenThrashGuard).toBe(false);
+    expect(settleCallbacks.length).toBe(1);
+    fireSettle();
+
+    const { monitor: mon0After } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1After } = getWorkspaceAndMonitor(ctx, 0, 1);
+    expect(mon0After.contains(leftNode)).toBe(true);
+    expect(mon1After.contains(rightNode)).toBe(true);
+    expect(leftWin.get_monitor()).toBe(0);
+    expect(rightWin.get_monitor()).toBe(1);
+    expect(wm()._softRehomeCooldownActive()).toBe(true);
+
+    // Post-rehome cooldown still blocks entered-monitor pile.
+    updateSpy.mockClear();
+    wm()._onWindowEnteredMonitor(ctx.display, 0, rightWin);
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("skips last-good snapshot during post-rehome cooldown", () => {
+    const frame = { x: 100, y: 100, width: 400, height: 400 };
+    const { win, node } = addTiled("C", 1, frame);
+    wm()._workareasThrashPending = false;
+    wm()._snapshotLastGoodHomes();
+    const good = wm()._lastGoodHomes.get(win);
+    expect(good?.monitorIndex).toBe(1);
+
+    // Poison would write mon0; cooldown must keep last-good.
+    wm().softRehome.beginPostRehomeCooldown();
+    win._monitor = 0;
+    node.rect = { x: 10, y: 10, width: 400, height: 400 };
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    mon0.appendChild(node);
+    wm()._snapshotLastGoodHomes();
+    expect(wm()._lastGoodHomes.get(win)?.monitorIndex).toBe(1);
+  });
+
   it("suppresses window-entered-monitor rehome during session layout restore", () => {
     const { win } = addTiled("S", 1, { x: 2000, y: 0, width: 400, height: 400 });
     wm()._sessionLayoutRestoring = true;

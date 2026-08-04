@@ -70,8 +70,10 @@ intersection, and re-parents tree nodes without a full wipe when structure is
 still consistent. Forest snapshots tag monitors with those keys so restore
 survives Mutter index renumber of the same physical heads.
 
-Manual lock (`Super+Delete` / lock now) often **does not** thrash the same way as
-overnight idle lock. To force the idle path for testing:
+Lock alone is mild; **lock + real DPMS off** (panels powered down) is the hard
+path — soft rehome defers settle until unlock so mid-lock Meta peels cannot
+poison last-good. Idle **dim** (pointer still visible) usually does not thrash.
+To force the thrash path for testing:
 
 ```bash
 # Short idle → auto-lock (hands off keyboard/mouse ~15s), restores timers after unlock

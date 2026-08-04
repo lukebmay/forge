@@ -232,12 +232,16 @@ export default class ForgeExtension extends Extension {
       Logger.info("user on session change");
       this._addIndicator();
       this.keybindings?.enable();
+      // Unlock + DPMS wake: settle soft rehome from pre-lock last-good (not mid-lock).
+      this.extWm?.setLockScreenThrashGuard(false);
     } else if (session.currentMode === "unlock-dialog") {
       // Keep running on lock screen so the window tree persists in memory; only
       // disable keybindings here (re-enabled on user session). Shutting the whole
       // extension down on lock was rejected under GNOME 45 session-mode review.
       // https://gjs.guide/extensions/review-guidelines/review-guidelines.html#session-modes
       Logger.info("lock-screen on session change");
+      // Hold thrash pending for the whole lock; Meta peels must not poison last-good.
+      this.extWm?.setLockScreenThrashGuard(true);
       this.keybindings?.disable();
       this._removeIndicator();
     }
