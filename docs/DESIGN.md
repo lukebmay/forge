@@ -199,13 +199,17 @@ piles under one monitor node and stays there after both heads return.
 2. On `workareas-changed` (with windows, no workspace add/remove), set a thrash
    pending flag and debounce (~300ms; hybrid GPU thrash often exceeds 200ms).
    While pending, ignore `window-entered-monitor` rehomes.
-3. **Lock-screen thrash guard (2026-08-04):** on `unlock-dialog`, hold thrash
-   pending and **do not settle** until user session returns. Mid-lock DPMS can
-   clear thrash pending after 300ms while Meta still peels windows;
-   `window-entered-monitor` then rehomes into the pile and the next quiet
-   `renderTree` **poisons last-good**. Unlock queues one settle from pre-lock
-   homes. After any settle, **post-rehome cooldown (~2.5s)** still blocks
-   entered-monitor and last-good snapshots.
+3. **Lock-screen thrash guard (2026-08-04):** on `unlock-dialog` (checked
+   **before** `parentMode === user`), freeze last-good, hold thrash pending,
+   and **do not settle** until user session returns. Mid-lock DPMS used to clear
+   thrash pending after 300ms while Meta still peeled; `window-entered-monitor`
+   rehomed into the pile and quiet `renderTree` **poisoned last-good**. Unlock
+   queues settle from pre-lock homes. After settle, thrash pending stays true
+   for a **sliding post-rehome cooldown (~3s)** (also on late workareas), and
+   settle **re-arms** if the monitor geometry fingerprint still moved during
+   the debounce. Zero monitors never clears thrash pending. Product
+   `Super+Delete` forces X11 DPMS off after `loginctl lock-session` so lock
+   means sleep (not dim-only).
 4. On settle: **snapshot forest first** (stableKeys from pre-refresh map), then
    refresh the T7 identity map, then resolve each window’s target monitor by
    **stableKey** → max intersection of last-good frame → remapped index → Meta.

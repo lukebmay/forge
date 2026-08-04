@@ -228,13 +228,8 @@ export default class ForgeExtension extends Extension {
   }
 
   _onSessionModeChanged(session) {
-    if (session.currentMode === "user" || session.parentMode === "user") {
-      Logger.info("user on session change");
-      this._addIndicator();
-      this.keybindings?.enable();
-      // Unlock + DPMS wake: settle soft rehome from pre-lock last-good (not mid-lock).
-      this.extWm?.setLockScreenThrashGuard(false);
-    } else if (session.currentMode === "unlock-dialog") {
+    // unlock-dialog first: some shells report parentMode=user while locked.
+    if (session.currentMode === "unlock-dialog") {
       // Keep running on lock screen so the window tree persists in memory; only
       // disable keybindings here (re-enabled on user session). Shutting the whole
       // extension down on lock was rejected under GNOME 45 session-mode review.
@@ -244,6 +239,12 @@ export default class ForgeExtension extends Extension {
       this.extWm?.setLockScreenThrashGuard(true);
       this.keybindings?.disable();
       this._removeIndicator();
+    } else if (session.currentMode === "user" || session.parentMode === "user") {
+      Logger.info("user on session change");
+      this._addIndicator();
+      this.keybindings?.enable();
+      // Unlock + DPMS wake: settle soft rehome from pre-lock last-good (not mid-lock).
+      this.extWm?.setLockScreenThrashGuard(false);
     }
   }
 

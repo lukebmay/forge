@@ -81,6 +81,9 @@ describe("Bug #78: workareas-changed monitor-count guard", () => {
 
     expect(render).toHaveBeenCalledWith("workareas-soft-rehome");
     expect(track).not.toHaveBeenCalled();
+    // Post-rehome cooldown holds thrash pending for late Meta peels.
+    expect(wm()._workareasThrashPending).toBe(true);
+    fireSettle(); // cooldown timer
     expect(wm()._workareasThrashPending).toBe(false);
   });
 

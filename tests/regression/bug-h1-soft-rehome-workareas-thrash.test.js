@@ -97,8 +97,13 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(mon1After.contains(rightNode)).toBe(true);
     expect(leftWin.get_monitor()).toBe(0);
     expect(rightWin.get_monitor()).toBe(1);
-    expect(wm()._workareasThrashPending).toBe(false);
+    // Cooldown holds thrash pending so late entered-monitor cannot pile.
+    expect(wm()._workareasThrashPending).toBe(true);
+    expect(wm()._softRehomeCooldownActive()).toBe(true);
     expect(wm().renderTree).toHaveBeenCalledWith("workareas-soft-rehome");
+    // Fire cooldown timer (second timeout_add from beginPostRehomeCooldown).
+    fireSettle();
+    expect(wm()._workareasThrashPending).toBe(false);
   });
 
   it("suppresses window-entered-monitor rehome while thrash is pending", () => {
@@ -171,12 +176,41 @@ describe("H1 soft rehome on workareas thrash", () => {
 
     // Poison would write mon0; cooldown must keep last-good.
     wm().softRehome.beginPostRehomeCooldown();
+    expect(wm()._workareasThrashPending).toBe(true);
     win._monitor = 0;
     node.rect = { x: 10, y: 10, width: 400, height: 400 };
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     mon0.appendChild(node);
     wm()._snapshotLastGoodHomes();
     expect(wm()._lastGoodHomes.get(win)?.monitorIndex).toBe(1);
+  });
+
+  it("keeps thrash pending when settle sees zero monitors", () => {
+    wm()._workareasThrashPending = true;
+    vi.spyOn(global.display, "get_n_monitors").mockReturnValue(0);
+    wm()._softRehomeAfterWorkareas();
+    expect(wm()._workareasThrashPending).toBe(true);
+  });
+
+  it("re-arms settle when monitor geometry changes during debounce", () => {
+    addTiled("F", 0, { x: 10, y: 10, width: 100, height: 100 });
+    let monCount = 1;
+    vi.spyOn(global.display, "get_n_monitors").mockImplementation(() => monCount);
+    vi.spyOn(global.display, "get_monitor_geometry").mockImplementation((i) => {
+      if (i === 0) return { x: 0, y: 0, width: 100, height: 100 };
+      return { x: 100, y: 0, width: 100, height: 100 };
+    });
+
+    const rehomeSpy = vi.spyOn(wm(), "_softRehomeAfterWorkareas").mockImplementation(() => {});
+    wm()._queueSoftRehomeOnWorkareas();
+    expect(settleCallbacks.length).toBe(1);
+    monCount = 2; // geometry thrash between arm and fire
+    fireSettle();
+    expect(rehomeSpy).not.toHaveBeenCalled();
+    expect(settleCallbacks.length).toBeGreaterThanOrEqual(1);
+    // Fingerprint stable at re-arm value → settle body runs.
+    fireSettle();
+    expect(rehomeSpy).toHaveBeenCalled();
   });
 
   it("suppresses window-entered-monitor rehome during session layout restore", () => {
