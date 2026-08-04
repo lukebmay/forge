@@ -115,8 +115,63 @@ Example (`gdisplays`; shellrc also aliases `displays=gdisplays`):
 - `gdisplays delete-host oldpc` → same
 - `gdisplays copy a b` when `b` exists → confirm / `--force`
 - `gdisplays load` never uses `--force` (stale connectors unsafe); foreign host → TTY confirm or `copy` then load; renames auto-remap
-- `gdisplays --user-to-login` (and other GDM ops) re-exec via `sudo` after explaining why; no manual `sudo` prefix required on TTY
+- `gdisplays --user-to-login` (and other GDM ops) re-exec via `sudo` when needed; **default** sudo password prompt only — no multi-line “root/sudo/escalating” preamble
 - `gdisplays save name` without `-d` → prompt only on TTY; scripts keep existing description
+
+## CLI UX (human-facing output) — GUIDELINE
+
+Agents writing or polishing CLI tools must treat **stdout as a product surface**, not a debug log. Prefer short, scannable progress over essays.
+
+### Principles
+
+| Rule | Detail |
+| --- | --- |
+| **Say each fact once** | Do not repeat “root”, “sudo”, “password”, or the same path in a banner, a body line, *and* a custom sudo prompt. |
+| **Privilege escalation is quiet** | Re-exec via `sudo` is fine. On TTY use the **default** sudo prompt (`[sudo] password for user:`). Do **not** print “Root required”, “Escalating with sudo”, “password is from sudo not this tool”, and a custom `-p` that re-explains root — that is three messages for one action. |
+| **Progress, not post-mortems** | Successful multi-step ops: one line per step, **present progressive** (“Backing up …”, “Updating …”), trailing green `✓` (see `ansi-colors.md` — ticks for **steps**, not overall success lines). |
+| **Paths** | Color paths **cyan** (files/dirs). In yellow warnings, use **blue** for paths. Prefer showing a useful relative backup name after `→` when the directory is already clear. |
+| **No filler** | Drop “desktop file unchanged”, full absolute backup destinations when basename + source path already tell the story, optional layout dumps the user did not ask for. |
+| **Warnings stay short** | One line, actionable if needed. Prefer *what the tool did* over *why GNOME is sad* in three clauses. |
+| **Space the closer** | Blank line before the final human instruction (e.g. “Log out or reboot…”) so it is not glued to progress ticks. |
+| **Errors get the prose** | Failures may explain more. Happy paths stay terse. |
+
+### Shape: multi-step privileged op (good)
+
+```text
+[sudo] password for luke:
+Backing up /var/lib/gdm3/.config/monitors.xml → monitors.xml.bak.20260804-162435... ✓
+Updating login display settings from user layout... ✓
+GDM greeter cannot use fractional scaling, so using scale=1
+
+Log out or reboot to see the login screen change.
+```
+
+### Shape: same op (bad — do not ship)
+
+```text
+Root required  --user-to-login
+  Updates the GDM greeter layout under /var/lib/gdm3 (owned by gdm/root).
+  Copies your user monitors.xml and flattens fractional scale so login accepts it.
+  Escalating with sudo (password prompt is from sudo, not this tool).
+
+[sudo] password for luke — gdisplays needs root for --user-to-login:
+Backed up login monitors.xml
+  /var/lib/gdm3/.config/monitors.xml
+  → /var/lib/gdm3/.config/monitors.xml.bak.…
+Login screen layout updated from user
+  /home/luke/.config/monitors.xml
+  → /var/lib/gdm3/.config/monitors.xml
+GDM greeter cannot use fractional scale — wrote scale=1 for login only
+  greeter: *DP-1 → HDMI-1  (desktop file unchanged)
+Log out or reboot to see the login screen change.
+```
+
+### Checklist before shipping CLI output
+
+1. Count mentions of the same theme (sudo/root, remap, backup) — keep **one**.
+2. Read the happy path out loud: if it sounds like a tutorial, cut.
+3. Colors match `ansi-colors.md` (cyan paths, blue commands, green step `✓`, yellow warn).
+4. Script/pipe mode: no prompts; no chatty “optional: …” stacks unless an error.
 
 ## Args
 
