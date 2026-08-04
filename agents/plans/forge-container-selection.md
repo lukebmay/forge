@@ -8,14 +8,15 @@
 
 ### Session note (overwrite)
 
-**Handoff 2026-08-03** — S2 shipped; next agent starts **S3**.
+**Handoff 2026-08-04** — S2 still next product is **S3**, but **Wayland session first**.
 
-- Branch: `plan/forge-first-class-containers` (master **not** merged; selection mid-wave)
-- Cross-session: [agents/HANDOFF.md](../HANDOFF.md)
-- **Next:** S3 kit bindings (Vim Super+p + BackSpace clear multi-bind + cheatsheet)
+- Branch: `plan/forge-first-class-containers` (thrash + lock-ownership commits; master not merged)
+- Cross-session: [agents/HANDOFF.md](../HANDOFF.md) — Wayland thrash + selection smoke
+- X11 selection smoke via RunSteps: elevate + layout-cycle TABBED↔STACKED OK; CLI swap not elevated
+- **Next after Wayland:** S3 kit bindings (Vim Super+p + BackSpace clear multi-bind + cheatsheet)
 - S2 completed: [completed/forge-container-selection_s2-ops-matrix.md](./forge-container-selection/completed/forge-container-selection_s2-ops-matrix.md)
 - **Next task:** [forge-container-selection_s3-kit-bindings.md](../tasks/forge-container-selection_s3-kit-bindings.md)
-- Elevated move/swap/layout/ungroup/resize; `swapUnits`; full suite **2053** green
+
 
 ---
 
