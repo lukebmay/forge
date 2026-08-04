@@ -52,7 +52,8 @@
 | Zero monitors | Never clear thrash pending |
 | Super+Delete | **GNOME** `media-keys.screensaver` = Super+Delete while Forge enabled (frees Super+L). No `xset dpms force off`. |
 
-**X11 live proof:** lock + DPMS Off ~24s → topology unchanged (3|4 both TABBED).  
+**X11 live proof:** lock + DPMS Off ~24s → topology unchanged (3|4 both TABBED).
+**X11 product path (2026-08-04):** GNOME `ScreenSaver.Lock` (Super+Delete media-keys; Forge does not own lock) → **Monitor is Off** without xset; unlock ~15s; topology **identical**; journal: thrash guard on → settle on unlock. Artifacts: `/tmp/forge-lock-thrash-20260804/gnome-owned-lock/`.  
 **Artifacts:** `/tmp/forge-lock-thrash-20260804/`.
 
 ### Design notes (lock ownership)
