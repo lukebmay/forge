@@ -4,17 +4,18 @@
 **Branch:** `plan/forge-first-class-containers` (local commits; push optional)  
 **Default:** `master` — **not** merged (selection mid-wave + thrash fix on feature)  
 **Remotes:** `test` / `prod` **not** touched  
+**Queue:** [PRIORITY.md](./PRIORITY.md) — **1 Wayland thrash → 2 selection S3 → 3 desktop keybinds**
 
 ## Where we are
 
 | Layer | Status |
 | --- | --- |
 | Soft-rehome lock+DPMS thrash | **Fixed + hardened** (live dual-head X11 retest OK) |
-| Lock ownership | **GNOME** screensaver → Super+Delete; Forge does **not** force DPMS |
+| Lock ownership | **GNOME** screensaver; Forge does **not** force DPMS (today Super+Delete only for all kits — **Safe should keep Super+L**, see desktop-keybinds plan) |
 | Containers spine C0–C5 + R1/R1b + R2 | **Done** |
 | Selection **S1–S2** | **Done** (elevated ops) |
-| Selection **S3** kit chords | **Next product** (unbound on Safe/Vim today) |
-| Live selection smoke (X11) | **Partial via RunSteps** (see below) |
+| Selection **S3** kit chords | After Wayland smoke |
+| Desktop keybinds plan | **New** — [forge-desktop-keybinds.md](./plans/forge-desktop-keybinds.md) |
 | Wayland live thrash + selection | **Next session** (operator logs into Wayland) |
 
 ## Next agent — Wayland session first
@@ -40,7 +41,7 @@
 
 6. **Selection smoke (Wayland):** same RunSteps as X11 (below); optional bind i3 kit for Super+a parent.  
 
-7. After Wayland OK: continue **S3** or merge feature→master when operator greenlights.
+7. After Wayland OK: **S3** selection kit binds → then **KB0** Safe dual-lock (desktop-keybinds plan).
 
 ## Soft-rehome (2026-08-04) — what shipped
 
@@ -92,10 +93,13 @@ forge tree
 | Soft rehome / lock guard | `lib/extension/soft-rehome.js` |
 | Session mode lock first | `extension.js` `_onSessionModeChanged` |
 | GNOME Super+Delete lock | `lib/shared/gnome-overrides.js` `screensaver` |
+| Conflict scan | `lib/shared/keybind-conflicts.js` + prefs Keyboard |
+| Prefs Keyboard | `lib/prefs/keyboard.js` |
 | Selection pure helpers | `layout-unit.js` |
 | Elevated keyboard ops | `command.js` Move/Swap/Layout/Ungroup |
 | Bag chrome | `decoration.js` `.window-selection-border` |
 | S3 task | `agents/tasks/forge-container-selection_s3-kit-bindings.md` |
+| Desktop keybinds plan | `agents/plans/forge-desktop-keybinds.md` |
 
 ## Human blockers
 
@@ -103,13 +107,14 @@ None hard. Operator must switch session for Wayland.
 
 ## Commits on feature (approx)
 
-- `76c4e7e` / `c0b6e67` — thrash guard + multi-machine races  
-- (pending) GNOME-owned lock, unbound Forge prefs-lock-screen  
+- thrash guard + multi-machine races + GNOME-owned lock (no DPMS force)  
+- docs: product GNOME lock retest; PRIORITY + desktop-keybinds plan  
 
 ## Plans
 
 | Plan | Next |
 | --- | --- |
+| Wayland thrash (ops) | [PRIORITY](./PRIORITY.md) #1 when on Wayland |
 | [forge-container-selection.md](./plans/forge-container-selection.md) | S3 after Wayland smoke |
-| Soft-rehome | Soak overnight Super+Delete if desired |
+| [forge-desktop-keybinds.md](./plans/forge-desktop-keybinds.md) | KB0 Safe Super+L+Delete; KB1 open GNOME Keyboard; KB2 conflict offer |
 | [forge-first-class-containers.md](./plans/forge-first-class-containers.md) | residual mouse / Z0 after selection |

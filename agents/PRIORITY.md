@@ -1,38 +1,49 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-03  
-**Lens:** day-to-day impact on `black` (dual 4K, X11, Shell 46), not tidy purity.  
+**Updated:** 2026-08-04  
+**Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
+
+## Priority order (locked 2026-08-04)
+
+| Order | Work | Why |
+| ---: | --- | --- |
+| **1** | **Wayland thrash + selection smoke** | Session switch; prove soft-rehome under compositor blank; short; gate daily-driver confidence on both sessions |
+| **2** | **Container selection finish** | S3 kit binds → S5 live QA; product mid-wave (S2 elevated ops already shipped) |
+| **3** | **Desktop keybinds** | Manage GNOME chords (not own); Safe dual-lock; conflict offer; open GNOME Keyboard button |
+
+**If operator is on Wayland:** do **1** before more product code.  
+**If still on X11** and not switching: **2** can proceed; thrash already OK on X11 product lock path.
 
 ## Next session focus
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **CON selection S3** | Vim Super+p + BackSpace clear multi-bind + cheatsheet | [plan](./plans/forge-container-selection.md) S2 done |
-| 2 | **D0 settle** | **User lock** on pure settle hybrid (draft in plan) | [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) |
-| 3 | containers residual | Mouse resize / optional Z0 after selection | [forge-first-class-containers.md](./plans/forge-first-class-containers.md) |
-| 4 | stacks SL6 | Optional polish | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
-| 5 | Live QA S5 | Checklist A–G + elevate → move bag → clear | After S3 |
+| **1** | **Wayland thrash** | Lock Super+Delete → unlock; `forge tree` dual-head; journal guard | [HANDOFF](./HANDOFF.md) |
+| **2** | **Wayland selection smoke** | RunSteps elevate + layout-cycle; optional i3 Super+a | After thrash OK |
+| **3** | **CON selection S3** | Vim Super+p + BackSpace clear multi-bind + cheatsheet | [plan](./plans/forge-container-selection.md) |
+| **4** | **KB0** | Safe kit-aware GNOME lock (Super+L keep + Super+Delete) | [desktop-keybinds](./plans/forge-desktop-keybinds.md) |
+| 5 | S5 live QA | Checklist A–G after S3 | selection plan |
+| 6 | KB1–KB4 | GNOME Keyboard button, conflict offer, desktop section, docs | after S3 |
 
-**Shipped this session**
+**Shipped recently**
 
 | Item | Note |
 | --- | --- |
-| **Selection S2** | Elevated move/swap/layout/ungroup/resize; `swapUnits` for CON units |
-| **Selection S1** | Ops target API + bag chrome (prior) |
-| **Handoff** | [HANDOFF.md](./HANDOFF.md) · S3 task ready |
+| Soft-rehome lock+DPMS | Guard + sliding cooldown + fingerprint re-arm; X11 product GNOME lock OK |
+| GNOME owns Super+Delete lock | Forge does not force DPMS; `prefs-lock-screen` unbound |
+| Selection S1–S2 | Elevated ops + bag chrome |
+| **Plan** desktop keybinds | [forge-desktop-keybinds.md](./plans/forge-desktop-keybinds.md) |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Doc | Role |
 | --- | --- |
-| [forge-layout-reliability.md](./plans/forge-layout-reliability.md) | LF1–LF6 **live OK** — keep open-then-stable-rehome |
-| [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) | **D0 draft ready** — hybrid settle; needs user lock |
-| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | STACKED **SL0–SL5 done**; SL6 optional |
-| [forge-layout-sugar.md](./plans/forge-layout-sugar.md) | Main path **done** (LS1–2,4–5,7–8) |
-| [forge-layout-sizes.md](./plans/forge-layout-sizes.md) | Custom `share` **done** (SZ1–SZ3) — **merged master** |
-| [docs/user/layout.md](../docs/user/layout.md) | Layout profiles + share sugar + survivor open-leaf |
-| [forge-workon-thrash-zero.md](./plans/forge-workon-thrash-zero.md) | Historical thrash-zero |
+| [HANDOFF.md](./HANDOFF.md) | Cross-session (Wayland next) |
+| [forge-desktop-keybinds.md](./plans/forge-desktop-keybinds.md) | Manage GNOME chords; Safe Super+L |
+| [forge-container-selection.md](./plans/forge-container-selection.md) | S3 next product |
+| [forge-layout-settle-pure.md](./plans/forge-layout-settle-pure.md) | D0 draft; user lock later |
+| [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) | SL0–SL5 done; SL6 optional |
 
 ---
 
@@ -40,21 +51,23 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [container selection / nesting](./plans/forge-container-selection.md) | **S2 done** — S3 kit binds next; live QA A–G with S5 |
-| P1 | [layout settle pure](./plans/forge-layout-settle-pure.md) D0 | Draft hybrid ready; **user lock** then PS1 |
-| P1 | [first-class containers](./plans/forge-first-class-containers.md) | C0–C5 + R1/R1b + R2 **done**; residual mouse / Z0 after selection |
+| **P0** | Wayland thrash + selection smoke | **Next when on Wayland** — [HANDOFF](./HANDOFF.md) |
+| **P0** | [container selection](./plans/forge-container-selection.md) | **S2 done** — S3 next (after or parallel if X11) |
+| **P1** | [desktop keybinds](./plans/forge-desktop-keybinds.md) | **Plan ready** — KB0 after S3 (or small anytime); KB1–4 after |
+| P1 | [layout settle pure](./plans/forge-layout-settle-pure.md) D0 | Draft hybrid; **user lock** then PS1 |
+| P1 | [first-class containers](./plans/forge-first-class-containers.md) residual | Mouse resize / Z0 after selection |
 | P1 | [stacked](./plans/forge-stacked-layouts.md) | SL0–SL5 **done**; SL6 optional |
 | P2 | Live layout daily-drive | Bare-array sugar live on black |
-| P3 | [resize ratio/autotile](./plans/forge-resize-and-autotile.md) | Optional/parked; design blocker closed — not a hard gate |
+| P3 | [resize ratio/autotile](./plans/forge-resize-and-autotile.md) | Optional/parked |
 | P3 | [layout-sugar](./plans/forge-layout-sugar.md) LS3/LS6 | Optional; main path **done** |
 
 ### Done recently
 
 | Item | Note |
 | --- | --- |
-| LF1 + LF2 layout reliability | A/B AGREE on `plan/forge-layout-reliability` |
-| layout two-pass mon claim | unit green; live closed by LF1 |
-| layout list docs/tests | host-only table UX + tree-root |
-| layout-sugar LS1–2,4–5,7–8 | Main path done |
-| STACKED Phase 1 / SL0–SL4 | keys, save, thrash parity, regression |
+| Lock thrash soft-rehome | X11 GNOME ScreenSaver.Lock + panels Off → no thrash |
+| Lock ownership | GNOME media-keys; no Forge DPMS |
+| Selection S1–S2 | Elevated CON ops |
+| LF1–LF8 layout reliability | Live OK |
+| STACKED SL0–SL5 | Done |
 | workon → layout rename | no BC |
