@@ -115,6 +115,12 @@ export class Window extends withSignals() {
     return this.title;
   }
 
+  // Test helper: late-arriving title (Wayland maps with null/empty).
+  set_title(value) {
+    this.title = value;
+    this.emit("notify::title");
+  }
+
   get_workspace() {
     return this._workspace;
   }

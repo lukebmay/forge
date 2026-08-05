@@ -103,6 +103,8 @@ export class Bin extends Widget {
     super(params);
     this.child = params.child || null;
     this.children = [];
+    this.reactive = params.reactive !== undefined ? params.reactive : true;
+    this.track_hover = params.track_hover !== undefined ? params.track_hover : false;
   }
 
   set_child(child) {
