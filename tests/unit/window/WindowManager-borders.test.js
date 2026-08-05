@@ -629,6 +629,50 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       expect(nodeWindow._actor).toBe(windowActor);
     });
 
+    it("hides orphan borders that lost their actor prop (registry)", () => {
+      const orphan = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      // Simulate a border left in window_group after actor prop was cleared
+      wm().decorationManager._registerBorder(orphan);
+
+      wm().hideWindowBorders();
+
+      expect(orphan.hide).toHaveBeenCalled();
+      expect(orphan.set_position).toHaveBeenCalledWith(-10000, -10000);
+    });
+
+    it("hides node-owned focus border when compositor private is null", () => {
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 400, height: 300 }),
+        workspace: ctx.workspaces[0],
+      });
+      metaWindow.get_compositor_private = vi.fn(() => null);
+
+      const nodeBorder = {
+        set_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+      nodeWindow._actor = null;
+      nodeWindow._focusBorder = nodeBorder;
+
+      wm().hideWindowBorders();
+
+      expect(nodeBorder.hide).toHaveBeenCalled();
+    });
+
     it("sizes focus border from tree renderRect when Meta frame is much smaller", () => {
       ctx.settings.get_boolean.mockImplementation((key) => {
         if (key === "tiling-mode-enabled") return true;
@@ -667,6 +711,66 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       // inset = 3 * dpi (1 in unit tests)
       expect(mockBorder.set_size).toHaveBeenCalledWith(1200 + 6, 900 + 6);
       expect(mockBorder.set_position).toHaveBeenCalledWith(50 - 3, 50 - 3);
+    });
+
+    it("sizes focus border from tree slot when Meta is only moderately off", () => {
+      // Pre-fix: only area < 50% used slot; moderate lag left a smaller outline.
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "tiling-mode-enabled") return true;
+        if (key === "focus-border-toggle") return true;
+        if (key === "focus-border-hidden-on-single") return false;
+        if (key === "split-border-toggle") return false;
+        return false;
+      });
+
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 100, y: 100, width: 1000, height: 700 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      metaWindow.get_compositor_private().border = mockBorder;
+      global.display.get_focus_window.mockReturnValue(metaWindow);
+      metaWindow.appears_focused_value = true;
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+      // Slot ~15% larger / shifted — not half area, but still wrong
+      nodeWindow.renderRect = { x: 50, y: 50, width: 1100, height: 800 };
+
+      wm().showWindowBorders();
+
+      expect(mockBorder.set_size).toHaveBeenCalledWith(1100 + 6, 800 + 6);
+      expect(mockBorder.set_position).toHaveBeenCalledWith(50 - 3, 50 - 3);
+    });
+
+    it("ensureFocusBorder starts hidden and is registered", () => {
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 400, height: 300 }),
+        workspace: ctx.workspaces[0],
+      });
+      const windowActor = metaWindow.get_compositor_private();
+      windowActor.border = undefined;
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+
+      const border = wm().decorationManager.ensureFocusBorder(windowActor, nodeWindow);
+
+      expect(border).toBeTruthy();
+      expect(border.visible).toBe(false);
+      expect(nodeWindow._focusBorder).toBe(border);
+      expect(windowActor.border).toBe(border);
+      expect(wm().decorationManager._borderRegistry.has(border)).toBe(true);
     });
   });
 

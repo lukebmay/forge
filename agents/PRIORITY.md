@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-05 (YouTube mon + borders + Guake pointer fixes; logout re-smoke)  
+**Updated:** 2026-08-05 (layout dev OK; border harden; stable gate before session split)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -8,34 +8,32 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Wayland thrash + selection smoke** | Session switch; prove soft-rehome under compositor blank; short; gate daily-driver confidence on both sessions |
+| **1** | **Border smoke + Wayland thrash** | Layout OK; borders must be clean before session-backend refactor |
 | **2** | **Container selection finish** | S3 kit binds → S5 live QA; product mid-wave (S2 elevated ops already shipped) |
 | **3** | **Desktop keybinds** | Manage GNOME chords (not own); Safe dual-lock; conflict offer; open GNOME Keyboard button |
 
-**If operator is on Wayland:** do **1** before more product code.  
+**If operator is on Wayland:** finish **1** before more product code or the session split.  
 **If still on X11** and not switching: **2** can proceed; thrash already OK on X11 product lock path.
 
 ## Next session focus
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **Logout + re-smoke** | Install already done; logout/in; YouTube mon=1 + no stale borders + Guake no warp | [HANDOFF](./HANDOFF.md) |
-| **2** | **Wayland thrash** | Lock Super+Delete → unlock; `forge tree`; journal | [HANDOFF](./HANDOFF.md) |
-| **2** | **Wayland selection smoke** | RunSteps elevate + layout-cycle; optional i3 Super+a | After thrash OK |
-| **3** | **CON selection S3** | Vim Super+p + BackSpace clear multi-bind + cheatsheet | [plan](./plans/forge-container-selection.md) |
-| **4** | **KB1+** | Open GNOME Keyboard button; conflict offer (KB2); desktop section | after S3; [desktop-keybinds](./plans/forge-desktop-keybinds.md) KB0 **done** |
-| 5 | S5 live QA | Checklist A–G after S3 | selection plan |
+| **1** | **Logout + border re-smoke** | New border registry code; no leftover outlines after focus/resize/layout | [HANDOFF](./HANDOFF.md) |
+| **2** | **Wayland thrash (W4)** | Super+Delete lock → unlock; `forge tree`; journal | After borders green |
+| **3** | **Session-backend plan** | Draft `session/{wayland,x11}` — **approve before code** | After thrash; major redesign |
+| **4** | **CON selection S3** | Vim Super+p + BackSpace clear multi-bind + cheatsheet | [plan](./plans/forge-container-selection.md) |
+| **5** | **KB1+** | Open GNOME Keyboard button; conflict offer (KB2) | after S3; [desktop-keybinds](./plans/forge-desktop-keybinds.md) |
 
 **Shipped recently**
 
 | Item | Note |
 | --- | --- |
-| Wayland W1–W5 | sizes, PlaceNext/PWA, Guake/dock, residual belt + tab icons — `plan/forge-wayland-live`; **logout/in then smoke** |
-| Soft-rehome lock+DPMS | Guard + sliding cooldown + fingerprint re-arm; X11 product GNOME lock OK |
-| GNOME owns Super+Delete lock | Forge does not force DPMS; `prefs-lock-screen` unbound |
+| Wayland W1–W5 + W3b | sizes, PlaceNext/PWA, Guake, cross-mon move — `plan/forge-wayland-live` |
+| **Border harden (W3c)** | registry + node ownership + slot prefer — **logout smoke** |
+| Soft-rehome lock+DPMS | X11 product GNOME lock OK |
 | Selection S1–S2 | Elevated ops + bag chrome |
 | **KB0** kit-aware GNOME lock | Safe Super+L+Delete; Vim/i3 Delete only |
-| Desktop keybinds plan | [forge-desktop-keybinds.md](./plans/forge-desktop-keybinds.md) — KB1 next |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 

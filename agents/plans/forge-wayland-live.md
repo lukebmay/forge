@@ -48,12 +48,14 @@ focused monitor. **No X11 regressions.**
 | W2 | Layout open wait / PlaceNext / multi-chrome on Wayland | **done** |
 | W3 | Guake + dock mon focus placement | **done** |
 | W5 | Layout residual + PWA icons/place + full belt | **done** (975ed17) |
-| W4 | Wayland thrash smoke (lock Super+Delete) | **next** (after logout smoke of 42c8751) |
-| W6? | Session backend split (wayland vs x11 modules) | **later** — see HANDOFF architecture; plan before large move |
+| W3b | Cross-mon move + Guake pointer + first stale-border fix | **done** (`42c8751`) |
+| W3c | Border registry / node ownership / tighter slot prefer | **done** (this session) — **logout smoke required** |
+| W4 | Wayland thrash smoke (lock Super+Delete) | **next** after border smoke green |
+| W6? | Session backend split (wayland vs x11 modules) | **later** — plan + approve after stable gate |
 
 ## Session note
 
-**2026-08-05:** Operator logging out to load `42c8751` (YouTube mon, borders, Guake
-pointer). Architecture note: Wayland/X11 not dual-backend yet — ad-hoc ifs + shared
-hardening; recommend `session/{wayland,x11}.js` after smoke, not more spaghetti in
-`window.js`. W4 thrash after pass criteria in HANDOFF.
+**2026-08-05 (later):** `forge layout dev` topology OK live. Operator still saw
+border issues after `42c8751`. Hardened: registry hide, node-owned borders,
+no map-time show, prefer tree slot when Meta lags moderately. Install + **logout**
+required. Stable gate before any session-backend refactor — see HANDOFF.

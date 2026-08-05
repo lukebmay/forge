@@ -216,17 +216,22 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       const actor = metaWindow.get_compositor_private();
-      actor.border = { hide: vi.fn() };
-      actor.splitBorder = { hide: vi.fn() };
+      const focusBorder = { hide: vi.fn() };
+      const splitBorder = { hide: vi.fn() };
+      actor.border = focusBorder;
+      actor.splitBorder = splitBorder;
 
       const removeChildSpy = vi.spyOn(ctx.windowGroup, "remove_child");
 
       wm().windowDestroy(actor);
 
-      expect(removeChildSpy).toHaveBeenCalledWith(actor.border);
-      expect(removeChildSpy).toHaveBeenCalledWith(actor.splitBorder);
-      expect(actor.border.hide).toHaveBeenCalled();
-      expect(actor.splitBorder.hide).toHaveBeenCalled();
+      expect(removeChildSpy).toHaveBeenCalledWith(focusBorder);
+      expect(removeChildSpy).toHaveBeenCalledWith(splitBorder);
+      expect(focusBorder.hide).toHaveBeenCalled();
+      expect(splitBorder.hide).toHaveBeenCalled();
+      // Props cleared after destroy
+      expect(actor.border).toBeUndefined();
+      expect(actor.splitBorder).toBeUndefined();
     });
 
     it("should remove window node from tree", () => {

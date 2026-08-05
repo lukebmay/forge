@@ -1,10 +1,10 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (operator logging out for fix smoke)  
-**Branch:** `plan/forge-wayland-live` (pushed `origin`)  
-**HEAD:** `42c8751` — cross-mon move, stale borders, Guake pointer  
-**Installed disk:** `v49-90-beta.2-174-g42c8751` (logout required to run this)  
-**Default:** `master` — **do not merge** until post-logout smoke OK  
+**Updated:** 2026-08-05 (border harden; layout dev OK; gate before session-backend split)  
+**Branch:** `plan/forge-wayland-live`  
+**HEAD:** (this commit) — border registry + node ownership + tighter slot prefer  
+**Installed disk:** after commit + `./install` → versionName includes new SHA  
+**Default:** `master` — **do not merge** until operator confirms borders clean post-logout  
 **Remotes:** `test` / `prod` **not** touched  
 
 **Plan:** [forge-wayland-live.md](./plans/forge-wayland-live.md)  
@@ -12,40 +12,53 @@
 
 ---
 
+## Status snapshot
+
+| Layer | Status |
+| --- | --- |
+| Layout `forge layout dev` | **OK** (operator + live tree): mon0 TABBED(Chrome,Grok)\|ghostty; mon1 ghostty\|TABBED(YouTube,Gmail,Voice); YouTube Meta mon=1 |
+| Cross-mon move | Shipped `42c8751` (`move_to_monitor` before clamp) |
+| Guake / float pointer | Shipped `42c8751` (no auto-warp floats; float under MONITOR) |
+| **Borders (this wave)** | **Hardened** — needs **logout/in** then re-smoke (Wayland modules) |
+| Soft-rehome thrash (W4) | **Not done** on Wayland |
+| Session backend split (W6) | **Not started** — architecture below; plan after border smoke green |
+
+---
+
 ## Operator action now
 
-1. **Log out and back into GNOME Wayland** (no HUP; disable/enable will not reload ES modules).
-2. Confirm code:
+1. **Log out and back into GNOME Wayland** (ES modules do not reload on disable/enable).
+2. Confirm:
 
 ```sh
 cd ~/dev/me/forge
 git checkout plan/forge-wayland-live
 git pull --ff-only origin plan/forge-wayland-live
-forge ping   # versionName should include g42c8751 (or newer)
+forge ping   # versionName should match HEAD (not g42c8751-only)
 ```
 
-3. Smoke layout:
+3. Smoke:
 
 ```sh
-# Prefer cold-ish dual Ghostty; do not close the agent Ghostty
 forge layout dev
 forge tree
+# Then focus/move/resize across mon0/mon1 and tab switches
 ```
 
-### Pass criteria
+### Pass criteria (stable gate before refactor)
 
 | Check | Expect |
 | --- | --- |
 | Topology | mon0 TABBED(Chrome,Grok)\|ghostty; mon1 ghostty\|TABBED(YouTube,Gmail,Voice) |
-| YouTube Meta mon | `monitor: 1` (not 0); frame x on mon1 (~≥2600) |
+| YouTube Meta mon | `monitor: 1`; frame on mon1 (~x≥2600) |
 | Active tabs | mon0 Grok; mon1 YouTube |
 | Icons | Grok ≠ Chrome; Gmail ≠ YouTube |
-| Borders | No leftover smaller red/yellow outlines after focus/move/resize |
-| Guake F12 | Does **not** yank pointer; not under tab-strip geometry |
-| Dry-run | At most residual focus ops (Grok/YouTube active + profile ghostty) |
+| **Borders** | **No leftover red/yellow/cyan outlines** after focus change, resize, tab switch, or re-layout — only the **current** focus (+ split edge if enabled) |
+| Guake F12 | Does not yank pointer; not under tab-strip geometry |
+| Dry-run | Residual focus ops only |
 
-4. If pass → **W4 thrash:** Super+Delete lock → unlock → `forge tree` + journal soft-rehome.  
-5. If thrash OK → selection smoke → S3 → KB1+. Merge plan → master only then.
+4. If borders **still** wrong: note color (red focus / yellow split / cyan tabbed / green selection), when (after resize? thrash? focus mon?), screenshot if easy — stay on this branch; do **not** start session-backend split.  
+5. If pass → **W4 thrash** (Super+Delete lock → unlock → `forge tree`) → then draft **session-backend** plan for approval (major redesign).
 
 Logging (debug install):
 
@@ -57,18 +70,36 @@ gsettings --schemadir "$SCHEMA" set org.gnome.shell.extensions.forge log-level 5
 
 ---
 
-## What shipped this wave (branch summary)
+## Border fix (this session)
 
-| Commit / area | What |
+### What was still wrong after `42c8751`
+
+Live actor resolve fixed null `_actor` cache, but:
+
+1. **Map-time `border.show()`** for every new tile → half-size rings during `layout dev` thrash.  
+2. **No registry** — borders live on `global.window_group`; if actor prop was lost, hide never found them.  
+3. **Meta-preferring rect** only when area &lt; 50% of slot → moderate Meta lag left smaller outlines.  
+4. Destroy path did not always clear node-owned borders.
+
+### What shipped
+
+| Change | Where |
 | --- | --- |
-| W1–W5 | sizes, PlaceNext/PWA, Guake mon, residual belt, tab icons |
-| **`42c8751`** | `move()` + `move_to_monitor`; live border actor hide; no float pointer-warp; float attach under MONITOR |
+| `_borderRegistry` + hide all registered on every hide | `decoration.js` |
+| Node ownership `_focusBorder` / `_splitBorders` + reattach | `decoration.js` |
+| `ensureFocusBorder()` always starts **hidden** | `decoration.js` + `window.js` track |
+| Prefer tree slot when Meta mon/size/pos off (tight thresholds) | `_borderRectForWindow` |
+| Destroy unregisters + clears node props | `windowDestroy` / disable |
+| Unit tests (orphan hide, moderate Meta lag, ensure hidden) | `WindowManager-borders.test.js` |
 
-### Root causes found live (2026-08-05)
+### Key code map (borders)
 
-1. **YouTube invisible** — tree mon1, Meta mon0; clamp used mon0 work area → frame ~`x:1313`.  
-2. **Stale borders** — `hideWindowBorders` used null/stale `Node._actor`.  
-3. **Guake** — `move-pointer-focus` warped into float; float attached under LFT/TABBED.
+| Concern | Path |
+| --- | --- |
+| Hide/show/registry | `lib/extension/decoration.js` |
+| Map-time create | `window.js` `trackWindow` → `ensureFocusBorder` |
+| Destroy | `window.js` `windowDestroy` → `_destroyActorBorder(..., node)` |
+| Tree slot | `node.renderRect` / `node.rect` |
 
 ---
 
@@ -76,55 +107,32 @@ gsettings --schemadir "$SCHEMA" set org.gnome.shell.extensions.forge log-level 5
 
 ### Are we cleanly separating tracts?
 
-**No — not as dual backends.** Today is:
-
-| Layer | How session type is handled |
-| --- | --- |
-| **Tree / layout math** | Shared (good) — `tree-layout.js`, percents, tab/stack structure |
-| **Mutter version drift** | Centralized — `compat.js` + `docs/dev/compat.md` (maximize flags, etc.) |
-| **Wayland vs X11** | **Ad-hoc** — a few `Meta.is_wayland_compositor()` branches (HiDPI align, stacking pin, comments about map races). Most “Wayland fixes” are **shared-path hardening** (null class/title, late identity, move_to_monitor, actor cache) that also runs on X11 |
+**No — not as dual backends.** Today is shared-path hardening + a few `Meta.is_wayland_compositor()` branches.
 
 Scattered sites (not a module boundary):
 
-- `tree.js` — Wayland transient `make_above` stacking pin on activate  
-- `window.js` — buffer-scale align in `move()`; late title/class; map races  
-- `decoration.js` — HiDPI border align  
-- Docs/comments elsewhere (drag-drop, soft-rehome, session restore)
+- `tree.js` — Wayland transient stacking pin  
+- `window.js` — buffer-scale align, late title/class, map races, mon move  
+- `decoration.js` — HiDPI border align + actor timing  
+- Docs/comments (drag-drop, soft-rehome, session restore)
 
-There is **no** `wayland/` vs `x11/` package, no session backend interface, no dual track for map → place → move → activate.
+### Recommended structure (not implemented — **plan + approve** after smoke)
 
-### Why that is risky (agrees with operator)
-
-Mutter/X11 and Mutter/Wayland differ on:
-
-- Map-time identity (null class/title)  
-- Compositor private actor timing  
-- Cross-monitor `move` / `move_to_monitor` semantics  
-- Stacking / raise / focus  
-- HiDPI coordinate spaces (fractional scale + `scale-monitor-framebuffer` on black)  
-- Shell reload (X11 HUP vs logout-only)
-
-Sprinkling `if (wayland)` inside `window.js` / `tree.js` will become spaghetti as black stays dual-session-capable.
-
-### Recommended structure (not implemented — plan when smoke is green)
-
-Keep **one product** (same tree model, same CLI, same prefs). Split **session mechanics**:
+Keep **one product** (tree, CLI, prefs). Split **session mechanics**:
 
 ```text
 lib/extension/
-  layout/          # pure / shared: tree-layout, percent, query (no Meta session ifs)
-  session/         # NEW boundary
-    types.js       # SessionBackend interface
-    shared.js      # helpers both use
+  layout/          # pure / shared tree math
+  session/         # NEW
+    types.js
+    shared.js
     wayland.js     # map, place, move, activate, stack, border actor timing
-    x11.js         # same surface, X11-safe behavior
-    index.js       # pick backend once at enable via Meta.is_wayland_compositor()
-  window.js        # orchestration only — calls backend, not raw session ifs
-  tree.js          # structure; activate delegates to session backend
-  compat.js        # KEEP for Mutter *version* (45/46/…), not X11 vs Wayland
+    x11.js
+    index.js       # pick at enable via Meta.is_wayland_compositor()
+  window.js        # orchestration → backend
+  tree.js          # structure; activate → backend
+  compat.js        # Mutter *version* only — never “if wayland”
 ```
-
-**Surface area for dual implementations** (same method names):
 
 | Method | Why dual |
 | --- | --- |
@@ -134,16 +142,7 @@ lib/extension/
 | `resolveWindowActor(node)` | border hide/show |
 | `alignRect(rect)` | HiDPI / buffer scale |
 
-**Do not** fork the whole tiling tree or prefs. **Do** stop adding new `if (is_wayland)` in `window.js` — new session behavior goes behind the backend.
-
-| Rule going forward (proposed) | Detail |
-| --- | --- |
-| New session-sensitive code | Backend method, not another mid-function if |
-| Shared layout math | Stay pure; no Meta session checks |
-| `compat.js` | Version only; never “if wayland” |
-| Dual live smoke | black can stay dual; CI/unit mock both backends |
-
-**When to plan this:** after logout smoke + W4, as a named plan slice (e.g. `forge-session-backend`) — **major redesign → plan + approve before large moves.** Until then, prefer shared hardening only when the bug is real on both; flag Wayland-only work clearly in notes.
+**Rule until then:** prefer shared hardening when the bug is real on both; flag Wayland-only work in notes. **Do not** start the large move until borders + W4 thrash are green and the operator approved a plan slice (e.g. `forge-session-backend`).
 
 ---
 
@@ -151,35 +150,17 @@ lib/extension/
 
 ### `move-pointer-focus-enabled`
 
-**On black:** true. **Why:** keyboard focus warps pointer so attachNode / open-app / LFT stay coherent when pointer was on the other head.
-
-**Better long-term:** open/place use **focus-monitor** (W3 started this); warp only on keyboard tile nav or only when pointer is on wrong mon; re-evaluate default false after open path proven.
-
-See also Guake: floats no longer auto-warp (`force` keybind still can).
+**On black:** true. Better long-term: open/place use focus-monitor; warp only on keyboard tile nav or wrong-mon pointer.
 
 ### Guake
 
-Float override; mon-follow only; attach under MONITOR; no tile under TABBED. If still “lowered” after logout, compare Forge disabled vs enabled (Guake/XWayland prefs).
-
----
-
-## Key code map
-
-| Concern | Path |
-| --- | --- |
-| Cross-mon move | `window.js` `move`, `_monitorIndexForRect` |
-| Borders hide/show | `decoration.js`, `tree.js` `windowActor` |
-| Pointer / floats | `focus.js` `movePointerWith` |
-| Float attach | `window.js` `trackWindow` |
-| Guake mon | `window.js` `_applyFloatFollowMonitor` |
-| Soft rehome | `soft-rehome.js` |
-| Mutter version | `compat.js` |
+Float override; mon-follow only; attach under MONITOR. If still lowered after logout, compare Forge off vs on.
 
 ---
 
 ## Human blockers
 
-None hard. **Operator: logout/in → § pass criteria → W4 thrash.**
+None hard. **Operator: logout/in → border + layout pass criteria → W4 thrash → then session-backend plan.**
 
 ---
 
@@ -187,7 +168,7 @@ None hard. **Operator: logout/in → § pass criteria → W4 thrash.**
 
 | Plan | Next |
 | --- | --- |
-| [forge-wayland-live](./plans/forge-wayland-live.md) | Logout smoke → **W4 thrash** |
+| [forge-wayland-live](./plans/forge-wayland-live.md) | Border smoke → **W4 thrash** → optional W6 plan |
+| Session backend split | Draft after stable gate (major redesign — user approve) |
 | [forge-container-selection](./plans/forge-container-selection.md) | S3 after Wayland OK |
 | [forge-desktop-keybinds](./plans/forge-desktop-keybinds.md) | KB1 after S3 |
-| Session backend split | Draft after smoke (not started) |
