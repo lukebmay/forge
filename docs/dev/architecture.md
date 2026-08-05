@@ -121,12 +121,12 @@ and `requestLayout` only latch need-commit (no per-app mid-batch render).
 `renderTree` + post-render verify) → end (one deferred `requestLayout` only if
 no residual render already cleared the latch).
 
-**CL10 layout-apply chrome (opt-in):** GSettings `layout-apply-chrome-enabled`
-(default **false**). When on, `beginOpenLayoutBatch` (depth ≥ 1) shows a
+**CL10 layout-apply chrome (default on):** GSettings `layout-apply-chrome-enabled`
+(default **true**). During `beginOpenLayoutBatch` (depth ≥ 1) shows a
 non-reactive full-stage dim scrim (`layout-apply-chrome.js`); cleared on batch
 depth 0, `disable()`, and always by a hard timer ≤ **8s** so chrome cannot stick.
-Enable for trial: Preferences → Settings → Debugging, or
-`gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled true`.
+Disable: Preferences → Settings → Debugging, or
+`gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled false`.
 
 ## Command dispatch flow
 
