@@ -47,10 +47,4 @@
 
 ## Session note
 
-**2026-08-04 W2 B-rework (A):** (1) Chrome equality tightened — browser↔PWA and
-browser↔browser only; distinct PWA/crx never match unless exact. Synced
-`place-hint.js` `wmClassEqual`, `forge` `_class_eq`, `layout_plan.py` `_class_eq`.
-Negative tests in place-hint, test_forge_class_eq, TestClassEqChromeFamily.
-(2) `_retryPlaceHintAfterIdentity` reparents under `plan.attachLft` / path via
-`_resolveAttachTarget` + `_reparentForLatePlace` (not mon-root only). Test:
-deferred treePath attach. Vitest extension/window 810 + pytest class_eq suites green.
+W2 A/B AGREE after rework. Chrome browser↔PWA sugar (not PWA↔PWA); PlaceNext sticky mon + deferred path attach. Commits 655a0c9 + 9e6bd15.
