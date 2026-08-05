@@ -45,10 +45,12 @@ focused monitor. **No X11 regressions.**
 | ID | Task | Status |
 | --- | --- | --- |
 | W1 | Size normalize + late-tile share + title signal + border non-reactive | **ready for verify** |
-| W2 | Layout open wait / PlaceNext / multi-chrome on Wayland | **next** |
+| W2 | Layout open wait / PlaceNext / multi-chrome on Wayland | **ready for verify** |
 | W3 | Guake + dock mon focus placement | draft |
 | W4 | Wayland thrash smoke (lock Super+Delete) | draft after W1 |
 
 ## Session note
 
-**2026-08-04 W1 done (A/B AGREE).** Live: zero/neg widths from mixed percent+late title. Next W2 PlaceNext/PWA wait + mon force.
+**2026-08-04 W2 implement (A):** Chrome PWA class sugar (CLI + place-hint);
+PlaceNext mon sticky force Meta; deferred place on late class. Full unit green.
+Next: B verify → W3 Guake/dock mon.

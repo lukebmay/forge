@@ -207,6 +207,109 @@ describe("OP1 open-app placement policy", () => {
       // Inserted after path target (sibling of a)
       expect(node.parentNode).toBe(a.nodeWindow.parentNode);
     });
+
+    it("W2: PlaceNext mon forces Meta sticky (not tree-only)", () => {
+      const lft = tileOn(0, { id: "lft0" });
+      wm().movePointerWith(lft.nodeWindow);
+
+      wm().placeNext({
+        wmClass: "Google-chrome",
+        monitor: 0,
+        expiresAt: Date.now() + 60_000,
+      });
+
+      // Meta maps on mon1 (restore/pointer) while PlaceNext wants mon0.
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        id: "chrome-place",
+        wm_class: "Google-chrome",
+      });
+      wm().trackWindow(null, metaWindow);
+
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(0);
+      expect(metaWindow.get_monitor()).toBe(0);
+      expect(metaWindow._forgeDockStickyMon).toBe(0);
+
+      // entered-monitor flip refused during sticky grace
+      metaWindow.move_to_monitor(1);
+      wm().updateMetaWorkspaceMonitor("window-entered-monitor", 1, metaWindow);
+      expect(metaWindow.get_monitor()).toBe(0);
+      expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0);
+    });
+
+    it("W2: Chrome PWA class matches Google-chrome PlaceNext", () => {
+      tileOn(1, { id: "lft1" });
+      wm().placeNext({
+        wmClass: "Google-chrome",
+        monitor: 0,
+        expiresAt: Date.now() + 60_000,
+      });
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        id: "pwa-win",
+        wm_class: "chrome-ggjoabcdef-Default",
+      });
+      wm().trackWindow(null, metaWindow);
+
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(0);
+      expect(metaWindow.get_monitor()).toBe(0);
+      expect(wm()._pendingPlaceHints.length).toBe(0);
+    });
+
+    it("W2: deferred PlaceNext when class lands after map", () => {
+      const lft = tileOn(1, { id: "lft1" });
+      wm().movePointerWith(lft.nodeWindow);
+
+      wm().placeNext({
+        wmClass: "Google-chrome",
+        monitor: 0,
+        expiresAt: Date.now() + 60_000,
+      });
+
+      // Null class at map: hint not consumed; homes to global LFT mon1.
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        id: "late-chrome",
+        wm_class: null,
+        title: null,
+      });
+      wm().trackWindow(null, metaWindow);
+
+      let node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      expect(wm()._pendingPlaceHints.length).toBe(1);
+      expect(metaWindow._forgeDockStickyMon).toBeUndefined();
+
+      // Class lands (Wayland) — consume PlaceNext and sticky-rehome to mon0.
+      metaWindow.set_wm_class("chrome-ggjoabcdef-Default");
+      node = wm().findNodeWindow(metaWindow);
+      expect(wm()._pendingPlaceHints.length).toBe(0);
+      expect(metaWindow.get_monitor()).toBe(0);
+      expect(monitorOf(node)).toBe(0);
+      expect(metaWindow._forgeDockStickyMon).toBe(0);
+    });
+
+    it("generic open without place hint does not sticky-force Meta mon", () => {
+      const lft = tileOn(1, { id: "lft1" });
+      wm().movePointerWith(lft.nodeWindow);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "generic-no-sticky",
+      });
+      wm().trackWindow(null, metaWindow);
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      // Tree homes to LFT mon; Meta sticky flags are dock/PlaceNext only.
+      expect(metaWindow._forgeDockStickyMon).toBeUndefined();
+    });
   });
 
   describe("dock sticky mon + LFT(m)", () => {

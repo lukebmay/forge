@@ -2673,8 +2673,36 @@ def _slot_mon_key(slot: Any) -> Optional[str]:
     return None
 
 
+def _is_chrome_browser_class(s: str) -> bool:
+    """Google-chrome / Chromium family (not a PWA instance id)."""
+    n = (s or "").strip().casefold()
+    if not n:
+        return False
+    if n in ("google-chrome", "chromium", "chromium-browser", "chrome"):
+        return True
+    if n.startswith("google-chrome-"):
+        return True
+    return False
+
+
+def _is_chrome_pwa_class(s: str) -> bool:
+    """Wayland Chrome PWA / crx_* instance classes."""
+    n = (s or "").strip().casefold()
+    if not n:
+        return False
+    if n.startswith("crx_"):
+        return True
+    if n.startswith("chrome-") and n.endswith("-default"):
+        return True
+    return False
+
+
+def _is_chrome_family_class(s: str) -> bool:
+    return _is_chrome_browser_class(s) or _is_chrome_pwa_class(s)
+
+
 def _class_eq(a: Any, b: Any) -> bool:
-    """Casefold equality, plus reverse-DNS stem sugar (ghostty ↔ com.mitchellh.ghostty)."""
+    """Casefold equality + reverse-DNS stem + Chrome family ↔ PWA ids."""
     if a is None or b is None:
         return False
     sa = str(a).strip().casefold()
@@ -2685,6 +2713,9 @@ def _class_eq(a: Any, b: Any) -> bool:
         return True
     # Sugar stem: "ghostty" matches "com.mitchellh.ghostty" (either side).
     if sa.endswith("." + sb) or sb.endswith("." + sa):
+        return True
+    # Google-chrome / Chromium ↔ chrome-*-Default / crx_* (layout match / wait).
+    if _is_chrome_family_class(sa) and _is_chrome_family_class(sb):
         return True
     return False
 
