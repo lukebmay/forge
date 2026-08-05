@@ -1,132 +1,193 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (post-reboot layout smoke + YouTube/borders/Guake fixes)  
-**Branch:** `plan/forge-wayland-live`  
-**Default:** `master` — **not** merged yet (need logout smoke of this fix)  
+**Updated:** 2026-08-05 (operator logging out for fix smoke)  
+**Branch:** `plan/forge-wayland-live` (pushed `origin`)  
+**HEAD:** `42c8751` — cross-mon move, stale borders, Guake pointer  
+**Installed disk:** `v49-90-beta.2-174-g42c8751` (logout required to run this)  
+**Default:** `master` — **do not merge** until post-logout smoke OK  
 **Remotes:** `test` / `prod` **not** touched  
+
+**Plan:** [forge-wayland-live.md](./plans/forge-wayland-live.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 
-**Plan:** [forge-wayland-live.md](./plans/forge-wayland-live.md)
-
 ---
 
-## Where we are
+## Operator action now
 
-| Layer | Status |
-| --- | --- |
-| Wayland **W1–W5** | Shipped earlier; operator rebooted / on Wayland |
-| Layout `dev` topology | Tree shape OK after reboot: mon0 tabs(Chrome,Grok)\|ghostty; mon1 ghostty\|tabs(YouTube,Gmail,Voice) |
-| **YouTube not visible** | **Root cause found + fixed (needs logout):** Meta stayed mon0; tree slot mon1. `move()` never called `move_to_monitor` before clamp → frame pinned ~mon0 right half |
-| **Stale tile borders** | **Fixed (needs logout):** `hideWindowBorders` used null/stale `Node._actor`; old smaller borders stayed visible over new tiles |
-| **Guake interference** | **Partial fix (needs logout):** no auto pointer-warp for floats; float-exempt attach under MONITOR not TABBED LFT; float-follow mon move only (W3) kept |
-| Icons | OK after logout (Grok/Gmail/YouTube PWA classes) |
-| Soft-rehome thrash | **W4 not done** on Wayland |
-| Selection S3 / desktop keybinds | After thrash + this smoke |
-
-### Live evidence (2026-08-05)
-
-- `forge ping` → `v49-90-beta.2-171-g975ed17` (pre-fix install; reinstall after this commit)
-- YouTube: tree `rect` mon1 (`x:3861`) but Meta `monitor:0`, frame often `x~1313` width half — classic offscreen clamp to mon0 work area
-- Guake journal: `moved pointer to [Guake!] at (3861,…)` with `move-pointer-focus-enabled true`
-- Dry-run after stable layout: only residual focus ops (Grok active, YouTube active, profile ghostty) — expected
-
----
-
-## Fix just landed (this session)
-
-| Fix | Where |
-| --- | --- |
-| `move()` → `safeMoveToMonitor` before clamp/resize | `lib/extension/window.js` |
-| Live actor resolve for hide/show borders; tree `renderRect` when Meta lagging | `lib/extension/decoration.js`, `tree.js` `windowActor` |
-| Skip auto pointer warp for FLOAT; force still warps | `lib/extension/focus.js` |
-| Float-exempt attach under MONITOR (not LFT tab bag) | `lib/extension/window.js` `trackWindow` |
-| Unit tests | movement, pointer, borders |
-
-**Wayland:** install + **logout/in** required for modules to load. Disable/enable is not enough.
-
----
-
-## Next agent — after install + logout/in
+1. **Log out and back into GNOME Wayland** (no HUP; disable/enable will not reload ES modules).
+2. Confirm code:
 
 ```sh
 cd ~/dev/me/forge
 git checkout plan/forge-wayland-live
 git pull --ff-only origin plan/forge-wayland-live
-./install
-# LOGOUT / LOGIN Wayland
-forge ping   # version must include new commit
-gsettings --schemadir ~/.local/share/gnome-shell/extensions/forge@jmmaranan.com/schemas \
-  set org.gnome.shell.extensions.forge logging-enabled true
+forge ping   # versionName should include g42c8751 (or newer)
 ```
 
-### 1. Layout smoke
+3. Smoke layout:
 
 ```sh
+# Prefer cold-ish dual Ghostty; do not close the agent Ghostty
 forge layout dev
 forge tree
-# YouTube: monitor field must be 1; Meta frame on mon1 (session-layout frame x≥2600-ish)
-# Tab order mon1: YouTube, Gmail, Voice; lastTab YouTube; icons OK
-# No leftover small red/yellow border ghosts after focus/move
 ```
 
-Toggle Guake F12: should **not** yank pointer; should not sit as if under a tab strip (monitor-root float). W3 may still `move_to_monitor` to focus mon.
+### Pass criteria
 
-### 2. W4 thrash
-
-Lock Super+Delete → unlock → `forge tree` topology stable; journal soft-rehome.
-
-### 3. Then selection smoke → S3 → KB1+
-
-### 4. Merge gate
-
-Merge → master only when layout + borders + thrash OK (or thrash explicitly deferred).
-
----
-
-## Follow-up notes (do not lose)
-
-### `move-pointer-focus-enabled` — why it exists / rethink
-
-**Setting:** `move-pointer-focus-enabled` (prefs: “Move pointer with focused window”). Currently **true** on black.
-
-**Why it exists (code):** keyboard focus left/right/up/down and swaps call `movePointerWith` so the pointer sits inside the newly focused tile. Comment in `focus.js`: *“useful for making sure that Forge calculates the attachNode properly”*. Related: `new-window-placement: pointer` uses pointer mon for opens; `focus-on-hover` is separate (off).
-
-**Why operator needed it:** likely so keyboard-driven focus kept LFT / PlaceNext / open-app mon correct when pointer was left on the other head (dual 4K). Without warp, focus mon0 + pointer mon1 → next open / dock sticky can attach wrong.
-
-**Problems:**
-- Warps into Guake and other floats on map/focus (annoying; fixed for floats unless `force`)
-- Feels aggressive for everyday focus
-
-**Better options to investigate (product task, not P0 now):**
-1. Prefer **focus-window monitor** for open/place (already partly W3 `resolveFocusMonitor`) over warping pointer
-2. Warp only on **keyboard** focus commands, not every focus signal
-3. Warp only when pointer is outside the destination monitor (not every tile change)
-4. Drop setting default to false once open-app + PlaceNext never use pointer mon alone
-
-File later under container/open-app or a small `forge-pointer-follow` task. Do not flip default until open path is proven without it.
-
-### Guake product stance
-
-- `windows.json` float override remains
-- W3 float-follow mon move stays for multi-mon F12
-- Do **not** tile Guake or put it under TABBED parents
-- Do **not** auto pointer-warp to Guake
-
-If Guake still looks “lowered” after logout, compare Guake-only geometry with Forge disabled (Guake prefs / XWayland).
-
----
-
-## Known constraints
-
-| Topic | Detail |
+| Check | Expect |
 | --- | --- |
-| **No Wayland HUP** | Logout/in only for extension module reload |
-| **Focus residual** | Dry-run 3 focus ops when topology perfect — intentional |
-| **Don’t close agent Ghostty** | Dual-head ghostty load-bearing for layout roles |
-| **Fractional scale 1.5** | black dual 4K; borders use dpi-scaled inset |
+| Topology | mon0 TABBED(Chrome,Grok)\|ghostty; mon1 ghostty\|TABBED(YouTube,Gmail,Voice) |
+| YouTube Meta mon | `monitor: 1` (not 0); frame x on mon1 (~≥2600) |
+| Active tabs | mon0 Grok; mon1 YouTube |
+| Icons | Grok ≠ Chrome; Gmail ≠ YouTube |
+| Borders | No leftover smaller red/yellow outlines after focus/move/resize |
+| Guake F12 | Does **not** yank pointer; not under tab-strip geometry |
+| Dry-run | At most residual focus ops (Grok/YouTube active + profile ghostty) |
+
+4. If pass → **W4 thrash:** Super+Delete lock → unlock → `forge tree` + journal soft-rehome.  
+5. If thrash OK → selection smoke → S3 → KB1+. Merge plan → master only then.
+
+Logging (debug install):
+
+```sh
+SCHEMA=~/.local/share/gnome-shell/extensions/forge@jmmaranan.com/schemas
+gsettings --schemadir "$SCHEMA" set org.gnome.shell.extensions.forge logging-enabled true
+gsettings --schemadir "$SCHEMA" set org.gnome.shell.extensions.forge log-level 5
+```
+
+---
+
+## What shipped this wave (branch summary)
+
+| Commit / area | What |
+| --- | --- |
+| W1–W5 | sizes, PlaceNext/PWA, Guake mon, residual belt, tab icons |
+| **`42c8751`** | `move()` + `move_to_monitor`; live border actor hide; no float pointer-warp; float attach under MONITOR |
+
+### Root causes found live (2026-08-05)
+
+1. **YouTube invisible** — tree mon1, Meta mon0; clamp used mon0 work area → frame ~`x:1313`.  
+2. **Stale borders** — `hideWindowBorders` used null/stale `Node._actor`.  
+3. **Guake** — `move-pointer-focus` warped into float; float attached under LFT/TABBED.
+
+---
+
+## Architecture: Wayland vs X11 (honest status)
+
+### Are we cleanly separating tracts?
+
+**No — not as dual backends.** Today is:
+
+| Layer | How session type is handled |
+| --- | --- |
+| **Tree / layout math** | Shared (good) — `tree-layout.js`, percents, tab/stack structure |
+| **Mutter version drift** | Centralized — `compat.js` + `docs/dev/compat.md` (maximize flags, etc.) |
+| **Wayland vs X11** | **Ad-hoc** — a few `Meta.is_wayland_compositor()` branches (HiDPI align, stacking pin, comments about map races). Most “Wayland fixes” are **shared-path hardening** (null class/title, late identity, move_to_monitor, actor cache) that also runs on X11 |
+
+Scattered sites (not a module boundary):
+
+- `tree.js` — Wayland transient `make_above` stacking pin on activate  
+- `window.js` — buffer-scale align in `move()`; late title/class; map races  
+- `decoration.js` — HiDPI border align  
+- Docs/comments elsewhere (drag-drop, soft-rehome, session restore)
+
+There is **no** `wayland/` vs `x11/` package, no session backend interface, no dual track for map → place → move → activate.
+
+### Why that is risky (agrees with operator)
+
+Mutter/X11 and Mutter/Wayland differ on:
+
+- Map-time identity (null class/title)  
+- Compositor private actor timing  
+- Cross-monitor `move` / `move_to_monitor` semantics  
+- Stacking / raise / focus  
+- HiDPI coordinate spaces (fractional scale + `scale-monitor-framebuffer` on black)  
+- Shell reload (X11 HUP vs logout-only)
+
+Sprinkling `if (wayland)` inside `window.js` / `tree.js` will become spaghetti as black stays dual-session-capable.
+
+### Recommended structure (not implemented — plan when smoke is green)
+
+Keep **one product** (same tree model, same CLI, same prefs). Split **session mechanics**:
+
+```text
+lib/extension/
+  layout/          # pure / shared: tree-layout, percent, query (no Meta session ifs)
+  session/         # NEW boundary
+    types.js       # SessionBackend interface
+    shared.js      # helpers both use
+    wayland.js     # map, place, move, activate, stack, border actor timing
+    x11.js         # same surface, X11-safe behavior
+    index.js       # pick backend once at enable via Meta.is_wayland_compositor()
+  window.js        # orchestration only — calls backend, not raw session ifs
+  tree.js          # structure; activate delegates to session backend
+  compat.js        # KEEP for Mutter *version* (45/46/…), not X11 vs Wayland
+```
+
+**Surface area for dual implementations** (same method names):
+
+| Method | Why dual |
+| --- | --- |
+| `onWindowMapped` / track | Identity race, float-exempt timing |
+| `moveWindow(meta, rect)` | mon + clamp + resize order |
+| `activateWindow(meta)` | stacking pin vs raise/activate |
+| `resolveWindowActor(node)` | border hide/show |
+| `alignRect(rect)` | HiDPI / buffer scale |
+
+**Do not** fork the whole tiling tree or prefs. **Do** stop adding new `if (is_wayland)` in `window.js` — new session behavior goes behind the backend.
+
+| Rule going forward (proposed) | Detail |
+| --- | --- |
+| New session-sensitive code | Backend method, not another mid-function if |
+| Shared layout math | Stay pure; no Meta session checks |
+| `compat.js` | Version only; never “if wayland” |
+| Dual live smoke | black can stay dual; CI/unit mock both backends |
+
+**When to plan this:** after logout smoke + W4, as a named plan slice (e.g. `forge-session-backend`) — **major redesign → plan + approve before large moves.** Until then, prefer shared hardening only when the bug is real on both; flag Wayland-only work clearly in notes.
+
+---
+
+## Follow-ups (do not lose)
+
+### `move-pointer-focus-enabled`
+
+**On black:** true. **Why:** keyboard focus warps pointer so attachNode / open-app / LFT stay coherent when pointer was on the other head.
+
+**Better long-term:** open/place use **focus-monitor** (W3 started this); warp only on keyboard tile nav or only when pointer is on wrong mon; re-evaluate default false after open path proven.
+
+See also Guake: floats no longer auto-warp (`force` keybind still can).
+
+### Guake
+
+Float override; mon-follow only; attach under MONITOR; no tile under TABBED. If still “lowered” after logout, compare Forge disabled vs enabled (Guake/XWayland prefs).
+
+---
+
+## Key code map
+
+| Concern | Path |
+| --- | --- |
+| Cross-mon move | `window.js` `move`, `_monitorIndexForRect` |
+| Borders hide/show | `decoration.js`, `tree.js` `windowActor` |
+| Pointer / floats | `focus.js` `movePointerWith` |
+| Float attach | `window.js` `trackWindow` |
+| Guake mon | `window.js` `_applyFloatFollowMonitor` |
+| Soft rehome | `soft-rehome.js` |
+| Mutter version | `compat.js` |
 
 ---
 
 ## Human blockers
 
-None hard. Operator: **logout/in after install**, then §1–2 above.
+None hard. **Operator: logout/in → § pass criteria → W4 thrash.**
+
+---
+
+## Plans next
+
+| Plan | Next |
+| --- | --- |
+| [forge-wayland-live](./plans/forge-wayland-live.md) | Logout smoke → **W4 thrash** |
+| [forge-container-selection](./plans/forge-container-selection.md) | S3 after Wayland OK |
+| [forge-desktop-keybinds](./plans/forge-desktop-keybinds.md) | KB1 after S3 |
+| Session backend split | Draft after smoke (not started) |

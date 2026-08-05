@@ -48,14 +48,12 @@ focused monitor. **No X11 regressions.**
 | W2 | Layout open wait / PlaceNext / multi-chrome on Wayland | **done** |
 | W3 | Guake + dock mon focus placement | **done** |
 | W5 | Layout residual + PWA icons/place + full belt | **done** (975ed17) |
-| W4 | Wayland thrash smoke (lock Super+Delete) | **next** |
+| W4 | Wayland thrash smoke (lock Super+Delete) | **next** (after logout smoke of 42c8751) |
+| W6? | Session backend split (wayland vs x11 modules) | **later** — see HANDOFF architecture; plan before large move |
 
 ## Session note
 
-**2026-08-05 (post reboot smoke):** Icons OK. Topology OK. **YouTube invisible:** Meta
-stayed mon0 while tree mon1 — `move()` lacked `move_to_monitor` before offscreen clamp
-(frame pinned ~mon0 right). **Stale tile borders:** hide used null `Node._actor`.
-**Guake:** auto pointer-warp + attach under TABBED LFT. Fixes in window/decoration/focus/tree;
-install dirty; **logout required**. W4 thrash still next after re-smoke.
-
-**Earlier W5:** PWA class, residual belt, tab icons. Residual dry-run focus ops intentional.
+**2026-08-05:** Operator logging out to load `42c8751` (YouTube mon, borders, Guake
+pointer). Architecture note: Wayland/X11 not dual-backend yet — ad-hoc ifs + shared
+hardening; recommend `session/{wayland,x11}.js` after smoke, not more spaghetti in
+`window.js`. W4 thrash after pass criteria in HANDOFF.
