@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
 **Updated:** 2026-08-05 (border harden; layout dev OK; gate before session-backend split)  
-**Branch:** `plan/forge-wayland-live`  
-**HEAD:** (this commit) — border registry + node ownership + tighter slot prefer  
-**Installed disk:** after commit + `./install` → versionName includes new SHA  
+**Branch:** `plan/forge-wayland-live` (pushed `origin`)  
+**HEAD:** `cfa5820` — border registry + node ownership + tighter slot prefer  
+**Installed disk:** `v49-90-beta.2-176-gcfa5820` (shell still on older until logout)  
 **Default:** `master` — **do not merge** until operator confirms borders clean post-logout  
 **Remotes:** `test` / `prod` **not** touched  
 
