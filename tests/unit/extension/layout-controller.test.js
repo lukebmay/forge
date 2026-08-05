@@ -371,6 +371,24 @@ describe("LayoutController agreement + verify scanner", () => {
     expect(lc.lastUnsettledReason).toBe("external-size");
   });
 
+  it("onExternalGeometry marks unsettled and schedules layout + verify", () => {
+    const lc = make({
+      scan: () => ({ ok: true, checked: 1, mismatches: [] }),
+    });
+    lc.settled = true;
+    lc.agreementCount = 2;
+
+    lc.onExternalGeometry("size-changed", null);
+
+    expect(lc.settled).toBe(false);
+    expect(lc.agreementCount).toBe(0);
+    expect(lc.lastUnsettledReason).toBe("size-changed");
+    expect(lc.layoutPending).toBe(true);
+    expect(lc.verifyPending).toBe(true);
+    expect(lc.pendingLayoutReasons).toContain("size-changed");
+    expect(lc.pendingVerifyReasons).toContain("size-changed");
+  });
+
   it("mismatch requestLayout at most once per wave (no infinite storm)", () => {
     const lc = make({
       scan: () => ({

@@ -3,7 +3,7 @@
 How a tree mutation becomes on-screen geometry. Entry point: `renderTree()` in
 `window.js`. See [architecture.md](architecture.md) for the surrounding subsystems.
 
-## `requestLayout` / `requestVerify` — `layout-controller.js` (CL0/CL1)
+## `requestLayout` / `requestVerify` — `layout-controller.js` (CL0–CL2)
 
 Preferred entry for sensor storms: `wm.requestLayout(reason)` trailing-debounces
 (~200ms) then calls `renderTree` once with coalesced reasons. After a **successful**
@@ -16,9 +16,23 @@ has its own ~150ms debounce channel, then runs the Meta↔slot scanner
 | --- | --- |
 | Full agreement | `agreementCount++`; at **≥2** consecutive → **SETTLED**; after first ok auto-schedules `requestVerify("agreement-confirm")` |
 | Mismatch | agreement = 0; unsettle; `requestLayout("verify-mismatch")` **once** per wave (latch until next full agreement) |
-| `markUnsettled(reason)` | agreement = 0; not settled (CL2 sensors will call this) |
+| `markUnsettled(reason)` | agreement = 0; not settled |
+| **External geometry** (CL2) | `onExternalGeometry` → unsettle + requestLayout + requestVerify |
 
 See [architecture.md](architecture.md#layout-control-loop-cl0cl1).
+
+### Geometry sensor attribution (CL2 / W-storm)
+
+`updateMetaPositionSize` (size/position-changed) attributes before retile:
+
+| Case | Behavior |
+| --- | --- |
+| `_suppressGeometrySignalRetile` (Forge `move` / `tree.apply`) | Chrome only; **no** markUnsettled / layout |
+| TILE frame ≈ slot (ε) | Chrome only; skip full layout |
+| External drift (not grab, not maximize-reject) | `onExternalGeometry` → unsettled + debounced layout/verify |
+
+Forge apply must not double-fire a layout storm: suppress is set for the duration
+of `move()` and `tree.apply`. Pure helpers live in `layout-sensors.js`.
 
 `renderTree` idle coalesce remains the inner commit layer; `requestLayout` sits
 above it. Call sites may still invoke `renderTree` directly (commands, force

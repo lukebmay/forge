@@ -55,8 +55,9 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | Module | Responsibility |
 | --- | --- |
 | `window.js` `WindowManager` | Event hub: binds GNOME signals, tracks windows, owns `renderTree`/`move`, focus, grab/drag. |
-| `layout-controller.js` `LayoutController` | Debounced `requestLayout` / `requestVerify`; CL1 Meta↔slot verify + agreement → SETTLED. |
+| `layout-controller.js` `LayoutController` | Debounced `requestLayout` / `requestVerify`; CL1 Meta↔slot verify + agreement → SETTLED; CL2 `onExternalGeometry`. |
 | `layout-verify.js` | Pure frame↔slot ε compare, forest scan, TILE leaf collect. |
+| `layout-sensors.js` | Pure attribution: Forge-caused suppress vs TILE in-slot chrome-only (CL2). |
 | `command.js` `CommandHandler` | Turns a user action into tree mutations (extracted from window.js). |
 | `focus.js` `FocusManager` | Focus tracking + active-window signal lifecycle (extracted from window.js). |
 | `decoration.js` `DecorationManager` | Stacked/tabbed container decorations and their actor lifecycle (extracted from window.js). |
@@ -72,7 +73,7 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 User-facing strings are localized with gettext; the catalog (`po/`) and Weblate
 workflow are documented in [translations.md](translations.md).
 
-## Layout control loop (CL0/CL1)
+## Layout control loop (CL0–CL2)
 
 Single writer intent for layout commits and post-render checks. Full plan:
 `agents/plans/forge-layout-control-loop.md`.
@@ -93,9 +94,16 @@ API: `wm.requestLayout` / `wm.requestVerify` → `LayoutController`
 150ms. Successful `renderTree` body schedules `requestVerify("post-render")`.
 Verify scan (`layout-verify.js`): TILE leaves only; ε default 4px; ≥2 consecutive
 full agreements → SETTLED (auto `agreement-confirm` after first ok). Mismatch
-requests one `requestLayout("verify-mismatch")` per wave. `markUnsettled` resets
-agreement (CL2 will wire external geometry). Existing call sites may still use
-`renderTree` directly; migrate sensors over later CL slices.
+requests one `requestLayout("verify-mismatch")` per wave.
+
+**CL2 external geometry:** size/position sensors call
+`layoutController.onExternalGeometry(reason)` → `markUnsettled` + debounced
+layout/verify (agreement → 0). Forge apply sets `_suppressGeometrySignalRetile`
+around `move` / `tree.apply` so our own `move_resize_frame` does **not** unsettle
+or retile. TILE already within ε of its slot is chrome-only (W-storm in-slot).
+Helpers: `layout-sensors.js` (`isForgeCausedGeometrySignal`,
+`shouldChromeOnlyGeometry`). Existing call sites may still use `renderTree`
+directly; open path `createDelay` migrates in CL4.
 
 ## Command dispatch flow
 
