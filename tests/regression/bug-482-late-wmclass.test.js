@@ -75,4 +75,19 @@ describe("Bug #482: late wm_class re-tiles", () => {
 
     expect(renderSpy).toHaveBeenCalledWith("wm-class-changed");
   });
+
+  it("same-class re-notify does not storm renderTree", () => {
+    const tracked = createMockWindow({
+      wm_class: "Anki",
+      id: 2003,
+      title: "Anki",
+      allows_resize: true,
+    });
+    ctx.windowManager.trackWindow(null, tracked);
+
+    const renderSpy = vi.spyOn(ctx.windowManager, "renderTree");
+    tracked.set_wm_class("Anki");
+    tracked.set_wm_class("Anki");
+    expect(renderSpy).not.toHaveBeenCalled();
+  });
 });

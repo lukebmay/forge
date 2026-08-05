@@ -50,12 +50,17 @@ focused monitor. **No X11 regressions.**
 | W5 | Layout residual + PWA icons/place + full belt | **done** (975ed17) |
 | W3b | Cross-mon move + Guake pointer + first stale-border fix | **done** (`42c8751`) |
 | W3c | Border registry / node ownership / tighter slot prefer | **done** (this session) — **logout smoke required** |
-| W4 | Wayland thrash smoke (lock Super+Delete) | **next** after border smoke green |
+| W4 | Wayland thrash smoke (lock Super+Delete) | **next** after storm harden + border smoke |
+| **W-storm** | Eliminate render storms (title/class/size/entered-mon feedback) | **done** (A/B AGREE) — logout smoke to confirm |
 | W6? | Session backend split (wayland vs x11 modules) | **later** — plan + approve after stable gate |
 
 ## Session note
 
-**2026-08-05 (later):** `forge layout dev` topology OK live. Operator still saw
-border issues after `42c8751`. Hardened: registry hide, node-owned borders,
-no map-time show, prefer tree slot when Meta lags moderately. Install + **logout**
-required. Stable gate before any session-backend refactor — see HANDOFF.
+**2026-08-05 W-storm done (A/B AGREE):** Root-cause guards — title/class identity
+retile only when policy can flip; `_suppressGeometrySignalRetile` around apply/move;
+TILE in-slot size-changed chrome-only; entered-monitor no render when already home.
+Tests: `bug-w-render-storm` + W1/#482/#461 + unit/window green. **Logout** to load.
+Next: live smoke (Nautilus path, Ghostty titles) then W4 thrash. Do not merge master
+until operator confirms. Completed task:
+`agents/plans/forge-wayland-live/completed/forge-wayland-live_w-render-storm.md`.
+

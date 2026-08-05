@@ -69,6 +69,39 @@ describe("W1: late title re-tiles", () => {
 
     expect(renderSpy).toHaveBeenCalledWith("title-changed");
   });
+
+  it("does not full re-tile on Nautilus path / shell prompt title spam", () => {
+    const tracked = createMockWindow({
+      wm_class: "org.gnome.Nautilus",
+      id: 3003,
+      title: "Home",
+      allows_resize: true,
+    });
+    ctx.windowManager.trackWindow(null, tracked);
+
+    const renderSpy = vi.spyOn(ctx.windowManager, "renderTree");
+    // Seeded at track: non-empty→non-empty path titles never flip float policy.
+    tracked.set_title("Documents");
+    tracked.set_title("Network");
+    tracked.set_title("smb://server/share");
+    tracked.set_title("smb://server/share/folder");
+    tracked.set_title("user@host:~/dev");
+
+    expect(renderSpy).not.toHaveBeenCalled();
+  });
+
+  it("same title re-notify does not re-tile", () => {
+    const tracked = createMockWindow({
+      wm_class: "org.gnome.Nautilus",
+      id: 3004,
+      title: "Home",
+      allows_resize: true,
+    });
+    ctx.windowManager.trackWindow(null, tracked);
+    const renderSpy = vi.spyOn(ctx.windowManager, "renderTree");
+    tracked.set_title("Home");
+    expect(renderSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe("W1: late FLOAT→TILE carves sibling share", () => {

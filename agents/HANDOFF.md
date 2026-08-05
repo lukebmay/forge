@@ -1,10 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (tile border = tree slot; no focus reflow)  
-**Branch:** `plan/forge-wayland-live` (pushed `origin`)  
-**HEAD:** `1e3bd05` — tile borders always use tree slot; no renderTree/apply on focus  
-**Installed disk:** `v49-90-beta.2-178-g1e3bd05` (shell loads this after reboot)  
-**Default:** `master` — **do not merge** until operator confirms borders + no YouTube reflow  
+**Updated:** 2026-08-05 (W-storm render guards)  
+**Branch:** `plan/forge-wayland-live`  
+**Installed disk:** dirty with W-storm guards (log out to load)  
+**Default:** `master` — **do not merge** until operator confirms borders + thrash fix  
 **Remotes:** `test` / `prod` **not** touched  
 
 **Plan:** [forge-wayland-live.md](./plans/forge-wayland-live.md)  
@@ -12,22 +11,36 @@
 
 ---
 
+## Live incident (2026-08-05 Wayland)
+
+| Symptom | Cause |
+| --- | --- |
+| Wayland “crashed” after Nautilus network share | Shell thrash: `notify::title` → full `renderTree` on every path/title update (~244 in minutes); earlier SIGSEGV dump also on disk |
+| Forge “not enabled” after login | GNOME safe mode: `org.gnome.shell disable-user-extensions` **true** (not removed from enabled-extensions list) |
+
+**Recovered:** `gsettings set org.gnome.shell disable-user-extensions false` → Forge **ACTIVE**.  
+**W-storm fixed on disk (logout to load):** title/class identity gates; `_suppressGeometrySignalRetile` on apply/move; TILE in-slot skip; entered-monitor no-op when already home. Task `forge-wayland-live_w-render-storm`.
+
+If Forge vanishes again after a crash: check `gsettings get org.gnome.shell disable-user-extensions` first.
+
+---
+
 ## Status snapshot
 
 | Layer | Status |
 | --- | --- |
-| Layout `forge layout dev` | **OK** (operator + live tree): mon0 TABBED(Chrome,Grok)\|ghostty; mon1 ghostty\|TABBED(YouTube,Gmail,Voice); YouTube Meta mon=1 |
-| Cross-mon move | Shipped `42c8751` (`move_to_monitor` before clamp) |
-| Guake / float pointer | Shipped `42c8751` (no auto-warp floats; float under MONITOR) |
-| **Borders (this wave)** | **Hardened** — needs **logout/in** then re-smoke (Wayland modules) |
-| Soft-rehome thrash (W4) | **Not done** on Wayland |
-| Session backend split (W6) | **Not started** — architecture below; plan after border smoke green |
+| Layout `forge layout dev` | **OK** prior session |
+| Cross-mon move / Guake | Shipped earlier on this branch |
+| **Borders** | Hardened — still needs clean logout smoke |
+| **Render storms (W-storm)** | **Code done** — logout + Nautilus/title smoke |
+| Soft-rehome thrash (W4) | **Not done** on Wayland (after storm confirm) |
+| Session backend split (W6) | **Not started** — after stable gate |
 
 ---
 
 ## Operator action now
 
-1. **Log out and back into GNOME Wayland** (ES modules do not reload on disable/enable).
+1. **Log out and back into GNOME Wayland** (ES modules do not reload on disable/enable). Confirms thrash fix + borders.
 2. Confirm:
 
 ```sh
