@@ -32,7 +32,7 @@ If Forge vanishes again after a crash: check `gsettings get org.gnome.shell disa
 | Layout `forge layout dev` | **OK** prior session |
 | Cross-mon move / Guake | Shipped earlier on this branch |
 | **Borders** | Hardened — still needs clean logout smoke |
-| **Render storms (W-storm)** | **Code done** — logout + Nautilus/title smoke |
+| **Render storms (W-storm)** | **Shipped `96ab67c`** — logout + Nautilus/title smoke |
 | Soft-rehome thrash (W4) | **Not done** on Wayland (after storm confirm) |
 | Session backend split (W6) | **Not started** — after stable gate |
 
