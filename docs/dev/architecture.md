@@ -55,7 +55,7 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | Module | Responsibility |
 | --- | --- |
 | `window.js` `WindowManager` | Event hub: binds GNOME signals, tracks windows, owns `renderTree`/`move`, focus, grab/drag. |
-| `layout-controller.js` `LayoutController` | Debounced `requestLayout` / `requestVerify`; CL1 Meta↔slot verify + agreement → SETTLED; CL2 `onExternalGeometry`. |
+| `layout-controller.js` `LayoutController` | Debounced `requestLayout` / `requestVerify`; CL1 Meta↔slot verify + agreement → SETTLED; CL2 `onExternalGeometry`; CL6 optional debug periodic verify. |
 | `layout-verify.js` | Pure frame↔slot ε compare, forest scan, TILE leaf collect. |
 | `layout-sensors.js` | Pure attribution: Forge-caused suppress vs TILE in-slot chrome-only (CL2). |
 | `command.js` `CommandHandler` | Turns a user action into tree mutations (extracted from window.js). |
@@ -95,6 +95,11 @@ API: `wm.requestLayout` / `wm.requestVerify` → `LayoutController`
 Verify scan (`layout-verify.js`): TILE leaves only; ε default 4px; ≥2 consecutive
 full agreements → SETTLED (auto `agreement-confirm` after first ok). Mismatch
 requests one `requestLayout("verify-mismatch")` per wave.
+
+**CL6 debug periodic verify:** GSettings `layout-verify-interval-ms` (uint, default
+**0** = off). When > 0, arms a repeating timer that calls
+`requestVerify("periodic")`. Restarted on setting change; cancelled on disable /
+set to 0. Not for production daily use.
 
 **CL2 external geometry:** size/position sensors call
 `layoutController.onExternalGeometry(reason)` → `markUnsettled` + debounced

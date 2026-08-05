@@ -124,6 +124,20 @@ present.
 Use this to confirm 1:2 vs 50–50 shares and which `moNwsW` a window sits under
 after blank/wake. Disabling the extension removes all overlay actors.
 
+## Periodic layout verify (debug only)
+
+Optional **debug** timer that re-checks Meta frames against tree slots. Production
+stays event-driven; leave this **off** (default **0**).
+
+```bash
+# e.g. every 5s while diagnosing open/tile desync — then set back to 0
+gsettings set org.gnome.shell.extensions.forge layout-verify-interval-ms 5000
+gsettings set org.gnome.shell.extensions.forge layout-verify-interval-ms 0
+```
+
+Requires a debug-capable install so verify scans run with logging if you need
+journal detail (`logging-enabled` / `log-level` below).
+
 ## Enabling debug logs
 
 Logging is **off by default** and only active in development builds. Turn it on:

@@ -133,6 +133,15 @@
             <summary>Show per-window layout debug overlay (parent layout, percent, monitor id)</summary>
         </key>
 
+        <key type="u" name="layout-verify-interval-ms">
+            <default>0</default>
+            <summary>Debug: periodic Meta↔slot verify interval in ms (0 = off; production stays event-driven)</summary>
+            <description>
+                When greater than zero, schedules a repeating requestVerify("periodic").
+                Default 0 keeps layout verify event-driven only. Intended for debug, not daily use.
+            </description>
+        </key>
+
         <key type="s" name="css-updated">
             <default>''</default>
             <summary>Timestamp when css is last updated. Also triggers reload of St</summary>

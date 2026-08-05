@@ -10,11 +10,13 @@
 
 ### Session note (overwrite)
 
-**2026-08-05 (CL0–CL5 done, B AGREE):** On `plan/forge-layout-control-loop`.
+**2026-08-05 (CL0–CL6 code done, B AGREE; CL7 operator):** On `plan/forge-layout-control-loop`.
 
-- Full control loop for open (N=1 quiet) + layout CLI multi-open batch + verify ×2
-  + thrash catalog (ghostty) + external geometry suppress.
-- **Next:** CL6 optional periodic verify gsetting; CL7 live Ghostty on black.
+- Control loop shipped: requestLayout/verify, Meta↔slot agreement ×2, external
+  geometry suppress, thrash catalog (ghostty), open quiet N=1, layout CLI
+  LayoutBatch, optional `layout-verify-interval-ms` (default 0).
+- **Next:** CL7 live Ghostty + `forge layout dev` on black (operator).
+- Commits: 05cfef2…e89ec31 + CL6 (pending wrap-up). Wayland-live stash untouched.
 
 ---
 
@@ -307,7 +309,7 @@ that refactor lands later, it consumes this API.
 | **CL3** | App thrash catalog + built-in ghostty + first-open observation | **done** | app-thrash-catalog.js; B AGREE |
 | **CL4** | Open path = batch N=1 through controller (replace blind createDelay) | **done** | layout-open.js; B AGREE |
 | **CL5** | Layout CLI / multi-open uses same commit+verify (LF6 quiet → one render) | **done** | LayoutBatch + gate; B AGREE r2 |
-| **CL6** | Optional debug periodic verify gsetting + docs | **next** | task: `…_cl6-debug-verify-interval.md` |
+| **CL6** | Optional debug periodic verify gsetting + docs | **A done** | await B; task: `…_cl6-debug-verify-interval.md` |
 | **CL7** | Live black: Ghostty sole open + `forge layout dev` + X11 or Wayland note | pending | Operator smoke |
 
 ### Suggested first implement task

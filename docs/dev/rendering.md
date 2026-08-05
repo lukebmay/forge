@@ -3,7 +3,7 @@
 How a tree mutation becomes on-screen geometry. Entry point: `renderTree()` in
 `window.js`. See [architecture.md](architecture.md) for the surrounding subsystems.
 
-## `requestLayout` / `requestVerify` — `layout-controller.js` (CL0–CL2)
+## `requestLayout` / `requestVerify` — `layout-controller.js` (CL0–CL6)
 
 Preferred entry for sensor storms: `wm.requestLayout(reason)` trailing-debounces
 (~200ms) then calls `renderTree` once with coalesced reasons. After a **successful**
@@ -18,6 +18,10 @@ has its own ~150ms debounce channel, then runs the Meta↔slot scanner
 | Mismatch | agreement = 0; unsettle; `requestLayout("verify-mismatch")` **once** per wave (latch until next full agreement) |
 | `markUnsettled(reason)` | agreement = 0; not settled |
 | **External geometry** (CL2) | `onExternalGeometry` → unsettle + requestLayout + requestVerify |
+| **Periodic verify** (CL6, debug) | GSettings `layout-verify-interval-ms` (default **0** = off) → repeating `requestVerify("periodic")` |
+
+Production stays **event-driven** only. The interval key is for diagnosing stuck
+desync; leave it at 0 for daily use. Cancelled on extension disable / set to 0.
 
 See [architecture.md](architecture.md#layout-control-loop-cl0cl1).
 

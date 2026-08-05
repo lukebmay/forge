@@ -184,4 +184,40 @@ describe("WindowManager layout controller (CL0)", () => {
     // CL4: open quiet → requestLayout("window-create") (force renderTree only if frozen)
     expect(typeof wm()._scheduleOpenCommit).toBe("function");
   });
+
+  it("CL6: default layout-verify-interval-ms is off", () => {
+    expect(wm().layoutController.verifyIntervalMs).toBe(0);
+    expect(wm().layoutController.periodicPending).toBe(false);
+  });
+
+  it("CL6: _syncLayoutVerifyInterval applies get_uint and settings change", () => {
+    const { advance } = installFakeTimersOnController(wm());
+    ctx.settings._values["layout-verify-interval-ms"] = 400;
+    wm()._syncLayoutVerifyInterval();
+    expect(wm().layoutController.verifyIntervalMs).toBe(400);
+    expect(wm().layoutController.periodicPending).toBe(true);
+
+    advance(400);
+    expect(wm().layoutController.periodicFireCount).toBe(1);
+    expect(wm().layoutController.pendingVerifyReasons).toContain("periodic");
+
+    ctx.settings._values["layout-verify-interval-ms"] = 0;
+    wm()._onSettingsChanged("layout-verify-interval-ms");
+    expect(wm().layoutController.verifyIntervalMs).toBe(0);
+    expect(wm().layoutController.periodicPending).toBe(false);
+  });
+
+  it("CL6: cancel/disable path clears periodic; enable re-syncs", () => {
+    installFakeTimersOnController(wm());
+    ctx.settings._values["layout-verify-interval-ms"] = 300;
+    wm()._syncLayoutVerifyInterval();
+    expect(wm().layoutController.periodicPending).toBe(true);
+
+    wm().layoutController.cancel();
+    expect(wm().layoutController.periodicPending).toBe(false);
+
+    // enable re-reads settings (skip full enable side effects)
+    wm()._syncLayoutVerifyInterval();
+    expect(wm().layoutController.periodicPending).toBe(true);
+  });
 });

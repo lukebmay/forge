@@ -7,6 +7,7 @@ import {
   LAYOUT_VERIFY_EPSILON_PX,
   LAYOUT_VERIFY_AGREEMENT_NEEDED,
   THRASH_EXTRA_VERIFY_REASON,
+  PERIODIC_VERIFY_REASON,
 } from "../../../lib/extension/layout-controller.js";
 import {
   AppThrashCatalog,
@@ -626,5 +627,128 @@ describe("LayoutController thrash-extra (CL3)", () => {
       cancel: (id) => clock.cancel(id),
     });
     expect(lc2.catalog).toBe(shared);
+  });
+});
+
+describe("LayoutController periodic verify (CL6)", () => {
+  let clock;
+  let verifyFires;
+
+  beforeEach(() => {
+    clock = createFakeClock();
+    verifyFires = [];
+  });
+
+  function make(opts = {}) {
+    return new LayoutController(null, {
+      schedule: (d, cb) => clock.schedule(d, cb),
+      cancel: (id) => clock.cancel(id),
+      onLayout: () => {},
+      onVerify: (reasons) => {
+        verifyFires.push(reasons.slice());
+      },
+      ...opts,
+    });
+  }
+
+  it("default interval is off (no timer)", () => {
+    const lc = make();
+    expect(lc.verifyIntervalMs).toBe(0);
+    expect(lc.periodicPending).toBe(false);
+    clock.advance(10_000);
+    expect(lc.periodicFireCount).toBe(0);
+    expect(verifyFires).toHaveLength(0);
+  });
+
+  it("interval > 0 arms repeating requestVerify(periodic)", () => {
+    const lc = make();
+    lc.setVerifyIntervalMs(500);
+    expect(lc.verifyIntervalMs).toBe(500);
+    expect(lc.periodicPending).toBe(true);
+
+    clock.advance(499);
+    expect(lc.periodicFireCount).toBe(0);
+    expect(verifyFires).toHaveLength(0);
+
+    clock.advance(1);
+    expect(lc.periodicFireCount).toBe(1);
+    // Periodic schedules requestVerify which debounces at verifyDelayMs
+    expect(lc.pendingVerifyReasons).toContain(PERIODIC_VERIFY_REASON);
+
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(verifyFires).toHaveLength(1);
+    expect(verifyFires[0]).toContain(PERIODIC_VERIFY_REASON);
+
+    // Second tick
+    clock.advance(500);
+    expect(lc.periodicFireCount).toBe(2);
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(verifyFires).toHaveLength(2);
+    expect(verifyFires[1]).toContain(PERIODIC_VERIFY_REASON);
+  });
+
+  it("constructor option verifyIntervalMs enables immediately", () => {
+    const lc = make({ verifyIntervalMs: 200 });
+    expect(lc.periodicPending).toBe(true);
+    clock.advance(200);
+    expect(lc.periodicFireCount).toBe(1);
+  });
+
+  it("set 0 cancels the timer", () => {
+    const lc = make();
+    lc.setVerifyIntervalMs(300);
+    expect(lc.periodicPending).toBe(true);
+    lc.setVerifyIntervalMs(0);
+    expect(lc.verifyIntervalMs).toBe(0);
+    expect(lc.periodicPending).toBe(false);
+    clock.advance(1000);
+    expect(lc.periodicFireCount).toBe(0);
+    expect(verifyFires).toHaveLength(0);
+  });
+
+  it("interval change restarts the timer", () => {
+    const lc = make();
+    lc.setVerifyIntervalMs(1000);
+    clock.advance(400);
+    // Still pending first long interval; switch to 100ms from now
+    lc.setVerifyIntervalMs(100);
+    expect(lc.periodicPending).toBe(true);
+    clock.advance(99);
+    expect(lc.periodicFireCount).toBe(0);
+    clock.advance(1);
+    expect(lc.periodicFireCount).toBe(1);
+  });
+
+  it("cancel clears periodic arm (interval retained until set 0)", () => {
+    const lc = make();
+    lc.setVerifyIntervalMs(250);
+    expect(lc.periodicPending).toBe(true);
+    lc.cancel();
+    expect(lc.periodicPending).toBe(false);
+    expect(lc.verifyIntervalMs).toBe(250);
+    clock.advance(1000);
+    expect(lc.periodicFireCount).toBe(0);
+
+    // Re-arm from stored interval (enable path calls setVerifyIntervalMs again)
+    lc.setVerifyIntervalMs(lc.verifyIntervalMs);
+    expect(lc.periodicPending).toBe(true);
+    clock.advance(250);
+    expect(lc.periodicFireCount).toBe(1);
+  });
+
+  it("destroy clears interval and refuses further set", () => {
+    const lc = make();
+    lc.setVerifyIntervalMs(100);
+    lc.destroy();
+    expect(lc.periodicPending).toBe(false);
+    expect(lc.verifyIntervalMs).toBe(0);
+    lc.setVerifyIntervalMs(500);
+    expect(lc.verifyIntervalMs).toBe(0);
+    clock.advance(1000);
+    expect(lc.periodicFireCount).toBe(0);
+  });
+
+  it("exports PERIODIC_VERIFY_REASON as periodic", () => {
+    expect(PERIODIC_VERIFY_REASON).toBe("periodic");
   });
 });
