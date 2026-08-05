@@ -2,8 +2,8 @@
 
 **Updated:** 2026-08-05 (tile border = tree slot; no focus reflow)  
 **Branch:** `plan/forge-wayland-live` (pushed `origin`)  
-**HEAD:** see tip — tile borders always use tree slot; no renderTree/apply on focus  
-**Installed disk:** reinstall before reboot; `forge ping` after login must match tip  
+**HEAD:** `1e3bd05` — tile borders always use tree slot; no renderTree/apply on focus  
+**Installed disk:** `v49-90-beta.2-178-g1e3bd05` (shell loads this after reboot)  
 **Default:** `master` — **do not merge** until operator confirms borders + no YouTube reflow  
 **Remotes:** `test` / `prod` **not** touched  
 
