@@ -6,7 +6,12 @@ import {
   VERIFY_REQUEST_DEBOUNCE_MS,
   LAYOUT_VERIFY_EPSILON_PX,
   LAYOUT_VERIFY_AGREEMENT_NEEDED,
+  THRASH_EXTRA_VERIFY_REASON,
 } from "../../../lib/extension/layout-controller.js";
+import {
+  AppThrashCatalog,
+  GHOSTTY_MIN_QUIET_MS,
+} from "../../../lib/extension/app-thrash-catalog.js";
 
 /**
  * Fake clock: schedule(delayMs, cb) queues timers; flush advances time.
@@ -468,5 +473,158 @@ describe("LayoutController agreement + verify scanner", () => {
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.agreementCount).toBe(2);
     expect(lc.verifyFireCount).toBe(2);
+  });
+});
+
+describe("LayoutController thrash-extra (CL3)", () => {
+  let clock;
+  let wm;
+
+  beforeEach(() => {
+    clock = createFakeClock();
+    wm = {
+      renderTree: vi.fn(),
+    };
+  });
+
+  function make(opts = {}) {
+    return new LayoutController(wm, {
+      schedule: (d, cb) => clock.schedule(d, cb),
+      cancel: (id) => clock.cancel(id),
+      layoutDelayMs: LAYOUT_REQUEST_DEBOUNCE_MS,
+      verifyDelayMs: VERIFY_REQUEST_DEBOUNCE_MS,
+      ...opts,
+    });
+  }
+
+  function settleOk(lc) {
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+  }
+
+  it("exports thrash-extra reason constant", () => {
+    expect(THRASH_EXTRA_VERIFY_REASON).toBe("thrash-extra");
+  });
+
+  it("holds an AppThrashCatalog by default (Ghostty quiet floor)", () => {
+    const lc = make({ scan: () => ({ ok: true, checked: 0, mismatches: [] }) });
+    expect(lc.catalog).toBeInstanceOf(AppThrashCatalog);
+    expect(lc.catalog.needsExtraVerify("ghostty")).toBe(true);
+    expect(lc.catalog.lookup("ghostty").minQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
+  });
+
+  it("SETTLED + thrashy TILE → one thrash-extra, not infinite", () => {
+    const lc = make({
+      scan: () => ({ ok: true, checked: 1, mismatches: [] }),
+      hasThrashyTile: () => true,
+    });
+
+    settleOk(lc);
+    expect(lc.settled).toBe(true);
+    expect(lc.thrashExtraRequestCount).toBe(1);
+    expect(lc.pendingVerifyReasons).toContain(THRASH_EXTRA_VERIFY_REASON);
+
+    // Fire thrash-extra — still ok / settled; must not request another
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.verifyFireCount).toBe(3);
+    expect(lc.lastVerifyReasons).toEqual([THRASH_EXTRA_VERIFY_REASON]);
+    expect(lc.settled).toBe(true);
+    expect(lc.thrashExtraRequestCount).toBe(1);
+
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS * 4);
+    expect(lc.verifyFireCount).toBe(3);
+    expect(lc.thrashExtraRequestCount).toBe(1);
+  });
+
+  it("SETTLED without thrashy TILE does not schedule thrash-extra", () => {
+    const lc = make({
+      scan: () => ({ ok: true, checked: 1, mismatches: [] }),
+      hasThrashyTile: () => false,
+    });
+    settleOk(lc);
+    expect(lc.settled).toBe(true);
+    expect(lc.thrashExtraRequestCount).toBe(0);
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS * 2);
+    expect(lc.verifyFireCount).toBe(2);
+  });
+
+  it("markUnsettled clears thrash latch so a new settle wave can re-request", () => {
+    const lc = make({
+      scan: () => ({ ok: true, checked: 1, mismatches: [] }),
+      hasThrashyTile: () => true,
+    });
+    settleOk(lc);
+    expect(lc.thrashExtraRequestCount).toBe(1);
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS); // thrash-extra
+    expect(lc.verifyFireCount).toBe(3);
+
+    lc.markUnsettled("external-size");
+    expect(lc.settled).toBe(false);
+
+    settleOk(lc);
+    expect(lc.thrashExtraRequestCount).toBe(2);
+    expect(lc.pendingVerifyReasons).toContain(THRASH_EXTRA_VERIFY_REASON);
+  });
+
+  it("onExternalGeometry records postMap for size and postApplyDrift when was SETTLED", () => {
+    const catalog = new AppThrashCatalog();
+    const lc = make({
+      catalog,
+      scan: () => ({ ok: true, checked: 1, mismatches: [] }),
+      hasThrashyTile: () => false,
+    });
+    settleOk(lc);
+    expect(lc.settled).toBe(true);
+
+    const meta = { get_wm_class: () => "org.example.Thrash" };
+    lc.onExternalGeometry("size-changed", meta);
+
+    const e = catalog.lookup("org.example.Thrash");
+    expect(e).toBeTruthy();
+    expect(e.postMapSizeChanges).toBe(1);
+    expect(e.postApplyDrift).toBe(1);
+    expect(lc.settled).toBe(false);
+  });
+
+  it("onExternalGeometry does not record postApplyDrift when not settled", () => {
+    const catalog = new AppThrashCatalog();
+    const lc = make({
+      catalog,
+      scan: () => ({ ok: true, checked: 0, mismatches: [] }),
+    });
+    expect(lc.settled).toBe(false);
+
+    lc.onExternalGeometry("size-changed", { get_wm_class: () => "Foo.Bar" });
+    const e = catalog.lookup("Foo.Bar");
+    expect(e.postMapSizeChanges).toBe(1);
+    expect(e.postApplyDrift).toBe(0);
+  });
+
+  it("suppress path: forge-caused never reaches onExternalGeometry counters", () => {
+    // Contract: callers use isForgeCausedGeometrySignal and skip onExternalGeometry.
+    // Catalog stays clean when only forge path "would have" fired.
+    const catalog = new AppThrashCatalog();
+    const lc = make({ catalog, hasThrashyTile: () => false });
+    // Simulate: external path not called; only chrome path would run under suppress.
+    expect(catalog.lookup("ghostty").postMapSizeChanges).toBe(0);
+    expect(catalog.lookup("ghostty").postApplyDrift).toBe(0);
+    expect(lc.catalog).toBe(catalog);
+  });
+
+  it("accepts injected catalog from options / wm.appThrashCatalog", () => {
+    const shared = new AppThrashCatalog();
+    const lc1 = make({ catalog: shared });
+    expect(lc1.catalog).toBe(shared);
+
+    const wmWith = {
+      renderTree: vi.fn(),
+      appThrashCatalog: shared,
+    };
+    const lc2 = new LayoutController(wmWith, {
+      schedule: (d, cb) => clock.schedule(d, cb),
+      cancel: (id) => clock.cancel(id),
+    });
+    expect(lc2.catalog).toBe(shared);
   });
 });

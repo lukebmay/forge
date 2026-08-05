@@ -75,6 +75,13 @@ describe("WindowManager layout controller (CL0)", () => {
     expect(VERIFY_REQUEST_DEBOUNCE_MS).toBe(150);
   });
 
+  it("constructs AppThrashCatalog and wires it into LayoutController (CL3)", async () => {
+    const { AppThrashCatalog } = await import("../../../lib/extension/app-thrash-catalog.js");
+    expect(wm().appThrashCatalog).toBeInstanceOf(AppThrashCatalog);
+    expect(wm().layoutController.catalog).toBe(wm().appThrashCatalog);
+    expect(wm().appThrashCatalog.needsExtraVerify("ghostty")).toBe(true);
+  });
+
   it("requestLayout delegates to controller and eventually calls renderTree", () => {
     const { advance } = installFakeTimersOnController(wm());
     const spy = vi.spyOn(wm(), "renderTree");
