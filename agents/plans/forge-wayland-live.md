@@ -44,15 +44,21 @@ focused monitor. **No X11 regressions.**
 
 | ID | Task | Status |
 | --- | --- | --- |
-| W1 | Size normalize + late-tile share + title signal + border non-reactive | **ready for verify** |
-| W2 | Layout open wait / PlaceNext / multi-chrome on Wayland | **ready for verify** |
-| W3 | Guake + dock mon focus placement | **ready for verify** |
-| W4 | Wayland thrash smoke (lock Super+Delete) | draft after W1 |
+| W1 | Size normalize + late-tile share + title signal + border non-reactive | **done** |
+| W2 | Layout open wait / PlaceNext / multi-chrome on Wayland | **done** |
+| W3 | Guake + dock mon focus placement | **done** |
+| W5 | Layout residual + PWA icons/place + full belt | **done** (975ed17) |
+| W4 | Wayland thrash smoke (lock Super+Delete) | **next** |
 
 ## Session note
 
-**2026-08-04 ship (unit-verified):** W1 size/late-tile, W2 PlaceNext/PWA wait, W3 focus-mon Guake/dock. All A/B AGREE.
+**2026-08-04 evening:** Live after reboot — first `layout dev` left YouTube on mon0;
+second pass healed. W5: same-PWA class match (crx↔chrome-Default), PlaceNext prefers
+desktop class, residual belt does structure/order/focus, open failures continue residual,
+tab icons rebuild on app id change + PWA desktop lookup.
 
-**Live gate (operator):** log out/in on Wayland (code already installed via `./install` after W1; reinstall after W3). Then smoke: open nautilus/text-editor as sibling (non-zero width), `forge layout dev`, Guake F12 on focus mon, dock open on dock mon.
+**Cold retest (CLI W5, extension needs logout for icons):** mon0 tabs(chrome,Grok)|ghostty;
+mon1 ghostty|tabs(YouTube,Gmail,Voice). Dry-run residual = 3 focus actives only (Grok,
+YouTube, profile ghostty) — correct product intent.
 
-**W4** thrash lock still draft. CSS border colors / green flash on text select deferred.
+**Still needs logout/in** for tab icon JS. Then W4 thrash smoke.
