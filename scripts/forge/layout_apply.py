@@ -797,3 +797,170 @@ def wait_for_tree_stable(
         "error": last_err
         or f"tree not stable after {timeout_ms}ms (need {samples_need} equal samples)",
     }
+
+
+# --- CL9: parallel open pin assignment (map/windowId, not TILE settle) ---
+
+
+def _default_class_eq(a: Any, b: Any) -> bool:
+    """Casefold equality for tests; forge passes richer _class_eq in production."""
+    if a is None or b is None:
+        return False
+    sa = str(a).strip().casefold()
+    sb = str(b).strip().casefold()
+    return bool(sa and sb and sa == sb)
+
+
+def window_has_map_id(win: Any) -> bool:
+    """True when a GetTree WINDOW leaf has a usable windowId (mapped/tracked)."""
+    if not isinstance(win, dict):
+        return False
+    wid = win.get("windowId")
+    return wid is not None and str(wid).strip() != ""
+
+
+def assign_open_role_pins(
+    pending: list[dict[str, Any]],
+    windows: list[dict[str, Any]],
+    used_ids: Optional[set[str]] = None,
+    *,
+    class_eq: Optional[Callable[[Any, Any], bool]] = None,
+) -> dict[str, Any]:
+    """
+    Greedy role → windowId pins for parallel layout opens (CL9).
+
+    pending items:
+      - role: str (required for pin key)
+      - wait_classes: list[str] | None — match wmClass when non-empty
+      - accept_any_new: bool — claim any unused mapped window if no class list
+
+    Only windows with windowId and not in used_ids are candidates.
+    Each windowId is assigned to at most one role (pending order wins).
+    Returns partial dict of role → windowId for newly matched roles this pass.
+    """
+    eq = class_eq if class_eq is not None else _default_class_eq
+    used: set[str] = set(used_ids or set())
+    out: dict[str, Any] = {}
+    if not pending:
+        return out
+
+    pool: list[dict[str, Any]] = []
+    for w in windows or []:
+        if not isinstance(w, dict) or not window_has_map_id(w):
+            continue
+        wid = str(w.get("windowId")).strip()
+        if wid in used:
+            continue
+        pool.append(w)
+
+    def _take_match(item: dict[str, Any]) -> Optional[dict[str, Any]]:
+        nonlocal pool
+        classes = item.get("wait_classes")
+        class_list: list[str] = []
+        if isinstance(classes, str) and classes.strip():
+            class_list = [classes.strip()]
+        elif isinstance(classes, list):
+            class_list = [str(c).strip() for c in classes if c and str(c).strip()]
+        accept_any = bool(item.get("accept_any_new"))
+
+        if class_list:
+            for i, w in enumerate(pool):
+                cls = w.get("wmClass") if w.get("wmClass") is not None else w.get("wm_class")
+                if any(eq(cls, want) for want in class_list):
+                    return pool.pop(i)
+            return None
+        if accept_any and pool:
+            return pool.pop(0)
+        return None
+
+    for item in pending:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        if role is None or str(role).strip() == "":
+            continue
+        rid = str(role)
+        if rid in out:
+            continue
+        hit = _take_match(item)
+        if hit is None:
+            continue
+        wid = str(hit.get("windowId")).strip()
+        out[rid] = hit.get("windowId")
+        used.add(wid)
+
+    return out
+
+
+def wait_for_open_role_pins(
+    load_windows: Callable[[], list[dict[str, Any]]],
+    pending: list[dict[str, Any]],
+    *,
+    baseline_ids: Optional[set[str]] = None,
+    timeout_ms: int = 15000,
+    poll_ms: int = 120,
+    class_eq: Optional[Callable[[Any, Any], bool]] = None,
+    sleep_fn: Optional[Callable[[float], None]] = None,
+    monotonic_fn: Optional[Callable[[], float]] = None,
+) -> dict[str, Any]:
+    """
+    Poll until each pending role has a mapped windowId (not TILE settle).
+
+    Pure of DBus: inject load_windows (+ optional sleep/monotonic for tests).
+    Returns role_pins, missing roles, polls, elapsed_ms, ok.
+    """
+    sleep = sleep_fn if sleep_fn is not None else time.sleep
+    mono = monotonic_fn if monotonic_fn is not None else time.monotonic
+    poll_s = max(0, int(poll_ms)) / 1000.0
+    deadline = mono() + max(0, int(timeout_ms)) / 1000.0
+    t0 = mono()
+    baseline = set(str(x) for x in (baseline_ids or set()))
+    used: set[str] = set(baseline)
+    pins: dict[str, Any] = {}
+    remaining = [
+        p
+        for p in pending
+        if isinstance(p, dict)
+        and p.get("role") is not None
+        and str(p.get("role")).strip() != ""
+    ]
+    polls = 0
+    last_err: Optional[str] = None
+
+    while remaining and mono() <= deadline:
+        try:
+            wins = load_windows()
+            if not isinstance(wins, list):
+                wins = []
+            last_err = None
+        except Exception as e:
+            last_err = str(e)
+            wins = []
+        polls += 1
+        assigned = assign_open_role_pins(remaining, wins, used, class_eq=class_eq)
+        if assigned:
+            for rid, wid in assigned.items():
+                pins[rid] = wid
+                used.add(str(wid).strip())
+            remaining = [
+                p for p in remaining if str(p.get("role")) not in pins
+            ]
+            if not remaining:
+                break
+        if poll_s > 0 and remaining:
+            sleep(poll_s)
+
+    missing = [str(p.get("role")) for p in remaining]
+    return {
+        "ok": len(missing) == 0,
+        "role_pins": pins,
+        "missing": missing,
+        "polls": polls,
+        "elapsed_ms": int((mono() - t0) * 1000),
+        "error": None
+        if not missing
+        else (
+            last_err
+            or f"map wait timeout for roles: {missing}"
+        ),
+    }

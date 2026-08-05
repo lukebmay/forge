@@ -531,6 +531,30 @@ describe("WindowManager open commit (CL4)", () => {
     expect(meta.get_compositor_private().opacity).toBe(255);
   });
 
+  it("CL9 releaseDeferredOpens unhides without ending batch", () => {
+    wm().beginOpenLayoutBatch();
+    wm().appThrashCatalog.recordOpen("org.example.RelDef");
+    const meta = trackNew({ id: "rel-def", wm_class: "org.example.RelDef" });
+    expect(wm()._isDeferredOpen(meta)).toBe(true);
+    expect(meta.get_compositor_private().opacity).toBe(0);
+    expect(wm().openLayoutBatchActive).toBe(true);
+
+    const out = wm().releaseDeferredOpens();
+    expect(out).toMatchObject({ ok: true, released: 1, depth: 1 });
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
+    expect(meta.get_compositor_private().opacity).toBe(255);
+    expect(wm().openLayoutBatchActive).toBe(true);
+
+    // Second release is a no-op; end still closes batch.
+    expect(wm().releaseDeferredOpens()).toMatchObject({ ok: true, released: 0, depth: 1 });
+    expect(wm().endOpenLayoutBatch("open-batch")).toMatchObject({
+      ok: true,
+      depth: 0,
+      wasActive: true,
+    });
+    expect(wm().openLayoutBatchActive).toBe(false);
+  });
+
   it("CL5 nest depth: only outermost end commits", () => {
     const lcSpy = vi.spyOn(wm().layoutController, "requestLayout");
     expect(wm().beginOpenLayoutBatch()).toMatchObject({ ok: true, depth: 1 });

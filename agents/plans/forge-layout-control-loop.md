@@ -1,6 +1,6 @@
 # Plan: Layout control loop (open = batch N, settle + verify)
 
-**Status:** active — CL8+ deferred hidden open (after CL0–CL7 X11)  
+**Status:** active — CL9 done; CL10 chrome next (after CL0–CL8)  
 **Priority:** P0 reliability (open/tile desync; Ghostty; shared by layout CLI)  
 **Branch:** `plan/forge-layout-control-loop` (implement here; merge → master when CL8–CL10 green)  
 **Created:** 2026-08-05  
@@ -10,16 +10,15 @@
 
 ### Session note (overwrite)
 
-**2026-08-05 (CL8 done — Task Force A):** Deferred hidden LayoutBatch admit shipped
-on `plan/forge-layout-control-loop`.
+**2026-08-05 (CL9 done — Task Force A):** Parallel deferred open + unhide-before-residual.
 
-- `lib/extension/layout-deferred-open.js` + vitest; wired in `window.js`
-  (`trackWindow`, `endOpenLayoutBatch`, `disable`, processFloats, raise guards).
-- Batch will-tile maps: FLOAT, mon sticky (`safeMoveToMonitor`), opacity 0, no
-  percent carve / open commit / mid-batch aspect split; release on batch end +
-  disable.
-- N=1 open path unchanged. Full `npm test` green (2113).
-- Next: **CL9** layout CLI parallel open + wait-for-map + unhide gate before residual.
+- Layout open: PlaceNext+launch all `no_wait` under LayoutBatch begin; map/windowId
+  pins via `wait_for_open_role_pins` (not TILE settle); `LayoutBatch release-deferred`
+  then residual plan+RunSteps (profile focus still last); LayoutBatch end.
+- DBus: `release` / `release-deferred` / `unhide`; `wm.releaseDeferredOpens()`;
+  `SESSION_API_VERSION` 8.
+- Pure helpers: `assign_open_role_pins`, `wait_for_open_role_pins` in layout_apply.
+- Tests: pytest 365 CLI; npm 2115. Next: **CL10** apply chrome/scrim.
 
 ---
 
@@ -361,13 +360,13 @@ LayoutBatch begin
 | **CL6** | Optional debug periodic verify gsetting + docs | **done** | layout-verify-interval-ms default 0; B AGREE |
 | **CL7** | Live black: Ghostty sole + `forge layout dev` — **X11 first**, Wayland after | **done (X11)** | X11 green 2026-08-05; Wayland residual open after merge · PWA `fe8448c` · [completed live](./forge-layout-control-loop/completed/forge-layout-control-loop_cl7-live-ghostty.md) |
 | **CL8** | Deferred hidden admit during LayoutBatch (ext): mon sticky, hide, no split carve, no raise | **done** | [completed](./forge-layout-control-loop/completed/forge-layout-control-loop_cl8-deferred-hidden-open.md) · layout-deferred-open.js |
-| **CL9** | Layout CLI: parallel open + wait-for-map (not TILE settle) + unhide gate before residual | **next** | after CL8 |
-| **CL10** | Optional layout-apply chrome/scrim setting + hard auto-clear (never stuck) | **pending** | after CL9 |
+| **CL9** | Layout CLI: parallel open + wait-for-map (not TILE settle) + unhide gate before residual | **done** | [completed](./forge-layout-control-loop/completed/forge-layout-control-loop_cl9-parallel-deferred-open.md) |
+| **CL10** | Optional layout-apply chrome/scrim setting + hard auto-clear (never stuck) | **next** | after CL9 |
 | **CL11** | Live retest X11 `forge layout dev` (then Wayland residual) | **pending** | operator + agent HUP |
 
 ### Suggested next implement task
 
-`agents/tasks/forge-layout-control-loop_cl9-…` (or create CL9 task) — parallel CLI open + wait-for-map + unhide gate.
+`agents/tasks/forge-layout-control-loop_cl10-…` — optional apply chrome/scrim + hard auto-clear.
 
 ---
 
@@ -428,10 +427,10 @@ Instrument (debug install): optional timeline log map / size-changed / apply / v
 
 ## Handoff bullets (next agent)
 
-1. **CL9 next** on `plan/forge-layout-control-loop` — parallel open + map wait + unhide gate.
+1. **CL10 next** on `plan/forge-layout-control-loop` — apply chrome/scrim + hard auto-clear.
 2. Wayland residual **after** CL8–CL10 + X11 retest (do not block on Wayland).
 3. Soft-rehome is **ours** (H1); rename separate PR.
 4. Ghostty: size thrash after map; settle intentionally a bit slow — but **no** temporary slivers.
-5. Layout multi-open: LayoutBatch + **hide until residual** (not mid-batch TILE).
+5. Layout multi-open: LayoutBatch + parallel map + **release-deferred before residual**.
 6. Apply chrome must never stick (CL10).
 7. **Git stash:** wayland-live WIP stashed — do not drop; do not pop onto this branch or master.

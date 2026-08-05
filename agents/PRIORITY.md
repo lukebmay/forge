@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-05 (CL8 done; CL9 next; Wayland after CL8–CL10)  
+**Updated:** 2026-08-05 (CL9 done; CL10 next; Wayland after CL8–CL10)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -10,7 +10,7 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **CL9–CL10** (CL8 done) deferred hidden open finish | Parallel CLI + chrome; kill sliver/jump |
+| **1** | **CL10** (CL9 done) apply chrome/scrim | Never-stick mask; finish deferred-open UX |
 | **2** | **X11 retest** then **Wayland residual** | After CL8–CL10 |
 | **3** | **Container selection finish** | S3 kit binds → S5 live QA |
 | **4** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
@@ -20,10 +20,9 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **CL9** | Parallel CLI open + wait-for-map + unhide gate | plan queue after CL8 |
-| **2** | **CL10** | Optional apply chrome/scrim (never stick) | plan queue |
-| **3** | **Live** | X11 layout dev retest → Wayland residual | [HANDOFF](./HANDOFF.md) |
-| **4** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |
+| **1** | **CL10** | Optional apply chrome/scrim (never stick) | plan queue after CL9 |
+| **2** | **Live** | X11 layout dev retest → Wayland residual | [HANDOFF](./HANDOFF.md) |
+| **3** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |
 
 **Shipped on master (local, not pushed)**
 

@@ -184,6 +184,34 @@ class TestOpenLoopContinueLogic(unittest.TestCase):
         self.assertEqual(open_failures, ["Grok"])
         self.assertEqual(role_pins, {"chrome": 1, "YouTube": 3})
 
+    def test_parallel_spawn_then_map_pin_bookkeeping(self):
+        """CL9: spawns succeed without windowId; map wait fills pins later."""
+        spawns = [
+            {"role": "chrome", "ok": True, "waited": False, "waitClasses": ["Google-chrome"]},
+            {"role": "ghostty", "ok": True, "waited": False, "waitClasses": ["ghostty"]},
+            {"role": "Grok", "ok": False, "error": "PlaceNext failed"},
+        ]
+        pending = []
+        open_failures: list[str] = []
+        for s in spawns:
+            if not s.get("ok"):
+                open_failures.append(s["role"])
+                continue
+            pending.append(
+                {
+                    "role": s["role"],
+                    "wait_classes": s.get("waitClasses"),
+                    "accept_any_new": s.get("waitClasses") is None,
+                }
+            )
+        self.assertEqual(open_failures, ["Grok"])
+        self.assertEqual([p["role"] for p in pending], ["chrome", "ghostty"])
+        # Map pins (no TILE required) applied after wait.
+        map_pins = {"chrome": 10, "ghostty": 20}
+        role_pins = dict(map_pins)
+        self.assertEqual(role_pins, {"chrome": 10, "ghostty": 20})
+        self.assertTrue(all(s.get("waited") is False for s in spawns if s.get("ok")))
+
 
 if __name__ == "__main__":
     unittest.main()

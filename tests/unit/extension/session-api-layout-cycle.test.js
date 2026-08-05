@@ -170,15 +170,30 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     expect(ctx.windowManager.openLayoutBatchActive).toBe(false);
   });
 
+  it("CL9 release-deferred unhides without ending batch", () => {
+    const a = api();
+    const wm = ctx.windowManager;
+    JSON.parse(a.LayoutBatch("begin"));
+    const releaseSpy = vi.spyOn(wm, "releaseDeferredOpens");
+    const out = JSON.parse(a.LayoutBatch("release-deferred"));
+    expect(out).toMatchObject({ ok: true, released: 0, depth: 1 });
+    expect(releaseSpy).toHaveBeenCalled();
+    expect(wm.openLayoutBatchActive).toBe(true);
+
+    const alias = JSON.parse(a.LayoutBatch("unhide"));
+    expect(alias.ok).toBe(true);
+    expect(wm.openLayoutBatchActive).toBe(true);
+  });
+
   it("rejects unknown action", () => {
     const out = JSON.parse(api().LayoutBatch("nope"));
     expect(out.ok).toBe(false);
-    expect(out.error).toMatch(/begin\|end/);
+    expect(out.error).toMatch(/begin\|end\|release-deferred/);
   });
 
-  it("Ping reports apiVersion ≥ 7", () => {
+  it("Ping reports apiVersion ≥ 8", () => {
     const ping = JSON.parse(api().Ping());
     expect(ping.ok).toBe(true);
-    expect(ping.apiVersion).toBeGreaterThanOrEqual(7);
+    expect(ping.apiVersion).toBeGreaterThanOrEqual(8);
   });
 });

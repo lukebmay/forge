@@ -19,6 +19,7 @@ from layout_apply import (  # noqa: E402
     MODE_RECONCILE,
     MODE_STEPS,
     actions_to_extension_steps,
+    assign_open_role_pins,
     detect_layout_mode,
     find_settled_window,
     forest_stability_fingerprint,
@@ -31,7 +32,9 @@ from layout_apply import (  # noqa: E402
     rewrite_ghostty_launch_app,
     slot_to_monitor_path,
     slot_to_tree_path,
+    wait_for_open_role_pins,
     wait_for_tree_stable,
+    window_has_map_id,
     window_is_settled,
     window_tile_selector,
 )
@@ -958,6 +961,121 @@ class TestPlanToStepsFixture(unittest.TestCase):
                 }
             ],
         )
+
+
+class TestCl9ParallelOpenPins(unittest.TestCase):
+    """CL9: map/windowId pin assignment without TILE settle."""
+
+    def test_window_has_map_id(self):
+        self.assertTrue(window_has_map_id({"windowId": 1, "mode": "FLOAT"}))
+        self.assertTrue(window_has_map_id({"windowId": "42"}))
+        self.assertFalse(window_has_map_id({"windowId": None}))
+        self.assertFalse(window_has_map_id({"windowId": ""}))
+        self.assertFalse(window_has_map_id({}))
+        self.assertFalse(window_has_map_id(None))
+
+    def test_assign_open_role_pins_by_class_ignores_mode(self):
+        pending = [
+            {"role": "chrome", "wait_classes": ["Google-chrome"]},
+            {"role": "ghostty", "wait_classes": ["ghostty", "com.mitchellh.ghostty"]},
+        ]
+        windows = [
+            {"windowId": 10, "wmClass": "Google-chrome", "mode": "FLOAT"},
+            {"windowId": 20, "wmClass": "com.mitchellh.ghostty", "mode": "FLOAT"},
+            {"windowId": 99, "wmClass": "other", "mode": "TILE"},
+        ]
+        pins = assign_open_role_pins(pending, windows, used_ids=set())
+        self.assertEqual(pins, {"chrome": 10, "ghostty": 20})
+        # FLOAT is fine — no TILE required for pin.
+        self.assertFalse(window_is_settled(windows[0]))
+
+    def test_assign_skips_used_and_same_class_second_instance(self):
+        pending = [
+            {"role": "g1", "wait_classes": ["ghostty"]},
+            {"role": "g2", "wait_classes": ["ghostty"]},
+        ]
+        windows = [
+            {"windowId": 1, "wmClass": "ghostty"},
+            {"windowId": 2, "wmClass": "ghostty"},
+        ]
+        pins = assign_open_role_pins(pending, windows, used_ids={"1"})
+        # window 1 already used (baseline); both roles claim from remaining → only id 2 left
+        self.assertEqual(pins, {"g1": 2})
+        pins2 = assign_open_role_pins(pending, windows, used_ids=set())
+        self.assertEqual(pins2, {"g1": 1, "g2": 2})
+
+    def test_assign_accept_any_new(self):
+        pending = [{"role": "mystery", "wait_classes": None, "accept_any_new": True}]
+        windows = [{"windowId": 7, "wmClass": "Whatever", "mode": "FLOAT"}]
+        pins = assign_open_role_pins(pending, windows)
+        self.assertEqual(pins, {"mystery": 7})
+
+    def test_wait_for_open_role_pins_polls_until_mapped(self):
+        pending = [
+            {"role": "a", "wait_classes": ["A"]},
+            {"role": "b", "wait_classes": ["B"]},
+        ]
+        polls = {"n": 0}
+        t = {"v": 0.0}
+
+        def load():
+            polls["n"] += 1
+            if polls["n"] < 3:
+                return [{"windowId": 1, "wmClass": "A", "mode": "FLOAT"}]
+            return [
+                {"windowId": 1, "wmClass": "A", "mode": "FLOAT"},
+                {"windowId": 2, "wmClass": "B", "mode": "FLOAT"},
+            ]
+
+        def mono() -> float:
+            return t["v"]
+
+        def sleep_fn(s: float) -> None:
+            t["v"] += s
+
+        out = wait_for_open_role_pins(
+            load,
+            pending,
+            baseline_ids=set(),
+            timeout_ms=5000,
+            poll_ms=50,
+            sleep_fn=sleep_fn,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["role_pins"], {"a": 1, "b": 2})
+        self.assertEqual(out["missing"], [])
+        self.assertGreaterEqual(out["polls"], 3)
+
+    def test_wait_for_open_role_pins_timeout_partial(self):
+        pending = [
+            {"role": "a", "wait_classes": ["A"]},
+            {"role": "missing", "wait_classes": ["Nope"]},
+        ]
+        t = {"v": 0.0}
+
+        def load():
+            return [{"windowId": 1, "wmClass": "A", "mode": "FLOAT"}]
+
+        def mono() -> float:
+            return t["v"]
+
+        def sleep_fn(s: float) -> None:
+            t["v"] += max(s, 0.1)
+
+        out = wait_for_open_role_pins(
+            load,
+            pending,
+            baseline_ids=set(),
+            timeout_ms=200,
+            poll_ms=50,
+            sleep_fn=sleep_fn,
+            monotonic_fn=mono,
+        )
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["role_pins"], {"a": 1})
+        self.assertEqual(out["missing"], ["missing"])
+        self.assertIn("map wait timeout", out["error"] or "")
 
 
 class TestLaunchAppGhostty(unittest.TestCase):

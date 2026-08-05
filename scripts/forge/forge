@@ -75,6 +75,7 @@ from layout_apply import (  # noqa: E402
     open_action_to_launch_fields,
     partition_plan_actions,
     residual_follow_up,
+    wait_for_open_role_pins,
     wait_for_tree_stable,
     window_is_settled,
 )
@@ -1033,6 +1034,9 @@ def wait_for_wm_class(
     LF5: when require_settled (default), do not return on mere class appear —
     wait until window_is_settled (TILE + id + reasonable rect). Unsettled hits
     are remembered; on timeout still return the hit so callers can try moves.
+
+    CL9 layout deferred opens: require_settled=False waits for map + windowId
+    only (FLOAT+hidden is ok); do not require TILE.
     """
     deadline = time.monotonic() + max(0, timeout_ms) / 1000.0
     baseline_ids = baseline_ids or set()
@@ -1062,7 +1066,19 @@ def wait_for_wm_class(
         if not hits:
             return None
         if not require_settled:
-            return _chosen(hits, matched_by)
+            # CL9: map pin only — need windowId; mode may stay FLOAT while deferred.
+            with_id = [
+                w
+                for w in hits
+                if w.get("windowId") is not None and str(w.get("windowId")).strip() != ""
+            ]
+            if with_id:
+                return _chosen(with_id, matched_by)
+            # Appear without id yet — remember and keep polling.
+            if pending_unsettled is None:
+                pending_unsettled = _chosen(hits, matched_by)
+                pending_unsettled["settled"] = False
+            return None
         settled = [w for w in hits if window_is_settled(w)]
         if settled:
             return _chosen(settled, matched_by)
@@ -1290,9 +1306,11 @@ def _payload_has_cli_only(payload: Any) -> list[str]:
 
 def _layout_batch_call(backend: str, action: str) -> tuple[bool, dict[str, Any]]:
     """
-    DBus LayoutBatch(begin|end) for CL5 multi-open control loop.
+    DBus LayoutBatch(begin|end|release-deferred) for CL5/CL9 multi-open loop.
 
     begin: defer per-app open renderTree until end (or residual RunSteps commit).
+    release-deferred / release / unhide: unhide CL8 deferred maps without ending
+    the batch (CL9: before residual plan + RunSteps).
     end: one requestLayout if still need-commit after residual.
     Returns (ok, payload). ok=false when DBus/extension fails (caller may continue).
     """
@@ -1369,8 +1387,14 @@ def do_launch(
     attach_selector: Optional[str] = None,
     first: bool = False,
     print_result: bool = True,
+    require_settled: bool = True,
 ) -> tuple[int, dict[str, Any]]:
-    """Shared launch path for `forge launch` and layout/run launch steps."""
+    """Shared launch path for `forge launch` and layout/run launch steps.
+
+    require_settled: LF5 default True (wait TILE). CL9 layout deferred opens use
+    False (map + windowId only) when waiting serially; parallel path uses no_wait
+    then wait_for_open_role_pins.
+    """
     app = (app or "").strip().strip("'\"")
     if not app:
         out = {"ok": False, "error": "app required", "op": "launch"}
@@ -1452,9 +1476,15 @@ def do_launch(
             "waited": False,
             "app": app,
             "op": "launch",
+            # CL9 parallel open: caller waits for map pins with these classes.
+            "waitClasses": wait_classes,
+            "acceptAnyNew": wait_classes is None,
+            "timeoutMs": timeout_ms,
         }
         if desktop:
             payload["desktop"] = desktop
+        if class_hints:
+            payload["wmClassCandidates"] = class_hints
         if print_result:
             _print_json(payload, compact=False)
         return 0, payload
@@ -1467,12 +1497,14 @@ def do_launch(
         baseline_ids=baseline,
         # Any wait class (explicit or desktop hints) disables accept-any fallback.
         accept_any_new=wait_classes is None,
+        require_settled=require_settled,
     )
     result = dict(result)
     result["op"] = "launch"
     result["pid"] = proc.pid
     result["waited"] = True
     result["app"] = app
+    result["requireSettled"] = require_settled
     if desktop:
         result["desktop"] = desktop
 
@@ -2057,9 +2089,10 @@ def _layout_run_reconcile(
             _layout_maybe_print_json(out, verbose=verbose, force=True)
             return rc
 
-    # 2–3) Opens under LayoutBatch (CL5): no per-app mid-batch renderTree.
-    # Flow: begin → open all → fingerprint batch quiet (LF6) → residual
-    # RunSteps (freeze → ops → one render + post-render verify) → end.
+    # 2–3) Opens under LayoutBatch (CL5/CL9): no per-app mid-batch renderTree.
+    # Flow: begin → parallel PlaceNext+launch all → wait map pins (not TILE) →
+    # fingerprint batch quiet (LF6) → release-deferred → residual RunSteps
+    # (freeze → ops incl. profile focus → one render + verify) → end.
     # Do not abort mid-loop: residual rehome still needs successful pins.
     role_pins: dict[str, Any] = {}
     open_failures: list[Any] = []
@@ -2073,31 +2106,88 @@ def _layout_run_reconcile(
             )
 
         try:
+            # CL9: one baseline before all spawns; PlaceNext+launch without
+            # serial TILE-wait; then map/windowId pin wait for every role.
+            open_baseline = _baseline_window_ids(backend)
+            pending_pins: list[dict[str, Any]] = []
+            open_timeout_ms = DEFAULT_LAUNCH_TIMEOUT_MS
+
             for oa in open_actions:
                 fields = open_action_to_launch_fields(oa)
                 role = oa.get("role")
+                # Parallel: never block on TILE settle per role.
+                fields = dict(fields)
+                fields["no_wait"] = True
                 _rc, result = do_launch(backend, print_result=False, **fields)
                 entry = dict(result)
                 if role is not None:
                     entry["role"] = role
+                entry["parallel"] = True
                 apply_log["opens"].append(entry)
                 if not result.get("ok"):
                     open_failures.append(role if role is not None else entry.get("error"))
                     _eprint(
-                        f"forge layout: open failed role={role!r}: "
+                        f"forge layout: open spawn failed role={role!r}: "
                         f"{result.get('error', 'unknown')}"
                     )
                     continue
-                # Pin launched windowId so residual claim works when title match lags
-                # (e.g. chrome "New Tab" vs title~= Google Chrome).
-                if role is not None and result.get("windowId") is not None:
-                    role_pins[str(role)] = result["windowId"]
+                if role is None or str(role).strip() == "":
+                    continue
+                wait_classes = result.get("waitClasses")
+                accept_any = bool(result.get("acceptAnyNew", wait_classes is None))
+                try:
+                    t_ms = int(result.get("timeoutMs") or fields.get("timeout") or open_timeout_ms)
+                except (TypeError, ValueError):
+                    t_ms = open_timeout_ms
+                open_timeout_ms = max(open_timeout_ms, t_ms)
+                pending_pins.append(
+                    {
+                        "role": str(role),
+                        "wait_classes": wait_classes,
+                        "accept_any_new": accept_any,
+                    }
+                )
 
             def _load_live_forest() -> dict[str, Any]:
                 return _layout_load_tree(backend, None)
 
+            def _load_live_windows() -> list[dict[str, Any]]:
+                return _iter_tree_windows(_load_live_forest())
+
+            if pending_pins:
+                pin_wait = wait_for_open_role_pins(
+                    _load_live_windows,
+                    pending_pins,
+                    baseline_ids=open_baseline,
+                    timeout_ms=open_timeout_ms,
+                    class_eq=_class_eq,
+                )
+                apply_log["openMapWait"] = {
+                    k: v for k, v in pin_wait.items() if k != "role_pins"
+                }
+                for rid, wid in (pin_wait.get("role_pins") or {}).items():
+                    role_pins[str(rid)] = wid
+                    # Annotate matching open log entry with pin.
+                    for entry in apply_log["opens"]:
+                        if (
+                            isinstance(entry, dict)
+                            and str(entry.get("role")) == str(rid)
+                            and entry.get("windowId") is None
+                        ):
+                            entry["windowId"] = wid
+                            entry["waited"] = True
+                            entry["requireSettled"] = False
+                            entry["matchedBy"] = "map-pin"
+                            break
+                for miss in pin_wait.get("missing") or []:
+                    open_failures.append(miss)
+                    _eprint(
+                        f"forge layout: open map wait failed role={miss!r}: "
+                        f"{pin_wait.get('error', 'timeout')}"
+                    )
+
             # Batch quiet gate (LF6): forest fingerprint holds N samples, then
-            # one residual plan + RunSteps commit (control-loop language).
+            # release deferred + residual plan + RunSteps (control-loop).
             stable_info = wait_for_tree_stable(
                 _load_live_forest,
                 timeout_ms=TREE_STABLE_TIMEOUT_MS,
@@ -2112,6 +2202,17 @@ def _layout_run_reconcile(
                     "forge layout: tree not fully stable after opens "
                     f"(proceeding: {stable_info.get('error')})"
                 )
+
+            # CL9: unhide deferred FLOAT maps before residual structure apply.
+            # Keep LayoutBatch active so residual freeze still batches render.
+            if batch_ok:
+                rel_ok, rel_payload = _layout_batch_call(backend, "release-deferred")
+                apply_log["layoutBatchRelease"] = rel_payload
+                if not rel_ok:
+                    _eprint(
+                        "forge layout: LayoutBatch release-deferred failed "
+                        f"(continuing: {rel_payload.get('error')})"
+                    )
 
             try:
                 forest2 = stable_info.get("forest")
@@ -2136,13 +2237,15 @@ def _layout_run_reconcile(
             residual_ext, residual_open = partition_plan_actions(plan2.get("actions"))
             # Apply residual moves/layout even when some roles still need open
             # (e.g. chrome title pin lag). Missing roles fail *after* mon fixes.
+            # Focus ops from profile IR still run here after deferred unhide.
             follow_steps, still_open = residual_follow_up(
                 residual_ext, residual_open, force_close=force_close
             )
             if still_open:
                 _eprint(f"forge layout: still missing roles after open: {still_open}")
             if follow_steps:
-                # LF5 belt: per-id settle is usually a no-op after tree-stable wait.
+                # LF5 belt: after release, just-opened may still be FLOAT until
+                # residual TILE; move anyway on settle timeout (existing policy).
                 settle_ids = move_step_window_ids(follow_steps)
                 for _role, pin_wid in (role_pins or {}).items():
                     if pin_wid is not None and str(pin_wid) not in settle_ids:
