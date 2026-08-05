@@ -1,6 +1,6 @@
 # Task: forge-wayland-live_w3-guake-dock-mon
 
-**Status:** ready  
+**Status:** ready for verify  
 **Plan:** [forge-wayland-live.md](../plans/forge-wayland-live.md)  
 **Branch:** `plan/forge-wayland-live`  
 **Created:** 2026-08-04
@@ -35,4 +35,12 @@
 
 ## Session note
 
-(overwrite)
+**2026-08-04 (A):** Shipped W3.
+
+- `WindowManager.resolveFocusMonitor()` — focus mon when valid, else current.
+- Dock hook notes focus mon via `resolveFocusMonitor()`.
+- Guake float-follow allowlist (`_isFloatFollowWindow` / `_applyFloatFollowMonitor`):
+  case-insensitive equals/contains `guake`; home mon override + map move + late
+  `notify::wm-class`. Not LFT.
+- Tests: `tests/unit/window/WindowManager-focus-monitor.test.js` (8).
+- Related window unit + W1/placement regressions green (489).

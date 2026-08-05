@@ -46,9 +46,9 @@ focused monitor. **No X11 regressions.**
 | --- | --- | --- |
 | W1 | Size normalize + late-tile share + title signal + border non-reactive | **ready for verify** |
 | W2 | Layout open wait / PlaceNext / multi-chrome on Wayland | **ready for verify** |
-| W3 | Guake + dock mon focus placement | **next** |
+| W3 | Guake + dock mon focus placement | **ready for verify** |
 | W4 | Wayland thrash smoke (lock Super+Delete) | draft after W1 |
 
 ## Session note
 
-**2026-08-04:** W1+W2 done (A/B AGREE). W3 next: Guake + dock focus mon. Live needs log out/in on Wayland to load code.
+**2026-08-04:** W1+W2 done (A/B AGREE). W3 implemented (A): `resolveFocusMonitor`, dock hook focus mon, Guake float-follow allowlist + late class. Unit tests green. Live: log out/in on Wayland to load code; verify Guake F12 on focused mon.
