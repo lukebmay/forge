@@ -47,9 +47,10 @@
 
 ## Session note
 
-**2026-08-04 W2 implement (A):** Chrome family `_class_eq` / `wmClassEqual` (browser ↔
-`chrome-*-Default` / `crx_*`); PlaceNext `homeMonitor` uses dock sticky
-`safeMoveToMonitor` + grace; late wm-class/title retries PlaceNext via
-`_retryPlaceHintAfterIdentity` (close over metaWindow). Tests: place-hint,
-open-app-policy W2 cases, `test_forge_class_eq.py`, layout_plan class eq.
-`npm test` 2076 + pytest CLI 344 green.
+**2026-08-04 W2 B-rework (A):** (1) Chrome equality tightened — browser↔PWA and
+browser↔browser only; distinct PWA/crx never match unless exact. Synced
+`place-hint.js` `wmClassEqual`, `forge` `_class_eq`, `layout_plan.py` `_class_eq`.
+Negative tests in place-hint, test_forge_class_eq, TestClassEqChromeFamily.
+(2) `_retryPlaceHintAfterIdentity` reparents under `plan.attachLft` / path via
+`_resolveAttachTarget` + `_reparentForLatePlace` (not mon-root only). Test:
+deferred treePath attach. Vitest extension/window 810 + pytest class_eq suites green.

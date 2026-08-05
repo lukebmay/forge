@@ -2702,7 +2702,7 @@ def _is_chrome_family_class(s: str) -> bool:
 
 
 def _class_eq(a: Any, b: Any) -> bool:
-    """Casefold equality + reverse-DNS stem + Chrome family ↔ PWA ids."""
+    """Casefold + reverse-DNS stem + browser↔PWA / browser↔browser (never PWA↔PWA)."""
     if a is None or b is None:
         return False
     sa = str(a).strip().casefold()
@@ -2714,8 +2714,14 @@ def _class_eq(a: Any, b: Any) -> bool:
     # Sugar stem: "ghostty" matches "com.mitchellh.ghostty" (either side).
     if sa.endswith("." + sb) or sb.endswith("." + sa):
         return True
-    # Google-chrome / Chromium ↔ chrome-*-Default / crx_* (layout match / wait).
-    if _is_chrome_family_class(sa) and _is_chrome_family_class(sb):
+    # Browser ↔ PWA (either side); browser ↔ browser. Never distinct PWA ↔ PWA.
+    a_browser = _is_chrome_browser_class(sa)
+    b_browser = _is_chrome_browser_class(sb)
+    a_pwa = _is_chrome_pwa_class(sa)
+    b_pwa = _is_chrome_pwa_class(sb)
+    if (a_browser and b_pwa) or (a_pwa and b_browser):
+        return True
+    if a_browser and b_browser:
         return True
     return False
 

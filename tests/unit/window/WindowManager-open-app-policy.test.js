@@ -295,6 +295,45 @@ describe("OP1 open-app placement policy", () => {
       expect(metaWindow._forgeDockStickyMon).toBe(0);
     });
 
+    it("W2: deferred PlaceNext reparents under treePath attach, not mon root only", () => {
+      const a = tileOn(1, { id: "path-a" });
+      tileOn(1, { id: "path-b" });
+      const other = tileOn(0, { id: "other" });
+      wm().movePointerWith(other.nodeWindow);
+
+      const mon1 = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
+      const monId = mon1.nodeValue;
+
+      wm().placeNext({
+        wmClass: "PathApp",
+        treePath: `${monId}/0`,
+        expiresAt: Date.now() + 60_000,
+      });
+
+      // Null class: misses PlaceNext, homes to global LFT mon0.
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "late-path",
+        wm_class: null,
+        title: null,
+      });
+      wm().trackWindow(null, metaWindow);
+
+      let node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(0);
+      expect(wm()._pendingPlaceHints.length).toBe(1);
+
+      // Class lands — consume treePath PlaceNext; sibling of path target, not mon root dump.
+      metaWindow.set_wm_class("PathApp");
+      node = wm().findNodeWindow(metaWindow);
+      expect(wm()._pendingPlaceHints.length).toBe(0);
+      expect(monitorOf(node)).toBe(1);
+      expect(node.parentNode).toBe(a.nodeWindow.parentNode);
+      // Inserted after path target a (index 0).
+      expect(a.nodeWindow.nextSibling).toBe(node);
+    });
+
     it("generic open without place hint does not sticky-force Meta mon", () => {
       const lft = tileOn(1, { id: "lft1" });
       wm().movePointerWith(lft.nodeWindow);

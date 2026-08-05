@@ -53,9 +53,21 @@ describe("wmClassEqual", () => {
     expect(wmClassEqual("chrome-aaa-Default", "Google-chrome")).toBe(true);
     // Ordinary self-match still works
     expect(wmClassEqual("Google-chrome", "Google-chrome")).toBe(true);
+    // browser ↔ browser
+    expect(wmClassEqual("Google-chrome", "Chromium")).toBe(true);
     // Non-chrome must not match PWA ids
     expect(wmClassEqual("firefox", "chrome-ggjo-Default")).toBe(false);
     expect(wmClassEqual("ghostty", "crx_abc")).toBe(false);
+  });
+
+  it("does not match distinct Chrome PWAs or crx ids", () => {
+    expect(wmClassEqual("chrome-aaa-Default", "chrome-bbb-Default")).toBe(false);
+    expect(wmClassEqual("chrome-ggjoabcdef-Default", "chrome-otherid-Default")).toBe(false);
+    expect(wmClassEqual("crx_a", "crx_b")).toBe(false);
+    expect(wmClassEqual("crx_abc123", "chrome-aaa-Default")).toBe(false);
+    // Same PWA still matches (exact)
+    expect(wmClassEqual("chrome-aaa-Default", "chrome-aaa-Default")).toBe(true);
+    expect(wmClassEqual("crx_a", "crx_a")).toBe(true);
   });
 });
 

@@ -4357,6 +4357,15 @@ class TestClassEqChromeFamily(unittest.TestCase):
         self.assertTrue(plan_class_eq("google-chrome-stable", "crx_xyz"))
         self.assertTrue(plan_class_eq("chrome-aaa-Default", "Google-chrome"))
         self.assertTrue(plan_class_eq("Google-chrome", "Google-chrome"))
+        self.assertTrue(plan_class_eq("Google-chrome", "Chromium"))
+
+    def test_distinct_pwas_do_not_match(self):
+        self.assertFalse(plan_class_eq("chrome-aaa-Default", "chrome-bbb-Default"))
+        self.assertFalse(plan_class_eq("chrome-ggjoabcdef-Default", "chrome-otherid-Default"))
+        self.assertFalse(plan_class_eq("crx_a", "crx_b"))
+        self.assertFalse(plan_class_eq("crx_abc123", "chrome-aaa-Default"))
+        self.assertTrue(plan_class_eq("chrome-aaa-Default", "chrome-aaa-Default"))
+        self.assertTrue(plan_class_eq("crx_a", "crx_a"))
 
     def test_non_chrome_does_not_match_pwa(self):
         self.assertFalse(plan_class_eq("firefox", "chrome-ggjo-Default"))
