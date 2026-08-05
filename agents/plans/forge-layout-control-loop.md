@@ -1,8 +1,8 @@
 # Plan: Layout control loop (open = batch N, settle + verify)
 
-**Status:** X11 acceptance met — remaining: merge → master, then Wayland residual smoke  
+**Status:** X11 acceptance met — **merged to master**; Wayland residual smoke open  
 **Priority:** P0 reliability (open/tile desync; Ghostty; shared by layout CLI)  
-**Branch:** `plan/forge-layout-control-loop`  
+**Branch:** code on `master` (plan branch still exists for history)  
 **Created:** 2026-08-05  
 **Host:** black — dual 4K; **X11 green**; Wayland residual still open  
 **Supersedes implement path of:** [forge-layout-settle-pure.md](./forge-layout-settle-pure.md) (D0 discussion → this plan)  
@@ -10,19 +10,15 @@
 
 ### Session note (overwrite)
 
-**2026-08-05 (CL7 X11 live green):** On `plan/forge-layout-control-loop`
-(ahead of origin, tip includes `fe8448c` + handoff docs; **not pushed**).
+**2026-08-05 (merged to master; Wayland residual next):**
 
-- **CL0–CL6 + CL7 PWA code + CL7 X11 live** done. Operator confirmed X11 bar.
-- Session: **X11**, displays **150%**, `forge layout dev` opened full black
-  profile (a bit slow — intentional control-loop settle).
-- Tree: mon0 TABBED chrome (New Tab)+Grok | ghostty; mon1 ghostty | TABBED
-  YouTube, Google Voice, Gmail. No PWA wait timeout.
-- Completed live task:
-  `…/completed/forge-layout-control-loop_cl7-live-ghostty.md`
-- **Remaining:** merge plan → `master` (local; no push unless asked), then
-  Wayland residual smoke (logout). Stash holds wayland-live WIP — do not drop/pop
-  onto control-loop. See [HANDOFF.md](../HANDOFF.md).
+- **CL0–CL7 X11** done on black (150%, `forge layout dev` dual-mon tree).
+- **Merged** `plan/forge-layout-control-loop` → `master` (local FF; not pushed).
+- Debug **install done** pre-Wayland logout (`g5721f8e` install path).
+- Tests: vitest 2100; CLI pytest 358.
+- **Next:** human logout → GNOME Wayland residual only. Stash holds
+  wayland-live WIP — do not drop; do not pop onto master.
+  See [HANDOFF.md](../HANDOFF.md).
 
 ---
 
@@ -381,11 +377,11 @@ Instrument (debug install): optional timeline log map / size-changed / apply / v
 
 ## Handoff bullets (next agent)
 
-1. **CL7 X11 live is green** — next is **merge** `plan/forge-layout-control-loop` → `master` (local only unless human asks push).
-2. Then **Wayland residual** smoke (logout install); do not block on rename.
+1. **Merged to master** (local). Next: **Wayland residual** smoke after logout (install already on disk).
+2. Do not block on monitor-recovery rename.
 3. Soft-rehome is **ours** (H1), not jcrussell; rename → [forge-monitor-recovery-rename.md](./forge-monitor-recovery-rename.md) (separate PR).
 4. Ghostty: size thrash after map, not self-move; control-loop settle is intentionally a bit slow.
 5. Open = batch N=1; layout multi-open same loop (LayoutBatch).
 6. Keep W-storm guards; route corrections through requestLayout/verify.
 7. Same code paths on X11 and Wayland; no session-backend split in this plan.
-8. **Git stash:** Wayland residual WIP is stashed — full note in [HANDOFF.md](../HANDOFF.md) (*Agent git: stashed Wayland WIP*). Do not drop; do not pop onto control-loop or master.
+8. **Git stash:** Wayland residual WIP is stashed — full note in [HANDOFF.md](../HANDOFF.md). Do not drop; do not pop onto master.
