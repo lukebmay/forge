@@ -1,9 +1,9 @@
 # forge-layout-settle-pure_d0-discussion
 
-**Status:** ready  
-**Plan:** [forge-layout-settle-pure.md](../plans/forge-layout-settle-pure.md)  
-**Branch:** `plan/forge-layout-settle-pure` (create when implementing; discussion may stay on master)  
-**Updated:** 2026-07-29
+**Status:** superseded  
+**Plan:** [forge-layout-settle-pure.md](../plans/forge-layout-settle-pure.md) → implement [forge-layout-control-loop.md](../plans/forge-layout-control-loop.md)  
+**Branch:** n/a  
+**Updated:** 2026-08-05
 
 ## Goal
 
@@ -46,8 +46,6 @@ See plan for full table. Short list:
 
 ## Session note
 
-**2026-07-30:** Draft recommendation written into plan (hybrid: PlaceNext +
-per-app `settleMs` + targeted residual Moves + LF6 batch fallback). Awaiting
-**user lock** before PS1/PS2 implement tasks. No code.
-
-Filed 2026-07-29 after LF6 live OK; plan for pure low-jump path.
+**2026-08-05:** User locked broader control-loop (open=batch N, verify×2,
+thrash catalog). D0 closed as **superseded**; no PS1 under settle-pure.
+Active: `agents/plans/forge-layout-control-loop.md` + task CL0.

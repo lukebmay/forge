@@ -1,16 +1,17 @@
 # Plan: Pure layout settle / low-jump rehome
 
-**Status:** draft — **D0 awaiting user lock** (recommendation drafted)  
-**Priority:** P1 (after daily-driver LF6 works; polish jumpiness)  
-**Updated:** 2026-07-30  
+**Status:** **superseded** for implementation by [forge-layout-control-loop.md](./forge-layout-control-loop.md)  
+**Priority:** historical (lessons retained)  
+**Updated:** 2026-08-05  
 **Base:** this tree (`lukebmay/forge`)  
-**Related:** [forge-layout-reliability.md](./forge-layout-reliability.md) (LF1–LF6 shipped; **keep current open-then-stable-rehome for now**)
+**Related:** [forge-layout-reliability.md](./forge-layout-reliability.md) (LF1–LF6 shipped)
 
 ### Session note (overwrite)
 
-**D0 draft recommendation ready for user lock (2026-07-30).** LF6 stays
-production until an implement slice ships. See **Recommended product path**
-below; discussion task still open until human locks.
+**2026-08-05:** User locked a broader control-loop design (open = batch N,
+event-driven verify ×2, thrash catalog, debounced render). Implement under
+**forge-layout-control-loop**, not PS1–PS3 here. Keep this file for LF5/LF6
+lessons and Ghostty resize notes.
 
 ---
 
@@ -194,9 +195,8 @@ not a full rewrite to serial-only.
 
 | ID | Task | Status |
 | --- | --- | --- |
-| **D0** | [forge-layout-settle-pure_d0-discussion](../tasks/forge-layout-settle-pure_d0-discussion.md) | **awaiting user lock** on recommended path |
-
-No implementation tasks until D0 produces an agreed approach (user lock).
+| **D0** | [forge-layout-settle-pure_d0-discussion](../tasks/forge-layout-settle-pure_d0-discussion.md) | **superseded** — lock landed as control-loop plan |
+| **→** | [forge-layout-control-loop.md](./forge-layout-control-loop.md) | **active implement plan** |
 
 ---
 
