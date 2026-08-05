@@ -1,13 +1,13 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (stash note for agents; control-loop plan live)  
-**Implement on:** `plan/forge-layout-control-loop` (tracks `origin`; queue also on `master`)  
+**Updated:** 2026-08-05 (CL0–CL6 code complete on control-loop branch)  
+**Implement on:** `plan/forge-layout-control-loop` (**ahead 7** of origin; **not pushed**)  
 **Wayland residual:** `plan/forge-wayland-live` — **WIP is stashed** (agents own git; see below)  
-**Default:** `master` has queue canon; do not merge wayland-live until operator smoke  
+**Default:** `master` has older queue docs until this plan branch is merged for queue canon  
 **Remotes:** `test` / `prod` **not** touched  
 
 **Active plan:** [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md)  
-**First task:** [forge-layout-control-loop_cl0-request-api.md](./tasks/forge-layout-control-loop_cl0-request-api.md)  
+**Next task:** [forge-layout-control-loop_cl7-live-ghostty.md](./tasks/forge-layout-control-loop_cl7-live-ghostty.md) — **operator** live smoke on black  
 **Rename-only plan:** [forge-monitor-recovery-rename.md](./plans/forge-monitor-recovery-rename.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 
@@ -21,7 +21,7 @@
 | --- | --- |
 | **Why** | Pre-handoff, unfinished `plan/forge-wayland-live` code was stashed so CL0 could start on a clean tree |
 | **Branch it belongs to** | `plan/forge-wayland-live` only |
-| **CL0 / control-loop** | **Do not** `stash pop` onto `plan/forge-layout-control-loop` or `master` |
+| **Control-loop** | **Do not** `stash pop` onto `plan/forge-layout-control-loop` or `master` |
 | **Drop?** | **Never** `stash drop` / `stash clear` until that WIP is committed on wayland-live or explicitly abandoned by the human |
 
 ### Identify
@@ -34,16 +34,6 @@ git stash list
 
 Index may not stay `@{0}` if other stashes are added — **match by message**, not only by number.
 
-### Contents (approx.)
-
-| Paths | Kind |
-| --- | --- |
-| `lib/shared/rival-tilers.js` + unit test | new |
-| `tests/regression/bug-move-to-monitor-unready-wayland.test.js` | new |
-| `lib/extension/soft-rehome.js`, `extension.js` | modified |
-| `scripts/forge/*`, `scripts/install.zsh`, `README.md` | modified |
-| movement unit test tweak | modified |
-
 ### Restore (only when resuming Wayland residual)
 
 ```sh
@@ -55,11 +45,43 @@ git stash pop stash@{N}
 # resolve conflicts if any; commit on wayland-live when ready
 ```
 
-### While implementing control-loop (CL*)
+---
 
-- Stay on `plan/forge-layout-control-loop`
-- Leave this stash untouched
-- If you need a clean stash stack for *new* WIP, push with a clear message; do not clear the Wayland stash
+## Control loop (CL0–CL6) — shipped on plan branch
+
+| ID | What |
+| --- | --- |
+| **CL0** | `layout-controller.js` — `requestLayout` / `requestVerify` trailing debounce; post-render hook |
+| **CL1** | `layout-verify.js` — Meta↔slot ε=4; agreement ×2 → SETTLED; mismatch latch |
+| **CL2** | `layout-sensors.js` — suppress on move/apply; in-slot chrome; external → `onExternalGeometry` |
+| **CL3** | `app-thrash-catalog.js` — Ghostty sticky `needsExtraVerify`; thrash-extra after SETTLED |
+| **CL4** | `layout-open.js` — open quiet (dock/default/ghostty) → `requestLayout` (max wait 2.5s) |
+| **CL5** | Open-layout batch + DBus `LayoutBatch` — layout CLI multi-open one post-quiet commit |
+| **CL6** | `layout-verify-interval-ms` gsetting (default **0** = off) → periodic `requestVerify` |
+
+**Commits (local, not pushed):**
+
+```text
+845700a feat(layout): CL6 optional layout-verify-interval-ms (default off)
+e89ec31 feat(layout): CL5 layout CLI open batch with single post-quiet commit
+58fab3e feat(layout): CL4 open path quiet batch then requestLayout
+9d7f921 feat(layout): CL3 in-memory app thrash catalog with Ghostty defaults
+1c1f2e9 feat(layout): CL2 external geometry via control loop and apply suppress
+ee8445d feat(layout): CL1 Meta↔slot verify scanner and agreement counter
+05cfef2 feat(layout): CL0 requestLayout/requestVerify debounce skeleton
+```
+
+**Tests (last full):** ~2095 npm unit tests green; pytest `tests/unit/cli/` 338 on CL5.
+
+### Key modules
+
+| Module | Role |
+| --- | --- |
+| `lib/extension/layout-controller.js` | Debounce, agreement, thrash-extra, periodic, batch gate |
+| `lib/extension/layout-verify.js` | Pure frame↔slot scan |
+| `lib/extension/layout-sensors.js` | Forge-caused / in-slot helpers |
+| `lib/extension/layout-open.js` | Open quiet/max-wait pure helpers |
+| `lib/extension/app-thrash-catalog.js` | Per-class thrash heuristics |
 
 ---
 
@@ -68,25 +90,16 @@ git stash pop stash@{N}
 | | |
 | --- | --- |
 | jcrussell? | **No** |
-| This fork | **Yes** — H1, Luke, `a897516` (2026-07-23); later `soft-rehome.js` extract |
-| Product name going forward | **monitor-recovery** (rename = separate PR only) |
+| This fork | **Yes** — H1, Luke; product name → **monitor-recovery** (separate PR only) |
 
 ---
 
-## What just locked (design — not coded yet)
+## Next for human / next agent
 
-| Decision | Detail |
-| --- | --- |
-| Open = batch N | Single pipeline; N=1 for dock/launcher |
-| Debounced layout | 150–300ms; **no** render-per-app in multi-open |
-| Verify | Event-driven; **≥2** consecutive Meta↔slot agreements after commit |
-| Catalog | First-open longer observe; thrashy classes (Ghostty) extra verify |
-| Sensors vs apply | Track client response to our `move_resize_frame`; suppress self-noise |
-| X11 | Same control loop; **no** session-backend split in this plan |
-| 5s rescan | Debug gsetting only; default off |
-| Ghostty truth | Post-map **resize**, not self-move |
-
-**First task:** [forge-layout-control-loop_cl0-request-api.md](./tasks/forge-layout-control-loop_cl0-request-api.md)
+1. **CL7 operator:** install branch on black; sole Ghostty + `forge layout dev`; note X11/Wayland.
+2. Merge `plan/forge-layout-control-loop` → `master` when CL7 OK (or earlier if you want queue+code on default) — **do not push** unless asked.
+3. Leave wayland-live stash alone until that plan resumes.
+4. Optional: MR0 monitor-recovery rename on own branch/PR.
 
 ---
 
@@ -94,35 +107,7 @@ git stash pop stash@{N}
 
 | Layer | Status |
 | --- | --- |
-| W-storm render guards | Shipped on wayland-live — logout smoke |
-| Borders | Hardened — still needs clean smoke |
+| W-storm render guards | On wayland-live (partially ported geometry suppress into CL2) |
+| Borders | Still needs clean smoke on Wayland residual |
 | monitor-recovery thrash (W4) | Not done on Wayland |
-| Control loop (CL*) | **Plan ready** — implement next major reliability path |
-
-If Forge vanishes after crash: `gsettings get org.gnome.shell disable-user-extensions`.
-
----
-
-## Operator / next agent
-
-1. Prefer finish short Wayland border smoke if still dirty on disk, **or** start CL0 on new branch from up-to-date master (merge wayland-live if needed).
-2. **Do not** mix monitor-recovery rename into CL commits.
-3. Implement CL0 → CL1 → CL2 → CL3 → CL4 (sole Ghostty live gate).
-4. After CL4: sole Ghostty open must show frame ≈ slot (no full red ring / small window).
-
-### Glossary quick ref
-
-| Term | Meaning |
-| --- | --- |
-| Mutate tree | In-memory topology only |
-| Render / commit | Slots + `move_resize_frame` |
-| Verify | Meta frames vs slots |
-| Rebuild | `reloadTree` nuclear |
-| Monitor-recovery | Workareas thrash (was soft-rehome) |
-
-Logging (debug install):
-
-```sh
-gsettings set org.gnome.shell.extensions.forge logging-enabled true
-gsettings set org.gnome.shell.extensions.forge log-level 4
-```
+| Control loop (CL*) | **CL0–CL6 code done** — CL7 operator smoke |

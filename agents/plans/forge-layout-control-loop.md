@@ -16,7 +16,7 @@
   geometry suppress, thrash catalog (ghostty), open quiet N=1, layout CLI
   LayoutBatch, optional `layout-verify-interval-ms` (default 0).
 - **Next:** CL7 live Ghostty + `forge layout dev` on black (operator).
-- Commits: 05cfef2…e89ec31 + CL6 (pending wrap-up). Wayland-live stash untouched.
+- Commits CL0–CL6 + handoff on plan branch (ahead of origin, not pushed). Wayland-live stash untouched.
 
 ---
 
@@ -309,8 +309,8 @@ that refactor lands later, it consumes this API.
 | **CL3** | App thrash catalog + built-in ghostty + first-open observation | **done** | app-thrash-catalog.js; B AGREE |
 | **CL4** | Open path = batch N=1 through controller (replace blind createDelay) | **done** | layout-open.js; B AGREE |
 | **CL5** | Layout CLI / multi-open uses same commit+verify (LF6 quiet → one render) | **done** | LayoutBatch + gate; B AGREE r2 |
-| **CL6** | Optional debug periodic verify gsetting + docs | **A done** | await B; task: `…_cl6-debug-verify-interval.md` |
-| **CL7** | Live black: Ghostty sole open + `forge layout dev` + X11 or Wayland note | pending | Operator smoke |
+| **CL6** | Optional debug periodic verify gsetting + docs | **done** | layout-verify-interval-ms default 0; B AGREE |
+| **CL7** | Live black: Ghostty sole open + `forge layout dev` + X11 or Wayland note | **next (operator)** | task: `…_cl7-live-ghostty.md` |
 
 ### Suggested first implement task
 
