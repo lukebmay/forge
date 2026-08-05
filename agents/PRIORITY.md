@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-04  
+**Updated:** 2026-08-04 (wayland W1–W3 on plan branch)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -29,6 +29,7 @@
 
 | Item | Note |
 | --- | --- |
+| Wayland W1–W3 | size/late-tile, PlaceNext/PWA, Guake/dock focus mon — `plan/forge-wayland-live`; needs logout/in smoke |
 | Soft-rehome lock+DPMS | Guard + sliding cooldown + fingerprint re-arm; X11 product GNOME lock OK |
 | GNOME owns Super+Delete lock | Forge does not force DPMS; `prefs-lock-screen` unbound |
 | Selection S1–S2 | Elevated ops + bag chrome |

@@ -1,12 +1,16 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-04  
+**Updated:** 2026-08-04 (wayland live fixes)  
 **Branch:** `plan/forge-first-class-containers` (local commits; push optional)  
 **Default:** `master` — **not** merged (selection mid-wave + thrash fix on feature)  
 **Remotes:** `test` / `prod` **not** touched  
 **Queue:** [PRIORITY.md](./PRIORITY.md) — **1 Wayland thrash → 2 selection S3 → 3 desktop keybinds**
 
 ## Where we are
+
+| Layer | Status |
+| --- | --- |
+| Wayland live fixes W1–W3 | **Unit done** on `plan/forge-wayland-live` — **logout/in required** for live smoke |
 
 | Layer | Status |
 | --- | --- |
