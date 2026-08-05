@@ -599,6 +599,77 @@ describe("WindowManager - Borders and Focus Indicators", () => {
     });
   });
 
+  describe("stale border hide after resize/move", () => {
+    it("hides border when Node._actor is null but live compositor has border", () => {
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 400, height: 300 }),
+        workspace: ctx.workspaces[0],
+      });
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      const windowActor = metaWindow.get_compositor_private();
+      windowActor.border = mockBorder;
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+      // Simulate map-time null cache (Wayland race)
+      nodeWindow._actor = null;
+
+      wm().hideWindowBorders();
+
+      expect(mockBorder.hide).toHaveBeenCalled();
+      // Cache refreshed for next hide/show
+      expect(nodeWindow._actor).toBe(windowActor);
+    });
+
+    it("sizes focus border from tree renderRect when Meta frame is much smaller", () => {
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "tiling-mode-enabled") return true;
+        if (key === "focus-border-toggle") return true;
+        if (key === "focus-border-hidden-on-single") return false;
+        if (key === "split-border-toggle") return false;
+        return false;
+      });
+
+      // Stale Meta frame (old small tile); tree slot is the post-resize size
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 100, y: 100, width: 400, height: 300 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      const windowActor = metaWindow.get_compositor_private();
+      windowActor.border = mockBorder;
+      global.display.get_focus_window.mockReturnValue(metaWindow);
+      metaWindow.appears_focused_value = true;
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+      nodeWindow.renderRect = { x: 50, y: 50, width: 1200, height: 900 };
+
+      wm().showWindowBorders();
+
+      // inset = 3 * dpi (1 in unit tests)
+      expect(mockBorder.set_size).toHaveBeenCalledWith(1200 + 6, 900 + 6);
+      expect(mockBorder.set_position).toHaveBeenCalledWith(50 - 3, 50 - 3);
+    });
+  });
+
   // Bug #164 (forge-uqx): on Wayland HiDPI, move() aligns the window to buffer
   // scale via _alignToBufferScale, but showWindowBorders() sized the border from
   // the raw frame rect — so the border ended up offset/smaller than the window.

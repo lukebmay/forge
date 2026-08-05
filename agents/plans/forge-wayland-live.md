@@ -52,13 +52,10 @@ focused monitor. **No X11 regressions.**
 
 ## Session note
 
-**2026-08-04 evening:** Live after reboot — first `layout dev` left YouTube on mon0;
-second pass healed. W5: same-PWA class match (crx↔chrome-Default), PlaceNext prefers
-desktop class, residual belt does structure/order/focus, open failures continue residual,
-tab icons rebuild on app id change + PWA desktop lookup.
+**2026-08-05 (post reboot smoke):** Icons OK. Topology OK. **YouTube invisible:** Meta
+stayed mon0 while tree mon1 — `move()` lacked `move_to_monitor` before offscreen clamp
+(frame pinned ~mon0 right). **Stale tile borders:** hide used null `Node._actor`.
+**Guake:** auto pointer-warp + attach under TABBED LFT. Fixes in window/decoration/focus/tree;
+install dirty; **logout required**. W4 thrash still next after re-smoke.
 
-**Cold retest (CLI W5, extension needs logout for icons):** mon0 tabs(chrome,Grok)|ghostty;
-mon1 ghostty|tabs(YouTube,Gmail,Voice). Dry-run residual = 3 focus actives only (Grok,
-YouTube, profile ghostty) — correct product intent.
-
-**Still needs logout/in** for tab icon JS. Then W4 thrash smoke.
+**Earlier W5:** PWA class, residual belt, tab icons. Residual dry-run focus ops intentional.

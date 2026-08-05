@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-04 (wayland W1–W5; logout smoke next)  
+**Updated:** 2026-08-05 (YouTube mon + borders + Guake pointer fixes; logout re-smoke)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -19,7 +19,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **Logout load + layout/icons smoke** | Confirm `forge ping` version; `layout dev` one-shot + icons | [HANDOFF](./HANDOFF.md) |
+| **1** | **Logout + re-smoke** | Install already done; logout/in; YouTube mon=1 + no stale borders + Guake no warp | [HANDOFF](./HANDOFF.md) |
 | **2** | **Wayland thrash** | Lock Super+Delete → unlock; `forge tree`; journal | [HANDOFF](./HANDOFF.md) |
 | **2** | **Wayland selection smoke** | RunSteps elevate + layout-cycle; optional i3 Super+a | After thrash OK |
 | **3** | **CON selection S3** | Vim Super+p + BackSpace clear multi-bind + cheatsheet | [plan](./plans/forge-container-selection.md) |

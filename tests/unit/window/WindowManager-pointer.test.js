@@ -87,6 +87,29 @@ describe("WindowManager - Focus-Follows-Pointer Behavior", () => {
       expect(canMoveSpy).toHaveBeenCalledWith(nodeWindow);
     });
 
+    it("should not auto-warp for float windows even when move-pointer-focus is on", () => {
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "move-pointer-focus-enabled") return true;
+        return true;
+      });
+
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 100, y: 100, width: 800, height: 400 }),
+        workspace: workspace0(),
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.FLOAT;
+
+      const warpSpy = vi.spyOn(wm(), "warpPointerToNodeWindow");
+      wm().movePointerWith(nodeWindow);
+      expect(warpSpy).not.toHaveBeenCalled();
+
+      // force still warps floats (explicit keybind)
+      wm().movePointerWith(nodeWindow, { force: true });
+      expect(warpSpy).toHaveBeenCalled();
+    });
+
     it("should warp pointer when force option is true", () => {
       ctx.settings.get_boolean.mockImplementation((key) => {
         if (key === "move-pointer-focus-enabled") return false;
