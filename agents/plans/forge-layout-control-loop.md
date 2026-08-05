@@ -1,6 +1,6 @@
 # Plan: Layout control loop (open = batch N, settle + verify)
 
-**Status:** active — CL10 done; CL11 live retest next (after CL0–CL10)  
+**Status:** active — CL11 residual mon-ensure done; operator re-apply next  
 **Priority:** P0 reliability (open/tile desync; Ghostty; shared by layout CLI)  
 **Branch:** `plan/forge-layout-control-loop` (implement here; merge → master when CL8–CL10 green)  
 **Created:** 2026-08-05  
@@ -10,14 +10,13 @@
 
 ### Session note (overwrite)
 
-**2026-08-05 (CL10 done — Task Force A):** Optional layout-apply chrome + hard clear.
+**2026-08-05 CL11 residual mon-ensure + structure verifier (A/B AGREE):** Operator
+`layout dev` left mon-root TABBED; residual skipped mon hsplit when roles were
+reused. Fix: mon ensure from just_opened + mon-layout mismatch; structure before
+mon; pure `compare_layout_structure` (FIRM profile↔live); CLI reload after
+release-deferred; deferred hide re-apply. CLI pytest **372**. Next: operator
+re-apply / live verify; then Wayland residual.
 
-- GSettings `layout-apply-chrome-enabled` default **false** (opt-in).
-- Show on LayoutBatch **begin** (depth ≥ 1); clear depth 0 / disable / hard ≤**8s**.
-- Pure: `layout-apply-chrome.js` transitions + `ApplyChromeController`; runtime
-  non-reactive dim on `Main.uiGroup`.
-- Prefs Debugging checkbox; architecture + troubleshooting notes.
-- Tests: npm **2126**. Next: **CL11** live retest X11 `forge layout dev`.
 
 ---
 

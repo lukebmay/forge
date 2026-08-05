@@ -16,6 +16,7 @@ if str(_FORGE_CLI) not in sys.path:
 
 from layout_plan import (  # noqa: E402
     collect_windows,
+    compare_layout_structure,
     detect_thrash,
     forest_stable_key_map,
     format_layout_description,
@@ -4405,6 +4406,285 @@ class TestClassEqChromeFamily(unittest.TestCase):
                 m,
             )
         )
+
+
+class TestResidualMonEnsureCL11(unittest.TestCase):
+    """
+    CL11: residual after open-all left mon-root TABBED fullscreen.
+    Structure-only repair + just_opened residual must emit mon hsplit.
+    """
+
+    # Black dev sugar (same as live operator profile shape)
+    PROFILE = [
+        [["google-chrome", "Grok"], "ghostty"],
+        ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
+    ]
+
+    def _operator_fail_forest(self):
+        """Dual mon TABBED; all mon-direct windows for dev roles (no nested CON)."""
+        return {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "TABBED",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 101,
+                            "wmClass": "Google-chrome",
+                            "title": "Google Chrome",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 102,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 103,
+                            "wmClass": "Google-chrome",
+                            "title": "Grok",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "TABBED",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 201,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 1,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 202,
+                            "wmClass": "Google-chrome",
+                            "title": "YouTube",
+                            "monitor": 1,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 203,
+                            "wmClass": "Google-chrome",
+                            "title": "Google Voice",
+                            "monitor": 1,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 204,
+                            "wmClass": "Google-chrome",
+                            "title": "Gmail",
+                            "monitor": 1,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                    ],
+                },
+            ],
+        }
+
+    def test_structure_only_flat_tabbed_emits_mon_hsplit(self):
+        """No open/move/just_opened: mon layout TABBED vs profile hsplit → mon ensure."""
+        plan = plan_reconcile(self._operator_fail_forest(), self.PROFILE)
+        self.assertTrue(plan["ok"])
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["reused"], 7)
+        ensures = [a for a in plan["actions"] if a.get("op") == "ensure_layout"]
+        by_slot = {a["slot"]: a for a in ensures}
+        self.assertIn("mon0", by_slot)
+        self.assertEqual(by_slot["mon0"]["mode"], "hsplit")
+        self.assertIn("mon1", by_slot)
+        self.assertEqual(by_slot["mon1"]["mode"], "hsplit")
+        self.assertIn("mon0.s0", by_slot)
+        self.assertEqual(by_slot["mon0.s0"]["mode"], "tabbed")
+        self.assertIn("mon1.s0", by_slot)
+        self.assertEqual(by_slot["mon1.s0"]["mode"], "tabbed")
+        # Structure (tab) before mon-level hsplit
+        slots = [a["slot"] for a in ensures]
+        self.assertLess(slots.index("mon0.s0"), slots.index("mon0"))
+        self.assertLess(slots.index("mon1.s0"), slots.index("mon1"))
+
+    def test_just_opened_residual_emits_mon_and_structure(self):
+        """Residual after open-all: all reused + just_opened_roles → mon + tab ensure."""
+        roles = {
+            "google-chrome",
+            "Grok",
+            "ghostty",
+            "ghostty-2",
+            "YouTube",
+            "Gmail",
+            "Google-Voice",
+        }
+        pins = {
+            "google-chrome": 101,
+            "Grok": 103,
+            "ghostty": 102,
+            "ghostty-2": 201,
+            "YouTube": 202,
+            "Gmail": 204,
+            "Google-Voice": 203,
+        }
+        plan = plan_reconcile(
+            self._operator_fail_forest(),
+            self.PROFILE,
+            role_pins=pins,
+            just_opened_roles=roles,
+        )
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        ensures = [a for a in plan["actions"] if a.get("op") == "ensure_layout"]
+        by_slot = {a["slot"]: a for a in ensures}
+        self.assertEqual(by_slot["mon0"]["mode"], "hsplit")
+        self.assertEqual(by_slot["mon1"]["mode"], "hsplit")
+        self.assertEqual(by_slot["mon0.s0"]["mode"], "tabbed")
+        self.assertEqual(by_slot["mon1.s0"]["mode"], "tabbed")
+        slots = [a["slot"] for a in ensures]
+        self.assertLess(slots.index("mon0.s0"), slots.index("mon0"))
+        self.assertLess(slots.index("mon1.s0"), slots.index("mon1"))
+
+    def test_safe_just_opened_skips_ensure_nothing_todo(self):
+        """--safe + just_opened: no ensure_layout; nothingToDo when no open/move."""
+        roles = {
+            "google-chrome",
+            "Grok",
+            "ghostty",
+            "ghostty-2",
+            "YouTube",
+            "Gmail",
+            "Google-Voice",
+        }
+        pins = {
+            "google-chrome": 101,
+            "Grok": 103,
+            "ghostty": 102,
+            "ghostty-2": 201,
+            "YouTube": 202,
+            "Gmail": 204,
+            "Google-Voice": 203,
+        }
+        plan = plan_reconcile(
+            self._operator_fail_forest(),
+            self.PROFILE,
+            role_pins=pins,
+            just_opened_roles=roles,
+            safe=True,
+        )
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        ensures = [a for a in plan["actions"] if a.get("op") == "ensure_layout"]
+        self.assertEqual(ensures, [])
+        self.assertTrue(plan["nothingToDo"], plan)
+        # Structure still reported (policy skips repair)
+        self.assertFalse(plan.get("structureMatch", True))
+
+    def test_extension_steps_include_mon_hsplit(self):
+        """actions_to_extension_steps maps mon ensure_layout → layout hsplit."""
+        from layout_apply import actions_to_extension_steps
+
+        plan = plan_reconcile(self._operator_fail_forest(), self.PROFILE)
+        steps = actions_to_extension_steps(plan["actions"])
+        layouts = [s for s in steps if s.get("op") == "layout"]
+        # At least one mon-level hsplit (and tabbed structure)
+        self.assertTrue(
+            any(s.get("mode") == "hsplit" for s in layouts),
+            layouts,
+        )
+        self.assertTrue(
+            any(s.get("mode") == "tabbed" for s in layouts),
+            layouts,
+        )
+        # Structure tab steps before mon hsplit among layout ops
+        layout_modes = [s.get("mode") for s in layouts]
+        self.assertLess(layout_modes.index("tabbed"), layout_modes.index("hsplit"))
+
+    def test_structure_compare_flags_flat_tabbed(self):
+        """Verifier: operator forest vs profile → not match (mon-layout + group)."""
+        cmp = compare_layout_structure(self._operator_fail_forest(), self.PROFILE)
+        self.assertFalse(cmp["match"])
+        kinds = {m["kind"] for m in cmp["mismatches"]}
+        self.assertIn("mon-layout", kinds)
+        self.assertIn("group", kinds)
+        mon_slots = {
+            m["slot"] for m in cmp["mismatches"] if m["kind"] == "mon-layout"
+        }
+        self.assertEqual(mon_slots, {"mon0", "mon1"})
+
+    def test_structure_compare_perfect_match(self):
+        """Verifier: tree-perfect vs profile-dev-v2 → match."""
+        cmp = compare_layout_structure(
+            _load("tree-perfect.json"), _load("profile-dev-v2.json")
+        )
+        self.assertTrue(cmp["match"], cmp["mismatches"])
+        self.assertEqual(cmp["mismatches"], [])
+
+    def test_structure_compare_never_disagrees_with_plan(self):
+        """
+        FIRM: if profile tree ≠ live tree, plan must not nothingToDo (default path).
+        If trees match and all roles claimed, plan has no structure/mon ensure.
+        """
+        cases = [
+            (self._operator_fail_forest(), self.PROFILE),
+            (_load("tree-perfect.json"), _load("profile-dev-v2.json")),
+            (_load("tree-voice-mon-direct.json"), _load("profile-dev-v2.json")),
+            (_load("tree-thrash-comms-nested-hsplit.json"), _load("profile-dev-v2.json")),
+        ]
+        for forest, profile in cases:
+            cmp = compare_layout_structure(forest, profile)
+            plan = plan_reconcile(forest, profile)
+            self.assertEqual(
+                plan.get("structureMatch"),
+                cmp["match"],
+                f"plan.structureMatch must mirror compare: {cmp['mismatches']}",
+            )
+            if not cmp["match"]:
+                self.assertFalse(
+                    plan["nothingToDo"],
+                    f"structure mismatch but nothingToDo: {cmp['mismatches']}",
+                )
+                # At least one structure/mon ensure or move/open when trees disagree
+                repair = [
+                    a
+                    for a in plan["actions"]
+                    if a.get("op")
+                    in ("ensure_layout", "ensure_order", "move", "open", "park")
+                ]
+                self.assertTrue(
+                    repair,
+                    f"mismatch without repair actions: {cmp['mismatches']} "
+                    f"actions={plan['actions']}",
+                )
+            else:
+                ensures = [
+                    a for a in plan["actions"] if a.get("op") == "ensure_layout"
+                ]
+                self.assertEqual(
+                    ensures,
+                    [],
+                    f"structure match but ensure_layout: {ensures}",
+                )
 
 
 if __name__ == "__main__":

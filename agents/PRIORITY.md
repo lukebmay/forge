@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-05 (CL10 done; CL11 live retest next; Wayland after)  
+**Updated:** 2026-08-05 (CL11 residual mon-ensure shipped; operator re-apply next)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -10,7 +10,7 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **CL11** live retest X11 `forge layout dev` | Gate CL8–CL10 before Wayland residual |
+| **1** | **CL11** operator re-apply after residual mon-ensure fix | Confirm layout tree on black; then Wayland residual |
 | **2** | **Wayland residual** | After X11 retest |
 | **3** | **Container selection finish** | S3 kit binds → S5 live QA |
 | **4** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
@@ -20,7 +20,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **CL11** | Live X11 layout dev retest (CL8–CL10) | [HANDOFF](./HANDOFF.md) |
+| **1** | **CL11** | Operator re-apply `forge layout dev` (mon hsplit fix) | [HANDOFF](./HANDOFF.md) |
 | **2** | **Wayland** | Residual after X11 green | [wayland-live](./plans/forge-wayland-live.md) |
 | **3** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |
 
@@ -47,7 +47,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 | Doc | Role |
 | --- | --- |
 | [HANDOFF.md](./HANDOFF.md) | Cross-session — **start here** |
-| [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md) | CL10 done; CL11 live next |
+| [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md) | CL11 mon-ensure + structure verifier done; re-apply next |
 | [forge-wayland-live.md](./plans/forge-wayland-live.md) | **Next residual** (stashed WIP) |
 | [forge-monitor-recovery-rename.md](./plans/forge-monitor-recovery-rename.md) | Rename PR only |
 | [forge-container-selection.md](./plans/forge-container-selection.md) | S3 next product |
@@ -58,7 +58,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [layout control loop](./plans/forge-layout-control-loop.md) | CL10 done on plan branch; **CL11** live retest next |
+| **P0** | [layout control loop](./plans/forge-layout-control-loop.md) | CL11 residual mon-ensure + structure verifier on plan branch; **operator re-apply** next |
 | **P0** | Wayland residual | After CL11 X11 retest; stash holds extra WIP |
 | **P1** | [container selection](./plans/forge-container-selection.md) | S2 done — S3 after Wayland residual |
 | **P1** | [desktop keybinds](./plans/forge-desktop-keybinds.md) | KB0 done — KB1–4 after S3 |

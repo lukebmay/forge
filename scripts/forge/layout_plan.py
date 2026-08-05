@@ -2102,43 +2102,66 @@ def plan_reconcile(
         size_actions = _size_actions(role_results, prof)
     counts["sized"] = len(size_actions)
 
-    # Role open/move rewrites mon splits. Park/close/structure alone must not
-    # thrash dual-mon hsplit (companions park used to force mon0+mon1 ensure).
-    # --safe: open+move only (no mon/slot ensure_layout).
+    # Residual just_opened: roles reused on correct mon still need mon ensure
+    # (open-all residual has opened=moved=0; mon stays TABBED without this).
+    if opened_roles and not safe:
+        for entry in role_results:
+            rid = entry.get("id")
+            if rid is None or str(rid) not in opened_roles:
+                continue
+            if entry.get("windowId") is None:
+                continue
+            mon_head = _slot_mon_key(entry.get("slot"))
+            if mon_head:
+                mons_with_placement.add(mon_head)
+            if entry.get("status") == "reused":
+                _mark_layout_slots_for_role(
+                    str(entry.get("slot") or ""),
+                    layout_slot_modes,
+                    slots_needing_layout,
+                )
+
+    # Live mon layout wrong vs profile split (e.g. mon-root TABBED, want hsplit).
+    mons_split_mismatch: set[str] = set()
+    if not safe:
+        mons_split_mismatch = _mons_with_split_mismatch(forest, prof, role_results)
+        for mon_key in mons_split_mismatch:
+            mons_with_placement.add(mon_key)
+
+    # FIRM: profile tree vs live forest structural compare (single source of truth).
+    structure_cmp = compare_layout_structure(
+        forest,
+        prof,
+        role_results=role_results,
+        parent_info=parent_info,
+        already_validated=True,
+    )
+
+    # Role open/move / residual just_opened / mon split repair rewrite mon splits.
+    # Park/close alone must not thrash dual-mon hsplit. --safe: no ensure.
     has_role_placement = counts["opened"] > 0 or counts["moved"] > 0
+    # just_opened only drives mon ensure off --safe (safe path is open+move only).
+    has_mon_ensure = (
+        has_role_placement
+        or (bool(opened_roles) and not safe)
+        or bool(mons_split_mismatch)
+    )
     has_work = (
         has_role_placement
+        or has_mon_ensure
         or counts["parked"] > 0
         or counts["closed"] > 0
         or counts["structure"] > 0
         or counts["ordered"] > 0
         or counts["sized"] > 0
+        or bool(slots_needing_layout)
+        or (not safe and not structure_cmp.get("match", True))
     )
-    ensure_actions: list[dict[str, Any]] = []
+    structure_ensure_actions: list[dict[str, Any]] = []
+    mon_ensure_actions: list[dict[str, Any]] = []
     if has_work and not safe:
-        # mon-level splits only for mons that actually open/move roles.
-        # Touching peer mons steals LFT/focus and can derail PlaceNext.
-        # Anchor on mon-direct children (term slots), never tab-group members —
-        # layout acts on the window's parent CON, so chrome in a tab would
-        # demote TABBED → HSPLIT.
-        if has_role_placement:
-            for mon_key, mon_body in prof.get("layout", {}).items():
-                if mon_key not in mons_with_placement:
-                    continue
-                split = mon_body.get("split")
-                if not split:
-                    continue
-                anchors = _mon_split_anchor_ids(role_results, mon_key, prof)
-                if not anchors:
-                    continue
-                ensure_actions.append(
-                    {
-                        "op": "ensure_layout",
-                        "slot": mon_key,
-                        "mode": split,
-                        "windowIds": anchors,
-                    }
-                )
+        # Nested tab/stack/h-v first so mon kids become [tab CON, term] before
+        # mon-level hsplit (flat TABBED mon otherwise equal-splits every leaf).
         for slot, mode in sorted(slots_needing_layout.items()):
             wids = structure_slots.get(slot, {}).get("windowIds")
             if wids is None:
@@ -2157,9 +2180,36 @@ def plan_reconcile(
             }
             if wids:
                 entry["windowIds"] = wids
-            ensure_actions.append(entry)
+            structure_ensure_actions.append(entry)
 
-    # de-dupe ensure by slot (first wins — mon splits already prepended)
+        # mon-level splits only for mons that open/move / just_opened / mismatch.
+        # Touching peer mons steals LFT/focus and can derail PlaceNext.
+        # Anchor on mon-direct children (term slots), never tab-group members —
+        # layout acts on the window's parent CON, so chrome in a tab would
+        # demote TABBED → HSPLIT.
+        if has_mon_ensure:
+            for mon_key, mon_body in prof.get("layout", {}).items():
+                if mon_key not in mons_with_placement:
+                    continue
+                if not isinstance(mon_body, dict):
+                    continue
+                split = mon_body.get("split")
+                if not split:
+                    continue
+                anchors = _mon_split_anchor_ids(role_results, mon_key, prof)
+                if not anchors:
+                    continue
+                mon_ensure_actions.append(
+                    {
+                        "op": "ensure_layout",
+                        "slot": mon_key,
+                        "mode": split,
+                        "windowIds": anchors,
+                    }
+                )
+
+    # de-dupe ensure by slot (first wins — structure before mon-level)
+    ensure_actions = structure_ensure_actions + mon_ensure_actions
     seen_ensure: set[str] = set()
     deduped_ensure: list[dict[str, Any]] = []
     for a in ensure_actions:
@@ -2181,7 +2231,7 @@ def plan_reconcile(
     if focus_actions:
         has_work = True
 
-    # ensure_layout → ensure_order → ensure_sizes (after structure/order) →
+    # structure ensure → mon ensure → ensure_order → ensure_sizes →
     # placement actions → focus last.
     final_actions = (
         deduped_ensure + order_actions + size_actions + actions + focus_actions
@@ -2195,6 +2245,8 @@ def plan_reconcile(
         "counts": counts,
         "roles": role_results,
         "actions": final_actions,
+        "structureMatch": bool(structure_cmp.get("match")),
+        "structureMismatches": list(structure_cmp.get("mismatches") or []),
         "kept": kept,
         "left": left,
         "unclaimed": unclaimed,
@@ -3748,6 +3800,191 @@ def _is_mon_direct_path(path: Any) -> bool:
     except ValueError:
         return False
     return True
+
+
+def _forest_mon_layouts(forest: Any) -> dict[str, str]:
+    """monN → live MONITOR layout (upper). Prefers workspace 0 roots."""
+    out: dict[str, str] = {}
+    for m in _iter_forest_monitors(forest):
+        if not isinstance(m, dict):
+            continue
+        idx = _monitor_node_index(m)
+        if idx is None:
+            continue
+        key = f"mon{idx}"
+        if key in out:
+            continue
+        lay = m.get("layout")
+        if lay is None:
+            continue
+        out[key] = str(lay).strip().upper()
+    return out
+
+
+def _mons_with_split_mismatch(
+    forest: Any,
+    prof: dict[str, Any],
+    role_results: list[dict[str, Any]],
+) -> set[str]:
+    """
+    mon keys where profile wants hsplit/vsplit but live mon layout differs.
+
+    Conservative: only layout-type mismatch (e.g. TABBED mon vs hsplit profile).
+    Does not fire on HSPLIT mon with a stray mon-direct companion (structure-only).
+    Requires at least one claimed role window on the mon.
+    """
+    live = _forest_mon_layouts(forest)
+    out: set[str] = set()
+    for mon_key, mon_body in (prof.get("layout") or {}).items():
+        if not isinstance(mon_body, dict):
+            continue
+        split = str(mon_body.get("split") or "").strip().lower()
+        if split not in ("hsplit", "vsplit"):
+            continue
+        if not _role_window_ids_for_mon(role_results, mon_key):
+            continue
+        live_lay = live.get(mon_key)
+        if not live_lay:
+            continue
+        want = split.upper()
+        if live_lay != want:
+            out.add(mon_key)
+    return out
+
+
+def compare_layout_structure(
+    forest: Any,
+    profile: Any,
+    *,
+    role_results: Optional[list[dict[str, Any]]] = None,
+    parent_info: Optional[dict[str, dict[str, Any]]] = None,
+    already_validated: bool = False,
+) -> dict[str, Any]:
+    """
+    Pure structural compare: layout profile (desired) vs GetTree forest (live).
+
+    FIRM: this is the single source of truth for "do these trees agree?"
+    Plan reconcile must not claim nothingToDo for structure when match is false
+    (except --safe, which skips structure repair by policy).
+
+    Checks (claimed roles only; missing opens are not structure mismatches):
+      - role monitor placement
+      - mon-level split layout (HSPLIT/VSPLIT vs live MONITOR.layout)
+      - multi-role tabbed/stacked/hsplit/vsplit slots share one CON of that mode
+
+    Returns:
+      {
+        "match": bool,
+        "mismatches": [
+          {"kind": "role-mon"|"mon-layout"|"group", "slot": str, "want": ..., "got": ...,
+           "detail": str}
+        ],
+      }
+    """
+    if not isinstance(forest, dict):
+        raise ValueError("forest must be a JSON object")
+    if already_validated and isinstance(profile, dict) and "roles" in profile:
+        prof = profile
+    else:
+        prof = validate_reconcile_profile(
+            profile, mon_count=forest_physical_mon_count(forest)
+        )
+        prof = resolve_profile_mon_keys(prof, forest)
+
+    windows = collect_windows(forest)
+    pinfo = parent_info if parent_info is not None else _window_parent_index(forest)
+    layout_slot_modes = _slot_layout_modes(prof)
+
+    if role_results is None:
+        role_windows = _two_pass_claim_windows(prof["roles"], windows)
+        roles: list[dict[str, Any]] = []
+        for role, chosen in zip(prof["roles"], role_windows):
+            entry: dict[str, Any] = {
+                "id": role["id"],
+                "slot": role["slot"],
+            }
+            if chosen is None:
+                entry["status"] = "open"
+            else:
+                entry["windowId"] = chosen.get("windowId")
+                entry["path"] = chosen.get("path")
+                entry["monitor"] = window_monitor_index(chosen)
+                entry["status"] = "claimed"
+            roles.append(entry)
+        role_results = roles
+
+    mismatches: list[dict[str, Any]] = []
+
+    # Role on wrong monitor (only claimed windows).
+    for r in role_results:
+        if r.get("windowId") is None:
+            continue
+        slot = str(r.get("slot") or "")
+        desired = mon_index_from_slot(slot)
+        win_mon = r.get("monitor")
+        if win_mon is None:
+            # resolve from path parent_info when plan_reconcile roles lack monitor
+            info = pinfo.get(str(r.get("windowId")))
+            path = str((info or {}).get("path") or r.get("path") or "")
+            if path.startswith("mo") and "ws" in path:
+                try:
+                    win_mon = int(path[2 : path.index("ws")])
+                except ValueError:
+                    win_mon = None
+        if desired is not None and win_mon is not None and int(win_mon) != int(desired):
+            mismatches.append(
+                {
+                    "kind": "role-mon",
+                    "slot": slot,
+                    "want": desired,
+                    "got": int(win_mon),
+                    "detail": f"role {r.get('id')} on mon{win_mon}, want mon{desired}",
+                }
+            )
+
+    # Mon-level layout type.
+    for mon_key in sorted(_mons_with_split_mismatch(forest, prof, role_results)):
+        mon_body = (prof.get("layout") or {}).get(mon_key) or {}
+        want = str((mon_body or {}).get("split") or "").strip().upper()
+        live = _forest_mon_layouts(forest).get(mon_key)
+        mismatches.append(
+            {
+                "kind": "mon-layout",
+                "slot": mon_key,
+                "want": want,
+                "got": live,
+                "detail": f"{mon_key} live layout {live!r} != profile {want!r}",
+            }
+        )
+
+    # Multi-role groups: tabbed/stacked/nested h-v must share one CON of that mode.
+    for slot, mode in sorted(layout_slot_modes.items()):
+        mode_l = str(mode or "").strip().lower()
+        if mode_l not in ("tabbed", "stacked", "hsplit", "vsplit"):
+            continue
+        if str(slot).endswith(".overflow"):
+            continue
+        if mode_l in ("hsplit", "vsplit"):
+            wids = _role_window_ids_for_slot_prefix(role_results, slot)
+        else:
+            wids = _role_window_ids_for_slot(role_results, slot)
+        if len(wids) < 2:
+            continue
+        if not _windows_share_group(wids, pinfo, mode_l):
+            mismatches.append(
+                {
+                    "kind": "group",
+                    "slot": slot,
+                    "want": mode_l,
+                    "got": None,
+                    "detail": f"{mode_l} roles not co-grouped under one CON: {slot}",
+                }
+            )
+
+    return {
+        "match": len(mismatches) == 0,
+        "mismatches": mismatches,
+    }
 
 
 def _mon_split_anchor_ids(

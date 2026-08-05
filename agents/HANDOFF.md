@@ -1,14 +1,15 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (CL10 done; CL11 live retest next)  
+**Updated:** 2026-08-05 (CL11 residual mon-ensure + structure verifier done)  
 **Implement on:** `plan/forge-layout-control-loop` (**ahead of origin**; **not pushed**)  
-**HEAD:** master has CL0–CL7; plan branch has CL8–CL10 (deferred open + apply chrome)  
-**Wayland residual:** **after** CL8–CL10 + X11 retest (do not block on Wayland now)  
+**HEAD:** master has CL0–CL7; plan branch has CL8–CL11 (deferred open + residual mon-ensure)  
+**Wayland residual:** after operator re-apply of mon-ensure fix  
 **Stashed WIP:** `plan/forge-wayland-live` — **do not drop**; do not pop onto control-loop/master  
 **Remotes:** **no push** unless human asks  
 
 **Active plan:** [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md)  
-**Next:** CL11 live retest X11 `forge layout dev` (then Wayland residual)  
+**Next:** Operator re-apply `forge layout dev` (or residual) — mon hsplit should land  
+**Completed CL11 mon-ensure:** [cl11-residual-mon-ensure](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl11-residual-mon-ensure.md)  
 **Completed CL10:** [cl10-apply-chrome](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl10-apply-chrome.md)  
 **Completed CL9:** [cl9-parallel-deferred-open](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl9-parallel-deferred-open.md)  
 **Completed CL8:** [cl8-deferred-hidden-open](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl8-deferred-hidden-open.md)  
@@ -25,8 +26,8 @@
 | **CL8** deferred hidden LayoutBatch admit | **Done** (plan branch) |
 | **CL9** parallel CLI open + map wait + unhide | **Done** (plan branch) |
 | **CL10** apply chrome | **Done** (plan branch; opt-in, hard ≤8s clear) |
-| X11 retest layout dev | **Next** (CL11) |
-| Wayland residual | After X11 retest |
+| **CL11** residual mon-ensure + structure verifier | **Done** (code); **operator re-apply** next |
+| Wayland residual | After operator green on mon-ensure |
 
 ---
 

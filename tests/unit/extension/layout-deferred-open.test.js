@@ -4,6 +4,8 @@ import {
   hideDeferredActor,
   isDeferredOpen,
   markDeferredOpen,
+  needsDeferredHideReapply,
+  rehideDeferredIfNeeded,
   shouldDeferHiddenOpen,
   shouldStickyMoveHomeMonitor,
   showDeferredActor,
@@ -89,7 +91,7 @@ describe("hideDeferredActor / showDeferredActor", () => {
     const snap = hideDeferredActor(actor);
     expect(actor.opacity).toBe(0);
     expect(actor.border.hidden).toBe(true);
-    expect(snap).toEqual({ prevOpacity: 200, hadBorder: true });
+    expect(snap).toEqual({ prevOpacity: 200, hadBorder: true, pendingHide: false });
 
     showDeferredActor(actor, snap);
     expect(actor.opacity).toBe(200);
@@ -97,12 +99,17 @@ describe("hideDeferredActor / showDeferredActor", () => {
   });
 
   it("handles missing actor and borderless actor", () => {
-    expect(hideDeferredActor(null)).toEqual({ prevOpacity: 255, hadBorder: false });
+    expect(hideDeferredActor(null)).toEqual({
+      prevOpacity: 255,
+      hadBorder: false,
+      pendingHide: true,
+    });
     showDeferredActor(null, { prevOpacity: 100 });
 
     const actor = makeActor({ withBorder: false });
     const snap = hideDeferredActor(actor);
     expect(snap.hadBorder).toBe(false);
+    expect(snap.pendingHide).toBe(false);
     expect(actor.opacity).toBe(0);
     showDeferredActor(actor, snap);
     expect(actor.opacity).toBe(255);
@@ -113,6 +120,59 @@ describe("hideDeferredActor / showDeferredActor", () => {
     const snap = hideDeferredActor(actor);
     expect(snap.prevOpacity).toBe(255);
     expect(actor.opacity).toBe(0);
+  });
+});
+
+describe("needsDeferredHideReapply / rehideDeferredIfNeeded", () => {
+  function makeActor({ opacity = 255 } = {}) {
+    return {
+      opacity,
+      border: {
+        hidden: false,
+        hide() {
+          this.hidden = true;
+        },
+        show() {
+          this.hidden = false;
+        },
+      },
+    };
+  }
+
+  it("re-hides when actor was null at mark (pendingHide)", () => {
+    const store = createDeferredOpenStore();
+    const meta = { id: "late" };
+    markDeferredOpen(store, meta, hideDeferredActor(null));
+    expect(needsDeferredHideReapply(null, true, store.states.get(meta))).toBe(true);
+
+    const actor = makeActor({ opacity: 255 });
+    expect(rehideDeferredIfNeeded(store, meta, actor)).toBe(true);
+    expect(actor.opacity).toBe(0);
+    expect(store.states.get(meta).pendingHide).toBe(false);
+    expect(store.states.get(meta).prevOpacity).toBe(255);
+  });
+
+  it("re-hides when client restored opacity while still deferred", () => {
+    const store = createDeferredOpenStore();
+    const meta = { id: "vis" };
+    const actor = makeActor({ opacity: 200 });
+    markDeferredOpen(store, meta, hideDeferredActor(actor));
+    expect(actor.opacity).toBe(0);
+    actor.opacity = 255;
+    expect(needsDeferredHideReapply(actor, true, store.states.get(meta))).toBe(true);
+    expect(rehideDeferredIfNeeded(store, meta, actor)).toBe(true);
+    expect(actor.opacity).toBe(0);
+    expect(store.states.get(meta).prevOpacity).toBe(200);
+  });
+
+  it("no-op when not deferred or already hidden", () => {
+    const store = createDeferredOpenStore();
+    const meta = { id: "ok" };
+    const actor = makeActor({ opacity: 255 });
+    expect(rehideDeferredIfNeeded(store, meta, actor)).toBe(false);
+    markDeferredOpen(store, meta, hideDeferredActor(actor));
+    expect(rehideDeferredIfNeeded(store, meta, actor)).toBe(false);
+    expect(needsDeferredHideReapply(actor, false)).toBe(false);
   });
 });
 

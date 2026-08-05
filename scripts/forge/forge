@@ -2215,7 +2215,14 @@ def _layout_run_reconcile(
                     )
 
             try:
-                forest2 = stable_info.get("forest")
+                # Prefer post-release GetTree so residual sees unhide modes,
+                # not a stale pre-release FLOAT snapshot from wait_for_tree_stable.
+                try:
+                    forest2 = _load_live_forest()
+                except Exception:
+                    forest2 = stable_info.get("forest")
+                if not isinstance(forest2, dict):
+                    forest2 = stable_info.get("forest")
                 if not isinstance(forest2, dict):
                     forest2 = _load_live_forest()
                 plan2 = plan_reconcile(
