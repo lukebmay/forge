@@ -58,6 +58,7 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | `layout-controller.js` `LayoutController` | Debounced `requestLayout` / `requestVerify`; CL1 Meta↔slot verify + agreement → SETTLED; CL2 `onExternalGeometry`; CL6 optional debug periodic verify. |
 | `layout-verify.js` | Pure frame↔slot ε compare, forest scan, TILE leaf collect. |
 | `layout-sensors.js` | Pure attribution: Forge-caused suppress vs TILE in-slot chrome-only (CL2). |
+| `layout-apply-chrome.js` | CL10 optional LayoutBatch dim scrim + hard ≤8s clear (opt-in). |
 | `command.js` `CommandHandler` | Turns a user action into tree mutations (extracted from window.js). |
 | `focus.js` `FocusManager` | Focus tracking + active-window signal lifecycle (extracted from window.js). |
 | `decoration.js` `DecorationManager` | Stacked/tabbed container decorations and their actor lifecycle (extracted from window.js). |
@@ -119,6 +120,13 @@ and `requestLayout` only latch need-commit (no per-app mid-batch render).
 (LF6 fingerprint = **batch quiet**) → residual `RunSteps` (freeze → ops → one
 `renderTree` + post-render verify) → end (one deferred `requestLayout` only if
 no residual render already cleared the latch).
+
+**CL10 layout-apply chrome (opt-in):** GSettings `layout-apply-chrome-enabled`
+(default **false**). When on, `beginOpenLayoutBatch` (depth ≥ 1) shows a
+non-reactive full-stage dim scrim (`layout-apply-chrome.js`); cleared on batch
+depth 0, `disable()`, and always by a hard timer ≤ **8s** so chrome cannot stick.
+Enable for trial: Preferences → Settings → Debugging, or
+`gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled true`.
 
 ## Command dispatch flow
 

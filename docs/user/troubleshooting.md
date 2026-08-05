@@ -124,6 +124,21 @@ present.
 Use this to confirm 1:2 vs 50–50 shares and which `moNwsW` a window sits under
 after blank/wake. Disabling the extension removes all overlay actors.
 
+## Layout apply chrome (optional multi-open dim)
+
+Soft full-screen dim while multi-open **LayoutBatch** runs (`forge layout` and
+related). **Off by default** (opt-in). Chrome is non-reactive and **always**
+hard-clears within **8s**, and also on batch end / extension disable — it must
+never stick and leave the session unusable.
+
+```bash
+gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled true
+# after trial:
+gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled false
+```
+
+Or **Preferences → Settings → Debugging → Layout apply chrome**.
+
 ## Periodic layout verify (debug only)
 
 Optional **debug** timer that re-checks Meta frames against tree slots. Production

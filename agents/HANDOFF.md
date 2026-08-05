@@ -1,14 +1,15 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (CL9 done; CL10 next)  
+**Updated:** 2026-08-05 (CL10 done; CL11 live retest next)  
 **Implement on:** `plan/forge-layout-control-loop` (**ahead of origin**; **not pushed**)  
-**HEAD:** master has CL0–CL7; plan branch has CL8–CL9 parallel deferred open  
+**HEAD:** master has CL0–CL7; plan branch has CL8–CL10 (deferred open + apply chrome)  
 **Wayland residual:** **after** CL8–CL10 + X11 retest (do not block on Wayland now)  
 **Stashed WIP:** `plan/forge-wayland-live` — **do not drop**; do not pop onto control-loop/master  
 **Remotes:** **no push** unless human asks  
 
 **Active plan:** [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md)  
-**Next:** CL10 apply chrome/scrim (never stick)  
+**Next:** CL11 live retest X11 `forge layout dev` (then Wayland residual)  
+**Completed CL10:** [cl10-apply-chrome](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl10-apply-chrome.md)  
 **Completed CL9:** [cl9-parallel-deferred-open](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl9-parallel-deferred-open.md)  
 **Completed CL8:** [cl8-deferred-hidden-open](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl8-deferred-hidden-open.md)  
 **Completed CL7 live:** [cl7-live-ghostty](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl7-live-ghostty.md)  
@@ -23,8 +24,8 @@
 | CL0–CL7 X11 | **Done** (operator green; on master) |
 | **CL8** deferred hidden LayoutBatch admit | **Done** (plan branch) |
 | **CL9** parallel CLI open + map wait + unhide | **Done** (plan branch) |
-| **CL10** apply chrome | **Next** |
-| X11 retest layout dev | After CL8–CL10 |
+| **CL10** apply chrome | **Done** (plan branch; opt-in, hard ≤8s clear) |
+| X11 retest layout dev | **Next** (CL11) |
 | Wayland residual | After X11 retest |
 
 ---
@@ -38,10 +39,18 @@ Parallel `forge layout` opens must:
 3. Early **`move_to_monitor`** for PlaceNext home mon  
 4. **No raise/activate** thrash during batch  
 5. One residual plan + render; focus from **layout saved focus**  
-6. Optional apply chrome later (CL10) — **never stick**  
+6. Optional apply chrome (CL10) — **never stick** (default off; hard clear)  
 7. Skip client position hints  
 
 See plan § *Deferred hidden open (CL8+)*.
+
+### Trial apply chrome
+
+```bash
+gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled true
+# after trial:
+gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled false
+```
 
 ---
 

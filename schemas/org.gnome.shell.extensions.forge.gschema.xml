@@ -133,6 +133,16 @@
             <summary>Show per-window layout debug overlay (parent layout, percent, monitor id)</summary>
         </key>
 
+        <key type="b" name="layout-apply-chrome-enabled">
+            <default>false</default>
+            <summary>Dim scrim during multi-open LayoutBatch apply (opt-in)</summary>
+            <description>
+                When true, shows a soft full-screen dim while LayoutBatch depth is ≥ 1
+                (forge layout multi-open). Always hard-clears within 8s and on batch end /
+                extension disable so chrome cannot stick. Default false (opt-in).
+            </description>
+        </key>
+
         <key type="u" name="layout-verify-interval-ms">
             <default>0</default>
             <summary>Debug: periodic Meta↔slot verify interval in ms (0 = off; production stays event-driven)</summary>
