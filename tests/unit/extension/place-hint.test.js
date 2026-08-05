@@ -3,6 +3,10 @@ import {
   matchesPlaceHint,
   metaWmClass,
   wmClassEqual,
+  isChromeBrowserClass,
+  isChromePwaClass,
+  isChromeFamilyClass,
+  chromePwaAppId,
   normalizePlaceHint,
   pruneExpiredPlaceHints,
   findMatchingPlaceHintIndex,
@@ -40,6 +44,65 @@ describe("wmClassEqual", () => {
     expect(wmClassEqual("tty", "com.mitchellh.ghostty")).toBe(false);
     expect(wmClassEqual("firefox", "com.mitchellh.ghostty")).toBe(false);
   });
+
+  it("matches Chrome browser family with PWA / crx ids", () => {
+    expect(wmClassEqual("Google-chrome", "chrome-ggjoabcdef-Default")).toBe(true);
+    expect(wmClassEqual("google-chrome", "chrome-ggjoabcdef-Default")).toBe(true);
+    expect(wmClassEqual("Chromium", "chrome-ggjoabcdef-Default")).toBe(true);
+    expect(wmClassEqual("chromium", "crx_abc123")).toBe(true);
+    expect(wmClassEqual("google-chrome-stable", "crx_xyz")).toBe(true);
+    expect(wmClassEqual("chrome-aaa-Default", "Google-chrome")).toBe(true);
+    expect(wmClassEqual("Google-chrome", "Google-chrome")).toBe(true);
+    expect(wmClassEqual("Google-chrome", "Chromium")).toBe(true);
+    expect(wmClassEqual("firefox", "chrome-ggjo-Default")).toBe(false);
+    expect(wmClassEqual("ghostty", "crx_abc")).toBe(false);
+  });
+
+  it("does not match distinct Chrome PWAs or crx ids", () => {
+    expect(wmClassEqual("chrome-aaa-Default", "chrome-bbb-Default")).toBe(false);
+    expect(wmClassEqual("chrome-ggjoabcdef-Default", "chrome-otherid-Default")).toBe(false);
+    expect(wmClassEqual("crx_a", "crx_b")).toBe(false);
+    expect(wmClassEqual("crx_abc123", "chrome-aaa-Default")).toBe(false);
+    expect(wmClassEqual("chrome-aaa-Default", "chrome-aaa-Default")).toBe(true);
+    expect(wmClassEqual("crx_a", "crx_a")).toBe(true);
+  });
+
+  it("matches same Chrome PWA across crx_* and chrome-*-Default", () => {
+    expect(
+      wmClassEqual(
+        "crx_agimnkijcaahngcdmfeangaknmldooml",
+        "chrome-agimnkijcaahngcdmfeangaknmldooml-Default"
+      )
+    ).toBe(true);
+    expect(
+      wmClassEqual(
+        "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+        "crx_ggjocahimgaohmigbfhghnlfcnjemagj"
+      )
+    ).toBe(true);
+    expect(
+      wmClassEqual(
+        "crx_ggjocahimgaohmigbfhghnlfcnjemagj",
+        "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Profile"
+      )
+    ).toBe(true);
+  });
+});
+
+describe("chrome family helpers", () => {
+  it("classifies browser vs PWA", () => {
+    expect(isChromeBrowserClass("Google-chrome")).toBe(true);
+    expect(isChromeBrowserClass("google-chrome-beta")).toBe(true);
+    expect(isChromeBrowserClass("Chromium")).toBe(true);
+    expect(isChromeBrowserClass("chrome-ggjo-Default")).toBe(false);
+    expect(isChromePwaClass("chrome-ggjo-Default")).toBe(true);
+    expect(isChromePwaClass("crx_abc")).toBe(true);
+    expect(isChromePwaClass("Google-chrome")).toBe(false);
+    expect(isChromeFamilyClass("chrome-x-Default")).toBe(true);
+    expect(isChromeFamilyClass("firefox")).toBe(false);
+    expect(chromePwaAppId("crx_abc123")).toBe("abc123");
+    expect(chromePwaAppId("chrome-abc123-Default")).toBe("abc123");
+  });
 });
 
 describe("matchesPlaceHint", () => {
@@ -61,6 +124,14 @@ describe("matchesPlaceHint", () => {
     const hint = { wmClass: "ghostty", monitor: 1, expiresAt: now + 1000 };
     expect(matchesPlaceHint({ wm_class: "com.mitchellh.ghostty" }, hint, now)).toBe(true);
     expect(matchesPlaceHint({ get_wm_class: () => "com.mitchellh.ghostty" }, hint, now)).toBe(true);
+  });
+
+  it("matches Chrome PWA class against Google-chrome PlaceNext", () => {
+    const hint = { wmClass: "Google-chrome", monitor: 0, expiresAt: now + 1000 };
+    expect(matchesPlaceHint({ wm_class: "chrome-ggjoabcdef-Default" }, hint, now)).toBe(true);
+    expect(matchesPlaceHint({ get_wm_class: () => "crx_pwa1" }, hint, now)).toBe(true);
+    // Null class must not consume a class-specific hint (deferred until class lands).
+    expect(matchesPlaceHint({ wm_class: null }, hint, now)).toBe(false);
   });
 
   it("rejects class mismatch", () => {

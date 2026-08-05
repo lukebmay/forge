@@ -96,7 +96,8 @@ ee8445d feat(layout): CL1 Meta↔slot verify scanner and agreement counter
 
 ## Next for human / next agent
 
-1. **CL7 operator:** install branch on black; sole Ghostty + `forge layout dev`; note X11/Wayland.
+1. **CL7 operator retest:** debug install of control-loop branch (PWA wait fix);
+   sole Ghostty → `forge layout dev` — no Grok 15s timeout; mon1 PWAs open; note X11/Wayland.
 2. Merge `plan/forge-layout-control-loop` → `master` when CL7 OK (or earlier if you want queue+code on default) — **do not push** unless asked.
 3. Leave wayland-live stash alone until that plan resumes.
 4. Optional: MR0 monitor-recovery rename on own branch/PR.
@@ -110,4 +111,4 @@ ee8445d feat(layout): CL1 Meta↔slot verify scanner and agreement counter
 | W-storm render guards | On wayland-live (partially ported geometry suppress into CL2) |
 | Borders | Still needs clean smoke on Wayland residual |
 | monitor-recovery thrash (W4) | Not done on Wayland |
-| Control loop (CL*) | **CL0–CL6 code done** — CL7 operator smoke |
+| Control loop (CL*) | **CL0–CL6 + PWA open/wait fix** — CL7 operator retest |

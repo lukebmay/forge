@@ -29,6 +29,7 @@ from layout_plan import (  # noqa: E402
     validate_reconcile_profile,
     window_matches,
 )
+from layout_plan import _class_eq as plan_class_eq  # noqa: E402
 from layout_plan import _mon_split_anchor_ids  # noqa: E402
 
 
@@ -4337,6 +4338,73 @@ class TestShareSugar(unittest.TestCase):
         self.assertEqual(size_ops[0]["shares"], [0.7, 0.3])
         self.assertEqual(size_ops[0]["windowIds"], [1, 2])
         self.assertEqual(plan["counts"].get("sized"), 1)
+
+
+class TestClassEqChromeFamily(unittest.TestCase):
+    """Chrome browser class matches PWA / crx ids for residual claim."""
+
+    def test_casefold_and_stem(self):
+        self.assertTrue(plan_class_eq("Google-chrome", "google-chrome"))
+        self.assertTrue(plan_class_eq("ghostty", "com.mitchellh.ghostty"))
+        self.assertFalse(plan_class_eq("A", "B"))
+        self.assertFalse(plan_class_eq(None, "A"))
+
+    def test_chrome_browser_matches_pwa_and_crx(self):
+        self.assertTrue(plan_class_eq("Google-chrome", "chrome-ggjoabcdef-Default"))
+        self.assertTrue(plan_class_eq("google-chrome", "chrome-ggjoabcdef-Default"))
+        self.assertTrue(plan_class_eq("Chromium", "chrome-ggjoabcdef-Default"))
+        self.assertTrue(plan_class_eq("chromium", "crx_abc123"))
+        self.assertTrue(plan_class_eq("google-chrome-stable", "crx_xyz"))
+        self.assertTrue(plan_class_eq("chrome-aaa-Default", "Google-chrome"))
+        self.assertTrue(plan_class_eq("Google-chrome", "Google-chrome"))
+        self.assertTrue(plan_class_eq("Google-chrome", "Chromium"))
+
+    def test_distinct_pwas_do_not_match(self):
+        self.assertFalse(plan_class_eq("chrome-aaa-Default", "chrome-bbb-Default"))
+        self.assertFalse(plan_class_eq("chrome-ggjoabcdef-Default", "chrome-otherid-Default"))
+        self.assertFalse(plan_class_eq("crx_a", "crx_b"))
+        self.assertFalse(plan_class_eq("crx_abc123", "chrome-aaa-Default"))
+        self.assertTrue(plan_class_eq("chrome-aaa-Default", "chrome-aaa-Default"))
+        self.assertTrue(plan_class_eq("crx_a", "crx_a"))
+
+    def test_same_pwa_crx_matches_chrome_default(self):
+        self.assertTrue(
+            plan_class_eq(
+                "crx_agimnkijcaahngcdmfeangaknmldooml",
+                "chrome-agimnkijcaahngcdmfeangaknmldooml-Default",
+            )
+        )
+        self.assertTrue(
+            plan_class_eq(
+                "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+                "crx_ggjocahimgaohmigbfhghnlfcnjemagj",
+            )
+        )
+
+    def test_non_chrome_does_not_match_pwa(self):
+        self.assertFalse(plan_class_eq("firefox", "chrome-ggjo-Default"))
+        self.assertFalse(plan_class_eq("ghostty", "crx_abc"))
+
+    def test_window_matches_sugar_against_pwa_class(self):
+        m = {"class": "Google-chrome", "title~=": "Grok"}
+        self.assertTrue(
+            window_matches(
+                {
+                    "wmClass": "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+                    "title": "Grok",
+                },
+                m,
+            )
+        )
+        self.assertFalse(
+            window_matches(
+                {
+                    "wmClass": "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+                    "title": "YouTube",
+                },
+                m,
+            )
+        )
 
 
 if __name__ == "__main__":

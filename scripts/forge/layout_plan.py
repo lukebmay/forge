@@ -2673,8 +2673,46 @@ def _slot_mon_key(slot: Any) -> Optional[str]:
     return None
 
 
+def _is_chrome_browser_class(s: str) -> bool:
+    """Google-chrome / Chromium family (not a PWA instance id)."""
+    n = (s or "").strip().casefold()
+    if not n:
+        return False
+    if n in ("google-chrome", "chromium", "chromium-browser", "chrome"):
+        return True
+    if n.startswith("google-chrome-"):
+        return True
+    return False
+
+
+def _chrome_pwa_app_id(s: str) -> Optional[str]:
+    """Shared id for crx_<id> and chrome-<id>-Default / profile-ish."""
+    n = (s or "").strip().casefold()
+    if not n:
+        return None
+    if n.startswith("crx_") and len(n) > 4:
+        return n[4:]
+    if not n.startswith("chrome-"):
+        return None
+    rest = n[len("chrome-") :]
+    if rest.endswith("-default") and len(rest) > len("-default"):
+        return rest[: -len("-default")]
+    m = re.match(r"^(.+)-profile(?:[._-].+)?$", rest)
+    if m and m.group(1):
+        return m.group(1)
+    return None
+
+
+def _is_chrome_pwa_class(s: str) -> bool:
+    return _chrome_pwa_app_id(s) is not None
+
+
+def _is_chrome_family_class(s: str) -> bool:
+    return _is_chrome_browser_class(s) or _is_chrome_pwa_class(s)
+
+
 def _class_eq(a: Any, b: Any) -> bool:
-    """Casefold equality, plus reverse-DNS stem sugar (ghostty ↔ com.mitchellh.ghostty)."""
+    """Casefold + reverse-DNS stem + browser↔PWA / same PWA id / browser↔browser."""
     if a is None or b is None:
         return False
     sa = str(a).strip().casefold()
@@ -2685,6 +2723,19 @@ def _class_eq(a: Any, b: Any) -> bool:
         return True
     # Sugar stem: "ghostty" matches "com.mitchellh.ghostty" (either side).
     if sa.endswith("." + sb) or sb.endswith("." + sa):
+        return True
+    a_id = _chrome_pwa_app_id(sa)
+    b_id = _chrome_pwa_app_id(sb)
+    if a_id and b_id and a_id == b_id:
+        return True
+    # Browser ↔ PWA (either side); browser ↔ browser. Never distinct PWA ↔ PWA.
+    a_browser = _is_chrome_browser_class(sa)
+    b_browser = _is_chrome_browser_class(sb)
+    a_pwa = _is_chrome_pwa_class(sa)
+    b_pwa = _is_chrome_pwa_class(sb)
+    if (a_browser and b_pwa) or (a_pwa and b_browser):
+        return True
+    if a_browser and b_browser:
         return True
     return False
 

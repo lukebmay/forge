@@ -10,13 +10,17 @@
 
 ### Session note (overwrite)
 
-**2026-08-05 (CL0–CL6 code done, B AGREE; CL7 operator):** On `plan/forge-layout-control-loop`.
+**2026-08-05 (CL7 PWA open/wait — A/B AGREE, install for operator):** On
+`plan/forge-layout-control-loop`.
 
-- Control loop shipped: requestLayout/verify, Meta↔slot agreement ×2, external
-  geometry suppress, thrash catalog (ghostty), open quiet N=1, layout CLI
-  LayoutBatch, optional `layout-verify-interval-ms` (default 0).
-- **Next:** CL7 live Ghostty + `forge layout dev` on black (operator).
-- Commits CL0–CL6 + handoff on plan branch (ahead of origin, not pushed). Wayland-live stash untouched.
+- CL0–CL6 shipped earlier; **CL7 code fix** for live Grok wait timeout:
+  merge desktop hints into wait, PlaceNext prefers `chrome-*-Default`/`crx_*`,
+  chrome family class_eq (CLI + place-hint), open loop continues on failure.
+- Completed task:
+  `agents/plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl7-pwa-open-wait.md`
+- Tests: CLI 358 + place-hint 24 green (B re-ran).
+- **Next:** operator logout smoke — sole Ghostty → `forge layout dev` (no Grok
+  15s timeout; mon1 PWAs open).
 
 ---
 

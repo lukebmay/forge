@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-05 (CL0–CL6 control-loop code complete; CL7 operator)  
+**Updated:** 2026-08-05 (CL7 PWA open/wait fix; operator retest of layout dev)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -32,7 +32,8 @@
 | Item | Note |
 | --- | --- |
 | CL0–CL6 layout control loop | debounce, verify×2, suppress, thrash catalog, open quiet, LayoutBatch, periodic gsetting |
-| Unit tests | ~2095 green |
+| CL7 PWA open/wait | merge desktop hints; chrome family class_eq; continue opens after fail |
+| Unit tests | CLI 358 + place-hint 24 for this fix |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -638,12 +639,36 @@ def resolve_desktop_file(app: str) -> Optional[str]:
     return top[0][1]
 
 
+def _chrome_app_id_from_exec(exec_line: str) -> Optional[str]:
+    """Parse --app-id=… / --app-id … from a desktop Exec= line."""
+    if not exec_line:
+        return None
+    cleaned = exec_line
+    for code in ("%f", "%F", "%u", "%U", "%i", "%c", "%k"):
+        cleaned = cleaned.replace(code, "")
+    try:
+        parts = shlex.split(cleaned)
+    except ValueError:
+        parts = cleaned.split()
+    for i, p in enumerate(parts):
+        if p.startswith("--app-id="):
+            aid = p.split("=", 1)[1].strip()
+            if aid:
+                return aid
+        if p == "--app-id" and i + 1 < len(parts):
+            aid = str(parts[i + 1]).strip()
+            if aid:
+                return aid
+    return None
+
+
 def infer_wm_class_hints(app: str, desktop: Optional[str] = None) -> list[str]:
     """
     Ordered candidate wm_class strings for wait / PlaceNext.
     Does not require --wm-class from the user.
     """
     hints: list[str] = []
+    seen: set[str] = set()
 
     def add(v: Optional[str]) -> None:
         if not v:
@@ -651,18 +676,30 @@ def infer_wm_class_hints(app: str, desktop: Optional[str] = None) -> list[str]:
         v = str(v).strip()
         if not v:
             return
-        if not any(_class_eq(v, h) for h in hints):
-            hints.append(v)
+        # Exact casefold only — keep both crx_<id> and chrome-<id>-Default.
+        cf = v.casefold()
+        if cf in seen:
+            return
+        seen.add(cf)
+        hints.append(v)
 
     if desktop:
         entry = parse_desktop_entry(desktop)
-        add(entry.get("StartupWMClass"))
+        startup = entry.get("StartupWMClass")
+        exec_line = entry.get("Exec", "") or ""
+        # Prefer Meta-facing chrome-<id>-Default, then crx_<id>.
+        app_id = _chrome_pwa_app_id(startup or "") or _chrome_app_id_from_exec(exec_line)
+        if app_id:
+            add(f"chrome-{app_id}-Default")
+            add(f"crx_{app_id}")
+        else:
+            add(startup)
         stem = Path(desktop).stem
         add(stem)
         # Last DNS label often matches Meta class (Nautilus, Calculator)
         if "." in stem:
             add(stem.rsplit(".", 1)[-1])
-        add(_exec_binary(entry.get("Exec", "")))
+        add(_exec_binary(exec_line))
         te = entry.get("TryExec") or ""
         if te:
             add(Path(te).name)
@@ -787,8 +824,46 @@ def launch_app(app: str, desktop: Optional[str] = None) -> subprocess.Popen:
     )
 
 
+def _is_chrome_browser_class(s: str) -> bool:
+    """Google-chrome / Chromium family (not a PWA instance id)."""
+    n = (s or "").strip().casefold()
+    if not n:
+        return False
+    if n in ("google-chrome", "chromium", "chromium-browser", "chrome"):
+        return True
+    if n.startswith("google-chrome-"):
+        return True
+    return False
+
+
+def _chrome_pwa_app_id(s: str) -> Optional[str]:
+    """Shared id for crx_<id> and chrome-<id>-Default / profile-ish."""
+    n = (s or "").strip().casefold()
+    if not n:
+        return None
+    if n.startswith("crx_") and len(n) > 4:
+        return n[4:]
+    if not n.startswith("chrome-"):
+        return None
+    rest = n[len("chrome-") :]
+    if rest.endswith("-default") and len(rest) > len("-default"):
+        return rest[: -len("-default")]
+    m = re.match(r"^(.+)-profile(?:[._-].+)?$", rest)
+    if m and m.group(1):
+        return m.group(1)
+    return None
+
+
+def _is_chrome_pwa_class(s: str) -> bool:
+    return _chrome_pwa_app_id(s) is not None
+
+
+def _is_chrome_family_class(s: str) -> bool:
+    return _is_chrome_browser_class(s) or _is_chrome_pwa_class(s)
+
+
 def _class_eq(a: Any, b: Any) -> bool:
-    """Casefold equality + reverse-DNS stem (ghostty ↔ com.mitchellh.ghostty)."""
+    """Casefold + reverse-DNS stem + browser↔PWA / same PWA id / browser↔browser."""
     if a is None or b is None:
         return False
     sa = str(a).strip().casefold()
@@ -799,7 +874,72 @@ def _class_eq(a: Any, b: Any) -> bool:
         return True
     if sa.endswith("." + sb) or sb.endswith("." + sa):
         return True
+    a_id = _chrome_pwa_app_id(sa)
+    b_id = _chrome_pwa_app_id(sb)
+    if a_id and b_id and a_id == b_id:
+        return True
+    # Browser ↔ PWA (either side); browser ↔ browser. Never distinct PWA ↔ PWA.
+    a_browser = _is_chrome_browser_class(sa)
+    b_browser = _is_chrome_browser_class(sb)
+    a_pwa = _is_chrome_pwa_class(sa)
+    b_pwa = _is_chrome_pwa_class(sb)
+    if (a_browser and b_pwa) or (a_pwa and b_browser):
+        return True
+    if a_browser and b_browser:
+        return True
     return False
+
+
+def merge_launch_wait_classes(
+    explicit: Optional[str], hints: list[str]
+) -> Optional[list[str]]:
+    """Desktop hints first, then explicit; casefold-exact dedupe (keep PWA forms)."""
+    wait: list[str] = []
+    seen: set[str] = set()
+
+    def push(v: str) -> None:
+        cf = v.casefold()
+        if cf in seen:
+            return
+        seen.add(cf)
+        wait.append(v)
+
+    for h in hints or []:
+        if not h:
+            continue
+        hv = str(h).strip()
+        if hv:
+            push(hv)
+    if explicit:
+        e = str(explicit).strip()
+        if e:
+            push(e)
+    return wait or None
+
+
+def prefer_launch_place_class(
+    explicit: Optional[str], hints: list[str]
+) -> Optional[str]:
+    """Prefer Meta-facing chrome-*-Default / crx_* over sugar Google-chrome."""
+    for h in hints or []:
+        if h and _is_chrome_pwa_class(h) and str(h).strip().casefold().startswith("chrome-"):
+            return str(h).strip()
+    for h in hints or []:
+        if h and _is_chrome_pwa_class(h):
+            return str(h).strip()
+    for h in hints or []:
+        if not h:
+            continue
+        if explicit and _is_chrome_browser_class(explicit) and not _is_chrome_browser_class(h):
+            return str(h).strip()
+    if hints:
+        first = str(hints[0]).strip()
+        if first:
+            return first
+    if explicit:
+        e = str(explicit).strip()
+        return e or None
+    return None
 
 
 def _iter_tree_windows(node: Any) -> list[dict[str, Any]]:
@@ -1249,17 +1389,9 @@ def do_launch(
     class_hints = infer_wm_class_hints(app, desktop)
     if not class_hints and is_ghostty_launch_target(app, desktop):
         class_hints = infer_wm_class_hints("ghostty", desktop)
-    if explicit_class:
-        wait_classes: str | list[str] | None = explicit_class
-        place_class = explicit_class
-    elif class_hints:
-        wait_classes = class_hints
-        # Class-specific PlaceNext so a peer open cannot steal a wildcard hint
-        # (e.g. mon0 ghostty after chrome on the same apply).
-        place_class = class_hints[0]
-    else:
-        wait_classes = None
-        place_class = None
+    # Hints first (specific desktop / PWA), then profile sugar (Google-chrome).
+    wait_classes = merge_launch_wait_classes(explicit_class, class_hints)
+    place_class = prefer_launch_place_class(explicit_class, class_hints)
 
     place_opts: dict[str, Any] = {}
     if monitor is not None and str(monitor).strip() != "":
@@ -1333,7 +1465,8 @@ def do_launch(
         timeout_ms,
         first=first,
         baseline_ids=baseline,
-        accept_any_new=explicit_class is None,
+        # Any wait class (explicit or desktop hints) disables accept-any fallback.
+        accept_any_new=wait_classes is None,
     )
     result = dict(result)
     result["op"] = "launch"
@@ -1344,8 +1477,9 @@ def do_launch(
         result["desktop"] = desktop
 
     if not result.get("ok"):
-        if class_hints:
-            result.setdefault("wmClassCandidates", class_hints)
+        cands = wait_classes if wait_classes else class_hints
+        if cands:
+            result.setdefault("wmClassCandidates", cands)
         if print_result:
             _eprint(f"forge launch: {result.get('error', 'wait failed')}")
             _print_json(result, compact=False)
@@ -1926,7 +2060,9 @@ def _layout_run_reconcile(
     # 2–3) Opens under LayoutBatch (CL5): no per-app mid-batch renderTree.
     # Flow: begin → open all → fingerprint batch quiet (LF6) → residual
     # RunSteps (freeze → ops → one render + post-render verify) → end.
+    # Do not abort mid-loop: residual rehome still needs successful pins.
     role_pins: dict[str, Any] = {}
+    open_failures: list[Any] = []
     if open_actions:
         batch_ok, batch_begin = _layout_batch_call(backend, "begin")
         apply_log["layoutBatchBegin"] = batch_begin
@@ -1946,15 +2082,12 @@ def _layout_run_reconcile(
                     entry["role"] = role
                 apply_log["opens"].append(entry)
                 if not result.get("ok"):
+                    open_failures.append(role if role is not None else entry.get("error"))
                     _eprint(
                         f"forge layout: open failed role={role!r}: "
                         f"{result.get('error', 'unknown')}"
                     )
-                    out = _layout_plan_meta(resolved, name, plan, dry_run=False)
-                    out["ok"] = False
-                    out["apply"] = apply_log
-                    _layout_maybe_print_json(out, verbose=verbose, force=True)
-                    return 1
+                    continue
                 # Pin launched windowId so residual claim works when title match lags
                 # (e.g. chrome "New Tab" vs title~= Google Chrome).
                 if role is not None and result.get("windowId") is not None:
@@ -2103,6 +2236,14 @@ def _layout_run_reconcile(
                 out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
                 out["ok"] = False
                 out["error"] = f"roles still missing after launch: {still_open}"
+                out["apply"] = apply_log
+                _layout_maybe_print_json(out, verbose=verbose, force=True)
+                return 1
+
+            if open_failures:
+                out = _layout_plan_meta(resolved, name, plan, dry_run=False)
+                out["ok"] = False
+                out["error"] = f"open failed for roles: {open_failures}"
                 out["apply"] = apply_log
                 _layout_maybe_print_json(out, verbose=verbose, force=True)
                 return 1
