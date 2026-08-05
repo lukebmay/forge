@@ -713,8 +713,9 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       expect(mockBorder.set_position).toHaveBeenCalledWith(50 - 3, 50 - 3);
     });
 
-    it("sizes focus border from tree slot when Meta is only moderately off", () => {
-      // Pre-fix: only area < 50% used slot; moderate lag left a smaller outline.
+    it("sizes focus border from tree slot even when Meta frame is close", () => {
+      // TILE always uses slot — Meta can be ~correct yet still wrong enough to
+      // paint a smaller cyan ring over a half-mon Chrome PWA tile.
       ctx.settings.get_boolean.mockImplementation((key) => {
         if (key === "tiling-mode-enabled") return true;
         if (key === "focus-border-toggle") return true;
@@ -724,7 +725,7 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       });
 
       const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 100, y: 100, width: 1000, height: 700 }),
+        rect: new Rectangle({ x: 48, y: 48, width: 1240, height: 1380 }),
         workspace: ctx.workspaces[0],
         wm_class: "TestApp",
       });
@@ -743,13 +744,12 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.TILE;
-      // Slot ~15% larger / shifted — not half area, but still wrong
-      nodeWindow.renderRect = { x: 50, y: 50, width: 1100, height: 800 };
+      nodeWindow.renderRect = { x: 46, y: 71, width: 1255, height: 1365 };
 
       wm().showWindowBorders();
 
-      expect(mockBorder.set_size).toHaveBeenCalledWith(1100 + 6, 800 + 6);
-      expect(mockBorder.set_position).toHaveBeenCalledWith(50 - 3, 50 - 3);
+      expect(mockBorder.set_size).toHaveBeenCalledWith(1255 + 6, 1365 + 6);
+      expect(mockBorder.set_position).toHaveBeenCalledWith(46 - 3, 71 - 3);
     });
 
     it("ensureFocusBorder starts hidden and is registered", () => {

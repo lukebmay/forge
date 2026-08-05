@@ -124,6 +124,25 @@ describe("WindowManager - Movement & Positioning", () => {
       expect(moveResizeSpy).toHaveBeenCalledWith(true, 500, 300, 640, 480);
     });
 
+    it("skips move_resize when frame is within epsilon of target (no reflow)", () => {
+      const metaWindow = createMockWindow({
+        rect: { x: 102, y: 201, width: 798, height: 602 },
+      });
+      const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
+      // Target within 4px of current frame on every axis
+      wm().move(metaWindow, { x: 100, y: 200, width: 800, height: 600 });
+      expect(moveResizeSpy).not.toHaveBeenCalled();
+    });
+
+    it("move_resize when frame differs beyond epsilon", () => {
+      const metaWindow = createMockWindow({
+        rect: { x: 0, y: 0, width: 400, height: 300 },
+      });
+      const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
+      wm().move(metaWindow, { x: 100, y: 200, width: 800, height: 600 });
+      expect(moveResizeSpy).toHaveBeenCalledWith(true, 100, 200, 800, 600);
+    });
+
     // Cross-mon tree place: Meta stayed on mon0 while tree slot was mon1 (YouTube
     // invisible). move() must move_to_monitor before clamp/resize.
     it("should move_to_monitor when dest rect is on another monitor", () => {

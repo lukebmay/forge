@@ -1,10 +1,10 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (border harden; layout dev OK; gate before session-backend split)  
+**Updated:** 2026-08-05 (tile border = tree slot; no focus reflow)  
 **Branch:** `plan/forge-wayland-live` (pushed `origin`)  
-**HEAD:** `cfa5820` — border registry + node ownership + tighter slot prefer  
-**Installed disk:** `v49-90-beta.2-176-gcfa5820` (shell still on older until logout)  
-**Default:** `master` — **do not merge** until operator confirms borders clean post-logout  
+**HEAD:** see tip — tile borders always use tree slot; no renderTree/apply on focus  
+**Installed disk:** reinstall before reboot; `forge ping` after login must match tip  
+**Default:** `master` — **do not merge** until operator confirms borders + no YouTube reflow  
 **Remotes:** `test` / `prod` **not** touched  
 
 **Plan:** [forge-wayland-live.md](./plans/forge-wayland-live.md)  
@@ -53,7 +53,8 @@ forge tree
 | YouTube Meta mon | `monitor: 1`; frame on mon1 (~x≥2600) |
 | Active tabs | mon0 Grok; mon1 YouTube |
 | Icons | Grok ≠ Chrome; Gmail ≠ YouTube |
-| **Borders** | **No leftover red/yellow/cyan outlines** after focus change, resize, tab switch, or re-layout — only the **current** focus (+ split edge if enabled) |
+| **Borders** | Focus ring matches tile size (half mon for Grok/YouTube, not ~1/3 or ~1/4). Red/cyan outline + optional yellow **right** edge (split hint) only on focused tile |
+| **No reflow** | Clicking YouTube / Grok / Ghostty does **not** resize the window or reflow the page |
 | Guake F12 | Does not yank pointer; not under tab-strip geometry |
 | Dry-run | Residual focus ops only |
 
@@ -70,27 +71,25 @@ gsettings --schemadir "$SCHEMA" set org.gnome.shell.extensions.forge log-level 5
 
 ---
 
-## Border fix (this session)
+## Border + focus-reflow fix (this session)
 
-### What was still wrong after `42c8751`
+### Live symptoms (operator)
 
-Live actor resolve fixed null `_actor` cache, but:
-
-1. **Map-time `border.show()`** for every new tile → half-size rings during `layout dev` thrash.  
-2. **No registry** — borders live on `global.window_group`; if actor prop was lost, hide never found them.  
-3. **Meta-preferring rect** only when area &lt; 50% of slot → moderate Meta lag left smaller outlines.  
-4. Destroy path did not always clear node-owned borders.
+| Symptom | Cause |
+| --- | --- |
+| Ghostty: red + yellow right edge | Expected (tiled focus + HSPLIT split hint) |
+| Grok: cyan ring ~1/3 mon width (tile is 1/2) | Border painted from **Meta frame**, not tree slot |
+| YouTube: cyan ring ~1/4 mon width | Same |
+| YouTube reflows on every focus/unfocus | Focus handler called `renderTree("focus")` → `apply` → `move_resize_frame` |
 
 ### What shipped
 
 | Change | Where |
 | --- | --- |
-| `_borderRegistry` + hide all registered on every hide | `decoration.js` |
-| Node ownership `_focusBorder` / `_splitBorders` + reattach | `decoration.js` |
-| `ensureFocusBorder()` always starts **hidden** | `decoration.js` + `window.js` track |
-| Prefer tree slot when Meta mon/size/pos off (tight thresholds) | `_borderRectForWindow` |
-| Destroy unregisters + clears node props | `windowDestroy` / disable |
-| Unit tests (orphan hide, moderate Meta lag, ensure hidden) | `WindowManager-borders.test.js` |
+| TILE borders **always** use tree slot | `_borderRectForWindow` |
+| No `renderTree`/`apply` on focus (chrome only) | `window.js` focus signal |
+| `move()` skip within 4px epsilon | `window.js` `move` |
+| Registry + node ownership + no map-time show | earlier this session |
 
 ### Key code map (borders)
 
