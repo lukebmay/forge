@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   LAYOUT_APPLY_CHROME_HARD_MS,
+  LAYOUT_APPLY_CHROME_SCRIM_ALPHA,
+  LAYOUT_APPLY_CHROME_TITLE,
+  formatApplyChromeStatus,
   createApplyChromeState,
   shouldShowChrome,
   transitionShow,
@@ -13,6 +16,29 @@ describe("LAYOUT_APPLY_CHROME_HARD_MS", () => {
   it("is ≤ 8s", () => {
     expect(LAYOUT_APPLY_CHROME_HARD_MS).toBeLessThanOrEqual(8000);
     expect(LAYOUT_APPLY_CHROME_HARD_MS).toBeGreaterThan(0);
+  });
+});
+
+describe("chrome presentation constants", () => {
+  it("scrim alpha is ~50% (darker overlay)", () => {
+    expect(LAYOUT_APPLY_CHROME_SCRIM_ALPHA).toBeGreaterThanOrEqual(0.45);
+    expect(LAYOUT_APPLY_CHROME_SCRIM_ALPHA).toBeLessThanOrEqual(0.6);
+  });
+
+  it("formats centered two-line status with layout name", () => {
+    expect(LAYOUT_APPLY_CHROME_TITLE).toBe("Forge");
+    expect(formatApplyChromeStatus("dev")).toEqual({
+      title: "Forge",
+      detail: 'Loading layout "dev"...',
+    });
+    expect(formatApplyChromeStatus(null)).toEqual({
+      title: "Forge",
+      detail: "Loading layout...",
+    });
+    expect(formatApplyChromeStatus("  ")).toEqual({
+      title: "Forge",
+      detail: "Loading layout...",
+    });
   });
 });
 

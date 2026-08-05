@@ -2097,7 +2097,8 @@ def _layout_run_reconcile(
     role_pins: dict[str, Any] = {}
     open_failures: list[Any] = []
     if open_actions:
-        batch_ok, batch_begin = _layout_batch_call(backend, "begin")
+        begin_action = f"begin:{name}" if name else "begin"
+        batch_ok, batch_begin = _layout_batch_call(backend, begin_action)
         apply_log["layoutBatchBegin"] = batch_begin
         if not batch_ok:
             _eprint(

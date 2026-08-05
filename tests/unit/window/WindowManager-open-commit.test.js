@@ -280,7 +280,7 @@ describe("WindowManager open commit (CL4)", () => {
     const insertSpy = vi.spyOn(wm().tree, "insertChildPercent");
     const scheduleSpy = vi.spyOn(wm(), "_scheduleOpenCommit");
 
-    expect(wm().beginOpenLayoutBatch()).toEqual({ ok: true, depth: 1 });
+    expect(wm().beginOpenLayoutBatch()).toMatchObject({ ok: true, depth: 1 });
     expect(wm().openLayoutBatchActive).toBe(true);
 
     const metas = [];
@@ -430,7 +430,7 @@ describe("WindowManager open commit (CL4)", () => {
     wm().layoutController = new LayoutController(wm(), { schedule, cancel });
 
     const renderSpy = vi.spyOn(wm(), "renderTree");
-    expect(wm().beginOpenLayoutBatch()).toEqual({ ok: true, depth: 1 });
+    expect(wm().beginOpenLayoutBatch()).toMatchObject({ ok: true, depth: 1 });
 
     wm().appThrashCatalog.recordOpen("org.example.ExtMid");
     const meta = trackNew({ id: "ext-mid", wm_class: "org.example.ExtMid" });
