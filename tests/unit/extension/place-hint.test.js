@@ -69,6 +69,21 @@ describe("wmClassEqual", () => {
     expect(wmClassEqual("chrome-aaa-Default", "chrome-aaa-Default")).toBe(true);
     expect(wmClassEqual("crx_a", "crx_a")).toBe(true);
   });
+
+  it("matches same Chrome PWA across crx_* and chrome-*-Default", () => {
+    expect(
+      wmClassEqual(
+        "crx_agimnkijcaahngcdmfeangaknmldooml",
+        "chrome-agimnkijcaahngcdmfeangaknmldooml-Default"
+      )
+    ).toBe(true);
+    expect(
+      wmClassEqual(
+        "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+        "crx_ggjocahimgaohmigbfhghnlfcnjemagj"
+      )
+    ).toBe(true);
+  });
 });
 
 describe("chrome family helpers", () => {

@@ -2701,8 +2701,20 @@ def _is_chrome_family_class(s: str) -> bool:
     return _is_chrome_browser_class(s) or _is_chrome_pwa_class(s)
 
 
+def _chrome_pwa_app_id(s: str) -> Optional[str]:
+    """Shared id for crx_<id> and chrome-<id>-Default."""
+    n = (s or "").strip().casefold()
+    if not n:
+        return None
+    if n.startswith("crx_") and len(n) > 4:
+        return n[4:]
+    if n.startswith("chrome-") and n.endswith("-default") and len(n) > len("chrome--default"):
+        return n[len("chrome-") : -len("-default")]
+    return None
+
+
 def _class_eq(a: Any, b: Any) -> bool:
-    """Casefold + reverse-DNS stem + browser↔PWA / browser↔browser (never PWA↔PWA)."""
+    """Casefold + reverse-DNS stem + browser↔PWA / same PWA id / browser↔browser."""
     if a is None or b is None:
         return False
     sa = str(a).strip().casefold()
@@ -2713,6 +2725,10 @@ def _class_eq(a: Any, b: Any) -> bool:
         return True
     # Sugar stem: "ghostty" matches "com.mitchellh.ghostty" (either side).
     if sa.endswith("." + sb) or sb.endswith("." + sa):
+        return True
+    a_id = _chrome_pwa_app_id(sa)
+    b_id = _chrome_pwa_app_id(sb)
+    if a_id and b_id and a_id == b_id:
         return True
     # Browser ↔ PWA (either side); browser ↔ browser. Never distinct PWA ↔ PWA.
     a_browser = _is_chrome_browser_class(sa)

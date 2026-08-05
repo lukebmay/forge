@@ -42,6 +42,30 @@ export class WindowTracker {
   }
 }
 
+/** Desktop id → App for Chrome PWA icon lookup tests. */
+const _appByDesktop = new Map();
+
+export class AppSystem {
+  static get_default() {
+    return new AppSystem();
+  }
+
+  lookup_app(desktopId) {
+    if (!desktopId) return null;
+    return _appByDesktop.get(String(desktopId)) || null;
+  }
+
+  /** Test helper: register a desktop id → App. */
+  static __setApp(desktopId, app) {
+    if (app == null) _appByDesktop.delete(String(desktopId));
+    else _appByDesktop.set(String(desktopId), app);
+  }
+
+  static __clearApps() {
+    _appByDesktop.clear();
+  }
+}
+
 export const ActionMode = {
   NONE: 0,
   NORMAL: 1 << 0,
@@ -58,5 +82,6 @@ export const ActionMode = {
 export default {
   App,
   WindowTracker,
+  AppSystem,
   ActionMode,
 };

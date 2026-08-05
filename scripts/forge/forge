@@ -814,8 +814,20 @@ def _is_chrome_family_class(s: str) -> bool:
     return _is_chrome_browser_class(s) or _is_chrome_pwa_class(s)
 
 
+def _chrome_pwa_app_id(s: str) -> Optional[str]:
+    """Shared id for crx_<id> and chrome-<id>-Default."""
+    n = (s or "").strip().casefold()
+    if not n:
+        return None
+    if n.startswith("crx_") and len(n) > 4:
+        return n[4:]
+    if n.startswith("chrome-") and n.endswith("-default") and len(n) > len("chrome--default"):
+        return n[len("chrome-") : -len("-default")]
+    return None
+
+
 def _class_eq(a: Any, b: Any) -> bool:
-    """Casefold + reverse-DNS stem + browser↔PWA / browser↔browser (never PWA↔PWA)."""
+    """Casefold + reverse-DNS stem + browser↔PWA / same PWA id / browser↔browser."""
     if a is None or b is None:
         return False
     sa = str(a).strip().casefold()
@@ -825,6 +837,10 @@ def _class_eq(a: Any, b: Any) -> bool:
     if sa == sb:
         return True
     if sa.endswith("." + sb) or sb.endswith("." + sa):
+        return True
+    a_id = _chrome_pwa_app_id(sa)
+    b_id = _chrome_pwa_app_id(sb)
+    if a_id and b_id and a_id == b_id:
         return True
     # Browser ↔ PWA (either side); browser ↔ browser. Never distinct PWA ↔ PWA.
     a_browser = _is_chrome_browser_class(sa)
@@ -1265,9 +1281,26 @@ def do_launch(
     class_hints = infer_wm_class_hints(app, desktop)
     if not class_hints and is_ghostty_launch_target(app, desktop):
         class_hints = infer_wm_class_hints("ghostty", desktop)
+    # Prefer desktop StartupWMClass / stem for PlaceNext when more specific than a
+    # broad layout wmClass (Google-chrome) so multi-PWA opens do not steal hints.
+    def _prefer_place_class(explicit: Optional[str], hints: list[str]) -> Optional[str]:
+        for h in hints:
+            if _is_chrome_pwa_class(h) or (
+                explicit and _is_chrome_browser_class(explicit) and not _is_chrome_browser_class(h)
+            ):
+                return h
+        if hints:
+            return hints[0]
+        return explicit
+
     if explicit_class:
-        wait_classes: str | list[str] | None = explicit_class
-        place_class = explicit_class
+        # Wait accepts profile class + desktop hints (crx_* / chrome-*-Default).
+        wait_list: list[str] = [explicit_class]
+        for h in class_hints:
+            if not any(_class_eq(h, w) for w in wait_list):
+                wait_list.append(h)
+        wait_classes: str | list[str] | None = wait_list
+        place_class = _prefer_place_class(explicit_class, class_hints) or explicit_class
     elif class_hints:
         wait_classes = class_hints
         # Class-specific PlaceNext so a peer open cannot steal a wildcard hint
@@ -1939,8 +1972,10 @@ def _layout_run_reconcile(
             _layout_maybe_print_json(out, verbose=verbose, force=True)
             return rc
 
-    # 2) Opens (launch + wait)
+    # 2) Opens (launch + wait). Do not abort mid-loop: residual rehome still
+    # needs every successful pin (YouTube on wrong mon after a later role fail).
     role_pins: dict[str, Any] = {}
+    open_failures: list[Any] = []
     for oa in open_actions:
         fields = open_action_to_launch_fields(oa)
         role = oa.get("role")
@@ -1950,15 +1985,12 @@ def _layout_run_reconcile(
             entry["role"] = role
         apply_log["opens"].append(entry)
         if not result.get("ok"):
+            open_failures.append(role if role is not None else entry.get("error"))
             _eprint(
                 f"forge layout: open failed role={role!r}: "
                 f"{result.get('error', 'unknown')}"
             )
-            out = _layout_plan_meta(resolved, name, plan, dry_run=False)
-            out["ok"] = False
-            out["apply"] = apply_log
-            _layout_maybe_print_json(out, verbose=verbose, force=True)
-            return 1
+            continue
         # Pin launched windowId so residual claim works when title match lags
         # (e.g. chrome "New Tab" vs title~= Google Chrome).
         if role is not None and result.get("windowId") is not None:
@@ -2050,7 +2082,8 @@ def _layout_run_reconcile(
                 return rc
         plan = plan2
 
-        # Belt: short second stable wait, then one more move pass if wrong mon.
+        # Belt: short second stable wait, then full residual (move + structure +
+        # order + focus). Move-only missed mon1 tab bags / role order after open.
         if role_pins and not still_open:
             belt_stable = wait_for_tree_stable(
                 _load_live_forest,
@@ -2077,15 +2110,10 @@ def _layout_run_reconcile(
                 _eprint(f"forge layout: belt re-plan after residual failed: {e}")
             else:
                 belt_ext, _belt_open = partition_plan_actions(plan3.get("actions"))
-                belt_moves = [
-                    a
-                    for a in belt_ext
-                    if isinstance(a, dict)
-                    and str(a.get("op") or "").strip().lower() == "move"
-                    and str(a.get("role") or "") in role_pins
-                ]
+                # Full residual: moves, ensure_layout/order/size, focus actives.
+                # Skip only pure-open (should be empty after pins).
                 belt_steps, _ = residual_follow_up(
-                    belt_moves, [], force_close=force_close
+                    belt_ext, [], force_close=force_close
                 )
                 if belt_steps:
                     belt_ids = move_step_window_ids(belt_steps)
@@ -2099,7 +2127,7 @@ def _layout_run_reconcile(
                     )
                     apply_log["beltFollowUp"] = agg
                     if rc != 0:
-                        _eprint("forge layout: belt follow-up moves failed")
+                        _eprint("forge layout: belt follow-up failed")
                         out = _layout_plan_meta(resolved, name, plan3, dry_run=False)
                         out["ok"] = False
                         out["apply"] = apply_log
@@ -2111,6 +2139,14 @@ def _layout_run_reconcile(
             out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
             out["ok"] = False
             out["error"] = f"roles still missing after launch: {still_open}"
+            out["apply"] = apply_log
+            _layout_maybe_print_json(out, verbose=verbose, force=True)
+            return 1
+
+        if open_failures:
+            out = _layout_plan_meta(resolved, name, plan, dry_run=False)
+            out["ok"] = False
+            out["error"] = f"open failed for roles: {open_failures}"
             out["apply"] = apply_log
             _layout_maybe_print_json(out, verbose=verbose, force=True)
             return 1
