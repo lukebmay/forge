@@ -349,6 +349,15 @@ window differs from desk focus.
 
 **Tests:** `tests/regression/bug-tab-click-activate.test.js`.
 
+**Auto-exit-tabbed ghost chrome (2026-08):** After the last tab closes,
+`auto-exit-tabbed` flips layout to H/VSPLIT (native CSD returns) but used to
+leave a sized `reactive` decoration actor. `updateDecorationLayout` re-showed
+any CON with a decoration (no `isStackedOrTabbed` gate) and restacked it above
+the window — an invisible hit plate over the CSD × (content click “fixed”
+focus). Fix: gate re-show; destroy decoration on auto-exit; hide/zero/disarm
+leftover decorations on non-tab layouts; re-arm `reactive` in `_ensureDecoration`.
+Tests: `tests/regression/bug-auto-exit-tabbed-ghost-decoration.test.js`.
+
 ## Full in-memory tree snapshot (T6)
 
 **Map:** [Recovery architecture](#recovery-architecture) — production thrash

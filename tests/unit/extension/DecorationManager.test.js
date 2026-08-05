@@ -115,6 +115,18 @@ describe("DecorationManager.updateDecorationLayout", () => {
 
     expect(con.decoration.show).toHaveBeenCalled();
   });
+
+  it("does not re-show decoration when CON layout is no longer stacked/tabbed", () => {
+    buildTabbedCon();
+    // Auto-exit / layout toggle off TABBED leaves decoration until teardown;
+    // re-show must stay gated on isStackedOrTabbed (ghost CSD hit plate).
+    con.layout = LAYOUT_TYPES.HSPLIT;
+
+    ctx.windowManager.updateDecorationLayout();
+
+    expect(con.decoration.hide).toHaveBeenCalled();
+    expect(con.decoration.show).not.toHaveBeenCalled();
+  });
 });
 
 describe("DecorationManager border lifecycle", () => {
