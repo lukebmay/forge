@@ -39,3 +39,5 @@ alone (CL4 is acceptance for sole Ghostty).
 ## Session note
 
 (ready — not started)
+
+**Git:** Unrelated `plan/forge-wayland-live` WIP is in `git stash` (message mentions rival-tilers / soft-rehome / install scripts). Agents own that stash — see `agents/HANDOFF.md`. Do not `stash pop` onto this branch; do not `stash drop` it.

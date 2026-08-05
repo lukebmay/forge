@@ -373,9 +373,10 @@ Instrument (debug install): optional timeline log map / size-changed / apply / v
 
 1. Read this plan + [forge-monitor-recovery-rename.md](./forge-monitor-recovery-rename.md) (do not implement rename here).
 2. Soft-rehome is **ours** (H1), not jcrussell.
-3. Cut `plan/forge-layout-control-loop`; implement **CL0 → CL1 → CL2 → CL3 → CL4**.
+3. Branch exists: `plan/forge-layout-control-loop` — implement **CL0 → CL1 → CL2 → CL3 → CL4**.
 4. Ghostty: size thrash after map, not self-move.
 5. Open = batch N=1; layout multi-open same loop.
 6. Keep W-storm guards; route corrections through requestLayout/verify.
 7. X11 included (same paths); no session-backend split in this plan.
 8. After CL4: live sole Ghostty; update HANDOFF/PRIORITY.
+9. **Git stash:** Wayland residual WIP is stashed for agents to manage — full note in [HANDOFF.md](../HANDOFF.md) (*Agent git: stashed Wayland WIP*). Do not drop; do not pop onto this branch.

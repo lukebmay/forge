@@ -1,8 +1,8 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (layout control-loop plan locked + pushed)  
-**Implement on:** `plan/forge-layout-control-loop` (= `master` @ `14d4308` + plan docs)  
-**Wayland residual:** `plan/forge-wayland-live` (W-storm shipped; WIP stashed — see below)  
+**Updated:** 2026-08-05 (stash note for agents; control-loop plan live)  
+**Implement on:** `plan/forge-layout-control-loop` (tracks `origin`; queue also on `master`)  
+**Wayland residual:** `plan/forge-wayland-live` — **WIP is stashed** (agents own git; see below)  
 **Default:** `master` has queue canon; do not merge wayland-live until operator smoke  
 **Remotes:** `test` / `prod` **not** touched  
 
@@ -11,12 +11,55 @@
 **Rename-only plan:** [forge-monitor-recovery-rename.md](./plans/forge-monitor-recovery-rename.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 
-### Stash (do not drop)
+---
 
-```text
-stash@{0}: WIP plan/forge-wayland-live: rival-tilers, soft-rehome, install scripts
-  (unrelated to CL0 — restore only on plan/forge-wayland-live when resuming that work)
+## Agent git: stashed Wayland WIP (do not lose)
+
+**Human is not managing this stash.** Agents must treat it as repo state.
+
+| | |
+| --- | --- |
+| **Why** | Pre-handoff, unfinished `plan/forge-wayland-live` code was stashed so CL0 could start on a clean tree |
+| **Branch it belongs to** | `plan/forge-wayland-live` only |
+| **CL0 / control-loop** | **Do not** `stash pop` onto `plan/forge-layout-control-loop` or `master` |
+| **Drop?** | **Never** `stash drop` / `stash clear` until that WIP is committed on wayland-live or explicitly abandoned by the human |
+
+### Identify
+
+```sh
+git stash list
+# Expect a message like:
+# stash@{N}: On plan/forge-wayland-live: WIP plan/forge-wayland-live: rival-tilers, soft-rehome, install scripts (unrelated to control-loop CL0)
 ```
+
+Index may not stay `@{0}` if other stashes are added — **match by message**, not only by number.
+
+### Contents (approx.)
+
+| Paths | Kind |
+| --- | --- |
+| `lib/shared/rival-tilers.js` + unit test | new |
+| `tests/regression/bug-move-to-monitor-unready-wayland.test.js` | new |
+| `lib/extension/soft-rehome.js`, `extension.js` | modified |
+| `scripts/forge/*`, `scripts/install.zsh`, `README.md` | modified |
+| movement unit test tweak | modified |
+
+### Restore (only when resuming Wayland residual)
+
+```sh
+cd ~/dev/me/forge
+git checkout plan/forge-wayland-live
+git pull --ff-only   # if tracking
+git stash list       # find N by message
+git stash pop stash@{N}
+# resolve conflicts if any; commit on wayland-live when ready
+```
+
+### While implementing control-loop (CL*)
+
+- Stay on `plan/forge-layout-control-loop`
+- Leave this stash untouched
+- If you need a clean stash stack for *new* WIP, push with a clear message; do not clear the Wayland stash
 
 ---
 
