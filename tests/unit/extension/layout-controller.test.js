@@ -4,6 +4,8 @@ import {
   LayoutController,
   LAYOUT_REQUEST_DEBOUNCE_MS,
   VERIFY_REQUEST_DEBOUNCE_MS,
+  LAYOUT_VERIFY_EPSILON_PX,
+  LAYOUT_VERIFY_AGREEMENT_NEEDED,
 } from "../../../lib/extension/layout-controller.js";
 
 /**
@@ -179,8 +181,10 @@ describe("LayoutController", () => {
     expect(lc.lastLayoutReasons).toEqual(["a", "b"]);
   });
 
-  it("requestVerify stub fires once and records reasons", () => {
-    const lc = make();
+  it("requestVerify fires once and records reasons", () => {
+    const lc = make({
+      scan: () => ({ ok: true, checked: 0, mismatches: [] }),
+    });
     lc.requestVerify("size-changed");
     lc.requestVerify("position-changed");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
@@ -262,5 +266,189 @@ describe("LayoutController", () => {
     });
     lc.requestLayout("orphan");
     expect(() => clock.advance(10)).not.toThrow();
+  });
+});
+
+describe("LayoutController agreement + verify scanner", () => {
+  let clock;
+  let wm;
+  let renderCalls;
+
+  beforeEach(() => {
+    clock = createFakeClock();
+    renderCalls = [];
+    wm = {
+      renderTree: vi.fn((from) => {
+        renderCalls.push(from);
+      }),
+    };
+  });
+
+  function make(opts = {}) {
+    return new LayoutController(wm, {
+      schedule: (d, cb) => clock.schedule(d, cb),
+      cancel: (id) => clock.cancel(id),
+      layoutDelayMs: LAYOUT_REQUEST_DEBOUNCE_MS,
+      verifyDelayMs: VERIFY_REQUEST_DEBOUNCE_MS,
+      ...opts,
+    });
+  }
+
+  it("exports verify constants", () => {
+    expect(LAYOUT_VERIFY_EPSILON_PX).toBe(4);
+    expect(LAYOUT_VERIFY_AGREEMENT_NEEDED).toBe(2);
+  });
+
+  it("agreement 0→1→2 SETTLED with auto second verify", () => {
+    const lc = make({
+      scan: () => ({ ok: true, checked: 1, mismatches: [] }),
+    });
+    expect(lc.agreementCount).toBe(0);
+    expect(lc.settled).toBe(false);
+
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.verifyFireCount).toBe(1);
+    expect(lc.agreementCount).toBe(1);
+    expect(lc.settled).toBe(false);
+    expect(lc.pendingVerifyReasons).toContain("agreement-confirm");
+
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.verifyFireCount).toBe(2);
+    expect(lc.agreementCount).toBe(2);
+    expect(lc.settled).toBe(true);
+    expect(lc.lastVerifyReasons).toEqual(["agreement-confirm"]);
+    // No third auto-verify once SETTLED
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS * 2);
+    expect(lc.verifyFireCount).toBe(2);
+  });
+
+  it("post-render path alone can SETTLED when all match", () => {
+    const lc = make({
+      scan: () => ({ ok: true, checked: 2, mismatches: [] }),
+    });
+    lc.onRenderComplete("tree-apply");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.agreementCount).toBe(1);
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.settled).toBe(true);
+    expect(lc.agreementCount).toBe(2);
+  });
+
+  it("mismatch resets agreement; markUnsettled resets", () => {
+    let ok = true;
+    const lc = make({
+      scan: () =>
+        ok
+          ? { ok: true, checked: 1, mismatches: [] }
+          : {
+              ok: false,
+              checked: 1,
+              mismatches: [{ id: 1, reasons: ["rect-mismatch"] }],
+            },
+    });
+
+    lc.requestVerify("a");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.agreementCount).toBe(1);
+
+    ok = false;
+    // Cancel auto confirm so we control the next fire
+    lc.cancel();
+    lc.requestVerify("mismatch");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.agreementCount).toBe(0);
+    expect(lc.settled).toBe(false);
+    expect(lc.lastVerifyResult.ok).toBe(false);
+
+    ok = true;
+    lc.requestVerify("recover");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.agreementCount).toBe(1);
+    lc.markUnsettled("external-size");
+    expect(lc.agreementCount).toBe(0);
+    expect(lc.settled).toBe(false);
+    expect(lc.lastUnsettledReason).toBe("external-size");
+  });
+
+  it("mismatch requestLayout at most once per wave (no infinite storm)", () => {
+    const lc = make({
+      scan: () => ({
+        ok: false,
+        checked: 1,
+        mismatches: [{ id: 1, reasons: ["rect-mismatch"] }],
+      }),
+    });
+
+    // Wave: verify → layout once; subsequent verifies while still mismatched do not re-request layout
+    lc.requestVerify("v1");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.mismatchLayoutRequestCount).toBe(1);
+    expect(lc.pendingLayoutReasons).toContain("verify-mismatch");
+
+    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
+    expect(wm.renderTree).toHaveBeenCalledTimes(1);
+    expect(wm.renderTree).toHaveBeenCalledWith("verify-mismatch");
+
+    // Simulate post-render re-verify (still mismatch) — latch holds
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    lc.requestVerify("again");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.mismatchLayoutRequestCount).toBe(1);
+    expect(lc.verifyFireCount).toBe(3);
+
+    // Drain any pending layout — none
+    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS * 2);
+    expect(wm.renderTree).toHaveBeenCalledTimes(1);
+  });
+
+  it("successful agreement clears mismatch latch for a later wave", () => {
+    let ok = false;
+    const lc = make({
+      scan: () =>
+        ok
+          ? { ok: true, checked: 1, mismatches: [] }
+          : {
+              ok: false,
+              checked: 1,
+              mismatches: [{ id: 1, reasons: ["rect-mismatch"] }],
+            },
+    });
+
+    lc.requestVerify("m1");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.mismatchLayoutRequestCount).toBe(1);
+    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
+    expect(wm.renderTree).toHaveBeenCalledTimes(1);
+
+    ok = true;
+    lc.cancel(); // drop auto agreement-confirm noise after we flip ok
+    lc.requestVerify("good");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.agreementCount).toBe(1);
+    // Latch cleared on agreement; cancel pending confirm
+    lc.cancel();
+
+    ok = false;
+    lc.requestVerify("m2");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.mismatchLayoutRequestCount).toBe(2);
+    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
+    expect(wm.renderTree).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not count the same fire twice; consecutive passes are separate fires", () => {
+    const lc = make({
+      scan: () => ({ ok: true, checked: 0, mismatches: [] }),
+    });
+    lc.requestVerify("once");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.agreementCount).toBe(1);
+    expect(lc.verifyFireCount).toBe(1);
+    // agreement-confirm is a second fire
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.agreementCount).toBe(2);
+    expect(lc.verifyFireCount).toBe(2);
   });
 });

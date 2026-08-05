@@ -3,13 +3,22 @@
 How a tree mutation becomes on-screen geometry. Entry point: `renderTree()` in
 `window.js`. See [architecture.md](architecture.md) for the surrounding subsystems.
 
-## `requestLayout` / `requestVerify` — `layout-controller.js` (CL0)
+## `requestLayout` / `requestVerify` — `layout-controller.js` (CL0/CL1)
 
 Preferred entry for sensor storms: `wm.requestLayout(reason)` trailing-debounces
 (~200ms) then calls `renderTree` once with coalesced reasons. After a **successful**
-idle body, `renderTree` schedules `requestVerify("post-render")` (CL0 stub;
-Meta↔slot scanner is CL1). `requestVerify` has its own ~150ms debounce channel.
-See [architecture.md](architecture.md#layout-control-loop-cl0).
+idle body, `renderTree` schedules `requestVerify("post-render")`. `requestVerify`
+has its own ~150ms debounce channel, then runs the Meta↔slot scanner
+(`layout-verify.js`): each managed TILE leaf compares `get_frame_rect()` to
+`renderRect`/`rect` within ε (default **4px**) and Meta mon vs tree MONITOR home.
+
+| Verify outcome | Effect |
+| --- | --- |
+| Full agreement | `agreementCount++`; at **≥2** consecutive → **SETTLED**; after first ok auto-schedules `requestVerify("agreement-confirm")` |
+| Mismatch | agreement = 0; unsettle; `requestLayout("verify-mismatch")` **once** per wave (latch until next full agreement) |
+| `markUnsettled(reason)` | agreement = 0; not settled (CL2 sensors will call this) |
+
+See [architecture.md](architecture.md#layout-control-loop-cl0cl1).
 
 `renderTree` idle coalesce remains the inner commit layer; `requestLayout` sits
 above it. Call sites may still invoke `renderTree` directly (commands, force

@@ -10,16 +10,13 @@
 
 ### Session note (overwrite)
 
-**2026-08-05 (CL0 done, B AGREE):** Layout request API on `plan/forge-layout-control-loop`.
+**2026-08-05 (CL0+CL1 done, B AGREE):** On `plan/forge-layout-control-loop`.
 
-- `lib/extension/layout-controller.js` — DebouncedRequest + LayoutController
-  (layout 200ms / verify 150ms); WM `requestLayout` / `requestVerify`; post-render hook.
-- Docs: architecture glossary; rendering.md layering.
-- Tests: layout-controller + WM-layout-controller; full suite green.
-- Soft-rehome not renamed; createDelay not replaced.
-- **Next:** CL1 verify scanner + agreement (`forge-layout-control-loop_cl1-verify-scanner.md`).
-- Task `forge-layout-control-loop_cl0-request-api` implement done — await B verify
-  then wrap-up commit. Next: CL1 verify scanner.
+- CL0: requestLayout/requestVerify debounce + post-render hook.
+- CL1: `layout-verify.js` + agreement ≥2 SETTLED, agreement-confirm, mismatch latch,
+  `markUnsettled`. Tests + docs green.
+- **Next:** CL2 external geometry → unsettled + suppress attribution
+  (`forge-layout-control-loop_cl2-external-geometry.md`).
 
 ---
 
@@ -307,8 +304,8 @@ that refactor lands later, it consumes this API.
 | ID | Task | Status | Notes |
 | --- | --- | --- | --- |
 | **CL0** | Glossary + `requestLayout` / `requestVerify` skeleton + debounce constants | **done** | layout-controller.js + tests; B AGREE |
-| **CL1** | Verify scanner (Meta ↔ slots) + agreement counter + schedule after render | **next** | task: `…_cl1-verify-scanner.md` |
-| **CL2** | External geometry → unsettled; suppress attribution | pending | Integrate size/pos handlers |
+| **CL1** | Verify scanner (Meta ↔ slots) + agreement counter + schedule after render | **done** | layout-verify.js; B AGREE |
+| **CL2** | External geometry → unsettled; suppress attribution | **next** | task: `…_cl2-external-geometry.md` |
 | **CL3** | App thrash catalog + built-in ghostty + first-open observation | pending | In-memory v1 |
 | **CL4** | Open path = batch N=1 through controller (replace blind createDelay) | pending | Sole Ghostty live acceptance |
 | **CL5** | Layout CLI / multi-open uses same commit+verify (LF6 quiet → one render) | pending | No per-app render mid-batch |
