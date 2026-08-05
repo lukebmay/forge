@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-04 (wayland W1–W3 on plan branch)  
+**Updated:** 2026-08-04 (wayland W1–W5; logout smoke next)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -19,7 +19,8 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **Wayland thrash** | Lock Super+Delete → unlock; `forge tree` dual-head; journal guard | [HANDOFF](./HANDOFF.md) |
+| **1** | **Logout load + layout/icons smoke** | Confirm `forge ping` version; `layout dev` one-shot + icons | [HANDOFF](./HANDOFF.md) |
+| **2** | **Wayland thrash** | Lock Super+Delete → unlock; `forge tree`; journal | [HANDOFF](./HANDOFF.md) |
 | **2** | **Wayland selection smoke** | RunSteps elevate + layout-cycle; optional i3 Super+a | After thrash OK |
 | **3** | **CON selection S3** | Vim Super+p + BackSpace clear multi-bind + cheatsheet | [plan](./plans/forge-container-selection.md) |
 | **4** | **KB1+** | Open GNOME Keyboard button; conflict offer (KB2); desktop section | after S3; [desktop-keybinds](./plans/forge-desktop-keybinds.md) KB0 **done** |
@@ -29,7 +30,7 @@
 
 | Item | Note |
 | --- | --- |
-| Wayland W1–W3 | size/late-tile, PlaceNext/PWA, Guake/dock focus mon — `plan/forge-wayland-live`; needs logout/in smoke |
+| Wayland W1–W5 | sizes, PlaceNext/PWA, Guake/dock, residual belt + tab icons — `plan/forge-wayland-live`; **logout/in then smoke** |
 | Soft-rehome lock+DPMS | Guard + sliding cooldown + fingerprint re-arm; X11 product GNOME lock OK |
 | GNOME owns Super+Delete lock | Forge does not force DPMS; `prefs-lock-screen` unbound |
 | Selection S1–S2 | Elevated ops + bag chrome |

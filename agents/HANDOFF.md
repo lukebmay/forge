@@ -1,124 +1,149 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-04 (wayland live fixes)  
-**Branch:** `plan/forge-first-class-containers` (local commits; push optional)  
-**Default:** `master` — **not** merged (selection mid-wave + thrash fix on feature)  
+**Updated:** 2026-08-04 (post Wayland W1–W5; operator logout/in next)  
+**Branch:** `plan/forge-wayland-live` (pushed to `origin`)  
+**Default:** `master` — **not** merged yet (wait for live smoke after logout)  
 **Remotes:** `test` / `prod` **not** touched  
-**Queue:** [PRIORITY.md](./PRIORITY.md) — **1 Wayland thrash → 2 selection S3 → 3 desktop keybinds**
+**Queue:** [PRIORITY.md](./PRIORITY.md) — thrash → selection S3 → desktop keybinds  
+
+**Plan:** [forge-wayland-live.md](./plans/forge-wayland-live.md)
+
+---
 
 ## Where we are
 
 | Layer | Status |
 | --- | --- |
-| Wayland live fixes W1–W3 | **Unit done** on `plan/forge-wayland-live` — **logout/in required** for live smoke |
+| Wayland **W1–W5** | **Shipped on branch** (unit + partial live). Extension on disk `v49-90-beta.2-171-g975ed17` (or newer). **Running shell may still be old** until logout/in. |
+| Layout `dev` topology | Cold retest OK after W5: mon0 tabs(Chrome,Grok)\|ghostty; mon1 ghostty\|tabs(YouTube,Gmail,Voice) |
+| Tab icons (Grok/Gmail wrong) | **Fix in tree.js** — needs logout so ES modules reload |
+| Soft-rehome thrash | X11 OK earlier; **Wayland thrash smoke not done** (W4) |
+| Selection S1–S2 | Done (prior); S3 after Wayland smoke |
+| Desktop keybinds | KB0 done; KB1+ after S3 |
+| Wayland shell reload | **No X11-style HUP** — logout/in only (park DX later) |
 
-| Layer | Status |
+### Commits on `plan/forge-wayland-live` (this wave)
+
+| Commit | What |
 | --- | --- |
-| Soft-rehome lock+DPMS thrash | **Fixed + hardened** (live dual-head X11 retest OK) |
-| Lock ownership | **GNOME** screensaver; Forge does **not** force DPMS (today Super+Delete only for all kits — **Safe should keep Super+L**, see desktop-keybinds plan) |
-| Containers spine C0–C5 + R1/R1b + R2 | **Done** |
-| Selection **S1–S2** | **Done** (elevated ops) |
-| Selection **S3** kit chords | After Wayland smoke |
-| Desktop keybinds plan | **New** — [forge-desktop-keybinds.md](./plans/forge-desktop-keybinds.md) |
-| Wayland live thrash + selection | **Next session** (operator logs into Wayland) |
+| `4f63ace` | **W1** computeSizes renormalize, late-tile share, `notify::title`, non-reactive borders |
+| `655a0c9` + `9e6bd15` | **W2** PlaceNext sticky mon, Chrome wait sugar, deferred path attach |
+| `9a13761` | **W3** focus-monitor for dock sticky + Guake |
+| `975ed17` | **W5** same-PWA crx↔chrome-Default, PlaceNext desktop class, full residual belt, open-continue, PWA tab icons |
 
-## Next agent — Wayland session first
+---
 
-1. Operator: log out of X11 (`:1`), log into **GNOME Wayland** on black.  
-2. Stay on **`plan/forge-first-class-containers`**; merge **`master` → feature** if master moved.  
-3. `./install` (debug) so extension + CLI match branch.  
-4. Enable logging:
+## Next agent — after operator logout/in (Wayland)
 
-   ```sh
-   SCHEMA_DIR=~/.local/share/gnome-shell/extensions/forge@jmmaranan.com/schemas
-   gsettings --schemadir "$SCHEMA_DIR" set org.gnome.shell.extensions.forge logging-enabled true
-   gsettings --schemadir "$SCHEMA_DIR" set org.gnome.shell.extensions.forge log-level 5
-   ```
+Operator will **log out and back into GNOME Wayland** so extension code reloads. Then:
 
-5. **Thrash matrix (Wayland):**  
-   - `forge layout dev`  
-   - Lock with **Super+Delete** (GNOME media-keys; no Forge DPMS force)  
-   - Wait until panels actually sleep if they do on Wayland; unlock  
-   - Compare `forge tree` topology (dual-head TABBED bags intact?)  
-   - Journal: `lock-screen thrash guard on` → unlock → `workareas-soft-rehome`  
-   - Note: Wayland has no `xset`; blank is compositor-owned.
+### 0. Branch + install match
 
-6. **Selection smoke (Wayland):** same RunSteps as X11 (below); optional bind i3 kit for Super+a parent.  
+```sh
+cd ~/dev/me/forge
+git checkout plan/forge-wayland-live
+git pull --ff-only origin plan/forge-wayland-live
+./install   # debug; files already installed — confirm version
+forge ping  # versionName should match git describe, not stale c0b6e67-era
+```
 
-7. After Wayland OK: **S3** selection kit binds → then **KB0** Safe dual-lock (desktop-keybinds plan).
+Logging:
 
-## Soft-rehome (2026-08-04) — what shipped
+```sh
+SCHEMA_DIR=~/.local/share/gnome-shell/extensions/forge@jmmaranan.com/schemas
+gsettings --schemadir "$SCHEMA_DIR" set org.gnome.shell.extensions.forge logging-enabled true
+gsettings --schemadir "$SCHEMA_DIR" set org.gnome.shell.extensions.forge log-level 5
+```
 
-| Piece | Behavior |
-| --- | --- |
-| Lock-screen thrash guard | On `unlock-dialog` (checked **before** parentMode=user): freeze last-good, hold thrash pending, **no settle until unlock** |
-| Post-rehome cooldown | Sliding **3s**; thrash pending stays true; late workareas re-extend |
-| Fingerprint re-arm | If mon geometry moves during 300ms debounce, re-queue settle |
-| Zero monitors | Never clear thrash pending |
-| Super+Delete | **GNOME** `media-keys.screensaver` = Super+Delete while Forge enabled (frees Super+L). No `xset dpms force off`. |
+### 1. Layout smoke (`forge layout dev`)
 
-**X11 live proof:** lock + DPMS Off ~24s → topology unchanged (3|4 both TABBED).
-**X11 product path (2026-08-04):** GNOME `ScreenSaver.Lock` (Super+Delete media-keys; Forge does not own lock) → **Monitor is Off** without xset; unlock ~15s; topology **identical**; journal: thrash guard on → settle on unlock. Artifacts: `/tmp/forge-lock-thrash-20260804/gnome-owned-lock/`.  
-**Artifacts:** `/tmp/forge-lock-thrash-20260804/`.
+Desired shape (`hosts/black/dev.json`):
 
-### Design notes (lock ownership)
+- **mon0:** TABBED(Chrome, Grok active) \| ghostty  
+- **mon1:** ghostty \| TABBED(YouTube active, Gmail, Google Voice)  
+- **Keyboard focus:** mon0 ghostty (`focus: ["ghostty", 0]`)
 
-- Vanilla GNOME/Ubuntu: **X DPMS timeouts often 0**; Mutter/gsd owns blank on lock/idle — not “someone disabled DPMS” via xset.  
-- Forge should **not** own lock or force DPMS. Only rebind Super+L → Super+Delete for focus-right.  
-- Optional Forge `prefs-lock-screen` left **unbound** (loginctl fallback if user binds it).
-
-## Selection live (X11, 2026-08-04)
-
-Via `forge run-steps` (focus-parent unbound on Safe/Vim; i3 has Super+a):
-
-| Check | Result |
-| --- | --- |
-| focus → focus-parent | OK (`attach: parent`) |
-| elevated layout-cycle group TABBED↔STACKED | **OK** mon0 tab bag |
-| focus-parent when already elevated under mon | `no focus parent` — **expected** (can't climb past MONITOR) |
-| focus-child after elevate | OK (`attach: child`) |
-| RunSteps `swap` after elevate | **Does not** swap CON unit — swaps leaf windows (CLI path not S2-aware). Keyboard Move/Swap use `resolveMoveUnit` (unit path). |
-| mon1 after thrash recover | Occasional nested HSPLIT residual from Mode B; `forge layout dev` usually heals |
-
-**Not fully keyboard-exercised:** S3 unbound on current kit. Wayland should re-run smoke + try i3 kit parent key if available.
-
-### Useful RunSteps
-
-```bash
+```sh
+# Prefer cold-ish: only Ghostty on both heads, then:
 forge layout dev
+forge tree
+forge layout dev --dry-run   # ideally only focus residuals or nothingToDo
+```
+
+Check:
+
+- [ ] One shot (not “second pass heals YouTube”)  
+- [ ] Tab **order** mon1: YouTube → Gmail → Voice  
+- [ ] **Active** tabs: Grok mon0, YouTube mon1  
+- [ ] **Icons:** Grok ≠ Chrome globe; Gmail ≠ YouTube  
+- [ ] No zero/negative tile widths  
+
+Do **not** close the Ghostty the agent runs in; other windows OK to close for cold layout.
+
+### 2. W4 — Wayland thrash smoke
+
+1. `forge layout dev` (stable dual-head tabs)  
+2. Lock **Super+Delete** (GNOME media-keys; no Forge DPMS)  
+3. Wait for blank if any; unlock  
+4. Compare `forge tree` topology  
+5. Journal: thrash guard → unlock → soft-rehome  
+
+Artifacts under `/tmp/forge-wayland-thrash-…` if useful.
+
+### 3. Selection smoke (after thrash OK)
+
+```sh
 forge run-steps '[{"op":"focus","selector":"title~=Grok"},{"op":"focus-parent","selector":"focus"},{"op":"layout-cycle","axis":"group","selector":"focus"}]'
 forge tree
 ```
 
-## Key code map
+Then product: **S3** kit bindings → desktop keybinds KB1+.
+
+### 4. Merge gate
+
+Merge `plan/forge-wayland-live` → `master` only when:
+
+- Layout + icons smoke OK on Wayland after logout  
+- Thrash not obviously broken (or explicitly deferred with note)  
+- Tests green; no doubt  
+
+Never touch `test` / `prod`.
+
+---
+
+## Known constraints
+
+| Topic | Detail |
+| --- | --- |
+| **No Wayland HUP** | Cannot reload extension modules like X11. Logout/in required. Disable/enable is **not** enough. Park “better Wayland reload DX” later. |
+| **Focus residual** | Dry-run may still list 3 focus ops (Grok active, YouTube active, profile ghostty) even when topology is perfect — product intent, not a thrash. |
+| **Don’t close agent Ghostty** | Dual-head ghostty is load-bearing for layout roles. |
+
+---
+
+## Key code map (this wave)
 
 | Concern | Path |
 | --- | --- |
-| Soft rehome / lock guard | `lib/extension/soft-rehome.js` |
-| Session mode lock first | `extension.js` `_onSessionModeChanged` |
-| GNOME Super+Delete lock | `lib/shared/gnome-overrides.js` `screensaver` |
-| Conflict scan | `lib/shared/keybind-conflicts.js` + prefs Keyboard |
-| Prefs Keyboard | `lib/prefs/keyboard.js` |
-| Selection pure helpers | `layout-unit.js` |
-| Elevated keyboard ops | `command.js` Move/Swap/Layout/Ungroup |
-| Bag chrome | `decoration.js` `.window-selection-border` |
-| S3 task | `agents/tasks/forge-container-selection_s3-kit-bindings.md` |
-| Desktop keybinds plan | `agents/plans/forge-desktop-keybinds.md` |
+| Fair sizes / late title | `lib/extension/tree-layout.js`, `window.js` |
+| PlaceNext / PWA class | `lib/extension/place-hint.js`, `scripts/forge/forge` `_class_eq` |
+| Layout residual belt | `scripts/forge/forge` (after opens) |
+| PWA tab icons | `lib/extension/tree.js` `_preferChromePwaApp`, `refreshApp` |
+| Dock/Guake mon | `window.js` `resolveFocusMonitor` |
+| Soft rehome | `lib/extension/soft-rehome.js` |
+
+---
 
 ## Human blockers
 
-None hard. Operator must switch session for Wayland.
+None hard. Operator: **logout/in Wayland**, then continue from §1 above.
 
-## Commits on feature (approx)
-
-- thrash guard + multi-machine races + GNOME-owned lock (no DPMS force)  
-- docs: product GNOME lock retest; PRIORITY + desktop-keybinds plan  
+---
 
 ## Plans
 
 | Plan | Next |
 | --- | --- |
-| Wayland thrash (ops) | [PRIORITY](./PRIORITY.md) #1 when on Wayland |
-| [forge-container-selection.md](./plans/forge-container-selection.md) | S3 after Wayland smoke |
-| [forge-desktop-keybinds.md](./plans/forge-desktop-keybinds.md) | KB0 Safe Super+L+Delete; KB1 open GNOME Keyboard; KB2 conflict offer |
-| [forge-first-class-containers.md](./plans/forge-first-class-containers.md) | residual mouse / Z0 after selection |
+| [forge-wayland-live](./plans/forge-wayland-live.md) | **W4 thrash** after logout smoke |
+| [forge-container-selection](./plans/forge-container-selection.md) | S3 after Wayland OK |
+| [forge-desktop-keybinds](./plans/forge-desktop-keybinds.md) | KB1 after S3 |
