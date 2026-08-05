@@ -10,17 +10,14 @@
 
 ### Session note (overwrite)
 
-**2026-08-05 (CL7 PWA open/wait — A/B AGREE, install for operator):** On
-`plan/forge-layout-control-loop`.
+**2026-08-05 (handoff — X11-first CL7 live):** On `plan/forge-layout-control-loop`
+(ahead 9, tip `fe8448c`, not pushed).
 
-- CL0–CL6 shipped earlier; **CL7 code fix** for live Grok wait timeout:
-  merge desktop hints into wait, PlaceNext prefers `chrome-*-Default`/`crx_*`,
-  chrome family class_eq (CLI + place-hint), open loop continues on failure.
-- Completed task:
-  `agents/plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl7-pwa-open-wait.md`
-- Tests: CLI 358 + place-hint 24 green (B re-ran).
-- **Next:** operator logout smoke — sole Ghostty → `forge layout dev` (no Grok
-  15s timeout; mon1 PWAs open).
+- CL0–CL6 + **CL7 PWA open/wait code** shipped; live retest **pending**.
+- Completed: `…/completed/forge-layout-control-loop_cl7-pwa-open-wait.md`
+- **Strategy:** prove CL7 on **X11** (HUP retest), then Wayland residual pass.
+- **Next:** human Xorg session → `./install --dev` → sole Ghostty →
+  `forge layout dev`. See [HANDOFF.md](../HANDOFF.md).
 
 ---
 
@@ -314,7 +311,7 @@ that refactor lands later, it consumes this API.
 | **CL4** | Open path = batch N=1 through controller (replace blind createDelay) | **done** | layout-open.js; B AGREE |
 | **CL5** | Layout CLI / multi-open uses same commit+verify (LF6 quiet → one render) | **done** | LayoutBatch + gate; B AGREE r2 |
 | **CL6** | Optional debug periodic verify gsetting + docs | **done** | layout-verify-interval-ms default 0; B AGREE |
-| **CL7** | Live black: Ghostty sole open + `forge layout dev` + X11 or Wayland note | **next (operator)** | task: `…_cl7-live-ghostty.md` |
+| **CL7** | Live black: Ghostty sole + `forge layout dev` — **X11 first**, Wayland after | **next (operator)** | task: `…_cl7-live-ghostty.md` · PWA wait code done `fe8448c` |
 
 ### Suggested first implement task
 
