@@ -1,14 +1,14 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (CL11 residual mon-ensure + structure verifier done)  
+**Updated:** 2026-08-05 (X11 polish green; ready for Wayland residual)  
 **Implement on:** `plan/forge-layout-control-loop` (**ahead of origin**; **not pushed**)  
-**HEAD:** master has CL0–CL7; plan branch has CL8–CL11 (deferred open + residual mon-ensure)  
-**Wayland residual:** after operator re-apply of mon-ensure fix  
+**HEAD:** master has CL0–CL7; plan branch has CL8–CL11 + chrome/ghost-deco polish  
+**Wayland residual:** **next** (X11 operator green on auto-exit CSD + layout apply)  
 **Stashed WIP:** `plan/forge-wayland-live` — **do not drop**; do not pop onto control-loop/master  
 **Remotes:** **no push** unless human asks  
 
 **Active plan:** [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md)  
-**Next:** Operator re-apply `forge layout dev` (or residual) — mon hsplit should land  
+**Next:** Wayland residual on `black` (logout/session; see [forge-wayland-live](./plans/forge-wayland-live.md))  
 **Completed CL11 mon-ensure:** [cl11-residual-mon-ensure](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl11-residual-mon-ensure.md)  
 **Completed CL10:** [cl10-apply-chrome](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl10-apply-chrome.md)  
 **Completed CL9:** [cl9-parallel-deferred-open](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_cl9-parallel-deferred-open.md)  
@@ -25,9 +25,10 @@
 | CL0–CL7 X11 | **Done** (operator green; on master) |
 | **CL8** deferred hidden LayoutBatch admit | **Done** (plan branch) |
 | **CL9** parallel CLI open + map wait + unhide | **Done** (plan branch) |
-| **CL10** apply chrome | **Done** (plan branch; opt-in, hard ≤8s clear) |
-| **CL11** residual mon-ensure + structure verifier | **Done** (code); **operator re-apply** next |
-| Wayland residual | After operator green on mon-ensure |
+| **CL10** apply chrome | **Done** (plan branch; default on; spinner + name) |
+| **CL11** residual mon-ensure + structure verifier | **Done** (plan branch) |
+| X11 polish (ghost deco / chrome UI) | **Done** (operator green 2026-08-05) |
+| Wayland residual | **Next** |
 
 ---
 
@@ -47,11 +48,20 @@ See plan § *Deferred hidden open (CL8+)*.
 
 ### Trial apply chrome
 
+Default **on**. Dim ~50% + spinner + `Forge` / `Loading layout "name"...`.
+Disable if noisy:
+
 ```bash
-gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled true
-# after trial:
 gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled false
 ```
+
+### Recent X11 polish (plan branch)
+
+| Commit area | Note |
+| --- | --- |
+| Ghost decoration after auto-exit-tabbed | `9beebdc` — native CSD × was blocked by leftover reactive strip |
+| Apply chrome presentation | `20c8d8f` — darker scrim, spinner, layout name via `begin:name` |
+| CL11 residual mon-ensure | Structure verifier + mon hsplit residual |
 
 ---
 
