@@ -134,3 +134,51 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(out.error).toMatch(/no merge partner/);
   });
 });
+
+describe("SessionApi LayoutBatch (CL5)", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      settings: { "tiling-mode-enabled": true },
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    ctx.cleanup();
+  });
+
+  function api() {
+    return new SessionApi({
+      extWm: ctx.windowManager,
+      settings: ctx.settings,
+    });
+  }
+
+  it("begin/end nest and end commits when need-commit latched", () => {
+    const a = api();
+    const begin = JSON.parse(a.LayoutBatch("begin"));
+    expect(begin).toMatchObject({ ok: true, depth: 1 });
+    expect(ctx.windowManager.openLayoutBatchActive).toBe(true);
+
+    ctx.windowManager._openLayoutBatchNeedsCommit = true;
+    const lcSpy = vi.spyOn(ctx.windowManager.layoutController, "requestLayout");
+    const end = JSON.parse(a.LayoutBatch("end"));
+    expect(end).toMatchObject({ ok: true, depth: 0, committed: true });
+    expect(lcSpy).toHaveBeenCalledWith("open-batch");
+    expect(ctx.windowManager.openLayoutBatchActive).toBe(false);
+  });
+
+  it("rejects unknown action", () => {
+    const out = JSON.parse(api().LayoutBatch("nope"));
+    expect(out.ok).toBe(false);
+    expect(out.error).toMatch(/begin\|end/);
+  });
+
+  it("Ping reports apiVersion ≥ 7", () => {
+    const ping = JSON.parse(api().Ping());
+    expect(ping.ok).toBe(true);
+    expect(ping.apiVersion).toBeGreaterThanOrEqual(7);
+  });
+});

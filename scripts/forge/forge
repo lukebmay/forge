@@ -43,6 +43,7 @@ _METHOD_IN_ARGS: dict[str, int] = {
     "SettingsSave": 1,
     "SettingsLoad": 1,
     "RunSteps": 1,
+    "LayoutBatch": 1,
     "SaveSessionLayout": 0,
 }
 
@@ -1147,6 +1148,26 @@ def _payload_has_cli_only(payload: Any) -> list[str]:
     return found
 
 
+def _layout_batch_call(backend: str, action: str) -> tuple[bool, dict[str, Any]]:
+    """
+    DBus LayoutBatch(begin|end) for CL5 multi-open control loop.
+
+    begin: defer per-app open renderTree until end (or residual RunSteps commit).
+    end: one requestLayout if still need-commit after residual.
+    Returns (ok, payload). ok=false when DBus/extension fails (caller may continue).
+    """
+    try:
+        raw = call_method(backend, "LayoutBatch", str(action))
+        data = json.loads(raw) if isinstance(raw, str) else raw
+    except Exception as e:
+        return False, {"ok": False, "error": str(e), "action": action}
+    if not isinstance(data, dict):
+        return False, {"ok": False, "error": "invalid LayoutBatch response", "raw": raw}
+    if data.get("ok") is True:
+        return True, data
+    return False, data
+
+
 def cmd_run_steps(backend: str, args: argparse.Namespace) -> int:
     """
     DBus RunSteps: freeze → extension ops → unfreeze + one render.
@@ -1902,181 +1923,198 @@ def _layout_run_reconcile(
             _layout_maybe_print_json(out, verbose=verbose, force=True)
             return rc
 
-    # 2) Opens (launch + wait)
+    # 2–3) Opens under LayoutBatch (CL5): no per-app mid-batch renderTree.
+    # Flow: begin → open all → fingerprint batch quiet (LF6) → residual
+    # RunSteps (freeze → ops → one render + post-render verify) → end.
     role_pins: dict[str, Any] = {}
-    for oa in open_actions:
-        fields = open_action_to_launch_fields(oa)
-        role = oa.get("role")
-        _rc, result = do_launch(backend, print_result=False, **fields)
-        entry = dict(result)
-        if role is not None:
-            entry["role"] = role
-        apply_log["opens"].append(entry)
-        if not result.get("ok"):
-            _eprint(
-                f"forge layout: open failed role={role!r}: "
-                f"{result.get('error', 'unknown')}"
-            )
-            out = _layout_plan_meta(resolved, name, plan, dry_run=False)
-            out["ok"] = False
-            out["apply"] = apply_log
-            _layout_maybe_print_json(out, verbose=verbose, force=True)
-            return 1
-        # Pin launched windowId so residual claim works when title match lags
-        # (e.g. chrome "New Tab" vs title~= Google Chrome).
-        if role is not None and result.get("windowId") is not None:
-            role_pins[str(role)] = result["windowId"]
-
-    # 3) After opens: wait whole GetTree stable, then one residual rehome batch.
-    # LF6: do not residual-move just-opened windows while Ghostty/self-place churns.
-    # Plan1 extension steps above only touch already-present tiles.
     if open_actions:
-
-        def _load_live_forest() -> dict[str, Any]:
-            return _layout_load_tree(backend, None)
-
-        # Open-all already pinned; wait until forest fingerprint holds N samples.
-        stable_info = wait_for_tree_stable(
-            _load_live_forest,
-            timeout_ms=TREE_STABLE_TIMEOUT_MS,
-            poll_ms=TREE_STABLE_POLL_MS,
-            stable_samples=TREE_STABLE_SAMPLES,
-        )
-        apply_log["treeStable"] = {
-            k: v for k, v in stable_info.items() if k != "forest"
-        }
-        if not stable_info.get("ok"):
+        batch_ok, batch_begin = _layout_batch_call(backend, "begin")
+        apply_log["layoutBatchBegin"] = batch_begin
+        if not batch_ok:
             _eprint(
-                "forge layout: tree not fully stable after opens "
-                f"(proceeding: {stable_info.get('error')})"
+                "forge layout: LayoutBatch begin failed "
+                f"(continuing without batch: {batch_begin.get('error')})"
             )
 
         try:
-            forest2 = stable_info.get("forest")
-            if not isinstance(forest2, dict):
-                forest2 = _load_live_forest()
-            plan2 = plan_reconcile(
-                forest2,
-                data,
-                clean=clean,
-                safe=safe,
-                role_pins=role_pins or None,
-                just_opened_roles=set(role_pins.keys()) if role_pins else None,
-            )
-        except Exception as e:
-            _eprint(f"forge layout: re-plan after open failed: {e}")
-            out = _layout_plan_meta(resolved, name, plan, dry_run=False)
-            out["ok"] = False
-            out["error"] = str(e)
-            out["apply"] = apply_log
-            _layout_maybe_print_json(out, verbose=verbose, force=True)
-            return 1
-        residual_ext, residual_open = partition_plan_actions(plan2.get("actions"))
-        # Apply residual moves/layout even when some roles still need open
-        # (e.g. chrome title pin lag). Missing roles fail *after* mon fixes.
-        follow_steps, still_open = residual_follow_up(
-            residual_ext, residual_open, force_close=force_close
-        )
-        if still_open:
-            _eprint(f"forge layout: still missing roles after open: {still_open}")
-        if follow_steps:
-            # LF5 belt: per-id settle is usually a no-op after tree-stable wait.
-            settle_ids = move_step_window_ids(follow_steps)
-            for _role, pin_wid in (role_pins or {}).items():
-                if pin_wid is not None and str(pin_wid) not in settle_ids:
-                    settle_ids.append(str(pin_wid))
-            if settle_ids:
-                settle_info = wait_for_window_ids_settled(
-                    backend, settle_ids, timeout_ms=2000
-                )
-                apply_log["followUpSettle"] = settle_info
-                if settle_info.get("pending"):
+            for oa in open_actions:
+                fields = open_action_to_launch_fields(oa)
+                role = oa.get("role")
+                _rc, result = do_launch(backend, print_result=False, **fields)
+                entry = dict(result)
+                if role is not None:
+                    entry["role"] = role
+                apply_log["opens"].append(entry)
+                if not result.get("ok"):
                     _eprint(
-                        "forge layout: residual targets not fully settled: "
-                        f"{settle_info['pending']} (moving anyway)"
+                        f"forge layout: open failed role={role!r}: "
+                        f"{result.get('error', 'unknown')}"
                     )
-            rc, agg = run_mixed_steps(
-                backend, follow_steps, stop_on_error=True, print_each=False
-            )
-            apply_log["followUp"] = agg
-            if rc != 0:
-                _eprint("forge layout: follow-up steps failed")
-                out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
-                out["ok"] = False
-                out["apply"] = apply_log
-                if still_open:
-                    out["error"] = (
-                        f"follow-up failed; roles still missing after launch: "
-                        f"{still_open}"
-                    )
-                _layout_maybe_print_json(out, verbose=verbose, force=True)
-                return rc
-        plan = plan2
+                    out = _layout_plan_meta(resolved, name, plan, dry_run=False)
+                    out["ok"] = False
+                    out["apply"] = apply_log
+                    _layout_maybe_print_json(out, verbose=verbose, force=True)
+                    return 1
+                # Pin launched windowId so residual claim works when title match lags
+                # (e.g. chrome "New Tab" vs title~= Google Chrome).
+                if role is not None and result.get("windowId") is not None:
+                    role_pins[str(role)] = result["windowId"]
 
-        # Belt: short second stable wait, then one more move pass if wrong mon.
-        if role_pins and not still_open:
-            belt_stable = wait_for_tree_stable(
+            def _load_live_forest() -> dict[str, Any]:
+                return _layout_load_tree(backend, None)
+
+            # Batch quiet gate (LF6): forest fingerprint holds N samples, then
+            # one residual plan + RunSteps commit (control-loop language).
+            stable_info = wait_for_tree_stable(
                 _load_live_forest,
-                timeout_ms=BELT_STABLE_TIMEOUT_MS,
-                poll_ms=BELT_STABLE_POLL_MS,
-                stable_samples=BELT_STABLE_SAMPLES,
+                timeout_ms=TREE_STABLE_TIMEOUT_MS,
+                poll_ms=TREE_STABLE_POLL_MS,
+                stable_samples=TREE_STABLE_SAMPLES,
             )
-            apply_log["beltTreeStable"] = {
-                k: v for k, v in belt_stable.items() if k != "forest"
+            apply_log["treeStable"] = {
+                k: v for k, v in stable_info.items() if k != "forest"
             }
+            if not stable_info.get("ok"):
+                _eprint(
+                    "forge layout: tree not fully stable after opens "
+                    f"(proceeding: {stable_info.get('error')})"
+                )
+
             try:
-                forest3 = belt_stable.get("forest")
-                if not isinstance(forest3, dict):
-                    forest3 = _load_live_forest()
-                plan3 = plan_reconcile(
-                    forest3,
+                forest2 = stable_info.get("forest")
+                if not isinstance(forest2, dict):
+                    forest2 = _load_live_forest()
+                plan2 = plan_reconcile(
+                    forest2,
                     data,
                     clean=clean,
                     safe=safe,
-                    role_pins=role_pins,
-                    just_opened_roles=set(role_pins.keys()),
+                    role_pins=role_pins or None,
+                    just_opened_roles=set(role_pins.keys()) if role_pins else None,
                 )
             except Exception as e:
-                _eprint(f"forge layout: belt re-plan after residual failed: {e}")
-            else:
-                belt_ext, _belt_open = partition_plan_actions(plan3.get("actions"))
-                belt_moves = [
-                    a
-                    for a in belt_ext
-                    if isinstance(a, dict)
-                    and str(a.get("op") or "").strip().lower() == "move"
-                    and str(a.get("role") or "") in role_pins
-                ]
-                belt_steps, _ = residual_follow_up(
-                    belt_moves, [], force_close=force_close
-                )
-                if belt_steps:
-                    belt_ids = move_step_window_ids(belt_steps)
-                    if belt_ids:
-                        belt_settle = wait_for_window_ids_settled(
-                            backend, belt_ids, timeout_ms=1500
-                        )
-                        apply_log["beltSettle"] = belt_settle
-                    rc, agg = run_mixed_steps(
-                        backend, belt_steps, stop_on_error=True, print_each=False
+                _eprint(f"forge layout: re-plan after open failed: {e}")
+                out = _layout_plan_meta(resolved, name, plan, dry_run=False)
+                out["ok"] = False
+                out["error"] = str(e)
+                out["apply"] = apply_log
+                _layout_maybe_print_json(out, verbose=verbose, force=True)
+                return 1
+            residual_ext, residual_open = partition_plan_actions(plan2.get("actions"))
+            # Apply residual moves/layout even when some roles still need open
+            # (e.g. chrome title pin lag). Missing roles fail *after* mon fixes.
+            follow_steps, still_open = residual_follow_up(
+                residual_ext, residual_open, force_close=force_close
+            )
+            if still_open:
+                _eprint(f"forge layout: still missing roles after open: {still_open}")
+            if follow_steps:
+                # LF5 belt: per-id settle is usually a no-op after tree-stable wait.
+                settle_ids = move_step_window_ids(follow_steps)
+                for _role, pin_wid in (role_pins or {}).items():
+                    if pin_wid is not None and str(pin_wid) not in settle_ids:
+                        settle_ids.append(str(pin_wid))
+                if settle_ids:
+                    settle_info = wait_for_window_ids_settled(
+                        backend, settle_ids, timeout_ms=2000
                     )
-                    apply_log["beltFollowUp"] = agg
-                    if rc != 0:
-                        _eprint("forge layout: belt follow-up moves failed")
-                        out = _layout_plan_meta(resolved, name, plan3, dry_run=False)
-                        out["ok"] = False
-                        out["apply"] = apply_log
-                        _layout_maybe_print_json(out, verbose=verbose, force=True)
-                        return rc
-                    plan = plan3
+                    apply_log["followUpSettle"] = settle_info
+                    if settle_info.get("pending"):
+                        _eprint(
+                            "forge layout: residual targets not fully settled: "
+                            f"{settle_info['pending']} (moving anyway)"
+                        )
+                rc, agg = run_mixed_steps(
+                    backend, follow_steps, stop_on_error=True, print_each=False
+                )
+                apply_log["followUp"] = agg
+                if rc != 0:
+                    _eprint("forge layout: follow-up steps failed")
+                    out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
+                    out["ok"] = False
+                    out["apply"] = apply_log
+                    if still_open:
+                        out["error"] = (
+                            f"follow-up failed; roles still missing after launch: "
+                            f"{still_open}"
+                        )
+                    _layout_maybe_print_json(out, verbose=verbose, force=True)
+                    return rc
+            plan = plan2
 
-        if still_open:
-            out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
-            out["ok"] = False
-            out["error"] = f"roles still missing after launch: {still_open}"
-            out["apply"] = apply_log
-            _layout_maybe_print_json(out, verbose=verbose, force=True)
-            return 1
+            # Belt: short second stable wait, then one more move pass if wrong mon.
+            if role_pins and not still_open:
+                belt_stable = wait_for_tree_stable(
+                    _load_live_forest,
+                    timeout_ms=BELT_STABLE_TIMEOUT_MS,
+                    poll_ms=BELT_STABLE_POLL_MS,
+                    stable_samples=BELT_STABLE_SAMPLES,
+                )
+                apply_log["beltTreeStable"] = {
+                    k: v for k, v in belt_stable.items() if k != "forest"
+                }
+                try:
+                    forest3 = belt_stable.get("forest")
+                    if not isinstance(forest3, dict):
+                        forest3 = _load_live_forest()
+                    plan3 = plan_reconcile(
+                        forest3,
+                        data,
+                        clean=clean,
+                        safe=safe,
+                        role_pins=role_pins,
+                        just_opened_roles=set(role_pins.keys()),
+                    )
+                except Exception as e:
+                    _eprint(f"forge layout: belt re-plan after residual failed: {e}")
+                else:
+                    belt_ext, _belt_open = partition_plan_actions(plan3.get("actions"))
+                    belt_moves = [
+                        a
+                        for a in belt_ext
+                        if isinstance(a, dict)
+                        and str(a.get("op") or "").strip().lower() == "move"
+                        and str(a.get("role") or "") in role_pins
+                    ]
+                    belt_steps, _ = residual_follow_up(
+                        belt_moves, [], force_close=force_close
+                    )
+                    if belt_steps:
+                        belt_ids = move_step_window_ids(belt_steps)
+                        if belt_ids:
+                            belt_settle = wait_for_window_ids_settled(
+                                backend, belt_ids, timeout_ms=1500
+                            )
+                            apply_log["beltSettle"] = belt_settle
+                        rc, agg = run_mixed_steps(
+                            backend, belt_steps, stop_on_error=True, print_each=False
+                        )
+                        apply_log["beltFollowUp"] = agg
+                        if rc != 0:
+                            _eprint("forge layout: belt follow-up moves failed")
+                            out = _layout_plan_meta(resolved, name, plan3, dry_run=False)
+                            out["ok"] = False
+                            out["apply"] = apply_log
+                            _layout_maybe_print_json(out, verbose=verbose, force=True)
+                            return rc
+                        plan = plan3
+
+            if still_open:
+                out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
+                out["ok"] = False
+                out["error"] = f"roles still missing after launch: {still_open}"
+                out["apply"] = apply_log
+                _layout_maybe_print_json(out, verbose=verbose, force=True)
+                return 1
+        finally:
+            if batch_ok:
+                _end_ok, batch_end = _layout_batch_call(backend, "end")
+                apply_log["layoutBatchEnd"] = batch_end
+                if not _end_ok:
+                    _eprint(
+                        "forge layout: LayoutBatch end failed: "
+                        f"{batch_end.get('error')}"
+                    )
 
     _eprint("  ok")
     out = _layout_plan_meta(resolved, name, plan, dry_run=False)

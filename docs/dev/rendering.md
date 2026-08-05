@@ -39,6 +39,10 @@ above it. Call sites may still invoke `renderTree` directly (commands, force
 paths). Open-app path (CL4): quiet settle via `layout-open.js` then
 `requestLayout("window-create")` (or one forced `renderTree` if render is frozen).
 
+Multi-open / layout CLI (CL5): `LayoutBatch` holds open commits mid-batch;
+fingerprint wait is batch quiet; residual `RunSteps` does freeze → one
+`renderTree("run-steps")` → verify. No per-role mid-batch render flood.
+
 ## `renderTree(from, force)` — `window.js`
 
 Renders are **debounced** through a single `GLib.idle_add` source so the bursts of

@@ -606,9 +606,12 @@ def move_step_window_ids(steps: Any) -> list[str]:
     return out
 
 
-# --- LF6: open-all → whole-tree stable → residual rehome ---
+# --- LF6 / CL5: open-all → batch quiet (fingerprint) → one residual commit ---
+# Control-loop: LayoutBatch begin → launch roles → wait_for_tree_stable
+# (batch quiet) → residual RunSteps (freeze → ops → one render + verify) → end.
+# Not a separate philosophy from requestLayout/verify — quiet gate only.
 
-# Defaults for post-open stability wait (Ghostty may self-move after TILE).
+# Defaults for post-open batch quiet (Ghostty may self-resize after map).
 TREE_STABLE_TIMEOUT_MS = 7000
 TREE_STABLE_POLL_MS = 180
 TREE_STABLE_SAMPLES = 3
@@ -731,7 +734,9 @@ def wait_for_tree_stable(
     Pure of DBus: inject load_forest (+ optional sleep/monotonic for tests).
     On timeout: ok=false, last fingerprint/forest still returned.
 
-    Residual rehome order (LF6): open all → wait_for_tree_stable → plan + apply.
+    Batch quiet gate (LF6 / CL5 control-loop): open all → wait_for_tree_stable
+    (fingerprint holds) → one residual plan + RunSteps commit+verify. Not a
+    per-role re-render loop.
     """
     sleep = sleep_fn if sleep_fn is not None else time.sleep
     mono = monotonic_fn if monotonic_fn is not None else time.monotonic

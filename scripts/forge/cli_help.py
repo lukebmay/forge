@@ -63,6 +63,7 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
         ("TABBED / STACKED", "Tab strip / stack of windows sharing one pane"),
         ("PlaceNext", "One-shot attach hint for the next matching window (monitor / tree path)"),
         ("RunSteps", "Batched extension ops (freeze -> ops -> one render)"),
+        ("LayoutBatch", "Multi-open control loop (CL5): defer per-app render; batch quiet then one commit"),
         ("reconcile", "Desired-state layout: match roles, open gaps, move/park - not a launch script"),
         ("slot", "Home for a role, e.g. mon0.term or mon1.comms (monitor + layout child id)"),
         ("moNwsW", "Monitor N, workspace W tree id (mo0ws0 = primary-ish mon 0, workspace 0)"),

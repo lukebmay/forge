@@ -10,11 +10,11 @@
 
 ### Session note (overwrite)
 
-**2026-08-05 (CL0–CL4 done, B AGREE):** On `plan/forge-layout-control-loop`.
+**2026-08-05 (CL0–CL5 done, B AGREE):** On `plan/forge-layout-control-loop`.
 
-- Control loop: requestLayout/verify, Meta↔slot agreement, external geometry
-  suppress, thrash catalog (ghostty), open quiet→requestLayout (N=1).
-- **Next:** CL5 layout CLI multi-open same commit+verify; CL7 live Ghostty.
+- Full control loop for open (N=1 quiet) + layout CLI multi-open batch + verify ×2
+  + thrash catalog (ghostty) + external geometry suppress.
+- **Next:** CL6 optional periodic verify gsetting; CL7 live Ghostty on black.
 
 ---
 
@@ -304,10 +304,10 @@ that refactor lands later, it consumes this API.
 | **CL0** | Glossary + `requestLayout` / `requestVerify` skeleton + debounce constants | **done** | layout-controller.js + tests; B AGREE |
 | **CL1** | Verify scanner (Meta ↔ slots) + agreement counter + schedule after render | **done** | layout-verify.js; B AGREE |
 | **CL2** | External geometry → unsettled; suppress attribution | **done** | layout-sensors + suppress; B AGREE |
-| **CL3** | App thrash catalog + built-in ghostty + first-open observation | **A done / await B** | task: `…_cl3-thrash-catalog.md` |
-| **CL4** | Open path = batch N=1 through controller (replace blind createDelay) | **A done / await B** | Sole Ghostty live → CL7 |
-| **CL5** | Layout CLI / multi-open uses same commit+verify (LF6 quiet → one render) | pending | No per-app render mid-batch |
-| **CL6** | Optional debug periodic verify gsetting + docs | pending | Default off |
+| **CL3** | App thrash catalog + built-in ghostty + first-open observation | **done** | app-thrash-catalog.js; B AGREE |
+| **CL4** | Open path = batch N=1 through controller (replace blind createDelay) | **done** | layout-open.js; B AGREE |
+| **CL5** | Layout CLI / multi-open uses same commit+verify (LF6 quiet → one render) | **done** | LayoutBatch + gate; B AGREE r2 |
+| **CL6** | Optional debug periodic verify gsetting + docs | **next** | task: `…_cl6-debug-verify-interval.md` |
 | **CL7** | Live black: Ghostty sole open + `forge layout dev` + X11 or Wayland note | pending | Operator smoke |
 
 ### Suggested first implement task

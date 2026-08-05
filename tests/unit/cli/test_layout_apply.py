@@ -636,11 +636,13 @@ class TestForestStabilityLf6(unittest.TestCase):
         self.assertGreaterEqual(out["polls"], 2)
 
     def test_open_then_stable_rehome_order_doc(self):
-        """Residual rehome is after wait_for_tree_stable (LF6 product order)."""
+        """Batch quiet (LF6/CL5) then residual plan + commit — control-loop order."""
         # Documented in wait_for_tree_stable docstring; keep API surface stable.
         doc = wait_for_tree_stable.__doc__ or ""
         self.assertIn("open all", doc.lower())
+        self.assertIn("batch quiet", doc.lower())
         self.assertIn("plan", doc.lower())
+        self.assertIn("commit", doc.lower())
 
 
 class TestPlanToStepsFixture(unittest.TestCase):

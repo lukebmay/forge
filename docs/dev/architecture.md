@@ -107,6 +107,14 @@ minQuiet → `_scheduleOpenCommit` → `requestLayout("window-create")` (force
 `renderTree` only when render is frozen). External geom during pending open
 resets quiet and does not early-`requestLayout`.
 
+**CL5 multi-open / layout CLI:** DBus `LayoutBatch(begin|end)` →
+`wm.beginOpenLayoutBatch` / `endOpenLayoutBatch`. While depth > 0, open commits
+and `requestLayout` only latch need-commit (no per-app mid-batch render).
+`forge layout` wraps launches: begin → open all → `wait_for_tree_stable`
+(LF6 fingerprint = **batch quiet**) → residual `RunSteps` (freeze → ops → one
+`renderTree` + post-render verify) → end (one deferred `requestLayout` only if
+no residual render already cleared the latch).
+
 ## Command dispatch flow
 
 ```
