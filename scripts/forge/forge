@@ -2251,15 +2251,15 @@ def _layout_run_reconcile(
             if still_open:
                 _eprint(f"forge layout: still missing roles after open: {still_open}")
             if follow_steps:
-                # LF5 belt: after release, just-opened may still be FLOAT until
-                # residual TILE; move anyway on settle timeout (existing policy).
+                # After release-deferred, extension processFloats → TILE. Wait
+                # longer than LF5 default so structure ops see TILE not FLOAT.
                 settle_ids = move_step_window_ids(follow_steps)
                 for _role, pin_wid in (role_pins or {}).items():
                     if pin_wid is not None and str(pin_wid) not in settle_ids:
                         settle_ids.append(str(pin_wid))
                 if settle_ids:
                     settle_info = wait_for_window_ids_settled(
-                        backend, settle_ids, timeout_ms=2000
+                        backend, settle_ids, timeout_ms=4000
                     )
                     apply_log["followUpSettle"] = settle_info
                     if settle_info.get("pending"):
