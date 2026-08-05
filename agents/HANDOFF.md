@@ -1,14 +1,22 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (layout control-loop plan locked)  
-**Branch (live Wayland work):** `plan/forge-wayland-live`  
-**Next feature branch:** `plan/forge-layout-control-loop` (cut when implementing CL0)  
-**Default:** `master` — merge wayland-live only after operator smoke if still open  
+**Updated:** 2026-08-05 (layout control-loop plan locked + pushed)  
+**Implement on:** `plan/forge-layout-control-loop` (= `master` @ `14d4308` + plan docs)  
+**Wayland residual:** `plan/forge-wayland-live` (W-storm shipped; WIP stashed — see below)  
+**Default:** `master` has queue canon; do not merge wayland-live until operator smoke  
 **Remotes:** `test` / `prod` **not** touched  
 
 **Active plan:** [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md)  
+**First task:** [forge-layout-control-loop_cl0-request-api.md](./tasks/forge-layout-control-loop_cl0-request-api.md)  
 **Rename-only plan:** [forge-monitor-recovery-rename.md](./plans/forge-monitor-recovery-rename.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
+
+### Stash (do not drop)
+
+```text
+stash@{0}: WIP plan/forge-wayland-live: rival-tilers, soft-rehome, install scripts
+  (unrelated to CL0 — restore only on plan/forge-wayland-live when resuming that work)
+```
 
 ---
 
