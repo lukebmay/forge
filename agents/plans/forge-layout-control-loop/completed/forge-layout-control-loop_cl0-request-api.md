@@ -1,9 +1,10 @@
 # Task: forge-layout-control-loop_cl0-request-api
 
-**Status:** ready  
+**Status:** done  
 **Plan:** [forge-layout-control-loop.md](../plans/forge-layout-control-loop.md)  
 **Branch:** `plan/forge-layout-control-loop`  
-**Created:** 2026-08-05
+**Created:** 2026-08-05  
+**Completed:** 2026-08-05
 
 ## Goal
 
@@ -38,6 +39,15 @@ alone (CL4 is acceptance for sole Ghostty).
 
 ## Session note
 
-(ready — not started)
+**2026-08-05:** CL0 done — A implement + B **AGREE**. Full suite 1974 passed.
 
-**Git:** Unrelated `plan/forge-wayland-live` WIP is in `git stash` (message mentions rival-tilers / soft-rehome / install scripts). Agents own that stash — see `agents/HANDOFF.md`. Do not `stash pop` onto this branch; do not `stash drop` it.
+### Shipped
+- `lib/extension/layout-controller.js` — `DebouncedRequest`, `LayoutController`,
+  `LAYOUT_REQUEST_DEBOUNCE_MS=200`, `VERIFY_REQUEST_DEBOUNCE_MS=150`; injectable timers.
+- WM: `layoutController`, `requestLayout` / `requestVerify`; successful `renderTree`
+  body → `onRenderComplete` → `requestVerify("post-render")`; cancel on teardown.
+- Docs: architecture glossary; rendering.md requestLayout note.
+- Tests: `layout-controller.test.js` (15) + `WindowManager-layout-controller.test.js` (9).
+
+### Next
+- CL1: real Meta↔slot scanner + agreement counter behind verify fire.

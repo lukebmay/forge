@@ -55,6 +55,7 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | Module | Responsibility |
 | --- | --- |
 | `window.js` `WindowManager` | Event hub: binds GNOME signals, tracks windows, owns `renderTree`/`move`, focus, grab/drag. |
+| `layout-controller.js` `LayoutController` | Debounced `requestLayout` / `requestVerify` (CL0); verify stub until CL1. |
 | `command.js` `CommandHandler` | Turns a user action into tree mutations (extracted from window.js). |
 | `focus.js` `FocusManager` | Focus tracking + active-window signal lifecycle (extracted from window.js). |
 | `decoration.js` `DecorationManager` | Stacked/tabbed container decorations and their actor lifecycle (extracted from window.js). |
@@ -69,6 +70,28 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 
 User-facing strings are localized with gettext; the catalog (`po/`) and Weblate
 workflow are documented in [translations.md](translations.md).
+
+## Layout control loop (CL0)
+
+Single writer intent for layout commits and post-render checks. Full plan:
+`agents/plans/forge-layout-control-loop.md`.
+
+| Term | Means | Touches Meta? |
+| --- | --- | --- |
+| **Mutate tree** | In-memory topology / percent / mode | No |
+| **Compute slots** | Walk tree → `renderRect` from workarea | No |
+| **Commit / apply** | `move_resize_frame` each TILE leaf to slot | Yes |
+| **Render** (`renderTree`) | prune → floats → compute + apply + chrome | Yes (apply) |
+| **Request layout** | `requestLayout(reason)` → debounce → `renderTree` | Not yet |
+| **Verify** | Read Meta frames; compare to slots (CL1 scanner) | Read |
+| **Rebuild** (`reloadTree`) | Wipe mon/ws nodes, re-track flat | Yes |
+| **Monitor-recovery** | Workareas thrash rehome (formerly soft-rehome) | Yes |
+
+API: `wm.requestLayout` / `wm.requestVerify` → `LayoutController`
+(`lib/extension/layout-controller.js`). Layout debounce default 200ms; verify
+150ms. Successful `renderTree` body schedules `requestVerify("post-render")`.
+Existing call sites may still use `renderTree` directly; migrate sensors over
+later CL slices.
 
 ## Command dispatch flow
 

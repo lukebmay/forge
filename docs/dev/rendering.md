@@ -3,6 +3,18 @@
 How a tree mutation becomes on-screen geometry. Entry point: `renderTree()` in
 `window.js`. See [architecture.md](architecture.md) for the surrounding subsystems.
 
+## `requestLayout` / `requestVerify` — `layout-controller.js` (CL0)
+
+Preferred entry for sensor storms: `wm.requestLayout(reason)` trailing-debounces
+(~200ms) then calls `renderTree` once with coalesced reasons. After a **successful**
+idle body, `renderTree` schedules `requestVerify("post-render")` (CL0 stub;
+Meta↔slot scanner is CL1). `requestVerify` has its own ~150ms debounce channel.
+See [architecture.md](architecture.md#layout-control-loop-cl0).
+
+`renderTree` idle coalesce remains the inner commit layer; `requestLayout` sits
+above it. Call sites may still invoke `renderTree` directly (commands, force
+paths); open-app `createDelay` is unchanged until CL4.
+
 ## `renderTree(from, force)` — `window.js`
 
 Renders are **debounced** through a single `GLib.idle_add` source so the bursts of
