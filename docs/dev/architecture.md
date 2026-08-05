@@ -102,8 +102,10 @@ layout/verify (agreement → 0). Forge apply sets `_suppressGeometrySignalRetile
 around `move` / `tree.apply` so our own `move_resize_frame` does **not** unsettle
 or retile. TILE already within ε of its slot is chrome-only (W-storm in-slot).
 Helpers: `layout-sensors.js` (`isForgeCausedGeometrySignal`,
-`shouldChromeOnlyGeometry`). Existing call sites may still use `renderTree`
-directly; open path `createDelay` migrates in CL4.
+`shouldChromeOnlyGeometry`). Open path (CL4): `layout-open.js` quiet + catalog
+minQuiet → `_scheduleOpenCommit` → `requestLayout("window-create")` (force
+`renderTree` only when render is frozen). External geom during pending open
+resets quiet and does not early-`requestLayout`.
 
 ## Command dispatch flow
 

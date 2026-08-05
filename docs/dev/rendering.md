@@ -36,7 +36,8 @@ of `move()` and `tree.apply`. Pure helpers live in `layout-sensors.js`.
 
 `renderTree` idle coalesce remains the inner commit layer; `requestLayout` sits
 above it. Call sites may still invoke `renderTree` directly (commands, force
-paths); open-app `createDelay` is unchanged until CL4.
+paths). Open-app path (CL4): quiet settle via `layout-open.js` then
+`requestLayout("window-create")` (or one forced `renderTree` if render is frozen).
 
 ## `renderTree(from, force)` — `window.js`
 

@@ -181,6 +181,7 @@ describe("WindowManager layout controller (CL0)", () => {
   it("CL0 keeps renderTree and requestLayout as separate layers", () => {
     expect(typeof wm().renderTree).toBe("function");
     expect(typeof wm().requestLayout).toBe("function");
-    // createDelay open path still calls renderTree directly (CL4), not replaced here
+    // CL4: open quiet → requestLayout("window-create") (force renderTree only if frozen)
+    expect(typeof wm()._scheduleOpenCommit).toBe("function");
   });
 });

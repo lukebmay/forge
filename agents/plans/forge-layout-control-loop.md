@@ -10,11 +10,11 @@
 
 ### Session note (overwrite)
 
-**2026-08-05 (CL0–CL3 done, B AGREE):** On `plan/forge-layout-control-loop`.
+**2026-08-05 (CL0–CL4 done, B AGREE):** On `plan/forge-layout-control-loop`.
 
-- CL0–CL2: request API, verify/SETTLED, external geometry + suppress.
-- CL3: app-thrash-catalog (ghostty sticky) + thrash-extra after SETTLED.
-- **Next:** CL4 open = batch N=1 (`…_cl4-open-batch.md`).
+- Control loop: requestLayout/verify, Meta↔slot agreement, external geometry
+  suppress, thrash catalog (ghostty), open quiet→requestLayout (N=1).
+- **Next:** CL5 layout CLI multi-open same commit+verify; CL7 live Ghostty.
 
 ---
 
@@ -305,7 +305,7 @@ that refactor lands later, it consumes this API.
 | **CL1** | Verify scanner (Meta ↔ slots) + agreement counter + schedule after render | **done** | layout-verify.js; B AGREE |
 | **CL2** | External geometry → unsettled; suppress attribution | **done** | layout-sensors + suppress; B AGREE |
 | **CL3** | App thrash catalog + built-in ghostty + first-open observation | **A done / await B** | task: `…_cl3-thrash-catalog.md` |
-| **CL4** | Open path = batch N=1 through controller (replace blind createDelay) | pending | Sole Ghostty live acceptance |
+| **CL4** | Open path = batch N=1 through controller (replace blind createDelay) | **A done / await B** | Sole Ghostty live → CL7 |
 | **CL5** | Layout CLI / multi-open uses same commit+verify (LF6 quiet → one render) | pending | No per-app render mid-batch |
 | **CL6** | Optional debug periodic verify gsetting + docs | pending | Default off |
 | **CL7** | Live black: Ghostty sole open + `forge layout dev` + X11 or Wayland note | pending | Operator smoke |
