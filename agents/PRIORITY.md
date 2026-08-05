@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-05 (control-loop on master; Wayland residual next)  
+**Updated:** 2026-08-05 (CL8 done; CL9 next; Wayland after CL8–CL10)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -10,19 +10,20 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Wayland residual pass** | Logout smoke; borders / W4 / place timing only |
-| **2** | **Container selection finish** | S3 kit binds → S5 live QA |
-| **3** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
-| **4** | **MR0 rename** | soft-rehome → monitor-recovery (own PR) |
+| **1** | **CL9–CL10** (CL8 done) deferred hidden open finish | Parallel CLI + chrome; kill sliver/jump |
+| **2** | **X11 retest** then **Wayland residual** | After CL8–CL10 |
+| **3** | **Container selection finish** | S3 kit binds → S5 live QA |
+| **4** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
+| **5** | **MR0 rename** | soft-rehome → monitor-recovery (own PR) |
 
 ## Next session focus
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **Wayland** | Logout → GNOME Wayland; sole Ghostty + `forge layout dev` | Install already done; [HANDOFF](./HANDOFF.md) |
-| **2** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |
-| **3** | **MR0** | monitor-recovery rename (own branch/PR) | [plan](./plans/forge-monitor-recovery-rename.md) |
-| **4** | **KB** | Desktop keybinds when CON allows | [desktop-keybinds](./plans/forge-desktop-keybinds.md) |
+| **1** | **CL9** | Parallel CLI open + wait-for-map + unhide gate | plan queue after CL8 |
+| **2** | **CL10** | Optional apply chrome/scrim (never stick) | plan queue |
+| **3** | **Live** | X11 layout dev retest → Wayland residual | [HANDOFF](./HANDOFF.md) |
+| **4** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |
 
 **Shipped on master (local, not pushed)**
 

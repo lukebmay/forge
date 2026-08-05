@@ -273,10 +273,12 @@ describe("WindowManager open commit (CL4)", () => {
     expect(requestSpy).not.toHaveBeenCalledWith("window-create");
   });
 
-  it("CL5 open-layout batch: N opens latch need-commit, no mid-batch layout", () => {
+  it("CL5/CL8 open-layout batch: deferred hidden admit, no mid-batch layout", () => {
     const requestSpy = vi.spyOn(wm(), "requestLayout");
     const renderSpy = vi.spyOn(wm(), "renderTree");
     const lcSpy = vi.spyOn(wm().layoutController, "requestLayout");
+    const insertSpy = vi.spyOn(wm().tree, "insertChildPercent");
+    const scheduleSpy = vi.spyOn(wm(), "_scheduleOpenCommit");
 
     expect(wm().beginOpenLayoutBatch()).toEqual({ ok: true, depth: 1 });
     expect(wm().openLayoutBatchActive).toBe(true);
@@ -293,18 +295,28 @@ describe("WindowManager open commit (CL4)", () => {
       );
     }
 
-    expect(metas.every((m) => wm()._openCommitPending.has(m))).toBe(true);
-    const maxQuiet = Math.max(...metas.map((m) => wm()._openCommitPending.get(m).minQuietMs));
+    // CL8: no open quiet commit / no percent carve while batch active.
+    expect(metas.every((m) => !wm()._openCommitPending.has(m))).toBe(true);
+    expect(metas.every((m) => wm()._isDeferredOpen(m))).toBe(true);
+    expect(scheduleSpy).not.toHaveBeenCalled();
+    // insertChildPercent only for non-deferred paths; none of these should carve.
+    const deferredInserts = insertSpy.mock.calls.filter(([parent, child]) =>
+      metas.some((m) => child?.nodeValue === m || child === m)
+    );
+    expect(deferredInserts).toHaveLength(0);
 
-    // One advance past all quiets → each open commit fires without layout
-    clock.advance(maxQuiet + 1);
-    clock.advance(0);
+    for (const m of metas) {
+      const actor = m.get_compositor_private();
+      expect(actor.opacity).toBe(0);
+      const node = wm().tree.findNode(m);
+      expect(node).toBeTruthy();
+      expect(node.mode).toBe(WINDOW_MODES.FLOAT);
+    }
 
     expect(requestSpy).not.toHaveBeenCalled();
     expect(lcSpy).not.toHaveBeenCalled();
     expect(renderSpy).not.toHaveBeenCalledWith("window-create", true);
     expect(wm()._openLayoutBatchNeedsCommit).toBe(true);
-    expect(metas.every((m) => !wm()._openCommitPending.has(m))).toBe(true);
 
     // Direct requestLayout during batch also only latches
     wm().requestLayout("sensor-noise");
@@ -319,7 +331,11 @@ describe("WindowManager open commit (CL4)", () => {
       wasActive: true,
     });
     expect(wm().openLayoutBatchActive).toBe(false);
-    // end bypasses WM gate → layoutController.requestLayout once
+    // end releases deferred (opacity restored) + layoutController.requestLayout once
+    expect(metas.every((m) => !wm()._isDeferredOpen(m))).toBe(true);
+    for (const m of metas) {
+      expect(m.get_compositor_private().opacity).toBe(255);
+    }
     expect(lcSpy).toHaveBeenCalledTimes(1);
     expect(lcSpy).toHaveBeenCalledWith("open-batch");
     expect(wm()._openLayoutBatchNeedsCommit).toBe(false);
@@ -330,9 +346,8 @@ describe("WindowManager open commit (CL4)", () => {
     wm().beginOpenLayoutBatch();
     wm().appThrashCatalog.recordOpen("org.example.Residual");
     const meta = trackNew({ id: "residual", wm_class: "org.example.Residual" });
-    const quiet = wm()._openCommitPending.get(meta).minQuietMs;
-    clock.advance(quiet + 1);
-    clock.advance(0);
+    // CL8: deferred admit latches need immediately (no open quiet).
+    expect(wm()._isDeferredOpen(meta)).toBe(true);
     expect(wm()._openLayoutBatchNeedsCommit).toBe(true);
 
     // Residual RunSteps: real renderTree path (sync idle mock runs body).
@@ -343,6 +358,7 @@ describe("WindowManager open commit (CL4)", () => {
     const end = wm().endOpenLayoutBatch("open-batch");
     expect(end.committed).toBe(false);
     expect(lcSpy).not.toHaveBeenCalled();
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
   });
 
   it("CL5 residual+end race: deferred idle + end does not double-fire layout", () => {
@@ -382,7 +398,7 @@ describe("WindowManager open commit (CL4)", () => {
     }
   });
 
-  it("CL5 external geom after open-commit mid-batch does not fire layout", () => {
+  it("CL5/CL8 external geom mid-batch deferred does not fire layout", () => {
     let nextId = 1;
     const timers = new Map();
     let now = 0;
@@ -418,14 +434,12 @@ describe("WindowManager open commit (CL4)", () => {
 
     wm().appThrashCatalog.recordOpen("org.example.ExtMid");
     const meta = trackNew({ id: "ext-mid", wm_class: "org.example.ExtMid" });
-    const quiet = wm()._openCommitPending.get(meta).minQuietMs;
-    clock.advance(quiet + 1);
-    clock.advance(0);
-    // Open commit finished — pending cleared; need-commit latched.
+    // CL8: deferred admit — no open quiet; need-commit latched; still FLOAT.
     expect(wm()._openCommitPending.has(meta)).toBe(false);
+    expect(wm()._isDeferredOpen(meta)).toBe(true);
     expect(wm()._openLayoutBatchNeedsCommit).toBe(true);
 
-    // Live path after open: controller onExternalGeometry (not wm.requestLayout gate alone).
+    // Live path: controller onExternalGeometry (not wm.requestLayout gate alone).
     wm().layoutController.onExternalGeometry("size-changed", meta);
     advanceLc(LAYOUT_REQUEST_DEBOUNCE_MS + 10);
     expect(renderSpy).not.toHaveBeenCalled();
@@ -438,16 +452,7 @@ describe("WindowManager open commit (CL4)", () => {
     expect(renderSpy).not.toHaveBeenCalled();
     expect(wm()._openLayoutBatchNeedsCommit).toBe(true);
 
-    // Full sensor path: TILE drift after open no longer open-pending
-    const node = wm().findNodeWindow(meta) ?? wm().tree?.findNode?.(meta);
-    if (node) {
-      node.mode = WINDOW_MODES.TILE;
-      node.renderRect = { x: 0, y: 0, width: 800, height: 600 };
-      node.rect = { ...node.renderRect };
-      meta.move_resize_frame?.(true, 200, 200, 400, 300);
-    }
-    ctx.display.get_focus_window.mockReturnValue(meta);
-    // Seed a focusable TILE node if trackNew left FLOAT-only
+    // Full sensor path on a pre-existing TILE node mid-batch
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const { metaWindow: focusMeta, nodeWindow } = createWindowNode(ctx.tree, monitor, {
       mode: "TILE",
@@ -470,9 +475,60 @@ describe("WindowManager open commit (CL4)", () => {
 
     const end = wm().endOpenLayoutBatch("open-batch");
     expect(end.committed).toBe(true);
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
     // End requests layout once after batch; debounce may schedule renderTree.
     advanceLc(LAYOUT_REQUEST_DEBOUNCE_MS + 10);
     expect(renderSpy).toHaveBeenCalled();
+  });
+
+  it("CL8 N=1 without LayoutBatch still schedules open commit", () => {
+    const scheduleSpy = vi.spyOn(wm(), "_scheduleOpenCommit");
+    const insertSpy = vi.spyOn(wm().tree, "insertChildPercent");
+    wm().appThrashCatalog.recordOpen("org.example.Solo");
+    const meta = trackNew({ id: "solo", wm_class: "org.example.Solo" });
+    expect(wm().openLayoutBatchActive).toBe(false);
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
+    expect(wm()._openCommitPending.has(meta)).toBe(true);
+    expect(scheduleSpy).toHaveBeenCalledTimes(1);
+    expect(insertSpy).toHaveBeenCalled();
+  });
+
+  it("CL8 PlaceNext deferred open moves to home monitor", () => {
+    expect(wm().beginOpenLayoutBatch()).toMatchObject({ ok: true, depth: 1 });
+    // Dual mon not required: home 0 still exercises sticky path when mon differs.
+    const place = wm().placeNext({ monitor: 0, wmClass: "org.example.PlaceDef" });
+    expect(place.ok).toBe(true);
+
+    const meta = createMockWindow({
+      id: "place-def",
+      wm_class: "org.example.PlaceDef",
+      workspace: ctx.workspaces[0],
+      monitor: 0,
+      rect: { x: 10, y: 10, width: 400, height: 300 },
+    });
+    const moveSpy = vi.spyOn(meta, "move_to_monitor");
+    // Force get_monitor !== home so safeMoveToMonitor actually calls move.
+    meta._monitor = 1;
+    wm().trackWindow(null, meta);
+
+    expect(wm()._isDeferredOpen(meta)).toBe(true);
+    expect(moveSpy).toHaveBeenCalledWith(0);
+    expect(wm()._openCommitPending.has(meta)).toBe(false);
+
+    wm().endOpenLayoutBatch("open-batch");
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
+  });
+
+  it("CL8 disable releases deferred (no stuck invisible)", () => {
+    wm().beginOpenLayoutBatch();
+    wm().appThrashCatalog.recordOpen("org.example.DisableDef");
+    const meta = trackNew({ id: "disable-def", wm_class: "org.example.DisableDef" });
+    expect(wm()._isDeferredOpen(meta)).toBe(true);
+    expect(meta.get_compositor_private().opacity).toBe(0);
+
+    wm().disable();
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
+    expect(meta.get_compositor_private().opacity).toBe(255);
   });
 
   it("CL5 nest depth: only outermost end commits", () => {

@@ -1,24 +1,25 @@
 # Plan: Layout control loop (open = batch N, settle + verify)
 
-**Status:** X11 acceptance met — **merged to master**; Wayland residual smoke open  
+**Status:** active — CL8+ deferred hidden open (after CL0–CL7 X11)  
 **Priority:** P0 reliability (open/tile desync; Ghostty; shared by layout CLI)  
-**Branch:** code on `master` (plan branch still exists for history)  
+**Branch:** `plan/forge-layout-control-loop` (implement here; merge → master when CL8–CL10 green)  
 **Created:** 2026-08-05  
-**Host:** black — dual 4K; **X11 green**; Wayland residual still open  
+**Host:** black — dual 4K; **X11 green** for CL0–CL7; Wayland residual **after** CL8–CL10  
 **Supersedes implement path of:** [forge-layout-settle-pure.md](./forge-layout-settle-pure.md) (D0 discussion → this plan)  
 **Related:** LF1–LF6 layout reliability, W-storm, place-hint / PlaceNext, monitor-recovery (legacy soft-rehome)
 
 ### Session note (overwrite)
 
-**2026-08-05 (merged to master; Wayland residual next):**
+**2026-08-05 (CL8 done — Task Force A):** Deferred hidden LayoutBatch admit shipped
+on `plan/forge-layout-control-loop`.
 
-- **CL0–CL7 X11** done on black (150%, `forge layout dev` dual-mon tree).
-- **Merged** `plan/forge-layout-control-loop` → `master` (local FF; not pushed).
-- Debug **install done** pre-Wayland logout (`g5721f8e` install path).
-- Tests: vitest 2100; CLI pytest 358.
-- **Next:** human logout → GNOME Wayland residual only. Stash holds
-  wayland-live WIP — do not drop; do not pop onto master.
-  See [HANDOFF.md](../HANDOFF.md).
+- `lib/extension/layout-deferred-open.js` + vitest; wired in `window.js`
+  (`trackWindow`, `endOpenLayoutBatch`, `disable`, processFloats, raise guards).
+- Batch will-tile maps: FLOAT, mon sticky (`safeMoveToMonitor`), opacity 0, no
+  percent carve / open commit / mid-batch aspect split; release on batch end +
+  disable.
+- N=1 open path unchanged. Full `npm test` green (2113).
+- Next: **CL9** layout CLI parallel open + wait-for-map + unhide gate before residual.
 
 ---
 
@@ -301,6 +302,52 @@ that refactor lands later, it consumes this API.
 
 ---
 
+## Deferred hidden open (CL8+) — user lock 2026-08-05
+
+### Problem (live)
+
+`forge layout` opens are correct *eventually* (PlaceNext + residual) but the
+path is jumpy: wrong monitor first, temporary H/V **slivers**, focus thrash,
+then residual restructure. Tiny first frames can also upset apps.
+
+### Locked direction (do not re-litigate without user)
+
+| # | Decision |
+| --- | --- |
+| **Pipeline** | **Parallel** launch → map **hidden** → **do not** intermediate TILE/split geometry → batch quiet → **one** residual plan + admit + render + verify |
+| **Tree** | Prefer **outside permanent tile geometry** while deferred (FLOAT / no percent carve / no mid-batch `renderTree`). Still **track** so GetTree + role pins work. |
+| **Staging alternative (fallback only)** | If hide proves impossible for a class: last tile unit on mon → if TABBED join else wrap TABBED; **not** equal-split spam. Do **not** implement complex “largest unit / count visible splits” analysis. |
+| **Mon sticky** | PlaceNext home mon → early `move_to_monitor` (same spirit as dock sticky). Relocate within mon later is OK. |
+| **Focus suppress** | During LayoutBatch: **no raise/activate** of deferred maps; do not steal LFT for survivors. |
+| **Residual focus** | Apply profile **saved focus** (layout IR `focus`), not “whatever last mapped.” |
+| **Apply chrome (G)** | Optional **disablable** UI setting: soft mask/scrim while residual apply. **FIRM:** must **never** stick (hard timeout auto-clear + clear on batch end + clear on `disable()`). Stuck chrome = dealbreaker. |
+| **Skip** | Client-side X11 position hints (H) — not worth it. |
+| **Speed** | Parallel first; stability over mid-batch pretty tiles. One final tree render, not temporary-then-final. |
+| **Wayland** | Operator Wayland residual **after** CL8–CL10 code + X11 retest. |
+
+### Target flow
+
+```text
+LayoutBatch begin
+  [optional chrome show — only if setting on; arm hard clear timer]
+  parallel: PlaceNext(mon[+path]) + launch each missing role
+  on map (batch): move_to_monitor(home); track FLOAT deferred;
+                  hide actor; no insertChildPercent; no raise;
+                  no open TILE commit / no mid-batch render
+  wait: all roles mapped (id pin) + forest/client quiet
+  residual: unhide deferred → freeze → plan ops (moves/tabs/sizes) →
+            one render + verify → focus from profile
+  LayoutBatch end + chrome clear (always)
+```
+
+### Non-goals this slice
+
+- Full pre-build of every empty CON skeleton from sugar (nice later; not required).
+- Serial open as default.
+- Renaming soft-rehome.
+
+---
+
 ## Task queue
 
 | ID | Task | Status | Notes |
@@ -313,10 +360,14 @@ that refactor lands later, it consumes this API.
 | **CL5** | Layout CLI / multi-open uses same commit+verify (LF6 quiet → one render) | **done** | LayoutBatch + gate; B AGREE r2 |
 | **CL6** | Optional debug periodic verify gsetting + docs | **done** | layout-verify-interval-ms default 0; B AGREE |
 | **CL7** | Live black: Ghostty sole + `forge layout dev` — **X11 first**, Wayland after | **done (X11)** | X11 green 2026-08-05; Wayland residual open after merge · PWA `fe8448c` · [completed live](./forge-layout-control-loop/completed/forge-layout-control-loop_cl7-live-ghostty.md) |
+| **CL8** | Deferred hidden admit during LayoutBatch (ext): mon sticky, hide, no split carve, no raise | **done** | [completed](./forge-layout-control-loop/completed/forge-layout-control-loop_cl8-deferred-hidden-open.md) · layout-deferred-open.js |
+| **CL9** | Layout CLI: parallel open + wait-for-map (not TILE settle) + unhide gate before residual | **next** | after CL8 |
+| **CL10** | Optional layout-apply chrome/scrim setting + hard auto-clear (never stuck) | **pending** | after CL9 |
+| **CL11** | Live retest X11 `forge layout dev` (then Wayland residual) | **pending** | operator + agent HUP |
 
-### Suggested first implement task
+### Suggested next implement task
 
-`agents/tasks/forge-layout-control-loop_cl0-request-api.md` — CL0 only when branch cut.
+`agents/tasks/forge-layout-control-loop_cl9-…` (or create CL9 task) — parallel CLI open + wait-for-map + unhide gate.
 
 ---
 
@@ -377,11 +428,10 @@ Instrument (debug install): optional timeline log map / size-changed / apply / v
 
 ## Handoff bullets (next agent)
 
-1. **Merged to master** (local). Next: **Wayland residual** smoke after logout (install already on disk).
-2. Do not block on monitor-recovery rename.
-3. Soft-rehome is **ours** (H1), not jcrussell; rename → [forge-monitor-recovery-rename.md](./forge-monitor-recovery-rename.md) (separate PR).
-4. Ghostty: size thrash after map, not self-move; control-loop settle is intentionally a bit slow.
-5. Open = batch N=1; layout multi-open same loop (LayoutBatch).
-6. Keep W-storm guards; route corrections through requestLayout/verify.
-7. Same code paths on X11 and Wayland; no session-backend split in this plan.
-8. **Git stash:** Wayland residual WIP is stashed — full note in [HANDOFF.md](../HANDOFF.md). Do not drop; do not pop onto master.
+1. **CL9 next** on `plan/forge-layout-control-loop` — parallel open + map wait + unhide gate.
+2. Wayland residual **after** CL8–CL10 + X11 retest (do not block on Wayland).
+3. Soft-rehome is **ours** (H1); rename separate PR.
+4. Ghostty: size thrash after map; settle intentionally a bit slow — but **no** temporary slivers.
+5. Layout multi-open: LayoutBatch + **hide until residual** (not mid-batch TILE).
+6. Apply chrome must never stick (CL10).
+7. **Git stash:** wayland-live WIP stashed — do not drop; do not pop onto this branch or master.
