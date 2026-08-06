@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (LX1 done; LX2 next)  
+**Updated:** 2026-08-06 (LX1–LX2 done; LX3 next)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -10,9 +10,8 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **LX2 split on tab extract** | Pop-out → thin slivers; square-ish split — [task](./tasks/forge-layout-live-x11_lx2-split-on-tab-extract.md) |
-| **2** | **LX3 cross-mon move** | Keybind move across mons failed — [task](./tasks/forge-layout-live-x11_lx3-cross-mon-move.md) |
-| **3** | **LX4 tab drag** | Drag tab should relocate tile unit — [task](./tasks/forge-layout-live-x11_lx4-tab-drag.md) |
+| **1** | **LX3 cross-mon move** | Keybind move across mons failed — [task](./tasks/forge-layout-live-x11_lx3-cross-mon-move.md) |
+| **2** | **LX4 tab drag** | Drag tab should relocate tile unit — [task](./tasks/forge-layout-live-x11_lx4-tab-drag.md) |
 | **4** | **layout mon order reverse (X11)** | Earlier report; not confirmed this session — [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
 | **5** | **AP5 op visual** (soft) | Gesture matrix eyes-on — [blocker](./blockers/B-ap5-operator-visual-matrix.md) |
 | **6** | **MR0 rename: soft-rehome → monitor-recovery** | Product language; separate PR — [plan](./plans/forge-monitor-recovery-rename.md) |
@@ -23,10 +22,10 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **LX2** | Split orient on tab extract | thin slivers |
-| **2** | **LX3** | Cross-monitor move | keybind failed |
-| **3** | **LX4** | Tab drag relocate | no drag today |
+| **1** | **LX3** | Cross-monitor move | keybind failed |
+| **2** | **LX4** | Tab drag relocate | no drag today |
 | **done** | **LX1** | Tab apply reHUP ×2 | [completed](./plans/forge-layout-live-x11/completed/forge-layout-live-x11_lx1-tab-apply-rehub.md) |
+| **done** | **LX2** | Split on tab extract | [completed](./plans/forge-layout-live-x11/completed/forge-layout-live-x11_lx2-split-on-tab-extract.md) |
 
 **Shipped on master (local, not pushed)**
 

@@ -1,10 +1,12 @@
 # LX2 — Split orientation when leaving a tab group
 
-**Status:** ready  
+**Status:** done  
 **Priority:** P1  
-**Plan:** [forge-layout-live-x11](../plans/forge-layout-live-x11.md)  
+**Plan:** [forge-layout-live-x11](../../forge-layout-live-x11.md)  
 **Branch:** `plan/forge-layout-live-x11`  
 **Created:** 2026-08-06  
+**Taskforce:** A/B AGREE  
+
 
 ## Problem
 
@@ -45,4 +47,16 @@ bands) over HSPLIT (two skinny columns).
 
 ## Session note
 
-**2026-08-06:** Filed from operator: Nautilus keybind pop-out → thin verticals.
+**2026-08-06 B:** **AGREE.** Diff is minimal and correctly gated: capture
+`wasTabOrStack` + `groupRect` before epilogue; `peeledToPair` requires group
+still under `parentTarget`, exactly 2 children, group included — avoids
+multi-sibling, wrong-parent, and swap false positives (swap returns before
+`_finishMove`). Reorient after `resetSiblingPercent` + `resetLayoutSingleChild`
+— no axis/percent fight; single-child TABBED→HSPLIT (qxqb) still runs first.
+MONITOR vs nested CON: only reorients when group’s parent is the target (solo
+peel under mon); nested outer CON not reoriented — acceptable for stated path.
+DnD left alone (own zones). Tests green: LX2 (5), qxqb, 213, s7ri, e3k1,
+Tree-operations, Tree-layout (108 total in batch).
+
+**2026-08-06 A:** Root cause — peel reparents next to tab CON but never reorients
+parent. Fix in `Tree._finishMove` via `determineSplitLayoutForRect(groupRect)`.

@@ -40,8 +40,8 @@ Dry-run after: `thrashState tabbed-roles-not-grouped:mon0.s0`, planned
 | ID | Task | Pri | Status |
 | --- | --- | --- | --- |
 | **LX1** | [tab-apply ghostty reHUP](./completed/forge-layout-live-x11_lx1-tab-apply-rehub.md) | P0 | **Done** A/B AGREE |
-| **LX2** | [split orient on tab extract](../tasks/forge-layout-live-x11_lx2-split-on-tab-extract.md) | P1 | ready (next) |
-| **LX3** | [cross-monitor move](../tasks/forge-layout-live-x11_lx3-cross-mon-move.md) | P1 | ready |
+| **LX2** | [split orient on tab extract](./completed/forge-layout-live-x11_lx2-split-on-tab-extract.md) | P1 | **Done** A/B AGREE |
+| **LX3** | [cross-monitor move](../tasks/forge-layout-live-x11_lx3-cross-mon-move.md) | P1 | ready (next) |
 | **LX4** | [tab drag relocate](../tasks/forge-layout-live-x11_lx4-tab-drag.md) | P1 | ready |
 
 Related (separate): [mon-order X11 reverse](../tasks/forge-layout-mon-order-x11-reversed.md) —
@@ -56,7 +56,10 @@ not confirmed this session (roles looked L/R correct; tab apply was the fail).
 
 ## Session note
 
+**2026-08-06 LX2 done (A/B AGREE):** Peel reorient in `Tree._finishMove` via
+`determineSplitLayoutForRect(groupRect)` when mon (or parent) holds pure
+`[group|extracted]` pair. Portrait → VSPLIT. Next: **LX3**.
+
 **2026-08-06 LX1 done (A/B AGREE):** FLOAT `tree.split` no-op broke mon-wrap on
 residual ensure → flat mon0 three. Fix: `forceSplit` allows FLOAT; `_layoutOp`
-wrap + re-find; H/V subset wrap; belt re-applies ensure_layout/order. Live reHUP
-×2 green. Next: **LX2**.
+wrap + re-find; H/V subset wrap; belt re-applies ensure_layout/order.
