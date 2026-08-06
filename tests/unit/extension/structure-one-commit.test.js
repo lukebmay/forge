@@ -164,4 +164,20 @@ describe("AP2 StructureChanged one-commit", () => {
     expect(reasons).toEqual(["grab-op-end"]);
     expect(reasons).not.toContain("drag-swap");
   });
+
+  it("FloatToggle under freeze is M-only (no mid-batch Cf)", () => {
+    const { winA } = tiledPair();
+    ctx.display.get_focus_window.mockReturnValue(winA);
+    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+    const commitSpy = vi.spyOn(wm(), "commitLayout");
+
+    wm().freezeRender();
+    wm().command({ name: "FloatToggle" });
+    expect(commitSpy).not.toHaveBeenCalled();
+    expect(renderSpy).not.toHaveBeenCalled();
+
+    wm().unfreezeRender();
+    wm().command({ name: "FloatToggle" });
+    expect(commitSpy).toHaveBeenCalledWith("float-toggle", { force: true });
+  });
 });

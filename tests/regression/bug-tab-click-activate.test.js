@@ -146,7 +146,7 @@ describe("tab click activates associated window", () => {
     expect(nA).toBeTruthy();
   });
 
-  it("unfreezes render so tab restack is not a freeze no-op (LF2)", () => {
+  it("temporarily unfreezes so tab restack is not a freeze no-op (LF2)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
     const wA = createMockWindow({ id: "fz-a" });
@@ -162,12 +162,16 @@ describe("tab click activates associated window", () => {
     wB.activate = vi.fn();
     const tabbedSpy = vi.spyOn(wm(), "updateTabbedFocus");
     const decoSpy = vi.spyOn(wm(), "updateDecorationLayout");
+    // Stages must run while freeze is clear; afterFocus restores batch Z.
+    tabbedSpy.mockImplementation(() => {
+      expect(wm()._freezeRender).toBe(false);
+    });
 
     nB._activateFromTab(wB);
 
-    expect(wm()._freezeRender).toBe(false);
     expect(tabbedSpy).toHaveBeenCalledWith(nB);
     expect(decoSpy).toHaveBeenCalled();
+    expect(wm()._freezeRender).toBe(true);
   });
 });
 

@@ -91,6 +91,23 @@ describe("action-pipeline afterFocus", () => {
     expect(stacked).toHaveBeenCalledWith(node);
     expect(deco).toHaveBeenCalledWith({ scope: "focus", focusNode: node });
   });
+
+  it("restores freeze after temporarily clearing for F/Dfocus", () => {
+    const node = trackOne();
+    wm().freezeRender();
+    expect(wm()._freezeRender).toBe(true);
+    const stacked = vi.spyOn(wm(), "updateStackedFocus");
+    afterFocus(wm(), node, { source: "mid-batch" });
+    expect(stacked).toHaveBeenCalledWith(node);
+    expect(wm()._freezeRender).toBe(true);
+  });
+
+  it("does not leave freeze on when caller was unfrozen", () => {
+    const node = trackOne();
+    wm().unfreezeRender();
+    afterFocus(wm(), node, { source: "normal" });
+    expect(wm()._freezeRender).toBe(false);
+  });
 });
 
 describe("action-pipeline commitLayout / settleTabFocus", () => {
@@ -158,5 +175,12 @@ describe("action-pipeline commitLayout / settleTabFocus", () => {
     const tab = vi.spyOn(wm(), "updateTabbedFocus");
     wm().settleTabFocus(node);
     expect(tab).toHaveBeenCalledWith(node);
+  });
+
+  it("settleTabFocus restores freeze when called under Z", () => {
+    const node = trackOne();
+    wm().freezeRender();
+    settleTabFocus(wm(), node);
+    expect(wm()._freezeRender).toBe(true);
   });
 });
