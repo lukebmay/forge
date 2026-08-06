@@ -1,7 +1,7 @@
 # Task: WS3 — Docs + live dual-ws smoke
 
 **Status:** done  
-**Plan:** [forge-layout-workspace-scope.md](../forge-layout-workspace-scope.md)  
+**Plan:** [forge-layout-workspace-scope.md](../../forge-layout-workspace-scope.md)  
 **Branch:** `plan/forge-layout-workspace-scope`  
 **Depends on:** WS0–WS2  
 **Created:** 2026-08-06  

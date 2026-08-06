@@ -1,6 +1,6 @@
 # Plan: Layout workspace scope
 
-**Status:** ready (design locked)  
+**Status:** done (X11 smoke green; Wayland residual for operator)  
 **Priority:** P0 daily-driver — desks are workspaces  
 **Created:** 2026-08-06  
 **Branch:** `plan/forge-layout-workspace-scope`  
