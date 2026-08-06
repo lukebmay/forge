@@ -164,7 +164,7 @@ forge install
 # or Super+Shift+r
 ```
 
-### Blank / wake test (soft rehome)
+### Blank / wake test (monitor-recovery)
 
 ```bash
 ./scripts/forge/trigger-idle-lock.zsh --idle-and-dpms --idle-delay=10

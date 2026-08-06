@@ -19,7 +19,7 @@ import { WINDOW_MODES } from "../../lib/extension/window.js";
  * (b) workspaceAdded/workspaceRemoved were only consumed inside
  * _onWorkareasChanged's tree-has-windows branch; a workspace change on an
  * empty tree left the flag set, making the NEXT unrelated workareas-changed
- * take the expensive trackCurrentWindows branch instead of soft rehome.
+ * take the expensive trackCurrentWindows branch instead of monitor-recovery.
  */
 describe("forge-n0s7: source-id and flag hygiene", () => {
   let ctx;
@@ -55,7 +55,7 @@ describe("forge-n0s7: source-id and flag hygiene", () => {
   it("consumes workspaceAdded even when the tree has no windows", () => {
     const wm = ctx.windowManager;
     const trackSpy = vi.spyOn(wm, "trackCurrentWindows").mockImplementation(() => {});
-    const softSpy = vi.spyOn(wm, "_queueSoftRehomeOnWorkareas").mockImplementation(() => {});
+    const softSpy = vi.spyOn(wm, "_queueMonitorRecoveryOnWorkareas").mockImplementation(() => {});
 
     // Workspace added while the tree is empty: nothing to re-track, but the
     // flag must still be consumed.
@@ -63,7 +63,7 @@ describe("forge-n0s7: source-id and flag hygiene", () => {
     wm._onWorkareasChanged(ctx.display);
     expect(wm.workspaceAdded).toBe(false);
 
-    // The next workareas-changed with windows present must take soft rehome,
+    // The next workareas-changed with windows present must take monitor-recovery,
     // not trackCurrentWindows.
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const win = createMockWindow({ wm_class: "App" });

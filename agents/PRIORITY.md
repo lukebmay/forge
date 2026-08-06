@@ -12,9 +12,8 @@
 | ---: | --- | --- |
 | **1** | **layout mon order reverse (X11)** | Earlier report; not confirmed this session — [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
 | **2** | **AP5 op visual** (soft) | Gesture matrix eyes-on — [blocker](./blockers/B-ap5-operator-visual-matrix.md) |
-| **3** | **MR0 rename: soft-rehome → monitor-recovery** | Product language; separate PR — [plan](./plans/forge-monitor-recovery-rename.md) |
-| **4** | **Container selection finish** | S3 kit binds → S5 live QA |
-| **5** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
+| **3** | **Container selection finish** | S3 kit binds → S5 live QA |
+| **4** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
 
 ## Next session focus
 
@@ -42,7 +41,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 | [docs/dev/actions.md](../docs/dev/actions.md) | Stage glossary + formulas |
 | [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md) | CL0–CL11 historical / residual smoke notes |
 | [forge-wayland-live_residual-smoke.md](./tasks/forge-wayland-live_residual-smoke.md) | Operator checklist |
-| [forge-monitor-recovery-rename.md](./plans/forge-monitor-recovery-rename.md) | Rename PR only |
+| [forge-monitor-recovery-rename.md](./plans/forge-monitor-recovery-rename.md) | MR0–MR2 done on plan branch |
 | [forge-container-selection.md](./plans/forge-container-selection.md) | S3 next product |
 
 ---
@@ -55,7 +54,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 | **P0** | [action pipeline](./plans/forge-action-pipeline.md) | **Code complete** (AP0–AP4; AP5 agent) |
 | **P1** | [AP5 op visual](./blockers/B-ap5-operator-visual-matrix.md) | Soft — human gesture matrix |
 | P1 | [layout control loop](./plans/forge-layout-control-loop.md) | **Merged to master** — residual operator smoke only |
-| **P1** | [monitor-recovery rename](./plans/forge-monitor-recovery-rename.md) | MR0 — own PR |
+| **done** | [monitor-recovery rename](./plans/forge-monitor-recovery-rename.md) | MR0–MR2 on plan branch |
 | **P1** | [container selection](./plans/forge-container-selection.md) | S2 done — S3 after pipeline green |
 | **P1** | [desktop keybinds](./plans/forge-desktop-keybinds.md) | KB0 done — KB1–4 after S3 |
 | **P1** | [layout mon order reverse X11](./tasks/forge-layout-mon-order-x11-reversed.md) | Filed 2026-08-06; demoted under LX1–4 |

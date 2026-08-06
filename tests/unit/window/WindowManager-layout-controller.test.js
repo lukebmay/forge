@@ -172,10 +172,10 @@ describe("WindowManager layout controller (CL0)", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it("does not rename soft-rehome symbols", () => {
-    expect(wm().softRehome).toBeTruthy();
-    expect(typeof wm().softRehome.queueSoftRehomeOnWorkareas).toBe("function");
-    expect(typeof wm().softRehome.softRehomeAfterWorkareas).toBe("function");
+  it("exposes monitor-recovery API on WindowManager", () => {
+    expect(wm().monitorRecovery).toBeTruthy();
+    expect(typeof wm().monitorRecovery.queueMonitorRecoveryOnWorkareas).toBe("function");
+    expect(typeof wm().monitorRecovery.recoverAfterWorkareas).toBe("function");
   });
 
   it("CL0 keeps renderTree and requestLayout as separate layers", () => {

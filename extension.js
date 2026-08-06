@@ -267,7 +267,7 @@ export default class ForgeExtension extends Extension {
       Logger.info("user on session change");
       this._addIndicator();
       this.keybindings?.enable();
-      // After lock/sleep: re-apply lock-time forest shield + longer soft-rehome settle.
+      // After lock/sleep: re-apply lock-time forest shield + longer monitor-recovery settle.
       if (this._sessionWasLocked) {
         this._sessionWasLocked = false;
         try {
@@ -284,7 +284,7 @@ export default class ForgeExtension extends Extension {
       Logger.info("lock-screen on session change");
       this.keybindings?.disable();
       this._removeIndicator();
-      // Snapshot quiet dual-mon tree before DPMS thrash can poison soft-rehome.
+      // Snapshot quiet dual-mon tree before DPMS thrash can poison monitor-recovery.
       this._sessionWasLocked = true;
       try {
         this.extWm?.onSessionLocked?.();

@@ -35,8 +35,8 @@ It probably matches a rule. Check **Preferences → Windows** and
 
 ## After lock / blank, all windows on one monitor
 
-Forge debounces workarea thrash and soft-rehomes from last known geometry (see
-[monitors.md](monitors.md)). If tiles stay piled on one head after both monitors
+Forge debounces workarea thrash and runs **monitor-recovery** from last known geometry
+(see [monitors.md](monitors.md)). If tiles stay piled on one head after both monitors
 are back:
 
 1. `Super+Shift+r` (config reload / re-render).

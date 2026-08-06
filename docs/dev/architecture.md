@@ -89,7 +89,7 @@ Single writer intent for layout commits and post-render checks. Full plan:
 | **Request layout** | `requestLayout(reason)` → debounce → `renderTree` | Not yet |
 | **Verify** | Read Meta frames; compare to slots (ε + mon); agreement ×2 → SETTLED | Read |
 | **Rebuild** (`reloadTree`) | Wipe mon/ws nodes, re-track flat | Yes |
-| **Monitor-recovery** | Workareas thrash rehome (formerly soft-rehome) | Yes |
+| **Monitor-recovery** | Workareas thrash rehome (formerly soft-rehome, H1) | Yes |
 
 API: `wm.requestLayout` / `wm.requestVerify` → `LayoutController`
 (`lib/extension/layout-controller.js`). Layout debounce default 200ms; verify

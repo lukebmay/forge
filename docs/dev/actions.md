@@ -137,7 +137,7 @@ else external drift           → Cq + V (unsettled)
 | --- | --- |
 | active workspace / add-remove | track + Dfull as needed + **C** |
 | window home reconcile | M rehome + **C** |
-| soft-rehome / workareas | M rehome + forest restore + **C** + LFT |
+| monitor-recovery / workareas | M rehome + forest restore + **C** + LFT |
 | session restore | M strict forest + raise settle + **C** + shield |
 | minimize | M + **C** |
 | fullscreen changed | **C** (demote inside body) |

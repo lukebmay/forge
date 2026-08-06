@@ -9,11 +9,11 @@ import {
 } from "../mocks/helpers/index.js";
 
 /**
- * H1 soft rehome: overnight auto-lock / workareas thrash can shove Meta.Windows
+ * H1 monitor-recovery: overnight auto-lock / workareas thrash can shove Meta.Windows
  * onto the primary. Forge must restore tree placement from last-good geometry
  * without a full wipe when both heads are still present.
  */
-describe("H1 soft rehome on workareas thrash", () => {
+describe("H1 monitor-recovery on workareas thrash", () => {
   let ctx;
   let settleCallbacks;
 
@@ -98,7 +98,7 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(leftWin.get_monitor()).toBe(0);
     expect(rightWin.get_monitor()).toBe(1);
     expect(wm()._workareasThrashPending).toBe(false);
-    expect(wm().renderTree).toHaveBeenCalledWith("workareas-soft-rehome");
+    expect(wm().renderTree).toHaveBeenCalledWith("workareas-monitor-recovery");
   });
 
   it("suppresses window-entered-monitor rehome while thrash is pending", () => {
@@ -128,9 +128,9 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
   });
 
-  it("seeded last-good from session frames keeps dual Ghosttys on mon0+mon1 after soft rehome", () => {
+  it("seeded last-good from session frames keeps dual Ghosttys on mon0+mon1 after monitor-recovery", () => {
     // Mirrors HUP: thrash piles both on mon1; empty WeakMap would use thrash frames;
-    // seed from portable mon0/mon1 frames so soft rehome does not undo session restore.
+    // seed from portable mon0/mon1 frames so monitor-recovery does not undo session restore.
     const leftFrame = { x: 100, y: 50, width: 900, height: 1000 };
     const rightFrame = { x: 2000, y: 50, width: 900, height: 1000 };
     const thrashFrame = { x: 2100, y: 10, width: 800, height: 900 };
@@ -145,8 +145,8 @@ describe("H1 soft rehome on workareas thrash", () => {
 
     // Empty last-good (new Meta.Window objects after HUP) → thrash frames win.
     expect(wm()._lastGoodHomes.get(leftWin)).toBeUndefined();
-    const bareLeft = wm()._resolveSoftRehomeMonitor(leftNode, dualGeoms, 2);
-    const bareRight = wm()._resolveSoftRehomeMonitor(rightNode, dualGeoms, 2);
+    const bareLeft = wm()._resolveMonitorRecoveryMonitor(leftNode, dualGeoms, 2);
+    const bareRight = wm()._resolveMonitorRecoveryMonitor(rightNode, dualGeoms, 2);
     expect(bareLeft).toBe(1);
     expect(bareRight).toBe(1);
 
@@ -164,10 +164,10 @@ describe("H1 soft rehome on workareas thrash", () => {
       ],
     });
 
-    expect(wm()._resolveSoftRehomeMonitor(leftNode, dualGeoms, 2)).toBe(0);
-    expect(wm()._resolveSoftRehomeMonitor(rightNode, dualGeoms, 2)).toBe(1);
+    expect(wm()._resolveMonitorRecoveryMonitor(leftNode, dualGeoms, 2)).toBe(0);
+    expect(wm()._resolveMonitorRecoveryMonitor(rightNode, dualGeoms, 2)).toBe(1);
 
-    wm()._softRehomeAfterWorkareas();
+    wm()._recoverAfterWorkareas();
 
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
@@ -177,9 +177,9 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(rightWin.get_monitor()).toBe(1);
   });
 
-  it("session-layout shield re-applies forest when soft rehome would freeze thrash tree", () => {
+  it("session-layout shield re-applies forest when monitor-recovery would freeze thrash tree", () => {
     // Live bug: restore builds dual Ghostty; Meta thrash peels left Ghostty to mon1;
-    // soft rehome snapshotTree() freezes mo0=tabs-only + mo1=Ghostty|tabs|Ghostty(width0).
+    // monitor-recovery snapshotTree() freezes mo0=tabs-only + mo1=Ghostty|tabs|Ghostty(width0).
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
     mon0.layout = LAYOUT_TYPES.HSPLIT;
@@ -292,8 +292,8 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(mon0.contains(nGLeft)).toBe(false);
     expect(mon1.contains(nGLeft)).toBe(true);
 
-    // Soft rehome during shield must re-apply forest — not freeze thrash snapshot.
-    wm()._softRehomeAfterWorkareas();
+    // Monitor-recovery during shield must re-apply forest — not freeze thrash snapshot.
+    wm()._recoverAfterWorkareas();
 
     expect(mon0.contains(nGLeft)).toBe(true);
     expect(mon1.contains(nGRight)).toBe(true);
@@ -334,13 +334,13 @@ describe("H1 soft rehome on workareas thrash", () => {
     if (mon1 && mon1.parentNode) mon1.parentNode.removeChild(mon1);
 
     const reload = vi.spyOn(wm(), "reloadTree").mockImplementation(() => {});
-    wm()._softRehomeAfterWorkareas();
-    expect(reload).toHaveBeenCalledWith("workareas-soft-rehome-inconsistent");
+    wm()._recoverAfterWorkareas();
+    expect(reload).toHaveBeenCalledWith("workareas-monitor-recovery-inconsistent");
     // Window node still exists (not wiped by soft path).
     expect(tree().getNodeByType(NODE_TYPES.WINDOW)).toContain(node);
   });
 
-  it("preserves an intact CON when both children soft-rehome to the same monitor", () => {
+  it("preserves an intact CON when both children monitor-recovery to the same monitor", () => {
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
     mon0.layout = LAYOUT_TYPES.HSPLIT;
@@ -372,7 +372,7 @@ describe("H1 soft rehome on workareas thrash", () => {
     mon0.appendChild(con);
     for (const { win } of nodes) win._monitor = 0;
 
-    wm()._softRehomeAfterWorkareas();
+    wm()._recoverAfterWorkareas();
 
     expect(mon1.contains(con)).toBe(true);
     expect(con.childNodes).toContain(nodes[0].n);
@@ -414,7 +414,7 @@ describe("H1 soft rehome on workareas thrash", () => {
     mon0.appendChild(tabs);
     for (const { win } of nodes) win._monitor = 0;
 
-    wm()._softRehomeAfterWorkareas();
+    wm()._recoverAfterWorkareas();
 
     expect(mon1.contains(tabs)).toBe(true);
     expect(tabs.layout).toBe(LAYOUT_TYPES.TABBED);
@@ -455,7 +455,7 @@ describe("H1 soft rehome on workareas thrash", () => {
     mon0.appendChild(tabs);
     for (const { win } of nodes) win._monitor = 0;
 
-    wm()._softRehomeAfterWorkareas();
+    wm()._recoverAfterWorkareas();
 
     expect(mon1.contains(tabs)).toBe(true);
     expect(nodes[0].n.parentNode).toBe(tabs);
@@ -533,7 +533,7 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(tabs.parentNode).toBe(mon1);
   });
 
-  it("soft rehome restores TABBED when thrash flattened under mon0 (cross-mon)", () => {
+  it("monitor-recovery restores TABBED when thrash flattened under mon0 (cross-mon)", () => {
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
     mon0.layout = LAYOUT_TYPES.HSPLIT;
@@ -562,7 +562,7 @@ describe("H1 soft rehome on workareas thrash", () => {
     wm()._workareasThrashPending = false;
     wm()._snapshotLastGoodHomes();
     const preThrashSnap = tree().snapshotTree();
-    // Soft rehome snapshots at settle time (after thrash). Feed the pre-thrash
+    // Monitor-recovery snapshots at settle time (after thrash). Feed the pre-thrash
     // forest so restore sees mon1 TABBED while live windows may sit on mon0.
     vi.spyOn(tree(), "snapshotTree").mockReturnValue(preThrashSnap);
 
@@ -573,7 +573,7 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(nodes[0].n.parentNode).toBe(mon0);
     expect(nodes[1].n.parentNode).toBe(mon0);
 
-    wm()._softRehomeAfterWorkareas();
+    wm()._recoverAfterWorkareas();
 
     // Last-good frames rehome Meta + nodes to mon1; restore rebuilds one TABBED.
     for (const { win } of nodes) {
@@ -633,7 +633,7 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(wm()._workareasThrashPending).toBe(true);
     // No settle timer while locked.
     expect(settleCallbacks).toHaveLength(0);
-    expect(wm().renderTree).not.toHaveBeenCalledWith("workareas-soft-rehome");
+    expect(wm().renderTree).not.toHaveBeenCalledWith("workareas-monitor-recovery");
   });
 
   it("lock: entered-monitor suppressed while locked", () => {
@@ -656,7 +656,7 @@ describe("H1 soft rehome on workareas thrash", () => {
     wm().onSessionLocked();
     expect(wm()._sessionLayoutShield?.fromLock).toBe(true);
 
-    // Sleep thrash: both Meta + tree on mon0 (would poison normal soft-rehome).
+    // Sleep thrash: both Meta + tree on mon0 (would poison normal monitor-recovery).
     leftWin._monitor = 0;
     rightWin._monitor = 0;
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);

@@ -12,7 +12,7 @@ import {
  * (KVM switch, lock). The "workareas-changed" handler guards on monitor count
  * being zero; this test exercises that guard via the extracted named handler.
  *
- * H1 soft rehome: non-zero workareas changes debounce into soft rehome + render
+ * H1 monitor-recovery: non-zero workareas changes debounce into monitor-recovery + render
  * (not an immediate renderTree("workareas-changed")).
  */
 describe("Bug #78: workareas-changed monitor-count guard", () => {
@@ -53,7 +53,7 @@ describe("Bug #78: workareas-changed monitor-count guard", () => {
     ctx.display.get_n_monitors = vi.fn(() => 0);
     const render = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
     const track = vi.spyOn(wm(), "trackCurrentWindows").mockImplementation(() => {});
-    const soft = vi.spyOn(wm(), "_queueSoftRehomeOnWorkareas");
+    const soft = vi.spyOn(wm(), "_queueMonitorRecoveryOnWorkareas");
 
     wm()._onWorkareasChanged(ctx.display);
 
@@ -62,7 +62,7 @@ describe("Bug #78: workareas-changed monitor-count guard", () => {
     expect(soft).not.toHaveBeenCalled();
   });
 
-  it("soft-rehomes (then re-renders) on a normal workareas change", () => {
+  it("runs monitor-recovery (then re-renders) on a normal workareas change", () => {
     addTrackedWindow();
     ctx.display.get_n_monitors = vi.fn(() => 1);
     const render = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
@@ -79,7 +79,7 @@ describe("Bug #78: workareas-changed monitor-count guard", () => {
 
     fireSettle();
 
-    expect(render).toHaveBeenCalledWith("workareas-soft-rehome");
+    expect(render).toHaveBeenCalledWith("workareas-monitor-recovery");
     expect(track).not.toHaveBeenCalled();
     expect(wm()._workareasThrashPending).toBe(false);
   });

@@ -401,7 +401,7 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
  * Cross-mon thrash: mon-keyed snapshot alone no-ops when cohort rehomes away
  * from monDesc.id — restore must remap / regroup mon-agnostically.
  */
-describe("tree-snapshot cross-mon soft-rehome recovery", () => {
+describe("tree-snapshot cross-mon monitor-recovery recovery", () => {
   let ctx;
 
   const dualGeoms = [
@@ -631,7 +631,7 @@ describe("tree-snapshot stableKey remap (T7)", () => {
       ],
     };
 
-    // After renumber: DP-1 is index 1. Soft rehome moved windows to mon1.
+    // After renumber: DP-1 is index 1. Monitor-recovery moved windows to mon1.
     mon1.appendChild(n0);
     mon1.appendChild(n1);
 

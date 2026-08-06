@@ -64,7 +64,7 @@ not expose to GJS.
 
 After **idle auto-lock**, DPMS blank, or GPU/connector re-probe, GNOME can fire a
 burst of `workareas-changed` while Mutter briefly reassigns windows to the
-primary head. Forge **soft-rehomes** on a short settle: it maps each tiled window
+primary head. Forge runs **monitor-recovery** on a short settle: it maps each tiled window
 back using last-quiet **stable output keys** when available, then geometry
 intersection, and re-parents tree nodes without a full wipe when structure is
 still consistent. Forest snapshots tag monitors with those keys so restore

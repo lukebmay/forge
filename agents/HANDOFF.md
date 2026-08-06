@@ -10,7 +10,7 @@
 **Plan:** [forge-layout-live-x11.md](./plans/forge-layout-live-x11.md) — **complete**  
 **Shipped:** LX1 FLOAT tab ensure · LX2 peel aspect · LX3 cross-mon · LX4 tab drag  
 **Operator:** reinstall/HUP; live-smoke tab drag (unit-only for LX4)  
-**Next queue:** mon-order X11 reverse (soft evidence) · AP5 visual · MR0 rename  
+**Next queue:** mon-order X11 reverse (soft evidence) · AP5 visual  
 **Pipeline (done):** [forge-action-pipeline.md](./plans/forge-action-pipeline.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 
@@ -25,7 +25,7 @@
 | **AP5 agent HUP** | **Done** — no SEGV; extension ACTIVE |
 | AP5 op visual | Soft blocker |
 | layout mon order reverse X11 | **Next agent task** |
-| MR0 soft-rehome rename | Queued P1 |
+| MR0–MR2 monitor-recovery rename | Done on `plan/forge-monitor-recovery-rename` |
 | Stash drop | Human OK only |
 
 ---
