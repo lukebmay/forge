@@ -10,7 +10,7 @@ usage() {
   cat <<EOF
 ${c_bold}trigger-idle-lock.zsh${c_reset} — force GNOME idle lock / DPMS for multi-mon testing
 
-Why: Soft-rehome (H1) fails on ${c_cyan}idle auto-lock + wake${c_reset}, not always on
+Why: Monitor-recovery (H1) fails on ${c_cyan}idle auto-lock + wake${c_reset}, not always on
 manual lock (Super+Delete). This script temporarily shortens the idle timer
 so you can reproduce without waiting an hour.
 

@@ -83,7 +83,7 @@ Product work aimed at surviving real multi-monitor sessions and scripting the de
 
 | Area | What & why |
 | --- | --- |
-| **Soft rehome** | After lock/blank/wake, workarea thrash no longer piles all tiles onto the primary monitor. Debounced rehome from last-known geometry. |
+| **Monitor-recovery** | After lock/blank/wake, workarea thrash no longer piles all tiles onto the primary monitor. Debounced rehome from last-known geometry. |
 | **Session layout** | Last-good tree snapshot (`session-layout.json`) so install/HUP reload can restore splits and tabs instead of flattening to columns. |
 | **Tab chrome** | Tab/stack labels always show for every window in the group (no empty gap when `Shell.App` is missing). |
 | **Tab-first groups** | Stack mode **on** (available); **tabbed** remains the default group type for DnD center, bare-array sugar, and merge-group. |
