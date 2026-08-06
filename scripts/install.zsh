@@ -44,6 +44,9 @@ so later ${c_blue}forge install${c_reset} re-runs this script from the same repo
 Also symlinks the control CLI to ${c_cyan}~/.local/bin/forge${c_reset} (remove with
 ${c_blue}forge uninstall${c_reset}).
 
+Extension install dir (not printed on success; use ${c_blue}forge status${c_reset}):
+  ${c_cyan}~/.local/share/gnome-shell/extensions/forge@jmmaranan.com${c_reset}
+
 Usage:
   ./install
   ./install [options]
@@ -143,9 +146,11 @@ _install_step() {
 _install_done() {
   local vn
   vn=$(forge_metadata_field version-name 2>/dev/null || print "n/a")
-  # One summary line (stderr). Path also on stdout for scripts.
-  print -u2 -- "${c_green}done${c_reset}  ${c_blue}${vn}${c_reset}  (${c_cyan}${FORGE_EXT_DIR}${c_reset})"
-  print -r -- "$FORGE_EXT_DIR"
+  # User summary only — path is in --help / forge status, not success output.
+  print -u2 -- "${c_green}Installed version${c_reset}  ${c_blue}${vn}${c_reset}"
+  if forge_is_verbose; then
+    print -u2 -- "  ${c_cyan}${FORGE_EXT_DIR}${c_reset}"
+  fi
 }
 
 print -u2 -- "${c_bold}forge install${c_reset}"
