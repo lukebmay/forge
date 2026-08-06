@@ -266,12 +266,12 @@ if (( DO_RESTART )); then
     fi
     forge_step_ok "Reload shell"
   elif (( rc == 2 )); then
-    # Single line for expected logout sessions (Wayland / unknown) — no forge_warn spam.
+    # Expected on Wayland (no in-session reload). Red X + action; not a die.
     st=$(forge_session_type)
     if [[ "$st" == "wayland" ]]; then
-      forge_step_warn "Reload shell — log out/in (Wayland)"
+      forge_step_fail "Reload shell — cannot reload extensions live on Wayland; log out and back in"
     else
-      forge_step_warn "Reload shell — log out/in (session=$st)"
+      forge_step_fail "Reload shell — cannot reload live (session=$st); log out and back in"
     fi
   else
     forge_step_fail "Reload shell"
