@@ -9,7 +9,8 @@ that tree onto the screen. Three tiers:
 3. **GNOME integration** — keybindings, quick-settings indicator, preferences,
    theming, and the Mutter-version shims.
 
-See [rendering.md](rendering.md) for the render pipeline and [compat.md](compat.md)
+See [rendering.md](rendering.md) for the render pipeline, [actions.md](actions.md)
+for per-action stage formulas (focus / move / open / …), and [compat.md](compat.md)
 for Mutter API drift.
 
 ## Entry point & lifecycle

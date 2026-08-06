@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (intra-tab thrash A/B AGREE; Wayland re-smoke)  
+**Updated:** 2026-08-06 (action pipeline P0; control-loop merged to master)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -10,8 +10,8 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Wayland re-smoke** (open place + focus border) | After install/logout: Nautilus under LFT; cyan ring matches tile |
-| **2** | Merge plan branch → master (when safe) | CL8–CL11 + polish + preflight + residual + open/border fixes |
+| **1** | **Action pipeline** (AP1 `afterFocus` → AP2 one-commit) | Consistent formulas; kill duplicate chrome/render paths — [plan](./plans/forge-action-pipeline.md) |
+| **2** | **X11 HUP smoke** of merged Wayland/control-loop + pipeline as it lands | Agent can HUP on X11; dual-mon thrash + focus |
 | **3** | **MR0 rename: soft-rehome → monitor-recovery** | Product language; separate PR — [plan](./plans/forge-monitor-recovery-rename.md) |
 | **4** | **Container selection finish** | S3 kit binds → S5 live QA |
 | **5** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
@@ -20,41 +20,30 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **Wayland** | Logout/reload → layout dev mon1 + focus reflow + verify settle | [verify-retry-cap](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_verify-retry-cap.md) |
-| **2** | **MR0** | Rename soft-rehome → monitor-recovery (own branch/PR) | [monitor-recovery-rename](./plans/forge-monitor-recovery-rename.md) |
-| **3** | **Merge** | Integrate plan → master after re-smoke | CL8–CL11 + open/border |
-| **4** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |
+| **1** | **AP1** | `afterFocus` + migrate all focus entries | [action-pipeline](./plans/forge-action-pipeline.md) |
+| **2** | **AP2** | Move/Swap/drag one Commit | same plan |
+| **3** | **MR0** | Rename soft-rehome → monitor-recovery (own branch/PR) | [monitor-recovery-rename](./plans/forge-monitor-recovery-rename.md) |
+| **4** | **CON S3** | After pipeline reliability green enough | [container-selection](./plans/forge-container-selection.md) |
 
 **Shipped on master (local, not pushed)**
 
 | Item | Note |
 | --- | --- |
-| CL0–CL7 layout control loop | debounce, verify×2, suppress, thrash catalog, open quiet, LayoutBatch, periodic gsetting |
-| CL7 PWA open/wait (`fe8448c`) | merge desktop hints; chrome family class_eq; continue opens after fail |
-| **CL7 live X11** | operator green: layout dev dual-mon tree; 150% scale |
-| Merge | `plan/forge-layout-control-loop` → `master` (fast-forward) |
-| Unit tests | vitest 2160 (after preflight); CLI pytest 365 |
-
-**On plan branch (not yet on master)**
-
-| Item | Note |
-| --- | --- |
-| CL8–CL9 | deferred hidden open + parallel map wait + release-deferred |
-| CL10 | apply chrome default on; spinner + layout name; hard ≤8s clear |
-| CL11 | residual mon-ensure + structure verifier |
-| X11 polish | ghost deco after auto-exit (`9beebdc`); chrome UI (`20c8d8f`) |
-| **Wayland preflight** | SEGV-safe `safeMoveToMonitor`; move dest mon + ε; rival tilers; installed dirty |
-| **Wayland residual fixes** | PWA tab icons; launch cwd=$HOME; focus attach; nearest-edge DnD; preview never-stick |
-| **Lock/sleep thrash** | Lock forest shield; no settle while locked; 8s unlock shield + 900ms settle |
-| **Intra-tab thrash** | Focus-scoped decoration restack; forge-geom borders-only (A/B AGREE) |
+| CL0–CL7 layout control loop | debounce, verify×2, suppress, thrash catalog, open quiet, LayoutBatch |
+| CL7 live X11 | operator green layout dev dual-mon |
+| **CL8–CL11 + Wayland residual** | deferred open, apply chrome, mon-ensure, SEGV-safe move, lock shield, open/border, intra-tab thrash |
+| Merge | `plan/forge-layout-control-loop` → `master` @ `e99f18b` (FF) |
+| **AP0** | action pipeline plan + `docs/dev/actions.md` |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Doc | Role |
 | --- | --- |
 | [HANDOFF.md](./HANDOFF.md) | Cross-session — **start here** |
-| [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md) | CL8–CL11 + X11 polish |
-| [forge-wayland-live_residual-smoke.md](./tasks/forge-wayland-live_residual-smoke.md) | **Operator next** |
+| [forge-action-pipeline.md](./plans/forge-action-pipeline.md) | **P0 active** — formulas + AP1–AP5 |
+| [docs/dev/actions.md](../docs/dev/actions.md) | Stage glossary + formulas |
+| [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md) | CL0–CL11 historical / residual smoke notes |
+| [forge-wayland-live_residual-smoke.md](./tasks/forge-wayland-live_residual-smoke.md) | Operator checklist |
 | [forge-monitor-recovery-rename.md](./plans/forge-monitor-recovery-rename.md) | Rename PR only |
 | [forge-container-selection.md](./plans/forge-container-selection.md) | S3 next product |
 
@@ -64,10 +53,11 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [layout control loop](./plans/forge-layout-control-loop.md) | CL8–CL11 + open/border fixes on plan branch |
-| **P0** | Wayland re-smoke | Install done; **logout** to load; check open place + focus border |
-| **P1** | [monitor-recovery rename](./plans/forge-monitor-recovery-rename.md) | **MR0 next** — soft-rehome → monitor-recovery (own PR) |
-| **P1** | [container selection](./plans/forge-container-selection.md) | S2 done — S3 after Wayland residual |
+| **P0** | [action pipeline](./plans/forge-action-pipeline.md) | **AP0 done; AP1 next** |
+| **P0** | X11 HUP smoke (merged control-loop + pipeline) | Operator on X11; agent HUP |
+| P1 | [layout control loop](./plans/forge-layout-control-loop.md) | **Merged to master** — residual operator smoke only |
+| **P1** | [monitor-recovery rename](./plans/forge-monitor-recovery-rename.md) | MR0 — own PR |
+| **P1** | [container selection](./plans/forge-container-selection.md) | S2 done — S3 after pipeline green |
 | **P1** | [desktop keybinds](./plans/forge-desktop-keybinds.md) | KB0 done — KB1–4 after S3 |
 | P1 | [first-class containers](./plans/forge-first-class-containers.md) residual | After selection |
 | P1 | [stacked](./plans/forge-stacked-layouts.md) | SL0–SL5 **done**; SL6 optional |
@@ -79,14 +69,6 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Item | Note |
 | --- | --- |
-| Wayland preflight | SEGV gates + move dest mon + rival tilers (control-loop) |
-| CL10 apply chrome | Opt-in dim + hard ≤8s clear (plan branch) |
-| Control-loop → master | Local fast-forward merge (CL0–CL7) |
-| CL7 live X11 | Operator green dual-mon layout dev |
-| CL7 PWA open/wait | Grok 15s timeout fixed |
-| Layout control loop CL0–CL6 | request/verify/open/batch/catalog |
-| Lock thrash soft-rehome | X11 GNOME ScreenSaver.Lock + panels Off → no thrash |
-| Selection S1–S2 | Elevated CON ops |
-| LF1–LF8 layout reliability | Live OK |
-| STACKED SL0–SL5 | Done |
-| workon → layout rename | no BC |
+| Intra-tab thrash | Focus-scoped deco; forge-geom borders-only — `e99f18b` |
+| focus-no-reflow | No `renderTree("focus")` — `097807d` |
+| Control-loop → master | FF merge 2026-08-06 |

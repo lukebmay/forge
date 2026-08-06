@@ -10,12 +10,14 @@
 
 ### Session note (overwrite)
 
+**2026-08-06:** Plan branch **FF-merged → master** (`e99f18b`). Further action
+consistency work lives in [forge-action-pipeline.md](./forge-action-pipeline.md)
+(P0). Residual operator smoke only on this plan.
+
 **2026-08-06 intra-tab thrash (A/B AGREE):** Cross-mon focus was hide-all tab chrome
 via full `updateDecorationLayout` on every focus (+ forge geom). Fix: focus-scoped
 restack only; forge-caused geom = borders only. Task:
 [completed/forge-layout-control-loop_intra-tab-thrash.md](./forge-layout-control-loop/completed/forge-layout-control-loop_intra-tab-thrash.md).
-Unit 1457 green. Operator: install + Wayland logout; click mon0 Ghostty — mon1
-tabs must not flash.
 
 
 ---
