@@ -8,10 +8,9 @@
 
 ### Session note (overwrite)
 
-**2026-08-06 WS1 (A implement):** GetTree `activeWorkspace`/`nWorkspaces`; CLI
-applies/saves on current desk via forest meta (offline default ws0); path builders
-+ residual/open already take `workspace=`. unit/cli 393; tree-query 14.
-Commit `fd3d098`. **Next: B verify**, then WS2 sequential/static.
+**2026-08-06 WS0–WS1 done (A/B AGREE):** plan filter + current-ws via
+GetTree `activeWorkspace`/`nWorkspaces`; apply/save on current desk; unit/cli
+393; tree-query 14. Commits `5f66e19` `fd3d098`. **Next: WS2** sequential XOR static.
 
 ---
 
