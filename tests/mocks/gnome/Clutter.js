@@ -78,6 +78,12 @@ export const BUTTON_PRIMARY = 1;
 export const BUTTON_MIDDLE = 2;
 export const BUTTON_SECONDARY = 3;
 
+export const EventType = {
+  MOTION: 3,
+  BUTTON_PRESS: 4,
+  BUTTON_RELEASE: 5,
+};
+
 // Import vi from vitest for spying
 import { vi } from "vitest";
 
@@ -119,6 +125,7 @@ export default {
   BUTTON_PRIMARY,
   BUTTON_MIDDLE,
   BUTTON_SECONDARY,
+  EventType,
   Seat,
   Backend,
   get_default_backend,

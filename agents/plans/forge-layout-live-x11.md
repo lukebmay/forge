@@ -1,6 +1,6 @@
 # Plan: Layout live X11 (tab apply, extract, multi-mon, drag)
 
-**Status:** active  
+**Status:** complete (LX1–LX4 A/B AGREE)  
 **Priority:** P0 daily-driver on black  
 **Created:** 2026-08-06  
 **Host:** black — X11, dual 4K, Shell 46  
@@ -42,7 +42,7 @@ Dry-run after: `thrashState tabbed-roles-not-grouped:mon0.s0`, planned
 | **LX1** | [tab-apply ghostty reHUP](./completed/forge-layout-live-x11_lx1-tab-apply-rehub.md) | P0 | **Done** A/B AGREE |
 | **LX2** | [split orient on tab extract](./completed/forge-layout-live-x11_lx2-split-on-tab-extract.md) | P1 | **Done** A/B AGREE |
 | **LX3** | [cross-monitor move](./completed/forge-layout-live-x11_lx3-cross-mon-move.md) | P1 | **Done** A/B AGREE |
-| **LX4** | [tab drag relocate](../tasks/forge-layout-live-x11_lx4-tab-drag.md) | P1 | ready (next) |
+| **LX4** | [tab drag relocate](./completed/forge-layout-live-x11_lx4-tab-drag.md) | P1 | **Done** A/B AGREE |
 
 Related (separate): [mon-order X11 reverse](../tasks/forge-layout-mon-order-x11-reversed.md) —
 not confirmed this session (roles looked L/R correct; tab apply was the fail).
@@ -56,10 +56,6 @@ not confirmed this session (roles looked L/R correct; tab apply was the fail).
 
 ## Session note
 
-**2026-08-06 LX3 done (A/B AGREE):** MONITOR move no longer gated on mon
-first/last child — neighbor mon always geometry-then-reparent (one-shot
-peel+cross for nested/tab). Next: **LX4** tab drag.
-
-**2026-08-06 LX2 done (A/B AGREE):** Peel reorient from tab group aspect.
-
-**2026-08-06 LX1 done (A/B AGREE):** FLOAT forceSplit for residual tab ensure.
+**2026-08-06 plan complete:** LX1–LX4 all A/B AGREE on `plan/forge-layout-live-x11`.
+Tab ensure after FLOAT open, peel aspect reorient, nested cross-mon move, tab
+drag→grab-tile. Operator should reHUP/install and re-smoke tab drag live.

@@ -1,18 +1,17 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (LX1–LX3 done; LX4 next)  
-**Branch tip:** `plan/forge-layout-live-x11`  
+**Updated:** 2026-08-06 (live X11 LX1–LX4 complete on plan branch)  
+**Branch tip:** `plan/forge-layout-live-x11` (merge → master when integrating)  
 **X11:** preferred for agent `./install` + `killall -HUP gnome-shell`  
 **Wayland:** ES modules need **logout** to reload  
 **Stash:** `stash@{0}` still present (applied earlier; drop after human OK)  
 **Remotes:** **no push** unless human asks  
 
-**Plan:** [forge-layout-live-x11.md](./plans/forge-layout-live-x11.md) — **active**  
-**Done:** LX1 tab-apply · LX2 peel split · LX3 cross-mon move  
-**Next:** [LX4 tab drag](./tasks/forge-layout-live-x11_lx4-tab-drag.md)  
+**Plan:** [forge-layout-live-x11.md](./plans/forge-layout-live-x11.md) — **complete**  
+**Shipped:** LX1 FLOAT tab ensure · LX2 peel aspect · LX3 cross-mon · LX4 tab drag  
+**Operator:** reinstall/HUP; live-smoke tab drag (unit-only for LX4)  
+**Next queue:** mon-order X11 reverse (soft evidence) · AP5 visual · MR0 rename  
 **Pipeline (done):** [forge-action-pipeline.md](./plans/forge-action-pipeline.md)  
-**Formulas:** [docs/dev/actions.md](../docs/dev/actions.md)  
-**Soft:** [AP5 op visual](./blockers/B-ap5-operator-visual-matrix.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 
 ---

@@ -93,8 +93,9 @@ describe("Bug forge-9fwj: keyboard-resize debounce cleans the arming node on foc
     // ...and the live grab op is cleared (forge-leqs), so later size-changed
     // handling takes the normal render path, not the no-op resize branch.
     expect(wm.grabOp).toBe(null);
-    // B, which never armed a grab, is untouched.
-    expect(nodeB.grabMode).toBe(null);
+    // B never armed a grab (undefined or null); grab-end prefers the arming
+    // metaWindow (A), so B is not cleaned/stamped by the end path.
+    expect(nodeB.grabMode == null).toBe(true);
 
     void winB;
   });
