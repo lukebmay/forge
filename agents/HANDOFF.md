@@ -1,64 +1,43 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (workspace-scope design locked; no implement yet)  
+**Updated:** 2026-08-06 (workspace CLI exclusive modes; container motion design)  
 **Branch tip:** `master` (local, **not pushed**)  
-**X11:** preferred for agent `./install` + `killall -HUP gnome-shell`  
-**Wayland:** ES modules need **logout** to reload  
-**Stash:** `stash@{0}` still present — drop only after human OK  
-**Remotes:** **no push** unless human asks  
+**X11:** `./install` + HUP OK · **Wayland:** logout to reload ES modules  
+**No push** unless human asks · stash drop only after human OK  
 
-## Next implement
+## P0 next: workspace-scoped layouts
 
-**[forge-layout-workspace-scope](./plans/forge-layout-workspace-scope.md)** — layouts are per-workspace desks.
+[forge-layout-workspace-scope.md](./plans/forge-layout-workspace-scope.md)
 
 | Task | Path |
 | --- | --- |
-| WS0 claim scope | [forge-layout-workspace-scope_ws0-claim-scope.md](./tasks/forge-layout-workspace-scope_ws0-claim-scope.md) |
-| WS1 apply + current | [forge-layout-workspace-scope_ws1-apply-current.md](./tasks/forge-layout-workspace-scope_ws1-apply-current.md) |
-| WS2 CLI grammar | [forge-layout-workspace-scope_ws2-cli-grammar.md](./tasks/forge-layout-workspace-scope_ws2-cli-grammar.md) |
-| WS3 docs + live | [forge-layout-workspace-scope_ws3-docs-live.md](./tasks/forge-layout-workspace-scope_ws3-docs-live.md) |
+| WS0 claim scope | […_ws0-claim-scope.md](./tasks/forge-layout-workspace-scope_ws0-claim-scope.md) |
+| WS1 apply + current | […_ws1-apply-current.md](./tasks/forge-layout-workspace-scope_ws1-apply-current.md) |
+| WS2 CLI | Sequential **XOR** static (`W:name` / `name@W`); **mix = error** |
+| WS3 docs + live | […_ws3-docs-live.md](./tasks/forge-layout-workspace-scope_ws3-docs-live.md) |
 
-**Branch when coding:** `plan/forge-layout-workspace-scope` from up-to-date master.
+**Branch when coding:** `plan/forge-layout-workspace-scope`
 
-### Locks (summary)
+## Design (no Shell motion yet)
 
-- Claim/apply/save **one workspace only** (no cross-ws steal).
-- Bare multi names = **sequential from current**; `W:name` and `name@W` pin; no `--on`.
-- Preflight all-or-nothing (missing profile / OOR ws / too few ws → apply nothing).
-- Layout names may not contain `:` or `@`.
+[forge-container-motion-design.md](./plans/forge-container-motion-design.md) — peel Model B lean,
+no edge auto-pop, join mess documented, HTML prototype **MD1** before MI* implement.
 
-### Deferred
-
-- [Tab chrome drag (browser-like)](./plans/forge-tab-chrome-drag.md) — P2 after dual-session core + WS scope.
-- Peel sliver UX — design discussion only (2026-08-06); not queued as task yet.
-
-## Shipped recently (master local)
-
-| Item | Note |
+| Task | Path |
 | --- | --- |
-| mon-order X11 | Bare dual L→R — `0e8c2f7` |
-| monitor-recovery rename | `ed77e04` + `b9e3040` |
-| X11 install/HUP smoke | green; **side effect:** layout pulled Inkscape from other ws → WS plan |
+| MD1 HTML prototype | [forge-container-motion-design_md1-html-prototype.md](./tasks/forge-container-motion-design_md1-html-prototype.md) |
 
-## Operator
+## Deferred
 
-1. Optional: Wayland residual after logout.  
-2. Next agent: start **WS0** (do not implement peel/tab-drag unless asked).  
+- [Tab chrome drag](./plans/forge-tab-chrome-drag.md) — browser-like DnD after dual-session + WS scope  
+- Selection S3 — containers branch rebase  
 
-```bash
-SCHEMA=~/.local/share/gnome-shell/extensions/forge@jmmaranan.com/schemas
-gsettings --schemadir "$SCHEMA" set org.gnome.shell.extensions.forge logging-enabled true
-gsettings --schemadir "$SCHEMA" set org.gnome.shell.extensions.forge log-level 4
-```
+## Locks (quick)
 
-## Open blockers
-
-| Severity | Item |
-| --- | --- |
-| soft | AP5 visual gesture matrix |
-| hard | B-manual-black-session-verify |
-| hard | resize-autotile-design (P3) |
+**Layout CLI:** all bare (sequential from current) **or** all numbered — never mix.  
+**Peel lean:** wrap bag slot → split(G′, peeled); aspect/direction; mon siblings keep width.  
+**Move lean:** no auto-pop at sibling edge; explicit move-out/in / group.
 
 ## Agent rules
 
-- FIRM SSH / secrets / no unsolicited push — see AGENTS.md  
+FIRM SSH / secrets / no unsolicited push — AGENTS.md  

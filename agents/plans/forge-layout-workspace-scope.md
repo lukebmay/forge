@@ -8,8 +8,9 @@
 
 ### Session note (overwrite)
 
-**2026-08-06:** Product locks from operator after Inkscape-on-ws2 was pulled
-into `forge layout dev` on ws1. Implement WS0 first (never claim off-ws).
+**2026-08-06:** Product locks after Inkscape-on-ws2 was pulled into `forge layout
+dev` on ws1. **No mix** sequential bare names with numbered forms (operator lock).
+**P0 first priority.** Implement WS0 first (never claim off-ws).
 
 ---
 
@@ -36,35 +37,38 @@ That fights multi-workspace use.
 | **Save** | Snapshot **that workspace only** |
 | **Escape hatch** | Optional later `--collect` / from-all-workspaces — **not** default; out of WS0–WS3 unless needed |
 
-### Workspace targeting (CLI)
+### Workspace targeting (CLI) — two exclusive modes
 
-| Form | Meaning |
+**All layout args are bare, or all are numbered. Never mix.**
+
+| Mode | Args | Behavior |
+| --- | --- | --- |
+| **Sequential** | Only bare `name`… | First → **current** workspace, second → current+1, … |
+| **Static** | Only `W:name` and/or `name@W`… | Each apply on explicit **1-based** workspace W |
+
+| Example | OK? |
 | --- | --- |
-| `forge layout dev` | Apply `dev` on **current** workspace |
-| `forge layout vinyl-graphics video-edit` | **Sequential from current**: first → current, second → current+1, … |
-| `forge layout 2:vinyl-graphics` or `vinyl-graphics@2` | Apply on workspace **2** (1-based) |
-| `forge layout 1:foo 2:bar 4:baz` | Explicit multi; no `--on` flag |
-| Mix | Args **without** explicit ws advance sequential cursor; explicit `W:name` / `name@W` pin that apply only |
+| `forge layout dev` | Sequential (current only) |
+| `forge layout vinyl-graphics video-edit` | Sequential from current |
+| `forge layout 1:foo 2:bar 4:baz` | Static |
+| `forge layout foo@1 bar@2` | Static (same as `1:foo 2:bar`) |
+| `forge layout dev 3:vinyl` | **Error** — mixed sequential + numbered |
+| `forge layout 1:foo video-edit` | **Error** — mixed |
 
-**Sequential cursor (locked):**
+**No `--on`.** Scripts use static form only: `1:foo 2:bar`.
 
-1. Start at **current** workspace index (1-based for CLI).
-2. For each bare `name`: apply on cursor, then cursor += 1.
-3. For each `W:name` / `name@W`: apply on W; **do not** advance cursor (or: do not use sequential slot — pin only).  
-   *Implement note:* pin does not consume a sequential slot and does not change cursor.
-4. One bare name alone = current only (cursor never needs +1 for user-visible effect).
-
-**No `--on`.** Specificity in scripts = `1:foo 2:bar`.
+**No pins-with-cursor.** Numbered forms never combine with bare names.
 
 ### Preflight (all-or-nothing)
 
 Before any mutate:
 
-1. Resolve every arg → `(workspace, profileName)`.
-2. **Every** profile must resolve (host + user search path) — else **error, apply nothing**.
-3. **Every** workspace index must exist in this session — else **error, apply nothing**.
-4. **Sequential span** must fit: if bare names need current..current+N-1 and session has fewer workspaces — **error, apply nothing**.
-5. Then apply in order; prefer stop-on-first-apply-failure with report of what succeeded (document in task). Preflight failures never partial-apply.
+1. Classify argv mode: all bare | all numbered | **mixed → error, apply nothing**.
+2. Resolve every arg → `(workspace, profileName)`.
+3. **Every** profile must resolve (host + user search path) — else **error, apply nothing**.
+4. **Every** workspace index must exist in this session — else **error, apply nothing**.
+5. **Sequential span** must fit: bare names need current..current+N-1 within session count — else **error, apply nothing**.
+6. Then apply in order; prefer stop-on-first-apply-failure with report of what succeeded (document in task). Preflight failures never partial-apply.
 
 ### Names
 
@@ -99,8 +103,12 @@ forge layout: profile 'vinyl-graphics' not found
 forge layout: workspace 5 out of range (session has 4 workspaces)
   hint: use 1..4, or bare name for current (now: 2)
 
-forge layout: need 3 workspaces from current (2) for sequential apply; only 4 exist total but 2..4 is OK / only 1 left
-  hint: open more workspaces, or use explicit N:name
+forge layout: need 3 workspaces from current (2) for sequential apply; session has 2
+  hint: open more workspaces, or use static form (1:foo 2:bar)
+
+forge layout: cannot mix sequential names and numbered workspaces
+  got: bare 'dev' and '3:vinyl'
+  hint: use only bare names (from current) or only N:name / name@N
 
 forge layout: name must not contain ':' or '@' (reserved for workspace targeting)
 ```
@@ -108,7 +116,8 @@ forge layout: name must not contain ':' or '@' (reserved for workspace targeting
 ### Out of scope (this plan)
 
 - Browser-like tab drag product (separate plan)
-- Container selection S3
+- Container motion / peel design ([forge-container-motion-design](./forge-container-motion-design.md))
+- Container selection S3 (unmerged branch)
 - Dynamic workspaces (still unsupported; fixed count)
 - Profile-pinned default workspace in JSON (workspaces shift — CLI only)
 
@@ -120,7 +129,7 @@ forge layout: name must not contain ':' or '@' (reserved for workspace targeting
 | --- | --- | --- |
 | **WS0** | Scope: forest filter + claim/open/structure only on target ws; unit fixtures (Inkscape-on-ws2 invisible to ws1 plan) | next |
 | **WS1** | Thread workspace through apply paths (stop hardcoding `ws0`); current-ws from extension | pending |
-| **WS2** | CLI parse: bare / `W:name` / `name@W`; sequential from current; preflight all-or-nothing; name charset on save | pending |
+| **WS2** | CLI: exclusive sequential **or** static modes; `W:name` / `name@W`; preflight; name charset on save | pending |
 | **WS3** | Docs + help + dry-run messaging; migrate any illegal names; live X11 smoke multi-ws | pending |
 
 Optional later (not required for plan done): `--collect`, `--switch` after apply to target ws.
@@ -130,13 +139,13 @@ Optional later (not required for plan done): `--collect`, `--switch` after apply
 ## Acceptance (plan done)
 
 1. `forge layout dev` never moves windows from other workspaces.
-2. Multi bare names sequential from current with preflight.
-3. `W:name` and `name@W` both work; mixed with bare sequential rules as locked.
+2. Multi bare names sequential from current with preflight; **mix with numbered is error**.
+3. Static mode: `W:name` and `name@W` only (all numbered).
 4. Save rejects `:` / `@` in names; list/show unchanged for legal names.
 5. Unit + live black dual-ws smoke green on X11; Wayland smoke when operator on Wayland.
 
 ## Related
 
 - Inkscape incident: layout apply during X11 smoke (2026-08-06)
-- Prior design chat: workspace-scoped desks + no global claim
+- Motion/peel/selection design: [forge-container-motion-design.md](./forge-container-motion-design.md)
 - Tab chrome drag: [forge-tab-chrome-drag.md](./forge-tab-chrome-drag.md) (lower pri)
