@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (Wayland residual fixes unit-green; operator re-smoke)  
+**Updated:** 2026-08-06 (open-under-focus + focus-border slot; MR rename queued)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -10,19 +10,20 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Wayland residual re-smoke** | After install: icons, open place, DnD, hints |
-| **2** | Merge plan branch → master (when safe) | CL8–CL11 + polish + preflight + residual fixes |
-| **3** | **Container selection finish** | S3 kit binds → S5 live QA |
-| **4** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
-| **5** | **MR0 rename** | soft-rehome → monitor-recovery (own PR) |
+| **1** | **Wayland re-smoke** (open place + focus border) | After install/logout: Nautilus under LFT; cyan ring matches tile |
+| **2** | Merge plan branch → master (when safe) | CL8–CL11 + polish + preflight + residual + open/border fixes |
+| **3** | **MR0 rename: soft-rehome → monitor-recovery** | Product language; separate PR — [plan](./plans/forge-monitor-recovery-rename.md) |
+| **4** | **Container selection finish** | S3 kit binds → S5 live QA |
+| **5** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
 
 ## Next session focus
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **Wayland** | Re-smoke after residual fixes install | [residual-smoke](./tasks/forge-wayland-live_residual-smoke.md) |
-| **2** | **Merge** | Integrate plan → master after re-smoke | CL8–CL11 + residual fixes |
-| **3** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |
+| **1** | **Wayland** | Re-smoke open-under-focus + border after install | [residual-smoke](./tasks/forge-wayland-live_residual-smoke.md) |
+| **2** | **MR0** | Rename soft-rehome → monitor-recovery (own branch/PR) | [monitor-recovery-rename](./plans/forge-monitor-recovery-rename.md) |
+| **3** | **Merge** | Integrate plan → master after re-smoke | CL8–CL11 + open/border |
+| **4** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |
 
 **Shipped on master (local, not pushed)**
 
@@ -62,11 +63,11 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [layout control loop](./plans/forge-layout-control-loop.md) | CL8–CL11 + X11 polish on plan branch; operator green |
-| **P0** | Wayland residual | **Operator logout**; preflight landed; stash applied |
+| **P0** | [layout control loop](./plans/forge-layout-control-loop.md) | CL8–CL11 + open/border fixes on plan branch |
+| **P0** | Wayland re-smoke | Install done; **logout** to load; check open place + focus border |
+| **P1** | [monitor-recovery rename](./plans/forge-monitor-recovery-rename.md) | **MR0 next** — soft-rehome → monitor-recovery (own PR) |
 | **P1** | [container selection](./plans/forge-container-selection.md) | S2 done — S3 after Wayland residual |
 | **P1** | [desktop keybinds](./plans/forge-desktop-keybinds.md) | KB0 done — KB1–4 after S3 |
-| **P2** | [monitor-recovery rename](./plans/forge-monitor-recovery-rename.md) | Separate PR |
 | P1 | [first-class containers](./plans/forge-first-class-containers.md) residual | After selection |
 | P1 | [stacked](./plans/forge-stacked-layouts.md) | SL0–SL5 **done**; SL6 optional |
 | P2 | Live layout daily-drive | Bare-array sugar live on black |

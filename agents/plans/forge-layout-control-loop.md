@@ -10,12 +10,13 @@
 
 ### Session note (overwrite)
 
-**2026-08-05 CL11 residual mon-ensure + structure verifier (A/B AGREE):** Operator
-`layout dev` left mon-root TABBED; residual skipped mon hsplit when roles were
-reused. Fix: mon ensure from just_opened + mon-layout mismatch; structure before
-mon; pure `compare_layout_structure` (FIRM profile↔live); CLI reload after
-release-deferred; deferred hide re-apply. CLI pytest **372**. Next: operator
-re-apply / live verify; then Wayland residual.
+**2026-08-06 open-under-focus + focus-border (unit 2174):** Wayland re-smoke: focus
+YouTube ring too narrow (Meta frame sliver); Nautilus under mon1 Ghostty landed mon-root
+third pane. Root: (1) border used `get_frame_rect` not tile slot; (2) open plan kept
+stale mon0 LFT when focus was mon1; (3) map thrash rehome flattened to mon-root; (4) DBus
+Focus did not touch LFT. Fix: slot border; focus-wins home mon; open sticky when
+LFT/dock/PlaceNext; rehome after mon LFT; Focus→movePointerWith. Installed; **Wayland
+logout** to load. MR rename soft-rehome→monitor-recovery bumped in PRIORITY.
 
 
 ---

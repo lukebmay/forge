@@ -402,6 +402,129 @@ describe("OP1 open-app placement policy", () => {
     });
   });
 
+  describe("open under mon1 leftover LFT (layout-dev shape)", () => {
+    beforeEach(() => setup());
+
+    it("focused mon1 tile wins over stale mon0 LFT (not mon-root after rehome)", () => {
+      // Agent terminal on mon0 is global LFT; user focuses mon1 ghostty then opens.
+      const mon0 = tileOn(0, {
+        id: "agent-term",
+        rect: { x: 0, y: 0, width: 900, height: 600 },
+      });
+      const mon1Tile = tileOn(1, {
+        id: "mon1-focus",
+        rect: { x: 1920, y: 0, width: 960, height: 1080 },
+      });
+      wm().movePointerWith(mon0.nodeWindow);
+      expect(wm().lftMru.globalHead()).toBe(mon0.nodeWindow);
+      // Focus mon1 without updating LFT first (simulate lag), then plan uses focus.
+      global.display.get_focus_window.mockReturnValue(mon1Tile.metaWindow);
+      // Touch mon1 LFT the way real focus would after click.
+      wm().movePointerWith(mon1Tile.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "open-under-focus",
+      });
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      expect(monitorOf(node)).toBe(1);
+      expect(mon1Tile.monitor.contains(node)).toBe(true);
+      // Sibling of focused mon1 tile (aspect-split), not mon0.
+      expect(node.parentNode).toBe(mon1Tile.nodeWindow.parentNode);
+      expect(meta._forgeDockStickyMon).toBe(1);
+    });
+
+    it("focus mon1 ghostty under leftover VSPLIT → open is sibling of ghostty not mon-root", () => {
+      // mon1 HSPLIT: CON(VSPLIT, sole ghostty) | CON(TABBED, chrome)
+      const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+      mon1.layout = LAYOUT_TYPES.HSPLIT;
+      const left = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, {});
+      left.layout = LAYOUT_TYPES.VSPLIT;
+      const right = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, {});
+      right.layout = LAYOUT_TYPES.TABBED;
+      const ghost = createWindowNode(ctx.tree, left, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "mon1-ghost",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 1920, y: 0, width: 960, height: 1080 },
+        },
+      });
+      createWindowNode(ctx.tree, right, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "mon1-yt",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 2880, y: 0, width: 960, height: 1080 },
+        },
+      });
+      // Global LFT was mon0; user focuses mon1 ghostty.
+      tileOn(0, { id: "mon0-term" });
+      wm().movePointerWith(ghost.nodeWindow);
+      expect(wm().lftMru.monHead(1)).toBe(ghost.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0, // Meta maps primary first
+        id: "nautilus-under-ghost",
+        wm_class: "org.gnome.Nautilus",
+      });
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      expect(node).toBeTruthy();
+      // Under left CON with ghostty, not mon-root third sibling.
+      expect(node.parentNode).toBe(left);
+      expect(left.contains(node)).toBe(true);
+      expect(mon1.childNodes.filter((n) => n.isWindow()).length).toBe(0);
+      // Sticky planned mon set even for non-dock.
+      expect(meta._forgeDockStickyMon).toBe(1);
+    });
+
+    it("entered-monitor rehome after open thrash attaches after mon LFT not mon-root", () => {
+      const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+      const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+      mon1.layout = LAYOUT_TYPES.HSPLIT;
+      const left = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, {});
+      left.layout = LAYOUT_TYPES.VSPLIT;
+      const ghost = createWindowNode(ctx.tree, left, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "g1",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 1920, y: 0, width: 960, height: 1080 },
+        },
+      });
+      wm().movePointerWith(ghost.nodeWindow);
+
+      // Wrong-mon tree attach (open landed under mon0); Meta then reports mon1.
+      const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, mon0, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "thrash-open",
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+        },
+      });
+      metaWindow.get_monitor = vi.fn(() => 1);
+      metaWindow.monitor = 1;
+
+      // Direct rehome (skip renderTree — fixture CONs lack full St actors).
+      wm()._rehomeWindowPreservingContainer(nodeWindow, metaWindow, mon1);
+
+      const live = wm().findNodeWindow(metaWindow);
+      expect(live).toBe(nodeWindow);
+      expect(mon1.contains(live)).toBe(true);
+      // After mon1 LFT (ghost), not mon-root alone.
+      expect(live.parentNode).toBe(ghost.nodeWindow.parentNode);
+      expect(mon1.childNodes.includes(live)).toBe(false);
+    });
+  });
+
   describe("tab-after and aspect split", () => {
     beforeEach(() => setup());
 

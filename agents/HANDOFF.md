@@ -1,16 +1,15 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (lock/sleep thrash fix + residual fixes; install + re-smoke)  
+**Updated:** 2026-08-06 (open-under-focus + focus-border; MR rename bumped)  
 **Implement on:** `plan/forge-layout-control-loop` (**ahead of origin**; **not pushed**)  
-**HEAD:** master has CL0–CL7; plan branch has CL8–CL11 + preflight + residual + **lock shield**  
-**Wayland:** layout dev green; **install** then overnight lock→wake verify  
-**Stash:** `stash@{0}` still present (applied content landed on this branch; safe to drop after you confirm)  
+**HEAD:** plan branch — CL8–CL11 + Wayland residual + lock shield + **open place / border**  
+**Wayland:** layout dev OK; open-under-focus + border fixes **installed**; **logout required** to load  
+**Stash:** `stash@{0}` still present (applied; drop after human OK)  
 **Remotes:** **no push** unless human asks  
 
 **Active plan:** [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md)  
 **Wayland residual smoke:** [forge-wayland-live_residual-smoke](./tasks/forge-wayland-live_residual-smoke.md)  
-**Residual fixes (done unit):** [completed wayland residual](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_wayland-residual-fixes.md)  
-**Historical Wayland plan:** on branch `plan/forge-wayland-live` (diverged; W1–W5 + W-storm)  
+**MR rename (next hygiene):** [forge-monitor-recovery-rename](./plans/forge-monitor-recovery-rename.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 
 ---
@@ -22,9 +21,10 @@
 | CL0–CL7 X11 | **Done** (operator green; on master) |
 | CL8–CL11 + X11 polish | **Done** (plan branch) |
 | Pre-Wayland prep (SEGV + move + rivals) | **Done** |
-| Wayland residual smoke | **Partial** — first pass OK; residual code landed |
-| Residual re-smoke | **Next — human** after `./install` |
+| Wayland residual smoke | **Partial** — icons/cwd/DnD/hints landed earlier |
+| Open place + focus border | **Code + unit green**; **logout** then re-smoke |
 | Lock→sleep→wake | **Next — human** (lock shield fix unit-green) |
+| **MR0 rename** soft-rehome → monitor-recovery | **Queued P1** — own PR |
 | Merge plan → master | After re-smoke green enough |
 
 ---
@@ -67,16 +67,18 @@ Content was **applied** onto `plan/forge-layout-control-loop` (not popped onto w
 
 ---
 
-## Operator action now (Wayland residual re-smoke)
+## Operator action now (Wayland re-smoke after open/border fix)
 
-Already on Wayland. Install latest plan branch, then re-check residuals:
+Code is installed on disk; **Wayland still needs log out/in** (disable/enable does not reload ES modules). Then:
 
 ```bash
-cd ~/dev/me/forge
-./install   # debug install; then reload Shell if needed (Wayland: logout/login or alt session)
+# after logout → Wayland
 forge ping
 forge layout dev
 forge tree
+# 1) Focus mon1 Ghostty (left), open Nautilus from dock → should nest under Ghostty (V/H split), not mon-root third pane
+# 2) Focus YouTube (right tab) → cyan focus ring should be ~half mon width (not a sliver)
+# Optional: switch to X11 later for killall -HUP gnome-shell thrash loops
 ```
 
 | Check | Expect |

@@ -249,6 +249,18 @@ describe("resolveOpenAppPlacement", () => {
     expect(r.attachLft).toBeNull();
   });
 
+  it("dock monLft empty but global LFT on dock mon → after-lft", () => {
+    const r = resolveOpenAppPlacement({
+      dockMonitor: 1,
+      monLft: null,
+      globalLft: lft1,
+      lftMonitor: 1,
+    });
+    expect(r.homeMonitor).toBe(1);
+    expect(r.attachLft).toBe(lft1);
+    expect(r.attachMode).toBe("after-lft");
+  });
+
   it("generic uses global LFT mon not pointer/window mon", () => {
     const r = resolveOpenAppPlacement({
       dockMonitor: -1,

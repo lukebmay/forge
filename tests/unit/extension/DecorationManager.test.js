@@ -180,6 +180,27 @@ describe("DecorationManager border lifecycle", () => {
   }
 
   describe("showWindowBorders visibility gating (appears_focused && !minimized)", () => {
+    it("sizes the border from the tile slot when Meta frame is a wrong sliver", () => {
+      const { border, metaWindow } = buildTwoTiled();
+      metaWindow.appears_focused = true;
+      metaWindow.minimized = false;
+      // Meta reports a thin frame (Chrome PWA lag); tree slot is half-mon wide.
+      metaWindow.get_frame_rect = vi.fn(() => ({ x: 100, y: 50, width: 200, height: 900 }));
+      const node = wm().findNodeWindow(metaWindow);
+      node.renderRect = { x: 0, y: 0, width: 960, height: 1080 };
+      node.rect = { x: 0, y: 0, width: 960, height: 1080 };
+
+      wm().showWindowBorders();
+
+      expect(border.set_size).toHaveBeenCalled();
+      const [w, h] = border.set_size.mock.calls.at(-1);
+      // Slot 960×1080 + inset (3*dpi each side); dpi mock is often 1 → +6.
+      expect(w).toBeGreaterThanOrEqual(960);
+      expect(h).toBeGreaterThanOrEqual(1080);
+      // Not the 200px Meta sliver (+ inset).
+      expect(w).toBeGreaterThan(400);
+    });
+
     it("shows the border when the window appears focused and is not minimized", () => {
       const { border, metaWindow } = buildTwoTiled();
       metaWindow.appears_focused = true;
