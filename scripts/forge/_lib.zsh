@@ -176,6 +176,7 @@ forge_session_type() {
 # Reload GNOME Shell so a replaced extension is actually loaded.
 # X11: killall -HUP. Wayland: cannot in-session restart — returns 2.
 # Returns 0 on HUP sent, 1 on failure, 2 if session needs logout.
+# Quiet install: no chatter for expected logout cases — caller owns one checklist line.
 forge_restart_shell() {
   local st
   st=$(forge_session_type)
@@ -183,8 +184,9 @@ forge_restart_shell() {
   # Discard CLI JSON stdout so quiet install checklists stay clean.
   if [[ -x "${FORGE_SCRIPTS_DIR:-$SCRIPT_DIR}/forge" ]]; then
     forge_info "flushing session layout before Shell reload…"
-    "${FORGE_SCRIPTS_DIR:-$SCRIPT_DIR}/forge" save-session-layout >/dev/null 2>&1 \
-      || forge_warn "session-layout flush skipped (extension offline or old build)"
+    if ! "${FORGE_SCRIPTS_DIR:-$SCRIPT_DIR}/forge" save-session-layout >/dev/null 2>&1; then
+      forge_is_quiet || forge_warn "session-layout flush skipped (extension offline or old build)"
+    fi
   fi
   case "$st" in
     x11)
@@ -201,11 +203,12 @@ forge_restart_shell() {
       return 1
       ;;
     wayland)
-      forge_warn "Wayland: log out and back in to load the new extension code"
+      # Expected: no in-session reload. Caller prints one step line.
+      forge_is_quiet || forge_warn "Wayland: log out and back in to load the new extension code"
       return 2
       ;;
     *)
-      forge_warn "session=$st: log out/in (or X11: killall -HUP gnome-shell) to load new code"
+      forge_is_quiet || forge_warn "session=$st: log out/in (or X11: killall -HUP gnome-shell) to load new code"
       return 2
       ;;
   esac

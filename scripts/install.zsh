@@ -141,17 +141,10 @@ _install_step() {
 }
 
 _install_done() {
-  local vn st
+  local vn
   vn=$(forge_metadata_field version-name 2>/dev/null || print "n/a")
+  # One summary line (stderr). Path also on stdout for scripts.
   print -u2 -- "${c_green}done${c_reset}  ${c_blue}${vn}${c_reset}  (${c_cyan}${FORGE_EXT_DIR}${c_reset})"
-  if (( ! DO_RESTART )); then
-    forge_warn "Shell not reloaded (--no-restart); reload to activate new code"
-  else
-    st=$(forge_session_type)
-    if [[ "$st" != "x11" ]]; then
-      forge_warn "session=$st: log out/in if code looks stale"
-    fi
-  fi
   print -r -- "$FORGE_EXT_DIR"
 }
 
@@ -273,13 +266,20 @@ if (( DO_RESTART )); then
     fi
     forge_step_ok "Reload shell"
   elif (( rc == 2 )); then
-    forge_step_warn "Reload shell (log out/in required)"
+    # Single line for expected logout sessions (Wayland / unknown) — no forge_warn spam.
+    st=$(forge_session_type)
+    if [[ "$st" == "wayland" ]]; then
+      forge_step_warn "Reload shell — log out/in (Wayland)"
+    else
+      forge_step_warn "Reload shell — log out/in (session=$st)"
+    fi
   else
     forge_step_fail "Reload shell"
     forge_die "Shell reload failed"
   fi
 else
-  forge_step_skip "Reload shell"
+  # Explicit --no-restart: skip only (user opted out; no second warning).
+  forge_step_skip "Reload shell (--no-restart)"
 fi
 
 _install_done
