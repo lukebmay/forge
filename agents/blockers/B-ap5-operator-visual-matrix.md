@@ -10,6 +10,12 @@
 **Created:** 2026-08-06  
 **Updated:** 2026-08-06  
 
+## RC relevance
+
+**Still relevant** for release quality, not a code gate. Agent AP5 + install already green;
+this is eyes-on confirmation that gestures feel one-settle / no flash. Soft — do not block
+agent queue. Prefer after workspace-scope + X11 RC smoke if time is short.
+
 ## What the human must do
 
 On **X11** black after action-pipeline install (already HUP’d agent-side):
@@ -18,8 +24,7 @@ On **X11** black after action-pipeline install (already HUP’d agent-side):
 - [ ] Tab switch → raise + strip; **no ¼ height**
 - [ ] Focus keys → borders follow; **no forest reflow**
 - [ ] Move / swap / drag → **one settle** each
-- [ ] Optional: `forge layout dev` apply → open batch clean  
-  (mon-order reverse is [separate task](../tasks/forge-layout-mon-order-x11-reversed.md) — do not fail AP5 only on that)
+- [ ] Optional: `forge layout dev` apply → open batch clean
 
 ## Done when
 
@@ -27,5 +32,5 @@ Checklist ticked or failures filed as agent tasks.
 
 ## Context
 
-Agent AP5: install + HUP no SEGV; extension ACTIVE; `npm test` 2219 green.
+Agent AP5: install + HUP no SEGV; extension ACTIVE; `npm test` green.
 See completed task note under `plans/forge-action-pipeline/completed/`.

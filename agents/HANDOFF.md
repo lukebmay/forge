@@ -1,11 +1,34 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (CSS overrides C0–C2 complete)  
-**Branch tip:** merge `plan/forge-css-overrides` → `master` (local, **not pushed**)  
+**Updated:** 2026-08-06 (RC: workspace scope WS0–WS3 on plan branch)  
+**Branch tip:** `plan/forge-layout-workspace-scope` (from master CSS tip)  
 **X11:** preferred for agent `./install` + `killall -HUP gnome-shell`  
-**Wayland:** ES modules need **logout** to reload  
+**Wayland:** ES modules need **logout** to reload — operator after agent X11 green  
 **Stash:** `stash@{0}` still present — **drop only after human OK**  
 **Remotes:** **no push** unless human asks  
+
+---
+
+## Stable RC (this arc)
+
+| Required for RC code | Status |
+| --- | --- |
+| CSS dual-load + deltas | **Done** on master |
+| Workspace scope WS0–WS3 | **Active** plan branch |
+| Unit tests green | gate each task |
+| X11 dual-ws + layout smoke | after WS3 |
+
+| Required for release confidence | Owner |
+| --- | --- |
+| Wayland residual smoke | human (logout) |
+| Session DPMS / daily layout | human B-manual |
+| AP5 visual matrix | human soft |
+
+| Explicitly **not** RC | Note |
+| --- | --- |
+| Container motion / peel | design + MD1 post-RC |
+| Resize / autotile | design P3 |
+| Tab chrome drag / S3+ | later |
 
 ---
 
@@ -15,17 +38,15 @@
 `~/.config/forge/stylesheet/forge/stylesheet.css`; `patchCss` never full-clobbers;
 Appearance writes deltas / Reset removes overrides. Docs: `docs/user/theming.md`.
 
-Operator purple theme already on disk; reinstall + Super+Shift+r to pick up dual-load.
-
 ---
 
-## Next session
+## This session
 
-1. **Layout workspace scope (P0)** — [plan](./plans/forge-layout-workspace-scope.md) WS0–WS3  
-2. Operator **Wayland** residual smoke  
-3. RC candidate after both green  
+1. Human blockers reviewed (all 3 still relevant; RC tags added).  
+2. Implement **WS0→WS3** via A/B taskforces on `plan/forge-layout-workspace-scope`.  
+3. X11 thorough test; hand Wayland to operator.
 
-### Workspace scope
+### Workspace scope tasks
 
 | ID | Task |
 | --- | --- |

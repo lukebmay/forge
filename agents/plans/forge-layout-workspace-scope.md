@@ -8,10 +8,9 @@
 
 ### Session note (overwrite)
 
-**2026-08-06 (WS0 A):** Claim/plan scoped to one workspace.  
-`plan_reconcile(..., workspace=0)` + `filter_forest_workspace` — off-ws invisible.  
-Apply dest/open paths take `workspace` (`moNwsW`). Unit: 388 passed.  
-Next: **WS1** thread current-ws through CLI apply (stop live default-only-ws0).
+**2026-08-06 WS0 done (A/B AGREE):** `plan_reconcile(..., workspace=0)` +
+`filter_forest_workspace`; apply dests `moNwsW`; dual-ws fixtures; unit/cli 388;
+commit `5f66e19`. Task in `completed/`. **Next: WS1** current-ws through CLI.
 
 ---
 
@@ -128,8 +127,8 @@ forge layout: name must not contain ':' or '@' (reserved for workspace targeting
 
 | ID | Work | Status |
 | --- | --- | --- |
-| **WS0** | Scope: forest filter + claim/open/structure only on target ws; unit fixtures (Inkscape-on-ws2 invisible to ws1 plan) | implemented (A done; B verify) |
-| **WS1** | Thread workspace through apply paths (stop hardcoding `ws0`); current-ws from extension | pending |
+| **WS0** | Scope: forest filter + claim/open/structure only on target ws; unit fixtures (Inkscape-on-ws2 invisible to ws1 plan) | **done** → completed/ |
+| **WS1** | Thread workspace through apply paths (stop hardcoding `ws0`); current-ws from extension | **next** |
 | **WS2** | CLI: exclusive sequential **or** static modes; `W:name` / `name@W`; preflight; name charset on save | pending |
 | **WS3** | Docs + help + dry-run messaging; migrate any illegal names; live X11 smoke multi-ws | pending |
 
