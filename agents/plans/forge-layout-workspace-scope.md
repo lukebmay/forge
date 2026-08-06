@@ -8,9 +8,10 @@
 
 ### Session note (overwrite)
 
-**2026-08-06:** Product locks after Inkscape-on-ws2 was pulled into `forge layout
-dev` on ws1. **No mix** sequential bare names with numbered forms (operator lock).
-**P0 first priority.** Implement WS0 first (never claim off-ws).
+**2026-08-06 (WS0 A):** Claim/plan scoped to one workspace.  
+`plan_reconcile(..., workspace=0)` + `filter_forest_workspace` — off-ws invisible.  
+Apply dest/open paths take `workspace` (`moNwsW`). Unit: 388 passed.  
+Next: **WS1** thread current-ws through CLI apply (stop live default-only-ws0).
 
 ---
 
@@ -127,7 +128,7 @@ forge layout: name must not contain ':' or '@' (reserved for workspace targeting
 
 | ID | Work | Status |
 | --- | --- | --- |
-| **WS0** | Scope: forest filter + claim/open/structure only on target ws; unit fixtures (Inkscape-on-ws2 invisible to ws1 plan) | next |
+| **WS0** | Scope: forest filter + claim/open/structure only on target ws; unit fixtures (Inkscape-on-ws2 invisible to ws1 plan) | implemented (A done; B verify) |
 | **WS1** | Thread workspace through apply paths (stop hardcoding `ws0`); current-ws from extension | pending |
 | **WS2** | CLI: exclusive sequential **or** static modes; `W:name` / `name@W`; preflight; name charset on save | pending |
 | **WS3** | Docs + help + dry-run messaging; migrate any illegal names; live X11 smoke multi-ws | pending |

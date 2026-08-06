@@ -1,6 +1,6 @@
 # Task: WS0 — Claim/plan scope to one workspace
 
-**Status:** ready  
+**Status:** implemented (awaiting B verify)  
 **Plan:** [forge-layout-workspace-scope.md](../plans/forge-layout-workspace-scope.md)  
 **Branch:** `plan/forge-layout-workspace-scope`  
 **Priority:** P0  
@@ -36,4 +36,35 @@ workspaces are not candidates for claim, keep, park, or structure.
 
 ## Session note
 
-(ready — not started)
+**2026-08-06 (Task Force A):** WS0 shipped.
+
+### What shipped
+- `plan_reconcile(..., workspace: int = 0)` filters forest to target ws via
+  `filter_forest_workspace` before claim/keep/park/structure/thrash/structure-cmp.
+- Off-ws windows are invisible (no claim, keep, park, move).
+- Open/move/park actions stamp `workspace`; plan returns `"workspace"`.
+- `collect_windows(..., workspace=)` optional filter.
+- `actions_to_extension_steps(..., workspace=0)` + `open_action_to_launch_fields`
+  dest paths use `moNws{W}` (per-action stamp overrides).
+
+### Key APIs
+```python
+filter_forest_workspace(forest, workspace=0) -> forest
+plan_reconcile(forest, profile, *, workspace=0, ...) -> plan  # plan["workspace"]
+collect_windows(forest, *, workspace=None)
+actions_to_extension_steps(actions, *, workspace=0, force_close=False)
+open_action_to_launch_fields(action, *, workspace=0)
+slot_to_monitor_path(slot, workspace=0)  # existing
+```
+
+### Tests
+- `TestWorkspaceScope` in `test_layout_plan.py` (dual-ws open/not-claim, Inkscape
+  isolation, target-ws reuse, default ws0).
+- Apply: dest `path:moNwsW`, open tree_path workspace stamp.
+- `pytest tests/unit/cli/ -q` → **388 passed**.
+
+### Remaining (WS1+)
+- Wire current workspace from extension into CLI apply (stop defaulting live path
+  to ws0 only when operator is on another desk).
+- Thread `plan["workspace"]` through forge CLI residual replan / PlaceNext.
+- WS2 multi-name sequential/static CLI; WS3 docs/dry-run messaging.

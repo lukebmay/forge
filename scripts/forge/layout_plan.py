@@ -1875,6 +1875,68 @@ def _normalize_match(match: dict[str, Any], where: str) -> dict[str, Any]:
     return out
 
 
+def _normalize_workspace(workspace: Any) -> int:
+    """Non-negative workspace index; bad values → 0."""
+    try:
+        ws = int(workspace)
+    except (TypeError, ValueError):
+        return 0
+    return ws if ws >= 0 else 0
+
+
+def monitor_workspace_index(m: dict[str, Any]) -> Optional[int]:
+    """Workspace index from MONITOR id (moNwsW). None if unparseable."""
+    mid = m.get("id")
+    if isinstance(mid, str):
+        parsed = _parse_mon_id(mid)
+        if parsed is not None:
+            return parsed[1]
+    return None
+
+
+def window_workspace_index(w: dict[str, Any]) -> Optional[int]:
+    """Workspace from window path mon id (moNwsW/...)."""
+    path = w.get("path")
+    if path is None or str(path).strip() == "":
+        return None
+    head = str(path).strip()
+    if head.startswith("path:"):
+        head = head[5:]
+    mon_head = head.split("/", 1)[0]
+    parsed = _parse_mon_id(mon_head)
+    if parsed is None:
+        return None
+    return parsed[1]
+
+
+def filter_forest_workspace(forest: Any, workspace: int = 0) -> Any:
+    """
+    Shallow-copy forest keeping only MONITOR roots for the target workspace.
+
+    Monitors without parseable moNwsW id are kept only for workspace 0
+    (legacy / single-workspace fixtures). Other workspaces are invisible.
+    """
+    ws = _normalize_workspace(workspace)
+    if not isinstance(forest, dict):
+        return forest
+    mons = forest.get("monitors")
+    if not isinstance(mons, list):
+        return forest
+    kept: list[Any] = []
+    for m in mons:
+        if not isinstance(m, dict):
+            continue
+        mws = monitor_workspace_index(m)
+        if mws is None:
+            if ws == 0:
+                kept.append(m)
+        elif mws == ws:
+            kept.append(m)
+    out = dict(forest)
+    out["monitors"] = kept
+    return out
+
+
 def plan_reconcile(
     forest: dict,
     profile: dict,
@@ -1883,9 +1945,14 @@ def plan_reconcile(
     safe: bool = False,
     role_pins: Optional[dict[str, Any]] = None,
     just_opened_roles: Optional[Iterable[str]] = None,
+    workspace: int = 0,
 ) -> dict[str, Any]:
     """
     Build a reconcile plan from a GetTree forest + validated (or raw) v2 profile.
+
+    workspace: 0-based Meta workspace index to plan against (default 0).
+    Only windows on that workspace are claim/keep/park/structure candidates;
+    matching windows on other workspaces are invisible (no cross-ws steal).
 
     clean=True: residuals that would park become close (Meta delete path);
     claimed roles and kept companions are never closed.
@@ -1903,6 +1970,7 @@ def plan_reconcile(
     Returns:
       {
         "ok": True,
+        "workspace": int,
         "nothingToDo": bool,
         "counts": {
           "reused", "opened", "moved", "parked", "kept", "closed",
@@ -1918,6 +1986,9 @@ def plan_reconcile(
     """
     if not isinstance(forest, dict):
         raise ValueError("forest must be a JSON object")
+    workspace = _normalize_workspace(workspace)
+    # Target-ws only: other moNwsW roots are not candidates for claim/park/keep.
+    forest = filter_forest_workspace(forest, workspace)
     # mon_count + L→R mon_indices so bare dual arrays bind leftmost head first
     # even when Meta mon0 is the right display (X11 / renumber footgun).
     prof = validate_reconcile_profile(profile, **forest_profile_mon_kwargs(forest))
@@ -1990,6 +2061,7 @@ def plan_reconcile(
                 "role": rid,
                 "open": dict(role["open"]),
                 "slot": slot,
+                "workspace": workspace,
             }
             # Nested split: attach next to claimed sibling when known (PlaceNext).
             if not safe:
@@ -2035,6 +2107,7 @@ def plan_reconcile(
                     "windowId": chosen.get("windowId"),
                     "path": chosen.get("path"),
                     "slot": slot,
+                    "workspace": workspace,
                 }
                 # First mon-layout child → prepend under MONITOR (term | tabs).
                 child_i = _slot_mon_child_index(prof, slot)
@@ -2121,6 +2194,7 @@ def plan_reconcile(
                 "windowId": w.get("windowId"),
                 "path": w.get("path"),
                 "slot": overflow_slot,
+                "workspace": workspace,
             }
             if park_anchor is not None:
                 awid = park_anchor.get("windowId")
@@ -2347,6 +2421,7 @@ def plan_reconcile(
 
     return {
         "ok": True,
+        "workspace": workspace,
         "nothingToDo": nothing,
         "counts": counts,
         "roles": role_results,
@@ -2363,8 +2438,17 @@ def plan_reconcile(
     }
 
 
-def collect_windows(forest: Any) -> list[dict[str, Any]]:
-    """Collect WINDOW nodes with path + monitor; prefer all mon roots in forest."""
+def collect_windows(
+    forest: Any, *, workspace: Optional[int] = None
+) -> list[dict[str, Any]]:
+    """
+    Collect WINDOW nodes with path + monitor.
+
+    workspace: when set, only windows under moNws{workspace} MONITOR roots.
+    None walks every mon root (caller may pre-filter via filter_forest_workspace).
+    """
+    if workspace is not None:
+        forest = filter_forest_workspace(forest, workspace)
     out: list[dict[str, Any]] = []
 
     def walk(n: Any, path: str, mon_idx: Optional[int]) -> None:

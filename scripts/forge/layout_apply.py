@@ -123,18 +123,33 @@ def window_tile_selector(action: dict[str, Any]) -> Optional[str]:
     return f"path:{s}"
 
 
-def _move_step_from_action(a: dict[str, Any]) -> Optional[dict[str, Any]]:
+def _action_workspace(a: dict[str, Any], default: int = 0) -> int:
+    """Workspace index from action (if stamped) else default."""
+    raw = a.get("workspace")
+    if raw is None:
+        return default
+    try:
+        ws = int(raw)
+    except (TypeError, ValueError):
+        return default
+    return ws if ws >= 0 else default
+
+
+def _move_step_from_action(
+    a: dict[str, Any], *, workspace: int = 0
+) -> Optional[dict[str, Any]]:
     """Build a move RunStep from plan move/park action (None if incomplete)."""
     tile = window_tile_selector(a)
     if not tile:
         return None
+    ws = _action_workspace(a, workspace)
     # Soft park: destWindowId → move onto that window (join group), not mon root.
     dest_wid = a.get("destWindowId")
     if dest_wid is not None and str(dest_wid).strip() != "":
         dest = f"id:{dest_wid}"
     else:
         slot = str(a.get("slot") or "mon0")
-        dest = slot_to_monitor_path(slot)
+        dest = slot_to_monitor_path(slot, workspace=ws)
     step: dict[str, Any] = {
         "op": "move",
         "tile": tile,
@@ -166,14 +181,17 @@ def _window_ids_to_selectors(wids: Any) -> list[str]:
 
 
 def actions_to_extension_steps(
-    actions: Any, *, force_close: bool = False
+    actions: Any, *, force_close: bool = False, workspace: int = 0
 ) -> list[dict[str, Any]]:
     """
     Map plan actions to extension RunSteps (move / layout / order / size / close).
     Skips open (CLI launch).
 
+    workspace: 0-based Meta workspace for mon dest paths (path:moNwsW).
+    Per-action workspace (if stamped by plan) overrides this default.
+
     layout needs a WINDOW selector (session-api _layoutOp → matchWindows).
-    mon path:moNws0 is valid move dest only — not layout selector.
+    mon path:moNwsW is valid move dest only — not layout selector.
 
     Order: placement moves/parks and residual closes first, then
     ensure_layout (structure after windows on target mon), then
@@ -197,6 +215,12 @@ def actions_to_extension_steps(
     if not isinstance(actions, list):
         return []
     force_close = bool(force_close)
+    try:
+        workspace = int(workspace)
+    except (TypeError, ValueError):
+        workspace = 0
+    if workspace < 0:
+        workspace = 0
 
     # First pass: window id per mon from move/park (fallback for mon splits)
     window_by_mon: dict[int, str] = {}
@@ -225,7 +249,7 @@ def actions_to_extension_steps(
             continue
         op = str(a.get("op") or "").strip().lower()
         if op in ("move", "park"):
-            step = _move_step_from_action(a)
+            step = _move_step_from_action(a, workspace=workspace)
             if step:
                 place_steps.append(step)
             continue
@@ -413,7 +437,9 @@ def rewrite_ghostty_launch_app(app: str) -> str:
     return shlex.join(ghostty_multi_instance_argv(app))
 
 
-def open_action_to_launch_fields(action: dict[str, Any]) -> dict[str, Any]:
+def open_action_to_launch_fields(
+    action: dict[str, Any], *, workspace: int = 0
+) -> dict[str, Any]:
     """Map plan open action → do_launch kwargs (+ role for reports)."""
     open_spec = action.get("open") if isinstance(action.get("open"), dict) else {}
     app = open_spec.get("app") or open_spec.get("desktop") or open_spec.get("command")
@@ -438,12 +464,13 @@ def open_action_to_launch_fields(action: dict[str, Any]) -> dict[str, Any]:
     mon = open_spec.get("monitor")
     tree = open_spec.get("treePath") or open_spec.get("path") or open_spec.get("tree_path")
     slot = action.get("slot")
+    ws = _action_workspace(action, workspace)
     if mon is None and slot:
         mon_i = mon_index_from_slot(str(slot))
         if mon_i is not None:
             mon = mon_i
     if tree is None and slot:
-        tree = slot_to_tree_path(str(slot))
+        tree = slot_to_tree_path(str(slot), workspace=ws)
     if mon is not None and str(mon).strip() != "":
         fields["monitor"] = mon
     if tree is not None and str(tree).strip() != "":
@@ -479,6 +506,7 @@ def residual_follow_up(
     residual_open: Any,
     *,
     force_close: bool = False,
+    workspace: int = 0,
 ) -> tuple[list[dict[str, Any]], list[Any]]:
     """
     Map residual extension actions to RunSteps; report still-open roles.
@@ -489,7 +517,9 @@ def residual_follow_up(
     """
     ext = residual_ext if isinstance(residual_ext, list) else []
     opens = residual_open if isinstance(residual_open, list) else []
-    steps = actions_to_extension_steps(ext, force_close=force_close)
+    steps = actions_to_extension_steps(
+        ext, force_close=force_close, workspace=workspace
+    )
     still = [a.get("role") for a in opens if isinstance(a, dict)]
     return steps, still
 

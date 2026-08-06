@@ -18,6 +18,7 @@ from layout_plan import (  # noqa: E402
     collect_windows,
     compare_layout_structure,
     detect_thrash,
+    filter_forest_workspace,
     forest_mon_indices_left_to_right,
     forest_stable_key_map,
     format_layout_description,
@@ -30,6 +31,7 @@ from layout_plan import (  # noqa: E402
     resolve_profile_mon_keys,
     validate_reconcile_profile,
     window_matches,
+    window_workspace_index,
 )
 from layout_plan import _class_eq as plan_class_eq  # noqa: E402
 from layout_plan import _mon_split_anchor_ids  # noqa: E402
@@ -4859,6 +4861,266 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
                     [],
                     f"structure match but ensure_layout: {ensures}",
                 )
+
+
+def _dual_ws_forest(
+    *,
+    ws0_windows: list[dict] | None = None,
+    ws1_windows: list[dict] | None = None,
+) -> dict:
+    """Minimal dual-mon dual-ws forest for workspace-scope tests."""
+
+    def mon(mid: str, kids: list, x: int = 0) -> dict:
+        return {
+            "nodeType": "MONITOR",
+            "layout": "HSPLIT",
+            "id": mid,
+            "rect": {"x": x, "y": 0, "width": 1000, "height": 1000},
+            "stableKey": f"geom:{x},0,1000,1000"
+            + ("#primary" if mid.startswith("mo0") else ""),
+            "children": kids,
+        }
+
+    def win(w: dict) -> dict:
+        base = {
+            "nodeType": "WINDOW",
+            "layout": None,
+            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+            "percent": 0,
+            "userSized": False,
+            "children": [],
+            "mode": "TILE",
+        }
+        base.update(w)
+        return base
+
+    return {
+        "apiVersion": 2,
+        "monitors": [
+            mon("mo0ws0", [win(w) for w in (ws0_windows or [])], x=0),
+            mon("mo1ws0", [], x=1000),
+            mon("mo0ws1", [win(w) for w in (ws1_windows or [])], x=0),
+            mon("mo1ws1", [], x=1000),
+        ],
+    }
+
+
+_TERM_ONLY_PROFILE = {
+    "version": 2,
+    "mode": "reconcile",
+    "roles": [
+        {
+            "id": "term",
+            "match": {"class": "com.mitchellh.ghostty"},
+            "open": {"app": "ghostty"},
+            "slot": "mon0.term",
+        }
+    ],
+    "layout": {"mon0": {"children": [{"roles": ["term"]}]}},
+    "marginal": {"mode": "coexist", "roleOrder": "first", "residual": "leave"},
+}
+
+
+class TestWorkspaceScope(unittest.TestCase):
+    """WS0: plan only sees/mutates one target workspace."""
+
+    def test_filter_forest_workspace_keeps_target_only(self):
+        forest = _dual_ws_forest(
+            ws1_windows=[
+                {
+                    "wmClass": "org.inkscape.Inkscape",
+                    "title": "Inkscape",
+                    "windowId": 902,
+                    "pid": 1902,
+                    "monitor": 0,
+                }
+            ]
+        )
+        scoped = filter_forest_workspace(forest, 0)
+        ids = [m.get("id") for m in scoped["monitors"]]
+        self.assertEqual(ids, ["mo0ws0", "mo1ws0"])
+        scoped1 = filter_forest_workspace(forest, 1)
+        ids1 = [m.get("id") for m in scoped1["monitors"]]
+        self.assertEqual(ids1, ["mo0ws1", "mo1ws1"])
+
+    def test_collect_windows_workspace_filter(self):
+        forest = _dual_ws_forest(
+            ws0_windows=[
+                {
+                    "wmClass": "Foo",
+                    "title": "A",
+                    "windowId": 1,
+                    "pid": 1,
+                    "monitor": 0,
+                }
+            ],
+            ws1_windows=[
+                {
+                    "wmClass": "Bar",
+                    "title": "B",
+                    "windowId": 2,
+                    "pid": 2,
+                    "monitor": 0,
+                }
+            ],
+        )
+        all_w = collect_windows(forest)
+        self.assertEqual({w["windowId"] for w in all_w}, {1, 2})
+        ws0 = collect_windows(forest, workspace=0)
+        self.assertEqual([w["windowId"] for w in ws0], [1])
+        self.assertEqual(window_workspace_index(ws0[0]), 0)
+        ws1 = collect_windows(forest, workspace=1)
+        self.assertEqual([w["windowId"] for w in ws1], [2])
+        self.assertEqual(window_workspace_index(ws1[0]), 1)
+
+    def test_role_on_other_ws_opens_not_claims(self):
+        """Ghostty only on ws1 → plan for ws0 opens; does not move/claim ws1."""
+        forest = _dual_ws_forest(
+            ws1_windows=[
+                {
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "Ghostty",
+                    "windowId": 901,
+                    "pid": 1901,
+                    "monitor": 0,
+                }
+            ]
+        )
+        plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=0)
+        self.assertEqual(plan["workspace"], 0)
+        self.assertEqual(len(plan["roles"]), 1)
+        self.assertEqual(plan["roles"][0]["status"], "open")
+        self.assertIsNone(plan["roles"][0].get("windowId"))
+        self.assertEqual(plan["counts"]["opened"], 1)
+        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["reused"], 0)
+        open_acts = [a for a in plan["actions"] if a.get("op") == "open"]
+        self.assertEqual(len(open_acts), 1)
+        self.assertEqual(open_acts[0].get("workspace"), 0)
+        # No action references the off-ws window id
+        for a in plan["actions"]:
+            self.assertNotEqual(a.get("windowId"), 901)
+
+    def test_inkscape_on_other_ws_not_kept_or_parked(self):
+        """Non-role companion only on ws2/ws1 is invisible to ws0 plan."""
+        forest = _dual_ws_forest(
+            ws1_windows=[
+                {
+                    "wmClass": "org.inkscape.Inkscape",
+                    "title": "Inkscape",
+                    "windowId": 902,
+                    "pid": 1902,
+                    "monitor": 0,
+                }
+            ]
+        )
+        plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=0)
+        kept_ids = {k.get("windowId") for k in plan.get("kept") or []}
+        left_ids = {k.get("windowId") for k in plan.get("left") or []}
+        unclaimed_ids = {k.get("windowId") for k in plan.get("unclaimed") or []}
+        self.assertNotIn(902, kept_ids)
+        self.assertNotIn(902, left_ids)
+        self.assertNotIn(902, unclaimed_ids)
+        park_ids = {
+            a.get("windowId")
+            for a in plan["actions"]
+            if a.get("op") in ("park", "close", "move")
+        }
+        self.assertNotIn(902, park_ids)
+        # Term missing on ws0 → open only
+        self.assertEqual(plan["counts"]["opened"], 1)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["parked"], 0)
+
+    def test_role_and_companion_on_same_other_ws_both_invisible(self):
+        forest = _dual_ws_forest(
+            ws1_windows=[
+                {
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "Ghostty",
+                    "windowId": 901,
+                    "pid": 1901,
+                    "monitor": 0,
+                },
+                {
+                    "wmClass": "org.inkscape.Inkscape",
+                    "title": "Inkscape",
+                    "windowId": 902,
+                    "pid": 1902,
+                    "monitor": 0,
+                },
+            ]
+        )
+        plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=0)
+        self.assertEqual(plan["roles"][0]["status"], "open")
+        all_seen = set()
+        for bag in (
+            plan.get("kept") or [],
+            plan.get("left") or [],
+            plan.get("unclaimed") or [],
+            plan.get("roles") or [],
+        ):
+            for e in bag:
+                if e.get("windowId") is not None:
+                    all_seen.add(e["windowId"])
+        for a in plan["actions"]:
+            if a.get("windowId") is not None:
+                all_seen.add(a["windowId"])
+        self.assertNotIn(901, all_seen)
+        self.assertNotIn(902, all_seen)
+
+    def test_plan_target_ws1_reuses_window_there(self):
+        forest = _dual_ws_forest(
+            ws0_windows=[
+                {
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "Ghostty-ws0",
+                    "windowId": 100,
+                    "pid": 1100,
+                    "monitor": 0,
+                }
+            ],
+            ws1_windows=[
+                {
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "Ghostty-ws1",
+                    "windowId": 901,
+                    "pid": 1901,
+                    "monitor": 0,
+                }
+            ],
+        )
+        plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=1)
+        self.assertEqual(plan["workspace"], 1)
+        self.assertEqual(plan["roles"][0]["status"], "reused")
+        self.assertEqual(plan["roles"][0]["windowId"], 901)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        # Must not claim the ws0 copy
+        self.assertNotEqual(plan["roles"][0].get("windowId"), 100)
+
+    def test_default_workspace_is_zero(self):
+        forest = _dual_ws_forest(
+            ws1_windows=[
+                {
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "Ghostty",
+                    "windowId": 901,
+                    "pid": 1901,
+                    "monitor": 0,
+                }
+            ]
+        )
+        plan = plan_reconcile(forest, _TERM_ONLY_PROFILE)
+        self.assertEqual(plan["workspace"], 0)
+        self.assertEqual(plan["roles"][0]["status"], "open")
+
+    def test_open_action_stamps_workspace(self):
+        forest = _dual_ws_forest()
+        plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=1)
+        opens = [a for a in plan["actions"] if a.get("op") == "open"]
+        self.assertTrue(opens)
+        for a in opens:
+            self.assertEqual(a.get("workspace"), 1)
 
 
 if __name__ == "__main__":

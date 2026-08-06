@@ -136,6 +136,7 @@ class TestSlotPaths(unittest.TestCase):
 
     def test_slot_to_tree_path(self):
         self.assertEqual(slot_to_tree_path("mon1.term"), "mo1ws0")
+        self.assertEqual(slot_to_tree_path("mon0.term", workspace=2), "mo0ws2")
 
 
 class TestActionMapping(unittest.TestCase):
@@ -171,6 +172,47 @@ class TestActionMapping(unittest.TestCase):
                 {"op": "layout", "mode": "hsplit", "selector": "id:3"},
             ],
         )
+
+    def test_actions_to_extension_steps_workspace_dest(self):
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "move",
+                    "role": "x",
+                    "windowId": 9,
+                    "slot": "mon1.comms",
+                }
+            ],
+            workspace=2,
+        )
+        self.assertEqual(steps[0]["dest"], "path:mo1ws2")
+
+    def test_action_workspace_stamp_overrides_param(self):
+        steps = actions_to_extension_steps(
+            [
+                {
+                    "op": "move",
+                    "windowId": 9,
+                    "slot": "mon0.term",
+                    "workspace": 1,
+                }
+            ],
+            workspace=0,
+        )
+        self.assertEqual(steps[0]["dest"], "path:mo0ws1")
+
+    def test_open_action_tree_path_uses_workspace(self):
+        fields = open_action_to_launch_fields(
+            {
+                "op": "open",
+                "role": "term",
+                "open": {"app": "ghostty"},
+                "slot": "mon1.term",
+                "workspace": 1,
+            }
+        )
+        self.assertEqual(fields["tree_path"], "mo1ws1")
+        self.assertEqual(fields["monitor"], 1)
 
     def test_soft_park_uses_dest_window_id(self):
         steps = actions_to_extension_steps(
