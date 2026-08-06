@@ -271,12 +271,18 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
 
     _out(s, heading("Tips", **kw))
     _out(s, "  • Always dry-run a new profile first.")
+    _out(s, "  • Apply/save scope the ", bold("current workspace", **kw), " only (GetTree activeWorkspace).")
     _out(s, "  • Match titles with ", cyan('title~="substr"', **kw), " when several windows share a class.")
     _out(s, "  • Counts: reused / opened / moved / kept / parked (or closed with --clean).")
     _out(s, "  • Default never closes windows; role windows and kept companions stay.")
     _out(s, "  • Thrashed desk: default auto Mode B recover (prefer over refuse).")
     _out(s, "  • Optional: ", cyan('"displays": "scene"', **kw), " -> gdisplays load; ", cyan('"settings": "name"', **kw), " -> SettingsLoad.")
-    _out(s, "  • Offline plan: ", cmd("forge layout name --dry-run --tree-file forest.json", **kw))
+    _out(
+        s,
+        "  • Offline plan: ",
+        cmd("forge layout name --dry-run --tree-file forest.json", **kw),
+        dim(" (meta activeWorkspace; else workspace 0)", **kw),
+    )
     _out(s, "  • Save sketch: ", cmd("forge layout save mydesk", **kw), "  (bare array when possible)")
     _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/layout-tiles-minimal.json", **kw), dim(" (bare)", **kw))
     _out(s, "                    ", cyan("scripts/forge/examples/layout-tiles-nested.json", **kw))

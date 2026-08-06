@@ -27,6 +27,7 @@ from layout_save import (  # noqa: E402
     resolve_save_description,
 )
 from layout_plan import (  # noqa: E402
+    filter_forest_workspace,
     normalize_profile,
     plan_reconcile,
     validate_reconcile_profile,
@@ -76,6 +77,76 @@ class TestCaptureTilesProfile(unittest.TestCase):
         profile = profile_for_output(capture_tiles_profile(forest))
         self.assertIsInstance(profile, list)
         self.assertEqual(len(profile), 2)
+
+    def test_save_filter_one_workspace_only(self):
+        """WS1: capture only mon roots for target/current workspace."""
+        forest = {
+            "apiVersion": 2,
+            "activeWorkspace": 1,
+            "nWorkspaces": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo0ws0",
+                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                    "stableKey": "geom:0,0,1000,1000#primary",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "layout": None,
+                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                            "percent": 0,
+                            "userSized": False,
+                            "children": [],
+                            "mode": "TILE",
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "ws0-term",
+                            "windowId": 10,
+                            "pid": 110,
+                            "monitor": 0,
+                        }
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo0ws1",
+                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                    "stableKey": "geom:0,0,1000,1000#primary",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "layout": None,
+                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                            "percent": 0,
+                            "userSized": False,
+                            "children": [],
+                            "mode": "TILE",
+                            "wmClass": "org.gnome.Nautilus",
+                            "title": "ws1-files",
+                            "windowId": 20,
+                            "pid": 220,
+                            "monitor": 0,
+                        }
+                    ],
+                },
+            ],
+        }
+        # Meta activeWorkspace=1 → only Nautilus, not Ghostty.
+        profile = profile_for_output(capture_tiles_profile(forest))
+        body = json.dumps(profile)
+        self.assertIn("nautilus", body.casefold())
+        self.assertNotIn("ghostty", body.casefold())
+        # Explicit workspace=0 ignores meta and captures Ghostty only.
+        profile0 = profile_for_output(capture_tiles_profile(forest, workspace=0))
+        body0 = json.dumps(profile0)
+        self.assertIn("ghostty", body0.casefold())
+        self.assertNotIn("nautilus", body0.casefold())
+        # filter_forest_workspace keeps one mon set.
+        scoped = filter_forest_workspace(forest, 1)
+        self.assertEqual([m["id"] for m in scoped["monitors"]], ["mo0ws1"])
+        self.assertEqual(scoped.get("activeWorkspace"), 1)
 
     def test_tabbed_ghostty_nautilus(self):
         forest = _load("tree-ghostty-nautilus-tab.json")

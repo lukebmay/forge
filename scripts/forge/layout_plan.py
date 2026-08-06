@@ -1915,6 +1915,7 @@ def filter_forest_workspace(forest: Any, workspace: int = 0) -> Any:
 
     Monitors without parseable moNwsW id are kept only for workspace 0
     (legacy / single-workspace fixtures). Other workspaces are invisible.
+    Preserves forest meta (activeWorkspace, nWorkspaces, focusWindowId, …).
     """
     ws = _normalize_workspace(workspace)
     if not isinstance(forest, dict):
@@ -1935,6 +1936,22 @@ def filter_forest_workspace(forest: Any, workspace: int = 0) -> Any:
     out = dict(forest)
     out["monitors"] = kept
     return out
+
+
+def active_workspace_from_forest(forest: Any, default: int = 0) -> int:
+    """
+    Resolve 0-based workspace index from GetTree forest meta.
+
+    Prefers activeWorkspace, then currentWorkspace (aliases). Missing or
+    invalid meta → default (0 for offline --tree-file without meta).
+    """
+    if not isinstance(forest, dict):
+        return _normalize_workspace(default)
+    for key in ("activeWorkspace", "currentWorkspace"):
+        if key not in forest or forest[key] is None:
+            continue
+        return _normalize_workspace(forest[key])
+    return _normalize_workspace(default)
 
 
 def plan_reconcile(

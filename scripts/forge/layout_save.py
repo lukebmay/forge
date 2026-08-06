@@ -19,6 +19,8 @@ from layout_plan import (
     _parse_mon_id,
     _stem_to_id,
     _tagged_container_mode,
+    active_workspace_from_forest,
+    filter_forest_workspace,
     forest_mon_indices_left_to_right,
     format_layout_description,
     normalize_shares,
@@ -53,16 +55,32 @@ _CHROME_CLASS_RE = re.compile(r"chrome|chromium|brave", re.I)
 
 
 def capture_tiles_profile(
-    forest: Any, *, description: Optional[str] = None
+    forest: Any,
+    *,
+    description: Optional[str] = None,
+    workspace: Optional[int] = None,
 ) -> dict[str, Any]:
     """
     Snapshot a GetTree forest into internal tiles mon-map sugar.
+
+    workspace: 0-based Meta index; when set, only mon roots for that desk.
+    When omitted and forest has activeWorkspace/currentWorkspace meta, save
+    that desk only. Offline trees without meta keep prior prefer-ws0 pick.
 
     Call profile_for_output() for bare-array JSON write form.
     Validates via normalize_profile + validate_reconcile_profile.
     """
     if not isinstance(forest, dict):
         raise ValueError("forest must be a JSON object")
+
+    if workspace is not None:
+        forest = filter_forest_workspace(forest, workspace)
+    elif forest.get("activeWorkspace") is not None or forest.get(
+        "currentWorkspace"
+    ) is not None:
+        forest = filter_forest_workspace(
+            forest, active_workspace_from_forest(forest)
+        )
 
     mons = _select_physical_monitors(forest)
     class_counts = _count_classes(mons)

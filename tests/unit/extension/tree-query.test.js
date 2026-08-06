@@ -200,6 +200,21 @@ describe("tree-query projectForest / monitorMatches", () => {
     expect(forest.focusWindowId).toBe(99);
   });
 
+  it("projectForest includes activeWorkspace and nWorkspaces when provided", () => {
+    const forest = projectForest([mon0], {
+      activeWorkspace: 2,
+      nWorkspaces: 4,
+    });
+    expect(forest.activeWorkspace).toBe(2);
+    expect(forest.nWorkspaces).toBe(4);
+  });
+
+  it("projectForest omits workspace meta when not provided", () => {
+    const forest = projectForest([mon0]);
+    expect(forest.activeWorkspace).toBeUndefined();
+    expect(forest.nWorkspaces).toBeUndefined();
+  });
+
   it("projectNode exports lastTabFocusId for tab/stack CONs", () => {
     const wFocus = mockWin({ title: "Grok", id: 7 });
     const tab = node({

@@ -95,6 +95,7 @@ from layout_lib import (  # noqa: E402
     _normalize_profile_name,
 )
 from layout_plan import (  # noqa: E402
+    active_workspace_from_forest,
     format_layout_description,
     plan_reconcile,
     validate_reconcile_profile,
@@ -1742,6 +1743,15 @@ def _layout_load_tree(
     return data
 
 
+def _layout_target_workspace(forest: dict[str, Any]) -> int:
+    """
+    0-based workspace for layout apply/save.
+
+    Live GetTree sets activeWorkspace. Offline --tree-file without meta → 0.
+    """
+    return active_workspace_from_forest(forest, default=0)
+
+
 def _layout_print_header(
     resolved: dict[str, Any],
     name: str,
@@ -2019,14 +2029,21 @@ def _layout_run_reconcile(
         _eprint(f"forge layout: GetTree failed: {e}")
         return 1
 
+    # WS1: current desk from forest meta (activeWorkspace); offline default 0.
+    workspace = _layout_target_workspace(forest)
+
     try:
         # Pass raw sugar so mon_count can re-desugar; pre-validated IR loses tiles.
-        plan = plan_reconcile(forest, data, clean=clean, safe=safe)
+        plan = plan_reconcile(
+            forest, data, clean=clean, safe=safe, workspace=workspace
+        )
     except ValueError as e:
         _eprint(f"forge layout: plan failed: {e}")
         return 1
 
     _layout_print_header(resolved, name)
+    # Human 1-based index; plan/tree use 0-based Meta.
+    _eprint(f"  workspace  {workspace + 1}")
     _layout_print_thrash_mode(plan, safe=safe)
     if clean:
         force_bit = " --force" if force_close else ""
@@ -2073,7 +2090,7 @@ def _layout_run_reconcile(
 
     # 1) Moves / parks / closes / ensure_layout for existing windows
     ext_steps = actions_to_extension_steps(
-        ext_actions, force_close=force_close
+        ext_actions, force_close=force_close, workspace=workspace
     )
     if ext_steps:
         rc, agg = run_mixed_steps(
@@ -2113,7 +2130,7 @@ def _layout_run_reconcile(
             open_timeout_ms = DEFAULT_LAUNCH_TIMEOUT_MS
 
             for oa in open_actions:
-                fields = open_action_to_launch_fields(oa)
+                fields = open_action_to_launch_fields(oa, workspace=workspace)
                 role = oa.get("role")
                 # Parallel: never block on TILE settle per role.
                 fields = dict(fields)
@@ -2232,6 +2249,7 @@ def _layout_run_reconcile(
                     safe=safe,
                     role_pins=role_pins or None,
                     just_opened_roles=set(role_pins.keys()) if role_pins else None,
+                    workspace=workspace,
                 )
             except Exception as e:
                 _eprint(f"forge layout: re-plan after open failed: {e}")
@@ -2246,7 +2264,10 @@ def _layout_run_reconcile(
             # (e.g. chrome title pin lag). Missing roles fail *after* mon fixes.
             # Focus ops from profile IR still run here after deferred unhide.
             follow_steps, still_open = residual_follow_up(
-                residual_ext, residual_open, force_close=force_close
+                residual_ext,
+                residual_open,
+                force_close=force_close,
+                workspace=workspace,
             )
             if still_open:
                 _eprint(f"forge layout: still missing roles after open: {still_open}")
@@ -2307,6 +2328,7 @@ def _layout_run_reconcile(
                         safe=safe,
                         role_pins=role_pins,
                         just_opened_roles=set(role_pins.keys()),
+                        workspace=workspace,
                     )
                 except Exception as e:
                     _eprint(f"forge layout: belt re-plan after residual failed: {e}")
@@ -2329,7 +2351,10 @@ def _layout_run_reconcile(
                         )
                     ]
                     belt_steps, _ = residual_follow_up(
-                        belt_actions, [], force_close=force_close
+                        belt_actions,
+                        [],
+                        force_close=force_close,
+                        workspace=workspace,
                     )
                     if belt_steps:
                         belt_ids = move_step_window_ids(belt_steps)
@@ -2421,8 +2446,11 @@ def _layout_run_save(
         _eprint(f"forge layout save: {e}")
         return 1
 
+    # Current desk only (meta activeWorkspace; offline without meta → ws0 pick).
+    workspace = _layout_target_workspace(forest)
+
     try:
-        profile = capture_tiles_profile(forest)
+        profile = capture_tiles_profile(forest, workspace=workspace)
     except ValueError as e:
         _eprint(f"forge layout save: {e}")
         return 1
@@ -3492,7 +3520,10 @@ def build_parser() -> argparse.ArgumentParser:
     layout_p.add_argument(
         "--tree-file",
         metavar="PATH",
-        help="GetTree forest JSON file (offline dry-run / save / tests; no DBus tree)",
+        help=(
+            "GetTree forest JSON (offline dry-run / save / tests; no DBus). "
+            "Uses forest.activeWorkspace when set; else workspace 0"
+        ),
     )
     layout_p.add_argument(
         "--stdout",

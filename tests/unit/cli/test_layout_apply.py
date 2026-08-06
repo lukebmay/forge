@@ -214,6 +214,34 @@ class TestActionMapping(unittest.TestCase):
         self.assertEqual(fields["tree_path"], "mo1ws1")
         self.assertEqual(fields["monitor"], 1)
 
+    def test_open_action_param_workspace_when_unstamped(self):
+        fields = open_action_to_launch_fields(
+            {
+                "op": "open",
+                "role": "term",
+                "open": {"app": "ghostty"},
+                "slot": "mon0.term",
+            },
+            workspace=2,
+        )
+        self.assertEqual(fields["tree_path"], "mo0ws2")
+
+    def test_residual_follow_up_workspace_dest(self):
+        steps, still = residual_follow_up(
+            [
+                {
+                    "op": "move",
+                    "role": "term",
+                    "windowId": 5,
+                    "slot": "mon1.term",
+                }
+            ],
+            [],
+            workspace=1,
+        )
+        self.assertEqual(still, [])
+        self.assertEqual(steps[0]["dest"], "path:mo1ws1")
+
     def test_soft_park_uses_dest_window_id(self):
         steps = actions_to_extension_steps(
             [

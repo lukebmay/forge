@@ -8,9 +8,10 @@
 
 ### Session note (overwrite)
 
-**2026-08-06 WS0 done (A/B AGREE):** `plan_reconcile(..., workspace=0)` +
-`filter_forest_workspace`; apply dests `moNwsW`; dual-ws fixtures; unit/cli 388;
-commit `5f66e19`. Task in `completed/`. **Next: WS1** current-ws through CLI.
+**2026-08-06 WS1 (A implement):** GetTree `activeWorkspace`/`nWorkspaces`; CLI
+applies/saves on current desk via forest meta (offline default ws0); path builders
++ residual/open already take `workspace=`. unit/cli 393; tree-query 14.
+Commit `5222047`. **Next: B verify**, then WS2 sequential/static.
 
 ---
 
@@ -128,7 +129,7 @@ forge layout: name must not contain ':' or '@' (reserved for workspace targeting
 | ID | Work | Status |
 | --- | --- | --- |
 | **WS0** | Scope: forest filter + claim/open/structure only on target ws; unit fixtures (Inkscape-on-ws2 invisible to ws1 plan) | **done** → completed/ |
-| **WS1** | Thread workspace through apply paths (stop hardcoding `ws0`); current-ws from extension | **next** |
+| **WS1** | Thread workspace through apply paths (stop hardcoding `ws0`); current-ws from extension | **implemented** (pending B) |
 | **WS2** | CLI: exclusive sequential **or** static modes; `W:name` / `name@W`; preflight; name charset on save | pending |
 | **WS3** | Docs + help + dry-run messaging; migrate any illegal names; live X11 smoke multi-ws | pending |
 

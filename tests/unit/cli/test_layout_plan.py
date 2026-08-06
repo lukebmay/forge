@@ -18,6 +18,7 @@ from layout_plan import (  # noqa: E402
     collect_windows,
     compare_layout_structure,
     detect_thrash,
+    active_workspace_from_forest,
     filter_forest_workspace,
     forest_mon_indices_left_to_right,
     forest_stable_key_map,
@@ -5121,6 +5122,49 @@ class TestWorkspaceScope(unittest.TestCase):
         self.assertTrue(opens)
         for a in opens:
             self.assertEqual(a.get("workspace"), 1)
+
+    def test_active_workspace_from_forest_meta(self):
+        forest = _dual_ws_forest()
+        self.assertEqual(active_workspace_from_forest(forest), 0)
+        forest["activeWorkspace"] = 1
+        self.assertEqual(active_workspace_from_forest(forest), 1)
+        forest2 = _dual_ws_forest()
+        forest2["currentWorkspace"] = 2
+        self.assertEqual(active_workspace_from_forest(forest2), 2)
+        # activeWorkspace wins over currentWorkspace
+        forest2["activeWorkspace"] = 0
+        self.assertEqual(active_workspace_from_forest(forest2), 0)
+        self.assertEqual(active_workspace_from_forest({}, default=3), 3)
+        self.assertEqual(active_workspace_from_forest({"activeWorkspace": -1}), 0)
+
+    def test_plan_uses_active_workspace_meta_via_helper(self):
+        """CLI resolves activeWorkspace then plan_reconcile(workspace=…)."""
+        forest = _dual_ws_forest(
+            ws0_windows=[
+                {
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "Ghostty-ws0",
+                    "windowId": 100,
+                    "pid": 1100,
+                    "monitor": 0,
+                }
+            ],
+            ws1_windows=[
+                {
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "Ghostty-ws1",
+                    "windowId": 901,
+                    "pid": 1901,
+                    "monitor": 0,
+                }
+            ],
+        )
+        forest["activeWorkspace"] = 1
+        ws = active_workspace_from_forest(forest)
+        plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=ws)
+        self.assertEqual(plan["workspace"], 1)
+        self.assertEqual(plan["roles"][0]["windowId"], 901)
+        self.assertEqual(plan["counts"]["opened"], 0)
 
 
 if __name__ == "__main__":
