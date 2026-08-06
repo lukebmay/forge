@@ -1,19 +1,21 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (workspace-scope exclusive modes; motion design plan)  
+**Updated:** 2026-08-06 (wrap — next: WS scope → Wayland RC smoke)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 **Agent git:** stash still listed (content **applied** to control-loop). Drop only after human OK — see [HANDOFF.md](./HANDOFF.md).
+
+**RC note:** After WS0–WS3 + X11/Wayland green → reasonable **release candidate** *before* peel/container motion and tab DnD.
 
 ## Priority order
 
 | Order | Work | Why |
 | ---: | --- | --- |
 | **1** | **Layout workspace scope** | Desks = workspaces; no cross-ws steal; sequential XOR static CLI — [plan](./plans/forge-layout-workspace-scope.md) |
-| **2** | **Container motion design + HTML prototype** | Peel B / move / join locks — [plan](./plans/forge-container-motion-design.md) — **no Shell motion until MD2** |
+| **2** | **Wayland residual + RC smoke** | Operator Wayland after WS — [task](./tasks/forge-wayland-live_residual-smoke.md) + HANDOFF checklist |
 | **3** | **AP5 op visual** (soft) | Gesture matrix eyes-on — [blocker](./blockers/B-ap5-operator-visual-matrix.md) |
-| **4** | **Wayland residual smoke** | After operator Wayland login — [task](./tasks/forge-wayland-live_residual-smoke.md) |
+| **4** | **Container motion design + HTML prototype** | Peel B / join locks — [plan](./plans/forge-container-motion-design.md) — **post-RC product** |
 | **5** | **Container selection S3+** | After rebase containers branch; kit binds |
 | **6** | **Desktop keybinds KB1–4** | After S3 |
 | **later** | **Tab chrome drag (browser-like)** | P2 — [plan](./plans/forge-tab-chrome-drag.md) |
@@ -22,9 +24,9 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **WS0** | Claim/plan one workspace only | [task](./tasks/forge-layout-workspace-scope_ws0-claim-scope.md) |
-| **2** | **WS1–WS3** | Apply current + CLI XOR modes + live | plan tasks |
-| **3** | **MD1** | HTML motion prototype | [task](./tasks/forge-container-motion-design_md1-html-prototype.md) |
+| **1** | **WS0–WS3** | Workspace-scoped layout end-to-end | [plan](./plans/forge-layout-workspace-scope.md) |
+| **2** | **Wayland RC** | Residual smoke + layout dual-ws | After WS on master |
+| **post-RC** | **MD1** | HTML motion prototype | [task](./tasks/forge-container-motion-design_md1-html-prototype.md) |
 
 **Shipped on master (local, not pushed)**
 
