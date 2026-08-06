@@ -752,8 +752,8 @@ forge_css_tag() {
 }
 
 forge_stamp_css_last_update() {
-  # Set css-last-update == ThemeManager cssTag so enable()/patchCss will NOT
-  # overwrite ~/.config/forge/stylesheet/forge/stylesheet.css with defaults.
+  # Set css-last-update == ThemeManager cssTag (rename-migration stamp).
+  # patchCss no longer overwrites user CSS with defaults; stamp still tracks version.
   forge_need_cmd gsettings
   local tag sd
   tag=$(forge_css_tag)

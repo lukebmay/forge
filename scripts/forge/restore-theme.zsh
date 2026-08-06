@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
-# Restore Forge colors/stylesheet from a backup and stamp css-last-update
-# so enable()/patchCss does not overwrite with defaults.
+# Restore Forge user CSS overrides from a backup and stamp css-last-update.
+# (patchCss no longer clobbers user CSS; stamp is still useful for renames.)
 emulate -L zsh
 set -euo pipefail
 SCRIPT_DIR=${0:A:h}
@@ -11,12 +11,12 @@ usage() {
 ${c_bold}restore-theme.zsh${c_reset} — restore border/theme CSS from a forge-manage backup
 
 Why this exists:
-  This tree stores focus/split colors in
-  ~/.config/forge/stylesheet/forge/stylesheet.css
-  EGO also had gsettings focus-border-color / split-border-color.
+  Focus/split colors live as *overrides* in
+  ~/.config/forge/stylesheet/forge/stylesheet.css (bundled base always loads
+  first). EGO also had gsettings focus-border-color / split-border-color.
 
-  On first enable after upgrade, patchCss() copies defaults over the user
-  stylesheet when css-last-update != ThemeManager.cssTag, leaving a .bak.
+  Older Forge could full-replace the user file on cssTag mismatch; current
+  patchCss does not. restore-theme still recovers backups + stamps/reloads.
 
 Usage:
   restore-theme.zsh [options] [backup-dir]

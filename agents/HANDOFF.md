@@ -1,37 +1,40 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (C0 dual-load landed; C1 next)  
-**Branch tip:** `plan/forge-css-overrides` → merge to master after wrap-up  
+**Updated:** 2026-08-06 (CSS overrides C0–C2 complete)  
+**Branch tip:** merge `plan/forge-css-overrides` → `master` (local, **not pushed**)  
 **X11:** preferred for agent `./install` + `killall -HUP gnome-shell`  
 **Wayland:** ES modules need **logout** to reload  
-**Stash:** `stash@{0}` still present (applied earlier) — **drop only after human OK**  
+**Stash:** `stash@{0}` still present — **drop only after human OK**  
 **Remotes:** **no push** unless human asks  
 
 ---
 
-## Next session (operator intent)
+## Just shipped
 
-1. **CSS base + user overrides (P0)** — [plan](./plans/forge-css-overrides.md)  
-   - **C0 done:** dual-load + non-destructive `patchCss`  
-   - **C1 next:** delta-only prefs writes — [task](./tasks/forge-css-overrides_c1-delta-writes.md)  
-   - Branch: `plan/forge-css-overrides`  
-2. Then layout workspace scope (WS0–WS3).  
-3. Operator Wayland residual smoke.  
+**CSS base + user overrides (D001)** — dual-load bundled then
+`~/.config/forge/stylesheet/forge/stylesheet.css`; `patchCss` never full-clobbers;
+Appearance writes deltas / Reset removes overrides. Docs: `docs/user/theming.md`.
 
-### CSS incident (why P0)
+Operator purple theme already on disk; reinstall + Super+Shift+r to pick up dual-load.
 
-User colors live in `~/.config/forge/stylesheet/forge/stylesheet.css`.  
-`patchCss()` full-replaced that file with bundled defaults on cssTag mismatch.  
-Operator purple focus restored manually (2026-08-06); side split indicator keeps `border-radius: 0`.  
-Design: always load **bundled base** then **user overrides**; never clobber.
+---
 
-### After CSS
+## Next session
 
-| Item | Note |
+1. **Layout workspace scope (P0)** — [plan](./plans/forge-layout-workspace-scope.md) WS0–WS3  
+2. Operator **Wayland** residual smoke  
+3. RC candidate after both green  
+
+### Workspace scope
+
+| ID | Task |
 | --- | --- |
-| [forge-layout-workspace-scope.md](./plans/forge-layout-workspace-scope.md) | WS0–WS3; exclusive sequential XOR static |
-| Wayland residual smoke | After WS |
-| [forge-container-motion-design.md](./plans/forge-container-motion-design.md) | Post-RC |
+| **WS0** | Claim/plan one workspace only |
+| **WS1** | Apply path + current ws |
+| **WS2** | CLI sequential XOR static |
+| **WS3** | Docs + live dual-ws |
+
+**CLI locks:** never steal from other workspaces; sequential XOR static; mix = error.
 
 ---
 
@@ -39,4 +42,3 @@ Design: always load **bundled base** then **user overrides**; never clobber.
 
 - **No push** unless human asks.  
 - **No SSH** without **explicit** in the current message.  
-- Queue docs (`agents/*`) live on default branch after wrap-up merge.

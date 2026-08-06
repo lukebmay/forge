@@ -492,6 +492,133 @@ describe("ThemeManagerBase", () => {
     });
   });
 
+  describe("delta-only user CSS (C1)", () => {
+    const baseWithBorders = `
+      .tiled { color: rgba(236, 94, 94, 1); border-width: 3px; opacity: 1; }
+      .split { color: red; border-width: 1px; opacity: 1; }
+      .floated { color: red; border-width: 1px; opacity: 1; }
+      .stacked { color: red; border-width: 1px; opacity: 1; }
+      .tabbed { color: red; border-width: 1px; opacity: 1; }
+      .window-tiled-border {
+        border-width: 3px;
+        border-color: rgba(236, 94, 94, 1);
+        border-style: solid;
+        border-radius: 14px;
+      }
+    `;
+
+    function lastWrittenCss(configMgr) {
+      const calls = configMgr.stylesheetFile.replace_contents.mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      const raw = calls[calls.length - 1][0];
+      return typeof raw === "string" ? raw : new TextDecoder().decode(raw);
+    }
+
+    function makeTm(userCss, baseCss = baseWithBorders) {
+      const configMgr = createMockConfigMgr(userCss, baseCss);
+      const tm = new ThemeManagerBase({
+        configMgr,
+        settings: createMockSettings(),
+      });
+      tm.reloadStylesheet = vi.fn();
+      return { tm, configMgr };
+    }
+
+    it("set one prop from minimal user file writes only that override", () => {
+      const { tm, configMgr } = makeTm("/* forge user overrides */\n");
+
+      expect(tm.setCssProperty(".window-tiled-border", "border-color", "purple")).toBe(true);
+
+      const written = lastWrittenCss(configMgr);
+      expect(written).toMatch(/\.window-tiled-border/);
+      expect(written).toMatch(/border-color:\s*purple/);
+      // Must not dump the full base theme into the user file.
+      expect(written).not.toMatch(/\.split\b/);
+      expect(written).not.toMatch(/\.floated\b/);
+      expect(written).not.toMatch(/border-radius/);
+      // User AST holds only the delta rule (plus optional comment).
+      const userRules = tm.cssAst.stylesheet.rules.filter((r) => r.type === "rule");
+      expect(userRules).toHaveLength(1);
+      expect(userRules[0].selectors).toEqual([".window-tiled-border"]);
+      expect(userRules[0].declarations.filter((d) => d.type === "declaration")).toHaveLength(1);
+    });
+
+    it("strip-identical on full-fork after set shrinks toward deltas", () => {
+      // Full prior default as user file (identical to base) + one custom color later.
+      const fullFork = baseWithBorders;
+      const { tm, configMgr } = makeTm(fullFork, baseWithBorders);
+
+      // User file starts as a full fork of base.
+      expect(tm.cssAst.stylesheet.rules.filter((r) => r.type === "rule").length).toBeGreaterThan(2);
+
+      expect(tm.setCssProperty(".window-tiled-border", "border-color", "purple")).toBe(true);
+
+      const written = lastWrittenCss(configMgr);
+      expect(written).toMatch(/border-color:\s*purple/);
+      // Identical-to-base rules must not remain forever.
+      expect(written).not.toMatch(/\.split\b/);
+      expect(written).not.toMatch(/\.floated\b/);
+      expect(written).not.toMatch(/border-radius:\s*14px/);
+      // Only the differing declaration survives.
+      const userRules = tm.cssAst.stylesheet.rules.filter((r) => r.type === "rule");
+      expect(userRules).toHaveLength(1);
+      expect(userRules[0].selectors).toContain(".window-tiled-border");
+      const decls = userRules[0].declarations.filter((d) => d.type === "declaration");
+      expect(decls).toHaveLength(1);
+      expect(decls[0].property).toBe("border-color");
+      expect(decls[0].value).toBe("purple");
+    });
+
+    it("removeCssProperty clears override; getCssProperty falls back to base", () => {
+      const userCss = `
+        /* forge user overrides */
+        .window-tiled-border { border-color: purple; border-width: 5px; }
+      `;
+      const { tm, configMgr } = makeTm(userCss);
+
+      expect(tm.getCssProperty(".window-tiled-border", "border-color").value).toBe("purple");
+      expect(tm.removeCssProperty(".window-tiled-border", "border-color")).toBe(true);
+      expect(tm.getCssProperty(".window-tiled-border", "border-color").value).toBe(
+        "rgba(236, 94, 94, 1)"
+      );
+      // Other user override remains.
+      expect(tm.getCssProperty(".window-tiled-border", "border-width").value).toBe("5px");
+
+      const written = lastWrittenCss(configMgr);
+      expect(written).not.toMatch(/border-color:\s*purple/);
+      expect(written).toMatch(/border-width:\s*5px/);
+    });
+
+    it("set to base value removes user override (not sticky default write)", () => {
+      const userCss = `
+        .window-tiled-border { border-color: purple; }
+      `;
+      const { tm, configMgr } = makeTm(userCss);
+      const baseColor = "rgba(236, 94, 94, 1)";
+
+      expect(tm.setCssProperty(".window-tiled-border", "border-color", baseColor)).toBe(true);
+      // Effective is base; user AST no longer holds the prop.
+      expect(tm.getCssProperty(".window-tiled-border", "border-color").value).toBe(baseColor);
+      const fromUser = tm._getCssPropertyFromAst(tm.cssAst, ".window-tiled-border", "border-color");
+      expect(fromUser.value).toBeUndefined();
+
+      const written = lastWrittenCss(configMgr);
+      expect(written).not.toMatch(/border-color/);
+      expect(written).not.toMatch(/purple/);
+    });
+
+    it("removeCssProperty returns false when no user override exists", () => {
+      const { tm, configMgr } = makeTm("/* forge user overrides */\n");
+      configMgr.stylesheetFile.replace_contents.mockClear();
+
+      expect(tm.removeCssProperty(".window-tiled-border", "border-color")).toBe(false);
+      expect(configMgr.stylesheetFile.replace_contents).not.toHaveBeenCalled();
+      expect(tm.getCssProperty(".window-tiled-border", "border-color").value).toBe(
+        "rgba(236, 94, 94, 1)"
+      );
+    });
+  });
+
   describe("reloadStylesheet", () => {
     it("should throw error (abstract method)", () => {
       expect(() => themeManager.reloadStylesheet()).toThrow("Must implement reloadStylesheet");

@@ -18,7 +18,7 @@ Pipeline (order matters):
   6. build-install --install-only
   7. apply-settings --translate=jcrussell  (dconf + CSS + stamp css-last-update)
   8. enable
-  9. restore-theme again (patchCss on first enable can clobber CSS — re-apply)
+  9. restore-theme again (belt-and-suspenders; patchCss no longer clobbers user CSS)
  10. reload Shell on X11 (default) so the new build is active
 
 Prefer root ${c_blue}./install${c_reset} (same path when lineage is EGO).
@@ -250,11 +250,10 @@ if (( ${#_mig_rivals[@]} > 0 )); then
 fi
 unset _mig_rivals _mig_line
 
-# Critical: first enable runs ThemeManager.patchCss() when css-last-update !=
-# cssTag, which OVERWRITES user stylesheet with defaults (keeps .bak).
-# Re-restore theme after enable and re-stamp so colors stick.
+# Re-restore user CSS after enable (belt-and-suspenders; patchCss no longer
+# overwrites user overrides with bundled defaults).
 if (( ! SKIP_APPLY )); then
-  forge_hdr "Re-restore theme after enable (defeat patchCss clobber)"
+  forge_hdr "Re-restore theme after enable"
   forge_restore_theme_from_backup "$BACKUP"
 fi
 

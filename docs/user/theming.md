@@ -10,7 +10,8 @@ Appearance settings (focus-hint borders, split borders, gaps, screen-edge margin
 tab margins) update live. When you change a focus-hint **color or size**, it
 propagates everywhere that hint is drawn: the tiled/stacked/tabbed window borders,
 the drag **preview hints**, and the overview / workspace-thumbnail hints. Each hint
-group has a **Reset** to restore the gschema default.
+group has a **Reset** that **clears your override** so the bundled default shows
+again (not a sticky copy of the default into your file).
 
 ## Gaps
 
@@ -19,34 +20,49 @@ group has a **Reset** to restore the gschema default.
 - `window-gap-hidden-on-single` — hide the gap when a workspace has one window.
 - `window-margin-{top,bottom,left,right}` — reserve screen-edge space for panels/docks.
 
-## Custom CSS
+## How stylesheets layer
 
-Forge loads a user stylesheet from:
+| Layer | Path | Role |
+| --- | --- | --- |
+| **Base** | extension `stylesheet.css` (bundled) | Always loaded first — structure + default colors |
+| **User** | `~/.config/forge/stylesheet/forge/stylesheet.css` | Loaded second — **overrides only** (cascade wins) |
 
-```
-~/.config/forge/stylesheet/forge/stylesheet.css
-```
+New installs seed the user file with a short comment (`/* forge user overrides */`),
+**not** a full copy of the default theme. Preferences write **only properties you
+change**. On save, rules that still match the base sheet are stripped so full-fork
+files from older Forge shrink toward true deltas.
 
-It's seeded from the bundled default on first run (and re-synced by `patchCss` on
-update). Edit it and reload with **`Super+Shift+r`** (re-imports the user file),
-or:
+### Live reload
 
-```bash
-./scripts/forge/reload-theme.zsh          # bumps css-updated; no reboot
-./scripts/forge/restore-theme.zsh [bak]   # restore colors from backup + reload
-```
+Edit the user file or use Appearance, then:
+
+- **`Super+Shift+r`** (config reload), or
+- `./scripts/forge/reload-theme.zsh` (bumps `css-updated`; no reboot)
 
 A full computer restart is **not** required. On X11, if Shell still shows stock
 borders after a code reinstall, `Alt+F2` → `r` (or `make dev` then
-`reload-theme.zsh`). `make dev` keeps verbose logging but still uses this user
-stylesheet for colors.
+`reload-theme.zsh`).
 
-Selectors Forge exposes (see the bundled `stylesheet.css` for the full set):
+### Upgrades
+
+`patchCss` / `css-last-update` may stamp a CSS version or rename known selectors.
+It does **not** overwrite your user stylesheet with bundled defaults. (Older Forge
+did full-file reseeds; that footgun is gone.)
+
+Restore colors from a backup if needed:
+
+```bash
+./scripts/forge/restore-theme.zsh [backup-dir]
+./scripts/forge/reload-theme.zsh
+```
+
+### Selectors (see bundled `stylesheet.css` for the full set)
 
 | Selector | What it styles |
 | --- | --- |
 | `.window-tiled-border` | Border of a tiled window |
 | `.window-split-border` | Split-container border |
+| `.window-split-horizontal` / `.window-split-vertical` | One-edge add/split indicator (**no** border-radius — straight edge) |
 | `.window-stacked-border` / `.window-tabbed-border` | Stacked / tabbed container border |
 | `.window-floated-border` | Floating-window border |
 | `.window-tabbed-tab`, `.window-tabbed-tab-active`, `.window-tabbed-tab-icon`, `.window-tabbed-tab-close` | Tab strip elements |
@@ -54,7 +70,8 @@ Selectors Forge exposes (see the bundled `stylesheet.css` for the full set):
 | `.tiled`, `.split`, `.stacked`, `.tabbed`, `.floated` | Palette classes (color/opacity) |
 
 Border width, color, radius, and opacity are plain CSS properties; colors accept
-`rgba(...)` or hex.
+`rgba(...)` or hex. Prefer only the rules you customize — the base supplies the rest.
 
 > Advanced: the CSS parser and `ThemeManagerBase` API live in `lib/css/` and
-> `lib/shared/theme.js` (see [dev/rendering.md](../dev/rendering.md)).
+> `lib/shared/theme.js` (see [dev/rendering.md](../dev/rendering.md)). Design
+> decision: [docs/DECISIONS.md](../DECISIONS.md) D001.

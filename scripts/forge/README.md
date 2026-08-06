@@ -117,11 +117,10 @@ for desktop ids. Extension must be enabled for DBus ops.
 4. **Uninstall does not purge** — dconf and `~/.config/forge` stay on disk.
 5. **Apply is belt-and-suspenders** — reloads the backup after install; verifies
    user keys (ignoring `css-last-update` stamps).
-6. **Theme / colors** — focus/split colors live in
-   `~/.config/forge/stylesheet/forge/stylesheet.css`. First enable can run
-   `patchCss()` and overwrite that file; migrate restores the backup stylesheet
-   and stamps `css-last-update` after enable. Manual fix:
-   `./scripts/forge/restore-theme.zsh [backup]` then
+6. **Theme / colors** — bundled base + user overrides at
+   `~/.config/forge/stylesheet/forge/stylesheet.css`. `patchCss` does **not**
+   overwrite user CSS with defaults (D001). Migrate still restores backup
+   overrides if needed: `./scripts/forge/restore-theme.zsh [backup]` then
    `./scripts/forge/reload-theme.zsh`.
 7. **Rollback** — `$BACKUP/emergency-rollback.zsh` or `rollback.zsh`.
 

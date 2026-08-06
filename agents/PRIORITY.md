@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (C0 dual-load done; C1 delta writes next)  
+**Updated:** 2026-08-06 (CSS overrides C0–C2 done; WS scope next)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -12,8 +12,8 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **CSS base + user overrides** | Stop clobbering personal theme; dual-load — [plan](./plans/forge-css-overrides.md) |
-| **2** | **Layout workspace scope** | Desks = workspaces; no cross-ws steal — [plan](./plans/forge-layout-workspace-scope.md) |
+| **1** | **Layout workspace scope** | Desks = workspaces; no cross-ws steal — [plan](./plans/forge-layout-workspace-scope.md) |
+| **done** | **CSS base + user overrides** | C0–C2 shipped — [plan](./plans/forge-css-overrides.md) |
 | **3** | **Wayland residual + RC smoke** | Operator Wayland after WS — [task](./tasks/forge-wayland-live_residual-smoke.md) |
 | **4** | **AP5 op visual** (soft) | Gesture matrix eyes-on — [blocker](./blockers/B-ap5-operator-visual-matrix.md) |
 | **5** | **Container motion design + HTML prototype** | Peel B / join locks — [plan](./plans/forge-container-motion-design.md) — **post-RC product** |
@@ -24,9 +24,8 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **C1** | Prefs delta-only user CSS writes | [task](./tasks/forge-css-overrides_c1-delta-writes.md) |
-| **2** | **C2** | theming docs + restore-theme scripts | Same plan |
-| **3** | **WS0–WS3** | Workspace-scoped layout | After CSS |
+| **1** | **WS0–WS3** | Workspace-scoped layout end-to-end | [plan](./plans/forge-layout-workspace-scope.md) |
+| **2** | **Wayland RC** | Residual smoke after WS | [task](./tasks/forge-wayland-live_residual-smoke.md) |
 
 **Shipped on master (local, not pushed)**
 
@@ -52,8 +51,8 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [CSS base + user overrides](./plans/forge-css-overrides.md) | C0 done; **next** C1 delta writes |
-| **P0** | [layout workspace scope](./plans/forge-layout-workspace-scope.md) | After CSS; WS0–WS3 |
+| **P0** | [layout workspace scope](./plans/forge-layout-workspace-scope.md) | **Next** WS0–WS3 |
+| **done** | [CSS base + user overrides](./plans/forge-css-overrides.md) | C0–C2 dual-load + deltas + docs |
 | **P1** | [container motion design](./plans/forge-container-motion-design.md) | Design open; MD1 prototype next |
 | **P0** | [layout live X11](./plans/forge-layout-live-x11.md) | Complete LX1–LX4 (peel incomplete → motion plan) |
 | **P0** | [action pipeline](./plans/forge-action-pipeline.md) | Code complete |
@@ -69,6 +68,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Item | Note |
 | --- | --- |
-| Operator purple theme restored under `~/.config/forge` | User-only; patchCss still a footgun until C0 |
+| CSS dual-load + delta overrides (D001) | C0–C2; personal colors no longer clobbered |
+| Operator purple theme restored under `~/.config/forge` | Survives dual-load |
 | Workspace CLI: no mix sequential + numbered | Locked 2026-08-06 |
 | Motion design plan + MD1 task | Peel Model B lean; HTML prototype required |

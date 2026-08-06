@@ -150,10 +150,12 @@ keeps its tree node, it is not detached.
 
 ## CSS / theme engine
 
-`ThemeManagerBase` (`lib/shared/theme.js`) parses the stylesheet with the bundled
-CSS parser in `lib/css/` and exposes `getCssProperty`/`setCssProperty`.
+`ThemeManagerBase` (`lib/shared/theme.js`) parses **bundled base + user** stylesheets
+with the CSS parser in `lib/css/` and exposes `getCssProperty`/`setCssProperty`
+(reads: user then base; writes: user deltas only; strip rules identical to base).
+`ExtensionThemeManager` loads St stylesheets **base then user**.
 `updateDecorationLayout()` / `updateBorderLayout()` apply style classes
 (`.window-tiled-border`, `.window-tabbed-tab`, palette classes …) to the actors.
-Users override appearance at
-`~/.config/forge/stylesheet/forge/stylesheet.css`; `patchCss()` syncs bundled
-defaults into the user profile, and a GSettings trigger reloads the stylesheet.
+User overrides: `~/.config/forge/stylesheet/forge/stylesheet.css`.
+`patchCss()` stamps `css-last-update` / optional renames — it does **not** copy
+defaults over the user file. `css-updated` GSettings reloads both sheets.
