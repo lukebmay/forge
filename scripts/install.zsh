@@ -168,9 +168,16 @@ case "$lineage" in
       forge_step_warn "CLI (non-fatal)"
     fi
     if (( DO_RESTART )); then
-      forge_step_ok "Reload shell"
+      st=$(forge_session_type)
+      if [[ "$st" == "x11" ]]; then
+        forge_step_ok "Extension successfully live reloaded"
+      elif [[ "$st" == "wayland" ]]; then
+        forge_step_fail "Reload shell — cannot reload extensions live on Wayland; log out and back in"
+      else
+        forge_step_fail "Reload shell — cannot reload live (session=$st); log out and back in"
+      fi
     else
-      forge_step_skip "Reload shell"
+      forge_step_skip "Reload shell (--no-restart)"
     fi
     _install_done
     exit 0
@@ -264,7 +271,7 @@ if (( DO_RESTART )); then
     if (( DO_RELOAD_THEME )) && [[ -f "$SCRIPT_DIR/reload-theme.zsh" ]]; then
       "$SCRIPT_DIR/reload-theme.zsh" --force >/dev/null 2>&1 || true
     fi
-    forge_step_ok "Reload shell"
+    forge_step_ok "Extension successfully live reloaded"
   elif (( rc == 2 )); then
     # Expected on Wayland (no in-session reload). Red X + action; not a die.
     st=$(forge_session_type)
