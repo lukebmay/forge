@@ -126,7 +126,7 @@ after blank/wake. Disabling the extension removes all overlay actors.
 
 ## Layout apply chrome (multi-open dim)
 
-~50% black full-screen dim with a spinner and “Forge: Loading layout…” while
+~80% black full-screen dim with a spinner and “Forge: Loading layout…” while
 multi-open **LayoutBatch** runs (`forge layout` and related). **On by default**.
 Chrome is non-reactive and **always** hard-clears within **8s**, and also on
 batch end / extension disable — it must never stick and leave the session
