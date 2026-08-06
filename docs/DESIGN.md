@@ -886,9 +886,12 @@ never applied after a debug install — looked like “need a reboot.”
 `patchCss()` re-copied defaults when `css-last-update` ≠ `cssTag`, wiping custom
 colors (e.g. dark purple focus).
 
-**Approach:** Always **load bundled base, then user file** (cascade). User path
-seeds a minimal comment only — not a full default copy. `patchCss` may stamp
-version / rename-migrate; it must **never** overwrite user CSS with defaults.
-Prefs write into the user file; C1 aims for delta-only rules. See
+**Approach:** Merge **bundled base + user overrides** into one
+`~/.config/forge/stylesheet/forge/effective.css` and load that single sheet.
+(St.Theme does not reliably cascade two `load_stylesheet` calls — dual-load left
+personal purple under bundled red.) User path seeds a minimal comment only — not
+a full default copy. `patchCss` may stamp version / rename-migrate; it must
+**never** overwrite user CSS with defaults. Prefs write into the user file; C1
+aims for delta-only rules. See
 [agents/plans/forge-css-overrides.md](../agents/plans/forge-css-overrides.md)
 and [docs/DECISIONS.md](./DECISIONS.md) D001.

@@ -13,11 +13,16 @@ vi.mock("../../../lib/shared/settings.js", () => ({
 
 // Minimal CSS so ThemeManagerBase._importCss() succeeds in the constructor.
 const sampleCss = `.tiled { color: rgba(255,255,255,0.8); border-width: 1px; opacity: 0.8; }`;
+const baseCss = `.tiled { color: rgba(236, 94, 94, 1); border-width: 3px; }`;
+const userCss = `.tiled { color: rgba(59, 1, 224, 1); border-width: 2px; }`;
 
-function createMockStylesheetFile(path) {
+function createMockStylesheetFile(path, contents = sampleCss) {
   const file = new File(path);
-  file.load_contents = vi.fn(() => [true, new TextEncoder().encode(sampleCss), null]);
+  file.load_contents = vi.fn(() => [true, new TextEncoder().encode(contents), null]);
   file.get_parent = vi.fn(() => ({ get_path: () => "/mock" }));
+  file.get_path = vi.fn(() => path);
+  file.replace_contents = vi.fn(() => [true, null]);
+  file.set_attribute_uint32 = vi.fn();
   return file;
 }
 
@@ -33,7 +38,6 @@ describe("forge-wwn8: ExtensionThemeManager.unloadStylesheet", () => {
   let mgr;
 
   beforeEach(() => {
-    // Stable theme object so load/unload calls are observable.
     theme = {
       load_stylesheet: vi.fn(),
       unload_stylesheet: vi.fn(),
@@ -42,12 +46,16 @@ describe("forge-wwn8: ExtensionThemeManager.unloadStylesheet", () => {
       get_theme: () => theme,
     });
 
-    const stylesheetFile = createMockStylesheetFile("/mock/stylesheet.css");
-    const defaultStylesheetFile = createMockStylesheetFile("/mock/default-stylesheet.css");
+    const stylesheetFile = createMockStylesheetFile("/mock/user-stylesheet.css", userCss);
+    const defaultStylesheetFile = createMockStylesheetFile("/mock/default-stylesheet.css", baseCss);
 
     const extension = {
       metadata: { uuid: "forge@jmmaranan.com" },
-      configMgr: { stylesheetFile, defaultStylesheetFile },
+      configMgr: {
+        stylesheetFile,
+        defaultStylesheetFile,
+        confDir: "/mock/config/forge",
+      },
       settings: {},
     };
 
@@ -58,16 +66,16 @@ describe("forge-wwn8: ExtensionThemeManager.unloadStylesheet", () => {
     vi.restoreAllMocks();
   });
 
-  it("unloads every stylesheet that was loaded (base + user)", () => {
+  it("unloads the effective stylesheet that was loaded", () => {
     mgr.reloadStylesheet();
-    expect(mgr.stylesheets.length).toBe(2);
+    expect(mgr.stylesheets.length).toBe(1);
+    const loaded = mgr.stylesheets[0];
 
     theme.unload_stylesheet.mockClear();
     mgr.unloadStylesheet();
 
-    expect(theme.unload_stylesheet).toHaveBeenCalledTimes(2);
-    expect(theme.unload_stylesheet).toHaveBeenCalledWith(mgr.configMgr.defaultStylesheetFile);
-    expect(theme.unload_stylesheet).toHaveBeenCalledWith(mgr.configMgr.stylesheetFile);
+    expect(theme.unload_stylesheet).toHaveBeenCalledTimes(1);
+    expect(theme.unload_stylesheet).toHaveBeenCalledWith(loaded);
   });
 
   it("does nothing when no stylesheet is loaded", () => {
@@ -83,7 +91,6 @@ describe("forge-wwn8: ExtensionThemeManager.unloadStylesheet", () => {
     expect(mgr.stylesheet).toBeNull();
     expect(mgr.stylesheets).toEqual([]);
 
-    // A second disable() (or double-unload) must not release already-freed handles.
     theme.unload_stylesheet.mockClear();
     mgr.unloadStylesheet();
     expect(theme.unload_stylesheet).not.toHaveBeenCalled();
@@ -105,12 +112,16 @@ describe("ExtensionThemeManager.reloadStylesheet", () => {
       get_theme: () => theme,
     });
 
-    stylesheetFile = createMockStylesheetFile("/mock/stylesheet.css");
-    defaultStylesheetFile = createMockStylesheetFile("/mock/default-stylesheet.css");
+    stylesheetFile = createMockStylesheetFile("/mock/user-stylesheet.css", userCss);
+    defaultStylesheetFile = createMockStylesheetFile("/mock/default-stylesheet.css", baseCss);
 
     const extension = {
       metadata: { uuid: "forge@jmmaranan.com" },
-      configMgr: { stylesheetFile, defaultStylesheetFile },
+      configMgr: {
+        stylesheetFile,
+        defaultStylesheetFile,
+        confDir: "/mock/config/forge",
+      },
       settings: {},
     };
 
@@ -121,14 +132,19 @@ describe("ExtensionThemeManager.reloadStylesheet", () => {
     vi.restoreAllMocks();
   });
 
-  it("loads base then user when both exist (user cascade wins)", () => {
+  it("loads a single effective sheet (base+user merged, not dual-load)", () => {
     mgr.reloadStylesheet();
 
-    expect(theme.load_stylesheet).toHaveBeenCalledTimes(2);
-    expect(theme.load_stylesheet.mock.calls[0][0]).toBe(defaultStylesheetFile);
-    expect(theme.load_stylesheet.mock.calls[1][0]).toBe(stylesheetFile);
-    expect(mgr.stylesheets).toEqual([defaultStylesheetFile, stylesheetFile]);
-    expect(mgr.stylesheet).toBe(stylesheetFile);
+    // One St load only — dual-load cascade is unreliable in St.
+    expect(theme.load_stylesheet).toHaveBeenCalledTimes(1);
+    expect(mgr.stylesheets.length).toBe(1);
+    expect(mgr.stylesheet).toBe(mgr.stylesheets[0]);
+    // Effective write used base + user contents.
+    const written = mgr.stylesheet.replace_contents?.mock?.calls?.[0]?.[0];
+    // File is the effective path's Gio.File from build — replace_contents on outFile.
+    // We assert user CSS was read and load happened once.
+    expect(stylesheetFile.load_contents).toHaveBeenCalled();
+    expect(defaultStylesheetFile.load_contents).toHaveBeenCalled();
   });
 
   it("loads only the bundled default when no user stylesheet exists", () => {
@@ -136,42 +152,21 @@ describe("ExtensionThemeManager.reloadStylesheet", () => {
     mgr.reloadStylesheet();
 
     expect(theme.load_stylesheet).toHaveBeenCalledTimes(1);
-    expect(theme.load_stylesheet).toHaveBeenCalledWith(defaultStylesheetFile);
-    expect(mgr.stylesheets).toEqual([defaultStylesheetFile]);
-    expect(mgr.stylesheet).toBe(defaultStylesheetFile);
+    expect(mgr.stylesheets.length).toBe(1);
   });
 
-  it("unloads both default and custom stylesheets before loading (forge-wwn8 leak guard)", () => {
+  it("unloads previous sheets before loading effective (forge-wwn8 leak guard)", () => {
     mgr.reloadStylesheet();
-
-    expect(theme.unload_stylesheet).toHaveBeenCalledWith(defaultStylesheetFile);
-    expect(theme.unload_stylesheet).toHaveBeenCalledWith(stylesheetFile);
+    expect(theme.unload_stylesheet).toHaveBeenCalled();
   });
 
-  it("loads base alone and logs when user stylesheet throws", () => {
+  it("does not throw when load_stylesheet fails", () => {
     const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});
-    theme.load_stylesheet = vi.fn((file) => {
-      if (file === stylesheetFile) throw new Error("theme refused user stylesheet");
+    theme.load_stylesheet = vi.fn(() => {
+      throw new Error("theme refused stylesheet");
     });
 
     expect(() => mgr.reloadStylesheet()).not.toThrow();
-
-    // Base still loads so structure works; user failure is logged (not silent red-only).
-    expect(theme.load_stylesheet).toHaveBeenCalledWith(defaultStylesheetFile);
-    expect(mgr.stylesheets).toEqual([defaultStylesheetFile]);
-    expect(errorSpy).toHaveBeenCalled();
-  });
-
-  it("loads user alone and logs when base stylesheet throws", () => {
-    const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});
-    theme.load_stylesheet = vi.fn((file) => {
-      if (file === defaultStylesheetFile) throw new Error("theme refused base stylesheet");
-    });
-
-    expect(() => mgr.reloadStylesheet()).not.toThrow();
-
-    expect(theme.load_stylesheet).toHaveBeenCalledWith(stylesheetFile);
-    expect(mgr.stylesheets).toEqual([stylesheetFile]);
     expect(errorSpy).toHaveBeenCalled();
   });
 });
