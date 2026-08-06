@@ -5,6 +5,8 @@
 **Updated:** 2026-08-06  
 **Priority:** P0 (day-to-day — personal colors keep getting wiped)
 
+**C0:** done — dual-load + non-destructive `patchCss` (see `completed/`).
+
 ## Problem
 
 User theme lives at `~/.config/forge/stylesheet/forge/stylesheet.css` as a **full fork** of the bundled sheet. On enable, when `css-last-update` ≠ `ThemeManagerBase.cssTag`, `patchCss()` **overwrites** that file with bundled defaults (only keeps `.bak`). Custom colors (e.g. dark purple focus) vanish after upgrades / reinstalls / tag bumps.
@@ -43,10 +45,10 @@ Structural: `.window-split-horizontal` / `.window-split-vertical` keep `border-r
 
 | ID | Task | Status |
 | --- | --- | --- |
-| **C0** | Dual-load base+user; kill destructive `patchCss`; unit tests | **next** |
-| **C1** | Prefs AST: effective read; write user-only props; no full rewrite of base | pending |
+| **C0** | Dual-load base+user; kill destructive `patchCss`; unit tests | **done** → `completed/forge-css-overrides_c0-dual-load.md` |
+| **C1** | Prefs: delta-only writes; reset clears override | **next** → `../tasks/forge-css-overrides_c1-delta-writes.md` |
 | **C2** | Docs (`theming.md`, DESIGN/DECISIONS); scripts (`restore-theme`, stamp, migrate notes) | pending |
-| **C3** | Optional: strip-identical migration + Appearance “reset property” | optional |
+| **C3** | Optional polish / migrate-only tools | optional |
 
 ## Acceptance (plan-level)
 
@@ -57,4 +59,8 @@ Structural: `.window-split-horizontal` / `.window-split-vertical` keep `border-r
 
 ## Session note
 
-**Next:** C0 on `plan/forge-css-overrides`. Operator already restored colors under `~/.config/forge/...` (dual-load keeps them).
+**C0 shipped (code on `plan/forge-css-overrides`, unit green 2255).**  
+Load: bundled base then `~/.config/forge/stylesheet/forge/stylesheet.css`. `patchCss` only stamps `css-last-update` (+ empty rename hook); never copies defaults over user. Reads fall back to base AST; writes always user file. Fresh user path seeds comment-only, not full fork.
+
+**Next:** C1 — prefs write delta props only / avoid full-user-AST bloat when editing Appearance on a color-only or full-fork sheet.  
+**Verify live:** custom colors survive cssTag bump + Super+Shift+r; Appearance still applies.

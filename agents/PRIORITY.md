@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (CSS overrides → P0; workspace scope deferred)  
+**Updated:** 2026-08-06 (C0 dual-load done; C1 delta writes next)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -24,8 +24,8 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **C0** | Dual-load + kill patchCss clobber | [task](./tasks/forge-css-overrides_c0-dual-load.md) |
-| **2** | **C1–C2** | Prefs delta writes + docs/scripts | Same plan |
+| **1** | **C1** | Prefs delta-only user CSS writes | [task](./tasks/forge-css-overrides_c1-delta-writes.md) |
+| **2** | **C2** | theming docs + restore-theme scripts | Same plan |
 | **3** | **WS0–WS3** | Workspace-scoped layout | After CSS |
 
 **Shipped on master (local, not pushed)**
@@ -52,7 +52,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [CSS base + user overrides](./plans/forge-css-overrides.md) | **Next** C0 dual-load |
+| **P0** | [CSS base + user overrides](./plans/forge-css-overrides.md) | C0 done; **next** C1 delta writes |
 | **P0** | [layout workspace scope](./plans/forge-layout-workspace-scope.md) | After CSS; WS0–WS3 |
 | **P1** | [container motion design](./plans/forge-container-motion-design.md) | Design open; MD1 prototype next |
 | **P0** | [layout live X11](./plans/forge-layout-live-x11.md) | Complete LX1–LX4 (peel incomplete → motion plan) |

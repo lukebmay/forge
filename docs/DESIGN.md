@@ -879,3 +879,16 @@ never applied after a debug install — looked like “need a reboot.”
 `production` for logger level and prefs Logger group only. Live reload:
 `css-updated` gsettings, Super+Shift+r (`ConfigReload` re-imports CSS), or
 `scripts/forge/reload-theme.zsh`.
+
+## CSS: base + user overrides (D001)
+
+**Problem:** The user stylesheet was a full fork of the bundled sheet. On enable,
+`patchCss()` re-copied defaults when `css-last-update` ≠ `cssTag`, wiping custom
+colors (e.g. dark purple focus).
+
+**Approach:** Always **load bundled base, then user file** (cascade). User path
+seeds a minimal comment only — not a full default copy. `patchCss` may stamp
+version / rename-migrate; it must **never** overwrite user CSS with defaults.
+Prefs write into the user file; C1 aims for delta-only rules. See
+[agents/plans/forge-css-overrides.md](../agents/plans/forge-css-overrides.md)
+and [docs/DECISIONS.md](./DECISIONS.md) D001.

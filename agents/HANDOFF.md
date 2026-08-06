@@ -1,7 +1,7 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (CSS overrides P0; theme restored on host)  
-**Branch tip:** `master` (local, **ahead of origin — not pushed**)  
+**Updated:** 2026-08-06 (C0 dual-load landed; C1 next)  
+**Branch tip:** `plan/forge-css-overrides` → merge to master after wrap-up  
 **X11:** preferred for agent `./install` + `killall -HUP gnome-shell`  
 **Wayland:** ES modules need **logout** to reload  
 **Stash:** `stash@{0}` still present (applied earlier) — **drop only after human OK**  
@@ -12,7 +12,8 @@
 ## Next session (operator intent)
 
 1. **CSS base + user overrides (P0)** — [plan](./plans/forge-css-overrides.md)  
-   - **C0:** dual-load + kill `patchCss` clobber — [task](./tasks/forge-css-overrides_c0-dual-load.md)  
+   - **C0 done:** dual-load + non-destructive `patchCss`  
+   - **C1 next:** delta-only prefs writes — [task](./tasks/forge-css-overrides_c1-delta-writes.md)  
    - Branch: `plan/forge-css-overrides`  
 2. Then layout workspace scope (WS0–WS3).  
 3. Operator Wayland residual smoke.  

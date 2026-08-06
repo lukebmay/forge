@@ -40,19 +40,28 @@ const sampleCss = `
 }
 `;
 
-// Create mock configMgr
-function createMockConfigMgr(cssContent = sampleCss) {
-  const mockFile = new File("/mock/stylesheet.css");
-  mockFile.load_contents = vi.fn(() => [true, new TextEncoder().encode(cssContent), null]);
-  mockFile.replace_contents = vi.fn(() => [true, null]);
-  mockFile.copy = vi.fn(() => true);
-  mockFile.get_parent = vi.fn(() => ({
+// Create mock configMgr. Optional separate base vs user content for dual-load tests.
+function createMockConfigMgr(cssContent = sampleCss, baseCssContent = null) {
+  const userFile = new File("/mock/stylesheet.css");
+  userFile.load_contents = vi.fn(() => [true, new TextEncoder().encode(cssContent), null]);
+  userFile.replace_contents = vi.fn(() => [true, null]);
+  userFile.copy = vi.fn(() => true);
+  userFile.get_parent = vi.fn(() => ({
+    get_path: () => "/mock",
+  }));
+
+  const baseContent = baseCssContent !== null ? baseCssContent : cssContent;
+  const baseFile = new File("/mock/default-stylesheet.css");
+  baseFile.load_contents = vi.fn(() => [true, new TextEncoder().encode(baseContent), null]);
+  baseFile.replace_contents = vi.fn(() => [true, null]);
+  baseFile.copy = vi.fn(() => true);
+  baseFile.get_parent = vi.fn(() => ({
     get_path: () => "/mock",
   }));
 
   return {
-    stylesheetFile: mockFile,
-    defaultStylesheetFile: mockFile,
+    stylesheetFile: userFile,
+    defaultStylesheetFile: baseFile,
     stylesheetFileName: "/mock/stylesheet.css",
   };
 }
@@ -230,10 +239,17 @@ describe("ThemeManagerBase", () => {
       expect(rule.selectors).toContain(".split");
     });
 
-    it("should return empty object if cssAst is undefined", () => {
+    it("should return empty object if both user and base ASTs are missing", () => {
       themeManager.cssAst = undefined;
+      themeManager.baseCssAst = undefined;
       const rule = themeManager.getCssRule(".tiled");
       expect(rule).toEqual({});
+    });
+
+    it("falls back to baseCssAst when user cssAst is undefined", () => {
+      themeManager.cssAst = undefined;
+      const rule = themeManager.getCssRule(".tiled");
+      expect(rule.selectors).toContain(".tiled");
     });
   });
 
@@ -349,22 +365,52 @@ describe("ThemeManagerBase", () => {
       expect(result).toBe(false);
     });
 
-    it("should copy files and update setting when update needed", () => {
+    it("stamps css-last-update without overwriting the user stylesheet", () => {
       mockSettings.set_uint("css-last-update", 0);
+      const customContents = "/* my purple focus */\n.window-tiled-color { color: purple; }";
+      mockConfigMgr.stylesheetFile.load_contents = vi.fn(() => [
+        true,
+        new TextEncoder().encode(customContents),
+        null,
+      ]);
+      mockConfigMgr.stylesheetFile.replace_contents = vi.fn(() => [true, null]);
+      mockConfigMgr.stylesheetFile.copy = vi.fn(() => true);
+
       const result = themeManager.patchCss();
       expect(result).toBe(true);
       expect(mockSettings.get_uint("css-last-update")).toBe(themeManager.cssTag);
+      // Must not clobber via copy from bundled default or rewrite of custom content.
+      expect(mockConfigMgr.defaultStylesheetFile.copy).not.toHaveBeenCalled();
+      expect(mockConfigMgr.stylesheetFile.copy).not.toHaveBeenCalled();
+      expect(mockConfigMgr.stylesheetFile.replace_contents).not.toHaveBeenCalled();
     });
 
-    it("should backup existing config CSS", () => {
+    it("does not overwrite existing custom user stylesheet when tag mismatches", () => {
+      const customCss = `
+        .tiled { color: rgba(128, 0, 128, 1); border-width: 3px; opacity: 1; }
+        .split { color: red; border-width: 1px; opacity: 1; }
+        .floated { color: red; border-width: 1px; opacity: 1; }
+        .stacked { color: red; border-width: 1px; opacity: 1; }
+        .tabbed { color: red; border-width: 1px; opacity: 1; }
+      `;
+      const userFile = mockConfigMgr.stylesheetFile;
+      let diskContents = customCss;
+      userFile.load_contents = vi.fn(() => [true, new TextEncoder().encode(diskContents), null]);
+      userFile.replace_contents = vi.fn((contents) => {
+        diskContents = typeof contents === "string" ? contents : new TextDecoder().decode(contents);
+        return [true, null];
+      });
+
       mockSettings.set_uint("css-last-update", 0);
       themeManager.patchCss();
-      expect(mockConfigMgr.stylesheetFile.copy).toHaveBeenCalled();
+
+      expect(diskContents).toBe(customCss);
+      expect(themeManager.getCssProperty(".tiled", "color").value).toBe("rgba(128, 0, 128, 1)");
     });
 
     // forge-0h9k: stylesheetFile is null when ~/.config/forge is unwritable and
-    // seeding fails. patchCss() must no-op (not deref null.get_path()) so enable()
-    // proceeds; css-last-update stays unwritten so it retries on a future launch.
+    // seeding fails. patchCss() must no-op so enable() proceeds; css-last-update
+    // stays unwritten so it retries on a future launch.
     it("is a no-op when stylesheetFile is null (unwritable config dir)", () => {
       mockConfigMgr.stylesheetFile = null;
       mockSettings.set_uint("css-last-update", 0);
@@ -378,27 +424,71 @@ describe("ThemeManagerBase", () => {
       expect(result).toBe(false);
       expect(mockSettings.get_uint("css-last-update")).toBe(0);
     });
+  });
 
-    // forge-8jks: the forge-0h9k null guard only covers the seeding-FAILED (null)
-    // leg. When stylesheet.css EXISTS but its dir is unwritable, Gio.File.copy
-    // THROWS a GError rather than returning false. Left unguarded it propagated out
-    // of the bare patchCss() call in enable(), aborting the extension
-    // half-initialized on every launch. patchCss must swallow it and return false.
-    it("returns false without throwing when copy raises a GError (unwritable dir)", () => {
-      mockSettings.set_uint("css-last-update", 0);
-      mockConfigMgr.stylesheetFile.copy = vi.fn(() => {
-        throw new Error("GError: Permission denied");
+  describe("getCssProperty base fallback (dual-load)", () => {
+    it("falls back to bundled base when user file lacks the rule", () => {
+      const baseCss = `
+        .tiled { color: rgba(1, 2, 3, 1); border-width: 9px; opacity: 0.9; }
+        .split { color: red; border-width: 1px; opacity: 1; }
+        .floated { color: red; border-width: 1px; opacity: 1; }
+        .stacked { color: red; border-width: 1px; opacity: 1; }
+        .tabbed { color: red; border-width: 1px; opacity: 1; }
+      `;
+      const userCss = `/* forge user overrides */\n.window-tiled-color { color: purple; }\n`;
+      const configMgr = createMockConfigMgr(userCss, baseCss);
+      const tm = new ThemeManagerBase({
+        configMgr,
+        settings: createMockSettings(),
       });
-      expect(themeManager._needUpdate()).toBe(true);
 
-      let result;
-      expect(() => {
-        result = themeManager.patchCss();
-      }).not.toThrow();
+      expect(tm.getCssProperty(".tiled", "color").value).toBe("rgba(1, 2, 3, 1)");
+      expect(tm.getCssProperty(".tiled", "border-width").value).toBe("9px");
+      expect(tm.getCssProperty(".window-tiled-color", "color").value).toBe("purple");
+    });
 
-      expect(result).toBe(false);
-      // css-last-update stays unwritten so patchCss retries once perms are fixed.
-      expect(mockSettings.get_uint("css-last-update")).toBe(0);
+    it("prefers user override over base when both define the property", () => {
+      const baseCss = `
+        .tiled { color: rgba(0, 0, 0, 1); border-width: 1px; opacity: 1; }
+        .split { color: red; border-width: 1px; opacity: 1; }
+        .floated { color: red; border-width: 1px; opacity: 1; }
+        .stacked { color: red; border-width: 1px; opacity: 1; }
+        .tabbed { color: red; border-width: 1px; opacity: 1; }
+      `;
+      const userCss = `
+        .tiled { color: rgba(128, 0, 128, 1); }
+      `;
+      const configMgr = createMockConfigMgr(userCss, baseCss);
+      const tm = new ThemeManagerBase({
+        configMgr,
+        settings: createMockSettings(),
+      });
+
+      expect(tm.getCssProperty(".tiled", "color").value).toBe("rgba(128, 0, 128, 1)");
+      // Missing on user rule → base
+      expect(tm.getCssProperty(".tiled", "border-width").value).toBe("1px");
+    });
+
+    it("setCssProperty writes into the user file, not the bundled base", () => {
+      const baseCss = `
+        .tiled { color: rgba(1, 2, 3, 1); border-width: 1px; opacity: 1; }
+        .split { color: red; border-width: 1px; opacity: 1; }
+        .floated { color: red; border-width: 1px; opacity: 1; }
+        .stacked { color: red; border-width: 1px; opacity: 1; }
+        .tabbed { color: red; border-width: 1px; opacity: 1; }
+      `;
+      const userCss = `/* forge user overrides */\n`;
+      const configMgr = createMockConfigMgr(userCss, baseCss);
+      const tm = new ThemeManagerBase({
+        configMgr,
+        settings: createMockSettings(),
+      });
+      tm.reloadStylesheet = vi.fn();
+
+      expect(tm.setCssProperty(".tiled", "color", "purple")).toBe(true);
+      expect(configMgr.stylesheetFile.replace_contents).toHaveBeenCalled();
+      expect(configMgr.defaultStylesheetFile.replace_contents).not.toHaveBeenCalled();
+      expect(tm.getCssProperty(".tiled", "color").value).toBe("purple");
     });
   });
 
@@ -506,14 +596,15 @@ describe("Bug #312 (forge-9sd) - read-only stylesheet persistence", () => {
     expect(errorSpy).toHaveBeenCalled();
   });
 
-  it("patchCss copies the read-only default with writable perms, so colors then persist", () => {
+  it("setCssProperty makes a read-only user stylesheet writable, so colors persist", () => {
     const source = new File("/install/stylesheet.css");
-    source._writable = false; // read-only install-dir file = the root cause
+    source._writable = false;
     source.load_contents = vi.fn(() => [true, new TextEncoder().encode(sampleCss), null]);
     const dest = new File("/mock/stylesheet.css");
     dest._writable = false;
     dest.load_contents = vi.fn(() => [true, new TextEncoder().encode(sampleCss), null]);
     vi.spyOn(dest, "replace_contents");
+    vi.spyOn(dest, "set_attribute_uint32");
 
     const configMgr = {
       stylesheetFile: dest,
@@ -521,15 +612,18 @@ describe("Bug #312 (forge-9sd) - read-only stylesheet persistence", () => {
       stylesheetFileName: "/mock/stylesheet.css",
     };
     const settings = createMockSettings();
-    settings.set_uint("css-last-update", 0); // force _needUpdate()
+    settings.set_uint("css-last-update", 0);
     const tm = new ThemeManagerBase({ configMgr, settings });
     tm.reloadStylesheet = vi.fn();
 
+    // patchCss no longer copies bundled → user; it only stamps the tag.
     expect(tm.patchCss()).toBe(true);
-    expect(dest._writable).toBe(true); // copy used TARGET_DEFAULT_PERMS
+    expect(dest.replace_contents).not.toHaveBeenCalled();
 
-    // A subsequent color change now persists instead of failing silently.
+    // Color writes still chmod + persist via _ensureWritable.
     tm.setCssProperty(".tiled", "color", "blue");
+    expect(dest.set_attribute_uint32).toHaveBeenCalled();
+    expect(dest._writable).toBe(true);
     expect(dest.replace_contents).toHaveBeenCalled();
     expect(tm.reloadStylesheet).toHaveBeenCalled();
   });

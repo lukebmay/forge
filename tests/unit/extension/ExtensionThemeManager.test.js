@@ -58,15 +58,16 @@ describe("forge-wwn8: ExtensionThemeManager.unloadStylesheet", () => {
     vi.restoreAllMocks();
   });
 
-  it("unloads the currently-loaded stylesheet", () => {
+  it("unloads every stylesheet that was loaded (base + user)", () => {
     mgr.reloadStylesheet();
-    const loaded = mgr.stylesheet;
-    expect(loaded).toBeTruthy();
+    expect(mgr.stylesheets.length).toBe(2);
 
     theme.unload_stylesheet.mockClear();
     mgr.unloadStylesheet();
 
-    expect(theme.unload_stylesheet).toHaveBeenCalledWith(loaded);
+    expect(theme.unload_stylesheet).toHaveBeenCalledTimes(2);
+    expect(theme.unload_stylesheet).toHaveBeenCalledWith(mgr.configMgr.defaultStylesheetFile);
+    expect(theme.unload_stylesheet).toHaveBeenCalledWith(mgr.configMgr.stylesheetFile);
   });
 
   it("does nothing when no stylesheet is loaded", () => {
@@ -74,15 +75,15 @@ describe("forge-wwn8: ExtensionThemeManager.unloadStylesheet", () => {
     expect(theme.unload_stylesheet).not.toHaveBeenCalled();
   });
 
-  it("clears the remembered handle so a second unload is a no-op", () => {
+  it("clears the remembered handles so a second unload is a no-op", () => {
     mgr.reloadStylesheet();
-    expect(mgr.stylesheet).toBeTruthy();
+    expect(mgr.stylesheets.length).toBeGreaterThan(0);
 
     mgr.unloadStylesheet();
     expect(mgr.stylesheet).toBeNull();
+    expect(mgr.stylesheets).toEqual([]);
 
-    // A second disable() (or double-unload) must not release an already-freed
-    // handle — without clearing this.stylesheet it would unload_stylesheet twice.
+    // A second disable() (or double-unload) must not release already-freed handles.
     theme.unload_stylesheet.mockClear();
     mgr.unloadStylesheet();
     expect(theme.unload_stylesheet).not.toHaveBeenCalled();
@@ -120,20 +121,23 @@ describe("ExtensionThemeManager.reloadStylesheet", () => {
     vi.restoreAllMocks();
   });
 
-  it("loads the user's custom stylesheet when present", () => {
+  it("loads base then user when both exist (user cascade wins)", () => {
     mgr.reloadStylesheet();
 
-    expect(theme.load_stylesheet).toHaveBeenCalledTimes(1);
-    expect(theme.load_stylesheet).toHaveBeenCalledWith(stylesheetFile);
+    expect(theme.load_stylesheet).toHaveBeenCalledTimes(2);
+    expect(theme.load_stylesheet.mock.calls[0][0]).toBe(defaultStylesheetFile);
+    expect(theme.load_stylesheet.mock.calls[1][0]).toBe(stylesheetFile);
+    expect(mgr.stylesheets).toEqual([defaultStylesheetFile, stylesheetFile]);
     expect(mgr.stylesheet).toBe(stylesheetFile);
   });
 
-  it("falls back to the bundled default when no user stylesheet exists", () => {
+  it("loads only the bundled default when no user stylesheet exists", () => {
     mgr.configMgr.stylesheetFile = null;
     mgr.reloadStylesheet();
 
     expect(theme.load_stylesheet).toHaveBeenCalledTimes(1);
     expect(theme.load_stylesheet).toHaveBeenCalledWith(defaultStylesheetFile);
+    expect(mgr.stylesheets).toEqual([defaultStylesheetFile]);
     expect(mgr.stylesheet).toBe(defaultStylesheetFile);
   });
 
@@ -152,9 +156,9 @@ describe("ExtensionThemeManager.reloadStylesheet", () => {
 
     expect(() => mgr.reloadStylesheet()).not.toThrow();
 
-    // The catch returns before assigning this.stylesheet, so no stale handle is
+    // The catch returns before assigning stylesheets, so no stale handle is
     // left for a later unloadStylesheet() to release incorrectly.
-    expect(mgr.stylesheet).toBeUndefined();
+    expect(mgr.stylesheets).toBeUndefined();
     expect(errorSpy).toHaveBeenCalled();
   });
 });
