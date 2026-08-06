@@ -113,6 +113,11 @@ cd forge
 ./install
 ```
 
+Install/update also **disables other GNOME Shell tiling extensions** (Ubuntu
+Tiling Assistant, Pop Shell, PaperWM, Tiling Shell, gTile, …) so they cannot
+fight Forge. Session WMs such as **i3/sway are not touched** — they are not
+Shell extensions.
+
 That builds the extension, installs it under
 `~/.local/share/gnome-shell/extensions/forge@jmmaranan.com`, enables it, puts
 the **`forge`** CLI on `~/.local/bin/forge`, and reloads GNOME Shell on X11.

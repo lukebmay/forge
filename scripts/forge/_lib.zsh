@@ -219,6 +219,53 @@ forge_ext_enabled() {
   gnome-extensions list --enabled 2>/dev/null | grep -qx "$FORGE_UUID"
 }
 
+# GNOME Shell tilers that must not run with Forge.
+# Keep in sync with lib/shared/rival-tilers.js (install + enable both use these).
+# Session WMs (i3, sway, Hyprland, …) are NOT listed — gnome-extensions never
+# touches them; only disable rival *extensions* under a GNOME Shell session.
+forge_rival_tiler_uuids() {
+  cat <<'EOF'
+tiling-assistant@ubuntu.com
+tiling-assistant@leleat-on-github
+pop-shell@system76.com
+paperwm@paperwm.github.com
+tilingshell@ferrarodomenico.com
+gTile@vibou
+gSnap@micahosborne
+winTile@nowsci.com
+shelltile@emasab.it
+material-shell@papyelgringo
+tactile@lundalomer.github.com
+EOF
+}
+
+# Disable enabled rival GNOME Shell tilers (install/update). Best-effort.
+# Prints disabled UUIDs on stdout (one per line). Returns 0 always.
+forge_disable_rival_tilers() {
+  local uuid
+  local -a disabled=()
+  if ! command -v gnome-extensions >/dev/null 2>&1; then
+    return 0
+  fi
+  # Only meaningful under GNOME Shell; never try to "disable i3" etc.
+  while IFS= read -r uuid; do
+    [[ -z "$uuid" || "$uuid" == \#* ]] && continue
+    [[ "$uuid" == "$FORGE_UUID" ]] && continue
+    if gnome-extensions list --enabled 2>/dev/null | grep -qx "$uuid"; then
+      if gnome-extensions disable "$uuid" 2>/dev/null; then
+        disabled+=("$uuid")
+      fi
+    fi
+  done < <(forge_rival_tiler_uuids)
+  if (( ${#disabled[@]} > 0 )); then
+    local u
+    for u in "${disabled[@]}"; do
+      print -r -- "$u"
+    done
+  fi
+  return 0
+}
+
 forge_metadata_field() {
   # $1 field name from metadata.json of installed extension
   # NOTE: never name a local `path` — zsh ties path[] ↔ PATH.

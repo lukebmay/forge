@@ -163,6 +163,15 @@ forge_do_install() {
   if (( DO_ENABLE )); then
     gnome-extensions enable "$FORGE_UUID" 2>/dev/null \
       || forge_warn "enable failed — restart shell / log out, then: gnome-extensions enable $FORGE_UUID"
+    # Same as ./install: drop rival GNOME Shell tilers (not session WMs).
+    _bi_rivals=()
+    while IFS= read -r _bi_line; do
+      [[ -n "$_bi_line" ]] && _bi_rivals+=("$_bi_line")
+    done < <(forge_disable_rival_tilers)
+    if (( ${#_bi_rivals[@]} > 0 )); then
+      forge_ok "disabled rival tilers: ${(j:, :)_bi_rivals}"
+    fi
+    unset _bi_rivals _bi_line
   fi
 
   if (( DO_HOST_DEFAULTS )) && [[ -f "$SCRIPT_DIR/host-defaults.conf" ]]; then

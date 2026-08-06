@@ -240,6 +240,16 @@ fi
 gnome-extensions enable "$FORGE_UUID" 2>/dev/null \
   || forge_warn "enable deferred — restart shell then: gnome-extensions enable $FORGE_UUID"
 
+# Drop rival GNOME Shell tilers (Tiling Assistant, Pop Shell, …). Not i3/sway.
+_mig_rivals=()
+while IFS= read -r _mig_line; do
+  [[ -n "$_mig_line" ]] && _mig_rivals+=("$_mig_line")
+done < <(forge_disable_rival_tilers)
+if (( ${#_mig_rivals[@]} > 0 )); then
+  forge_ok "disabled rival tilers: ${(j:, :)_mig_rivals}"
+fi
+unset _mig_rivals _mig_line
+
 # Critical: first enable runs ThemeManager.patchCss() when css-last-update !=
 # cssTag, which OVERWRITES user stylesheet with defaults (keeps .bak).
 # Re-restore theme after enable and re-stamp so colors stick.
@@ -260,6 +270,7 @@ if (( RESTART_SHELL )); then
   if (( rc == 0 )); then
     sleep 1
     gnome-extensions enable "$FORGE_UUID" 2>/dev/null || true
+    forge_disable_rival_tilers >/dev/null || true
     # One more theme pass after HUP enable
     if (( ! SKIP_APPLY )); then
       forge_restore_theme_from_backup "$BACKUP"

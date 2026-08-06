@@ -26,8 +26,12 @@ usage() {
   cat <<EOF
 ${c_bold}install${c_reset} — install on-disk Forge from this git tree
 
-Default (no flags): build → install → enable → host defaults → CLI → reload
+Default (no flags): build → install → enable → disable rival tilers →
+host defaults → CLI → reload
 Shell on X11. Quiet checklist UX (no prompts for routine paths).
+
+Disables other GNOME Shell tiling extensions (Tiling Assistant, Pop Shell,
+PaperWM, …) so they cannot fight Forge. Does not touch session WMs (i3/sway).
 
   none / unknown     → build + install this tree
   luke / jcrussell   → rebuild this tree over the live extension
@@ -218,6 +222,18 @@ else
   _install_step "Enable" gnome-extensions enable "$FORGE_UUID"
 fi
 
+# Rival GNOME Shell tilers (not i3/sway) — install/update must not leave two WMs.
+_install_rivals=()
+while IFS= read -r _install_line; do
+  [[ -n "$_install_line" ]] && _install_rivals+=("$_install_line")
+done < <(forge_disable_rival_tilers)
+if (( ${#_install_rivals[@]} > 0 )); then
+  forge_step_ok "Rival tilers off (${(j:, :)_install_rivals})"
+else
+  forge_step_ok "Rival tilers (none enabled)"
+fi
+unset _install_rivals _install_line
+
 if (( DO_HOST_DEFAULTS )) && [[ -f "$SCRIPT_DIR/host-defaults.conf" ]]; then
   if forge_run_capture "$SCRIPT_DIR/apply-host-defaults.zsh" --force "$SCRIPT_DIR/host-defaults.conf"; then
     forge_step_ok "Host defaults"
@@ -251,6 +267,7 @@ if (( DO_RESTART )); then
   if (( rc == 0 )); then
     sleep 1
     gnome-extensions enable "$FORGE_UUID" 2>/dev/null || true
+    forge_disable_rival_tilers >/dev/null || true
     if (( DO_RELOAD_THEME )) && [[ -f "$SCRIPT_DIR/reload-theme.zsh" ]]; then
       "$SCRIPT_DIR/reload-theme.zsh" --force >/dev/null 2>&1 || true
     fi

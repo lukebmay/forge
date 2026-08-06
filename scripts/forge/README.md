@@ -11,7 +11,8 @@ extension in place — backup first if you care about a previous build.
 
 ```bash
 # From a clone of lukebmay/forge
-./install                 # build → install → enable → CLI → reload Shell (X11)
+./install                 # build → install → enable → rival tilers off → CLI → reload (X11)
+                          # Rival = other GNOME Shell tilers only (not i3/sway)
 
 forge ping
 forge tree

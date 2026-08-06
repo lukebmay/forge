@@ -31,6 +31,7 @@ import {
   overridesGatedBy,
   reconcileAction,
 } from "./lib/shared/gnome-overrides.js";
+import { disableRivalTilers } from "./lib/shared/rival-tilers.js";
 
 // Application imports
 import { Cheatsheet } from "./lib/extension/cheatsheet.js";
@@ -69,6 +70,10 @@ export default class ForgeExtension extends Extension {
       Logger.warn(`Failed to disable GNOME conflicting features: ${e}`);
     }
 
+    // Rival GNOME Shell tilers only (Tiling Assistant, Pop Shell, …).
+    // Session WMs (i3/sway) are not extensions and are never touched.
+    this._disableRivalTilers();
+
     // forge-abk: some overrides are gated on a runtime-toggleable Forge setting
     // (edge-tiling on tiling-mode-enabled). Re-evaluate them when those settings
     // change so e.g. toggling Forge tiling off restores GNOME's native
@@ -103,6 +108,36 @@ export default class ForgeExtension extends Extension {
     this.sessionApi = new SessionApi(this);
     this.sessionApi.enable();
     Logger.info(`enable: finalized vars`);
+  }
+
+  /**
+   * Disable known rival GNOME Shell tiling extensions. Best-effort: missing
+   * ExtensionManager APIs or already-disabled UUIDs are ignored. Does not touch
+   * session window managers (i3, sway, …) — those are not Shell extensions.
+   */
+  _disableRivalTilers() {
+    try {
+      const mgr = Main.extensionManager;
+      if (!mgr || typeof mgr.disableExtension !== "function") return;
+      disableRivalTilers({
+        isEnabled: (uuid) => {
+          try {
+            const ext = mgr.lookup?.(uuid);
+            // ExtensionState.ENABLED is typically 1; prefer string/name when present.
+            const st = ext?.state;
+            if (st == null) return false;
+            if (typeof st === "number") return st === 1;
+            return String(st).toUpperCase().includes("ENABLED");
+          } catch (_e) {
+            return false;
+          }
+        },
+        disable: (uuid) => mgr.disableExtension(uuid),
+        log: (msg) => Logger.info(msg),
+      });
+    } catch (e) {
+      Logger.warn(`Failed to disable rival tilers: ${e}`);
+    }
   }
 
   /**

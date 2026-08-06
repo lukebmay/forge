@@ -1,17 +1,17 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-05 (X11 polish green; Wayland residual next)  
+**Updated:** 2026-08-05 (pre-Wayland prep landed; operator Wayland logout next)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
-**Agent git:** unfinished `plan/forge-wayland-live` work is **stashed** (rival-tilers / soft-rehome / install scripts). Human is not managing it — see [HANDOFF.md](./HANDOFF.md) § *Agent git: stashed Wayland WIP*. Do not drop; do not pop onto master.
+**Agent git:** stash still listed (content **applied** to control-loop). Drop only after human OK — see [HANDOFF.md](./HANDOFF.md).
 
 ## Priority order
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Wayland residual** | X11 control-loop + ghost-deco green; dual-mon daily path |
-| **2** | Merge plan branch → master (when safe) | CL8–CL11 + polish still plan-only |
+| **1** | **Wayland residual smoke** | Human logout; dual-mon daily path |
+| **2** | Merge plan branch → master (when safe) | CL8–CL11 + polish + preflight still plan-only |
 | **3** | **Container selection finish** | S3 kit binds → S5 live QA |
 | **4** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
 | **5** | **MR0 rename** | soft-rehome → monitor-recovery (own PR) |
@@ -20,20 +20,19 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **Wayland** | Live residual on black (logout session) | [wayland-live](./plans/forge-wayland-live.md) |
-| **2** | **Merge** | Integrate plan → master after Wayland smoke | CL8–CL11 |
+| **1** | **Wayland** | Operator residual smoke (logout) | [residual-smoke](./tasks/forge-wayland-live_residual-smoke.md) |
+| **2** | **Merge** | Integrate plan → master after Wayland smoke | CL8–CL11 + preflight |
 | **3** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |
 
 **Shipped on master (local, not pushed)**
 
 | Item | Note |
 | --- | --- |
-| CL0–CL6 layout control loop | debounce, verify×2, suppress, thrash catalog, open quiet, LayoutBatch, periodic gsetting |
+| CL0–CL7 layout control loop | debounce, verify×2, suppress, thrash catalog, open quiet, LayoutBatch, periodic gsetting |
 | CL7 PWA open/wait (`fe8448c`) | merge desktop hints; chrome family class_eq; continue opens after fail |
 | **CL7 live X11** | operator green: layout dev dual-mon tree; 150% scale |
 | Merge | `plan/forge-layout-control-loop` → `master` (fast-forward) |
-| Unit tests | vitest 2126; CLI pytest 365 |
-| Debug install | pre-Wayland logout install done |
+| Unit tests | vitest 2160 (after preflight); CLI pytest 365 |
 
 **On plan branch (not yet on master)**
 
@@ -43,14 +42,15 @@
 | CL10 | apply chrome default on; spinner + layout name; hard ≤8s clear |
 | CL11 | residual mon-ensure + structure verifier |
 | X11 polish | ghost deco after auto-exit (`9beebdc`); chrome UI (`20c8d8f`) |
+| **Wayland preflight** | SEGV-safe `safeMoveToMonitor`; move dest mon + ε; rival tilers; installed dirty |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Doc | Role |
 | --- | --- |
 | [HANDOFF.md](./HANDOFF.md) | Cross-session — **start here** |
-| [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md) | CL11 mon-ensure + structure verifier done; re-apply next |
-| [forge-wayland-live.md](./plans/forge-wayland-live.md) | **Next residual** (stashed WIP) |
+| [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md) | CL8–CL11 + X11 polish |
+| [forge-wayland-live_residual-smoke.md](./tasks/forge-wayland-live_residual-smoke.md) | **Operator next** |
 | [forge-monitor-recovery-rename.md](./plans/forge-monitor-recovery-rename.md) | Rename PR only |
 | [forge-container-selection.md](./plans/forge-container-selection.md) | S3 next product |
 
@@ -61,7 +61,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 | Pri | Item | Status |
 | --- | --- | --- |
 | **P0** | [layout control loop](./plans/forge-layout-control-loop.md) | CL8–CL11 + X11 polish on plan branch; operator green |
-| **P0** | Wayland residual | **Next**; stash holds extra WIP — do not drop |
+| **P0** | Wayland residual | **Operator logout**; preflight landed; stash applied |
 | **P1** | [container selection](./plans/forge-container-selection.md) | S2 done — S3 after Wayland residual |
 | **P1** | [desktop keybinds](./plans/forge-desktop-keybinds.md) | KB0 done — KB1–4 after S3 |
 | **P2** | [monitor-recovery rename](./plans/forge-monitor-recovery-rename.md) | Separate PR |
@@ -75,6 +75,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Item | Note |
 | --- | --- |
+| Wayland preflight | SEGV gates + move dest mon + rival tilers (control-loop) |
 | CL10 apply chrome | Opt-in dim + hard ≤8s clear (plan branch) |
 | Control-loop → master | Local fast-forward merge (CL0–CL7) |
 | CL7 live X11 | Operator green dual-mon layout dev |
