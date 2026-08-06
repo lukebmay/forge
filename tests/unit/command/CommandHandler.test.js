@@ -65,7 +65,18 @@ describe("CommandHandler", () => {
       queueEvent: vi.fn(),
       updateStackedFocus: vi.fn(),
       updateTabbedFocus: vi.fn(),
+      updateDecorationLayout: vi.fn(),
+      updateBorderLayout: vi.fn(),
       movePointerWith: vi.fn(),
+      // AP1: FocusChanged body; mock mirrors stage composition for spy tests.
+      afterFocus: vi.fn(function (node, opts) {
+        this.updateStackedFocus(node);
+        this.updateTabbedFocus(node);
+        this.updateDecorationLayout?.({ scope: "focus", focusNode: node });
+        this.updateBorderLayout?.();
+        this.movePointerWith(node, { force: !!(opts && opts.forcePointer) });
+        if (this.tree) this.tree.attachNode = node;
+      }),
       determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
       applyDefaultLayoutToContainer: vi.fn(),
       floatAllWindows: vi.fn(),
@@ -696,9 +707,12 @@ describe("CommandHandler", () => {
 
   // forge-zrl: cyclic focus/swap dispatch.
   describe("FocusNext/FocusPrev/SwapNext/SwapPrev commands", () => {
-    it("FocusNext cycles focus forward and updates stacked/tabbed focus", () => {
+    it("FocusNext cycles focus forward and runs afterFocus", () => {
       commandHandler.execute({ name: "FocusNext" });
       expect(mockTree.focusSibling).toHaveBeenCalledWith(mockNodeWindow, 1);
+      expect(mockWm.afterFocus).toHaveBeenCalledWith(mockNodeWindow, {
+        source: "command-focus-sibling",
+      });
       expect(mockWm.updateStackedFocus).toHaveBeenCalled();
       expect(mockWm.updateTabbedFocus).toHaveBeenCalled();
     });

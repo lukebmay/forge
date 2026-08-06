@@ -641,11 +641,12 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(renderSpy.mock.calls.some((c) => c[0] === "focus")).toBe(false);
   });
 
-  it("queues focus-update chrome work (restack, decoration, border)", () => {
+  it("queues focus-update chrome work via afterFocus (restack, decoration, border)", () => {
     const metaWindow = createMockWindow({ wm_class: "App", workspace: ctx.workspaces[0] });
     wm().trackWindow(null, metaWindow);
     const node = wm().tree.findNode(metaWindow);
 
+    const afterSpy = vi.spyOn(wm(), "afterFocus");
     const stackedSpy = vi.spyOn(wm(), "updateStackedFocus");
     const tabbedSpy = vi.spyOn(wm(), "updateTabbedFocus");
     const decoSpy = vi.spyOn(wm(), "updateDecorationLayout");
@@ -657,11 +658,13 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(update).toBeDefined();
     update.callback();
 
+    expect(afterSpy).toHaveBeenCalledWith(node, { source: "meta-focus" });
     expect(stackedSpy).toHaveBeenCalledWith(node);
     expect(tabbedSpy).toHaveBeenCalledWith(node);
-    expect(decoSpy).toHaveBeenCalled();
+    expect(decoSpy).toHaveBeenCalledWith({ scope: "focus", focusNode: node });
     expect(borderSpy).toHaveBeenCalled();
-    expect(pointerSpy).toHaveBeenCalledWith(node);
+    expect(pointerSpy).toHaveBeenCalledWith(node, { force: false });
+    expect(wm().tree.attachNode).toBe(node);
   });
 
   it("short-circuits deferred-open focus without queue or render", () => {

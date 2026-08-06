@@ -52,6 +52,7 @@ describe("tab click activates associated window", () => {
     wB.raise = vi.fn();
     wB.focus = vi.fn();
     wB.activate = vi.fn();
+    const afterSpy = vi.spyOn(wm(), "afterFocus");
     const tabbedSpy = vi.spyOn(wm(), "updateTabbedFocus");
     const stackedSpy = vi.spyOn(wm(), "updateStackedFocus");
     const decoSpy = vi.spyOn(wm(), "updateDecorationLayout");
@@ -64,10 +65,11 @@ describe("tab click activates associated window", () => {
     // LF2: focus+activate (keyboard path); activate-only failed on X11 after multi-mon.
     expect(wB.focus).toHaveBeenCalled();
     expect(wB.activate).toHaveBeenCalled();
+    // Immediate afterFocus (raise buries strip; Meta queue may skip if focus unchanged).
+    expect(afterSpy).toHaveBeenCalledWith(nB, { source: "tab-click" });
     expect(tabbedSpy).toHaveBeenCalledWith(nB);
     expect(stackedSpy).toHaveBeenCalledWith(nB);
-    // Raise buries chrome; restack immediately (do not wait for focus-update queue).
-    expect(decoSpy).toHaveBeenCalled();
+    expect(decoSpy).toHaveBeenCalledWith({ scope: "focus", focusNode: nB });
     expect(borderSpy).toHaveBeenCalled();
     expect(nA).toBeTruthy();
   });

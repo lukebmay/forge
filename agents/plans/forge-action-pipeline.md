@@ -1,6 +1,6 @@
 # Plan: Forge action pipeline
 
-**Status:** active — AP0 landed; AP1 next  
+**Status:** active — AP1 **done** (A/B AGREE); AP2 next  
 **Priority:** **P0** (highest)  
 **Branch:** `plan/forge-action-pipeline` (from master)  
 **Created:** 2026-08-06  
@@ -13,9 +13,12 @@
 
 ## Session note (overwrite)
 
-**2026-08-06:** Control-loop + Wayland residual **merged → master** (`e99f18b`).
-Action pipeline plan + `docs/dev/actions.md` landed (AP0). Next: AP1 `afterFocus`
-on `plan/forge-action-pipeline` with X11 HUP.
+**2026-08-06 AP1 done (A/B AGREE):**
+- `afterFocus` in `lib/extension/action-pipeline.js`; WM delegate.
+- Focus entries: Meta, overview, command, tab click, DBus.
+- Tests 2194 pass. Optional 220ms idle-0 deferred.
+- Completed task: `plans/forge-action-pipeline/completed/…_ap1-after-focus.md`
+- **Next:** AP2 Structure one-commit (Move/Swap/drag).
 
 ---
 
@@ -95,8 +98,8 @@ Module: `lib/extension/action-pipeline.js` (or thin WM delegates).
 | ID | Task | Status | Depends |
 | --- | --- | --- | --- |
 | **AP0** | Docs: this plan + `docs/dev/actions.md` + PRIORITY/HANDOFF | **done** | — |
-| **AP1** | `afterFocus` + migrate Meta/tab/cmd/DBus focus; tests | **next** | AP0 |
-| **AP2** | Structure one-commit (Move/Swap/drag); tests | ready | AP1 |
+| **AP1** | `afterFocus` + migrate Meta/tab/cmd/DBus focus; tests | **done** | AP0 |
+| **AP2** | Structure one-commit (Move/Swap/drag); tests | **next** | AP1 |
 | **AP3** | Geom/open/RunSteps formula alignment | ready | AP1 |
 | **AP4** | command.js → `commitLayout` facade | ready | AP2 |
 | **AP5** | Live X11 HUP smoke matrix | ready | AP2 |
