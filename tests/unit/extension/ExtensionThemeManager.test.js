@@ -148,17 +148,30 @@ describe("ExtensionThemeManager.reloadStylesheet", () => {
     expect(theme.unload_stylesheet).toHaveBeenCalledWith(stylesheetFile);
   });
 
-  it("leaves state consistent and logs when load_stylesheet throws", () => {
+  it("loads base alone and logs when user stylesheet throws", () => {
     const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});
-    theme.load_stylesheet = vi.fn(() => {
-      throw new Error("theme refused stylesheet");
+    theme.load_stylesheet = vi.fn((file) => {
+      if (file === stylesheetFile) throw new Error("theme refused user stylesheet");
     });
 
     expect(() => mgr.reloadStylesheet()).not.toThrow();
 
-    // The catch returns before assigning stylesheets, so no stale handle is
-    // left for a later unloadStylesheet() to release incorrectly.
-    expect(mgr.stylesheets).toBeUndefined();
+    // Base still loads so structure works; user failure is logged (not silent red-only).
+    expect(theme.load_stylesheet).toHaveBeenCalledWith(defaultStylesheetFile);
+    expect(mgr.stylesheets).toEqual([defaultStylesheetFile]);
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it("loads user alone and logs when base stylesheet throws", () => {
+    const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});
+    theme.load_stylesheet = vi.fn((file) => {
+      if (file === defaultStylesheetFile) throw new Error("theme refused base stylesheet");
+    });
+
+    expect(() => mgr.reloadStylesheet()).not.toThrow();
+
+    expect(theme.load_stylesheet).toHaveBeenCalledWith(stylesheetFile);
+    expect(mgr.stylesheets).toEqual([stylesheetFile]);
     expect(errorSpy).toHaveBeenCalled();
   });
 });

@@ -60,7 +60,8 @@ Options:
   --no-save           Skip pre-update backup when already luke/jcrussell
   --no-restart        Do not HUP/reload Shell (files only; code stays old until you reload)
   --restart-shell     Same as default (explicit)
-  --reload-theme      Stamp/reload user stylesheet after install
+  --reload-theme      Stamp/reload user stylesheet after install (default)
+  --no-reload-theme   Skip css-last-update stamp / css-updated bump
   --skip-npm          Skip npm install if node_modules missing
   --no-host-defaults  Skip apply-host-defaults.zsh
   --force             Non-interactive (default for this script; kept for CI flags)
@@ -85,7 +86,9 @@ MODE="dev"
 DO_SAVE="" # empty = default by lineage
 # Default: reload Shell so the extension is actually running the new build.
 DO_RESTART=1
-DO_RELOAD_THEME=0
+# Always stamp css-last-update + bump css-updated so user overrides reload
+# after HUP (otherwise dual-load can leave bundled base colors looking "wiped").
+DO_RELOAD_THEME=1
 DO_HOST_DEFAULTS=1
 SKIP_NPM=0
 
@@ -106,6 +109,7 @@ while (( $# )); do
     --no-restart|--no-restart-shell) DO_RESTART=0; shift ;;
     --restart-shell) DO_RESTART=1; shift ;;
     --reload-theme) DO_RELOAD_THEME=1; shift ;;
+    --no-reload-theme) DO_RELOAD_THEME=0; shift ;;
     --no-host-defaults) DO_HOST_DEFAULTS=0; shift ;;
     --skip-npm) SKIP_NPM=1; shift ;;
     -*) forge_die "unknown option: $1" ;;
