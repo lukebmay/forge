@@ -8,9 +8,10 @@
 
 ### Session note (overwrite)
 
-**2026-08-06 WS0–WS1 done (A/B AGREE):** plan filter + current-ws via
-GetTree `activeWorkspace`/`nWorkspaces`; apply/save on current desk; unit/cli
-393; tree-query 14. Commits `5f66e19` `fd3d098`. **Next: WS2** sequential XOR static.
+**2026-08-06 WS2 (A implement):** exclusive sequential XOR static CLI grammar;
+all-or-nothing preflight; save rejects `:`/`@`; dry-run candidates + help.
+Module `layout_cli.py`; `tests/unit/cli` **424**. Commit `31b75cd`.
+**Next: B verify → WS3.**
 
 ---
 
@@ -128,8 +129,8 @@ forge layout: name must not contain ':' or '@' (reserved for workspace targeting
 | ID | Work | Status |
 | --- | --- | --- |
 | **WS0** | Scope: forest filter + claim/open/structure only on target ws; unit fixtures (Inkscape-on-ws2 invisible to ws1 plan) | **done** → completed/ |
-| **WS1** | Thread workspace through apply paths (stop hardcoding `ws0`); current-ws from extension | **implemented** (pending B) |
-| **WS2** | CLI: exclusive sequential **or** static modes; `W:name` / `name@W`; preflight; name charset on save | pending |
+| **WS1** | Thread workspace through apply paths (stop hardcoding `ws0`); current-ws from extension | **done** → completed/ |
+| **WS2** | CLI: exclusive sequential **or** static modes; `W:name` / `name@W`; preflight; name charset on save | **implemented** (pending B) |
 | **WS3** | Docs + help + dry-run messaging; migrate any illegal names; live X11 smoke multi-ws | pending |
 
 Optional later (not required for plan done): `--collect`, `--switch` after apply to target ws.

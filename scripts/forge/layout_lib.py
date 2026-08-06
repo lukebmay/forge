@@ -52,6 +52,10 @@ def _normalize_profile_name(name: str) -> str:
     if not name or not isinstance(name, str):
         raise ValueError("profile name required")
     name = name.strip()
+    if ":" in name or "@" in name:
+        raise ValueError(
+            "name must not contain ':' or '@' (reserved for workspace targeting)"
+        )
     if not _NAME_RE.match(name):
         raise ValueError("invalid profile name (use A-Za-z0-9_-)")
     return name

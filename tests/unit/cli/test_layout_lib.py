@@ -46,6 +46,12 @@ class TestProfilePath(unittest.TestCase):
         with self.assertRaises(ValueError):
             profile_path("has space")
 
+    def test_name_rejects_colon_and_at(self):
+        with self.assertRaisesRegex(ValueError, r"':' or '@'"):
+            profile_path("foo:bar")
+        with self.assertRaisesRegex(ValueError, r"':' or '@'"):
+            profile_path("foo@1")
+
 
 class TestValidateProfile(unittest.TestCase):
     def test_minimal(self):

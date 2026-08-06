@@ -151,13 +151,16 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
         ("forge layout help", "This guide"),
         ("forge layout list", "This host: Name + Description table (JSON when piped)"),
         ("forge layout show <name>", "Resolved path + validated profile"),
-        ("forge layout save <name>", "Snapshot tree → host profile file (overwrite)"),
+        ("forge layout save <name>", "Snapshot current desk → host profile (no : or @ in name)"),
         ("forge layout save <name> --tree-file F", "Offline save from GetTree JSON"),
         ("forge layout save <name> --stdout", "Print JSON only (no write)"),
         ("forge layout save <name> --description T", "Set description (no prompt)"),
         ("forge layout save <name> --no-description", "Omit description key"),
         ("forge layout <name> --dry-run", "Plan only (human + plan JSON; mode A/B)"),
-        ("forge layout <name>", "Apply; short human summary (stderr)"),
+        ("forge layout <name>", "Apply on current workspace; short human summary (stderr)"),
+        ("forge layout a b", "Sequential: a→current, b→current+1 (all bare)"),
+        ("forge layout 1:a 3:b", "Static: explicit 1-based workspaces (all numbered)"),
+        ("forge layout a@1 b@3", "Static: same as 1:a 3:b"),
         ("forge layout <name> --verbose", "Also dump plan/apply JSON (or FORGE_VERBOSE=1)"),
         ("forge layout <name> --force-launch", "Imperative steps[] only (escape hatch)"),
         ("forge layout <name> --safe", "Open+move roles only (no park/structure/ensure)"),
@@ -166,6 +169,33 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     ):
         _out(s, "  ", cmd(line, **kw))
         _out(s, "      ", dim(desc, **kw))
+    _blank(s)
+
+    _out(s, heading("Workspace targeting", **kw), " ", dim("(exclusive modes)", **kw))
+    _out(
+        s,
+        "  All layout args are ",
+        bold("bare", **kw),
+        " or all are ",
+        bold("numbered", **kw),
+        ". Never mix.",
+    )
+    for line, desc in (
+        ("bare names only", "Sequential from current: name1 → now, name2 → now+1, …"),
+        ("N:name  /  name@N", "Static on workspace N (CLI is 1-based; tree uses 0-based)"),
+        ("mix bare + N:name", "Error — apply nothing"),
+        ("preflight", "Every profile must exist; every workspace in range; else no apply"),
+        ("scope", "Each apply/save only sees windows on that workspace (no cross-ws steal)"),
+    ):
+        _out(s, "  ", cyan(line, **kw), "  ", desc)
+    _out(
+        s,
+        "  ",
+        dim(
+            "No --on. Scripts use static form only: forge layout 1:foo 2:bar",
+            **kw,
+        ),
+    )
     _blank(s)
 
     _out(s, heading("Where profiles live", **kw), " ", dim("(first hit wins)", **kw))
@@ -271,7 +301,19 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
 
     _out(s, heading("Tips", **kw))
     _out(s, "  • Always dry-run a new profile first.")
-    _out(s, "  • Apply/save scope the ", bold("current workspace", **kw), " only (GetTree activeWorkspace).")
+    _out(
+        s,
+        "  • Default apply/save: ",
+        bold("current workspace", **kw),
+        " only (GetTree activeWorkspace).",
+    )
+    _out(
+        s,
+        "  • Dry-run prints ",
+        cyan("candidates: N on wsK (ignored M on other workspaces)", **kw),
+        " per target.",
+    )
+    _out(s, "  • Profile names must not contain ", cyan(":", **kw), " or ", cyan("@", **kw), " (workspace targeting).")
     _out(s, "  • Match titles with ", cyan('title~="substr"', **kw), " when several windows share a class.")
     _out(s, "  • Counts: reused / opened / moved / kept / parked (or closed with --clean).")
     _out(s, "  • Default never closes windows; role windows and kept companions stay.")
@@ -281,7 +323,7 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
         s,
         "  • Offline plan: ",
         cmd("forge layout name --dry-run --tree-file forest.json", **kw),
-        dim(" (meta activeWorkspace; else workspace 0)", **kw),
+        dim(" (meta activeWorkspace + nWorkspaces; else mon ids / ws0)", **kw),
     )
     _out(s, "  • Save sketch: ", cmd("forge layout save mydesk", **kw), "  (bare array when possible)")
     _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/layout-tiles-minimal.json", **kw), dim(" (bare)", **kw))

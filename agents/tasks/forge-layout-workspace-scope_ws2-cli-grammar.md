@@ -1,6 +1,6 @@
 # Task: WS2 — CLI grammar, sequential XOR static, preflight
 
-**Status:** ready  
+**Status:** implemented (pending B verify)  
 **Plan:** [forge-layout-workspace-scope.md](../plans/forge-layout-workspace-scope.md)  
 **Branch:** `plan/forge-layout-workspace-scope`  
 **Depends on:** WS0, WS1  
@@ -37,11 +37,11 @@ forge layout dev 3:vinyl                      # ERROR mixed
 
 ## Acceptance
 
-1. Parser unit tests: bare, `W:name`, `name@W`, **mixed error**, invalid W, too few ws.
-2. Save rejects names containing `:` or `@`.
-3. Scan existing layout dirs; fix any illegal names if found.
-4. Dry-run prints per-ws plan + ignored off-ws candidate count.
-5. Help text documents exclusive modes + 1-based indexes.
+1. Parser unit tests: bare, `W:name`, `name@W`, **mixed error**, invalid W, too few ws. **✓**
+2. Save rejects names containing `:` or `@`. **✓**
+3. Scan existing layout dirs; fix any illegal names if found. **✓** (none)
+4. Dry-run prints per-ws plan + ignored off-ws candidate count. **✓**
+5. Help text documents exclusive modes + 1-based indexes. **✓**
 
 ## Out of scope
 
@@ -50,4 +50,18 @@ forge layout dev 3:vinyl                      # ERROR mixed
 
 ## Session note
 
-(ready — not started)
+**2026-08-06 WS2 (Task Force A):**
+
+- **Pure module:** `scripts/forge/layout_cli.py` — `parse_layout_arg`,
+  `classify_layout_args`, `bind_layout_targets`, `preflight_layout_run`,
+  `n_workspaces_from_forest`, `window_candidate_counts`, `validate_layout_name`.
+  CLI 1-based → internal 0-based.
+- **CLI:** `cmd_layout` → `_layout_run_multi` all-or-nothing preflight; multi
+  sequential/static apply; stop-on-first-apply-failure with report; dry-run
+  candidates line; save name charset.
+- **Names:** `layout_lib._normalize_profile_name` + save reject `:`/`@`.
+  Scanned FORGE_LAYOUT_DIR / XDG / examples — no illegal names.
+- **Help:** `cli_help.print_layout_help` + argparse description exclusive modes.
+- **Tests:** `test_layout_cli.py` + lib name tests; full `tests/unit/cli` **424** green.
+- **Commit:** `31b75cd`.
+- **Next:** B verify → WS3 docs/live.

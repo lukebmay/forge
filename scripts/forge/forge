@@ -79,6 +79,14 @@ from layout_apply import (  # noqa: E402
     wait_for_tree_stable,
     window_is_settled,
 )
+from layout_cli import (  # noqa: E402
+    LayoutParseError,
+    format_candidate_line,
+    n_workspaces_from_forest,
+    preflight_layout_run,
+    validate_layout_name,
+    window_candidate_counts,
+)
 from layout_lib import (  # noqa: E402
     extract_steps_and_stop,
     format_profile_list_table,
@@ -1694,31 +1702,36 @@ def _load_gdisplays(scene: str) -> int:
 
 def _layout_parse_tokens(
     tokens: list[str], args: argparse.Namespace
-) -> tuple[str, Optional[str], bool, bool, bool, bool]:
+) -> tuple[str, Optional[str], list[str], bool, bool, bool, bool]:
     """
     Parse layout positional tokens + flags.
-    Returns (action, name, dry_run, force_launch, clean, force_close).
+
+    Returns
+      (action, name, run_tokens, dry_run, force_launch, clean, force_close).
     action: list | show | run | help | save
+    name: set for show/save; None for run (use run_tokens).
+    run_tokens: raw layout targets for action=run (bare and/or N:name / name@N).
     """
     dry_run = bool(getattr(args, "dry_run", False))
     force_launch = bool(getattr(args, "force_launch", False))
     clean = bool(getattr(args, "clean", False))
     force_close = bool(getattr(args, "force", False))
     if not tokens:
-        return "help", None, dry_run, force_launch, clean, force_close
+        return "help", None, [], dry_run, force_launch, clean, force_close
 
     head = tokens[0].strip()
     if head in ("help", "-h", "--help"):
-        return "help", None, dry_run, force_launch, clean, force_close
+        return "help", None, [], dry_run, force_launch, clean, force_close
     if head == "list":
-        return "list", None, dry_run, force_launch, clean, force_close
+        return "list", None, [], dry_run, force_launch, clean, force_close
     if head == "show":
         name = tokens[1].strip() if len(tokens) >= 2 else None
-        return "show", name, dry_run, force_launch, clean, force_close
+        return "show", name, [], dry_run, force_launch, clean, force_close
     if head == "save":
         name = tokens[1].strip() if len(tokens) >= 2 else None
-        return "save", name, dry_run, force_launch, clean, force_close
-    return "run", head, dry_run, force_launch, clean, force_close
+        return "save", name, [], dry_run, force_launch, clean, force_close
+    # Apply targets: remaining positionals (exclusive sequential XOR static).
+    return "run", None, list(tokens), dry_run, force_launch, clean, force_close
 
 
 def _layout_load_tree(
@@ -2005,7 +2018,15 @@ def _layout_run_reconcile(
     force_close: bool = False,
     safe: bool = False,
     verbose: bool = False,
+    workspace: Optional[int] = None,
+    forest: Optional[dict[str, Any]] = None,
 ) -> int:
+    """
+    Plan/apply one reconcile profile on a target workspace.
+
+    workspace: 0-based Meta index; None → activeWorkspace from forest (WS1).
+    forest: reuse a loaded GetTree (multi-target); else load via tree_file/bus.
+    """
     name = resolved["name"]
     # Early validate for preamble / shape errors. Final IR uses mon_count from
     # GetTree inside plan_reconcile (bare tab|split must not become dual mon).
@@ -2019,18 +2040,20 @@ def _layout_run_reconcile(
     if rc != 0:
         return rc
 
-    needs_bus = not tree_file
-    if needs_bus and backend is None:
-        backend = _check_deps()
+    if forest is None:
+        needs_bus = not tree_file
+        if needs_bus and backend is None:
+            backend = _check_deps()
+        try:
+            forest = _layout_load_tree(backend, tree_file)
+        except Exception as e:
+            _eprint(f"forge layout: GetTree failed: {e}")
+            return 1
 
-    try:
-        forest = _layout_load_tree(backend, tree_file)
-    except Exception as e:
-        _eprint(f"forge layout: GetTree failed: {e}")
-        return 1
-
-    # WS1: current desk from forest meta (activeWorkspace); offline default 0.
-    workspace = _layout_target_workspace(forest)
+    # WS1/WS2: explicit target or current desk from forest meta.
+    if workspace is None:
+        workspace = _layout_target_workspace(forest)
+    current_ws = _layout_target_workspace(forest)
 
     try:
         # Pass raw sugar so mon_count can re-desugar; pre-validated IR loses tiles.
@@ -2043,7 +2066,19 @@ def _layout_run_reconcile(
 
     _layout_print_header(resolved, name)
     # Human 1-based index; plan/tree use 0-based Meta.
-    _eprint(f"  workspace  {workspace + 1}")
+    cur_bit = " (current)" if workspace == current_ws else ""
+    _eprint(f"  workspace  {workspace + 1}{cur_bit}")
+    if dry_run:
+        on_n, ignored = window_candidate_counts(forest, workspace)
+        _eprint(
+            "  "
+            + format_candidate_line(
+                workspace + 1,
+                on_n,
+                ignored,
+                is_current=workspace == current_ws,
+            )
+        )
     _layout_print_thrash_mode(plan, safe=safe)
     if clean:
         force_bit = " --force" if force_close else ""
@@ -2498,11 +2533,17 @@ def _layout_run_save(
 
 
 def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
-    """forge layout list | show | save | <name> [--dry-run] [--clean] [--safe]."""
+    """forge layout list | show | save | <targets…> [--dry-run] [--clean] [--safe]."""
     tokens: list[str] = list(getattr(args, "layout_tokens", None) or [])
-    action, name, dry_run, force_launch, clean, force_close = _layout_parse_tokens(
-        tokens, args
-    )
+    (
+        action,
+        name,
+        run_tokens,
+        dry_run,
+        force_launch,
+        clean,
+        force_close,
+    ) = _layout_parse_tokens(tokens, args)
     tree_file = getattr(args, "tree_file", None)
     verbose = _layout_is_verbose(args)
     safe = bool(getattr(args, "safe", False))
@@ -2599,6 +2640,12 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         if len(tokens) > 2:
             _eprint("forge layout save: unexpected extra arguments")
             return 1
+        # WS2: reject : / @ before path write (clear reserved-charset message).
+        try:
+            name = validate_layout_name(name)
+        except LayoutParseError as e:
+            _eprint(f"forge layout save: {e.message}")
+            return 1
         stdout_only = bool(getattr(args, "stdout", False))
         desc_flag = getattr(args, "description", None)
         no_desc = bool(getattr(args, "no_description", False))
@@ -2613,38 +2660,116 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
             monitors=bool(getattr(args, "monitors", False)),
         )
 
-    if action == "run":
-        if not name or len(tokens) != 1:
-            _eprint(
-                "forge layout: use `forge layout <name>` "
-                "(or list / show <name> / save <name>)"
-            )
-            return 1
-    else:
+    if action != "run":
         _eprint(f"forge layout: unknown action {action!r}")
         return 1
 
-    try:
-        resolved = resolve_profile(name)
-    except ValueError as e:
-        _eprint(f"forge layout: {e}")
-        return 1
-    if not resolved["found"] or resolved["path"] is None:
-        _eprint(f"forge layout: profile not found: {name}")
+    if not run_tokens:
+        _eprint(
+            "forge layout: use `forge layout <name>` "
+            "(or list / show <name> / save <name>)"
+        )
         return 1
 
-    path = resolved["path"]
+    return _layout_run_multi(
+        backend,
+        run_tokens,
+        dry_run=dry_run,
+        tree_file=tree_file,
+        clean=clean,
+        force_close=force_close,
+        safe=safe,
+        verbose=verbose,
+        force_launch=force_launch,
+    )
+
+
+def _layout_eprint_error(msg: str) -> None:
+    """Print multi-line layout error; first line prefixed, continuations indented."""
+    lines = str(msg).splitlines() or [str(msg)]
+    _eprint(f"forge layout: {lines[0]}")
+    for line in lines[1:]:
+        if line.startswith(" "):
+            _eprint(line)
+        else:
+            _eprint(f"  {line}")
+
+
+def _layout_run_multi(
+    backend: Optional[str],
+    run_tokens: list[str],
+    *,
+    dry_run: bool,
+    tree_file: Optional[str],
+    clean: bool,
+    force_close: bool,
+    safe: bool,
+    verbose: bool,
+    force_launch: bool,
+) -> int:
+    """
+    Apply one or more layout targets after all-or-nothing preflight (WS2).
+
+    Sequential: bare names → current, current+1, …
+    Static: only N:name / name@N (1-based).
+    Mixed bare + numbered → error, apply nothing.
+    On first apply failure: stop and report (later targets not applied).
+    """
+    needs_bus = not tree_file
+    if needs_bus and backend is None:
+        backend = _check_deps()
     try:
-        data = load_profile_file(path)
-        mode = detect_layout_mode(data, force_launch=force_launch)
-    except FileNotFoundError as e:
-        _eprint(f"forge layout: {e}")
-        return 1
-    except ValueError as e:
-        _eprint(f"forge layout: {e}")
+        forest = _layout_load_tree(backend, tree_file)
+    except Exception as e:
+        _eprint(f"forge layout: GetTree failed: {e}")
         return 1
 
-    if mode == MODE_STEPS:
+    current_0 = _layout_target_workspace(forest)
+    n_ws = n_workspaces_from_forest(forest)
+    if n_ws is None:
+        _layout_eprint_error(
+            "cannot determine workspace count "
+            "(GetTree missing nWorkspaces and mon workspace ids)\n"
+            "  hint: use a live session or a forest with nWorkspaces / moNwsW mon ids"
+        )
+        return 1
+
+    try:
+        mode_label, targets, resolved_list = preflight_layout_run(
+            run_tokens,
+            current_0based=current_0,
+            n_workspaces=n_ws,
+            resolve_name=resolve_profile,
+        )
+    except LayoutParseError as e:
+        _layout_eprint_error(e.message)
+        return 1
+
+    # Load profile bodies after preflight (all names already resolve).
+    payloads: list[tuple[Any, dict[str, Any], dict[str, Any], str]] = []
+    for target, resolved in zip(targets, resolved_list):
+        path = resolved.get("path") if isinstance(resolved, dict) else None
+        if path is None:
+            _layout_eprint_error(f"profile {target.name!r} not found")
+            return 1
+        try:
+            data = load_profile_file(path)
+            layout_mode = detect_layout_mode(data, force_launch=force_launch)
+        except (FileNotFoundError, ValueError) as e:
+            _eprint(f"forge layout: {e}")
+            return 1
+        if layout_mode == MODE_STEPS and len(targets) > 1:
+            _layout_eprint_error(
+                f"multi-layout only supports reconcile profiles "
+                f"({target.name!r} is steps mode)\n"
+                "  hint: apply steps profiles one at a time"
+            )
+            return 1
+        payloads.append((target, resolved, data, layout_mode))
+
+    # Single steps profile (legacy path).
+    if len(payloads) == 1 and payloads[0][3] == MODE_STEPS:
+        _target, resolved, data, _lm = payloads[0]
         if clean:
             _eprint("forge layout: --clean applies to reconcile only (steps mode)")
         if safe:
@@ -2657,17 +2782,57 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
             force_launch=force_launch,
             verbose=verbose,
         )
-    return _layout_run_reconcile(
-        backend,
-        resolved,
-        data,
-        dry_run=dry_run,
-        tree_file=tree_file,
-        clean=clean,
-        force_close=force_close,
-        safe=safe,
-        verbose=verbose,
-    )
+
+    if len(targets) > 1:
+        _eprint(
+            f"forge layout: {mode_label} mode  "
+            f"{len(targets)} target(s)  "
+            f"current workspace {current_0 + 1}  "
+            f"session {n_ws}"
+        )
+
+    applied: list[str] = []
+    for target, resolved, data, _lm in payloads:
+        # Fresh forest between applies so later desks see post-mutate state.
+        if applied and not dry_run:
+            try:
+                forest = _layout_load_tree(backend, tree_file)
+            except Exception as e:
+                _eprint(f"forge layout: GetTree failed after {applied[-1]!r}: {e}")
+                _eprint(
+                    f"forge layout: stopped after {len(applied)}/"
+                    f"{len(targets)} (applied: {', '.join(applied)})"
+                )
+                return 1
+        rc = _layout_run_reconcile(
+            backend,
+            resolved,
+            data,
+            dry_run=dry_run,
+            tree_file=tree_file,
+            clean=clean,
+            force_close=force_close,
+            safe=safe,
+            verbose=verbose,
+            workspace=target.workspace_0based,
+            forest=forest,
+        )
+        if rc != 0:
+            if applied:
+                _eprint(
+                    f"forge layout: stopped after failure on {target.name!r} "
+                    f"(ws {target.workspace_1based}); "
+                    f"succeeded: {', '.join(applied)}"
+                )
+            else:
+                _eprint(
+                    f"forge layout: failed on {target.name!r} "
+                    f"(ws {target.workspace_1based}); nothing applied"
+                )
+            return rc
+        applied.append(f"{target.name}@ws{target.workspace_1based}")
+
+    return 0
 
 
 def _origin_paths() -> list[Path]:
@@ -3448,15 +3613,22 @@ def build_parser() -> argparse.ArgumentParser:
         "  forge layout <name>           # reconcile (v2) or steps (v1); quiet by default\n"
         "  forge layout <name> --dry-run # print plan only (no launch/RunSteps)\n"
         "  forge layout <name> --verbose # full plan/apply JSON on stdout\n"
+        "  forge layout a b              # sequential: a→current, b→current+1\n"
+        "  forge layout 1:a 3:b          # static 1-based workspaces (or a@1 b@3)\n"
         "  forge layout list             # this host: Name + Description (JSON on stdout)\n"
         "  forge layout show <name>      # header + validated profile JSON\n"
-        "  forge layout save <name>      # snapshot tree → host profile file (overwrite)\n"
+        "  forge layout save <name>      # snapshot current desk → host profile\n"
         "  forge layout save <name> --stdout  # print JSON only (no write)\n"
         "  forge layout save <name> --tree-file F  # offline from forest JSON\n"
         "  forge layout <name> --force-launch  # imperative steps[] only\n"
         "  forge layout <name> --safe    # open+move roles only (no park/structure)\n"
         "  forge layout <name> --clean   # close residuals (Meta delete; not park)\n"
         "  forge layout <name> --clean --force  # stronger delete; never process-kill\n"
+        "\n"
+        "Workspace modes (exclusive): all bare names (sequential from current) OR\n"
+        "all N:name / name@N (static, 1-based). Mixing bare + numbered is an error.\n"
+        "Preflight: every profile exists and every workspace in range, else apply nothing.\n"
+        "Names must not contain ':' or '@'. Scope: target workspace only.\n"
         "\n"
         "Resolve order: FORGE_LAYOUT_PATH →\n"
         "  $FORGE_LAYOUT_DIR/hosts/<host>/<name>.json →\n"
@@ -3484,7 +3656,10 @@ def build_parser() -> argparse.ArgumentParser:
         "layout_tokens",
         nargs="*",
         metavar="ARG",
-        help="help | list | show <name> | save <name> | <name>",
+        help=(
+            "help | list | show <name> | save <name> | "
+            "<name>… (sequential) | N:name | name@N (static)"
+        ),
     )
     layout_p.add_argument(
         "--dry-run",
@@ -3522,7 +3697,7 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help=(
             "GetTree forest JSON (offline dry-run / save / tests; no DBus). "
-            "Uses forest.activeWorkspace when set; else workspace 0"
+            "Uses activeWorkspace + nWorkspaces when set; else mon ids / workspace 0"
         ),
     )
     layout_p.add_argument(
