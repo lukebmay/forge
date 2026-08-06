@@ -2312,15 +2312,24 @@ def _layout_run_reconcile(
                     _eprint(f"forge layout: belt re-plan after residual failed: {e}")
                 else:
                     belt_ext, _belt_open = partition_plan_actions(plan3.get("actions"))
-                    belt_moves = [
+                    # Belt: rehome wrong-mon opens + re-apply structure (tab/stack
+                    # ensure). Structure-only residual can look green then thrash
+                    # undoes mon0 tabs; moves alone never re-tab.
+                    belt_actions = [
                         a
                         for a in belt_ext
                         if isinstance(a, dict)
-                        and str(a.get("op") or "").strip().lower() == "move"
-                        and str(a.get("role") or "") in role_pins
+                        and (
+                            (
+                                str(a.get("op") or "").strip().lower() == "move"
+                                and str(a.get("role") or "") in role_pins
+                            )
+                            or str(a.get("op") or "").strip().lower()
+                            in ("ensure_layout", "ensure_order")
+                        )
                     ]
                     belt_steps, _ = residual_follow_up(
-                        belt_moves, [], force_close=force_close
+                        belt_actions, [], force_close=force_close
                     )
                     if belt_steps:
                         belt_ids = move_step_window_ids(belt_steps)

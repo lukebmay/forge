@@ -134,4 +134,58 @@ describe("TZ-tab-apply: layout tabbed flattens nested HSPLIT", () => {
     expect(outer.childNodes).toHaveLength(2);
     expect(outer.childNodes[1].nodeType).toBe(NODE_TYPES.CON);
   });
+
+  it("FLOAT mon-direct: forceSplit wraps then TABBED (LX1)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const wChrome = createMockWindow({ id: 501, wm_class: "Google-chrome" });
+    const wGrok = createMockWindow({ id: 502, wm_class: "Google-chrome" });
+    const wGhost = createMockWindow({ id: 503, wm_class: "ghostty" });
+    const nChrome = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wChrome);
+    const nGrok = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wGrok);
+    const nGhost = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wGhost);
+    nChrome.mode = "FLOAT";
+    nGrok.mode = "FLOAT";
+    nGhost.mode = "TILE";
+
+    const session = api();
+    const layoutOut = session._layoutOp("TABBED", "id:501", { quiet: true });
+    expect(layoutOut.ok).toBe(true);
+    expect(layoutOut.error).toBeUndefined();
+
+    const liveChrome = wm().tree.findNode(wChrome);
+    const bag = liveChrome.parentNode;
+    expect(bag).not.toBe(monitor);
+    expect(bag.nodeType).toBe(NODE_TYPES.CON);
+    expect(bag.layout).toBe(LAYOUT_TYPES.TABBED);
+    // Ghostty stays mon-direct sibling (subset bag)
+    expect(nGhost.parentNode).toBe(monitor);
+
+    expect(session._moveOp("id:502", "id:501", { quiet: true }).ok).toBe(true);
+    expect(new Set(bag.childNodes.map((c) => c.nodeValue))).toEqual(new Set([wChrome, wGrok]));
+    expect(bag.childNodes).toHaveLength(2);
+    expect(nGhost.parentNode).toBe(monitor);
+    expect(monitor.layout).toBe(LAYOUT_TYPES.HSPLIT);
+  });
+
+  it("H/V CON multi-window: wrap subset, leave non-member sibling", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const outer = createCon(monitor.nodeValue, LAYOUT_TYPES.HSPLIT);
+    const wChrome = createMockWindow({ id: 601, wm_class: "Chrome" });
+    const wGrok = createMockWindow({ id: 602, wm_class: "Grok" });
+    const wGhost = createMockWindow({ id: 603, wm_class: "ghostty" });
+    wm().tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, wChrome);
+    wm().tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, wGrok);
+    const nGhost = wm().tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, wGhost);
+
+    const session = api();
+    expect(session._layoutOp("TABBED", "id:601", { quiet: true }).ok).toBe(true);
+    const liveChrome = wm().tree.findNode(wChrome);
+    const bag = liveChrome.parentNode;
+    expect(bag).not.toBe(outer);
+    expect(bag.layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(session._moveOp("id:602", "id:601", { quiet: true }).ok).toBe(true);
+    expect(new Set(bag.childNodes.map((c) => c.nodeValue))).toEqual(new Set([wChrome, wGrok]));
+    expect(nGhost.parentNode).toBe(outer);
+  });
 });

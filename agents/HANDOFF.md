@@ -1,16 +1,17 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (action pipeline code complete on master)  
-**Branch tip:** `master` / `plan/forge-action-pipeline` (FF synced)  
+**Updated:** 2026-08-06 (LX1 done on plan branch; LX2 next)  
+**Branch tip:** `plan/forge-layout-live-x11` (LX1 shipped; merge to master when ready)  
 **X11:** preferred for agent `./install` + `killall -HUP gnome-shell`  
 **Wayland:** ES modules need **logout** to reload  
 **Stash:** `stash@{0}` still present (applied earlier; drop after human OK)  
 **Remotes:** **no push** unless human asks  
 
-**Plan:** [forge-action-pipeline.md](./plans/forge-action-pipeline.md) — **code complete**  
+**Plan:** [forge-layout-live-x11.md](./plans/forge-layout-live-x11.md) — **active**  
+**Done:** [LX1 tab-apply](./plans/forge-layout-live-x11/completed/forge-layout-live-x11_lx1-tab-apply-rehub.md)  
+**Next:** [LX2 split on tab extract](./tasks/forge-layout-live-x11_lx2-split-on-tab-extract.md)  
+**Pipeline (done):** [forge-action-pipeline.md](./plans/forge-action-pipeline.md)  
 **Formulas:** [docs/dev/actions.md](../docs/dev/actions.md)  
-**API:** `afterFocus` / `commitLayout` / `settleTabFocus`  
-**Next product:** [layout mon order X11 reverse](./tasks/forge-layout-mon-order-x11-reversed.md)  
 **Soft:** [AP5 op visual](./blockers/B-ap5-operator-visual-matrix.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 

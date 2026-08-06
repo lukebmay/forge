@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (action pipeline code complete; mon-order next)  
+**Updated:** 2026-08-06 (LX1 done; LX2 next)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -10,20 +10,23 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **layout mon order reverse (X11)** | `forge layout dev` flipped mon L/R — [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
-| **2** | **AP5 op visual** (soft) | Gesture matrix eyes-on — [blocker](./blockers/B-ap5-operator-visual-matrix.md) |
-| **3** | **MR0 rename: soft-rehome → monitor-recovery** | Product language; separate PR — [plan](./plans/forge-monitor-recovery-rename.md) |
-| **4** | **Container selection finish** | S3 kit binds → S5 live QA |
-| **5** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
+| **1** | **LX2 split on tab extract** | Pop-out → thin slivers; square-ish split — [task](./tasks/forge-layout-live-x11_lx2-split-on-tab-extract.md) |
+| **2** | **LX3 cross-mon move** | Keybind move across mons failed — [task](./tasks/forge-layout-live-x11_lx3-cross-mon-move.md) |
+| **3** | **LX4 tab drag** | Drag tab should relocate tile unit — [task](./tasks/forge-layout-live-x11_lx4-tab-drag.md) |
+| **4** | **layout mon order reverse (X11)** | Earlier report; not confirmed this session — [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
+| **5** | **AP5 op visual** (soft) | Gesture matrix eyes-on — [blocker](./blockers/B-ap5-operator-visual-matrix.md) |
+| **6** | **MR0 rename: soft-rehome → monitor-recovery** | Product language; separate PR — [plan](./plans/forge-monitor-recovery-rename.md) |
+| **7** | **Container selection finish** | S3 kit binds → S5 live QA |
+| **8** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
 
 ## Next session focus
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **mon-order X11** | Reversed mon order on `forge layout dev` | [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
-| **2** | **AP5 visual** | Soft op checklist | [blocker](./blockers/B-ap5-operator-visual-matrix.md) |
-| **3** | **MR0** | Rename soft-rehome → monitor-recovery | [monitor-recovery-rename](./plans/forge-monitor-recovery-rename.md) |
-| **4** | **CON S3** | After pipeline reliability green enough | [container-selection](./plans/forge-container-selection.md) |
+| **1** | **LX2** | Split orient on tab extract | thin slivers |
+| **2** | **LX3** | Cross-monitor move | keybind failed |
+| **3** | **LX4** | Tab drag relocate | no drag today |
+| **done** | **LX1** | Tab apply reHUP ×2 | [completed](./plans/forge-layout-live-x11/completed/forge-layout-live-x11_lx1-tab-apply-rehub.md) |
 
 **Shipped on master (local, not pushed)**
 
@@ -53,13 +56,14 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
+| **P0** | [layout live X11](./plans/forge-layout-live-x11.md) | **Active** — LX1 done; LX2–LX4 open |
 | **P0** | [action pipeline](./plans/forge-action-pipeline.md) | **Code complete** (AP0–AP4; AP5 agent) |
 | **P1** | [AP5 op visual](./blockers/B-ap5-operator-visual-matrix.md) | Soft — human gesture matrix |
 | P1 | [layout control loop](./plans/forge-layout-control-loop.md) | **Merged to master** — residual operator smoke only |
 | **P1** | [monitor-recovery rename](./plans/forge-monitor-recovery-rename.md) | MR0 — own PR |
 | **P1** | [container selection](./plans/forge-container-selection.md) | S2 done — S3 after pipeline green |
 | **P1** | [desktop keybinds](./plans/forge-desktop-keybinds.md) | KB0 done — KB1–4 after S3 |
-| **P1** | [layout mon order reverse X11](./tasks/forge-layout-mon-order-x11-reversed.md) | Filed 2026-08-06; after pipeline |
+| **P1** | [layout mon order reverse X11](./tasks/forge-layout-mon-order-x11-reversed.md) | Filed 2026-08-06; demoted under LX1–4 |
 | P1 | [first-class containers](./plans/forge-first-class-containers.md) residual | After selection |
 | P1 | [stacked](./plans/forge-stacked-layouts.md) | SL0–SL5 **done**; SL6 optional |
 | P2 | Live layout daily-drive | Bare-array sugar live on black |
