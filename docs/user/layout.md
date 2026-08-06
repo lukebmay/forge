@@ -28,12 +28,68 @@ export FORGE_LAYOUT_DIR=$shellrc/configs/forge/layout
 forge layout list
 forge layout show mydesk
 forge layout mydesk --dry-run     # print plan only
-forge layout mydesk               # apply
+forge layout mydesk               # apply on current workspace only
 ```
 
 Tree root for `hosts/` + `common/` is `FORGE_LAYOUT_DIR` when set, else
 `~/.config/forge/layout` (same root `layout save` uses). Apply/show still
 resolve common/flat after host (see search order below). **`list` is host-only.**
+
+## Workspace scope
+
+Layouts are **task desks**. Each apply (and save) targets **one workspace** and
+only sees windows on that desk. Matching class/title on another workspace is
+**invisible** — layout never steals or parks them onto the active desk.
+
+| Rule | Detail |
+| --- | --- |
+| **Default** | Bare `forge layout <name>` → **current** workspace only |
+| **No cross-ws claim** | Plan, open, move, keep, park, structure — all scoped to the target |
+| **Open missing** | New apps land on the **target** workspace |
+| **Save** | Snapshots **that** workspace only |
+| **Indexes** | CLI workspace numbers are **1-based** (`2:dev` = second desk). Tree paths use 0-based Meta indexes (`moNwsW` → workspace **W+1** in CLI) |
+
+### Targeting modes (exclusive)
+
+**All layout args are bare, or all are numbered. Never mix.**
+
+| Mode | Args | Behavior |
+| --- | --- | --- |
+| **Sequential** | Only bare names | First → **current**, second → current+1, … |
+| **Static** | Only `W:name` and/or `name@W` | Each apply on explicit **1-based** workspace W |
+
+| Example | OK? |
+| --- | --- |
+| `forge layout dev` | Sequential (current only) |
+| `forge layout vinyl-graphics video-edit` | Sequential from current |
+| `forge layout 1:foo 2:bar 4:baz` | Static |
+| `forge layout foo@1 bar@2` | Static (same as `1:foo 2:bar`) |
+| `forge layout dev 3:vinyl` | **Error** — mixed sequential + numbered |
+| `forge layout 1:foo video-edit` | **Error** — mixed |
+
+There is **no `--on`**. Scripts use static form only: `forge layout 1:foo 2:bar`.
+
+### Preflight (all-or-nothing)
+
+Before any mutate, Forge:
+
+1. Classifies argv mode: all bare | all numbered | **mixed → error, apply nothing**.
+2. Resolves every arg → `(workspace, profileName)`.
+3. Requires **every** profile to exist (host + user search path) — else **error, apply nothing**.
+4. Requires **every** workspace index to exist in this session — else **error, apply nothing**.
+5. For sequential, requires the span current..current+N−1 to fit session count — else **error, apply nothing**.
+
+Preflight failures never partial-apply. Dry-run prints per-workspace blocks including:
+
+```text
+workspace: 2 (current)
+candidates: 5 on ws2 (ignored 8 on other workspaces)
+```
+
+### Save name charset
+
+Profile names must **not** contain `:` or `@` (reserved for workspace targeting).
+`forge layout save bad:name` errors with a clear message.
 
 ## Commands
 
@@ -42,11 +98,14 @@ resolve common/flat after host (see search order below). **`list` is host-only.*
 | `forge layout help` | Colorized guide, defaults, minimal example |
 | `forge layout list` | **This host only:** Name + Description table (TTY); `[{name,description}]` JSON when stdout is piped |
 | `forge layout show <name>` | Header + validated (normalized) profile JSON |
-| `forge layout save <name>` | Snapshot tree → host profile file (creates dirs; **overwrites**) |
+| `forge layout save <name>` | Snapshot **current** workspace → host profile (creates dirs; **overwrites**; no `:`/`@` in name) |
 | `forge layout save <name> --stdout` | Print JSON only (no write) |
 | `forge layout save <name> --tree-file F` | Offline save from a GetTree forest file |
 | `forge layout <name> --dry-run` | Plan only; human counts + plan JSON; **no** mutations |
-| `forge layout <name>` | Apply; short human summary on stderr (no plan JSON) |
+| `forge layout <name>` | Apply on **current** workspace; short human summary on stderr |
+| `forge layout a b` | Sequential: `a` → current, `b` → current+1 (all bare) |
+| `forge layout 1:a 3:b` | Static: explicit 1-based workspaces (all numbered) |
+| `forge layout a@1 b@3` | Static: same as `1:a 3:b` |
 | `forge layout <name> --verbose` | Apply (or dry-run) with full plan/apply JSON on stdout; also `FORGE_VERBOSE=1` |
 | `forge layout <name> --safe` | Open missing roles + move wrong-mon roles only (no park / structure / mon ensure) |
 | `forge layout <name> --clean` | Close residuals (Meta delete) instead of leave/park |
@@ -391,12 +450,15 @@ shell init when you keep a multi-machine tree outside XDG.
 ## Tips
 
 - Always dry-run a new profile: `forge layout <name> --dry-run`.
+- Default apply/save is **current workspace only** — other desks stay isolated.
+- Dry-run shows `candidates: N on wsK (ignored M on other workspaces)` per target.
 - Title matchers (`title~=`) disambiguate several windows of the same class.
 - Counts: `reused` / `opened` / `moved` / `kept` / `left` / `parked` / `structure` (or `closed` with `--clean`).
 - Default apply is quiet (stderr only); use `--verbose` or `FORGE_VERBOSE=1` for plan JSON.
 - Optional: `displays` → `gdisplays load`; `settings` → DBus SettingsLoad.
-- Offline plan: `--tree-file path/to/GetTree.json` with `--dry-run`.
+- Offline plan: `--tree-file path/to/GetTree.json` with `--dry-run` (uses forest `meta` for active/n workspaces when present).
 - Help color: `forge --color=always layout help` (or `never` / `auto`).
+- Wayland and X11 share the same CLI; workspace scope behavior is session-type-agnostic.
 
 More: [scripts/forge/README.md](../../scripts/forge/README.md),
 [DESIGN.md](../DESIGN.md).

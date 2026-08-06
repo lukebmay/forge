@@ -8,9 +8,11 @@
 
 ### Session note (overwrite)
 
-**2026-08-06 WS0–WS2 done (A/B AGREE):** workspace-scoped plan/apply; current-ws;
-CLI sequential XOR static + preflight; unit/cli 424. Commits through `21812f5`.
-**Next: WS3** docs + live X11 dual-ws smoke.
+**2026-08-06 WS0–WS3 done (A docs+live smoke):** workspace-scoped plan/apply;
+current-ws; CLI sequential XOR static + preflight; docs Workspace scope;
+live X11: Inkscape on ws2 unchanged by `forge layout dev` on current; preflight
+errors no-mutate (tree sha stable); multi sequential/static proven dry-run live.
+**Plan acceptance met on X11.** Wayland matrix residual (operator logout).
 
 ---
 
@@ -129,8 +131,8 @@ forge layout: name must not contain ':' or '@' (reserved for workspace targeting
 | --- | --- | --- |
 | **WS0** | Scope: forest filter + claim/open/structure only on target ws; unit fixtures (Inkscape-on-ws2 invisible to ws1 plan) | **done** → completed/ |
 | **WS1** | Thread workspace through apply paths (stop hardcoding `ws0`); current-ws from extension | **done** → completed/ |
-| **WS2** | CLI: exclusive sequential **or** static modes; `W:name` / `name@W`; preflight; name charset on save | **implemented** (pending B) |
-| **WS3** | Docs + help + dry-run messaging; migrate any illegal names; live X11 smoke multi-ws | **next** |
+| **WS2** | CLI: exclusive sequential **or** static modes; `W:name` / `name@W`; preflight; name charset on save | **done** → completed/ |
+| **WS3** | Docs + help + dry-run messaging; migrate any illegal names; live X11 smoke multi-ws | **done** → completed/ |
 
 Optional later (not required for plan done): `--collect`, `--switch` after apply to target ws.
 
