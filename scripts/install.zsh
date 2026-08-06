@@ -147,7 +147,7 @@ _install_done() {
   local vn
   vn=$(forge_metadata_field version-name 2>/dev/null || print "n/a")
   # User summary only — path is in --help / forge status, not success output.
-  print -u2 -- "${c_green}Installed version${c_reset}  ${c_blue}${vn}${c_reset}"
+  print -u2 -- "${c_green}Installed version${c_reset} ${c_blue}${vn}${c_reset}"
   if forge_is_verbose; then
     print -u2 -- "  ${c_cyan}${FORGE_EXT_DIR}${c_reset}"
   fi
