@@ -1,9 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { afterFocus } from "../../../lib/extension/action-pipeline.js";
+import {
+  afterFocus,
+  commitLayout,
+  settleTabFocus,
+} from "../../../lib/extension/action-pipeline.js";
 import { createMockWindow, createWindowManagerFixture } from "../../mocks/helpers/index.js";
 
 /**
  * AP1: afterFocus is the only FocusChanged body (F → Dfocus → B → P → A).
+ * AP2: commitLayout (one C) + settleTabFocus (no C).
  */
 describe("action-pipeline afterFocus", () => {
   let ctx;
@@ -85,5 +90,73 @@ describe("action-pipeline afterFocus", () => {
     wm().afterFocus(node, { source: "wm-delegate" });
     expect(stacked).toHaveBeenCalledWith(node);
     expect(deco).toHaveBeenCalledWith({ scope: "focus", focusNode: node });
+  });
+});
+
+describe("action-pipeline commitLayout / settleTabFocus", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    ctx.cleanup();
+  });
+
+  const wm = () => ctx.windowManager;
+
+  function trackOne() {
+    const meta = createMockWindow({ wm_class: "App", workspace: ctx.workspaces[0] });
+    wm().trackWindow(null, meta);
+    return wm().tree.findNode(meta);
+  }
+
+  it("commitLayout force → one renderTree Cf", () => {
+    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+    const reqSpy = vi.spyOn(wm(), "requestLayout").mockImplementation(() => {});
+    commitLayout(wm(), "move-window", { force: true });
+    expect(renderSpy).toHaveBeenCalledTimes(1);
+    expect(renderSpy).toHaveBeenCalledWith("move-window", true);
+    expect(reqSpy).not.toHaveBeenCalled();
+  });
+
+  it("commitLayout default → requestLayout Cq", () => {
+    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+    const reqSpy = vi.spyOn(wm(), "requestLayout").mockImplementation(() => {});
+    commitLayout(wm(), "external");
+    expect(reqSpy).toHaveBeenCalledWith("external");
+    expect(renderSpy).not.toHaveBeenCalled();
+  });
+
+  it("WindowManager.commitLayout delegates", () => {
+    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+    wm().commitLayout("swap", { force: true });
+    expect(renderSpy).toHaveBeenCalledWith("swap", true);
+  });
+
+  it("settleTabFocus runs F+Dfocus+B and never renderTree", () => {
+    const node = trackOne();
+    const order = [];
+    vi.spyOn(wm(), "updateStackedFocus").mockImplementation(() => order.push("Fstack"));
+    vi.spyOn(wm(), "updateTabbedFocus").mockImplementation(() => order.push("Ftab"));
+    vi.spyOn(wm(), "updateDecorationLayout").mockImplementation(() => order.push("Dfocus"));
+    vi.spyOn(wm(), "updateBorderLayout").mockImplementation(() => order.push("B"));
+    const ptr = vi.spyOn(wm(), "movePointerWith").mockImplementation(() => {});
+    const renderSpy = vi.spyOn(wm(), "renderTree");
+
+    settleTabFocus(wm(), node);
+
+    expect(order).toEqual(["Fstack", "Ftab", "Dfocus", "B"]);
+    expect(ptr).not.toHaveBeenCalled();
+    expect(renderSpy).not.toHaveBeenCalled();
+  });
+
+  it("WindowManager.settleTabFocus delegates", () => {
+    const node = trackOne();
+    const tab = vi.spyOn(wm(), "updateTabbedFocus");
+    wm().settleTabFocus(node);
+    expect(tab).toHaveBeenCalledWith(node);
   });
 });

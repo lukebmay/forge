@@ -77,6 +77,16 @@ describe("CommandHandler", () => {
         this.movePointerWith(node, { force: !!(opts && opts.forcePointer) });
         if (this.tree) this.tree.attachNode = node;
       }),
+      // AP2: StructureChanged — one C via commitLayout; settle without 2nd C.
+      commitLayout: vi.fn(function (reason, opts) {
+        this.renderTree(reason, !!(opts && opts.force));
+      }),
+      settleTabFocus: vi.fn(function (node) {
+        this.updateStackedFocus(node);
+        this.updateTabbedFocus(node);
+        this.updateDecorationLayout?.({ scope: "focus", focusNode: node });
+        this.updateBorderLayout?.();
+      }),
       determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
       applyDefaultLayoutToContainer: vi.fn(),
       floatAllWindows: vi.fn(),
@@ -477,10 +487,12 @@ describe("CommandHandler", () => {
       expect(mockWm.movePointerWith).toHaveBeenCalledWith(mockNodeWindow);
     });
 
-    it("should render tree after swap", () => {
+    it("should commit layout once after swap", () => {
       commandHandler.execute({ name: "WindowSwapLastActive" });
 
-      expect(mockWm.renderTree).toHaveBeenCalledWith("swap-last-active");
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("swap-last-active", { force: true });
+      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
+      expect(mockWm.renderTree).toHaveBeenCalledWith("swap-last-active", true);
     });
 
     it("should not swap if no focus window", () => {
@@ -722,10 +734,13 @@ describe("CommandHandler", () => {
       expect(mockTree.focusSibling).toHaveBeenCalledWith(mockNodeWindow, -1);
     });
 
-    it("SwapNext swaps forward and re-renders when a swap happened", () => {
+    it("SwapNext swaps forward and one-commits when a swap happened", () => {
       commandHandler.execute({ name: "SwapNext" });
       expect(mockTree.swapSibling).toHaveBeenCalledWith(mockNodeWindow, 1);
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("swap-sibling", { force: true });
+      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
       expect(mockWm.renderTree).toHaveBeenCalledWith("swap-sibling", true);
+      expect(mockWm.settleTabFocus).toHaveBeenCalledWith(mockNodeWindow);
       expect(mockWm.movePointerWith).toHaveBeenCalledWith(mockNodeWindow);
     });
 
@@ -734,9 +749,10 @@ describe("CommandHandler", () => {
       expect(mockTree.swapSibling).toHaveBeenCalledWith(mockNodeWindow, -1);
     });
 
-    it("SwapNext does not re-render when no swap target exists", () => {
+    it("SwapNext does not commit when no swap target exists", () => {
       mockTree.swapSibling.mockReturnValue(null);
       commandHandler.execute({ name: "SwapNext" });
+      expect(mockWm.commitLayout).not.toHaveBeenCalled();
       expect(mockWm.renderTree).not.toHaveBeenCalled();
     });
   });

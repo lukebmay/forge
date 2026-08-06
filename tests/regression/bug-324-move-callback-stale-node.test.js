@@ -118,7 +118,7 @@ describe("forge-ne1 (#324): Move's queued callback vs stale/dead nodes", () => {
     expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining("move callback failed"));
   });
 
-  it("live window in a stacked container still gets raised and re-rendered", () => {
+  it("live window in a stacked container still gets raised without a second commit", () => {
     const a = tiledWindow("A");
     tiledWindow("B");
     const raiseSpy = vi.spyOn(a.win, "raise");
@@ -126,9 +126,13 @@ describe("forge-ne1 (#324): Move's queued callback vs stale/dead nodes", () => {
     moveRightWithFocusOn(a.win);
     stackedConWith(a.node);
     const renderSpy = vi.spyOn(ctx.windowManager, "renderTree");
+    const settleSpy = vi.spyOn(ctx.windowManager, "settleTabFocus");
     flush();
 
     expect(raiseSpy).toHaveBeenCalled();
-    expect(renderSpy).toHaveBeenCalledWith("move-stacked-queue");
+    // AP2: deferred path settles tab/stack without move-*-queue renderTree.
+    expect(settleSpy).toHaveBeenCalled();
+    expect(renderSpy).not.toHaveBeenCalledWith("move-stacked-queue");
+    expect(renderSpy).not.toHaveBeenCalledWith("move-tabbed-queue");
   });
 });
