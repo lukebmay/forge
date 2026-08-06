@@ -2231,10 +2231,12 @@ def plan_reconcile(
     if focus_actions:
         has_work = True
 
-    # structure ensure → mon ensure → ensure_order → ensure_sizes →
-    # placement actions → focus last.
+    # structure ensure → mon ensure → place/move/open/park/close →
+    # ensure_order → ensure_sizes → focus last.
+    # Place before mon order so ensure_order sees co-located mon-directs
+    # (order while still on the wrong mon soft-skips in the extension).
     final_actions = (
-        deduped_ensure + order_actions + size_actions + actions + focus_actions
+        deduped_ensure + actions + order_actions + size_actions + focus_actions
     )
     nothing = not has_work
     thrash_risk = _compute_thrash_risk(final_actions, counts)

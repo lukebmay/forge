@@ -10,9 +10,10 @@
 
 ### Session note (overwrite)
 
-**2026-08-06 focus-no-reflow (A/B AGREE):** Meta `focus` no longer force-`renderTree("focus")`.
-Chrome via `focus-update` queue only; float raise path kept. Unit window suite 507.
-Live: install + extension reload; confirm no Chrome ¼→full reflow on focus.
+**2026-08-06 verify-retry-cap (A/B AGREE):** Mismatch→layout cap 10 + give-up
+`Logger.error`; mon-order soft-skip + plan place-before-order; tab/stack slot reassert
+on focus (no focus reflow). SETTLED still 2 clean delayed verifies. Install needs
+Wayland logout to load.
 
 
 ---

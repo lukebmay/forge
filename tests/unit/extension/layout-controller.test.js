@@ -6,9 +6,11 @@ import {
   VERIFY_REQUEST_DEBOUNCE_MS,
   LAYOUT_VERIFY_EPSILON_PX,
   LAYOUT_VERIFY_AGREEMENT_NEEDED,
+  LAYOUT_VERIFY_MISMATCH_MAX,
   THRASH_EXTRA_VERIFY_REASON,
   PERIODIC_VERIFY_REASON,
 } from "../../../lib/extension/layout-controller.js";
+import { Logger } from "../../../lib/shared/logger.js";
 import {
   AppThrashCatalog,
   GHOSTTY_MIN_QUIET_MS,
@@ -303,6 +305,7 @@ describe("LayoutController agreement + verify scanner", () => {
   it("exports verify constants", () => {
     expect(LAYOUT_VERIFY_EPSILON_PX).toBe(4);
     expect(LAYOUT_VERIFY_AGREEMENT_NEEDED).toBe(2);
+    expect(LAYOUT_VERIFY_MISMATCH_MAX).toBe(10);
   });
 
   it("agreement 0→1→2 SETTLED with auto second verify", () => {
@@ -395,39 +398,55 @@ describe("LayoutController agreement + verify scanner", () => {
     expect(lc.pendingVerifyReasons).toContain("size-changed");
   });
 
-  it("mismatch requestLayout at most once per wave (no infinite storm)", () => {
+  it("mismatch retries layout up to LAYOUT_VERIFY_MISMATCH_MAX then give-up", () => {
+    const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});
     const lc = make({
       scan: () => ({
         ok: false,
-        checked: 1,
+        checked: 2,
         mismatches: [{ id: 1, reasons: ["rect-mismatch"] }],
       }),
     });
 
-    // Wave: verify → layout once; subsequent verifies while still mismatched do not re-request layout
-    lc.requestVerify("v1");
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.mismatchLayoutRequestCount).toBe(1);
-    expect(lc.pendingLayoutReasons).toContain("verify-mismatch");
+    // Each mismatch verify fire re-requests layout until the cap.
+    for (let i = 1; i <= LAYOUT_VERIFY_MISMATCH_MAX; i++) {
+      lc.cancel();
+      lc.requestVerify(`m${i}`);
+      clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+      expect(lc.mismatchLayoutRequestCount).toBe(i);
+      expect(lc.agreementCount).toBe(0);
+      expect(lc._mismatchGiveUp).toBe(false);
+      clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
+      expect(wm.renderTree).toHaveBeenCalledTimes(i);
+      expect(wm.renderTree).toHaveBeenLastCalledWith("verify-mismatch");
+    }
 
-    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
-    expect(wm.renderTree).toHaveBeenCalledTimes(1);
-    expect(wm.renderTree).toHaveBeenCalledWith("verify-mismatch");
-
-    // Simulate post-render re-verify (still mismatch) — latch holds
-    lc.requestVerify("post-render");
+    // Cap+1: no further layout; give-up + Logger.error once.
+    lc.cancel();
+    lc.requestVerify("m-give-up");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    lc.requestVerify("again");
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.mismatchLayoutRequestCount).toBe(1);
-    expect(lc.verifyFireCount).toBe(3);
+    expect(lc.mismatchLayoutRequestCount).toBe(LAYOUT_VERIFY_MISMATCH_MAX);
+    expect(lc._mismatchGiveUp).toBe(true);
+    expect(lc.agreementCount).toBe(0);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(String(errorSpy.mock.calls[0][0])).toMatch(/give-up/);
+    expect(String(errorSpy.mock.calls[0][0])).toMatch(/rect-mismatch|sample=/);
 
-    // Drain any pending layout — none
     clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS * 2);
-    expect(wm.renderTree).toHaveBeenCalledTimes(1);
+    expect(wm.renderTree).toHaveBeenCalledTimes(LAYOUT_VERIFY_MISMATCH_MAX);
+
+    // Further mismatches stay quiet (still reset agreement).
+    lc.cancel();
+    lc.requestVerify("m-quiet");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(wm.renderTree).toHaveBeenCalledTimes(LAYOUT_VERIFY_MISMATCH_MAX);
+    expect(lc.agreementCount).toBe(0);
+
+    errorSpy.mockRestore();
   });
 
-  it("successful agreement clears mismatch latch for a later wave", () => {
+  it("successful agreement clears mismatch budget for a later wave", () => {
     let ok = false;
     const lc = make({
       scan: () =>
@@ -451,15 +470,56 @@ describe("LayoutController agreement + verify scanner", () => {
     lc.requestVerify("good");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.agreementCount).toBe(1);
-    // Latch cleared on agreement; cancel pending confirm
+    expect(lc.mismatchLayoutRequestCount).toBe(0);
+    expect(lc._mismatchGiveUp).toBe(false);
+    // Budget cleared on agreement; cancel pending confirm
     lc.cancel();
 
     ok = false;
     lc.requestVerify("m2");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.mismatchLayoutRequestCount).toBe(2);
+    expect(lc.mismatchLayoutRequestCount).toBe(1);
     clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
     expect(wm.renderTree).toHaveBeenCalledTimes(2);
+  });
+
+  it("markUnsettled resets mismatch give-up so a new wave can retry", () => {
+    const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});
+    const lc = make({
+      scan: () => ({
+        ok: false,
+        checked: 1,
+        mismatches: [{ id: 1, reasons: ["rect-mismatch"] }],
+      }),
+    });
+
+    // Exhaust budget
+    for (let i = 0; i < LAYOUT_VERIFY_MISMATCH_MAX; i++) {
+      lc.cancel();
+      lc.requestVerify(`e${i}`);
+      clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+      clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
+    }
+    lc.cancel();
+    lc.requestVerify("give-up");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc._mismatchGiveUp).toBe(true);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+
+    // External drift must not leave the controller permanently dead.
+    lc.markUnsettled("external-size");
+    expect(lc._mismatchGiveUp).toBe(false);
+    expect(lc.mismatchLayoutRequestCount).toBe(0);
+    expect(lc.agreementCount).toBe(0);
+
+    lc.cancel();
+    lc.requestVerify("retry-wave");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.mismatchLayoutRequestCount).toBe(1);
+    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
+    expect(wm.renderTree).toHaveBeenCalledTimes(LAYOUT_VERIFY_MISMATCH_MAX + 1);
+
+    errorSpy.mockRestore();
   });
 
   it("does not count the same fire twice; consecutive passes are separate fires", () => {

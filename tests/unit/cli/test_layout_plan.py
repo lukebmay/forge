@@ -740,6 +740,29 @@ class TestMonOrder(unittest.TestCase):
         self.assertEqual(plan["counts"].get("ordered", 0), 0)
         self.assertFalse(any(a.get("op") == "ensure_order" for a in plan["actions"]))
 
+    def test_place_move_before_ensure_order_in_final_actions(self):
+        """Placement (move/open) must precede mon ensure_order so co-locate first."""
+        plan = plan_reconcile(
+            _load("tree-stray-wrong-mon.json"),
+            _load("profile-bare-single-mon.json"),
+        )
+        self.assertTrue(plan["ok"])
+        ops = [a.get("op") for a in plan["actions"]]
+        self.assertIn("move", ops)
+        self.assertIn("ensure_order", ops)
+        first_place = min(
+            i for i, op in enumerate(ops) if op in ("move", "open", "park", "close")
+        )
+        first_order = ops.index("ensure_order")
+        self.assertLess(
+            first_place,
+            first_order,
+            f"place/move must precede ensure_order; got {ops}",
+        )
+        # ensure_sizes (if any) also after place
+        if "ensure_sizes" in ops:
+            self.assertLess(first_place, ops.index("ensure_sizes"))
+
 
 class TestTwoPassMonClaim(unittest.TestCase):
     """Same-class dual-mon roles must not steal the only on-mon window."""

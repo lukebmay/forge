@@ -17,6 +17,7 @@ describe("SessionApi layout-cycle / merge-group", () => {
 
   beforeEach(() => {
     ctx = createWindowManagerFixture({
+      globals: { display: { monitorCount: 2 } },
       settings: {
         "tiling-mode-enabled": true,
         "showtab-decoration-enabled": true,
@@ -132,6 +133,29 @@ describe("SessionApi layout-cycle / merge-group", () => {
 
     const out = api()._mergeGroupOp("id:51", null, { quiet: true });
     expect(out.error).toMatch(/no merge partner/);
+  });
+
+  it("order soft-skips when mon-directs not under same MONITOR", () => {
+    const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const mon1 = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
+    expect(mon0).toBeTruthy();
+    expect(mon1).toBeTruthy();
+    expect(mon0).not.toBe(mon1);
+
+    const w0 = createMockWindow({ id: 201, wm_class: "A" });
+    const w1 = createMockWindow({ id: 202, wm_class: "B" });
+    const n0 = wm().tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, w0);
+    const n1 = wm().tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w1);
+    n0.mode = WINDOW_MODES.TILE;
+    n1.mode = WINDOW_MODES.TILE;
+
+    const out = api()._orderMonChildrenOp(["id:201", "id:202"], { quiet: true });
+    expect(out.error).toBeUndefined();
+    expect(out).toMatchObject({
+      ok: true,
+      reordered: false,
+      reason: "mon-directs not under same MONITOR",
+    });
   });
 });
 

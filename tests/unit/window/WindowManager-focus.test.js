@@ -9,6 +9,7 @@ import {
   setPointer,
 } from "../../mocks/helpers/index.js";
 import { Workspace, WindowType, Rectangle } from "../../mocks/gnome/Meta.js";
+import { Bin } from "../../mocks/gnome/St.js";
 import * as Utils from "../../../lib/extension/utils.js";
 import { mockSeat } from "../../mocks/gnome/Clutter.js";
 
@@ -691,5 +692,83 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(raise).toBeDefined();
     raise.callback();
     expect(renderSpy).toHaveBeenCalledWith("raise-float-queue");
+  });
+
+  it("tabbed siblings off-slot get move() on focus; on-slot does not; no renderTree focus", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+
+    const slot = { x: 100, y: 50, width: 800, height: 600 };
+    const off = { x: 10, y: 10, width: 200, height: 150 };
+
+    const wOff = createMockWindow({
+      id: "tab-off",
+      wm_class: "Off",
+      rect: off,
+      workspace: ctx.workspaces[0],
+    });
+    const wOn = createMockWindow({
+      id: "tab-on",
+      wm_class: "On",
+      rect: slot,
+      workspace: ctx.workspaces[0],
+    });
+    const nOff = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wOff);
+    const nOn = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wOn);
+    nOff.mode = WINDOW_MODES.TILE;
+    nOn.mode = WINDOW_MODES.TILE;
+    nOff.rect = { ...slot };
+    nOff.renderRect = { ...slot };
+    nOn.rect = { ...slot };
+    nOn.renderRect = { ...slot };
+    tab.lastTabFocus = wOff;
+
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    const renderSpy = vi.spyOn(wm(), "renderTree");
+    wOn.raise = vi.fn();
+
+    // Same path as Meta focus-update queue (no full renderTree).
+    wm().updateTabbedFocus(nOn);
+
+    expect(moveSpy).toHaveBeenCalledWith(wOff, expect.objectContaining(slot));
+    expect(moveSpy.mock.calls.some((c) => c[0] === wOn)).toBe(false);
+    expect(renderSpy).not.toHaveBeenCalledWith("focus", true);
+    expect(renderSpy).not.toHaveBeenCalledWith("focus");
+    expect(wOn.raise).toHaveBeenCalled();
+    expect(tab.lastTabFocus).toBe(wOn);
+  });
+
+  it("activateFromTab reasserts off-slot tab siblings without focus render", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+
+    const slot = { x: 0, y: 0, width: 900, height: 700 };
+    const off = { x: 50, y: 50, width: 100, height: 80 };
+
+    const wA = createMockWindow({ id: "af-a", rect: off, workspace: ctx.workspaces[0] });
+    const wB = createMockWindow({ id: "af-b", rect: slot, workspace: ctx.workspaces[0] });
+    const nA = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wB);
+    nA.mode = WINDOW_MODES.TILE;
+    nB.mode = WINDOW_MODES.TILE;
+    nA.rect = { ...slot };
+    nA.renderRect = { ...slot };
+    nB.rect = { ...slot };
+    nB.renderRect = { ...slot };
+
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    const renderSpy = vi.spyOn(wm(), "renderTree");
+    wB.raise = vi.fn();
+    wB.focus = vi.fn();
+    wB.activate = vi.fn();
+
+    nB._activateFromTab(wB);
+
+    expect(moveSpy).toHaveBeenCalledWith(wA, expect.objectContaining(slot));
+    expect(moveSpy.mock.calls.some((c) => c[0] === wB)).toBe(false);
+    expect(renderSpy).not.toHaveBeenCalledWith("focus");
+    expect(renderSpy.mock.calls.some((c) => c[0] === "focus")).toBe(false);
   });
 });
