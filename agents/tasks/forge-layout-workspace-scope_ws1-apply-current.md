@@ -37,5 +37,5 @@ live session; thread 0-based index through plan/apply; CLI still 1-based later.
   Offline `--tree-file` without meta → workspace 0 (documented).
 - **Save:** `capture_tiles_profile(..., workspace=)` + meta auto-filter current desk.
 - **Tests:** unit/cli **393** green; tree-query vitest **14** green.
-- **Commit:** `5222047`.
+- **Commit:** `fd3d098`.
 - **Next:** B verify → then WS2 sequential/static CLI modes.

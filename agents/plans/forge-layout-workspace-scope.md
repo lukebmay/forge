@@ -11,7 +11,7 @@
 **2026-08-06 WS1 (A implement):** GetTree `activeWorkspace`/`nWorkspaces`; CLI
 applies/saves on current desk via forest meta (offline default ws0); path builders
 + residual/open already take `workspace=`. unit/cli 393; tree-query 14.
-Commit `5222047`. **Next: B verify**, then WS2 sequential/static.
+Commit `fd3d098`. **Next: B verify**, then WS2 sequential/static.
 
 ---
 
