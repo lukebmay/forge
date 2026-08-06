@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (Wayland residual code fixes; re-smoke next)  
+**Updated:** 2026-08-06 (lock/sleep thrash fix + residual fixes; install + re-smoke)  
 **Implement on:** `plan/forge-layout-control-loop` (**ahead of origin**; **not pushed**)  
-**HEAD:** master has CL0–CL7; plan branch has CL8–CL11 + preflight + **Wayland residual fixes**  
-**Wayland:** first smoke mostly OK; residual fixes unit-green — **install + re-smoke**  
+**HEAD:** master has CL0–CL7; plan branch has CL8–CL11 + preflight + residual + **lock shield**  
+**Wayland:** layout dev green; **install** then overnight lock→wake verify  
 **Stash:** `stash@{0}` still present (applied content landed on this branch; safe to drop after you confirm)  
 **Remotes:** **no push** unless human asks  
 
@@ -24,6 +24,7 @@
 | Pre-Wayland prep (SEGV + move + rivals) | **Done** |
 | Wayland residual smoke | **Partial** — first pass OK; residual code landed |
 | Residual re-smoke | **Next — human** after `./install` |
+| Lock→sleep→wake | **Next — human** (lock shield fix unit-green) |
 | Merge plan → master | After re-smoke green enough |
 
 ---

@@ -267,6 +267,15 @@ export default class ForgeExtension extends Extension {
       Logger.info("user on session change");
       this._addIndicator();
       this.keybindings?.enable();
+      // After lock/sleep: re-apply lock-time forest shield + longer soft-rehome settle.
+      if (this._sessionWasLocked) {
+        this._sessionWasLocked = false;
+        try {
+          this.extWm?.onSessionUnlocked?.();
+        } catch (e) {
+          Logger.warn(`onSessionUnlocked failed: ${e}`);
+        }
+      }
     } else if (session.currentMode === "unlock-dialog") {
       // Keep running on lock screen so the window tree persists in memory; only
       // disable keybindings here (re-enabled on user session). Shutting the whole
@@ -275,6 +284,13 @@ export default class ForgeExtension extends Extension {
       Logger.info("lock-screen on session change");
       this.keybindings?.disable();
       this._removeIndicator();
+      // Snapshot quiet dual-mon tree before DPMS thrash can poison soft-rehome.
+      this._sessionWasLocked = true;
+      try {
+        this.extWm?.onSessionLocked?.();
+      } catch (e) {
+        Logger.warn(`onSessionLocked failed: ${e}`);
+      }
     }
   }
 

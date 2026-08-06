@@ -619,4 +619,60 @@ describe("H1 soft rehome on workareas thrash", () => {
     expect(tabbed[0].childNodes).toContain(nodes[1].n);
     expect(mon0.contains(tabbed[0])).toBe(true);
   });
+
+  it("lock: workareas while locked holds thrash flag and does not settle", () => {
+    addTiled("L", 0, { x: 100, y: 100, width: 800, height: 600 });
+    addTiled("R", 1, { x: 2000, y: 100, width: 800, height: 600 });
+    wm().onSessionLocked();
+    expect(wm()._sessionLocked).toBe(true);
+    expect(wm()._sessionLayoutShield?.fromLock).toBe(true);
+    expect(wm()._sessionLayoutShield?.liveForest?.monitors?.length).toBeGreaterThan(0);
+
+    settleCallbacks.length = 0;
+    wm()._onWorkareasChanged(ctx.display);
+    expect(wm()._workareasThrashPending).toBe(true);
+    // No settle timer while locked.
+    expect(settleCallbacks).toHaveLength(0);
+    expect(wm().renderTree).not.toHaveBeenCalledWith("workareas-soft-rehome");
+  });
+
+  it("lock: entered-monitor suppressed while locked", () => {
+    const { win } = addTiled("A", 1, { x: 2000, y: 0, width: 400, height: 400 });
+    wm().onSessionLocked();
+    const updateSpy = vi.spyOn(wm(), "updateMetaWorkspaceMonitor").mockImplementation(() => {});
+    wm()._onWindowEnteredMonitor(ctx.display, 0, win);
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("unlock: re-applies lock shield after Meta thrash piles windows on mon0", () => {
+    const leftFrame = { x: 100, y: 100, width: 800, height: 600 };
+    const rightFrame = { x: 2000, y: 100, width: 800, height: 600 };
+    const { win: leftWin, node: leftNode } = addTiled("L", 0, leftFrame);
+    const { win: rightWin, node: rightNode } = addTiled("R", 1, rightFrame);
+    wm()._workareasThrashPending = false;
+    wm()._snapshotLastGoodHomes();
+
+    // Quiet dual-mon desk → lock arms shield.
+    wm().onSessionLocked();
+    expect(wm()._sessionLayoutShield?.fromLock).toBe(true);
+
+    // Sleep thrash: both Meta + tree on mon0 (would poison normal soft-rehome).
+    leftWin._monitor = 0;
+    rightWin._monitor = 0;
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    mon0.appendChild(rightNode);
+
+    // Unlock: short shield + settle; shield path restores dual homes.
+    wm().onSessionUnlocked();
+    expect(wm()._sessionLocked).toBe(false);
+    expect(wm()._unlockWorkareasSettleBoost).toBe(true);
+    fireSettle();
+
+    const { monitor: mon0After } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1After } = getWorkspaceAndMonitor(ctx, 0, 1);
+    expect(mon0After.contains(leftNode)).toBe(true);
+    expect(mon1After.contains(rightNode)).toBe(true);
+    expect(leftWin.get_monitor()).toBe(0);
+    expect(rightWin.get_monitor()).toBe(1);
+  });
 });

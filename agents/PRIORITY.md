@@ -44,6 +44,7 @@
 | X11 polish | ghost deco after auto-exit (`9beebdc`); chrome UI (`20c8d8f`) |
 | **Wayland preflight** | SEGV-safe `safeMoveToMonitor`; move dest mon + ε; rival tilers; installed dirty |
 | **Wayland residual fixes** | PWA tab icons; launch cwd=$HOME; focus attach; nearest-edge DnD; preview never-stick |
+| **Lock/sleep thrash** | Lock forest shield; no settle while locked; 8s unlock shield + 900ms settle |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
