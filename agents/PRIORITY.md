@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (AP4 done; AP5 live smoke next; mon-order filed)  
+**Updated:** 2026-08-06 (action pipeline code complete; mon-order next)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -10,22 +10,20 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Action pipeline** (AP1 `afterFocus` → AP2 one-commit) | Consistent formulas; kill duplicate chrome/render paths — [plan](./plans/forge-action-pipeline.md) |
-| **2** | **X11 HUP smoke** of merged Wayland/control-loop + pipeline as it lands | Agent can HUP on X11; dual-mon thrash + focus |
+| **1** | **layout mon order reverse (X11)** | `forge layout dev` flipped mon L/R — [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
+| **2** | **AP5 op visual** (soft) | Gesture matrix eyes-on — [blocker](./blockers/B-ap5-operator-visual-matrix.md) |
 | **3** | **MR0 rename: soft-rehome → monitor-recovery** | Product language; separate PR — [plan](./plans/forge-monitor-recovery-rename.md) |
 | **4** | **Container selection finish** | S3 kit binds → S5 live QA |
 | **5** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
-| **6** | **layout mon order reverse (X11)** | `forge layout dev` flipped mon L/R — [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
 
 ## Next session focus
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **AP5** | Live X11 HUP smoke matrix | [action-pipeline](./plans/forge-action-pipeline.md) |
-| **2** | **mon-order X11** | Reversed mon order on layout dev | [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
-| **3** | **MR0** | Rename soft-rehome → monitor-recovery (own branch/PR) | [monitor-recovery-rename](./plans/forge-monitor-recovery-rename.md) |
+| **1** | **mon-order X11** | Reversed mon order on `forge layout dev` | [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
+| **2** | **AP5 visual** | Soft op checklist | [blocker](./blockers/B-ap5-operator-visual-matrix.md) |
+| **3** | **MR0** | Rename soft-rehome → monitor-recovery | [monitor-recovery-rename](./plans/forge-monitor-recovery-rename.md) |
 | **4** | **CON S3** | After pipeline reliability green enough | [container-selection](./plans/forge-container-selection.md) |
-| later | **mon-order X11** | Reversed monitor order on `forge layout dev` | [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
 
 **Shipped on master (local, not pushed)**
 
@@ -55,8 +53,8 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [action pipeline](./plans/forge-action-pipeline.md) | **AP4 done; AP5 live smoke next** |
-| **P0** | X11 HUP smoke (merged control-loop + pipeline) | Operator on X11; agent HUP |
+| **P0** | [action pipeline](./plans/forge-action-pipeline.md) | **Code complete** (AP0–AP4; AP5 agent) |
+| **P1** | [AP5 op visual](./blockers/B-ap5-operator-visual-matrix.md) | Soft — human gesture matrix |
 | P1 | [layout control loop](./plans/forge-layout-control-loop.md) | **Merged to master** — residual operator smoke only |
 | **P1** | [monitor-recovery rename](./plans/forge-monitor-recovery-rename.md) | MR0 — own PR |
 | **P1** | [container selection](./plans/forge-container-selection.md) | S2 done — S3 after pipeline green |

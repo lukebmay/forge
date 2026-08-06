@@ -1,17 +1,17 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (AP4 done; AP5 smoke next; mon-order filed)  
-**Implement on:** `plan/forge-action-pipeline`  
+**Updated:** 2026-08-06 (action pipeline code complete on master)  
+**Branch tip:** `master` / `plan/forge-action-pipeline` (FF synced)  
 **X11:** preferred for agent `./install` + `killall -HUP gnome-shell`  
 **Wayland:** ES modules need **logout** to reload  
 **Stash:** `stash@{0}` still present (applied earlier; drop after human OK)  
 **Remotes:** **no push** unless human asks  
 
-**Active plan:** [forge-action-pipeline.md](./plans/forge-action-pipeline.md)  
+**Plan:** [forge-action-pipeline.md](./plans/forge-action-pipeline.md) — **code complete**  
 **Formulas:** [docs/dev/actions.md](../docs/dev/actions.md)  
-**AP1–AP4 done:** afterFocus, one-commit, geom/open/RunSteps, command facade  
-**Next:** AP5 live X11 HUP smoke  
-**Later:** [layout mon order X11 reverse](./tasks/forge-layout-mon-order-x11-reversed.md)  
+**API:** `afterFocus` / `commitLayout` / `settleTabFocus`  
+**Next product:** [layout mon order X11 reverse](./tasks/forge-layout-mon-order-x11-reversed.md)  
+**Soft:** [AP5 op visual](./blockers/B-ap5-operator-visual-matrix.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 
 ---
@@ -21,10 +21,11 @@
 | Phase | Status |
 | --- | --- |
 | CL0–CL11 + Wayland residual | **On master** |
-| **Action pipeline AP0–AP4** | **Done** (unit green 2219) |
-| **AP5 live X11 HUP smoke** | **Next** (agent install/HUP + operator visual) |
-| MR0 soft-rehome rename | Queued P1 — own PR |
-| layout mon order reverse X11 | Filed; after pipeline |
+| **Action pipeline AP0–AP4** | **Done** (2219 unit tests) |
+| **AP5 agent HUP** | **Done** — no SEGV; extension ACTIVE |
+| AP5 op visual | Soft blocker |
+| layout mon order reverse X11 | **Next agent task** |
+| MR0 soft-rehome rename | Queued P1 |
 | Stash drop | Human OK only |
 
 ---

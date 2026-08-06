@@ -1,10 +1,10 @@
 # Plan: Forge action pipeline
 
-**Status:** active — AP1–AP4 **done**; AP5 live smoke next  
+**Status:** **code complete** (AP0–AP4 + AP5 agent); soft op visual residual  
 **Priority:** **P0** (highest)  
-**Branch:** `plan/forge-action-pipeline` (from master)  
+**Branch:** `plan/forge-action-pipeline` (merged → master locally)  
 **Created:** 2026-08-06  
-**Host:** black — dual 4K; prefer **X11 HUP** while implementing  
+**Host:** black — dual 4K; prefer **X11 HUP**  
 
 **Formulas:** [docs/dev/actions.md](../../docs/dev/actions.md)  
 **Related:** [layout control loop](./forge-layout-control-loop.md) (CL0–CL11 on master), [DESIGN § Raise](../../docs/DESIGN.md)
@@ -13,10 +13,12 @@
 
 ## Session note (overwrite)
 
-**2026-08-06 AP4 done (A/B AGREE):**
-- command.js zero bare renderTree; all structure/size → commitLayout force.
-- session-api non-quiet size/order/layout/cycle/merge; float no double C.
-- Tests 2219. **Next:** AP5 live X11 HUP smoke.
+**2026-08-06 plan wrap (AP0–AP5 agent done):**
+- AP1 `afterFocus` · AP2 one-commit · AP3 geom/open/RunSteps · AP4 command facade
+- AP5: X11 install+HUP no SEGV; extension ACTIVE; 2219 tests; op visual =
+  soft [B-ap5-operator-visual-matrix](../blockers/B-ap5-operator-visual-matrix.md)
+- API: `afterFocus` / `commitLayout` / `settleTabFocus` in `action-pipeline.js`
+- Later: mon-order X11 reverse task (not this plan)
 
 ---
 
@@ -100,7 +102,7 @@ Module: `lib/extension/action-pipeline.js` (or thin WM delegates).
 | **AP2** | Structure one-commit (Move/Swap/drag); tests | **done** | AP1 |
 | **AP3** | Geom/open/RunSteps formula alignment | **done** | AP1 |
 | **AP4** | command.js → `commitLayout` facade | **done** | AP2 |
-| **AP5** | Live X11 HUP smoke matrix | **next** | AP2 |
+| **AP5** | Live X11 HUP smoke matrix | **agent done** (op visual residual) | AP2 |
 
 ### AP1 acceptance
 
