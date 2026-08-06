@@ -243,7 +243,11 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     _out(
         s,
         "  ",
-        dim("First mon child = left in hsplit; first mon1 child = left of right monitor.", **kw),
+        dim(
+            "Bare dual array = physical L→R (not Meta mon0/mon1). "
+            "First mon child = left in hsplit; first mon1 child = left of right monitor.",
+            **kw,
+        ),
     )
     _blank(s)
 

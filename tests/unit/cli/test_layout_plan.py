@@ -18,6 +18,7 @@ from layout_plan import (  # noqa: E402
     collect_windows,
     compare_layout_structure,
     detect_thrash,
+    forest_mon_indices_left_to_right,
     forest_stable_key_map,
     format_layout_description,
     mon_head_and_rest,
@@ -614,6 +615,156 @@ class TestStringCellInference(unittest.TestCase):
         self.assertEqual(plan["counts"]["reused"], 7)
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(plan["counts"]["moved"], 0)
+
+
+class TestBareMonGeometryOrder(unittest.TestCase):
+    """Bare dual array binds physical L→R, not Meta mon0 when indices flip."""
+
+    def _flipped_forest(self):
+        """Meta mon0 = RIGHT (x=5120), mon1 = LEFT primary (x=0). Roles already correct physically."""
+        return {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo0ws0",
+                    "layout": "HSPLIT",
+                    "stableKey": "geom:5120,0,5120,2880",
+                    "rect": {"x": 5120, "y": 0, "width": 5120, "height": 2880},
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 201,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 202,
+                                    "wmClass": "Google-chrome",
+                                    "title": "YouTube",
+                                    "monitor": 0,
+                                    "mode": "TILE",
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 203,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Gmail",
+                                    "monitor": 0,
+                                    "mode": "TILE",
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 204,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Voice",
+                                    "monitor": 0,
+                                    "mode": "TILE",
+                                    "children": [],
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "id": "mo1ws0",
+                    "layout": "HSPLIT",
+                    "stableKey": "geom:0,0,5120,2880#primary",
+                    "rect": {"x": 0, "y": 0, "width": 5120, "height": 2880},
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 101,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Google Chrome",
+                                    "monitor": 1,
+                                    "mode": "TILE",
+                                    "children": [],
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 102,
+                                    "wmClass": "Google-chrome",
+                                    "title": "Grok",
+                                    "monitor": 1,
+                                    "mode": "TILE",
+                                    "children": [],
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 103,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 1,
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                    ],
+                },
+            ],
+        }
+
+    def test_forest_mon_indices_left_to_right_flipped(self):
+        forest = self._flipped_forest()
+        self.assertEqual(forest_mon_indices_left_to_right(forest), [1, 0])
+
+    def test_bare_dev_no_cross_mon_moves_when_meta_flipped(self):
+        """dev bare: first body = left desk; must map to Meta mon1 when mon1 is left."""
+        forest = self._flipped_forest()
+        profile = [
+            [["google-chrome", "Grok"], "ghostty"],
+            ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
+        ]
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"], plan)
+        by_id = {r["id"]: r for r in plan["roles"]}
+        # Left desk roles → mon1 (physical left)
+        self.assertEqual(by_id["google-chrome"]["slot"], "mon1.s0")
+        self.assertEqual(by_id["Grok"]["slot"], "mon1.s0")
+        self.assertEqual(by_id["ghostty"]["slot"], "mon1.ghostty")
+        # Right desk roles → mon0 (physical right)
+        self.assertEqual(by_id["ghostty-2"]["slot"], "mon0.ghostty-2")
+        self.assertEqual(by_id["YouTube"]["slot"], "mon0.s0")
+        self.assertEqual(plan["counts"]["moved"], 0)
+        self.assertEqual(plan["counts"]["reused"], 7)
+
+    def test_explicit_mon0_still_meta_index(self):
+        """Explicit mon0/mon1 keys keep Meta index binding (not remapped by geometry)."""
+        forest = self._flipped_forest()
+        profile = {
+            "tiles": {
+                "mon0": [["google-chrome", "Grok"], "ghostty"],
+                "mon1": ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
+            }
+        }
+        plan = plan_reconcile(forest, profile)
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertTrue(by_id["google-chrome"]["slot"].startswith("mon0."))
+        # Physical left windows are on mon1 → planner must move them onto mon0
+        self.assertGreaterEqual(plan["counts"]["moved"], 1)
+
+    def test_resolve_left_right_geometry(self):
+        forest = self._flipped_forest()
+        self.assertEqual(resolve_mon_key("left", forest), 1)
+        self.assertEqual(resolve_mon_key("right", forest), 0)
+        self.assertEqual(resolve_mon_key("primary", forest), 1)
 
 
 class TestMatching(unittest.TestCase):

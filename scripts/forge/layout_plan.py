@@ -18,6 +18,8 @@ _SLOT_RE = re.compile(r"^(mon\d+|primary)(?:\.(.+))?$")
 _MON_KEY_RE = re.compile(r"^mon(\d+)$")
 _MON_ID_RE = re.compile(r"^mo(\d+)ws(\d+)$")
 _NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+# Geometry roles (physical side) — resolve via live forest rect / geom stableKey.
+_GEOM_ROLE_KEYS = frozenset({"left", "right", "top", "bottom"})
 # T7 stableKey prefixes (see lib/extension/monitor-identity.js)
 _STABLE_KEY_RE = re.compile(r"^(?:geom:|conn:|name:).+")
 # Container mode aliases (load accepts all; save emits medium keys — see SUGAR_*).
@@ -138,6 +140,10 @@ def _is_builtin_mon_key(key: str) -> bool:
     return key == "primary" or bool(_MON_KEY_RE.match(key))
 
 
+def _is_geom_role_key(key: str) -> bool:
+    return key in _GEOM_ROLE_KEYS
+
+
 def mon_head_and_rest(
     slot: str,
     known_heads: Optional[Iterable[str]] = None,
@@ -217,24 +223,29 @@ def _validate_monitors_aliases(raw: Any) -> dict[str, str]:
 
 
 def _mon_key_ok(key: str, aliases: dict[str, str]) -> bool:
-    if _is_builtin_mon_key(key) or _is_stable_key(key):
+    if _is_builtin_mon_key(key) or _is_stable_key(key) or _is_geom_role_key(key):
         return True
     return key in aliases
 
 
 def _mon_key_error(key: str, where: str, aliases: dict[str, str]) -> ValueError:
-    parts = ["monN", "primary", "stableKey (geom:|conn:|name:…)"]
+    parts = [
+        "monN",
+        "primary",
+        "left|right|top|bottom",
+        "stableKey (geom:|conn:|name:…)",
+    ]
     if aliases:
         parts.append("or alias " + ", ".join(sorted(repr(a) for a in aliases)))
     return ValueError(f"{where} {key!r}: want {' / '.join(parts)}")
 
 
 def _slot_ok(slot: str, aliases: dict[str, str], layout_keys: set[str]) -> bool:
-    known = set(layout_keys) | set(aliases.keys())
+    known = set(layout_keys) | set(aliases.keys()) | set(_GEOM_ROLE_KEYS)
     head, _rest = mon_head_and_rest(slot, known_heads=known)
     if not head:
         return False
-    if _is_builtin_mon_key(head):
+    if _is_builtin_mon_key(head) or _is_geom_role_key(head):
         return True
     if head in aliases or head in layout_keys:
         return True
@@ -242,7 +253,10 @@ def _slot_ok(slot: str, aliases: dict[str, str], layout_keys: set[str]) -> bool:
 
 
 def normalize_profile(
-    data: Any, *, mon_count: Optional[int] = None
+    data: Any,
+    *,
+    mon_count: Optional[int] = None,
+    mon_indices: Optional[list[int]] = None,
 ) -> dict[str, Any]:
     """
     Desugar tiles sugar → v2 IR and fill omit-noise defaults.
@@ -256,6 +270,10 @@ def normalize_profile(
       - pure roles+layout IR (pass-through + defaults)
 
     mon_count: physical outputs from GetTree; required for bare dual-mon.
+    mon_indices: when planning against a live forest, Meta indices in physical
+      L→R order (see forest_mon_indices_left_to_right). Bare dual arrays map
+      body[i] → mon{mon_indices[i]} so first mon body is the leftmost head even
+      when Meta mon0 is the right display. Explicit monN / monitors[] ignore this.
     Offline (None): bare arrays always desugar as mon0 panes (use mon keys /
     monitors[] for multi-mon without a live forest).
     """
@@ -267,7 +285,9 @@ def normalize_profile(
     out = copy.deepcopy(data)
     # Preserve focus token before tiles extraction mutates keys.
     focus_raw = out.get("focus")
-    tiles, mon_explicit, from_sugar = _extract_tiles_from_profile(out, mon_count=mon_count)
+    tiles, mon_explicit, from_sugar = _extract_tiles_from_profile(
+        out, mon_count=mon_count, mon_indices=mon_indices
+    )
     had_sugar = from_sugar
 
     if tiles is not None:
@@ -313,14 +333,17 @@ def normalize_profile(
 
 
 def _extract_tiles_from_profile(
-    out: dict[str, Any], *, mon_count: Optional[int]
+    out: dict[str, Any],
+    *,
+    mon_count: Optional[int],
+    mon_indices: Optional[list[int]] = None,
 ) -> tuple[Optional[dict[str, Any]], bool, bool]:
     """
     Pull tiles sugar out of profile dict (mutates out: pops consumed keys).
 
     Returns (tiles_mon_map|None, mon_explicit, had_sugar).
     """
-    # 1) Explicit monitors: [ monBody, … ]
+    # 1) Explicit monitors: [ monBody, … ] — Meta index order (not geometry L→R)
     monitors_raw = out.get("monitors")
     if isinstance(monitors_raw, list):
         out.pop("monitors", None)
@@ -331,7 +354,7 @@ def _extract_tiles_from_profile(
         }
         return tiles, True, True
 
-    # 2) Top-level monN / primary / stableKey bodies (no tiles wrapper)
+    # 2) Top-level monN / primary / stableKey / geom-role bodies (no tiles wrapper)
     top_mon_keys = [
         k
         for k in list(out.keys())
@@ -339,6 +362,7 @@ def _extract_tiles_from_profile(
         and (
             _is_builtin_mon_key(k.strip())
             or _is_stable_key(k.strip())
+            or _is_geom_role_key(k.strip())
         )
         and k
         not in (
@@ -362,7 +386,11 @@ def _extract_tiles_from_profile(
     top_mon_keys = [
         k
         for k in top_mon_keys
-        if _is_builtin_mon_key(str(k).strip()) or _is_stable_key(str(k).strip())
+        if (
+            _is_builtin_mon_key(str(k).strip())
+            or _is_stable_key(str(k).strip())
+            or _is_geom_role_key(str(k).strip())
+        )
     ]
     if top_mon_keys and "tiles" not in out and "roles" not in out:
         tiles = {}
@@ -370,14 +398,16 @@ def _extract_tiles_from_profile(
             tiles[str(k).strip()] = out.pop(k)
         return tiles, True, True
 
-    # 3) tiles: array (implicit) or mon map (explicit if mon keys)
+    # 3) tiles: array (implicit L→R) or mon map (explicit if mon keys)
     if "tiles" not in out:
         return None, False, False
 
     tiles_in = out.pop("tiles")
     if isinstance(tiles_in, list):
         return (
-            _bare_array_to_mon_tiles(tiles_in, mon_count=mon_count),
+            _bare_array_to_mon_tiles(
+                tiles_in, mon_count=mon_count, mon_indices=mon_indices
+            ),
             False,
             True,
         )
@@ -553,12 +583,18 @@ def _mon_body_as_pane_list(body: Any) -> list[Any]:
 
 
 def _bare_array_to_mon_tiles(
-    items: list[Any], *, mon_count: Optional[int] = None
+    items: list[Any],
+    *,
+    mon_count: Optional[int] = None,
+    mon_indices: Optional[list[int]] = None,
 ) -> dict[str, Any]:
     """
-    Implicit bare array → mon map.
+    Implicit bare array → mon map (physical L→R when mon_indices given).
 
-    Live mon_count == len(items) and each item is mon-body-shaped → mon0..monN-1.
+    Live mon_count == len(items) and each item is mon-body-shaped → one mon each.
+    With mon_indices (geometry L→R Meta indices from the live forest), body[i]
+    binds to mon{mon_indices[i]} so the first list is always the leftmost head.
+    Without mon_indices → mon0..monN-1 (Meta index order; offline / show).
     mon_count <= 1 with multiple mon-body-looking items → fold all panes onto mon0
     (temporary second head gone). Offline (mon_count None) → always mon0 panes
     (multi-mon offline needs mon0/mon1 or monitors[]).
@@ -581,6 +617,9 @@ def _bare_array_to_mon_tiles(
             and len(items) == n
             and all(_looks_like_mon_body(x) for x in items)
         ):
+            idxs = _normalize_mon_indices(mon_indices, n)
+            if idxs is not None:
+                return {f"mon{idxs[i]}": body for i, body in enumerate(items)}
             return {f"mon{i}": body for i, body in enumerate(items)}
         # mon count known but not a dual bare match → single-mon pane list
         return {"mon0": items}
@@ -589,8 +628,29 @@ def _bare_array_to_mon_tiles(
     # pane list). Tagged panes like {tab:…}/{vsplit:…} stay mon0 (green).
     # Explicit mon0/mon1 or monitors[] when offline dual must be unambiguous.
     if len(items) >= 2 and all(isinstance(x, list) for x in items):
+        n = len(items)
+        idxs = _normalize_mon_indices(mon_indices, n)
+        if idxs is not None:
+            return {f"mon{idxs[i]}": body for i, body in enumerate(items)}
         return {f"mon{i}": body for i, body in enumerate(items)}
     return {"mon0": items}
+
+
+def _normalize_mon_indices(
+    mon_indices: Optional[list[int]], n: int
+) -> Optional[list[int]]:
+    """Return n distinct non-neg Meta indices, or None when unusable."""
+    if not mon_indices or n <= 0:
+        return None
+    try:
+        idxs = [int(x) for x in mon_indices[:n]]
+    except (TypeError, ValueError):
+        return None
+    if len(idxs) != n or any(i < 0 for i in idxs):
+        return None
+    if len(set(idxs)) != n:
+        return None
+    return idxs
 
 
 def forest_physical_mon_count(forest: Any) -> int:
@@ -603,6 +663,44 @@ def forest_physical_mon_count(forest: Any) -> int:
         if idx is not None:
             idxs.add(idx)
     return max(1, len(idxs))
+
+
+def forest_mon_indices_left_to_right(forest: Any) -> list[int]:
+    """
+    Unique Meta mon indices sorted physical left→right (then top→bottom).
+
+    Uses MONITOR rect or geom: stableKey; falls back to Meta index as x when
+    geometry is missing so order stays deterministic.
+    """
+    best: dict[int, tuple[float, float]] = {}
+    for m in _iter_forest_monitors(forest):
+        if not isinstance(m, dict):
+            continue
+        idx = _monitor_node_index(m)
+        if idx is None:
+            continue
+        rect = _mon_node_rect(m)
+        if rect:
+            x, y = float(rect["x"]), float(rect["y"])
+        else:
+            x, y = float(idx) * 1_000_000.0, 0.0
+        prev = best.get(idx)
+        if prev is None or (x, y) < prev:
+            best[idx] = (x, y)
+    return [
+        i
+        for i, _xy in sorted(
+            best.items(), key=lambda kv: (kv[1][0], kv[1][1], kv[0])
+        )
+    ]
+
+
+def forest_profile_mon_kwargs(forest: Any) -> dict[str, Any]:
+    """mon_count + mon_indices for normalize/validate against a live forest."""
+    idxs = forest_mon_indices_left_to_right(forest)
+    if not idxs:
+        return {"mon_count": 1, "mon_indices": [0]}
+    return {"mon_count": len(idxs), "mon_indices": idxs}
 
 
 def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -622,10 +720,12 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
         if not (
             _is_builtin_mon_key(mon_key)
             or _is_stable_key(mon_key)
+            or _is_geom_role_key(mon_key)
             or _NAME_RE.match(mon_key)
         ):
             raise ValueError(
-                f"tiles key {mon_key!r}: want monN, primary, stableKey, or alias name"
+                f"tiles key {mon_key!r}: want monN, primary, left|right, "
+                f"stableKey, or alias name"
             )
 
         split_override: Optional[str] = None
@@ -1326,14 +1426,18 @@ def _normalize_split_alias(val: Any, where: str) -> Optional[str]:
 
 
 def validate_reconcile_profile(
-    data: Any, *, mon_count: Optional[int] = None
+    data: Any,
+    *,
+    mon_count: Optional[int] = None,
+    mon_indices: Optional[list[int]] = None,
 ) -> dict[str, Any]:
     """
     Validate version-2 reconcile profile; return normalized dict.
     Raises ValueError with a clear message.
 
     Runs normalize_profile first (tiles sugar → IR + defaults).
-    mon_count is forwarded for bare-array dual vs single mon disambiguation.
+    mon_count / mon_indices are forwarded for bare-array dual mon binding
+    (see forest_profile_mon_kwargs).
 
     Human-friendly defaults (no app-specific hardcoding in Forge):
       - version omitted + roles[] → 2
@@ -1347,7 +1451,9 @@ def validate_reconcile_profile(
       - marginal omitted → coexist / first (via normalize)
       - role.slot from layout.roles listing when omitted
     """
-    data = normalize_profile(data, mon_count=mon_count)
+    data = normalize_profile(
+        data, mon_count=mon_count, mon_indices=mon_indices
+    )
 
     has_roles = isinstance(data.get("roles"), list) and len(data.get("roles") or []) > 0
 
@@ -1812,12 +1918,10 @@ def plan_reconcile(
     """
     if not isinstance(forest, dict):
         raise ValueError("forest must be a JSON object")
-    # mon_count so bare sugar tab|split stays mon0 on single-output desks
-    # (shape heuristic alone misreads as dual mon — green save round-trip).
-    prof = validate_reconcile_profile(
-        profile, mon_count=forest_physical_mon_count(forest)
-    )
-    # Rewrite mon keys (stableKey / alias / primary) → monN using live forest.
+    # mon_count + L→R mon_indices so bare dual arrays bind leftmost head first
+    # even when Meta mon0 is the right display (X11 / renumber footgun).
+    prof = validate_reconcile_profile(profile, **forest_profile_mon_kwargs(forest))
+    # Rewrite mon keys (stableKey / alias / primary / left|right) → monN.
     prof = resolve_profile_mon_keys(prof, forest)
     clean = bool(clean)
     safe = bool(safe)
@@ -2416,7 +2520,7 @@ def resolve_mon_key(
     aliases: Optional[dict[str, str]] = None,
 ) -> int:
     """
-    Resolve monN / primary / stableKey / profile alias → monitor index.
+    Resolve monN / primary / left|right|top|bottom / stableKey / alias → index.
     Raises ValueError listing available stableKeys when unknown.
     """
     if not key or not str(key).strip():
@@ -2431,8 +2535,12 @@ def resolve_mon_key(
     if mm:
         return int(mm.group(1))
 
+    # Profile monitors aliases win over builtin geometry roles (left/right/…).
     if key in aliases:
         return resolve_mon_key(aliases[key], forest, aliases={})
+
+    if _is_geom_role_key(key):
+        return _geom_role_mon_index(key, forest)
 
     sk_map = forest_stable_key_map(forest)
     if key in sk_map:
@@ -2444,8 +2552,47 @@ def resolve_mon_key(
         alias_hint = f"; profile aliases: {', '.join(sorted(aliases))}"
     raise ValueError(
         f"monitor key {key!r} not in forest "
-        f"(available stableKeys: {available}{alias_hint}; also monN / primary)"
+        f"(available stableKeys: {available}{alias_hint}; "
+        f"also monN / primary / left|right|top|bottom)"
     )
+
+
+def _geom_role_mon_index(role: str, forest: Any) -> int:
+    """left/right by x; top/bottom by y (Meta index via geometry)."""
+    idxs = forest_mon_indices_left_to_right(forest)
+    if not idxs:
+        return 0
+    if role == "left":
+        return idxs[0]
+    if role == "right":
+        return idxs[-1]
+    # top / bottom: re-sort by y then x
+    best: dict[int, tuple[float, float]] = {}
+    for m in _iter_forest_monitors(forest):
+        if not isinstance(m, dict):
+            continue
+        idx = _monitor_node_index(m)
+        if idx is None:
+            continue
+        rect = _mon_node_rect(m)
+        if rect:
+            x, y = float(rect["x"]), float(rect["y"])
+        else:
+            x, y = float(idx) * 1_000_000.0, 0.0
+        prev = best.get(idx)
+        if prev is None or (y, x) < prev:
+            best[idx] = (y, x)
+    ordered = [
+        i
+        for i, _xy in sorted(
+            best.items(), key=lambda kv: (kv[1][0], kv[1][1], kv[0])
+        )
+    ]
+    if not ordered:
+        return idxs[0]
+    if role == "top":
+        return ordered[0]
+    return ordered[-1]
 
 
 def resolve_mon_key_to_monN(
@@ -2484,7 +2631,7 @@ def resolve_profile_mon_keys(profile: dict[str, Any], forest: Any) -> dict[str, 
     aliases = {str(k): str(v) for k, v in aliases_raw.items()}
     cache: dict[str, str] = {}
     sk_map = forest_stable_key_map(forest)
-    known_heads = set(sk_map.keys()) | set(aliases.keys())
+    known_heads = set(sk_map.keys()) | set(aliases.keys()) | set(_GEOM_ROLE_KEYS)
     if isinstance(out.get("layout"), dict):
         known_heads |= {str(k) for k in out["layout"].keys()}
 
@@ -3889,7 +4036,7 @@ def compare_layout_structure(
         prof = profile
     else:
         prof = validate_reconcile_profile(
-            profile, mon_count=forest_physical_mon_count(forest)
+            profile, **forest_profile_mon_kwargs(forest)
         )
         prof = resolve_profile_mon_keys(prof, forest)
 
@@ -4168,7 +4315,7 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
     """
     if not isinstance(forest, dict):
         raise ValueError("forest must be a JSON object")
-    prof = validate_reconcile_profile(profile)
+    prof = validate_reconcile_profile(profile, **forest_profile_mon_kwargs(forest))
     prof = resolve_profile_mon_keys(prof, forest)
 
     windows = collect_windows(forest)

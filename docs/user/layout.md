@@ -101,7 +101,8 @@ Drop this at `~/.config/forge/layout/simple.json` (edit app names):
 ```
 
 **Dual monitor** — top-level length equals live mon count; each item is that
-mon’s pane list (apply uses GetTree mon count):
+mon’s pane list in **physical left→right** order (not Meta `mon0`/`mon1`
+when those differ — e.g. some X11 / renumber layouts):
 
 ```json
 [
@@ -112,9 +113,9 @@ mon’s pane list (apply uses GetTree mon count):
 
 | Sugar | Meaning |
 | --- | --- |
-| Bare top-level array | **Implicit mons:** if `len == live mon count` and each item is a mon body list → one mon each; else all panes on mon0. Offline (no tree): dual only when every top-level item is a **list** |
-| `{ "mon0": […], "mon1": […] }` | **Explicit mon keys** — never fold mon1→mon0 when a head is missing |
-| `{ "monitors": [ […], […] ] }` | **Explicit mon list** (same no-fold rule) |
+| Bare top-level array | **Implicit mons (physical L→R):** if `len == live mon count` and each item is a mon body list → body[0] = leftmost head, body[1] = next, … (via GetTree geometry). Offline (no tree): dual only when every top-level item is a **list**, bound as mon0..monN-1 |
+| `{ "mon0": […], "mon1": […] }` | **Explicit Meta index** — `monN` is Mutter monitor index (may not be L→R); never fold mon1→mon0 when a head is missing |
+| `{ "monitors": [ […], […] ] }` | **Explicit mon list by Meta index** (same no-fold rule) |
 | `{ "tab": ["a","b"] }` | Tabbed pane (also `t` / `tabbed`) |
 | `{ "stack": ["a","b"] }` | Stacked pane (also `s` / `stacked`) |
 | `{ "tab": […], "active": "Grok" }` | Tab/stack open leaf (first match in group) |
@@ -182,16 +183,19 @@ bare (no share noise).
 
 ### Monitor keys (stable across renumber)
 
-Everyday bare arrays use index order. For multi-host or hybrid-GPU renumber,
-tiles/layout keys may also be:
+Everyday **bare arrays** use **physical left→right** order from the live tree
+(geometry / `geom:` stableKey). Explicit `monN` is always the **Meta monitor
+index** (`moNwsW` in `forge tree`) — that may differ from L→R after X11/GPU
+renumber. Prefer bare arrays or geometry roles when you mean “left desk.”
 
 | Form | Example |
 | --- | --- |
-| `monN` / `primary` | `"mon0": [ … ]` inside a `tiles` object |
+| `monN` / `primary` | `"mon0": [ … ]` inside a `tiles` object (Meta index) |
+| `left` / `right` / `top` / `bottom` | `"left": [ … ]` — physical side from live tree rect |
 | Full T7 `stableKey` | `"geom:0,0,5120,2880#primary": [ … ]` (from `forge tree`) |
-| Short alias | Top-level `"monitors": { "left": "geom:…#primary", "right": "geom:…" }` then tiles use `"left"` / `"right"` |
+| Short alias | Top-level `"monitors": { "L": "geom:…#primary", "R": "geom:…" }` then tiles use `"L"` / `"R"` (aliases may also be named `left`/`right` and override builtin geometry roles) |
 
-At plan time Forge resolves keys to mon **index** via the live tree’s `stableKey`s
+At plan time Forge resolves keys to mon **index** via the live tree
 (rewrites the IR to `monN` before placing windows). Unknown keys error with the
 available stableKeys listed.
 

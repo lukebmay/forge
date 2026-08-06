@@ -783,10 +783,12 @@ array (no `tiles` / no `mon0`) so a dual-mon desk is just:
 
 **Layout sugar containers + mon binding (2026-07-29):** medium keys on save
 (`tab`/`stack`/`hsplit`/`vsplit`); load accepts short/medium/long aliases
-(`t`/`h`/`v`/`s`, …). Bare array = **implicit** mons (live mon count;
-offline dual only when every top-level item is a list). Explicit `mon0`/`mon1`
-or `monitors: [[],[]]` never folds heads together. `forge layout save
---monitors` writes mon keys.
+(`t`/`h`/`v`/`s`, …). Bare array = **implicit** mons in **physical L→R**
+order from GetTree geometry (live mon count; offline dual only when every
+top-level item is a list → mon0..). Explicit `mon0`/`mon1` or
+`monitors: [[],[]]` bind **Meta index** and never fold heads together.
+`left`/`right`/`top`/`bottom` resolve by geometry; save bare order is L→R.
+`forge layout save --monitors` writes mon keys.
 
 String cells: open by desktop/PATH; match inferred from app Name / chrome
 heuristics (plan: [forge-layout-sugar.md](../agents/plans/forge-layout-sugar.md)).

@@ -14,10 +14,12 @@ from layout_plan import (
     SUGAR_VSPLIT,
     _alloc_role_id,
     _infer_open_and_match,
+    _mon_node_rect,
     _order_monitors,
     _parse_mon_id,
     _stem_to_id,
     _tagged_container_mode,
+    forest_mon_indices_left_to_right,
     format_layout_description,
     normalize_shares,
     validate_reconcile_profile,
@@ -146,10 +148,17 @@ def capture_tiles_profile(
         out["focus"] = focus_token
 
     validate_reconcile_profile(out)
+    # Bare-array emit order = physical L→R (matches bare load with mon_indices).
+    bare_order = [
+        f"mon{i}"
+        for i in forest_mon_indices_left_to_right(forest)
+        if f"mon{i}" in tiles
+    ]
     out["_stats"] = {
         "mons": mon_window_counts,
         "windows": sum(mon_window_counts.values()),
         "floating": len(floating),
+        "bareMonOrder": bare_order,
     }
     return out
 
@@ -224,7 +233,12 @@ def profile_for_output(
         result_m = {"description": desc_s, **mon_map}
         return _attach_focus_float(result_m)
 
-    bare = _tiles_to_bare_array(tiles_out)
+    bare_order = None
+    stats = profile.get("_stats") if isinstance(profile.get("_stats"), dict) else None
+    if stats and isinstance(stats.get("bareMonOrder"), list):
+        bare_order = [str(x) for x in stats["bareMonOrder"] if x is not None]
+
+    bare = _tiles_to_bare_array(tiles_out, mon_order=bare_order)
     if bare is None:
         # Non-consecutive mon keys → keep mon map object under tiles
         mon_map = _tiles_to_mon_key_map(tiles_out)
@@ -243,8 +257,14 @@ def profile_for_output(
     return _attach_focus_float(wrapped)
 
 
-def _tiles_to_bare_array(tiles: Any) -> Optional[list[Any]]:
-    """mon0..monN-1 consecutive map → mon bodies list; single mon → panes list.
+def _tiles_to_bare_array(
+    tiles: Any, *, mon_order: Optional[list[str]] = None
+) -> Optional[list[Any]]:
+    """mon map → mon bodies list; single mon → panes list.
+
+    Dual-mon bare order prefers mon_order (physical L→R Meta keys from capture)
+    so save/load round-trips when Meta mon0 is not the leftmost head.
+    Fallback: consecutive mon0..monN-1.
 
     Single-mon mon-level {hsplit|vsplit: …} is not folded to a bare
     [{split:…}] pane list — that would desugar as one nested child and lose
@@ -256,10 +276,18 @@ def _tiles_to_bare_array(tiles: Any) -> Optional[list[Any]]:
     if not isinstance(tiles, dict) or not tiles:
         return None
     n = len(tiles)
-    expected = [f"mon{i}" for i in range(n)]
-    if set(tiles.keys()) != set(expected):
+
+    order: Optional[list[str]] = None
+    if mon_order and len(mon_order) == n and set(mon_order) == set(tiles.keys()):
+        order = list(mon_order)
+    else:
+        expected = [f"mon{i}" for i in range(n)]
+        if set(tiles.keys()) == set(expected):
+            order = expected
+    if order is None:
         return None
-    bodies = [tiles[f"mon{i}"] for i in range(n)]
+
+    bodies = [tiles[k] for k in order]
     if n == 1:
         body = bodies[0]
         if isinstance(body, list):
@@ -750,7 +778,15 @@ def _select_physical_monitors(forest: dict[str, Any]) -> list[dict[str, Any]]:
     if any(_mon_has_windows(m) for m in chosen):
         chosen = [m for m in chosen if _mon_has_windows(m)]
 
-    return sorted(chosen, key=lambda m: (_mon_index(m) is None, _mon_index(m) or 0))
+    # Physical L→R (then top→bottom) so bare save order matches bare load.
+    def _geom_sort_key(m: dict[str, Any]) -> tuple:
+        mi = _mon_index(m)
+        rect = _mon_node_rect(m)
+        if rect:
+            return (float(rect["x"]), float(rect["y"]), mi if mi is not None else 99)
+        return (1e12, 0.0, mi if mi is not None else 99)
+
+    return sorted(chosen, key=_geom_sort_key)
 
 
 def _physical_key(m: dict[str, Any]) -> Any:
