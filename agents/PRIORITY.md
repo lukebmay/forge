@@ -40,7 +40,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 | Doc | Role |
 | --- | --- |
 | [HANDOFF.md](./HANDOFF.md) | Cross-session — **start here** |
-| [forge-action-pipeline.md](./plans/forge-action-pipeline.md) | **P0 active** — formulas + AP1–AP5 |
+| [forge-action-pipeline.md](./plans/forge-action-pipeline.md) | **Code complete** — formulas + AP0–AP5 agent |
 | [docs/dev/actions.md](../docs/dev/actions.md) | Stage glossary + formulas |
 | [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md) | CL0–CL11 historical / residual smoke notes |
 | [forge-wayland-live_residual-smoke.md](./tasks/forge-wayland-live_residual-smoke.md) | Operator checklist |
