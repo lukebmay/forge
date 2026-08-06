@@ -10,10 +10,12 @@
 
 ### Session note (overwrite)
 
-**2026-08-06 verify-retry-cap (A/B AGREE):** Mismatch→layout cap 10 + give-up
-`Logger.error`; mon-order soft-skip + plan place-before-order; tab/stack slot reassert
-on focus (no focus reflow). SETTLED still 2 clean delayed verifies. Install needs
-Wayland logout to load.
+**2026-08-06 intra-tab thrash (A/B AGREE):** Cross-mon focus was hide-all tab chrome
+via full `updateDecorationLayout` on every focus (+ forge geom). Fix: focus-scoped
+restack only; forge-caused geom = borders only. Task:
+[completed/forge-layout-control-loop_intra-tab-thrash.md](./forge-layout-control-loop/completed/forge-layout-control-loop_intra-tab-thrash.md).
+Unit 1457 green. Operator: install + Wayland logout; click mon0 Ghostty — mon1
+tabs must not flash.
 
 
 ---

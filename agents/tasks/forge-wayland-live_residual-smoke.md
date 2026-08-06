@@ -59,6 +59,18 @@ gsettings get org.gnome.shell disable-user-extensions   # false
 
 ## Session note
 
+**2026-08-06 focus-no-reflow:** Root cause = Meta `focus` → `renderTree("focus", true)`.
+Fixed on plan branch (`097807d`). Disk install **v49-90-beta.2-166-g097807d**;
+runtime still **g4320b9f** (Wayland cannot live-reload). **Operator: log out → Wayland
+again**, then confirm: focus walk (click + Super+hjkl) no Chrome ¼→full reflow; tab
+switch stable; borders still track focus.
+
+**2026-08-06 intra-tab thrash (A/B AGREE):** After focus-no-reflow, click mon0
+Ghostty still thrashed mon1 tab strip — full `updateDecorationLayout` hide-all on
+every focus. Fixed: focus-scoped restack only + forge-geom borders-only. See
+[completed/forge-layout-control-loop_intra-tab-thrash.md](../plans/forge-layout-control-loop/completed/forge-layout-control-loop_intra-tab-thrash.md).
+**Re-check after install/logout:** mon0 Ghostty click must not flash mon1 tabs.
+
 **2026-08-06 follow-up (open place + focus border):** Operator re-smoke still saw (1) cyan focus outline on YouTube ~1/6 mon width (slot half) and (2) Nautilus from mon1 dock/focus at mon-root end, not under mon1 Ghostty. Reproduced: `forge focus path:mo1ws0/0/0` + launch → path `mo1ws0/2`. Root causes: Meta map thrash rehome flattens under-LFT attach; focus border used `get_frame_rect` slivers; DBus Focus did not touch LFT. Fixes on plan branch (unit 2173): open sticky when dock/LFT/PlaceNext; rehome after mon LFT; border from `renderRect`/`rect`; Focus → `movePointerWith`. Installed; **Wayland needs logout** to load. Then re-check both.
 
 **2026-08-06 operator Wayland smoke:** layout dev mostly good (a bit slow). Residuals filed → wayland residual fixes (icons, cwd, DnD, hints) landed earlier.

@@ -771,4 +771,223 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(renderSpy).not.toHaveBeenCalledWith("focus");
     expect(renderSpy.mock.calls.some((c) => c[0] === "focus")).toBe(false);
   });
+
+  it("focus-update uses focus-scoped decoration (not full hide/show)", () => {
+    const metaWindow = createMockWindow({ wm_class: "App", workspace: ctx.workspaces[0] });
+    wm().trackWindow(null, metaWindow);
+    const node = wm().tree.findNode(metaWindow);
+
+    const decoSpy = vi.spyOn(wm(), "updateDecorationLayout");
+    const captured = fireFocus(metaWindow);
+    const update = captured.find((e) => e.name === "focus-update");
+    update.callback();
+
+    expect(decoSpy).toHaveBeenCalledWith({
+      scope: "focus",
+      focusNode: node,
+    });
+    // Never a bare full layout from ordinary focus-update.
+    expect(decoSpy.mock.calls.some((c) => c.length === 0 || c[0] == null)).toBe(false);
+  });
+});
+
+/**
+ * intra-tab thrash: cross-mon focus must not hide-flash other mon tab strips;
+ * on-slot tab siblings skip move; forge-caused geom skips decoration storm.
+ */
+describe("WindowManager - intra-tab thrash (cross-mon focus)", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      globals: {
+        display: {
+          monitorCount: 2,
+          monitorGeometries: [
+            { x: 0, y: 0, width: 1920, height: 1080 },
+            { x: 1920, y: 0, width: 1920, height: 1080 },
+          ],
+        },
+      },
+      settings: {
+        "tiling-mode-enabled": true,
+        "showtab-decoration-enabled": true,
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    ctx.cleanup();
+  });
+
+  const wm = () => ctx.windowManager;
+
+  it("focusing mon0 does not hide mon1 TABBED decoration", () => {
+    const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const mon1 = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
+
+    // mon0: plain Ghostty-like tile
+    const ghostty = createMockWindow({
+      id: "ghostty",
+      wm_class: "Ghostty",
+      rect: { x: 0, y: 0, width: 960, height: 1080 },
+      workspace: ctx.workspaces[0],
+    });
+    const nGhost = wm().tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, ghostty);
+    nGhost.mode = WINDOW_MODES.TILE;
+
+    // mon1: TABBED pair with live decoration strip
+    const tab = wm().tree.createNode(mon1.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const deco = { show: vi.fn(), hide: vi.fn() };
+    tab.decoration = deco;
+    const slot = { x: 1920, y: 0, width: 1920, height: 1000 };
+    const wA = createMockWindow({
+      id: "tab-a",
+      rect: slot,
+      workspace: ctx.workspaces[0],
+    });
+    const wB = createMockWindow({
+      id: "tab-b",
+      rect: slot,
+      workspace: ctx.workspaces[0],
+    });
+    const nA = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wB);
+    nA.mode = WINDOW_MODES.TILE;
+    nB.mode = WINDOW_MODES.TILE;
+    nA.rect = { ...slot };
+    nA.renderRect = { ...slot };
+    nB.rect = { ...slot };
+    nB.renderRect = { ...slot };
+    tab.lastTabFocus = wA;
+
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    const restackSpy = vi.spyOn(wm().decorationManager, "_restackDecorationAboveGroup");
+    const showSpy = vi.spyOn(wm().decorationManager, "_showAndRestackTabDecoration");
+
+    // Same body as Meta focus-update queue (focus-no-reflow chrome path).
+    wm().unfreezeRender();
+    wm().updateStackedFocus(nGhost);
+    wm().updateTabbedFocus(nGhost);
+    wm().updateDecorationLayout({ scope: "focus", focusNode: nGhost });
+    wm().updateBorderLayout();
+
+    // Other mon's strip must not hide/flash.
+    expect(deco.hide).not.toHaveBeenCalled();
+    // Focused window is not in a tab group — no restack of mon1 either.
+    expect(restackSpy).not.toHaveBeenCalledWith(tab, expect.anything());
+    expect(showSpy).not.toHaveBeenCalledWith(tab);
+    // No reassert moves on mon1 tabs when focusing mon0 Ghostty.
+    expect(moveSpy.mock.calls.some((c) => c[0] === wA || c[0] === wB)).toBe(false);
+  });
+
+  it("tab switch restacks only the focused CON; on-slot siblings skip move", () => {
+    const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const mon1 = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
+
+    // mon0 tab group (must stay untouched)
+    const tab0 = wm().tree.createNode(mon0.nodeValue, NODE_TYPES.CON, new Bin());
+    tab0.layout = LAYOUT_TYPES.TABBED;
+    const deco0 = { show: vi.fn(), hide: vi.fn() };
+    tab0.decoration = deco0;
+    const slot0 = { x: 0, y: 0, width: 960, height: 1000 };
+    const w0a = createMockWindow({ id: "m0a", rect: slot0, workspace: ctx.workspaces[0] });
+    const w0b = createMockWindow({ id: "m0b", rect: slot0, workspace: ctx.workspaces[0] });
+    const n0a = wm().tree.createNode(tab0.nodeValue, NODE_TYPES.WINDOW, w0a);
+    const n0b = wm().tree.createNode(tab0.nodeValue, NODE_TYPES.WINDOW, w0b);
+    n0a.mode = WINDOW_MODES.TILE;
+    n0b.mode = WINDOW_MODES.TILE;
+    n0a.rect = { ...slot0 };
+    n0a.renderRect = { ...slot0 };
+    n0b.rect = { ...slot0 };
+    n0b.renderRect = { ...slot0 };
+
+    // mon1 tab group — switch within this one
+    const tab1 = wm().tree.createNode(mon1.nodeValue, NODE_TYPES.CON, new Bin());
+    tab1.layout = LAYOUT_TYPES.TABBED;
+    const deco1 = { show: vi.fn(), hide: vi.fn() };
+    tab1.decoration = deco1;
+    const slot1 = { x: 1920, y: 0, width: 1920, height: 1000 };
+    const w1a = createMockWindow({ id: "m1a", rect: slot1, workspace: ctx.workspaces[0] });
+    const w1b = createMockWindow({ id: "m1b", rect: slot1, workspace: ctx.workspaces[0] });
+    const n1a = wm().tree.createNode(tab1.nodeValue, NODE_TYPES.WINDOW, w1a);
+    const n1b = wm().tree.createNode(tab1.nodeValue, NODE_TYPES.WINDOW, w1b);
+    n1a.mode = WINDOW_MODES.TILE;
+    n1b.mode = WINDOW_MODES.TILE;
+    n1a.rect = { ...slot1 };
+    n1a.renderRect = { ...slot1 };
+    n1b.rect = { ...slot1 };
+    n1b.renderRect = { ...slot1 };
+    tab1.lastTabFocus = w1a;
+
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    const restackSpy = vi.spyOn(wm().decorationManager, "_restackDecorationAboveGroup");
+    w1b.raise = vi.fn();
+
+    wm().updateTabbedFocus(n1b);
+    wm().updateDecorationLayout({ scope: "focus", focusNode: n1b });
+
+    // mon0 strip never hide/show/restack
+    expect(deco0.hide).not.toHaveBeenCalled();
+    expect(deco0.show).not.toHaveBeenCalled();
+    expect(restackSpy.mock.calls.some((c) => c[0] === tab0)).toBe(false);
+    // mon1 strip restacked (and shown) for the focused group only
+    expect(deco1.show).toHaveBeenCalled();
+    expect(restackSpy.mock.calls.some((c) => c[0] === tab1)).toBe(true);
+    // Both mon1 tabs on-slot → no move
+    expect(moveSpy).not.toHaveBeenCalled();
+    expect(w1b.raise).toHaveBeenCalled();
+    expect(tab1.lastTabFocus).toBe(w1b);
+  });
+
+  it("forge-caused size-changed does not call updateDecorationLayout", () => {
+    const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const slot = { x: 0, y: 0, width: 800, height: 600 };
+    const meta = createMockWindow({
+      id: "geo",
+      rect: slot,
+      workspace: ctx.workspaces[0],
+    });
+    const node = wm().tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, meta);
+    node.mode = WINDOW_MODES.TILE;
+    node.rect = { ...slot };
+    node.renderRect = { ...slot };
+    ctx.display.get_focus_window.mockReturnValue(meta);
+
+    const decoSpy = vi.spyOn(wm(), "updateDecorationLayout");
+    const borderSpy = vi.spyOn(wm(), "updateBorderLayout").mockImplementation(() => {});
+    wm()._suppressGeometrySignalRetile = true;
+
+    wm().updateMetaPositionSize(meta, "size-changed");
+
+    expect(borderSpy).toHaveBeenCalled();
+    expect(decoSpy).not.toHaveBeenCalled();
+  });
+
+  it("in-slot external size-changed does not call updateDecorationLayout", () => {
+    const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const slot = { x: 10, y: 20, width: 900, height: 700 };
+    const meta = createMockWindow({
+      id: "inslot",
+      rect: { x: slot.x + 1, y: slot.y, width: slot.width, height: slot.height },
+      workspace: ctx.workspaces[0],
+    });
+    const node = wm().tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, meta);
+    node.mode = WINDOW_MODES.TILE;
+    node.rect = { ...slot };
+    node.renderRect = { ...slot };
+    ctx.display.get_focus_window.mockReturnValue(meta);
+
+    const decoSpy = vi.spyOn(wm(), "updateDecorationLayout");
+    const borderSpy = vi.spyOn(wm(), "updateBorderLayout").mockImplementation(() => {});
+    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+
+    wm().updateMetaPositionSize(meta, "size-changed");
+
+    expect(borderSpy).toHaveBeenCalled();
+    expect(decoSpy).not.toHaveBeenCalled();
+    expect(renderSpy).not.toHaveBeenCalled();
+  });
 });

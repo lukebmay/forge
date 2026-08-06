@@ -127,6 +127,45 @@ describe("DecorationManager.updateDecorationLayout", () => {
     expect(con.decoration.hide).toHaveBeenCalled();
     expect(con.decoration.show).not.toHaveBeenCalled();
   });
+
+  it("scope:focus restacks focused CON only and does not hide-all", () => {
+    buildTabbedCon();
+    const focusChild = con.childNodes[0];
+    const restackSpy = vi.spyOn(
+      ctx.windowManager.decorationManager,
+      "_restackDecorationAboveGroup"
+    );
+
+    ctx.windowManager.updateDecorationLayout({
+      scope: "focus",
+      focusNode: focusChild,
+    });
+
+    expect(con.decoration.hide).not.toHaveBeenCalled();
+    expect(con.decoration.show).toHaveBeenCalled();
+    expect(restackSpy).toHaveBeenCalledWith(con, expect.any(Array));
+  });
+
+  it("scope:focus is a no-op when focus is not in a tabbed/stacked CON", () => {
+    buildTabbedCon();
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+      windowOverrides: { id: "solo" },
+    });
+    const restackSpy = vi.spyOn(
+      ctx.windowManager.decorationManager,
+      "_restackDecorationAboveGroup"
+    );
+
+    ctx.windowManager.updateDecorationLayout({
+      scope: "focus",
+      focusNode: nodeWindow,
+    });
+
+    expect(con.decoration.hide).not.toHaveBeenCalled();
+    expect(con.decoration.show).not.toHaveBeenCalled();
+    expect(restackSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe("DecorationManager border lifecycle", () => {

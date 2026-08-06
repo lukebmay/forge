@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (open-under-focus + focus-border slot; MR rename queued)  
+**Updated:** 2026-08-06 (intra-tab thrash A/B AGREE; Wayland re-smoke)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -46,6 +46,7 @@
 | **Wayland preflight** | SEGV-safe `safeMoveToMonitor`; move dest mon + ε; rival tilers; installed dirty |
 | **Wayland residual fixes** | PWA tab icons; launch cwd=$HOME; focus attach; nearest-edge DnD; preview never-stick |
 | **Lock/sleep thrash** | Lock forest shield; no settle while locked; 8s unlock shield + 900ms settle |
+| **Intra-tab thrash** | Focus-scoped decoration restack; forge-geom borders-only (A/B AGREE) |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 

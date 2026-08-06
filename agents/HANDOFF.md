@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (open-under-focus + focus-border; MR rename bumped)  
+**Updated:** 2026-08-06 (intra-tab thrash A/B AGREE; Wayland re-smoke still needed)  
 **Implement on:** `plan/forge-layout-control-loop` (**ahead of origin**; **not pushed**)  
-**HEAD:** plan branch — CL8–CL11 + Wayland residual + lock shield + **open place / border**  
-**Wayland:** layout dev OK; open-under-focus + border fixes **installed**; **logout required** to load  
+**HEAD:** plan branch — CL8–CL11 + Wayland residual + lock shield + open/border + **intra-tab thrash**  
+**Wayland:** layout dev OK; thrash fix on disk after install; **logout required** to load ES modules  
 **Stash:** `stash@{0}` still present (applied; drop after human OK)  
 **Remotes:** **no push** unless human asks  
 
@@ -23,6 +23,7 @@
 | Pre-Wayland prep (SEGV + move + rivals) | **Done** |
 | Wayland residual smoke | **Partial** — icons/cwd/DnD/hints landed earlier |
 | Open place + focus border | **Code + unit green**; **logout** then re-smoke |
+| Intra-tab thrash (cross-mon focus) | **Code + unit green** (A/B AGREE); live re-verify |
 | Lock→sleep→wake | **Next — human** (lock shield fix unit-green) |
 | **MR0 rename** soft-rehome → monitor-recovery | **Queued P1** — own PR |
 | Merge plan → master | After re-smoke green enough |
