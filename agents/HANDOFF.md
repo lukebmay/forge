@@ -1,8 +1,7 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (control-loop on master; action pipeline P0)  
-**Implement on:** `plan/forge-action-pipeline` (create from **master** for AP1+)  
-**HEAD:** `master` @ `e99f18b` + AP0 docs commit (local; **not pushed**)  
+**Updated:** 2026-08-06 (AP1 done; AP2 A/B; X11 mon-order filed)  
+**Implement on:** `plan/forge-action-pipeline`  
 **X11:** preferred for agent `./install` + `killall -HUP gnome-shell`  
 **Wayland:** ES modules need **logout** to reload  
 **Stash:** `stash@{0}` still present (applied earlier; drop after human OK)  
@@ -10,9 +9,9 @@
 
 **Active plan:** [forge-action-pipeline.md](./plans/forge-action-pipeline.md)  
 **Formulas:** [docs/dev/actions.md](../docs/dev/actions.md)  
-**Merged (historical):** [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md)  
-**Smoke checklist:** [forge-wayland-live_residual-smoke](./tasks/forge-wayland-live_residual-smoke.md)  
-**MR rename (P1):** [forge-monitor-recovery-rename](./plans/forge-monitor-recovery-rename.md)  
+**AP1 done:** `afterFocus` FocusChanged body  
+**Next:** AP2 Structure one-commit  
+**Later:** [layout mon order X11 reverse](./tasks/forge-layout-mon-order-x11-reversed.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 
 ---
@@ -21,12 +20,13 @@
 
 | Phase | Status |
 | --- | --- |
-| CL0–CL11 + Wayland residual | **On master** (`e99f18b` FF from plan branch) |
-| Intra-tab thrash / focus-no-reflow | **On master** (unit green; live re-smoke on X11 HUP) |
-| **Action pipeline AP0** | **Done** — plan + actions.md |
-| **AP1 afterFocus** | **Next** — `plan/forge-action-pipeline` |
-| AP2 one-commit structure | After AP1 |
+| CL0–CL11 + Wayland residual | **On master** |
+| **Action pipeline AP0** | **Done** |
+| **AP1 afterFocus** | **Done** (A/B AGREE; on plan branch) |
+| **AP2 structure one-commit** | **Next** |
+| AP3–AP5 | After AP2 |
 | MR0 soft-rehome rename | Queued P1 — own PR |
+| layout mon order reverse X11 | Filed; after pipeline reliability |
 | Stash drop | Human OK only |
 
 ---
