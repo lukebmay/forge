@@ -600,3 +600,96 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
   });
 });
+
+/**
+ * focus-no-reflow: Meta "focus" must update chrome/restack only — not force a
+ * full tree apply (Wayland Chrome PWA ¼-height flicker).
+ */
+describe("WindowManager - Meta focus signal (no reflow)", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    ctx.cleanup();
+  });
+
+  const wm = () => ctx.windowManager;
+
+  function fireFocus(metaWindow) {
+    const captured = [];
+    vi.spyOn(wm(), "queueEvent").mockImplementation((eventObj) => captured.push(eventObj));
+    ctx.display.get_focus_window.mockReturnValue(metaWindow);
+    metaWindow.emit("focus", metaWindow);
+    return captured;
+  }
+
+  it("does not call renderTree('focus') on ordinary tile focus", () => {
+    const metaWindow = createMockWindow({ wm_class: "App", workspace: ctx.workspaces[0] });
+    wm().trackWindow(null, metaWindow);
+    expect(wm().tree.findNode(metaWindow)).toBeTruthy();
+
+    const renderSpy = vi.spyOn(wm(), "renderTree");
+    fireFocus(metaWindow);
+
+    expect(renderSpy).not.toHaveBeenCalledWith("focus", true);
+    expect(renderSpy).not.toHaveBeenCalledWith("focus");
+    expect(renderSpy.mock.calls.some((c) => c[0] === "focus")).toBe(false);
+  });
+
+  it("queues focus-update chrome work (restack, decoration, border)", () => {
+    const metaWindow = createMockWindow({ wm_class: "App", workspace: ctx.workspaces[0] });
+    wm().trackWindow(null, metaWindow);
+    const node = wm().tree.findNode(metaWindow);
+
+    const stackedSpy = vi.spyOn(wm(), "updateStackedFocus");
+    const tabbedSpy = vi.spyOn(wm(), "updateTabbedFocus");
+    const decoSpy = vi.spyOn(wm(), "updateDecorationLayout");
+    const borderSpy = vi.spyOn(wm(), "updateBorderLayout");
+    const pointerSpy = vi.spyOn(wm(), "movePointerWith");
+
+    const captured = fireFocus(metaWindow);
+    const update = captured.find((e) => e.name === "focus-update");
+    expect(update).toBeDefined();
+    update.callback();
+
+    expect(stackedSpy).toHaveBeenCalledWith(node);
+    expect(tabbedSpy).toHaveBeenCalledWith(node);
+    expect(decoSpy).toHaveBeenCalled();
+    expect(borderSpy).toHaveBeenCalled();
+    expect(pointerSpy).toHaveBeenCalledWith(node);
+  });
+
+  it("short-circuits deferred-open focus without queue or render", () => {
+    const metaWindow = createMockWindow({ wm_class: "App", workspace: ctx.workspaces[0] });
+    wm().trackWindow(null, metaWindow);
+    vi.spyOn(wm(), "_isDeferredOpen").mockReturnValue(true);
+
+    const queueSpy = vi.spyOn(wm(), "queueEvent");
+    const renderSpy = vi.spyOn(wm(), "renderTree");
+    ctx.display.get_focus_window.mockReturnValue(metaWindow);
+    metaWindow.emit("focus", metaWindow);
+
+    expect(queueSpy).not.toHaveBeenCalled();
+    expect(renderSpy).not.toHaveBeenCalled();
+  });
+
+  it("still queues raise-float render for focused floats (not focus reason)", () => {
+    const metaWindow = createMockWindow({ wm_class: "FloatApp", workspace: ctx.workspaces[0] });
+    wm().trackWindow(null, metaWindow);
+    const node = wm().tree.findNode(metaWindow);
+    node.mode = WINDOW_MODES.FLOAT;
+
+    const renderSpy = vi.spyOn(wm(), "renderTree");
+    const captured = fireFocus(metaWindow);
+
+    expect(renderSpy.mock.calls.some((c) => c[0] === "focus")).toBe(false);
+    const raise = captured.find((e) => e.name === "raise-float");
+    expect(raise).toBeDefined();
+    raise.callback();
+    expect(renderSpy).toHaveBeenCalledWith("raise-float-queue");
+  });
+});

@@ -20,7 +20,7 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **Wayland** | Re-smoke open-under-focus + border after install | [residual-smoke](./tasks/forge-wayland-live_residual-smoke.md) |
+| **1** | **Wayland** | Confirm focus-no-reflow + residual smoke after reload | [focus-no-reflow](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_focus-no-reflow.md) |
 | **2** | **MR0** | Rename soft-rehome → monitor-recovery (own branch/PR) | [monitor-recovery-rename](./plans/forge-monitor-recovery-rename.md) |
 | **3** | **Merge** | Integrate plan → master after re-smoke | CL8–CL11 + open/border |
 | **4** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |

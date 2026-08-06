@@ -10,13 +10,9 @@
 
 ### Session note (overwrite)
 
-**2026-08-06 open-under-focus + focus-border (unit 2174):** Wayland re-smoke: focus
-YouTube ring too narrow (Meta frame sliver); Nautilus under mon1 Ghostty landed mon-root
-third pane. Root: (1) border used `get_frame_rect` not tile slot; (2) open plan kept
-stale mon0 LFT when focus was mon1; (3) map thrash rehome flattened to mon-root; (4) DBus
-Focus did not touch LFT. Fix: slot border; focus-wins home mon; open sticky when
-LFT/dock/PlaceNext; rehome after mon LFT; Focus→movePointerWith. Installed; **Wayland
-logout** to load. MR rename soft-rehome→monitor-recovery bumped in PRIORITY.
+**2026-08-06 focus-no-reflow (A/B AGREE):** Meta `focus` no longer force-`renderTree("focus")`.
+Chrome via `focus-update` queue only; float raise path kept. Unit window suite 507.
+Live: install + extension reload; confirm no Chrome ¼→full reflow on focus.
 
 
 ---
