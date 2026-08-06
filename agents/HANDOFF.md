@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (LX1–LX2 done; LX3 next)  
+**Updated:** 2026-08-06 (LX1–LX3 done; LX4 next)  
 **Branch tip:** `plan/forge-layout-live-x11`  
 **X11:** preferred for agent `./install` + `killall -HUP gnome-shell`  
 **Wayland:** ES modules need **logout** to reload  
@@ -8,8 +8,8 @@
 **Remotes:** **no push** unless human asks  
 
 **Plan:** [forge-layout-live-x11.md](./plans/forge-layout-live-x11.md) — **active**  
-**Done:** LX1 tab-apply · LX2 peel split orient  
-**Next:** [LX3 cross-mon move](./tasks/forge-layout-live-x11_lx3-cross-mon-move.md)  
+**Done:** LX1 tab-apply · LX2 peel split · LX3 cross-mon move  
+**Next:** [LX4 tab drag](./tasks/forge-layout-live-x11_lx4-tab-drag.md)  
 **Pipeline (done):** [forge-action-pipeline.md](./plans/forge-action-pipeline.md)  
 **Formulas:** [docs/dev/actions.md](../docs/dev/actions.md)  
 **Soft:** [AP5 op visual](./blockers/B-ap5-operator-visual-matrix.md)  
