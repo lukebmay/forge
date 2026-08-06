@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (AP3 done; AP4 next; X11 mon-order filed)  
+**Updated:** 2026-08-06 (AP4 done; AP5 live smoke next; mon-order filed)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -21,8 +21,8 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **AP4** | command.js → commitLayout facade | [action-pipeline](./plans/forge-action-pipeline.md) |
-| **2** | **AP5** | Live X11 HUP smoke matrix | same plan (operator/agent) |
+| **1** | **AP5** | Live X11 HUP smoke matrix | [action-pipeline](./plans/forge-action-pipeline.md) |
+| **2** | **mon-order X11** | Reversed mon order on layout dev | [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
 | **3** | **MR0** | Rename soft-rehome → monitor-recovery (own branch/PR) | [monitor-recovery-rename](./plans/forge-monitor-recovery-rename.md) |
 | **4** | **CON S3** | After pipeline reliability green enough | [container-selection](./plans/forge-container-selection.md) |
 | later | **mon-order X11** | Reversed monitor order on `forge layout dev` | [task](./tasks/forge-layout-mon-order-x11-reversed.md) |
@@ -55,7 +55,7 @@ Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [action pipeline](./plans/forge-action-pipeline.md) | **AP3 done; AP4 next** |
+| **P0** | [action pipeline](./plans/forge-action-pipeline.md) | **AP4 done; AP5 live smoke next** |
 | **P0** | X11 HUP smoke (merged control-loop + pipeline) | Operator on X11; agent HUP |
 | P1 | [layout control loop](./plans/forge-layout-control-loop.md) | **Merged to master** — residual operator smoke only |
 | **P1** | [monitor-recovery rename](./plans/forge-monitor-recovery-rename.md) | MR0 — own PR |

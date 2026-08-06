@@ -93,6 +93,7 @@ describe("CommandHandler", () => {
       unfloatAllWindows: vi.fn(),
       floatWorkspace: vi.fn(),
       unfloatWorkspace: vi.fn(),
+      _isWorkspaceSkipped: vi.fn(() => false),
       prefsTitle: "Forge Preferences",
       reloadWindowOverrides: vi.fn(),
       toggleWorkspaceMonocle: vi.fn(),
@@ -180,10 +181,12 @@ describe("CommandHandler", () => {
       );
     });
 
-    it("should render tree after reset", () => {
+    it("should commit layout after reset", () => {
       commandHandler.execute({ name: "WindowResetSizes" });
 
-      expect(mockWm.renderTree).toHaveBeenCalledWith("window-reset-sizes");
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("window-reset-sizes", { force: true });
+      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
+      expect(mockWm.renderTree).toHaveBeenCalledWith("window-reset-sizes", true);
     });
 
     it("should do nothing if no focus window node", () => {
@@ -255,6 +258,13 @@ describe("CommandHandler", () => {
       expect(mockWm.unfreezeRender).toHaveBeenCalled();
     });
 
+    it("should commit layout once after toggle", () => {
+      commandHandler.execute({ name: "LayoutStackedToggle" });
+
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("layout-stacked-toggle", { force: true });
+      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
+    });
+
     it("should do nothing if stacked mode disabled", () => {
       mockSettings.get_boolean.mockReturnValue(false);
 
@@ -306,6 +316,13 @@ describe("CommandHandler", () => {
       expect(mockNodeWindow.parentNode.lastTabFocus).toBeNull();
     });
 
+    it("should commit layout once after toggle", () => {
+      commandHandler.execute({ name: "LayoutTabbedToggle" });
+
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("layout-tabbed-toggle", { force: true });
+      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
+    });
+
     it("should do nothing if tabbed mode disabled", () => {
       mockSettings.get_boolean.mockReturnValue(false);
 
@@ -331,6 +348,7 @@ describe("CommandHandler", () => {
 
       expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
       expect(mockNodeWindow.parentNode.lastTabFocus).toBe(mockMetaWindow);
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("layout-stack-tab-toggle", { force: true });
     });
 
     it("should switch TABBED to STACKED", () => {
@@ -342,6 +360,7 @@ describe("CommandHandler", () => {
 
       expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.STACKED);
       expect(mockNodeWindow.parentNode.lastTabFocus).toBeNull();
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("layout-stack-tab-toggle", { force: true });
     });
 
     it("should no-op on split (groupify is a later op)", () => {
@@ -350,6 +369,7 @@ describe("CommandHandler", () => {
       commandHandler.execute({ name: "LayoutStackTabToggle" });
 
       expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(mockWm.commitLayout).not.toHaveBeenCalled();
       expect(mockWm.renderTree).not.toHaveBeenCalled();
     });
 
@@ -359,6 +379,7 @@ describe("CommandHandler", () => {
       commandHandler.execute({ name: "LayoutStackTabToggle" });
 
       expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(mockWm.commitLayout).not.toHaveBeenCalled();
       expect(mockWm.renderTree).not.toHaveBeenCalled();
     });
 
@@ -403,7 +424,9 @@ describe("CommandHandler", () => {
         partnerNode,
         LAYOUT_TYPES.TABBED
       );
-      expect(mockWm.renderTree).toHaveBeenCalledWith("window-merge-group");
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("window-merge-group", { force: true });
+      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
+      expect(mockWm.renderTree).toHaveBeenCalledWith("window-merge-group", true);
     });
 
     it("should fall back to tiled sibling when last-active missing", () => {
@@ -546,6 +569,15 @@ describe("CommandHandler", () => {
       expect(mockWm.unfreezeRender).toHaveBeenCalled();
     });
 
+    it("should commit layout once after toggle", () => {
+      commandHandler.execute({ name: "ShowTabDecorationToggle" });
+
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("showtab-decoration-enabled", {
+        force: true,
+      });
+      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
+    });
+
     it("should do nothing if tabbed mode disabled", () => {
       mockSettings.get_boolean.mockReturnValue(false);
 
@@ -683,7 +715,7 @@ describe("CommandHandler", () => {
       expect(mockWm.move).toHaveBeenCalled();
     });
 
-    it("should queue render event", () => {
+    it("should queue render event that commits layout once", () => {
       commandHandler.execute({
         name: "SnapLayoutMove",
         direction: "left",
@@ -694,6 +726,10 @@ describe("CommandHandler", () => {
         name: "snap-layout-move",
         callback: expect.any(Function),
       });
+      const { callback } = mockWm.queueEvent.mock.calls[0][0];
+      callback();
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("snap-layout-move", { force: true });
+      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
     });
 
     it("should not snap if no focus window", () => {
@@ -714,6 +750,29 @@ describe("CommandHandler", () => {
       expect(() => {
         commandHandler.execute({ name: "UnknownCommand" });
       }).not.toThrow();
+    });
+  });
+
+  // AP4: remaining StructureChanged / SizeOnly → one commitLayout Cf each.
+  describe("AP4 structure handlers use commitLayout", () => {
+    it.each([
+      ["Split", { name: "Split", orientation: "horizontal" }, "split"],
+      ["LayoutToggle", { name: "LayoutToggle" }, "layout-split-toggle"],
+      ["WindowResetSizes", { name: "WindowResetSizes" }, "window-reset-sizes"],
+      ["WorkspaceActiveTileToggle", { name: "WorkspaceActiveTileToggle" }, "workspace-toggle"],
+    ])("%s commits once with force", (_label, action, reason) => {
+      mockSettings.get_string.mockReturnValue("");
+      commandHandler.execute(action);
+      expect(mockWm.commitLayout).toHaveBeenCalledWith(reason, { force: true });
+      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
+      expect(mockWm.renderTree).toHaveBeenCalledWith(reason, true);
+    });
+
+    it("Focus still afterFocus only (no C)", () => {
+      commandHandler.execute({ name: "Focus", direction: "right" });
+      expect(mockWm.afterFocus).toHaveBeenCalled();
+      expect(mockWm.commitLayout).not.toHaveBeenCalled();
+      expect(mockWm.renderTree).not.toHaveBeenCalled();
     });
   });
 

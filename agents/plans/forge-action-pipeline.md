@@ -1,6 +1,6 @@
 # Plan: Forge action pipeline
 
-**Status:** active — AP1–AP3 **done**; AP4 next  
+**Status:** active — AP1–AP4 **done**; AP5 live smoke next  
 **Priority:** **P0** (highest)  
 **Branch:** `plan/forge-action-pipeline` (from master)  
 **Created:** 2026-08-06  
@@ -13,10 +13,10 @@
 
 ## Session note (overwrite)
 
-**2026-08-06 AP3 done (A/B AGREE):**
-- RunSteps/Open/geom size paths via `commitLayout`; settle via `settleTabFocus`.
-- Tests 2211. Completed task under plans/…/completed/.
-- **Next:** AP4 command.js remaining → commitLayout facade.
+**2026-08-06 AP4 done (A/B AGREE):**
+- command.js zero bare renderTree; all structure/size → commitLayout force.
+- session-api non-quiet size/order/layout/cycle/merge; float no double C.
+- Tests 2219. **Next:** AP5 live X11 HUP smoke.
 
 ---
 
@@ -99,8 +99,8 @@ Module: `lib/extension/action-pipeline.js` (or thin WM delegates).
 | **AP1** | `afterFocus` + migrate Meta/tab/cmd/DBus focus; tests | **done** | AP0 |
 | **AP2** | Structure one-commit (Move/Swap/drag); tests | **done** | AP1 |
 | **AP3** | Geom/open/RunSteps formula alignment | **done** | AP1 |
-| **AP4** | command.js → `commitLayout` facade | **next** | AP2 |
-| **AP5** | Live X11 HUP smoke matrix | ready | AP2 |
+| **AP4** | command.js → `commitLayout` facade | **done** | AP2 |
+| **AP5** | Live X11 HUP smoke matrix | **next** | AP2 |
 
 ### AP1 acceptance
 

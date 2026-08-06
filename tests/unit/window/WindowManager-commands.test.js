@@ -42,7 +42,7 @@ describe("WindowManager - Command System", () => {
 
     ctx.display.get_focus_window.mockReturnValue(metaWindow);
 
-    // Mock renderTree to avoid UI operations
+    // Mock layout commit surface (commitLayout → renderTree for force Cf)
     wm().renderTree = vi.fn();
     wm().move = vi.fn();
     wm().movePointerWith = vi.fn();
@@ -85,7 +85,8 @@ describe("WindowManager - Command System", () => {
       expect(wm().move).toHaveBeenCalled();
     });
 
-    it("should render tree after float toggle", () => {
+    it("should commit layout after float toggle", () => {
+      const commitSpy = vi.spyOn(wm(), "commitLayout");
       const action = {
         name: "FloatToggle",
         mode: WINDOW_MODES.FLOAT,
@@ -97,6 +98,7 @@ describe("WindowManager - Command System", () => {
 
       wm().command(action);
 
+      expect(commitSpy).toHaveBeenCalledWith("float-toggle", { force: true });
       expect(wm().renderTree).toHaveBeenCalledWith("float-toggle", true);
     });
   });
@@ -131,11 +133,13 @@ describe("WindowManager - Command System", () => {
       expect(wm().unfreezeRender).toHaveBeenCalled();
     });
 
-    it("should render tree after move", () => {
+    it("should commit layout after move", () => {
+      const commitSpy = vi.spyOn(wm(), "commitLayout");
       const action = { name: "Move", direction: "down" };
 
       wm().command(action);
 
+      expect(commitSpy).toHaveBeenCalledWith("move-window", { force: true });
       expect(wm().renderTree).toHaveBeenCalled();
     });
   });
@@ -222,11 +226,13 @@ describe("WindowManager - Command System", () => {
       expect(wm().updateStackedFocus).toHaveBeenCalled();
     });
 
-    it("should render tree after swap", () => {
+    it("should commit layout after swap", () => {
+      const commitSpy = vi.spyOn(wm(), "commitLayout");
       const action = { name: "Swap", direction: "right" };
 
       wm().command(action);
 
+      expect(commitSpy).toHaveBeenCalledWith("swap", { force: true });
       expect(wm().renderTree).toHaveBeenCalledWith("swap", true);
     });
 
@@ -289,12 +295,14 @@ describe("WindowManager - Command System", () => {
       expect(splitSpy).not.toHaveBeenCalled();
     });
 
-    it("should render tree after split", () => {
+    it("should commit layout after split", () => {
+      const commitSpy = vi.spyOn(wm(), "commitLayout");
       const action = { name: "Split", orientation: "horizontal" };
 
       wm().command(action);
 
-      expect(wm().renderTree).toHaveBeenCalledWith("split");
+      expect(commitSpy).toHaveBeenCalledWith("split", { force: true });
+      expect(wm().renderTree).toHaveBeenCalledWith("split", true);
     });
 
     it("should not split if no focus window", () => {
@@ -335,12 +343,14 @@ describe("WindowManager - Command System", () => {
       expect(ctx.tree.attachNode).toBe(nodeWindow.parentNode);
     });
 
-    it("should render tree after toggle", () => {
+    it("should commit layout after toggle", () => {
+      const commitSpy = vi.spyOn(wm(), "commitLayout");
       const action = { name: "LayoutToggle" };
 
       wm().command(action);
 
-      expect(wm().renderTree).toHaveBeenCalledWith("layout-split-toggle");
+      expect(commitSpy).toHaveBeenCalledWith("layout-split-toggle", { force: true });
+      expect(wm().renderTree).toHaveBeenCalledWith("layout-split-toggle", true);
     });
 
     it("should not toggle if no focus window", () => {
@@ -413,12 +423,16 @@ describe("WindowManager - Command System", () => {
       expect(unfloatSpy).toHaveBeenCalled();
     });
 
-    it("should render tree after toggle", () => {
+    it("should commit layout after toggle", () => {
+      const commitSpy = vi.spyOn(wm(), "commitLayout");
       const action = { name: "TilingModeToggle" };
       vi.spyOn(wm(), "floatAllWindows").mockImplementation(() => {});
 
       wm().command(action);
 
+      expect(commitSpy).toHaveBeenCalledWith(expect.stringMatching(/^tiling-mode-toggle /), {
+        force: true,
+      });
       expect(wm().renderTree).toHaveBeenCalled();
     });
   });

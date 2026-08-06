@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (AP3 done; AP4 next; X11 mon-order filed)  
+**Updated:** 2026-08-06 (AP4 done; AP5 smoke next; mon-order filed)  
 **Implement on:** `plan/forge-action-pipeline`  
 **X11:** preferred for agent `./install` + `killall -HUP gnome-shell`  
 **Wayland:** ES modules need **logout** to reload  
@@ -9,8 +9,8 @@
 
 **Active plan:** [forge-action-pipeline.md](./plans/forge-action-pipeline.md)  
 **Formulas:** [docs/dev/actions.md](../docs/dev/actions.md)  
-**AP1–AP3 done:** afterFocus, structure one-commit, geom/open/RunSteps  
-**Next:** AP4 command.js → commitLayout  
+**AP1–AP4 done:** afterFocus, one-commit, geom/open/RunSteps, command facade  
+**Next:** AP5 live X11 HUP smoke  
 **Later:** [layout mon order X11 reverse](./tasks/forge-layout-mon-order-x11-reversed.md)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 
@@ -21,11 +21,10 @@
 | Phase | Status |
 | --- | --- |
 | CL0–CL11 + Wayland residual | **On master** |
-| **Action pipeline AP0–AP3** | **Done** |
-| **AP4 command facade** | **Next** |
-| AP5 live X11 HUP smoke | After AP4 (operator/agent) |
+| **Action pipeline AP0–AP4** | **Done** (unit green 2219) |
+| **AP5 live X11 HUP smoke** | **Next** (agent install/HUP + operator visual) |
 | MR0 soft-rehome rename | Queued P1 — own PR |
-| layout mon order reverse X11 | Filed; after pipeline reliability |
+| layout mon order reverse X11 | Filed; after pipeline |
 | Stash drop | Human OK only |
 
 ---
