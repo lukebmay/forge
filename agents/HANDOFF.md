@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (**X11 RC ready** — WS0–WS3 + CSS on master)  
-**Branch tip:** `master` @ `6e210a7` (local, **ahead of origin**, not pushed)  
-**Install:** `v49-90-beta.2-202-g6e210a7` · X11 · ACTIVE  
-**Wayland:** ES modules need **logout** to reload — operator residual next  
+**Updated:** 2026-08-06 (wrap-up: X11 RC + theme effective overlay; Wayland next)  
+**Branch tip:** `master` @ `5a8714a` (+ wrap-up docs) — local, **ahead of origin**, not pushed  
+**Install:** `v49-90-beta.2-205-g5a8714a` · X11 ACTIVE  
+**Wayland:** **Operator next** — log out → GNOME on Wayland → residual smoke  
 **Stash:** `stash@{0}` still present — **drop only after human OK**  
 **Remotes:** **no push** unless human asks  
 
@@ -13,10 +13,11 @@
 
 | Gate | Status |
 | --- | --- |
-| CSS dual-load + deltas | **Done** |
+| CSS dual-load → **effective overlay** (user colors) | **Done** (`5a8714a`) |
 | Workspace scope WS0–WS3 | **Done** (merged master) |
-| Unit: npm 2262 + pytest cli 424 | **Green** |
-| X11 dual-ws + layout apply smoke | **Green** |
+| Unit: npm + pytest cli | Green (pre-theme-wrap) |
+| X11 dual-ws + layout smoke | **Green** |
+| Theme: personal purple via `effective.css` | Fixed; re-check after Wayland login |
 | Wayland residual | **Human** after logout |
 | Session DPMS / daily layout | **Human** B-manual |
 | AP5 visual matrix | **Human soft** |
@@ -27,26 +28,23 @@
 | Resize / autotile | design P3 |
 | Tab chrome drag / S3+ | later |
 
-### Just shipped (this arc)
+### Theme fix (this wrap)
 
-**Layout workspace scope** — plan/claim/apply/save scoped to one workspace;
-GetTree `activeWorkspace`/`nWorkspaces`; CLI sequential XOR static + preflight;
-docs Workspace scope; live X11 Inkscape-on-ws2 isolation proven.
+St.Theme did not honor dual-load or simple concat — borders stayed bundled red while
+purple lived in `~/.config/forge/stylesheet/forge/stylesheet.css`.
 
-**CSS base + user overrides (D001)** — dual-load; patchCss never full-clobbers.
+**Now:** merge base+user into `~/.config/forge/stylesheet/forge/effective.css`
+(one rule per selector, user wins); load only that sheet; restyle on
+`css-updated` / Super+Shift+r. Install defaults to theme reload after HUP.
 
 ### Operator checklist (you)
 
-1. **Wayland:** log out → GNOME on Wayland → [residual smoke](./tasks/forge-wayland-live_residual-smoke.md).  
-2. Optional: [B-manual session](./blockers/B-manual-black-session-verify.md) (DPMS / daily layout).  
-3. Optional soft: [AP5 visual](./blockers/B-ap5-operator-visual-matrix.md).  
-4. When happy: push + tag RC/beta per [RELEASING.md](../RELEASING.md) (agent will not push unasked).
-
-### Note
-
-`gsettings` schema may need  
-`GSETTINGS_SCHEMA_DIR=~/.local/share/gnome-shell/extensions/forge@jmmaranan.com/schemas`  
-on this host (extension DBus/prefs still work). Not RC-blocking.
+1. **Log out → GNOME on Wayland.**  
+2. Confirm Forge ACTIVE + purple focus border.  
+3. Residual smoke: [forge-wayland-live_residual-smoke](./tasks/forge-wayland-live_residual-smoke.md)  
+   (`forge layout dev`, focus walk, tabs, no reflow/thrash).  
+4. Optional: [B-manual](./blockers/B-manual-black-session-verify.md), [B-ap5](./blockers/B-ap5-operator-visual-matrix.md).  
+5. When happy: ask to **push** / tag per [RELEASING.md](../RELEASING.md).
 
 ---
 
