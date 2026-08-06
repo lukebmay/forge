@@ -63,5 +63,5 @@ forge layout dev 3:vinyl                      # ERROR mixed
   Scanned FORGE_LAYOUT_DIR / XDG / examples — no illegal names.
 - **Help:** `cli_help.print_layout_help` + argparse description exclusive modes.
 - **Tests:** `test_layout_cli.py` + lib name tests; full `tests/unit/cli` **424** green.
-- **Commit:** `31b75cd`.
+- **Commit:** `21812f5`.
 - **Next:** B verify → WS3 docs/live.

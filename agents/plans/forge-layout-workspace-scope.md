@@ -10,7 +10,7 @@
 
 **2026-08-06 WS2 (A implement):** exclusive sequential XOR static CLI grammar;
 all-or-nothing preflight; save rejects `:`/`@`; dry-run candidates + help.
-Module `layout_cli.py`; `tests/unit/cli` **424**. Commit `31b75cd`.
+Module `layout_cli.py`; `tests/unit/cli` **424**. Commit `21812f5`.
 **Next: B verify → WS3.**
 
 ---
