@@ -115,7 +115,8 @@ Admit (track, sensors, sticky mon)
   → V (auto)
 ```
 
-**LayoutBatch:** deferred hidden admits → map quiet → residual **M → one Cf → V**.
+**LayoutBatch:** deferred hidden admits → map quiet → residual **M → one C → V**
+(`Cq` via layout-controller when present; `Cf` if frozen / no controller).
 
 ---
 
