@@ -1128,6 +1128,8 @@ class TestLaunchAppGhostty(unittest.TestCase):
         self.assertEqual(argv[0], "/usr/bin/ghostty")
         self.assertEqual(argv[1], GHOSTTY_MULTI_INSTANCE_FLAG)
         self.assertNotIn("--gtk-single-instance=true", argv)
+        # cwd=$HOME so layout from a project dir does not open Ghostty there
+        self.assertEqual(popen.call_args.kwargs.get("cwd"), self.forge._launch_home())
 
     def test_launch_app_ghostty_argv_already_multi(self):
         from unittest import mock
@@ -1143,6 +1145,7 @@ class TestLaunchAppGhostty(unittest.TestCase):
                     self.forge.launch_app(app)
         argv = popen.call_args[0][0]
         self.assertEqual(argv, ["ghostty", GHOSTTY_MULTI_INSTANCE_FLAG])
+        self.assertEqual(popen.call_args.kwargs.get("cwd"), self.forge._launch_home())
 
 
 class TestEnsureSizesApply(unittest.TestCase):

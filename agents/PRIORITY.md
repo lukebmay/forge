@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-05 (pre-Wayland prep landed; operator Wayland logout next)  
+**Updated:** 2026-08-06 (Wayland residual fixes unit-green; operator re-smoke)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -10,8 +10,8 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Wayland residual smoke** | Human logout; dual-mon daily path |
-| **2** | Merge plan branch → master (when safe) | CL8–CL11 + polish + preflight still plan-only |
+| **1** | **Wayland residual re-smoke** | After install: icons, open place, DnD, hints |
+| **2** | Merge plan branch → master (when safe) | CL8–CL11 + polish + preflight + residual fixes |
 | **3** | **Container selection finish** | S3 kit binds → S5 live QA |
 | **4** | **Desktop keybinds** | Manage GNOME chords; Safe dual-lock |
 | **5** | **MR0 rename** | soft-rehome → monitor-recovery (own PR) |
@@ -20,8 +20,8 @@
 
 | Order | ID | Task | Why |
 | ---: | --- | --- | --- |
-| **1** | **Wayland** | Operator residual smoke (logout) | [residual-smoke](./tasks/forge-wayland-live_residual-smoke.md) |
-| **2** | **Merge** | Integrate plan → master after Wayland smoke | CL8–CL11 + preflight |
+| **1** | **Wayland** | Re-smoke after residual fixes install | [residual-smoke](./tasks/forge-wayland-live_residual-smoke.md) |
+| **2** | **Merge** | Integrate plan → master after re-smoke | CL8–CL11 + residual fixes |
 | **3** | **CON S3** | After reliability green enough | [container-selection](./plans/forge-container-selection.md) |
 
 **Shipped on master (local, not pushed)**
@@ -43,6 +43,7 @@
 | CL11 | residual mon-ensure + structure verifier |
 | X11 polish | ghost deco after auto-exit (`9beebdc`); chrome UI (`20c8d8f`) |
 | **Wayland preflight** | SEGV-safe `safeMoveToMonitor`; move dest mon + ε; rival tilers; installed dirty |
+| **Wayland residual fixes** | PWA tab icons; launch cwd=$HOME; focus attach; nearest-edge DnD; preview never-stick |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.
 

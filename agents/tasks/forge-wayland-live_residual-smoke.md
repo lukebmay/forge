@@ -59,4 +59,6 @@ gsettings get org.gnome.shell disable-user-extensions   # false
 
 ## Session note
 
+**2026-08-06 operator Wayland smoke:** layout dev mostly good (a bit slow). Residuals filed → [forge-wayland-live_residual-fixes](./forge-wayland-live_residual-fixes.md): wrong PWA tab icons, Ghostty cwd=repo, Nautilus mon-root vs aspect under LFT, hard vertical DnD, preview-hint stick risk. Fixes landed on plan branch (unit green); re-smoke after install.
+
 **2026-08-05 prep:** Stash applied onto control-loop + move() port from wayland branch (dest mon / epsilon). Install `v49-90-beta.2-155-gd81e4e2-dirty` on X11. Awaiting operator Wayland logout smoke.

@@ -607,16 +607,22 @@ describe("Utility Functions", () => {
       expect(detectDropZone(smallRegions, [500, 400])).toBe(DROP_ZONES.CENTER);
     });
 
-    it("should give left/right priority over top/bottom", () => {
-      // Top-left corner is in both left and top regions
-      // Left should win
-      expect(detectDropZone(regions, [100, 100])).toBe(DROP_ZONES.LEFT);
-      // Top-right corner
-      expect(detectDropZone(regions, [900, 100])).toBe(DROP_ZONES.RIGHT);
-      // Bottom-left corner
-      expect(detectDropZone(regions, [100, 700])).toBe(DROP_ZONES.LEFT);
-      // Bottom-right corner
-      expect(detectDropZone(regions, [900, 700])).toBe(DROP_ZONES.RIGHT);
+    it("should pick nearest edge in corners (not fixed L/R over T/B)", () => {
+      // Top-left: closer to top edge (y=100→dist 100) than left (x=100→dist 100) — tie: first sorted stable
+      // Closer to top: y=50, x=100 → top dist 50, left dist 100
+      expect(detectDropZone(regions, [100, 50], rect)).toBe(DROP_ZONES.TOP);
+      // Closer to left: y=100, x=50 → left dist 50, top dist 100
+      expect(detectDropZone(regions, [50, 100], rect)).toBe(DROP_ZONES.LEFT);
+      // Top-right closer to top
+      expect(detectDropZone(regions, [900, 50], rect)).toBe(DROP_ZONES.TOP);
+      // Bottom-left closer to bottom
+      expect(detectDropZone(regions, [100, 750], rect)).toBe(DROP_ZONES.BOTTOM);
+      // Bottom-right closer to right
+      expect(detectDropZone(regions, [950, 700], rect)).toBe(DROP_ZONES.RIGHT);
+    });
+
+    it("infers target rect when omitted so nearest-edge still works", () => {
+      expect(detectDropZone(regions, [100, 50])).toBe(DROP_ZONES.TOP);
     });
   });
 

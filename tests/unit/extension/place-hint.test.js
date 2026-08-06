@@ -7,6 +7,8 @@ import {
   isChromePwaClass,
   isChromeFamilyClass,
   chromePwaAppId,
+  chromePwaDesktopIds,
+  preferChromePwaApp,
   normalizePlaceHint,
   pruneExpiredPlaceHints,
   findMatchingPlaceHintIndex,
@@ -102,6 +104,37 @@ describe("chrome family helpers", () => {
     expect(isChromeFamilyClass("firefox")).toBe(false);
     expect(chromePwaAppId("crx_abc123")).toBe("abc123");
     expect(chromePwaAppId("chrome-abc123-Default")).toBe("abc123");
+  });
+});
+
+describe("preferChromePwaApp / chromePwaDesktopIds", () => {
+  it("lists desktop ids for Meta chrome-<id>-Default class", () => {
+    expect(chromePwaDesktopIds("chrome-fmgjjmmmlfnkbppncabfkddbjimcfncm-Default")).toEqual([
+      "chrome-fmgjjmmmlfnkbppncabfkddbjimcfncm-Default.desktop",
+      "chrome-fmgjjmmmlfnkbppncabfkddbjimcfncm-default.desktop",
+    ]);
+    expect(chromePwaDesktopIds("Google-chrome")).toEqual([]);
+  });
+
+  it("looks up PWA app when tracker returned bare Chrome", () => {
+    const pwa = { get_id: () => "chrome-abc-Default.desktop", get_name: () => "Gmail" };
+    const chrome = { get_id: () => "google-chrome.desktop", get_name: () => "Chrome" };
+    const sys = {
+      lookup_app: (id) => (id === "chrome-abc-Default.desktop" ? pwa : null),
+    };
+    expect(preferChromePwaApp("chrome-abc-Default", chrome, sys)).toBe(pwa);
+  });
+
+  it("keeps tracker app when it already matches the PWA id", () => {
+    const pwa = { get_id: () => "chrome-abc-Default.desktop" };
+    const sys = { lookup_app: () => ({ get_id: () => "other" }) };
+    expect(preferChromePwaApp("chrome-abc-Default", pwa, sys)).toBe(pwa);
+  });
+
+  it("returns null when no AppSystem match", () => {
+    const chrome = { get_id: () => "google-chrome.desktop" };
+    expect(preferChromePwaApp("chrome-abc-Default", chrome, { lookup_app: () => null })).toBeNull();
+    expect(preferChromePwaApp("chrome-abc-Default", chrome, null)).toBeNull();
   });
 });
 

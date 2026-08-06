@@ -42,6 +42,29 @@ export class WindowTracker {
   }
 }
 
+/** Map of desktop-id → App for preferChromePwaApp / tab icon tests. */
+const _appSystemApps = new Map();
+
+export class AppSystem {
+  static get_default() {
+    return new AppSystem();
+  }
+
+  /** @param {string} id @param {App} app */
+  static _registerForTests(id, app) {
+    _appSystemApps.set(id, app);
+  }
+
+  static _clearForTests() {
+    _appSystemApps.clear();
+  }
+
+  lookup_app(id) {
+    if (!id) return null;
+    return _appSystemApps.get(id) || _appSystemApps.get(String(id).toLowerCase()) || null;
+  }
+}
+
 export const ActionMode = {
   NONE: 0,
   NORMAL: 1 << 0,
@@ -58,5 +81,6 @@ export const ActionMode = {
 export default {
   App,
   WindowTracker,
+  AppSystem,
   ActionMode,
 };

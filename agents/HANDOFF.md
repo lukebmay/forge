@@ -1,14 +1,15 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-05 (pre-Wayland prep landed; operator logout next)  
+**Updated:** 2026-08-06 (Wayland residual code fixes; re-smoke next)  
 **Implement on:** `plan/forge-layout-control-loop` (**ahead of origin**; **not pushed**)  
-**HEAD:** master has CL0–CL7; plan branch has CL8–CL11 + chrome/ghost-deco + **Wayland preflight**  
-**Wayland residual:** **operator next** — log out → GNOME **Wayland** session  
+**HEAD:** master has CL0–CL7; plan branch has CL8–CL11 + preflight + **Wayland residual fixes**  
+**Wayland:** first smoke mostly OK; residual fixes unit-green — **install + re-smoke**  
 **Stash:** `stash@{0}` still present (applied content landed on this branch; safe to drop after you confirm)  
 **Remotes:** **no push** unless human asks  
 
 **Active plan:** [forge-layout-control-loop.md](./plans/forge-layout-control-loop.md)  
 **Wayland residual smoke:** [forge-wayland-live_residual-smoke](./tasks/forge-wayland-live_residual-smoke.md)  
+**Residual fixes (done unit):** [completed wayland residual](./plans/forge-layout-control-loop/completed/forge-layout-control-loop_wayland-residual-fixes.md)  
 **Historical Wayland plan:** on branch `plan/forge-wayland-live` (diverged; W1–W5 + W-storm)  
 **Queue:** [PRIORITY.md](./PRIORITY.md)
 
@@ -20,9 +21,10 @@
 | --- | --- |
 | CL0–CL7 X11 | **Done** (operator green; on master) |
 | CL8–CL11 + X11 polish | **Done** (plan branch) |
-| Pre-Wayland prep (SEGV + move + rivals) | **Done** (this session; installed dirty) |
-| Wayland residual smoke | **Next — human** (logout) |
-| Merge plan → master | After Wayland smoke green enough |
+| Pre-Wayland prep (SEGV + move + rivals) | **Done** |
+| Wayland residual smoke | **Partial** — first pass OK; residual code landed |
+| Residual re-smoke | **Next — human** after `./install` |
+| Merge plan → master | After re-smoke green enough |
 
 ---
 
@@ -64,22 +66,27 @@ Content was **applied** onto `plan/forge-layout-control-loop` (not popped onto w
 
 ---
 
-## Operator action now (Wayland)
+## Operator action now (Wayland residual re-smoke)
 
-1. **Optional:** commit is local on control-loop — re-`./install` after commit for clean versionName.
-2. **Log out** → at greeter pick **GNOME on Wayland** (not Xorg).
-3. After login:
+Already on Wayland. Install latest plan branch, then re-check residuals:
 
 ```bash
 cd ~/dev/me/forge
-forge ping          # ok + versionName
-gsettings get org.gnome.shell disable-user-extensions   # must be false
+./install   # debug install; then reload Shell if needed (Wayland: logout/login or alt session)
+forge ping
 forge layout dev
 forge tree
 ```
 
-4. Smoke checklist → [residual-smoke task](./tasks/forge-wayland-live_residual-smoke.md).
-5. If Shell crashes: check `disable-user-extensions`; journal; note whether Nautilus/close/path-title was involved.
+| Check | Expect |
+| --- | --- |
+| Tab icons | Gmail / YouTube / Grok each own icon (not swapped / bare Chrome) |
+| Ghostty open | cwd ~ not the forge repo |
+| Focus mon1 ghostty → open Nautilus | Aspect-split under ghostty (not mon-root end) |
+| Drag vertical split | Top/bottom zones easier (nearest edge) |
+| Preview hints on | Can enable; abort drag / disable setting — **never stuck dim** |
+
+Full checklist: [residual-smoke](./tasks/forge-wayland-live_residual-smoke.md).
 
 ---
 

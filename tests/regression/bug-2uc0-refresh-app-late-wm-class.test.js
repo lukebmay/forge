@@ -51,4 +51,31 @@ describe("Bug forge-2uc0: Node.refreshApp rebuilds app + tab when wm_class lands
     expect(nodeWindow.tab).toBeTruthy();
     expect(nodeWindow._tabFallback).toBe(false);
   });
+
+  it("rebuilds tab when resolved Shell.App id changes (wrong Chrome → PWA)", () => {
+    const chrome = {
+      get_id: () => "google-chrome.desktop",
+      get_name: () => "Chrome",
+      create_icon_texture: () => ({}),
+    };
+    const pwa = {
+      get_id: () => "chrome-abc-Default.desktop",
+      get_name: () => "Grok",
+      create_icon_texture: () => ({}),
+    };
+    const spy = vi.spyOn(Shell.WindowTracker.prototype, "get_window_app").mockReturnValue(chrome);
+
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const { nodeWindow } = createWindowNode(ctx.tree, monitor);
+    const firstTab = nodeWindow.tab;
+    expect(nodeWindow.app).toBe(chrome);
+    expect(firstTab).toBeTruthy();
+
+    spy.mockReturnValue(pwa);
+    nodeWindow.refreshApp();
+
+    expect(nodeWindow.app).toBe(pwa);
+    expect(nodeWindow.tab).toBeTruthy();
+    expect(nodeWindow.tab).not.toBe(firstTab);
+  });
 });
