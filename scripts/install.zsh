@@ -170,14 +170,17 @@ case "$lineage" in
     if (( DO_RESTART )); then
       st=$(forge_session_type)
       if [[ "$st" == "x11" ]]; then
-        forge_step_ok "Extension successfully live reloaded"
-      elif [[ "$st" == "wayland" ]]; then
-        forge_step_fail "Reload shell — cannot reload extensions live on Wayland; log out and back in"
+        forge_step_ok "Live reload"
       else
-        forge_step_fail "Reload shell — cannot reload live (session=$st); log out and back in"
+        forge_step_fail "Live reload"
+        if [[ "$st" == "wayland" ]]; then
+          forge_warn "must log out and back in to complete install on Wayland"
+        else
+          forge_warn "must log out and back in to complete install (session=$st)"
+        fi
       fi
     else
-      forge_step_skip "Reload shell (--no-restart)"
+      forge_step_skip "Live reload (--no-restart)"
     fi
     _install_done
     exit 0
@@ -271,22 +274,23 @@ if (( DO_RESTART )); then
     if (( DO_RELOAD_THEME )) && [[ -f "$SCRIPT_DIR/reload-theme.zsh" ]]; then
       "$SCRIPT_DIR/reload-theme.zsh" --force >/dev/null 2>&1 || true
     fi
-    forge_step_ok "Extension successfully live reloaded"
+    forge_step_ok "Live reload"
   elif (( rc == 2 )); then
-    # Expected on Wayland (no in-session reload). Red X + action; not a die.
+    # Expected on Wayland: red X step + one warning line; not a die.
+    forge_step_fail "Live reload"
     st=$(forge_session_type)
     if [[ "$st" == "wayland" ]]; then
-      forge_step_fail "Reload shell — cannot reload extensions live on Wayland; log out and back in"
+      forge_warn "must log out and back in to complete install on Wayland"
     else
-      forge_step_fail "Reload shell — cannot reload live (session=$st); log out and back in"
+      forge_warn "must log out and back in to complete install (session=$st)"
     fi
   else
-    forge_step_fail "Reload shell"
+    forge_step_fail "Live reload"
     forge_die "Shell reload failed"
   fi
 else
   # Explicit --no-restart: skip only (user opted out; no second warning).
-  forge_step_skip "Reload shell (--no-restart)"
+  forge_step_skip "Live reload (--no-restart)"
 fi
 
 _install_done
