@@ -8,10 +8,11 @@
 
 ### Session note (overwrite)
 
-**2026-08-06:** **SL1 done** (A/B AGREE). Time-to-stable + raise-only minQuiet on
-open path; forest-ok gate fixed (no sample while FLOAT absent from TILE results).
-Next: **SL2** layout-batch deferred open samples + debug dump (operator `layout
-dev` path currently skips `_scheduleOpenCommit` note).
+**2026-08-06:** **SL1+SL2 done** (A/B AGREE both). Agent-side data collection
+ready: open + layout-batch settle samples, raise-only minQuiet, `forge thrash`
+dump. **SL3** (drop Ghostty seed) blocked on operator live samples. Topology
+residuals (Grok open leaf, giant tab) still open — use thrash dump to see if
+settle is the cause.
 
 ---
 
@@ -83,7 +84,7 @@ Pure helpers live in `app-thrash-catalog.js` (unit-tested). Wire from
 | Id | Task | Status |
 | --- | --- | --- |
 | **SL1** | Time-to-stable samples + raise-only learned `minQuietMs` + snapshot + tests | **done** → [completed](./forge-settle-learning/completed/forge-settle-learning_sl1-time-to-stable.md) |
-| **SL2** | Layout-batch deferred samples + debug dump | next → [task](../tasks/forge-settle-learning_sl2-batch-dump.md) |
+| **SL2** | Layout-batch deferred samples + debug dump | **done** → [completed](./forge-settle-learning/completed/forge-settle-learning_sl2-batch-dump.md) |
 | **SL3** | Drop/relax Ghostty built-in when live samples support it | pending (needs operator evidence) |
 
 ---

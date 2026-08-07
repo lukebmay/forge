@@ -215,9 +215,32 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     expect(out.error).toMatch(/begin\|end\|release-deferred/);
   });
 
-  it("Ping reports apiVersion ≥ 8", () => {
+  it("Ping reports apiVersion ≥ 9", () => {
     const ping = JSON.parse(api().Ping());
     expect(ping.ok).toBe(true);
-    expect(ping.apiVersion).toBeGreaterThanOrEqual(8);
+    expect(ping.apiVersion).toBeGreaterThanOrEqual(9);
+  });
+
+  it("SL2 GetThrashCatalog returns catalog.snapshot shape", () => {
+    const a = api();
+    const cat = ctx.windowManager.appThrashCatalog;
+    cat.recordSettleSample("org.example.Dump", { ms: 250, kind: "open", mismatches: 1 });
+
+    const out = JSON.parse(a.GetThrashCatalog());
+    expect(out.ok).toBe(true);
+    expect(out.apiVersion).toBeGreaterThanOrEqual(9);
+    expect(Array.isArray(out.entries)).toBe(true);
+
+    const row = out.entries.find((e) => e.key === "org.example.dump");
+    expect(row).toBeTruthy();
+    expect(row.settleSampleCount).toBe(1);
+    expect(row.settleMsLast).toBe(250);
+    expect(row.mismatchBeforeSettle).toBe(1);
+    expect(typeof row.minQuietMs).toBe("number");
+    expect(typeof row.thrashScore).toBe("number");
+
+    const ghost = out.entries.find((e) => e.key === "com.mitchellh.ghostty" || e.key === "ghostty");
+    expect(ghost).toBeTruthy();
+    expect(ghost.builtIn).toBe(true);
   });
 });

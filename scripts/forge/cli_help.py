@@ -30,6 +30,7 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
     rows = [
         ("layout", "Named layout profiles - idempotent reconcile (preferred)"),
         ("tree", "Dump tiling forest as JSON"),
+        ("thrash", "Dump thrash/settle catalog JSON (debug; session memory)"),
         ("focus / swap / move", "Tile ops by selector"),
         ("launch", "Start app; place after LFT (or PlaceNext path/monitor)"),
         ("run / run-steps", "JSON step scripts (mixed CLI+ext / ext-only)"),

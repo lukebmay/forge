@@ -555,6 +555,65 @@ describe("WindowManager open commit (CL4)", () => {
     expect(wm().openLayoutBatchActive).toBe(false);
   });
 
+  it("SL2: deferred release notes settle pending (mappedAt t0)", () => {
+    const tMap = 1_111_000;
+    clock.setNow(tMap);
+    wm().beginOpenLayoutBatch();
+    wm().appThrashCatalog.recordOpen("org.example.SettleDef");
+    const meta = trackNew({ id: "settle-def", wm_class: "org.example.SettleDef" });
+    expect(wm()._isDeferredOpen(meta)).toBe(true);
+    expect(wm().layoutController._settlePending.has(meta)).toBe(false);
+
+    clock.setNow(tMap + 200);
+    const out = wm().releaseDeferredOpens();
+    expect(out.released).toBe(1);
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
+
+    const st = wm().layoutController._settlePending.get(meta);
+    expect(st).toBeTruthy();
+    expect(st.openedAt).toBe(tMap); // map time, not release time
+    expect(st.mismatches).toBe(0);
+
+    // end batch without re-noting a second pending entry
+    wm().endOpenLayoutBatch("open-batch");
+    expect(wm().layoutController._settlePending.size).toBe(1);
+    expect(wm().layoutController._settlePending.get(meta).openedAt).toBe(tMap);
+  });
+
+  it("SL2: endOpenLayoutBatch release also notes settle pending", () => {
+    const tMap = 2_222_000;
+    clock.setNow(tMap);
+    wm().beginOpenLayoutBatch();
+    wm().appThrashCatalog.recordOpen("org.example.SettleEnd");
+    const meta = trackNew({ id: "settle-end", wm_class: "org.example.SettleEnd" });
+    expect(wm()._isDeferredOpen(meta)).toBe(true);
+
+    clock.setNow(tMap + 50);
+    wm().endOpenLayoutBatch("open-batch");
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
+    const st = wm().layoutController._settlePending.get(meta);
+    expect(st).toBeTruthy();
+    expect(st.openedAt).toBe(tMap);
+  });
+
+  it("SL2: open-commit note after deferred release keeps earliest t0", () => {
+    const tMap = 3_333_000;
+    clock.setNow(tMap);
+    wm().beginOpenLayoutBatch();
+    wm().appThrashCatalog.recordOpen("org.example.DoublePath");
+    const meta = trackNew({ id: "double-path", wm_class: "org.example.DoublePath" });
+    wm().releaseDeferredOpens();
+    expect(wm().layoutController._settlePending.get(meta)?.openedAt).toBe(tMap);
+
+    clock.setNow(tMap + 400);
+    // Simulate open-commit path also noting (would use later now).
+    wm().layoutController.noteOpenPendingForSettle(meta, Date.now());
+    expect(wm().layoutController._settlePending.size).toBe(1);
+    expect(wm().layoutController._settlePending.get(meta).openedAt).toBe(tMap);
+
+    wm().endOpenLayoutBatch("open-batch");
+  });
+
   it("CL5 nest depth: only outermost end commits", () => {
     const lcSpy = vi.spyOn(wm().layoutController, "requestLayout");
     expect(wm().beginOpenLayoutBatch()).toMatchObject({ ok: true, depth: 1 });

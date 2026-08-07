@@ -46,6 +46,7 @@ _METHOD_IN_ARGS: dict[str, int] = {
     "RunSteps": 1,
     "LayoutBatch": 1,
     "SaveSessionLayout": 0,
+    "GetThrashCatalog": 0,
 }
 
 # Ops executed only by this CLI (not extension RunSteps). Documented for scripts.
@@ -463,6 +464,27 @@ def cmd_tree(backend: str, args: argparse.Namespace) -> int:
         _print_json(data, compact=args.compact)
         return 1
     _print_json(data, compact=args.compact)
+    return 0
+
+
+def cmd_thrash(backend: str, args: argparse.Namespace) -> int:
+    """Dump in-session thrash/settle catalog (GetThrashCatalog)."""
+    try:
+        raw = call_method(backend, "GetThrashCatalog")
+    except Exception as e:
+        _eprint(f"forge thrash: bus call failed (is the extension enabled?): {e}")
+        return 1
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        print(raw)
+        return 1
+    if isinstance(data, dict) and data.get("ok") is False:
+        err = data.get("error") or "thrash catalog failed"
+        _eprint(f"forge thrash: {err}")
+        _print_json(data, compact=getattr(args, "compact", False))
+        return 1
+    _print_json(data, compact=getattr(args, "compact", False))
     return 0
 
 
@@ -3406,6 +3428,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Single-line JSON (default is pretty)",
     )
     tree.set_defaults(func=cmd_tree)
+
+    thrash = sub.add_parser(
+        "thrash",
+        help="Dump in-session thrash/settle catalog JSON (debug after layout dev)",
+    )
+    thrash.add_argument(
+        "--compact",
+        action="store_true",
+        help="Single-line JSON (default is pretty)",
+    )
+    thrash.set_defaults(func=cmd_thrash)
 
     focus = sub.add_parser("focus", help="Focus a tile by selector")
     focus.add_argument("selector", help="Tile selector (see main --help)")

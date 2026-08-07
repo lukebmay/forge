@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (settle-learning SL1 after Wayland residual report)  
-**Branch tip:** `master` (ahead of origin); **active work** `plan/forge-settle-learning`  
-**Install:** master tip; Wayland **cannot HUP** — logout to load  
-**Wayland:** re-smoke found residuals (see below); agent started settle-learning  
+**Updated:** 2026-08-06 (settle-learning SL1+SL2 on master)  
+**Branch tip:** `master` (ahead of origin); plan branch `plan/forge-settle-learning` same tip  
+**Install:** this tip; Wayland **cannot HUP** — logout to load  
+**Wayland:** residual fails noted; settle data collection ready (`forge thrash`)  
 **Stash:** `stash@{0}` still present — **drop only after human OK**  
 **Remotes:** **no push** unless human asks  
 
@@ -17,7 +17,8 @@
 | Workspace scope WS0–WS3 | **Done** |
 | WR1 chrome geom / focus thrash | **Done** |
 | WR2 Guake rehome | **Reverted** (`0d18ac0`) — float only |
-| Unit: window + extension | Green on master |
+| Settle learning SL1+SL2 | **Done** — open + batch samples; `forge thrash` |
+| Unit: window + extension | Green |
 | X11 dual-ws + layout smoke | **Green** |
 | Wayland residual re-smoke | **Partial fail** (see residuals) |
 | Session DPMS / daily layout | **Human** B-manual |
@@ -30,36 +31,29 @@
 | mon0 left TABBED: Grok not open/visible unit after `layout dev` | tab settle / active leaf? |
 | Only Ghostty → `layout dev` → mon0 one giant tab (no tab\|ghostty split) | residual structure race? |
 
-**Decision:** mid [settle-learning](./plans/forge-settle-learning.md) data collection
-before more WR patches. Topology may still need a separate fix.
+**Decision:** mid [settle-learning](./plans/forge-settle-learning.md) data first.
+Agent SL1+SL2 shipped; use thrash dump before more WR patches. Topology may still
+need a separate fix if samples show settle is fine.
 
-| Explicitly **not** RC | Note |
+### Settle learning (agent shipped)
+
+| Piece | How |
 | --- | --- |
-| Container motion / peel | design + MD1 post-RC |
-| Resize / autotile | design P3 |
-| Tab chrome drag / S3+ | later |
+| Open quiet | Learned raise-only `minQuietMs` from time-to-stable samples (Ghostty seed floor) |
+| Layout batch | Deferred release stamps settle pending (`mappedAt`) |
+| Dump | `forge thrash` → DBus `GetThrashCatalog` → catalog snapshot JSON |
 
-### WR1 / WR2 (this wrap)
+---
 
-Operator Wayland report: Guake always right; Grok not open leaf / stuck ¼ height;
-Chrome PWA focus flicker; journal verify give-up rect-mismatch.
+## Operator checklist (you)
 
-| Fix | Detail |
-| --- | --- |
-| WR1 | Focus reassert **open leaf only**; pure rect-mismatch → targeted reassert (not full forest); give-up → **force** reassert |
-| WR2 | Guake float rehome: tile mon → LFT → focus mon → mon0 on map + focus |
-
-Plan: [forge-wayland-operator-residuals](./plans/forge-wayland-operator-residuals.md)
-
-### Operator checklist (you)
-
-1. **Install** from this tree (`./install` or `forge install`) if agent did not.  
-2. **Log out → GNOME on Wayland** (required to load new JS).  
+1. **Install** from this tree (`./install` or `forge install`).  
+2. **Log out → GNOME on Wayland** (required to load new JS + DBus).  
 3. Confirm Forge ACTIVE + purple focus border.  
 4. Residual smoke: [forge-wayland-live_residual-smoke](./tasks/forge-wayland-live_residual-smoke.md)  
    - `forge layout dev` → mon0 open leaf **Grok** full slot  
-   - Focus walk + tab clicks → **no** Chrome ¼ flicker / stuck undersize  
-   - Guake F12: focus mon0 → left; focus mon1 → right  
+   - Sole Ghostty re-layout: expect mon0 **tab \| ghostty** split, not one giant tab  
+   - After settle: **`forge thrash`** — paste/share entries with settleMs / minQuiet  
 5. Optional: [B-manual](./blockers/B-manual-black-session-verify.md), [B-ap5](./blockers/B-ap5-operator-visual-matrix.md).  
 6. When happy: ask to **push** / tag per [RELEASING.md](../RELEASING.md).
 

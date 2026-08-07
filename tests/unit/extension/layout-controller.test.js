@@ -881,6 +881,46 @@ describe("LayoutController thrash-extra (CL3)", () => {
     expect(e.settleSampleCount).toBe(1);
     expect(lc._settlePending.size).toBe(0);
   });
+
+  it("SL2: double-note is idempotent (earliest openedAt; one sample)", () => {
+    const catalog = new AppThrashCatalog();
+    const meta = {
+      get_id: () => 3,
+      get_wm_class: () => "org.example.DoubleNote",
+    };
+    const early = Date.now() - 500;
+    const late = Date.now() - 50;
+    const lc = make({
+      catalog,
+      hasThrashyTile: () => false,
+      scan: () => ({
+        ok: true,
+        checked: 1,
+        mismatches: [],
+        results: [{ id: 3, ok: true, reasons: [] }],
+      }),
+    });
+
+    lc.noteOpenPendingForSettle(meta, late);
+    lc.noteOpenPendingForSettle(meta, early); // keep earliest
+    expect(lc._settlePending.size).toBe(1);
+    expect(lc._settlePending.get(meta).openedAt).toBe(early);
+
+    // mismatches survive re-note
+    lc._settlePending.get(meta).mismatches = 2;
+    lc.noteOpenPendingForSettle(meta, Date.now());
+    expect(lc._settlePending.get(meta).mismatches).toBe(2);
+    expect(lc._settlePending.get(meta).openedAt).toBe(early);
+
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+
+    const e = catalog.lookup("org.example.DoubleNote");
+    expect(e.settleSampleCount).toBe(1);
+    expect(e.settleMsLast).toBeGreaterThanOrEqual(500);
+    expect(e.mismatchBeforeSettle).toBe(2);
+    expect(lc._settlePending.size).toBe(0);
+  });
 });
 
 describe("LayoutController periodic verify (CL6)", () => {

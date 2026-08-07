@@ -1,31 +1,32 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (settle-learning SL1 started after Wayland residual smoke)  
+**Updated:** 2026-08-06 (settle-learning SL1+SL2 done; operator thrash dump next)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 **Agent git:** stash still listed — drop only after human OK.  
-**Install:** master tip; Wayland needs **logout** for JS. **No push** until human asks.  
-**Active code:** [settle-learning](./plans/forge-settle-learning.md) on `plan/forge-settle-learning` (SL1 done; SL2 next).
+**Install:** master tip includes settle-learning SL1+SL2; Wayland needs **logout**. **No push** until human asks.  
+**Active:** [settle-learning](./plans/forge-settle-learning.md) agent slices done; SL3 needs live samples.
 
 ---
 
 ## Stable release candidate (RC)
 
-### Status: **code ready** — operator Wayland re-smoke (float OK for Guake; no app rehome)
+### Status: **code ready** — operator Wayland re-smoke + thrash data
 
 | Layer | Work | Owner | Status |
 | --- | --- | --- | --- |
 | **Code** | Workspace scope, theme overlay, action pipeline | agent | **Done** |
 | **Code** | WR1 chrome geom / focus thrash | agent | **Done** |
 | **Code** | Guake-named rehome | agent | **Reverted** (`0d18ac0`) — float only |
+| **Code** | Settle learning SL1+SL2 | agent | **Done** (plan branch → master) |
 | **Live X11** | Dual-ws + layout + theme | agent | **Green** |
-| **Live Wayland** | Residual smoke (geom, tabs, Guake float) | **human** | **Next** after install+logout |
+| **Live Wayland** | Residual smoke + thrash dump | **human** | **Next** after install+logout |
 | **Live session** | DPMS / blank-wake | **human** B-manual | Open hard |
 | **Soft eyes** | AP5 visual matrix | **human** B-ap5 | Soft |
-| **Post-RC** | ignore mode, settle learning, container motion, … | later | Mid / design |
+| **Post-RC** | ignore mode, SL3 seed drop, container motion, … | later | Mid / design |
 
-**Operator next:** install → logout → Wayland residual smoke → optional session/AP5 → push/tag when ready.
+**Operator next:** install → logout → `forge layout dev` → `forge thrash` + residual smoke → optional session/AP5 → push/tag when ready.
 
 ---
 
@@ -33,11 +34,11 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Settle learning SL2** (agent) | [task](./tasks/forge-settle-learning_sl2-batch-dump.md) — batch samples + dump |
-| **2** | **Wayland residual re-smoke** (operator) | [task](./tasks/forge-wayland-live_residual-smoke.md) — Grok open leaf + giant-tab fails noted |
-| **3** | **Session verify** (human hard) | [B-manual](./blockers/B-manual-black-session-verify.md) |
-| **4** | **AP5 visual** (soft) | [B-ap5](./blockers/B-ap5-operator-visual-matrix.md) |
+| **1** | **Wayland residual re-smoke + thrash dump** (operator) | [smoke](./tasks/forge-wayland-live_residual-smoke.md) — Grok open leaf + giant-tab; `forge thrash` after layout |
+| **2** | **Session verify** (human hard) | [B-manual](./blockers/B-manual-black-session-verify.md) |
+| **3** | **AP5 visual** (soft) | [B-ap5](./blockers/B-ap5-operator-visual-matrix.md) |
 | **mid** | **Window ignore mode** | [task](./tasks/forge-window-ignore-mode.md) — not RC |
+| **mid** | **Settle SL3** (drop seeds) | after operator thrash evidence |
 | **post-RC** | Container motion design + MD1 | [plan](./plans/forge-container-motion-design.md) |
 
 ## Queue
@@ -48,10 +49,10 @@
 | **done RC** | [layout workspace scope](./plans/forge-layout-workspace-scope.md) | WS0–WS3 done |
 | **done RC** | Theme effective overlay | User colors survive install |
 | **done RC** | [CSS base + user overrides](./plans/forge-css-overrides.md) | C0–C2 + effective fix |
-| **P0 human** | Wayland residual re-smoke | Operator after logout |
+| **done mid** | [settle-learning SL1+SL2](./plans/forge-settle-learning.md) | samples + `forge thrash` |
+| **P0 human** | Wayland residual re-smoke + thrash | Operator after logout |
 | **P1 human** | [session verify](./blockers/B-manual-black-session-verify.md) | Hard |
 | **soft** | [AP5 op visual](./blockers/B-ap5-operator-visual-matrix.md) | Soft |
-| **mid agent** | [settle-learning SL2](./tasks/forge-settle-learning_sl2-batch-dump.md) | next (SL1 done) |
 | **mid** | [window ignore mode](./tasks/forge-window-ignore-mode.md) | ready, not RC |
 | **post-RC** | [container motion](./plans/forge-container-motion-design.md) | Design |
 
