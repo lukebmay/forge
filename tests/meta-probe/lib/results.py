@@ -12,9 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from lib.settle import settle_result_to_dict
+
 
 def session_type_label(explicit: Optional[str] = None) -> str:
-    """Normalize session for path namespace: wayland | x11 | unknown."""
     raw = (explicit or os.environ.get("XDG_SESSION_TYPE") or "unknown").strip().lower()
     if raw in ("wayland", "waylands"):
         return "wayland"
@@ -39,7 +40,6 @@ def host_meta(host: Optional[str] = None, *, session: Optional[str] = None) -> d
 
 
 def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
-    """Recursive dict merge; overlay wins. Lists/scalars replace."""
     out = dict(base)
     for k, v in overlay.items():
         if k in out and isinstance(out[k], dict) and isinstance(v, dict):
@@ -50,15 +50,10 @@ def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
 
 
 def apply_suite(config: dict[str, Any], suite: str) -> dict[str, Any]:
-    """
-    Merge suites.<suite> over base config. Sets suite + phase if not already set.
-    Unknown suite → config unchanged except suite label.
-    """
     cfg = dict(config)
     suites = cfg.get("suites") or {}
     overlay = suites.get(suite) or {}
     if overlay:
-        # do not nest suites into merged output forever with self-reference noise
         body = {k: v for k, v in overlay.items() if k != "comment"}
         cfg = deep_merge(cfg, body)
     cfg["suite"] = suite
@@ -74,7 +69,6 @@ def namespace_dir(
     session: str,
     suite: str,
 ) -> Path:
-    """results/<host>/<session>/<suite>/"""
     safe = lambda s: "".join(c if c.isalnum() or c in "-_." else "-" for c in s)
     return results_root / safe(host) / safe(session) / safe(suite)
 
@@ -87,14 +81,15 @@ def new_run_doc(
     ops: dict[str, Any],
     env: Optional[dict[str, Any]] = None,
     session: Optional[str] = None,
+    agreement_contract: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc).isoformat()
     h = host_meta(host, session=session)
     return {
-        "schemaVersion": 3,
-        "probeVersion": config.get("probeVersion", "0.2.0"),
+        "schemaVersion": 4,
+        "probeVersion": config.get("probeVersion", "0.3.0"),
         "suite": config.get("suite") or "default",
-        "phase": config.get("phase", "A-serial-single-op"),
+        "phase": config.get("phase", "full-suite"),
         "createdAt": now,
         "host": h,
         "namespace": {
@@ -102,6 +97,9 @@ def new_run_doc(
             "session": h["sessionType"],
             "suite": config.get("suite") or "default",
         },
+        "agreementContract": agreement_contract or {},
+        "disagreementCatalog": {},
+        "derivedKnobs": {},
         "env": env or {},
         "config": config,
         "appsCatalogVersion": apps.get("version"),
@@ -123,17 +121,29 @@ def trial_record(
     skip_reason: Optional[str] = None,
     window: Optional[dict[str, Any]] = None,
     notes: str = "",
+    role: str = "full",
+    knobs: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
+    # slim window: ids + layout only
+    win_slim = None
+    if window:
+        win_slim = {
+            "windowId": window.get("windowId"),
+            "wmClass": window.get("wmClass"),
+            "frame": window.get("frame"),
+            "monitor": window.get("monitor"),
+            "workspace": window.get("workspace"),
+        }
     return {
         "appId": app_id,
         "opId": op_id,
         "sample": sample,
+        "role": role,
         "ok": ok,
         "skipped": skipped,
         "skipReason": skip_reason,
-        "verifyMode": (settle or {}).get("verifyMode")
-        or (op_result or {}).get("verifyMode"),
-        "window": window,
+        "knobs": knobs or {},
+        "window": win_slim,
         "opResult": op_result,
         "settle": settle,
         "notes": notes,
@@ -142,46 +152,17 @@ def trial_record(
 
 
 def settle_to_dict(s: Any, *, detail: str = "summary") -> dict[str, Any]:
-    """
-    detail:
-      summary — counts, timings, signal totals (default; small JSON)
-      full — include events + every verification poll (huge; calibration debug)
-    """
     if s is None:
         return {}
     if isinstance(s, dict):
         d = dict(s)
     else:
-        d = {
-            "settled": s.settled,
-            "reason": s.reason,
-            "waitMs": s.wait_ms,
-            "quietMsUsed": s.quiet_ms_used,
-            "agreeCountUsed": s.agree_count_used,
-            "agreementIntervalMs": s.agreement_interval_ms,
-            "agreementReached": s.agreement_reached,
-            "verifyMode": s.verify_mode,
-            "verificationCount": s.verification_count,
-            "eventCount": s.event_count,
-            "relevantEventCount": s.relevant_event_count,
-            "firstEventMs": s.first_event_ms,
-            "lastEventMs": s.last_event_ms,
-            "timeToQuietMs": s.time_to_quiet_ms,
-            "timeToSettledMs": s.time_to_settled_ms,
-            "countsBySignal": s.counts_by_signal,
-            "interEventDeltasMs": s.inter_event_deltas_ms,
-            "verifications": s.verifications,
-            "events": s.events,
-        }
+        d = settle_result_to_dict(s)
+    # always light: checks already compact (tMs + out)
     if detail != "full":
-        # Keep agreement-tick samples only if present (tiny); drop dense poll spam + raw events
-        verifs = d.get("verifications") or []
-        ticks = [v for v in verifs if v.get("agreementTick")]
-        d["verifications"] = ticks
         d.pop("events", None)
-        d["recordDetail"] = "summary"
-    else:
-        d["recordDetail"] = "full"
+        d.pop("verifications", None)
+    d["recordDetail"] = detail
     return d
 
 
@@ -192,6 +173,7 @@ def write_run(
     latest: bool = True,
     results_root: Optional[Path] = None,
 ) -> Path:
+    """Write once at end of run (caller must not invoke mid-matrix)."""
     out_dir.mkdir(parents=True, exist_ok=True)
     ns = doc.get("namespace") or {}
     host = ns.get("host") or doc.get("host", {}).get("host", "host")
@@ -199,7 +181,6 @@ def write_run(
     suite = ns.get("suite") or doc.get("suite") or "run"
     phase = str(doc.get("phase") or suite).replace("/", "-").replace(":", "-")
     ts = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
-    # path already namespaces host/session/suite; filename keeps phase + time
     path = out_dir / f"run-{phase}-{ts}.json"
     path.write_text(json.dumps(doc, indent=2, sort_keys=False) + "\n", encoding="utf-8")
 
@@ -207,7 +188,6 @@ def write_run(
         try:
             if link_path.is_symlink() or link_path.exists():
                 link_path.unlink()
-            # relative link when same dir
             if link_path.parent == target.parent:
                 link_path.symlink_to(target.name)
             else:
@@ -220,7 +200,6 @@ def write_run(
         if results_root is not None:
             results_root.mkdir(parents=True, exist_ok=True)
             _link_latest(results_root / "latest.json", path)
-            # also host/session latest for browsing
             host_sess = results_root / str(host) / str(session)
             host_sess.mkdir(parents=True, exist_ok=True)
             _link_latest(host_sess / "latest.json", path)

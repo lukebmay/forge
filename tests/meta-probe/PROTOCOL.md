@@ -6,16 +6,15 @@ See full contract: [AGREEMENT.md](./AGREEMENT.md).
 
 | Term | Meaning |
 | --- | --- |
-| **Agreement check** | One intervalic poll: drain hard/soft signals + compare snapshot to contract. **Not** a separate “verification” concept. |
-| **Agreement** | Hard contract holds → settle duration continues. |
-| **Hard disagreement** (`d_*`) | Layout-relevant mismatch → **resets** settle duration to 0. |
-| **Soft disagreement** (`s_*`) | Noisy non-layout signal (title, focus, raise-alone) → **recorded, does not reset** timer. |
-| **Settled** | Continuous **hard-stable** duration ≥ `settleDurationMs` (default **3s**). Soft noise does not interrupt. |
+| **Agreement check** | Intervalic poll only (no separate “verification”). Drain events + snapshot. |
+| **Agreement** | No hard signals → stable duration continues. |
+| **Hard** (`d_*`) | Hard **signal** → **resets** duration. Unknown signals mint `d_auto_*`. |
+| **Soft** (`s_*`) | Title/focus/raise or **snapshot thrash** → **record only, no reset**. |
+| **Settled** | Hard-stable duration ≥ `settleDurationMs` (bootstrap first cal **10s** @ **50ms** checks; then derived). |
 
-**Contract v1 soft (no reset):** `s_title`, `s_focus`, `s_raise`.  
-**Hard resets:** frame/monitor/workspace/max/fs/min/class and hard signals — see AGREEMENT.md.
-
-Legacy pilot used verify + agreeCount; new runs follow this document.
+**Matrix:** 1 calibration + N full samples **per app+op**; ops never interleave.  
+**I/O:** all trials in memory; **one** write after the run.  
+**WS1:** only when finished. **Windows:** closed after each app and at end.
 
 ## Safety (every run)
 

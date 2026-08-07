@@ -64,46 +64,34 @@ tests/meta-probe/
 # 2) Agent (or you) prep — enables probe, disables Forge+rivals, preflight
 python3 tests/meta-probe/probe_driver.py prep --host black
 
-# 3) Calibrate host×session (strict knobs, n=2) — skip if already green for this pair
-python3 tests/meta-probe/probe_driver.py calibrate --host black
-# → results/black/wayland/calibration/  (or …/x11/… when on X11)
-
-# 4) Full matrix (tuned knobs after calibration)
+# 3) Full matrix: 1 cal + 10 full per app+op (bootstrap first cal @ 10s / 50ms)
 python3 tests/meta-probe/probe_driver.py run --host black --suite full-suite --samples 10
+# → results/black/wayland/full-suite/  (single JSON write at end)
+
 python3 tests/meta-probe/analyze.py results/black/wayland/full-suite/latest.json
 
-# 5) Restore desktop: focus WS1 (index 0), disable probe, re-enable Forge/rivals
+# 4) Restore desktop when done: WS1 + Forge
 python3 tests/meta-probe/probe_driver.py cleanup
 ```
 
-**Results namespace:** `results/<host>/<session>/<suite>/` — never mix Wayland and X11.
+**Results:** `results/<host>/<session>/<suite>/` — never mix Wayland and X11.  
+**Agreement:** [AGREEMENT.md](./AGREEMENT.md) · **Handoff:** [SESSION_HANDOFF.md](./SESSION_HANDOFF.md)
 
-**Knobs / calibration:** [CALIBRATION.md](./CALIBRATION.md)  
-**Agreement contract (hard vs soft):** [AGREEMENT.md](./AGREEMENT.md) — soft disagreements are stored but **never** reset the settle timer.
-
-**After testing:** always leave the operator on **WS1** (0-based index **0**).
-`cleanup` does this before disabling the probe.
-
-**Handoff:** [SESSION_HANDOFF.md](./SESSION_HANDOFF.md) · [PROTOCOL.md](./PROTOCOL.md)
+Soft `s_*` never resets settle; hard `d_*` does. Close test windows; **WS1 only when finished**.
 
 ## Settle knobs (`config.default.json`)
 
 | Knob | Meaning |
 | --- | --- |
-| `quietMs` | No relevant Meta events for this long → eligible for agreement |
-| `agreementIntervalMs` | Min time **between official agreement ticks** (default **2000**) |
-| `agreeCount` | Consecutive agreement ticks → **settled** (default **5**) |
-| dense `pollMs` | Samples 0–4: frequent verifications (default 50ms) |
-| sparse `pollMs` | Samples 5–9: deliberate verifications (default 2000ms) |
+| `checkIntervalMs` | Agreement check period (full suite; cal uses 50ms) |
+| `settleDurationMs` | Continuous **hard-stable** time required |
+| `bootstrapSettleDurationMs` | First cal only (default **10000**) |
+| `calibrationCheckIntervalMs` | Cal check period (default **50**) |
 | `maxWaitMs` | Hard fail if not settled |
-| `cooldownMs` | Extra wait after settled before next trial |
-| `samples` | Trials per (app, op) — default **10** |
+| `cooldownMs` | Pause after each trial |
+| `samples` | Full trials per app+op **after** 1 calibration |
 
-**Verification** ≠ **agreement**. Verifications can be dense for data; agreement
-ticks are always 2s-spaced while quiet. See PROTOCOL.md.
-
-Debug “fully serialized” mode is the **default** for `run` / `pilot`. No parallel
-path in v1.
+No separate “verification” layer — only agreement checks. See AGREEMENT.md.
 
 ## What is recorded per trial
 

@@ -1,12 +1,11 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-07 (meta-probe pilot next after Wayland logout)  
+**Updated:** 2026-08-07 (meta-probe **full-suite** after Wayland restart)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
-**Agent git:** stash still listed — drop only after human OK.  
 **No push** until human asks.  
-**Active P0:** Meta/Mutter probe pilot — [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md). Stop guessing Forge settle knobs until data lands.
+**Active P0:** Meta probe **full-suite** — [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md). Agreement settle implemented; collect data next.
 
 ---
 
@@ -35,8 +34,8 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Meta probe pilot** (agent after logout) | Nautilus→Ghostty→Inkscape; [SESSION_HANDOFF](../tests/meta-probe/SESSION_HANDOFF.md) |
-| **2** | **Full probe matrix** on `black` | 10 samples × apps/ops; hosts `gray`/`green` later |
+| **1** | **Meta probe full-suite** (agent after Wayland restart) | [SESSION_HANDOFF](../tests/meta-probe/SESSION_HANDOFF.md) — prep → run → analyze → cleanup |
+| **2** | **X11 + gray/green** probe | Same harness; re-bootstrap knobs per host×session |
 | **3** | **Layout engine rewrite from data** | Only after abundance of Meta timings |
 | **mid** | Wayland product residuals (VSPLIT, Grok leaf, WS overlay, float save) | Parked until probe informs approach |
 | **mid** | Session verify / AP5 | Human blockers when back to daily driver |

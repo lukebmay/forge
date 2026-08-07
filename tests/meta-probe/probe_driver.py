@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-Meta Probe driver — serial app/op matrix with settle gates.
+Meta Probe driver — serial app/op matrix with agreement settle.
 
 Does not import Forge. Requires meta-probe@forge-test.local enabled;
 Forge and rival tilers must be disabled.
+
+Agreement model (see AGREEMENT.md): intervalic hard/soft checks; soft never
+resets settle duration. Results stay in memory until the run finishes.
 """
 
 from __future__ import annotations
@@ -25,12 +28,20 @@ from lib.results import (  # noqa: E402
     apply_suite,
     namespace_dir,
     new_run_doc,
-    session_type_label,
     settle_to_dict,
     trial_record,
     write_run,
 )
-from lib.settle import match_window, summarize_events, verify_mode_for_sample  # noqa: E402
+from lib.settle import (  # noqa: E402
+    DisagreementCatalog,
+    SettleConfig,
+    SettleResult,
+    agreement_contract_doc,
+    classify_check,
+    derive_knobs_from_calibration,
+    match_window,
+    settle_config_from_dict,
+)
 
 BUS_NAME = "org.gnome.Shell.Extensions.MetaProbe"
 BUS_PATH = "/org/gnome/Shell/Extensions/MetaProbe"
@@ -104,22 +115,7 @@ def _gnome_extensions_list_enabled() -> Optional[str]:
         return None
 
 
-def extension_state(uuid: str) -> Optional[str]:
-    """Raw State: value (active/inactive/…) or None if missing."""
-    out = _gnome_extensions_info(uuid)
-    if out is None:
-        return None
-    for line in out.splitlines():
-        if line.strip().lower().startswith("state:"):
-            return line.split(":", 1)[1].strip().lower()
-    return None
-
-
 def extension_enabled(uuid: str) -> Optional[bool]:
-    """
-    True if extension is on. GNOME 45+ uses Enabled: Yes + State: ACTIVE
-    (not State: ENABLED). Fall back to `list --enabled`.
-    """
     info = _gnome_extensions_info(uuid)
     if info is None:
         listed = _gnome_extensions_list_enabled()
@@ -167,119 +163,148 @@ def close_window(window_id: int) -> None:
         pass
 
 
+def close_windows(ids: set[int] | list[int]) -> None:
+    for wid in list(ids):
+        if wid:
+            close_window(int(wid))
+            time.sleep(0.05)
+
+
+def close_matching(match: dict[str, Any]) -> None:
+    for w in find_matching_windows(match):
+        wid = int(w.get("windowId") or 0)
+        if wid:
+            close_window(wid)
+    time.sleep(0.3)
+
+
 def wait_settled(
-    cfg,
+    cfg: SettleConfig,
     *,
     window_id: Optional[int],
     t0_mono: float,
     since_seq: int,
-    verify_mode: str,
-) -> tuple[Any, int]:
+    catalog: DisagreementCatalog,
+) -> tuple[SettleResult, int]:
     """
-    Poll until agree_count official agreement ticks spaced by agreement_interval_ms
-    while quiet for quiet_ms, or max_wait.
-
-    Verification = one poll (events + optional snapshot). Official agreement tick
-    only when quiet and ≥ agreement_interval_ms since last agreement tick.
+    Poll every check_interval_ms. Hard disagreement resets stable duration.
+    Soft disagreement is recorded only. Settled when stable >= settle_duration_ms.
     """
-    agreement = 0
-    all_events: list[dict[str, Any]] = []
-    verifications: list[dict[str, Any]] = []
+    checks: list[dict[str, Any]] = []
+    counts: dict[str, int] = {}
     last_seq = since_seq
-    last_agreement_mono: Optional[float] = None
+    stable_ms = 0.0
+    last_mono = t0_mono
+    hard_resets = 0
+    soft_n = 0
+    agree_n = 0
+    first_agree: Optional[float] = None
+    last_hard: Optional[float] = None
+    prev_snap: Optional[dict[str, Any]] = None
+    new_catalog: dict[str, Any] = {}
+    catalog_before = set(catalog.entries.keys())
+
+    if window_id:
+        try:
+            prev_snap = probe_json("SnapshotWindow", str(int(window_id))).get("window")
+        except Exception:
+            prev_snap = None
 
     while True:
-        time.sleep(cfg.poll_ms / 1000.0)
+        time.sleep(cfg.check_interval_ms / 1000.0)
         batch = get_events(last_seq)
         last_seq = int(batch.get("lastSeq") or last_seq)
         now = float(batch.get("monoMs") or mono_from_probe())
         new_ev = batch.get("events") or []
-        if new_ev:
-            all_events.extend(new_ev)
-
-        snap = None
-        if cfg.snapshot_each_poll and window_id:
-            try:
-                snap = probe_json("SnapshotWindow", str(int(window_id))).get("window")
-            except Exception:
-                snap = None
-
-        rel = [
-            e
-            for e in all_events
-            if (e.get("signal") in cfg.relevant_signals)
-            and (
-                window_id is None
-                or window_id <= 0
-                or int(e.get("windowId") or 0) == window_id
-            )
-        ]
+        dt = max(0.0, now - last_mono)
+        last_mono = now
         wait_ms = now - t0_mono
-        last_rel_mono = float(rel[-1]["monoMs"]) if rel else t0_mono
-        quiet_for = now - last_rel_mono
 
-        v = {
-            "monoMs": now,
-            "waitMs": wait_ms,
-            "quietForMs": quiet_for,
-            "relevantEventCount": len(rel),
-            "newEventsThisPoll": len(new_ev),
-            "frame": (snap or {}).get("frame") if snap else None,
-            "monitor": (snap or {}).get("monitor") if snap else None,
-            "agreementSoFar": agreement,
-        }
-        verifications.append(v)
+        curr_snap = None
+        if window_id:
+            try:
+                curr_snap = probe_json("SnapshotWindow", str(int(window_id))).get("window")
+            except Exception:
+                curr_snap = prev_snap
+
+        outcome, severity, _components = classify_check(
+            events=new_ev,
+            window_id=window_id,
+            prev_snap=prev_snap,
+            curr_snap=curr_snap,
+            catalog=catalog,
+        )
+        for k in catalog.entries:
+            if k not in catalog_before:
+                new_catalog[k] = catalog.entries[k]
+                catalog_before.add(k)
+
+        t_rel = wait_ms
+        checks.append({"tMs": round(t_rel, 3), "out": outcome})
+        counts[outcome] = counts.get(outcome, 0) + 1
+
+        if severity == "hard":
+            stable_ms = 0.0
+            hard_resets += 1
+            last_hard = wait_ms
+        elif severity == "soft":
+            soft_n += 1
+            # soft does not reset; still accumulate stable time
+            stable_ms += dt
+        else:
+            agree_n += 1
+            if first_agree is None:
+                first_agree = wait_ms
+            stable_ms += dt
+
+        if curr_snap:
+            prev_snap = curr_snap
 
         if wait_ms >= cfg.max_wait_ms:
             return (
-                summarize_events(
-                    all_events,
-                    cfg,
-                    t0_mono=t0_mono,
-                    window_id=window_id,
+                SettleResult(
                     settled=False,
                     reason="max_wait",
                     wait_ms=wait_ms,
-                    agreement_reached=agreement,
-                    verify_mode=verify_mode,
-                    verifications=verifications,
+                    check_interval_ms=cfg.check_interval_ms,
+                    settle_duration_ms=cfg.settle_duration_ms,
+                    stable_ms=stable_ms,
+                    check_count=len(checks),
+                    hard_reset_count=hard_resets,
+                    soft_count=soft_n,
+                    agreement_count=agree_n,
+                    time_to_first_agreement_ms=first_agree,
+                    time_to_last_hard_ms=last_hard,
+                    time_to_settled_ms=None,
+                    checks=checks,
+                    disagreement_counts=counts,
+                    new_catalog_entries=new_catalog,
                 ),
                 last_seq,
             )
 
-        # Activity resets official agreement chain
-        if quiet_for < cfg.quiet_ms:
-            agreement = 0
-            last_agreement_mono = None
-            continue
-
-        # Quiet: may take an official agreement tick if interval elapsed
-        if last_agreement_mono is None:
-            can_tick = True
-        else:
-            can_tick = (now - last_agreement_mono) >= cfg.agreement_interval_ms
-
-        if can_tick:
-            agreement += 1
-            last_agreement_mono = now
-            verifications[-1]["agreementTick"] = True
-            verifications[-1]["agreementSoFar"] = agreement
-            if agreement >= cfg.agree_count:
-                return (
-                    summarize_events(
-                        all_events,
-                        cfg,
-                        t0_mono=t0_mono,
-                        window_id=window_id,
-                        settled=True,
-                        reason="quiet_agreement",
-                        wait_ms=wait_ms,
-                        agreement_reached=agreement,
-                        verify_mode=verify_mode,
-                        verifications=verifications,
-                    ),
-                    last_seq,
-                )
+        if stable_ms >= cfg.settle_duration_ms and severity != "hard":
+            return (
+                SettleResult(
+                    settled=True,
+                    reason="hard_stable_duration",
+                    wait_ms=wait_ms,
+                    check_interval_ms=cfg.check_interval_ms,
+                    settle_duration_ms=cfg.settle_duration_ms,
+                    stable_ms=stable_ms,
+                    check_count=len(checks),
+                    hard_reset_count=hard_resets,
+                    soft_count=soft_n,
+                    agreement_count=agree_n,
+                    time_to_first_agreement_ms=first_agree,
+                    time_to_last_hard_ms=last_hard,
+                    time_to_settled_ms=wait_ms,
+                    checks=checks,
+                    disagreement_counts=counts,
+                    new_catalog_entries=new_catalog,
+                ),
+                last_seq,
+            )
 
 
 def _desktop_candidates(name: str) -> list[Path]:
@@ -297,7 +322,6 @@ def _desktop_candidates(name: str) -> list[Path]:
 
 
 def app_launchable(app: dict[str, Any]) -> tuple[bool, str]:
-    """Return (ok, reason). Used for skip-if-missing."""
     open_spec = app.get("open") or {}
     desktop = open_spec.get("desktop")
     argv = open_spec.get("argv")
@@ -353,7 +377,6 @@ def safety_check(
 ) -> list[str]:
     errs: list[str] = []
     safety = config.get("safety") or {}
-    # Running Shell list from probe (authoritative when available)
     shell_enabled: Optional[set[str]] = None
     if env and isinstance(env.get("enabledExtensions"), list):
         shell_enabled = set(env["enabledExtensions"])
@@ -374,6 +397,7 @@ def safety_check(
 
 
 def ensure_workspace(config: dict[str, Any], *, no_switch: bool) -> None:
+    """Switch to test desk only — never operator WS1."""
     if no_switch:
         return
     ws = (config.get("workspace") or {}).get("preferIndex")
@@ -387,8 +411,18 @@ def ensure_workspace(config: dict[str, Any], *, no_switch: bool) -> None:
 
 
 def focus_workspace_index(index: int) -> dict[str, Any]:
-    """Switch active workspace (0-based). Requires probe DBus."""
     return probe_json("FocusWorkspace", str(int(index)))
+
+
+def return_to_operator_desk(config: dict[str, Any]) -> None:
+    """Call only when measurement is finished."""
+    ws = (config.get("workspace") or {}).get("returnIndex", 0)
+    try:
+        focus_workspace_index(int(ws))
+        time.sleep(0.3)
+        print(f"returned to workspace index {ws} (human WS{int(ws) + 1})", file=sys.stderr)
+    except Exception as e:
+        print(f"warn: return FocusWorkspace: {e}", file=sys.stderr)
 
 
 def cmd_ping(_args: argparse.Namespace) -> int:
@@ -422,7 +456,10 @@ def cmd_preflight(args: argparse.Namespace) -> int:
         env = probe_json("GetEnv")
     except Exception as e:
         print(f"FAIL probe: {e}", file=sys.stderr)
-        print("hint: run prep after Wayland login: python3 probe_driver.py prep --host black", file=sys.stderr)
+        print(
+            "hint: run prep after Wayland login: python3 probe_driver.py prep --host black",
+            file=sys.stderr,
+        )
         return 1
     errs = safety_check(config, allow_forge=args.allow_forge, env=env)
     out = {
@@ -446,7 +483,6 @@ def cmd_preflight(args: argparse.Namespace) -> int:
 
 
 def cmd_focus_workspace(args: argparse.Namespace) -> int:
-    """Switch to a workspace by 0-based index (human WS1 = index 0)."""
     try:
         out = focus_workspace_index(int(args.index))
     except Exception as e:
@@ -458,19 +494,18 @@ def cmd_focus_workspace(args: argparse.Namespace) -> int:
 
 def _run_open_fresh(
     app: dict[str, Any],
-    config: dict[str, Any],
+    cfg: SettleConfig,
+    catalog: DisagreementCatalog,
     sample: int,
     owned: dict[str, Any],
-) -> tuple[Optional[dict[str, Any]], Any, dict[str, Any]]:
-    """Close owned window if any, spawn, wait map+settle."""
-    mode_name, cfg = verify_mode_for_sample(config, sample)
+) -> tuple[Optional[dict[str, Any]], Optional[SettleResult], dict[str, Any]]:
     match = app.get("match") or {}
-    map_max = float((config.get("open") or {}).get("mapMaxWaitMs") or 120000)
+    map_max = 120000.0
 
-    # close prior owned
     if owned.get("windowId"):
         close_window(int(owned["windowId"]))
         time.sleep(0.4)
+    close_matching(match)
 
     clear_events()
     mark = probe_json("BeginMark", f"open_fresh:{app['id']}:{sample}")
@@ -491,41 +526,47 @@ def _run_open_fresh(
         time.sleep(0.1)
 
     if not window:
-        batch = get_events(since)
-        settle = summarize_events(
-            batch.get("events") or [],
-            cfg,
-            t0_mono=t0,
-            window_id=None,
-            settled=False,
-            reason="map_timeout",
-            wait_ms=mono_from_probe() - t0,
-            agreement_reached=0,
-            verify_mode=mode_name,
-            verifications=[],
+        return (
+            None,
+            SettleResult(
+                settled=False,
+                reason="map_timeout",
+                wait_ms=mono_from_probe() - t0,
+                check_interval_ms=cfg.check_interval_ms,
+                settle_duration_ms=cfg.settle_duration_ms,
+                stable_ms=0,
+                check_count=0,
+                hard_reset_count=0,
+                soft_count=0,
+                agreement_count=0,
+                time_to_first_agreement_ms=None,
+                time_to_last_hard_ms=None,
+                time_to_settled_ms=None,
+                checks=[],
+                disagreement_counts={},
+            ),
+            {"ok": False, "error": "map_timeout"},
         )
-        return None, settle, {"ok": False, "error": "map_timeout"}
 
     settle, _ = wait_settled(
         cfg,
         window_id=int(window["windowId"]),
         t0_mono=t0,
         since_seq=since,
-        verify_mode=mode_name,
+        catalog=catalog,
     )
     snap = probe_json("SnapshotWindow", str(int(window["windowId"])))
     window = snap.get("window") or window
-    return window, settle, {"ok": True, "kind": "open_fresh", "verifyMode": mode_name}
+    return window, settle, {"ok": True, "kind": "open_fresh"}
 
 
 def _run_open_warm(
     app: dict[str, Any],
-    config: dict[str, Any],
+    cfg: SettleConfig,
+    catalog: DisagreementCatalog,
     sample: int,
     existing: dict[str, Any],
-) -> tuple[Optional[dict[str, Any]], Any, dict[str, Any]]:
-    """Process already has a window; launch again without closing first."""
-    mode_name, cfg = verify_mode_for_sample(config, sample)
+) -> tuple[Optional[dict[str, Any]], Optional[SettleResult], dict[str, Any]]:
     match = app.get("match") or {}
     before_ids = {int(w["windowId"]) for w in find_matching_windows(match)}
 
@@ -539,7 +580,7 @@ def _run_open_warm(
     except Exception as e:
         return existing, None, {"ok": False, "error": str(e)}
 
-    map_max = float((config.get("open") or {}).get("mapMaxWaitMs") or 120000)
+    map_max = 120000.0
     deadline = time.time() + map_max / 1000.0
     target = None
     while time.time() < deadline:
@@ -548,9 +589,7 @@ def _run_open_warm(
         if new_ones:
             target = new_ones[-1]
             break
-        # single-instance: may only focus existing
         if wins and time.time() > deadline - (map_max / 1000.0) + 2.0:
-            # after 2s still no new id → treat existing as warm target
             target = existing
             break
         time.sleep(0.1)
@@ -563,7 +602,7 @@ def _run_open_warm(
         window_id=int(target["windowId"]),
         t0_mono=t0,
         since_seq=since,
-        verify_mode=mode_name,
+        catalog=catalog,
     )
     snap = probe_json("SnapshotWindow", str(int(target["windowId"])))
     target = snap.get("window") or target
@@ -573,9 +612,7 @@ def _run_open_warm(
         {
             "ok": True,
             "kind": "open_warm",
-            "verifyMode": mode_name,
             "newWindow": int(target["windowId"]) not in before_ids,
-            "beforeIds": list(before_ids),
         },
     )
 
@@ -583,18 +620,16 @@ def _run_open_warm(
 def run_op(
     op: dict[str, Any],
     window: dict[str, Any],
-    config: dict[str, Any],
-    sample: int,
+    cfg: SettleConfig,
+    catalog: DisagreementCatalog,
     home_monitor: int,
     home_workspace: int,
-) -> tuple[dict[str, Any], Any, dict[str, Any]]:
-    """Returns (op_result, settle, window_updated)."""
-    mode_name, cfg = verify_mode_for_sample(config, sample)
+) -> tuple[dict[str, Any], Optional[SettleResult], dict[str, Any]]:
     wid = int(window["windowId"])
     kind = op.get("kind")
 
     clear_events()
-    mark = probe_json("BeginMark", f"op:{op['id']}:{sample}")
+    mark = probe_json("BeginMark", f"op:{op['id']}")
     since = int(mark.get("mark", {}).get("seq") or 0)
     t0 = float(mark.get("mark", {}).get("monoMs") or mono_from_probe())
     op_result: dict[str, Any]
@@ -633,7 +668,6 @@ def run_op(
         cur = int(window.get("workspace", home_workspace))
         dest = (cur + int((op.get("params") or {}).get("delta", 1))) % max(nws, 1)
         op_result = probe_json("MoveToWorkspace", str(wid), str(dest))
-        # return home for cleanliness after settle in caller? keep as-is; restore op separate
     elif kind == "focus_workspace_roundtrip":
         env = probe_json("GetEnv")
         nws = int(env.get("nWorkspaces") or 1)
@@ -668,19 +702,12 @@ def run_op(
         window_id=wid,
         t0_mono=t0,
         since_seq=since,
-        verify_mode=mode_name,
+        catalog=catalog,
     )
     snap = probe_json("SnapshotWindow", str(wid))
     if snap.get("window"):
         window = snap["window"]
-    op_result = dict(op_result)
-    op_result["verifyMode"] = mode_name
     return op_result, settle, window
-
-
-def _record_detail(config: dict[str, Any]) -> str:
-    d = (config.get("recordDetail") or "summary").lower()
-    return "full" if d == "full" else "summary"
 
 
 def run_matrix(
@@ -695,7 +722,12 @@ def run_matrix(
     out_dir: Optional[Path],
     phase_label: Optional[str] = None,
     session: Optional[str] = None,
+    return_ws_when_done: bool = True,
 ) -> Path:
+    """
+    In-memory collection only; single write_run at the end.
+    Per app+op: 1 calibration then `samples` full trials (unless samples=0).
+    """
     env = probe_json("GetEnv")
     errs = safety_check(config, allow_forge=allow_forge, env=env)
     if errs:
@@ -705,7 +737,27 @@ def run_matrix(
     if phase_label:
         config["phase"] = phase_label
 
-    detail = _record_detail(config)
+    settle_cfg = config.get("settle") or {}
+    live_duration = float(settle_cfg.get("settleDurationMs") or 3000)
+    live_interval = float(settle_cfg.get("checkIntervalMs") or 100)
+    # mutate settle knobs in a local dict for derivation
+    knobs = {
+        "settleDurationMs": live_duration,
+        "checkIntervalMs": live_interval,
+        "calibrationCheckIntervalMs": float(
+            settle_cfg.get("calibrationCheckIntervalMs") or 50
+        ),
+        "bootstrapSettleDurationMs": float(
+            settle_cfg.get("bootstrapSettleDurationMs") or 10000
+        ),
+        "bootstrapCheckIntervalMs": float(
+            settle_cfg.get("bootstrapCheckIntervalMs") or 50
+        ),
+        "maxWaitMs": float(settle_cfg.get("maxWaitMs") or 120000),
+    }
+
+    catalog = DisagreementCatalog()
+    contract = agreement_contract_doc(knobs["settleDurationMs"], knobs["checkIntervalMs"])
     apps_doc = {"version": 2, "apps": apps}
     ops_doc = {"version": 2, "ops": ops}
     doc = new_run_doc(
@@ -715,11 +767,14 @@ def run_matrix(
         ops=ops_doc,
         env=env,
         session=session,
+        agreement_contract=contract,
     )
 
     ensure_workspace(config, no_switch=no_switch_workspace)
-    cooldown = float(config.get("cooldownMs") or 2000) / 1000.0
-    between_apps = float(config.get("betweenAppsMs") or 5000) / 1000.0
+    cooldown = float(config.get("cooldownMs") or 500) / 1000.0
+    between_apps = float(config.get("betweenAppsMs") or 2000) / 1000.0
+    per_op_cal = bool((config.get("matrix") or {}).get("calibrateEachOp", True))
+    full_samples = int(samples)
 
     open_ops = [o for o in ops if o.get("kind") in ("open_fresh", "open_warm")]
     other_ops = [o for o in ops if o.get("kind") not in ("open_fresh", "open_warm")]
@@ -727,176 +782,313 @@ def run_matrix(
     ns = doc.get("namespace") or {}
     print(
         f"run host={ns.get('host')} session={ns.get('session')} suite={ns.get('suite')} "
-        f"samples={samples} apps={len(apps)} ops={len(ops)} phase={config.get('phase')} "
-        f"detail={detail} agree={((config.get('settle') or {}).get('agreeCount'))}",
+        f"full_samples={full_samples} apps={len(apps)} ops={len(ops)} "
+        f"cal_each_op={per_op_cal} (memory-only until end)",
         file=sys.stderr,
     )
 
-    for ai, app in enumerate(apps):
-        print(f"\n=== app {app['id']} ===", file=sys.stderr)
-        tags = app.get("tags") or []
-        ok_launch, why = app_launchable(app)
-        if not ok_launch:
-            msg = f"skip {app['id']}: {why}"
-            print(f"  {msg}", file=sys.stderr)
-            if "skip-if-missing" in tags or "optional" in tags:
-                doc["errors"].append({"app": app["id"], "skipped": True, "reason": why})
-                continue
-            doc["errors"].append({"app": app["id"], "error": why})
-            continue
+    bootstrap_done = False
+    owned_all: set[int] = set()
 
-        owned: dict[str, Any] = {}
-        home_monitor = 0
-        home_workspace = 0
-        window: Optional[dict[str, Any]] = None
+    def cfg_for(phase: str) -> SettleConfig:
+        s = dict(settle_cfg)
+        s.update(
+            {
+                "settleDurationMs": knobs["settleDurationMs"],
+                "checkIntervalMs": knobs["checkIntervalMs"],
+                "calibrationCheckIntervalMs": knobs["calibrationCheckIntervalMs"],
+                "bootstrapSettleDurationMs": knobs["bootstrapSettleDurationMs"],
+                "bootstrapCheckIntervalMs": knobs["bootstrapCheckIntervalMs"],
+                "maxWaitMs": knobs["maxWaitMs"],
+            }
+        )
+        return settle_config_from_dict(s, phase=phase)
 
-        # open_fresh samples
-        for op in open_ops:
-            if op.get("kind") == "open_fresh":
-                for sample in range(samples):
-                    print(f"  {op['id']} sample {sample+1}/{samples}…", file=sys.stderr)
-                    window, settle, op_res = _run_open_fresh(app, config, sample, owned)
-                    ok = bool(window and settle and settle.settled)
-                    if window:
-                        owned = window
-                        home_monitor = int(window.get("monitor") or 0)
-                        home_workspace = int(window.get("workspace") or 0)
-                    doc["trials"].append(
-                        trial_record(
-                            app_id=app["id"],
-                            op_id=op["id"],
-                            sample=sample,
-                            ok=ok,
-                            settle=settle_to_dict(settle, detail=detail),
-                            op_result=op_res,
-                            window=window,
-                            notes=op_res.get("error") or "",
-                        )
-                    )
-                    print(
-                        f"    ok={ok} settled={getattr(settle, 'settled', None)} "
-                        f"wait={getattr(settle, 'wait_ms', None)} "
-                        f"mode={getattr(settle, 'verify_mode', None)} "
-                        f"rel={getattr(settle, 'relevant_event_count', None)}",
-                        file=sys.stderr,
-                    )
-                    time.sleep(cooldown)
+    def append_trial(
+        *,
+        app_id: str,
+        op_id: str,
+        sample: int,
+        role: str,
+        ok: bool,
+        settle: Optional[SettleResult],
+        op_result: Optional[dict[str, Any]],
+        window: Optional[dict[str, Any]],
+        notes: str = "",
+        skipped: bool = False,
+        skip_reason: Optional[str] = None,
+    ) -> None:
+        doc["trials"].append(
+            trial_record(
+                app_id=app_id,
+                op_id=op_id,
+                sample=sample,
+                ok=ok,
+                settle=settle_to_dict(settle) if settle else {},
+                op_result=op_result,
+                window=window,
+                notes=notes,
+                role=role,
+                knobs={
+                    "checkIntervalMs": knobs["checkIntervalMs"]
+                    if role == "full"
+                    else knobs["calibrationCheckIntervalMs"],
+                    "settleDurationMs": knobs["settleDurationMs"]
+                    if bootstrap_done or role == "full"
+                    else knobs["bootstrapSettleDurationMs"],
+                },
+                skipped=skipped,
+                skip_reason=skip_reason,
+            )
+        )
 
-            elif op.get("kind") == "open_warm":
-                if not window:
-                    # seed with one fresh open (not counted as warm)
-                    window, settle, _ = _run_open_fresh(app, config, 0, owned)
-                    if window:
-                        owned = window
-                        home_monitor = int(window.get("monitor") or 0)
-                        home_workspace = int(window.get("workspace") or 0)
-                    time.sleep(cooldown)
-                if not window:
-                    doc["errors"].append({"app": app["id"], "error": "no window for open_warm"})
-                    continue
-                for sample in range(samples):
-                    print(f"  {op['id']} sample {sample+1}/{samples}…", file=sys.stderr)
-                    window, settle, op_res = _run_open_warm(app, config, sample, window)
-                    ok = bool(window and settle and settle.settled)
-                    if window:
-                        owned = window
-                    doc["trials"].append(
-                        trial_record(
-                            app_id=app["id"],
-                            op_id=op["id"],
-                            sample=sample,
-                            ok=ok,
-                            settle=settle_to_dict(settle, detail=detail),
-                            op_result=op_res,
-                            window=window,
-                        )
-                    )
-                    print(
-                        f"    ok={ok} new={op_res.get('newWindow')} "
-                        f"wait={getattr(settle, 'wait_ms', None)}",
-                        file=sys.stderr,
-                    )
-                    time.sleep(cooldown)
+    def run_cal_and_full(
+        *,
+        app: dict[str, Any],
+        op: dict[str, Any],
+        window: Optional[dict[str, Any]],
+        home_monitor: int,
+        home_workspace: int,
+        is_open_fresh: bool,
+        is_open_warm: bool,
+    ) -> tuple[Optional[dict[str, Any]], int, int]:
+        nonlocal bootstrap_done, knobs
+        phase = "bootstrap" if not bootstrap_done else "calibration"
+        cal_cfg = cfg_for(phase)
+        print(
+            f"  {op['id']} CAL ({phase}) interval={cal_cfg.check_interval_ms}ms "
+            f"duration={cal_cfg.settle_duration_ms}ms…",
+            file=sys.stderr,
+        )
 
-        if not window and other_ops:
-            window, settle, _ = _run_open_fresh(app, config, 0, {})
-            if window:
-                home_monitor = int(window.get("monitor") or 0)
-                home_workspace = int(window.get("workspace") or 0)
-            time.sleep(cooldown)
-
-        if not window:
-            print(f"  skip non-open ops: no window", file=sys.stderr)
-            continue
-
-        for op in other_ops:
-            for sample in range(samples):
-                print(f"  {op['id']} sample {sample+1}/{samples}…", file=sys.stderr)
-                snap = probe_json("SnapshotWindow", str(int(window["windowId"])))
-                if not snap.get("ok"):
-                    doc["trials"].append(
-                        trial_record(
-                            app_id=app["id"],
-                            op_id=op["id"],
-                            sample=sample,
-                            ok=False,
-                            settle={},
-                            notes="window lost",
-                        )
-                    )
-                    break
-                window = snap["window"]
-                op_result, settle, window = run_op(
-                    op, window, config, sample, home_monitor, home_workspace
+        if is_open_fresh:
+            window, settle, op_res = _run_open_fresh(app, cal_cfg, catalog, 0, window or {})
+        elif is_open_warm:
+            if not window:
+                window, settle, _ = _run_open_fresh(app, cal_cfg, catalog, 0, {})
+                time.sleep(cooldown)
+            window, settle, op_res = _run_open_warm(
+                app, cal_cfg, catalog, 0, window or {}
+            )
+        else:
+            if not window:
+                return None, home_monitor, home_workspace
+            op_res, settle, window = run_op(
+                op, window, cal_cfg, catalog, home_monitor, home_workspace
+            )
+            if op_res.get("skipped"):
+                append_trial(
+                    app_id=app["id"],
+                    op_id=op["id"],
+                    sample=0,
+                    role="calibration",
+                    ok=True,
+                    settle=None,
+                    op_result=op_res,
+                    window=window,
+                    skipped=True,
+                    skip_reason=op_res.get("reason"),
                 )
-                if op_result.get("skipped"):
-                    doc["trials"].append(
-                        trial_record(
-                            app_id=app["id"],
-                            op_id=op["id"],
-                            sample=sample,
-                            ok=True,
-                            skipped=True,
-                            skip_reason=op_result.get("reason"),
-                            settle={},
-                            op_result=op_result,
-                            window=window,
-                        )
-                    )
-                    print(f"    skipped: {op_result.get('reason')}", file=sys.stderr)
+                return window, home_monitor, home_workspace
+
+        ok = bool(window and settle and settle.settled)
+        append_trial(
+            app_id=app["id"],
+            op_id=op["id"],
+            sample=0,
+            role="calibration" if bootstrap_done else "bootstrap",
+            ok=ok,
+            settle=settle,
+            op_result=op_res,
+            window=window,
+            notes=(op_res or {}).get("error") or "",
+        )
+        print(
+            f"    cal ok={ok} wait={getattr(settle, 'wait_ms', None)} "
+            f"hard={getattr(settle, 'hard_reset_count', None)} "
+            f"soft={getattr(settle, 'soft_count', None)}",
+            file=sys.stderr,
+        )
+
+        if settle and settle.settled:
+            derived = derive_knobs_from_calibration(
+                settle,
+                prev_duration_ms=knobs["settleDurationMs"],
+                prev_interval_ms=knobs["checkIntervalMs"],
+            )
+            if not bootstrap_done:
+                # first cal is bootstrap at 10s — adopt derived for rest of session
+                knobs["settleDurationMs"] = derived["settleDurationMs"]
+                knobs["checkIntervalMs"] = derived["checkIntervalMs"]
+                bootstrap_done = True
+                doc["derivedKnobs"] = dict(knobs)
+                print(f"    bootstrap knobs → {knobs}", file=sys.stderr)
+            else:
+                # later cals may only coarsen interval slightly / raise duration on thrash
+                knobs["settleDurationMs"] = max(
+                    knobs["settleDurationMs"], derived["settleDurationMs"]
+                )
+                knobs["checkIntervalMs"] = max(
+                    50.0, min(500.0, derived["checkIntervalMs"])
+                )
+                doc["derivedKnobs"] = dict(knobs)
+
+        if window and window.get("windowId"):
+            owned_all.add(int(window["windowId"]))
+            home_monitor = int(window.get("monitor") or home_monitor)
+            home_workspace = int(window.get("workspace") or home_workspace)
+
+        time.sleep(cooldown)
+
+        # full samples
+        full_cfg = cfg_for("full")
+        for sample in range(full_samples):
+            print(
+                f"  {op['id']} full {sample + 1}/{full_samples} "
+                f"interval={full_cfg.check_interval_ms}ms "
+                f"duration={full_cfg.settle_duration_ms}ms…",
+                file=sys.stderr,
+            )
+            if is_open_fresh:
+                window, settle, op_res = _run_open_fresh(
+                    app, full_cfg, catalog, sample, window or {}
+                )
+            elif is_open_warm:
+                window, settle, op_res = _run_open_warm(
+                    app, full_cfg, catalog, sample, window or {}
+                )
+            else:
+                if not window:
                     break
-                ok = bool(op_result.get("ok") and settle and settle.settled)
-                doc["trials"].append(
-                    trial_record(
+                op_res, settle, window = run_op(
+                    op, window, full_cfg, catalog, home_monitor, home_workspace
+                )
+                if op_res.get("skipped"):
+                    append_trial(
                         app_id=app["id"],
                         op_id=op["id"],
                         sample=sample,
-                        ok=ok,
-                        settle=settle_to_dict(settle, detail=detail),
-                        op_result={
-                            k: v
-                            for k, v in op_result.items()
-                            if k not in ("before", "after")
-                        },
+                        role="full",
+                        ok=True,
+                        settle=None,
+                        op_result=op_res,
                         window=window,
+                        skipped=True,
+                        skip_reason=op_res.get("reason"),
                     )
-                )
-                print(
-                    f"    ok={ok} wait={getattr(settle, 'wait_ms', None)} "
-                    f"mode={getattr(settle, 'verify_mode', None)} "
-                    f"rel={getattr(settle, 'relevant_event_count', None)}",
-                    file=sys.stderr,
-                )
-                time.sleep(cooldown)
+                    break
 
-        # cleanup
-        if (config.get("safety") or {}).get("closeAfterApp", True) and window:
-            close_window(int(window["windowId"]))
+            ok = bool(
+                (op_res or {}).get("ok", True)
+                and settle
+                and settle.settled
+                and (window or not is_open_fresh)
+            )
+            if is_open_fresh or is_open_warm:
+                ok = bool(window and settle and settle.settled)
+            append_trial(
+                app_id=app["id"],
+                op_id=op["id"],
+                sample=sample,
+                role="full",
+                ok=ok,
+                settle=settle,
+                op_result={
+                    k: v
+                    for k, v in (op_res or {}).items()
+                    if k not in ("before", "after")
+                },
+                window=window,
+            )
+            print(
+                f"    ok={ok} wait={getattr(settle, 'wait_ms', None)} "
+                f"hard={getattr(settle, 'hard_reset_count', None)}",
+                file=sys.stderr,
+            )
+            if window and window.get("windowId"):
+                owned_all.add(int(window["windowId"]))
+            time.sleep(cooldown)
+
+        return window, home_monitor, home_workspace
+
+    try:
+        for ai, app in enumerate(apps):
+            print(f"\n=== app {app['id']} ===", file=sys.stderr)
+            tags = app.get("tags") or []
+            ok_launch, why = app_launchable(app)
+            if not ok_launch:
+                print(f"  skip {app['id']}: {why}", file=sys.stderr)
+                if "skip-if-missing" in tags or "optional" in tags:
+                    doc["errors"].append(
+                        {"app": app["id"], "skipped": True, "reason": why}
+                    )
+                    continue
+                doc["errors"].append({"app": app["id"], "error": why})
+                continue
+
+            window: Optional[dict[str, Any]] = None
+            home_monitor = 0
+            home_workspace = 0
+            match = app.get("match") or {}
+
+            # sequential ops: finish each fully before next
+            for op in open_ops + other_ops:
+                kind = op.get("kind")
+                is_of = kind == "open_fresh"
+                is_ow = kind == "open_warm"
+                if not is_of and not is_ow and not window:
+                    # seed window with open_fresh settle only (not a counted op sample)
+                    seed_cfg = cfg_for("full" if bootstrap_done else "bootstrap")
+                    window, settle, _ = _run_open_fresh(app, seed_cfg, catalog, 0, {})
+                    if window:
+                        owned_all.add(int(window["windowId"]))
+                        home_monitor = int(window.get("monitor") or 0)
+                        home_workspace = int(window.get("workspace") or 0)
+                    time.sleep(cooldown)
+                if not is_of and not is_ow and not window:
+                    print(f"  skip {op['id']}: no window", file=sys.stderr)
+                    continue
+
+                window, home_monitor, home_workspace = run_cal_and_full(
+                    app=app,
+                    op=op,
+                    window=window,
+                    home_monitor=home_monitor,
+                    home_workspace=home_workspace,
+                    is_open_fresh=is_of,
+                    is_open_warm=is_ow,
+                )
+
+            # teardown app windows
+            print(f"  cleanup windows for {app['id']}", file=sys.stderr)
+            if window and window.get("windowId"):
+                owned_all.add(int(window["windowId"]))
+            close_matching(match)
+            close_windows(owned_all)
+            owned_all.clear()
             time.sleep(0.5)
 
-        if ai + 1 < len(apps):
-            time.sleep(between_apps)
+            if ai + 1 < len(apps):
+                time.sleep(between_apps)
+    finally:
+        # always close leftovers; only return to WS1 when done
+        print("final window cleanup…", file=sys.stderr)
+        close_windows(owned_all)
+        for app in apps:
+            try:
+                close_matching(app.get("match") or {})
+            except Exception:
+                pass
+        if return_ws_when_done:
+            return_to_operator_desk(config)
 
+    doc["disagreementCatalog"] = catalog.to_dict()
+    doc["agreementContract"] = agreement_contract_doc(
+        knobs["settleDurationMs"], knobs["checkIntervalMs"]
+    )
+    doc["derivedKnobs"] = dict(knobs)
+
+    # single disk write after all measurement
     results_root = ROOT / (config.get("output") or {}).get("dir", "results")
     if out_dir is not None:
         out = Path(out_dir)
@@ -922,8 +1114,7 @@ def _load_config(args: argparse.Namespace, *, default_suite: str) -> dict[str, A
     if getattr(args, "keep_detail", False):
         config = dict(config)
         config["recordDetail"] = "full"
-    config = apply_suite(config, suite)
-    return config
+    return apply_suite(config, suite)
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -942,7 +1133,6 @@ def cmd_run(args: argparse.Namespace) -> int:
     samples = int(args.samples if args.samples is not None else config.get("samples") or 10)
 
     apps = [a for a in apps_doc.get("apps") or [] if not app_filter or a["id"] in app_filter]
-    # default full suite: tag "full"; skip pure optional unless requested
     if not app_filter:
         apps = [
             a
@@ -950,7 +1140,6 @@ def cmd_run(args: argparse.Namespace) -> int:
             if "full" in (a.get("tags") or []) or "pilot" in (a.get("tags") or [])
         ]
         apps = [a for a in apps if "optional" not in (a.get("tags") or [])]
-        # do not thrash guake while agent may be running inside it
         if not getattr(args, "include_guake", False):
             apps = [a for a in apps if a.get("id") != "guake"]
     ops = [o for o in ops_doc.get("ops") or [] if not op_filter or o["id"] in op_filter]
@@ -966,6 +1155,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             no_switch_workspace=args.no_switch_workspace,
             out_dir=Path(args.out_dir) if args.out_dir else None,
             session=getattr(args, "session", None),
+            return_ws_when_done=not getattr(args, "no_return_ws", False),
         )
     except Exception as e:
         print(f"error: {e}", file=sys.stderr)
@@ -975,7 +1165,6 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_pilot(args: argparse.Namespace) -> int:
-    """Staged pilot: nautilus → ghostty → inkscape with small sample counts."""
     config = _load_config(args, default_suite="pilot")
     apps_doc = _load_json(ROOT / "apps.json")
     ops_doc = _load_json(ROOT / "ops.json")
@@ -995,47 +1184,43 @@ def cmd_pilot(args: argparse.Namespace) -> int:
             print(f"unknown stage {args.stage}", file=sys.stderr)
             return 2
 
-    # optional: only a few ops for first micro-pass
     if args.ops:
         op_filter = set(args.ops.split(","))
         ops_all = [o for o in ops_all if o["id"] in op_filter]
 
+    # one matrix for all pilot apps (keeps bootstrap once)
+    apps: list[dict[str, Any]] = []
     for stage in stages:
-        print(f"\n######## PILOT {stage['id']} ########", file=sys.stderr)
-        samples = int(args.samples if args.samples is not None else stage.get("samples") or 2)
-        apps = [by_id[i] for i in stage.get("apps") or [] if i in by_id]
-        if not apps:
-            print(f"skip empty stage {stage['id']}", file=sys.stderr)
-            continue
-        # each stage writes under suite pilot; phase labels stage id
-        stage_config = dict(config)
-        stage_config["suite"] = "pilot"
-        try:
-            path = run_matrix(
-                host=args.host,
-                config=stage_config,
-                apps=apps,
-                ops=ops_all,
-                samples=samples,
-                allow_forge=args.allow_forge,
-                no_switch_workspace=args.no_switch_workspace,
-                out_dir=Path(args.out_dir) if args.out_dir else None,
-                phase_label=f"pilot:{stage['id']}",
-                session=getattr(args, "session", None),
-            )
-            print(path)
-        except Exception as e:
-            print(f"error stage {stage['id']}: {e}", file=sys.stderr)
-            return 2
+        for i in stage.get("apps") or []:
+            if i in by_id and by_id[i] not in apps:
+                apps.append(by_id[i])
+    samples = int(args.samples if args.samples is not None else 2)
+    try:
+        path = run_matrix(
+            host=args.host,
+            config=config,
+            apps=apps,
+            ops=ops_all,
+            samples=samples,
+            allow_forge=args.allow_forge,
+            no_switch_workspace=args.no_switch_workspace,
+            out_dir=Path(args.out_dir) if args.out_dir else None,
+            phase_label="pilot",
+            session=getattr(args, "session", None),
+        )
+        print(path)
+    except Exception as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
     return 0
 
 
 def cmd_calibrate(args: argparse.Namespace) -> int:
-    """Strict short matrix for knob discovery on a host×session."""
     args.suite = "calibration"
     if not args.apps:
-        # default calibration set: stable + thrashy + terminal
         args.apps = "nautilus,ghostty,inkscape,gnome-terminal"
+    if args.samples is None:
+        args.samples = 0  # cal-only path: still runs cal; full_samples=0
     return cmd_run(args)
 
 
@@ -1064,7 +1249,7 @@ def build_parser() -> argparse.ArgumentParser:
     spr.add_argument("--host", default=None)
     spr.set_defaults(func=cmd_prep)
 
-    sc = sub.add_parser("cleanup", help="Disable probe; restore Forge+rivals")
+    sc = sub.add_parser("cleanup", help="Disable probe; restore Forge+rivals; WS1")
     sc.set_defaults(func=cmd_cleanup)
 
     sf = sub.add_parser("preflight", help="Ping + safety (Forge/rivals off)")
@@ -1074,62 +1259,62 @@ def build_parser() -> argparse.ArgumentParser:
     sf.set_defaults(func=cmd_preflight)
 
     for name, help_ in (
-        ("run", "Full or filtered serial matrix (default suite: full-suite)"),
-        ("pilot", "Staged pilot: nautilus → ghostty → inkscape"),
-        ("calibrate", "Strict short matrix for host×session knob discovery"),
+        ("run", "Matrix: 1 cal + N full samples per app+op"),
+        ("pilot", "Pilot apps with agreement settle"),
+        ("calibrate", "Calibration suite (dense interval; bootstrap duration)"),
     ):
         sr = sub.add_parser(name, help=help_)
         sr.add_argument("--host", default=None, help="Host label: black | gray | green")
         sr.add_argument(
             "--session",
             default=None,
-            help="wayland | x11 (default: XDG_SESSION_TYPE). Used for result namespace.",
+            help="wayland | x11 (default: XDG_SESSION_TYPE)",
         )
         sr.add_argument(
             "--suite",
             default=None,
-            help="calibration | full-suite | pilot | strict (default depends on command)",
+            help="calibration | full-suite | pilot | strict",
         )
         sr.add_argument("--config", default=None)
-        sr.add_argument("--apps", default=None, help="comma app ids (run only)")
+        sr.add_argument("--apps", default=None, help="comma app ids")
         sr.add_argument("--ops", default=None, help="comma op ids")
-        sr.add_argument("--samples", type=int, default=None)
+        sr.add_argument(
+            "--samples",
+            type=int,
+            default=None,
+            help="full samples per op after calibration (default 10)",
+        )
         sr.add_argument("--out-dir", default=None)
         sr.add_argument("--allow-forge", action="store_true")
         sr.add_argument("--no-switch-workspace", action="store_true")
         sr.add_argument(
+            "--no-return-ws",
+            action="store_true",
+            help="Do not FocusWorkspace(returnIndex) at end (cleanup still does)",
+        )
+        sr.add_argument(
             "--keep-detail",
             action="store_true",
-            help="Record full verification polls + events (large JSON)",
+            help="Reserved; checks timeline is always stored",
         )
         if name == "run":
             sr.add_argument(
                 "--include-guake",
                 action="store_true",
-                help="Include guake in default app list (off by default)",
+                help="Include guake in default app list",
             )
             sr.set_defaults(func=cmd_run)
         elif name == "pilot":
-            sr.add_argument(
-                "--stage",
-                default=None,
-                help="only one pilot stage id (e.g. stage1-nautilus)",
-            )
+            sr.add_argument("--stage", default=None, help="unused; all pilot stages merge")
             sr.set_defaults(func=cmd_pilot)
         else:
             sr.set_defaults(func=cmd_calibrate)
 
     sw = sub.add_parser(
         "focus-workspace",
-        help="Switch workspace by 0-based index (WS1=0). Call after testing.",
+        help="Switch workspace (0-based). Use 0 only when finished testing.",
     )
-    sw.add_argument(
-        "index",
-        type=int,
-        nargs="?",
-        default=None,
-        help="0-based workspace index (default: config workspace.returnIndex or 0)",
-    )
+    sw.add_argument("index", type=int, nargs="?", default=None)
     sw.add_argument("--config", default=None)
     sw.set_defaults(func=cmd_focus_workspace_cli)
 
@@ -1141,8 +1326,7 @@ def cmd_focus_workspace_cli(args: argparse.Namespace) -> int:
     if args.index is not None:
         idx = int(args.index)
     else:
-        ws = config.get("workspace") or {}
-        idx = int(ws.get("returnIndex", 0))
+        idx = int((config.get("workspace") or {}).get("returnIndex", 0))
     args.index = idx
     return cmd_focus_workspace(args)
 
