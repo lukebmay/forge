@@ -1,12 +1,14 @@
 {
-  "version": 2,
+  "version": 3,
   "probeVersion": "0.2.0",
   "phase": "A-serial-single-op",
+  "suite": "full-suite",
   "samples": 10,
+  "recordDetail": "summary",
   "settle": {
     "comment": "Official agreement tick = quiet for quietMs, then spaced by agreementIntervalMs. Settled = agreeCount consecutive agreement ticks.",
     "quietMs": 500,
-    "agreeCount": 5,
+    "agreeCount": 3,
     "agreementIntervalMs": 2000,
     "maxWaitMs": 120000,
     "relevantSignals": [
@@ -26,21 +28,21 @@
     ],
     "verifyModes": {
       "dense": {
-        "samples": [0, 1, 2, 3, 4],
+        "samples": [0, 1],
         "pollMs": 50,
         "snapshotEachPoll": true,
-        "comment": "Frequent Meta reads + event drain for instrumentation; agreement still only every agreementIntervalMs while quiet"
+        "comment": "Two dense samples capture event series; agreement still only every agreementIntervalMs"
       },
       "sparse": {
-        "samples": [5, 6, 7, 8, 9],
+        "samples": [2, 3, 4, 5, 6, 7, 8, 9],
         "pollMs": 2000,
-        "snapshotEachPoll": true,
-        "comment": "Deliberate verifies only at agreement interval — lower Meta query load"
+        "snapshotEachPoll": false,
+        "comment": "Lower Meta load; poll at agreement interval"
       }
     }
   },
-  "cooldownMs": 2000,
-  "betweenAppsMs": 5000,
+  "cooldownMs": 500,
+  "betweenAppsMs": 2000,
   "open": {
     "mapMaxWaitMs": 120000,
     "postMapSettle": true
@@ -48,7 +50,7 @@
   "workspace": {
     "preferIndex": 3,
     "returnIndex": 0,
-    "comment": "preferIndex = test desk (0-based; default 3). returnIndex = operator desk after testing (0 = human WS1 / Guake). Always FocusWorkspace(returnIndex) before cleanup or session end."
+    "comment": "preferIndex = test desk (0-based; default 3). returnIndex = operator desk after testing (0 = human WS1 / Guake)."
   },
   "safety": {
     "requireForgeDisabled": true,
@@ -76,7 +78,112 @@
   },
   "output": {
     "dir": "results",
-    "writeLatestSymlink": true
+    "writeLatestSymlink": true,
+    "namespace": true,
+    "comment": "results/<host>/<session>/<suite>/run-*.json  e.g. black/wayland/full-suite"
+  },
+  "suites": {
+    "calibration": {
+      "phase": "calibration",
+      "samples": 2,
+      "recordDetail": "summary",
+      "cooldownMs": 500,
+      "betweenAppsMs": 2000,
+      "settle": {
+        "quietMs": 500,
+        "agreeCount": 5,
+        "agreementIntervalMs": 2000,
+        "maxWaitMs": 120000,
+        "verifyModes": {
+          "dense": {
+            "samples": [0, 1],
+            "pollMs": 50,
+            "snapshotEachPoll": true
+          },
+          "sparse": {
+            "samples": [],
+            "pollMs": 2000,
+            "snapshotEachPoll": false
+          }
+        },
+        "comment": "Strict settle for host/session knob discovery. Measure timeToQuiet vs waitMs. If wait≈agreeCount×interval and timeToQuiet≪wait, full-suite may use agreeCount=3."
+      },
+      "comment": "Run first on each host×session (black/wayland, black/x11, gray/…)."
+    },
+    "full-suite": {
+      "phase": "full-suite",
+      "samples": 10,
+      "recordDetail": "summary",
+      "cooldownMs": 500,
+      "betweenAppsMs": 2000,
+      "settle": {
+        "quietMs": 500,
+        "agreeCount": 3,
+        "agreementIntervalMs": 2000,
+        "verifyModes": {
+          "dense": {
+            "samples": [0, 1],
+            "pollMs": 50,
+            "snapshotEachPoll": true
+          },
+          "sparse": {
+            "samples": [2, 3, 4, 5, 6, 7, 8, 9],
+            "pollMs": 2000,
+            "snapshotEachPoll": false
+          }
+        },
+        "comment": "black/wayland 2026-08-07 calibration: n=112 trials all quiet_agreement; wait p50≈8635ms ≈ floor; timeToQuiet typically <1s; no late thrash. agreeCount 5→3 saves ~4s/trial without losing late-noise detection (still 6s spaced quiet). Re-run calibration on gray/green/x11 before adopting."
+      }
+    },
+    "pilot": {
+      "phase": "pilot",
+      "samples": 2,
+      "recordDetail": "summary",
+      "cooldownMs": 500,
+      "betweenAppsMs": 2000,
+      "settle": {
+        "quietMs": 500,
+        "agreeCount": 3,
+        "agreementIntervalMs": 2000,
+        "verifyModes": {
+          "dense": {
+            "samples": [0, 1],
+            "pollMs": 50,
+            "snapshotEachPoll": true
+          },
+          "sparse": {
+            "samples": [],
+            "pollMs": 2000,
+            "snapshotEachPoll": false
+          }
+        }
+      }
+    },
+    "strict": {
+      "phase": "strict",
+      "samples": 10,
+      "recordDetail": "summary",
+      "cooldownMs": 1000,
+      "betweenAppsMs": 3000,
+      "settle": {
+        "quietMs": 500,
+        "agreeCount": 5,
+        "agreementIntervalMs": 2000,
+        "verifyModes": {
+          "dense": {
+            "samples": [0, 1, 2, 3, 4],
+            "pollMs": 50,
+            "snapshotEachPoll": true
+          },
+          "sparse": {
+            "samples": [5, 6, 7, 8, 9],
+            "pollMs": 2000,
+            "snapshotEachPoll": true
+          }
+        },
+        "comment": "Original conservative knobs (pre-calibration). Use if full-suite shows thrash or timeouts."
+      }
+    }
   },
   "pilot": {
     "stages": [
@@ -99,5 +206,16 @@
         "comment": "known slow/late classify"
       }
     ]
+  },
+  "calibrationNote": {
+    "black_wayland_2026-08-07": {
+      "trials": 112,
+      "ok": 112,
+      "waitMs_p50": 8635,
+      "waitMs_max": 9558,
+      "timeToQuiet_open_inkscape_ms": 960,
+      "conclusion": "Settle wait dominated by agreement floor (agreeCount×interval), not Meta thrash. Full-suite agreeCount=3 is quality-safe on this host/session. Recalibrate other hosts/sessions.",
+      "wallClockSaving": "~4s per trial vs agreeCount=5; plus cooldown/betweenApps cuts; plus summary JSON (~10-50× smaller without verification spam)"
+    }
   }
 }

@@ -64,24 +64,26 @@ tests/meta-probe/
 # 2) Agent (or you) prep — enables probe, disables Forge+rivals, preflight
 python3 tests/meta-probe/probe_driver.py prep --host black
 
-# 3) Pilot (nautilus → ghostty → inkscape)
-python3 tests/meta-probe/probe_driver.py pilot --host black
+# 3) Calibrate host×session (strict knobs, n=2) — skip if already green for this pair
+python3 tests/meta-probe/probe_driver.py calibrate --host black
+# → results/black/wayland/calibration/  (or …/x11/… when on X11)
 
-# 4) Full matrix after pilot green
-python3 tests/meta-probe/probe_driver.py run --host black --samples 10
-python3 tests/meta-probe/analyze.py results/latest.json
+# 4) Full matrix (tuned knobs after calibration)
+python3 tests/meta-probe/probe_driver.py run --host black --suite full-suite --samples 10
+python3 tests/meta-probe/analyze.py results/black/wayland/full-suite/latest.json
 
 # 5) Restore desktop: focus WS1 (index 0), disable probe, re-enable Forge/rivals
 python3 tests/meta-probe/probe_driver.py cleanup
-# equivalent end-of-run workspace return only:
-# python3 tests/meta-probe/probe_driver.py focus-workspace 0
 ```
 
-**After testing:** always leave the operator on **WS1** (0-based index **0**).
-`cleanup` does this before disabling the probe. Future agents: treat return-to-WS1
-as part of “session finished,” not optional.
+**Results namespace:** `results/<host>/<session>/<suite>/` — never mix Wayland and X11.
 
-**After restart handoff:** [SESSION_HANDOFF.md](./SESSION_HANDOFF.md) · [PROTOCOL.md](./PROTOCOL.md)
+**Knobs / calibration:** [CALIBRATION.md](./CALIBRATION.md)
+
+**After testing:** always leave the operator on **WS1** (0-based index **0**).
+`cleanup` does this before disabling the probe.
+
+**Handoff:** [SESSION_HANDOFF.md](./SESSION_HANDOFF.md) · [PROTOCOL.md](./PROTOCOL.md)
 
 ## Settle knobs (`config.default.json`)
 

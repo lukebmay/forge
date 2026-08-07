@@ -90,12 +90,27 @@ python3 probe_driver.py pilot --host black --stage stage3-inkscape --samples 2
 python3 probe_driver.py pilot --host black
 ```
 
-## Full science matrix (after pilot green)
+## Full science matrix (after calibration green)
 
 ```bash
-python3 probe_driver.py run --host black --samples 10
-python3 analyze.py results/latest.json
+python3 probe_driver.py run --host black --suite full-suite --samples 10
+python3 analyze.py results/black/wayland/full-suite/latest.json
 ```
+
+Result paths are namespaced: `results/<host>/<session>/<suite>/`  
+(`session` = `wayland` | `x11` from `XDG_SESSION_TYPE` or `--session`).
+
+## Calibration before full-suite (each host × session)
+
+See [CALIBRATION.md](./CALIBRATION.md). Short form:
+
+```bash
+python3 probe_driver.py calibrate --host black   # → …/calibration/
+# decide knobs from timeToQuiet vs waitMs; then full-suite
+```
+
+**black/wayland** already calibrated (2026-08-07): full-suite uses `agreeCount=3`.  
+Recalibrate on **x11** and on **gray/green**.
 
 ## Multi-host later
 
@@ -105,7 +120,7 @@ python3 analyze.py results/latest.json
 | `gray` | ~2018 laptop |
 | `green` | ~2012 desktop |
 
-Same tree + config; `--host gray` / `--host green`. Copy `results/run-*.json`.
+Same tree; `--host gray` / `--host green`. Copy whole `results/<host>/` trees.
 
 ## Open-method note
 

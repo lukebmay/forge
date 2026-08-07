@@ -21,7 +21,15 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from lib.ext_state import parse_info_enabled, parse_list_enabled  # noqa: E402
-from lib.results import new_run_doc, settle_to_dict, trial_record, write_run  # noqa: E402
+from lib.results import (  # noqa: E402
+    apply_suite,
+    namespace_dir,
+    new_run_doc,
+    session_type_label,
+    settle_to_dict,
+    trial_record,
+    write_run,
+)
 from lib.settle import match_window, summarize_events, verify_mode_for_sample  # noqa: E402
 
 BUS_NAME = "org.gnome.Shell.Extensions.MetaProbe"
@@ -670,6 +678,11 @@ def run_op(
     return op_result, settle, window
 
 
+def _record_detail(config: dict[str, Any]) -> str:
+    d = (config.get("recordDetail") or "summary").lower()
+    return "full" if d == "full" else "summary"
+
+
 def run_matrix(
     *,
     host: Optional[str],
@@ -681,19 +694,28 @@ def run_matrix(
     no_switch_workspace: bool,
     out_dir: Optional[Path],
     phase_label: Optional[str] = None,
+    session: Optional[str] = None,
 ) -> Path:
     env = probe_json("GetEnv")
     errs = safety_check(config, allow_forge=allow_forge, env=env)
     if errs:
         raise RuntimeError("; ".join(errs))
 
+    config = dict(config)
     if phase_label:
-        config = dict(config)
         config["phase"] = phase_label
 
+    detail = _record_detail(config)
     apps_doc = {"version": 2, "apps": apps}
     ops_doc = {"version": 2, "ops": ops}
-    doc = new_run_doc(host=host, config=config, apps=apps_doc, ops=ops_doc, env=env)
+    doc = new_run_doc(
+        host=host,
+        config=config,
+        apps=apps_doc,
+        ops=ops_doc,
+        env=env,
+        session=session,
+    )
 
     ensure_workspace(config, no_switch=no_switch_workspace)
     cooldown = float(config.get("cooldownMs") or 2000) / 1000.0
@@ -702,9 +724,11 @@ def run_matrix(
     open_ops = [o for o in ops if o.get("kind") in ("open_fresh", "open_warm")]
     other_ops = [o for o in ops if o.get("kind") not in ("open_fresh", "open_warm")]
 
+    ns = doc.get("namespace") or {}
     print(
-        f"run host={doc['host']['host']} samples={samples} apps={len(apps)} "
-        f"ops={len(ops)} phase={config.get('phase')}",
+        f"run host={ns.get('host')} session={ns.get('session')} suite={ns.get('suite')} "
+        f"samples={samples} apps={len(apps)} ops={len(ops)} phase={config.get('phase')} "
+        f"detail={detail} agree={((config.get('settle') or {}).get('agreeCount'))}",
         file=sys.stderr,
     )
 
@@ -743,7 +767,7 @@ def run_matrix(
                             op_id=op["id"],
                             sample=sample,
                             ok=ok,
-                            settle=settle_to_dict(settle),
+                            settle=settle_to_dict(settle, detail=detail),
                             op_result=op_res,
                             window=window,
                             notes=op_res.get("error") or "",
@@ -782,7 +806,7 @@ def run_matrix(
                             op_id=op["id"],
                             sample=sample,
                             ok=ok,
-                            settle=settle_to_dict(settle),
+                            settle=settle_to_dict(settle, detail=detail),
                             op_result=op_res,
                             window=window,
                         )
@@ -848,7 +872,7 @@ def run_matrix(
                         op_id=op["id"],
                         sample=sample,
                         ok=ok,
-                        settle=settle_to_dict(settle),
+                        settle=settle_to_dict(settle, detail=detail),
                         op_result={
                             k: v
                             for k, v in op_result.items()
@@ -873,14 +897,37 @@ def run_matrix(
         if ai + 1 < len(apps):
             time.sleep(between_apps)
 
-    out = out_dir or ROOT / (config.get("output") or {}).get("dir", "results")
-    path = write_run(doc, Path(out), latest=True)
+    results_root = ROOT / (config.get("output") or {}).get("dir", "results")
+    if out_dir is not None:
+        out = Path(out_dir)
+    else:
+        ns = doc.get("namespace") or {}
+        if (config.get("output") or {}).get("namespace", True):
+            out = namespace_dir(
+                results_root,
+                host=str(ns.get("host") or "host"),
+                session=str(ns.get("session") or "unknown"),
+                suite=str(ns.get("suite") or "default"),
+            )
+        else:
+            out = results_root
+    path = write_run(doc, Path(out), latest=True, results_root=results_root)
     print(f"\nwrote {path}", file=sys.stderr)
     return path
 
 
-def cmd_run(args: argparse.Namespace) -> int:
+def _load_config(args: argparse.Namespace, *, default_suite: str) -> dict[str, Any]:
     config = _load_json(Path(args.config) if args.config else ROOT / "config.default.json")
+    suite = getattr(args, "suite", None) or default_suite
+    if getattr(args, "keep_detail", False):
+        config = dict(config)
+        config["recordDetail"] = "full"
+    config = apply_suite(config, suite)
+    return config
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    config = _load_config(args, default_suite="full-suite")
     apps_doc = _load_json(ROOT / "apps.json")
     ops_doc = _load_json(ROOT / "ops.json")
 
@@ -903,6 +950,9 @@ def cmd_run(args: argparse.Namespace) -> int:
             if "full" in (a.get("tags") or []) or "pilot" in (a.get("tags") or [])
         ]
         apps = [a for a in apps if "optional" not in (a.get("tags") or [])]
+        # do not thrash guake while agent may be running inside it
+        if not getattr(args, "include_guake", False):
+            apps = [a for a in apps if a.get("id") != "guake"]
     ops = [o for o in ops_doc.get("ops") or [] if not op_filter or o["id"] in op_filter]
 
     try:
@@ -915,6 +965,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             allow_forge=args.allow_forge,
             no_switch_workspace=args.no_switch_workspace,
             out_dir=Path(args.out_dir) if args.out_dir else None,
+            session=getattr(args, "session", None),
         )
     except Exception as e:
         print(f"error: {e}", file=sys.stderr)
@@ -925,7 +976,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def cmd_pilot(args: argparse.Namespace) -> int:
     """Staged pilot: nautilus → ghostty → inkscape with small sample counts."""
-    config = _load_json(Path(args.config) if args.config else ROOT / "config.default.json")
+    config = _load_config(args, default_suite="pilot")
     apps_doc = _load_json(ROOT / "apps.json")
     ops_doc = _load_json(ROOT / "ops.json")
     by_id = {a["id"]: a for a in apps_doc.get("apps") or []}
@@ -956,10 +1007,13 @@ def cmd_pilot(args: argparse.Namespace) -> int:
         if not apps:
             print(f"skip empty stage {stage['id']}", file=sys.stderr)
             continue
+        # each stage writes under suite pilot; phase labels stage id
+        stage_config = dict(config)
+        stage_config["suite"] = "pilot"
         try:
             path = run_matrix(
                 host=args.host,
-                config=config,
+                config=stage_config,
                 apps=apps,
                 ops=ops_all,
                 samples=samples,
@@ -967,12 +1021,22 @@ def cmd_pilot(args: argparse.Namespace) -> int:
                 no_switch_workspace=args.no_switch_workspace,
                 out_dir=Path(args.out_dir) if args.out_dir else None,
                 phase_label=f"pilot:{stage['id']}",
+                session=getattr(args, "session", None),
             )
             print(path)
         except Exception as e:
             print(f"error stage {stage['id']}: {e}", file=sys.stderr)
             return 2
     return 0
+
+
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    """Strict short matrix for knob discovery on a host×session."""
+    args.suite = "calibration"
+    if not args.apps:
+        # default calibration set: stable + thrashy + terminal
+        args.apps = "nautilus,ghostty,inkscape,gnome-terminal"
+    return cmd_run(args)
 
 
 def cmd_prep(args: argparse.Namespace) -> int:
@@ -1010,11 +1074,22 @@ def build_parser() -> argparse.ArgumentParser:
     sf.set_defaults(func=cmd_preflight)
 
     for name, help_ in (
-        ("run", "Full or filtered serial matrix"),
+        ("run", "Full or filtered serial matrix (default suite: full-suite)"),
         ("pilot", "Staged pilot: nautilus → ghostty → inkscape"),
+        ("calibrate", "Strict short matrix for host×session knob discovery"),
     ):
         sr = sub.add_parser(name, help=help_)
         sr.add_argument("--host", default=None, help="Host label: black | gray | green")
+        sr.add_argument(
+            "--session",
+            default=None,
+            help="wayland | x11 (default: XDG_SESSION_TYPE). Used for result namespace.",
+        )
+        sr.add_argument(
+            "--suite",
+            default=None,
+            help="calibration | full-suite | pilot | strict (default depends on command)",
+        )
         sr.add_argument("--config", default=None)
         sr.add_argument("--apps", default=None, help="comma app ids (run only)")
         sr.add_argument("--ops", default=None, help="comma op ids")
@@ -1022,7 +1097,19 @@ def build_parser() -> argparse.ArgumentParser:
         sr.add_argument("--out-dir", default=None)
         sr.add_argument("--allow-forge", action="store_true")
         sr.add_argument("--no-switch-workspace", action="store_true")
-        if name == "pilot":
+        sr.add_argument(
+            "--keep-detail",
+            action="store_true",
+            help="Record full verification polls + events (large JSON)",
+        )
+        if name == "run":
+            sr.add_argument(
+                "--include-guake",
+                action="store_true",
+                help="Include guake in default app list (off by default)",
+            )
+            sr.set_defaults(func=cmd_run)
+        elif name == "pilot":
             sr.add_argument(
                 "--stage",
                 default=None,
@@ -1030,7 +1117,7 @@ def build_parser() -> argparse.ArgumentParser:
             )
             sr.set_defaults(func=cmd_pilot)
         else:
-            sr.set_defaults(func=cmd_run)
+            sr.set_defaults(func=cmd_calibrate)
 
     sw = sub.add_parser(
         "focus-workspace",

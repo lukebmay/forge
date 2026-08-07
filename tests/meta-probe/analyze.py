@@ -40,6 +40,7 @@ def summarize(doc: dict[str, Any]) -> dict[str, Any]:
     rows = []
     for (app, op), trials in sorted(groups.items()):
         waits = []
+        quiets = []
         rels = []
         oks = 0
         signal_totals: dict[str, list[int]] = defaultdict(list)
@@ -49,6 +50,8 @@ def summarize(doc: dict[str, Any]) -> dict[str, Any]:
             s = t.get("settle") or {}
             if s.get("waitMs") is not None:
                 waits.append(float(s["waitMs"]))
+            if s.get("timeToQuietMs") is not None:
+                quiets.append(float(s["timeToQuietMs"]))
             if s.get("relevantEventCount") is not None:
                 rels.append(int(s["relevantEventCount"]))
             for sig, n in (s.get("countsBySignal") or {}).items():
@@ -68,6 +71,10 @@ def summarize(doc: dict[str, Any]) -> dict[str, Any]:
                     "max": max(waits) if waits else None,
                     "min": min(waits) if waits else None,
                 },
+                "timeToQuietMs": {
+                    "p50": pct(quiets, 50),
+                    "max": max(quiets) if quiets else None,
+                },
                 "relevantEvents": {
                     "mean": statistics.mean(rels) if rels else None,
                     "p50": pct([float(x) for x in rels], 50) if rels else None,
@@ -78,8 +85,11 @@ def summarize(doc: dict[str, Any]) -> dict[str, Any]:
                 },
             }
         )
+    ns = doc.get("namespace") or {}
     return {
         "host": doc.get("host"),
+        "namespace": ns,
+        "suite": doc.get("suite"),
         "phase": doc.get("phase"),
         "createdAt": doc.get("createdAt"),
         "trialCount": len(doc.get("trials") or []),
@@ -89,15 +99,23 @@ def summarize(doc: dict[str, Any]) -> dict[str, Any]:
 
 def print_table(summary: dict[str, Any]) -> None:
     host = (summary.get("host") or {}).get("host")
-    print(f"host={host} phase={summary.get('phase')} trials={summary.get('trialCount')}")
+    ns = summary.get("namespace") or {}
+    sess = ns.get("session") or (summary.get("host") or {}).get("sessionType")
+    suite = summary.get("suite") or ns.get("suite")
+    print(
+        f"host={host} session={sess} suite={suite} "
+        f"phase={summary.get('phase')} trials={summary.get('trialCount')}"
+    )
     print(
         f"{'app':16} {'op':22} {'n':>3} {'ok':>3} "
-        f"{'wait_p50':>9} {'wait_p95':>9} {'wait_max':>9} "
+        f"{'wait_p50':>9} {'quiet_p50':>9} {'wait_max':>9} "
         f"{'ev_p50':>7} {'ev_max':>7}"
     )
     for r in summary.get("rows") or []:
         w = r["waitMs"]
+        q = r.get("timeToQuietMs") or {}
         e = r["relevantEvents"]
+
         def f(x):
             return f"{x:9.0f}" if x is not None else f"{'—':>9}"
 
@@ -106,7 +124,7 @@ def print_table(summary: dict[str, Any]) -> None:
 
         print(
             f"{r['appId'][:16]:16} {r['opId'][:22]:22} {r['n']:3} {r['ok']:3} "
-            f"{f(w.get('p50'))} {f(w.get('p95'))} {f(w.get('max'))} "
+            f"{f(w.get('p50'))} {f(q.get('p50'))} {f(w.get('max'))} "
             f"{fi(e.get('p50'))} {fi(e.get('max'))}"
         )
 

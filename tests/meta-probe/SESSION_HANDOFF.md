@@ -1,127 +1,110 @@
-# Session handoff — Meta probe full matrix (next session)
+# Session handoff — Meta probe full matrix
 
 **Date prepared:** 2026-08-07  
 **Branch:** `task/meta-probe-harness`  
-**Host:** `black` (later `gray`, `green`)  
+**Host:** `black`  
 **Path:** `tests/meta-probe/`  
-**Session type:** Wayland (do not mix with X11 results)
 
 ## Status
 
 | Item | State |
 | --- | --- |
-| Pilot (nautilus, ghostty, inkscape, gnome-terminal) n=2 | **Green** — see results below |
-| Prep Forge-disable bug | **Fixed** (Enabled/State parsing + retries + preflight) |
-| Full science matrix n=10 | **Ready** — not started (this handoff) |
+| Prep Forge-disable bug | **Fixed** |
+| black/wayland calibration (pilot n=2) | **Green** — knobs tuned for full-suite |
+| Result namespace | `results/<host>/<session>/<suite>/` |
+| black/wayland **full-suite** n=10 | **Ready** (next session) |
+| black/x11 calibration + full-suite | **Queued** (after X11 login) |
+| gray/green | Calibrate first on each |
 
-## Human (only)
+## Human
 
-1. Stay out of OS/window manipulation during agent runs  
-2. Leave **Guake on WS1**; leave **test workspace empty** (driver uses index `preferIndex` default **3**)  
-3. Tell agent: **start full matrix** / **probe ready**  
-4. Do **not** manually enable/disable extensions unless prep fails  
+1. Logout/login as needed (Wayland for full-suite; later X11 for session compare)  
+2. Guake on **WS1**; leave test desk empty (driver uses index **3**)  
+3. Do not touch windows/OS during runs  
+4. Say **start full suite** / **probe ready**  
 
-## Agent start (new session)
+## Agent — black Wayland full suite (this restart)
 
 ```bash
 cd /home/luke/dev/me/forge
 git checkout task/meta-probe-harness
 cd tests/meta-probe
 
-# Prep: symlink probe, disable forge+rivals (reliable), enable probe, preflight
+python3 -m unittest test_ext_state test_settle test_results -q
 python3 probe_driver.py prep --host black
+# session auto from XDG_SESSION_TYPE; override only if needed: --session wayland
 
-# Optional unit guard
-python3 -m unittest test_ext_state test_settle -v
+# Full science matrix (guake excluded unless --include-guake)
+python3 probe_driver.py run --host black --suite full-suite --samples 10
 
-# Full matrix (long). Prefer one continuous run so results stay one doc:
-python3 probe_driver.py run --host black --samples 10
-
-# If token budget is tight, run app groups and stop cleanly between groups:
-# python3 probe_driver.py run --host black --samples 10 --apps nautilus,ghostty,inkscape,gnome-terminal
-# python3 probe_driver.py run --host black --samples 10 --apps google-chrome,google-chrome-amazon,firefox
-# python3 probe_driver.py run --host black --samples 10 --apps grok,youtube,gmail,google-voice
-# python3 probe_driver.py run --host black --samples 10 --apps code,gimp,kdenlive,obs,steam,slack
-# Skip guake unless operator moves agent off Guake
-
-python3 analyze.py results/latest.json
+python3 analyze.py results/black/wayland/full-suite/latest.json
+# End: restore Forge + WS1
+python3 probe_driver.py cleanup
 ```
 
-### After testing (FIRM)
+If token budget is tight, run app groups under the **same** suite/namespace:
 
 ```bash
-# cleanup focuses WS1 (index 0), disables probe, restores Forge/rivals
-python3 probe_driver.py cleanup
-
-# If cleanup cannot run but probe is still up:
-python3 probe_driver.py focus-workspace 0
+python3 probe_driver.py run --host black --suite full-suite --samples 10 \
+  --apps nautilus,ghostty,inkscape,gnome-terminal
+python3 probe_driver.py run --host black --suite full-suite --samples 10 \
+  --apps google-chrome,google-chrome-amazon,firefox
+# …etc. Each write is a separate run-*.json under full-suite/
 ```
 
-**Human signal that the agent finished:** active workspace is **WS1** (index 0), where Guake is.
+**Stop** on prep/preflight failure, shell crash, or repeated settle timeouts → focus WS1, note failure, do not thrash.
 
-## Workspace map (FIRM)
+## Knobs (black/wayland full-suite — from calibration)
 
-| 0-based index | Human | Use |
+| Knob | full-suite | calibration/strict |
 | --- | --- | --- |
-| **0** | **WS1** | Operator / Guake — **return here when done** |
-| 3 | (default test) | Empty measurement desk (`config.workspace.preferIndex`) |
+| agreeCount | **3** | 5 |
+| agreementIntervalMs | 2000 | 2000 |
+| quietMs | 500 | 500 |
+| samples | 10 | 2 (calibration) |
+| dense sample indices | 0,1 | 0,1 |
+| cooldownMs | 500 | 500 |
+| betweenAppsMs | 2000 | 2000 |
+| recordDetail | summary | summary |
 
-`cleanup.sh` always `FocusWorkspace(returnIndex)` **before** disabling the probe (`returnIndex` default 0).
+Rationale: [CALIBRATION.md](./CALIBRATION.md). Prior pilot wait p50≈8.6s was almost pure 5×2s floor; timeToQuiet &lt;1s.
 
-## Full suite apps (tag `full`)
+## Namespace
 
-| Group | Apps | Notes |
+```text
+results/black/wayland/calibration/   # prior pilot + future calibrate
+results/black/wayland/full-suite/    # this session
+results/black/x11/calibration/       # after X11 login
+results/black/x11/full-suite/
+```
+
+## Workspace (FIRM)
+
+| Index | Human | Role |
 | --- | --- | --- |
-| Pilot | nautilus, ghostty, inkscape | Already green at n=2 |
-| Terminal | gnome-terminal | Green at n=2; **skip guake** while agent is in Guake |
-| Chrome | google-chrome, google-chrome-amazon | heavy URL |
-| PWAs | grok, youtube, gmail, google-voice | |
-| Browsers | firefox | |
-| Electron | code, slack | skip-if-missing OK |
-| Creative | gimp, kdenlive, obs | skip-if-missing OK |
-| Games | steam | skip-if-missing OK |
+| **0** | **WS1** | Operator / Guake — **return when done** (`cleanup` does this) |
+| **3** | test desk | Measurement (`preferIndex`) |
 
-Missing binaries with `skip-if-missing` are skipped, not hard-failed.
+## Later sessions
 
-## Settle (do not speed up)
+### X11 on black
 
-quietMs=500 · agreementIntervalMs=2000 · agreeCount=5 · dense samples 0–4 / sparse 5–9  
+```bash
+# after login to X11
+python3 probe_driver.py prep --host black
+python3 probe_driver.py calibrate --host black --session x11
+# if timeToQuiet still ≪ wait → 
+python3 probe_driver.py run --host black --session x11 --suite full-suite --samples 10
+python3 probe_driver.py cleanup
+```
 
-~10s min settle when already quiet × 14 ops × 10 samples ≈ long wall clock per app (~20–30+ min/app order of magnitude). Budget time; prefer continuous `run` until budget/problem.
+### gray / green
 
-## Prep bug (fixed) — do not regress
-
-| Wrong | Right |
-| --- | --- |
-| Match `State:.*enabled` only | Prefer `Enabled: Yes/No`, then `State: ACTIVE/INACTIVE` |
-| Trust preflight when CLI always said disabled | `extension_enabled` + probe `enabledExtensions` + list `--enabled` |
-| One-shot disable | prep retries disable; dies if Forge still on |
-
-Code: `lib/ext_state.py`, `prep.sh`, `probe_driver.extension_enabled`, `test_ext_state.py`.
-
-## Prior pilot results (2026-08-07 black Wayland)
-
-| Run | Result |
-| --- | --- |
-| pilot stage1 nautilus n=2 × 14 ops | 28/28 ok |
-| pilot stage2 ghostty n=2 × 14 ops | 28/28 ok |
-| pilot stage3 inkscape n=2 × 14 ops | 28/28 ok |
-| run gnome-terminal n=2 × 14 ops | 28/28 ok |
-
-Artifacts: `tests/meta-probe/results/run-black-*.json`
-
-## Orchestrator notes (full matrix session)
-
-1. One task: collect as many full-matrix samples as budget allows  
-2. On significant failure (prep die, preflight fail, shell crash, repeated settle timeout): **stop**, focus WS1, write note — do not thrash  
-3. Do not open guake as a target app while the agent is inside Guake  
-4. No push unless asked; no SSH without **explicit**  
-5. Do not wire probe into Forge layout engine yet  
-6. End: `cleanup` (restores Forge + **WS1**)  
+Always `calibrate` first; only then full-suite (or `--suite strict` if thrashy).
 
 ## FIRM
 
-- No push unless asked  
-- No SSH without **explicit** in user message  
+- No push unless asked; no SSH without **explicit**  
 - Do not wire probe into Forge layout engine yet  
-- **Always return to WS1 (index 0) when testing ends**  
+- Always **WS1** when testing ends  
+- Skip **guake** app while agent runs inside Guake  
