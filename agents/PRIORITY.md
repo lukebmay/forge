@@ -1,12 +1,12 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-07 (mon-child topology peel on master; Wayland re-smoke next)  
+**Updated:** 2026-08-07 (meta-probe pilot next after Wayland logout)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 **Agent git:** stash still listed — drop only after human OK.  
-**Install:** master tip includes mon-child peel + settle SL1+SL2; Wayland needs **logout**. **No push** until human asks.  
-**Active:** [settle-learning](./plans/forge-settle-learning.md) SL3 needs live samples; topology peel shipped.
+**No push** until human asks.  
+**Active P0:** Meta/Mutter probe pilot — [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md). Stop guessing Forge settle knobs until data lands.
 
 ---
 
@@ -35,12 +35,12 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Wayland re-smoke + thrash dump** (operator) | Confirm peel fixes giant-tab / Grok leaf; [smoke](./tasks/forge-wayland-live_residual-smoke.md) |
-| **2** | **Session verify** (human hard) | [B-manual](./blockers/B-manual-black-session-verify.md) |
-| **3** | **AP5 visual** (soft) | [B-ap5](./blockers/B-ap5-operator-visual-matrix.md) |
-| **mid** | **Window ignore mode** | [task](./tasks/forge-window-ignore-mode.md) — not RC |
-| **mid** | **Settle SL3** (drop seeds) | after operator thrash evidence (`settleSampleCount` > 0) |
-| **post-RC** | Container motion design + MD1 | [plan](./plans/forge-container-motion-design.md) |
+| **1** | **Meta probe pilot** (agent after logout) | Nautilus→Ghostty→Inkscape; [SESSION_HANDOFF](../tests/meta-probe/SESSION_HANDOFF.md) |
+| **2** | **Full probe matrix** on `black` | 10 samples × apps/ops; hosts `gray`/`green` later |
+| **3** | **Layout engine rewrite from data** | Only after abundance of Meta timings |
+| **mid** | Wayland product residuals (VSPLIT, Grok leaf, WS overlay, float save) | Parked until probe informs approach |
+| **mid** | Session verify / AP5 | Human blockers when back to daily driver |
+| **post** | Container motion, ignore mode, SL3 seeds | After measurement campaign |
 
 ## Queue
 

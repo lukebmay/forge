@@ -1,79 +1,70 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-07 (mon-child topology peel)  
-**Branch tip:** `master` (ahead of origin)  
-**Install:** this tip; Wayland **cannot HUP** — logout to load  
-**Wayland:** topology peel shipped offline; needs live re-smoke after logout  
-**Stash:** `stash@{0}` still present — **drop only after human OK**  
-**Remotes:** **no push** unless human asks  
+**Updated:** 2026-08-07 (meta-probe harness on `task/meta-probe-harness`)  
+**Branch:** `task/meta-probe-harness` (commit locally; no push unless asked)  
+**Active P0:** **Meta/Mutter probe pilot** — stability data before more layout guessing  
+**Probe path:** [`tests/meta-probe/`](../tests/meta-probe/)  
+**Session start:** [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md)
 
 ---
 
-## Stable RC
+## What changed (this prep)
 
-| Gate | Status |
+Stability rewrite is **blocked on data**, not more Forge timeout knobs.
+
+| Item | Status |
 | --- | --- |
-| CSS dual-load → **effective overlay** (user colors) | **Done** |
-| Workspace scope WS0–WS3 | **Done** |
-| WR1 chrome geom / focus thrash | **Done** |
-| WR2 Guake rehome | **Reverted** (`0d18ac0`) — float only |
-| Settle learning SL1+SL2 | **Done** — open + batch samples; `forge thrash` |
-| Mon-child giant-tab peel | **Done** (2026-08-07) — plan demotes polluted tab then re-tabs role subset |
-| Unit: window + extension + CLI layout | Green (426 CLI unit) |
-| X11 dual-ws + layout smoke | **Green** |
-| Wayland residual re-smoke | **Pending** install+logout after peel |
-| Session DPMS / daily layout | **Human** B-manual |
-| AP5 visual matrix | **Human soft** |
+| `tests/meta-probe/` harness (extension + driver + settle model) | **Ready** |
+| Probe symlink install | **Done** on black (`install-probe.sh`) |
+| Probe **enabled** in live Shell | **Needs Wayland logout** |
+| Pilot (nautilus → ghostty → inkscape) | **Next** after enable |
+| Full 10-sample matrix | After pilot green |
+| Hosts later | `black`, `gray` (~2018), `green` (~2012) |
 
-### Wayland residuals — status
+### Settle model (locked for science)
 
-| Symptom | 2026-08-06 | 2026-08-07 agent |
-| --- | --- | --- |
-| mon0 giant TABBED (chrome+ghostty+Grok); no tab\|ghostty | fail | **Plan fix shipped** — peel demote + subset tab; live verify after logout |
-| Grok not visible open leaf | fail | Expected better after peel + existing active focus ops |
-| `forge layout save` float-only Inkscape | `roles must be non-empty` | Clearer: `only floating windows to capture` (tile first) |
+- **Verification** = poll Meta (events ± snapshot); may be dense  
+- **Agreement tick** = quiet ≥500ms **and** ≥**2s** since last tick  
+- **Settled** = **5** agreement ticks  
+- Samples 0–4 dense (50ms poll); 5–9 sparse (2s poll)  
+- **open_fresh** and **open_warm** are distinct ops  
+- Chrome **desktop/PWA** vs **fixed URL** are distinct app entries  
 
-Live dry-run on pre-fix forest now plans:
+### Safety
 
-```text
-ensure_layout mon0 hsplit [chrome]
-ensure_layout mon0.s0 tabbed [chrome, Grok]
-ensure_order mon0 [chrome, ghostty]
-focus Grok (active) → YouTube → ghostty (profile)
-```
+Forge **and** rival tilers **must** be disabled during runs.  
+Driver `preflight` enforces this.
 
-### Settle learning
+---
 
-| Piece | How |
+## Operator (human) — before agent pilot
+
+1. **Logout → login** (Wayland) so `meta-probe@forge-test.local` can load  
+2. Optional: Guake or SSH for chat; leave **workspace 3** empty  
+3. Tell agent: **start preliminary testing** / **probe ready**
+
+Agent runs `python3 probe_driver.py prep --host black` (all enable/disable), then pilot.
+End of session: `python3 probe_driver.py cleanup`.
+
+---
+
+## Forge product residuals (parked during measurement)
+
+Do **not** keep guessing layout timeouts until probe data exists.
+
+| Symptom | Notes |
 | --- | --- |
-| Open quiet | Learned raise-only `minQuietMs` (Ghostty seed floor) |
-| Layout batch | Deferred release stamps settle pending |
-| Dump | `forge thrash` → session-memory catalog (**not** disk) |
-| Live samples | Operator: still **0** settleSampleCount in last dump — run thrash after layout |
+| mon1 VSPLIT vs HSPLIT after `layout dev` | Structure residual |
+| Grok not open leaf | lastTabFocus / focus settle |
+| YouTube overlay on other workspace | WS isolation / restack |
+| Inkscape float-only / no border until drag | Admit + float save product gaps |
+
+RC code (peel, etc.) remains on master; **live Wayland product smoke is secondary** to probe pilot this session.
 
 ---
 
-## Operator checklist (you)
+## Agent rules
 
-1. **Install** from this tree (`./install` or `forge install`).  
-2. **Log out → GNOME on Wayland** (required to load new JS + CLI-driven structure).  
-3. Confirm Forge ACTIVE + purple focus border.  
-4. Residual smoke: [forge-wayland-live_residual-smoke](./tasks/forge-wayland-live_residual-smoke.md)  
-   - `forge layout dev` → mon0 **TABBED(Chrome,Grok) \| ghostty**; open leaf **Grok** then profile focus ghostty  
-   - Sole Ghostty re-layout: same split, not one giant tab  
-   - After settle: **`forge thrash`** — share entries with settleMs / minQuiet if non-zero  
-5. Optional: [B-manual](./blockers/B-manual-black-session-verify.md), [B-ap5](./blockers/B-ap5-operator-visual-matrix.md).  
-6. When happy: ask to **push** / tag per [RELEASING.md](../RELEASING.md).
-
-### Save notes
-
-- `forge layout save` snapshots **tiled** structure on the **current workspace** only.  
-- FLOAT-only desks (e.g. lone Inkscape) → error `only floating windows to capture` — tile the window first, or write the profile by hand.  
-- Profiles live under `$FORGE_LAYOUT_DIR/hosts/<host>/` or `~/.config/forge/layout/`.
-
----
-
-## Agent rules (reminder)
-
-- **No push** unless human asks.  
-- **No SSH** without **explicit** in the current message.  
+- **No push** unless human asks  
+- **No SSH** without **explicit** in the current message  
+- Measurement only under `tests/meta-probe/` — do not wire into Forge layout engine yet  

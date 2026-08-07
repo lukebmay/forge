@@ -1,0 +1,9 @@
+{
+  "uuid": "meta-probe@forge-test.local",
+  "name": "Meta Probe (Forge test harness)",
+  "description": "Forge-independent Meta/Mutter event recorder + op executor for layout analytics. Not a tiler. Safe to disable anytime.",
+  "shell-version": ["45", "46", "47", "48"],
+  "session-modes": ["user"],
+  "version": 1,
+  "url": "https://github.com/lukebmay/forge"
+}

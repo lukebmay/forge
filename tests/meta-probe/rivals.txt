@@ -1,0 +1,12 @@
+forge@jmmaranan.com
+tiling-assistant@ubuntu.com
+tiling-assistant@leleat-on-github
+pop-shell@system76.com
+paperwm@paperwm.github.com
+tilingshell@ferrarodomenico.com
+gTile@vibou
+gSnap@micahosborne
+winTile@nowsci.com
+shelltile@emasab.it
+material-shell@papyelgringo
+tactile@lundalomer.github.com

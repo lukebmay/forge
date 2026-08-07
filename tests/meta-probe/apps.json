@@ -1,0 +1,217 @@
+{
+  "version": 3,
+  "description": "Pilot + full suite. PWAs primary for Chrome content; chrome blank vs Amazon URL for open-method. Creative apps: GIMP, Kdenlive, OBS.",
+  "apps": [
+    {
+      "id": "nautilus",
+      "label": "Nautilus (pilot baseline)",
+      "match": { "wmClass": "org.gnome.Nautilus" },
+      "open": {
+        "argv": ["nautilus", "--new-window"],
+        "timeoutMs": 20000
+      },
+      "tags": ["pilot", "full", "gtk", "stable"]
+    },
+    {
+      "id": "ghostty",
+      "label": "Ghostty",
+      "match": { "wmClass": "com.mitchellh.ghostty" },
+      "open": {
+        "argv": ["ghostty", "--gtk-single-instance=false"],
+        "timeoutMs": 20000
+      },
+      "tags": ["pilot", "full", "dev", "thrash-size"]
+    },
+    {
+      "id": "inkscape",
+      "label": "Inkscape",
+      "match": { "wmClass": "org.inkscape.Inkscape" },
+      "open": {
+        "argv": ["inkscape"],
+        "desktop": "org.inkscape.Inkscape.desktop",
+        "timeoutMs": 90000
+      },
+      "tags": ["pilot", "full", "difficult", "late-map", "creative"]
+    },
+    {
+      "id": "google-chrome",
+      "label": "Google Chrome (new window, no URL / about:blank)",
+      "match": { "wmClass": "google-chrome" },
+      "open": {
+        "argv": ["google-chrome", "--new-window", "about:blank"],
+        "timeoutMs": 30000
+      },
+      "tags": ["full", "chrome", "open-method"]
+    },
+    {
+      "id": "google-chrome-amazon",
+      "label": "Google Chrome heavy URL (Amazon)",
+      "match": { "wmClass": "google-chrome" },
+      "open": {
+        "argv": ["google-chrome", "--new-window", "https://www.amazon.com/"],
+        "timeoutMs": 60000
+      },
+      "tags": ["full", "chrome", "open-method", "heavy-url"],
+      "notes": "Large, chatty site — contrast with about:blank and PWAs"
+    },
+    {
+      "id": "grok",
+      "label": "Grok PWA",
+      "match": {
+        "wmClass": "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+        "titleContains": "Grok"
+      },
+      "open": {
+        "desktop": "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default.desktop",
+        "fallbackArgv": ["google-chrome", "--app-id=ggjocahimgaohmigbfhghnlfcnjemagj"],
+        "timeoutMs": 45000
+      },
+      "tags": ["full", "dev", "chrome-pwa"]
+    },
+    {
+      "id": "youtube",
+      "label": "YouTube PWA",
+      "match": {
+        "wmClass": "chrome-agimnkijcaahngcdmfeangaknmldooml-Default",
+        "titleContains": "YouTube"
+      },
+      "open": {
+        "desktop": "chrome-agimnkijcaahngcdmfeangaknmldooml-Default.desktop",
+        "fallbackArgv": ["google-chrome", "--app-id=agimnkijcaahngcdmfeangaknmldooml"],
+        "timeoutMs": 45000
+      },
+      "tags": ["full", "dev", "chrome-pwa"]
+    },
+    {
+      "id": "gmail",
+      "label": "Gmail PWA",
+      "match": {
+        "wmClass": "chrome-fmgjjmmmlfnkbppncabfkddbjimcfncm-Default",
+        "titleContains": "Gmail"
+      },
+      "open": {
+        "desktop": "chrome-fmgjjmmmlfnkbppncabfkddbjimcfncm-Default.desktop",
+        "fallbackArgv": ["google-chrome", "--app-id=fmgjjmmmlfnkbppncabfkddbjimcfncm"],
+        "timeoutMs": 45000
+      },
+      "tags": ["full", "dev", "chrome-pwa"]
+    },
+    {
+      "id": "google-voice",
+      "label": "Google Voice PWA",
+      "match": {
+        "wmClass": "chrome-bojjonegeadjcbekpnkhoalecdkdohbo-Default",
+        "titleContains": "Voice"
+      },
+      "open": {
+        "desktop": "chrome-bojjonegeadjcbekpnkhoalecdkdohbo-Default.desktop",
+        "fallbackArgv": ["google-chrome", "--app-id=bojjonegeadjcbekpnkhoalecdkdohbo"],
+        "timeoutMs": 45000
+      },
+      "tags": ["full", "dev", "chrome-pwa"]
+    },
+    {
+      "id": "firefox",
+      "label": "Firefox",
+      "match": { "wmClass": "firefox" },
+      "open": {
+        "argv": ["firefox", "--new-window", "about:blank"],
+        "desktop": "firefox_firefox.desktop",
+        "timeoutMs": 45000
+      },
+      "tags": ["full", "browser", "difficult"]
+    },
+    {
+      "id": "code",
+      "label": "VS Code (Electron)",
+      "match": { "wmClass": "code" },
+      "open": {
+        "argv": ["code", "--new-window"],
+        "desktop": "code_code.desktop",
+        "timeoutMs": 60000
+      },
+      "tags": ["full", "electron", "difficult"]
+    },
+    {
+      "id": "guake",
+      "label": "Guake",
+      "match": { "wmClass": "Guake" },
+      "open": {
+        "argv": ["guake"],
+        "desktop": "guake.desktop",
+        "timeoutMs": 20000
+      },
+      "tags": ["full", "overlay", "difficult"],
+      "notes": "Dropdown/overlay; always-on-top class residual for Forge"
+    },
+    {
+      "id": "gimp",
+      "label": "GIMP",
+      "match": { "wmClass": "Gimp" },
+      "open": {
+        "argv": ["gimp"],
+        "desktop": "gimp_gimp.desktop",
+        "timeoutMs": 90000
+      },
+      "tags": ["full", "creative", "difficult"]
+    },
+    {
+      "id": "kdenlive",
+      "label": "Kdenlive (video editor)",
+      "match": { "wmClass": "kdenlive" },
+      "open": {
+        "argv": ["kdenlive"],
+        "desktop": "org.kde.kdenlive.desktop",
+        "timeoutMs": 90000
+      },
+      "tags": ["full", "creative", "video", "skip-if-missing"],
+      "notes": "Common Linux NLE; skip if not installed on host"
+    },
+    {
+      "id": "obs",
+      "label": "OBS Studio (live streaming / podcast)",
+      "match": { "wmClass": "obs" },
+      "open": {
+        "argv": ["obs"],
+        "desktop": "obs-studio_obs-studio.desktop",
+        "timeoutMs": 90000
+      },
+      "tags": ["full", "creative", "streaming", "difficult"],
+      "notes": "Live podcasting / streaming standard; snap may be obs-studio"
+    },
+    {
+      "id": "gnome-terminal",
+      "label": "GNOME Terminal",
+      "match": { "wmClass": "gnome-terminal-server" },
+      "open": {
+        "argv": ["gnome-terminal", "--window"],
+        "timeoutMs": 20000
+      },
+      "tags": ["full", "gtk", "terminal"],
+      "notes": "Terminal thrash compare vs Ghostty"
+    },
+    {
+      "id": "steam",
+      "label": "Steam",
+      "match": { "wmClass": "steam" },
+      "open": {
+        "argv": ["steam"],
+        "desktop": "steam.desktop",
+        "timeoutMs": 120000
+      },
+      "tags": ["full", "skip-if-missing", "difficult"],
+      "notes": "Fullscreen / multi-window; skip if not installed"
+    },
+    {
+      "id": "slack",
+      "label": "Slack (Electron)",
+      "match": { "wmClass": "Slack" },
+      "open": {
+        "argv": ["slack"],
+        "desktop": "slack.desktop",
+        "timeoutMs": 60000
+      },
+      "tags": ["full", "electron", "skip-if-missing"]
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "version": 2,
+  "probeVersion": "0.2.0",
+  "phase": "A-serial-single-op",
+  "samples": 10,
+  "settle": {
+    "comment": "Official agreement tick = quiet for quietMs, then spaced by agreementIntervalMs. Settled = agreeCount consecutive agreement ticks.",
+    "quietMs": 500,
+    "agreeCount": 5,
+    "agreementIntervalMs": 2000,
+    "maxWaitMs": 120000,
+    "relevantSignals": [
+      "window-created",
+      "size-changed",
+      "position-changed",
+      "raised",
+      "workspace-changed",
+      "notify::wm-class",
+      "notify::title",
+      "notify::appears-focused",
+      "notify::fullscreen",
+      "notify::maximized-horizontally",
+      "notify::maximized-vertically",
+      "notify::minimized",
+      "unmanaged"
+    ],
+    "verifyModes": {
+      "dense": {
+        "samples": [0, 1, 2, 3, 4],
+        "pollMs": 50,
+        "snapshotEachPoll": true,
+        "comment": "Frequent Meta reads + event drain for instrumentation; agreement still only every agreementIntervalMs while quiet"
+      },
+      "sparse": {
+        "samples": [5, 6, 7, 8, 9],
+        "pollMs": 2000,
+        "snapshotEachPoll": true,
+        "comment": "Deliberate verifies only at agreement interval — lower Meta query load"
+      }
+    }
+  },
+  "cooldownMs": 2000,
+  "betweenAppsMs": 5000,
+  "open": {
+    "mapMaxWaitMs": 120000,
+    "postMapSettle": true
+  },
+  "workspace": {
+    "preferIndex": 3,
+    "comment": "Empty high workspace; operator may use Guake/SSH for agent control"
+  },
+  "safety": {
+    "requireForgeDisabled": true,
+    "requireRivalsDisabled": true,
+    "closeAfterApp": true,
+    "onlyTouchOwnedWindows": true,
+    "rivalUuids": [
+      "tiling-assistant@ubuntu.com",
+      "tiling-assistant@leleat-on-github",
+      "pop-shell@system76.com",
+      "paperwm@paperwm.github.com",
+      "tilingshell@ferrarodomenico.com",
+      "gTile@vibou",
+      "gSnap@micahosborne",
+      "winTile@nowsci.com",
+      "shelltile@emasab.it",
+      "material-shell@papyelgringo",
+      "tactile@lundalomer.github.com"
+    ]
+  },
+  "hosts": {
+    "black": "daily dual-4K Shell 46 (primary science host)",
+    "gray": "decent laptop ~2018",
+    "green": "older desktop ~2012"
+  },
+  "output": {
+    "dir": "results",
+    "writeLatestSymlink": true
+  },
+  "pilot": {
+    "stages": [
+      {
+        "id": "stage1-nautilus",
+        "apps": ["nautilus"],
+        "samples": 2,
+        "comment": "stable GTK baseline — all ops, 2 samples each"
+      },
+      {
+        "id": "stage2-ghostty",
+        "apps": ["ghostty"],
+        "samples": 2,
+        "comment": "known size thrash after map"
+      },
+      {
+        "id": "stage3-inkscape",
+        "apps": ["inkscape"],
+        "samples": 2,
+        "comment": "known slow/late classify"
+      }
+    ]
+  }
+}

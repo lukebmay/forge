@@ -1,0 +1,84 @@
+{
+  "version": 2,
+  "description": "Meta ops Forge uses (or will use). Phase A = serial single-op. Open modes are distinct ops.",
+  "ops": [
+    {
+      "id": "open_fresh",
+      "label": "Cold/fresh open (close prior owned window, spawn new)",
+      "kind": "open_fresh",
+      "notes": "Each sample: ensure no owned window, spawn, map→settle"
+    },
+    {
+      "id": "open_warm",
+      "label": "Warm open (process already running; launch again)",
+      "kind": "open_warm",
+      "notes": "After a living window exists: launch again without killing first. Multi-instance → second map; single-instance → focus/reuse path"
+    },
+    {
+      "id": "move_resize",
+      "label": "move_resize_frame (in-monitor nudge)",
+      "kind": "move_resize",
+      "params": { "dx": 48, "dy": 48, "dw": -96, "dh": -96 }
+    },
+    {
+      "id": "move_resize_restore",
+      "label": "move_resize_frame restore baseline rect",
+      "kind": "move_resize_restore"
+    },
+    {
+      "id": "move_to_monitor",
+      "label": "move_to_monitor other head",
+      "kind": "move_to_monitor",
+      "params": { "preferOther": true }
+    },
+    {
+      "id": "move_to_monitor_home",
+      "label": "move_to_monitor home",
+      "kind": "move_to_monitor_home"
+    },
+    {
+      "id": "move_to_workspace",
+      "label": "change_workspace to spare then back intent",
+      "kind": "move_to_workspace",
+      "params": { "delta": 1 },
+      "notes": "Move window to workspace index+1 (mod n); measures workspace Meta churn"
+    },
+    {
+      "id": "focus_workspace_roundtrip",
+      "label": "Focus other workspace then back (window stays)",
+      "kind": "focus_workspace_roundtrip",
+      "notes": "Visibility/restack: switch active WS away and back without moving window"
+    },
+    {
+      "id": "activate",
+      "label": "activate + focus",
+      "kind": "activate"
+    },
+    {
+      "id": "raise",
+      "label": "raise",
+      "kind": "raise"
+    },
+    {
+      "id": "unmaximize",
+      "label": "unmaximize",
+      "kind": "unmaximize"
+    },
+    {
+      "id": "minimize_unminimize",
+      "label": "minimize then unminimize",
+      "kind": "minimize_unminimize",
+      "notes": "Compound but atomic product path; settle after unminimize"
+    },
+    {
+      "id": "make_above_toggle",
+      "label": "make_above then unmake_above",
+      "kind": "make_above_toggle"
+    },
+    {
+      "id": "fullscreen_toggle",
+      "label": "fullscreen then unfullscreen",
+      "kind": "fullscreen_toggle"
+    }
+  ]
+}

@@ -33,8 +33,13 @@ tests/
 │       └── testFixtures.js      # Complete test fixture factories
 ├── unit/                        # Unit tests by module
 ├── integration/                 # Full workflow tests
-└── regression/                  # Bug regression tests
+├── regression/                  # Bug regression tests
+└── meta-probe/                  # Forge-independent Meta/Mutter timing harness
 ```
+
+**Meta probe** (`tests/meta-probe/`): serial per-app Meta operation analytics
+(event counts + settle times). Not unit tests; not Forge. See
+[meta-probe/README.md](./meta-probe/README.md).
 
 ## Writing Tests
 
