@@ -5,6 +5,8 @@ import {
   isTabOrStackParent,
   shouldTabInsteadOfSplit,
   resolveOpenAppPlacement,
+  resolveFloatFocusMonitor,
+  isFocusMonitorFloatClass,
   matchPendingDockLaunch,
   normalizeDockAppId,
   DOCK_LAUNCH_TTL_MS,
@@ -317,6 +319,60 @@ describe("resolveOpenAppPlacement", () => {
     expect(r.isDock).toBe(true);
     expect(r.homeMonitor).toBe(0);
     expect(r.attachLft).toBe(lft0);
+  });
+});
+
+describe("resolveFloatFocusMonitor (WR2 Guake)", () => {
+  it("prefers focused tile mon over LFT and focus window", () => {
+    expect(
+      resolveFloatFocusMonitor({
+        focusedTileMonitor: 0,
+        lftMonitor: 1,
+        focusWindowMonitor: 1,
+      })
+    ).toBe(0);
+  });
+
+  it("uses LFT when no focused tile", () => {
+    expect(
+      resolveFloatFocusMonitor({
+        focusedTileMonitor: -1,
+        lftMonitor: 1,
+        focusWindowMonitor: 0,
+      })
+    ).toBe(1);
+  });
+
+  it("uses focus window mon when no tile and no LFT", () => {
+    expect(
+      resolveFloatFocusMonitor({
+        focusedTileMonitor: -1,
+        lftMonitor: -1,
+        focusWindowMonitor: 1,
+      })
+    ).toBe(1);
+  });
+
+  it("falls back to mon0", () => {
+    expect(resolveFloatFocusMonitor({})).toBe(0);
+    expect(
+      resolveFloatFocusMonitor({
+        focusedTileMonitor: -1,
+        lftMonitor: -1,
+        focusWindowMonitor: -1,
+        fallbackMonitor: 0,
+      })
+    ).toBe(0);
+  });
+
+  it("isFocusMonitorFloatClass matches Guake only (case-insensitive)", () => {
+    expect(isFocusMonitorFloatClass("Guake")).toBe(true);
+    expect(isFocusMonitorFloatClass("guake")).toBe(true);
+    expect(isFocusMonitorFloatClass(" GUAKE ")).toBe(true);
+    expect(isFocusMonitorFloatClass("Firefox")).toBe(false);
+    expect(isFocusMonitorFloatClass("com.github.amezin.ddterm")).toBe(false);
+    expect(isFocusMonitorFloatClass(null)).toBe(false);
+    expect(isFocusMonitorFloatClass("")).toBe(false);
   });
 });
 

@@ -697,7 +697,7 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(renderSpy).toHaveBeenCalledWith("raise-float-queue");
   });
 
-  it("tabbed siblings off-slot get move() on focus; on-slot does not; no renderTree focus", () => {
+  it("tab focus reasserts only open leaf when off-slot; buried siblings skip move", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
     tab.layout = LAYOUT_TYPES.TABBED;
@@ -731,18 +731,94 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     const renderSpy = vi.spyOn(wm(), "renderTree");
     wOn.raise = vi.fn();
 
-    // Same path as Meta focus-update queue (no full renderTree).
+    // Open leaf (wOn) is on-slot → no move; buried wOff off-slot → still no move.
     wm().updateTabbedFocus(nOn);
 
-    expect(moveSpy).toHaveBeenCalledWith(wOff, expect.objectContaining(slot));
-    expect(moveSpy.mock.calls.some((c) => c[0] === wOn)).toBe(false);
+    expect(moveSpy).not.toHaveBeenCalled();
     expect(renderSpy).not.toHaveBeenCalledWith("focus", true);
     expect(renderSpy).not.toHaveBeenCalledWith("focus");
     expect(wOn.raise).toHaveBeenCalled();
     expect(tab.lastTabFocus).toBe(wOn);
   });
 
-  it("activateFromTab reasserts off-slot tab siblings without focus render", () => {
+  it("tab focus reasserts off-slot open leaf only (not buried sibling)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+
+    const slot = { x: 100, y: 50, width: 800, height: 600 };
+    const off = { x: 10, y: 10, width: 200, height: 150 };
+
+    const wBuried = createMockWindow({
+      id: "tab-buried",
+      rect: off,
+      workspace: ctx.workspaces[0],
+    });
+    const wOpen = createMockWindow({
+      id: "tab-open",
+      rect: off,
+      workspace: ctx.workspaces[0],
+    });
+    const nBuried = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wBuried);
+    const nOpen = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wOpen);
+    nBuried.mode = WINDOW_MODES.TILE;
+    nOpen.mode = WINDOW_MODES.TILE;
+    nBuried.rect = { ...slot };
+    nBuried.renderRect = { ...slot };
+    nOpen.rect = { ...slot };
+    nOpen.renderRect = { ...slot };
+
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    const renderSpy = vi.spyOn(wm(), "renderTree");
+    wOpen.raise = vi.fn();
+
+    wm().updateTabbedFocus(nOpen);
+
+    // Only the open leaf is reasserted when off-slot (buried Chrome stays put).
+    expect(moveSpy).toHaveBeenCalledTimes(1);
+    expect(moveSpy).toHaveBeenCalledWith(
+      wOpen,
+      expect.objectContaining(slot),
+      null,
+      expect.objectContaining({ force: false })
+    );
+    expect(moveSpy.mock.calls.some((c) => c[0] === wBuried)).toBe(false);
+    expect(renderSpy).not.toHaveBeenCalledWith("focus");
+    expect(wOpen.raise).toHaveBeenCalled();
+    expect(tab.lastTabFocus).toBe(wOpen);
+  });
+
+  it("reassertTilesByIds moves only listed off-slot TILE windows", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const slot = { x: 0, y: 0, width: 800, height: 600 };
+    const off = { x: 10, y: 10, width: 100, height: 80 };
+
+    const wA = createMockWindow({ id: 11, rect: off, workspace: ctx.workspaces[0] });
+    const wB = createMockWindow({ id: 22, rect: slot, workspace: ctx.workspaces[0] });
+    const wC = createMockWindow({ id: 33, rect: off, workspace: ctx.workspaces[0] });
+    const nA = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wB);
+    const nC = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wC);
+    for (const n of [nA, nB, nC]) {
+      n.mode = WINDOW_MODES.TILE;
+      n.rect = { ...slot };
+      n.renderRect = { ...slot };
+    }
+
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    const n = wm().reassertTilesByIds([11, 22], { force: false });
+    // wA off-slot → move; wB on-slot → skip; wC not in ids → skip
+    expect(n).toBe(1);
+    expect(moveSpy).toHaveBeenCalledTimes(1);
+    expect(moveSpy).toHaveBeenCalledWith(
+      wA,
+      expect.objectContaining(slot),
+      null,
+      expect.objectContaining({ force: false })
+    );
+  });
+
+  it("activateFromTab reasserts only off-slot open leaf without focus render", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
     tab.layout = LAYOUT_TYPES.TABBED;
@@ -751,7 +827,7 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     const off = { x: 50, y: 50, width: 100, height: 80 };
 
     const wA = createMockWindow({ id: "af-a", rect: off, workspace: ctx.workspaces[0] });
-    const wB = createMockWindow({ id: "af-b", rect: slot, workspace: ctx.workspaces[0] });
+    const wB = createMockWindow({ id: "af-b", rect: off, workspace: ctx.workspaces[0] });
     const nA = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wA);
     const nB = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wB);
     nA.mode = WINDOW_MODES.TILE;
@@ -769,8 +845,14 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
 
     nB._activateFromTab(wB);
 
-    expect(moveSpy).toHaveBeenCalledWith(wA, expect.objectContaining(slot));
-    expect(moveSpy.mock.calls.some((c) => c[0] === wB)).toBe(false);
+    // Open leaf wB was off-slot → reassert; buried wA not moved.
+    expect(moveSpy).toHaveBeenCalledWith(
+      wB,
+      expect.objectContaining(slot),
+      null,
+      expect.objectContaining({ force: false })
+    );
+    expect(moveSpy.mock.calls.some((c) => c[0] === wA)).toBe(false);
     expect(renderSpy).not.toHaveBeenCalledWith("focus");
     expect(renderSpy.mock.calls.some((c) => c[0] === "focus")).toBe(false);
   });
