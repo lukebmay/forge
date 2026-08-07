@@ -1,50 +1,34 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-07 (meta-probe harness on `task/meta-probe-harness`)  
-**Branch:** `task/meta-probe-harness` (commit locally; no push unless asked)  
-**Active P0:** **Meta/Mutter probe pilot** — stability data before more layout guessing  
+**Updated:** 2026-08-07 (next-session prep locked for meta-probe)  
+**Branch:** `task/meta-probe-harness`  
+**Active P0:** Harness reshape → multi-op thrash sweeps (2-step then isolated 3-step) → ghostty 5×  
 **Probe path:** [`tests/meta-probe/`](../tests/meta-probe/)  
 **Session start:** [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md)
 
 ---
 
-## What changed (this prep)
-
-Stability rewrite is **blocked on data**, not more Forge timeout knobs.
+## Campaign state
 
 | Item | Status |
 | --- | --- |
-| `tests/meta-probe/` harness (extension + driver + settle model) | **Ready** |
-| Probe symlink install | **Done** on black (`install-probe.sh`) |
-| Probe **enabled** in live Shell | **Needs Wayland logout** |
-| Pilot (nautilus → ghostty → inkscape) | **Next** after enable |
-| Full 10-sample matrix | After pilot green |
-| Hosts later | `black`, `gray` (~2018), `green` (~2012) |
+| First black/wayland single-op data | **Done** (local gitignored results; broad apps 10×) |
+| Core apps | **nautilus, ghostty, inkscape, grok, obs** |
+| Next session | (1) harness 5×/sleep/trial model (2) delay-until-thrash 2-step then 3-step isolation (3) ghostty pilot (4) rest |
 
-### Settle model (locked for science)
+### 3-step sweep (locked)
 
-- **Verification** = poll Meta (events ± snapshot); may be dense  
-- **Agreement tick** = quiet ≥500ms **and** ≥**2s** since last tick  
-- **Settled** = **5** agreement ticks  
-- Samples 0–4 dense (50ms poll); 5–9 sparse (2s poll)  
-- **open_fresh** and **open_warm** are distinct ops  
-- Chrome **desktop/PWA** vs **fixed URL** are distinct app entries  
+Pad D₁/D₂ from 2-step last-good → confirm thrashless → **lock one, decrease the other to thrash, reset** → swap axes → joint near-edge → **compare** smallest success to hypothesis. Details in SESSION_HANDOFF.
 
 ### Safety
 
-Forge **and** rival tilers **must** be disabled during runs.  
-Driver `preflight` enforces this.
+Forge + rivals off; **sleep inhibit in prep, restore on cleanup**. No Guake close. WS1 only when finished.
 
 ---
 
-## Operator (human) — before agent pilot
+## Operator next session
 
-1. **Logout → login** (Wayland) so `meta-probe@forge-test.local` can load  
-2. Optional: Guake or SSH for chat; leave **workspace 3** empty  
-3. Tell agent: **start preliminary testing** / **probe ready**
-
-Agent runs `python3 probe_driver.py prep --host black` (all enable/disable), then pilot.
-End of session: `python3 probe_driver.py cleanup`.
+Wayland; Guake WS1 OK; empty test desk. Say **begin harness update** / **proceed**.
 
 ---
 
