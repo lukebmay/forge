@@ -18,13 +18,16 @@ Minimum settle wall time when already quiet: about `agreeCount × agreementInter
 2. **All rival tilers disabled** (same list as Forge’s `rival-tilers.js`)
 3. **Probe enabled** (`meta-probe@forge-test.local`)
 4. Prefer **empty workspace** (driver switches to index **3** by default)
+5. **When testing finishes** — always return to **human WS1** (0-based index **0**) so the operator sees the session is done
 
 ```bash
-gnome-extensions disable forge@jmmaranan.com
-# disable any rivals that preflight reports
-gnome-extensions enable meta-probe@forge-test.local
+# Prefer scripted prep (parses Enabled: Yes / State: ACTIVE correctly):
+python3 tests/meta-probe/probe_driver.py prep --host black
 python3 tests/meta-probe/probe_driver.py preflight --host black
 ```
+
+**Extension state note:** GNOME 45+ reports `Enabled: Yes|No` and `State: ACTIVE|INACTIVE`.
+Do **not** match only `State: ENABLED` — that race left Forge running in early pilots.
 
 ## Operator desk (PM)
 
@@ -36,9 +39,23 @@ python3 tests/meta-probe/probe_driver.py preflight --host black
 
 Recommended for long runs:
 
-- Leave daily apps on workspace 0–1
-- Agent uses **workspace 3** (auto)
+- Leave daily apps on **human WS1** (0-based index **0**); Guake/chat stays there
+- Agent uses **test workspace index 3** (config `workspace.preferIndex`, default 3)
 - You drive the agent via **Guake** (often float/overlay) **or SSH from gray/green** so chat/IDE is not on the test desk
+
+### Workspace return (FIRM for agents)
+
+| Index (0-based) | Human name | Role |
+| --- | --- | --- |
+| `0` | **WS1** | Operator desk — Guake / agent control. **Return here when testing ends.** |
+| `3` | (config default) | Test desk — empty; driver switches here for runs |
+
+```bash
+# End of every measurement session (also done by cleanup.sh):
+python3 tests/meta-probe/probe_driver.py focus-workspace 0
+# or: cleanup (focuses returnIndex then restores extensions)
+python3 tests/meta-probe/probe_driver.py cleanup
+```
 
 Closing *all* session windows is optional, not required.
 

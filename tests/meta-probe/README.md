@@ -71,9 +71,15 @@ python3 tests/meta-probe/probe_driver.py pilot --host black
 python3 tests/meta-probe/probe_driver.py run --host black --samples 10
 python3 tests/meta-probe/analyze.py results/latest.json
 
-# 5) Restore desktop (re-enable Forge/rivals as they were)
+# 5) Restore desktop: focus WS1 (index 0), disable probe, re-enable Forge/rivals
 python3 tests/meta-probe/probe_driver.py cleanup
+# equivalent end-of-run workspace return only:
+# python3 tests/meta-probe/probe_driver.py focus-workspace 0
 ```
+
+**After testing:** always leave the operator on **WS1** (0-based index **0**).
+`cleanup` does this before disabling the probe. Future agents: treat return-to-WS1
+as part of “session finished,” not optional.
 
 **After restart handoff:** [SESSION_HANDOFF.md](./SESSION_HANDOFF.md) · [PROTOCOL.md](./PROTOCOL.md)
 

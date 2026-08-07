@@ -20,6 +20,7 @@ from typing import Any, Optional
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+from lib.ext_state import parse_info_enabled, parse_list_enabled  # noqa: E402
 from lib.results import new_run_doc, settle_to_dict, trial_record, write_run  # noqa: E402
 from lib.settle import match_window, summarize_events, verify_mode_for_sample  # noqa: E402
 
@@ -75,12 +76,30 @@ def probe_json(method: str, *args: str) -> dict[str, Any]:
         raise RuntimeError(f"bad JSON from {method}: {raw[:200]}") from e
 
 
-def extension_state(uuid: str) -> Optional[str]:
+def _gnome_extensions_info(uuid: str) -> Optional[str]:
     try:
-        out = subprocess.check_output(
+        return subprocess.check_output(
             ["gnome-extensions", "info", uuid], text=True, stderr=subprocess.DEVNULL
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def _gnome_extensions_list_enabled() -> Optional[str]:
+    try:
+        return subprocess.check_output(
+            ["gnome-extensions", "list", "--enabled"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def extension_state(uuid: str) -> Optional[str]:
+    """Raw State: value (active/inactive/…) or None if missing."""
+    out = _gnome_extensions_info(uuid)
+    if out is None:
         return None
     for line in out.splitlines():
         if line.strip().lower().startswith("state:"):
@@ -89,10 +108,23 @@ def extension_state(uuid: str) -> Optional[str]:
 
 
 def extension_enabled(uuid: str) -> Optional[bool]:
-    st = extension_state(uuid)
-    if st is None:
+    """
+    True if extension is on. GNOME 45+ uses Enabled: Yes + State: ACTIVE
+    (not State: ENABLED). Fall back to `list --enabled`.
+    """
+    info = _gnome_extensions_info(uuid)
+    if info is None:
+        listed = _gnome_extensions_list_enabled()
+        if listed is None:
+            return None
+        return parse_list_enabled(listed, uuid)
+    parsed = parse_info_enabled(info)
+    if parsed is not None:
+        return parsed
+    listed = _gnome_extensions_list_enabled()
+    if listed is None:
         return None
-    return "enabled" in st and "disabled" not in st
+    return parse_list_enabled(listed, uuid)
 
 
 def mono_from_probe() -> float:
@@ -305,16 +337,30 @@ def open_app(app: dict[str, Any]) -> subprocess.Popen:
     )
 
 
-def safety_check(config: dict[str, Any], *, allow_forge: bool) -> list[str]:
+def safety_check(
+    config: dict[str, Any],
+    *,
+    allow_forge: bool,
+    env: Optional[dict[str, Any]] = None,
+) -> list[str]:
     errs: list[str] = []
     safety = config.get("safety") or {}
+    # Running Shell list from probe (authoritative when available)
+    shell_enabled: Optional[set[str]] = None
+    if env and isinstance(env.get("enabledExtensions"), list):
+        shell_enabled = set(env["enabledExtensions"])
+
+    def is_on(uuid: str) -> bool:
+        if shell_enabled is not None and uuid in shell_enabled:
+            return True
+        return extension_enabled(uuid) is True
+
     if safety.get("requireForgeDisabled", True) and not allow_forge:
-        fe = extension_enabled(FORGE_UUID)
-        if fe is True:
+        if is_on(FORGE_UUID):
             errs.append(f"Forge enabled ({FORGE_UUID}) — disable before measuring")
     if safety.get("requireRivalsDisabled", True):
         for uuid in safety.get("rivalUuids") or []:
-            if extension_enabled(uuid) is True:
+            if is_on(uuid):
                 errs.append(f"rival tiler enabled: {uuid}")
     return errs
 
@@ -330,6 +376,11 @@ def ensure_workspace(config: dict[str, Any], *, no_switch: bool) -> None:
         time.sleep(0.4)
     except Exception as e:
         print(f"warn: FocusWorkspace: {e}", file=sys.stderr)
+
+
+def focus_workspace_index(index: int) -> dict[str, Any]:
+    """Switch active workspace (0-based). Requires probe DBus."""
+    return probe_json("FocusWorkspace", str(int(index)))
 
 
 def cmd_ping(_args: argparse.Namespace) -> int:
@@ -365,8 +416,16 @@ def cmd_preflight(args: argparse.Namespace) -> int:
         print(f"FAIL probe: {e}", file=sys.stderr)
         print("hint: run prep after Wayland login: python3 probe_driver.py prep --host black", file=sys.stderr)
         return 1
-    errs = safety_check(config, allow_forge=args.allow_forge)
-    out = {"ping": ping, "env": env, "errors": errs}
+    errs = safety_check(config, allow_forge=args.allow_forge, env=env)
+    out = {
+        "ping": ping,
+        "env": env,
+        "errors": errs,
+        "cli": {
+            "forgeEnabled": extension_enabled(FORGE_UUID),
+            "probeEnabled": extension_enabled(PROBE_UUID),
+        },
+    }
     if getattr(args, "host", None):
         out["host"] = args.host
     print(json.dumps(out, indent=2))
@@ -376,6 +435,17 @@ def cmd_preflight(args: argparse.Namespace) -> int:
         return 2
     print("preflight OK", file=sys.stderr)
     return 0
+
+
+def cmd_focus_workspace(args: argparse.Namespace) -> int:
+    """Switch to a workspace by 0-based index (human WS1 = index 0)."""
+    try:
+        out = focus_workspace_index(int(args.index))
+    except Exception as e:
+        print(f"FocusWorkspace failed: {e}", file=sys.stderr)
+        return 1
+    print(json.dumps(out, indent=2))
+    return 0 if out.get("ok", True) else 2
 
 
 def _run_open_fresh(
@@ -612,11 +682,11 @@ def run_matrix(
     out_dir: Optional[Path],
     phase_label: Optional[str] = None,
 ) -> Path:
-    errs = safety_check(config, allow_forge=allow_forge)
+    env = probe_json("GetEnv")
+    errs = safety_check(config, allow_forge=allow_forge, env=env)
     if errs:
         raise RuntimeError("; ".join(errs))
 
-    env = probe_json("GetEnv")
     if phase_label:
         config = dict(config)
         config["phase"] = phase_label
@@ -962,7 +1032,32 @@ def build_parser() -> argparse.ArgumentParser:
         else:
             sr.set_defaults(func=cmd_run)
 
+    sw = sub.add_parser(
+        "focus-workspace",
+        help="Switch workspace by 0-based index (WS1=0). Call after testing.",
+    )
+    sw.add_argument(
+        "index",
+        type=int,
+        nargs="?",
+        default=None,
+        help="0-based workspace index (default: config workspace.returnIndex or 0)",
+    )
+    sw.add_argument("--config", default=None)
+    sw.set_defaults(func=cmd_focus_workspace_cli)
+
     return p
+
+
+def cmd_focus_workspace_cli(args: argparse.Namespace) -> int:
+    config = _load_json(Path(args.config) if args.config else ROOT / "config.default.json")
+    if args.index is not None:
+        idx = int(args.index)
+    else:
+        ws = config.get("workspace") or {}
+        idx = int(ws.get("returnIndex", 0))
+    args.index = idx
+    return cmd_focus_workspace(args)
 
 
 def main(argv: Optional[list[str]] = None) -> int:

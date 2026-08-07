@@ -47,7 +47,8 @@
   },
   "workspace": {
     "preferIndex": 3,
-    "comment": "Empty high workspace; operator may use Guake/SSH for agent control"
+    "returnIndex": 0,
+    "comment": "preferIndex = test desk (0-based; default 3). returnIndex = operator desk after testing (0 = human WS1 / Guake). Always FocusWorkspace(returnIndex) before cleanup or session end."
   },
   "safety": {
     "requireForgeDisabled": true,

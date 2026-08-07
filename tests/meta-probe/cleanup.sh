@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Undo prep.sh: disable probe, restore forge/rivals to recorded states.
+# Undo prep.sh: return to WS1, disable probe, restore forge/rivals.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 UUID_PROBE="meta-probe@forge-test.local"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/forge-meta-probe"
 STATE_FILE="$STATE_DIR/prep-state.json"
+# Human WS1 = 0-based index 0 (operator desk / Guake)
+RETURN_WS_INDEX="${META_PROBE_RETURN_WS:-0}"
 
 log() { printf 'meta-probe cleanup: %s\n' "$*" >&2; }
 die() { log "error: $*"; exit 1; }
@@ -17,7 +19,17 @@ need_cmd() {
 need_cmd gnome-extensions
 need_cmd python3
 
-# Always try to disable probe first
+# --- return to operator workspace BEFORE disabling probe (needs DBus) ---
+if python3 "$ROOT/probe_driver.py" ping >/dev/null 2>&1; then
+  log "focus workspace index $RETURN_WS_INDEX (human WS$((RETURN_WS_INDEX + 1)))"
+  python3 "$ROOT/probe_driver.py" focus-workspace "$RETURN_WS_INDEX" >/dev/null 2>&1 \
+    || log "warn: FocusWorkspace $RETURN_WS_INDEX failed (continuing cleanup)"
+  sleep 0.3
+else
+  log "probe DBus down — skip workspace return (switch to WS1 manually if needed)"
+fi
+
+# Always try to disable probe next
 if gnome-extensions info "$UUID_PROBE" >/dev/null 2>&1; then
   log "disable $UUID_PROBE"
   gnome-extensions disable "$UUID_PROBE" 2>/dev/null || true
@@ -63,4 +75,4 @@ PY
 
 # archive state so re-prep records fresh
 mv -f "$STATE_FILE" "$STATE_FILE.restored-$(date -u +%Y%m%dT%H%M%SZ)" 2>/dev/null || rm -f "$STATE_FILE"
-log "OK — tiling extensions restored per saved state; probe off"
+log "OK — workspace → index $RETURN_WS_INDEX (WS$((RETURN_WS_INDEX + 1))); tilers restored; probe off"
