@@ -1,6 +1,6 @@
 # Plan: forge-wayland-operator-residuals
 
-**Status:** in progress  
+**Status:** done (WR1+WR2 A/B AGREE)  
 **Branch:** `plan/forge-wayland-operator-residuals`  
 **Created:** 2026-08-06  
 **Host:** black — dual 4K @ 1.5; GNOME Shell 46 **Wayland**  
@@ -40,17 +40,20 @@ Live evidence:
 
 | Task | File | Status |
 | --- | --- | --- |
-| **WR1** | [chrome geom + focus thrash](../tasks/forge-wayland-operator-residuals_wr1-chrome-geom-focus.md) | A done — await B |
-| **WR2** | [Guake focus monitor](../tasks/forge-wayland-operator-residuals_wr2-guake-mon.md) | **next** |
+| **WR1** | [chrome geom + focus thrash](../tasks/forge-wayland-operator-residuals_wr1-chrome-geom-focus.md) | Done (A/B AGREE) |
+| **WR2** | [Guake focus monitor](../tasks/forge-wayland-operator-residuals_wr2-guake-mon.md) | A done — await B |
 
 ## Session note
 
-**2026-08-06 WR1 A:** Open-leaf-only tab reassert (no buried Chrome move_resize);
-pure rect-mismatch → targeted `reassertTilesByIds` (not full forest); give-up
-force reassert + recovery verify. `move({ force })`. Vitest window+extension 975.
-Branch `plan/forge-wayland-operator-residuals`. Live still needs install+logout.
 
-## Session note
+**2026-08-06 WR2 done (A/B AGREE):** Guake rehome to focus/LFT mon on map+focus. Plan complete pending operator live smoke (install + Wayland).
+
+
+**2026-08-06 WR2 A:** Guake rehome to focus/LFT mon via pure
+`resolveFloatFocusMonitor` + `_rehomeFocusFloatMonitor` (safeMove + sticky);
+map + focus paths. Tests: lft-mru + guake-focus-mon green. Branch
+`plan/forge-wayland-operator-residuals`. No commit yet. Live: install + F12 mon
+check after B.
 
 **2026-08-06 WR1 done (A/B AGREE):** Open-leaf focus reassert; pure rect-mismatch targeted reassert; give-up force reassert. Tests 975. Next: **WR2 Guake mon**. Live: install + Wayland logout after WR2 or intermediate install.
 
