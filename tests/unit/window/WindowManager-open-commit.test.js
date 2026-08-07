@@ -439,15 +439,16 @@ describe("WindowManager open commit (CL4)", () => {
     expect(wm()._isDeferredOpen(meta)).toBe(true);
     expect(wm()._openLayoutBatchNeedsCommit).toBe(true);
 
-    // Live path: controller onExternalGeometry (not wm.requestLayout gate alone).
+    // External geom is sensor-only (no requestLayout); need-commit stays latched
+    // from deferred open, not from geometry.
     wm().layoutController.onExternalGeometry("size-changed", meta);
     advanceLc(LAYOUT_REQUEST_DEBOUNCE_MS + 10);
     expect(renderSpy).not.toHaveBeenCalled();
     expect(wm().layoutController.layoutPending).toBe(false);
     expect(wm()._openLayoutBatchNeedsCommit).toBe(true);
 
-    // verify-mismatch also goes through controller.requestLayout
-    wm().layoutController.requestLayout("verify-mismatch");
+    // Explicit requestLayout still latches need-commit mid-batch (no mid-batch fire).
+    wm().layoutController.requestLayout("batch-force");
     advanceLc(LAYOUT_REQUEST_DEBOUNCE_MS + 10);
     expect(renderSpy).not.toHaveBeenCalled();
     expect(wm()._openLayoutBatchNeedsCommit).toBe(true);

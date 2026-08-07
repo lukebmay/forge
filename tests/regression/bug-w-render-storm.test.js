@@ -15,7 +15,7 @@ import { isForgeCausedGeometrySignal } from "../../lib/extension/layout-sensors.
  * (apply→size-changed feedback, TILE already in slot) thrashed Shell.
  *
  * Guards: _suppressGeometrySignalRetile around apply/move, TILE-in-slot
- * chrome-only, external drift → markUnsettled + requestLayout/verify.
+ * chrome-only, external drift → markUnsettled + diagnostic verify (no layout).
  */
 describe("W-render-storm / CL2: geometry feedback attribution", () => {
   let ctx;
@@ -125,7 +125,7 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     expect(second.nodeWindow).toBeTruthy();
   });
 
-  it("TILE external drift → markUnsettled + requestLayout (not naked storm)", () => {
+  it("TILE external drift → markUnsettled + verify only (no layout storm)", () => {
     installFakeTimers();
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
@@ -136,6 +136,7 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     ctx.display.get_focus_window.mockReturnValue(first.metaWindow);
 
     const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+    const layoutSpy = vi.spyOn(wm().layoutController, "requestLayout");
     const markSpy = vi.spyOn(wm().layoutController, "markUnsettled");
 
     wm().updateMetaPositionSize(first.metaWindow, "size-changed");
@@ -143,13 +144,14 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     expect(markSpy).toHaveBeenCalled();
     expect(wm().layoutController.settled).toBe(false);
     expect(wm().layoutController.agreementCount).toBe(0);
-    expect(wm().layoutController.layoutPending).toBe(true);
+    expect(wm().layoutController.layoutPending).toBe(false);
+    expect(layoutSpy).not.toHaveBeenCalled();
     expect(wm().layoutController.verifyPending).toBe(true);
     // Debounced — no immediate naked renderTree.
     expect(renderSpy).not.toHaveBeenCalled();
   });
 
-  it("after SETTLED, external size-changed drops settled and schedules verify/layout", () => {
+  it("after SETTLED, external size-changed drops settled and schedules verify only", () => {
     installFakeTimers();
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
@@ -162,13 +164,15 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
 
     const lc = wm().layoutController;
     lc.settled = true;
-    lc.agreementCount = 2;
+    lc.agreementCount = 1;
+    const layoutSpy = vi.spyOn(lc, "requestLayout");
 
     wm().updateMetaPositionSize(first.metaWindow, "size-changed");
 
     expect(lc.settled).toBe(false);
     expect(lc.agreementCount).toBe(0);
-    expect(lc.layoutPending).toBe(true);
+    expect(lc.layoutPending).toBe(false);
+    expect(layoutSpy).not.toHaveBeenCalled();
     expect(lc.verifyPending).toBe(true);
   });
 

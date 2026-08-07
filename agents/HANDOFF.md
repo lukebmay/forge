@@ -1,31 +1,27 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-07 (core matrix + thrash green; Meta D=0 baseline)  
-**Branch:** `task/meta-probe-harness` (local commits; **no push**)  
-**Active P0 next:** Layout engine rewrite **or** Forge-on thrash / X11 — see PRIORITY  
-**Probe:** [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md)
+**Updated:** 2026-08-07 (apply-contract **locked**; AC1 in progress)  
+**Branch:** `plan/forge-layout-apply-contract`  
+**Active P0:** [forge-layout-apply-contract](./plans/forge-layout-apply-contract.md) AC1 purge  
+**Live smoke:** deferred (Wayland — no HUP this session)
 
 ---
 
-## Campaign done this session
+## Campaign
 
 | Item | Status |
 | --- | --- |
-| Harness reshape (A/B) | **Done** `7ce020b` — 5×, core apps, sleep inhibit, per-app write, thrash + `sweep` |
-| Ghostty pilot | **Green** |
-| Core single-ops | **Green** nautilus, ghostty, inkscape, grok, obs |
-| 2-step thrash (Forge off) | **lastGood D=0** for ghostty, inkscape, obs |
-| Desktop restore | cleanup OK (Forge on, sleep restored) |
+| Meta baseline (Forge-off D=0) | **Done** |
+| Apply/settle contract design | **Locked** |
+| AC1 purge verify war | **in progress** |
+| AC2+ | queued after AC1 AGREE |
 
-### Finding
+### Next
 
-Meta alone does not need multi-op inter-step delay for core apps on black/wayland. Product thrash is almost certainly Forge layout work. OBS settle floor ~4s; others ~3s.
-
-### Next (pick)
-
-1. Design/implement layout engine delays from Meta baseline (near-zero inter-op + settle floors)  
-2. Probe thrash **with Forge on** for product edges  
-3. X11 / gray / green hosts  
+1. Finish AC1 A/B → wrap-up commit  
+2. AC2 command epoch  
+3. AC3 streaming · AC4 placeholder · AC5 slot math  
+4. AC6 live smoke when X11 HUP or logout available  
 
 ---
 
@@ -35,6 +31,7 @@ Meta alone does not need multi-op inter-step delay for core apps on black/waylan
 - hard: resize-autotile-design  
 - soft: B-ap5-operator-visual-matrix  
 - human: Wayland residual re-smoke after install+logout (RC)  
+- deferred: AC6 live smoke for apply-contract  
 
 ---
 

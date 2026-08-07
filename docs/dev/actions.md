@@ -126,7 +126,7 @@ Admit (track, sensors, sticky mon)
 forge-caused or TILE in-slot  → B only
 grab live                     → live resize/move handlers (no C mid-grab)
 covering max/fs               → B + Dfull or next C
-else external drift           → Cq + V (unsettled)
+else external drift           → V only (unsettled; no Cq forest re-apply)
 ```
 
 ---

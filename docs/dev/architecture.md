@@ -56,7 +56,7 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | Module | Responsibility |
 | --- | --- |
 | `window.js` `WindowManager` | Event hub: binds GNOME signals, tracks windows, owns `renderTree`/`move`, focus, grab/drag. |
-| `layout-controller.js` `LayoutController` | Debounced `requestLayout` / `requestVerify`; CL1 Meta↔slot verify + agreement → SETTLED; CL2 `onExternalGeometry`; CL6 optional debug periodic verify. |
+| `layout-controller.js` `LayoutController` | Debounced `requestLayout` / `requestVerify`; Meta↔slot verify is a **sensor** (ok → SETTLED; mismatch never reasserts); `onExternalGeometry` diagnostic only; CL6 optional debug periodic verify. |
 | `layout-verify.js` | Pure frame↔slot ε compare, forest scan, TILE leaf collect. |
 | `layout-sensors.js` | Pure attribution: Forge-caused suppress vs TILE in-slot chrome-only (CL2). |
 | `layout-apply-chrome.js` | CL10 LayoutBatch dim scrim (~80%) + per-mon spinner/label (title ≈7.5% height) + hard ≤8s clear. |
@@ -75,10 +75,11 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 User-facing strings are localized with gettext; the catalog (`po/`) and Weblate
 workflow are documented in [translations.md](translations.md).
 
-## Layout control loop (CL0–CL2)
+## Layout control loop (CL0–CL2 + apply-contract)
 
-Single writer intent for layout commits and post-render checks. Full plan:
-`agents/plans/forge-layout-control-loop.md`.
+Single writer intent for layout commits and post-render **sensor** checks.
+Direction plan: `agents/plans/forge-layout-apply-contract.md` (supersedes
+pixel-war settle in `forge-layout-control-loop.md`).
 
 | Term | Means | Touches Meta? |
 | --- | --- | --- |
@@ -87,27 +88,30 @@ Single writer intent for layout commits and post-render checks. Full plan:
 | **Commit / apply** | `move_resize_frame` each TILE leaf to slot | Yes |
 | **Render** (`renderTree`) | prune → floats → compute + apply + chrome | Yes (apply) |
 | **Request layout** | `requestLayout(reason)` → debounce → `renderTree` | Not yet |
-| **Verify** | Read Meta frames; compare to slots (ε + mon); agreement ×2 → SETTLED | Read |
+| **Verify** | Read Meta frames; compare to slots (ε + mon); **sensor only** | Read |
 | **Rebuild** (`reloadTree`) | Wipe mon/ws nodes, re-track flat | Yes |
 | **Monitor-recovery** | Workareas thrash rehome (formerly soft-rehome, H1) | Yes |
 
 API: `wm.requestLayout` / `wm.requestVerify` → `LayoutController`
 (`lib/extension/layout-controller.js`). Layout debounce default 200ms; verify
 150ms. Successful `renderTree` body schedules `requestVerify("post-render")`.
-Verify scan (`layout-verify.js`): TILE leaves only; ε default 4px; ≥2 consecutive
-full agreements → SETTLED (auto `agreement-confirm` after first ok). Mismatch
-requests one `requestLayout("verify-mismatch")` per wave.
+Verify scan (`layout-verify.js`): TILE leaves only; ε default 4px. **Single ok
+→ SETTLED** (no agreement×2, no `agreement-confirm`, no thrash-extra). Mismatch
+sets `settled=false` and stores `lastVerifyResult` — it does **not**
+`reassertTilesByIds` or `requestLayout("verify-mismatch")`. SETTLED means we
+are not re-fighting pixels, not permanent frame==slot equality.
 
 **CL6 debug periodic verify:** GSettings `layout-verify-interval-ms` (uint, default
 **0** = off). When > 0, arms a repeating timer that calls
 `requestVerify("periodic")`. Restarted on setting change; cancelled on disable /
-set to 0. Not for production daily use.
+set to 0. Not for production daily use. Periodic fire must stay sensor-only.
 
-**CL2 external geometry:** size/position sensors call
-`layoutController.onExternalGeometry(reason)` → `markUnsettled` + debounced
-layout/verify (agreement → 0). Forge apply sets `_suppressGeometrySignalRetile`
-around `move` / `tree.apply` so our own `move_resize_frame` does **not** unsettle
-or retile. TILE already within ε of its slot is chrome-only (W-storm in-slot).
+**External geometry:** size/position sensors call
+`layoutController.onExternalGeometry(reason)` → thrash-catalog observe +
+`markUnsettled` + diagnostic `requestVerify` only (**no** `requestLayout`).
+Forge apply sets `_suppressGeometrySignalRetile` around `move` / `tree.apply`
+so our own `move_resize_frame` does **not** unsettle (command epoch still
+planned). TILE already within ε of its slot is chrome-only (W-storm in-slot).
 Helpers: `layout-sensors.js` (`isForgeCausedGeometrySignal`,
 `shouldChromeOnlyGeometry`). Open path (CL4): `layout-open.js` quiet + catalog
 minQuiet → `_scheduleOpenCommit` → `requestLayout("window-create")` (force

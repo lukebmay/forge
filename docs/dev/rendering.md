@@ -3,29 +3,35 @@
 How a tree mutation becomes on-screen geometry. Entry point: `renderTree()` in
 `window.js`. See [architecture.md](architecture.md) for the surrounding subsystems.
 
-## `requestLayout` / `requestVerify` — `layout-controller.js` (CL0–CL6)
+## `requestLayout` / `requestVerify` — `layout-controller.js` (sensor settle)
 
-Preferred entry for sensor storms: `wm.requestLayout(reason)` trailing-debounces
-(~200ms) then calls `renderTree` once with coalesced reasons. After a **successful**
-idle body, `renderTree` schedules `requestVerify("post-render")`. `requestVerify`
-has its own ~150ms debounce channel, then runs the Meta↔slot scanner
-(`layout-verify.js`): each managed TILE leaf compares `get_frame_rect()` to
-`renderRect`/`rect` within ε (default **4px**) and Meta mon vs tree MONITOR home.
+Preferred entry for intentional layout commits: `wm.requestLayout(reason)`
+trailing-debounces (~200ms) then calls `renderTree` once with coalesced reasons.
+After a **successful** idle body, `renderTree` schedules
+`requestVerify("post-render")`. `requestVerify` has its own ~150ms debounce
+channel, then runs the Meta↔slot scanner (`layout-verify.js`): each managed TILE
+leaf compares `get_frame_rect()` to `renderRect`/`rect` within ε (default
+**4px**) and Meta mon vs tree MONITOR home.
+
+**Verify is a sensor, not an actuator** (apply-contract AC1). See
+[architecture.md](architecture.md#layout-control-loop-cl0cl2--apply-contract)
+and `agents/plans/forge-layout-apply-contract.md`.
 
 | Verify outcome | Effect |
 | --- | --- |
-| Full agreement | `agreementCount++`; at **≥2** consecutive → **SETTLED**; after first ok auto-schedules `requestVerify("agreement-confirm")` |
-| Mismatch | agreement = 0; unsettle; `requestLayout("verify-mismatch")` **once** per wave (latch until next full agreement) |
+| Full agreement (ok) | `agreementCount++`; **single ok → SETTLED**; no auto second verify / thrash-extra |
+| Mismatch | agreement = 0; `settled=false`; store `lastVerifyResult` + log — **no** reassert / `requestLayout` |
 | `markUnsettled(reason)` | agreement = 0; not settled |
-| **External geometry** (CL2) | `onExternalGeometry` → unsettle + requestLayout + requestVerify |
-| **Periodic verify** (CL6, debug) | GSettings `layout-verify-interval-ms` (default **0** = off) → repeating `requestVerify("periodic")` |
+| **External geometry** | `onExternalGeometry` → catalog observe + unsettle + diagnostic `requestVerify` only (**no** layout) |
+| **Periodic verify** (CL6, debug) | GSettings `layout-verify-interval-ms` (default **0** = off) → repeating `requestVerify("periodic")` (sensor only) |
+
+**SETTLED** means Forge is not re-fighting client residual for pixel equality —
+not that Meta frame will equal slot forever.
 
 Production stays **event-driven** only. The interval key is for diagnosing stuck
 desync; leave it at 0 for daily use. Cancelled on extension disable / set to 0.
 
-See [architecture.md](architecture.md#layout-control-loop-cl0cl1).
-
-### Geometry sensor attribution (CL2 / W-storm)
+### Geometry sensor attribution (W-storm)
 
 `updateMetaPositionSize` (size/position-changed) attributes before retile:
 
@@ -33,10 +39,11 @@ See [architecture.md](architecture.md#layout-control-loop-cl0cl1).
 | --- | --- |
 | `_suppressGeometrySignalRetile` (Forge `move` / `tree.apply`) | Chrome only; **no** markUnsettled / layout |
 | TILE frame ≈ slot (ε) | Chrome only; skip full layout |
-| External drift (not grab, not maximize-reject) | `onExternalGeometry` → unsettled + debounced layout/verify |
+| External drift (not grab, not maximize-reject) | `onExternalGeometry` → unsettled + diagnostic verify (**no** forest apply) |
 
 Forge apply must not double-fire a layout storm: suppress is set for the duration
-of `move()` and `tree.apply`. Pure helpers live in `layout-sensors.js`.
+of `move()` and `tree.apply` (command epoch planned to replace stack-only
+suppress). Pure helpers live in `layout-sensors.js`.
 
 `renderTree` idle coalesce remains the inner commit layer; `requestLayout` sits
 above it. Call sites may still invoke `renderTree` directly (commands, force

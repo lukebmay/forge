@@ -19,9 +19,9 @@ import {
 const slot = { x: 100, y: 200, width: 800, height: 600 };
 
 describe("layout-verify constants", () => {
-  it("defaults match plan (ε=4, agreement×2)", () => {
+  it("defaults match plan (ε=4, single agreement)", () => {
     expect(LAYOUT_VERIFY_EPSILON_PX).toBe(4);
-    expect(LAYOUT_VERIFY_AGREEMENT_NEEDED).toBe(2);
+    expect(LAYOUT_VERIFY_AGREEMENT_NEEDED).toBe(1);
   });
 });
 

@@ -6,11 +6,8 @@ import {
   VERIFY_REQUEST_DEBOUNCE_MS,
   LAYOUT_VERIFY_EPSILON_PX,
   LAYOUT_VERIFY_AGREEMENT_NEEDED,
-  LAYOUT_VERIFY_MISMATCH_MAX,
-  THRASH_EXTRA_VERIFY_REASON,
   PERIODIC_VERIFY_REASON,
 } from "../../../lib/extension/layout-controller.js";
-import { Logger } from "../../../lib/shared/logger.js";
 import {
   AppThrashCatalog,
   GHOSTTY_MIN_QUIET_MS,
@@ -278,18 +275,14 @@ describe("LayoutController", () => {
   });
 });
 
-describe("LayoutController agreement + verify scanner", () => {
+describe("LayoutController verify sensor (apply-contract AC1)", () => {
   let clock;
   let wm;
-  let renderCalls;
 
   beforeEach(() => {
     clock = createFakeClock();
-    renderCalls = [];
     wm = {
-      renderTree: vi.fn((from) => {
-        renderCalls.push(from);
-      }),
+      renderTree: vi.fn(),
       reassertTilesByIds: vi.fn(() => 0),
     };
   });
@@ -304,13 +297,12 @@ describe("LayoutController agreement + verify scanner", () => {
     });
   }
 
-  it("exports verify constants", () => {
+  it("exports verify constants (single-ok settle; no mismatch war exports)", () => {
     expect(LAYOUT_VERIFY_EPSILON_PX).toBe(4);
-    expect(LAYOUT_VERIFY_AGREEMENT_NEEDED).toBe(2);
-    expect(LAYOUT_VERIFY_MISMATCH_MAX).toBe(10);
+    expect(LAYOUT_VERIFY_AGREEMENT_NEEDED).toBe(1);
   });
 
-  it("agreement 0→1→2 SETTLED with auto second verify", () => {
+  it("single verify ok → SETTLED without agreement-confirm or thrash-extra", () => {
     const lc = make({
       scan: () => ({ ok: true, checked: 1, mismatches: [] }),
     });
@@ -321,32 +313,30 @@ describe("LayoutController agreement + verify scanner", () => {
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.verifyFireCount).toBe(1);
     expect(lc.agreementCount).toBe(1);
-    expect(lc.settled).toBe(false);
-    expect(lc.pendingVerifyReasons).toContain("agreement-confirm");
-
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.verifyFireCount).toBe(2);
-    expect(lc.agreementCount).toBe(2);
     expect(lc.settled).toBe(true);
-    expect(lc.lastVerifyReasons).toEqual(["agreement-confirm"]);
-    // No third auto-verify once SETTLED
+    expect(lc.pendingVerifyReasons).not.toContain("agreement-confirm");
+    expect(lc.pendingVerifyReasons).not.toContain("thrash-extra");
+    expect(wm.reassertTilesByIds).not.toHaveBeenCalled();
+    expect(wm.renderTree).not.toHaveBeenCalled();
+
+    // No auto second fire once SETTLED
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS * 2);
-    expect(lc.verifyFireCount).toBe(2);
+    expect(lc.verifyFireCount).toBe(1);
   });
 
-  it("post-render path alone can SETTLED when all match", () => {
+  it("post-render path alone SETTLED on first ok", () => {
     const lc = make({
       scan: () => ({ ok: true, checked: 2, mismatches: [] }),
     });
     lc.onRenderComplete("tree-apply");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.agreementCount).toBe(1);
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.settled).toBe(true);
-    expect(lc.agreementCount).toBe(2);
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.verifyFireCount).toBe(1);
   });
 
-  it("mismatch resets agreement; markUnsettled resets", () => {
+  it("mismatch resets agreement/settled and never reasserts or requestLayout", () => {
     let ok = true;
     const lc = make({
       scan: () =>
@@ -362,46 +352,51 @@ describe("LayoutController agreement + verify scanner", () => {
     lc.requestVerify("a");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.agreementCount).toBe(1);
+    expect(lc.settled).toBe(true);
 
     ok = false;
-    // Cancel auto confirm so we control the next fire
-    lc.cancel();
     lc.requestVerify("mismatch");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.agreementCount).toBe(0);
     expect(lc.settled).toBe(false);
     expect(lc.lastVerifyResult.ok).toBe(false);
+    expect(wm.reassertTilesByIds).not.toHaveBeenCalled();
+    expect(wm.renderTree).not.toHaveBeenCalled();
+    expect(lc.layoutPending).toBe(false);
+    expect(lc.pendingVerifyReasons).not.toContain("verify-mismatch-reassert");
+    expect(lc.pendingLayoutReasons).not.toContain("verify-mismatch");
 
     ok = true;
     lc.requestVerify("recover");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.agreementCount).toBe(1);
+    expect(lc.settled).toBe(true);
     lc.markUnsettled("external-size");
     expect(lc.agreementCount).toBe(0);
     expect(lc.settled).toBe(false);
     expect(lc.lastUnsettledReason).toBe("external-size");
   });
 
-  it("onExternalGeometry marks unsettled and schedules layout + verify", () => {
+  it("onExternalGeometry unsettles + diagnostic verify only (no layout)", () => {
     const lc = make({
       scan: () => ({ ok: true, checked: 1, mismatches: [] }),
     });
     lc.settled = true;
-    lc.agreementCount = 2;
+    lc.agreementCount = 1;
 
     lc.onExternalGeometry("size-changed", null);
 
     expect(lc.settled).toBe(false);
     expect(lc.agreementCount).toBe(0);
     expect(lc.lastUnsettledReason).toBe("size-changed");
-    expect(lc.layoutPending).toBe(true);
+    expect(lc.layoutPending).toBe(false);
     expect(lc.verifyPending).toBe(true);
-    expect(lc.pendingLayoutReasons).toContain("size-changed");
+    expect(lc.pendingLayoutReasons).not.toContain("size-changed");
     expect(lc.pendingVerifyReasons).toContain("size-changed");
+    expect(wm.reassertTilesByIds).not.toHaveBeenCalled();
   });
 
-  it("pure rect-mismatch uses targeted reassert (no full layout) until give-up", () => {
-    const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});
+  it("rect-mismatch sensor: no reassert, no give-up storm, no layout", () => {
     const lc = make({
       scan: () => ({
         ok: false,
@@ -410,49 +405,19 @@ describe("LayoutController agreement + verify scanner", () => {
       }),
     });
 
-    // Each mismatch verify reasserts tiles + re-requests verify until the cap.
-    for (let i = 1; i <= LAYOUT_VERIFY_MISMATCH_MAX; i++) {
+    for (let i = 0; i < 12; i++) {
       lc.cancel();
       lc.requestVerify(`m${i}`);
       clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-      expect(lc.mismatchLayoutRequestCount).toBe(i);
+      expect(lc.settled).toBe(false);
       expect(lc.agreementCount).toBe(0);
-      expect(lc._mismatchGiveUp).toBe(false);
-      expect(wm.reassertTilesByIds).toHaveBeenCalledTimes(i);
-      // Pure rect path: no forest apply.
-      expect(wm.renderTree).not.toHaveBeenCalled();
     }
-
-    // Cap+1: force reassert + give-up + Logger.error once; no layout.
-    lc.cancel();
-    const reassertBefore = wm.reassertTilesByIds.mock.calls.length;
-    lc.requestVerify("m-give-up");
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.mismatchLayoutRequestCount).toBe(LAYOUT_VERIFY_MISMATCH_MAX);
-    expect(lc._mismatchGiveUp).toBe(true);
-    expect(lc.agreementCount).toBe(0);
-    expect(errorSpy).toHaveBeenCalledTimes(1);
-    expect(String(errorSpy.mock.calls[0][0])).toMatch(/give-up/);
-    expect(String(errorSpy.mock.calls[0][0])).toMatch(/rect-mismatch|sample=/);
-    expect(wm.reassertTilesByIds.mock.calls.length).toBe(reassertBefore + 1);
-    const lastCall = wm.reassertTilesByIds.mock.calls.at(-1);
-    expect(lastCall[0]).toEqual([1]);
-    expect(lastCall[1]).toEqual({ force: true });
+    expect(wm.reassertTilesByIds).not.toHaveBeenCalled();
     expect(wm.renderTree).not.toHaveBeenCalled();
-
-    // Further mismatches stay quiet (still reset agreement); no extra force.
-    lc.cancel();
-    const reassertAtGiveUp = wm.reassertTilesByIds.mock.calls.length;
-    lc.requestVerify("m-quiet");
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(errorSpy).toHaveBeenCalledTimes(1);
-    expect(wm.reassertTilesByIds.mock.calls.length).toBe(reassertAtGiveUp);
-    expect(lc.agreementCount).toBe(0);
-
-    errorSpy.mockRestore();
+    expect(lc.layoutPending).toBe(false);
   });
 
-  it("mon-mismatch still requests full layout re-apply", () => {
+  it("mon-mismatch does not request full layout re-apply", () => {
     const lc = make({
       scan: () => ({
         ok: false,
@@ -463,104 +428,42 @@ describe("LayoutController agreement + verify scanner", () => {
 
     lc.requestVerify("mon");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.mismatchLayoutRequestCount).toBe(1);
     expect(wm.reassertTilesByIds).not.toHaveBeenCalled();
     clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
-    expect(wm.renderTree).toHaveBeenCalledTimes(1);
-    expect(wm.renderTree).toHaveBeenCalledWith("verify-mismatch");
-  });
-
-  it("successful agreement clears mismatch budget for a later wave", () => {
-    let ok = false;
-    const lc = make({
-      scan: () =>
-        ok
-          ? { ok: true, checked: 1, mismatches: [] }
-          : {
-              ok: false,
-              checked: 1,
-              mismatches: [{ id: 1, reasons: ["rect-mismatch"] }],
-            },
-    });
-
-    lc.requestVerify("m1");
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.mismatchLayoutRequestCount).toBe(1);
-    expect(wm.reassertTilesByIds).toHaveBeenCalledTimes(1);
     expect(wm.renderTree).not.toHaveBeenCalled();
-
-    ok = true;
-    lc.cancel(); // drop auto reassert-verify / agreement-confirm noise
-    lc.requestVerify("good");
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.agreementCount).toBe(1);
-    expect(lc.mismatchLayoutRequestCount).toBe(0);
-    expect(lc._mismatchGiveUp).toBe(false);
-    // Budget cleared on agreement; cancel pending confirm
-    lc.cancel();
-
-    ok = false;
-    lc.requestVerify("m2");
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.mismatchLayoutRequestCount).toBe(1);
-    expect(wm.reassertTilesByIds).toHaveBeenCalledTimes(2);
+    expect(lc.settled).toBe(false);
+    expect(lc.lastVerifyResult.ok).toBe(false);
   });
 
-  it("markUnsettled resets mismatch give-up so a new wave can retry", () => {
-    const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});
+  it("no thrash-extra schedule after SETTLED even with thrashy class catalog", () => {
     const lc = make({
-      scan: () => ({
-        ok: false,
-        checked: 1,
-        mismatches: [{ id: 1, reasons: ["rect-mismatch"] }],
-      }),
+      scan: () => ({ ok: true, checked: 1, mismatches: [] }),
     });
+    expect(lc.catalog.needsExtraVerify("ghostty")).toBe(true);
 
-    // Exhaust budget
-    for (let i = 0; i < LAYOUT_VERIFY_MISMATCH_MAX; i++) {
-      lc.cancel();
-      lc.requestVerify(`e${i}`);
-      clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    }
-    lc.cancel();
-    lc.requestVerify("give-up");
+    lc.requestVerify("post-render");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc._mismatchGiveUp).toBe(true);
-    expect(errorSpy).toHaveBeenCalledTimes(1);
-    const reassertAtGiveUp = wm.reassertTilesByIds.mock.calls.length;
-
-    // External drift must not leave the controller permanently dead.
-    lc.markUnsettled("external-size");
-    expect(lc._mismatchGiveUp).toBe(false);
-    expect(lc.mismatchLayoutRequestCount).toBe(0);
-    expect(lc.agreementCount).toBe(0);
-
-    lc.cancel();
-    lc.requestVerify("retry-wave");
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.mismatchLayoutRequestCount).toBe(1);
-    expect(wm.reassertTilesByIds.mock.calls.length).toBe(reassertAtGiveUp + 1);
-    expect(wm.renderTree).not.toHaveBeenCalled();
-
-    errorSpy.mockRestore();
+    expect(lc.settled).toBe(true);
+    expect(lc.pendingVerifyReasons).toEqual([]);
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS * 4);
+    expect(lc.verifyFireCount).toBe(1);
   });
 
-  it("does not count the same fire twice; consecutive passes are separate fires", () => {
+  it("does not auto-fire a second verify after single ok", () => {
     const lc = make({
       scan: () => ({ ok: true, checked: 0, mismatches: [] }),
     });
     lc.requestVerify("once");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.agreementCount).toBe(1);
+    expect(lc.settled).toBe(true);
     expect(lc.verifyFireCount).toBe(1);
-    // agreement-confirm is a second fire
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.agreementCount).toBe(2);
-    expect(lc.verifyFireCount).toBe(2);
+    expect(lc.verifyFireCount).toBe(1);
   });
 });
 
-describe("LayoutController thrash-extra (CL3)", () => {
+describe("LayoutController catalog observe (no thrash-extra control loop)", () => {
   let clock;
   let wm;
 
@@ -584,12 +487,7 @@ describe("LayoutController thrash-extra (CL3)", () => {
   function settleOk(lc) {
     lc.requestVerify("post-render");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
   }
-
-  it("exports thrash-extra reason constant", () => {
-    expect(THRASH_EXTRA_VERIFY_REASON).toBe("thrash-extra");
-  });
 
   it("holds an AppThrashCatalog by default (Ghostty quiet floor)", () => {
     const lc = make({ scan: () => ({ ok: true, checked: 0, mismatches: [] }) });
@@ -598,65 +496,11 @@ describe("LayoutController thrash-extra (CL3)", () => {
     expect(lc.catalog.lookup("ghostty").minQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
   });
 
-  it("SETTLED + thrashy TILE → one thrash-extra, not infinite", () => {
-    const lc = make({
-      scan: () => ({ ok: true, checked: 1, mismatches: [] }),
-      hasThrashyTile: () => true,
-    });
-
-    settleOk(lc);
-    expect(lc.settled).toBe(true);
-    expect(lc.thrashExtraRequestCount).toBe(1);
-    expect(lc.pendingVerifyReasons).toContain(THRASH_EXTRA_VERIFY_REASON);
-
-    // Fire thrash-extra — still ok / settled; must not request another
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-    expect(lc.verifyFireCount).toBe(3);
-    expect(lc.lastVerifyReasons).toEqual([THRASH_EXTRA_VERIFY_REASON]);
-    expect(lc.settled).toBe(true);
-    expect(lc.thrashExtraRequestCount).toBe(1);
-
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS * 4);
-    expect(lc.verifyFireCount).toBe(3);
-    expect(lc.thrashExtraRequestCount).toBe(1);
-  });
-
-  it("SETTLED without thrashy TILE does not schedule thrash-extra", () => {
-    const lc = make({
-      scan: () => ({ ok: true, checked: 1, mismatches: [] }),
-      hasThrashyTile: () => false,
-    });
-    settleOk(lc);
-    expect(lc.settled).toBe(true);
-    expect(lc.thrashExtraRequestCount).toBe(0);
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS * 2);
-    expect(lc.verifyFireCount).toBe(2);
-  });
-
-  it("markUnsettled clears thrash latch so a new settle wave can re-request", () => {
-    const lc = make({
-      scan: () => ({ ok: true, checked: 1, mismatches: [] }),
-      hasThrashyTile: () => true,
-    });
-    settleOk(lc);
-    expect(lc.thrashExtraRequestCount).toBe(1);
-    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS); // thrash-extra
-    expect(lc.verifyFireCount).toBe(3);
-
-    lc.markUnsettled("external-size");
-    expect(lc.settled).toBe(false);
-
-    settleOk(lc);
-    expect(lc.thrashExtraRequestCount).toBe(2);
-    expect(lc.pendingVerifyReasons).toContain(THRASH_EXTRA_VERIFY_REASON);
-  });
-
   it("onExternalGeometry records postMap for size and postApplyDrift when was SETTLED", () => {
     const catalog = new AppThrashCatalog();
     const lc = make({
       catalog,
       scan: () => ({ ok: true, checked: 1, mismatches: [] }),
-      hasThrashyTile: () => false,
     });
     settleOk(lc);
     expect(lc.settled).toBe(true);
@@ -669,6 +513,8 @@ describe("LayoutController thrash-extra (CL3)", () => {
     expect(e.postMapSizeChanges).toBe(1);
     expect(e.postApplyDrift).toBe(1);
     expect(lc.settled).toBe(false);
+    expect(lc.layoutPending).toBe(false);
+    expect(lc.verifyPending).toBe(true);
   });
 
   it("onExternalGeometry does not record postApplyDrift when not settled", () => {
@@ -687,10 +533,8 @@ describe("LayoutController thrash-extra (CL3)", () => {
 
   it("suppress path: forge-caused never reaches onExternalGeometry counters", () => {
     // Contract: callers use isForgeCausedGeometrySignal and skip onExternalGeometry.
-    // Catalog stays clean when only forge path "would have" fired.
     const catalog = new AppThrashCatalog();
-    const lc = make({ catalog, hasThrashyTile: () => false });
-    // Simulate: external path not called; only chrome path would run under suppress.
+    const lc = make({ catalog });
     expect(catalog.lookup("ghostty").postMapSizeChanges).toBe(0);
     expect(catalog.lookup("ghostty").postApplyDrift).toBe(0);
     expect(lc.catalog).toBe(catalog);
@@ -721,7 +565,6 @@ describe("LayoutController thrash-extra (CL3)", () => {
     const openedAt = Date.now() - 350;
     const lc = make({
       catalog,
-      hasThrashyTile: () => false,
       scan: () => ({
         ok: true,
         checked: 1,
@@ -753,7 +596,6 @@ describe("LayoutController thrash-extra (CL3)", () => {
     let phase = 0;
     const lc = make({
       catalog,
-      hasThrashyTile: () => false,
       scan: () => {
         phase += 1;
         if (phase === 1) {
@@ -778,9 +620,8 @@ describe("LayoutController thrash-extra (CL3)", () => {
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(catalog.lookup("org.example.Mismatch")).toBeFalsy();
     expect(lc._settlePending.get(meta)?.mismatches).toBe(1);
+    expect(wm.renderTree).not.toHaveBeenCalled();
 
-    // cancel reassert noise; fire second verify
-    lc.cancel();
     lc.requestVerify("post-render");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
 
@@ -818,11 +659,9 @@ describe("LayoutController thrash-extra (CL3)", () => {
     let phase = 0;
     const lc = make({
       catalog,
-      hasThrashyTile: () => false,
       scan: () => {
         phase += 1;
         if (phase === 1) {
-          // Forest ok (other tiles settled) but pending window not in TILE scan.
           return {
             ok: true,
             checked: 1,
@@ -850,7 +689,6 @@ describe("LayoutController thrash-extra (CL3)", () => {
     expect(lc._settlePending.size).toBe(1);
     expect(lc._settlePending.has(meta)).toBe(true);
 
-    lc.cancel();
     lc.requestVerify("post-render");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
 
@@ -868,7 +706,6 @@ describe("LayoutController thrash-extra (CL3)", () => {
     };
     const lc = make({
       catalog,
-      hasThrashyTile: () => false,
       scan: () => ({ ok: true, checked: 0, mismatches: [], results: [] }),
     });
 
@@ -892,7 +729,6 @@ describe("LayoutController thrash-extra (CL3)", () => {
     const late = Date.now() - 50;
     const lc = make({
       catalog,
-      hasThrashyTile: () => false,
       scan: () => ({
         ok: true,
         checked: 1,
@@ -906,7 +742,6 @@ describe("LayoutController thrash-extra (CL3)", () => {
     expect(lc._settlePending.size).toBe(1);
     expect(lc._settlePending.get(meta).openedAt).toBe(early);
 
-    // mismatches survive re-note
     lc._settlePending.get(meta).mismatches = 2;
     lc.noteOpenPendingForSettle(meta, Date.now());
     expect(lc._settlePending.get(meta).mismatches).toBe(2);
