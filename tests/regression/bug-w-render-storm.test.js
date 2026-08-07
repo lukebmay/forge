@@ -217,4 +217,69 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     expect(sawSuppress).toBe(true);
     expect(wm()._suppressGeometrySignalRetile).toBe(false);
   });
+
+  it("AC2: after move, size-changed within echo residual does not markUnsettled", () => {
+    let now = 10_000;
+    wm().layoutEpoch.setNow(() => now);
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
+    const meta = first.metaWindow;
+    const slot = { x: 10, y: 20, width: 500, height: 400 };
+    first.nodeWindow.mode = WINDOW_MODES.TILE;
+    first.nodeWindow.renderRect = { ...slot };
+    ctx.display.get_focus_window.mockReturnValue(meta);
+
+    wm().move(meta, slot);
+    expect(wm().layoutEpoch.isEchoActive(meta)).toBe(true);
+    expect(wm()._suppressGeometrySignalRetile).toBe(false);
+
+    // Client snap far from slot while residual still open — still Forge echo.
+    meta.move_resize_frame(true, 50, 50, 300, 200);
+    const markSpy = vi.spyOn(wm().layoutController, "markUnsettled");
+    const layoutSpy = vi.spyOn(wm().layoutController, "requestLayout");
+    wm().updateMetaPositionSize(meta, "size-changed");
+
+    expect(markSpy).not.toHaveBeenCalled();
+    expect(layoutSpy).not.toHaveBeenCalled();
+    expect(wm().updateBorderLayout).toHaveBeenCalled();
+  });
+
+  it("AC2: after echo residual expires, external geom may markUnsettled (no requestLayout)", () => {
+    installFakeTimers();
+    let now = 20_000;
+    wm().layoutEpoch.setNow(() => now);
+    const residual = wm().layoutEpoch.residualMs;
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
+    const meta = first.metaWindow;
+    const slot = { x: 0, y: 0, width: 800, height: 600 };
+    first.nodeWindow.mode = WINDOW_MODES.TILE;
+    first.nodeWindow.renderRect = { ...slot };
+    first.nodeWindow.rect = { ...slot };
+    ctx.display.get_focus_window.mockReturnValue(meta);
+
+    wm().move(meta, slot);
+    now += residual;
+    expect(wm().layoutEpoch.isEchoActive(meta)).toBe(false);
+
+    meta.move_resize_frame(true, 200, 200, 400, 300);
+    const markSpy = vi.spyOn(wm().layoutController, "markUnsettled");
+    const layoutSpy = vi.spyOn(wm().layoutController, "requestLayout");
+    wm().updateMetaPositionSize(meta, "size-changed");
+
+    expect(markSpy).toHaveBeenCalled();
+    expect(layoutSpy).not.toHaveBeenCalled();
+    expect(wm().layoutController.verifyPending).toBe(true);
+  });
+
+  it("AC2: LayoutBatch begin advances wave id", () => {
+    expect(wm().layoutEpoch.waveId).toBe(0);
+    const begin = wm().beginOpenLayoutBatch("demo");
+    expect(begin.waveId).toBe(1);
+    expect(wm().layoutEpoch.waveId).toBe(1);
+    wm().beginOpenLayoutBatch();
+    expect(wm().layoutEpoch.waveId).toBe(2);
+    wm().endOpenLayoutBatch("open-batch");
+    wm().endOpenLayoutBatch("open-batch");
+  });
 });

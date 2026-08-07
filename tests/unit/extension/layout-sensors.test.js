@@ -12,14 +12,28 @@ describe("isForgeCausedGeometrySignal", () => {
     expect(isForgeCausedGeometrySignal({})).toBe(false);
   });
 
-  it("is true only when _suppressGeometrySignalRetile is set", () => {
+  it("is true when _suppressGeometrySignalRetile is set", () => {
     expect(isForgeCausedGeometrySignal({ _suppressGeometrySignalRetile: false })).toBe(false);
     expect(isForgeCausedGeometrySignal({ _suppressGeometrySignalRetile: true })).toBe(true);
   });
 
-  it("ignores metaWindow for now (flag is WM-wide)", () => {
+  it("stack suppress is WM-wide (metaWindow optional)", () => {
     const wm = { _suppressGeometrySignalRetile: true };
     expect(isForgeCausedGeometrySignal(wm, { id: 1 })).toBe(true);
+    expect(isForgeCausedGeometrySignal(wm)).toBe(true);
+  });
+
+  it("true when layoutEpoch.isEchoActive for that metaWindow", () => {
+    const win = { id: 7 };
+    const wm = {
+      _suppressGeometrySignalRetile: false,
+      layoutEpoch: {
+        isEchoActive: (mw) => mw === win,
+      },
+    };
+    expect(isForgeCausedGeometrySignal(wm, win)).toBe(true);
+    expect(isForgeCausedGeometrySignal(wm, { id: 8 })).toBe(false);
+    expect(isForgeCausedGeometrySignal(wm, null)).toBe(false);
   });
 });
 

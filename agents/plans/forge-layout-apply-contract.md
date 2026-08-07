@@ -17,9 +17,12 @@ until operator can re-smoke on X11 or after logout.
 
 ### Session note (overwrite)
 
-**2026-08-07 (AC1 done):** A/B **AGREE**. Verify sensor-only; thrash-extra /
-mismatch→reassert/layout / agreement×2 / external→requestLayout removed. Unit
-2281 green. Next: **AC2** command epoch. No live HUP (Wayland).
+**2026-08-07 (AC2 A done):** Per-window command echo epoch landed on
+`plan/forge-layout-apply-contract`. `layout-epoch.js` +
+`COMMAND_ECHO_RESIDUAL_MS=350`; `isForgeCausedGeometrySignal` = suppress OR
+active echo; `move` starts echo after real commit; LayoutBatch begin →
+`beginWave`. Stack suppress kept. Unit suite green (2295). No live HUP.
+Await B verify / wrap-up commit.
 
 ---
 
@@ -420,7 +423,7 @@ Full inventory: **§15**.
 | ID | Task | Status | Depends | Notes |
 | --- | --- | --- | --- | --- |
 | **AC1** | Purge §15 KILL verify/pixel-war paths + rewrite tests | **done** | — | completed/ |
-| **AC2** | Command epoch attribution (replace stack-only suppress) | **ready** | AC1 | |
+| **AC2** | Command epoch attribution (replace stack-only suppress) | **A done / B next** | AC1 | layout-epoch.js · residual 350ms |
 | **AC3** | Streaming admit/apply; drop LF6 fingerprint default | next | AC2 | |
 | **AC4** | Placeholder tile + thrash/fail isolate | next | AC2 | |
 | **AC5** | Harden slot-math unit tests | next | AC1 | Can parallel after AC1 in later sessions |

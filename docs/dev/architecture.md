@@ -58,7 +58,8 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | `window.js` `WindowManager` | Event hub: binds GNOME signals, tracks windows, owns `renderTree`/`move`, focus, grab/drag. |
 | `layout-controller.js` `LayoutController` | Debounced `requestLayout` / `requestVerify`; Meta↔slot verify is a **sensor** (ok → SETTLED; mismatch never reasserts); `onExternalGeometry` diagnostic only; CL6 optional debug periodic verify. |
 | `layout-verify.js` | Pure frame↔slot ε compare, forest scan, TILE leaf collect. |
-| `layout-sensors.js` | Pure attribution: Forge-caused suppress vs TILE in-slot chrome-only (CL2). |
+| `layout-sensors.js` | Pure attribution: stack suppress **or** active command echo epoch vs TILE in-slot chrome-only (CL2/AC2). |
+| `layout-epoch.js` | Per-window command echo epochs + wave id (apply-contract AC2 residual). |
 | `layout-apply-chrome.js` | CL10 LayoutBatch dim scrim (~80%) + per-mon spinner/label (title ≈7.5% height) + hard ≤8s clear. |
 | `command.js` `CommandHandler` | Turns a user action into tree mutations (extracted from window.js). |
 | `focus.js` `FocusManager` | Focus tracking + active-window signal lifecycle (extracted from window.js). |
@@ -110,13 +111,16 @@ set to 0. Not for production daily use. Periodic fire must stay sensor-only.
 `layoutController.onExternalGeometry(reason)` → thrash-catalog observe +
 `markUnsettled` + diagnostic `requestVerify` only (**no** `requestLayout`).
 Forge apply sets `_suppressGeometrySignalRetile` around `move` / `tree.apply`
-so our own `move_resize_frame` does **not** unsettle (command epoch still
-planned). TILE already within ε of its slot is chrome-only (W-storm in-slot).
-Helpers: `layout-sensors.js` (`isForgeCausedGeometrySignal`,
-`shouldChromeOnlyGeometry`). Open path (CL4): `layout-open.js` quiet + catalog
-minQuiet → `_scheduleOpenCommit` → `requestLayout("window-create")` (force
-`renderTree` only when render is frozen). External geom during pending open
-resets quiet and does not early-`requestLayout`.
+(in-stack re-entrancy) **and** starts a per-window **command echo epoch**
+(`layout-epoch.js`, residual `COMMAND_ECHO_RESIDUAL_MS` = 350ms) after a real
+`move_resize_frame` so post-stack client snap is still chrome-only. Attribution:
+`isForgeCausedGeometrySignal(wm, metaWindow)` = stack suppress **or** active
+echo for that window. LayoutBatch `begin` calls `layoutEpoch.beginWave()`.
+TILE already within ε of its slot is chrome-only (W-storm in-slot). Helpers:
+`layout-sensors.js`, `layout-epoch.js`. Open path (CL4): `layout-open.js` quiet +
+catalog minQuiet → `_scheduleOpenCommit` → `requestLayout("window-create")`
+(force `renderTree` only when render is frozen). External geom during pending
+open resets quiet and does not early-`requestLayout`.
 
 **CL5 multi-open / layout CLI:** DBus `LayoutBatch(begin|end)` →
 `wm.beginOpenLayoutBatch` / `endOpenLayoutBatch`. While depth > 0, open commits

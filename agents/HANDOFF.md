@@ -2,7 +2,7 @@
 
 **Updated:** 2026-08-07 (apply-contract **locked**; AC1 in progress)  
 **Branch:** `plan/forge-layout-apply-contract`  
-**Active P0:** [forge-layout-apply-contract](./plans/forge-layout-apply-contract.md) AC1 purge  
+**Active P0:** [forge-layout-apply-contract](./plans/forge-layout-apply-contract.md) AC2 command epoch  
 **Live smoke:** deferred (Wayland — no HUP this session)
 
 ---
@@ -13,15 +13,15 @@
 | --- | --- |
 | Meta baseline (Forge-off D=0) | **Done** |
 | Apply/settle contract design | **Locked** |
-| AC1 purge verify war | **in progress** |
-| AC2+ | queued after AC1 AGREE |
+| AC1 purge verify war | **done** (merged master) |
+| AC2 command epoch | **in progress** |
+| AC3–AC5 | queued |
 
 ### Next
 
-1. Finish AC1 A/B → wrap-up commit  
-2. AC2 command epoch  
-3. AC3 streaming · AC4 placeholder · AC5 slot math  
-4. AC6 live smoke when X11 HUP or logout available  
+1. Finish AC2 A/B → wrap-up commit  
+2. AC3 streaming · AC4 placeholder · AC5 slot math  
+3. AC6 live smoke when X11 HUP or logout available  
 
 ---
 

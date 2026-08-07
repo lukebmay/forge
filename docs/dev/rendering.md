@@ -37,13 +37,15 @@ desync; leave it at 0 for daily use. Cancelled on extension disable / set to 0.
 
 | Case | Behavior |
 | --- | --- |
-| `_suppressGeometrySignalRetile` (Forge `move` / `tree.apply`) | Chrome only; **no** markUnsettled / layout |
+| `_suppressGeometrySignalRetile` (Forge `move` / `tree.apply`) | Chrome only; **no** markUnsettled / layout (in-stack) |
+| Active command echo epoch for that window (`layout-epoch.js`, 350ms residual) | Chrome only after stack returns (client snap) |
 | TILE frame ≈ slot (ε) | Chrome only; skip full layout |
-| External drift (not grab, not maximize-reject) | `onExternalGeometry` → unsettled + diagnostic verify (**no** forest apply) |
+| External drift (not grab, not maximize-reject, epoch expired) | `onExternalGeometry` → unsettled + diagnostic verify (**no** forest apply) |
 
-Forge apply must not double-fire a layout storm: suppress is set for the duration
-of `move()` and `tree.apply` (command epoch planned to replace stack-only
-suppress). Pure helpers live in `layout-sensors.js`.
+Forge apply must not double-fire a layout storm: stack suppress covers
+`move()` / `tree.apply` re-entrancy; per-window **command echo epoch** covers
+post-apply residual size/position (AC2). `isForgeCausedGeometrySignal` is true
+for **either**. Helpers: `layout-sensors.js`, `layout-epoch.js`.
 
 `renderTree` idle coalesce remains the inner commit layer; `requestLayout` sits
 above it. Call sites may still invoke `renderTree` directly (commands, force
