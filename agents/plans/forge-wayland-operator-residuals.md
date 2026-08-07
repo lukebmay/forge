@@ -58,3 +58,6 @@ check after B.
 **2026-08-06 WR1 done (A/B AGREE):** Open-leaf focus reassert; pure rect-mismatch targeted reassert; give-up force reassert. Tests 975. Next: **WR2 Guake mon**. Live: install + Wayland logout after WR2 or intermediate install.
 
 **2026-08-06:** Plan opened from operator Wayland smoke. Branch from master @ theme wrap.
+
+**2026-08-06 post-review:** Reverted WR2 Guake hardcode (product: no app-named rehome). Float override remains. Thrash seed removal deferred until operator reload.
+
