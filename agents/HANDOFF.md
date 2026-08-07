@@ -1,10 +1,10 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-07 (harness reshape shipped; ghostty pilot next)  
-**Branch:** `task/meta-probe-harness`  
-**Active P0:** Live **ghostty pilot** (single-ops 5× → 2-step sweeps → 3-step if ready) then rest of core apps  
+**Updated:** 2026-08-07 (ghostty pilot green; core matrix next)  
+**Branch:** `task/meta-probe-harness` (ahead of origin by 1 commit, no push)  
+**Active P0:** Meta probe **core-app matrix** (nautilus, inkscape, grok, obs)  
 **Probe path:** [`tests/meta-probe/`](../tests/meta-probe/)  
-**Session start:** [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md)
+**Session:** [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md)
 
 ---
 
@@ -12,46 +12,39 @@
 
 | Item | Status |
 | --- | --- |
-| Harness reshape (5×, core, sleep, trial, thrash, sweep CLI) | **Done** — A/B AGREE, unit tests 48 OK |
-| Multi-op delay-until-thrash code | **Done** (`probe_driver.py sweep`) |
-| Ghostty pilot live | **Next** |
-| Core-app matrix (5 apps) | After ghostty green |
+| Harness reshape | **Done** `7ce020b` — A/B AGREE, 48 unit tests |
+| Ghostty pilot live | **Green** — single-ops 5× all ok; 2-step + 3-step thrash-free at **D=0** (Forge off) |
+| Core-app matrix | **Next** |
+| Layout engine rewrite from data | After matrix / thrash edges on hard apps |
 
-### How to run pilot
+### Ghostty finding
+
+Meta alone (Forge disabled) handles ghostty multi-op at zero inter-step delay. Look for thrash edges on **inkscape / obs** next; D=0 is the ghostty Meta baseline.
+
+### How to continue
 
 ```bash
 cd tests/meta-probe
 python3 probe_driver.py prep --host black
-python3 probe_driver.py run --host black --suite full-suite --apps ghostty --samples 5
-python3 probe_driver.py sweep --host black --apps ghostty --maneuver launch_then_move --d-start 2000 --d-step 100
-python3 probe_driver.py sweep --host black --apps ghostty --maneuver launch_then_monitor --d-start 2000 --d-step 100
-# then 3-step with padded last-good D1/D2
+python3 probe_driver.py run --host black --suite full-suite --samples 5   # all core
+# or per-app + sweeps for hard apps
 python3 probe_driver.py cleanup
 ```
 
 ### Safety
 
-Forge + rivals off during prep; **sleep inhibit in prep, restore on cleanup**. No Guake close. WS1 only when finished.
+Sleep inhibit in prep; restore on cleanup. No Guake close. WS1 only when finished.
 
 ---
 
-## Forge product residuals (parked during measurement)
+## Forge product residuals (parked)
 
-Do **not** keep guessing layout timeouts until probe data exists.
-
-| Symptom | Notes |
-| --- | --- |
-| mon1 VSPLIT vs HSPLIT after `layout dev` | Structure residual |
-| Grok not open leaf | lastTabFocus / focus settle |
-| YouTube overlay on other workspace | WS isolation / restack |
-| Inkscape float-only / no border until drag | Admit + float save product gaps |
-
-RC code remains on master; **live Wayland product smoke is secondary** to probe pilot.
+Do not guess layout timeouts until more probe thrash data exists.
 
 ---
 
 ## Agent rules
 
 - **No push** unless human asks  
-- **No SSH** without **explicit** in the current message  
-- Measurement only under `tests/meta-probe/` — do not wire into Forge layout engine yet  
+- **No SSH** without **explicit**  
+- Measurement only under `tests/meta-probe/`  

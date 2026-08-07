@@ -1,11 +1,11 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-07 (harness reshape done; ghostty pilot next)  
+**Updated:** 2026-08-07 (ghostty pilot green; core matrix next)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 **No push** until human asks.  
-**Active P0:** Meta probe **ghostty live pilot** (5× single-ops + 2-step/3-step thrash sweeps) — [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md).
+**Active P0:** Meta probe **core-app matrix** after ghostty green — [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md).
 
 ---
 
@@ -34,8 +34,8 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Ghostty live pilot** (harness code **done**) | prep → 5× single-ops → 2-step then 3-step thrash sweeps → cleanup — [SESSION_HANDOFF](../tests/meta-probe/SESSION_HANDOFF.md) |
-| **2** | **Core-app matrix** after ghostty green | nautilus, inkscape, grok, obs (+ re-run ghostty if harness churns) |
+| **1** | **Core-app matrix** (ghostty pilot **green**) | nautilus, inkscape, grok, obs; thrash sweeps especially on hard apps; ghostty Meta D=0 baseline — [SESSION_HANDOFF](../tests/meta-probe/SESSION_HANDOFF.md) |
+| **2** | **Re-run ghostty** only if harness churns | Already green at 5× + multi-op D=0 |
 | **3** | **X11 + gray/green** probe | Re-bootstrap knobs per host×session |
 | **4** | **Layout engine rewrite from data** | Especially thrash-free inter-op delays |
 | **mid** | Wayland product residuals (VSPLIT, Grok leaf, WS overlay, float save) | Parked until probe informs approach |
