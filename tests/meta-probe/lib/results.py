@@ -166,42 +166,134 @@ def settle_to_dict(s: Any, *, detail: str = "summary") -> dict[str, Any]:
     return d
 
 
+def atomic_write_json(path: Path, doc: dict[str, Any]) -> None:
+    """Write JSON via temp + rename (same-dir atomic on POSIX)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + f".tmp.{os.getpid()}")
+    try:
+        tmp.write_text(json.dumps(doc, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+
+
+def _link_latest(link_path: Path, target: Path) -> None:
+    try:
+        if link_path.is_symlink() or link_path.exists():
+            link_path.unlink()
+        if link_path.parent == target.parent:
+            link_path.symlink_to(target.name)
+        else:
+            link_path.symlink_to(os.path.relpath(target, link_path.parent))
+    except OSError:
+        link_path.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
+
+
+def update_latest_links(
+    path: Path,
+    *,
+    out_dir: Path,
+    results_root: Optional[Path],
+    host: str,
+    session: str,
+) -> None:
+    _link_latest(out_dir / "latest.json", path)
+    if results_root is not None:
+        results_root.mkdir(parents=True, exist_ok=True)
+        _link_latest(results_root / "latest.json", path)
+        host_sess = results_root / str(host) / str(session)
+        host_sess.mkdir(parents=True, exist_ok=True)
+        _link_latest(host_sess / "latest.json", path)
+
+
+def run_output_path(
+    out_dir: Path,
+    doc: dict[str, Any],
+    *,
+    ts: Optional[str] = None,
+) -> Path:
+    """Stable path for a run document (timestamp fixed for checkpoints)."""
+    suite = (doc.get("namespace") or {}).get("suite") or doc.get("suite") or "run"
+    phase = str(doc.get("phase") or suite).replace("/", "-").replace(":", "-")
+    stamp = ts or time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    return out_dir / f"run-{phase}-{stamp}.json"
+
+
 def write_run(
     doc: dict[str, Any],
     out_dir: Path,
     *,
     latest: bool = True,
     results_root: Optional[Path] = None,
+    path: Optional[Path] = None,
+    update_latest: Optional[bool] = None,
 ) -> Path:
-    """Write once at end of run (caller must not invoke mid-matrix)."""
+    """
+    Atomic write of run JSON.
+
+    path: if set, overwrite that file (per-app checkpoint / final).
+    update_latest: default True when latest=True; set False for silent checkpoints
+      that only rewrite the run file (caller may still pass latest=True for final).
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     ns = doc.get("namespace") or {}
     host = ns.get("host") or doc.get("host", {}).get("host", "host")
     session = ns.get("session") or doc.get("host", {}).get("sessionType", "unknown")
-    suite = ns.get("suite") or doc.get("suite") or "run"
-    phase = str(doc.get("phase") or suite).replace("/", "-").replace(":", "-")
-    ts = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
-    path = out_dir / f"run-{phase}-{ts}.json"
-    path.write_text(json.dumps(doc, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+    if path is None:
+        path = run_output_path(out_dir, doc)
+    else:
+        path = Path(path)
 
-    def _link_latest(link_path: Path, target: Path) -> None:
-        try:
-            if link_path.is_symlink() or link_path.exists():
-                link_path.unlink()
-            if link_path.parent == target.parent:
-                link_path.symlink_to(target.name)
-            else:
-                link_path.symlink_to(os.path.relpath(target, link_path.parent))
-        except OSError:
-            link_path.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
+    atomic_write_json(path, doc)
 
-    if latest:
-        _link_latest(out_dir / "latest.json", path)
-        if results_root is not None:
-            results_root.mkdir(parents=True, exist_ok=True)
-            _link_latest(results_root / "latest.json", path)
-            host_sess = results_root / str(host) / str(session)
-            host_sess.mkdir(parents=True, exist_ok=True)
-            _link_latest(host_sess / "latest.json", path)
-
+    do_latest = latest if update_latest is None else update_latest
+    if do_latest:
+        update_latest_links(
+            path,
+            out_dir=out_dir,
+            results_root=results_root,
+            host=str(host),
+            session=str(session),
+        )
     return path
+
+
+def checkpoint_run(
+    doc: dict[str, Any],
+    path: Path,
+    *,
+    results_root: Optional[Path] = None,
+    update_latest: bool = False,
+) -> Path:
+    """Mid-run durable write (per-app). Same path; optional latest links."""
+    out_dir = path.parent
+    ns = doc.get("namespace") or {}
+    host = ns.get("host") or doc.get("host", {}).get("host", "host")
+    session = ns.get("session") or doc.get("host", {}).get("sessionType", "unknown")
+    doc = dict(doc)
+    doc["checkpointAt"] = datetime.now(timezone.utc).isoformat()
+    atomic_write_json(path, doc)
+    if update_latest:
+        update_latest_links(
+            path,
+            out_dir=out_dir,
+            results_root=results_root,
+            host=str(host),
+            session=str(session),
+        )
+    return path
+
+
+def write_per_app_enabled(config: dict[str, Any]) -> bool:
+    """True when checkpoints should flush after each app (default after reshape)."""
+    out = config.get("output") or {}
+    if "writePerApp" in out:
+        return bool(out["writePerApp"])
+    # legacy: writeOnlyAtEnd true → no mid-run write
+    if out.get("writeOnlyAtEnd") is True:
+        return False
+    return True

@@ -19,6 +19,47 @@ need_cmd() {
 need_cmd gnome-extensions
 need_cmd python3
 
+INHIBIT_PID_FILE="$STATE_DIR/inhibit.pid"
+
+restore_sleep_inhibit() {
+  # Always restore even on partial cleanup paths (FIRM).
+  local pid=""
+  if [[ -f "$INHIBIT_PID_FILE" ]]; then
+    pid="$(tr -d '[:space:]' <"$INHIBIT_PID_FILE" 2>/dev/null || true)"
+  fi
+  if [[ -z "$pid" && -f "$STATE_FILE" ]]; then
+    pid="$(python3 - "$STATE_FILE" <<'PY' 2>/dev/null || true
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+if not p.exists():
+    raise SystemExit
+d = json.loads(p.read_text())
+si = d.get("sleepInhibit") or {}
+pid = si.get("pid")
+if pid is not None:
+    print(int(pid))
+PY
+)"
+  fi
+  if [[ -n "${pid:-}" ]]; then
+    if kill -0 "$pid" 2>/dev/null; then
+      log "restore sleep: kill inhibit pid $pid"
+      kill "$pid" 2>/dev/null || true
+      sleep 0.1
+      kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+    else
+      log "sleep inhibit pid $pid already gone"
+    fi
+  else
+    log "no sleep inhibit pid recorded"
+  fi
+  rm -f "$INHIBIT_PID_FILE"
+}
+
+# --- sleep restore first so partial exits still clear inhibit ---
+restore_sleep_inhibit
+
 # --- return to operator workspace BEFORE disabling probe (needs DBus) ---
 if python3 "$ROOT/probe_driver.py" ping >/dev/null 2>&1; then
   log "focus workspace index $RETURN_WS_INDEX (human WS$((RETURN_WS_INDEX + 1)))"
@@ -36,7 +77,7 @@ if gnome-extensions info "$UUID_PROBE" >/dev/null 2>&1; then
 fi
 
 if [[ ! -f "$STATE_FILE" ]]; then
-  log "no state file ($STATE_FILE) — re-enable forge only (best effort)"
+  log "no state file ($STATE_FILE) — re-enable forge only (best effort); sleep already restored"
   gnome-extensions enable forge@jmmaranan.com 2>/dev/null || true
   log "done (partial)"
   exit 0
@@ -75,4 +116,4 @@ PY
 
 # archive state so re-prep records fresh
 mv -f "$STATE_FILE" "$STATE_FILE.restored-$(date -u +%Y%m%dT%H%M%SZ)" 2>/dev/null || rm -f "$STATE_FILE"
-log "OK — workspace → index $RETURN_WS_INDEX (WS$((RETURN_WS_INDEX + 1))); tilers restored; probe off"
+log "OK — workspace → index $RETURN_WS_INDEX (WS$((RETURN_WS_INDEX + 1))); tilers restored; probe off; sleep restored"

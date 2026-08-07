@@ -1,13 +1,15 @@
 {
-  "version": 4,
-  "probeVersion": "0.3.0",
+  "version": 5,
+  "probeVersion": "0.4.0",
   "phase": "full-suite",
   "suite": "full-suite",
-  "samples": 10,
+  "samples": 5,
   "recordDetail": "summary",
+  "defaultAppTag": "core",
   "matrix": {
     "calibrateEachOp": true,
-    "comment": "Each app+op: 1 calibration then samples full trials. Ops never interleave."
+    "excludeOpenWarmByDefault": true,
+    "comment": "Each app+op: 1 cal then samples full trials. Sticky window for non-open ops; open_fresh closes each sample. open_warm opt-in only."
   },
   "settle": {
     "comment": "Agreement-only: check every checkIntervalMs. Hard d_* resets stable duration; soft s_* recorded only. Settled when hard-stable for settleDurationMs. See AGREEMENT.md.",
@@ -18,6 +20,21 @@
     "bootstrapSettleDurationMs": 10000,
     "maxWaitMs": 120000,
     "noteSlowHosts": "Slow machines → longer settleDurationMs after bootstrap (more jitter spacing), never shorter."
+  },
+  "thrash": {
+    "comment": "Thrash if settle fail, hard_reset_count > maxHardResets, or waitMs > waitFactor * settleDurationMs.",
+    "maxHardResets": 20,
+    "waitFactor": 4.0
+  },
+  "sweep": {
+    "dStartMs": 2000,
+    "dStepMs": 100,
+    "dMinMs": 0,
+    "padMs": 200,
+    "jointPadMs": 50,
+    "jointSteps": 3,
+    "stopOnFirstThrash": true,
+    "comment": "2-step: high→down until thrash. 3-step isolation uses padMs from 2-step last-good."
   },
   "cooldownMs": 500,
   "betweenAppsMs": 2000,
@@ -35,6 +52,7 @@
     "requireRivalsDisabled": true,
     "closeAfterApp": true,
     "onlyTouchOwnedWindows": true,
+    "neverCloseGuake": true,
     "rivalUuids": [
       "tiling-assistant@ubuntu.com",
       "tiling-assistant@leleat-on-github",
@@ -58,38 +76,44 @@
     "dir": "results",
     "writeLatestSymlink": true,
     "namespace": true,
-    "writeOnlyAtEnd": true,
-    "comment": "results/<host>/<session>/<suite>/ — single write after matrix"
+    "writePerApp": true,
+    "writeOnlyAtEnd": false,
+    "comment": "results/<host>/<session>/<suite>/ — checkpoint after each app; final updates latest.json"
   },
   "suites": {
     "calibration": {
       "phase": "calibration",
       "samples": 0,
-      "comment": "Cal denseness only (bootstrap 10s then derived); samples=0 means no full 10×"
+      "comment": "Cal denseness only (bootstrap 10s then derived); samples=0 means no full N×"
     },
     "full-suite": {
       "phase": "full-suite",
-      "samples": 10
+      "samples": 5
     },
     "pilot": {
       "phase": "pilot",
-      "samples": 2
+      "samples": 5
     },
     "strict": {
       "phase": "strict",
-      "samples": 10,
+      "samples": 5,
       "settle": {
         "settleDurationMs": 5000,
         "checkIntervalMs": 50,
         "bootstrapSettleDurationMs": 10000
       }
+    },
+    "thrash-sweep": {
+      "phase": "thrash-sweep",
+      "samples": 1,
+      "comment": "Multi-op delay sweeps (1 sample per delay step)"
     }
   },
   "pilot": {
     "stages": [
-      { "id": "stage1-nautilus", "apps": ["nautilus"], "samples": 2 },
-      { "id": "stage2-ghostty", "apps": ["ghostty"], "samples": 2 },
-      { "id": "stage3-inkscape", "apps": ["inkscape"], "samples": 2 }
+      { "id": "stage1-nautilus", "apps": ["nautilus"], "samples": 5 },
+      { "id": "stage2-ghostty", "apps": ["ghostty"], "samples": 5 },
+      { "id": "stage3-inkscape", "apps": ["inkscape"], "samples": 5 }
     ]
   }
 }

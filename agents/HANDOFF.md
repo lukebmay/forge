@@ -1,8 +1,8 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-07 (next-session prep locked for meta-probe)  
+**Updated:** 2026-08-07 (harness reshape shipped; ghostty pilot next)  
 **Branch:** `task/meta-probe-harness`  
-**Active P0:** Harness reshape → multi-op thrash sweeps (2-step then isolated 3-step) → ghostty 5×  
+**Active P0:** Live **ghostty pilot** (single-ops 5× → 2-step sweeps → 3-step if ready) then rest of core apps  
 **Probe path:** [`tests/meta-probe/`](../tests/meta-probe/)  
 **Session start:** [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md)
 
@@ -12,23 +12,26 @@
 
 | Item | Status |
 | --- | --- |
-| First black/wayland single-op data | **Done** (local gitignored results; broad apps 10×) |
-| Core apps | **nautilus, ghostty, inkscape, grok, obs** |
-| Next session | (1) harness 5×/sleep/trial model (2) delay-until-thrash 2-step then 3-step isolation (3) ghostty pilot (4) rest |
+| Harness reshape (5×, core, sleep, trial, thrash, sweep CLI) | **Done** — A/B AGREE, unit tests 48 OK |
+| Multi-op delay-until-thrash code | **Done** (`probe_driver.py sweep`) |
+| Ghostty pilot live | **Next** |
+| Core-app matrix (5 apps) | After ghostty green |
 
-### 3-step sweep (locked)
+### How to run pilot
 
-Pad D₁/D₂ from 2-step last-good → confirm thrashless → **lock one, decrease the other to thrash, reset** → swap axes → joint near-edge → **compare** smallest success to hypothesis. Details in SESSION_HANDOFF.
+```bash
+cd tests/meta-probe
+python3 probe_driver.py prep --host black
+python3 probe_driver.py run --host black --suite full-suite --apps ghostty --samples 5
+python3 probe_driver.py sweep --host black --apps ghostty --maneuver launch_then_move --d-start 2000 --d-step 100
+python3 probe_driver.py sweep --host black --apps ghostty --maneuver launch_then_monitor --d-start 2000 --d-step 100
+# then 3-step with padded last-good D1/D2
+python3 probe_driver.py cleanup
+```
 
 ### Safety
 
-Forge + rivals off; **sleep inhibit in prep, restore on cleanup**. No Guake close. WS1 only when finished.
-
----
-
-## Operator next session
-
-Wayland; Guake WS1 OK; empty test desk. Say **begin harness update** / **proceed**.
+Forge + rivals off during prep; **sleep inhibit in prep, restore on cleanup**. No Guake close. WS1 only when finished.
 
 ---
 
@@ -43,7 +46,7 @@ Do **not** keep guessing layout timeouts until probe data exists.
 | YouTube overlay on other workspace | WS isolation / restack |
 | Inkscape float-only / no border until drag | Admit + float save product gaps |
 
-RC code (peel, etc.) remains on master; **live Wayland product smoke is secondary** to probe pilot this session.
+RC code remains on master; **live Wayland product smoke is secondary** to probe pilot.
 
 ---
 

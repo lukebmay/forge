@@ -10,7 +10,7 @@
         "argv": ["nautilus", "--new-window"],
         "timeoutMs": 20000
       },
-      "tags": ["pilot", "full", "gtk", "stable"]
+      "tags": ["core", "pilot", "full", "gtk", "stable"]
     },
     {
       "id": "ghostty",
@@ -20,7 +20,7 @@
         "argv": ["ghostty", "--gtk-single-instance=false"],
         "timeoutMs": 20000
       },
-      "tags": ["pilot", "full", "dev", "thrash-size"]
+      "tags": ["core", "pilot", "full", "dev", "thrash-size"]
     },
     {
       "id": "inkscape",
@@ -31,7 +31,7 @@
         "desktop": "org.inkscape.Inkscape.desktop",
         "timeoutMs": 90000
       },
-      "tags": ["pilot", "full", "difficult", "late-map", "creative"]
+      "tags": ["core", "pilot", "full", "difficult", "late-map", "creative"]
     },
     {
       "id": "google-chrome",
@@ -66,7 +66,7 @@
         "fallbackArgv": ["google-chrome", "--app-id=ggjocahimgaohmigbfhghnlfcnjemagj"],
         "timeoutMs": 45000
       },
-      "tags": ["full", "dev", "chrome-pwa"]
+      "tags": ["core", "full", "dev", "chrome-pwa"]
     },
     {
       "id": "youtube",
@@ -176,7 +176,7 @@
         "desktop": "obs-studio_obs-studio.desktop",
         "timeoutMs": 90000
       },
-      "tags": ["full", "creative", "streaming", "difficult"],
+      "tags": ["core", "full", "creative", "streaming", "difficult"],
       "notes": "Live podcasting / streaming standard; snap may be obs-studio"
     },
     {

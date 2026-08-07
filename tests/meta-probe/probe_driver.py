@@ -6,7 +6,8 @@ Does not import Forge. Requires meta-probe@forge-test.local enabled;
 Forge and rival tilers must be disabled.
 
 Agreement model (see AGREEMENT.md): intervalic hard/soft checks; soft never
-resets settle duration. Results stay in memory until the run finishes.
+resets settle duration. Default: checkpoint write after each app; open_warm
+opt-in only; sticky window for non-open ops; open_fresh open→settle→close.
 """
 
 from __future__ import annotations
@@ -26,10 +27,13 @@ sys.path.insert(0, str(ROOT))
 from lib.ext_state import parse_info_enabled, parse_list_enabled  # noqa: E402
 from lib.results import (  # noqa: E402
     apply_suite,
+    checkpoint_run,
     namespace_dir,
     new_run_doc,
+    run_output_path,
     settle_to_dict,
     trial_record,
+    write_per_app_enabled,
     write_run,
 )
 from lib.settle import (  # noqa: E402
@@ -41,6 +45,20 @@ from lib.settle import (  # noqa: E402
     derive_knobs_from_calibration,
     match_window,
     settle_config_from_dict,
+)
+from lib.sweep import (  # noqa: E402
+    compare_hypothesis,
+    delay_schedule,
+    hypothesis_from_two_step,
+    isolation_plan,
+    isolation_safe_d2,
+    joint_near_edge_candidates,
+    record_last_good_first_fail,
+)
+from lib.thrash import (  # noqa: E402
+    is_thrash_from_settle,
+    thrash_config_from_dict,
+    trial_is_thrash,
 )
 
 BUS_NAME = "org.gnome.Shell.Extensions.MetaProbe"
@@ -156,25 +174,55 @@ def find_matching_window(match: dict[str, Any]) -> Optional[dict[str, Any]]:
     return wins[-1] if wins else None
 
 
-def close_window(window_id: int) -> None:
+def _is_guake_snap(snap: Optional[dict[str, Any]]) -> bool:
+    if not snap:
+        return False
+    wc = (snap.get("wmClass") or "").lower()
+    wi = (snap.get("wmClassInstance") or "").lower()
+    title = (snap.get("title") or "").lower()
+    return "guake" in wc or "guake" in wi or title.startswith("guake")
+
+
+def close_window(window_id: int, *, allow_guake: bool = False) -> None:
+    """Close by id. Never closes Guake unless allow_guake (app under test is guake)."""
+    wid = int(window_id)
+    if not allow_guake:
+        try:
+            snap = probe_json("SnapshotWindow", str(wid)).get("window")
+            if _is_guake_snap(snap):
+                print(f"  skip close Guake windowId={wid}", file=sys.stderr)
+                return
+        except Exception:
+            # If snapshot fails, still refuse when id might be guake: list-check
+            try:
+                for w in list_windows():
+                    if int(w.get("windowId") or 0) == wid and _is_guake_snap(w):
+                        print(f"  skip close Guake windowId={wid}", file=sys.stderr)
+                        return
+            except Exception:
+                pass
     try:
-        probe_json("Close", str(int(window_id)))
+        probe_json("Close", str(wid))
     except Exception:
         pass
 
 
-def close_windows(ids: set[int] | list[int]) -> None:
+def close_windows(ids: set[int] | list[int], *, allow_guake: bool = False) -> None:
     for wid in list(ids):
         if wid:
-            close_window(int(wid))
+            close_window(int(wid), allow_guake=allow_guake)
             time.sleep(0.05)
 
 
-def close_matching(match: dict[str, Any]) -> None:
+def close_matching(match: dict[str, Any], *, allow_guake: bool = False) -> None:
     for w in find_matching_windows(match):
         wid = int(w.get("windowId") or 0)
-        if wid:
-            close_window(wid)
+        if not wid:
+            continue
+        if not allow_guake and _is_guake_snap(w):
+            print(f"  skip close Guake (match) windowId={wid}", file=sys.stderr)
+            continue
+        close_window(wid, allow_guake=allow_guake)
     time.sleep(0.3)
 
 
@@ -492,20 +540,31 @@ def cmd_focus_workspace(args: argparse.Namespace) -> int:
     return 0 if out.get("ok", True) else 2
 
 
+def _app_allow_guake(app: dict[str, Any]) -> bool:
+    return str(app.get("id") or "").lower() == "guake"
+
+
 def _run_open_fresh(
     app: dict[str, Any],
     cfg: SettleConfig,
     catalog: DisagreementCatalog,
     sample: int,
     owned: dict[str, Any],
+    *,
+    close_after: bool = False,
 ) -> tuple[Optional[dict[str, Any]], Optional[SettleResult], dict[str, Any]]:
+    """
+    Open fresh window and settle. If close_after, close the window after settle
+    (open_fresh matrix samples — no leftover pile). Multi-op maneuvers leave open.
+    """
     match = app.get("match") or {}
+    allow_guake = _app_allow_guake(app)
     map_max = 120000.0
 
     if owned.get("windowId"):
-        close_window(int(owned["windowId"]))
+        close_window(int(owned["windowId"]), allow_guake=allow_guake)
         time.sleep(0.4)
-    close_matching(match)
+    close_matching(match, allow_guake=allow_guake)
 
     clear_events()
     mark = probe_json("BeginMark", f"open_fresh:{app['id']}:{sample}")
@@ -557,7 +616,13 @@ def _run_open_fresh(
     )
     snap = probe_json("SnapshotWindow", str(int(window["windowId"])))
     window = snap.get("window") or window
-    return window, settle, {"ok": True, "kind": "open_fresh"}
+    op_res: dict[str, Any] = {"ok": True, "kind": "open_fresh"}
+    if close_after and window and window.get("windowId"):
+        close_window(int(window["windowId"]), allow_guake=allow_guake)
+        time.sleep(0.25)
+        op_res["closedAfter"] = True
+        window = None
+    return window, settle, op_res
 
 
 def _run_open_warm(
@@ -710,6 +775,16 @@ def run_op(
     return op_result, settle, window
 
 
+def _annotate_thrash(
+    trial: dict[str, Any], thrash_cfg: dict[str, Any]
+) -> dict[str, Any]:
+    # skipped ops (e.g. single-monitor move_to_monitor) must not count as thrash
+    thrash, reason = trial_is_thrash(trial, thrash_cfg)
+    trial["thrash"] = thrash
+    trial["thrashReason"] = reason
+    return trial
+
+
 def run_matrix(
     *,
     host: Optional[str],
@@ -725,8 +800,9 @@ def run_matrix(
     return_ws_when_done: bool = True,
 ) -> Path:
     """
-    In-memory collection only; single write_run at the end.
     Per app+op: 1 calibration then `samples` full trials (unless samples=0).
+    Sticky window for non-open ops; open_fresh closes each sample.
+    Checkpoints after each app when writePerApp (default).
     """
     env = probe_json("GetEnv")
     errs = safety_check(config, allow_forge=allow_forge, env=env)
@@ -738,9 +814,9 @@ def run_matrix(
         config["phase"] = phase_label
 
     settle_cfg = config.get("settle") or {}
+    thrash_cfg = thrash_config_from_dict(config.get("thrash"))
     live_duration = float(settle_cfg.get("settleDurationMs") or 3000)
     live_interval = float(settle_cfg.get("checkIntervalMs") or 100)
-    # mutate settle knobs in a local dict for derivation
     knobs = {
         "settleDurationMs": live_duration,
         "checkIntervalMs": live_interval,
@@ -769,21 +845,42 @@ def run_matrix(
         session=session,
         agreement_contract=contract,
     )
+    doc["thrashConfig"] = thrash_cfg
+    doc["probeVersion"] = config.get("probeVersion", doc.get("probeVersion"))
 
     ensure_workspace(config, no_switch=no_switch_workspace)
     cooldown = float(config.get("cooldownMs") or 500) / 1000.0
     between_apps = float(config.get("betweenAppsMs") or 2000) / 1000.0
     per_op_cal = bool((config.get("matrix") or {}).get("calibrateEachOp", True))
     full_samples = int(samples)
+    per_app_write = write_per_app_enabled(config)
 
     open_ops = [o for o in ops if o.get("kind") in ("open_fresh", "open_warm")]
     other_ops = [o for o in ops if o.get("kind") not in ("open_fresh", "open_warm")]
+
+    results_root = ROOT / (config.get("output") or {}).get("dir", "results")
+    if out_dir is not None:
+        out = Path(out_dir)
+    else:
+        ns0 = doc.get("namespace") or {}
+        if (config.get("output") or {}).get("namespace", True):
+            out = namespace_dir(
+                results_root,
+                host=str(ns0.get("host") or "host"),
+                session=str(ns0.get("session") or "unknown"),
+                suite=str(ns0.get("suite") or "default"),
+            )
+        else:
+            out = results_root
+    out = Path(out)
+    out.mkdir(parents=True, exist_ok=True)
+    run_path = run_output_path(out, doc)
 
     ns = doc.get("namespace") or {}
     print(
         f"run host={ns.get('host')} session={ns.get('session')} suite={ns.get('suite')} "
         f"full_samples={full_samples} apps={len(apps)} ops={len(ops)} "
-        f"cal_each_op={per_op_cal} (memory-only until end)",
+        f"cal_each_op={per_op_cal} write_per_app={per_app_write} path={run_path}",
         file=sys.stderr,
     )
 
@@ -804,6 +901,30 @@ def run_matrix(
         )
         return settle_config_from_dict(s, phase=phase)
 
+    def flush_checkpoint(*, final: bool = False) -> None:
+        doc["disagreementCatalog"] = catalog.to_dict()
+        doc["agreementContract"] = agreement_contract_doc(
+            knobs["settleDurationMs"], knobs["checkIntervalMs"]
+        )
+        doc["derivedKnobs"] = dict(knobs)
+        if final:
+            write_run(
+                doc,
+                out,
+                latest=True,
+                results_root=results_root,
+                path=run_path,
+                update_latest=True,
+            )
+        else:
+            checkpoint_run(
+                doc,
+                run_path,
+                results_root=results_root,
+                update_latest=False,
+            )
+            print(f"  checkpoint → {run_path}", file=sys.stderr)
+
     def append_trial(
         *,
         app_id: str,
@@ -818,29 +939,29 @@ def run_matrix(
         skipped: bool = False,
         skip_reason: Optional[str] = None,
     ) -> None:
-        doc["trials"].append(
-            trial_record(
-                app_id=app_id,
-                op_id=op_id,
-                sample=sample,
-                ok=ok,
-                settle=settle_to_dict(settle) if settle else {},
-                op_result=op_result,
-                window=window,
-                notes=notes,
-                role=role,
-                knobs={
-                    "checkIntervalMs": knobs["checkIntervalMs"]
-                    if role == "full"
-                    else knobs["calibrationCheckIntervalMs"],
-                    "settleDurationMs": knobs["settleDurationMs"]
-                    if bootstrap_done or role == "full"
-                    else knobs["bootstrapSettleDurationMs"],
-                },
-                skipped=skipped,
-                skip_reason=skip_reason,
-            )
+        rec = trial_record(
+            app_id=app_id,
+            op_id=op_id,
+            sample=sample,
+            ok=ok,
+            settle=settle_to_dict(settle) if settle else {},
+            op_result=op_result,
+            window=window,
+            notes=notes,
+            role=role,
+            knobs={
+                "checkIntervalMs": knobs["checkIntervalMs"]
+                if role == "full"
+                else knobs["calibrationCheckIntervalMs"],
+                "settleDurationMs": knobs["settleDurationMs"]
+                if bootstrap_done or role == "full"
+                else knobs["bootstrapSettleDurationMs"],
+            },
+            skipped=skipped,
+            skip_reason=skip_reason,
         )
+        _annotate_thrash(rec, thrash_cfg)
+        doc["trials"].append(rec)
 
     def run_cal_and_full(
         *,
@@ -853,6 +974,7 @@ def run_matrix(
         is_open_warm: bool,
     ) -> tuple[Optional[dict[str, Any]], int, int]:
         nonlocal bootstrap_done, knobs
+        allow_guake = _app_allow_guake(app)
         phase = "bootstrap" if not bootstrap_done else "calibration"
         cal_cfg = cfg_for(phase)
         print(
@@ -862,10 +984,14 @@ def run_matrix(
         )
 
         if is_open_fresh:
-            window, settle, op_res = _run_open_fresh(app, cal_cfg, catalog, 0, window or {})
+            window, settle, op_res = _run_open_fresh(
+                app, cal_cfg, catalog, 0, window or {}, close_after=True
+            )
         elif is_open_warm:
             if not window:
-                window, settle, _ = _run_open_fresh(app, cal_cfg, catalog, 0, {})
+                window, settle, _ = _run_open_fresh(
+                    app, cal_cfg, catalog, 0, {}, close_after=False
+                )
                 time.sleep(cooldown)
             window, settle, op_res = _run_open_warm(
                 app, cal_cfg, catalog, 0, window or {}
@@ -891,7 +1017,11 @@ def run_matrix(
                 )
                 return window, home_monitor, home_workspace
 
-        ok = bool(window and settle and settle.settled)
+        # open_fresh close_after → window None; ok from settle alone
+        if is_open_fresh:
+            ok = bool(settle and settle.settled and (op_res or {}).get("ok", True))
+        else:
+            ok = bool(window and settle and settle.settled)
         append_trial(
             app_id=app["id"],
             op_id=op["id"],
@@ -917,14 +1047,12 @@ def run_matrix(
                 prev_interval_ms=knobs["checkIntervalMs"],
             )
             if not bootstrap_done:
-                # first cal is bootstrap at 10s — adopt derived for rest of session
                 knobs["settleDurationMs"] = derived["settleDurationMs"]
                 knobs["checkIntervalMs"] = derived["checkIntervalMs"]
                 bootstrap_done = True
                 doc["derivedKnobs"] = dict(knobs)
                 print(f"    bootstrap knobs → {knobs}", file=sys.stderr)
             else:
-                # later cals may only coarsen interval slightly / raise duration on thrash
                 knobs["settleDurationMs"] = max(
                     knobs["settleDurationMs"], derived["settleDurationMs"]
                 )
@@ -940,7 +1068,6 @@ def run_matrix(
 
         time.sleep(cooldown)
 
-        # full samples
         full_cfg = cfg_for("full")
         for sample in range(full_samples):
             print(
@@ -951,7 +1078,12 @@ def run_matrix(
             )
             if is_open_fresh:
                 window, settle, op_res = _run_open_fresh(
-                    app, full_cfg, catalog, sample, window or {}
+                    app,
+                    full_cfg,
+                    catalog,
+                    sample,
+                    window or {},
+                    close_after=True,
                 )
             elif is_open_warm:
                 window, settle, op_res = _run_open_warm(
@@ -978,14 +1110,17 @@ def run_matrix(
                     )
                     break
 
-            ok = bool(
-                (op_res or {}).get("ok", True)
-                and settle
-                and settle.settled
-                and (window or not is_open_fresh)
-            )
-            if is_open_fresh or is_open_warm:
+            if is_open_fresh:
+                ok = bool(settle and settle.settled and (op_res or {}).get("ok", True))
+            elif is_open_warm:
                 ok = bool(window and settle and settle.settled)
+            else:
+                ok = bool(
+                    (op_res or {}).get("ok", True)
+                    and settle
+                    and settle.settled
+                    and window
+                )
             append_trial(
                 app_id=app["id"],
                 op_id=op["id"],
@@ -1001,7 +1136,8 @@ def run_matrix(
                 window=window,
             )
             print(
-                f"    ok={ok} wait={getattr(settle, 'wait_ms', None)} "
+                f"    ok={ok} thrash={doc['trials'][-1].get('thrash')} "
+                f"wait={getattr(settle, 'wait_ms', None)} "
                 f"hard={getattr(settle, 'hard_reset_count', None)}",
                 file=sys.stderr,
             )
@@ -1015,6 +1151,7 @@ def run_matrix(
         for ai, app in enumerate(apps):
             print(f"\n=== app {app['id']} ===", file=sys.stderr)
             tags = app.get("tags") or []
+            allow_guake = _app_allow_guake(app)
             ok_launch, why = app_launchable(app)
             if not ok_launch:
                 print(f"  skip {app['id']}: {why}", file=sys.stderr)
@@ -1022,8 +1159,10 @@ def run_matrix(
                     doc["errors"].append(
                         {"app": app["id"], "skipped": True, "reason": why}
                     )
-                    continue
-                doc["errors"].append({"app": app["id"], "error": why})
+                else:
+                    doc["errors"].append({"app": app["id"], "error": why})
+                if per_app_write:
+                    flush_checkpoint(final=False)
                 continue
 
             window: Optional[dict[str, Any]] = None
@@ -1031,19 +1170,32 @@ def run_matrix(
             home_workspace = 0
             match = app.get("match") or {}
 
-            # sequential ops: finish each fully before next
+            # sticky seed once for non-open ops; open_fresh is open→settle→close
             for op in open_ops + other_ops:
                 kind = op.get("kind")
                 is_of = kind == "open_fresh"
                 is_ow = kind == "open_warm"
                 if not is_of and not is_ow and not window:
-                    # seed window with open_fresh settle only (not a counted op sample)
                     seed_cfg = cfg_for("full" if bootstrap_done else "bootstrap")
-                    window, settle, _ = _run_open_fresh(app, seed_cfg, catalog, 0, {})
+                    window, settle, _ = _run_open_fresh(
+                        app, seed_cfg, catalog, 0, {}, close_after=False
+                    )
                     if window:
                         owned_all.add(int(window["windowId"]))
                         home_monitor = int(window.get("monitor") or 0)
                         home_workspace = int(window.get("workspace") or 0)
+                        # sticky seed may also bootstrap knobs
+                        if settle and settle.settled and not bootstrap_done:
+                            derived = derive_knobs_from_calibration(
+                                settle,
+                                prev_duration_ms=knobs["settleDurationMs"],
+                                prev_interval_ms=knobs["checkIntervalMs"],
+                            )
+                            knobs["settleDurationMs"] = derived["settleDurationMs"]
+                            knobs["checkIntervalMs"] = derived["checkIntervalMs"]
+                            bootstrap_done = True
+                            doc["derivedKnobs"] = dict(knobs)
+                            print(f"    seed bootstrap knobs → {knobs}", file=sys.stderr)
                     time.sleep(cooldown)
                 if not is_of and not is_ow and not window:
                     print(f"  skip {op['id']}: no window", file=sys.stderr)
@@ -1059,53 +1211,40 @@ def run_matrix(
                     is_open_warm=is_ow,
                 )
 
-            # teardown app windows
             print(f"  cleanup windows for {app['id']}", file=sys.stderr)
             if window and window.get("windowId"):
                 owned_all.add(int(window["windowId"]))
-            close_matching(match)
-            close_windows(owned_all)
+            close_matching(match, allow_guake=allow_guake)
+            close_windows(owned_all, allow_guake=allow_guake)
             owned_all.clear()
             time.sleep(0.5)
+
+            if per_app_write:
+                flush_checkpoint(final=False)
 
             if ai + 1 < len(apps):
                 time.sleep(between_apps)
     finally:
-        # always close leftovers; only return to WS1 when done
         print("final window cleanup…", file=sys.stderr)
         close_windows(owned_all)
         for app in apps:
             try:
-                close_matching(app.get("match") or {})
+                close_matching(
+                    app.get("match") or {},
+                    allow_guake=_app_allow_guake(app),
+                )
             except Exception:
                 pass
         if return_ws_when_done:
             return_to_operator_desk(config)
+        # durable even on exception mid-run
+        try:
+            flush_checkpoint(final=True)
+        except Exception as e:
+            print(f"warn: final write failed: {e}", file=sys.stderr)
 
-    doc["disagreementCatalog"] = catalog.to_dict()
-    doc["agreementContract"] = agreement_contract_doc(
-        knobs["settleDurationMs"], knobs["checkIntervalMs"]
-    )
-    doc["derivedKnobs"] = dict(knobs)
-
-    # single disk write after all measurement
-    results_root = ROOT / (config.get("output") or {}).get("dir", "results")
-    if out_dir is not None:
-        out = Path(out_dir)
-    else:
-        ns = doc.get("namespace") or {}
-        if (config.get("output") or {}).get("namespace", True):
-            out = namespace_dir(
-                results_root,
-                host=str(ns.get("host") or "host"),
-                session=str(ns.get("session") or "unknown"),
-                suite=str(ns.get("suite") or "default"),
-            )
-        else:
-            out = results_root
-    path = write_run(doc, Path(out), latest=True, results_root=results_root)
-    print(f"\nwrote {path}", file=sys.stderr)
-    return path
+    print(f"\nwrote {run_path}", file=sys.stderr)
+    return run_path
 
 
 def _load_config(args: argparse.Namespace, *, default_suite: str) -> dict[str, Any]:
@@ -1115,6 +1254,523 @@ def _load_config(args: argparse.Namespace, *, default_suite: str) -> dict[str, A
         config = dict(config)
         config["recordDetail"] = "full"
     return apply_suite(config, suite)
+
+
+def select_default_apps(
+    apps_doc: dict[str, Any],
+    config: dict[str, Any],
+    *,
+    include_guake: bool = False,
+) -> list[dict[str, Any]]:
+    """Default full-suite apps: tag `core` (or config.defaultAppTag)."""
+    tag = str(config.get("defaultAppTag") or "core")
+    apps = list(apps_doc.get("apps") or [])
+    core = [a for a in apps if tag in (a.get("tags") or [])]
+    if not core:
+        # fallback: pilot+full if catalog not tagged yet
+        core = [
+            a
+            for a in apps
+            if "full" in (a.get("tags") or []) or "pilot" in (a.get("tags") or [])
+        ]
+    core = [a for a in core if "optional" not in (a.get("tags") or [])]
+    if not include_guake:
+        core = [a for a in core if a.get("id") != "guake"]
+    return core
+
+
+def select_default_ops(ops_doc: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Exclude open_warm and any defaultExclude / optIn ops unless --ops given."""
+    ops = list(ops_doc.get("ops") or [])
+    exclude = set(ops_doc.get("defaultExclude") or [])
+    if (config.get("matrix") or {}).get("excludeOpenWarmByDefault", True):
+        exclude.add("open_warm")
+    out = []
+    for o in ops:
+        if o.get("id") in exclude:
+            continue
+        if o.get("optIn"):
+            continue
+        out.append(o)
+    return out
+
+
+def _move_resize_params(window: dict[str, Any]) -> tuple[int, int, int, int]:
+    frame = window.get("frame") or {}
+    x = int(frame.get("x", 0)) + 48
+    y = int(frame.get("y", 0)) + 48
+    w = max(200, int(frame.get("width", 800)) - 96)
+    h = max(200, int(frame.get("height", 600)) - 96)
+    return x, y, w, h
+
+
+def run_maneuver_once(
+    *,
+    maneuver: str,
+    app: dict[str, Any],
+    cfg: SettleConfig,
+    catalog: DisagreementCatalog,
+    thrash_cfg: dict[str, Any],
+    d_ms: float = 0.0,
+    d1_ms: float = 0.0,
+    d2_ms: float = 0.0,
+    sample: int = 0,
+) -> dict[str, Any]:
+    """
+    Execute one multi-op maneuver; always close app windows after.
+    Returns trial-like dict with thrash, delays, settle of final step.
+    """
+    allow_guake = _app_allow_guake(app)
+    match = app.get("match") or {}
+    close_matching(match, allow_guake=allow_guake)
+
+    result: dict[str, Any] = {
+        "maneuver": maneuver,
+        "appId": app["id"],
+        "sample": sample,
+        "dMs": d_ms,
+        "d1Ms": d1_ms,
+        "d2Ms": d2_ms,
+        "ok": False,
+        "thrash": True,
+        "thrashReason": "",
+        "steps": [],
+    }
+
+    def step_settle(label: str, settle: Optional[SettleResult], extra: Optional[dict] = None):
+        thrash, reason = is_thrash_from_settle(settle, thrash_cfg)
+        entry = {
+            "step": label,
+            "settle": settle_to_dict(settle) if settle else {},
+            "thrash": thrash,
+            "thrashReason": reason,
+        }
+        if extra:
+            entry.update(extra)
+        result["steps"].append(entry)
+        return thrash, reason
+
+    try:
+        window, settle_open, open_res = _run_open_fresh(
+            app, cfg, catalog, sample, {}, close_after=False
+        )
+        thrash, reason = step_settle("open", settle_open, {"opResult": open_res})
+        if thrash or not window:
+            result["thrash"] = True
+            result["thrashReason"] = reason or "open_failed"
+            result["ok"] = False
+            return result
+
+        wid = int(window["windowId"])
+        home_monitor = int(window.get("monitor") or 0)
+
+        if maneuver == "launch_then_move":
+            time.sleep(max(0.0, d_ms) / 1000.0)
+            clear_events()
+            mark = probe_json("BeginMark", f"maneuver:{maneuver}:move")
+            since = int(mark.get("mark", {}).get("seq") or 0)
+            t0 = float(mark.get("mark", {}).get("monoMs") or mono_from_probe())
+            x, y, w, h = _move_resize_params(window)
+            op_res = probe_json("MoveResize", str(wid), str(x), str(y), str(w), str(h))
+            settle, _ = wait_settled(
+                cfg, window_id=wid, t0_mono=t0, since_seq=since, catalog=catalog
+            )
+            thrash, reason = step_settle("move_resize", settle, {"opResult": op_res, "delayMs": d_ms})
+
+        elif maneuver == "launch_then_monitor":
+            env = probe_json("GetEnv")
+            n = int(env.get("nMonitors") or 1)
+            if n < 2:
+                result["ok"] = True
+                result["thrash"] = False
+                result["skipped"] = True
+                result["skipReason"] = "single_monitor"
+                result["thrashReason"] = ""
+                return result
+            time.sleep(max(0.0, d_ms) / 1000.0)
+            clear_events()
+            mark = probe_json("BeginMark", f"maneuver:{maneuver}:monitor")
+            since = int(mark.get("mark", {}).get("seq") or 0)
+            t0 = float(mark.get("mark", {}).get("monoMs") or mono_from_probe())
+            cur = int(window.get("monitor", 0))
+            dest = 1 if cur == 0 else 0
+            op_res = probe_json("MoveToMonitor", str(wid), str(dest))
+            settle, _ = wait_settled(
+                cfg, window_id=wid, t0_mono=t0, since_seq=since, catalog=catalog
+            )
+            thrash, reason = step_settle(
+                "move_to_monitor", settle, {"opResult": op_res, "delayMs": d_ms}
+            )
+
+        elif maneuver == "launch_monitor_move":
+            env = probe_json("GetEnv")
+            n = int(env.get("nMonitors") or 1)
+            if n < 2:
+                result["ok"] = True
+                result["thrash"] = False
+                result["skipped"] = True
+                result["skipReason"] = "single_monitor"
+                return result
+            time.sleep(max(0.0, d1_ms) / 1000.0)
+            clear_events()
+            mark = probe_json("BeginMark", f"maneuver:{maneuver}:monitor")
+            since = int(mark.get("mark", {}).get("seq") or 0)
+            t0 = float(mark.get("mark", {}).get("monoMs") or mono_from_probe())
+            cur = int(window.get("monitor", 0))
+            dest = 1 if cur == 0 else 0
+            op_res = probe_json("MoveToMonitor", str(wid), str(dest))
+            settle_m, _ = wait_settled(
+                cfg, window_id=wid, t0_mono=t0, since_seq=since, catalog=catalog
+            )
+            thrash, reason = step_settle(
+                "move_to_monitor", settle_m, {"opResult": op_res, "delayMs": d1_ms}
+            )
+            if thrash:
+                result["thrash"] = True
+                result["thrashReason"] = reason
+                result["ok"] = False
+                return result
+            snap = probe_json("SnapshotWindow", str(wid)).get("window") or window
+            time.sleep(max(0.0, d2_ms) / 1000.0)
+            clear_events()
+            mark = probe_json("BeginMark", f"maneuver:{maneuver}:move")
+            since = int(mark.get("mark", {}).get("seq") or 0)
+            t0 = float(mark.get("mark", {}).get("monoMs") or mono_from_probe())
+            x, y, w, h = _move_resize_params(snap)
+            op_res = probe_json("MoveResize", str(wid), str(x), str(y), str(w), str(h))
+            settle, _ = wait_settled(
+                cfg, window_id=wid, t0_mono=t0, since_seq=since, catalog=catalog
+            )
+            thrash, reason = step_settle(
+                "move_resize", settle, {"opResult": op_res, "delayMs": d2_ms}
+            )
+        else:
+            result["thrashReason"] = f"unknown_maneuver:{maneuver}"
+            return result
+
+        result["thrash"] = thrash
+        result["thrashReason"] = reason
+        result["ok"] = not thrash
+        # final settle on last step
+        if result["steps"]:
+            result["settle"] = result["steps"][-1].get("settle") or {}
+        return result
+    finally:
+        close_matching(match, allow_guake=allow_guake)
+
+
+def run_two_step_sweep(
+    *,
+    host: Optional[str],
+    config: dict[str, Any],
+    apps: list[dict[str, Any]],
+    maneuver: str,
+    d_start: float,
+    d_step: float,
+    d_min: float,
+    allow_forge: bool,
+    no_switch_workspace: bool,
+    out_dir: Optional[Path],
+    session: Optional[str] = None,
+    stop_on_thrash: bool = True,
+) -> Path:
+    env = probe_json("GetEnv")
+    errs = safety_check(config, allow_forge=allow_forge, env=env)
+    if errs:
+        raise RuntimeError("; ".join(errs))
+
+    config = dict(config)
+    config["phase"] = config.get("phase") or "thrash-sweep"
+    config["suite"] = config.get("suite") or "thrash-sweep"
+    thrash_cfg = thrash_config_from_dict(config.get("thrash"))
+    settle_cfg = config.get("settle") or {}
+    cfg = settle_config_from_dict(settle_cfg, phase="full")
+    catalog = DisagreementCatalog()
+    schedule = delay_schedule(d_start, d_step, d_min=d_min)
+
+    doc = new_run_doc(
+        host=host,
+        config=config,
+        apps={"version": 2, "apps": apps},
+        ops={"version": 3, "maneuvers": [maneuver]},
+        env=env,
+        session=session,
+        agreement_contract=agreement_contract_doc(
+            cfg.settle_duration_ms, cfg.check_interval_ms
+        ),
+    )
+    doc["thrashConfig"] = thrash_cfg
+    doc["sweep"] = {
+        "maneuver": maneuver,
+        "kind": "two_step",
+        "dStartMs": d_start,
+        "dStepMs": d_step,
+        "dMinMs": d_min,
+        "scheduleMs": schedule,
+    }
+    doc["sweepResults"] = {}
+
+    ensure_workspace(config, no_switch=no_switch_workspace)
+    results_root = ROOT / (config.get("output") or {}).get("dir", "results")
+    if out_dir is not None:
+        out = Path(out_dir)
+    else:
+        ns = doc.get("namespace") or {}
+        out = namespace_dir(
+            results_root,
+            host=str(ns.get("host") or "host"),
+            session=str(ns.get("session") or "unknown"),
+            suite=str(ns.get("suite") or "thrash-sweep"),
+        )
+    out.mkdir(parents=True, exist_ok=True)
+    run_path = run_output_path(out, doc)
+    cooldown = float(config.get("cooldownMs") or 500) / 1000.0
+
+    try:
+        for app in apps:
+            print(f"\n=== sweep {maneuver} app={app['id']} ===", file=sys.stderr)
+            ok_launch, why = app_launchable(app)
+            if not ok_launch:
+                doc["errors"].append({"app": app["id"], "error": why})
+                continue
+            pairs: list[tuple[float, bool]] = []
+            for d in schedule:
+                print(f"  D={d}ms…", file=sys.stderr)
+                trial = run_maneuver_once(
+                    maneuver=maneuver,
+                    app=app,
+                    cfg=cfg,
+                    catalog=catalog,
+                    thrash_cfg=thrash_cfg,
+                    d_ms=d,
+                )
+                trial["appId"] = app["id"]
+                trial["opId"] = maneuver
+                trial["role"] = "sweep"
+                doc["trials"].append(trial)
+                thrash = bool(trial.get("thrash"))
+                pairs.append((d, thrash))
+                print(
+                    f"    thrash={thrash} reason={trial.get('thrashReason')}",
+                    file=sys.stderr,
+                )
+                time.sleep(cooldown)
+                if thrash and stop_on_thrash:
+                    break
+            summary = record_last_good_first_fail(pairs)
+            doc["sweepResults"][app["id"]] = summary
+            print(f"  lastGood={summary.get('lastGoodMs')} firstFail={summary.get('firstFailMs')}", file=sys.stderr)
+            if write_per_app_enabled(config):
+                checkpoint_run(doc, run_path, results_root=results_root)
+    finally:
+        return_to_operator_desk(config)
+        doc["disagreementCatalog"] = catalog.to_dict()
+        write_run(doc, out, latest=True, results_root=results_root, path=run_path)
+    print(f"\nwrote {run_path}", file=sys.stderr)
+    return run_path
+
+
+def run_three_step_isolation(
+    *,
+    host: Optional[str],
+    config: dict[str, Any],
+    apps: list[dict[str, Any]],
+    d1_0: float,
+    d2_0: float,
+    d_step: float,
+    d_min: float,
+    pad_ms: float,
+    joint_pad_ms: float,
+    joint_steps: int,
+    allow_forge: bool,
+    no_switch_workspace: bool,
+    out_dir: Optional[Path],
+    session: Optional[str] = None,
+    hypothesis: Optional[dict[str, float]] = None,
+    stop_on_thrash: bool = True,
+) -> Path:
+    env = probe_json("GetEnv")
+    errs = safety_check(config, allow_forge=allow_forge, env=env)
+    if errs:
+        raise RuntimeError("; ".join(errs))
+
+    config = dict(config)
+    config["phase"] = "thrash-sweep"
+    config["suite"] = config.get("suite") or "thrash-sweep"
+    thrash_cfg = thrash_config_from_dict(config.get("thrash"))
+    settle_cfg = config.get("settle") or {}
+    cfg = settle_config_from_dict(settle_cfg, phase="full")
+    catalog = DisagreementCatalog()
+    plan = isolation_plan(
+        d1_0=d1_0,
+        d2_0=d2_0,
+        d_step=d_step,
+        d_min=d_min,
+        joint_pad_ms=joint_pad_ms,
+        joint_steps=joint_steps,
+    )
+    hyp = hypothesis or {"d1Ms": d1_0, "d2Ms": d2_0, "padMs": pad_ms}
+
+    doc = new_run_doc(
+        host=host,
+        config=config,
+        apps={"version": 2, "apps": apps},
+        ops={"version": 3, "maneuvers": ["launch_monitor_move"]},
+        env=env,
+        session=session,
+        agreement_contract=agreement_contract_doc(
+            cfg.settle_duration_ms, cfg.check_interval_ms
+        ),
+    )
+    doc["thrashConfig"] = thrash_cfg
+    doc["sweep"] = {
+        "maneuver": "launch_monitor_move",
+        "kind": "three_step_isolation",
+        "plan": plan,
+        "hypothesis": hyp,
+    }
+    doc["sweepResults"] = {}
+
+    ensure_workspace(config, no_switch=no_switch_workspace)
+    results_root = ROOT / (config.get("output") or {}).get("dir", "results")
+    if out_dir is not None:
+        out = Path(out_dir)
+    else:
+        ns = doc.get("namespace") or {}
+        out = namespace_dir(
+            results_root,
+            host=str(ns.get("host") or "host"),
+            session=str(ns.get("session") or "unknown"),
+            suite=str(ns.get("suite") or "thrash-sweep"),
+        )
+    out.mkdir(parents=True, exist_ok=True)
+    run_path = run_output_path(out, doc)
+    cooldown = float(config.get("cooldownMs") or 500) / 1000.0
+    maneuver = "launch_monitor_move"
+
+    def once(app: dict[str, Any], d1: float, d2: float, role: str) -> dict[str, Any]:
+        trial = run_maneuver_once(
+            maneuver=maneuver,
+            app=app,
+            cfg=cfg,
+            catalog=catalog,
+            thrash_cfg=thrash_cfg,
+            d1_ms=d1,
+            d2_ms=d2,
+        )
+        trial["appId"] = app["id"]
+        trial["opId"] = maneuver
+        trial["role"] = role
+        trial["d1Ms"] = d1
+        trial["d2Ms"] = d2
+        doc["trials"].append(trial)
+        time.sleep(cooldown)
+        return trial
+
+    try:
+        for app in apps:
+            print(f"\n=== 3-step isolation app={app['id']} ===", file=sys.stderr)
+            ok_launch, why = app_launchable(app)
+            if not ok_launch:
+                doc["errors"].append({"app": app["id"], "error": why})
+                continue
+
+            app_res: dict[str, Any] = {"hypothesis": hyp}
+
+            # 1. confirm thrashless at (D1⁰, D2⁰)
+            print(f"  confirm D1={d1_0} D2={d2_0}…", file=sys.stderr)
+            t = once(app, d1_0, d2_0, "confirm")
+            app_res["confirm"] = {
+                "d1Ms": d1_0,
+                "d2Ms": d2_0,
+                "thrash": t.get("thrash"),
+                "thrashReason": t.get("thrashReason"),
+            }
+            if t.get("thrash") and not t.get("skipped"):
+                app_res["error"] = "confirm_thrashed"
+                doc["sweepResults"][app["id"]] = app_res
+                if write_per_app_enabled(config):
+                    checkpoint_run(doc, run_path, results_root=results_root)
+                continue
+            if t.get("skipped"):
+                app_res["skipped"] = t.get("skipReason")
+                doc["sweepResults"][app["id"]] = app_res
+                continue
+
+            # 2. lock D1, sweep D2 down
+            pairs_d2: list[tuple[float, bool]] = []
+            for d2 in plan["sweepD2"]["scheduleMs"]:
+                print(f"  lock D1={d1_0} sweep D2={d2}…", file=sys.stderr)
+                t = once(app, d1_0, d2, "sweep_d2")
+                pairs_d2.append((d2, bool(t.get("thrash"))))
+                if t.get("thrash") and stop_on_thrash:
+                    break
+            sum_d2 = record_last_good_first_fail(pairs_d2)
+            app_res["d2"] = sum_d2
+            safe_d2 = isolation_safe_d2(
+                d2_0=d2_0, last_good_d2=sum_d2.get("lastGoodMs"), pad_ms=pad_ms
+            )
+            app_res["safeD2Ms"] = safe_d2
+
+            # 3. lock D2 safe, sweep D1 down
+            pairs_d1: list[tuple[float, bool]] = []
+            for d1 in plan["sweepD1"]["scheduleMs"]:
+                print(f"  lock D2={safe_d2} sweep D1={d1}…", file=sys.stderr)
+                t = once(app, d1, safe_d2, "sweep_d1")
+                pairs_d1.append((d1, bool(t.get("thrash"))))
+                if t.get("thrash") and stop_on_thrash:
+                    break
+            sum_d1 = record_last_good_first_fail(pairs_d1)
+            app_res["d1"] = sum_d1
+
+            d1_star = sum_d1.get("lastGoodMs")
+            d2_star = sum_d2.get("lastGoodMs")
+            app_res["lastGood"] = {"d1Ms": d1_star, "d2Ms": d2_star}
+            app_res["firstFail"] = {
+                "d1Ms": sum_d1.get("firstFailMs"),
+                "d2Ms": sum_d2.get("firstFailMs"),
+            }
+
+            # 4. joint near-edge
+            joint_rows = []
+            candidates = joint_near_edge_candidates(
+                d1_star=d1_star,
+                d2_star=d2_star,
+                pad_ms=joint_pad_ms,
+                step_ms=d_step,
+                max_steps=joint_steps,
+            )
+            best_joint: Optional[tuple[float, float]] = None
+            for d1, d2 in candidates:
+                print(f"  joint D1={d1} D2={d2}…", file=sys.stderr)
+                t = once(app, d1, d2, "joint")
+                joint_rows.append(
+                    {"d1Ms": d1, "d2Ms": d2, "thrash": t.get("thrash")}
+                )
+                if not t.get("thrash"):
+                    best_joint = (d1, d2)
+                elif stop_on_thrash and best_joint is not None:
+                    break
+            app_res["joint"] = joint_rows
+            if best_joint:
+                measured = {"d1Ms": best_joint[0], "d2Ms": best_joint[1]}
+            else:
+                measured = {"d1Ms": d1_star, "d2Ms": d2_star}
+            app_res["measured"] = measured
+            app_res["hypothesisCompare"] = compare_hypothesis(hyp, measured)
+            doc["sweepResults"][app["id"]] = app_res
+            print(
+                f"  measured={measured} vs hyp={hyp} → {app_res['hypothesisCompare']}",
+                file=sys.stderr,
+            )
+            if write_per_app_enabled(config):
+                checkpoint_run(doc, run_path, results_root=results_root)
+    finally:
+        return_to_operator_desk(config)
+        doc["disagreementCatalog"] = catalog.to_dict()
+        write_run(doc, out, latest=True, results_root=results_root, path=run_path)
+    print(f"\nwrote {run_path}", file=sys.stderr)
+    return run_path
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -1130,19 +1786,19 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     app_filter = set(args.apps.split(",")) if args.apps else None
     op_filter = set(args.ops.split(",")) if args.ops else None
-    samples = int(args.samples if args.samples is not None else config.get("samples") or 10)
+    samples = int(args.samples if args.samples is not None else config.get("samples") or 5)
 
-    apps = [a for a in apps_doc.get("apps") or [] if not app_filter or a["id"] in app_filter]
-    if not app_filter:
-        apps = [
-            a
-            for a in apps
-            if "full" in (a.get("tags") or []) or "pilot" in (a.get("tags") or [])
-        ]
-        apps = [a for a in apps if "optional" not in (a.get("tags") or [])]
-        if not getattr(args, "include_guake", False):
-            apps = [a for a in apps if a.get("id") != "guake"]
-    ops = [o for o in ops_doc.get("ops") or [] if not op_filter or o["id"] in op_filter]
+    if app_filter:
+        apps = [a for a in apps_doc.get("apps") or [] if a["id"] in app_filter]
+    else:
+        apps = select_default_apps(
+            apps_doc, config, include_guake=getattr(args, "include_guake", False)
+        )
+
+    if op_filter:
+        ops = [o for o in ops_doc.get("ops") or [] if o["id"] in op_filter]
+    else:
+        ops = select_default_ops(ops_doc, config)
 
     try:
         path = run_matrix(
@@ -1157,6 +1813,88 @@ def cmd_run(args: argparse.Namespace) -> int:
             session=getattr(args, "session", None),
             return_ws_when_done=not getattr(args, "no_return_ws", False),
         )
+    except Exception as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    print(path)
+    return 0
+
+
+def cmd_sweep(args: argparse.Namespace) -> int:
+    config = _load_config(args, default_suite="thrash-sweep")
+    apps_doc = _load_json(ROOT / "apps.json")
+    sw = config.get("sweep") or {}
+
+    try:
+        probe_json("Ping")
+    except Exception as e:
+        print(f"error: probe not reachable: {e}", file=sys.stderr)
+        return 1
+
+    app_filter = set(args.apps.split(",")) if args.apps else None
+    if app_filter:
+        apps = [a for a in apps_doc.get("apps") or [] if a["id"] in app_filter]
+    else:
+        apps = select_default_apps(apps_doc, config)
+
+    d_start = float(args.d_start if args.d_start is not None else sw.get("dStartMs", 2000))
+    d_step = float(args.d_step if args.d_step is not None else sw.get("dStepMs", 100))
+    d_min = float(args.d_min if args.d_min is not None else sw.get("dMinMs", 0))
+    pad_ms = float(args.pad if args.pad is not None else sw.get("padMs", 200))
+    stop = not getattr(args, "no_stop_on_thrash", False)
+
+    maneuver = args.maneuver
+    try:
+        if maneuver in ("launch_then_move", "launch_then_monitor"):
+            path = run_two_step_sweep(
+                host=args.host,
+                config=config,
+                apps=apps,
+                maneuver=maneuver,
+                d_start=d_start,
+                d_step=d_step,
+                d_min=d_min,
+                allow_forge=args.allow_forge,
+                no_switch_workspace=args.no_switch_workspace,
+                out_dir=Path(args.out_dir) if args.out_dir else None,
+                session=getattr(args, "session", None),
+                stop_on_thrash=stop,
+            )
+        elif maneuver == "launch_monitor_move":
+            d1 = float(args.d1 if args.d1 is not None else d_start)
+            d2 = float(args.d2 if args.d2 is not None else d_start)
+            # optional hypothesis from prior 2-step last-goods
+            hyp = None
+            if args.hyp_monitor is not None or args.hyp_move is not None:
+                hyp = hypothesis_from_two_step(
+                    launch_then_monitor_last_good=args.hyp_monitor,
+                    launch_then_move_last_good=args.hyp_move,
+                    pad_ms=pad_ms,
+                    default_ms=d_start,
+                )
+                d1 = hyp["d1Ms"]
+                d2 = hyp["d2Ms"]
+            path = run_three_step_isolation(
+                host=args.host,
+                config=config,
+                apps=apps,
+                d1_0=d1,
+                d2_0=d2,
+                d_step=d_step,
+                d_min=d_min,
+                pad_ms=pad_ms,
+                joint_pad_ms=float(sw.get("jointPadMs", 50)),
+                joint_steps=int(sw.get("jointSteps", 3)),
+                allow_forge=args.allow_forge,
+                no_switch_workspace=args.no_switch_workspace,
+                out_dir=Path(args.out_dir) if args.out_dir else None,
+                session=getattr(args, "session", None),
+                hypothesis=hyp,
+                stop_on_thrash=stop,
+            )
+        else:
+            print(f"error: unknown maneuver {maneuver}", file=sys.stderr)
+            return 2
     except Exception as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
@@ -1194,7 +1932,11 @@ def cmd_pilot(args: argparse.Namespace) -> int:
         for i in stage.get("apps") or []:
             if i in by_id and by_id[i] not in apps:
                 apps.append(by_id[i])
-    samples = int(args.samples if args.samples is not None else 2)
+    samples = int(
+        args.samples if args.samples is not None else config.get("samples") or 5
+    )
+    if not args.ops:
+        ops_all = select_default_ops(ops_doc, config)
     try:
         path = run_matrix(
             host=args.host,
@@ -1245,11 +1987,17 @@ def build_parser() -> argparse.ArgumentParser:
     se = sub.add_parser("env", help="Print probe GetEnv")
     se.set_defaults(func=cmd_env)
 
-    spr = sub.add_parser("prep", help="Install/enable probe; disable Forge+rivals")
+    spr = sub.add_parser(
+        "prep",
+        help="Install/enable probe; disable Forge+rivals; inhibit sleep/idle",
+    )
     spr.add_argument("--host", default=None)
     spr.set_defaults(func=cmd_prep)
 
-    sc = sub.add_parser("cleanup", help="Disable probe; restore Forge+rivals; WS1")
+    sc = sub.add_parser(
+        "cleanup",
+        help="Disable probe; restore Forge+rivals+sleep; WS1",
+    )
     sc.set_defaults(func=cmd_cleanup)
 
     sf = sub.add_parser("preflight", help="Ping + safety (Forge/rivals off)")
@@ -1259,7 +2007,7 @@ def build_parser() -> argparse.ArgumentParser:
     sf.set_defaults(func=cmd_preflight)
 
     for name, help_ in (
-        ("run", "Matrix: 1 cal + N full samples per app+op"),
+        ("run", "Matrix: 1 cal + N full samples per app+op (core apps; no open_warm)"),
         ("pilot", "Pilot apps with agreement settle"),
         ("calibrate", "Calibration suite (dense interval; bootstrap duration)"),
     ):
@@ -1273,16 +2021,24 @@ def build_parser() -> argparse.ArgumentParser:
         sr.add_argument(
             "--suite",
             default=None,
-            help="calibration | full-suite | pilot | strict",
+            help="calibration | full-suite | pilot | strict | thrash-sweep",
         )
         sr.add_argument("--config", default=None)
-        sr.add_argument("--apps", default=None, help="comma app ids")
-        sr.add_argument("--ops", default=None, help="comma op ids")
+        sr.add_argument(
+            "--apps",
+            default=None,
+            help="comma app ids (default: tag core — nautilus,ghostty,inkscape,grok,obs)",
+        )
+        sr.add_argument(
+            "--ops",
+            default=None,
+            help="comma op ids (default: all except open_warm; pass open_warm to opt in)",
+        )
         sr.add_argument(
             "--samples",
             type=int,
             default=None,
-            help="full samples per op after calibration (default 10)",
+            help="full samples per op after calibration (default 5)",
         )
         sr.add_argument("--out-dir", default=None)
         sr.add_argument("--allow-forge", action="store_true")
@@ -1309,6 +2065,54 @@ def build_parser() -> argparse.ArgumentParser:
             sr.set_defaults(func=cmd_pilot)
         else:
             sr.set_defaults(func=cmd_calibrate)
+
+    ss = sub.add_parser(
+        "sweep",
+        help="Multi-op delay thrash sweep (2-step or 3-step isolation)",
+    )
+    ss.add_argument("--host", default=None)
+    ss.add_argument("--session", default=None)
+    ss.add_argument("--suite", default="thrash-sweep")
+    ss.add_argument("--config", default=None)
+    ss.add_argument(
+        "--apps",
+        default=None,
+        help="comma app ids (default: core)",
+    )
+    ss.add_argument(
+        "--maneuver",
+        required=True,
+        choices=["launch_then_move", "launch_then_monitor", "launch_monitor_move"],
+        help="2-step: launch_then_move|launch_then_monitor; 3-step: launch_monitor_move",
+    )
+    ss.add_argument("--d-start", type=float, default=None, help="start delay ms (high)")
+    ss.add_argument("--d-step", type=float, default=None, help="step down ms")
+    ss.add_argument("--d-min", type=float, default=None, help="minimum delay ms")
+    ss.add_argument("--d1", type=float, default=None, help="3-step D1 start (ms)")
+    ss.add_argument("--d2", type=float, default=None, help="3-step D2 start (ms)")
+    ss.add_argument("--pad", type=float, default=None, help="pad above last-good (ms)")
+    ss.add_argument(
+        "--hyp-monitor",
+        type=float,
+        default=None,
+        help="2-step launch_then_monitor last-good → pad into D1",
+    )
+    ss.add_argument(
+        "--hyp-move",
+        type=float,
+        default=None,
+        help="2-step launch_then_move last-good → pad into D2",
+    )
+    ss.add_argument("--out-dir", default=None)
+    ss.add_argument("--allow-forge", action="store_true")
+    ss.add_argument("--no-switch-workspace", action="store_true")
+    ss.add_argument(
+        "--no-stop-on-thrash",
+        action="store_true",
+        help="Continue full schedule after first thrash",
+    )
+    ss.add_argument("--keep-detail", action="store_true")
+    ss.set_defaults(func=cmd_sweep)
 
     sw = sub.add_parser(
         "focus-workspace",

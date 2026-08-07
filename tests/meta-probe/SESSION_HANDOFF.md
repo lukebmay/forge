@@ -3,7 +3,7 @@
 **Branch:** `task/meta-probe-harness`  
 **Host:** `black`  
 **Path:** `tests/meta-probe/`  
-**Updated:** 2026-08-07 (next-session prep locked; commit when ready)
+**Updated:** 2026-08-07 (harness reshape shipped; ready for ghostty pilot)
 
 ## Status
 
@@ -11,9 +11,9 @@
 | --- | --- |
 | Agreement settle v1 | **Shipped** |
 | First black/wayland data (10×, broad apps) | **Collected** (local results gitignored) |
-| Harness reshape (5×, core apps, sleep, trial model) | **Next session #1** |
-| Multi-op delay-until-thrash (2-step, then 3-step) | **Next session #2** |
-| Ghostty pilot (bootstrap → 5× → teardown) | **Next session #3** |
+| Harness reshape (5×, core apps, sleep, trial model) | **Shipped** |
+| Multi-op delay-until-thrash (2-step, then 3-step) | **Shipped** (CLI `sweep`; live run next) |
+| Ghostty pilot (bootstrap → 5× → teardown) | **Next** |
 | Core-app matrix (5 apps) | After ghostty green |
 
 ## What we already have (single-op baselines)
@@ -108,18 +108,26 @@ prep (probe on, Forge off, sleep inhibit)
 - Small fixes → nautilus, grok, inkscape, obs  
 - Large harness churn → re-run **all five** including ghostty  
 
-## Agent commands (after harness lands)
+## Agent commands (harness ready)
 
 ```bash
 cd /home/luke/dev/me/forge
 git checkout task/meta-probe-harness
 cd tests/meta-probe
-python3 -m unittest test_ext_state test_settle test_results -q
-python3 probe_driver.py prep --host black
+python3 -m unittest test_ext_state test_settle test_results test_thrash test_sweep -q
+python3 probe_driver.py prep --host black   # sleep inhibit + probe on + Forge off
 python3 probe_driver.py run --host black --suite full-suite --samples 5 --apps ghostty
+python3 probe_driver.py sweep --host black --apps ghostty --maneuver launch_then_move --d-start 2000 --d-step 100
+python3 probe_driver.py sweep --host black --apps ghostty --maneuver launch_then_monitor --d-start 2000 --d-step 100
+python3 probe_driver.py sweep --host black --apps ghostty --maneuver launch_monitor_move \
+  --hyp-monitor <lastGood> --hyp-move <lastGood> --d-step 100
 python3 analyze.py results/black/wayland/full-suite/latest.json
-python3 probe_driver.py cleanup
+python3 probe_driver.py cleanup             # sleep restore + WS1 + Forge on
 ```
+
+**Harness notes:** default apps = `core` tag; `open_warm` opt-in via `--ops`;
+per-app atomic checkpoint under `results/<host>/<session>/<suite>/`; thrash =
+settle fail | excess hard resets | wait ≫ settleDuration.
 
 ## Pre-session checklist (operator / agent)
 

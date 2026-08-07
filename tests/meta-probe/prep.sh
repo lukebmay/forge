@@ -188,5 +188,51 @@ if probe_on is not True:
     raise SystemExit("probe does not report enabled")
 PY
 
-log "OK — ready for pilot/run. Cleanup later: $ROOT/cleanup.sh"
+# --- sleep/idle inhibit (FIRM: cleanup must restore) ---
+# Background systemd-inhibit sleep infinity; PID recorded in state + inhibit.pid.
+INHIBIT_PID_FILE="$STATE_DIR/inhibit.pid"
+if [[ -f "$INHIBIT_PID_FILE" ]]; then
+  old_pid="$(cat "$INHIBIT_PID_FILE" 2>/dev/null || true)"
+  if [[ -n "${old_pid:-}" ]] && kill -0 "$old_pid" 2>/dev/null; then
+    log "sleep inhibit already active (pid $old_pid)"
+  else
+    rm -f "$INHIBIT_PID_FILE"
+  fi
+fi
+
+if [[ ! -f "$INHIBIT_PID_FILE" ]]; then
+  if command -v systemd-inhibit >/dev/null 2>&1; then
+    log "starting sleep/idle inhibit (systemd-inhibit)"
+    # shellcheck disable=SC2086
+    systemd-inhibit \
+      --what=idle:sleep:handle-lid-switch \
+      --who=meta-probe \
+      --why="Meta probe measurement session" \
+      --mode=block \
+      sleep infinity &
+    inhibit_pid=$!
+    echo "$inhibit_pid" >"$INHIBIT_PID_FILE"
+    python3 - "$STATE_FILE" "$inhibit_pid" <<'PY'
+import json, sys
+from pathlib import Path
+from datetime import datetime, timezone
+
+path = Path(sys.argv[1])
+pid = int(sys.argv[2])
+data = json.loads(path.read_text()) if path.exists() else {}
+data["sleepInhibit"] = {
+    "method": "systemd-inhibit",
+    "pid": pid,
+    "what": "idle:sleep:handle-lid-switch",
+    "startedAt": datetime.now(timezone.utc).isoformat(),
+}
+path.write_text(json.dumps(data, indent=2) + "\n")
+print(f"  sleepInhibit pid={pid}", file=sys.stderr)
+PY
+  else
+    log "warn: systemd-inhibit not found — sleep may interrupt long runs"
+  fi
+fi
+
+log "OK — ready for pilot/run (sleep inhibited if available). Cleanup later: $ROOT/cleanup.sh"
 echo "$STATE_FILE"

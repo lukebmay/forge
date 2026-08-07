@@ -1,18 +1,20 @@
 {
-  "version": 2,
-  "description": "Meta ops Forge uses (or will use). Phase A = serial single-op. Open modes are distinct ops.",
+  "version": 3,
+  "description": "Meta ops + multi-op maneuvers. Phase A = serial single-op. open_warm is opt-in only (piles multi-instance windows).",
+  "defaultExclude": ["open_warm"],
   "ops": [
     {
       "id": "open_fresh",
-      "label": "Cold/fresh open (close prior owned window, spawn new)",
+      "label": "Cold/fresh open (close prior, spawn, settle, close)",
       "kind": "open_fresh",
-      "notes": "Each sample: ensure no owned window, spawn, map→settle"
+      "notes": "Each sample: open → settle → close (no leftover pile)"
     },
     {
       "id": "open_warm",
       "label": "Warm open (process already running; launch again)",
       "kind": "open_warm",
-      "notes": "After a living window exists: launch again without killing first. Multi-instance → second map; single-instance → focus/reuse path"
+      "optIn": true,
+      "notes": "OPT-IN ONLY. After a living window exists: launch again without killing first. Multi-instance → piles windows; excluded from default full-suite."
     },
     {
       "id": "move_resize",
@@ -79,6 +81,29 @@
       "id": "fullscreen_toggle",
       "label": "fullscreen then unfullscreen",
       "kind": "fullscreen_toggle"
+    }
+  ],
+  "maneuvers": [
+    {
+      "id": "launch_then_move",
+      "label": "open → delay D → move_resize → settle",
+      "kind": "launch_then_move",
+      "steps": 2,
+      "notes": "2-step thrash sweep: high D → down until thrash"
+    },
+    {
+      "id": "launch_then_monitor",
+      "label": "open → delay D → move_to_monitor → settle",
+      "kind": "launch_then_monitor",
+      "steps": 2,
+      "notes": "2-step thrash sweep; needs ≥2 monitors"
+    },
+    {
+      "id": "launch_monitor_move",
+      "label": "open → D1 → move_to_monitor → D2 → move_resize → settle",
+      "kind": "launch_monitor_move",
+      "steps": 3,
+      "notes": "3-step isolation sweep (lock one delay, thrash-search the other)"
     }
   ]
 }
