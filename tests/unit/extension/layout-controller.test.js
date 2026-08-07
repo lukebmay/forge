@@ -289,6 +289,7 @@ describe("LayoutController agreement + verify scanner", () => {
       renderTree: vi.fn((from) => {
         renderCalls.push(from);
       }),
+      reassertTilesByIds: vi.fn(() => 0),
     };
   });
 
@@ -398,7 +399,7 @@ describe("LayoutController agreement + verify scanner", () => {
     expect(lc.pendingVerifyReasons).toContain("size-changed");
   });
 
-  it("mismatch retries layout up to LAYOUT_VERIFY_MISMATCH_MAX then give-up", () => {
+  it("pure rect-mismatch uses targeted reassert (no full layout) until give-up", () => {
     const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});
     const lc = make({
       scan: () => ({
@@ -408,7 +409,7 @@ describe("LayoutController agreement + verify scanner", () => {
       }),
     });
 
-    // Each mismatch verify fire re-requests layout until the cap.
+    // Each mismatch verify reasserts tiles + re-requests verify until the cap.
     for (let i = 1; i <= LAYOUT_VERIFY_MISMATCH_MAX; i++) {
       lc.cancel();
       lc.requestVerify(`m${i}`);
@@ -416,13 +417,14 @@ describe("LayoutController agreement + verify scanner", () => {
       expect(lc.mismatchLayoutRequestCount).toBe(i);
       expect(lc.agreementCount).toBe(0);
       expect(lc._mismatchGiveUp).toBe(false);
-      clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
-      expect(wm.renderTree).toHaveBeenCalledTimes(i);
-      expect(wm.renderTree).toHaveBeenLastCalledWith("verify-mismatch");
+      expect(wm.reassertTilesByIds).toHaveBeenCalledTimes(i);
+      // Pure rect path: no forest apply.
+      expect(wm.renderTree).not.toHaveBeenCalled();
     }
 
-    // Cap+1: no further layout; give-up + Logger.error once.
+    // Cap+1: force reassert + give-up + Logger.error once; no layout.
     lc.cancel();
+    const reassertBefore = wm.reassertTilesByIds.mock.calls.length;
     lc.requestVerify("m-give-up");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.mismatchLayoutRequestCount).toBe(LAYOUT_VERIFY_MISMATCH_MAX);
@@ -431,19 +433,40 @@ describe("LayoutController agreement + verify scanner", () => {
     expect(errorSpy).toHaveBeenCalledTimes(1);
     expect(String(errorSpy.mock.calls[0][0])).toMatch(/give-up/);
     expect(String(errorSpy.mock.calls[0][0])).toMatch(/rect-mismatch|sample=/);
+    expect(wm.reassertTilesByIds.mock.calls.length).toBe(reassertBefore + 1);
+    const lastCall = wm.reassertTilesByIds.mock.calls.at(-1);
+    expect(lastCall[0]).toEqual([1]);
+    expect(lastCall[1]).toEqual({ force: true });
+    expect(wm.renderTree).not.toHaveBeenCalled();
 
-    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS * 2);
-    expect(wm.renderTree).toHaveBeenCalledTimes(LAYOUT_VERIFY_MISMATCH_MAX);
-
-    // Further mismatches stay quiet (still reset agreement).
+    // Further mismatches stay quiet (still reset agreement); no extra force.
     lc.cancel();
+    const reassertAtGiveUp = wm.reassertTilesByIds.mock.calls.length;
     lc.requestVerify("m-quiet");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(errorSpy).toHaveBeenCalledTimes(1);
-    expect(wm.renderTree).toHaveBeenCalledTimes(LAYOUT_VERIFY_MISMATCH_MAX);
+    expect(wm.reassertTilesByIds.mock.calls.length).toBe(reassertAtGiveUp);
     expect(lc.agreementCount).toBe(0);
 
     errorSpy.mockRestore();
+  });
+
+  it("mon-mismatch still requests full layout re-apply", () => {
+    const lc = make({
+      scan: () => ({
+        ok: false,
+        checked: 1,
+        mismatches: [{ id: 9, reasons: ["mon-mismatch"] }],
+      }),
+    });
+
+    lc.requestVerify("mon");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(lc.mismatchLayoutRequestCount).toBe(1);
+    expect(wm.reassertTilesByIds).not.toHaveBeenCalled();
+    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
+    expect(wm.renderTree).toHaveBeenCalledTimes(1);
+    expect(wm.renderTree).toHaveBeenCalledWith("verify-mismatch");
   });
 
   it("successful agreement clears mismatch budget for a later wave", () => {
@@ -462,11 +485,11 @@ describe("LayoutController agreement + verify scanner", () => {
     lc.requestVerify("m1");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.mismatchLayoutRequestCount).toBe(1);
-    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
-    expect(wm.renderTree).toHaveBeenCalledTimes(1);
+    expect(wm.reassertTilesByIds).toHaveBeenCalledTimes(1);
+    expect(wm.renderTree).not.toHaveBeenCalled();
 
     ok = true;
-    lc.cancel(); // drop auto agreement-confirm noise after we flip ok
+    lc.cancel(); // drop auto reassert-verify / agreement-confirm noise
     lc.requestVerify("good");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.agreementCount).toBe(1);
@@ -479,8 +502,7 @@ describe("LayoutController agreement + verify scanner", () => {
     lc.requestVerify("m2");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.mismatchLayoutRequestCount).toBe(1);
-    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
-    expect(wm.renderTree).toHaveBeenCalledTimes(2);
+    expect(wm.reassertTilesByIds).toHaveBeenCalledTimes(2);
   });
 
   it("markUnsettled resets mismatch give-up so a new wave can retry", () => {
@@ -498,13 +520,13 @@ describe("LayoutController agreement + verify scanner", () => {
       lc.cancel();
       lc.requestVerify(`e${i}`);
       clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
-      clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
     }
     lc.cancel();
     lc.requestVerify("give-up");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc._mismatchGiveUp).toBe(true);
     expect(errorSpy).toHaveBeenCalledTimes(1);
+    const reassertAtGiveUp = wm.reassertTilesByIds.mock.calls.length;
 
     // External drift must not leave the controller permanently dead.
     lc.markUnsettled("external-size");
@@ -516,8 +538,8 @@ describe("LayoutController agreement + verify scanner", () => {
     lc.requestVerify("retry-wave");
     clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
     expect(lc.mismatchLayoutRequestCount).toBe(1);
-    clock.advance(LAYOUT_REQUEST_DEBOUNCE_MS);
-    expect(wm.renderTree).toHaveBeenCalledTimes(LAYOUT_VERIFY_MISMATCH_MAX + 1);
+    expect(wm.reassertTilesByIds.mock.calls.length).toBe(reassertAtGiveUp + 1);
+    expect(wm.renderTree).not.toHaveBeenCalled();
 
     errorSpy.mockRestore();
   });
