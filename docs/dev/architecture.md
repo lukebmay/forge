@@ -125,10 +125,11 @@ open resets quiet and does not early-`requestLayout`.
 **CL5 multi-open / layout CLI:** DBus `LayoutBatch(begin|end)` →
 `wm.beginOpenLayoutBatch` / `endOpenLayoutBatch`. While depth > 0, open commits
 and `requestLayout` only latch need-commit (no per-app mid-batch render).
-`forge layout` wraps launches: begin → open all → `wait_for_tree_stable`
-(LF6 fingerprint = **batch quiet**) → residual `RunSteps` (freeze → ops → one
-`renderTree` + post-render verify) → end (one deferred `requestLayout` only if
-no residual render already cleared the latch).
+`forge layout` wraps launches: begin → open all → map-pin wait → residual
+`RunSteps` (freeze → ops → one `renderTree` + post-render verify) → end (one
+deferred `requestLayout` only if no residual render already cleared the latch).
+Optional debug LF6 whole-tree fingerprint quiet:
+`--wait-tree-stable` / `FORGE_LAYOUT_WAIT_TREE_STABLE=1` (not the default gate).
 
 **CL10 layout-apply chrome (default on):** GSettings `layout-apply-chrome-enabled`
 (default **true**). During `beginOpenLayoutBatch` (depth ≥ 1) shows a

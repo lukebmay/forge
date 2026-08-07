@@ -25,6 +25,7 @@ from layout_apply import (  # noqa: E402
     forest_stability_fingerprint,
     ghostty_multi_instance_argv,
     is_ghostty_launch_target,
+    layout_wait_tree_stable_enabled,
     move_step_window_ids,
     open_action_to_launch_fields,
     partition_plan_actions,
@@ -535,7 +536,40 @@ class TestWindowSettledLf5(unittest.TestCase):
 
 
 class TestForestStabilityLf6(unittest.TestCase):
-    """LF6: whole-tree fingerprint + stable wait before residual rehome."""
+    """LF6 helpers: fingerprint + optional wait (debug; not default apply gate)."""
+
+    def test_wait_tree_stable_enabled_default_off(self):
+        self.assertFalse(layout_wait_tree_stable_enabled(flag=False, env={}))
+        self.assertFalse(
+            layout_wait_tree_stable_enabled(flag=False, env={"FORGE_LAYOUT_WAIT_TREE_STABLE": ""})
+        )
+        self.assertFalse(
+            layout_wait_tree_stable_enabled(flag=False, env={"FORGE_LAYOUT_WAIT_TREE_STABLE": "0"})
+        )
+
+    def test_wait_tree_stable_enabled_flag_or_env(self):
+        self.assertTrue(layout_wait_tree_stable_enabled(flag=True, env={}))
+        self.assertTrue(
+            layout_wait_tree_stable_enabled(
+                flag=False, env={"FORGE_LAYOUT_WAIT_TREE_STABLE": "1"}
+            )
+        )
+        self.assertTrue(
+            layout_wait_tree_stable_enabled(
+                flag=False, env={"FORGE_LAYOUT_WAIT_TREE_STABLE": "true"}
+            )
+        )
+        self.assertTrue(
+            layout_wait_tree_stable_enabled(
+                flag=False, env={"FORGE_LAYOUT_WAIT_TREE_STABLE": "YES"}
+            )
+        )
+        # Flag wins even if env is unset/falsey.
+        self.assertTrue(
+            layout_wait_tree_stable_enabled(
+                flag=True, env={"FORGE_LAYOUT_WAIT_TREE_STABLE": "0"}
+            )
+        )
 
     def test_fingerprint_stable_on_same_forest(self):
         forest = _load("tree-perfect.json")
@@ -708,14 +742,13 @@ class TestForestStabilityLf6(unittest.TestCase):
         self.assertLess(out["samples"], 3)
         self.assertGreaterEqual(out["polls"], 2)
 
-    def test_open_then_stable_rehome_order_doc(self):
-        """Batch quiet (LF6/CL5) then residual plan + commit — control-loop order."""
-        # Documented in wait_for_tree_stable docstring; keep API surface stable.
+    def test_wait_for_tree_stable_optional_debug_doc(self):
+        """Helper remains; docstring says optional debug, not default product gate."""
         doc = wait_for_tree_stable.__doc__ or ""
-        self.assertIn("open all", doc.lower())
-        self.assertIn("batch quiet", doc.lower())
-        self.assertIn("plan", doc.lower())
-        self.assertIn("commit", doc.lower())
+        self.assertIn("optional", doc.lower())
+        self.assertIn("debug", doc.lower())
+        self.assertIn("wait-tree-stable", doc.lower())
+        self.assertIn("fingerprint", doc.lower())
 
 
 class TestPlanToStepsFixture(unittest.TestCase):

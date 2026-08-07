@@ -53,8 +53,9 @@ paths). Open-app path (CL4): quiet settle via `layout-open.js` then
 `requestLayout("window-create")` (or one forced `renderTree` if render is frozen).
 
 Multi-open / layout CLI (CL5): `LayoutBatch` holds open commits mid-batch;
-fingerprint wait is batch quiet; residual `RunSteps` does freeze → one
-`renderTree("run-steps")` → verify. No per-role mid-batch render flood.
+residual `RunSteps` does freeze → one `renderTree("run-steps")` → verify.
+Optional LF6 whole-tree fingerprint quiet is debug-only
+(`--wait-tree-stable` / env). No per-role mid-batch render flood.
 
 ## `renderTree(from, force)` — `window.js`
 

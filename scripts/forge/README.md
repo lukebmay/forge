@@ -96,6 +96,7 @@ file text or an auto one-liner. Common/flat/env-path profiles are not listed.
 | **v1 steps** | optional displays → SettingsLoad → mixed `steps` |
 | **`--dry-run`** | plan only; no mutations |
 | **`--force-launch`** | require `steps[]`; skip reconcile |
+| **`--wait-tree-stable`** | debug: LF6 whole-tree fingerprint quiet (also `FORGE_LAYOUT_WAIT_TREE_STABLE=1`) |
 | **`--clean`** | close residuals (Meta delete) instead of leave/park |
 
 Examples: `examples/layout-tiles-minimal.json`, `layout-tiles-nested.json`,

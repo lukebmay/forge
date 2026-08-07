@@ -17,12 +17,8 @@ until operator can re-smoke on X11 or after logout.
 
 ### Session note (overwrite)
 
-**2026-08-07 (AC2 A done):** Per-window command echo epoch landed on
-`plan/forge-layout-apply-contract`. `layout-epoch.js` +
-`COMMAND_ECHO_RESIDUAL_MS=350`; `isForgeCausedGeometrySignal` = suppress OR
-active echo; `move` starts echo after real commit; LayoutBatch begin →
-`beginWave`. Stack suppress kept. Unit suite green (2295). No live HUP.
-Await B verify / wrap-up commit.
+**2026-08-07 (AC3 done):** A/B **AGREE**. LF6 fingerprint wait default-off;
+opt-in `--wait-tree-stable` / env. Next: **AC4** placeholder, **AC5** slot math.
 
 ---
 
@@ -423,10 +419,10 @@ Full inventory: **§15**.
 | ID | Task | Status | Depends | Notes |
 | --- | --- | --- | --- | --- |
 | **AC1** | Purge §15 KILL verify/pixel-war paths + rewrite tests | **done** | — | completed/ |
-| **AC2** | Command epoch attribution (replace stack-only suppress) | **A done / B next** | AC1 | layout-epoch.js · residual 350ms |
-| **AC3** | Streaming admit/apply; drop LF6 fingerprint default | next | AC2 | |
-| **AC4** | Placeholder tile + thrash/fail isolate | next | AC2 | |
-| **AC5** | Harden slot-math unit tests | next | AC1 | Can parallel after AC1 in later sessions |
+| **AC2** | Command epoch attribution (replace stack-only suppress) | **done** | AC1 | completed/ |
+| **AC3** | Streaming admit/apply; drop LF6 fingerprint default | **done** | AC2 | completed/ |
+| **AC4** | Placeholder tile + thrash/fail isolate | **ready** | AC2 | |
+| **AC5** | Harden slot-math unit tests | **ready** | AC1 | after AC1; may follow AC4 |
 | **AC6** | Live smoke | **deferred** | AC3–AC5 | Wayland — wait for X11 HUP or logout |
 | **AC7** | Residual nudge (optional) | later | AC6 + visual QA | Punt v1 |
 
@@ -507,7 +503,7 @@ These encode **pixel war**, **forest thrash**, or **Meta hard-settle as lifestyl
 | postMap / postApplyDrift counters | Diagnostic only, or drive float-out? If neither, cut. |
 | Periodic verify interval (CL6) | Debug-only diagnostic OK; must not reassert |
 | Tab/stack sibling `reassertNodeToSlot` in focus path | Needed for open-leaf chrome correctness, or another reassert war? Audit per call site. |
-| `wait_for_tree_stable` / fingerprint in CLI | Delete default; keep optional debug flag? |
+| `wait_for_tree_stable` / fingerprint in CLI | **AC3:** default off; `--wait-tree-stable` / env keeps helpers |
 | Settle-learning plan (SL1/SL2) | Supersede or re-scope to residual/float-out metrics only |
 | forge thrash dump CLI | Keep as **observe** tool; not as driver of reassert |
 

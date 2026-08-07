@@ -108,6 +108,7 @@ Profile names must **not** contain `:` or `@` (reserved for workspace targeting)
 | `forge layout a@1 b@3` | Static: same as `1:a 3:b` |
 | `forge layout <name> --verbose` | Apply (or dry-run) with full plan/apply JSON on stdout; also `FORGE_VERBOSE=1` |
 | `forge layout <name> --safe` | Open missing roles + move wrong-mon roles only (no park / structure / mon ensure) |
+| `forge layout <name> --wait-tree-stable` | Debug: wait for whole GetTree fingerprint quiet before residual place (also `FORGE_LAYOUT_WAIT_TREE_STABLE=1`) |
 | `forge layout <name> --clean` | Close residuals (Meta delete) instead of leave/park |
 | `forge layout <name> --clean --force` | Stronger Meta delete; **never** process-kill |
 | `forge layout <name> --force-launch` | Imperative `steps[]` only (errors if none) |

@@ -165,6 +165,10 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
         ("forge layout <name> --verbose", "Also dump plan/apply JSON (or FORGE_VERBOSE=1)"),
         ("forge layout <name> --force-launch", "Imperative steps[] only (escape hatch)"),
         ("forge layout <name> --safe", "Open+move roles only (no park/structure/ensure)"),
+        (
+            "forge layout <name> --wait-tree-stable",
+            "Debug: whole GetTree fingerprint quiet before residual (also env=1)",
+        ),
         ("forge layout <name> --clean", "Close residuals (Meta delete; not park)"),
         ("forge layout <name> --clean --force", "Stronger delete; never process-kill"),
     ):
@@ -287,6 +291,12 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  ", bold("v1 steps[]", **kw), "         imperative replay (can double apps)")
     _out(s, "  ", bold("--force-launch", **kw), "      force steps[] path for debug")
     _out(s, "  ", bold("--safe", **kw), "             open+move roles only (no park/structure/ensure)")
+    _out(
+        s,
+        "  ",
+        bold("--wait-tree-stable", **kw),
+        "  debug LF6 fingerprint quiet (or FORGE_LAYOUT_WAIT_TREE_STABLE=1)",
+    )
     _out(s, "  ", bold("--clean", **kw), "            close residuals (default leave; Mode B parks)")
     _out(s, "  ", bold("--clean --force", **kw), "     stronger Meta delete; never process-kill")
     _out(s, "  ", bold("marginal.mode=strict", **kw), "  no companion keep; residual leave|park still applies")

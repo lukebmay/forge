@@ -76,6 +76,7 @@ from layout_apply import (  # noqa: E402
     open_action_to_launch_fields,
     partition_plan_actions,
     residual_follow_up,
+    layout_wait_tree_stable_enabled,
     wait_for_open_role_pins,
     wait_for_tree_stable,
     window_is_settled,
@@ -2042,12 +2043,14 @@ def _layout_run_reconcile(
     verbose: bool = False,
     workspace: Optional[int] = None,
     forest: Optional[dict[str, Any]] = None,
+    wait_tree_stable: bool = False,
 ) -> int:
     """
     Plan/apply one reconcile profile on a target workspace.
 
     workspace: 0-based Meta index; None → activeWorkspace from forest (WS1).
     forest: reuse a loaded GetTree (multi-target); else load via tree_file/bus.
+    wait_tree_stable: optional LF6 GetTree fingerprint quiet (debug; default off).
     """
     name = resolved["name"]
     # Early validate for preamble / shape errors. Final IR uses mon_count from
@@ -2163,9 +2166,9 @@ def _layout_run_reconcile(
             return rc
 
     # 2–3) Opens under LayoutBatch (CL5/CL9): no per-app mid-batch renderTree.
-    # Flow: begin → parallel PlaceNext+launch all → wait map pins (not TILE) →
-    # fingerprint batch quiet (LF6) → release-deferred → residual RunSteps
-    # (freeze → ops incl. profile focus → one render + verify) → end.
+    # Flow: begin → parallel PlaceNext+launch all → map-pin wait → optional
+    # fingerprint quiet (--wait-tree-stable) → release-deferred → residual
+    # RunSteps (freeze → ops → one render + verify) → end.
     # Do not abort mid-loop: residual rehome still needs successful pins.
     role_pins: dict[str, Any] = {}
     open_failures: list[Any] = []
@@ -2260,22 +2263,26 @@ def _layout_run_reconcile(
                         f"{pin_wait.get('error', 'timeout')}"
                     )
 
-            # Batch quiet gate (LF6): forest fingerprint holds N samples, then
-            # release deferred + residual plan + RunSteps (control-loop).
-            stable_info = wait_for_tree_stable(
-                _load_live_forest,
-                timeout_ms=TREE_STABLE_TIMEOUT_MS,
-                poll_ms=TREE_STABLE_POLL_MS,
-                stable_samples=TREE_STABLE_SAMPLES,
-            )
-            apply_log["treeStable"] = {
-                k: v for k, v in stable_info.items() if k != "forest"
-            }
-            if not stable_info.get("ok"):
-                _eprint(
-                    "forge layout: tree not fully stable after opens "
-                    f"(proceeding: {stable_info.get('error')})"
+            # Optional LF6 batch quiet (debug): whole GetTree fingerprint holds
+            # N samples. Default off — tree owns slots; map-pin wait is enough.
+            stable_info: dict[str, Any] = {"skipped": True}
+            if wait_tree_stable:
+                stable_info = wait_for_tree_stable(
+                    _load_live_forest,
+                    timeout_ms=TREE_STABLE_TIMEOUT_MS,
+                    poll_ms=TREE_STABLE_POLL_MS,
+                    stable_samples=TREE_STABLE_SAMPLES,
                 )
+                apply_log["treeStable"] = {
+                    k: v for k, v in stable_info.items() if k != "forest"
+                }
+                if not stable_info.get("ok"):
+                    _eprint(
+                        "forge layout: tree not fully stable after opens "
+                        f"(proceeding: {stable_info.get('error')})"
+                    )
+            else:
+                apply_log["treeStable"] = {"skipped": True}
 
             # CL9: unhide deferred FLOAT maps before residual structure apply.
             # Keep LayoutBatch active so residual freeze still batches render.
@@ -2363,17 +2370,21 @@ def _layout_run_reconcile(
                     return rc
             plan = plan2
 
-            # Belt: short second stable wait, then one more move pass if wrong mon.
+            # Belt: optional second stable wait (same flag), then move pass if wrong mon.
             if role_pins and not still_open:
-                belt_stable = wait_for_tree_stable(
-                    _load_live_forest,
-                    timeout_ms=BELT_STABLE_TIMEOUT_MS,
-                    poll_ms=BELT_STABLE_POLL_MS,
-                    stable_samples=BELT_STABLE_SAMPLES,
-                )
-                apply_log["beltTreeStable"] = {
-                    k: v for k, v in belt_stable.items() if k != "forest"
-                }
+                belt_stable: dict[str, Any] = {"skipped": True}
+                if wait_tree_stable:
+                    belt_stable = wait_for_tree_stable(
+                        _load_live_forest,
+                        timeout_ms=BELT_STABLE_TIMEOUT_MS,
+                        poll_ms=BELT_STABLE_POLL_MS,
+                        stable_samples=BELT_STABLE_SAMPLES,
+                    )
+                    apply_log["beltTreeStable"] = {
+                        k: v for k, v in belt_stable.items() if k != "forest"
+                    }
+                else:
+                    apply_log["beltTreeStable"] = {"skipped": True}
                 try:
                     forest3 = belt_stable.get("forest")
                     if not isinstance(forest3, dict):
@@ -2569,6 +2580,9 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
     tree_file = getattr(args, "tree_file", None)
     verbose = _layout_is_verbose(args)
     safe = bool(getattr(args, "safe", False))
+    wait_tree_stable = layout_wait_tree_stable_enabled(
+        flag=bool(getattr(args, "wait_tree_stable", False)),
+    )
     if force_close and not clean:
         _eprint("forge layout: --force only applies with --clean (ignored)")
         force_close = False
@@ -2703,6 +2717,7 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         safe=safe,
         verbose=verbose,
         force_launch=force_launch,
+        wait_tree_stable=wait_tree_stable,
     )
 
 
@@ -2728,6 +2743,7 @@ def _layout_run_multi(
     safe: bool,
     verbose: bool,
     force_launch: bool,
+    wait_tree_stable: bool = False,
 ) -> int:
     """
     Apply one or more layout targets after all-or-nothing preflight (WS2).
@@ -2838,6 +2854,7 @@ def _layout_run_multi(
             verbose=verbose,
             workspace=target.workspace_0based,
             forest=forest,
+            wait_tree_stable=wait_tree_stable,
         )
         if rc != 0:
             if applied:
@@ -3655,6 +3672,7 @@ def build_parser() -> argparse.ArgumentParser:
         "  forge layout save <name> --tree-file F  # offline from forest JSON\n"
         "  forge layout <name> --force-launch  # imperative steps[] only\n"
         "  forge layout <name> --safe    # open+move roles only (no park/structure)\n"
+        "  forge layout <name> --wait-tree-stable  # debug LF6 fingerprint quiet\n"
         "  forge layout <name> --clean   # close residuals (Meta delete; not park)\n"
         "  forge layout <name> --clean --force  # stronger delete; never process-kill\n"
         "\n"
@@ -3676,6 +3694,7 @@ def build_parser() -> argparse.ArgumentParser:
         "move/park via RunSteps; Mode A collects marginals, Mode B parks on thrash.\n"
         "Default never closes windows; --clean closes true residuals only.\n"
         "--safe: open missing roles + move wrong-mon roles only (no park/structure).\n"
+        "--wait-tree-stable / FORGE_LAYOUT_WAIT_TREE_STABLE=1: optional LF6 quiet.\n"
         "v1 steps: version 1 / mode: steps / --force-launch with steps[].\n"
         "Defaults: see forge layout help. Docs: docs/user/layout.md."
     )
@@ -3714,6 +3733,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--safe",
         action="store_true",
         help="Open missing roles + move wrong-mon roles only (no park/structure/ensure)",
+    )
+    layout_p.add_argument(
+        "--wait-tree-stable",
+        action="store_true",
+        dest="wait_tree_stable",
+        help=(
+            "Debug: wait for whole GetTree fingerprint quiet before residual place "
+            "(and belt). Also FORGE_LAYOUT_WAIT_TREE_STABLE=1. Default: off."
+        ),
     )
     layout_p.add_argument(
         "--clean",

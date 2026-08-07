@@ -3,10 +3,11 @@
 
 from __future__ import annotations
 
+import os
 import shlex
 import time
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Mapping, Optional
 
 from layout_plan import mon_index_from_slot
 
@@ -636,18 +637,39 @@ def move_step_window_ids(steps: Any) -> list[str]:
     return out
 
 
-# --- LF6 / CL5: open-all → batch quiet (fingerprint) → one residual commit ---
-# Control-loop: LayoutBatch begin → launch roles → wait_for_tree_stable
-# (batch quiet) → residual RunSteps (freeze → ops → one render + verify) → end.
-# Not a separate philosophy from requestLayout/verify — quiet gate only.
+# --- LF6 fingerprint helpers (optional debug; not default apply gate) ---
+# Product path: open all → map-pin wait → release-deferred → residual place.
+# wait_for_tree_stable is opt-in via --wait-tree-stable / FORGE_LAYOUT_WAIT_TREE_STABLE.
 
-# Defaults for post-open batch quiet (Ghostty may self-resize after map).
+# Defaults when fingerprint quiet is enabled (Ghostty may self-resize after map).
 TREE_STABLE_TIMEOUT_MS = 7000
 TREE_STABLE_POLL_MS = 180
 TREE_STABLE_SAMPLES = 3
 BELT_STABLE_TIMEOUT_MS = 2500
 BELT_STABLE_POLL_MS = 150
 BELT_STABLE_SAMPLES = 2
+
+# Env values that enable optional whole-tree fingerprint quiet (case-insensitive).
+_WAIT_TREE_STABLE_TRUTHY = frozenset({"1", "true", "yes", "on"})
+
+
+def layout_wait_tree_stable_enabled(
+    *,
+    flag: bool = False,
+    env: Optional[Mapping[str, str]] = None,
+) -> bool:
+    """
+    Whether forge layout should run LF6 wait_for_tree_stable (main + belt).
+
+    Default off. Opt-in: CLI --wait-tree-stable (flag=True) and/or env
+    FORGE_LAYOUT_WAIT_TREE_STABLE=1 (also true/yes/on). Pass env= for tests;
+    forge uses os.environ when env is None.
+    """
+    if flag:
+        return True
+    e = env if env is not None else os.environ
+    raw = str(e.get("FORGE_LAYOUT_WAIT_TREE_STABLE") or "").strip().lower()
+    return raw in _WAIT_TREE_STABLE_TRUTHY
 
 
 def _stability_focus_id(node: dict[str, Any]) -> str:
@@ -764,9 +786,9 @@ def wait_for_tree_stable(
     Pure of DBus: inject load_forest (+ optional sleep/monotonic for tests).
     On timeout: ok=false, last fingerprint/forest still returned.
 
-    Batch quiet gate (LF6 / CL5 control-loop): open all → wait_for_tree_stable
-    (fingerprint holds) → one residual plan + RunSteps commit+verify. Not a
-    per-role re-render loop.
+    Optional debug batch quiet (LF6): open all → wait_for_tree_stable
+    (fingerprint holds) → residual plan + RunSteps. Not the default product
+    gate — enable with --wait-tree-stable / FORGE_LAYOUT_WAIT_TREE_STABLE.
     """
     sleep = sleep_fn if sleep_fn is not None else time.sleep
     mono = monotonic_fn if monotonic_fn is not None else time.monotonic
