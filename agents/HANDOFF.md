@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (wrap-up: X11 RC + theme effective overlay; Wayland next)  
-**Branch tip:** `master` @ `5a8714a` (+ wrap-up docs) — local, **ahead of origin**, not pushed  
-**Install:** `v49-90-beta.2-205-g5a8714a` · X11 ACTIVE  
-**Wayland:** **Operator next** — log out → GNOME on Wayland → residual smoke  
+**Updated:** 2026-08-06 (WR1+WR2 Wayland residuals on master)  
+**Branch tip:** `master` @ merge `db50561` (WR1 `dd7e6ca` + WR2 `1f44c0b`) — local, **ahead of origin**, not pushed  
+**Install:** reinstall this tip; Wayland **cannot HUP** — logout to load  
+**Wayland:** **Operator re-smoke** after install+logout  
 **Stash:** `stash@{0}` still present — **drop only after human OK**  
 **Remotes:** **no push** unless human asks  
 
@@ -13,12 +13,13 @@
 
 | Gate | Status |
 | --- | --- |
-| CSS dual-load → **effective overlay** (user colors) | **Done** (`5a8714a`) |
-| Workspace scope WS0–WS3 | **Done** (merged master) |
-| Unit: npm + pytest cli | Green (pre-theme-wrap) |
-| X11 dual-ws + layout smoke | **Green** |
-| Theme: personal purple via `effective.css` | Fixed; re-check after Wayland login |
-| Wayland residual | **Human** after logout |
+| CSS dual-load → **effective overlay** (user colors) | **Done** |
+| Workspace scope WS0–WS3 | **Done** |
+| WR1 chrome geom / focus thrash | **Done** (open-leaf reassert; targeted rect-mismatch recovery) |
+| WR2 Guake focus/LFT mon | **Done** (Guake-only rehome on map+focus) |
+| Unit: window + extension | Green (WR suites + pre-commit) |
+| X11 dual-ws + layout smoke | **Green** (pre-WR) |
+| Wayland residual re-smoke | **Human** after install+logout |
 | Session DPMS / daily layout | **Human** B-manual |
 | AP5 visual matrix | **Human soft** |
 
@@ -28,23 +29,29 @@
 | Resize / autotile | design P3 |
 | Tab chrome drag / S3+ | later |
 
-### Theme fix (this wrap)
+### WR1 / WR2 (this wrap)
 
-St.Theme did not honor dual-load or simple concat — borders stayed bundled red while
-purple lived in `~/.config/forge/stylesheet/forge/stylesheet.css`.
+Operator Wayland report: Guake always right; Grok not open leaf / stuck ¼ height;
+Chrome PWA focus flicker; journal verify give-up rect-mismatch.
 
-**Now:** merge base+user into `~/.config/forge/stylesheet/forge/effective.css`
-(one rule per selector, user wins); load only that sheet; restyle on
-`css-updated` / Super+Shift+r. Install defaults to theme reload after HUP.
+| Fix | Detail |
+| --- | --- |
+| WR1 | Focus reassert **open leaf only**; pure rect-mismatch → targeted reassert (not full forest); give-up → **force** reassert |
+| WR2 | Guake float rehome: tile mon → LFT → focus mon → mon0 on map + focus |
+
+Plan: [forge-wayland-operator-residuals](./plans/forge-wayland-operator-residuals.md)
 
 ### Operator checklist (you)
 
-1. **Log out → GNOME on Wayland.**  
-2. Confirm Forge ACTIVE + purple focus border.  
-3. Residual smoke: [forge-wayland-live_residual-smoke](./tasks/forge-wayland-live_residual-smoke.md)  
-   (`forge layout dev`, focus walk, tabs, no reflow/thrash).  
-4. Optional: [B-manual](./blockers/B-manual-black-session-verify.md), [B-ap5](./blockers/B-ap5-operator-visual-matrix.md).  
-5. When happy: ask to **push** / tag per [RELEASING.md](../RELEASING.md).
+1. **Install** from this tree (`./install` or `forge install`) if agent did not.  
+2. **Log out → GNOME on Wayland** (required to load new JS).  
+3. Confirm Forge ACTIVE + purple focus border.  
+4. Residual smoke: [forge-wayland-live_residual-smoke](./tasks/forge-wayland-live_residual-smoke.md)  
+   - `forge layout dev` → mon0 open leaf **Grok** full slot  
+   - Focus walk + tab clicks → **no** Chrome ¼ flicker / stuck undersize  
+   - Guake F12: focus mon0 → left; focus mon1 → right  
+5. Optional: [B-manual](./blockers/B-manual-black-session-verify.md), [B-ap5](./blockers/B-ap5-operator-visual-matrix.md).  
+6. When happy: ask to **push** / tag per [RELEASING.md](../RELEASING.md).
 
 ---
 

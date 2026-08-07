@@ -76,3 +76,9 @@ every focus. Fixed: focus-scoped restack only + forge-geom borders-only. See
 **2026-08-06 operator Wayland smoke:** layout dev mostly good (a bit slow). Residuals filed → wayland residual fixes (icons, cwd, DnD, hints) landed earlier.
 
 **2026-08-05 prep:** Stash applied onto control-loop + move() port from wayland branch (dest mon / epsilon).
+
+**2026-08-06 operator residuals → WR1+WR2 (merged master):**
+Guake wrong mon; Grok not visible / ¼ height; focus flicker. Fixes on master
+(`dd7e6ca` / `1f44c0b` via merge `db50561`). **Re-smoke after install+logout:**
+layout dev open leaf Grok; focus walk no thrash; Guake F12 mon0/mon1.
+
