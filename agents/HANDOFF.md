@@ -1,50 +1,44 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-07 (ghostty pilot green; core matrix next)  
-**Branch:** `task/meta-probe-harness` (ahead of origin by 1 commit, no push)  
-**Active P0:** Meta probe **core-app matrix** (nautilus, inkscape, grok, obs)  
-**Probe path:** [`tests/meta-probe/`](../tests/meta-probe/)  
-**Session:** [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md)
+**Updated:** 2026-08-07 (core matrix + thrash green; Meta D=0 baseline)  
+**Branch:** `task/meta-probe-harness` (local commits; **no push**)  
+**Active P0 next:** Layout engine rewrite **or** Forge-on thrash / X11 — see PRIORITY  
+**Probe:** [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md)
 
 ---
 
-## Campaign state
+## Campaign done this session
 
 | Item | Status |
 | --- | --- |
-| Harness reshape | **Done** `7ce020b` — A/B AGREE, 48 unit tests |
-| Ghostty pilot live | **Green** — single-ops 5× all ok; 2-step + 3-step thrash-free at **D=0** (Forge off) |
-| Core-app matrix | **Next** |
-| Layout engine rewrite from data | After matrix / thrash edges on hard apps |
+| Harness reshape (A/B) | **Done** `7ce020b` — 5×, core apps, sleep inhibit, per-app write, thrash + `sweep` |
+| Ghostty pilot | **Green** |
+| Core single-ops | **Green** nautilus, ghostty, inkscape, grok, obs |
+| 2-step thrash (Forge off) | **lastGood D=0** for ghostty, inkscape, obs |
+| Desktop restore | cleanup OK (Forge on, sleep restored) |
 
-### Ghostty finding
+### Finding
 
-Meta alone (Forge disabled) handles ghostty multi-op at zero inter-step delay. Look for thrash edges on **inkscape / obs** next; D=0 is the ghostty Meta baseline.
+Meta alone does not need multi-op inter-step delay for core apps on black/wayland. Product thrash is almost certainly Forge layout work. OBS settle floor ~4s; others ~3s.
 
-### How to continue
+### Next (pick)
 
-```bash
-cd tests/meta-probe
-python3 probe_driver.py prep --host black
-python3 probe_driver.py run --host black --suite full-suite --samples 5   # all core
-# or per-app + sweeps for hard apps
-python3 probe_driver.py cleanup
-```
-
-### Safety
-
-Sleep inhibit in prep; restore on cleanup. No Guake close. WS1 only when finished.
+1. Design/implement layout engine delays from Meta baseline (near-zero inter-op + settle floors)  
+2. Probe thrash **with Forge on** for product edges  
+3. X11 / gray / green hosts  
 
 ---
 
-## Forge product residuals (parked)
+## Open human blockers (unchanged)
 
-Do not guess layout timeouts until more probe thrash data exists.
+- hard: B-manual-black-session-verify (DPMS / lock)  
+- hard: resize-autotile-design  
+- soft: B-ap5-operator-visual-matrix  
+- human: Wayland residual re-smoke after install+logout (RC)  
 
 ---
 
 ## Agent rules
 
-- **No push** unless human asks  
-- **No SSH** without **explicit**  
-- Measurement only under `tests/meta-probe/`  
+- **No push** unless asked · **No SSH** without **explicit**  
+- Probe stays Forge-independent unless a task intentionally measures Forge-on  

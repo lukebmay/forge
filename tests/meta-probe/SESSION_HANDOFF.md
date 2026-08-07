@@ -3,89 +3,51 @@
 **Branch:** `task/meta-probe-harness`  
 **Host:** `black`  
 **Path:** `tests/meta-probe/`  
-**Updated:** 2026-08-07 (ghostty pilot live green; core matrix next)
+**Updated:** 2026-08-07 (core matrix + thrash sweeps green; Forge-off Meta baseline)
 
 ## Status
 
 | Item | State |
 | --- | --- |
-| Agreement settle v1 | **Shipped** |
-| First black/wayland data (10×, broad apps) | **Collected** (local results gitignored) |
-| Harness reshape (5×, core apps, sleep, trial model) | **Shipped** (`7ce020b`) |
-| Multi-op delay-until-thrash (2-step, then 3-step) | **Shipped** + **ghostty live** |
-| Ghostty pilot (bootstrap → 5× → teardown) | **Green** (2026-08-07) |
-| Core-app matrix (5 apps) | **Next** — nautilus, inkscape, grok, obs (+ optional re-ghostty) |
+| Harness reshape | **Shipped** `7ce020b` |
+| Ghostty pilot | **Green** |
+| Core-app single-ops 5× | **Green** (all five) |
+| 2-step thrash sweeps | **Green at D=0** (ghostty, inkscape, obs; Forge off) |
+| Next | X11 / other hosts **or** thrash with **Forge on** / layout rewrite from Meta baseline |
 
-## Ghostty pilot results (black / wayland)
+## Live results (black / wayland, Forge **off**)
 
-Local only (`results/` gitignored):
+| Run | Apps / maneuver | Result |
+| --- | --- | --- |
+| `full-suite/…211847Z` | ghostty 13 ops × 5 | all ok, thrash=0 |
+| `full-suite/…213430Z` | nautilus, inkscape, grok, obs × 5 | all ok, thrash=0; per-app checkpoints OK |
+| thrash-sweep ghostty | launch_then_{move,monitor} | lastGood **0** |
+| thrash-sweep ghostty | launch_monitor_move | measured (0,0) |
+| thrash-sweep inkscape/obs | 2-step D=1000→0 step 200 | lastGood **0** both maneuvers |
 
-| Run | Result |
-| --- | --- |
-| `full-suite/run-full-suite-20260807T211847Z.json` | ghostty × 13 ops × 5 full: **78 trials, all ok, thrash=0** |
-| `thrash-sweep/…212413Z` | `launch_then_move` D=2000→0: **lastGood=0**, firstFail=None |
-| `thrash-sweep/…212725Z` | `launch_then_monitor` D=2000→0: **lastGood=0**, firstFail=None |
-| `thrash-sweep/…213039Z` | `launch_monitor_move` isolation: **measured (D1,D2)=(0,0)** thrashless |
+**Key finding:** With Forge disabled, Meta multi-op chains for core apps are thrash-free even at **D=0**. Inter-op thrash expected in product is likely **Forge-induced**, not a Meta floor. OBS needs longer settleDuration (~4s derived) than others (~3s).
 
-**Derived knobs after pilot:** settleDurationMs=3000, checkIntervalMs ended ~250.
+## Core apps
 
-**Finding:** With Forge **off**, ghostty Meta ops + multi-op chains are thrash-free even at **D=0**. Inter-op delays for the layout engine may only show thrash under Forge load or harder apps (inkscape/obs). Record D=0 as Meta baseline for ghostty.
+nautilus · ghostty · inkscape · grok · obs — all single-op green on black/wayland.
 
-## Core apps only (FIRM)
+## Next ordered work
 
-| id | Why |
-| --- | --- |
-| **nautilus** | GTK baseline |
-| **ghostty** | Dev terminal thrash — **pilot done** |
-| **inkscape** | Late-map / creative difficult |
-| **grok** | Single PWA stand-in |
-| **obs** | Heavy creative / multi-surface |
+1. Optional: thrash sweeps **with Forge enabled** (separate mode — product thrash edges)  
+2. X11 on black; gray/green hosts later  
+3. Layout engine rewrite using Meta baseline (near-zero inter-op delay when quiet) + measured settle floors  
+4. Do **not** invent large inter-op sleeps without Forge-on thrash data  
 
-## Next session — ordered work
-
-1. **Core-app matrix** — same harness: prep → run full-suite (default core, or per-app) → 2-step sweeps → 3-step where 2-step has non-zero edge → cleanup  
-2. Prefer **inkscape** and **obs** early if looking for thrash edges  
-3. Keep ghostty D=0 baseline; only re-run if harness churns  
-4. Later: X11 / gray/green; layout engine rewrite from thrash-free delays  
-
-## Agent commands
+## Commands
 
 ```bash
-cd /home/luke/dev/me/forge
-git checkout task/meta-probe-harness
 cd tests/meta-probe
-python3 -m unittest test_ext_state test_settle test_results test_thrash test_sweep -q
 python3 probe_driver.py prep --host black
 python3 probe_driver.py run --host black --suite full-suite --samples 5
-# or one app:
-python3 probe_driver.py run --host black --suite full-suite --apps inkscape --samples 5
-python3 probe_driver.py sweep --host black --apps inkscape --maneuver launch_then_move --d-start 2000 --d-step 100
+python3 probe_driver.py sweep --host black --apps inkscape --maneuver launch_then_move --d-start 1000 --d-step 200
 python3 probe_driver.py cleanup
 ```
 
-## Pre-session checklist
+## Teardown (FIRM)
 
-| Step | Who |
-| --- | --- |
-| Branch `task/meta-probe-harness` | agent |
-| Wayland; Guake OK on WS1; test desk free (index 3) | human |
-| prep (sleep inhibit + probe; Forge off) | agent |
-| Do not touch desk during run | human |
-
-## Teardown rules (FIRM)
-
-- Close every matrix-opened window  
-- **No WS1** until finished  
-- cleanup: WS1 + Forge restore + **sleep restore**  
-- Never close Guake  
-
-## Do not
-
-- Wire probe into Forge layout engine yet  
-- Push unless asked; SSH without **explicit**  
-- Mutate idle/sleep without restore in cleanup  
-
-## Namespace
-
-`results/<host>/<session>/<suite>/`  
-e.g. `black/wayland/full-suite/`, `black/wayland/thrash-sweep/` (gitignored data)
+cleanup → WS1 + Forge + **sleep restore**. Never close Guake. No push unless asked.

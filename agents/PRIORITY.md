@@ -1,11 +1,11 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-07 (ghostty pilot green; core matrix next)  
+**Updated:** 2026-08-07 (core matrix green; Meta D=0 baseline → engine rewrite or Forge-on thrash)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 **No push** until human asks.  
-**Active P0:** Meta probe **core-app matrix** after ghostty green — [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md).
+**Active P0 next:** Layout engine rewrite from Meta baseline **or** Forge-on thrash probe — [`tests/meta-probe/SESSION_HANDOFF.md`](../tests/meta-probe/SESSION_HANDOFF.md).
 
 ---
 
@@ -34,10 +34,10 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Core-app matrix** (ghostty pilot **green**) | nautilus, inkscape, grok, obs; thrash sweeps especially on hard apps; ghostty Meta D=0 baseline — [SESSION_HANDOFF](../tests/meta-probe/SESSION_HANDOFF.md) |
-| **2** | **Re-run ghostty** only if harness churns | Already green at 5× + multi-op D=0 |
+| **1** | **Layout engine rewrite from Meta baseline** | Core apps settle green; multi-op thrash-free at **D=0** with Forge off — product thrash is Forge-side — [SESSION_HANDOFF](../tests/meta-probe/SESSION_HANDOFF.md) |
+| **2** | **Forge-on thrash probe** (optional mode) | Measure product edges with layout enabled |
 | **3** | **X11 + gray/green** probe | Re-bootstrap knobs per host×session |
-| **4** | **Layout engine rewrite from data** | Especially thrash-free inter-op delays |
+| **done** | Harness + core matrix black/wayland | 5× single-ops; 2-step D=0 ghostty/inkscape/obs |
 | **mid** | Wayland product residuals (VSPLIT, Grok leaf, WS overlay, float save) | Parked until probe informs approach |
 | **mid** | Session verify / AP5 | Human blockers when back to daily driver |
 | **post** | Container motion, ignore mode, SL3 seeds | After measurement campaign |
