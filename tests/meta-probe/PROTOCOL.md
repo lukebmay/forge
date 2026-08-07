@@ -1,16 +1,21 @@
 # Meta probe — collection protocol
 
-## Terminology (locked)
+## Terminology (locked — agreement model)
+
+See full contract: [AGREEMENT.md](./AGREEMENT.md).
 
 | Term | Meaning |
 | --- | --- |
-| **Verification** | One poll of Meta: drain events (+ optional `SnapshotWindow`). Can be frequent. |
-| **Agreement tick** | A verification where the window has been **quiet** for ≥ `quietMs`, and ≥ `agreementIntervalMs` (default **2s**) has passed since the previous agreement tick. |
-| **Settled** | `agreeCount` (default **5**) consecutive agreement ticks without a quiet reset. |
-| **Dense verify mode** | Samples 0–4: poll every **50ms** (rich event/snapshot series). Agreement still only every **2s**. |
-| **Sparse verify mode** | Samples 5–9: poll every **2s** (lower Meta query load). Same agreement rules. |
+| **Agreement check** | One intervalic poll: drain hard/soft signals + compare snapshot to contract. **Not** a separate “verification” concept. |
+| **Agreement** | Hard contract holds → settle duration continues. |
+| **Hard disagreement** (`d_*`) | Layout-relevant mismatch → **resets** settle duration to 0. |
+| **Soft disagreement** (`s_*`) | Noisy non-layout signal (title, focus, raise-alone) → **recorded, does not reset** timer. |
+| **Settled** | Continuous **hard-stable** duration ≥ `settleDurationMs` (default **3s**). Soft noise does not interrupt. |
 
-Minimum settle wall time when already quiet: about `agreeCount × agreementIntervalMs` ≈ **10s**.
+**Contract v1 soft (no reset):** `s_title`, `s_focus`, `s_raise`.  
+**Hard resets:** frame/monitor/workspace/max/fs/min/class and hard signals — see AGREEMENT.md.
+
+Legacy pilot used verify + agreeCount; new runs follow this document.
 
 ## Safety (every run)
 

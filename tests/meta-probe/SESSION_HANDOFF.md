@@ -54,20 +54,25 @@ python3 probe_driver.py run --host black --suite full-suite --samples 10 \
 
 **Stop** on prep/preflight failure, shell crash, or repeated settle timeouts → focus WS1, note failure, do not thrash.
 
-## Knobs (black/wayland full-suite — from calibration)
+## Agreement model (design lock)
 
-| Knob | full-suite | calibration/strict |
+| Outcome | Timer |
+| --- | --- |
+| hard agreement | accumulates toward `settleDurationMs` (~3s) |
+| hard disagreement `d_*` | **reset** |
+| soft disagreement `s_*` (title, focus, raise-alone) | **record only — no reset** |
+
+Full contract: [AGREEMENT.md](./AGREEMENT.md). Soft data is kept for chrome/focus analysis; layout settle keys off hard only.
+
+## Knobs (target; implement may still lag)
+
+| Knob | Calibration | Full 10× |
 | --- | --- | --- |
-| agreeCount | **3** | 5 |
-| agreementIntervalMs | 2000 | 2000 |
-| quietMs | 500 | 500 |
-| samples | 10 | 2 (calibration) |
-| dense sample indices | 0,1 | 0,1 |
-| cooldownMs | 500 | 500 |
-| betweenAppsMs | 2000 | 2000 |
-| recordDetail | summary | summary |
+| checkIntervalMs | dense (~100ms) | cal-derived, clamped |
+| settleDurationMs | 3000 | **same** (soft does not change this) |
+| samples | 1 cal + then 10 full per app+op | — |
 
-Rationale: [CALIBRATION.md](./CALIBRATION.md). Prior pilot wait p50≈8.6s was almost pure 5×2s floor; timeToQuiet &lt;1s.
+Rationale: [CALIBRATION.md](./CALIBRATION.md) · [AGREEMENT.md](./AGREEMENT.md).
 
 ## Namespace
 

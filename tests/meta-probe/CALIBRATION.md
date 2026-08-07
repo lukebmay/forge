@@ -1,5 +1,7 @@
 # Meta probe — calibration & knobs
 
+**Agreement semantics:** [AGREEMENT.md](./AGREEMENT.md) — **soft** disagreements (`s_title`, `s_focus`, `s_raise`) are recorded on the check timeline but **do not** reset settle duration. Only **hard** (`d_*`) resets. Calibration must not fold soft into hard to “speed up” settle.
+
 ## Why calibrate per host × session
 
 Settle knobs trade **wall clock** against **late Meta thrash** detection. Black

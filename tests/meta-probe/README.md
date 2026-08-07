@@ -78,7 +78,8 @@ python3 tests/meta-probe/probe_driver.py cleanup
 
 **Results namespace:** `results/<host>/<session>/<suite>/` — never mix Wayland and X11.
 
-**Knobs / calibration:** [CALIBRATION.md](./CALIBRATION.md)
+**Knobs / calibration:** [CALIBRATION.md](./CALIBRATION.md)  
+**Agreement contract (hard vs soft):** [AGREEMENT.md](./AGREEMENT.md) — soft disagreements are stored but **never** reset the settle timer.
 
 **After testing:** always leave the operator on **WS1** (0-based index **0**).
 `cleanup` does this before disabling the probe.
