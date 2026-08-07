@@ -152,6 +152,10 @@ def capture_tiles_profile(
 
     if not tiles and not floating:
         raise ValueError("no tiled windows to capture")
+    # Float-only desk: cannot desugar empty tiles → roles for reconcile validate.
+    # Fail before "profile roles must be non-empty".
+    if not tiles and floating:
+        raise ValueError("only floating windows to capture")
 
     out: dict[str, Any] = {}
     if description:

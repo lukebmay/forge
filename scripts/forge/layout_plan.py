@@ -2264,9 +2264,18 @@ def plan_reconcile(
             if len(wids) < 2:
                 continue
             share = _windows_share_group(wids, parent_info, mode)
+            role_wids = _role_window_ids_for_slot(role_results, slot)
+            # Co-grouped multi-role bag polluted by another mon-child role
+            # (giant tab: chrome+Grok+ghostty) → peel + re-tab role-only ids.
+            if share and _slot_parent_has_foreign_mon_child(
+                slot, role_wids if role_wids else wids, role_results, parent_info
+            ):
+                peel_wids = role_wids if len(role_wids) >= 2 else wids
+                structure_slots[slot] = {"mode": mode, "windowIds": peel_wids}
+                slots_needing_layout[slot] = mode
+                continue
             if share:
                 # Co-grouped: still repair role sibling order (YT→Gmail→Voice).
-                role_wids = _role_window_ids_for_slot(role_results, slot)
                 if len(role_wids) >= 2 and not _sibling_order_matches(
                     role_wids, parent_info
                 ):
@@ -2332,6 +2341,55 @@ def plan_reconcile(
         already_validated=True,
     )
 
+    # Mon-child peel: demote shared TABBED/STACKED before subset re-tab.
+    # layoutOp only wraps subset on H/V multi-window CONs — not already-TABBED.
+    peel_demote_actions: list[dict[str, Any]] = []
+    mon_child_peel_mons: set[str] = set()
+    if not safe:
+        for mm in structure_cmp.get("mismatches") or []:
+            if not isinstance(mm, dict) or mm.get("kind") != "mon-child":
+                continue
+            mon_key = str(mm.get("slot") or "")
+            if not mon_key:
+                continue
+            mon_child_peel_mons.add(mon_key)
+            mon_body = (prof.get("layout") or {}).get(mon_key) or {}
+            split = str((mon_body or {}).get("split") or "hsplit").strip().lower()
+            if split not in ("hsplit", "vsplit"):
+                split = "hsplit"
+            anchor = _peel_demote_anchor(
+                mon_key, role_results, parent_info, prof, mm
+            )
+            if anchor is None:
+                continue
+            peel_demote_actions.append(
+                {
+                    "op": "ensure_layout",
+                    "slot": mon_key,
+                    "mode": split,
+                    "windowIds": [anchor],
+                }
+            )
+            mons_with_placement.add(mon_key)
+            # Force multi-role tab/stack under this mon into structure repair
+            # with role-only windowIds (exclude foreign mon-child roles).
+            for slot, mode in layout_slot_modes.items():
+                if not str(slot).startswith(mon_key + "."):
+                    continue
+                mode_l = str(mode or "").strip().lower()
+                if mode_l not in ("tabbed", "stacked"):
+                    continue
+                role_wids = _role_window_ids_for_slot(role_results, slot)
+                if len(role_wids) < 2:
+                    continue
+                if slot not in structure_slots:
+                    structure_slots[slot] = {
+                        "mode": mode_l,
+                        "windowIds": role_wids,
+                    }
+                    slots_needing_layout[slot] = mode_l
+        counts["structure"] = len(structure_slots)
+
     # Role open/move / residual just_opened / mon split repair rewrite mon splits.
     # Park/close alone must not thrash dual-mon hsplit. --safe: no ensure.
     has_role_placement = counts["opened"] > 0 or counts["moved"] > 0
@@ -2340,6 +2398,7 @@ def plan_reconcile(
         has_role_placement
         or (bool(opened_roles) and not safe)
         or bool(mons_split_mismatch)
+        or bool(mon_child_peel_mons)
     )
     has_work = (
         has_role_placement
@@ -2350,6 +2409,7 @@ def plan_reconcile(
         or counts["ordered"] > 0
         or counts["sized"] > 0
         or bool(slots_needing_layout)
+        or bool(peel_demote_actions)
         or (not safe and not structure_cmp.get("match", True))
     )
     structure_ensure_actions: list[dict[str, Any]] = []
@@ -2357,6 +2417,7 @@ def plan_reconcile(
     if has_work and not safe:
         # Nested tab/stack/h-v first so mon kids become [tab CON, term] before
         # mon-level hsplit (flat TABBED mon otherwise equal-splits every leaf).
+        # Peel demotes go *before* tab structure (already in peel_demote_actions).
         for slot, mode in sorted(slots_needing_layout.items()):
             wids = structure_slots.get(slot, {}).get("windowIds")
             if wids is None:
@@ -2381,10 +2442,13 @@ def plan_reconcile(
         # Touching peer mons steals LFT/focus and can derail PlaceNext.
         # Anchor on mon-direct children (term slots), never tab-group members —
         # layout acts on the window's parent CON, so chrome in a tab would
-        # demote TABBED → HSPLIT.
+        # demote TABBED → HSPLIT. Peel demote already handled polluted bags.
         if has_mon_ensure:
             for mon_key, mon_body in prof.get("layout", {}).items():
                 if mon_key not in mons_with_placement:
+                    continue
+                if mon_key in mon_child_peel_mons:
+                    # Peel demote already rewrote mon bag; skip second mon ensure.
                     continue
                 if not isinstance(mon_body, dict):
                     continue
@@ -2403,8 +2467,10 @@ def plan_reconcile(
                     }
                 )
 
-    # de-dupe ensure by slot (first wins — structure before mon-level)
-    ensure_actions = structure_ensure_actions + mon_ensure_actions
+    # de-dupe ensure by slot (first wins — peel demote before structure before mon)
+    ensure_actions = (
+        peel_demote_actions + structure_ensure_actions + mon_ensure_actions
+    )
     seen_ensure: set[str] = set()
     deduped_ensure: list[dict[str, Any]] = []
     for a in ensure_actions:
@@ -4052,6 +4118,203 @@ def _is_mon_direct_path(path: Any) -> bool:
     return True
 
 
+def _mon_layout_child_id(slot: Any) -> Optional[str]:
+    """mon0.left-tab → left-tab; mon0.s1.nautilus → s1; mon0 → None."""
+    s = str(slot or "").strip()
+    if not s or "." not in s:
+        return None
+    parts = s.split(".")
+    if len(parts) < 2 or not parts[1]:
+        return None
+    return parts[1]
+
+
+def _parent_path_for_wid(
+    wid: Any, parent_info: dict[str, dict[str, Any]]
+) -> Optional[str]:
+    info = parent_info.get(str(wid)) if wid is not None else None
+    if not info:
+        return None
+    pp = info.get("parent_path")
+    if pp is None or str(pp).strip() == "":
+        return None
+    return str(pp)
+
+
+def _is_con_parent(
+    wid: Any, parent_info: dict[str, dict[str, Any]]
+) -> bool:
+    """True when window's parent is a CON (not MONITOR / mon-direct)."""
+    info = parent_info.get(str(wid)) if wid is not None else None
+    if not info:
+        return False
+    ptype = str(info.get("parent_type") or "").upper()
+    if ptype == "MONITOR":
+        return False
+    # CON or missing type with nested path (moNwsW/i/j)
+    path = str(info.get("path") or "")
+    if ptype == "CON":
+        return True
+    # Nested under mon child without parent_type stamped
+    parts = path.split("/")
+    return len(parts) >= 3
+
+
+def _slot_parent_has_foreign_mon_child(
+    slot: str,
+    window_ids: list[Any],
+    role_results: list[dict[str, Any]],
+    parent_info: dict[str, dict[str, Any]],
+) -> bool:
+    """
+    True when a claimed role of a *different* mon-layout child shares a parent
+    CON path with window_ids (e.g. ghostty co-tabbed with chrome+Grok).
+
+    Mon-direct siblings correctly share the MONITOR parent — not a mismatch.
+    """
+    mon_child = _mon_layout_child_id(slot)
+    mon_key = str(slot or "").split(".", 1)[0] if slot else ""
+    if not mon_child or not mon_key:
+        return False
+    own_parents: set[str] = set()
+    for wid in window_ids:
+        if not _is_con_parent(wid, parent_info):
+            continue
+        pp = _parent_path_for_wid(wid, parent_info)
+        if pp is not None:
+            own_parents.add(pp)
+    if not own_parents:
+        return False
+    for r in role_results:
+        if r.get("windowId") is None:
+            continue
+        if not _is_con_parent(r.get("windowId"), parent_info):
+            continue
+        rslot = str(r.get("slot") or "")
+        rhead = rslot.split(".", 1)[0] if rslot else ""
+        if rhead != mon_key:
+            continue
+        rchild = _mon_layout_child_id(rslot)
+        if rchild is None or rchild == mon_child:
+            continue
+        pp = _parent_path_for_wid(r.get("windowId"), parent_info)
+        if pp is not None and pp in own_parents:
+            return True
+    return False
+
+
+def _mon_child_topology_mismatches(
+    role_results: list[dict[str, Any]],
+    parent_info: dict[str, dict[str, Any]],
+    prof: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """
+    Claimed roles for different mon-layout children share the same parent CON
+    path (collapsed mon children / giant tab bag).
+
+    Ignores MONITOR parents (correct mon-direct siblings). kind: mon-child.
+    """
+    mismatches: list[dict[str, Any]] = []
+    for mon_key, mon_body in sorted((prof.get("layout") or {}).items()):
+        if not isinstance(mon_body, dict):
+            continue
+        children = mon_body.get("children") or []
+        if not isinstance(children, list) or len(children) < 2:
+            continue
+        # mon-child id → claimed role entries
+        by_child: dict[str, list[dict[str, Any]]] = {}
+        for r in role_results:
+            if r.get("windowId") is None:
+                continue
+            slot = str(r.get("slot") or "")
+            head = slot.split(".", 1)[0] if slot else ""
+            if head != mon_key:
+                continue
+            child_id = _mon_layout_child_id(slot)
+            if not child_id:
+                continue
+            by_child.setdefault(child_id, []).append(r)
+        if len(by_child) < 2:
+            continue
+        path_to_children: dict[str, set[str]] = {}
+        for child_id, roles in by_child.items():
+            for r in roles:
+                wid = r.get("windowId")
+                # Only CON parents: mon-direct siblings share MONITOR correctly.
+                if not _is_con_parent(wid, parent_info):
+                    continue
+                pp = _parent_path_for_wid(wid, parent_info)
+                if pp is None:
+                    continue
+                path_to_children.setdefault(pp, set()).add(child_id)
+        polluted = {
+            pp: sorted(kids)
+            for pp, kids in path_to_children.items()
+            if len(kids) >= 2
+        }
+        if not polluted:
+            continue
+        want_ids = [
+            str(c.get("id"))
+            for c in children
+            if isinstance(c, dict) and c.get("id") is not None
+        ]
+        mismatches.append(
+            {
+                "kind": "mon-child",
+                "slot": mon_key,
+                "want": want_ids,
+                "got": polluted,
+                "detail": (
+                    f"{mon_key} mon-child roles share parent CON path(s): "
+                    + ", ".join(sorted(polluted))
+                ),
+            }
+        )
+    return mismatches
+
+
+def _peel_demote_anchor(
+    mon_key: str,
+    role_results: list[dict[str, Any]],
+    parent_info: dict[str, dict[str, Any]],
+    prof: dict[str, Any],
+    mismatch: dict[str, Any],
+) -> Any:
+    """
+    Window id whose parent CON is the polluted TABBED/STACKED bag.
+    layout hsplit/vsplit on it demotes the bag so subset tab wrap can peel.
+    """
+    polluted_paths = set()
+    got = mismatch.get("got")
+    if isinstance(got, dict):
+        polluted_paths = {str(k) for k in got.keys()}
+    # Prefer a window under a TABBED/STACKED parent on a polluted path.
+    for r in role_results:
+        wid = r.get("windowId")
+        if wid is None or str(wid).strip() == "":
+            continue
+        slot = str(r.get("slot") or "")
+        head = slot.split(".", 1)[0] if slot else ""
+        if head != mon_key:
+            continue
+        info = parent_info.get(str(wid)) or {}
+        pp = info.get("parent_path")
+        if polluted_paths and str(pp) not in polluted_paths:
+            continue
+        parent_lay = str(info.get("parent_layout") or "").upper()
+        parent_type = str(info.get("parent_type") or "").upper()
+        if parent_type == "MONITOR":
+            continue
+        if parent_lay in ("TABBED", "STACKED") or (
+            polluted_paths and str(pp) in polluted_paths
+        ):
+            return wid
+    # Fallback: first mon-child rep.
+    reps = _mon_child_reps(role_results, prof, mon_key)
+    return reps[0] if reps else None
+
+
 def _forest_mon_layouts(forest: Any) -> dict[str, str]:
     """monN → live MONITOR layout (upper). Prefers workspace 0 roots."""
     out: dict[str, str] = {}
@@ -4121,13 +4384,14 @@ def compare_layout_structure(
       - role monitor placement
       - mon-level split layout (HSPLIT/VSPLIT vs live MONITOR.layout)
       - multi-role tabbed/stacked/hsplit/vsplit slots share one CON of that mode
+      - mon-child topology: different mon-layout children not under one shared CON
 
     Returns:
       {
         "match": bool,
         "mismatches": [
-          {"kind": "role-mon"|"mon-layout"|"group", "slot": str, "want": ..., "got": ...,
-           "detail": str}
+          {"kind": "role-mon"|"mon-layout"|"group"|"mon-child", "slot": str,
+           "want": ..., "got": ..., "detail": str}
         ],
       }
     """
@@ -4230,6 +4494,28 @@ def compare_layout_structure(
                     "detail": f"{mode_l} roles not co-grouped under one CON: {slot}",
                 }
             )
+            continue
+        # Co-grouped but polluted by another mon-child role (giant tab bag).
+        if mode_l in ("tabbed", "stacked") and _slot_parent_has_foreign_mon_child(
+            slot, wids, role_results, pinfo
+        ):
+            mismatches.append(
+                {
+                    "kind": "group",
+                    "slot": slot,
+                    "want": mode_l,
+                    "got": "polluted",
+                    "detail": (
+                        f"{mode_l} group for {slot} shares parent with "
+                        "foreign mon-child role(s)"
+                    ),
+                }
+            )
+
+    # Mon-child topology: different profile mon children under one CON path.
+    mismatches.extend(
+        _mon_child_topology_mismatches(role_results, pinfo, prof)
+    )
 
     return {
         "match": len(mismatches) == 0,

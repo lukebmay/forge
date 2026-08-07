@@ -337,6 +337,47 @@ class TestCaptureTilesProfile(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no tiled windows"):
             capture_tiles_profile(_load("tree-empty.json"))
 
+    def test_float_only_raises_clear_message(self):
+        """FLOAT-only mon: clear error, never 'profile roles must be non-empty'."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo0ws0",
+                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                    "stableKey": "geom:0,0,1000,1000#primary",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "layout": None,
+                            "rect": {
+                                "x": 0,
+                                "y": 0,
+                                "width": 100,
+                                "height": 100,
+                            },
+                            "percent": 0,
+                            "userSized": False,
+                            "children": [],
+                            "wmClass": "org.inkscape.Inkscape",
+                            "title": "Drawing",
+                            "windowId": 9001,
+                            "pid": 9001,
+                            "monitor": 0,
+                            "mode": "FLOAT",
+                        }
+                    ],
+                }
+            ],
+        }
+        with self.assertRaises(ValueError) as ctx:
+            capture_tiles_profile(forest)
+        msg = str(ctx.exception)
+        self.assertNotIn("roles must be non-empty", msg)
+        self.assertRegex(msg, r"only floating|no tiled", msg)
+
     def test_stderr_counts(self):
         forest = _load("tree-perfect.json")
         raw = capture_tiles_profile(forest)

@@ -4817,6 +4817,69 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         self.assertTrue(cmp["match"], cmp["mismatches"])
         self.assertEqual(cmp["mismatches"], [])
 
+    def test_mon0_giant_tab_structure_mismatch_and_peel(self):
+        """
+        mon0 TABBED[chrome, ghostty, Grok] vs profile tab|ghostty:
+        structureMatch false; peel demote mon hsplit then left-tab role-only.
+        """
+        forest = _load("tree-mon0-giant-tab.json")
+        profile = _load("profile-dev-v2.json")
+        cmp = compare_layout_structure(forest, profile)
+        self.assertFalse(cmp["match"], cmp["mismatches"])
+        kinds = {m["kind"] for m in cmp["mismatches"]}
+        self.assertIn("mon-child", kinds, cmp["mismatches"])
+        mon_child = [m for m in cmp["mismatches"] if m["kind"] == "mon-child"]
+        self.assertTrue(any(m.get("slot") == "mon0" for m in mon_child), mon_child)
+
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan.get("structureMatch"))
+        self.assertEqual(plan.get("structureMatch"), cmp["match"])
+        self.assertFalse(plan["nothingToDo"])
+        ensures = [a for a in plan["actions"] if a.get("op") == "ensure_layout"]
+        # Peel demote mon0 first, then mon0.left-tab tabbed with chrome+Grok only.
+        self.assertGreaterEqual(len(ensures), 2, ensures)
+        demote = ensures[0]
+        self.assertEqual(demote.get("slot"), "mon0")
+        self.assertEqual(demote.get("mode"), "hsplit")
+        self.assertTrue(demote.get("windowIds"), demote)
+
+        left_tab = next(
+            (
+                a
+                for a in ensures
+                if a.get("slot") == "mon0.left-tab" and a.get("mode") == "tabbed"
+            ),
+            None,
+        )
+        self.assertIsNotNone(left_tab, ensures)
+        wids = [str(x) for x in (left_tab.get("windowIds") or [])]
+        # chrome 101 + Grok 102 only — not ghostty 103
+        self.assertEqual(wids, ["101", "102"], left_tab)
+        # Demote before tab re-group in action list
+        demote_i = next(
+            i
+            for i, a in enumerate(plan["actions"])
+            if a.get("op") == "ensure_layout" and a.get("slot") == "mon0"
+        )
+        tab_i = next(
+            i
+            for i, a in enumerate(plan["actions"])
+            if a.get("op") == "ensure_layout" and a.get("slot") == "mon0.left-tab"
+        )
+        self.assertLess(demote_i, tab_i, plan["actions"])
+
+        from layout_apply import actions_to_extension_steps
+
+        steps = actions_to_extension_steps(plan["actions"])
+        layouts = [s for s in steps if s.get("op") == "layout"]
+        self.assertTrue(layouts, steps)
+        # First layout is hsplit demote; tabbed follows with subset join.
+        self.assertEqual(layouts[0].get("mode"), "hsplit", layouts)
+        self.assertTrue(
+            any(s.get("mode") == "tabbed" for s in layouts),
+            layouts,
+        )
+
     def test_structure_compare_never_disagrees_with_plan(self):
         """
         FIRM: if profile tree ≠ live tree, plan must not nothingToDo (default path).
@@ -4827,6 +4890,7 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
             (_load("tree-perfect.json"), _load("profile-dev-v2.json")),
             (_load("tree-voice-mon-direct.json"), _load("profile-dev-v2.json")),
             (_load("tree-thrash-comms-nested-hsplit.json"), _load("profile-dev-v2.json")),
+            (_load("tree-mon0-giant-tab.json"), _load("profile-dev-v2.json")),
         ]
         for forest, profile in cases:
             cmp = compare_layout_structure(forest, profile)
