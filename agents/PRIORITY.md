@@ -1,11 +1,12 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-06 (Guake rehome reverted; ignore + settle-learning queued mid)  
+**Updated:** 2026-08-06 (settle-learning SL1 started after Wayland residual smoke)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 **Agent git:** stash still listed — drop only after human OK.  
-**Install:** tip includes WR1 + Guake rehome **revert** (`0d18ac0`); Wayland needs **logout**. **No push** until human asks.
+**Install:** master tip; Wayland needs **logout** for JS. **No push** until human asks.  
+**Active code:** [settle-learning](./plans/forge-settle-learning.md) on `plan/forge-settle-learning` (SL1 done; SL2 next).
 
 ---
 
@@ -32,11 +33,11 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Wayland residual re-smoke** (operator) | [task](./tasks/forge-wayland-live_residual-smoke.md) |
-| **2** | **Session verify** (human hard) | [B-manual](./blockers/B-manual-black-session-verify.md) |
-| **3** | **AP5 visual** (soft) | [B-ap5](./blockers/B-ap5-operator-visual-matrix.md) |
+| **1** | **Settle learning SL2** (agent) | [task](./tasks/forge-settle-learning_sl2-batch-dump.md) — batch samples + dump |
+| **2** | **Wayland residual re-smoke** (operator) | [task](./tasks/forge-wayland-live_residual-smoke.md) — Grok open leaf + giant-tab fails noted |
+| **3** | **Session verify** (human hard) | [B-manual](./blockers/B-manual-black-session-verify.md) |
+| **4** | **AP5 visual** (soft) | [B-ap5](./blockers/B-ap5-operator-visual-matrix.md) |
 | **mid** | **Window ignore mode** | [task](./tasks/forge-window-ignore-mode.md) — not RC |
-| **mid draft** | **Settle learning** (drop thrash seeds) | [task](./tasks/forge-settle-learning.md) — after smoke |
 | **post-RC** | Container motion design + MD1 | [plan](./plans/forge-container-motion-design.md) |
 
 ## Queue
@@ -50,8 +51,8 @@
 | **P0 human** | Wayland residual re-smoke | Operator after logout |
 | **P1 human** | [session verify](./blockers/B-manual-black-session-verify.md) | Hard |
 | **soft** | [AP5 op visual](./blockers/B-ap5-operator-visual-matrix.md) | Soft |
+| **mid agent** | [settle-learning SL2](./tasks/forge-settle-learning_sl2-batch-dump.md) | next (SL1 done) |
 | **mid** | [window ignore mode](./tasks/forge-window-ignore-mode.md) | ready, not RC |
-| **mid draft** | [settle learning](./tasks/forge-settle-learning.md) | after reload evidence |
 | **post-RC** | [container motion](./plans/forge-container-motion-design.md) | Design |
 
 Product base: `~/dev/me/forge`, origin **lukebmay/forge**, lineage **`luke`**.

@@ -78,6 +78,15 @@ every focus. Fixed: focus-scoped restack only + forge-geom borders-only. See
 **2026-08-05 prep:** Stash applied onto control-loop + move() port from wayland branch (dest mon / epsilon).
 
 **2026-08-06 operator residuals → WR1+WR2 (merged master):**
+
+**2026-08-06 operator Wayland re-smoke (post reinstall + WR tip):**
+- `forge layout dev` mostly worked.
+- **Fail:** mon0 left tab group — Grok was **not** the visible/open app unit.
+- **Fail:** close all but Ghostty → `layout dev` again → mon0 became **one giant
+  tab group** (no middle split; expect tab group left + Ghostty right).
+- Decision: do **not** pile more WR one-offs; start mid **settle-learning** data
+  collection ([plan](../plans/forge-settle-learning.md)). Topology residuals may
+  still need a separate fix if samples show settle is fine.
 Guake wrong mon; Grok not visible / ¼ height; focus flicker. Fixes on master
 (`dd7e6ca` / `1f44c0b` via merge `db50561`). **Re-smoke after install+logout:**
 layout dev open leaf Grok; focus walk no thrash; Guake F12 mon0/mon1.

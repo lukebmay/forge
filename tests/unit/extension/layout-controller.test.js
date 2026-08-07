@@ -14,6 +14,7 @@ import { Logger } from "../../../lib/shared/logger.js";
 import {
   AppThrashCatalog,
   GHOSTTY_MIN_QUIET_MS,
+  SETTLE_LEARN_PAD,
 } from "../../../lib/extension/app-thrash-catalog.js";
 
 /**
@@ -709,6 +710,176 @@ describe("LayoutController thrash-extra (CL3)", () => {
       cancel: (id) => clock.cancel(id),
     });
     expect(lc2.catalog).toBe(shared);
+  });
+
+  it("SL1: noteOpenPending + verify ok records settle sample", () => {
+    const catalog = new AppThrashCatalog();
+    const meta = {
+      get_id: () => 42,
+      get_wm_class: () => "org.example.Settle",
+    };
+    const openedAt = Date.now() - 350;
+    const lc = make({
+      catalog,
+      hasThrashyTile: () => false,
+      scan: () => ({
+        ok: true,
+        checked: 1,
+        mismatches: [],
+        results: [{ id: 42, ok: true, reasons: [] }],
+      }),
+    });
+
+    lc.noteOpenPendingForSettle(meta, openedAt);
+    expect(lc._settlePending.size).toBe(1);
+
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+
+    const e = catalog.lookup("org.example.Settle");
+    expect(e).toBeTruthy();
+    expect(e.settleSampleCount).toBe(1);
+    expect(e.settleMsLast).toBeGreaterThanOrEqual(350);
+    expect(e.minQuietMs).toBe(e.settleMsLast * SETTLE_LEARN_PAD);
+    expect(lc._settlePending.size).toBe(0);
+  });
+
+  it("SL1: mismatch accumulates then first ok records once", () => {
+    const catalog = new AppThrashCatalog();
+    const meta = {
+      get_id: () => 7,
+      get_wm_class: () => "org.example.Mismatch",
+    };
+    let phase = 0;
+    const lc = make({
+      catalog,
+      hasThrashyTile: () => false,
+      scan: () => {
+        phase += 1;
+        if (phase === 1) {
+          return {
+            ok: false,
+            checked: 1,
+            mismatches: [{ id: 7, reasons: ["rect-mismatch"] }],
+            results: [{ id: 7, ok: false, reasons: ["rect-mismatch"] }],
+          };
+        }
+        return {
+          ok: true,
+          checked: 1,
+          mismatches: [],
+          results: [{ id: 7, ok: true, reasons: [] }],
+        };
+      },
+    });
+
+    lc.noteOpenPendingForSettle(meta, Date.now() - 100);
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(catalog.lookup("org.example.Mismatch")).toBeFalsy();
+    expect(lc._settlePending.get(meta)?.mismatches).toBe(1);
+
+    // cancel reassert noise; fire second verify
+    lc.cancel();
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+
+    const e = catalog.lookup("org.example.Mismatch");
+    expect(e.settleSampleCount).toBe(1);
+    expect(e.mismatchBeforeSettle).toBe(1);
+    expect(lc._settlePending.size).toBe(0);
+  });
+
+  it("SL1: clearOpenPendingForSettle drops observation", () => {
+    const catalog = new AppThrashCatalog();
+    const meta = { get_id: () => 1, get_wm_class: () => "org.example.Gone" };
+    const lc = make({
+      catalog,
+      scan: () => ({
+        ok: true,
+        checked: 1,
+        mismatches: [],
+        results: [{ id: 1, ok: true, reasons: [] }],
+      }),
+    });
+    lc.noteOpenPendingForSettle(meta, Date.now());
+    lc.clearOpenPendingForSettle(meta);
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+    expect(catalog.lookup("org.example.Gone")).toBeFalsy();
+  });
+
+  it("SL1: forest ok without pending id in results does not sample", () => {
+    const catalog = new AppThrashCatalog();
+    const meta = {
+      get_id: () => 42,
+      get_wm_class: () => "org.example.FloatFirst",
+    };
+    let phase = 0;
+    const lc = make({
+      catalog,
+      hasThrashyTile: () => false,
+      scan: () => {
+        phase += 1;
+        if (phase === 1) {
+          // Forest ok (other tiles settled) but pending window not in TILE scan.
+          return {
+            ok: true,
+            checked: 1,
+            mismatches: [],
+            results: [{ id: 99, ok: true, reasons: [] }],
+          };
+        }
+        return {
+          ok: true,
+          checked: 2,
+          mismatches: [],
+          results: [
+            { id: 99, ok: true, reasons: [] },
+            { id: 42, ok: true, reasons: [] },
+          ],
+        };
+      },
+    });
+
+    lc.noteOpenPendingForSettle(meta, Date.now() - 200);
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+
+    expect(catalog.lookup("org.example.FloatFirst")).toBeFalsy();
+    expect(lc._settlePending.size).toBe(1);
+    expect(lc._settlePending.has(meta)).toBe(true);
+
+    lc.cancel();
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+
+    const e = catalog.lookup("org.example.FloatFirst");
+    expect(e).toBeTruthy();
+    expect(e.settleSampleCount).toBe(1);
+    expect(lc._settlePending.size).toBe(0);
+  });
+
+  it("SL1: forest ok with empty results still samples (inject path)", () => {
+    const catalog = new AppThrashCatalog();
+    const meta = {
+      get_id: () => 5,
+      get_wm_class: () => "org.example.Inject",
+    };
+    const lc = make({
+      catalog,
+      hasThrashyTile: () => false,
+      scan: () => ({ ok: true, checked: 0, mismatches: [], results: [] }),
+    });
+
+    lc.noteOpenPendingForSettle(meta, Date.now() - 100);
+    lc.requestVerify("post-render");
+    clock.advance(VERIFY_REQUEST_DEBOUNCE_MS);
+
+    const e = catalog.lookup("org.example.Inject");
+    expect(e).toBeTruthy();
+    expect(e.settleSampleCount).toBe(1);
+    expect(lc._settlePending.size).toBe(0);
   });
 });
 

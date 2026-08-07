@@ -3,8 +3,12 @@ import {
   AppThrashCatalog,
   BUILT_IN_THRASH_DEFAULTS,
   GHOSTTY_MIN_QUIET_MS,
+  SETTLE_EMA_ALPHA,
+  SETTLE_LEARN_CAP_MS,
+  SETTLE_LEARN_PAD,
   THRASH_SCORE_THRESHOLD,
   classStem,
+  computeLearnedMinQuietMs,
   extractWmClass,
   hasThrashyManagedTile,
   normalizeWmClass,
@@ -208,5 +212,157 @@ describe("extractWmClass / hasThrashyManagedTile", () => {
   it("hasThrashyManagedTile false without catalog or tree", () => {
     expect(hasThrashyManagedTile({}, new AppThrashCatalog())).toBe(false);
     expect(hasThrashyManagedTile({ tree: {} }, null)).toBe(false);
+  });
+});
+
+describe("computeLearnedMinQuietMs", () => {
+  it("exports pad / cap in the locked range", () => {
+    expect(SETTLE_LEARN_PAD).toBeGreaterThanOrEqual(1.15);
+    expect(SETTLE_LEARN_PAD).toBeLessThanOrEqual(1.25);
+    expect(SETTLE_LEARN_CAP_MS).toBe(2000);
+    expect(SETTLE_EMA_ALPHA).toBeGreaterThan(0);
+    expect(SETTLE_EMA_ALPHA).toBeLessThan(1);
+  });
+
+  it("pads sample and respects seed floor", () => {
+    expect(
+      computeLearnedMinQuietMs({
+        seedFloor: 250,
+        previousMinQuiet: 250,
+        sampleMs: 100,
+        pad: 1.2,
+        cap: 2000,
+      })
+    ).toBe(250);
+    expect(
+      computeLearnedMinQuietMs({
+        seedFloor: 250,
+        previousMinQuiet: 250,
+        sampleMs: 400,
+        pad: 1.2,
+        cap: 2000,
+      })
+    ).toBe(480);
+  });
+
+  it("raise-only vs previous when later samples are faster", () => {
+    const raised = computeLearnedMinQuietMs({
+      seedFloor: 0,
+      previousMinQuiet: 0,
+      sampleMs: 500,
+      pad: 1.2,
+      cap: 2000,
+    });
+    expect(raised).toBe(600);
+    expect(
+      computeLearnedMinQuietMs({
+        seedFloor: 0,
+        previousMinQuiet: raised,
+        sampleMs: 100,
+        pad: 1.2,
+        cap: 2000,
+      })
+    ).toBe(600);
+  });
+
+  it("caps at SETTLE_LEARN_CAP_MS and never goes below 0", () => {
+    expect(
+      computeLearnedMinQuietMs({
+        seedFloor: 0,
+        previousMinQuiet: 0,
+        sampleMs: 5000,
+        pad: 1.2,
+        cap: SETTLE_LEARN_CAP_MS,
+      })
+    ).toBe(SETTLE_LEARN_CAP_MS);
+    expect(
+      computeLearnedMinQuietMs({
+        seedFloor: -10,
+        previousMinQuiet: -5,
+        sampleMs: -20,
+      })
+    ).toBe(0);
+  });
+});
+
+describe("AppThrashCatalog recordSettleSample + snapshot", () => {
+  /** @type {AppThrashCatalog} */
+  let cat;
+
+  beforeEach(() => {
+    cat = new AppThrashCatalog();
+  });
+
+  it("records settle stats and raises minQuiet with pad", () => {
+    const e = cat.recordSettleSample("org.example.Slow", {
+      ms: 500,
+      kind: "open",
+      mismatches: 2,
+    });
+    expect(e.settleSampleCount).toBe(1);
+    expect(e.settleMsLast).toBe(500);
+    expect(e.settleMsMax).toBe(500);
+    expect(e.settleMsEma).toBe(500);
+    expect(e.mismatchBeforeSettle).toBe(2);
+    expect(e.minQuietMs).toBe(Math.round(500 * SETTLE_LEARN_PAD * 1000) / 1000);
+    expect(e.minQuietMs).toBe(500 * SETTLE_LEARN_PAD);
+    expect(e.seedMinQuietMs).toBe(0);
+  });
+
+  it("EMA updates and minQuiet is raise-only", () => {
+    cat.recordSettleSample("Foo", { ms: 400 });
+    const e = cat.lookup("Foo");
+    const quietAfterSlow = e.minQuietMs;
+    expect(quietAfterSlow).toBe(400 * SETTLE_LEARN_PAD);
+
+    cat.recordSettleSample("Foo", { ms: 100, mismatches: 1 });
+    expect(e.settleSampleCount).toBe(2);
+    expect(e.settleMsLast).toBe(100);
+    expect(e.settleMsMax).toBe(400);
+    const expectedEma = SETTLE_EMA_ALPHA * 100 + (1 - SETTLE_EMA_ALPHA) * 400;
+    expect(e.settleMsEma).toBeCloseTo(expectedEma, 5);
+    expect(e.minQuietMs).toBe(quietAfterSlow); // raise-only
+    expect(e.mismatchBeforeSettle).toBe(1);
+  });
+
+  it("Ghostty seed stays floor; needsExtraVerify sticky; samples can raise", () => {
+    const e = cat.lookup("ghostty");
+    expect(e.seedMinQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
+    expect(e.minQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
+    expect(e.needsExtraVerify).toBe(true);
+
+    cat.recordSettleSample("com.mitchellh.ghostty", { ms: 50 });
+    expect(e.minQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
+    expect(e.needsExtraVerify).toBe(true);
+    expect(e.builtIn).toBe(true);
+
+    cat.recordSettleSample("ghostty", { ms: 800 });
+    expect(e.minQuietMs).toBe(800 * SETTLE_LEARN_PAD);
+    expect(e.minQuietMs).toBeGreaterThan(GHOSTTY_MIN_QUIET_MS);
+    expect(e.needsExtraVerify).toBe(true);
+  });
+
+  it("snapshot includes settle fields; does not persist to disk", () => {
+    cat.recordSettleSample("org.gnome.Nautilus", { ms: 300, mismatches: 1 });
+    const snap = cat.snapshot();
+    const row = snap.find((r) => r.key === "org.gnome.nautilus");
+    expect(row).toBeTruthy();
+    expect(row.settleSampleCount).toBe(1);
+    expect(row.settleMsLast).toBe(300);
+    expect(row.settleMsMax).toBe(300);
+    expect(row.settleMsEma).toBe(300);
+    expect(row.mismatchBeforeSettle).toBe(1);
+    expect(row.minQuietMs).toBe(300 * SETTLE_LEARN_PAD);
+    expect(row.seedMinQuietMs).toBe(0);
+
+    const ghost = snap.find((r) => r.key === "com.mitchellh.ghostty" || r.key === "ghostty");
+    expect(ghost).toBeTruthy();
+    expect(ghost.builtIn).toBe(true);
+    expect(ghost.minQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
+  });
+
+  it("null class is a no-op for settle", () => {
+    expect(cat.recordSettleSample(null, { ms: 100 })).toBeNull();
+    expect(cat.recordSettleSample("", { ms: 100 })).toBeNull();
   });
 });

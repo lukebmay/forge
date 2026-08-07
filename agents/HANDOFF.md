@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-06 (WR1+WR2 Wayland residuals on master)  
-**Branch tip:** `master` @ merge `db50561` (WR1 `dd7e6ca` + WR2 `1f44c0b`) — local, **ahead of origin**, not pushed  
-**Install:** reinstall this tip; Wayland **cannot HUP** — logout to load  
-**Wayland:** **Operator re-smoke** after install+logout  
+**Updated:** 2026-08-06 (settle-learning SL1 after Wayland residual report)  
+**Branch tip:** `master` (ahead of origin); **active work** `plan/forge-settle-learning`  
+**Install:** master tip; Wayland **cannot HUP** — logout to load  
+**Wayland:** re-smoke found residuals (see below); agent started settle-learning  
 **Stash:** `stash@{0}` still present — **drop only after human OK**  
 **Remotes:** **no push** unless human asks  
 
@@ -15,13 +15,23 @@
 | --- | --- |
 | CSS dual-load → **effective overlay** (user colors) | **Done** |
 | Workspace scope WS0–WS3 | **Done** |
-| WR1 chrome geom / focus thrash | **Done** (open-leaf reassert; targeted rect-mismatch recovery) |
-| WR2 Guake focus/LFT mon | **Done** (Guake-only rehome on map+focus) |
-| Unit: window + extension | Green (WR suites + pre-commit) |
-| X11 dual-ws + layout smoke | **Green** (pre-WR) |
-| Wayland residual re-smoke | **Human** after install+logout |
+| WR1 chrome geom / focus thrash | **Done** |
+| WR2 Guake rehome | **Reverted** (`0d18ac0`) — float only |
+| Unit: window + extension | Green on master |
+| X11 dual-ws + layout smoke | **Green** |
+| Wayland residual re-smoke | **Partial fail** (see residuals) |
 | Session DPMS / daily layout | **Human** B-manual |
 | AP5 visual matrix | **Human soft** |
+
+### Wayland residuals (2026-08-06 operator)
+
+| Symptom | Note |
+| --- | --- |
+| mon0 left TABBED: Grok not open/visible unit after `layout dev` | tab settle / active leaf? |
+| Only Ghostty → `layout dev` → mon0 one giant tab (no tab\|ghostty split) | residual structure race? |
+
+**Decision:** mid [settle-learning](./plans/forge-settle-learning.md) data collection
+before more WR patches. Topology may still need a separate fix.
 
 | Explicitly **not** RC | Note |
 | --- | --- |

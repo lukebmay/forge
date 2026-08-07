@@ -14,6 +14,7 @@ import {
 import {
   AppThrashCatalog,
   GHOSTTY_MIN_QUIET_MS,
+  SETTLE_LEARN_PAD,
 } from "../../../lib/extension/app-thrash-catalog.js";
 
 describe("layout-open constants", () => {
@@ -75,6 +76,19 @@ describe("computeOpenMinQuietMs", () => {
   it("treats bad catalog values as zero", () => {
     expect(computeOpenMinQuietMs({ catalogMinQuietMs: -10 })).toBe(OPEN_DEFAULT_QUIET_MS);
     expect(computeOpenMinQuietMs({ catalogMinQuietMs: "x" })).toBe(OPEN_DEFAULT_QUIET_MS);
+  });
+
+  it("reads raised catalog minQuiet after settle samples (SL1)", () => {
+    const cat = new AppThrashCatalog();
+    cat.recordSettleSample("org.example.Learned", { ms: 500 });
+    const entry = cat.lookup("org.example.Learned");
+    expect(entry.minQuietMs).toBe(500 * SETTLE_LEARN_PAD);
+    const ms = computeOpenMinQuietMs({
+      catalogMinQuietMs: entry.minQuietMs,
+      firstOpen: false,
+    });
+    expect(ms).toBe(Math.max(OPEN_DEFAULT_QUIET_MS, 500 * SETTLE_LEARN_PAD));
+    expect(ms).toBeGreaterThan(OPEN_DEFAULT_QUIET_MS);
   });
 });
 
