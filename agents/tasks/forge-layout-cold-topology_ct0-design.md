@@ -54,4 +54,4 @@ A short design section in the plan (or `docs/DESIGN.md` pointer) that answers:
 
 ## Session note
 
-Created 2026-08-08 for handoff. Start here after Wayland reload; do not implement CT1 until design lock.
+Created 2026-08-08 for handoff. Start after login (Wayland *or* X11 — both daily drivers). Do not implement CT1 until design lock. CT3 X11 live is required parity, not optional smoke.

@@ -1,8 +1,8 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-08 (post-reboot displays + cold topology plan)  
-**Branch:** `master` (cold work → create `plan/forge-layout-cold-topology`)  
-**Session type for next operator login:** **Wayland** (daily driver; tip install already on disk)
+**Updated:** 2026-08-08 (tasks complete for cold topology + cross-link gdisplays)  
+**Branch:** `master` → implement on `plan/forge-layout-cold-topology`  
+**Sessions:** **Wayland and X11 are both daily drivers** (X11 on older machines)
 
 ---
 
@@ -10,65 +10,39 @@
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | **Cold layout topology (design → one-shot)** | [plans/forge-layout-cold-topology.md](./plans/forge-layout-cold-topology.md) · task [CT0](./tasks/forge-layout-cold-topology_ct0-design.md) |
-| mid | DnD plan branch merge when ready | `plan/forge-dnd-drop-zones` |
-| shellrc | gdisplays multi-config duals (no login ensure) | shellrc `bdb2ccc` + follow-up strip ensure |
+| **P0** | Cold layout topology **CT0 design** | [plan](./plans/forge-layout-cold-topology.md) · [CT0](./tasks/forge-layout-cold-topology_ct0-design.md) |
+| → | CT1 skeleton implement | [CT1](./tasks/forge-layout-cold-topology_ct1-skeleton.md) |
+| → | CT2 Wayland live · CT3 X11 live | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) · [CT3](./tasks/forge-layout-cold-topology_ct3-x11-live.md) |
+| shellrc | gdisplays session/greeter (GS0+) | `~/dev/me/shellrc/agents/plans/gdisplays-session-greeter.md` |
 
 ---
 
-## What just happened (reboot incident)
+## Architecture lock (do not re-litigate)
 
-1. **Displays:** DRM connector renumber (hybrid AMD/NVIDIA) + single-config user `monitors.xml` → Mutter 1.25 fallback; greeter X11 duals/primary drift.  
-2. **gdisplays:** User XML now writes **canonical + live + history duals**; load applies non-persistently so Mutter cannot wipe multi-config. **Login ensure/autostart removed** (hostile; not product).  
-3. **Forge session-layout:** Correctly discarded post-reboot (by design).  
-4. **`forge layout dev`:** First pass Mode B partial; 2–3 passes reached correct tree. **Not** settle-thrash regression — cold topology construction order.
-
-### Current desk (after recovery)
-
-```text
-mon0: tab(chrome, Grok) | ghostty
-mon1: ghostty | tab(YouTube, Gmail, Voice)
-```
-
-### Operator after Wayland reload
-
-1. Confirm scale 1.5 / primary left (`gdisplays --status`). If wrong: `gdisplays load default` then optional `gdisplays --user-to-login` (greeter primary = **user** primary, scale=1 duals).  
-2. Do **not** expect login autostart.  
-3. Next agent work: **CT0 design lock** for cold layout — not a second-pass Mode B patch.
-
----
-
-## Cold Mode B — architectural read (for CT0)
-
-| Layer | Role |
+| Topic | Decision |
 | --- | --- |
-| Apply-contract thrash | Residual geom after place — **done** |
-| Mode B thrash-recover | Mid-session chaos — keep for true thrash only |
-| Cold path | Must **skeleton-first, then bind**; no thrash recover mid-batch |
-
-Agree: tree **shape** should not race async maps; async is for **bind/place** to slots only.
+| Settle thrash (AC1–AC6) | Done — residual geom = echo |
+| Cold Mode B second pass | **Not** the product fix — skeleton-first one-shot |
+| Thrash mid-batch | Forbidden while layout ops in flight |
+| Tree shape vs bind | Shape first; async bind to slots OK |
+| X11 | Daily driver parity (CT3), not optional |
 
 ---
 
-## gdisplays (shellrc) product direction (not forge)
+## Operator after login
 
-Friendly helper, not greeter-fighting daemon:
-
-- Multi-config duals on **user** XML (append/union renumber variants) — in place.  
-- Greeter: write-through on intentional load/set; primary follows **user** primary; scale=1 duals for GDM.  
-- Keep X11+Wayland duals; keep NVIDIA-class renumbers for other users.  
-- No login ensure / autostart.
+1. `gdisplays --status` — if scale wrong: `gdisplays load default`  
+2. Greeter wrong: `gdisplays --user-to-login` until GS2 write-through ships  
+3. Agent: **CT0** (forge) and/or **GS0** (shellrc gdisplays)
 
 ---
 
 ## Open human blockers
 
 - hard: resize-autotile-design  
-- soft: none for this incident  
 
 ---
 
 ## Agent rules
 
 - **No push** unless asked · **No SSH** without **explicit**  
-- Plan code on `plan/<plan>` · queue docs on default branch after wrap-up  

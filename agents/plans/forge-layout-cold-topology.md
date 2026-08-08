@@ -74,27 +74,36 @@ Open design choices (task 0 must lock):
 
 ---
 
+## Daily drivers
+
+| Session | Role |
+| --- | --- |
+| **Wayland** | Primary on `black` |
+| **X11** | Daily driver on older machines + testing — **CT3 required**, not optional |
+
+---
+
 ## Tasks
 
 | ID | Task | Status |
 | --- | --- | --- |
-| **CT0** | [Design lock](../tasks/forge-layout-cold-topology_ct0-design.md) — phases, APIs, acceptance | **ready** |
-| CT1 | Implement skeleton-first cold path (unit + dry fixtures) | blocked on CT0 |
-| CT2 | Live Wayland one-shot `layout dev` on black | blocked on CT1 |
-| CT3 | Live X11 smoke parity | after CT2 |
+| **CT0** | [Design lock](../tasks/forge-layout-cold-topology_ct0-design.md) | **ready** |
+| **CT1** | [Skeleton-first implement](../tasks/forge-layout-cold-topology_ct1-skeleton.md) | ready (after CT0) |
+| **CT2** | [Wayland live one-shot](../tasks/forge-layout-cold-topology_ct2-wayland-live.md) | ready (after CT1) |
+| **CT3** | [X11 live one-shot](../tasks/forge-layout-cold-topology_ct3-x11-live.md) | ready (after CT1; parallel CT2) |
 
 ---
 
 ## Acceptance (plan-level)
 
-- [ ] Cold desk (0–2 ghosts, chrome not open) → single `forge layout dev` → mon0 `tab(chrome,Grok)|ghostty`, mon1 `ghostty|tab(YT,Gmail,Voice)` without Mode B stderr path  
-- [ ] Settled re-run still idempotent (reused N, moved 0 when already correct)  
+- [ ] Cold desk → single `forge layout dev` → correct dual-mon tabs **without Mode B** on Wayland (CT2) and X11 (CT3)  
+- [ ] Settled re-run idempotent  
 - [ ] No thrash-recover interleaved with open/bind  
-- [ ] Unit tests for phase order; no “run plan twice” test as success  
+- [ ] Unit tests for phase order; no “plan twice” as success  
 - [ ] docs/user/layout.md cold section updated  
 
 ---
 
 ## Session note
 
-**2026-08-08:** Plan opened after reboot incident analysis. Cold Mode B residual confirmed architectural, not settle-thrash regression. Operator rejected login-time display ensure; gdisplays multi-config duals stay separate. Next: CT0 design lock, then implement on `plan/forge-layout-cold-topology`.
+**2026-08-08:** Plan opened after reboot incident. Cold Mode B residual = architectural. Operator: X11 is also daily driver — CT3 required. gdisplays greeter/session plan is shellrc-side. Next: CT0 design lock on `plan/forge-layout-cold-topology`.
