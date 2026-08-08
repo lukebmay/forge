@@ -46,3 +46,7 @@
 **Tests:** vitest FocusManager + WindowManager-focus + session-api-layout-cycle + layout-apply-chrome: **80 pass**. pytest CLI layout subset: **422 pass**. `zsh -n` session-sleep OK.
 
 **Branch:** forge `task/layout-focus-chrome-session-sleep`; shellrc `master`.
+
+## Session note (2026-08-08)
+
+A/B **AGREE**. Shipped: no focus reassert; chrome-clear before residual; B-manual done; session-sleep v2. Commits e31777c + docs. No push.
