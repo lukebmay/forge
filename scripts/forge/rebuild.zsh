@@ -152,7 +152,7 @@ if command -v gsettings >/dev/null 2>&1; then
   fi
 fi
 
-gnome-extensions enable "$FORGE_UUID" 2>/dev/null \
+forge_enable_extension "$FORGE_UUID" \
   || forge_warn "enable failed (may need shell restart first)"
 
 if (( DO_RELOAD_THEME )); then
@@ -166,7 +166,7 @@ if (( DO_RESTART )); then
   forge_restart_shell || rc=$?
   if (( rc == 0 )); then
     sleep 1
-    gnome-extensions enable "$FORGE_UUID" 2>/dev/null || true
+    forge_enable_extension "$FORGE_UUID" >/dev/null 2>&1 || true
     if (( DO_RELOAD_THEME )); then
       "$SCRIPT_DIR/reload-theme.zsh" --force 2>/dev/null || true
     fi

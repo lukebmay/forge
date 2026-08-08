@@ -169,8 +169,9 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
             "forge layout <name> --wait-tree-stable",
             "Debug: whole GetTree fingerprint quiet before residual (also env=1)",
         ),
-        ("forge layout <name> --clean", "Close residuals (Meta delete; not park)"),
-        ("forge layout <name> --clean --force", "Stronger delete; never process-kill"),
+        ("forge layout <name>", "Close non-layout windows (default)"),
+        ("forge layout <name> --keep-others", "Park residuals into last mon unit (tabs)"),
+        ("forge layout <name> --clean --force", "Stronger Meta delete; never process-kill"),
     ):
         _out(s, "  ", cmd(line, **kw))
         _out(s, "      ", dim(desc, **kw))
@@ -297,14 +298,15 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
         bold("--wait-tree-stable", **kw),
         "  debug LF6 fingerprint quiet (or FORGE_LAYOUT_WAIT_TREE_STABLE=1)",
     )
-    _out(s, "  ", bold("--clean", **kw), "            close residuals (default leave; Mode B parks)")
+    _out(s, "  ", bold("default", **kw), "             close non-layout windows (desk = profile only)")
+    _out(s, "  ", bold("--keep-others", **kw), "       park residuals onto last mon unit (tab join)")
     _out(s, "  ", bold("--clean --force", **kw), "     stronger Meta delete; never process-kill")
-    _out(s, "  ", bold("marginal.mode=strict", **kw), "  no companion keep; residual leave|park still applies")
+    _out(s, "  ", bold("marginal.mode=strict", **kw), "  no companion keep; residual policy still applies")
     _blank(s)
 
     _out(s, heading("Thrash modes", **kw), " ", dim("(auto; stderr on dry-run/apply)", **kw))
     _out(s, "  ", bold("mode=A collect", **kw), "       desk sane: open gaps, move roles, tab marginals into views")
-    _out(s, "  ", bold("mode=B thrash-recover", **kw), " desk wrong: roles only + soft-park other tiles")
+    _out(s, "  ", bold("mode=B thrash-recover", **kw), " desk wrong: roles only; residuals close (or park with --keep-others)")
     _out(s, "  ", bold("thrashState", **kw), "            one line when thrashed (score + reasons)")
     _out(s, "  ", bold("thrashRisk", **kw), "             plan risk when score > 0 (structure/moves)")
     _out(s, "  ", bold("--safe", **kw), "                 skips park/structure; still reports A/B detection")

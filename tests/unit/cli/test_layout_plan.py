@@ -3246,16 +3246,18 @@ class TestMarginalCoexist(unittest.TestCase):
         self.assertEqual(plan["counts"]["left"], 0)
         parks = [a for a in plan["actions"] if a["op"] == "park"]
         self.assertEqual(len(parks), 2)
-        # Soft park onto Ghostty (only claimed window)
+        # Soft park onto Ghostty (only claimed window; mon1 has no claimed unit)
         for p in parks:
             self.assertEqual(p.get("destWindowId"), 601)
-        # No overflow ensure_layout
-        self.assertFalse(
-            any(
-                a.get("op") == "ensure_layout" and "overflow" in str(a.get("slot", ""))
-                for a in plan["actions"]
-            )
-        )
+        # Tab-join last mon unit: overflow ensure_layout wraps ghostty + residuals
+        overflow = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and "overflow" in str(a.get("slot", ""))
+        ]
+        self.assertEqual(len(overflow), 1, overflow)
+        self.assertEqual(overflow[0].get("mode"), "tabbed")
+        self.assertEqual(overflow[0].get("windowIds")[0], 601)
         # WR16: park-only must not rewrite mon splits
         mon_ensures = [
             a
@@ -3673,13 +3675,14 @@ class TestMonChildSpanAndParkGating(unittest.TestCase):
             if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
         ]
         self.assertEqual(mon_ensures, [])
-        # Soft park: no overflow ensure_layout (zero thrash)
+        # Soft park: tab-join overflow ensure (not mon-level hsplit rewrite)
         overflow = [
             a
             for a in plan["actions"]
             if a.get("op") == "ensure_layout" and "overflow" in str(a.get("slot", ""))
         ]
-        self.assertEqual(overflow, [])
+        self.assertTrue(overflow, plan["actions"])
+        self.assertTrue(all(a.get("mode") in ("tabbed", "stacked") for a in overflow))
         parks = [a for a in plan["actions"] if a.get("op") == "park"]
         self.assertEqual(len(parks), 2)
         self.assertTrue(all(p.get("destWindowId") is not None for p in parks))
@@ -4880,6 +4883,44 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
             layouts,
         )
 
+    def test_mon0_nested_hsplit_collapse_mismatch_and_order(self):
+        """
+        mon0 nested HSPLIT[VSPLIT(ghostty)|TABBED(chrome,Grok)] vs tab|ghostty:
+        structureMatch false (mon-direct collapse); ensure_order only — no peel
+        demote that would smash the tab bag.
+        """
+        forest = _load("tree-mon0-nested-hsplit-collapse.json")
+        profile = _load("profile-dev-v2.json")
+        cmp = compare_layout_structure(forest, profile)
+        self.assertFalse(cmp["match"], cmp["mismatches"])
+        mon_child = [m for m in cmp["mismatches"] if m["kind"] == "mon-child"]
+        self.assertTrue(any(m.get("slot") == "mon0" for m in mon_child), mon_child)
+        detail = " ".join(str(m.get("detail") or "") for m in mon_child)
+        self.assertIn("mon-direct", detail)
+
+        plan = plan_reconcile(forest, profile)
+        self.assertFalse(plan.get("structureMatch"))
+        self.assertFalse(plan["nothingToDo"])
+        # No peel demote ensure mon0 hsplit — would demote the chrome tab bag.
+        mon0_layout = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") == "mon0"
+        ]
+        self.assertEqual(mon0_layout, [], mon0_layout)
+        orders = [
+            a
+            for a in plan["actions"]
+            if a.get("op") == "ensure_order" and a.get("slot") == "mon0"
+        ]
+        self.assertEqual(len(orders), 1, plan["actions"])
+        # Profile mon children: left-tab (chrome) then term (ghostty)
+        self.assertEqual(
+            [str(x) for x in (orders[0].get("windowIds") or [])],
+            ["101", "100"],
+            orders[0],
+        )
+
     def test_structure_compare_never_disagrees_with_plan(self):
         """
         FIRM: if profile tree ≠ live tree, plan must not nothingToDo (default path).
@@ -4891,6 +4932,7 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
             (_load("tree-voice-mon-direct.json"), _load("profile-dev-v2.json")),
             (_load("tree-thrash-comms-nested-hsplit.json"), _load("profile-dev-v2.json")),
             (_load("tree-mon0-giant-tab.json"), _load("profile-dev-v2.json")),
+            (_load("tree-mon0-nested-hsplit-collapse.json"), _load("profile-dev-v2.json")),
         ]
         for forest, profile in cases:
             cmp = compare_layout_structure(forest, profile)

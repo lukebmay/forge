@@ -1337,12 +1337,13 @@ def _payload_has_cli_only(payload: Any) -> list[str]:
 
 def _layout_batch_call(backend: str, action: str) -> tuple[bool, dict[str, Any]]:
     """
-    DBus LayoutBatch(begin|end|release-deferred) for CL5/CL9 multi-open loop.
+    DBus LayoutBatch(begin|end|release-deferred|chrome-clear) for layout apply.
 
     begin: defer per-app open renderTree until end (or residual RunSteps commit).
     release-deferred / release / unhide: unhide CL8 deferred maps without ending
     the batch (CL9: before residual plan + RunSteps).
-    end: one requestLayout if still need-commit after residual.
+    end: batch depth 0 + deferred commit; apply chrome stays up for residual place.
+    chrome-clear: hide apply chrome after residual/belt/retry (or finally).
     Returns (ok, payload). ok=false when DBus/extension fails (caller may continue).
     """
     try:
@@ -2045,7 +2046,8 @@ def _layout_run_reconcile(
     *,
     dry_run: bool,
     tree_file: Optional[str],
-    clean: bool = False,
+    clean: bool = True,
+    keep_others: bool = False,
     force_close: bool = False,
     safe: bool = False,
     verbose: bool = False,
@@ -2091,7 +2093,12 @@ def _layout_run_reconcile(
     try:
         # Pass raw sugar so mon_count can re-desugar; pre-validated IR loses tiles.
         plan = plan_reconcile(
-            forest, data, clean=clean, safe=safe, workspace=workspace
+            forest,
+            data,
+            clean=clean,
+            keep_others=keep_others,
+            safe=safe,
+            workspace=workspace,
         )
     except ValueError as e:
         _eprint(f"forge layout: plan failed: {e}")
@@ -2113,14 +2120,13 @@ def _layout_run_reconcile(
             )
         )
     _layout_print_thrash_mode(plan, safe=safe)
-    if clean:
+    if safe:
+        _eprint("  residuals=leave (--safe: open+move only)")
+    elif keep_others:
+        _eprint("  residuals=park (--keep-others: join last mon unit as tabs)")
+    else:
         force_bit = " --force" if force_close else ""
-        if safe:
-            _eprint(
-                f"  clean=true{force_bit} (ignored with --safe; residuals left)"
-            )
-        else:
-            _eprint(f"  clean=true{force_bit} (residuals close, not park)")
+        _eprint(f"  residuals=close{force_bit} (default; non-layout windows closed)")
     counts = plan.get("counts") or {}
     _layout_print_counts(counts)
     _layout_print_thrash_state(plan)
@@ -2175,11 +2181,12 @@ def _layout_run_reconcile(
 
     # 2–3) Opens under LayoutBatch (CL5/CL9): no per-app mid-batch renderTree.
     # Flow: begin → parallel PlaceNext+launch all → map-pin wait → optional
-    # fingerprint quiet (--wait-tree-stable) → release-deferred → residual
-    # RunSteps (freeze → ops → one render + verify) → end.
+    # fingerprint quiet (--wait-tree-stable) → release-deferred → end batch →
+    # residual RunSteps → chrome-clear. Apply chrome stays until residual place.
     # Do not abort mid-loop: residual rehome still needs successful pins.
     role_pins: dict[str, Any] = {}
     open_failures: list[Any] = []
+    chrome_clear_needed = False
     if open_actions:
         begin_action = f"begin:{name}" if name else "begin"
         batch_ok, batch_begin = _layout_batch_call(backend, begin_action)
@@ -2189,6 +2196,8 @@ def _layout_run_reconcile(
                 "forge layout: LayoutBatch begin failed "
                 f"(continuing without batch: {batch_begin.get('error')})"
             )
+        else:
+            chrome_clear_needed = True
 
         try:
             # CL9: one baseline before all spawns; PlaceNext+launch without
@@ -2336,6 +2345,7 @@ def _layout_run_reconcile(
                     forest2,
                     data,
                     clean=clean,
+                    keep_others=keep_others,
                     safe=safe,
                     role_pins=role_pins or None,
                     just_opened_roles=set(role_pins.keys()) if role_pins else None,
@@ -2419,6 +2429,7 @@ def _layout_run_reconcile(
                         forest3,
                         data,
                         clean=clean,
+                        keep_others=keep_others,
                         safe=safe,
                         role_pins=role_pins,
                         just_opened_roles=set(role_pins.keys()),
@@ -2479,6 +2490,7 @@ def _layout_run_reconcile(
                         forest4,
                         data,
                         clean=clean,
+                        keep_others=keep_others,
                         safe=safe,
                         role_pins=role_pins,
                         just_opened_roles=set(role_pins.keys()),
@@ -2580,6 +2592,15 @@ def _layout_run_reconcile(
                         "forge layout: LayoutBatch end failed: "
                         f"{batch_end.get('error')}"
                     )
+            # Always clear apply chrome after residual place (or error path).
+            if chrome_clear_needed:
+                _clr_ok, clr_payload = _layout_batch_call(backend, "chrome-clear")
+                apply_log["layoutChromeClear"] = clr_payload
+                if not _clr_ok:
+                    _eprint(
+                        "forge layout: LayoutBatch chrome-clear failed: "
+                        f"{clr_payload.get('error')}"
+                    )
 
     _eprint("  ok")
     out = _layout_plan_meta(resolved, name, plan, dry_run=False)
@@ -2678,7 +2699,7 @@ def _layout_run_save(
 
 
 def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
-    """forge layout list | show | save | <targets…> [--dry-run] [--clean] [--safe]."""
+    """forge layout list | show | save | <targets…> [--dry-run] [--keep-others] [--safe]."""
     tokens: list[str] = list(getattr(args, "layout_tokens", None) or [])
     (
         action,
@@ -2686,17 +2707,29 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         run_tokens,
         dry_run,
         force_launch,
-        clean,
+        _clean_flag,
         force_close,
     ) = _layout_parse_tokens(tokens, args)
     tree_file = getattr(args, "tree_file", None)
     verbose = _layout_is_verbose(args)
     safe = bool(getattr(args, "safe", False))
+    keep_others = bool(
+        getattr(args, "keep_others", False) or getattr(args, "keep", False)
+    )
+    # Product default: close non-layout windows. --keep-others parks instead.
+    # --clean remains accepted (explicit close; same as default).
+    if keep_others:
+        clean = False
+    else:
+        clean = True
     wait_tree_stable = layout_wait_tree_stable_enabled(
         flag=bool(getattr(args, "wait_tree_stable", False)),
     )
-    if force_close and not clean:
-        _eprint("forge layout: --force only applies with --clean (ignored)")
+    if force_close and keep_others:
+        _eprint("forge layout: --force only applies when closing residuals (ignored with --keep-others)")
+        force_close = False
+    elif force_close and not clean:
+        _eprint("forge layout: --force only applies when closing residuals (ignored)")
         force_close = False
 
     if action == "help":
@@ -2825,6 +2858,7 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         dry_run=dry_run,
         tree_file=tree_file,
         clean=clean,
+        keep_others=keep_others,
         force_close=force_close,
         safe=safe,
         verbose=verbose,
@@ -2851,6 +2885,7 @@ def _layout_run_multi(
     dry_run: bool,
     tree_file: Optional[str],
     clean: bool,
+    keep_others: bool = False,
     force_close: bool,
     safe: bool,
     verbose: bool,
@@ -2961,6 +2996,7 @@ def _layout_run_multi(
             dry_run=dry_run,
             tree_file=tree_file,
             clean=clean,
+            keep_others=keep_others,
             force_close=force_close,
             safe=safe,
             verbose=verbose,
@@ -3785,8 +3821,9 @@ def build_parser() -> argparse.ArgumentParser:
         "  forge layout <name> --force-launch  # imperative steps[] only\n"
         "  forge layout <name> --safe    # open+move roles only (no park/structure)\n"
         "  forge layout <name> --wait-tree-stable  # debug LF6 fingerprint quiet\n"
-        "  forge layout <name> --clean   # close residuals (Meta delete; not park)\n"
-        "  forge layout <name> --clean --force  # stronger delete; never process-kill\n"
+        "  forge layout <name>             # close non-layout windows (default)\n"
+        "  forge layout <name> --keep-others  # park residuals into last mon unit\n"
+        "  forge layout <name> --clean --force  # stronger Meta delete; never process-kill\n"
         "\n"
         "Workspace modes (exclusive): all bare names (sequential from current) OR\n"
         "all N:name / name@N (static, 1-based). Mixing bare + numbered is an error.\n"
@@ -3803,9 +3840,9 @@ def build_parser() -> argparse.ArgumentParser:
         "Host: FORGE_HOST or short hostname. Export FORGE_LAYOUT_DIR from shellrc.\n"
         "\n"
         "v2 reconcile (default when roles present): GetTree → plan → open gaps,\n"
-        "move/park via RunSteps; Mode A collects marginals, Mode B parks on thrash.\n"
-        "Default never closes windows; --clean closes true residuals only.\n"
-        "--safe: open missing roles + move wrong-mon roles only (no park/structure).\n"
+        "move/structure via RunSteps; non-layout windows closed by default.\n"
+        "--keep-others / --keep: park residuals onto each mon's last unit (tab join).\n"
+        "--safe: open missing roles + move wrong-mon roles only (no close/park/structure).\n"
         "--wait-tree-stable / FORGE_LAYOUT_WAIT_TREE_STABLE=1: optional LF6 quiet.\n"
         "v1 steps: version 1 / mode: steps / --force-launch with steps[].\n"
         "Defaults: see forge layout help. Docs: docs/user/layout.md."
@@ -3858,12 +3895,22 @@ def build_parser() -> argparse.ArgumentParser:
     layout_p.add_argument(
         "--clean",
         action="store_true",
-        help="Close residual windows (Meta delete) instead of parking to overflow",
+        help="Close residual windows (default; explicit for scripts)",
+    )
+    layout_p.add_argument(
+        "--keep-others",
+        "--keep",
+        action="store_true",
+        dest="keep_others",
+        help=(
+            "Park non-layout windows onto each monitor's last unit "
+            "(tab-join; default group type). Default is to close them."
+        ),
     )
     layout_p.add_argument(
         "--force",
         action="store_true",
-        help="With --clean: stronger Meta delete (skip can_close veto); never process-kill",
+        help="With close path: stronger Meta delete (skip can_close veto); never process-kill",
     )
     layout_p.add_argument(
         "--tree-file",

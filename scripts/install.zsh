@@ -223,15 +223,36 @@ _install_step "Build" "$SCRIPT_DIR/build-install.zsh" "${build_args[@]}"
 install_args=(--force --install-only --no-enable --no-host-defaults)
 _install_step "Install extension" "$SCRIPT_DIR/build-install.zsh" "${install_args[@]}"
 
+# Clear GNOME post-crash session block (disable-user-extensions) before enable.
+_block_st=$(forge_clear_shell_extension_block "$FORGE_UUID" 2>/dev/null || print fail)
+case "$_block_st" in
+  cleared|cleared:*)
+    forge_step_ok "Session block cleared ($_block_st)"
+    ;;
+  fail)
+    forge_step_warn "Session block clear failed (check dconf locks)"
+    ;;
+  *)
+    forge_step_ok "Session block clear"
+    ;;
+esac
+unset _block_st
+
 # Enable: soft when we will HUP (often fails until reload); hard otherwise.
 if (( DO_RESTART )); then
-  if forge_run_capture gnome-extensions enable "$FORGE_UUID"; then
+  if forge_run_capture forge_enable_extension "$FORGE_UUID"; then
     forge_step_ok "Enable"
   else
     forge_step_warn "Enable (will retry after reload)"
   fi
 else
-  _install_step "Enable" gnome-extensions enable "$FORGE_UUID"
+  if forge_enable_extension "$FORGE_UUID"; then
+    forge_step_ok "Enable"
+  else
+    forge_step_fail "Enable"
+    forge_warn "try: gsettings set org.gnome.shell disable-user-extensions false"
+    forge_warn "then: gnome-extensions enable $FORGE_UUID"
+  fi
 fi
 
 # Rival GNOME Shell tilers (not i3/sway) — install/update must not leave two WMs.
@@ -278,7 +299,7 @@ if (( DO_RESTART )); then
   forge_restart_shell || rc=$?
   if (( rc == 0 )); then
     sleep 1
-    gnome-extensions enable "$FORGE_UUID" 2>/dev/null || true
+    forge_enable_extension "$FORGE_UUID" >/dev/null 2>&1 || true
     forge_disable_rival_tilers >/dev/null || true
     if (( DO_RELOAD_THEME )) && [[ -f "$SCRIPT_DIR/reload-theme.zsh" ]]; then
       "$SCRIPT_DIR/reload-theme.zsh" --force >/dev/null 2>&1 || true

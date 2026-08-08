@@ -9,6 +9,25 @@
 - **Check it's enabled** — `gnome-extensions list --enabled` should include
   `forge@jmmaranan.com`.
 
+## Extension won't enable after a Shell crash
+
+When GNOME Shell aborts while user extensions load, it sets a **session block**:
+
+```bash
+gsettings get org.gnome.shell disable-user-extensions   # true → all user extensions off
+```
+
+`./install` / `forge install` **clears** that flag and drops Forge from
+`disabled-extensions` before `gnome-extensions enable`. If enable still fails:
+
+```bash
+gsettings set org.gnome.shell disable-user-extensions false
+gnome-extensions enable forge@jmmaranan.com
+# Wayland: log out and back in. X11: Alt+F2 → r, or killall -HUP gnome-shell
+```
+
+Also confirm Extensions app master toggle is on (same setting).
+
 ## A window won't tile (or won't float)
 
 It probably matches a rule. Check **Preferences → Windows** and
@@ -127,10 +146,10 @@ after blank/wake. Disabling the extension removes all overlay actors.
 ## Layout apply chrome (multi-open dim)
 
 ~80% black full-screen dim with a spinner and “Forge: Loading layout…” while
-multi-open **LayoutBatch** runs (`forge layout` and related). **On by default**.
-Chrome is non-reactive and **always** hard-clears within **8s**, and also on
-batch end / extension disable — it must never stick and leave the session
-unusable.
+`forge layout` multi-open + residual place runs. **On by default**. Chrome is
+non-reactive and stays up until residual moves finish (CLI `chrome-clear`),
+extension disable, or a hard timer ≤ **30s** — it must never stick and leave
+the session unusable.
 
 ```bash
 # disable if the dim is annoying:

@@ -11,6 +11,8 @@ import {
   applyPreset,
   applyBindings,
   bindingsFromSettings,
+  bindingsEqual,
+  matchKitId,
   isBareSuperLetterOrNumber,
   isBareSuperAccel,
   kitUsesBareSuper,
@@ -175,6 +177,36 @@ describe("keybind kits", () => {
     it("has no internal duplicates", () => {
       expect(findInternalBindingConflicts(KITS.vim.bindings)).toEqual([]);
       expect(findInternalBindingConflicts(KITS.i3.bindings)).toEqual([]);
+    });
+  });
+
+  describe("matchKitId / bindingsEqual", () => {
+    it("matches each built-in kit snapshot", () => {
+      for (const id of ["safe", "vim", "i3"]) {
+        const kit = KITS[id];
+        expect(
+          matchKitId({
+            modMaskMouseTile: kit.modMaskMouseTile,
+            bindings: kit.bindings,
+          })
+        ).toBe(id);
+      }
+    });
+
+    it("returns custom when any binding differs", () => {
+      const bindings = { ...KITS.safe.bindings };
+      bindings["window-focus-left"] = ["<Super>x"];
+      expect(
+        matchKitId({
+          modMaskMouseTile: KITS.safe.modMaskMouseTile,
+          bindings,
+        })
+      ).toBe("custom");
+    });
+
+    it("bindingsEqual is order-sensitive per key", () => {
+      expect(bindingsEqual(KITS.vim.bindings, KITS.vim.bindings)).toBe(true);
+      expect(bindingsEqual(KITS.vim.bindings, KITS.i3.bindings)).toBe(false);
     });
   });
 

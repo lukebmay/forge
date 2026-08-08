@@ -109,7 +109,8 @@ Profile names must **not** contain `:` or `@` (reserved for workspace targeting)
 | `forge layout <name> --verbose` | Apply (or dry-run) with full plan/apply JSON on stdout; also `FORGE_VERBOSE=1` |
 | `forge layout <name> --safe` | Open missing roles + move wrong-mon roles only (no park / structure / mon ensure) |
 | `forge layout <name> --wait-tree-stable` | Debug: wait for whole GetTree fingerprint quiet before residual place (also `FORGE_LAYOUT_WAIT_TREE_STABLE=1`) |
-| `forge layout <name> --clean` | Close residuals (Meta delete) instead of leave/park |
+| `forge layout <name>` | Close non-layout windows (default) |
+| `forge layout <name> --keep-others` | Park residuals onto each mon’s last unit (tab join) |
 | `forge layout <name> --clean --force` | Stronger Meta delete; **never** process-kill |
 | `forge layout <name> --force-launch` | Imperative `steps[]` only (errors if none) |
 
@@ -302,20 +303,21 @@ nested array would be ambiguous.
 ### Companions (marginal coexist)
 
 By default, unclaimed windows **already in** a layout slot group stay
-(**kept**). True residuals are **left in place** (status `left`) so
-`forge layout` never cross-mon parks them. Opt-in soft park appends onto
-the last claimed role window (no mon-root dump). Close is never default —
-use **`--clean`** only when you want residuals closed.
+(**kept**). True residuals are **closed** so `forge layout` ends with
+only profile windows. **`--keep-others`** soft-parks residuals onto each
+monitor’s last unit (tab-join; lone app becomes a tab group). **`--safe`**
+leaves residuals put (open+move only).
 
 | Setting / flag | Default | Effect |
 | --- | --- | --- |
 | `marginal.mode` | `coexist` | Keep slot companions; residual policy separate |
-| `marginal.residual` | `leave` | Leave true residuals put (zero thrash) |
-| `marginal.residual: "park"` | — | Soft park onto last claimed role window |
+| `marginal.residual` | `leave` | Profile hint when CLI does not force close/park |
+| `marginal.residual: "park"` | — | Soft park (library API; CLI uses `--keep-others`) |
 | `marginal.roleOrder` | `first` | Orders **new** groups only; never re-tab for order |
-| `marginal.mode: "strict"` | — | No keep; residual leave|park still applies |
+| `marginal.mode: "strict"` | — | No keep; residual close/park still applies |
 | `--safe` | off | Open missing roles + move wrong-mon roles only; leave everything else |
-| `--clean` | off | Close residuals (Meta delete) instead of leave/park |
+| residual close | **on** | Close non-layout windows (product default) |
+| `--keep-others` / `--keep` | off | Park residuals onto last mon unit (tab join) |
 | `--clean --force` | — | Stronger delete (skip `can_close` veto); **never** process-kill |
 
 Kept companions and claimed role windows are never closed.
@@ -390,8 +392,8 @@ bare array) is present, it wins for structure.
 
 | Schema | Behavior |
 | --- | --- |
-| **v2 reconcile** (bare array, `tiles`, or `roles` + layout) | Snapshot tree → match roles → open gaps, move/keep/park; second run ≈ no-op |
-| **`--clean`** | Residuals close via Meta delete (not park); roles + keeps untouched |
+| **v2 reconcile** (bare array, `tiles`, or `roles` + layout) | Snapshot tree → match roles → open gaps, move/keep; close residuals by default; second run ≈ no-op |
+| **`--keep-others`** | Residuals park onto last mon unit (tab join); roles + keeps untouched |
 | **v1 steps** (`version: 1` / `mode: "steps"` / `steps[]` without roles) | Replay launch + focus/layout ops (can double apps) |
 | **`--force-launch`** | Force the steps path even on a dual profile |
 
@@ -454,7 +456,7 @@ shell init when you keep a multi-machine tree outside XDG.
 - Default apply/save is **current workspace only** — other desks stay isolated.
 - Dry-run shows `candidates: N on wsK (ignored M on other workspaces)` per target.
 - Title matchers (`title~=`) disambiguate several windows of the same class.
-- Counts: `reused` / `opened` / `moved` / `kept` / `left` / `parked` / `structure` (or `closed` with `--clean`).
+- Counts: `reused` / `opened` / `moved` / `kept` / `closed` (default) / `parked` (`--keep-others`) / `structure`.
 - Default apply is quiet (stderr only); use `--verbose` or `FORGE_VERBOSE=1` for plan JSON.
 - Optional: `displays` → `gdisplays load`; `settings` → DBus SettingsLoad.
 - Offline plan: `--tree-file path/to/GetTree.json` with `--dry-run` (uses forest `meta` for active/n workspaces when present).

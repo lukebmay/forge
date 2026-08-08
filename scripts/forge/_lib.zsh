@@ -222,6 +222,166 @@ forge_ext_enabled() {
   gnome-extensions list --enabled 2>/dev/null | grep -qx "$FORGE_UUID"
 }
 
+# GNOME post-crash safety: when Shell aborts while user extensions load, it sets
+# org.gnome.shell disable-user-extensions=true. Until that is cleared, enable is
+# a no-op / Extensions app stays "off" for every user extension.
+# Also drop our UUID from disabled-extensions if present.
+#
+# Prints one-line status to stdout for checklist (cleared|ok|fail|skip).
+# Returns 0 when user extensions can load; 1 if still blocked.
+forge_clear_shell_extension_block() {
+  local uuid="${1:-$FORGE_UUID}"
+  if ! command -v gsettings >/dev/null 2>&1; then
+    print -r -- "skip"
+    return 0
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    # Minimal fallback without list surgery
+    local blocked
+    blocked=$(gsettings get org.gnome.shell disable-user-extensions 2>/dev/null || print false)
+    if [[ "$blocked" == "true" ]]; then
+      if gsettings set org.gnome.shell disable-user-extensions false 2>/dev/null; then
+        print -r -- "cleared"
+        return 0
+      fi
+      print -r -- "fail"
+      return 1
+    fi
+    print -r -- "ok"
+    return 0
+  fi
+  python3 - "$uuid" <<'PY'
+import subprocess
+import sys
+
+uuid = sys.argv[1]
+
+
+def gget(key: str) -> str:
+    r = subprocess.run(
+        ["gsettings", "get", "org.gnome.shell", key],
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode != 0:
+        return ""
+    return (r.stdout or "").strip()
+
+
+def gset(*args: str) -> bool:
+    r = subprocess.run(
+        ["gsettings", "set", "org.gnome.shell", *args],
+        capture_output=True,
+        text=True,
+    )
+    return r.returncode == 0
+
+
+def parse_strv(raw: str) -> list[str]:
+    # GVariant text: @as [] or ['a', 'b']
+    s = (raw or "").strip()
+    if not s or s in ("@as []", "[]"):
+        return []
+    if s.startswith("@as "):
+        s = s[4:].strip()
+    out: list[str] = []
+    cur = []
+    in_str = False
+    esc = False
+    for ch in s:
+        if in_str:
+            if esc:
+                cur.append(ch)
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == "'":
+                out.append("".join(cur))
+                cur = []
+                in_str = False
+            else:
+                cur.append(ch)
+        else:
+            if ch == "'":
+                in_str = True
+    return out
+
+
+def fmt_strv(items: list[str]) -> str:
+    if not items:
+        return "@as []"
+    # gsettings accepts ['a', 'b']
+    return "[" + ", ".join("'" + x.replace("'", "\\'") + "'" for x in items) + "]"
+
+
+actions: list[str] = []
+blocked = gget("disable-user-extensions")
+if blocked == "true":
+    if not gset("disable-user-extensions", "false"):
+        print("fail", flush=True)
+        sys.exit(1)
+    actions.append("disable-user-extensions")
+
+disabled = parse_strv(gget("disabled-extensions"))
+if uuid in disabled:
+    disabled = [x for x in disabled if x != uuid]
+    if not gset("disabled-extensions", fmt_strv(disabled)):
+        print("fail", flush=True)
+        sys.exit(1)
+    actions.append("disabled-extensions")
+
+if actions:
+    print("cleared:" + ",".join(actions), flush=True)
+else:
+    print("ok", flush=True)
+sys.exit(0)
+PY
+}
+
+# Enable Forge after clearing session block. Retries once if still off.
+# Returns 0 when list --enabled contains UUID.
+forge_enable_extension() {
+  local uuid="${1:-$FORGE_UUID}"
+  local block_st
+  block_st=$(forge_clear_shell_extension_block "$uuid" 2>/dev/null || print fail)
+  case "$block_st" in
+    cleared|cleared:*)
+      forge_info "cleared GNOME extension session block ($block_st) — Shell crash safety"
+      ;;
+    fail)
+      forge_warn "could not clear org.gnome.shell disable-user-extensions (dconf lock?)"
+      ;;
+  esac
+
+  if ! command -v gnome-extensions >/dev/null 2>&1; then
+    forge_warn "gnome-extensions not found"
+    return 1
+  fi
+
+  # Force off first so ERROR/stale state can re-bind (best-effort).
+  gnome-extensions disable "$uuid" 2>/dev/null || true
+  if ! gnome-extensions enable "$uuid" 2>/dev/null; then
+    # Second chance after another clear (race with shell still writing true).
+    forge_clear_shell_extension_block "$uuid" >/dev/null 2>&1 || true
+    gnome-extensions enable "$uuid" 2>/dev/null || true
+  fi
+
+  if forge_ext_enabled; then
+    return 0
+  fi
+
+  # Still blocked? Report gsettings for the operator.
+  local still
+  still=$(gsettings get org.gnome.shell disable-user-extensions 2>/dev/null || print unknown)
+  if [[ "$still" == "true" ]]; then
+    forge_warn "user extensions still disabled (disable-user-extensions=true)"
+    forge_warn "run: gsettings set org.gnome.shell disable-user-extensions false"
+  else
+    forge_warn "enable did not stick — log out/in, then: gnome-extensions enable $uuid"
+  fi
+  return 1
+}
+
 # GNOME Shell tilers that must not run with Forge.
 # Keep in sync with lib/shared/rival-tilers.js (install + enable both use these).
 # Session WMs (i3, sway, Hyprland, …) are NOT listed — gnome-extensions never

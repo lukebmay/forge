@@ -1,6 +1,6 @@
 # Task: forge-wayland-live_residual-smoke
 
-**Status:** ready — **operator / live**  
+**Status:** agent smoke done 2026-08-08 — **usable RC** (Mode B); logout for tip + eyes  
 **Plan:** historical [forge-wayland-live](../plans/) on branch `plan/forge-wayland-live`; residual runs on **`plan/forge-layout-control-loop`**  
 **Branch:** `plan/forge-layout-control-loop`  
 **Created:** 2026-08-05  
@@ -58,6 +58,15 @@ gsettings get org.gnome.shell disable-user-extensions   # false
 | Layout incomplete | which apps missing; open wait timeout? |
 
 ## Session note
+
+**2026-08-08 Wayland RC agent smoke (black):** Session Wayland Shell 46 dual 4K.
+Unit 2337 + pytest 431 green. Install tip `5ea572b` on disk; runtime during smoke
+`a6699fe` (logout required). Cold `forge layout dev` Mode A: mon1 tabs on mon0.
+Mode B thrash-recover: roles correct mon0 tab(Chrome,Grok)\|ghostty + mon1
+ghostty\|tab(YT,Gmail,Voice). Focus walk OK, no ¼ stuck, Nautilus open/close no
+crash (left single-child VSPLIT cruft). Guake FLOAT mon0 (named rehome still
+reverted). Journal clean of give-up/mismatch. Nested mon0 HSPLIT + `order:mon0`
+residual remains. **RC = usable with Mode B**, not perfect cold topology.
 
 **2026-08-06 focus-no-reflow:** Root cause = Meta `focus` → `renderTree("focus", true)`.
 Fixed on plan branch (`097807d`). Disk install **v49-90-beta.2-166-g097807d**;

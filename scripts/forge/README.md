@@ -97,7 +97,9 @@ file text or an auto one-liner. Common/flat/env-path profiles are not listed.
 | **`--dry-run`** | plan only; no mutations |
 | **`--force-launch`** | require `steps[]`; skip reconcile |
 | **`--wait-tree-stable`** | debug: LF6 whole-tree fingerprint quiet (also `FORGE_LAYOUT_WAIT_TREE_STABLE=1`) |
-| **`--clean`** | close residuals (Meta delete) instead of leave/park |
+| **default** | close non-layout windows |
+| **`--keep-others`** | park residuals onto last mon unit (tab join) |
+| **`--clean`** | explicit close (same as default) |
 
 Examples: `examples/layout-tiles-minimal.json`, `layout-tiles-nested.json`,
 `layout-minimal.json`, `layout-dev-v2.json`. User guide: [docs/user/layout.md](../../docs/user/layout.md).

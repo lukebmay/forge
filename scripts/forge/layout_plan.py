@@ -1959,6 +1959,7 @@ def plan_reconcile(
     profile: dict,
     *,
     clean: bool = False,
+    keep_others: bool = False,
     safe: bool = False,
     role_pins: Optional[dict[str, Any]] = None,
     just_opened_roles: Optional[Iterable[str]] = None,
@@ -1971,8 +1972,9 @@ def plan_reconcile(
     Only windows on that workspace are claim/keep/park/structure candidates;
     matching windows on other workspaces are invisible (no cross-ws steal).
 
-    clean=True: residuals that would park become close (Meta delete path);
-    claimed roles and kept companions are never closed.
+    clean=True: close true residuals (Meta delete path). Product CLI default.
+    keep_others=True: soft-park residuals onto each mon's last unit (tab join);
+    overrides clean. claimed roles and kept companions are never closed/parked.
 
     safe=True: open missing roles + move roles to correct mon only;
     no park/close, no collect keep, no structure, no mon ensure.
@@ -2012,6 +2014,10 @@ def plan_reconcile(
     # Rewrite mon keys (stableKey / alias / primary / left|right) → monN.
     prof = resolve_profile_mon_keys(prof, forest)
     clean = bool(clean)
+    keep_others = bool(keep_others)
+    if keep_others:
+        # Park wins over close when both somehow set.
+        clean = False
     safe = bool(safe)
     pins = _normalize_role_pins(role_pins)
     opened_roles = {
@@ -2054,9 +2060,11 @@ def plan_reconcile(
     residual_mode = str(marginal.get("residual") or "leave").strip().lower()
     if residual_mode not in ("leave", "park"):
         residual_mode = "leave"
-    # Mode B: soft-park every non-role (clean still closes). Mode A: collect then residual.
-    # --safe: never park/close residuals (open+move only).
-    force_park_residuals = thrashed and not clean and not safe
+    # Residuals: keep_others → park; clean → close; Mode B thrash → park when
+    # not clean; else profile residual leave|park. --safe: never park/close.
+    force_park_residuals = (
+        keep_others or (thrashed and not clean and not safe)
+    ) and not safe
 
     # Two-pass claim: same-mon first so earlier roles do not steal later mons'
     # only matching window (e.g. mon0.ghostty vs mon1.ghostty-2).
@@ -2170,11 +2178,18 @@ def plan_reconcile(
         for k in keys:
             key_to_slot.setdefault(k, slot)
 
-    park_anchor = (
-        _soft_park_anchor(windows, parent_info, claimed)
-        if (residual_mode == "park" or force_park_residuals) and not clean and not safe
-        else None
+    want_park = (
+        (residual_mode == "park" or force_park_residuals) and not clean and not safe
     )
+    # Per-mon last unit (claimed role preferred) for soft park join.
+    anchors_by_mon = (
+        _soft_park_anchors_by_mon(windows, parent_info, claimed) if want_park else {}
+    )
+    global_park_anchor = (
+        _soft_park_anchor(windows, parent_info, claimed) if want_park else None
+    )
+    # mon_index → { "anchor": wid, "parked": [wid, ...] } for tab-join ensure
+    park_join_by_mon: dict[int, dict[str, Any]] = {}
 
     kept: list[dict[str, Any]] = []
     left: list[dict[str, Any]] = []
@@ -2211,7 +2226,7 @@ def plan_reconcile(
             unclaimed.append(entry)
             counts["left"] += 1
         else:
-            # Soft park: move onto last mon last group; never mon-root dump.
+            # Soft park onto that mon's last unit; tab-join if last unit is an app.
             entry = dict(summary)
             entry["status"] = "parked"
             unclaimed.append(entry)
@@ -2223,16 +2238,31 @@ def plan_reconcile(
                 "slot": overflow_slot,
                 "workspace": workspace,
             }
-            if park_anchor is not None:
-                awid = park_anchor.get("windowId")
+            mon_i = window_monitor_index(w)
+            anchor = None
+            if mon_i is not None:
+                anchor = anchors_by_mon.get(int(mon_i))
+            if anchor is None:
+                anchor = global_park_anchor
+            if anchor is not None:
+                awid = anchor.get("windowId")
                 if awid is not None and str(awid) != str(w.get("windowId")):
                     park_act["destWindowId"] = awid
-                    mon_i = window_monitor_index(park_anchor)
-                    if mon_i is not None:
-                        park_act["slot"] = f"mon{mon_i}.overflow"
+                    mon_a = window_monitor_index(anchor)
+                    if mon_a is None:
+                        mon_a = mon_i
+                    if mon_a is not None:
+                        park_act["slot"] = f"mon{mon_a}.overflow"
+                        join = park_join_by_mon.setdefault(
+                            int(mon_a),
+                            {"anchor": awid, "parked": []},
+                        )
+                        if join.get("anchor") is None:
+                            join["anchor"] = awid
+                        rwid = w.get("windowId")
+                        if rwid is not None and str(rwid).strip() != "":
+                            join["parked"].append(rwid)
             actions.append(park_act)
-
-    # Soft park only: no overflow ensure_layout (avoids mon rewrite).
 
     # Tabbed/stacked + nested h/v: repair when not co-grouped; order when shared.
     # Mode B: kept empty → structure windowIds are roles only. --safe: skip.
@@ -2300,6 +2330,37 @@ def plan_reconcile(
                 continue
             structure_slots[slot] = {"mode": mode, "windowIds": wids}
             slots_needing_layout[slot] = mode
+
+        # Soft park: tab-join residuals into that mon's last unit (default = tabbed).
+        # Lone app last unit is wrapped to a group then residuals join the bag.
+        if want_park and park_join_by_mon:
+            overflow_layout = str(
+                ((prof.get("overflow") or {}).get("layout") or "tabbed")
+            ).strip().lower()
+            if overflow_layout not in ("tabbed", "stacked"):
+                overflow_layout = "tabbed"
+            for mon_a, join in sorted(park_join_by_mon.items()):
+                anchor_wid = join.get("anchor")
+                parked_wids = join.get("parked") or []
+                if anchor_wid is None or not parked_wids:
+                    continue
+                wids_j: list[Any] = [anchor_wid]
+                seen_w: set[str] = {str(anchor_wid)}
+                for pwid in parked_wids:
+                    if str(pwid) in seen_w:
+                        continue
+                    seen_w.add(str(pwid))
+                    wids_j.append(pwid)
+                if len(wids_j) < 2:
+                    continue
+                slot_j = f"mon{mon_a}.overflow"
+                # First wins if a real profile slot already owns this key (rare).
+                if slot_j not in structure_slots:
+                    structure_slots[slot_j] = {
+                        "mode": overflow_layout,
+                        "windowIds": wids_j,
+                    }
+                    slots_needing_layout[slot_j] = overflow_layout
 
     counts["structure"] = len(structure_slots)
 
@@ -2525,6 +2586,7 @@ def plan_reconcile(
         "left": left,
         "unclaimed": unclaimed,
         "clean": clean,
+        "keepOthers": keep_others,
         "safe": safe,
         "thrashRisk": thrash_risk,
         "thrashState": thrash_state,
@@ -3626,6 +3688,55 @@ def _size_actions(
     return actions
 
 
+def _soft_park_window_sort_key(
+    w: dict[str, Any], parent_info: dict[str, dict[str, Any]]
+) -> Optional[tuple]:
+    """Higher key = later mon-child / leaf (last unit on that mon)."""
+    mon = window_monitor_index(w)
+    if mon is None:
+        return None
+    wid = w.get("windowId")
+    if wid is None:
+        return None
+    info = parent_info.get(str(wid)) or {}
+    path = str(info.get("path") or w.get("path") or "")
+    loc = _mon_child_loc(path)
+    child_i = loc[1] if loc else -1
+    try:
+        leaf = int(path.rsplit("/", 1)[-1])
+    except ValueError:
+        leaf = 0
+    return (int(mon), child_i, leaf)
+
+
+def _soft_park_anchors_by_mon(
+    windows: list[dict[str, Any]],
+    parent_info: dict[str, dict[str, Any]],
+    claimed: set[str],
+) -> dict[int, dict[str, Any]]:
+    """
+    Last *claimed* mon unit per monitor for soft park.
+
+    mon_index → window dict. Last = highest mon-child index, then leaf index.
+    Unclaimed residuals are never anchors (would park residual onto residual).
+    """
+    out: dict[int, dict[str, Any]] = {}
+    best_by_mon: dict[int, tuple[tuple, dict[str, Any]]] = {}
+    for w in windows:
+        if _window_key(w) not in claimed:
+            continue
+        key = _soft_park_window_sort_key(w, parent_info)
+        if key is None:
+            continue
+        mon = key[0]
+        prev = best_by_mon.get(mon)
+        if prev is None or key > prev[0]:
+            best_by_mon[mon] = (key, w)
+    for mon, (_k, w) in best_by_mon.items():
+        out[mon] = w
+    return out
+
+
 def _soft_park_anchor(
     windows: list[dict[str, Any]],
     parent_info: dict[str, dict[str, Any]],
@@ -3636,35 +3747,21 @@ def _soft_park_anchor(
     Park moves onto this window id — no mon-root insert.
     Falls back to any tiled window only if no claimed anchors exist.
     """
-    pools = [
-        [w for w in windows if _window_key(w) in claimed],
-        list(windows),
-    ]
-    for pool in pools:
-        best: Optional[dict[str, Any]] = None
-        best_key: Optional[tuple] = None
-        for w in pool:
-            mon = window_monitor_index(w)
-            if mon is None:
-                continue
-            wid = w.get("windowId")
-            if wid is None:
-                continue
-            info = parent_info.get(str(wid)) or {}
-            path = str(info.get("path") or w.get("path") or "")
-            loc = _mon_child_loc(path)
-            child_i = loc[1] if loc else -1
-            try:
-                leaf = int(path.rsplit("/", 1)[-1])
-            except ValueError:
-                leaf = 0
-            key = (mon, child_i, leaf)
-            if best_key is None or key > best_key:
-                best_key = key
-                best = w
-        if best is not None:
-            return best
-    return None
+    by_mon = _soft_park_anchors_by_mon(windows, parent_info, claimed)
+    if by_mon:
+        best_mon = max(by_mon.keys())
+        return by_mon[best_mon]
+    # No claimed roles: last any tiled window (empty desk edge case).
+    best: Optional[dict[str, Any]] = None
+    best_key: Optional[tuple] = None
+    for w in windows:
+        key = _soft_park_window_sort_key(w, parent_info)
+        if key is None:
+            continue
+        if best_key is None or key > best_key:
+            best_key = key
+            best = w
+    return best
 
 
 def _compute_thrash_risk(
@@ -4220,9 +4317,11 @@ def _mon_child_topology_mismatches(
 ) -> list[dict[str, Any]]:
     """
     Claimed roles for different mon-layout children share the same parent CON
-    path (collapsed mon children / giant tab bag).
+    path (collapsed mon children / giant tab bag), or the same mon-direct child
+    index (nested HSPLIT wrapping tab|ghostty under one mon pane).
 
-    Ignores MONITOR parents (correct mon-direct siblings). kind: mon-child.
+    Ignores MONITOR parents for immediate-parent check (correct mon-direct
+    siblings). kind: mon-child.
     """
     mismatches: list[dict[str, Any]] = []
     for mon_key, mon_body in sorted((prof.get("layout") or {}).items()):
@@ -4247,9 +4346,18 @@ def _mon_child_topology_mismatches(
         if len(by_child) < 2:
             continue
         path_to_children: dict[str, set[str]] = {}
+        mon_direct_to_children: dict[str, set[str]] = {}
         for child_id, roles in by_child.items():
             for r in roles:
                 wid = r.get("windowId")
+                info = parent_info.get(str(wid)) if wid is not None else None
+                path = (info or {}).get("path") or r.get("path")
+                loc = _mon_child_loc(path)
+                if loc is not None:
+                    mon_direct_key = f"{loc[0]}/{loc[1]}"
+                    mon_direct_to_children.setdefault(mon_direct_key, set()).add(
+                        child_id
+                    )
                 # Only CON parents: mon-direct siblings share MONITOR correctly.
                 if not _is_con_parent(wid, parent_info):
                     continue
@@ -4262,22 +4370,35 @@ def _mon_child_topology_mismatches(
             for pp, kids in path_to_children.items()
             if len(kids) >= 2
         }
-        if not polluted:
+        # Nested mon collapse: different profile mon-children under one mon-direct
+        # index (e.g. mo0ws0/0 HSPLIT wrapping both tab and ghostty).
+        collapsed = {
+            k: sorted(kids)
+            for k, kids in mon_direct_to_children.items()
+            if len(kids) >= 2
+        }
+        if not polluted and not collapsed:
             continue
         want_ids = [
             str(c.get("id"))
             for c in children
             if isinstance(c, dict) and c.get("id") is not None
         ]
+        got = polluted if polluted else collapsed
+        detail_kind = (
+            "share parent CON path(s)"
+            if polluted
+            else "share mon-direct index (nested mon collapse)"
+        )
         mismatches.append(
             {
                 "kind": "mon-child",
                 "slot": mon_key,
                 "want": want_ids,
-                "got": polluted,
+                "got": got,
                 "detail": (
-                    f"{mon_key} mon-child roles share parent CON path(s): "
-                    + ", ".join(sorted(polluted))
+                    f"{mon_key} mon-child roles {detail_kind}: "
+                    + ", ".join(sorted(got))
                 ),
             }
         )
@@ -4294,6 +4415,9 @@ def _peel_demote_anchor(
     """
     Window id whose parent CON is the polluted TABBED/STACKED bag.
     layout hsplit/vsplit on it demotes the bag so subset tab wrap can peel.
+
+    Returns None for nested mon-direct collapse (not a giant tab bag) — order
+    hoist repairs that path; demoting the tab group would be wrong.
     """
     polluted_paths = set()
     got = mismatch.get("got")
@@ -4310,19 +4434,18 @@ def _peel_demote_anchor(
             continue
         info = parent_info.get(str(wid)) or {}
         pp = info.get("parent_path")
-        if polluted_paths and str(pp) not in polluted_paths:
-            continue
         parent_lay = str(info.get("parent_layout") or "").upper()
         parent_type = str(info.get("parent_type") or "").upper()
         if parent_type == "MONITOR":
             continue
-        if parent_lay in ("TABBED", "STACKED") or (
-            polluted_paths and str(pp) in polluted_paths
-        ):
-            return wid
-    # Fallback: first mon-child rep.
-    reps = _mon_child_reps(role_results, prof, mon_key)
-    return reps[0] if reps else None
+        # Giant-tab peel only: polluted key must be the TABBED/STACKED parent path.
+        if parent_lay not in ("TABBED", "STACKED"):
+            continue
+        if polluted_paths and str(pp) not in polluted_paths:
+            continue
+        return wid
+    # Nested mon collapse (mon-direct index keys) has no tab bag to demote.
+    return None
 
 
 def _forest_mon_layouts(forest: Any) -> dict[str, str]:

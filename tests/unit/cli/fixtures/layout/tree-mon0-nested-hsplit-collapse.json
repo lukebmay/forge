@@ -1,0 +1,170 @@
+{
+  "apiVersion": 1,
+  "monitors": [
+    {
+      "nodeType": "MONITOR",
+      "layout": "HSPLIT",
+      "id": "mo0ws0",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 2560,
+        "height": 1440
+      },
+      "children": [
+        {
+          "nodeType": "CON",
+          "layout": "HSPLIT",
+          "children": [
+            {
+              "nodeType": "CON",
+              "layout": "VSPLIT",
+              "children": [
+                {
+                  "nodeType": "WINDOW",
+                  "wmClass": "com.mitchellh.ghostty",
+                  "title": "g0",
+                  "windowId": 100,
+                  "pid": 1,
+                  "monitor": 0,
+                  "mode": "TILE",
+                  "children": [],
+                  "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 640,
+                    "height": 1440
+                  }
+                }
+              ]
+            },
+            {
+              "nodeType": "CON",
+              "layout": "TABBED",
+              "children": [
+                {
+                  "nodeType": "WINDOW",
+                  "wmClass": "google-chrome",
+                  "title": "about:blank - Google Chrome",
+                  "windowId": 101,
+                  "pid": 2,
+                  "monitor": 0,
+                  "mode": "TILE",
+                  "children": [],
+                  "rect": {
+                    "x": 640,
+                    "y": 0,
+                    "width": 640,
+                    "height": 1440
+                  }
+                },
+                {
+                  "nodeType": "WINDOW",
+                  "wmClass": "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+                  "title": "Grok",
+                  "windowId": 102,
+                  "pid": 2,
+                  "monitor": 0,
+                  "mode": "TILE",
+                  "children": [],
+                  "rect": {
+                    "x": 640,
+                    "y": 0,
+                    "width": 640,
+                    "height": 1440
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeType": "MONITOR",
+      "layout": "HSPLIT",
+      "id": "mo1ws0",
+      "rect": {
+        "x": 2560,
+        "y": 0,
+        "width": 2560,
+        "height": 1440
+      },
+      "children": [
+        {
+          "nodeType": "WINDOW",
+          "wmClass": "com.mitchellh.ghostty",
+          "title": "g1",
+          "windowId": 200,
+          "pid": 3,
+          "monitor": 1,
+          "mode": "TILE",
+          "children": [],
+          "rect": {
+            "x": 2560,
+            "y": 0,
+            "width": 1280,
+            "height": 1440
+          }
+        },
+        {
+          "nodeType": "CON",
+          "layout": "TABBED",
+          "children": [
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "chrome-agimnkijcaahngcdmfeangaknmldooml-Default",
+              "title": "YouTube",
+              "windowId": 201,
+              "pid": 2,
+              "monitor": 1,
+              "mode": "TILE",
+              "children": [],
+              "rect": {
+                "x": 3840,
+                "y": 0,
+                "width": 1280,
+                "height": 1440
+              }
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "chrome-fmgjjmmmlfnkbppncabfkddbjimcfncm-Default",
+              "title": "Gmail",
+              "windowId": 202,
+              "pid": 2,
+              "monitor": 1,
+              "mode": "TILE",
+              "children": [],
+              "rect": {
+                "x": 3840,
+                "y": 0,
+                "width": 1280,
+                "height": 1440
+              }
+            },
+            {
+              "nodeType": "WINDOW",
+              "wmClass": "chrome-bojjonegeadjcbekpnkhoalecdkdohbo-Default",
+              "title": "Voice",
+              "windowId": 203,
+              "pid": 2,
+              "monitor": 1,
+              "mode": "TILE",
+              "children": [],
+              "rect": {
+                "x": 3840,
+                "y": 0,
+                "width": 1280,
+                "height": 1440
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "focusWindowId": 100,
+  "activeWorkspace": 0,
+  "nWorkspaces": 4
+}

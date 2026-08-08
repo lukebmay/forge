@@ -137,9 +137,9 @@
             <default>true</default>
             <summary>Dim scrim during multi-open LayoutBatch apply</summary>
             <description>
-                When true, shows a soft full-screen dim while LayoutBatch depth is ≥ 1
-                (forge layout multi-open). Always hard-clears within 8s and on batch end /
-                extension disable so chrome cannot stick. Default true; set false to disable.
+                When true, shows a soft full-screen dim during forge layout multi-open and
+                residual place. Cleared after residual (chrome-clear), on extension disable,
+                or hard timeout ≤30s so chrome cannot stick. Default true; set false to disable.
             </description>
         </key>
 

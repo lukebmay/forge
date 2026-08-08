@@ -161,8 +161,12 @@ forge_do_install() {
   fi
 
   if (( DO_ENABLE )); then
-    gnome-extensions enable "$FORGE_UUID" 2>/dev/null \
-      || forge_warn "enable failed — restart shell / log out, then: gnome-extensions enable $FORGE_UUID"
+    if forge_enable_extension "$FORGE_UUID"; then
+      forge_ok "enabled $FORGE_UUID"
+    else
+      forge_warn "enable failed — clear session block + restart shell, then: gnome-extensions enable $FORGE_UUID"
+      forge_warn "  gsettings set org.gnome.shell disable-user-extensions false"
+    fi
     # Same as ./install: drop rival GNOME Shell tilers (not session WMs).
     _bi_rivals=()
     while IFS= read -r _bi_line; do

@@ -16,9 +16,9 @@ import {
 } from "../../../lib/extension/layout-apply-chrome.js";
 
 describe("LAYOUT_APPLY_CHROME_HARD_MS", () => {
-  it("is ≤ 8s", () => {
-    expect(LAYOUT_APPLY_CHROME_HARD_MS).toBeLessThanOrEqual(8000);
-    expect(LAYOUT_APPLY_CHROME_HARD_MS).toBeGreaterThan(0);
+  it("is a firm cap covering multi-open + residual (≤60s, >8s)", () => {
+    expect(LAYOUT_APPLY_CHROME_HARD_MS).toBeGreaterThan(8000);
+    expect(LAYOUT_APPLY_CHROME_HARD_MS).toBeLessThanOrEqual(60000);
   });
 });
 

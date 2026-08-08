@@ -157,6 +157,38 @@ describe("SessionApi layout-cycle / merge-group", () => {
       reason: "mon-directs not under same MONITOR",
     });
   });
+
+  it("order hoists nested mon HSPLIT wrapper then L/R reorders", () => {
+    // mon: HSPLIT[ VSPLIT(ghostty) | TABBED(chrome,Grok) ] → tab | ghostty
+    const mon = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const wrap = wm().tree.createNode(mon.nodeValue, NODE_TYPES.CON, new Bin());
+    wrap.layout = LAYOUT_TYPES.HSPLIT;
+    const v = wm().tree.createNode(wrap.nodeValue, NODE_TYPES.CON, new Bin());
+    v.layout = LAYOUT_TYPES.VSPLIT;
+    const tab = wm().tree.createNode(wrap.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const ghost = createMockWindow({ id: 301, wm_class: "ghostty" });
+    const chrome = createMockWindow({ id: 302, wm_class: "google-chrome" });
+    const grok = createMockWindow({ id: 303, wm_class: "Grok" });
+    const nGhost = wm().tree.createNode(v.nodeValue, NODE_TYPES.WINDOW, ghost);
+    const nChrome = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, chrome);
+    const nGrok = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, grok);
+    nGhost.mode = WINDOW_MODES.TILE;
+    nChrome.mode = WINDOW_MODES.TILE;
+    nGrok.mode = WINDOW_MODES.TILE;
+
+    // Profile order: chrome tab left, ghostty right
+    const out = api()._orderMonChildrenOp(["id:302", "id:301"], { quiet: true });
+    expect(out.error).toBeUndefined();
+    expect(out).toMatchObject({ ok: true, reordered: true, scope: "mon" });
+    // Wrapper gone; mon-direct = tab then ghostty leaf (VSPLIT unwrapped)
+    expect(mon.childNodes.length).toBe(2);
+    expect(mon.childNodes[0]).toBe(tab);
+    expect(mon.childNodes[1]).toBe(nGhost);
+    expect(nChrome.parentNode).toBe(tab);
+    expect(nGrok.parentNode).toBe(tab);
+    expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
+  });
 });
 
 describe("SessionApi LayoutBatch (CL5)", () => {
@@ -192,6 +224,38 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     expect(end).toMatchObject({ ok: true, depth: 0, committed: true });
     expect(lcSpy).toHaveBeenCalledWith("open-batch");
     expect(ctx.windowManager.openLayoutBatchActive).toBe(false);
+  });
+
+  it("end keeps apply chrome; chrome-clear hides it", () => {
+    const a = api();
+    const wm = ctx.windowManager;
+    const show = vi.fn();
+    const hide = vi.fn();
+    // Minimal chrome controller stand-in (LayoutApplyChrome shape).
+    wm.layoutApplyChrome = {
+      visible: false,
+      setLayoutName: vi.fn(),
+      syncFromBatch: vi.fn((depth) => {
+        if (depth >= 1) {
+          wm.layoutApplyChrome.visible = true;
+          show();
+        }
+      }),
+      clear: vi.fn(() => {
+        wm.layoutApplyChrome.visible = false;
+        hide();
+      }),
+    };
+    JSON.parse(a.LayoutBatch("begin:dev"));
+    expect(wm.layoutApplyChrome.syncFromBatch).toHaveBeenCalled();
+    JSON.parse(a.LayoutBatch("end"));
+    // Residual still covered — end must not clear chrome.
+    expect(wm.layoutApplyChrome.clear).not.toHaveBeenCalled();
+    expect(wm.layoutApplyChrome.visible).toBe(true);
+    const clr = JSON.parse(a.LayoutBatch("chrome-clear"));
+    expect(clr).toMatchObject({ ok: true });
+    expect(wm.layoutApplyChrome.clear).toHaveBeenCalled();
+    expect(wm.layoutApplyChrome.visible).toBe(false);
   });
 
   it("CL9 release-deferred unhides without ending batch", () => {

@@ -73,7 +73,7 @@ if (( DO_SETTINGS )); then
   "$SCRIPT_DIR/apply-settings.zsh" "${apply_args[@]}" "$SRC"
 fi
 
-gnome-extensions enable "$FORGE_UUID" 2>/dev/null \
+forge_enable_extension "$FORGE_UUID" \
   || forge_warn "enable deferred — log out/in then: gnome-extensions enable $FORGE_UUID"
 
 forge_warn "Log out/in if Shell still runs old code."

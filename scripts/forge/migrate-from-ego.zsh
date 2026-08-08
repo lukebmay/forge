@@ -237,7 +237,7 @@ else
   forge_info "skipped apply; dconf left as-is ($mid_keys keys)"
 fi
 
-gnome-extensions enable "$FORGE_UUID" 2>/dev/null \
+forge_enable_extension "$FORGE_UUID" \
   || forge_warn "enable deferred — restart shell then: gnome-extensions enable $FORGE_UUID"
 
 # Drop rival GNOME Shell tilers (Tiling Assistant, Pop Shell, …). Not i3/sway.
@@ -268,7 +268,7 @@ if (( RESTART_SHELL )); then
   forge_restart_shell || rc=$?
   if (( rc == 0 )); then
     sleep 1
-    gnome-extensions enable "$FORGE_UUID" 2>/dev/null || true
+    forge_enable_extension "$FORGE_UUID" >/dev/null 2>&1 || true
     forge_disable_rival_tilers >/dev/null || true
     # One more theme pass after HUP enable
     if (( ! SKIP_APPLY )); then
