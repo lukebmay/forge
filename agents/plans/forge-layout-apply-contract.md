@@ -1,10 +1,10 @@
 # Plan: Layout apply / settle contract (v2 design)
 
-**Status:** **locked** — implement on `plan/forge-layout-apply-contract`  
+**Status:** **code complete** (AC1–AC5); **AC6 live smoke deferred** (Wayland)  
 **Priority:** P0 (next engine work after Meta baseline)  
 **Created:** 2026-08-07  
 **Updated:** 2026-08-07  
-**Branch:** `plan/forge-layout-apply-contract`  
+**Branch:** `plan/forge-layout-apply-contract` (merged → master per slice)  
 **Base evidence:** Meta probe black/Wayland — multi-op thrash-free at **D=0** with Forge off  
 ([`tests/meta-probe/SESSION_HANDOFF.md`](../../tests/meta-probe/SESSION_HANDOFF.md))  
 **Supersedes (direction):** pixel-lock settle + forest reassert in
@@ -17,8 +17,10 @@ until operator can re-smoke on X11 or after logout.
 
 ### Session note (overwrite)
 
-**2026-08-07 (AC4 done):** A/B **AGREE**. isolateThrashWindow + placeholder leaf +
-remove reflow. Next: **AC5** slot-math tests.
+**2026-08-07 (plan code complete):** AC1–AC5 A/B **AGREE** and merged to master.
+Verify sensor-only; command epoch 350ms; LF6 fingerprint default-off; placeholder
+isolate; slot-math tests (65). **AC6 live smoke deferred** (Wayland). AC7 residual
+nudge still later.
 
 ---
 
@@ -422,7 +424,7 @@ Full inventory: **§15**.
 | **AC2** | Command epoch attribution (replace stack-only suppress) | **done** | AC1 | completed/ |
 | **AC3** | Streaming admit/apply; drop LF6 fingerprint default | **done** | AC2 | completed/ |
 | **AC4** | Placeholder tile + thrash/fail isolate | **done** | AC2 | completed/ |
-| **AC5** | Harden slot-math unit tests | **ready** | AC1 | |
+| **AC5** | Harden slot-math unit tests | **in progress** (A done) | AC1 | |
 | **AC6** | Live smoke | **deferred** | AC3–AC5 | Wayland — wait for X11 HUP or logout |
 | **AC7** | Residual nudge (optional) | later | AC6 + visual QA | Punt v1 |
 

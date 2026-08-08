@@ -1,19 +1,37 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import St, { __setScaleFactor, __resetScaleFactor } from "gi://St";
 import Clutter from "gi://Clutter";
+import { Rectangle } from "../../mocks/gnome/Meta.js";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
+  applyMargins,
   planTabRows,
+  processGap as pureProcessGap,
+  splitChildRect,
   tabbedBarHeight,
   tabbedChildRect,
+  stackedChildRect,
 } from "../../../lib/extension/tree-layout.js";
-import { createTreeFixture } from "../../mocks/helpers/index.js";
+import {
+  createTreeFixture,
+  createWindowManagerFixture,
+  createContainerNode,
+  createHorizontalLayout,
+  createWindowNode,
+  getMonitors,
+  getWorkspaceAndMonitor,
+} from "../../mocks/helpers/index.js";
 
 /**
- * Tree layout algorithm tests
+ * Tree layout algorithm tests — apply-contract O8 / plan §5.0
  *
- * Tests the core tiling algorithms: processSplit, processStacked, processTabbed, computeSizes
- * These are the heart of the i3-like window management system.
+ * Guards pure slot math so wrong geometry is a correctness bug, not thrash:
+ * mon workareas → root slots, H/V percent distribution, nested splits,
+ * gaps / outer margins, tab chrome / stack insets on leaf rects.
+ * Prefer Tree.processNode + pure tree-layout helpers (no live HUP).
+ *
+ * Core algorithms: processSplit, processStacked, processTabbed, computeSizes,
+ * processGap, applyMargins.
  */
 describe("planTabRows / tabbedBarHeight (T9 pure)", () => {
   it("max=0 (or unset) yields a single unlimited row", () => {
@@ -51,6 +69,87 @@ describe("planTabRows / tabbedBarHeight (T9 pure)", () => {
     const laid = tabbedChildRect(rect, 70, "top", true);
     expect(laid.y).toBe(80);
     expect(laid.height).toBe(730);
+  });
+
+  it("tabbedChildRect bottom keeps content at rect top", () => {
+    const rect = { x: 10, y: 20, width: 800, height: 600 };
+    const laid = tabbedChildRect(rect, 40, "bottom", true);
+    expect(laid).toEqual({ x: 10, y: 20, width: 800, height: 560 });
+  });
+
+  it("stackedChildRect insets by N× bar height (top)", () => {
+    const rect = { x: 0, y: 0, width: 500, height: 400 };
+    const laid = stackedChildRect(rect, 30, 3, "top");
+    expect(laid.totalBars).toBe(90);
+    expect(laid.rect).toEqual({ x: 0, y: 90, width: 500, height: 310 });
+  });
+});
+
+/** Pure tree-layout helpers — apply-contract O8 slot math. */
+describe("applyMargins / pure processGap / splitChildRect (O8)", () => {
+  it("applyMargins shrinks workarea by screen-edge margins", () => {
+    const rect = { x: 0, y: 0, width: 1920, height: 1080 };
+    expect(applyMargins(rect, { top: 32, bottom: 0, left: 8, right: 8 })).toEqual({
+      x: 8,
+      y: 32,
+      width: 1904,
+      height: 1048,
+    });
+  });
+
+  it("applyMargins with empty margins is identity", () => {
+    const rect = { x: 100, y: 50, width: 800, height: 600 };
+    expect(applyMargins(rect, {})).toEqual(rect);
+  });
+
+  it("pure processGap insets when both axes exceed 2× gap", () => {
+    const node = { rect: { x: 10, y: 20, width: 100, height: 80 } };
+    expect(pureProcessGap(node, 5)).toEqual({ x: 15, y: 25, width: 90, height: 70 });
+  });
+
+  it("pure processGap skips inset when rect is too small", () => {
+    const node = { rect: { x: 0, y: 0, width: 12, height: 100 } };
+    expect(pureProcessGap(node, 10)).toEqual({ x: 0, y: 0, width: 12, height: 100 });
+  });
+
+  it("splitChildRect HSPLIT places children by cumulative sizes", () => {
+    const nodeRect = { x: 100, y: 50, width: 1000, height: 400 };
+    const sizes = [300, 200, 500];
+    expect(splitChildRect("HSPLIT", nodeRect, sizes, 0)).toEqual({
+      x: 100,
+      y: 50,
+      width: 300,
+      height: 400,
+    });
+    expect(splitChildRect("HSPLIT", nodeRect, sizes, 1)).toEqual({
+      x: 400,
+      y: 50,
+      width: 200,
+      height: 400,
+    });
+    expect(splitChildRect("HSPLIT", nodeRect, sizes, 2)).toEqual({
+      x: 600,
+      y: 50,
+      width: 500,
+      height: 400,
+    });
+  });
+
+  it("splitChildRect VSPLIT stacks by cumulative sizes", () => {
+    const nodeRect = { x: 0, y: 10, width: 800, height: 900 };
+    const sizes = [200, 300, 400];
+    expect(splitChildRect("VSPLIT", nodeRect, sizes, 1)).toEqual({
+      x: 0,
+      y: 210,
+      width: 800,
+      height: 300,
+    });
+    expect(splitChildRect("VSPLIT", nodeRect, sizes, 2)).toEqual({
+      x: 0,
+      y: 510,
+      width: 800,
+      height: 400,
+    });
   });
 });
 
@@ -159,6 +258,73 @@ describe("Tree Layout Algorithms", () => {
 
       expect(sizes).toHaveLength(1);
       expect(sizes[0]).toBe(1000); // Full width
+    });
+
+    // Percent edge cases (apply-contract O8): computeSizes does not renormalize
+    // user percents before flooring; remainder folds into the last child.
+    it("folds floor remainder into the last sibling so sizes sum to total", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.HSPLIT;
+      container.rect = { x: 0, y: 0, width: 1000, height: 500 };
+
+      const children = [
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+      ];
+      // 1/3 each → floor 333; remainder 1 goes to last → 333,333,334
+      const sizes = ctx.tree.computeSizes(container, children);
+      expect(sizes.reduce((a, b) => a + b, 0)).toBe(1000);
+      expect(sizes[0]).toBe(333);
+      expect(sizes[1]).toBe(333);
+      expect(sizes[2]).toBe(334);
+    });
+
+    it("treats zero/missing percent as equal share (not a zero slot)", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.HSPLIT;
+      container.rect = { x: 0, y: 0, width: 1000, height: 500 };
+
+      const child1 = new Node(NODE_TYPES.CON, new St.Bin());
+      child1.percent = 0;
+      const child2 = new Node(NODE_TYPES.CON, new St.Bin());
+      // undefined percent
+      const sizes = ctx.tree.computeSizes(container, [child1, child2]);
+      expect(sizes).toEqual([500, 500]);
+    });
+
+    it("does not renormalize percents that sum past 1.0 (last absorbs remainder)", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.HSPLIT;
+      container.rect = { x: 0, y: 0, width: 1000, height: 500 };
+
+      const child1 = new Node(NODE_TYPES.CON, new St.Bin());
+      child1.percent = 0.7;
+      const child2 = new Node(NODE_TYPES.CON, new St.Bin());
+      child2.percent = 0.7;
+
+      const sizes = ctx.tree.computeSizes(container, [child1, child2]);
+      // floor(700)+floor(700)=1400 → last gets 1000-1400 = -400 → 300
+      expect(sizes[0]).toBe(700);
+      expect(sizes[1]).toBe(300);
+      expect(sizes.reduce((a, b) => a + b, 0)).toBe(1000);
+    });
+
+    it("honors unequal percents that sum under 1.0 (last absorbs remainder)", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.VSPLIT;
+      container.rect = { x: 0, y: 0, width: 800, height: 1000 };
+
+      const child1 = new Node(NODE_TYPES.CON, new St.Bin());
+      child1.percent = 0.2;
+      const child2 = new Node(NODE_TYPES.CON, new St.Bin());
+      child2.percent = 0.2;
+
+      const sizes = ctx.tree.computeSizes(container, [child1, child2]);
+      // floor(200)+floor(200)=400 → last += 600 → 200,800
+      expect(sizes[0]).toBe(200);
+      expect(sizes[1]).toBe(800);
+      expect(sizes.reduce((a, b) => a + b, 0)).toBe(1000);
     });
   });
 
@@ -840,6 +1006,273 @@ describe("Tree Layout Algorithms", () => {
       expect(child2.rect.width).toBe(480); // 1200 * 0.4
       expect(child1.rect.x).toBe(0);
       expect(child2.rect.x).toBe(720);
+    });
+  });
+
+  /**
+   * processNode end-to-end slot math (apply-contract O8).
+   * Workarea → mon.rect (margins + gap) → nested splits/percents → leaf
+   * renderRect (gap) and tab/stack chrome insets. No live Shell HUP.
+   */
+  describe("processNode slot math (apply-contract O8)", () => {
+    afterEach(() => {
+      // Local fixtures may replace ctx; outer suite does not always clean up.
+      if (ctx?.cleanup) ctx.cleanup();
+    });
+
+    it("dual-mon different workareas yield independent root slots", () => {
+      ctx.cleanup();
+      ctx = createTreeFixture({
+        fullExtWm: true,
+        globals: {
+          display: {
+            monitorCount: 2,
+            monitorGeometries: [
+              { x: 0, y: 0, width: 1920, height: 1080 },
+              { x: 1920, y: 0, width: 2560, height: 1440 },
+            ],
+          },
+        },
+      });
+      ctx.extWm.calculateGaps = vi.fn(() => 0);
+
+      const ws = ctx.workspaceManager.get_active_workspace();
+      ws.get_work_area_for_monitor = (idx) => {
+        if (idx === 0) return new Rectangle({ x: 0, y: 0, width: 1920, height: 1040 });
+        return new Rectangle({ x: 1920, y: 0, width: 2560, height: 1400 });
+      };
+
+      const monitors = getMonitors(ctx);
+      expect(monitors).toHaveLength(2);
+
+      const [w0a, w0b] = createHorizontalLayout(ctx.tree, monitors[0], 2);
+      const [w1a] = createHorizontalLayout(ctx.tree, monitors[1], 1);
+
+      ctx.tree.processNode(ctx.tree);
+
+      expect(monitors[0].rect).toEqual({ x: 0, y: 0, width: 1920, height: 1040 });
+      expect(monitors[1].rect).toEqual({ x: 1920, y: 0, width: 2560, height: 1400 });
+
+      expect(w0a.nodeWindow.rect).toEqual({ x: 0, y: 0, width: 960, height: 1040 });
+      expect(w0b.nodeWindow.rect).toEqual({ x: 960, y: 0, width: 960, height: 1040 });
+      expect(w1a.nodeWindow.rect).toEqual({ x: 1920, y: 0, width: 2560, height: 1400 });
+      expect(w1a.nodeWindow.renderRect).toEqual(w1a.nodeWindow.rect);
+    });
+
+    it("nested H then V with percents places quadrant leaves correctly", () => {
+      ctx.cleanup();
+      ctx = createTreeFixture({ fullExtWm: true });
+      ctx.extWm.calculateGaps = vi.fn(() => 0);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const left = createContainerNode(monitor, LAYOUT_TYPES.VSPLIT);
+      left.percent = 0.4;
+      const right = createContainerNode(monitor, LAYOUT_TYPES.VSPLIT);
+      right.percent = 0.6;
+
+      const tl = createWindowNode(ctx.tree, left, { mode: "TILE" });
+      tl.nodeWindow.percent = 0.25;
+      const bl = createWindowNode(ctx.tree, left, { mode: "TILE" });
+      bl.nodeWindow.percent = 0.75;
+
+      const tr = createWindowNode(ctx.tree, right, { mode: "TILE" });
+      const br = createWindowNode(ctx.tree, right, { mode: "TILE" });
+      // equal V on right
+
+      ctx.tree.processNode(monitor);
+
+      // mon workarea 1920×1080; left 40% → 768, right 60% → 1152
+      expect(left.rect).toEqual({ x: 0, y: 0, width: 768, height: 1080 });
+      expect(right.rect).toEqual({ x: 768, y: 0, width: 1152, height: 1080 });
+
+      expect(tl.nodeWindow.rect).toEqual({ x: 0, y: 0, width: 768, height: 270 });
+      expect(bl.nodeWindow.rect).toEqual({ x: 0, y: 270, width: 768, height: 810 });
+      expect(tr.nodeWindow.rect).toEqual({ x: 768, y: 0, width: 1152, height: 540 });
+      expect(br.nodeWindow.rect).toEqual({ x: 768, y: 540, width: 1152, height: 540 });
+
+      expect(tl.nodeWindow.renderRect).toEqual(tl.nodeWindow.rect);
+      expect(br.nodeWindow.renderRect).toEqual(br.nodeWindow.rect);
+    });
+
+    it("outer margins shrink mon root before split", () => {
+      ctx.cleanup();
+      ctx = createTreeFixture({
+        fullExtWm: true,
+        settings: {
+          "window-margin-top": 40,
+          "window-margin-bottom": 10,
+          "window-margin-left": 20,
+          "window-margin-right": 20,
+        },
+      });
+      ctx.extWm.calculateGaps = vi.fn(() => 0);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const [left, right] = createHorizontalLayout(ctx.tree, monitor, 2);
+
+      ctx.tree.processNode(monitor);
+
+      // 1920×1080 − margins → x20 y40 w1880 h1030
+      expect(monitor.rect).toEqual({ x: 20, y: 40, width: 1880, height: 1030 });
+      expect(left.nodeWindow.rect).toEqual({ x: 20, y: 40, width: 940, height: 1030 });
+      expect(right.nodeWindow.rect).toEqual({ x: 960, y: 40, width: 940, height: 1030 });
+    });
+
+    it("gaps inset mon then leaf renderRect", () => {
+      ctx.cleanup();
+      ctx = createTreeFixture({ fullExtWm: true });
+      const gap = 10;
+      ctx.extWm.calculateGaps = vi.fn(() => gap);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const [left, right] = createHorizontalLayout(ctx.tree, monitor, 2);
+
+      ctx.tree.processNode(monitor);
+
+      // mon workarea gapped once: 10,10,1900,1060
+      expect(monitor.rect).toEqual({ x: 10, y: 10, width: 1900, height: 1060 });
+      // split of mon.rect (not workarea)
+      expect(left.nodeWindow.rect).toEqual({ x: 10, y: 10, width: 950, height: 1060 });
+      expect(right.nodeWindow.rect).toEqual({ x: 960, y: 10, width: 950, height: 1060 });
+      // leaf renderRect gapped again
+      expect(left.nodeWindow.renderRect).toEqual({ x: 20, y: 20, width: 930, height: 1040 });
+      expect(right.nodeWindow.renderRect).toEqual({ x: 970, y: 20, width: 930, height: 1040 });
+    });
+
+    it("margins + gaps compose on mon root", () => {
+      ctx.cleanup();
+      ctx = createTreeFixture({
+        fullExtWm: true,
+        settings: {
+          "window-margin-top": 20,
+          "window-margin-bottom": 20,
+          "window-margin-left": 10,
+          "window-margin-right": 10,
+        },
+      });
+      const gap = 5;
+      ctx.extWm.calculateGaps = vi.fn(() => gap);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      createWindowNode(ctx.tree, monitor, { mode: "TILE" });
+
+      ctx.tree.processNode(monitor);
+
+      // margins → {10,20,1900,1040}; then gap → {15,25,1890,1030}
+      expect(monitor.rect).toEqual({ x: 15, y: 25, width: 1890, height: 1030 });
+    });
+
+    it("TABBED processNode insets leaf content by bar height", () => {
+      ctx.cleanup();
+      ctx = createTreeFixture({
+        fullExtWm: true,
+        settings: { "stacked-tab-bar-height": 35, "showtab-decoration-enabled": true },
+      });
+      ctx.extWm.calculateGaps = vi.fn(() => 0);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.TABBED;
+      const a = createWindowNode(ctx.tree, monitor, { mode: "TILE" });
+      const b = createWindowNode(ctx.tree, monitor, { mode: "TILE" });
+
+      ctx.tree.processNode(monitor);
+
+      // Both leaves share the full mon rect inset by one tab bar (top)
+      const expected = { x: 0, y: 35, width: 1920, height: 1080 - 35 };
+      expect(a.nodeWindow.rect).toEqual(expected);
+      expect(b.nodeWindow.rect).toEqual(expected);
+      expect(a.nodeWindow.renderRect).toEqual(expected);
+    });
+
+    it("STACKED processNode insets leaf content by N× bar height", () => {
+      ctx.cleanup();
+      ctx = createTreeFixture({
+        fullExtWm: true,
+        settings: { "stacked-tab-bar-height": 40, "showtab-decoration-enabled": true },
+      });
+      ctx.extWm.calculateGaps = vi.fn(() => 0);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.STACKED;
+      const wins = [
+        createWindowNode(ctx.tree, monitor, { mode: "TILE" }),
+        createWindowNode(ctx.tree, monitor, { mode: "TILE" }),
+        createWindowNode(ctx.tree, monitor, { mode: "TILE" }),
+      ];
+
+      ctx.tree.processNode(monitor);
+
+      const bars = 40 * 3;
+      const expected = { x: 0, y: bars, width: 1920, height: 1080 - bars };
+      for (const w of wins) {
+        expect(w.nodeWindow.rect).toEqual(expected);
+        expect(w.nodeWindow.renderRect).toEqual(expected);
+      }
+    });
+
+    it("nested split under TABBED CON applies chrome then gap on leaves", () => {
+      ctx.cleanup();
+      ctx = createTreeFixture({
+        fullExtWm: true,
+        settings: { "stacked-tab-bar-height": 30, "showtab-decoration-enabled": true },
+      });
+      const gap = 8;
+      ctx.extWm.calculateGaps = vi.fn(() => gap);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const tabCon = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
+      tabCon.percent = 0.5;
+      const plain = createWindowNode(ctx.tree, monitor, { mode: "TILE" });
+      plain.nodeWindow.percent = 0.5;
+
+      const t0 = createWindowNode(ctx.tree, tabCon, { mode: "TILE" });
+      const t1 = createWindowNode(ctx.tree, tabCon, { mode: "TILE" });
+
+      ctx.tree.processNode(monitor);
+
+      // mon after gap: 8,8,1904,1064; half widths 952
+      expect(tabCon.rect.width).toBe(952);
+      expect(plain.nodeWindow.rect.x).toBe(8 + 952);
+
+      // TABBED content: y = mon.y + 30, height = mon.h - 30
+      expect(t0.nodeWindow.rect).toEqual({
+        x: 8,
+        y: 8 + 30,
+        width: 952,
+        height: 1064 - 30,
+      });
+      expect(t1.nodeWindow.rect).toEqual(t0.nodeWindow.rect);
+      // leaf renderRect gap again
+      expect(t0.nodeWindow.renderRect).toEqual({
+        x: 8 + gap,
+        y: 8 + 30 + gap,
+        width: 952 - gap * 2,
+        height: 1064 - 30 - gap * 2,
+      });
+    });
+
+    it("buffer-scale align rounds slot edges to scale (move-time contract)", () => {
+      // Tree plans pure rects; WindowManager.move aligns to buffer scale when
+      // dpi>1. Document the pure rule used at apply (O8 surface adjacent).
+      ctx.cleanup();
+      const wmCtx = createWindowManagerFixture();
+      const align = (v, scale) => wmCtx.windowManager._alignToBufferScale(v, scale);
+
+      expect(align(0, 2)).toBe(0);
+      expect(align(1, 2)).toBe(2);
+      expect(align(960.4, 2)).toBe(960);
+      expect(align(961, 2)).toBe(962);
+      expect(align(100, 1.5)).toBe(100.5);
+      expect(align(101, 1.5)).toBe(100.5);
+
+      wmCtx.cleanup();
+      // Restore suite fixture for sibling tests' beforeEach independence.
+      ctx = createTreeFixture({ fullExtWm: true });
+      ctx.extWm.calculateGaps = vi.fn(() => 10);
     });
   });
 

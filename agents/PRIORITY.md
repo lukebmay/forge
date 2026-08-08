@@ -1,11 +1,11 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-07 (apply-contract locked; AC1 purge)  
+**Updated:** 2026-08-07 (apply-contract AC1–AC5 code complete)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 **No push** until human asks.  
-**Active P0:** Implement [layout apply/settle contract](./plans/forge-layout-apply-contract.md) — AC1 purge → AC2 epoch → AC3–AC5. Live AC6 deferred (Wayland).
+**Active P0:** [layout apply/settle contract](./plans/forge-layout-apply-contract.md) **AC6 live smoke** when X11/logout — AC1–AC5 done on master.
 
 ---
 
@@ -34,8 +34,8 @@
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Layout apply/settle contract** | **Locked** — AC1 purge in progress — [forge-layout-apply-contract](./plans/forge-layout-apply-contract.md) |
-| **2** | AC2–AC5 implement | Command epoch, streaming admit, placeholder, slot-math tests |
+| **1** | **Layout apply/settle AC6 live smoke** | Agent code done; operator when not stuck on Wayland-only — [plan](./plans/forge-layout-apply-contract.md) |
+| **done** | AC1–AC5 apply contract | sensor verify, epoch, drop LF6 default, placeholder, slot tests |
 | **done** | Meta baseline black/wayland | D=0 thrash-free Forge-off; product thrash is Forge-side |
 | **park** | Forge-on thrash probe | Only if instrumented to localize loops; not “prove thrash” |
 | **park** | X11 + gray/green probe | After contract needs a second host |

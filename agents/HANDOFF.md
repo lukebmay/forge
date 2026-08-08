@@ -1,41 +1,51 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-07 (apply-contract **locked**; AC1 in progress)  
-**Branch:** `plan/forge-layout-apply-contract`  
-**Active P0:** [forge-layout-apply-contract](./plans/forge-layout-apply-contract.md) AC2 command epoch  
+**Updated:** 2026-08-07 (apply-contract **code complete** AC1–AC5)  
+**Branch:** `master` (plan branch merged per slice)  
+**Active P0 next:** **AC6 live smoke** when X11 HUP or logout available  
 **Live smoke:** deferred (Wayland — no HUP this session)
 
 ---
 
-## Campaign
+## Campaign: layout apply/settle contract
 
-| Item | Status |
-| --- | --- |
-| Meta baseline (Forge-off D=0) | **Done** |
-| Apply/settle contract design | **Locked** |
-| AC1 purge verify war | **done** (merged master) |
-| AC2 command epoch | **in progress** |
-| AC3–AC5 | queued |
+| Item | Status | Commit |
+| --- | --- | --- |
+| Design lock | **Done** | plan doc |
+| AC1 purge verify war | **done** | `333f8bf` |
+| AC2 command epoch | **done** | `b20c227` |
+| AC3 drop LF6 fingerprint default | **done** | `9633290` |
+| AC4 placeholder thrash isolate | **done** | `cf453cb` |
+| AC5 slot-math unit tests | **done** | (this wrap) |
+| AC6 live smoke | **deferred** | Wayland |
+| AC7 residual nudge | later | after visual QA |
 
-### Next
+### One-line contract
 
-1. Finish AC2 A/B → wrap-up commit  
-2. AC3 streaming · AC4 placeholder · AC5 slot math  
-3. AC6 live smoke when X11 HUP or logout available  
+Plan with tree math → parallel launch → place when admissible → post-apply =
+echo residual (350ms) → thrash → float + placeholder — never thrash the forest.
+
+### Operator next (AC6)
+
+When on X11 (HUP) or after Wayland logout:
+
+1. Install + enable Forge  
+2. `forge layout dev` (no fingerprint wait by default)  
+3. Focus walk, tab switch, thrash isolate if needed  
+4. Optional: `FORGE_LAYOUT_WAIT_TREE_STABLE=1` only for debug  
 
 ---
 
-## Open human blockers (unchanged)
+## Open human blockers
 
 - hard: B-manual-black-session-verify (DPMS / lock)  
 - hard: resize-autotile-design  
 - soft: B-ap5-operator-visual-matrix  
 - human: Wayland residual re-smoke after install+logout (RC)  
-- deferred: AC6 live smoke for apply-contract  
+- deferred: AC6 apply-contract live smoke  
 
 ---
 
 ## Agent rules
 
 - **No push** unless asked · **No SSH** without **explicit**  
-- Probe stays Forge-independent unless a task intentionally measures Forge-on  
