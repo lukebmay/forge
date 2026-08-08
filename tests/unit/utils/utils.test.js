@@ -607,18 +607,25 @@ describe("Utility Functions", () => {
       expect(detectDropZone(smallRegions, [500, 400])).toBe(DROP_ZONES.CENTER);
     });
 
-    it("should pick nearest edge in corners (not fixed L/R over T/B)", () => {
-      // Top-left: closer to top edge (y=100→dist 100) than left (x=100→dist 100) — tie: first sorted stable
-      // Closer to top: y=50, x=100 → top dist 50, left dist 100
+    it("should pick nearest edge in corners (normalized by axis)", () => {
+      // Distances are divided by width/height so tall tiles do not prefer L/R.
+      // Closer to top: y=50, x=100 → top 50/800, left 100/1000
       expect(detectDropZone(regions, [100, 50], rect)).toBe(DROP_ZONES.TOP);
-      // Closer to left: y=100, x=50 → left dist 50, top dist 100
+      // Closer to left: y=100, x=50 → left 50/1000, top 100/800
       expect(detectDropZone(regions, [50, 100], rect)).toBe(DROP_ZONES.LEFT);
       // Top-right closer to top
       expect(detectDropZone(regions, [900, 50], rect)).toBe(DROP_ZONES.TOP);
-      // Bottom-left closer to bottom
+      // Bottom-left closer to bottom (norm)
       expect(detectDropZone(regions, [100, 750], rect)).toBe(DROP_ZONES.BOTTOM);
       // Bottom-right closer to right
       expect(detectDropZone(regions, [950, 700], rect)).toBe(DROP_ZONES.RIGHT);
+    });
+
+    it("tall tile bottom-corner prefers BOTTOM over LEFT (norm)", () => {
+      const tall = { x: 0, y: 0, width: 960, height: 1400 };
+      const tallRegions = calculateDropRegions(tall, 0.3);
+      // 50px from left and from bottom — raw px ties would be unstable; norm → bottom.
+      expect(detectDropZone(tallRegions, [50, 1350], tall)).toBe(DROP_ZONES.BOTTOM);
     });
 
     it("infers target rect when omitted so nearest-edge still works", () => {

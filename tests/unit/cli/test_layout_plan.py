@@ -2246,6 +2246,31 @@ class TestModeACollect(unittest.TestCase):
         self.assertEqual(ensures["mon1.term"]["windowIds"], [201, 301, 302])
         self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
 
+    def test_clean_closes_mode_a_companions_not_keep(self):
+        """Product default clean=True: mon-child companions close, not kept."""
+        forest = _load("tree-mon1-companions-direct.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile, clean=True)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertTrue(plan["clean"])
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["closed"], 2)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        closes = {a["windowId"] for a in plan["actions"] if a.get("op") == "close"}
+        self.assertEqual(closes, {301, 302})
+
+    def test_keep_others_parks_mode_a_companions_not_keep(self):
+        """--keep-others: companions park (tab-join), not silent keep."""
+        forest = _load("tree-mon1-companions-direct.json")
+        profile = _load("profile-dev-v2.json")
+        plan = plan_reconcile(forest, profile, clean=False, keep_others=True)
+        self.assertFalse(plan["thrashState"]["thrashed"])
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["closed"], 0)
+        self.assertEqual(plan["counts"]["parked"], 2)
+        parks = {a["windowId"] for a in plan["actions"] if a.get("op") == "park"}
+        self.assertEqual(parks, {301, 302})
+
     def test_chrome_half_collect_to_comms(self):
         """Marginal rect only on chrome half → mon1.comms (not mon-span term)."""
         forest = _load("tree-mon1-marginal-chrome-half.json")
@@ -3466,14 +3491,25 @@ class TestCleanResiduals(unittest.TestCase):
         for c in closes:
             self.assertNotIn(c["windowId"], role_ids)
 
-    def test_clean_keeps_companions(self):
+    def test_clean_closes_companions(self):
+        """clean=True closes mon-child companions (product desk = profile only)."""
         forest = _load("tree-ghostty-nautilus-tab.json")
         plan = plan_reconcile(forest, self._ghostty_profile(), clean=True)
         self.assertEqual(plan["counts"]["reused"], 1)
+        self.assertEqual(plan["counts"]["kept"], 0)
+        self.assertEqual(plan["counts"]["closed"], 1)
+        self.assertEqual(plan["counts"]["parked"], 0)
+        closes = [a for a in plan["actions"] if a["op"] == "close"]
+        self.assertEqual(len(closes), 1)
+        self.assertEqual(closes[0]["windowId"], 502)
+
+    def test_leave_keeps_companions_when_not_clean(self):
+        """Without clean: Mode A coexist keeps tab companions in place."""
+        forest = _load("tree-ghostty-nautilus-tab.json")
+        plan = plan_reconcile(forest, self._ghostty_profile(), clean=False)
+        self.assertEqual(plan["counts"]["reused"], 1)
         self.assertEqual(plan["counts"]["kept"], 1)
         self.assertEqual(plan["counts"]["closed"], 0)
-        self.assertEqual(plan["counts"]["parked"], 0)
-        self.assertFalse(any(a["op"] == "close" for a in plan["actions"]))
         self.assertEqual(plan["kept"][0]["windowId"], 502)
 
     def test_clean_strict_closes_companions(self):

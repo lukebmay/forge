@@ -1974,7 +1974,8 @@ def plan_reconcile(
 
     clean=True: close true residuals (Meta delete path). Product CLI default.
     keep_others=True: soft-park residuals onto each mon's last unit (tab join);
-    overrides clean. claimed roles and kept companions are never closed/parked.
+    overrides clean. claimed roles are never closed/parked. Mode A "kept"
+    companions apply only when neither clean nor park (residual leave).
 
     safe=True: open missing roles + move roles to correct mon only;
     no park/close, no collect keep, no structure, no mon ensure.
@@ -2200,7 +2201,11 @@ def plan_reconcile(
         summary = _window_summary(w)
         key = _window_key(w)
         keep_slot = key_to_slot.get(key) if key_to_slot else None
-        if keep_slot is not None:
+        # Mode A "kept" companions only when we are not closing/parking residuals.
+        # Product default (clean=True) must close non-layout windows; --keep-others
+        # must park them. Previously keep always won → default close and --keep
+        # both looked like no-ops for mon-child companions (Nautilus, etc.).
+        if keep_slot is not None and not clean and not want_park and not safe:
             entry = dict(summary)
             entry["status"] = "kept"
             entry["slot"] = keep_slot

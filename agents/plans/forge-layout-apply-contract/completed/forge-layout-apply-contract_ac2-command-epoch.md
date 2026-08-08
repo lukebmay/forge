@@ -66,7 +66,7 @@ commanded+residual-done for settle purposes.
 
 - Placeholder / thrash float (AC4)  
 - Streaming admit / LF6 drop (AC3)  
-- Residual **nudge/center** (AC7)  
+- Residual **nudge/center** (AC7) — later **cancelled**  
 - Live smoke (AC6 deferred)  
 - Removing `_suppressGeometrySignalRetile` entirely (keep as inner-stack belt)
 

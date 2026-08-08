@@ -1,9 +1,9 @@
 # Plan: Layout apply / settle contract (v2 design)
 
-**Status:** **complete** (AC1–AC6); AC7 residual nudge still later  
-**Priority:** P0 (engine contract done; AC7 optional)  
+**Status:** **complete** (AC1–AC6); AC7 residual nudge **cancelled**  
+**Priority:** P0 (engine contract done)  
 **Created:** 2026-08-07  
-**Updated:** 2026-08-07  
+**Updated:** 2026-08-08  
 **Branch:** `plan/forge-layout-apply-contract` (merged → master per slice)  
 **Base evidence:** Meta probe black/Wayland — multi-op thrash-free at **D=0** with Forge off  
 ([`tests/meta-probe/SESSION_HANDOFF.md`](../../tests/meta-probe/SESSION_HANDOFF.md))  
@@ -17,10 +17,9 @@ Mode B thrash-recover pass; settled desk matches `dev` dual-mon tabs.
 
 ### Session note (overwrite)
 
-**2026-08-07 (AC6 live X11):** AC1–AC6 complete. Live: debug install, `forge layout
-dev` map-pin ~414ms / treeStable skipped, thrash-recover to mon0 tab\|ghostty +
-mon1 ghostty\|tab. No Shell crash. Cold first-pass mon thrash residual noted (not
-contract regression). AC7 residual nudge still later.
+**2026-08-08:** Operator visual QA: settled layout looks fine **without** a final
+centering/nudge step → **AC7 cancelled** (not deferred). Plan fully complete
+AC1–AC6 only.
 
 ---
 
@@ -43,7 +42,6 @@ forest**. Meta alone places core apps without multi-op thrash. The bug is the
 6. **Echo-first attribution** — during a Forge layout wave, geometry jitter is assumed to be **our command + client response**, not a human, unless proven otherwise.
 7. **No forest thrash** — one bad window never re-applies / unsets the whole tree.
 8. **Bounded failure** — thrash budget exhausted → float thrash app + **placeholder tile** in the reserved slot (user can close placeholder to drop the empty slot).
-9. **Residual nudge** — **deferred** until renders are stable; then decide if one-shot center is worth it.
 
 ## 3. Non-goals (this design)
 
@@ -51,7 +49,7 @@ forest**. Meta alone places core apps without multi-op thrash. The bug is the
 - Competing-tiler coexistence during layout waves (rivals stay disabled).
 - Perfect pixel match to slot forever.
 - Continuous production rescan.
-- Post-apply center/nudge in v1 of this contract (explicit punt).
+- Post-apply center/nudge (AC7) — **cancelled** after visual QA (not needed).
 
 ---
 
@@ -128,7 +126,7 @@ workareas, gaps, nested splits, tab chrome insets, buffer-scale align).
                     ┌─────────────────▼───────────────────┐
                     │ 3. RESIDUAL (per window, parallel)  │
                     │    echo observe; accept residual    │
-                    │    (nudge punted v1) → SETTLED      │
+                    │    (no nudge) → SETTLED             │
                     │    thrash/fail → PLACEHOLDER        │
                     └─────────────────┬───────────────────┘
                                       │
@@ -154,20 +152,16 @@ dominated by **slowest map + that window’s residual**, not by sequential chain
 | Pixel equality to slot forever | **No** | Terminal grid, min-size, scale |
 | Human drag mid-wave | **Out of band** | See §7 input freeze |
 
-### 5.4 Residual policy (post-apply) — v1
+### 5.4 Residual policy (post-apply) — locked
 
 After command epoch *N* for window *W*:
 
 1. Attribute geom signals to **echo / client response** for a short residual
    window (catalog optional; raise-only later).
 2. **Do not reassert** to chase pixel equality.
-3. **Do not nudge/center** in v1 — **punt** until stable renders exist; then
-   measure how far clients sit from slots and decide if one-shot adjust is worth
-   a setting.
+3. **Do not nudge/center** — operator visual QA (2026-08-08): settled layout is
+   fine without a final centering step; AC7 cancelled.
 4. Never: mismatch → forest `requestLayout` → everyone moves.
-
-**Later (only if needed after visual QA):** optional one-shot residual adjust +
-gsetting to disable for speed.
 
 ---
 
@@ -204,10 +198,11 @@ barrier** (e.g. both mon1 tabs), not “entire forest Meta-stable.”
 - Waiting was a **historical race bandage** (LF5/LF6 mon fights), not physics.
 - Move each window when **that** window is admissible; residual is local.
 
-### 6.3 Optional centering after resize
+### 6.3 Centering after resize — cancelled
 
-**Punted for v1.** After stable renders, eyeball residuals; only then consider
-one-shot adjust + setting. Never multi-round chase.
+**Cancelled (2026-08-08).** Operator visual QA: no final centering/nudge step
+needed. Accept residuals; never multi-round chase. Do not re-open as optional
+work unless a new live regression shows half-landed tiles.
 
 ---
 
@@ -406,7 +401,7 @@ Full inventory: **§15**.
 | --- | --- | --- | --- |
 | **O1** | Thrash isolate | **locked lean** | Placeholder tile in reserved slot; thrash client FLOAT |
 | **O1b** | Remove empty slot | **locked lean** | Close placeholder (real Forge window preferred); then reflow |
-| **O2** | Residual nudge | **punt v1** | No center/adjust until stable renders + visual QA |
+| **O2** | Residual nudge | **cancelled** | Visual QA fine without center/adjust (2026-08-08) |
 | **O3** | Input freeze | **locked lean** | Echo-first + layout-apply chrome on multi-open |
 | **O4** | Role-group barriers | **deferred** | Only if live multi-instance repro forces it |
 | **O5** | Float vs IGNORE | **deferred** | FLOAT until ignore mode ships |
@@ -426,9 +421,9 @@ Full inventory: **§15**.
 | **AC4** | Placeholder tile + thrash/fail isolate | **done** | AC2 | completed/ |
 | **AC5** | Harden slot-math unit tests | **done** | AC1 | completed/ |
 | **AC6** | Live smoke | **done** | AC3–AC5 | completed/ — black X11 2026-08-07 |
-| **AC7** | Residual nudge (optional) | later | AC6 + visual QA | Punt v1 |
+| **AC7** | Residual nudge (optional) | **cancelled** | — | Visual QA: not needed (2026-08-08) |
 
-Active task files: `agents/tasks/forge-layout-apply-contract_ac*.md`  
+Active task files: none (plan complete).  
 Completed: `agents/plans/forge-layout-apply-contract/completed/`
 
 ---
@@ -436,15 +431,14 @@ Completed: `agents/plans/forge-layout-apply-contract/completed/`
 ## 13. What we are not doing now
 
 - Forge-on thrash sweeps “to prove thrash.”  
-- Residual center/nudge feature work (until AC7).  
+- Residual center/nudge (AC7 cancelled).  
 - Dual systems (“new path + old reassert belt”).  
-- Live install/HUP while on Wayland (AC6 done on X11).
 
 ---
 
 ## 14. One-sentence contract
 
-> **Plan with bulletproof tree math, launch in parallel, place each window as soon as it is admissible without Meta hard-settle unless the next op needs Meta, treat post-apply jitter as our echo and accept residuals (nudge later if needed), and if one app fails or thrashes, put a closable Forge placeholder in the slot and float the bad client — never thrash the forest.**
+> **Plan with bulletproof tree math, launch in parallel, place each window as soon as it is admissible without Meta hard-settle unless the next op needs Meta, treat post-apply jitter as our echo and accept residuals, and if one app fails or thrashes, put a closable Forge placeholder in the slot and float the bad client — never thrash the forest.**
 
 ---
 
@@ -475,7 +469,7 @@ These encode **pixel war**, **forest thrash**, or **Meta hard-settle as lifestyl
 | SL1 time-to-stable via first Meta↔slot agreement | `_settlePending`, `noteOpenPendingForSettle`, `recordSettleSample` on agreement | Optimizes for old success metric |
 | `needsExtraVerify` driving control-loop behavior | `app-thrash-catalog.js` + controller | Only served thrash-extra / extra verify |
 | LF6 **whole GetTree fingerprint quiet** as default pre-place gate | layout CLI / open batch philosophy | Global Meta barrier; causes jumpiness; not required if tree owns slots |
-| Residual **nudge/center** if any half-landed | (none / future) | Explicitly **punt** until stable renders |
+| Residual **nudge/center** if any half-landed | (none) | **Cancelled** after visual QA — do not implement |
 | Stack-only `_suppressGeometrySignalRetile` **as sole** self-echo filter | `window.js` `move` / `tree.apply` | Incomplete; replace with command epoch (not “also keep both forever”) |
 
 ### 15.3 KEEP (clear job under new contract)
@@ -537,10 +531,11 @@ Those tests document the old disease. Replace with:
 
 ## 16. Design lock checklist
 
-- [x] §§5–8 + §11 accepted (incl. placeholder + punt nudge)  
+- [x] §§5–8 + §11 accepted (incl. placeholder; AC7 nudge cancelled)  
 - [x] §15 kill list accepted (no “keep reassert as belt”)  
 - [x] O4–O6 deferred  
 - [x] Explicit: **no dual-path** old verify war  
 - [x] Implement purge first (AC1), features second (AC2+)  
+- [x] AC7 cancelled after visual QA (2026-08-08)  
 
 **Locked:** 2026-08-07 by operator Begin on this plan.  

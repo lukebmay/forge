@@ -31,7 +31,7 @@ These pure paths must be high-test, high-review.
 ## Out of scope
 
 - Live smoke (AC6)  
-- Residual nudge  
+- Residual nudge (AC7 — later **cancelled**)  
 - Placeholder visual polish  
 
 ## Acceptance

@@ -439,6 +439,133 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
       expect(dragged.parentNode).toBe(target.parentNode);
     });
+
+    it("BOTTOM edge on nested TABBED CON under mon HSPLIT wraps into VSPLIT (not mon sibling HSPLIT)", () => {
+      // Daily path: mon HSPLIT [TABBED half-height tabs | sibling]. Dropping on the
+      // bottom of the tab group must become VSPLIT(TABBED, dragged) in place.
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const tabCon = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const target = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+      target.mode = WINDOW_MODES.TILE;
+      const otherTab = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaB);
+      otherTab.mode = WINDOW_MODES.TILE;
+
+      const { nodeWindow: sibling } = createWindowWithRect(monitor, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 400, y: 400, width: 400, height: 300 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      // Bottom-center of the left tab group (avoid corner nearest-edge LEFT).
+      setPointer(480, 1000);
+      wm().nodeWinAtPointer = target;
+
+      wm().moveWindowToPointer(dragged, false);
+
+      const wrap = dragged.parentNode;
+      expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(wrap.parentNode).toBe(monitor);
+      expect(tabCon.parentNode).toBe(wrap);
+      expect(tabCon.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(tabCon.childNodes).toContain(target);
+      expect(tabCon.childNodes).toContain(otherTab);
+      expect(wrap.childNodes).toContain(tabCon);
+      expect(wrap.childNodes).toContain(dragged);
+      expect(wrap.childNodes.indexOf(tabCon)).toBeLessThan(wrap.childNodes.indexOf(dragged));
+      // Right sibling stays a mon-level peer of the new wrap, not of dragged alone.
+      expect(sibling.parentNode).toBe(monitor);
+      expect(monitor.childNodes).toContain(wrap);
+      expect(monitor.childNodes).toContain(sibling);
+    });
+
+    it("LEFT edge on nested TABBED CON under mon HSPLIT wraps into HSPLIT", () => {
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const tabCon = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const target = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+      target.mode = WINDOW_MODES.TILE;
+
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 960, y: 0, width: 960, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      setPointer(50, 540);
+      wm().nodeWinAtPointer = target;
+
+      wm().moveWindowToPointer(dragged, false);
+
+      const wrap = dragged.parentNode;
+      expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(tabCon.parentNode).toBe(wrap);
+      expect(wrap.childNodes.indexOf(dragged)).toBeLessThan(wrap.childNodes.indexOf(tabCon));
+    });
+
+    it("no-op when already bottom of VSPLIT and drop BOTTOM on top sibling", () => {
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const split = createContainer(monitor, LAYOUT_TYPES.VSPLIT, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const metaTop = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 540 }),
+        workspace: workspace0(),
+      });
+      const metaBot = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 540, width: 960, height: 540 }),
+        workspace: workspace0(),
+      });
+      const top = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaTop);
+      top.mode = WINDOW_MODES.TILE;
+      const bot = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaBot);
+      bot.mode = WINDOW_MODES.GRAB_TILE;
+
+      // Bottom-center of the top sibling (same relative place).
+      setPointer(480, 500);
+      wm().nodeWinAtPointer = top;
+      const orderBefore = split.childNodes.slice();
+
+      wm().moveWindowToPointer(bot, false);
+
+      expect(split.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(split.childNodes).toEqual(orderBefore);
+      expect(bot.parentNode).toBe(split);
+    });
   });
 
   // ============================================================================
@@ -1383,6 +1510,82 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       expect(previewHint.set_style_class_name).toHaveBeenCalledWith("window-tilepreview-tabbed");
     });
 
+    it("Super (tile mod) shows hints when preview-hint-enabled is false", () => {
+      setupPreviewTest();
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "preview-hint-enabled") return false;
+        if (key === "stacked-tiling-mode-enabled") return true;
+        if (key === "tabbed-tiling-mode-enabled") return true;
+        return key === "tiling-mode-enabled";
+      });
+      // DragDropManager._previewHintsWanted → allowDragDropTile (tile mod / Super).
+      vi.spyOn(wm().dragDrop, "allowDragDropTile").mockReturnValue(true);
+
+      const monitor = getMonitor();
+      const { nodeWindow: target } = createWindowWithRect(monitor, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 0, y: 0, width: 1920, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+      const previewHint = {
+        set_style_class_name: vi.fn(),
+        set_position: vi.fn(),
+        set_size: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      dragged.previewHint = previewHint;
+      setPointer(100, 540);
+      wm().nodeWinAtPointer = target;
+
+      wm().moveWindowToPointer(dragged, true);
+
+      expect(previewHint.show).toHaveBeenCalled();
+      expect(previewHint.set_style_class_name).toHaveBeenCalledWith("window-tilepreview-tiled");
+    });
+
+    it("setting off + no tile mod does not paint hints", () => {
+      setupPreviewTest();
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "preview-hint-enabled") return false;
+        return key === "tiling-mode-enabled";
+      });
+      vi.spyOn(wm().dragDrop, "allowDragDropTile").mockReturnValue(false);
+
+      const monitor = getMonitor();
+      const { nodeWindow: target } = createWindowWithRect(monitor, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 0, y: 0, width: 1920, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+      const previewHint = {
+        set_style_class_name: vi.fn(),
+        set_position: vi.fn(),
+        set_size: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      dragged.previewHint = previewHint;
+      setPointer(100, 540);
+      wm().nodeWinAtPointer = target;
+
+      wm().moveWindowToPointer(dragged, true);
+
+      expect(previewHint.show).not.toHaveBeenCalled();
+    });
+
     it("should hide preview when no targetRect", () => {
       setupPreviewTest();
       const monitor = getMonitor();
@@ -1466,7 +1669,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
   // ============================================================================
 
   describe("Stacked Container with CON Parent", () => {
-    it("should detach window from stacked CON when dropping LEFT", () => {
+    it("LEFT edge on nested STACKED CON wraps into HSPLIT in place", () => {
       const monitor = getMonitor();
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
@@ -1502,15 +1705,17 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(100, 540);
       wm().nodeWinAtPointer = target;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(dragged, false);
 
-      // Should call split because stackedCon is not monitor parent
-      expect(splitSpy).toHaveBeenCalled();
+      const wrap = dragged.parentNode;
+      expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(stackedCon.parentNode).toBe(wrap);
+      expect(wrap.childNodes.indexOf(dragged)).toBeLessThan(wrap.childNodes.indexOf(stackedCon));
+      expect(stackedCon.childNodes).toContain(target);
+      expect(stackedCon.childNodes).toContain(other);
     });
 
-    it("should insert window before stacked CON when dropping TOP", () => {
+    it("TOP edge on nested STACKED CON wraps into VSPLIT with dragged first", () => {
       const monitor = getMonitor();
       monitor.layout = LAYOUT_TYPES.VSPLIT;
 
@@ -1546,11 +1751,12 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(960, 600);
       wm().nodeWinAtPointer = target;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(splitSpy).toHaveBeenCalled();
+      const wrap = dragged.parentNode;
+      expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(stackedCon.parentNode).toBe(wrap);
+      expect(wrap.childNodes.indexOf(dragged)).toBeLessThan(wrap.childNodes.indexOf(stackedCon));
     });
   });
 

@@ -63,7 +63,7 @@ than inventing a second path.
 ## Out of scope
 
 - Full GTK `forge-placeholder` packaging polish (OK to stub spawn path)  
-- Residual center/nudge (AC7)  
+- Residual center/nudge (AC7) — later **cancelled**  
 - Live visual QA (AC6)  
 - Re-introducing verify reassert  
 
@@ -98,4 +98,4 @@ than inventing a second path.
 | Docs | architecture.md, rendering.md, DECISIONS D006 |
 | Commit | **not** by A (orchestrator after B AGREE) |
 
-**Residual for AC5/AC6:** no open-timeout auto-wire into isolate yet (API ready); no GTK `forge-placeholder` process; no live visual QA; residual center/nudge still AC7.
+**Residual for AC5/AC6:** no open-timeout auto-wire into isolate yet (API ready); no GTK `forge-placeholder` process; no live visual QA at this slice. (AC7 nudge later **cancelled** 2026-08-08.)

@@ -53,7 +53,7 @@ old gate for debugging. Belt may share the same flag or stay off always unless
 
 - Placeholder product (AC4)  
 - Slot-math pure tests (AC5)  
-- Residual nudge  
+- Residual nudge (AC7 — later **cancelled**)  
 - Live layout smoke (AC6)  
 - Changing extension open quiet admit (minQuietMs) beyond comment cleanup  
 - Removing fingerprint helpers entirely  

@@ -1,13 +1,14 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-08 (layout residual default close + prefs kit type)  
-**Branch:** `master` (disk install dirty tip; **Wayland needs logout** for prefs/extension)  
-**Active P0 next:** **logout** → `layout dev` (closes extras; chrome stays) + prefs kit type UI  
-**Live smoke:** **X11 green** (prior). **Wayland** usable RC; tip needs logout.
+**Updated:** 2026-08-08 (layout clean vs keep fix; Super peek hints)  
+**Branch:** `master` (disk install dirty tip; **Wayland needs logout**)  
+**Active P0 next:** logout → `layout dev` closes residuals; Super+drag hints with setting off  
+**DnD redesign (later):** [forge-dnd-drop-zones.md](./plans/forge-dnd-drop-zones.md)  
+**Live smoke:** usable Wayland RC; operator DnD much better.
 
 ---
 
-## Campaign: layout apply/settle contract
+## Campaign: layout apply/settle contract — **complete**
 
 | Item | Status | Commit |
 | --- | --- | --- |
@@ -18,7 +19,7 @@
 | AC4 placeholder thrash isolate | **done** | `cf453cb` |
 | AC5 slot-math unit tests | **done** | `df60734` |
 | AC6 live smoke | **done** | X11 live (docs wrap) |
-| AC7 residual nudge | later | after visual QA |
+| AC7 residual nudge | **cancelled** | visual QA fine without (2026-08-08) |
 
 ### One-line contract
 

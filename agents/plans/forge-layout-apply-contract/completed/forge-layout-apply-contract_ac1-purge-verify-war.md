@@ -64,7 +64,7 @@ verify = sensor; SETTLED ≠ pixel equality forever; point at apply-contract pla
 - Placeholder tile product (AC4)  
 - Slot-math pure test hardening beyond what this purge forces (AC5)  
 - Live smoke (AC6 deferred)  
-- Residual nudge (AC7)
+- Residual nudge (AC7) — later **cancelled**
 
 ## Acceptance
 

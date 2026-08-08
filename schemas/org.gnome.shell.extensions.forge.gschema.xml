@@ -229,8 +229,8 @@
             <summary>Generic open monitor: 'pointer' follows last focused tile (OP1; id kept for configs); 'window-actual' uses the window's own monitor. Dock sticky mon wins when a dock launch is detected.</summary>
         </key>
         <key type="b" name="preview-hint-enabled">
-            <default>false</default>
-            <summary>Whether to show preview hint DND</summary>
+            <default>true</default>
+            <summary>Whether to show preview hint DND (failsafe + grab-end clear; off if sticky)</summary>
         </key>
         <key type="b" name="showtab-decoration-enabled">
             <default>true</default>

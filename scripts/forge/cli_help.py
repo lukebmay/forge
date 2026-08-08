@@ -328,8 +328,8 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     )
     _out(s, "  • Profile names must not contain ", cyan(":", **kw), " or ", cyan("@", **kw), " (workspace targeting).")
     _out(s, "  • Match titles with ", cyan('title~="substr"', **kw), " when several windows share a class.")
-    _out(s, "  • Counts: reused / opened / moved / kept / parked (or closed with --clean).")
-    _out(s, "  • Default never closes windows; role windows and kept companions stay.")
+    _out(s, "  • Counts: reused / opened / moved / kept / parked / closed.")
+    _out(s, "  • Default closes non-layout windows; roles stay. --keep-others parks instead.")
     _out(s, "  • Thrashed desk: default auto Mode B recover (prefer over refuse).")
     _out(s, "  • Optional: ", cyan('"displays": "scene"', **kw), " -> gdisplays load; ", cyan('"settings": "name"', **kw), " -> SettingsLoad.")
     _out(

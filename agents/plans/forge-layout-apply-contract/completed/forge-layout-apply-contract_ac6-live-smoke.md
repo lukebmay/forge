@@ -40,4 +40,4 @@ Live-smoke the apply/settle contract on X11 after AC1–AC5.
 
 **Contract confirmations:** no default fingerprint quiet; streaming map-pin + residual RunSteps; sensor/epoch path does not storm Shell; thrash catalog still has diagnostic samples (`forge thrash`).
 
-**AC7 residual nudge:** still later (punt v1).
+**AC7 residual nudge:** **cancelled** (2026-08-08) — visual QA fine without.

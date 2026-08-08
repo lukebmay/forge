@@ -195,8 +195,8 @@
         },
         "preview-hint-enabled": {
           "type": "boolean",
-          "description": "Show preview hint during drag-and-drop",
-          "default": false
+          "description": "Show preview hint during drag-and-drop (grab-end + 4s failsafe clear)",
+          "default": true
         },
         "showtab-decoration-enabled": {
           "type": "boolean",
