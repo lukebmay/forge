@@ -47,6 +47,14 @@ Forge apply must not double-fire a layout storm: stack suppress covers
 post-apply residual size/position (AC2). `isForgeCausedGeometrySignal` is true
 for **either**. Helpers: `layout-sensors.js`, `layout-epoch.js`.
 
+**AC4 placeholder isolate:** when thrash budget / fail-open fires,
+`isolateThrashWindow` floats the client and reserves the slot with a placeholder
+TILE leaf — **no** verify reassert and **no** forest layout war. Placeholder
+leaves take share in `getTiledChildren` / processNode but are skipped in
+`tree.apply` (no `move_resize`). Removing the placeholder is an intentional
+topology change: one `requestLayout("placeholder-remove")`. See
+`layout-placeholder.js` and architecture apply-contract section.
+
 `renderTree` idle coalesce remains the inner commit layer; `requestLayout` sits
 above it. Call sites may still invoke `renderTree` directly (commands, force
 paths). Open-app path (CL4): quiet settle via `layout-open.js` then

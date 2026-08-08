@@ -17,8 +17,8 @@ until operator can re-smoke on X11 or after logout.
 
 ### Session note (overwrite)
 
-**2026-08-07 (AC3 done):** A/B **AGREE**. LF6 fingerprint wait default-off;
-opt-in `--wait-tree-stable` / env. Next: **AC4** placeholder, **AC5** slot math.
+**2026-08-07 (AC4 done):** A/B **AGREE**. isolateThrashWindow + placeholder leaf +
+remove reflow. Next: **AC5** slot-math tests.
 
 ---
 
@@ -421,8 +421,8 @@ Full inventory: **§15**.
 | **AC1** | Purge §15 KILL verify/pixel-war paths + rewrite tests | **done** | — | completed/ |
 | **AC2** | Command epoch attribution (replace stack-only suppress) | **done** | AC1 | completed/ |
 | **AC3** | Streaming admit/apply; drop LF6 fingerprint default | **done** | AC2 | completed/ |
-| **AC4** | Placeholder tile + thrash/fail isolate | **ready** | AC2 | |
-| **AC5** | Harden slot-math unit tests | **ready** | AC1 | after AC1; may follow AC4 |
+| **AC4** | Placeholder tile + thrash/fail isolate | **done** | AC2 | completed/ |
+| **AC5** | Harden slot-math unit tests | **ready** | AC1 | |
 | **AC6** | Live smoke | **deferred** | AC3–AC5 | Wayland — wait for X11 HUP or logout |
 | **AC7** | Residual nudge (optional) | later | AC6 + visual QA | Punt v1 |
 

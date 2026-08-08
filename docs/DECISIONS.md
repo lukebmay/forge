@@ -10,3 +10,4 @@ set Status=`superseded` and add a new row (do not rewrite history silently).
 | D003 | 2026-08-07 | meta-probe | P1 | superseded | Settle = hard-stable duration; cal@50ms bootstrap 10s; 1 cal+N full/op; write once at end | Superseded by D004 (per-app write + thrash campaign) |
 | D004 | 2026-08-07 | meta-probe | P0 | active | Core apps 5×; sticky trials; per-app write; sleep inhibit; thrash delay sweeps | Sleep/crash lost matrices; open_warm piled windows; need thrash-free inter-op D for engine rewrite |
 | D005 | 2026-08-07 | meta-probe | P0 | active | Meta baseline: multi-op thrash-free at D=0 (Forge off) on black | Core apps green; product thrash is Forge-induced, not Meta floor |
+| D006 | 2026-08-07 | layout | P0 | active | Thrash/fail-open → float client + placeholder TILE leaf; never forest reassert | One bad app must not unsettle forest; close PH = drop slot + one reflow |

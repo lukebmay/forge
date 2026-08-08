@@ -60,6 +60,7 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | `layout-verify.js` | Pure frame↔slot ε compare, forest scan, TILE leaf collect. |
 | `layout-sensors.js` | Pure attribution: stack suppress **or** active command echo epoch vs TILE in-slot chrome-only (CL2/AC2). |
 | `layout-epoch.js` | Per-window command echo epochs + wave id (apply-contract AC2 residual). |
+| `layout-placeholder.js` | AC4 thrash/fail-open isolate: pure plan + tree stub placeholder leaf; float client, reserve slot, remove → one reflow. |
 | `layout-apply-chrome.js` | CL10 LayoutBatch dim scrim (~80%) + per-mon spinner/label (title ≈7.5% height) + hard ≤8s clear. |
 | `command.js` `CommandHandler` | Turns a user action into tree mutations (extracted from window.js). |
 | `focus.js` `FocusManager` | Focus tracking + active-window signal lifecycle (extracted from window.js). |
@@ -121,6 +122,15 @@ TILE already within ε of its slot is chrome-only (W-storm in-slot). Helpers:
 catalog minQuiet → `_scheduleOpenCommit` → `requestLayout("window-create")`
 (force `renderTree` only when render is frozen). External geom during pending
 open resets quiet and does not early-`requestLayout`.
+
+**AC4 thrash / fail-open isolate:** one bad client never reasserts the forest.
+`wm.isolateThrashWindow(meta|node)` floats the mapped TILE client, inserts a
+first-class **placeholder** TILE leaf (`placeholder` flag / `forge-placeholder`
+wm_class; tree stub MVP) in the reserved slot, and issues **one**
+`requestLayout("thrash-isolate")`. Placeholders are never thrash-isolated again
+and are skipped by `tree.apply` Meta move and verify scan. Close path:
+`wm.removePlaceholder(node)` → `removeNode` + `requestLayout("placeholder-remove")`
+once. Helpers: `layout-placeholder.js`; GetTree exports `placeholder: true`.
 
 **CL5 multi-open / layout CLI:** DBus `LayoutBatch(begin|end)` →
 `wm.beginOpenLayoutBatch` / `endOpenLayoutBatch`. While depth > 0, open commits
