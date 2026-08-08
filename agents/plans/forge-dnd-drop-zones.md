@@ -1,17 +1,20 @@
 # Plan: Stable DnD drop zones + indicators
 
-**Status:** in progress (implement)  
-**Priority:** mid (post RC / after cross-mon + no-op hardening)  
+**Status:** complete  
+**Priority:** mid (post RC)  
 **Created:** 2026-08-08  
-**Updated:** 2026-08-08 (implement start)  
+**Updated:** 2026-08-08 (D4 done — plan closed)  
 
 ### Session note
 
-**D0–D3 done.** Hit: `drag-drop.js` uses `buildDropZones` + `hitTestDropZone`.
-Paint: five `St.Bin` zones under container (`window-tilepreview-zone` + hover
-class); clear on grab-end/failsafe. No-op: `_isNoOpDrop` kept (same-slot /
-self). Pure paint: `zonePaintRects` / `PAINT_ZONE_ORDER`.
-**Next: D4** cross-mon target refresh + live dual-4K smoke.
+**D0–D4 done.** Five-zone hit/paint/no-op + workspace-wide cross-mon targets.
+Pure filter: `isEligibleDragDropTargetNode` / `collectDragDropTargetMetaWindows`.
+`trackCurrentMonWs` has no mon-index gate; `_handleMoving` refreshes each motion.
+Tests: `forge-d4-cross-mon-dnd-targets.test.js` + prior D0–D3 suites.
+
+**Optional operator smoke (soft):** dual-4K drag mon0→mon1 hover paints five
+zones; leave mon clears overlay; drop edge/center on foreign mon; no sticky
+preview after grab-end. Does not block plan close.
 
 ---
 
@@ -100,7 +103,7 @@ While drag-tile is active and pointer is over a valid unit:
 
 ---
 
-## Implementation slices (later)
+## Implementation slices
 
 | ID | Work |
 | --- | --- |
@@ -108,7 +111,7 @@ While drag-tile is active and pointer is over a valid unit:
 | **D1** | Wire hit → D0 geometry; keep semantics table — **done** |
 | **D2** | Paint all five regions + hover emphasis; failsafe/clear — **done** |
 | **D3** | Explicit no-op path + regression (same-slot VSPLIT) — **done** |
-| **D4** | Cross-mon target refresh + live smoke dual 4K |
+| **D4** | Cross-mon target refresh + dual-mon unit tests; live smoke optional — **done** |
 
 ---
 
@@ -116,9 +119,8 @@ While drag-tile is active and pointer is over a valid unit:
 
 - Immediate: cross-mon `sortedWindows`, identity no-op, corner bias interim
 - [forge-tab-chrome-drag.md](./forge-tab-chrome-drag.md)
-- `lib/extension/drag-drop.js`, `lib/extension/utils.js` (`calculateDropRegions`)
-
+- `lib/extension/drag-drop.js`, `lib/extension/drop-zones.js`, `lib/extension/utils.js`
 
 ### Next
 
-**D4** cross-mon target refresh + live dual-4K operator smoke.
+Plan complete. Optional dual-4K operator smoke (soft) when convenient.

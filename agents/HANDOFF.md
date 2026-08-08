@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-08 (focus no reassert; chrome clear before residual; B-manual done)  
-**Branch:** `task/layout-focus-chrome-session-sleep` → merge to master when ready  
-**Active P0 next:** logout → load tip; focus walk (no PWA flicker from reassert); chrome drops at batch end  
-**DnD redesign (later):** [forge-dnd-drop-zones.md](./plans/forge-dnd-drop-zones.md)  
+**Updated:** 2026-08-08 (D4 DnD cross-mon complete; plan closed)  
+**Branch:** `plan/forge-dnd-drop-zones` → merge to master when ready  
+**Active P0 next:** logout → load tip; focus walk; chrome drops at batch end  
+**DnD zones:** [forge-dnd-drop-zones.md](./plans/forge-dnd-drop-zones.md) — **D0–D4 done** (optional dual-4K live smoke soft)  
 **Live smoke:** usable Wayland RC; operator layout OK.
 
 ---
