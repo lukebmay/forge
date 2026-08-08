@@ -1,9 +1,9 @@
 # Plan: Stable DnD drop zones + indicators
 
-**Status:** design locked (operator 2026-08-08); implement later  
+**Status:** in progress (implement)  
 **Priority:** mid (post RC / after cross-mon + no-op hardening)  
 **Created:** 2026-08-08  
-**Updated:** 2026-08-08  
+**Updated:** 2026-08-08 (implement start)  
 
 ### Session note
 
@@ -115,3 +115,8 @@ While drag-tile is active and pointer is over a valid unit:
 - Immediate: cross-mon `sortedWindows`, identity no-op, corner bias interim
 - [forge-tab-chrome-drag.md](./forge-tab-chrome-drag.md)
 - `lib/extension/drag-drop.js`, `lib/extension/utils.js` (`calculateDropRegions`)
+
+
+### Next
+
+**D0** pure geometry in progress.
