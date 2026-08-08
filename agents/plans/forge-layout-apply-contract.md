@@ -424,7 +424,7 @@ Full inventory: **§15**.
 | **AC2** | Command epoch attribution (replace stack-only suppress) | **done** | AC1 | completed/ |
 | **AC3** | Streaming admit/apply; drop LF6 fingerprint default | **done** | AC2 | completed/ |
 | **AC4** | Placeholder tile + thrash/fail isolate | **done** | AC2 | completed/ |
-| **AC5** | Harden slot-math unit tests | **in progress** (A done) | AC1 | |
+| **AC5** | Harden slot-math unit tests | **done** | AC1 | completed/ |
 | **AC6** | Live smoke | **deferred** | AC3–AC5 | Wayland — wait for X11 HUP or logout |
 | **AC7** | Residual nudge (optional) | later | AC6 + visual QA | Punt v1 |
 
