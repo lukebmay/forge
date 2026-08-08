@@ -61,7 +61,7 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | `layout-sensors.js` | Pure attribution: stack suppress **or** active command echo epoch vs TILE in-slot chrome-only (CL2/AC2). |
 | `layout-epoch.js` | Per-window command echo epochs + wave id (apply-contract AC2 residual). |
 | `layout-placeholder.js` | AC4 thrash/fail-open isolate: pure plan + tree stub placeholder leaf; float client, reserve slot, remove → one reflow. |
-| `layout-apply-chrome.js` | CL10 layout-apply dim scrim (~80%) + per-mon spinner/label (title ≈7.5% height) + hard ≤30s clear; stays through residual place. |
+| `layout-apply-chrome.js` | CL10 layout-apply dim scrim (~80%) + per-mon spinner/label (title ≈7.5% height) + hard ≤30s clear; clears after batch end (before residual). |
 | `command.js` `CommandHandler` | Turns a user action into tree mutations (extracted from window.js). |
 | `focus.js` `FocusManager` | Focus tracking + active-window signal lifecycle (extracted from window.js). |
 | `decoration.js` `DecorationManager` | Stacked/tabbed container decorations and their actor lifecycle (extracted from window.js). |
