@@ -1,7 +1,7 @@
 # Plan: Layout apply / settle contract (v2 design)
 
-**Status:** **code complete** (AC1–AC5); **AC6 live smoke deferred** (Wayland)  
-**Priority:** P0 (next engine work after Meta baseline)  
+**Status:** **complete** (AC1–AC6); AC7 residual nudge still later  
+**Priority:** P0 (engine contract done; AC7 optional)  
 **Created:** 2026-08-07  
 **Updated:** 2026-08-07  
 **Branch:** `plan/forge-layout-apply-contract` (merged → master per slice)  
@@ -12,15 +12,15 @@
 **Related:** [forge-layout-settle-pure.md](./forge-layout-settle-pure.md),
 [forge-settle-learning.md](./forge-settle-learning.md)
 
-**Live smoke:** deferred while host is **Wayland** (no Shell HUP). Unit tests only
-until operator can re-smoke on X11 or after logout.
+**Live smoke:** **done** on black X11 (2026-08-07). Cold multi-open may need one
+Mode B thrash-recover pass; settled desk matches `dev` dual-mon tabs.
 
 ### Session note (overwrite)
 
-**2026-08-07 (plan code complete):** AC1–AC5 A/B **AGREE** and merged to master.
-Verify sensor-only; command epoch 350ms; LF6 fingerprint default-off; placeholder
-isolate; slot-math tests (65). **AC6 live smoke deferred** (Wayland). AC7 residual
-nudge still later.
+**2026-08-07 (AC6 live X11):** AC1–AC6 complete. Live: debug install, `forge layout
+dev` map-pin ~414ms / treeStable skipped, thrash-recover to mon0 tab\|ghostty +
+mon1 ghostty\|tab. No Shell crash. Cold first-pass mon thrash residual noted (not
+contract regression). AC7 residual nudge still later.
 
 ---
 
@@ -425,7 +425,7 @@ Full inventory: **§15**.
 | **AC3** | Streaming admit/apply; drop LF6 fingerprint default | **done** | AC2 | completed/ |
 | **AC4** | Placeholder tile + thrash/fail isolate | **done** | AC2 | completed/ |
 | **AC5** | Harden slot-math unit tests | **done** | AC1 | completed/ |
-| **AC6** | Live smoke | **deferred** | AC3–AC5 | Wayland — wait for X11 HUP or logout |
+| **AC6** | Live smoke | **done** | AC3–AC5 | completed/ — black X11 2026-08-07 |
 | **AC7** | Residual nudge (optional) | later | AC6 + visual QA | Punt v1 |
 
 Active task files: `agents/tasks/forge-layout-apply-contract_ac*.md`  
@@ -438,7 +438,7 @@ Completed: `agents/plans/forge-layout-apply-contract/completed/`
 - Forge-on thrash sweeps “to prove thrash.”  
 - Residual center/nudge feature work (until AC7).  
 - Dual systems (“new path + old reassert belt”).  
-- Live install/HUP while on Wayland (AC6 deferred).
+- Live install/HUP while on Wayland (AC6 done on X11).
 
 ---
 

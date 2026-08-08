@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-07 (apply-contract **code complete** AC1–AC5)  
-**Branch:** `master` (plan branch merged per slice)  
-**Active P0 next:** **AC6 live smoke** when X11 HUP or logout available  
-**Live smoke:** deferred (Wayland — no HUP this session)
+**Updated:** 2026-08-07 (apply-contract **AC1–AC6 complete**)  
+**Branch:** `master` / `plan/forge-layout-apply-contract` (same tip)  
+**Active P0 next:** RC Wayland residual re-smoke (human logout) or AC7 residual nudge later  
+**Live smoke:** **AC6 green on X11** (2026-08-07)
 
 ---
 
@@ -16,8 +16,8 @@
 | AC2 command epoch | **done** | `b20c227` |
 | AC3 drop LF6 fingerprint default | **done** | `9633290` |
 | AC4 placeholder thrash isolate | **done** | `cf453cb` |
-| AC5 slot-math unit tests | **done** | (this wrap) |
-| AC6 live smoke | **deferred** | Wayland |
+| AC5 slot-math unit tests | **done** | `df60734` |
+| AC6 live smoke | **done** | X11 live (docs wrap) |
 | AC7 residual nudge | later | after visual QA |
 
 ### One-line contract
@@ -25,14 +25,11 @@
 Plan with tree math → parallel launch → place when admissible → post-apply =
 echo residual (350ms) → thrash → float + placeholder — never thrash the forest.
 
-### Operator next (AC6)
+### Operator next (RC)
 
-When on X11 (HUP) or after Wayland logout:
-
-1. Install + enable Forge  
-2. `forge layout dev` (no fingerprint wait by default)  
-3. Focus walk, tab switch, thrash isolate if needed  
-4. Optional: `FORGE_LAYOUT_WAIT_TREE_STABLE=1` only for debug  
+Wayland residual re-smoke after install+logout when ready. Optional: cold
+`forge layout dev` may need a second pass (Mode B thrash-recover) if first
+multi-open lands wrong mon.
 
 ---
 
@@ -42,7 +39,6 @@ When on X11 (HUP) or after Wayland logout:
 - hard: resize-autotile-design  
 - soft: B-ap5-operator-visual-matrix  
 - human: Wayland residual re-smoke after install+logout (RC)  
-- deferred: AC6 apply-contract live smoke  
 
 ---
 
