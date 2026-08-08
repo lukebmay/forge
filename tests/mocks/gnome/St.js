@@ -7,6 +7,12 @@ export class Widget extends withSignals() {
     this.name = params.name || "";
     this.style_class = params.style_class || "";
     this.visible = params.visible !== false;
+    this.reactive = params.reactive !== undefined ? params.reactive : true;
+    this.children = [];
+    this.x = params.x || 0;
+    this.y = params.y || 0;
+    this.width = params.width || 0;
+    this.height = params.height || 0;
   }
 
   get_style_class_name() {
@@ -49,6 +55,26 @@ export class Widget extends withSignals() {
 
   get_parent() {
     return this._parent || null;
+  }
+
+  add_child(child) {
+    if (!child) return;
+    if (!this.children.includes(child)) this.children.push(child);
+    child._parent = this;
+  }
+
+  remove_child(child) {
+    const index = this.children.indexOf(child);
+    if (index !== -1) this.children.splice(index, 1);
+    if (child && child._parent === this) child._parent = null;
+  }
+
+  get_children() {
+    return this.children;
+  }
+
+  contains(child) {
+    return this.children.includes(child);
   }
 
   // St.Widget theme-node accessor. Tests don't compute real CSS, so return a stub

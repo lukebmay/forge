@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-08 (focus reassert off path; chrome clear before residual; B-manual done)  
+**Updated:** 2026-08-08 (DnD drop-zones D0–D4 complete on plan branch)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46 **Wayland**), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -61,6 +61,7 @@ eyes focus-walk (AP5) → optional `session-sleep blank --force` → push/tag wh
 | **P0 human** | Logout + AP5 eyes after tip load | Soft matrix / visual |
 | **done** | [session verify](./blockers/completed/B-manual-black-session-verify.md) | Layout OK; DPMS deferred |
 | **done** | [AP5 op visual](./blockers/completed/B-ap5-operator-visual-matrix.md) | Soft eyes 2026-08-08 |
+| **done mid** | [DnD five-zone drop zones](./plans/forge-dnd-drop-zones.md) | D0–D4 on `plan/forge-dnd-drop-zones` (soft dual-4K smoke) |
 | **mid** | [window ignore mode](./tasks/forge-window-ignore-mode.md) | ready, not RC |
 | **post-RC** | [container motion](./plans/forge-container-motion-design.md) | Design |
 

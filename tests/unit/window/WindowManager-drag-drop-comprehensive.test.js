@@ -1613,6 +1613,88 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       // Preview should not be shown since there's no target
       expect(previewHint.show).not.toHaveBeenCalled();
     });
+
+    it("paints all five zones with hover emphasis (multi-actor path)", () => {
+      setupPreviewTest();
+      const monitor = getMonitor();
+      const { nodeWindow: target } = createWindowWithRect(monitor, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 0, y: 0, width: 1920, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      const makeZoneActor = () => ({
+        set_style_class_name: vi.fn(),
+        set_position: vi.fn(),
+        set_size: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      });
+      const zoneActors = {
+        TOP: makeZoneActor(),
+        RIGHT: makeZoneActor(),
+        BOTTOM: makeZoneActor(),
+        LEFT: makeZoneActor(),
+        CENTER: makeZoneActor(),
+      };
+      const previewHint = {
+        set_style_class_name: vi.fn(),
+        set_position: vi.fn(),
+        set_size: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+        remove_child: vi.fn(),
+        add_child: vi.fn(),
+      };
+      dragged.previewHint = previewHint;
+      dragged.previewZoneActors = zoneActors;
+
+      setPointer(100, 540); // LEFT
+      wm().nodeWinAtPointer = target;
+      wm().moveWindowToPointer(dragged, true);
+
+      expect(previewHint.show).toHaveBeenCalled();
+      expect(previewHint.set_position).toHaveBeenCalledWith(0, 0);
+      expect(previewHint.set_size).toHaveBeenCalledWith(1920, 1080);
+
+      for (const z of ["TOP", "RIGHT", "BOTTOM", "LEFT", "CENTER"]) {
+        expect(zoneActors[z].show).toHaveBeenCalled();
+        expect(zoneActors[z].set_style_class_name).toHaveBeenCalled();
+      }
+      expect(zoneActors.LEFT.set_style_class_name).toHaveBeenCalledWith("window-tilepreview-tiled");
+      expect(zoneActors.TOP.set_style_class_name).toHaveBeenCalledWith("window-tilepreview-zone");
+      expect(zoneActors.CENTER.set_style_class_name).toHaveBeenCalledWith(
+        "window-tilepreview-zone"
+      );
+    });
+
+    it("clearAllPreviewHints destroys multi-zone actors", () => {
+      setupPreviewTest();
+      const monitor = getMonitor();
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 0, y: 0, width: 100, height: 100 },
+        WINDOW_MODES.GRAB_TILE
+      );
+      const zone = { hide: vi.fn(), destroy: vi.fn() };
+      const container = { hide: vi.fn(), destroy: vi.fn() };
+      dragged.previewHint = container;
+      dragged.previewZoneActors = { LEFT: zone, TOP: zone };
+      wm()._draggedNodeWindow = dragged;
+
+      wm().dragDrop.clearAllPreviewHints();
+
+      expect(zone.destroy).toHaveBeenCalled();
+      expect(container.destroy).toHaveBeenCalled();
+      expect(dragged.previewHint).toBeNull();
+      expect(dragged.previewZoneActors).toBeNull();
+    });
   });
 
   // ============================================================================
@@ -1928,7 +2010,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       expect(swapSpy).toHaveBeenCalled();
     });
 
-    it("should detect corner as top region (top takes priority over left)", () => {
+    it("top-left fan: above UL→cUL diagonal is TOP (VSPLIT), not left-band HSPLIT", () => {
       const monitor = getMonitor();
 
       const { nodeWindow: target } = createWindowWithRect(monitor, {
@@ -1943,13 +2025,36 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
         WINDOW_MODES.GRAB_TILE
       );
 
-      // Top-left corner (both left and top regions)
+      // D0 trapezoids: (100,100) is above the UL→center diagonal → TOP → VSPLIT
       setPointer(100, 100);
       wm().nodeWinAtPointer = target;
 
       wm().moveWindowToPointer(dragged, false);
 
-      // Left region is checked before top, so HSPLIT expected
+      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+    });
+
+    it("top-left fan: below UL→cUL diagonal is LEFT (HSPLIT)", () => {
+      const monitor = getMonitor();
+
+      const { nodeWindow: target } = createWindowWithRect(monitor, {
+        x: 0,
+        y: 0,
+        width: 1000,
+        height: 1000,
+      });
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 0, y: 0, width: 1000, height: 1000 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      // (10,50) is below the diagonal → LEFT → HSPLIT
+      setPointer(10, 50);
+      wm().nodeWinAtPointer = target;
+
+      wm().moveWindowToPointer(dragged, false);
+
       expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
   });

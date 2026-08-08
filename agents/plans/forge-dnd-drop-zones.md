@@ -1,15 +1,20 @@
 # Plan: Stable DnD drop zones + indicators
 
-**Status:** design locked (operator 2026-08-08); implement later  
-**Priority:** mid (post RC / after cross-mon + no-op hardening)  
+**Status:** complete  
+**Priority:** mid (post RC)  
 **Created:** 2026-08-08  
-**Updated:** 2026-08-08  
+**Updated:** 2026-08-08 (D4 done — plan closed)  
 
 ### Session note
 
-Operator specified geometry + semantics. Immediate bugs (cross-mon targets,
-same-slot HSPLIT) are separate small fixes; **this plan is the full indicator
-redesign** — do not partially ship trapezoids until ready.
+**D0–D4 done.** Five-zone hit/paint/no-op + workspace-wide cross-mon targets.
+Pure filter: `isEligibleDragDropTargetNode` / `collectDragDropTargetMetaWindows`.
+`trackCurrentMonWs` has no mon-index gate; `_handleMoving` refreshes each motion.
+Tests: `forge-d4-cross-mon-dnd-targets.test.js` + prior D0–D3 suites.
+
+**Optional operator smoke (soft):** dual-4K drag mon0→mon1 hover paints five
+zones; leave mon clears overlay; drop edge/center on foreign mon; no sticky
+preview after grab-end. Does not block plan close.
 
 ---
 
@@ -98,15 +103,15 @@ While drag-tile is active and pointer is over a valid unit:
 
 ---
 
-## Implementation slices (later)
+## Implementation slices
 
 | ID | Work |
 | --- | --- |
-| **D0** | Pure geometry: build zones from rect; point test; unit tests |
-| **D1** | Wire `detectDropZone` → new geometry; keep semantics table |
-| **D2** | Paint all five regions + hover emphasis; failsafe/clear |
-| **D3** | Explicit no-op path + regression (same-slot VSPLIT) |
-| **D4** | Cross-mon target refresh + live smoke dual 4K |
+| **D0** | Pure geometry: build zones from rect; point test; unit tests — **done** |
+| **D1** | Wire hit → D0 geometry; keep semantics table — **done** |
+| **D2** | Paint all five regions + hover emphasis; failsafe/clear — **done** |
+| **D3** | Explicit no-op path + regression (same-slot VSPLIT) — **done** |
+| **D4** | Cross-mon target refresh + dual-mon unit tests; live smoke optional — **done** |
 
 ---
 
@@ -114,4 +119,8 @@ While drag-tile is active and pointer is over a valid unit:
 
 - Immediate: cross-mon `sortedWindows`, identity no-op, corner bias interim
 - [forge-tab-chrome-drag.md](./forge-tab-chrome-drag.md)
-- `lib/extension/drag-drop.js`, `lib/extension/utils.js` (`calculateDropRegions`)
+- `lib/extension/drag-drop.js`, `lib/extension/drop-zones.js`, `lib/extension/utils.js`
+
+### Next
+
+Plan complete. Optional dual-4K operator smoke (soft) when convenient.
