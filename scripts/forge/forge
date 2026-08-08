@@ -68,6 +68,7 @@ from layout_apply import (  # noqa: E402
     TREE_STABLE_SAMPLES,
     TREE_STABLE_TIMEOUT_MS,
     actions_to_extension_steps,
+    belt_actions_from_plan,
     detect_layout_mode,
     find_settled_window,
     ghostty_multi_instance_argv,
@@ -1343,7 +1344,7 @@ def _layout_batch_call(backend: str, action: str) -> tuple[bool, dict[str, Any]]
     release-deferred / release / unhide: unhide CL8 deferred maps without ending
     the batch (CL9: before residual plan + RunSteps).
     end: batch depth 0 + deferred commit (does not clear apply chrome).
-    chrome-clear: hide apply chrome after end / before residual (or finally).
+    chrome-clear: hide apply chrome after residual/belt/retry (or finally).
     Returns (ok, payload). ok=false when DBus/extension fails (caller may continue).
     """
     try:
@@ -2182,8 +2183,11 @@ def _layout_run_reconcile(
     # 2–3) Opens under LayoutBatch (CL5/CL9): no per-app mid-batch renderTree.
     # Flow: begin → parallel PlaceNext+launch all → map-pin wait → optional
     # fingerprint quiet (--wait-tree-stable) → release-deferred → end batch →
-    # chrome-clear → residual RunSteps. Spinner covers multi-open only; residual
-    # rehome does not need the overlay. Finally clears chrome if still up.
+    # residual RunSteps (bind/place/structure) → chrome-clear. Apply chrome
+    # stays through residual: cold bind + structure is the long visual phase
+    # (clearing at batch end made the dim drop mid-thrash on Wayland cold).
+    # Batch must still end before residual so mon moves stick; chrome is
+    # independent of batch depth. Finally clears chrome if still up.
     # Do not abort mid-loop: residual rehome still needs successful pins.
     role_pins: dict[str, Any] = {}
     open_failures: list[Any] = []
@@ -2330,17 +2334,8 @@ def _layout_run_reconcile(
                         f"{end_payload.get('error')}"
                     )
                 batch_ok = False  # finally: skip second end
-                # Clear apply chrome as soon as opens settle — before residual.
-                if chrome_clear_needed:
-                    _clr_ok, clr_payload = _layout_batch_call(backend, "chrome-clear")
-                    apply_log["layoutChromeClear"] = clr_payload
-                    if not _clr_ok:
-                        _eprint(
-                            "forge layout: LayoutBatch chrome-clear failed: "
-                            f"{clr_payload.get('error')}"
-                        )
-                    else:
-                        chrome_clear_needed = False
+                # Keep apply chrome through residual bind/place/structure.
+                # chrome-clear runs in finally after residual/belt (or on error).
 
             try:
                 # Prefer post-release GetTree so residual sees unhide modes,
@@ -2451,22 +2446,8 @@ def _layout_run_reconcile(
                     _eprint(f"forge layout: belt re-plan after residual failed: {e}")
                 else:
                     belt_ext, _belt_open = partition_plan_actions(plan3.get("actions"))
-                    # Belt: rehome wrong-mon opens + re-apply structure (tab/stack
-                    # ensure). Structure-only residual can look green then thrash
-                    # undoes mon0 tabs; moves alone never re-tab.
-                    belt_actions = [
-                        a
-                        for a in belt_ext
-                        if isinstance(a, dict)
-                        and (
-                            (
-                                str(a.get("op") or "").strip().lower() == "move"
-                                and str(a.get("role") or "") in role_pins
-                            )
-                            or str(a.get("op") or "").strip().lower()
-                            in ("ensure_layout", "ensure_order")
-                        )
-                    ]
+                    # Belt: rehome + structure/order + focus (see belt_actions_from_plan).
+                    belt_actions = belt_actions_from_plan(belt_ext, role_pins)
                     belt_steps, _ = residual_follow_up(
                         belt_actions,
                         [],
@@ -2624,7 +2605,7 @@ def _layout_run_reconcile(
                         "forge layout: LayoutBatch end failed: "
                         f"{batch_end.get('error')}"
                     )
-            # Safety: clear chrome on error / early exit if not already cleared.
+            # Clear apply chrome after residual/belt/retry (or error/early exit).
             if chrome_clear_needed:
                 _clr_ok, clr_payload = _layout_batch_call(backend, "chrome-clear")
                 apply_log["layoutChromeClear"] = clr_payload

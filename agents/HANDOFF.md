@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-08 (CT1 code done; next = CT2 Wayland live)  
+**Updated:** 2026-08-08 (CT2 fix: belt focus + lastTabFocus; logout re-smoke)  
 **Branch:** `plan/forge-layout-cold-topology` (merge to master after wrap-up)  
 **Sessions:** **Wayland and X11 are both daily drivers** (X11 on older machines)
 
@@ -10,10 +10,18 @@
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | **CT2** Wayland live one-shot cold layout | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
+| **P0** | **CT2** — code fix shipped; **logout + cold re-smoke** | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
 | → | CT3 X11 live (required parity) | [CT3](./tasks/forge-layout-cold-topology_ct3-x11-live.md) |
 | post | Cleanup dead cold fallbacks (after live green) | [cleanup](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) |
 | shellrc | gdisplays session/greeter (GS0+) | `~/dev/me/shellrc/agents/plans/gdisplays-session-greeter.md` |
+
+### CT2 fix (2026-08-08) — operator logout then cold smoke
+
+**Bug:** mon0 tab showed Chrome not Grok; partial reopen thrashed.  
+**Cause:** post-open belt re-`ensure_layout` (anchor=chrome) without focus; stomped active leaf.  
+**Fix:** belt includes focus; `_layoutOp` preserves valid lastTabFocus; chrome-clear after residual (D010/D011).  
+**Live:** partial close Grok → layout → Grok open leaf OK (CLI).  
+**You:** log out (Wayland install) → cold `forge layout dev` → confirm mon0 Grok open + dual-mon tabs; second run moved 0.
 
 ---
 
@@ -44,22 +52,30 @@
 
 ---
 
-## CT2 live (next — operator; not A/B coding)
+## Regression fixed this session
 
-1. Debug install: `./install` (production=false).  
-2. Logging on:
+| Issue | Fix |
+| --- | --- |
+| Apply chrome ended too early on cold Wayland | CLI `chrome-clear` **after residual** (D010) |
+| mon0 Chrome open instead of Grok; partial thrash | Belt re-focus after ensure; `_layoutOp` preserves lastTabFocus (D011) |
+
+## CT2 live (operator re-smoke after logout)
+
+Code + `./install` done. Wayland needs **logout** for extension half (CLI belt focus is already live).
+
+1. Log out → Wayland back.  
+2. Optional logging:
    ```sh
    gsettings set org.gnome.shell.extensions.forge logging-enabled true
    gsettings set org.gnome.shell.extensions.forge log-level 4
    ```
-3. Cold desk → **one** `forge layout dev` → dual-mon tabs correct **without** Mode B / second pass.  
-4. Settled re-run → nothing to do.  
-5. Stop at failures; session-layout-trace / `forge tree` for diagnosis.  
+3. Cold/near-cold → **one** `forge layout dev` → mon0 tab **Grok** open \| ghostty; mon1 ghostty \| YT tabs.  
+4. Settled re-run → moved 0.  
+5. Optional: close Grok → layout → reopen + Grok open leaf, no layered thrash.  
 6. Do **not** start cleanup-fallbacks until CT2+CT3 green.
 
-**Key paths:** `layout_plan.py`, `layout_apply.py`, `scripts/forge/forge`
-`_layout_run_reconcile`, `run-steps.js`, `session-api.js`,
-`layout-placeholder.js` / `tree.js`.
+**Key paths:** `layout_apply.py` (`belt_actions_from_plan`), `scripts/forge/forge`,
+`session-api.js` `_layoutOp`, `layout_plan.py`.
 
 ---
 
@@ -67,7 +83,7 @@
 
 1. `gdisplays --status` — if scale wrong: `gdisplays load default`  
 2. Greeter wrong: `gdisplays --user-to-login` until GS2 write-through ships  
-3. Agent/operator: **CT2** live on Wayland
+3. **CT2 cold smoke** (above)
 
 ---
 

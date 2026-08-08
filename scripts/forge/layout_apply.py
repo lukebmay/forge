@@ -590,6 +590,32 @@ def residual_follow_up(
     return steps, still
 
 
+def belt_actions_from_plan(
+    actions: Any,
+    role_pins: Optional[dict[str, Any]] = None,
+) -> list[dict[str, Any]]:
+    """
+    Post-open belt: rehome just-opened roles, re-ensure structure/order, re-focus.
+
+    Focus is required: ensure_layout tabbed anchors on first windowId (often
+    chrome) and would leave the wrong open leaf without a final focus pass.
+    """
+    if not isinstance(actions, list):
+        return []
+    pins = role_pins if isinstance(role_pins, dict) else {}
+    pin_roles = {str(k) for k in pins.keys() if k is not None and str(k).strip()}
+    out: list[dict[str, Any]] = []
+    for a in actions:
+        if not isinstance(a, dict):
+            continue
+        op = str(a.get("op") or "").strip().lower()
+        if op == "move" and str(a.get("role") or "") in pin_roles:
+            out.append(a)
+        elif op in ("ensure_layout", "ensure_order", "focus"):
+            out.append(a)
+    return out
+
+
 # --- LF5: settle-before-move (pure predicates; CLI poll uses these) ---
 
 # GetTree WINDOW.mode after processFloats first pass. FLOAT = not yet tiled.

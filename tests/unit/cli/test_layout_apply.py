@@ -20,6 +20,7 @@ from layout_apply import (  # noqa: E402
     MODE_STEPS,
     actions_to_extension_steps,
     assign_open_role_pins,
+    belt_actions_from_plan,
     detect_layout_mode,
     find_settled_window,
     forest_stability_fingerprint,
@@ -349,6 +350,37 @@ class TestActionMapping(unittest.TestCase):
         self.assertEqual(len(ext), 2)
         self.assertEqual(len(opens), 1)
         self.assertEqual(opens[0]["role"], "a")
+
+    def test_belt_actions_include_focus_after_structure(self):
+        """CT2: belt must re-focus active (Grok) after ensure_layout anchors chrome."""
+        actions = [
+            {
+                "op": "ensure_layout",
+                "slot": "mon0.s0",
+                "mode": "tabbed",
+                "windowIds": [10, 20],
+            },
+            {"op": "move", "role": "Grok", "windowId": 20, "slot": "mon0.s0"},
+            {"op": "move", "role": "other", "windowId": 99, "slot": "mon1.x"},
+            {"op": "focus", "selector": "id:20", "role": "Grok", "reason": "active"},
+            {"op": "focus", "selector": "id:1", "role": "ghostty", "reason": "profile"},
+            {"op": "park", "windowId": 5, "slot": "mon1"},
+            {"op": "bind", "windowId": 20, "layoutRole": "Grok"},
+        ]
+        belt = belt_actions_from_plan(actions, {"Grok": 20})
+        ops = [a["op"] for a in belt]
+        self.assertEqual(ops.count("ensure_layout"), 1)
+        self.assertEqual(ops.count("focus"), 2)
+        self.assertIn("move", ops)
+        # Only just-opened role moves (Grok), not unrelated move.
+        moves = [a for a in belt if a.get("op") == "move"]
+        self.assertEqual(len(moves), 1)
+        self.assertEqual(moves[0]["role"], "Grok")
+        self.assertFalse(any(a.get("op") in ("park", "bind") for a in belt))
+        # Focus last in extension steps so open leaf sticks after layout join.
+        steps = actions_to_extension_steps(belt)
+        self.assertEqual(steps[-1]["op"], "focus")
+        self.assertTrue(any(s.get("op") == "focus" and s.get("selector") == "id:20" for s in steps))
 
     def test_residual_follow_up_moves_despite_residual_open(self):
         """LF3: residual open (chrome lag) must not drop mon-fix moves."""

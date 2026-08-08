@@ -4,7 +4,7 @@
 **Lens:** `black` dual 4K Shell 46 — **Wayland and X11 daily drivers**  
 **No push** until human asks.
 
-**Active P0:** cold layout topology — **CT2 Wayland live** (CT1 code done)
+**Active P0:** cold layout topology — **CT2 operator logout + cold re-smoke** (code fix in)
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [CT2 Wayland live](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) | **ready** (next; operator) |
+| **P0** | [CT2 Wayland live](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) | **fix in; logout + cold smoke** |
 | P0 | [CT3 X11 live](./tasks/forge-layout-cold-topology_ct3-x11-live.md) | ready (required; parallel CT2) |
 | post | [cleanup cold fallbacks](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) | after CT2+CT3 green |
 | mid | Merge DnD plan branch | when ready |

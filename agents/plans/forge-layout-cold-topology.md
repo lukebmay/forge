@@ -1,6 +1,6 @@
 # Plan: cold layout topology (one-shot, no Mode B patch-over)
 
-**Status:** active — CT1 code done; **CT2/CT3 live next**  
+**Status:** active — CT1 done; CT2 fix (belt focus) in; **operator logout + cold smoke**  
 **Priority:** P0 (daily driver cold `forge layout dev`)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Depends on:** apply-contract AC1–AC6 (done); thrash-zero Mode A/B (done, **not** the fix here)  
@@ -89,7 +89,7 @@ Open design choices (task 0 must lock):
 | --- | --- | --- |
 | **CT0** | [Design lock](./completed/forge-layout-cold-topology_ct0-design.md) | **done** (approved) |
 | **CT1** | [Skeleton-first implement](./completed/forge-layout-cold-topology_ct1-skeleton.md) | **done** (unit/code; A/B AGREE) |
-| **CT2** | [Wayland live one-shot](../tasks/forge-layout-cold-topology_ct2-wayland-live.md) | **ready** (next; operator live) |
+| **CT2** | [Wayland live one-shot](../tasks/forge-layout-cold-topology_ct2-wayland-live.md) | **in progress — fix shipped; logout re-smoke** |
 | **CT3** | [X11 live one-shot](../tasks/forge-layout-cold-topology_ct3-x11-live.md) | ready (after CT1; parallel CT2) |
 
 ---
@@ -251,8 +251,12 @@ Live CT2/CT3 remain operator one-shot checks (not unit).
 
 ## Session note
 
+**2026-08-08 (CT2 fix):** Belt post-open now re-focuses; `_layoutOp` preserves
+valid lastTabFocus (D011). Chrome≠Grok was belt stomping active after
+ensure_layout. Partial reopen live-checked OK. Operator: **logout** then cold
+smoke. [CT2](../tasks/forge-layout-cold-topology_ct2-wayland-live.md).
+
 **2026-08-08 (CT1 done):** Skeleton-first cold path landed (A/B AGREE after rework).
 Key: `ensure_skeleton` + `bind` RunSteps; cold thrash report-only; P5 residual after
 bind; postOpenRetry opt-in; Mode B mid-session unchanged. Units: 290 plan/apply +
 97 JS. Task → `completed/forge-layout-cold-topology_ct1-skeleton.md`.
-**Next:** CT2 Wayland live (this host) · CT3 X11 live. No cleanup until both green.

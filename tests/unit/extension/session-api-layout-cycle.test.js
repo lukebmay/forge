@@ -55,6 +55,26 @@ describe("SessionApi layout-cycle / merge-group", () => {
     return { con, w1, w2, n1, n2 };
   }
 
+  it("layout TABBED re-affirm preserves valid lastTabFocus (belt anchor ≠ active)", () => {
+    // Belt ensure_layout anchors on first role (chrome); profile active is Grok.
+    const { con, w1, w2 } = twoWindowTabbed();
+    con.lastTabFocus = w2; // Grok open leaf
+    const out = api()._layoutOp(LAYOUT_TYPES.TABBED, "id:11", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(con.lastTabFocus).toBe(w2);
+    expect(con.lastTabFocus).not.toBe(w1);
+  });
+
+  it("layout TABBED sets lastTabFocus when previous open leaf is gone", () => {
+    const { con, w1, w2 } = twoWindowTabbed();
+    con.lastTabFocus = { id: 999, gone: true };
+    const out = api()._layoutOp(LAYOUT_TYPES.TABBED, "id:11", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(con.lastTabFocus).toBe(w1);
+    void w2;
+  });
+
   it("layout-cycle group flips TABBED → STACKED", () => {
     const { con } = twoWindowTabbed();
     const out = api()._layoutCycleOp("group", "id:11", { quiet: true });
@@ -249,7 +269,7 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     JSON.parse(a.LayoutBatch("begin:dev"));
     expect(wm.layoutApplyChrome.syncFromBatch).toHaveBeenCalled();
     JSON.parse(a.LayoutBatch("end"));
-    // end() never auto-clears; product CLI clears right after end (before residual).
+    // end() never auto-clears; product CLI clears after residual place (finally).
     expect(wm.layoutApplyChrome.clear).not.toHaveBeenCalled();
     expect(wm.layoutApplyChrome.visible).toBe(true);
     const clr = JSON.parse(a.LayoutBatch("chrome-clear"));
