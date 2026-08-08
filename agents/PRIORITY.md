@@ -1,34 +1,28 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-08 (DnD drop-zones D0–D4 complete on plan branch)  
+**Updated:** 2026-08-08 (cold topology plan opened; displays incident closed in shellrc)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46 **Wayland**), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 **No push** until human asks.  
-**Active P0:** **logout to load tip** + soft eyes (AP5); cold layout Mode B residual known.
+**Active P0:** **cold layout topology** (one-shot; CT0 design) — not Mode B second-pass.
 
 ---
 
 ## Stable release candidate (RC)
 
-### Status: **usable RC** on Wayland — cold layout needs Mode B; logout for tip
+### Status: **usable RC** on Wayland — cold one-shot layout is the remaining product gap
 
 | Layer | Work | Owner | Status |
 | --- | --- | --- | --- |
-| **Code** | Workspace scope, theme overlay, action pipeline | agent | **Done** |
-| **Code** | WR1 chrome geom / focus thrash | agent | **Done** |
-| **Code** | Guake-named rehome | agent | **Reverted** (`0d18ac0`) — float only |
-| **Code** | Settle learning SL1+SL2 | agent | **Done** |
-| **Code** | Mon-child giant-tab peel + float-only save UX | agent | **Done** (2026-08-07) |
-| **Live X11** | Dual-ws + layout + theme + apply-contract AC6 | agent | **Green** |
-| **Live Wayland** | Residual re-smoke + thrash dump | agent | **2026-08-08** — Mode B green; nested-CON residual |
-| **Live session** | DPMS / blank-wake | **human** | **Done** layout OK; DPMS via `session-sleep` later |
-| **Soft eyes** | AP5 visual matrix | **human** | **Done** 2026-08-08 |
-| **Post-RC** | ignore mode, SL3 seed drop, container motion, … | later | Mid / design |
+| **Code** | Workspace scope, theme, apply contract AC1–AC6 | agent | **Done** |
+| **Code** | Settle thrash / Mode A collect | agent | **Done** |
+| **Code** | Cold one-shot topology | agent | **Next** — [cold-topology](./plans/forge-layout-cold-topology.md) |
+| **Live Wayland** | RC smoke | agent | Mode B recover works; cold first-pass residual known |
+| **Displays** | gdisplays duals / no login ensure | shellrc | **Done** 6.3.5 direction |
+| **Soft eyes** | AP5 | human | **Done** 2026-08-08 |
 
-**Operator next:** **log out** (tip: focus raise-only + chrome clears after batch end) →
-2-ghostty / cold `forge layout dev` → mon0 tab\|ghostty; spinner drops before residual →
-eyes focus-walk (AP5) → optional `session-sleep blank --force` → push/tag when ready.
+**Operator next:** Wayland login → verify displays → agent **CT0** design lock → CT1 implement.
 
 ---
 
@@ -36,32 +30,20 @@ eyes focus-walk (AP5) → optional `session-sleep blank --force` → push/tag wh
 
 | Order | Work | Why |
 | ---: | --- | --- |
-| **1** | **Logout + AP5 eyes** (human) | Load tip `5ea572b`; visual focus matrix (soft) |
-| **done** | Wayland residual re-smoke (agent) | Mode B recover green; nested-CON residual known |
-| **done** | AC1–AC6 apply contract | sensor verify, epoch, drop LF6 default, placeholder, slot tests, **X11 live** |
-| **done** | Meta baseline black/wayland | D=0 thrash-free Forge-off; product thrash is Forge-side |
-| **park** | Forge-on thrash probe | Only if instrumented to localize loops; not “prove thrash” |
-| **park** | X11 + gray/green probe | After contract needs a second host |
-| **mid** | Wayland product residuals (VSPLIT, Grok leaf, WS overlay, float save) | Parked until probe informs approach |
-| **mid** | Session verify / AP5 | Human blockers when back to daily driver |
-| **post** | Container motion, ignore mode, SL3 seeds | After measurement campaign |
+| **1** | **[Cold layout topology](./plans/forge-layout-cold-topology.md)** CT0→CT2 | One-shot `layout dev`; stop Mode B as cold default |
+| **2** | Merge DnD plan branch when ready | Soft dual-4K smoke optional |
+| mid | Nested-CON / float-save residuals | After cold path |
+| park | Forge-on thrash probe | Only if instrumented |
+| post | Container motion, ignore mode, SL3 | After measurement |
 
 ## Queue
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **done** | WR1 chrome geom; Guake rehome reverted | master |
-| **done RC** | [layout workspace scope](./plans/forge-layout-workspace-scope.md) | WS0–WS3 done |
-| **done RC** | Theme effective overlay | User colors survive install |
-| **done RC** | [CSS base + user overrides](./plans/forge-css-overrides.md) | C0–C2 + effective fix |
-| **done mid** | [settle-learning SL1+SL2](./plans/forge-settle-learning.md) | samples + `forge thrash` |
-| **done** | [mon-child topology peel](./tasks/completed/forge-layout-mon-child-topology.md) | giant-tab + float save UX |
-| **done** | [layout apply/settle AC1–AC6](./plans/forge-layout-apply-contract.md) | X11 live green 2026-08-07 |
-| **done RC** | Wayland residual re-smoke (agent) | Mode B recover; logout for tip still |
-| **P0 human** | Logout + AP5 eyes after tip load | Soft matrix / visual |
-| **done** | [session verify](./blockers/completed/B-manual-black-session-verify.md) | Layout OK; DPMS deferred |
-| **done** | [AP5 op visual](./blockers/completed/B-ap5-operator-visual-matrix.md) | Soft eyes 2026-08-08 |
-| **done mid** | [DnD five-zone drop zones](./plans/forge-dnd-drop-zones.md) | D0–D4 on `plan/forge-dnd-drop-zones` (soft dual-4K smoke) |
+| **P0** | [cold-topology CT0 design](./tasks/forge-layout-cold-topology_ct0-design.md) | **ready** |
+| **done RC** | apply contract AC1–AC6; thrash-zero Mode A/B | master |
+| **done RC** | Wayland residual re-smoke (Mode B recover) | 2026-08-08 |
+| **done mid** | DnD five-zone D0–D4 | `plan/forge-dnd-drop-zones` |
 | **mid** | [window ignore mode](./tasks/forge-window-ignore-mode.md) | ready, not RC |
 | **post-RC** | [container motion](./plans/forge-container-motion-design.md) | Design |
 

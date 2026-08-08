@@ -1,80 +1,74 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-08 (D4 DnD cross-mon complete; plan closed)  
-**Branch:** `plan/forge-dnd-drop-zones` → merge to master when ready  
-**Active P0 next:** logout → load tip; focus walk; chrome drops at batch end  
-**DnD zones:** [forge-dnd-drop-zones.md](./plans/forge-dnd-drop-zones.md) — **D0–D4 done** (optional dual-4K live smoke soft)  
-**Live smoke:** usable Wayland RC; operator layout OK.
+**Updated:** 2026-08-08 (post-reboot displays + cold topology plan)  
+**Branch:** `master` (cold work → create `plan/forge-layout-cold-topology`)  
+**Session type for next operator login:** **Wayland** (daily driver; tip install already on disk)
 
 ---
 
-## Campaign: layout apply/settle contract — **complete**
+## Start here
 
-| Item | Status | Commit |
+| Pri | Work | Path |
 | --- | --- | --- |
-| Design lock | **Done** | plan doc |
-| AC1 purge verify war | **done** | `333f8bf` |
-| AC2 command epoch | **done** | `b20c227` |
-| AC3 drop LF6 fingerprint default | **done** | `9633290` |
-| AC4 placeholder thrash isolate | **done** | `cf453cb` |
-| AC5 slot-math unit tests | **done** | `df60734` |
-| AC6 live smoke | **done** | X11 live (docs wrap) |
-| AC7 residual nudge | **cancelled** | visual QA fine without (2026-08-08) |
+| **P0** | **Cold layout topology (design → one-shot)** | [plans/forge-layout-cold-topology.md](./plans/forge-layout-cold-topology.md) · task [CT0](./tasks/forge-layout-cold-topology_ct0-design.md) |
+| mid | DnD plan branch merge when ready | `plan/forge-dnd-drop-zones` |
+| shellrc | gdisplays multi-config duals (no login ensure) | shellrc `bdb2ccc` + follow-up strip ensure |
 
-### One-line contract
+---
 
-Plan with tree math → parallel launch → place when admissible → post-apply =
-echo residual (350ms) → thrash → float + placeholder — never thrash the forest.
+## What just happened (reboot incident)
 
-### Wayland RC smoke (2026-08-08, agent)
+1. **Displays:** DRM connector renumber (hybrid AMD/NVIDIA) + single-config user `monitors.xml` → Mutter 1.25 fallback; greeter X11 duals/primary drift.  
+2. **gdisplays:** User XML now writes **canonical + live + history duals**; load applies non-persistently so Mutter cannot wipe multi-config. **Login ensure/autostart removed** (hostile; not product).  
+3. **Forge session-layout:** Correctly discarded post-reboot (by design).  
+4. **`forge layout dev`:** First pass Mode B partial; 2–3 passes reached correct tree. **Not** settle-thrash regression — cold topology construction order.
 
-| Check | Result |
+### Current desk (after recovery)
+
+```text
+mon0: tab(chrome, Grok) | ghostty
+mon1: ghostty | tab(YouTube, Gmail, Voice)
+```
+
+### Operator after Wayland reload
+
+1. Confirm scale 1.5 / primary left (`gdisplays --status`). If wrong: `gdisplays load default` then optional `gdisplays --user-to-login` (greeter primary = **user** primary, scale=1 duals).  
+2. Do **not** expect login autostart.  
+3. Next agent work: **CT0 design lock** for cold layout — not a second-pass Mode B patch.
+
+---
+
+## Cold Mode B — architectural read (for CT0)
+
+| Layer | Role |
 | --- | --- |
-| Session | Wayland · Shell 46 · dual MSI 4K @ scale |
-| Unit | **2337** vitest + **431** pytest green |
-| `forge ping` / enable | ACTIVE; `disable-user-extensions` false |
-| Rivals | tiling-assistant disabled; no Pop |
-| Disk install | `v49-90-beta.2-234-g5ea572b` (needs **logout** to load) |
-| Runtime during smoke | still `…-233-ga6699fe` (pre-logout) |
-| Cold `layout dev` | Mode A: mon1 tabs **wrong mon** (all on mon0) |
-| 2nd pass | Mode B thrash-recover → mon0 tab\|ghostty + mon1 ghostty\|tab **roles OK** |
-| 3rd pass | idempotent reopen 0; residual `order:mon0` / nested HSPLIT |
-| Focus walk | Grok / YouTube / both Ghostties **ok**; no stuck ¼ widths |
-| Nautilus open/close | no Shell crash; left mon1 single-child **VSPLIT** cruft |
-| Guake show | FLOAT mon0; thrash score up; product rehome still **reverted** |
-| Journal | no Forge give-up / mismatch / Shell abort in window |
-| `make dist` | zip builds |
+| Apply-contract thrash | Residual geom after place — **done** |
+| Mode B thrash-recover | Mid-session chaos — keep for true thrash only |
+| Cold path | Must **skeleton-first, then bind**; no thrash recover mid-batch |
 
-**RC call:** **usable daily-driver candidate**, not “perfect cold layout.” Ship bar =
-Mode B recover + known nested-CON / Guake float residuals. B-manual closed (layout OK).
+Agree: tree **shape** should not race async maps; async is for **bind/place** to slots only.
 
-### 2026-08-08 product path updates (this task)
+---
 
-1. **Focus tab/stack:** no `_reassertTabStackSiblingSlots` on focus (lastTabFocus + raise only).  
-   Geometry stays with render/verify — reduces Gmail/Voice PWA flicker on first tab selects.
-2. **Apply chrome:** clear at LayoutBatch **end** (before residual place). Hard cap **30s**.  
-   Spinner no longer covers residual rehome (~4s after maps settle).
-3. **session-sleep** (shellrc): testing API (blank/dpms/lock/suspend/wake sequences) vs settings API.
+## gdisplays (shellrc) product direction (not forge)
 
-### Operator next (RC)
+Friendly helper, not greeter-fighting daemon:
 
-1. **Log out → back in** (load tip).  
-2. Cold / 2-ghostty `forge layout dev` → mon0 tab\|ghostty; chrome drops when opens settle.  
-3. Eyes: tab focus walk on PWAs (no flash).  
-4. Optional DPMS: `session-sleep blank --force` / `wake`.  
-5. Push/tag only when human asks.
+- Multi-config duals on **user** XML (append/union renumber variants) — in place.  
+- Greeter: write-through on intentional load/set; primary follows **user** primary; scale=1 duals for GDM.  
+- Keep X11+Wayland duals; keep NVIDIA-class renumbers for other users.  
+- No login ensure / autostart.
 
 ---
 
 ## Open human blockers
 
 - hard: resize-autotile-design  
-- **done:** B-manual-black-session-verify (layout OK; DPMS deferred to session-sleep)  
-- soft: B-ap5 **done** 2026-08-08  
-- **done agent:** Wayland residual re-smoke; focus/chrome/session-sleep task  
+- soft: none for this incident  
 
 ---
 
 ## Agent rules
 
 - **No push** unless asked · **No SSH** without **explicit**  
+- Plan code on `plan/<plan>` · queue docs on default branch after wrap-up  
