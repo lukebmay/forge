@@ -2488,11 +2488,12 @@ def _layout_run_reconcile(
                     _eprint(f"forge layout: post-open re-plan failed: {e}")
                 else:
                     thrash4 = plan4.get("thrashState") or {}
-                    # Retry only when mon/structure still wrong (not focus-only).
+                    # Retry mon/structure/order residuals (not focus-only).
                     need_retry = bool(thrash4.get("thrashed")) or any(
                         isinstance(a, dict)
                         and (
-                            str(a.get("op") or "").strip().lower() == "move"
+                            str(a.get("op") or "").strip().lower()
+                            in ("move", "ensure_order")
                             or (
                                 str(a.get("op") or "").strip().lower()
                                 == "ensure_layout"

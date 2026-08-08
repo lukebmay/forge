@@ -907,11 +907,13 @@ class TestPlanToStepsFixture(unittest.TestCase):
             [
                 {"op": "layout", "mode": "tabbed", "selector": "id:10"},
                 {"op": "move", "tile": "id:11", "dest": "id:10"},
+                # Join inserts after anchor → order pass restores profile order.
+                {"op": "order", "windowIds": ["id:10", "id:11"]},
             ],
         )
 
     def test_ensure_layout_tabbed_multi_window_order(self):
-        """layout on anchor first (flatten + mon-wrap), then move others in."""
+        """layout + join moves, then order so join-after-anchor does not reverse tails."""
         steps = actions_to_extension_steps(
             [
                 {
@@ -928,11 +930,12 @@ class TestPlanToStepsFixture(unittest.TestCase):
                 {"op": "layout", "mode": "tabbed", "selector": "id:201"},
                 {"op": "move", "tile": "id:301", "dest": "id:201"},
                 {"op": "move", "tile": "id:302", "dest": "id:201"},
+                {"op": "order", "windowIds": ["id:201", "id:301", "id:302"]},
             ],
         )
         # layout must precede moves so mon-direct windows get a CON wrap first
         self.assertEqual(steps[0]["op"], "layout")
-        self.assertTrue(all(s["op"] == "move" for s in steps[1:]))
+        self.assertEqual(steps[-1]["op"], "order")
 
     def test_ensure_layout_nested_vsplit_joins_like_tabbed(self):
         """LF8: nested h/v with ≥2 windowIds → layout first + move rest onto first."""
@@ -951,6 +954,7 @@ class TestPlanToStepsFixture(unittest.TestCase):
             [
                 {"op": "layout", "mode": "vsplit", "selector": "id:103"},
                 {"op": "move", "tile": "id:301", "dest": "id:103"},
+                {"op": "order", "windowIds": ["id:103", "id:301"]},
             ],
         )
 
@@ -1038,7 +1042,16 @@ class TestPlanToStepsFixture(unittest.TestCase):
         )
         self.assertEqual(steps[0]["op"], "move")
         self.assertEqual(steps[1]["op"], "layout")
-        self.assertEqual(steps[-1], {"op": "order", "windowIds": ["id:101", "id:103"]})
+        # place → layout/join → order(s). Plan ensure_order first; tab join adds
+        # a second order so join-after-anchor does not reverse role tails.
+        order_steps = [s for s in steps if s.get("op") == "order"]
+        self.assertEqual(
+            order_steps,
+            [
+                {"op": "order", "windowIds": ["id:101", "id:103"]},
+                {"op": "order", "windowIds": ["id:101", "id:102"]},
+            ],
+        )
 
     def test_move_position_start_from_plan(self):
         steps = actions_to_extension_steps(

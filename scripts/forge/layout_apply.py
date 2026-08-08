@@ -318,10 +318,15 @@ def actions_to_extension_steps(
         if mode in ("tabbed", "stacked") and id_sels:
             # layout first: mon-wrap + H/V→tab flatten in extension _layoutOp;
             # then move remaining ids onto anchor so mon-direct siblings join the bag.
+            # Each join inserts *after* the anchor, so join order alone reverses
+            # the tail (YT←Gmail←Voice → YT,Voice,Gmail). Always re-order to
+            # profile windowIds when ≥2 members.
             anchor = id_sels[0]
             layout_steps.append({"op": "layout", "mode": mode, "selector": anchor})
             for sel in id_sels[1:]:
                 layout_steps.append({"op": "move", "tile": sel, "dest": anchor})
+            if len(id_sels) >= 2:
+                order_steps.append({"op": "order", "windowIds": list(id_sels)})
             continue
 
         # Nested h/v split structure: join members onto first id (like tabbed).
@@ -336,6 +341,8 @@ def actions_to_extension_steps(
             layout_steps.append({"op": "layout", "mode": mode, "selector": anchor})
             for sel in id_sels[1:]:
                 layout_steps.append({"op": "move", "tile": sel, "dest": anchor})
+            if len(id_sels) >= 2:
+                order_steps.append({"op": "order", "windowIds": list(id_sels)})
             continue
 
         sel = id_sels[0] if id_sels else window_by_mon.get(mon)

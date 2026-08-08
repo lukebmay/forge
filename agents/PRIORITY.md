@@ -1,11 +1,11 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-07 (apply-contract AC1–AC6 complete; X11 live green)  
+**Updated:** 2026-08-07 (apply-contract X11 green + tab order; next Wayland)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
 **No push** until human asks.  
-**Active P0:** RC Wayland residual re-smoke (human logout) — apply contract AC1–AC6 done.
+**Active P0:** **Wayland residual re-smoke** (operator logout) — X11 cold layout green.
 
 ---
 

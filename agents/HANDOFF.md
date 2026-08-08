@@ -1,9 +1,10 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-07 (apply-contract **AC1–AC6 complete**)  
+**Updated:** 2026-08-07 (apply-contract AC1–AC6 + Chrome multi-open title/order)  
 **Branch:** `master` / `plan/forge-layout-apply-contract` (same tip)  
-**Active P0 next:** RC Wayland residual re-smoke (human logout) or AC7 residual nudge later  
-**Live smoke:** **AC6 green on X11** (2026-08-07)
+**Active P0 next:** **Wayland residual re-smoke** (operator logout)  
+**Live smoke:** **X11 green** — cold dual-Ghostty `forge layout dev` lands mon0
+tab\|ghostty + mon1 ghostty\|tab (YT→Gmail→Voice)
 
 ---
 
