@@ -112,9 +112,13 @@ class TestValidateReconcileProfile(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unsupported profile version"):
             validate_reconcile_profile({"version": 1, "roles": []})
 
-    def test_reject_empty_roles(self):
-        with self.assertRaisesRegex(ValueError, "non-empty"):
-            validate_reconcile_profile({"version": 2, "mode": "reconcile", "roles": []})
+    def test_allow_empty_roles(self):
+        """Empty desk profile (forge layout clean) is valid."""
+        p = validate_reconcile_profile({"version": 2, "mode": "reconcile", "roles": []})
+        self.assertEqual(p["roles"], [])
+        self.assertEqual(p["version"], 2)
+        p2 = validate_reconcile_profile([])
+        self.assertEqual(p2["roles"], [])
 
     def test_reject_missing_match(self):
         with self.assertRaisesRegex(ValueError, "match"):
@@ -836,6 +840,17 @@ class TestPlanEmpty(unittest.TestCase):
         self.assertEqual(len(roles_open), 7)
         # no park of nonexistent
         self.assertFalse(any(a["op"] == "park" for a in plan["actions"]))
+
+    def test_empty_profile_closes_all(self):
+        """Empty roles profile + clean → close every window (layout clean)."""
+        forest = _load("tree-perfect.json")
+        plan = plan_reconcile(forest, [], clean=True)
+        self.assertTrue(plan["ok"])
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertEqual(plan["counts"]["reused"], 0)
+        self.assertEqual(plan["counts"]["closed"], 7)
+        closes = [a for a in plan["actions"] if a["op"] == "close"]
+        self.assertEqual(len(closes), 7)
 
 
 class TestPlanPerfect(unittest.TestCase):

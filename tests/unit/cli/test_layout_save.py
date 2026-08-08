@@ -333,12 +333,19 @@ class TestCaptureTilesProfile(unittest.TestCase):
             self.assertEqual(len(kids), 1)
             self.assertIn(kids[0].get("split"), ("hsplit", "vsplit"))
 
-    def test_empty_raises(self):
-        with self.assertRaisesRegex(ValueError, "no tiled windows"):
-            capture_tiles_profile(_load("tree-empty.json"))
+    def test_empty_desk_saves_empty_profile(self):
+        """Empty forest → bare [] so `forge layout clean` can close everything."""
+        raw = capture_tiles_profile(_load("tree-empty.json"))
+        self.assertEqual(raw.get("tiles"), {})
+        self.assertTrue(raw.get("_stats", {}).get("empty"))
+        out = profile_for_output(raw)
+        self.assertEqual(out, [])
+        ir = validate_reconcile_profile(out)
+        self.assertEqual(ir["roles"], [])
+        self.assertEqual(ir["version"], 2)
 
-    def test_float_only_raises_clear_message(self):
-        """FLOAT-only mon: clear error, never 'profile roles must be non-empty'."""
+    def test_float_only_saves_empty_profile(self):
+        """FLOAT-only desk (e.g. Guake) → empty profile, not an error."""
         forest = {
             "apiVersion": 2,
             "monitors": [
@@ -372,11 +379,16 @@ class TestCaptureTilesProfile(unittest.TestCase):
                 }
             ],
         }
-        with self.assertRaises(ValueError) as ctx:
-            capture_tiles_profile(forest)
-        msg = str(ctx.exception)
-        self.assertNotIn("roles must be non-empty", msg)
-        self.assertRegex(msg, r"only floating|no tiled", msg)
+        raw = capture_tiles_profile(forest)
+        self.assertEqual(raw.get("tiles"), {})
+        self.assertNotIn("floating", raw)
+        self.assertEqual(raw.get("_stats", {}).get("floating"), 1)
+        out = profile_for_output(raw)
+        self.assertEqual(out, [])
+        plan = plan_reconcile(forest, out, clean=True)
+        self.assertEqual(plan["counts"]["closed"], 1)
+        self.assertEqual(plan["actions"][0]["op"], "close")
+        self.assertEqual(plan["actions"][0]["windowId"], 9001)
 
     def test_stderr_counts(self):
         forest = _load("tree-perfect.json")

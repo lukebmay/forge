@@ -429,11 +429,13 @@ def format_layout_description(profile: Any) -> str:
     except (ValueError, TypeError):
         return ""
     layout = data.get("layout")
+    roles_list = data.get("roles") if isinstance(data.get("roles"), list) else []
+    intentional_empty = isinstance(data.get("roles"), list) and len(roles_list) == 0
     if not isinstance(layout, dict) or not layout:
-        return ""
+        return "empty" if intentional_empty else ""
 
     roles_by_id: dict[str, dict[str, Any]] = {}
-    for r in data.get("roles") or []:
+    for r in roles_list:
         if isinstance(r, dict) and r.get("id") is not None:
             roles_by_id[str(r["id"])] = r
 
@@ -461,7 +463,7 @@ def format_layout_description(profile: Any) -> str:
         else:
             parts.append(f"{mon_key}: {', '.join(tokens)}")
     if not parts:
-        return ""
+        return "empty" if intentional_empty else ""
     return ". ".join(parts) + "."
 
 
@@ -1456,9 +1458,11 @@ def validate_reconcile_profile(
     )
 
     has_roles = isinstance(data.get("roles"), list) and len(data.get("roles") or []) > 0
+    # Empty roles[] is valid (empty desk / `forge layout clean`).
+    has_roles_key = isinstance(data.get("roles"), list)
 
     if "version" not in data:
-        if not has_roles:
+        if not has_roles and not has_roles_key:
             raise ValueError("profile version required (want version: 2) or provide roles[]")
         ver = PROFILE_VERSION
     else:
@@ -1470,7 +1474,7 @@ def validate_reconcile_profile(
 
     mode = data.get("mode")
     if mode is None:
-        if not has_roles:
+        if not has_roles and not has_roles_key:
             raise ValueError("mode required (want mode: reconcile) or provide roles")
         mode = MODE_RECONCILE
     if not isinstance(mode, str) or mode.strip().lower() != MODE_RECONCILE:
@@ -1482,8 +1486,7 @@ def validate_reconcile_profile(
     roles_in = data["roles"]
     if not isinstance(roles_in, list):
         raise ValueError("profile roles must be an array")
-    if len(roles_in) == 0:
-        raise ValueError("profile roles must be non-empty")
+    # roles: [] allowed — no claimed windows; clean closes residuals.
 
     aliases = _validate_monitors_aliases(data.get("monitors"))
 

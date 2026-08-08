@@ -128,6 +128,17 @@ forge layout save mydesk --stdout > /tmp/mydesk.json
 forge layout mydesk --dry-run
 ```
 
+**Empty desk / clean layout:** save with no tiled windows (or only floats
+such as Guake) writes an empty profile (`[]`). Applying it with the product
+default close policy clears the workspace:
+
+```bash
+# From Guake with everything else closed, or after closing tiled apps:
+forge layout save clean
+forge layout clean          # closes all windows on the current workspace
+forge layout clean --dry-run
+```
+
 Write path (overwrites if present):
 
 ```text

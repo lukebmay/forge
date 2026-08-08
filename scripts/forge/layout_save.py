@@ -150,22 +150,19 @@ def capture_tiles_profile(
             if wid is not None:
                 seen_float_ids.add(str(wid))
 
-    if not tiles and not floating:
-        raise ValueError("no tiled windows to capture")
-    # Float-only desk: cannot desugar empty tiles → roles for reconcile validate.
-    # Fail before "profile roles must be non-empty".
-    if not tiles and floating:
-        raise ValueError("only floating windows to capture")
-
+    # Empty or float-only desk → empty profile (no tiled roles). Valid for
+    # `forge layout clean`: product close residuals wipe the desk. FLOAT
+    # windows are not saved as roles (floating IR is reserved / not claimed).
     out: dict[str, Any] = {}
     if description:
         out["description"] = description
     out["tiles"] = tiles
     # Omit empty floating for max sugar (defaults to none on load).
-    if floating:
+    # Also omit when tiles empty so empty/clean profiles close floats too.
+    if floating and tiles:
         out["floating"] = floating
 
-    focus_token = _focus_token_from_forest(forest, mons)
+    focus_token = _focus_token_from_forest(forest, mons) if tiles else None
     if focus_token is not None:
         out["focus"] = focus_token
 
@@ -181,6 +178,7 @@ def capture_tiles_profile(
         "windows": sum(mon_window_counts.values()),
         "floating": len(floating),
         "bareMonOrder": bare_order,
+        "empty": not tiles,
     }
     return out
 
@@ -242,6 +240,15 @@ def profile_for_output(
         if floating:
             body["floating"] = floating
         return body
+
+    # Empty desk → bare [] (load/desugar as no roles).
+    if not tiles_out:
+        if desc_s is None and focus_out is None and not floating:
+            return []
+        empty_body: dict[str, Any] = {"tiles": []}
+        if desc_s:
+            empty_body["description"] = desc_s
+        return _attach_focus_float(empty_body)
 
     # Build sugar for description compare
     if monitors:
