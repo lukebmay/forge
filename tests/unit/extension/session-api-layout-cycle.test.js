@@ -226,7 +226,7 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     expect(ctx.windowManager.openLayoutBatchActive).toBe(false);
   });
 
-  it("end keeps apply chrome; chrome-clear hides it", () => {
+  it("end does not clear chrome; chrome-clear hides it (CLI after end)", () => {
     const a = api();
     const wm = ctx.windowManager;
     const show = vi.fn();
@@ -249,7 +249,7 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     JSON.parse(a.LayoutBatch("begin:dev"));
     expect(wm.layoutApplyChrome.syncFromBatch).toHaveBeenCalled();
     JSON.parse(a.LayoutBatch("end"));
-    // Residual still covered — end must not clear chrome.
+    // end() never auto-clears; product CLI clears right after end (before residual).
     expect(wm.layoutApplyChrome.clear).not.toHaveBeenCalled();
     expect(wm.layoutApplyChrome.visible).toBe(true);
     const clr = JSON.parse(a.LayoutBatch("chrome-clear"));

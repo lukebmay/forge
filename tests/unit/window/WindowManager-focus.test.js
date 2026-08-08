@@ -741,7 +741,7 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(tab.lastTabFocus).toBe(wOn);
   });
 
-  it("tab focus reasserts off-slot open leaf only (not buried sibling)", () => {
+  it("tab focus is lastTabFocus + raise only (no move_resize reassert)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
     tab.layout = LAYOUT_TYPES.TABBED;
@@ -774,15 +774,8 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
 
     wm().updateTabbedFocus(nOpen);
 
-    // Only the open leaf is reasserted when off-slot (buried Chrome stays put).
-    expect(moveSpy).toHaveBeenCalledTimes(1);
-    expect(moveSpy).toHaveBeenCalledWith(
-      wOpen,
-      expect.objectContaining(slot),
-      null,
-      expect.objectContaining({ force: false })
-    );
-    expect(moveSpy.mock.calls.some((c) => c[0] === wBuried)).toBe(false);
+    // Focus path must not move_resize (Chrome PWA flicker). Geometry → verify.
+    expect(moveSpy).not.toHaveBeenCalled();
     expect(renderSpy).not.toHaveBeenCalledWith("focus");
     expect(wOpen.raise).toHaveBeenCalled();
     expect(tab.lastTabFocus).toBe(wOpen);
@@ -818,7 +811,7 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     );
   });
 
-  it("activateFromTab reasserts only off-slot open leaf without focus render", () => {
+  it("activateFromTab raises without move_resize reassert or focus render", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
     tab.layout = LAYOUT_TYPES.TABBED;
@@ -845,16 +838,12 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
 
     nB._activateFromTab(wB);
 
-    // Open leaf wB was off-slot → reassert; buried wA not moved.
-    expect(moveSpy).toHaveBeenCalledWith(
-      wB,
-      expect.objectContaining(slot),
-      null,
-      expect.objectContaining({ force: false })
-    );
-    expect(moveSpy.mock.calls.some((c) => c[0] === wA)).toBe(false);
+    // Focus/tab activate: no geometry reassert (raise + lastTabFocus only).
+    expect(moveSpy).not.toHaveBeenCalled();
     expect(renderSpy).not.toHaveBeenCalledWith("focus");
     expect(renderSpy.mock.calls.some((c) => c[0] === "focus")).toBe(false);
+    expect(wB.raise).toHaveBeenCalled();
+    expect(tab.lastTabFocus).toBe(wB);
   });
 
   it("focus-update uses focus-scoped decoration (not full hide/show)", () => {
