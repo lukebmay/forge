@@ -763,9 +763,100 @@ class TestPlanToStepsFixture(unittest.TestCase):
         ext, opens = partition_plan_actions(plan["actions"])
         self.assertEqual(len(opens), 7)
         steps = actions_to_extension_steps(ext)
-        # ensure_layout present in plan but not feasible (no window id) — skip
-        # so apply does not fail layout before launches
-        self.assertEqual(steps, [])
+        # CT1: skeleton maps without windowIds; opens stay CLI-side
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0]["op"], "skeleton")
+        self.assertIn("mons", steps[0])
+        self.assertGreaterEqual(len(steps[0]["mons"]), 2)
+        # No layout/move steps before maps
+        self.assertFalse(any(s["op"] == "layout" for s in steps))
+
+    def test_skeleton_and_bind_mapper(self):
+        actions = [
+            {
+                "op": "ensure_skeleton",
+                "workspace": 0,
+                "mons": [
+                    {
+                        "mon": 0,
+                        "slot": "mon0",
+                        "split": "hsplit",
+                        "children": [
+                            {
+                                "id": "left-tab",
+                                "slot": "mon0.left-tab",
+                                "mode": "tabbed",
+                                "roles": ["chrome-luke", "grok"],
+                            },
+                            {
+                                "id": "term",
+                                "slot": "mon0.term",
+                                "roles": ["ghostty-left"],
+                            },
+                        ],
+                    }
+                ],
+            },
+            {"op": "bind", "role": "chrome-luke", "windowId": 101, "layoutRole": "chrome-luke"},
+            {"op": "ensure_order", "windowIds": [101, 103]},
+            {"op": "focus", "windowId": 101},
+        ]
+        steps = actions_to_extension_steps(actions)
+        ops = [s["op"] for s in steps]
+        self.assertEqual(ops[0], "skeleton")
+        self.assertNotIn("windowIds", steps[0])
+        self.assertIn("mons", steps[0])
+        self.assertEqual(ops[1], "bind")
+        self.assertEqual(steps[1]["tile"], "id:101")
+        self.assertEqual(steps[1]["layoutRole"], "chrome-luke")
+        self.assertEqual(ops[-1], "focus")
+        # Phase order: skeleton before bind before order before focus
+        self.assertLess(ops.index("skeleton"), ops.index("bind"))
+        self.assertLess(ops.index("bind"), ops.index("order"))
+        self.assertLess(ops.index("order"), ops.index("focus"))
+
+    def test_bind_before_residual_close_and_park(self):
+        """CT0 P5: role move → bind → residual park/close (not close before bind)."""
+        actions = [
+            {
+                "op": "move",
+                "role": "ghostty",
+                "windowId": 501,
+                "slot": "mon0.term",
+            },
+            {
+                "op": "bind",
+                "role": "ghostty",
+                "windowId": 501,
+                "layoutRole": "ghostty",
+            },
+            {
+                "op": "park",
+                "windowId": 999,
+                "slot": "mon0.overflow",
+                "destWindowId": 501,
+            },
+            {"op": "close", "windowId": 1000},
+            {"op": "ensure_order", "windowIds": [501, 502]},
+        ]
+        steps = actions_to_extension_steps(actions)
+        ops = [s["op"] for s in steps]
+        # role move, bind, residual park(as move)+close, order
+        self.assertEqual(ops[0], "move")
+        self.assertEqual(steps[0]["tile"], "id:501")
+        self.assertEqual(ops[1], "bind")
+        # residual park becomes move onto dest; close after bind
+        bind_i = ops.index("bind")
+        close_i = ops.index("close")
+        self.assertLess(bind_i, close_i)
+        # park mapped as move after bind
+        residual_moves = [
+            i for i, s in enumerate(steps) if s["op"] == "move" and s["tile"] == "id:999"
+        ]
+        self.assertEqual(len(residual_moves), 1)
+        self.assertLess(bind_i, residual_moves[0])
+        self.assertLess(residual_moves[0], close_i)
+        self.assertLess(close_i, ops.index("order"))
 
     def test_doubled_moves_and_parks(self):
         plan = plan_reconcile(

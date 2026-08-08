@@ -193,6 +193,37 @@ describe("run-steps pure helpers (FC4)", () => {
       expect(validateStep({ op: "close" }).ok).toBe(false);
       expect(validateStep({ op: "close" }).error).toMatch(/selector/);
     });
+
+    it("normalizes skeleton and bind (CT1)", () => {
+      expect(EXTENSION_OPS).toContain("skeleton");
+      expect(EXTENSION_OPS).toContain("bind");
+      const sk = validateStep({
+        op: "skeleton",
+        workspace: 0,
+        mons: [{ mon: 0, split: "hsplit", children: [] }],
+      });
+      expect(sk.ok).toBe(true);
+      expect(sk.step).toMatchObject({
+        op: "skeleton",
+        workspace: 0,
+      });
+      expect(Array.isArray(sk.step.mons)).toBe(true);
+      expect(validateStep({ op: "skeleton" }).ok).toBe(false);
+      const bind = validateStep({
+        op: "bind",
+        tile: "id:101",
+        layoutRole: "chrome-luke",
+        layoutSlot: "mon0.left-tab",
+      });
+      expect(bind.ok).toBe(true);
+      expect(bind.step).toEqual({
+        op: "bind",
+        tile: "id:101",
+        layoutRole: "chrome-luke",
+        layoutSlot: "mon0.left-tab",
+      });
+      expect(validateStep({ op: "bind" }).ok).toBe(false);
+    });
   });
 
   describe("validateSteps", () => {

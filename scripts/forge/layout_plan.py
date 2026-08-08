@@ -2031,10 +2031,13 @@ def plan_reconcile(
     }
 
     # Mode B gate — once; reused for residual policy + plan.thrashState.
+    # Cold happy path (CT0): thrash may be reported for stderr info only —
+    # force_park is gated after claim (cold empty / residual bind).
     thrash_state = detect_thrash(forest, prof)
     thrashed = bool(thrash_state.get("thrashed"))
 
     windows = collect_windows(forest)
+    layout_placeholders = collect_layout_placeholders(forest)
     claimed: set[str] = set()  # windowId keys
     role_results: list[dict[str, Any]] = []
     actions: list[dict[str, Any]] = []
@@ -2051,6 +2054,8 @@ def plan_reconcile(
         "ordered": 0,
         "sized": 0,
         "focused": 0,
+        "skeleton": 0,
+        "bound": 0,
     }
     slots_needing_layout: dict[str, str] = {}  # slot → mode
     mons_with_placement: set[str] = set()
@@ -2064,11 +2069,6 @@ def plan_reconcile(
     residual_mode = str(marginal.get("residual") or "leave").strip().lower()
     if residual_mode not in ("leave", "park"):
         residual_mode = "leave"
-    # Residuals: keep_others → park; clean → close; Mode B thrash → park when
-    # not clean; else profile residual leave|park. --safe: never park/close.
-    force_park_residuals = (
-        keep_others or (thrashed and not clean and not safe)
-    ) and not safe
 
     # Two-pass claim: same-mon first so earlier roles do not steal later mons'
     # only matching window (e.g. mon0.ghostty vs mon1.ghostty-2).
@@ -2171,6 +2171,23 @@ def plan_reconcile(
                     )
         role_results.append(entry)
 
+    # Cold empty: every role needs open (no claimed windows). CT1 skeleton path.
+    cold_empty = (
+        not safe
+        and bool(role_results)
+        and all(str(r.get("status") or "") == "open" for r in role_results)
+    )
+    # Residual after open batch (just_opened_roles) or cold empty: thrash must not
+    # force residual park (CT0 P0–P5 cold; Mode B only mid-session / --recover).
+    suppress_thrash_park = cold_empty or bool(opened_roles)
+    # Residuals: keep_others → park; clean → close; Mode B thrash → park when
+    # not clean and not cold/bind; else profile residual leave|park. --safe: never.
+    force_park_residuals = (
+        keep_others or (thrashed and not clean and not safe and not suppress_thrash_park)
+    ) and not safe
+    # Slot-tagged layout PHs (from ensure_skeleton): residual prefers bind.
+    has_layout_ph = bool(layout_placeholders)
+
     # floating[]: claim matching windows so clean/park residuals leave them alone.
     _claim_floating_windows(prof.get("floating") or [], windows, claimed)
 
@@ -2201,12 +2218,23 @@ def plan_reconcile(
     kept: list[dict[str, Any]] = []
     left: list[dict[str, Any]] = []
     unclaimed: list[dict[str, Any]] = []
+    # P5 residual close/park — separate from role open/move (bind barrier before P5).
+    residual_actions: list[dict[str, Any]] = []
     for w in windows:
         if _window_key(w) in claimed:
             continue
         summary = _window_summary(w)
         key = _window_key(w)
         keep_slot = key_to_slot.get(key) if key_to_slot else None
+        # Cold empty first plan: skeleton + open only. Defer residual close/park
+        # until post-open residual replan (after bind). Avoids close-before-open.
+        if cold_empty and not safe:
+            entry = dict(summary)
+            entry["status"] = "left"
+            left.append(entry)
+            unclaimed.append(entry)
+            counts["left"] += 1
+            continue
         # Mode A "kept" companions only when we are not closing/parking residuals.
         # Product default (clean=True) must close non-layout windows; --keep-others
         # must park them. Previously keep always won → default close and --keep
@@ -2223,7 +2251,7 @@ def plan_reconcile(
             entry["status"] = "closed"
             unclaimed.append(entry)
             counts["closed"] += 1
-            actions.append(
+            residual_actions.append(
                 {
                     "op": "close",
                     "windowId": w.get("windowId"),
@@ -2273,13 +2301,17 @@ def plan_reconcile(
                         rwid = w.get("windowId")
                         if rwid is not None and str(rwid).strip() != "":
                             join["parked"].append(rwid)
-            actions.append(park_act)
+            residual_actions.append(park_act)
 
     # Tabbed/stacked + nested h/v: repair when not co-grouped; order when shared.
     # Mode B: kept empty → structure windowIds are roles only. --safe: skip.
+    # Cold empty: skeleton owns structure (no window-anchored ensure_layout).
+    # LayoutRole PHs: prefer bind path — skip invent structure even without
+    # just_opened_roles (Mode B thrash only when no layout PHs).
     structure_slots: dict[str, dict[str, Any]] = {}
     slot_order_actions: list[dict[str, Any]] = []
-    if not safe:
+    skip_window_structure = cold_empty or has_layout_ph
+    if not safe and not skip_window_structure:
         slots_for_structure = set(layout_slot_modes.keys())
         for k in kept:
             if k.get("slot"):
@@ -2425,9 +2457,10 @@ def plan_reconcile(
 
     # Mon-child peel: demote shared TABBED/STACKED before subset re-tab.
     # layoutOp only wraps subset on H/V multi-window CONs — not already-TABBED.
+    # Cold / PH-bind residual: no peel (skeleton+bind owns topology).
     peel_demote_actions: list[dict[str, Any]] = []
     mon_child_peel_mons: set[str] = set()
-    if not safe:
+    if not safe and not skip_window_structure:
         for mm in structure_cmp.get("mismatches") or []:
             if not isinstance(mm, dict) or mm.get("kind") != "mon-child":
                 continue
@@ -2474,14 +2507,31 @@ def plan_reconcile(
 
     # Role open/move / residual just_opened / mon split repair rewrite mon splits.
     # Park/close alone must not thrash dual-mon hsplit. --safe: no ensure.
+    # Cold empty: skeleton (not mon ensure). PH residual: bind after place.
     has_role_placement = counts["opened"] > 0 or counts["moved"] > 0
     # just_opened only drives mon ensure off --safe (safe path is open+move only).
+    # Skip mon ensure when skeleton/bind path owns topology.
     has_mon_ensure = (
-        has_role_placement
-        or (bool(opened_roles) and not safe)
-        or bool(mons_split_mismatch)
-        or bool(mon_child_peel_mons)
+        not skip_window_structure
+        and (
+            has_role_placement
+            or (bool(opened_roles) and not safe)
+            or bool(mons_split_mismatch)
+            or bool(mon_child_peel_mons)
+        )
     )
+    skeleton_actions: list[dict[str, Any]] = []
+    if cold_empty and not safe:
+        sk = build_ensure_skeleton_action(prof, workspace=workspace)
+        if sk is not None:
+            skeleton_actions.append(sk)
+            counts["skeleton"] = 1
+
+    bind_actions: list[dict[str, Any]] = []
+    if not safe and has_layout_ph and not cold_empty:
+        bind_actions = build_bind_actions(role_results, layout_placeholders)
+        counts["bound"] = len(bind_actions)
+
     has_work = (
         has_role_placement
         or has_mon_ensure
@@ -2492,11 +2542,13 @@ def plan_reconcile(
         or counts["sized"] > 0
         or bool(slots_needing_layout)
         or bool(peel_demote_actions)
-        or (not safe and not structure_cmp.get("match", True))
+        or bool(skeleton_actions)
+        or bool(bind_actions)
+        or (not safe and not skip_window_structure and not structure_cmp.get("match", True))
     )
     structure_ensure_actions: list[dict[str, Any]] = []
     mon_ensure_actions: list[dict[str, Any]] = []
-    if has_work and not safe:
+    if has_work and not safe and not skip_window_structure:
         # Nested tab/stack/h-v first so mon kids become [tab CON, term] before
         # mon-level hsplit (flat TABBED mon otherwise equal-splits every leaf).
         # Peel demotes go *before* tab structure (already in peel_demote_actions).
@@ -2511,13 +2563,15 @@ def plan_reconcile(
                     wids = _ordered_slot_window_ids(
                         role_results, slot, kept, role_order
                     )
+            # Window-anchored ensure needs at least one id (empty desk → skeleton).
+            if not wids:
+                continue
             entry: dict[str, Any] = {
                 "op": "ensure_layout",
                 "slot": slot,
                 "mode": mode,
+                "windowIds": wids,
             }
-            if wids:
-                entry["windowIds"] = wids
             structure_ensure_actions.append(entry)
 
         # mon-level splits only for mons that open/move / just_opened / mismatch.
@@ -2564,6 +2618,7 @@ def plan_reconcile(
 
     # Active tab/stack + profile focus → focus ops after structure settles.
     # Survivor open-leaf when profile omits active (bare-array reopen).
+    # Cold empty: focus after maps (residual replan); no focus without windowId.
     focus_actions = _focus_actions_from_profile(
         prof,
         role_results,
@@ -2574,12 +2629,19 @@ def plan_reconcile(
     if focus_actions:
         has_work = True
 
-    # structure ensure → mon ensure → place/move/open/park/close →
-    # ensure_order → ensure_sizes → focus last.
-    # Place before mon order so ensure_order sees co-located mon-directs
-    # (order while still on the wrong mon soft-skips in the extension).
+    # CT0 phase order (one plan model):
+    # skeleton → structure ensure → role open/move → bind → P5 residual close/park
+    # → order → size → focus. Bind barrier before residual close/park.
+    # Role place before mon order so ensure_order sees co-located mon-directs.
     final_actions = (
-        deduped_ensure + actions + order_actions + size_actions + focus_actions
+        skeleton_actions
+        + deduped_ensure
+        + actions
+        + bind_actions
+        + residual_actions
+        + order_actions
+        + size_actions
+        + focus_actions
     )
     nothing = not has_work
     thrash_risk = _compute_thrash_risk(final_actions, counts)
@@ -2599,19 +2661,36 @@ def plan_reconcile(
         "clean": clean,
         "keepOthers": keep_others,
         "safe": safe,
+        "coldEmpty": cold_empty,
         "thrashRisk": thrash_risk,
         "thrashState": thrash_state,
     }
 
 
-def collect_windows(
+# AC4 / CT1: layout placeholders (not claimable apps).
+_PLACEHOLDER_WM_CLASS = "forge-placeholder"
+_PH_TITLE_RE = re.compile(
+    r"^forge-ph:(?P<slot>[^:]+):(?P<role>.+)$", re.IGNORECASE
+)
+
+
+def _is_placeholder_window_node(n: dict[str, Any]) -> bool:
+    """True for GetTree WINDOW leaves that are layout/ thrash placeholders."""
+    if n.get("placeholder") is True:
+        return True
+    wm = n.get("wmClass") or n.get("wm_class")
+    if wm == _PLACEHOLDER_WM_CLASS:
+        return True
+    return False
+
+
+def collect_layout_placeholders(
     forest: Any, *, workspace: Optional[int] = None
 ) -> list[dict[str, Any]]:
     """
-    Collect WINDOW nodes with path + monitor.
+    Collect slot-tagged layout placeholders (ensure_skeleton / fail-open).
 
-    workspace: when set, only windows under moNws{workspace} MONITOR roots.
-    None walks every mon root (caller may pre-filter via filter_forest_workspace).
+    layoutRole / layoutSlot from GetTree fields, or title forge-ph:slot:role.
     """
     if workspace is not None:
         forest = filter_forest_workspace(forest, workspace)
@@ -2622,6 +2701,244 @@ def collect_windows(
             return
         ntype = n.get("nodeType") or n.get("type")
         if ntype == "WINDOW":
+            if not _is_placeholder_window_node(n):
+                return
+            role = n.get("layoutRole")
+            slot = n.get("layoutSlot")
+            title = n.get("title")
+            if (role is None or slot is None) and isinstance(title, str):
+                m = _PH_TITLE_RE.match(title.strip())
+                if m:
+                    slot = slot or m.group("slot")
+                    role = role or m.group("role")
+            # Only layout-slot PHs drive bind (plain thrash PH has no tags).
+            if role is None and slot is None:
+                return
+            out.append(
+                {
+                    "windowId": n.get("windowId"),
+                    "path": path or n.get("path"),
+                    "monitor": (
+                        n.get("monitor")
+                        if isinstance(n.get("monitor"), int)
+                        else mon_idx
+                    ),
+                    "layoutRole": str(role) if role is not None else None,
+                    "layoutSlot": str(slot) if slot is not None else None,
+                    "title": title,
+                    "placeholder": True,
+                }
+            )
+            return
+        kids = n.get("children") or n.get("childNodes") or []
+        if not isinstance(kids, list):
+            return
+        cur_mon = mon_idx
+        mon_id = n.get("id") if ntype == "MONITOR" else None
+        if ntype == "MONITOR" and isinstance(mon_id, str):
+            parsed = _parse_mon_id(mon_id)
+            if parsed is not None:
+                cur_mon = parsed[0]
+        for i, c in enumerate(kids):
+            if mon_id:
+                child_path = f"{mon_id}/{i}"
+            elif path:
+                child_path = f"{path}/{i}"
+            else:
+                child_path = str(i)
+            walk(c, child_path, cur_mon)
+
+    if isinstance(forest, dict):
+        mons = forest.get("monitors")
+        if isinstance(mons, list):
+            for m in _order_monitors(mons):
+                walk(m, "", None)
+        else:
+            walk(forest, "", None)
+    elif isinstance(forest, list):
+        for m in _order_monitors(forest):
+            walk(m, "", None)
+    return out
+
+
+def build_ensure_skeleton_action(
+    prof: dict[str, Any], *, workspace: int = 0
+) -> Optional[dict[str, Any]]:
+    """
+    Pure plan action: mon splits + tab/stack CONs + slot-tagged PH leaves.
+
+    No windowIds — extension skeleton op builds the tree before maps.
+    """
+    layout = prof.get("layout")
+    if not isinstance(layout, dict) or not layout:
+        return None
+    mons: list[dict[str, Any]] = []
+
+    def child_spec(ch: dict[str, Any], prefix: str) -> Optional[dict[str, Any]]:
+        cid = ch.get("id")
+        if cid is None or str(cid).strip() == "":
+            return None
+        full = f"{prefix}.{cid}"
+        nested = ch.get("children")
+        if isinstance(nested, list) and nested:
+            kids: list[dict[str, Any]] = []
+            for sub in nested:
+                if isinstance(sub, dict):
+                    spec = child_spec(sub, full)
+                    if spec is not None:
+                        kids.append(spec)
+            if not kids:
+                return None
+            split = str(ch.get("split") or "hsplit").strip().lower()
+            if split not in ("hsplit", "vsplit"):
+                split = "hsplit"
+            entry: dict[str, Any] = {
+                "id": str(cid),
+                "slot": full,
+                "split": split,
+                "children": kids,
+            }
+            shares = normalize_shares(ch.get("share") or ch.get("shares"))
+            if shares is not None:
+                entry["shares"] = shares
+            return entry
+        roles_raw = ch.get("roles") or []
+        roles = [str(r) for r in roles_raw if r is not None and str(r).strip() != ""]
+        mode = str(ch.get("layout") or "").strip().lower() or None
+        if mode not in ("tabbed", "stacked", "hsplit", "vsplit", None):
+            mode = None
+        if len(roles) > 1 and mode not in ("tabbed", "stacked", "hsplit", "vsplit"):
+            mode = "tabbed"
+        elif len(roles) <= 1:
+            # Mon-direct single-role unit: one PH leaf (no bag CON).
+            mode = None
+        entry = {
+            "id": str(cid),
+            "slot": full,
+            "roles": roles,
+        }
+        if mode:
+            entry["mode"] = mode
+        shares = normalize_shares(ch.get("share") or ch.get("shares"))
+        if shares is not None:
+            entry["shares"] = shares
+        return entry
+
+    for mon_key in sorted(layout.keys(), key=_layout_mon_sort_key):
+        mon_body = layout[mon_key]
+        if not isinstance(mon_body, dict):
+            continue
+        mon_i = mon_index_from_slot(str(mon_key))
+        if mon_i is None:
+            continue
+        children_out: list[dict[str, Any]] = []
+        for ch in mon_body.get("children") or []:
+            if not isinstance(ch, dict):
+                continue
+            spec = child_spec(ch, str(mon_key))
+            if spec is not None:
+                children_out.append(spec)
+        if not children_out:
+            continue
+        split = str(mon_body.get("split") or "hsplit").strip().lower()
+        if split not in ("hsplit", "vsplit"):
+            split = "hsplit"
+        mon_entry: dict[str, Any] = {
+            "mon": mon_i,
+            "slot": str(mon_key),
+            "split": split,
+            "children": children_out,
+        }
+        shares = normalize_shares(mon_body.get("share") or mon_body.get("shares"))
+        if shares is not None:
+            mon_entry["shares"] = shares
+        mons.append(mon_entry)
+
+    if not mons:
+        return None
+    return {
+        "op": "ensure_skeleton",
+        "workspace": int(workspace),
+        "mons": mons,
+    }
+
+
+def build_bind_actions(
+    role_results: list[dict[str, Any]],
+    placeholders: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Map claimed roles onto layoutRole/layoutSlot placeholders (bind ops)."""
+    by_role: dict[str, dict[str, Any]] = {}
+    by_slot_role: dict[tuple[str, str], dict[str, Any]] = {}
+    for ph in placeholders:
+        if not isinstance(ph, dict):
+            continue
+        role = ph.get("layoutRole")
+        slot = ph.get("layoutSlot")
+        if role is not None and str(role).strip() != "":
+            by_role.setdefault(str(role), ph)
+        if (
+            role is not None
+            and slot is not None
+            and str(role).strip() != ""
+            and str(slot).strip() != ""
+        ):
+            by_slot_role.setdefault((str(slot), str(role)), ph)
+
+    out: list[dict[str, Any]] = []
+    used_ph: set[str] = set()
+    for r in role_results:
+        if not isinstance(r, dict):
+            continue
+        rid = r.get("id")
+        wid = r.get("windowId")
+        if rid is None or wid is None or str(wid).strip() == "":
+            continue
+        slot = str(r.get("slot") or "")
+        ph = by_slot_role.get((slot, str(rid))) or by_role.get(str(rid))
+        if ph is None:
+            continue
+        ph_id = ph.get("windowId")
+        ph_key = str(ph_id if ph_id is not None else ph.get("path") or id(ph))
+        if ph_key in used_ph:
+            continue
+        used_ph.add(ph_key)
+        act: dict[str, Any] = {
+            "op": "bind",
+            "role": rid,
+            "slot": slot,
+            "windowId": wid,
+            "layoutRole": str(ph.get("layoutRole") or rid),
+            "layoutSlot": str(ph.get("layoutSlot") or slot),
+        }
+        if ph_id is not None:
+            act["placeholderId"] = ph_id
+        out.append(act)
+    return out
+
+
+def collect_windows(
+    forest: Any, *, workspace: Optional[int] = None
+) -> list[dict[str, Any]]:
+    """
+    Collect WINDOW nodes with path + monitor.
+
+    workspace: when set, only windows under moNws{workspace} MONITOR roots.
+    None walks every mon root (caller may pre-filter via filter_forest_workspace).
+
+    Placeholders (AC4 / layout skeleton) are excluded — not claimable apps.
+    """
+    if workspace is not None:
+        forest = filter_forest_workspace(forest, workspace)
+    out: list[dict[str, Any]] = []
+
+    def walk(n: Any, path: str, mon_idx: Optional[int]) -> None:
+        if not isinstance(n, dict):
+            return
+        ntype = n.get("nodeType") or n.get("type")
+        if ntype == "WINDOW":
+            if _is_placeholder_window_node(n):
+                return
             w = {
                 "windowId": n.get("windowId"),
                 "wmClass": n.get("wmClass") or n.get("wm_class"),
@@ -3880,6 +4197,11 @@ def _compute_thrash_risk(
             else:
                 structure_groups += 1
                 reasons.append(f"structure:{slot}")
+        elif op == "ensure_skeleton":
+            structure_groups += 1
+            reasons.append("skeleton")
+        elif op == "bind":
+            reasons.append(f"bind:{a.get('role') or a.get('windowId')}")
         elif op == "ensure_order":
             reasons.append(f"order:{a.get('slot')}")
         elif op == "ensure_sizes":

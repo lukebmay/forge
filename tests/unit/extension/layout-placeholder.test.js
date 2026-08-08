@@ -6,6 +6,7 @@ import {
   PLACEHOLDER_ISOLATE_LAYOUT_REASON,
   PLACEHOLDER_REMOVE_LAYOUT_REASON,
   PLACEHOLDER_FAILED_OPEN_LAYOUT_REASON,
+  PLACEHOLDER_SKELETON_LAYOUT_REASON,
   createPlaceholderStub,
   isPlaceholderValue,
   isPlaceholderNode,
@@ -16,6 +17,8 @@ import {
   planRemovePlaceholder,
   executeIsolateThrash,
   executeRemovePlaceholder,
+  layoutPlaceholderTitle,
+  parseLayoutPlaceholderTitle,
   _resetPlaceholderStubSeqForTests,
 } from "../../../lib/extension/layout-placeholder.js";
 import { projectNode } from "../../../lib/extension/tree-query.js";
@@ -44,6 +47,24 @@ describe("layout-placeholder pure helpers", () => {
     expect(s.get_id()).toMatch(/^forge-ph-/);
     expect(isPlaceholderValue(s)).toBe(true);
     expect(isPlaceholderWmClass(PLACEHOLDER_WM_CLASS)).toBe(true);
+  });
+
+  it("slot-tagged skeleton stub encodes title and layout fields (CT1)", () => {
+    const s = createPlaceholderStub({
+      layoutSlot: "mon0.left-tab",
+      layoutRole: "chrome-luke",
+      reason: PLACEHOLDER_SKELETON_LAYOUT_REASON,
+    });
+    expect(s.layoutSlot).toBe("mon0.left-tab");
+    expect(s.layoutRole).toBe("chrome-luke");
+    expect(s.get_title()).toBe("forge-ph:mon0.left-tab:chrome-luke");
+    expect(layoutPlaceholderTitle("mon0.term", "ghostty-left")).toBe(
+      "forge-ph:mon0.term:ghostty-left"
+    );
+    expect(parseLayoutPlaceholderTitle(s.get_title())).toEqual({
+      slot: "mon0.left-tab",
+      role: "chrome-luke",
+    });
   });
 
   it("isPlaceholderNode respects flag and stub value", () => {
@@ -232,6 +253,32 @@ describe("layout-placeholder GetTree + verify", () => {
     expect(out.placeholderReason).toBe("thrash");
     expect(out.wmClass).toBe(PLACEHOLDER_WM_CLASS);
     expect(out.mode).toBe("TILE");
+  });
+
+  it("projectNode exports layoutSlot/layoutRole for skeleton PHs", () => {
+    const stub = createPlaceholderStub({
+      id: "ph-slot",
+      layoutSlot: "mon0.left-tab",
+      layoutRole: "chrome-luke",
+    });
+    const node = {
+      nodeType: "WINDOW",
+      layout: null,
+      rect: null,
+      percent: 0,
+      userSized: false,
+      mode: "TILE",
+      placeholder: true,
+      layoutSlot: "mon0.left-tab",
+      layoutRole: "chrome-luke",
+      nodeValue: stub,
+      childNodes: [],
+      isWindow: () => true,
+    };
+    const out = projectNode(node);
+    expect(out.placeholder).toBe(true);
+    expect(out.layoutSlot).toBe("mon0.left-tab");
+    expect(out.layoutRole).toBe("chrome-luke");
   });
 
   it("collectTileVerifyInputs skips placeholders", () => {

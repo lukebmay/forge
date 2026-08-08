@@ -194,20 +194,22 @@ def actions_to_extension_steps(
     layout needs a WINDOW selector (session-api _layoutOp → matchWindows).
     mon path:moNwsW is valid move dest only — not layout selector.
 
-    Order: placement moves/parks and residual closes first, then
-    ensure_layout (structure after windows on target mon), then
-    ensure_order (mon-level L/R after groups exist), then
-    ensure_sizes (sibling percent shares), then focus
-    (active tab/stack + profile focus).
+    CT0/CT1 phase order:
+      skeleton → role place (move) → bind → P5 residual (park/close)
+      → ensure_layout → order → size → focus
 
-    close → {op: close, selector: id:…} (+ force when force_close).
+    Role moves may run before bind (mon-correctness for PH replace).
+    Residual close/park of non-roles is after the bind barrier.
 
-    ensure_layout with windowIds (structure repair):
+    ensure_skeleton → {op: skeleton, mons: [...], workspace} (no windowIds).
+    bind → {op: bind, tile: id:…, layoutRole?, layoutSlot?, placeholder?}.
+
+    ensure_layout with windowIds (structure repair, mid-session):
       - tabbed/stacked: layout on first id, then move remaining ids into it
       - nested hsplit/vsplit (slot has '.'): same join as tabbed
       - mon-level hsplit/vsplit: layout on first available id only
     Fallback when no windowIds: id from move/park on same mon; skip if none
-    (empty desk: open first; residual replan may layout after).
+    (cold empty uses ensure_skeleton instead).
 
     ensure_order → {op: order, windowIds: [id:…, …]} (mon child reorder).
     ensure_sizes → {op: size, windowIds: [id:…], shares: […]} (sibling percents).
@@ -239,7 +241,10 @@ def actions_to_extension_steps(
             mon = 0
         window_by_mon.setdefault(mon, tile)
 
-    place_steps: list[dict[str, Any]] = []
+    skeleton_steps: list[dict[str, Any]] = []
+    role_place_steps: list[dict[str, Any]] = []
+    residual_steps: list[dict[str, Any]] = []
+    bind_steps: list[dict[str, Any]] = []
     layout_steps: list[dict[str, Any]] = []
     order_steps: list[dict[str, Any]] = []
     size_steps: list[dict[str, Any]] = []
@@ -249,10 +254,45 @@ def actions_to_extension_steps(
         if not isinstance(a, dict):
             continue
         op = str(a.get("op") or "").strip().lower()
-        if op in ("move", "park"):
+        if op == "ensure_skeleton":
+            mons = a.get("mons")
+            if not isinstance(mons, list) or not mons:
+                continue
+            step: dict[str, Any] = {"op": "skeleton", "mons": mons}
+            ws_a = a.get("workspace")
+            if ws_a is not None:
+                try:
+                    step["workspace"] = int(ws_a)
+                except (TypeError, ValueError):
+                    step["workspace"] = workspace
+            else:
+                step["workspace"] = workspace
+            skeleton_steps.append(step)
+            continue
+        if op == "bind":
+            tile = window_tile_selector(a)
+            if not tile:
+                continue
+            bind_step: dict[str, Any] = {"op": "bind", "tile": tile}
+            if a.get("layoutRole") is not None:
+                bind_step["layoutRole"] = str(a.get("layoutRole"))
+            if a.get("layoutSlot") is not None:
+                bind_step["layoutSlot"] = str(a.get("layoutSlot"))
+            ph = a.get("placeholderId")
+            if ph is not None and str(ph).strip() != "":
+                p = str(ph).strip()
+                bind_step["placeholder"] = p if p.startswith("id:") else f"id:{p}"
+            bind_steps.append(bind_step)
+            continue
+        if op == "move":
             step = _move_step_from_action(a, workspace=workspace)
             if step:
-                place_steps.append(step)
+                role_place_steps.append(step)
+            continue
+        if op == "park":
+            step = _move_step_from_action(a, workspace=workspace)
+            if step:
+                residual_steps.append(step)
             continue
         if op == "close":
             tile = window_tile_selector(a)
@@ -261,7 +301,7 @@ def actions_to_extension_steps(
             close_step: dict[str, Any] = {"op": "close", "selector": tile}
             if force_close or a.get("force"):
                 close_step["force"] = True
-            place_steps.append(close_step)
+            residual_steps.append(close_step)
             continue
         if op == "focus":
             sel = a.get("selector")
@@ -351,7 +391,17 @@ def actions_to_extension_steps(
         layout_steps.append({"op": "layout", "mode": mode, "selector": sel})
 
     # Focus last so lastTabFocus + keyboard focus stick after structure/order/size.
-    return place_steps + layout_steps + order_steps + size_steps + focus_steps
+    # Bind before residual close/park (CT0 P5 after bind barrier).
+    return (
+        skeleton_steps
+        + role_place_steps
+        + bind_steps
+        + residual_steps
+        + layout_steps
+        + order_steps
+        + size_steps
+        + focus_steps
+    )
 
 
 def _ghostty_stem(token: str) -> str:

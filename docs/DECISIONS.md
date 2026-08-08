@@ -13,3 +13,4 @@ set Status=`superseded` and add a new row (do not rewrite history silently).
 | D006 | 2026-08-07 | layout | P0 | active | Thrash/fail-open → float client + placeholder TILE leaf; never forest reassert | One bad app must not unsettle forest; close PH = drop slot + one reflow |
 | D007 | 2026-08-08 | open-app | P1 | active | Dock sticky mon = pointer geometry; hook activate/open_new_window/activate_full; never rehome dock by focus | get_current_monitor/focus stole left-dock opens to right mon |
 | D008 | 2026-08-08 | layout | P0 | active | Cold layout: skeleton (slot-tagged PHs) before bind; no Mode B mid-batch | Residual Mode B second pass is construction-order patch, not product fix |
+| D009 | 2026-08-08 | layout | P0 | active | CT1: ensure_skeleton+bind ops; thrash park suppressed on cold/just_opened | One CLI invocation; postOpenRetry opt-in only |

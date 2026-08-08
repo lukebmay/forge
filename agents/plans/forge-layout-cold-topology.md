@@ -1,6 +1,6 @@
 # Plan: cold layout topology (one-shot, no Mode B patch-over)
 
-**Status:** active — CT0 done; **CT1 implement next**  
+**Status:** active — CT1 code done; **CT2/CT3 live next**  
 **Priority:** P0 (daily driver cold `forge layout dev`)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Depends on:** apply-contract AC1–AC6 (done); thrash-zero Mode A/B (done, **not** the fix here)  
@@ -88,8 +88,8 @@ Open design choices (task 0 must lock):
 | ID | Task | Status |
 | --- | --- | --- |
 | **CT0** | [Design lock](./completed/forge-layout-cold-topology_ct0-design.md) | **done** (approved) |
-| **CT1** | [Skeleton-first implement](../tasks/forge-layout-cold-topology_ct1-skeleton.md) | **ready** |
-| **CT2** | [Wayland live one-shot](../tasks/forge-layout-cold-topology_ct2-wayland-live.md) | ready (after CT1) |
+| **CT1** | [Skeleton-first implement](./completed/forge-layout-cold-topology_ct1-skeleton.md) | **done** (unit/code; A/B AGREE) |
+| **CT2** | [Wayland live one-shot](../tasks/forge-layout-cold-topology_ct2-wayland-live.md) | **ready** (next; operator live) |
 | **CT3** | [X11 live one-shot](../tasks/forge-layout-cold-topology_ct3-x11-live.md) | ready (after CT1; parallel CT2) |
 
 ---
@@ -98,9 +98,9 @@ Open design choices (task 0 must lock):
 
 - [ ] Cold desk → single `forge layout dev` → correct dual-mon tabs **without Mode B** on Wayland (CT2) and X11 (CT3)  
 - [ ] Settled re-run idempotent  
-- [ ] No thrash-recover interleaved with open/bind  
-- [ ] Unit tests for phase order; no “plan twice” as success  
-- [ ] docs/user/layout.md cold section updated  
+- [x] No thrash-recover interleaved with open/bind *(CT1 unit)*  
+- [x] Unit tests for phase order; no “plan twice” as success *(CT1)*  
+- [x] docs/user/layout.md cold section updated *(CT1)*  
 
 ---
 
@@ -251,8 +251,8 @@ Live CT2/CT3 remain operator one-shot checks (not unit).
 
 ## Session note
 
-**2026-08-08 (CT0 done):** Design approved by human. Skeleton = slot-tagged AC4
-placeholders; thrash not policy during open/bind; Mode B not cold success path.
-**Next:** CT1 implement on `plan/forge-layout-cold-topology`. After CT2/CT3 live
-pass, plan a **cleanup sweep** to remove cold Mode B / multi-replan fallbacks
-that the new path makes dead (see PRIORITY post queue).
+**2026-08-08 (CT1 done):** Skeleton-first cold path landed (A/B AGREE after rework).
+Key: `ensure_skeleton` + `bind` RunSteps; cold thrash report-only; P5 residual after
+bind; postOpenRetry opt-in; Mode B mid-session unchanged. Units: 290 plan/apply +
+97 JS. Task → `completed/forge-layout-cold-topology_ct1-skeleton.md`.
+**Next:** CT2 Wayland live (this host) · CT3 X11 live. No cleanup until both green.

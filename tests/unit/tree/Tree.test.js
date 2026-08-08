@@ -285,4 +285,54 @@ describe("Tree", () => {
       expect(ctx.tree.findNode(bin3)).toBe(container3);
     });
   });
+
+  describe("CT1 skeleton placeholders", () => {
+    it("createPlaceholderLeaf tags layoutSlot/layoutRole and survives cleanTree", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const tabCon = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
+      tabCon.layout = LAYOUT_TYPES.TABBED;
+      const ph1 = ctx.tree.createPlaceholderLeaf(tabCon, {
+        layoutSlot: "mon0.left-tab",
+        layoutRole: "chrome-luke",
+        reason: "layout-skeleton",
+      });
+      const ph2 = ctx.tree.createPlaceholderLeaf(tabCon, {
+        layoutSlot: "mon0.left-tab",
+        layoutRole: "grok",
+        reason: "layout-skeleton",
+      });
+      const termPh = ctx.tree.createPlaceholderLeaf(monitor, {
+        layoutSlot: "mon0.term",
+        layoutRole: "ghostty-left",
+        reason: "layout-skeleton",
+      });
+      expect(ph1.placeholder).toBe(true);
+      expect(ph1.layoutRole).toBe("chrome-luke");
+      expect(ph2.layoutSlot).toBe("mon0.left-tab");
+      expect(termPh.layoutRole).toBe("ghostty-left");
+      expect(tabCon.childNodes.length).toBe(2);
+      expect(monitor.childNodes.length).toBeGreaterThanOrEqual(2);
+
+      // cleanTree must not strip slot-tagged PH leaves (non-empty CONs)
+      ctx.tree.cleanTree();
+      expect(tabCon.childNodes.length).toBe(2);
+      expect(isPlaceholderAlive(ph1)).toBe(true);
+      expect(isPlaceholderAlive(ph2)).toBe(true);
+      expect(isPlaceholderAlive(termPh)).toBe(true);
+
+      // Bind-style replace: insert real window, drop PH (parent.removeChild path)
+      const meta = createMockWindow({ id: 101, wm_class: "Google-chrome" });
+      const real = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, meta);
+      tabCon.insertBefore(real, ph1);
+      tabCon.removeChild(ph1);
+      expect(tabCon.childNodes.includes(real)).toBe(true);
+      expect(tabCon.childNodes.includes(ph1)).toBe(false);
+      expect(tabCon.childNodes.includes(ph2)).toBe(true);
+    });
+  });
 });
+
+function isPlaceholderAlive(node) {
+  return !!(node && node.parentNode && node.placeholder);
+}

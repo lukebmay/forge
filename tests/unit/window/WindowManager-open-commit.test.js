@@ -654,6 +654,18 @@ describe("WindowManager open commit (CL4)", () => {
     expect(lcSpy).not.toHaveBeenCalled();
   });
 
+  it("CT1: endOpenLayoutBatch clears sticky _layoutBindPending", () => {
+    wm()._layoutBindPending = true;
+    expect(wm().beginOpenLayoutBatch()).toMatchObject({ ok: true, depth: 1 });
+    expect(wm()._layoutBindPending).toBe(true);
+    expect(wm().endOpenLayoutBatch("open-batch")).toMatchObject({
+      ok: true,
+      depth: 0,
+      wasActive: true,
+    });
+    expect(wm()._layoutBindPending).toBe(false);
+  });
+
   it("does not requestLayout for external geom while open pending", () => {
     const onExt = vi.spyOn(wm().layoutController, "onExternalGeometry");
     const meta = trackNew({ id: "no-early", wm_class: "org.example.NoEarly" });

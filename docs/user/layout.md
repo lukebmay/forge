@@ -342,6 +342,22 @@ leaves residuals put (open+move only).
 
 Kept companions and claimed role windows are never closed.
 
+### Cold apply (empty desk)
+
+On a **cold empty** desk (no claimed role windows), one `forge layout <name>`:
+
+1. **Skeleton** — mon splits + tab/stack groups + slot-tagged placeholder tiles  
+2. **Open** missing roles (parallel under LayoutBatch)  
+3. **Bind** each mapped window into its skeleton slot  
+4. **Order / size / focus** once  
+5. Residuals (close by default) **after** bind  
+
+Thrash detection may still print on stderr for info; it does **not** force Mode B
+park mid-open or mid-bind. Mode B remains for true mid-session chaos (scrambled
+desk with existing role windows), not as a second cold pass.
+
+Settled re-run on a perfect tree stays a no-op (`nothing to do`).
+
 ### Thrash modes (auto)
 
 Every reconcile plan detects desk health (`plan.thrashState`) and picks a mode:
@@ -349,7 +365,7 @@ Every reconcile plan detects desk health (`plan.thrashState`) and picks a mode:
 | Mode | When | Behavior |
 | --- | --- | --- |
 | **A collect** | Desk looks sane | Open gaps, move wrong-mon roles, tab marginals into overlapping views |
-| **B thrash-recover** | Thrash detected | Place roles only; soft-park every other tiled window to last mon last group |
+| **B thrash-recover** | Mid-session thrash (not cold empty / not mid-bind) | Place roles only; soft-park every other tiled window to last mon last group |
 
 Human stderr (dry-run and apply) includes:
 
@@ -361,12 +377,13 @@ Human stderr (dry-run and apply) includes:
   thrashRisk  N (…optional plan-risk reasons when score > 0)
 ```
 
-Default product path **auto recovers** with Mode B when thrashed (no refuse gate).
-`--safe` still reports Mode A/B but only emits open/move actions.
+Cold empty path uses skeleton+bind (above), not Mode B. Mid-session thrash still
+auto Mode B parks when not clean. `--safe` still reports Mode A/B but only emits
+open/move actions.
 
 Companions stacked under a role with VSPLIT/HSPLIT (including nested CONs)
 stay **Mode A**: they tab into that view. Only true thrash (wrong mon, excess
-mon children, multi-role tab groups broken) uses Mode B park.
+mon children, multi-role tab groups broken) uses Mode B park mid-session.
 
 Optional top-level `floating` lists float roles (from `--keep-floats` or hand
 edit). Apply claims matching windows so residual close leaves them alone; it

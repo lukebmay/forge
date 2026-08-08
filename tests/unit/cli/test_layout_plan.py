@@ -15,6 +15,9 @@ if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
 from layout_plan import (  # noqa: E402
+    build_bind_actions,
+    build_ensure_skeleton_action,
+    collect_layout_placeholders,
     collect_windows,
     compare_layout_structure,
     detect_thrash,
@@ -840,6 +843,19 @@ class TestPlanEmpty(unittest.TestCase):
         self.assertEqual(len(roles_open), 7)
         # no park of nonexistent
         self.assertFalse(any(a["op"] == "park" for a in plan["actions"]))
+        # CT1: skeleton before opens; no thrash-driven park; no windowless ensure
+        ops = [a["op"] for a in plan["actions"]]
+        self.assertIn("ensure_skeleton", ops)
+        self.assertEqual(ops[0], "ensure_skeleton")
+        sk_idx = ops.index("ensure_skeleton")
+        open_idx = ops.index("open")
+        self.assertLess(sk_idx, open_idx)
+        self.assertEqual(plan["counts"].get("skeleton"), 1)
+        self.assertTrue(plan.get("coldEmpty"))
+        self.assertFalse(any(a["op"] == "ensure_layout" for a in plan["actions"]))
+        self.assertFalse(any(a["op"] == "park" for a in plan["actions"]))
+        # thrash report-only (empty desk not Mode B)
+        self.assertFalse(plan["thrashState"]["thrashed"])
 
     def test_empty_profile_closes_all(self):
         """Empty roles profile + clean → close every window (layout clean)."""
@@ -3143,13 +3159,325 @@ class TestEnsureLayout(unittest.TestCase):
         forest = _load("tree-empty.json")
         profile = _load("profile-dev-v2.json")
         plan = plan_reconcile(forest, profile)
+        # CT1 cold empty: skeleton owns topology; no window-anchored ensure_layout
         ensures = [a for a in plan["actions"] if a["op"] == "ensure_layout"]
-        slots = {a["slot"] for a in ensures}
-        # Empty forest: no window anchors → skip mon-level ensure (would demote tabs)
-        self.assertNotIn("mon0", slots)
-        self.assertNotIn("mon1", slots)
-        self.assertIn("mon0.left-tab", slots)
-        self.assertIn("mon1.comms", slots)
+        self.assertEqual(ensures, [])
+        sk = [a for a in plan["actions"] if a["op"] == "ensure_skeleton"]
+        self.assertEqual(len(sk), 1)
+        mon_slots = {m.get("slot") for m in sk[0].get("mons") or []}
+        self.assertIn("mon0", mon_slots)
+        self.assertIn("mon1", mon_slots)
+        # Nested tab units present under mon children
+        all_child_slots = []
+        for m in sk[0]["mons"]:
+            for ch in m.get("children") or []:
+                all_child_slots.append(ch.get("slot"))
+        self.assertIn("mon0.left-tab", all_child_slots)
+        self.assertIn("mon1.comms", all_child_slots)
+
+
+class TestColdSkeletonCt1(unittest.TestCase):
+    """CT1: skeleton-first cold path; Mode B only for mid-session thrash."""
+
+    def test_skeleton_action_shape(self):
+        prof = validate_reconcile_profile(_load("profile-dev-v2.json"))
+        sk = build_ensure_skeleton_action(prof, workspace=0)
+        self.assertIsNotNone(sk)
+        self.assertEqual(sk["op"], "ensure_skeleton")
+        self.assertEqual(sk["workspace"], 0)
+        mon0 = next(m for m in sk["mons"] if m["slot"] == "mon0")
+        self.assertEqual(mon0["split"], "hsplit")
+        kids = {c["id"]: c for c in mon0["children"]}
+        self.assertEqual(kids["left-tab"]["mode"], "tabbed")
+        self.assertEqual(kids["left-tab"]["roles"], ["chrome-luke", "grok"])
+        self.assertNotIn("mode", kids["term"])
+        self.assertEqual(kids["term"]["roles"], ["ghostty-left"])
+
+    def test_phase_order_skeleton_open_no_park(self):
+        plan = plan_reconcile(_load("tree-empty.json"), _load("profile-dev-v2.json"))
+        ops = [a["op"] for a in plan["actions"]]
+        self.assertEqual(ops[0], "ensure_skeleton")
+        self.assertTrue(all(o in ("ensure_skeleton", "open") for o in ops))
+        self.assertNotIn("park", ops)
+        self.assertNotIn("ensure_layout", ops)
+
+    def test_perfect_still_nothing_to_do(self):
+        plan = plan_reconcile(_load("tree-perfect.json"), _load("profile-dev-v2.json"))
+        self.assertTrue(plan["nothingToDo"])
+        self.assertEqual(plan["actions"], [])
+        self.assertFalse(plan.get("coldEmpty"))
+
+    def test_mid_session_thrash_still_mode_b_park(self):
+        plan = plan_reconcile(
+            _load("tree-thrash-mode-b-companions.json"),
+            _load("profile-dev-v2.json"),
+        )
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        self.assertFalse(plan.get("coldEmpty"))
+        self.assertGreater(plan["counts"]["parked"], 0)
+        self.assertTrue(any(a["op"] == "park" for a in plan["actions"]))
+        self.assertFalse(any(a["op"] == "ensure_skeleton" for a in plan["actions"]))
+
+    def test_bind_from_placeholders(self):
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo0ws0",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "placeholder": True,
+                                    "layoutRole": "chrome-luke",
+                                    "layoutSlot": "mon0.left-tab",
+                                    "windowId": "forge-ph-1",
+                                    "wmClass": "forge-placeholder",
+                                    "title": "forge-ph:mon0.left-tab:chrome-luke",
+                                    "mode": "TILE",
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "placeholder": True,
+                                    "layoutRole": "grok",
+                                    "layoutSlot": "mon0.left-tab",
+                                    "windowId": "forge-ph-2",
+                                    "wmClass": "forge-placeholder",
+                                    "title": "forge-ph:mon0.left-tab:grok",
+                                    "mode": "TILE",
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "placeholder": True,
+                            "layoutRole": "ghostty-left",
+                            "layoutSlot": "mon0.term",
+                            "windowId": "forge-ph-3",
+                            "wmClass": "forge-placeholder",
+                            "title": "forge-ph:mon0.term:ghostty-left",
+                            "mode": "TILE",
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo1ws0",
+                    "children": [],
+                },
+            ],
+        }
+        phs = collect_layout_placeholders(forest)
+        self.assertEqual(len(phs), 3)
+        # Placeholders must not be claim candidates
+        wins = collect_windows(forest)
+        self.assertEqual(wins, [])
+        role_results = [
+            {
+                "id": "chrome-luke",
+                "slot": "mon0.left-tab",
+                "status": "reused",
+                "windowId": 101,
+            },
+            {
+                "id": "grok",
+                "slot": "mon0.left-tab",
+                "status": "reused",
+                "windowId": 102,
+            },
+            {
+                "id": "ghostty-left",
+                "slot": "mon0.term",
+                "status": "reused",
+                "windowId": 103,
+            },
+        ]
+        binds = build_bind_actions(role_results, phs)
+        self.assertEqual(len(binds), 3)
+        self.assertTrue(all(b["op"] == "bind" for b in binds))
+        roles = {b["role"] for b in binds}
+        self.assertEqual(roles, {"chrome-luke", "grok", "ghostty-left"})
+
+    def test_residual_just_opened_suppresses_thrash_park(self):
+        """just_opened_roles → no Mode B park even if forest looks thrashed."""
+        plan = plan_reconcile(
+            _load("tree-thrash-mode-b-companions.json"),
+            _load("profile-dev-v2.json"),
+            just_opened_roles={"chrome-luke", "grok"},
+        )
+        self.assertTrue(plan["thrashState"]["thrashed"])
+        # keep_others false, clean default True → close not park; thrash park off
+        # With clean=True, residuals close (not park). Ensure thrash did not park.
+        self.assertEqual(plan["counts"]["parked"], 0)
+        plan_keep = plan_reconcile(
+            _load("tree-thrash-mode-b-companions.json"),
+            _load("profile-dev-v2.json"),
+            clean=False,
+            just_opened_roles={"chrome-luke"},
+        )
+        # Without keep_others and residual leave default + thrash suppressed → left
+        # Profile residual is leave unless thrash forces park — suppressed here.
+        self.assertEqual(plan_keep["counts"]["parked"], 0)
+
+    def _ph_ghostty_forest(self, *, with_junk=True, with_role_win=True):
+        """Layout PH mon0.term + optional real ghostty + junk residual."""
+        kids = [
+            {
+                "nodeType": "WINDOW",
+                "placeholder": True,
+                "layoutRole": "ghostty",
+                "layoutSlot": "mon0.term",
+                "windowId": "forge-ph-term",
+                "wmClass": "forge-placeholder",
+                "title": "forge-ph:mon0.term:ghostty",
+                "mode": "TILE",
+            }
+        ]
+        if with_role_win:
+            kids.append(
+                {
+                    "nodeType": "WINDOW",
+                    "windowId": 501,
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "ghostty",
+                    "mode": "TILE",
+                }
+            )
+        if with_junk:
+            kids.append(
+                {
+                    "nodeType": "WINDOW",
+                    "windowId": 999,
+                    "wmClass": "org.gnome.Nautilus",
+                    "title": "Files",
+                    "mode": "TILE",
+                }
+            )
+        return {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo0ws0",
+                    "children": kids,
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo1ws0",
+                    "children": [],
+                },
+            ],
+        }
+
+    def _ghostty_only_profile(self):
+        return {
+            "version": 2,
+            "mode": "reconcile",
+            "overflow": {"slot": "mon0.overflow", "layout": "tabbed"},
+            "layout": {
+                "mon0": {
+                    "split": "hsplit",
+                    "children": [{"id": "term", "roles": ["ghostty"]}],
+                }
+            },
+            "roles": [
+                {
+                    "id": "ghostty",
+                    "match": {"class": "com.mitchellh.ghostty"},
+                    "open": {"app": "ghostty"},
+                    "slot": "mon0.term",
+                }
+            ],
+        }
+
+    def test_residual_bind_before_close(self):
+        """CT0 P5: layout PHs + just_opened + junk → bind before residual close."""
+        forest = self._ph_ghostty_forest(with_junk=True, with_role_win=True)
+        plan = plan_reconcile(
+            forest,
+            self._ghostty_only_profile(),
+            clean=True,
+            just_opened_roles={"ghostty"},
+        )
+        ops = [a["op"] for a in plan["actions"]]
+        self.assertIn("bind", ops)
+        self.assertIn("close", ops)
+        self.assertLess(ops.index("bind"), ops.index("close"))
+        self.assertFalse(any(a["op"] == "ensure_layout" for a in plan["actions"]))
+        self.assertEqual(plan["counts"]["bound"], 1)
+        self.assertEqual(plan["counts"]["closed"], 1)
+
+    def test_residual_bind_before_park(self):
+        """CT0 P5: bind barrier before residual park (keep_others)."""
+        forest = self._ph_ghostty_forest(with_junk=True, with_role_win=True)
+        plan = plan_reconcile(
+            forest,
+            self._ghostty_only_profile(),
+            clean=False,
+            keep_others=True,
+            just_opened_roles={"ghostty"},
+        )
+        ops = [a["op"] for a in plan["actions"]]
+        self.assertIn("bind", ops)
+        self.assertIn("park", ops)
+        self.assertLess(ops.index("bind"), ops.index("park"))
+
+    def test_cold_empty_with_junk_no_close_on_first_plan(self):
+        """Cold first plan: skeleton+open only; defer residual close to replan."""
+        # Empty roles claim + junk present → still coldEmpty (all roles open).
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo0ws0",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 999,
+                            "wmClass": "org.gnome.Nautilus",
+                            "title": "Files",
+                            "mode": "TILE",
+                        }
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo1ws0",
+                    "children": [],
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, self._ghostty_only_profile(), clean=True)
+        self.assertTrue(plan.get("coldEmpty"))
+        ops = [a["op"] for a in plan["actions"]]
+        self.assertEqual(ops[0], "ensure_skeleton")
+        self.assertIn("open", ops)
+        self.assertNotIn("close", ops)
+        self.assertNotIn("park", ops)
+        self.assertEqual(plan["counts"]["closed"], 0)
+        # Junk deferred as left (residual replan after open/bind closes it).
+        self.assertEqual(plan["counts"]["left"], 1)
+
+    def test_has_layout_ph_skips_structure_without_just_opened(self):
+        """layout PHs alone prefer bind path (no hybrid ensure_layout invent)."""
+        forest = self._ph_ghostty_forest(with_junk=False, with_role_win=True)
+        plan = plan_reconcile(forest, self._ghostty_only_profile())
+        self.assertFalse(plan.get("coldEmpty"))
+        ops = [a["op"] for a in plan["actions"]]
+        self.assertIn("bind", ops)
+        self.assertFalse(any(a["op"] == "ensure_layout" for a in plan["actions"]))
+        self.assertNotIn("ensure_skeleton", ops)
 
 
 class TestMarginalCoexist(unittest.TestCase):
