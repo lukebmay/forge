@@ -6,6 +6,10 @@ import {
   hitTestDropZoneAt,
   pointInPolygon,
   rectContainsPoint,
+  polygonBoundingRect,
+  zonePaintRects,
+  zonePaintRect,
+  PAINT_ZONE_ORDER,
 } from "../../../lib/extension/drop-zones.js";
 import { DROP_ZONES as UTILS_DROP_ZONES } from "../../../lib/extension/utils.js";
 
@@ -240,5 +244,46 @@ describe("hitTestDropZone", () => {
     expect(hitTestDropZone(z, [240, 400])).toBe(DROP_ZONES.LEFT);
     // Just outside C on top → TOP
     expect(hitTestDropZone(z, [500, 190])).toBe(DROP_ZONES.TOP);
+  });
+});
+
+describe("zone paint partition (D2)", () => {
+  const landscape = { x: 0, y: 0, width: 1000, height: 800 };
+
+  it("zonePaintRects covers full unit without overlap area", () => {
+    const z = buildDropZones(landscape);
+    const rects = zonePaintRects(z);
+    expect(rects).not.toBeNull();
+    expect(rects[DROP_ZONES.CENTER]).toMatchObject({ x: 250, y: 200, width: 500, height: 400 });
+    expect(rects[DROP_ZONES.TOP]).toMatchObject({ x: 0, y: 0, width: 1000, height: 200 });
+    expect(rects[DROP_ZONES.BOTTOM]).toMatchObject({ x: 0, y: 600, width: 1000, height: 200 });
+    expect(rects[DROP_ZONES.LEFT]).toMatchObject({ x: 0, y: 200, width: 250, height: 400 });
+    expect(rects[DROP_ZONES.RIGHT]).toMatchObject({ x: 750, y: 200, width: 250, height: 400 });
+
+    // Area of five rects equals unit area (non-overlapping partition).
+    let area = 0;
+    for (const zKey of PAINT_ZONE_ORDER) {
+      const r = rects[zKey];
+      area += r.width * r.height;
+    }
+    expect(area).toBe(landscape.width * landscape.height);
+  });
+
+  it("zonePaintRect picks one zone; NONE/null safe", () => {
+    const z = buildDropZones(landscape);
+    expect(zonePaintRect(z, DROP_ZONES.LEFT)).toMatchObject({
+      x: 0,
+      y: 200,
+      width: 250,
+      height: 400,
+    });
+    expect(zonePaintRect(z, DROP_ZONES.NONE)).toBeNull();
+    expect(zonePaintRect(null, DROP_ZONES.TOP)).toBeNull();
+  });
+
+  it("polygonBoundingRect of center matches C", () => {
+    const z = buildDropZones(landscape);
+    const bb = polygonBoundingRect(z.center.polygon);
+    expect(bb).toMatchObject({ x: 250, y: 200, width: 500, height: 400 });
   });
 });

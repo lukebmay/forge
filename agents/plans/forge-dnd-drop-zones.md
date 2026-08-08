@@ -7,10 +7,11 @@
 
 ### Session note
 
-**D0 done:** pure geometry in `lib/extension/drop-zones.js` + vitest
-`tests/unit/extension/drop-zones.test.js`. API: `buildDropZones`,
-`hitTestDropZone`, `hitTestDropZoneAt`, `DROP_ZONES` (utils re-exports).
-**Next: D1** wire drag-drop detect → new geometry (do not paint yet).
+**D0–D3 done.** Hit: `drag-drop.js` uses `buildDropZones` + `hitTestDropZone`.
+Paint: five `St.Bin` zones under container (`window-tilepreview-zone` + hover
+class); clear on grab-end/failsafe. No-op: `_isNoOpDrop` kept (same-slot /
+self). Pure paint: `zonePaintRects` / `PAINT_ZONE_ORDER`.
+**Next: D4** cross-mon target refresh + live dual-4K smoke.
 
 ---
 
@@ -104,9 +105,9 @@ While drag-tile is active and pointer is over a valid unit:
 | ID | Work |
 | --- | --- |
 | **D0** | Pure geometry: build zones from rect; point test; unit tests — **done** |
-| **D1** | Wire `detectDropZone` → new geometry; keep semantics table |
-| **D2** | Paint all five regions + hover emphasis; failsafe/clear |
-| **D3** | Explicit no-op path + regression (same-slot VSPLIT) |
+| **D1** | Wire hit → D0 geometry; keep semantics table — **done** |
+| **D2** | Paint all five regions + hover emphasis; failsafe/clear — **done** |
+| **D3** | Explicit no-op path + regression (same-slot VSPLIT) — **done** |
 | **D4** | Cross-mon target refresh + live smoke dual 4K |
 
 ---
@@ -120,4 +121,4 @@ While drag-tile is active and pointer is over a valid unit:
 
 ### Next
 
-**D1** wire `detectDropZone` / drag-drop hover to `hitTestDropZone` (no paint yet).
+**D4** cross-mon target refresh + live dual-4K operator smoke.
