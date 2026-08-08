@@ -1,6 +1,6 @@
 # Plan: cold layout topology (one-shot, no Mode B patch-over)
 
-**Status:** ready — first task is design lock  
+**Status:** active — CT0 done; **CT1 implement next**  
 **Priority:** P0 (daily driver cold `forge layout dev`)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Depends on:** apply-contract AC1–AC6 (done); thrash-zero Mode A/B (done, **not** the fix here)  
@@ -87,8 +87,8 @@ Open design choices (task 0 must lock):
 
 | ID | Task | Status |
 | --- | --- | --- |
-| **CT0** | [Design lock](../tasks/forge-layout-cold-topology_ct0-design.md) | **ready** |
-| **CT1** | [Skeleton-first implement](../tasks/forge-layout-cold-topology_ct1-skeleton.md) | ready (after CT0) |
+| **CT0** | [Design lock](./completed/forge-layout-cold-topology_ct0-design.md) | **done** (approved) |
+| **CT1** | [Skeleton-first implement](../tasks/forge-layout-cold-topology_ct1-skeleton.md) | **ready** |
 | **CT2** | [Wayland live one-shot](../tasks/forge-layout-cold-topology_ct2-wayland-live.md) | ready (after CT1) |
 | **CT3** | [X11 live one-shot](../tasks/forge-layout-cold-topology_ct3-x11-live.md) | ready (after CT1; parallel CT2) |
 
@@ -104,6 +104,155 @@ Open design choices (task 0 must lock):
 
 ---
 
+## CT0 design lock (2026-08-08)
+
+**Status:** **approved 2026-08-08** (human) — CT1 implement unlocked  
+**Grounded in:** current `_layout_run_reconcile` / `plan_reconcile` / `_layoutOp` / AC4 placeholders
+
+### Diagnosis (locked)
+
+Cold failure is **construction order**, not settle thrash:
+
+```text
+today: open all → residual replan (often Mode B) → belt → postOpenRetry
+want:  skeleton → open → bind to slots → size/focus → residual only
+```
+
+Today structure is **window-anchored**: empty desk → plan has only `open`;
+`ensure_layout` is skipped without `windowId`; residual replan joins live
+maps and thrash Mode B parks companions. AC1–AC6 residual-geom stand; they
+do not fix this.
+
+### 1. Skeleton — what exists before role maps
+
+**Choice: slot-tagged placeholders as mon-child units (extend AC4).**
+
+| Unit | Before any role map |
+| --- | --- |
+| Mon with hsplit/vsplit ≥2 children | MONITOR layout set; one mon-direct TILE **placeholder leaf per mon child** (term pane = one PH; multi-role tab pane = **one TABBED CON** with N PH leaves in profile order) |
+| Multi-role tab/stack group | TABBED/STACKED CON under mon (or under nested split CON), children = placeholders tagged `slot` + `role` |
+| Nested h/v under mon child | Nested CON + PH leaves for each leaf role (same as today after join, but pre-built) |
+
+**Why placeholders (not bare empty CONs):**
+
+- `cleanTree()` drops empty CONs and flattens single-child CONs — bare empty
+  bags do not survive.
+- AC4 already has first-class TILE stubs (`createPlaceholderLeaf`,
+  `forge-placeholder`, GetTree-visible) that **do** survive prune.
+- Bind = **replace PH with real window** (or move real onto PH then drop PH)
+  — same isolation path as fail-open.
+- Single-role mon child still gets a PH so mon hsplit has two mon-direct
+  children before maps (no “first map owns mon”).
+
+**Not chosen:** invent durable empty CONs + cleanTree exemptions (more
+policy surface, fights existing collapse rules). **Not chosen:** CLI-only
+reorder of existing ops (no selector without a window).
+
+### 2. Phases (one CLI invocation; internal barriers)
+
+```text
+P0  Resolve profile + live candidates (class/title). NO thrash residual policy.
+P1  Skeleton commit (RunSteps, freezeRender OK):
+      ensure_skeleton → mon splits + tab/stack CONs + slot-tagged PHs
+      Barrier: tree shape matches profile mon-child topology (PHs count).
+P2  LayoutBatch begin → parallel open (PlaceNext mon hint only).
+      NO Mode B. NO structure rewrite from thrash. NO residual park mid-open.
+P3  Bind: each mapped role → claim PH (slot/role tag) → replace/move into slot.
+      Async OK per role; structure not rebuilt from race.
+P4  When all opened roles bound (or timeout + fail-open PH for missing):
+      ensure_order + ensure_sizes + focus once.
+P5  Residuals close/park **after** bind barrier (profile / --keep-others / --clean).
+P6  Thrash detect **report-only** on cold happy path; Mode B recover only if
+      operator --recover or mid-session chaos (existing product), never auto
+      mid-batch. Drop cold postOpenRetry as success path (optional chaos only).
+```
+
+**Parallel:** P2 opens parallel; P3 binds as maps arrive. **Barrier before P5:**
+bind complete for launched roles. **Barrier before Mode B:** never on cold
+default.
+
+### 3. When thrashState may run
+
+| Moment | Allowed? |
+| --- | --- |
+| Initial cold plan (P0–P1) | Detect optional for stderr **info only**; **must not** force residual park or role-only structure |
+| During open/bind (P2–P3) | **Forbidden** as policy driver |
+| After P4 sizes/focus | Report; Mode B only with `--recover` or separate mid-session thrash path |
+| Settled re-run (perfect tree) | `nothingToDo`; thrash false |
+
+`--safe` unchanged: open+move only, no skeleton mutation beyond moves if already structured.
+
+### 4. Extension APIs
+
+| Op / change | Role |
+| --- | --- |
+| **New** plan action `ensure_skeleton` (or `skeleton`) | Pure plan emits mon tree: slots, modes, role ids, optional shares — **no windowIds** |
+| **New** RunSteps `skeleton` (or multi-step create-placeholder + layout) | Build mon children + CONs + PHs; tag PH with `layoutSlot` / `layoutRole` (GetTree fields) |
+| **Bind** | Prefer replace-PH-with-window; reuse move+drop-PH if simpler in CT1 |
+| Existing `ensure_layout` / move / order / size / focus | Keep for mid-session repair and settled re-run structure fix; cold happy path prefers skeleton+bind |
+| LayoutBatch / PlaceNext | Keep; PlaceNext mon path only during P2 (attach to sibling optional when PH already mon-local) |
+| entered-monitor rehome | Suppress while layout epoch “bind pending” / openLayoutBatchActive (extend existing suppress) |
+
+**CLI:** `_layout_run_reconcile` reorders to skeleton RunSteps **before** opens;
+residual replan after open is **bind+order+size+focus+residual**, not Mode B
+structure invention. Demote `postOpenRetry` off default success path.
+
+### 5. Failure / placeholders
+
+- Failed open: leave role PH (fail-open isolate AC4) or float client + PH —
+  **same product rules as apply-contract**.
+- Residual close never deletes claimed role windows; PHs are not “residuals”
+  to close as apps — drop only after successful bind or explicit cancel.
+- Float / Guake / floating[] claim rules unchanged.
+
+### 6. Tests (CT1 unit bar — no “plan twice”)
+
+| Fixture / assert | Intent |
+| --- | --- |
+| `tree-empty` + `profile-dev-v2` | Plan emits `ensure_skeleton` (or equiv) **before** opens; no thrash-driven park on empty |
+| Skeleton mapper | `actions_to_extension_steps` / new mapper produces skeleton steps without windowIds |
+| Phase order pure | One plan model: skeleton → open → bind → order/size/focus; Mode B park **absent** on cold empty |
+| Perfect tree | Still `nothingToDo` (idempotent) |
+| Extension unit | create skeleton under mock mon; bind replaces PH; cleanTree does not strip slot PHs mid-wave |
+
+Live CT2/CT3 remain operator one-shot checks (not unit).
+
+### CT1 implement scope (files)
+
+| Area | Files |
+| --- | --- |
+| Plan | `scripts/forge/layout_plan.py` — skeleton actions; thrash policy gate for cold |
+| Apply map | `scripts/forge/layout_apply.py` — map skeleton; phase order |
+| Orchestrator | `scripts/forge/forge` `_layout_run_reconcile` — skeleton pre-open; demote postOpenRetry |
+| RunSteps schema | `lib/extension/run-steps.js` |
+| Dispatch | `lib/extension/session-api.js` — skeleton op / PH create + layout |
+| Tree / PH | `lib/extension/tree.js`, `layout-placeholder.js` — slot/role tags; bind replace |
+| Batch suppress | `lib/extension/window.js` (entered-monitor / rehome while bind pending) |
+| Tests | `tests/unit/cli/test_layout_plan.py`, `test_layout_apply.py`, fixtures; optional extension unit for PH skeleton |
+| Docs (wrap-up) | `docs/user/layout.md` cold section; DECISIONS row |
+
+**Out of CT1:** live Wayland/X11 (CT2/CT3); gdisplays; Mode B rewrite for mid-session (keep as-is).
+
+### Explicit non-use of Mode B on cold happy path
+
+- No `force_park_residuals` from thrash during P0–P5 cold default.
+- No postOpenRetry that re-enters Mode B to “finish” cold topology.
+- Mode B remains for true mid-session chaos / explicit recover.
+
+### Open only if spike blocks CT1
+
+| Risk | Fallback |
+| --- | --- |
+| GetTree cannot carry slot tags on PH | Encode slot in PH title/`id` (`forge-ph:mon0.s0:chrome`) for claim |
+| Mon layout without real window selector | Skeleton op sets MONITOR/CON layout by path, not `_layoutOp` window selector |
+| PlaceNext fights PH mon child | Bind-only after map; PlaceNext mon index only |
+
+---
+
 ## Session note
 
-**2026-08-08:** Plan opened after reboot incident. Cold Mode B residual = architectural. Operator: X11 is also daily driver — CT3 required. gdisplays greeter/session plan is shellrc-side. Next: CT0 design lock on `plan/forge-layout-cold-topology`.
+**2026-08-08 (CT0 done):** Design approved by human. Skeleton = slot-tagged AC4
+placeholders; thrash not policy during open/bind; Mode B not cold success path.
+**Next:** CT1 implement on `plan/forge-layout-cold-topology`. After CT2/CT3 live
+pass, plan a **cleanup sweep** to remove cold Mode B / multi-replan fallbacks
+that the new path makes dead (see PRIORITY post queue).

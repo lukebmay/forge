@@ -1,9 +1,9 @@
 # CT0 — Cold layout topology: design lock
 
-**Status:** ready  
-**Plan:** [forge-layout-cold-topology.md](../plans/forge-layout-cold-topology.md)  
-**Branch:** `plan/forge-layout-cold-topology` (create from master when starting implement)  
-**Owner:** agent + human approve design before CT1 code  
+**Status:** done  
+**Plan:** [forge-layout-cold-topology.md](../../forge-layout-cold-topology.md)  
+**Branch:** `plan/forge-layout-cold-topology`  
+**Owner:** agent + human — **approved 2026-08-08**  
 
 ---
 
@@ -45,13 +45,16 @@ A short design section in the plan (or `docs/DESIGN.md` pointer) that answers:
 
 ## Acceptance
 
-- [ ] Written design approved (or iterated once) with human  
-- [ ] Explicit **non**-use of Mode B on cold happy path  
-- [ ] CT1 implement scope listed (files, ops)  
-- [ ] No code required for CT0 unless spike proves an API gap  
+- [x] Written design in plan (CT0 design lock section)  
+- [x] Written design **approved** with human (2026-08-08)  
+- [x] Explicit **non**-use of Mode B on cold happy path (locked in plan)  
+- [x] CT1 implement scope listed (files, ops)  
+- [x] No code required for CT0 (spike only if PH/GetTree gaps block CT1)  
 
 ---
 
 ## Session note
 
-Created 2026-08-08 for handoff. Start after login (Wayland *or* X11 — both daily drivers). Do not implement CT1 until design lock. CT3 X11 live is required parity, not optional smoke.
+**2026-08-08:** CT0 complete. Design approved. Skeleton = slot-tagged AC4
+placeholders; phases skeleton→open→bind→size→residual; Mode B not cold happy
+path. Unlocks CT1 on `plan/forge-layout-cold-topology`.
