@@ -23,7 +23,7 @@
 | **Live X11** | Dual-ws + layout + theme + apply-contract AC6 | agent | **Green** |
 | **Live Wayland** | Residual re-smoke + thrash dump | agent | **2026-08-08** — Mode B green; nested-CON residual |
 | **Live session** | DPMS / blank-wake | **human** B-manual | Open hard |
-| **Soft eyes** | AP5 visual matrix | **human** B-ap5 | Soft |
+| **Soft eyes** | AP5 visual matrix | **human** | **Done** 2026-08-08 |
 | **Post-RC** | ignore mode, SL3 seed drop, container motion, … | later | Mid / design |
 
 **Operator next:** **log out** (disk has chrome-through-residual + mon0 nested hoist) →
@@ -60,7 +60,7 @@ tab\|ghostty → eyes focus-walk (AP5) → optional DPMS → push/tag when ready
 | **done RC** | Wayland residual re-smoke (agent) | Mode B recover; logout for tip still |
 | **P0 human** | Logout + AP5 eyes after tip load | Soft matrix / visual |
 | **P1 human** | [session verify](./blockers/B-manual-black-session-verify.md) | Hard |
-| **soft** | [AP5 op visual](./blockers/B-ap5-operator-visual-matrix.md) | Soft |
+| **done** | [AP5 op visual](./blockers/completed/B-ap5-operator-visual-matrix.md) | Soft eyes 2026-08-08 |
 | **mid** | [window ignore mode](./tasks/forge-window-ignore-mode.md) | ready, not RC |
 | **post-RC** | [container motion](./plans/forge-container-motion-design.md) | Design |
 

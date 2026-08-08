@@ -139,6 +139,15 @@ forge layout clean          # closes all windows on the current workspace
 forge layout clean --dry-run
 ```
 
+**Keep floats on save:** default omits FLOAT windows so clean profiles wipe them.
+Pass `--keep-floats` to record Guake (etc.) under `floating[]`; apply claims those
+matches and will not close them as residuals.
+
+```bash
+forge layout save desk --keep-floats
+forge layout save clean --keep-floats   # empty tiles + floating Guake kept on apply
+```
+
 Write path (overwrites if present):
 
 ```text
@@ -152,7 +161,7 @@ $FORGE_LAYOUT_DIR/hosts/<host>/<name>.json
 | Shape | **Bare JSON array** when possible (string cells + tab lists); object form only when needed |
 | Strings | App token is both open target and match seed (`google-chrome`, `Grok`, `ghostty`) |
 | Description | Optional; pure auto one-liners are omitted on save (`list`/`show` recompute). Custom text is kept |
-| Floating | Omitted when empty; present only if float windows were captured |
+| Floating | Omitted by default; use `--keep-floats` to capture FLOAT windows |
 | Write | Host path above; creates parent dirs; **overwrites** existing file |
 | Counts | stderr: mon counts + wrote path / host / name |
 
@@ -359,7 +368,9 @@ Companions stacked under a role with VSPLIT/HSPLIT (including nested CONs)
 stay **Mode A**: they tab into that view. Only true thrash (wrong mon, excess
 mon children, multi-role tab groups broken) uses Mode B park.
 
-Optional top-level `floating` is reserved for float roles (omit when empty).
+Optional top-level `floating` lists float roles (from `--keep-floats` or hand
+edit). Apply claims matching windows so residual close leaves them alone; it
+does not open missing floats or re-float tiled windows.
 
 ### Defaults (omit noise)
 

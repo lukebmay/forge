@@ -59,6 +59,7 @@ def capture_tiles_profile(
     *,
     description: Optional[str] = None,
     workspace: Optional[int] = None,
+    keep_floats: bool = False,
 ) -> dict[str, Any]:
     """
     Snapshot a GetTree forest into internal tiles mon-map sugar.
@@ -66,6 +67,9 @@ def capture_tiles_profile(
     workspace: 0-based Meta index; when set, only mon roots for that desk.
     When omitted and forest has activeWorkspace/currentWorkspace meta, save
     that desk only. Offline trees without meta keep prior prefer-ws0 pick.
+
+    keep_floats: include FLOAT windows under top-level ``floating`` (even when
+    tiles are empty). Default omits floats so empty/clean profiles close them.
 
     Call profile_for_output() for bare-array JSON write form.
     Validates via normalize_profile + validate_reconcile_profile.
@@ -150,17 +154,19 @@ def capture_tiles_profile(
             if wid is not None:
                 seen_float_ids.add(str(wid))
 
-    # Empty or float-only desk → empty profile (no tiled roles). Valid for
-    # `forge layout clean`: product close residuals wipe the desk. FLOAT
-    # windows are not saved as roles (floating IR is reserved / not claimed).
+    # Empty or float-only desk → empty tiles (no tiled roles). Valid for
+    # `forge layout clean`. With keep_floats, FLOAT cells are kept under
+    # floating[] and claimed on apply so residuals do not close them.
     out: dict[str, Any] = {}
     if description:
         out["description"] = description
     out["tiles"] = tiles
-    # Omit empty floating for max sugar (defaults to none on load).
-    # Also omit when tiles empty so empty/clean profiles close floats too.
-    if floating and tiles:
+    keep_floats = bool(keep_floats)
+    if floating and (tiles or keep_floats):
         out["floating"] = floating
+    elif floating and not keep_floats:
+        # Seen floats counted in stats only (default clean-empty path).
+        pass
 
     focus_token = _focus_token_from_forest(forest, mons) if tiles else None
     if focus_token is not None:
@@ -177,8 +183,10 @@ def capture_tiles_profile(
         "mons": mon_window_counts,
         "windows": sum(mon_window_counts.values()),
         "floating": len(floating),
+        "floatingSaved": len(out.get("floating") or []),
         "bareMonOrder": bare_order,
-        "empty": not tiles,
+        "empty": not tiles and not out.get("floating"),
+        "keepFloats": keep_floats,
     }
     return out
 

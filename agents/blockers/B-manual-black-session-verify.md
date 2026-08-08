@@ -8,7 +8,7 @@
 **Unblocks:** agents/plans/forge-harden-and-session.md; **RC confidence** on lock/DPMS/session  
 **Priority:** P1  
 **Created:** 2026-08-05  
-**Updated:** 2026-08-06  
+**Updated:** 2026-08-08  
 
 ## RC relevance
 
@@ -18,8 +18,8 @@ are green; live blank/wake + real layout path remain operator-owned. Not design 
 ## What the human must do
 
 - [ ] On host `black`, exercise DPMS blank/wake
-- [ ] Run real `gdisplays load` / layout path used daily
-- [ ] Run a real `forge layout dev` (or current daily layout) and confirm layout behavior
+- [x] Run real `gdisplays load` / layout path used daily (operator: cold layout OK 2026-08-08)
+- [x] Run a real `forge layout dev` (or current daily layout) and confirm layout behavior
 - [ ] Note any multi-monitor thrash or shell abort
 
 ## Done when
@@ -30,3 +30,18 @@ Daily-driver confidence is recorded, or new failure modes are filed as agent tas
 
 Automated unit/regression for monitor-recovery landed; live multi-monitor/session checks remain
 operator-owned. CLI rename: `workon` → `forge layout`.
+
+
+## DPMS helper (2026-08-08)
+
+Shellrc: `session-sleep` (also forge `scripts/forge/trigger-idle-lock.zsh`).
+
+```sh
+session-sleep status
+session-sleep blank --hold=5 --force
+session-sleep idle --idle-delay=12
+session-sleep idle-blank --idle-delay=10   # closest to overnight
+session-sleep lock --force
+session-sleep suspend --force              # full system sleep
+session-sleep restore                      # if timers left shortened
+```

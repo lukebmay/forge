@@ -73,7 +73,7 @@ Mode B recover + known nested-CON / Guake float residuals; hard DPMS still human
 
 - hard: B-manual-black-session-verify (DPMS / lock)  
 - hard: resize-autotile-design  
-- soft: B-ap5-operator-visual-matrix  
+- soft: B-ap5 **done** 2026-08-08 (PWA flicker likely Chrome)
 - **done agent:** Wayland residual re-smoke (Mode B path green; logout for tip)  
 
 ---

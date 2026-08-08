@@ -390,6 +390,52 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertEqual(plan["actions"][0]["op"], "close")
         self.assertEqual(plan["actions"][0]["windowId"], 9001)
 
+    def test_keep_floats_saves_and_protects_on_clean(self):
+        """--keep-floats records FLOAT cells; clean claim leaves them open."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo0ws0",
+                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                    "stableKey": "geom:0,0,1000,1000#primary",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "layout": None,
+                            "rect": {
+                                "x": 0,
+                                "y": 0,
+                                "width": 100,
+                                "height": 100,
+                            },
+                            "percent": 0,
+                            "userSized": False,
+                            "children": [],
+                            "wmClass": "Guake",
+                            "title": "Guake",
+                            "windowId": 42,
+                            "pid": 42,
+                            "monitor": 0,
+                            "mode": "FLOAT",
+                        }
+                    ],
+                }
+            ],
+        }
+        raw = capture_tiles_profile(forest, keep_floats=True)
+        self.assertEqual(raw.get("tiles"), {})
+        self.assertIn("floating", raw)
+        self.assertTrue(raw["floating"])
+        out = profile_for_output(raw)
+        self.assertIsInstance(out, dict)
+        self.assertIn("floating", out)
+        plan = plan_reconcile(forest, out, clean=True)
+        self.assertEqual(plan["counts"]["closed"], 0)
+        self.assertFalse(any(a.get("op") == "close" for a in plan["actions"]))
+
     def test_stderr_counts(self):
         forest = _load("tree-perfect.json")
         raw = capture_tiles_profile(forest)

@@ -2626,6 +2626,7 @@ def _layout_run_save(
     description_flag: Optional[str] = None,
     no_description: bool = False,
     monitors: bool = False,
+    keep_floats: bool = False,
 ) -> int:
     """Snapshot GetTree → tiles sugar; write host profile or print with --stdout."""
     try:
@@ -2651,7 +2652,9 @@ def _layout_run_save(
     workspace = _layout_target_workspace(forest)
 
     try:
-        profile = capture_tiles_profile(forest, workspace=workspace)
+        profile = capture_tiles_profile(
+            forest, workspace=workspace, keep_floats=bool(keep_floats)
+        )
     except ValueError as e:
         _eprint(f"forge layout save: {e}")
         return 1
@@ -2839,6 +2842,7 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
             description_flag=desc_flag,
             no_description=no_desc,
             monitors=bool(getattr(args, "monitors", False)),
+            keep_floats=bool(getattr(args, "keep_floats", False)),
         )
 
     if action != "run":
@@ -3948,6 +3952,15 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "With save: emit explicit mon0/mon1/… keys (no mon fold on mismatch). "
             "Default save is bare array (implicit mons via live monitor count)"
+        ),
+    )
+    layout_p.add_argument(
+        "--keep-floats",
+        action="store_true",
+        dest="keep_floats",
+        help=(
+            "With save: include FLOAT windows under floating[] (e.g. Guake). "
+            "Default omits floats so empty/clean profiles close them on apply"
         ),
     )
     layout_p.set_defaults(func=cmd_layout)

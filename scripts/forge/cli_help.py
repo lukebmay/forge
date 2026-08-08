@@ -155,6 +155,7 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
         ("forge layout save <name>", "Snapshot current desk → host profile (no : or @ in name)"),
         ("forge layout save <name> --tree-file F", "Offline save from GetTree JSON"),
         ("forge layout save <name> --stdout", "Print JSON only (no write)"),
+        ("forge layout save <name> --keep-floats", "Include FLOAT windows (Guake, …)"),
         ("forge layout save <name> --description T", "Set description (no prompt)"),
         ("forge layout save <name> --no-description", "Omit description key"),
         ("forge layout <name> --dry-run", "Plan only (human + plan JSON; mode A/B)"),
@@ -339,6 +340,11 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
         dim(" (meta activeWorkspace + nWorkspaces; else mon ids / ws0)", **kw),
     )
     _out(s, "  • Save sketch: ", cmd("forge layout save mydesk", **kw), "  (bare array when possible)")
+    _out(
+        s,
+        "  • Keep Guake on save: ",
+        cmd("forge layout save mydesk --keep-floats", **kw),
+    )
     _out(s, "  • In-tree examples: ", cyan("scripts/forge/examples/layout-tiles-minimal.json", **kw), dim(" (bare)", **kw))
     _out(s, "                    ", cyan("scripts/forge/examples/layout-tiles-nested.json", **kw))
     _out(s, "                    ", cyan("scripts/forge/examples/layout-minimal.json", **kw), dim(" (IR)", **kw))

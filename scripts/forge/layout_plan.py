@@ -2171,6 +2171,9 @@ def plan_reconcile(
                     )
         role_results.append(entry)
 
+    # floating[]: claim matching windows so clean/park residuals leave them alone.
+    _claim_floating_windows(prof.get("floating") or [], windows, claimed)
+
     # Mode A collect: assign marginals to views (coexist). Mode B / --safe: skip.
     slot_members = (
         _build_slot_membership(role_results, parent_info, windows, prof, forest)
@@ -2967,6 +2970,77 @@ def window_matches(w: dict[str, Any], match: dict[str, Any]) -> bool:
                 return False
 
     return True
+
+
+def _floating_cell_to_match(cell: Any) -> Optional[dict[str, Any]]:
+    """Role-cell sugar → match dict for floating claim (no open required)."""
+    if isinstance(cell, str):
+        token = cell.strip()
+        if not token:
+            return None
+        _open_spec, match = _infer_open_and_match(token)
+        return match if isinstance(match, dict) and match else None
+    if not isinstance(cell, dict):
+        return None
+    match = cell.get("match")
+    if isinstance(match, str) and match.strip():
+        return {"class": match.strip()}
+    if isinstance(match, dict) and match:
+        return dict(match)
+    flat: dict[str, Any] = {}
+    if cell.get("class") is not None:
+        flat["class"] = cell.get("class")
+    if cell.get("title~=") is not None:
+        flat["title~="] = cell.get("title~=")
+    elif cell.get("title") is not None:
+        flat["title"] = cell.get("title")
+    if flat:
+        return flat
+    app = cell.get("app")
+    if app is not None and str(app).strip():
+        _open_spec, match = _infer_open_and_match(str(app).strip())
+        if isinstance(match, dict) and match:
+            return match
+    return None
+
+
+def _claim_floating_windows(
+    floating: Any,
+    windows: list[dict[str, Any]],
+    claimed: set[str],
+) -> int:
+    """
+    Mark windows matching profile floating[] as claimed (no open/structure).
+
+    Returns number of windows claimed. Each floating cell claims at most one
+    free match so clean residuals leave Guake / other floats alone.
+    """
+    if not isinstance(floating, list) or not floating:
+        return 0
+    n = 0
+    for cell in floating:
+        match = _floating_cell_to_match(cell)
+        if not match:
+            continue
+        candidates = [
+            w
+            for w in windows
+            if _window_key(w) not in claimed and window_matches(w, match)
+        ]
+        if not candidates:
+            continue
+        # Prefer FLOAT mode when present (Guake vs accidental title match).
+        floats = [
+            w
+            for w in candidates
+            if str(w.get("mode") or "").upper() == "FLOAT"
+        ]
+        pick = floats[0] if floats else candidates[0]
+        key = _window_key(pick)
+        if key:
+            claimed.add(key)
+            n += 1
+    return n
 
 
 def _match_mon_pref(match: dict[str, Any], slot_mon: Optional[int]) -> Optional[int]:

@@ -1,6 +1,6 @@
 # B-ap5-operator-visual-matrix — AP5 visual gesture matrix on X11
 
-**Status:** open  
+**Status:** done  
 **Severity:** soft  
 **Owner:** human  
 **Kind:** verify  
@@ -8,7 +8,7 @@
 **Unblocks:** full AP5 sign-off (agent install/HUP already green)  
 **Priority:** P1  
 **Created:** 2026-08-06  
-**Updated:** 2026-08-06  
+**Updated:** 2026-08-08  
 
 ## RC relevance
 
@@ -34,3 +34,12 @@ Checklist ticked or failures filed as agent tasks.
 
 Agent AP5: install + HUP no SEGV; extension ACTIVE; `npm test` green.
 See completed task note under `plans/forge-action-pipeline/completed/`.
+
+
+## Operator note (2026-08-08)
+
+Eyes-on after cold/partial layout: focus walk OK. One residual: Gmail/Voice PWA
+tab focus flickered ~2 times when first becoming the open leaf after re-open,
+then stabilized. Assessed as likely Chrome PWA paint + first slot reassert
+(not a new Forge restack bug); not reopened as agent task unless it returns
+after fully settled windows.
