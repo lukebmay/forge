@@ -6,6 +6,7 @@ import {
   shouldTabInsteadOfSplit,
   resolveOpenAppPlacement,
   matchPendingDockLaunch,
+  monitorIndexFromPoint,
   normalizeDockAppId,
   DOCK_LAUNCH_TTL_MS,
 } from "../../../lib/extension/lft-mru.js";
@@ -317,6 +318,29 @@ describe("resolveOpenAppPlacement", () => {
     expect(r.isDock).toBe(true);
     expect(r.homeMonitor).toBe(0);
     expect(r.attachLft).toBe(lft0);
+  });
+});
+
+describe("monitorIndexFromPoint", () => {
+  const geos = [
+    { x: 0, y: 0, width: 1920, height: 1080 },
+    { x: 1920, y: 0, width: 1920, height: 1080 },
+  ];
+
+  it("hits left then right mon", () => {
+    expect(monitorIndexFromPoint(100, 100, geos)).toBe(0);
+    expect(monitorIndexFromPoint(2000, 50, geos)).toBe(1);
+  });
+
+  it("boundary at mon edge is right mon", () => {
+    expect(monitorIndexFromPoint(1920, 0, geos)).toBe(1);
+    expect(monitorIndexFromPoint(1919, 0, geos)).toBe(0);
+  });
+
+  it("outside all → -1; empty → -1", () => {
+    expect(monitorIndexFromPoint(-1, 0, geos)).toBe(-1);
+    expect(monitorIndexFromPoint(0, 0, [])).toBe(-1);
+    expect(monitorIndexFromPoint(NaN, 0, geos)).toBe(-1);
   });
 });
 

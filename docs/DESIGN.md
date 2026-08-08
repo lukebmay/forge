@@ -533,7 +533,9 @@ easy to poison with floats (Guake) and ignored per-monitor dock intent.
 3. **Dock open (when detectable):** sticky dock mon (`move_to_monitor` + short
    grace against re-home races); attach **LFT(m)** else mon root. Detection:
    `noteDockLaunch` / `_forgeDockMonitor`, plus best-effort `Shell.App`
-   activate/open_new_window hook (skips overview).
+   `activate` / `open_new_window` / `activate_full` hook (skips overview).
+   Dock mon = **pointer geometry** at launch (not focus/`get_current_monitor`
+   alone). Open-under-focus must never rehome a dock plan off that mon.
 4. **Insert:** LFT in TABBED/STACKED → insert after LFT; else aspect split of LFT
    rect (taller → VSPLIT, else HSPLIT).
 

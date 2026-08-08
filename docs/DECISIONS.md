@@ -11,3 +11,4 @@ set Status=`superseded` and add a new row (do not rewrite history silently).
 | D004 | 2026-08-07 | meta-probe | P0 | active | Core apps 5×; sticky trials; per-app write; sleep inhibit; thrash delay sweeps | Sleep/crash lost matrices; open_warm piled windows; need thrash-free inter-op D for engine rewrite |
 | D005 | 2026-08-07 | meta-probe | P0 | active | Meta baseline: multi-op thrash-free at D=0 (Forge off) on black | Core apps green; product thrash is Forge-induced, not Meta floor |
 | D006 | 2026-08-07 | layout | P0 | active | Thrash/fail-open → float client + placeholder TILE leaf; never forest reassert | One bad app must not unsettle forest; close PH = drop slot + one reflow |
+| D007 | 2026-08-08 | open-app | P1 | active | Dock sticky mon = pointer geometry; hook activate/open_new_window/activate_full; never rehome dock by focus | get_current_monitor/focus stole left-dock opens to right mon |

@@ -22,6 +22,10 @@ export class App {
     // GNOME Shell App.open_new_window
   }
 
+  activate_full(_timestamp, _workspace, _openNew) {
+    // GNOME Shell App.activate_full — some docks use this path
+  }
+
   create_icon_texture(size) {
     return {
       width: size,

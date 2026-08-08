@@ -315,6 +315,8 @@ describe("OP1 open-app placement policy", () => {
         // Activating an app notes launch on the *live* WM only.
         const app = new Shell.App({ id: "com.example.DockApp" });
         ctx2.display.get_current_monitor.mockReturnValue(1);
+        // Pointer on mon1 (x≥1920) so geometry path agrees with current mon.
+        global.get_pointer.mockReturnValue([2000, 100, 0]);
         app.activate();
         expect(ctx2.windowManager._pendingDockLaunches.some((e) => e.monitor === 1)).toBe(true);
         expect(wm()._pendingDockLaunches?.length ?? 0).toBe(0);
@@ -322,6 +324,84 @@ describe("OP1 open-app placement policy", () => {
         ctx2.cleanup();
         Shell.App.prototype._forgeDockWm = null;
       }
+    });
+
+    it("focus mon0 + dock sticky mon1 homes to mon1 after LFT(1)", () => {
+      const on0 = tileOn(0, { id: "focus0" });
+      const on1 = tileOn(1, { id: "lft1" });
+      wm().movePointerWith(on1.nodeWindow);
+      wm().movePointerWith(on0.nodeWindow);
+      expect(wm().lftMru.globalHead()).toBe(on0.nodeWindow);
+      global.display.get_focus_window.mockReturnValue(on0.metaWindow);
+
+      wm().noteDockLaunch(1, { appId: "org.gnome.Nautilus.desktop" });
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "dock-vs-focus",
+      });
+      metaWindow._forgeAppId = "org.gnome.Nautilus";
+
+      wm().trackWindow(null, metaWindow);
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      expect(metaWindow.get_monitor()).toBe(1);
+      expect(metaWindow._forgeDockStickyMon).toBe(1);
+      // After LFT(1), not mon0 focus tile.
+      expect(node.parentNode).toBe(on1.nodeWindow.parentNode);
+    });
+
+    it("hook notes mon from pointer geometry over get_current_monitor", () => {
+      wm()._tryInstallDockLaunchHook();
+      // Stale/wrong current mon (focus mon); pointer is on mon1.
+      ctx.display.get_current_monitor.mockReturnValue(0);
+      global.get_pointer.mockReturnValue([2000, 200, 0]);
+
+      const app = new Shell.App({ id: "com.example.PointerDock" });
+      app.activate();
+
+      const pending = wm()._pendingDockLaunches || [];
+      expect(pending.some((e) => e.monitor === 1 && e.appId === "com.example.PointerDock")).toBe(
+        true
+      );
+    });
+
+    it("activate_full records dock launch when wrapped", () => {
+      wm()._tryInstallDockLaunchHook();
+      ctx.display.get_current_monitor.mockReturnValue(1);
+      global.get_pointer.mockReturnValue([2100, 50, 0]);
+
+      const app = new Shell.App({ id: "com.example.FullActivate" });
+      expect(typeof app.activate_full).toBe("function");
+      app.activate_full(0, null, true);
+
+      expect(
+        (wm()._pendingDockLaunches || []).some(
+          (e) => e.monitor === 1 && e.appId === "com.example.FullActivate"
+        )
+      ).toBe(true);
+    });
+
+    it("focus-steal does not rehome when isDock", () => {
+      const on0 = tileOn(0, { id: "steal-focus" });
+      const on1 = tileOn(1, { id: "dock-lft" });
+      wm().movePointerWith(on1.nodeWindow);
+      wm().movePointerWith(on0.nodeWindow);
+      global.display.get_focus_window.mockReturnValue(on0.metaWindow);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "no-steal",
+      });
+      metaWindow._forgeDockMonitor = 1;
+
+      const plan = wm()._planOpenAppPlacement(metaWindow);
+      expect(plan.isDock).toBe(true);
+      expect(plan.homeMonitor).toBe(1);
+      expect(plan.attachLft).toBe(on1.nodeWindow);
+      // Focus mon0 must not replace home or attach.
+      expect(plan.attachLft).not.toBe(on0.nodeWindow);
     });
 
     it("dock sticky grace rejects re-home flip", () => {
