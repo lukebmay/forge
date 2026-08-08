@@ -5,7 +5,9 @@ Helpers for **installing**, **backing up**, and **migrating** this Forge tree
 is the **`forge`** CLI (DBus), not these zsh tools.
 
 UUID is always `forge@jmmaranan.com`. Any install **replaces** the live
-extension in place — backup first if you care about a previous build.
+extension in place — install/update **disable** the loaded extension first
+(EGO / jcrussell / luke / unknown), then swap files, so Shell does not thrash
+on an in-place `rm -rf`. Backup first if you care about a previous build.
 
 ## Preferred user path
 
@@ -27,9 +29,9 @@ git tree to use. It also symlinks `~/.local/bin/forge` → this tree’s CLI.
 
 | Current install | What `./install` does |
 | --- | --- |
-| none / unknown | build + install this tree |
-| luke / jcrussell | in-place rebuild from this tree |
-| EGO / SweetTooth | full migrate (`migrate-from-ego`: backup + translate settings) |
+| none | build + install this tree |
+| luke / jcrussell / unknown | disable → rebuild this tree over the live extension |
+| EGO / SweetTooth | full migrate (`migrate-from-ego`: backup + disable/uninstall + translate) |
 
 Default output is a short ✓/✗ checklist. Use `--verbose` / `FORGE_VERBOSE=1` for
 full make/npm chatter. Opt out of Shell reload with `--no-restart`.

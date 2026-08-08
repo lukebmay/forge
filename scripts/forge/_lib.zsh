@@ -338,6 +338,51 @@ sys.exit(0)
 PY
 }
 
+# Disable Forge (or $1 UUID) before replacing/removing extension files.
+# Unloading first avoids Shell thrash when the same UUID dir is rm -rf'd
+# while the extension is still loaded.
+#
+# Status on stdout (one line): disabled | already-off | not-installed | skip | fail
+# Logs on stderr. Returns 0 for disabled/already-off/not-installed/skip; 1 for fail.
+# Best-effort: missing gnome-extensions → skip (return 0) so offline tests can proceed.
+forge_disable_extension() {
+  local uuid="${1:-$FORGE_UUID}"
+
+  if [[ "$uuid" == "$FORGE_UUID" ]] && ! forge_ext_installed; then
+    forge_info "disable: $uuid not installed"
+    print -r -- "not-installed"
+    return 0
+  fi
+
+  if ! command -v gnome-extensions >/dev/null 2>&1; then
+    forge_warn "gnome-extensions not found — cannot disable $uuid before replace"
+    print -r -- "skip"
+    return 0
+  fi
+
+  if ! gnome-extensions list --enabled 2>/dev/null | grep -qx "$uuid"; then
+    forge_info "disable: $uuid already off"
+    print -r -- "already-off"
+    return 0
+  fi
+
+  if gnome-extensions disable "$uuid" 2>/dev/null; then
+    # Confirm when possible (list may lag briefly; treat command success as ok).
+    if gnome-extensions list --enabled 2>/dev/null | grep -qx "$uuid"; then
+      forge_warn "disable $uuid reported ok but still listed enabled"
+      print -r -- "fail"
+      return 1
+    fi
+    forge_ok "disabled $uuid (before replace)"
+    print -r -- "disabled"
+    return 0
+  fi
+
+  forge_warn "disable $uuid failed"
+  print -r -- "fail"
+  return 1
+}
+
 # Enable Forge after clearing session block. Retries once if still off.
 # Returns 0 when list --enabled contains UUID.
 forge_enable_extension() {

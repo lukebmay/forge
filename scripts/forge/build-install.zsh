@@ -30,9 +30,12 @@ Options:
   --color=auto|always|never
   -h, --help
 
+Any replace of an existing install disables $FORGE_UUID first, then rm + copy
+temp/ (safe for EGO / jcrussell / luke / unknown sharing the same UUID).
+
 Safe migrate order (EGO → this tree):
   1. build-install.zsh --build-only     # old Forge still running
-  2. uninstall.zsh                      # removes code only
+  2. uninstall.zsh                      # disable + remove code only
   3. build-install.zsh --install-only   # copies verified temp/
 
 Requirements:
@@ -139,10 +142,15 @@ forge_do_build() {
 forge_do_install() {
   forge_verify_temp_build
 
+  local _replace_lineage="none" _dis_st
   if forge_ext_installed; then
     if ! forge_confirm "Replace installed Forge with built temp/?"; then
       forge_die "aborted"
     fi
+    # Same UUID for EGO / jcrussell / luke — never rm while Shell still has it loaded.
+    _replace_lineage=$(forge_detect_lineage)
+    _dis_st=$(forge_disable_extension "$FORGE_UUID" || true)
+    forge_info "pre-replace disable: $_dis_st (lineage=$_replace_lineage)"
   fi
 
   forge_hdr "Install temp/ → $FORGE_EXT_DIR"

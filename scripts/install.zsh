@@ -26,16 +26,22 @@ usage() {
   cat <<EOF
 ${c_bold}install${c_reset} — install on-disk Forge from this git tree
 
-Default (no flags): build → install → enable → disable rival tilers →
-host defaults → CLI → reload
+Default (no flags): build → disable previous (if any) → install → enable →
+disable rival tilers → host defaults → CLI → reload
 Shell on X11. Quiet checklist UX (no prompts for routine paths).
+
+Safely replaces any prior EGO / jcrussell / luke / unknown install of the same
+UUID (${c_cyan}forge@jmmaranan.com${c_reset}): detects lineage, ${c_bold}disables${c_reset}
+the loaded extension, then replaces files (avoids Shell thrash/logout from
+rm -rf under a still-enabled extension). ${c_blue}forge update${c_reset} uses this path.
 
 Disables other GNOME Shell tiling extensions (Tiling Assistant, Pop Shell,
 PaperWM, …) so they cannot fight Forge. Does not touch session WMs (i3/sway).
 
-  none / unknown     → build + install this tree
-  luke / jcrussell   → rebuild this tree over the live extension
-  ego (SweetTooth)   → migrate with auto-backup (migrate-from-ego)
+  none               → build + install this tree
+  luke / jcrussell   → disable → rebuild this tree over the live extension
+  unknown            → disable → replace (backup by default)
+  ego (SweetTooth)   → migrate with auto-backup (migrate-from-ego; disable first)
 
 Records install origin at:
   ${c_cyan}~/.local/share/forge-manage/install-origin.json${c_reset}
@@ -219,6 +225,23 @@ build_args=(--force --build-only)
 [[ "$MODE" == "prod" ]] && build_args+=(--prod) || build_args+=(--dev)
 (( SKIP_NPM )) && build_args+=(--skip-npm)
 _install_step "Build" "$SCRIPT_DIR/build-install.zsh" "${build_args[@]}"
+
+# Unload before install-only rm (defense-in-depth also inside forge_do_install).
+if [[ "$lineage" != "none" ]]; then
+  _dis_st=$(forge_disable_extension "$FORGE_UUID" || true)
+  case "$_dis_st" in
+    disabled|already-off|not-installed)
+      forge_step_ok "Disable previous ($lineage)"
+      ;;
+    skip)
+      forge_step_warn "Disable previous ($lineage) — gnome-extensions missing"
+      ;;
+    *)
+      forge_step_warn "Disable previous ($lineage) (${_dis_st:-fail})"
+      ;;
+  esac
+  unset _dis_st
+fi
 
 install_args=(--force --install-only --no-enable --no-host-defaults)
 _install_step "Install extension" "$SCRIPT_DIR/build-install.zsh" "${install_args[@]}"
