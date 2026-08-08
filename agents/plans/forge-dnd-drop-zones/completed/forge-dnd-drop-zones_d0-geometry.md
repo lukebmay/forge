@@ -1,6 +1,6 @@
 # Task: D0 — Pure drop-zone geometry
 
-**Status:** in progress  
+**Status:** done  
 **Plan:** forge-dnd-drop-zones  
 **Branch:** `plan/forge-dnd-drop-zones`  
 **Created:** 2026-08-08  
@@ -32,12 +32,29 @@ Target unit rect `U` (frame):
 
 ## Acceptance
 
-- [ ] Geometry matches plan formulas
-- [ ] Center wins over edge bands when inside C
-- [ ] Trapezoid hit tests cover full U without gaps (except maybe exact edges shared)
-- [ ] Vitest green for new tests
-- [ ] No live Shell install required
+- [x] Geometry matches plan formulas
+- [x] Center wins over edge bands when inside C
+- [x] Trapezoid hit tests cover full U without gaps (except maybe exact edges shared)
+- [x] Vitest green for new tests
+- [x] No live Shell install required
 
 ## Non-goals
 
 D1 wire, D2 paint, D3 no-op polish, D4 live smoke.
+
+## Session note
+
+**Shipped (D0):** Pure five-zone geometry in `lib/extension/drop-zones.js` +
+`tests/unit/extension/drop-zones.test.js` (19 tests green).
+
+| Export | Role |
+| --- | --- |
+| `DROP_ZONES` | Canonical enum (utils re-exports) |
+| `buildDropZones(rect)` | `{ unit, center{rect+poly}, top/right/bottom/left{polygon} }` |
+| `hitTestDropZone(zones, point)` | CENTER > trapezoids > nearest-edge residual; outside → NONE |
+| `hitTestDropZoneAt(rect, point)` | D1 convenience |
+| `pointInPolygon` / `rectContainsPoint` | pure helpers |
+
+**Not wired:** drag-drop.js still uses `calculateDropRegions` / `detectDropZone` (D1).
+
+**Next:** D1 wire `detectDropZone` → new geometry; keep semantics table.

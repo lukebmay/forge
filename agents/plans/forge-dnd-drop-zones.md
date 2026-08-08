@@ -7,9 +7,10 @@
 
 ### Session note
 
-Operator specified geometry + semantics. Immediate bugs (cross-mon targets,
-same-slot HSPLIT) are separate small fixes; **this plan is the full indicator
-redesign** — do not partially ship trapezoids until ready.
+**D0 done:** pure geometry in `lib/extension/drop-zones.js` + vitest
+`tests/unit/extension/drop-zones.test.js`. API: `buildDropZones`,
+`hitTestDropZone`, `hitTestDropZoneAt`, `DROP_ZONES` (utils re-exports).
+**Next: D1** wire drag-drop detect → new geometry (do not paint yet).
 
 ---
 
@@ -102,7 +103,7 @@ While drag-tile is active and pointer is over a valid unit:
 
 | ID | Work |
 | --- | --- |
-| **D0** | Pure geometry: build zones from rect; point test; unit tests |
+| **D0** | Pure geometry: build zones from rect; point test; unit tests — **done** |
 | **D1** | Wire `detectDropZone` → new geometry; keep semantics table |
 | **D2** | Paint all five regions + hover emphasis; failsafe/clear |
 | **D3** | Explicit no-op path + regression (same-slot VSPLIT) |
@@ -119,4 +120,4 @@ While drag-tile is active and pointer is over a valid unit:
 
 ### Next
 
-**D0** pure geometry in progress.
+**D1** wire `detectDropZone` / drag-drop hover to `hitTestDropZone` (no paint yet).
