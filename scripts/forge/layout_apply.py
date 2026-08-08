@@ -481,6 +481,14 @@ def open_action_to_launch_fields(
     if attach is not None and str(attach).strip() != "":
         s = str(attach).strip()
         fields["attach_selector"] = s if s.startswith("id:") else f"id:{s}"
+    # Title identity for PlaceNext (Chrome multi-open / X11 shared wmClass).
+    oa_match = action.get("match") if isinstance(action.get("match"), dict) else {}
+    title_sub = oa_match.get("title~=")
+    title_exact = oa_match.get("title")
+    if title_sub is not None and str(title_sub).strip() != "":
+        fields["title_contains"] = str(title_sub).strip()
+    if title_exact is not None and str(title_exact).strip() != "":
+        fields["title_exact"] = str(title_exact).strip()
     return fields
 
 
@@ -871,6 +879,52 @@ def window_has_map_id(win: Any) -> bool:
     return wid is not None and str(wid).strip() != ""
 
 
+def _pending_title_exact(item: dict[str, Any]) -> Optional[str]:
+    """Exact title pin field from pending item (if any)."""
+    v = item.get("title_exact")
+    if v is not None and str(v).strip() != "":
+        return str(v).strip()
+    # Bare title only when no substring field is set.
+    if item.get("title_contains") is not None or item.get("title~=") is not None:
+        return None
+    v = item.get("title")
+    if v is not None and str(v).strip() != "":
+        return str(v).strip()
+    return None
+
+
+def _pending_title_contains(item: dict[str, Any]) -> Optional[str]:
+    """Substring / title~= pin field from pending item (if any)."""
+    for key in ("title_contains", "title~="):
+        v = item.get(key)
+        if v is not None and str(v).strip() != "":
+            return str(v).strip()
+    return None
+
+
+def window_matches_pin_title(win: dict[str, Any], item: dict[str, Any]) -> bool:
+    """
+    Title identity for map-pin (X11 Chrome PWAs share wmClass=Google-chrome).
+
+    No title constraint → True (class / accept_any decides).
+    With constraint → False until title is present and matches (do not early-claim).
+    """
+    if not isinstance(win, dict) or not isinstance(item, dict):
+        return False
+    exact = _pending_title_exact(item)
+    contains = _pending_title_contains(item)
+    if exact is None and contains is None:
+        return True
+    title = win.get("title")
+    if title is None:
+        return False
+    title_s = str(title)
+    if exact is not None:
+        return title_s == exact
+    assert contains is not None
+    return contains in title_s
+
+
 def assign_open_role_pins(
     pending: list[dict[str, Any]],
     windows: list[dict[str, Any]],
@@ -884,7 +938,12 @@ def assign_open_role_pins(
     pending items:
       - role: str (required for pin key)
       - wait_classes: list[str] | None — match wmClass when non-empty
+      - title_contains / title~= : substring title identity (Chrome multi-open)
+      - title_exact / title : exact title identity
       - accept_any_new: bool — claim any unused mapped window if no class list
+
+    Title constraints (when set) must match before a pin is taken — avoids
+    scrambling multiple Google-chrome maps that only differ by title later.
 
     Only windows with windowId and not in used_ids are candidates.
     Each windowId is assigned to at most one role (pending order wins).
@@ -914,14 +973,41 @@ def assign_open_role_pins(
         elif isinstance(classes, list):
             class_list = [str(c).strip() for c in classes if c and str(c).strip()]
         accept_any = bool(item.get("accept_any_new"))
+        need_title = (
+            _pending_title_exact(item) is not None
+            or _pending_title_contains(item) is not None
+        )
+
+        candidates = [w for w in pool if window_matches_pin_title(w, item)]
+        if need_title and not candidates:
+            return None
+
+        def _pop_from_pool(w: dict[str, Any]) -> dict[str, Any]:
+            for i, p in enumerate(pool):
+                if p is w or (
+                    str(p.get("windowId")).strip() == str(w.get("windowId")).strip()
+                ):
+                    return pool.pop(i)
+            # Should not happen; remove by identity fallback
+            pool.remove(w)
+            return w
+
+        search = candidates if need_title else pool
 
         if class_list:
-            for i, w in enumerate(pool):
+            for w in search:
                 cls = w.get("wmClass") if w.get("wmClass") is not None else w.get("wm_class")
                 if any(eq(cls, want) for want in class_list):
-                    return pool.pop(i)
+                    return _pop_from_pool(w)
+            # Title identity alone is enough when class list never appears on
+            # X11 (all PWAs stay Google-chrome) but title~= is set.
+            if need_title and search:
+                return _pop_from_pool(search[0])
             return None
+        if need_title and search:
+            return _pop_from_pool(search[0])
         if accept_any and pool:
+            # Never accept-any when a title constraint failed (already returned).
             return pool.pop(0)
         return None
 

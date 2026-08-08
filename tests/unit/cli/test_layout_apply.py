@@ -1180,6 +1180,102 @@ class TestCl9ParallelOpenPins(unittest.TestCase):
         self.assertEqual(out["missing"], ["missing"])
         self.assertIn("map wait timeout", out["error"] or "")
 
+    def test_assign_open_role_pins_title_disambiguates_chrome(self):
+        """X11: all PWAs share Google-chrome — title~= must pin, not open order."""
+        pending = [
+            {
+                "role": "google-chrome",
+                "wait_classes": ["Google-chrome"],
+                "title_contains": "Google Chrome",
+            },
+            {
+                "role": "Grok",
+                "wait_classes": ["Google-chrome", "chrome-ggjo-Default"],
+                "title_contains": "Grok",
+            },
+            {
+                "role": "Gmail",
+                "wait_classes": ["Google-chrome"],
+                "title_contains": "Gmail",
+            },
+        ]
+        # Map order is scrambled vs role open order (Gmail, Grok, about:blank).
+        windows = [
+            {"windowId": 1, "wmClass": "Google-chrome", "title": "Gmail - Inbox"},
+            {"windowId": 2, "wmClass": "Google-chrome", "title": "Grok"},
+            {
+                "windowId": 3,
+                "wmClass": "Google-chrome",
+                "title": "about:blank - Google Chrome",
+            },
+        ]
+        pins = assign_open_role_pins(pending, windows, used_ids=set())
+        self.assertEqual(
+            pins,
+            {"google-chrome": 3, "Grok": 2, "Gmail": 1},
+        )
+
+    def test_assign_open_role_pins_waits_when_title_missing(self):
+        pending = [
+            {
+                "role": "Grok",
+                "wait_classes": ["Google-chrome"],
+                "title_contains": "Grok",
+            }
+        ]
+        early = [{"windowId": 9, "wmClass": "Google-chrome", "title": ""}]
+        self.assertEqual(assign_open_role_pins(pending, early), {})
+        later = [{"windowId": 9, "wmClass": "Google-chrome", "title": "Grok"}]
+        self.assertEqual(assign_open_role_pins(pending, later), {"Grok": 9})
+
+    def test_wait_for_open_role_pins_title_polls_until_identity(self):
+        pending = [
+            {
+                "role": "Grok",
+                "wait_classes": ["Google-chrome"],
+                "title_contains": "Grok",
+            },
+            {
+                "role": "Gmail",
+                "wait_classes": ["Google-chrome"],
+                "title_contains": "Gmail",
+            },
+        ]
+        polls = {"n": 0}
+        t = {"v": 0.0}
+
+        def load():
+            polls["n"] += 1
+            if polls["n"] < 3:
+                # Mapped but titles not ready — must not pin by class alone.
+                return [
+                    {"windowId": 1, "wmClass": "Google-chrome", "title": ""},
+                    {"windowId": 2, "wmClass": "Google-chrome", "title": ""},
+                ]
+            return [
+                {"windowId": 1, "wmClass": "Google-chrome", "title": "Gmail - Inbox"},
+                {"windowId": 2, "wmClass": "Google-chrome", "title": "Grok"},
+            ]
+
+        def mono() -> float:
+            return t["v"]
+
+        def sleep_fn(s: float) -> None:
+            t["v"] += s
+
+        out = wait_for_open_role_pins(
+            load,
+            pending,
+            baseline_ids=set(),
+            timeout_ms=5000,
+            poll_ms=50,
+            sleep_fn=sleep_fn,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["role_pins"], {"Grok": 2, "Gmail": 1})
+        self.assertGreaterEqual(out["polls"], 3)
+
 
 class TestLaunchAppGhostty(unittest.TestCase):
     """LF4: forge.launch_app must not gio-launch single-instance Ghostty desktop."""

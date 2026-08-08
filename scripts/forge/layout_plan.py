@@ -2080,6 +2080,16 @@ def plan_reconcile(
                 "slot": slot,
                 "workspace": workspace,
             }
+            # Title identity for CL9 map-pin (X11 Chrome PWAs share wmClass).
+            role_match = role.get("match")
+            if isinstance(role_match, dict):
+                pin_match: dict[str, Any] = {}
+                if role_match.get("title~=") is not None:
+                    pin_match["title~="] = role_match.get("title~=")
+                if role_match.get("title") is not None:
+                    pin_match["title"] = role_match.get("title")
+                if pin_match:
+                    open_act["match"] = pin_match
             # Nested split: attach next to claimed sibling when known (PlaceNext).
             if not safe:
                 join_wid = _nested_split_join_dest(

@@ -1417,6 +1417,8 @@ def do_launch(
     tree_path: Optional[str] = None,
     attach_selector: Optional[str] = None,
     first: bool = False,
+    title_contains: Optional[str] = None,
+    title_exact: Optional[str] = None,
     print_result: bool = True,
     require_settled: bool = True,
 ) -> tuple[int, dict[str, Any]]:
@@ -1459,6 +1461,12 @@ def do_launch(
         place_opts["attachSelector"] = attach
     if place_class:
         place_opts["wmClass"] = place_class
+    tc = (title_contains or "").strip() if title_contains is not None else ""
+    te = (title_exact or "").strip() if title_exact is not None else ""
+    if tc:
+        place_opts["titleContains"] = tc
+    if te:
+        place_opts["titleExact"] = te
     if first:
         place_opts["first"] = True
     if place_opts and (
@@ -2217,13 +2225,20 @@ def _layout_run_reconcile(
                 except (TypeError, ValueError):
                     t_ms = open_timeout_ms
                 open_timeout_ms = max(open_timeout_ms, t_ms)
-                pending_pins.append(
-                    {
-                        "role": str(role),
-                        "wait_classes": wait_classes,
-                        "accept_any_new": accept_any,
-                    }
-                )
+                pin_entry: dict[str, Any] = {
+                    "role": str(role),
+                    "wait_classes": wait_classes,
+                    "accept_any_new": accept_any,
+                }
+                # Title identity from plan match (Chrome multi-open on X11).
+                oa_match = oa.get("match") if isinstance(oa.get("match"), dict) else {}
+                title_sub = oa_match.get("title~=")
+                title_exact = oa_match.get("title")
+                if title_sub is not None and str(title_sub).strip() != "":
+                    pin_entry["title_contains"] = str(title_sub).strip()
+                if title_exact is not None and str(title_exact).strip() != "":
+                    pin_entry["title_exact"] = str(title_exact).strip()
+                pending_pins.append(pin_entry)
 
             def _load_live_forest() -> dict[str, Any]:
                 return _layout_load_tree(backend, None)
@@ -2285,7 +2300,10 @@ def _layout_run_reconcile(
                 apply_log["treeStable"] = {"skipped": True}
 
             # CL9: unhide deferred FLOAT maps before residual structure apply.
-            # Keep LayoutBatch active so residual freeze still batches render.
+            # Then end the open batch before residual place. Keeping depth>0
+            # through residual made cross-mon chrome moves report ok but not
+            # stick (Mode B thrash-recover without batch works). Batch only
+            # needs to suppress mid-open render flood through map-pin wait.
             if batch_ok:
                 rel_ok, rel_payload = _layout_batch_call(backend, "release-deferred")
                 apply_log["layoutBatchRelease"] = rel_payload
@@ -2294,6 +2312,14 @@ def _layout_run_reconcile(
                         "forge layout: LayoutBatch release-deferred failed "
                         f"(continuing: {rel_payload.get('error')})"
                     )
+                end_ok, end_payload = _layout_batch_call(backend, "end")
+                apply_log["layoutBatchEnd"] = end_payload
+                if not end_ok:
+                    _eprint(
+                        "forge layout: LayoutBatch end before residual failed: "
+                        f"{end_payload.get('error')}"
+                    )
+                batch_ok = False  # finally: skip second end
 
             try:
                 # Prefer post-release GetTree so residual sees unhide modes,
@@ -2443,6 +2469,91 @@ def _layout_run_reconcile(
                             _layout_maybe_print_json(out, verbose=verbose, force=True)
                             return rc
                         plan = plan3
+
+                # Cold multi-open: first residual can land before Meta mon sticks.
+                # Quiet thrash-recover pass once titles/PlaceNext have settled.
+                try:
+                    time.sleep(0.45)
+                    forest4 = _load_live_forest()
+                    plan4 = plan_reconcile(
+                        forest4,
+                        data,
+                        clean=clean,
+                        safe=safe,
+                        role_pins=role_pins,
+                        just_opened_roles=set(role_pins.keys()),
+                        workspace=workspace,
+                    )
+                except Exception as e:
+                    _eprint(f"forge layout: post-open re-plan failed: {e}")
+                else:
+                    thrash4 = plan4.get("thrashState") or {}
+                    # Retry only when mon/structure still wrong (not focus-only).
+                    need_retry = bool(thrash4.get("thrashed")) or any(
+                        isinstance(a, dict)
+                        and (
+                            str(a.get("op") or "").strip().lower() == "move"
+                            or (
+                                str(a.get("op") or "").strip().lower()
+                                == "ensure_layout"
+                                and a.get("windowIds")
+                            )
+                        )
+                        for a in (plan4.get("actions") or [])
+                    )
+                    apply_log["postOpenRetry"] = {
+                        "needed": need_retry,
+                        "thrashed": bool(thrash4.get("thrashed")),
+                        "reasons": thrash4.get("reasons"),
+                    }
+                    if need_retry:
+                        retry_ext, _ = partition_plan_actions(plan4.get("actions"))
+                        retry_actions = [
+                            a
+                            for a in retry_ext
+                            if isinstance(a, dict)
+                            and str(a.get("op") or "").strip().lower()
+                            in (
+                                "move",
+                                "ensure_layout",
+                                "ensure_order",
+                                "ensure_sizes",
+                                "focus",
+                            )
+                        ]
+                        retry_steps, _ = residual_follow_up(
+                            retry_actions,
+                            [],
+                            force_close=force_close,
+                            workspace=workspace,
+                        )
+                        if retry_steps:
+                            retry_ids = move_step_window_ids(retry_steps)
+                            if retry_ids:
+                                apply_log["postOpenRetrySettle"] = (
+                                    wait_for_window_ids_settled(
+                                        backend, retry_ids, timeout_ms=2000
+                                    )
+                                )
+                            rc, agg = run_mixed_steps(
+                                backend,
+                                retry_steps,
+                                stop_on_error=True,
+                                print_each=False,
+                            )
+                            apply_log["postOpenRetryFollowUp"] = agg
+                            if rc != 0:
+                                _eprint("forge layout: post-open retry failed")
+                                out = _layout_plan_meta(
+                                    resolved, name, plan4, dry_run=False
+                                )
+                                out["ok"] = False
+                                out["apply"] = apply_log
+                                _layout_maybe_print_json(
+                                    out, verbose=verbose, force=True
+                                )
+                                return rc
+                            plan = plan4
 
             if still_open:
                 out = _layout_plan_meta(resolved, name, plan2, dry_run=False)

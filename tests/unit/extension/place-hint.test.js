@@ -186,6 +186,58 @@ describe("matchesPlaceHint", () => {
   it("rejects null hint", () => {
     expect(matchesPlaceHint({ wm_class: "A" }, null, now)).toBe(false);
   });
+
+  it("requires titleContains when set (Chrome multi-open)", () => {
+    const hint = {
+      wmClass: "chrome-ggjo-Default",
+      titleContains: "Grok",
+      monitor: 0,
+      expiresAt: now + 1000,
+    };
+    expect(matchesPlaceHint({ wm_class: "Google-chrome", title: "Grok" }, hint, now)).toBe(true);
+    expect(matchesPlaceHint({ wm_class: "Google-chrome", title: "Gmail" }, hint, now)).toBe(false);
+    expect(matchesPlaceHint({ wm_class: "Google-chrome", title: "" }, hint, now)).toBe(false);
+  });
+
+  it("does not match bare Google-chrome to PWA hint without title", () => {
+    const hint = {
+      wmClass: "chrome-ggjoabcdef-Default",
+      monitor: 1,
+      expiresAt: now + 1000,
+    };
+    expect(matchesPlaceHint({ wm_class: "Google-chrome" }, hint, now)).toBe(false);
+  });
+});
+
+describe("findMatchingPlaceHintIndex title preference", () => {
+  const now = 2_000_000;
+
+  it("picks title-matching PWA hint over LIFO loose class scramble", () => {
+    const queue = [
+      {
+        wmClass: "chrome-aaa-Default",
+        titleContains: "Grok",
+        monitor: 0,
+        expiresAt: now + 1000,
+      },
+      {
+        wmClass: "chrome-bbb-Default",
+        titleContains: "Gmail",
+        monitor: 1,
+        expiresAt: now + 1000,
+      },
+      {
+        wmClass: "chrome-ccc-Default",
+        titleContains: "YouTube",
+        monitor: 1,
+        expiresAt: now + 1000,
+      },
+    ];
+    const gmail = { wm_class: "Google-chrome", title: "Gmail - Inbox" };
+    expect(findMatchingPlaceHintIndex(queue, gmail, now)).toBe(1);
+    const grok = { wm_class: "Google-chrome", title: "Grok" };
+    expect(findMatchingPlaceHintIndex(queue, grok, now)).toBe(0);
+  });
 });
 
 describe("normalizePlaceHint", () => {
