@@ -103,14 +103,16 @@ if forge_ext_installed; then
   if ! forge_confirm "Replace installed Forge with EGO v$EGO_VERSION?"; then
     forge_die "aborted"
   fi
+  # Unload before zip/dir replace (shared UUID).
+  forge_disable_extension "$FORGE_UUID" >/dev/null || true
 fi
 
 # Prefer gnome-extensions install --force when available
 if gnome-extensions install --help 2>&1 | grep -q -- '--force'; then
   gnome-extensions install --force "$ZIP"
 else
-  # Manual install
-  gnome-extensions disable "$FORGE_UUID" 2>/dev/null || true
+  # Manual install (disable already attempted when replacing)
+  forge_disable_extension "$FORGE_UUID" >/dev/null || true
   rm -rf "$FORGE_EXT_DIR"
   mkdir -p "$FORGE_EXT_DIR"
   unzip -q -o "$ZIP" -d "$FORGE_EXT_DIR"

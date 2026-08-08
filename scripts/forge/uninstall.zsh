@@ -76,7 +76,8 @@ if (( ext_was || PURGE_CFG || PURGE_DCONF || ! KEEP_CLI )); then
 fi
 
 if (( ext_was )); then
-  gnome-extensions disable "$FORGE_UUID" 2>/dev/null || true
+  # Unload before delete (same UUID as EGO/jcrussell/luke).
+  forge_disable_extension "$FORGE_UUID" >/dev/null || true
   rm -rf "$FORGE_EXT_DIR"
   forge_ok "removed extension dir"
 fi
