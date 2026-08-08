@@ -147,10 +147,10 @@ non-reactive full-stage ~80% black dim with a large white spinner +
 “Forge: Loading layout…” centered on each monitor (`layout-apply-chrome.js`;
 title ≈ **7.5%** of that monitor’s **stage** height as **visual** size —
 CSS px = stage×ratio / `scale_factor` so St does not double-scale HiDPI —
-detail half that). Stays up through residual place after LayoutBatch end;
-cleared by `LayoutBatch chrome-clear` (CLI after residual), `disable()`, and
-always by a hard timer ≤ **30s** so chrome cannot stick. Disable: Preferences →
-Settings → Debugging, or
+detail half that). Cleared when opens settle and LayoutBatch ends — **before**
+residual place/structure (spinner need not cover rehome). CLI issues
+`LayoutBatch chrome-clear` after end (finally if still up); also `disable()` and
+a hard timer ≤ **30s**. Disable: Preferences → Settings → Debugging, or
 `gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled false`.
 
 ## Command dispatch flow

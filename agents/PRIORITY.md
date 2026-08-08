@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-08 (Wayland agent RC smoke)  
+**Updated:** 2026-08-08 (focus reassert off path; chrome clear before residual; B-manual done)  
 **Lens:** day-to-day impact on `black` (dual 4K, Shell 46 **Wayland**), not tidy purity.  
 **Cross-repo:** life P0 (finances / job search) outranks Forge; this file is **Forge only**.
 
@@ -22,13 +22,13 @@
 | **Code** | Mon-child giant-tab peel + float-only save UX | agent | **Done** (2026-08-07) |
 | **Live X11** | Dual-ws + layout + theme + apply-contract AC6 | agent | **Green** |
 | **Live Wayland** | Residual re-smoke + thrash dump | agent | **2026-08-08** — Mode B green; nested-CON residual |
-| **Live session** | DPMS / blank-wake | **human** B-manual | Open hard |
+| **Live session** | DPMS / blank-wake | **human** | **Done** layout OK; DPMS via `session-sleep` later |
 | **Soft eyes** | AP5 visual matrix | **human** | **Done** 2026-08-08 |
 | **Post-RC** | ignore mode, SL3 seed drop, container motion, … | later | Mid / design |
 
-**Operator next:** **log out** (disk has chrome-through-residual + mon0 nested hoist) →
-2-ghostty / cold `forge layout dev` → confirm chrome stays until place done + mon0
-tab\|ghostty → eyes focus-walk (AP5) → optional DPMS → push/tag when ready.
+**Operator next:** **log out** (tip: focus raise-only + chrome clears after batch end) →
+2-ghostty / cold `forge layout dev` → mon0 tab\|ghostty; spinner drops before residual →
+eyes focus-walk (AP5) → optional `session-sleep blank --force` → push/tag when ready.
 
 ---
 
@@ -59,7 +59,7 @@ tab\|ghostty → eyes focus-walk (AP5) → optional DPMS → push/tag when ready
 | **done** | [layout apply/settle AC1–AC6](./plans/forge-layout-apply-contract.md) | X11 live green 2026-08-07 |
 | **done RC** | Wayland residual re-smoke (agent) | Mode B recover; logout for tip still |
 | **P0 human** | Logout + AP5 eyes after tip load | Soft matrix / visual |
-| **P1 human** | [session verify](./blockers/B-manual-black-session-verify.md) | Hard |
+| **done** | [session verify](./blockers/completed/B-manual-black-session-verify.md) | Layout OK; DPMS deferred |
 | **done** | [AP5 op visual](./blockers/completed/B-ap5-operator-visual-matrix.md) | Soft eyes 2026-08-08 |
 | **mid** | [window ignore mode](./tasks/forge-window-ignore-mode.md) | ready, not RC |
 | **post-RC** | [container motion](./plans/forge-container-motion-design.md) | Design |

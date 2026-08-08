@@ -1,10 +1,10 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-08 (layout clean vs keep fix; Super peek hints)  
-**Branch:** `master` (disk install dirty tip; **Wayland needs logout**)  
-**Active P0 next:** logout → `layout dev` closes residuals; Super+drag hints with setting off  
+**Updated:** 2026-08-08 (focus no reassert; chrome clear before residual; B-manual done)  
+**Branch:** `task/layout-focus-chrome-session-sleep` → merge to master when ready  
+**Active P0 next:** logout → load tip; focus walk (no PWA flicker from reassert); chrome drops at batch end  
 **DnD redesign (later):** [forge-dnd-drop-zones.md](./plans/forge-dnd-drop-zones.md)  
-**Live smoke:** usable Wayland RC; operator DnD much better.
+**Live smoke:** usable Wayland RC; operator layout OK.
 
 ---
 
@@ -46,35 +46,32 @@ echo residual (350ms) → thrash → float + placeholder — never thrash the fo
 | `make dist` | zip builds |
 
 **RC call:** **usable daily-driver candidate**, not “perfect cold layout.” Ship bar =
-Mode B recover + known nested-CON / Guake float residuals; hard DPMS still human.
+Mode B recover + known nested-CON / Guake float residuals. B-manual closed (layout OK).
 
-### 2026-08-08 operator residuals (post Wayland reinstall)
+### 2026-08-08 product path updates (this task)
 
-1. **Apply chrome clears too early** — tied to LayoutBatch end (before residual place).  
-   **Fixed (disk):** chrome stays through residual; CLI `LayoutBatch chrome-clear` after place; hard cap **30s**.
-2. **Close all but 2 Ghostties → `layout dev`** left mon0 nested HSPLIT + mon1 tabs on mon0.  
-   Mode B thrash-recover moved mon1 roles; mon0 nested collapse remained unrepaired (`order` soft-no-op).  
-   **Fixed (disk):** structure detect mon-direct collapse; `_orderMonChildrenOp` **hoists** nested mon H/V panes + unwraps single-child VSPLIT.
-
-**Needs logout** to load extension tip. Then: thrash-recover (or cold 2-ghostty `layout dev`) should flatten mon0 to tab|ghostty; chrome should stay until tiles settle.
+1. **Focus tab/stack:** no `_reassertTabStackSiblingSlots` on focus (lastTabFocus + raise only).  
+   Geometry stays with render/verify — reduces Gmail/Voice PWA flicker on first tab selects.
+2. **Apply chrome:** clear at LayoutBatch **end** (before residual place). Hard cap **30s**.  
+   Spinner no longer covers residual rehome (~4s after maps settle).
+3. **session-sleep** (shellrc): testing API (blank/dpms/lock/suspend/wake sequences) vs settings API.
 
 ### Operator next (RC)
 
-1. **Log out → back in** (load tip with chrome + mon hoist).  
-2. Cold / 2-ghostty `forge layout dev` → mon0 tab\|ghostty, mon1 ghostty\|tab.  
-3. Confirm apply chrome stays until residual place finishes.  
-4. Eyes: focus walk no flash (soft AP5).  
-5. Optional DPMS (B-manual).  
-6. Push/tag only when human asks.
+1. **Log out → back in** (load tip).  
+2. Cold / 2-ghostty `forge layout dev` → mon0 tab\|ghostty; chrome drops when opens settle.  
+3. Eyes: tab focus walk on PWAs (no flash).  
+4. Optional DPMS: `session-sleep blank --force` / `wake`.  
+5. Push/tag only when human asks.
 
 ---
 
 ## Open human blockers
 
-- hard: B-manual-black-session-verify (DPMS / lock)  
 - hard: resize-autotile-design  
-- soft: B-ap5 **done** 2026-08-08 (PWA flicker likely Chrome)
-- **done agent:** Wayland residual re-smoke (Mode B path green; logout for tip)  
+- **done:** B-manual-black-session-verify (layout OK; DPMS deferred to session-sleep)  
+- soft: B-ap5 **done** 2026-08-08  
+- **done agent:** Wayland residual re-smoke; focus/chrome/session-sleep task  
 
 ---
 
