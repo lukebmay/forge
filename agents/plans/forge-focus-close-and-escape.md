@@ -1,7 +1,8 @@
 # Plan: focus on close + unfocus (Ctrl+Super+Esc)
 
-**Status:** complete — FC0–FC3 shipped  
-**Priority:** high (daily driver feel)  
+**Status:** partial — **FC0–FC1 shipped** (close → focus restore).  
+**FC2–FC3 unfocus (`Ctrl+Super+Esc`) abandoned** 2026-08-09 (chords poorly with Esc/terminals; not product-critical). Keybind unbound; `WindowUnfocus` command removed.  
+**Priority:** close-focus remains high; unfocus abandoned  
 **Branch:** `master`  
 **Related:** action pipeline FocusChanged; LFT MRU; tree single-child collapse
 

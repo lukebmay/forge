@@ -1,0 +1,243 @@
+{
+  "capability": {
+    "agentMode": "TILE",
+    "agentTerminal": "ghostty",
+    "agentWindowId": "923230955",
+    "agentWmClass": "com.mitchellh.ghostty",
+    "canHup": false,
+    "canNested": true,
+    "canPartial": true,
+    "canRetest": true,
+    "canTrueCold": false,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-279-g8c66092-dirty",
+    "focusWindowId": "923230955",
+    "nTileWindows": 7,
+    "notes": [
+      "true cold blocked: tiled ghostty agent would die if all tiles closed",
+      "Wayland: no HUP \u2014 reload extension via `forge nested restart` (not logout). Dual-mon live still host desk."
+    ],
+    "session": "wayland"
+  },
+  "cases": [
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "mon0-open-leaf-grok",
+          "detail": "mon0 open leaf 'Grok'",
+          "ok": true
+        },
+        {
+          "check": "mon1-open-leaf-youtube",
+          "detail": "mon1 open leaf 'YouTube'",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 923230955 present",
+          "ok": true
+        }
+      ],
+      "id": "L1.left-chrome",
+      "layoutRc": 0,
+      "layoutTail": "     \"chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default\",\n        \"com.mitchellh.ghostty\",\n        \"chrome-agimnkijcaahngcdmfeangaknmldooml-Default\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=dev source=host path=\u2026/forge/layout/hosts/black/dev.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  4   opened  3   moved  0\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "beltTreeStable",
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "followUpGeomSoft",
+          "followUpPlace2",
+          "followUpPlace2Settle",
+          "followUpSettle",
+          "followUpStructure",
+          "followUpStructureSettle",
+          "layoutBatchBegin",
+          "layoutBatchEnd",
+          "layoutBatchRelease",
+          "layoutChromeClear",
+          "openMapWait",
+          "opens",
+          "postOpenRetry",
+          "treeStable"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 3,
+          "reused": 4
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 2073,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 2000,
+        "thrashRisk": null,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 3350
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": ["923231061", "923231063", "923231064"],
+          "monIndex": 1,
+          "step": "close-mon1-chrome"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        }
+      ],
+      "title": "Left chrome+ghostty, mon1 chrome closed \u2192 layout dev"
+    }
+  ],
+  "env": {
+    "agentMode": "TILE",
+    "agentTerminal": "ghostty",
+    "canHup": false,
+    "canNested": true,
+    "canRetest": true,
+    "canTrueCold": false,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-279-g8c66092-dirty",
+    "hostname": "black",
+    "nTileWindowsStart": 7,
+    "nestedGnome": false,
+    "session": "wayland"
+  },
+  "kind": "forge-test-live",
+  "metricsSummary": {
+    "casesWithMetrics": 1,
+    "delayTimeoutsLikelyOkTotal": 1,
+    "expectationMissesTotal": 0,
+    "hardReadyTimedOutMovingAnywayTotal": 0,
+    "hardReadyWarningsTotal": 0,
+    "softCorrectionsTotal": 0,
+    "softTimeoutMsAvg": 2000,
+    "softTimeoutMsMax": 2000,
+    "wallMsAvg": 3350,
+    "wallMsMax": 3350,
+    "wallMsTotal": 3350
+  },
+  "schemaVersion": 1,
+  "selection": {
+    "behaviors": [],
+    "selected": ["L1.left-chrome"],
+    "skipped": [],
+    "suite": "auto",
+    "tags": []
+  },
+  "summary": {
+    "cases": [
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "mon0-open-leaf-grok",
+            "detail": "mon0 open leaf 'Grok'",
+            "ok": true
+          },
+          {
+            "check": "mon1-open-leaf-youtube",
+            "detail": "mon1 open leaf 'YouTube'",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 923230955 present",
+            "ok": true
+          }
+        ],
+        "id": "L1.left-chrome",
+        "layoutRc": 0,
+        "layoutTail": "     \"chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default\",\n        \"com.mitchellh.ghostty\",\n        \"chrome-agimnkijcaahngcdmfeangaknmldooml-Default\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=dev source=host path=\u2026/forge/layout/hosts/black/dev.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  4   opened  3   moved  0\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "beltTreeStable",
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "followUpGeomSoft",
+            "followUpPlace2",
+            "followUpPlace2Settle",
+            "followUpSettle",
+            "followUpStructure",
+            "followUpStructureSettle",
+            "layoutBatchBegin",
+            "layoutBatchEnd",
+            "layoutBatchRelease",
+            "layoutChromeClear",
+            "openMapWait",
+            "opens",
+            "postOpenRetry",
+            "treeStable"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 3,
+            "reused": 4
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 2073,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 2000,
+          "thrashRisk": null,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 3350
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": ["923231061", "923231063", "923231064"],
+            "monIndex": 1,
+            "step": "close-mon1-chrome"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          }
+        ],
+        "title": "Left chrome+ghostty, mon1 chrome closed \u2192 layout dev"
+      }
+    ],
+    "failed": 0,
+    "ok": true,
+    "passed": 1
+  }
+}

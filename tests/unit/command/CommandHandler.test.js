@@ -548,31 +548,15 @@ describe("CommandHandler", () => {
     });
   });
 
-  describe("WindowUnfocus command", () => {
-    it("exits mode without unfocus when exitForgeMode returns true", () => {
-      mockWm.exitForgeMode = vi.fn(() => true);
-      mockWm.unfocusTiles = vi.fn();
-
-      commandHandler.execute({ name: "WindowUnfocus" });
-
-      expect(mockWm.exitForgeMode).toHaveBeenCalled();
-      expect(mockWm.unfocusTiles).not.toHaveBeenCalled();
-    });
-
-    it("unfocuses tiles when no mode is active", () => {
+  describe("WindowUnfocus command (abandoned)", () => {
+    it("is a no-op — keybind/command product path removed", () => {
       mockWm.exitForgeMode = vi.fn(() => false);
       mockWm.unfocusTiles = vi.fn();
 
-      commandHandler.execute({ name: "WindowUnfocus" });
-
-      expect(mockWm.exitForgeMode).toHaveBeenCalled();
-      expect(mockWm.unfocusTiles).toHaveBeenCalled();
-    });
-
-    it("is a no-op when helpers are missing", () => {
-      delete mockWm.exitForgeMode;
-      delete mockWm.unfocusTiles;
       expect(() => commandHandler.execute({ name: "WindowUnfocus" })).not.toThrow();
+
+      expect(mockWm.exitForgeMode).not.toHaveBeenCalled();
+      expect(mockWm.unfocusTiles).not.toHaveBeenCalled();
     });
   });
 

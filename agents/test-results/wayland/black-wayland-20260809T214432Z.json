@@ -1,0 +1,394 @@
+{
+  "capability": {
+    "agentMode": "TILE",
+    "agentTerminal": "ghostty",
+    "agentWindowId": "923230955",
+    "agentWindowOptional": true,
+    "agentWmClass": "com.mitchellh.ghostty",
+    "canHup": false,
+    "canNested": true,
+    "canPartial": true,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-279-g8c66092-dirty",
+    "focusWindowId": "923231101",
+    "nTileWindows": 4,
+    "notes": [
+      "focus is other class='org.gnome.Nautilus'",
+      "agent guessed first ghostty (no guake; focus not agent)",
+      "true cold OK: durable Grok leader (agent TILE may close; process survives \u2014 reattach after)",
+      "Wayland: no HUP \u2014 reload extension via `forge nested restart` (not logout). Dual-mon live still host desk."
+    ],
+    "session": "wayland"
+  },
+  "cases": [
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "mon0-open-leaf-grok",
+          "detail": "mon0 open leaf 'Grok'",
+          "ok": true
+        },
+        {
+          "check": "mon1-open-leaf-youtube",
+          "detail": "mon1 open leaf 'YouTube'",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent window optional (leader/true-cold): agent 923230955 missing from tree",
+          "ok": true
+        },
+        {
+          "check": "profile-focus-if-set",
+          "detail": "focusWindowId=923231103",
+          "ok": true
+        }
+      ],
+      "id": "L2.true-cold-dev",
+      "layoutRc": 0,
+      "layoutTail": "ify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  6   moved  0   left  1\n  thrashRisk  2 (skeleton, open:google-chrome, open:Grok, open:ghostty)\nforge layout: residual targets not hard-ready: ['923231102', '923231106', '923231107', '923231103', '923231104', '923231105'] (moving anyway)\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "beltTreeStable",
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "followUpGeomSoft",
+          "followUpSettle",
+          "followUpStructure",
+          "followUpStructureSettle",
+          "layoutBatchBegin",
+          "layoutBatchEnd",
+          "layoutBatchRelease",
+          "layoutChromeClear",
+          "openMapWait",
+          "opens",
+          "postOpenRetry",
+          "treeStable"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 6,
+          "reused": 0
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [
+          "hard-ready timeout after 5000ms (pending ['923231102', '923231106', '923231107', '923231103', '923231104', '923231105'])"
+        ],
+        "hardReadyWarnings": 3,
+        "softCorrections": 0,
+        "softElapsedMs": 2021,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 2000,
+        "thrashRisk": 2,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 13516
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": ["923230955", "923231100", "923231101", "923230961"],
+          "keptAgent": false,
+          "step": "close-all-tiles"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        }
+      ],
+      "title": "True cold (no tiles) \u2192 layout _forge-test-dual open leaf + focus"
+    },
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "no-tiles-or-only-agent",
+          "detail": "no unexpected TILE windows",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent window optional (leader/true-cold): agent 923231103 missing from tree",
+          "ok": true
+        }
+      ],
+      "id": "L2.layout-clean",
+      "layoutRc": 0,
+      "layoutTail": "_ms\": 409,\n      \"softTimeoutMs\": 400,\n      \"wallMs\": 3000,\n      \"error\": null,\n      \"pendingCount\": 0\n    },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-clean source=host path=\u2026/hosts/black/_forge-test-clean.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  0   moved  0   closed  6\n  thrashRisk  6\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "opens"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 0,
+          "reused": 0
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 409,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 400,
+        "thrashRisk": 6,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 917
+      },
+      "ok": true,
+      "setup": [
+        {
+          "action": "noop",
+          "hasTiles": true,
+          "step": "ensure-some-tiles"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        }
+      ],
+      "title": "Non-empty desk \u2192 layout _forge-test-clean empties tiles"
+    }
+  ],
+  "env": {
+    "agentMode": "TILE",
+    "agentTerminal": "ghostty",
+    "canHup": false,
+    "canNested": true,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-279-g8c66092-dirty",
+    "hostname": "black",
+    "nTileWindowsStart": 4,
+    "nestedGnome": false,
+    "session": "wayland"
+  },
+  "kind": "forge-test-live",
+  "metricsSummary": {
+    "casesWithMetrics": 2,
+    "delayTimeoutsLikelyOkTotal": 2,
+    "expectationMissesTotal": 0,
+    "hardReadyTimedOutMovingAnywayTotal": 0,
+    "hardReadyWarningsTotal": 3,
+    "softCorrectionsTotal": 0,
+    "softTimeoutMsAvg": 1200,
+    "softTimeoutMsMax": 2000,
+    "wallMsAvg": 7216,
+    "wallMsMax": 13516,
+    "wallMsTotal": 14433
+  },
+  "schemaVersion": 1,
+  "selection": {
+    "behaviors": [],
+    "selected": ["L2.true-cold-dev", "L2.layout-clean"],
+    "skipped": [],
+    "suite": "cold",
+    "tags": []
+  },
+  "summary": {
+    "cases": [
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "mon0-open-leaf-grok",
+            "detail": "mon0 open leaf 'Grok'",
+            "ok": true
+          },
+          {
+            "check": "mon1-open-leaf-youtube",
+            "detail": "mon1 open leaf 'YouTube'",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent window optional (leader/true-cold): agent 923230955 missing from tree",
+            "ok": true
+          },
+          {
+            "check": "profile-focus-if-set",
+            "detail": "focusWindowId=923231103",
+            "ok": true
+          }
+        ],
+        "id": "L2.true-cold-dev",
+        "layoutRc": 0,
+        "layoutTail": "ify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  6   moved  0   left  1\n  thrashRisk  2 (skeleton, open:google-chrome, open:Grok, open:ghostty)\nforge layout: residual targets not hard-ready: ['923231102', '923231106', '923231107', '923231103', '923231104', '923231105'] (moving anyway)\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "beltTreeStable",
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "followUpGeomSoft",
+            "followUpSettle",
+            "followUpStructure",
+            "followUpStructureSettle",
+            "layoutBatchBegin",
+            "layoutBatchEnd",
+            "layoutBatchRelease",
+            "layoutChromeClear",
+            "openMapWait",
+            "opens",
+            "postOpenRetry",
+            "treeStable"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 6,
+            "reused": 0
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [
+            "hard-ready timeout after 5000ms (pending ['923231102', '923231106', '923231107', '923231103', '923231104', '923231105'])"
+          ],
+          "hardReadyWarnings": 3,
+          "softCorrections": 0,
+          "softElapsedMs": 2021,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 2000,
+          "thrashRisk": 2,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 13516
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": ["923230955", "923231100", "923231101", "923230961"],
+            "keptAgent": false,
+            "step": "close-all-tiles"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          }
+        ],
+        "title": "True cold (no tiles) \u2192 layout _forge-test-dual open leaf + focus"
+      },
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "no-tiles-or-only-agent",
+            "detail": "no unexpected TILE windows",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent window optional (leader/true-cold): agent 923231103 missing from tree",
+            "ok": true
+          }
+        ],
+        "id": "L2.layout-clean",
+        "layoutRc": 0,
+        "layoutTail": "_ms\": 409,\n      \"softTimeoutMs\": 400,\n      \"wallMs\": 3000,\n      \"error\": null,\n      \"pendingCount\": 0\n    },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-clean source=host path=\u2026/hosts/black/_forge-test-clean.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  0   moved  0   closed  6\n  thrashRisk  6\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "opens"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 0,
+            "reused": 0
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 409,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 400,
+          "thrashRisk": 6,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 917
+        },
+        "ok": true,
+        "setup": [
+          {
+            "action": "noop",
+            "hasTiles": true,
+            "step": "ensure-some-tiles"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          }
+        ],
+        "title": "Non-empty desk \u2192 layout _forge-test-clean empties tiles"
+      }
+    ],
+    "failed": 0,
+    "ok": true,
+    "passed": 2
+  }
+}

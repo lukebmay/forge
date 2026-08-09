@@ -1,9 +1,8 @@
 # layout-mon-claim-order
 
-**Status:** incomplete vs live — superseded by LF1  
-**Updated:** 2026-07-29  
-**Follow-up:** [forge-layout-reliability_lf1-partial-reopen](./forge-layout-reliability_lf1-partial-reopen.md)
-(user still sees mon1 3-unit Ghostty thrash after close mon0 Ghostty + Chrome)
+**Status:** historical — mon-claim lessons folded into spine + R010 mitigations  
+**Updated:** 2026-08-09  
+**Follow-up:** only if first-shot multi-open structure still fails after residual place→structure (R010). Do **not** reintroduce belt ensure_layout thrash.
 
 ## Problem
 

@@ -617,6 +617,62 @@ def residual_follow_up(
     return steps, still
 
 
+# RunSteps ops that rehome windows (must settle mon before structure).
+_PLACE_STEP_OPS = frozenset(
+    {
+        "move",
+        "park",
+        "close",
+        "float",
+        "unfloat",
+    }
+)
+# RunSteps ops that rewrite topology / order / size after place.
+_STRUCTURE_STEP_OPS = frozenset(
+    {
+        "layout",
+        "order",
+        "size",
+        "bind",
+        "skeleton",
+        "ensure_layout",  # plan-level name if ever passed through
+        "ensure_order",
+        "ensure_sizes",
+    }
+)
+
+
+def partition_extension_steps_place_vs_structure(
+    steps: Any,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Split residual RunSteps into place (move/park/close) vs structure
+    (layout/order/size/bind/skeleton). Preserves relative order within each.
+
+    Wayland mon moves can report ok while tree paths still lag; running
+    ensure_layout in the same batch then tabs on the pre-move mon and leaves
+    mon1 flat. Apply place first, replan structure from a fresh GetTree, then
+    structure-only (see forge residual path).
+    """
+    if not isinstance(steps, list):
+        return [], []
+    place: list[dict[str, Any]] = []
+    structure: list[dict[str, Any]] = []
+    for s in steps:
+        if not isinstance(s, dict):
+            continue
+        op = str(s.get("op") or "").strip().lower()
+        if op in _PLACE_STEP_OPS:
+            place.append(s)
+        elif op in _STRUCTURE_STEP_OPS:
+            structure.append(s)
+        else:
+            # Unknown / focus should not be in residual_structure; keep with place
+            # so we do not drop ops silently.
+            place.append(s)
+    return place, structure
+
+
 def belt_actions_from_plan(
     actions: Any,
     role_pins: Optional[dict[str, Any]] = None,

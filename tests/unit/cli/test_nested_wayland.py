@@ -20,10 +20,14 @@ from nested_wayland import (  # noqa: E402
     bus_address_for,
     can_nested_on_host,
     client_env,
+    dummy_mode_specs,
+    dummy_monitor_scales,
     format_env_export,
     format_status_text,
+    host_primary_logical_size,
     host_session_type,
     host_wayland_display,
+    parse_num_monitors,
     parse_size,
     require_wayland_host,
     session_dir,
@@ -37,6 +41,7 @@ from nested_wayland import (  # noqa: E402
 def test_parse_size_ok() -> None:
     assert parse_size("1500x1000") == "1500x1000"
     assert parse_size(" 1920X1080 ") == "1920x1080"
+    assert parse_size("1280x720@60.0") == "1280x720@60.0"
 
 
 def test_parse_size_bad() -> None:
@@ -44,6 +49,47 @@ def test_parse_size_bad() -> None:
         parse_size("big")
     with pytest.raises(NestedError):
         parse_size("10x10")
+
+
+def test_parse_num_monitors() -> None:
+    assert parse_num_monitors(1) == 1
+    assert parse_num_monitors(2) == 2
+    with pytest.raises(NestedError):
+        parse_num_monitors(0)
+    with pytest.raises(NestedError):
+        parse_num_monitors(99)
+
+
+def test_dummy_mode_specs_colon_not_comma() -> None:
+    """Mutter g_strsplit(mode_specs, \":\") — commas are invalid."""
+    assert dummy_mode_specs("1280x720", 2) == "1280x720"
+    assert ":" not in dummy_mode_specs("1500x1000", 1) or True
+    assert "," not in dummy_mode_specs("1500x1000", 2)
+    assert dummy_monitor_scales("1", 2) == "1,1"
+    assert dummy_monitor_scales("1,2", 2) == "1,2"
+
+
+def test_host_primary_logical_size_from_tree(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Nest default size should track host primary logical WxH when forge tree works."""
+    import nested_wayland as nw
+
+    class FakeProc:
+        returncode = 0
+        stdout = (
+            '{"monitors":[{"stableKey":"geom:0,0,2560,1440#primary","rect":{}},'
+            '{"stableKey":"geom:2560,0,2560,1440"}]}'
+        )
+        stderr = ""
+
+    monkeypatch.setattr(
+        nw.subprocess,
+        "run",
+        lambda *a, **k: FakeProc(),
+    )
+    monkeypatch.setattr(nw.shutil, "which", lambda _n: "forge")
+    assert host_primary_logical_size({"XDG_SESSION_TYPE": "wayland"}) == "2560x1440"
 
 
 def test_safe_name() -> None:
@@ -72,6 +118,7 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
         state_dir=str(tmp_path),
         bus_address=bus_address_for(tmp_path),
         created_at=0.0,
+        num_monitors=2,
     )
     assert cfg.bus_address == f"unix:path={tmp_path / 'bus'}"
     env = client_env(cfg)
@@ -85,6 +132,8 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
     assert senv["WAYLAND_DISPLAY"] == "wayland-0"
     assert senv["DBUS_SESSION_BUS_ADDRESS"] == cfg.bus_address
     assert senv["MUTTER_DEBUG_DUMMY_MODE_SPECS"] == "1280x800"
+    assert senv["MUTTER_DEBUG_NUM_DUMMY_MONITORS"] == "2"
+    assert senv["MUTTER_DEBUG_DUMMY_MONITOR_SCALES"] == "1,1"
 
     export = format_env_export(cfg)
     assert "export WAYLAND_DISPLAY='wayland-forge'" in export

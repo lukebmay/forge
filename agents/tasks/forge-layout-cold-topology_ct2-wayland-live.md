@@ -80,6 +80,15 @@ forge test live run --from-work open-leaf   # etc. — host dual-mon
 
 ## Session note
 
+**2026-08-09 (RC campaign):** Wayland suite recorded in
+[`agents/plans/forge-wayland-rc-test-suite.md`](../plans/forge-wayland-rc-test-suite.md)
++ results under `agents/test-results/wayland/`. L0 green. Host dual-mon: settled
+partials (left-chrome after good desk, settled-rerun, close-focus, ghosttys-multi)
+PASS; **one-shot ghosttys-only / multi-open still fails** (R010 — Mode B second
+layout repairs). Unfocus FAIL until host loads tip unfocus float handoff. Nest
+start flaky after first success. Host runtime tip lag: disk install newer than
+Shell-loaded 279 until logout.
+
 **2026-08-09:** AT-W1 harness shipped. CT2 procedure updated to nested reload + host dual-mon.
 
 **2026-08-08 (agent CT2 work + late-focus):**

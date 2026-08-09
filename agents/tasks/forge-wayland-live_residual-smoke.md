@@ -1,8 +1,8 @@
 # Task: forge-wayland-live_residual-smoke
 
-**Status:** agent smoke done 2026-08-08 — **usable RC** (Mode B); logout for tip + eyes  
-**Plan:** historical [forge-wayland-live](../plans/) on branch `plan/forge-wayland-live`; residual runs on **`plan/forge-layout-control-loop`**  
-**Branch:** `plan/forge-layout-control-loop`  
+**Status:** superseded 2026-08-09 — use [forge-wayland-rc-test-suite](../plans/forge-wayland-rc-test-suite.md) + nest dual-mon  
+**Plan:** historical (control-loop era). **Do not reimplement Mode B as cold success.**  
+**Branch:** master  
 **Created:** 2026-08-05  
 **Host:** black — dual 4K @ 1.5; GNOME Shell 46
 

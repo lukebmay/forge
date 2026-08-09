@@ -45,6 +45,8 @@ DEFAULT_NAME = "forge"
 DEFAULT_DISPLAY = "wayland-forge"
 DEFAULT_SIZE = "1500x1000"
 DEFAULT_SCALE = "1"
+DEFAULT_MONITORS = 1
+MAX_DUMMY_MONITORS = 4  # Mutter clamps higher counts
 SHELL_READY_TIMEOUT_S = 30.0
 SOCKET_READY_TIMEOUT_S = 20.0
 STOP_GRACE_S = 3.0
@@ -75,6 +77,10 @@ class NestedConfig:
     state_dir: str
     bus_address: str
     created_at: float
+    # Virtual dummy monitors inside the nest (MUTTER_DEBUG_NUM_DUMMY_MONITORS).
+    # 1 = single virtual mon (default). 2+ = side-by-side dummy outputs for
+    # dual-mon layout tests without host dual-mon geometry.
+    num_monitors: int = DEFAULT_MONITORS
 
 
 def runtime_dir(env: Optional[Mapping[str, str]] = None) -> Path:
@@ -106,15 +112,128 @@ def _safe_name(name: str) -> str:
 
 
 def parse_size(spec: str) -> str:
+    """Parse a single virtual mode WWxHH (optional @RR)."""
     s = (spec or "").strip().lower().replace(" ", "")
-    if "x" not in s:
+    if not s:
+        raise NestedError("size required (WWxHH)")
+    # Strip optional refresh: 1280x720@60.0 → 1280x720 for validation
+    base = s.split("@", 1)[0]
+    if "x" not in base:
         raise NestedError(f"size must look like WxH (got {spec!r})")
-    w, _, h = s.partition("x")
+    w, _, h = base.partition("x")
     if not w.isdigit() or not h.isdigit():
         raise NestedError(f"size must look like WxH (got {spec!r})")
     if int(w) < 320 or int(h) < 240:
         raise NestedError(f"size too small: {spec!r}")
+    # Preserve refresh suffix if present and well-formed
+    if "@" in s:
+        return f"{int(w)}x{int(h)}@{s.split('@', 1)[1]}"
     return f"{int(w)}x{int(h)}"
+
+
+def host_primary_logical_size(
+    env: Optional[Mapping[str, str]] = None,
+) -> Optional[str]:
+    """
+    Logical size of the host primary monitor as WWxHH (for nest dummy mons).
+
+    Prefer Forge GetTree stableKey geom when extension is up; else parse
+    gdisplays-style geometry. Each nest dummy mon should match this size so
+    dual-mon nests are full-size side-by-side (window may be large — drag ok;
+    layout tests do not need to "see" the nest UI).
+    """
+    e = dict(env) if env is not None else dict(os.environ)
+    # Avoid nest client env when probing host.
+    if _looks_like_nest_display(str(e.get("WAYLAND_DISPLAY") or "")):
+        e.pop("WAYLAND_DISPLAY", None)
+        # Prefer host wayland from socket list
+        try:
+            e["WAYLAND_DISPLAY"] = host_wayland_display(e)
+        except NestedError:
+            pass
+    # 1) forge tree
+    try:
+        forge_bin = shutil.which("forge") or "forge"
+        proc = subprocess.run(
+            [forge_bin, "tree", "--compact"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=8,
+            env={**os.environ, **e},
+        )
+        if proc.returncode == 0 and (proc.stdout or "").strip():
+            data = json.loads(proc.stdout)
+            for m in data.get("monitors") or []:
+                if not isinstance(m, dict):
+                    continue
+                sk = str(m.get("stableKey") or "")
+                # geom:0,0,2560,1440#primary
+                if "geom:" not in sk:
+                    continue
+                geom = sk.split("geom:", 1)[1].split("#", 1)[0]
+                parts = geom.split(",")
+                if len(parts) >= 4 and parts[2].isdigit() and parts[3].isdigit():
+                    w, h = int(parts[2]), int(parts[3])
+                    if w >= 320 and h >= 240:
+                        if "#primary" in sk or m.get("rect"):
+                            return f"{w}x{h}"
+            # fallback first mon with geom
+            for m in data.get("monitors") or []:
+                sk = str((m or {}).get("stableKey") or "")
+                if "geom:" not in sk:
+                    continue
+                geom = sk.split("geom:", 1)[1].split("#", 1)[0]
+                parts = geom.split(",")
+                if len(parts) >= 4 and parts[2].isdigit() and parts[3].isdigit():
+                    w, h = int(parts[2]), int(parts[3])
+                    if w >= 320 and h >= 240:
+                        return f"{w}x{h}"
+    except (OSError, json.JSONDecodeError, subprocess.TimeoutExpired, ValueError):
+        pass
+    return None
+
+
+def parse_num_monitors(raw: Any) -> int:
+    """Dummy monitor count for nest (1–MAX_DUMMY_MONITORS)."""
+    try:
+        n = int(raw)
+    except (TypeError, ValueError) as e:
+        raise NestedError(f"monitors must be an integer (got {raw!r})") from e
+    if n < 1:
+        raise NestedError(f"monitors must be ≥1 (got {n})")
+    if n > MAX_DUMMY_MONITORS:
+        raise NestedError(
+            f"monitors clamped max is {MAX_DUMMY_MONITORS} (got {n})"
+        )
+    return n
+
+
+def dummy_mode_specs(size: str, num_monitors: int) -> str:
+    """
+    MUTTER_DEBUG_DUMMY_MODE_SPECS value.
+
+    Mutter wants a *colon*-separated list of modes (not commas). Multiple
+    modes are available modes per output, not one mode per monitor.
+    NUM_DUMMY_MONITORS creates the outputs; each gets the same mode list.
+    """
+    # One preferred mode is enough; all dummy outputs share it.
+    return parse_size(size)
+
+
+def dummy_monitor_scales(scale: str, num_monitors: int) -> str:
+    """Comma-separated scales, one entry per dummy monitor."""
+    s = (scale or DEFAULT_SCALE).strip() or DEFAULT_SCALE
+    # Allow already-expanded "1,1"
+    if "," in s:
+        parts = [p.strip() for p in s.split(",") if p.strip()]
+        if len(parts) == num_monitors:
+            return ",".join(parts)
+        # Pad / trim
+        while len(parts) < num_monitors:
+            parts.append(parts[-1] if parts else DEFAULT_SCALE)
+        return ",".join(parts[:num_monitors])
+    return ",".join([s] * max(1, num_monitors))
 
 
 def check_deps() -> list[str]:
@@ -265,8 +384,18 @@ def shell_start_env(cfg: NestedConfig) -> dict[str, str]:
     env["WAYLAND_DISPLAY"] = cfg.host_wayland
     env["GDK_BACKEND"] = "wayland"
     env["XDG_SESSION_TYPE"] = "wayland"
-    env["MUTTER_DEBUG_DUMMY_MODE_SPECS"] = cfg.size
-    env["MUTTER_DEBUG_DUMMY_MONITOR_SCALES"] = cfg.scale
+    nmon = int(getattr(cfg, "num_monitors", DEFAULT_MONITORS) or DEFAULT_MONITORS)
+    if nmon < 1:
+        nmon = 1
+    if nmon > MAX_DUMMY_MONITORS:
+        nmon = MAX_DUMMY_MONITORS
+    # Colon-separated modes (per-output mode list). Commas are invalid and
+    # crash nest with "No valid mode specs".
+    env["MUTTER_DEBUG_DUMMY_MODE_SPECS"] = dummy_mode_specs(cfg.size, nmon)
+    env["MUTTER_DEBUG_NUM_DUMMY_MONITORS"] = str(nmon)
+    env["MUTTER_DEBUG_DUMMY_MONITOR_SCALES"] = dummy_monitor_scales(
+        cfg.scale, nmon
+    )
     # Nested retest should be responsive, not demo-slow.
     env.pop("GNOME_SHELL_SLOWDOWN_FACTOR", None)
     return env
@@ -310,6 +439,15 @@ def load_config(name: str = DEFAULT_NAME) -> Optional[NestedConfig]:
     except (OSError, json.JSONDecodeError):
         return None
     try:
+        nmon = data.get("num_monitors", DEFAULT_MONITORS)
+        try:
+            nmon_i = int(nmon)
+        except (TypeError, ValueError):
+            nmon_i = DEFAULT_MONITORS
+        if nmon_i < 1:
+            nmon_i = DEFAULT_MONITORS
+        if nmon_i > MAX_DUMMY_MONITORS:
+            nmon_i = MAX_DUMMY_MONITORS
         return NestedConfig(
             name=str(data["name"]),
             display=str(data["display"]),
@@ -320,6 +458,7 @@ def load_config(name: str = DEFAULT_NAME) -> Optional[NestedConfig]:
             state_dir=str(data["state_dir"]),
             bus_address=str(data["bus_address"]),
             created_at=float(data.get("created_at", 0)),
+            num_monitors=nmon_i,
         )
     except (KeyError, TypeError, ValueError):
         return None
@@ -549,6 +688,7 @@ def start(
     display: Optional[str] = None,
     size: str = DEFAULT_SIZE,
     scale: str = DEFAULT_SCALE,
+    num_monitors: int = DEFAULT_MONITORS,
     unsafe_mode: bool = True,
     host_wayland: Optional[str] = None,
     replace: bool = False,
@@ -574,6 +714,7 @@ def start(
         stop(name=name, force=True)
 
     size = parse_size(size)
+    nmon = parse_num_monitors(num_monitors)
     try:
         host_wl = (host_wayland or host_wayland_display()).strip()
     except NestedError as e:
@@ -610,6 +751,7 @@ def start(
         state_dir=str(d),
         bus_address=bus_address_for(d),
         created_at=time.time(),
+        num_monitors=nmon,
     )
     save_config(cfg)
 
@@ -645,32 +787,68 @@ def _kill_pid(pid: Optional[int], *, force: bool) -> None:
         return
 
 
+def _pids_with_cmdline_needle(needle: str) -> list[int]:
+    """Best-effort: PIDs whose /proc cmdline contains needle (orphan cleanup)."""
+    if not needle or len(needle) < 8:
+        return []
+    found: list[int] = []
+    try:
+        proc_root = Path("/proc")
+        for entry in proc_root.iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                raw = (entry / "cmdline").read_bytes()
+            except OSError:
+                continue
+            cmd = raw.replace(b"\0", b" ").decode("utf-8", "replace")
+            if needle in cmd:
+                found.append(int(entry.name))
+    except OSError:
+        return found
+    return found
+
+
+def _kill_graceful(pid: Optional[int], *, grace_s: float) -> None:
+    if pid is None or not _pid_alive(pid):
+        return
+    _kill_pid(pid, force=False)
+    deadline = time.monotonic() + grace_s
+    while _pid_alive(pid) and time.monotonic() < deadline:
+        time.sleep(0.1)
+    if _pid_alive(pid):
+        _kill_pid(pid, force=True)
+
+
 def stop(*, name: str = DEFAULT_NAME, force: bool = False) -> bool:
-    """Stop nested session. Returns True if something was running."""
+    """Stop nested session. Returns True if something was running or cleaned."""
     name = _safe_name(name)
     d = session_dir(name)
     cfg = load_config(name)
     display = cfg.display if cfg else DEFAULT_DISPLAY
     shell_pid = _read_pid(d / "shell.pid") if d.is_dir() else None
     dbus_pid = _read_pid(d / "dbus.pid") if d.is_dir() else None
+    bus_path = d / "bus"
+    # Orphans when pid files stale but nest bus/socket still held.
+    orphan_pids = _pids_with_cmdline_needle(str(bus_path))
+    if display:
+        orphan_pids.extend(
+            p
+            for p in _pids_with_cmdline_needle(str(nest_socket_path(display)))
+            if p not in orphan_pids
+        )
     was = bool(
         (shell_pid and _pid_alive(shell_pid))
         or (dbus_pid and _pid_alive(dbus_pid))
+        or any(_pid_alive(p) for p in orphan_pids)
     )
 
-    _kill_pid(shell_pid, force=False)
-    deadline = time.monotonic() + STOP_GRACE_S
-    while shell_pid and _pid_alive(shell_pid) and time.monotonic() < deadline:
-        time.sleep(0.1)
-    if shell_pid and _pid_alive(shell_pid):
-        _kill_pid(shell_pid, force=True)
-
-    _kill_pid(dbus_pid, force=False)
-    deadline = time.monotonic() + 1.5
-    while dbus_pid and _pid_alive(dbus_pid) and time.monotonic() < deadline:
-        time.sleep(0.1)
-    if dbus_pid and _pid_alive(dbus_pid):
-        _kill_pid(dbus_pid, force=True)
+    _kill_graceful(shell_pid, grace_s=STOP_GRACE_S)
+    _kill_graceful(dbus_pid, grace_s=1.5)
+    for opid in orphan_pids:
+        if opid in (shell_pid, dbus_pid, os.getpid()):
+            continue
+        _kill_graceful(opid, grace_s=1.0)
 
     sock = nest_socket_path(display)
     for stale in (sock, Path(str(sock) + ".lock")):
@@ -680,12 +858,18 @@ def stop(*, name: str = DEFAULT_NAME, force: bool = False) -> bool:
         except OSError:
             pass
 
-    bus_path = d / "bus"
     try:
         if bus_path.exists():
             bus_path.unlink()
     except OSError:
         pass
+
+    for pid_file in (d / "shell.pid", d / "dbus.pid"):
+        try:
+            if pid_file.is_file():
+                pid_file.unlink()
+        except OSError:
+            pass
 
     if cfg:
         _write_status(cfg, phase="stopped")
@@ -706,6 +890,15 @@ def restart(
         "replace": True,
         "size": start_kwargs.get("size") or (cfg.size if cfg else DEFAULT_SIZE),
         "scale": start_kwargs.get("scale") or (cfg.scale if cfg else DEFAULT_SCALE),
+        "num_monitors": (
+            start_kwargs["num_monitors"]
+            if "num_monitors" in start_kwargs
+            else (
+                getattr(cfg, "num_monitors", DEFAULT_MONITORS)
+                if cfg
+                else DEFAULT_MONITORS
+            )
+        ),
         "unsafe_mode": (
             start_kwargs["unsafe_mode"]
             if "unsafe_mode" in start_kwargs
@@ -754,6 +947,7 @@ def status_dict(name: str = DEFAULT_NAME) -> dict[str, Any]:
                 "host_wayland": cfg.host_wayland,
                 "size": cfg.size,
                 "scale": cfg.scale,
+                "num_monitors": getattr(cfg, "num_monitors", DEFAULT_MONITORS),
                 "bus_address": cfg.bus_address,
                 "socket": str(nest_socket_path(cfg.display)),
                 "socket_exists": nest_socket_path(cfg.display).is_socket(),
@@ -928,6 +1122,7 @@ def format_status_text(st: Mapping[str, Any]) -> str:
         f"display:      {st.get('display', '—')}",
         f"host:         {st.get('host_wayland', '—')}",
         f"size:         {st.get('size', '—')}",
+        f"monitors:     {st.get('num_monitors', '—')}",
         f"shell_pid:    {st.get('shell_pid')}",
         f"dbus_pid:     {st.get('dbus_pid')}",
         f"bus:          {st.get('bus_address', '—')}",
@@ -985,11 +1180,20 @@ def cmd_nested(_backend: Any, args: Any) -> int:
 
 
 def _cli_start(args: Any, name: str) -> int:
+    nmon = getattr(args, "monitors", None)
+    if nmon is None:
+        nmon = DEFAULT_MONITORS
+    size = getattr(args, "size", None)
+    if not size:
+        # Default each dummy mon to host primary logical size (not a shrunk
+        # multi-mon fit). Dual-mon nest becomes ~2×W wide; drag the nest window.
+        size = host_primary_logical_size() or DEFAULT_SIZE
     cfg = start(
         name=name,
         display=getattr(args, "display", None),
-        size=getattr(args, "size", None) or DEFAULT_SIZE,
+        size=size,
         scale=str(getattr(args, "scale", None) or DEFAULT_SCALE),
+        num_monitors=int(nmon),
         unsafe_mode=not bool(getattr(args, "safe_mode", False)),
         replace=bool(getattr(args, "replace", False)),
         allow_x11=bool(getattr(args, "allow_x11", False)),
@@ -997,6 +1201,7 @@ def _cli_start(args: Any, name: str) -> int:
     print(f"forge nested: started {cfg.name}")
     print(f"  display:  {cfg.display} (host {cfg.host_wayland})")
     print(f"  size:     {cfg.size}")
+    print(f"  monitors: {cfg.num_monitors}")
     print(f"  bus:      {cfg.bus_address}")
     print(f"  state:    {cfg.state_dir}")
     print(f"  env:      source {cfg.state_dir}/env.sh")
@@ -1025,6 +1230,10 @@ def _cli_restart(args: Any, name: str) -> int:
         kwargs["size"] = args.size
     if getattr(args, "scale", None):
         kwargs["scale"] = args.scale
+    if getattr(args, "monitors", None) is not None:
+        kwargs["num_monitors"] = int(args.monitors)
+    elif prev is not None and getattr(prev, "num_monitors", None):
+        kwargs["num_monitors"] = prev.num_monitors
     if bool(getattr(args, "safe_mode", False)):
         kwargs["unsafe_mode"] = False
     elif prev is not None:
@@ -1035,8 +1244,9 @@ def _cli_restart(args: Any, name: str) -> int:
         print(f"forge nested: restarted {cfg.name} forge_ready={result['forge_ready']}")
     else:
         print(f"forge nested: restarted {cfg.name}")
-    print(f"  display: {cfg.display}")
-    print(f"  env:     source {cfg.state_dir}/env.sh")
+    print(f"  display:  {cfg.display}")
+    print(f"  monitors: {cfg.num_monitors}")
+    print(f"  env:      source {cfg.state_dir}/env.sh")
     return 0
 
 

@@ -75,16 +75,10 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Expand / shrink | `Ctrl+Super+]` / `Ctrl+Super+[` |
 | Swap last active | `Ctrl+Super+Enter` |
 | Layout debug overlay | `Ctrl+Super+d` |
-| Unfocus tiles (or exit mode) | `Ctrl+Super+Esc` |
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Edge resize (grow) | `Ctrl+Super+y/u/i/o` (left/bottom/top/right) |
 | Edge resize (shrink) | `Ctrl+Shift+Super+o/i/u/y` |
 | Snaps / monocle / cyclic focus | unbound |
-
-**Unfocus (`Ctrl+Super+Esc`):** clears TILE keyboard focus (stage/panel
-best-effort). Does not wipe LFT for open-app placement. With focus-on-hover, the
-window under the pointer is not re-focused until the pointer leaves it. Future
-selection/grab modes exit first without unfocusing.
 
 Forge still frees a few GNOME defaults while enabled (edge-tile keys, maximize,
 etc. — see `gnome-overrides`). Those restore on disable.
@@ -121,7 +115,6 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Snaps (center / thirds) | `Ctrl+Alt+c` / `d/e/g/t` |
 | Edge resize | same family as Safe (`Ctrl+Super` y/u/i/o + Shift twins) |
-| Unfocus tiles (or exit mode) | `Ctrl+Super+Esc` (all kits) |
 
 **Why this shape:** focus is the hottest action → shortest chord (`Super+letter`).
 Move adds Shift (heavier). Swap adds Ctrl so three roles share hjkl without

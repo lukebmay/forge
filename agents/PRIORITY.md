@@ -1,11 +1,16 @@
 # forge (lukebmay) — active priorities
 
 **Updated:** 2026-08-09  
-**Lens:** `black` dual 4K Shell 46 — **X11 preferred for agent live test**; Wayland daily driver too  
-**Branch:** **`master`** default (side branches only for major refactors/features)  
+**Lens:** `black` dual 4K Shell 46 — **Wayland** daily driver + nest dual-mon RC  
+**Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Active:** Nested Wayland harness **AT-W1 shipped** + workflow locked in testing/HANDOFF. Next: **extensive Wayland smoke** (install → nest restart → host live loop).
+**Active:** Nest **isolation strategies** (discussion first) then practical isolation
++ extension shutdown; continue nest dual-mon RC with `_forge-test-*` only.
+Architecture = cold spine + D019 hard/soft (not patch thrash).
+
+**FIRM:** `forge nested stop` after nest tests — never leave subshells running.
+See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md#nest-lifecycle--stop-after-tests-firm).
 
 ---
 
@@ -13,30 +18,29 @@
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| done | [CLI attachable jobs](./plans/forge-cli-jobs.md) | **Shipped** CJ1–CJ6 (D021) |
-| **P0 use** | [AI live test matrix](./plans/forge-ai-live-test-matrix.md) | **AT0–AT2 + FC3 cases** — layout/focus sign-off |
-| done | [AT-W1 nested Wayland](./plans/forge-ai-live-test-matrix.md) | **Shipped** `forge nested` + workflow in testing.md / HANDOFF |
-| **next** | Extensive Wayland smoke | [HANDOFF loop](./HANDOFF.md#wayland-extensive-smoke-loop) · [testing.md § Wayland](./testing.md) · [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
-| later (shellrc **P0**) | Durable Grok (GH0 leader spike first) | **shellrc** — not forge |
-| done | SE9; SE6/SE10; FC3; AT2; CJ1–CJ6; SE0–SE8b; R007 | completed/ |
+| **P0 next** | **Discussion:** nest isolation strategies (separate user? profile? env? extension unload) | [D0 task](./tasks/forge-nested-isolation_d0-discussion.md) |
+| **P0** | Nest dual-mon RC + layout smoke (`_forge-test-*`); host mon-sized dummy mons | [suite](./plans/forge-wayland-rc-test-suite.md) |
+| **P0 use** | Live matrix on `_forge-test-*` only (L0 first) | [AI live matrix](./plans/forge-ai-live-test-matrix.md) |
+| next | R010 only if first-shot structure still fails after place→structure | [REGRESSIONS](./REGRESSIONS.md) |
+| later | STACKED / resize-autotile | separate plans — do not mix into settle spine |
+| abandoned | `Ctrl+Super+Esc` unfocus (FC2) | keybind unbound |
+| done | R007; D019 SE0–SE9; AT-W1; CLI jobs; leader true-cold; place→structure residual | completed/ |
 
-**Handoff doctrine:** [HANDOFF.md](./HANDOFF.md) — spine over band-aids; no personal-layout code.
-
-**Live tests:** select by work — never default-run the full matrix.
+**Handoff:** [HANDOFF.md](./HANDOFF.md) — spine over band-aids; headless reattach after true cold; **always stop nest**.
 
 ```bash
 forge test live probe
-forge test live plan --from-work open-leaf   # or cold|clean|settle|focus|close|unfocus
-forge test live run --tags R008              # after open-leaf work
-forge test live run --from-work close        # FC3 close-focus
-forge test live run --from-work unfocus      # FC3 unfocus
+forge test live plan --from-work open-leaf
+forge nested start --monitors=2 --replace
+# throwaway: eval $(forge nested env --export) && forge layout _forge-test-ghosttys
+forge nested stop    # FIRM when nest work ends
+forge nested status  # running: False
 ```
 
 | Doc | Role |
 | --- | --- |
 | [HANDOFF.md](./HANDOFF.md) | Start here |
-| [AI live matrix](./plans/forge-ai-live-test-matrix.md) | Capability + selective suites |
-| [CLI jobs plan](./plans/forge-cli-jobs.md) | Durable mutators (shipped) |
-| [settle contract](./plans/forge-layout-settle-contract.md) | Hard/soft settle |
-| [focus close + escape](./plans/forge-focus-close-and-escape.md) | Close focus + unfocus (FC0–FC3 done) |
-| [REGRESSIONS.md](./REGRESSIONS.md) | Guard spine + live case tags |
+| [settle contract](./plans/forge-layout-settle-contract.md) | Hard/soft — product |
+| [cold topology](./plans/forge-layout-cold-topology.md) | Spine |
+| [Wayland RC suite](./plans/forge-wayland-rc-test-suite.md) | Procedure + nest dual |
+| [REGRESSIONS.md](./REGRESSIONS.md) | R0xx + guards |

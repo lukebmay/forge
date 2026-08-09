@@ -1,8 +1,8 @@
 # Task: settle learning (overview — see plan)
 
-**Status:** superseded by plan tasks  
-**Priority:** mid  
-**Plan:** [forge-settle-learning.md](../plans/forge-settle-learning.md)  
+**Status:** superseded — use [forge-layout-settle-contract](../plans/forge-layout-settle-contract.md) (SE0–SE9 shipped)  
+**Priority:** none  
+**Plan:** historical [forge-settle-learning.md](../plans/forge-settle-learning.md)  
 **Created:** 2026-08-06  
 
 Active implement task: [forge-settle-learning_sl1-time-to-stable.md](./forge-settle-learning_sl1-time-to-stable.md).

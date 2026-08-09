@@ -2579,12 +2579,27 @@ def plan_reconcile(
         # Anchor on mon-direct children (term slots), never tab-group members —
         # layout acts on the window's parent CON, so chrome in a tab would
         # demote TABBED → HSPLIT. Peel demote already handled polluted bags.
+        #
+        # Nested structure first builds [tab CON, term]. A mon-level ensure
+        # *after* that (same RunSteps batch) has been observed to flatten
+        # mon1 tab groups on partial reopen (left-chrome): moves + TABBED
+        # join succeed, then mon HSPLIT on the term anchor leaves YT/Gmail/
+        # Voice mon-direct again. Skip mon ensure when nested structure for
+        # this mon is also planned this pass — mon kids are owned by nested
+        # ensure + ensure_order. Peel / split-mismatch still force mon ensure.
+        nested_structure_mons = {
+            str(slot).split(".", 1)[0]
+            for slot in slots_needing_layout
+            if isinstance(slot, str) and "." in slot
+        }
         if has_mon_ensure:
             for mon_key, mon_body in prof.get("layout", {}).items():
                 if mon_key not in mons_with_placement:
                     continue
                 if mon_key in mon_child_peel_mons:
                     # Peel demote already rewrote mon bag; skip second mon ensure.
+                    continue
+                if mon_key in nested_structure_mons and mon_key not in mons_split_mismatch:
                     continue
                 if not isinstance(mon_body, dict):
                     continue

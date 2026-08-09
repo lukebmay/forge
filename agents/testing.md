@@ -66,7 +66,9 @@ forge test live run --from-work <hint>    # only selected cases
 | **Wayland retest** | See **§ Wayland live testing workflow** below (FIRM when session is Wayland) |
 | **CLI jobs** | Mutating `forge` runs as durable jobs — closing the agent TTY does **not** abort apply. True cold still needs non-tile agent **window** placement. Job runner units: `tests/unit/cli/test_job_runner.py` |
 | **L1 setup** | `close-mon0/1-chrome` by tree mon; `ensure-nautilus` / `ensure-dev-shape` real (AT2). Units: `tests/unit/cli/test_live_matrix.py` |
-| **Focus live** | `--from-work close` / `unfocus` → `L1.close-focus-lft` / `L1.unfocus`; RunSteps `unfocus` (FC3) |
+| **Focus live** | `--from-work close` → `L1.close-focus-lft` (close→LFT). Unfocus key product **abandoned**. |
+| **True cold / headless** | Durable Grok leader required if agent TILE will close. After suite, leader reopens Ghostty head; operator `grok -r`. Windowed clients die with TTY and cannot self-reattach. |
+| **Test layouts** | Only `_forge-test-*` profiles — not personal `dev`/`t1` |
 
 Plan: `agents/plans/forge-ai-live-test-matrix.md`.  
 Handoff quick ref: `agents/HANDOFF.md` § Nested Wayland / Wayland smoke loop.
@@ -115,20 +117,34 @@ On **X11:** use HUP; `forge nested start` **exits 2** with HUP guidance (not a c
 0. Confirm: XDG_SESSION_TYPE=wayland; forge test live probe → can_nested=true
 1. L0 for blast radius (pytest/vitest)
 2. Install tip: ./install   # or forge install
-3. Nest up (once per login if not running):
+3. Nest up (only while actively testing nest / extension reload):
      forge nested doctor
      forge nested start          # or restart if already up
-     eval $(forge nested env --export) && forge ping   # optional nest health
-4. Host dual-mon cases (normal env — do NOT leave nest env exported for host desk):
-     unset DBUS_SESSION_BUS_ADDRESS   # if you sourced nest env in this shell
-     # restore host session bus if needed: login shell / systemd --user env
+     # throwaway shell only — never leave nest env on durable agent shell:
+     eval $(forge nested env --export) && forge ping
+4. Host dual-mon cases (host env only — nest must NOT be exported here):
+     forge nested stop           # FIRM if nest work is done for this stretch
      forge test live plan --from-work <hint>
      forge test live run  --from-work <hint>
-     # and/or: forge layout dev, CT2 cold, partial matrix from HANDOFF
-5. Code change → re-install → forge nested restart → re-run L0 + same live subset
-6. Repeat 4–5 until green. Logout only if host Shell never loaded this tip
+5. Code change → re-install → forge nested restart → re-run L0 + nest subset
+6. Repeat until green. Logout only if host Shell never loaded this tip
    (first install this boot) and host dual-mon requires host-loaded extension.
+7. ALWAYS before wrap-up / handoff / idle: forge nested stop
+     forge nested status         # running: False
 ```
+
+### Nest stop after tests (FIRM)
+
+| Rule | Detail |
+| --- | --- |
+| **Stop when done** | After nest cases finish for this session/prompt → `forge nested stop` |
+| **Stop before host matrix** | Do not run host `forge layout` / `forge test live` with nest env exported |
+| **Verify** | `forge nested status` → `running: False` |
+| **No durable export** | Prefer `forge nested exec -- <cmd>` or a throwaway terminal |
+| **Wrap-up gate** | Commit/handoff only after nest is stopped (or status proves already down) |
+
+Leaving nests up wastes resources and can leave orphan session buses that
+`status` may not always see if pid files went stale.
 
 **Shell env trap:** `eval $(forge nested env --export)` points `WAYLAND_DISPLAY` +
 `DBUS_SESSION_BUS_ADDRESS` at the **nest**. Host dual-mon commands must use the
@@ -141,15 +157,17 @@ exports before host `forge tree` / `forge layout` / `forge test live run`.
 # Reload extension JS mid-campaign (Wayland)
 ./install && forge nested restart
 
-# Nest health (optional)
+# Nest health (throwaway shell)
 forge nested status
 eval $(forge nested env --export) && forge ping
-forge nested stop
+# … nest tests …
+forge nested stop              # FIRM when nest work ends
+forge nested status            # running: False
 
-# Host live (dual-mon) — host env
+# Host live (dual-mon) — host env only
 forge test live probe
 forge test live run --from-work open-leaf   # example
-forge layout dev
+# Prefer _forge-test-* layouts, not personal dev/t1
 
 # Make aliases
 make nested-start | nested-restart | nested-stop | nested-status

@@ -1,8 +1,8 @@
 # Task: forge-layout-control-loop_cl11-live-deferred-open
 
-**Status:** ready — **operator / live**  
-**Plan:** [forge-layout-control-loop.md](../plans/forge-layout-control-loop.md)  
-**Branch:** `plan/forge-layout-control-loop` (tip CL8–CL10; install `g3b551b3`)  
+**Status:** superseded 2026-08-09 — control-loop verify-war era; do **not** reimplement  
+**Plan:** historical [forge-layout-control-loop.md](../plans/forge-layout-control-loop.md)  
+**Branch:** master  
 **Created:** 2026-08-05
 
 ## Goal

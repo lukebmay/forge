@@ -9,6 +9,7 @@ See agents/plans/forge-ai-live-test-matrix.md.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from dataclasses import dataclass, field
@@ -39,12 +40,12 @@ BEHAVIORS = frozenset(
         "partial-reload",
         "clean-empty",
         "close-focus",
-        "unfocus",
         "mon-claim",
         "dock-open",
         "structure-bind",
         "settle-soft",
         "save-focus",
+        "multi-instance",
     }
 )
 
@@ -58,11 +59,21 @@ WORK_HINTS: dict[str, tuple[str, ...]] = {
     "cold": ("cold-open",),
     "clean": ("clean-empty",),
     "close": ("close-focus",),
-    "unfocus": ("unfocus",),
     "save": ("save-focus",),
     "settle": ("settle-soft",),
     "dock": ("dock-open", "mon-claim"),
     "partial": ("partial-reload",),
+    "multi-instance": ("multi-instance",),
+    "wayland-rc": (
+        "layout-apply",
+        "open-leaf",
+        "partial-reload",
+        "settle-soft",
+        "close-focus",
+        "multi-instance",
+        "structure-bind",
+        "mon-claim",
+    ),
 }
 
 
@@ -111,7 +122,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "structure-bind",
         ),
         regressions=("R005", "R007", "R008"),
-        profile="dev",
+        profile="_forge-test-dual",
         setup=("close-chrome", "keep-agent", "keep-ghostty-tiles"),
         checks=(
             "ok",
@@ -120,12 +131,12 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "agent-survives",
             "profile-focus-if-set",
         ),
-        notes="Never close agent Ghostty. Primary partial-reload bar.",
+        notes="Never close agent Ghostty. Uses _forge-test-dual (not personal dev).",
     ),
     LiveCase(
         id="L1.left-chrome",
         layer=LAYER_L1,
-        title="Left chrome+ghostty, mon1 chrome closed → layout dev",
+        title="Left chrome+ghostty, mon1 chrome closed → layout _forge-test-dual",
         behaviors=(
             "layout-apply",
             "partial-reload",
@@ -135,14 +146,14 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "mon-claim",
         ),
         regressions=("R005", "R007"),
-        profile="dev",
+        profile="_forge-test-dual",
         setup=("close-mon1-chrome", "keep-agent"),
         checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube", "agent-survives"),
     ),
     LiveCase(
         id="L1.right-ghostty",
         layer=LAYER_L1,
-        title="mon0 chrome closed; mon1 ghostty+tabs → layout dev",
+        title="mon0 chrome closed; mon1 ghostty+tabs → layout _forge-test-dual",
         behaviors=(
             "layout-apply",
             "partial-reload",
@@ -152,7 +163,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "structure-bind",
         ),
         regressions=("R001", "R005"),
-        profile="dev",
+        profile="_forge-test-dual",
         setup=("close-mon0-chrome", "keep-agent", "keep-mon1"),
         checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube", "agent-survives"),
         notes="mon1 ghostty reused, not stolen to mon0.",
@@ -160,17 +171,18 @@ LIVE_CASES: tuple[LiveCase, ...] = (
     LiveCase(
         id="L1.t1-nautilus",
         layer=LAYER_L1,
-        title="Left ghostty + nautilus → layout t1",
+        title="Left ghostty + nautilus → layout _forge-test-nautilus",
         behaviors=("layout-apply", "partial-reload", "structure-bind", "mon-claim"),
         regressions=(),
-        profile="t1",
+        profile="_forge-test-nautilus",
         setup=("close-chrome", "keep-agent", "ensure-nautilus"),
         checks=("ok", "agent-survives"),
+        notes="Dedicated test profile (not personal t1).",
     ),
     LiveCase(
         id="L2.true-cold-dev",
         layer=LAYER_L2,
-        title="True cold (no tiles) → layout dev open leaf + focus",
+        title="True cold (no tiles) → layout _forge-test-dual open leaf + focus",
         behaviors=(
             "cold-open",
             "layout-apply",
@@ -182,7 +194,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
         ),
         regressions=("R005", "R007", "R008"),
         requires_true_cold=True,
-        profile="dev",
+        profile="_forge-test-dual",
         setup=("close-all-tiles", "keep-agent"),
         checks=(
             "ok",
@@ -191,29 +203,33 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "agent-survives",
             "profile-focus-if-set",
         ),
-        notes="Requires Guake/float agent. Closes all TILE windows.",
+        notes=(
+            "True cold: Guake/float agent, OR durable Grok leader "
+            "(GROK_LEADER_SOCKET) — agent TILE may close; process survives."
+        ),
     ),
     LiveCase(
         id="L2.layout-clean",
         layer=LAYER_L2,
-        title="Non-empty desk → layout clean empties tiles",
+        title="Non-empty desk → layout _forge-test-clean empties tiles",
         behaviors=("clean-empty", "layout-apply"),
         regressions=("R009",),
         requires_true_cold=True,
-        profile="clean",
+        profile="_forge-test-clean",
         setup=("ensure-some-tiles", "keep-agent"),
         checks=("ok", "no-tiles-or-only-agent", "agent-survives"),
-        notes="Empty profile must close residuals. Agent must not be a tile.",
+        notes="Empty test profile closes residuals. Agent must not be a tile.",
     ),
     LiveCase(
         id="L1.settled-rerun",
         layer=LAYER_L1,
-        title="Settled desk → layout dev no thrash (focus phase soft)",
+        title="Settled desk → layout _forge-test-dual no thrash (focus soft)",
         behaviors=("layout-apply", "profile-focus", "open-leaf", "settle-soft"),
         regressions=("R007",),
-        profile="dev",
+        profile="_forge-test-dual",
         setup=("ensure-dev-shape", "keep-agent"),
         checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube", "agent-survives"),
+        notes="ensure-dev-shape bootstraps via _forge-test-dual when needed.",
     ),
     LiveCase(
         id="L1.close-focus-lft",
@@ -221,25 +237,34 @@ LIVE_CASES: tuple[LiveCase, ...] = (
         title="Close focused chrome → focus lands on remaining TILE (LFT/sibling)",
         behaviors=("close-focus",),
         regressions=(),
-        profile="dev",
+        profile="_forge-test-dual",
         setup=("ensure-dev-shape", "keep-agent"),
         actions=("focus-disposable-chrome", "close-focus"),
         run_layout=False,
         checks=("ok", "focus-is-tile", "closed-gone", "agent-survives"),
         notes="FC3: does not re-open closed chrome; desk may need layout after run.",
     ),
+    # L1.unfocus abandoned — Ctrl+Super+Esc product surface removed.
     LiveCase(
-        id="L1.unfocus",
+        id="L1.ghosttys-multi",
         layer=LAYER_L1,
-        title="Unfocus tiles → no TILE keyboard focus; LFT retained",
-        behaviors=("unfocus",),
-        regressions=(),
-        profile="dev",
-        setup=("ensure-dev-shape", "keep-agent"),
-        actions=("focus-any-tile", "unfocus"),
-        run_layout=False,
-        checks=("ok", "no-tile-focus", "lft-retained", "agent-survives"),
-        notes="FC3: RunSteps unfocus (same as WindowUnfocus / Ctrl+Super+Esc).",
+        title="Chrome closed → layout _forge-test-ghosttys dual mon multi-instance",
+        behaviors=(
+            "layout-apply",
+            "partial-reload",
+            "multi-instance",
+            "structure-bind",
+            "mon-claim",
+        ),
+        regressions=("R010",),
+        profile="_forge-test-ghosttys",
+        setup=("close-chrome", "keep-agent", "keep-ghostty-tiles"),
+        checks=(
+            "ok",
+            "dual-ghostty-mons",
+            "agent-survives",
+        ),
+        notes="Test profile multi-instance; not personal ghosttys/dev.",
     ),
 )
 
@@ -255,6 +280,8 @@ class Capability:
     can_nested: bool = False  # host Wayland → forge nested for JS reload
     can_retest: bool = False  # can_hup or can_nested
     can_true_cold: bool = False
+    # Durable leader: agent TILE may close; process survives (reattach after).
+    agent_window_optional: bool = False
     can_partial: bool = True
     extension_ok: bool = False
     extension_version: Optional[str] = None
@@ -273,6 +300,7 @@ class Capability:
             "canNested": self.can_nested,
             "canRetest": self.can_retest,
             "canTrueCold": self.can_true_cold,
+            "agentWindowOptional": self.agent_window_optional,
             "canPartial": self.can_partial,
             "extensionOk": self.extension_ok,
             "extensionVersion": self.extension_version,
@@ -528,13 +556,34 @@ def capability_from_forest(
         agent_mode = str(agent_win.get("mode") or "") or None
         agent_cls = _wm_class_str(agent_win) or None
 
-    # True cold: agent is Guake, or FLOAT agent that is not a required tile.
+    # True cold: Guake/float agent, OR durable Grok leader (process survives
+    # agent TILE death — headless/leader mode). Closing all tiles still loses
+    # the agent *window*; reattach after L2 (new Ghostty + grok reattach).
+    e = env if env is not None else os.environ
     can_true_cold = False
+    leader_sock = str(e.get("GROK_LEADER_SOCKET") or "").strip()
+    leader_ok = False
+    if leader_sock:
+        try:
+            import stat as _stat
+
+            st = os.stat(leader_sock)
+            leader_ok = _stat.S_ISSOCK(st.st_mode)
+        except OSError:
+            leader_ok = False
+    agent_window_optional = False
     if agent_kind == "guake":
         can_true_cold = True
     elif agent_kind == "ghostty" and str(agent_mode or "").upper() == "FLOAT":
         can_true_cold = True
         notes.append("true cold OK: float ghostty")
+    elif leader_ok:
+        can_true_cold = True
+        agent_window_optional = True
+        notes.append(
+            "true cold OK: durable Grok leader "
+            "(agent TILE may close; process survives — reattach after)"
+        )
     elif agent_kind == "ghostty":
         notes.append("true cold blocked: tiled ghostty agent would die if all tiles closed")
     else:
@@ -590,6 +639,7 @@ def capability_from_forest(
         can_nested=can_nested,
         can_retest=can_retest,
         can_true_cold=can_true_cold,
+        agent_window_optional=agent_window_optional,
         can_partial=True,
         extension_ok=ext_ok if ping is not None else True,
         extension_version=ext_ver,
@@ -829,25 +879,49 @@ def window_title(w: dict[str, Any]) -> str:
     return str(w.get("title") or "")
 
 
-def open_leaf_title(group: dict[str, Any]) -> str:
+def open_leaf_window(group: dict[str, Any]) -> Optional[dict[str, Any]]:
     ltf = group.get("lastTabFocusId")
     if ltf is None:
-        return ""
+        return None
     sid = str(ltf)
     for c in group.get("children") or []:
         if str(c.get("windowId")) == sid:
-            return window_title(c)
-    return ""
+            return c if isinstance(c, dict) else None
+    return None
+
+
+def open_leaf_title(group: dict[str, Any]) -> str:
+    w = open_leaf_window(group)
+    return window_title(w) if w else ""
 
 
 def check_mon_open_leaf_contains(
-    forest: Any, *, mon_index: int, substring: str
+    forest: Any,
+    *,
+    mon_index: int,
+    substring: str,
+    require_chrome_family: bool = True,
 ) -> tuple[bool, str]:
+    """
+    First TABBED group on mon has open leaf title containing substring.
+
+    require_chrome_family (default True): open leaf must be chrome/PWA so agent
+    Ghostty titles containing \"grok\" cannot false-pass mon0-open-leaf-grok.
+    """
     groups = [g for g in tabbed_groups(forest) if g.get("monitor") == mon_index]
     if not groups:
         return False, f"mon{mon_index}: no TABBED group"
     # first tabbed on that mon (profile mon0 left tab)
-    title = open_leaf_title(groups[0])
+    leaf = open_leaf_window(groups[0])
+    title = window_title(leaf) if leaf else ""
+    if require_chrome_family:
+        cls = _wm_class_str(leaf) if leaf else ""
+        if not _is_chrome_family_wm_class(cls):
+            return (
+                False,
+                f"mon{mon_index} open leaf class={cls!r} title={title!r} "
+                f"(want chrome-family for {substring!r})",
+            )
     if substring.casefold() in title.casefold():
         return True, f"mon{mon_index} open leaf {title!r}"
     return False, f"mon{mon_index} open leaf {title!r} missing {substring!r}"
@@ -862,6 +936,22 @@ def check_agent_survives(
     if agent_window_id in ids:
         return True, f"agent {agent_window_id} present"
     return False, f"agent {agent_window_id} missing from tree"
+
+
+def check_dual_ghostty_mons(forest: Any) -> tuple[bool, str]:
+    """At least one TILE ghostty on mon0 and mon1 (multi-instance layout)."""
+    mon_hits: dict[int, int] = {}
+    for mon_i, w in iter_windows_with_mon(forest):
+        if str(w.get("mode") or "").upper() != "TILE":
+            continue
+        if not _is_ghostty_class(_wm_class_str(w)):
+            continue
+        mon_hits[int(mon_i)] = mon_hits.get(int(mon_i), 0) + 1
+    n0 = mon_hits.get(0, 0)
+    n1 = mon_hits.get(1, 0)
+    if n0 >= 1 and n1 >= 1:
+        return True, f"ghostty TILE mon0={n0} mon1={n1}"
+    return False, f"need ghostty TILE on mon0 and mon1; have mon0={n0} mon1={n1}"
 
 
 def check_no_tile_windows(
@@ -979,6 +1069,16 @@ def evaluate_checks(
             )
         elif name == "agent-survives":
             ok, detail = check_agent_survives(forest, capability.agent_window_id)
+            if (
+                not ok
+                and getattr(capability, "agent_window_optional", False)
+            ):
+                ok = True
+                detail = (
+                    f"agent window optional (leader/true-cold): {detail}"
+                )
+        elif name == "dual-ghostty-mons":
+            ok, detail = check_dual_ghostty_mons(forest)
         elif name == "profile-focus-if-set":
             # Soft: detailed focus is SE8b. Harness records focus id only.
             ok = True
@@ -1004,6 +1104,271 @@ def evaluate_checks(
             detail = f"unknown check {name!r}"
         results.append({"check": name, "ok": ok, "detail": detail})
     return results
+
+
+# --- layout output → metrics (cross-host RC compare) ---
+
+_COUNTS_RE = re.compile(
+    r"reused\s+(\d+)\s+opened\s+(\d+)\s+moved\s+(\d+)",
+    re.IGNORECASE,
+)
+_THRASH_RISK_RE = re.compile(r"thrashRisk\s+(\d+)", re.IGNORECASE)
+_THRASH_STATE_RE = re.compile(
+    r"thrashState\s+(\S+)(?:\s+score=(\d+))?",
+    re.IGNORECASE,
+)
+_HARD_READY_WARN_RE = re.compile(
+    r"targets not hard-ready|hard-ready timeout|not hard-ready",
+    re.IGNORECASE,
+)
+_SOFT_TIMEOUT_RE = re.compile(r'"softTimeoutMs"\s*:\s*(\d+)')
+_CORRECTIONS_RE = re.compile(r'"corrections"\s*:\s*(\d+)')
+_SOFT_SETTLED_RE = re.compile(r'"softSettled"\s*:\s*(true|false)', re.IGNORECASE)
+_ELAPSED_RE = re.compile(r'"elapsed_ms"\s*:\s*(\d+)')
+
+
+def _try_parse_json_blobs(text: str) -> list[dict[str, Any]]:
+    """Best-effort: pull top-level JSON objects from mixed layout stdout/stderr."""
+    out: list[dict[str, Any]] = []
+    if not text:
+        return out
+    decoder = json.JSONDecoder()
+    i = 0
+    n = len(text)
+    while i < n:
+        if text[i] != "{":
+            i += 1
+            continue
+        try:
+            obj, end = decoder.raw_decode(text, i)
+        except json.JSONDecodeError:
+            i += 1
+            continue
+        if isinstance(obj, dict):
+            out.append(obj)
+        i = max(end, i + 1)
+    return out
+
+
+def extract_layout_metrics(output: str, *, wall_ms: Optional[int] = None) -> dict[str, Any]:
+    """
+    Parse forge layout human + optional verbose JSON into compare metrics.
+
+    Namespaced later by env (host/session) in the live report writer.
+    """
+    text = output or ""
+    metrics: dict[str, Any] = {
+        "wallMs": wall_ms,
+        "counts": {},
+        "thrashRisk": None,
+        "thrashState": None,
+        "thrashScore": None,
+        "hardReadyWarnings": 0,
+        "hardReadyTimeoutHints": [],
+        "softTimeoutMs": None,
+        "softSettled": None,
+        "softCorrections": None,
+        "softResiduals": None,
+        "softElapsedMs": None,
+        "expectationMisses": 0,
+        "delayTimeoutsLikelyOk": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "applyKeys": [],
+    }
+
+    m = _COUNTS_RE.search(text)
+    if m:
+        metrics["counts"] = {
+            "reused": int(m.group(1)),
+            "opened": int(m.group(2)),
+            "moved": int(m.group(3)),
+        }
+    m = _THRASH_RISK_RE.search(text)
+    if m:
+        metrics["thrashRisk"] = int(m.group(1))
+    m = _THRASH_STATE_RE.search(text)
+    if m:
+        metrics["thrashState"] = m.group(1)
+        if m.group(2):
+            metrics["thrashScore"] = int(m.group(2))
+
+    hard_hits = _HARD_READY_WARN_RE.findall(text)
+    metrics["hardReadyWarnings"] = len(hard_hits)
+    if re.search(r"not hard-ready \(moving anyway\)", text, re.I):
+        metrics["hardReadyTimedOutMovingAnyway"] = len(
+            re.findall(r"not hard-ready \(moving anyway\)", text, re.I)
+        )
+
+    blobs = _try_parse_json_blobs(text)
+    apply: Optional[dict[str, Any]] = None
+    for blob in blobs:
+        if isinstance(blob.get("apply"), dict):
+            apply = blob["apply"]
+            break
+        # bare apply log
+        if "finalFocusSoft" in blob or "followUpSettle" in blob:
+            apply = blob
+            break
+    if apply is not None:
+        metrics["applyKeys"] = sorted(str(k) for k in apply.keys())
+        soft = apply.get("finalFocusSoft")
+        if isinstance(soft, dict):
+            if soft.get("softTimeoutMs") is not None:
+                metrics["softTimeoutMs"] = int(soft["softTimeoutMs"])
+            if soft.get("softSettled") is not None:
+                metrics["softSettled"] = bool(soft["softSettled"])
+            if soft.get("corrections") is not None:
+                metrics["softCorrections"] = int(soft["corrections"])
+            residuals = soft.get("residuals")
+            if isinstance(residuals, list):
+                metrics["softResiduals"] = len(residuals)
+                metrics["expectationMisses"] = len(residuals)
+            if soft.get("elapsed_ms") is not None:
+                metrics["softElapsedMs"] = int(soft["elapsed_ms"])
+            # Quiet held after timeout with no residual → delay "timeout" was success.
+            if soft.get("softSettled") and int(soft.get("corrections") or 0) == 0:
+                metrics["delayTimeoutsLikelyOk"] = 1
+            elif soft.get("softSettled") and int(soft.get("corrections") or 0) > 0:
+                # Corrected thrash then quiet — still soft success after miss(es).
+                metrics["delayTimeoutsLikelyOk"] = 1
+        if metrics["softTimeoutMs"] is None and apply.get("finalFocusSoftTimeoutMs") is not None:
+            try:
+                metrics["softTimeoutMs"] = int(apply["finalFocusSoftTimeoutMs"])
+            except (TypeError, ValueError):
+                pass
+        settle = apply.get("followUpSettle") or apply.get("finalFocusSettle")
+        if isinstance(settle, dict) and settle.get("ok") is False:
+            metrics["hardReadyWarnings"] = max(
+                metrics["hardReadyWarnings"], 1
+            )
+            err = settle.get("error")
+            if err:
+                metrics["hardReadyTimeoutHints"].append(str(err)[:200])
+        flush = apply.get("settleHeuristicsFlush")
+        if isinstance(flush, dict):
+            metrics["heuristicsFlush"] = {
+                k: flush.get(k)
+                for k in ("path", "written", "entryCount", "reason")
+                if k in flush
+            }
+
+    # Fallback soft fields from loose regex if no apply blob
+    if metrics["softTimeoutMs"] is None:
+        m = _SOFT_TIMEOUT_RE.search(text)
+        if m:
+            metrics["softTimeoutMs"] = int(m.group(1))
+    if metrics["softCorrections"] is None:
+        m = _CORRECTIONS_RE.search(text)
+        if m:
+            metrics["softCorrections"] = int(m.group(1))
+    if metrics["softSettled"] is None:
+        m = _SOFT_SETTLED_RE.search(text)
+        if m:
+            metrics["softSettled"] = m.group(1).lower() == "true"
+    if metrics["softElapsedMs"] is None:
+        m = _ELAPSED_RE.search(text)
+        if m:
+            metrics["softElapsedMs"] = int(m.group(1))
+
+    return metrics
+
+
+def build_env_namespace(
+    cap: Capability,
+    *,
+    hostname: Optional[str] = None,
+    nested_running: Optional[bool] = None,
+    extra: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    """Stable env label block for RC report compare (host / session / nest)."""
+    import socket
+
+    host = hostname or socket.gethostname() or "unknown"
+    return {
+        "hostname": host,
+        "session": cap.session,
+        "agentTerminal": cap.agent_terminal,
+        "agentMode": cap.agent_mode,
+        "canHup": cap.can_hup,
+        "canNested": cap.can_nested,
+        "canRetest": cap.can_retest,
+        "canTrueCold": cap.can_true_cold,
+        "extensionOk": cap.extension_ok,
+        "extensionVersion": cap.extension_version,
+        "nestedGnome": nested_running,
+        "nTileWindowsStart": cap.n_tile_windows,
+        **(extra or {}),
+    }
+
+
+def default_live_report_path(
+    *,
+    hostname: Optional[str] = None,
+    session: str = "unknown",
+    when: Optional[str] = None,
+) -> str:
+    """agents/test-results/wayland/<host>-<session>-<stamp>.json under repo if found."""
+    import socket
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    host = hostname or socket.gethostname() or "host"
+    stamp = when or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    # Prefer repo agents/ if cwd or this file lives in a forge tree.
+    here = Path(__file__).resolve()
+    repo = None
+    for p in [Path.cwd(), *here.parents]:
+        if (p / "agents").is_dir() and (p / "scripts" / "forge").is_dir():
+            repo = p
+            break
+    base = (repo / "agents" / "test-results" / "wayland") if repo else Path(
+        "agents/test-results/wayland"
+    )
+    base.mkdir(parents=True, exist_ok=True)
+    return str(base / f"{host}-{session}-{stamp}.json")
+
+
+def summarize_metrics(case_results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Roll up per-case metrics for the report summary block."""
+    walls: list[int] = []
+    soft_to: list[int] = []
+    corrections = 0
+    misses = 0
+    hard_warns = 0
+    delay_ok = 0
+    hard_move_anyway = 0
+    for r in case_results:
+        m = r.get("metrics") or {}
+        if not isinstance(m, dict):
+            continue
+        if m.get("wallMs") is not None:
+            try:
+                walls.append(int(m["wallMs"]))
+            except (TypeError, ValueError):
+                pass
+        if m.get("softTimeoutMs") is not None:
+            try:
+                soft_to.append(int(m["softTimeoutMs"]))
+            except (TypeError, ValueError):
+                pass
+        corrections += int(m.get("softCorrections") or 0)
+        misses += int(m.get("expectationMisses") or 0)
+        hard_warns += int(m.get("hardReadyWarnings") or 0)
+        delay_ok += int(m.get("delayTimeoutsLikelyOk") or 0)
+        hard_move_anyway += int(m.get("hardReadyTimedOutMovingAnyway") or 0)
+    return {
+        "casesWithMetrics": sum(1 for r in case_results if r.get("metrics")),
+        "wallMsTotal": sum(walls) if walls else None,
+        "wallMsMax": max(walls) if walls else None,
+        "wallMsAvg": int(sum(walls) / len(walls)) if walls else None,
+        "softTimeoutMsMax": max(soft_to) if soft_to else None,
+        "softTimeoutMsAvg": int(sum(soft_to) / len(soft_to)) if soft_to else None,
+        "softCorrectionsTotal": corrections,
+        "expectationMissesTotal": misses,
+        "hardReadyWarningsTotal": hard_warns,
+        "hardReadyTimedOutMovingAnywayTotal": hard_move_anyway,
+        "delayTimeoutsLikelyOkTotal": delay_ok,
+    }
 
 
 def format_probe_text(cap: Capability) -> str:

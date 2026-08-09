@@ -34,6 +34,7 @@ from layout_apply import (  # noqa: E402
     move_step_window_ids,
     open_action_to_launch_fields,
     parent_last_tab_focus_by_window_id,
+    partition_extension_steps_place_vs_structure,
     partition_plan_actions,
     residual_follow_up,
     resolve_focus_soft_timeout_ms,
@@ -599,6 +600,20 @@ class TestActionMapping(unittest.TestCase):
         self.assertEqual(len(move), 1)
         self.assertEqual(move[0]["tile"], "id:501")
         self.assertEqual(move[0]["dest"], "path:mo1ws0")
+
+    def test_partition_extension_steps_place_vs_structure(self):
+        """R010: residual place must run before structure ensure_layout."""
+        place, structure = partition_extension_steps_place_vs_structure(
+            [
+                {"op": "move", "tile": "id:1", "dest": "path:mo1ws0"},
+                {"op": "layout", "mode": "TABBED", "selector": "id:2"},
+                {"op": "order", "windowIds": ["id:3", "id:4"]},
+                {"op": "close", "selector": "id:5"},
+                {"op": "size", "windowIds": ["id:3"], "shares": [0.5]},
+            ]
+        )
+        self.assertEqual([s["op"] for s in place], ["move", "close"])
+        self.assertEqual([s["op"] for s in structure], ["layout", "order", "size"])
 
     def test_open_action_to_launch_fields(self):
         fields = open_action_to_launch_fields(

@@ -107,6 +107,7 @@ from layout_apply import (  # noqa: E402
     open_action_to_launch_fields,
     partition_plan_actions,
     residual_follow_up,
+    partition_extension_steps_place_vs_structure,
     resolve_focus_soft_timeout_ms,
     resolve_geom_soft_timeout_ms,
     run_soft_focus_barrier,
@@ -2956,10 +2957,16 @@ def _layout_run_reconcile_apply(
             )
             if still_open:
                 _eprint(f"forge layout: still missing roles after open: {still_open}")
-            if follow_steps:
+            # Split place vs structure: mon moves must stick before ensure_layout
+            # (Wayland partial reopen left mon1 flat when same-batch TABBED ran
+            # against pre-move mon0 paths).
+            place_steps, _struct_from_plan2 = (
+                partition_extension_steps_place_vs_structure(follow_steps)
+            )
+            if place_steps or follow_steps:
                 # After release-deferred, extension processFloats → TILE. Wait
                 # longer than LF5 default so structure ops see TILE not FLOAT.
-                settle_ids = move_step_window_ids(follow_steps)
+                settle_ids = move_step_window_ids(place_steps or follow_steps)
                 for _role, pin_wid in (role_pins or {}).items():
                     if pin_wid is not None and str(pin_wid) not in settle_ids:
                         settle_ids.append(str(pin_wid))
@@ -2972,33 +2979,153 @@ def _layout_run_reconcile_apply(
                             f"{settle_info['pending']} (moving anyway)"
                         )
                 move_t0 = time.monotonic()
-                rc, agg = run_mixed_steps(
-                    backend, follow_steps, stop_on_error=True, print_each=False
-                )
-                apply_log["followUp"] = agg
-                if rc != 0:
-                    _eprint("forge layout: follow-up steps failed")
-                    out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
-                    out["ok"] = False
-                    out["apply"] = apply_log
-                    if still_open:
-                        out["error"] = (
-                            f"follow-up failed; roles still missing after launch: "
-                            f"{still_open}"
-                        )
-                    _layout_maybe_print_json(out, verbose=verbose, force=True)
-                    return rc
-                # SE6: soft geom quiet after residual moves (learn + wait).
-                geom_ids = move_step_window_ids(follow_steps)
-                if geom_ids:
-                    _layout_soft_geom_pass(
-                        backend,
-                        geom_ids,
-                        process_kind="move",
-                        apply_log=apply_log,
-                        log_key="followUpGeomSoft",
-                        call_started_mono=move_t0,
+                if place_steps:
+                    rc, agg = run_mixed_steps(
+                        backend, place_steps, stop_on_error=True, print_each=False
                     )
+                    apply_log["followUp"] = agg
+                    if rc != 0:
+                        _eprint("forge layout: follow-up place steps failed")
+                        out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
+                        out["ok"] = False
+                        out["apply"] = apply_log
+                        if still_open:
+                            out["error"] = (
+                                f"follow-up failed; roles still missing after launch: "
+                                f"{still_open}"
+                            )
+                        _layout_maybe_print_json(out, verbose=verbose, force=True)
+                        return rc
+                    # SE6: soft geom quiet after residual moves (learn + wait).
+                    geom_ids = move_step_window_ids(place_steps)
+                    if geom_ids:
+                        _layout_soft_geom_pass(
+                            backend,
+                            geom_ids,
+                            process_kind="move",
+                            apply_log=apply_log,
+                            log_key="followUpGeomSoft",
+                            call_started_mono=move_t0,
+                        )
+                else:
+                    apply_log["followUp"] = {"ok": True, "skipped": True, "reason": "no place"}
+
+                # Structure replan from post-place forest (fresh mon paths).
+                try:
+                    forest_struct = _load_live_forest()
+                    plan_struct = plan_reconcile(
+                        forest_struct,
+                        data,
+                        clean=clean,
+                        keep_others=keep_others,
+                        safe=safe,
+                        role_pins=role_pins or None,
+                        just_opened_roles=(
+                            set(role_pins.keys()) if role_pins else None
+                        ),
+                        workspace=workspace,
+                    )
+                except Exception as e:
+                    _eprint(f"forge layout: structure re-plan after place failed: {e}")
+                    plan_struct = plan2
+                struct_ext, _struct_open = partition_plan_actions(
+                    plan_struct.get("actions")
+                )
+                # Full residual sans focus from post-place forest. May still need
+                # moves when opens landed on the wrong mon (plan2 moved=0) — do
+                # not drop place ops. Split place→structure again so mon sticks
+                # before ensure_layout.
+                struct_structure = without_focus_actions(struct_ext)
+                struct_follow, _ = residual_follow_up(
+                    struct_structure,
+                    [],
+                    force_close=force_close,
+                    workspace=workspace,
+                )
+                place2, struct2 = partition_extension_steps_place_vs_structure(
+                    struct_follow
+                )
+                if place2:
+                    settle2_ids = move_step_window_ids(place2)
+                    if settle2_ids:
+                        apply_log["followUpPlace2Settle"] = (
+                            wait_for_window_ids_settled(backend, settle2_ids)
+                        )
+                    rc_p2, agg_p2 = run_mixed_steps(
+                        backend, place2, stop_on_error=True, print_each=False
+                    )
+                    apply_log["followUpPlace2"] = agg_p2
+                    if rc_p2 != 0:
+                        _eprint("forge layout: follow-up place2 steps failed")
+                        out = _layout_plan_meta(
+                            resolved, name, plan_struct, dry_run=False
+                        )
+                        out["ok"] = False
+                        out["apply"] = apply_log
+                        _layout_maybe_print_json(out, verbose=verbose, force=True)
+                        return rc_p2
+                    # Fresh structure plan after late mon rehome.
+                    try:
+                        forest_struct = _load_live_forest()
+                        plan_struct = plan_reconcile(
+                            forest_struct,
+                            data,
+                            clean=clean,
+                            keep_others=keep_others,
+                            safe=safe,
+                            role_pins=role_pins or None,
+                            just_opened_roles=(
+                                set(role_pins.keys()) if role_pins else None
+                            ),
+                            workspace=workspace,
+                        )
+                        struct_ext, _ = partition_plan_actions(
+                            plan_struct.get("actions")
+                        )
+                        struct_follow, _ = residual_follow_up(
+                            without_focus_actions(struct_ext),
+                            [],
+                            force_close=force_close,
+                            workspace=workspace,
+                        )
+                        _place3, struct2 = (
+                            partition_extension_steps_place_vs_structure(
+                                struct_follow
+                            )
+                        )
+                    except Exception as e:
+                        _eprint(
+                            f"forge layout: structure re-plan after place2 failed: {e}"
+                        )
+                if struct2:
+                    struct_ids = move_step_window_ids(struct2)
+                    for _role, pin_wid in (role_pins or {}).items():
+                        if pin_wid is not None and str(pin_wid) not in struct_ids:
+                            struct_ids.append(str(pin_wid))
+                    if struct_ids:
+                        apply_log["followUpStructureSettle"] = (
+                            wait_for_window_ids_settled(backend, struct_ids)
+                        )
+                    rc_s, agg_s = run_mixed_steps(
+                        backend, struct2, stop_on_error=True, print_each=False
+                    )
+                    apply_log["followUpStructure"] = agg_s
+                    if rc_s != 0:
+                        _eprint("forge layout: follow-up structure steps failed")
+                        out = _layout_plan_meta(
+                            resolved, name, plan_struct, dry_run=False
+                        )
+                        out["ok"] = False
+                        out["apply"] = apply_log
+                        _layout_maybe_print_json(out, verbose=verbose, force=True)
+                        return rc_s
+                else:
+                    apply_log["followUpStructure"] = {
+                        "ok": True,
+                        "skipped": True,
+                        "reason": "nothing to structure",
+                    }
+                plan2 = plan_struct
             plan = plan2
 
             # Belt: optional stable wait, then wrong-mon rehome for just-opened only.
@@ -4452,11 +4579,23 @@ def _test_live_close_all_tiles(backend: str, keep_id: Optional[str]) -> list[str
     return closed
 
 
-def _test_live_run_layout(name: str) -> tuple[int, str]:
-    """Invoke forge layout <name> as subprocess (same CLI). Returns (rc, stderr+stdout tail)."""
+def _test_live_run_layout(
+    name: str, *, verbose: bool = True
+) -> tuple[int, str, int]:
+    """
+    Invoke forge layout <name> as subprocess (same CLI).
+
+    Returns (rc, combined stdout+stderr, wall_ms).
+    verbose=True (default for live matrix) so apply JSON is available for metrics.
+    """
     cmd = [sys.executable, str(Path(__file__).resolve()), "layout", name]
+    if verbose:
+        cmd.append("--verbose")
     # Prefer local forge path so we use this tree
     env = os.environ.copy()
+    if verbose:
+        env["FORGE_VERBOSE"] = "1"
+    t0 = time.monotonic()
     proc = subprocess.run(
         cmd,
         capture_output=True,
@@ -4464,8 +4603,10 @@ def _test_live_run_layout(name: str) -> tuple[int, str]:
         env=env,
         timeout=300,
     )
-    out = (proc.stdout or "") + (proc.stderr or "")
-    return int(proc.returncode), out[-4000:]
+    wall_ms = int(max(0.0, (time.monotonic() - t0) * 1000))
+    out = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    # Keep a long tail for metrics + debug (soft barriers can be verbose).
+    return int(proc.returncode), out[-120000:], wall_ms
 
 
 def _test_live_ensure_nautilus(backend: str) -> dict[str, Any]:
@@ -4499,20 +4640,22 @@ def _test_live_ensure_nautilus(backend: str) -> dict[str, Any]:
 
 
 def _test_live_ensure_dev_shape(backend: str) -> dict[str, Any]:
-    """No-op when dual-mon dev shape already present; else one layout dev bootstrap."""
+    """No-op when dual-mon test shape already present; else bootstrap test profile."""
     from live_matrix import forest_looks_like_dev_shape
 
+    # Prefer dedicated test profile (not personal `dev`).
+    bootstrap = "_forge-test-dual"
     forest = _test_live_get_forest(backend, None)
     ok, detail = forest_looks_like_dev_shape(forest)
     if ok:
         return {"shaped": True, "action": "noop", "detail": detail}
-    rc, out = _test_live_run_layout("dev")
+    rc, out, _wall = _test_live_run_layout(bootstrap, verbose=False)
     time.sleep(0.5)
     forest2 = _test_live_get_forest(backend, None)
     ok2, detail2 = forest_looks_like_dev_shape(forest2)
     return {
         "shaped": ok2,
-        "action": "layout-dev",
+        "action": f"layout-{bootstrap}",
         "layoutRc": rc,
         "detail": detail2 if ok2 else f"before={detail}; after={detail2}",
         "layoutTail": out[-400:] if out else "",
@@ -4529,7 +4672,7 @@ def _test_live_ensure_some_tiles(
     forest = _test_live_get_forest(backend, None)
     if forest_has_some_tiles(forest, allow_window_ids=allow):
         return {"action": "noop", "hasTiles": True}
-    rc, out = _test_live_run_layout("dev")
+    rc, out, _wall = _test_live_run_layout("_forge-test-dual", verbose=False)
     time.sleep(0.5)
     forest2 = _test_live_get_forest(backend, None)
     has = forest_has_some_tiles(forest2, allow_window_ids=allow)
@@ -4630,12 +4773,16 @@ def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
     """
     from live_matrix import (
         LIVE_CASES,
+        build_env_namespace,
+        default_live_report_path,
         evaluate_checks,
+        extract_layout_metrics,
         format_selection_text,
         list_cases,
         parse_csv_set,
         recommend_for_work,
         select_cases,
+        summarize_metrics,
         summarize_run,
     )
 
@@ -4802,10 +4949,18 @@ def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
                     )
                     time.sleep(0.5)
                 elif step == "close-all-tiles":
-                    closed = _test_live_close_all_tiles(
-                        backend, cap_case.agent_window_id
+                    # Durable leader: close agent TILE too (true empty desk).
+                    keep = cap_case.agent_window_id
+                    if getattr(cap_case, "agent_window_optional", False):
+                        keep = None
+                    closed = _test_live_close_all_tiles(backend, keep)
+                    entry["setup"].append(
+                        {
+                            "step": step,
+                            "closed": closed,
+                            "keptAgent": keep is not None,
+                        }
                     )
-                    entry["setup"].append({"step": step, "closed": closed})
                     time.sleep(0.8)
                 elif step == "ensure-nautilus":
                     info = _test_live_ensure_nautilus(backend)
@@ -4832,9 +4987,12 @@ def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
             run_layout = bool(getattr(c, "run_layout", True))
             layout_ok = True
             if run_layout and c.profile:
-                rc, layout_out = _test_live_run_layout(c.profile)
+                rc, layout_out, wall_ms = _test_live_run_layout(c.profile)
                 entry["layoutRc"] = rc
                 entry["layoutTail"] = layout_out[-800:]
+                entry["metrics"] = extract_layout_metrics(
+                    layout_out, wall_ms=wall_ms
+                )
                 layout_ok = rc == 0
 
             # Optional post-setup actions (FC3 close/unfocus).
@@ -4963,22 +5121,191 @@ def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
         case_results.append(entry)
 
     summary = summarize_run(case_results)
+    metrics_summary = summarize_metrics(case_results)
     print()
     print(
         f"forge test live: "
         f"{'PASS' if summary['ok'] else 'FAIL'} "
         f"({summary['passed']} passed, {summary['failed']} failed)"
     )
+    if metrics_summary.get("wallMsTotal") is not None:
+        _eprint(
+            f"  metrics: wallMsTotal={metrics_summary.get('wallMsTotal')} "
+            f"wallMsMax={metrics_summary.get('wallMsMax')} "
+            f"softCorrections={metrics_summary.get('softCorrectionsTotal')} "
+            f"expectationMisses={metrics_summary.get('expectationMissesTotal')} "
+            f"hardReadyWarn={metrics_summary.get('hardReadyWarningsTotal')} "
+            f"delayTimeoutsLikelyOk={metrics_summary.get('delayTimeoutsLikelyOkTotal')}"
+        )
+
+    # Nested status for env namespace (best-effort; never fails the suite).
+    nested_running: Optional[bool] = None
+    try:
+        from nested_wayland import is_running as nested_is_running
+
+        nested_running = bool(nested_is_running())
+    except Exception:
+        nested_running = None
+
+    env_ns = build_env_namespace(cap, nested_running=nested_running)
+    report = {
+        "schemaVersion": 1,
+        "kind": "forge-test-live",
+        "env": env_ns,
+        "capability": cap.to_dict(),
+        "selection": sel.to_dict(),
+        "summary": summary,
+        "metricsSummary": metrics_summary,
+        "cases": case_results,
+    }
+
+    report_path = getattr(args, "report", None) or os.environ.get(
+        "FORGE_LIVE_REPORT"
+    )
+    if report_path is None or str(report_path).strip() in ("", "auto", "1", "true"):
+        # Default: always write RC-comparable report for live runs.
+        report_path = default_live_report_path(session=cap.session)
+    report_path = str(report_path).strip()
+    if report_path and report_path.lower() not in ("none", "off", "0", "false"):
+        try:
+            Path(report_path).parent.mkdir(parents=True, exist_ok=True)
+            Path(report_path).write_text(
+                json.dumps(report, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            _eprint(f"forge test live: report → {report_path}")
+        except OSError as e:
+            _eprint(f"forge test live: could not write report {report_path}: {e}")
+
     if verbose or not summary["ok"]:
         _print_json(
             {
+                "env": env_ns,
                 "capability": cap.to_dict(),
                 "selection": sel.to_dict(),
                 "summary": summary,
+                "metricsSummary": metrics_summary,
             },
             compact=False,
         )
+
+    # Headless leader: if true-cold/clean closed the agent TILE, reopen a head
+    # so the operator can see results. Only the durable leader process reaches
+    # here after window death — a non-leader client dies with its TTY.
+    try:
+        reattach = _test_live_reattach_agent_head(backend, cap, case_results)
+        if reattach:
+            report["reattach"] = reattach
+            if report_path and report_path.lower() not in (
+                "none",
+                "off",
+                "0",
+                "false",
+            ):
+                try:
+                    Path(report_path).write_text(
+                        json.dumps(report, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                except OSError:
+                    pass
+    except Exception as e:
+        _eprint(f"forge test live: reattach head failed: {e}")
+
     return 0 if summary["ok"] else 1
+
+
+def _test_live_reattach_agent_head(
+    backend: Optional[str],
+    cap: Any,
+    case_results: list[dict[str, Any]],
+) -> Optional[dict[str, Any]]:
+    """
+    Reopen Ghostty on the host after a live suite that may have closed the agent.
+
+    FIRM: only meaningful under durable Grok leader (agent_window_optional).
+    Non-headless agents cannot self-heal after their TTY dies.
+    """
+    if not getattr(cap, "agent_window_optional", False) and not getattr(
+        cap, "can_true_cold", False
+    ):
+        # Still reattach if any case closed all tiles / agent missing after run
+        closed_agent = False
+        for r in case_results:
+            for ch in r.get("checks") or []:
+                det = str(ch.get("detail") or "")
+                if "agent window optional" in det or "missing from tree" in det:
+                    closed_agent = True
+        if not closed_agent:
+            return None
+
+    leader = (os.environ.get("GROK_LEADER_SOCKET") or "").strip()
+    if not leader:
+        _eprint(
+            "forge test live: agent head may be gone; no GROK_LEADER_SOCKET — "
+            "cannot self-reattach (run under durable leader for true cold)"
+        )
+        return {"ok": False, "reason": "no-leader"}
+
+    # Prefer host session bus (do not leave nest env).
+    env = os.environ.copy()
+    try:
+        out = subprocess.run(
+            ["systemctl", "--user", "show-environment"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        for line in (out.stdout or "").splitlines():
+            if line.startswith("DBUS_SESSION_BUS_ADDRESS="):
+                env["DBUS_SESSION_BUS_ADDRESS"] = line.split("=", 1)[1]
+            if line.startswith("WAYLAND_DISPLAY="):
+                wd = line.split("=", 1)[1]
+                if wd and "forge" not in wd and "nested" not in wd:
+                    env["WAYLAND_DISPLAY"] = wd
+        env["XDG_SESSION_TYPE"] = env.get("XDG_SESSION_TYPE") or "wayland"
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+    # If a ghostty already exists on host tree, skip launch.
+    try:
+        forest = _test_live_get_forest(backend or _check_deps(), None)
+        from live_matrix import iter_windows
+
+        for w in iter_windows(forest):
+            cls = str(w.get("wmClass") or w.get("wm_class") or "").lower()
+            if "ghostty" in cls:
+                _eprint(
+                    "forge test live: agent head reattach — Ghostty already present "
+                    f"id={w.get('windowId')}; reattach UI: grok -r <session-id>"
+                )
+                return {
+                    "ok": True,
+                    "launched": False,
+                    "existingWindowId": w.get("windowId"),
+                    "hint": "grok -r <session-id>",
+                }
+    except Exception:
+        pass
+
+    # Launch Ghostty detached on host so operator can reattach the head.
+    try:
+        subprocess.Popen(
+            ["ghostty"],
+            env=env,
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        _eprint(
+            "forge test live: reopened Ghostty for agent head — "
+            "reattach with: grok -r <session-id>  (or /resume in an open client)"
+        )
+        return {"ok": True, "launched": True, "hint": "grok -r <session-id>"}
+    except OSError as e:
+        _eprint(f"forge test live: could not launch Ghostty for reattach: {e}")
+        return {"ok": False, "error": str(e)}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -5535,6 +5862,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="JSON dump with human plan/results",
     )
+    test_p.add_argument(
+        "--report",
+        metavar="PATH",
+        default=None,
+        help=(
+            "Write JSON results+metrics to PATH. "
+            "Default auto path under agents/test-results/wayland/; "
+            "FORGE_LIVE_REPORT=none to disable"
+        ),
+    )
     test_p.set_defaults(func=cmd_test)
 
     nested_p = sub.add_parser(
@@ -5546,6 +5883,7 @@ def build_parser() -> argparse.ArgumentParser:
             "out of the host Wayland session (AT-W1).\n"
             "\n"
             "  forge nested start                 # start nest + enable Forge\n"
+            "  forge nested start --monitors=2    # dual virtual mon (dummy)\n"
             "  forge nested status\n"
             "  eval $(forge nested env --export)  # point forge/apps at nest\n"
             "  forge ping                         # talks to nested Forge\n"
@@ -5553,6 +5891,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  forge nested restart               # reload shell/extension\n"
             "  forge nested stop\n"
             "\n"
+            "Multi-monitor: MUTTER_DEBUG_NUM_DUMMY_MONITORS (not host desks).\n"
             "Independent of shellrc. State: ~/.local/state/forge/nested/<name>/\n"
             "Override root: FORGE_NESTED_ROOT=…"
         ),
@@ -5581,12 +5920,21 @@ def build_parser() -> argparse.ArgumentParser:
     nested_p.add_argument(
         "--size",
         default=None,
-        help="Virtual monitor size WxH (default: 1500x1000)",
+        help="Virtual mode size WxH per dummy mon (default: 1500x1000)",
+    )
+    nested_p.add_argument(
+        "--monitors",
+        type=int,
+        default=None,
+        help=(
+            "Number of dummy monitors in the nest (1–4, default 1). "
+            "Use 2 for dual-mon layout tests without host dual geometry."
+        ),
     )
     nested_p.add_argument(
         "--scale",
         default=None,
-        help="MUTTER_DEBUG_DUMMY_MONITOR_SCALES (default: 1)",
+        help="Dummy monitor scale(s): one value or comma list (default: 1)",
     )
     nested_p.add_argument(
         "--replace",

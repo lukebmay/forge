@@ -93,7 +93,7 @@ describe("Keybindings", () => {
         "prefs-cheatsheet-toggle",
         "prefs-lock-screen",
         "layout-debug-overlay-toggle",
-        "window-unfocus",
+        // window-unfocus abandoned — no product keybind
       ];
 
       for (const key of expectedKeys) {
@@ -152,9 +152,8 @@ describe("Keybindings", () => {
       expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "GapSize", amount: -1 });
     });
 
-    it("window-unfocus should dispatch WindowUnfocus", () => {
-      keybindings._bindings["window-unfocus"]();
-      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "WindowUnfocus" });
+    it("window-unfocus is not a product keybind (abandoned)", () => {
+      expect(keybindings._bindings["window-unfocus"]).toBeUndefined();
     });
 
     it("window-resize-top-increase should use resize-amount from settings", () => {

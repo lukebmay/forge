@@ -22,12 +22,14 @@ from live_matrix import (  # noqa: E402
     capability_from_forest,
     check_agent_survives,
     check_closed_gone,
+    check_dual_ghostty_mons,
     check_focus_is_tile,
     check_lft_retained,
     check_mon_open_leaf_contains,
     check_no_tile_focus,
     classify_agent_terminal,
     evaluate_checks,
+    extract_layout_metrics,
     forest_has_nautilus,
     forest_has_some_tiles,
     forest_looks_like_dev_shape,
@@ -35,6 +37,7 @@ from live_matrix import (  # noqa: E402
     select_cases,
     select_chrome_tile_ids,
     session_type_from_env,
+    summarize_metrics,
 )
 
 
@@ -235,6 +238,25 @@ class TestSelect(unittest.TestCase):
         c = next(x for x in LIVE_CASES if x.id == "L2.layout-clean")
         self.assertIn("R009", c.regressions)
 
+    def test_catalog_has_ghosttys_multi(self):
+        c = next(x for x in LIVE_CASES if x.id == "L1.ghosttys-multi")
+        self.assertEqual(c.profile, "_forge-test-ghosttys")
+        self.assertIn("multi-instance", c.behaviors)
+        self.assertIn("dual-ghostty-mons", c.checks)
+
+    def test_catalog_uses_forge_test_profiles(self):
+        """Live cases must not target personal `dev` layout."""
+        for c in LIVE_CASES:
+            if c.profile in ("dev", "default"):
+                self.fail(f"{c.id} still uses personal profile {c.profile!r}")
+
+    def test_work_hint_multi_instance(self):
+        self.assertIn("multi-instance", behaviors_from_work_hint("multi-instance"))
+        forest = _add_guake(_load("tree-perfect.json"))
+        cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "wayland"})
+        sel = recommend_for_work("multi-instance", cap)
+        self.assertTrue(any(c.id == "L1.ghosttys-multi" for c in sel.cases))
+
 
 class TestChecks(unittest.TestCase):
     def test_open_leaf_and_agent(self):
@@ -261,6 +283,98 @@ class TestChecks(unittest.TestCase):
             layout_ok=True,
         )
         self.assertTrue(all(r["ok"] for r in results))
+
+    def test_dual_ghostty_mons(self):
+        forest = _load("tree-perfect.json")
+        ok, detail = check_dual_ghostty_mons(forest)
+        self.assertTrue(ok, detail)
+        # remove mon1 ghostty → fail
+        mon1 = forest["monitors"][1]
+        mon1["children"] = [
+            c
+            for c in mon1.get("children") or []
+            if not (
+                isinstance(c, dict)
+                and "ghostty" in str(c.get("wmClass") or "").lower()
+            )
+        ]
+        ok2, _ = check_dual_ghostty_mons(forest)
+        self.assertFalse(ok2)
+
+
+class TestLayoutMetrics(unittest.TestCase):
+    def test_extract_from_human_and_apply_json(self):
+        sample = """
+forge layout: host=black profile=dev
+  reused  2   opened  4   moved  1
+  thrashRisk  3
+  thrashState  ok score=0
+forge layout: residual targets not hard-ready (moving anyway)
+{
+  "ok": true,
+  "apply": {
+    "finalFocusSoftTimeoutMs": 2000,
+    "finalFocusSoft": {
+      "ok": true,
+      "softSettled": true,
+      "clean": true,
+      "corrections": 1,
+      "residuals": [{"latencyMs": 120}],
+      "elapsed_ms": 2150,
+      "softTimeoutMs": 2000
+    },
+    "followUpSettle": {"ok": true}
+  }
+}
+"""
+        m = extract_layout_metrics(sample, wall_ms=9000)
+        self.assertEqual(m["wallMs"], 9000)
+        self.assertEqual(m["counts"]["reused"], 2)
+        self.assertEqual(m["counts"]["opened"], 4)
+        self.assertEqual(m["counts"]["moved"], 1)
+        self.assertEqual(m["thrashRisk"], 3)
+        self.assertEqual(m["softTimeoutMs"], 2000)
+        self.assertTrue(m["softSettled"])
+        self.assertEqual(m["softCorrections"], 1)
+        self.assertEqual(m["expectationMisses"], 1)
+        self.assertEqual(m["hardReadyTimedOutMovingAnyway"], 1)
+        self.assertEqual(m["delayTimeoutsLikelyOk"], 1)
+
+    def test_summarize_metrics(self):
+        cases = [
+            {
+                "ok": True,
+                "metrics": {
+                    "wallMs": 1000,
+                    "softTimeoutMs": 2000,
+                    "softCorrections": 1,
+                    "expectationMisses": 2,
+                    "hardReadyWarnings": 0,
+                    "delayTimeoutsLikelyOk": 1,
+                    "hardReadyTimedOutMovingAnyway": 0,
+                },
+            },
+            {
+                "ok": True,
+                "metrics": {
+                    "wallMs": 3000,
+                    "softTimeoutMs": 4000,
+                    "softCorrections": 0,
+                    "expectationMisses": 0,
+                    "hardReadyWarnings": 1,
+                    "delayTimeoutsLikelyOk": 1,
+                    "hardReadyTimedOutMovingAnyway": 1,
+                },
+            },
+        ]
+        s = summarize_metrics(cases)
+        self.assertEqual(s["wallMsTotal"], 4000)
+        self.assertEqual(s["wallMsMax"], 3000)
+        self.assertEqual(s["softCorrectionsTotal"], 1)
+        self.assertEqual(s["expectationMissesTotal"], 2)
+        self.assertEqual(s["hardReadyWarningsTotal"], 1)
+        self.assertEqual(s["hardReadyTimedOutMovingAnywayTotal"], 1)
+        self.assertEqual(s["delayTimeoutsLikelyOkTotal"], 2)
 
 
 class TestSetupSelectors(unittest.TestCase):
@@ -322,7 +436,7 @@ class TestSetupSelectors(unittest.TestCase):
 
 
 class TestFocusCloseChecks(unittest.TestCase):
-    """FC3 pure checks for close-focus / unfocus live cases."""
+    """FC1/FC3 pure checks for close-focus (unfocus product abandoned)."""
 
     def test_focus_is_tile_and_no_tile_focus(self):
         forest = _load("tree-perfect.json")
@@ -346,22 +460,19 @@ class TestFocusCloseChecks(unittest.TestCase):
         ok3, _ = check_lft_retained(forest, "103")
         self.assertTrue(ok3)
 
-    def test_work_hint_close_and_unfocus(self):
+    def test_work_hint_close(self):
         self.assertIn("close-focus", behaviors_from_work_hint("close"))
-        self.assertIn("unfocus", behaviors_from_work_hint("unfocus"))
         forest = _add_guake(_load("tree-perfect.json"))
         cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
         close_sel = recommend_for_work("close", cap)
         self.assertTrue(any(c.id == "L1.close-focus-lft" for c in close_sel.cases))
-        unf_sel = recommend_for_work("unfocus", cap)
-        self.assertTrue(any(c.id == "L1.unfocus" for c in unf_sel.cases))
         # tight: close does not pull open-leaf matrix
         self.assertFalse(any(c.id == "L1.ghosttys-only" for c in close_sel.cases))
 
-    def test_catalog_fc3_cases(self):
+    def test_catalog_close_focus_case(self):
         ids = {c.id for c in LIVE_CASES}
         self.assertIn("L1.close-focus-lft", ids)
-        self.assertIn("L1.unfocus", ids)
+        self.assertNotIn("L1.unfocus", ids)
         close_c = next(c for c in LIVE_CASES if c.id == "L1.close-focus-lft")
         self.assertFalse(close_c.run_layout)
         self.assertIn("close-focus", close_c.actions)
