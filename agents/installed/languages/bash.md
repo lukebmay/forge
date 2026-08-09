@@ -1,3 +1,9 @@
+---
+title: Bash
+read_when: Writing or reviewing Bash scripts
+order: 200
+---
+
 # bash
 
 **Precedence:** in-repo `.editorconfig`, `shfmt`, shellcheck, and project scripts override this file.

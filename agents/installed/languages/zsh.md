@@ -1,3 +1,9 @@
+---
+title: Zsh
+read_when: Writing or reviewing zsh scripts/functions
+order: 200
+---
+
 # zsh
 
 **Precedence:** in-repo `.editorconfig`, `shfmt` flags, shellcheck config, and project scripts override this file.

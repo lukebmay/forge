@@ -1,3 +1,9 @@
+---
+title: PostgreSQL
+read_when: Postgres schemas, queries, migrations, or ops
+order: 200
+---
+
 # PostgreSQL
 
 **Precedence:** project migrations, `postgresql.conf`, connection pool settings, and DBA conventions override this file.

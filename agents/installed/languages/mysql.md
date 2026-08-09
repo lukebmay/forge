@@ -1,3 +1,9 @@
+---
+title: MySQL
+read_when: MySQL/MariaDB schemas, queries, or ops
+order: 200
+---
+
 # MySQL / MariaDB
 
 **Precedence:** project migrations, server config (`sql_mode`, charset), and DBA conventions override this file.

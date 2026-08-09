@@ -1,3 +1,9 @@
+---
+title: Web frontend
+read_when: Client-side web app architecture
+order: 200
+---
+
 # Web frontend (stack-agnostic)
 
 **Precedence:** project design system, a11y policy, bundler/framework docs, and in-repo lint/format configs override this file.

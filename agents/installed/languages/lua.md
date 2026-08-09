@@ -1,3 +1,9 @@
+---
+title: Lua
+read_when: Writing or reviewing Lua (including nvim)
+order: 200
+---
+
 # Lua
 
 **Precedence:** `stylua.toml` / `.stylua.toml`, luacheck, lua_ls settings in the project override this file.

@@ -1,3 +1,9 @@
+---
+title: QEMU
+read_when: QEMU/KVM VMs or related scripts
+order: 200
+---
+
 # QEMU / KVM
 
 **Precedence:** host virt stack (libvirt/virt-manager), org image pipeline, and security policy override this file.

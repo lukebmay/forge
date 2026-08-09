@@ -1,3 +1,9 @@
+---
+title: TypeScript
+read_when: Writing or reviewing TypeScript
+order: 200
+---
+
 # TypeScript
 
 **Precedence:** `tsconfig.json` / `tsconfig.*.json`, ESLint typescript-eslint, Prettier, and package scripts override this file.

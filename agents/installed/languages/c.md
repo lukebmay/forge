@@ -1,3 +1,9 @@
+---
+title: C
+read_when: Writing or reviewing C code
+order: 200
+---
+
 # C
 
 **Precedence:** `.clang-format`, `.clang-tidy`, compile_flags/compile_commands, and project Makefiles override this file.

@@ -1,3 +1,9 @@
+---
+title: SQLite
+read_when: SQLite schemas, queries, or embedded DB work
+order: 200
+---
+
 # SQLite
 
 **Precedence:** project pragmas, migration tooling, and embedder (app) conventions override this file.

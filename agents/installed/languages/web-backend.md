@@ -1,3 +1,9 @@
+---
+title: Web backend
+read_when: Server-side web app architecture
+order: 200
+---
+
 # Web backend (stack-agnostic)
 
 **Precedence:** service architecture docs, API specs, security policy, and in-repo frameworks override this file.

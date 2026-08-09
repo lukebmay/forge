@@ -1,3 +1,9 @@
+---
+title: C++
+read_when: Writing or reviewing C++ code
+order: 200
+---
+
 # C++
 
 **Precedence:** `.clang-format`, `.clang-tidy`, `CMakeLists`/build flags, and C++ standard set by the project override this file.

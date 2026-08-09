@@ -1,3 +1,9 @@
+---
+title: React
+read_when: React components or app structure
+order: 200
+---
+
 # React
 
 **Precedence:** ESLint (react/typescript-eslint), Prettier, `tsconfig`, framework conventions (Next/Vite/Remix) override this file.

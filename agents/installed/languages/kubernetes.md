@@ -1,3 +1,9 @@
+---
+title: Kubernetes
+read_when: k8s manifests, cluster ops, or kubectl workflows
+order: 200
+---
+
 # Kubernetes
 
 **Precedence:** cluster policies (PSS/PSA, NetworkPolicy), Helm/Kustomize layout, and platform docs override this file.

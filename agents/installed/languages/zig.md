@@ -1,3 +1,9 @@
+---
+title: Zig
+read_when: Writing or reviewing Zig
+order: 200
+---
+
 # Zig
 
 **Precedence:** `zig fmt`, project `build.zig` / `build.zig.zon`, and any documented style notes override this file.
