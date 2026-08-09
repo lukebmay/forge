@@ -179,6 +179,47 @@ describe("FocusManager", () => {
       expect(focusSpy).toHaveBeenCalled();
       expect(raiseSpy).toHaveBeenCalled();
     });
+
+    it("does not hover-refocus while unfocus suppress points at that window (FC2)", () => {
+      const { metaWindow, focusSpy, raiseSpy } = placeWindowUnderPointer();
+      wm().shouldFocusOnHover = true;
+      wm()._unfocusHoverSuppressMeta = metaWindow;
+      // No current focus so happy path would otherwise focus under pointer.
+      ctx.display.focus_window = null;
+      if (ctx.display.get_focus_window) {
+        ctx.display.get_focus_window = vi.fn(() => null);
+      }
+
+      const result = wm()._focusWindowUnderPointer();
+
+      expect(result).toBe(true);
+      expect(focusSpy).not.toHaveBeenCalled();
+      expect(raiseSpy).not.toHaveBeenCalled();
+      expect(wm()._unfocusHoverSuppressMeta).toBe(metaWindow);
+    });
+
+    it("clears unfocus suppress when pointer leaves suppressed window (FC2)", () => {
+      const { metaWindow, focusSpy } = placeWindowUnderPointer();
+      const other = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      global.get_window_actors.mockReturnValue([{ meta_window: other }]);
+      wm().shouldFocusOnHover = true;
+      wm()._unfocusHoverSuppressMeta = metaWindow;
+      ctx.display.focus_window = null;
+      if (ctx.display.get_focus_window) {
+        ctx.display.get_focus_window = vi.fn(() => null);
+      }
+      const otherFocus = vi.spyOn(other, "focus");
+
+      const result = wm()._focusWindowUnderPointer();
+
+      expect(result).toBe(true);
+      expect(wm()._unfocusHoverSuppressMeta).toBeNull();
+      expect(focusSpy).not.toHaveBeenCalled();
+      expect(otherFocus).toHaveBeenCalled();
+    });
   });
 
   describe("updateStackedFocus() / updateTabbedFocus() - _freezeRender no-op", () => {

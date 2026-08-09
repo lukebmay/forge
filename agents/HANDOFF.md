@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**SE8b; CE1; FC0–FC1 focus-after-close shipped**)  
+**Updated:** 2026-08-09 (**FC2 unfocus; SE8b; CE1; FC0–FC1**)  
 **Branch:** **`master`** (default). Plan/task branches only for major refactors/features.  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).  
 **Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP (never close agent Ghostty).  
@@ -50,8 +50,8 @@ forge test live plan --tags R008              # regression-linked cases
 | Unrelated: resize-autotile, STACKED product | **Open** (other plans) |
 
 **Bottom line:** Open-leaf architecture (R007) holds for **true cold** (SE8b
-verified). **AI live matrix** is the preferred sign-off path (`forge test live`,
-L0 first). Next product: focus-on-close + Esc (FC0).
+verified). Focus-on-close (FC0–FC1) + unfocus Esc (FC2) shipped. **AI live
+matrix** is the preferred layout sign-off path (`forge test live`, L0 first).
 
 ---
 
@@ -60,18 +60,19 @@ L0 first). Next product: focus-on-close + Esc (FC0).
 | Pri | Work | Path |
 | --- | --- | --- |
 | **use** | AI live matrix for any layout work | [plan](./plans/forge-ai-live-test-matrix.md) · `forge test live` |
-| high | Ctrl+Super+Esc unfocus | [plan](./plans/forge-focus-close-and-escape.md) **FC2** |
 | mid | AT2 L1 mon-specific setup polish | [AT2](./tasks/forge-ai-live-test-matrix_at2-l1-setup.md) |
+| mid | FC3 combined live smoke (close + unfocus) | [plan](./plans/forge-focus-close-and-escape.md) draft |
 | later | Nested Wayland retest spike | AT-W1 — only before next Wayland CT |
 | mid | Merge DnD plan branch when ready | `plan/forge-dnd-drop-zones` (complete) |
 | optional | SE6 geom soft residual | [settle](./plans/forge-layout-settle-contract.md) |
 | human | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
-| done | SE8b R008; CE1 R009; SE0–SE5+SE7; R007; AI matrix AT0/AT1 | — |
+| done | FC2 unfocus; FC0–FC1; SE8b R008; CE1 R009; SE0–SE5+SE7; R007; AT0/AT1 | — |
 
 ### Session ship (2026-08-09) — cold-continue
 
 | Shipped | Detail |
 | --- | --- |
+| **FC2** | `window-unfocus` → `Ctrl+Super+Escape`; `exitForgeMode` no-op API; `unfocusTiles` + hover suppress; live X11 `focusWindowId` None |
 | **SE8b / R008** | True cold Guake X11 2/2 + partial ghosttys-only green; R007 path holds (no new open-leaf code) |
 | **CE1 / R009** | `detect_layout_mode` empty `tiles:[]` / `roles:[]` → reconcile; live `forge layout clean` empties desk |
 | **FC0–FC1** | `pickFocusAfterClose` + wire in `window.js` close restore; live close→LFT smoke |
@@ -80,7 +81,7 @@ L0 first). Next product: focus-on-close + Esc (FC0).
 
 | Not shipped | Detail |
 | --- | --- |
-| FC2 unfocus key | plan only — **next** |
+| FC3 combined close+unfocus matrix | draft — unfocus half green on FC2 |
 | AT2 / AT-W1 | setup polish / nested Wayland deferred |
 | Residual hard-ready warn | cold open still logs “targets not hard-ready (moving anyway)” — structure race noise, leaves OK |
 

@@ -60,6 +60,13 @@ describe("action-pipeline afterFocus", () => {
     expect(ptr).toHaveBeenCalledWith(node, { force: true });
   });
 
+  it("clears FC2 unfocus hover suppress on intentional focus", () => {
+    const node = trackOne();
+    wm()._unfocusHoverSuppressMeta = node.nodeValue;
+    afterFocus(wm(), node, { source: "command-focus" });
+    expect(wm()._unfocusHoverSuppressMeta).toBeNull();
+  });
+
   it("no-ops on null node without calling stages", () => {
     const stacked = vi.spyOn(wm(), "updateStackedFocus");
     const tabbed = vi.spyOn(wm(), "updateTabbedFocus");

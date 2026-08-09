@@ -265,6 +265,10 @@
         "layout-debug-overlay-toggle": {
           "$ref": "#/definitions/keybinding",
           "description": "Toggle layout debug overlay"
+        },
+        "window-unfocus": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Unfocus tiles (clear TILE keyboard focus; exit mode if active)"
         }
       },
       "additionalProperties": false

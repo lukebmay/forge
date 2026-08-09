@@ -604,5 +604,10 @@
             <default><![CDATA[['<Ctrl><Super>d']]]></default>
             <summary>Toggle layout debug overlay</summary>
         </key>
+
+        <key type="as" name="window-unfocus">
+            <default><![CDATA[['<Ctrl><Super>Escape']]]></default>
+            <summary>Unfocus tiles (or exit mode)</summary>
+        </key>
     </schema>
 </schemalist>
