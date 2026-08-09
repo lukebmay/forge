@@ -2167,6 +2167,19 @@ class TestLaunchAppGhostty(unittest.TestCase):
         self.assertNotIn("--gtk-single-instance=true", argv)
         # cwd=$HOME so layout from a project dir does not open Ghostty there
         self.assertEqual(popen.call_args.kwargs.get("cwd"), self.forge._launch_home())
+        # env cleaned: agent NO_COLOR etc. must not poison terminal shells / Grok TUI
+        env = popen.call_args.kwargs.get("env")
+        self.assertIsInstance(env, dict)
+        for key in (
+            "NO_COLOR",
+            "FORCE_COLOR",
+            "CLICOLOR",
+            "CLICOLOR_FORCE",
+            "CARGO_TERM_COLOR",
+            "PIP_NO_COLOR",
+            "NPM_CONFIG_COLOR",
+        ):
+            self.assertNotIn(key, env)
 
     def test_launch_app_ghostty_argv_already_multi(self):
         from unittest import mock
@@ -2183,6 +2196,35 @@ class TestLaunchAppGhostty(unittest.TestCase):
         argv = popen.call_args[0][0]
         self.assertEqual(argv, ["ghostty", GHOSTTY_MULTI_INSTANCE_FLAG])
         self.assertEqual(popen.call_args.kwargs.get("cwd"), self.forge._launch_home())
+        env = popen.call_args.kwargs.get("env")
+        self.assertIsInstance(env, dict)
+        self.assertNotIn("NO_COLOR", env)
+
+    def test_launch_env_strips_agent_color_kill_vars(self):
+        """Agent shells set NO_COLOR; desktop launches must drop them."""
+        poisoned = {
+            "PATH": "/usr/bin",
+            "HOME": "/home/luke",
+            "DISPLAY": ":0",
+            "NO_COLOR": "1",
+            "FORCE_COLOR": "0",
+            "CLICOLOR": "0",
+            "CLICOLOR_FORCE": "0",
+            "CARGO_TERM_COLOR": "never",
+            "PIP_NO_COLOR": "1",
+            "NPM_CONFIG_COLOR": "false",
+            "PY_COLORS": "0",
+            "PYTHON_COLORS": "0",
+            "KEEP_ME": "yes",
+        }
+        cleaned = self.forge._launch_env(poisoned)
+        self.assertEqual(cleaned.get("KEEP_ME"), "yes")
+        self.assertEqual(cleaned.get("DISPLAY"), ":0")
+        self.assertEqual(cleaned.get("PATH"), "/usr/bin")
+        for key in self.forge._LAUNCH_ENV_DROP:
+            self.assertNotIn(key, cleaned)
+        # Does not mutate the input mapping
+        self.assertEqual(poisoned.get("NO_COLOR"), "1")
 
 
 class TestEnsureSizesApply(unittest.TestCase):

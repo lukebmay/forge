@@ -664,6 +664,13 @@ instance — PlaceNext stem match alone cannot fix it. Layout open and
 StartupWMClass wait hints. Residual move + optional belt re-plan remain
 the safety net if Meta mon is still wrong.
 
+**Launch env (terminals / Grok):** `_popen_detached` always uses
+`cwd=$HOME` **and** strips agent/CI color-suppression variables
+(`NO_COLOR`, `FORCE_COLOR`, `CLICOLOR*`, `CARGO_TERM_COLOR`,
+`PIP_NO_COLOR`, `NPM_CONFIG_COLOR`, `PY_COLORS`, `PYTHON_COLORS`).
+Agent shells set those so tool output is monochrome; without stripping,
+Ghostty inherits them and interactive shells/Grok stay monochrome.
+
 **Open-then-place (apply contract):** Per-window TILE settle (LF5) is not
 enough when Ghostty (or Meta) **moves itself** after first tile, but whole-forest
 Meta-stable is **not** the product default (LF6 fingerprint was correct but
