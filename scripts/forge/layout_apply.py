@@ -593,17 +593,22 @@ def residual_follow_up(
 def belt_actions_from_plan(
     actions: Any,
     role_pins: Optional[dict[str, Any]] = None,
+    *,
+    include_focus: bool = False,
 ) -> list[dict[str, Any]]:
     """
-    Post-open belt: rehome just-opened roles, re-ensure structure/order, re-focus.
+    Post-open belt: rehome just-opened roles + re-ensure structure/order.
 
-    Focus is required: ensure_layout tabbed anchors on first windowId (often
-    chrome) and would leave the wrong open leaf without a final focus pass.
+    Focus is deferred to a final post-settle pass (include_focus=False default):
+    mid-flight focus Grok is often stolen when chrome/PWAs finish mapping.
     """
     if not isinstance(actions, list):
         return []
     pins = role_pins if isinstance(role_pins, dict) else {}
     pin_roles = {str(k) for k in pins.keys() if k is not None and str(k).strip()}
+    structure_ops = {"ensure_layout", "ensure_order"}
+    if include_focus:
+        structure_ops = structure_ops | {"focus"}
     out: list[dict[str, Any]] = []
     for a in actions:
         if not isinstance(a, dict):
@@ -611,9 +616,37 @@ def belt_actions_from_plan(
         op = str(a.get("op") or "").strip().lower()
         if op == "move" and str(a.get("role") or "") in pin_roles:
             out.append(a)
-        elif op in ("ensure_layout", "ensure_order", "focus"):
+        elif op in structure_ops:
             out.append(a)
     return out
+
+
+def focus_actions_from_plan(actions: Any) -> list[dict[str, Any]]:
+    """Extract focus ops only (profile active + keyboard focus)."""
+    if not isinstance(actions, list):
+        return []
+    return [
+        a
+        for a in actions
+        if isinstance(a, dict) and str(a.get("op") or "").strip().lower() == "focus"
+    ]
+
+
+def without_focus_actions(actions: Any) -> list[dict[str, Any]]:
+    """Drop focus ops so structure/bind can run without raising open leaves early."""
+    if not isinstance(actions, list):
+        return []
+    return [
+        a
+        for a in actions
+        if isinstance(a, dict) and str(a.get("op") or "").strip().lower() != "focus"
+    ]
+
+
+# Quiet after structure before final active-leaf focus (chrome/PWA late activate).
+FINAL_FOCUS_QUIET_MS = 400
+# Second reassert after first raise (late chrome steal).
+FINAL_FOCUS_REASSERT_MS = 250
 
 
 # --- LF5: settle-before-move (pure predicates; CLI poll uses these) ---

@@ -62,6 +62,8 @@ from layout_apply import (  # noqa: E402
     BELT_STABLE_POLL_MS,
     BELT_STABLE_SAMPLES,
     BELT_STABLE_TIMEOUT_MS,
+    FINAL_FOCUS_QUIET_MS,
+    FINAL_FOCUS_REASSERT_MS,
     MODE_RECONCILE,
     MODE_STEPS,
     TREE_STABLE_POLL_MS,
@@ -71,6 +73,7 @@ from layout_apply import (  # noqa: E402
     belt_actions_from_plan,
     detect_layout_mode,
     find_settled_window,
+    focus_actions_from_plan,
     ghostty_multi_instance_argv,
     is_ghostty_launch_target,
     move_step_window_ids,
@@ -81,6 +84,7 @@ from layout_apply import (  # noqa: E402
     wait_for_open_role_pins,
     wait_for_tree_stable,
     window_is_settled,
+    without_focus_actions,
 )
 from layout_cli import (  # noqa: E402
     LayoutParseError,
@@ -1359,6 +1363,78 @@ def _layout_batch_call(backend: str, action: str) -> tuple[bool, dict[str, Any]]
     return False, data
 
 
+def _layout_final_focus_pass(
+    backend: str,
+    data: dict[str, Any],
+    *,
+    clean: bool,
+    keep_others: bool,
+    safe: bool,
+    workspace: int,
+    role_pins: Optional[dict[str, Any]],
+    force_close: bool,
+    apply_log: dict[str, Any],
+) -> tuple[int, Optional[dict[str, Any]]]:
+    """
+    After structure/bind settle: wait, then apply profile active/focus last.
+
+    Cold chrome/PWA launches often activate late and steal lastTabFocus if we
+    raise Grok mid-residual. One quiet settle + focus, then a short reassert.
+    Returns (rc, last plan with focus) — rc non-zero only on hard RunSteps fail.
+    """
+    pin_ids = [
+        str(w)
+        for w in (role_pins or {}).values()
+        if w is not None and str(w).strip() != ""
+    ]
+    settle: dict[str, Any] = {"skipped": True}
+    if pin_ids:
+        settle = wait_for_window_ids_settled(backend, pin_ids, timeout_ms=3000)
+    apply_log["finalFocusSettle"] = settle
+
+    quiet_s = max(0, FINAL_FOCUS_QUIET_MS) / 1000.0
+    if quiet_s:
+        time.sleep(quiet_s)
+
+    last_plan: Optional[dict[str, Any]] = None
+    for pass_name, delay_ms in (
+        ("finalFocus", 0),
+        ("finalFocusReassert", FINAL_FOCUS_REASSERT_MS),
+    ):
+        if delay_ms and delay_ms > 0:
+            time.sleep(delay_ms / 1000.0)
+        try:
+            forest = _layout_load_tree(backend, None)
+            plan_f = plan_reconcile(
+                forest,
+                data,
+                clean=clean,
+                keep_others=keep_others,
+                safe=safe,
+                role_pins=role_pins or None,
+                just_opened_roles=set(role_pins.keys()) if role_pins else None,
+                workspace=workspace,
+            )
+        except Exception as e:
+            apply_log[pass_name] = {"ok": False, "error": str(e)}
+            return 0, last_plan  # non-fatal: structure already applied
+        last_plan = plan_f
+        focus_acts = focus_actions_from_plan(plan_f.get("actions"))
+        steps = actions_to_extension_steps(
+            focus_acts, force_close=force_close, workspace=workspace
+        )
+        if not steps:
+            apply_log[pass_name] = {"ok": True, "steps": 0, "skipped": True}
+            continue
+        rc, agg = run_mixed_steps(
+            backend, steps, stop_on_error=True, print_each=False
+        )
+        apply_log[pass_name] = {"ok": rc == 0, "steps": len(steps), "agg": agg}
+        if rc != 0:
+            return rc, last_plan
+    return 0, last_plan
+
+
 def cmd_run_steps(backend: str, args: argparse.Namespace) -> int:
     """
     DBus RunSteps: freeze → extension ops → unfreeze + one render.
@@ -2163,9 +2239,15 @@ def _layout_run_reconcile(
         "followUp": None,
     }
 
-    # 1) Moves / parks / closes / ensure_layout for existing windows
+    # 1) Moves / parks / closes / ensure_layout for existing windows.
+    # When opens follow, strip focus: chrome late-activate steals open leaf if we
+    # raise Grok/YouTube before all maps settle. Final focus after open path.
+    # No-open re-run keeps focus in this batch (settled desk).
+    structure_for_pre = (
+        without_focus_actions(ext_actions) if open_actions else ext_actions
+    )
     ext_steps = actions_to_extension_steps(
-        ext_actions, force_close=force_close, workspace=workspace
+        structure_for_pre, force_close=force_close, workspace=workspace
     )
     if ext_steps:
         rc, agg = run_mixed_steps(
@@ -2367,11 +2449,11 @@ def _layout_run_reconcile(
                 _layout_maybe_print_json(out, verbose=verbose, force=True)
                 return 1
             residual_ext, residual_open = partition_plan_actions(plan2.get("actions"))
-            # Apply residual moves/layout even when some roles still need open
-            # (e.g. chrome title pin lag). Missing roles fail *after* mon fixes.
-            # Focus ops from profile IR still run here after deferred unhide.
+            # Structure/bind only here — no early focus (chrome late-activate steals
+            # lastTabFocus). Final focus pass after residual+belt settles.
+            residual_structure = without_focus_actions(residual_ext)
             follow_steps, still_open = residual_follow_up(
-                residual_ext,
+                residual_structure,
                 residual_open,
                 force_close=force_close,
                 workspace=workspace,
@@ -2446,8 +2528,10 @@ def _layout_run_reconcile(
                     _eprint(f"forge layout: belt re-plan after residual failed: {e}")
                 else:
                     belt_ext, _belt_open = partition_plan_actions(plan3.get("actions"))
-                    # Belt: rehome + structure/order + focus (see belt_actions_from_plan).
-                    belt_actions = belt_actions_from_plan(belt_ext, role_pins)
+                    # Belt: rehome + structure only; focus is final pass after settle.
+                    belt_actions = belt_actions_from_plan(
+                        belt_ext, role_pins, include_focus=False
+                    )
                     belt_steps, _ = residual_follow_up(
                         belt_actions,
                         [],
@@ -2596,6 +2680,30 @@ def _layout_run_reconcile(
                 out["apply"] = apply_log
                 _layout_maybe_print_json(out, verbose=verbose, force=True)
                 return 1
+
+            # Final open-leaf + profile focus after chrome/PWA map thrash settles.
+            focus_rc, focus_plan = _layout_final_focus_pass(
+                backend,
+                data,
+                clean=clean,
+                keep_others=keep_others,
+                safe=safe,
+                workspace=workspace,
+                role_pins=role_pins,
+                force_close=force_close,
+                apply_log=apply_log,
+            )
+            if focus_rc != 0:
+                out = _layout_plan_meta(
+                    resolved, name, focus_plan or plan, dry_run=False
+                )
+                out["ok"] = False
+                out["error"] = "final focus pass failed"
+                out["apply"] = apply_log
+                _layout_maybe_print_json(out, verbose=verbose, force=True)
+                return focus_rc
+            if isinstance(focus_plan, dict):
+                plan = focus_plan
         finally:
             if batch_ok:
                 _end_ok, batch_end = _layout_batch_call(backend, "end")

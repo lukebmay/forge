@@ -22,6 +22,7 @@ from layout_apply import (  # noqa: E402
     assign_open_role_pins,
     belt_actions_from_plan,
     detect_layout_mode,
+    focus_actions_from_plan,
     find_settled_window,
     forest_stability_fingerprint,
     ghostty_multi_instance_argv,
@@ -39,6 +40,7 @@ from layout_apply import (  # noqa: E402
     window_has_map_id,
     window_is_settled,
     window_tile_selector,
+    without_focus_actions,
 )
 from layout_plan import plan_reconcile  # noqa: E402
 
@@ -351,8 +353,8 @@ class TestActionMapping(unittest.TestCase):
         self.assertEqual(len(opens), 1)
         self.assertEqual(opens[0]["role"], "a")
 
-    def test_belt_actions_include_focus_after_structure(self):
-        """CT2: belt must re-focus active (Grok) after ensure_layout anchors chrome."""
+    def test_belt_actions_structure_only_by_default(self):
+        """Belt mid-flight is structure only; focus is a final post-settle pass."""
         actions = [
             {
                 "op": "ensure_layout",
@@ -370,17 +372,23 @@ class TestActionMapping(unittest.TestCase):
         belt = belt_actions_from_plan(actions, {"Grok": 20})
         ops = [a["op"] for a in belt]
         self.assertEqual(ops.count("ensure_layout"), 1)
-        self.assertEqual(ops.count("focus"), 2)
+        self.assertEqual(ops.count("focus"), 0)
         self.assertIn("move", ops)
-        # Only just-opened role moves (Grok), not unrelated move.
         moves = [a for a in belt if a.get("op") == "move"]
         self.assertEqual(len(moves), 1)
         self.assertEqual(moves[0]["role"], "Grok")
-        self.assertFalse(any(a.get("op") in ("park", "bind") for a in belt))
-        # Focus last in extension steps so open leaf sticks after layout join.
-        steps = actions_to_extension_steps(belt)
-        self.assertEqual(steps[-1]["op"], "focus")
-        self.assertTrue(any(s.get("op") == "focus" and s.get("selector") == "id:20" for s in steps))
+        self.assertFalse(any(a.get("op") in ("park", "bind", "focus") for a in belt))
+
+        with_focus = belt_actions_from_plan(
+            actions, {"Grok": 20}, include_focus=True
+        )
+        self.assertEqual(sum(1 for a in with_focus if a["op"] == "focus"), 2)
+
+        focus_only = focus_actions_from_plan(actions)
+        self.assertEqual(len(focus_only), 2)
+        stripped = without_focus_actions(actions)
+        self.assertFalse(any(a.get("op") == "focus" for a in stripped))
+        self.assertEqual(len(stripped), len(actions) - 2)
 
     def test_residual_follow_up_moves_despite_residual_open(self):
         """LF3: residual open (chrome lag) must not drop mon-fix moves."""

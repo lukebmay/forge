@@ -16,3 +16,4 @@ set Status=`superseded` and add a new row (do not rewrite history silently).
 | D009 | 2026-08-08 | layout | P0 | active | CT1: ensure_skeleton+bind ops; thrash park suppressed on cold/just_opened | One CLI invocation; postOpenRetry opt-in only |
 | D010 | 2026-08-08 | layout | P1 | active | Apply chrome clears after residual place (not at LayoutBatch end) | Cold bind/structure is long visual phase; early clear dropped dim mid-thrash |
 | D011 | 2026-08-08 | layout | P0 | active | Belt post-open re-focuses; layout preserves valid lastTabFocus | ensure_layout anchors first id (chrome) and stomped active Grok |
+| D012 | 2026-08-08 | layout | P0 | active | Final focus after open settle (+ reassert); no mid-flight focus | Chrome/PWA late activate steals open leaf if Grok raised early |

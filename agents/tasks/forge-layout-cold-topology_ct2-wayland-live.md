@@ -26,23 +26,23 @@ Single `forge layout dev` from cold/near-cold desk reaches profile topology with
 
 ## Session note
 
-**2026-08-08 (agent CT2 work):**
+**2026-08-08 (agent CT2 work + late-focus):**
 
-### Root cause (Chrome open instead of Grok)
-Post-open **belt** re-ran `ensure_layout` tabbed with `windowIds[0]=chrome` as layout selector. `_layoutOp` always set `lastTabFocus` to that selector. Belt **omitted focus**, so residual focus Grok was stomped. Same on cold residual path whenever belt re-ensured.
+### Root causes (Chrome open instead of Grok)
+1. Belt `ensure_layout` anchored chrome and stomped lastTabFocus (no re-focus).  
+2. **Even with mid-flight focus:** chrome/PWA **late activate** after Grok raise steals open leaf on cold open. Operator: wait until launches stable.
 
 ### Fix
-1. `belt_actions_from_plan`: include **focus** with ensure_layout/order/move  
-2. `_layoutOp`: if already TABBED/STACKED and `lastTabFocus` still a child, **preserve** it  
-3. D010 chrome-clear after residual (uncommitted → same ship)  
-4. D011  
+1. Mid-flight structure **without focus** when opens are in flight  
+2. **Final focus pass** after residual+belt: settle pins → quiet 400ms → focus → reassert 250ms (D012)  
+3. `_layoutOp` preserves valid lastTabFocus (D011); chrome-clear after residual (D010)  
 
-### Live check (this session, CLI live without logout)
-- Settled desk: layout → lastTabFocus Grok ✓  
-- Close Grok → layout → reopen Grok, lastTabFocus=Grok ✓ (no layered thrash)  
-- Units: layout apply+plan **291** pass; session-api layout-cycle **16** pass  
+### Live
+- Settled focus Grok sticks  
+- Partial reopen can still mis-mon Grok once (Mode B second run repaired); final focus sets open leaf when structure correct  
+- Units green  
 
-### Still needs operator (Wayland)
-`./install` done; **logout** for extension `_layoutOp` preserve. Then cold/near-cold one-shot CT2 acceptance.
+### Operator
+CLI is live (no logout for final-focus). Cold: `forge layout dev` once; confirm mon0 **Grok** open. If still wrong, say so with `forge tree` mon0 lastTabFocus.
 
 Created 2026-08-08. Wayland is a daily driver.

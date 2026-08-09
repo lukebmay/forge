@@ -57,7 +57,7 @@
 | Issue | Fix |
 | --- | --- |
 | Apply chrome ended too early on cold Wayland | CLI `chrome-clear` **after residual** (D010) |
-| mon0 Chrome open instead of Grok; partial thrash | Belt re-focus after ensure; `_layoutOp` preserves lastTabFocus (D011) |
+| mon0 Chrome open instead of Grok | Final focus **after** open settle (+ reassert); no mid-flight focus (D012); lastTabFocus preserve (D011) |
 
 ## CT2 live (operator re-smoke after logout)
 
