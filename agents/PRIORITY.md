@@ -5,7 +5,7 @@
 **Branch:** **`master`** default (side branches only for major refactors/features)  
 **Push:** only when human asks.
 
-**Active:** SE6 + SE10 **shipped**. Next: AT-W1 / human CT2 / shellrc durable Grok.
+**Active:** Settle-contract **SE0–SE10 shipped** (SE9 last). Next: AT-W1 / human CT2 / shellrc durable Grok.
 
 ---
 
@@ -18,7 +18,7 @@
 | later | [AT-W1 nested Wayland](./plans/forge-ai-live-test-matrix.md) | optional — only before Wayland CT |
 | later (shellrc **P0**) | Durable Grok (GH0 leader spike first) | **shellrc** — not forge: `…/grok-reattachable-headless_gh0-leader-spike.md` |
 | human | CT2 Wayland cold smoke | logout when needed |
-| done | SE6 geom soft + session I/O; SE10 Ghostty minQuiet seed drop; FC3; AT2; CJ1–CJ6; SE0–SE5+SE7; R007 | completed/ |
+| done | SE9 reset-heuristics + schema invalidate; SE6/SE10; FC3; AT2; CJ1–CJ6; SE0–SE8b; R007 | completed/ |
 
 **Handoff doctrine:** [HANDOFF.md](./HANDOFF.md) — spine over band-aids; no personal-layout code.
 

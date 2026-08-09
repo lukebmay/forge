@@ -685,7 +685,8 @@ jumpy). Reconcile apply when roles need open:
    barrier (focus steal = thrash correct; post-move geom quiet learn) →
    post-settled verify once. Heuristics:
    `~/.config/forge/config/settle-heuristics.json` (CLI: load once / flush at
-   end of layout apply; extension may seed open quiet from file once).
+   end of layout apply; schema mismatch → empty; wipe with
+   `forge thrash reset-heuristics`; extension may seed open quiet from file once).
 
 **Agent-facing contract (why + anti-patches + code map):**
 [agents/project.md](../agents/project.md) § Layout apply architecture.

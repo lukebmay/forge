@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Settle heuristics store (SE1) — pure helpers for hard/soft settle timeouts.
+"""Settle heuristics store (SE1/SE9) — pure helpers for hard/soft settle timeouts.
 
 File-backed rolling residual latencies per (host, class, process, residual).
 No DBus / process spawn. Schema v1: ~/.config/forge/config/settle-heuristics.json
+Bump SCHEMA_VERSION to invalidate; wipe with reset_heuristics_file / forge thrash.
 
 See docs/DECISIONS.md D019 and agents/plans/forge-layout-settle-contract.md.
 """
@@ -16,8 +17,10 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping, MutableMapping, Optional, Sequence
 
-# --- schema / defaults (SE0 lock) ---
+# --- schema / defaults (SE0 lock; SE9 invalidate/reset) ---
 
+# Bump when entry shape or soft/hard timeout *semantics* change so on-disk
+# samples are not reused. load_store treats other versions as empty.
 SCHEMA_VERSION = 1
 HEURISTICS_FILENAME = "settle-heuristics.json"
 DEFAULT_CONFIG_ROOT = Path.home() / ".config" / "forge"
@@ -293,10 +296,105 @@ def soft_timeout_for_key(
     return soft_timeout_ms(entry if isinstance(entry, dict) else None, rk)
 
 
+def schema_version_ok(version: Any) -> bool:
+    """True when file/store version matches SCHEMA_VERSION."""
+    try:
+        return int(version) == SCHEMA_VERSION
+    except (TypeError, ValueError):
+        return False
+
+
+def store_file_status(path: Any = None) -> dict[str, Any]:
+    """
+    Inspect on-disk heuristics without treating invalid data as product entries.
+
+    Returns path, exists, valid, version, schemaVersion, entryCount, reason.
+    Does not rewrite the file.
+    """
+    p = Path(path) if path is not None else heuristics_path()
+    out: dict[str, Any] = {
+        "path": str(p),
+        "exists": False,
+        "valid": False,
+        "version": None,
+        "schemaVersion": SCHEMA_VERSION,
+        "entryCount": 0,
+        "reason": "missing",
+    }
+    if not p.is_file():
+        return out
+    out["exists"] = True
+    try:
+        text = p.read_text(encoding="utf-8")
+        data = json.loads(text)
+    except (OSError, UnicodeError, json.JSONDecodeError, TypeError):
+        out["reason"] = "unreadable"
+        return out
+    if not isinstance(data, dict):
+        out["reason"] = "not-object"
+        return out
+    ver = data.get("version")
+    out["version"] = ver
+    if not schema_version_ok(ver):
+        out["reason"] = "schema-mismatch"
+        return out
+    entries = data.get("entries")
+    if not isinstance(entries, dict):
+        entries = {}
+    out["valid"] = True
+    out["entryCount"] = sum(1 for k, v in entries.items() if isinstance(k, str) and isinstance(v, dict))
+    out["reason"] = "ok"
+    return out
+
+
+def reset_heuristics_file(path: Any = None, *, unlink: bool = False) -> dict[str, Any]:
+    """
+    Wipe settle heuristics on disk (SE9 operator reset).
+
+    Default: write empty valid schema (version + empty entries).
+    unlink=True: remove the file if present (next layout recreates on flush).
+
+    Also clears the process default HeuristicsSession so a later load in this
+    process does not keep stale RAM samples.
+    """
+    p = Path(path) if path is not None else heuristics_path()
+    existed = p.is_file()
+    prior = store_file_status(p) if existed else None
+    try:
+        if unlink:
+            if existed:
+                p.unlink()
+            action = "removed" if existed else "missing"
+        else:
+            save_store(p, empty_store())
+            action = "written"
+    except OSError as e:
+        return {
+            "ok": False,
+            "path": str(p),
+            "action": "error",
+            "error": str(e),
+            "schemaVersion": SCHEMA_VERSION,
+            "prior": prior,
+        }
+    # Drop process session so next ensure_loaded re-reads (or empty).
+    reset_default_session()
+    return {
+        "ok": True,
+        "path": str(p),
+        "action": action,
+        "existed": existed,
+        "schemaVersion": SCHEMA_VERSION,
+        "version": SCHEMA_VERSION if action == "written" else None,
+        "prior": prior,
+    }
+
+
 def load_store(path: Any) -> dict[str, Any]:
     """
     Read heuristics JSON. Missing/unreadable/bad schema → empty store.
-    version mismatch → empty (caller may migrate later; SE9).
+    version mismatch → empty (SE9: bump SCHEMA_VERSION to invalidate on disk).
+    Does not rewrite invalid files; use reset_heuristics_file to wipe.
     """
     p = Path(path) if path is not None else heuristics_path()
     try:
@@ -308,11 +406,7 @@ def load_store(path: Any) -> dict[str, Any]:
         return empty_store()
     if not isinstance(data, dict):
         return empty_store()
-    ver = data.get("version")
-    try:
-        if int(ver) != SCHEMA_VERSION:
-            return empty_store()
-    except (TypeError, ValueError):
+    if not schema_version_ok(data.get("version")):
         return empty_store()
     entries = data.get("entries")
     if not isinstance(entries, dict):

@@ -373,7 +373,11 @@ On a **cold empty** desk (no claimed role windows), one `forge layout <name>`:
    focus steal, correct immediately and reset quiet. Geom quiet is observe +
    learn (no re-apply). Heuristics file:
    `~/.config/forge/config/settle-heuristics.json` (loaded once per CLI
-   process, accumulated in memory, written once at end of layout apply).  
+   process, accumulated in memory, written once at end of layout apply).
+   Schema version must match the engine; a mismatch is ignored as empty
+   (bump on timeout-semantics change). Operator wipe:
+   `forge thrash reset-heuristics` (or `… --unlink` to delete the file);
+   status: `forge thrash heuristics`.  
 8. **Post-settled verify once** — re-apply only still-mismatched open leaves /
    keyboard focus; not a blind double raise  
 

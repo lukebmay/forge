@@ -35,12 +35,15 @@ from settle_heuristics import (  # noqa: E402
     record_trial,
     residual_latencies,
     reset_default_session,
+    reset_heuristics_file,
     resolve_host,
     save_store,
+    schema_version_ok,
     soft_clamp_ms,
     soft_floor_ms,
     soft_timeout_for_key,
     soft_timeout_ms,
+    store_file_status,
 )
 
 
@@ -167,6 +170,13 @@ class StoreIo(unittest.TestCase):
             path = Path(td) / "bad.json"
             path.write_text(json.dumps({"version": 99, "entries": {"x": {}}}), encoding="utf-8")
             self.assertEqual(load_store(path), empty_store())
+            # SE9: invalid file stays on disk until operator reset
+            self.assertTrue(path.is_file())
+            st = store_file_status(path)
+            self.assertFalse(st["valid"])
+            self.assertEqual(st["reason"], "schema-mismatch")
+            self.assertEqual(st["version"], 99)
+            self.assertEqual(st["schemaVersion"], SCHEMA_VERSION)
 
     def test_corrupt_json_empty(self):
         with tempfile.TemporaryDirectory() as td:
@@ -185,6 +195,88 @@ class StoreIo(unittest.TestCase):
         self.assertNotIn("chrome-left", k)
         parts = parse_key(k)
         self.assertEqual(set(parts.keys()), {"host", "class", "processKind", "residualKind"})
+
+    def test_schema_version_ok(self):
+        self.assertTrue(schema_version_ok(SCHEMA_VERSION))
+        self.assertTrue(schema_version_ok(str(SCHEMA_VERSION)))
+        self.assertFalse(schema_version_ok(SCHEMA_VERSION + 1))
+        self.assertFalse(schema_version_ok(None))
+        self.assertFalse(schema_version_ok("nope"))
+
+    def test_store_file_status_missing_and_ok(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "config" / "settle-heuristics.json"
+            missing = store_file_status(path)
+            self.assertFalse(missing["exists"])
+            self.assertEqual(missing["reason"], "missing")
+            store = empty_store()
+            key = make_key("black", "ghostty", "move", "geom")
+            get_or_create_entry(
+                store,
+                key,
+                host="black",
+                wm_class="ghostty",
+                process_kind="move",
+                residual_kind="geom",
+            )
+            save_store(path, store)
+            ok = store_file_status(path)
+            self.assertTrue(ok["exists"])
+            self.assertTrue(ok["valid"])
+            self.assertEqual(ok["reason"], "ok")
+            self.assertEqual(ok["entryCount"], 1)
+            self.assertEqual(ok["version"], SCHEMA_VERSION)
+
+    def test_reset_heuristics_write_empty(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "config" / "settle-heuristics.json"
+            store = empty_store()
+            key = make_key("black", "google-chrome", "focus-phase", "focus")
+            get_or_create_entry(
+                store,
+                key,
+                host="black",
+                wm_class="google-chrome",
+                process_kind="focus-phase",
+                residual_kind="focus",
+            )
+            record_and_soft_timeout(
+                store,
+                host="black",
+                wm_class="google-chrome",
+                process_kind="focus-phase",
+                residual_kind="focus",
+                had_residual=True,
+                latency_ms=900,
+            )
+            save_store(path, store)
+            # Session holds stale data until reset clears it
+            sess = HeuristicsSession(path)
+            self.assertGreater(sess.soft_timeout("black", "google-chrome", "focus-phase", "focus"), 0)
+            result = reset_heuristics_file(path)
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["action"], "written")
+            self.assertTrue(result["existed"])
+            loaded = load_store(path)
+            self.assertEqual(loaded["entries"], {})
+            self.assertEqual(loaded["version"], SCHEMA_VERSION)
+            st = store_file_status(path)
+            self.assertTrue(st["valid"])
+            self.assertEqual(st["entryCount"], 0)
+
+    def test_reset_heuristics_unlink(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "config" / "settle-heuristics.json"
+            save_store(path, empty_store())
+            self.assertTrue(path.is_file())
+            result = reset_heuristics_file(path, unlink=True)
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["action"], "removed")
+            self.assertFalse(path.is_file())
+            # Missing file is ok
+            again = reset_heuristics_file(path, unlink=True)
+            self.assertTrue(again["ok"])
+            self.assertEqual(again["action"], "missing")
 
 
 class Constants(unittest.TestCase):

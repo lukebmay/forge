@@ -123,7 +123,9 @@ from settle_heuristics import (  # noqa: E402
     default_session,
     is_first_ever,
     make_key,
+    reset_heuristics_file,
     resolve_host as settle_resolve_host,
+    store_file_status,
 )
 from layout_cli import (  # noqa: E402
     LayoutParseError,
@@ -513,8 +515,42 @@ def cmd_tree(backend: str, args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_thrash(backend: str, args: argparse.Namespace) -> int:
-    """Dump in-session thrash/settle catalog (GetThrashCatalog)."""
+def cmd_thrash(backend: Optional[str], args: argparse.Namespace) -> int:
+    """Thrash/settle debug: extension catalog, heuristics file status, or reset."""
+    action = str(getattr(args, "thrash_action", None) or "catalog").strip().lower()
+    compact = bool(getattr(args, "compact", False))
+
+    if action in ("heuristics", "heuristics-status"):
+        status = store_file_status()
+        _print_json(status, compact=compact)
+        return 0 if status.get("reason") in ("ok", "missing") else 0
+
+    if action == "reset-heuristics":
+        unlink = bool(getattr(args, "unlink", False))
+        result = reset_heuristics_file(unlink=unlink)
+        if not result.get("ok"):
+            _eprint(
+                f"forge thrash reset-heuristics: {result.get('error') or 'failed'}"
+            )
+            _print_json(result, compact=compact)
+            return 1
+        path = result.get("path") or ""
+        if result.get("action") == "removed":
+            _eprint(f"forge thrash: removed settle heuristics {path}")
+        elif result.get("action") == "missing":
+            _eprint(f"forge thrash: no settle heuristics file ({path})")
+        else:
+            _eprint(
+                f"forge thrash: wrote empty settle heuristics "
+                f"v{result.get('schemaVersion')} → {path}"
+            )
+        _print_json(result, compact=compact)
+        return 0
+
+    # Default: dump extension thrash/settle catalog (GetThrashCatalog).
+    if backend is None:
+        _eprint("forge thrash: DBus backend required for catalog dump")
+        return 1
     try:
         raw = call_method(backend, "GetThrashCatalog")
     except Exception as e:
@@ -528,9 +564,9 @@ def cmd_thrash(backend: str, args: argparse.Namespace) -> int:
     if isinstance(data, dict) and data.get("ok") is False:
         err = data.get("error") or "thrash catalog failed"
         _eprint(f"forge thrash: {err}")
-        _print_json(data, compact=getattr(args, "compact", False))
+        _print_json(data, compact=compact)
         return 1
-    _print_json(data, compact=getattr(args, "compact", False))
+    _print_json(data, compact=compact)
     return 0
 
 
@@ -5018,7 +5054,32 @@ def build_parser() -> argparse.ArgumentParser:
 
     thrash = sub.add_parser(
         "thrash",
-        help="Dump in-session thrash/settle catalog JSON (debug after layout dev)",
+        help="Thrash/settle debug (catalog dump, heuristics status, reset)",
+        description=(
+            "Debug settle thrash and file-backed soft heuristics.\n"
+            "\n"
+            "  forge thrash                     # extension thrash catalog (DBus)\n"
+            "  forge thrash catalog             # same\n"
+            "  forge thrash heuristics          # settle-heuristics.json status\n"
+            "  forge thrash reset-heuristics    # wipe learning file (empty v schema)\n"
+            "  forge thrash reset-heuristics --unlink   # delete file instead\n"
+            "\n"
+            "Schema: bump settle_heuristics.SCHEMA_VERSION to invalidate samples\n"
+            "on load. Path: ~/.config/forge/config/settle-heuristics.json"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    thrash.add_argument(
+        "thrash_action",
+        nargs="?",
+        default="catalog",
+        choices=("catalog", "heuristics", "reset-heuristics"),
+        help="catalog (default), heuristics, or reset-heuristics",
+    )
+    thrash.add_argument(
+        "--unlink",
+        action="store_true",
+        help="With reset-heuristics: delete file instead of writing empty schema",
     )
     thrash.add_argument(
         "--compact",
@@ -5724,6 +5785,13 @@ def _dispatch_command(args: argparse.Namespace) -> int:
         cmd_jobs,
     ):
         return int(args.func(None, args))
+
+    if cmd_name == "thrash":
+        action = str(getattr(args, "thrash_action", None) or "catalog").strip().lower()
+        if action in ("heuristics", "heuristics-status", "reset-heuristics"):
+            return int(args.func(None, args))
+        backend = _check_deps()
+        return int(args.func(backend, args))
 
     if cmd_name == "test":
         action = str(getattr(args, "live_action", "plan") or "plan").strip().lower()

@@ -10,6 +10,11 @@ AC1–AC6 apply-contract, thrash catalog (CL3)
 
 ### Session note (overwrite)
 
+**2026-08-09 (SE9):** Schema mismatch still empty-on-load; `store_file_status` +
+`reset_heuristics_file`; CLI `forge thrash heuristics` /
+`forge thrash reset-heuristics` [--unlink]. Units green. Settle-contract
+implementation tasks complete (SE0–SE10).
+
 **2026-08-09 (SE8b close):** True cold Guake X11 **2/2 green** (Grok/YouTube
 leaves; soft barrier 0 corrections; partial ghosttys-only PASS). R008 closed by
 live verify under R007 path — no new open-leaf code. Residual desk with wrong
@@ -194,7 +199,7 @@ Optional later:
 
 | ID | Task | Status |
 | --- | --- | --- |
-| **SE9** | Invalidate heuristics on schema/engine bump; operator `forge thrash reset-heuristics` | optional |
+| **SE9** | Invalidate heuristics on schema/engine bump; operator `forge thrash reset-heuristics` | **done** |
 | **SE10** | Drop Ghostty brand seed when live samples support (old SL3) | **done** (minQuiet seed 0; needsExtraVerify kept) |
 
 ---
@@ -215,6 +220,7 @@ Optional later:
 - [x] Cold/near-cold open: profile actives visible without second CLI layout (CT3 X11 near-cold)  
 - [x] SE6 geom soft into same store; session load-once / flush top-level  
 - [x] SE10 Ghostty minQuiet seed dropped (live settle ~225ms; thrashScore 0)  
+- [x] SE9 schema invalidate + `forge thrash reset-heuristics` / `heuristics`  
 - [ ] Hard timeout 5s path logs clearly when Meta never delivers (live)  
 - [ ] Optional true cold-empty CT3  
 

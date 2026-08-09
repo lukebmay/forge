@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**SE6 + SE10**; AT2 + FC3 already shipped)  
+**Updated:** 2026-08-09 (**SE9** + SE6/SE10; AT2 + FC3 already shipped)  
 **Branch:** **`master`** (default). Plan/task branches only for major refactors/features.  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).  
 **Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP.  
@@ -48,6 +48,7 @@ forge test live plan --tags R008              # regression-linked cases
 | `forge layout clean` `{tiles:[]}` | **Shipped** — CE1 / R009 `detect_layout_mode` empty tiles |
 | **CLI attachable jobs** | **Shipped** — D021; CJ1–CJ6; parent-HUP live smoke green |
 | Geom soft residual in **same** file (SE6) | **Done** — session load-once / flush top-level; CLI geom soft after moves; catalog seeds from file |
+| Heuristics reset / schema invalidate (SE9) | **Done** — mismatch → empty load; `forge thrash heuristics` / `reset-heuristics` |
 | True cold-empty CT3 (all apps closed) | **Optional / not required** if matrix green |
 | Wayland CT2 parity | **Not re-run** this session (logout) |
 | Unrelated: resize-autotile, STACKED product | **Open** (other plans) |
@@ -65,7 +66,7 @@ preferred layout sign-off path (`forge test live`, L0 first).
 | later | Nested Wayland retest spike | AT-W1 — only before next Wayland CT |
 | later (shellrc **P0**) | Durable Grok (leader spike first) | `~/dev/me/shellrc/agents/tasks/grok-reattachable-headless_gh0-leader-spike.md` — not forge work |
 | human | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
-| done | **SE6** geom soft + session I/O; **SE10** Ghostty seed drop; **FC3**; **AT2**; CLI jobs; SE0–SE5+SE7; R007 | — |
+| done | **SE9** reset-heuristics + schema invalidate; **SE6**/**SE10**; **FC3**; **AT2**; CLI jobs; SE0–SE8b; R007 | — |
 
 ### Session ship (2026-08-09) — cold-continue
 
@@ -85,6 +86,12 @@ preferred layout sign-off path (`forge test live`, L0 first).
 | --- | --- |
 | AT-W1 | nested Wayland deferred |
 | Residual hard-ready warn | cold open still logs “targets not hard-ready (moving anyway)” — structure race noise |
+
+### Session ship (2026-08-09) — SE9
+
+| Shipped | Detail |
+| --- | --- |
+| **SE9** | `store_file_status` / `reset_heuristics_file`; `forge thrash heuristics` + `reset-heuristics` [--unlink]; schema mismatch empty-on-load documented; units |
 
 ### Session ship (2026-08-09) — SE6 / SE10
 
