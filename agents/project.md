@@ -267,7 +267,7 @@ class keys only** (no titles, URLs, or personal role names).
 4. **No new cold-path pass** without removing an obsolete one (or documenting why it stays).  
 5. **Temporary** only if the operator **explicitly** asks for temp/stopgap.  
 6. Unit-test pure helpers; **sign off layout** with the **partial reload matrix** below—not unit tests alone.  
-7. Prefer **X11** for agent live tests (`./install` + HUP). Wayland: reload via **`forge nested restart`** (not logout for retests); dual-mon CT still host desk.
+7. Prefer **X11** for agent live tests (`./install` + HUP). **Wayland:** full loop in [testing.md](./testing.md) § Wayland live testing workflow — nest restart between installs; dual-mon on host.
 
 ### Code map (entry points)
 
@@ -289,7 +289,7 @@ class keys only** (no titles, URLs, or personal role names).
 - Prefer fixing root causes over silencing crashes.
 - Do not re-run the upstream-vs-fork comparison unless the trees change materially.
 
-### Dev testing (live install / Shell HUP)
+### Dev testing (live install / Shell reload)
 
 When agents run live tests that need install + Shell reload (`./install`,
 `forge save-session-layout`, dual-mon thrash):
@@ -302,12 +302,17 @@ When agents run live tests that need install + Shell reload (`./install`,
    gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO
    ```
 
-3. **Session-layout file trace** (debug builds only): append-only log at
+3. **Reload path by session:**
+   - **X11:** `killall -HUP gnome-shell` (or Alt+F2 → r).
+   - **Wayland:** `forge nested restart` between code changes; dual-mon live on
+     **host** desk. Full procedure: [testing.md](./testing.md) § Wayland live
+     testing workflow and [HANDOFF](./HANDOFF.md) § Wayland extensive smoke loop.
+4. **Session-layout file trace** (debug builds only): append-only log at
    `~/.config/forge/config/session-layout-trace.log` during restore / shield /
    rehome. Prefer this over journal guessing after HUP.
-4. **Post-HUP collectors** must survive `killall -HUP gnome-shell` (`nohup` /
+5. **Post-HUP collectors** (X11) must survive `killall -HUP gnome-shell` (`nohup` /
    background script writing under `/tmp/...`), then compare `forge tree`.
-5. Do not rely on the user to re-layout windows for verification.
+6. Do not rely on the user to re-layout windows for verification.
 
 ### Agent live E2E (most important)
 

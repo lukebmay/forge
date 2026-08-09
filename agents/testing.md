@@ -62,13 +62,123 @@ forge test live run --from-work <hint>    # only selected cases
 | **Select by blast radius** | Only cases whose behaviors the change can break |
 | **Not always full suite** | `plan` without filters is max-for-capability, not mandatory run |
 | **Regression → catalog + unit** | Live R0xx → `LIVE_CASES` tag; pure test when possible |
-| **Capability** | True cold needs Guake/float agent; X11 for HUP loops |
-| **Wayland retest** | Host Wayland: `forge nested restart` (AT-W1) — **not** logout for JS reload. Dual-mon live still host desk. X11: HUP; `forge nested` exits 2. Probe: `can_nested` / `can_retest` |
+| **Capability** | True cold needs Guake/float agent; X11 for HUP loops; Wayland: `can_nested` / `can_retest` |
+| **Wayland retest** | See **§ Wayland live testing workflow** below (FIRM when session is Wayland) |
 | **CLI jobs** | Mutating `forge` runs as durable jobs — closing the agent TTY does **not** abort apply. True cold still needs non-tile agent **window** placement. Job runner units: `tests/unit/cli/test_job_runner.py` |
 | **L1 setup** | `close-mon0/1-chrome` by tree mon; `ensure-nautilus` / `ensure-dev-shape` real (AT2). Units: `tests/unit/cli/test_live_matrix.py` |
 | **Focus live** | `--from-work close` / `unfocus` → `L1.close-focus-lft` / `L1.unfocus`; RunSteps `unfocus` (FC3) |
 
-Plan: `agents/plans/forge-ai-live-test-matrix.md`.
+Plan: `agents/plans/forge-ai-live-test-matrix.md`.  
+Handoff quick ref: `agents/HANDOFF.md` § Nested Wayland / Wayland smoke loop.
+
+---
+
+## Wayland live testing workflow (FIRM when on Wayland)
+
+Use this whenever the login session is **Wayland** and work needs **install / extension
+JS reload / dual-mon desk smoke**. Do **not** invent logout loops for mid-campaign
+retests when `can_nested` is true.
+
+### Two layers (do not conflate)
+
+| Layer | What it proves | Where it runs | How extension code reloads |
+| --- | --- | --- | --- |
+| **A — Nest retest** | Extension loads, DBus Forge works, single-mon shell behavior | Nested Shell window (`forge nested`) | `forge nested restart` (no host logout) |
+| **B — Host dual-mon live** | Real dual 4K desk: layout, open leaf, focus, cold/partial | **Host** Wayland session | Host cannot HUP — tip must already be on host **or** one logout after first install this boot |
+
+| Also | Role |
+| --- | --- |
+| **L0** | Unit/integration for pure/contract bugs — always before expensive live |
+| **CLI-only** (`layout_apply` / `forge` Python) | Live on host **without** nest restart or HUP |
+
+Nest is **single virtual monitor**. It is **not** a substitute for dual-mon CT / matrix
+geometry. Host desk remains the authority for dual-mon sign-off.
+
+### Capability gates
+
+```bash
+forge test live probe          # host desk + can_hup / can_nested / can_retest
+forge nested doctor            # nest host tools only (exit 0 if can nest)
+```
+
+| Field | Meaning |
+| --- | --- |
+| `can_hup` | X11 only — `killall -HUP gnome-shell` reloads host extension |
+| `can_nested` | Wayland host + tools — `forge nested` allowed |
+| `can_retest` | `can_hup` **or** `can_nested` — agent can iterate without fantasy reboot |
+
+On **X11:** use HUP; `forge nested start` **exits 2** with HUP guidance (not a crash).
+
+### Extensive Wayland smoke loop (default agent campaign)
+
+```text
+0. Confirm: XDG_SESSION_TYPE=wayland; forge test live probe → can_nested=true
+1. L0 for blast radius (pytest/vitest)
+2. Install tip: ./install   # or forge install
+3. Nest up (once per login if not running):
+     forge nested doctor
+     forge nested start          # or restart if already up
+     eval $(forge nested env --export) && forge ping   # optional nest health
+4. Host dual-mon cases (normal env — do NOT leave nest env exported for host desk):
+     unset DBUS_SESSION_BUS_ADDRESS   # if you sourced nest env in this shell
+     # restore host session bus if needed: login shell / systemd --user env
+     forge test live plan --from-work <hint>
+     forge test live run  --from-work <hint>
+     # and/or: forge layout dev, CT2 cold, partial matrix from HANDOFF
+5. Code change → re-install → forge nested restart → re-run L0 + same live subset
+6. Repeat 4–5 until green. Logout only if host Shell never loaded this tip
+   (first install this boot) and host dual-mon requires host-loaded extension.
+```
+
+**Shell env trap:** `eval $(forge nested env --export)` points `WAYLAND_DISPLAY` +
+`DBUS_SESSION_BUS_ADDRESS` at the **nest**. Host dual-mon commands must use the
+**host** bus/display. Prefer a separate terminal for nest health, or unset nest
+exports before host `forge tree` / `forge layout` / `forge test live run`.
+
+### Minimal commands (cheat sheet)
+
+```bash
+# Reload extension JS mid-campaign (Wayland)
+./install && forge nested restart
+
+# Nest health (optional)
+forge nested status
+eval $(forge nested env --export) && forge ping
+forge nested stop
+
+# Host live (dual-mon) — host env
+forge test live probe
+forge test live run --from-work open-leaf   # example
+forge layout dev
+
+# Make aliases
+make nested-start | nested-restart | nested-stop | nested-status
+```
+
+### When logout is still required
+
+| Situation | Action |
+| --- | --- |
+| Host never loaded this build this boot, and case needs **host** dual-mon extension | One logout/in, then prefer nest for further JS reloads |
+| `can_nested=false` (`forge nested doctor`) | Fix tools/host Wayland, or logout once |
+| Changing only CLI Python (no extension JS) | No nest restart, no logout |
+
+### X11 contrast (same product)
+
+```bash
+./install && killall -HUP gnome-shell    # host reloads
+forge test live run --from-work <hint>
+```
+
+### Ownership
+
+| Piece | Path |
+| --- | --- |
+| Nest module / CLI | `scripts/forge/nested_wayland.py`, `forge nested …` |
+| Units | `tests/unit/cli/test_nested_wayland.py`, live_matrix probe fields |
+| Plan | `agents/plans/forge-ai-live-test-matrix.md` (AT-W1) |
+| CT2 host cold | `agents/tasks/forge-layout-cold-topology_ct2-wayland-live.md` |
+| shellrc twin (optional) | `nested-gnome` — not a forge dependency |
 
 ## Do / don’t
 

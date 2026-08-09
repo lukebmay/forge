@@ -5,7 +5,7 @@
 **Branch:** **`master`** default (side branches only for major refactors/features)  
 **Push:** only when human asks.
 
-**Active:** Settle-contract **SE0–SE10 shipped**. Nested Wayland harness **AT-W1 shipped**. Next: human CT2 (optional nest) / shellrc durable Grok.
+**Active:** Nested Wayland harness **AT-W1 shipped** + workflow locked in testing/HANDOFF. Next: **extensive Wayland smoke** (install → nest restart → host live loop).
 
 ---
 
@@ -15,10 +15,10 @@
 | --- | --- | --- |
 | done | [CLI attachable jobs](./plans/forge-cli-jobs.md) | **Shipped** CJ1–CJ6 (D021) |
 | **P0 use** | [AI live test matrix](./plans/forge-ai-live-test-matrix.md) | **AT0–AT2 + FC3 cases** — layout/focus sign-off |
-| done | [AT-W1 nested Wayland](./plans/forge-ai-live-test-matrix.md) | **Shipped** `forge nested`; dual-mon CT still human |
-| later (shellrc **P0**) | Durable Grok (GH0 leader spike first) | **shellrc** — not forge: `…/grok-reattachable-headless_gh0-leader-spike.md` |
-| human | CT2 Wayland cold smoke | logout and/or `forge nested` |
-| done | SE9 reset-heuristics + schema invalidate; SE6/SE10; FC3; AT2; CJ1–CJ6; SE0–SE8b; R007 | completed/ |
+| done | [AT-W1 nested Wayland](./plans/forge-ai-live-test-matrix.md) | **Shipped** `forge nested` + workflow in testing.md / HANDOFF |
+| **next** | Extensive Wayland smoke | [HANDOFF loop](./HANDOFF.md#wayland-extensive-smoke-loop) · [testing.md § Wayland](./testing.md) · [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
+| later (shellrc **P0**) | Durable Grok (GH0 leader spike first) | **shellrc** — not forge |
+| done | SE9; SE6/SE10; FC3; AT2; CJ1–CJ6; SE0–SE8b; R007 | completed/ |
 
 **Handoff doctrine:** [HANDOFF.md](./HANDOFF.md) — spine over band-aids; no personal-layout code.
 

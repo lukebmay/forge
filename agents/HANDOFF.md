@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**AT-W1** nested Wayland; SE9 + SE6/SE10; AT2 + FC3)  
+**Updated:** 2026-08-09 (**AT-W1** nested Wayland workflow locked; SE9 + AT2 + FC3)  
 **Branch:** **`master`** (default). Plan/task branches only for major refactors/features.  
-**Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland daily driver; **nested retest** via `forge nested` (no host logout).  
-**Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP.  
+**Sessions:** **X11** = HUP reload preferred for quick agent loops. **Wayland** daily driver + extensive smoke: **`forge nested restart`** between code changes (no logout loop). Dual-mon cases always on **host** desk.  
+**Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP (X11) / host live (Wayland).  
 **Jobs (shipped):** Mutating `forge` commands are **durable by default** (attach). Closing agent TTY mid-layout does **not** abort apply. `--detach` / `--foreground` / `FORGE_JOB=0`. `forge jobs` list|status|attach|cancel|log. True cold still cares about agent *window* placement (tile vs Guake/float), not apply process survival.  
 **Live setup (AT2):** `close-mon0/1-chrome` by tree mon; `ensure-nautilus` / `ensure-dev-shape` / `ensure-some-tiles` real.  
 **Note:** Guake dropdown hidden may omit Guake from `forge tree` → probe can report ghostty / `can_true_cold=false` even when agent is under Guake (pstree). Manual true cold still OK.
@@ -18,8 +18,8 @@ unit tests — run **L0 first** for the blast radius, then selected live cases.
 ```bash
 # 1) L0 pure/integration for what you touched
 python3 -m pytest tests/unit/cli/test_layout_apply.py -q   # example
-# 2) Live E2E subset only
-forge test live probe                         # capability gates
+# 2) Live E2E subset only (host desk)
+forge test live probe                         # can_hup / can_nested / can_retest
 forge test live plan --from-work open-leaf    # what would run (not everything)
 forge test live run --from-work open-leaf     # execute selected only
 forge test live plan --tags R008              # regression-linked cases
@@ -31,7 +31,9 @@ forge test live plan --tags R008              # regression-linked cases
 | Select by **behaviors** / **R0xx** / work hint | Do **not** run full matrix every time |
 | New live regression | REGRESSIONS + unit if pure + `LIVE_CASES` R id |
 | True cold | Requires Guake (or float agent); probe `can_true_cold` |
-| Wayland nested retest | **AT-W1 shipped** — `forge nested start\|restart\|stop` |
+| **Wayland smoke** | Full loop: [§ Wayland extensive smoke loop](#wayland-extensive-smoke-loop) + `agents/testing.md` § Wayland |
+
+**Rules authority:** `agents/testing.md` § Wayland live testing workflow (FIRM on Wayland).
 
 ### Architecture fix status (honest)
 
@@ -50,7 +52,7 @@ forge test live plan --tags R008              # regression-linked cases
 | Geom soft residual in **same** file (SE6) | **Done** — session load-once / flush top-level; CLI geom soft after moves; catalog seeds from file |
 | Heuristics reset / schema invalidate (SE9) | **Done** — mismatch → empty load; `forge thrash heuristics` / `reset-heuristics` |
 | True cold-empty CT3 (all apps closed) | **Optional / not required** if matrix green |
-| Wayland CT2 parity | **Not re-run** this session (logout) |
+| Wayland CT2 / extensive smoke | **Next** — nested reload loop locked; host dual-mon cases pending |
 | Unrelated: resize-autotile, STACKED product | **Open** (other plans) |
 
 **Bottom line:** Open-leaf architecture (R007) holds. Focus-on-close + unfocus Esc
@@ -64,9 +66,9 @@ Wayland lets agents reload extension JS without host logout (`forge nested`).
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| later (shellrc **P0**) | Durable Grok (leader spike first) | `~/dev/me/shellrc/agents/tasks/grok-reattachable-headless_gh0-leader-spike.md` — not forge work |
-| human | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) — host logout and/or `forge nested` |
-| done | **AT-W1** nested Wayland harness (`forge nested`); **SE9**; **SE6**/**SE10**; **FC3**; **AT2**; CLI jobs; SE0–SE8b; R007 | — |
+| **next** | Extensive **Wayland** smoke (change code between tests) | [§ Wayland extensive smoke loop](#wayland-extensive-smoke-loop) · [testing.md](./testing.md) § Wayland · [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
+| later (shellrc **P0**) | Durable Grok (leader spike first) | `~/dev/me/shellrc/agents/tasks/…` — not forge work |
+| done | **AT-W1** nested harness + workflow docs; **SE9**; **SE6**/**SE10**; **FC3**; **AT2**; CLI jobs; SE0–SE8b; R007 | — |
 
 ### Session ship (2026-08-09) — cold-continue
 
@@ -90,22 +92,54 @@ Wayland lets agents reload extension JS without host logout (`forge nested`).
 
 ### Nested Wayland (AT-W1) — agent retest without logout
 
-**Name:** `forge nested` (short; help says nested **Wayland** GNOME Shell). Not
-`nested-wayland` — length for little gain. On **X11** → exit **2** with HUP
-guidance (`forge nested doctor`). Dual-mon CT still = **host** desk.
+**Name:** `forge nested` (short; nested **Wayland** GNOME Shell). On **X11** →
+exit **2** + HUP guidance (`forge nested doctor`). Independent of shellrc twin
+`nested-gnome`.
+
+| Layer | Use for | Reload |
+| --- | --- | --- |
+| **Nest** | Extension JS load / `forge ping` in nest | `forge nested restart` |
+| **Host desk** | Dual-mon layout / matrix / CT2 | Host tip already loaded, or **one** logout this boot |
+
+### Wayland extensive smoke loop
+
+Canonical rules (FIRM on Wayland): **`agents/testing.md` § Wayland live testing workflow**.
 
 ```bash
-forge nested doctor                # can_nested / refuse reason
-forge nested start                 # window on host; private bus + Forge
-eval $(forge nested env --export)  # forge/apps → nest
-forge ping
-# after ./install (or code change):
-forge nested restart               # reload extension JS
+# 0) Capability (host)
+forge test live probe                 # want can_nested=true, can_retest=true
+forge nested doctor
+
+# 1) L0 for blast radius
+python3 -m pytest tests/unit/cli/test_layout_apply.py -q   # example
+
+# 2) Install tip + nest (once per login if nest not up)
+./install                             # or forge install
+forge nested start                    # or: forge nested restart if already running
+# optional nest health (use a throwaway shell — nest env steals DBUS/WAYLAND):
+#   eval $(forge nested env --export) && forge ping
+
+# 3) Host dual-mon live (host env — do not keep nest env exported)
+forge test live plan --from-work open-leaf    # or cold|settle|close|…
+forge test live run  --from-work open-leaf
+# CT2 / partial matrix: forge layout dev; HANDOFF § Agent live E2E
+
+# 4) Code change → re-install → nest restart → same live subset
+./install && forge nested restart
+# re-run L0 + step 3
+
+# 5) Stop nest when done (optional)
 forge nested stop
-# make nested-start | nested-restart | nested-stop | nested-status
 ```
 
-Independent of shellrc. Generic twin: shellrc `nested-gnome` (same idea: short name, Wayland host required).
+| Do | Don’t |
+| --- | --- |
+| `./install && forge nested restart` between extension JS changes | Logout every iteration when `can_nested` |
+| Run dual-mon matrix / CT2 on **host** | Treat nest as dual-mon CT |
+| Unset nest env before host `forge tree` / layout / live run | Leave `eval $(forge nested env --export)` on host desk shell |
+| One logout if host never loaded tip this boot | Assume nest reload updates host Shell |
+
+**Make:** `nested-start` · `nested-restart` · `nested-stop` · `nested-status`
 
 ### Session ship (2026-08-09) — SE9
 
@@ -213,7 +247,7 @@ See also: [REGRESSIONS.md](./REGRESSIONS.md) (guard the **spine**, not a museum 
 | Focus | One post-settle phase; not mid-structure raise |
 | Profiles | Data only — never special-case a host desk in product code |
 | X11 | Preferred agent live test (HUP); CT3 required |
-| Wayland | Daily driver; **`forge nested restart`** for extension retest (logout only if host never loaded tip) |
+| Wayland | Daily driver + extensive smoke: nest restart between installs; dual-mon = host (see testing.md § Wayland) |
 | Cleanup strip | **Code landed 2026-08-08** — belt moves-only; one focus; postOpenRetry opt-in |
 | CLI jobs | **D021** — durable mutators by default; not a daemon |
 
@@ -241,23 +275,25 @@ Audit table: [cleanup task](./tasks/forge-layout-cold-topology_cleanup-fallbacks
 
 ## Testing this session
 
-**Prefer X11** on black: `./install` + `killall -HUP gnome-shell` (or project install path) so agents can verify without logout.
+**X11:** `./install` + `killall -HUP gnome-shell` so agents can verify without logout.
+
+**Wayland extensive smoke:** `./install` + `forge nested restart` between code changes; dual-mon matrix/CT on **host** desk. Full loop: [§ Wayland extensive smoke loop](#wayland-extensive-smoke-loop) and `agents/testing.md` § Wayland.
 
 ```sh
 gsettings set org.gnome.shell.extensions.forge logging-enabled true
 gsettings set org.gnome.shell.extensions.forge log-level 4
 ```
 
-Wayland: `forge nested restart` for extension code retest; host dual-mon still host desk.
-
-CLI-only cleanup changes (Python `forge` / `layout_apply`) are live without HUP. Extension half needs install/HUP.
+CLI-only cleanup changes (Python `forge` / `layout_apply`) are live without nest/HUP. Extension half needs install + HUP (X11) or nest restart (Wayland).
 
 ### Agent live E2E — most important (run these)
 
 These **partial layout reloads** are the **primary agent end-to-end bar** for
-layout settle + claim + open leaf. Unit tests do not replace them. Prefer X11;
-agent **window** placement matters for true cold (process survival is separate —
-jobs keep apply running if the TTY dies).
+layout settle + claim + open leaf. Unit tests do not replace them. Prefer X11
+for quick HUP loops; on **Wayland** run the same cases on the **host** desk after
+`forge nested restart` (see § Wayland extensive smoke loop). Agent **window**
+placement matters for true cold (process survival is separate — jobs keep apply
+running if the TTY dies).
 
 Profile baseline: host `dev` (mon0 tab+ghostty | mon1 ghostty+tab). For the
 nautilus case use host `t1` (or open Nautilus then `layout t1`).

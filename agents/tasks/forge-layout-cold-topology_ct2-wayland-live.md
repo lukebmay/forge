@@ -27,6 +27,9 @@ Single `forge layout dev` from cold/near-cold desk reaches profile topology with
 
 ## How to run (2026-08-09 — nested method)
 
+**Canonical workflow (FIRM):** [agents/testing.md](../testing.md) § Wayland live
+testing workflow · [HANDOFF](../HANDOFF.md) § Wayland extensive smoke loop.
+
 **Two layers — do not conflate them:**
 
 | Layer | What | Tool |
