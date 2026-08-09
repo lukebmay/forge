@@ -1,3 +1,9 @@
+---
+title: Neovim
+read_when: Editing nvim config, Lua plugins, or editor tooling in this stack
+order: 110
+---
+
 # Neovim
 
 Location: `configs/nvim/` — NvChad v2.5 + lazy.nvim. Rich GUI-like UX; some structure/startup debt.

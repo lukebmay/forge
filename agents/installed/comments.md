@@ -1,37 +1,34 @@
+---
+title: Comments
+read_when: Adding or editing source comments
+order: 50
+---
+
 # Comments
 
 ## Style (strict)
 
 Keep comments **short and non-specific**.
 
-- Prefer one short line or end-of-line.
-- Explain *why* only when non-obvious to a reader who does not know this code.
-- **Never** restate *what* the next lines clearly do.
-- **Never** embed volatile detail: color roles, perf justifications, long purpose parentheticals, goal/history notes, review chat.
+- Prefer one short line or end-of-line
+- Explain *why* only when non-obvious
+- **Never** restate *what* the next lines clearly do
+- **Never** embed volatile detail (history, review chat, long purpose essays)
 
-Good: `# Grok` · `# Bun` · `# Update check (quiet on no-op)` · `# Secrets`
+Good: `# Grok` · `# Update check (quiet on no-op)`  
+Bad: long banners, “expensive: …” essays
 
-Bad: `# Grok (PATH/fpath + config symlink; light enough for zshenv)` · long “expensive: …” banners
-
-Design, history, and rationale → `docs/DESIGN.md` (interesting decisions) and
-`agents/plans/` (execution plans). **Not** long source comments. See
-`documentation.md`.
-
-When touching old verbose comments, trim them in the same change.
+Design/history → `docs/DESIGN.md` / `docs/DECISIONS.md` / plans — not source novels.
 
 ## General
 
-- Prefer EOL (`//`, `#`, `--`) over blocks when both exist.
-- No emoji in comments unless the code already uses them.
-- Minimize arrows (`↑↓←→`); only if they cut real noise.
-- Stale comments are worse than none; avoid details likely to rot.
-- Prefer clear names/structure over comments; names over ~30 chars hurt readability.
-- Math/physics: conventional short names OK with a brief term comment.
-- Accurate always: update or delete when code changes.
-- Tags: `TODO`, `FIXME`, `NOTE`.
+- Prefer EOL over blocks when both exist
+- No emoji unless the file already uses them
+- Stale comments are worse than none
+- Prefer clear names over comments
+- Tags: `TODO`, `FIXME`, `NOTE`
+- Update or delete when code changes
 
 ## Audience
 
-**Production:** for other developers — no chat addresses, no session history. Structure, non-obvious logic, external constraints. Light section headers OK.
-
-**Teaching:** more context OK while explaining; if landing in a file, still write production-style comments. Separate “final code” from tutorial narration.
+Production comments for other developers: structure, non-obvious logic, external constraints. No session chat addresses.

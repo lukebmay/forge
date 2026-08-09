@@ -1,216 +1,294 @@
 schema = 1
-tool_version = "0.1.10"
-catalog_version = "0.2.0"
+tool_version = "0.2.1"
+catalog_version = "0.3.0"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-01T18:07:40+00:00"
+updated_at = "2026-08-09T01:24:52+00:00"
 
 [[files]]
 id = "ansi-colors"
 path = "ansi-colors.md"
-version = "1.0.0"
-sha256 = "62485ce3ee130d8673d770a2e75671c7c7ffeca0607ccabfe06f144eef1e6f70"
+version = "2.0.0"
+sha256 = "bed435b621ecac8b5bf38abd40ef39b1fef6934bc5e03e950a231b69db14a4a0"
+title = "ANSI colors"
+read_when = "Adding terminal colors or formatting CLI output"
 
 [[files]]
 id = "comments"
 path = "comments.md"
-version = "1.0.0"
-sha256 = "461df7ff7606ce982bee0894f43d036a2726a1973028eec15ae22222acc74ded"
+version = "2.0.0"
+sha256 = "27d78d06fbc71d58397c2730ba98189136806b7dfe2a272ec84c610f4bc45803"
+title = "Comments"
+read_when = "Adding or editing source comments"
 
 [[files]]
 id = "documentation"
 path = "documentation.md"
-version = "1.0.1"
-sha256 = "4e919508fca04a3a8c27a838d341a9450e210ff01b4a293621eebb31186c1d54"
+version = "2.0.0"
+sha256 = "ff50da0d958cb1ca30a4858b156817d74f94eaf67ba1a3302180a685f1176da4"
+title = "Documentation"
+read_when = "Writing design docs, DECISIONS, user docs, or choosing where “why” lives"
 
 [[files]]
 id = "general"
 path = "general.md"
-version = "1.5.1"
-sha256 = "f15df9648953367c12d64ef12051307eea4b78823d60a4b2825ea1071252978a"
+version = "2.0.0"
+sha256 = "fd1aed8488370c8eca716bb56d95a591d0610db9235b395c9e909b923b96b696"
+title = "General process"
+read_when = "Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, architecture vs patches"
 
 [[files]]
 id = "git"
 path = "git.md"
-version = "1.3.0"
-sha256 = "46257ba647aca0a6177cb39348a2f16594d0bcd7b05507b070bd403bfaba093a"
+version = "2.0.0"
+sha256 = "f747375d38d434e512e50118485f3c9204ed8606b12bf3e11531efc7e1eb51b7"
+title = "Git"
+read_when = "Before any commit, push, branch, merge, rebase, or release-ladder work"
 
 [[files]]
 id = "bash"
 path = "languages/bash.md"
-version = "1.0.0"
-sha256 = "79f2e9a804741b80174206fa0da8f313c76a022468e312ed7c1c54963b692fa9"
+version = "1.1.0"
+sha256 = "bb860988e7fbac880c740ea485cbb2dba73ca11a5e1360ff8945274d6d849a14"
+title = "Bash"
+read_when = "Writing or reviewing Bash scripts"
 
 [[files]]
 id = "c"
 path = "languages/c.md"
-version = "1.0.0"
-sha256 = "be08c16cc490d5a82c01ee43cca813c3d56327ddfa809b98779a0b7575c9078c"
+version = "1.1.0"
+sha256 = "01886f640a6b830c13b6bb21efb1f26bc746d17fe2ebefad007ce15d369c7767"
+title = "C"
+read_when = "Writing or reviewing C code"
 
 [[files]]
 id = "cpp"
 path = "languages/cpp.md"
-version = "1.0.0"
-sha256 = "54a1537753489865ea161dd11d7b992ca1ebcaf7d424fbfea6120634beac2dfb"
+version = "1.1.0"
+sha256 = "b9b4eaeb96b6eefa15ddd7f984f0238537712718704a326dd201ced18d3b5c56"
+title = "C++"
+read_when = "Writing or reviewing C++ code"
 
 [[files]]
 id = "css"
 path = "languages/css.md"
-version = "1.0.0"
-sha256 = "28e54d5135cdf2e0a8045f003ed07784418282dbdd4b4afe6058a4042ca3782d"
+version = "1.1.0"
+sha256 = "01008356ff74e8946aefeffbfe8f0fa572020b1c393abcd3dfb0525b9fb78889"
+title = "CSS"
+read_when = "Writing or reviewing CSS"
 
 [[files]]
 id = "docker"
 path = "languages/docker.md"
-version = "1.0.0"
-sha256 = "a70aac88d5f37340f6d5c0d2e7c66ea75a7c05596ce7cc5edf446bda8ede20ba"
+version = "1.1.0"
+sha256 = "14a1ea20aa94f5f32f77a71d78b3e11e4b5aa90f3a98aa30d9f2b84aa962fca7"
+title = "Docker"
+read_when = "Dockerfile, compose, or container image work"
 
 [[files]]
 id = "go"
 path = "languages/go.md"
-version = "1.0.0"
-sha256 = "1e8c216e5882210e9e73ec267391e7dfbf8a7df175a1800941bf9d95bbde7796"
+version = "1.1.0"
+sha256 = "90162fc24d95fe5f99fb8e857a050d43debb25f59e26869be7151d26a7f8652d"
+title = "Go"
+read_when = "Writing or reviewing Go"
 
 [[files]]
 id = "html"
 path = "languages/html.md"
-version = "1.0.0"
-sha256 = "0ba9c4be32003a262dc71796a64df6b5598c3a9c61930450d9326a5d46eaedd0"
+version = "1.1.0"
+sha256 = "6b2b51184a5eff01b4afb318f13742a053fb42054224f24ace0bb78adb0e158a"
+title = "HTML"
+read_when = "Writing or reviewing HTML"
 
 [[files]]
 id = "javascript"
 path = "languages/javascript.md"
-version = "1.0.0"
-sha256 = "681922ca276ae0d9e58b1b660b686cf975df89cd3c79b7bbe87ec1f9cf99d6a1"
+version = "1.1.0"
+sha256 = "780630ed2cde1cb67498444512a45884e63e40195f61de8f21c0536e1be3db44"
+title = "JavaScript"
+read_when = "Writing or reviewing JavaScript"
 
 [[files]]
 id = "kubernetes"
 path = "languages/kubernetes.md"
-version = "1.0.0"
-sha256 = "e170fd20b54a0eef8d2af74836e7f0db38ec42965cd0a41ea845c3ea35d3614e"
+version = "1.1.0"
+sha256 = "5b08b37c3816ba41f53ca79554c9d1bea8f9da4afa6be0ddf74379e6942a448f"
+title = "Kubernetes"
+read_when = "k8s manifests, cluster ops, or kubectl workflows"
 
 [[files]]
 id = "lua"
 path = "languages/lua.md"
-version = "1.0.0"
-sha256 = "625ab454a59a9854ee29d7151c9402989f0e5503146e576edf3d437dd412a6f9"
+version = "1.1.0"
+sha256 = "5afa80a4c42b8496d99036d238ebdd3df1e1bdf7a6b9a4bb5a0c9a02b3391c60"
+title = "Lua"
+read_when = "Writing or reviewing Lua (including nvim)"
 
 [[files]]
 id = "mongodb"
 path = "languages/mongodb.md"
-version = "1.0.0"
-sha256 = "f53c4a6936b69b19565f792b89cf7ebbbb1b6cca9a4e7490ddbb12fbecb4622a"
+version = "1.1.0"
+sha256 = "6f2468f6303c9963ae281f0608c13640c3bb2591f4d0059e303cb55bdba996ff"
+title = "MongoDB"
+read_when = "MongoDB schemas, queries, or ops"
 
 [[files]]
 id = "mysql"
 path = "languages/mysql.md"
-version = "1.0.0"
-sha256 = "424c43fb70423b590b17e55a15e430a1485361bbf24abd9d3b0a1bb2516b0372"
+version = "1.1.0"
+sha256 = "f691c989d4c299391cd0e8420a83ee91182609a81771cdf7f89d68dfd8907eb8"
+title = "MySQL"
+read_when = "MySQL/MariaDB schemas, queries, or ops"
 
 [[files]]
 id = "podman"
 path = "languages/podman.md"
-version = "1.0.0"
-sha256 = "264a41b3a50192ba647e043f93eac4601741b778f9546b613240eec4206be4a9"
+version = "1.1.0"
+sha256 = "53512acc99eadfa7d69fcc2c96ae826ca3fbd4dadd9f365ce2c03669404fd9bc"
+title = "Podman"
+read_when = "Podman containers or rootless container work"
 
 [[files]]
 id = "postgres"
 path = "languages/postgres.md"
-version = "1.0.0"
-sha256 = "61bcff9701be39c50ac06b3aafc41e87c45ab7f8b1fd63ac9d6852abc53784be"
+version = "1.1.0"
+sha256 = "b56cd684467d7854e03d6057e10398e407de9edff682832b0e31f33746f407d0"
+title = "PostgreSQL"
+read_when = "Postgres schemas, queries, migrations, or ops"
 
 [[files]]
 id = "python"
 path = "languages/python.md"
-version = "1.0.0"
-sha256 = "6179e5d42f18b46de75e400102dfac1289d7210a10f51fe88d218dcf262ee748"
+version = "1.1.0"
+sha256 = "8138ab1c64ff33e7bb093ed20c9ff0014292ae860e6ffe81a87455bbd6c47e78"
+title = "Python"
+read_when = "Writing or reviewing Python"
 
 [[files]]
 id = "qemu"
 path = "languages/qemu.md"
-version = "1.0.0"
-sha256 = "4dc8a1cf72171271b70a2fb909a84f4d3277ab61f7bf90d43ac1eadc599d587b"
+version = "1.1.0"
+sha256 = "ac34318193eaf68be142d098b9a232b6d9d7e6ccbbefd3b43cf7a75e3a346041"
+title = "QEMU"
+read_when = "QEMU/KVM VMs or related scripts"
 
 [[files]]
 id = "react"
 path = "languages/react.md"
-version = "1.0.0"
-sha256 = "3e8971402643cfb2894c7f2c9c84c61c15acbb0db9e91fa956a473435db3cb8c"
+version = "1.1.0"
+sha256 = "38b403b9490534025fcc19478ed8d3b194c84f4b2171ea1c9818a07b5329f1ca"
+title = "React"
+read_when = "React components or app structure"
 
 [[files]]
 id = "redis"
 path = "languages/redis.md"
-version = "1.0.0"
-sha256 = "522228b215bb53c25f12dd4ea1a32137afd2706e3288c8f08f38e4cb8181a6fb"
+version = "1.1.0"
+sha256 = "4356e8d17d350cad9e70df507513753ebd57f5c5075572c7eae30a3f02e914c9"
+title = "Redis"
+read_when = "Redis usage, keys, or ops"
 
 [[files]]
 id = "rust"
 path = "languages/rust.md"
-version = "1.0.0"
-sha256 = "a94e49aecaf44dc9e9e9cb53f84165448377de37cac59d3705a6ab8b462b8c26"
+version = "1.1.0"
+sha256 = "6f2eac03cf608992893c59fde490f400f6a27a7c2a04f05ba0b6b48481d17874"
+title = "Rust"
+read_when = "Writing or reviewing Rust"
 
 [[files]]
 id = "sqlite"
 path = "languages/sqlite.md"
-version = "1.0.0"
-sha256 = "adfa033f4b2b2f615c73e7bdbd6f6cdafde3ba6e34b617e3454d3334e5d51b28"
+version = "1.1.0"
+sha256 = "5f3650c8b7e842ba32ce692bbc8b626c2df24fe069e889df0eb5b0163848f127"
+title = "SQLite"
+read_when = "SQLite schemas, queries, or embedded DB work"
 
 [[files]]
 id = "typescript"
 path = "languages/typescript.md"
-version = "1.0.1"
-sha256 = "d89b04f33458ab28591b97e442ab5eef09a23d274e829887f91d8ce0c099822d"
+version = "1.1.0"
+sha256 = "8c7550b74c3a96559a1f8c126eb51a9cc922a9323bb18859c075eee104925b9a"
+title = "TypeScript"
+read_when = "Writing or reviewing TypeScript"
 
 [[files]]
 id = "web-backend"
 path = "languages/web-backend.md"
-version = "1.0.1"
-sha256 = "492b54af080fd467a0b1e3cd1f063efbac9205a8fd3382e0d47c9ce176661c97"
+version = "1.1.0"
+sha256 = "6959f048e82a48b4951da77353ca6a905ff5d71d6c16b24cc5eb113b24568b27"
+title = "Web backend"
+read_when = "Server-side web app architecture"
 
 [[files]]
 id = "web-frontend"
 path = "languages/web-frontend.md"
-version = "1.0.1"
-sha256 = "b5c45e834284a6281b7fa8688199ac648dd03866a31decb81381b67322022f4a"
+version = "1.1.0"
+sha256 = "8573396d2bd3f6b64ff64cf903ac02115b90a86189ce6b6df229767d2e58ebd9"
+title = "Web frontend"
+read_when = "Client-side web app architecture"
 
 [[files]]
 id = "zig"
 path = "languages/zig.md"
-version = "1.0.0"
-sha256 = "1753665b1c87a76494b989490f2d9d823b114067a4e32f9e78a15b9b6b6e5679"
+version = "1.1.0"
+sha256 = "1835574489b2f693512a50a2ac8deadec1ecef43bf885bf44917f2647acc60bb"
+title = "Zig"
+read_when = "Writing or reviewing Zig"
 
 [[files]]
 id = "zsh"
 path = "languages/zsh.md"
-version = "1.0.0"
-sha256 = "c64f194e12a0b69a104d16d3a12e147db468a00f1606cf2db245418c2fb7a60e"
+version = "1.1.0"
+sha256 = "b65e6b2e21cf7b65b77d1844281a9b46c34771bbf466e390592931e5db844464"
+title = "Zsh"
+read_when = "Writing or reviewing zsh scripts/functions"
 
 [[files]]
 id = "markdown"
 path = "markdown.md"
-version = "1.0.0"
-sha256 = "a9d2ad62b6341b0ee02289b15a7b5061ec12e16abcbcef5e4b77c0355b126247"
+version = "2.0.0"
+sha256 = "68c4cac0d7b06859d1b7f3c5fd588f08d25c251ceaaea50fdcecd15ef3ef5594"
+title = "Markdown"
+read_when = "Writing or editing markdown docs, plans, tasks, or README prose"
 
 [[files]]
 id = "nvim"
 path = "nvim.md"
-version = "1.0.0"
-sha256 = "92bca9ef3fd49e78ad602044fe92866b658d54c8ac68aafe56c5c843892fba81"
+version = "1.1.0"
+sha256 = "1092e0d76e466a5eb3f0fe5031852576caeae42a99370d84ec808c7a0daf0c66"
+title = "Neovim"
+read_when = "Editing nvim config, Lua plugins, or editor tooling in this stack"
 
 [[files]]
 id = "scripting"
 path = "scripting.md"
-version = "1.0.0"
-sha256 = "c7ef4e040ea834d7a32f80ebaa795b917da25b2e089dea166b29d26bdd3be982"
+version = "2.0.0"
+sha256 = "57b16752953d6796088b2df8127a410be7a7e0a3f79ec4938cb6231bc17be683"
+title = "Scripting"
+read_when = "Writing or changing shell/Python scripts, installers, CLI tools, or bin entries"
 
 [[files]]
 id = "secrets"
 path = "secrets.md"
-version = "1.0.0"
-sha256 = "ee762019c61f81f847ec1646275980cdf0a93b9526afc34601fe1835ecd44f04"
+version = "1.1.0"
+sha256 = "b6c579f861e4efcab210b1affce6baccb47bb2a1ea98d4a50a7eeed1830175cd"
+title = "Secrets store notes"
+read_when = "When handling project secret locations or agents/secrets.md finds"
 
 [[files]]
 id = "security"
 path = "security.md"
-version = "1.3.0"
-sha256 = "b4e2a2decb24383c6bde960d656b11432046d1ae8efa02a747a56df01ec4d1fe"
+version = "2.0.0"
+sha256 = "32e1a94166ba85c613a7cdbd113f22a5ab8f53589d1991dcb920eae9ec8422e1"
+title = "Security"
+read_when = "Before SSH, secrets, sudo/root, credentials, or any important live-data mutation"
+
+[[files]]
+id = "testing"
+path = "testing.md"
+version = "2.0.0"
+sha256 = "7ca13d0adb3d8d4d474e046941977d3163070edcfcd1eede49163f9c1b92bff3"
+title = "Testing"
+read_when = "Adding tests, changing test strategy, or enabling optional features for verification"

@@ -1,3 +1,9 @@
+---
+title: CSS
+read_when: Writing or reviewing CSS
+order: 200
+---
+
 # CSS
 
 **Precedence:** Stylelint, Prettier, Tailwind/PostCSS configs override this file.

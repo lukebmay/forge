@@ -1,3 +1,9 @@
+---
+title: Secrets store notes
+read_when: When handling project secret locations or agents/secrets.md finds
+order: 25
+---
+
 # Secrets (contextual names only)
 
 Track **names + where found** — never real values. Goal: lift secrets out of the tree over time.

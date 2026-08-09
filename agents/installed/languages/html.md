@@ -1,3 +1,9 @@
+---
+title: HTML
+read_when: Writing or reviewing HTML
+order: 200
+---
+
 # HTML
 
 **Precedence:** `.htmlhintrc`, Prettier, ESLint HTML plugin, and project templates override this file.

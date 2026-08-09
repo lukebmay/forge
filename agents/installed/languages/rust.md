@@ -1,3 +1,9 @@
+---
+title: Rust
+read_when: Writing or reviewing Rust
+order: 200
+---
+
 # Rust
 
 **Precedence:** `rustfmt.toml`, `clippy` lints, `Cargo.toml` / workspace config override this file.

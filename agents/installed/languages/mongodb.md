@@ -1,3 +1,9 @@
+---
+title: MongoDB
+read_when: MongoDB schemas, queries, or ops
+order: 200
+---
+
 # MongoDB
 
 **Precedence:** project schema validation, replica set/sharding topology, and driver settings override this file.

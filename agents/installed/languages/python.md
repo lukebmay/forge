@@ -1,3 +1,9 @@
+---
+title: Python
+read_when: Writing or reviewing Python
+order: 200
+---
+
 # Python
 
 **Precedence:** `pyproject.toml`, `ruff`/`yapf`/`black`, `pyrightconfig.json`/`mypy`, `.editorconfig` override this file.

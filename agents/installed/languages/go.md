@@ -1,3 +1,9 @@
+---
+title: Go
+read_when: Writing or reviewing Go
+order: 200
+---
+
 # Go
 
 **Precedence:** `gofmt`/`gofumpt`, `golangci-lint`, `go.mod`, and gopls settings override this file.

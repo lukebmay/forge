@@ -1,3 +1,9 @@
+---
+title: Redis
+read_when: Redis usage, keys, or ops
+order: 200
+---
+
 # Redis
 
 **Precedence:** deployment topology (standalone/sentinel/cluster), maxmemory policy, and project key conventions override this file.

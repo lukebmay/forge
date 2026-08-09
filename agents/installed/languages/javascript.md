@@ -1,3 +1,9 @@
+---
+title: JavaScript
+read_when: Writing or reviewing JavaScript
+order: 200
+---
+
 # JavaScript
 
 **Precedence:** `eslint.config.*`, Prettier, and package scripts override this file.
