@@ -33,6 +33,39 @@ Do not chase coverage numbers. Prefer one test that would have caught a real bug
 | Shape still moving | Sparse tests; unit only on stable pure helpers |
 | Contract locked | Build unit suite; integration on critical paths |
 | Bug found | Regression test when cheap and non-brittle |
+| **Live layout bug** | REGRESSIONS row + unit if pure + **`LIVE_CASES` R0xx** in `live_matrix.py` |
+
+## Forge AI live matrix (GUIDELINE)
+
+AI live cases are **E2E-class** (desk behavior hard to fully script). They
+**use scripting** for setup/apply/tree/checks; the agent supplies selection,
+judgment, and debug. They **do not replace** unit/integration tests.
+
+**Order (FIRM for layout work):**
+
+1. **L0** — relevant unit/integration for the blast radius  
+2. **`forge test live plan/run`** — selected E2E cases only  
+3. Fix phase → re-run L0 → re-run same live subset  
+
+```bash
+# L0 example (adjust to touch paths)
+python3 -m pytest tests/unit/cli/test_layout_apply.py -q
+# then live
+forge test live probe
+forge test live plan --from-work <hint>   # or --behaviors / --tags R0xx
+forge test live run --from-work <hint>    # only selected cases
+```
+
+| Rule | Detail |
+| --- | --- |
+| **L0 before live** | Rule out pure bugs before dual-mon thrash |
+| **Select by blast radius** | Only cases whose behaviors the change can break |
+| **Not always full suite** | `plan` without filters is max-for-capability, not mandatory run |
+| **Regression → catalog + unit** | Live R0xx → `LIVE_CASES` tag; pure test when possible |
+| **Capability** | True cold needs Guake/float agent; X11 for HUP loops |
+| **Wayland retest** | Deferred nested Shell (AT-W1); not every session |
+
+Plan: `agents/plans/forge-ai-live-test-matrix.md`.
 
 ## Do / don’t
 

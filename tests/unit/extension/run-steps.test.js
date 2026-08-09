@@ -62,6 +62,12 @@ describe("run-steps pure helpers (FC4)", () => {
         ok: true,
         step: { op: "focus", selector: "class:A" },
       });
+      // Layout open-leaf: keyboard false must survive normalize (not stripped).
+      expect(validateStep({ op: "focus", selector: "id:1", keyboard: false }).step).toEqual({
+        op: "focus",
+        selector: "id:1",
+        keyboard: false,
+      });
       expect(validateStep({ op: "swap", a: "focus", b: "lft" }).step).toMatchObject({
         op: "swap",
         a: "focus",

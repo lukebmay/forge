@@ -108,6 +108,7 @@ Profile names must **not** contain `:` or `@` (reserved for workspace targeting)
 | `forge layout a@1 b@3` | Static: same as `1:a 3:b` |
 | `forge layout <name> --verbose` | Apply (or dry-run) with full plan/apply JSON on stdout; also `FORGE_VERBOSE=1` |
 | `forge layout <name> --safe` | Open missing roles + move wrong-mon roles only (no park / structure / mon ensure) |
+| `forge layout <name> --focus TOKEN` | Override profile keyboard focus on load (`ghostty`, `ghostty,0`, JSON `[token, n]`) |
 | `forge layout <name> --wait-tree-stable` | Debug: wait for whole GetTree fingerprint quiet before residual place (also `FORGE_LAYOUT_WAIT_TREE_STABLE=1`) |
 | `forge layout <name>` | Close non-layout windows (default) |
 | `forge layout <name> --keep-others` | Park residuals onto each mon’s last unit (tab join) |
@@ -139,13 +140,21 @@ forge layout clean          # closes all windows on the current workspace
 forge layout clean --dry-run
 ```
 
-**Keep floats on save:** default omits FLOAT windows so clean profiles wipe them.
-Pass `--keep-floats` to record Guake (etc.) under `floating[]`; apply claims those
-matches and will not close them as residuals.
+**Keep floats on save:** default omits FLOAT windows on **empty** desks so clean
+profiles wipe them. Pass `--keep-floats` to record Guake (etc.) under `floating[]`
+(also when tiles are empty); apply claims those matches and will not close them
+as residuals.
+
+**Focus on save:** `focus` is the last-focused window that is **part of the saved
+layout**. If a float is saved and focused (e.g. Guake), focus is that float. If
+the keyboard is on a float that is **not** saved, focus falls back to the last
+focused **tile** (`lastTileFocusWindowId` / LFT). Override on load with
+`--focus` when you save from a terminal but want a different start focus:
 
 ```bash
 forge layout save desk --keep-floats
 forge layout save clean --keep-floats   # empty tiles + floating Guake kept on apply
+forge layout desk --focus ghostty,0     # left ghostty even if save was from Guake
 ```
 
 Write path (overwrites if present):

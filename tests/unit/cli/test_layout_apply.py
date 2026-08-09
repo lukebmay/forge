@@ -295,8 +295,26 @@ class TestActionMapping(unittest.TestCase):
             steps,
             [
                 {"op": "move", "tile": "id:9", "dest": "path:mo0ws0"},
+                # profile = keyboard activate; active = open-leaf only
                 {"op": "focus", "selector": "id:102"},
-                {"op": "focus", "selector": "id:101"},
+                {"op": "focus", "selector": "id:101", "keyboard": False},
+            ],
+        )
+
+    def test_focus_active_open_leaf_no_keyboard(self):
+        steps = actions_to_extension_steps(
+            [
+                {"op": "focus", "selector": "id:1", "reason": "active"},
+                {"op": "focus", "selector": "id:2", "reason": "survivor"},
+                {"op": "focus", "selector": "id:3", "reason": "profile"},
+            ]
+        )
+        self.assertEqual(
+            steps,
+            [
+                {"op": "focus", "selector": "id:1", "keyboard": False},
+                {"op": "focus", "selector": "id:2", "keyboard": False},
+                {"op": "focus", "selector": "id:3"},
             ],
         )
 

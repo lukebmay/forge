@@ -317,7 +317,17 @@ def actions_to_extension_steps(
                     s = str(wid).strip()
                     sel = s if s.startswith("id:") else f"id:{s}"
             if sel is not None and str(sel).strip() != "":
-                focus_steps.append({"op": "focus", "selector": str(sel).strip()})
+                step_f: dict[str, Any] = {
+                    "op": "focus",
+                    "selector": str(sel).strip(),
+                }
+                # Tab/stack open leaf: pin+raise only. Profile keyboard focus
+                # activates. Prevents YouTube/Grok activate from stomping focus.
+                reason = str(a.get("reason") or "").strip().lower()
+                kbd = a.get("keyboard")
+                if kbd is False or kbd == 0 or reason in ("active", "survivor"):
+                    step_f["keyboard"] = False
+                focus_steps.append(step_f)
             continue
         if op == "ensure_order":
             id_sels = _window_ids_to_selectors(
@@ -768,6 +778,9 @@ SOFT_FOCUS_POLL_MS = 100
 # Keep SOFT_FOCUS_WALL_CAP_MS in sync with lib/extension/layout-open-leaf-pin.js.
 SOFT_FOCUS_WALL_MULT = 3
 SOFT_FOCUS_WALL_CAP_MS = 15000
+# After just-opened maps, learned soft floor (400ms) is too short for chrome/PWA
+# late activate. Floor soft quiet higher while role pins exist (cold/partial open).
+COLD_FOCUS_SOFT_FLOOR_MS = 2000
 # Opt-in always-on second full focus: FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS=<ms>.
 FINAL_FOCUS_REASSERT_MS = 0
 

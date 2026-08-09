@@ -168,7 +168,20 @@ def capture_tiles_profile(
         # Seen floats counted in stats only (default clean-empty path).
         pass
 
-    focus_token = _focus_token_from_forest(forest, mons) if tiles else None
+    # Focus must be a window that is part of the saved layout. Floats count
+    # only when they land under floating[] (tiles+floats always, or --keep-floats
+    # on empty). Otherwise fall back to lastTileFocusWindowId among tiles.
+    floats_saved = bool(out.get("floating"))
+    focus_token = (
+        _focus_token_from_forest(
+            forest,
+            mons,
+            include_floats=floats_saved,
+            floating_cells=list(out.get("floating") or []),
+        )
+        if tiles or floats_saved
+        else None
+    )
     if focus_token is not None:
         out["focus"] = focus_token
 
@@ -1128,24 +1141,139 @@ def _disambiguate_token(
 
 
 def _focus_token_from_forest(
-    forest: dict[str, Any], mons: list[dict[str, Any]]
+    forest: dict[str, Any],
+    mons: list[dict[str, Any]],
+    *,
+    include_floats: bool = False,
+    floating_cells: Optional[list[Any]] = None,
 ) -> Any:
-    """Map forest.focusWindowId → sugar token / [token, n] when captured."""
+    """
+    Map forest focus → sugar token / [token, n] for a window that is part of
+    the saved layout.
+
+    Preference:
+      1. focusWindowId if it is a saved tile (or saved float when include_floats)
+      2. else lastTileFocusWindowId among saved tiles (keyboard was on a float
+         excluded from the profile)
+      3. else None
+    """
     fid = forest.get("focusWindowId")
-    if fid is None or fid == "":
-        return None
-    entries: list[tuple[str, Optional[str]]] = []
+    tile_entries: list[tuple[str, Optional[str]]] = []
     for mon in mons:
         for w in _window_leaves(mon):
+            if _is_float_window(w):
+                continue
             if w.get("windowId") is None:
                 continue
-            entries.append((str(w.get("windowId")), _window_sugar_token(w)))
-    for i, (wid, tok) in enumerate(entries):
-        if wid != str(fid):
-            continue
-        tokens = [t for _, t in entries]
-        return _disambiguate_token(tok, tokens, i)
+            tile_entries.append((str(w.get("windowId")), _window_sugar_token(w)))
+
+    float_entries: list[tuple[str, Optional[str]]] = []
+    if include_floats:
+        seen: set[str] = set()
+        for w in _all_windows(forest):
+            if not _is_float_window(w):
+                continue
+            wid = w.get("windowId")
+            if wid is None or str(wid) in seen:
+                continue
+            seen.add(str(wid))
+            float_entries.append((str(wid), _window_sugar_token(w)))
+        if not float_entries and floating_cells:
+            # Offline / already-captured cells without windowId → cannot match.
+            pass
+
+    def _token_for(wid: Any, entries: list[tuple[str, Optional[str]]]) -> Any:
+        if wid is None or wid == "":
+            return None
+        target = str(wid)
+        for i, (eid, tok) in enumerate(entries):
+            if eid != target:
+                continue
+            tokens = [t for _, t in entries]
+            return _disambiguate_token(tok, tokens, i)
+        return None
+
+    saved_entries = list(tile_entries)
+    if include_floats:
+        saved_entries.extend(float_entries)
+
+    # Current keyboard focus if it is part of the saved layout.
+    if fid is not None and fid != "":
+        hit = _token_for(fid, saved_entries)
+        if hit is not None:
+            return hit
+
+    # Focus is a float (or unknown) not in the save → last focused tile.
+    ltf = forest.get("lastTileFocusWindowId")
+    if ltf is None and isinstance(forest.get("meta"), dict):
+        ltf = forest["meta"].get("lastTileFocusWindowId")
+    hit_tile = _token_for(ltf, tile_entries)
+    if hit_tile is not None:
+        return hit_tile
     return None
+
+
+def parse_focus_cli_token(raw: Any) -> Any:
+    """
+    Parse ``forge layout --focus`` value into sugar focus ref.
+
+    Accepts: role token, integer index, ``token,n`` / ``token:n``, or JSON
+    ``[\"token\", n]``. Empty → None.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, list):
+        if len(raw) == 2:
+            return raw
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    if s.startswith("["):
+        import json as _json
+
+        try:
+            val = _json.loads(s)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"invalid --focus JSON: {e}") from e
+        if isinstance(val, list) and len(val) == 2:
+            return val
+        if isinstance(val, (str, int)):
+            return val
+        raise ValueError("invalid --focus JSON (want token, index, or [token, n])")
+    # token,n or token:n (0-based among same token)
+    for sep in (",", ":"):
+        if sep in s:
+            left, right = s.rsplit(sep, 1)
+            left = left.strip()
+            right = right.strip()
+            if left and right.isdigit():
+                return [left, int(right)]
+    if s.isdigit() or (s.startswith("-") and s[1:].isdigit()):
+        return int(s)
+    return s
+
+
+def apply_focus_override(profile: Any, focus_raw: Any) -> Any:
+    """
+    Set top-level focus on a sugar/IR profile dict (or wrap bare tiles list).
+
+    Mutates dict in place when possible; returns the profile to use for plan.
+    """
+    token = parse_focus_cli_token(focus_raw)
+    if token is None:
+        return profile
+    if isinstance(profile, list):
+        return {"tiles": profile, "focus": token}
+    if not isinstance(profile, dict):
+        raise ValueError("profile must be a JSON object or bare tiles array")
+    out = profile
+    out["focus"] = token
+    return out
 
 
 def _active_token_for_group(

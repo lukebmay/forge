@@ -10,9 +10,12 @@ AC1–AC6 apply-contract, thrash catalog (CL3)
 
 ### Session note (overwrite)
 
+**2026-08-09 (later):** **True cold still fails mon0 open leaf** (Chrome over Grok)
+after reinstall; agent now Guake-capable. **SE8** filed. R007 partial path was
+green; true cold is a separate residual class.
+
 **2026-08-09:** **SE0–SE5 + SE7 done.** Soft barrier + 15s open-leaf pin + persist.
-CT3 near-cold X11 green (Grok/YouTube leaves + ghostty focus). Next: SE6 geom
-optional; full cold empty CT3 optional; cleanup strip close.
+CT3 near-cold X11 green (Grok/YouTube leaves + ghostty focus).
 
 **2026-08-08:** Operator + agent locked direction. Product: hard Meta readiness →
 act → soft expectation barrier (file-backed) → post-settled verify once.
@@ -180,6 +183,7 @@ defaults below as locked for implement tasks.
 | **SE6** | Geom soft expectation: fold SL1 minQuiet into same store/API (no second file) | ready after SE1 |
 | **SE7** | Persist updates end-of-layout; first-ever learning trial path; docs (`layout.md` settle section) + REGRESSIONS | **done** |
 | **SE8** | X11 CT3 cold smoke + Wayland CT2 when logout OK; thrash dump / heuristics dump CLI if useful | **partial** (CT3 near-cold green; true empty optional) |
+| **SE8b** | [True cold open leaf (Chrome over Grok)](../tasks/forge-layout-settle-contract_se8-true-cold-open-leaf.md) — Guake agent L2; debug + fix | **ready** |
 
 Optional later:
 

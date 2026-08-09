@@ -62,6 +62,7 @@ from layout_apply import (  # noqa: E402
     BELT_STABLE_POLL_MS,
     BELT_STABLE_SAMPLES,
     BELT_STABLE_TIMEOUT_MS,
+    COLD_FOCUS_SOFT_FLOOR_MS,
     FINAL_FOCUS_QUIET_MS,
     FINAL_FOCUS_REASSERT_MS,
     HARD_TIMEOUT_MS,
@@ -132,6 +133,7 @@ from layout_plan import (  # noqa: E402
 )
 from layout_save import (  # noqa: E402
     apply_description,
+    apply_focus_override,
     auto_description_for_profile,
     capture_tiles_profile,
     format_capture_stderr,
@@ -1522,6 +1524,10 @@ def _layout_final_focus_pass(
     soft_ms = resolve_focus_soft_timeout_ms(
         heuristics, host=host, wm_classes=wm_classes
     )
+    # Cold/partial open: learned floor (400ms) is too short for chrome late
+    # activate; keep soft quiet ≥ COLD_FOCUS_SOFT_FLOOR_MS while pins exist.
+    if pin_ids:
+        soft_ms = max(int(soft_ms), int(COLD_FOCUS_SOFT_FLOOR_MS))
     apply_log["finalFocusSoftTimeoutMs"] = soft_ms
     soft_rc_holder: list[int] = [0]
     soft_state: dict[str, Any] = {"plan": last_plan}
@@ -2499,12 +2505,10 @@ def _layout_run_reconcile(
     }
 
     # 1) Moves / parks / closes / ensure_layout for existing windows.
-    # When opens follow, strip focus: chrome late-activate steals open leaf if we
-    # raise Grok/YouTube before all maps settle. Final focus after open path.
-    # No-open re-run keeps focus in this batch (settled desk).
-    structure_for_pre = (
-        without_focus_actions(ext_actions) if open_actions else ext_actions
-    )
+    # Always strip focus from structure batches: open-leaf + profile keyboard
+    # focus is a post-settle phase (soft residual barrier). Mid-session no-open
+    # re-runs used to focus here without soft barrier → kbd thrash after actives.
+    structure_for_pre = without_focus_actions(ext_actions)
     ext_steps = actions_to_extension_steps(
         structure_for_pre, force_close=force_close, workspace=workspace
     )
@@ -2981,6 +2985,30 @@ def _layout_run_reconcile(
                         "forge layout: LayoutBatch chrome-clear failed: "
                         f"{clr_payload.get('error')}"
                     )
+    else:
+        # No opens: still one post-structure focus phase + soft barrier.
+        focus_rc, focus_plan = _layout_final_focus_pass(
+            backend,
+            data,
+            clean=clean,
+            keep_others=keep_others,
+            safe=safe,
+            workspace=workspace,
+            role_pins=role_pins,
+            force_close=force_close,
+            apply_log=apply_log,
+        )
+        if focus_rc != 0:
+            out = _layout_plan_meta(
+                resolved, name, focus_plan or plan, dry_run=False
+            )
+            out["ok"] = False
+            out["error"] = "final focus pass failed"
+            out["apply"] = apply_log
+            _layout_maybe_print_json(out, verbose=verbose, force=True)
+            return focus_rc
+        if isinstance(focus_plan, dict):
+            plan = focus_plan
 
     _eprint("  ok")
     out = _layout_plan_meta(resolved, name, plan, dry_run=False)
@@ -3248,6 +3276,7 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         verbose=verbose,
         force_launch=force_launch,
         wait_tree_stable=wait_tree_stable,
+        focus_override=getattr(args, "focus", None),
     )
 
 
@@ -3275,6 +3304,7 @@ def _layout_run_multi(
     verbose: bool,
     force_launch: bool,
     wait_tree_stable: bool = False,
+    focus_override: Optional[str] = None,
 ) -> int:
     """
     Apply one or more layout targets after all-or-nothing preflight (WS2).
@@ -3323,6 +3353,12 @@ def _layout_run_multi(
             return 1
         try:
             data = load_profile_file(path)
+            if focus_override is not None and str(focus_override).strip() != "":
+                try:
+                    data = apply_focus_override(data, focus_override)
+                except ValueError as e:
+                    _eprint(f"forge layout: --focus: {e}")
+                    return 1
             layout_mode = detect_layout_mode(data, force_launch=force_launch)
         except (FileNotFoundError, ValueError) as e:
             _eprint(f"forge layout: {e}")
@@ -3906,6 +3942,334 @@ def cmd_help(_backend: Optional[str], _args: argparse.Namespace) -> int:
     return 0
 
 
+def _test_live_get_forest(backend: Optional[str], tree_file: Optional[str]) -> dict[str, Any]:
+    return _layout_load_tree(backend, tree_file)
+
+
+def _test_live_probe(
+    backend: Optional[str], *, tree_file: Optional[str] = None
+) -> dict[str, Any]:
+    from live_matrix import capability_from_forest, format_probe_text
+
+    ping_payload: Optional[dict[str, Any]] = None
+    if tree_file is None and backend is not None:
+        try:
+            raw = call_method(backend, "Ping")
+            ping_payload = json.loads(raw) if isinstance(raw, str) else raw
+            if not isinstance(ping_payload, dict):
+                ping_payload = {"ok": True, "raw": ping_payload}
+        except Exception as e:
+            ping_payload = {"ok": False, "error": str(e)}
+    forest = _test_live_get_forest(backend, tree_file)
+    cap = capability_from_forest(forest, ping=ping_payload)
+    return {"capability": cap, "forest": forest, "text": format_probe_text(cap)}
+
+
+def _test_live_close_chrome(backend: str) -> list[str]:
+    """Close all Google-chrome TILE windows via RunSteps. Returns closed ids."""
+    forest = _test_live_get_forest(backend, None)
+    from live_matrix import iter_windows
+
+    closed: list[str] = []
+    steps: list[dict[str, Any]] = []
+    for w in iter_windows(forest):
+        cls = str(w.get("wmClass") or "").lower()
+        if "chrome" not in cls and "chromium" not in cls:
+            continue
+        if str(w.get("mode") or "").upper() != "TILE":
+            continue
+        wid = w.get("windowId")
+        if wid is None:
+            continue
+        steps.append({"op": "close", "selector": f"id:{wid}"})
+        closed.append(str(wid))
+    if steps:
+        run_mixed_steps(backend, steps, stop_on_error=False, print_each=False)
+    return closed
+
+
+def _test_live_close_all_tiles(backend: str, keep_id: Optional[str]) -> list[str]:
+    forest = _test_live_get_forest(backend, None)
+    from live_matrix import iter_windows
+
+    closed: list[str] = []
+    steps: list[dict[str, Any]] = []
+    keep = str(keep_id) if keep_id else None
+    for w in iter_windows(forest):
+        if str(w.get("mode") or "").upper() != "TILE":
+            continue
+        wid = w.get("windowId")
+        if wid is None:
+            continue
+        if keep and str(wid) == keep:
+            continue
+        steps.append({"op": "close", "selector": f"id:{wid}"})
+        closed.append(str(wid))
+    if steps:
+        run_mixed_steps(backend, steps, stop_on_error=False, print_each=False)
+    return closed
+
+
+def _test_live_run_layout(name: str) -> tuple[int, str]:
+    """Invoke forge layout <name> as subprocess (same CLI). Returns (rc, stderr+stdout tail)."""
+    cmd = [sys.executable, str(Path(__file__).resolve()), "layout", name]
+    # Prefer local forge path so we use this tree
+    env = os.environ.copy()
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=300,
+    )
+    out = (proc.stdout or "") + (proc.stderr or "")
+    return int(proc.returncode), out[-4000:]
+
+
+def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
+    """
+    AI live test matrix: probe capability, select cases by behaviors/regressions,
+    plan or execute. See agents/plans/forge-ai-live-test-matrix.md.
+    """
+    from live_matrix import (
+        LIVE_CASES,
+        evaluate_checks,
+        format_selection_text,
+        list_cases,
+        parse_csv_set,
+        recommend_for_work,
+        select_cases,
+        summarize_run,
+    )
+
+    which = str(getattr(args, "test_which", "live") or "live").strip().lower()
+    if which not in ("live",):
+        _eprint(f"forge test: unknown suite kind {which!r} (try: live)")
+        return 1
+
+    action = str(getattr(args, "live_action", "plan") or "plan").strip().lower()
+    tree_file = getattr(args, "tree_file", None)
+    verbose = bool(getattr(args, "verbose", False) or _layout_is_verbose(args))
+
+    # Offline probe/list from tree-file does not need DBus.
+    needs_bus = tree_file is None and action not in ("list",)
+    if needs_bus and backend is None:
+        try:
+            backend = _check_deps()
+        except SystemExit:
+            raise
+        except Exception as e:
+            _eprint(f"forge test live: DBus required: {e}")
+            return 1
+
+    if action == "list":
+        rows = []
+        for c in list_cases():
+            rows.append(
+                {
+                    "id": c.id,
+                    "layer": c.layer,
+                    "title": c.title,
+                    "behaviors": list(c.behaviors),
+                    "regressions": list(c.regressions),
+                    "requiresTrueCold": c.requires_true_cold,
+                    "profile": c.profile,
+                }
+            )
+        _print_json(rows, compact=False)
+        return 0
+
+    # Probe capability (always for plan/run/probe)
+    try:
+        probed = _test_live_probe(backend, tree_file=tree_file)
+    except Exception as e:
+        _eprint(f"forge test live: probe failed: {e}")
+        return 1
+    cap = probed["capability"]
+
+    if action == "probe":
+        print(probed["text"])
+        if verbose:
+            _print_json(cap.to_dict(), compact=False)
+        return 0 if cap.extension_ok or tree_file else 1
+
+    suite = str(getattr(args, "suite", "auto") or "auto")
+    behaviors = parse_csv_set(getattr(args, "behaviors", None))
+    tags = parse_csv_set(getattr(args, "tags", None))
+    case_ids = parse_csv_set(getattr(args, "cases", None))
+    work = getattr(args, "from_work", None)
+
+    if work:
+        sel = recommend_for_work(str(work), cap)
+        # still allow further AND filters
+        if behaviors or tags or case_ids:
+            sel = select_cases(
+                suite=sel.suite,
+                capability=cap,
+                behaviors=behaviors or sel.behaviors,
+                tags=tags or sel.tags,
+                case_ids=case_ids or None,
+            )
+    else:
+        sel = select_cases(
+            suite=suite,
+            capability=cap,
+            behaviors=behaviors or None,
+            tags=tags or None,
+            case_ids=case_ids or None,
+        )
+
+    if action in ("plan", "select"):
+        print(probed["text"])
+        print()
+        print(format_selection_text(sel, cap))
+        if not sel.cases:
+            _eprint("forge test live: no cases selected")
+            return 2
+        if verbose:
+            _print_json(
+                {"capability": cap.to_dict(), "selection": sel.to_dict()},
+                compact=False,
+            )
+        return 0
+
+    if action not in ("run", "execute"):
+        _eprint(
+            f"forge test live: unknown action {action!r} "
+            "(probe|list|plan|run)"
+        )
+        return 1
+
+    if tree_file:
+        _eprint("forge test live: --tree-file is probe/plan only (not run)")
+        return 1
+    if backend is None:
+        _eprint("forge test live: run requires DBus")
+        return 1
+    if not sel.cases:
+        print(probed["text"])
+        print(format_selection_text(sel, cap))
+        _eprint("forge test live: no cases selected")
+        return 2
+
+    print(probed["text"])
+    print()
+    print(format_selection_text(sel, cap))
+    print()
+    _eprint(f"forge test live: executing {len(sel.cases)} case(s)…")
+
+    case_results: list[dict[str, Any]] = []
+    for c in sel.cases:
+        _eprint(f"  → {c.id}: {c.title}")
+        entry: dict[str, Any] = {
+            "id": c.id,
+            "title": c.title,
+            "ok": False,
+            "setup": [],
+            "layoutRc": None,
+            "checks": [],
+        }
+        try:
+            # Re-probe agent id each case (survives closes)
+            forest0 = _test_live_get_forest(backend, None)
+            from live_matrix import capability_from_forest
+
+            cap_case = capability_from_forest(forest0)
+            # Prefer initial agent id if still present
+            if cap.agent_window_id:
+                from live_matrix import iter_windows
+
+                ids = {
+                    str(w.get("windowId"))
+                    for w in iter_windows(forest0)
+                    if w.get("windowId") is not None
+                }
+                if cap.agent_window_id in ids:
+                    cap_case.agent_window_id = cap.agent_window_id
+
+            for step in c.setup:
+                if step == "close-chrome":
+                    closed = _test_live_close_chrome(backend)
+                    entry["setup"].append({"step": step, "closed": closed})
+                    time.sleep(0.5)
+                elif step == "close-all-tiles":
+                    closed = _test_live_close_all_tiles(
+                        backend, cap_case.agent_window_id
+                    )
+                    entry["setup"].append({"step": step, "closed": closed})
+                    time.sleep(0.8)
+                elif step in (
+                    "keep-agent",
+                    "keep-ghostty-tiles",
+                    "keep-mon1",
+                    "ensure-dev-shape",
+                    "ensure-some-tiles",
+                    "close-mon1-chrome",
+                    "close-mon0-chrome",
+                    "ensure-nautilus",
+                ):
+                    # Partial setup variants: for v1 harness, close-chrome covers
+                    # most L1; mon-specific closes approximate with close-chrome.
+                    if step.startswith("close-mon"):
+                        closed = _test_live_close_chrome(backend)
+                        entry["setup"].append({"step": step, "closed": closed})
+                        time.sleep(0.5)
+                    else:
+                        entry["setup"].append({"step": step, "skipped": True})
+                else:
+                    entry["setup"].append({"step": step, "unknown": True})
+
+            if c.profile:
+                rc, layout_out = _test_live_run_layout(c.profile)
+                entry["layoutRc"] = rc
+                entry["layoutTail"] = layout_out[-800:]
+                layout_ok = rc == 0
+            else:
+                layout_ok = True
+
+            time.sleep(0.3)
+            forest1 = _test_live_get_forest(backend, None)
+            cap_after = capability_from_forest(forest1)
+            if cap_case.agent_window_id:
+                cap_after.agent_window_id = cap_case.agent_window_id
+            checks = evaluate_checks(
+                forest1,
+                c.checks,
+                capability=cap_after,
+                layout_ok=layout_ok,
+            )
+            entry["checks"] = checks
+            entry["ok"] = layout_ok and all(ch.get("ok") for ch in checks)
+            status = "PASS" if entry["ok"] else "FAIL"
+            _eprint(f"    {status}")
+            for ch in checks:
+                mark = "ok" if ch.get("ok") else "FAIL"
+                _eprint(f"      [{mark}] {ch.get('check')}: {ch.get('detail')}")
+        except Exception as e:
+            entry["ok"] = False
+            entry["error"] = str(e)
+            _eprint(f"    FAIL error: {e}")
+        case_results.append(entry)
+
+    summary = summarize_run(case_results)
+    print()
+    print(
+        f"forge test live: "
+        f"{'PASS' if summary['ok'] else 'FAIL'} "
+        f"({summary['passed']} passed, {summary['failed']} failed)"
+    )
+    if verbose or not summary["ok"]:
+        _print_json(
+            {
+                "capability": cap.to_dict(),
+                "selection": sel.to_dict(),
+                "summary": summary,
+            },
+            compact=False,
+        )
+    return 0 if summary["ok"] else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="forge",
@@ -4204,6 +4568,7 @@ def build_parser() -> argparse.ArgumentParser:
         "  forge layout save <name> --tree-file F  # offline from forest JSON\n"
         "  forge layout <name> --force-launch  # imperative steps[] only\n"
         "  forge layout <name> --safe    # open+move roles only (no park/structure)\n"
+        "  forge layout <name> --focus ghostty  # override keyboard focus on load\n"
         "  forge layout <name> --wait-tree-stable  # debug LF6 fingerprint quiet\n"
         "  forge layout <name>             # close non-layout windows (default)\n"
         "  forge layout <name> --keep-others  # park residuals into last mon unit\n"
@@ -4343,7 +4708,98 @@ def build_parser() -> argparse.ArgumentParser:
             "Default omits floats so empty/clean profiles close them on apply"
         ),
     )
+    layout_p.add_argument(
+        "--focus",
+        metavar="TOKEN",
+        default=None,
+        help=(
+            "Override profile keyboard focus on load. TOKEN is a role sugar "
+            "token (ghostty), multi-instance token,n or token:n, integer index, "
+            "or JSON [token, n]. Useful when saving from a terminal but not "
+            "wanting that terminal as the restored focus."
+        ),
+    )
     layout_p.set_defaults(func=cmd_layout)
+
+    test_p = sub.add_parser(
+        "test",
+        help="AI live test matrix (capability-gated; select by behaviors)",
+        description=(
+            "Live dual-mon tests for agents. Probe session capability, select\n"
+            "cases by suite / behaviors / regression tags, plan or run.\n"
+            "\n"
+            "  forge test live probe              # session + agent + gates\n"
+            "  forge test live list               # catalog JSON\n"
+            "  forge test live plan               # auto suite for this capability\n"
+            "  forge test live plan --from-work open-leaf\n"
+            "  forge test live plan --tags R008\n"
+            "  forge test live plan --suite partial\n"
+            "  forge test live run --from-work cold   # execute (destructive)\n"
+            "\n"
+            "Do not always run everything: pick behaviors that current work can\n"
+            "change. New regressions must add a catalog case (R0xx tag).\n"
+            "Docs: agents/plans/forge-ai-live-test-matrix.md"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    test_p.add_argument(
+        "test_which",
+        nargs="?",
+        default="live",
+        help="Matrix kind (only: live)",
+    )
+    test_p.add_argument(
+        "live_action",
+        nargs="?",
+        default="plan",
+        help="probe | list | plan | run  (default: plan)",
+    )
+    test_p.add_argument(
+        "--suite",
+        default="auto",
+        help="auto | partial (L1) | cold (L2) | regression (needs --tags/--behaviors)",
+    )
+    test_p.add_argument(
+        "--behaviors",
+        metavar="LIST",
+        default=None,
+        help="Comma-separated behaviors (open-leaf,layout-apply,cold-open,…)",
+    )
+    test_p.add_argument(
+        "--tags",
+        metavar="LIST",
+        default=None,
+        help="Comma-separated tags / regression ids (R008,L1.ghosttys-only)",
+    )
+    test_p.add_argument(
+        "--cases",
+        metavar="LIST",
+        default=None,
+        help="Comma-separated case ids only",
+    )
+    test_p.add_argument(
+        "--from-work",
+        metavar="HINT",
+        default=None,
+        dest="from_work",
+        help=(
+            "Work-area hint → behaviors: layout-apply|open-leaf|focus|cold|"
+            "clean|close|save|settle|dock  or free behavior list"
+        ),
+    )
+    test_p.add_argument(
+        "--tree-file",
+        metavar="PATH",
+        default=None,
+        help="Offline forest for probe/plan (no DBus)",
+    )
+    test_p.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="JSON dump with human plan/results",
+    )
+    test_p.set_defaults(func=cmd_test)
 
     install_p = sub.add_parser(
         "install",
@@ -4579,6 +5035,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         cmd_help,
     ):
         return int(args.func(None, args))
+
+    if cmd_name == "test":
+        action = str(getattr(args, "live_action", "plan") or "plan").strip().lower()
+        tree_file = getattr(args, "tree_file", None)
+        # list is offline; probe/plan offline with --tree-file
+        if action == "list" or tree_file:
+            return int(args.func(None, args))
+        backend = _check_deps()
+        return int(args.func(backend, args))
 
     if cmd_name == "layout":
         tokens = list(getattr(args, "layout_tokens", None) or [])

@@ -21,8 +21,10 @@ if str(_FORGE_CLI) not in sys.path:
 
 from layout_save import (  # noqa: E402
     apply_description,
+    apply_focus_override,
     capture_tiles_profile,
     format_capture_stderr,
+    parse_focus_cli_token,
     profile_for_output,
     resolve_save_description,
 )
@@ -435,6 +437,79 @@ class TestCaptureTilesProfile(unittest.TestCase):
         plan = plan_reconcile(forest, out, clean=True)
         self.assertEqual(plan["counts"]["closed"], 0)
         self.assertFalse(any(a.get("op") == "close" for a in plan["actions"]))
+
+    def test_focus_from_float_when_floats_saved(self):
+        """When floating[] is saved, keyboard focus on Guake is recorded."""
+        forest = _load("tree-perfect.json")
+        guake = {
+            "nodeType": "WINDOW",
+            "layout": None,
+            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+            "percent": 0,
+            "userSized": False,
+            "children": [],
+            "wmClass": "Guake",
+            "title": "Guake",
+            "windowId": 777,
+            "pid": 777,
+            "monitor": 0,
+            "mode": "FLOAT",
+        }
+        forest["monitors"][0]["children"].append(guake)
+        forest["focusWindowId"] = 777
+        # LFT is a tile — must NOT win when Guake is part of the save.
+        forest["lastTileFocusWindowId"] = 103
+        raw = capture_tiles_profile(forest, keep_floats=True)
+        self.assertTrue(raw.get("floating"))
+        # App stem sugar (class Guake → guake)
+        self.assertEqual(raw.get("focus"), "guake")
+        out = profile_for_output(raw)
+        self.assertEqual(out.get("focus"), "guake")
+
+    def test_focus_falls_back_to_last_tile_when_float_excluded(self):
+        """Float not in save → focus uses lastTileFocusWindowId among tiles."""
+        from layout_save import _focus_token_from_forest, _select_physical_monitors
+
+        forest = _load("tree-perfect.json")
+        mon0 = forest["monitors"][0]
+        mon0["children"].append(
+            {
+                "nodeType": "WINDOW",
+                "layout": None,
+                "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                "percent": 0,
+                "userSized": False,
+                "children": [],
+                "wmClass": "Guake",
+                "title": "Guake",
+                "windowId": 777,
+                "pid": 777,
+                "monitor": 0,
+                "mode": "FLOAT",
+            }
+        )
+        forest["focusWindowId"] = 777
+        forest["lastTileFocusWindowId"] = 103
+        mons = _select_physical_monitors(forest)
+        tok = _focus_token_from_forest(
+            forest, mons, include_floats=False, floating_cells=[]
+        )
+        # Dual ghostty → left instance 0
+        self.assertEqual(tok, ["ghostty", 0])
+
+    def test_parse_focus_cli_and_override(self):
+        self.assertEqual(parse_focus_cli_token("ghostty"), "ghostty")
+        self.assertEqual(parse_focus_cli_token("ghostty,0"), ["ghostty", 0])
+        self.assertEqual(parse_focus_cli_token("ghostty:1"), ["ghostty", 1])
+        self.assertEqual(parse_focus_cli_token('["Grok", 1]'), ["Grok", 1])
+        self.assertEqual(parse_focus_cli_token("2"), 2)
+        bare = [["google-chrome", "Grok"], "ghostty"]
+        wrapped = apply_focus_override(bare, "ghostty,0")
+        self.assertEqual(wrapped["focus"], ["ghostty", 0])
+        self.assertEqual(wrapped["tiles"], bare)
+        obj = {"tiles": bare, "focus": "Grok"}
+        apply_focus_override(obj, "ghostty")
+        self.assertEqual(obj["focus"], "ghostty")
 
     def test_stderr_counts(self):
         forest = _load("tree-perfect.json")

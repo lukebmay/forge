@@ -1,16 +1,40 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**settle/cleanup closed; window ignore mode shipped; on master**)  
+**Updated:** 2026-08-09 (**AI live matrix shipped: `forge test live`**)  
 **Branch:** **`master`** (default). Plan/task branches only for major refactors/features.  
-**Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).
+**Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).  
+**Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP (never close agent Ghostty).
 
 **Default:** always fix the **real problem** (phase contract). Temporary / band-aid only if the operator **explicitly** asks for temporary.
+
+### AI live tests (do this for layout work)
+
+E2E-class desk tests (scripted setup + agent judgment). **Not** a substitute for
+unit tests — run **L0 first** for the blast radius, then selected live cases.
+
+```bash
+# 1) L0 pure/integration for what you touched
+python3 -m pytest tests/unit/cli/test_layout_apply.py -q   # example
+# 2) Live E2E subset only
+forge test live probe                         # capability gates
+forge test live plan --from-work open-leaf    # what would run (not everything)
+forge test live run --from-work open-leaf     # execute selected only
+forge test live plan --tags R008              # regression-linked cases
+```
+
+| Rule | Detail |
+| --- | --- |
+| **L0 then live** | Rule out pure bugs before dual-mon thrash |
+| Select by **behaviors** / **R0xx** / work hint | Do **not** run full matrix every time |
+| New live regression | REGRESSIONS + unit if pure + `LIVE_CASES` R id |
+| True cold | Requires Guake (or float agent); probe `can_true_cold` |
+| Wayland nested retest | Deferred AT-W1 — only before next Wayland CT |
 
 ### Architecture fix status (honest)
 
 | Problem class | Status |
 | --- | --- |
-| Cold/partial **open leaf** (Chrome over Grok, wrong tab) | **Fixed in product path** — D018 pin 15s + D019 soft barrier + post-settled verify; matrix green 2026-08-09 |
+| Cold/partial **open leaf** (Chrome over Grok, wrong tab) | **Partial green only** — R007 path works for ghosttys-only; **true cold still fails** mon0 Chrome over Grok (SE8b). Agent Guake can repro. |
 | **Hard Meta ready** before move/focus | **Fixed** — 5s call-clock `wait_until_hard_ready` |
 | Fixed 250ms/2s reassert as product truth | **Removed** — learned soft quiet + event-driven correct |
 | Belt structure rewrite after bind | **Still stripped** (D014) — do not reintroduce |
@@ -23,32 +47,44 @@
 | Wayland CT2 parity | **Not re-run** this session (logout) |
 | Unrelated: resize-autotile, STACKED product | **Open** (other plans) |
 
-**Bottom line:** the **focus/open-leaf + hard/soft settle architecture** for
-layout apply is in place and live-proven on the important partial reloads.
-Not every residual in the forge product is closed — only this failure class.
+**Bottom line:** Partial layout focus architecture (R007) is in; **true cold open
+leaf still broken** (SE8b). **AI live matrix is the preferred sign-off path**
+(`forge test live`, L0 first). Clean profile + focus-on-close still queued.
 
 ---
 
-## Start here
+## Start here (next agent)
 
 | Pri | Work | Path |
 | --- | --- | --- |
+| **use** | AI live matrix for any layout work | [plan](./plans/forge-ai-live-test-matrix.md) · `forge test live` |
+| high | True cold open leaf (Chrome over Grok) | [SE8b](./tasks/forge-layout-settle-contract_se8-true-cold-open-leaf.md) · `forge test live run --tags R008` |
+| high | `forge layout clean` empty `tiles:[]` object | [CE1](./tasks/forge-layout-clean-empty_ce1-detect.md) · R009 |
+| high | Focus on close + Ctrl+Super+Esc unfocus | [plan](./plans/forge-focus-close-and-escape.md) FC0→FC2 |
+| mid | AT2 L1 mon-specific setup polish | [AT2](./tasks/forge-ai-live-test-matrix_at2-l1-setup.md) |
+| later | Nested Wayland retest spike | AT-W1 — only before next Wayland CT |
 | mid | Merge DnD plan branch when ready | `plan/forge-dnd-drop-zones` (complete) |
-| optional | SE6 geom soft residual same heuristics file | [settle](./plans/forge-layout-settle-contract.md) |
-| optional | CT3 true cold-empty | [CT3](./tasks/forge-layout-cold-topology_ct3-x11-live.md) |
-| human | CT2 Wayland cold smoke (logout) | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
-| shellrc | gdisplays session/greeter (GS0+) | `~/dev/me/shellrc/agents/plans/gdisplays-session-greeter.md` |
-| done | SE0–SE5+SE7; cleanup strip; CT3 near-cold | settle + cold-topology completed/ |
-| done | Window ignore mode | [completed](./tasks/completed/forge-window-ignore-mode.md) |
+| optional | SE6 geom soft residual | [settle](./plans/forge-layout-settle-contract.md) |
+| human | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
+| done | SE0–SE5+SE7; R007; AI matrix AT0/AT1; cleanup strip | — |
 
-### Progress (2026-08-09)
+### Session ship (2026-08-09) — cold-continue
 
-| Done | Detail |
+| Shipped | Detail |
 | --- | --- |
-| SE0–SE4 | hard/soft settle + focus phase wire |
-| SE5 | `LAYOUT_OPEN_LEAF_PIN_MS=15000`; pure pin helpers; meta-focus steal tests |
-| SE7 | heuristics file persist |
-| CT3 | near-cold `layout dev`: Grok + YouTube leaves, ghostty focus; agent Ghostty kept |
+| **R007** | Open-leaf focus `keyboard:false`; always soft final focus; cold soft floor 2s with pins; RunSteps passthrough; save focus floats/LFT; `--focus` CLI |
+| **AI live matrix** | `scripts/forge/live_matrix.py` + `forge test live probe\|list\|plan\|run`; L0-then-live policy; behavior/R0xx selection; Guake preferred for `can_true_cold` |
+| **Plans/tasks** | SE8b true cold; CE1 clean empty; focus-close FC0–2; AI matrix AT0 done / AT2 polish / AT-W1 later |
+| **Units** | `test_live_matrix` (15); layout save/apply focus tests; run-steps keyboard false |
+
+| Not shipped | Detail |
+| --- | --- |
+| SE8b true cold | mon0 still Chrome over Grok after full cold (Guake can repro) |
+| CE1 | `detect_layout_mode` rejects `{tiles:[]}` — root-caused, not coded |
+| Focus-on-close / unfocus key | plan only |
+| AT2 / AT-W1 | setup polish / nested Wayland deferred |
+
+**Enable live:** X11; Guake for cold; `gsettings … logging-enabled true` + log-level 4 if debugging pin.
 
 **Live notes:** first-ever soft focus wait ~6s; after zero-residual samples next full focus phase uses 400ms floor. Pin was 3.5s (too short) → 15s wall.
 
