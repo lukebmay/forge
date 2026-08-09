@@ -58,6 +58,7 @@
 | --- | --- |
 | Apply chrome ended too early on cold Wayland | CLI `chrome-clear` **after residual** (D010) |
 | mon0 Chrome open instead of Grok | Final focus **after** open settle (+ reassert); no mid-flight focus (D012); lastTabFocus preserve (D011) |
+| Left dock → right mon; open covers left tab | Single dock-pending appId match; empty LFT(m) → last mon tile not mon-root (D013). See [REGRESSIONS.md](./REGRESSIONS.md) R003–R004 |
 
 ## CT2 live (operator re-smoke after logout)
 

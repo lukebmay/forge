@@ -17,3 +17,4 @@ set Status=`superseded` and add a new row (do not rewrite history silently).
 | D010 | 2026-08-08 | layout | P1 | active | Apply chrome clears after residual place (not at LayoutBatch end) | Cold bind/structure is long visual phase; early clear dropped dim mid-thrash |
 | D011 | 2026-08-08 | layout | P0 | active | Belt post-open re-focuses; layout preserves valid lastTabFocus | ensure_layout anchors first id (chrome) and stomped active Grok |
 | D012 | 2026-08-08 | layout | P0 | active | Final focus after open settle (+ reassert); no mid-flight focus | Chrome/PWA late activate steals open leaf if Grok raised early |
+| D013 | 2026-08-08 | open-app | P0 | active | Empty LFT(m) → last tile on mon; single dock pending wins appId drift | mon-root 3rd HSPLIT covered tabs; dock miss fell to focus mon |

@@ -380,4 +380,22 @@ describe("matchPendingDockLaunch", () => {
     ];
     expect(matchPendingDockLaunch(pending, { now }).monitor).toBe(1);
   });
+
+  it("single unexpired note wins even when appId stem mismatches (dock sticky)", () => {
+    // Shell.App id vs WindowTracker id drift must not drop dock mon → focus LFT.
+    const pending = [{ monitor: 0, appId: "org.gnome.Nautilus.desktop", ts: now - 30 }];
+    const m = matchPendingDockLaunch(pending, {
+      appId: "org.gnome.Nautilus-search",
+      now,
+    });
+    expect(m).toEqual({ monitor: 0, index: 0 });
+  });
+
+  it("two mismatched pendings → null (do not steal sibling launch mon)", () => {
+    const pending = [
+      { monitor: 0, appId: "a.desktop", ts: now - 40 },
+      { monitor: 1, appId: "b.desktop", ts: now - 10 },
+    ];
+    expect(matchPendingDockLaunch(pending, { appId: "c.desktop", now })).toBeNull();
+  });
 });
