@@ -69,9 +69,9 @@ TABBED/STACKED with one remaining window: collapse to that window (lose tab stri
 
 | ID | Task | Status |
 | --- | --- | --- |
-| FC0 | [Design lock + pure focus-target helper](../tasks/forge-focus-close-and-escape_fc0-policy.md) | ready |
-| FC1 | [Wire close restore to policy](../tasks/forge-focus-close-and-escape_fc1-close-restore.md) | next |
-| FC2 | [Unfocus keybind + mode exit hook](../tasks/forge-focus-close-and-escape_fc2-unfocus.md) | next |
+| FC0 | [Design lock + pure focus-target helper](./completed/forge-focus-close-and-escape_fc0-policy.md) | **done** — `pickFocusAfterClose` |
+| FC1 | [Wire close restore to policy](./completed/forge-focus-close-and-escape_fc1-close-restore.md) | **done** |
+| FC2 | [Unfocus keybind + mode exit hook](../tasks/forge-focus-close-and-escape_fc2-unfocus.md) | **next** |
 | FC3 | Live X11 smoke (sibling, promote, LFT, unfocus) | draft |
 
 ---

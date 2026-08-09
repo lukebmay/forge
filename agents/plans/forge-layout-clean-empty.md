@@ -1,9 +1,15 @@
 # Plan: empty / clean layout profiles
 
-**Status:** active — P0 product bug  
-**Priority:** high (broken `forge layout clean`)  
+**Status:** complete — CE1 shipped 2026-08-09  
+**Priority:** high (was broken `forge layout clean`)  
 **Branch:** `master`  
 **Related:** [docs/user/layout.md](../../docs/user/layout.md) empty desk; WR15 clean; sugar save
+
+### Session note
+
+**2026-08-09:** CE1 done — `detect_layout_mode` accepts empty `tiles:[]` /
+`roles:[]`; live `forge layout clean` closes residuals; units in
+`test_layout_apply.TestDetectMode`.
 
 ---
 
@@ -56,7 +62,7 @@ there are zero roles. That is the “clean desk” command.
 
 | ID | Task | Status |
 | --- | --- | --- |
-| CE1 | [detect empty tiles object](../tasks/forge-layout-clean-empty_ce1-detect.md) | ready |
+| CE1 | [detect empty tiles object](./completed/forge-layout-clean-empty_ce1-detect.md) | **done** |
 
 ---
 

@@ -1,9 +1,10 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**AI live matrix shipped: `forge test live`**)  
+**Updated:** 2026-08-09 (**SE8b; CE1; FC0–FC1 focus-after-close shipped**)  
 **Branch:** **`master`** (default). Plan/task branches only for major refactors/features.  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).  
-**Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP (never close agent Ghostty).
+**Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP (never close agent Ghostty).  
+**Note:** Guake dropdown hidden may omit Guake from `forge tree` → probe can report ghostty / `can_true_cold=false` even when agent is under Guake (pstree). Manual true cold still OK.
 
 **Default:** always fix the **real problem** (phase contract). Temporary / band-aid only if the operator **explicitly** asks for temporary.
 
@@ -34,7 +35,7 @@ forge test live plan --tags R008              # regression-linked cases
 
 | Problem class | Status |
 | --- | --- |
-| Cold/partial **open leaf** (Chrome over Grok, wrong tab) | **Partial green only** — R007 path works for ghosttys-only; **true cold still fails** mon0 Chrome over Grok (SE8b). Agent Guake can repro. |
+| Cold/partial **open leaf** (Chrome over Grok, wrong tab) | **Green** — R007 path; SE8b true cold Guake 2/2 + partial ghosttys-only PASS (2026-08-09) |
 | **Hard Meta ready** before move/focus | **Fixed** — 5s call-clock `wait_until_hard_ready` |
 | Fixed 250ms/2s reassert as product truth | **Removed** — learned soft quiet + event-driven correct |
 | Belt structure rewrite after bind | **Still stripped** (D014) — do not reintroduce |
@@ -42,14 +43,15 @@ forge test live plan --tags R008              # regression-linked cases
 | Heuristics file learning | **Landed** — first-ever ~6s then floor/history; SE7 persist |
 | Cleanup strip (belt invent / multi-focus) | **Closed** — code landed; CT3 near-cold + matrix green |
 | Window ignore mode | **Shipped** — `mode: "ignore"` in windows.json (D020) |
+| `forge layout clean` `{tiles:[]}` | **Shipped** — CE1 / R009 `detect_layout_mode` empty tiles |
 | Geom soft residual in **same** file (SE6) | **Optional** — SL1 still session thrash catalog |
 | True cold-empty CT3 (all apps closed) | **Optional / not required** if matrix green |
 | Wayland CT2 parity | **Not re-run** this session (logout) |
 | Unrelated: resize-autotile, STACKED product | **Open** (other plans) |
 
-**Bottom line:** Partial layout focus architecture (R007) is in; **true cold open
-leaf still broken** (SE8b). **AI live matrix is the preferred sign-off path**
-(`forge test live`, L0 first). Clean profile + focus-on-close still queued.
+**Bottom line:** Open-leaf architecture (R007) holds for **true cold** (SE8b
+verified). **AI live matrix** is the preferred sign-off path (`forge test live`,
+L0 first). Next product: focus-on-close + Esc (FC0).
 
 ---
 
@@ -58,31 +60,29 @@ leaf still broken** (SE8b). **AI live matrix is the preferred sign-off path**
 | Pri | Work | Path |
 | --- | --- | --- |
 | **use** | AI live matrix for any layout work | [plan](./plans/forge-ai-live-test-matrix.md) · `forge test live` |
-| high | True cold open leaf (Chrome over Grok) | [SE8b](./tasks/forge-layout-settle-contract_se8-true-cold-open-leaf.md) · `forge test live run --tags R008` |
-| high | `forge layout clean` empty `tiles:[]` object | [CE1](./tasks/forge-layout-clean-empty_ce1-detect.md) · R009 |
-| high | Focus on close + Ctrl+Super+Esc unfocus | [plan](./plans/forge-focus-close-and-escape.md) FC0→FC2 |
+| high | Ctrl+Super+Esc unfocus | [plan](./plans/forge-focus-close-and-escape.md) **FC2** |
 | mid | AT2 L1 mon-specific setup polish | [AT2](./tasks/forge-ai-live-test-matrix_at2-l1-setup.md) |
 | later | Nested Wayland retest spike | AT-W1 — only before next Wayland CT |
 | mid | Merge DnD plan branch when ready | `plan/forge-dnd-drop-zones` (complete) |
 | optional | SE6 geom soft residual | [settle](./plans/forge-layout-settle-contract.md) |
 | human | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
-| done | SE0–SE5+SE7; R007; AI matrix AT0/AT1; cleanup strip | — |
+| done | SE8b R008; CE1 R009; SE0–SE5+SE7; R007; AI matrix AT0/AT1 | — |
 
 ### Session ship (2026-08-09) — cold-continue
 
 | Shipped | Detail |
 | --- | --- |
+| **SE8b / R008** | True cold Guake X11 2/2 + partial ghosttys-only green; R007 path holds (no new open-leaf code) |
+| **CE1 / R009** | `detect_layout_mode` empty `tiles:[]` / `roles:[]` → reconcile; live `forge layout clean` empties desk |
+| **FC0–FC1** | `pickFocusAfterClose` + wire in `window.js` close restore; live close→LFT smoke |
 | **R007** | Open-leaf focus `keyboard:false`; always soft final focus; cold soft floor 2s with pins; RunSteps passthrough; save focus floats/LFT; `--focus` CLI |
 | **AI live matrix** | `scripts/forge/live_matrix.py` + `forge test live probe\|list\|plan\|run`; L0-then-live policy; behavior/R0xx selection; Guake preferred for `can_true_cold` |
-| **Plans/tasks** | SE8b true cold; CE1 clean empty; focus-close FC0–2; AI matrix AT0 done / AT2 polish / AT-W1 later |
-| **Units** | `test_live_matrix` (15); layout save/apply focus tests; run-steps keyboard false |
 
 | Not shipped | Detail |
 | --- | --- |
-| SE8b true cold | mon0 still Chrome over Grok after full cold (Guake can repro) |
-| CE1 | `detect_layout_mode` rejects `{tiles:[]}` — root-caused, not coded |
-| Focus-on-close / unfocus key | plan only |
+| FC2 unfocus key | plan only — **next** |
 | AT2 / AT-W1 | setup polish / nested Wayland deferred |
+| Residual hard-ready warn | cold open still logs “targets not hard-ready (moving anyway)” — structure race noise, leaves OK |
 
 **Enable live:** X11; Guake for cold; `gsettings … logging-enabled true` + log-level 4 if debugging pin.
 

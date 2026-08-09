@@ -51,12 +51,14 @@ from layout_apply import (  # noqa: E402
     without_focus_actions,
 )
 from settle_heuristics import (  # noqa: E402
+    PAD,
     empty_store,
     get_or_create_entry,
     learning_trial_soft_cap_ms,
     make_key,
     record_trial,
     soft_floor_ms,
+    soft_timeout_ms,
 )
 from layout_plan import plan_reconcile  # noqa: E402
 
@@ -120,6 +122,28 @@ class TestDetectMode(unittest.TestCase):
             detect_layout_mode({"tiles": [["a", "b"], ["c"]]}),
             MODE_RECONCILE,
         )
+
+    def test_empty_tiles_list_is_reconcile(self):
+        # CE1 / R009: host clean.json is {"tiles": [], "description": "…"}.
+        self.assertEqual(
+            detect_layout_mode(
+                {"tiles": [], "description": "No apps open, clean workspace."}
+            ),
+            MODE_RECONCILE,
+        )
+
+    def test_empty_tiles_dict_is_reconcile(self):
+        self.assertEqual(detect_layout_mode({"tiles": {}}), MODE_RECONCILE)
+
+    def test_empty_roles_list_is_reconcile(self):
+        self.assertEqual(detect_layout_mode({"roles": []}), MODE_RECONCILE)
+        self.assertEqual(
+            detect_layout_mode({"version": 2, "roles": []}),
+            MODE_RECONCILE,
+        )
+
+    def test_bare_empty_array_is_reconcile(self):
+        self.assertEqual(detect_layout_mode([]), MODE_RECONCILE)
 
     def test_force_launch_with_steps(self):
         self.assertEqual(
@@ -979,6 +1003,270 @@ class TestSoftFocusBarrierSe3(unittest.TestCase):
 
     def test_soft_floor_known(self):
         self.assertEqual(soft_floor_ms("focus"), 400)
+
+
+class TestTimeoutResilience(unittest.TestCase):
+    """
+    Heuristic/hard waits can be too small (R006/R007 class).
+
+    Soft undersize is often *not* detected inside the barrier (false soft-settled);
+    recovery is post-settled verify + residual learning. Hard undersize is explicit
+    (ok=false, pending) and callers continue degraded ("moving anyway").
+    """
+
+    def test_soft_wall_timeout_when_quiet_never_held(self):
+        """Clean desk but soft quiet > wall → timedOut, not softSettled."""
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += s
+
+        out = run_soft_focus_barrier(
+            lambda: [],
+            lambda _n: None,
+            soft_timeout_ms=1000,
+            poll_ms=50,
+            max_wall_ms=100,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+        )
+        self.assertFalse(out["ok"])
+        self.assertFalse(out["softSettled"])
+        self.assertTrue(out["clean"])
+        self.assertTrue(out.get("timedOut"))
+        self.assertEqual(out["wallMs"], 100)
+        self.assertEqual(out["softTimeoutMs"], 1000)
+        self.assertIn("wall timeout", out["error"] or "")
+        self.assertGreaterEqual(out["elapsed_ms"], 100)
+
+    def test_soft_too_small_false_settled_then_post_settled_verify(self):
+        """
+        Soft quiet ends before late steal is visible to the barrier.
+
+        Barrier sees only clean polls → softSettled. Post-settled check still
+        finds open-leaf mismatch and would correct once (D019 terminal phase).
+        """
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += s
+
+        soft = run_soft_focus_barrier(
+            lambda: [],  # residual not yet visible during tiny quiet
+            lambda _n: None,
+            soft_timeout_ms=50,
+            poll_ms=25,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+            max_wall_ms=5000,
+        )
+        self.assertTrue(soft["ok"])
+        self.assertTrue(soft["softSettled"])
+        self.assertEqual(soft["corrections"], 0)
+        self.assertEqual(soft["residuals"], [])
+        self.assertGreaterEqual(soft["elapsed_ms"], 50)
+
+        # Late residual after soft-settled (chrome activate rewrote lastTabFocus).
+        focus_actions = [
+            {
+                "op": "focus",
+                "selector": "id:20",
+                "role": "Grok",
+                "reason": "active",
+            },
+            {
+                "op": "focus",
+                "selector": "id:99",
+                "role": "term",
+                "reason": "profile",
+            },
+        ]
+        forest_stolen = {
+            "focusWindowId": 99,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 10,  # chrome over Grok
+                            "children": [
+                                {"nodeType": "WINDOW", "windowId": 10},
+                                {"nodeType": "WINDOW", "windowId": 20},
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+        needed = focus_actions_still_needed(forest_stolen, focus_actions)
+        self.assertEqual([a["role"] for a in needed], ["Grok"])
+
+        # One post-settled correct (product path); mismatch clears.
+        forest_fixed = {
+            "focusWindowId": 99,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 20,
+                            "children": [
+                                {"nodeType": "WINDOW", "windowId": 10},
+                                {"nodeType": "WINDOW", "windowId": 20},
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+        self.assertEqual(focus_actions_still_needed(forest_fixed, focus_actions), [])
+
+    def test_soft_residual_during_barrier_records_and_settles(self):
+        """Undersized soft still recovers if residual lands while barrier is open."""
+        clock = {"t": 0.0}
+        phase = {"n": 0}
+        corrects: list[list] = []
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += s
+
+        def check():
+            phase["n"] += 1
+            # First poll clean; second (after soft would nearly end) steals;
+            # after correct, clean for the full soft window.
+            if phase["n"] == 2:
+                return [{"op": "focus", "selector": "id:20", "role": "Grok"}]
+            return []
+
+        def correct(needed):
+            corrects.append(list(needed))
+
+        out = run_soft_focus_barrier(
+            check,
+            correct,
+            soft_timeout_ms=80,
+            poll_ms=40,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+            max_wall_ms=5000,
+        )
+        self.assertTrue(out["ok"])
+        self.assertTrue(out["softSettled"])
+        self.assertEqual(out["corrections"], 1)
+        self.assertEqual(len(out["residuals"]), 1)
+        self.assertGreaterEqual(out["residuals"][0]["latencyMs"], 0)
+        self.assertEqual(len(corrects), 1)
+
+    def test_learning_raises_soft_timeout_after_late_residual(self):
+        """Residual sample after undersized quiet raises next soft timeout (pad)."""
+        store = empty_store()
+        key = make_key("black", "google-chrome", "focus-phase", "focus")
+        ent = get_or_create_entry(
+            store,
+            key,
+            host="black",
+            wm_class="google-chrome",
+            process_kind="focus-phase",
+            residual_kind="focus",
+        )
+        # Prior runs looked quiet → floor only (learned too small for chrome).
+        for _ in range(3):
+            record_trial(ent, had_residual=False)
+        before = soft_timeout_ms(ent, "focus")
+        self.assertEqual(before, soft_floor_ms("focus"))  # 400
+
+        # Late residual observed (post-settled or mid-barrier) at 1200ms.
+        record_trial(ent, had_residual=True, latency_ms=1200)
+        after = soft_timeout_ms(ent, "focus")
+        self.assertEqual(after, int(1200 * PAD))  # 1500
+        self.assertGreater(after, before)
+
+        # resolve_focus_soft_timeout_ms uses the same entry path.
+        t = resolve_focus_soft_timeout_ms(
+            store, host="black", wm_classes=["google-chrome"]
+        )
+        self.assertEqual(t, after)
+
+    def test_hard_timeout_detects_pending_and_returns_without_raise(self):
+        """
+        Hard undersize: explicit ok=false + pending; caller continues degraded.
+
+        Product path logs and moves anyway — barrier must not throw.
+        """
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += max(s, 0.02)
+
+        # One ready, one never TILE within tiny hard budget.
+        def load():
+            return [
+                {
+                    "windowId": "1",
+                    "mode": "TILE",
+                    "rect": {"width": 10, "height": 10},
+                    "monitor": 0,
+                },
+                {"windowId": "2", "mode": "FLOAT"},
+            ]
+
+        out = wait_until_hard_ready(
+            load,
+            ["1", "2"],
+            timeout_ms=80,
+            poll_ms=20,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+        )
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["settled"], ["1"])
+        self.assertEqual(out["pending"], ["2"])
+        self.assertEqual(out["hardTimeoutMs"], 80)
+        self.assertIn("hard-ready timeout", out["error"] or "")
+        self.assertGreaterEqual(out["elapsed_ms"], 80)
+        # Degraded continue policy: partial settled is usable; pending is the signal.
+        self.assertTrue(out["settled"])
+        self.assertTrue(out["pending"])
+
+    def test_hard_timeout_zero_budget_immediate(self):
+        """timeout_ms=0: first poll fail → timeout (call clock already expired)."""
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        out = wait_until_hard_ready(
+            lambda: [{"windowId": 1, "mode": "FLOAT"}],
+            ["1"],
+            timeout_ms=0,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=lambda _s: None,
+            monotonic_fn=mono,
+        )
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["pending"], ["1"])
+        self.assertIn("hard-ready timeout", out["error"] or "")
 
 
 class TestForestStabilityLf6(unittest.TestCase):

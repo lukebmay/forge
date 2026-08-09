@@ -10,9 +10,14 @@ AC1–AC6 apply-contract, thrash catalog (CL3)
 
 ### Session note (overwrite)
 
+**2026-08-09 (SE8b close):** True cold Guake X11 **2/2 green** (Grok/YouTube
+leaves; soft barrier 0 corrections; partial ghosttys-only PASS). R008 closed by
+live verify under R007 path — no new open-leaf code. Residual desk with wrong
+LTF mid-session still fixed by one `layout dev`.
+
 **2026-08-09 (later):** **True cold still fails mon0 open leaf** (Chrome over Grok)
-after reinstall; agent now Guake-capable. **SE8** filed. R007 partial path was
-green; true cold is a separate residual class.
+after reinstall; agent now Guake-capable. **SE8b** filed. R007 partial path was
+green; true cold rechecked and closed same day.
 
 **2026-08-09:** **SE0–SE5 + SE7 done.** Soft barrier + 15s open-leaf pin + persist.
 CT3 near-cold X11 green (Grok/YouTube leaves + ghostty focus).

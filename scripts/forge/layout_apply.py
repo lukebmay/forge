@@ -49,12 +49,14 @@ def detect_layout_mode(data: Any, *, force_launch: bool = False) -> str:
 
     has_steps = isinstance(data.get("steps"), list)
     roles = data.get("roles")
+    # Non-empty roles → reconcile content. Empty roles:[] is still reconcile
+    # sugar (empty desk) when there is no steps[] path competing.
     has_roles = isinstance(roles, list) and len(roles) > 0
+    has_roles_list = isinstance(roles, list)
     tiles = data.get("tiles")
-    has_tiles = (
-        (isinstance(tiles, dict) and len(tiles) > 0)
-        or (isinstance(tiles, list) and len(tiles) > 0)
-    )
+    # Presence of tiles as list or dict — including empty — is reconcile sugar
+    # (CE1: save-with-description empty desk is {"tiles": [], "description": …}).
+    has_tiles = isinstance(tiles, (list, dict))
     mode_raw = data.get("mode")
     mode_s = str(mode_raw).strip().lower() if mode_raw is not None else None
     ver = data.get("version")
@@ -75,7 +77,11 @@ def detect_layout_mode(data: Any, *, force_launch: bool = False) -> str:
     if mode_s == MODE_RECONCILE:
         return MODE_RECONCILE
 
-    if ver in (2, "2") and (has_roles or has_tiles):
+    # Empty desk: tiles:[] / tiles:{} / roles:[] (no steps) → reconcile.
+    if (has_tiles or has_roles_list) and not has_steps:
+        return MODE_RECONCILE
+
+    if ver in (2, "2") and (has_roles or has_tiles or has_roles_list):
         return MODE_RECONCILE
 
     if (has_roles or has_tiles) and not has_steps:
@@ -953,7 +959,8 @@ def run_soft_focus_barrier(
                 "pendingCount": 0,
             }
 
-        if now > wall_deadline:
+        # >= so timeout_ms/wall_ms of 0 (or exact deadline hit) cannot spin forever.
+        if now >= wall_deadline:
             return {
                 "ok": False,
                 "softSettled": False,
@@ -1177,7 +1184,8 @@ def wait_until_hard_ready(
                 "hardTimeoutMs": int(timeout_ms),
                 "error": None,
             }
-        if mono() > deadline:
+        # >= so hard timeout 0 (or exact deadline) cannot spin when mono freezes/equal.
+        if mono() >= deadline:
             break
         if poll_s > 0:
             sleep(poll_s)
