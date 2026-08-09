@@ -765,15 +765,10 @@ FINAL_FOCUS_QUIET_MS = 400
 # Soft focus barrier poll (SE3); soft timeout comes from settle heuristics.
 SOFT_FOCUS_POLL_MS = 100
 # Wall mult on soft_timeout so steal-reset loops cannot run forever.
+# Keep SOFT_FOCUS_WALL_CAP_MS in sync with lib/extension/layout-open-leaf-pin.js.
 SOFT_FOCUS_WALL_MULT = 3
 SOFT_FOCUS_WALL_CAP_MS = 15000
-# Legacy fixed verify/stable (superseded by soft barrier; env may still read).
-FINAL_FOCUS_VERIFY_QUIET_MS = 350
-FINAL_FOCUS_STABLE_TIMEOUT_MS = 2000
-FINAL_FOCUS_STABLE_POLL_MS = 200
-FINAL_FOCUS_STABLE_SAMPLES = 2
-# Legacy always-on second full focus pass — default off.
-# Opt-in: FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS=<ms> (debug / compare).
+# Opt-in always-on second full focus: FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS=<ms>.
 FINAL_FOCUS_REASSERT_MS = 0
 
 

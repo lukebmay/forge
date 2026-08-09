@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**P0 = settle contract** SE5→CT3; X11 agent live)  
+**Updated:** 2026-08-09 (**settle SE0–SE5+SE7; CT3 near-cold green**)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).
 
@@ -12,25 +12,23 @@
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | **Settle contract SE5→** then SE8/CT3 | [plan](./plans/forge-layout-settle-contract.md) |
-| done | SE0–SE4 + SE7: store, hard-ready, soft barrier, wire, persist | [completed/](./plans/forge-layout-settle-contract/completed/) |
-| → | CT3 X11 cold one-shot | [CT3](./tasks/forge-layout-cold-topology_ct3-x11-live.md) |
-| → | Cleanup strip (close after CT3 + settle) | [cleanup](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) |
+| **P0** | Settle contract residual: SE6 geom optional; close cleanup after CT3 | [plan](./plans/forge-layout-settle-contract.md) |
+| done | SE0–SE5 + SE7; CT3 near-cold X11 green | [completed/](./plans/forge-layout-settle-contract/completed/) |
+| → | CT3 optional true cold-empty | [CT3](./tasks/forge-layout-cold-topology_ct3-x11-live.md) |
+| → | Cleanup strip close | [cleanup](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) |
 | → | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
 | shellrc | gdisplays session/greeter (GS0+) | `~/dev/me/shellrc/agents/plans/gdisplays-session-greeter.md` |
-
-**Do not** start unrelated mid features until settle contract + CT3 green.
 
 ### Progress (2026-08-09)
 
 | Done | Detail |
 | --- | --- |
-| SE0–SE2 | D019; heuristics store; hard-ready 5s |
-| SE3–SE4 | soft barrier + focus phase product path |
-| SE7 | persist `settle-heuristics.json`; layout.md + R006 |
-| **Next** | **SE5** extension pin/D018; **SE8/CT3** X11 cold smoke |
+| SE0–SE4 | hard/soft settle + focus phase wire |
+| SE5 | `LAYOUT_OPEN_LEAF_PIN_MS=15000`; pure pin helpers; meta-focus steal tests |
+| SE7 | heuristics file persist |
+| CT3 | near-cold `layout dev`: Grok + YouTube leaves, ghostty focus; agent Ghostty kept |
 
-**Note:** first-ever app class uses learning-trial soft timeout (~6s focus) until samples exist; file updates after each layout focus phase.
+**Live notes:** first-ever soft focus wait ~6s; after zero-residual samples next full focus phase uses 400ms floor. Pin was 3.5s (too short) → 15s wall.
 
 ---
 
@@ -133,7 +131,7 @@ Skeleton-first cold path: `ensure_skeleton` + `bind`; cold thrash report-only; p
 | lastTabFocus preserve on `_layoutOp` | **Keep** generic mid-session safety D016 |
 | Mode B cold | Still suppressed on cold/just_opened |
 
-**Cold X11 residual (2026-08-08):** mon0 Chrome over Grok; mon1 wrong tab selected (content vs strip). Root: (1) chrome late meta-focus rewrites lastTabFocus after CLI focus; (2) tab-active CSS followed keyboard focus only, not open leaf. **D018:** `pinLayoutOpenLeaf` + restore on meta-focus steal; `_syncTabActiveFromLastTabFocus`; CLI focus stable poll (~2s). Install+HUP required for extension half.
+**Cold X11 residual (fixed 2026-08-09):** mon0 Chrome over Grok; mon1 wrong tab. **D018+D019+SE5:** pin open leaf for soft wall (15s); restore on meta-focus steal; tab-active=lastTabFocus; CLI soft residual barrier + post-settled verify.
 
 Audit table: [cleanup task](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md).
 

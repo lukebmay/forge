@@ -10,8 +10,9 @@ AC1–AC6 apply-contract, thrash catalog (CL3)
 
 ### Session note (overwrite)
 
-**2026-08-09:** **SE0–SE4 + SE7 done.** Soft barrier + file persist + docs.
-Next: **SE5** extension pin/D018 tighten; **SE8/CT3** X11 cold smoke.
+**2026-08-09:** **SE0–SE5 + SE7 done.** Soft barrier + 15s open-leaf pin + persist.
+CT3 near-cold X11 green (Grok/YouTube leaves + ghostty focus). Next: SE6 geom
+optional; full cold empty CT3 optional; cleanup strip close.
 
 **2026-08-08:** Operator + agent locked direction. Product: hard Meta readiness →
 act → soft expectation barrier (file-backed) → post-settled verify once.
@@ -175,10 +176,10 @@ defaults below as locked for implement tasks.
 | **SE2** | Hard-ready barrier API (call clock → TILE/rect/mon; 5s timeout) unify LF5 wait; tests | **done** |
 | **SE3** | Soft expectation barrier (focus residual): start after focus apply; steal → correct + record + reset quiet; soft timeout from heuristics; tests | **done** |
 | **SE4** | Wire focus phase in `forge layout` open path: hard-ready → apply once → soft barrier → post-settled verify once; restore reassert-as-phase (not fixed 250 ms product) | **done** |
-| **SE5** | Extension: ensure pin/restore + tab-active=lastTabFocus aligned with SE3 (D018 keep/tighten); meta-focus steal always treated as thrash during layout focus pin window | **next** |
+| **SE5** | Extension: ensure pin/restore + tab-active=lastTabFocus aligned with SE3 (D018 keep/tighten); meta-focus steal always treated as thrash during layout focus pin window | **done** |
 | **SE6** | Geom soft expectation: fold SL1 minQuiet into same store/API (no second file) | ready after SE1 |
 | **SE7** | Persist updates end-of-layout; first-ever learning trial path; docs (`layout.md` settle section) + REGRESSIONS | **done** |
-| **SE8** | X11 CT3 cold smoke + Wayland CT2 when logout OK; thrash dump / heuristics dump CLI if useful | ready after SE5 |
+| **SE8** | X11 CT3 cold smoke + Wayland CT2 when logout OK; thrash dump / heuristics dump CLI if useful | **partial** (CT3 near-cold green; true empty optional) |
 
 Optional later:
 
@@ -197,12 +198,15 @@ Optional later:
 - [x] SE3 soft focus barrier + tests  
 - [x] SE4 focus phase wire (hard → apply → soft → verify once)  
 - [x] SE7 persist heuristics + layout.md / REGRESSIONS  
-- [x] Focus steal during focus phase corrected without fixed 250 ms sole policy (code; CT3 live)  
-- [x] Heuristics file path + rolling update (code; live after first layout)  
+- [x] SE5 open-leaf pin 15s + meta-focus restore tests  
+- [x] Focus steal during focus phase corrected without fixed 250 ms sole policy  
+- [x] Heuristics file path + rolling update (live after first layout)  
 - [x] Unit tests for pure store + soft/hard predicates; abstract roles only  
 - [x] No personal-layout product branches  
-- [ ] Cold open: profile actives visible without second CLI layout (CT3 X11)  
+- [x] Cold/near-cold open: profile actives visible without second CLI layout (CT3 X11 near-cold)  
 - [ ] Hard timeout 5s path logs clearly when Meta never delivers (live)  
+- [ ] Optional true cold-empty CT3  
+
 
 ---
 
