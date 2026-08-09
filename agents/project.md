@@ -57,10 +57,11 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 
 | Item | Status | Next |
 | --- | --- | --- |
-| **STACKED layouts** | **Next major** | Product path for users who want stacks (see PRIORITY) |
-| `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive |
+| **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **P0** | CJ1 runner → wire mutators → jobs CLI → tests → **docs ship gate** (this file + root README: arch + long first-load warning) |
+| **STACKED layouts** | Major product | After jobs / as PRIORITY allows |
+| `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive; jobs will make mid-apply TTY death safe |
 | [forge-workon-reconcile](./plans/forge-workon-reconcile.md) | **Complete** (historical name) | — |
-| [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | — |
+| [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | Jobs extend CLI process model |
 | [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + T9 **Done** | Live |
 | [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 + B1 **Done** | B2 optional |
 | [personal fork](./plans/forge-fork-eval/completed/forge-fork-eval_personal-fork.md) | **Done** | lukebmay/forge · lineage `luke` · master |

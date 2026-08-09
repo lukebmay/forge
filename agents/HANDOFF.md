@@ -1,9 +1,10 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**FC2 unfocus; SE8b; CE1; FC0–FC1**)  
+**Updated:** 2026-08-09 (**P0 → CLI jobs; FC2; SE8b; CE1; FC0–FC1**)  
 **Branch:** **`master`** (default). Plan/task branches only for major refactors/features.  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).  
-**Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP (never close agent Ghostty).  
+**Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP.  
+**Until [CLI jobs](./plans/forge-cli-jobs.md) ships:** closing agent Ghostty mid-`forge layout` can still abort apply — avoid. **After jobs:** apply survives TTY death by default; true cold still cares about agent *window* placement (tile vs Guake/float), not apply process survival.  
 **Note:** Guake dropdown hidden may omit Guake from `forge tree` → probe can report ghostty / `can_true_cold=false` even when agent is under Guake (pstree). Manual true cold still OK.
 
 **Default:** always fix the **real problem** (phase contract). Temporary / band-aid only if the operator **explicitly** asks for temporary.
@@ -59,19 +60,24 @@ matrix** is the preferred layout sign-off path (`forge test live`, L0 first).
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **use** | AI live matrix for any layout work | [plan](./plans/forge-ai-live-test-matrix.md) · `forge test live` |
+| **P0** | **CLI attachable jobs** — durable mutators; default attach; TTY death ≠ kill job | [plan](./plans/forge-cli-jobs.md) · [CJ1](./tasks/forge-cli-jobs_cj1-runner-core.md) |
+| **use** | AI live matrix for layout work (after/with jobs as needed) | [plan](./plans/forge-ai-live-test-matrix.md) · `forge test live` |
 | mid | AT2 L1 mon-specific setup polish | [AT2](./tasks/forge-ai-live-test-matrix_at2-l1-setup.md) |
 | mid | FC3 combined live smoke (close + unfocus) | [plan](./plans/forge-focus-close-and-escape.md) draft |
 | later | Nested Wayland retest spike | AT-W1 — only before next Wayland CT |
+| later (shellrc **P0**) | Durable Grok (leader spike first) | `~/dev/me/shellrc/agents/tasks/grok-reattachable-headless_gh0-leader-spike.md` — not forge work |
 | mid | Merge DnD plan branch when ready | `plan/forge-dnd-drop-zones` (complete) |
 | optional | SE6 geom soft residual | [settle](./plans/forge-layout-settle-contract.md) |
 | human | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
 | done | FC2 unfocus; FC0–FC1; SE8b R008; CE1 R009; SE0–SE5+SE7; R007; AT0/AT1 | — |
 
+**Ship gate for CLI jobs:** update **project.md** (agents) + **README.md** (users: architecture + long first-load warning in plain language) + DECISIONS/DESIGN/user docs — see plan CJ6.
+
 ### Session ship (2026-08-09) — cold-continue
 
 | Shipped | Detail |
 | --- | --- |
+| **P0 plan: CLI attachable jobs** | Design locked — durable mutators by default (attach wait; `--detach` = no wait only). [plan](./plans/forge-cli-jobs.md) · next **[CJ1](./tasks/forge-cli-jobs_cj1-runner-core.md)**. Ship gate CJ6: project.md + README (arch + long first-load warning). **No code yet.** |
 | **FC2** | `window-unfocus` → `Ctrl+Super+Escape`; `exitForgeMode` no-op API; `unfocusTiles` + hover suppress; live X11 `focusWindowId` None |
 | **SE8b / R008** | True cold Guake X11 2/2 + partial ghosttys-only green; R007 path holds (no new open-leaf code) |
 | **CE1 / R009** | `detect_layout_mode` empty `tiles:[]` / `roles:[]` → reconcile; live `forge layout clean` empties desk |
@@ -81,6 +87,7 @@ matrix** is the preferred layout sign-off path (`forge test live`, L0 first).
 
 | Not shipped | Detail |
 | --- | --- |
+| CLI jobs implementation (CJ1–CJ6) | plan only — runner, wire mutators, jobs CLI, tests, docs |
 | FC3 combined close+unfocus matrix | draft — unfocus half green on FC2 |
 | AT2 / AT-W1 | setup polish / nested Wayland deferred |
 | Residual hard-ready warn | cold open still logs “targets not hard-ready (moving anyway)” — structure race noise, leaves OK |

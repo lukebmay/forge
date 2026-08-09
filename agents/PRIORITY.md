@@ -5,7 +5,7 @@
 **Branch:** **`master`** default (side branches only for major refactors/features)  
 **Push:** only when human asks.
 
-**Active:** AI live matrix for layout sign-off; mid queue (AT2, FC3 smoke, DnD merge).
+**Active:** **CLI attachable jobs (P0)** — durable layout/apply; then AI live matrix as needed.
 
 ---
 
@@ -13,10 +13,13 @@
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [AI live test matrix](./plans/forge-ai-live-test-matrix.md) | **AT0/AT1 shipped** — use `forge test live`; AT2 polish ready |
+| **P0** | [CLI attachable jobs](./plans/forge-cli-jobs.md) | **Next** — CJ1 runner core ready; durability default (no flag) |
+| **P0 use** | [AI live test matrix](./plans/forge-ai-live-test-matrix.md) | **AT0/AT1 shipped** — use for layout sign-off; fewer TTY-survival suites after jobs land |
+| mid | [CJ1 job runner core](./tasks/forge-cli-jobs_cj1-runner-core.md) | ready |
 | mid | [AT2 L1 setup precision](./tasks/forge-ai-live-test-matrix_at2-l1-setup.md) | ready (Guake-hidden probe polish useful) |
 | mid | [Focus close + Esc](./plans/forge-focus-close-and-escape.md) FC3 | draft combined live smoke |
 | later | [AT-W1 nested Wayland](./plans/forge-ai-live-test-matrix.md) | optional — only before Wayland CT |
+| later (shellrc **P0**) | Durable Grok (GH0 leader spike first) | **shellrc** — not forge: `…/grok-reattachable-headless_gh0-leader-spike.md` |
 | mid | Merge DnD plan branch | complete — merge when ready |
 | optional | settle SE6 geom soft | optional |
 | human | CT2 Wayland cold smoke | logout when needed |
