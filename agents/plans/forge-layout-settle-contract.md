@@ -10,9 +10,8 @@ AC1–AC6 apply-contract, thrash catalog (CL3)
 
 ### Session note (overwrite)
 
-**2026-08-09:** **SE0–SE2 done.** SE1 store + SE2 `wait_until_hard_ready` /
-`hard_ready_status`; CLI LF5 settle uses HARD_TIMEOUT_MS (5s). Next: **SE3** soft
-focus residual barrier (heuristics timeouts; steal → correct + record).
+**2026-08-09:** **SE0–SE4 + SE7 done.** Soft barrier + file persist + docs.
+Next: **SE5** extension pin/D018 tighten; **SE8/CT3** X11 cold smoke.
 
 **2026-08-08:** Operator + agent locked direction. Product: hard Meta readiness →
 act → soft expectation barrier (file-backed) → post-settled verify once.
@@ -174,12 +173,12 @@ defaults below as locked for implement tasks.
 | **SE0** | Design discussion lock (table above) + DECISIONS D019 | **done** |
 | **SE1** | Heuristics store: schema, read/write, host+class+kind keys, rolling last-10, pad/clamp pure helpers + unit tests | **done** |
 | **SE2** | Hard-ready barrier API (call clock → TILE/rect/mon; 5s timeout) unify LF5 wait; tests | **done** |
-| **SE3** | Soft expectation barrier (focus residual): start after focus apply; steal → correct + record + reset quiet; soft timeout from heuristics; tests | **next** |
-| **SE4** | Wire focus phase in `forge layout` open path: hard-ready → apply once → soft barrier → post-settled verify once; restore reassert-as-phase (not fixed 250 ms product) | ready after SE3 |
-| **SE5** | Extension: ensure pin/restore + tab-active=lastTabFocus aligned with SE3 (D018 keep/tighten); meta-focus steal always treated as thrash during layout focus pin window | ready after SE3 |
+| **SE3** | Soft expectation barrier (focus residual): start after focus apply; steal → correct + record + reset quiet; soft timeout from heuristics; tests | **done** |
+| **SE4** | Wire focus phase in `forge layout` open path: hard-ready → apply once → soft barrier → post-settled verify once; restore reassert-as-phase (not fixed 250 ms product) | **done** |
+| **SE5** | Extension: ensure pin/restore + tab-active=lastTabFocus aligned with SE3 (D018 keep/tighten); meta-focus steal always treated as thrash during layout focus pin window | **next** |
 | **SE6** | Geom soft expectation: fold SL1 minQuiet into same store/API (no second file) | ready after SE1 |
-| **SE7** | Persist updates end-of-layout; first-ever learning trial path; docs (`layout.md` settle section) + REGRESSIONS | ready after SE4 |
-| **SE8** | X11 CT3 cold smoke + Wayland CT2 when logout OK; thrash dump / heuristics dump CLI if useful | ready after SE4 |
+| **SE7** | Persist updates end-of-layout; first-ever learning trial path; docs (`layout.md` settle section) + REGRESSIONS | **done** |
+| **SE8** | X11 CT3 cold smoke + Wayland CT2 when logout OK; thrash dump / heuristics dump CLI if useful | ready after SE5 |
 
 Optional later:
 
@@ -195,13 +194,15 @@ Optional later:
 - [x] SE0 locked (D019 written)  
 - [x] SE1 heuristics store + unit tests  
 - [x] SE2 hard-ready barrier (5s; unify LF5)  
+- [x] SE3 soft focus barrier + tests  
+- [x] SE4 focus phase wire (hard → apply → soft → verify once)  
+- [x] SE7 persist heuristics + layout.md / REGRESSIONS  
+- [x] Focus steal during focus phase corrected without fixed 250 ms sole policy (code; CT3 live)  
+- [x] Heuristics file path + rolling update (code; live after first layout)  
+- [x] Unit tests for pure store + soft/hard predicates; abstract roles only  
+- [x] No personal-layout product branches  
 - [ ] Cold open: profile actives visible without second CLI layout (CT3 X11)  
-- [ ] Focus steal during focus phase corrected without fixed 250 ms sole policy  
-- [ ] Heuristics file created after first learning trial; subsequent runs use soft timeouts from file  
-- [ ] Rolling updates keep store fresh across sessions  
-- [ ] Hard timeout 5s path logs clearly when Meta never delivers  
-- [ ] Unit tests for pure store + soft/hard predicates; abstract roles only  
-- [ ] No personal-layout product branches  
+- [ ] Hard timeout 5s path logs clearly when Meta never delivers (live)  
 
 ---
 

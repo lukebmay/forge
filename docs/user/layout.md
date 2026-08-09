@@ -350,9 +350,14 @@ On a **cold empty** desk (no claimed role windows), one `forge layout <name>`:
 2. **Open** missing roles (parallel under LayoutBatch)  
 3. **Bind** each mapped window into its skeleton slot  
 4. **Order / size** once; residual close/park after bind  
-5. **Focus** after settle (profile `active` / open leaf + keyboard `focus`)  
-6. **Verify once** — if a late map rewrote `lastTabFocus` (common with Chrome
-   PWAs), re-apply only the mismatched groups; not a blind double raise  
+5. **Hard-ready** pin roles (TILE + rect + mon; hard timeout ~5s)  
+6. **Focus once** (profile `active` / open leaf + keyboard `focus`)  
+7. **Soft residual barrier** — wait a learned quiet window (per host + app
+   class) for late activate/focus steal; on steal, correct immediately and
+   reset quiet. Heuristics file:
+   `~/.config/forge/config/settle-heuristics.json` (updated after layout).  
+8. **Post-settled verify once** — re-apply only still-mismatched open leaves /
+   keyboard focus; not a blind double raise  
 
 No happy-path second structure pass, Mode B recover, or stacked focus reassert.
 Optional belt after residual only rehomes just-opened roles still on the wrong

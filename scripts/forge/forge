@@ -64,13 +64,10 @@ from layout_apply import (  # noqa: E402
     BELT_STABLE_TIMEOUT_MS,
     FINAL_FOCUS_QUIET_MS,
     FINAL_FOCUS_REASSERT_MS,
-    FINAL_FOCUS_STABLE_POLL_MS,
-    FINAL_FOCUS_STABLE_SAMPLES,
-    FINAL_FOCUS_STABLE_TIMEOUT_MS,
-    FINAL_FOCUS_VERIFY_QUIET_MS,
     HARD_TIMEOUT_MS,
     MODE_RECONCILE,
     MODE_STEPS,
+    SOFT_FOCUS_POLL_MS,
     TREE_STABLE_POLL_MS,
     TREE_STABLE_SAMPLES,
     TREE_STABLE_TIMEOUT_MS,
@@ -86,12 +83,23 @@ from layout_apply import (  # noqa: E402
     open_action_to_launch_fields,
     partition_plan_actions,
     residual_follow_up,
+    resolve_focus_soft_timeout_ms,
+    run_soft_focus_barrier,
     layout_wait_tree_stable_enabled,
     wait_for_open_role_pins,
     wait_for_tree_stable,
     wait_until_hard_ready,
     window_is_settled,
     without_focus_actions,
+)
+from settle_heuristics import (  # noqa: E402
+    empty_store,
+    get_or_create_entry,
+    load_store as load_settle_heuristics,
+    make_key,
+    record_trial,
+    resolve_host,
+    save_store as save_settle_heuristics,
 )
 from layout_cli import (  # noqa: E402
     LayoutParseError,
@@ -1377,15 +1385,41 @@ def _layout_final_focus_reassert_ms() -> int:
     return max(0, int(FINAL_FOCUS_REASSERT_MS or 0))
 
 
-def _layout_final_focus_verify_quiet_ms() -> int:
-    """Quiet after first focus before lastTabFocus verify (late chrome steal)."""
-    raw = os.environ.get("FORGE_LAYOUT_FINAL_FOCUS_VERIFY_MS", "").strip()
-    if raw:
-        try:
-            return max(0, int(raw))
-        except ValueError:
-            return max(0, int(FINAL_FOCUS_VERIFY_QUIET_MS or 0))
-    return max(0, int(FINAL_FOCUS_VERIFY_QUIET_MS or 0))
+def _layout_focus_wm_classes(
+    forest: Any, focus_actions: Any
+) -> list[str]:
+    """wmClass values for focus action window ids (heuristic keys)."""
+    if not isinstance(focus_actions, list) or not focus_actions:
+        return []
+    want: set[str] = set()
+    for a in focus_actions:
+        if not isinstance(a, dict):
+            continue
+        sel = a.get("selector")
+        if sel is None:
+            continue
+        s = str(sel).strip()
+        if s.startswith("id:"):
+            wid = s[3:].strip()
+            if wid:
+                want.add(wid)
+    if not want:
+        return []
+    classes: list[str] = []
+    seen: set[str] = set()
+    for w in _iter_tree_windows(forest):
+        wid = w.get("windowId")
+        if wid is None or str(wid) not in want:
+            continue
+        cls = w.get("wmClass") or w.get("wm_class")
+        if cls is None or not str(cls).strip():
+            continue
+        c = str(cls).strip()
+        key = c.casefold()
+        if key not in seen:
+            seen.add(key)
+            classes.append(c)
+    return classes
 
 
 def _layout_plan_focus_actions(
@@ -1429,13 +1463,11 @@ def _layout_final_focus_pass(
     apply_log: dict[str, Any],
 ) -> tuple[int, Optional[dict[str, Any]]]:
     """
-    After structure/bind settle: quiet, apply profile actives + keyboard focus,
-    then verify lastTabFocus and re-apply only mismatches once.
+    Focus phase (D019): hard-ready → apply once → soft residual barrier →
+    post-settled verify once.
 
-    Cold chrome/PWA often activates after the first raise and steals open leaf
-    (Chrome over Grok, Voice tab lit while YouTube should be active). Verify
-    barrier owns that race — not a blind always-on second reassert.
-    Returns (rc, last plan with focus) — rc non-zero only on hard RunSteps fail.
+    Soft barrier uses settle-heuristics timeouts; focus steal corrects immediately
+    and resets quiet. Returns (rc, last plan) — rc non-zero only on hard RunSteps fail.
     """
     pin_ids = [
         str(w)
@@ -1453,7 +1485,7 @@ def _layout_final_focus_pass(
 
     last_plan: Optional[dict[str, Any]] = None
     try:
-        plan_f, focus_acts, _forest0 = _layout_plan_focus_actions(
+        plan_f, focus_acts, forest0 = _layout_plan_focus_actions(
             backend,
             data,
             clean=clean,
@@ -1469,6 +1501,7 @@ def _layout_final_focus_pass(
     steps = actions_to_extension_steps(
         focus_acts, force_close=force_close, workspace=workspace
     )
+    focus_t0 = time.monotonic()
     if not steps:
         apply_log["finalFocus"] = {"ok": True, "steps": 0, "skipped": True}
     else:
@@ -1479,11 +1512,99 @@ def _layout_final_focus_pass(
         if rc != 0:
             return rc, last_plan
 
-    # Verify barrier: wait for late activate, re-apply only open leaves / kbd
-    # that did not stick (mismatch), at most once.
-    verify_ms = _layout_final_focus_verify_quiet_ms()
-    if verify_ms > 0:
-        time.sleep(verify_ms / 1000.0)
+    # Soft expectation barrier (SE3): learned quiet; steal → correct + reset.
+    host = resolve_host()
+    try:
+        heuristics = load_settle_heuristics(None)
+    except Exception:
+        heuristics = empty_store()
+    wm_classes = _layout_focus_wm_classes(forest0, focus_acts)
+    soft_ms = resolve_focus_soft_timeout_ms(
+        heuristics, host=host, wm_classes=wm_classes
+    )
+    apply_log["finalFocusSoftTimeoutMs"] = soft_ms
+    soft_rc_holder: list[int] = [0]
+    soft_state: dict[str, Any] = {"plan": last_plan}
+
+    def _check_needed() -> list[dict[str, Any]]:
+        plan_c, focus_c, forest_c = _layout_plan_focus_actions(
+            backend,
+            data,
+            clean=clean,
+            keep_others=keep_others,
+            safe=safe,
+            workspace=workspace,
+            role_pins=role_pins,
+        )
+        soft_state["plan"] = plan_c
+        return focus_actions_still_needed(forest_c, focus_c)
+
+    def _apply_correct(needed: Any) -> None:
+        s_steps = actions_to_extension_steps(
+            needed, force_close=force_close, workspace=workspace
+        )
+        if not s_steps:
+            return
+        rc, agg = run_mixed_steps(
+            backend, s_steps, stop_on_error=True, print_each=False
+        )
+        if rc != 0:
+            soft_rc_holder[0] = rc
+            soft_state["agg"] = agg
+            raise RuntimeError(f"soft focus correct RunSteps rc={rc}")
+
+    soft = run_soft_focus_barrier(
+        _check_needed,
+        _apply_correct,
+        soft_timeout_ms=soft_ms,
+        poll_ms=SOFT_FOCUS_POLL_MS,
+        call_started_mono=focus_t0,
+    )
+    last_plan = soft_state.get("plan") or last_plan
+    apply_log["finalFocusSoft"] = soft
+    if soft_rc_holder[0] != 0:
+        return soft_rc_holder[0], last_plan
+
+    # In-memory residual samples for learning (persist in SE7).
+    for res in soft.get("residuals") or []:
+        lat = res.get("latencyMs")
+        for cls in wm_classes or ["unknown"]:
+            key = make_key(host, cls, "focus-phase", "focus")
+            ent = get_or_create_entry(
+                heuristics,
+                key,
+                host=host,
+                wm_class=cls,
+                process_kind="focus-phase",
+                residual_kind="focus",
+            )
+            record_trial(ent, had_residual=True, latency_ms=lat)
+    if soft.get("softSettled") and not soft.get("residuals"):
+        for cls in wm_classes or ["unknown"]:
+            key = make_key(host, cls, "focus-phase", "focus")
+            ent = get_or_create_entry(
+                heuristics,
+                key,
+                host=host,
+                wm_class=cls,
+                process_kind="focus-phase",
+                residual_kind="focus",
+            )
+            record_trial(ent, had_residual=False)
+    persist_info: dict[str, Any] = {
+        "host": host,
+        "classes": wm_classes,
+        "residualSamples": len(soft.get("residuals") or []),
+    }
+    try:
+        save_settle_heuristics(None, heuristics)
+        persist_info["persist"] = "ok"
+    except OSError as e:
+        persist_info["persist"] = "error"
+        persist_info["persistError"] = str(e)
+    apply_log["finalFocusHeuristics"] = persist_info
+
+    # Post-settled verify once (D019): one more mismatch check after soft settle.
     try:
         plan_v, focus_all, forest_v = _layout_plan_focus_actions(
             backend,
@@ -1504,7 +1625,7 @@ def _layout_final_focus_pass(
             "ok": True,
             "steps": 0,
             "skipped": True,
-            "reason": "open-leaf and profile focus match live tree",
+            "reason": "post-settled open-leaf/profile match",
         }
     else:
         v_steps = actions_to_extension_steps(
@@ -1529,74 +1650,6 @@ def _layout_final_focus_pass(
             }
             if rc != 0:
                 return rc, last_plan
-
-    # Stability poll: chrome can steal after the first verify window; re-apply
-    # mismatches until clean samples or timeout (extension pins also help).
-    stable_timeout = max(0, int(FINAL_FOCUS_STABLE_TIMEOUT_MS or 0))
-    stable_poll = max(50, int(FINAL_FOCUS_STABLE_POLL_MS or 200))
-    stable_need = max(1, int(FINAL_FOCUS_STABLE_SAMPLES or 2))
-    if stable_timeout <= 0:
-        apply_log["finalFocusStable"] = {"skipped": True, "reason": "timeout 0"}
-    else:
-        clean_streak = 0
-        reapply_n = 0
-        t_end = time.monotonic() + (stable_timeout / 1000.0)
-        stable_ok = False
-        while time.monotonic() < t_end:
-            time.sleep(stable_poll / 1000.0)
-            try:
-                plan_s, focus_s, forest_s = _layout_plan_focus_actions(
-                    backend,
-                    data,
-                    clean=clean,
-                    keep_others=keep_others,
-                    safe=safe,
-                    workspace=workspace,
-                    role_pins=role_pins,
-                )
-            except Exception as e:
-                apply_log["finalFocusStable"] = {"ok": False, "error": str(e)}
-                break
-            last_plan = plan_s
-            still = focus_actions_still_needed(forest_s, focus_s)
-            if not still:
-                clean_streak += 1
-                if clean_streak >= stable_need:
-                    stable_ok = True
-                    apply_log["finalFocusStable"] = {
-                        "ok": True,
-                        "cleanSamples": clean_streak,
-                        "reapply": reapply_n,
-                    }
-                    break
-                continue
-            clean_streak = 0
-            s_steps = actions_to_extension_steps(
-                still, force_close=force_close, workspace=workspace
-            )
-            if not s_steps:
-                continue
-            reapply_n += 1
-            rc, agg = run_mixed_steps(
-                backend, s_steps, stop_on_error=True, print_each=False
-            )
-            if rc != 0:
-                apply_log["finalFocusStable"] = {
-                    "ok": False,
-                    "reapply": reapply_n,
-                    "neededRoles": [
-                        a.get("role") for a in still if isinstance(a, dict)
-                    ],
-                    "agg": agg,
-                }
-                return rc, last_plan
-        if not stable_ok and "finalFocusStable" not in apply_log:
-            apply_log["finalFocusStable"] = {
-                "ok": False,
-                "cleanSamples": clean_streak,
-                "reapply": reapply_n,
-                "timeout": True,
-            }
 
     # Optional debug: always-on second full focus (not the product path).
     reassert_ms = _layout_final_focus_reassert_ms()
@@ -1635,7 +1688,7 @@ def _layout_final_focus_pass(
     else:
         apply_log["finalFocusReassert"] = {
             "skipped": True,
-            "reason": "verify+stable poll is product path",
+            "reason": "soft barrier + post-settled verify is product path",
         }
 
     return 0, last_plan

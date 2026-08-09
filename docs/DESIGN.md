@@ -648,7 +648,9 @@ jumpy). Reconcile apply when roles need open:
 3. Map-pin wait per role (windowId identity); tree owns intended slots.
 4. Release-deferred → re-plan with `role_pins` → residual bind/order/size (no mid-flight focus).
 5. Optional belt: pin-role wrong-mon **moves only** (no ensure_layout rewrite).
-6. One post-settle focus pass (quiet settle; no default second reassert).
+6. Focus phase (D019): hard-ready → apply open leaves once → soft residual
+   barrier (learned quiet; steal = thrash correct) → post-settled verify once.
+   Heuristics: `~/.config/forge/config/settle-heuristics.json`.
 
 **Optional debug (LF6):** `--wait-tree-stable` or `FORGE_LAYOUT_WAIT_TREE_STABLE=1`
 runs `wait_for_tree_stable` (main + belt) so rehome waits until GetTree

@@ -10,7 +10,12 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Optional
 
 from layout_plan import mon_index_from_slot
-from settle_heuristics import HARD_TIMEOUT_MS
+from settle_heuristics import (
+    HARD_TIMEOUT_MS,
+    make_key,
+    soft_clamp_ms,
+    soft_timeout_for_key,
+)
 
 MODE_STEPS = "steps"
 MODE_RECONCILE = "reconcile"
@@ -757,15 +762,208 @@ def focus_actions_still_needed(
 
 # Quiet after structure before final active-leaf focus (chrome/PWA late activate).
 FINAL_FOCUS_QUIET_MS = 400
-# After first focus: wait for late activate, then verify lastTabFocus (not blind reassert).
+# Soft focus barrier poll (SE3); soft timeout comes from settle heuristics.
+SOFT_FOCUS_POLL_MS = 100
+# Wall mult on soft_timeout so steal-reset loops cannot run forever.
+SOFT_FOCUS_WALL_MULT = 3
+SOFT_FOCUS_WALL_CAP_MS = 15000
+# Legacy fixed verify/stable (superseded by soft barrier; env may still read).
 FINAL_FOCUS_VERIFY_QUIET_MS = 350
-# Poll window after verify: re-apply mismatches until clean samples or timeout.
 FINAL_FOCUS_STABLE_TIMEOUT_MS = 2000
 FINAL_FOCUS_STABLE_POLL_MS = 200
 FINAL_FOCUS_STABLE_SAMPLES = 2
 # Legacy always-on second full focus pass — default off.
 # Opt-in: FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS=<ms> (debug / compare).
 FINAL_FOCUS_REASSERT_MS = 0
+
+
+def resolve_focus_soft_timeout_ms(
+    store: Any,
+    *,
+    host: Any,
+    wm_classes: Any = None,
+    process_kind: str = "focus-phase",
+) -> int:
+    """
+    Soft focus timeout from heuristics: max across wm_classes, or unknown class.
+
+    Never uses personal role names — host + class + process + residual only.
+    """
+    classes: list[str] = []
+    if isinstance(wm_classes, (list, tuple, set)):
+        for c in wm_classes:
+            s = str(c).strip() if c is not None else ""
+            if s:
+                classes.append(s)
+    elif wm_classes is not None and str(wm_classes).strip():
+        classes.append(str(wm_classes).strip())
+    if not classes:
+        classes = ["unknown"]
+    return max(
+        soft_timeout_for_key(
+            store,
+            make_key(host, c, process_kind, "focus"),
+            residual_kind="focus",
+        )
+        for c in classes
+    )
+
+
+def soft_focus_wall_ms(soft_timeout_ms: int) -> int:
+    """Overall wall for soft barrier (quiet resets must not loop forever)."""
+    try:
+        st = max(0, int(soft_timeout_ms))
+    except (TypeError, ValueError):
+        st = 0
+    raw = max(st * SOFT_FOCUS_WALL_MULT, soft_clamp_ms("focus"))
+    return int(min(SOFT_FOCUS_WALL_CAP_MS, max(st, raw)))
+
+
+def run_soft_focus_barrier(
+    check_needed: Callable[[], Any],
+    apply_correct: Callable[[Any], Any],
+    *,
+    soft_timeout_ms: int,
+    poll_ms: int = SOFT_FOCUS_POLL_MS,
+    max_wall_ms: Optional[int] = None,
+    max_corrections: int = 32,
+    call_started_mono: Optional[float] = None,
+    sleep_fn: Optional[Callable[[float], None]] = None,
+    monotonic_fn: Optional[Callable[[], float]] = None,
+) -> dict[str, Any]:
+    """
+    Soft expectation barrier after focus apply (SE3 / D019).
+
+    Call clock: from focus-apply (call_started_mono). Quiet window =
+    soft_timeout_ms after last act (apply or correct). Focus steal → correct
+    immediately, record residual latency from last act, reset quiet. No residual
+    for soft_timeout → soft-settled. Wall cap stops infinite steal thrash.
+    Pure of DBus — inject check_needed / apply_correct / sleep / mono.
+    """
+    sleep = sleep_fn if sleep_fn is not None else time.sleep
+    mono = monotonic_fn if monotonic_fn is not None else time.monotonic
+    try:
+        soft_ms = max(0, int(soft_timeout_ms))
+    except (TypeError, ValueError):
+        soft_ms = 0
+    wall_ms = (
+        max(0, int(max_wall_ms))
+        if max_wall_ms is not None
+        else soft_focus_wall_ms(soft_ms)
+    )
+    poll_s = max(0, int(poll_ms)) / 1000.0
+    t0 = float(call_started_mono) if call_started_mono is not None else mono()
+    last_act = t0
+    wall_deadline = t0 + wall_ms / 1000.0
+    residuals: list[dict[str, Any]] = []
+    corrections = 0
+    polls = 0
+    last_needed: list[Any] = []
+    last_correct_err: Optional[str] = None
+
+    while True:
+        now = mono()
+        elapsed_ms = int(max(0.0, (now - t0) * 1000))
+        quiet_elapsed_ms = int(max(0.0, (now - last_act) * 1000))
+
+        try:
+            needed_raw = check_needed()
+            last_correct_err = None
+        except Exception as e:
+            last_correct_err = str(e)
+            needed_raw = None
+
+        polls += 1
+        if isinstance(needed_raw, list):
+            needed = needed_raw
+        elif needed_raw:
+            needed = [needed_raw]
+        else:
+            needed = []
+        last_needed = needed
+
+        if needed:
+            # Focus thrash: residual latency from last act; correct + reset quiet.
+            latency_ms = int(max(0.0, (now - last_act) * 1000))
+            residuals.append(
+                {
+                    "latencyMs": latency_ms,
+                    "neededCount": len(needed),
+                    "elapsedFromCallMs": elapsed_ms,
+                }
+            )
+            if corrections >= max_corrections:
+                return {
+                    "ok": False,
+                    "softSettled": False,
+                    "clean": False,
+                    "corrections": corrections,
+                    "residuals": residuals,
+                    "polls": polls,
+                    "elapsed_ms": elapsed_ms,
+                    "softTimeoutMs": soft_ms,
+                    "wallMs": wall_ms,
+                    "error": f"soft focus: max corrections ({max_corrections})",
+                    "pendingCount": len(needed),
+                }
+            try:
+                apply_correct(needed)
+                last_correct_err = None
+            except Exception as e:
+                last_correct_err = str(e)
+                return {
+                    "ok": False,
+                    "softSettled": False,
+                    "clean": False,
+                    "corrections": corrections,
+                    "residuals": residuals,
+                    "polls": polls,
+                    "elapsed_ms": int(max(0.0, (mono() - t0) * 1000)),
+                    "softTimeoutMs": soft_ms,
+                    "wallMs": wall_ms,
+                    "error": f"soft focus correct failed: {e}",
+                    "pendingCount": len(needed),
+                }
+            corrections += 1
+            last_act = mono()
+            # Continue immediately to re-check after correct.
+            continue
+
+        # Clean: soft-settled when quiet held for soft_timeout.
+        if quiet_elapsed_ms >= soft_ms:
+            return {
+                "ok": True,
+                "softSettled": True,
+                "clean": True,
+                "corrections": corrections,
+                "residuals": residuals,
+                "polls": polls,
+                "elapsed_ms": elapsed_ms,
+                "softTimeoutMs": soft_ms,
+                "wallMs": wall_ms,
+                "error": None,
+                "pendingCount": 0,
+            }
+
+        if now > wall_deadline:
+            return {
+                "ok": False,
+                "softSettled": False,
+                "clean": True,  # last check was clean but quiet not held long enough
+                "corrections": corrections,
+                "residuals": residuals,
+                "polls": polls,
+                "elapsed_ms": elapsed_ms,
+                "softTimeoutMs": soft_ms,
+                "wallMs": wall_ms,
+                "error": last_correct_err
+                or f"soft focus wall timeout after {wall_ms}ms",
+                "pendingCount": 0,
+                "timedOut": True,
+            }
+
+        if poll_s > 0:
+            sleep(poll_s)
 
 
 # --- LF5 / SE2: hard-ready (TILE+rect+mon) before act; call-clock timeout ---

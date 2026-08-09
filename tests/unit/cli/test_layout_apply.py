@@ -36,9 +36,12 @@ from layout_apply import (  # noqa: E402
     parent_last_tab_focus_by_window_id,
     partition_plan_actions,
     residual_follow_up,
+    resolve_focus_soft_timeout_ms,
     rewrite_ghostty_launch_app,
+    run_soft_focus_barrier,
     slot_to_monitor_path,
     slot_to_tree_path,
+    soft_focus_wall_ms,
     wait_for_open_role_pins,
     wait_for_tree_stable,
     wait_until_hard_ready,
@@ -46,6 +49,14 @@ from layout_apply import (  # noqa: E402
     window_is_settled,
     window_tile_selector,
     without_focus_actions,
+)
+from settle_heuristics import (  # noqa: E402
+    empty_store,
+    get_or_create_entry,
+    learning_trial_soft_cap_ms,
+    make_key,
+    record_trial,
+    soft_floor_ms,
 )
 from layout_plan import plan_reconcile  # noqa: E402
 
@@ -829,6 +840,127 @@ class TestHardReadySe2(unittest.TestCase):
         )
         self.assertTrue(out["ok"])
         self.assertGreaterEqual(out["elapsed_ms"], 1500)
+
+
+class TestSoftFocusBarrierSe3(unittest.TestCase):
+    """SE3: soft focus residual barrier (steal → correct + reset quiet)."""
+
+    def test_resolve_timeout_first_ever(self):
+        t = resolve_focus_soft_timeout_ms(empty_store(), host="black")
+        self.assertEqual(t, learning_trial_soft_cap_ms("focus"))
+
+    def test_resolve_timeout_uses_max_across_classes(self):
+        store = empty_store()
+        key = make_key("black", "google-chrome", "focus-phase", "focus")
+        ent = get_or_create_entry(
+            store,
+            key,
+            host="black",
+            wm_class="google-chrome",
+            process_kind="focus-phase",
+            residual_kind="focus",
+        )
+        record_trial(ent, had_residual=True, latency_ms=800)
+        t = resolve_focus_soft_timeout_ms(
+            store, host="black", wm_classes=["google-chrome", "ghostty"]
+        )
+        # chrome learned 800*1.25=1000; ghostty first-ever 6000 → max 6000
+        self.assertEqual(t, learning_trial_soft_cap_ms("focus"))
+        t_chrome = resolve_focus_soft_timeout_ms(
+            store, host="black", wm_classes=["google-chrome"]
+        )
+        self.assertEqual(t_chrome, int(800 * 1.25))
+
+    def test_wall_ms_clamped(self):
+        self.assertEqual(soft_focus_wall_ms(400), 3000)  # clamp focus 3s wins over 1.2s
+        self.assertLessEqual(soft_focus_wall_ms(10_000), 15000)
+
+    def test_soft_settle_no_residual(self):
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += s
+
+        out = run_soft_focus_barrier(
+            lambda: [],
+            lambda _n: None,
+            soft_timeout_ms=150,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertTrue(out["softSettled"])
+        self.assertEqual(out["corrections"], 0)
+        self.assertEqual(out["residuals"], [])
+        self.assertGreaterEqual(out["elapsed_ms"], 150)
+
+    def test_steal_corrects_and_resets_quiet(self):
+        clock = {"t": 0.0}
+        phase = {"n": 0}
+        corrects: list[int] = []
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += s
+
+        def check():
+            # steal on first poll after start; clean after one correct
+            phase["n"] += 1
+            if phase["n"] == 1:
+                return [{"op": "focus", "selector": "id:1"}]
+            return []
+
+        def correct(needed):
+            corrects.append(len(needed))
+
+        out = run_soft_focus_barrier(
+            check,
+            correct,
+            soft_timeout_ms=100,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+            max_wall_ms=5000,
+        )
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["corrections"], 1)
+        self.assertEqual(len(out["residuals"]), 1)
+        self.assertEqual(corrects, [1])
+
+    def test_max_corrections_stops_loop(self):
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += 0.01
+
+        out = run_soft_focus_barrier(
+            lambda: [{"op": "focus"}],
+            lambda _n: None,
+            soft_timeout_ms=500,
+            poll_ms=10,
+            max_corrections=3,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+            max_wall_ms=10_000,
+        )
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["corrections"], 3)
+        self.assertIn("max corrections", out["error"] or "")
+
+    def test_soft_floor_known(self):
+        self.assertEqual(soft_floor_ms("focus"), 400)
 
 
 class TestForestStabilityLf6(unittest.TestCase):
