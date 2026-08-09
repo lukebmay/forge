@@ -1,23 +1,45 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**settle SE0–SE5+SE7; CT3 near-cold green**)  
-**Branch:** `plan/forge-layout-cold-topology`  
+**Updated:** 2026-08-09 (**settle/cleanup closed; window ignore mode shipped; on master**)  
+**Branch:** **`master`** (default). Plan/task branches only for major refactors/features.  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).
 
 **Default:** always fix the **real problem** (phase contract). Temporary / band-aid only if the operator **explicitly** asks for temporary.
 
+### Architecture fix status (honest)
+
+| Problem class | Status |
+| --- | --- |
+| Cold/partial **open leaf** (Chrome over Grok, wrong tab) | **Fixed in product path** — D018 pin 15s + D019 soft barrier + post-settled verify; matrix green 2026-08-09 |
+| **Hard Meta ready** before move/focus | **Fixed** — 5s call-clock `wait_until_hard_ready` |
+| Fixed 250ms/2s reassert as product truth | **Removed** — learned soft quiet + event-driven correct |
+| Belt structure rewrite after bind | **Still stripped** (D014) — do not reintroduce |
+| Mode B as cold success | **Still suppressed** on cold |
+| Heuristics file learning | **Landed** — first-ever ~6s then floor/history; SE7 persist |
+| Cleanup strip (belt invent / multi-focus) | **Closed** — code landed; CT3 near-cold + matrix green |
+| Window ignore mode | **Shipped** — `mode: "ignore"` in windows.json (D020) |
+| Geom soft residual in **same** file (SE6) | **Optional** — SL1 still session thrash catalog |
+| True cold-empty CT3 (all apps closed) | **Optional / not required** if matrix green |
+| Wayland CT2 parity | **Not re-run** this session (logout) |
+| Unrelated: resize-autotile, STACKED product | **Open** (other plans) |
+
+**Bottom line:** the **focus/open-leaf + hard/soft settle architecture** for
+layout apply is in place and live-proven on the important partial reloads.
+Not every residual in the forge product is closed — only this failure class.
+
 ---
 
-## Start here (P0)
+## Start here
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | Settle contract residual: SE6 geom optional; close cleanup after CT3 | [plan](./plans/forge-layout-settle-contract.md) |
-| done | SE0–SE5 + SE7; CT3 near-cold X11 green | [completed/](./plans/forge-layout-settle-contract/completed/) |
-| → | CT3 optional true cold-empty | [CT3](./tasks/forge-layout-cold-topology_ct3-x11-live.md) |
-| → | Cleanup strip close | [cleanup](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) |
-| → | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
+| mid | Merge DnD plan branch when ready | `plan/forge-dnd-drop-zones` (complete) |
+| optional | SE6 geom soft residual same heuristics file | [settle](./plans/forge-layout-settle-contract.md) |
+| optional | CT3 true cold-empty | [CT3](./tasks/forge-layout-cold-topology_ct3-x11-live.md) |
+| human | CT2 Wayland cold smoke (logout) | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
 | shellrc | gdisplays session/greeter (GS0+) | `~/dev/me/shellrc/agents/plans/gdisplays-session-greeter.md` |
+| done | SE0–SE5+SE7; cleanup strip; CT3 near-cold | settle + cold-topology completed/ |
+| done | Window ignore mode | [completed](./tasks/completed/forge-window-ignore-mode.md) |
 
 ### Progress (2026-08-09)
 
@@ -148,7 +170,32 @@ gsettings set org.gnome.shell.extensions.forge log-level 4
 
 Wayland: logout still required for extension code.
 
-CLI-only cleanup changes (Python `forge` / `layout_apply`) are live without HUP. Extension comment-only; no HUP required for cleanup strip.
+CLI-only cleanup changes (Python `forge` / `layout_apply`) are live without HUP. Extension half needs install/HUP.
+
+### Agent live E2E — most important (run these)
+
+These **partial layout reloads** are the **primary agent end-to-end bar** for
+layout settle + claim + open leaf. Unit tests do not replace them. Prefer X11;
+**never close the agent’s own Ghostty** (close other windows only).
+
+Profile baseline: host `dev` (mon0 tab+ghostty | mon1 ghostty+tab). For the
+nautilus case use host `t1` (or open Nautilus then `layout t1`).
+
+| # | Pre-state (then `forge layout dev` unless noted) | Must hold after |
+| --- | --- | --- |
+| **1** | **Ghosttys only** — both mon ghosttys; all Chrome/PWAs closed | Full desk; mon0 open leaf **Grok**; mon1 **YouTube**; agent ghostty id survives |
+| **2** | **Left chrome + ghostty** — mon0 tab(chrome,Grok)+ghostty; mon1 chrome closed (ghostty may remain) | mon1 tabs reopen; open leaves Grok + YouTube; no mon steal of mon0 ghostty |
+| **3** | **Right ghostty** — mon0 chrome closed (ghostty only); mon1 ghostty + tabs | mon0 chrome/Grok reopen; mon1 ghostty **reused** (not stolen to mon0); leaves correct |
+| **4** | **Left ghostty + nautilus** — agent ghostty + Nautilus only → `forge layout t1` | t1 structure; nautilus kept/placed; agent ghostty survives; tabs/actives sane |
+
+Also useful (secondary): near-cold empty → one `layout dev`; settled re-run no-op;
+optional true cold-empty (close everything **except** agent terminal carefully).
+
+**Pass criteria (each case):** `ok`; structure not thrashing (no Mode B cold);
+profile actives visible (lastTabFocus); focus role if profile sets it; **agent
+Ghostty windowId still in tree**.
+
+**2026-08-09:** matrix green on black X11 after SE0–SE5+SE7 (agent ghostty kept).
 
 ---
 
@@ -156,7 +203,7 @@ CLI-only cleanup changes (Python `forge` / `layout_apply`) are live without HUP.
 
 1. `gdisplays --status` — if scale wrong: `gdisplays load default`  
 2. Confirm session is **X11** for agent live tests  
-3. Agent: **CT3 X11 cold smoke** (near-cold or cold desk → one `forge layout dev`)  
+3. Agent: **partial reload matrix** above (not only full cold)  
 
 ---
 

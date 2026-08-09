@@ -1,10 +1,10 @@
 # CT-cleanup — Strip patchwork; architecture holds the weight
 
-**Status:** code landed — close after CT3 green  
-**Plan:** [forge-layout-cold-topology.md](../plans/forge-layout-cold-topology.md)  
+**Status:** done  
+**Plan:** [forge-layout-cold-topology.md](../../forge-layout-cold-topology.md)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Test host:** **X11** preferred (agent `./install` + Shell HUP). Wayland logout for extension-only when needed.  
-**Doctrine:** [HANDOFF.md](../HANDOFF.md) — patches bad; spine good; **no personal-layout special cases**
+**Doctrine:** [HANDOFF.md](../../../HANDOFF.md) — patches bad; spine good; **no personal-layout special cases**
 
 ---
 
@@ -62,11 +62,13 @@ Thrash mid-batch forbidden. Mode B = true chaos / explicit recover only.
 - [x] `docs/user/layout.md` cold section = one-shot spine only  
 - [x] DECISIONS / archive: what was removed and why (D014–D016)  
 - [x] HANDOFF + PRIORITY updated after ship  
-- [x] Settled X11 re-run ok (CLI path live); **full cold CT3 still open**  
+- [x] Settled X11 re-run ok (CLI path live); **CT3 near-cold + partial matrix green (2026-08-09)**  
 
 ---
 
 ## Session note
+
+**2026-08-09 (close):** CT3 near-cold X11 green + agent partial reload matrix green after settle SE0–SE5+SE7. Cleanup strip remains landed (belt moves-only, one focus phase, postOpenRetry opt-in). True cold-empty and CT2 Wayland still optional / human-logout — not required to keep this strip closed.
 
 **2026-08-08 (cleanup implement):**
 
@@ -75,6 +77,5 @@ Thrash mid-batch forbidden. Mode B = true chaos / explicit recover only.
 - **Docs:** DECISIONS D011/D012 superseded → D014–D016; layout.md cold; cli_help Mode B tips; REGRESSIONS R001/R002; DESIGN open-then-place steps.  
 - **Tests:** `test_belt_actions_pin_moves_only_by_default`; CLI units **455 passed**.  
 - **Live:** X11 session; settled `forge layout dev` → ok (focus-only work). Full cold empty one-shot = **CT3**.  
-- **Close this task** when CT3 accepts one-shot cold without Mode B / belt invent.
 
-Created 2026-08-08; unparked as P0 same day.
+Created 2026-08-08; unparked as P0 same day; closed 2026-08-09.

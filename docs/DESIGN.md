@@ -652,6 +652,9 @@ jumpy). Reconcile apply when roles need open:
    barrier (learned quiet; steal = thrash correct) → post-settled verify once.
    Heuristics: `~/.config/forge/config/settle-heuristics.json`.
 
+**Agent-facing contract (why + anti-patches + code map):**
+[agents/project.md](../agents/project.md) § Layout apply architecture.
+
 **Optional debug (LF6):** `--wait-tree-stable` or `FORGE_LAYOUT_WAIT_TREE_STABLE=1`
 runs `wait_for_tree_stable` (main + belt) so rehome waits until GetTree
 fingerprint holds N polls (`forest_stability_fingerprint` in `layout_apply.py`).

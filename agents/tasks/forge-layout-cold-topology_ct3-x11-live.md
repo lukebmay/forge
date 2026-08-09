@@ -11,6 +11,10 @@
 
 Same one-shot cold layout on **X11** — also a daily driver (older machines + testing), not a second-class smoke.
 
+**More important than full cold-empty alone:** the **partial layout reload matrix**
+in [HANDOFF.md](../HANDOFF.md) (ghosttys only / left chrome+ghostty / right ghostty /
+left ghostty+nautilus). Those are the primary agent E2E bar.
+
 ---
 
 ## Acceptance

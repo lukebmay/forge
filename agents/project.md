@@ -37,9 +37,12 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 
 | Branch | Role |
 | --- | --- |
-| `master` | GNOME 45+ — **this work** (`lukebmay/forge` default) |
+| `master` | GNOME 45+ — **default work branch** (`lukebmay/forge`) |
+| `plan/*` / `task/*` | **Major** refactors/features only; merge back when gated |
 | `main` | Upstream default on **jcrussell** / **forge-ext** (pull via `upstream/main`) |
 | `legacy` / `gnome-3-36` | GNOME 3.36 — feature-frozen |
+
+Day-to-day agents implement on **`master`**. Do not open a side branch for ordinary fixes or small features.
 
 ## Priorities for agents
 
@@ -86,6 +89,10 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 | **Window modes** | TILE (managed), FLOAT (unmanaged), GRAB_TILE (drag), DEFAULT |
 | **Session / lock** | On lock screen: disable keybindings; **keep tree in memory** so layout survives |
 | **GObject** | Core classes use `static { GObject.registerClass(this); }`; track signal IDs and disconnect on teardown / `disable()` |
+| **Open leaf** | Visible/active child of a TABBED/STACKED group (`lastTabFocus`) — not the same as keyboard focus |
+| **Hard expectation** | Meta signal we wait for before the next act (TILE, windowId, mon, sane rect) |
+| **Soft residual** | Race that *may* follow an act (focus steal, size-changed); wait learned quiet; if absent, proceed |
+| **Profile** | User JSON data only — never special-case a host desk in product code |
 
 ## Configuration paths
 
@@ -94,6 +101,7 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 | GSettings schema | `org.gnome.shell.extensions.forge` |
 | Window overrides | `~/.config/forge/config/windows.json` |
 | Stylesheet overrides | `~/.config/forge/stylesheet/forge/stylesheet.css` |
+| Settle heuristics | `~/.config/forge/config/settle-heuristics.json` (host+class+kind timings only) |
 
 ## Where to look (do not dump full docs here)
 
@@ -101,10 +109,161 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 | --- | --- |
 | Build / test / format | [CONTRIBUTING.md](../CONTRIBUTING.md), `make help` |
 | Architecture / render / Mutter | [docs/dev/](../docs/dev/) (`architecture.md`, `rendering.md`, `compat.md`) |
+| **Layout settle / cold spine (agents)** | **This file** § Layout apply architecture |
 | Unit / e2e tests | [tests/README.md](../tests/README.md), [tests/e2e/README.md](../tests/e2e/README.md) |
-| User behavior | [docs/user/](../docs/user/) |
-| Durable “why” | [docs/DESIGN.md](../docs/DESIGN.md) |
-| Priorities / plans | [PRIORITY.md](./PRIORITY.md), `agents/plans/` |
+| User behavior | [docs/user/](../docs/user/) (`layout.md` cold apply steps) |
+| Durable “why” + decisions | [docs/DESIGN.md](../docs/DESIGN.md), [docs/DECISIONS.md](../docs/DECISIONS.md) (D008–D019) |
+| Priorities / plans / live matrix | [PRIORITY.md](./PRIORITY.md), [HANDOFF.md](./HANDOFF.md), `agents/plans/` |
+
+---
+
+## Layout apply architecture (for future agents)
+
+This is the **product contract** for `forge layout` (reconcile / desired-state
+desk restore). Read it before adding sleeps, second `ensure_layout` passes,
+“just run layout again,” or app-specific branches.
+
+Chrome/Grok/Ghostty appear below only as **repro history** on host `black`. The
+engine must stay generic: any app class, any mon order, any profile `active`.
+
+### Vocabulary (do not conflate these)
+
+| Term | Meaning in forge |
+| --- | --- |
+| **TABBED group** | Several windows share one pane; only one is the **open leaf** (visible content). Forge draws a tab strip for the others. |
+| **Open leaf** | Which window the group shows (`lastTabFocus` / `lastTabFocusId`). Profile field often named `active`. |
+| **Keyboard focus** | Which window receives keys (`focusWindowId`). Can differ from open leaf (e.g. focus on Ghostty while a mon0 tab shows Grok). |
+| **Tab strip active** | Which tab *looks* selected in decoration CSS. Must track **open leaf**, not only keyboard focus. |
+| **Late activate** | After map/tile, an app raises itself (common with Chrome and PWAs) and rewrites Meta focus / open leaf after we already set them. |
+| **Hard expectation** | Something we treat as required before the next act (e.g. mode TILE, windowId present, monitor ≥ 0, positive width/height). |
+| **Soft residual** | Something that *often* happens after an act but is not guaranteed (focus steal, size-changed). Wait a learned quiet window; if nothing arrives, move on. |
+| **Call clock** | Timer starts when **we** issue the act (launch, move, focus apply)—not from “command start” or machine benchmarks alone. |
+
+### Why we chose this architecture
+
+**Constraint:** Mutter/GNOME does not emit “this window is settled.” Apps map as
+FLOAT, then TILE; they may activate, resize, or steal focus seconds later.
+Sleeping a fixed 250 ms or re-running layout “until it looks right” is not a
+contract.
+
+**History (what went wrong):** each live failure got another **band-aid**—extra
+`ensure_layout` after bind, focus during open, fixed reassert timers, belt
+structure rewrite, Mode B thrash-recover as cold “success.” That felt like
+progress and **rotted the system**: band-aids hid the next bug, tests encoded
+patches, and agents re-learned one desk instead of a phase model.
+
+**Choice:** an **ordered phase spine** (structure before focus) plus a
+**hard/soft settle contract** (wait for required Meta signals; treat residual
+races as event-driven thrash with learned timeouts). Goals:
+
+1. Name the **phase** that failed (skeleton / open / bind / focus / …), not “Chrome is weird.”
+2. **One** `forge layout <name>` finishes the desk; multi-CLI “run again” is not the product fix.
+3. **Profiles = data**; product code stays generic (no “if Grok then …” branches).
+4. When the real fix lands, **delete** the crutches that only existed for that failure class.
+
+Decisions: **D008–D009** (cold spine), **D014** (belt moves-only), **D016**
+(mid-session lastTabFocus preserve on re-affirm), **D018** (pin open leaf on
+steal), **D019** (hard + soft settle). Plans:
+[forge-layout-cold-topology](./plans/forge-layout-cold-topology.md),
+[forge-layout-settle-contract](./plans/forge-layout-settle-contract.md).
+
+### Problems this architecture solves
+
+Concrete failure classes (how they looked, what phase owned them):
+
+| What went wrong (observable) | Wrong fix (do not reintroduce) | Architecture answer |
+| --- | --- | --- |
+| After cold or partial `layout dev`, a **TABBED group shows the wrong window**: e.g. plain Chrome “New Tab” **visible over** the profile’s intended open leaf (Grok), or mon1 shows Voice content while the YouTube tab is lit (or the reverse). Profile wanted `active: Grok` / `active: YouTube`. | Mid-open focus; sleep 250 ms and re-focus forever; belt re-`ensure_layout` that rewrites the group | **Focus is post-structure.** After bind/order: hard-ready → apply open leaves **once** → soft barrier (late activate = thrash → correct + reset quiet) → **one** post-settled verify. Extension **pins** the intended open leaf (~15s) and restores on meta-focus steal; tab strip follows **lastTabFocus**, not keyboard-only. |
+| Operator must run `forge layout` **two or three times** before the desk sticks | Accept multi-CLI as success; Mode B second pass on cold | **One spine per command.** Soft residual + verify-once catch late Meta *inside* that run. |
+| After thrash, mon children **swap order** (e.g. mon1 becomes `term \| tab` instead of `tab \| term`) | “Just run layout again” / ensure_order as the design | **Order is part of construction**, not a cleanup pass after chaos. No happy-path structure rewrite after bind. |
+| Post-open “belt” **rewrites topology** and stomps open leaf / mon order | More ensure_layout after residual | Belt = **wrong-mon moves for just-opened pin roles only** (D014). Structure stays with residual bind. |
+| Fixed quiet (250 ms / 2 s) works on one machine, fails on another or when Chrome is slow | Longer sleeps; per-app hardcode | **Hard wait ~5s** for TILE/rect/mon (call clock). **Soft wait** = rolling max residual latency × 1.25 per host+wm_class (file-backed), with floor/clamp and first-ever learning trial—not wall-clock from process start alone. |
+| Product code grows `if chrome / if ghostty` settle branches for one host desk | Ship personal layout as engine logic | Heuristics keys: `host\|class\|processKind\|residualKind`. Profiles name roles; **engine never keys on role names**. |
+| Cold empty desk treated as thrash → Mode B parks everything then “recovers” | Mode B as cold success path | Cold/just_opened: thrash **report-only**; skeleton-first one-shot. Mode B = true mid-session chaos only. |
+
+### Cold / open spine (hold this)
+
+Happy path for one reconcile apply (especially when roles need open):
+
+```text
+skeleton → open (map pin) → bind → order/size → residual place
+         → hard-ready (TILE / rect / mon)
+         → focus once (open leaves + profile keyboard focus)
+         → soft residual barrier (steal → correct + reset quiet)
+         → post-settled verify once
+         → persist settle heuristics
+```
+
+| Phase | Responsibility | Must not |
+| --- | --- | --- |
+| **Skeleton** | Build mon splits + tab/stack groups with slot-tagged placeholders when the desk is empty | Invent mon-root as a third HSPLIT sibling for one dual-mon setup |
+| **Open** | Launch missing roles; wait for **map + windowId** (mode may stay FLOAT while deferred) | Require TILE mid-open; raise profile actives while other apps still mapping |
+| **Bind / order / size** | Attach windows to slots; mon-child order; size shares | Mid-flight focus; Mode B park as “construction succeeded” |
+| **Hard-ready** | Before move/focus targets: TILE (or grab), sane rect, mon ≥ 0; timeout ~5s from the call | Move FLOAT leaves that Meta will snap back |
+| **Focus once** | Set each TABBED/STACKED open leaf from profile `active`, then keyboard focus if profile asks | Focus during open thrash; always-on second full raise |
+| **Soft barrier** | After focus apply: wait learned quiet; if open leaf / kbd mismatches, **correct immediately**, record residual latency, **reset** quiet | Fixed reassert forever; Chrome-only product paths |
+| **Post-settled verify** | After soft settle: one full mismatch check; correct at most once more | Infinite reassert loop |
+| **Belt (optional)** | If just-opened roles still on wrong mon: **move only** | `ensure_layout` / `ensure_order` after bind on the happy path |
+
+Thrash mid-batch is **forbidden**. Multi-step work **inside one command** is fine
+only if ordered as above. “Operator runs layout again” is **not** the design.
+
+### Hard vs soft settle (D019)
+
+| Kind | Meaning | Clock | Timeout |
+| --- | --- | --- | --- |
+| **Hard** | Required before the next act (map, TILE, mon, rect) | From the forge call that needs readiness | ~**5s** (`HARD_TIMEOUT_MS`) |
+| **Soft** | Residual that often follows focus/move (focus steal, geometry noise) | From last act (apply or correct); quiet **resets** when a residual fires | Learned: max(last **10** residual-positive latencies) × **1.25**, floored/clamped; **first-ever** class/key uses a longer learning trial (~6s for focus) |
+
+**Focus steal during the pin window is thrash, not “user intent.”** On layout
+focus, the extension pins the intended open leaf for ~**15s** (aligned with the
+soft wall cap—short pins expired mid soft barrier). If Meta activates a sibling
+in the same TABBED/STACKED group, restore the pin (raise + lastTabFocus + tab
+strip). Decoration mark the open leaf from **lastTabFocus**, not keyboard focus
+alone (so the strip matches the visible content).
+
+Heuristics file: `~/.config/forge/config/settle-heuristics.json` — **timings and
+class keys only** (no titles, URLs, or personal role names).
+
+| Layer | Entry points |
+| --- | --- |
+| Store / soft timeout math | `scripts/forge/settle_heuristics.py` |
+| Hard-ready / soft barrier pure | `scripts/forge/layout_apply.py` (`wait_until_hard_ready`, `run_soft_focus_barrier`, `focus_actions_still_needed`) |
+| CLI focus phase | `scripts/forge/forge` → `_layout_final_focus_pass` |
+| Pin + meta-steal restore | `lib/extension/layout-open-leaf-pin.js`, `window.js`, `session-api.js` `_focusOp`, `action-pipeline.js` `afterFocus` |
+
+### What we deliberately rejected
+
+| Rejected approach | Why |
+| --- | --- |
+| Default whole-tree fingerprint quiet (LF6) before every residual | Can wait correctly but feels jumpy; keep **opt-in** (`--wait-tree-stable` / env) |
+| “Sleep N ms then reassert focus forever” | Brittle across hosts; stacks forever; hides real structure bugs |
+| Product branches for one person’s Chrome/Grok/Ghostty desk | Profiles are data; optional geom seeds are floors, not the product |
+| Mode B / `FORGE_LAYOUT_POST_OPEN_RETRY` as cold happy path | Masks construction-order failure; Mode B = mid-session chaos; postOpenRetry env-only |
+| Fixing wrong mon-children / missing bind with more waits | That is a **structure** bug—fix the spine, not soft timeout |
+
+### Rules for future agents (FIRM)
+
+1. **Name the phase** that broke before coding (skeleton \| open \| bind \| order \| size \| focus \| residual).  
+2. **Fix that phase’s contract** so the failure class cannot recur; then **delete** the band-aid that only papered it.  
+3. **No personal-layout product code.** Reproduce with abstract roles or profile JSON; never ship `if role == Grok`.  
+4. **No new cold-path pass** without removing an obsolete one (or documenting why it stays).  
+5. **Temporary** only if the operator **explicitly** asks for temp/stopgap.  
+6. Unit-test pure helpers; **sign off layout** with the **partial reload matrix** below—not unit tests alone.  
+7. Prefer **X11** for agent live tests (`./install` + HUP); Wayland needs logout for extension loads.
+
+### Code map (entry points)
+
+| Concern | Where |
+| --- | --- |
+| Plan / two-pass mon claim / cold thrash suppress | `scripts/forge/layout_plan.py` |
+| Pure apply helpers, belt, hard/soft, focus still-needed | `scripts/forge/layout_apply.py` |
+| Heuristics store | `scripts/forge/settle_heuristics.py` |
+| CLI layout + focus phase | `scripts/forge/forge` (`cmd_layout`, `_layout_final_focus_pass`) |
+| Open-leaf pin / meta-steal restore | `lib/extension/layout-open-leaf-pin.js`, `window.js`, `session-api.js`, `action-pipeline.js` |
+| User-facing cold steps | [docs/user/layout.md](../docs/user/layout.md) |
+
+---
 
 ## Project-specific rules
 
@@ -132,6 +291,23 @@ When agents run live tests that need install + Shell reload (`./install`,
 4. **Post-HUP collectors** must survive `killall -HUP gnome-shell` (`nohup` /
    background script writing under `/tmp/...`), then compare `forge tree`.
 5. Do not rely on the user to re-layout windows for verification.
+
+### Agent live E2E (most important)
+
+**Do not treat unit tests alone as layout sign-off.** These partial reloads are
+the **primary agent end-to-end bar** for the architecture above. Full procedure
+and pass criteria: [HANDOFF.md](./HANDOFF.md) § Agent live E2E.
+
+| # | Pre-state | Then |
+| --- | --- | --- |
+| 1 | **Ghosttys only** (all Chrome closed) | `forge layout dev` |
+| 2 | **Left chrome + ghostty** (mon1 Chrome closed) | `forge layout dev` |
+| 3 | **Right ghostty** (mon0 Chrome closed; mon1 ghostty+tabs) | `forge layout dev` |
+| 4 | **Left ghostty + nautilus** | `forge layout t1` |
+
+**Never close the agent’s Ghostty.** After each case on `dev`: mon0 TABBED open
+leaf is the Grok window (not plain Chrome); mon1 open leaf is YouTube; structure
+is not Mode-B thrashing; **agent windowId still in `forge tree`**.
 
 ### Git
 

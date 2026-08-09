@@ -1,7 +1,7 @@
 # Plan: cold layout topology (one-shot, no Mode B patch-over)
 
-**Status:** active — **P0 = CT3 X11 cold smoke** (cleanup strip code landed); CT2 Wayland when logout OK  
-**Priority:** P0 (daily driver cold `forge layout dev`)  
+**Status:** active — CT1+cleanup done; CT3 near-cold green; CT2 Wayland when logout OK  
+**Priority:** residual optional / human (true empty, Wayland)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Depends on:** apply-contract AC1–AC6 (done); thrash-zero Mode A/B (done, **not** the fix here)  
 **Related:** [forge-layout-apply-contract.md](./forge-layout-apply-contract.md), [forge-workon-thrash-zero](./forge-workon-thrash-zero/) (historical)

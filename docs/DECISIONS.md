@@ -24,3 +24,4 @@ set Status=`superseded` and add a new row (do not rewrite history silently).
 | D017 | 2026-08-08 | layout | P0 | superseded | Final focus + verify-once only | Superseded by D018 — verify alone lost to multi-second chrome activate |
 | D018 | 2026-08-08 | layout | P0 | active | Pin tab open leaf on focus; restore on meta-focus steal; tab-active=lastTabFocus; CLI stable poll | Cold: Chrome over Grok; tab chrome follows keyboard not open leaf |
 | D019 | 2026-08-08 | layout | P0 | active | Settle contract: hard Meta ready + soft expectations (file heuristics) + post-settled verify once; focus steal = thrash correct | Fixed ms reassert brittle; Meta has no settle ACK; plan forge-layout-settle-contract |
+| D020 | 2026-08-09 | windows | mid | active | `mode: "ignore"` in windows.json: no tree node / decorations / session claim; user config only (no bundled brands) | Float still tracks + processFloats; some apps need true hands-off |

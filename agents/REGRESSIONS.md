@@ -13,12 +13,28 @@ the fix**, then a row here. Plan session notes are not enough.
 | R003 | 2026-08-08 | left dock open → right mon | dock mon from focus/`get_current_monitor`; weak hook | D007 pointer mon + activate_full | `open-app-policy` focus mon0 + dock mon1; pointer geometry |
 | R004 | 2026-08-08 | dock miss → focus mon; mon-root covers left tab | appId mismatch dropped pending; empty LFT(m) → mon-root 3rd HSPLIT child | single-pending match; `_lastTileOnMonitor` end-of-tree | `lft-mru` single unexpired mismatch; `open-app-policy` dock empty mon LFT |
 
+## Agent live E2E (most important)
+
+Unit tests are necessary but **not sufficient** for dual-mon layout. Agents
+must run the **partial reload matrix** on X11 (never close agent Ghostty):
+
+| Pre-state | Command |
+| --- | --- |
+| Ghosttys only | `forge layout dev` |
+| Left chrome + ghostty | `forge layout dev` |
+| Right ghostty (mon0 chrome gone) | `forge layout dev` |
+| Left ghostty + nautilus | `forge layout t1` |
+
+Full procedure + pass criteria: [HANDOFF.md](./HANDOFF.md) § Agent live E2E.
+Guards open-leaf steal (R005/R006), mon claim (R001 class), dual ghostty reuse.
+
 ## Rules
 
 1. **New live regression** → file row + failing unit test before/with fix.  
 2. **Do not** only “note in HANDOFF” without a test.  
 3. Prefer pure helpers (`lft-mru.js`, `layout_apply.py`) so tests stay fast.  
-4. Wayland install needs **logout** for extension half; CLI path is live immediately.
+4. Wayland install needs **logout** for extension half; CLI path is live immediately.  
+5. Layout sign-off: **partial reload matrix** (above), not only cold-empty or unit.
 
 ## Related
 

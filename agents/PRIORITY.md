@@ -2,9 +2,10 @@
 
 **Updated:** 2026-08-09  
 **Lens:** `black` dual 4K Shell 46 — **X11 preferred for agent live test**; Wayland daily driver too  
+**Branch:** **`master`** default (side branches only for major refactors/features)  
 **Push:** only when human asks.
 
-**Active P0:** settle contract **mostly done** (SE0–SE5+SE7; CT3 near-cold green)
+**Active:** P0 settle/cleanup closed; mid ignore mode **done**; next mid/optional below.
 
 ---
 
@@ -12,15 +13,14 @@
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [settle contract](./plans/forge-layout-settle-contract.md) | SE0–SE5+SE7 done; SE6 optional; SE8 partial |
-| P0 | [CT3 X11](./tasks/forge-layout-cold-topology_ct3-x11-live.md) | near-cold green; optional true empty |
-| P0 | [cleanup strip](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) | close after settle confirmed |
-| P0 | [CT3 X11 live](./tasks/forge-layout-cold-topology_ct3-x11-live.md) | after SE4+; prove one-shot cold |
-| P0 | [cleanup strip](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) | code landed; close after CT3 + settle |
-| P0 | [CT2 Wayland live](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) | operator logout when needed |
-| mid | Merge DnD plan branch | when ready |
-| mid | [window ignore mode](./tasks/forge-window-ignore-mode.md) | ready |
-| mid | [settle-learning SL3](./plans/forge-settle-learning.md) | absorb into settle-contract SE6+ |
+| mid | Merge DnD plan branch | `plan/forge-dnd-drop-zones` complete — merge when ready |
+| optional | [settle SE6](./plans/forge-layout-settle-contract.md) geom soft residual | after SE1 store; optional |
+| optional | [CT3 true empty](./tasks/forge-layout-cold-topology_ct3-x11-live.md) | near-cold + matrix already green |
+| human | [CT2 Wayland](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) | logout when needed |
+| done | [window ignore mode](./tasks/completed/forge-window-ignore-mode.md) | D020; units green |
+| done | settle SE0–SE5+SE7 | completed/ |
+| done | cleanup strip | completed/ under cold-topology |
+| mid | [settle-learning SL3](./plans/forge-settle-learning.md) | absorb into SE6+ |
 | post | container motion, … | later |
 
 **Handoff doctrine:** [HANDOFF.md](./HANDOFF.md) — spine over band-aids; no personal-layout code.
