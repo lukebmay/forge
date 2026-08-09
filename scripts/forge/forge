@@ -28,7 +28,9 @@ _EXT_ORIGIN = (
     / "install-origin.json"
 )
 # Subcommands that do not need a DBus session (extension may be offline).
-_NO_DBUS_COMMANDS = frozenset({"install", "uninstall", "update", "help", "keybind"})
+_NO_DBUS_COMMANDS = frozenset(
+    {"install", "uninstall", "update", "help", "keybind", "jobs"}
+)
 # layout list|show|help|save(--stdout/--tree-file) are offline; apply needs DBus.
 
 # Methods that take string in-args (all return a single string).
@@ -58,6 +60,27 @@ HARD_DEPS = ("python3", "PyGObject (gi.repository.Gio) or gdbus")
 _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
+from job_runner import (  # noqa: E402
+    TERMINAL_STATUSES,
+    BusyError,
+    JobNotFoundError,
+    attach,
+    default_jobs_root,
+    default_timeout_for_command,
+    extract_job_meta_flags,
+    is_job_worker,
+    is_mutating_job_command,
+    job_dir,
+    list_jobs,
+    load_handle,
+    maybe_run_as_job,
+    pid_alive,
+    read_status,
+    reap_stale_jobs,
+    request_cancel,
+    worker_install_signal_policy,
+    worker_mark_done,
+)
 from layout_apply import (  # noqa: E402
     BELT_STABLE_POLL_MS,
     BELT_STABLE_SAMPLES,
@@ -3783,6 +3806,202 @@ def cmd_update(_backend: Optional[str], args: argparse.Namespace) -> int:
     return cmd_install(_backend, args)
 
 
+def _jobs_format_age(started_at: Any, *, now: Optional[float] = None) -> str:
+    try:
+        started = float(started_at)
+    except (TypeError, ValueError):
+        return "?"
+    ts = time.time() if now is None else float(now)
+    sec = max(0, int(ts - started))
+    if sec < 60:
+        return f"{sec}s"
+    if sec < 3600:
+        return f"{sec // 60}m"
+    if sec < 86400:
+        return f"{sec // 3600}h"
+    return f"{sec // 86400}d"
+
+
+def _jobs_resolve_id(jobs_root: Path, job_id: str) -> str:
+    """Accept full id or unique prefix."""
+    jid = (job_id or "").strip()
+    if not jid:
+        raise JobNotFoundError(job_id or "")
+    direct = job_dir(jobs_root, jid)
+    if (direct / "status.json").is_file():
+        return jid
+    matches = [
+        p.name
+        for p in jobs_root.iterdir()
+        if p.is_dir() and p.name.startswith(jid) and (p / "status.json").is_file()
+    ] if jobs_root.is_dir() else []
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError(
+            f"ambiguous job id {jid!r}; matches: {', '.join(sorted(matches))}"
+        )
+    raise JobNotFoundError(jid)
+
+
+def cmd_jobs(_backend: Optional[str], args: argparse.Namespace) -> int:
+    """Manage durable forge jobs (list/status/attach/cancel/log). No DBus."""
+    root = default_jobs_root()
+    try:
+        reap_stale_jobs(root)
+    except OSError:
+        pass
+
+    action = str(getattr(args, "jobs_action", "list") or "list").strip().lower()
+    job_id_arg = getattr(args, "job_id", None)
+    follow = bool(getattr(args, "follow", False))
+    compact = bool(getattr(args, "compact", False))
+
+    if action in ("list", ""):
+        rows = list_jobs(root)
+        if compact:
+            _print_json(rows, compact=True)
+            return 0
+        if not rows:
+            print("no jobs")
+            return 0
+        # active first already by started_at desc in list_jobs; group active top
+        active = [r for r in rows if str(r.get("status")) not in TERMINAL_STATUSES]
+        done = [r for r in rows if str(r.get("status")) in TERMINAL_STATUSES]
+        ordered = active + done
+        print(f"{'ID':<28} {'STATUS':<10} {'PID':<8} {'AGE':<6} COMMAND")
+        for r in ordered:
+            jid = str(r.get("job_id") or "")
+            st = str(r.get("status") or "")
+            pid = r.get("pid")
+            pid_s = str(pid) if pid is not None else "-"
+            age = _jobs_format_age(r.get("started_at"))
+            cmd = str(r.get("command") or "")
+            argv = r.get("argv") or []
+            if isinstance(argv, list) and len(argv) >= 3:
+                # python forge <cmd> ...
+                tail = " ".join(str(x) for x in argv[2:6])
+                if len(argv) > 6:
+                    tail += " …"
+                cmd = tail or cmd
+            print(f"{jid:<28} {st:<10} {pid_s:<8} {age:<6} {cmd}")
+        return 0
+
+    if not job_id_arg:
+        _eprint(f"forge jobs {action}: need job id")
+        return 1
+    try:
+        jid = _jobs_resolve_id(root, str(job_id_arg))
+    except JobNotFoundError as e:
+        _eprint(f"forge jobs: {e}")
+        return 1
+    except ValueError as e:
+        _eprint(f"forge jobs: {e}")
+        return 1
+
+    jdir = job_dir(root, jid)
+
+    if action == "status":
+        try:
+            st = read_status(jdir)
+        except JobNotFoundError as e:
+            _eprint(f"forge jobs: {e}")
+            return 1
+        _print_json(st, compact=compact)
+        return 0
+
+    if action == "cancel":
+        try:
+            st = read_status(jdir)
+        except JobNotFoundError as e:
+            _eprint(f"forge jobs: {e}")
+            return 1
+        if str(st.get("status")) in TERMINAL_STATUSES:
+            print(f"job {jid} already {st.get('status')}")
+            return 0
+        ok = request_cancel(root, jid)
+        if not ok:
+            _eprint(f"forge jobs cancel: could not signal job {jid}")
+            return 1
+        print(f"job {jid} cancel signaled")
+        return 0
+
+    if action == "attach":
+        try:
+            st = read_status(jdir)
+        except JobNotFoundError as e:
+            _eprint(f"forge jobs: {e}")
+            return 1
+        if str(st.get("status")) in TERMINAL_STATUSES:
+            # drain logs and return stored exit
+            for name in ("stdout.log", "stderr.log"):
+                path = jdir / name
+                if path.is_file():
+                    sys.stdout.write(path.read_text(encoding="utf-8", errors="replace"))
+            code = st.get("exit_code")
+            return int(code) if code is not None else (0 if st.get("status") == "ok" else 1)
+        try:
+            handle = load_handle(root, jid)
+        except Exception as e:
+            _eprint(f"forge jobs attach: {e}")
+            return 1
+        return int(attach(handle))
+
+    if action == "log":
+        stdout_path = jdir / "stdout.log"
+        stderr_path = jdir / "stderr.log"
+        if follow:
+            off_out = 0
+            off_err = 0
+            try:
+                while True:
+                    if stdout_path.is_file():
+                        with open(
+                            stdout_path, "r", encoding="utf-8", errors="replace"
+                        ) as fh:
+                            fh.seek(off_out)
+                            data = fh.read()
+                            off_out = fh.tell()
+                        if data:
+                            sys.stdout.write(data)
+                            sys.stdout.flush()
+                    if stderr_path.is_file():
+                        with open(
+                            stderr_path, "r", encoding="utf-8", errors="replace"
+                        ) as fh:
+                            fh.seek(off_err)
+                            data = fh.read()
+                            off_err = fh.tell()
+                        if data:
+                            sys.stderr.write(data)
+                            sys.stderr.flush()
+                    try:
+                        st = read_status(jdir)
+                    except JobNotFoundError:
+                        break
+                    if str(st.get("status")) in TERMINAL_STATUSES:
+                        break
+                    pid = st.get("pid")
+                    if pid is not None and not pid_alive(int(pid)):
+                        break
+                    time.sleep(0.1)
+            except KeyboardInterrupt:
+                return 130
+            return 0
+        if stdout_path.is_file():
+            sys.stdout.write(stdout_path.read_text(encoding="utf-8", errors="replace"))
+        if stderr_path.is_file():
+            err_text = stderr_path.read_text(encoding="utf-8", errors="replace")
+            if err_text:
+                if not err_text.endswith("\n"):
+                    err_text += "\n"
+                sys.stderr.write(err_text)
+        return 0
+
+    _eprint(f"forge jobs: unknown action {action!r}")
+    return 1
+
+
 def cmd_uninstall(_backend: Optional[str], args: argparse.Namespace) -> int:
     """Remove extension + forge-owned ~/.local/bin/forge. No DBus."""
     origin = _load_install_origin()
@@ -4972,11 +5191,115 @@ def build_parser() -> argparse.ArgumentParser:
     )
     uninstall_p.set_defaults(func=cmd_uninstall)
 
+    jobs_p = sub.add_parser(
+        "jobs",
+        help="List/attach/cancel durable CLI jobs",
+        description=(
+            "Manage one-shot durable forge jobs (layout/install/run/…).\n"
+            "Mutating commands run as jobs by default (survive TTY death).\n"
+            "\n"
+            "  forge jobs                 # list\n"
+            "  forge jobs status <id>     # status.json\n"
+            "  forge jobs attach <id>     # stream + wait\n"
+            "  forge jobs cancel <id>     # cooperative stop\n"
+            "  forge jobs log <id>        # stdout/stderr\n"
+            "  forge jobs log <id> -f     # follow until done\n"
+            "\n"
+            "Also: forge layout … --detach | --foreground | FORGE_JOB=0\n"
+            f"Job dir: ~/.local/share/forge/jobs/ (or $FORGE_JOBS_DIR)"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    jobs_p.add_argument(
+        "jobs_action",
+        nargs="?",
+        default="list",
+        choices=("list", "status", "attach", "cancel", "log"),
+        help="Action (default: list)",
+    )
+    jobs_p.add_argument(
+        "job_id",
+        nargs="?",
+        default=None,
+        help="Job id (or unique prefix)",
+    )
+    jobs_p.add_argument(
+        "-f",
+        "--follow",
+        action="store_true",
+        help="With log: tail until job finishes",
+    )
+    jobs_p.add_argument(
+        "--compact",
+        action="store_true",
+        help="With list/status: single-line JSON",
+    )
+    jobs_p.set_defaults(func=cmd_jobs)
+
     return p
 
 
+def _job_layout_head(args: argparse.Namespace) -> str:
+    tokens = list(getattr(args, "layout_tokens", None) or [])
+    return tokens[0].strip() if tokens else ""
+
+
+def _should_use_job_runner(args: argparse.Namespace) -> bool:
+    cmd = getattr(args, "command", None) or ""
+    if cmd == "layout":
+        return is_mutating_job_command(
+            "layout",
+            layout_head=_job_layout_head(args),
+            dry_run=bool(getattr(args, "dry_run", False)),
+        )
+    if cmd == "test":
+        action = str(getattr(args, "live_action", "plan") or "plan").strip().lower()
+        return is_mutating_job_command("test", test_action=action)
+    return is_mutating_job_command(cmd)
+
+
+def _dispatch_command(args: argparse.Namespace) -> int:
+    """Run the parsed subcommand (in-process). Shared by parent worker path."""
+    cmd_name = getattr(args, "command", None) or ""
+    if cmd_name in _NO_DBUS_COMMANDS or getattr(args, "func", None) in (
+        cmd_install,
+        cmd_update,
+        cmd_uninstall,
+        cmd_help,
+        cmd_jobs,
+    ):
+        return int(args.func(None, args))
+
+    if cmd_name == "test":
+        action = str(getattr(args, "live_action", "plan") or "plan").strip().lower()
+        tree_file = getattr(args, "tree_file", None)
+        if action == "list" or tree_file:
+            return int(args.func(None, args))
+        backend = _check_deps()
+        return int(args.func(backend, args))
+
+    if cmd_name == "layout":
+        tokens = list(getattr(args, "layout_tokens", None) or [])
+        head = tokens[0].strip() if tokens else ""
+        dry = bool(getattr(args, "dry_run", False))
+        tree_file = getattr(args, "tree_file", None)
+        if head in ("list", "show", "help", "-h", "--help") or not tokens:
+            return int(args.func(None, args))
+        if head == "save" and tree_file:
+            return int(args.func(None, args))
+        if dry and tree_file:
+            return int(args.func(None, args))
+        backend = _check_deps()
+        return int(args.func(backend, args))
+
+    backend = _check_deps()
+    return int(args.func(backend, args))
+
+
 def main(argv: Optional[list[str]] = None) -> int:
-    argv = list(sys.argv[1:] if argv is None else argv)
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    cleaned_argv, detach, foreground = extract_job_meta_flags(raw_argv)
+    argv = cleaned_argv
     argv, color_mode = parse_color_flag(argv)
     if color_mode is not None:
         try:
@@ -5026,43 +5349,65 @@ def main(argv: Optional[list[str]] = None) -> int:
             _eprint(f"forge: {e}")
             return 1
 
-    # install / update / uninstall / help / layout list|show|help do not need DBus
     cmd_name = getattr(args, "command", None) or ""
-    if cmd_name in _NO_DBUS_COMMANDS or getattr(args, "func", None) in (
-        cmd_install,
-        cmd_update,
-        cmd_uninstall,
-        cmd_help,
+
+    # Durable job wrap for mutating commands (default attach; --detach = no wait)
+    if (
+        _should_use_job_runner(args)
+        and not is_job_worker()
+        and not foreground
     ):
-        return int(args.func(None, args))
+        try:
+            reap_stale_jobs(default_jobs_root())
+        except OSError:
+            pass
+        forge_script = Path(__file__).resolve()
+        worker_argv = [sys.executable, str(forge_script), *argv]
+        timeout_sec = default_timeout_for_command(cmd_name)
+        try:
+            job_rc = maybe_run_as_job(
+                worker_argv,
+                detach=detach,
+                foreground=False,
+                command=cmd_name,
+                timeout_sec=timeout_sec,
+            )
+        except BusyError as e:
+            _eprint(f"forge: another mutating job is running: {e.job_id}")
+            _eprint(
+                f"  status: {default_jobs_root() / e.job_id / 'status.json'}"
+            )
+            _eprint("  wait for it to finish, or set FORGE_JOB=0 / --foreground to bypass")
+            return 1
+        except Exception as e:
+            _eprint(f"forge: job runner failed: {e}")
+            return 1
+        if job_rc is not None:
+            return int(job_rc)
 
-    if cmd_name == "test":
-        action = str(getattr(args, "live_action", "plan") or "plan").strip().lower()
-        tree_file = getattr(args, "tree_file", None)
-        # list is offline; probe/plan offline with --tree-file
-        if action == "list" or tree_file:
-            return int(args.func(None, args))
-        backend = _check_deps()
-        return int(args.func(backend, args))
-
-    if cmd_name == "layout":
-        tokens = list(getattr(args, "layout_tokens", None) or [])
-        head = tokens[0].strip() if tokens else ""
-        dry = bool(getattr(args, "dry_run", False))
-        tree_file = getattr(args, "tree_file", None)
-        if head in ("list", "show", "help", "-h", "--help") or not tokens:
-            return int(args.func(None, args))
-        # Offline: save / dry-run when forest is on disk
-        if head == "save" and tree_file:
-            return int(args.func(None, args))
-        if dry and tree_file:
-            return int(args.func(None, args))
-        backend = _check_deps()
-        return int(args.func(backend, args))
-
-    backend = _check_deps()
-    return int(args.func(backend, args))
+    return _dispatch_command(args)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    _exit = 1
+    try:
+        if is_job_worker():
+            worker_install_signal_policy()
+        _exit = int(main())
+    except SystemExit as e:
+        code = e.code
+        if code is None:
+            _exit = 0
+        elif isinstance(code, int):
+            _exit = code
+        else:
+            _exit = 1
+    except KeyboardInterrupt:
+        _exit = 130
+    except BaseException:
+        if is_job_worker():
+            worker_mark_done(1)
+        raise
+    if is_job_worker():
+        worker_mark_done(_exit, cancelled=(_exit == 130))
+    sys.exit(_exit)

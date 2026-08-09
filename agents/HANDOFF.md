@@ -1,10 +1,10 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**P0 → CLI jobs; FC2; SE8b; CE1; FC0–FC1**)  
+**Updated:** 2026-08-09 (**CLI jobs shipped CJ1–CJ6**; next mid queue)  
 **Branch:** **`master`** (default). Plan/task branches only for major refactors/features.  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).  
 **Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP.  
-**Until [CLI jobs](./plans/forge-cli-jobs.md) ships:** closing agent Ghostty mid-`forge layout` can still abort apply — avoid. **After jobs:** apply survives TTY death by default; true cold still cares about agent *window* placement (tile vs Guake/float), not apply process survival.  
+**Jobs (shipped):** Mutating `forge` commands are **durable by default** (attach). Closing agent TTY mid-layout does **not** abort apply. `--detach` / `--foreground` / `FORGE_JOB=0`. `forge jobs` list|status|attach|cancel|log. True cold still cares about agent *window* placement (tile vs Guake/float), not apply process survival.  
 **Note:** Guake dropdown hidden may omit Guake from `forge tree` → probe can report ghostty / `can_true_cold=false` even when agent is under Guake (pstree). Manual true cold still OK.
 
 **Default:** always fix the **real problem** (phase contract). Temporary / band-aid only if the operator **explicitly** asks for temporary.
@@ -45,14 +45,15 @@ forge test live plan --tags R008              # regression-linked cases
 | Cleanup strip (belt invent / multi-focus) | **Closed** — code landed; CT3 near-cold + matrix green |
 | Window ignore mode | **Shipped** — `mode: "ignore"` in windows.json (D020) |
 | `forge layout clean` `{tiles:[]}` | **Shipped** — CE1 / R009 `detect_layout_mode` empty tiles |
+| **CLI attachable jobs** | **Shipped** — D021; CJ1–CJ6; parent-HUP live smoke green |
 | Geom soft residual in **same** file (SE6) | **Optional** — SL1 still session thrash catalog |
 | True cold-empty CT3 (all apps closed) | **Optional / not required** if matrix green |
 | Wayland CT2 parity | **Not re-run** this session (logout) |
 | Unrelated: resize-autotile, STACKED product | **Open** (other plans) |
 
-**Bottom line:** Open-leaf architecture (R007) holds for **true cold** (SE8b
-verified). Focus-on-close (FC0–FC1) + unfocus Esc (FC2) shipped. **AI live
-matrix** is the preferred layout sign-off path (`forge test live`, L0 first).
+**Bottom line:** Open-leaf architecture (R007) holds. Focus-on-close + unfocus Esc
+shipped. **CLI jobs** make mutators TTY-safe. **AI live matrix** remains the
+preferred layout sign-off path (`forge test live`, L0 first).
 
 ---
 
@@ -60,41 +61,43 @@ matrix** is the preferred layout sign-off path (`forge test live`, L0 first).
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | **CLI attachable jobs** — durable mutators; default attach; TTY death ≠ kill job | [plan](./plans/forge-cli-jobs.md) · [CJ1](./tasks/forge-cli-jobs_cj1-runner-core.md) |
-| **use** | AI live matrix for layout work (after/with jobs as needed) | [plan](./plans/forge-ai-live-test-matrix.md) · `forge test live` |
 | mid | AT2 L1 mon-specific setup polish | [AT2](./tasks/forge-ai-live-test-matrix_at2-l1-setup.md) |
 | mid | FC3 combined live smoke (close + unfocus) | [plan](./plans/forge-focus-close-and-escape.md) draft |
+| mid | Merge DnD plan branch when ready | `plan/forge-dnd-drop-zones` (complete) |
 | later | Nested Wayland retest spike | AT-W1 — only before next Wayland CT |
 | later (shellrc **P0**) | Durable Grok (leader spike first) | `~/dev/me/shellrc/agents/tasks/grok-reattachable-headless_gh0-leader-spike.md` — not forge work |
-| mid | Merge DnD plan branch when ready | `plan/forge-dnd-drop-zones` (complete) |
 | optional | SE6 geom soft residual | [settle](./plans/forge-layout-settle-contract.md) |
 | human | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
-| done | FC2 unfocus; FC0–FC1; SE8b R008; CE1 R009; SE0–SE5+SE7; R007; AT0/AT1 | — |
-
-**Ship gate for CLI jobs:** update **project.md** (agents) + **README.md** (users: architecture + long first-load warning in plain language) + DECISIONS/DESIGN/user docs — see plan CJ6.
+| done | **CLI jobs CJ1–CJ6**; FC2; FC0–FC1; SE8b R008; CE1 R009; SE0–SE5+SE7; R007; AT0/AT1 | — |
 
 ### Session ship (2026-08-09) — cold-continue
 
 | Shipped | Detail |
 | --- | --- |
-| **P0 plan: CLI attachable jobs** | Design locked — durable mutators by default (attach wait; `--detach` = no wait only). [plan](./plans/forge-cli-jobs.md) · next **[CJ1](./tasks/forge-cli-jobs_cj1-runner-core.md)**. Ship gate CJ6: project.md + README (arch + long first-load warning). **No code yet.** |
-| **FC2** | `window-unfocus` → `Ctrl+Super+Escape`; `exitForgeMode` no-op API; `unfocusTiles` + hover suppress; live X11 `focusWindowId` None |
-| **SE8b / R008** | True cold Guake X11 2/2 + partial ghosttys-only green; R007 path holds (no new open-leaf code) |
-| **CE1 / R009** | `detect_layout_mode` empty `tiles:[]` / `roles:[]` → reconcile; live `forge layout clean` empties desk |
-| **FC0–FC1** | `pickFocusAfterClose` + wire in `window.js` close restore; live close→LFT smoke |
-| **R007** | Open-leaf focus `keyboard:false`; always soft final focus; cold soft floor 2s with pins; RunSteps passthrough; save focus floats/LFT; `--focus` CLI |
-| **AI live matrix** | `scripts/forge/live_matrix.py` + `forge test live probe\|list\|plan\|run`; L0-then-live policy; behavior/R0xx selection; Guake preferred for `can_true_cold` |
+| **CLI jobs (P0)** | `job_runner.py`; mutator wire; `forge jobs`; units (31); live parent-HUP + cancel; D021; docs (project.md, README first-load warning, DESIGN, user layout, scripts README, testing.md) |
+| **FC2** | `window-unfocus` → `Ctrl+Super+Escape`; live X11 unfocus |
+| **SE8b / R008** | True cold Guake X11 2/2 + partial ghosttys-only green |
+| **CE1 / R009** | empty `tiles:[]` → reconcile; live `forge layout clean` |
+| **FC0–FC1** | close→focus restore; live close→LFT smoke |
+| **R007** | Open-leaf focus path; soft final focus; pins |
+| **AI live matrix** | `forge test live probe\|list\|plan\|run` |
 
 | Not shipped | Detail |
 | --- | --- |
-| CLI jobs implementation (CJ1–CJ6) | plan only — runner, wire mutators, jobs CLI, tests, docs |
-| FC3 combined close+unfocus matrix | draft — unfocus half green on FC2 |
+| FC3 combined close+unfocus matrix | draft |
 | AT2 / AT-W1 | setup polish / nested Wayland deferred |
-| Residual hard-ready warn | cold open still logs “targets not hard-ready (moving anyway)” — structure race noise, leaves OK |
+| Residual hard-ready warn | cold open still logs “targets not hard-ready (moving anyway)” — structure race noise |
 
 **Enable live:** X11; Guake for cold; `gsettings … logging-enabled true` + log-level 4 if debugging pin.
 
-**Live notes:** first-ever soft focus wait ~6s; after zero-residual samples next full focus phase uses 400ms floor. Pin was 3.5s (too short) → 15s wall.
+**Jobs usage:**
+
+```bash
+forge layout dev                 # durable + attach
+forge layout dev --detach        # job id; forge jobs status|attach|cancel|log
+FORGE_JOB=0 forge layout dev     # in-process debug
+python3 -m pytest tests/unit/cli/test_job_runner.py -q
+```
 
 ---
 
@@ -180,6 +183,7 @@ See also: [REGRESSIONS.md](./REGRESSIONS.md) (guard the **spine**, not a museum 
 | X11 | Preferred agent live test (HUP); CT3 required |
 | Wayland | Daily driver; logout for extension loads |
 | Cleanup strip | **Code landed 2026-08-08** — belt moves-only; one focus; postOpenRetry opt-in |
+| CLI jobs | **D021** — durable mutators by default; not a daemon |
 
 ---
 
@@ -220,7 +224,8 @@ CLI-only cleanup changes (Python `forge` / `layout_apply`) are live without HUP.
 
 These **partial layout reloads** are the **primary agent end-to-end bar** for
 layout settle + claim + open leaf. Unit tests do not replace them. Prefer X11;
-**never close the agent’s own Ghostty** (close other windows only).
+agent **window** placement matters for true cold (process survival is separate —
+jobs keep apply running if the TTY dies).
 
 Profile baseline: host `dev` (mon0 tab+ghostty | mon1 ghostty+tab). For the
 nautilus case use host `t1` (or open Nautilus then `layout t1`).

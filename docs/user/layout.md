@@ -29,7 +29,14 @@ forge layout list
 forge layout show mydesk
 forge layout mydesk --dry-run     # print plan only
 forge layout mydesk               # apply on current workspace only
+forge layout mydesk --detach      # background job; forge jobs to watch
+forge jobs                        # list durable CLI jobs
 ```
+
+**Durable apply:** `forge layout <name>` runs as a one-shot job by default. If
+you close the terminal mid-apply, the job keeps running. Use `--foreground` or
+`FORGE_JOB=0` for the old in-process path. First cold apply can take many
+seconds while Forge waits for apps to map and settle (later runs are faster).
 
 Tree root for `hosts/` + `common/` is `FORGE_LAYOUT_DIR` when set, else
 `~/.config/forge/layout` (same root `layout save` uses). Apply/show still

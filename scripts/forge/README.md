@@ -65,8 +65,22 @@ forge layout help
 forge layout list
 forge layout save mydesk
 forge layout mydesk --dry-run
-forge layout mydesk
+forge layout mydesk               # durable job + attach (default)
+forge layout mydesk --detach      # start job, print id, return
+forge layout mydesk --foreground  # in-process (debug)
+FORGE_JOB=0 forge layout mydesk   # same as --foreground
+
+# Durable jobs (layout apply, install/update/uninstall, run, test live run)
+forge jobs                        # list
+forge jobs status <id>
+forge jobs attach <id>
+forge jobs cancel <id>
+forge jobs log <id> [-f]
 ```
+
+Jobs live under `~/.local/share/forge/jobs/<id>/` (override with `FORGE_JOBS_DIR`).
+One mutating job at a time. Workers ignore SIGHUP so closing the terminal does
+not abort apply. `FORGE_JOB_TIMEOUT` overrides the whole-job ceiling (seconds).
 
 `launch` resolves short names via XDG `.desktop` files, infers `wm_class`, and
 waits for the new window. Default placement: LFT attach (see product docs).

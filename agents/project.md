@@ -57,9 +57,9 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 
 | Item | Status | Next |
 | --- | --- | --- |
-| **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **P0** | CJ1 runner → wire mutators → jobs CLI → tests → **docs ship gate** (this file + root README: arch + long first-load warning) |
-| **STACKED layouts** | Major product | After jobs / as PRIORITY allows |
-| `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive; jobs will make mid-apply TTY death safe |
+| **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
+| **STACKED layouts** | Major product | As PRIORITY allows |
+| `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive; mid-apply TTY death no longer aborts job |
 | [forge-workon-reconcile](./plans/forge-workon-reconcile.md) | **Complete** (historical name) | — |
 | [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | Jobs extend CLI process model |
 | [forge-daily-driver](./plans/forge-daily-driver.md) | T0–T7 + OP1 + T9 **Done** | Live |
@@ -68,6 +68,22 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 
 **Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).  
 **Host `black`:** GNOME Shell 46, X11, dual 4K; **this tree** installed in place (not EGO v89).
+
+## CLI jobs (agents)
+
+| Rule | Detail |
+| --- | --- |
+| **Default** | Mutating commands = durable job + **attach** (stream + wait). No flag for TTY survival. |
+| **`--detach`** | Same worker; print job id; return immediately |
+| **`--foreground` / `FORGE_JOB=0`** | In-process (debug) |
+| **In-scope** | `layout` apply (incl. clean profile), `run` / `run-steps`, install family, `test live run` |
+| **Out of scope** | `ping`, `tree`, `layout list\|show\|save\|help`, short focus/get/set |
+| **Single-flight** | One mutator at a time; busy → error with job id |
+| **Job dir** | `~/.local/share/forge/jobs/<id>/` (`status.json`, `pid`, logs) or `$FORGE_JOBS_DIR` |
+| **Signals** | Attached Ctrl+C cancels worker; SIGHUP/TTY death does **not** kill worker; `forge jobs cancel` |
+| **Code** | `scripts/forge/job_runner.py`; D021 |
+| **Tests** | Units `tests/unit/cli/test_job_runner.py`; live parent-HUP smoke green (CJ5) |
+| **True cold** | Still cares about agent **window** placement (Guake/float), not apply process survival |
 
 ## Layout
 

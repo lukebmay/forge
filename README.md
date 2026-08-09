@@ -93,7 +93,16 @@ Product work aimed at surviving real multi-monitor sessions and scripting the de
 | **Layout debug overlay** | Opt-in labels for layout type, percent, and mon-ws id (`Ctrl+Super+d`). |
 | **`forge` CLI** | DBus control plane: tree, focus, swap, move, launch, settings, session-layout flush. |
 | **`forge layout`** | Named layout profiles — idempotent reconcile (open gaps, move mismatches, leave companions). |
+| **Durable CLI jobs** | Mutating commands (layout apply, install, …) outlive terminal close by default; `forge jobs` to list/attach/cancel. |
 | **Install tooling** | `./install` + `forge install` / `update` / `uninstall`; settings-safe migrate from EGO. |
+
+**Long first layout apply:** The first time Forge applies a full desk layout
+(especially after login or with apps closed), it may take a while. That is
+intentional: Forge waits for windows to really appear and settle, and learns how
+long your apps need, so it does not yank them around early or leave a half-built
+desk. Later applies are usually much faster. Closing the terminal during apply
+no longer aborts the job — work continues in the background; check with
+`forge jobs`.
 
 ---
 
@@ -127,6 +136,9 @@ the **`forge`** CLI on `~/.local/bin/forge`, and reloads GNOME Shell on X11.
 forge ping
 forge tree
 forge help
+forge layout mydesk          # durable by default (survives closing the terminal)
+forge layout mydesk --detach # fire-and-forget; then: forge jobs
+forge jobs                   # list / status / attach / cancel / log
 ```
 
 **Already on extensions.gnome.org Forge?** `./install` migrates with an automatic

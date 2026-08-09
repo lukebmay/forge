@@ -38,6 +38,7 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
         ("keybind", "Backup/apply keybind kits (vim|safe|i3; no DBus)"),
         ("ping", "Extension health"),
         ("test live", "AI live matrix (probe/plan/run by behaviors)"),
+        ("jobs", "List/attach/cancel durable CLI jobs (layout/install survive TTY death)"),
         ("save-session-layout", "Flush last-good topology before install/HUP"),
         ("install / uninstall", "Reinstall from git tree / remove extension"),
         ("update", "Fetch origin/master; pull if new; always install (even if git current)"),
@@ -52,6 +53,8 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  ", cmd("forge layout list", **kw))
     _out(s, "  ", cmd("forge layout mydesk --dry-run", **kw))
     _out(s, "  ", cmd("forge layout mydesk", **kw))
+    _out(s, "  ", cmd("forge layout mydesk --detach", **kw), "  ", dim("# job continues if TTY dies", **kw))
+    _out(s, "  ", cmd("forge jobs", **kw), "                   ", dim("# list durable jobs", **kw))
     _out(s, "  ", cmd("forge tree", **kw))
     _out(s, "  ", cmd("forge launch nautilus", **kw))
     _blank(s)

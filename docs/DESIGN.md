@@ -20,6 +20,32 @@ still means “non-EGO git build,” with old stamps defaulting to `jcrussell`.
 Preferred install path: `./install` / `forge install`. Low-level helpers:
 `build-install.zsh`, `rebuild.zsh`, `migrate-from-ego.zsh`.
 
+## CLI job runner (durable mutators)
+
+**Why:** Long desk mutators (`forge layout`, install, live test run, …) used to
+die with the controlling TTY. Agents closing a terminal mid-apply left half-built
+desks. That is a process-hosting problem, not a layout-settle problem.
+
+**Choice (D021):** mutating commands run as **one-shot durable jobs** by default.
+UX still looks like a foreground CLI (start + attach: stream logs, wait, exit
+with worker code). **`--detach`** only skips the wait. No flag is required for
+durability. Workers use a new session (`start_new_session`), ignore SIGHUP, log
+under `~/.local/share/forge/jobs/<id>/`, and release a global mutator lock when
+done. Fast/read-only commands stay in-process.
+
+```text
+forge layout mydesk          # job + attach (default)
+forge layout mydesk --detach # job id, return immediately
+forge jobs / status / attach / cancel / log
+FORGE_JOB=0 | --foreground   # old in-process path (debug)
+```
+
+**Not:** an always-on daemon, multi-job queue, or transactional RunSteps rollback.
+Logout/reboot ends jobs (session DBus/DISPLAY). Idempotent re-apply remains the
+heal path after hard kill/OOM.
+
+**Code:** `scripts/forge/job_runner.py`; wire in `scripts/forge/forge`.
+
 ## Recovery architecture
 
 **Why this section exists:** Overnight lock/wake thrash and extension HUP look

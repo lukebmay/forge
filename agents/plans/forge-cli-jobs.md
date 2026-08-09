@@ -1,7 +1,7 @@
 # Plan: CLI attachable jobs (survive TTY death)
 
-**Status:** active — design locked; implement on `master`  
-**Priority:** **P0** (desk-mutating CLI must outlive accidental terminal close)  
+**Status:** **complete** (CJ1–CJ6) — durable mutators + jobs CLI + live smoke + docs  
+**Priority:** was **P0**; shipped 2026-08-09  
 **Branch:** `master`  
 **Related:** [forge-command](./forge-command.md); [AI live matrix](./forge-ai-live-test-matrix.md);
 [HANDOFF](../HANDOFF.md); [project.md](../project.md)
@@ -217,12 +217,12 @@ when the agent is not a TILE client.
 | ID | Task | Status |
 | --- | --- | --- |
 | **CJ0** | Design lock + decision row + plan (this file) | **done** (this session) |
-| **CJ1** | Job runner core: spawn, status dir, attach I/O, HUP-safe worker, single-flight | ready |
-| **CJ2** | Wire mutating CLI paths (`layout` apply/clean, `run`, install family, live run) + `--detach` / `--foreground` | ready |
-| **CJ3** | `forge jobs` list/attach/cancel/log/status + reaper + deadlines | ready |
-| **CJ4** | Unit tests (status, reaper, parent-death simulation, single-flight) | ready |
-| **CJ5** | Live smoke: kill attach parent mid-layout; cancel path; retire TTY-only harness notes | ready |
-| **CJ6** | Docs ship gate: project.md, README (arch + first-load warning), DECISIONS, DESIGN, user/scripts README, HANDOFF/testing | ready — **mandatory on complete** |
+| **CJ1** | Job runner core: spawn, status dir, attach I/O, HUP-safe worker, single-flight | **done** → [completed](./forge-cli-jobs/completed/forge-cli-jobs_cj1-runner-core.md) |
+| **CJ2** | Wire mutating CLI paths (`layout` apply/clean, `run`, install family, live run) + `--detach` / `--foreground` | **done** → [completed](./forge-cli-jobs/completed/forge-cli-jobs_cj2-wire-mutators.md) |
+| **CJ3** | `forge jobs` list/attach/cancel/log/status + reaper + deadlines | **done** → [completed](./forge-cli-jobs/completed/forge-cli-jobs_cj3-jobs-cli.md) |
+| **CJ4** | Unit tests (status, reaper, parent-death simulation, single-flight) | **done** in `test_job_runner.py` (31) |
+| **CJ5** | Live smoke: kill attach parent mid-layout; cancel path; retire TTY-only harness notes | **done** → [completed](./forge-cli-jobs/completed/forge-cli-jobs_cj5-live-smoke.md) |
+| **CJ6** | Docs ship gate: project.md, README (arch + first-load warning), DECISIONS, DESIGN, user/scripts README, HANDOFF/testing | **done** |
 
 Task files: `agents/tasks/forge-cli-jobs_cjN-….md` as work starts; completed →
 `agents/plans/forge-cli-jobs/completed/`.
@@ -231,17 +231,17 @@ Task files: `agents/tasks/forge-cli-jobs_cjN-….md` as work starts; completed �
 
 ## Acceptance (plan done when)
 
-- [ ] In-scope commands are durable by default (no flag); attach is default UX
-- [ ] `--detach` returns immediately with job id; same worker
-- [ ] TTY/SIGHUP death does not kill worker; job reaches terminal status on disk
-- [ ] Ctrl+C attached cancels cooperatively; `forge jobs cancel` works detached
-- [ ] Single-flight mutators; clear error if busy
-- [ ] Job deadline + reaper; no infinite hung workers as steady state
-- [ ] Units green; one live parent-kill smoke green on X11
-- [ ] Live/agent docs no longer claim “closing terminal aborts layout”
-- [ ] **All documentation ship-gate rows updated** (especially project.md + README
+- [x] In-scope commands are durable by default (no flag); attach is default UX
+- [x] `--detach` returns immediately with job id; same worker
+- [x] TTY/SIGHUP death does not kill worker; job reaches terminal status on disk
+- [x] Ctrl+C attached cancels cooperatively; `forge jobs cancel` works detached
+- [x] Single-flight mutators; clear error if busy
+- [x] Job deadline + reaper; no infinite hung workers as steady state
+- [x] Units green; one live parent-kill smoke green on X11
+- [x] Live/agent docs no longer claim “closing terminal aborts layout”
+- [x] **All documentation ship-gate rows updated** (especially project.md + README
       architecture + long first-load warning in human terms)
-- [ ] Grok wrapper explicitly out of scope here (optional follow-on noted)
+- [x] Grok wrapper explicitly out of scope here (optional follow-on noted)
 
 ---
 
