@@ -597,18 +597,17 @@ def belt_actions_from_plan(
     include_focus: bool = False,
 ) -> list[dict[str, Any]]:
     """
-    Post-open belt: rehome just-opened roles + re-ensure structure/order.
+    Post-open belt: wrong-mon rehome for just-opened roles only.
 
-    Focus is deferred to a final post-settle pass (include_focus=False default):
-    mid-flight focus Grok is often stolen when chrome/PWAs finish mapping.
+    Skeleton→bind residual owns structure/order/size. Belt must not re-run
+    ensure_layout / ensure_order (that rewrote topology after bind and stomped
+    lastTabFocus). include_focus is kept for tests/API; default False — focus is
+    a single post-settle pass, never mid-belt.
     """
     if not isinstance(actions, list):
         return []
     pins = role_pins if isinstance(role_pins, dict) else {}
     pin_roles = {str(k) for k in pins.keys() if k is not None and str(k).strip()}
-    structure_ops = {"ensure_layout", "ensure_order"}
-    if include_focus:
-        structure_ops = structure_ops | {"focus"}
     out: list[dict[str, Any]] = []
     for a in actions:
         if not isinstance(a, dict):
@@ -616,7 +615,7 @@ def belt_actions_from_plan(
         op = str(a.get("op") or "").strip().lower()
         if op == "move" and str(a.get("role") or "") in pin_roles:
             out.append(a)
-        elif op in structure_ops:
+        elif include_focus and op == "focus":
             out.append(a)
     return out
 
@@ -643,10 +642,129 @@ def without_focus_actions(actions: Any) -> list[dict[str, Any]]:
     ]
 
 
+def _focus_action_window_id(action: Any) -> Optional[str]:
+    """Parse id:N from a focus action selector; None if missing."""
+    if not isinstance(action, dict):
+        return None
+    sel = action.get("selector")
+    if sel is None:
+        return None
+    s = str(sel).strip()
+    if not s.startswith("id:"):
+        return None
+    wid = s[3:].strip()
+    return wid if wid else None
+
+
+def parent_last_tab_focus_by_window_id(forest: Any) -> dict[str, str]:
+    """
+    Map each WINDOW id under a TABBED/STACKED CON → that CON's lastTabFocusId.
+
+    Used to verify open-leaf after focus (late chrome activate steals lastTabFocus).
+    Missing lastTabFocusId → empty string for children of that group.
+    """
+    out: dict[str, str] = {}
+
+    def walk(n: Any) -> None:
+        if not isinstance(n, dict):
+            return
+        kids = n.get("children") if n.get("children") is not None else n.get("childNodes")
+        if not isinstance(kids, list):
+            kids = []
+        layout = str(n.get("layout") or "").strip().upper()
+        if layout in ("TABBED", "STACKED"):
+            ltf = n.get("lastTabFocusId")
+            ltf_s = (
+                str(ltf).strip() if ltf is not None and str(ltf).strip() != "" else ""
+            )
+            for c in kids:
+                if not isinstance(c, dict):
+                    continue
+                ntype = str(c.get("nodeType") or c.get("type") or "").strip().upper()
+                if ntype and ntype != "WINDOW":
+                    continue
+                wid = c.get("windowId")
+                if wid is None or str(wid).strip() == "":
+                    continue
+                out[str(wid)] = ltf_s
+        for c in kids:
+            walk(c)
+
+    if isinstance(forest, dict):
+        mons = forest.get("monitors")
+        if isinstance(mons, list):
+            for m in mons:
+                walk(m)
+        else:
+            walk(forest)
+    elif isinstance(forest, list):
+        for m in forest:
+            walk(m)
+    return out
+
+
+def focus_actions_still_needed(
+    forest: Any,
+    focus_actions: Any,
+) -> list[dict[str, Any]]:
+    """
+    Subset of focus actions that did not stick on the live forest.
+
+    - reason active|survivor: parent TABBED/STACKED lastTabFocusId must equal
+      the action window id (open leaf).
+    - reason profile: forest focusWindowId must equal the action window id.
+    - unknown reason: treat as needed (safe).
+
+    Cold chrome/PWA often activates after the first focus pass and rewrites
+    lastTabFocus; this is the verify barrier (one conditional re-apply), not a
+    blind second raise.
+    """
+    if not isinstance(focus_actions, list) or not focus_actions:
+        return []
+    parent_ltf = parent_last_tab_focus_by_window_id(forest)
+    kbd = ""
+    if isinstance(forest, dict):
+        fw = forest.get("focusWindowId")
+        if fw is None and isinstance(forest.get("meta"), dict):
+            fw = forest["meta"].get("focusWindowId")
+        if fw is not None and str(fw).strip() != "":
+            kbd = str(fw).strip()
+
+    needed: list[dict[str, Any]] = []
+    for a in focus_actions:
+        if not isinstance(a, dict):
+            continue
+        wid = _focus_action_window_id(a)
+        if wid is None:
+            needed.append(a)
+            continue
+        reason = str(a.get("reason") or "").strip().lower()
+        if reason in ("active", "survivor"):
+            live = parent_ltf.get(wid)
+            if live is None:
+                # Window not under a tab/stack group in export — still raise.
+                needed.append(a)
+            elif live != wid:
+                needed.append(a)
+        elif reason == "profile":
+            if kbd != wid:
+                needed.append(a)
+        else:
+            needed.append(a)
+    return needed
+
+
 # Quiet after structure before final active-leaf focus (chrome/PWA late activate).
 FINAL_FOCUS_QUIET_MS = 400
-# Second reassert after first raise (late chrome steal).
-FINAL_FOCUS_REASSERT_MS = 250
+# After first focus: wait for late activate, then verify lastTabFocus (not blind reassert).
+FINAL_FOCUS_VERIFY_QUIET_MS = 350
+# Poll window after verify: re-apply mismatches until clean samples or timeout.
+FINAL_FOCUS_STABLE_TIMEOUT_MS = 2000
+FINAL_FOCUS_STABLE_POLL_MS = 200
+FINAL_FOCUS_STABLE_SAMPLES = 2
+# Legacy always-on second full focus pass — default off.
+# Opt-in: FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS=<ms> (debug / compare).
+FINAL_FOCUS_REASSERT_MS = 0
 
 
 # --- LF5: settle-before-move (pure predicates; CLI poll uses these) ---

@@ -64,6 +64,10 @@ from layout_apply import (  # noqa: E402
     BELT_STABLE_TIMEOUT_MS,
     FINAL_FOCUS_QUIET_MS,
     FINAL_FOCUS_REASSERT_MS,
+    FINAL_FOCUS_STABLE_POLL_MS,
+    FINAL_FOCUS_STABLE_SAMPLES,
+    FINAL_FOCUS_STABLE_TIMEOUT_MS,
+    FINAL_FOCUS_VERIFY_QUIET_MS,
     MODE_RECONCILE,
     MODE_STEPS,
     TREE_STABLE_POLL_MS,
@@ -74,6 +78,7 @@ from layout_apply import (  # noqa: E402
     detect_layout_mode,
     find_settled_window,
     focus_actions_from_plan,
+    focus_actions_still_needed,
     ghostty_multi_instance_argv,
     is_ghostty_launch_target,
     move_step_window_ids,
@@ -1363,6 +1368,61 @@ def _layout_batch_call(backend: str, action: str) -> tuple[bool, dict[str, Any]]
     return False, data
 
 
+def _layout_final_focus_reassert_ms() -> int:
+    """
+    Optional always-on second full focus pass delay (default 0 = off).
+
+    Product path uses verify-once (mismatch only). Debug/compare:
+    FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS=<ms>.
+    """
+    raw = os.environ.get("FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS", "").strip()
+    if raw:
+        try:
+            return max(0, int(raw))
+        except ValueError:
+            return 0
+    return max(0, int(FINAL_FOCUS_REASSERT_MS or 0))
+
+
+def _layout_final_focus_verify_quiet_ms() -> int:
+    """Quiet after first focus before lastTabFocus verify (late chrome steal)."""
+    raw = os.environ.get("FORGE_LAYOUT_FINAL_FOCUS_VERIFY_MS", "").strip()
+    if raw:
+        try:
+            return max(0, int(raw))
+        except ValueError:
+            return max(0, int(FINAL_FOCUS_VERIFY_QUIET_MS or 0))
+    return max(0, int(FINAL_FOCUS_VERIFY_QUIET_MS or 0))
+
+
+def _layout_plan_focus_actions(
+    backend: str,
+    data: dict[str, Any],
+    *,
+    clean: bool,
+    keep_others: bool,
+    safe: bool,
+    workspace: int,
+    role_pins: Optional[dict[str, Any]],
+) -> tuple[Optional[dict[str, Any]], list[dict[str, Any]], Optional[dict[str, Any]]]:
+    """
+    Load forest + plan_reconcile → (plan, focus_actions, forest).
+    On plan error: (None, [], None) and caller logs non-fatal.
+    """
+    forest = _layout_load_tree(backend, None)
+    plan_f = plan_reconcile(
+        forest,
+        data,
+        clean=clean,
+        keep_others=keep_others,
+        safe=safe,
+        role_pins=role_pins or None,
+        just_opened_roles=set(role_pins.keys()) if role_pins else None,
+        workspace=workspace,
+    )
+    return plan_f, focus_actions_from_plan(plan_f.get("actions")), forest
+
+
 def _layout_final_focus_pass(
     backend: str,
     data: dict[str, Any],
@@ -1376,10 +1436,12 @@ def _layout_final_focus_pass(
     apply_log: dict[str, Any],
 ) -> tuple[int, Optional[dict[str, Any]]]:
     """
-    After structure/bind settle: wait, then apply profile active/focus last.
+    After structure/bind settle: quiet, apply profile actives + keyboard focus,
+    then verify lastTabFocus and re-apply only mismatches once.
 
-    Cold chrome/PWA launches often activate late and steal lastTabFocus if we
-    raise Grok mid-residual. One quiet settle + focus, then a short reassert.
+    Cold chrome/PWA often activates after the first raise and steals open leaf
+    (Chrome over Grok, Voice tab lit while YouTube should be active). Verify
+    barrier owns that race — not a blind always-on second reassert.
     Returns (rc, last plan with focus) — rc non-zero only on hard RunSteps fail.
     """
     pin_ids = [
@@ -1397,41 +1459,192 @@ def _layout_final_focus_pass(
         time.sleep(quiet_s)
 
     last_plan: Optional[dict[str, Any]] = None
-    for pass_name, delay_ms in (
-        ("finalFocus", 0),
-        ("finalFocusReassert", FINAL_FOCUS_REASSERT_MS),
-    ):
-        if delay_ms and delay_ms > 0:
-            time.sleep(delay_ms / 1000.0)
+    try:
+        plan_f, focus_acts, _forest0 = _layout_plan_focus_actions(
+            backend,
+            data,
+            clean=clean,
+            keep_others=keep_others,
+            safe=safe,
+            workspace=workspace,
+            role_pins=role_pins,
+        )
+    except Exception as e:
+        apply_log["finalFocus"] = {"ok": False, "error": str(e)}
+        return 0, last_plan
+    last_plan = plan_f
+    steps = actions_to_extension_steps(
+        focus_acts, force_close=force_close, workspace=workspace
+    )
+    if not steps:
+        apply_log["finalFocus"] = {"ok": True, "steps": 0, "skipped": True}
+    else:
+        rc, agg = run_mixed_steps(
+            backend, steps, stop_on_error=True, print_each=False
+        )
+        apply_log["finalFocus"] = {"ok": rc == 0, "steps": len(steps), "agg": agg}
+        if rc != 0:
+            return rc, last_plan
+
+    # Verify barrier: wait for late activate, re-apply only open leaves / kbd
+    # that did not stick (mismatch), at most once.
+    verify_ms = _layout_final_focus_verify_quiet_ms()
+    if verify_ms > 0:
+        time.sleep(verify_ms / 1000.0)
+    try:
+        plan_v, focus_all, forest_v = _layout_plan_focus_actions(
+            backend,
+            data,
+            clean=clean,
+            keep_others=keep_others,
+            safe=safe,
+            workspace=workspace,
+            role_pins=role_pins,
+        )
+    except Exception as e:
+        apply_log["finalFocusVerify"] = {"ok": False, "error": str(e)}
+        return 0, last_plan
+    last_plan = plan_v
+    needed = focus_actions_still_needed(forest_v, focus_all)
+    if not needed:
+        apply_log["finalFocusVerify"] = {
+            "ok": True,
+            "steps": 0,
+            "skipped": True,
+            "reason": "open-leaf and profile focus match live tree",
+        }
+    else:
+        v_steps = actions_to_extension_steps(
+            needed, force_close=force_close, workspace=workspace
+        )
+        if not v_steps:
+            apply_log["finalFocusVerify"] = {
+                "ok": True,
+                "steps": 0,
+                "skipped": True,
+                "needed": len(needed),
+            }
+        else:
+            rc, agg = run_mixed_steps(
+                backend, v_steps, stop_on_error=True, print_each=False
+            )
+            apply_log["finalFocusVerify"] = {
+                "ok": rc == 0,
+                "steps": len(v_steps),
+                "neededRoles": [a.get("role") for a in needed if isinstance(a, dict)],
+                "agg": agg,
+            }
+            if rc != 0:
+                return rc, last_plan
+
+    # Stability poll: chrome can steal after the first verify window; re-apply
+    # mismatches until clean samples or timeout (extension pins also help).
+    stable_timeout = max(0, int(FINAL_FOCUS_STABLE_TIMEOUT_MS or 0))
+    stable_poll = max(50, int(FINAL_FOCUS_STABLE_POLL_MS or 200))
+    stable_need = max(1, int(FINAL_FOCUS_STABLE_SAMPLES or 2))
+    if stable_timeout <= 0:
+        apply_log["finalFocusStable"] = {"skipped": True, "reason": "timeout 0"}
+    else:
+        clean_streak = 0
+        reapply_n = 0
+        t_end = time.monotonic() + (stable_timeout / 1000.0)
+        stable_ok = False
+        while time.monotonic() < t_end:
+            time.sleep(stable_poll / 1000.0)
+            try:
+                plan_s, focus_s, forest_s = _layout_plan_focus_actions(
+                    backend,
+                    data,
+                    clean=clean,
+                    keep_others=keep_others,
+                    safe=safe,
+                    workspace=workspace,
+                    role_pins=role_pins,
+                )
+            except Exception as e:
+                apply_log["finalFocusStable"] = {"ok": False, "error": str(e)}
+                break
+            last_plan = plan_s
+            still = focus_actions_still_needed(forest_s, focus_s)
+            if not still:
+                clean_streak += 1
+                if clean_streak >= stable_need:
+                    stable_ok = True
+                    apply_log["finalFocusStable"] = {
+                        "ok": True,
+                        "cleanSamples": clean_streak,
+                        "reapply": reapply_n,
+                    }
+                    break
+                continue
+            clean_streak = 0
+            s_steps = actions_to_extension_steps(
+                still, force_close=force_close, workspace=workspace
+            )
+            if not s_steps:
+                continue
+            reapply_n += 1
+            rc, agg = run_mixed_steps(
+                backend, s_steps, stop_on_error=True, print_each=False
+            )
+            if rc != 0:
+                apply_log["finalFocusStable"] = {
+                    "ok": False,
+                    "reapply": reapply_n,
+                    "neededRoles": [
+                        a.get("role") for a in still if isinstance(a, dict)
+                    ],
+                    "agg": agg,
+                }
+                return rc, last_plan
+        if not stable_ok and "finalFocusStable" not in apply_log:
+            apply_log["finalFocusStable"] = {
+                "ok": False,
+                "cleanSamples": clean_streak,
+                "reapply": reapply_n,
+                "timeout": True,
+            }
+
+    # Optional debug: always-on second full focus (not the product path).
+    reassert_ms = _layout_final_focus_reassert_ms()
+    if reassert_ms > 0:
+        time.sleep(reassert_ms / 1000.0)
         try:
-            forest = _layout_load_tree(backend, None)
-            plan_f = plan_reconcile(
-                forest,
+            plan_r, focus_r, _ = _layout_plan_focus_actions(
+                backend,
                 data,
                 clean=clean,
                 keep_others=keep_others,
                 safe=safe,
-                role_pins=role_pins or None,
-                just_opened_roles=set(role_pins.keys()) if role_pins else None,
                 workspace=workspace,
+                role_pins=role_pins,
             )
         except Exception as e:
-            apply_log[pass_name] = {"ok": False, "error": str(e)}
-            return 0, last_plan  # non-fatal: structure already applied
-        last_plan = plan_f
-        focus_acts = focus_actions_from_plan(plan_f.get("actions"))
-        steps = actions_to_extension_steps(
-            focus_acts, force_close=force_close, workspace=workspace
+            apply_log["finalFocusReassert"] = {"ok": False, "error": str(e)}
+            return 0, last_plan
+        last_plan = plan_r
+        r_steps = actions_to_extension_steps(
+            focus_r, force_close=force_close, workspace=workspace
         )
-        if not steps:
-            apply_log[pass_name] = {"ok": True, "steps": 0, "skipped": True}
-            continue
-        rc, agg = run_mixed_steps(
-            backend, steps, stop_on_error=True, print_each=False
-        )
-        apply_log[pass_name] = {"ok": rc == 0, "steps": len(steps), "agg": agg}
-        if rc != 0:
-            return rc, last_plan
+        if r_steps:
+            rc, agg = run_mixed_steps(
+                backend, r_steps, stop_on_error=True, print_each=False
+            )
+            apply_log["finalFocusReassert"] = {
+                "ok": rc == 0,
+                "steps": len(r_steps),
+                "agg": agg,
+            }
+            if rc != 0:
+                return rc, last_plan
+        else:
+            apply_log["finalFocusReassert"] = {"ok": True, "steps": 0, "skipped": True}
+    else:
+        apply_log["finalFocusReassert"] = {
+            "skipped": True,
+            "reason": "verify+stable poll is product path",
+        }
+
     return 0, last_plan
 
 
@@ -2495,7 +2708,9 @@ def _layout_run_reconcile(
                     return rc
             plan = plan2
 
-            # Belt: optional second stable wait (same flag), then move pass if wrong mon.
+            # Belt: optional stable wait, then wrong-mon rehome for just-opened only.
+            # No ensure_layout / ensure_order here (CT cleanup: residual bind owns
+            # structure; belt structure rewrite stomped open leaf / mon order).
             if role_pins and not still_open:
                 belt_stable: dict[str, Any] = {"skipped": True}
                 if wait_tree_stable:
@@ -2528,7 +2743,7 @@ def _layout_run_reconcile(
                     _eprint(f"forge layout: belt re-plan after residual failed: {e}")
                 else:
                     belt_ext, _belt_open = partition_plan_actions(plan3.get("actions"))
-                    # Belt: rehome + structure only; focus is final pass after settle.
+                    # Belt: pin-role moves only; focus is final pass after settle.
                     belt_actions = belt_actions_from_plan(
                         belt_ext, role_pins, include_focus=False
                     )

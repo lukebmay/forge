@@ -208,7 +208,7 @@ describe("FocusManager", () => {
       expect(queueSpy).not.toHaveBeenCalled();
     });
 
-    it("updateTabbedFocus is a no-op when _freezeRender is true", () => {
+    it("updateTabbedFocus records lastTabFocus under freeze but does not raise", () => {
       const nodeWindow = stackedNode(LAYOUT_TYPES.TABBED);
       const raiseSpy = vi.spyOn(nodeWindow.nodeValue, "raise");
       wm()._freezeRender = true;
@@ -216,6 +216,18 @@ describe("FocusManager", () => {
       wm().updateTabbedFocus(nodeWindow);
 
       expect(raiseSpy).not.toHaveBeenCalled();
+      expect(nodeWindow.parentNode.lastTabFocus).toBe(nodeWindow.nodeValue);
+    });
+
+    it("updateStackedFocus records lastTabFocus under freeze but does not raise", () => {
+      const nodeWindow = stackedNode(LAYOUT_TYPES.STACKED);
+      const raiseSpy = vi.spyOn(nodeWindow.nodeValue, "raise");
+      wm()._freezeRender = true;
+
+      wm().updateStackedFocus(nodeWindow);
+
+      expect(raiseSpy).not.toHaveBeenCalled();
+      expect(nodeWindow.parentNode.lastTabFocus).toBe(nodeWindow.nodeValue);
     });
   });
 });

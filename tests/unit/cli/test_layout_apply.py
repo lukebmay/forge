@@ -23,6 +23,7 @@ from layout_apply import (  # noqa: E402
     belt_actions_from_plan,
     detect_layout_mode,
     focus_actions_from_plan,
+    focus_actions_still_needed,
     find_settled_window,
     forest_stability_fingerprint,
     ghostty_multi_instance_argv,
@@ -30,6 +31,7 @@ from layout_apply import (  # noqa: E402
     layout_wait_tree_stable_enabled,
     move_step_window_ids,
     open_action_to_launch_fields,
+    parent_last_tab_focus_by_window_id,
     partition_plan_actions,
     residual_follow_up,
     rewrite_ghostty_launch_app,
@@ -353,8 +355,125 @@ class TestActionMapping(unittest.TestCase):
         self.assertEqual(len(opens), 1)
         self.assertEqual(opens[0]["role"], "a")
 
-    def test_belt_actions_structure_only_by_default(self):
-        """Belt mid-flight is structure only; focus is a final post-settle pass."""
+    def test_focus_actions_still_needed_open_leaf_mismatch(self):
+        """Late chrome steal: lastTabFocus ≠ active role → verify re-apply."""
+        forest = {
+            "focusWindowId": 99,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 10,  # chrome visible/stolen
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 10,
+                                    "wmClass": "a",
+                                    "title": "a",
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 20,
+                                    "wmClass": "b",
+                                    "title": "b",
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 30,  # already correct
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 30,
+                                    "wmClass": "c",
+                                    "title": "c",
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 31,
+                                    "wmClass": "d",
+                                    "title": "d",
+                                },
+                            ],
+                        },
+                    ],
+                }
+            ],
+        }
+        by_wid = parent_last_tab_focus_by_window_id(forest)
+        self.assertEqual(by_wid["10"], "10")
+        self.assertEqual(by_wid["20"], "10")
+        self.assertEqual(by_wid["30"], "30")
+
+        actions = [
+            {
+                "op": "focus",
+                "selector": "id:20",
+                "role": "b",
+                "reason": "active",
+            },
+            {
+                "op": "focus",
+                "selector": "id:30",
+                "role": "c",
+                "reason": "active",
+            },
+            {
+                "op": "focus",
+                "selector": "id:99",
+                "role": "term",
+                "reason": "profile",
+            },
+        ]
+        needed = focus_actions_still_needed(forest, actions)
+        roles = [a["role"] for a in needed]
+        self.assertEqual(roles, ["b"])  # only stolen open leaf
+
+        # Profile kbd mismatch
+        forest_bad_kbd = dict(forest)
+        forest_bad_kbd["focusWindowId"] = 10
+        needed2 = focus_actions_still_needed(forest_bad_kbd, actions)
+        self.assertEqual([a["role"] for a in needed2], ["b", "term"])
+
+        # All match → empty
+        forest_ok = {
+            "focusWindowId": 99,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 20,
+                            "children": [
+                                {"nodeType": "WINDOW", "windowId": 10},
+                                {"nodeType": "WINDOW", "windowId": 20},
+                            ],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 30,
+                            "children": [
+                                {"nodeType": "WINDOW", "windowId": 30},
+                                {"nodeType": "WINDOW", "windowId": 31},
+                            ],
+                        },
+                    ],
+                }
+            ],
+        }
+        self.assertEqual(focus_actions_still_needed(forest_ok, actions), [])
+
+    def test_belt_actions_pin_moves_only_by_default(self):
+        """Belt is wrong-mon rehome for pins only; no structure rewrite or focus."""
         actions = [
             {
                 "op": "ensure_layout",
@@ -362,6 +481,7 @@ class TestActionMapping(unittest.TestCase):
                 "mode": "tabbed",
                 "windowIds": [10, 20],
             },
+            {"op": "ensure_order", "slot": "mon0", "mode": "hsplit", "windowIds": [1, 2]},
             {"op": "move", "role": "Grok", "windowId": 20, "slot": "mon0.s0"},
             {"op": "move", "role": "other", "windowId": 99, "slot": "mon1.x"},
             {"op": "focus", "selector": "id:20", "role": "Grok", "reason": "active"},
@@ -371,18 +491,22 @@ class TestActionMapping(unittest.TestCase):
         ]
         belt = belt_actions_from_plan(actions, {"Grok": 20})
         ops = [a["op"] for a in belt]
-        self.assertEqual(ops.count("ensure_layout"), 1)
-        self.assertEqual(ops.count("focus"), 0)
-        self.assertIn("move", ops)
-        moves = [a for a in belt if a.get("op") == "move"]
-        self.assertEqual(len(moves), 1)
-        self.assertEqual(moves[0]["role"], "Grok")
-        self.assertFalse(any(a.get("op") in ("park", "bind", "focus") for a in belt))
+        self.assertEqual(ops, ["move"])
+        self.assertEqual(belt[0]["role"], "Grok")
+        self.assertFalse(
+            any(
+                a.get("op")
+                in ("park", "bind", "focus", "ensure_layout", "ensure_order")
+                for a in belt
+            )
+        )
 
         with_focus = belt_actions_from_plan(
             actions, {"Grok": 20}, include_focus=True
         )
         self.assertEqual(sum(1 for a in with_focus if a["op"] == "focus"), 2)
+        self.assertEqual(sum(1 for a in with_focus if a["op"] == "move"), 1)
+        self.assertFalse(any(a.get("op") == "ensure_layout" for a in with_focus))
 
         focus_only = focus_actions_from_plan(actions)
         self.assertEqual(len(focus_only), 2)

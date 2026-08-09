@@ -1,6 +1,6 @@
 # CT-cleanup — Strip patchwork; architecture holds the weight
 
-**Status:** ready — **P0 next** (operator 2026-08-08)  
+**Status:** code landed — close after CT3 green  
 **Plan:** [forge-layout-cold-topology.md](../plans/forge-layout-cold-topology.md)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Test host:** **X11** preferred (agent `./install` + Shell HUP). Wayland logout for extension-only when needed.  
@@ -32,40 +32,49 @@ Thrash mid-batch forbidden. Mode B = true chaos / explicit recover only.
 
 ---
 
-## Candidate removals / demotions (audit each)
+## Audit table (2026-08-08)
 
-| Area | Likely demote / delete | Keep if |
-| --- | --- | --- |
-| CLI belt structure re-ensure after residual | Happy-path topology rewrite after bind | Only wrong-mon rehome for just-opened, not full ensure invent |
-| Cold `postOpenRetry` / plan4 as success | Opt-in recover only (already partly true) | Explicit env / `--recover` |
-| Mid-flight focus before opens settle | Already stripped when opens; verify no residual paths reintroduce | — |
-| Extra final-focus reassert sleeps | One post-settle focus; drop double reassert if race owned | Minimal quiet if Meta requires |
-| Preserve lastTabFocus on every re-ensure | If re-ensure gone on happy path, preserve is less critical | Still OK as generic safety |
-| Mode B park on cold / just_opened | Report-only already; ensure no success path | Mid-session chaos |
-| Ensure-after-open-only topology rebuild | Skeleton owns empty desk | Mid-session structure repair without skeleton |
-| Timing “try again” sleeps | Papered construction races | Documented Meta settle only |
-| Docs/help Mode B as normal cold | One-shot language only | Recover docs separate |
-| Personal-layout framing in comments/tests | Abstract roles; desk only in optional live notes | — |
-
-**Keep always:** AC1–AC6 settle; Mode A collect; Mode B true thrash; `--safe`; idempotent settled re-run; fail-open PH; generic dock/LFT policy (not app-name branches).
+| Area | Verdict | Path / symbol | Notes |
+| --- | --- | --- | --- |
+| CLI belt structure re-ensure | **delete** (structure ops) | `layout_apply.belt_actions_from_plan`; `forge._layout_run_reconcile` belt block | Belt = pin-role **moves only**. Residual bind/order/size owns topology. D014 |
+| Cold `postOpenRetry` / plan4 | **demote** (keep opt-in) | `forge` ~`FORGE_LAYOUT_POST_OPEN_RETRY` | Already off default (CT1). No change. D009 |
+| Mid-flight focus before settle | **keep** stripped | `without_focus_actions` pre-open + residual | Final pass only. D015 |
+| Extra final-focus reassert | **delete** default | `_layout_final_focus_pass`; `FINAL_FOCUS_REASSERT_MS=0` | Opt-in `FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS`. D015 |
+| Preserve lastTabFocus on ensure | **keep** (generic) | `session-api.js` `_layoutOp` | Mid-session ensure still anchors first id. D016 |
+| Mode B park on cold / just_opened | **keep** suppressed | `layout_plan.plan_reconcile` `suppress_thrash_park` | Report-only cold; Mode B mid-session only |
+| Ensure-after-open topology rebuild | **keep** gated | `skip_window_structure` when `cold_empty` or layout PH | Skeleton/bind path; no invent on PH residual |
+| Timing try-again sleeps | **demote** | Quiet 400ms before focus kept as Meta settle | Second reassert sleep removed |
+| Docs/help Mode B as normal cold | **delete** framing | `cli_help.py`, `docs/user/layout.md` | Cold = one-shot spine; Mode B mid-session |
+| Personal-layout framing | **keep** abstract tests | belt unit uses role `Grok` only as pin name in abstract list | No product app branches |
+| Chrome-clear after residual | **keep** | LayoutBatch chrome-clear in finally | D010 — long residual phase |
+| Dock sticky / last tile | **keep** | open-app policy (D007/D013) | Generic; not desk-specific |
+| AC1–AC6 settle | **keep** | layout-controller sensor | Never reassert forest on mismatch |
+| `--safe` / fail-open PH | **keep** | plan + AC4 | Unchanged |
 
 ---
 
 ## Acceptance
 
-- [ ] Written audit table: each candidate → **keep / demote / delete** + path/symbol  
-- [ ] Dead cold success paths removed or gated behind explicit recover  
-- [ ] No new happy-path “plan twice / belt invent / multi-focus” without removing an old one  
-- [ ] Unit suite green; tests describe **policy**, not one profile’s apps  
-- [ ] `docs/user/layout.md` cold section = one-shot spine only  
-- [ ] DECISIONS / archive: what was removed and why  
-- [ ] HANDOFF + PRIORITY updated after ship  
-- [ ] Prefer X11 live smoke for any behavior change that needs Shell  
+- [x] Written audit table: each candidate → **keep / demote / delete** + path/symbol  
+- [x] Dead cold success paths removed or gated behind explicit recover  
+- [x] No new happy-path “plan twice / belt invent / multi-focus” without removing an old one  
+- [x] Unit suite green; tests describe **policy**, not one profile’s apps  
+- [x] `docs/user/layout.md` cold section = one-shot spine only  
+- [x] DECISIONS / archive: what was removed and why (D014–D016)  
+- [x] HANDOFF + PRIORITY updated after ship  
+- [x] Settled X11 re-run ok (CLI path live); **full cold CT3 still open**  
 
 ---
 
 ## Session note
 
-**2026-08-08:** Operator elevated cleanup to **P0** before more feature patches. Strong anti-patch doctrine in HANDOFF. Test on **X11**. Do not custom-code personal layouts.
+**2026-08-08 (cleanup implement):**
+
+- **Deleted weight:** belt `ensure_layout`/`ensure_order`; default final-focus reassert (250ms second pass).  
+- **Kept:** one quiet + one focus; pin-role belt moves; lastTabFocus preserve on `_layoutOp`; postOpenRetry env opt-in; Mode B mid-session; D010 chrome-clear.  
+- **Docs:** DECISIONS D011/D012 superseded → D014–D016; layout.md cold; cli_help Mode B tips; REGRESSIONS R001/R002; DESIGN open-then-place steps.  
+- **Tests:** `test_belt_actions_pin_moves_only_by_default`; CLI units **455 passed**.  
+- **Live:** X11 session; settled `forge layout dev` → ok (focus-only work). Full cold empty one-shot = **CT3**.  
+- **Close this task** when CT3 accepts one-shot cold without Mode B / belt invent.
 
 Created 2026-08-08; unparked as P0 same day.

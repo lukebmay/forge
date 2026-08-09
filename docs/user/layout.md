@@ -349,8 +349,15 @@ On a **cold empty** desk (no claimed role windows), one `forge layout <name>`:
 1. **Skeleton** — mon splits + tab/stack groups + slot-tagged placeholder tiles  
 2. **Open** missing roles (parallel under LayoutBatch)  
 3. **Bind** each mapped window into its skeleton slot  
-4. **Order / size / focus** once  
-5. Residuals (close by default) **after** bind  
+4. **Order / size** once; residual close/park after bind  
+5. **Focus** after settle (profile `active` / open leaf + keyboard `focus`)  
+6. **Verify once** — if a late map rewrote `lastTabFocus` (common with Chrome
+   PWAs), re-apply only the mismatched groups; not a blind double raise  
+
+No happy-path second structure pass, Mode B recover, or stacked focus reassert.
+Optional belt after residual only rehomes just-opened roles still on the wrong
+monitor (moves only). Chaos recover: mid-session Mode B, or env
+`FORGE_LAYOUT_POST_OPEN_RETRY=1`.
 
 Thrash detection may still print on stderr for info; it does **not** force Mode B
 park mid-open or mid-bind. Mode B remains for true mid-session chaos (scrambled

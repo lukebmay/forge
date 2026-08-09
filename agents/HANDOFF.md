@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-08 (P0 = patch cleanup; real fix unless temp requested; **X11**)  
+**Updated:** 2026-08-08 (**P0 = settle contract** SE0→; X11 agent live)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).
 
@@ -12,12 +12,13 @@
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | **Strip patchwork — architecture holds the weight** | [cleanup](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) |
-| → | CT3 X11 live smoke (agent can HUP + verify) | [CT3](./tasks/forge-layout-cold-topology_ct3-x11-live.md) |
-| → | CT2 Wayland cold smoke (operator logout when needed) | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
+| **P0** | **Settle contract** (hard Meta + soft expectations + verify) | [plan](./plans/forge-layout-settle-contract.md) |
+| → | CT3 X11 cold one-shot (after SE4+) | [CT3](./tasks/forge-layout-cold-topology_ct3-x11-live.md) |
+| → | Cleanup strip (close after CT3 + settle) | [cleanup](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) |
+| → | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
 | shellrc | gdisplays session/greeter (GS0+) | `~/dev/me/shellrc/agents/plans/gdisplays-session-greeter.md` |
 
-**Do not** start unrelated mid features (DnD polish, ignore-mode, etc.) until cleanup has removed dead/competing cold-path patches and the spine is documented as the only success path.
+**Do not** start unrelated mid features until settle contract + CT3 green.
 
 ---
 
@@ -78,7 +79,7 @@ These are from the same CT2 week — use them as anti-patterns in cleanup and de
 **Cold spine (CT0 lock — hold this):**
 
 ```text
-skeleton → open → bind to slots → order/size → focus once (post-settle) → residual
+skeleton → open → bind → order/size → focus once (post-settle) → residual
 ```
 
 Thrash mid-batch is **forbidden**. Multi-CLI “run layout again” is **not** the product fix. Internal multi-phase **within one command** is OK only if ordered as above.
@@ -102,7 +103,7 @@ See also: [REGRESSIONS.md](./REGRESSIONS.md) (guard the **spine**, not a museum 
 | Profiles | Data only — never special-case a host desk in product code |
 | X11 | Preferred agent live test (HUP); CT3 required |
 | Wayland | Daily driver; logout for extension loads |
-| Cleanup | **P0 now** — remove patch weight; architecture holds |
+| Cleanup strip | **Code landed 2026-08-08** — belt moves-only; one focus; postOpenRetry opt-in |
 
 ---
 
@@ -110,18 +111,19 @@ See also: [REGRESSIONS.md](./REGRESSIONS.md) (guard the **spine**, not a museum 
 
 Skeleton-first cold path: `ensure_skeleton` + `bind`; cold thrash report-only; postOpenRetry opt-in. Units landed with CT1.
 
-## Recent mitigations (candidates to **demote/delete** in cleanup)
+## Cleanup strip (landed — verify via CT3)
 
-These may have been necessary while the spine was incomplete. Cleanup audits each as **keep / demote / delete** — default is **delete if the phase model makes it redundant**.
+| Was | Now |
+| --- | --- |
+| Belt `ensure_layout` / `ensure_order` after residual | **Pin-role wrong-mon moves only** (`belt_actions_from_plan`) D014 |
+| Final focus + 250ms reassert | **Focus + verify-once** (re-apply only lastTabFocus/kbd mismatches) D017 |
+| postOpenRetry default | Still opt-in `FORGE_LAYOUT_POST_OPEN_RETRY=1` D009 |
+| lastTabFocus preserve on `_layoutOp` | **Keep** generic mid-session safety D016 |
+| Mode B cold | Still suppressed on cold/just_opened |
 
-| ID | Mitigation | Cleanup question |
-| --- | --- | --- |
-| D010 | Chrome-clear after residual | Keep if residual is long phase; don’t clear mid-bind |
-| D011 | Preserve lastTabFocus on re-ensure | Delete re-ensure on happy path → preserve may be unused |
-| D012 | Final focus + quiet + reassert | Keep **one** post-settle focus; drop extra reasserts if race owned |
-| D013 | Dock single-pending + last tile | Keep as **generic** policy; not desk-specific |
-| Belt structure after residual | Demote/delete if skeleton+bind already correct |
-| Cold Mode B / postOpenRetry | Explicit recover only, never default success |
+**Cold X11 residual (2026-08-08):** mon0 Chrome over Grok; mon1 wrong tab selected (content vs strip). Root: (1) chrome late meta-focus rewrites lastTabFocus after CLI focus; (2) tab-active CSS followed keyboard focus only, not open leaf. **D018:** `pinLayoutOpenLeaf` + restore on meta-focus steal; `_syncTabActiveFromLastTabFocus`; CLI focus stable poll (~2s). Install+HUP required for extension half.
+
+Audit table: [cleanup task](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md).
 
 ---
 
@@ -136,13 +138,15 @@ gsettings set org.gnome.shell.extensions.forge log-level 4
 
 Wayland: logout still required for extension code.
 
+CLI-only cleanup changes (Python `forge` / `layout_apply`) are live without HUP. Extension comment-only; no HUP required for cleanup strip.
+
 ---
 
 ## Operator after session switch
 
 1. `gdisplays --status` — if scale wrong: `gdisplays load default`  
 2. Confirm session is **X11** for agent live tests  
-3. Agent: **P0 cleanup** (audit + strip), then CT3 X11 smoke  
+3. Agent: **CT3 X11 cold smoke** (near-cold or cold desk → one `forge layout dev`)  
 
 ---
 

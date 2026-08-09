@@ -1,18 +1,22 @@
 # Plan: Settle learning (time-to-stable heuristics)
 
-**Status:** active  
-**Priority:** mid (post-RC fine; operator chose over more one-off Wayland WR patches)  
-**Branch:** `plan/forge-settle-learning`  
+**Status:** active — **implement via** [forge-layout-settle-contract.md](./forge-layout-settle-contract.md)  
+**Priority:** P0 (absorbed into settle contract)  
+**Branch:** `plan/forge-settle-learning` (historical); work on cold-topology / master  
 **Created:** 2026-08-06  
-**Related:** CL3 thrash catalog (`app-thrash-catalog.js`), CL4 open quiet (`layout-open.js`), control-loop verify  
+**Related:** settle-contract (P0), CL3 thrash catalog, CL4 open quiet, control-loop verify  
 
 ### Session note (overwrite)
 
+**2026-08-08:** **Superseded / absorbed by** [forge-layout-settle-contract.md](./forge-layout-settle-contract.md)
+(P0). Hard Meta ready + soft expectations (file-backed rolling heuristics) +
+post-settled verify; focus steal = thrash. SL1–SL2 geom samples remain building
+blocks (SE6 folds into same store). **SL3** Ghostty seed drop → settle-contract
+SE10 optional.
+
 **2026-08-06:** **SL1+SL2 done** (A/B AGREE both). Agent-side data collection
 ready: open + layout-batch settle samples, raise-only minQuiet, `forge thrash`
-dump. **SL3** (drop Ghostty seed) blocked on operator live samples. Topology
-residuals (Grok open leaf, giant tab) still open — use thrash dump to see if
-settle is the cause.
+dump.
 
 ---
 

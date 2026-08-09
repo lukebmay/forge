@@ -1,6 +1,6 @@
 # Plan: cold layout topology (one-shot, no Mode B patch-over)
 
-**Status:** active — **P0 = cleanup strip patchwork** (architecture holds); CT2/CT3 smoke on X11 preferred  
+**Status:** active — **P0 = CT3 X11 cold smoke** (cleanup strip code landed); CT2 Wayland when logout OK  
 **Priority:** P0 (daily driver cold `forge layout dev`)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Depends on:** apply-contract AC1–AC6 (done); thrash-zero Mode A/B (done, **not** the fix here)  
@@ -90,8 +90,8 @@ Open design choices (task 0 must lock):
 | **CT0** | [Design lock](./completed/forge-layout-cold-topology_ct0-design.md) | **done** (approved) |
 | **CT1** | [Skeleton-first implement](./completed/forge-layout-cold-topology_ct1-skeleton.md) | **done** (unit/code; A/B AGREE) |
 | **CT2** | [Wayland live one-shot](../tasks/forge-layout-cold-topology_ct2-wayland-live.md) | smoke when ready (operator) |
-| **CT3** | [X11 live one-shot](../tasks/forge-layout-cold-topology_ct3-x11-live.md) | ready — **prefer X11 for agent live** |
-| **cleanup** | [Strip patchwork](../tasks/forge-layout-cold-topology_cleanup-fallbacks.md) | **P0 next** — delete mitigations; spine only |
+| **CT3** | [X11 live one-shot](../tasks/forge-layout-cold-topology_ct3-x11-live.md) | **P0 next** — prove one-shot after cleanup |
+| **cleanup** | [Strip patchwork](../tasks/forge-layout-cold-topology_cleanup-fallbacks.md) | code landed (belt moves-only; one focus); close after CT3 |
 
 ---
 

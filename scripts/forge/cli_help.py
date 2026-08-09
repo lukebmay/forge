@@ -307,7 +307,12 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
 
     _out(s, heading("Thrash modes", **kw), " ", dim("(auto; stderr on dry-run/apply)", **kw))
     _out(s, "  ", bold("mode=A collect", **kw), "       desk sane: open gaps, move roles, tab marginals into views")
-    _out(s, "  ", bold("mode=B thrash-recover", **kw), " desk wrong: roles only; residuals close (or park with --keep-others)")
+    _out(
+        s,
+        "  ",
+        bold("mode=B thrash-recover", **kw),
+        " mid-session chaos only: roles only; residuals close (or park with --keep-others)",
+    )
     _out(s, "  ", bold("thrashState", **kw), "            one line when thrashed (score + reasons)")
     _out(s, "  ", bold("thrashRisk", **kw), "             plan risk when score > 0 (structure/moves)")
     _out(s, "  ", bold("--safe", **kw), "                 skips park/structure; still reports A/B detection")
@@ -331,7 +336,14 @@ def print_layout_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  • Match titles with ", cyan('title~="substr"', **kw), " when several windows share a class.")
     _out(s, "  • Counts: reused / opened / moved / kept / parked / closed.")
     _out(s, "  • Default closes non-layout windows; roles stay. --keep-others parks instead.")
-    _out(s, "  • Thrashed desk: default auto Mode B recover (prefer over refuse).")
+    _out(
+        s,
+        "  • Cold empty: one-shot skeleton→open→bind (not Mode B). Mode B = mid-session thrash only.",
+    )
+    _out(
+        s,
+        "  • Mid-session thrashed desk: auto Mode B recover (prefer over refuse).",
+    )
     _out(s, "  • Optional: ", cyan('"displays": "scene"', **kw), " -> gdisplays load; ", cyan('"settings": "name"', **kw), " -> SettingsLoad.")
     _out(
         s,

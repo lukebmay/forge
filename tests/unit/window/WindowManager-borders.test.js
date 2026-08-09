@@ -252,9 +252,12 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       global.display.get_focus_window.mockReturnValue(metaWindow);
 
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      monitor.layout = LAYOUT_TYPES.TABBED;
+      // TABBED CON (open leaf = lastTabFocus), not mon-root tab bag.
+      const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
+      con.layout = LAYOUT_TYPES.TABBED;
+      con.lastTabFocus = metaWindow;
 
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      const nodeWindow = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.TILE;
 
       const mockTab = {

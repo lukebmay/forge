@@ -15,6 +15,12 @@ set Status=`superseded` and add a new row (do not rewrite history silently).
 | D008 | 2026-08-08 | layout | P0 | active | Cold layout: skeleton (slot-tagged PHs) before bind; no Mode B mid-batch | Residual Mode B second pass is construction-order patch, not product fix |
 | D009 | 2026-08-08 | layout | P0 | active | CT1: ensure_skeleton+bind ops; thrash park suppressed on cold/just_opened | One CLI invocation; postOpenRetry opt-in only |
 | D010 | 2026-08-08 | layout | P1 | active | Apply chrome clears after residual place (not at LayoutBatch end) | Cold bind/structure is long visual phase; early clear dropped dim mid-thrash |
-| D011 | 2026-08-08 | layout | P0 | active | Belt post-open re-focuses; layout preserves valid lastTabFocus | ensure_layout anchors first id (chrome) and stomped active Grok |
-| D012 | 2026-08-08 | layout | P0 | active | Final focus after open settle (+ reassert); no mid-flight focus | Chrome/PWA late activate steals open leaf if Grok raised early |
+| D011 | 2026-08-08 | layout | P0 | superseded | Belt re-focus + preserve lastTabFocus on ensure | Superseded by D014 (belt no structure; keep preserve as generic) |
+| D012 | 2026-08-08 | layout | P0 | superseded | Final focus after settle + reassert | Superseded by D015 (one post-settle focus; reassert opt-in) |
 | D013 | 2026-08-08 | open-app | P0 | active | Empty LFT(m) → last tile on mon; single dock pending wins appId drift | mon-root 3rd HSPLIT covered tabs; dock miss fell to focus mon |
+| D014 | 2026-08-08 | layout | P0 | active | Post-open belt = pin-role wrong-mon moves only; no ensure_layout/order | Belt structure rewrite after bind stomped topology/open leaf; residual owns structure |
+| D015 | 2026-08-08 | layout | P0 | superseded | One post-settle focus; no reassert | Superseded by D017 — quiet alone does not own late chrome steal |
+| D016 | 2026-08-08 | layout | P0 | active | `_layoutOp` still preserves valid lastTabFocus on TABBED/STACKED re-affirm | Mid-session ensure_layout still anchors first id; generic safety not desk-specific |
+| D017 | 2026-08-08 | layout | P0 | superseded | Final focus + verify-once only | Superseded by D018 — verify alone lost to multi-second chrome activate |
+| D018 | 2026-08-08 | layout | P0 | active | Pin tab open leaf on focus; restore on meta-focus steal; tab-active=lastTabFocus; CLI stable poll | Cold: Chrome over Grok; tab chrome follows keyboard not open leaf |
+| D019 | 2026-08-08 | layout | P0 | active | Settle contract: hard Meta ready + soft expectations (file heuristics) + post-settled verify once; focus steal = thrash correct | Fixed ms reassert brittle; Meta has no settle ACK; plan forge-layout-settle-contract |
