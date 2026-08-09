@@ -50,11 +50,12 @@ Load plan/task files **on demand** for the current work only.
 | `agents/installed/security.md` | Security | Before SSH, secrets, sudo/root, credentials, or any important live-data mutation |
 | `agents/installed/secrets.md` | Secrets store notes | When handling project secret locations or agents/secrets.md finds |
 | `agents/installed/git.md` | Git | Before any commit, push, branch, merge, rebase, or release-ladder work |
-| `agents/installed/scripting.md` | Scripting | Writing or changing shell/Python scripts, installers, CLI tools, or bin entries |
+| `agents/installed/scripting.md` | Scripting | Writing or changing shell/Python scripts, installers, CLI tools, bin entries, or launching user-visible apps from a Grok agent |
 | `agents/installed/comments.md` | Comments | Adding or editing source comments |
 | `agents/installed/documentation.md` | Documentation | Writing design docs, DECISIONS, user docs, or choosing where “why” lives |
-| `agents/installed/testing.md` | Testing | Adding tests, changing test strategy, or enabling optional features for verification |
-| `agents/installed/ansi-colors.md` | ANSI colors | Adding terminal colors or formatting CLI output |
+| `agents/installed/testing.md` | Testing | Adding tests, changing test strategy, enabling optional features, or checking if Grok is in durable --leader mode |
+| `agents/testing.md` | Testing (user override) | Adding tests, changing test strategy, or enabling optional features for verification |
+| `agents/installed/ansi-colors.md` | ANSI colors | Adding terminal colors, formatting CLI output, or launching user-visible CLIs from a Grok agent |
 | `agents/installed/markdown.md` | Markdown | Writing or editing markdown docs, plans, tasks, or README prose |
 | `agents/installed/nvim.md` | Neovim | Editing nvim config, Lua plugins, or editor tooling in this stack |
 | `agents/installed/languages/bash.md` | Bash | Writing or reviewing Bash scripts |

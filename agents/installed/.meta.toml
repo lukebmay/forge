@@ -1,17 +1,17 @@
 schema = 1
 tool_version = "0.2.1"
-catalog_version = "0.3.0"
+catalog_version = "0.3.1"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-09T01:24:52+00:00"
+updated_at = "2026-08-09T19:16:03+00:00"
 
 [[files]]
 id = "ansi-colors"
 path = "ansi-colors.md"
-version = "2.0.0"
-sha256 = "bed435b621ecac8b5bf38abd40ef39b1fef6934bc5e03e950a231b69db14a4a0"
+version = "2.1.0"
+sha256 = "2d2f54a86bf18a051242fe6132427a7a3f98e0cab5f367f619ccc5daeb3ed076"
 title = "ANSI colors"
-read_when = "Adding terminal colors or formatting CLI output"
+read_when = "Adding terminal colors, formatting CLI output, or launching user-visible CLIs from a Grok agent"
 
 [[files]]
 id = "comments"
@@ -264,10 +264,10 @@ read_when = "Editing nvim config, Lua plugins, or editor tooling in this stack"
 [[files]]
 id = "scripting"
 path = "scripting.md"
-version = "2.0.0"
-sha256 = "57b16752953d6796088b2df8127a410be7a7e0a3f79ec4938cb6231bc17be683"
+version = "2.1.0"
+sha256 = "4ce2610ccda4ec82f2a7b47e39ab07febcde88dab8205d5c92017b37101b34c9"
 title = "Scripting"
-read_when = "Writing or changing shell/Python scripts, installers, CLI tools, or bin entries"
+read_when = "Writing or changing shell/Python scripts, installers, CLI tools, bin entries, or launching user-visible apps from a Grok agent"
 
 [[files]]
 id = "secrets"
@@ -288,7 +288,7 @@ read_when = "Before SSH, secrets, sudo/root, credentials, or any important live-
 [[files]]
 id = "testing"
 path = "testing.md"
-version = "2.0.0"
-sha256 = "7ca13d0adb3d8d4d474e046941977d3163070edcfcd1eede49163f9c1b92bff3"
+version = "2.1.0"
+sha256 = "60613d5eb847b0b97101c2464a57369762aebba4b555c7574ff7a21d9ebf5f70"
 title = "Testing"
-read_when = "Adding tests, changing test strategy, or enabling optional features for verification"
+read_when = "Adding tests, changing test strategy, enabling optional features, or checking if Grok is in durable --leader mode"

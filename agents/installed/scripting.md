@@ -1,6 +1,6 @@
 ---
 title: Scripting
-read_when: Writing or changing shell/Python scripts, installers, CLI tools, or bin entries
+read_when: Writing or changing shell/Python scripts, installers, CLI tools, bin entries, or launching user-visible apps from a Grok agent
 order: 40
 ---
 
@@ -52,6 +52,47 @@ Detect TTY on stdin+stdout.
 | Script/CI | **Refuse** unless `--force` (or equally explicit flag) |
 
 Never assume “yes” non-interactively for delete/overwrite/wipe/foreign-host apply.
+
+## User-facing launches from Grok (FIRM)
+
+Grok agent tools often run with a **monochrome sandbox**: `NO_COLOR=1`,
+`FORCE_COLOR=0`, `TERM=dumb`, plus tool-specific `*_NO_COLOR` / `CLICOLOR=0`.
+That is correct for machine-parsed tool output. It is **wrong** for anything the
+human will look at in a real terminal or desktop window.
+
+**Always** strip the agent sandbox when launching user-visible work, for example:
+
+- Desk/layout: `forge layout dev`, `forge layout <name>`, `forge launch …`
+- Terminals/editors/browsers opened for the user
+- Interactive CLIs the user will read (colored status, TUI apps)
+
+### Recipe
+
+Prefer the shellrc helper (on PATH after `shellrc` install):
+
+```bash
+user-env forge layout dev
+user-env ghostty -e zsh -lic 'cd ~/dev/me/forge && exec zsh'
+user-env -- npm run dev   # -- ends flags
+```
+
+If `user-env` is missing, equivalent minimal reset:
+
+```bash
+env -u NO_COLOR -u PIP_NO_COLOR -u NPM_CONFIG_COLOR \
+  -u CARGO_TERM_COLOR -u CLICOLOR -u CLICOLOR_FORCE \
+  TERM="${TERM/#dumb/xterm-256color}" \
+  FORCE_COLOR=1 CLICOLOR_FORCE=1 \
+  forge layout dev
+```
+
+| Keep | Drop / override |
+| --- | --- |
+| `PATH`, `DISPLAY`, `XDG_*`, credentials, project env | `NO_COLOR`, `FORCE_COLOR=0`, `CLICOLOR=0`, `TERM=dumb` |
+| `GROK_LEADER_SOCKET` (harmless for most apps) | Agent-only monochrome `*_NO_COLOR` / `*_COLOR=never` |
+
+Do **not** wrap pure agent/CI tool steps in `user-env` — keep monochrome there so
+logs stay parseable. Leader-mode detection: `testing.md`.
 
 ## Args
 
