@@ -61,7 +61,7 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | `layout-sensors.js` | Pure attribution: stack suppress **or** active command echo epoch vs TILE in-slot chrome-only (CL2/AC2). |
 | `layout-epoch.js` | Per-window command echo epochs + wave id (apply-contract AC2 residual). |
 | `layout-placeholder.js` | AC4 thrash/fail-open isolate: pure plan + tree stub placeholder leaf; float client, reserve slot, remove → one reflow. |
-| `layout-apply-chrome.js` | CL10 layout-apply dim scrim (~80%) + per-mon spinner/label (title ≈7.5% height) + hard ≤30s clear; clears after batch end (before residual). |
+| `layout-apply-chrome.js` | CL10 layout-apply dim scrim (~80%) + per-mon spinner/label (title ≈7.5% height) + hard ≤30s clear; clears after residual place (CLI finally). |
 | `command.js` `CommandHandler` | Turns a user action into tree mutations (extracted from window.js). |
 | `focus.js` `FocusManager` | Focus tracking + active-window signal lifecycle (extracted from window.js). |
 | `decoration.js` `DecorationManager` | Stacked/tabbed container decorations and their actor lifecycle (extracted from window.js). |
@@ -147,10 +147,11 @@ non-reactive full-stage ~80% black dim with a large white spinner +
 “Forge: Loading layout…” centered on each monitor (`layout-apply-chrome.js`;
 title ≈ **7.5%** of that monitor’s **stage** height as **visual** size —
 CSS px = stage×ratio / `scale_factor` so St does not double-scale HiDPI —
-detail half that). Cleared when opens settle and LayoutBatch ends — **before**
-residual place/structure (spinner need not cover rehome). CLI issues
-`LayoutBatch chrome-clear` after end (finally if still up); also `disable()` and
-a hard timer ≤ **30s**. Disable: Preferences → Settings → Debugging, or
+detail half that). Cleared after residual bind/place/structure (CLI
+`LayoutBatch chrome-clear` in finally after residual/belt; also on error).
+Batch end alone does not clear — cold residual is the long visual phase.
+Also `disable()` and a hard timer ≤ **30s**. Disable: Preferences → Settings →
+Debugging, or
 `gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled false`.
 
 ## Command dispatch flow

@@ -1,10 +1,11 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-08  
-**Lens:** `black` dual 4K Shell 46 — **Wayland and X11 daily drivers**  
-**No push** until human asks.
+**Updated:** 2026-08-09  
+**Lens:** `black` dual 4K Shell 46 — **X11 preferred for agent live test**; Wayland daily driver too  
+**Branch:** **`master`** default (side branches only for major refactors/features)  
+**Push:** only when human asks.
 
-**Active P0:** cold layout topology — **CT2 Wayland live** (CT1 code done)
+**Active:** P0 settle/cleanup closed; mid ignore mode **done**; next mid/optional below.
 
 ---
 
@@ -12,18 +13,23 @@
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [CT2 Wayland live](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) | **ready** (next; operator) |
-| P0 | [CT3 X11 live](./tasks/forge-layout-cold-topology_ct3-x11-live.md) | ready (required; parallel CT2) |
-| post | [cleanup cold fallbacks](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) | after CT2+CT3 green |
-| mid | Merge DnD plan branch | when ready |
-| mid | [window ignore mode](./tasks/forge-window-ignore-mode.md) | ready |
-| post | container motion, SL3, … | later |
+| mid | Merge DnD plan branch | `plan/forge-dnd-drop-zones` complete — merge when ready |
+| optional | [settle SE6](./plans/forge-layout-settle-contract.md) geom soft residual | after SE1 store; optional |
+| optional | [CT3 true empty](./tasks/forge-layout-cold-topology_ct3-x11-live.md) | near-cold + matrix already green |
+| human | [CT2 Wayland](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) | logout when needed |
+| done | [window ignore mode](./tasks/completed/forge-window-ignore-mode.md) | D020; units green |
+| done | settle SE0–SE5+SE7 | completed/ |
+| done | cleanup strip | completed/ under cold-topology |
+| mid | [settle-learning SL3](./plans/forge-settle-learning.md) | absorb into SE6+ |
+| post | container motion, … | later |
 
-**Done this session:** [CT1 skeleton](./plans/forge-layout-cold-topology/completed/forge-layout-cold-topology_ct1-skeleton.md) (unit/code A/B).
+**Handoff doctrine:** [HANDOFF.md](./HANDOFF.md) — spine over band-aids; no personal-layout code.
 
 **Cross-repo displays:** shellrc [gdisplays-session-greeter](../../shellrc/agents/plans/gdisplays-session-greeter.md) GS0–GS5.
 
 | Doc | Role |
 | --- | --- |
 | [HANDOFF.md](./HANDOFF.md) | Start here |
-| [plan cold-topology](./plans/forge-layout-cold-topology.md) | Architecture + CT0 lock + tasks |
+| [settle contract](./plans/forge-layout-settle-contract.md) | Hard/soft settle + focus thrash |
+| [cold topology](./plans/forge-layout-cold-topology.md) | Skeleton→bind spine |
+| [REGRESSIONS.md](./REGRESSIONS.md) | Guard spine with abstract tests |

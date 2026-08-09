@@ -108,6 +108,35 @@ describe("action-pipeline afterFocus", () => {
     afterFocus(wm(), node, { source: "normal" });
     expect(wm()._freezeRender).toBe(false);
   });
+
+  it("meta-focus steal restores pin and skips adopting stealer (D018/SE5)", () => {
+    const node = trackOne();
+    const order = [];
+    vi.spyOn(wm(), "restoreLayoutOpenLeafIfStolen").mockImplementation(() => {
+      order.push("restore");
+      return true;
+    });
+    vi.spyOn(wm(), "updateStackedFocus").mockImplementation(() => order.push("F"));
+    vi.spyOn(wm(), "updateTabbedFocus").mockImplementation(() => order.push("Ftab"));
+    vi.spyOn(wm(), "updateDecorationLayout").mockImplementation(() => order.push("D"));
+    vi.spyOn(wm(), "updateBorderLayout").mockImplementation(() => order.push("B"));
+    vi.spyOn(wm(), "movePointerWith").mockImplementation(() => order.push("P"));
+
+    afterFocus(wm(), node, { source: "meta-focus" });
+
+    expect(wm().restoreLayoutOpenLeafIfStolen).toHaveBeenCalledWith(node);
+    expect(order).toEqual(["restore", "B"]);
+    expect(wm().updateStackedFocus).not.toHaveBeenCalled();
+    expect(wm().movePointerWith).not.toHaveBeenCalled();
+  });
+
+  it("meta-focus without steal still runs full afterFocus", () => {
+    const node = trackOne();
+    vi.spyOn(wm(), "restoreLayoutOpenLeafIfStolen").mockReturnValue(false);
+    const stacked = vi.spyOn(wm(), "updateStackedFocus");
+    afterFocus(wm(), node, { source: "meta-focus" });
+    expect(stacked).toHaveBeenCalledWith(node);
+  });
 });
 
 describe("action-pipeline commitLayout / settleTabFocus", () => {

@@ -11,17 +11,31 @@
 
 Same one-shot cold layout on **X11** — also a daily driver (older machines + testing), not a second-class smoke.
 
+**More important than full cold-empty alone:** the **partial layout reload matrix**
+in [HANDOFF.md](../HANDOFF.md) (ghosttys only / left chrome+ghostty / right ghostty /
+left ghostty+nautilus). Those are the primary agent E2E bar.
+
 ---
 
 ## Acceptance
 
-- [ ] Same profile structure as CT2 on X11  
-- [ ] No Wayland-only assumptions in bind path  
-- [ ] Document any residual X11-only quirks  
-- [ ] Notes in plan session  
+- [x] Same profile structure as CT2 on X11 (dev: mon0 tab+ghostty / mon1 ghostty+tab)  
+- [x] No Wayland-only assumptions in bind path  
+- [x] Document any residual X11-only quirks  
+- [x] Notes in plan session  
+- [ ] Optional: true cold empty (all roles closed) re-smoke  
 
 ---
 
 ## Session note
 
-Created 2026-08-08. Operator: X11 is daily driver on older hosts; CT3 is required parity, not optional.
+**2026-08-09 (black X11, settle SE3–SE5):** Near-cold empty desk (only this Ghostty) →
+`forge layout dev --verbose` **ok**. Soft barrier first-ever `softTimeoutMs=6000`,
+`corrections=0`, `softSettled=true`, post-settled verify skipped (match). Live tree:
+mon0 `lastTabFocus`=Grok, mon1=YouTube, `focusWindowId`=ghostty (agent terminal kept).
+Heuristics written `~/.config/forge/config/settle-heuristics.json` (zero-residual trials).
+Second apply settled no-op ~0.1s. **Did not close agent Ghostty.** Pin residual now 15s (SE5).
+
+**2026-08-08 cold after reboot (black X11):** structure OK; mon0 Chrome over Grok (pre-D017).
+
+Created 2026-08-08.

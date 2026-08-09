@@ -643,11 +643,17 @@ enough when Ghostty (or Meta) **moves itself** after first tile, but whole-fores
 Meta-stable is **not** the product default (LF6 fingerprint was correct but
 jumpy). Reconcile apply when roles need open:
 
-1. Extension steps for **already-present** tiles only.
+1. Extension steps for **already-present** tiles only (cold empty: skeleton first).
 2. **Open all** missing apps (launch + pin windowIds); no residual Move mid-open.
 3. Map-pin wait per role (windowId identity); tree owns intended slots.
-4. Release-deferred → re-plan with `role_pins` → residual moves/layout/order/focus.
-5. Optional belt re-plan/move if just_opened still wrong mon.
+4. Release-deferred → re-plan with `role_pins` → residual bind/order/size (no mid-flight focus).
+5. Optional belt: pin-role wrong-mon **moves only** (no ensure_layout rewrite).
+6. Focus phase (D019): hard-ready → apply open leaves once → soft residual
+   barrier (learned quiet; steal = thrash correct) → post-settled verify once.
+   Heuristics: `~/.config/forge/config/settle-heuristics.json`.
+
+**Agent-facing contract (why + anti-patches + code map):**
+[agents/project.md](../agents/project.md) § Layout apply architecture.
 
 **Optional debug (LF6):** `--wait-tree-stable` or `FORGE_LAYOUT_WAIT_TREE_STABLE=1`
 runs `wait_for_tree_stable` (main + belt) so rehome waits until GetTree

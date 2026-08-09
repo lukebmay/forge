@@ -1,7 +1,7 @@
 # Plan: cold layout topology (one-shot, no Mode B patch-over)
 
-**Status:** active — CT1 code done; **CT2/CT3 live next**  
-**Priority:** P0 (daily driver cold `forge layout dev`)  
+**Status:** active — CT1+cleanup done; CT3 near-cold green; CT2 Wayland when logout OK  
+**Priority:** residual optional / human (true empty, Wayland)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Depends on:** apply-contract AC1–AC6 (done); thrash-zero Mode A/B (done, **not** the fix here)  
 **Related:** [forge-layout-apply-contract.md](./forge-layout-apply-contract.md), [forge-workon-thrash-zero](./forge-workon-thrash-zero/) (historical)
@@ -89,8 +89,9 @@ Open design choices (task 0 must lock):
 | --- | --- | --- |
 | **CT0** | [Design lock](./completed/forge-layout-cold-topology_ct0-design.md) | **done** (approved) |
 | **CT1** | [Skeleton-first implement](./completed/forge-layout-cold-topology_ct1-skeleton.md) | **done** (unit/code; A/B AGREE) |
-| **CT2** | [Wayland live one-shot](../tasks/forge-layout-cold-topology_ct2-wayland-live.md) | **ready** (next; operator live) |
-| **CT3** | [X11 live one-shot](../tasks/forge-layout-cold-topology_ct3-x11-live.md) | ready (after CT1; parallel CT2) |
+| **CT2** | [Wayland live one-shot](../tasks/forge-layout-cold-topology_ct2-wayland-live.md) | smoke when ready (operator) |
+| **CT3** | [X11 live one-shot](../tasks/forge-layout-cold-topology_ct3-x11-live.md) | **P0 next** — prove one-shot after cleanup |
+| **cleanup** | [Strip patchwork](../tasks/forge-layout-cold-topology_cleanup-fallbacks.md) | code landed (belt moves-only; one focus); close after CT3 |
 
 ---
 
@@ -251,8 +252,15 @@ Live CT2/CT3 remain operator one-shot checks (not unit).
 
 ## Session note
 
+**2026-08-08 (operator):** **P0 = cleanup** — strip stacked patches; architecture
+holds (HANDOFF doctrine). No personal-layout special cases. Prefer **X11** for
+agent live. [cleanup](../tasks/forge-layout-cold-topology_cleanup-fallbacks.md).
+
+**2026-08-08 (CT2 mitigations):** Final focus after settle (D012); lastTabFocus
+preserve (D011); chrome-clear after residual (D010). Cleanup must audit these
+as keep/demote/delete once spine owns happy path.
+
 **2026-08-08 (CT1 done):** Skeleton-first cold path landed (A/B AGREE after rework).
 Key: `ensure_skeleton` + `bind` RunSteps; cold thrash report-only; P5 residual after
 bind; postOpenRetry opt-in; Mode B mid-session unchanged. Units: 290 plan/apply +
 97 JS. Task → `completed/forge-layout-cold-topology_ct1-skeleton.md`.
-**Next:** CT2 Wayland live (this host) · CT3 X11 live. No cleanup until both green.

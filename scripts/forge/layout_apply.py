@@ -10,6 +10,12 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Optional
 
 from layout_plan import mon_index_from_slot
+from settle_heuristics import (
+    HARD_TIMEOUT_MS,
+    make_key,
+    soft_clamp_ms,
+    soft_timeout_for_key,
+)
 
 MODE_STEPS = "steps"
 MODE_RECONCILE = "reconcile"
@@ -590,12 +596,380 @@ def residual_follow_up(
     return steps, still
 
 
-# --- LF5: settle-before-move (pure predicates; CLI poll uses these) ---
+def belt_actions_from_plan(
+    actions: Any,
+    role_pins: Optional[dict[str, Any]] = None,
+    *,
+    include_focus: bool = False,
+) -> list[dict[str, Any]]:
+    """
+    Post-open belt: wrong-mon rehome for just-opened roles only.
+
+    Skeleton→bind residual owns structure/order/size. Belt must not re-run
+    ensure_layout / ensure_order (that rewrote topology after bind and stomped
+    lastTabFocus). include_focus is kept for tests/API; default False — focus is
+    a single post-settle pass, never mid-belt.
+    """
+    if not isinstance(actions, list):
+        return []
+    pins = role_pins if isinstance(role_pins, dict) else {}
+    pin_roles = {str(k) for k in pins.keys() if k is not None and str(k).strip()}
+    out: list[dict[str, Any]] = []
+    for a in actions:
+        if not isinstance(a, dict):
+            continue
+        op = str(a.get("op") or "").strip().lower()
+        if op == "move" and str(a.get("role") or "") in pin_roles:
+            out.append(a)
+        elif include_focus and op == "focus":
+            out.append(a)
+    return out
+
+
+def focus_actions_from_plan(actions: Any) -> list[dict[str, Any]]:
+    """Extract focus ops only (profile active + keyboard focus)."""
+    if not isinstance(actions, list):
+        return []
+    return [
+        a
+        for a in actions
+        if isinstance(a, dict) and str(a.get("op") or "").strip().lower() == "focus"
+    ]
+
+
+def without_focus_actions(actions: Any) -> list[dict[str, Any]]:
+    """Drop focus ops so structure/bind can run without raising open leaves early."""
+    if not isinstance(actions, list):
+        return []
+    return [
+        a
+        for a in actions
+        if isinstance(a, dict) and str(a.get("op") or "").strip().lower() != "focus"
+    ]
+
+
+def _focus_action_window_id(action: Any) -> Optional[str]:
+    """Parse id:N from a focus action selector; None if missing."""
+    if not isinstance(action, dict):
+        return None
+    sel = action.get("selector")
+    if sel is None:
+        return None
+    s = str(sel).strip()
+    if not s.startswith("id:"):
+        return None
+    wid = s[3:].strip()
+    return wid if wid else None
+
+
+def parent_last_tab_focus_by_window_id(forest: Any) -> dict[str, str]:
+    """
+    Map each WINDOW id under a TABBED/STACKED CON → that CON's lastTabFocusId.
+
+    Used to verify open-leaf after focus (late chrome activate steals lastTabFocus).
+    Missing lastTabFocusId → empty string for children of that group.
+    """
+    out: dict[str, str] = {}
+
+    def walk(n: Any) -> None:
+        if not isinstance(n, dict):
+            return
+        kids = n.get("children") if n.get("children") is not None else n.get("childNodes")
+        if not isinstance(kids, list):
+            kids = []
+        layout = str(n.get("layout") or "").strip().upper()
+        if layout in ("TABBED", "STACKED"):
+            ltf = n.get("lastTabFocusId")
+            ltf_s = (
+                str(ltf).strip() if ltf is not None and str(ltf).strip() != "" else ""
+            )
+            for c in kids:
+                if not isinstance(c, dict):
+                    continue
+                ntype = str(c.get("nodeType") or c.get("type") or "").strip().upper()
+                if ntype and ntype != "WINDOW":
+                    continue
+                wid = c.get("windowId")
+                if wid is None or str(wid).strip() == "":
+                    continue
+                out[str(wid)] = ltf_s
+        for c in kids:
+            walk(c)
+
+    if isinstance(forest, dict):
+        mons = forest.get("monitors")
+        if isinstance(mons, list):
+            for m in mons:
+                walk(m)
+        else:
+            walk(forest)
+    elif isinstance(forest, list):
+        for m in forest:
+            walk(m)
+    return out
+
+
+def focus_actions_still_needed(
+    forest: Any,
+    focus_actions: Any,
+) -> list[dict[str, Any]]:
+    """
+    Subset of focus actions that did not stick on the live forest.
+
+    - reason active|survivor: parent TABBED/STACKED lastTabFocusId must equal
+      the action window id (open leaf).
+    - reason profile: forest focusWindowId must equal the action window id.
+    - unknown reason: treat as needed (safe).
+
+    Cold chrome/PWA often activates after the first focus pass and rewrites
+    lastTabFocus; this is the verify barrier (one conditional re-apply), not a
+    blind second raise.
+    """
+    if not isinstance(focus_actions, list) or not focus_actions:
+        return []
+    parent_ltf = parent_last_tab_focus_by_window_id(forest)
+    kbd = ""
+    if isinstance(forest, dict):
+        fw = forest.get("focusWindowId")
+        if fw is None and isinstance(forest.get("meta"), dict):
+            fw = forest["meta"].get("focusWindowId")
+        if fw is not None and str(fw).strip() != "":
+            kbd = str(fw).strip()
+
+    needed: list[dict[str, Any]] = []
+    for a in focus_actions:
+        if not isinstance(a, dict):
+            continue
+        wid = _focus_action_window_id(a)
+        if wid is None:
+            needed.append(a)
+            continue
+        reason = str(a.get("reason") or "").strip().lower()
+        if reason in ("active", "survivor"):
+            live = parent_ltf.get(wid)
+            if live is None:
+                # Window not under a tab/stack group in export — still raise.
+                needed.append(a)
+            elif live != wid:
+                needed.append(a)
+        elif reason == "profile":
+            if kbd != wid:
+                needed.append(a)
+        else:
+            needed.append(a)
+    return needed
+
+
+# Quiet after structure before final active-leaf focus (chrome/PWA late activate).
+FINAL_FOCUS_QUIET_MS = 400
+# Soft focus barrier poll (SE3); soft timeout comes from settle heuristics.
+SOFT_FOCUS_POLL_MS = 100
+# Wall mult on soft_timeout so steal-reset loops cannot run forever.
+# Keep SOFT_FOCUS_WALL_CAP_MS in sync with lib/extension/layout-open-leaf-pin.js.
+SOFT_FOCUS_WALL_MULT = 3
+SOFT_FOCUS_WALL_CAP_MS = 15000
+# Opt-in always-on second full focus: FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS=<ms>.
+FINAL_FOCUS_REASSERT_MS = 0
+
+
+def resolve_focus_soft_timeout_ms(
+    store: Any,
+    *,
+    host: Any,
+    wm_classes: Any = None,
+    process_kind: str = "focus-phase",
+) -> int:
+    """
+    Soft focus timeout from heuristics: max across wm_classes, or unknown class.
+
+    Never uses personal role names — host + class + process + residual only.
+    """
+    classes: list[str] = []
+    if isinstance(wm_classes, (list, tuple, set)):
+        for c in wm_classes:
+            s = str(c).strip() if c is not None else ""
+            if s:
+                classes.append(s)
+    elif wm_classes is not None and str(wm_classes).strip():
+        classes.append(str(wm_classes).strip())
+    if not classes:
+        classes = ["unknown"]
+    return max(
+        soft_timeout_for_key(
+            store,
+            make_key(host, c, process_kind, "focus"),
+            residual_kind="focus",
+        )
+        for c in classes
+    )
+
+
+def soft_focus_wall_ms(soft_timeout_ms: int) -> int:
+    """Overall wall for soft barrier (quiet resets must not loop forever)."""
+    try:
+        st = max(0, int(soft_timeout_ms))
+    except (TypeError, ValueError):
+        st = 0
+    raw = max(st * SOFT_FOCUS_WALL_MULT, soft_clamp_ms("focus"))
+    return int(min(SOFT_FOCUS_WALL_CAP_MS, max(st, raw)))
+
+
+def run_soft_focus_barrier(
+    check_needed: Callable[[], Any],
+    apply_correct: Callable[[Any], Any],
+    *,
+    soft_timeout_ms: int,
+    poll_ms: int = SOFT_FOCUS_POLL_MS,
+    max_wall_ms: Optional[int] = None,
+    max_corrections: int = 32,
+    call_started_mono: Optional[float] = None,
+    sleep_fn: Optional[Callable[[float], None]] = None,
+    monotonic_fn: Optional[Callable[[], float]] = None,
+) -> dict[str, Any]:
+    """
+    Soft expectation barrier after focus apply (SE3 / D019).
+
+    Call clock: from focus-apply (call_started_mono). Quiet window =
+    soft_timeout_ms after last act (apply or correct). Focus steal → correct
+    immediately, record residual latency from last act, reset quiet. No residual
+    for soft_timeout → soft-settled. Wall cap stops infinite steal thrash.
+    Pure of DBus — inject check_needed / apply_correct / sleep / mono.
+    """
+    sleep = sleep_fn if sleep_fn is not None else time.sleep
+    mono = monotonic_fn if monotonic_fn is not None else time.monotonic
+    try:
+        soft_ms = max(0, int(soft_timeout_ms))
+    except (TypeError, ValueError):
+        soft_ms = 0
+    wall_ms = (
+        max(0, int(max_wall_ms))
+        if max_wall_ms is not None
+        else soft_focus_wall_ms(soft_ms)
+    )
+    poll_s = max(0, int(poll_ms)) / 1000.0
+    t0 = float(call_started_mono) if call_started_mono is not None else mono()
+    last_act = t0
+    wall_deadline = t0 + wall_ms / 1000.0
+    residuals: list[dict[str, Any]] = []
+    corrections = 0
+    polls = 0
+    last_needed: list[Any] = []
+    last_correct_err: Optional[str] = None
+
+    while True:
+        now = mono()
+        elapsed_ms = int(max(0.0, (now - t0) * 1000))
+        quiet_elapsed_ms = int(max(0.0, (now - last_act) * 1000))
+
+        try:
+            needed_raw = check_needed()
+            last_correct_err = None
+        except Exception as e:
+            last_correct_err = str(e)
+            needed_raw = None
+
+        polls += 1
+        if isinstance(needed_raw, list):
+            needed = needed_raw
+        elif needed_raw:
+            needed = [needed_raw]
+        else:
+            needed = []
+        last_needed = needed
+
+        if needed:
+            # Focus thrash: residual latency from last act; correct + reset quiet.
+            latency_ms = int(max(0.0, (now - last_act) * 1000))
+            residuals.append(
+                {
+                    "latencyMs": latency_ms,
+                    "neededCount": len(needed),
+                    "elapsedFromCallMs": elapsed_ms,
+                }
+            )
+            if corrections >= max_corrections:
+                return {
+                    "ok": False,
+                    "softSettled": False,
+                    "clean": False,
+                    "corrections": corrections,
+                    "residuals": residuals,
+                    "polls": polls,
+                    "elapsed_ms": elapsed_ms,
+                    "softTimeoutMs": soft_ms,
+                    "wallMs": wall_ms,
+                    "error": f"soft focus: max corrections ({max_corrections})",
+                    "pendingCount": len(needed),
+                }
+            try:
+                apply_correct(needed)
+                last_correct_err = None
+            except Exception as e:
+                last_correct_err = str(e)
+                return {
+                    "ok": False,
+                    "softSettled": False,
+                    "clean": False,
+                    "corrections": corrections,
+                    "residuals": residuals,
+                    "polls": polls,
+                    "elapsed_ms": int(max(0.0, (mono() - t0) * 1000)),
+                    "softTimeoutMs": soft_ms,
+                    "wallMs": wall_ms,
+                    "error": f"soft focus correct failed: {e}",
+                    "pendingCount": len(needed),
+                }
+            corrections += 1
+            last_act = mono()
+            # Continue immediately to re-check after correct.
+            continue
+
+        # Clean: soft-settled when quiet held for soft_timeout.
+        if quiet_elapsed_ms >= soft_ms:
+            return {
+                "ok": True,
+                "softSettled": True,
+                "clean": True,
+                "corrections": corrections,
+                "residuals": residuals,
+                "polls": polls,
+                "elapsed_ms": elapsed_ms,
+                "softTimeoutMs": soft_ms,
+                "wallMs": wall_ms,
+                "error": None,
+                "pendingCount": 0,
+            }
+
+        if now > wall_deadline:
+            return {
+                "ok": False,
+                "softSettled": False,
+                "clean": True,  # last check was clean but quiet not held long enough
+                "corrections": corrections,
+                "residuals": residuals,
+                "polls": polls,
+                "elapsed_ms": elapsed_ms,
+                "softTimeoutMs": soft_ms,
+                "wallMs": wall_ms,
+                "error": last_correct_err
+                or f"soft focus wall timeout after {wall_ms}ms",
+                "pendingCount": 0,
+                "timedOut": True,
+            }
+
+        if poll_s > 0:
+            sleep(poll_s)
+
+
+# --- LF5 / SE2: hard-ready (TILE+rect+mon) before act; call-clock timeout ---
 
 # GetTree WINDOW.mode after processFloats first pass. FLOAT = not yet tiled.
 SETTLED_MODES = frozenset({"TILE", "tile"})
 # Mid-drag is rare for layout open; treat as settled enough to Move.
 SETTLED_MODES_LOOSE = frozenset({"TILE", "tile", "GRAB_TILE", "grab_tile"})
+
+# Poll interval while waiting for hard Meta signals (map/TILE/rect/mon).
+HARD_READY_POLL_MS = 120
 
 
 def _rect_is_reasonable(rect: Any) -> bool:
@@ -678,6 +1052,135 @@ def find_settled_window(
         if window_is_settled(w, require_tile=require_tile):
             return w
     return None
+
+
+def hard_ready_status(
+    windows: Any,
+    window_ids: Any,
+    *,
+    require_tile: bool = True,
+) -> dict[str, Any]:
+    """
+    Pure classification: which of window_ids are hard-ready (window_is_settled).
+
+    Hard expectations (D019): windowId present, TILE (default), sane rect, mon≥0.
+    """
+    ids = [
+        str(x).strip()
+        for x in (window_ids or [])
+        if x is not None and str(x).strip() != ""
+    ]
+    # Preserve order; unique
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for i in ids:
+        if i not in seen:
+            seen.add(i)
+            ordered.append(i)
+    settled: list[str] = []
+    pending: list[str] = []
+    for wid in ordered:
+        if find_settled_window(windows, window_id=wid, require_tile=require_tile):
+            settled.append(wid)
+        else:
+            pending.append(wid)
+    return {
+        "ok": len(pending) == 0,
+        "settled": settled,
+        "pending": pending,
+    }
+
+
+def wait_until_hard_ready(
+    load_windows: Callable[[], Any],
+    window_ids: Any,
+    *,
+    timeout_ms: int = HARD_TIMEOUT_MS,
+    poll_ms: int = HARD_READY_POLL_MS,
+    require_tile: bool = True,
+    call_started_mono: Optional[float] = None,
+    sleep_fn: Optional[Callable[[float], None]] = None,
+    monotonic_fn: Optional[Callable[[], float]] = None,
+) -> dict[str, Any]:
+    """
+    Poll load_windows until all window_ids are hard-ready or hard timeout.
+
+    Call clock: elapsed_ms from call_started_mono if given, else first entry.
+    Pure of DBus — inject load_windows (+ sleep/monotonic for tests).
+    Default timeout HARD_TIMEOUT_MS (5s, D019).
+    """
+    sleep = sleep_fn if sleep_fn is not None else time.sleep
+    mono = monotonic_fn if monotonic_fn is not None else time.monotonic
+    ids = [
+        str(x).strip()
+        for x in (window_ids or [])
+        if x is not None and str(x).strip() != ""
+    ]
+    t0 = float(call_started_mono) if call_started_mono is not None else mono()
+    if not ids:
+        return {
+            "ok": True,
+            "settled": [],
+            "pending": [],
+            "polls": 0,
+            "elapsed_ms": int(max(0.0, (mono() - t0) * 1000)),
+            "hardTimeoutMs": int(timeout_ms),
+            "error": None,
+        }
+
+    deadline = t0 + max(0, int(timeout_ms)) / 1000.0
+    poll_s = max(0, int(poll_ms)) / 1000.0
+    polls = 0
+    last_status: dict[str, Any] = {
+        "ok": False,
+        "settled": [],
+        "pending": list(ids),
+    }
+    last_err: Optional[str] = None
+
+    while True:
+        try:
+            windows = load_windows()
+            last_status = hard_ready_status(
+                windows, ids, require_tile=require_tile
+            )
+            last_err = None
+        except Exception as e:
+            last_err = str(e)
+            last_status = {
+                "ok": False,
+                "settled": list(last_status.get("settled") or []),
+                "pending": list(ids),
+            }
+        polls += 1
+        elapsed_ms = int(max(0.0, (mono() - t0) * 1000))
+        if last_status.get("ok"):
+            return {
+                "ok": True,
+                "settled": list(last_status.get("settled") or []),
+                "pending": [],
+                "polls": polls,
+                "elapsed_ms": elapsed_ms,
+                "hardTimeoutMs": int(timeout_ms),
+                "error": None,
+            }
+        if mono() > deadline:
+            break
+        if poll_s > 0:
+            sleep(poll_s)
+
+    elapsed_ms = int(max(0.0, (mono() - t0) * 1000))
+    pending = list(last_status.get("pending") or ids)
+    return {
+        "ok": False,
+        "settled": list(last_status.get("settled") or []),
+        "pending": pending,
+        "polls": polls,
+        "elapsed_ms": elapsed_ms,
+        "hardTimeoutMs": int(timeout_ms),
+        "error": last_err
+        or f"hard-ready timeout after {timeout_ms}ms (pending {pending})",
+    }
 
 
 def move_step_window_ids(steps: Any) -> list[str]:

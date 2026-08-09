@@ -29,8 +29,8 @@
           },
           "mode": {
             "type": "string",
-            "enum": ["float", "tile"],
-            "description": "float = window will not be tiled (stays floating), tile = force window to tile even if it would normally float"
+            "enum": ["float", "tile", "ignore"],
+            "description": "float = not tiled but still tracked; tile = force into tiling; ignore = Forge never manages (no tree node, no decorations, no session layout)"
           }
         },
         "additionalProperties": false

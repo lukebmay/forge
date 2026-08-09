@@ -16,28 +16,47 @@ if str(_FORGE_CLI) not in sys.path:
 
 from layout_apply import (  # noqa: E402
     GHOSTTY_MULTI_INSTANCE_FLAG,
+    HARD_TIMEOUT_MS,
     MODE_RECONCILE,
     MODE_STEPS,
     actions_to_extension_steps,
     assign_open_role_pins,
+    belt_actions_from_plan,
     detect_layout_mode,
+    focus_actions_from_plan,
+    focus_actions_still_needed,
     find_settled_window,
     forest_stability_fingerprint,
     ghostty_multi_instance_argv,
+    hard_ready_status,
     is_ghostty_launch_target,
     layout_wait_tree_stable_enabled,
     move_step_window_ids,
     open_action_to_launch_fields,
+    parent_last_tab_focus_by_window_id,
     partition_plan_actions,
     residual_follow_up,
+    resolve_focus_soft_timeout_ms,
     rewrite_ghostty_launch_app,
+    run_soft_focus_barrier,
     slot_to_monitor_path,
     slot_to_tree_path,
+    soft_focus_wall_ms,
     wait_for_open_role_pins,
     wait_for_tree_stable,
+    wait_until_hard_ready,
     window_has_map_id,
     window_is_settled,
     window_tile_selector,
+    without_focus_actions,
+)
+from settle_heuristics import (  # noqa: E402
+    empty_store,
+    get_or_create_entry,
+    learning_trial_soft_cap_ms,
+    make_key,
+    record_trial,
+    soft_floor_ms,
 )
 from layout_plan import plan_reconcile  # noqa: E402
 
@@ -350,6 +369,165 @@ class TestActionMapping(unittest.TestCase):
         self.assertEqual(len(opens), 1)
         self.assertEqual(opens[0]["role"], "a")
 
+    def test_focus_actions_still_needed_open_leaf_mismatch(self):
+        """Late chrome steal: lastTabFocus ≠ active role → verify re-apply."""
+        forest = {
+            "focusWindowId": 99,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 10,  # chrome visible/stolen
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 10,
+                                    "wmClass": "a",
+                                    "title": "a",
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 20,
+                                    "wmClass": "b",
+                                    "title": "b",
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 30,  # already correct
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 30,
+                                    "wmClass": "c",
+                                    "title": "c",
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 31,
+                                    "wmClass": "d",
+                                    "title": "d",
+                                },
+                            ],
+                        },
+                    ],
+                }
+            ],
+        }
+        by_wid = parent_last_tab_focus_by_window_id(forest)
+        self.assertEqual(by_wid["10"], "10")
+        self.assertEqual(by_wid["20"], "10")
+        self.assertEqual(by_wid["30"], "30")
+
+        actions = [
+            {
+                "op": "focus",
+                "selector": "id:20",
+                "role": "b",
+                "reason": "active",
+            },
+            {
+                "op": "focus",
+                "selector": "id:30",
+                "role": "c",
+                "reason": "active",
+            },
+            {
+                "op": "focus",
+                "selector": "id:99",
+                "role": "term",
+                "reason": "profile",
+            },
+        ]
+        needed = focus_actions_still_needed(forest, actions)
+        roles = [a["role"] for a in needed]
+        self.assertEqual(roles, ["b"])  # only stolen open leaf
+
+        # Profile kbd mismatch
+        forest_bad_kbd = dict(forest)
+        forest_bad_kbd["focusWindowId"] = 10
+        needed2 = focus_actions_still_needed(forest_bad_kbd, actions)
+        self.assertEqual([a["role"] for a in needed2], ["b", "term"])
+
+        # All match → empty
+        forest_ok = {
+            "focusWindowId": 99,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 20,
+                            "children": [
+                                {"nodeType": "WINDOW", "windowId": 10},
+                                {"nodeType": "WINDOW", "windowId": 20},
+                            ],
+                        },
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": 30,
+                            "children": [
+                                {"nodeType": "WINDOW", "windowId": 30},
+                                {"nodeType": "WINDOW", "windowId": 31},
+                            ],
+                        },
+                    ],
+                }
+            ],
+        }
+        self.assertEqual(focus_actions_still_needed(forest_ok, actions), [])
+
+    def test_belt_actions_pin_moves_only_by_default(self):
+        """Belt is wrong-mon rehome for pins only; no structure rewrite or focus."""
+        actions = [
+            {
+                "op": "ensure_layout",
+                "slot": "mon0.s0",
+                "mode": "tabbed",
+                "windowIds": [10, 20],
+            },
+            {"op": "ensure_order", "slot": "mon0", "mode": "hsplit", "windowIds": [1, 2]},
+            {"op": "move", "role": "Grok", "windowId": 20, "slot": "mon0.s0"},
+            {"op": "move", "role": "other", "windowId": 99, "slot": "mon1.x"},
+            {"op": "focus", "selector": "id:20", "role": "Grok", "reason": "active"},
+            {"op": "focus", "selector": "id:1", "role": "ghostty", "reason": "profile"},
+            {"op": "park", "windowId": 5, "slot": "mon1"},
+            {"op": "bind", "windowId": 20, "layoutRole": "Grok"},
+        ]
+        belt = belt_actions_from_plan(actions, {"Grok": 20})
+        ops = [a["op"] for a in belt]
+        self.assertEqual(ops, ["move"])
+        self.assertEqual(belt[0]["role"], "Grok")
+        self.assertFalse(
+            any(
+                a.get("op")
+                in ("park", "bind", "focus", "ensure_layout", "ensure_order")
+                for a in belt
+            )
+        )
+
+        with_focus = belt_actions_from_plan(
+            actions, {"Grok": 20}, include_focus=True
+        )
+        self.assertEqual(sum(1 for a in with_focus if a["op"] == "focus"), 2)
+        self.assertEqual(sum(1 for a in with_focus if a["op"] == "move"), 1)
+        self.assertFalse(any(a.get("op") == "ensure_layout" for a in with_focus))
+
+        focus_only = focus_actions_from_plan(actions)
+        self.assertEqual(len(focus_only), 2)
+        stripped = without_focus_actions(actions)
+        self.assertFalse(any(a.get("op") == "focus" for a in stripped))
+        self.assertEqual(len(stripped), len(actions) - 2)
+
     def test_residual_follow_up_moves_despite_residual_open(self):
         """LF3: residual open (chrome lag) must not drop mon-fix moves."""
         residual_ext = [
@@ -533,6 +711,256 @@ class TestWindowSettledLf5(unittest.TestCase):
             {"op": "park", "tile": "id:99", "dest": "id:1"},
         ]
         self.assertEqual(move_step_window_ids(steps), ["501", "99"])
+
+
+class TestHardReadySe2(unittest.TestCase):
+    """SE2: hard-ready barrier (call clock → TILE/rect/mon; 5s)."""
+
+    def test_hard_timeout_locked(self):
+        self.assertEqual(HARD_TIMEOUT_MS, 5000)
+
+    def test_hard_ready_status_partial(self):
+        wins = [
+            {"windowId": 1, "mode": "FLOAT"},
+            {
+                "windowId": 2,
+                "mode": "TILE",
+                "rect": {"width": 100, "height": 100},
+                "monitor": 0,
+            },
+        ]
+        st = hard_ready_status(wins, ["1", "2", "2"])
+        self.assertFalse(st["ok"])
+        self.assertEqual(st["settled"], ["2"])
+        self.assertEqual(st["pending"], ["1"])
+
+    def test_hard_ready_status_all_ok(self):
+        wins = [
+            {"windowId": "a", "mode": "TILE", "rect": {"width": 1, "height": 1}},
+            {"windowId": "b", "mode": "TILE"},
+        ]
+        st = hard_ready_status(wins, ["a", "b"])
+        self.assertTrue(st["ok"])
+        self.assertEqual(st["pending"], [])
+
+    def test_wait_until_hard_ready_empty_ids(self):
+        out = wait_until_hard_ready(lambda: [], [], timeout_ms=100)
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["polls"], 0)
+
+    def test_wait_until_hard_ready_polls_until_tile(self):
+        state = {"n": 0}
+        windows_seq = [
+            [{"windowId": 9, "mode": "FLOAT"}],
+            [{"windowId": 9, "mode": "FLOAT"}],
+            [
+                {
+                    "windowId": 9,
+                    "mode": "TILE",
+                    "rect": {"width": 10, "height": 10},
+                    "monitor": 0,
+                }
+            ],
+        ]
+
+        def load():
+            i = min(state["n"], len(windows_seq) - 1)
+            state["n"] += 1
+            return windows_seq[i]
+
+        sleeps: list[float] = []
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            sleeps.append(s)
+            clock["t"] += s
+
+        out = wait_until_hard_ready(
+            load,
+            ["9"],
+            timeout_ms=HARD_TIMEOUT_MS,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["settled"], ["9"])
+        self.assertGreaterEqual(out["polls"], 3)
+        self.assertEqual(out["hardTimeoutMs"], HARD_TIMEOUT_MS)
+        self.assertTrue(sleeps)  # waited between polls
+
+    def test_wait_until_hard_ready_timeout(self):
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += max(s, 0.05)
+
+        out = wait_until_hard_ready(
+            lambda: [{"windowId": 1, "mode": "FLOAT"}],
+            ["1"],
+            timeout_ms=200,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+        )
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["pending"], ["1"])
+        self.assertIn("hard-ready timeout", out["error"] or "")
+        self.assertGreaterEqual(out["elapsed_ms"], 200)
+
+    def test_call_clock_from_call_started(self):
+        """Elapsed is from call_started_mono, not only poll loop entry."""
+        clock = {"t": 1.5}  # 1500ms after call at t=0
+
+        def mono():
+            return clock["t"]
+
+        out = wait_until_hard_ready(
+            lambda: [
+                {
+                    "windowId": 3,
+                    "mode": "TILE",
+                    "rect": {"width": 1, "height": 1},
+                }
+            ],
+            ["3"],
+            timeout_ms=HARD_TIMEOUT_MS,
+            poll_ms=0,
+            call_started_mono=0.0,
+            sleep_fn=lambda _s: None,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertGreaterEqual(out["elapsed_ms"], 1500)
+
+
+class TestSoftFocusBarrierSe3(unittest.TestCase):
+    """SE3: soft focus residual barrier (steal → correct + reset quiet)."""
+
+    def test_resolve_timeout_first_ever(self):
+        t = resolve_focus_soft_timeout_ms(empty_store(), host="black")
+        self.assertEqual(t, learning_trial_soft_cap_ms("focus"))
+
+    def test_resolve_timeout_uses_max_across_classes(self):
+        store = empty_store()
+        key = make_key("black", "google-chrome", "focus-phase", "focus")
+        ent = get_or_create_entry(
+            store,
+            key,
+            host="black",
+            wm_class="google-chrome",
+            process_kind="focus-phase",
+            residual_kind="focus",
+        )
+        record_trial(ent, had_residual=True, latency_ms=800)
+        t = resolve_focus_soft_timeout_ms(
+            store, host="black", wm_classes=["google-chrome", "ghostty"]
+        )
+        # chrome learned 800*1.25=1000; ghostty first-ever 6000 → max 6000
+        self.assertEqual(t, learning_trial_soft_cap_ms("focus"))
+        t_chrome = resolve_focus_soft_timeout_ms(
+            store, host="black", wm_classes=["google-chrome"]
+        )
+        self.assertEqual(t_chrome, int(800 * 1.25))
+
+    def test_wall_ms_clamped(self):
+        self.assertEqual(soft_focus_wall_ms(400), 3000)  # clamp focus 3s wins over 1.2s
+        self.assertLessEqual(soft_focus_wall_ms(10_000), 15000)
+
+    def test_soft_settle_no_residual(self):
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += s
+
+        out = run_soft_focus_barrier(
+            lambda: [],
+            lambda _n: None,
+            soft_timeout_ms=150,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertTrue(out["softSettled"])
+        self.assertEqual(out["corrections"], 0)
+        self.assertEqual(out["residuals"], [])
+        self.assertGreaterEqual(out["elapsed_ms"], 150)
+
+    def test_steal_corrects_and_resets_quiet(self):
+        clock = {"t": 0.0}
+        phase = {"n": 0}
+        corrects: list[int] = []
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += s
+
+        def check():
+            # steal on first poll after start; clean after one correct
+            phase["n"] += 1
+            if phase["n"] == 1:
+                return [{"op": "focus", "selector": "id:1"}]
+            return []
+
+        def correct(needed):
+            corrects.append(len(needed))
+
+        out = run_soft_focus_barrier(
+            check,
+            correct,
+            soft_timeout_ms=100,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+            max_wall_ms=5000,
+        )
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["corrections"], 1)
+        self.assertEqual(len(out["residuals"]), 1)
+        self.assertEqual(corrects, [1])
+
+    def test_max_corrections_stops_loop(self):
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += 0.01
+
+        out = run_soft_focus_barrier(
+            lambda: [{"op": "focus"}],
+            lambda _n: None,
+            soft_timeout_ms=500,
+            poll_ms=10,
+            max_corrections=3,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+            max_wall_ms=10_000,
+        )
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["corrections"], 3)
+        self.assertIn("max corrections", out["error"] or "")
+
+    def test_soft_floor_known(self):
+        self.assertEqual(soft_floor_ms("focus"), 400)
 
 
 class TestForestStabilityLf6(unittest.TestCase):

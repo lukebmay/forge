@@ -146,10 +146,10 @@ after blank/wake. Disabling the extension removes all overlay actors.
 ## Layout apply chrome (multi-open dim)
 
 ~80% black full-screen dim with a spinner and “Forge: Loading layout…” while
-`forge layout` multi-open maps windows. **On by default**. Chrome is non-reactive
-and clears when the open batch ends (before residual place), on extension
-disable, or a hard timer ≤ **30s** — it must never stick and leave the session
-unusable.
+`forge layout` multi-open maps windows and residual bind/place runs. **On by
+default**. Chrome is non-reactive and clears after residual place finishes, on
+extension disable, or a hard timer ≤ **30s** — it must never stick and leave the
+session unusable.
 
 ```bash
 # disable if the dim is annoying:

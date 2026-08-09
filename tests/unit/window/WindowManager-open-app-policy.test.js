@@ -437,6 +437,55 @@ describe("OP1 open-app placement policy", () => {
       expect(wm().detectDockLaunchMonitor(metaWindow)).toBe(-1);
     });
 
+    it("dock mon0 with empty LFT mon ring attaches after last mon0 tile (not mon-root)", () => {
+      // After layout: mon0 has tab|ghostty structure but mon LFT never touched
+      // (focus stayed on mon1). mon-root would add a 3rd HSPLIT sibling covering
+      // the left tab group; end-of-tree last tile is correct.
+      const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+      const tabCon = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.CON, {});
+      tabCon.layout = LAYOUT_TYPES.TABBED;
+      const chrome = createWindowNode(ctx.tree, tabCon, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "chrome-tab",
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          rect: { x: 0, y: 0, width: 900, height: 1000 },
+        },
+      });
+      const ghost = createWindowNode(ctx.tree, mon0, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "ghost-mon0",
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          rect: { x: 900, y: 0, width: 900, height: 1000 },
+        },
+      });
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      // Focus mon1 only — mon0 LFT ring empty.
+      const right = tileOn(1, { id: "focus-right" });
+      wm().movePointerWith(right.nodeWindow);
+      expect(wm().lftMru.monHead(0)).toBeNull();
+      expect(wm().lftMru.globalHead()).toBe(right.nodeWindow);
+      global.display.get_focus_window.mockReturnValue(right.metaWindow);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        id: "dock-nautilus-left",
+      });
+      metaWindow._forgeDockMonitor = 0;
+      wm().trackWindow(null, metaWindow);
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(0);
+      // After last mon0 tile (ghost), not mon-root third sibling of [tab, ghost].
+      expect(node.parentNode).toBe(ghost.nodeWindow.parentNode);
+      expect(node.parentNode).not.toBe(mon0);
+      expect(metaWindow._forgeDockStickyMon).toBe(0);
+      void chrome;
+    });
+
     it("OP2: second dock Ghostty on mon1 tiles without drag", () => {
       // mon0 already has Ghostty (global LFT); dock open on mon1 must home mon1.
       const mon0Term = tileOn(0, {
