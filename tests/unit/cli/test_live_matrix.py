@@ -129,8 +129,11 @@ class TestSessionAndAgent(unittest.TestCase):
         )
         self.assertEqual(cap.session, "x11")
         self.assertTrue(cap.can_hup)
+        self.assertFalse(cap.can_nested)
+        self.assertTrue(cap.can_retest)
         self.assertTrue(cap.can_true_cold)
         self.assertEqual(cap.agent_terminal, "guake")
+        self.assertTrue(any("HUP" in n for n in cap.notes))
 
     def test_capability_true_cold_blocked_ghostty(self):
         forest = _load("tree-perfect.json")
@@ -141,6 +144,24 @@ class TestSessionAndAgent(unittest.TestCase):
         self.assertEqual(cap.agent_terminal, "ghostty")
         self.assertFalse(cap.can_true_cold)
         self.assertTrue(cap.can_hup)
+        self.assertFalse(cap.can_nested)
+
+    def test_capability_wayland_nested_note(self):
+        forest = _add_guake(_load("tree-perfect.json"))
+        # No host Wayland socket in this env → can_nested false; still wayland session.
+        cap = capability_from_forest(
+            forest,
+            env={
+                "XDG_SESSION_TYPE": "wayland",
+                "WAYLAND_DISPLAY": "wayland-missing-for-unit",
+                "XDG_RUNTIME_DIR": "/tmp/forge-no-wl-runtime",
+            },
+        )
+        self.assertEqual(cap.session, "wayland")
+        self.assertFalse(cap.can_hup)
+        self.assertFalse(cap.can_nested)
+        self.assertFalse(cap.can_retest)
+        self.assertTrue(any("nested" in n.lower() for n in cap.notes))
 
 
 class TestSelect(unittest.TestCase):

@@ -37,7 +37,7 @@ Guards open-leaf steal (R005/R006), mon claim (R001 class), dual ghostty reuse.
    `LIVE_CASES` entry in `scripts/forge/live_matrix.py` tagged with that **R0xx**.  
 2. **Do not** only “note in HANDOFF” without a test.  
 3. Prefer pure helpers (`lft-mru.js`, `layout_apply.py`) so tests stay fast.  
-4. Wayland install needs **logout** for extension half; CLI path is live immediately.  
+4. Wayland host Shell cannot HUP — reload extension via **`forge nested restart`** (AT-W1); dual-mon host CT may still need one logout if host never loaded tip. CLI path is live immediately.  
 5. Layout sign-off: **`forge test live plan/run`** with behaviors for the change —
    not the full catalog every time. Full auto only for release / large layout refactors.  
 6. Select: `forge test live plan --tags R0xx` or `--from-work open-leaf|cold|…`.

@@ -267,7 +267,7 @@ class keys only** (no titles, URLs, or personal role names).
 4. **No new cold-path pass** without removing an obsolete one (or documenting why it stays).  
 5. **Temporary** only if the operator **explicitly** asks for temp/stopgap.  
 6. Unit-test pure helpers; **sign off layout** with the **partial reload matrix** below—not unit tests alone.  
-7. Prefer **X11** for agent live tests (`./install` + HUP); Wayland needs logout for extension loads.
+7. Prefer **X11** for agent live tests (`./install` + HUP). Wayland: reload via **`forge nested restart`** (not logout for retests); dual-mon CT still host desk.
 
 ### Code map (entry points)
 

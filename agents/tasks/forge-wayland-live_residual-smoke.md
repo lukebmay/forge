@@ -16,7 +16,7 @@ Confirm Forge is daily-driver safe on **Wayland** after control-loop CL8–CL11 
 - [x] `move()` dest mon + 4px epsilon + alive guard
 - [x] Rival GNOME Shell tilers disabled on install/enable
 - [x] Unit tests green (2160)
-- [x] Debug install + logging on (X11 HUP); **Wayland needs logout**
+- [x] Debug install + logging on (X11 HUP); **Wayland: `forge nested restart`** (AT-W1)
 
 ## Operator steps
 

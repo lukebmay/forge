@@ -63,7 +63,7 @@ forge test live run --from-work <hint>    # only selected cases
 | **Not always full suite** | `plan` without filters is max-for-capability, not mandatory run |
 | **Regression → catalog + unit** | Live R0xx → `LIVE_CASES` tag; pure test when possible |
 | **Capability** | True cold needs Guake/float agent; X11 for HUP loops |
-| **Wayland retest** | Deferred nested Shell (AT-W1); not every session |
+| **Wayland retest** | Host Wayland: `forge nested restart` (AT-W1) — **not** logout for JS reload. Dual-mon live still host desk. X11: HUP; `forge nested` exits 2. Probe: `can_nested` / `can_retest` |
 | **CLI jobs** | Mutating `forge` runs as durable jobs — closing the agent TTY does **not** abort apply. True cold still needs non-tile agent **window** placement. Job runner units: `tests/unit/cli/test_job_runner.py` |
 | **L1 setup** | `close-mon0/1-chrome` by tree mon; `ensure-nautilus` / `ensure-dev-shape` real (AT2). Units: `tests/unit/cli/test_live_matrix.py` |
 | **Focus live** | `--from-work close` / `unfocus` → `L1.close-focus-lft` / `L1.unfocus`; RunSteps `unfocus` (FC3) |

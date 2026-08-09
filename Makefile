@@ -201,6 +201,11 @@ log: horizontal-line
 journal:
 	journalctl -b 0 -r --since "1 hour ago"
 
+# Nested Wayland GNOME Shell for repeated retests (no host logout).
+# Preferred: durable private bus + restartable nest via forge CLI (AT-W1).
+#   make nested-start   / nested-stop / nested-restart / nested-status
+# Legacy foreground (blocks; dbus-run-session; no forge enable):
+#   make test-nested
 test-nested: horizontal-line
 	env GNOME_SHELL_SLOWDOWN_FACTOR=2 \
 		MUTTER_DEBUG_DUMMY_MODE_SPECS=1500x1000 \
@@ -209,18 +214,33 @@ test-nested: horizontal-line
 		WAYLAND_DISPLAY=wayland-forge \
 		dbus-run-session -- gnome-shell --nested --wayland --wayland-display=wayland-forge
 
+nested-start:
+	./scripts/forge/forge nested start --replace $(NESTED_FLAGS)
+
+nested-stop:
+	./scripts/forge/forge nested stop --force
+
+nested-restart:
+	./scripts/forge/forge nested restart $(NESTED_FLAGS)
+
+nested-status:
+	./scripts/forge/forge nested status
+
 # Usage:
+#   make nested-start
 #   make test-open &
 #   make test-open CMD=gnome-text-editor
 #   make test-open CMD=gnome-terminal ARGS='--app-id app.x'
-#   make test-open CMD=gnome-gnome-www-browser
 #   make test-open CMD=firefox ARGS='--safe-mode' ENVVARS='MOZ_DBUS_REMOTE=1 MOZ_ENABLE_WAYLAND=1'
+#   eval $$(./scripts/forge/forge nested env --export) && forge ping
 #
 test-open: CMD=gnome-text-editor
 test-open:
-	GDK_BACKEND=wayland WAYLAND_DISPLAY=wayland-forge $(ENVVARS) $(CMD) $(ARGS)&
+	@eval $$(./scripts/forge/forge nested env --export 2>/dev/null) && \
+		GDK_BACKEND=wayland $(ENVVARS) $(CMD) $(ARGS) & \
+	|| (echo "make test-open: nested session not running; try: make nested-start" >&2; exit 1)
 
-# When developing locally
+# When developing locally (legacy: foreground nest after install)
 test: disable uninstall clean build debug install enable test-nested
 
 # X-Window testing need gnome-shell restart

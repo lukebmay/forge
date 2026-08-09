@@ -18,13 +18,24 @@ make dev           # compile schemas + install to ~/.local/share/gnome-shell/ext
 make prod          # like dev, then enable + restart shell
 ```
 
-Apply changes: on X11, `Alt+F2` → `r` → Enter; on Wayland, log out/in — or use a
-nested session that needs no restart:
+Apply changes: on X11, `Alt+F2` → `r` → Enter (or `killall -HUP gnome-shell`); on
+Wayland, log out/in — or use a **nested** Shell that you can restart without
+logging out of the host session:
 
 ```bash
-make test          # build + launch a nested Wayland GNOME Shell (no restart needed)
-make test-x        # build + restart gnome-shell (X11)
-make log           # tail Forge's logs
+# Preferred (durable bus + Forge enable; restartable) — host must be Wayland
+make nested-start          # or: forge nested start
+eval $(forge nested env --export)
+forge ping
+make nested-restart        # reload extension JS after rebuild/install
+make nested-stop
+forge nested doctor        # can_nested? (exits 2 on X11 with HUP guidance)
+
+# On X11: do not use nested — killall -HUP gnome-shell / make test-x
+# Legacy foreground nest (blocks the terminal; no private state dir)
+make test                  # build + install + foreground nested Shell
+make test-x                # build + restart gnome-shell (X11)
+make log                   # tail Forge's logs
 ```
 
 ## Tests

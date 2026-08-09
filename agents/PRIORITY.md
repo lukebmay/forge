@@ -5,7 +5,7 @@
 **Branch:** **`master`** default (side branches only for major refactors/features)  
 **Push:** only when human asks.
 
-**Active:** Settle-contract **SE0–SE10 shipped** (SE9 last). Next: AT-W1 / human CT2 / shellrc durable Grok.
+**Active:** Settle-contract **SE0–SE10 shipped**. Nested Wayland harness **AT-W1 shipped**. Next: human CT2 (optional nest) / shellrc durable Grok.
 
 ---
 
@@ -15,9 +15,9 @@
 | --- | --- | --- |
 | done | [CLI attachable jobs](./plans/forge-cli-jobs.md) | **Shipped** CJ1–CJ6 (D021) |
 | **P0 use** | [AI live test matrix](./plans/forge-ai-live-test-matrix.md) | **AT0–AT2 + FC3 cases** — layout/focus sign-off |
-| later | [AT-W1 nested Wayland](./plans/forge-ai-live-test-matrix.md) | optional — only before Wayland CT |
+| done | [AT-W1 nested Wayland](./plans/forge-ai-live-test-matrix.md) | **Shipped** `forge nested`; dual-mon CT still human |
 | later (shellrc **P0**) | Durable Grok (GH0 leader spike first) | **shellrc** — not forge: `…/grok-reattachable-headless_gh0-leader-spike.md` |
-| human | CT2 Wayland cold smoke | logout when needed |
+| human | CT2 Wayland cold smoke | logout and/or `forge nested` |
 | done | SE9 reset-heuristics + schema invalidate; SE6/SE10; FC3; AT2; CJ1–CJ6; SE0–SE8b; R007 | completed/ |
 
 **Handoff doctrine:** [HANDOFF.md](./HANDOFF.md) — spine over band-aids; no personal-layout code.

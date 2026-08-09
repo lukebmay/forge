@@ -41,6 +41,7 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
         ("keybind", "Backup/apply keybind kits (vim|safe|i3; no DBus)"),
         ("ping", "Extension health"),
         ("test live", "AI live matrix (probe/plan/run by behaviors)"),
+        ("nested", "Nested Wayland Shell for retests without host logout"),
         ("jobs", "List/attach/cancel durable CLI jobs (layout/install survive TTY death)"),
         ("save-session-layout", "Flush last-good topology before install/HUP"),
         ("install / uninstall", "Reinstall from git tree / remove extension"),

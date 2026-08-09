@@ -63,7 +63,16 @@ python3 tests/meta-probe/probe_driver.py cleanup
 
 Closing *all* session windows is optional, not required.
 
-## After Wayland restart (first time)
+## After Wayland extension reload
+
+Prefer nested retest (no host logout) when only meta-probe / Forge JS must reload:
+
+```bash
+forge nested restart          # or: forge nested start  (first time this login)
+# host dual-mon / real apps still use the host session after tip is loaded
+```
+
+If host Shell never loaded the tip (first install this boot), log out once, then:
 
 ```bash
 # already linked by install-probe.sh

@@ -252,6 +252,8 @@ class Capability:
     agent_mode: Optional[str] = None  # TILE | FLOAT | …
     agent_wm_class: Optional[str] = None
     can_hup: bool = False
+    can_nested: bool = False  # host Wayland → forge nested for JS reload
+    can_retest: bool = False  # can_hup or can_nested
     can_true_cold: bool = False
     can_partial: bool = True
     extension_ok: bool = False
@@ -268,6 +270,8 @@ class Capability:
             "agentMode": self.agent_mode,
             "agentWmClass": self.agent_wm_class,
             "canHup": self.can_hup,
+            "canNested": self.can_nested,
+            "canRetest": self.can_retest,
             "canTrueCold": self.can_true_cold,
             "canPartial": self.can_partial,
             "extensionOk": self.extension_ok,
@@ -537,8 +541,32 @@ def capability_from_forest(
         notes.append("true cold blocked: agent terminal not guake/float")
 
     can_hup = session == "x11"
+    # Nested Wayland retest (AT-W1): prefer forge nested over logout on Wayland.
+    can_nested = False
     if session == "wayland":
-        notes.append("Wayland: no HUP reload; extension retest needs logout or nested Shell")
+        try:
+            from nested_wayland import can_nested_on_host
+
+            can_nested = bool(can_nested_on_host(env if env is not None else None))
+        except Exception:
+            can_nested = False
+        if can_nested:
+            notes.append(
+                "Wayland: no HUP — reload extension via "
+                "`forge nested restart` (not logout). Dual-mon live still host desk."
+            )
+        else:
+            notes.append(
+                "Wayland: no HUP; nested unavailable — "
+                "`forge nested doctor` or logout once after install"
+            )
+    elif session == "x11":
+        notes.append(
+            "X11: reload via HUP (`killall -HUP gnome-shell`). "
+            "`forge nested` refuses here (exit 2) — nest is Wayland-host only."
+        )
+
+    can_retest = bool(can_hup or can_nested)
 
     ext_ok = False
     ext_ver = None
@@ -559,6 +587,8 @@ def capability_from_forest(
         agent_mode=agent_mode,
         agent_wm_class=agent_cls,
         can_hup=can_hup,
+        can_nested=can_nested,
+        can_retest=can_retest,
         can_true_cold=can_true_cold,
         can_partial=True,
         extension_ok=ext_ok if ping is not None else True,
@@ -984,6 +1014,8 @@ def format_probe_text(cap: Capability) -> str:
         f"agent_mode:       {cap.agent_mode or '—'}",
         f"agent_wm_class:   {cap.agent_wm_class or '—'}",
         f"can_hup:          {cap.can_hup}",
+        f"can_nested:       {cap.can_nested}",
+        f"can_retest:       {cap.can_retest}",
         f"can_true_cold:    {cap.can_true_cold}",
         f"can_partial:      {cap.can_partial}",
         f"extension_ok:     {cap.extension_ok}",

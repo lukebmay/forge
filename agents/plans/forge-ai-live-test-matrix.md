@@ -25,8 +25,8 @@
 4. **Do not run the whole matrix by default.** Select by what the current work
    can change (`--from-work`, `--behaviors`, `--tags`).
 5. **Capability gates** refuse unsafe suites (e.g. true cold with tiled Ghostty agent).
-6. **Wayland nested Shell** is a **later** task (AT-W1), only when we resume
-   Wayland testing — not blocking X11 agent loop.
+6. **Wayland nested Shell** (AT-W1 **shipped**): `forge nested restart` for
+   extension retest on Wayland host; not blocking X11 agent loop (HUP there).
 
 ### Pyramid (how layers fit)
 
@@ -124,13 +124,17 @@ Implementation:
 
 ## Capability matrix
 
-| Session | Agent | HUP retest | True cold |
-| --- | --- | --- | --- |
-| X11 + Ghostty (tile) | keep Ghostty | yes | **no** |
-| X11 + Guake (float) | keep Guake | yes | **yes** |
-| Wayland + either | — | **no** | once/login |
+| Session | Agent | HUP retest | Nested retest | True cold |
+| --- | --- | --- | --- | --- |
+| X11 + Ghostty (tile) | keep Ghostty | yes (`can_hup`) | **no** (`forge nested` exit 2) | **no** |
+| X11 + Guake (float) | keep Guake | yes | no | **yes** |
+| Wayland + either | — | **no** | **yes** (`can_nested` → `forge nested restart`) | host once/login if tip never loaded |
 
+Probe fields: `can_hup`, `can_nested`, `can_retest` (= hup ∨ nested).  
 Probe prefers **Guake FLOAT** as agent even if keyboard focus is Chrome (mid-test).
+
+**Wayland dual-mon live** still runs on the **host** desk. Nest is for extension JS
+reload (single virtual monitor), not a dual-mon CT substitute.
 
 ---
 
@@ -146,13 +150,37 @@ Add cases when filing REGRESSIONS rows.
 
 ---
 
-## Wayland retest (deferred — AT-W1)
+## Wayland retest (AT-W1 — harness shipped)
 
-Do **not** block X11 work. When we next need Wayland live:
+Do **not** block X11 work. Nested retest path (no host logout):
 
-1. **AT-W1** nested Mutter/Wayland spike (restart nested Shell only).
-2. If that fails → next-login job queue (report files), not chat-across-reboot fantasy.
-3. Plain zsh subshell **never** reloads extension JS.
+```bash
+# From a host Wayland session (nested shell appears as a window):
+forge nested start                  # private bus + nest + enable Forge
+eval $(forge nested env --export)   # point forge/apps at nest
+forge ping                          # must talk to nested Forge
+# … install/rebuild host tree, then:
+forge nested restart                # reload extension JS (no logout)
+forge nested stop
+# Make helpers: make nested-start | nested-restart | nested-stop | nested-status
+```
+
+| Piece | Path |
+| --- | --- |
+| Module | `scripts/forge/nested_wayland.py` |
+| CLI | `forge nested start\|stop\|restart\|status\|env\|exec\|enable-forge\|logs\|wait` |
+| Units | `tests/unit/cli/test_nested_wayland.py` |
+| Make | `nested-start` / `nested-restart` / `nested-stop` / `nested-status` |
+| State | `~/.local/state/forge/nested/<name>/` (`FORGE_NESTED_ROOT`) |
+
+**Proven (2026-08-09):** start → Forge DBus ready → `forge ping` ok → restart → stop on
+host Wayland. Independent of shellrc (generic twin: shellrc `nested-gnome`).
+
+Still optional for day-to-day X11 matrix. Use before Wayland CT / logout-heavy retests.
+
+1. **AT-W1** nested Mutter/Wayland harness — **shipped** (above).
+2. **AT-W2** if nest insufficient for dual-mon CT → next-login job queue (report files).
+3. Plain zsh subshell **never** reloads extension JS (use `forge nested restart`).
 
 ---
 
@@ -164,8 +192,8 @@ Do **not** block X11 work. When we next need Wayland live:
 | **AT1** | `forge test live run` L1/L2 execute path | **done** (v1 harness) |
 | **AT2** | Tighten L1 setups (close mon0/mon1 only; nautilus ensure) | **done** |
 | **AT3** | Agent rule: regression → catalog case (REGRESSIONS + testing.md) | **done** |
-| **AT-W1** | Nested Wayland Shell retest spike | **optional / later** (before next Wayland CT) |
-| **AT-W2** | Next-login queue if AT-W1 fails | optional |
+| **AT-W1** | Nested Wayland Shell retest harness | **done** (spike + CLI; dual-mon CT still human) |
+| **AT-W2** | Next-login queue if nest insufficient for full CT | optional |
 
 ### AT2 setup precision (shipped)
 

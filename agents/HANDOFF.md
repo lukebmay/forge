@@ -1,8 +1,8 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**SE9** + SE6/SE10; AT2 + FC3 already shipped)  
+**Updated:** 2026-08-09 (**AT-W1** nested Wayland; SE9 + SE6/SE10; AT2 + FC3)  
 **Branch:** **`master`** (default). Plan/task branches only for major refactors/features.  
-**Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).  
+**Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland daily driver; **nested retest** via `forge nested` (no host logout).  
 **Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP.  
 **Jobs (shipped):** Mutating `forge` commands are **durable by default** (attach). Closing agent TTY mid-layout does **not** abort apply. `--detach` / `--foreground` / `FORGE_JOB=0`. `forge jobs` list|status|attach|cancel|log. True cold still cares about agent *window* placement (tile vs Guake/float), not apply process survival.  
 **Live setup (AT2):** `close-mon0/1-chrome` by tree mon; `ensure-nautilus` / `ensure-dev-shape` / `ensure-some-tiles` real.  
@@ -31,7 +31,7 @@ forge test live plan --tags R008              # regression-linked cases
 | Select by **behaviors** / **R0xx** / work hint | Do **not** run full matrix every time |
 | New live regression | REGRESSIONS + unit if pure + `LIVE_CASES` R id |
 | True cold | Requires Guake (or float agent); probe `can_true_cold` |
-| Wayland nested retest | Deferred AT-W1 — only before next Wayland CT |
+| Wayland nested retest | **AT-W1 shipped** — `forge nested start\|restart\|stop` |
 
 ### Architecture fix status (honest)
 
@@ -55,7 +55,8 @@ forge test live plan --tags R008              # regression-linked cases
 
 **Bottom line:** Open-leaf architecture (R007) holds. Focus-on-close + unfocus Esc
 shipped. **CLI jobs** make mutators TTY-safe. **AI live matrix** remains the
-preferred layout sign-off path (`forge test live`, L0 first).
+preferred layout sign-off path (`forge test live`, L0 first). **AT-W1** nested
+Wayland lets agents reload extension JS without host logout (`forge nested`).
 
 ---
 
@@ -63,10 +64,9 @@ preferred layout sign-off path (`forge test live`, L0 first).
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| later | Nested Wayland retest spike | AT-W1 — only before next Wayland CT |
 | later (shellrc **P0**) | Durable Grok (leader spike first) | `~/dev/me/shellrc/agents/tasks/grok-reattachable-headless_gh0-leader-spike.md` — not forge work |
-| human | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
-| done | **SE9** reset-heuristics + schema invalidate; **SE6**/**SE10**; **FC3**; **AT2**; CLI jobs; SE0–SE8b; R007 | — |
+| human | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) — host logout and/or `forge nested` |
+| done | **AT-W1** nested Wayland harness (`forge nested`); **SE9**; **SE6**/**SE10**; **FC3**; **AT2**; CLI jobs; SE0–SE8b; R007 | — |
 
 ### Session ship (2026-08-09) — cold-continue
 
@@ -81,11 +81,31 @@ preferred layout sign-off path (`forge test live`, L0 first).
 | **FC0–FC1** | close→focus restore; live close→LFT smoke |
 | **R007** | Open-leaf focus path; soft final focus; pins |
 | **AI live matrix** | `forge test live` AT0–AT2 + close/unfocus cases |
+| **AT-W1** | `forge nested` durable nest + Forge enable; live ping green; shellrc `nested-gnome` twin |
 
 | Not shipped | Detail |
 | --- | --- |
-| AT-W1 | nested Wayland deferred |
+| AT-W2 | next-login queue if nest insufficient for full dual-mon CT |
 | Residual hard-ready warn | cold open still logs “targets not hard-ready (moving anyway)” — structure race noise |
+
+### Nested Wayland (AT-W1) — agent retest without logout
+
+**Name:** `forge nested` (short; help says nested **Wayland** GNOME Shell). Not
+`nested-wayland` — length for little gain. On **X11** → exit **2** with HUP
+guidance (`forge nested doctor`). Dual-mon CT still = **host** desk.
+
+```bash
+forge nested doctor                # can_nested / refuse reason
+forge nested start                 # window on host; private bus + Forge
+eval $(forge nested env --export)  # forge/apps → nest
+forge ping
+# after ./install (or code change):
+forge nested restart               # reload extension JS
+forge nested stop
+# make nested-start | nested-restart | nested-stop | nested-status
+```
+
+Independent of shellrc. Generic twin: shellrc `nested-gnome` (same idea: short name, Wayland host required).
 
 ### Session ship (2026-08-09) — SE9
 
@@ -163,7 +183,7 @@ These are from the same CT2 week — use them as anti-patterns in cleanup and de
 2. Fix that phase’s contract so the failure class cannot recur.
 3. Delete or demote every pass/sleep/re-ensure that only existed for that failure class.
 4. Prove with abstract unit forests (roles a/b/c), not only one host profile.
-5. Live smoke on X11 (agent HUP) first; Wayland logout when extension-only.
+5. Live smoke on X11 (agent HUP) first; Wayland extension retest via `forge nested restart`.
 6. Temporary only if operator explicitly requested temporary.
 ```
 
@@ -193,7 +213,7 @@ See also: [REGRESSIONS.md](./REGRESSIONS.md) (guard the **spine**, not a museum 
 | Focus | One post-settle phase; not mid-structure raise |
 | Profiles | Data only — never special-case a host desk in product code |
 | X11 | Preferred agent live test (HUP); CT3 required |
-| Wayland | Daily driver; logout for extension loads |
+| Wayland | Daily driver; **`forge nested restart`** for extension retest (logout only if host never loaded tip) |
 | Cleanup strip | **Code landed 2026-08-08** — belt moves-only; one focus; postOpenRetry opt-in |
 | CLI jobs | **D021** — durable mutators by default; not a daemon |
 
@@ -228,7 +248,7 @@ gsettings set org.gnome.shell.extensions.forge logging-enabled true
 gsettings set org.gnome.shell.extensions.forge log-level 4
 ```
 
-Wayland: logout still required for extension code.
+Wayland: `forge nested restart` for extension code retest; host dual-mon still host desk.
 
 CLI-only cleanup changes (Python `forge` / `layout_apply`) are live without HUP. Extension half needs install/HUP.
 

@@ -174,17 +174,18 @@ forge_session_type() {
 }
 
 # Reload GNOME Shell so a replaced extension is actually loaded.
-# X11: killall -HUP. Wayland: cannot in-session restart — returns 2.
-# Returns 0 on HUP sent, 1 on failure, 2 if session needs logout.
-# Quiet install: no chatter for expected logout cases — caller owns one checklist line.
+# X11: killall -HUP. Wayland: cannot HUP host Shell — returns 2 with nested guidance.
+# Returns 0 on HUP sent, 1 on failure, 2 if session needs nested restart or logout.
+# Quiet install: no chatter for expected non-HUP cases — caller owns one checklist line.
 forge_restart_shell() {
-  local st
+  local st forge_cli
   st=$(forge_session_type)
+  forge_cli="${FORGE_SCRIPTS_DIR:-$SCRIPT_DIR}/forge"
   # Best-effort flush so install HUP can restore splits/tabs (disable may not run).
   # Discard CLI JSON stdout so quiet install checklists stay clean.
-  if [[ -x "${FORGE_SCRIPTS_DIR:-$SCRIPT_DIR}/forge" ]]; then
+  if [[ -x $forge_cli ]]; then
     forge_info "flushing session layout before Shell reload…"
-    if ! "${FORGE_SCRIPTS_DIR:-$SCRIPT_DIR}/forge" save-session-layout >/dev/null 2>&1; then
+    if ! "$forge_cli" save-session-layout >/dev/null 2>&1; then
       forge_is_quiet || forge_warn "session-layout flush skipped (extension offline or old build)"
     fi
   fi
@@ -203,12 +204,19 @@ forge_restart_shell() {
       return 1
       ;;
     wayland)
-      # Expected: no in-session reload. Caller prints one step line.
-      forge_is_quiet || forge_warn "Wayland: log out and back in to load the new extension code"
+      # Host Shell cannot HUP. Prefer nested retest over logout for extension JS.
+      if forge_is_quiet; then
+        :
+      else
+        forge_warn "Wayland: host Shell cannot HUP. Retest path:"
+        forge_warn "  forge nested restart   # reload extension in nest (no logout)"
+        forge_warn "  # dual-mon host CT still needs host desk (logout once if host never loaded tip)"
+        forge_warn "  forge nested doctor    # capability / refuse reasons"
+      fi
       return 2
       ;;
     *)
-      forge_is_quiet || forge_warn "session=$st: log out/in (or X11: killall -HUP gnome-shell) to load new code"
+      forge_is_quiet || forge_warn "session=$st: X11 → killall -HUP gnome-shell; Wayland → forge nested restart"
       return 2
       ;;
   esac

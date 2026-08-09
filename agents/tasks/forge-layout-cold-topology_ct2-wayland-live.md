@@ -1,9 +1,10 @@
 # CT2 — Live Wayland one-shot cold layout
 
-**Status:** in progress — code fix landed; operator cold re-smoke after logout  
+**Status:** in progress — code green on X11 matrix; Wayland cold re-smoke  
 **Plan:** [forge-layout-cold-topology.md](../plans/forge-layout-cold-topology.md)  
 **Depends:** CT1  
 **Host:** `black` Wayland dual 4K  
+**Retest (AT-W1):** prefer `forge nested` over logout for **extension JS reload**
 
 ---
 
@@ -24,7 +25,59 @@ Single `forge layout dev` from cold/near-cold desk reaches profile topology with
 
 ---
 
+## How to run (2026-08-09 — nested method)
+
+**Two layers — do not conflate them:**
+
+| Layer | What | Tool |
+| --- | --- | --- |
+| **A. Extension JS reload** | New `lib/` / extension install must load | **`forge nested restart`** (no host logout) |
+| **B. Dual-mon cold desk** | Real dual 4K host topology | Host Wayland session (`forge layout dev` on host) |
+
+### A — Reload extension without logout
+
+```bash
+# After ./install or forge install on a Wayland login:
+forge nested doctor          # can_nested?
+forge nested start           # once per login (or restart if already up)
+eval $(forge nested env --export)
+forge ping                   # nested Forge
+# after more code installs:
+forge nested restart
+```
+
+Nest is **single virtual monitor** — not a substitute for dual-mon CT geometry.
+
+### B — Dual-mon cold smoke (host)
+
+```bash
+# Host session must already be running the tip (logout once after install
+# if host Shell never loaded this build; thereafter nested handles retests).
+forge test live probe        # expect can_nested + can_retest on Wayland
+gsettings set org.gnome.shell.extensions.forge logging-enabled true
+gsettings set org.gnome.shell.extensions.forge log-level 4
+# near-cold / cold desk then:
+forge layout dev
+forge tree                   # mon0 Grok open leaf; mon1 YouTube; structure OK
+```
+
+### Agent selective live (host desk)
+
+```bash
+forge test live plan --from-work cold
+forge test live run --from-work open-leaf   # etc. — host dual-mon
+```
+
+### X11 note
+
+`forge nested` **refuses on X11** (exit 2) with HUP guidance. On X11 use
+`killall -HUP gnome-shell` for reload; nested is Wayland-host only.
+
+---
+
 ## Session note
+
+**2026-08-09:** AT-W1 harness shipped. CT2 procedure updated to nested reload + host dual-mon.
 
 **2026-08-08 (agent CT2 work + late-focus):**
 
@@ -41,8 +94,5 @@ Single `forge layout dev` from cold/near-cold desk reaches profile topology with
 - Settled focus Grok sticks  
 - Partial reopen can still mis-mon Grok once (Mode B second run repaired); final focus sets open leaf when structure correct  
 - Units green  
-
-### Operator
-CLI is live (no logout for final-focus). Cold: `forge layout dev` once; confirm mon0 **Grok** open. If still wrong, say so with `forge tree` mon0 lastTabFocus.
 
 Created 2026-08-08. Wayland is a daily driver.

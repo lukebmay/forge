@@ -4,8 +4,10 @@
 
 - **Reload config** — `Super+Shift+r` re-reads `windows.json` / `keybindings.json`
   from disk without restarting.
-- **Restart GNOME Shell** — on X11, `Alt+F2` → `r` → Enter. On Wayland, log out and
-  back in.
+- **Restart GNOME Shell** — on X11, `Alt+F2` → `r` → Enter (or `killall -HUP gnome-shell`).
+  On Wayland the host Shell cannot HUP; for developer retests use a nested Shell:
+  `forge nested restart` (see `forge nested --help`). Logging out still reloads the
+  host session for dual-monitor daily driving.
 - **Check it's enabled** — `gnome-extensions list --enabled` should include
   `forge@jmmaranan.com`.
 
@@ -23,7 +25,8 @@ gsettings get org.gnome.shell disable-user-extensions   # true → all user exte
 ```bash
 gsettings set org.gnome.shell disable-user-extensions false
 gnome-extensions enable forge@jmmaranan.com
-# Wayland: log out and back in. X11: Alt+F2 → r, or killall -HUP gnome-shell
+# X11: Alt+F2 → r, or killall -HUP gnome-shell
+# Wayland retest: forge nested restart  (host daily driver: log out once)
 ```
 
 Also confirm Extensions app master toggle is on (same setting).
