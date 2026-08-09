@@ -116,6 +116,7 @@ describe("run-steps pure helpers (FC4)", () => {
       expect(EXTENSION_OPS).toContain("order");
       expect(EXTENSION_OPS).toContain("place-next");
       expect(EXTENSION_OPS).toContain("close");
+      expect(EXTENSION_OPS).toContain("unfocus");
     });
 
     it("normalizes layout-cycle / merge-group / float", () => {

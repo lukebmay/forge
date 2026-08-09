@@ -58,6 +58,7 @@ WORK_HINTS: dict[str, tuple[str, ...]] = {
     "cold": ("cold-open",),
     "clean": ("clean-empty",),
     "close": ("close-focus",),
+    "unfocus": ("unfocus",),
     "save": ("save-focus",),
     "settle": ("settle-soft",),
     "dock": ("dock-open", "mon-claim"),
@@ -77,8 +78,12 @@ class LiveCase:
     requires_true_cold: bool = False
     requires_hup: bool = False  # only needed if suite reinstalls mid-run
     profile: str = "dev"
-    # setup: high-level intents interpreted by runner
+    # setup: high-level intents interpreted by runner (before optional layout)
     setup: tuple[str, ...] = ()
+    # actions: post-setup intents (focus/close/unfocus); empty → layout profile only
+    actions: tuple[str, ...] = ()
+    # If False, skip forge layout <profile> (action-only cases).
+    run_layout: bool = True
     # checks: high-level intents
     checks: tuple[str, ...] = ()
     notes: str = ""
@@ -210,6 +215,32 @@ LIVE_CASES: tuple[LiveCase, ...] = (
         setup=("ensure-dev-shape", "keep-agent"),
         checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube", "agent-survives"),
     ),
+    LiveCase(
+        id="L1.close-focus-lft",
+        layer=LAYER_L1,
+        title="Close focused chrome → focus lands on remaining TILE (LFT/sibling)",
+        behaviors=("close-focus",),
+        regressions=(),
+        profile="dev",
+        setup=("ensure-dev-shape", "keep-agent"),
+        actions=("focus-disposable-chrome", "close-focus"),
+        run_layout=False,
+        checks=("ok", "focus-is-tile", "closed-gone", "agent-survives"),
+        notes="FC3: does not re-open closed chrome; desk may need layout after run.",
+    ),
+    LiveCase(
+        id="L1.unfocus",
+        layer=LAYER_L1,
+        title="Unfocus tiles → no TILE keyboard focus; LFT retained",
+        behaviors=("unfocus",),
+        regressions=(),
+        profile="dev",
+        setup=("ensure-dev-shape", "keep-agent"),
+        actions=("focus-any-tile", "unfocus"),
+        run_layout=False,
+        checks=("ok", "no-tile-focus", "lft-retained", "agent-survives"),
+        notes="FC3: RunSteps unfocus (same as WindowUnfocus / Ctrl+Super+Esc).",
+    ),
 )
 
 
@@ -294,6 +325,120 @@ def iter_windows(forest: Any) -> list[dict[str, Any]]:
         for m in forest.get("monitors") or []:
             walk(m)
     return out
+
+
+def iter_windows_with_mon(forest: Any) -> list[tuple[int, dict[str, Any]]]:
+    """Windows with tiling-tree monitor index (tree walk is layout authority)."""
+    out: list[tuple[int, dict[str, Any]]] = []
+
+    def walk(n: Any, mon_i: int) -> None:
+        if not isinstance(n, dict):
+            return
+        if str(n.get("nodeType") or "").upper() == "WINDOW":
+            out.append((mon_i, n))
+            return
+        for c in n.get("children") or []:
+            walk(c, mon_i)
+
+    if isinstance(forest, dict):
+        for i, m in enumerate(forest.get("monitors") or []):
+            if not isinstance(m, dict):
+                continue
+            walk(m, i)
+    return out
+
+
+def _is_chrome_family_wm_class(cls: str) -> bool:
+    c = (cls or "").lower()
+    return "chrome" in c or "chromium" in c or "brave" in c
+
+
+def _is_nautilus_wm_class(cls: str) -> bool:
+    c = (cls or "").lower()
+    return "nautilus" in c or c in ("org.gnome.nautilus", "org.gnome.Nautilus".lower())
+
+
+def select_chrome_tile_ids(
+    forest: Any,
+    *,
+    mon_index: Optional[int] = None,
+) -> list[str]:
+    """
+    TILE chrome-family window ids, optionally restricted to a tree monitor index.
+
+    mon_index=None → all monitors (close-chrome).
+    mon_index=0|1|… → that mon only (close-monN-chrome).
+    """
+    ids: list[str] = []
+    for mon_i, w in iter_windows_with_mon(forest):
+        if mon_index is not None and mon_i != mon_index:
+            continue
+        if str(w.get("mode") or "").upper() != "TILE":
+            continue
+        if not _is_chrome_family_wm_class(_wm_class_str(w)):
+            continue
+        wid = w.get("windowId")
+        if wid is None:
+            continue
+        ids.append(str(wid))
+    return ids
+
+
+def forest_has_nautilus(forest: Any) -> bool:
+    for w in iter_windows(forest):
+        if _is_nautilus_wm_class(_wm_class_str(w)):
+            return True
+    return False
+
+
+def forest_looks_like_dev_shape(forest: Any) -> tuple[bool, str]:
+    """
+    Cheap dual-mon 'dev desk' shape: non-empty mon0/mon1, a TABBED group on each,
+    at least one ghostty TILE and one chrome-family TILE.
+    """
+    if not isinstance(forest, dict):
+        return False, "no forest"
+    mons = forest.get("monitors") or []
+    non_empty = [
+        i
+        for i, m in enumerate(mons)
+        if isinstance(m, dict) and (m.get("children") or [])
+    ]
+    if len(non_empty) < 2:
+        return False, f"need ≥2 non-empty mons, have {non_empty}"
+    tabs = tabbed_groups(forest)
+    mons_with_tab = {g.get("monitor") for g in tabs}
+    if 0 not in mons_with_tab or 1 not in mons_with_tab:
+        return False, f"need TABBED on mon0 and mon1, have {sorted(mons_with_tab)}"
+    has_ghostty = False
+    has_chrome = False
+    for w in iter_windows(forest):
+        if str(w.get("mode") or "").upper() != "TILE":
+            continue
+        cls = _wm_class_str(w)
+        if _is_ghostty_class(cls):
+            has_ghostty = True
+        if _is_chrome_family_wm_class(cls):
+            has_chrome = True
+    if not has_ghostty:
+        return False, "no ghostty TILE"
+    if not has_chrome:
+        return False, "no chrome TILE"
+    return True, "dev-shape ok (tabbed mon0+mon1, ghostty+chrome tiles)"
+
+
+def forest_has_some_tiles(
+    forest: Any, *, allow_window_ids: Optional[set[str]] = None
+) -> bool:
+    allow = allow_window_ids or set()
+    for w in iter_windows(forest):
+        if str(w.get("mode") or "").upper() != "TILE":
+            continue
+        wid = w.get("windowId")
+        if wid is not None and str(wid) in allow:
+            continue
+        return True
+    return False
 
 
 def classify_agent_terminal(
@@ -705,12 +850,88 @@ def check_no_tile_windows(
     return False, f"still tiled: {titles}"
 
 
+def _window_by_id(forest: Any, window_id: Optional[str]) -> Optional[dict[str, Any]]:
+    if not window_id:
+        return None
+    sid = str(window_id)
+    for w in iter_windows(forest):
+        if str(w.get("windowId")) == sid:
+            return w
+    return None
+
+
+def check_focus_is_tile(forest: Any) -> tuple[bool, str]:
+    """Keyboard focus is a TILE window still in the tree."""
+    if not isinstance(forest, dict):
+        return False, "no forest"
+    fid = forest.get("focusWindowId")
+    if fid is None:
+        return False, "focusWindowId is None"
+    w = _window_by_id(forest, str(fid))
+    if w is None:
+        return False, f"focusWindowId={fid} not in tree"
+    mode = str(w.get("mode") or "").upper()
+    if mode != "TILE":
+        return False, f"focus is {mode or '?'} id={fid} class={_wm_class_str(w)!r}"
+    return True, f"focus TILE id={fid} class={_wm_class_str(w)!r}"
+
+
+def check_no_tile_focus(forest: Any) -> tuple[bool, str]:
+    """No TILE holds keyboard focus (unfocus success)."""
+    if not isinstance(forest, dict):
+        return False, "no forest"
+    fid = forest.get("focusWindowId")
+    if fid is None:
+        return True, "focusWindowId is None"
+    w = _window_by_id(forest, str(fid))
+    if w is None:
+        return True, f"focusWindowId={fid} not a tree window"
+    mode = str(w.get("mode") or "").upper()
+    if mode == "TILE":
+        return False, f"still TILE focus id={fid} class={_wm_class_str(w)!r}"
+    return True, f"focus non-tile {mode} id={fid}"
+
+
+def check_closed_gone(forest: Any, closed_id: Optional[str]) -> tuple[bool, str]:
+    if not closed_id:
+        return True, "no closed id tracked"
+    ids = {
+        str(w.get("windowId"))
+        for w in iter_windows(forest)
+        if w.get("windowId") is not None
+    }
+    if str(closed_id) in ids:
+        return False, f"closed id {closed_id} still in tree"
+    return True, f"closed id {closed_id} gone"
+
+
+def check_lft_retained(
+    forest: Any, lft_before: Optional[str]
+) -> tuple[bool, str]:
+    """lastTileFocusWindowId still present when we had one (FC2: LFT not cleared)."""
+    if not lft_before:
+        return True, "no LFT before"
+    if not isinstance(forest, dict):
+        return False, "no forest"
+    lft = forest.get("lastTileFocusWindowId")
+    if lft is None:
+        return False, f"lastTileFocusWindowId missing (was {lft_before})"
+    if str(lft) != str(lft_before):
+        w = _window_by_id(forest, str(lft))
+        if w is not None and str(w.get("mode") or "").upper() == "TILE":
+            return True, f"LFT moved {lft_before}→{lft} (still TILE)"
+        return False, f"LFT {lft_before}→{lft}"
+    return True, f"LFT retained {lft}"
+
+
 def evaluate_checks(
     forest: Any,
     checks: Sequence[str],
     *,
     capability: Capability,
     layout_ok: bool = True,
+    closed_window_id: Optional[str] = None,
+    lft_before: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """Run named checks; return list of {check, ok, detail}."""
     results: list[dict[str, Any]] = []
@@ -719,7 +940,7 @@ def evaluate_checks(
         detail = ""
         if name == "ok":
             ok = layout_ok
-            detail = "layout ok" if ok else "layout failed"
+            detail = "actions/layout ok" if ok else "actions/layout failed"
         elif name == "mon0-open-leaf-grok":
             ok, detail = check_mon_open_leaf_contains(forest, mon_index=0, substring="Grok")
         elif name == "mon1-open-leaf-youtube":
@@ -729,23 +950,25 @@ def evaluate_checks(
         elif name == "agent-survives":
             ok, detail = check_agent_survives(forest, capability.agent_window_id)
         elif name == "profile-focus-if-set":
-            # Soft: if focus is set on a ghostty, prefer left (first) ghostty token —
-            # only fail if focus is clearly a chrome New Tab when profile wants ghostty.
-            # For harness: pass if agent survives and mon leaves OK; detailed focus
-            # is SE8b. Here: pass when focusWindowId is not mon0 non-Grok chrome only.
+            # Soft: detailed focus is SE8b. Harness records focus id only.
             ok = True
-            detail = f"focusWindowId={capability.focus_window_id} (soft check)"
             fid = None
             if isinstance(forest, dict):
                 fid = forest.get("focusWindowId")
-            if fid is not None:
-                detail = f"focusWindowId={fid}"
-            ok = True
+            detail = f"focusWindowId={fid}"
         elif name == "no-tiles-or-only-agent":
             allow = set()
             if capability.agent_window_id:
                 allow.add(capability.agent_window_id)
             ok, detail = check_no_tile_windows(forest, allow_window_ids=allow)
+        elif name == "focus-is-tile":
+            ok, detail = check_focus_is_tile(forest)
+        elif name == "no-tile-focus":
+            ok, detail = check_no_tile_focus(forest)
+        elif name == "closed-gone":
+            ok, detail = check_closed_gone(forest, closed_window_id)
+        elif name == "lft-retained":
+            ok, detail = check_lft_retained(forest, lft_before)
         else:
             ok = False
             detail = f"unknown check {name!r}"

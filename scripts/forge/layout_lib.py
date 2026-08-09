@@ -29,6 +29,7 @@ EXTENSION_OPS = frozenset(
         "place-next",
         "set",
         "close",
+        "unfocus",
     }
 )
 

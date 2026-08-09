@@ -5,7 +5,7 @@
 **Branch:** **`master`** default (side branches only for major refactors/features)  
 **Push:** only when human asks.
 
-**Active:** CLI jobs **shipped**. Next mid queue (AT2 / FC3 / DnD merge / …).
+**Active:** AT2 + FC3 **shipped** (wrap-up). Next: optional SE6 / AT-W1 / human CT2.
 
 ---
 
@@ -14,15 +14,12 @@
 | Pri | Item | Status |
 | --- | --- | --- |
 | done | [CLI attachable jobs](./plans/forge-cli-jobs.md) | **Shipped** CJ1–CJ6 (D021) |
-| **P0 use** | [AI live test matrix](./plans/forge-ai-live-test-matrix.md) | **AT0/AT1 shipped** — use for layout sign-off |
-| mid | [AT2 L1 setup precision](./tasks/forge-ai-live-test-matrix_at2-l1-setup.md) | ready (Guake-hidden probe polish useful) |
-| mid | [Focus close + Esc](./plans/forge-focus-close-and-escape.md) FC3 | draft combined live smoke |
+| **P0 use** | [AI live test matrix](./plans/forge-ai-live-test-matrix.md) | **AT0–AT2 + FC3 cases** — layout/focus sign-off |
 | later | [AT-W1 nested Wayland](./plans/forge-ai-live-test-matrix.md) | optional — only before Wayland CT |
 | later (shellrc **P0**) | Durable Grok (GH0 leader spike first) | **shellrc** — not forge: `…/grok-reattachable-headless_gh0-leader-spike.md` |
-| mid | Merge DnD plan branch | complete — merge when ready |
 | optional | settle SE6 geom soft | optional |
 | human | CT2 Wayland cold smoke | logout when needed |
-| done | CJ1–CJ6 jobs; FC2 unfocus; FC0–FC1; SE8b R008; CE1 R009; SE0–SE5+SE7; R007 | completed/ |
+| done | FC3; AT2; DnD D0–D4 (already on master); CJ1–CJ6; FC0–FC2; SE8b; CE1; SE0–SE5+SE7; R007 | completed/ |
 
 **Handoff doctrine:** [HANDOFF.md](./HANDOFF.md) — spine over band-aids; no personal-layout code.
 
@@ -30,8 +27,10 @@
 
 ```bash
 forge test live probe
-forge test live plan --from-work open-leaf   # or cold|clean|settle|focus
+forge test live plan --from-work open-leaf   # or cold|clean|settle|focus|close|unfocus
 forge test live run --tags R008              # after open-leaf work
+forge test live run --from-work close        # FC3 close-focus
+forge test live run --from-work unfocus      # FC3 unfocus
 ```
 
 | Doc | Role |
@@ -40,5 +39,5 @@ forge test live run --tags R008              # after open-leaf work
 | [AI live matrix](./plans/forge-ai-live-test-matrix.md) | Capability + selective suites |
 | [CLI jobs plan](./plans/forge-cli-jobs.md) | Durable mutators (shipped) |
 | [settle contract](./plans/forge-layout-settle-contract.md) | Hard/soft settle |
-| [focus close + escape](./plans/forge-focus-close-and-escape.md) | Close focus + unfocus |
+| [focus close + escape](./plans/forge-focus-close-and-escape.md) | Close focus + unfocus (FC0–FC3 done) |
 | [REGRESSIONS.md](./REGRESSIONS.md) | Guard spine + live case tags |

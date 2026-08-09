@@ -65,6 +65,8 @@ forge test live run --from-work <hint>    # only selected cases
 | **Capability** | True cold needs Guake/float agent; X11 for HUP loops |
 | **Wayland retest** | Deferred nested Shell (AT-W1); not every session |
 | **CLI jobs** | Mutating `forge` runs as durable jobs — closing the agent TTY does **not** abort apply. True cold still needs non-tile agent **window** placement. Job runner units: `tests/unit/cli/test_job_runner.py` |
+| **L1 setup** | `close-mon0/1-chrome` by tree mon; `ensure-nautilus` / `ensure-dev-shape` real (AT2). Units: `tests/unit/cli/test_live_matrix.py` |
+| **Focus live** | `--from-work close` / `unfocus` → `L1.close-focus-lft` / `L1.unfocus`; RunSteps `unfocus` (FC3) |
 
 Plan: `agents/plans/forge-ai-live-test-matrix.md`.
 

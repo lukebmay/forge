@@ -139,7 +139,7 @@ Probe prefers **Guake FLOAT** as agent even if keyboard focus is Chrome (mid-tes
 | Layer | Cases | Notes |
 | --- | --- | --- |
 | **L0** | pytest/vitest | not via `forge test live` |
-| **L1** | ghosttys-only, left-chrome, right-ghostty, t1-nautilus, settled-rerun | partial reload |
+| **L1** | ghosttys-only, left-chrome, right-ghostty, t1-nautilus, settled-rerun, close-focus-lft, unfocus | partial + focus |
 | **L2** | true-cold-dev, layout-clean | needs `can_true_cold` |
 
 Add cases when filing REGRESSIONS rows.
@@ -161,11 +161,25 @@ Do **not** block X11 work. When we next need Wayland live:
 | ID | Task | Status |
 | --- | --- | --- |
 | **AT0** | Capability probe + catalog + select + docs | **done** (this slice) |
-| **AT1** | `forge test live run` L1/L2 execute path | **done** (v1 harness; mon-specific setup still coarse) |
-| **AT2** | Tighten L1 setups (close mon0/mon1 only; nautilus ensure) | ready |
+| **AT1** | `forge test live run` L1/L2 execute path | **done** (v1 harness) |
+| **AT2** | Tighten L1 setups (close mon0/mon1 only; nautilus ensure) | **done** |
 | **AT3** | Agent rule: regression → catalog case (REGRESSIONS + testing.md) | **done** |
 | **AT-W1** | Nested Wayland Shell retest spike | **optional / later** (before next Wayland CT) |
 | **AT-W2** | Next-login queue if AT-W1 fails | optional |
+
+### AT2 setup precision (shipped)
+
+| Setup step | Behavior |
+| --- | --- |
+| `close-chrome` | All TILE chrome-family windows |
+| `close-mon0-chrome` / `close-mon1-chrome` | Same, filtered by **tree monitor index** |
+| `ensure-nautilus` | Launch Nautilus if no nautilus window |
+| `ensure-dev-shape` | No-op if dual-mon tabbed + ghostty+chrome tiles; else one `layout dev` |
+| `ensure-some-tiles` | No-op if any TILE (excl. agent keep); else `layout dev` |
+| `keep-agent` / `keep-ghostty-tiles` / `keep-mon1` | Declarative (close helpers + post-checks) |
+
+**Remaining coarseness:** shape heuristic is structural (not full profile role match);
+hidden Guake may still miss `can_true_cold` when absent from `forge tree`.
 
 ---
 
