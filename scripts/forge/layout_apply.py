@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Optional
 
 from layout_plan import mon_index_from_slot
+from settle_heuristics import HARD_TIMEOUT_MS
 
 MODE_STEPS = "steps"
 MODE_RECONCILE = "reconcile"
@@ -767,12 +768,15 @@ FINAL_FOCUS_STABLE_SAMPLES = 2
 FINAL_FOCUS_REASSERT_MS = 0
 
 
-# --- LF5: settle-before-move (pure predicates; CLI poll uses these) ---
+# --- LF5 / SE2: hard-ready (TILE+rect+mon) before act; call-clock timeout ---
 
 # GetTree WINDOW.mode after processFloats first pass. FLOAT = not yet tiled.
 SETTLED_MODES = frozenset({"TILE", "tile"})
 # Mid-drag is rare for layout open; treat as settled enough to Move.
 SETTLED_MODES_LOOSE = frozenset({"TILE", "tile", "GRAB_TILE", "grab_tile"})
+
+# Poll interval while waiting for hard Meta signals (map/TILE/rect/mon).
+HARD_READY_POLL_MS = 120
 
 
 def _rect_is_reasonable(rect: Any) -> bool:
@@ -855,6 +859,135 @@ def find_settled_window(
         if window_is_settled(w, require_tile=require_tile):
             return w
     return None
+
+
+def hard_ready_status(
+    windows: Any,
+    window_ids: Any,
+    *,
+    require_tile: bool = True,
+) -> dict[str, Any]:
+    """
+    Pure classification: which of window_ids are hard-ready (window_is_settled).
+
+    Hard expectations (D019): windowId present, TILE (default), sane rect, mon≥0.
+    """
+    ids = [
+        str(x).strip()
+        for x in (window_ids or [])
+        if x is not None and str(x).strip() != ""
+    ]
+    # Preserve order; unique
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for i in ids:
+        if i not in seen:
+            seen.add(i)
+            ordered.append(i)
+    settled: list[str] = []
+    pending: list[str] = []
+    for wid in ordered:
+        if find_settled_window(windows, window_id=wid, require_tile=require_tile):
+            settled.append(wid)
+        else:
+            pending.append(wid)
+    return {
+        "ok": len(pending) == 0,
+        "settled": settled,
+        "pending": pending,
+    }
+
+
+def wait_until_hard_ready(
+    load_windows: Callable[[], Any],
+    window_ids: Any,
+    *,
+    timeout_ms: int = HARD_TIMEOUT_MS,
+    poll_ms: int = HARD_READY_POLL_MS,
+    require_tile: bool = True,
+    call_started_mono: Optional[float] = None,
+    sleep_fn: Optional[Callable[[float], None]] = None,
+    monotonic_fn: Optional[Callable[[], float]] = None,
+) -> dict[str, Any]:
+    """
+    Poll load_windows until all window_ids are hard-ready or hard timeout.
+
+    Call clock: elapsed_ms from call_started_mono if given, else first entry.
+    Pure of DBus — inject load_windows (+ sleep/monotonic for tests).
+    Default timeout HARD_TIMEOUT_MS (5s, D019).
+    """
+    sleep = sleep_fn if sleep_fn is not None else time.sleep
+    mono = monotonic_fn if monotonic_fn is not None else time.monotonic
+    ids = [
+        str(x).strip()
+        for x in (window_ids or [])
+        if x is not None and str(x).strip() != ""
+    ]
+    t0 = float(call_started_mono) if call_started_mono is not None else mono()
+    if not ids:
+        return {
+            "ok": True,
+            "settled": [],
+            "pending": [],
+            "polls": 0,
+            "elapsed_ms": int(max(0.0, (mono() - t0) * 1000)),
+            "hardTimeoutMs": int(timeout_ms),
+            "error": None,
+        }
+
+    deadline = t0 + max(0, int(timeout_ms)) / 1000.0
+    poll_s = max(0, int(poll_ms)) / 1000.0
+    polls = 0
+    last_status: dict[str, Any] = {
+        "ok": False,
+        "settled": [],
+        "pending": list(ids),
+    }
+    last_err: Optional[str] = None
+
+    while True:
+        try:
+            windows = load_windows()
+            last_status = hard_ready_status(
+                windows, ids, require_tile=require_tile
+            )
+            last_err = None
+        except Exception as e:
+            last_err = str(e)
+            last_status = {
+                "ok": False,
+                "settled": list(last_status.get("settled") or []),
+                "pending": list(ids),
+            }
+        polls += 1
+        elapsed_ms = int(max(0.0, (mono() - t0) * 1000))
+        if last_status.get("ok"):
+            return {
+                "ok": True,
+                "settled": list(last_status.get("settled") or []),
+                "pending": [],
+                "polls": polls,
+                "elapsed_ms": elapsed_ms,
+                "hardTimeoutMs": int(timeout_ms),
+                "error": None,
+            }
+        if mono() > deadline:
+            break
+        if poll_s > 0:
+            sleep(poll_s)
+
+    elapsed_ms = int(max(0.0, (mono() - t0) * 1000))
+    pending = list(last_status.get("pending") or ids)
+    return {
+        "ok": False,
+        "settled": list(last_status.get("settled") or []),
+        "pending": pending,
+        "polls": polls,
+        "elapsed_ms": elapsed_ms,
+        "hardTimeoutMs": int(timeout_ms),
+        "error": last_err
+        or f"hard-ready timeout after {timeout_ms}ms (pending {pending})",
+    }
 
 
 def move_step_window_ids(steps: Any) -> list[str]:

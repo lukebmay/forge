@@ -68,6 +68,7 @@ from layout_apply import (  # noqa: E402
     FINAL_FOCUS_STABLE_SAMPLES,
     FINAL_FOCUS_STABLE_TIMEOUT_MS,
     FINAL_FOCUS_VERIFY_QUIET_MS,
+    HARD_TIMEOUT_MS,
     MODE_RECONCILE,
     MODE_STEPS,
     TREE_STABLE_POLL_MS,
@@ -88,6 +89,7 @@ from layout_apply import (  # noqa: E402
     layout_wait_tree_stable_enabled,
     wait_for_open_role_pins,
     wait_for_tree_stable,
+    wait_until_hard_ready,
     window_is_settled,
     without_focus_actions,
 )
@@ -1219,48 +1221,39 @@ def wait_for_wm_class(
 def wait_for_window_ids_settled(
     backend: str,
     window_ids: list[str] | set[str],
-    timeout_ms: int = 3000,
+    timeout_ms: int = HARD_TIMEOUT_MS,
+    *,
+    call_started_mono: Optional[float] = None,
 ) -> dict[str, Any]:
     """
-    Poll until every windowId is settled (TILE) or timeout.
+    Poll until every windowId is hard-ready (TILE+rect+mon) or hard timeout.
 
-    Used before residual/belt Move so Meta rehome sticks (LF5).
+    LF5 / SE2: used before residual/belt Move and focus phase hard-ready.
+    Default timeout HARD_TIMEOUT_MS (5s). Call clock from call_started_mono
+    when the forge act that needs hard-ready was just issued.
     """
-    ids = [str(x).strip() for x in window_ids if x is not None and str(x).strip()]
-    if not ids:
-        return {"ok": True, "settled": [], "pending": []}
-    deadline = time.monotonic() + max(0, timeout_ms) / 1000.0
-    pending = set(ids)
-    settled: list[str] = []
-    last_err = "timeout"
-    while time.monotonic() <= deadline and pending:
-        try:
-            raw = call_method(backend, "GetTree", "{}")
-            data = json.loads(raw)
-        except Exception as e:
-            last_err = str(e)
-            time.sleep(0.12)
-            continue
+    t0 = call_started_mono if call_started_mono is not None else time.monotonic()
+    last_err: Optional[str] = None
+
+    def load_windows() -> list[dict[str, Any]]:
+        nonlocal last_err
+        raw = call_method(backend, "GetTree", "{}")
+        data = json.loads(raw)
         if isinstance(data, dict) and data.get("error"):
             last_err = str(data["error"])
-            time.sleep(0.12)
-            continue
-        wins = _iter_tree_windows(data)
-        still: set[str] = set()
-        for wid in pending:
-            if find_settled_window(wins, window_id=wid):
-                settled.append(wid)
-            else:
-                still.add(wid)
-        pending = still
-        if pending:
-            time.sleep(0.12)
-    return {
-        "ok": len(pending) == 0,
-        "settled": settled,
-        "pending": sorted(pending),
-        "error": None if not pending else f"settle timeout ({last_err})",
-    }
+            raise RuntimeError(last_err)
+        last_err = None
+        return list(_iter_tree_windows(data))
+
+    out = wait_until_hard_ready(
+        load_windows,
+        window_ids,
+        timeout_ms=timeout_ms,
+        call_started_mono=t0,
+    )
+    if not out.get("ok") and last_err and not out.get("error"):
+        out["error"] = f"hard-ready timeout ({last_err})"
+    return out
 
 
 def _baseline_window_ids(backend: str) -> set[str]:
@@ -1451,7 +1444,7 @@ def _layout_final_focus_pass(
     ]
     settle: dict[str, Any] = {"skipped": True}
     if pin_ids:
-        settle = wait_for_window_ids_settled(backend, pin_ids, timeout_ms=3000)
+        settle = wait_for_window_ids_settled(backend, pin_ids)
     apply_log["finalFocusSettle"] = settle
 
     quiet_s = max(0, FINAL_FOCUS_QUIET_MS) / 1000.0
@@ -2681,13 +2674,11 @@ def _layout_run_reconcile(
                     if pin_wid is not None and str(pin_wid) not in settle_ids:
                         settle_ids.append(str(pin_wid))
                 if settle_ids:
-                    settle_info = wait_for_window_ids_settled(
-                        backend, settle_ids, timeout_ms=4000
-                    )
+                    settle_info = wait_for_window_ids_settled(backend, settle_ids)
                     apply_log["followUpSettle"] = settle_info
                     if settle_info.get("pending"):
                         _eprint(
-                            "forge layout: residual targets not fully settled: "
+                            "forge layout: residual targets not hard-ready: "
                             f"{settle_info['pending']} (moving anyway)"
                         )
                 rc, agg = run_mixed_steps(
@@ -2757,7 +2748,7 @@ def _layout_run_reconcile(
                         belt_ids = move_step_window_ids(belt_steps)
                         if belt_ids:
                             belt_settle = wait_for_window_ids_settled(
-                                backend, belt_ids, timeout_ms=1500
+                                backend, belt_ids
                             )
                             apply_log["beltSettle"] = belt_settle
                         rc, agg = run_mixed_steps(
@@ -2857,7 +2848,7 @@ def _layout_run_reconcile(
                                 if retry_ids:
                                     apply_log["postOpenRetrySettle"] = (
                                         wait_for_window_ids_settled(
-                                            backend, retry_ids, timeout_ms=2000
+                                            backend, retry_ids
                                         )
                                     )
                                 rc, agg = run_mixed_steps(

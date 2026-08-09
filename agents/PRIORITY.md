@@ -1,10 +1,10 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-08  
+**Updated:** 2026-08-09  
 **Lens:** `black` dual 4K Shell 46 — **X11 preferred for agent live test**; Wayland daily driver too  
-**Push:** only when human asks (this session: wrap-up push requested).
+**Push:** only when human asks.
 
-**Active P0:** **layout settle contract** (hard + soft expectations) — then CT3 cold smoke
+**Active P0:** **layout settle contract** — SE0–SE2 done; **SE3 soft focus barrier next**
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | [settle contract SE0→SE8](./plans/forge-layout-settle-contract.md) | **next** — design lock + implement |
+| **P0** | [settle contract SE3→SE8](./plans/forge-layout-settle-contract.md) | **next = SE3** soft focus residual barrier |
 | P0 | [CT3 X11 live](./tasks/forge-layout-cold-topology_ct3-x11-live.md) | after SE4+; prove one-shot cold |
 | P0 | [cleanup strip](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) | code landed; close after CT3 + settle |
 | P0 | [CT2 Wayland live](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) | operator logout when needed |

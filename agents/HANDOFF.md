@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-08 (**P0 = settle contract** SE0→; X11 agent live)  
+**Updated:** 2026-08-09 (**P0 = settle contract** SE3→; X11 agent live)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).
 
@@ -12,13 +12,23 @@
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | **Settle contract** (hard Meta + soft expectations + verify) | [plan](./plans/forge-layout-settle-contract.md) |
+| **P0** | **Settle contract SE3→** (soft barrier → wire focus → CT3) | [plan](./plans/forge-layout-settle-contract.md) |
+| done | SE0 D019; SE1 heuristics store; SE2 hard-ready 5s | [completed/](./plans/forge-layout-settle-contract/completed/) |
 | → | CT3 X11 cold one-shot (after SE4+) | [CT3](./tasks/forge-layout-cold-topology_ct3-x11-live.md) |
 | → | Cleanup strip (close after CT3 + settle) | [cleanup](./tasks/forge-layout-cold-topology_cleanup-fallbacks.md) |
 | → | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
 | shellrc | gdisplays session/greeter (GS0+) | `~/dev/me/shellrc/agents/plans/gdisplays-session-greeter.md` |
 
 **Do not** start unrelated mid features until settle contract + CT3 green.
+
+### Progress (2026-08-09)
+
+| Done | Detail |
+| --- | --- |
+| SE0 | D019 + SE0 defaults locked |
+| SE1 | `scripts/forge/settle_heuristics.py`; `~/.config/forge/config/settle-heuristics.json`; 18 tests |
+| SE2 | `hard_ready_status` / `wait_until_hard_ready`; CLI settle uses HARD_TIMEOUT_MS |
+| **Next** | **SE3** soft focus residual barrier (timeout from heuristics; steal → correct + record + reset quiet) |
 
 ---
 

@@ -16,6 +16,7 @@ if str(_FORGE_CLI) not in sys.path:
 
 from layout_apply import (  # noqa: E402
     GHOSTTY_MULTI_INSTANCE_FLAG,
+    HARD_TIMEOUT_MS,
     MODE_RECONCILE,
     MODE_STEPS,
     actions_to_extension_steps,
@@ -27,6 +28,7 @@ from layout_apply import (  # noqa: E402
     find_settled_window,
     forest_stability_fingerprint,
     ghostty_multi_instance_argv,
+    hard_ready_status,
     is_ghostty_launch_target,
     layout_wait_tree_stable_enabled,
     move_step_window_ids,
@@ -39,6 +41,7 @@ from layout_apply import (  # noqa: E402
     slot_to_tree_path,
     wait_for_open_role_pins,
     wait_for_tree_stable,
+    wait_until_hard_ready,
     window_has_map_id,
     window_is_settled,
     window_tile_selector,
@@ -697,6 +700,135 @@ class TestWindowSettledLf5(unittest.TestCase):
             {"op": "park", "tile": "id:99", "dest": "id:1"},
         ]
         self.assertEqual(move_step_window_ids(steps), ["501", "99"])
+
+
+class TestHardReadySe2(unittest.TestCase):
+    """SE2: hard-ready barrier (call clock → TILE/rect/mon; 5s)."""
+
+    def test_hard_timeout_locked(self):
+        self.assertEqual(HARD_TIMEOUT_MS, 5000)
+
+    def test_hard_ready_status_partial(self):
+        wins = [
+            {"windowId": 1, "mode": "FLOAT"},
+            {
+                "windowId": 2,
+                "mode": "TILE",
+                "rect": {"width": 100, "height": 100},
+                "monitor": 0,
+            },
+        ]
+        st = hard_ready_status(wins, ["1", "2", "2"])
+        self.assertFalse(st["ok"])
+        self.assertEqual(st["settled"], ["2"])
+        self.assertEqual(st["pending"], ["1"])
+
+    def test_hard_ready_status_all_ok(self):
+        wins = [
+            {"windowId": "a", "mode": "TILE", "rect": {"width": 1, "height": 1}},
+            {"windowId": "b", "mode": "TILE"},
+        ]
+        st = hard_ready_status(wins, ["a", "b"])
+        self.assertTrue(st["ok"])
+        self.assertEqual(st["pending"], [])
+
+    def test_wait_until_hard_ready_empty_ids(self):
+        out = wait_until_hard_ready(lambda: [], [], timeout_ms=100)
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["polls"], 0)
+
+    def test_wait_until_hard_ready_polls_until_tile(self):
+        state = {"n": 0}
+        windows_seq = [
+            [{"windowId": 9, "mode": "FLOAT"}],
+            [{"windowId": 9, "mode": "FLOAT"}],
+            [
+                {
+                    "windowId": 9,
+                    "mode": "TILE",
+                    "rect": {"width": 10, "height": 10},
+                    "monitor": 0,
+                }
+            ],
+        ]
+
+        def load():
+            i = min(state["n"], len(windows_seq) - 1)
+            state["n"] += 1
+            return windows_seq[i]
+
+        sleeps: list[float] = []
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            sleeps.append(s)
+            clock["t"] += s
+
+        out = wait_until_hard_ready(
+            load,
+            ["9"],
+            timeout_ms=HARD_TIMEOUT_MS,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["settled"], ["9"])
+        self.assertGreaterEqual(out["polls"], 3)
+        self.assertEqual(out["hardTimeoutMs"], HARD_TIMEOUT_MS)
+        self.assertTrue(sleeps)  # waited between polls
+
+    def test_wait_until_hard_ready_timeout(self):
+        clock = {"t": 0.0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += max(s, 0.05)
+
+        out = wait_until_hard_ready(
+            lambda: [{"windowId": 1, "mode": "FLOAT"}],
+            ["1"],
+            timeout_ms=200,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+        )
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["pending"], ["1"])
+        self.assertIn("hard-ready timeout", out["error"] or "")
+        self.assertGreaterEqual(out["elapsed_ms"], 200)
+
+    def test_call_clock_from_call_started(self):
+        """Elapsed is from call_started_mono, not only poll loop entry."""
+        clock = {"t": 1.5}  # 1500ms after call at t=0
+
+        def mono():
+            return clock["t"]
+
+        out = wait_until_hard_ready(
+            lambda: [
+                {
+                    "windowId": 3,
+                    "mode": "TILE",
+                    "rect": {"width": 1, "height": 1},
+                }
+            ],
+            ["3"],
+            timeout_ms=HARD_TIMEOUT_MS,
+            poll_ms=0,
+            call_started_mono=0.0,
+            sleep_fn=lambda _s: None,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertGreaterEqual(out["elapsed_ms"], 1500)
 
 
 class TestForestStabilityLf6(unittest.TestCase):
