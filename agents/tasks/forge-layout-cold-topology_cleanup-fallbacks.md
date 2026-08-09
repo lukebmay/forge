@@ -1,48 +1,71 @@
-# CT-cleanup — Remove dead cold-path fallbacks
+# CT-cleanup — Strip patchwork; architecture holds the weight
 
-**Status:** parked (start after CT2 + CT3 live green)  
+**Status:** ready — **P0 next** (operator 2026-08-08)  
 **Plan:** [forge-layout-cold-topology.md](../plans/forge-layout-cold-topology.md)  
-**Branch:** `plan/forge-layout-cold-topology` (or `task/forge-layout-cold-cleanup`)  
-**Depends:** CT1 shipped; CT2 Wayland + CT3 X11 one-shot verified
+**Branch:** `plan/forge-layout-cold-topology`  
+**Test host:** **X11** preferred (agent `./install` + Shell HUP). Wayland logout for extension-only when needed.  
+**Doctrine:** [HANDOFF.md](../HANDOFF.md) — patches bad; spine good; **no personal-layout special cases**
 
 ---
 
 ## Goal
 
-After skeleton-first cold layout is the real path, **delete or demote**
-fallback / patch-over patterns that only existed because construction order
-was wrong. Stop accumulating useless dead code.
+Stop duct-taping cold/open/layout. **Delete or demote** fallbacks that only exist because construction order or open policy was wrong. After this task, the **CT0 phase model** is the only happy path — not belt + retry + re-focus + Mode B.
+
+This is not “docs only.” Audit real call sites, remove weight, keep unit suite green with **abstract** fixtures (roles a/b/c, dual mon), not one host desk.
 
 ---
 
-## Candidate removals / demotions (audit, do not delete blindly)
+## Why this is P0
 
-| Area | Likely dead or demote |
-| --- | --- |
-| CLI orchestrator | Cold `postOpenRetry` / plan4 thrash re-apply as success path |
-| Residual multi-replan | Belt plan3 structure invention when skeleton already correct |
-| Mode B | Auto Mode B park on cold open (keep mid-session chaos / `--recover` only) |
-| Ensure-after-open only | Paths that skip skeleton and rebuild topology solely from residual windows |
-| Sleeps / “try again” | Timing hacks that papered over race construction |
-| Docs / help | Text that presents Mode B second pass as normal cold success |
+Stacked mitigations (belt ensure, preserve lastTabFocus, final focus quiet/reassert, postOpenRetry, Mode B as cold success, mon-root patches) make the next failure harder to see and encourage more patches. Operator: **architecture holds the weight; clean off the patchwork when the real fix exists.**
 
-**Keep:** AC1–AC6 settle contract; Mode A collect for sane mid-session; Mode B
-for true thrash recover; `--safe`; settled re-run idempotent; fail-open
-placeholders for bad clients.
+---
+
+## Spine (do not invent another pass)
+
+```text
+skeleton → open → bind → order/size → focus once (post-settle) → residual
+```
+
+Thrash mid-batch forbidden. Mode B = true chaos / explicit recover only.
+
+---
+
+## Candidate removals / demotions (audit each)
+
+| Area | Likely demote / delete | Keep if |
+| --- | --- | --- |
+| CLI belt structure re-ensure after residual | Happy-path topology rewrite after bind | Only wrong-mon rehome for just-opened, not full ensure invent |
+| Cold `postOpenRetry` / plan4 as success | Opt-in recover only (already partly true) | Explicit env / `--recover` |
+| Mid-flight focus before opens settle | Already stripped when opens; verify no residual paths reintroduce | — |
+| Extra final-focus reassert sleeps | One post-settle focus; drop double reassert if race owned | Minimal quiet if Meta requires |
+| Preserve lastTabFocus on every re-ensure | If re-ensure gone on happy path, preserve is less critical | Still OK as generic safety |
+| Mode B park on cold / just_opened | Report-only already; ensure no success path | Mid-session chaos |
+| Ensure-after-open-only topology rebuild | Skeleton owns empty desk | Mid-session structure repair without skeleton |
+| Timing “try again” sleeps | Papered construction races | Documented Meta settle only |
+| Docs/help Mode B as normal cold | One-shot language only | Recover docs separate |
+| Personal-layout framing in comments/tests | Abstract roles; desk only in optional live notes | — |
+
+**Keep always:** AC1–AC6 settle; Mode A collect; Mode B true thrash; `--safe`; idempotent settled re-run; fail-open PH; generic dock/LFT policy (not app-name branches).
 
 ---
 
 ## Acceptance
 
-- [ ] Audit list of fallback call sites with “keep / demote / delete”  
+- [ ] Written audit table: each candidate → **keep / demote / delete** + path/symbol  
 - [ ] Dead cold success paths removed or gated behind explicit recover  
-- [ ] Unit/regression suite still green; no “plan twice” tests as success  
-- [ ] `docs/user/layout.md` cold section matches one-shot path only  
-- [ ] Short DECISIONS / archive note what was removed and why  
+- [ ] No new happy-path “plan twice / belt invent / multi-focus” without removing an old one  
+- [ ] Unit suite green; tests describe **policy**, not one profile’s apps  
+- [ ] `docs/user/layout.md` cold section = one-shot spine only  
+- [ ] DECISIONS / archive: what was removed and why  
+- [ ] HANDOFF + PRIORITY updated after ship  
+- [ ] Prefer X11 live smoke for any behavior change that needs Shell  
 
 ---
 
 ## Session note
 
-Created 2026-08-08 from operator direction: after architecture fix + live
-test, run a cleanup sweep. **Do not start until CT2/CT3 pass.**
+**2026-08-08:** Operator elevated cleanup to **P0** before more feature patches. Strong anti-patch doctrine in HANDOFF. Test on **X11**. Do not custom-code personal layouts.
+
+Created 2026-08-08; unparked as P0 same day.
