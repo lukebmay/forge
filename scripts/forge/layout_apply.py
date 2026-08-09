@@ -17,6 +17,11 @@ from settle_heuristics import (
     soft_timeout_for_key,
 )
 
+# Geom soft wall (SE6); keep near focus wall so thrash cannot loop forever.
+SOFT_GEOM_POLL_MS = 100
+SOFT_GEOM_WALL_MULT = 3
+SOFT_GEOM_WALL_CAP_MS = 15000
+
 MODE_STEPS = "steps"
 MODE_RECONCILE = "reconcile"
 
@@ -831,6 +836,210 @@ def soft_focus_wall_ms(soft_timeout_ms: int) -> int:
         st = 0
     raw = max(st * SOFT_FOCUS_WALL_MULT, soft_clamp_ms("focus"))
     return int(min(SOFT_FOCUS_WALL_CAP_MS, max(st, raw)))
+
+
+def resolve_geom_soft_timeout_ms(
+    store: Any,
+    *,
+    host: Any,
+    wm_classes: Any = None,
+    process_kind: str = "move",
+) -> int:
+    """Soft geom timeout from heuristics: max across wm_classes, or unknown."""
+    classes: list[str] = []
+    if isinstance(wm_classes, (list, tuple, set)):
+        for c in wm_classes:
+            s = str(c).strip() if c is not None else ""
+            if s:
+                classes.append(s)
+    elif wm_classes is not None and str(wm_classes).strip():
+        classes.append(str(wm_classes).strip())
+    if not classes:
+        classes = ["unknown"]
+    return max(
+        soft_timeout_for_key(
+            store,
+            make_key(host, c, process_kind, "geom"),
+            residual_kind="geom",
+        )
+        for c in classes
+    )
+
+
+def soft_geom_wall_ms(soft_timeout_ms: int) -> int:
+    """Overall wall for geom soft barrier."""
+    try:
+        st = max(0, int(soft_timeout_ms))
+    except (TypeError, ValueError):
+        st = 0
+    raw = max(st * SOFT_GEOM_WALL_MULT, soft_clamp_ms("geom"))
+    return int(min(SOFT_GEOM_WALL_CAP_MS, max(st, raw)))
+
+
+def window_rect_fingerprint(win: Any) -> Optional[tuple[int, int, int, int]]:
+    """Integer (x,y,w,h) for geom quiet compare; None if unusable."""
+    if not isinstance(win, dict):
+        return None
+    rect = win.get("rect")
+    if not isinstance(rect, dict):
+        return None
+    try:
+        x = int(round(float(rect.get("x", 0))))
+        y = int(round(float(rect.get("y", 0))))
+        w = int(round(float(rect.get("width", 0))))
+        h = int(round(float(rect.get("height", 0))))
+    except (TypeError, ValueError):
+        return None
+    if w <= 0 or h <= 0:
+        return None
+    return (x, y, w, h)
+
+
+def rect_map_for_ids(windows: Any, window_ids: Any) -> dict[str, tuple[int, int, int, int]]:
+    """windowId → rect fingerprint for ids present and usable."""
+    want = {
+        str(x).strip()
+        for x in (window_ids or [])
+        if x is not None and str(x).strip() != ""
+    }
+    out: dict[str, tuple[int, int, int, int]] = {}
+    if not want or not isinstance(windows, list):
+        return out
+    for w in windows:
+        if not isinstance(w, dict):
+            continue
+        wid = w.get("windowId")
+        if wid is None or str(wid) not in want:
+            continue
+        fp = window_rect_fingerprint(w)
+        if fp is not None:
+            out[str(wid)] = fp
+    return out
+
+
+def run_soft_geom_barrier(
+    load_windows: Callable[[], Any],
+    window_ids: Any,
+    *,
+    soft_timeout_ms: int,
+    poll_ms: int = SOFT_GEOM_POLL_MS,
+    max_wall_ms: Optional[int] = None,
+    call_started_mono: Optional[float] = None,
+    sleep_fn: Optional[Callable[[float], None]] = None,
+    monotonic_fn: Optional[Callable[[], float]] = None,
+) -> dict[str, Any]:
+    """
+    Soft geom expectation after hard-ready or post-move (SE6 / D019).
+
+    Quiet = no tracked rect change for soft_timeout_ms. Rect change → residual
+    latency from last act, reset quiet. No re-apply (observe + learn only).
+    """
+    sleep = sleep_fn if sleep_fn is not None else time.sleep
+    mono = monotonic_fn if monotonic_fn is not None else time.monotonic
+    try:
+        soft_ms = max(0, int(soft_timeout_ms))
+    except (TypeError, ValueError):
+        soft_ms = 0
+    wall_ms = (
+        max(0, int(max_wall_ms))
+        if max_wall_ms is not None
+        else soft_geom_wall_ms(soft_ms)
+    )
+    poll_s = max(0, int(poll_ms)) / 1000.0
+    t0 = float(call_started_mono) if call_started_mono is not None else mono()
+    last_act = t0
+    wall_deadline = t0 + wall_ms / 1000.0
+    residuals: list[dict[str, Any]] = []
+    polls = 0
+    last_map: dict[str, tuple[int, int, int, int]] = {}
+    last_err: Optional[str] = None
+    ids = [
+        str(x).strip()
+        for x in (window_ids or [])
+        if x is not None and str(x).strip() != ""
+    ]
+
+    if not ids:
+        return {
+            "ok": True,
+            "softSettled": True,
+            "clean": True,
+            "residuals": [],
+            "polls": 0,
+            "elapsed_ms": int(max(0.0, (mono() - t0) * 1000)),
+            "softTimeoutMs": soft_ms,
+            "wallMs": wall_ms,
+            "error": None,
+            "skipped": True,
+        }
+
+    while True:
+        now = mono()
+        elapsed_ms = int(max(0.0, (now - t0) * 1000))
+        quiet_elapsed_ms = int(max(0.0, (now - last_act) * 1000))
+
+        try:
+            windows = load_windows()
+            cur = rect_map_for_ids(windows, ids)
+            last_err = None
+        except Exception as e:
+            last_err = str(e)
+            cur = last_map
+
+        polls += 1
+
+        if last_map and cur:
+            changed = [
+                wid
+                for wid, fp in cur.items()
+                if wid in last_map and last_map[wid] != fp
+            ]
+            if changed:
+                lat = quiet_elapsed_ms
+                residuals.append(
+                    {
+                        "latencyMs": lat,
+                        "windowIds": changed,
+                        "kind": "geom",
+                    }
+                )
+                last_act = mono()
+                last_map = cur
+                continue
+
+        if cur:
+            last_map = cur
+
+        if quiet_elapsed_ms >= soft_ms:
+            return {
+                "ok": True,
+                "softSettled": True,
+                "clean": True,
+                "residuals": residuals,
+                "polls": polls,
+                "elapsed_ms": elapsed_ms,
+                "softTimeoutMs": soft_ms,
+                "wallMs": wall_ms,
+                "error": None,
+            }
+
+        if now >= wall_deadline:
+            return {
+                "ok": False,
+                "softSettled": False,
+                "clean": True,
+                "residuals": residuals,
+                "polls": polls,
+                "elapsed_ms": elapsed_ms,
+                "softTimeoutMs": soft_ms,
+                "wallMs": wall_ms,
+                "error": last_err
+                or f"soft geom wall timeout after {wall_ms}ms",
+                "timedOut": True,
+            }
+
+        if poll_s > 0:
+            sleep(poll_s)
 
 
 def run_soft_focus_barrier(

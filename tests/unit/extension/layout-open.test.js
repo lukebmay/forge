@@ -37,24 +37,26 @@ describe("computeOpenMinQuietMs", () => {
     expect(computeOpenMinQuietMs({ isDock: true, firstOpen: true })).toBe(OPEN_DOCK_QUIET_MS);
   });
 
-  it("ghostty / catalog uses ≥ built-in minQuiet", () => {
+  it("ghostty / catalog: SE10 seed 0 falls to default open quiet", () => {
     const cat = new AppThrashCatalog();
     const g = cat.lookup("ghostty");
-    expect(g.minQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
+    expect(g.minQuietMs).toBe(0);
+    expect(GHOSTTY_MIN_QUIET_MS).toBe(0);
     const ms = computeOpenMinQuietMs({
       catalogMinQuietMs: g.minQuietMs,
       firstOpen: false,
     });
-    expect(ms).toBeGreaterThanOrEqual(GHOSTTY_MIN_QUIET_MS);
-    expect(ms).toBe(Math.max(OPEN_DEFAULT_QUIET_MS, GHOSTTY_MIN_QUIET_MS));
+    expect(ms).toBe(OPEN_DEFAULT_QUIET_MS);
   });
 
   it("dock + catalog raises above dock floor when thrashy", () => {
+    // Learned geom quiet (not brand seed — SE10 dropped Ghostty minQuiet seed).
+    const thrashyCatalogMs = 300;
     const ms = computeOpenMinQuietMs({
       isDock: true,
-      catalogMinQuietMs: GHOSTTY_MIN_QUIET_MS,
+      catalogMinQuietMs: thrashyCatalogMs,
     });
-    expect(ms).toBe(GHOSTTY_MIN_QUIET_MS);
+    expect(ms).toBe(thrashyCatalogMs);
     expect(ms).toBeGreaterThan(OPEN_DOCK_QUIET_MS);
   });
 

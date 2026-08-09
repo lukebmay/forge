@@ -682,8 +682,10 @@ jumpy). Reconcile apply when roles need open:
 4. Release-deferred → re-plan with `role_pins` → residual bind/order/size (no mid-flight focus).
 5. Optional belt: pin-role wrong-mon **moves only** (no ensure_layout rewrite).
 6. Focus phase (D019): hard-ready → apply open leaves once → soft residual
-   barrier (learned quiet; steal = thrash correct) → post-settled verify once.
-   Heuristics: `~/.config/forge/config/settle-heuristics.json`.
+   barrier (focus steal = thrash correct; post-move geom quiet learn) →
+   post-settled verify once. Heuristics:
+   `~/.config/forge/config/settle-heuristics.json` (CLI: load once / flush at
+   end of layout apply; extension may seed open quiet from file once).
 
 **Agent-facing contract (why + anti-patches + code map):**
 [agents/project.md](../agents/project.md) § Layout apply architecture.

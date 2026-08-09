@@ -37,11 +37,15 @@ from layout_apply import (  # noqa: E402
     partition_plan_actions,
     residual_follow_up,
     resolve_focus_soft_timeout_ms,
+    resolve_geom_soft_timeout_ms,
     rewrite_ghostty_launch_app,
     run_soft_focus_barrier,
+    run_soft_geom_barrier,
     slot_to_monitor_path,
     slot_to_tree_path,
     soft_focus_wall_ms,
+    soft_geom_wall_ms,
+    window_rect_fingerprint,
     wait_for_open_role_pins,
     wait_for_tree_stable,
     wait_until_hard_ready,
@@ -1267,6 +1271,102 @@ class TestTimeoutResilience(unittest.TestCase):
         self.assertFalse(out["ok"])
         self.assertEqual(out["pending"], ["1"])
         self.assertIn("hard-ready timeout", out["error"] or "")
+
+
+class TestSoftGeomBarrierSe6(unittest.TestCase):
+    """SE6: soft geom residual barrier (rect quiet + learn)."""
+
+    def test_resolve_geom_timeout_first_ever(self):
+        t = resolve_geom_soft_timeout_ms(empty_store(), host="black")
+        self.assertEqual(t, learning_trial_soft_cap_ms("geom"))
+
+    def test_resolve_geom_learned(self):
+        store = empty_store()
+        key = make_key("black", "ghostty", "move", "geom")
+        ent = get_or_create_entry(
+            store,
+            key,
+            host="black",
+            wm_class="ghostty",
+            process_kind="move",
+            residual_kind="geom",
+        )
+        record_trial(ent, had_residual=True, latency_ms=400)
+        t = resolve_geom_soft_timeout_ms(
+            store, host="black", wm_classes=["ghostty"], process_kind="move"
+        )
+        self.assertEqual(t, int(400 * PAD))
+
+    def test_geom_wall_capped(self):
+        self.assertLessEqual(soft_geom_wall_ms(10_000), 15000)
+
+    def test_soft_geom_settle_no_residual(self):
+        clock = {"t": 0.0}
+        win = {
+            "windowId": "1",
+            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+        }
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += s
+
+        out = run_soft_geom_barrier(
+            lambda: [win],
+            ["1"],
+            soft_timeout_ms=150,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertTrue(out["softSettled"])
+        self.assertEqual(out["residuals"], [])
+        self.assertGreaterEqual(out["elapsed_ms"], 150)
+
+    def test_soft_geom_rect_change_records_residual(self):
+        clock = {"t": 0.0}
+        phase = {"n": 0}
+
+        def mono():
+            return clock["t"]
+
+        def sleep(s):
+            clock["t"] += s
+
+        def load():
+            phase["n"] += 1
+            w = 100 if phase["n"] < 3 else 120
+            return [
+                {
+                    "windowId": "1",
+                    "rect": {"x": 0, "y": 0, "width": w, "height": 100},
+                }
+            ]
+
+        out = run_soft_geom_barrier(
+            load,
+            ["1"],
+            soft_timeout_ms=100,
+            poll_ms=50,
+            call_started_mono=0.0,
+            sleep_fn=sleep,
+            monotonic_fn=mono,
+            max_wall_ms=5000,
+        )
+        self.assertTrue(out["ok"])
+        self.assertGreaterEqual(len(out["residuals"]), 1)
+        self.assertEqual(out["residuals"][0]["kind"], "geom")
+
+    def test_rect_fingerprint(self):
+        fp = window_rect_fingerprint(
+            {"rect": {"x": 1.2, "y": 3.7, "width": 10, "height": 20}}
+        )
+        self.assertEqual(fp, (1, 4, 10, 20))
+        self.assertIsNone(window_rect_fingerprint({"rect": {"width": 0, "height": 1}}))
 
 
 class TestForestStabilityLf6(unittest.TestCase):

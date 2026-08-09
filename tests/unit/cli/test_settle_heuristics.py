@@ -19,6 +19,8 @@ from settle_heuristics import (  # noqa: E402
     PAD,
     ROLLING_N,
     SCHEMA_VERSION,
+    HeuristicsSession,
+    default_session,
     empty_entry,
     empty_store,
     get_or_create_entry,
@@ -32,6 +34,7 @@ from settle_heuristics import (  # noqa: E402
     record_and_soft_timeout,
     record_trial,
     residual_latencies,
+    reset_default_session,
     resolve_host,
     save_store,
     soft_clamp_ms,
@@ -60,6 +63,7 @@ class NormalizeAndKeys(unittest.TestCase):
 class SoftTimeoutMath(unittest.TestCase):
     def test_floors_and_clamps(self):
         self.assertEqual(soft_floor_ms("focus"), 400)
+        self.assertEqual(soft_floor_ms("geom"), 200)
         self.assertEqual(soft_clamp_ms("focus"), 3000)
         self.assertEqual(soft_clamp_ms("geom"), 5000)
         self.assertEqual(learning_trial_soft_cap_ms("focus"), 6000)  # min(10s, 3s*2)
@@ -186,6 +190,52 @@ class StoreIo(unittest.TestCase):
 class Constants(unittest.TestCase):
     def test_hard_timeout_locked(self):
         self.assertEqual(HARD_TIMEOUT_MS, 5000)
+
+
+class HeuristicsSessionTests(unittest.TestCase):
+    def tearDown(self):
+        reset_default_session()
+
+    def test_load_once_record_flush_once(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "config" / "settle-heuristics.json"
+            path.parent.mkdir(parents=True)
+            sess = HeuristicsSession(path)
+            self.assertFalse(sess.is_loaded())
+            t0 = sess.soft_timeout("black", "ghostty", "move", "geom")
+            self.assertTrue(sess.is_loaded())
+            self.assertFalse(sess.is_dirty())
+            self.assertEqual(t0, learning_trial_soft_cap_ms("geom"))
+            # No write until flush after dirty record
+            self.assertFalse(path.is_file())
+            sess.record(
+                host="black",
+                wm_class="ghostty",
+                process_kind="move",
+                residual_kind="geom",
+                had_residual=True,
+                latency_ms=300,
+            )
+            self.assertTrue(sess.is_dirty())
+            self.assertFalse(path.is_file())
+            info = sess.flush()
+            self.assertEqual(info["persist"], "ok")
+            self.assertFalse(sess.is_dirty())
+            self.assertTrue(path.is_file())
+            # Clean flush is no-op
+            self.assertEqual(sess.flush()["persist"], "skipped")
+            # Second load sees data
+            sess2 = HeuristicsSession(path)
+            self.assertEqual(
+                sess2.soft_timeout("black", "ghostty", "move", "geom"),
+                int(300 * PAD),
+            )
+
+    def test_default_session_singleton(self):
+        reset_default_session()
+        a = default_session()
+        b = default_session()
+        self.assertIs(a, b)
 
 
 if __name__ == "__main__":

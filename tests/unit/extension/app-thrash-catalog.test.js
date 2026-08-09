@@ -54,9 +54,10 @@ describe("AppThrashCatalog built-in Ghostty", () => {
     cat = new AppThrashCatalog();
   });
 
-  it("exports ghostty defaults in the locked range", () => {
-    expect(GHOSTTY_MIN_QUIET_MS).toBeGreaterThanOrEqual(150);
-    expect(GHOSTTY_MIN_QUIET_MS).toBeLessThanOrEqual(300);
+  it("exports ghostty defaults (SE10: no minQuiet seed; sticky verify)", () => {
+    expect(GHOSTTY_MIN_QUIET_MS).toBe(0);
+    expect(SETTLE_LEARN_PAD).toBe(1.25);
+    expect(SETTLE_LEARN_CAP_MS).toBe(5000);
     expect(THRASH_SCORE_THRESHOLD).toBe(3);
     expect(BUILT_IN_THRASH_DEFAULTS.length).toBeGreaterThanOrEqual(1);
   });
@@ -66,7 +67,8 @@ describe("AppThrashCatalog built-in Ghostty", () => {
     expect(e).toBeTruthy();
     expect(e.builtIn).toBe(true);
     expect(e.needsExtraVerify).toBe(true);
-    expect(e.minQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
+    expect(e.minQuietMs).toBe(0);
+    expect(e.seedMinQuietMs).toBe(0);
   });
 
   it("lookup by stem and mixed case", () => {
@@ -217,9 +219,8 @@ describe("extractWmClass / hasThrashyManagedTile", () => {
 
 describe("computeLearnedMinQuietMs", () => {
   it("exports pad / cap in the locked range", () => {
-    expect(SETTLE_LEARN_PAD).toBeGreaterThanOrEqual(1.15);
-    expect(SETTLE_LEARN_PAD).toBeLessThanOrEqual(1.25);
-    expect(SETTLE_LEARN_CAP_MS).toBe(2000);
+    expect(SETTLE_LEARN_PAD).toBe(1.25);
+    expect(SETTLE_LEARN_CAP_MS).toBe(5000);
     expect(SETTLE_EMA_ALPHA).toBeGreaterThan(0);
     expect(SETTLE_EMA_ALPHA).toBeLessThan(1);
   });
@@ -245,24 +246,43 @@ describe("computeLearnedMinQuietMs", () => {
     ).toBe(480);
   });
 
-  it("raise-only vs previous when later samples are faster", () => {
+  it("single-sample fallback is raise-only vs previous", () => {
     const raised = computeLearnedMinQuietMs({
       seedFloor: 0,
       previousMinQuiet: 0,
       sampleMs: 500,
-      pad: 1.2,
+      pad: 1.25,
       cap: 2000,
     });
-    expect(raised).toBe(600);
+    expect(raised).toBe(625);
     expect(
       computeLearnedMinQuietMs({
         seedFloor: 0,
         previousMinQuiet: raised,
         sampleMs: 100,
-        pad: 1.2,
+        pad: 1.25,
         cap: 2000,
       })
-    ).toBe(600);
+    ).toBe(625);
+  });
+
+  it("rolling latencies use max*pad (can drop when old max ages out)", () => {
+    expect(
+      computeLearnedMinQuietMs({
+        seedFloor: 0,
+        latenciesMs: [100, 400],
+        pad: 1.25,
+        cap: 5000,
+      })
+    ).toBe(500);
+    expect(
+      computeLearnedMinQuietMs({
+        seedFloor: 0,
+        latenciesMs: [100],
+        pad: 1.25,
+        cap: 5000,
+      })
+    ).toBe(125);
   });
 
   it("caps at SETTLE_LEARN_CAP_MS and never goes below 0", () => {
@@ -270,8 +290,8 @@ describe("computeLearnedMinQuietMs", () => {
       computeLearnedMinQuietMs({
         seedFloor: 0,
         previousMinQuiet: 0,
-        sampleMs: 5000,
-        pad: 1.2,
+        sampleMs: 10000,
+        pad: 1.25,
         cap: SETTLE_LEARN_CAP_MS,
       })
     ).toBe(SETTLE_LEARN_CAP_MS);
@@ -309,7 +329,7 @@ describe("AppThrashCatalog recordSettleSample + snapshot", () => {
     expect(e.seedMinQuietMs).toBe(0);
   });
 
-  it("EMA updates and minQuiet is raise-only", () => {
+  it("EMA updates; minQuiet follows rolling max*pad", () => {
     cat.recordSettleSample("Foo", { ms: 400 });
     const e = cat.lookup("Foo");
     const quietAfterSlow = e.minQuietMs;
@@ -321,25 +341,48 @@ describe("AppThrashCatalog recordSettleSample + snapshot", () => {
     expect(e.settleMsMax).toBe(400);
     const expectedEma = SETTLE_EMA_ALPHA * 100 + (1 - SETTLE_EMA_ALPHA) * 400;
     expect(e.settleMsEma).toBeCloseTo(expectedEma, 5);
-    expect(e.minQuietMs).toBe(quietAfterSlow); // raise-only
+    // Rolling still holds 400 → same quiet until max ages out of window.
+    expect(e.minQuietMs).toBe(quietAfterSlow);
+    expect(e.latenciesMs).toEqual([400, 100]);
     expect(e.mismatchBeforeSettle).toBe(1);
   });
 
-  it("Ghostty seed stays floor; needsExtraVerify sticky; samples can raise", () => {
+  it("Ghostty has no minQuiet seed; needsExtraVerify sticky; samples raise", () => {
     const e = cat.lookup("ghostty");
-    expect(e.seedMinQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
-    expect(e.minQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
+    expect(e.seedMinQuietMs).toBe(0);
+    expect(e.minQuietMs).toBe(0);
     expect(e.needsExtraVerify).toBe(true);
 
     cat.recordSettleSample("com.mitchellh.ghostty", { ms: 50 });
-    expect(e.minQuietMs).toBe(GHOSTTY_MIN_QUIET_MS);
+    expect(e.minQuietMs).toBe(50 * SETTLE_LEARN_PAD);
     expect(e.needsExtraVerify).toBe(true);
     expect(e.builtIn).toBe(true);
 
     cat.recordSettleSample("ghostty", { ms: 800 });
     expect(e.minQuietMs).toBe(800 * SETTLE_LEARN_PAD);
-    expect(e.minQuietMs).toBeGreaterThan(GHOSTTY_MIN_QUIET_MS);
     expect(e.needsExtraVerify).toBe(true);
+  });
+
+  it("applySettleHeuristicsStore seeds geom latencies once", () => {
+    const n = cat.applySettleHeuristicsStore({
+      version: 1,
+      entries: {
+        "black|com.mitchellh.ghostty|move|geom": {
+          class: "com.mitchellh.ghostty",
+          latenciesMs: [200, 300],
+          residualKind: "geom",
+        },
+        "black|google-chrome|focus-phase|focus": {
+          class: "google-chrome",
+          latenciesMs: [900],
+          residualKind: "focus",
+        },
+      },
+    });
+    expect(n).toBe(1);
+    const e = cat.lookup("com.mitchellh.ghostty");
+    expect(e.latenciesMs).toEqual([200, 300]);
+    expect(e.minQuietMs).toBe(300 * SETTLE_LEARN_PAD);
   });
 
   it("snapshot includes settle fields; does not persist to disk", () => {

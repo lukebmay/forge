@@ -30,12 +30,15 @@ LEARNING_TRIAL_SOFT_CAP_MS = 10000
 # residual kind → soft floor / clamp (ms)
 SOFT_FLOOR_MS: Mapping[str, int] = {
     "focus": 400,
-    "geom": 0,
+    # geom: match open-default quiet; zero-residual trials do not collapse to 0
+    "geom": 200,
 }
 SOFT_CLAMP_MS: Mapping[str, int] = {
     "focus": 3000,
     "geom": 5000,
 }
+# Post-move first-ever observe window (full learning trial cap is too long for apply).
+GEOM_FIRST_EVER_OBSERVE_MS = 500
 
 PROCESS_KINDS = frozenset({"open", "move", "focus-phase"})
 RESIDUAL_KINDS = frozenset({"focus", "geom"})
@@ -403,3 +406,113 @@ def record_and_soft_timeout(
     record_trial(entry, had_residual=had_residual, latency_ms=latency_ms)
     timeout = soft_timeout_ms(entry, residual_kind)
     return entry, timeout
+
+
+# --- process session: load once, accumulate, flush at top-level ---
+
+
+class HeuristicsSession:
+    """In-memory settle store for one process / top-level CLI command.
+
+    Load once on first use. Trials accumulate in RAM (rolling last-N per key).
+    Write only via flush() when dirty — call from top-level ops, not subroutines.
+    """
+
+    def __init__(self, path: Any = None) -> None:
+        self._path = Path(path) if path is not None else None
+        self._store: Optional[dict[str, Any]] = None
+        self._dirty = False
+
+    @property
+    def path(self) -> Path:
+        return self._path if self._path is not None else heuristics_path()
+
+    def is_loaded(self) -> bool:
+        return self._store is not None
+
+    def is_dirty(self) -> bool:
+        return self._dirty
+
+    def ensure_loaded(self) -> dict[str, Any]:
+        if self._store is None:
+            try:
+                self._store = load_store(self.path)
+            except Exception:
+                self._store = empty_store()
+            self._dirty = False
+        return self._store
+
+    def store(self) -> dict[str, Any]:
+        return self.ensure_loaded()
+
+    def soft_timeout(
+        self,
+        host: Any,
+        wm_class: Any,
+        process_kind: Any,
+        residual_kind: Any,
+    ) -> int:
+        st = self.ensure_loaded()
+        key = make_key(host, wm_class, process_kind, residual_kind)
+        return soft_timeout_for_key(st, key, residual_kind=residual_kind)
+
+    def record(
+        self,
+        *,
+        host: Any,
+        wm_class: Any,
+        process_kind: Any,
+        residual_kind: Any,
+        had_residual: bool,
+        latency_ms: Optional[int] = None,
+    ) -> dict[str, Any]:
+        st = self.ensure_loaded()
+        key = make_key(host, wm_class, process_kind, residual_kind)
+        entry = get_or_create_entry(
+            st,
+            key,
+            host=str(host or ""),
+            wm_class=normalize_class(wm_class),
+            process_kind=str(process_kind or "").strip().lower(),
+            residual_kind=str(residual_kind or "").strip().lower(),
+        )
+        record_trial(entry, had_residual=had_residual, latency_ms=latency_ms)
+        self._dirty = True
+        return entry
+
+    def flush(self) -> dict[str, Any]:
+        """Atomic write if dirty. No-op when clean or never loaded."""
+        if self._store is None:
+            return {"persist": "skipped", "reason": "not-loaded"}
+        if not self._dirty:
+            return {"persist": "skipped", "reason": "clean"}
+        try:
+            save_store(self.path, self._store)
+            self._dirty = False
+            return {"persist": "ok"}
+        except OSError as e:
+            return {"persist": "error", "persistError": str(e)}
+
+    def reset(self) -> None:
+        """Drop memory (tests / recovery). Next ensure_loaded re-reads disk."""
+        self._store = None
+        self._dirty = False
+
+
+_default_session: Optional[HeuristicsSession] = None
+
+
+def default_session() -> HeuristicsSession:
+    """Process-wide session. One load; flush at top-level command end."""
+    global _default_session
+    if _default_session is None:
+        _default_session = HeuristicsSession()
+    return _default_session
+
+
+def reset_default_session() -> None:
+    """Clear process session (tests)."""
+    global _default_session
+    if _default_session is not None:
+        _default_session.reset()
+    _default_session = None

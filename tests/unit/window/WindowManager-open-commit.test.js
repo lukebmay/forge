@@ -159,7 +159,7 @@ describe("WindowManager open commit (CL4)", () => {
     expect(wm()._openCommitPending.has(meta)).toBe(false);
   });
 
-  it("ghostty uses catalog minQuiet ≥ built-in (after first open of class)", () => {
+  it("ghostty uses default open quiet when catalog seed is 0 (SE10)", () => {
     // Seed: first open of ghostty so second uses no first-open extra
     wm().appThrashCatalog.recordOpen("com.mitchellh.ghostty");
 
@@ -168,13 +168,14 @@ describe("WindowManager open commit (CL4)", () => {
       wm_class: "com.mitchellh.ghostty",
     });
     const state = wm()._openCommitPending.get(meta);
-    expect(state.minQuietMs).toBeGreaterThanOrEqual(GHOSTTY_MIN_QUIET_MS);
+    // SE10: no built-in minQuiet seed → OPEN_DEFAULT_QUIET_MS path
     expect(state.minQuietMs).toBe(
       computeOpenMinQuietMs({
         catalogMinQuietMs: GHOSTTY_MIN_QUIET_MS,
         firstOpen: false,
       })
     );
+    expect(state.minQuietMs).toBe(OPEN_DEFAULT_QUIET_MS);
   });
 
   it("dock open uses short floor (50) via same pipeline", () => {

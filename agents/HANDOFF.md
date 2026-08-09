@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-09 (**AT2 + FC3 wrap-up**; DnD already on master)  
+**Updated:** 2026-08-09 (**SE6 + SE10**; AT2 + FC3 already shipped)  
 **Branch:** **`master`** (default). Plan/task branches only for major refactors/features.  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).  
 **Agent terminal:** Guake OK for **true cold**; Ghostty OK for partial + HUP.  
@@ -47,7 +47,7 @@ forge test live plan --tags R008              # regression-linked cases
 | Window ignore mode | **Shipped** — `mode: "ignore"` in windows.json (D020) |
 | `forge layout clean` `{tiles:[]}` | **Shipped** — CE1 / R009 `detect_layout_mode` empty tiles |
 | **CLI attachable jobs** | **Shipped** — D021; CJ1–CJ6; parent-HUP live smoke green |
-| Geom soft residual in **same** file (SE6) | **Optional** — SL1 still session thrash catalog |
+| Geom soft residual in **same** file (SE6) | **Done** — session load-once / flush top-level; CLI geom soft after moves; catalog seeds from file |
 | True cold-empty CT3 (all apps closed) | **Optional / not required** if matrix green |
 | Wayland CT2 parity | **Not re-run** this session (logout) |
 | Unrelated: resize-autotile, STACKED product | **Open** (other plans) |
@@ -64,9 +64,8 @@ preferred layout sign-off path (`forge test live`, L0 first).
 | --- | --- | --- |
 | later | Nested Wayland retest spike | AT-W1 — only before next Wayland CT |
 | later (shellrc **P0**) | Durable Grok (leader spike first) | `~/dev/me/shellrc/agents/tasks/grok-reattachable-headless_gh0-leader-spike.md` — not forge work |
-| optional | SE6 geom soft residual | [settle](./plans/forge-layout-settle-contract.md) |
 | human | CT2 Wayland cold smoke | [CT2](./tasks/forge-layout-cold-topology_ct2-wayland-live.md) |
-| done | **FC3** close+unfocus live; **AT2**; DnD D0–D4 (merged earlier); **CLI jobs**; FC0–FC2; SE8b; CE1; SE0–SE5+SE7; R007; AT0/AT1 | — |
+| done | **SE6** geom soft + session I/O; **SE10** Ghostty seed drop; **FC3**; **AT2**; CLI jobs; SE0–SE5+SE7; R007 | — |
 
 ### Session ship (2026-08-09) — cold-continue
 
@@ -86,6 +85,13 @@ preferred layout sign-off path (`forge test live`, L0 first).
 | --- | --- |
 | AT-W1 | nested Wayland deferred |
 | Residual hard-ready warn | cold open still logs “targets not hard-ready (moving anyway)” — structure race noise |
+
+### Session ship (2026-08-09) — SE6 / SE10
+
+| Shipped | Detail |
+| --- | --- |
+| **SE6** | `HeuristicsSession` load-once / accumulate / flush at top-level layout; geom soft after residual+belt moves; extension catalog rolling latencies + file seed (read once) |
+| **SE10** | Ghostty minQuiet seed → 0; `needsExtraVerify` kept; live thrash ~225ms settle, thrashScore 0 |
 
 **Enable live:** X11; Guake for cold; `gsettings … logging-enabled true` + log-level 4 if debugging pin.
 

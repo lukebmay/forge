@@ -108,7 +108,9 @@ from layout_apply import (  # noqa: E402
     partition_plan_actions,
     residual_follow_up,
     resolve_focus_soft_timeout_ms,
+    resolve_geom_soft_timeout_ms,
     run_soft_focus_barrier,
+    run_soft_geom_barrier,
     layout_wait_tree_stable_enabled,
     wait_for_open_role_pins,
     wait_for_tree_stable,
@@ -117,13 +119,11 @@ from layout_apply import (  # noqa: E402
     without_focus_actions,
 )
 from settle_heuristics import (  # noqa: E402
-    empty_store,
-    get_or_create_entry,
-    load_store as load_settle_heuristics,
+    GEOM_FIRST_EVER_OBSERVE_MS,
+    default_session,
+    is_first_ever,
     make_key,
-    record_trial,
-    resolve_host,
-    save_store as save_settle_heuristics,
+    resolve_host as settle_resolve_host,
 )
 from layout_cli import (  # noqa: E402
     LayoutParseError,
@@ -1466,6 +1466,18 @@ def _layout_focus_wm_classes(
                 want.add(wid)
     if not want:
         return []
+    return _layout_wm_classes_for_ids(forest, want)
+
+
+def _layout_wm_classes_for_ids(forest: Any, window_ids: Any) -> list[str]:
+    """Unique wmClass list for window ids (heuristic keys; no personal roles)."""
+    want = {
+        str(x).strip()
+        for x in (window_ids or [])
+        if x is not None and str(x).strip() != ""
+    }
+    if not want:
+        return []
     classes: list[str] = []
     seen: set[str] = set()
     for w in _iter_tree_windows(forest):
@@ -1481,6 +1493,101 @@ def _layout_focus_wm_classes(
             seen.add(key)
             classes.append(c)
     return classes
+
+
+def _layout_soft_geom_pass(
+    backend: str,
+    window_ids: list[str],
+    *,
+    process_kind: str,
+    apply_log: dict[str, Any],
+    log_key: str,
+    call_started_mono: Optional[float] = None,
+) -> dict[str, Any]:
+    """
+    Soft geom barrier after hard-ready / move. Records to session store only.
+    Flush is top-level (SE6).
+    """
+    ids = [str(x).strip() for x in window_ids if x is not None and str(x).strip()]
+    if not ids:
+        out = {"skipped": True, "reason": "no-window-ids"}
+        apply_log[log_key] = out
+        return out
+
+    session = default_session()
+    host = settle_resolve_host()
+    t0 = call_started_mono if call_started_mono is not None else time.monotonic()
+
+    def load_windows() -> list[dict[str, Any]]:
+        raw = call_method(backend, "GetTree", "{}")
+        data = json.loads(raw)
+        if isinstance(data, dict) and data.get("error"):
+            raise RuntimeError(str(data["error"]))
+        return list(_iter_tree_windows(data))
+
+    try:
+        forest = _layout_load_tree(backend, None)
+    except Exception:
+        forest = None
+    wm_classes = _layout_wm_classes_for_ids(forest, ids) if forest else []
+    soft_ms = resolve_geom_soft_timeout_ms(
+        session.store(),
+        host=host,
+        wm_classes=wm_classes,
+        process_kind=process_kind,
+    )
+    # First-ever learning trial is up to 10s; post-move observe uses a short window.
+    entries = (session.store().get("entries") or {}) if session.store() else {}
+    classes_for_first = wm_classes or ["unknown"]
+    if any(
+        is_first_ever(entries.get(make_key(host, c, process_kind, "geom")))
+        for c in classes_for_first
+    ):
+        soft_ms = min(int(soft_ms), int(GEOM_FIRST_EVER_OBSERVE_MS))
+    soft = run_soft_geom_barrier(
+        load_windows,
+        ids,
+        soft_timeout_ms=soft_ms,
+        call_started_mono=t0,
+    )
+    for res in soft.get("residuals") or []:
+        lat = res.get("latencyMs")
+        for cls in wm_classes or ["unknown"]:
+            session.record(
+                host=host,
+                wm_class=cls,
+                process_kind=process_kind,
+                residual_kind="geom",
+                had_residual=True,
+                latency_ms=lat,
+            )
+    if soft.get("softSettled") and not soft.get("residuals"):
+        for cls in wm_classes or ["unknown"]:
+            session.record(
+                host=host,
+                wm_class=cls,
+                process_kind=process_kind,
+                residual_kind="geom",
+                had_residual=False,
+            )
+    out = {
+        "softTimeoutMs": soft_ms,
+        "classes": wm_classes,
+        "host": host,
+        "processKind": process_kind,
+        "persist": "deferred",
+        **{k: v for k, v in soft.items() if k not in ("softTimeoutMs",)},
+    }
+    apply_log[log_key] = out
+    return out
+
+
+def _layout_flush_settle_heuristics(apply_log: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    """Top-level write of dirty settle heuristics (once per CLI layout apply)."""
+    info = default_session().flush()
+    if isinstance(apply_log, dict):
+        apply_log["settleHeuristicsFlush"] = info
+    return info
 
 
 def _layout_plan_focus_actions(
@@ -1574,11 +1681,10 @@ def _layout_final_focus_pass(
             return rc, last_plan
 
     # Soft expectation barrier (SE3): learned quiet; steal → correct + reset.
-    host = resolve_host()
-    try:
-        heuristics = load_settle_heuristics(None)
-    except Exception:
-        heuristics = empty_store()
+    # Session store: load once, record in memory; flush at top-level layout end.
+    session = default_session()
+    host = settle_resolve_host()
+    heuristics = session.store()
     wm_classes = _layout_focus_wm_classes(forest0, focus_acts)
     soft_ms = resolve_focus_soft_timeout_ms(
         heuristics, host=host, wm_classes=wm_classes
@@ -1630,44 +1736,33 @@ def _layout_final_focus_pass(
     if soft_rc_holder[0] != 0:
         return soft_rc_holder[0], last_plan
 
-    # In-memory residual samples for learning (persist in SE7).
+    # In-memory residual samples; flush once at top-level layout end (SE6/SE7).
     for res in soft.get("residuals") or []:
         lat = res.get("latencyMs")
         for cls in wm_classes or ["unknown"]:
-            key = make_key(host, cls, "focus-phase", "focus")
-            ent = get_or_create_entry(
-                heuristics,
-                key,
+            session.record(
                 host=host,
                 wm_class=cls,
                 process_kind="focus-phase",
                 residual_kind="focus",
+                had_residual=True,
+                latency_ms=lat,
             )
-            record_trial(ent, had_residual=True, latency_ms=lat)
     if soft.get("softSettled") and not soft.get("residuals"):
         for cls in wm_classes or ["unknown"]:
-            key = make_key(host, cls, "focus-phase", "focus")
-            ent = get_or_create_entry(
-                heuristics,
-                key,
+            session.record(
                 host=host,
                 wm_class=cls,
                 process_kind="focus-phase",
                 residual_kind="focus",
+                had_residual=False,
             )
-            record_trial(ent, had_residual=False)
-    persist_info: dict[str, Any] = {
+    apply_log["finalFocusHeuristics"] = {
         "host": host,
         "classes": wm_classes,
         "residualSamples": len(soft.get("residuals") or []),
+        "persist": "deferred",
     }
-    try:
-        save_settle_heuristics(None, heuristics)
-        persist_info["persist"] = "ok"
-    except OSError as e:
-        persist_info["persist"] = "error"
-        persist_info["persistError"] = str(e)
-    apply_log["finalFocusHeuristics"] = persist_info
 
     # Post-settled verify once (D019): one more mismatch check after soft settle.
     try:
@@ -2562,6 +2657,48 @@ def _layout_run_reconcile(
         "opens": [],
         "followUp": None,
     }
+    # Settle heuristics: load-on-first-use; flush once when this apply exits.
+    try:
+        return _layout_run_reconcile_apply(
+            backend,
+            resolved,
+            data,
+            plan=plan,
+            name=name,
+            ext_actions=ext_actions,
+            open_actions=open_actions,
+            apply_log=apply_log,
+            clean=clean,
+            keep_others=keep_others,
+            force_close=force_close,
+            safe=safe,
+            verbose=verbose,
+            workspace=workspace,
+            wait_tree_stable=wait_tree_stable,
+        )
+    finally:
+        _layout_flush_settle_heuristics(apply_log)
+
+
+def _layout_run_reconcile_apply(
+    backend: str,
+    resolved: dict[str, Any],
+    data: dict[str, Any],
+    *,
+    plan: dict[str, Any],
+    name: str,
+    ext_actions: list,
+    open_actions: list,
+    apply_log: dict[str, Any],
+    clean: bool,
+    keep_others: bool,
+    force_close: bool,
+    safe: bool,
+    verbose: bool,
+    workspace: int,
+    wait_tree_stable: bool,
+) -> int:
+    """Apply half of reconcile (heuristics flush owned by caller)."""
 
     # 1) Moves / parks / closes / ensure_layout for existing windows.
     # Always strip focus from structure batches: open-leaf + profile keyboard
@@ -2797,6 +2934,7 @@ def _layout_run_reconcile(
                             "forge layout: residual targets not hard-ready: "
                             f"{settle_info['pending']} (moving anyway)"
                         )
+                move_t0 = time.monotonic()
                 rc, agg = run_mixed_steps(
                     backend, follow_steps, stop_on_error=True, print_each=False
                 )
@@ -2813,6 +2951,17 @@ def _layout_run_reconcile(
                         )
                     _layout_maybe_print_json(out, verbose=verbose, force=True)
                     return rc
+                # SE6: soft geom quiet after residual moves (learn + wait).
+                geom_ids = move_step_window_ids(follow_steps)
+                if geom_ids:
+                    _layout_soft_geom_pass(
+                        backend,
+                        geom_ids,
+                        process_kind="move",
+                        apply_log=apply_log,
+                        log_key="followUpGeomSoft",
+                        call_started_mono=move_t0,
+                    )
             plan = plan2
 
             # Belt: optional stable wait, then wrong-mon rehome for just-opened only.
@@ -2867,6 +3016,7 @@ def _layout_run_reconcile(
                                 backend, belt_ids
                             )
                             apply_log["beltSettle"] = belt_settle
+                        belt_t0 = time.monotonic()
                         rc, agg = run_mixed_steps(
                             backend, belt_steps, stop_on_error=True, print_each=False
                         )
@@ -2878,6 +3028,15 @@ def _layout_run_reconcile(
                             out["apply"] = apply_log
                             _layout_maybe_print_json(out, verbose=verbose, force=True)
                             return rc
+                        if belt_ids:
+                            _layout_soft_geom_pass(
+                                backend,
+                                belt_ids,
+                                process_kind="move",
+                                apply_log=apply_log,
+                                log_key="beltGeomSoft",
+                                call_started_mono=belt_t0,
+                            )
                         plan = plan3
 
                 # CT0/CT1: postOpenRetry Mode B thrash-recover is not the cold

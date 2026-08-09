@@ -185,7 +185,7 @@ defaults below as locked for implement tasks.
 | **SE3** | Soft expectation barrier (focus residual): start after focus apply; steal → correct + record + reset quiet; soft timeout from heuristics; tests | **done** |
 | **SE4** | Wire focus phase in `forge layout` open path: hard-ready → apply once → soft barrier → post-settled verify once; restore reassert-as-phase (not fixed 250 ms product) | **done** |
 | **SE5** | Extension: ensure pin/restore + tab-active=lastTabFocus aligned with SE3 (D018 keep/tighten); meta-focus steal always treated as thrash during layout focus pin window | **done** |
-| **SE6** | Geom soft expectation: fold SL1 minQuiet into same store/API (no second file) | ready after SE1 |
+| **SE6** | Geom soft expectation: fold SL1 minQuiet into same store/API (no second file) | **done** |
 | **SE7** | Persist updates end-of-layout; first-ever learning trial path; docs (`layout.md` settle section) + REGRESSIONS | **done** |
 | **SE8** | X11 CT3 cold smoke + Wayland CT2 when logout OK; thrash dump / heuristics dump CLI if useful | **partial** (CT3 near-cold green; true empty optional) |
 | **SE8b** | [True cold open leaf (Chrome over Grok)](../tasks/forge-layout-settle-contract_se8-true-cold-open-leaf.md) — Guake agent L2; debug + fix | **ready** |
@@ -195,7 +195,7 @@ Optional later:
 | ID | Task | Status |
 | --- | --- | --- |
 | **SE9** | Invalidate heuristics on schema/engine bump; operator `forge thrash reset-heuristics` | optional |
-| **SE10** | Drop Ghostty brand seed when live samples support (old SL3) | optional |
+| **SE10** | Drop Ghostty brand seed when live samples support (old SL3) | **done** (minQuiet seed 0; needsExtraVerify kept) |
 
 ---
 
@@ -213,6 +213,8 @@ Optional later:
 - [x] Unit tests for pure store + soft/hard predicates; abstract roles only  
 - [x] No personal-layout product branches  
 - [x] Cold/near-cold open: profile actives visible without second CLI layout (CT3 X11 near-cold)  
+- [x] SE6 geom soft into same store; session load-once / flush top-level  
+- [x] SE10 Ghostty minQuiet seed dropped (live settle ~225ms; thrashScore 0)  
 - [ ] Hard timeout 5s path logs clearly when Meta never delivers (live)  
 - [ ] Optional true cold-empty CT3  
 

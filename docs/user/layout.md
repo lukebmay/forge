@@ -369,9 +369,11 @@ On a **cold empty** desk (no claimed role windows), one `forge layout <name>`:
 5. **Hard-ready** pin roles (TILE + rect + mon; hard timeout ~5s)  
 6. **Focus once** (profile `active` / open leaf + keyboard `focus`)  
 7. **Soft residual barrier** — wait a learned quiet window (per host + app
-   class) for late activate/focus steal; on steal, correct immediately and
-   reset quiet. Heuristics file:
-   `~/.config/forge/config/settle-heuristics.json` (updated after layout).  
+   class) for late **focus** steal and post-move **geometry** residual; on
+   focus steal, correct immediately and reset quiet. Geom quiet is observe +
+   learn (no re-apply). Heuristics file:
+   `~/.config/forge/config/settle-heuristics.json` (loaded once per CLI
+   process, accumulated in memory, written once at end of layout apply).  
 8. **Post-settled verify once** — re-apply only still-mismatched open leaves /
    keyboard focus; not a blind double raise  
 
