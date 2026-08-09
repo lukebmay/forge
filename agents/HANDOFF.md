@@ -1,8 +1,10 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-08 (P0 = patch cleanup; test on **X11**)  
+**Updated:** 2026-08-08 (P0 = patch cleanup; real fix unless temp requested; **X11**)  
 **Branch:** `plan/forge-layout-cold-topology`  
 **Sessions:** **X11 preferred for agent live test** (HUP reload). Wayland still a daily driver (logout to load extension).
+
+**Default:** always fix the **real problem** (phase contract). Temporary / band-aid only if the operator **explicitly** asks for temporary.
 
 ---
 
@@ -42,7 +44,25 @@ Forge layout has been **duct-taped**: each live failure got another pass, sleep,
 4. Tests encode patches (“plan twice is OK”) instead of the spine.  
 5. Personal layout names in code/comments become the implicit product.
 
-Operator rule (hard): **no custom coding for personal layouts.** Profiles are data. Engine must work for any mon order, any tab/stack actives, any app class. Framing a bug as “Grok vs Chrome on black” is fine for repro; **shipping a Chrome/Grok branch is fireable-level bad.**
+Operator rules (hard):
+
+1. **No custom coding for personal layouts.** Profiles are data. Engine must work for any mon order, any tab/stack actives, any app class. Framing a bug as “Grok vs Chrome on black” is fine for repro; **shipping a Chrome/Grok branch is fireable-level bad.**  
+2. **Always prefer the real problem** over a temporary workaround. Temporary only when the operator **explicitly** asks for temp / stopgap / “just unstick me.”
+
+### Recent examples (what not to do again)
+
+These are from the same CT2 week — use them as anti-patterns in cleanup and design.
+
+| What we saw | Wrong response (patch) | Real problem (architecture) |
+| --- | --- | --- |
+| Tab open leaf wrong after cold open (wrong role visible) | Mid-flight focus; belt re-focus; quiet sleep + second reassert stacked forever | **Visibility / active leaf is a post-settle phase.** Raising an open leaf while maps still activate lets apps steal focus (autofocus / late activate). Focus **once after** structure+bind+order are stable — not during open thrash. |
+| “Fix” open leaf by stomping lastTabFocus rules ad hoc | Preserve-lastTabFocus bolted onto every re-ensure | **Do not re-ensure topology after bind on the happy path.** If structure rewrite is the crime, stop rewriting; don’t paper the side effect. |
+| mon1 mon-children **swapped** (tab \| term vs term \| tab) after thrash | Run layout again / `ensure_order` as the mental model of success | **Order is part of the spine**, not a cleanup pass after chaos. Construction must not thrash mon order mid-batch; settled re-run is repair, not the design. |
+| Left dock open lands on focus mon | One more dock hook special-case | **Generic policy:** dock sticky mon from pointer; attach LFT(m) or last tile on that mon — never “Nautilus on black” logic. |
+| New open as mon-root covering a tab group | Another mon-root exception for “my dual mon” | **Empty mon LFT ring → end-of-mon-tree attach** (generic last tile), not inventing mon-root as third HSPLIT sibling. |
+| Agent “fixed” desk by reordering windows live | Treat symptom as done | Identify the **phase** that allowed swap/steal; fix contract + **delete** the band-aid when the real fix lands. |
+
+**Focus/visibility rule (generic):** any tab/stack **active** (or profile focus) must be applied **after** launches and moves have settled enough that clients will not steal activation. That is phase ordering, not an app-specific race sleep.
 
 ### How to work instead
 
@@ -52,6 +72,7 @@ Operator rule (hard): **no custom coding for personal layouts.** Profiles are da
 3. Delete or demote every pass/sleep/re-ensure that only existed for that failure class.
 4. Prove with abstract unit forests (roles a/b/c), not only one host profile.
 5. Live smoke on X11 (agent HUP) first; Wayland logout when extension-only.
+6. Temporary only if operator explicitly requested temporary.
 ```
 
 **Cold spine (CT0 lock — hold this):**
