@@ -26,6 +26,7 @@ from live_matrix import (  # noqa: E402
     check_focus_is_tile,
     check_lft_retained,
     check_mon_open_leaf_contains,
+    check_nautilus_tabbed_with_mon0_ghostty,
     check_no_tile_focus,
     classify_agent_terminal,
     evaluate_checks,
@@ -258,8 +259,110 @@ class TestSelect(unittest.TestCase):
         sel = recommend_for_work("multi-instance", cap)
         self.assertTrue(any(c.id == "L1.ghosttys-multi" for c in sel.cases))
 
+    def test_catalog_has_r012_cross_mon_tab_dnd(self):
+        c = next(x for x in LIVE_CASES if x.id == "L1.r012-cross-mon-tab-dnd")
+        self.assertIn("R012", c.regressions)
+        self.assertIn("cross-mon-dnd", c.behaviors)
+        self.assertIn("nautilus-tabbed-with-mon0-ghostty", c.checks)
+        self.assertIn("r012-tab-mon1-then-center-join-mon0", c.actions)
+        self.assertEqual(c.profile, "_forge-test-ghosttys")
+
+    def test_tags_r012(self):
+        forest = _add_guake(_load("tree-perfect.json"))
+        cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
+        sel = select_cases(suite="regression", capability=cap, tags={"R012"})
+        ids = {c.id for c in sel.cases}
+        self.assertIn("L1.r012-cross-mon-tab-dnd", ids)
+
+    def test_work_hint_dnd(self):
+        self.assertIn("cross-mon-dnd", behaviors_from_work_hint("dnd"))
+        forest = _add_guake(_load("tree-perfect.json"))
+        cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
+        sel = recommend_for_work("dnd", cap)
+        self.assertTrue(any(c.id == "L1.r012-cross-mon-tab-dnd" for c in sel.cases))
+
 
 class TestChecks(unittest.TestCase):
+
+    def test_nautilus_tabbed_with_mon0_ghostty(self):
+        forest = {
+            "apiVersion": 1,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 10,
+                                    "mode": "TILE",
+                                    "wmClass": "com.mitchellh.ghostty",
+                                    "title": "ghostty",
+                                    "monitor": 0,
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "windowId": 11,
+                                    "mode": "TILE",
+                                    "wmClass": "org.gnome.Nautilus",
+                                    "title": "Home",
+                                    "monitor": 0,
+                                },
+                            ],
+                        }
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 20,
+                            "mode": "TILE",
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "ghostty",
+                            "monitor": 1,
+                        }
+                    ],
+                },
+            ],
+        }
+        ok, detail = check_nautilus_tabbed_with_mon0_ghostty(forest)
+        self.assertTrue(ok, detail)
+
+        # mon-level HSPLIT siblings → fail
+        forest_hs = {
+            "apiVersion": 1,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "children": [
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 10,
+                            "mode": "TILE",
+                            "wmClass": "com.mitchellh.ghostty",
+                            "monitor": 0,
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 11,
+                            "mode": "TILE",
+                            "wmClass": "org.gnome.Nautilus",
+                            "monitor": 0,
+                        },
+                    ],
+                }
+            ],
+        }
+        ok2, _ = check_nautilus_tabbed_with_mon0_ghostty(forest_hs)
+        self.assertFalse(ok2)
 
     def test_open_leaf_and_agent(self):
         forest = _load("tree-perfect.json")

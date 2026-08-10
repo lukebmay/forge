@@ -45,6 +45,7 @@ BEHAVIORS = frozenset({
     "settle-soft",
     "save-focus",
     "multi-instance",
+    "cross-mon-dnd",
 })
 
 # Work-area → default behaviors (for --from-work hints)
@@ -62,6 +63,8 @@ WORK_HINTS: dict[str, tuple[str, ...]] = {
     "dock": ("dock-open", "mon-claim"),
     "partial": ("partial-reload", ),
     "multi-instance": ("multi-instance", ),
+    "dnd": ("cross-mon-dnd", "structure-bind"),
+    "tab-dnd": ("cross-mon-dnd", "structure-bind"),
     "wayland-rc": (
         "layout-apply",
         "open-leaf",
@@ -277,6 +280,37 @@ LIVE_CASES: tuple[LiveCase, ...] = (
         ),
         notes="Test profile multi-instance; not personal ghosttys/dev.",
     ),
+    LiveCase(
+        id="L1.r012-cross-mon-tab-dnd",
+        layer=LAYER_L1,
+        title=
+        "Cross-mon center tab-join Nautilus → mon0 Ghostty (R012 mid-drag rehome)",
+        behaviors=(
+            "cross-mon-dnd",
+            "structure-bind",
+            "partial-reload",
+            "mon-claim",
+        ),
+        regressions=("R012", ),
+        profile="_forge-test-ghosttys",
+        setup=("close-chrome", "keep-agent", "keep-ghostty-tiles",
+               "ensure-nautilus"),
+        # After layout: tab Nautilus with mon1 Ghostty, then dnd-drop center onto mon0 Ghostty
+        # (synthetic GRAB_TILE + entered-monitor probe via RunSteps dnd-drop).
+        actions=("r012-tab-mon1-then-center-join-mon0", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+            "nautilus-tabbed-with-mon0-ghostty",
+        ),
+        notes=(
+            "R012: mid-drag entered-monitor must not rehome to mon HSPLIT. "
+            "L0 unit: bug-r012-grabtile-no-mid-drag-rehome. "
+            "Harness uses RunSteps dnd-drop (center + simulateEnteredMonitor). "
+            "Optional human smoke: Super-drag Nautilus center onto mon0 Ghostty."
+        ),
+    ),
 )
 
 
@@ -435,6 +469,121 @@ def forest_has_nautilus(forest: Any) -> bool:
         if _is_nautilus_wm_class(_wm_class_str(w)):
             return True
     return False
+
+
+def _window_parent_chain_layouts(forest: Any, window_id: Any) -> list[dict[str, Any]]:
+    """Walk forest and return parent CON/MONITOR nodes for a window id (rootward)."""
+    if not isinstance(forest, dict) or window_id is None:
+        return []
+    want = str(window_id)
+    found: list[dict[str, Any]] = []
+
+    def walk(n: Any, ancestors: list[dict[str, Any]]) -> bool:
+        if not isinstance(n, dict):
+            return False
+        nt = str(n.get("nodeType") or "").upper()
+        if nt == "WINDOW" and str(n.get("windowId")) == want:
+            found.extend(reversed(ancestors))
+            return True
+        next_anc = ancestors
+        if nt in ("CON", "MONITOR", "WORKSPACE"):
+            next_anc = ancestors + [n]
+        for c in n.get("children") or []:
+            if walk(c, next_anc):
+                return True
+        return False
+
+    for m in forest.get("monitors") or []:
+        if walk(m, []):
+            break
+    return found
+
+
+def check_nautilus_tabbed_with_mon0_ghostty(forest: Any) -> tuple[bool, str]:
+    """
+    R012: Nautilus and a mon0 Ghostty share a TABBED CON (not mon-level HSPLIT siblings).
+    """
+    if not isinstance(forest, dict):
+        return False, "no forest"
+    mons = forest.get("monitors") or []
+    if not mons:
+        return False, "no monitors"
+
+    nautilus_ids: list[str] = []
+    mon0_ghostty_ids: list[str] = []
+    for mon_i, w in iter_windows_with_mon(forest):
+        if str(w.get("mode") or "").upper() != "TILE":
+            continue
+        cls = _wm_class_str(w)
+        wid = w.get("windowId")
+        if wid is None:
+            continue
+        sid = str(wid)
+        if _is_nautilus_wm_class(cls):
+            nautilus_ids.append(sid)
+        if mon_i == 0 and _is_ghostty_class(cls):
+            mon0_ghostty_ids.append(sid)
+
+    if not nautilus_ids:
+        return False, "no TILE Nautilus"
+    if not mon0_ghostty_ids:
+        return False, "no TILE Ghostty on mon0"
+
+    # Same TABBED parent for some nautilus + mon0 ghostty pair.
+    for nid in nautilus_ids:
+        n_chain = _window_parent_chain_layouts(forest, nid)
+        n_tab_parents = [
+            p for p in n_chain
+            if str(p.get("layout") or "").upper() == "TABBED"
+        ]
+        if not n_tab_parents:
+            continue
+        for gid in mon0_ghostty_ids:
+            g_chain = _window_parent_chain_layouts(forest, gid)
+            g_tab_parents = [
+                p for p in g_chain
+                if str(p.get("layout") or "").upper() == "TABBED"
+            ]
+            # Identity: same lastTabFocus group / overlapping child sets via window ids
+            # Prefer structural identity: both under a TABBED that contains both ids.
+            for tab in n_tab_parents:
+                tab_ids = {
+                    str(w.get("windowId"))
+                    for w in _iter_windows_under(tab)
+                    if w.get("windowId") is not None
+                }
+                if nid in tab_ids and gid in tab_ids:
+                    return True, f"TABBED mon0-ish group holds nautilus={nid} ghostty={gid}"
+            for tab in g_tab_parents:
+                tab_ids = {
+                    str(w.get("windowId"))
+                    for w in _iter_windows_under(tab)
+                    if w.get("windowId") is not None
+                }
+                if nid in tab_ids and gid in tab_ids:
+                    return True, f"TABBED holds nautilus={nid} mon0 ghostty={gid}"
+
+    # Failure detail: mon0 HSPLIT siblings?
+    return (
+        False,
+        f"Nautilus {nautilus_ids} not TABBED with mon0 Ghostty {mon0_ghostty_ids}",
+    )
+
+
+def _iter_windows_under(node: Any) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+
+    def walk(n: Any) -> None:
+        if not isinstance(n, dict):
+            return
+        if str(n.get("nodeType") or "").upper() == "WINDOW":
+            out.append(n)
+            return
+        for c in n.get("children") or []:
+            walk(c)
+
+    walk(node)
+    return out
 
 
 def forest_looks_like_dev_shape(forest: Any) -> tuple[bool, str]:
@@ -1119,6 +1268,8 @@ def evaluate_checks(
             ok, detail = check_closed_gone(forest, closed_window_id)
         elif name == "lft-retained":
             ok, detail = check_lft_retained(forest, lft_before)
+        elif name == "nautilus-tabbed-with-mon0-ghostty":
+            ok, detail = check_nautilus_tabbed_with_mon0_ghostty(forest)
         else:
             ok = False
             detail = f"unknown check {name!r}"

@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-10 (lifecycle **W1–W5 + L8/L11**; **R011** tab-join structure; X11 live **9/9**; **Wayland RC next**)  
+**Updated:** 2026-08-10 (**R012** GRAB_TILE mid-drag rehome skip; lifecycle **W1–W5 + L8/L11**; **R011**; Wayland RC next)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest dual-mon for RC without host logout.  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -48,6 +48,7 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 | later | STACKED product / resize-autotile | other plans — do not mix into cold spine |
 | done | Pure L1–L6 + L4; wire **W1–W5**; **L8** OpenCommitManager; **L11** LayoutBatchDepth | [completed/](./plans/forge-lifecycle-abstractions/completed/) |
 | done | **R011** tab-join moves stay in structure (X11 live 9/9) | [REGRESSIONS](./REGRESSIONS.md) · report `agents/test-results/wayland/black-x11-20260810T173208Z.json` |
+| done | **R012** GRAB_TILE mid-drag rehome skip + live `L1.r012-cross-mon-tab-dnd` | [REGRESSIONS](./REGRESSIONS.md) · L0 unit + `forge test live plan --tags R012` |
 
 ### P0 — Lifecycle abstractions (plan scope complete)
 

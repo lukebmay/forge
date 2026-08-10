@@ -4766,6 +4766,121 @@ def _test_live_unfocus(backend: str) -> dict[str, Any]:
     return {"ok": rc == 0, "result": out}
 
 
+def _test_live_r012_tab_mon1_then_center_join_mon0(
+    backend: str, *, keep_id: Optional[str] = None
+) -> dict[str, Any]:
+    """
+    R012 live action: tab Nautilus with mon1 Ghostty, then synthetic center
+    dnd-drop onto mon0 Ghostty (GRAB_TILE + entered-monitor probe).
+    """
+    from live_matrix import (
+        _is_ghostty_class,
+        _is_nautilus_wm_class,
+        _wm_class_str,
+        iter_windows_with_mon,
+    )
+
+    forest = _test_live_get_forest(backend, None)
+    keep = str(keep_id) if keep_id else None
+
+    def _pick_ghosttys_and_nautilus(fr: Any) -> tuple[Optional[str], Optional[str], Optional[str]]:
+        """Return (mon0_ghostty, mon1_ghostty, nautilus). Agent may be mon0 Ghostty target."""
+        m0: Optional[str] = None
+        m1: Optional[str] = None
+        nau: Optional[str] = None
+        m0_non_agent: Optional[str] = None
+        m1_non_agent: Optional[str] = None
+        for mon_i, w in iter_windows_with_mon(fr):
+            if str(w.get("mode") or "").upper() != "TILE":
+                continue
+            wid = w.get("windowId")
+            if wid is None:
+                continue
+            sid = str(wid)
+            cls = _wm_class_str(w)
+            if _is_nautilus_wm_class(cls) and nau is None:
+                nau = sid
+            if _is_ghostty_class(cls):
+                if mon_i == 0:
+                    if m0 is None:
+                        m0 = sid
+                    if keep and sid != keep and m0_non_agent is None:
+                        m0_non_agent = sid
+                if mon_i == 1:
+                    if m1 is None:
+                        m1 = sid
+                    if keep and sid != keep and m1_non_agent is None:
+                        m1_non_agent = sid
+        # Prefer non-agent Ghostty when both exist (agent must survive; drop onto peer).
+        return (m0_non_agent or m0, m1_non_agent or m1, nau)
+
+    mon0_ghostty, mon1_ghostty, nautilus = _pick_ghosttys_and_nautilus(forest)
+
+    if not mon0_ghostty:
+        return {"ok": False, "error": "no TILE Ghostty on mon0"}
+    if not mon1_ghostty:
+        return {"ok": False, "error": "no TILE Ghostty on mon1"}
+    if not nautilus:
+        # Test profiles often residuals=close — re-open after layout.
+        ens = _test_live_ensure_nautilus(backend)
+        if ens.get("error") or ens.get("ok") is False:
+            return {"ok": False, "error": f"ensure-nautilus: {ens}"}
+        time.sleep(0.8)
+        forest = _test_live_get_forest(backend, None)
+        mon0_ghostty, mon1_ghostty, nautilus = _pick_ghosttys_and_nautilus(forest)
+    if not nautilus:
+        return {"ok": False, "error": "no TILE Nautilus after ensure"}
+    if not mon0_ghostty or not mon1_ghostty:
+        return {
+            "ok": False,
+            "error": f"missing ghostty mon0={mon0_ghostty} mon1={mon1_ghostty}",
+        }
+
+    # 1) Join Nautilus with mon1 Ghostty (tab group on right mon).
+    steps_tab = [
+        {
+            "op": "merge-group",
+            "selector": f"id:{nautilus}",
+            "with": f"id:{mon1_ghostty}",
+        }
+    ]
+    rc1, out1 = run_mixed_steps(
+        backend, steps_tab, stop_on_error=True, print_each=False
+    )
+    if rc1 != 0:
+        return {
+            "ok": False,
+            "error": "merge-group mon1 failed",
+            "result": out1,
+            "nautilus": nautilus,
+            "mon1Ghostty": mon1_ghostty,
+        }
+    time.sleep(0.35)
+
+    # 2) Center drop onto mon0 Ghostty with entered-monitor mid GRAB_TILE (R012).
+    steps_dnd = [
+        {
+            "op": "dnd-drop",
+            "tile": f"id:{nautilus}",
+            "onto": f"id:{mon0_ghostty}",
+            "zone": "CENTER",
+            "simulateEnteredMonitor": True,
+        }
+    ]
+    rc2, out2 = run_mixed_steps(
+        backend, steps_dnd, stop_on_error=True, print_each=False
+    )
+    return {
+        "ok": rc2 == 0,
+        "nautilus": nautilus,
+        "mon0Ghostty": mon0_ghostty,
+        "mon1Ghostty": mon1_ghostty,
+        "mergeResult": out1,
+        "dndResult": out2,
+        "error": None if rc2 == 0 else "dnd-drop center mon0 failed",
+    }
+
+
 def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
     """
     AI live test matrix: probe capability, select cases by behaviors/regressions,
@@ -5088,6 +5203,15 @@ def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
                         action_ok = False
                         break
                     time.sleep(0.3)
+                elif act == "r012-tab-mon1-then-center-join-mon0":
+                    info = _test_live_r012_tab_mon1_then_center_join_mon0(
+                        backend, keep_id=cap_case.agent_window_id
+                    )
+                    entry["actions"].append({"step": act, **info})
+                    if not info.get("ok"):
+                        action_ok = False
+                        break
+                    time.sleep(0.45)
                 else:
                     entry["actions"].append({"step": act, "unknown": True})
                     action_ok = False

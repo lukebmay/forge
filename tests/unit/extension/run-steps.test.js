@@ -112,6 +112,7 @@ describe("run-steps pure helpers (FC4)", () => {
       expect(EXTENSION_OPS).toContain("layout");
       expect(EXTENSION_OPS).toContain("layout-cycle");
       expect(EXTENSION_OPS).toContain("merge-group");
+      expect(EXTENSION_OPS).toContain("dnd-drop");
       expect(EXTENSION_OPS).toContain("float");
       expect(EXTENSION_OPS).toContain("order");
       expect(EXTENSION_OPS).toContain("place-next");
@@ -140,6 +141,29 @@ describe("run-steps pure helpers (FC4)", () => {
         op: "merge-group",
         with: "class:X",
       });
+      expect(
+        validateStep({
+          op: "dnd-drop",
+          tile: "id:1",
+          onto: "id:2",
+          zone: "center",
+        }).step
+      ).toEqual({
+        op: "dnd-drop",
+        tile: "id:1",
+        onto: "id:2",
+        zone: "CENTER",
+        simulateEnteredMonitor: true,
+      });
+      expect(
+        validateStep({
+          op: "dnd-drop",
+          tile: "id:1",
+          onto: "id:2",
+          simulateEnteredMonitor: false,
+        }).step.simulateEnteredMonitor
+      ).toBe(false);
+      expect(validateStep({ op: "dnd-drop", tile: "id:1" }).ok).toBe(false);
 
       expect(validateStep({ op: "float" }).step).toEqual({
         op: "float",

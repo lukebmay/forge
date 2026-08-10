@@ -35,8 +35,15 @@ forge jobs                        # list durable CLI jobs
 
 **Durable apply:** `forge layout <name>` runs as a one-shot job by default. If
 you close the terminal mid-apply, the job keeps running. Use `--foreground` or
-`FORGE_JOB=0` for the old in-process path. First cold apply can take many
-seconds while Forge waits for apps to map and settle (later runs are faster).
+`FORGE_JOB=0` for the old in-process path.
+
+**Cold after reboot is still multi-second** even when settle heuristics exist:
+apps must map again, hard-ready (TILE/rect/mon) can wait up to ~5s per target,
+and open-leaf soft quiet floors at 2s while pins exist. Learned timings in
+`~/.config/forge/config/settle-heuristics.json` shorten **soft residual** quiet
+after focus/move (focus steal, geom noise)—they do **not** skip open/map or
+hard Meta readiness. Mid-session re-apply with windows already TILE is much
+faster than true cold.
 
 Tree root for `hosts/` + `common/` is `FORGE_LAYOUT_DIR` when set, else
 `~/.config/forge/layout` (same root `layout save` uses). Apply/show still
