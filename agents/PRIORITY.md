@@ -3,12 +3,14 @@
 **Updated:** 2026-08-10  
 **Lens:** healthy codebase first — ownership, pure reuse, unit tests. Size is a symptom.  
 **Branch:** **`master`** default  
-**Push:** only when human asks.
+**Push:** only when human asks (this session: user asked commit+push).
 
-**Active:** Lifecycle **W1–W5 + L8/L11** + **R011** shipped (X11 live 9/9). **Wayland RC is P0.**  
+**Active:** Lifecycle **W1–W5 + L8/L11** + **R011/R012** shipped.  
+**Next product:** nest isolation **N3→N1→N4→N2** (D022), then Wayland RC under locked process.  
 Architecture = cold spine + D019 hard/soft (not patch thrash).
 
 **FIRM:** `forge nested stop` after any nest tests — never leave subshells running.  
+After N3: prefer mechanical auto-cleanup over memory alone.  
 See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
 
 ---
@@ -17,18 +19,27 @@ See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0 now** | Wayland nest dual-mon RC + host L1/L2 on `_forge-test-*` | [suite](./plans/forge-wayland-rc-test-suite.md) |
+| **P0 now** | **Nest isolation implement** N3 → N1 → N4 → N2 | [plan](./plans/forge-nested-isolation.md) · [D022](../docs/DECISIONS.md) |
+| **P1** | Wayland RC suite — **host L1 first**; nest only for code/reload or multi-mon cases (default mon=1) | [suite](./plans/forge-wayland-rc-test-suite.md) |
 | optional | Per-window signals → WindowAttach | [plan](./plans/forge-lifecycle-abstractions.md) |
-| parked | Nest isolation strategies discussion | [D0 nest](./tasks/forge-nested-isolation_d0-discussion.md) |
 | later | STACKED / resize-autotile | separate plans — do not mix into settle spine |
 | abandoned | `Ctrl+Super+Esc` unfocus (FC2) | keybind unbound |
-| done | Pure bags + **W1–W5** + **L8/L11**; **R011**; D0; R007; D019; CLI jobs | [completed/](./plans/forge-lifecycle-abstractions/completed/) · [REGRESSIONS](./REGRESSIONS.md) |
+| done | Nest isolation **D0 design lock** | [completed](./tasks/completed/forge-nested-isolation_d0-discussion.md) |
+| done | Pure bags + **W1–W5** + **L8/L11**; **R011/R012**; D019; CLI jobs | [completed/](./plans/forge-lifecycle-abstractions/completed/) · [REGRESSIONS](./REGRESSIONS.md) |
 
-**Handoff:** [HANDOFF.md](./HANDOFF.md) — bag map, dump commands, residual wire list.
+### Why this order
+
+1. **N3** auto-cleanup — operator safety; small; any nest use must not leave residue.  
+2. **N1** nest host id + CLI data root — stop parent heuristics/config taint from nest CLI.  
+3. **N4** docs — agents stop defaulting dual-mon / nest-for-everything.  
+4. **N2** extension data root — full anti-taint for nest-loaded JS.  
+5. **Wayland RC** — host L1 does not need nest; nest multi-mon only when testing multi-mon; safer after N1+.
+
+**Do not** start dual-mon nest by default. **Do not** nest for no-code host smokes.
+
+**Handoff:** [HANDOFF.md](./HANDOFF.md).
 
 ```bash
-# Residual work is unit-tested wire — not full Wayland RC.
-# If nest is used anyway:
 forge nested stop
 forge nested status   # running: False
 ```
@@ -36,10 +47,8 @@ forge nested status   # running: False
 | Doc | Role |
 | --- | --- |
 | [HANDOFF.md](./HANDOFF.md) | Start here |
-| [lifecycle abstractions](./plans/forge-lifecycle-abstractions.md) | P0 health plan (locked) |
-| [completed/](./plans/forge-lifecycle-abstractions/completed/) | A1–A6 + W1–W5 |
-| [D0 rate](./tasks/forge-lifecycle-abstractions_d0-rate.md) | Done — lock record |
+| [nest isolation plan](./plans/forge-nested-isolation.md) | **P0 implement** |
+| [Wayland RC suite](./plans/forge-wayland-rc-test-suite.md) | P1 RC procedure |
+| [lifecycle abstractions](./plans/forge-lifecycle-abstractions.md) | Health plan (done scope) |
 | [settle contract](./plans/forge-layout-settle-contract.md) | Hard/soft — product |
-| [cold topology](./plans/forge-layout-cold-topology.md) | Spine |
-| [Wayland RC suite](./plans/forge-wayland-rc-test-suite.md) | Parked RC |
 | [REGRESSIONS.md](./REGRESSIONS.md) | R0xx + guards |

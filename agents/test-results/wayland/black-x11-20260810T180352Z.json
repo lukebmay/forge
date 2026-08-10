@@ -1,0 +1,277 @@
+{
+  "capability": {
+    "agentMode": "TILE",
+    "agentTerminal": "ghostty",
+    "agentWindowId": "3404745134",
+    "agentWindowOptional": true,
+    "agentWmClass": "com.mitchellh.ghostty",
+    "canHup": true,
+    "canNested": false,
+    "canPartial": true,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-287-gd749837-dirty",
+    "focusWindowId": "3404745134",
+    "nTileWindows": 8,
+    "notes": [
+      "true cold OK: durable Grok leader (agent TILE may close; process survives \u2014 reattach after)",
+      "X11: reload via HUP (`killall -HUP gnome-shell`). `forge nested` refuses here (exit 2) \u2014 nest is Wayland-host only."
+    ],
+    "session": "x11"
+  },
+  "cases": [
+    {
+      "actions": [
+        {
+          "error": "no TILE Ghostty on mon0",
+          "ok": false,
+          "step": "r012-tab-mon1-then-center-join-mon0"
+        }
+      ],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout failed",
+          "ok": false
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 3404745134 present",
+          "ok": true
+        },
+        {
+          "check": "nautilus-tabbed-with-mon0-ghostty",
+          "detail": "no TILE Nautilus",
+          "ok": false
+        }
+      ],
+      "id": "L1.r012-cross-mon-tab-dnd",
+      "layoutRc": 0,
+      "layoutTail": "      \"wallMs\": 3000,\n      \"error\": null,\n      \"pendingCount\": 0\n    },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-ghosttys source=host path=\u2026/black/_forge-test-ghosttys.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  2   opened  0   moved  0   closed  1\n  thrashRisk  1\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "opens"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 0,
+          "reused": 2
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 471,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 400,
+        "thrashRisk": 1,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 1007
+      },
+      "ok": false,
+      "setup": [
+        {
+          "closed": ["3404745127", "3404745132", "3404745133", "3404745130", "3404745131"],
+          "step": "close-chrome"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-ghostty-tiles"
+        },
+        {
+          "already": true,
+          "launched": false,
+          "step": "ensure-nautilus"
+        }
+      ],
+      "title": "Cross-mon center tab-join Nautilus \u2192 mon0 Ghostty (R012 mid-drag rehome)"
+    }
+  ],
+  "env": {
+    "agentMode": "TILE",
+    "agentTerminal": "ghostty",
+    "canHup": true,
+    "canNested": false,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-287-gd749837-dirty",
+    "hostname": "black",
+    "nTileWindowsStart": 8,
+    "nestedGnome": false,
+    "session": "x11"
+  },
+  "kind": "forge-test-live",
+  "metricsSummary": {
+    "casesWithMetrics": 1,
+    "delayTimeoutsLikelyOkTotal": 1,
+    "expectationMissesTotal": 0,
+    "hardReadyTimedOutMovingAnywayTotal": 0,
+    "hardReadyWarningsTotal": 0,
+    "softCorrectionsTotal": 0,
+    "softTimeoutMsAvg": 400,
+    "softTimeoutMsMax": 400,
+    "wallMsAvg": 1007,
+    "wallMsMax": 1007,
+    "wallMsTotal": 1007
+  },
+  "reattach": {
+    "existingWindowId": 3404745134,
+    "hint": "grok -r <session-id>",
+    "launched": false,
+    "ok": true
+  },
+  "schemaVersion": 1,
+  "selection": {
+    "behaviors": [],
+    "selected": ["L1.r012-cross-mon-tab-dnd"],
+    "skipped": [
+      {
+        "id": "L1.ghosttys-only",
+        "reason": "tags filter ['R012']"
+      },
+      {
+        "id": "L1.left-chrome",
+        "reason": "tags filter ['R012']"
+      },
+      {
+        "id": "L1.right-ghostty",
+        "reason": "tags filter ['R012']"
+      },
+      {
+        "id": "L1.t1-nautilus",
+        "reason": "tags filter ['R012']"
+      },
+      {
+        "id": "L2.true-cold-dev",
+        "reason": "tags filter ['R012']"
+      },
+      {
+        "id": "L2.layout-clean",
+        "reason": "tags filter ['R012']"
+      },
+      {
+        "id": "L1.settled-rerun",
+        "reason": "tags filter ['R012']"
+      },
+      {
+        "id": "L1.close-focus-lft",
+        "reason": "tags filter ['R012']"
+      },
+      {
+        "id": "L1.ghosttys-multi",
+        "reason": "tags filter ['R012']"
+      }
+    ],
+    "suite": "auto",
+    "tags": ["R012"]
+  },
+  "summary": {
+    "cases": [
+      {
+        "actions": [
+          {
+            "error": "no TILE Ghostty on mon0",
+            "ok": false,
+            "step": "r012-tab-mon1-then-center-join-mon0"
+          }
+        ],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout failed",
+            "ok": false
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 3404745134 present",
+            "ok": true
+          },
+          {
+            "check": "nautilus-tabbed-with-mon0-ghostty",
+            "detail": "no TILE Nautilus",
+            "ok": false
+          }
+        ],
+        "id": "L1.r012-cross-mon-tab-dnd",
+        "layoutRc": 0,
+        "layoutTail": "      \"wallMs\": 3000,\n      \"error\": null,\n      \"pendingCount\": 0\n    },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-ghosttys source=host path=\u2026/black/_forge-test-ghosttys.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  2   opened  0   moved  0   closed  1\n  thrashRisk  1\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "opens"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 0,
+            "reused": 2
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 471,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 400,
+          "thrashRisk": 1,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 1007
+        },
+        "ok": false,
+        "setup": [
+          {
+            "closed": ["3404745127", "3404745132", "3404745133", "3404745130", "3404745131"],
+            "step": "close-chrome"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-ghostty-tiles"
+          },
+          {
+            "already": true,
+            "launched": false,
+            "step": "ensure-nautilus"
+          }
+        ],
+        "title": "Cross-mon center tab-join Nautilus \u2192 mon0 Ghostty (R012 mid-drag rehome)"
+      }
+    ],
+    "failed": 1,
+    "ok": false,
+    "passed": 0
+  }
+}

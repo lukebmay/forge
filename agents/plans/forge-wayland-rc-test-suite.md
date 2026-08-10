@@ -1,12 +1,14 @@
 # Wayland RC test suite (duplicable)
 
-**Status:** active — first full run on host `black` 2026-08-09  
+**Status:** active — P1 after nest isolation N3–N2 (D022); first full run 2026-08-09  
 **Purpose:** Repeatable dual-mon Wayland smoke for a **release candidate**, with
 metrics comparable across machines (e.g. older host).  
 **Session:** Wayland login (daily driver). Extension retest via **`forge nested`**,
-not logout loops.
+not logout loops. **Nest default 1 mon**; dual nest only for multi-mon cases.
+No-code smokes stay on **host**. Isolation plan:
+[forge-nested-isolation.md](./forge-nested-isolation.md).
 
-Related: [testing.md § Wayland](../testing.md), [HANDOFF smoke loop](../HANDOFF.md#wayland-extensive-smoke-loop),
+Related: [testing.md § Wayland](../testing.md), [HANDOFF](../HANDOFF.md),
 [AI live matrix](./forge-ai-live-test-matrix.md), [CT2](../tasks/forge-layout-cold-topology_ct2-wayland-live.md).
 
 ---
@@ -70,19 +72,17 @@ python3 -m pytest tests/unit/cli/test_live_matrix.py tests/unit/cli/test_layout_
 # npm test   # or make unit-test when extension JS touched
 ```
 
-### Phase 1 — Nest retest harness
+### Phase 1 — Nest retest harness (only if extension JS retest needed)
 
 ```bash
 ./install                         # tip on disk
-# Single-mon nest (extension reload smoke):
-forge nested start                # or restart if already up
-# Dual-mon nest (multi-mon layout smoke without host desk):
-forge nested start --monitors=2 --replace   # mon size = host primary logical default
-# throwaway shell only (never durable agent shell):
-eval $(forge nested env --export) && forge ping
-forge tree   # expect mo0ws0 + mo1ws0 stableKeys side-by-side when --monitors=2
-forge layout _forge-test-ghosttys
-forge nested restart --monitors=2
+# Default: single-mon nest (extension reload / single-desk structure)
+forge nested start                # or restart if already up — mon=1
+forge nested exec -- forge ping
+# Dual-mon nest ONLY when testing multi-mon behavior:
+forge nested start --monitors=2 --replace
+forge nested exec -- forge tree   # expect mo0ws0 + mo1ws0 when --monitors=2
+forge nested exec -- forge layout _forge-test-ghosttys
 # … more nest cases …
 forge nested stop                 # FIRM when nest phase ends
 forge nested status               # running: False

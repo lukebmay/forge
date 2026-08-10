@@ -85,7 +85,7 @@ retests when `can_nested` is true.
 
 | Layer | What it proves | Where it runs | How extension code reloads |
 | --- | --- | --- | --- |
-| **A — Nest retest** | Extension loads, DBus Forge works, single-mon shell behavior | Nested Shell window (`forge nested`) | `forge nested restart` (no host logout) |
+| **A — Nest retest** | Extension loads, DBus Forge works; structure/open/focus retest | Nested Shell window (`forge nested`) | `forge nested restart` (no host logout) |
 | **B — Host dual-mon live** | Real dual 4K desk: layout, open leaf, focus, cold/partial | **Host** Wayland session | Host cannot HUP — tip must already be on host **or** one logout after first install this boot |
 
 | Also | Role |
@@ -93,8 +93,20 @@ retests when `can_nested` is true.
 | **L0** | Unit/integration for pure/contract bugs — always before expensive live |
 | **CLI-only** (`layout_apply` / `forge` Python) | Live on host **without** nest restart or HUP |
 
-Nest is **single virtual monitor**. It is **not** a substitute for dual-mon CT / matrix
-geometry. Host desk remains the authority for dual-mon sign-off.
+### When to nest (D022 — FIRM)
+
+| Situation | Action |
+| --- | --- |
+| Extension **JS** changed → need reload without host logout | **Nest** (code/test loop) |
+| No code change; one-shot / smoke | **Host only** — do not start nest |
+| Multi-mon behavior under test | Nest `--monitors=N` (usually 2) **or** host dual-mon |
+| Single-desk structure / open / focus retest | Nest **default 1 mon** — do not pay dual-mon cost |
+| Chrome open-leaf / real dual-4K RC authority | **Host** L1 (until nest chrome isolation proven) |
+
+Nest supports **1–4** dummy monitors (`--monitors`). **Default is 1.** Multi-mon
+nest is not a free substitute for host dual-4K geometry; host remains authority
+for physical dual-mon sign-off. Design: [D022](../docs/DECISIONS.md) ·
+[nest isolation plan](./plans/forge-nested-isolation.md).
 
 ### Capability gates
 
@@ -116,19 +128,22 @@ On **X11:** use HUP; `forge nested start` **exits 2** with HUP guidance (not a c
 ```text
 0. Confirm: XDG_SESSION_TYPE=wayland; forge test live probe → can_nested=true
 1. L0 for blast radius (pytest/vitest)
-2. Install tip: ./install   # or forge install
-3. Nest up (only while actively testing nest / extension reload):
+2. If NO extension JS change this iteration:
+     host-only live / forge layout / probe — skip nest entirely
+3. If extension JS changed (code/test loop):
+     ./install
      forge nested doctor
-     forge nested start          # or restart if already up
-     # throwaway shell only — never leave nest env on durable agent shell:
-     eval $(forge nested env --export) && forge ping
-4. Host dual-mon cases (host env only — nest must NOT be exported here):
-     forge nested stop           # FIRM if nest work is done for this stretch
+     forge nested start              # default mon=1
+     # multi-mon case only:  forge nested start --monitors=2 --replace
+     forge nested exec -- forge ping   # prefer exec over durable env export
+     # … nest cases …
+     forge nested stop               # FIRM (N3 will make this mechanical)
+4. Host dual-mon / chrome RC (host env only — nest NOT exported):
+     forge nested stop               # if nest was up
      forge test live plan --from-work <hint>
      forge test live run  --from-work <hint>
-5. Code change → re-install → forge nested restart → re-run L0 + nest subset
-6. Repeat until green. Logout only if host Shell never loaded this tip
-   (first install this boot) and host dual-mon requires host-loaded extension.
+5. Code change → re-install → forge nested restart (mon=1 unless multi-mon case)
+6. Logout only if host Shell never loaded this tip and host dual-mon needs host tip.
 7. ALWAYS before wrap-up / handoff / idle: forge nested stop
      forge nested status         # running: False
 ```
