@@ -1,12 +1,13 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-10 (**nest isolation v1 done** N3→N1→N4→N2; **P1 = Wayland RC**)  
+**Updated:** 2026-08-10 (**R015 empty-mon DnD shipped** — L0 green; host tip pending)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
-**Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).
+**Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
+**Last RC:** [forge-wayland-rc_r013-r014](./plans/forge-wayland-rc-test-suite/completed/forge-wayland-rc_r013-r014.md) · tip `…g89d5223-dirty` + R015 WIP.
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
@@ -45,19 +46,40 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P1** | Wayland RC — host L1/`_forge-test-*` first; nest mon=1 unless multi-mon case | [suite](./plans/forge-wayland-rc-test-suite.md) |
-| optional | Per-window signals → WindowAttach | [plan](./plans/forge-lifecycle-abstractions.md) |
+| **next** | Load R015 tip on host (nest dual-mon or one logout); confirm empty-mon drag | [PRIORITY](./PRIORITY.md) · [R015](./REGRESSIONS.md) |
+| done | **R015** empty-mon DnD (grab-end rehome when no TILE under pointer) | L0 `bug-r015-empty-mon-dnd`; live `L1.r015-empty-mon-dnd` |
+| done | Wayland RC R013/R014 + host logout + suite green | [completed](./plans/forge-wayland-rc-test-suite/completed/forge-wayland-rc_r013-r014.md) |
 | done | Nest isolation **N3→N1→N4→N2** (D022 v1) | [plan](./plans/forge-nested-isolation.md) · [completed/](./plans/forge-nested-isolation/completed/) |
-| done | D022 + D0 nest isolation design | [completed](./tasks/completed/forge-nested-isolation_d0-discussion.md) |
 | done | Lifecycle W1–W5 + L8/L11; R011; R012 | [REGRESSIONS](./REGRESSIONS.md) |
 
 ### Plan map
 
 | Plan | Role |
 | --- | --- |
-| [forge-wayland-rc-test-suite.md](./plans/forge-wayland-rc-test-suite.md) | **P1** RC procedure |
+| [forge-wayland-rc-test-suite.md](./plans/forge-wayland-rc-test-suite.md) | RC procedure (last run green) |
 | [forge-nested-isolation.md](./plans/forge-nested-isolation.md) | Nest isolation v1 (**done**) |
-| [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete) |
+| [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |
+
+### R015 (empty-mon drag) — shipped in tree
+
+**Symptom:** dual-mon Wayland; two dock windows on left; click-drag one to empty
+right mon → snaps back on release. Keyboard mon-move works.
+
+**Root:** DnD only commits with `nodeWinAtPointer`. R012 skips mid-drag rehome.
+Empty dest → null target → grab-end no-op → render snaps back.
+
+**Fix:** `resolveEmptyMonitorDrop` + `_commitEmptyMonitorDrop` in
+`lib/extension/drag-drop.js`; session `dnd-drop` accepts `destMonitor` without
+`onto`; live case `L1.r015-empty-mon-dnd`.
+
+```bash
+# L0
+npm test -- tests/regression/bug-r015-empty-mon-dnd.test.js
+python3 -m pytest tests/unit/cli/test_live_matrix.py -q -k r015
+# Load tip + dual-mon live (Wayland):
+./install && forge nested run --monitors=2 -- forge test live run --tags R015
+# Or host after one logout loads tip: human drag mon0 TILE onto empty mon1
+```
 
 ### Nest isolation v1 (shipped)
 
@@ -72,7 +94,7 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 `…/forge-config`, not parent `~/.config/forge`. Prefer `forge nested run` for campaigns.
 Shared intentionally: install UUID, layout profiles, gsettings.
 
-### P1 — Wayland RC prep (next campaign)
+### Wayland RC (cleared 2026-08-10)
 
 Procedure: [forge-wayland-rc-test-suite.md](./plans/forge-wayland-rc-test-suite.md) ·
 process: [testing.md](./testing.md) § Wayland.
@@ -99,8 +121,9 @@ forge test live plan --from-work wayland-rc
 # Host dual-mon RC needs tip already on host (one logout after install if needed)
 ```
 
-**Host tip note:** nest can load tip via `./install` + nest restart without host logout;
-host Shell still needs logout/reload once if host RC must exercise new extension JS.
+**Last host run:** tip `…-dirty` after logout; full `wayland-rc` cleared (first
+`L1.ghosttys-only` post-login hard-ready fluke; retest PASS). R013/R014 open-leaf
+thrash **not** reproduced.
 
 ### Lifecycle bags (shipped — residual optional)
 
@@ -178,8 +201,8 @@ No-code smoke → **host** only (no nest).
 | Doc | Role |
 | --- | --- |
 | [PRIORITY.md](./PRIORITY.md) | Queue |
-| [nest isolation](./plans/forge-nested-isolation.md) | **P0** |
-| [Wayland RC suite](./plans/forge-wayland-rc-test-suite.md) | P1 |
+| [nest isolation](./plans/forge-nested-isolation.md) | Nest isolation v1 (**done**) |
+| [Wayland RC suite](./plans/forge-wayland-rc-test-suite.md) | RC procedure (cleared) |
 | [lifecycle abstractions](./plans/forge-lifecycle-abstractions.md) | Health (done scope) |
 | [settle contract](./plans/forge-layout-settle-contract.md) | Hard/soft product |
 | [REGRESSIONS.md](./REGRESSIONS.md) | R0xx + guards |

@@ -1,6 +1,6 @@
 # Wayland RC test suite (duplicable)
 
-**Status:** active — **P1 now** (nest isolation v1 done 2026-08-10); prior run 2026-08-09  
+**Status:** active procedure — **last black run green 2026-08-10** (R013/R014 cleared)  
 **Purpose:** Repeatable dual-mon Wayland smoke for a **release candidate**, with
 metrics comparable across machines (e.g. older host).  
 **Session:** Wayland login (daily driver). Extension retest via **`forge nested`**,
@@ -235,14 +235,16 @@ Reports use `session: x11` so files do not collide with Wayland runs.
 
 ---
 
-## Bugs found (2026-08-09 black)
+## Bugs found (black)
 
-| Id | Symptom | Status |
-| --- | --- | --- |
-| **R010** | One-shot multi-open / ghosttys-only: mon1 flat or mon0 thrash; Mode B second layout repairs | Partial fix (place→structure split; mon-ensure skip); first-shot still FAIL |
-| Unfocus Wayland | RunSteps unfocus ok but Meta TILE remains focused | Tip JS: hand focus to FLOAT/Guake; **host must load tip** (logout once) |
-| Nest die | Nested shell sometimes exits ~2s after enable | Investigate; first start/ping can still be green |
-| Open-leaf false PASS | Ghostty title containing “grok” matched mon0 Grok check | Fixed: chrome-family required |
+| Id | Date | Symptom | Status |
+| --- | --- | --- | --- |
+| **R010** | 2026-08-09 | One-shot multi-open / ghosttys-only: mon1 flat or mon0 thrash; Mode B second layout repairs | Partial (place→structure; mon-ensure skip); see R013 |
+| **R013** | 2026-08-10 | Belt mon-root moves after residual structure flatten mon1 TABBED | **Shipped CLI** `beltStructure`; host RC green after tip load |
+| **R014** | 2026-08-10 | Soft focus 32 corrections; open leaf stuck on Ghostty after keyboard:false Grok | **Shipped tip** GetTree no longer mutates LTF; host logout done; RC green |
+| Unfocus Wayland | 2026-08-09 | RunSteps unfocus ok but Meta TILE remains focused | Tip JS; host logout |
+| Nest die | 2026-08-09 | Nested shell sometimes exits ~2s after enable | Investigate; first start/ping can still be green |
+| Open-leaf false PASS | 2026-08-09 | Ghostty title containing “grok” matched mon0 Grok check | Fixed: chrome-family required |
 
 Record new failures under `agents/REGRESSIONS.md` + unit when pure + `LIVE_CASES`.  
 Results JSON: `agents/test-results/wayland/`.

@@ -3129,8 +3129,10 @@ def _layout_run_reconcile_apply(
             plan = plan2
 
             # Belt: optional stable wait, then wrong-mon rehome for just-opened only.
-            # No ensure_layout / ensure_order here (CT cleanup: residual bind owns
-            # structure; belt structure rewrite stomped open leaf / mon order).
+            # Pin mon-moves only (no ensure_* in the move batch — D014). After mon
+            # rehome, one structure rebind repairs TABBED groups that mon-root moves
+            # flatten (Wayland multi-open residual: residual structure tabs mon1,
+            # Meta rehomes pins to mon0, belt moves mon-root and leaves mon1 flat).
             if role_pins and not still_open:
                 belt_stable: dict[str, Any] = {"skipped": True}
                 if wait_tree_stable:
@@ -3201,6 +3203,137 @@ def _layout_run_reconcile_apply(
                                 log_key="beltGeomSoft",
                                 call_started_mono=belt_t0,
                             )
+                        # Structure rebind after belt mon-root moves (same
+                        # place→structure contract as residual follow-up).
+                        try:
+                            forest_bs = _load_live_forest()
+                            plan_bs = plan_reconcile(
+                                forest_bs,
+                                data,
+                                clean=clean,
+                                keep_others=keep_others,
+                                safe=safe,
+                                role_pins=role_pins,
+                                just_opened_roles=set(role_pins.keys()),
+                                workspace=workspace,
+                            )
+                            bs_ext, _ = partition_plan_actions(
+                                plan_bs.get("actions")
+                            )
+                            bs_follow, _ = residual_follow_up(
+                                without_focus_actions(bs_ext),
+                                [],
+                                force_close=force_close,
+                                workspace=workspace,
+                            )
+                            bs_place, bs_struct = (
+                                partition_extension_steps_place_vs_structure(
+                                    bs_follow
+                                )
+                            )
+                            if bs_place:
+                                bs_place_ids = move_step_window_ids(bs_place)
+                                if bs_place_ids:
+                                    apply_log["beltPlace2Settle"] = (
+                                        wait_for_window_ids_settled(
+                                            backend, bs_place_ids
+                                        )
+                                    )
+                                rc_bp, agg_bp = run_mixed_steps(
+                                    backend,
+                                    bs_place,
+                                    stop_on_error=True,
+                                    print_each=False,
+                                )
+                                apply_log["beltPlace2"] = agg_bp
+                                if rc_bp != 0:
+                                    _eprint(
+                                        "forge layout: belt place2 steps failed"
+                                    )
+                                    out = _layout_plan_meta(
+                                        resolved, name, plan_bs, dry_run=False
+                                    )
+                                    out["ok"] = False
+                                    out["apply"] = apply_log
+                                    _layout_maybe_print_json(
+                                        out, verbose=verbose, force=True
+                                    )
+                                    return rc_bp
+                                forest_bs = _load_live_forest()
+                                plan_bs = plan_reconcile(
+                                    forest_bs,
+                                    data,
+                                    clean=clean,
+                                    keep_others=keep_others,
+                                    safe=safe,
+                                    role_pins=role_pins,
+                                    just_opened_roles=set(role_pins.keys()),
+                                    workspace=workspace,
+                                )
+                                bs_ext, _ = partition_plan_actions(
+                                    plan_bs.get("actions")
+                                )
+                                bs_follow, _ = residual_follow_up(
+                                    without_focus_actions(bs_ext),
+                                    [],
+                                    force_close=force_close,
+                                    workspace=workspace,
+                                )
+                                _bp3, bs_struct = (
+                                    partition_extension_steps_place_vs_structure(
+                                        bs_follow
+                                    )
+                                )
+                            if bs_struct:
+                                bs_ids = move_step_window_ids(bs_struct)
+                                for _role, pin_wid in (role_pins or {}).items():
+                                    if (pin_wid is not None
+                                            and str(pin_wid) not in bs_ids):
+                                        bs_ids.append(str(pin_wid))
+                                if bs_ids:
+                                    apply_log["beltStructureSettle"] = (
+                                        wait_for_window_ids_settled(
+                                            backend, bs_ids
+                                        )
+                                    )
+                                rc_bs, agg_bs = run_mixed_steps(
+                                    backend,
+                                    bs_struct,
+                                    stop_on_error=True,
+                                    print_each=False,
+                                )
+                                apply_log["beltStructure"] = agg_bs
+                                if rc_bs != 0:
+                                    _eprint(
+                                        "forge layout: belt structure rebind failed"
+                                    )
+                                    out = _layout_plan_meta(
+                                        resolved, name, plan_bs, dry_run=False
+                                    )
+                                    out["ok"] = False
+                                    out["apply"] = apply_log
+                                    _layout_maybe_print_json(
+                                        out, verbose=verbose, force=True
+                                    )
+                                    return rc_bs
+                            else:
+                                apply_log["beltStructure"] = {
+                                    "ok": True,
+                                    "skipped": True,
+                                    "reason": "nothing to structure",
+                                }
+                            plan = plan_bs
+                        except Exception as e:
+                            _eprint(
+                                "forge layout: belt structure rebind failed: "
+                                f"{e}"
+                            )
+                            apply_log["beltStructure"] = {
+                                "ok": False,
+                                "error": str(e),
+                            }
+                            plan = plan3
+                    else:
                         plan = plan3
 
                 # CT0/CT1: postOpenRetry Mode B thrash-recover is not the cold
@@ -4881,6 +5014,130 @@ def _test_live_r012_tab_mon1_then_center_join_mon0(
     }
 
 
+def _test_live_r015_empty_mon1_dnd(
+    backend: str, *, keep_id: Optional[str] = None
+) -> dict[str, Any]:
+    """
+    R015 live action: ensure mon1 has no TILE, pick a mon0 TILE (not agent),
+    synthetic dnd-drop with destMonitor=1 (empty-mon rehome).
+    """
+    from live_matrix import (
+        _is_ghostty_class,
+        _is_nautilus_wm_class,
+        _wm_class_str,
+        iter_windows_with_mon,
+    )
+
+    forest = _test_live_get_forest(backend, None)
+    keep = str(keep_id) if keep_id else None
+
+    mon0_tiles: list[str] = []
+    mon1_tiles: list[str] = []
+    for mon_i, w in iter_windows_with_mon(forest):
+        if str(w.get("mode") or "").upper() != "TILE":
+            continue
+        wid = w.get("windowId")
+        if wid is None:
+            continue
+        sid = str(wid)
+        if keep and sid == keep:
+            continue
+        if mon_i == 0:
+            mon0_tiles.append(sid)
+        elif mon_i == 1:
+            mon1_tiles.append(sid)
+
+    # Clear mon1 tiles so dest is empty (close non-agent).
+    for sid in list(mon1_tiles):
+        info = _test_live_close_id(backend, sid)
+        if not info.get("ok"):
+            return {
+                "ok": False,
+                "error": f"could not clear mon1 tile {sid}: {info}",
+            }
+        time.sleep(0.25)
+    if mon1_tiles:
+        time.sleep(0.35)
+        forest = _test_live_get_forest(backend, None)
+        mon1_tiles = []
+        mon0_tiles = []
+        for mon_i, w in iter_windows_with_mon(forest):
+            if str(w.get("mode") or "").upper() != "TILE":
+                continue
+            wid = w.get("windowId")
+            if wid is None:
+                continue
+            sid = str(wid)
+            if keep and sid == keep:
+                continue
+            if mon_i == 0:
+                mon0_tiles.append(sid)
+            elif mon_i == 1:
+                mon1_tiles.append(sid)
+        if mon1_tiles:
+            return {
+                "ok": False,
+                "error": f"mon1 still has tiles after close: {mon1_tiles}",
+            }
+
+    if not mon0_tiles:
+        # Prefer Nautilus on mon0; else open one.
+        ens = _test_live_ensure_nautilus(backend)
+        if ens.get("error") or ens.get("ok") is False:
+            return {"ok": False, "error": f"ensure-nautilus: {ens}"}
+        time.sleep(0.8)
+        forest = _test_live_get_forest(backend, None)
+        mon0_tiles = []
+        for mon_i, w in iter_windows_with_mon(forest):
+            if mon_i != 0 or str(w.get("mode") or "").upper() != "TILE":
+                continue
+            wid = w.get("windowId")
+            if wid is None:
+                continue
+            sid = str(wid)
+            if keep and sid == keep:
+                continue
+            mon0_tiles.append(sid)
+    if not mon0_tiles:
+        return {"ok": False, "error": "no mon0 TILE to drag (excluding agent)"}
+
+    # Prefer Nautilus or non-ghostty so we don't peel layout-critical ghostty.
+    tile_id = mon0_tiles[0]
+    forest = _test_live_get_forest(backend, None)
+    for mon_i, w in iter_windows_with_mon(forest):
+        if mon_i != 0 or str(w.get("mode") or "").upper() != "TILE":
+            continue
+        wid = w.get("windowId")
+        if wid is None:
+            continue
+        sid = str(wid)
+        if sid not in mon0_tiles:
+            continue
+        cls = _wm_class_str(w)
+        if _is_nautilus_wm_class(cls):
+            tile_id = sid
+            break
+        if not _is_ghostty_class(cls):
+            tile_id = sid
+
+    steps = [
+        {
+            "op": "dnd-drop",
+            "tile": f"id:{tile_id}",
+            "destMonitor": 1,
+            "simulateEnteredMonitor": True,
+        }
+    ]
+    rc, out = run_mixed_steps(backend, steps, stop_on_error=True, print_each=False)
+    return {
+        "ok": rc == 0,
+        "tile": tile_id,
+        "destMonitor": 1,
+        "dndResult": out,
+        "error": None if rc == 0 else "dnd-drop empty mon1 failed",
+    }
+
+
 def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
     """
     AI live test matrix: probe capability, select cases by behaviors/regressions,
@@ -5205,6 +5462,15 @@ def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
                     time.sleep(0.3)
                 elif act == "r012-tab-mon1-then-center-join-mon0":
                     info = _test_live_r012_tab_mon1_then_center_join_mon0(
+                        backend, keep_id=cap_case.agent_window_id
+                    )
+                    entry["actions"].append({"step": act, **info})
+                    if not info.get("ok"):
+                        action_ok = False
+                        break
+                    time.sleep(0.45)
+                elif act == "r015-empty-mon1-dnd":
+                    info = _test_live_r015_empty_mon1_dnd(
                         backend, keep_id=cap_case.agent_window_id
                     )
                     entry["actions"].append({"step": act, **info})

@@ -267,6 +267,14 @@ class TestSelect(unittest.TestCase):
         self.assertIn("r012-tab-mon1-then-center-join-mon0", c.actions)
         self.assertEqual(c.profile, "_forge-test-ghosttys")
 
+    def test_catalog_has_r015_empty_mon_dnd(self):
+        c = next(x for x in LIVE_CASES if x.id == "L1.r015-empty-mon-dnd")
+        self.assertIn("R015", c.regressions)
+        self.assertIn("cross-mon-dnd", c.behaviors)
+        self.assertIn("tile-on-mon1", c.checks)
+        self.assertIn("r015-empty-mon1-dnd", c.actions)
+        self.assertEqual(c.profile, "_forge-test-ghosttys")
+
     def test_tags_r012(self):
         forest = _add_guake(_load("tree-perfect.json"))
         cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
@@ -274,12 +282,21 @@ class TestSelect(unittest.TestCase):
         ids = {c.id for c in sel.cases}
         self.assertIn("L1.r012-cross-mon-tab-dnd", ids)
 
+    def test_tags_r015(self):
+        forest = _add_guake(_load("tree-perfect.json"))
+        cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
+        sel = select_cases(suite="regression", capability=cap, tags={"R015"})
+        ids = {c.id for c in sel.cases}
+        self.assertIn("L1.r015-empty-mon-dnd", ids)
+
     def test_work_hint_dnd(self):
         self.assertIn("cross-mon-dnd", behaviors_from_work_hint("dnd"))
         forest = _add_guake(_load("tree-perfect.json"))
         cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
         sel = recommend_for_work("dnd", cap)
-        self.assertTrue(any(c.id == "L1.r012-cross-mon-tab-dnd" for c in sel.cases))
+        ids = {c.id for c in sel.cases}
+        self.assertIn("L1.r012-cross-mon-tab-dnd", ids)
+        self.assertIn("L1.r015-empty-mon-dnd", ids)
 
 
 class TestChecks(unittest.TestCase):

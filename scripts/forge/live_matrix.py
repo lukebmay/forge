@@ -125,7 +125,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "settle-soft",
             "structure-bind",
         ),
-        regressions=("R005", "R007", "R008", "R011"),
+        regressions=("R005", "R007", "R008", "R011", "R013", "R014"),
         profile="_forge-test-dual",
         setup=("close-chrome", "keep-agent", "keep-ghostty-tiles"),
         checks=(
@@ -169,7 +169,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "mon-claim",
             "structure-bind",
         ),
-        regressions=("R001", "R005", "R011"),
+        regressions=("R001", "R005", "R011", "R013", "R014"),
         profile="_forge-test-dual",
         setup=("close-mon0-chrome", "keep-agent", "keep-mon1"),
         checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube",
@@ -309,6 +309,33 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "L0 unit: bug-r012-grabtile-no-mid-drag-rehome. "
             "Harness uses RunSteps dnd-drop (center + simulateEnteredMonitor). "
             "Optional human smoke: Super-drag Nautilus center onto mon0 Ghostty."
+        ),
+    ),
+    LiveCase(
+        id="L1.r015-empty-mon-dnd",
+        layer=LAYER_L1,
+        title="Empty mon1 drag-drop rehome (R015 snap-back)",
+        behaviors=(
+            "cross-mon-dnd",
+            "structure-bind",
+            "mon-claim",
+        ),
+        regressions=("R015", ),
+        profile="_forge-test-ghosttys",
+        setup=("close-chrome", "keep-agent", "keep-ghostty-tiles",
+               "ensure-nautilus"),
+        actions=("r015-empty-mon1-dnd", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+            "tile-on-mon1",
+        ),
+        notes=(
+            "R015: grab-end over empty mon must rehome (not snap back). "
+            "L0 unit: bug-r015-empty-mon-dnd. "
+            "Harness: clear mon1 tiles, dnd-drop tile destMonitor=1. "
+            "Optional human: drag TILE from mon0 onto empty mon1 work area."
         ),
     ),
 )
@@ -497,6 +524,22 @@ def _window_parent_chain_layouts(forest: Any, window_id: Any) -> list[dict[str, 
         if walk(m, []):
             break
     return found
+
+
+def check_tile_on_mon(forest: Any, mon_index: int = 1) -> tuple[bool, str]:
+    """R015: at least one TILE on the given monitor (empty-mon drop landed)."""
+    if not isinstance(forest, dict):
+        return False, "no forest"
+    count = 0
+    for mon_i, w in iter_windows_with_mon(forest):
+        if mon_i != mon_index:
+            continue
+        if str(w.get("mode") or "").upper() != "TILE":
+            continue
+        count += 1
+    if count < 1:
+        return False, f"no TILE on mon{mon_index}"
+    return True, f"{count} TILE(s) on mon{mon_index}"
 
 
 def check_nautilus_tabbed_with_mon0_ghostty(forest: Any) -> tuple[bool, str]:
@@ -1270,6 +1313,8 @@ def evaluate_checks(
             ok, detail = check_lft_retained(forest, lft_before)
         elif name == "nautilus-tabbed-with-mon0-ghostty":
             ok, detail = check_nautilus_tabbed_with_mon0_ghostty(forest)
+        elif name == "tile-on-mon1":
+            ok, detail = check_tile_on_mon(forest, mon_index=1)
         else:
             ok = False
             detail = f"unknown check {name!r}"

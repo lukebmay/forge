@@ -710,10 +710,12 @@ def belt_actions_from_plan(
     """
     Post-open belt: wrong-mon rehome for just-opened roles only.
 
-    Skeleton→bind residual owns structure/order/size. Belt must not re-run
-    ensure_layout / ensure_order (that rewrote topology after bind and stomped
-    lastTabFocus). include_focus is kept for tests/API; default False — focus is
-    a single post-settle pass, never mid-belt.
+    The *move batch* must not include ensure_layout / ensure_order (D014 —
+    mid-belt structure rewrite stomped open leaf / mon order). After mon-root
+    moves, the CLI apply path re-runs one place→structure rebind
+    (`beltStructure`) so TABBED groups flattened by mon rehome are rebuilt.
+    include_focus is kept for tests/API; default False — focus is a single
+    post-settle pass, never mid-belt.
     """
     if not isinstance(actions, list):
         return []

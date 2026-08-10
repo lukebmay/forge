@@ -1,0 +1,372 @@
+{
+  "capability": {
+    "agentMode": null,
+    "agentTerminal": "unknown",
+    "agentWindowId": null,
+    "agentWindowOptional": true,
+    "agentWmClass": null,
+    "canHup": false,
+    "canNested": true,
+    "canPartial": true,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-292-g89d5223-dirty",
+    "focusWindowId": null,
+    "nTileWindows": 0,
+    "notes": [
+      "no windows in forest",
+      "true cold OK: durable Grok leader (agent TILE may close; process survives \u2014 reattach after)",
+      "Wayland: no HUP \u2014 reload extension via `forge nested restart` (not logout). Dual-mon live still host desk."
+    ],
+    "session": "wayland"
+  },
+  "cases": [
+    {
+      "actions": [
+        {
+          "destMonitor": 1,
+          "dndResult": {
+            "chunks": [
+              {
+                "kind": "extension",
+                "ok": true,
+                "results": [
+                  {
+                    "candidate": {
+                      "nodeType": "WINDOW",
+                      "path": "mo0ws0/0",
+                      "title": "Ghostty",
+                      "windowId": 1198612985,
+                      "wmClass": "com.mitchellh.ghostty"
+                    },
+                    "destMonitor": 1,
+                    "emptyMon": true,
+                    "enteredMonitorSkippedRehome": true,
+                    "index": 0,
+                    "monitorAfter": 1,
+                    "ok": true,
+                    "rehomed": true
+                  }
+                ]
+              }
+            ],
+            "ok": true
+          },
+          "error": null,
+          "ok": true,
+          "step": "r015-empty-mon1-dnd",
+          "tile": "1198612985"
+        }
+      ],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 1198612985 present",
+          "ok": true
+        },
+        {
+          "check": "tile-on-mon1",
+          "detail": "1 TILE(s) on mon1",
+          "ok": true
+        }
+      ],
+      "id": "L1.r015-empty-mon-dnd",
+      "layoutRc": 0,
+      "layoutTail": "   \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black-sub-forge profile=_forge-test-ghosttys source=common path=\u2026/common/_forge-test-ghosttys.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  2   moved  0   left  2\n  thrashRisk  2 (skeleton, open:ghostty, open:ghostty-2)\nforge layout: residual targets not hard-ready: ['1198612984', '1198612985'] (moving anyway)\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "beltTreeStable",
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "followUpGeomSoft",
+          "followUpSettle",
+          "followUpStructure",
+          "followUpStructureSettle",
+          "layoutBatchBegin",
+          "layoutBatchEnd",
+          "layoutBatchRelease",
+          "layoutChromeClear",
+          "openMapWait",
+          "opens",
+          "postOpenRetry",
+          "treeStable"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 2,
+          "reused": 0
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [
+          "hard-ready timeout after 5000ms (pending ['1198612984', '1198612985'])"
+        ],
+        "hardReadyWarnings": 3,
+        "softCorrections": 0,
+        "softElapsedMs": 6043,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 6000,
+        "thrashRisk": 2,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 18292
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": [],
+          "step": "close-chrome"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-ghostty-tiles"
+        },
+        {
+          "already": false,
+          "launched": true,
+          "ok": true,
+          "step": "ensure-nautilus",
+          "windowId": 1198612982
+        }
+      ],
+      "title": "Empty mon1 drag-drop rehome (R015 snap-back)"
+    }
+  ],
+  "env": {
+    "agentMode": null,
+    "agentTerminal": "unknown",
+    "canHup": false,
+    "canNested": true,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-292-g89d5223-dirty",
+    "hostname": "black",
+    "nTileWindowsStart": 0,
+    "nestedGnome": true,
+    "session": "wayland"
+  },
+  "kind": "forge-test-live",
+  "metricsSummary": {
+    "casesWithMetrics": 1,
+    "delayTimeoutsLikelyOkTotal": 1,
+    "expectationMissesTotal": 0,
+    "hardReadyTimedOutMovingAnywayTotal": 0,
+    "hardReadyWarningsTotal": 3,
+    "softCorrectionsTotal": 0,
+    "softTimeoutMsAvg": 6000,
+    "softTimeoutMsMax": 6000,
+    "wallMsAvg": 18292,
+    "wallMsMax": 18292,
+    "wallMsTotal": 18292
+  },
+  "reattach": {
+    "existingWindowId": 1198612985,
+    "hint": "grok -r <session-id>",
+    "launched": false,
+    "ok": true
+  },
+  "schemaVersion": 1,
+  "selection": {
+    "behaviors": [],
+    "selected": ["L1.r015-empty-mon-dnd"],
+    "skipped": [
+      {
+        "id": "L1.ghosttys-only",
+        "reason": "tags filter ['R015']"
+      },
+      {
+        "id": "L1.left-chrome",
+        "reason": "tags filter ['R015']"
+      },
+      {
+        "id": "L1.right-ghostty",
+        "reason": "tags filter ['R015']"
+      },
+      {
+        "id": "L1.t1-nautilus",
+        "reason": "tags filter ['R015']"
+      },
+      {
+        "id": "L2.true-cold-dev",
+        "reason": "tags filter ['R015']"
+      },
+      {
+        "id": "L2.layout-clean",
+        "reason": "tags filter ['R015']"
+      },
+      {
+        "id": "L1.settled-rerun",
+        "reason": "tags filter ['R015']"
+      },
+      {
+        "id": "L1.close-focus-lft",
+        "reason": "tags filter ['R015']"
+      },
+      {
+        "id": "L1.ghosttys-multi",
+        "reason": "tags filter ['R015']"
+      },
+      {
+        "id": "L1.r012-cross-mon-tab-dnd",
+        "reason": "tags filter ['R015']"
+      }
+    ],
+    "suite": "auto",
+    "tags": ["R015"]
+  },
+  "summary": {
+    "cases": [
+      {
+        "actions": [
+          {
+            "destMonitor": 1,
+            "dndResult": {
+              "chunks": [
+                {
+                  "kind": "extension",
+                  "ok": true,
+                  "results": [
+                    {
+                      "candidate": {
+                        "nodeType": "WINDOW",
+                        "path": "mo0ws0/0",
+                        "title": "Ghostty",
+                        "windowId": 1198612985,
+                        "wmClass": "com.mitchellh.ghostty"
+                      },
+                      "destMonitor": 1,
+                      "emptyMon": true,
+                      "enteredMonitorSkippedRehome": true,
+                      "index": 0,
+                      "monitorAfter": 1,
+                      "ok": true,
+                      "rehomed": true
+                    }
+                  ]
+                }
+              ],
+              "ok": true
+            },
+            "error": null,
+            "ok": true,
+            "step": "r015-empty-mon1-dnd",
+            "tile": "1198612985"
+          }
+        ],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 1198612985 present",
+            "ok": true
+          },
+          {
+            "check": "tile-on-mon1",
+            "detail": "1 TILE(s) on mon1",
+            "ok": true
+          }
+        ],
+        "id": "L1.r015-empty-mon-dnd",
+        "layoutRc": 0,
+        "layoutTail": "   \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black-sub-forge profile=_forge-test-ghosttys source=common path=\u2026/common/_forge-test-ghosttys.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  2   moved  0   left  2\n  thrashRisk  2 (skeleton, open:ghostty, open:ghostty-2)\nforge layout: residual targets not hard-ready: ['1198612984', '1198612985'] (moving anyway)\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "beltTreeStable",
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "followUpGeomSoft",
+            "followUpSettle",
+            "followUpStructure",
+            "followUpStructureSettle",
+            "layoutBatchBegin",
+            "layoutBatchEnd",
+            "layoutBatchRelease",
+            "layoutChromeClear",
+            "openMapWait",
+            "opens",
+            "postOpenRetry",
+            "treeStable"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 2,
+            "reused": 0
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [
+            "hard-ready timeout after 5000ms (pending ['1198612984', '1198612985'])"
+          ],
+          "hardReadyWarnings": 3,
+          "softCorrections": 0,
+          "softElapsedMs": 6043,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 6000,
+          "thrashRisk": 2,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 18292
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": [],
+            "step": "close-chrome"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-ghostty-tiles"
+          },
+          {
+            "already": false,
+            "launched": true,
+            "ok": true,
+            "step": "ensure-nautilus",
+            "windowId": 1198612982
+          }
+        ],
+        "title": "Empty mon1 drag-drop rehome (R015 snap-back)"
+      }
+    ],
+    "failed": 0,
+    "ok": true,
+    "passed": 1
+  }
+}

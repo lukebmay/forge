@@ -131,3 +131,8 @@ a tabbed or stacked container (`dnd-center-layout`, default `tabbed`). With stac
 mode off, center drop is forced to **tabbed** regardless of that setting. Whether
 you must hold a modifier while dragging is set by the drag mask — see
 [keybindings.md](keybindings.md#drag-to-tile).
+
+**Empty monitor:** drag a tile onto another monitor’s empty work area (no window
+under the pointer) and release — the window rehomes onto that monitor (same
+attach policy as keyboard mon-move: after last tile on that mon when present,
+else monitor root). Dropping into empty space on the *same* monitor is a no-op.

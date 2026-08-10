@@ -1,0 +1,315 @@
+{
+  "capability": {
+    "agentMode": "TILE",
+    "agentTerminal": "ghostty",
+    "agentWindowId": "2065062153",
+    "agentWindowOptional": true,
+    "agentWmClass": "com.mitchellh.ghostty",
+    "canHup": false,
+    "canNested": true,
+    "canPartial": true,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-292-g89d5223-dirty",
+    "focusWindowId": "2065062159",
+    "nTileWindows": 3,
+    "notes": [
+      "focus is other class='org.gnome.Nautilus'",
+      "agent guessed first ghostty (no guake; focus not agent)",
+      "true cold OK: durable Grok leader (agent TILE may close; process survives \u2014 reattach after)",
+      "Wayland: no HUP \u2014 reload extension via `forge nested restart` (not logout). Dual-mon live still host desk."
+    ],
+    "session": "wayland"
+  },
+  "cases": [
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "mon0-open-leaf-grok",
+          "detail": "mon0 open leaf 'Grok'",
+          "ok": true
+        },
+        {
+          "check": "mon1-open-leaf-youtube",
+          "detail": "mon1 open leaf 'YouTube'",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 2065062153 present",
+          "ok": true
+        },
+        {
+          "check": "profile-focus-if-set",
+          "detail": "focusWindowId=2065062153",
+          "ok": true
+        }
+      ],
+      "id": "L1.ghosttys-only",
+      "layoutRc": 0,
+      "layoutTail": "e-agimnkijcaahngcdmfeangaknmldooml-Default\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  1   opened  4   moved  1   closed  1\n  thrashRisk  4 (open:google-chrome, open:Grok, move:ghostty-2, open:YouTube)\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "beltFollowUp",
+          "beltGeomSoft",
+          "beltSettle",
+          "beltStructure",
+          "beltStructureSettle",
+          "beltTreeStable",
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "followUpGeomSoft",
+          "followUpPlace2",
+          "followUpPlace2Settle",
+          "followUpSettle",
+          "followUpStructure",
+          "followUpStructureSettle",
+          "layoutBatchBegin",
+          "layoutBatchEnd",
+          "layoutBatchRelease",
+          "layoutChromeClear",
+          "openMapWait",
+          "opens",
+          "postOpenRetry",
+          "treeStable"
+        ],
+        "counts": {
+          "moved": 1,
+          "opened": 4,
+          "reused": 1
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 2059,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 2000,
+        "thrashRisk": 4,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 3824
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": [],
+          "step": "close-chrome"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-ghostty-tiles"
+        }
+      ],
+      "title": "Ghosttys only \u2192 layout dev (Chrome reopen)"
+    }
+  ],
+  "env": {
+    "agentMode": "TILE",
+    "agentTerminal": "ghostty",
+    "canHup": false,
+    "canNested": true,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-292-g89d5223-dirty",
+    "hostname": "black",
+    "nTileWindowsStart": 3,
+    "nestedGnome": false,
+    "session": "wayland"
+  },
+  "kind": "forge-test-live",
+  "metricsSummary": {
+    "casesWithMetrics": 1,
+    "delayTimeoutsLikelyOkTotal": 1,
+    "expectationMissesTotal": 0,
+    "hardReadyTimedOutMovingAnywayTotal": 0,
+    "hardReadyWarningsTotal": 0,
+    "softCorrectionsTotal": 0,
+    "softTimeoutMsAvg": 2000,
+    "softTimeoutMsMax": 2000,
+    "wallMsAvg": 3824,
+    "wallMsMax": 3824,
+    "wallMsTotal": 3824
+  },
+  "reattach": {
+    "existingWindowId": 2065062153,
+    "hint": "grok -r <session-id>",
+    "launched": false,
+    "ok": true
+  },
+  "schemaVersion": 1,
+  "selection": {
+    "behaviors": [],
+    "selected": ["L1.ghosttys-only"],
+    "skipped": [
+      {
+        "id": "L1.left-chrome",
+        "reason": "tags filter ['L1.ghosttys-only']"
+      },
+      {
+        "id": "L1.right-ghostty",
+        "reason": "tags filter ['L1.ghosttys-only']"
+      },
+      {
+        "id": "L1.t1-nautilus",
+        "reason": "tags filter ['L1.ghosttys-only']"
+      },
+      {
+        "id": "L2.true-cold-dev",
+        "reason": "tags filter ['L1.ghosttys-only']"
+      },
+      {
+        "id": "L2.layout-clean",
+        "reason": "tags filter ['L1.ghosttys-only']"
+      },
+      {
+        "id": "L1.settled-rerun",
+        "reason": "tags filter ['L1.ghosttys-only']"
+      },
+      {
+        "id": "L1.close-focus-lft",
+        "reason": "tags filter ['L1.ghosttys-only']"
+      },
+      {
+        "id": "L1.ghosttys-multi",
+        "reason": "tags filter ['L1.ghosttys-only']"
+      },
+      {
+        "id": "L1.r012-cross-mon-tab-dnd",
+        "reason": "tags filter ['L1.ghosttys-only']"
+      }
+    ],
+    "suite": "auto",
+    "tags": ["L1.ghosttys-only"]
+  },
+  "summary": {
+    "cases": [
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "mon0-open-leaf-grok",
+            "detail": "mon0 open leaf 'Grok'",
+            "ok": true
+          },
+          {
+            "check": "mon1-open-leaf-youtube",
+            "detail": "mon1 open leaf 'YouTube'",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 2065062153 present",
+            "ok": true
+          },
+          {
+            "check": "profile-focus-if-set",
+            "detail": "focusWindowId=2065062153",
+            "ok": true
+          }
+        ],
+        "id": "L1.ghosttys-only",
+        "layoutRc": 0,
+        "layoutTail": "e-agimnkijcaahngcdmfeangaknmldooml-Default\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  1   opened  4   moved  1   closed  1\n  thrashRisk  4 (open:google-chrome, open:Grok, move:ghostty-2, open:YouTube)\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "beltFollowUp",
+            "beltGeomSoft",
+            "beltSettle",
+            "beltStructure",
+            "beltStructureSettle",
+            "beltTreeStable",
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "followUpGeomSoft",
+            "followUpPlace2",
+            "followUpPlace2Settle",
+            "followUpSettle",
+            "followUpStructure",
+            "followUpStructureSettle",
+            "layoutBatchBegin",
+            "layoutBatchEnd",
+            "layoutBatchRelease",
+            "layoutChromeClear",
+            "openMapWait",
+            "opens",
+            "postOpenRetry",
+            "treeStable"
+          ],
+          "counts": {
+            "moved": 1,
+            "opened": 4,
+            "reused": 1
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 2059,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 2000,
+          "thrashRisk": 4,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 3824
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": [],
+            "step": "close-chrome"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-ghostty-tiles"
+          }
+        ],
+        "title": "Ghosttys only \u2192 layout dev (Chrome reopen)"
+      }
+    ],
+    "failed": 0,
+    "ok": true,
+    "passed": 1
+  }
+}
