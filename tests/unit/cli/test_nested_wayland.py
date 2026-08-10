@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -23,16 +24,25 @@ from nested_wayland import (  # noqa: E402
     client_env,
     dummy_mode_specs,
     dummy_monitor_scales,
+    ensure_nest_cli_dirs,
     format_env_export,
     format_status_text,
+    has_stale_residue,
     host_primary_logical_size,
     host_session_type,
     host_wayland_display,
+    is_running,
+    merge_client_env,
+    nest_forge_config_home,
+    nest_forge_host,
+    parent_short_hostname,
     parse_num_monitors,
     parse_size,
+    reap_stale,
     require_wayland_host,
     session_dir,
     shell_start_env,
+    should_stop_on_exit,
     state_root,
     x11_refuse_message,
 )
@@ -107,6 +117,14 @@ def test_state_root_override(tmp_path: Path,
     assert session_dir("forge") == tmp_path / "nests" / "forge"
 
 
+def test_nest_forge_host_shape() -> None:
+    assert nest_forge_host("forge", parent_host="black") == "black-sub-forge"
+    assert nest_forge_host("my-nest", parent_host="Desk") == "desk-sub-my-nest"
+    assert nest_forge_host("forge", parent_host="black") != "black"
+    # parent_short_hostname ignores FORGE_HOST (logical)
+    assert parent_short_hostname(hostname="black.local") == "black"
+
+
 def test_bus_and_client_env(tmp_path: Path) -> None:
     cfg = NestedConfig(
         name="forge",
@@ -126,6 +144,14 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
     assert env["DBUS_SESSION_BUS_ADDRESS"] == cfg.bus_address
     assert env["GDK_BACKEND"] == "wayland"
     assert env["XDG_SESSION_TYPE"] == "wayland"
+    # N1: logical host + nest-scoped CLI config root
+    assert env["FORGE_HOST"] == nest_forge_host("forge")
+    assert env["FORGE_HOST"].endswith("-sub-forge")
+    assert env["FORGE_HOST"] != parent_short_hostname()
+    assert env["FORGE_CONFIG_HOME"] == str(tmp_path / "forge-config")
+    assert (tmp_path / "forge-config" / "config").is_dir()
+    assert nest_forge_config_home(cfg) == tmp_path / "forge-config"
+    assert ensure_nest_cli_dirs(cfg) == tmp_path / "forge-config"
 
     # Nested shell process uses host display, not nest display
     senv = shell_start_env(cfg)
@@ -134,10 +160,63 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
     assert senv["MUTTER_DEBUG_DUMMY_MODE_SPECS"] == "1280x800"
     assert senv["MUTTER_DEBUG_NUM_DUMMY_MONITORS"] == "2"
     assert senv["MUTTER_DEBUG_DUMMY_MONITOR_SCALES"] == "1,1"
+    # N2: Shell inherits same forge isolation as client_env (no full XDG rewrite)
+    assert senv["FORGE_CONFIG_HOME"] == str(tmp_path / "forge-config")
+    assert senv["FORGE_HOST"] == nest_forge_host("forge")
+    assert "XDG_CONFIG_HOME" not in senv or senv.get("XDG_CONFIG_HOME") == os.environ.get(
+        "XDG_CONFIG_HOME"
+    )
 
     export = format_env_export(cfg)
     assert "export WAYLAND_DISPLAY='wayland-forge'" in export
     assert "DBUS_SESSION_BUS_ADDRESS=" in export
+    assert "FORGE_HOST=" in export
+    assert "FORGE_CONFIG_HOME=" in export
+
+
+def test_merge_client_env_isolation(tmp_path: Path) -> None:
+    """merge_client_env overlays nest isolation without dropping base PATH."""
+    from layout_lib import DEFAULT_CONFIG_ROOT, layout_tree_root, resolve_host
+    from settle_heuristics import heuristics_path
+
+    cfg = NestedConfig(
+        name="forge",
+        display="wayland-forge",
+        size="1280x800",
+        scale="1",
+        host_wayland="wayland-0",
+        unsafe_mode=True,
+        state_dir=str(tmp_path),
+        bus_address=bus_address_for(tmp_path),
+        created_at=0.0,
+        num_monitors=1,
+    )
+    base = {
+        "PATH": "/usr/bin",
+        "HOME": str(tmp_path),
+        "FORGE_HOST": "parent-host",
+        "FORGE_CONFIG_HOME": str(tmp_path / "parent-config"),
+    }
+    merged = merge_client_env(cfg, base)
+    assert merged["PATH"] == "/usr/bin"
+    assert merged["FORGE_HOST"] == nest_forge_host("forge")
+    assert merged["FORGE_HOST"] != "parent-host"
+    assert merged["FORGE_CONFIG_HOME"] == str(tmp_path / "forge-config")
+    assert merged["WAYLAND_DISPLAY"] == "wayland-forge"
+    # Path helpers: nest heuristics ≠ parent
+    parent_h = heuristics_path(env={
+        "FORGE_CONFIG_HOME": str(tmp_path / "parent-config"),
+    })
+    nest_h = heuristics_path(env=merged)
+    assert parent_h != nest_h
+    assert nest_h == (tmp_path / "forge-config" / "config" /
+                       "settle-heuristics.json")
+    assert parent_h == (tmp_path / "parent-config" / "config" /
+                        "settle-heuristics.json")
+    # Layout host follows FORGE_HOST
+    assert resolve_host(merged) == merged["FORGE_HOST"]
+    # Layout tree root ignores FORGE_CONFIG_HOME (shared profiles)
+    assert layout_tree_root(merged) == DEFAULT_CONFIG_ROOT / "layout"
 
 
 def test_format_status_text() -> None:
@@ -196,3 +275,185 @@ def test_host_session_and_x11_refuse() -> None:
     assert require_wayland_host(allow_x11=True,
                                 env={"XDG_SESSION_TYPE": "x11"}) == "x11"
     assert not can_nested_on_host({"XDG_SESSION_TYPE": "x11"})
+
+
+def test_should_stop_on_exit_policy() -> None:
+    """Campaign run always stops; exec stops only if it started the nest."""
+    # run (always_stop): stop unless keep
+    assert should_stop_on_exit(always_stop=True, started_nest=False) is True
+    assert should_stop_on_exit(always_stop=True, started_nest=True) is True
+    assert should_stop_on_exit(always_stop=True, started_nest=False,
+                               keep=True) is False
+    # exec (not always_stop): stop only when this invocation started nest
+    assert should_stop_on_exit(always_stop=False, started_nest=True) is True
+    assert should_stop_on_exit(always_stop=False, started_nest=False) is False
+    assert should_stop_on_exit(always_stop=False, started_nest=True,
+                               keep=True) is False
+
+
+def test_is_running_false_when_pids_dead(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Lying pid files must not report running."""
+    import nested_wayland as nw
+
+    nest_root = tmp_path / "nests"
+    state = nest_root / "forge"
+    state.mkdir(parents=True)
+    monkeypatch.setenv("FORGE_NESTED_ROOT", str(nest_root))
+    cfg = NestedConfig(
+        name="forge",
+        display="wayland-forge-unit",
+        size="1280x800",
+        scale="1",
+        host_wayland="wayland-0",
+        unsafe_mode=True,
+        state_dir=str(state),
+        bus_address=bus_address_for(state),
+        created_at=0.0,
+        num_monitors=1,
+    )
+    nw.save_config(cfg)
+    (state / "shell.pid").write_text("999999\n", encoding="utf-8")
+    (state / "dbus.pid").write_text("999998\n", encoding="utf-8")
+    # No live socket; pids are almost certainly dead
+    assert is_running("forge") is False
+
+
+def test_has_stale_residue_and_reap(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Dead pid files / bus residue → has_stale_residue; reap cleans them."""
+    import nested_wayland as nw
+
+    nest_root = tmp_path / "nests"
+    state = nest_root / "forge"
+    state.mkdir(parents=True)
+    monkeypatch.setenv("FORGE_NESTED_ROOT", str(nest_root))
+    # Isolate nest socket under a fake runtime dir
+    rt = tmp_path / "run"
+    rt.mkdir()
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(rt))
+
+    cfg = NestedConfig(
+        name="forge",
+        display="wayland-forge-unit",
+        size="1280x800",
+        scale="1",
+        host_wayland="wayland-0",
+        unsafe_mode=True,
+        state_dir=str(state),
+        bus_address=bus_address_for(state),
+        created_at=0.0,
+        num_monitors=1,
+    )
+    nw.save_config(cfg)
+    (state / "shell.pid").write_text("999999\n", encoding="utf-8")
+    (state / "dbus.pid").write_text("999998\n", encoding="utf-8")
+    (state / "bus").write_text("", encoding="utf-8")  # leftover path
+    sock = rt / "wayland-forge-unit"
+    sock.write_text("", encoding="utf-8")
+
+    assert is_running("forge") is False
+    assert has_stale_residue("forge") is True
+    assert reap_stale("forge") is True
+    assert not (state / "shell.pid").is_file()
+    assert not (state / "dbus.pid").is_file()
+    assert not (state / "bus").exists()
+    assert not sock.exists()
+    assert has_stale_residue("forge") is False
+    # Second reap is a no-op
+    assert reap_stale("forge") is False
+
+
+def test_reap_stale_noop_when_running(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import nested_wayland as nw
+
+    monkeypatch.setenv("FORGE_NESTED_ROOT", str(tmp_path / "nests"))
+    monkeypatch.setattr(nw, "is_running", lambda _n="forge": True)
+    assert has_stale_residue("forge") is False
+    assert reap_stale("forge") is False
+
+
+def test_run_campaign_always_stops(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """run_campaign stops nest on exit even when nest was already up."""
+    import nested_wayland as nw
+
+    stops: list[str] = []
+    cfg = NestedConfig(
+        name="forge",
+        display="wayland-forge-unit",
+        size="1280x800",
+        scale="1",
+        host_wayland="wayland-0",
+        unsafe_mode=True,
+        state_dir=str(tmp_path),
+        bus_address=bus_address_for(tmp_path),
+        created_at=0.0,
+        num_monitors=1,
+    )
+    monkeypatch.setattr(nw, "is_running", lambda _n="forge": True)
+    monkeypatch.setattr(nw, "load_config", lambda _n="forge": cfg)
+    monkeypatch.setattr(nw, "exec_in", lambda _c, _a: 0)
+    monkeypatch.setattr(
+        nw, "stop",
+        lambda **kw: stops.append(kw.get("name", "forge")) or True)
+
+    assert nw.run_campaign(["true"], name="forge") == 0
+    assert stops == ["forge"]
+
+
+def test_run_campaign_keep_skips_stop(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import nested_wayland as nw
+
+    stops: list[str] = []
+    cfg = NestedConfig(
+        name="forge",
+        display="wayland-forge-unit",
+        size="1280x800",
+        scale="1",
+        host_wayland="wayland-0",
+        unsafe_mode=True,
+        state_dir=str(tmp_path),
+        bus_address=bus_address_for(tmp_path),
+        created_at=0.0,
+        num_monitors=1,
+    )
+    monkeypatch.setattr(nw, "is_running", lambda _n="forge": True)
+    monkeypatch.setattr(nw, "load_config", lambda _n="forge": cfg)
+    monkeypatch.setattr(nw, "exec_in", lambda _c, _a: 7)
+    monkeypatch.setattr(
+        nw, "stop",
+        lambda **kw: stops.append(kw.get("name", "forge")) or True)
+
+    assert nw.run_campaign(["true"], name="forge", keep=True) == 7
+    assert stops == []
+
+
+def test_run_campaign_stops_even_on_cmd_error(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import nested_wayland as nw
+
+    stops: list[str] = []
+    cfg = NestedConfig(
+        name="forge",
+        display="wayland-forge-unit",
+        size="1280x800",
+        scale="1",
+        host_wayland="wayland-0",
+        unsafe_mode=True,
+        state_dir=str(tmp_path),
+        bus_address=bus_address_for(tmp_path),
+        created_at=0.0,
+        num_monitors=1,
+    )
+    monkeypatch.setattr(nw, "is_running", lambda _n="forge": True)
+    monkeypatch.setattr(nw, "load_config", lambda _n="forge": cfg)
+    monkeypatch.setattr(nw, "exec_in", lambda _c, _a: 42)
+    monkeypatch.setattr(
+        nw, "stop",
+        lambda **kw: stops.append(kw.get("name", "forge")) or True)
+
+    assert nw.run_campaign(["false"], name="forge") == 42
+    assert stops == ["forge"]

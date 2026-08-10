@@ -6012,9 +6012,11 @@ def build_parser() -> argparse.ArgumentParser:
             "  eval $(forge nested env --export)  # point forge/apps at nest\n"
             "  forge ping                         # talks to nested Forge\n"
             "  forge nested exec -- gnome-text-editor\n"
+            "  forge nested run -- true           # campaign: start→cmd→always stop\n"
             "  forge nested restart               # reload shell/extension\n"
             "  forge nested stop\n"
             "\n"
+            "Campaign entry: prefer `forge nested run` (always stops on exit).\n"
             "Multi-monitor: MUTTER_DEBUG_NUM_DUMMY_MONITORS (not host desks).\n"
             "Independent of shellrc. State: ~/.local/state/forge/nested/<name>/\n"
             "Override root: FORGE_NESTED_ROOT=…"
@@ -6026,7 +6028,7 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         default="status",
         help=(
-            "start | stop | restart | status | env | exec | enable-forge | "
+            "start | stop | restart | status | env | exec | run | enable-forge | "
             "logs | wait | doctor  (default: status)"
         ),
     )
@@ -6089,6 +6091,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="With stop: SIGKILL after grace",
     )
     nested_p.add_argument(
+        "--keep",
+        action="store_true",
+        help="With run: leave nest running after command (debug; default always-stop)",
+    )
+    nested_p.add_argument(
         "--export",
         dest="export_env",
         action="store_true",
@@ -6122,7 +6129,7 @@ def build_parser() -> argparse.ArgumentParser:
         "nested_cmd",
         nargs="*",
         default=[],
-        help="With exec: command (put -- before foreign flags)",
+        help="With exec/run: command (put -- before foreign flags)",
     )
     nested_p.set_defaults(func=cmd_nested)
 

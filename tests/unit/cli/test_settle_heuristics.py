@@ -37,6 +37,7 @@ from settle_heuristics import (  # noqa: E402
     reset_default_session,
     reset_heuristics_file,
     residual_latencies,
+    resolve_config_root,
     resolve_host,
     save_store,
     schema_version_ok,
@@ -266,6 +267,23 @@ class StoreIo(unittest.TestCase):
             heuristics_path(root),
             root / "config" / "settle-heuristics.json",
         )
+
+    def test_forge_config_home_env(self):
+        nest = Path("/tmp/nest-state/forge-config")
+        env = {"FORGE_CONFIG_HOME": str(nest)}
+        self.assertEqual(resolve_config_root(env=env), nest)
+        self.assertEqual(
+            heuristics_path(env=env),
+            nest / "config" / "settle-heuristics.json",
+        )
+        # Explicit config_root wins over env
+        other = Path("/tmp/explicit")
+        self.assertEqual(
+            heuristics_path(other, env=env),
+            other / "config" / "settle-heuristics.json",
+        )
+        parent = Path.home() / ".config" / "forge" / "config" / "settle-heuristics.json"
+        self.assertNotEqual(heuristics_path(env=env), parent)
 
     def test_roundtrip(self):
         with tempfile.TemporaryDirectory() as td:

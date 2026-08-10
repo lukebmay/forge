@@ -1,6 +1,6 @@
 # Wayland RC test suite (duplicable)
 
-**Status:** active — P1 after nest isolation N3–N2 (D022); first full run 2026-08-09  
+**Status:** active — **P1 now** (nest isolation v1 done 2026-08-10); prior run 2026-08-09  
 **Purpose:** Repeatable dual-mon Wayland smoke for a **release candidate**, with
 metrics comparable across machines (e.g. older host).  
 **Session:** Wayland login (daily driver). Extension retest via **`forge nested`**,
@@ -19,7 +19,7 @@ Related: [testing.md § Wayland](../testing.md), [HANDOFF](../HANDOFF.md),
 | --- | --- | --- |
 | **L0** | Pure/contract (plan, apply, settle, jobs, live select) | `pytest` / vitest |
 | **Nest single (A)** | Extension loads; Forge DBus; `forge ping` after restart | Nested Shell window |
-| **Nest dual (A2)** | Dummy dual mon + layout across mon0/mon1 | `forge nested start --monitors=2` |
+| **Nest dual (A2)** | Dummy dual mon + layout across mon0/mon1 | `forge nested run --monitors=2 -- …` (dual only) |
 | **Host L1 (B)** | Physical dual 4K partial reload, open leaf, multi-instance, focus | **Host** desk |
 | **Host L2** | True cold + clean | Host + Guake/float **or durable Grok leader** |
 | **CT2 / near-cold** | One-shot layout from sparse desk | Host or nest dual |
@@ -76,27 +76,30 @@ python3 -m pytest tests/unit/cli/test_live_matrix.py tests/unit/cli/test_layout_
 
 ```bash
 ./install                         # tip on disk
-# Default: single-mon nest (extension reload / single-desk structure)
-forge nested start                # or restart if already up — mon=1
-forge nested exec -- forge ping
+# Prefer campaign entry for one-shots (mon=1 default; always stops):
+forge nested run -- forge ping
 # Dual-mon nest ONLY when testing multi-mon behavior:
-forge nested start --monitors=2 --replace
-forge nested exec -- forge tree   # expect mo0ws0 + mo1ws0 when --monitors=2
+forge nested run --monitors=2 -- forge tree   # expect mo0ws0 + mo1ws0
+# Multi-step interactive (keep nest up deliberately):
+forge nested restart              # mon=1; or start --monitors=2 --replace for dual
+forge nested exec -- forge tree
 forge nested exec -- forge layout _forge-test-ghosttys
 # … more nest cases …
-forge nested stop                 # FIRM when nest phase ends
+forge nested stop                 # FIRM when interactive phase ends
 forge nested status               # running: False
 # do NOT export nest into host dual-mon shell
 ```
 
-**FIRM — stop nest after tests:** Every nest campaign ends with
-`forge nested stop` (and status check). Do not leave subshells running across
-host matrix, wrap-up, or handoff. See [testing.md](../testing.md) nest stop
-rules and [HANDOFF](../HANDOFF.md#nest-lifecycle--stop-after-tests-firm).
+**FIRM — stop nest after tests:** Prefer `forge nested run -- …` for campaign-
+shaped work (N3 always stops unless `--keep`). Interactive `start` / `restart` /
+`exec` still require `forge nested stop` + status check when the phase ends.
+Do not leave subshells running across host matrix, wrap-up, or handoff. See
+[testing.md](../testing.md) nest stop rules and
+[HANDOFF](../HANDOFF.md#nest-lifecycle--stop-after-tests-firm).
 
-**Proven on black:** `forge nested start --monitors=2` → two dummy outputs
-(each ≈ host primary logical size) → layout `_forge-test-ghosttys` → one
-ghostty per mon.
+**Proven on black:** `forge nested start --monitors=2` (or `run --monitors=2`)
+→ two dummy outputs (each ≈ host primary logical size) → layout
+`_forge-test-ghosttys` → one ghostty per mon.
 
 ### Phase 2 — Host L1 (X11 parity partial matrix + multi-instance)
 
@@ -149,10 +152,13 @@ would kill the agent window). Re-run L2 from Guake for full RC.
 ### Phase 4 — Nest-only smoke (after code change)
 
 ```bash
+# One-shot (preferred):
+./install && forge nested run -- forge ping
+# Or multi-step:
 ./install && forge nested restart
-# nest health shell:
-eval $(forge nested env --export) && forge ping
-# host dual-mon: unset nest exports first, then re-run L1 subset
+forge nested exec -- forge ping
+forge nested stop
+# host dual-mon: nest must be down / not exported, then re-run L1 subset
 ```
 
 ---
@@ -212,7 +218,7 @@ the older host usually mean slower Meta/Chrome, not always a product bug.
 ## Pass criteria (RC bar)
 
 1. **L0 green** for blast radius.  
-2. **Nest:** start → ping → restart → ping.  
+2. **Nest:** `run -- ping` (or start→ping→restart→ping) ends with nest down.  
 3. **L1:** all selected cases PASS; agent Ghostty `windowId` still in `forge tree`.  
 4. **Open leaf:** mon0 Grok / mon1 YouTube after `dev` partials (R005/R007 class).  
 5. **Multi-instance:** `L1.ghosttys-multi` dual mon ghostty.  
@@ -251,7 +257,9 @@ forge test live plan --suite partial
 forge test live run --suite partial
 forge test live run --from-work wayland-rc
 forge test live run --cases L1.ghosttys-only,L1.ghosttys-multi
-./install && forge nested restart
+./install && forge nested run -- forge ping          # mon=1; auto stop
+./install && forge nested run --monitors=2 -- …      # dual nest only for dual cases
+./install && forge nested restart && … && forge nested stop
 forge layout clean          # only with float agent / accept closing tiles
 forge thrash heuristics
 ```

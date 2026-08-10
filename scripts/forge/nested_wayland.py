@@ -22,9 +22,12 @@ Client env (apps / ``forge`` against the nest)::
     WAYLAND_DISPLAY=<nest display e.g. wayland-forge>
     GDK_BACKEND=wayland
     XDG_SESSION_TYPE=wayland
+    FORGE_HOST=<hostname>-sub-<nestname>   # logical host (CLI + Shell)
+    FORGE_CONFIG_HOME=<state>/forge-config # forge config root (CLI + nest Shell)
 
 Nested shell itself is started with the *host* WAYLAND_DISPLAY so it embeds
-as a window on the host compositor.
+as a window on the host compositor. Same FORGE_* isolation is exported on
+the shell process so the extension honors nest paths (N2).
 """
 
 from __future__ import annotations
@@ -33,6 +36,7 @@ import json
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -368,13 +372,66 @@ def bus_address_for(dir_path: Path) -> str:
     return f"unix:path={dir_path / 'bus'}"
 
 
+def parent_short_hostname(
+    env: Optional[Mapping[str, str]] = None,
+    *,
+    hostname: Optional[str] = None,
+) -> str:
+    """Machine short name for nest host ids (never FORGE_HOST — that is logical)."""
+    if hostname is not None and str(hostname).strip():
+        return str(hostname).split(".", 1)[0].strip().lower() or "unknown"
+    e = env if env is not None else os.environ
+    # HOSTNAME / HOST can be set by shells; prefer live gethostname.
+    try:
+        name = socket.gethostname()
+    except OSError:
+        name = str(e.get("HOSTNAME") or e.get("HOST") or "unknown")
+    return str(name).split(".", 1)[0].strip().lower() or "unknown"
+
+
+def nest_forge_host(
+    name: str,
+    *,
+    parent_host: Optional[str] = None,
+    env: Optional[Mapping[str, str]] = None,
+) -> str:
+    """Logical host id for nest CLI: ``<short-hostname>-sub-<nestname>``."""
+    nest = _safe_name(name)
+    parent = (parent_host if parent_host is not None else
+              parent_short_hostname(env)).strip().lower() or "unknown"
+    return f"{parent}-sub-{nest}"
+
+
+def nest_forge_config_home(cfg: NestedConfig) -> Path:
+    """CLI forge config root under nest state (``~/.config/forge`` analogue)."""
+    return Path(cfg.state_dir) / "forge-config"
+
+
+def ensure_nest_cli_dirs(cfg: NestedConfig) -> Path:
+    """Create nest-scoped forge config root (CLI + Shell extension)."""
+    root = nest_forge_config_home(cfg)
+    (root / "config").mkdir(parents=True, exist_ok=True)
+    return root
+
+
 def client_env(cfg: NestedConfig) -> dict[str, str]:
-    """Environment for clients of the nested compositor (apps, forge CLI)."""
+    """Environment for clients of the nested compositor (apps, forge CLI).
+
+    Isolation (N1/N2):
+      FORGE_HOST=<hostname>-sub-<nestname>
+      FORGE_CONFIG_HOME=<state_dir>/forge-config  # settle-heuristics, windows.json
+
+    Layout *profiles* stay shared via ``layout/`` / ``FORGE_LAYOUT_DIR``
+    (not redirected). Nest Shell gets the same FORGE_* via shell_start_env.
+    """
+    ensure_nest_cli_dirs(cfg)
     return {
         "DBUS_SESSION_BUS_ADDRESS": cfg.bus_address,
         "WAYLAND_DISPLAY": cfg.display,
         "GDK_BACKEND": "wayland",
         "XDG_SESSION_TYPE": "wayland",
+        "FORGE_HOST": nest_forge_host(cfg.name),
+        "FORGE_CONFIG_HOME": str(nest_forge_config_home(cfg)),
     }
 
 
@@ -386,6 +443,10 @@ def shell_start_env(cfg: NestedConfig) -> dict[str, str]:
     env["WAYLAND_DISPLAY"] = cfg.host_wayland
     env["GDK_BACKEND"] = "wayland"
     env["XDG_SESSION_TYPE"] = "wayland"
+    # N2: forge-specific root only (not full XDG_CONFIG_HOME rewrite).
+    ensure_nest_cli_dirs(cfg)
+    env["FORGE_HOST"] = nest_forge_host(cfg.name)
+    env["FORGE_CONFIG_HOME"] = str(nest_forge_config_home(cfg))
     nmon = int(
         getattr(cfg, "num_monitors", DEFAULT_MONITORS) or DEFAULT_MONITORS)
     if nmon < 1:
@@ -487,6 +548,11 @@ def nest_socket_path(display: str) -> Path:
 
 
 def is_running(name: str = DEFAULT_NAME) -> bool:
+    """True only when nest shell + dbus pids are alive and the nest socket exists.
+
+    Dead pid files or leftover sockets alone do **not** count as running
+    (callers should :func:`reap_stale` / :func:`stop` to clean residue).
+    """
     cfg = load_config(name)
     if not cfg:
         return False
@@ -498,6 +564,60 @@ def is_running(name: str = DEFAULT_NAME) -> bool:
     if dbus_pid is None or not _pid_alive(dbus_pid):
         return False
     return nest_socket_path(cfg.display).is_socket()
+
+
+def should_stop_on_exit(
+    *,
+    always_stop: bool,
+    started_nest: bool,
+    keep: bool = False,
+) -> bool:
+    """Whether this invocation owns nest teardown on exit.
+
+    * ``always_stop`` — campaign ``run`` entry: stop unless *keep*.
+    * ``started_nest`` — this invocation started the nest (``exec`` auto-start).
+    * ``keep`` — debug opt-out: leave nest up.
+    """
+    if keep:
+        return False
+    if always_stop:
+        return True
+    return bool(started_nest)
+
+
+def has_stale_residue(name: str = DEFAULT_NAME) -> bool:
+    """True when pid files / bus / nest sockets remain but nest is not running."""
+    name = _safe_name(name)
+    if is_running(name):
+        return False
+    d = session_dir(name)
+    cfg = load_config(name)
+    display = cfg.display if cfg else DEFAULT_DISPLAY
+    if d.is_dir():
+        for pid_file in (d / "shell.pid", d / "dbus.pid"):
+            if pid_file.is_file():
+                return True
+        if (d / "bus").exists():
+            return True
+    sock = nest_socket_path(display)
+    if sock.exists() or Path(str(sock) + ".lock").exists():
+        return True
+    return False
+
+
+def reap_stale(name: str = DEFAULT_NAME) -> bool:
+    """Clean dead pid files / leftover sockets / bus when nest is not running.
+
+    No-op when :func:`is_running` is True. Returns True if residue was present
+    and cleanup was attempted (via :func:`stop`).
+    """
+    name = _safe_name(name)
+    if is_running(name):
+        return False
+    if not has_stale_residue(name):
+        return False
+    stop(name=name, force=True)
+    return True
 
 
 def _gdbus(
@@ -716,6 +836,9 @@ def start(
                 return cfg
             raise NestedError(f"nested session {name!r} already running")
         stop(name=name, force=True)
+    else:
+        # Dead pids / leftover sockets would confuse a new start.
+        reap_stale(name)
 
     size = parse_size(size)
     nmon = parse_num_monitors(num_monitors)
@@ -913,6 +1036,8 @@ def restart(
 
 def status_dict(name: str = DEFAULT_NAME) -> dict[str, Any]:
     name = _safe_name(name)
+    # Heal lying pid files / leftover bus socket so status is trustworthy.
+    reaped = reap_stale(name)
     cfg = load_config(name)
     d = session_dir(name)
     shell_pid = _read_pid(d / "shell.pid") if d.is_dir() else None
@@ -933,6 +1058,7 @@ def status_dict(name: str = DEFAULT_NAME) -> dict[str, Any]:
         shell_pid if shell_pid and _pid_alive(shell_pid) else None,
         "dbus_pid": dbus_pid if dbus_pid and _pid_alive(dbus_pid) else None,
         "state_dir": str(d),
+        "reaped_stale": reaped,
     }
     if cfg:
         out.update({
@@ -1104,6 +1230,61 @@ def exec_in(
     return int(proc.returncode)
 
 
+def run_campaign(
+    argv: Sequence[str],
+    *,
+    name: str = DEFAULT_NAME,
+    keep: bool = False,
+    display: Optional[str] = None,
+    size: Optional[str] = None,
+    scale: str = DEFAULT_SCALE,
+    num_monitors: int = DEFAULT_MONITORS,
+    unsafe_mode: bool = True,
+    allow_x11: bool = False,
+    enable_forge: bool = True,
+) -> int:
+    """FIRM campaign entry: ensure nest up → run *argv* → always stop.
+
+    Stops the nest on any exit path (success or error) unless *keep* is True,
+    even if the nest was already running when this invocation began.
+    """
+    if not argv:
+        raise NestedError("run requires a command")
+    name = _safe_name(name)
+    do_stop = should_stop_on_exit(
+        always_stop=True,
+        started_nest=False,
+        keep=keep,
+    )
+    try:
+        if not is_running(name):
+            sz = size or host_primary_logical_size() or DEFAULT_SIZE
+            cfg = start(
+                name=name,
+                display=display,
+                size=sz,
+                scale=scale,
+                num_monitors=num_monitors,
+                unsafe_mode=unsafe_mode,
+                allow_x11=allow_x11,
+                replace=False,
+            )
+            if enable_forge:
+                enable_forge_extension(cfg.bus_address)
+        cfg = load_config(name)
+        if not cfg or not is_running(name):
+            raise NestedError(
+                f"nested session {name!r} not running after ensure-start")
+        return exec_in(cfg, argv)
+    finally:
+        if do_stop:
+            try:
+                stop(name=name, force=True)
+            except Exception:
+                # Never mask the campaign return / primary error with stop noise.
+                pass
+
+
 def format_env_export(cfg: NestedConfig) -> str:
     parts = [
         f"export {k}={_shell_quote(v)}" for k, v in client_env(cfg).items()
@@ -1161,6 +1342,8 @@ def cmd_nested(_backend: Any, args: Any) -> int:
             return _cli_env(args, name)
         if action == "exec":
             return _cli_exec(args, name)
+        if action == "run":
+            return _cli_run(args, name)
         if action == "enable-forge":
             return _cli_enable_forge(name)
         if action == "logs":
@@ -1274,6 +1457,13 @@ def _cli_env(args: Any, name: str) -> int:
 
 
 def _cli_exec(args: Any, name: str) -> int:
+    """Run *cmd* in nest client env. Nest must already be running.
+
+    Does not start or stop the nest (interactive use). Prefer
+    ``forge nested run`` for campaign entry that always cleans up.
+    """
+    # Heal lying pids so we do not exec against a dead session.
+    reap_stale(name)
     cfg = load_config(name)
     if not cfg or not is_running(name):
         print(f"forge nested: session {name!r} not running", file=sys.stderr)
@@ -1285,6 +1475,37 @@ def _cli_exec(args: Any, name: str) -> int:
         print("forge nested exec: need a command after --", file=sys.stderr)
         return 2
     return exec_in(cfg, argv)
+
+
+def _cli_run(args: Any, name: str) -> int:
+    """Campaign entry: start if needed → exec → always stop (unless --keep)."""
+    argv = list(getattr(args, "nested_cmd", None) or [])
+    if argv and argv[0] == "--":
+        argv = argv[1:]
+    if not argv:
+        print("forge nested run: need a command after --", file=sys.stderr)
+        return 2
+    nmon = getattr(args, "monitors", None)
+    if nmon is None:
+        nmon = DEFAULT_MONITORS
+    size = getattr(args, "size", None)
+    keep = bool(getattr(args, "keep", False))
+    rc = run_campaign(
+        argv,
+        name=name,
+        keep=keep,
+        display=getattr(args, "display", None),
+        size=size,
+        scale=str(getattr(args, "scale", None) or DEFAULT_SCALE),
+        num_monitors=int(nmon),
+        unsafe_mode=not bool(getattr(args, "safe_mode", False)),
+        allow_x11=bool(getattr(args, "allow_x11", False)),
+        enable_forge=not bool(getattr(args, "no_enable", False)),
+    )
+    if keep:
+        print(f"forge nested run: kept session {name!r} (--keep)",
+              file=sys.stderr)
+    return rc
 
 
 def _cli_enable_forge(name: str) -> int:

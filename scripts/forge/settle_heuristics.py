@@ -24,6 +24,8 @@ from typing import Any, Mapping, MutableMapping, Optional, Sequence
 SCHEMA_VERSION = 1
 HEURISTICS_FILENAME = "settle-heuristics.json"
 DEFAULT_CONFIG_ROOT = Path.home() / ".config" / "forge"
+# Nest client_env sets this to <nest_state>/forge-config (CLI isolation; D022/N1).
+CONFIG_HOME_ENV = "FORGE_CONFIG_HOME"
 
 HARD_TIMEOUT_MS = 5000
 ROLLING_N = 10
@@ -49,15 +51,33 @@ RESIDUAL_KINDS = frozenset({"focus", "geom"})
 _KEY_SEP = "|"
 
 
-def config_dir(config_root: Optional[Path] = None) -> Path:
-    root = Path(
-        config_root) if config_root is not None else DEFAULT_CONFIG_ROOT
-    return root / "config"
+def resolve_config_root(
+    config_root: Optional[Path] = None,
+    env: Optional[Mapping[str, str]] = None,
+) -> Path:
+    """Forge config root: explicit path, else FORGE_CONFIG_HOME, else ~/.config/forge."""
+    if config_root is not None:
+        return Path(config_root)
+    e = env if env is not None else os.environ
+    raw = e.get(CONFIG_HOME_ENV) if e is not None else None
+    if raw is not None and str(raw).strip():
+        return Path(str(raw).strip()).expanduser()
+    return DEFAULT_CONFIG_ROOT
 
 
-def heuristics_path(config_root: Optional[Path] = None) -> Path:
+def config_dir(
+    config_root: Optional[Path] = None,
+    env: Optional[Mapping[str, str]] = None,
+) -> Path:
+    return resolve_config_root(config_root, env) / "config"
+
+
+def heuristics_path(
+    config_root: Optional[Path] = None,
+    env: Optional[Mapping[str, str]] = None,
+) -> Path:
     """Resolve settle-heuristics.json under forge config (no existence check)."""
-    return config_dir(config_root) / HEURISTICS_FILENAME
+    return config_dir(config_root, env) / HEURISTICS_FILENAME
 
 
 def normalize_class(wm_class: Any) -> str:

@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-10 (**D022** nest isolation locked; **P0 = N3→N1→N4→N2**; P1 Wayland RC)  
+**Updated:** 2026-08-10 (**nest isolation v1 done** N3→N1→N4→N2; **P1 = Wayland RC**)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -26,12 +26,12 @@
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
 | Close → focus | **Kept** (FC1) — LFT/sibling restore |
 | CLI jobs | Durable mutators (D021) |
-| Wayland retest | `forge nested restart` (not logout loop) when extension JS changed |
+| Wayland retest | Prefer `forge nested run` (or `restart`+stop); never logout loops for JS |
 | Nest purpose (D022) | Code/test loop only (avoid logout); no-code smokes on **host** |
 | Nest mon count | **Default 1.** `--monitors=N` only when testing multi-mon behavior |
 | Nest mon size | Default size policy may shrink later; dual: each dummy ≈ primary logical historically |
-| Nest after tests | **FIRM** stop — after N3: mechanical auto-cleanup on campaign entry |
-| Nest isolation v1 | Data root + `FORGE_HOST=…-sub-…`; **no** UNIX test user; escalate only if still taints |
+| Nest after tests | **FIRM** — prefer `forge nested run` (always stops); interactive → `stop` |
+| Nest isolation v1 | `FORGE_HOST=…-sub-…` + `FORGE_CONFIG_HOME` on CLI **and** nest Shell (N1/N2); extension `forgeConfigHome()`; shared layout profiles + install UUID OK; **no** UNIX test user |
 
 ### Why patches are bad (still FIRM)
 
@@ -45,12 +45,9 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0-1** | **N3** nest auto stop/cleanup (`run` or exec always-stop) | [task](./tasks/forge-nested-isolation_n3-auto-cleanup.md) |
-| **P0-2** | **N1** nest `FORGE_HOST` + CLI config/state roots | [task](./tasks/forge-nested-isolation_n1-data-root.md) |
-| **P0-3** | **N4** docs (testing.md, RC suite) to match D022 | [task](./tasks/forge-nested-isolation_n4-docs.md) |
-| **P0-4** | **N2** extension/Shell data root (no parent `~/.config/forge` writes) | [task](./tasks/forge-nested-isolation_n2-extension-root.md) |
 | **P1** | Wayland RC — host L1/`_forge-test-*` first; nest mon=1 unless multi-mon case | [suite](./plans/forge-wayland-rc-test-suite.md) |
 | optional | Per-window signals → WindowAttach | [plan](./plans/forge-lifecycle-abstractions.md) |
+| done | Nest isolation **N3→N1→N4→N2** (D022 v1) | [plan](./plans/forge-nested-isolation.md) · [completed/](./plans/forge-nested-isolation/completed/) |
 | done | D022 + D0 nest isolation design | [completed](./tasks/completed/forge-nested-isolation_d0-discussion.md) |
 | done | Lifecycle W1–W5 + L8/L11; R011; R012 | [REGRESSIONS](./REGRESSIONS.md) |
 
@@ -58,22 +55,52 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Plan | Role |
 | --- | --- |
-| [forge-nested-isolation.md](./plans/forge-nested-isolation.md) | **P0** implement order + acceptance |
-| [forge-wayland-rc-test-suite.md](./plans/forge-wayland-rc-test-suite.md) | P1 RC procedure |
+| [forge-wayland-rc-test-suite.md](./plans/forge-wayland-rc-test-suite.md) | **P1** RC procedure |
+| [forge-nested-isolation.md](./plans/forge-nested-isolation.md) | Nest isolation v1 (**done**) |
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete) |
 
-### P0 — Nest isolation (implement)
+### Nest isolation v1 (shipped)
 
-**Do N3 first**, then N1, N4 (docs can ship with N3), then N2.
+| Slice | Goal | Status |
+| --- | --- | --- |
+| N3 | Campaign entry always cleans nest; stale reaper | done |
+| N1 | `FORGE_HOST=<host>-sub-<name>` + nest CLI data dirs; shared layout profiles OK | done |
+| N4 | testing.md / RC suite / HANDOFF process rules | done |
+| N2 | Nest Shell/extension honor same data root (`forgeConfigHome`) | done |
 
-| Slice | Goal |
+**CLI + nest Shell:** `FORGE_HOST` / `FORGE_CONFIG_HOME`; extension writes under nest
+`…/forge-config`, not parent `~/.config/forge`. Prefer `forge nested run` for campaigns.
+Shared intentionally: install UUID, layout profiles, gsettings.
+
+### P1 — Wayland RC prep (next campaign)
+
+Procedure: [forge-wayland-rc-test-suite.md](./plans/forge-wayland-rc-test-suite.md) ·
+process: [testing.md](./testing.md) § Wayland.
+
+| Rule | Detail |
 | --- | --- |
-| N3 | Campaign entry always cleans nest; stale reaper |
-| N1 | `FORGE_HOST=<host>-sub-<name>` + nest CLI data dirs; shared layout profiles OK |
-| N4 | testing.md / RC suite process rules |
-| N2 | Nest Shell/extension honor same data root |
+| Host first | L1 / dual-mon open-leaf / chrome RC authority on **host** desk |
+| Layouts | **`_forge-test-*` only** — never personal `dev` / `t1` |
+| Nest | Code→reload or multi-mon structure only; default **mon=1** |
+| Campaign entry | `forge nested run -- …` (always stops); dual: `--monitors=2` only when needed |
+| Isolation | Nest CLI+Shell use nest `forge-config`; parent `~/.config/forge` not rewritten |
+| Results | `agents/test-results/wayland/<host>-wayland-<UTC>.json` |
+| Wrap-up | `forge nested status` → `running: False` |
 
-**Until N1/N2 land:** nest CLI may still touch parent heuristics — prefer ghostty structure smokes; avoid long nest settle campaigns on parent config; always `forge nested stop`.
+```bash
+echo "$XDG_SESSION_TYPE"          # wayland
+forge test live probe             # can_nested / can_retest
+# L0
+python3 -m pytest tests/unit/cli/test_layout_apply.py \
+  tests/unit/cli/test_live_matrix.py tests/unit/cli/test_nested_wayland.py -q
+# Host L1 / partial (no nest if no JS change)
+forge test live plan --from-work wayland-rc
+# After extension JS change: ./install && forge nested run -- …
+# Host dual-mon RC needs tip already on host (one logout after install if needed)
+```
+
+**Host tip note:** nest can load tip via `./install` + nest restart without host logout;
+host Shell still needs logout/reload once if host RC must exercise new extension JS.
 
 ### Lifecycle bags (shipped — residual optional)
 
@@ -93,13 +120,20 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 ### Nest lifecycle — STOP after tests (FIRM)
 
 ```bash
+# Prefer campaign entry (always stops unless --keep):
+forge nested run -- forge ping
+forge nested status   # want: running: False
+
+# Interactive multi-step still ends with:
 forge nested stop
 forge nested status   # want: running: False
 ```
 
-Prefer `forge nested exec -- …` (and after N3: campaign `run` that always stops).  
+**Prefer** `forge nested run -- …` for one-shot campaigns.  
+Use `exec` / `restart` only when the nest must stay up for multi-step work; **still stop** when done.  
 **Never** leave nest env on durable agent shells.  
-**Default** `forge nested start` → 1 mon. Dual only: `--monitors=2` when testing dual-mon behavior.
+**Default** mon=1. Dual only: `--monitors=2` when testing dual-mon behavior.  
+Nest client + Shell env: `FORGE_HOST=…-sub-…`, `FORGE_CONFIG_HOME=<session>/forge-config` (N1/N2).
 
 ### Headless / true cold
 
@@ -114,12 +148,14 @@ python3 -m pytest tests/unit/cli/test_layout_apply.py tests/unit/cli/test_live_m
 ### Nested Wayland (process)
 
 ```bash
-# Code changed → retest without logout:
-./install && forge nested restart          # mon=1 default
+# Code changed → one-shot retest without logout (preferred):
+./install && forge nested run -- forge ping          # mon=1; auto stop
 # Multi-mon behavior under test only:
-forge nested start --monitors=2 --replace
+forge nested run --monitors=2 -- forge tree
+# Multi-step interactive:
+./install && forge nested restart
 forge nested exec -- forge ping
-forge nested stop                          # FIRM until N3 auto
+forge nested stop                                   # FIRM
 ```
 
 No-code smoke → **host** only (no nest).

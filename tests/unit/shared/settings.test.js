@@ -52,16 +52,37 @@ describe("ConfigManager", () => {
   });
 
   describe("confDir", () => {
-    it("should return forge config directory under user config", () => {
-      const confDir = configManager.confDir;
-      expect(confDir).toContain("forge");
-      expect(confDir).toContain(".config");
+    /** @type {import("vitest").MockInstance | undefined} */
+    let getenvSpy;
+
+    afterEach(() => {
+      getenvSpy?.mockRestore();
+      getenvSpy = undefined;
     });
 
-    it("should be consistent across calls", () => {
+    async function spyGetenv(impl) {
+      const mod = await import("../../mocks/gnome/GLib.js");
+      const target = mod.default ?? mod;
+      getenvSpy = vi.spyOn(target, "getenv").mockImplementation(impl);
+      return target;
+    }
+
+    it("should return forge config directory under user config", async () => {
+      await spyGetenv(() => null);
+      const confDir = configManager.confDir;
+      expect(confDir).toBe("/home/test/.config/forge");
+    });
+
+    it("should be consistent across calls", async () => {
+      await spyGetenv(() => null);
       const first = configManager.confDir;
       const second = configManager.confDir;
       expect(first).toBe(second);
+    });
+
+    it("honors FORGE_CONFIG_HOME without appending /forge", async () => {
+      await spyGetenv((k) => (k === "FORGE_CONFIG_HOME" ? "/tmp/nest-state/forge-config" : null));
+      expect(configManager.confDir).toBe("/tmp/nest-state/forge-config");
     });
   });
 

@@ -39,6 +39,10 @@ def profiles_dir(env: Optional[dict[str, str]] = None) -> Path:
     raw = (e.get("FORGE_KEYBIND_PROFILES_DIR") or "").strip()
     if raw:
         return Path(raw).expanduser()
+    # Nest client_env: FORGE_CONFIG_HOME=<state>/forge-config (CLI isolation).
+    cfg_home = (e.get("FORGE_CONFIG_HOME") or "").strip()
+    if cfg_home:
+        return Path(cfg_home).expanduser() / "config" / "keybinding-profiles"
     return _XDG_PROFILES
 
 

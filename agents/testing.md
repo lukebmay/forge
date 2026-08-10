@@ -97,7 +97,7 @@ retests when `can_nested` is true.
 
 | Situation | Action |
 | --- | --- |
-| Extension **JS** changed → need reload without host logout | **Nest** (code/test loop) |
+| Extension **JS** changed → need reload without host logout | **Nest** (code/test loop only) |
 | No code change; one-shot / smoke | **Host only** — do not start nest |
 | Multi-mon behavior under test | Nest `--monitors=N` (usually 2) **or** host dual-mon |
 | Single-desk structure / open / focus retest | Nest **default 1 mon** — do not pay dual-mon cost |
@@ -107,6 +107,38 @@ Nest supports **1–4** dummy monitors (`--monitors`). **Default is 1.** Multi-m
 nest is not a free substitute for host dual-4K geometry; host remains authority
 for physical dual-mon sign-off. Design: [D022](../docs/DECISIONS.md) ·
 [nest isolation plan](./plans/forge-nested-isolation.md).
+
+### Nest entrypoints (N3 — FIRM)
+
+| Entry | When | Cleanup |
+| --- | --- | --- |
+| **`forge nested run -- <cmd…>`** | **Prefer** for one-shot campaigns | Starts if needed → cmd → **always stops** (unless `--keep`) |
+| **`forge nested exec -- <cmd…>`** | Nest already up; multi-step interactive | No auto-stop — **stop** when done |
+| **`forge nested restart` / `start`** | Long interactive retest loop | **stop** when campaign ends |
+
+```bash
+# One-shot campaign (default mon=1; auto cleanup)
+./install && forge nested run -- forge ping
+# Multi-mon campaign only when testing multi-mon:
+forge nested run --monitors=2 -- forge tree
+# Keep nest up intentionally:
+forge nested run --keep -- forge ping   # then stop yourself later
+```
+
+`status` / `start` / `exec` also **reap stale** pid/bus residue (N3).
+
+### Nest client + Shell env (N1/N2)
+
+Nest `env` / `export` / `exec` / `run` **and** nest Shell start set:
+
+| Var | Value | Role |
+| --- | --- | --- |
+| `FORGE_HOST` | `<short-hostname>-sub-<nestname>` (e.g. `black-sub-forge`) | Separate host key for CLI heuristics / layout host |
+| `FORGE_CONFIG_HOME` | `<session_dir>/forge-config` | Nest forge root (CLI + extension; not parent `~/.config/forge`) |
+
+Extension uses `forgeConfigHome()` / `forgeConfigDir()` (`lib/shared/forge-config-home.js`).
+Layout **profiles** stay shared (`layout/` / `FORGE_LAYOUT_DIR`). Shared install UUID
+and gsettings are intentional.
 
 ### Capability gates
 
@@ -133,33 +165,38 @@ On **X11:** use HUP; `forge nested start` **exits 2** with HUP guidance (not a c
 3. If extension JS changed (code/test loop):
      ./install
      forge nested doctor
-     forge nested start              # default mon=1
-     # multi-mon case only:  forge nested start --monitors=2 --replace
-     forge nested exec -- forge ping   # prefer exec over durable env export
-     # … nest cases …
-     forge nested stop               # FIRM (N3 will make this mechanical)
+     # Prefer one-shot campaign entry (auto stop):
+     forge nested run -- forge ping
+     # multi-mon case only: forge nested run --monitors=2 -- …
+     # Multi-step interactive (keep nest up):
+     #   forge nested restart            # mon=1 default
+     #   forge nested exec -- forge tree
+     #   … more nest cases …
+     #   forge nested stop               # FIRM when interactive loop ends
 4. Host dual-mon / chrome RC (host env only — nest NOT exported):
-     forge nested stop               # if nest was up
+     forge nested stop               # if nest still up
      forge test live plan --from-work <hint>
      forge test live run  --from-work <hint>
-5. Code change → re-install → forge nested restart (mon=1 unless multi-mon case)
+5. Code change → re-install → prefer `forge nested run -- …` or
+   `restart`+`exec`+`stop` (mon=1 unless multi-mon case)
 6. Logout only if host Shell never loaded this tip and host dual-mon needs host tip.
-7. ALWAYS before wrap-up / handoff / idle: forge nested stop
-     forge nested status         # running: False
+7. ALWAYS before wrap-up / handoff / idle: nest down
+     forge nested status         # running: False (reaps stale)
 ```
 
 ### Nest stop after tests (FIRM)
 
 | Rule | Detail |
 | --- | --- |
-| **Stop when done** | After nest cases finish for this session/prompt → `forge nested stop` |
+| **Prefer `run`** | One-shot campaigns use `forge nested run -- …` (mechanical stop) |
+| **Interactive still stop** | `exec` / `restart` / `start` leave nest up — `forge nested stop` when done |
 | **Stop before host matrix** | Do not run host `forge layout` / `forge test live` with nest env exported |
 | **Verify** | `forge nested status` → `running: False` |
-| **No durable export** | Prefer `forge nested exec -- <cmd>` or a throwaway terminal |
+| **No durable export** | Prefer `run` / `exec`; avoid long-lived `eval $(forge nested env --export)` on agent shells |
 | **Wrap-up gate** | Commit/handoff only after nest is stopped (or status proves already down) |
 
-Leaving nests up wastes resources and can leave orphan session buses that
-`status` may not always see if pid files went stale.
+Leaving nests up wastes resources and can leave orphan session buses;
+`status` reaps stale pids, but prefer `run` so cleanup is not memory-only.
 
 **Shell env trap:** `eval $(forge nested env --export)` points `WAYLAND_DISPLAY` +
 `DBUS_SESSION_BUS_ADDRESS` at the **nest**. Host dual-mon commands must use the
@@ -169,14 +206,13 @@ exports before host `forge tree` / `forge layout` / `forge test live run`.
 ### Minimal commands (cheat sheet)
 
 ```bash
-# Reload extension JS mid-campaign (Wayland)
-./install && forge nested restart
+# One-shot nest campaign (Wayland; auto cleanup)
+./install && forge nested run -- forge ping
 
-# Nest health (throwaway shell)
-forge nested status
-eval $(forge nested env --export) && forge ping
-# … nest tests …
-forge nested stop              # FIRM when nest work ends
+# Multi-step retest loop (stop yourself)
+./install && forge nested restart
+forge nested exec -- forge tree
+forge nested stop
 forge nested status            # running: False
 
 # Host live (dual-mon) — host env only

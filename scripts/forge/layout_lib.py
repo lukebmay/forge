@@ -12,6 +12,7 @@ from typing import Any, Mapping, Optional
 
 PROFILE_VERSION = 1
 LAYOUT_DIR_NAME = "layout"
+# Profiles stay shared; nest uses FORGE_CONFIG_HOME for timings only (N1).
 DEFAULT_CONFIG_ROOT = Path.home() / ".config" / "forge"
 
 CLI_ONLY_OPS = frozenset({"launch", "wait-window", "wait"})
