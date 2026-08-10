@@ -1,9 +1,10 @@
 # Plan: Lifecycle & pure abstractions (codebase health)
 
-**Status:** active — **D0 rate + invent first** (no big extract until locked)  
+**Status:** active — **A1 SourceBag done**; next L6 settle-math + SignalBag  
 **Priority:** **P0 ahead of Wayland RC continuation**  
 **Updated:** 2026-08-10  
-**Mode:** discussion → lock → implement pure + unit tests → thin wire → only then more live Wayland  
+**Mode:** pure + thin wire in progress → only then more live Wayland  
+**Lock:** 2026-08-10 — see [D0 task](../tasks/forge-lifecycle-abstractions_d0-rate.md)
 
 ---
 
@@ -17,11 +18,32 @@
 - Less duplication (JS thrash catalog ↔ CLI settle heuristics, GLib schedule copies)
 - Fewer classes of bugs (orphan sources after disable, missed disconnect, suppress flag stuck)
 
-Do **not** optimize for “lines deleted from `window.js`.” Prefer extractions modules that
+Do **not** optimize for “lines deleted from `window.js`.” Prefer extracted modules that
 make the right cleanup **automatic**.
 
 Related history: [forge-codebase-audit.md](./forge-codebase-audit.md) (CA/B extracts). This plan
 is **lifecycle infrastructure + pure policy**, not another size-only pass.
+
+---
+
+## Architecture (what is *not* a pre-req)
+
+Larger product issues exist; **none should block L1–L6**. Bags are foundations those
+areas will use. Do **not** start a multi-session redesign before pure lifecycle slices.
+
+| Large topic | Real? | Block bags? | When / how |
+| --- | --- | --- | --- |
+| **WM god-object** (`window.js` size) | Yes — symptom of ownership + many domains | **No** | Bags first; extract managers when a domain has a dispose contract (pattern: Focus, DnD, session-layout-restore) |
+| **Cold spine / hard-soft settle product** | Already **locked** (D008–D019) | **No** | Product work separate; do not re-litigate |
+| **Failed cold → FLOAT + placeholders / self-heal** | Yes ops pain | **No** | Product spine residual — not lifecycle bags; bags still help disable correctness during that work |
+| **Two settle “brains”** (ext thrash/open quiet vs CLI soft residual) | Intentional layer split + shared *formula* drift | **No** | L6 = shared **math kernel** only; keep product APIs separate |
+| **Nest isolation / shared config** | Yes | **No** | Parked D0 nest — after pure health or explicit reprioritize |
+| **Tree mutation / single-writer** | Partial risk under thrash | **No** | Only if a concrete DESIGN-FLAW appears; not pre-req |
+| **Big-bang rewrite Tree/WM** | Would be expensive redesign | **Forbidden as first move** | general.md: stop + design blocker if multi-session rewrite tempts |
+
+**Bottom line:** incremental lifecycle ownership is the right architectural *next* step.
+Product failures (desk thrash, dual-mon cold) stay on their plans; they get safer code
+when timers/signals stop leaking — they are not fixed by waiting for a mega-refactor.
 
 ---
 
@@ -37,26 +59,27 @@ is **lifecycle infrastructure + pure policy**, not another size-only pass.
 
 ---
 
-## Candidate lines (rate in D0 — provisional ranks)
+## Locked lines (D0)
 
-Agents **must re-examine and rate** these (impact on bugs, reuse, testability, cost, risk).
-Do not treat the order below as locked.
+| ID | Abstraction | Verdict | Notes |
+| --- | --- | --- | --- |
+| **L1** | **SourceBag** | **do-now** first pure | `sources.js`; inject schedule; named slots; fold glibSchedule/Cancel here |
+| **L2** | **SignalBag** | do-now pure / next wire | Expand disconnectSignals; groups; safe once |
+| **L3** | **Lifetime** | do-next thin | sources + signals dispose; no DI framework |
+| **L4** | **Per-window attach** | do-next | After L2; WeakMap one dispose |
+| **L5** | **Suppress tokens** | do-next | Stack/finally; includes geom epoch style |
+| **L6** | **settle-math kernel** | do-now pure (2nd) | rolling max×pad floor/cap; **not** merge thrash catalog with CLI session |
+| **L7** | Catalog façade | thin only | Catalog stays; may call L6 |
+| **L8** | OpenCommit manager | do-next | First **wire** owner of SourceBag; extract manager optional after |
+| **L9** | utils split | **defer** | Keep one file; tests already good |
+| **L10** | EventQueue + drain source | accept after L1 | queueEvent owns drain via bag |
+| **L11** | Batch-depth pure | accept small | openLayoutBatchDepth state machine |
+| **L12** | Place-hint bag | reject now | already pure + tested |
+| **L13** | Render policy table | reject / later | product not lifecycle |
 
-| ID | Abstraction | Intent | Pure? | Notes / existing code |
-| --- | --- | --- | --- | --- |
-| **L1** | **`sources.js` / SourceBag** | All GLib timeout/idle owned; named slots; `cancelAll` | Yes (inject schedule) | Fold `glibSchedule`/`glibCancel` out of layout-controller |
-| **L2** | **`signals.js` / SignalBag** | All `.connect` via bag; safe disconnect once; groups | Adapter over GObject | Expand local `disconnectSignals`; per-target groups |
-| **L3** | **`Lifetime` / Disposable** | `sources + signals` dispose together | Yes | WM + managers + per-window attach |
-| **L4** | **Per-window attach** | One dispose for windowSignals, actorSignals, stack timeout, borders bookkeeping | Mostly glue | WeakMap; track/destroy/disable one path |
-| **L5** | **Suppress tokens** | Stack/finally for geometry / entered-monitor / session flags | Yes | Prevent stuck `_suppress*` |
-| **L6** | **Heuristics / HQueue** | Rolling N samples + soft timeout ops | Yes | Unify with `SETTLE_ROLLING_N`, CLI `settle_heuristics.py` |
-| **L7** | **Catalog façade** | Thin pure under `AppThrashCatalog`; seed load helper | Yes | Do **not** duplicate catalog class |
-| **L8** | **OpenCommit controller** | Quiet schedule/cancel/touch/fire as manager | Pure policy + sources | Uses L1 + L6/L7 |
-| **L9** | **`utils.js` audit/split** | Domain clusters (rect/geom, grab/DnD, mon/ws ids, gnome compat) | Yes | ~615 lines; see D0 |
-| **L?** | **Other (invent)** | D0 must propose additional high-value pure abstractions | — | Prefer testable pure over glue churn |
-
-**Provisional implement order after lock (example only):**  
-L1 → L2 → L3 → L6/L7 (pure first) → L4 → L8 → L5 → L9 as needed.
+**Implement order (locked):**  
+Pure: L1 → L6 → L2 → L3 → L5 → L11 optional.  
+Wire: open-commit → WM/LC global sources → L4 → L8 extract optional → suppress sites.
 
 ---
 
@@ -74,9 +97,10 @@ L1 → L2 → L3 → L6/L7 (pure first) → L4 → L8 → L5 → L9 as needed.
 
 | Phase | Work | Gate |
 | --- | --- | --- |
-| **D0** | Rate candidates; invent more; utils inventory; test strategy; recommend order | User lock |
-| **A1+** | Implement pure modules + **comprehensive unit tests** first | `npm test` / vitest green |
-| **W1+** | Wire one owner at a time (open-commit, then WM bind/disable, …) | No behavior change intended; smoke light |
+| **D0** | Rate + invent + utils + test plan + lock | **Done** 2026-08-10 |
+| **A1** | SourceBag pure + unit tests + open-commit wire | **Done** [task](../tasks/forge-lifecycle-abstractions_a1-source-bag.md) |
+| **A2+** | settle-math kernel; SignalBag; Lifetime; suppress; … | next |
+| **W1+** | More WM named sources; per-window attach; suppress sites | open-commit already on SourceBag |
 | **After** | Resume nest dual-mon RC + isolation D0 as product priorities | Handoff flip |
 
 ---
@@ -108,8 +132,9 @@ Inject schedule/cancel (pattern already used by LayoutController / open-commit).
 
 | Task | Path | Status |
 | --- | --- | --- |
-| D0 rate + invent + utils + test plan | [forge-lifecycle-abstractions_d0-rate.md](../tasks/forge-lifecycle-abstractions_d0-rate.md) | **ready / P0** |
-| Implement slices | TBD after lock | — |
+| D0 rate + invent + utils + test plan | [forge-lifecycle-abstractions_d0-rate.md](../tasks/forge-lifecycle-abstractions_d0-rate.md) | **done / locked** |
+| A1 SourceBag pure + tests + open-commit wire | [forge-lifecycle-abstractions_a1-source-bag.md](../tasks/forge-lifecycle-abstractions_a1-source-bag.md) | **done** |
+| Later slices | TBD (A2 settle-math, SignalBag, more WM sources, …) | — |
 
 ---
 

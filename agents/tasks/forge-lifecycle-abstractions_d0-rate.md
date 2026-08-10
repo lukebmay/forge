@@ -1,130 +1,119 @@
 # forge-lifecycle-abstractions_d0-rate — Rate lifecycle abstractions + invent more
 
-**Status:** ready  
+**Status:** done  
 **Plan:** [forge-lifecycle-abstractions.md](../plans/forge-lifecycle-abstractions.md)  
 **Branch:** master (default)  
-**Blocker:** (none) — **user lock** on ranking + first implement slice before code  
-**Updated:** 2026-08-10
+**Blocker:** (none)  
+**Updated:** 2026-08-10  
+**Lock:** **LOCKED** 2026-08-10 (operator: agent may decide; decisions below)
 
 ## Goal
 
 **Discussion + inventory first** (implementation only after user lock).
 
-1. **Examine and rate** the abstraction lines already proposed (session transcript /
-   plan table L1–L9).
-2. **Identify additional** useful, **testable** abstractions that improve quality,
-   cut bugs, and promote reuse (not cosmetic splits).
-3. **Audit `lib/extension/utils.js`** (and related shared helpers) for split /
-   keep / pure-test gaps.
-4. Produce a **recommended implement order**, test strategy, and explicit
-   non-goals so the next agent does not thrash.
+1. **Examine and rate** the abstraction lines already proposed (plan table L1–L9).
+2. **Identify additional** useful, **testable** abstractions.
+3. **Audit `lib/extension/utils.js`** for split / keep / pure-test gaps.
+4. Produce **implement order**, test strategy, non-goals.
 
-**Lens (FIRM):** size is a **symptom**. Optimize for **health**: ownership,
-cleanup contracts, pure reuse, unit tests. Do **not** treat “lines removed from
-`window.js`” as the success metric.
+**Lens (FIRM):** size is a **symptom**. Health = ownership, cleanup contracts, pure reuse, unit tests.
 
-**Priority (FIRM):** this work is **ahead of further Wayland RC / live matrix
-campaigns**. Keep nest stop FIRM if any nest is touched; do not expand Wayland
-testing as the main track until D0 is locked and early pure slices land (or the
-user reprioritizes).
+## Lock decisions (authoritative)
 
-## Context (from prior session)
-
-Provisional candidates (rate these; rewrite ranks):
-
-| ID | Idea | Why it might matter |
-| --- | --- | --- |
-| L1 | `sources.js` / SourceBag | Ad-hoc GLib ids + hand clear list in disable |
-| L2 | `signals.js` / SignalBag | Connect arrays; missed disconnect (dialogs etc.) |
-| L3 | Lifetime = sources+signals dispose | One cleanup contract |
-| L4 | Per-window attach (WeakMap) | Meta signals + stack timeout + borders |
-| L5 | Suppress tokens (try/finally) | Stuck `_suppress*` flags |
-| L6 | Heuristics HQueue (rolling N) | Duplicated with CLI settle-heuristics |
-| L7 | Catalog pure façade / seed load | `AppThrashCatalog` already exists — thin, not replace |
-| L8 | OpenCommit manager | Quiet schedule block in WM |
-| L9 | `utils.js` domain split | rect, grab, mon/ws, drop zones, gnome |
-
-Existing partials to **reuse**, not reinvent:
-
-- `disconnectSignals`, `_clearTimeoutId` in `window.js`
-- `glibSchedule` / `glibCancel` in `layout-controller.js`
-- `app-thrash-catalog.js` + `layout-open.js` open quiet pure
-- `scripts/forge/settle_heuristics.py` + unit tests
-- Manager extract pattern (Focus, DnD, session-layout-restore, monitor-recovery)
-
-Also note: failed cold layout can leave FLOAT + placeholders; self-heal is product
-spine work — **out of D0 scope** unless it needs a pure helper (e.g. thrash
-detect). Lifecycle bags still help disable/destroy correctness.
-
-## Agenda
-
-### 1. Rate each L1–L9
-
-For each candidate fill:
-
-| Field | Content |
+| Decision | Value |
 | --- | --- |
-| **Impact** | Bugs prevented / reuse / clarity (H/M/L) |
-| **Testability** | Unit ease (H/M/L) |
-| **Cost / risk** | Wire risk to Shell; scope creep |
-| **Depends on** | Other L* |
-| **Verdict** | do-now / do-next / defer / reject + why |
+| First pure slice | **L1 SourceBag** + unit tests |
+| Second pure slice | **L6 settle-math kernel** (shared rolling max×pad floor/cap) + JS↔CLI golden cases for that formula only |
+| First wire owner | **Open-commit timers** → SourceBag (already injects schedule/cancel) |
+| Then wire | WM global named sources on disable; LC may re-export schedule from `sources.js` |
+| L2 SignalBag | Pure after L1; wire before L4 |
+| L3 Lifetime | Thin compose of L1+L2 — do not invent DI framework |
+| L4 Per-window attach | After bags proven |
+| L5 Suppress tokens | Small pure; wire opportunistically |
+| L7 Catalog | **No rewrite** — catalog may call L6 kernel only |
+| L8 OpenCommit manager | After SourceBag wire (optional extract once bag-backed) |
+| L9 utils split | **Deferred** — keep one file |
+| L10 EventQueue + drain source | Accept; after SourceBag (drain uses bag) |
+| L11 Batch-depth pure | Accept small pure anytime after L1 |
+| L12 Place-hint bag | Reject for now (already pure + tested) |
+| L13 Render policy table | Reject / later product |
+| L14 Epoch suppress | Fold into L5 |
+| Product spine / self-heal / FLOAT hard-ready | **Out of this plan** — separate product work; bags do not block or replace it |
+| Larger arch first? | **No** — see plan § Architecture (what is *not* a pre-req) |
 
-### 2. Invent more (required)
+### Implement order (locked)
 
-Scan at least:
+```text
+Pure:  L1 SourceBag → L6 settle-math kernel → L2 SignalBag → L3 Lifetime → L5 suppress → L11 batch-depth (optional)
+Wire:  open-commit → WM/LC global sources → L4 per-window attach → L8 manager extract (optional) → suppress sites
+Defer: L7 rewrite, L9 utils split, place-hint bag, Wayland RC, nest isolation, STACKED
+```
 
-- `lib/extension/window.js` (disable, track/destroy, suppress flags, queueEvent)
-- `lib/extension/tree.js` (if cleanup/duplication)
-- `lib/extension/utils.js` + `lib/shared/*` pure candidates
-- Duplicate math: thrash catalog ↔ settle_heuristics.py
-- Any “copy-paste cleanup” or “must remember finally” sites
+### SourceBag API (locked intent)
 
-Propose **L10+** only if **testable** and not a rename-only split. Examples to
-consider (accept or reject with reason): event queue ownership, place-hint
-lifecycle, layout-batch depth as state machine, render/commitLayout policy table.
+- Injectable `schedule` / `cancel` (default GLib timeout; idle support in v1 or v1.1).
+- Named slots: `set(name, delayMs, cb)` replaces prior id for that name; `cancel(name)`; `cancelAll()` / `dispose()`.
+- Leak criterion: after dispose, fake registry has zero live ids.
+- Home: `lib/extension/sources.js`; move `glibSchedule`/`glibCancel` here; LC re-exports or imports.
 
-### 3. utils.js inventory
+## Rating summary (L1–L9)
 
-- Cluster exports by domain
-- What already has unit tests vs none
-- Recommend: keep one file / split into N pure modules / move drop-zones to existing
-  `drop-zones.js` etc.
-- Prefer **move tests with code**
+| ID | Verdict | Why |
+| --- | --- | --- |
+| L1 SourceBag | **do-now** | H impact, H test, low pure risk; disable checklist disease |
+| L2 SignalBag | **do-now pure / next wire** | Missed-disconnect class; expand disconnectSignals |
+| L3 Lifetime | **do-next** | Thin glue only |
+| L4 Per-window attach | **do-next** | Real destroy path; needs L2 |
+| L5 Suppress tokens | **do-next** | Small pure; stuck-flag class |
+| L6 settle-math kernel | **do-now pure** | Shared formula; **not** product merge of thrash vs CLI soft |
+| L7 Catalog façade | **thin/defer** | Catalog stays; call kernel |
+| L8 OpenCommit mgr | **do-next** | Pure policy already in layout-open.js |
+| L9 utils split | **defer** | Already tested; nav-only ROI |
 
-### 4. Test strategy
+## Invented (L10+)
 
-- List pure modules + first test files
-- Golden cases for heuristics (JS/CLI parity)
-- Fake GLib inject pattern
-- Optional CI grep later (no bare `timeout_add` outside sources) — note only
+| ID | Verdict |
+| --- | --- |
+| L10 EventQueue + owned drain | Accept after SourceBag |
+| L11 Batch-depth pure | Accept small |
+| L12 Place-hint bag | Reject now |
+| L13 Render policy table | Reject / later |
+| L14 Epoch → L5 | Merge |
+| L16 Golden fixtures for L6 | Accept as tests |
 
-### 5. Implement order + first slice
+## utils.js
 
-Recommend:
+**Keep one file.** Clusters: rect, grab, drop (re-export), mon/ws, gnome compat. Split only after bags if navigation pain remains; move tests with code.
 
-1. First pure PR after lock (smallest high-testability win)
-2. First wire PR (who owns SourceBag first)
-3. What stays parked (Wayland RC, nest isolation D0, STACKED)
+## Test strategy
+
+| Module | Tests |
+| --- | --- |
+| `sources.js` | `tests/unit/extension/sources.test.js` — inject fake GLib, replace slot, cancelAll leak-free |
+| settle-math | JS unit + golden parity rows with `test_settle_heuristics.py` for shared formula only |
+| `signals.js` | fake target, groups, dispose-after-finalize |
+| suppress | nested + throw restores |
+| OpenCommit wire | later; layout-open pure already green |
 
 ## Acceptance
 
-- [ ] Rating table for L1–L9 complete (verdicts + why)
-- [ ] At least **2 additional** candidates considered (accepted or rejected)
-- [ ] utils.js inventory + recommendation
-- [ ] Test strategy written (unit-first, concrete paths)
-- [ ] Recommended order + **first implement slice** named
-- [ ] **User lock** recorded (or explicit defer) before coding
-- [ ] HANDOFF/PRIORITY still point here until lock + next task filed
+- [x] Rating table for L1–L9 complete
+- [x] ≥2 additional candidates (L10, L11, L12 reject, L16)
+- [x] utils.js inventory + recommendation
+- [x] Test strategy written
+- [x] Order + first slice named
+- [x] **User lock** recorded (agent authorized 2026-08-10)
+- [x] Next task filed: A1 SourceBag
+- [x] HANDOFF/PRIORITY updated for post-lock
 
 ## Out of scope for D0
 
-- Implementing SourceBag/SignalBag/HQueue (file follow-up tasks after lock)
-- Full Wayland RC suite runs as main work
-- Nest isolation implementation (discussion task remains separate)
+- Implementation (→ A1+)
+- Full Wayland RC / nest isolation
 - Window.js rewrite
 
 ## Session note
 
-- Created 2026-08-10 from operator direction: prioritize healthy abstractions
-  over symptom size and over continuing Wayland testing for now.
+- 2026-08-10: D0 analysis complete; operator approved direction and authorized agent lock.
+- Larger architecture: **nothing must block L1** — see plan. Product spine (self-heal, dual-mon cold) remains separate queue after pure health slices.
+- Next: [forge-lifecycle-abstractions_a1-source-bag.md](./forge-lifecycle-abstractions_a1-source-bag.md)

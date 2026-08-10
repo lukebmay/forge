@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-10 (lifecycle abstractions **P0** before more Wayland RC)  
+**Updated:** 2026-08-10 (lifecycle **A1 SourceBag shipped** → next L6 settle-math / SignalBag)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest dual-mon available for later RC.  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -42,26 +42,27 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime) so disable/destroy c
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0 now** | **Lifecycle / pure abstractions:** rate candidates, invent more, utils audit, unit-test plan — **lock before code** | [plan](./plans/forge-lifecycle-abstractions.md) · [D0 task](./tasks/forge-lifecycle-abstractions_d0-rate.md) |
-| after lock | Implement pure modules + comprehensive unit tests; wire one owner at a time | follow-up tasks from D0 |
+| **P0 now** | **L6 settle-math kernel** (shared rolling formula) + golden parity; then SignalBag | [plan](./plans/forge-lifecycle-abstractions.md) |
+| next | Wire more WM sources onto SourceBag; Lifetime; suppress; per-window attach | plan locked order |
 | parked | Nest isolation discussion (still valid; not cancelled) | [D0 nest](./tasks/forge-nested-isolation_d0-discussion.md) |
 | parked | Wayland nest dual-mon RC + host L1 on `_forge-test-*` | [suite](./plans/forge-wayland-rc-test-suite.md) |
 | later | STACKED product / resize-autotile | other plans — do not mix into cold spine |
-| done | R007; D019 SE0–SE9; AT-W1 nest; CLI jobs; place→structure residual; leader true-cold; `_forge-test-*` profiles | completed/ |
+| done | **A1 SourceBag** + open-commit wire; D0 lock; R007; D019 SE0–SE9; AT-W1 nest; CLI jobs; leader true-cold | [A1](./tasks/forge-lifecycle-abstractions_a1-source-bag.md) · completed/ |
 
-### P0 — Lifecycle abstractions (read this)
+### P0 — Lifecycle abstractions (A1 done)
 
-**Operator direction (2026-08-10):** Prioritize these abstractions **before continuing Wayland testing.**
+**D0 locked; A1 shipped 2026-08-10.** Plan: [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md).
 
-1. Open [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) and [D0 rate task](./tasks/forge-lifecycle-abstractions_d0-rate.md).
-2. **Examine and rate** the proposed lines (L1–L9 in the plan): SourceBag, SignalBag, Lifetime, per-window attach, suppress tokens, heuristics HQueue, catalog façade, OpenCommit manager, utils split.
-3. **Identify other** useful, **unit-testable** abstractions that improve quality, reduce bugs, and avoid duplication (reuse). Reject rename-only splits.
-4. **Audit `lib/extension/utils.js`** (and related helpers) for keep vs domain split + missing tests.
-5. Write a **test strategy** (unit-first; inject GLib; heuristics JS↔CLI golden parity).
-6. Recommend implement order + **first pure slice**; get **user lock** before coding large extracts.
-7. Do **not** treat shrinking `window.js` line count as the goal. Health = ownership, cleanup contracts, pure reuse, tests.
+| Item | Detail |
+| --- | --- |
+| **Code** | `lib/extension/sources.js` — `SourceBag`, `glibSchedule`/`glibCancel`/`glibIdleSchedule` |
+| **Wire** | Open-commit timers → `_openCommitSources` (`label: open-commit`) |
+| **Tests** | `tests/unit/extension/sources.test.js` (+ open-commit / LC still green) |
+| **Debug logs** | `[SourceBag:<label>]` set/replace/cancel/fire/dispose; `[open-commit]` schedule/arm/fire/cancelAll + `snapshot()` |
+| **Enable logs** | `gsettings set … logging-enabled true` + `log-level 5` (DEBUG) on debug install |
+| **Next** | L6 settle-math pure; SignalBag; more named WM sources |
 
-Existing partials (reuse): `disconnectSignals` / `_clearTimeoutId` in `window.js`; `glibSchedule`/`glibCancel` in `layout-controller.js`; `app-thrash-catalog.js`; `layout-open.js`; `settle_heuristics.py`.
+**Failure dump:** `wm._openCommitSources.snapshot()` (and future bags) — residual slots + counters.
 
 ### Nest lifecycle — STOP after tests (FIRM)
 
@@ -122,8 +123,9 @@ forge nested stop    # FIRM
 | Doc | Role |
 | --- | --- |
 | [PRIORITY.md](./PRIORITY.md) | Queue |
-| [lifecycle abstractions](./plans/forge-lifecycle-abstractions.md) | **P0 plan** |
-| [D0 rate task](./tasks/forge-lifecycle-abstractions_d0-rate.md) | **Start work here** |
+| [lifecycle abstractions](./plans/forge-lifecycle-abstractions.md) | **P0 plan (locked)** |
+| [A1 SourceBag](./tasks/forge-lifecycle-abstractions_a1-source-bag.md) | Done — SourceBag + open-commit wire |
+| [D0 rate task](./tasks/forge-lifecycle-abstractions_d0-rate.md) | Done — lock + ranking |
 | [settle contract](./plans/forge-layout-settle-contract.md) | Hard/soft product |
 | [cold topology](./plans/forge-layout-cold-topology.md) | Spine |
 | [Wayland RC suite](./plans/forge-wayland-rc-test-suite.md) | Parked RC procedure |
