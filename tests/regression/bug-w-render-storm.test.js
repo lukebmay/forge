@@ -14,8 +14,8 @@ import { isForgeCausedGeometrySignal } from "../../lib/extension/layout-sensors.
  * W-render-storm / CL2: full layout on noisy Meta geometry signals
  * (apply→size-changed feedback, TILE already in slot) thrashed Shell.
  *
- * Guards: _suppressGeometrySignalRetile around apply/move, TILE-in-slot
- * chrome-only, external drift → markUnsettled + diagnostic verify (no layout).
+ * Guards: _suppressGeom around apply/move, TILE-in-slot chrome-only,
+ * external drift → markUnsettled + diagnostic verify (no layout).
  */
 describe("W-render-storm / CL2: geometry feedback attribution", () => {
   let ctx;
@@ -79,7 +79,7 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     const meta = first.metaWindow;
     ctx.display.get_focus_window.mockReturnValue(meta);
 
-    wm()._suppressGeometrySignalRetile = true;
+    wm()._suppressGeom.enter();
     const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
     const layoutSpy = vi.spyOn(wm().layoutController, "requestLayout");
     const markSpy = vi.spyOn(wm().layoutController, "markUnsettled");
@@ -188,7 +188,7 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     const markSpy = vi.spyOn(wm().layoutController, "markUnsettled");
     const origMove = wm().move.bind(wm());
     vi.spyOn(wm(), "move").mockImplementation((meta, rect, ...rest) => {
-      expect(wm()._suppressGeometrySignalRetile).toBe(true);
+      expect(wm()._suppressGeom.active).toBe(true);
       expect(isForgeCausedGeometrySignal(wm())).toBe(true);
       wm().updateMetaPositionSize(meta, "size-changed");
       return origMove(meta, rect, ...rest);
@@ -198,7 +198,7 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
 
     expect(renderSpy).not.toHaveBeenCalled();
     expect(markSpy).not.toHaveBeenCalled();
-    expect(wm()._suppressGeometrySignalRetile).toBe(false);
+    expect(wm()._suppressGeom.active).toBe(false);
   });
 
   it("move() raises geometry suppress for the duration of the commit", () => {
@@ -208,14 +208,14 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     let sawSuppress = false;
     const origResize = metaWindow.move_resize_frame.bind(metaWindow);
     metaWindow.move_resize_frame = (interactive, x, y, w, h) => {
-      sawSuppress = wm()._suppressGeometrySignalRetile === true;
+      sawSuppress = wm()._suppressGeom.active === true;
       return origResize(interactive, x, y, w, h);
     };
 
-    expect(wm()._suppressGeometrySignalRetile).toBe(false);
+    expect(wm()._suppressGeom.active).toBe(false);
     wm().move(metaWindow, { x: 50, y: 50, width: 400, height: 300 });
     expect(sawSuppress).toBe(true);
-    expect(wm()._suppressGeometrySignalRetile).toBe(false);
+    expect(wm()._suppressGeom.active).toBe(false);
   });
 
   it("AC2: after move, size-changed within echo residual does not markUnsettled", () => {
@@ -231,7 +231,7 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
 
     wm().move(meta, slot);
     expect(wm().layoutEpoch.isEchoActive(meta)).toBe(true);
-    expect(wm()._suppressGeometrySignalRetile).toBe(false);
+    expect(wm()._suppressGeom.active).toBe(false);
 
     // Client snap far from slot while residual still open — still Forge echo.
     meta.move_resize_frame(true, 50, 50, 300, 200);

@@ -583,7 +583,7 @@ describe("LayoutController catalog observe (no thrash-extra control loop)", () =
     expect(e).toBeTruthy();
     expect(e.settleSampleCount).toBe(1);
     expect(e.settleMsLast).toBeGreaterThanOrEqual(350);
-    expect(e.minQuietMs).toBe(e.settleMsLast * SETTLE_LEARN_PAD);
+    expect(e.minQuietMs).toBe(Math.trunc(e.settleMsLast * SETTLE_LEARN_PAD));
     expect(lc._settlePending.size).toBe(0);
   });
 

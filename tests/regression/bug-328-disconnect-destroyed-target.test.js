@@ -7,8 +7,8 @@ import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/i
  * _removeSignals() loop - every remaining window kept its connections and
  * _signalsBound stayed true, producing the "invalid (NULL) pointer instance /
  * g_signal_handler_disconnect assertion" storm on later disable/destroy
- * passes. A missing target (e.g. global.window_manager already torn down)
- * threw a TypeError with the same effect.
+ * passes. SignalBag._safeDisconnect and disconnectSignals both swallow
+ * per-id throws so cleanup continues.
  */
 describe("Bug #328: disconnect on destroyed targets must not abort cleanup", () => {
   let ctx;
@@ -26,9 +26,7 @@ describe("Bug #328: disconnect on destroyed targets must not abort cleanup", () 
 
   function seedSignalState(windows) {
     wm()._signalsBound = true;
-    wm()._displaySignals = [];
-    wm()._workspaceManagerSignals = [];
-    wm()._overviewSignals = [];
+    wm()._wmSignals?.disconnectAll();
     ctx.display.get_tab_list = vi.fn(() => windows);
   }
 
@@ -52,18 +50,19 @@ describe("Bug #328: disconnect on destroyed targets must not abort cleanup", () 
     expect(wm()._signalsBound).toBe(false);
   });
 
-  it("a missing target with pending signal ids is a no-op, not a TypeError", () => {
+  it("a bag-owned target that throws on disconnect does not abort cleanup", () => {
     seedSignalState([]);
-    // Simulate a torn-down global: ids recorded but the target is gone.
-    wm()._windowManagerSignals = [201];
-    const savedWindowManager = global.window_manager;
-    global.window_manager = undefined;
+    // W5: globals live on SignalBag; dead GObject-style disconnect must not throw out.
+    const dead = {
+      connect: () => 201,
+      disconnect: () => {
+        throw new Error("Object 0xdead has been already deallocated");
+      },
+    };
+    wm()._wmSignals.connect(dead, "fake", () => {}, { group: "windowManager" });
 
-    try {
-      expect(() => wm()._removeSignals()).not.toThrow();
-      expect(wm()._signalsBound).toBe(false);
-    } finally {
-      global.window_manager = savedWindowManager;
-    }
+    expect(() => wm()._removeSignals()).not.toThrow();
+    expect(wm()._signalsBound).toBe(false);
+    expect(wm()._wmSignals.size).toBe(0);
   });
 });

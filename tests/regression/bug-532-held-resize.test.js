@@ -75,7 +75,7 @@ describe("Bug #532: held resize keeps the grab open and accumulates", () => {
     expect(node1.initRect).toBe(firstInit);
     // A single debounced grab-end is pending (the fix), and the shared event
     // queue is NOT used per-repeat (the old behaviour).
-    expect(ctx.windowManager._manualResizeEndId).toBeTruthy();
+    expect(ctx.windowManager._wmSources.has("manualResizeEnd")).toBe(true);
     expect(ctx.windowManager.eventQueue.length).toBe(0);
   });
 

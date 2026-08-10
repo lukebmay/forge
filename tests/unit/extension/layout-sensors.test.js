@@ -12,13 +12,13 @@ describe("isForgeCausedGeometrySignal", () => {
     expect(isForgeCausedGeometrySignal({})).toBe(false);
   });
 
-  it("is true when _suppressGeometrySignalRetile is set", () => {
-    expect(isForgeCausedGeometrySignal({ _suppressGeometrySignalRetile: false })).toBe(false);
-    expect(isForgeCausedGeometrySignal({ _suppressGeometrySignalRetile: true })).toBe(true);
+  it("is true when _suppressGeom.active", () => {
+    expect(isForgeCausedGeometrySignal({ _suppressGeom: { active: false } })).toBe(false);
+    expect(isForgeCausedGeometrySignal({ _suppressGeom: { active: true } })).toBe(true);
   });
 
   it("stack suppress is WM-wide (metaWindow optional)", () => {
-    const wm = { _suppressGeometrySignalRetile: true };
+    const wm = { _suppressGeom: { active: true } };
     expect(isForgeCausedGeometrySignal(wm, { id: 1 })).toBe(true);
     expect(isForgeCausedGeometrySignal(wm)).toBe(true);
   });
@@ -26,7 +26,7 @@ describe("isForgeCausedGeometrySignal", () => {
   it("true when layoutEpoch.isEchoActive for that metaWindow", () => {
     const win = { id: 7 };
     const wm = {
-      _suppressGeometrySignalRetile: false,
+      _suppressGeom: { active: false },
       layoutEpoch: {
         isEchoActive: (mw) => mw === win,
       },

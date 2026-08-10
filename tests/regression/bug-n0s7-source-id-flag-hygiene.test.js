@@ -11,10 +11,9 @@ import { WINDOW_MODES } from "../../lib/extension/window.js";
 /**
  * forge-n0s7: two stale-state leaks.
  *
- * (a) The pointer-focus poll loop ends itself by returning false (GLib then
- * destroys the source) without zeroing _pointerFocusTimeoutId, so the next
- * pointerLoopInit() or _removeSignals() called GLib.Source.remove on a dead
- * ID (GLib-CRITICAL log spam).
+ * (a) The pointer-focus poll ends when _focusWindowUnderPointer returns false
+ * (no re-arm). SourceBag clears the slot on fire, so cancel/re-init never
+ * Source.remove's a dead id (GLib-CRITICAL spam).
  *
  * (b) workspaceAdded/workspaceRemoved were only consumed inside
  * _onWorkareasChanged's tree-has-windows branch; a workspace change on an
@@ -33,7 +32,7 @@ describe("forge-n0s7: source-id and flag hygiene", () => {
     ctx.cleanup();
   });
 
-  it("pointer-focus loop zeroes its source ID when it self-terminates", () => {
+  it("pointer-focus loop drops its bag slot when it self-terminates", () => {
     const callbacks = [];
     vi.spyOn(GLib, "timeout_add").mockImplementation((priority, interval, cb) => {
       callbacks.push(cb);
@@ -42,14 +41,14 @@ describe("forge-n0s7: source-id and flag hygiene", () => {
     const wm = ctx.windowManager;
     wm.shouldFocusOnHover = true;
     wm.pointerLoopInit();
-    expect(wm._pointerFocusTimeoutId).toBe(42);
+    expect(wm._wmSources.has("pointerFocus")).toBe(true);
+    expect(wm._wmSources.getId("pointerFocus")).toBe(42);
 
-    // User turns the feature off; the next tick ends the loop.
+    // User turns the feature off; the next tick ends the loop (no re-arm).
     wm.shouldFocusOnHover = false;
-    const keepPolling = callbacks[callbacks.length - 1]();
+    callbacks[callbacks.length - 1]();
 
-    expect(keepPolling).toBe(false);
-    expect(wm._pointerFocusTimeoutId).toBe(0);
+    expect(wm._wmSources.has("pointerFocus")).toBe(false);
   });
 
   it("consumes workspaceAdded even when the tree has no windows", () => {

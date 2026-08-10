@@ -1,17 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import GLib from "gi://GLib";
 import { WorkspaceManager } from "../../lib/extension/workspace.js";
+import { SourceBag } from "../../lib/extension/sources.js";
 import { createMockWindow, installGnomeGlobals } from "../mocks/helpers/index.js";
 
 /**
- * forge-wqlx: the window-added handler scheduled its 200ms re-home timeout only
- * when the single shared `_wsWindowAddSrcId` was falsy, and the timeout closure
- * captured just the FIRST event's metaWindow. So within any 200ms burst (session
- * restore, multi-window apps) only the first window's monitor re-home ran; every
- * other window was silently dropped until a later unrelated event.
- *
- * Fix: queue every window added during the debounce and flush them all in one
- * timeout, isolating each so a finalized window cannot strand its siblings.
+ * forge-wqlx: window-added debounce queues every window and flushes them under
+ * one SourceBag slot (wsWindowAdd), isolating each so a finalized window
+ * cannot strand its siblings.
  */
 describe("forge-wqlx: window-added debounce re-homes every window in a burst", () => {
   let ctx;
@@ -23,18 +18,19 @@ describe("forge-wqlx: window-added debounce re-homes every window in a burst", (
   beforeEach(() => {
     ctx = installGnomeGlobals();
     workspace = ctx.workspaces[0];
+    timeouts = [];
     extWm = {
       updateMetaWorkspaceMonitor: vi.fn(),
-      _wsWindowAddSrcId: 0,
       _wsWindowAddQueue: null,
+      _wmSources: new SourceBag({
+        schedule: (_ms, cb) => {
+          timeouts.push(cb);
+          return timeouts.length;
+        },
+        cancel: () => {},
+      }),
     };
     workspaceManager = new WorkspaceManager({}, extWm);
-
-    timeouts = [];
-    vi.spyOn(GLib, "timeout_add").mockImplementation((priority, interval, callback) => {
-      timeouts.push(callback);
-      return timeouts.length; // distinct non-zero IDs
-    });
   });
 
   afterEach(() => {
@@ -67,7 +63,7 @@ describe("forge-wqlx: window-added debounce re-homes every window in a burst", (
       winB.get_monitor(),
       winB
     );
-    expect(extWm._wsWindowAddSrcId).toBe(0);
+    expect(extWm._wmSources.has("wsWindowAdd")).toBe(false);
   });
 
   it("still flushes live windows when one queued window was finalized", () => {
@@ -84,13 +80,13 @@ describe("forge-wqlx: window-added debounce re-homes every window in a burst", (
     expect(timeouts.length).toBe(1);
 
     // The finalized window must neither throw out of the callback nor strand
-    // the live one, and the guard must still reset.
+    // the live one, and the bag slot must still clear.
     expect(() => timeouts[0]()).not.toThrow();
     expect(extWm.updateMetaWorkspaceMonitor).toHaveBeenCalledWith(
       "window-added",
       live.get_monitor(),
       live
     );
-    expect(extWm._wsWindowAddSrcId).toBe(0);
+    expect(extWm._wmSources.has("wsWindowAdd")).toBe(false);
   });
 });

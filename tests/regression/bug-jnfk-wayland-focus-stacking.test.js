@@ -26,8 +26,8 @@ import { MotionDirection } from "../mocks/gnome/Meta.js";
  * so focusing faster than 50ms cancelled the previous window's pending
  * unmake_above() — leaving earlier windows stuck always-on-top, which
  * isFloatingExempt then float-ejected so they overlapped. The pin is now keyed
- * per-MetaWindow (_forgeStackTimeoutId) and flagged (_forgeTransientAbove) so
- * isFloatingExempt skips Forge's own transient pin.
+ * per-window on WindowAttach Lifetime.sources slot "stack" and flagged
+ * (_forgeTransientAbove) so isFloatingExempt skips Forge's own transient pin.
  */
 describe("forge-jnfk: Wayland focus stacking restores above-state", () => {
   let ctx;
@@ -82,11 +82,11 @@ describe("forge-jnfk: Wayland focus stacking restores above-state", () => {
       const realMakeAbove = win.make_above.bind(win);
       const realUnmakeAbove = win.unmake_above.bind(win);
       vi.spyOn(win, "make_above").mockImplementation(() => {
-        suppressedDuring.push(ctx.windowManager._suppressAboveHandler);
+        suppressedDuring.push(ctx.windowManager._suppressAbove.active);
         realMakeAbove();
       });
       vi.spyOn(win, "unmake_above").mockImplementation(() => {
-        suppressedDuring.push(ctx.windowManager._suppressAboveHandler);
+        suppressedDuring.push(ctx.windowManager._suppressAbove.active);
         realUnmakeAbove();
       });
     }
@@ -96,7 +96,7 @@ describe("forge-jnfk: Wayland focus stacking restores above-state", () => {
 
     // make_above then unmake_above, both with the suppress flag held.
     expect(suppressedDuring).toEqual([true, true]);
-    expect(ctx.windowManager._suppressAboveHandler).toBeFalsy();
+    expect(ctx.windowManager._suppressAbove.active).toBe(false);
   });
 
   it("does not unpin a window the user already had above", () => {
@@ -114,10 +114,13 @@ describe("forge-jnfk: Wayland focus stacking restores above-state", () => {
     const removeSpy = vi.spyOn(GLib.Source, "remove");
 
     ctx.tree.focus(nodeA, MotionDirection.RIGHT);
-    expect(winB._forgeStackTimeoutId).toBe(42);
+    const ltB = ctx.windowManager._windowAttach.get(winB);
+    expect(ltB?.sources.getId("stack")).toBe(42);
+    expect(winB._forgeStackTimeoutId).toBeUndefined();
 
     ctx.windowManager.disable();
     expect(removeSpy).toHaveBeenCalledWith(42);
+    expect(ctx.windowManager._windowAttach.size).toBe(0);
   });
 
   // forge-ph7f: rapid focus must not strand earlier windows always-on-top.
@@ -148,9 +151,14 @@ describe("forge-jnfk: Wayland focus stacking restores above-state", () => {
     ctx.tree.focus(nodeB, MotionDirection.LEFT);
 
     expect(ids).toHaveLength(2);
-    expect(winB._forgeStackTimeoutId).toBe(ids[0]);
-    expect(winA._forgeStackTimeoutId).toBe(ids[1]);
+    const ltB = ctx.windowManager._windowAttach.get(winB);
+    const ltA = ctx.windowManager._windowAttach.get(winA);
+    expect(ltB?.sources.getId("stack")).toBe(ids[0]);
+    expect(ltA?.sources.getId("stack")).toBe(ids[1]);
     // Neither pending unpin was cancelled by the other (the shared-id bug).
     expect(removeSpy).not.toHaveBeenCalled();
+    // Field ownership removed — bag only.
+    expect(winA._forgeStackTimeoutId).toBeUndefined();
+    expect(winB._forgeStackTimeoutId).toBeUndefined();
   });
 });

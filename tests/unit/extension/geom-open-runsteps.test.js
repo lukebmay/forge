@@ -41,7 +41,7 @@ describe("AP3 ExternalGeometry B-only / Cq", () => {
     const meta = first.metaWindow;
     ctx.display.get_focus_window.mockReturnValue(meta);
 
-    wm()._suppressGeometrySignalRetile = true;
+    wm()._suppressGeom.enter();
     const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
     const commitSpy = vi.spyOn(wm(), "commitLayout");
     const markSpy = vi.spyOn(wm().layoutController, "markUnsettled");

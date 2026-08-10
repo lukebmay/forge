@@ -44,8 +44,9 @@ describe("WindowManager - Pointer & Focus Management", () => {
   const workspace0 = () => ctx.workspaces[0];
 
   afterEach(() => {
-    // Clean up any GLib timeout that may have been created
-    if (wm()._pointerFocusTimeoutId) {
+    // Clean up any pointer-focus poll that may have been armed
+    if (wm()._wmSources?.has("pointerFocus")) {
+      wm()._wmSources.cancel("pointerFocus");
       vi.clearAllTimers();
     }
     ctx.cleanup();
@@ -1032,7 +1033,7 @@ describe("WindowManager - intra-tab thrash (cross-mon focus)", () => {
 
     const decoSpy = vi.spyOn(wm(), "updateDecorationLayout");
     const borderSpy = vi.spyOn(wm(), "updateBorderLayout").mockImplementation(() => {});
-    wm()._suppressGeometrySignalRetile = true;
+    wm()._suppressGeom.enter();
 
     wm().updateMetaPositionSize(meta, "size-changed");
 

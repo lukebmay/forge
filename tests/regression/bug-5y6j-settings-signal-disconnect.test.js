@@ -10,8 +10,8 @@ import { withSignals } from "../mocks/helpers/signalMixin.js";
  * into the nulled extension (`this.ext.settings is null`) on a zombie
  * WindowManager.
  *
- * Fix: store the connect ID in _settingsSignals and disconnect it in
- * _removeSignals.
+ * Fix: own the connect on the WM SignalBag (group "settings") and
+ * disconnectAll in _removeSignals.
  */
 describe("forge-5y6j: settings 'changed' handler is disconnected on disable", () => {
   let ctx;

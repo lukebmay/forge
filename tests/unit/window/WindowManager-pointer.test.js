@@ -192,8 +192,8 @@ describe("WindowManager - Focus-Follows-Pointer Behavior", () => {
       });
 
       expect(fixture.windowManager.shouldFocusOnHover).toBe(true);
-      // pointerLoopInit() runs in the constructor and registers a GLib timeout
-      expect(fixture.windowManager._pointerFocusTimeoutId).toBeTruthy();
+      // pointerLoopInit() runs in the constructor and arms bag slot pointerFocus
+      expect(fixture.windowManager._wmSources.has("pointerFocus")).toBe(true);
     });
 
     it("does not start the pointer loop when focus-on-hover-enabled is false", () => {
@@ -202,7 +202,7 @@ describe("WindowManager - Focus-Follows-Pointer Behavior", () => {
       });
 
       expect(fixture.windowManager.shouldFocusOnHover).toBe(false);
-      expect(fixture.windowManager._pointerFocusTimeoutId).toBeFalsy();
+      expect(fixture.windowManager._wmSources.has("pointerFocus")).toBe(false);
     });
   });
 });

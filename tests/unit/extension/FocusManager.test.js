@@ -35,7 +35,8 @@ describe("FocusManager", () => {
   const workspace0 = () => ctx.workspaces[0];
 
   afterEach(() => {
-    if (wm()._pointerFocusTimeoutId) {
+    if (wm()._wmSources?.has("pointerFocus")) {
+      wm()._wmSources.cancel("pointerFocus");
       vi.clearAllTimers();
     }
     ctx.cleanup();
@@ -74,30 +75,26 @@ describe("FocusManager", () => {
   });
 
   describe("_focusWindowUnderPointer() - disabling guards (return false)", () => {
-    it("returns false and clears the timeout id when shouldFocusOnHover is false", () => {
+    it("returns false when shouldFocusOnHover is false (poll stops re-arming)", () => {
       const { focusSpy, raiseSpy } = placeWindowUnderPointer();
       wm().shouldFocusOnHover = false;
       wm().disabled = false;
-      wm()._pointerFocusTimeoutId = 99;
 
       const result = wm()._focusWindowUnderPointer();
 
       expect(result).toBe(false);
-      expect(wm()._pointerFocusTimeoutId).toBe(0);
       expect(focusSpy).not.toHaveBeenCalled();
       expect(raiseSpy).not.toHaveBeenCalled();
     });
 
-    it("returns false and clears the timeout id when disabled is true", () => {
+    it("returns false when disabled is true (poll stops re-arming)", () => {
       const { focusSpy, raiseSpy } = placeWindowUnderPointer();
       wm().shouldFocusOnHover = true;
       wm().disabled = true;
-      wm()._pointerFocusTimeoutId = 99;
 
       const result = wm()._focusWindowUnderPointer();
 
       expect(result).toBe(false);
-      expect(wm()._pointerFocusTimeoutId).toBe(0);
       expect(focusSpy).not.toHaveBeenCalled();
       expect(raiseSpy).not.toHaveBeenCalled();
     });

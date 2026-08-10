@@ -130,8 +130,9 @@ describe("WindowManager layout controller (CL0)", () => {
       throw new Error("simulated prune failure");
     });
 
-    // try/finally rethrows after clearing _renderTreeSrcId; onRenderComplete skipped
-    expect(() => wm().renderTree("boom")).toThrow(/simulated prune failure/);
+    // SourceBag catches cb throws (idle mock is sync); slot clears; no onRenderComplete.
+    expect(() => wm().renderTree("boom")).not.toThrow();
+    expect(wm()._wmSources.has("renderTree")).toBe(false);
     expect(completeSpy).not.toHaveBeenCalled();
     expect(lc.pendingVerifyReasons).not.toContain("post-render");
   });

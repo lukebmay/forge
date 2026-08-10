@@ -93,9 +93,7 @@ describe("LayoutCommandEpoch", () => {
 
 describe("isForgeCausedGeometrySignal + echo epoch", () => {
   it("true for stack suppress without epoch", () => {
-    expect(isForgeCausedGeometrySignal({ _suppressGeometrySignalRetile: true }, { id: 1 })).toBe(
-      true
-    );
+    expect(isForgeCausedGeometrySignal({ _suppressGeom: { active: true } }, { id: 1 })).toBe(true);
   });
 
   it("true for active echo when suppress is off", () => {
@@ -104,7 +102,7 @@ describe("isForgeCausedGeometrySignal + echo epoch", () => {
     const win = { id: 9 };
     layoutEpoch.startEcho(win);
     const wm = {
-      _suppressGeometrySignalRetile: false,
+      _suppressGeom: { active: false },
       layoutEpoch,
     };
     expect(isForgeCausedGeometrySignal(wm, win)).toBe(true);
@@ -118,11 +116,11 @@ describe("isForgeCausedGeometrySignal + echo epoch", () => {
     const layoutEpoch = new LayoutCommandEpoch({ now: () => now, residualMs: 50 });
     const win = { id: 1 };
     const wm = {
-      _suppressGeometrySignalRetile: true,
+      _suppressGeom: { active: true },
       layoutEpoch,
     };
     expect(isForgeCausedGeometrySignal(wm, win)).toBe(true);
-    wm._suppressGeometrySignalRetile = false;
+    wm._suppressGeom = { active: false };
     layoutEpoch.startEcho(win);
     expect(isForgeCausedGeometrySignal(wm, win)).toBe(true);
   });

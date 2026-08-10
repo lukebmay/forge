@@ -1,9 +1,9 @@
 # Plan: Lifecycle & pure abstractions (codebase health)
 
-**Status:** active — **A1 SourceBag done**; next L6 settle-math + SignalBag  
-**Priority:** **P0 ahead of Wayland RC continuation**  
+**Status:** active — **pure + W1–W5 + L8/L11 done**; optional per-window signal arrays remain  
+**Priority:** product next = resume Wayland nest RC (or per-window signals later)  
 **Updated:** 2026-08-10  
-**Mode:** pure + thin wire in progress → only then more live Wayland  
+**Mode:** lifecycle health slices complete for plan scope → live Wayland when resumed  
 **Lock:** 2026-08-10 — see [D0 task](../tasks/forge-lifecycle-abstractions_d0-rate.md)
 
 ---
@@ -63,17 +63,17 @@ when timers/signals stop leaking — they are not fixed by waiting for a mega-re
 
 | ID | Abstraction | Verdict | Notes |
 | --- | --- | --- | --- |
-| **L1** | **SourceBag** | **do-now** first pure | `sources.js`; inject schedule; named slots; fold glibSchedule/Cancel here |
-| **L2** | **SignalBag** | do-now pure / next wire | Expand disconnectSignals; groups; safe once |
-| **L3** | **Lifetime** | do-next thin | sources + signals dispose; no DI framework |
-| **L4** | **Per-window attach** | do-next | After L2; WeakMap one dispose |
-| **L5** | **Suppress tokens** | do-next | Stack/finally; includes geom epoch style |
-| **L6** | **settle-math kernel** | do-now pure (2nd) | rolling max×pad floor/cap; **not** merge thrash catalog with CLI session |
+| **L1** | **SourceBag** | **done** | `sources.js`; open-commit + W1 `_wmSources` wired |
+| **L2** | **SignalBag** | **done** pure + **W5 wire** | `signals.js`; `wm._wmSignals` owns globals |
+| **L3** | **Lifetime** | **done** thin | `lifetime.js`; signals→sources dispose |
+| **L4** | **Per-window attach** | **done pure + W2 wire** | `window-attach.js`; stack slot `"stack"` live |
+| **L5** | **Suppress tokens** | **done pure + W4 wire** | `suppress.js`; geom/above/rehome on WM |
+| **L6** | **settle-math kernel** | **done** | `settle-math.js` + CLI golden parity |
 | **L7** | Catalog façade | thin only | Catalog stays; may call L6 |
-| **L8** | OpenCommit manager | do-next | First **wire** owner of SourceBag; extract manager optional after |
+| **L8** | OpenCommit manager | **done** | `open-commit-manager.js`; bag + pending; fire stays on WM |
 | **L9** | utils split | **defer** | Keep one file; tests already good |
 | **L10** | EventQueue + drain source | accept after L1 | queueEvent owns drain via bag |
-| **L11** | Batch-depth pure | accept small | openLayoutBatchDepth state machine |
+| **L11** | Batch-depth pure | **done** | `layout-batch-depth.js`; WM `_layoutBatch` |
 | **L12** | Place-hint bag | reject now | already pure + tested |
 | **L13** | Render policy table | reject / later | product not lifecycle |
 
@@ -98,10 +98,21 @@ Wire: open-commit → WM/LC global sources → L4 → L8 extract optional → su
 | Phase | Work | Gate |
 | --- | --- | --- |
 | **D0** | Rate + invent + utils + test plan + lock | **Done** 2026-08-10 |
-| **A1** | SourceBag pure + unit tests + open-commit wire | **Done** [task](../tasks/forge-lifecycle-abstractions_a1-source-bag.md) |
-| **A2+** | settle-math kernel; SignalBag; Lifetime; suppress; … | next |
-| **W1+** | More WM named sources; per-window attach; suppress sites | open-commit already on SourceBag |
-| **After** | Resume nest dual-mon RC + isolation D0 as product priorities | Handoff flip |
+| **A1** | SourceBag pure + unit tests + open-commit wire | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a1-source-bag.md) |
+| **A2** | settle-math kernel + golden parity | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a2-settle-math.md) |
+| **A3** | SignalBag pure + disconnectSignals re-home | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a3-signal-bag.md) |
+| **A4** | Lifetime pure compose | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a4-lifetime.md) |
+| **A5** | SuppressFlag pure | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a5-suppress.md) |
+| **A6** | WindowAttach pure | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a6-per-window-attach.md) |
+| **W1** | WM global timers → `_wmSources` (10 slots) | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_w1-wm-sources.md) |
+| **W2** | L4 stack → WindowAttach | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_w2-l4-stack-wire.md) |
+| **W3** | Residual WM field timers → `_wmSources` | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_w3-residual-wm-timers.md) |
+| **W4** | SuppressFlag sites | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_w4-suppress-sites.md) |
+| **W5** | WM global SignalBag | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_w5-wm-signals.md) |
+| **L8** | OpenCommitManager extract | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_l8-open-commit-manager.md) |
+| **L11** | LayoutBatchDepth pure | **Done** [completed](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_l11-batch-depth.md) |
+| **Optional later** | Per-window `windowSignals`/`actorSignals` → WindowAttach | not blocking RC |
+| **Product next** | Resume nest dual-mon RC + isolation D0 | Handoff |
 
 ---
 
@@ -133,8 +144,20 @@ Inject schedule/cancel (pattern already used by LayoutController / open-commit).
 | Task | Path | Status |
 | --- | --- | --- |
 | D0 rate + invent + utils + test plan | [forge-lifecycle-abstractions_d0-rate.md](../tasks/forge-lifecycle-abstractions_d0-rate.md) | **done / locked** |
-| A1 SourceBag pure + tests + open-commit wire | [forge-lifecycle-abstractions_a1-source-bag.md](../tasks/forge-lifecycle-abstractions_a1-source-bag.md) | **done** |
-| Later slices | TBD (A2 settle-math, SignalBag, more WM sources, …) | — |
+| A1 SourceBag pure + tests + open-commit wire | [forge-lifecycle-abstractions_a1-source-bag.md](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a1-source-bag.md) | **done** |
+| A2 settle-math kernel + golden parity | [forge-lifecycle-abstractions_a2-settle-math.md](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a2-settle-math.md) | **done** |
+| A3 SignalBag pure + re-home disconnectSignals | [forge-lifecycle-abstractions_a3-signal-bag.md](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a3-signal-bag.md) | **done** |
+| A4 Lifetime pure compose | [forge-lifecycle-abstractions_a4-lifetime.md](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a4-lifetime.md) | **done** |
+| A5 SuppressFlag pure | [completed A5](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a5-suppress.md) | **done** |
+| A6 WindowAttach pure | [completed A6](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_a6-per-window-attach.md) | **done** |
+| W1 WM SourceBag wire (10 slots) | [completed W1](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_w1-wm-sources.md) | **done** |
+| W2 L4 stack wire | [completed W2](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_w2-l4-stack-wire.md) | **done** |
+| W3 residual WM timers | [completed W3](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_w3-residual-wm-timers.md) | **done** |
+| W4 suppress sites | [completed W4](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_w4-suppress-sites.md) | **done** |
+| W5 WM SignalBag wire | [completed W5](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_w5-wm-signals.md) | **done** |
+| L8 OpenCommitManager | [completed L8](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_l8-open-commit-manager.md) | **done** |
+| L11 LayoutBatchDepth | [completed L11](./forge-lifecycle-abstractions/completed/forge-lifecycle-abstractions_l11-batch-depth.md) | **done** |
+| Later optional | Per-window signals → attach | **optional** |
 
 ---
 

@@ -285,6 +285,18 @@ describe("computeLearnedMinQuietMs", () => {
     ).toBe(125);
   });
 
+  it("empty latenciesMs array uses kernel floor (seedFloor)", () => {
+    expect(
+      computeLearnedMinQuietMs({
+        seedFloor: 250,
+        previousMinQuiet: 900,
+        latenciesMs: [],
+        pad: 1.25,
+        cap: 5000,
+      })
+    ).toBe(250);
+  });
+
   it("caps at SETTLE_LEARN_CAP_MS and never goes below 0", () => {
     expect(
       computeLearnedMinQuietMs({
@@ -324,8 +336,8 @@ describe("AppThrashCatalog recordSettleSample + snapshot", () => {
     expect(e.settleMsMax).toBe(500);
     expect(e.settleMsEma).toBe(500);
     expect(e.mismatchBeforeSettle).toBe(2);
-    expect(e.minQuietMs).toBe(Math.round(500 * SETTLE_LEARN_PAD * 1000) / 1000);
-    expect(e.minQuietMs).toBe(500 * SETTLE_LEARN_PAD);
+    // Kernel truncates (match CLI int): 500 * 1.25 = 625
+    expect(e.minQuietMs).toBe(Math.trunc(500 * SETTLE_LEARN_PAD));
     expect(e.seedMinQuietMs).toBe(0);
   });
 
@@ -333,7 +345,7 @@ describe("AppThrashCatalog recordSettleSample + snapshot", () => {
     cat.recordSettleSample("Foo", { ms: 400 });
     const e = cat.lookup("Foo");
     const quietAfterSlow = e.minQuietMs;
-    expect(quietAfterSlow).toBe(400 * SETTLE_LEARN_PAD);
+    expect(quietAfterSlow).toBe(Math.trunc(400 * SETTLE_LEARN_PAD));
 
     cat.recordSettleSample("Foo", { ms: 100, mismatches: 1 });
     expect(e.settleSampleCount).toBe(2);
@@ -354,12 +366,13 @@ describe("AppThrashCatalog recordSettleSample + snapshot", () => {
     expect(e.needsExtraVerify).toBe(true);
 
     cat.recordSettleSample("com.mitchellh.ghostty", { ms: 50 });
-    expect(e.minQuietMs).toBe(50 * SETTLE_LEARN_PAD);
+    // 50 * 1.25 = 62.5 → trunc 62 (CLI parity)
+    expect(e.minQuietMs).toBe(Math.trunc(50 * SETTLE_LEARN_PAD));
     expect(e.needsExtraVerify).toBe(true);
     expect(e.builtIn).toBe(true);
 
     cat.recordSettleSample("ghostty", { ms: 800 });
-    expect(e.minQuietMs).toBe(800 * SETTLE_LEARN_PAD);
+    expect(e.minQuietMs).toBe(Math.trunc(800 * SETTLE_LEARN_PAD));
     expect(e.needsExtraVerify).toBe(true);
   });
 
@@ -382,7 +395,7 @@ describe("AppThrashCatalog recordSettleSample + snapshot", () => {
     expect(n).toBe(1);
     const e = cat.lookup("com.mitchellh.ghostty");
     expect(e.latenciesMs).toEqual([200, 300]);
-    expect(e.minQuietMs).toBe(300 * SETTLE_LEARN_PAD);
+    expect(e.minQuietMs).toBe(Math.trunc(300 * SETTLE_LEARN_PAD));
   });
 
   it("snapshot includes settle fields; does not persist to disk", () => {
@@ -395,7 +408,7 @@ describe("AppThrashCatalog recordSettleSample + snapshot", () => {
     expect(row.settleMsMax).toBe(300);
     expect(row.settleMsEma).toBe(300);
     expect(row.mismatchBeforeSettle).toBe(1);
-    expect(row.minQuietMs).toBe(300 * SETTLE_LEARN_PAD);
+    expect(row.minQuietMs).toBe(Math.trunc(300 * SETTLE_LEARN_PAD));
     expect(row.seedMinQuietMs).toBe(0);
 
     const ghost = snap.find((r) => r.key === "com.mitchellh.ghostty" || r.key === "ghostty");

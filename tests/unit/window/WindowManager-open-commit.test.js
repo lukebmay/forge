@@ -378,7 +378,7 @@ describe("WindowManager open commit (CL4)", () => {
 
       // Residual schedules idle; need-commit cleared at schedule time.
       wm().renderTree("run-steps", true);
-      expect(wm()._renderTreeSrcId).not.toBe(0);
+      expect(wm()._wmSources.has("renderTree")).toBe(true);
       expect(wm()._openLayoutBatchNeedsCommit).toBe(false);
       expect(treeRenderSpy).not.toHaveBeenCalled();
 

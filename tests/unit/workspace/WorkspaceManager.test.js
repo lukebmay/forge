@@ -56,11 +56,12 @@ describe("WorkspaceManager", () => {
       addMonitor: vi.fn(),
     };
 
-    // Create a mock WindowManager
+    // Create a mock WindowManager (wsWindowAdd uses SourceBag when signals fire)
     mockExtWm = {
       determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
       updateMetaWorkspaceMonitor: vi.fn(),
-      _wsWindowAddSrcId: 0,
+      _wsWindowAddQueue: null,
+      _wmSources: { has: () => false, set: () => null, cancel: () => false },
     };
 
     // Create WorkspaceManager instance

@@ -287,7 +287,7 @@ describe("WindowManager - Resize Operations", () => {
       wm().resize(GrabOp.RESIZING_E, 50);
 
       // A single debounced grab-end is pending; the shared event queue is unused.
-      expect(wm()._manualResizeEndId).toBeTruthy();
+      expect(wm()._wmSources.has("manualResizeEnd")).toBe(true);
       expect(wm().eventQueue.length).toBe(0);
     });
 
@@ -305,7 +305,7 @@ describe("WindowManager - Resize Operations", () => {
       wm().resize(GrabOp.RESIZING_E, 50);
 
       // The grab stays open (one pending end), not one queued event per repeat.
-      expect(wm()._manualResizeEndId).toBeTruthy();
+      expect(wm()._wmSources.has("manualResizeEnd")).toBe(true);
       expect(wm().eventQueue.length).toBe(0);
     });
   });
@@ -473,7 +473,7 @@ describe("WindowManager - Resize Operations", () => {
 
       expect(moveSpy).not.toHaveBeenCalled();
       expect(beginSpy).not.toHaveBeenCalled();
-      expect(wm()._manualResizeEndId).toBeFalsy();
+      expect(wm()._wmSources.has("manualResizeEnd")).toBe(false);
     });
 
     it("flushes a pending grab-end for a DIFFERENT window before resizing (forge-h6z9)", () => {

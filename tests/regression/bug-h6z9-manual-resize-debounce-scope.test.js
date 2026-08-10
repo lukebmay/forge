@@ -91,11 +91,11 @@ describe("forge-h6z9: manual resize debounce scoped to its window/grab", () => {
   it("_handleGrabOpBegin cancels a pending manual-resize end so it can't fire into a new grab", () => {
     focus(winA);
     wm().resize(GrabOp.KEYBOARD_RESIZING_E, 10);
-    expect(wm()._manualResizeEndId).toBeTruthy();
+    expect(wm()._wmSources.has("manualResizeEnd")).toBe(true);
 
     // A real pointer grab begins on the same window <120ms later.
     wm()._handleGrabOpBegin(ctx.display, winA, GrabOp.MOVING);
 
-    expect(wm()._manualResizeEndId).toBeFalsy();
+    expect(wm()._wmSources.has("manualResizeEnd")).toBe(false);
   });
 });

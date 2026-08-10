@@ -4,11 +4,10 @@ import { createWindowManagerFixture } from "../mocks/helpers/testFixtures.js";
 
 /**
  * Bug #531 hardening: a JS throw inside renderTree's idle callback (or a
- * queued event's callback in queueEvent's drain loop) left the source id
- * (_renderTreeSrcId / _queueSourceId) stuck non-zero after GJS removed the
- * throwing source. Every later renderTree()/queueEvent() then no-oped
- * forever, so newly created windows stayed in their initial FLOAT mode —
- * "Forge can't tile".
+ * queued event's callback in queueEvent's drain loop) used to leave the
+ * source id stuck non-zero after GJS removed the throwing source. Every
+ * later renderTree()/queueEvent() then no-oped forever ("Forge can't tile").
+ * SourceBag clears the named slot on fire (before cb), so throw cannot wedge.
  *
  * The default GLib mock runs idle_add synchronously (the throw would escape
  * before the source id is even assigned), so these tests swap in deferred
@@ -64,11 +63,11 @@ describe("Bug #531: render/queue wedge after a throwing callback", () => {
     const renderSpy = vi.spyOn(wm.tree, "render");
 
     wm.renderTree("t1");
-    expect(wm._renderTreeSrcId).not.toBe(0);
+    expect(wm._wmSources.has("renderTree")).toBe(true);
     flush();
 
-    // The throwing pass must reset the id so the next render can schedule.
-    expect(wm._renderTreeSrcId).toBe(0);
+    // The throwing pass must clear the slot so the next render can schedule.
+    expect(wm._wmSources.has("renderTree")).toBe(false);
 
     wm.renderTree("t2");
     flush();
@@ -84,7 +83,7 @@ describe("Bug #531: render/queue wedge after a throwing callback", () => {
     });
     flush();
 
-    expect(wm._queueSourceId).toBe(0);
+    expect(wm._wmSources.has("queue")).toBe(false);
 
     const good = vi.fn();
     wm.queueEvent({ name: "good", callback: good });
@@ -104,6 +103,6 @@ describe("Bug #531: render/queue wedge after a throwing callback", () => {
     flush();
 
     expect(after).toHaveBeenCalled();
-    expect(wm._queueSourceId).toBe(0);
+    expect(wm._wmSources.has("queue")).toBe(false);
   });
 });

@@ -156,6 +156,24 @@ describe("SourceBag", () => {
     expect(glib.residualIds()).toEqual([]);
   });
 
+  it("sync schedule (idle mock) fires cb and leaves no residual slot", () => {
+    const cb = vi.fn();
+    const syncBag = new SourceBag({
+      label: "sync",
+      scheduleIdle: (wrapped) => {
+        wrapped(); // fire before returning id (default GLib test mock)
+        return 77;
+      },
+      cancel: () => {},
+    });
+    const id = syncBag.setIdle("renderTree", cb);
+    expect(id).toBe(77);
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(syncBag.has("renderTree")).toBe(false);
+    expect(syncBag.size).toBe(0);
+    expect(syncBag.snapshot().fireCount).toBe(1);
+  });
+
   it("setIdle uses idle scheduler", () => {
     const cb = vi.fn();
     const id = bag.setIdle("idle-1", cb);
