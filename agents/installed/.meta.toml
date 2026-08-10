@@ -1,9 +1,9 @@
 schema = 1
 tool_version = "0.2.1"
-catalog_version = "0.3.2"
+catalog_version = "0.3.3"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-10T18:52:04+00:00"
+updated_at = "2026-08-10T18:56:46+00:00"
 
 [[files]]
 id = "ansi-colors"
@@ -264,8 +264,8 @@ read_when = "Editing nvim config, Lua plugins, or editor tooling in this stack"
 [[files]]
 id = "scripting"
 path = "scripting.md"
-version = "2.1.0"
-sha256 = "4ce2610ccda4ec82f2a7b47e39ab07febcde88dab8205d5c92017b37101b34c9"
+version = "2.2.0"
+sha256 = "1d3674628d8150f412b3515f1f9fcd61c8908d116d4eea44f367ce235c2702a5"
 title = "Scripting"
 read_when = "Writing or changing shell/Python scripts, installers, CLI tools, bin entries, or launching user-visible apps from a Grok agent"
 
@@ -288,7 +288,7 @@ read_when = "Before SSH, secrets, sudo/root, credentials, or any important live-
 [[files]]
 id = "testing"
 path = "testing.md"
-version = "2.1.0"
-sha256 = "60613d5eb847b0b97101c2464a57369762aebba4b555c7574ff7a21d9ebf5f70"
+version = "2.2.0"
+sha256 = "c0273f93481bf0183540b37837f74b98e76a185c9be60f0ed07dbf1f384b391c"
 title = "Testing"
-read_when = "Adding tests, changing test strategy, enabling optional features, or checking if Grok is in durable --leader mode"
+read_when = "Adding tests, changing test strategy, enabling optional features, checking Grok durable --leader mode, or reattaching headless Grok for the human"

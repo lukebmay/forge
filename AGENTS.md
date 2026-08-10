@@ -53,7 +53,7 @@ Load plan/task files **on demand** for the current work only.
 | `agents/installed/scripting.md` | Scripting | Writing or changing shell/Python scripts, installers, CLI tools, bin entries, or launching user-visible apps from a Grok agent |
 | `agents/installed/comments.md` | Comments | Adding or editing source comments |
 | `agents/installed/documentation.md` | Documentation | Writing design docs, DECISIONS, user docs, or choosing where “why” lives |
-| `agents/installed/testing.md` | Testing | Adding tests, changing test strategy, enabling optional features, or checking if Grok is in durable --leader mode |
+| `agents/installed/testing.md` | Testing | Adding tests, changing test strategy, enabling optional features, checking Grok durable --leader mode, or reattaching headless Grok for the human |
 | `agents/testing.md` | Testing (user override) | Adding tests, changing test strategy, or enabling optional features for verification |
 | `agents/installed/ansi-colors.md` | ANSI colors | Adding terminal colors, formatting CLI output, or launching user-visible CLIs from a Grok agent |
 | `agents/installed/markdown.md` | Markdown | Writing or editing markdown docs, plans, tasks, or README prose |

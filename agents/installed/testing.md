@@ -1,6 +1,6 @@
 ---
 title: Testing
-read_when: Adding tests, changing test strategy, enabling optional features, or checking if Grok is in durable --leader mode
+read_when: Adding tests, changing test strategy, enabling optional features, checking Grok durable --leader mode, or reattaching headless Grok for the human
 order: 70
 ---
 
@@ -91,3 +91,26 @@ grok --status   # shellrc wrapper: leader reachable + pid + socket
 
 When **not** in leader mode, treat the agent process as TTY-scoped: window death can
 abort mid-work; prefer shorter critical sections and explicit checkpoints.
+
+### Reattach for the human (FIRM after headless / detached work)
+
+When agent work used **headless or detached** Grok (`grok --detach`, background
+leader, headless `-p`, or tests that may **close** the terminal that launched
+Grok), after that work is **complete**: open a **user-visible terminal** and
+**reattach the head** so the operator can see results live. Do not leave them
+with only a chat summary when a live leader/session still holds the work.
+
+```bash
+user-env grok                 # durable TUI attach (shellrc wrapper)
+user-env grok --attach        # same intent
+user-env grok -r <session-id> # known session
+grok --list                   # discover session ids if needed
+```
+
+| Do | Don’t |
+| --- | --- |
+| Reattach after acceptance / wrap-up of headless work | Assume the human read the transcript only |
+| Use `user-env` so the TUI is not monochrome (`scripting.md`) | Start a second unrelated session when reattach would show the same work |
+| Prefer the existing leader/session | `grok --stop` just to “clean up” after a successful turn |
+
+Skip only if the user said not to, or there was never a durable/headless session.

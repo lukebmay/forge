@@ -94,6 +94,10 @@ env -u NO_COLOR -u PIP_NO_COLOR -u NPM_CONFIG_COLOR \
 Do **not** wrap pure agent/CI tool steps in `user-env` — keep monochrome there so
 logs stay parseable. Leader-mode detection: `testing.md`.
 
+After **headless / detached** Grok work (or tests that closed the launch TTY):
+open a terminal and **reattach** the durable head for the human
+(`user-env grok` / `grok --attach` / `grok -r …`) — full rule in `testing.md`.
+
 ## Args
 
 - Python: `argparse`
