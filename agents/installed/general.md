@@ -1,6 +1,6 @@
 ---
 title: General process
-read_when: Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, architecture vs patches
+read_when: Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches
 order: 10
 ---
 
@@ -141,22 +141,42 @@ Functionally complete + unambiguous + succinct. Overwrite, don’t pile. Explora
 | Plan reshape discovery | Stop and ask |
 | Progress note | Overwrite one note when code changes |
 
-### Taskforce (when non-trivial code)
+### Orchestrator + taskforces (when plans / priorities)
+
+On plan or priority work, the **main agent is the orchestrator**: assign work to
+subagents; do not do large implementation yourself when a taskforce fits.
 
 | Rule | Detail |
 | --- | --- |
 | Who spawns | **Only** top-level orchestrator; children cannot spawn |
-| A then B | Implement → verify; never parallel A/B |
-| Fresh agents | New A/B each round; no `resume_from` for baggage |
+| Default shape | **Single-agent** taskforce (one implementer per assignment) |
+| Batching | **MAY** give one agent several related tasks when one session is likely cheaper than multiple handoffs |
+| Parallel | **Only when safe** (no shared-file races, no conflicting branch edits, independent acceptance). Otherwise **serial** |
+| A/B (expensive) | **Only when necessary** — major design/architecture, high-stakes decisions, or when a separate verifier is clearly worth the cost. Not the default for ordinary implement slices |
+| A then B | When A/B is used: implement → verify; **never** parallel A/B |
+| Explore (on demand) | **MAY** use a short-lived read-only explorer for cold/unfamiliar scope. Prefer **explore+implement in one agent** for ordinary slices |
+| Explore output | Write findings only into the **active** task/plan handoff (entry points, proven vs guessed, traps). **No** standing repo-wide explore digest |
+| Fresh agents | New subagent(s) per assignment; no `resume_from` for baggage (unless operator asks) |
 | Branch | **Default master** unless isolation required (see git.md) |
 | Handoff | Overwrite disk notes (complete+succinct); no transcript paste into next prompt |
 | Budget | Stop starting new tasks ~300K orchestrator tokens |
-| Max rounds | 5 A→B; then escalate |
+| Max A/B rounds | 5 A→B when A/B is in use; then escalate |
 | DESIGN-FLAW | Stop; design discussion; no wrap-up commit |
-| A/B model | Grok + high reasoning unless user says otherwise |
+| Model | Grok + high reasoning unless user says otherwise |
 | Eligible | Required ready/next/in-progress; not optional/hard-blocked |
 
-**Begin** (no task named): read PRIORITY + blockers → next eligible required work → A/B until budget/done → report open blockers.
+**Cost stance (GUIDELINE):** A/B doubles agent work. Prefer one capable implementer +
+orchestrator review of disk notes/diff. Escalate to A/B for big irreversible
+choices or when independent verification is the acceptance path.
+
+**Explore stance (GUIDELINE):** Explorer *passes* yes; explorer *literature* no.
+Skip a separate explore step when the plan/task already scopes paths, the area is
+recently known, or the implementer will re-walk the same tree anyway. Summaries
+earn tokens only when they block a re-scan for **this** work — overwrite or drop
+them with the task.
+
+**Begin** (no task named): read PRIORITY + blockers → next eligible required work
+→ single-agent (or rare A/B) taskforces until budget/done → report open blockers.
 
 Wrap-up on success: residue → notes → docs as needed → tests → commit/push per git.md.
 

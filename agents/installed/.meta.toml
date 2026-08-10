@@ -1,9 +1,9 @@
 schema = 1
 tool_version = "0.2.1"
-catalog_version = "0.3.1"
+catalog_version = "0.3.2"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-09T19:16:03+00:00"
+updated_at = "2026-08-10T18:52:04+00:00"
 
 [[files]]
 id = "ansi-colors"
@@ -32,16 +32,16 @@ read_when = "Writing design docs, DECISIONS, user docs, or choosing where “why
 [[files]]
 id = "general"
 path = "general.md"
-version = "2.0.0"
-sha256 = "fd1aed8488370c8eca716bb56d95a591d0610db9235b395c9e909b923b96b696"
+version = "2.1.0"
+sha256 = "74c2ea0e5cb9250417bcdf04f1724ad9cf6c0d23e475967e2174bc4e5c89d0ae"
 title = "General process"
-read_when = "Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, architecture vs patches"
+read_when = "Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches"
 
 [[files]]
 id = "git"
 path = "git.md"
-version = "2.0.0"
-sha256 = "f747375d38d434e512e50118485f3c9204ed8606b12bf3e11531efc7e1eb51b7"
+version = "2.0.1"
+sha256 = "5f6c3536e727698bb98fe1cb11638a85a9c13a97d48d711cfc22dfedb0b86ea3"
 title = "Git"
 read_when = "Before any commit, push, branch, merge, rebase, or release-ladder work"
 
