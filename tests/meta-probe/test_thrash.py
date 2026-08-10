@@ -39,6 +39,7 @@ def _ok_settle(**kw) -> SettleResult:
 
 
 class ThrashDetectTests(unittest.TestCase):
+
     def test_settled_clean(self):
         thrash, reason = is_thrash(
             settled=True,
@@ -50,7 +51,9 @@ class ThrashDetectTests(unittest.TestCase):
         self.assertEqual(reason, "")
 
     def test_settle_fail(self):
-        thrash, reason = is_thrash(settled=False, wait_ms=5000, settle_duration_ms=3000)
+        thrash, reason = is_thrash(settled=False,
+                                   wait_ms=5000,
+                                   settle_duration_ms=3000)
         self.assertTrue(thrash)
         self.assertEqual(reason, "settle_fail")
 
@@ -89,9 +92,12 @@ class ThrashDetectTests(unittest.TestCase):
         self.assertEqual(reason, "settle_fail")
 
     def test_from_settle_dict(self):
-        thrash, _ = is_thrash_from_settle(
-            {"settled": True, "hardResetCount": 0, "waitMs": 3000, "settleDurationMs": 3000}
-        )
+        thrash, _ = is_thrash_from_settle({
+            "settled": True,
+            "hardResetCount": 0,
+            "waitMs": 3000,
+            "settleDurationMs": 3000
+        })
         self.assertFalse(thrash)
 
     def test_none_settle(self):
@@ -100,25 +106,31 @@ class ThrashDetectTests(unittest.TestCase):
         self.assertEqual(reason, "settle_missing")
 
     def test_trial(self):
-        thrash, _ = trial_is_thrash(
-            {
-                "ok": True,
-                "settle": {
-                    "settled": True,
-                    "hardResetCount": 0,
-                    "waitMs": 3000,
-                    "settleDurationMs": 3000,
-                },
-            }
-        )
+        thrash, _ = trial_is_thrash({
+            "ok": True,
+            "settle": {
+                "settled": True,
+                "hardResetCount": 0,
+                "waitMs": 3000,
+                "settleDurationMs": 3000,
+            },
+        })
         self.assertFalse(thrash)
-        thrash, reason = trial_is_thrash({"ok": False, "settle": {"settled": False}})
+        thrash, reason = trial_is_thrash({
+            "ok": False,
+            "settle": {
+                "settled": False
+            }
+        })
         self.assertTrue(thrash)
 
     def test_skipped_not_thrash(self):
-        thrash, reason = trial_is_thrash(
-            {"ok": True, "skipped": True, "skipReason": "single_monitor", "settle": {}}
-        )
+        thrash, reason = trial_is_thrash({
+            "ok": True,
+            "skipped": True,
+            "skipReason": "single_monitor",
+            "settle": {}
+        })
         self.assertFalse(thrash)
         self.assertEqual(reason, "")
 

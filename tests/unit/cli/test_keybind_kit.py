@@ -18,6 +18,7 @@ from keybind_kit import (  # noqa: E402
 
 
 class TestKeybindKitPaths(unittest.TestCase):
+
     def test_profiles_dir_env(self):
         env = {"FORGE_KEYBIND_PROFILES_DIR": "/tmp/kbd-profiles"}
         self.assertEqual(profiles_dir(env), Path("/tmp/kbd-profiles"))
@@ -27,14 +28,14 @@ class TestKeybindKitPaths(unittest.TestCase):
         self.assertEqual(profiles_dir(env), Path("/tmp/kbd"))
 
     def test_profiles_dir_empty_env_falls_back_xdg(self):
-        env = {"FORGE_KEYBIND_PROFILES_DIR": "   ", "HOME": "/home/test"}
         # HOME may not affect Path.home() if already resolved — only check non-env path shape
         d = profiles_dir({"FORGE_KEYBIND_PROFILES_DIR": ""})
         self.assertTrue(str(d).endswith("keybinding-profiles"))
         self.assertIn("forge", str(d))
 
     def test_sanitize_profile_name(self):
-        self.assertEqual(sanitize_profile_name("backup-before-vim-20260728"), "backup-before-vim-20260728")
+        self.assertEqual(sanitize_profile_name("backup-before-vim-20260728"),
+                         "backup-before-vim-20260728")
         self.assertIsNone(sanitize_profile_name("../evil"))
         self.assertIsNone(sanitize_profile_name("has space"))
         self.assertIsNone(sanitize_profile_name(""))

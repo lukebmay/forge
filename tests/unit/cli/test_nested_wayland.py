@@ -17,6 +17,7 @@ from nested_wayland import (  # noqa: E402
     NestedError,
     NestedUnsupported,
     _looks_like_nest_display,
+    _safe_name,
     bus_address_for,
     can_nested_on_host,
     client_env,
@@ -34,7 +35,6 @@ from nested_wayland import (  # noqa: E402
     shell_start_env,
     state_root,
     x11_refuse_message,
-    _safe_name,
 )
 
 
@@ -70,8 +70,7 @@ def test_dummy_mode_specs_colon_not_comma() -> None:
 
 
 def test_host_primary_logical_size_from_tree(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+    monkeypatch: pytest.MonkeyPatch, ) -> None:
     """Nest default size should track host primary logical WxH when forge tree works."""
     import nested_wayland as nw
 
@@ -79,8 +78,7 @@ def test_host_primary_logical_size_from_tree(
         returncode = 0
         stdout = (
             '{"monitors":[{"stableKey":"geom:0,0,2560,1440#primary","rect":{}},'
-            '{"stableKey":"geom:2560,0,2560,1440"}]}'
-        )
+            '{"stableKey":"geom:2560,0,2560,1440"}]}')
         stderr = ""
 
     monkeypatch.setattr(
@@ -89,7 +87,8 @@ def test_host_primary_logical_size_from_tree(
         lambda *a, **k: FakeProc(),
     )
     monkeypatch.setattr(nw.shutil, "which", lambda _n: "forge")
-    assert host_primary_logical_size({"XDG_SESSION_TYPE": "wayland"}) == "2560x1440"
+    assert host_primary_logical_size({"XDG_SESSION_TYPE":
+                                      "wayland"}) == "2560x1440"
 
 
 def test_safe_name() -> None:
@@ -101,7 +100,8 @@ def test_safe_name() -> None:
         _safe_name("a/b")
 
 
-def test_state_root_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_state_root_override(tmp_path: Path,
+                             monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FORGE_NESTED_ROOT", str(tmp_path / "nests"))
     assert state_root() == tmp_path / "nests"
     assert session_dir("forge") == tmp_path / "nests" / "forge"
@@ -141,24 +141,22 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
 
 
 def test_format_status_text() -> None:
-    text = format_status_text(
-        {
-            "name": "forge",
-            "running": True,
-            "shell_ready": True,
-            "forge_ready": False,
-            "display": "wayland-forge",
-            "host_wayland": "wayland-0",
-            "size": "1500x1000",
-            "shell_pid": 1,
-            "dbus_pid": 2,
-            "bus_address": "unix:path=/tmp/bus",
-            "socket": "/run/user/1000/wayland-forge",
-            "state_dir": "/tmp/s",
-            "env_sh": "/tmp/s/env.sh",
-            "shell_log": "/tmp/s/shell.log",
-        }
-    )
+    text = format_status_text({
+        "name": "forge",
+        "running": True,
+        "shell_ready": True,
+        "forge_ready": False,
+        "display": "wayland-forge",
+        "host_wayland": "wayland-0",
+        "size": "1500x1000",
+        "shell_pid": 1,
+        "dbus_pid": 2,
+        "bus_address": "unix:path=/tmp/bus",
+        "socket": "/run/user/1000/wayland-forge",
+        "state_dir": "/tmp/s",
+        "env_sh": "/tmp/s/env.sh",
+        "shell_log": "/tmp/s/shell.log",
+    })
     assert "running:      True" in text
     assert "wayland-forge" in text
 
@@ -171,8 +169,7 @@ def test_looks_like_nest_display() -> None:
 
 
 def test_host_wayland_ignores_nest_env(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     rt = tmp_path / "run"
     rt.mkdir()
     (rt / "wayland-0").touch()
@@ -196,7 +193,6 @@ def test_host_session_and_x11_refuse() -> None:
         require_wayland_host(env={"XDG_SESSION_TYPE": "x11"})
     assert ei.value.exit_code == 2
     # force allow does not raise
-    assert require_wayland_host(
-        allow_x11=True, env={"XDG_SESSION_TYPE": "x11"}
-    ) == "x11"
+    assert require_wayland_host(allow_x11=True,
+                                env={"XDG_SESSION_TYPE": "x11"}) == "x11"
     assert not can_nested_on_host({"XDG_SESSION_TYPE": "x11"})

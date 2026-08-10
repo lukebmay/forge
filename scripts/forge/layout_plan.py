@@ -46,19 +46,17 @@ SUGAR_VSPLIT = "vsplit"
 _CONTAINER_TAG_KEYS = frozenset(_SPLIT_ALIASES.keys())
 
 # String-cell open.app → Chrome class (casefold keys).
-_CHROME_LAUNCHERS = frozenset(
-    {
-        "google-chrome",
-        "google-chrome-stable",
-        "google-chrome-beta",
-        "google-chrome-unstable",
-        "chromium",
-        "chromium-browser",
-        "chrome",
-        "brave",
-        "brave-browser",
-    }
-)
+_CHROME_LAUNCHERS = frozenset({
+    "google-chrome",
+    "google-chrome-stable",
+    "google-chrome-beta",
+    "google-chrome-unstable",
+    "chromium",
+    "chromium-browser",
+    "chrome",
+    "brave",
+    "brave-browser",
+})
 _CHROME_CLASS = "Google-chrome"
 # Known PWA / product names → title~= fragment (casefold keys).
 _KNOWN_PWA_TITLE = {
@@ -170,7 +168,7 @@ def mon_head_and_rest(
         if best is not None:
             if slot == best:
                 return best, None
-            rest = slot[len(best) + 1 :]
+            rest = slot[len(best) + 1:]
             return best, rest if rest != "" else None
         return slot, None
 
@@ -194,8 +192,7 @@ def _validate_monitors_aliases(raw: Any) -> dict[str, str]:
     if not isinstance(raw, dict):
         raise ValueError(
             "monitors must be an array of mon bodies or an object "
-            "(alias → monN | primary | stableKey)"
-        )
+            "(alias → monN | primary | stableKey)")
     out: dict[str, str] = {}
     for k, v in raw.items():
         if not isinstance(k, str) or not k.strip():
@@ -204,31 +201,32 @@ def _validate_monitors_aliases(raw: Any) -> dict[str, str]:
         if not _NAME_RE.match(alias):
             raise ValueError(f"monitors alias {alias!r}: use A-Za-z0-9_-")
         if _is_builtin_mon_key(alias):
-            raise ValueError(f"monitors alias {alias!r}: reserved (monN / primary)")
+            raise ValueError(
+                f"monitors alias {alias!r}: reserved (monN / primary)")
         if _is_stable_key(alias):
-            raise ValueError(f"monitors alias {alias!r}: use a short name, not a stableKey")
+            raise ValueError(
+                f"monitors alias {alias!r}: use a short name, not a stableKey")
         if not isinstance(v, str) or not str(v).strip():
-            raise ValueError(f"monitors.{alias}: target must be a non-empty string")
+            raise ValueError(
+                f"monitors.{alias}: target must be a non-empty string")
         target = str(v).strip()
-        if not (
-            _is_builtin_mon_key(target)
-            or _is_stable_key(target)
-        ):
+        if not (_is_builtin_mon_key(target) or _is_stable_key(target)):
             raise ValueError(
                 f"monitors.{alias}: target want monN, primary, or stableKey "
-                f"(got {target!r})"
-            )
+                f"(got {target!r})")
         out[alias] = target
     return out
 
 
 def _mon_key_ok(key: str, aliases: dict[str, str]) -> bool:
-    if _is_builtin_mon_key(key) or _is_stable_key(key) or _is_geom_role_key(key):
+    if _is_builtin_mon_key(key) or _is_stable_key(key) or _is_geom_role_key(
+            key):
         return True
     return key in aliases
 
 
-def _mon_key_error(key: str, where: str, aliases: dict[str, str]) -> ValueError:
+def _mon_key_error(key: str, where: str, aliases: dict[str,
+                                                       str]) -> ValueError:
     parts = [
         "monN",
         "primary",
@@ -240,7 +238,8 @@ def _mon_key_error(key: str, where: str, aliases: dict[str, str]) -> ValueError:
     return ValueError(f"{where} {key!r}: want {' / '.join(parts)}")
 
 
-def _slot_ok(slot: str, aliases: dict[str, str], layout_keys: set[str]) -> bool:
+def _slot_ok(slot: str, aliases: dict[str, str],
+             layout_keys: set[str]) -> bool:
     known = set(layout_keys) | set(aliases.keys()) | set(_GEOM_ROLE_KEYS)
     head, _rest = mon_head_and_rest(slot, known_heads=known)
     if not head:
@@ -286,8 +285,7 @@ def normalize_profile(
     # Preserve focus token before tiles extraction mutates keys.
     focus_raw = out.get("focus")
     tiles, mon_explicit, from_sugar = _extract_tiles_from_profile(
-        out, mon_count=mon_count, mon_indices=mon_indices
-    )
+        out, mon_count=mon_count, mon_indices=mon_indices)
     had_sugar = from_sugar
 
     if tiles is not None:
@@ -299,7 +297,8 @@ def normalize_profile(
         if mon_explicit:
             out["monExplicit"] = True
 
-    has_roles = isinstance(out.get("roles"), list) and len(out.get("roles") or []) > 0
+    has_roles = isinstance(out.get("roles"), list) and len(
+        out.get("roles") or []) > 0
     if has_roles or had_sugar:
         out.setdefault("version", PROFILE_VERSION)
         out.setdefault("mode", MODE_RECONCILE)
@@ -323,9 +322,8 @@ def normalize_profile(
             else:
                 out["focus"] = focus_raw
         else:
-            out["focus"] = (
-                focus_raw.strip() if isinstance(focus_raw, str) else focus_raw
-            )
+            out["focus"] = (focus_raw.strip()
+                            if isinstance(focus_raw, str) else focus_raw)
     elif "focus" in out:
         out.pop("focus", None)
 
@@ -349,48 +347,35 @@ def _extract_tiles_from_profile(
         out.pop("monitors", None)
         if "tiles" in out:
             raise ValueError("profile: use monitors[] or tiles, not both")
-        tiles = {
-            f"mon{i}": body for i, body in enumerate(monitors_raw)
-        }
+        tiles = {f"mon{i}": body for i, body in enumerate(monitors_raw)}
         return tiles, True, True
 
     # 2) Top-level monN / primary / stableKey / geom-role bodies (no tiles wrapper)
     top_mon_keys = [
-        k
-        for k in list(out.keys())
-        if isinstance(k, str)
-        and (
-            _is_builtin_mon_key(k.strip())
-            or _is_stable_key(k.strip())
-            or _is_geom_role_key(k.strip())
-        )
-        and k
-        not in (
-            "version",
-            "mode",
-            "roles",
-            "layout",
-            "overflow",
-            "marginal",
-            "floating",
-            "description",
-            "tiles",
-            "monitors",
-            "monExplicit",
-            "displays",
-            "settings",
-            "focus",
-        )
+        k for k in list(out.keys()) if isinstance(k, str) and (
+            _is_builtin_mon_key(k.strip()) or _is_stable_key(k.strip())
+            or _is_geom_role_key(k.strip())) and k not in (
+                "version",
+                "mode",
+                "roles",
+                "layout",
+                "overflow",
+                "marginal",
+                "floating",
+                "description",
+                "tiles",
+                "monitors",
+                "monExplicit",
+                "displays",
+                "settings",
+                "focus",
+            )
     ]
     # monN keys only when value looks like mon body (list or split object), not strings
     top_mon_keys = [
-        k
-        for k in top_mon_keys
-        if (
-            _is_builtin_mon_key(str(k).strip())
-            or _is_stable_key(str(k).strip())
-            or _is_geom_role_key(str(k).strip())
-        )
+        k for k in top_mon_keys
+        if (_is_builtin_mon_key(str(k).strip()) or _is_stable_key(
+            str(k).strip()) or _is_geom_role_key(str(k).strip()))
     ]
     if top_mon_keys and "tiles" not in out and "roles" not in out:
         tiles = {}
@@ -405,9 +390,9 @@ def _extract_tiles_from_profile(
     tiles_in = out.pop("tiles")
     if isinstance(tiles_in, list):
         return (
-            _bare_array_to_mon_tiles(
-                tiles_in, mon_count=mon_count, mon_indices=mon_indices
-            ),
+            _bare_array_to_mon_tiles(tiles_in,
+                                     mon_count=mon_count,
+                                     mon_indices=mon_indices),
             False,
             True,
         )
@@ -429,8 +414,10 @@ def format_layout_description(profile: Any) -> str:
     except (ValueError, TypeError):
         return ""
     layout = data.get("layout")
-    roles_list = data.get("roles") if isinstance(data.get("roles"), list) else []
-    intentional_empty = isinstance(data.get("roles"), list) and len(roles_list) == 0
+    roles_list = data.get("roles") if isinstance(data.get("roles"),
+                                                 list) else []
+    intentional_empty = isinstance(data.get("roles"),
+                                   list) and len(roles_list) == 0
     if not isinstance(layout, dict) or not layout:
         return "empty" if intentional_empty else ""
 
@@ -448,9 +435,7 @@ def format_layout_description(profile: Any) -> str:
         if not isinstance(children, list) or not children:
             continue
         tokens = [
-            t
-            for c in children
-            if (t := _format_desc_child(c, roles_by_id))
+            t for c in children if (t := _format_desc_child(c, roles_by_id))
         ]
         if not tokens:
             continue
@@ -476,16 +461,13 @@ def _layout_mon_sort_key(key: str) -> tuple:
     return (2, 0, str(key))
 
 
-def _format_desc_child(child: Any, roles_by_id: dict[str, dict[str, Any]]) -> str:
+def _format_desc_child(child: Any, roles_by_id: dict[str, dict[str,
+                                                               Any]]) -> str:
     if not isinstance(child, dict):
         return ""
     nested = child.get("children")
     if isinstance(nested, list) and nested:
-        kids = [
-            t
-            for c in nested
-            if (t := _format_desc_child(c, roles_by_id))
-        ]
+        kids = [t for c in nested if (t := _format_desc_child(c, roles_by_id))]
         if not kids:
             return ""
         split = child.get("split")
@@ -513,7 +495,8 @@ def _role_desc_token(rid: Any, roles_by_id: dict[str, dict[str, Any]]) -> str:
         return key
     open_spec = r.get("open")
     if isinstance(open_spec, dict):
-        app = open_spec.get("app") or open_spec.get("desktop") or open_spec.get("command")
+        app = open_spec.get("app") or open_spec.get(
+            "desktop") or open_spec.get("command")
         if app is not None and str(app).strip():
             return str(app).strip()
     elif isinstance(open_spec, str) and open_spec.strip():
@@ -530,7 +513,8 @@ def _looks_like_mon_body(item: Any) -> bool:
         return True
     if not isinstance(item, dict):
         return False
-    if item.get("open") is not None or item.get("match") is not None or item.get("app") is not None:
+    if item.get("open") is not None or item.get(
+            "match") is not None or item.get("app") is not None:
         return False
     if _tagged_container_mode(item) is not None:
         return True
@@ -546,13 +530,15 @@ def _tagged_container_mode(item: dict[str, Any]) -> Optional[str]:
     """
     if not isinstance(item, dict):
         return None
-    if item.get("open") is not None or item.get("match") is not None or item.get("app") is not None:
+    if item.get("open") is not None or item.get(
+            "match") is not None or item.get("app") is not None:
         return None
-    tags = [k for k in item.keys() if str(k).strip().lower() in _CONTAINER_TAG_KEYS]
+    tags = [
+        k for k in item.keys() if str(k).strip().lower() in _CONTAINER_TAG_KEYS
+    ]
     # Allow id / active / share|ratio alongside the tag
     other = [
-        k
-        for k in item.keys()
+        k for k in item.keys()
         if str(k).strip().lower() not in _CONTAINER_TAG_KEYS
         and str(k).strip().lower() not in _TAG_OPTIONAL_KEYS
     ]
@@ -577,7 +563,8 @@ def _mon_body_as_pane_list(body: Any) -> list[Any]:
         tag = _tagged_container_mode(body)
         if tag is not None:
             for k, v in body.items():
-                if str(k).strip().lower() in _CONTAINER_TAG_KEYS and isinstance(v, list):
+                if str(k).strip().lower(
+                ) in _CONTAINER_TAG_KEYS and isinstance(v, list):
                     # Whole mon is one tagged container → single pane
                     return [body]
         return [body]
@@ -614,11 +601,8 @@ def _bare_array_to_mon_tiles(
                     panes.extend(_mon_body_as_pane_list(body))
                 return {"mon0": panes}
             return {"mon0": items}
-        if (
-            n >= 2
-            and len(items) == n
-            and all(_looks_like_mon_body(x) for x in items)
-        ):
+        if (n >= 2 and len(items) == n
+                and all(_looks_like_mon_body(x) for x in items)):
             idxs = _normalize_mon_indices(mon_indices, n)
             if idxs is not None:
                 return {f"mon{idxs[i]}": body for i, body in enumerate(items)}
@@ -638,9 +622,8 @@ def _bare_array_to_mon_tiles(
     return {"mon0": items}
 
 
-def _normalize_mon_indices(
-    mon_indices: Optional[list[int]], n: int
-) -> Optional[list[int]]:
+def _normalize_mon_indices(mon_indices: Optional[list[int]],
+                           n: int) -> Optional[list[int]]:
     """Return n distinct non-neg Meta indices, or None when unusable."""
     if not mon_indices or n <= 0:
         return None
@@ -690,10 +673,8 @@ def forest_mon_indices_left_to_right(forest: Any) -> list[int]:
         if prev is None or (x, y) < prev:
             best[idx] = (x, y)
     return [
-        i
-        for i, _xy in sorted(
-            best.items(), key=lambda kv: (kv[1][0], kv[1][1], kv[0])
-        )
+        i for i, _xy in sorted(best.items(),
+                               key=lambda kv: (kv[1][0], kv[1][1], kv[0]))
     ]
 
 
@@ -705,7 +686,8 @@ def forest_profile_mon_kwargs(forest: Any) -> dict[str, Any]:
     return {"mon_count": len(idxs), "mon_indices": idxs}
 
 
-def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _desugar_tiles(
+        tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """tiles mon map → (roles[], layout{})."""
     roles: list[dict[str, Any]] = []
     layout: dict[str, Any] = {}
@@ -713,22 +695,15 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
 
     for mon_key, mon_body in tiles.items():
         if not isinstance(mon_key, str) or not mon_key.strip():
-            raise ValueError(
-                "tiles keys must be non-empty strings "
-                "(monN, primary, stableKey, or monitors alias)"
-            )
+            raise ValueError("tiles keys must be non-empty strings "
+                             "(monN, primary, stableKey, or monitors alias)")
         mon_key = mon_key.strip()
         # Full alias check needs top-level monitors map (validate_reconcile_profile).
-        if not (
-            _is_builtin_mon_key(mon_key)
-            or _is_stable_key(mon_key)
-            or _is_geom_role_key(mon_key)
-            or _NAME_RE.match(mon_key)
-        ):
+        if not (_is_builtin_mon_key(mon_key) or _is_stable_key(mon_key)
+                or _is_geom_role_key(mon_key) or _NAME_RE.match(mon_key)):
             raise ValueError(
                 f"tiles key {mon_key!r}: want monN, primary, left|right, "
-                f"stableKey, or alias name"
-            )
+                f"stableKey, or alias name")
 
         split_override: Optional[str] = None
         content: Any
@@ -750,8 +725,7 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
                 mon_share_src = None
             else:
                 split_override = _normalize_split_alias(
-                    mon_body.get("split"), f"tiles.{mon_key}"
-                )
+                    mon_body.get("split"), f"tiles.{mon_key}")
                 if "content" in mon_body:
                     content = mon_body["content"]
                 elif "children" in mon_body:
@@ -759,8 +733,7 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
                 else:
                     raise ValueError(
                         f"tiles.{mon_key}: need content array, bare array, "
-                        f"or {{hsplit|vsplit|tab|stack: […]}}"
-                    )
+                        f"or {{hsplit|vsplit|tab|stack: […]}}")
         else:
             raise ValueError(
                 f"tiles.{mon_key}: want array or {{split|hsplit|vsplit|tab, content}}"
@@ -770,9 +743,8 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
             raise ValueError(f"tiles.{mon_key}.content must be an array")
 
         s_next = [0]
-        children = _desugar_panes(
-            content, mon_key, mon_key, roles, used_ids, s_next
-        )
+        children = _desugar_panes(content, mon_key, mon_key, roles, used_ids,
+                                  s_next)
         entry: dict[str, Any] = {"children": children}
         split = split_override
         if split is None and len(children) >= 2:
@@ -780,7 +752,8 @@ def _desugar_tiles(tiles: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[st
         if split is not None:
             entry["split"] = split
         shares = _share_weights_from_obj(mon_share_src)
-        if shares is not None and len(shares) == len(children) and len(children) >= 2:
+        if shares is not None and len(shares) == len(children) and len(
+                children) >= 2:
             entry["share"] = shares
         layout[mon_key] = entry
 
@@ -799,7 +772,8 @@ def _desugar_panes(
     children: list[dict[str, Any]] = []
     for i, item in enumerate(items):
         where = f"{path_prefix}[{i}]"
-        child = _desugar_pane(item, mon_key, path_prefix, where, roles, used_ids, s_next)
+        child = _desugar_pane(item, mon_key, path_prefix, where, roles,
+                              used_ids, s_next)
         children.append(child)
     return children
 
@@ -823,7 +797,8 @@ def _desugar_pane(
                     content = v
                     break
             if not isinstance(content, list) or len(content) == 0:
-                raise ValueError(f"{where}: {tag_mode} needs a non-empty content array")
+                raise ValueError(
+                    f"{where}: {tag_mode} needs a non-empty content array")
             child = _desugar_tagged_container(
                 tag_mode,
                 content,
@@ -852,11 +827,8 @@ def _desugar_pane(
                 content = item.get("content")
                 if content is None:
                     content = item.get("children")
-                if (
-                    isinstance(content, list)
-                    and len(content) > 0
-                    and all(_is_role_cell(x) for x in content)
-                ):
+                if (isinstance(content, list) and len(content) > 0
+                        and all(_is_role_cell(x) for x in content)):
                     child = _desugar_role_pane(
                         content,
                         mon_key,
@@ -888,12 +860,14 @@ def _desugar_pane(
                     )
 
     # Nested split object { split, content } / { content } default hsplit
-    if isinstance(item, dict) and ("split" in item or "content" in item or "children" in item):
-        if "roles" in item and item.get("content") is None and item.get("children") is None:
-            if item.get("open") is not None or item.get("match") is not None or item.get("app") is not None:
-                return _desugar_role_pane(
-                    [item], mon_key, path_prefix, where, roles, used_ids, s_next
-                )
+    if isinstance(item, dict) and ("split" in item or "content" in item
+                                   or "children" in item):
+        if "roles" in item and item.get("content") is None and item.get(
+                "children") is None:
+            if item.get("open") is not None or item.get(
+                    "match") is not None or item.get("app") is not None:
+                return _desugar_role_pane([item], mon_key, path_prefix, where,
+                                          roles, used_ids, s_next)
         split = _normalize_split_alias(item.get("split"), where)
         content = item.get("content")
         if content is None:
@@ -904,12 +878,18 @@ def _desugar_pane(
             split = "hsplit"
         if split in ("tabbed", "stacked"):
             if content and all(_is_role_cell(x) for x in content):
-                child = _desugar_role_pane(
-                    content, mon_key, path_prefix, where, roles, used_ids, s_next, mode=split
-                )
+                child = _desugar_role_pane(content,
+                                           mon_key,
+                                           path_prefix,
+                                           where,
+                                           roles,
+                                           used_ids,
+                                           s_next,
+                                           mode=split)
                 _apply_active_to_child(child, item.get("active"), roles)
                 return child
-            raise ValueError(f"{where}: tabbed/stacked content must be role cells")
+            raise ValueError(
+                f"{where}: tabbed/stacked content must be role cells")
         return _desugar_split_node(
             split,
             content,
@@ -928,9 +908,8 @@ def _desugar_pane(
         if len(item) == 0:
             raise ValueError(f"{where}: empty pane")
         if all(_is_role_cell(x) for x in item):
-            return _desugar_role_pane(
-                item, mon_key, path_prefix, where, roles, used_ids, s_next
-            )
+            return _desugar_role_pane(item, mon_key, path_prefix, where, roles,
+                                      used_ids, s_next)
         # Nested panes → default hsplit
         return _desugar_split_node(
             "hsplit",
@@ -946,14 +925,11 @@ def _desugar_pane(
 
     # Bare string / rich role object → single-role pane
     if _is_role_cell(item):
-        return _desugar_role_pane(
-            [item], mon_key, path_prefix, where, roles, used_ids, s_next
-        )
+        return _desugar_role_pane([item], mon_key, path_prefix, where, roles,
+                                  used_ids, s_next)
 
-    raise ValueError(
-        f"{where}: want string, role object, array, or "
-        f"{{tab|stack|hsplit|vsplit|split, content}}"
-    )
+    raise ValueError(f"{where}: want string, role object, array, or "
+                     f"{{tab|stack|hsplit|vsplit|split, content}}")
 
 
 def _desugar_tagged_container(
@@ -970,10 +946,17 @@ def _desugar_tagged_container(
 ) -> dict[str, Any]:
     if mode in ("tabbed", "stacked"):
         if not all(_is_role_cell(x) for x in content):
-            raise ValueError(f"{where}: {mode} content must be role cells (strings/objects)")
-        return _desugar_role_pane(
-            content, mon_key, path_prefix, where, roles, used_ids, s_next, mode=mode
-        )
+            raise ValueError(
+                f"{where}: {mode} content must be role cells (strings/objects)"
+            )
+        return _desugar_role_pane(content,
+                                  mon_key,
+                                  path_prefix,
+                                  where,
+                                  roles,
+                                  used_ids,
+                                  s_next,
+                                  mode=mode)
     if mode in ("hsplit", "vsplit"):
         return _desugar_split_node(
             mode,
@@ -1032,9 +1015,11 @@ def _is_role_cell(x: Any) -> bool:
         return False
     if "content" in x or "children" in x:
         return False
-    if "layout" in x and x.get("open") is None and x.get("match") is None and x.get("app") is None:
+    if "layout" in x and x.get("open") is None and x.get(
+            "match") is None and x.get("app") is None:
         return False
-    if "split" in x and x.get("open") is None and x.get("match") is None and x.get("app") is None:
+    if "split" in x and x.get("open") is None and x.get(
+            "match") is None and x.get("app") is None:
         return False
     return True
 
@@ -1051,7 +1036,8 @@ def _desugar_role_pane(
 ) -> dict[str, Any]:
     role_ids: list[str] = []
     for j, cell in enumerate(cells):
-        role = _cell_to_role(cell, used_ids, f"{where}[{j}]" if len(cells) > 1 else where)
+        role = _cell_to_role(cell, used_ids,
+                             f"{where}[{j}]" if len(cells) > 1 else where)
         role_ids.append(role["id"])
         roles.append(role)
 
@@ -1113,9 +1099,9 @@ def _role_matches_token(token: str, role: dict[str, Any]) -> bool:
     return False
 
 
-def _match_role_token_nth(
-    token: str, roles: list[dict[str, Any]], n: int = 0
-) -> Optional[str]:
+def _match_role_token_nth(token: str,
+                          roles: list[dict[str, Any]],
+                          n: int = 0) -> Optional[str]:
     """Nth (0-based) role id matching token among roles list order."""
     if not isinstance(n, int) or isinstance(n, bool) or n < 0:
         return None
@@ -1131,7 +1117,8 @@ def _match_role_token_nth(
     return None
 
 
-def _match_role_token(token: str, roles: list[dict[str, Any]]) -> Optional[str]:
+def _match_role_token(token: str, roles: list[dict[str,
+                                                   Any]]) -> Optional[str]:
     """Map focus/active sugar token → first matching role id."""
     return _match_role_token_nth(token, roles, 0)
 
@@ -1139,14 +1126,16 @@ def _match_role_token(token: str, roles: list[dict[str, Any]]) -> Optional[str]:
 def _check_role_ref_shape(raw: Any, where: str) -> None:
     """Raise ValueError if active/focus sugar is malformed."""
     if isinstance(raw, bool):
-        raise ValueError(f"{where}: must be string, int index, or [token, index]")
+        raise ValueError(
+            f"{where}: must be string, int index, or [token, index]")
     if isinstance(raw, int):
         if raw < 0:
             raise ValueError(f"{where}: index must be >= 0 (0-based)")
         return
     if isinstance(raw, list):
         if len(raw) != 2:
-            raise ValueError(f"{where}: want [token, index] (0-based occurrence)")
+            raise ValueError(
+                f"{where}: want [token, index] (0-based occurrence)")
         tok, n = raw[0], raw[1]
         if not str(tok).strip():
             raise ValueError(f"{where}: token must be non-empty")
@@ -1183,9 +1172,8 @@ def _resolve_role_ref(ref: Any, roles: list[dict[str, Any]]) -> Optional[str]:
     return _match_role_token(str(ref).strip(), roles)
 
 
-def _resolve_active_ref(
-    ref: Any, role_ids: list[str], group_roles: list[dict[str, Any]]
-) -> Optional[str]:
+def _resolve_active_ref(ref: Any, role_ids: list[str],
+                        group_roles: list[dict[str, Any]]) -> Optional[str]:
     """Resolve active sugar against a group's ordered role ids / role objects."""
     if not _role_ref_present(ref):
         return None
@@ -1205,9 +1193,8 @@ def _resolve_active_ref(
     return None
 
 
-def _apply_active_to_child(
-    child: dict[str, Any], active_raw: Any, roles: list[dict[str, Any]]
-) -> None:
+def _apply_active_to_child(child: dict[str, Any], active_raw: Any,
+                           roles: list[dict[str, Any]]) -> None:
     """Set child.active to a role id when active sugar matches a group role."""
     if not _role_ref_present(active_raw):
         return
@@ -1215,9 +1202,7 @@ def _apply_active_to_child(
     if not isinstance(child_roles, list) or not child_roles:
         return
     role_ids = [str(rid) for rid in child_roles]
-    by_id = {
-        str(r.get("id")): r for r in roles if r.get("id") is not None
-    }
+    by_id = {str(r.get("id")): r for r in roles if r.get("id") is not None}
     group_roles = [by_id[rid] for rid in role_ids if rid in by_id]
     rid = _resolve_active_ref(active_raw, role_ids, group_roles)
     if rid is not None:
@@ -1302,7 +1287,8 @@ def _cell_to_role(cell: Any, used_ids: set[str], where: str) -> dict[str, Any]:
     rid_raw = cell.get("id")
     if rid_raw is None or str(rid_raw).strip() == "":
         # Full app token → id ("Google Voice" → Google-Voice), not first word only
-        rid = _alloc_role_id(_stem_to_id(app_full or app_stem or "app"), used_ids)
+        rid = _alloc_role_id(_stem_to_id(app_full or app_stem or "app"),
+                             used_ids)
     else:
         rid = str(rid_raw).strip()
         if not _NAME_RE.match(rid):
@@ -1330,11 +1316,9 @@ def _cell_to_role(cell: Any, used_ids: set[str], where: str) -> dict[str, Any]:
         # Same inference as bare string cells when match not overridden.
         _open_i, match = _infer_open_and_match(app_full or app_stem or rid)
         # Keep author open as written; only fill wmClass when chrome-inferred and unset.
-        if (
-            match.get("class") == _CHROME_CLASS
-            and open_spec.get("wmClass") is None
-            and open_spec.get("wm_class") is None
-        ):
+        if (match.get("class") == _CHROME_CLASS
+                and open_spec.get("wmClass") is None
+                and open_spec.get("wm_class") is None):
             open_spec = dict(open_spec)
             open_spec["wmClass"] = _CHROME_CLASS
 
@@ -1389,7 +1373,8 @@ def _open_stem(open_spec: Any) -> str:
     if isinstance(open_spec, str):
         return open_spec.strip().split()[0] if open_spec.strip() else ""
     if isinstance(open_spec, dict):
-        app = open_spec.get("app") or open_spec.get("desktop") or open_spec.get("command")
+        app = open_spec.get("app") or open_spec.get(
+            "desktop") or open_spec.get("command")
         if app is None:
             return ""
         return str(app).strip().split()[0]
@@ -1453,17 +1438,20 @@ def validate_reconcile_profile(
       - marginal omitted → coexist / first (via normalize)
       - role.slot from layout.roles listing when omitted
     """
-    data = normalize_profile(
-        data, mon_count=mon_count, mon_indices=mon_indices
-    )
+    data = normalize_profile(data,
+                             mon_count=mon_count,
+                             mon_indices=mon_indices)
 
-    has_roles = isinstance(data.get("roles"), list) and len(data.get("roles") or []) > 0
+    has_roles = isinstance(data.get("roles"), list) and len(
+        data.get("roles") or []) > 0
     # Empty roles[] is valid (empty desk / `forge layout clean`).
     has_roles_key = isinstance(data.get("roles"), list)
 
     if "version" not in data:
         if not has_roles and not has_roles_key:
-            raise ValueError("profile version required (want version: 2) or provide roles[]")
+            raise ValueError(
+                "profile version required (want version: 2) or provide roles[]"
+            )
         ver = PROFILE_VERSION
     else:
         ver = data["version"]
@@ -1475,10 +1463,12 @@ def validate_reconcile_profile(
     mode = data.get("mode")
     if mode is None:
         if not has_roles and not has_roles_key:
-            raise ValueError("mode required (want mode: reconcile) or provide roles")
+            raise ValueError(
+                "mode required (want mode: reconcile) or provide roles")
         mode = MODE_RECONCILE
     if not isinstance(mode, str) or mode.strip().lower() != MODE_RECONCILE:
-        raise ValueError(f"unsupported mode: {mode!r} (want {MODE_RECONCILE!r})")
+        raise ValueError(
+            f"unsupported mode: {mode!r} (want {MODE_RECONCILE!r})")
     mode = MODE_RECONCILE
 
     if "roles" not in data:
@@ -1503,10 +1493,8 @@ def validate_reconcile_profile(
 
     for mon_key, mon_body in layout_in.items():
         if not isinstance(mon_key, str) or not mon_key.strip():
-            raise ValueError(
-                "layout keys must be non-empty strings "
-                "(monN, primary, stableKey, or monitors alias)"
-            )
+            raise ValueError("layout keys must be non-empty strings "
+                             "(monN, primary, stableKey, or monitors alias)")
         mon_key = mon_key.strip()
         if not _mon_key_ok(mon_key, aliases):
             raise _mon_key_error(mon_key, "layout key", aliases)
@@ -1532,7 +1520,8 @@ def validate_reconcile_profile(
         if split is not None:
             split_s = str(split).strip().lower()
             if split_s not in ("hsplit", "vsplit", "tabbed", "stacked"):
-                raise ValueError(f"layout.{mon_key}.split: unsupported {split!r}")
+                raise ValueError(
+                    f"layout.{mon_key}.split: unsupported {split!r}")
             split = split_s
         entry: dict[str, Any] = {"children": children}
         if split is not None:
@@ -1540,7 +1529,8 @@ def validate_reconcile_profile(
         shares = normalize_shares(mon_body.get("share"))
         if shares is None:
             shares = normalize_shares(mon_body.get("ratio"))
-        if shares is not None and len(shares) == len(children) and len(children) >= 2:
+        if shares is not None and len(shares) == len(children) and len(
+                children) >= 2:
             entry["share"] = shares
         layout[mon_key] = entry
         layout_keys.add(mon_key)
@@ -1557,10 +1547,8 @@ def validate_reconcile_profile(
             raise ValueError("overflow.slot required")
         oslot = str(oslot).strip()
         if not _slot_ok(oslot, aliases, layout_keys):
-            raise ValueError(
-                f"overflow.slot invalid: {oslot!r} "
-                "(want monN|primary|stableKey|alias . path)"
-            )
+            raise ValueError(f"overflow.slot invalid: {oslot!r} "
+                             "(want monN|primary|stableKey|alias . path)")
         olayout = overflow_in.get("layout", "tabbed")
         olayout_s = str(olayout).strip().lower()
         if olayout_s not in ("tabbed", "stacked", "hsplit", "vsplit"):
@@ -1577,7 +1565,8 @@ def validate_reconcile_profile(
             raise ValueError(f"roles[{i}]: id required")
         rid = str(rid).strip()
         if not _NAME_RE.match(rid):
-            raise ValueError(f"roles[{i}].id: invalid {rid!r} (use A-Za-z0-9_-)")
+            raise ValueError(
+                f"roles[{i}].id: invalid {rid!r} (use A-Za-z0-9_-)")
         if rid in seen_ids:
             raise ValueError(f"duplicate role id: {rid}")
         seen_ids.add(rid)
@@ -1588,10 +1577,8 @@ def validate_reconcile_profile(
         if isinstance(match, str) and match.strip():
             match = {"class": match.strip()}
         if not isinstance(match, dict) or not match:
-            raise ValueError(
-                f"roles[{i}] ({rid}): match object required "
-                '(or match:"WmClass" / class:"WmClass")'
-            )
+            raise ValueError(f"roles[{i}] ({rid}): match object required "
+                             '(or match:"WmClass" / class:"WmClass")')
         norm_match = _normalize_match(match, f"roles[{i}].match")
 
         open_spec = role.get("open")
@@ -1600,13 +1587,13 @@ def validate_reconcile_profile(
         if isinstance(open_spec, str) and open_spec.strip():
             open_spec = {"app": open_spec.strip()}
         if open_spec is None:
-            raise ValueError(
-                f"roles[{i}] ({rid}): open object required "
-                '(or open:"app" / app:"app")'
-            )
+            raise ValueError(f"roles[{i}] ({rid}): open object required "
+                             '(or open:"app" / app:"app")')
         if not isinstance(open_spec, dict):
-            raise ValueError(f"roles[{i}] ({rid}): open must be an object or string")
-        app = open_spec.get("app") or open_spec.get("desktop") or open_spec.get("command")
+            raise ValueError(
+                f"roles[{i}] ({rid}): open must be an object or string")
+        app = open_spec.get("app") or open_spec.get(
+            "desktop") or open_spec.get("command")
         if app is None or str(app).strip() == "":
             raise ValueError(f"roles[{i}] ({rid}): open.app required")
         norm_open: dict[str, Any] = {"app": str(app).strip()}
@@ -1621,29 +1608,31 @@ def validate_reconcile_profile(
             try:
                 norm_open["timeout"] = int(open_spec["timeout"])
             except (TypeError, ValueError) as e:
-                raise ValueError(f"roles[{i}] ({rid}): open.timeout must be int") from e
+                raise ValueError(
+                    f"roles[{i}] ({rid}): open.timeout must be int") from e
         mon = open_spec.get("monitor")
         if mon is not None and str(mon).strip() != "":
             norm_open["monitor"] = mon
-        path = open_spec.get("treePath") or open_spec.get("path") or open_spec.get("tree_path")
+        path = open_spec.get("treePath") or open_spec.get(
+            "path") or open_spec.get("tree_path")
         if path is not None and str(path).strip() != "":
             norm_open["treePath"] = str(path).strip()
         if open_spec.get("first") is not None:
             norm_open["first"] = bool(open_spec["first"])
-        no_wait = open_spec.get("noWait") if "noWait" in open_spec else open_spec.get("no_wait")
+        no_wait = open_spec.get(
+            "noWait") if "noWait" in open_spec else open_spec.get("no_wait")
         if no_wait is not None:
             norm_open["noWait"] = bool(no_wait)
 
         slot = role.get("slot")
         if slot is not None:
             if not isinstance(slot, str) or not slot.strip():
-                raise ValueError(f"roles[{i}] ({rid}): slot must be a non-empty string")
+                raise ValueError(
+                    f"roles[{i}] ({rid}): slot must be a non-empty string")
             slot = slot.strip()
             if not _slot_ok(slot, aliases, layout_keys):
-                raise ValueError(
-                    f"roles[{i}] ({rid}): invalid slot {slot!r} "
-                    "(want monN|primary|stableKey|alias . path)"
-                )
+                raise ValueError(f"roles[{i}] ({rid}): invalid slot {slot!r} "
+                                 "(want monN|primary|stableKey|alias . path)")
         elif rid in mon_role_map:
             slot = mon_role_map[rid]
         else:
@@ -1656,14 +1645,12 @@ def validate_reconcile_profile(
             # still ok; slot on role is authoritative
             pass
 
-        roles.append(
-            {
-                "id": rid,
-                "match": norm_match,
-                "open": norm_open,
-                "slot": slot,
-            }
-        )
+        roles.append({
+            "id": rid,
+            "match": norm_match,
+            "open": norm_open,
+            "slot": slot,
+        })
 
     out: dict[str, Any] = {
         "version": PROFILE_VERSION,
@@ -1710,9 +1697,9 @@ def validate_reconcile_profile(
         m_mode = str(m_mode).strip().lower()
         if m_mode not in ("coexist", "strict"):
             raise ValueError(
-                f"marginal.mode: unsupported {m_mode!r} (want coexist|strict)"
-            )
-        role_order = marginal.get("roleOrder") or marginal.get("role_order") or "first"
+                f"marginal.mode: unsupported {m_mode!r} (want coexist|strict)")
+        role_order = marginal.get("roleOrder") or marginal.get(
+            "role_order") or "first"
         if role_order is None or str(role_order).strip() == "":
             role_order = "first"
         role_order = str(role_order).strip().lower()
@@ -1771,28 +1758,27 @@ def _validate_layout_children(
         roles_list = ch.get("roles")
         if roles_list is not None:
             if not isinstance(roles_list, list) or not all(
-                isinstance(r, str) and r.strip() for r in roles_list
-            ):
+                    isinstance(r, str) and r.strip() for r in roles_list):
                 raise ValueError(f"{ch_where}.roles must be a string array")
             roles_list = [str(r).strip() for r in roles_list]
         else:
             roles_list = None
 
         if has_nested and roles_list:
-            raise ValueError(f"{ch_where}: use roles or nested children, not both")
+            raise ValueError(
+                f"{ch_where}: use roles or nested children, not both")
 
         cid = ch.get("id")
         if cid is None or str(cid).strip() == "":
             if roles_list and len(roles_list) == 1 and not has_nested:
                 cid = roles_list[0]
             else:
-                raise ValueError(
-                    f"{ch_where}: id required "
-                    "(or single roles:[id] to default id)"
-                )
+                raise ValueError(f"{ch_where}: id required "
+                                 "(or single roles:[id] to default id)")
         cid = str(cid).strip()
         if not _NAME_RE.match(cid):
-            raise ValueError(f"{ch_where}.id: invalid {cid!r} (use A-Za-z0-9_-)")
+            raise ValueError(
+                f"{ch_where}.id: invalid {cid!r} (use A-Za-z0-9_-)")
         full_slot = f"{path_prefix}.{cid}"
         if full_slot in slot_ids:
             raise ValueError(f"duplicate slot id: {full_slot}")
@@ -1816,12 +1802,14 @@ def _validate_layout_children(
             if split is not None:
                 split_s = str(split).strip().lower()
                 if split_s not in ("hsplit", "vsplit", "tabbed", "stacked"):
-                    raise ValueError(f"{ch_where}.split: unsupported {split!r}")
+                    raise ValueError(
+                        f"{ch_where}.split: unsupported {split!r}")
                 child["split"] = split_s
             shares = normalize_shares(ch.get("share"))
             if shares is None:
                 shares = normalize_shares(ch.get("ratio"))
-            if shares is not None and len(shares) == len(nested) and len(nested) >= 2:
+            if shares is not None and len(shares) == len(nested) and len(
+                    nested) >= 2:
                 child["share"] = shares
         else:
             lay = ch.get("layout")
@@ -1836,7 +1824,8 @@ def _validate_layout_children(
                 child["roles"] = roles_list
                 for rid in child["roles"]:
                     if rid in mon_role_map:
-                        raise ValueError(f"role {rid!r} listed in multiple layout slots")
+                        raise ValueError(
+                            f"role {rid!r} listed in multiple layout slots")
                     mon_role_map[rid] = full_slot
             active = ch.get("active")
             if _role_ref_present(active):
@@ -2014,7 +2003,8 @@ def plan_reconcile(
     forest = filter_forest_workspace(forest, workspace)
     # mon_count + L→R mon_indices so bare dual arrays bind leftmost head first
     # even when Meta mon0 is the right display (X11 / renumber footgun).
-    prof = validate_reconcile_profile(profile, **forest_profile_mon_kwargs(forest))
+    prof = validate_reconcile_profile(profile,
+                                      **forest_profile_mon_kwargs(forest))
     # Rewrite mon keys (stableKey / alias / primary / left|right) → monN.
     prof = resolve_profile_mon_keys(prof, forest)
     clean = bool(clean)
@@ -2026,8 +2016,7 @@ def plan_reconcile(
     pins = _normalize_role_pins(role_pins)
     opened_roles = {
         str(x).strip()
-        for x in (just_opened_roles or [])
-        if x is not None and str(x).strip()
+        for x in (just_opened_roles or []) if x is not None and str(x).strip()
     }
 
     # Mode B gate — once; reused for residual policy + plan.thrashState.
@@ -2118,9 +2107,8 @@ def plan_reconcile(
             if mon_head:
                 mons_with_placement.add(mon_head)
             if not safe:
-                _mark_layout_slots_for_role(
-                    slot, layout_slot_modes, slots_needing_layout
-                )
+                _mark_layout_slots_for_role(slot, layout_slot_modes,
+                                            slots_needing_layout)
         else:
             claimed.add(_window_key(chosen))
             entry["windowId"] = chosen.get("windowId")
@@ -2166,25 +2154,21 @@ def plan_reconcile(
                     move_act["destWindowId"] = join_wid
                 actions.append(move_act)
                 if not safe:
-                    _mark_layout_slots_for_role(
-                        slot, layout_slot_modes, slots_needing_layout
-                    )
+                    _mark_layout_slots_for_role(slot, layout_slot_modes,
+                                                slots_needing_layout)
         role_results.append(entry)
 
     # Cold empty: every role needs open (no claimed windows). CT1 skeleton path.
-    cold_empty = (
-        not safe
-        and bool(role_results)
-        and all(str(r.get("status") or "") == "open" for r in role_results)
-    )
+    cold_empty = (not safe and bool(role_results) and all(
+        str(r.get("status") or "") == "open" for r in role_results))
     # Residual after open batch (just_opened_roles) or cold empty: thrash must not
     # force residual park (CT0 P0–P5 cold; Mode B only mid-session / --recover).
     suppress_thrash_park = cold_empty or bool(opened_roles)
     # Residuals: keep_others → park; clean → close; Mode B thrash → park when
     # not clean and not cold/bind; else profile residual leave|park. --safe: never.
-    force_park_residuals = (
-        keep_others or (thrashed and not clean and not safe and not suppress_thrash_park)
-    ) and not safe
+    force_park_residuals = (keep_others or
+                            (thrashed and not clean and not safe
+                             and not suppress_thrash_park)) and not safe
     # Slot-tagged layout PHs (from ensure_skeleton): residual prefers bind.
     has_layout_ph = bool(layout_placeholders)
 
@@ -2192,26 +2176,22 @@ def plan_reconcile(
     _claim_floating_windows(prof.get("floating") or [], windows, claimed)
 
     # Mode A collect: assign marginals to views (coexist). Mode B / --safe: skip.
-    slot_members = (
-        _build_slot_membership(role_results, parent_info, windows, prof, forest)
-        if marginal_mode != "strict" and not thrashed and not safe
-        else {}
-    )
+    slot_members = (_build_slot_membership(role_results, parent_info, windows,
+                                           prof, forest)
+                    if marginal_mode != "strict" and not thrashed and not safe
+                    else {})
     key_to_slot: dict[str, str] = {}
     for slot, keys in slot_members.items():
         for k in keys:
             key_to_slot.setdefault(k, slot)
 
-    want_park = (
-        (residual_mode == "park" or force_park_residuals) and not clean and not safe
-    )
+    want_park = ((residual_mode == "park" or force_park_residuals)
+                 and not clean and not safe)
     # Per-mon last unit (claimed role preferred) for soft park join.
-    anchors_by_mon = (
-        _soft_park_anchors_by_mon(windows, parent_info, claimed) if want_park else {}
-    )
-    global_park_anchor = (
-        _soft_park_anchor(windows, parent_info, claimed) if want_park else None
-    )
+    anchors_by_mon = (_soft_park_anchors_by_mon(windows, parent_info, claimed)
+                      if want_park else {})
+    global_park_anchor = (_soft_park_anchor(windows, parent_info, claimed)
+                          if want_park else None)
     # mon_index → { "anchor": wid, "parked": [wid, ...] } for tab-join ensure
     park_join_by_mon: dict[int, dict[str, Any]] = {}
 
@@ -2251,13 +2231,11 @@ def plan_reconcile(
             entry["status"] = "closed"
             unclaimed.append(entry)
             counts["closed"] += 1
-            residual_actions.append(
-                {
-                    "op": "close",
-                    "windowId": w.get("windowId"),
-                    "path": w.get("path"),
-                }
-            )
+            residual_actions.append({
+                "op": "close",
+                "windowId": w.get("windowId"),
+                "path": w.get("path"),
+            })
         elif safe or (residual_mode == "leave" and not force_park_residuals):
             entry = dict(summary)
             entry["status"] = "left"
@@ -2294,7 +2272,10 @@ def plan_reconcile(
                         park_act["slot"] = f"mon{mon_a}.overflow"
                         join = park_join_by_mon.setdefault(
                             int(mon_a),
-                            {"anchor": awid, "parked": []},
+                            {
+                                "anchor": awid,
+                                "parked": []
+                            },
                         )
                         if join.get("anchor") is None:
                             join["anchor"] = awid
@@ -2326,14 +2307,12 @@ def plan_reconcile(
                     continue
                 if _windows_share_group(wids, parent_info, mode):
                     if not _sibling_order_matches(wids, parent_info):
-                        slot_order_actions.append(
-                            {
-                                "op": "ensure_order",
-                                "slot": slot,
-                                "mode": mode,
-                                "windowIds": wids,
-                            }
-                        )
+                        slot_order_actions.append({
+                            "op": "ensure_order",
+                            "slot": slot,
+                            "mode": mode,
+                            "windowIds": wids,
+                        })
                     continue
                 structure_slots[slot] = {"mode": mode, "windowIds": wids}
                 slots_needing_layout[slot] = mode
@@ -2343,7 +2322,8 @@ def plan_reconcile(
             if mode is None:
                 # Single-role slot with companions → treat as tabbed bag
                 mode = "tabbed"
-            wids = _ordered_slot_window_ids(role_results, slot, kept, role_order)
+            wids = _ordered_slot_window_ids(role_results, slot, kept,
+                                            role_order)
             if len(wids) < 2:
                 continue
             share = _windows_share_group(wids, parent_info, mode)
@@ -2351,8 +2331,8 @@ def plan_reconcile(
             # Co-grouped multi-role bag polluted by another mon-child role
             # (giant tab: chrome+Grok+ghostty) → peel + re-tab role-only ids.
             if share and _slot_parent_has_foreign_mon_child(
-                slot, role_wids if role_wids else wids, role_results, parent_info
-            ):
+                    slot, role_wids if role_wids else wids, role_results,
+                    parent_info):
                 peel_wids = role_wids if len(role_wids) >= 2 else wids
                 structure_slots[slot] = {"mode": mode, "windowIds": peel_wids}
                 slots_needing_layout[slot] = mode
@@ -2360,16 +2340,13 @@ def plan_reconcile(
             if share:
                 # Co-grouped: still repair role sibling order (YT→Gmail→Voice).
                 if len(role_wids) >= 2 and not _sibling_order_matches(
-                    role_wids, parent_info
-                ):
-                    slot_order_actions.append(
-                        {
-                            "op": "ensure_order",
-                            "slot": slot,
-                            "mode": mode,
-                            "windowIds": role_wids,
-                        }
-                    )
+                        role_wids, parent_info):
+                    slot_order_actions.append({
+                        "op": "ensure_order",
+                        "slot": slot,
+                        "mode": mode,
+                        "windowIds": role_wids,
+                    })
                 continue
             structure_slots[slot] = {"mode": mode, "windowIds": wids}
             slots_needing_layout[slot] = mode
@@ -2377,9 +2354,8 @@ def plan_reconcile(
         # Soft park: tab-join residuals into that mon's last unit (default = tabbed).
         # Lone app last unit is wrapped to a group then residuals join the bag.
         if want_park and park_join_by_mon:
-            overflow_layout = str(
-                ((prof.get("overflow") or {}).get("layout") or "tabbed")
-            ).strip().lower()
+            overflow_layout = str(((prof.get("overflow") or {}).get("layout")
+                                   or "tabbed")).strip().lower()
             if overflow_layout not in ("tabbed", "stacked"):
                 overflow_layout = "tabbed"
             for mon_a, join in sorted(park_join_by_mon.items()):
@@ -2442,7 +2418,8 @@ def plan_reconcile(
     # Live mon layout wrong vs profile split (e.g. mon-root TABBED, want hsplit).
     mons_split_mismatch: set[str] = set()
     if not safe:
-        mons_split_mismatch = _mons_with_split_mismatch(forest, prof, role_results)
+        mons_split_mismatch = _mons_with_split_mismatch(
+            forest, prof, role_results)
         for mon_key in mons_split_mismatch:
             mons_with_placement.add(mon_key)
 
@@ -2469,22 +2446,20 @@ def plan_reconcile(
                 continue
             mon_child_peel_mons.add(mon_key)
             mon_body = (prof.get("layout") or {}).get(mon_key) or {}
-            split = str((mon_body or {}).get("split") or "hsplit").strip().lower()
+            split = str((mon_body or {}).get("split")
+                        or "hsplit").strip().lower()
             if split not in ("hsplit", "vsplit"):
                 split = "hsplit"
-            anchor = _peel_demote_anchor(
-                mon_key, role_results, parent_info, prof, mm
-            )
+            anchor = _peel_demote_anchor(mon_key, role_results, parent_info,
+                                         prof, mm)
             if anchor is None:
                 continue
-            peel_demote_actions.append(
-                {
-                    "op": "ensure_layout",
-                    "slot": mon_key,
-                    "mode": split,
-                    "windowIds": [anchor],
-                }
-            )
+            peel_demote_actions.append({
+                "op": "ensure_layout",
+                "slot": mon_key,
+                "mode": split,
+                "windowIds": [anchor],
+            })
             mons_with_placement.add(mon_key)
             # Force multi-role tab/stack under this mon into structure repair
             # with role-only windowIds (exclude foreign mon-child roles).
@@ -2511,15 +2486,10 @@ def plan_reconcile(
     has_role_placement = counts["opened"] > 0 or counts["moved"] > 0
     # just_opened only drives mon ensure off --safe (safe path is open+move only).
     # Skip mon ensure when skeleton/bind path owns topology.
-    has_mon_ensure = (
-        not skip_window_structure
-        and (
-            has_role_placement
-            or (bool(opened_roles) and not safe)
-            or bool(mons_split_mismatch)
-            or bool(mon_child_peel_mons)
-        )
-    )
+    has_mon_ensure = (not skip_window_structure and
+                      (has_role_placement or (bool(opened_roles) and not safe)
+                       or bool(mons_split_mismatch)
+                       or bool(mon_child_peel_mons)))
     skeleton_actions: list[dict[str, Any]] = []
     if cold_empty and not safe:
         sk = build_ensure_skeleton_action(prof, workspace=workspace)
@@ -2532,20 +2502,13 @@ def plan_reconcile(
         bind_actions = build_bind_actions(role_results, layout_placeholders)
         counts["bound"] = len(bind_actions)
 
-    has_work = (
-        has_role_placement
-        or has_mon_ensure
-        or counts["parked"] > 0
-        or counts["closed"] > 0
-        or counts["structure"] > 0
-        or counts["ordered"] > 0
-        or counts["sized"] > 0
-        or bool(slots_needing_layout)
-        or bool(peel_demote_actions)
-        or bool(skeleton_actions)
-        or bool(bind_actions)
-        or (not safe and not skip_window_structure and not structure_cmp.get("match", True))
-    )
+    has_work = (has_role_placement or has_mon_ensure or counts["parked"] > 0
+                or counts["closed"] > 0 or counts["structure"] > 0
+                or counts["ordered"] > 0 or counts["sized"] > 0
+                or bool(slots_needing_layout) or bool(peel_demote_actions)
+                or bool(skeleton_actions) or bool(bind_actions)
+                or (not safe and not skip_window_structure
+                    and not structure_cmp.get("match", True)))
     structure_ensure_actions: list[dict[str, Any]] = []
     mon_ensure_actions: list[dict[str, Any]] = []
     if has_work and not safe and not skip_window_structure:
@@ -2560,9 +2523,8 @@ def plan_reconcile(
                     # Nested split: collect mon0.s1 + mon0.s1.* role leaves.
                     wids = _role_window_ids_for_slot_prefix(role_results, slot)
                 else:
-                    wids = _ordered_slot_window_ids(
-                        role_results, slot, kept, role_order
-                    )
+                    wids = _ordered_slot_window_ids(role_results, slot, kept,
+                                                    role_order)
             # Window-anchored ensure needs at least one id (empty desk → skeleton).
             if not wids:
                 continue
@@ -2609,19 +2571,16 @@ def plan_reconcile(
                 anchors = _mon_split_anchor_ids(role_results, mon_key, prof)
                 if not anchors:
                     continue
-                mon_ensure_actions.append(
-                    {
-                        "op": "ensure_layout",
-                        "slot": mon_key,
-                        "mode": split,
-                        "windowIds": anchors,
-                    }
-                )
+                mon_ensure_actions.append({
+                    "op": "ensure_layout",
+                    "slot": mon_key,
+                    "mode": split,
+                    "windowIds": anchors,
+                })
 
     # de-dupe ensure by slot (first wins — peel demote before structure before mon)
-    ensure_actions = (
-        peel_demote_actions + structure_ensure_actions + mon_ensure_actions
-    )
+    ensure_actions = (peel_demote_actions + structure_ensure_actions +
+                      mon_ensure_actions)
     seen_ensure: set[str] = set()
     deduped_ensure: list[dict[str, Any]] = []
     for a in ensure_actions:
@@ -2648,16 +2607,9 @@ def plan_reconcile(
     # skeleton → structure ensure → role open/move → bind → P5 residual close/park
     # → order → size → focus. Bind barrier before residual close/park.
     # Role place before mon order so ensure_order sees co-located mon-directs.
-    final_actions = (
-        skeleton_actions
-        + deduped_ensure
-        + actions
-        + bind_actions
-        + residual_actions
-        + order_actions
-        + size_actions
-        + focus_actions
-    )
+    final_actions = (skeleton_actions + deduped_ensure + actions +
+                     bind_actions + residual_actions + order_actions +
+                     size_actions + focus_actions)
     nothing = not has_work
     thrash_risk = _compute_thrash_risk(final_actions, counts)
 
@@ -2684,9 +2636,8 @@ def plan_reconcile(
 
 # AC4 / CT1: layout placeholders (not claimable apps).
 _PLACEHOLDER_WM_CLASS = "forge-placeholder"
-_PH_TITLE_RE = re.compile(
-    r"^forge-ph:(?P<slot>[^:]+):(?P<role>.+)$", re.IGNORECASE
-)
+_PH_TITLE_RE = re.compile(r"^forge-ph:(?P<slot>[^:]+):(?P<role>.+)$",
+                          re.IGNORECASE)
 
 
 def _is_placeholder_window_node(n: dict[str, Any]) -> bool:
@@ -2700,8 +2651,9 @@ def _is_placeholder_window_node(n: dict[str, Any]) -> bool:
 
 
 def collect_layout_placeholders(
-    forest: Any, *, workspace: Optional[int] = None
-) -> list[dict[str, Any]]:
+        forest: Any,
+        *,
+        workspace: Optional[int] = None) -> list[dict[str, Any]]:
     """
     Collect slot-tagged layout placeholders (ensure_skeleton / fail-open).
 
@@ -2729,21 +2681,22 @@ def collect_layout_placeholders(
             # Only layout-slot PHs drive bind (plain thrash PH has no tags).
             if role is None and slot is None:
                 return
-            out.append(
-                {
-                    "windowId": n.get("windowId"),
-                    "path": path or n.get("path"),
-                    "monitor": (
-                        n.get("monitor")
-                        if isinstance(n.get("monitor"), int)
-                        else mon_idx
-                    ),
-                    "layoutRole": str(role) if role is not None else None,
-                    "layoutSlot": str(slot) if slot is not None else None,
-                    "title": title,
-                    "placeholder": True,
-                }
-            )
+            out.append({
+                "windowId":
+                n.get("windowId"),
+                "path":
+                path or n.get("path"),
+                "monitor": (n.get("monitor") if isinstance(
+                    n.get("monitor"), int) else mon_idx),
+                "layoutRole":
+                str(role) if role is not None else None,
+                "layoutSlot":
+                str(slot) if slot is not None else None,
+                "title":
+                title,
+                "placeholder":
+                True,
+            })
             return
         kids = n.get("children") or n.get("childNodes") or []
         if not isinstance(kids, list):
@@ -2777,8 +2730,9 @@ def collect_layout_placeholders(
 
 
 def build_ensure_skeleton_action(
-    prof: dict[str, Any], *, workspace: int = 0
-) -> Optional[dict[str, Any]]:
+        prof: dict[str, Any],
+        *,
+        workspace: int = 0) -> Optional[dict[str, Any]]:
     """
     Pure plan action: mon splits + tab/stack CONs + slot-tagged PH leaves.
 
@@ -2789,7 +2743,8 @@ def build_ensure_skeleton_action(
         return None
     mons: list[dict[str, Any]] = []
 
-    def child_spec(ch: dict[str, Any], prefix: str) -> Optional[dict[str, Any]]:
+    def child_spec(ch: dict[str, Any],
+                   prefix: str) -> Optional[dict[str, Any]]:
         cid = ch.get("id")
         if cid is None or str(cid).strip() == "":
             return None
@@ -2818,11 +2773,14 @@ def build_ensure_skeleton_action(
                 entry["shares"] = shares
             return entry
         roles_raw = ch.get("roles") or []
-        roles = [str(r) for r in roles_raw if r is not None and str(r).strip() != ""]
+        roles = [
+            str(r) for r in roles_raw if r is not None and str(r).strip() != ""
+        ]
         mode = str(ch.get("layout") or "").strip().lower() or None
         if mode not in ("tabbed", "stacked", "hsplit", "vsplit", None):
             mode = None
-        if len(roles) > 1 and mode not in ("tabbed", "stacked", "hsplit", "vsplit"):
+        if len(roles) > 1 and mode not in ("tabbed", "stacked", "hsplit",
+                                           "vsplit"):
             mode = "tabbed"
         elif len(roles) <= 1:
             # Mon-direct single-role unit: one PH leaf (no bag CON).
@@ -2864,7 +2822,8 @@ def build_ensure_skeleton_action(
             "split": split,
             "children": children_out,
         }
-        shares = normalize_shares(mon_body.get("share") or mon_body.get("shares"))
+        shares = normalize_shares(
+            mon_body.get("share") or mon_body.get("shares"))
         if shares is not None:
             mon_entry["shares"] = shares
         mons.append(mon_entry)
@@ -2892,12 +2851,8 @@ def build_bind_actions(
         slot = ph.get("layoutSlot")
         if role is not None and str(role).strip() != "":
             by_role.setdefault(str(role), ph)
-        if (
-            role is not None
-            and slot is not None
-            and str(role).strip() != ""
-            and str(slot).strip() != ""
-        ):
+        if (role is not None and slot is not None and str(role).strip() != ""
+                and str(slot).strip() != ""):
             by_slot_role.setdefault((str(slot), str(role)), ph)
 
     out: list[dict[str, Any]] = []
@@ -2932,9 +2887,9 @@ def build_bind_actions(
     return out
 
 
-def collect_windows(
-    forest: Any, *, workspace: Optional[int] = None
-) -> list[dict[str, Any]]:
+def collect_windows(forest: Any,
+                    *,
+                    workspace: Optional[int] = None) -> list[dict[str, Any]]:
     """
     Collect WINDOW nodes with path + monitor.
 
@@ -2955,13 +2910,21 @@ def collect_windows(
             if _is_placeholder_window_node(n):
                 return
             w = {
-                "windowId": n.get("windowId"),
-                "wmClass": n.get("wmClass") or n.get("wm_class"),
-                "title": n.get("title"),
-                "path": path or n.get("path"),
-                "monitor": n.get("monitor") if isinstance(n.get("monitor"), int) else mon_idx,
-                "mode": n.get("mode"),
-                "pid": n.get("pid"),
+                "windowId":
+                n.get("windowId"),
+                "wmClass":
+                n.get("wmClass") or n.get("wm_class"),
+                "title":
+                n.get("title"),
+                "path":
+                path or n.get("path"),
+                "monitor":
+                n.get("monitor")
+                if isinstance(n.get("monitor"), int) else mon_idx,
+                "mode":
+                n.get("mode"),
+                "pid":
+                n.get("pid"),
             }
             rect = n.get("rect")
             if isinstance(rect, dict):
@@ -3087,9 +3050,8 @@ def _primary_mon_index(forest: Any) -> int:
         if not isinstance(m, dict):
             continue
         sk = m.get("stableKey") or ""
-        if m.get("isPrimary") is True or (
-            isinstance(sk, str) and "#primary" in sk
-        ):
+        if m.get("isPrimary") is True or (isinstance(sk, str)
+                                          and "#primary" in sk):
             idx = _monitor_node_index(m)
             if idx is not None:
                 return idx
@@ -3132,11 +3094,9 @@ def resolve_mon_key(
     alias_hint = ""
     if aliases:
         alias_hint = f"; profile aliases: {', '.join(sorted(aliases))}"
-    raise ValueError(
-        f"monitor key {key!r} not in forest "
-        f"(available stableKeys: {available}{alias_hint}; "
-        f"also monN / primary / left|right|top|bottom)"
-    )
+    raise ValueError(f"monitor key {key!r} not in forest "
+                     f"(available stableKeys: {available}{alias_hint}; "
+                     f"also monN / primary / left|right|top|bottom)")
 
 
 def _geom_role_mon_index(role: str, forest: Any) -> int:
@@ -3165,10 +3125,8 @@ def _geom_role_mon_index(role: str, forest: Any) -> int:
         if prev is None or (y, x) < prev:
             best[idx] = (y, x)
     ordered = [
-        i
-        for i, _xy in sorted(
-            best.items(), key=lambda kv: (kv[1][0], kv[1][1], kv[0])
-        )
+        i for i, _xy in sorted(best.items(),
+                               key=lambda kv: (kv[1][0], kv[1][1], kv[0]))
     ]
     if not ordered:
         return idxs[0]
@@ -3203,17 +3161,20 @@ def _rewrite_slot_mon(
     return f"{mon_n}.{rest}"
 
 
-def resolve_profile_mon_keys(profile: dict[str, Any], forest: Any) -> dict[str, Any]:
+def resolve_profile_mon_keys(profile: dict[str, Any],
+                             forest: Any) -> dict[str, Any]:
     """
     Deep-copy profile and rewrite layout keys / role slots / overflow to monN
     using forest stableKeys and optional profile monitors aliases.
     """
     out = copy.deepcopy(profile)
-    aliases_raw = out.get("monitors") if isinstance(out.get("monitors"), dict) else {}
+    aliases_raw = out.get("monitors") if isinstance(out.get("monitors"),
+                                                    dict) else {}
     aliases = {str(k): str(v) for k, v in aliases_raw.items()}
     cache: dict[str, str] = {}
     sk_map = forest_stable_key_map(forest)
-    known_heads = set(sk_map.keys()) | set(aliases.keys()) | set(_GEOM_ROLE_KEYS)
+    known_heads = set(sk_map.keys()) | set(
+        aliases.keys()) | set(_GEOM_ROLE_KEYS)
     if isinstance(out.get("layout"), dict):
         known_heads |= {str(k) for k in out["layout"].keys()}
 
@@ -3222,8 +3183,7 @@ def resolve_profile_mon_keys(profile: dict[str, Any], forest: Any) -> dict[str, 
         new_layout: dict[str, Any] = {}
         for mon_key, mon_body in layout_in.items():
             mon_n = cache.get(str(mon_key)) or resolve_mon_key_to_monN(
-                str(mon_key), forest, aliases
-            )
+                str(mon_key), forest, aliases)
             cache[str(mon_key)] = mon_n
             if mon_n in new_layout:
                 raise ValueError(
@@ -3237,17 +3197,15 @@ def resolve_profile_mon_keys(profile: dict[str, Any], forest: Any) -> dict[str, 
             continue
         slot = role.get("slot")
         if isinstance(slot, str) and slot.strip():
-            role["slot"] = _rewrite_slot_mon(
-                slot.strip(), forest, aliases, cache, known_heads
-            )
+            role["slot"] = _rewrite_slot_mon(slot.strip(), forest, aliases,
+                                             cache, known_heads)
 
     overflow = out.get("overflow")
     if isinstance(overflow, dict):
         oslot = overflow.get("slot")
         if isinstance(oslot, str) and oslot.strip():
-            overflow["slot"] = _rewrite_slot_mon(
-                oslot.strip(), forest, aliases, cache, known_heads
-            )
+            overflow["slot"] = _rewrite_slot_mon(oslot.strip(), forest,
+                                                 aliases, cache, known_heads)
 
     out.pop("monitors", None)
     return out
@@ -3355,16 +3313,14 @@ def _claim_floating_windows(
         if not match:
             continue
         candidates = [
-            w
-            for w in windows
+            w for w in windows
             if _window_key(w) not in claimed and window_matches(w, match)
         ]
         if not candidates:
             continue
         # Prefer FLOAT mode when present (Guake vs accidental title match).
         floats = [
-            w
-            for w in candidates
+            w for w in candidates
             if str(w.get("mode") or "").upper() == "FLOAT"
         ]
         pick = floats[0] if floats else candidates[0]
@@ -3375,7 +3331,8 @@ def _claim_floating_windows(
     return n
 
 
-def _match_mon_pref(match: dict[str, Any], slot_mon: Optional[int]) -> Optional[int]:
+def _match_mon_pref(match: dict[str, Any],
+                    slot_mon: Optional[int]) -> Optional[int]:
     mon = match.get("mon")
     if mon is None or mon == "":
         return slot_mon
@@ -3415,8 +3372,8 @@ def _pick_window(
 
 
 def _two_pass_claim_windows(
-    roles: list[dict[str, Any]], windows: list[dict[str, Any]]
-) -> list[Optional[dict[str, Any]]]:
+        roles: list[dict[str, Any]],
+        windows: list[dict[str, Any]]) -> list[Optional[dict[str, Any]]]:
     """
     Assign windows to roles without earlier slots stealing later mons.
 
@@ -3429,8 +3386,7 @@ def _two_pass_claim_windows(
     def free_matches(role: dict[str, Any]) -> list[dict[str, Any]]:
         match = role.get("match") or {}
         return [
-            w
-            for w in windows
+            w for w in windows
             if _window_key(w) not in claimed and window_matches(w, match)
         ]
 
@@ -3456,7 +3412,8 @@ def _two_pass_claim_windows(
     return chosen
 
 
-def _normalize_role_pins(role_pins: Optional[dict[str, Any]]) -> dict[str, Any]:
+def _normalize_role_pins(
+        role_pins: Optional[dict[str, Any]]) -> dict[str, Any]:
     """role id → windowId (skip empty)."""
     if not isinstance(role_pins, dict):
         return {}
@@ -3548,9 +3505,9 @@ def _chrome_pwa_app_id(s: str) -> Optional[str]:
         return n[4:]
     if not n.startswith("chrome-"):
         return None
-    rest = n[len("chrome-") :]
+    rest = n[len("chrome-"):]
     if rest.endswith("-default") and len(rest) > len("-default"):
-        return rest[: -len("-default")]
+        return rest[:-len("-default")]
     m = re.match(r"^(.+)-profile(?:[._-].+)?$", rest)
     if m and m.group(1):
         return m.group(1)
@@ -3636,13 +3593,13 @@ def _focus_actions_from_profile(
     """
     by_id = {
         str(r.get("id")): r
-        for r in role_results
-        if r.get("id") is not None
+        for r in role_results if r.get("id") is not None
     }
     actions: list[dict[str, Any]] = []
     seen_sels: set[str] = set()
     opened = just_opened_roles or set()
-    last_tab_by_wid = _last_tab_focus_window_ids(forest) if forest is not None else set()
+    last_tab_by_wid = _last_tab_focus_window_ids(
+        forest) if forest is not None else set()
 
     def add_role_focus(rid: Any, *, reason: str) -> None:
         if rid is None:
@@ -3658,14 +3615,12 @@ def _focus_actions_from_profile(
         if sel in seen_sels:
             return
         seen_sels.add(sel)
-        actions.append(
-            {
-                "op": "focus",
-                "selector": sel,
-                "role": key,
-                "reason": reason,
-            }
-        )
+        actions.append({
+            "op": "focus",
+            "selector": sel,
+            "role": key,
+            "reason": reason,
+        })
 
     def walk(children: Any) -> None:
         if not isinstance(children, list):
@@ -3677,7 +3632,8 @@ def _focus_actions_from_profile(
             if isinstance(nested, list) and nested:
                 walk(nested)
             lay = str(ch.get("layout") or "").strip().lower()
-            roles_list = ch.get("roles") if isinstance(ch.get("roles"), list) else []
+            roles_list = ch.get("roles") if isinstance(ch.get("roles"),
+                                                       list) else []
             is_group = lay in ("tabbed", "stacked") or len(roles_list) >= 2
             if not is_group:
                 continue
@@ -3686,9 +3642,8 @@ def _focus_actions_from_profile(
                 add_role_focus(str(active).strip(), reason="active")
                 continue
             # No profile active: preserve survivor open leaf when companions join.
-            survivor = _pick_survivor_open_role(
-                roles_list, by_id, opened, last_tab_by_wid
-            )
+            survivor = _pick_survivor_open_role(roles_list, by_id, opened,
+                                                last_tab_by_wid)
             if survivor is not None:
                 add_role_focus(survivor, reason="survivor")
 
@@ -3811,9 +3766,8 @@ def _slot_layout_modes(prof: dict[str, Any]) -> dict[str, str]:
     return modes
 
 
-def _role_window_ids_for_slot(
-    role_results: list[dict[str, Any]], slot: str
-) -> list[Any]:
+def _role_window_ids_for_slot(role_results: list[dict[str, Any]],
+                              slot: str) -> list[Any]:
     """Ordered windowIds for claimed roles targeting slot (profile order)."""
     out: list[Any] = []
     for r in role_results:
@@ -3826,9 +3780,8 @@ def _role_window_ids_for_slot(
     return out
 
 
-def _role_window_ids_for_slot_prefix(
-    role_results: list[dict[str, Any]], slot_prefix: str
-) -> list[Any]:
+def _role_window_ids_for_slot_prefix(role_results: list[dict[str, Any]],
+                                     slot_prefix: str) -> list[Any]:
     """
     Claimed role windowIds under slot or any nested leaf (mon0.s1 → ghostty,
     nautilus under mon0.s1.*). Profile order.
@@ -3848,9 +3801,8 @@ def _role_window_ids_for_slot_prefix(
     return out
 
 
-def _parent_hv_split_slot(
-    slot: str, layout_slot_modes: dict[str, str]
-) -> Optional[str]:
+def _parent_hv_split_slot(slot: str,
+                          layout_slot_modes: dict[str, str]) -> Optional[str]:
     """Nearest ancestor (incl. self) with hsplit/vsplit mode; None if none."""
     if not slot or "." not in slot:
         return None
@@ -3942,14 +3894,16 @@ def _first_role_ids_in_layout_node(node: dict[str, Any]) -> list[str]:
     return []
 
 
-def _mon_child_reps(
-    role_results: list[dict[str, Any]], prof: dict[str, Any], mon_key: str
-) -> list[Any]:
+def _mon_child_reps(role_results: list[dict[str, Any]], prof: dict[str, Any],
+                    mon_key: str) -> list[Any]:
     """
     One claimed windowId per mon layout child in profile order.
     First role under that child that has a windowId (tabs → first tab role).
     """
-    by_id = {str(r.get("id")): r for r in role_results if r.get("id") is not None}
+    by_id = {
+        str(r.get("id")): r
+        for r in role_results if r.get("id") is not None
+    }
     mon_body = (prof.get("layout") or {}).get(mon_key)
     if not isinstance(mon_body, dict):
         return []
@@ -3969,9 +3923,8 @@ def _mon_child_reps(
     return out
 
 
-def _mon_order_matches(
-    parent_info: dict[str, dict[str, Any]], reps: list[Any]
-) -> bool:
+def _mon_order_matches(parent_info: dict[str, dict[str, Any]],
+                       reps: list[Any]) -> bool:
     """
     True when reps share one mon and mon-level child indices are strictly
     increasing (profile order already matches live L→R / T→B).
@@ -4015,22 +3968,22 @@ def _mon_order_actions(
             continue
         if _mon_order_matches(parent_info, reps):
             continue
-        actions.append(
-            {
-                "op": "ensure_order",
-                "slot": mon_key,
-                "mode": split,
-                "windowIds": reps,
-            }
-        )
+        actions.append({
+            "op": "ensure_order",
+            "slot": mon_key,
+            "mode": split,
+            "windowIds": reps,
+        })
     return actions
 
 
-def _layout_node_child_reps(
-    role_results: list[dict[str, Any]], node: dict[str, Any]
-) -> list[Any]:
+def _layout_node_child_reps(role_results: list[dict[str, Any]],
+                            node: dict[str, Any]) -> list[Any]:
     """One claimed windowId per layout child (profile order); skip unclaimed."""
-    by_id = {str(r.get("id")): r for r in role_results if r.get("id") is not None}
+    by_id = {
+        str(r.get("id")): r
+        for r in role_results if r.get("id") is not None
+    }
     out: list[Any] = []
     for ch in node.get("children") or []:
         if not isinstance(ch, dict):
@@ -4069,22 +4022,16 @@ def _size_actions(
             return
         children = node.get("children")
         shares = normalize_shares(node.get("share"))
-        if (
-            shares is not None
-            and isinstance(children, list)
-            and len(children) >= 2
-            and len(shares) == len(children)
-        ):
+        if (shares is not None and isinstance(children, list)
+                and len(children) >= 2 and len(shares) == len(children)):
             reps = _layout_node_child_reps(role_results, node)
             if len(reps) >= 2 and len(reps) == len(shares):
-                actions.append(
-                    {
-                        "op": "ensure_sizes",
-                        "slot": slot,
-                        "windowIds": reps,
-                        "shares": shares,
-                    }
-                )
+                actions.append({
+                    "op": "ensure_sizes",
+                    "slot": slot,
+                    "windowIds": reps,
+                    "shares": shares,
+                })
         if isinstance(children, list):
             for ch in children:
                 if not isinstance(ch, dict):
@@ -4103,8 +4050,8 @@ def _size_actions(
 
 
 def _soft_park_window_sort_key(
-    w: dict[str, Any], parent_info: dict[str, dict[str, Any]]
-) -> Optional[tuple]:
+        w: dict[str, Any],
+        parent_info: dict[str, dict[str, Any]]) -> Optional[tuple]:
     """Higher key = later mon-child / leaf (last unit on that mon)."""
     mon = window_monitor_index(w)
     if mon is None:
@@ -4178,9 +4125,8 @@ def _soft_park_anchor(
     return best
 
 
-def _compute_thrash_risk(
-    actions: list[dict[str, Any]], counts: dict[str, Any]
-) -> dict[str, Any]:
+def _compute_thrash_risk(actions: list[dict[str, Any]],
+                         counts: dict[str, Any]) -> dict[str, Any]:
     """
     Score how destructive a plan is (cross-mon moves, mon ensures, structure).
     CLI may warn / refuse on high scores (TZ2).
@@ -4228,14 +4174,8 @@ def _compute_thrash_risk(
     if parks and any(r.startswith("hard-park") for r in reasons):
         cross_mon += parks
     ordered = int(counts.get("ordered") or 0)
-    score = (
-        3 * cross_mon
-        + 2 * mon_ensures
-        + 2 * structure_groups
-        + parks
-        + ordered
-        + int(counts.get("closed") or 0)
-    )
+    score = (3 * cross_mon + 2 * mon_ensures + 2 * structure_groups + parks +
+             ordered + int(counts.get("closed") or 0))
     # Dedup reasons while preserving order
     seen: set[str] = set()
     uniq: list[str] = []
@@ -4291,9 +4231,8 @@ def _mon_node_rect(mon_node: dict[str, Any]) -> Optional[dict[str, float]]:
     }
 
 
-def _split_rect(
-    parent: dict[str, float], n: int, split: str
-) -> list[dict[str, float]]:
+def _split_rect(parent: dict[str, float], n: int,
+                split: str) -> list[dict[str, float]]:
     if n <= 0:
         return []
     if n == 1:
@@ -4303,25 +4242,21 @@ def _split_rect(
     if split_l in ("vsplit", "v", "vertical"):
         h = parent["height"] / n
         for i in range(n):
-            out.append(
-                {
-                    "x": parent["x"],
-                    "y": parent["y"] + i * h,
-                    "width": parent["width"],
-                    "height": h,
-                }
-            )
+            out.append({
+                "x": parent["x"],
+                "y": parent["y"] + i * h,
+                "width": parent["width"],
+                "height": h,
+            })
     else:
         w = parent["width"] / n
         for i in range(n):
-            out.append(
-                {
-                    "x": parent["x"] + i * w,
-                    "y": parent["y"],
-                    "width": w,
-                    "height": parent["height"],
-                }
-            )
+            out.append({
+                "x": parent["x"] + i * w,
+                "y": parent["y"],
+                "width": w,
+                "height": parent["height"],
+            })
     return out
 
 
@@ -4339,9 +4274,8 @@ def _rect_overlap_area(a: dict[str, float], b: dict[str, float]) -> float:
     return (ix2 - ix1) * (iy2 - iy1)
 
 
-def _build_view_regions(
-    prof: dict[str, Any], forest: Any
-) -> list[dict[str, Any]]:
+def _build_view_regions(prof: dict[str, Any],
+                        forest: Any) -> list[dict[str, Any]]:
     """
     Profile mon-child / nested pane regions in profile order.
     Equal splits of mon rect (tree rect or geom: stableKey; synthetic fallback).
@@ -4366,29 +4300,25 @@ def _build_view_regions(
             nested = ch.get("children")
             if isinstance(nested, list) and nested:
                 nest_split = str(
-                    ch.get("split") or ch.get("layout") or "hsplit"
-                ).strip().lower()
+                    ch.get("split") or ch.get("layout")
+                    or "hsplit").strip().lower()
                 if nest_split in ("tabbed", "stacked"):
-                    views.append(
-                        {
-                            "slot": full,
-                            "mon_idx": mon_idx,
-                            "rect": r,
-                            "order": order,
-                        }
-                    )
-                    order += 1
-                else:
-                    walk(nested, r, full, nest_split, mon_idx)
-            else:
-                views.append(
-                    {
+                    views.append({
                         "slot": full,
                         "mon_idx": mon_idx,
                         "rect": r,
                         "order": order,
-                    }
-                )
+                    })
+                    order += 1
+                else:
+                    walk(nested, r, full, nest_split, mon_idx)
+            else:
+                views.append({
+                    "slot": full,
+                    "mon_idx": mon_idx,
+                    "rect": r,
+                    "order": order,
+                })
                 order += 1
 
     for mon_key, mon_body in (prof.get("layout") or {}).items():
@@ -4583,9 +4513,8 @@ def _ordered_slot_window_ids(
     return roles + companions
 
 
-def _sibling_order_ids(
-    window_ids: list[Any], parent_info: dict[str, dict[str, Any]]
-) -> list[Any]:
+def _sibling_order_ids(window_ids: list[Any],
+                       parent_info: dict[str, dict[str, Any]]) -> list[Any]:
     """Sort windowIds by sibling index under their parent CON."""
 
     def sort_key(wid: Any) -> tuple:
@@ -4600,9 +4529,8 @@ def _sibling_order_ids(
     return sorted(window_ids, key=sort_key)
 
 
-def _sibling_order_matches(
-    window_ids: list[Any], parent_info: dict[str, dict[str, Any]]
-) -> bool:
+def _sibling_order_matches(window_ids: list[Any],
+                           parent_info: dict[str, dict[str, Any]]) -> bool:
     """True when window_ids are already in live sibling order (profile order)."""
     if len(window_ids) < 2:
         return True
@@ -4610,9 +4538,8 @@ def _sibling_order_matches(
     return [str(x) for x in live] == [str(x) for x in window_ids]
 
 
-def _role_window_ids_for_mon(
-    role_results: list[dict[str, Any]], mon_key: str
-) -> list[Any]:
+def _role_window_ids_for_mon(role_results: list[dict[str, Any]],
+                             mon_key: str) -> list[Any]:
     """WindowIds for roles whose slot is on mon_key (mon0 / mon1 / primary)."""
     out: list[Any] = []
     for r in role_results:
@@ -4656,8 +4583,7 @@ def _mon_layout_child_id(slot: Any) -> Optional[str]:
 
 
 def _parent_path_for_wid(
-    wid: Any, parent_info: dict[str, dict[str, Any]]
-) -> Optional[str]:
+        wid: Any, parent_info: dict[str, dict[str, Any]]) -> Optional[str]:
     info = parent_info.get(str(wid)) if wid is not None else None
     if not info:
         return None
@@ -4667,9 +4593,7 @@ def _parent_path_for_wid(
     return str(pp)
 
 
-def _is_con_parent(
-    wid: Any, parent_info: dict[str, dict[str, Any]]
-) -> bool:
+def _is_con_parent(wid: Any, parent_info: dict[str, dict[str, Any]]) -> bool:
     """True when window's parent is a CON (not MONITOR / mon-direct)."""
     info = parent_info.get(str(wid)) if wid is not None else None
     if not info:
@@ -4774,9 +4698,8 @@ def _mon_child_topology_mismatches(
                 loc = _mon_child_loc(path)
                 if loc is not None:
                     mon_direct_key = f"{loc[0]}/{loc[1]}"
-                    mon_direct_to_children.setdefault(mon_direct_key, set()).add(
-                        child_id
-                    )
+                    mon_direct_to_children.setdefault(mon_direct_key,
+                                                      set()).add(child_id)
                 # Only CON parents: mon-direct siblings share MONITOR correctly.
                 if not _is_con_parent(wid, parent_info):
                     continue
@@ -4786,41 +4709,35 @@ def _mon_child_topology_mismatches(
                 path_to_children.setdefault(pp, set()).add(child_id)
         polluted = {
             pp: sorted(kids)
-            for pp, kids in path_to_children.items()
-            if len(kids) >= 2
+            for pp, kids in path_to_children.items() if len(kids) >= 2
         }
         # Nested mon collapse: different profile mon-children under one mon-direct
         # index (e.g. mo0ws0/0 HSPLIT wrapping both tab and ghostty).
         collapsed = {
             k: sorted(kids)
-            for k, kids in mon_direct_to_children.items()
-            if len(kids) >= 2
+            for k, kids in mon_direct_to_children.items() if len(kids) >= 2
         }
         if not polluted and not collapsed:
             continue
         want_ids = [
-            str(c.get("id"))
-            for c in children
+            str(c.get("id")) for c in children
             if isinstance(c, dict) and c.get("id") is not None
         ]
         got = polluted if polluted else collapsed
-        detail_kind = (
-            "share parent CON path(s)"
-            if polluted
-            else "share mon-direct index (nested mon collapse)"
-        )
-        mismatches.append(
-            {
-                "kind": "mon-child",
-                "slot": mon_key,
-                "want": want_ids,
-                "got": got,
-                "detail": (
-                    f"{mon_key} mon-child roles {detail_kind}: "
-                    + ", ".join(sorted(got))
-                ),
-            }
-        )
+        detail_kind = ("share parent CON path(s)" if polluted else
+                       "share mon-direct index (nested mon collapse)")
+        mismatches.append({
+            "kind":
+            "mon-child",
+            "slot":
+            mon_key,
+            "want":
+            want_ids,
+            "got":
+            got,
+            "detail": (f"{mon_key} mon-child roles {detail_kind}: " +
+                       ", ".join(sorted(got))),
+        })
     return mismatches
 
 
@@ -4952,13 +4869,13 @@ def compare_layout_structure(
     if already_validated and isinstance(profile, dict) and "roles" in profile:
         prof = profile
     else:
-        prof = validate_reconcile_profile(
-            profile, **forest_profile_mon_kwargs(forest)
-        )
+        prof = validate_reconcile_profile(profile,
+                                          **forest_profile_mon_kwargs(forest))
         prof = resolve_profile_mon_keys(prof, forest)
 
     windows = collect_windows(forest)
-    pinfo = parent_info if parent_info is not None else _window_parent_index(forest)
+    pinfo = parent_info if parent_info is not None else _window_parent_index(
+        forest)
     layout_slot_modes = _slot_layout_modes(prof)
 
     if role_results is None:
@@ -4994,34 +4911,42 @@ def compare_layout_structure(
             path = str((info or {}).get("path") or r.get("path") or "")
             if path.startswith("mo") and "ws" in path:
                 try:
-                    win_mon = int(path[2 : path.index("ws")])
+                    win_mon = int(path[2:path.index("ws")])
                 except ValueError:
                     win_mon = None
-        if desired is not None and win_mon is not None and int(win_mon) != int(desired):
-            mismatches.append(
-                {
-                    "kind": "role-mon",
-                    "slot": slot,
-                    "want": desired,
-                    "got": int(win_mon),
-                    "detail": f"role {r.get('id')} on mon{win_mon}, want mon{desired}",
-                }
-            )
+        if desired is not None and win_mon is not None and int(win_mon) != int(
+                desired):
+            mismatches.append({
+                "kind":
+                "role-mon",
+                "slot":
+                slot,
+                "want":
+                desired,
+                "got":
+                int(win_mon),
+                "detail":
+                f"role {r.get('id')} on mon{win_mon}, want mon{desired}",
+            })
 
     # Mon-level layout type.
-    for mon_key in sorted(_mons_with_split_mismatch(forest, prof, role_results)):
+    for mon_key in sorted(_mons_with_split_mismatch(forest, prof,
+                                                    role_results)):
         mon_body = (prof.get("layout") or {}).get(mon_key) or {}
         want = str((mon_body or {}).get("split") or "").strip().upper()
         live = _forest_mon_layouts(forest).get(mon_key)
-        mismatches.append(
-            {
-                "kind": "mon-layout",
-                "slot": mon_key,
-                "want": want,
-                "got": live,
-                "detail": f"{mon_key} live layout {live!r} != profile {want!r}",
-            }
-        )
+        mismatches.append({
+            "kind":
+            "mon-layout",
+            "slot":
+            mon_key,
+            "want":
+            want,
+            "got":
+            live,
+            "detail":
+            f"{mon_key} live layout {live!r} != profile {want!r}",
+        })
 
     # Multi-role groups: tabbed/stacked/nested h-v must share one CON of that mode.
     for slot, mode in sorted(layout_slot_modes.items()):
@@ -5037,37 +4962,39 @@ def compare_layout_structure(
         if len(wids) < 2:
             continue
         if not _windows_share_group(wids, pinfo, mode_l):
-            mismatches.append(
-                {
-                    "kind": "group",
-                    "slot": slot,
-                    "want": mode_l,
-                    "got": None,
-                    "detail": f"{mode_l} roles not co-grouped under one CON: {slot}",
-                }
-            )
+            mismatches.append({
+                "kind":
+                "group",
+                "slot":
+                slot,
+                "want":
+                mode_l,
+                "got":
+                None,
+                "detail":
+                f"{mode_l} roles not co-grouped under one CON: {slot}",
+            })
             continue
         # Co-grouped but polluted by another mon-child role (giant tab bag).
-        if mode_l in ("tabbed", "stacked") and _slot_parent_has_foreign_mon_child(
-            slot, wids, role_results, pinfo
-        ):
-            mismatches.append(
-                {
-                    "kind": "group",
-                    "slot": slot,
-                    "want": mode_l,
-                    "got": "polluted",
-                    "detail": (
-                        f"{mode_l} group for {slot} shares parent with "
-                        "foreign mon-child role(s)"
-                    ),
-                }
-            )
+        if mode_l in ("tabbed",
+                      "stacked") and _slot_parent_has_foreign_mon_child(
+                          slot, wids, role_results, pinfo):
+            mismatches.append({
+                "kind":
+                "group",
+                "slot":
+                slot,
+                "want":
+                mode_l,
+                "got":
+                "polluted",
+                "detail": (f"{mode_l} group for {slot} shares parent with "
+                           "foreign mon-child role(s)"),
+            })
 
     # Mon-child topology: different profile mon children under one CON path.
-    mismatches.extend(
-        _mon_child_topology_mismatches(role_results, pinfo, prof)
-    )
+    mismatches.extend(_mon_child_topology_mismatches(role_results, pinfo,
+                                                     prof))
 
     return {
         "match": len(mismatches) == 0,
@@ -5075,9 +5002,8 @@ def compare_layout_structure(
     }
 
 
-def _mon_split_anchor_ids(
-    role_results: list[dict[str, Any]], mon_key: str, prof: dict[str, Any]
-) -> list[Any]:
+def _mon_split_anchor_ids(role_results: list[dict[str, Any]], mon_key: str,
+                          prof: dict[str, Any]) -> list[Any]:
     """
     Window ids for mon-level hsplit/vsplit ensure.
 
@@ -5085,7 +5011,10 @@ def _mon_split_anchor_ids(
     under tab/stack/vsplit CONs must not be anchors — layout rewrites the
     selected window's parent and would demote nested VSPLIT/TABBED → mon mode.
     """
-    by_id = {str(r.get("id")): r for r in role_results if r.get("id") is not None}
+    by_id = {
+        str(r.get("id")): r
+        for r in role_results if r.get("id") is not None
+    }
     mon_body = (prof.get("layout") or {}).get(mon_key)
     out: list[Any] = []
 
@@ -5194,18 +5123,22 @@ def _window_parent_index(forest: Any) -> dict[str, dict[str, Any]]:
         mons = forest.get("monitors")
         if isinstance(mons, list):
             for m in _order_monitors(mons):
-                walk(m, str(m.get("id") or "") if isinstance(m, dict) else "", None, None, None)
+                walk(m,
+                     str(m.get("id") or "") if isinstance(m, dict) else "",
+                     None, None, None)
         else:
             walk(forest, "", None, None, None)
     elif isinstance(forest, list):
         for m in _order_monitors(forest):
-            walk(m, str(m.get("id") or "") if isinstance(m, dict) else "", None, None, None)
+            walk(m,
+                 str(m.get("id") or "") if isinstance(m, dict) else "", None,
+                 None, None)
     return out
 
 
-def _windows_share_group(
-    window_ids: list[Any], parent_info: dict[str, dict[str, Any]], mode: str
-) -> bool:
+def _windows_share_group(window_ids: list[Any],
+                         parent_info: dict[str, dict[str,
+                                                     Any]], mode: str) -> bool:
     """
     True when all windows share one CON parent with the desired layout.
 
@@ -5231,7 +5164,9 @@ def _windows_share_group(
     if len(parents) != 1 or None in parents or "" in parents:
         return False
     # Must be under a CON (not flat siblings on the monitor)
-    if any(str(i.get("parent_type") or "").upper() == "MONITOR" for i in infos):
+    if any(
+            str(i.get("parent_type") or "").upper() == "MONITOR"
+            for i in infos):
         return False
     if want:
         got = str(infos[0].get("parent_layout") or "").upper()
@@ -5254,7 +5189,8 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
     """
     if not isinstance(forest, dict):
         raise ValueError("forest must be a JSON object")
-    prof = validate_reconcile_profile(profile, **forest_profile_mon_kwargs(forest))
+    prof = validate_reconcile_profile(profile,
+                                      **forest_profile_mon_kwargs(forest))
     prof = resolve_profile_mon_keys(prof, forest)
 
     windows = collect_windows(forest)
@@ -5272,7 +5208,8 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
             continue
         desired = mon_index_from_slot(str(r.get("slot") or ""))
         win_mon = r.get("monitor")
-        if desired is not None and win_mon is not None and int(win_mon) != int(desired):
+        if desired is not None and win_mon is not None and int(win_mon) != int(
+                desired):
             wrong_mon += 1
     if wrong_mon >= _THRASH_WRONG_MON_K:
         score += 2 * wrong_mon
@@ -5312,7 +5249,8 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
         # ≫ N mon-level children (e.g. 5 vs 2); 4 vs 2 alone is not thrash
         if n_exp > 0 and n_live > max(n_exp + 1, n_exp * 2):
             score += 3
-            reasons.append(f"mon-children-excess:mon{mon_idx}:{n_live}>{n_exp}")
+            reasons.append(
+                f"mon-children-excess:mon{mon_idx}:{n_live}>{n_exp}")
 
         for view in expected:
             if not isinstance(view, dict) or not view.get("id"):
@@ -5327,13 +5265,10 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
             if mode not in ("tabbed", "stacked") or len(view_roles) < 2:
                 continue
             wids = [
-                r["windowId"]
-                for r in role_results
-                if r.get("windowId") is not None
-                and (
+                r["windowId"] for r in role_results
+                if r.get("windowId") is not None and (
                     str(r.get("slot") or "") == slot
-                    or str(r.get("slot") or "").startswith(slot + ".")
-                )
+                    or str(r.get("slot") or "").startswith(slot + "."))
             ]
             if not wids:
                 continue
@@ -5368,8 +5303,8 @@ def detect_thrash(forest: Any, profile: Any) -> dict[str, Any]:
 
 
 def _claim_roles_for_detect(
-    prof: dict[str, Any], windows: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+        prof: dict[str, Any],
+        windows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Claim windows for roles (same two-pass preference as plan_reconcile)."""
     roles = list(prof.get("roles") or [])
     picks = _two_pass_claim_windows(roles, windows)
@@ -5446,7 +5381,7 @@ def _parse_regex_literal(body: str) -> tuple[str, str]:
         i += 1
     if i >= len(body) or body[i] != "/":
         raise ValueError("unterminated regex")
-    flags = body[i + 1 :]
+    flags = body[i + 1:]
     if flags and not re.fullmatch(r"[gimsuy]*", flags):
         raise ValueError(f"invalid regex flags: {flags}")
     re.compile(source, _re_flags(flags))  # validate

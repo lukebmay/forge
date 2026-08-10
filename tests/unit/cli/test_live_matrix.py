@@ -80,35 +80,31 @@ def _walk_wins(forest):
 def _add_guake(forest, wid=999, *, focused=True):
     f = json.loads(json.dumps(forest))
     mon0 = f["monitors"][0]
-    mon0.setdefault("children", []).append(
-        {
-            "nodeType": "WINDOW",
-            "layout": None,
-            "children": [],
-            "wmClass": "Guake",
-            "title": "Guake",
-            "windowId": wid,
-            "mode": "FLOAT",
-            "monitor": 0,
-        }
-    )
+    mon0.setdefault("children", []).append({
+        "nodeType": "WINDOW",
+        "layout": None,
+        "children": [],
+        "wmClass": "Guake",
+        "title": "Guake",
+        "windowId": wid,
+        "mode": "FLOAT",
+        "monitor": 0,
+    })
     if focused:
         f["focusWindowId"] = wid
     return f
 
 
 class TestSessionAndAgent(unittest.TestCase):
+
     def test_session_x11_wayland(self):
+        self.assertEqual(session_type_from_env({"XDG_SESSION_TYPE": "x11"}),
+                         "x11")
         self.assertEqual(
-            session_type_from_env({"XDG_SESSION_TYPE": "x11"}), "x11"
-        )
+            session_type_from_env({"XDG_SESSION_TYPE": "wayland"}), "wayland")
         self.assertEqual(
-            session_type_from_env({"XDG_SESSION_TYPE": "wayland"}), "wayland"
-        )
-        self.assertEqual(
-            session_type_from_env(
-                {"WAYLAND_DISPLAY": "wayland-0"}, xdg_session_type=""
-            ),
+            session_type_from_env({"WAYLAND_DISPLAY": "wayland-0"},
+                                  xdg_session_type=""),
             "wayland",
         )
 
@@ -127,9 +123,12 @@ class TestSessionAndAgent(unittest.TestCase):
 
     def test_capability_true_cold_guake(self):
         forest = _add_guake(_load("tree-perfect.json"))
-        cap = capability_from_forest(
-            forest, ping={"ok": True, "versionName": "test"}, env={"XDG_SESSION_TYPE": "x11"}
-        )
+        cap = capability_from_forest(forest,
+                                     ping={
+                                         "ok": True,
+                                         "versionName": "test"
+                                     },
+                                     env={"XDG_SESSION_TYPE": "x11"})
         self.assertEqual(cap.session, "x11")
         self.assertTrue(cap.can_hup)
         self.assertFalse(cap.can_nested)
@@ -141,9 +140,7 @@ class TestSessionAndAgent(unittest.TestCase):
     def test_capability_true_cold_blocked_ghostty(self):
         forest = _load("tree-perfect.json")
         forest["focusWindowId"] = 103
-        cap = capability_from_forest(
-            forest, env={"XDG_SESSION_TYPE": "x11"}
-        )
+        cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
         self.assertEqual(cap.agent_terminal, "ghostty")
         self.assertFalse(cap.can_true_cold)
         self.assertTrue(cap.can_hup)
@@ -168,6 +165,7 @@ class TestSessionAndAgent(unittest.TestCase):
 
 
 class TestSelect(unittest.TestCase):
+
     def test_partial_excludes_l2(self):
         forest = _add_guake(_load("tree-perfect.json"))
         cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
@@ -182,7 +180,8 @@ class TestSelect(unittest.TestCase):
         cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
         sel = select_cases(suite="cold", capability=cap)
         self.assertEqual(sel.cases, [])
-        self.assertTrue(any("true cold blocked" in s["reason"] for s in sel.skipped))
+        self.assertTrue(
+            any("true cold blocked" in s["reason"] for s in sel.skipped))
 
     def test_cold_with_guake(self):
         forest = _add_guake(_load("tree-perfect.json"))
@@ -194,9 +193,9 @@ class TestSelect(unittest.TestCase):
     def test_behaviors_open_leaf(self):
         forest = _add_guake(_load("tree-perfect.json"))
         cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
-        sel = select_cases(
-            suite="auto", capability=cap, behaviors={"open-leaf"}
-        )
+        sel = select_cases(suite="auto",
+                           capability=cap,
+                           behaviors={"open-leaf"})
         self.assertTrue(sel.cases)
         for c in sel.cases:
             self.assertIn("open-leaf", c.behaviors)
@@ -251,14 +250,17 @@ class TestSelect(unittest.TestCase):
                 self.fail(f"{c.id} still uses personal profile {c.profile!r}")
 
     def test_work_hint_multi_instance(self):
-        self.assertIn("multi-instance", behaviors_from_work_hint("multi-instance"))
+        self.assertIn("multi-instance",
+                      behaviors_from_work_hint("multi-instance"))
         forest = _add_guake(_load("tree-perfect.json"))
-        cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "wayland"})
+        cap = capability_from_forest(forest,
+                                     env={"XDG_SESSION_TYPE": "wayland"})
         sel = recommend_for_work("multi-instance", cap)
         self.assertTrue(any(c.id == "L1.ghosttys-multi" for c in sel.cases))
 
 
 class TestChecks(unittest.TestCase):
+
     def test_open_leaf_and_agent(self):
         forest = _load("tree-perfect.json")
         # fixture mon0 tab lastTabFocus may be unset — set Grok
@@ -268,11 +270,13 @@ class TestChecks(unittest.TestCase):
         mon1_tab["lastTabFocusId"] = 202
         forest["focusWindowId"] = 103
         cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
-        ok, _ = check_mon_open_leaf_contains(forest, mon_index=0, substring="Grok")
+        ok, _ = check_mon_open_leaf_contains(forest,
+                                             mon_index=0,
+                                             substring="Grok")
         self.assertTrue(ok)
-        ok, _ = check_mon_open_leaf_contains(
-            forest, mon_index=1, substring="YouTube"
-        )
+        ok, _ = check_mon_open_leaf_contains(forest,
+                                             mon_index=1,
+                                             substring="YouTube")
         self.assertTrue(ok)
         ok, _ = check_agent_survives(forest, "103")
         self.assertTrue(ok)
@@ -291,18 +295,16 @@ class TestChecks(unittest.TestCase):
         # remove mon1 ghostty → fail
         mon1 = forest["monitors"][1]
         mon1["children"] = [
-            c
-            for c in mon1.get("children") or []
-            if not (
-                isinstance(c, dict)
-                and "ghostty" in str(c.get("wmClass") or "").lower()
-            )
+            c for c in mon1.get("children") or []
+            if not (isinstance(c, dict)
+                    and "ghostty" in str(c.get("wmClass") or "").lower())
         ]
         ok2, _ = check_dual_ghostty_mons(forest)
         self.assertFalse(ok2)
 
 
 class TestLayoutMetrics(unittest.TestCase):
+
     def test_extract_from_human_and_apply_json(self):
         sample = """
 forge layout: host=black profile=dev
@@ -406,18 +408,16 @@ class TestSetupSelectors(unittest.TestCase):
         forest = _load("tree-perfect.json")
         self.assertFalse(forest_has_nautilus(forest))
         mon0 = forest["monitors"][0]
-        mon0.setdefault("children", []).append(
-            {
-                "nodeType": "WINDOW",
-                "layout": None,
-                "children": [],
-                "wmClass": "org.gnome.Nautilus",
-                "title": "Home",
-                "windowId": 555,
-                "mode": "TILE",
-                "monitor": 0,
-            }
-        )
+        mon0.setdefault("children", []).append({
+            "nodeType": "WINDOW",
+            "layout": None,
+            "children": [],
+            "wmClass": "org.gnome.Nautilus",
+            "title": "Home",
+            "windowId": 555,
+            "mode": "TILE",
+            "monitor": 0,
+        })
         self.assertTrue(forest_has_nautilus(forest))
 
     def test_dev_shape_and_some_tiles(self):
@@ -431,7 +431,14 @@ class TestSetupSelectors(unittest.TestCase):
         ok2, _ = forest_looks_like_dev_shape(empty)
         self.assertFalse(ok2)
         # No tiles at all
-        bare = {"monitors": [{"children": []}, {"children": []}], "focusWindowId": None}
+        bare = {
+            "monitors": [{
+                "children": []
+            }, {
+                "children": []
+            }],
+            "focusWindowId": None
+        }
         self.assertFalse(forest_has_some_tiles(bare))
 
 
@@ -465,9 +472,11 @@ class TestFocusCloseChecks(unittest.TestCase):
         forest = _add_guake(_load("tree-perfect.json"))
         cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
         close_sel = recommend_for_work("close", cap)
-        self.assertTrue(any(c.id == "L1.close-focus-lft" for c in close_sel.cases))
+        self.assertTrue(
+            any(c.id == "L1.close-focus-lft" for c in close_sel.cases))
         # tight: close does not pull open-leaf matrix
-        self.assertFalse(any(c.id == "L1.ghosttys-only" for c in close_sel.cases))
+        self.assertFalse(
+            any(c.id == "L1.ghosttys-only" for c in close_sel.cases))
 
     def test_catalog_close_focus_case(self):
         ids = {c.id for c in LIVE_CASES}

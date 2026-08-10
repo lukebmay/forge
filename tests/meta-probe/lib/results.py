@@ -16,7 +16,8 @@ from lib.settle import settle_result_to_dict
 
 
 def session_type_label(explicit: Optional[str] = None) -> str:
-    raw = (explicit or os.environ.get("XDG_SESSION_TYPE") or "unknown").strip().lower()
+    raw = (explicit or os.environ.get("XDG_SESSION_TYPE")
+           or "unknown").strip().lower()
     if raw in ("wayland", "waylands"):
         return "wayland"
     if raw in ("x11", "xorg", "mir"):
@@ -24,7 +25,9 @@ def session_type_label(explicit: Optional[str] = None) -> str:
     return raw or "unknown"
 
 
-def host_meta(host: Optional[str] = None, *, session: Optional[str] = None) -> dict[str, Any]:
+def host_meta(host: Optional[str] = None,
+              *,
+              session: Optional[str] = None) -> dict[str, Any]:
     st = session_type_label(session)
     return {
         "host": host or socket.gethostname().split(".")[0],
@@ -39,7 +42,8 @@ def host_meta(host: Optional[str] = None, *, session: Optional[str] = None) -> d
     }
 
 
-def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+def deep_merge(base: dict[str, Any], overlay: dict[str,
+                                                   Any]) -> dict[str, Any]:
     out = dict(base)
     for k, v in overlay.items():
         if k in out and isinstance(out[k], dict) and isinstance(v, dict):
@@ -69,7 +73,9 @@ def namespace_dir(
     session: str,
     suite: str,
 ) -> Path:
-    safe = lambda s: "".join(c if c.isalnum() or c in "-_." else "-" for c in s)
+    def safe(s: str) -> str:
+        return "".join(c if c.isalnum() or c in "-_." else "-" for c in s)
+
     return results_root / safe(host) / safe(session) / safe(suite)
 
 
@@ -171,7 +177,8 @@ def atomic_write_json(path: Path, doc: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + f".tmp.{os.getpid()}")
     try:
-        tmp.write_text(json.dumps(doc, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+        tmp.write_text(json.dumps(doc, indent=2, sort_keys=False) + "\n",
+                       encoding="utf-8")
         os.replace(tmp, path)
     finally:
         if tmp.exists():
@@ -190,7 +197,8 @@ def _link_latest(link_path: Path, target: Path) -> None:
         else:
             link_path.symlink_to(os.path.relpath(target, link_path.parent))
     except OSError:
-        link_path.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
+        link_path.write_text(target.read_text(encoding="utf-8"),
+                             encoding="utf-8")
 
 
 def update_latest_links(
@@ -217,7 +225,8 @@ def run_output_path(
     ts: Optional[str] = None,
 ) -> Path:
     """Stable path for a run document (timestamp fixed for checkpoints)."""
-    suite = (doc.get("namespace") or {}).get("suite") or doc.get("suite") or "run"
+    suite = (doc.get("namespace")
+             or {}).get("suite") or doc.get("suite") or "run"
     phase = str(doc.get("phase") or suite).replace("/", "-").replace(":", "-")
     stamp = ts or time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
     return out_dir / f"run-{phase}-{stamp}.json"
@@ -242,7 +251,8 @@ def write_run(
     out_dir.mkdir(parents=True, exist_ok=True)
     ns = doc.get("namespace") or {}
     host = ns.get("host") or doc.get("host", {}).get("host", "host")
-    session = ns.get("session") or doc.get("host", {}).get("sessionType", "unknown")
+    session = ns.get("session") or doc.get("host", {}).get(
+        "sessionType", "unknown")
     if path is None:
         path = run_output_path(out_dir, doc)
     else:
@@ -273,7 +283,8 @@ def checkpoint_run(
     out_dir = path.parent
     ns = doc.get("namespace") or {}
     host = ns.get("host") or doc.get("host", {}).get("host", "host")
-    session = ns.get("session") or doc.get("host", {}).get("sessionType", "unknown")
+    session = ns.get("session") or doc.get("host", {}).get(
+        "sessionType", "unknown")
     doc = dict(doc)
     doc["checkpointAt"] = datetime.now(timezone.utc).isoformat()
     atomic_write_json(path, doc)

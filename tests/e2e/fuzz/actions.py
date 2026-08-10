@@ -166,7 +166,6 @@ DRAG_PATH_WEIGHT = 4
 # the real reparent. Single-monitor-reachable; true dual-display stays deferred (forge-leqs/62ja).
 REHOME_WEIGHT = 2
 
-
 # App palette as a weighted (name, weight) list for the spawn step (Angle 2). Drawn heavily
 # toward DEFAULT_TEST_APP (the fast/reliable tiled editor); the minority entry (zenity) is a
 # dialog/transient probe. Baked into the step as a tag so replay re-spawns the same app.

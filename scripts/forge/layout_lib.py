@@ -15,23 +15,21 @@ LAYOUT_DIR_NAME = "layout"
 DEFAULT_CONFIG_ROOT = Path.home() / ".config" / "forge"
 
 CLI_ONLY_OPS = frozenset({"launch", "wait-window", "wait"})
-EXTENSION_OPS = frozenset(
-    {
-        "ping",
-        "focus",
-        "swap",
-        "move",
-        "layout",
-        "layout-cycle",
-        "merge-group",
-        "float",
-        "order",
-        "place-next",
-        "set",
-        "close",
-        "unfocus",
-    }
-)
+EXTENSION_OPS = frozenset({
+    "ping",
+    "focus",
+    "swap",
+    "move",
+    "layout",
+    "layout-cycle",
+    "merge-group",
+    "float",
+    "order",
+    "place-next",
+    "set",
+    "close",
+    "unfocus",
+})
 
 _NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
@@ -45,7 +43,8 @@ SOURCE_NOT_FOUND = "not-found"
 
 
 def layout_dir(config_root: Optional[Path] = None) -> Path:
-    root = Path(config_root) if config_root is not None else DEFAULT_CONFIG_ROOT
+    root = Path(
+        config_root) if config_root is not None else DEFAULT_CONFIG_ROOT
     return root / LAYOUT_DIR_NAME
 
 
@@ -124,7 +123,9 @@ def _env_layout_dir(
     config_root: Optional[Path] = None,
 ) -> Path:
     """Alias for layout_tree_root (always a path; never None)."""
-    return layout_tree_root(env, config_root=config_root, layout_dir_env=layout_dir_env)
+    return layout_tree_root(env,
+                            config_root=config_root,
+                            layout_dir_env=layout_dir_env)
 
 
 def _profile_candidates(
@@ -142,7 +143,8 @@ def _profile_candidates(
         out.append((Path(str(path_env).strip()).expanduser(), SOURCE_ENV_PATH))
     root = Path(wdir)
     out.append((root / "hosts" / host / f"{name}.json", SOURCE_HOST))
-    out.append((root / "hosts" / host / name / "profile.json", SOURCE_HOST_DIR))
+    out.append(
+        (root / "hosts" / host / name / "profile.json", SOURCE_HOST_DIR))
     out.append((root / "common" / f"{name}.json", SOURCE_COMMON))
     # Flat drop-in next to hosts/ (tree root) and, if different, XDG layout/
     flat_tree = root / f"{name}.json"
@@ -175,10 +177,14 @@ def resolve_profile(
     name = _normalize_profile_name(name)
     e = env if env is not None else os.environ
     host = resolve_host(e)
-    wdir = layout_tree_root(e, config_root=config_root, layout_dir_env=layout_dir_env)
-    candidates = _profile_candidates(
-        name, host, config_root=config_root, wdir=wdir, env=e
-    )
+    wdir = layout_tree_root(e,
+                            config_root=config_root,
+                            layout_dir_env=layout_dir_env)
+    candidates = _profile_candidates(name,
+                                     host,
+                                     config_root=config_root,
+                                     wdir=wdir,
+                                     env=e)
     candidate_paths = [str(p) for p, _ in candidates]
 
     for path, source in candidates:
@@ -227,7 +233,9 @@ def list_profiles_resolved(
     """
     e = env if env is not None else os.environ
     host = resolve_host(e)
-    wdir = layout_tree_root(e, config_root=config_root, layout_dir_env=layout_dir_env)
+    wdir = layout_tree_root(e,
+                            config_root=config_root,
+                            layout_dir_env=layout_dir_env)
     names: set[str] = set()
 
     host_dir = Path(wdir) / "hosts" / host
@@ -309,7 +317,7 @@ def format_short_path(path: Path | str, *, max_len: int = 36) -> str:
     try:
         home = str(Path.home())
         if s == home or s.startswith(home + os.sep):
-            s = "~" + s[len(home) :]
+            s = "~" + s[len(home):]
     except (OSError, RuntimeError):
         pass
     if len(s) <= max_len:
@@ -318,20 +326,21 @@ def format_short_path(path: Path | str, *, max_len: int = 36) -> str:
     body = s[2:] if s.startswith("~/") else (s[1:] if s.startswith("/") else s)
     parts = [p for p in body.split("/") if p]
     if not parts:
-        return "…" + s[-(max(1, max_len - 1)) :]
+        return "…" + s[-(max(1, max_len - 1)):]
     for i in range(len(parts)):
         candidate = "…/" + "/".join(parts[i:])
         if len(candidate) <= max_len:
             return candidate
     last = parts[-1]
     if len(last) + 1 <= max_len:
-        return "…" + last[-(max_len - 1) :] if len(last) >= max_len else "…/" + last
-    return "…" + last[-(max_len - 1) :]
+        return "…" + last[-(max_len - 1):] if len(
+            last) >= max_len else "…/" + last
+    return "…" + last[-(max_len - 1):]
 
 
-def format_profile_list_line(
-    entry: Mapping[str, Any], *, desc_max: int = 40
-) -> str:
+def format_profile_list_line(entry: Mapping[str, Any],
+                             *,
+                             desc_max: int = 40) -> str:
     """Legacy one-line form (name + desc); prefer format_profile_list_table."""
     name = str(entry.get("name") or "?")
     desc = entry.get("description")
@@ -339,16 +348,14 @@ def format_profile_list_line(
     if isinstance(desc, str) and desc.strip():
         d = desc.strip()
         if len(d) > desc_max:
-            d = d[: max(1, desc_max - 1)] + "…"
+            d = d[:max(1, desc_max - 1)] + "…"
     return f"{name}  {d}".rstrip()
 
 
 def host_profiles_only(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Keep profiles from hosts/<host>/ (host file or host-dir form)."""
     return [
-        e
-        for e in entries
-        if e.get("source") in (SOURCE_HOST, SOURCE_HOST_DIR)
+        e for e in entries if e.get("source") in (SOURCE_HOST, SOURCE_HOST_DIR)
     ]
 
 
@@ -394,7 +401,9 @@ def format_profile_list_table(
             return f"{cyan(n, stream=stream)}{pad}"
         return f"{n}{pad}"
 
-    lines = [f"{_hdr('Name')}{' ' * max(0, name_w - len('Name'))}  {_hdr('Description')}"]
+    lines = [
+        f"{_hdr('Name')}{' ' * max(0, name_w - len('Name'))}  {_hdr('Description')}"
+    ]
     for n, d in zip(names, descs):
         lines.append(f"{_name_cell(n)}  {d}")
     return "\n".join(lines)
@@ -432,7 +441,8 @@ def validate_profile(data: Any) -> dict[str, Any]:
         raise ValueError("profile version required (want version: 1)")
     ver = data["version"]
     if ver != PROFILE_VERSION and ver != str(PROFILE_VERSION):
-        raise ValueError(f"unsupported profile version: {ver!r} (want {PROFILE_VERSION})")
+        raise ValueError(
+            f"unsupported profile version: {ver!r} (want {PROFILE_VERSION})")
 
     if "steps" not in data:
         raise ValueError("profile steps required (array; may be empty)")
@@ -451,8 +461,7 @@ def validate_profile(data: Any) -> dict[str, Any]:
             raise ValueError(
                 f"steps[{i}]: unknown op {op_name!r} "
                 f"(extension: {', '.join(sorted(EXTENSION_OPS))}; "
-                f"cli: {', '.join(sorted(CLI_ONLY_OPS))})"
-            )
+                f"cli: {', '.join(sorted(CLI_ONLY_OPS))})")
         _validate_step_fields(i, op_name, step)
 
     out: dict[str, Any] = {
@@ -476,13 +485,16 @@ def validate_profile(data: Any) -> dict[str, Any]:
     displays = data.get("displays")
     if displays is not None:
         if not isinstance(displays, str) or not displays.strip():
-            raise ValueError("displays must be a non-empty string (gdisplays scene name)")
+            raise ValueError(
+                "displays must be a non-empty string (gdisplays scene name)")
         out["displays"] = displays.strip()
 
     settings = data.get("settings")
     if settings is not None:
         if not isinstance(settings, str) or not settings.strip():
-            raise ValueError("settings must be a non-empty string (config-sync profile name)")
+            raise ValueError(
+                "settings must be a non-empty string (config-sync profile name)"
+            )
         out["settings"] = settings.strip()
 
     return out
@@ -492,7 +504,8 @@ def _validate_step_fields(i: int, op: str, step: dict[str, Any]) -> None:
     if op == "launch":
         app = step.get("app") or step.get("desktop") or step.get("command")
         if app is None or str(app).strip() == "":
-            raise ValueError(f"steps[{i}]: launch requires app (or desktop/command)")
+            raise ValueError(
+                f"steps[{i}]: launch requires app (or desktop/command)")
     elif op == "wait":
         ms = step.get("ms") if "ms" in step else step.get("timeout")
         if ms is None:
@@ -563,7 +576,8 @@ def launch_fields_from_step(step: dict[str, Any]) -> dict[str, Any]:
     wc = step.get("wmClass") or step.get("wm_class")
     if wc is not None and str(wc).strip() != "":
         fields["wm_class"] = str(wc).strip()
-    timeout = step.get("timeout") if "timeout" in step else step.get("timeoutMs")
+    timeout = step.get("timeout") if "timeout" in step else step.get(
+        "timeoutMs")
     if timeout is not None:
         fields["timeout"] = int(timeout)
     no_wait = step.get("noWait") if "noWait" in step else step.get("no_wait")

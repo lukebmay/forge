@@ -17,20 +17,36 @@ from lib.settle import (
 
 
 class MatchTests(unittest.TestCase):
+
     def test_wm_class(self):
         snap = {"wmClass": "com.mitchellh.ghostty", "title": "x"}
-        self.assertTrue(match_window(snap, {"wmClass": "com.mitchellh.ghostty"}))
+        self.assertTrue(
+            match_window(snap, {"wmClass": "com.mitchellh.ghostty"}))
         self.assertFalse(match_window(snap, {"wmClass": "google-chrome"}))
 
 
 class ClassifyTests(unittest.TestCase):
+
     def test_hard_size_resets(self):
         cat = DisagreementCatalog()
         out, sev, _ = classify_check(
-            events=[{"signal": "size-changed", "windowId": 1}],
+            events=[{
+                "signal": "size-changed",
+                "windowId": 1
+            }],
             window_id=1,
-            prev_snap={"frame": {"x": 0, "y": 0, "width": 100, "height": 100}},
-            curr_snap={"frame": {"x": 0, "y": 0, "width": 200, "height": 100}},
+            prev_snap={"frame": {
+                "x": 0,
+                "y": 0,
+                "width": 100,
+                "height": 100
+            }},
+            curr_snap={"frame": {
+                "x": 0,
+                "y": 0,
+                "width": 200,
+                "height": 100
+            }},
             catalog=cat,
         )
         self.assertEqual(sev, "hard")
@@ -39,10 +55,29 @@ class ClassifyTests(unittest.TestCase):
     def test_soft_title_no_hard(self):
         cat = DisagreementCatalog()
         out, sev, _ = classify_check(
-            events=[{"signal": "notify::title", "windowId": 1}],
+            events=[{
+                "signal": "notify::title",
+                "windowId": 1
+            }],
             window_id=1,
-            prev_snap={"title": "a", "frame": {"x": 0, "y": 0, "width": 1, "height": 1}},
-            curr_snap={"title": "b", "frame": {"x": 0, "y": 0, "width": 1, "height": 1}},
+            prev_snap={
+                "title": "a",
+                "frame": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 1,
+                    "height": 1
+                }
+            },
+            curr_snap={
+                "title": "b",
+                "frame": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 1,
+                    "height": 1
+                }
+            },
             catalog=cat,
         )
         self.assertEqual(sev, "soft")
@@ -54,8 +89,20 @@ class ClassifyTests(unittest.TestCase):
         out, sev, _ = classify_check(
             events=[],
             window_id=1,
-            prev_snap={"frame": {"x": 0, "y": 0, "width": 100, "height": 100}},
-            curr_snap={"frame": {"x": 10, "y": 0, "width": 100, "height": 100}},
+            prev_snap={"frame": {
+                "x": 0,
+                "y": 0,
+                "width": 100,
+                "height": 100
+            }},
+            curr_snap={
+                "frame": {
+                    "x": 10,
+                    "y": 0,
+                    "width": 100,
+                    "height": 100
+                }
+            },
             catalog=cat,
         )
         self.assertEqual(sev, "soft")
@@ -64,7 +111,12 @@ class ClassifyTests(unittest.TestCase):
     def test_agreement(self):
         cat = DisagreementCatalog()
         snap = {
-            "frame": {"x": 0, "y": 0, "width": 1, "height": 1},
+            "frame": {
+                "x": 0,
+                "y": 0,
+                "width": 1,
+                "height": 1
+            },
             "title": "t",
             "monitor": 0,
         }
@@ -81,7 +133,10 @@ class ClassifyTests(unittest.TestCase):
     def test_unknown_signal_mints_catalog(self):
         cat = DisagreementCatalog()
         out, sev, _ = classify_check(
-            events=[{"signal": "notify::weird-prop", "windowId": 1}],
+            events=[{
+                "signal": "notify::weird-prop",
+                "windowId": 1
+            }],
             window_id=1,
             prev_snap=None,
             curr_snap=None,
@@ -89,10 +144,12 @@ class ClassifyTests(unittest.TestCase):
         )
         self.assertEqual(sev, "hard")
         self.assertIn(out, cat.entries)
-        self.assertTrue(cat.entries[out].get("auto") or out.startswith("d_auto_"))
+        self.assertTrue(cat.entries[out].get("auto")
+                        or out.startswith("d_auto_"))
 
 
 class DeriveTests(unittest.TestCase):
+
     def test_slow_thrash_raises_duration(self):
         r = SettleResult(
             settled=True,
@@ -111,7 +168,9 @@ class DeriveTests(unittest.TestCase):
             checks=[],
             disagreement_counts={},
         )
-        d = derive_knobs_from_calibration(r, prev_duration_ms=3000, prev_interval_ms=100)
+        d = derive_knobs_from_calibration(r,
+                                          prev_duration_ms=3000,
+                                          prev_interval_ms=100)
         self.assertGreaterEqual(d["settleDurationMs"], 3000)
 
     def test_clean_raises_interval(self):
@@ -132,11 +191,14 @@ class DeriveTests(unittest.TestCase):
             checks=[],
             disagreement_counts={},
         )
-        d = derive_knobs_from_calibration(r, prev_duration_ms=3000, prev_interval_ms=50)
+        d = derive_knobs_from_calibration(r,
+                                          prev_duration_ms=3000,
+                                          prev_interval_ms=50)
         self.assertGreaterEqual(d["checkIntervalMs"], 50)
 
 
 class ConfigPhaseTests(unittest.TestCase):
+
     def test_bootstrap_duration(self):
         cfg = settle_config_from_dict(
             {
@@ -152,6 +214,7 @@ class ConfigPhaseTests(unittest.TestCase):
 
 
 class DiffTests(unittest.TestCase):
+
     def test_frame_diff(self):
         a = {"frame": {"x": 0, "y": 0, "width": 1, "height": 1}}
         b = {"frame": {"x": 1, "y": 0, "width": 1, "height": 1}}

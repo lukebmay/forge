@@ -54,8 +54,7 @@ def delay_schedule(
 
 
 def record_last_good_first_fail(
-    trials: Sequence[tuple[float, bool]],
-) -> dict[str, Any]:
+    trials: Sequence[tuple[float, bool]], ) -> dict[str, Any]:
     """
     trials: ordered high D → low D, each (delay_ms, is_thrash).
 
@@ -81,7 +80,10 @@ def record_last_good_first_fail(
     }
 
 
-def pad_delay(last_good: Optional[float], *, pad_ms: float, floor_ms: float = 0.0) -> float:
+def pad_delay(last_good: Optional[float],
+              *,
+              pad_ms: float,
+              floor_ms: float = 0.0) -> float:
     """
     Conservative start: last-good + pad.
     If last_good is None, return floor_ms (caller supplies default high start).
@@ -112,7 +114,10 @@ def isolation_plan(
     d2_schedule = delay_schedule(d2_0, d_step, d_min=d_min)
     d1_schedule = delay_schedule(d1_0, d_step, d_min=d_min)
     return {
-        "confirm": {"d1Ms": float(d1_0), "d2Ms": float(d2_0)},
+        "confirm": {
+            "d1Ms": float(d1_0),
+            "d2Ms": float(d2_0)
+        },
         "sweepD2": {
             "lock": "d1",
             "lockMs": float(d1_0),
@@ -202,8 +207,14 @@ def compare_hypothesis(
     m1 = measured.get("d1Ms")
     m2 = measured.get("d2Ms")
     out: dict[str, Any] = {
-        "hypothesis": {"d1Ms": h1, "d2Ms": h2},
-        "measured": {"d1Ms": m1, "d2Ms": m2},
+        "hypothesis": {
+            "d1Ms": h1,
+            "d2Ms": h2
+        },
+        "measured": {
+            "d1Ms": m1,
+            "d2Ms": m2
+        },
     }
     if m1 is not None and h1 > 0:
         out["d1Ratio"] = float(m1) / h1

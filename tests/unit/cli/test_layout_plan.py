@@ -14,14 +14,16 @@ _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "layout"
 if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
+from layout_plan import _class_eq as plan_class_eq  # noqa: E402
 from layout_plan import (  # noqa: E402
+    _mon_split_anchor_ids,  # noqa: E402
+    active_workspace_from_forest,
     build_bind_actions,
     build_ensure_skeleton_action,
     collect_layout_placeholders,
     collect_windows,
     compare_layout_structure,
     detect_thrash,
-    active_workspace_from_forest,
     filter_forest_workspace,
     forest_mon_indices_left_to_right,
     forest_stable_key_map,
@@ -37,8 +39,6 @@ from layout_plan import (  # noqa: E402
     window_matches,
     window_workspace_index,
 )
-from layout_plan import _class_eq as plan_class_eq  # noqa: E402
-from layout_plan import _mon_split_anchor_ids  # noqa: E402
 
 
 def _load(name: str):
@@ -46,6 +46,7 @@ def _load(name: str):
 
 
 class TestValidateReconcileProfile(unittest.TestCase):
+
     def test_fixture_ok(self):
         p = validate_reconcile_profile(_load("profile-dev-v2.json"))
         self.assertEqual(p["version"], 2)
@@ -62,22 +63,25 @@ class TestValidateReconcileProfile(unittest.TestCase):
 
     def test_version_default_when_roles(self):
         raw = {
-            "roles": [
-                {
-                    "id": "term",
-                    "match": "com.mitchellh.ghostty",
-                    "open": "ghostty",
-                    "slot": "mon0.term",
-                }
-            ],
+            "roles": [{
+                "id": "term",
+                "match": "com.mitchellh.ghostty",
+                "open": "ghostty",
+                "slot": "mon0.term",
+            }],
             "layout": {
-                "mon0": {"children": [{"roles": ["term"]}]}
+                "mon0": {
+                    "children": [{
+                        "roles": ["term"]
+                    }]
+                }
             },
         }
         p = validate_reconcile_profile(raw)
         self.assertEqual(p["version"], 2)
         self.assertEqual(p["mode"], "reconcile")
-        self.assertEqual(p["roles"][0]["match"]["class"], "com.mitchellh.ghostty")
+        self.assertEqual(p["roles"][0]["match"]["class"],
+                         "com.mitchellh.ghostty")
         self.assertEqual(p["roles"][0]["open"]["app"], "ghostty")
         self.assertEqual(p["roles"][0]["slot"], "mon0.term")
         self.assertEqual(p["layout"]["mon0"]["children"][0]["id"], "term")
@@ -85,22 +89,40 @@ class TestValidateReconcileProfile(unittest.TestCase):
     def test_split_and_tabbed_defaults(self):
         raw = {
             "roles": [
-                {"id": "a", "class": "Foo", "app": "foo"},
-                {"id": "b", "class": "Bar", "app": "bar"},
-                {"id": "t", "match": "Term", "open": "term"},
+                {
+                    "id": "a",
+                    "class": "Foo",
+                    "app": "foo"
+                },
+                {
+                    "id": "b",
+                    "class": "Bar",
+                    "app": "bar"
+                },
+                {
+                    "id": "t",
+                    "match": "Term",
+                    "open": "term"
+                },
             ],
             "layout": {
                 "mon0": {
                     "children": [
-                        {"id": "tabs", "roles": ["a", "b"]},
-                        {"roles": ["t"]},
+                        {
+                            "id": "tabs",
+                            "roles": ["a", "b"]
+                        },
+                        {
+                            "roles": ["t"]
+                        },
                     ]
                 }
             },
         }
         p = validate_reconcile_profile(raw)
         self.assertEqual(p["layout"]["mon0"]["split"], "hsplit")
-        self.assertEqual(p["layout"]["mon0"]["children"][0]["layout"], "tabbed")
+        self.assertEqual(p["layout"]["mon0"]["children"][0]["layout"],
+                         "tabbed")
         self.assertEqual(p["roles"][0]["slot"], "mon0.tabs")
         self.assertEqual(p["roles"][2]["slot"], "mon0.t")
 
@@ -117,7 +139,11 @@ class TestValidateReconcileProfile(unittest.TestCase):
 
     def test_allow_empty_roles(self):
         """Empty desk profile (forge layout clean) is valid."""
-        p = validate_reconcile_profile({"version": 2, "mode": "reconcile", "roles": []})
+        p = validate_reconcile_profile({
+            "version": 2,
+            "mode": "reconcile",
+            "roles": []
+        })
         self.assertEqual(p["roles"], [])
         self.assertEqual(p["version"], 2)
         p2 = validate_reconcile_profile([])
@@ -125,102 +151,108 @@ class TestValidateReconcileProfile(unittest.TestCase):
 
     def test_reject_missing_match(self):
         with self.assertRaisesRegex(ValueError, "match"):
-            validate_reconcile_profile(
-                {
-                    "version": 2,
-                    "roles": [
-                        {
-                            "id": "x",
-                            "open": {"app": "a"},
-                            "slot": "mon0.term",
-                        }
-                    ],
-                }
-            )
+            validate_reconcile_profile({
+                "version":
+                2,
+                "roles": [{
+                    "id": "x",
+                    "open": {
+                        "app": "a"
+                    },
+                    "slot": "mon0.term",
+                }],
+            })
 
     def test_reject_mon_only_match(self):
         with self.assertRaisesRegex(ValueError, "need class, title"):
-            validate_reconcile_profile(
-                {
-                    "version": 2,
-                    "roles": [
-                        {
-                            "id": "x",
-                            "match": {"mon": 0},
-                            "open": {"app": "a"},
-                            "slot": "mon0.term",
-                        }
-                    ],
-                }
-            )
+            validate_reconcile_profile({
+                "version":
+                2,
+                "roles": [{
+                    "id": "x",
+                    "match": {
+                        "mon": 0
+                    },
+                    "open": {
+                        "app": "a"
+                    },
+                    "slot": "mon0.term",
+                }],
+            })
 
     def test_reject_missing_open_app(self):
         with self.assertRaisesRegex(ValueError, "open.app"):
-            validate_reconcile_profile(
-                {
-                    "version": 2,
-                    "roles": [
-                        {
-                            "id": "x",
-                            "match": {"class": "X"},
-                            "open": {},
-                            "slot": "mon0.term",
-                        }
-                    ],
-                }
-            )
+            validate_reconcile_profile({
+                "version":
+                2,
+                "roles": [{
+                    "id": "x",
+                    "match": {
+                        "class": "X"
+                    },
+                    "open": {},
+                    "slot": "mon0.term",
+                }],
+            })
 
     def test_reject_bad_slot(self):
         with self.assertRaisesRegex(ValueError, "invalid slot"):
-            validate_reconcile_profile(
-                {
-                    "version": 2,
-                    "roles": [
-                        {
-                            "id": "x",
-                            "match": {"class": "X"},
-                            "open": {"app": "a"},
-                            "slot": "not-a-slot",
-                        }
-                    ],
-                }
-            )
+            validate_reconcile_profile({
+                "version":
+                2,
+                "roles": [{
+                    "id": "x",
+                    "match": {
+                        "class": "X"
+                    },
+                    "open": {
+                        "app": "a"
+                    },
+                    "slot": "not-a-slot",
+                }],
+            })
 
     def test_reject_steps_mode(self):
         with self.assertRaisesRegex(ValueError, "unsupported mode"):
-            validate_reconcile_profile(
-                {
-                    "version": 2,
-                    "mode": "steps",
-                    "roles": [
-                        {
-                            "id": "x",
-                            "match": {"class": "X"},
-                            "open": {"app": "a"},
-                            "slot": "mon0.a",
-                        }
-                    ],
-                }
-            )
+            validate_reconcile_profile({
+                "version":
+                2,
+                "mode":
+                "steps",
+                "roles": [{
+                    "id": "x",
+                    "match": {
+                        "class": "X"
+                    },
+                    "open": {
+                        "app": "a"
+                    },
+                    "slot": "mon0.a",
+                }],
+            })
 
     def test_slot_from_layout_roles(self):
-        p = validate_reconcile_profile(
-            {
-                "version": 2,
-                "layout": {
-                    "mon0": {
-                        "children": [{"id": "term", "roles": ["ghost"]}],
-                    }
+        p = validate_reconcile_profile({
+            "version":
+            2,
+            "layout": {
+                "mon0": {
+                    "children": [{
+                        "id": "term",
+                        "roles": ["ghost"]
+                    }],
+                }
+            },
+            "roles": [{
+                "id": "ghost",
+                "match": {
+                    "class": "G"
                 },
-                "roles": [
-                    {
-                        "id": "ghost",
-                        "match": {"class": "G"},
-                        "open": {"app": "ghostty"},
-                    }
-                ],
-            }
-        )
+                "open": {
+                    "app": "ghostty"
+                },
+            }],
+        })
         self.assertEqual(p["roles"][0]["slot"], "mon0.term")
 
 
@@ -274,7 +306,8 @@ class TestTilesNormalize(unittest.TestCase):
             "tiles": {
                 "mon0": ["term"],
                 "mon1": {
-                    "split": "h",
+                    "split":
+                    "h",
                     "content": [
                         "ghostty",
                         {
@@ -295,8 +328,10 @@ class TestTilesNormalize(unittest.TestCase):
         self.assertEqual(nested["children"][0]["roles"], ["youtube", "gmail"])
         self.assertEqual(nested["children"][1]["id"], "nautilus")
         by_id = {r["id"]: r for r in p["roles"]}
-        self.assertEqual(by_id["youtube"]["slot"], f"mon1.{nested['id']}.{nested['children'][0]['id']}")
-        self.assertEqual(by_id["nautilus"]["slot"], f"mon1.{nested['id']}.nautilus")
+        self.assertEqual(by_id["youtube"]["slot"],
+                         f"mon1.{nested['id']}.{nested['children'][0]['id']}")
+        self.assertEqual(by_id["nautilus"]["slot"],
+                         f"mon1.{nested['id']}.nautilus")
 
     def test_nested_array_form(self):
         raw = {
@@ -320,7 +355,10 @@ class TestTilesNormalize(unittest.TestCase):
         raw = {
             "tiles": {
                 "mon0": [
-                    {"layout": "stacked", "content": ["ghostty", "nautilus"]},
+                    {
+                        "layout": "stacked",
+                        "content": ["ghostty", "nautilus"]
+                    },
                     "firefox",
                 ]
             }
@@ -339,7 +377,10 @@ class TestTilesNormalize(unittest.TestCase):
         """split: stacked with only role cells also desugars to stacked leaf."""
         raw = {
             "tiles": {
-                "mon0": [{"split": "stacked", "content": ["a", "b"]}],
+                "mon0": [{
+                    "split": "stacked",
+                    "content": ["a", "b"]
+                }],
             }
         }
         p = validate_reconcile_profile(raw)
@@ -351,7 +392,8 @@ class TestTilesNormalize(unittest.TestCase):
     def test_bare_multi_cell_still_tabbed(self):
         raw = {"tiles": {"mon0": [["a", "b"]]}}
         p = validate_reconcile_profile(raw)
-        self.assertEqual(p["layout"]["mon0"]["children"][0]["layout"], "tabbed")
+        self.assertEqual(p["layout"]["mon0"]["children"][0]["layout"],
+                         "tabbed")
 
     def test_id_dedupe(self):
         raw = {"tiles": {"mon0": ["ghostty", "ghostty", "ghostty"]}}
@@ -370,8 +412,12 @@ class TestTilesNormalize(unittest.TestCase):
             ("vsplit", "vsplit"),
         ):
             p = validate_reconcile_profile(
-                {"tiles": {"mon0": {"split": alias, "content": ["a", "b"]}}}
-            )
+                {"tiles": {
+                    "mon0": {
+                        "split": alias,
+                        "content": ["a", "b"]
+                    }
+                }})
             self.assertEqual(p["layout"]["mon0"]["split"], want, alias)
 
     def test_rich_object_cell(self):
@@ -380,8 +426,14 @@ class TestTilesNormalize(unittest.TestCase):
                 "mon0": [
                     {
                         "id": "grok",
-                        "match": {"class": "Google-chrome", "title~=": "Grok"},
-                        "open": {"app": "Grok", "wmClass": "Google-chrome"},
+                        "match": {
+                            "class": "Google-chrome",
+                            "title~=": "Grok"
+                        },
+                        "open": {
+                            "app": "Grok",
+                            "wmClass": "Google-chrome"
+                        },
                     },
                     "ghostty",
                 ]
@@ -434,7 +486,8 @@ class TestTilesNormalize(unittest.TestCase):
 
     def test_nested_ir_validate(self):
         raw = {
-            "version": 2,
+            "version":
+            2,
             "roles": [
                 {
                     "id": "a",
@@ -451,17 +504,24 @@ class TestTilesNormalize(unittest.TestCase):
             ],
             "layout": {
                 "mon0": {
-                    "split": "hsplit",
-                    "children": [
-                        {
-                            "id": "s0",
-                            "split": "vsplit",
-                            "children": [
-                                {"id": "a", "roles": ["a"]},
-                                {"id": "b", "roles": ["b"]},
-                            ],
-                        }
-                    ],
+                    "split":
+                    "hsplit",
+                    "children": [{
+                        "id":
+                        "s0",
+                        "split":
+                        "vsplit",
+                        "children": [
+                            {
+                                "id": "a",
+                                "roles": ["a"]
+                            },
+                            {
+                                "id": "b",
+                                "roles": ["b"]
+                            },
+                        ],
+                    }],
                 }
             },
         }
@@ -516,7 +576,8 @@ class TestBareArrayNormalize(unittest.TestCase):
 
     def test_tiles_array_key(self):
         raw = {
-            "description": "with tiles array",
+            "description":
+            "with tiles array",
             "tiles": [
                 [["google-chrome", "Grok"], "ghostty"],
                 ["ghostty", ["YouTube", "Gmail"]],
@@ -582,19 +643,15 @@ class TestStringCellInference(unittest.TestCase):
         self.assertEqual(r["id"], "Google-Voice")
 
     def test_explicit_object_overrides(self):
-        p = validate_reconcile_profile(
-            {
-                "tiles": {
-                    "mon0": [
-                        {
-                            "app": "Grok",
-                            "class": "Custom-Class",
-                            "title~=": "MyGrok",
-                        }
-                    ]
-                }
+        p = validate_reconcile_profile({
+            "tiles": {
+                "mon0": [{
+                    "app": "Grok",
+                    "class": "Custom-Class",
+                    "title~=": "MyGrok",
+                }]
             }
-        )
+        })
         r = p["roles"][0]
         self.assertEqual(r["match"]["class"], "Custom-Class")
         self.assertEqual(r["match"]["title~="], "MyGrok")
@@ -606,10 +663,12 @@ class TestStringCellInference(unittest.TestCase):
         self.assertTrue(window_matches(w, p["roles"][0]["match"]))
         self.assertFalse(
             window_matches(
-                {"wmClass": "Google-chrome", "title": "Gmail - Inbox"},
+                {
+                    "wmClass": "Google-chrome",
+                    "title": "Gmail - Inbox"
+                },
                 p["roles"][0]["match"],
-            )
-        )
+            ))
 
     def test_ghostty_claims_reverse_dns(self):
         w = {"wmClass": "com.mitchellh.ghostty", "title": "Ghostty"}
@@ -633,14 +692,24 @@ class TestBareMonGeometryOrder(unittest.TestCase):
     def _flipped_forest(self):
         """Meta mon0 = RIGHT (x=5120), mon1 = LEFT primary (x=0). Roles already correct physically."""
         return {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
-                    "stableKey": "geom:5120,0,5120,2880",
-                    "rect": {"x": 5120, "y": 0, "width": 5120, "height": 2880},
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
+                    "stableKey":
+                    "geom:5120,0,5120,2880",
+                    "rect": {
+                        "x": 5120,
+                        "y": 0,
+                        "width": 5120,
+                        "height": 2880
+                    },
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -652,8 +721,10 @@ class TestBareMonGeometryOrder(unittest.TestCase):
                             "children": [],
                         },
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -687,15 +758,26 @@ class TestBareMonGeometryOrder(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
-                    "stableKey": "geom:0,0,5120,2880#primary",
-                    "rect": {"x": 0, "y": 0, "width": 5120, "height": 2880},
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
+                    "stableKey":
+                    "geom:0,0,5120,2880#primary",
+                    "rect": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 5120,
+                        "height": 2880
+                    },
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -778,6 +860,7 @@ class TestBareMonGeometryOrder(unittest.TestCase):
 
 
 class TestMatching(unittest.TestCase):
+
     def test_class_case_insensitive(self):
         w = {"wmClass": "Google-chrome", "title": "Grok"}
         self.assertTrue(window_matches(w, {"class": "google-chrome"}))
@@ -797,22 +880,27 @@ class TestMatching(unittest.TestCase):
         m = {"class": "Google-chrome", "title~=": "Google Chrome"}
         self.assertTrue(
             window_matches(
-                {"wmClass": "Google-chrome", "title": "New Tab - Google Chrome"}, m
-            )
-        )
+                {
+                    "wmClass": "Google-chrome",
+                    "title": "New Tab - Google Chrome"
+                }, m))
         self.assertTrue(
             window_matches(
-                {"wmClass": "Google-chrome", "title": "Google Chrome"}, m
-            )
-        )
+                {
+                    "wmClass": "Google-chrome",
+                    "title": "Google Chrome"
+                }, m))
         self.assertFalse(
-            window_matches({"wmClass": "Google-chrome", "title": "Grok"}, m)
-        )
+            window_matches({
+                "wmClass": "Google-chrome",
+                "title": "Grok"
+            }, m))
         self.assertFalse(
             window_matches(
-                {"wmClass": "Google-chrome", "title": "Gmail - Inbox - Gmail"}, m
-            )
-        )
+                {
+                    "wmClass": "Google-chrome",
+                    "title": "Gmail - Inbox - Gmail"
+                }, m))
 
     def test_title_regex(self):
         w = {"title": "Google Chrome"}
@@ -826,6 +914,7 @@ class TestMatching(unittest.TestCase):
 
 
 class TestPlanEmpty(unittest.TestCase):
+
     def test_empty_opens_all(self):
         forest = _load("tree-empty.json")
         profile = _load("profile-dev-v2.json")
@@ -852,7 +941,8 @@ class TestPlanEmpty(unittest.TestCase):
         self.assertLess(sk_idx, open_idx)
         self.assertEqual(plan["counts"].get("skeleton"), 1)
         self.assertTrue(plan.get("coldEmpty"))
-        self.assertFalse(any(a["op"] == "ensure_layout" for a in plan["actions"]))
+        self.assertFalse(
+            any(a["op"] == "ensure_layout" for a in plan["actions"]))
         self.assertFalse(any(a["op"] == "park" for a in plan["actions"]))
         # thrash report-only (empty desk not Mode B)
         self.assertFalse(plan["thrashState"]["thrashed"])
@@ -870,6 +960,7 @@ class TestPlanEmpty(unittest.TestCase):
 
 
 class TestPlanPerfect(unittest.TestCase):
+
     def test_perfect_nothing_to_do(self):
         forest = _load("tree-perfect.json")
         profile = _load("profile-dev-v2.json")
@@ -884,7 +975,8 @@ class TestPlanPerfect(unittest.TestCase):
         self.assertEqual(plan["counts"]["reused"], 7)
         self.assertEqual(plan["actions"], [])
         self.assertTrue(all(r["status"] == "reused" for r in plan["roles"]))
-        self.assertFalse(any(a.get("op") == "ensure_order" for a in plan["actions"]))
+        self.assertFalse(
+            any(a.get("op") == "ensure_order" for a in plan["actions"]))
 
 
 class TestMonOrder(unittest.TestCase):
@@ -912,10 +1004,9 @@ class TestMonOrder(unittest.TestCase):
         # No mon ensure_layout thrash — order only
         self.assertFalse(
             any(
-                a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
-                for a in plan["actions"]
-            )
-        )
+                a.get("op") == "ensure_layout" and a.get("slot") in ("mon0",
+                                                                     "mon1")
+                for a in plan["actions"]))
 
     def test_perfect_order_no_ensure_order(self):
         forest = _load("tree-perfect.json")
@@ -923,7 +1014,8 @@ class TestMonOrder(unittest.TestCase):
         plan = plan_reconcile(forest, profile)
         self.assertTrue(plan["nothingToDo"])
         self.assertEqual(plan["counts"].get("ordered", 0), 0)
-        self.assertFalse(any(a.get("op") == "ensure_order" for a in plan["actions"]))
+        self.assertFalse(
+            any(a.get("op") == "ensure_order" for a in plan["actions"]))
 
     def test_place_move_before_ensure_order_in_final_actions(self):
         """Placement (move/open) must precede mon ensure_order so co-locate first."""
@@ -935,9 +1027,8 @@ class TestMonOrder(unittest.TestCase):
         ops = [a.get("op") for a in plan["actions"]]
         self.assertIn("move", ops)
         self.assertIn("ensure_order", ops)
-        first_place = min(
-            i for i, op in enumerate(ops) if op in ("move", "open", "park", "close")
-        )
+        first_place = min(i for i, op in enumerate(ops)
+                          if op in ("move", "open", "park", "close"))
         first_order = ops.index("ensure_order")
         self.assertLess(
             first_place,
@@ -959,7 +1050,8 @@ class TestTwoPassMonClaim(unittest.TestCase):
             ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
         ]
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
                     "nodeType": "MONITOR",
@@ -968,9 +1060,12 @@ class TestTwoPassMonClaim(unittest.TestCase):
                     "children": [],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -981,8 +1076,10 @@ class TestTwoPassMonClaim(unittest.TestCase):
                             "children": [],
                         },
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -1021,8 +1118,7 @@ class TestTwoPassMonClaim(unittest.TestCase):
         self.assertEqual(by_id["ghostty-2"]["status"], "reused")
         self.assertEqual(by_id["ghostty-2"]["windowId"], 201)
         moves = [
-            a
-            for a in plan["actions"]
+            a for a in plan["actions"]
             if a.get("op") == "move" and a.get("windowId") == 201
         ]
         self.assertEqual(moves, [])
@@ -1034,7 +1130,8 @@ class TestTwoPassMonClaim(unittest.TestCase):
             ["ghostty", ["YouTube", "Gmail", "Google Voice"]],
         ]
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
                     "nodeType": "MONITOR",
@@ -1043,41 +1140,44 @@ class TestTwoPassMonClaim(unittest.TestCase):
                     "children": [],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
-                    "children": [
-                        {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
-                            "children": [
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 202,
-                                    "wmClass": "Google-chrome",
-                                    "title": "YouTube",
-                                    "monitor": 1,
-                                    "children": [],
-                                },
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 203,
-                                    "wmClass": "Google-chrome",
-                                    "title": "Gmail",
-                                    "monitor": 1,
-                                    "children": [],
-                                },
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 204,
-                                    "wmClass": "Google-chrome",
-                                    "title": "Google Voice",
-                                    "monitor": 1,
-                                    "children": [],
-                                },
-                            ],
-                        }
-                    ],
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
+                    "children": [{
+                        "nodeType":
+                        "CON",
+                        "layout":
+                        "TABBED",
+                        "children": [
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 202,
+                                "wmClass": "Google-chrome",
+                                "title": "YouTube",
+                                "monitor": 1,
+                                "children": [],
+                            },
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 203,
+                                "wmClass": "Google-chrome",
+                                "title": "Gmail",
+                                "monitor": 1,
+                                "children": [],
+                            },
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 204,
+                                "wmClass": "Google-chrome",
+                                "title": "Google Voice",
+                                "monitor": 1,
+                                "children": [],
+                            },
+                        ],
+                    }],
                 },
             ],
         }
@@ -1086,9 +1186,9 @@ class TestTwoPassMonClaim(unittest.TestCase):
         self.assertEqual(by_id["ghostty"]["status"], "open")
         self.assertEqual(by_id["ghostty-2"]["status"], "open")
         mon_ensures = [
-            a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+            a for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0",
+                                                                    "mon1")
         ]
         for a in mon_ensures:
             wids = a.get("windowIds") or []
@@ -1117,13 +1217,18 @@ class TestPartialReopenLF1(unittest.TestCase):
     def _forest_repro(self):
         """mon0: Grok only. mon1: ghostty | tab(YT,Gmail,Voice)."""
         return {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
-                    "lastTabFocusId": 101,
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
+                    "lastTabFocusId":
+                    101,
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -1136,9 +1241,12 @@ class TestPartialReopenLF1(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -1149,8 +1257,10 @@ class TestPartialReopenLF1(unittest.TestCase):
                             "children": [],
                         },
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -1193,8 +1303,7 @@ class TestPartialReopenLF1(unittest.TestCase):
         self.assertEqual(by_id["Grok"]["status"], "reused")
         # Peer mon ensure must not thrash mon1 when only mon0 places.
         mon1_ensures = [
-            a
-            for a in plan["actions"]
+            a for a in plan["actions"]
             if a.get("op") == "ensure_layout" and a.get("slot") == "mon1"
         ]
         self.assertEqual(mon1_ensures, [])
@@ -1202,28 +1311,35 @@ class TestPartialReopenLF1(unittest.TestCase):
         self.assertTrue(
             any(
                 a.get("role") == "Grok" and a.get("reason") == "survivor"
-                for a in focus
-            ),
+                for a in focus),
             focus,
         )
         self.assertTrue(
-            any(a.get("op") == "open" and a.get("role") == "ghostty" for a in plan["actions"])
-        )
+            any(
+                a.get("op") == "open" and a.get("role") == "ghostty"
+                for a in plan["actions"]))
 
     def test_residual_pin_chrome_title_mismatch_move_ghostty_focus_grok(self):
         """After open: chrome title misses match; ghostty on wrong mon; pins fix."""
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
-                            "lastTabFocusId": 301,
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
+                            "lastTabFocusId":
+                            301,
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -1246,9 +1362,12 @@ class TestPartialReopenLF1(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -1259,8 +1378,10 @@ class TestPartialReopenLF1(unittest.TestCase):
                             "children": [],
                         },
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -1303,7 +1424,10 @@ class TestPartialReopenLF1(unittest.TestCase):
         plan = plan_reconcile(
             forest,
             self.PROFILE,
-            role_pins={"google-chrome": 301, "ghostty": 401},
+            role_pins={
+                "google-chrome": 301,
+                "ghostty": 401
+            },
             just_opened_roles={"google-chrome", "ghostty"},
         )
         by_id = {r["id"]: r for r in plan["roles"]}
@@ -1316,8 +1440,7 @@ class TestPartialReopenLF1(unittest.TestCase):
         opens = [a for a in plan["actions"] if a.get("op") == "open"]
         self.assertEqual(opens, [])
         moves = [
-            a
-            for a in plan["actions"]
+            a for a in plan["actions"]
             if a.get("op") == "move" and a.get("windowId") == 401
         ]
         self.assertEqual(len(moves), 1)
@@ -1325,19 +1448,15 @@ class TestPartialReopenLF1(unittest.TestCase):
         focus = [a for a in plan["actions"] if a.get("op") == "focus"]
         self.assertTrue(
             any(
-                a.get("role") == "Grok"
-                and a.get("reason") == "survivor"
-                and a.get("selector") == "id:101"
-                for a in focus
-            ),
+                a.get("role") == "Grok" and a.get("reason") == "survivor"
+                and a.get("selector") == "id:101" for a in focus),
             focus,
         )
         # mon1 already correct — no mon1 ensure thrash
         self.assertFalse(
             any(
                 a.get("op") == "ensure_layout" and a.get("slot") == "mon1"
-                for a in plan["actions"]
-            ),
+                for a in plan["actions"]),
             plan["actions"],
         )
 
@@ -1357,13 +1476,18 @@ class TestPartialReopenLF3(unittest.TestCase):
     def _forest_chrome_and_mon1_term_closed(self):
         """mon0: Grok | ghostty. mon1: tabs only."""
         return {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
-                    "lastTabFocusId": 101,
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
+                    "lastTabFocusId":
+                    101,
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -1384,13 +1508,18 @@ class TestPartialReopenLF3(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -1424,7 +1553,8 @@ class TestPartialReopenLF3(unittest.TestCase):
         }
 
     def test_plan1_reuse_mon0_ghostty_open_mon1(self):
-        plan = plan_reconcile(self._forest_chrome_and_mon1_term_closed(), self.PROFILE)
+        plan = plan_reconcile(self._forest_chrome_and_mon1_term_closed(),
+                              self.PROFILE)
         by_id = {r["id"]: r for r in plan["roles"]}
         self.assertEqual(by_id["ghostty"]["status"], "reused")
         self.assertEqual(by_id["ghostty"]["windowId"], 102)
@@ -1449,17 +1579,24 @@ class TestPartialReopenLF3(unittest.TestCase):
     def test_residual_two_ghosttys_on_mon0_move_mon1(self):
         """New mon1 Ghostty landed mon0; residual moves ghostty-2 to mon1."""
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
-                            "lastTabFocusId": 101,
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
+                            "lastTabFocusId":
+                            101,
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -1498,13 +1635,18 @@ class TestPartialReopenLF3(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -1539,7 +1681,10 @@ class TestPartialReopenLF3(unittest.TestCase):
         plan = plan_reconcile(
             forest,
             self.PROFILE,
-            role_pins={"google-chrome": 301, "ghostty-2": 501},
+            role_pins={
+                "google-chrome": 301,
+                "ghostty-2": 501
+            },
             just_opened_roles={"google-chrome", "ghostty-2"},
         )
         by_id = {r["id"]: r for r in plan["roles"]}
@@ -1550,8 +1695,7 @@ class TestPartialReopenLF3(unittest.TestCase):
         self.assertEqual(by_id["google-chrome"]["status"], "reused")
         self.assertEqual(by_id["google-chrome"]["windowId"], 301)
         moves = [
-            a
-            for a in plan["actions"]
+            a for a in plan["actions"]
             if a.get("op") == "move" and a.get("windowId") == 501
         ]
         self.assertEqual(len(moves), 1)
@@ -1564,12 +1708,16 @@ class TestPartialReopenLF3(unittest.TestCase):
     def test_residual_without_chrome_pin_still_plans_ghostty_move(self):
         """Chrome title lag → open; ghostty-2 still planned as move (apply must run)."""
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -1607,13 +1755,18 @@ class TestPartialReopenLF3(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -1683,8 +1836,7 @@ class TestTabRoleOrder(unittest.TestCase):
         plan = plan_reconcile(forest, profile)
         self.assertFalse(plan["nothingToDo"])
         orders = [
-            a
-            for a in plan["actions"]
+            a for a in plan["actions"]
             if a.get("op") == "ensure_order" and a.get("slot") == "mon1.comms"
         ]
         self.assertEqual(len(orders), 1)
@@ -1740,8 +1892,7 @@ class TestThrashModeMatrix(unittest.TestCase):
             self.assertEqual(k["slot"], "mon1.term")
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertIn("mon1.term", ensures)
         self.assertEqual(ensures["mon1.term"]["mode"], "tabbed")
@@ -1774,8 +1925,7 @@ class TestThrashModeMatrix(unittest.TestCase):
         self.assertEqual(plan["counts"]["parked"], 0)
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertIn("mon1.comms", ensures)
         self.assertEqual(ensures["mon1.comms"]["mode"], "tabbed")
@@ -1788,7 +1938,10 @@ class TestThrashModeMatrix(unittest.TestCase):
         # Structure work is only the comms rejoin (count may be 1)
         self.assertGreaterEqual(plan["counts"]["structure"], 1)
         self.assertEqual(
-            {a["slot"] for a in plan["actions"] if a.get("op") == "ensure_layout"},
+            {
+                a["slot"]
+                for a in plan["actions"] if a.get("op") == "ensure_layout"
+            },
             {"mon1.comms"},
         )
 
@@ -1807,8 +1960,7 @@ class TestThrashModeMatrix(unittest.TestCase):
             self.assertEqual(k["slot"], "mon1.term")
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertIn("mon1.term", ensures)
         self.assertEqual(ensures["mon1.term"]["mode"], "tabbed")
@@ -1821,14 +1973,13 @@ class TestThrashModeMatrix(unittest.TestCase):
         """wrong-mon roles → moves + structure; not dual-mon park thrash."""
         plan = self._plan("tree-wrong-mon-roles.json")
         self.assertTrue(plan["ok"])
-        self.assertTrue(plan["thrashState"]["thrashed"])  # roles-wrong-mon signal
+        self.assertTrue(
+            plan["thrashState"]["thrashed"])  # roles-wrong-mon signal
         self.assertFalse(plan["nothingToDo"])
         self.assertEqual(plan["counts"]["moved"], 2)
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(plan["counts"]["parked"], 0)
-        self.assertEqual(
-            plan["counts"]["reused"] + plan["counts"]["moved"], 7
-        )
+        self.assertEqual(plan["counts"]["reused"] + plan["counts"]["moved"], 7)
         moves = [a for a in plan["actions"] if a.get("op") == "move"]
         move_ids = {m["windowId"] for m in moves}
         self.assertEqual(move_ids, {201, 202})
@@ -1842,8 +1993,7 @@ class TestThrashModeMatrix(unittest.TestCase):
         # Comms still tabbed after youtube returns
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertIn("mon1.comms", ensures)
         self.assertEqual(ensures["mon1.comms"]["mode"], "tabbed")
@@ -1874,14 +2024,11 @@ class TestDetectThrash(unittest.TestCase):
         self.assertGreaterEqual(state["score"], 3)
         blob = " ".join(state["reasons"]).lower()
         self.assertTrue(
-            any(
-                k in blob
-                for k in (
-                    "nested-split",
-                    "tabbed-roles-not-grouped",
-                    "mon1.comms",
-                )
-            ),
+            any(k in blob for k in (
+                "nested-split",
+                "tabbed-roles-not-grouped",
+                "mon1.comms",
+            )),
             f"reasons should mention comms structure: {state['reasons']}",
         )
 
@@ -1896,31 +2043,40 @@ class TestDetectThrash(unittest.TestCase):
     def _stacked_pair_profile(self):
         """Minimal multi-role stacked profile for mon0.stack (ghostty + nautilus)."""
         return {
-            "version": 2,
-            "mode": "reconcile",
+            "version":
+            2,
+            "mode":
+            "reconcile",
             "layout": {
                 "mon0": {
-                    "split": "hsplit",
-                    "children": [
-                        {
-                            "id": "stack",
-                            "layout": "stacked",
-                            "roles": ["ghostty", "nautilus"],
-                        }
-                    ],
+                    "split":
+                    "hsplit",
+                    "children": [{
+                        "id": "stack",
+                        "layout": "stacked",
+                        "roles": ["ghostty", "nautilus"],
+                    }],
                 }
             },
             "roles": [
                 {
                     "id": "ghostty",
-                    "match": {"class": "com.mitchellh.ghostty"},
-                    "open": {"app": "ghostty"},
+                    "match": {
+                        "class": "com.mitchellh.ghostty"
+                    },
+                    "open": {
+                        "app": "ghostty"
+                    },
                     "slot": "mon0.stack",
                 },
                 {
                     "id": "nautilus",
-                    "match": {"class": "org.gnome.Nautilus"},
-                    "open": {"app": "nautilus"},
+                    "match": {
+                        "class": "org.gnome.Nautilus"
+                    },
+                    "open": {
+                        "app": "nautilus"
+                    },
                     "slot": "mon0.stack",
                 },
             ],
@@ -1929,40 +2085,43 @@ class TestDetectThrash(unittest.TestCase):
     def test_detect_thrash_stacked_roles_not_grouped(self):
         """Multi-role stacked slot with flat mon children → stacked-roles-not-grouped."""
         forest = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 601,
-                            "wmClass": "com.mitchellh.ghostty",
-                            "title": "Ghostty",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "children": [],
-                        },
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 602,
-                            "wmClass": "org.gnome.Nautilus",
-                            "title": "Home",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "children": [],
-                        },
-                    ],
-                }
-            ],
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "HSPLIT",
+                "children": [
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 601,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "Ghostty",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "children": [],
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 602,
+                        "wmClass": "org.gnome.Nautilus",
+                        "title": "Home",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "children": [],
+                    },
+                ],
+            }],
         }
         state = detect_thrash(forest, self._stacked_pair_profile())
         self.assertTrue(state["thrashed"])
         self.assertGreaterEqual(state["score"], 3)
         self.assertTrue(
-            any(r == "stacked-roles-not-grouped:mon0.stack" for r in state["reasons"]),
+            any(r == "stacked-roles-not-grouped:mon0.stack"
+                for r in state["reasons"]),
             f"expected stacked-roles-not-grouped:mon0.stack in {state['reasons']}",
         )
 
@@ -1991,18 +2150,16 @@ class TestDetectThrash(unittest.TestCase):
         self.assertGreaterEqual(state["score"], 3)
         blob = " ".join(state["reasons"]).lower()
         self.assertTrue(
-            any(
-                k in blob
-                for k in (
-                    "nested-split",
-                    "stacked-roles-not-grouped",
-                    "mon1.comms",
-                )
-            ),
+            any(k in blob for k in (
+                "nested-split",
+                "stacked-roles-not-grouped",
+                "mon1.comms",
+            )),
             f"reasons should mention stacked/comms structure: {state['reasons']}",
         )
         self.assertFalse(
-            any("tabbed-roles-not-grouped:mon1.comms" in r for r in state["reasons"]),
+            any("tabbed-roles-not-grouped:mon1.comms" in r
+                for r in state["reasons"]),
             f"stacked slot must not use tabbed reason: {state['reasons']}",
         )
 
@@ -2014,8 +2171,7 @@ class TestDetectThrash(unittest.TestCase):
         self.assertFalse(plan["nothingToDo"])
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertIn("mon0.stack", ensures)
         self.assertEqual(ensures["mon0.stack"]["mode"], "stacked")
@@ -2031,41 +2187,42 @@ class TestDetectThrash(unittest.TestCase):
     def test_plan_stacked_on_flat_emits_ensure_stacked(self):
         """Stacked multi-role profile + flat mon siblings → ensure_layout stacked."""
         forest = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 601,
-                            "wmClass": "com.mitchellh.ghostty",
-                            "title": "Ghostty",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "children": [],
-                        },
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 602,
-                            "wmClass": "org.gnome.Nautilus",
-                            "title": "Home",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "children": [],
-                        },
-                    ],
-                }
-            ],
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "HSPLIT",
+                "children": [
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 601,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "Ghostty",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "children": [],
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 602,
+                        "wmClass": "org.gnome.Nautilus",
+                        "title": "Home",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "children": [],
+                    },
+                ],
+            }],
         }
         plan = plan_reconcile(forest, self._stacked_pair_profile())
         self.assertTrue(plan["ok"])
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertIn("mon0.stack", ensures)
         self.assertEqual(ensures["mon0.stack"]["mode"], "stacked")
@@ -2084,8 +2241,7 @@ class TestDetectThrash(unittest.TestCase):
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(plan["actions"], [])
         self.assertFalse(
-            any(a.get("op") == "ensure_layout" for a in plan["actions"]),
-        )
+            any(a.get("op") == "ensure_layout" for a in plan["actions"]), )
 
     def test_plan_reconcile_thrash_state_on_thrash_fixture(self):
         forest = _load("tree-thrash-mode-b-companions.json")
@@ -2131,10 +2287,12 @@ class TestModeBThrashRecover(unittest.TestCase):
         park_ids = {p["windowId"] for p in parks}
         self.assertEqual(park_ids, {301, 302})
         for p in parks:
-            self.assertIsNotNone(p.get("destWindowId"), f"soft park needs dest: {p}")
+            self.assertIsNotNone(p.get("destWindowId"),
+                                 f"soft park needs dest: {p}")
             # Dump: last mon last claimed role (voice 204 on mon1.comms)
             self.assertEqual(p["destWindowId"], 204)
-        self.assertFalse(any(u.get("status") == "kept" for u in plan["unclaimed"]))
+        self.assertFalse(
+            any(u.get("status") == "kept" for u in plan["unclaimed"]))
 
     def test_perfect_still_nothing_to_do_no_mass_park(self):
         forest = _load("tree-perfect.json")
@@ -2211,21 +2369,37 @@ class TestSafeMode(unittest.TestCase):
         # ghostty role on mon0; stray windows left. Use a role that needs move.
         # Prefer thrash fixture roles with wrong mon if available; else construct.
         profile = {
-            "version": 2,
-            "mode": "reconcile",
-            "overflow": {"slot": "mon0.overflow", "layout": "tabbed"},
-            "marginal": {"mode": "coexist", "roleOrder": "first", "residual": "leave"},
-            "layout": {
-                "mon0": {"children": [{"id": "term", "roles": ["ghostty"]}]},
+            "version":
+            2,
+            "mode":
+            "reconcile",
+            "overflow": {
+                "slot": "mon0.overflow",
+                "layout": "tabbed"
             },
-            "roles": [
-                {
-                    "id": "ghostty",
-                    "match": {"class": "com.mitchellh.ghostty"},
-                    "open": {"app": "ghostty"},
-                    "slot": "mon0.term",
-                }
-            ],
+            "marginal": {
+                "mode": "coexist",
+                "roleOrder": "first",
+                "residual": "leave"
+            },
+            "layout": {
+                "mon0": {
+                    "children": [{
+                        "id": "term",
+                        "roles": ["ghostty"]
+                    }]
+                },
+            },
+            "roles": [{
+                "id": "ghostty",
+                "match": {
+                    "class": "com.mitchellh.ghostty"
+                },
+                "open": {
+                    "app": "ghostty"
+                },
+                "slot": "mon0.term",
+            }],
         }
         # Baseline: ghostty reused; strays left
         plan0 = plan_reconcile(forest, profile, safe=True)
@@ -2247,7 +2421,10 @@ class TestSafeMode(unittest.TestCase):
         self.assertTrue(plan["clean"])
         self.assertEqual(plan["counts"]["closed"], 0)
         self.assertEqual(plan["counts"]["parked"], 0)
-        self.assertFalse(any(a.get("op") in ("close", "park", "ensure_layout") for a in plan["actions"]))
+        self.assertFalse(
+            any(
+                a.get("op") in ("close", "park", "ensure_layout")
+                for a in plan["actions"]))
 
 
 class TestModeACollect(unittest.TestCase):
@@ -2267,8 +2444,7 @@ class TestModeACollect(unittest.TestCase):
             self.assertEqual(k["slot"], "mon1.term")
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertNotIn("mon0", ensures)
         self.assertNotIn("mon1", ensures)
@@ -2287,7 +2463,10 @@ class TestModeACollect(unittest.TestCase):
         self.assertEqual(plan["counts"]["kept"], 0)
         self.assertEqual(plan["counts"]["closed"], 2)
         self.assertEqual(plan["counts"]["parked"], 0)
-        closes = {a["windowId"] for a in plan["actions"] if a.get("op") == "close"}
+        closes = {
+            a["windowId"]
+            for a in plan["actions"] if a.get("op") == "close"
+        }
         self.assertEqual(closes, {301, 302})
 
     def test_keep_others_parks_mode_a_companions_not_keep(self):
@@ -2299,7 +2478,10 @@ class TestModeACollect(unittest.TestCase):
         self.assertEqual(plan["counts"]["kept"], 0)
         self.assertEqual(plan["counts"]["closed"], 0)
         self.assertEqual(plan["counts"]["parked"], 2)
-        parks = {a["windowId"] for a in plan["actions"] if a.get("op") == "park"}
+        parks = {
+            a["windowId"]
+            for a in plan["actions"] if a.get("op") == "park"
+        }
         self.assertEqual(parks, {301, 302})
 
     def test_chrome_half_collect_to_comms(self):
@@ -2314,16 +2496,14 @@ class TestModeACollect(unittest.TestCase):
         self.assertEqual(plan["kept"][0]["slot"], "mon1.comms")
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertNotIn("mon0", ensures)
         self.assertNotIn("mon1", ensures)
         self.assertIn("mon1.comms", ensures)
         self.assertEqual(ensures["mon1.comms"]["mode"], "tabbed")
-        self.assertEqual(
-            ensures["mon1.comms"]["windowIds"], [202, 203, 204, 301]
-        )
+        self.assertEqual(ensures["mon1.comms"]["windowIds"],
+                         [202, 203, 204, 301])
         self.assertFalse(any(a.get("op") == "park" for a in plan["actions"]))
 
     def test_partial_straddle_first_view(self):
@@ -2338,8 +2518,7 @@ class TestModeACollect(unittest.TestCase):
         self.assertEqual(plan["kept"][0]["slot"], "mon1.term")
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertIn("mon1.term", ensures)
         self.assertEqual(ensures["mon1.term"]["mode"], "tabbed")
@@ -2348,16 +2527,22 @@ class TestModeACollect(unittest.TestCase):
     def test_already_tabbed_collect_nothing_to_do(self):
         """Second plan after collect: forest already tabbed → nothingToDo."""
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -2388,13 +2573,18 @@ class TestModeACollect(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -2423,8 +2613,10 @@ class TestModeACollect(unittest.TestCase):
                             ],
                         },
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -2471,7 +2663,8 @@ class TestModeACollect(unittest.TestCase):
         self.assertEqual(plan["counts"]["parked"], 2)
         self.assertEqual(plan["counts"]["kept"], 0)
         park_ids = {
-            a["windowId"] for a in plan["actions"] if a.get("op") == "park"
+            a["windowId"]
+            for a in plan["actions"] if a.get("op") == "park"
         }
         self.assertEqual(park_ids, {301, 302})
 
@@ -2502,8 +2695,7 @@ class TestModeANestedCompanions(unittest.TestCase):
         self.assertEqual(by_slot.get("mon1.term"), {301, 302})
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertEqual(ensures["mon0.term"]["mode"], "tabbed")
         self.assertEqual(ensures["mon0.term"]["windowIds"], [103, 901])
@@ -2526,8 +2718,7 @@ class TestModeANestedCompanions(unittest.TestCase):
                 self.assertEqual(k["slot"], "mon1.term")
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertEqual(ensures["mon0.term"]["windowIds"], [103, 901])
         self.assertEqual(ensures["mon1.term"]["windowIds"], [201, 301, 302])
@@ -2546,25 +2737,40 @@ class TestModeANestedCompanions(unittest.TestCase):
                                 "class": "Google-chrome",
                                 "title~=": "Google Chrome",
                             },
-                            "open": {"app": "google-chrome"},
+                            "open": {
+                                "app": "google-chrome"
+                            },
                         },
                         {
                             "id": "grok",
-                            "match": {"class": "Google-chrome", "title~=": "Grok"},
-                            "open": {"app": "Grok"},
+                            "match": {
+                                "class": "Google-chrome",
+                                "title~=": "Grok"
+                            },
+                            "open": {
+                                "app": "Grok"
+                            },
                         },
                     ],
                     {
                         "id": "ghostty-left",
-                        "match": {"class": "com.mitchellh.ghostty"},
-                        "open": {"app": "ghostty"},
+                        "match": {
+                            "class": "com.mitchellh.ghostty"
+                        },
+                        "open": {
+                            "app": "ghostty"
+                        },
                     },
                 ],
                 "mon1": [
                     {
                         "id": "ghostty-right",
-                        "match": {"class": "com.mitchellh.ghostty"},
-                        "open": {"app": "ghostty"},
+                        "match": {
+                            "class": "com.mitchellh.ghostty"
+                        },
+                        "open": {
+                            "app": "ghostty"
+                        },
                     },
                     [
                         {
@@ -2573,17 +2779,29 @@ class TestModeANestedCompanions(unittest.TestCase):
                                 "class": "Google-chrome",
                                 "title~=": "YouTube",
                             },
-                            "open": {"app": "YouTube"},
+                            "open": {
+                                "app": "YouTube"
+                            },
                         },
                         {
                             "id": "gmail",
-                            "match": {"class": "Google-chrome", "title~=": "Gmail"},
-                            "open": {"app": "Gmail"},
+                            "match": {
+                                "class": "Google-chrome",
+                                "title~=": "Gmail"
+                            },
+                            "open": {
+                                "app": "Gmail"
+                            },
                         },
                         {
                             "id": "voice",
-                            "match": {"class": "Google-chrome", "title~=": "Voice"},
-                            "open": {"app": "Google Voice"},
+                            "match": {
+                                "class": "Google-chrome",
+                                "title~=": "Voice"
+                            },
+                            "open": {
+                                "app": "Google Voice"
+                            },
                         },
                     ],
                 ],
@@ -2600,13 +2818,11 @@ class TestModeANestedCompanions(unittest.TestCase):
         self.assertEqual(by_slot.get("mon1.ghostty-right"), {301, 302})
         ensures = {
             a["slot"]: a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
+            for a in plan["actions"] if a.get("op") == "ensure_layout"
         }
         self.assertEqual(ensures["mon0.ghostty-left"]["windowIds"], [103, 901])
-        self.assertEqual(
-            ensures["mon1.ghostty-right"]["windowIds"], [201, 301, 302]
-        )
+        self.assertEqual(ensures["mon1.ghostty-right"]["windowIds"],
+                         [201, 301, 302])
 
     def test_true_thrash_still_mode_b(self):
         forest = _load("tree-thrash-mode-b-companions.json")
@@ -2619,16 +2835,22 @@ class TestModeANestedCompanions(unittest.TestCase):
     def test_post_tab_nothing_to_do(self):
         """Already tabbed role+companions → second plan nothingToDo."""
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -2649,8 +2871,10 @@ class TestModeANestedCompanions(unittest.TestCase):
                             ],
                         },
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -2673,13 +2897,18 @@ class TestModeANestedCompanions(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -2708,8 +2937,10 @@ class TestModeANestedCompanions(unittest.TestCase):
                             ],
                         },
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -2750,19 +2981,26 @@ class TestModeANestedCompanions(unittest.TestCase):
 
 
 class TestPlanStructureRepair(unittest.TestCase):
+
     def test_mon_split_anchors_skip_tab_members(self):
         """Mon hsplit ensure anchors on term tiles, not chrome inside tabs."""
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -2801,41 +3039,44 @@ class TestPlanStructureRepair(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
-                    "children": [
-                        {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
-                            "children": [
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 201,
-                                    "wmClass": "Google-chrome",
-                                    "title": "YouTube",
-                                    "monitor": 1,
-                                    "children": [],
-                                },
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 202,
-                                    "wmClass": "Google-chrome",
-                                    "title": "Gmail",
-                                    "monitor": 1,
-                                    "children": [],
-                                },
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 203,
-                                    "wmClass": "Google-chrome",
-                                    "title": "Voice",
-                                    "monitor": 1,
-                                    "children": [],
-                                },
-                            ],
-                        }
-                    ],
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
+                    "children": [{
+                        "nodeType":
+                        "CON",
+                        "layout":
+                        "TABBED",
+                        "children": [
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 201,
+                                "wmClass": "Google-chrome",
+                                "title": "YouTube",
+                                "monitor": 1,
+                                "children": [],
+                            },
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 202,
+                                "wmClass": "Google-chrome",
+                                "title": "Gmail",
+                                "monitor": 1,
+                                "children": [],
+                            },
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 203,
+                                "wmClass": "Google-chrome",
+                                "title": "Voice",
+                                "monitor": 1,
+                                "children": [],
+                            },
+                        ],
+                    }],
                 },
             ],
         }
@@ -2844,7 +3085,8 @@ class TestPlanStructureRepair(unittest.TestCase):
         by_slot = {
             a["slot"]: a
             for a in plan["actions"]
-            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0",
+                                                                    "mon1")
         }
         # Only mons with role open/move get mon ensure (avoid peer thrash / LFT steal).
         self.assertNotIn("mon0", by_slot)
@@ -2856,12 +3098,16 @@ class TestPlanStructureRepair(unittest.TestCase):
     def test_flat_same_mon_needs_structure(self):
         """Windows on correct mons but not tabbed → structure repair, not open."""
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -2890,9 +3136,12 @@ class TestPlanStructureRepair(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -2949,6 +3198,7 @@ class TestPlanStructureRepair(unittest.TestCase):
 
 
 class TestPlanDoubled(unittest.TestCase):
+
     def test_doubled_claims_one_parks_extras(self):
         forest = _load("tree-doubled-black.json")
         profile = _load("profile-dev-v2.json")
@@ -2959,16 +3209,16 @@ class TestPlanDoubled(unittest.TestCase):
         # all 7 roles filled from existing windows
         self.assertEqual(plan["counts"]["reused"] + plan["counts"]["moved"], 7)
         claimed_ids = {
-            r["windowId"] for r in plan["roles"] if r.get("windowId") is not None
+            r["windowId"]
+            for r in plan["roles"] if r.get("windowId") is not None
         }
         self.assertEqual(len(claimed_ids), 7)
         # no double-open
         self.assertFalse(any(a["op"] == "open" for a in plan["actions"]))
         # coexist: tab-CON extras kept; bare residuals left in place (TZ1)
         self.assertGreater(
-            plan["counts"]["parked"]
-            + plan["counts"]["kept"]
-            + plan["counts"].get("left", 0),
+            plan["counts"]["parked"] + plan["counts"]["kept"] +
+            plan["counts"].get("left", 0),
             0,
         )
         parks = [a for a in plan["actions"] if a["op"] == "park"]
@@ -2979,11 +3229,9 @@ class TestPlanDoubled(unittest.TestCase):
         wins = collect_windows(forest)
         self.assertEqual(
             len(wins),
-            plan["counts"]["reused"]
-            + plan["counts"]["moved"]
-            + plan["counts"]["parked"]
-            + plan["counts"]["kept"]
-            + plan["counts"].get("left", 0),
+            plan["counts"]["reused"] + plan["counts"]["moved"] +
+            plan["counts"]["parked"] + plan["counts"]["kept"] +
+            plan["counts"].get("left", 0),
         )
 
     def test_doubled_strict_leaves_extras_by_default(self):
@@ -3020,19 +3268,22 @@ class TestPlanDoubled(unittest.TestCase):
         self.assertIn(gl["status"], ("reused", "move"))
         # path mon0 preferred for left
         self.assertTrue(
-            str(gl.get("path", "")).startswith("mo0") or gl["status"] == "move"
-        )
+            str(gl.get("path", "")).startswith("mo0")
+            or gl["status"] == "move")
         gr = by_id["ghostty-right"]
         self.assertNotEqual(gl.get("windowId"), gr.get("windowId"))
 
 
 class TestPlanPartial(unittest.TestCase):
+
     def test_missing_one_role_opens_one(self):
         forest = _load("tree-perfect.json")
         # remove Grok window from forest
         mons = forest["monitors"]
         tab = mons[0]["children"][0]
-        tab["children"] = [c for c in tab["children"] if c.get("title") != "Grok"]
+        tab["children"] = [
+            c for c in tab["children"] if c.get("title") != "Grok"
+        ]
         profile = _load("profile-dev-v2.json")
         plan = plan_reconcile(forest, profile)
         self.assertEqual(plan["counts"]["opened"], 1)
@@ -3044,14 +3295,19 @@ class TestPlanPartial(unittest.TestCase):
 
 
 class TestClaimExclusivity(unittest.TestCase):
+
     def test_two_roles_same_class_no_steal(self):
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -3080,20 +3336,33 @@ class TestClaimExclusivity(unittest.TestCase):
             ],
         }
         profile = {
-            "version": 2,
-            "mode": "reconcile",
-            "overflow": {"slot": "mon0.overflow", "layout": "tabbed"},
+            "version":
+            2,
+            "mode":
+            "reconcile",
+            "overflow": {
+                "slot": "mon0.overflow",
+                "layout": "tabbed"
+            },
             "roles": [
                 {
                     "id": "ghostty-left",
-                    "match": {"class": "com.mitchellh.ghostty"},
-                    "open": {"app": "ghostty"},
+                    "match": {
+                        "class": "com.mitchellh.ghostty"
+                    },
+                    "open": {
+                        "app": "ghostty"
+                    },
                     "slot": "mon0.term",
                 },
                 {
                     "id": "ghostty-right",
-                    "match": {"class": "com.mitchellh.ghostty"},
-                    "open": {"app": "ghostty"},
+                    "match": {
+                        "class": "com.mitchellh.ghostty"
+                    },
+                    "open": {
+                        "app": "ghostty"
+                    },
                     "slot": "mon1.term",
                 },
             ],
@@ -3112,37 +3381,45 @@ class TestClaimExclusivity(unittest.TestCase):
 
     def test_single_window_second_role_opens(self):
         forest = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 9,
-                            "wmClass": "com.mitchellh.ghostty",
-                            "title": "only",
-                            "monitor": 0,
-                            "children": [],
-                        }
-                    ],
-                }
-            ],
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "children": [{
+                    "nodeType": "WINDOW",
+                    "windowId": 9,
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "only",
+                    "monitor": 0,
+                    "children": [],
+                }],
+            }],
         }
         profile = {
-            "version": 2,
+            "version":
+            2,
             "roles": [
                 {
                     "id": "a",
-                    "match": {"class": "com.mitchellh.ghostty"},
-                    "open": {"app": "ghostty"},
+                    "match": {
+                        "class": "com.mitchellh.ghostty"
+                    },
+                    "open": {
+                        "app": "ghostty"
+                    },
                     "slot": "mon0.term",
                 },
                 {
                     "id": "b",
-                    "match": {"class": "com.mitchellh.ghostty"},
-                    "open": {"app": "ghostty"},
+                    "match": {
+                        "class": "com.mitchellh.ghostty"
+                    },
+                    "open": {
+                        "app": "ghostty"
+                    },
                     "slot": "mon1.term",
                 },
             ],
@@ -3155,6 +3432,7 @@ class TestClaimExclusivity(unittest.TestCase):
 
 
 class TestEnsureLayout(unittest.TestCase):
+
     def test_ensure_on_work(self):
         forest = _load("tree-empty.json")
         profile = _load("profile-dev-v2.json")
@@ -3194,7 +3472,8 @@ class TestColdSkeletonCt1(unittest.TestCase):
         self.assertEqual(kids["term"]["roles"], ["ghostty-left"])
 
     def test_phase_order_skeleton_open_no_park(self):
-        plan = plan_reconcile(_load("tree-empty.json"), _load("profile-dev-v2.json"))
+        plan = plan_reconcile(_load("tree-empty.json"),
+                              _load("profile-dev-v2.json"))
         ops = [a["op"] for a in plan["actions"]]
         self.assertEqual(ops[0], "ensure_skeleton")
         self.assertTrue(all(o in ("ensure_skeleton", "open") for o in ops))
@@ -3202,7 +3481,8 @@ class TestColdSkeletonCt1(unittest.TestCase):
         self.assertNotIn("ensure_layout", ops)
 
     def test_perfect_still_nothing_to_do(self):
-        plan = plan_reconcile(_load("tree-perfect.json"), _load("profile-dev-v2.json"))
+        plan = plan_reconcile(_load("tree-perfect.json"),
+                              _load("profile-dev-v2.json"))
         self.assertTrue(plan["nothingToDo"])
         self.assertEqual(plan["actions"], [])
         self.assertFalse(plan.get("coldEmpty"))
@@ -3216,20 +3496,27 @@ class TestColdSkeletonCt1(unittest.TestCase):
         self.assertFalse(plan.get("coldEmpty"))
         self.assertGreater(plan["counts"]["parked"], 0)
         self.assertTrue(any(a["op"] == "park" for a in plan["actions"]))
-        self.assertFalse(any(a["op"] == "ensure_skeleton" for a in plan["actions"]))
+        self.assertFalse(
+            any(a["op"] == "ensure_skeleton" for a in plan["actions"]))
 
     def test_bind_from_placeholders(self):
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "layout": "HSPLIT",
-                    "id": "mo0ws0",
+                    "nodeType":
+                    "MONITOR",
+                    "layout":
+                    "HSPLIT",
+                    "id":
+                    "mo0ws0",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -3238,7 +3525,8 @@ class TestColdSkeletonCt1(unittest.TestCase):
                                     "layoutSlot": "mon0.left-tab",
                                     "windowId": "forge-ph-1",
                                     "wmClass": "forge-placeholder",
-                                    "title": "forge-ph:mon0.left-tab:chrome-luke",
+                                    "title":
+                                    "forge-ph:mon0.left-tab:chrome-luke",
                                     "mode": "TILE",
                                 },
                                 {
@@ -3327,40 +3615,35 @@ class TestColdSkeletonCt1(unittest.TestCase):
 
     def _ph_ghostty_forest(self, *, with_junk=True, with_role_win=True):
         """Layout PH mon0.term + optional real ghostty + junk residual."""
-        kids = [
-            {
-                "nodeType": "WINDOW",
-                "placeholder": True,
-                "layoutRole": "ghostty",
-                "layoutSlot": "mon0.term",
-                "windowId": "forge-ph-term",
-                "wmClass": "forge-placeholder",
-                "title": "forge-ph:mon0.term:ghostty",
-                "mode": "TILE",
-            }
-        ]
+        kids = [{
+            "nodeType": "WINDOW",
+            "placeholder": True,
+            "layoutRole": "ghostty",
+            "layoutSlot": "mon0.term",
+            "windowId": "forge-ph-term",
+            "wmClass": "forge-placeholder",
+            "title": "forge-ph:mon0.term:ghostty",
+            "mode": "TILE",
+        }]
         if with_role_win:
-            kids.append(
-                {
-                    "nodeType": "WINDOW",
-                    "windowId": 501,
-                    "wmClass": "com.mitchellh.ghostty",
-                    "title": "ghostty",
-                    "mode": "TILE",
-                }
-            )
+            kids.append({
+                "nodeType": "WINDOW",
+                "windowId": 501,
+                "wmClass": "com.mitchellh.ghostty",
+                "title": "ghostty",
+                "mode": "TILE",
+            })
         if with_junk:
-            kids.append(
-                {
-                    "nodeType": "WINDOW",
-                    "windowId": 999,
-                    "wmClass": "org.gnome.Nautilus",
-                    "title": "Files",
-                    "mode": "TILE",
-                }
-            )
+            kids.append({
+                "nodeType": "WINDOW",
+                "windowId": 999,
+                "wmClass": "org.gnome.Nautilus",
+                "title": "Files",
+                "mode": "TILE",
+            })
         return {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
                     "nodeType": "MONITOR",
@@ -3379,23 +3662,33 @@ class TestColdSkeletonCt1(unittest.TestCase):
 
     def _ghostty_only_profile(self):
         return {
-            "version": 2,
-            "mode": "reconcile",
-            "overflow": {"slot": "mon0.overflow", "layout": "tabbed"},
+            "version":
+            2,
+            "mode":
+            "reconcile",
+            "overflow": {
+                "slot": "mon0.overflow",
+                "layout": "tabbed"
+            },
             "layout": {
                 "mon0": {
                     "split": "hsplit",
-                    "children": [{"id": "term", "roles": ["ghostty"]}],
+                    "children": [{
+                        "id": "term",
+                        "roles": ["ghostty"]
+                    }],
                 }
             },
-            "roles": [
-                {
-                    "id": "ghostty",
-                    "match": {"class": "com.mitchellh.ghostty"},
-                    "open": {"app": "ghostty"},
-                    "slot": "mon0.term",
-                }
-            ],
+            "roles": [{
+                "id": "ghostty",
+                "match": {
+                    "class": "com.mitchellh.ghostty"
+                },
+                "open": {
+                    "app": "ghostty"
+                },
+                "slot": "mon0.term",
+            }],
         }
 
     def test_residual_bind_before_close(self):
@@ -3411,7 +3704,8 @@ class TestColdSkeletonCt1(unittest.TestCase):
         self.assertIn("bind", ops)
         self.assertIn("close", ops)
         self.assertLess(ops.index("bind"), ops.index("close"))
-        self.assertFalse(any(a["op"] == "ensure_layout" for a in plan["actions"]))
+        self.assertFalse(
+            any(a["op"] == "ensure_layout" for a in plan["actions"]))
         self.assertEqual(plan["counts"]["bound"], 1)
         self.assertEqual(plan["counts"]["closed"], 1)
 
@@ -3434,21 +3728,23 @@ class TestColdSkeletonCt1(unittest.TestCase):
         """Cold first plan: skeleton+open only; defer residual close to replan."""
         # Empty roles claim + junk present → still coldEmpty (all roles open).
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "layout": "HSPLIT",
-                    "id": "mo0ws0",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 999,
-                            "wmClass": "org.gnome.Nautilus",
-                            "title": "Files",
-                            "mode": "TILE",
-                        }
-                    ],
+                    "nodeType":
+                    "MONITOR",
+                    "layout":
+                    "HSPLIT",
+                    "id":
+                    "mo0ws0",
+                    "children": [{
+                        "nodeType": "WINDOW",
+                        "windowId": 999,
+                        "wmClass": "org.gnome.Nautilus",
+                        "title": "Files",
+                        "mode": "TILE",
+                    }],
                 },
                 {
                     "nodeType": "MONITOR",
@@ -3476,7 +3772,8 @@ class TestColdSkeletonCt1(unittest.TestCase):
         self.assertFalse(plan.get("coldEmpty"))
         ops = [a["op"] for a in plan["actions"]]
         self.assertIn("bind", ops)
-        self.assertFalse(any(a["op"] == "ensure_layout" for a in plan["actions"]))
+        self.assertFalse(
+            any(a["op"] == "ensure_layout" for a in plan["actions"]))
         self.assertNotIn("ensure_skeleton", ops)
 
 
@@ -3485,23 +3782,33 @@ class TestMarginalCoexist(unittest.TestCase):
 
     def _ghostty_profile(self, **marginal_extra):
         prof = {
-            "version": 2,
-            "mode": "reconcile",
-            "overflow": {"slot": "mon0.overflow", "layout": "tabbed"},
+            "version":
+            2,
+            "mode":
+            "reconcile",
+            "overflow": {
+                "slot": "mon0.overflow",
+                "layout": "tabbed"
+            },
             "layout": {
                 "mon0": {
                     "split": "hsplit",
-                    "children": [{"id": "term", "roles": ["ghostty"]}],
+                    "children": [{
+                        "id": "term",
+                        "roles": ["ghostty"]
+                    }],
                 }
             },
-            "roles": [
-                {
-                    "id": "ghostty",
-                    "match": {"class": "com.mitchellh.ghostty"},
-                    "open": {"app": "ghostty"},
-                    "slot": "mon0.term",
-                }
-            ],
+            "roles": [{
+                "id": "ghostty",
+                "match": {
+                    "class": "com.mitchellh.ghostty"
+                },
+                "open": {
+                    "app": "ghostty"
+                },
+                "slot": "mon0.term",
+            }],
         }
         if marginal_extra:
             prof["marginal"] = marginal_extra
@@ -3553,38 +3860,40 @@ class TestMarginalCoexist(unittest.TestCase):
     def test_nautilus_wrong_order_no_structure_thrash(self):
         """Already tabbed together → no order-only re-tab (TZ1 zero thrash)."""
         forest = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "HSPLIT",
+                "children": [{
+                    "nodeType":
+                    "CON",
+                    "layout":
+                    "TABBED",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
-                            "children": [
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 502,
-                                    "wmClass": "org.gnome.Nautilus",
-                                    "title": "Home",
-                                    "monitor": 0,
-                                    "children": [],
-                                },
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 501,
-                                    "wmClass": "com.mitchellh.ghostty",
-                                    "title": "Ghostty",
-                                    "monitor": 0,
-                                    "children": [],
-                                },
-                            ],
-                        }
+                            "nodeType": "WINDOW",
+                            "windowId": 502,
+                            "wmClass": "org.gnome.Nautilus",
+                            "title": "Home",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 501,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "monitor": 0,
+                            "children": [],
+                        },
                     ],
-                }
-            ],
+                }],
+            }],
         }
         plan = plan_reconcile(forest, self._ghostty_profile())
         self.assertEqual(plan["counts"]["kept"], 1)
@@ -3619,18 +3928,17 @@ class TestMarginalCoexist(unittest.TestCase):
             self.assertEqual(p.get("destWindowId"), 601)
         # Tab-join last mon unit: overflow ensure_layout wraps ghostty + residuals
         overflow = [
-            a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout" and "overflow" in str(a.get("slot", ""))
+            a for a in plan["actions"] if a.get("op") == "ensure_layout"
+            and "overflow" in str(a.get("slot", ""))
         ]
         self.assertEqual(len(overflow), 1, overflow)
         self.assertEqual(overflow[0].get("mode"), "tabbed")
         self.assertEqual(overflow[0].get("windowIds")[0], 601)
         # WR16: park-only must not rewrite mon splits
         mon_ensures = [
-            a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+            a for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0",
+                                                                    "mon1")
         ]
         self.assertEqual(mon_ensures, [])
 
@@ -3638,30 +3946,40 @@ class TestMarginalCoexist(unittest.TestCase):
         """WR16: mon-direct after role mon-child is span-kept (not park)."""
         forest = _load("tree-extra-role-copy.json")
         profile = {
-            "version": 2,
+            "version":
+            2,
             "layout": {
                 "mon0": {
-                    "split": "hsplit",
-                    "children": [
-                        {
-                            "id": "left-tab",
-                            "layout": "tabbed",
-                            "roles": ["chrome-luke", "grok"],
-                        }
-                    ],
+                    "split":
+                    "hsplit",
+                    "children": [{
+                        "id": "left-tab",
+                        "layout": "tabbed",
+                        "roles": ["chrome-luke", "grok"],
+                    }],
                 }
             },
             "roles": [
                 {
                     "id": "chrome-luke",
-                    "match": {"class": "Google-chrome", "title": "Google Chrome"},
-                    "open": {"app": "google-chrome"},
+                    "match": {
+                        "class": "Google-chrome",
+                        "title": "Google Chrome"
+                    },
+                    "open": {
+                        "app": "google-chrome"
+                    },
                     "slot": "mon0.left-tab",
                 },
                 {
                     "id": "grok",
-                    "match": {"class": "Google-chrome", "title~=": "Grok"},
-                    "open": {"app": "Grok"},
+                    "match": {
+                        "class": "Google-chrome",
+                        "title~=": "Grok"
+                    },
+                    "open": {
+                        "app": "Grok"
+                    },
                     "slot": "mon0.left-tab",
                 },
             ],
@@ -3679,70 +3997,80 @@ class TestMarginalCoexist(unittest.TestCase):
     def test_extra_in_slot_con_kept(self):
         """Extra matcher copy already in role's tab CON → companion keep."""
         forest = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "children": [{
+                    "nodeType":
+                    "CON",
+                    "layout":
+                    "TABBED",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
-                            "children": [
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 801,
-                                    "wmClass": "Google-chrome",
-                                    "title": "Google Chrome",
-                                    "monitor": 0,
-                                    "children": [],
-                                },
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 802,
-                                    "wmClass": "Google-chrome",
-                                    "title": "Grok",
-                                    "monitor": 0,
-                                    "children": [],
-                                },
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 803,
-                                    "wmClass": "Google-chrome",
-                                    "title": "Grok",
-                                    "monitor": 0,
-                                    "children": [],
-                                },
-                            ],
-                        }
+                            "nodeType": "WINDOW",
+                            "windowId": 801,
+                            "wmClass": "Google-chrome",
+                            "title": "Google Chrome",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 802,
+                            "wmClass": "Google-chrome",
+                            "title": "Grok",
+                            "monitor": 0,
+                            "children": [],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 803,
+                            "wmClass": "Google-chrome",
+                            "title": "Grok",
+                            "monitor": 0,
+                            "children": [],
+                        },
                     ],
-                }
-            ],
+                }],
+            }],
         }
         profile = {
-            "version": 2,
+            "version":
+            2,
             "layout": {
                 "mon0": {
-                    "children": [
-                        {
-                            "id": "left-tab",
-                            "layout": "tabbed",
-                            "roles": ["chrome-luke", "grok"],
-                        }
-                    ]
+                    "children": [{
+                        "id": "left-tab",
+                        "layout": "tabbed",
+                        "roles": ["chrome-luke", "grok"],
+                    }]
                 }
             },
             "roles": [
                 {
                     "id": "chrome-luke",
-                    "match": {"class": "Google-chrome", "title": "Google Chrome"},
-                    "open": {"app": "google-chrome"},
+                    "match": {
+                        "class": "Google-chrome",
+                        "title": "Google Chrome"
+                    },
+                    "open": {
+                        "app": "google-chrome"
+                    },
                     "slot": "mon0.left-tab",
                 },
                 {
                     "id": "grok",
-                    "match": {"class": "Google-chrome", "title~=": "Grok"},
-                    "open": {"app": "Grok"},
+                    "match": {
+                        "class": "Google-chrome",
+                        "title~=": "Grok"
+                    },
+                    "open": {
+                        "app": "Grok"
+                    },
                     "slot": "mon0.left-tab",
                 },
             ],
@@ -3757,8 +4085,7 @@ class TestMarginalCoexist(unittest.TestCase):
     def test_strict_leaves_unclaimed_by_default(self):
         forest = _load("tree-ghostty-nautilus-tab.json")
         plan = plan_reconcile(
-            forest, self._ghostty_profile(mode="strict", roleOrder="first")
-        )
+            forest, self._ghostty_profile(mode="strict", roleOrder="first"))
         self.assertEqual(plan["counts"]["reused"], 1)
         self.assertEqual(plan["counts"]["kept"], 0)
         self.assertEqual(plan["counts"]["parked"], 0)
@@ -3770,7 +4097,9 @@ class TestMarginalCoexist(unittest.TestCase):
         forest = _load("tree-ghostty-nautilus-tab.json")
         plan = plan_reconcile(
             forest,
-            self._ghostty_profile(mode="strict", residual="park", roleOrder="first"),
+            self._ghostty_profile(mode="strict",
+                                  residual="park",
+                                  roleOrder="first"),
         )
         self.assertEqual(plan["counts"]["kept"], 0)
         self.assertEqual(plan["counts"]["parked"], 1)
@@ -3785,23 +4114,32 @@ class TestCleanResiduals(unittest.TestCase):
 
     def _ghostty_profile(self, mode="coexist"):
         return {
-            "version": 2,
-            "marginal": {"mode": mode, "roleOrder": "first"},
+            "version":
+            2,
+            "marginal": {
+                "mode": mode,
+                "roleOrder": "first"
+            },
             "layout": {
                 "mon0": {
                     "children": [
-                        {"id": "term", "roles": ["ghostty"]},
+                        {
+                            "id": "term",
+                            "roles": ["ghostty"]
+                        },
                     ]
                 }
             },
-            "roles": [
-                {
-                    "id": "ghostty",
-                    "match": {"class": "com.mitchellh.ghostty"},
-                    "open": {"app": "ghostty"},
-                    "slot": "mon0.term",
-                }
-            ],
+            "roles": [{
+                "id": "ghostty",
+                "match": {
+                    "class": "com.mitchellh.ghostty"
+                },
+                "open": {
+                    "app": "ghostty"
+                },
+                "slot": "mon0.term",
+            }],
         }
 
     def test_default_leaves_strays(self):
@@ -3829,7 +4167,8 @@ class TestCleanResiduals(unittest.TestCase):
         self.assertFalse(any(a["op"] == "park" for a in plan["actions"]))
         # role window not closed
         role_ids = {
-            r.get("windowId") for r in plan["roles"] if r.get("windowId") is not None
+            r.get("windowId")
+            for r in plan["roles"] if r.get("windowId") is not None
         }
         for c in closes:
             self.assertNotIn(c["windowId"], role_ids)
@@ -3857,9 +4196,9 @@ class TestCleanResiduals(unittest.TestCase):
 
     def test_clean_strict_closes_companions(self):
         forest = _load("tree-ghostty-nautilus-tab.json")
-        plan = plan_reconcile(
-            forest, self._ghostty_profile(mode="strict"), clean=True
-        )
+        plan = plan_reconcile(forest,
+                              self._ghostty_profile(mode="strict"),
+                              clean=True)
         self.assertEqual(plan["counts"]["kept"], 0)
         self.assertEqual(plan["counts"]["parked"], 0)
         self.assertEqual(plan["counts"]["closed"], 1)
@@ -3871,9 +4210,8 @@ class TestCleanResiduals(unittest.TestCase):
         forest = _load("tree-stray-wrong-mon.json")
         plan = plan_reconcile(forest, self._ghostty_profile(), clean=True)
         overflow_ensures = [
-            a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout" and "overflow" in str(a.get("slot", ""))
+            a for a in plan["actions"] if a.get("op") == "ensure_layout"
+            and "overflow" in str(a.get("slot", ""))
         ]
         self.assertEqual(overflow_ensures, [])
 
@@ -3898,7 +4236,9 @@ class TestMonChildSpanAndParkGating(unittest.TestCase):
             self.assertEqual(k["status"], "kept")
         # Structure tabs ghostty + companions; no mon0/mon1 rewrite
         self.assertGreaterEqual(plan["counts"]["structure"], 1)
-        ensures = [a for a in plan["actions"] if a.get("op") == "ensure_layout"]
+        ensures = [
+            a for a in plan["actions"] if a.get("op") == "ensure_layout"
+        ]
         by_slot = {a["slot"]: a for a in ensures}
         self.assertNotIn("mon0", by_slot)
         self.assertNotIn("mon1", by_slot)
@@ -3909,16 +4249,22 @@ class TestMonChildSpanAndParkGating(unittest.TestCase):
 
     def test_mon1_companions_already_tabbed_nothing_to_do(self):
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -3949,13 +4295,18 @@ class TestMonChildSpanAndParkGating(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -3984,8 +4335,10 @@ class TestMonChildSpanAndParkGating(unittest.TestCase):
                             ],
                         },
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -4027,21 +4380,27 @@ class TestMonChildSpanAndParkGating(unittest.TestCase):
     def test_park_only_no_mon_level_ensure(self):
         forest = _load("tree-stray-wrong-mon.json")
         profile = {
-            "version": 2,
+            "version":
+            2,
             "layout": {
                 "mon0": {
                     "split": "hsplit",
-                    "children": [{"id": "term", "roles": ["ghostty"]}],
+                    "children": [{
+                        "id": "term",
+                        "roles": ["ghostty"]
+                    }],
                 }
             },
-            "roles": [
-                {
-                    "id": "ghostty",
-                    "match": {"class": "com.mitchellh.ghostty"},
-                    "open": {"app": "ghostty"},
-                    "slot": "mon0.term",
-                }
-            ],
+            "roles": [{
+                "id": "ghostty",
+                "match": {
+                    "class": "com.mitchellh.ghostty"
+                },
+                "open": {
+                    "app": "ghostty"
+                },
+                "slot": "mon0.term",
+            }],
         }
         profile["marginal"] = {"mode": "coexist", "residual": "park"}
         plan = plan_reconcile(forest, profile)
@@ -4049,19 +4408,19 @@ class TestMonChildSpanAndParkGating(unittest.TestCase):
         self.assertEqual(plan["counts"]["moved"], 0)
         self.assertEqual(plan["counts"]["opened"], 0)
         mon_ensures = [
-            a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+            a for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0",
+                                                                    "mon1")
         ]
         self.assertEqual(mon_ensures, [])
         # Soft park: tab-join overflow ensure (not mon-level hsplit rewrite)
         overflow = [
-            a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout" and "overflow" in str(a.get("slot", ""))
+            a for a in plan["actions"] if a.get("op") == "ensure_layout"
+            and "overflow" in str(a.get("slot", ""))
         ]
         self.assertTrue(overflow, plan["actions"])
-        self.assertTrue(all(a.get("mode") in ("tabbed", "stacked") for a in overflow))
+        self.assertTrue(
+            all(a.get("mode") in ("tabbed", "stacked") for a in overflow))
         parks = [a for a in plan["actions"] if a.get("op") == "park"]
         self.assertEqual(len(parks), 2)
         self.assertTrue(all(p.get("destWindowId") is not None for p in parks))
@@ -4089,7 +4448,8 @@ class TestStableKeyMonitors(unittest.TestCase):
 
     def test_resolve_unknown_lists_available(self):
         forest = _load("tree-empty.json")
-        with self.assertRaisesRegex(ValueError, r"available stableKeys:.*geom:"):
+        with self.assertRaisesRegex(ValueError,
+                                    r"available stableKeys:.*geom:"):
             resolve_mon_key("geom:9,9,1,1", forest)
 
     def test_validate_raw_stable_key_layout(self):
@@ -4106,7 +4466,10 @@ class TestStableKeyMonitors(unittest.TestCase):
 
     def test_validate_alias_map(self):
         raw = {
-            "monitors": {"left": _SK0, "right": _SK1},
+            "monitors": {
+                "left": _SK0,
+                "right": _SK1
+            },
             "tiles": {
                 "left": ["ghostty"],
                 "right": ["firefox"],
@@ -4143,7 +4506,10 @@ class TestStableKeyMonitors(unittest.TestCase):
     def test_plan_alias_map_empty(self):
         forest = _load("tree-empty.json")
         profile = {
-            "monitors": {"left": _SK0, "right": _SK1},
+            "monitors": {
+                "left": _SK0,
+                "right": _SK1
+            },
             "tiles": {
                 "left": ["ghostty"],
                 "right": ["firefox"],
@@ -4172,7 +4538,8 @@ class TestStableKeyMonitors(unittest.TestCase):
         plan = plan_reconcile(forest, raw)
         self.assertTrue(plan["nothingToDo"])
         self.assertEqual(plan["counts"]["reused"], 7)
-        self.assertTrue(all(r["slot"].startswith("mon") for r in plan["roles"]))
+        self.assertTrue(all(r["slot"].startswith("mon")
+                            for r in plan["roles"]))
 
     def test_plan_alias_perfect_reuse(self):
         forest = _load("tree-perfect.json")
@@ -4193,12 +4560,14 @@ class TestStableKeyMonitors(unittest.TestCase):
 
     def test_resolve_profile_rewrites_to_monN(self):
         forest = _load("tree-empty.json")
-        prof = validate_reconcile_profile(
-            {
-                "monitors": {"left": _SK0},
-                "tiles": {"left": ["ghostty"]},
-            }
-        )
+        prof = validate_reconcile_profile({
+            "monitors": {
+                "left": _SK0
+            },
+            "tiles": {
+                "left": ["ghostty"]
+            },
+        })
         resolved = resolve_profile_mon_keys(prof, forest)
         self.assertIn("mon0", resolved["layout"])
         self.assertNotIn("left", resolved["layout"])
@@ -4209,14 +4578,16 @@ class TestStableKeyMonitors(unittest.TestCase):
         forest = _load("tree-empty.json")
         plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
         self.assertEqual(plan["counts"]["opened"], 7)
-        plan2 = plan_reconcile(_load("tree-perfect.json"), _load("profile-dev-v2.json"))
+        plan2 = plan_reconcile(_load("tree-perfect.json"),
+                               _load("profile-dev-v2.json"))
         self.assertTrue(plan2["nothingToDo"])
 
     def test_dotted_name_stable_key_longest_prefix(self):
         """name:Dell.U2720Q must not split on first '.' (validate + resolve agree)."""
         sk_dotted = "name:Dell.U2720Q"
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
                     "nodeType": "MONITOR",
@@ -4233,9 +4604,8 @@ class TestStableKeyMonitors(unittest.TestCase):
             ],
         }
         # mon_head_and_rest: longest-prefix, not first-dot
-        head, rest = mon_head_and_rest(
-            f"{sk_dotted}.ghostty", known_heads={sk_dotted}
-        )
+        head, rest = mon_head_and_rest(f"{sk_dotted}.ghostty",
+                                       known_heads={sk_dotted})
         self.assertEqual(head, sk_dotted)
         self.assertEqual(rest, "ghostty")
         # first-dot fallback would wrongly yield name:Dell
@@ -4254,8 +4624,12 @@ class TestStableKeyMonitors(unittest.TestCase):
 
         # alias → dotted stableKey
         profile_alias = {
-            "monitors": {"desk": sk_dotted},
-            "tiles": {"desk": ["ghostty"]},
+            "monitors": {
+                "desk": sk_dotted
+            },
+            "tiles": {
+                "desk": ["ghostty"]
+            },
         }
         plan_a = plan_reconcile(forest, profile_alias)
         self.assertEqual(plan_a["roles"][0]["slot"], "mon0.ghostty")
@@ -4263,18 +4637,24 @@ class TestStableKeyMonitors(unittest.TestCase):
 
 
 class TestFocusAndActive(unittest.TestCase):
+
     def test_profile_focus_and_tab_active_emit_focus_actions(self):
         forest = _load("tree-perfect.json")
         profile = {
             "focus": "Grok",
             "tiles": {
                 "mon0": [
-                    {"tab": ["google-chrome", "Grok"], "active": "Grok"},
+                    {
+                        "tab": ["google-chrome", "Grok"],
+                        "active": "Grok"
+                    },
                     "ghostty",
                 ],
                 "mon1": [
                     "ghostty",
-                    {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                    {
+                        "tab": ["YouTube", "Gmail", "Google Voice"]
+                    },
                 ],
             },
         }
@@ -4299,12 +4679,16 @@ class TestFocusAndActive(unittest.TestCase):
             "focus": "Grok",
             "tiles": {
                 "mon0": [
-                    {"tab": ["google-chrome", "Grok"]},
+                    {
+                        "tab": ["google-chrome", "Grok"]
+                    },
                     "ghostty",
                 ],
                 "mon1": [
                     "ghostty",
-                    {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                    {
+                        "tab": ["YouTube", "Gmail", "Google Voice"]
+                    },
                 ],
             },
         }
@@ -4327,12 +4711,17 @@ class TestFocusAndActive(unittest.TestCase):
         profile = {
             "tiles": {
                 "mon0": [
-                    {"tab": ["Grok", "Grok"], "active": ["Grok", 1]},
+                    {
+                        "tab": ["Grok", "Grok"],
+                        "active": ["Grok", 1]
+                    },
                     "ghostty",
                 ],
                 "mon1": [
                     "ghostty",
-                    {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                    {
+                        "tab": ["YouTube", "Gmail", "Google Voice"]
+                    },
                 ],
             },
         }
@@ -4341,10 +4730,12 @@ class TestFocusAndActive(unittest.TestCase):
         self.assertEqual(tab0.get("active"), "Grok-2")
         plan = plan_reconcile(forest, profile)
         focus_ops = [a for a in plan["actions"] if a.get("op") == "focus"]
-        self.assertTrue(any(a.get("selector") == "id:102" for a in focus_ops), focus_ops)
+        self.assertTrue(any(a.get("selector") == "id:102" for a in focus_ops),
+                        focus_ops)
         self.assertTrue(
-            any(a.get("role") == "Grok-2" and a.get("reason") == "active" for a in focus_ops)
-        )
+            any(
+                a.get("role") == "Grok-2" and a.get("reason") == "active"
+                for a in focus_ops))
 
     def test_focus_nth_grok_desk_wide(self):
         forest = self._dual_grok_forest()
@@ -4352,12 +4743,16 @@ class TestFocusAndActive(unittest.TestCase):
             "focus": ["Grok", 1],
             "tiles": {
                 "mon0": [
-                    {"tab": ["Grok", "Grok"]},
+                    {
+                        "tab": ["Grok", "Grok"]
+                    },
                     "ghostty",
                 ],
                 "mon1": [
                     "ghostty",
-                    {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                    {
+                        "tab": ["YouTube", "Gmail", "Google Voice"]
+                    },
                 ],
             },
         }
@@ -4368,8 +4763,7 @@ class TestFocusAndActive(unittest.TestCase):
         self.assertTrue(
             any(
                 a.get("selector") == "id:102" and a.get("reason") == "profile"
-                for a in focus_ops
-            ),
+                for a in focus_ops),
             focus_ops,
         )
 
@@ -4382,12 +4776,17 @@ class TestFocusAndActive(unittest.TestCase):
             profile = {
                 "tiles": {
                     "mon0": [
-                        {"tab": ["Grok", "Grok"], "active": idx},
+                        {
+                            "tab": ["Grok", "Grok"],
+                            "active": idx
+                        },
                         "ghostty",
                     ],
                     "mon1": [
                         "ghostty",
-                        {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                        {
+                            "tab": ["YouTube", "Gmail", "Google Voice"]
+                        },
                     ],
                 },
             }
@@ -4397,7 +4796,9 @@ class TestFocusAndActive(unittest.TestCase):
             plan = plan_reconcile(forest, profile)
             focus_ops = [a for a in plan["actions"] if a.get("op") == "focus"]
             self.assertTrue(
-                any(a.get("selector") == f"id:{expect_wid}" for a in focus_ops),
+                any(
+                    a.get("selector") == f"id:{expect_wid}"
+                    for a in focus_ops),
                 (idx, focus_ops),
             )
 
@@ -4406,10 +4807,14 @@ class TestFocusAndActive(unittest.TestCase):
         profile = {
             "focus": "Grok-2",
             "tiles": {
-                "mon0": [{"tab": ["Grok", "Grok"]}, "ghostty"],
+                "mon0": [{
+                    "tab": ["Grok", "Grok"]
+                }, "ghostty"],
                 "mon1": [
                     "ghostty",
-                    {"tab": ["YouTube", "Gmail", "Google Voice"]},
+                    {
+                        "tab": ["YouTube", "Gmail", "Google Voice"]
+                    },
                 ],
             },
         }
@@ -4419,12 +4824,11 @@ class TestFocusAndActive(unittest.TestCase):
         self.assertTrue(
             any(
                 a.get("op") == "focus" and a.get("selector") == "id:102"
-                for a in plan["actions"]
-            )
-        )
+                for a in plan["actions"]))
 
 
 class TestFormatLayoutDescription(unittest.TestCase):
+
     def test_bare_dual_mon(self):
         bare = _load("profile-bare-dual-mon.json")
         desc = format_layout_description(bare)
@@ -4452,16 +4856,24 @@ class TestFormatLayoutDescription(unittest.TestCase):
         sugar = {
             "tiles": {
                 "mon0": [
-                    {"split": "h", "content": ["ghostty", "firefox"]},
+                    {
+                        "split": "h",
+                        "content": ["ghostty", "firefox"]
+                    },
                     "code",
                 ]
             }
         }
         desc = format_layout_description(sugar)
-        self.assertEqual(desc, "mon0 (hsplit): hsplit(ghostty, firefox), code.")
+        self.assertEqual(desc,
+                         "mon0 (hsplit): hsplit(ghostty, firefox), code.")
 
     def test_empty_or_steps_profile(self):
-        self.assertEqual(format_layout_description({"version": 1, "steps": []}), "")
+        self.assertEqual(
+            format_layout_description({
+                "version": 1,
+                "steps": []
+            }), "")
         self.assertEqual(format_layout_description({}), "")
 
     def test_split_inferred_when_omitted(self):
@@ -4480,8 +4892,13 @@ class TestFormatLayoutDescription(unittest.TestCase):
 _T1_PROFILE = {
     "tiles": [
         [
-            {"tab": ["google-chrome", "Grok"], "active": "Grok"},
-            {"vsplit": ["ghostty", "nautilus"]},
+            {
+                "tab": ["google-chrome", "Grok"],
+                "active": "Grok"
+            },
+            {
+                "vsplit": ["ghostty", "nautilus"]
+            },
         ],
         [
             "ghostty",
@@ -4501,8 +4918,10 @@ def _t1_forest_missing_nautilus(*, nautilus_on_mon1: bool = False):
     """
     mon0_kids = [
         {
-            "nodeType": "CON",
-            "layout": "TABBED",
+            "nodeType":
+            "CON",
+            "layout":
+            "TABBED",
             "children": [
                 {
                     "nodeType": "WINDOW",
@@ -4525,8 +4944,10 @@ def _t1_forest_missing_nautilus(*, nautilus_on_mon1: bool = False):
             ],
         },
         {
-            "nodeType": "CON",
-            "layout": "VSPLIT",
+            "nodeType":
+            "CON",
+            "layout":
+            "VSPLIT",
             "children": [
                 {
                     "nodeType": "WINDOW",
@@ -4551,8 +4972,10 @@ def _t1_forest_missing_nautilus(*, nautilus_on_mon1: bool = False):
             "children": [],
         },
         {
-            "nodeType": "CON",
-            "layout": "TABBED",
+            "nodeType":
+            "CON",
+            "layout":
+            "TABBED",
             "children": [
                 {
                     "nodeType": "WINDOW",
@@ -4585,25 +5008,29 @@ def _t1_forest_missing_nautilus(*, nautilus_on_mon1: bool = False):
         },
     ]
     if nautilus_on_mon1:
-        mon1_kids.append(
-            {
-                "nodeType": "WINDOW",
-                "windowId": 301,
-                "wmClass": "org.gnome.Nautilus",
-                "title": "Home",
-                "monitor": 1,
-                "mode": "TILE",
-                "children": [],
-            }
-        )
+        mon1_kids.append({
+            "nodeType": "WINDOW",
+            "windowId": 301,
+            "wmClass": "org.gnome.Nautilus",
+            "title": "Home",
+            "monitor": 1,
+            "mode": "TILE",
+            "children": [],
+        })
     return {
-        "apiVersion": 2,
+        "apiVersion":
+        2,
         "monitors": [
             {
                 "nodeType": "MONITOR",
                 "id": "mo0ws0",
                 "layout": "HSPLIT",
-                "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 1000,
+                    "height": 1000
+                },
                 "stableKey": "geom:0,0,5120,2880#primary",
                 "children": mon0_kids,
             },
@@ -4611,7 +5038,12 @@ def _t1_forest_missing_nautilus(*, nautilus_on_mon1: bool = False):
                 "nodeType": "MONITOR",
                 "id": "mo1ws0",
                 "layout": "HSPLIT",
-                "rect": {"x": 1000, "y": 0, "width": 1000, "height": 1000},
+                "rect": {
+                    "x": 1000,
+                    "y": 0,
+                    "width": 1000,
+                    "height": 1000
+                },
                 "stableKey": "geom:5120,0,5120,2880",
                 "children": mon1_kids,
             },
@@ -4635,8 +5067,7 @@ class TestLf8NestedVsplitApply(unittest.TestCase):
         forest = _t1_forest_missing_nautilus()
         plan = plan_reconcile(forest, _T1_PROFILE)
         mon0_ensures = [
-            a
-            for a in plan["actions"]
+            a for a in plan["actions"]
             if a.get("op") == "ensure_layout" and a.get("slot") == "mon0"
         ]
         # Nested ghostty must not anchor mon0 hsplit (would demote VSPLIT CON).
@@ -4655,10 +5086,8 @@ class TestLf8NestedVsplitApply(unittest.TestCase):
         )
         # Nested vsplit ensure and/or open dest onto ghostty.
         nest_ensures = [
-            a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
-            and a.get("mode") == "vsplit"
+            a for a in plan["actions"]
+            if a.get("op") == "ensure_layout" and a.get("mode") == "vsplit"
             and str(a.get("slot") or "").startswith("mon0.s1")
         ]
         open_naut = next(a for a in opens if a.get("role") == "nautilus")
@@ -4675,8 +5104,7 @@ class TestLf8NestedVsplitApply(unittest.TestCase):
         forest = _t1_forest_missing_nautilus(nautilus_on_mon1=True)
         plan = plan_reconcile(forest, _T1_PROFILE)
         moves = [
-            a
-            for a in plan["actions"]
+            a for a in plan["actions"]
             if a.get("op") == "move" and a.get("role") == "nautilus"
         ]
         self.assertEqual(len(moves), 1, plan["actions"])
@@ -4689,11 +5117,8 @@ class TestLf8NestedVsplitApply(unittest.TestCase):
         self.assertEqual(move.get("windowId"), 301)
         # Still no mon0 hsplit demote via nested leaf.
         mon0_hsplit = [
-            a
-            for a in plan["actions"]
-            if a.get("op") == "ensure_layout"
-            and a.get("slot") == "mon0"
-            and a.get("mode") == "hsplit"
+            a for a in plan["actions"] if a.get("op") == "ensure_layout"
+            and a.get("slot") == "mon0" and a.get("mode") == "hsplit"
         ]
         self.assertEqual(mon0_hsplit, [])
 
@@ -4710,16 +5135,22 @@ class TestLf8NestedVsplitApply(unittest.TestCase):
         # so mon1 placement needs mon-direct... profile-dev mon1 term is mon-direct
         # when present. Use forest with mon0 ghostty mon-direct + open on mon1.
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "HSPLIT",
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
+                            "nodeType":
+                            "CON",
+                            "layout":
+                            "TABBED",
                             "children": [
                                 {
                                     "nodeType": "WINDOW",
@@ -4750,41 +5181,44 @@ class TestLf8NestedVsplitApply(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
-                    "children": [
-                        {
-                            "nodeType": "CON",
-                            "layout": "TABBED",
-                            "children": [
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 202,
-                                    "wmClass": "Google-chrome",
-                                    "title": "YouTube",
-                                    "monitor": 1,
-                                    "children": [],
-                                },
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 203,
-                                    "wmClass": "Google-chrome",
-                                    "title": "Gmail",
-                                    "monitor": 1,
-                                    "children": [],
-                                },
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 204,
-                                    "wmClass": "Google-chrome",
-                                    "title": "Voice",
-                                    "monitor": 1,
-                                    "children": [],
-                                },
-                            ],
-                        }
-                    ],
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
+                    "children": [{
+                        "nodeType":
+                        "CON",
+                        "layout":
+                        "TABBED",
+                        "children": [
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 202,
+                                "wmClass": "Google-chrome",
+                                "title": "YouTube",
+                                "monitor": 1,
+                                "children": [],
+                            },
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 203,
+                                "wmClass": "Google-chrome",
+                                "title": "Gmail",
+                                "monitor": 1,
+                                "children": [],
+                            },
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 204,
+                                "wmClass": "Google-chrome",
+                                "title": "Voice",
+                                "monitor": 1,
+                                "children": [],
+                            },
+                        ],
+                    }],
                 },
             ],
         }
@@ -4794,7 +5228,8 @@ class TestLf8NestedVsplitApply(unittest.TestCase):
         mon_ensures = {
             a["slot"]: a
             for a in plan["actions"]
-            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0", "mon1")
+            if a.get("op") == "ensure_layout" and a.get("slot") in ("mon0",
+                                                                    "mon1")
         }
         # mon0 has no open/move → no mon0 ensure; mon1 open with no mon-direct anchor
         self.assertNotIn("mon0", mon_ensures)
@@ -4828,7 +5263,10 @@ class TestShareSugar(unittest.TestCase):
         sugar = {
             "tiles": {
                 "mon0": [
-                    {"hsplit": ["ghostty", "firefox"], "share": [2, 1]},
+                    {
+                        "hsplit": ["ghostty", "firefox"],
+                        "share": [2, 1]
+                    },
                     "code",
                 ]
             }
@@ -4845,40 +5283,42 @@ class TestShareSugar(unittest.TestCase):
 
     def test_plan_ensure_sizes_when_claimed(self):
         forest = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 1,
-                            "wmClass": "com.mitchellh.ghostty",
-                            "title": "Ghostty",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "percent": 0.5,
-                            "userSized": False,
-                            "children": [],
-                            "path": "mo0ws0/0",
-                        },
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 2,
-                            "wmClass": "org.gnome.Nautilus",
-                            "title": "Home",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "percent": 0.5,
-                            "userSized": False,
-                            "children": [],
-                            "path": "mo0ws0/1",
-                        },
-                    ],
-                }
-            ],
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "HSPLIT",
+                "children": [
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 1,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "Ghostty",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "percent": 0.5,
+                        "userSized": False,
+                        "children": [],
+                        "path": "mo0ws0/0",
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 2,
+                        "wmClass": "org.gnome.Nautilus",
+                        "title": "Home",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "percent": 0.5,
+                        "userSized": False,
+                        "children": [],
+                        "path": "mo0ws0/1",
+                    },
+                ],
+            }],
         }
         # Paths on forest walk: collect_windows builds path; parent_info needs
         # tree structure with path via walk. Use real nested forest paths.
@@ -4892,7 +5332,9 @@ class TestShareSugar(unittest.TestCase):
         }
         plan = plan_reconcile(forest, profile)
         self.assertTrue(plan["ok"])
-        size_ops = [a for a in plan["actions"] if a.get("op") == "ensure_sizes"]
+        size_ops = [
+            a for a in plan["actions"] if a.get("op") == "ensure_sizes"
+        ]
         self.assertEqual(len(size_ops), 1)
         self.assertEqual(size_ops[0]["slot"], "mon0")
         self.assertEqual(size_ops[0]["shares"], [0.7, 0.3])
@@ -4910,8 +5352,10 @@ class TestClassEqChromeFamily(unittest.TestCase):
         self.assertFalse(plan_class_eq(None, "A"))
 
     def test_chrome_browser_matches_pwa_and_crx(self):
-        self.assertTrue(plan_class_eq("Google-chrome", "chrome-ggjoabcdef-Default"))
-        self.assertTrue(plan_class_eq("google-chrome", "chrome-ggjoabcdef-Default"))
+        self.assertTrue(
+            plan_class_eq("Google-chrome", "chrome-ggjoabcdef-Default"))
+        self.assertTrue(
+            plan_class_eq("google-chrome", "chrome-ggjoabcdef-Default"))
         self.assertTrue(plan_class_eq("Chromium", "chrome-ggjoabcdef-Default"))
         self.assertTrue(plan_class_eq("chromium", "crx_abc123"))
         self.assertTrue(plan_class_eq("google-chrome-stable", "crx_xyz"))
@@ -4920,11 +5364,15 @@ class TestClassEqChromeFamily(unittest.TestCase):
         self.assertTrue(plan_class_eq("Google-chrome", "Chromium"))
 
     def test_distinct_pwas_do_not_match(self):
-        self.assertFalse(plan_class_eq("chrome-aaa-Default", "chrome-bbb-Default"))
-        self.assertFalse(plan_class_eq("chrome-ggjoabcdef-Default", "chrome-otherid-Default"))
+        self.assertFalse(
+            plan_class_eq("chrome-aaa-Default", "chrome-bbb-Default"))
+        self.assertFalse(
+            plan_class_eq("chrome-ggjoabcdef-Default",
+                          "chrome-otherid-Default"))
         self.assertFalse(plan_class_eq("crx_a", "crx_b"))
         self.assertFalse(plan_class_eq("crx_abc123", "chrome-aaa-Default"))
-        self.assertTrue(plan_class_eq("chrome-aaa-Default", "chrome-aaa-Default"))
+        self.assertTrue(
+            plan_class_eq("chrome-aaa-Default", "chrome-aaa-Default"))
         self.assertTrue(plan_class_eq("crx_a", "crx_a"))
 
     def test_same_pwa_crx_matches_chrome_default(self):
@@ -4932,14 +5380,12 @@ class TestClassEqChromeFamily(unittest.TestCase):
             plan_class_eq(
                 "crx_agimnkijcaahngcdmfeangaknmldooml",
                 "chrome-agimnkijcaahngcdmfeangaknmldooml-Default",
-            )
-        )
+            ))
         self.assertTrue(
             plan_class_eq(
                 "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
                 "crx_ggjocahimgaohmigbfhghnlfcnjemagj",
-            )
-        )
+            ))
 
     def test_non_chrome_does_not_match_pwa(self):
         self.assertFalse(plan_class_eq("firefox", "chrome-ggjo-Default"))
@@ -4950,21 +5396,21 @@ class TestClassEqChromeFamily(unittest.TestCase):
         self.assertTrue(
             window_matches(
                 {
-                    "wmClass": "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+                    "wmClass":
+                    "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
                     "title": "Grok",
                 },
                 m,
-            )
-        )
+            ))
         self.assertFalse(
             window_matches(
                 {
-                    "wmClass": "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+                    "wmClass":
+                    "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
                     "title": "YouTube",
                 },
                 m,
-            )
-        )
+            ))
 
 
 class TestResidualMonEnsureCL11(unittest.TestCase):
@@ -4982,12 +5428,16 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
     def _operator_fail_forest(self):
         """Dual mon TABBED; all mon-direct windows for dev roles (no nested CON)."""
         return {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "TABBED",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "TABBED",
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -5019,9 +5469,12 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "TABBED",
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "TABBED",
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -5071,7 +5524,9 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(plan["counts"]["moved"], 0)
         self.assertEqual(plan["counts"]["reused"], 7)
-        ensures = [a for a in plan["actions"] if a.get("op") == "ensure_layout"]
+        ensures = [
+            a for a in plan["actions"] if a.get("op") == "ensure_layout"
+        ]
         by_slot = {a["slot"]: a for a in ensures}
         self.assertIn("mon0", by_slot)
         self.assertEqual(by_slot["mon0"]["mode"], "hsplit")
@@ -5114,7 +5569,9 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         )
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(plan["counts"]["moved"], 0)
-        ensures = [a for a in plan["actions"] if a.get("op") == "ensure_layout"]
+        ensures = [
+            a for a in plan["actions"] if a.get("op") == "ensure_layout"
+        ]
         by_slot = {a["slot"]: a for a in ensures}
         self.assertEqual(by_slot["mon0"]["mode"], "hsplit")
         self.assertEqual(by_slot["mon1"]["mode"], "hsplit")
@@ -5153,7 +5610,9 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         )
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(plan["counts"]["moved"], 0)
-        ensures = [a for a in plan["actions"] if a.get("op") == "ensure_layout"]
+        ensures = [
+            a for a in plan["actions"] if a.get("op") == "ensure_layout"
+        ]
         self.assertEqual(ensures, [])
         self.assertTrue(plan["nothingToDo"], plan)
         # Structure still reported (policy skips repair)
@@ -5177,25 +5636,27 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         )
         # Structure tab steps before mon hsplit among layout ops
         layout_modes = [s.get("mode") for s in layouts]
-        self.assertLess(layout_modes.index("tabbed"), layout_modes.index("hsplit"))
+        self.assertLess(layout_modes.index("tabbed"),
+                        layout_modes.index("hsplit"))
 
     def test_structure_compare_flags_flat_tabbed(self):
         """Verifier: operator forest vs profile → not match (mon-layout + group)."""
-        cmp = compare_layout_structure(self._operator_fail_forest(), self.PROFILE)
+        cmp = compare_layout_structure(self._operator_fail_forest(),
+                                       self.PROFILE)
         self.assertFalse(cmp["match"])
         kinds = {m["kind"] for m in cmp["mismatches"]}
         self.assertIn("mon-layout", kinds)
         self.assertIn("group", kinds)
         mon_slots = {
-            m["slot"] for m in cmp["mismatches"] if m["kind"] == "mon-layout"
+            m["slot"]
+            for m in cmp["mismatches"] if m["kind"] == "mon-layout"
         }
         self.assertEqual(mon_slots, {"mon0", "mon1"})
 
     def test_structure_compare_perfect_match(self):
         """Verifier: tree-perfect vs profile-dev-v2 → match."""
-        cmp = compare_layout_structure(
-            _load("tree-perfect.json"), _load("profile-dev-v2.json")
-        )
+        cmp = compare_layout_structure(_load("tree-perfect.json"),
+                                       _load("profile-dev-v2.json"))
         self.assertTrue(cmp["match"], cmp["mismatches"])
         self.assertEqual(cmp["mismatches"], [])
 
@@ -5211,13 +5672,16 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         kinds = {m["kind"] for m in cmp["mismatches"]}
         self.assertIn("mon-child", kinds, cmp["mismatches"])
         mon_child = [m for m in cmp["mismatches"] if m["kind"] == "mon-child"]
-        self.assertTrue(any(m.get("slot") == "mon0" for m in mon_child), mon_child)
+        self.assertTrue(any(m.get("slot") == "mon0" for m in mon_child),
+                        mon_child)
 
         plan = plan_reconcile(forest, profile)
         self.assertFalse(plan.get("structureMatch"))
         self.assertEqual(plan.get("structureMatch"), cmp["match"])
         self.assertFalse(plan["nothingToDo"])
-        ensures = [a for a in plan["actions"] if a.get("op") == "ensure_layout"]
+        ensures = [
+            a for a in plan["actions"] if a.get("op") == "ensure_layout"
+        ]
         # Peel demote mon0 first, then mon0.left-tab tabbed with chrome+Grok only.
         self.assertGreaterEqual(len(ensures), 2, ensures)
         demote = ensures[0]
@@ -5226,11 +5690,9 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         self.assertTrue(demote.get("windowIds"), demote)
 
         left_tab = next(
-            (
-                a
-                for a in ensures
-                if a.get("slot") == "mon0.left-tab" and a.get("mode") == "tabbed"
-            ),
+            (a for a in ensures
+             if a.get("slot") == "mon0.left-tab" and a.get("mode") == "tabbed"
+             ),
             None,
         )
         self.assertIsNotNone(left_tab, ensures)
@@ -5239,15 +5701,11 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         self.assertEqual(wids, ["101", "102"], left_tab)
         # Demote before tab re-group in action list
         demote_i = next(
-            i
-            for i, a in enumerate(plan["actions"])
-            if a.get("op") == "ensure_layout" and a.get("slot") == "mon0"
-        )
-        tab_i = next(
-            i
-            for i, a in enumerate(plan["actions"])
-            if a.get("op") == "ensure_layout" and a.get("slot") == "mon0.left-tab"
-        )
+            i for i, a in enumerate(plan["actions"])
+            if a.get("op") == "ensure_layout" and a.get("slot") == "mon0")
+        tab_i = next(i for i, a in enumerate(plan["actions"])
+                     if a.get("op") == "ensure_layout"
+                     and a.get("slot") == "mon0.left-tab")
         self.assertLess(demote_i, tab_i, plan["actions"])
 
         from layout_apply import actions_to_extension_steps
@@ -5273,7 +5731,8 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         cmp = compare_layout_structure(forest, profile)
         self.assertFalse(cmp["match"], cmp["mismatches"])
         mon_child = [m for m in cmp["mismatches"] if m["kind"] == "mon-child"]
-        self.assertTrue(any(m.get("slot") == "mon0" for m in mon_child), mon_child)
+        self.assertTrue(any(m.get("slot") == "mon0" for m in mon_child),
+                        mon_child)
         detail = " ".join(str(m.get("detail") or "") for m in mon_child)
         self.assertIn("mon-direct", detail)
 
@@ -5282,14 +5741,12 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         self.assertFalse(plan["nothingToDo"])
         # No peel demote ensure mon0 hsplit — would demote the chrome tab bag.
         mon0_layout = [
-            a
-            for a in plan["actions"]
+            a for a in plan["actions"]
             if a.get("op") == "ensure_layout" and a.get("slot") == "mon0"
         ]
         self.assertEqual(mon0_layout, [], mon0_layout)
         orders = [
-            a
-            for a in plan["actions"]
+            a for a in plan["actions"]
             if a.get("op") == "ensure_order" and a.get("slot") == "mon0"
         ]
         self.assertEqual(len(orders), 1, plan["actions"])
@@ -5308,10 +5765,13 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
         cases = [
             (self._operator_fail_forest(), self.PROFILE),
             (_load("tree-perfect.json"), _load("profile-dev-v2.json")),
-            (_load("tree-voice-mon-direct.json"), _load("profile-dev-v2.json")),
-            (_load("tree-thrash-comms-nested-hsplit.json"), _load("profile-dev-v2.json")),
+            (_load("tree-voice-mon-direct.json"),
+             _load("profile-dev-v2.json")),
+            (_load("tree-thrash-comms-nested-hsplit.json"),
+             _load("profile-dev-v2.json")),
             (_load("tree-mon0-giant-tab.json"), _load("profile-dev-v2.json")),
-            (_load("tree-mon0-nested-hsplit-collapse.json"), _load("profile-dev-v2.json")),
+            (_load("tree-mon0-nested-hsplit-collapse.json"),
+             _load("profile-dev-v2.json")),
         ]
         for forest, profile in cases:
             cmp = compare_layout_structure(forest, profile)
@@ -5328,10 +5788,9 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
                 )
                 # At least one structure/mon ensure or move/open when trees disagree
                 repair = [
-                    a
-                    for a in plan["actions"]
-                    if a.get("op")
-                    in ("ensure_layout", "ensure_order", "move", "open", "park")
+                    a for a in plan["actions"]
+                    if a.get("op") in ("ensure_layout", "ensure_order", "move",
+                                       "open", "park")
                 ]
                 self.assertTrue(
                     repair,
@@ -5340,7 +5799,8 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
                 )
             else:
                 ensures = [
-                    a for a in plan["actions"] if a.get("op") == "ensure_layout"
+                    a for a in plan["actions"]
+                    if a.get("op") == "ensure_layout"
                 ]
                 self.assertEqual(
                     ensures,
@@ -5358,20 +5818,35 @@ def _dual_ws_forest(
 
     def mon(mid: str, kids: list, x: int = 0) -> dict:
         return {
-            "nodeType": "MONITOR",
-            "layout": "HSPLIT",
-            "id": mid,
-            "rect": {"x": x, "y": 0, "width": 1000, "height": 1000},
-            "stableKey": f"geom:{x},0,1000,1000"
-            + ("#primary" if mid.startswith("mo0") else ""),
-            "children": kids,
+            "nodeType":
+            "MONITOR",
+            "layout":
+            "HSPLIT",
+            "id":
+            mid,
+            "rect": {
+                "x": x,
+                "y": 0,
+                "width": 1000,
+                "height": 1000
+            },
+            "stableKey":
+            f"geom:{x},0,1000,1000" +
+            ("#primary" if mid.startswith("mo0") else ""),
+            "children":
+            kids,
         }
 
     def win(w: dict) -> dict:
         base = {
             "nodeType": "WINDOW",
             "layout": None,
-            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+            "rect": {
+                "x": 0,
+                "y": 0,
+                "width": 100,
+                "height": 100
+            },
             "percent": 0,
             "userSized": False,
             "children": [],
@@ -5381,7 +5856,8 @@ def _dual_ws_forest(
         return base
 
     return {
-        "apiVersion": 2,
+        "apiVersion":
+        2,
         "monitors": [
             mon("mo0ws0", [win(w) for w in (ws0_windows or [])], x=0),
             mon("mo1ws0", [], x=1000),
@@ -5392,18 +5868,32 @@ def _dual_ws_forest(
 
 
 _TERM_ONLY_PROFILE = {
-    "version": 2,
-    "mode": "reconcile",
-    "roles": [
-        {
-            "id": "term",
-            "match": {"class": "com.mitchellh.ghostty"},
-            "open": {"app": "ghostty"},
-            "slot": "mon0.term",
+    "version":
+    2,
+    "mode":
+    "reconcile",
+    "roles": [{
+        "id": "term",
+        "match": {
+            "class": "com.mitchellh.ghostty"
+        },
+        "open": {
+            "app": "ghostty"
+        },
+        "slot": "mon0.term",
+    }],
+    "layout": {
+        "mon0": {
+            "children": [{
+                "roles": ["term"]
+            }]
         }
-    ],
-    "layout": {"mon0": {"children": [{"roles": ["term"]}]}},
-    "marginal": {"mode": "coexist", "roleOrder": "first", "residual": "leave"},
+    },
+    "marginal": {
+        "mode": "coexist",
+        "roleOrder": "first",
+        "residual": "leave"
+    },
 }
 
 
@@ -5411,17 +5901,13 @@ class TestWorkspaceScope(unittest.TestCase):
     """WS0: plan only sees/mutates one target workspace."""
 
     def test_filter_forest_workspace_keeps_target_only(self):
-        forest = _dual_ws_forest(
-            ws1_windows=[
-                {
-                    "wmClass": "org.inkscape.Inkscape",
-                    "title": "Inkscape",
-                    "windowId": 902,
-                    "pid": 1902,
-                    "monitor": 0,
-                }
-            ]
-        )
+        forest = _dual_ws_forest(ws1_windows=[{
+            "wmClass": "org.inkscape.Inkscape",
+            "title": "Inkscape",
+            "windowId": 902,
+            "pid": 1902,
+            "monitor": 0,
+        }])
         scoped = filter_forest_workspace(forest, 0)
         ids = [m.get("id") for m in scoped["monitors"]]
         self.assertEqual(ids, ["mo0ws0", "mo1ws0"])
@@ -5431,24 +5917,20 @@ class TestWorkspaceScope(unittest.TestCase):
 
     def test_collect_windows_workspace_filter(self):
         forest = _dual_ws_forest(
-            ws0_windows=[
-                {
-                    "wmClass": "Foo",
-                    "title": "A",
-                    "windowId": 1,
-                    "pid": 1,
-                    "monitor": 0,
-                }
-            ],
-            ws1_windows=[
-                {
-                    "wmClass": "Bar",
-                    "title": "B",
-                    "windowId": 2,
-                    "pid": 2,
-                    "monitor": 0,
-                }
-            ],
+            ws0_windows=[{
+                "wmClass": "Foo",
+                "title": "A",
+                "windowId": 1,
+                "pid": 1,
+                "monitor": 0,
+            }],
+            ws1_windows=[{
+                "wmClass": "Bar",
+                "title": "B",
+                "windowId": 2,
+                "pid": 2,
+                "monitor": 0,
+            }],
         )
         all_w = collect_windows(forest)
         self.assertEqual({w["windowId"] for w in all_w}, {1, 2})
@@ -5461,17 +5943,13 @@ class TestWorkspaceScope(unittest.TestCase):
 
     def test_role_on_other_ws_opens_not_claims(self):
         """Ghostty only on ws1 → plan for ws0 opens; does not move/claim ws1."""
-        forest = _dual_ws_forest(
-            ws1_windows=[
-                {
-                    "wmClass": "com.mitchellh.ghostty",
-                    "title": "Ghostty",
-                    "windowId": 901,
-                    "pid": 1901,
-                    "monitor": 0,
-                }
-            ]
-        )
+        forest = _dual_ws_forest(ws1_windows=[{
+            "wmClass": "com.mitchellh.ghostty",
+            "title": "Ghostty",
+            "windowId": 901,
+            "pid": 1901,
+            "monitor": 0,
+        }])
         plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=0)
         self.assertEqual(plan["workspace"], 0)
         self.assertEqual(len(plan["roles"]), 1)
@@ -5489,21 +5967,20 @@ class TestWorkspaceScope(unittest.TestCase):
 
     def test_inkscape_on_other_ws_not_kept_or_parked(self):
         """Non-role companion only on ws2/ws1 is invisible to ws0 plan."""
-        forest = _dual_ws_forest(
-            ws1_windows=[
-                {
-                    "wmClass": "org.inkscape.Inkscape",
-                    "title": "Inkscape",
-                    "windowId": 902,
-                    "pid": 1902,
-                    "monitor": 0,
-                }
-            ]
-        )
+        forest = _dual_ws_forest(ws1_windows=[{
+            "wmClass": "org.inkscape.Inkscape",
+            "title": "Inkscape",
+            "windowId": 902,
+            "pid": 1902,
+            "monitor": 0,
+        }])
         plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=0)
         kept_ids = {k.get("windowId") for k in plan.get("kept") or []}
         left_ids = {k.get("windowId") for k in plan.get("left") or []}
-        unclaimed_ids = {k.get("windowId") for k in plan.get("unclaimed") or []}
+        unclaimed_ids = {
+            k.get("windowId")
+            for k in plan.get("unclaimed") or []
+        }
         self.assertNotIn(902, kept_ids)
         self.assertNotIn(902, left_ids)
         self.assertNotIn(902, unclaimed_ids)
@@ -5519,32 +5996,30 @@ class TestWorkspaceScope(unittest.TestCase):
         self.assertEqual(plan["counts"]["parked"], 0)
 
     def test_role_and_companion_on_same_other_ws_both_invisible(self):
-        forest = _dual_ws_forest(
-            ws1_windows=[
-                {
-                    "wmClass": "com.mitchellh.ghostty",
-                    "title": "Ghostty",
-                    "windowId": 901,
-                    "pid": 1901,
-                    "monitor": 0,
-                },
-                {
-                    "wmClass": "org.inkscape.Inkscape",
-                    "title": "Inkscape",
-                    "windowId": 902,
-                    "pid": 1902,
-                    "monitor": 0,
-                },
-            ]
-        )
+        forest = _dual_ws_forest(ws1_windows=[
+            {
+                "wmClass": "com.mitchellh.ghostty",
+                "title": "Ghostty",
+                "windowId": 901,
+                "pid": 1901,
+                "monitor": 0,
+            },
+            {
+                "wmClass": "org.inkscape.Inkscape",
+                "title": "Inkscape",
+                "windowId": 902,
+                "pid": 1902,
+                "monitor": 0,
+            },
+        ])
         plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=0)
         self.assertEqual(plan["roles"][0]["status"], "open")
         all_seen = set()
         for bag in (
-            plan.get("kept") or [],
-            plan.get("left") or [],
-            plan.get("unclaimed") or [],
-            plan.get("roles") or [],
+                plan.get("kept") or [],
+                plan.get("left") or [],
+                plan.get("unclaimed") or [],
+                plan.get("roles") or [],
         ):
             for e in bag:
                 if e.get("windowId") is not None:
@@ -5557,24 +6032,20 @@ class TestWorkspaceScope(unittest.TestCase):
 
     def test_plan_target_ws1_reuses_window_there(self):
         forest = _dual_ws_forest(
-            ws0_windows=[
-                {
-                    "wmClass": "com.mitchellh.ghostty",
-                    "title": "Ghostty-ws0",
-                    "windowId": 100,
-                    "pid": 1100,
-                    "monitor": 0,
-                }
-            ],
-            ws1_windows=[
-                {
-                    "wmClass": "com.mitchellh.ghostty",
-                    "title": "Ghostty-ws1",
-                    "windowId": 901,
-                    "pid": 1901,
-                    "monitor": 0,
-                }
-            ],
+            ws0_windows=[{
+                "wmClass": "com.mitchellh.ghostty",
+                "title": "Ghostty-ws0",
+                "windowId": 100,
+                "pid": 1100,
+                "monitor": 0,
+            }],
+            ws1_windows=[{
+                "wmClass": "com.mitchellh.ghostty",
+                "title": "Ghostty-ws1",
+                "windowId": 901,
+                "pid": 1901,
+                "monitor": 0,
+            }],
         )
         plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=1)
         self.assertEqual(plan["workspace"], 1)
@@ -5585,17 +6056,13 @@ class TestWorkspaceScope(unittest.TestCase):
         self.assertNotEqual(plan["roles"][0].get("windowId"), 100)
 
     def test_default_workspace_is_zero(self):
-        forest = _dual_ws_forest(
-            ws1_windows=[
-                {
-                    "wmClass": "com.mitchellh.ghostty",
-                    "title": "Ghostty",
-                    "windowId": 901,
-                    "pid": 1901,
-                    "monitor": 0,
-                }
-            ]
-        )
+        forest = _dual_ws_forest(ws1_windows=[{
+            "wmClass": "com.mitchellh.ghostty",
+            "title": "Ghostty",
+            "windowId": 901,
+            "pid": 1901,
+            "monitor": 0,
+        }])
         plan = plan_reconcile(forest, _TERM_ONLY_PROFILE)
         self.assertEqual(plan["workspace"], 0)
         self.assertEqual(plan["roles"][0]["status"], "open")
@@ -5620,29 +6087,26 @@ class TestWorkspaceScope(unittest.TestCase):
         forest2["activeWorkspace"] = 0
         self.assertEqual(active_workspace_from_forest(forest2), 0)
         self.assertEqual(active_workspace_from_forest({}, default=3), 3)
-        self.assertEqual(active_workspace_from_forest({"activeWorkspace": -1}), 0)
+        self.assertEqual(active_workspace_from_forest({"activeWorkspace": -1}),
+                         0)
 
     def test_plan_uses_active_workspace_meta_via_helper(self):
         """CLI resolves activeWorkspace then plan_reconcile(workspace=…)."""
         forest = _dual_ws_forest(
-            ws0_windows=[
-                {
-                    "wmClass": "com.mitchellh.ghostty",
-                    "title": "Ghostty-ws0",
-                    "windowId": 100,
-                    "pid": 1100,
-                    "monitor": 0,
-                }
-            ],
-            ws1_windows=[
-                {
-                    "wmClass": "com.mitchellh.ghostty",
-                    "title": "Ghostty-ws1",
-                    "windowId": 901,
-                    "pid": 1901,
-                    "monitor": 0,
-                }
-            ],
+            ws0_windows=[{
+                "wmClass": "com.mitchellh.ghostty",
+                "title": "Ghostty-ws0",
+                "windowId": 100,
+                "pid": 1100,
+                "monitor": 0,
+            }],
+            ws1_windows=[{
+                "wmClass": "com.mitchellh.ghostty",
+                "title": "Ghostty-ws1",
+                "windowId": 901,
+                "pid": 1901,
+                "monitor": 0,
+            }],
         )
         forest["activeWorkspace"] = 1
         ws = active_workspace_from_forest(forest)

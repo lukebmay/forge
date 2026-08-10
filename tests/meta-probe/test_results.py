@@ -23,6 +23,7 @@ from lib.settle import SettleResult
 
 
 class SuiteMergeTests(unittest.TestCase):
+
     def test_deep_merge(self):
         m = deep_merge({"settle": {"a": 1, "b": 2}}, {"settle": {"b": 9}})
         self.assertEqual(m["settle"]["a"], 1)
@@ -31,7 +32,12 @@ class SuiteMergeTests(unittest.TestCase):
     def test_apply_suite(self):
         cfg = {
             "samples": 5,
-            "suites": {"full-suite": {"phase": "full-suite", "samples": 5}},
+            "suites": {
+                "full-suite": {
+                    "phase": "full-suite",
+                    "samples": 5
+                }
+            },
         }
         out = apply_suite(cfg, "full-suite")
         self.assertEqual(out["suite"], "full-suite")
@@ -39,6 +45,7 @@ class SuiteMergeTests(unittest.TestCase):
 
 
 class SettleDictTests(unittest.TestCase):
+
     def test_from_result(self):
         r = SettleResult(
             settled=True,
@@ -54,7 +61,10 @@ class SettleDictTests(unittest.TestCase):
             time_to_first_agreement_ms=50,
             time_to_last_hard_ms=None,
             time_to_settled_ms=3000,
-            checks=[{"tMs": 50, "out": "agreement"}],
+            checks=[{
+                "tMs": 50,
+                "out": "agreement"
+            }],
             disagreement_counts={"agreement": 1},
         )
         d = settle_to_dict(r)
@@ -64,10 +74,14 @@ class SettleDictTests(unittest.TestCase):
 
 
 class NamespaceWriteTests(unittest.TestCase):
+
     def test_write(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            out = namespace_dir(root, host="black", session="wayland", suite="full-suite")
+            out = namespace_dir(root,
+                                host="black",
+                                session="wayland",
+                                suite="full-suite")
             doc = {
                 "phase": "full-suite",
                 "suite": "full-suite",
@@ -76,7 +90,10 @@ class NamespaceWriteTests(unittest.TestCase):
                     "session": "wayland",
                     "suite": "full-suite",
                 },
-                "host": {"host": "black", "sessionType": "wayland"},
+                "host": {
+                    "host": "black",
+                    "sessionType": "wayland"
+                },
                 "trials": [],
             }
             path = write_run(doc, out, latest=True, results_root=root)
@@ -87,7 +104,10 @@ class NamespaceWriteTests(unittest.TestCase):
     def test_atomic_and_checkpoint(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            out = namespace_dir(root, host="black", session="wayland", suite="full-suite")
+            out = namespace_dir(root,
+                                host="black",
+                                session="wayland",
+                                suite="full-suite")
             doc = {
                 "phase": "full-suite",
                 "suite": "full-suite",
@@ -96,8 +116,13 @@ class NamespaceWriteTests(unittest.TestCase):
                     "session": "wayland",
                     "suite": "full-suite",
                 },
-                "host": {"host": "black", "sessionType": "wayland"},
-                "trials": [{"appId": "a"}],
+                "host": {
+                    "host": "black",
+                    "sessionType": "wayland"
+                },
+                "trials": [{
+                    "appId": "a"
+                }],
             }
             path = run_output_path(out, doc, ts="20260807T000000Z")
             atomic_write_json(path, doc)
@@ -112,8 +137,14 @@ class NamespaceWriteTests(unittest.TestCase):
             self.assertTrue((out / "latest.json").exists())
 
     def test_write_per_app_flag(self):
-        self.assertTrue(write_per_app_enabled({"output": {"writePerApp": True}}))
-        self.assertFalse(write_per_app_enabled({"output": {"writeOnlyAtEnd": True}}))
+        self.assertTrue(
+            write_per_app_enabled({"output": {
+                "writePerApp": True
+            }}))
+        self.assertFalse(
+            write_per_app_enabled({"output": {
+                "writeOnlyAtEnd": True
+            }}))
         self.assertTrue(write_per_app_enabled({"output": {}}))
 
 

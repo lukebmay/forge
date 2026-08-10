@@ -15,27 +15,28 @@ if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
 from layout_lib import (  # noqa: E402
+    SOURCE_COMMON,
+    SOURCE_ENV_PATH,
+    SOURCE_HOST,
+    SOURCE_HOST_DIR,
+    SOURCE_XDG,
     extract_steps_and_stop,
     format_profile_list_line,
     format_profile_list_table,
     format_short_path,
     host_profiles_only,
     launch_fields_from_step,
+    layout_dir,
     list_profiles,
     load_profile_file,
     partition_mixed_steps,
     profile_path,
     validate_profile,
-    layout_dir,
-    SOURCE_ENV_PATH,
-    SOURCE_HOST,
-    SOURCE_HOST_DIR,
-    SOURCE_COMMON,
-    SOURCE_XDG,
 )
 
 
 class TestProfilePath(unittest.TestCase):
+
     def test_name_ok(self):
         p = profile_path("dev", config_root=Path("/tmp/forge-cfg"))
         self.assertEqual(p, Path("/tmp/forge-cfg/layout/dev.json"))
@@ -54,6 +55,7 @@ class TestProfilePath(unittest.TestCase):
 
 
 class TestValidateProfile(unittest.TestCase):
+
     def test_minimal(self):
         p = validate_profile({"version": 1, "steps": []})
         self.assertEqual(p["version"], 1)
@@ -81,17 +83,30 @@ class TestValidateProfile(unittest.TestCase):
             validate_profile({"version": 1, "steps": [{"op": "teleport"}]})
 
     def test_phase1_layout_ops_accepted(self):
-        p = validate_profile(
-            {
-                "version": 1,
-                "steps": [
-                    {"op": "layout-cycle", "axis": "group"},
-                    {"op": "merge-group", "selector": "focus", "with": "id:2"},
-                    {"op": "float", "selector": "focus", "scope": "window"},
-                    {"op": "order", "windowIds": ["id:1", "id:2"]},
-                ],
-            }
-        )
+        p = validate_profile({
+            "version":
+            1,
+            "steps": [
+                {
+                    "op": "layout-cycle",
+                    "axis": "group"
+                },
+                {
+                    "op": "merge-group",
+                    "selector": "focus",
+                    "with": "id:2"
+                },
+                {
+                    "op": "float",
+                    "selector": "focus",
+                    "scope": "window"
+                },
+                {
+                    "op": "order",
+                    "windowIds": ["id:1", "id:2"]
+                },
+            ],
+        })
         self.assertEqual(len(p["steps"]), 4)
 
     def test_launch_requires_app(self):
@@ -103,25 +118,42 @@ class TestValidateProfile(unittest.TestCase):
             validate_profile({"version": 1, "steps": [{"op": "wait"}]})
 
     def test_wait_window_requires_class(self):
-        with self.assertRaisesRegex(ValueError, "wait-window requires wmClass"):
+        with self.assertRaisesRegex(ValueError,
+                                    "wait-window requires wmClass"):
             validate_profile({"version": 1, "steps": [{"op": "wait-window"}]})
 
     def test_full_ok(self):
-        p = validate_profile(
-            {
-                "version": 1,
-                "description": "blurb",
-                "displays": "rec",
-                "settings": "daily",
-                "stopOnError": False,
-                "steps": [
-                    {"op": "launch", "app": "ghostty", "monitor": "0"},
-                    {"op": "wait", "ms": 100},
-                    {"op": "wait-window", "wmClass": "X"},
-                    {"op": "focus", "selector": "class:X"},
-                ],
-            }
-        )
+        p = validate_profile({
+            "version":
+            1,
+            "description":
+            "blurb",
+            "displays":
+            "rec",
+            "settings":
+            "daily",
+            "stopOnError":
+            False,
+            "steps": [
+                {
+                    "op": "launch",
+                    "app": "ghostty",
+                    "monitor": "0"
+                },
+                {
+                    "op": "wait",
+                    "ms": 100
+                },
+                {
+                    "op": "wait-window",
+                    "wmClass": "X"
+                },
+                {
+                    "op": "focus",
+                    "selector": "class:X"
+                },
+            ],
+        })
         self.assertEqual(p["displays"], "rec")
         self.assertEqual(p["settings"], "daily")
         self.assertFalse(p["stopOnError"])
@@ -133,12 +165,19 @@ class TestValidateProfile(unittest.TestCase):
 
 
 class TestPartitionMixedSteps(unittest.TestCase):
+
     def test_empty(self):
         self.assertEqual(partition_mixed_steps([]), [])
         self.assertEqual(partition_mixed_steps(None), [])
 
     def test_extension_only(self):
-        steps = [{"op": "focus", "selector": "focus"}, {"op": "layout", "mode": "tabbed"}]
+        steps = [{
+            "op": "focus",
+            "selector": "focus"
+        }, {
+            "op": "layout",
+            "mode": "tabbed"
+        }]
         chunks = partition_mixed_steps(steps)
         self.assertEqual(len(chunks), 1)
         self.assertEqual(chunks[0]["kind"], "extension")
@@ -152,11 +191,27 @@ class TestPartitionMixedSteps(unittest.TestCase):
 
     def test_mixed_mirrors_js(self):
         steps = [
-            {"op": "set", "key": "a", "value": 1},
-            {"op": "launch", "app": "x"},
-            {"op": "wait-window", "wmClass": "X"},
-            {"op": "focus", "selector": "class:X"},
-            {"op": "layout", "mode": "tabbed"},
+            {
+                "op": "set",
+                "key": "a",
+                "value": 1
+            },
+            {
+                "op": "launch",
+                "app": "x"
+            },
+            {
+                "op": "wait-window",
+                "wmClass": "X"
+            },
+            {
+                "op": "focus",
+                "selector": "class:X"
+            },
+            {
+                "op": "layout",
+                "mode": "tabbed"
+            },
         ]
         chunks = partition_mixed_steps(steps)
         self.assertEqual(
@@ -170,29 +225,31 @@ class TestPartitionMixedSteps(unittest.TestCase):
 
 
 class TestExtractAndLaunchFields(unittest.TestCase):
+
     def test_extract_array(self):
         steps, soe = extract_steps_and_stop([{"op": "ping"}])
         self.assertTrue(soe)
         self.assertEqual(len(steps), 1)
 
     def test_extract_object(self):
-        steps, soe = extract_steps_and_stop({"steps": [], "stopOnError": False})
+        steps, soe = extract_steps_and_stop({
+            "steps": [],
+            "stopOnError": False
+        })
         self.assertFalse(soe)
         self.assertEqual(steps, [])
 
     def test_launch_fields(self):
-        f = launch_fields_from_step(
-            {
-                "op": "launch",
-                "app": "ghostty",
-                "monitor": 1,
-                "treePath": "mo0ws0",
-                "wmClass": "Ghostty",
-                "timeout": 5000,
-                "noWait": True,
-                "first": True,
-            }
-        )
+        f = launch_fields_from_step({
+            "op": "launch",
+            "app": "ghostty",
+            "monitor": 1,
+            "treePath": "mo0ws0",
+            "wmClass": "Ghostty",
+            "timeout": 5000,
+            "noWait": True,
+            "first": True,
+        })
         self.assertEqual(f["app"], "ghostty")
         self.assertEqual(f["monitor"], 1)
         self.assertEqual(f["tree_path"], "mo0ws0")
@@ -203,6 +260,7 @@ class TestExtractAndLaunchFields(unittest.TestCase):
 
 
 class TestListLoadProfiles(unittest.TestCase):
+
     def test_list_and_load(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -211,12 +269,16 @@ class TestListLoadProfiles(unittest.TestCase):
             body = {
                 "version": 1,
                 "description": "hello",
-                "steps": [{"op": "ping"}],
+                "steps": [{
+                    "op": "ping"
+                }],
             }
             (d / "dev.json").write_text(json.dumps(body), encoding="utf-8")
-            (d / "other.json").write_text(
-                json.dumps({"version": 1, "steps": []}), encoding="utf-8"
-            )
+            (d / "other.json").write_text(json.dumps({
+                "version": 1,
+                "steps": []
+            }),
+                                          encoding="utf-8")
             listed = list_profiles(root)
             names = [x["name"] for x in listed]
             self.assertEqual(names, ["dev", "other"])
@@ -243,8 +305,12 @@ class TestListLoadProfiles(unittest.TestCase):
             d = layout_dir(root)
             d.mkdir(parents=True)
             body = [
-                [{"tab": ["google-chrome", "Grok"]}, "ghostty"],
-                ["ghostty", {"tab": ["YouTube", "Gmail", "Google Voice"]}],
+                [{
+                    "tab": ["google-chrome", "Grok"]
+                }, "ghostty"],
+                ["ghostty", {
+                    "tab": ["YouTube", "Gmail", "Google Voice"]
+                }],
             ]
             (d / "bare.json").write_text(json.dumps(body), encoding="utf-8")
             listed = list_profiles(root)
@@ -261,7 +327,9 @@ class TestListLoadProfiles(unittest.TestCase):
             d.mkdir(parents=True)
             body = {
                 "description": "My custom",
-                "tiles": {"mon0": ["ghostty", "firefox"]},
+                "tiles": {
+                    "mon0": ["ghostty", "firefox"]
+                },
             }
             (d / "x.json").write_text(json.dumps(body), encoding="utf-8")
             listed = list_profiles(root)
@@ -280,6 +348,7 @@ class TestListLoadProfiles(unittest.TestCase):
 
 
 class TestFormatShortPath(unittest.TestCase):
+
     def test_short_unchanged(self):
         self.assertEqual(format_short_path("/tmp/dev.json"), "/tmp/dev.json")
 
@@ -289,20 +358,16 @@ class TestFormatShortPath(unittest.TestCase):
         self.assertTrue(got.startswith("~/.config/"), got)
 
     def test_long_ellipsis_at_slash(self):
-        long = (
-            "/home/user/dev/me/shellrc/configs/forge/layout/"
-            "hosts/black/dev.json"
-        )
+        long = ("/home/user/dev/me/shellrc/configs/forge/layout/"
+                "hosts/black/dev.json")
         got = format_short_path(long, max_len=28)
         self.assertTrue(got.startswith("…/"), got)
         self.assertIn("hosts/black/dev.json", got)
         self.assertLessEqual(len(got), 28)
 
     def test_default_keeps_host_tail(self):
-        long = (
-            "/home/user/dev/me/shellrc/configs/forge/layout/"
-            "hosts/black/dev.json"
-        )
+        long = ("/home/user/dev/me/shellrc/configs/forge/layout/"
+                "hosts/black/dev.json")
         got = format_short_path(long)
         self.assertEqual(got, "…/forge/layout/hosts/black/dev.json")
 
@@ -320,8 +385,14 @@ class TestFormatShortPath(unittest.TestCase):
     def test_list_table_two_columns(self):
         table = format_profile_list_table(
             [
-                {"name": "dev", "description": "Dual-mon desk"},
-                {"name": "code", "description": "Editor + term"},
+                {
+                    "name": "dev",
+                    "description": "Dual-mon desk"
+                },
+                {
+                    "name": "code",
+                    "description": "Editor + term"
+                },
             ],
             color=False,
         )
@@ -341,10 +412,13 @@ class TestFormatShortPath(unittest.TestCase):
 
     def test_list_table_empty_and_missing_desc(self):
         empty = format_profile_list_table([], color=False)
-        self.assertEqual(empty.splitlines()[0].split(), ["Name", "Description"])
+        self.assertEqual(empty.splitlines()[0].split(),
+                         ["Name", "Description"])
         self.assertEqual(len(empty.splitlines()), 1)
         one = format_profile_list_table(
-            [{"name": "solo"}],
+            [{
+                "name": "solo"
+            }],
             color=False,
         )
         self.assertIn("solo", one.splitlines()[1])
@@ -352,16 +426,32 @@ class TestFormatShortPath(unittest.TestCase):
 
     def test_host_profiles_only_filters(self):
         rows = [
-            {"name": "dev", "source": SOURCE_HOST},
-            {"name": "nested", "source": SOURCE_HOST_DIR},
-            {"name": "shared", "source": SOURCE_COMMON},
-            {"name": "flat", "source": SOURCE_XDG},
-            {"name": "oneshot", "source": SOURCE_ENV_PATH},
+            {
+                "name": "dev",
+                "source": SOURCE_HOST
+            },
+            {
+                "name": "nested",
+                "source": SOURCE_HOST_DIR
+            },
+            {
+                "name": "shared",
+                "source": SOURCE_COMMON
+            },
+            {
+                "name": "flat",
+                "source": SOURCE_XDG
+            },
+            {
+                "name": "oneshot",
+                "source": SOURCE_ENV_PATH
+            },
         ]
         got = host_profiles_only(rows)
         self.assertEqual([r["name"] for r in got], ["dev", "nested"])
         self.assertEqual(
-            {r["source"] for r in got},
+            {r["source"]
+             for r in got},
             {SOURCE_HOST, SOURCE_HOST_DIR},
         )
 

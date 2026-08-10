@@ -18,6 +18,7 @@ from lib.sweep import (
 
 
 class DelayScheduleTests(unittest.TestCase):
+
     def test_high_to_low(self):
         s = delay_schedule(500, 100, d_min=0)
         self.assertEqual(s[0], 500.0)
@@ -30,9 +31,11 @@ class DelayScheduleTests(unittest.TestCase):
 
 
 class LastGoodFirstFailTests(unittest.TestCase):
+
     def test_finds_edge(self):
         # high → low: good until 200, thrash at 100
-        pairs = [(500, False), (400, False), (300, False), (200, False), (100, True)]
+        pairs = [(500, False), (400, False), (300, False), (200, False),
+                 (100, True)]
         r = record_last_good_first_fail(pairs)
         self.assertEqual(r["lastGoodMs"], 200.0)
         self.assertEqual(r["firstFailMs"], 100.0)
@@ -53,6 +56,7 @@ class LastGoodFirstFailTests(unittest.TestCase):
 
 
 class HypothesisTests(unittest.TestCase):
+
     def test_pad(self):
         self.assertEqual(pad_delay(100, pad_ms=50), 150.0)
         self.assertEqual(pad_delay(None, pad_ms=50, floor_ms=2000), 2000.0)
@@ -67,12 +71,19 @@ class HypothesisTests(unittest.TestCase):
         self.assertEqual(h["d2Ms"], 400.0)
 
     def test_compare(self):
-        c = compare_hypothesis({"d1Ms": 500, "d2Ms": 400}, {"d1Ms": 250, "d2Ms": 200})
+        c = compare_hypothesis({
+            "d1Ms": 500,
+            "d2Ms": 400
+        }, {
+            "d1Ms": 250,
+            "d2Ms": 200
+        })
         self.assertEqual(c["d1Ratio"], 0.5)
         self.assertEqual(c["d2ErrorMs"], -200.0)
 
 
 class IsolationTests(unittest.TestCase):
+
     def test_plan_has_phases(self):
         p = isolation_plan(d1_0=1000, d2_0=800, d_step=100, d_min=0)
         self.assertEqual(p["confirm"]["d1Ms"], 1000.0)
@@ -90,9 +101,11 @@ class IsolationTests(unittest.TestCase):
         )
 
     def test_joint_candidates(self):
-        c = joint_near_edge_candidates(
-            d1_star=200, d2_star=150, pad_ms=50, step_ms=50, max_steps=2
-        )
+        c = joint_near_edge_candidates(d1_star=200,
+                                       d2_star=150,
+                                       pad_ms=50,
+                                       step_ms=50,
+                                       max_steps=2)
         self.assertEqual(len(c), 2)
         self.assertEqual(c[0], (250.0, 200.0))
 

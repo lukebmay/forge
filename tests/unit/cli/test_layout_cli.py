@@ -28,9 +28,11 @@ from layout_cli import (  # noqa: E402
 
 
 class TestValidateLayoutName(unittest.TestCase):
+
     def test_ok(self):
         self.assertEqual(validate_layout_name("dev"), "dev")
-        self.assertEqual(validate_layout_name("  vinyl-graphics  "), "vinyl-graphics")
+        self.assertEqual(validate_layout_name("  vinyl-graphics  "),
+                         "vinyl-graphics")
 
     def test_colon_at_reserved(self):
         with self.assertRaisesRegex(LayoutParseError, r"':' or '@'"):
@@ -44,6 +46,7 @@ class TestValidateLayoutName(unittest.TestCase):
 
 
 class TestParseLayoutArg(unittest.TestCase):
+
     def test_bare(self):
         a = parse_layout_arg("dev")
         self.assertEqual(a.name, "dev")
@@ -76,15 +79,18 @@ class TestParseLayoutArg(unittest.TestCase):
             parse_layout_arg("foo@0")
 
     def test_invalid_near_colon(self):
-        with self.assertRaisesRegex(LayoutParseError, "invalid workspace form"):
+        with self.assertRaisesRegex(LayoutParseError,
+                                    "invalid workspace form"):
             parse_layout_arg("x:foo")
 
     def test_invalid_near_at(self):
-        with self.assertRaisesRegex(LayoutParseError, "invalid workspace form"):
+        with self.assertRaisesRegex(LayoutParseError,
+                                    "invalid workspace form"):
             parse_layout_arg("foo@x")
 
 
 class TestClassifyLayoutArgs(unittest.TestCase):
+
     def test_sequential_single(self):
         mode, args = classify_layout_args(["dev"])
         self.assertEqual(mode, MODE_SEQUENTIAL)
@@ -94,7 +100,8 @@ class TestClassifyLayoutArgs(unittest.TestCase):
     def test_sequential_multi(self):
         mode, args = classify_layout_args(["vinyl-graphics", "video-edit"])
         self.assertEqual(mode, MODE_SEQUENTIAL)
-        self.assertEqual([a.name for a in args], ["vinyl-graphics", "video-edit"])
+        self.assertEqual([a.name for a in args],
+                         ["vinyl-graphics", "video-edit"])
 
     def test_static_colon(self):
         mode, args = classify_layout_args(["1:foo", "2:bar", "4:baz"])
@@ -130,26 +137,31 @@ class TestClassifyLayoutArgs(unittest.TestCase):
 
 
 class TestBindLayoutTargets(unittest.TestCase):
+
     def test_sequential_from_current(self):
         mode, args = classify_layout_args(["a", "b", "c"])
-        targets = bind_layout_targets(
-            mode, args, current_0based=1, n_workspaces=4
-        )
+        targets = bind_layout_targets(mode,
+                                      args,
+                                      current_0based=1,
+                                      n_workspaces=4)
         self.assertEqual(
-            [(t.name, t.workspace_0based, t.workspace_1based) for t in targets],
+            [(t.name, t.workspace_0based, t.workspace_1based)
+             for t in targets],
             [("a", 1, 2), ("b", 2, 3), ("c", 3, 4)],
         )
 
     def test_sequential_too_few_workspaces(self):
         mode, args = classify_layout_args(["a", "b", "c"])
-        with self.assertRaisesRegex(LayoutParseError, r"need 3 workspaces from current \(2\)"):
+        with self.assertRaisesRegex(LayoutParseError,
+                                    r"need 3 workspaces from current \(2\)"):
             bind_layout_targets(mode, args, current_0based=1, n_workspaces=2)
 
     def test_static_in_range(self):
         mode, args = classify_layout_args(["1:foo", "2:bar", "4:baz"])
-        targets = bind_layout_targets(
-            mode, args, current_0based=0, n_workspaces=4
-        )
+        targets = bind_layout_targets(mode,
+                                      args,
+                                      current_0based=0,
+                                      n_workspaces=4)
         self.assertEqual(
             [(t.name, t.workspace_0based) for t in targets],
             [("foo", 0), ("bar", 1), ("baz", 3)],
@@ -158,8 +170,7 @@ class TestBindLayoutTargets(unittest.TestCase):
     def test_static_out_of_range(self):
         mode, args = classify_layout_args(["5:foo"])
         with self.assertRaisesRegex(
-            LayoutParseError, r"workspace 5 out of range \(session has 4"
-        ):
+                LayoutParseError, r"workspace 5 out of range \(session has 4"):
             bind_layout_targets(mode, args, current_0based=1, n_workspaces=4)
 
     def test_static_zero_parsed_earlier(self):
@@ -168,17 +179,29 @@ class TestBindLayoutTargets(unittest.TestCase):
 
 
 class TestNWorkspacesFromForest(unittest.TestCase):
+
     def test_meta(self):
         self.assertEqual(
-            n_workspaces_from_forest({"nWorkspaces": 4, "monitors": []}), 4
-        )
+            n_workspaces_from_forest({
+                "nWorkspaces": 4,
+                "monitors": []
+            }), 4)
 
     def test_from_mon_ids(self):
         forest = {
             "monitors": [
-                {"id": "mo0ws0", "nodeType": "MONITOR"},
-                {"id": "mo1ws0", "nodeType": "MONITOR"},
-                {"id": "mo0ws2", "nodeType": "MONITOR"},
+                {
+                    "id": "mo0ws0",
+                    "nodeType": "MONITOR"
+                },
+                {
+                    "id": "mo1ws0",
+                    "nodeType": "MONITOR"
+                },
+                {
+                    "id": "mo0ws2",
+                    "nodeType": "MONITOR"
+                },
             ]
         }
         self.assertEqual(n_workspaces_from_forest(forest), 3)
@@ -189,7 +212,9 @@ class TestNWorkspacesFromForest(unittest.TestCase):
 
 
 class TestPreflightLayoutRun(unittest.TestCase):
+
     def test_full_ok_with_resolve(self):
+
         def resolve(name: str):
             return {"found": True, "name": name, "path": f"/{name}.json"}
 
@@ -204,16 +229,19 @@ class TestPreflightLayoutRun(unittest.TestCase):
         self.assertEqual(len(resolved), 2)
 
     def test_profile_missing(self):
+
         def resolve(name: str):
             return {
-                "found": False,
+                "found":
+                False,
                 "candidates": [
                     f"/layout/hosts/black/{name}.json",
                     f"/layout/common/{name}.json",
                 ],
             }
 
-        with self.assertRaisesRegex(LayoutParseError, r"profile 'missing' not found"):
+        with self.assertRaisesRegex(LayoutParseError,
+                                    r"profile 'missing' not found"):
             preflight_layout_run(
                 ["missing"],
                 current_0based=0,
@@ -227,40 +255,46 @@ class TestPreflightLayoutRun(unittest.TestCase):
                 ["dev", "3:vinyl"],
                 current_0based=0,
                 n_workspaces=4,
-                resolve_name=lambda n: {"found": True, "name": n},
+                resolve_name=lambda n: {
+                    "found": True,
+                    "name": n
+                },
             )
 
 
 class TestCandidateCounts(unittest.TestCase):
+
     def _forest(self):
         # Two mon roots on different workspaces with one window each
         return {
-            "nWorkspaces": 2,
-            "activeWorkspace": 0,
+            "nWorkspaces":
+            2,
+            "activeWorkspace":
+            0,
             "monitors": [
                 {
-                    "id": "mo0ws0",
-                    "nodeType": "MONITOR",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 1,
-                            "wmClass": "A",
-                            "path": "mo0ws0/0",
-                        }
-                    ],
+                    "id":
+                    "mo0ws0",
+                    "nodeType":
+                    "MONITOR",
+                    "children": [{
+                        "nodeType": "WINDOW",
+                        "windowId": 1,
+                        "wmClass": "A",
+                        "path": "mo0ws0/0",
+                    }],
                 },
                 {
-                    "id": "mo0ws1",
-                    "nodeType": "MONITOR",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 2,
-                            "wmClass": "B",
-                            "path": "mo0ws1/0",
-                        }
-                    ],
+                    "id":
+                    "mo0ws1",
+                    "nodeType":
+                    "MONITOR",
+                    "children": [{
+                        "nodeType": "WINDOW",
+                        "windowId": 2,
+                        "wmClass": "B",
+                        "path": "mo0ws1/0",
+                    }],
                 },
             ],
         }
@@ -277,8 +311,7 @@ class TestCandidateCounts(unittest.TestCase):
     def test_format_line(self):
         s = format_candidate_line(2, 5, 8, is_current=True)
         self.assertEqual(
-            s, "candidates: 5 on ws2 (ignored 8 on other workspaces)"
-        )
+            s, "candidates: 5 on ws2 (ignored 8 on other workspaces)")
         s2 = format_candidate_line(1, 3, 0)
         self.assertEqual(s2, "candidates: 3 on ws1")
 

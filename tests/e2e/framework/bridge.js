@@ -736,11 +736,10 @@
     },
 
     // M3: quiescence probe so the Python settle can wait for async finalize to drain. Move /
-    // SnapLayoutMove finalize through wm.queueEvent, which enqueues onto wm.eventQueue (a Queue,
-    // tree.js:758, with a .length getter) and drains via a GLib.timeout (window.js:271); a render
-    // is then a GLib.idle_add tracked by wm._renderTreeSrcId (window.js:1439). So:
+    // SnapLayoutMove finalize through wm.queueEvent (eventQueue + SourceBag slot "queue");
+    // render is GLib idle via SourceBag slot "renderTree". So:
     //   queue         = eventQueue.length (pending queued events; 0 if the structure is missing)
-    //   pendingRender = !!_renderTreeSrcId (an idle render is scheduled but hasn't fired)
+    //   pendingRender = _wmSources.has("renderTree")
     //   busy          = queue > 0 || pendingRender
     // Never throws — returns {busy:false,...} on any error.
     fuzzPendingWork() {
@@ -751,7 +750,7 @@
         if (wm && wm.eventQueue && typeof wm.eventQueue.length === "number") {
           queue = wm.eventQueue.length;
         }
-        const pendingRender = !!(wm && wm._renderTreeSrcId);
+        const pendingRender = !!(wm && wm._wmSources?.has?.("renderTree"));
         return JSON.stringify({ busy: queue > 0 || pendingRender, queue, pendingRender });
       } catch (e) {
         return JSON.stringify({ busy: false, queue: 0, pendingRender: false });
@@ -1538,9 +1537,8 @@
     // Resource-leak METRIC (Angle 3, demoted to a logged metric — exact-baseline-after-disable
     // is flaky from GJS GC timing). Consolidates the ALREADY-tracked collections scattered across
     // WindowManager + the tree into one cheap snapshot the engine logs / non-growth-warns on:
-    //  - signals: total length of the bound-once global signal arrays (_displaySignals,
-    //    _windowManagerSignals, _workspaceManagerSignals, _settingsSignals, _overviewSignals).
-    //    These are bound once in _bindSignals and never grow — so growth here is a real leak.
+    //  - signals: live WM-global SignalBag size (display/wm/wsm/settings/overview).
+    //    Bound once in _bindSignals and never grow — so growth here is a real leak.
     //  - timers: count of LIVE tracked GLib source ids (the set _removeSignals clears). Transient
     //    by nature (come and go), reported for visibility, NOT a non-growth target.
     //  - decorations/tabs/previewHints: per-node actors counted by walking the tree (Node.tab /
@@ -1551,25 +1549,17 @@
         const ext = forgeExt();
         const wm = ext && ext.extWm;
         if (!wm) return JSON.stringify({ error: "no-wm" });
-        const arrLen = (a) => (Array.isArray(a) ? a.length : 0);
-        const signals =
-          arrLen(wm._displaySignals) +
-          arrLen(wm._windowManagerSignals) +
-          arrLen(wm._workspaceManagerSignals) +
-          arrLen(wm._settingsSignals) +
-          arrLen(wm._overviewSignals);
-        const timerIds = [
-          "_renderTreeSrcId",
-          "_reloadTreeSrcId",
-          "_wsWindowAddSrcId",
-          "_windowHomeReconcileSrcId",
-          "_queueSourceId",
-          "_manualResizeEndId",
-          "_pointerFocusTimeoutId",
-          "_workspaceChangingTimeoutId",
-        ];
-        let timers = 0;
-        for (const id of timerIds) if (wm[id]) timers += 1;
+        // W5: globals on SignalBag (groups display/windowManager/workspaceManager/settings/overview).
+        const signals = wm._wmSignals?.size ?? 0;
+        // W1: WM global timers live on SourceBag; count live slots (incl. residual W3).
+        // W2: per-window stack pin lives on WindowAttach → Lifetime.sources slot "stack".
+        let timers = wm._wmSources?.size ?? 0;
+        const attachSnap = wm._windowAttach?.snapshot?.();
+        if (attachSnap?.windows) {
+          for (const w of attachSnap.windows) {
+            timers += w.lifetime?.sources?.size ?? 0;
+          }
+        }
         let decorations = 0;
         let tabs = 0;
         let previewHints = 0;

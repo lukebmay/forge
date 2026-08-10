@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import statistics
-import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Optional
@@ -31,7 +30,8 @@ def pct(xs: list[float], p: float) -> Optional[float]:
 
 
 def summarize(doc: dict[str, Any]) -> dict[str, Any]:
-    groups: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    groups: dict[tuple[str, str, str], list[dict[str,
+                                                 Any]]] = defaultdict(list)
     for t in doc.get("trials") or []:
         if t.get("skipped"):
             continue
@@ -54,28 +54,26 @@ def summarize(doc: dict[str, Any]) -> dict[str, Any]:
                 hard.append(int(s["hardResetCount"]))
             if s.get("softCount") is not None:
                 soft.append(int(s["softCount"]))
-        rows.append(
-            {
-                "appId": app,
-                "opId": op,
-                "role": role,
-                "n": len(trials),
-                "ok": oks,
-                "waitMs": {
-                    "p50": pct(waits, 50),
-                    "max": max(waits) if waits else None,
-                    "mean": statistics.mean(waits) if waits else None,
-                },
-                "hardResets": {
-                    "p50": pct([float(x) for x in hard], 50) if hard else None,
-                    "max": max(hard) if hard else None,
-                },
-                "soft": {
-                    "p50": pct([float(x) for x in soft], 50) if soft else None,
-                    "max": max(soft) if soft else None,
-                },
-            }
-        )
+        rows.append({
+            "appId": app,
+            "opId": op,
+            "role": role,
+            "n": len(trials),
+            "ok": oks,
+            "waitMs": {
+                "p50": pct(waits, 50),
+                "max": max(waits) if waits else None,
+                "mean": statistics.mean(waits) if waits else None,
+            },
+            "hardResets": {
+                "p50": pct([float(x) for x in hard], 50) if hard else None,
+                "max": max(hard) if hard else None,
+            },
+            "soft": {
+                "p50": pct([float(x) for x in soft], 50) if soft else None,
+                "max": max(soft) if soft else None,
+            },
+        })
     return {
         "host": doc.get("host"),
         "namespace": doc.get("namespace"),
@@ -94,14 +92,11 @@ def print_table(summary: dict[str, Any]) -> None:
     ns = summary.get("namespace") or {}
     print(
         f"host={host} session={ns.get('session')} suite={summary.get('suite')} "
-        f"phase={summary.get('phase')} trials={summary.get('trialCount')}"
-    )
+        f"phase={summary.get('phase')} trials={summary.get('trialCount')}")
     if summary.get("derivedKnobs"):
         print(f"derivedKnobs={summary['derivedKnobs']}")
-    print(
-        f"{'app':14} {'op':20} {'role':10} {'n':>3} {'ok':>3} "
-        f"{'wait_p50':>9} {'wait_max':>9} {'hard_p50':>8} {'soft_p50':>8}"
-    )
+    print(f"{'app':14} {'op':20} {'role':10} {'n':>3} {'ok':>3} "
+          f"{'wait_p50':>9} {'wait_max':>9} {'hard_p50':>8} {'soft_p50':>8}")
     for r in summary.get("rows") or []:
         w = r["waitMs"]
         h = r["hardResets"]
@@ -113,12 +108,10 @@ def print_table(summary: dict[str, Any]) -> None:
         def fi(x):
             return f"{x:8.0f}" if x is not None else f"{'—':>8}"
 
-        print(
-            f"{str(r['appId'])[:14]:14} {str(r['opId'])[:20]:20} "
-            f"{str(r['role'])[:10]:10} {r['n']:3} {r['ok']:3} "
-            f"{f(w.get('p50'))} {f(w.get('max'))} "
-            f"{fi(h.get('p50'))} {fi(s.get('p50'))}"
-        )
+        print(f"{str(r['appId'])[:14]:14} {str(r['opId'])[:20]:20} "
+              f"{str(r['role'])[:10]:10} {r['n']:3} {r['ok']:3} "
+              f"{f(w.get('p50'))} {f(w.get('max'))} "
+              f"{fi(h.get('p50'))} {fi(s.get('p50'))}")
 
 
 def main(argv: Optional[list[str]] = None) -> int:

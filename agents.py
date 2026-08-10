@@ -44,8 +44,7 @@ HEADER = (
     "     Routing index only: full rules live under agents/ and agents/installed/.\n"
     "     Open linked files when their trigger matches; do not invent rules.\n"
     "     Do not gitignore this file: Grok skips gitignored project instructions. -->\n"
-    "\n"
-)
+    "\n")
 
 HARD_KERNEL = """## Hard kernel (always on)
 
@@ -68,7 +67,8 @@ _FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?", re.DOTALL)
 
 def is_volatile(rel: str) -> bool:
     norm = rel.replace("\\", "/")
-    return any(norm == p.rstrip("/") or norm.startswith(p) for p in VOLATILE_PREFIXES)
+    return any(norm == p.rstrip("/") or norm.startswith(p)
+               for p in VOLATILE_PREFIXES)
 
 
 def _rel_posix(base: Path, path: Path) -> str:
@@ -204,7 +204,8 @@ def collect_fragments(
     for arg in paths:
         target = _resolve_under_agents(arg)
         if target is None:
-            print(f"warning: path not found under agents/: {arg}", file=sys.stderr)
+            print(f"warning: path not found under agents/: {arg}",
+                  file=sys.stderr)
             continue
         if target.is_file():
             extras.append(target)
@@ -226,13 +227,10 @@ def collect_fragments(
                 if not p.is_relative_to(AGENTS_DIR.resolve()):
                     continue
                 rel_agents = _rel_posix(AGENTS_DIR, p)
-                if (
-                    has_installed
-                    and not rel_agents.startswith("installed/")
-                    and not is_volatile(rel_agents)
-                    and rel_agents != "project.md"
-                    and (INSTALLED_DIR / rel_agents).is_file()
-                ):
+                if (has_installed and not rel_agents.startswith("installed/")
+                        and not is_volatile(rel_agents)
+                        and rel_agents != "project.md"
+                        and (INSTALLED_DIR / rel_agents).is_file()):
                     installed_rels.add(rel_agents)
                     continue
                 label = _label_for(p)
@@ -240,10 +238,8 @@ def collect_fragments(
             continue
         if label in seen:
             continue
-        if is_volatile(label) or (
-            label.startswith("installed/")
-            and is_volatile(label[len("installed/"):])
-        ):
+        if is_volatile(label) or (label.startswith("installed/")
+                                  and is_volatile(label[len("installed/"):])):
             volatile.append((label, p))
         else:
             stable.append((label, p))
@@ -322,7 +318,7 @@ def compose_index(fragments: Sequence[Tuple[str, Path]]) -> str:
             continue
         title, read_when, order = route_from_path(path)
         if label.endswith(" (user)"):
-            rel_read = "agents/" + label[: -len(" (user)")]
+            rel_read = "agents/" + label[:-len(" (user)")]
             title = f"{title} (user override)"
         rows.append((order, rel_read, title, read_when))
     rows.sort(key=lambda r: (r[0], r[1]))
@@ -331,21 +327,21 @@ def compose_index(fragments: Sequence[Tuple[str, Path]]) -> str:
         we = read_when.replace("|", "\\|")
         parts.append(f"| `{rel_read}` | {te} | {we} |")
     if not rows:
-        parts.append("| *(none installed)* | — | Run `agents init` / `agents install` |")
-    parts.extend(
-        [
-            "",
-            "## How to use this index",
-            "",
-            "1. Match your action to **Read when**.",
-            "2. **Open the Path** (Read tool / editor) and follow that file.",
-            "3. User overrides at `agents/<same-rel-as-installed>` win over "
-            "`agents/installed/…` when both exist — the table lists the override path.",
-            "4. Do not paste entire guideline files into chat; follow them in place.",
-            "5. Rebuild after install/update: `agents build` or `python3 agents.py build`.",
-            "",
-        ]
-    )
+        parts.append(
+            "| *(none installed)* | — | Run `agents init` / `agents install` |"
+        )
+    parts.extend([
+        "",
+        "## How to use this index",
+        "",
+        "1. Match your action to **Read when**.",
+        "2. **Open the Path** (Read tool / editor) and follow that file.",
+        "3. User overrides at `agents/<same-rel-as-installed>` win over "
+        "`agents/installed/…` when both exist — the table lists the override path.",
+        "4. Do not paste entire guideline files into chat; follow them in place.",
+        "5. Rebuild after install/update: `agents build` or `python3 agents.py build`.",
+        "",
+    ])
     return "\n".join(parts).rstrip() + "\n"
 
 
@@ -357,9 +353,9 @@ def write_atomic(target: Path, content: str) -> bool:
                 return False
         except OSError:
             pass
-    fd, tmp_name = tempfile.mkstemp(
-        prefix=".AGENTS.", suffix=".tmp", dir=str(target.parent)
-    )
+    fd, tmp_name = tempfile.mkstemp(prefix=".AGENTS.",
+                                    suffix=".tmp",
+                                    dir=str(target.parent))
     tmp_path = Path(tmp_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
@@ -379,9 +375,12 @@ def write_atomic(target: Path, content: str) -> bool:
 def cmd_build(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="agents.py build",
-        description="Compose AGENTS.md routing index from agents/ + installed guidelines.",
+        description=
+        "Compose AGENTS.md routing index from agents/ + installed guidelines.",
     )
-    parser.add_argument("paths", nargs="*", help="Extra paths under agents/ to index")
+    parser.add_argument("paths",
+                        nargs="*",
+                        help="Extra paths under agents/ to index")
     parser.add_argument("--preset", choices=PRESETS, default="core")
     parser.add_argument("--readme", action="store_true")
     parser.add_argument("-o", "--output")
@@ -390,10 +389,13 @@ def cmd_build(argv: Sequence[str]) -> int:
     args = parser.parse_args(list(argv))
 
     if not AGENTS_DIR.is_dir():
-        print(f"error: agents/ not found under {PROJECT_ROOT}", file=sys.stderr)
+        print(f"error: agents/ not found under {PROJECT_ROOT}",
+              file=sys.stderr)
         return 2
 
-    frags = collect_fragments(args.preset, args.paths, include_readme=args.readme)
+    frags = collect_fragments(args.preset,
+                              args.paths,
+                              include_readme=args.readme)
     if args.list:
         for label, _ in frags:
             print(label)
@@ -427,8 +429,7 @@ def cmd_build(argv: Sequence[str]) -> int:
 
 
 def usage() -> None:
-    print(
-        f"""agents.py {__version__} — project agents routing-index composer
+    print(f"""agents.py {__version__} — project agents routing-index composer
 
 Commands:
   build [paths…]     Compose root AGENTS.md index (default --preset=core)
@@ -437,8 +438,7 @@ Commands:
 
 AGENTS.md is a **when-to-read map**. Full rules stay in agents/installed/.
 Install/update fragments with the shellrc `agents` tool.
-"""
-    )
+""")
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

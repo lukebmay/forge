@@ -20,7 +20,6 @@ from .constants import Timing
 if TYPE_CHECKING:
     from .shell_proxy import ShellProxy
 
-
 # Mirror of DEFAULT_FLOAT_LAYOUT in lib/extension/keybindings.js:31 — the kwargs
 # the keybinding callback passes to extWm.command({name: "FloatToggle", ...}).
 # Kept in sync so the dbus dispatch path produces the same window geometry as

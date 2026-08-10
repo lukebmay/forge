@@ -26,6 +26,7 @@ from settle_heuristics import (  # noqa: E402
     get_or_create_entry,
     heuristics_path,
     is_first_ever,
+    last_rolling_latencies,
     learning_trial_soft_cap_ms,
     load_store,
     make_key,
@@ -33,21 +34,92 @@ from settle_heuristics import (  # noqa: E402
     parse_key,
     record_and_soft_timeout,
     record_trial,
-    residual_latencies,
     reset_default_session,
     reset_heuristics_file,
+    residual_latencies,
     resolve_host,
     save_store,
     schema_version_ok,
     soft_clamp_ms,
     soft_floor_ms,
     soft_timeout_for_key,
+    soft_timeout_from_latencies,
     soft_timeout_ms,
     store_file_status,
 )
 
+# Golden rows shared with tests/unit/extension/settle-math.test.js (identical expects).
+SETTLE_MATH_GOLDEN = [
+    {
+        "latenciesMs": [],
+        "pad": 1.25,
+        "floor": 400,
+        "clamp": 3000,
+        "expect": 400
+    },
+    {
+        "latenciesMs": [100],
+        "pad": 1.25,
+        "floor": 400,
+        "clamp": 3000,
+        "expect": 400
+    },
+    {
+        "latenciesMs": [800],
+        "pad": 1.25,
+        "floor": 400,
+        "clamp": 3000,
+        "expect": 1000
+    },
+    {
+        "latenciesMs": [100, 2000],
+        "pad": 1.25,
+        "floor": 400,
+        "clamp": 3000,
+        "expect": 2500
+    },
+    {
+        "latenciesMs": [10000],
+        "pad": 1.25,
+        "floor": 400,
+        "clamp": 3000,
+        "expect": 3000
+    },
+    {
+        "latenciesMs":
+        [9000, 1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 100, 200, 300, 400],
+        "pad":
+        1.25,
+        "floor":
+        0,
+        "clamp":
+        99999,
+        "expect":
+        500,
+        "rolling":
+        True,
+    },
+    {
+        "latenciesMs": [50],
+        "pad": 1.25,
+        "floor": 0,
+        "clamp": 5000,
+        "expect": 62
+    },
+    {
+        "latenciesMs": [None, "x", -5,
+                        float("nan"),
+                        float("inf")],
+        "pad": 1.25,
+        "floor": 400,
+        "clamp": 3000,
+        "expect": 400,
+    },
+]
+
 
 class NormalizeAndKeys(unittest.TestCase):
+
     def test_normalize_class(self):
         self.assertEqual(normalize_class("  Google-chrome  "), "google-chrome")
         self.assertEqual(normalize_class(None), "")
@@ -59,18 +131,22 @@ class NormalizeAndKeys(unittest.TestCase):
         self.assertEqual(parse_key(k)["class"], "com.mitchellh.ghostty")
 
     def test_resolve_host_env(self):
-        self.assertEqual(resolve_host({"FORGE_HOST": "Desk"}, hostname="other"), "desk")
+        self.assertEqual(
+            resolve_host({"FORGE_HOST": "Desk"}, hostname="other"), "desk")
         self.assertEqual(resolve_host({}, hostname="black.local"), "black")
 
 
 class SoftTimeoutMath(unittest.TestCase):
+
     def test_floors_and_clamps(self):
         self.assertEqual(soft_floor_ms("focus"), 400)
         self.assertEqual(soft_floor_ms("geom"), 200)
         self.assertEqual(soft_clamp_ms("focus"), 3000)
         self.assertEqual(soft_clamp_ms("geom"), 5000)
-        self.assertEqual(learning_trial_soft_cap_ms("focus"), 6000)  # min(10s, 3s*2)
-        self.assertEqual(learning_trial_soft_cap_ms("geom"), 10000)  # min(10s, 5s*2)
+        self.assertEqual(learning_trial_soft_cap_ms("focus"),
+                         6000)  # min(10s, 3s*2)
+        self.assertEqual(learning_trial_soft_cap_ms("geom"),
+                         10000)  # min(10s, 5s*2)
 
     def test_first_ever_learning_trial(self):
         self.assertTrue(is_first_ever(None))
@@ -120,7 +196,70 @@ class SoftTimeoutMath(unittest.TestCase):
         self.assertEqual(ent["zeroResidualCount"], 1)
 
 
+class SoftTimeoutKernel(unittest.TestCase):
+    """L6 pure kernel + golden parity with settle-math.test.js."""
+
+    def test_last_rolling_latencies_filters_and_trims(self):
+        self.assertEqual(last_rolling_latencies(None), [])
+        self.assertEqual(last_rolling_latencies("100"), [])
+        self.assertEqual(last_rolling_latencies([100, -1, "x", 200.9, 0]),
+                         [100, 200, 0])
+        vals = [i * 10 for i in range(ROLLING_N + 5)]
+        out = last_rolling_latencies(vals)
+        self.assertEqual(len(out), ROLLING_N)
+        self.assertEqual(out[0], 5 * 10)
+        self.assertEqual(out[-1], (ROLLING_N + 4) * 10)
+
+    def test_soft_timeout_from_latencies_empty_floor(self):
+        self.assertEqual(
+            soft_timeout_from_latencies([], pad=1.25, floor=400, clamp=3000),
+            400,
+        )
+
+    def test_soft_timeout_from_latencies_trunc(self):
+        # 50 * 1.25 = 62.5 → int 62 (toward zero)
+        self.assertEqual(
+            soft_timeout_from_latencies([50], pad=1.25, floor=0, clamp=5000),
+            62,
+        )
+        self.assertEqual(
+            soft_timeout_from_latencies([333], pad=1.25, floor=0, clamp=99999),
+            416,
+        )
+
+    def test_golden_parity(self):
+        for i, row in enumerate(SETTLE_MATH_GOLDEN):
+            samples = row["latenciesMs"]
+            if row.get("rolling"):
+                samples = last_rolling_latencies(samples, ROLLING_N)
+            got = soft_timeout_from_latencies(
+                samples,
+                pad=row["pad"],
+                floor=row["floor"],
+                clamp=row["clamp"],
+            )
+            self.assertEqual(
+                got,
+                row["expect"],
+                msg=f"golden[{i}] latencies={row['latenciesMs']!r} got={got}",
+            )
+
+    def test_soft_timeout_ms_residual_uses_kernel(self):
+        ent = empty_entry(residual_kind="focus")
+        record_trial(ent, had_residual=True, latency_ms=800)
+        self.assertEqual(
+            soft_timeout_ms(ent, "focus"),
+            soft_timeout_from_latencies(
+                residual_latencies(ent),
+                pad=PAD,
+                floor=soft_floor_ms("focus"),
+                clamp=soft_clamp_ms("focus"),
+            ),
+        )
+
+
 class StoreIo(unittest.TestCase):
+
     def test_heuristics_path(self):
         root = Path("/tmp/forge-test-root")
         self.assertEqual(
@@ -168,7 +307,13 @@ class StoreIo(unittest.TestCase):
     def test_bad_version_empty(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "bad.json"
-            path.write_text(json.dumps({"version": 99, "entries": {"x": {}}}), encoding="utf-8")
+            path.write_text(json.dumps({
+                "version": 99,
+                "entries": {
+                    "x": {}
+                }
+            }),
+                            encoding="utf-8")
             self.assertEqual(load_store(path), empty_store())
             # SE9: invalid file stays on disk until operator reset
             self.assertTrue(path.is_file())
@@ -185,7 +330,8 @@ class StoreIo(unittest.TestCase):
             self.assertEqual(load_store(path), empty_store())
 
     def test_soft_timeout_for_missing_key_is_first_ever(self):
-        t = soft_timeout_for_key(empty_store(), make_key("h", "c", "focus-phase", "focus"))
+        t = soft_timeout_for_key(empty_store(),
+                                 make_key("h", "c", "focus-phase", "focus"))
         self.assertEqual(t, learning_trial_soft_cap_ms("focus"))
 
     def test_no_personal_role_in_key(self):
@@ -194,7 +340,8 @@ class StoreIo(unittest.TestCase):
         self.assertNotIn("grok", k)
         self.assertNotIn("chrome-left", k)
         parts = parse_key(k)
-        self.assertEqual(set(parts.keys()), {"host", "class", "processKind", "residualKind"})
+        self.assertEqual(set(parts.keys()),
+                         {"host", "class", "processKind", "residualKind"})
 
     def test_schema_version_ok(self):
         self.assertTrue(schema_version_ok(SCHEMA_VERSION))
@@ -252,7 +399,9 @@ class StoreIo(unittest.TestCase):
             save_store(path, store)
             # Session holds stale data until reset clears it
             sess = HeuristicsSession(path)
-            self.assertGreater(sess.soft_timeout("black", "google-chrome", "focus-phase", "focus"), 0)
+            self.assertGreater(
+                sess.soft_timeout("black", "google-chrome", "focus-phase",
+                                  "focus"), 0)
             result = reset_heuristics_file(path)
             self.assertTrue(result["ok"])
             self.assertEqual(result["action"], "written")
@@ -280,11 +429,13 @@ class StoreIo(unittest.TestCase):
 
 
 class Constants(unittest.TestCase):
+
     def test_hard_timeout_locked(self):
         self.assertEqual(HARD_TIMEOUT_MS, 5000)
 
 
 class HeuristicsSessionTests(unittest.TestCase):
+
     def tearDown(self):
         reset_default_session()
 

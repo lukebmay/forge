@@ -93,9 +93,8 @@ class RouteA:
         # If gnome-shell has crashed this errors out and the file is whatever the
         # shell left behind (truncated) — a known route-A limitation.
         try:
-            self.proxy.call_sync(
-                "StopScreencast", None, Gio.DBusCallFlags.NONE, -1, None
-            )
+            self.proxy.call_sync("StopScreencast", None,
+                                 Gio.DBusCallFlags.NONE, -1, None)
             log("StopScreencast sent")
         except GLib.Error as e:
             log(f"StopScreencast failed: {e.message}")
@@ -122,9 +121,8 @@ class RouteB:
             "org.gnome.Mutter.DisplayConfig",
             None,
         )
-        state = dc.call_sync(
-            "GetCurrentState", None, Gio.DBusCallFlags.NONE, -1, None
-        ).unpack()
+        state = dc.call_sync("GetCurrentState", None, Gio.DBusCallFlags.NONE,
+                             -1, None).unpack()
         # state = (serial, monitors, logical_monitors, properties)
         monitors = state[1]
         # monitors[i] = ((connector, vendor, product, serial), modes, props)
@@ -156,7 +154,7 @@ class RouteB:
         )
         self._session_path = sc.call_sync(
             "CreateSession",
-            GLib.Variant("(a{sv})", ({},)),
+            GLib.Variant("(a{sv})", ({}, )),
             Gio.DBusCallFlags.NONE,
             -1,
             None,
@@ -198,12 +196,10 @@ class RouteB:
     def _on_stream_added(self, conn, sender, path, iface, signal_, params):
         node_id = params.unpack()[0]
         Gst = self._Gst
-        desc = (
-            f"pipewiresrc path={node_id} ! videorate ! "
-            f"video/x-raw,framerate={FRAMERATE}/1 ! videoconvert ! "
-            f"vp8enc cpu-used=8 deadline=1 ! queue ! webmmux ! "
-            f"filesink location={self.out_path}"
-        )
+        desc = (f"pipewiresrc path={node_id} ! videorate ! "
+                f"video/x-raw,framerate={FRAMERATE}/1 ! videoconvert ! "
+                f"vp8enc cpu-used=8 deadline=1 ! queue ! webmmux ! "
+                f"filesink location={self.out_path}")
         log(f"pipewire node {node_id}; launching: {desc}")
         # parse_launch raises GLib.Error if an element is missing (e.g.
         # pipewiresrc/vp8enc absent). This runs inside a D-Bus signal callback,
@@ -228,9 +224,8 @@ class RouteB:
         # confirm before tearing down — NEVER SIGKILL the pipeline.
         self.pipeline.send_event(Gst.Event.new_eos())
         bus = self.pipeline.get_bus()
-        bus.timed_pop_filtered(
-            5 * Gst.SECOND, Gst.MessageType.EOS | Gst.MessageType.ERROR
-        )
+        bus.timed_pop_filtered(5 * Gst.SECOND,
+                               Gst.MessageType.EOS | Gst.MessageType.ERROR)
         self.pipeline.set_state(Gst.State.NULL)
         log("route B pipeline finalized (EOS)")
 

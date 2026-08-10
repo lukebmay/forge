@@ -21,6 +21,7 @@ _chrome_pwa_app_id = forge._chrome_pwa_app_id
 
 
 class TestForgeClassEq(unittest.TestCase):
+
     def test_casefold_and_stem(self):
         self.assertTrue(_class_eq("Google-chrome", "google-chrome"))
         self.assertTrue(_class_eq("ghostty", "com.mitchellh.ghostty"))
@@ -28,8 +29,10 @@ class TestForgeClassEq(unittest.TestCase):
         self.assertFalse(_class_eq(None, "A"))
 
     def test_chrome_browser_matches_pwa_and_crx(self):
-        self.assertTrue(_class_eq("Google-chrome", "chrome-ggjoabcdef-Default"))
-        self.assertTrue(_class_eq("google-chrome", "chrome-ggjoabcdef-Default"))
+        self.assertTrue(_class_eq("Google-chrome",
+                                  "chrome-ggjoabcdef-Default"))
+        self.assertTrue(_class_eq("google-chrome",
+                                  "chrome-ggjoabcdef-Default"))
         self.assertTrue(_class_eq("Chromium", "chrome-ggjoabcdef-Default"))
         self.assertTrue(_class_eq("chromium", "crx_abc123"))
         self.assertTrue(_class_eq("google-chrome-stable", "crx_xyz"))
@@ -39,7 +42,8 @@ class TestForgeClassEq(unittest.TestCase):
 
     def test_distinct_pwas_do_not_match(self):
         self.assertFalse(_class_eq("chrome-aaa-Default", "chrome-bbb-Default"))
-        self.assertFalse(_class_eq("chrome-ggjoabcdef-Default", "chrome-otherid-Default"))
+        self.assertFalse(
+            _class_eq("chrome-ggjoabcdef-Default", "chrome-otherid-Default"))
         self.assertFalse(_class_eq("crx_a", "crx_b"))
         self.assertFalse(_class_eq("crx_abc123", "chrome-aaa-Default"))
         self.assertTrue(_class_eq("chrome-aaa-Default", "chrome-aaa-Default"))
@@ -50,23 +54,21 @@ class TestForgeClassEq(unittest.TestCase):
             _class_eq(
                 "crx_agimnkijcaahngcdmfeangaknmldooml",
                 "chrome-agimnkijcaahngcdmfeangaknmldooml-Default",
-            )
-        )
+            ))
         self.assertTrue(
             _class_eq(
                 "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
                 "crx_ggjocahimgaohmigbfhghnlfcnjemagj",
-            )
-        )
+            ))
         # Profile-ish same app id
         self.assertTrue(
             _class_eq(
                 "crx_ggjocahimgaohmigbfhghnlfcnjemagj",
                 "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Profile",
-            )
-        )
+            ))
         self.assertEqual(
-            _chrome_pwa_app_id("chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Profile_1"),
+            _chrome_pwa_app_id(
+                "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Profile_1"),
             "ggjocahimgaohmigbfhghnlfcnjemagj",
         )
 
@@ -76,6 +78,7 @@ class TestForgeClassEq(unittest.TestCase):
 
 
 class TestLaunchWaitPlaceHelpers(unittest.TestCase):
+
     def test_merge_hints_first_then_explicit(self):
         # Keep both PWA forms + sugar; hints before explicit; casefold dedupe only.
         hints = [
@@ -86,20 +89,21 @@ class TestLaunchWaitPlaceHelpers(unittest.TestCase):
         wait = merge_launch_wait_classes("Google-chrome", hints)
         self.assertIsNotNone(wait)
         assert wait is not None
-        self.assertEqual(
-            wait[0], "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default"
-        )
+        self.assertEqual(wait[0],
+                         "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default")
         self.assertIn("crx_ggjocahimgaohmigbfhghnlfcnjemagj", wait)
         # google-chrome already from hints; Google-chrome casefolds equal.
         self.assertEqual(wait[-1], "google-chrome")
-        self.assertEqual(len([w for w in wait if w.casefold() == "google-chrome"]), 1)
+        self.assertEqual(
+            len([w for w in wait if w.casefold() == "google-chrome"]), 1)
 
     def test_merge_explicit_only(self):
         wait = merge_launch_wait_classes("Google-chrome", [])
         self.assertEqual(wait, ["Google-chrome"])
 
     def test_merge_hints_only(self):
-        wait = merge_launch_wait_classes(None, ["com.mitchellh.ghostty", "ghostty"])
+        wait = merge_launch_wait_classes(None,
+                                         ["com.mitchellh.ghostty", "ghostty"])
         self.assertEqual(wait, ["com.mitchellh.ghostty", "ghostty"])
 
     def test_prefer_chrome_default_over_sugar(self):
@@ -111,9 +115,8 @@ class TestLaunchWaitPlaceHelpers(unittest.TestCase):
                 "google-chrome",
             ],
         )
-        self.assertEqual(
-            place, "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default"
-        )
+        self.assertEqual(place,
+                         "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default")
 
     def test_prefer_crx_when_no_chrome_default(self):
         place = prefer_launch_place_class(
@@ -123,21 +126,18 @@ class TestLaunchWaitPlaceHelpers(unittest.TestCase):
         self.assertEqual(place, "crx_abc123")
 
     def test_prefer_explicit_when_no_hints(self):
-        self.assertEqual(
-            prefer_launch_place_class("Google-chrome", []), "Google-chrome"
-        )
+        self.assertEqual(prefer_launch_place_class("Google-chrome", []),
+                         "Google-chrome")
 
     def test_infer_hints_from_crx_startup(self):
         app_id = "ggjocahimgaohmigbfhghnlfcnjemagj"
-        body = textwrap.dedent(
-            f"""\
+        body = textwrap.dedent(f"""\
             [Desktop Entry]
             Type=Application
             Name=Grok
             Exec=/usr/bin/google-chrome --app-id={app_id}
             StartupWMClass=crx_{app_id}
-            """
-        )
+            """)
         with tempfile.TemporaryDirectory() as td:
             desk = Path(td) / f"chrome-{app_id}-Default.desktop"
             desk.write_text(body, encoding="utf-8")
@@ -147,14 +147,12 @@ class TestLaunchWaitPlaceHelpers(unittest.TestCase):
 
     def test_infer_hints_from_app_id_only(self):
         app_id = "agimnkijcaahngcdmfeangaknmldooml"
-        body = textwrap.dedent(
-            f"""\
+        body = textwrap.dedent(f"""\
             [Desktop Entry]
             Type=Application
             Name=YouTube
             Exec=/usr/bin/google-chrome --profile-directory=Default --app-id={app_id}
-            """
-        )
+            """)
         with tempfile.TemporaryDirectory() as td:
             desk = Path(td) / "youtube.desktop"
             desk.write_text(body, encoding="utf-8")
@@ -168,9 +166,21 @@ class TestOpenLoopContinueLogic(unittest.TestCase):
 
     def test_continue_records_failures_and_pins(self):
         opens = [
-            {"role": "chrome", "ok": True, "windowId": 1},
-            {"role": "Grok", "ok": False, "error": "timeout"},
-            {"role": "YouTube", "ok": True, "windowId": 3},
+            {
+                "role": "chrome",
+                "ok": True,
+                "windowId": 1
+            },
+            {
+                "role": "Grok",
+                "ok": False,
+                "error": "timeout"
+            },
+            {
+                "role": "YouTube",
+                "ok": True,
+                "windowId": 3
+            },
         ]
         role_pins: dict[str, int] = {}
         open_failures: list[str] = []
@@ -187,9 +197,23 @@ class TestOpenLoopContinueLogic(unittest.TestCase):
     def test_parallel_spawn_then_map_pin_bookkeeping(self):
         """CL9: spawns succeed without windowId; map wait fills pins later."""
         spawns = [
-            {"role": "chrome", "ok": True, "waited": False, "waitClasses": ["Google-chrome"]},
-            {"role": "ghostty", "ok": True, "waited": False, "waitClasses": ["ghostty"]},
-            {"role": "Grok", "ok": False, "error": "PlaceNext failed"},
+            {
+                "role": "chrome",
+                "ok": True,
+                "waited": False,
+                "waitClasses": ["Google-chrome"]
+            },
+            {
+                "role": "ghostty",
+                "ok": True,
+                "waited": False,
+                "waitClasses": ["ghostty"]
+            },
+            {
+                "role": "Grok",
+                "ok": False,
+                "error": "PlaceNext failed"
+            },
         ]
         pending = []
         open_failures: list[str] = []
@@ -197,20 +221,19 @@ class TestOpenLoopContinueLogic(unittest.TestCase):
             if not s.get("ok"):
                 open_failures.append(s["role"])
                 continue
-            pending.append(
-                {
-                    "role": s["role"],
-                    "wait_classes": s.get("waitClasses"),
-                    "accept_any_new": s.get("waitClasses") is None,
-                }
-            )
+            pending.append({
+                "role": s["role"],
+                "wait_classes": s.get("waitClasses"),
+                "accept_any_new": s.get("waitClasses") is None,
+            })
         self.assertEqual(open_failures, ["Grok"])
         self.assertEqual([p["role"] for p in pending], ["chrome", "ghostty"])
         # Map pins (no TILE required) applied after wait.
         map_pins = {"chrome": 10, "ghostty": 20}
         role_pins = dict(map_pins)
         self.assertEqual(role_pins, {"chrome": 10, "ghostty": 20})
-        self.assertTrue(all(s.get("waited") is False for s in spawns if s.get("ok")))
+        self.assertTrue(
+            all(s.get("waited") is False for s in spawns if s.get("ok")))
 
 
 if __name__ == "__main__":

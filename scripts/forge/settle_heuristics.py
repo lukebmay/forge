@@ -50,7 +50,8 @@ _KEY_SEP = "|"
 
 
 def config_dir(config_root: Optional[Path] = None) -> Path:
-    root = Path(config_root) if config_root is not None else DEFAULT_CONFIG_ROOT
+    root = Path(
+        config_root) if config_root is not None else DEFAULT_CONFIG_ROOT
     return root / "config"
 
 
@@ -167,24 +168,88 @@ def _nonneg_int(value: Any, default: int = 0) -> int:
     return n if n >= 0 else default
 
 
+def _latency_int(value: Any) -> Optional[int]:
+    """Non-negative int latency ms, or None if invalid (match JS finite filter)."""
+    if isinstance(value, bool):
+        return None
+    try:
+        fv = float(value)
+    except (TypeError, ValueError):
+        return None
+    if fv != fv or fv in (float("inf"), float("-inf")):  # NaN / ±
+        return None
+    if fv < 0:
+        return None
+    return int(fv)  # toward zero for positive (match JS Math.trunc)
+
+
+def last_rolling_latencies(values: Any, n: int = ROLLING_N) -> list[int]:
+    """Last N non-negative finite int latencies (ms); skip invalid."""
+    if not isinstance(values, Sequence) or isinstance(values, (str, bytes)):
+        return []
+    out: list[int] = []
+    for v in values:
+        ms = _latency_int(v)
+        if ms is not None:
+            out.append(ms)
+    lim = int(n) if isinstance(
+        n, (int, float)) and not isinstance(n, bool) else ROLLING_N
+    if lim > 0 and len(out) > lim:
+        return out[-lim:]
+    return out
+
+
+def soft_timeout_from_latencies(
+    latencies: Any,
+    *,
+    pad: float = PAD,
+    floor: int = 0,
+    clamp: Optional[int] = None,
+) -> int:
+    """
+    Shared soft-timeout formula (L6 kernel).
+
+    Empty after filter → floor; else int(min(clamp, max(floor, max*pad))).
+    Floors/clamps and first-ever policy stay outside this helper.
+    """
+    p = pad if isinstance(
+        pad, (int, float)) and not isinstance(pad, bool) and pad > 0 else PAD
+    try:
+        fl = int(floor)
+    except (TypeError, ValueError):
+        fl = 0
+    if fl < 0:
+        fl = 0
+    if clamp is None:
+        cl = 2**31 - 1
+    else:
+        try:
+            cl = int(clamp)
+        except (TypeError, ValueError, OverflowError):
+            cl = 2**31 - 1
+        if cl < 0:
+            cl = 0
+
+    samples: list[int] = []
+    if isinstance(latencies,
+                  Sequence) and not isinstance(latencies, (str, bytes)):
+        for v in latencies:
+            ms = _latency_int(v)
+            if ms is not None:
+                samples.append(ms)
+
+    if not samples:
+        return fl
+
+    raw = max(samples) * float(p)
+    return int(min(cl, max(fl, raw)))
+
+
 def residual_latencies(entry: Any, *, n: int = ROLLING_N) -> list[int]:
     """Last N residual-positive latencies (ms); ignore non-finite / negative."""
     if not isinstance(entry, dict):
         return []
-    raw = entry.get("latenciesMs")
-    if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes)):
-        return []
-    out: list[int] = []
-    for v in raw:
-        try:
-            ms = int(v)
-        except (TypeError, ValueError):
-            continue
-        if ms >= 0:
-            out.append(ms)
-    if n > 0 and len(out) > n:
-        return out[-n:]
-    return out
+    return last_rolling_latencies(entry.get("latenciesMs"), n)
 
 
 def soft_timeout_ms(
@@ -218,11 +283,7 @@ def soft_timeout_ms(
         return int(min(max(fl, cap), max(cl, cap)))
 
     lats = residual_latencies(entry, n=rolling_n)
-    if not lats:
-        return int(min(cl, fl)) if cl > 0 else fl
-
-    raw = max(lats) * float(p)
-    return int(min(cl, max(fl, raw)))
+    return soft_timeout_from_latencies(lats, pad=p, floor=fl, clamp=cl)
 
 
 def record_trial(
@@ -238,7 +299,8 @@ def record_trial(
     """
     entry["trialCount"] = _nonneg_int(entry.get("trialCount"), 0) + 1
     if not had_residual:
-        entry["zeroResidualCount"] = _nonneg_int(entry.get("zeroResidualCount"), 0) + 1
+        entry["zeroResidualCount"] = _nonneg_int(
+            entry.get("zeroResidualCount"), 0) + 1
         return dict(entry)
 
     ms = _nonneg_int(latency_ms, 0)
@@ -342,12 +404,15 @@ def store_file_status(path: Any = None) -> dict[str, Any]:
     if not isinstance(entries, dict):
         entries = {}
     out["valid"] = True
-    out["entryCount"] = sum(1 for k, v in entries.items() if isinstance(k, str) and isinstance(v, dict))
+    out["entryCount"] = sum(1 for k, v in entries.items()
+                            if isinstance(k, str) and isinstance(v, dict))
     out["reason"] = "ok"
     return out
 
 
-def reset_heuristics_file(path: Any = None, *, unlink: bool = False) -> dict[str, Any]:
+def reset_heuristics_file(path: Any = None,
+                          *,
+                          unlink: bool = False) -> dict[str, Any]:
     """
     Wipe settle heuristics on disk (SE9 operator reset).
 
@@ -447,10 +512,12 @@ def save_store(path: Any, store: Mapping[str, Any]) -> None:
                 "host": str(v.get("host") or ""),
                 "class": normalize_class(v.get("class")),
                 "processKind": str(v.get("processKind") or "").strip().lower(),
-                "residualKind": str(v.get("residualKind") or "").strip().lower(),
+                "residualKind": str(v.get("residualKind")
+                                    or "").strip().lower(),
                 "latenciesMs": residual_latencies(v, n=ROLLING_N),
                 "trialCount": _nonneg_int(v.get("trialCount"), 0),
-                "zeroResidualCount": _nonneg_int(v.get("zeroResidualCount"), 0),
+                "zeroResidualCount": _nonneg_int(v.get("zeroResidualCount"),
+                                                 0),
             }
     data = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     fd, tmp_name = tempfile.mkstemp(

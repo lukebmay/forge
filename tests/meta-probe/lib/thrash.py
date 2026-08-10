@@ -11,13 +11,13 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-
 # Defaults used when config omits thrash block
 DEFAULT_MAX_HARD_RESETS = 20
 DEFAULT_WAIT_FACTOR = 4.0
 
 
-def thrash_config_from_dict(cfg: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+def thrash_config_from_dict(
+        cfg: Optional[dict[str, Any]] = None) -> dict[str, Any]:
     """Normalize thrash knobs from config.thrash or empty."""
     t = dict(cfg or {})
     return {
@@ -58,11 +58,13 @@ def is_thrash_from_settle(
         return True, "settle_missing"
     if isinstance(settle, dict):
         settled = bool(settle.get("settled"))
-        hard = int(settle.get("hardResetCount") or settle.get("hard_reset_count") or 0)
+        hard = int(
+            settle.get("hardResetCount") or settle.get("hard_reset_count")
+            or 0)
         wait = float(settle.get("waitMs") or settle.get("wait_ms") or 0)
         duration = float(
-            settle.get("settleDurationMs") or settle.get("settle_duration_ms") or 3000
-        )
+            settle.get("settleDurationMs") or settle.get("settle_duration_ms")
+            or 3000)
     else:
         settled = bool(getattr(settle, "settled", False))
         hard = int(getattr(settle, "hard_reset_count", 0) or 0)
@@ -85,10 +87,12 @@ def trial_is_thrash(
     """Thrash from a trial_record-shaped dict (uses settle + ok)."""
     if trial.get("skipped"):
         return False, ""
-    if trial.get("ok") is False and not (trial.get("settle") or {}).get("settled"):
+    if trial.get("ok") is False and not (trial.get("settle")
+                                         or {}).get("settled"):
         # still use settle details when present
         pass
-    thrash, reason = is_thrash_from_settle(trial.get("settle") or {}, thrash_cfg)
+    thrash, reason = is_thrash_from_settle(
+        trial.get("settle") or {}, thrash_cfg)
     if thrash:
         return thrash, reason
     if trial.get("ok") is False:

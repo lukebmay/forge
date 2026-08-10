@@ -86,7 +86,10 @@ def _gdbus_call(method: str, *args: str) -> str:
         *args,
     ]
     try:
-        out = subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT, timeout=60)
+        out = subprocess.check_output(cmd,
+                                      text=True,
+                                      stderr=subprocess.STDOUT,
+                                      timeout=60)
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"gdbus {method} failed: {e.output}") from e
     except FileNotFoundError as e:
@@ -96,9 +99,9 @@ def _gdbus_call(method: str, *args: str) -> str:
         text = text[1:-1].strip()
     if text.endswith(","):
         text = text[:-1].strip()
-    if (text.startswith("'") and text.endswith("'")) or (
-        text.startswith('"') and text.endswith('"')
-    ):
+    if (text.startswith("'")
+            and text.endswith("'")) or (text.startswith('"')
+                                        and text.endswith('"')):
         inner = text[1:-1]
         inner = inner.replace("\\'", "'").replace("\\\\", "\\")
         return inner
@@ -115,9 +118,9 @@ def probe_json(method: str, *args: str) -> dict[str, Any]:
 
 def _gnome_extensions_info(uuid: str) -> Optional[str]:
     try:
-        return subprocess.check_output(
-            ["gnome-extensions", "info", uuid], text=True, stderr=subprocess.DEVNULL
-        )
+        return subprocess.check_output(["gnome-extensions", "info", uuid],
+                                       text=True,
+                                       stderr=subprocess.DEVNULL)
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
 
@@ -196,8 +199,10 @@ def close_window(window_id: int, *, allow_guake: bool = False) -> None:
             # If snapshot fails, still refuse when id might be guake: list-check
             try:
                 for w in list_windows():
-                    if int(w.get("windowId") or 0) == wid and _is_guake_snap(w):
-                        print(f"  skip close Guake windowId={wid}", file=sys.stderr)
+                    if int(w.get("windowId")
+                           or 0) == wid and _is_guake_snap(w):
+                        print(f"  skip close Guake windowId={wid}",
+                              file=sys.stderr)
                         return
             except Exception:
                 pass
@@ -207,20 +212,25 @@ def close_window(window_id: int, *, allow_guake: bool = False) -> None:
         pass
 
 
-def close_windows(ids: set[int] | list[int], *, allow_guake: bool = False) -> None:
+def close_windows(ids: set[int] | list[int],
+                  *,
+                  allow_guake: bool = False) -> None:
     for wid in list(ids):
         if wid:
             close_window(int(wid), allow_guake=allow_guake)
             time.sleep(0.05)
 
 
-def close_matching(match: dict[str, Any], *, allow_guake: bool = False) -> None:
+def close_matching(match: dict[str, Any],
+                   *,
+                   allow_guake: bool = False) -> None:
     for w in find_matching_windows(match):
         wid = int(w.get("windowId") or 0)
         if not wid:
             continue
         if not allow_guake and _is_guake_snap(w):
-            print(f"  skip close Guake (match) windowId={wid}", file=sys.stderr)
+            print(f"  skip close Guake (match) windowId={wid}",
+                  file=sys.stderr)
             continue
         close_window(wid, allow_guake=allow_guake)
     time.sleep(0.3)
@@ -254,7 +264,8 @@ def wait_settled(
 
     if window_id:
         try:
-            prev_snap = probe_json("SnapshotWindow", str(int(window_id))).get("window")
+            prev_snap = probe_json("SnapshotWindow",
+                                   str(int(window_id))).get("window")
         except Exception:
             prev_snap = None
 
@@ -271,7 +282,8 @@ def wait_settled(
         curr_snap = None
         if window_id:
             try:
-                curr_snap = probe_json("SnapshotWindow", str(int(window_id))).get("window")
+                curr_snap = probe_json("SnapshotWindow",
+                                       str(int(window_id))).get("window")
             except Exception:
                 curr_snap = prev_snap
 
@@ -436,7 +448,8 @@ def safety_check(
 
     if safety.get("requireForgeDisabled", True) and not allow_forge:
         if is_on(FORGE_UUID):
-            errs.append(f"Forge enabled ({FORGE_UUID}) — disable before measuring")
+            errs.append(
+                f"Forge enabled ({FORGE_UUID}) — disable before measuring")
     if safety.get("requireRivalsDisabled", True):
         for uuid in safety.get("rivalUuids") or []:
             if is_on(uuid):
@@ -468,7 +481,8 @@ def return_to_operator_desk(config: dict[str, Any]) -> None:
     try:
         focus_workspace_index(int(ws))
         time.sleep(0.3)
-        print(f"returned to workspace index {ws} (human WS{int(ws) + 1})", file=sys.stderr)
+        print(f"returned to workspace index {ws} (human WS{int(ws) + 1})",
+              file=sys.stderr)
     except Exception as e:
         print(f"warn: return FocusWorkspace: {e}", file=sys.stderr)
 
@@ -498,7 +512,8 @@ def cmd_env(_args: argparse.Namespace) -> int:
 
 
 def cmd_preflight(args: argparse.Namespace) -> int:
-    config = _load_json(Path(args.config) if args.config else ROOT / "config.default.json")
+    config = _load_json(
+        Path(args.config) if args.config else ROOT / "config.default.json")
     try:
         ping = probe_json("Ping")
         env = probe_json("GetEnv")
@@ -604,7 +619,10 @@ def _run_open_fresh(
                 checks=[],
                 disagreement_counts={},
             ),
-            {"ok": False, "error": "map_timeout"},
+            {
+                "ok": False,
+                "error": "map_timeout"
+            },
         )
 
     settle, _ = wait_settled(
@@ -706,7 +724,8 @@ def run_op(
         y = int(frame.get("y", 0)) + int(p.get("dy", 0))
         w = max(200, int(frame.get("width", 800)) + int(p.get("dw", 0)))
         h = max(200, int(frame.get("height", 600)) + int(p.get("dh", 0)))
-        op_result = probe_json("MoveResize", str(wid), str(x), str(y), str(w), str(h))
+        op_result = probe_json("MoveResize", str(wid), str(x), str(y), str(w),
+                               str(h))
     elif kind == "move_resize_restore":
         frame = window.get("frame") or {}
         op_result = probe_json(
@@ -721,17 +740,23 @@ def run_op(
         env = probe_json("GetEnv")
         n = int(env.get("nMonitors") or 1)
         if n < 2:
-            return {"ok": True, "skipped": True, "reason": "single_monitor"}, None, window
+            return {
+                "ok": True,
+                "skipped": True,
+                "reason": "single_monitor"
+            }, None, window
         cur = int(window.get("monitor", 0))
         dest = 1 if cur == 0 else 0
         op_result = probe_json("MoveToMonitor", str(wid), str(dest))
     elif kind == "move_to_monitor_home":
-        op_result = probe_json("MoveToMonitor", str(wid), str(int(home_monitor)))
+        op_result = probe_json("MoveToMonitor", str(wid),
+                               str(int(home_monitor)))
     elif kind == "move_to_workspace":
         env = probe_json("GetEnv")
         nws = int(env.get("nWorkspaces") or 1)
         cur = int(window.get("workspace", home_workspace))
-        dest = (cur + int((op.get("params") or {}).get("delta", 1))) % max(nws, 1)
+        dest = (cur + int(
+            (op.get("params") or {}).get("delta", 1))) % max(nws, 1)
         op_result = probe_json("MoveToWorkspace", str(wid), str(dest))
     elif kind == "focus_workspace_roundtrip":
         env = probe_json("GetEnv")
@@ -775,9 +800,8 @@ def run_op(
     return op_result, settle, window
 
 
-def _annotate_thrash(
-    trial: dict[str, Any], thrash_cfg: dict[str, Any]
-) -> dict[str, Any]:
+def _annotate_thrash(trial: dict[str, Any],
+                     thrash_cfg: dict[str, Any]) -> dict[str, Any]:
     # skipped ops (e.g. single-monitor move_to_monitor) must not count as thrash
     thrash, reason = trial_is_thrash(trial, thrash_cfg)
     trial["thrash"] = thrash
@@ -818,22 +842,23 @@ def run_matrix(
     live_duration = float(settle_cfg.get("settleDurationMs") or 3000)
     live_interval = float(settle_cfg.get("checkIntervalMs") or 100)
     knobs = {
-        "settleDurationMs": live_duration,
-        "checkIntervalMs": live_interval,
-        "calibrationCheckIntervalMs": float(
-            settle_cfg.get("calibrationCheckIntervalMs") or 50
-        ),
-        "bootstrapSettleDurationMs": float(
-            settle_cfg.get("bootstrapSettleDurationMs") or 10000
-        ),
-        "bootstrapCheckIntervalMs": float(
-            settle_cfg.get("bootstrapCheckIntervalMs") or 50
-        ),
-        "maxWaitMs": float(settle_cfg.get("maxWaitMs") or 120000),
+        "settleDurationMs":
+        live_duration,
+        "checkIntervalMs":
+        live_interval,
+        "calibrationCheckIntervalMs":
+        float(settle_cfg.get("calibrationCheckIntervalMs") or 50),
+        "bootstrapSettleDurationMs":
+        float(settle_cfg.get("bootstrapSettleDurationMs") or 10000),
+        "bootstrapCheckIntervalMs":
+        float(settle_cfg.get("bootstrapCheckIntervalMs") or 50),
+        "maxWaitMs":
+        float(settle_cfg.get("maxWaitMs") or 120000),
     }
 
     catalog = DisagreementCatalog()
-    contract = agreement_contract_doc(knobs["settleDurationMs"], knobs["checkIntervalMs"])
+    contract = agreement_contract_doc(knobs["settleDurationMs"],
+                                      knobs["checkIntervalMs"])
     apps_doc = {"version": 2, "apps": apps}
     ops_doc = {"version": 2, "ops": ops}
     doc = new_run_doc(
@@ -851,12 +876,15 @@ def run_matrix(
     ensure_workspace(config, no_switch=no_switch_workspace)
     cooldown = float(config.get("cooldownMs") or 500) / 1000.0
     between_apps = float(config.get("betweenAppsMs") or 2000) / 1000.0
-    per_op_cal = bool((config.get("matrix") or {}).get("calibrateEachOp", True))
+    per_op_cal = bool((config.get("matrix") or {}).get("calibrateEachOp",
+                                                       True))
     full_samples = int(samples)
     per_app_write = write_per_app_enabled(config)
 
     open_ops = [o for o in ops if o.get("kind") in ("open_fresh", "open_warm")]
-    other_ops = [o for o in ops if o.get("kind") not in ("open_fresh", "open_warm")]
+    other_ops = [
+        o for o in ops if o.get("kind") not in ("open_fresh", "open_warm")
+    ]
 
     results_root = ROOT / (config.get("output") or {}).get("dir", "results")
     if out_dir is not None:
@@ -889,23 +917,26 @@ def run_matrix(
 
     def cfg_for(phase: str) -> SettleConfig:
         s = dict(settle_cfg)
-        s.update(
-            {
-                "settleDurationMs": knobs["settleDurationMs"],
-                "checkIntervalMs": knobs["checkIntervalMs"],
-                "calibrationCheckIntervalMs": knobs["calibrationCheckIntervalMs"],
-                "bootstrapSettleDurationMs": knobs["bootstrapSettleDurationMs"],
-                "bootstrapCheckIntervalMs": knobs["bootstrapCheckIntervalMs"],
-                "maxWaitMs": knobs["maxWaitMs"],
-            }
-        )
+        s.update({
+            "settleDurationMs":
+            knobs["settleDurationMs"],
+            "checkIntervalMs":
+            knobs["checkIntervalMs"],
+            "calibrationCheckIntervalMs":
+            knobs["calibrationCheckIntervalMs"],
+            "bootstrapSettleDurationMs":
+            knobs["bootstrapSettleDurationMs"],
+            "bootstrapCheckIntervalMs":
+            knobs["bootstrapCheckIntervalMs"],
+            "maxWaitMs":
+            knobs["maxWaitMs"],
+        })
         return settle_config_from_dict(s, phase=phase)
 
     def flush_checkpoint(*, final: bool = False) -> None:
         doc["disagreementCatalog"] = catalog.to_dict()
         doc["agreementContract"] = agreement_contract_doc(
-            knobs["settleDurationMs"], knobs["checkIntervalMs"]
-        )
+            knobs["settleDurationMs"], knobs["checkIntervalMs"])
         doc["derivedKnobs"] = dict(knobs)
         if final:
             write_run(
@@ -950,11 +981,11 @@ def run_matrix(
             notes=notes,
             role=role,
             knobs={
-                "checkIntervalMs": knobs["checkIntervalMs"]
-                if role == "full"
-                else knobs["calibrationCheckIntervalMs"],
-                "settleDurationMs": knobs["settleDurationMs"]
-                if bootstrap_done or role == "full"
+                "checkIntervalMs":
+                knobs["checkIntervalMs"]
+                if role == "full" else knobs["calibrationCheckIntervalMs"],
+                "settleDurationMs":
+                knobs["settleDurationMs"] if bootstrap_done or role == "full"
                 else knobs["bootstrapSettleDurationMs"],
             },
             skipped=skipped,
@@ -973,8 +1004,7 @@ def run_matrix(
         is_open_fresh: bool,
         is_open_warm: bool,
     ) -> tuple[Optional[dict[str, Any]], int, int]:
-        nonlocal bootstrap_done, knobs
-        allow_guake = _app_allow_guake(app)
+        nonlocal bootstrap_done
         phase = "bootstrap" if not bootstrap_done else "calibration"
         cal_cfg = cfg_for(phase)
         print(
@@ -984,24 +1014,27 @@ def run_matrix(
         )
 
         if is_open_fresh:
-            window, settle, op_res = _run_open_fresh(
-                app, cal_cfg, catalog, 0, window or {}, close_after=True
-            )
+            window, settle, op_res = _run_open_fresh(app,
+                                                     cal_cfg,
+                                                     catalog,
+                                                     0,
+                                                     window or {},
+                                                     close_after=True)
         elif is_open_warm:
             if not window:
-                window, settle, _ = _run_open_fresh(
-                    app, cal_cfg, catalog, 0, {}, close_after=False
-                )
+                window, settle, _ = _run_open_fresh(app,
+                                                    cal_cfg,
+                                                    catalog,
+                                                    0, {},
+                                                    close_after=False)
                 time.sleep(cooldown)
-            window, settle, op_res = _run_open_warm(
-                app, cal_cfg, catalog, 0, window or {}
-            )
+            window, settle, op_res = _run_open_warm(app, cal_cfg, catalog, 0,
+                                                    window or {})
         else:
             if not window:
                 return None, home_monitor, home_workspace
-            op_res, settle, window = run_op(
-                op, window, cal_cfg, catalog, home_monitor, home_workspace
-            )
+            op_res, settle, window = run_op(op, window, cal_cfg, catalog,
+                                            home_monitor, home_workspace)
             if op_res.get("skipped"):
                 append_trial(
                     app_id=app["id"],
@@ -1019,7 +1052,8 @@ def run_matrix(
 
         # open_fresh close_after → window None; ok from settle alone
         if is_open_fresh:
-            ok = bool(settle and settle.settled and (op_res or {}).get("ok", True))
+            ok = bool(settle and settle.settled
+                      and (op_res or {}).get("ok", True))
         else:
             ok = bool(window and settle and settle.settled)
         append_trial(
@@ -1053,12 +1087,10 @@ def run_matrix(
                 doc["derivedKnobs"] = dict(knobs)
                 print(f"    bootstrap knobs → {knobs}", file=sys.stderr)
             else:
-                knobs["settleDurationMs"] = max(
-                    knobs["settleDurationMs"], derived["settleDurationMs"]
-                )
+                knobs["settleDurationMs"] = max(knobs["settleDurationMs"],
+                                                derived["settleDurationMs"])
                 knobs["checkIntervalMs"] = max(
-                    50.0, min(500.0, derived["checkIntervalMs"])
-                )
+                    50.0, min(500.0, derived["checkIntervalMs"]))
                 doc["derivedKnobs"] = dict(knobs)
 
         if window and window.get("windowId"):
@@ -1087,14 +1119,12 @@ def run_matrix(
                 )
             elif is_open_warm:
                 window, settle, op_res = _run_open_warm(
-                    app, full_cfg, catalog, sample, window or {}
-                )
+                    app, full_cfg, catalog, sample, window or {})
             else:
                 if not window:
                     break
-                op_res, settle, window = run_op(
-                    op, window, full_cfg, catalog, home_monitor, home_workspace
-                )
+                op_res, settle, window = run_op(op, window, full_cfg, catalog,
+                                                home_monitor, home_workspace)
                 if op_res.get("skipped"):
                     append_trial(
                         app_id=app["id"],
@@ -1111,16 +1141,13 @@ def run_matrix(
                     break
 
             if is_open_fresh:
-                ok = bool(settle and settle.settled and (op_res or {}).get("ok", True))
+                ok = bool(settle and settle.settled
+                          and (op_res or {}).get("ok", True))
             elif is_open_warm:
                 ok = bool(window and settle and settle.settled)
             else:
-                ok = bool(
-                    (op_res or {}).get("ok", True)
-                    and settle
-                    and settle.settled
-                    and window
-                )
+                ok = bool((op_res or {}).get("ok", True) and settle
+                          and settle.settled and window)
             append_trial(
                 app_id=app["id"],
                 op_id=op["id"],
@@ -1156,9 +1183,11 @@ def run_matrix(
             if not ok_launch:
                 print(f"  skip {app['id']}: {why}", file=sys.stderr)
                 if "skip-if-missing" in tags or "optional" in tags:
-                    doc["errors"].append(
-                        {"app": app["id"], "skipped": True, "reason": why}
-                    )
+                    doc["errors"].append({
+                        "app": app["id"],
+                        "skipped": True,
+                        "reason": why
+                    })
                 else:
                     doc["errors"].append({"app": app["id"], "error": why})
                 if per_app_write:
@@ -1176,10 +1205,13 @@ def run_matrix(
                 is_of = kind == "open_fresh"
                 is_ow = kind == "open_warm"
                 if not is_of and not is_ow and not window:
-                    seed_cfg = cfg_for("full" if bootstrap_done else "bootstrap")
-                    window, settle, _ = _run_open_fresh(
-                        app, seed_cfg, catalog, 0, {}, close_after=False
-                    )
+                    seed_cfg = cfg_for(
+                        "full" if bootstrap_done else "bootstrap")
+                    window, settle, _ = _run_open_fresh(app,
+                                                        seed_cfg,
+                                                        catalog,
+                                                        0, {},
+                                                        close_after=False)
                     if window:
                         owned_all.add(int(window["windowId"]))
                         home_monitor = int(window.get("monitor") or 0)
@@ -1191,11 +1223,14 @@ def run_matrix(
                                 prev_duration_ms=knobs["settleDurationMs"],
                                 prev_interval_ms=knobs["checkIntervalMs"],
                             )
-                            knobs["settleDurationMs"] = derived["settleDurationMs"]
-                            knobs["checkIntervalMs"] = derived["checkIntervalMs"]
+                            knobs["settleDurationMs"] = derived[
+                                "settleDurationMs"]
+                            knobs["checkIntervalMs"] = derived[
+                                "checkIntervalMs"]
                             bootstrap_done = True
                             doc["derivedKnobs"] = dict(knobs)
-                            print(f"    seed bootstrap knobs → {knobs}", file=sys.stderr)
+                            print(f"    seed bootstrap knobs → {knobs}",
+                                  file=sys.stderr)
                     time.sleep(cooldown)
                 if not is_of and not is_ow and not window:
                     print(f"  skip {op['id']}: no window", file=sys.stderr)
@@ -1247,8 +1282,10 @@ def run_matrix(
     return run_path
 
 
-def _load_config(args: argparse.Namespace, *, default_suite: str) -> dict[str, Any]:
-    config = _load_json(Path(args.config) if args.config else ROOT / "config.default.json")
+def _load_config(args: argparse.Namespace, *,
+                 default_suite: str) -> dict[str, Any]:
+    config = _load_json(
+        Path(args.config) if args.config else ROOT / "config.default.json")
     suite = getattr(args, "suite", None) or default_suite
     if getattr(args, "keep_detail", False):
         config = dict(config)
@@ -1269,9 +1306,8 @@ def select_default_apps(
     if not core:
         # fallback: pilot+full if catalog not tagged yet
         core = [
-            a
-            for a in apps
-            if "full" in (a.get("tags") or []) or "pilot" in (a.get("tags") or [])
+            a for a in apps if "full" in (a.get("tags") or []) or "pilot" in (
+                a.get("tags") or [])
         ]
     core = [a for a in core if "optional" not in (a.get("tags") or [])]
     if not include_guake:
@@ -1279,7 +1315,8 @@ def select_default_apps(
     return core
 
 
-def select_default_ops(ops_doc: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
+def select_default_ops(ops_doc: dict[str, Any],
+                       config: dict[str, Any]) -> list[dict[str, Any]]:
     """Exclude open_warm and any defaultExclude / optIn ops unless --ops given."""
     ops = list(ops_doc.get("ops") or [])
     exclude = set(ops_doc.get("defaultExclude") or [])
@@ -1337,7 +1374,9 @@ def run_maneuver_once(
         "steps": [],
     }
 
-    def step_settle(label: str, settle: Optional[SettleResult], extra: Optional[dict] = None):
+    def step_settle(label: str,
+                    settle: Optional[SettleResult],
+                    extra: Optional[dict] = None):
         thrash, reason = is_thrash_from_settle(settle, thrash_cfg)
         entry = {
             "step": label,
@@ -1351,10 +1390,13 @@ def run_maneuver_once(
         return thrash, reason
 
     try:
-        window, settle_open, open_res = _run_open_fresh(
-            app, cfg, catalog, sample, {}, close_after=False
-        )
-        thrash, reason = step_settle("open", settle_open, {"opResult": open_res})
+        window, settle_open, open_res = _run_open_fresh(app,
+                                                        cfg,
+                                                        catalog,
+                                                        sample, {},
+                                                        close_after=False)
+        thrash, reason = step_settle("open", settle_open,
+                                     {"opResult": open_res})
         if thrash or not window:
             result["thrash"] = True
             result["thrashReason"] = reason or "open_failed"
@@ -1362,7 +1404,6 @@ def run_maneuver_once(
             return result
 
         wid = int(window["windowId"])
-        home_monitor = int(window.get("monitor") or 0)
 
         if maneuver == "launch_then_move":
             time.sleep(max(0.0, d_ms) / 1000.0)
@@ -1371,11 +1412,17 @@ def run_maneuver_once(
             since = int(mark.get("mark", {}).get("seq") or 0)
             t0 = float(mark.get("mark", {}).get("monoMs") or mono_from_probe())
             x, y, w, h = _move_resize_params(window)
-            op_res = probe_json("MoveResize", str(wid), str(x), str(y), str(w), str(h))
-            settle, _ = wait_settled(
-                cfg, window_id=wid, t0_mono=t0, since_seq=since, catalog=catalog
-            )
-            thrash, reason = step_settle("move_resize", settle, {"opResult": op_res, "delayMs": d_ms})
+            op_res = probe_json("MoveResize", str(wid), str(x), str(y), str(w),
+                                str(h))
+            settle, _ = wait_settled(cfg,
+                                     window_id=wid,
+                                     t0_mono=t0,
+                                     since_seq=since,
+                                     catalog=catalog)
+            thrash, reason = step_settle("move_resize", settle, {
+                "opResult": op_res,
+                "delayMs": d_ms
+            })
 
         elif maneuver == "launch_then_monitor":
             env = probe_json("GetEnv")
@@ -1395,12 +1442,15 @@ def run_maneuver_once(
             cur = int(window.get("monitor", 0))
             dest = 1 if cur == 0 else 0
             op_res = probe_json("MoveToMonitor", str(wid), str(dest))
-            settle, _ = wait_settled(
-                cfg, window_id=wid, t0_mono=t0, since_seq=since, catalog=catalog
-            )
-            thrash, reason = step_settle(
-                "move_to_monitor", settle, {"opResult": op_res, "delayMs": d_ms}
-            )
+            settle, _ = wait_settled(cfg,
+                                     window_id=wid,
+                                     t0_mono=t0,
+                                     since_seq=since,
+                                     catalog=catalog)
+            thrash, reason = step_settle("move_to_monitor", settle, {
+                "opResult": op_res,
+                "delayMs": d_ms
+            })
 
         elif maneuver == "launch_monitor_move":
             env = probe_json("GetEnv")
@@ -1419,31 +1469,39 @@ def run_maneuver_once(
             cur = int(window.get("monitor", 0))
             dest = 1 if cur == 0 else 0
             op_res = probe_json("MoveToMonitor", str(wid), str(dest))
-            settle_m, _ = wait_settled(
-                cfg, window_id=wid, t0_mono=t0, since_seq=since, catalog=catalog
-            )
-            thrash, reason = step_settle(
-                "move_to_monitor", settle_m, {"opResult": op_res, "delayMs": d1_ms}
-            )
+            settle_m, _ = wait_settled(cfg,
+                                       window_id=wid,
+                                       t0_mono=t0,
+                                       since_seq=since,
+                                       catalog=catalog)
+            thrash, reason = step_settle("move_to_monitor", settle_m, {
+                "opResult": op_res,
+                "delayMs": d1_ms
+            })
             if thrash:
                 result["thrash"] = True
                 result["thrashReason"] = reason
                 result["ok"] = False
                 return result
-            snap = probe_json("SnapshotWindow", str(wid)).get("window") or window
+            snap = probe_json("SnapshotWindow",
+                              str(wid)).get("window") or window
             time.sleep(max(0.0, d2_ms) / 1000.0)
             clear_events()
             mark = probe_json("BeginMark", f"maneuver:{maneuver}:move")
             since = int(mark.get("mark", {}).get("seq") or 0)
             t0 = float(mark.get("mark", {}).get("monoMs") or mono_from_probe())
             x, y, w, h = _move_resize_params(snap)
-            op_res = probe_json("MoveResize", str(wid), str(x), str(y), str(w), str(h))
-            settle, _ = wait_settled(
-                cfg, window_id=wid, t0_mono=t0, since_seq=since, catalog=catalog
-            )
-            thrash, reason = step_settle(
-                "move_resize", settle, {"opResult": op_res, "delayMs": d2_ms}
-            )
+            op_res = probe_json("MoveResize", str(wid), str(x), str(y), str(w),
+                                str(h))
+            settle, _ = wait_settled(cfg,
+                                     window_id=wid,
+                                     t0_mono=t0,
+                                     since_seq=since,
+                                     catalog=catalog)
+            thrash, reason = step_settle("move_resize", settle, {
+                "opResult": op_res,
+                "delayMs": d2_ms
+            })
         else:
             result["thrashReason"] = f"unknown_maneuver:{maneuver}"
             return result
@@ -1491,13 +1549,18 @@ def run_two_step_sweep(
     doc = new_run_doc(
         host=host,
         config=config,
-        apps={"version": 2, "apps": apps},
-        ops={"version": 3, "maneuvers": [maneuver]},
+        apps={
+            "version": 2,
+            "apps": apps
+        },
+        ops={
+            "version": 3,
+            "maneuvers": [maneuver]
+        },
         env=env,
         session=session,
-        agreement_contract=agreement_contract_doc(
-            cfg.settle_duration_ms, cfg.check_interval_ms
-        ),
+        agreement_contract=agreement_contract_doc(cfg.settle_duration_ms,
+                                                  cfg.check_interval_ms),
     )
     doc["thrashConfig"] = thrash_cfg
     doc["sweep"] = {
@@ -1528,7 +1591,8 @@ def run_two_step_sweep(
 
     try:
         for app in apps:
-            print(f"\n=== sweep {maneuver} app={app['id']} ===", file=sys.stderr)
+            print(f"\n=== sweep {maneuver} app={app['id']} ===",
+                  file=sys.stderr)
             ok_launch, why = app_launchable(app)
             if not ok_launch:
                 doc["errors"].append({"app": app["id"], "error": why})
@@ -1559,13 +1623,19 @@ def run_two_step_sweep(
                     break
             summary = record_last_good_first_fail(pairs)
             doc["sweepResults"][app["id"]] = summary
-            print(f"  lastGood={summary.get('lastGoodMs')} firstFail={summary.get('firstFailMs')}", file=sys.stderr)
+            print(
+                f"  lastGood={summary.get('lastGoodMs')} firstFail={summary.get('firstFailMs')}",
+                file=sys.stderr)
             if write_per_app_enabled(config):
                 checkpoint_run(doc, run_path, results_root=results_root)
     finally:
         return_to_operator_desk(config)
         doc["disagreementCatalog"] = catalog.to_dict()
-        write_run(doc, out, latest=True, results_root=results_root, path=run_path)
+        write_run(doc,
+                  out,
+                  latest=True,
+                  results_root=results_root,
+                  path=run_path)
     print(f"\nwrote {run_path}", file=sys.stderr)
     return run_path
 
@@ -1614,13 +1684,18 @@ def run_three_step_isolation(
     doc = new_run_doc(
         host=host,
         config=config,
-        apps={"version": 2, "apps": apps},
-        ops={"version": 3, "maneuvers": ["launch_monitor_move"]},
+        apps={
+            "version": 2,
+            "apps": apps
+        },
+        ops={
+            "version": 3,
+            "maneuvers": ["launch_monitor_move"]
+        },
         env=env,
         session=session,
-        agreement_contract=agreement_contract_doc(
-            cfg.settle_duration_ms, cfg.check_interval_ms
-        ),
+        agreement_contract=agreement_contract_doc(cfg.settle_duration_ms,
+                                                  cfg.check_interval_ms),
     )
     doc["thrashConfig"] = thrash_cfg
     doc["sweep"] = {
@@ -1648,7 +1723,8 @@ def run_three_step_isolation(
     cooldown = float(config.get("cooldownMs") or 500) / 1000.0
     maneuver = "launch_monitor_move"
 
-    def once(app: dict[str, Any], d1: float, d2: float, role: str) -> dict[str, Any]:
+    def once(app: dict[str, Any], d1: float, d2: float,
+             role: str) -> dict[str, Any]:
         trial = run_maneuver_once(
             maneuver=maneuver,
             app=app,
@@ -1669,7 +1745,8 @@ def run_three_step_isolation(
 
     try:
         for app in apps:
-            print(f"\n=== 3-step isolation app={app['id']} ===", file=sys.stderr)
+            print(f"\n=== 3-step isolation app={app['id']} ===",
+                  file=sys.stderr)
             ok_launch, why = app_launchable(app)
             if not ok_launch:
                 doc["errors"].append({"app": app["id"], "error": why})
@@ -1707,9 +1784,9 @@ def run_three_step_isolation(
                     break
             sum_d2 = record_last_good_first_fail(pairs_d2)
             app_res["d2"] = sum_d2
-            safe_d2 = isolation_safe_d2(
-                d2_0=d2_0, last_good_d2=sum_d2.get("lastGoodMs"), pad_ms=pad_ms
-            )
+            safe_d2 = isolation_safe_d2(d2_0=d2_0,
+                                        last_good_d2=sum_d2.get("lastGoodMs"),
+                                        pad_ms=pad_ms)
             app_res["safeD2Ms"] = safe_d2
 
             # 3. lock D2 safe, sweep D1 down
@@ -1744,9 +1821,11 @@ def run_three_step_isolation(
             for d1, d2 in candidates:
                 print(f"  joint D1={d1} D2={d2}…", file=sys.stderr)
                 t = once(app, d1, d2, "joint")
-                joint_rows.append(
-                    {"d1Ms": d1, "d2Ms": d2, "thrash": t.get("thrash")}
-                )
+                joint_rows.append({
+                    "d1Ms": d1,
+                    "d2Ms": d2,
+                    "thrash": t.get("thrash")
+                })
                 if not t.get("thrash"):
                     best_joint = (d1, d2)
                 elif stop_on_thrash and best_joint is not None:
@@ -1768,7 +1847,11 @@ def run_three_step_isolation(
     finally:
         return_to_operator_desk(config)
         doc["disagreementCatalog"] = catalog.to_dict()
-        write_run(doc, out, latest=True, results_root=results_root, path=run_path)
+        write_run(doc,
+                  out,
+                  latest=True,
+                  results_root=results_root,
+                  path=run_path)
     print(f"\nwrote {run_path}", file=sys.stderr)
     return run_path
 
@@ -1786,14 +1869,16 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     app_filter = set(args.apps.split(",")) if args.apps else None
     op_filter = set(args.ops.split(",")) if args.ops else None
-    samples = int(args.samples if args.samples is not None else config.get("samples") or 5)
+    samples = int(args.samples if args.
+                  samples is not None else config.get("samples") or 5)
 
     if app_filter:
         apps = [a for a in apps_doc.get("apps") or [] if a["id"] in app_filter]
     else:
-        apps = select_default_apps(
-            apps_doc, config, include_guake=getattr(args, "include_guake", False)
-        )
+        apps = select_default_apps(apps_doc,
+                                   config,
+                                   include_guake=getattr(
+                                       args, "include_guake", False))
 
     if op_filter:
         ops = [o for o in ops_doc.get("ops") or [] if o["id"] in op_filter]
@@ -1837,9 +1922,12 @@ def cmd_sweep(args: argparse.Namespace) -> int:
     else:
         apps = select_default_apps(apps_doc, config)
 
-    d_start = float(args.d_start if args.d_start is not None else sw.get("dStartMs", 2000))
-    d_step = float(args.d_step if args.d_step is not None else sw.get("dStepMs", 100))
-    d_min = float(args.d_min if args.d_min is not None else sw.get("dMinMs", 0))
+    d_start = float(
+        args.d_start if args.d_start is not None else sw.get("dStartMs", 2000))
+    d_step = float(
+        args.d_step if args.d_step is not None else sw.get("dStepMs", 100))
+    d_min = float(
+        args.d_min if args.d_min is not None else sw.get("dMinMs", 0))
     pad_ms = float(args.pad if args.pad is not None else sw.get("padMs", 200))
     stop = not getattr(args, "no_stop_on_thrash", False)
 
@@ -1932,9 +2020,8 @@ def cmd_pilot(args: argparse.Namespace) -> int:
         for i in stage.get("apps") or []:
             if i in by_id and by_id[i] not in apps:
                 apps.append(by_id[i])
-    samples = int(
-        args.samples if args.samples is not None else config.get("samples") or 5
-    )
+    samples = int(args.samples if args.
+                  samples is not None else config.get("samples") or 5)
     if not args.ops:
         ops_all = select_default_ops(ops_doc, config)
     try:
@@ -1978,7 +2065,8 @@ def cmd_cleanup(_args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Meta/Mutter probe driver (Forge-independent)")
+    p = argparse.ArgumentParser(
+        description="Meta/Mutter probe driver (Forge-independent)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp = sub.add_parser("ping", help="Ping probe extension")
@@ -2007,12 +2095,17 @@ def build_parser() -> argparse.ArgumentParser:
     sf.set_defaults(func=cmd_preflight)
 
     for name, help_ in (
-        ("run", "Matrix: 1 cal + N full samples per app+op (core apps; no open_warm)"),
+        ("run",
+         "Matrix: 1 cal + N full samples per app+op (core apps; no open_warm)"
+         ),
         ("pilot", "Pilot apps with agreement settle"),
-        ("calibrate", "Calibration suite (dense interval; bootstrap duration)"),
+        ("calibrate",
+         "Calibration suite (dense interval; bootstrap duration)"),
     ):
         sr = sub.add_parser(name, help=help_)
-        sr.add_argument("--host", default=None, help="Host label: black | gray | green")
+        sr.add_argument("--host",
+                        default=None,
+                        help="Host label: black | gray | green")
         sr.add_argument(
             "--session",
             default=None,
@@ -2027,12 +2120,14 @@ def build_parser() -> argparse.ArgumentParser:
         sr.add_argument(
             "--apps",
             default=None,
-            help="comma app ids (default: tag core — nautilus,ghostty,inkscape,grok,obs)",
+            help=
+            "comma app ids (default: tag core — nautilus,ghostty,inkscape,grok,obs)",
         )
         sr.add_argument(
             "--ops",
             default=None,
-            help="comma op ids (default: all except open_warm; pass open_warm to opt in)",
+            help=
+            "comma op ids (default: all except open_warm; pass open_warm to opt in)",
         )
         sr.add_argument(
             "--samples",
@@ -2046,7 +2141,8 @@ def build_parser() -> argparse.ArgumentParser:
         sr.add_argument(
             "--no-return-ws",
             action="store_true",
-            help="Do not FocusWorkspace(returnIndex) at end (cleanup still does)",
+            help=
+            "Do not FocusWorkspace(returnIndex) at end (cleanup still does)",
         )
         sr.add_argument(
             "--keep-detail",
@@ -2061,7 +2157,9 @@ def build_parser() -> argparse.ArgumentParser:
             )
             sr.set_defaults(func=cmd_run)
         elif name == "pilot":
-            sr.add_argument("--stage", default=None, help="unused; all pilot stages merge")
+            sr.add_argument("--stage",
+                            default=None,
+                            help="unused; all pilot stages merge")
             sr.set_defaults(func=cmd_pilot)
         else:
             sr.set_defaults(func=cmd_calibrate)
@@ -2082,15 +2180,33 @@ def build_parser() -> argparse.ArgumentParser:
     ss.add_argument(
         "--maneuver",
         required=True,
-        choices=["launch_then_move", "launch_then_monitor", "launch_monitor_move"],
-        help="2-step: launch_then_move|launch_then_monitor; 3-step: launch_monitor_move",
+        choices=[
+            "launch_then_move", "launch_then_monitor", "launch_monitor_move"
+        ],
+        help=
+        "2-step: launch_then_move|launch_then_monitor; 3-step: launch_monitor_move",
     )
-    ss.add_argument("--d-start", type=float, default=None, help="start delay ms (high)")
+    ss.add_argument("--d-start",
+                    type=float,
+                    default=None,
+                    help="start delay ms (high)")
     ss.add_argument("--d-step", type=float, default=None, help="step down ms")
-    ss.add_argument("--d-min", type=float, default=None, help="minimum delay ms")
-    ss.add_argument("--d1", type=float, default=None, help="3-step D1 start (ms)")
-    ss.add_argument("--d2", type=float, default=None, help="3-step D2 start (ms)")
-    ss.add_argument("--pad", type=float, default=None, help="pad above last-good (ms)")
+    ss.add_argument("--d-min",
+                    type=float,
+                    default=None,
+                    help="minimum delay ms")
+    ss.add_argument("--d1",
+                    type=float,
+                    default=None,
+                    help="3-step D1 start (ms)")
+    ss.add_argument("--d2",
+                    type=float,
+                    default=None,
+                    help="3-step D2 start (ms)")
+    ss.add_argument("--pad",
+                    type=float,
+                    default=None,
+                    help="pad above last-good (ms)")
     ss.add_argument(
         "--hyp-monitor",
         type=float,
@@ -2126,7 +2242,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def cmd_focus_workspace_cli(args: argparse.Namespace) -> int:
-    config = _load_json(Path(args.config) if args.config else ROOT / "config.default.json")
+    config = _load_json(
+        Path(args.config) if args.config else ROOT / "config.default.json")
     if args.index is not None:
         idx = int(args.index)
     else:

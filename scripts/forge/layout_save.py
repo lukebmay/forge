@@ -80,11 +80,9 @@ def capture_tiles_profile(
     if workspace is not None:
         forest = filter_forest_workspace(forest, workspace)
     elif forest.get("activeWorkspace") is not None or forest.get(
-        "currentWorkspace"
-    ) is not None:
-        forest = filter_forest_workspace(
-            forest, active_workspace_from_forest(forest)
-        )
+            "currentWorkspace") is not None:
+        forest = filter_forest_workspace(forest,
+                                         active_workspace_from_forest(forest))
 
     mons = _select_physical_monitors(forest)
     class_counts = _count_classes(mons)
@@ -172,24 +170,19 @@ def capture_tiles_profile(
     # only when they land under floating[] (tiles+floats always, or --keep-floats
     # on empty). Otherwise fall back to lastTileFocusWindowId among tiles.
     floats_saved = bool(out.get("floating"))
-    focus_token = (
-        _focus_token_from_forest(
-            forest,
-            mons,
-            include_floats=floats_saved,
-            floating_cells=list(out.get("floating") or []),
-        )
-        if tiles or floats_saved
-        else None
-    )
+    focus_token = (_focus_token_from_forest(
+        forest,
+        mons,
+        include_floats=floats_saved,
+        floating_cells=list(out.get("floating") or []),
+    ) if tiles or floats_saved else None)
     if focus_token is not None:
         out["focus"] = focus_token
 
     validate_reconcile_profile(out)
     # Bare-array emit order = physical L→R (matches bare load with mon_indices).
     bare_order = [
-        f"mon{i}"
-        for i in forest_mon_indices_left_to_right(forest)
+        f"mon{i}" for i in forest_mon_indices_left_to_right(forest)
         if f"mon{i}" in tiles
     ]
     out["_stats"] = {
@@ -204,9 +197,9 @@ def capture_tiles_profile(
     return out
 
 
-def profile_for_output(
-    profile: dict[str, Any], *, monitors: bool = False
-) -> Any:
+def profile_for_output(profile: dict[str, Any],
+                       *,
+                       monitors: bool = False) -> Any:
     """
     Drop internal keys and emit simplest sugar for JSON print/write.
 
@@ -219,7 +212,7 @@ def profile_for_output(
     out = {
         k: v
         for k, v in profile.items()
-        if not k.startswith("_") and k not in ("monExplicit",)
+        if not k.startswith("_") and k not in ("monExplicit", )
     }
     tiles = out.get("tiles")
     if isinstance(tiles, dict):
@@ -284,7 +277,8 @@ def profile_for_output(
         return _attach_focus_float(result_m)
 
     bare_order = None
-    stats = profile.get("_stats") if isinstance(profile.get("_stats"), dict) else None
+    stats = profile.get("_stats") if isinstance(profile.get("_stats"),
+                                                dict) else None
     if stats and isinstance(stats.get("bareMonOrder"), list):
         bare_order = [str(x) for x in stats["bareMonOrder"] if x is not None]
 
@@ -308,8 +302,9 @@ def profile_for_output(
 
 
 def _tiles_to_bare_array(
-    tiles: Any, *, mon_order: Optional[list[str]] = None
-) -> Optional[list[Any]]:
+        tiles: Any,
+        *,
+        mon_order: Optional[list[str]] = None) -> Optional[list[Any]]:
     """mon map → mon bodies list; single mon → panes list.
 
     Dual-mon bare order prefers mon_order (physical L→R Meta keys from capture)
@@ -328,7 +323,8 @@ def _tiles_to_bare_array(
     n = len(tiles)
 
     order: Optional[list[str]] = None
-    if mon_order and len(mon_order) == n and set(mon_order) == set(tiles.keys()):
+    if mon_order and len(mon_order) == n and set(mon_order) == set(
+            tiles.keys()):
         order = list(mon_order)
     else:
         expected = [f"mon{i}" for i in range(n)]
@@ -401,7 +397,8 @@ def _compact_pane_node(node: Any) -> Any:
                 if active_out is not None:
                     out_tag["active"] = active_out
                 share_out = _share_for_output(node)
-                if share_out is not None and medium in (SUGAR_HSPLIT, SUGAR_VSPLIT):
+                if share_out is not None and medium in (SUGAR_HSPLIT,
+                                                        SUGAR_VSPLIT):
                     if len(share_out) == len(content):
                         out_tag["share"] = share_out
                 return out_tag
@@ -409,9 +406,7 @@ def _compact_pane_node(node: Any) -> Any:
         mode_raw = node.get("layout")
         if mode_raw is None:
             mode_raw = node.get("split")
-        if mode_raw is not None and (
-            "content" in node or "children" in node
-        ):
+        if mode_raw is not None and ("content" in node or "children" in node):
             mode_s = str(mode_raw).strip().lower()
             content = node.get("content")
             if content is None:
@@ -429,12 +424,13 @@ def _compact_pane_node(node: Any) -> Any:
                     out_split = {SUGAR_VSPLIT: content_c}
                 if out_split is not None:
                     share_out = _share_for_output(node)
-                    if share_out is not None and len(share_out) == len(content_c):
+                    if share_out is not None and len(share_out) == len(
+                            content_c):
                         out_split["share"] = share_out
                     return out_split
         if "content" in node or "children" in node or (
-            "split" in node and node.get("app") is None and node.get("open") is None
-        ):
+                "split" in node and node.get("app") is None
+                and node.get("open") is None):
             out = dict(node)
             if isinstance(out.get("content"), list):
                 out["content"] = _compact_pane_list(out["content"])
@@ -451,9 +447,7 @@ def _is_compact_role_cell(x: Any) -> bool:
     if not isinstance(x, dict):
         return False
     # Role-ish object, not a container
-    if any(
-        k in x
-        for k in (
+    if any(k in x for k in (
             "tab",
             "t",
             "tabbed",
@@ -468,8 +462,7 @@ def _is_compact_role_cell(x: Any) -> bool:
             "children",
             "split",
             "layout",
-        )
-    ):
+    )):
         return False
     return True
 
@@ -546,7 +539,8 @@ def _cell_match_dict(cell: dict[str, Any]) -> Optional[dict[str, Any]]:
     return flat
 
 
-def _match_re_inferable(cell_match: dict[str, Any], inferred: dict[str, Any]) -> bool:
+def _match_re_inferable(cell_match: dict[str, Any],
+                        inferred: dict[str, Any]) -> bool:
     """True when cell match is the same constraint set as string inference."""
     # Normalize title keys
     c = dict(cell_match)
@@ -586,7 +580,8 @@ def _class_token_equiv(a: Any, b: Any) -> bool:
     return stem_a.casefold() == stem_b.casefold()
 
 
-def _open_re_inferable(cell: dict[str, Any], open_i: dict[str, Any], app: str) -> bool:
+def _open_re_inferable(cell: dict[str, Any], open_i: dict[str, Any],
+                       app: str) -> bool:
     open_spec = cell.get("open")
     if open_spec is None:
         return True
@@ -627,8 +622,8 @@ def is_interactive_tty(
 
 def read_existing_description(path: Any) -> Optional[str]:
     """Stored description from an existing profile file, or None."""
-    from pathlib import Path
     import json
+    from pathlib import Path
 
     p = Path(path)
     if not p.is_file():
@@ -723,7 +718,8 @@ def resolve_save_description(
         return s if s.strip() else None
 
     auto_s = (auto or "").strip()
-    existing_s = existing.strip() if isinstance(existing, str) and existing.strip() else None
+    existing_s = existing.strip() if isinstance(
+        existing, str) and existing.strip() else None
     # Prefer stored custom; else auto one-liner (never the word "Description").
     current = existing_s if existing_s is not None else (auto_s or "")
 
@@ -746,7 +742,8 @@ def resolve_save_description(
     shown = current if current else "(none)"
     _print(f"{cur_label} {shown}")
 
-    choice_prompt = _save_label("Keep, Edit (K/e):", stream=prompt_stream) + " "
+    choice_prompt = _save_label("Keep, Edit (K/e):",
+                                stream=prompt_stream) + " "
     if input_fn is not None:
         raw_choice = input_fn(choice_prompt)
     else:
@@ -754,7 +751,8 @@ def resolve_save_description(
     choice = (raw_choice or "k").strip().lower() or "k"
 
     if choice.startswith("e"):
-        new_prompt = _save_label("New Description:", stream=prompt_stream) + " "
+        new_prompt = _save_label("New Description:",
+                                 stream=prompt_stream) + " "
         got = _edit(new_prompt, current)
         got_s = got.strip() if isinstance(got, str) else ""
         return got_s or None
@@ -763,7 +761,8 @@ def resolve_save_description(
     return current or None
 
 
-def apply_description(profile: dict[str, Any], description: Optional[str]) -> dict[str, Any]:
+def apply_description(profile: dict[str, Any],
+                      description: Optional[str]) -> dict[str, Any]:
     """Set or clear description on a capture profile (mutates and returns)."""
     if description is None or not str(description).strip():
         profile.pop("description", None)
@@ -784,13 +783,8 @@ def format_capture_stderr(profile: dict[str, Any]) -> str:
     mon_bit = " ".join(parts) if parts else "mons=0"
     return (
         f"forge layout save: {mon_bit} "
-        f"windows={stats.get('windows', 0)}"
-        + (
-            f" floating={stats['floating']}"
-            if stats.get("floating")
-            else ""
-        )
-    )
+        f"windows={stats.get('windows', 0)}" +
+        (f" floating={stats['floating']}" if stats.get("floating") else ""))
 
 
 def _select_physical_monitors(forest: dict[str, Any]) -> list[dict[str, Any]]:
@@ -833,7 +827,8 @@ def _select_physical_monitors(forest: dict[str, Any]) -> list[dict[str, Any]]:
         mi = _mon_index(m)
         rect = _mon_node_rect(m)
         if rect:
-            return (float(rect["x"]), float(rect["y"]), mi if mi is not None else 99)
+            return (float(rect["x"]), float(rect["y"]),
+                    mi if mi is not None else 99)
         return (1e12, 0.0, mi if mi is not None else 99)
 
     return sorted(chosen, key=_geom_sort_key)
@@ -938,7 +933,8 @@ def _node_size_weight(node: dict[str, Any]) -> float:
     return 1.0
 
 
-def _shares_from_sibling_nodes(nodes: list[dict[str, Any]]) -> Optional[list[float]]:
+def _shares_from_sibling_nodes(
+        nodes: list[dict[str, Any]]) -> Optional[list[float]]:
     if len(nodes) < 2:
         return None
     return normalize_shares([_node_size_weight(n) for n in nodes])
@@ -975,7 +971,8 @@ def _should_emit_share(nodes: list[dict[str, Any]]) -> bool:
     return False
 
 
-def _emit_share_for_siblings(nodes: list[dict[str, Any]]) -> Optional[list[float]]:
+def _emit_share_for_siblings(
+        nodes: list[dict[str, Any]]) -> Optional[list[float]]:
     if not _should_emit_share(nodes):
         return None
     return _shares_from_sibling_nodes(nodes)
@@ -996,9 +993,8 @@ def _share_for_output(node: dict[str, Any]) -> Optional[list[float]]:
     return shares
 
 
-def _capture_pane(
-    node: dict[str, Any], used_ids: set[str], class_counts: dict[str, int]
-) -> tuple[Any, int]:
+def _capture_pane(node: dict[str, Any], used_ids: set[str],
+                  class_counts: dict[str, int]) -> tuple[Any, int]:
     """Return (sugar pane or None, window count)."""
     ntype = node.get("nodeType") or node.get("type")
     if ntype == "WINDOW":
@@ -1013,9 +1009,7 @@ def _capture_pane(
     if layout in ("TABBED", "STACKED"):
         # Prefer direct children order (tab bar L→R / stack order).
         wins = [
-            c
-            for c in kids
-            if (c.get("nodeType") or c.get("type")) == "WINDOW"
+            c for c in kids if (c.get("nodeType") or c.get("type")) == "WINDOW"
             and not _is_float_window(c)
         ]
         if not wins:
@@ -1037,9 +1031,11 @@ def _capture_pane(
         if len(cells) == 1:
             return cells[0], 1
         # Medium sugar keys: tab / stack
-        group: dict[str, Any] = (
-            {SUGAR_STACK: cells} if layout == "STACKED" else {SUGAR_TAB: cells}
-        )
+        group: dict[str, Any] = ({
+            SUGAR_STACK: cells
+        } if layout == "STACKED" else {
+            SUGAR_TAB: cells
+        })
         active = _active_token_for_group(node, cell_wins, cells)
         if active is not None:
             group["active"] = active
@@ -1119,9 +1115,8 @@ def _token_key(token: Any) -> Optional[str]:
     return s.casefold() if s else None
 
 
-def _disambiguate_token(
-    token: Optional[str], tokens: list[Optional[str]], index: int
-) -> Any:
+def _disambiguate_token(token: Optional[str], tokens: list[Optional[str]],
+                        index: int) -> Any:
     """
     Unique token → bare string; colliding token → [token, n] (0-based among matches).
     No token → bare index into tokens.
@@ -1130,8 +1125,7 @@ def _disambiguate_token(
         return index
     key = _token_key(token)
     matches = [
-        i
-        for i, t in enumerate(tokens)
+        i for i, t in enumerate(tokens)
         if _token_key(t) is not None and _token_key(t) == key
     ]
     if len(matches) <= 1:
@@ -1165,7 +1159,8 @@ def _focus_token_from_forest(
                 continue
             if w.get("windowId") is None:
                 continue
-            tile_entries.append((str(w.get("windowId")), _window_sugar_token(w)))
+            tile_entries.append(
+                (str(w.get("windowId")), _window_sugar_token(w)))
 
     float_entries: list[tuple[str, Optional[str]]] = []
     if include_floats:
@@ -1244,7 +1239,8 @@ def parse_focus_cli_token(raw: Any) -> Any:
             return val
         if isinstance(val, (str, int)):
             return val
-        raise ValueError("invalid --focus JSON (want token, index, or [token, n])")
+        raise ValueError(
+            "invalid --focus JSON (want token, index, or [token, n])")
     # token,n or token:n (0-based among same token)
     for sep in (",", ":"):
         if sep in s:
@@ -1294,9 +1290,7 @@ def _active_token_for_group(
             break
     if focus_idx is None:
         return None
-    tokens = [
-        _cell_sugar_token(cell, w) for w, cell in zip(wins, cells)
-    ]
+    tokens = [_cell_sugar_token(cell, w) for w, cell in zip(wins, cells)]
     token = tokens[focus_idx] if focus_idx < len(tokens) else None
     return _disambiguate_token(token, tokens, focus_idx)
 
@@ -1324,9 +1318,8 @@ def _cell_sugar_token(cell: Any, w: dict[str, Any]) -> Optional[str]:
     return _window_sugar_token(w)
 
 
-def _role_cell(
-    w: dict[str, Any], used_ids: set[str], class_counts: dict[str, int]
-) -> Optional[Any]:
+def _role_cell(w: dict[str, Any], used_ids: set[str],
+               class_counts: dict[str, int]) -> Optional[Any]:
     """Compact sugar cell: string when possible, else flat {app,class,title~=}."""
     cls = _wm_class(w)
     title = w.get("title")
@@ -1386,8 +1379,7 @@ def _open_app_for_window(cls: str, title: str, stem: str) -> str:
 def _role_id_base(cls: str, title: str, app: str) -> str:
     if _is_chrome_like(cls):
         if "Google Chrome" in title and not _title_has_other_known(
-            title, "Google Chrome"
-        ):
+                title, "Google Chrome"):
             return "google-chrome"
         frag = _short_title_frag(title)
         if frag and frag.lower() not in ("google", "chrome"):
@@ -1405,9 +1397,8 @@ def _title_has_other_known(title: str, exclude: str) -> bool:
     return False
 
 
-def _title_match_fragment(
-    cls: str, title: str, class_counts: dict[str, int]
-) -> Optional[str]:
+def _title_match_fragment(cls: str, title: str,
+                          class_counts: dict[str, int]) -> Optional[str]:
     if not title:
         return None
     chrome = _is_chrome_like(cls)

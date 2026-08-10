@@ -62,7 +62,8 @@ def classify_extension(
     """
     if info_missing or info_text is None:
         if list_enabled_text is not None and uuid is not None:
-            return "enabled" if parse_list_enabled(list_enabled_text, uuid) else "missing"
+            return "enabled" if parse_list_enabled(list_enabled_text,
+                                                   uuid) else "missing"
         return "missing"
 
     parsed = parse_info_enabled(info_text)
@@ -71,5 +72,6 @@ def classify_extension(
     if parsed is False:
         return "disabled"
     if list_enabled_text is not None and uuid is not None:
-        return "enabled" if parse_list_enabled(list_enabled_text, uuid) else "disabled"
+        return "enabled" if parse_list_enabled(list_enabled_text,
+                                               uuid) else "disabled"
     return "disabled"

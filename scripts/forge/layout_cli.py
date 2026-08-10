@@ -85,8 +85,7 @@ def parse_layout_arg(token: str) -> LayoutArg:
             raise LayoutParseError(
                 f"workspace {w} out of range (workspace indexes are 1-based)\n"
                 f"  got: {raw!r}\n"
-                f"  hint: use N:name with N ≥ 1"
-            )
+                f"  hint: use N:name with N ≥ 1")
         try:
             name = validate_layout_name(name)
         except LayoutParseError as e:
@@ -101,8 +100,7 @@ def parse_layout_arg(token: str) -> LayoutArg:
             raise LayoutParseError(
                 f"workspace {w} out of range (workspace indexes are 1-based)\n"
                 f"  got: {raw!r}\n"
-                f"  hint: use name@N with N ≥ 1"
-            )
+                f"  hint: use name@N with N ≥ 1")
         try:
             name = validate_layout_name(name)
         except LayoutParseError as e:
@@ -113,13 +111,11 @@ def parse_layout_arg(token: str) -> LayoutArg:
     if ":" in raw:
         raise LayoutParseError(
             f"invalid workspace form {raw!r} (want N:name with N ≥ 1)\n"
-            f"  hint: use 1:foo or foo@1, or bare name for current"
-        )
+            f"  hint: use 1:foo or foo@1, or bare name for current")
     if "@" in raw:
         raise LayoutParseError(
             f"invalid workspace form {raw!r} (want name@N with N ≥ 1)\n"
-            f"  hint: use foo@1 or 1:foo, or bare name for current"
-        )
+            f"  hint: use foo@1 or 1:foo, or bare name for current")
     try:
         name = validate_layout_name(raw)
     except LayoutParseError as e:
@@ -137,8 +133,7 @@ def classify_layout_args(tokens: list[str]) -> tuple[str, list[LayoutArg]]:
     if not tokens:
         raise LayoutParseError(
             "need at least one layout name\n"
-            "  hint: forge layout <name> | forge layout help"
-        )
+            "  hint: forge layout <name> | forge layout help")
     args = [parse_layout_arg(t) for t in tokens]
     bare = [a for a in args if a.form == "bare"]
     numbered = [a for a in args if a.form != "bare"]
@@ -208,8 +203,7 @@ def bind_layout_targets(
                     workspace_0based=w0,
                     workspace_1based=w0 + 1,
                     raw=a.raw,
-                )
-            )
+                ))
         return out
 
     if mode != MODE_STATIC:
@@ -229,8 +223,7 @@ def bind_layout_targets(
                 workspace_0based=w1 - 1,
                 workspace_1based=w1,
                 raw=a.raw,
-            )
-        )
+            ))
     return out
 
 
@@ -270,9 +263,8 @@ def n_workspaces_from_forest(forest: Any) -> Optional[int]:
     return max(wss) + 1
 
 
-def window_candidate_counts(
-    forest: Any, workspace_0based: int
-) -> tuple[int, int]:
+def window_candidate_counts(forest: Any,
+                            workspace_0based: int) -> tuple[int, int]:
     """
     (on_workspace, ignored_other) window counts for dry-run messaging.
     """
@@ -287,16 +279,16 @@ def window_candidate_counts(
     return on_n, ignored
 
 
-def format_candidate_line(
-    workspace_1based: int, on_ws: int, ignored: int, *, is_current: bool = False
-) -> str:
+def format_candidate_line(workspace_1based: int,
+                          on_ws: int,
+                          ignored: int,
+                          *,
+                          is_current: bool = False) -> str:
     """Human dry-run candidate line (1-based workspace). is_current unused (ws line)."""
     del is_current  # kept for call-site stability; "(current)" is on workspace line
     if ignored:
-        return (
-            f"candidates: {on_ws} on ws{workspace_1based} "
-            f"(ignored {ignored} on other workspaces)"
-        )
+        return (f"candidates: {on_ws} on ws{workspace_1based} "
+                f"(ignored {ignored} on other workspaces)")
     return f"candidates: {on_ws} on ws{workspace_1based}"
 
 
@@ -346,7 +338,6 @@ def preflight_layout_run(
                 )
             if r is None or r is False:
                 raise LayoutParseError(
-                    f"profile {t.name!r} not found\n  hint: forge layout list"
-                )
+                    f"profile {t.name!r} not found\n  hint: forge layout list")
             resolved_list.append(r)
     return mode, targets, resolved_list

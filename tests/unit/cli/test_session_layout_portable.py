@@ -28,17 +28,23 @@ def _load_forge_cli():
 
 
 class TestSessionLayoutPortable(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         cls.forge = _load_forge_cli()
 
     def test_project_con_keeps_last_tab_focus_and_child_order(self):
         node = {
-            "nodeType": "CON",
-            "layout": "TABBED",
-            "percent": 0,
-            "userSized": False,
-            "lastTabFocusId": 42,
+            "nodeType":
+            "CON",
+            "layout":
+            "TABBED",
+            "percent":
+            0,
+            "userSized":
+            False,
+            "lastTabFocusId":
+            42,
             "children": [
                 {
                     "nodeType": "WINDOW",
@@ -66,41 +72,46 @@ class TestSessionLayoutPortable(unittest.TestCase):
 
     def test_write_session_layout_includes_focus_and_open_tab(self):
         forest = {
-            "focusWindowId": 42,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
+            "focusWindowId":
+            42,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "HSPLIT",
+                "children": [{
+                    "nodeType":
+                    "CON",
+                    "layout":
+                    "STACKED",
+                    "percent":
+                    1,
+                    "userSized":
+                    False,
+                    "lastTabFocusId":
+                    42,
                     "children": [
                         {
-                            "nodeType": "CON",
-                            "layout": "STACKED",
-                            "percent": 1,
+                            "nodeType": "WINDOW",
+                            "windowId": 1,
+                            "wmClass": "A",
+                            "title": "a",
+                            "percent": 0,
                             "userSized": False,
-                            "lastTabFocusId": 42,
-                            "children": [
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 1,
-                                    "wmClass": "A",
-                                    "title": "a",
-                                    "percent": 0,
-                                    "userSized": False,
-                                },
-                                {
-                                    "nodeType": "WINDOW",
-                                    "windowId": 42,
-                                    "wmClass": "B",
-                                    "title": "b",
-                                    "percent": 0,
-                                    "userSized": False,
-                                },
-                            ],
-                        }
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 42,
+                            "wmClass": "B",
+                            "title": "b",
+                            "percent": 0,
+                            "userSized": False,
+                        },
                     ],
-                }
-            ],
+                }],
+            }],
         }
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

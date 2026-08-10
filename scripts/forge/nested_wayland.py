@@ -132,8 +132,7 @@ def parse_size(spec: str) -> str:
 
 
 def host_primary_logical_size(
-    env: Optional[Mapping[str, str]] = None,
-) -> Optional[str]:
+    env: Optional[Mapping[str, str]] = None, ) -> Optional[str]:
     """
     Logical size of the host primary monitor as WWxHH (for nest dummy mons).
 
@@ -160,7 +159,10 @@ def host_primary_logical_size(
             capture_output=True,
             text=True,
             timeout=8,
-            env={**os.environ, **e},
+            env={
+                **os.environ,
+                **e
+            },
         )
         if proc.returncode == 0 and (proc.stdout or "").strip():
             data = json.loads(proc.stdout)
@@ -173,7 +175,8 @@ def host_primary_logical_size(
                     continue
                 geom = sk.split("geom:", 1)[1].split("#", 1)[0]
                 parts = geom.split(",")
-                if len(parts) >= 4 and parts[2].isdigit() and parts[3].isdigit():
+                if len(parts) >= 4 and parts[2].isdigit() and parts[3].isdigit(
+                ):
                     w, h = int(parts[2]), int(parts[3])
                     if w >= 320 and h >= 240:
                         if "#primary" in sk or m.get("rect"):
@@ -185,11 +188,13 @@ def host_primary_logical_size(
                     continue
                 geom = sk.split("geom:", 1)[1].split("#", 1)[0]
                 parts = geom.split(",")
-                if len(parts) >= 4 and parts[2].isdigit() and parts[3].isdigit():
+                if len(parts) >= 4 and parts[2].isdigit() and parts[3].isdigit(
+                ):
                     w, h = int(parts[2]), int(parts[3])
                     if w >= 320 and h >= 240:
                         return f"{w}x{h}"
-    except (OSError, json.JSONDecodeError, subprocess.TimeoutExpired, ValueError):
+    except (OSError, json.JSONDecodeError, subprocess.TimeoutExpired,
+            ValueError):
         pass
     return None
 
@@ -204,8 +209,7 @@ def parse_num_monitors(raw: Any) -> int:
         raise NestedError(f"monitors must be ≥1 (got {n})")
     if n > MAX_DUMMY_MONITORS:
         raise NestedError(
-            f"monitors clamped max is {MAX_DUMMY_MONITORS} (got {n})"
-        )
+            f"monitors clamped max is {MAX_DUMMY_MONITORS} (got {n})")
     return n
 
 
@@ -271,8 +275,7 @@ def x11_refuse_message(session: str = "x11") -> str:
         f"  Dual-mon CT: still runs on the host desk after extension is loaded;\n"
         f"               use nest to reload JS without logout, not as dual-mon desk.\n"
         f"  Experimental nest under X11 parent: FORGE_NESTED_ALLOW_X11=1 "
-        f"(usually still needs a Wayland socket — prefer a Wayland session)."
-    )
+        f"(usually still needs a Wayland socket — prefer a Wayland session).")
 
 
 def require_wayland_host(
@@ -358,8 +361,7 @@ def host_wayland_display(env: Optional[Mapping[str, str]] = None) -> str:
         return candidates[0]
     raise NestedError(
         "no host WAYLAND_DISPLAY; start from a Wayland session "
-        "or set HOST_WAYLAND_DISPLAY / FORGE_NESTED_HOST_WAYLAND"
-    )
+        "or set HOST_WAYLAND_DISPLAY / FORGE_NESTED_HOST_WAYLAND")
 
 
 def bus_address_for(dir_path: Path) -> str:
@@ -384,7 +386,8 @@ def shell_start_env(cfg: NestedConfig) -> dict[str, str]:
     env["WAYLAND_DISPLAY"] = cfg.host_wayland
     env["GDK_BACKEND"] = "wayland"
     env["XDG_SESSION_TYPE"] = "wayland"
-    nmon = int(getattr(cfg, "num_monitors", DEFAULT_MONITORS) or DEFAULT_MONITORS)
+    nmon = int(
+        getattr(cfg, "num_monitors", DEFAULT_MONITORS) or DEFAULT_MONITORS)
     if nmon < 1:
         nmon = 1
     if nmon > MAX_DUMMY_MONITORS:
@@ -394,8 +397,7 @@ def shell_start_env(cfg: NestedConfig) -> dict[str, str]:
     env["MUTTER_DEBUG_DUMMY_MODE_SPECS"] = dummy_mode_specs(cfg.size, nmon)
     env["MUTTER_DEBUG_NUM_DUMMY_MONITORS"] = str(nmon)
     env["MUTTER_DEBUG_DUMMY_MONITOR_SCALES"] = dummy_monitor_scales(
-        cfg.scale, nmon
-    )
+        cfg.scale, nmon)
     # Nested retest should be responsive, not demo-slow.
     env.pop("GNOME_SHELL_SLOWDOWN_FACTOR", None)
     return env
@@ -518,7 +520,10 @@ def _gdbus(
     )
 
 
-def name_has_owner(bus_address: str, name: str, *, timeout: float = 5.0) -> bool:
+def name_has_owner(bus_address: str,
+                   name: str,
+                   *,
+                   timeout: float = 5.0) -> bool:
     proc = _gdbus(
         bus_address,
         [
@@ -540,7 +545,10 @@ def name_has_owner(bus_address: str, name: str, *, timeout: float = 5.0) -> bool
     return "true" in out
 
 
-def shell_eval(bus_address: str, js: str, *, timeout: float = 5.0) -> tuple[bool, str]:
+def shell_eval(bus_address: str,
+               js: str,
+               *,
+               timeout: float = 5.0) -> tuple[bool, str]:
     """Return (ok, payload). ok is Shell.Eval success flag."""
     proc = _gdbus(
         bus_address,
@@ -571,7 +579,8 @@ def shell_eval(bus_address: str, js: str, *, timeout: float = 5.0) -> tuple[bool
     return True, out
 
 
-def wait_socket(display: str, timeout_s: float = SOCKET_READY_TIMEOUT_S) -> bool:
+def wait_socket(display: str,
+                timeout_s: float = SOCKET_READY_TIMEOUT_S) -> bool:
     path = nest_socket_path(display)
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
@@ -652,10 +661,8 @@ def _start_shell(cfg: NestedConfig) -> int:
     sock = nest_socket_path(cfg.display)
     for stale in (sock, Path(str(sock) + ".lock")):
         if stale.exists() and not any(
-            _pid_alive(p)
-            for p in [_read_pid(d / "shell.pid")]
-            if p is not None
-        ):
+                _pid_alive(p)
+                for p in [_read_pid(d / "shell.pid")] if p is not None):
             try:
                 stale.unlink()
             except OSError:
@@ -696,11 +703,8 @@ def start(
 ) -> NestedConfig:
     missing = check_deps()
     if missing:
-        raise NestedError(
-            "missing required tools: "
-            + ", ".join(missing)
-            + " (install gnome-shell / dbus)"
-        )
+        raise NestedError("missing required tools: " + ", ".join(missing) +
+                          " (install gnome-shell / dbus)")
 
     require_wayland_host(allow_x11=allow_x11)
 
@@ -729,10 +733,8 @@ def start(
         raise NestedError("empty host WAYLAND_DISPLAY")
     host_sock = runtime_dir() / host_wl
     if not host_sock.is_socket():
-        raise NestedError(
-            f"host Wayland socket not found: {host_sock} "
-            f"(are you in a Wayland session?)"
-        )
+        raise NestedError(f"host Wayland socket not found: {host_sock} "
+                          f"(are you in a Wayland session?)")
 
     disp = (display or DEFAULT_DISPLAY).strip()
     if not disp.startswith("wayland-"):
@@ -766,13 +768,11 @@ def start(
         stop(name=name, force=True)
         raise NestedError(
             f"nested Wayland socket not ready: {nest_socket_path(cfg.display)}; "
-            f"see {d / 'shell.log'}"
-        )
+            f"see {d / 'shell.log'}")
     if not wait_shell_ready(cfg.bus_address):
         stop(name=name, force=True)
         raise NestedError(
-            f"nested gnome-shell not ready on bus; see {d / 'shell.log'}"
-        )
+            f"nested gnome-shell not ready on bus; see {d / 'shell.log'}")
 
     _write_status(cfg, phase="running")
     return cfg
@@ -835,13 +835,10 @@ def stop(*, name: str = DEFAULT_NAME, force: bool = False) -> bool:
         orphan_pids.extend(
             p
             for p in _pids_with_cmdline_needle(str(nest_socket_path(display)))
-            if p not in orphan_pids
-        )
-    was = bool(
-        (shell_pid and _pid_alive(shell_pid))
-        or (dbus_pid and _pid_alive(dbus_pid))
-        or any(_pid_alive(p) for p in orphan_pids)
-    )
+            if p not in orphan_pids)
+    was = bool((shell_pid and _pid_alive(shell_pid))
+               or (dbus_pid and _pid_alive(dbus_pid))
+               or any(_pid_alive(p) for p in orphan_pids))
 
     _kill_graceful(shell_pid, grace_s=STOP_GRACE_S)
     _kill_graceful(dbus_pid, grace_s=1.5)
@@ -886,32 +883,29 @@ def restart(
     cfg = load_config(name)
     stop(name=name, force=True)
     kwargs: dict[str, Any] = {
-        "name": name,
-        "replace": True,
-        "size": start_kwargs.get("size") or (cfg.size if cfg else DEFAULT_SIZE),
-        "scale": start_kwargs.get("scale") or (cfg.scale if cfg else DEFAULT_SCALE),
-        "num_monitors": (
-            start_kwargs["num_monitors"]
-            if "num_monitors" in start_kwargs
-            else (
-                getattr(cfg, "num_monitors", DEFAULT_MONITORS)
-                if cfg
-                else DEFAULT_MONITORS
-            )
-        ),
-        "unsafe_mode": (
-            start_kwargs["unsafe_mode"]
-            if "unsafe_mode" in start_kwargs
-            else (cfg.unsafe_mode if cfg else True)
-        ),
-        "allow_x11": bool(start_kwargs.get("allow_x11", False)),
+        "name":
+        name,
+        "replace":
+        True,
+        "size":
+        start_kwargs.get("size") or (cfg.size if cfg else DEFAULT_SIZE),
+        "scale":
+        start_kwargs.get("scale") or (cfg.scale if cfg else DEFAULT_SCALE),
+        "num_monitors":
+        (start_kwargs["num_monitors"] if "num_monitors" in start_kwargs else
+         (getattr(cfg, "num_monitors", DEFAULT_MONITORS)
+          if cfg else DEFAULT_MONITORS)),
+        "unsafe_mode":
+        (start_kwargs["unsafe_mode"] if "unsafe_mode" in start_kwargs else
+         (cfg.unsafe_mode if cfg else True)),
+        "allow_x11":
+        bool(start_kwargs.get("allow_x11", False)),
     }
     display = start_kwargs.get("display") or (cfg.display if cfg else None)
     if display:
         kwargs["display"] = display
-    host_wl = start_kwargs.get("host_wayland") or (
-        cfg.host_wayland if cfg else None
-    )
+    host_wl = start_kwargs.get("host_wayland") or (cfg.host_wayland
+                                                   if cfg else None)
     if host_wl:
         kwargs["host_wayland"] = host_wl
     return start(**kwargs)
@@ -928,33 +922,41 @@ def status_dict(name: str = DEFAULT_NAME) -> dict[str, Any]:
     forge_ready = False
     if running and cfg:
         shell_ready = name_has_owner(cfg.bus_address, "org.gnome.Shell")
-        forge_ready = name_has_owner(
-            cfg.bus_address, "org.gnome.Shell.Extensions.Forge"
-        )
+        forge_ready = name_has_owner(cfg.bus_address,
+                                     "org.gnome.Shell.Extensions.Forge")
     out: dict[str, Any] = {
         "name": name,
         "running": running,
         "shell_ready": shell_ready,
         "forge_ready": forge_ready,
-        "shell_pid": shell_pid if shell_pid and _pid_alive(shell_pid) else None,
+        "shell_pid":
+        shell_pid if shell_pid and _pid_alive(shell_pid) else None,
         "dbus_pid": dbus_pid if dbus_pid and _pid_alive(dbus_pid) else None,
         "state_dir": str(d),
     }
     if cfg:
-        out.update(
-            {
-                "display": cfg.display,
-                "host_wayland": cfg.host_wayland,
-                "size": cfg.size,
-                "scale": cfg.scale,
-                "num_monitors": getattr(cfg, "num_monitors", DEFAULT_MONITORS),
-                "bus_address": cfg.bus_address,
-                "socket": str(nest_socket_path(cfg.display)),
-                "socket_exists": nest_socket_path(cfg.display).is_socket(),
-                "env_sh": str(d / "env.sh"),
-                "shell_log": str(d / "shell.log"),
-            }
-        )
+        out.update({
+            "display":
+            cfg.display,
+            "host_wayland":
+            cfg.host_wayland,
+            "size":
+            cfg.size,
+            "scale":
+            cfg.scale,
+            "num_monitors":
+            getattr(cfg, "num_monitors", DEFAULT_MONITORS),
+            "bus_address":
+            cfg.bus_address,
+            "socket":
+            str(nest_socket_path(cfg.display)),
+            "socket_exists":
+            nest_socket_path(cfg.display).is_socket(),
+            "env_sh":
+            str(d / "env.sh"),
+            "shell_log":
+            str(d / "shell.log"),
+        })
     return out
 
 
@@ -968,9 +970,8 @@ def _write_status(cfg: NestedConfig, *, phase: str) -> None:
         "bus_address": cfg.bus_address,
     }
     try:
-        (d / "status.json").write_text(
-            json.dumps(payload, indent=2) + "\n", encoding="utf-8"
-        )
+        (d / "status.json").write_text(json.dumps(payload, indent=2) + "\n",
+                                       encoding="utf-8")
     except OSError:
         pass
 
@@ -1044,17 +1045,14 @@ def enable_forge_extension(
                 env=env,
             )
             if en.returncode != 0:
-                notes.append(
-                    "gnome-extensions enable: "
-                    + (
-                        (en.stderr or en.stdout or "").strip()
-                        or str(en.returncode)
-                    )
-                )
+                notes.append("gnome-extensions enable: " +
+                             ((en.stderr or en.stdout or "").strip()
+                              or str(en.returncode)))
             else:
                 notes.append("gnome-extensions enable ok")
         except subprocess.TimeoutExpired:
-            notes.append("gnome-extensions enable timed out (often ok on nest)")
+            notes.append(
+                "gnome-extensions enable timed out (often ok on nest)")
         except OSError as e:
             notes.append(f"gnome-extensions enable error: {e}")
     else:
@@ -1063,15 +1061,13 @@ def enable_forge_extension(
     # Nested shell: enable via extensionManager (needs --unsafe-mode Eval).
     ok, payload = shell_eval(
         bus_address,
-        (
-            "(function(){ try { "
-            f'const ext = Main.extensionManager.lookup("{uuid}"); '
-            'if (!ext) return "missing"; '
-            "if (ext.state === 1) return \"already\"; "
-            f'Main.extensionManager.enableExtension("{uuid}"); '
-            'return "enabled"; '
-            "} catch (e) { return String(e); } })()"
-        ),
+        ("(function(){ try { "
+         f'const ext = Main.extensionManager.lookup("{uuid}"); '
+         'if (!ext) return "missing"; '
+         "if (ext.state === 1) return \"already\"; "
+         f'Main.extensionManager.enableExtension("{uuid}"); '
+         'return "enabled"; '
+         "} catch (e) { return String(e); } })()"),
         timeout=8.0,
     )
     notes.append(f"shell_eval={payload if ok else 'fail:' + payload}")
@@ -1109,7 +1105,9 @@ def exec_in(
 
 
 def format_env_export(cfg: NestedConfig) -> str:
-    parts = [f"export {k}={_shell_quote(v)}" for k, v in client_env(cfg).items()]
+    parts = [
+        f"export {k}={_shell_quote(v)}" for k, v in client_env(cfg).items()
+    ]
     return "\n".join(parts) + "\n"
 
 
@@ -1146,7 +1144,9 @@ def cmd_nested(_backend: Any, args: Any) -> int:
             return _cli_start(args, name)
         if action == "stop":
             was = stop(name=name, force=bool(getattr(args, "force", False)))
-            print(f"forge nested: {'stopped' if was else 'not running'} ({name})")
+            print(
+                f"forge nested: {'stopped' if was else 'not running'} ({name})"
+            )
             return 0
         if action == "restart":
             return _cli_restart(args, name)
@@ -1205,11 +1205,15 @@ def _cli_start(args: Any, name: str) -> int:
     print(f"  bus:      {cfg.bus_address}")
     print(f"  state:    {cfg.state_dir}")
     print(f"  env:      source {cfg.state_dir}/env.sh")
-    print(f"  clients:  forge nested exec -- <cmd>   # or eval $(forge nested env --export)")
+    print(
+        "  clients:  forge nested exec -- <cmd>   # or eval $(forge nested env --export)"
+    )
 
     if not bool(getattr(args, "no_enable", False)):
         result = enable_forge_extension(cfg.bus_address)
-        print(f"  forge:    ready={result['forge_ready']} notes={result['notes']}")
+        print(
+            f"  forge:    ready={result['forge_ready']} notes={result['notes']}"
+        )
         if not result["forge_ready"]:
             print(
                 "  hint:     install extension on host (./install), then: "
@@ -1241,7 +1245,9 @@ def _cli_restart(args: Any, name: str) -> int:
     cfg = restart(**kwargs)
     if not bool(getattr(args, "no_enable", False)):
         result = enable_forge_extension(cfg.bus_address)
-        print(f"forge nested: restarted {cfg.name} forge_ready={result['forge_ready']}")
+        print(
+            f"forge nested: restarted {cfg.name} forge_ready={result['forge_ready']}"
+        )
     else:
         print(f"forge nested: restarted {cfg.name}")
     print(f"  display:  {cfg.display}")
@@ -1292,7 +1298,6 @@ def _cli_enable_forge(name: str) -> int:
 
 
 def _cli_logs(args: Any, name: str) -> int:
-    cfg = load_config(name)
     d = session_dir(name)
     log = d / "shell.log"
     if not log.is_file():
@@ -1300,7 +1305,8 @@ def _cli_logs(args: Any, name: str) -> int:
         return 1
     follow = bool(getattr(args, "follow", False))
     if follow:
-        proc = subprocess.run(["tail", "-n", "50", "-F", str(log)], check=False)
+        proc = subprocess.run(
+            ["tail", "-n", "50", "-F", str(log)], check=False)
         return int(proc.returncode)
     sys.stdout.write(log.read_text(encoding="utf-8", errors="replace"))
     return 0
@@ -1335,17 +1341,22 @@ def _cli_doctor(args: Any) -> int:
     except NestedError as e:
         host_err = str(e)
     payload = {
-        "hostSession": session,
-        "canNested": can,
-        "toolsMissing": missing,
-        "hostWayland": host_wl,
-        "hostWaylandError": host_err,
-        "allowX11Env": allow_x11_host(),
-        "command": "forge nested",
-        "note": (
-            "Short name for nested Wayland GNOME Shell retests "
-            "(not nested X11). On X11 use HUP instead."
-        ),
+        "hostSession":
+        session,
+        "canNested":
+        can,
+        "toolsMissing":
+        missing,
+        "hostWayland":
+        host_wl,
+        "hostWaylandError":
+        host_err,
+        "allowX11Env":
+        allow_x11_host(),
+        "command":
+        "forge nested",
+        "note": ("Short name for nested Wayland GNOME Shell retests "
+                 "(not nested X11). On X11 use HUP instead."),
     }
     if getattr(args, "json", False):
         print(json.dumps(payload, indent=2))

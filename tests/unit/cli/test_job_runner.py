@@ -61,6 +61,7 @@ from job_runner import (  # noqa: E402
 
 
 class JobModeFlags(unittest.TestCase):
+
     def test_job_mode_enabled_defaults(self):
         self.assertTrue(job_mode_enabled({}))
         self.assertTrue(job_mode_enabled({"FORGE_JOB": "1"}))
@@ -77,7 +78,8 @@ class JobModeFlags(unittest.TestCase):
 
     def test_parse_timeout(self):
         self.assertEqual(parse_job_timeout_sec({}), 300.0)
-        self.assertEqual(parse_job_timeout_sec({"FORGE_JOB_TIMEOUT": "90"}), 90.0)
+        self.assertEqual(parse_job_timeout_sec({"FORGE_JOB_TIMEOUT": "90"}),
+                         90.0)
         self.assertIsNone(parse_job_timeout_sec({"FORGE_JOB_TIMEOUT": "0"}))
 
     def test_default_jobs_root_override(self):
@@ -86,6 +88,7 @@ class JobModeFlags(unittest.TestCase):
 
 
 class StatusMachine(unittest.TestCase):
+
     def test_new_job_id_shape(self):
         jid = new_job_id(now=0, rand="abcdef")
         self.assertTrue(jid.startswith("19700101T000000Z-"))
@@ -94,9 +97,10 @@ class StatusMachine(unittest.TestCase):
     def test_prepare_and_terminal(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            jid, jdir, st = prepare_job_dir(
-                root, job_id="j1", command="layout", argv=["forge", "layout", "dev"]
-            )
+            jid, jdir, st = prepare_job_dir(root,
+                                            job_id="j1",
+                                            command="layout",
+                                            argv=["forge", "layout", "dev"])
             self.assertEqual(jid, "j1")
             self.assertEqual(st["status"], STATUS_PENDING)
             self.assertEqual(read_status(jdir)["command"], "layout")
@@ -116,6 +120,7 @@ class StatusMachine(unittest.TestCase):
 
 
 class MutatorLock(unittest.TestCase):
+
     def test_claim_and_busy(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -139,26 +144,32 @@ class MutatorLock(unittest.TestCase):
     def test_stale_claim_allows_takeover(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            jid, jdir, _ = prepare_job_dir(
-                root, job_id="dead", command="layout", now=time.time() - 120
-            )
+            jid, jdir, _ = prepare_job_dir(root,
+                                           job_id="dead",
+                                           command="layout",
+                                           now=time.time() - 120)
             update_status(jdir, status=STATUS_RUNNING, pid=999999999)
             write_pid(jdir, 999999999)
             claim_mutator(root, "dead", now=time.time() - 120)
             set_mutator_pid(root, "dead", 999999999)
             # dead pid → not active
             self.assertFalse(
-                holder_is_active(root, {"job_id": "dead", "pid": 999999999})
-            )
+                holder_is_active(root, {
+                    "job_id": "dead",
+                    "pid": 999999999
+                }))
             claim_mutator(root, "fresh")
             release_mutator(root, "fresh")
 
 
 class Reaper(unittest.TestCase):
+
     def test_reap_orphaned_worker(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            jid, jdir, _ = prepare_job_dir(root, job_id="orph", command="layout")
+            jid, jdir, _ = prepare_job_dir(root,
+                                           job_id="orph",
+                                           command="layout")
             write_pid(jdir, 999999998)
             update_status(jdir, status=STATUS_RUNNING, pid=999999998)
             claim_mutator(root, "orph")
@@ -170,18 +181,17 @@ class Reaper(unittest.TestCase):
 
 
 class SpawnAttach(unittest.TestCase):
+
     def _py_worker(self, body: str) -> list[str]:
         return [sys.executable, "-c", body]
 
     def test_attach_streams_and_exit_code(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            code = (
-                "import sys\n"
-                "print('hello-out', flush=True)\n"
-                "print('hello-err', file=sys.stderr, flush=True)\n"
-                "sys.exit(7)\n"
-            )
+            code = ("import sys\n"
+                    "print('hello-out', flush=True)\n"
+                    "print('hello-err', file=sys.stderr, flush=True)\n"
+                    "sys.exit(7)\n")
             handle = spawn_worker(
                 self._py_worker(code),
                 jobs_root=root,
@@ -190,7 +200,10 @@ class SpawnAttach(unittest.TestCase):
             )
             out = io.StringIO()
             err = io.StringIO()
-            rc = attach(handle, stream_out=out, stream_err=err, forward_signals=False)
+            rc = attach(handle,
+                        stream_out=out,
+                        stream_err=err,
+                        forward_signals=False)
             self.assertEqual(rc, 7)
             self.assertIn("hello-out", out.getvalue())
             self.assertIn("hello-err", err.getvalue())
@@ -222,11 +235,9 @@ class SpawnAttach(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             marker = Path(tmp) / "done.txt"
-            code = (
-                "import time, pathlib\n"
-                "time.sleep(0.4)\n"
-                f"pathlib.Path({str(marker)!r}).write_text('1')\n"
-            )
+            code = ("import time, pathlib\n"
+                    "time.sleep(0.4)\n"
+                    f"pathlib.Path({str(marker)!r}).write_text('1')\n")
             out = io.StringIO()
             t0 = time.time()
             rc = run_job(
@@ -264,12 +275,10 @@ class SpawnAttach(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             marker = Path(tmp) / "after-hup.txt"
-            code = (
-                "import time, pathlib, signal\n"
-                "signal.signal(signal.SIGHUP, signal.SIG_IGN)\n"
-                "time.sleep(0.35)\n"
-                f"pathlib.Path({str(marker)!r}).write_text('survived')\n"
-            )
+            code = ("import time, pathlib, signal\n"
+                    "signal.signal(signal.SIGHUP, signal.SIG_IGN)\n"
+                    "time.sleep(0.35)\n"
+                    f"pathlib.Path({str(marker)!r}).write_text('survived')\n")
             handle = spawn_worker(
                 self._py_worker(code),
                 jobs_root=root,
@@ -282,14 +291,18 @@ class SpawnAttach(unittest.TestCase):
                 if marker.is_file():
                     break
                 time.sleep(0.05)
-            self.assertTrue(marker.is_file(), "worker should ignore SIGHUP and finish")
+            self.assertTrue(marker.is_file(),
+                            "worker should ignore SIGHUP and finish")
             self.assertEqual(marker.read_text(), "survived")
             # reap
             for _ in range(40):
                 if not pid_alive(handle.pid):
                     break
                 time.sleep(0.05)
-            rc = attach(handle, stream_out=io.StringIO(), stream_err=io.StringIO(), forward_signals=False)
+            rc = attach(handle,
+                        stream_out=io.StringIO(),
+                        stream_err=io.StringIO(),
+                        forward_signals=False)
             self.assertEqual(rc, 0)
 
     def test_parent_death_worker_continues(self):
@@ -297,11 +310,9 @@ class SpawnAttach(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             marker = Path(tmp) / "late.txt"
-            code = (
-                "import time, pathlib\n"
-                "time.sleep(0.5)\n"
-                f"pathlib.Path({str(marker)!r}).write_text('done')\n"
-            )
+            code = ("import time, pathlib\n"
+                    "time.sleep(0.5)\n"
+                    f"pathlib.Path({str(marker)!r}).write_text('done')\n")
             # outer process spawns job then exits without waiting (like TTY death after detach)
             launcher = (
                 "import sys, time\n"
@@ -336,13 +347,11 @@ class SpawnAttach(unittest.TestCase):
     def test_cooperative_cancel(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            code = (
-                "import time, signal, sys\n"
-                "def _h(s, f):\n"
-                "    sys.exit(130)\n"
-                "signal.signal(signal.SIGINT, _h)\n"
-                "time.sleep(10)\n"
-            )
+            code = ("import time, signal, sys\n"
+                    "def _h(s, f):\n"
+                    "    sys.exit(130)\n"
+                    "signal.signal(signal.SIGINT, _h)\n"
+                    "time.sleep(10)\n")
             handle = spawn_worker(
                 self._py_worker(code),
                 jobs_root=root,
@@ -350,9 +359,13 @@ class SpawnAttach(unittest.TestCase):
                 timeout_sec=30,
             )
             time.sleep(0.1)
-            self.assertTrue(request_cancel(root, handle.job_id, sig=signal.SIGINT))
+            self.assertTrue(
+                request_cancel(root, handle.job_id, sig=signal.SIGINT))
             out = io.StringIO()
-            rc = attach(handle, stream_out=out, stream_err=io.StringIO(), forward_signals=False)
+            rc = attach(handle,
+                        stream_out=out,
+                        stream_err=io.StringIO(),
+                        forward_signals=False)
             # 130 from worker exit, or cancelled mapping
             self.assertIn(rc, (130, 1))
             st = read_status(handle.job_dir)
@@ -375,7 +388,10 @@ class SpawnAttach(unittest.TestCase):
                     command="test",
                     timeout_sec=30,
                 )
-            attach(h1, stream_out=io.StringIO(), stream_err=io.StringIO(), forward_signals=False)
+            attach(h1,
+                   stream_out=io.StringIO(),
+                   stream_err=io.StringIO(),
+                   forward_signals=False)
             # after first finishes, second works
             h2 = spawn_worker(
                 self._py_worker("print(1)"),
@@ -383,11 +399,19 @@ class SpawnAttach(unittest.TestCase):
                 command="test",
                 timeout_sec=30,
             )
-            rc = attach(h2, stream_out=io.StringIO(), stream_err=io.StringIO(), forward_signals=False)
+            rc = attach(h2,
+                        stream_out=io.StringIO(),
+                        stream_err=io.StringIO(),
+                        forward_signals=False)
             self.assertEqual(rc, 0)
 
     def test_worker_env_disables_nesting(self):
-        env = worker_env({"FORGE_JOB": "1", "DISPLAY": ":0"}, job_id="x", job_dir_path=Path("/tmp/x"))
+        env = worker_env({
+            "FORGE_JOB": "1",
+            "DISPLAY": ":0"
+        },
+                         job_id="x",
+                         job_dir_path=Path("/tmp/x"))
         self.assertEqual(env["FORGE_JOB_WORKER"], "1")
         self.assertEqual(env["FORGE_JOB"], "0")
         self.assertEqual(env["FORGE_JOB_ID"], "x")
@@ -413,6 +437,7 @@ class SpawnAttach(unittest.TestCase):
 
 
 class AttachTimeout(unittest.TestCase):
+
     def test_deadline_marks_timeout(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -435,16 +460,15 @@ class AttachTimeout(unittest.TestCase):
 
 
 class CliHelpers(unittest.TestCase):
+
     def test_extract_job_meta_flags(self):
         cleaned, det, fg = extract_job_meta_flags(
-            ["layout", "dev", "--detach", "--verbose"]
-        )
+            ["layout", "dev", "--detach", "--verbose"])
         self.assertEqual(cleaned, ["layout", "dev", "--verbose"])
         self.assertTrue(det)
         self.assertFalse(fg)
         cleaned, det, fg = extract_job_meta_flags(
-            ["--foreground", "layout", "dev", "--detach"]
-        )
+            ["--foreground", "layout", "dev", "--detach"])
         self.assertEqual(cleaned, ["layout", "dev"])
         self.assertFalse(det)  # foreground wins
         self.assertTrue(fg)
@@ -456,8 +480,7 @@ class CliHelpers(unittest.TestCase):
         self.assertFalse(is_mutating_job_command("layout", layout_head="show"))
         self.assertFalse(is_mutating_job_command("layout", layout_head="save"))
         self.assertFalse(
-            is_mutating_job_command("layout", layout_head="dev", dry_run=True)
-        )
+            is_mutating_job_command("layout", layout_head="dev", dry_run=True))
         self.assertTrue(is_mutating_job_command("install"))
         self.assertTrue(is_mutating_job_command("run"))
         self.assertTrue(is_mutating_job_command("test", test_action="run"))
@@ -469,13 +492,16 @@ class CliHelpers(unittest.TestCase):
         self.assertEqual(default_timeout_for_command("layout", env={}), 300.0)
         self.assertEqual(default_timeout_for_command("install", env={}), 900.0)
         self.assertEqual(
-            default_timeout_for_command("layout", env={"FORGE_JOB_TIMEOUT": "42"}),
+            default_timeout_for_command("layout",
+                                        env={"FORGE_JOB_TIMEOUT": "42"}),
             42.0,
         )
 
     def test_forge_worker_argv(self):
-        argv = forge_worker_argv("/path/forge", ["layout", "dev"], python="/usr/bin/python3")
-        self.assertEqual(argv, ["/usr/bin/python3", "/path/forge", "layout", "dev"])
+        argv = forge_worker_argv("/path/forge", ["layout", "dev"],
+                                 python="/usr/bin/python3")
+        self.assertEqual(argv,
+                         ["/usr/bin/python3", "/path/forge", "layout", "dev"])
 
     def test_is_job_worker_pid_scoped(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -491,6 +517,7 @@ class CliHelpers(unittest.TestCase):
 
 
 class JobsCli(unittest.TestCase):
+
     def test_jobs_list_status_log_cancel(self):
         forge = _FORGE_CLI / "forge"
         with tempfile.TemporaryDirectory() as tmp:
@@ -521,7 +548,8 @@ class JobsCli(unittest.TestCase):
             self.assertIn(jid, list_p.stdout)
 
             st_p = subprocess.run(
-                [sys.executable, str(forge), "jobs", "status", jid],
+                [sys.executable,
+                 str(forge), "jobs", "status", jid],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -531,7 +559,8 @@ class JobsCli(unittest.TestCase):
             self.assertIn('"status"', st_p.stdout)
 
             log_p = subprocess.run(
-                [sys.executable, str(forge), "jobs", "log", jid],
+                [sys.executable,
+                 str(forge), "jobs", "log", jid],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -542,7 +571,8 @@ class JobsCli(unittest.TestCase):
 
             # already terminal
             can_p = subprocess.run(
-                [sys.executable, str(forge), "jobs", "cancel", jid],
+                [sys.executable,
+                 str(forge), "jobs", "cancel", jid],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -567,7 +597,8 @@ class JobsCli(unittest.TestCase):
             jid = list_jobs(Path(tmp))[0]["job_id"]
             prefix = jid[:12]
             st_p = subprocess.run(
-                [sys.executable, str(forge), "jobs", "status", prefix],
+                [sys.executable,
+                 str(forge), "jobs", "status", prefix],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -593,8 +624,10 @@ class WireSmoke(unittest.TestCase):
                 env=env,
                 timeout=30,
             )
-            jobs = [p for p in Path(tmp).iterdir() if p.is_dir()] if Path(tmp).is_dir() else []
-            self.assertEqual(jobs, [], f"layout list should not spawn jobs: {jobs}")
+            jobs = [p for p in Path(tmp).iterdir()
+                    if p.is_dir()] if Path(tmp).is_dir() else []
+            self.assertEqual(jobs, [],
+                             f"layout list should not spawn jobs: {jobs}")
 
     def test_forge_as_job_worker_marks_done(self):
         """Spawn forge --version as a durable worker; status ends ok."""
@@ -641,9 +674,12 @@ class WireSmoke(unittest.TestCase):
             jobs = [p for p in Path(tmp).iterdir() if p.is_dir()]
             self.assertEqual(len(jobs), 1, f"expected one job dir, got {jobs}")
             st = read_status(jobs[0])
-            self.assertIn(st["status"], (STATUS_FAILED, STATUS_OK, STATUS_CANCELLED))
+            self.assertIn(st["status"],
+                          (STATUS_FAILED, STATUS_OK, STATUS_CANCELLED))
             # Worker should have finished (not left running)
-            self.assertIn(st["status"], (STATUS_FAILED, STATUS_OK, STATUS_CANCELLED, STATUS_TIMEOUT))
+            self.assertIn(
+                st["status"],
+                (STATUS_FAILED, STATUS_OK, STATUS_CANCELLED, STATUS_TIMEOUT))
 
 
 if __name__ == "__main__":

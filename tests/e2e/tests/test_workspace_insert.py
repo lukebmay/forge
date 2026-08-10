@@ -38,7 +38,6 @@ INSERT_WORKSPACE_JS = """
 })();
 """
 
-
 # forge-t3bb: INSERT_WORKSPACE_JS permanently grows the workspace count and
 # shifts the active index — the session pins dynamic-workspaces=false (see
 # start-user-session.sh), so GNOME never removes the extra workspace, and

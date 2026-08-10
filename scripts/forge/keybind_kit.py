@@ -23,17 +23,13 @@ MOD_MASK_KEY = "mod-mask-mouse-tile"
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent.parent
-_XDG_PROFILES = Path.home() / ".config" / "forge" / "config" / "keybinding-profiles"
+_XDG_PROFILES = Path.home(
+) / ".config" / "forge" / "config" / "keybinding-profiles"
 
 # Prefer user-installed extension schema, then source-tree schemas/
 _DEFAULT_SCHEMA_CANDIDATES = (
-    Path.home()
-    / ".local"
-    / "share"
-    / "gnome-shell"
-    / "extensions"
-    / "forge@jmmaranan.com"
-    / "schemas",
+    Path.home() / ".local" / "share" / "gnome-shell" / "extensions" /
+    "forge@jmmaranan.com" / "schemas",
     _REPO_ROOT / "schemas",
 )
 
@@ -96,8 +92,7 @@ def compile_source_schemas() -> Path:
     cmd = shutil.which("glib-compile-schemas")
     if not cmd:
         raise RuntimeError(
-            "glib-compile-schemas not found (needed for Phase 1 key schema)"
-        )
+            "glib-compile-schemas not found (needed for Phase 1 key schema)")
     subprocess.run([cmd, str(schema_dir)], check=True)
     compiled = schema_dir / "gschemas.compiled"
     if not compiled.is_file():
@@ -223,7 +218,8 @@ def load_kit_from_presets(kit_id: str) -> dict[str, Any]:
 
     node = shutil.which("node")
     if not node:
-        raise RuntimeError("node not found (needed to load keybind-presets.js)")
+        raise RuntimeError(
+            "node not found (needed to load keybind-presets.js)")
 
     script = f"""
 import {{ getKit, buildProfileProps, KEYBINDING_PRESET_KEYS }} from {_repo_url("lib/shared/keybind-presets.js")};
@@ -245,8 +241,7 @@ console.log(JSON.stringify(props));
     )
     if r.returncode != 0:
         raise RuntimeError(
-            f"node kit load failed: {(r.stderr or r.stdout or '').strip()}"
-        )
+            f"node kit load failed: {(r.stderr or r.stdout or '').strip()}")
     # node may print warnings on stderr; stdout is JSON
     line = r.stdout.strip().splitlines()[-1]
     return json.loads(line)
@@ -284,7 +279,8 @@ def build_profile_props(
         props["name"] = name
     if note:
         props["note"] = note
-    props["savedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    props["savedAt"] = datetime.now(
+        timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return props
 
 
@@ -315,7 +311,9 @@ def backup_live(
     try:
         keys = keybinding_keys_from_presets()
     except Exception:
-        keys = [k for k in gsettings_list_keys(schema_dir) if k != MOD_MASK_KEY]
+        keys = [
+            k for k in gsettings_list_keys(schema_dir) if k != MOD_MASK_KEY
+        ]
 
     dconf_raw = dconf_dump_kbd()
 
@@ -379,15 +377,13 @@ def apply_profile_props(
         schema_dir = resolve_schema_dir(prefer_source=True)
         # If source has newer keys, prefer compiled source
         if schema_dir is None or not _schema_has_key(
-            schema_dir, "con-stack-tab-layout-toggle"
-        ):
+                schema_dir, "con-stack-tab-layout-toggle"):
             try:
                 schema_dir = compile_source_schemas()
             except Exception as e:
                 if schema_dir is None:
                     raise RuntimeError(
-                        f"no usable GSettings schema dir ({e})"
-                    ) from e
+                        f"no usable GSettings schema dir ({e})") from e
 
     bindings = props.get("bindings") or {}
     if not isinstance(bindings, dict):
@@ -400,8 +396,7 @@ def apply_profile_props(
     known = set(gsettings_list_keys(schema_dir))
     if not known:
         raise RuntimeError(
-            f"schema {SCHEMA_KBD} not available (schema_dir={schema_dir})"
-        )
+            f"schema {SCHEMA_KBD} not available (schema_dir={schema_dir})")
 
     applied: list[str] = []
 
@@ -437,7 +432,9 @@ def apply_kit(
     props = load_kit_from_presets(kit_id)
     # drop helper field
     props.pop("keys", None)
-    applied = apply_profile_props(props, schema_dir=schema_dir, dry_run=dry_run)
+    applied = apply_profile_props(props,
+                                  schema_dir=schema_dir,
+                                  dry_run=dry_run)
     return props, applied
 
 
@@ -472,7 +469,8 @@ def _eprint(*args: object) -> None:
 
 def cmd_backup(args: Any) -> int:
     try:
-        path = backup_live(args.name, out_dir=Path(args.dir) if args.dir else None)
+        path = backup_live(args.name,
+                           out_dir=Path(args.dir) if args.dir else None)
     except Exception as e:
         _eprint(f"forge keybind backup: {e}")
         return 1
@@ -489,11 +487,13 @@ def cmd_apply(args: Any) -> int:
             p = Path(profile).expanduser()
             if not p.is_file():
                 # try profiles dir
-                cand = profiles_dir() / f"{sanitize_profile_name(profile) or profile}.json"
+                cand = profiles_dir(
+                ) / f"{sanitize_profile_name(profile) or profile}.json"
                 if cand.is_file():
                     p = cand
                 else:
-                    _eprint(f"forge keybind apply: profile not found: {profile}")
+                    _eprint(
+                        f"forge keybind apply: profile not found: {profile}")
                     return 1
             applied = apply_profile_file(p, dry_run=dry)
             label = str(p)
@@ -501,7 +501,9 @@ def cmd_apply(args: Any) -> int:
             _props, applied = apply_kit(kit, dry_run=dry)
             label = f"kit:{kit}"
         else:
-            _eprint("forge keybind apply: need kit name (vim|safe|i3) or --profile")
+            _eprint(
+                "forge keybind apply: need kit name (vim|safe|i3) or --profile"
+            )
             return 1
     except Exception as e:
         _eprint(f"forge keybind apply: {e}")
@@ -533,17 +535,18 @@ def build_keybind_subparser(sub: Any) -> None:
     kb = sub.add_parser(
         "keybind",
         help="Backup/apply keybind kits (gsettings; no DBus)",
-        description=(
-            "Backup live Forge keybindings to a profile JSON, or apply a built-in "
-            "kit (vim|safe|i3) / saved profile.\n"
-            "Dir: FORGE_KEYBIND_PROFILES_DIR or ~/.config/forge/config/keybinding-profiles\n"
-            "Schema: extension schemas/ or repo schemas/ (auto-compiles source if needed)."
-        ),
+        description=
+        ("Backup live Forge keybindings to a profile JSON, or apply a built-in "
+         "kit (vim|safe|i3) / saved profile.\n"
+         "Dir: FORGE_KEYBIND_PROFILES_DIR or ~/.config/forge/config/keybinding-profiles\n"
+         "Schema: extension schemas/ or repo schemas/ (auto-compiles source if needed)."
+         ),
         formatter_class=__import__("argparse").RawDescriptionHelpFormatter,
     )
     kb_sub = kb.add_subparsers(dest="keybind_action", required=True)
 
-    b = kb_sub.add_parser("backup", help="Dump live keybindings to profile JSON")
+    b = kb_sub.add_parser("backup",
+                          help="Dump live keybindings to profile JSON")
     b.add_argument(
         "name",
         nargs="?",
@@ -557,7 +560,8 @@ def build_keybind_subparser(sub: Any) -> None:
     )
     b.set_defaults(func=_dispatch_keybind, keybind_handler=cmd_backup)
 
-    a = kb_sub.add_parser("apply", help="Apply kit or profile to live gsettings")
+    a = kb_sub.add_parser("apply",
+                          help="Apply kit or profile to live gsettings")
     a.add_argument(
         "kit",
         nargs="?",
@@ -584,7 +588,9 @@ def build_keybind_subparser(sub: Any) -> None:
     a.set_defaults(func=_dispatch_keybind, keybind_handler=cmd_apply)
 
     ls = kb_sub.add_parser("list", help="List saved profile names")
-    ls.add_argument("--dir", metavar="PATH", help="Override profiles directory")
+    ls.add_argument("--dir",
+                    metavar="PATH",
+                    help="Override profiles directory")
     ls.set_defaults(func=_dispatch_keybind, keybind_handler=cmd_list)
 
     d = kb_sub.add_parser("dir", help="Print resolved profiles directory")
@@ -604,8 +610,10 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     p = argparse.ArgumentParser(prog="keybind_kit.py")
     sub = p.add_subparsers(dest="command")
+
     # reuse forge-style subcommands via a tiny shim
     class _Sub:
+
         def add_parser(self, *a, **k):
             return sub.add_parser(*a, **k)
 

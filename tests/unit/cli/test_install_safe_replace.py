@@ -22,18 +22,20 @@ _UUID = "forge@jmmaranan.com"
 
 def _write_executable(path: Path, body: str) -> None:
     path.write_text(body)
-    path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP
+               | stat.S_IXOTH)
 
 
-def _make_gnome_extensions_stub(bin_dir: Path, log_path: Path, *, enabled_uuids: list[str]) -> Path:
+def _make_gnome_extensions_stub(bin_dir: Path, log_path: Path, *,
+                                enabled_uuids: list[str]) -> Path:
     """Stub gnome-extensions that logs disable/enable/list and tracks enabled set."""
     state = bin_dir / "enabled-state.txt"
-    state.write_text("\n".join(enabled_uuids) + ("\n" if enabled_uuids else ""))
+    state.write_text("\n".join(enabled_uuids) +
+                     ("\n" if enabled_uuids else ""))
     stub = bin_dir / "gnome-extensions"
     _write_executable(
         stub,
-        textwrap.dedent(
-            f"""\
+        textwrap.dedent(f"""\
             #!/usr/bin/env zsh
             emulate -L zsh
             set -euo pipefail
@@ -66,8 +68,7 @@ def _make_gnome_extensions_stub(bin_dir: Path, log_path: Path, *, enabled_uuids:
                 ;;
             esac
             exit 0
-            """
-        ),
+            """),
     )
     return stub
 
@@ -79,7 +80,9 @@ def _zsh_bin() -> str:
     return "zsh"
 
 
-def _run_zsh(script: str, env: dict[str, str], timeout: float = 30.0) -> subprocess.CompletedProcess[str]:
+def _run_zsh(script: str,
+             env: dict[str, str],
+             timeout: float = 30.0) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [_zsh_bin(), "-c", script],
         env=env,
@@ -91,21 +94,19 @@ def _run_zsh(script: str, env: dict[str, str], timeout: float = 30.0) -> subproc
 
 
 class TestForgeDisableExtension(unittest.TestCase):
+
     def setUp(self) -> None:
         self._td = tempfile.TemporaryDirectory(prefix="forge-safe-replace-")
         self.root = Path(self._td.name)
         self.ext = self.root / "extensions" / _UUID
         self.ext.mkdir(parents=True)
         (self.ext / "metadata.json").write_text(
-            json.dumps(
-                {
-                    "uuid": _UUID,
-                    "name": "Forge",
-                    "version-name": "test-luke",
-                    "shell-version": ["46"],
-                }
-            )
-        )
+            json.dumps({
+                "uuid": _UUID,
+                "name": "Forge",
+                "version-name": "test-luke",
+                "shell-version": ["46"],
+            }))
         self.bin = self.root / "bin"
         self.bin.mkdir()
         self.log = self.root / "gnome-extensions.log"
@@ -127,14 +128,12 @@ class TestForgeDisableExtension(unittest.TestCase):
         self._td.cleanup()
 
     def _disable(self) -> subprocess.CompletedProcess[str]:
-        script = textwrap.dedent(
-            f"""\
+        script = textwrap.dedent(f"""\
             emulate -L zsh
             set -euo pipefail
             source {_LIB!s}
             forge_disable_extension
-            """
-        )
+            """)
         return _run_zsh(script, self.env)
 
     def test_disable_when_enabled(self) -> None:
@@ -162,14 +161,12 @@ class TestForgeDisableExtension(unittest.TestCase):
         empty.mkdir(exist_ok=True)
         env = {**self.env, "PATH": str(empty)}
         r = _run_zsh(
-            textwrap.dedent(
-                f"""\
+            textwrap.dedent(f"""\
                 emulate -L zsh
                 set -euo pipefail
                 source {_LIB!s}
                 forge_disable_extension
-                """
-            ),
+                """),
             env,
         )
         self.assertEqual(r.returncode, 0, msg=r.stderr)
@@ -186,36 +183,35 @@ class TestForgeDoInstallDisableBeforeRm(unittest.TestCase):
         self.repo.mkdir()
         # Minimal fake repo + verified temp build
         (self.repo / "Makefile").write_text("# fake\n")
-        (self.repo / "metadata.json").write_text(json.dumps({"uuid": _UUID, "name": "Forge"}))
+        (self.repo / "metadata.json").write_text(
+            json.dumps({
+                "uuid": _UUID,
+                "name": "Forge"
+            }))
         temp = self.repo / "temp"
         temp.mkdir()
         # forge_verify_temp_build needs >150 lines in extension.js
-        (temp / "extension.js").write_text("\n".join(f"// line {i}" for i in range(200)))
+        (temp / "extension.js").write_text("\n".join(f"// line {i}"
+                                                     for i in range(200)))
         (temp / "metadata.json").write_text(
-            json.dumps(
-                {
-                    "uuid": _UUID,
-                    "name": "Forge",
-                    "version-name": "from-temp",
-                    "shell-version": ["46"],
-                }
-            )
-        )
+            json.dumps({
+                "uuid": _UUID,
+                "name": "Forge",
+                "version-name": "from-temp",
+                "shell-version": ["46"],
+            }))
         (temp / "schemas").mkdir()
         (temp / "schemas" / "gschemas.compiled").write_bytes(b"fake")
 
         self.ext = self.root / "extensions" / _UUID
         self.ext.mkdir(parents=True)
         (self.ext / "metadata.json").write_text(
-            json.dumps(
-                {
-                    "uuid": _UUID,
-                    "name": "Forge",
-                    "version-name": "old-install",
-                    "shell-version": ["46"],
-                }
-            )
-        )
+            json.dumps({
+                "uuid": _UUID,
+                "name": "Forge",
+                "version-name": "old-install",
+                "shell-version": ["46"],
+            }))
         (self.ext / "old-marker.txt").write_text("stale")
 
         self.bin = self.root / "bin"
@@ -234,8 +230,7 @@ class TestForgeDoInstallDisableBeforeRm(unittest.TestCase):
         state.write_text(_UUID + "\n")
         _write_executable(
             self.bin / "gnome-extensions",
-            textwrap.dedent(
-                f"""\
+            textwrap.dedent(f"""\
                 #!/usr/bin/env zsh
                 emulate -L zsh
                 set -euo pipefail
@@ -268,8 +263,7 @@ class TestForgeDoInstallDisableBeforeRm(unittest.TestCase):
                     ;;
                 esac
                 exit 0
-                """
-            ),
+                """),
         )
 
         self.env = {
@@ -284,7 +278,8 @@ class TestForgeDoInstallDisableBeforeRm(unittest.TestCase):
             "HOME": str(self.root / "home"),
             # Avoid writing origin into real manage dir
             "FORGE_MANAGE_DIR": str(self.root / "manage"),
-            "FORGE_ORIGIN_PATH": str(self.root / "manage" / "install-origin.json"),
+            "FORGE_ORIGIN_PATH":
+            str(self.root / "manage" / "install-origin.json"),
         }
         (self.root / "home").mkdir(exist_ok=True)
         (self.root / "manage").mkdir(exist_ok=True)
@@ -309,13 +304,16 @@ class TestForgeDoInstallDisableBeforeRm(unittest.TestCase):
             timeout=60,
             check=False,
         )
-        self.assertEqual(r.returncode, 0, msg=f"stdout={r.stdout}\nstderr={r.stderr}")
+        self.assertEqual(r.returncode,
+                         0,
+                         msg=f"stdout={r.stdout}\nstderr={r.stderr}")
 
         order = self.order.read_text().strip().splitlines()
         self.assertIn(
             "disable-while-old-present",
             order,
-            msg=f"disable must run before rm; order={order!r} log={self.log.read_text()!r}",
+            msg=
+            f"disable must run before rm; order={order!r} log={self.log.read_text()!r}",
         )
         self.assertNotIn("disable-after-old-gone", order)
 
@@ -331,14 +329,18 @@ class TestForgeDoInstallDisableBeforeRm(unittest.TestCase):
 
 
 class TestInstallHelpMentionsSafeReplace(unittest.TestCase):
+
     def test_install_zsh_help(self) -> None:
         r = subprocess.run(
-            [_zsh_bin(), str(_REPO / "scripts" / "install.zsh"), "--help"],
+            [_zsh_bin(),
+             str(_REPO / "scripts" / "install.zsh"), "--help"],
             text=True,
             capture_output=True,
             timeout=15,
             check=False,
-            env={**os.environ, "FORGE_COLOR": "never"},
+            env={
+                **os.environ, "FORGE_COLOR": "never"
+            },
         )
         self.assertEqual(r.returncode, 0, msg=r.stderr)
         out = r.stdout + r.stderr

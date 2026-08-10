@@ -31,6 +31,7 @@ LEGACY_DISABLED = """\
 
 
 class ParseInfoTests(unittest.TestCase):
+
     def test_gnome46_active(self):
         self.assertIs(parse_info_enabled(GNOME46_ACTIVE), True)
 
@@ -55,6 +56,7 @@ class ParseInfoTests(unittest.TestCase):
 
 
 class ListEnabledTests(unittest.TestCase):
+
     def test_list(self):
         text = "a@x\nforge@jmmaranan.com\nb@y\n"
         self.assertTrue(parse_list_enabled(text, "forge@jmmaranan.com"))
@@ -62,11 +64,14 @@ class ListEnabledTests(unittest.TestCase):
 
 
 class ClassifyTests(unittest.TestCase):
+
     def test_info_active(self):
-        self.assertEqual(classify_extension(info_text=GNOME46_ACTIVE), "enabled")
+        self.assertEqual(classify_extension(info_text=GNOME46_ACTIVE),
+                         "enabled")
 
     def test_info_inactive(self):
-        self.assertEqual(classify_extension(info_text=GNOME46_INACTIVE), "disabled")
+        self.assertEqual(classify_extension(info_text=GNOME46_INACTIVE),
+                         "disabled")
 
     def test_missing(self):
         self.assertEqual(classify_extension(info_missing=True), "missing")

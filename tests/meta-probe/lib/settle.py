@@ -11,85 +11,135 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-
 CONTRACT_VERSION = 1
 
 # Signals that reset settle duration
-HARD_SIGNALS = frozenset(
-    {
-        "window-created",
-        "size-changed",
-        "position-changed",
-        "workspace-changed",
-        "notify::maximized-horizontally",
-        "notify::maximized-vertically",
-        "notify::fullscreen",
-        "notify::minimized",
-        "notify::wm-class",
-        "unmanaged",
-    }
-)
+HARD_SIGNALS = frozenset({
+    "window-created",
+    "size-changed",
+    "position-changed",
+    "workspace-changed",
+    "notify::maximized-horizontally",
+    "notify::maximized-vertically",
+    "notify::fullscreen",
+    "notify::minimized",
+    "notify::wm-class",
+    "unmanaged",
+})
 
 # Signals recorded as soft (never reset timer)
-SOFT_SIGNALS = frozenset(
-    {
-        "notify::title",
-        "notify::appears-focused",
-        "raised",
-    }
-)
+SOFT_SIGNALS = frozenset({
+    "notify::title",
+    "notify::appears-focused",
+    "raised",
+})
 
 # Snapshot fields compared for soft-only thrash (do not reset timer)
 SOFT_SNAP_FIELDS = frozenset({"title", "focused", "above"})
 
 # Layout snapshot fields — if they differ without a hard event, still soft for now
 # (events usually fire; contract may promote later via version bump)
-HARD_SNAP_FIELDS = frozenset(
-    {"frame", "monitor", "workspace", "maximized", "fullscreen", "minimized", "wmClass", "wmClassInstance"}
-)
+HARD_SNAP_FIELDS = frozenset({
+    "frame", "monitor", "workspace", "maximized", "fullscreen", "minimized",
+    "wmClass", "wmClassInstance"
+})
 
 KNOWN_HARD = {
-    "d_size": {"signals": ["size-changed"]},
-    "d_pos": {"signals": ["position-changed"]},
-    "d_workspace": {"signals": ["workspace-changed"]},
-    "d_max": {"signals": ["notify::maximized-horizontally", "notify::maximized-vertically"]},
-    "d_fs": {"signals": ["notify::fullscreen"]},
-    "d_min": {"signals": ["notify::minimized"]},
-    "d_class": {"signals": ["notify::wm-class"]},
-    "d_create": {"signals": ["window-created"]},
-    "d_unmanaged": {"signals": ["unmanaged"]},
+    "d_size": {
+        "signals": ["size-changed"]
+    },
+    "d_pos": {
+        "signals": ["position-changed"]
+    },
+    "d_workspace": {
+        "signals": ["workspace-changed"]
+    },
+    "d_max": {
+        "signals":
+        ["notify::maximized-horizontally", "notify::maximized-vertically"]
+    },
+    "d_fs": {
+        "signals": ["notify::fullscreen"]
+    },
+    "d_min": {
+        "signals": ["notify::minimized"]
+    },
+    "d_class": {
+        "signals": ["notify::wm-class"]
+    },
+    "d_create": {
+        "signals": ["window-created"]
+    },
+    "d_unmanaged": {
+        "signals": ["unmanaged"]
+    },
 }
 
 KNOWN_SOFT = {
-    "s_title": {"signals": ["notify::title"], "fields": ["title"]},
-    "s_focus": {"signals": ["notify::appears-focused"], "fields": ["focused"]},
-    "s_raise": {"signals": ["raised"]},
-    "s_snap_frame": {"fields": ["frame"]},
-    "s_snap_monitor": {"fields": ["monitor"]},
-    "s_snap_workspace": {"fields": ["workspace"]},
-    "s_snap_max": {"fields": ["maximized"]},
-    "s_snap_fs": {"fields": ["fullscreen"]},
-    "s_snap_min": {"fields": ["minimized"]},
-    "s_snap_class": {"fields": ["wmClass", "wmClassInstance"]},
-    "s_snap_title": {"fields": ["title"]},
-    "s_snap_focus": {"fields": ["focused"]},
-    "s_snap_above": {"fields": ["above"]},
+    "s_title": {
+        "signals": ["notify::title"],
+        "fields": ["title"]
+    },
+    "s_focus": {
+        "signals": ["notify::appears-focused"],
+        "fields": ["focused"]
+    },
+    "s_raise": {
+        "signals": ["raised"]
+    },
+    "s_snap_frame": {
+        "fields": ["frame"]
+    },
+    "s_snap_monitor": {
+        "fields": ["monitor"]
+    },
+    "s_snap_workspace": {
+        "fields": ["workspace"]
+    },
+    "s_snap_max": {
+        "fields": ["maximized"]
+    },
+    "s_snap_fs": {
+        "fields": ["fullscreen"]
+    },
+    "s_snap_min": {
+        "fields": ["minimized"]
+    },
+    "s_snap_class": {
+        "fields": ["wmClass", "wmClassInstance"]
+    },
+    "s_snap_title": {
+        "fields": ["title"]
+    },
+    "s_snap_focus": {
+        "fields": ["focused"]
+    },
+    "s_snap_above": {
+        "fields": ["above"]
+    },
 }
 
 
-def agreement_contract_doc(settle_duration_ms: float, check_interval_ms: float) -> dict[str, Any]:
+def agreement_contract_doc(settle_duration_ms: float,
+                           check_interval_ms: float) -> dict[str, Any]:
     return {
-        "version": CONTRACT_VERSION,
-        "checkIntervalMs": check_interval_ms,
-        "settleDurationMs": settle_duration_ms,
-        "hardSignals": sorted(HARD_SIGNALS),
-        "softSignals": sorted(SOFT_SIGNALS),
-        "softSnapFields": sorted(SOFT_SNAP_FIELDS),
-        "hardSnapFieldsSoftForNow": sorted(HARD_SNAP_FIELDS),
-        "note": (
-            "Hard signal → reset timer. Soft signal/snapshot thrash → record only. "
-            "Snapshot-only layout diffs are soft in v1 (may promote later)."
-        ),
+        "version":
+        CONTRACT_VERSION,
+        "checkIntervalMs":
+        check_interval_ms,
+        "settleDurationMs":
+        settle_duration_ms,
+        "hardSignals":
+        sorted(HARD_SIGNALS),
+        "softSignals":
+        sorted(SOFT_SIGNALS),
+        "softSnapFields":
+        sorted(SOFT_SNAP_FIELDS),
+        "hardSnapFieldsSoftForNow":
+        sorted(HARD_SNAP_FIELDS),
+        "note":
+        ("Hard signal → reset timer. Soft signal/snapshot thrash → record only. "
+         "Snapshot-only layout diffs are soft in v1 (may promote later)."),
     }
 
 
@@ -104,7 +154,8 @@ class SettleConfig:
     agreement_interval_ms: float = 0.0
     poll_ms: float = 50.0
     snapshot_each_poll: bool = True
-    relevant_signals: list[str] = field(default_factory=lambda: sorted(HARD_SIGNALS | SOFT_SIGNALS))
+    relevant_signals: list[str] = field(
+        default_factory=lambda: sorted(HARD_SIGNALS | SOFT_SIGNALS))
 
 
 @dataclass
@@ -154,7 +205,8 @@ class DisagreementCatalog:
         for name, ent in self.entries.items():
             if ent.get("kind") != kind:
                 continue
-            if set(ent.get("signals") or []) == sig_set and set(ent.get("fields") or []) == field_set:
+            if set(ent.get("signals") or []) == sig_set and set(
+                    ent.get("fields") or []) == field_set:
                 return name
         # mint new id
         blob = f"{kind}|{','.join(sorted(sig_set))}|{','.join(sorted(field_set))}"
@@ -183,22 +235,23 @@ def _frame_eq(a: Any, b: Any) -> bool:
     return True
 
 
-def snapshot_field_diffs(prev: Optional[dict[str, Any]], curr: Optional[dict[str, Any]]) -> list[str]:
+def snapshot_field_diffs(prev: Optional[dict[str, Any]],
+                         curr: Optional[dict[str, Any]]) -> list[str]:
     if not prev or not curr:
         return []
     diffs: list[str] = []
     for k in (
-        "frame",
-        "monitor",
-        "workspace",
-        "maximized",
-        "fullscreen",
-        "minimized",
-        "wmClass",
-        "wmClassInstance",
-        "title",
-        "focused",
-        "above",
+            "frame",
+            "monitor",
+            "workspace",
+            "maximized",
+            "fullscreen",
+            "minimized",
+            "wmClass",
+            "wmClassInstance",
+            "title",
+            "focused",
+            "above",
     ):
         if k == "frame":
             if not _frame_eq(prev.get("frame"), curr.get("frame")):
@@ -250,8 +303,10 @@ def classify_check(
                     pref = name
                     break
             ids.append(
-                catalog.ensure(kind="hard", signals=[sig], fields=[], preferred=pref)
-            )
+                catalog.ensure(kind="hard",
+                               signals=[sig],
+                               fields=[],
+                               preferred=pref))
         if len(set(ids)) == 1:
             return ids[0], "hard", ids
         multi = catalog.ensure(
@@ -296,7 +351,11 @@ def classify_check(
             if sig in (meta.get("signals") or []):
                 pref = name
                 break
-        soft_ids.append(catalog.ensure(kind="soft", signals=[sig], fields=[], preferred=pref))
+        soft_ids.append(
+            catalog.ensure(kind="soft",
+                           signals=[sig],
+                           fields=[],
+                           preferred=pref))
 
     for f in field_diffs:
         pref = {
@@ -313,8 +372,8 @@ def classify_check(
             "above": "s_snap_above",
         }.get(f)
         soft_ids.append(
-            catalog.ensure(kind="soft", signals=[], fields=[f], preferred=pref)
-        )
+            catalog.ensure(kind="soft", signals=[], fields=[f],
+                           preferred=pref))
 
     if soft_ids:
         if len(set(soft_ids)) == 1:
@@ -348,7 +407,9 @@ def match_window(snap: dict[str, Any], match: dict[str, Any]) -> bool:
     return True
 
 
-def settle_config_from_dict(settle: dict[str, Any], *, phase: str = "full") -> SettleConfig:
+def settle_config_from_dict(settle: dict[str, Any],
+                            *,
+                            phase: str = "full") -> SettleConfig:
     """phase: bootstrap | calibration | full"""
     base_interval = float(settle.get("checkIntervalMs") or 50)
     base_duration = float(settle.get("settleDurationMs") or 3000)
@@ -400,7 +461,8 @@ def derive_knobs_from_calibration(
             duration = max(3000.0, min(duration, 5000.0))
 
     # Full-suite check interval: coarser when hard silence after thrash
-    if result.hard_reset_count <= 2 and (result.time_to_last_hard_ms or 0) < 1500:
+    if result.hard_reset_count <= 2 and (result.time_to_last_hard_ms
+                                         or 0) < 1500:
         interval = min(500.0, max(100.0, prev_interval_ms * 4))
     elif result.hard_reset_count <= 8:
         interval = min(250.0, max(50.0, prev_interval_ms * 2))

@@ -10,7 +10,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 _REPO = Path(__file__).resolve().parents[3]
 _FORGE_CLI = _REPO / "scripts" / "forge"
@@ -19,6 +18,12 @@ _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "layout"
 if str(_FORGE_CLI) not in sys.path:
     sys.path.insert(0, str(_FORGE_CLI))
 
+from layout_plan import (  # noqa: E402
+    filter_forest_workspace,
+    normalize_profile,
+    plan_reconcile,
+    validate_reconcile_profile,
+)
 from layout_save import (  # noqa: E402
     apply_description,
     apply_focus_override,
@@ -28,12 +33,6 @@ from layout_save import (  # noqa: E402
     profile_for_output,
     resolve_save_description,
 )
-from layout_plan import (  # noqa: E402
-    filter_forest_workspace,
-    normalize_profile,
-    plan_reconcile,
-    validate_reconcile_profile,
-)
 
 
 def _load(name: str):
@@ -41,6 +40,7 @@ def _load(name: str):
 
 
 class TestCaptureTilesProfile(unittest.TestCase):
+
     def test_perfect_dual_mon_shape(self):
         forest = _load("tree-perfect.json")
         raw = capture_tiles_profile(forest)
@@ -57,7 +57,8 @@ class TestCaptureTilesProfile(unittest.TestCase):
         # mon1: ghostty + tabbed triple
         self.assertEqual(len(mon1), 2)
         self.assertIsInstance(mon1[1], dict)
-        self.assertEqual(mon1[1].get("tab"), ["YouTube", "Gmail", "Google Voice"])
+        self.assertEqual(mon1[1].get("tab"),
+                         ["YouTube", "Gmail", "Google Voice"])
 
     def test_chrome_string_cells_when_inferable(self):
         forest = _load("tree-perfect.json")
@@ -83,55 +84,82 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_save_filter_one_workspace_only(self):
         """WS1: capture only mon roots for target/current workspace."""
         forest = {
-            "apiVersion": 2,
-            "activeWorkspace": 1,
-            "nWorkspaces": 2,
+            "apiVersion":
+            2,
+            "activeWorkspace":
+            1,
+            "nWorkspaces":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "layout": "HSPLIT",
-                    "id": "mo0ws0",
-                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
-                    "stableKey": "geom:0,0,1000,1000#primary",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "layout": None,
-                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
-                            "percent": 0,
-                            "userSized": False,
-                            "children": [],
-                            "mode": "TILE",
-                            "wmClass": "com.mitchellh.ghostty",
-                            "title": "ws0-term",
-                            "windowId": 10,
-                            "pid": 110,
-                            "monitor": 0,
-                        }
-                    ],
+                    "nodeType":
+                    "MONITOR",
+                    "layout":
+                    "HSPLIT",
+                    "id":
+                    "mo0ws0",
+                    "rect": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 1000,
+                        "height": 1000
+                    },
+                    "stableKey":
+                    "geom:0,0,1000,1000#primary",
+                    "children": [{
+                        "nodeType": "WINDOW",
+                        "layout": None,
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "width": 100,
+                            "height": 100
+                        },
+                        "percent": 0,
+                        "userSized": False,
+                        "children": [],
+                        "mode": "TILE",
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "ws0-term",
+                        "windowId": 10,
+                        "pid": 110,
+                        "monitor": 0,
+                    }],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "layout": "HSPLIT",
-                    "id": "mo0ws1",
-                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
-                    "stableKey": "geom:0,0,1000,1000#primary",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "layout": None,
-                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
-                            "percent": 0,
-                            "userSized": False,
-                            "children": [],
-                            "mode": "TILE",
-                            "wmClass": "org.gnome.Nautilus",
-                            "title": "ws1-files",
-                            "windowId": 20,
-                            "pid": 220,
-                            "monitor": 0,
-                        }
-                    ],
+                    "nodeType":
+                    "MONITOR",
+                    "layout":
+                    "HSPLIT",
+                    "id":
+                    "mo0ws1",
+                    "rect": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 1000,
+                        "height": 1000
+                    },
+                    "stableKey":
+                    "geom:0,0,1000,1000#primary",
+                    "children": [{
+                        "nodeType": "WINDOW",
+                        "layout": None,
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "width": 100,
+                            "height": 100
+                        },
+                        "percent": 0,
+                        "userSized": False,
+                        "children": [],
+                        "mode": "TILE",
+                        "wmClass": "org.gnome.Nautilus",
+                        "title": "ws1-files",
+                        "windowId": 20,
+                        "pid": 220,
+                        "monitor": 0,
+                    }],
                 },
             ],
         }
@@ -141,7 +169,8 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertIn("nautilus", body.casefold())
         self.assertNotIn("ghostty", body.casefold())
         # Explicit workspace=0 ignores meta and captures Ghostty only.
-        profile0 = profile_for_output(capture_tiles_profile(forest, workspace=0))
+        profile0 = profile_for_output(
+            capture_tiles_profile(forest, workspace=0))
         body0 = json.dumps(profile0)
         self.assertIn("ghostty", body0.casefold())
         self.assertNotIn("nautilus", body0.casefold())
@@ -224,9 +253,8 @@ class TestCaptureTilesProfile(unittest.TestCase):
 
         ir = validate_reconcile_profile(profile, mon_count=2)
         self.assertEqual(ir.get("focus"), "Grok-2")
-        tab_child = next(
-            c for c in ir["layout"]["mon0"]["children"] if c.get("layout") == "tabbed"
-        )
+        tab_child = next(c for c in ir["layout"]["mon0"]["children"]
+                         if c.get("layout") == "tabbed")
         self.assertEqual(tab_child.get("active"), "Grok-2")
         self.assertEqual(tab_child.get("roles"), ["Grok", "Grok-2"])
 
@@ -248,18 +276,20 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertEqual(kids[0]["layout"], "stacked")
         self.assertEqual(len(kids[0]["roles"]), 2)
         tab_sugar = profile_for_output(
-            capture_tiles_profile(_load("tree-ghostty-nautilus-tab.json"))
-        )
+            capture_tiles_profile(_load("tree-ghostty-nautilus-tab.json")))
         self.assertIn("tab", tab_sugar[0])
         tab_ir = validate_reconcile_profile(tab_sugar)
-        self.assertEqual(tab_ir["layout"]["mon0"]["children"][0]["layout"], "tabbed")
+        self.assertEqual(tab_ir["layout"]["mon0"]["children"][0]["layout"],
+                         "tabbed")
 
     def test_single_mon_tab_plus_vsplit_not_dual_mon_roundtrip(self):
         """Green desk: tab | vsplit — bare array stays mon0 (not dual mon)."""
         intended = {
             "tiles": {
                 "mon0": [
-                    {"tab": ["Grok", "google-chrome"]},
+                    {
+                        "tab": ["Grok", "google-chrome"]
+                    },
                     {
                         "vsplit": [
                             "ghostty",
@@ -309,26 +339,53 @@ class TestCaptureTilesProfile(unittest.TestCase):
 
     def test_container_aliases_load(self):
         for sugar in (
-            {"t": ["a", "b"]},
-            {"tab": ["a", "b"]},
-            {"tabbed": ["a", "b"]},
-            {"layout": "tab", "content": ["a", "b"]},
+            {
+                "t": ["a", "b"]
+            },
+            {
+                "tab": ["a", "b"]
+            },
+            {
+                "tabbed": ["a", "b"]
+            },
+            {
+                "layout": "tab",
+                "content": ["a", "b"]
+            },
         ):
             ir = validate_reconcile_profile([sugar])
-            self.assertEqual(ir["layout"]["mon0"]["children"][0]["layout"], "tabbed")
+            self.assertEqual(ir["layout"]["mon0"]["children"][0]["layout"],
+                             "tabbed")
         for sugar in (
-            {"s": ["a", "b"]},
-            {"stack": ["a", "b"]},
-            {"stacked": ["a", "b"]},
+            {
+                "s": ["a", "b"]
+            },
+            {
+                "stack": ["a", "b"]
+            },
+            {
+                "stacked": ["a", "b"]
+            },
         ):
             ir = validate_reconcile_profile([sugar])
-            self.assertEqual(ir["layout"]["mon0"]["children"][0]["layout"], "stacked")
+            self.assertEqual(ir["layout"]["mon0"]["children"][0]["layout"],
+                             "stacked")
         for sugar in (
-            {"h": ["ghostty", "firefox"]},
-            {"hsplit": ["ghostty", "firefox"]},
-            {"horizontal": ["ghostty", "firefox"]},
-            {"v": ["ghostty", "firefox"]},
-            {"vsplit": ["ghostty", "firefox"]},
+            {
+                "h": ["ghostty", "firefox"]
+            },
+            {
+                "hsplit": ["ghostty", "firefox"]
+            },
+            {
+                "horizontal": ["ghostty", "firefox"]
+            },
+            {
+                "v": ["ghostty", "firefox"]
+            },
+            {
+                "vsplit": ["ghostty", "firefox"]
+            },
         ):
             ir = validate_reconcile_profile([sugar])
             kids = ir["layout"]["mon0"]["children"]
@@ -349,37 +406,43 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_float_only_saves_empty_profile(self):
         """FLOAT-only desk (e.g. Guake) → empty profile, not an error."""
         forest = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "layout": "HSPLIT",
-                    "id": "mo0ws0",
-                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
-                    "stableKey": "geom:0,0,1000,1000#primary",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "layout": None,
-                            "rect": {
-                                "x": 0,
-                                "y": 0,
-                                "width": 100,
-                                "height": 100,
-                            },
-                            "percent": 0,
-                            "userSized": False,
-                            "children": [],
-                            "wmClass": "org.inkscape.Inkscape",
-                            "title": "Drawing",
-                            "windowId": 9001,
-                            "pid": 9001,
-                            "monitor": 0,
-                            "mode": "FLOAT",
-                        }
-                    ],
-                }
-            ],
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "layout":
+                "HSPLIT",
+                "id":
+                "mo0ws0",
+                "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 1000,
+                    "height": 1000
+                },
+                "stableKey":
+                "geom:0,0,1000,1000#primary",
+                "children": [{
+                    "nodeType": "WINDOW",
+                    "layout": None,
+                    "rect": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 100,
+                        "height": 100,
+                    },
+                    "percent": 0,
+                    "userSized": False,
+                    "children": [],
+                    "wmClass": "org.inkscape.Inkscape",
+                    "title": "Drawing",
+                    "windowId": 9001,
+                    "pid": 9001,
+                    "monitor": 0,
+                    "mode": "FLOAT",
+                }],
+            }],
         }
         raw = capture_tiles_profile(forest)
         self.assertEqual(raw.get("tiles"), {})
@@ -395,37 +458,43 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_keep_floats_saves_and_protects_on_clean(self):
         """--keep-floats records FLOAT cells; clean claim leaves them open."""
         forest = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "layout": "HSPLIT",
-                    "id": "mo0ws0",
-                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
-                    "stableKey": "geom:0,0,1000,1000#primary",
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "layout": None,
-                            "rect": {
-                                "x": 0,
-                                "y": 0,
-                                "width": 100,
-                                "height": 100,
-                            },
-                            "percent": 0,
-                            "userSized": False,
-                            "children": [],
-                            "wmClass": "Guake",
-                            "title": "Guake",
-                            "windowId": 42,
-                            "pid": 42,
-                            "monitor": 0,
-                            "mode": "FLOAT",
-                        }
-                    ],
-                }
-            ],
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "layout":
+                "HSPLIT",
+                "id":
+                "mo0ws0",
+                "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 1000,
+                    "height": 1000
+                },
+                "stableKey":
+                "geom:0,0,1000,1000#primary",
+                "children": [{
+                    "nodeType": "WINDOW",
+                    "layout": None,
+                    "rect": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 100,
+                        "height": 100,
+                    },
+                    "percent": 0,
+                    "userSized": False,
+                    "children": [],
+                    "wmClass": "Guake",
+                    "title": "Guake",
+                    "windowId": 42,
+                    "pid": 42,
+                    "monitor": 0,
+                    "mode": "FLOAT",
+                }],
+            }],
         }
         raw = capture_tiles_profile(forest, keep_floats=True)
         self.assertEqual(raw.get("tiles"), {})
@@ -444,7 +513,12 @@ class TestCaptureTilesProfile(unittest.TestCase):
         guake = {
             "nodeType": "WINDOW",
             "layout": None,
-            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+            "rect": {
+                "x": 0,
+                "y": 0,
+                "width": 100,
+                "height": 100
+            },
             "percent": 0,
             "userSized": False,
             "children": [],
@@ -472,28 +546,32 @@ class TestCaptureTilesProfile(unittest.TestCase):
 
         forest = _load("tree-perfect.json")
         mon0 = forest["monitors"][0]
-        mon0["children"].append(
-            {
-                "nodeType": "WINDOW",
-                "layout": None,
-                "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
-                "percent": 0,
-                "userSized": False,
-                "children": [],
-                "wmClass": "Guake",
-                "title": "Guake",
-                "windowId": 777,
-                "pid": 777,
-                "monitor": 0,
-                "mode": "FLOAT",
-            }
-        )
+        mon0["children"].append({
+            "nodeType": "WINDOW",
+            "layout": None,
+            "rect": {
+                "x": 0,
+                "y": 0,
+                "width": 100,
+                "height": 100
+            },
+            "percent": 0,
+            "userSized": False,
+            "children": [],
+            "wmClass": "Guake",
+            "title": "Guake",
+            "windowId": 777,
+            "pid": 777,
+            "monitor": 0,
+            "mode": "FLOAT",
+        })
         forest["focusWindowId"] = 777
         forest["lastTileFocusWindowId"] = 103
         mons = _select_physical_monitors(forest)
-        tok = _focus_token_from_forest(
-            forest, mons, include_floats=False, floating_cells=[]
-        )
+        tok = _focus_token_from_forest(forest,
+                                       mons,
+                                       include_floats=False,
+                                       floating_cells=[])
         # Dual ghostty → left instance 0
         self.assertEqual(tok, ["ghostty", 0])
 
@@ -530,7 +608,8 @@ class TestCaptureTilesProfile(unittest.TestCase):
                 for x in node:
                     _collect(x, labels)
             elif isinstance(node, dict):
-                for k in ("tab", "stack", "hsplit", "vsplit", "content", "children"):
+                for k in ("tab", "stack", "hsplit", "vsplit", "content",
+                          "children"):
                     if k in node:
                         _collect(node[k], labels)
                 if node.get("app"):
@@ -543,7 +622,8 @@ class TestCaptureTilesProfile(unittest.TestCase):
         ir = normalize_profile(profile, mon_count=2)
         gids = [r["id"] for r in ir["roles"] if "ghostty" in r["id"]]
         self.assertIn("ghostty", gids)
-        self.assertTrue(any(x.startswith("ghostty") and x != "ghostty" for x in gids))
+        self.assertTrue(
+            any(x.startswith("ghostty") and x != "ghostty" for x in gids))
 
     def test_custom_description_wraps_tiles_array(self):
         forest = _load("tree-perfect.json")
@@ -576,50 +656,58 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_mon_vsplit_saves_tagged_not_bare_hsplit(self):
         """Mon-root VSPLIT [ghostty, nautilus] must not desugar as hsplit."""
         forest = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "VSPLIT",
-                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 1,
-                            "wmClass": "com.mitchellh.ghostty",
-                            "title": "Ghostty",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "rect": {
-                                "x": 0,
-                                "y": 0,
-                                "width": 1000,
-                                "height": 500,
-                            },
-                            "children": [],
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "VSPLIT",
+                "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 1000,
+                    "height": 1000
+                },
+                "children": [
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 1,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "Ghostty",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "width": 1000,
+                            "height": 500,
                         },
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 2,
-                            "wmClass": "org.gnome.Nautilus",
-                            "title": "Home",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "rect": {
-                                "x": 0,
-                                "y": 500,
-                                "width": 1000,
-                                "height": 500,
-                            },
-                            "children": [],
+                        "children": [],
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 2,
+                        "wmClass": "org.gnome.Nautilus",
+                        "title": "Home",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "rect": {
+                            "x": 0,
+                            "y": 500,
+                            "width": 1000,
+                            "height": 500,
                         },
-                    ],
-                }
-            ],
+                        "children": [],
+                    },
+                ],
+            }],
         }
         raw = capture_tiles_profile(forest)
-        self.assertEqual(raw["tiles"]["mon0"], {"vsplit": ["ghostty", "nautilus"]})
+        self.assertEqual(raw["tiles"]["mon0"],
+                         {"vsplit": ["ghostty", "nautilus"]})
         sugar = profile_for_output(raw)
         # Single mon: mon map (not bare [{vsplit}] nested-only pane list).
         self.assertIsInstance(sugar, dict)
@@ -636,76 +724,88 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_mon_vsplit_reopen_plan_ensure_vsplit(self):
         """After closing nautilus, plan ensure_layout mode=vsplit (not hsplit)."""
         forest = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "VSPLIT",
-                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 1,
-                            "wmClass": "com.mitchellh.ghostty",
-                            "title": "Ghostty",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "rect": {
-                                "x": 0,
-                                "y": 0,
-                                "width": 1000,
-                                "height": 500,
-                            },
-                            "children": [],
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "VSPLIT",
+                "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 1000,
+                    "height": 1000
+                },
+                "children": [
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 1,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "Ghostty",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "width": 1000,
+                            "height": 500,
                         },
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 2,
-                            "wmClass": "org.gnome.Nautilus",
-                            "title": "Home",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "rect": {
-                                "x": 0,
-                                "y": 500,
-                                "width": 1000,
-                                "height": 500,
-                            },
-                            "children": [],
+                        "children": [],
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 2,
+                        "wmClass": "org.gnome.Nautilus",
+                        "title": "Home",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "rect": {
+                            "x": 0,
+                            "y": 500,
+                            "width": 1000,
+                            "height": 500,
                         },
-                    ],
-                }
-            ],
+                        "children": [],
+                    },
+                ],
+            }],
         }
         sugar = profile_for_output(capture_tiles_profile(forest))
         live = {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
-                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 1,
-                            "wmClass": "com.mitchellh.ghostty",
-                            "title": "Ghostty",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "rect": {
-                                "x": 0,
-                                "y": 0,
-                                "width": 1000,
-                                "height": 1000,
-                            },
-                            "children": [],
-                        }
-                    ],
-                }
-            ],
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "HSPLIT",
+                "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 1000,
+                    "height": 1000
+                },
+                "children": [{
+                    "nodeType": "WINDOW",
+                    "windowId": 1,
+                    "wmClass": "com.mitchellh.ghostty",
+                    "title": "Ghostty",
+                    "monitor": 0,
+                    "mode": "TILE",
+                    "rect": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 1000,
+                        "height": 1000,
+                    },
+                    "children": [],
+                }],
+            }],
         }
         plan = plan_reconcile(live, sugar)
         self.assertTrue(plan["ok"])
@@ -713,8 +813,7 @@ class TestCaptureTilesProfile(unittest.TestCase):
         self.assertEqual(by_id["ghostty"]["status"], "reused")
         self.assertEqual(by_id["nautilus"]["status"], "open")
         ensures = [
-            a
-            for a in plan["actions"]
+            a for a in plan["actions"]
             if a.get("op") == "ensure_layout" and a.get("slot") == "mon0"
         ]
         self.assertTrue(ensures, plan["actions"])
@@ -724,13 +823,22 @@ class TestCaptureTilesProfile(unittest.TestCase):
     def test_dual_mon_vsplit_bare_preserves_mon_split(self):
         """Dual bare [{vsplit:…}, mon1Body] + mon_count=2 → mon0.split=vsplit."""
         forest = {
-            "apiVersion": 2,
+            "apiVersion":
+            2,
             "monitors": [
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "VSPLIT",
-                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo0ws0",
+                    "layout":
+                    "VSPLIT",
+                    "rect": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 1000,
+                        "height": 1000
+                    },
                     "children": [
                         {
                             "nodeType": "WINDOW",
@@ -765,27 +873,33 @@ class TestCaptureTilesProfile(unittest.TestCase):
                     ],
                 },
                 {
-                    "nodeType": "MONITOR",
-                    "id": "mo1ws0",
-                    "layout": "HSPLIT",
-                    "rect": {"x": 1000, "y": 0, "width": 1000, "height": 1000},
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 3,
-                            "wmClass": "com.mitchellh.ghostty",
-                            "title": "Ghostty",
-                            "monitor": 1,
-                            "mode": "TILE",
-                            "rect": {
-                                "x": 1000,
-                                "y": 0,
-                                "width": 1000,
-                                "height": 1000,
-                            },
-                            "children": [],
-                        }
-                    ],
+                    "nodeType":
+                    "MONITOR",
+                    "id":
+                    "mo1ws0",
+                    "layout":
+                    "HSPLIT",
+                    "rect": {
+                        "x": 1000,
+                        "y": 0,
+                        "width": 1000,
+                        "height": 1000
+                    },
+                    "children": [{
+                        "nodeType": "WINDOW",
+                        "windowId": 3,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "Ghostty",
+                        "monitor": 1,
+                        "mode": "TILE",
+                        "rect": {
+                            "x": 1000,
+                            "y": 0,
+                            "width": 1000,
+                            "height": 1000,
+                        },
+                        "children": [],
+                    }],
                 },
             ],
         }
@@ -815,6 +929,7 @@ class TestCaptureTilesProfile(unittest.TestCase):
 
 
 class TestCaptureRoundTrip(unittest.TestCase):
+
     def test_perfect_forest_reuses_all(self):
         forest = _load("tree-perfect.json")
         sugar = profile_for_output(capture_tiles_profile(forest))
@@ -846,7 +961,8 @@ class TestCaptureRoundTrip(unittest.TestCase):
         forest = _load("tree-stacked-pair.json")
         sugar = profile_for_output(capture_tiles_profile(forest))
         ir = normalize_profile(sugar)
-        self.assertEqual(ir["layout"]["mon0"]["children"][0]["layout"], "stacked")
+        self.assertEqual(ir["layout"]["mon0"]["children"][0]["layout"],
+                         "stacked")
         plan = plan_reconcile(forest, sugar)
         self.assertEqual(plan["counts"]["opened"], 0)
         self.assertEqual(len(plan["roles"]), 2)
@@ -856,15 +972,15 @@ class TestCaptureRoundTrip(unittest.TestCase):
         self.assertEqual(plan["actions"], [])
         self.assertFalse(plan.get("thrashState", {}).get("thrashed", False))
         ensures = [
-            a
-            for a in plan.get("actions") or []
-            if a.get("op") == "ensure_layout"
-            and a.get("mode") in ("tabbed", "stacked")
+            a for a in plan.get("actions") or []
+            if a.get("op") == "ensure_layout" and a.get("mode") in ("tabbed",
+                                                                    "stacked")
         ]
         self.assertEqual(ensures, [])
 
 
 class TestResolveSaveDescription(unittest.TestCase):
+
     def test_noninteractive_new_uses_auto(self):
         got = resolve_save_description(
             auto="mon0: ghostty.",
@@ -900,6 +1016,7 @@ class TestResolveSaveDescription(unittest.TestCase):
         self.assertIsNone(got)
 
     def test_interactive_no_existing_keep_uses_auto(self):
+
         def boom(_prompt: str, prefill: str) -> str:
             raise AssertionError("edit should not run on Keep")
 
@@ -922,6 +1039,7 @@ class TestResolveSaveDescription(unittest.TestCase):
         self.assertNotIn("Description: mon0", got)
 
     def test_interactive_keep(self):
+
         def boom(prompt: str, prefill: str) -> str:
             raise AssertionError("edit should not run on Keep")
 
@@ -990,6 +1108,7 @@ class TestResolveSaveDescription(unittest.TestCase):
 
 
 class TestSaveCli(unittest.TestCase):
+
     def test_stdout_only(self):
         tree = _FIXTURES / "tree-perfect.json"
         proc = subprocess.run(
@@ -1109,7 +1228,12 @@ class TestSaveCli(unittest.TestCase):
             dest = root / "hosts" / "testhost" / "mydesk.json"
             dest.parent.mkdir(parents=True)
             dest.write_text(
-                json.dumps({"description": "Keep me", "tiles": {"mon0": ["x"]}}),
+                json.dumps({
+                    "description": "Keep me",
+                    "tiles": {
+                        "mon0": ["x"]
+                    }
+                }),
                 encoding="utf-8",
             )
             env = {
@@ -1170,53 +1294,62 @@ class TestShareCapture(unittest.TestCase):
 
     def _mon_forest(self, *, p0=0.0, p1=0.0, u0=False, u1=False):
         return {
-            "apiVersion": 2,
-            "monitors": [
-                {
-                    "nodeType": "MONITOR",
-                    "id": "mo0ws0",
-                    "layout": "HSPLIT",
-                    "percent": 0,
-                    "userSized": False,
-                    "rect": {"x": 0, "y": 0, "width": 1000, "height": 1000},
-                    "children": [
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 1,
-                            "wmClass": "com.mitchellh.ghostty",
-                            "title": "Ghostty",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "percent": p0,
-                            "userSized": u0,
-                            "rect": {
-                                "x": 0,
-                                "y": 0,
-                                "width": 700,
-                                "height": 1000,
-                            },
-                            "children": [],
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "HSPLIT",
+                "percent":
+                0,
+                "userSized":
+                False,
+                "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 1000,
+                    "height": 1000
+                },
+                "children": [
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 1,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "Ghostty",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "percent": p0,
+                        "userSized": u0,
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "width": 700,
+                            "height": 1000,
                         },
-                        {
-                            "nodeType": "WINDOW",
-                            "windowId": 2,
-                            "wmClass": "org.gnome.Nautilus",
-                            "title": "Home",
-                            "monitor": 0,
-                            "mode": "TILE",
-                            "percent": p1,
-                            "userSized": u1,
-                            "rect": {
-                                "x": 700,
-                                "y": 0,
-                                "width": 300,
-                                "height": 1000,
-                            },
-                            "children": [],
+                        "children": [],
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 2,
+                        "wmClass": "org.gnome.Nautilus",
+                        "title": "Home",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "percent": p1,
+                        "userSized": u1,
+                        "rect": {
+                            "x": 700,
+                            "y": 0,
+                            "width": 300,
+                            "height": 1000,
                         },
-                    ],
-                }
-            ],
+                        "children": [],
+                    },
+                ],
+            }],
         }
 
     def test_user_sized_emits_share(self):
@@ -1250,7 +1383,8 @@ class TestShareCapture(unittest.TestCase):
         # Bare panes list — no share key
         self.assertIsInstance(sugar, list)
         self.assertEqual(len(sugar), 2)
-        self.assertTrue(all(not isinstance(x, dict) or "share" not in x for x in sugar))
+        self.assertTrue(
+            all(not isinstance(x, dict) or "share" not in x for x in sugar))
 
     def test_roundtrip_normalize_keeps_share(self):
         forest = self._mon_forest(p0=0.7, p1=0.3, u0=True, u1=True)

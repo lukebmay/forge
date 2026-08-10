@@ -38,8 +38,7 @@ STATUS_CANCELLED = "cancelled"
 STATUS_TIMEOUT = "timeout"
 
 TERMINAL_STATUSES = frozenset(
-    {STATUS_OK, STATUS_FAILED, STATUS_CANCELLED, STATUS_TIMEOUT}
-)
+    {STATUS_OK, STATUS_FAILED, STATUS_CANCELLED, STATUS_TIMEOUT})
 ACTIVE_STATUSES = frozenset({STATUS_PENDING, STATUS_RUNNING})
 
 ENV_JOB_ENABLE = "FORGE_JOB"  # "0" disables job wrapper
@@ -68,6 +67,7 @@ class BusyError(JobError):
 
 
 class JobNotFoundError(JobError):
+
     def __init__(self, job_id: str):
         self.job_id = job_id
         super().__init__(f"job not found: {job_id}")
@@ -149,7 +149,9 @@ def parse_job_timeout_sec(
 # --- id / status ---
 
 
-def new_job_id(*, now: Optional[float] = None, rand: Optional[str] = None) -> str:
+def new_job_id(*,
+               now: Optional[float] = None,
+               rand: Optional[str] = None) -> str:
     """UTC-ish compact id: YYYYMMDDTHHMMSSZ-<6 hex>."""
     t = time.gmtime(time.time() if now is None else now)
     stamp = time.strftime("%Y%m%dT%H%M%SZ", t)
@@ -352,7 +354,8 @@ def _read_lock_payload(path: Path) -> Optional[dict[str, Any]]:
 def _write_lock_payload(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(dict(payload), sort_keys=True) + "\n", encoding="utf-8")
+    tmp.write_text(json.dumps(dict(payload), sort_keys=True) + "\n",
+                   encoding="utf-8")
     os.replace(tmp, path)
 
 
@@ -475,7 +478,8 @@ def release_mutator(jobs_root: Path, job_id: str) -> bool:
                 return False
             try:
                 cur = json.loads(raw)
-                held = str(cur.get("job_id") or "") if isinstance(cur, dict) else ""
+                held = str(cur.get("job_id") or "") if isinstance(cur,
+                                                                  dict) else ""
             except json.JSONDecodeError:
                 held = raw
             if held != job_id:
@@ -655,7 +659,8 @@ def spawn_worker(
     except BusyError:
         # best-effort cleanup of empty claim dir
         try:
-            for name in (STATUS_FILENAME, ARGV_FILENAME, STDOUT_LOG, STDERR_LOG):
+            for name in (STATUS_FILENAME, ARGV_FILENAME, STDOUT_LOG,
+                         STDERR_LOG):
                 p = jdir / name
                 if p.is_file():
                     p.unlink()
@@ -780,7 +785,7 @@ def finalize_from_wait(
     elif cancelled:
         # prefer conventional 130; keep worker code if already 130-ish
         code = 130
-        if wait_code is not None and int(wait_code) not in (0,):
+        if wait_code is not None and int(wait_code) not in (0, ):
             code = int(wait_code) if int(wait_code) >= 128 else 130
         st = mark_terminal(
             jdir,
@@ -873,7 +878,9 @@ def attach(
             deadline = st.get("deadline_at")
             if deadline is not None and float(now_fn()) >= float(deadline):
                 timed_out = True
-                request_cancel(handle.jobs_root, handle.job_id, sig=signal.SIGTERM)
+                request_cancel(handle.jobs_root,
+                               handle.job_id,
+                               sig=signal.SIGTERM)
                 deadline_kill_at = float(now_fn()) + 2.0
                 while float(now_fn()) < deadline_kill_at:
                     reaped = waitpid_exit_code(handle.pid)
@@ -1101,7 +1108,8 @@ DEFAULT_TIMEOUT_BY_COMMAND: Mapping[str, float] = {
 }
 
 
-def extract_job_meta_flags(argv: Sequence[str]) -> tuple[list[str], bool, bool]:
+def extract_job_meta_flags(
+        argv: Sequence[str]) -> tuple[list[str], bool, bool]:
     """Strip --detach / --foreground from argv. Returns (cleaned, detach, foreground)."""
     detach = False
     foreground = False
@@ -1134,7 +1142,8 @@ def is_mutating_job_command(
         if dry_run:
             return False
         head = (layout_head or "").strip().lower()
-        if not head or head in ("list", "show", "help", "-h", "--help", "save"):
+        if not head or head in ("list", "show", "help", "-h", "--help",
+                                "save"):
             return False
         return True  # apply targets (incl. profile named clean)
     if cmd == "test":

@@ -37,6 +37,7 @@ def _write(path: Path, obj: dict | None = None) -> Path:
 
 
 class TestResolveHost(unittest.TestCase):
+
     def test_forge_host_env(self):
         self.assertEqual(resolve_host({"FORGE_HOST": "black"}), "black")
         self.assertEqual(resolve_host({"FORGE_HOST": "  green  "}), "green")
@@ -51,12 +52,17 @@ class TestResolveHost(unittest.TestCase):
 
 
 class TestResolveProfile(unittest.TestCase):
+
     def test_xdg_only_when_no_env(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             xdg = _write(
                 root / "layout" / "dev.json",
-                {"version": 1, "description": "xdg", "steps": []},
+                {
+                    "version": 1,
+                    "description": "xdg",
+                    "steps": []
+                },
             )
             r = resolve_profile("dev", config_root=root, env={})
             self.assertTrue(r["found"])
@@ -70,15 +76,27 @@ class TestResolveProfile(unittest.TestCase):
             wdir = root / "wdir"
             host_p = _write(
                 wdir / "hosts" / "black" / "dev.json",
-                {"version": 1, "description": "host", "steps": []},
+                {
+                    "version": 1,
+                    "description": "host",
+                    "steps": []
+                },
             )
             _write(
                 wdir / "common" / "dev.json",
-                {"version": 1, "description": "common", "steps": []},
+                {
+                    "version": 1,
+                    "description": "common",
+                    "steps": []
+                },
             )
             _write(
                 root / "xdg" / "layout" / "dev.json",
-                {"version": 1, "description": "xdg", "steps": []},
+                {
+                    "version": 1,
+                    "description": "xdg",
+                    "steps": []
+                },
             )
             env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
             r = resolve_profile("dev", config_root=root / "xdg", env=env)
@@ -93,11 +111,19 @@ class TestResolveProfile(unittest.TestCase):
             wdir = root / "wdir"
             common = _write(
                 wdir / "common" / "dev.json",
-                {"version": 1, "description": "common", "steps": []},
+                {
+                    "version": 1,
+                    "description": "common",
+                    "steps": []
+                },
             )
             _write(
                 root / "xdg" / "layout" / "dev.json",
-                {"version": 1, "description": "xdg", "steps": []},
+                {
+                    "version": 1,
+                    "description": "xdg",
+                    "steps": []
+                },
             )
             env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
             r = resolve_profile("dev", config_root=root / "xdg", env=env)
@@ -111,7 +137,11 @@ class TestResolveProfile(unittest.TestCase):
             wdir = root / "wdir"
             host_dir = _write(
                 wdir / "hosts" / "black" / "dev" / "profile.json",
-                {"version": 1, "description": "host-dir", "steps": []},
+                {
+                    "version": 1,
+                    "description": "host-dir",
+                    "steps": []
+                },
             )
             env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
             r = resolve_profile("dev", config_root=root / "xdg", env=env)
@@ -140,7 +170,10 @@ class TestResolveProfile(unittest.TestCase):
                 r = resolve_profile(
                     "dev",
                     config_root=root,
-                    env={"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "green"},
+                    env={
+                        "FORGE_LAYOUT_DIR": str(wdir),
+                        "FORGE_HOST": "green"
+                    },
                 )
             self.assertEqual(r["host"], "green")
             self.assertEqual(r["path"], green)
@@ -151,7 +184,11 @@ class TestResolveProfile(unittest.TestCase):
             root = Path(td)
             special = _write(
                 root / "elsewhere" / "dev.json",
-                {"version": 1, "description": "path", "steps": []},
+                {
+                    "version": 1,
+                    "description": "path",
+                    "steps": []
+                },
             )
             _write(root / "wdir" / "common" / "dev.json")
             env = {
@@ -199,7 +236,9 @@ class TestResolveProfile(unittest.TestCase):
     def test_not_found(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            r = resolve_profile("missing", config_root=root, env={"FORGE_HOST": "h"})
+            r = resolve_profile("missing",
+                                config_root=root,
+                                env={"FORGE_HOST": "h"})
             self.assertFalse(r["found"])
             self.assertIsNone(r["path"])
             self.assertEqual(r["source"], SOURCE_NOT_FOUND)
@@ -219,12 +258,15 @@ class TestResolveProfile(unittest.TestCase):
             # Would win if DIR set — must be ignored
             _write(root / "fake" / "hosts" / "black" / "dev.json")
             xdg = _write(root / "layout" / "dev.json")
-            r = resolve_profile("dev", config_root=root, env={"FORGE_HOST": "black"})
+            r = resolve_profile("dev",
+                                config_root=root,
+                                env={"FORGE_HOST": "black"})
             self.assertEqual(r["source"], SOURCE_XDG)
             self.assertEqual(r["path"], xdg)
 
 
 class TestListProfilesResolved(unittest.TestCase):
+
     def test_union_with_source_tags(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -232,17 +274,29 @@ class TestListProfilesResolved(unittest.TestCase):
             xdg_root = root / "xdg"
             _write(
                 wdir / "hosts" / "black" / "dev.json",
-                {"version": 1, "description": "host-dev", "steps": []},
+                {
+                    "version": 1,
+                    "description": "host-dev",
+                    "steps": []
+                },
             )
             _write(
                 wdir / "common" / "shared.json",
-                {"version": 1, "description": "common-shared", "steps": []},
+                {
+                    "version": 1,
+                    "description": "common-shared",
+                    "steps": []
+                },
             )
             # same name in common + host → host wins
             _write(wdir / "common" / "dev.json")
             _write(
                 xdg_root / "layout" / "local.json",
-                {"version": 1, "description": "xdg-local", "steps": []},
+                {
+                    "version": 1,
+                    "description": "xdg-local",
+                    "steps": []
+                },
             )
             # xdg only for name only on xdg
             env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
@@ -262,7 +316,10 @@ class TestListProfilesResolved(unittest.TestCase):
             _write(wdir / "hosts" / "black" / "rec" / "profile.json")
             listed = list_profiles_resolved(
                 config_root=root / "empty",
-                env={"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"},
+                env={
+                    "FORGE_LAYOUT_DIR": str(wdir),
+                    "FORGE_HOST": "black"
+                },
             )
             self.assertEqual(len(listed), 1)
             self.assertEqual(listed[0]["name"], "rec")
@@ -283,17 +340,22 @@ class TestListProfilesResolved(unittest.TestCase):
             root = Path(td)
             host_p = _write(
                 root / "layout" / "hosts" / "black" / "dev.json",
-                {"version": 1, "description": "from-save", "steps": []},
+                {
+                    "version": 1,
+                    "description": "from-save",
+                    "steps": []
+                },
             )
-            listed = list_profiles_resolved(
-                config_root=root, env={"FORGE_HOST": "black"}
-            )
+            listed = list_profiles_resolved(config_root=root,
+                                            env={"FORGE_HOST": "black"})
             self.assertEqual(len(listed), 1)
             self.assertEqual(listed[0]["name"], "dev")
             self.assertEqual(listed[0]["source"], SOURCE_HOST)
             self.assertEqual(listed[0]["path"], str(host_p))
             self.assertEqual(listed[0]["description"], "from-save")
-            r = resolve_profile("dev", config_root=root, env={"FORGE_HOST": "black"})
+            r = resolve_profile("dev",
+                                config_root=root,
+                                env={"FORGE_HOST": "black"})
             self.assertTrue(r["found"])
             self.assertEqual(r["source"], SOURCE_HOST)
             self.assertEqual(r["path"], host_p)
@@ -305,21 +367,32 @@ class TestListProfilesResolved(unittest.TestCase):
             layout = root / "layout"
             _write(
                 layout / "hosts" / "black" / "dev.json",
-                {"version": 1, "description": "host-desk", "steps": []},
+                {
+                    "version": 1,
+                    "description": "host-desk",
+                    "steps": []
+                },
             )
             _write(
                 layout / "common" / "shared.json",
-                {"version": 1, "description": "common-desk", "steps": []},
+                {
+                    "version": 1,
+                    "description": "common-desk",
+                    "steps": []
+                },
             )
             _write(
                 layout / "flat.json",
-                {"version": 1, "description": "flat-desk", "steps": []},
+                {
+                    "version": 1,
+                    "description": "flat-desk",
+                    "steps": []
+                },
             )
             env = {"FORGE_HOST": "black"}
             all_listed = list_profiles_resolved(config_root=root, env=env)
-            self.assertEqual(
-                {e["name"] for e in all_listed}, {"dev", "shared", "flat"}
-            )
+            self.assertEqual({e["name"]
+                              for e in all_listed}, {"dev", "shared", "flat"})
             host_only = host_profiles_only(all_listed)
             self.assertEqual([e["name"] for e in host_only], ["dev"])
             self.assertEqual(host_only[0]["description"], "host-desk")
@@ -334,11 +407,19 @@ class TestListProfilesResolved(unittest.TestCase):
             wdir = root / "shellrc-layout"
             _write(
                 wdir / "hosts" / "black" / "dev.json",
-                {"version": 1, "description": "env-host", "steps": []},
+                {
+                    "version": 1,
+                    "description": "env-host",
+                    "steps": []
+                },
             )
             _write(
                 root / "layout" / "hosts" / "black" / "dev.json",
-                {"version": 1, "description": "xdg-host", "steps": []},
+                {
+                    "version": 1,
+                    "description": "xdg-host",
+                    "steps": []
+                },
             )
             env = {"FORGE_LAYOUT_DIR": str(wdir), "FORGE_HOST": "black"}
             listed = list_profiles_resolved(config_root=root, env=env)
