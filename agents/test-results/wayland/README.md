@@ -14,6 +14,20 @@ Suite procedure (duplicable on older machines):
 See suite doc § Metrics. Top-level `env` namespaces host/session/nest/capability.  
 `metricsSummary` rolls up wall time, soft corrections, expectation misses, hard-ready warnings.
 
+## 2026-08-10 host `black` (X11 partial — R011)
+
+| Item | Value |
+| --- | --- |
+| Session | **X11** (HUP-capable; nest refused) |
+| Extension | tip dirty lifecycle bags + **R011** CLI |
+| Full auto live | **9/9 PASS** — `black-x11-20260810T173208Z.json` |
+| softCorrections | **0** total (pre-R011 ghosttys-only/right-ghostty hit max 32) |
+| Baseline (7/9) | `agents/test-results/x11/live-20260810-131353.json` |
+
+**R011:** tab-join moves (`dest id:…`) stay in structure after TABBED wrap; mon-path moves remain place. Fixes first-shot open leaf on partial chrome reopen.
+
+Wayland host dual-mon RC still next (need Wayland login + nest).
+
 ## 2026-08-09 host `black` (this campaign)
 
 | Item | Value |

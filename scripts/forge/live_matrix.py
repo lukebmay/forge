@@ -30,24 +30,22 @@ SUITE_AUTO = "auto"  # max for capability
 SUITE_REGRESSION = "regression"  # require --tags R0xx or --behaviors
 
 # Behavior tokens (what product areas a case exercises)
-BEHAVIORS = frozenset(
-    {
-        "layout-apply",
-        "open-leaf",
-        "profile-focus",
-        "chrome-map",
-        "cold-open",
-        "partial-reload",
-        "clean-empty",
-        "close-focus",
-        "mon-claim",
-        "dock-open",
-        "structure-bind",
-        "settle-soft",
-        "save-focus",
-        "multi-instance",
-    }
-)
+BEHAVIORS = frozenset({
+    "layout-apply",
+    "open-leaf",
+    "profile-focus",
+    "chrome-map",
+    "cold-open",
+    "partial-reload",
+    "clean-empty",
+    "close-focus",
+    "mon-claim",
+    "dock-open",
+    "structure-bind",
+    "settle-soft",
+    "save-focus",
+    "multi-instance",
+})
 
 # Work-area → default behaviors (for --from-work hints)
 # Prefer distinctive behaviors so --from-work does not pull the whole catalog.
@@ -56,14 +54,14 @@ WORK_HINTS: dict[str, tuple[str, ...]] = {
     "layout-apply": ("layout-apply", "structure-bind"),
     "open-leaf": ("open-leaf", "chrome-map", "settle-soft"),
     "focus": ("profile-focus", "settle-soft"),
-    "cold": ("cold-open",),
-    "clean": ("clean-empty",),
-    "close": ("close-focus",),
-    "save": ("save-focus",),
-    "settle": ("settle-soft",),
+    "cold": ("cold-open", ),
+    "clean": ("clean-empty", ),
+    "close": ("close-focus", ),
+    "save": ("save-focus", ),
+    "settle": ("settle-soft", ),
     "dock": ("dock-open", "mon-claim"),
-    "partial": ("partial-reload",),
-    "multi-instance": ("multi-instance",),
+    "partial": ("partial-reload", ),
+    "multi-instance": ("multi-instance", ),
     "wayland-rc": (
         "layout-apply",
         "open-leaf",
@@ -100,7 +98,10 @@ class LiveCase:
     notes: str = ""
 
     def tags(self) -> frozenset[str]:
-        t = {self.id, self.layer, self.profile, *self.behaviors, *self.regressions}
+        t = {
+            self.id, self.layer, self.profile, *self.behaviors,
+            *self.regressions
+        }
         if self.requires_true_cold:
             t.add("true-cold")
         return frozenset(t)
@@ -121,7 +122,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "settle-soft",
             "structure-bind",
         ),
-        regressions=("R005", "R007", "R008"),
+        regressions=("R005", "R007", "R008", "R011"),
         profile="_forge-test-dual",
         setup=("close-chrome", "keep-agent", "keep-ghostty-tiles"),
         checks=(
@@ -131,12 +132,14 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "agent-survives",
             "profile-focus-if-set",
         ),
-        notes="Never close agent Ghostty. Uses _forge-test-dual (not personal dev).",
+        notes=
+        "Never close agent Ghostty. Uses _forge-test-dual (not personal dev).",
     ),
     LiveCase(
         id="L1.left-chrome",
         layer=LAYER_L1,
-        title="Left chrome+ghostty, mon1 chrome closed → layout _forge-test-dual",
+        title=
+        "Left chrome+ghostty, mon1 chrome closed → layout _forge-test-dual",
         behaviors=(
             "layout-apply",
             "partial-reload",
@@ -148,7 +151,8 @@ LIVE_CASES: tuple[LiveCase, ...] = (
         regressions=("R005", "R007"),
         profile="_forge-test-dual",
         setup=("close-mon1-chrome", "keep-agent"),
-        checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube", "agent-survives"),
+        checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube",
+                "agent-survives"),
     ),
     LiveCase(
         id="L1.right-ghostty",
@@ -162,17 +166,19 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "mon-claim",
             "structure-bind",
         ),
-        regressions=("R001", "R005"),
+        regressions=("R001", "R005", "R011"),
         profile="_forge-test-dual",
         setup=("close-mon0-chrome", "keep-agent", "keep-mon1"),
-        checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube", "agent-survives"),
+        checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube",
+                "agent-survives"),
         notes="mon1 ghostty reused, not stolen to mon0.",
     ),
     LiveCase(
         id="L1.t1-nautilus",
         layer=LAYER_L1,
         title="Left ghostty + nautilus → layout _forge-test-nautilus",
-        behaviors=("layout-apply", "partial-reload", "structure-bind", "mon-claim"),
+        behaviors=("layout-apply", "partial-reload", "structure-bind",
+                   "mon-claim"),
         regressions=(),
         profile="_forge-test-nautilus",
         setup=("close-chrome", "keep-agent", "ensure-nautilus"),
@@ -182,7 +188,8 @@ LIVE_CASES: tuple[LiveCase, ...] = (
     LiveCase(
         id="L2.true-cold-dev",
         layer=LAYER_L2,
-        title="True cold (no tiles) → layout _forge-test-dual open leaf + focus",
+        title=
+        "True cold (no tiles) → layout _forge-test-dual open leaf + focus",
         behaviors=(
             "cold-open",
             "layout-apply",
@@ -205,15 +212,14 @@ LIVE_CASES: tuple[LiveCase, ...] = (
         ),
         notes=(
             "True cold: Guake/float agent, OR durable Grok leader "
-            "(GROK_LEADER_SOCKET) — agent TILE may close; process survives."
-        ),
+            "(GROK_LEADER_SOCKET) — agent TILE may close; process survives."),
     ),
     LiveCase(
         id="L2.layout-clean",
         layer=LAYER_L2,
         title="Non-empty desk → layout _forge-test-clean empties tiles",
         behaviors=("clean-empty", "layout-apply"),
-        regressions=("R009",),
+        regressions=("R009", ),
         requires_true_cold=True,
         profile="_forge-test-clean",
         setup=("ensure-some-tiles", "keep-agent"),
@@ -224,31 +230,36 @@ LIVE_CASES: tuple[LiveCase, ...] = (
         id="L1.settled-rerun",
         layer=LAYER_L1,
         title="Settled desk → layout _forge-test-dual no thrash (focus soft)",
-        behaviors=("layout-apply", "profile-focus", "open-leaf", "settle-soft"),
-        regressions=("R007",),
+        behaviors=("layout-apply", "profile-focus", "open-leaf",
+                   "settle-soft"),
+        regressions=("R007", ),
         profile="_forge-test-dual",
         setup=("ensure-dev-shape", "keep-agent"),
-        checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube", "agent-survives"),
+        checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube",
+                "agent-survives"),
         notes="ensure-dev-shape bootstraps via _forge-test-dual when needed.",
     ),
     LiveCase(
         id="L1.close-focus-lft",
         layer=LAYER_L1,
-        title="Close focused chrome → focus lands on remaining TILE (LFT/sibling)",
-        behaviors=("close-focus",),
+        title=
+        "Close focused chrome → focus lands on remaining TILE (LFT/sibling)",
+        behaviors=("close-focus", ),
         regressions=(),
         profile="_forge-test-dual",
         setup=("ensure-dev-shape", "keep-agent"),
         actions=("focus-disposable-chrome", "close-focus"),
         run_layout=False,
         checks=("ok", "focus-is-tile", "closed-gone", "agent-survives"),
-        notes="FC3: does not re-open closed chrome; desk may need layout after run.",
+        notes=
+        "FC3: does not re-open closed chrome; desk may need layout after run.",
     ),
     # L1.unfocus abandoned — Ctrl+Super+Esc product surface removed.
     LiveCase(
         id="L1.ghosttys-multi",
         layer=LAYER_L1,
-        title="Chrome closed → layout _forge-test-ghosttys dual mon multi-instance",
+        title=
+        "Chrome closed → layout _forge-test-ghosttys dual mon multi-instance",
         behaviors=(
             "layout-apply",
             "partial-reload",
@@ -256,7 +267,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "structure-bind",
             "mon-claim",
         ),
-        regressions=("R010",),
+        regressions=("R010", ),
         profile="_forge-test-ghosttys",
         setup=("close-chrome", "keep-agent", "keep-ghostty-tiles"),
         checks=(
@@ -317,10 +328,12 @@ def session_type_from_env(
     xdg_session_type: Optional[str] = None,
 ) -> str:
     e = env if env is not None else os.environ
-    st = (xdg_session_type if xdg_session_type is not None else e.get("XDG_SESSION_TYPE") or "").strip().lower()
+    st = (xdg_session_type if xdg_session_type is not None else
+          e.get("XDG_SESSION_TYPE") or "").strip().lower()
     if st in ("x11", "wayland"):
         return st
-    wd = wayland_display if wayland_display is not None else e.get("WAYLAND_DISPLAY")
+    wd = wayland_display if wayland_display is not None else e.get(
+        "WAYLAND_DISPLAY")
     if wd and str(wd).strip():
         return "wayland"
     if e.get("DISPLAY"):
@@ -387,7 +400,8 @@ def _is_chrome_family_wm_class(cls: str) -> bool:
 
 def _is_nautilus_wm_class(cls: str) -> bool:
     c = (cls or "").lower()
-    return "nautilus" in c or c in ("org.gnome.nautilus", "org.gnome.Nautilus".lower())
+    return "nautilus" in c or c in ("org.gnome.nautilus",
+                                    "org.gnome.Nautilus".lower())
 
 
 def select_chrome_tile_ids(
@@ -432,8 +446,7 @@ def forest_looks_like_dev_shape(forest: Any) -> tuple[bool, str]:
         return False, "no forest"
     mons = forest.get("monitors") or []
     non_empty = [
-        i
-        for i, m in enumerate(mons)
+        i for i, m in enumerate(mons)
         if isinstance(m, dict) and (m.get("children") or [])
     ]
     if len(non_empty) < 2:
@@ -459,9 +472,9 @@ def forest_looks_like_dev_shape(forest: Any) -> tuple[bool, str]:
     return True, "dev-shape ok (tabbed mon0+mon1, ghostty+chrome tiles)"
 
 
-def forest_has_some_tiles(
-    forest: Any, *, allow_window_ids: Optional[set[str]] = None
-) -> bool:
+def forest_has_some_tiles(forest: Any,
+                          *,
+                          allow_window_ids: Optional[set[str]] = None) -> bool:
     allow = allow_window_ids or set()
     for w in iter_windows(forest):
         if str(w.get("mode") or "").upper() != "TILE":
@@ -494,8 +507,7 @@ def classify_agent_terminal(
 
     by_id = {
         str(w.get("windowId")): w
-        for w in wins
-        if w.get("windowId") is not None
+        for w in wins if w.get("windowId") is not None
     }
     fid = None
     if isinstance(forest, dict) and forest.get("focusWindowId") is not None:
@@ -505,13 +517,14 @@ def classify_agent_terminal(
     # Guake first: durable agent terminal for true cold even if focus is Chrome.
     guakes = [w for w in wins if _is_guake_class(_wm_class_str(w))]
     if guakes:
-        float_g = [w for w in guakes if str(w.get("mode") or "").upper() == "FLOAT"]
+        float_g = [
+            w for w in guakes if str(w.get("mode") or "").upper() == "FLOAT"
+        ]
         pick = float_g[0] if float_g else guakes[0]
-        if focused is not None and str(focused.get("windowId")) != str(pick.get("windowId")):
-            notes.append(
-                f"focus is {_wm_class_str(focused)!r}; agent=guake "
-                f"id={pick.get('windowId')}"
-            )
+        if focused is not None and str(focused.get("windowId")) != str(
+                pick.get("windowId")):
+            notes.append(f"focus is {_wm_class_str(focused)!r}; agent=guake "
+                         f"id={pick.get('windowId')}")
         return "guake", pick, notes
 
     if focused is not None:
@@ -582,10 +595,11 @@ def capability_from_forest(
         agent_window_optional = True
         notes.append(
             "true cold OK: durable Grok leader "
-            "(agent TILE may close; process survives — reattach after)"
-        )
+            "(agent TILE may close; process survives — reattach after)")
     elif agent_kind == "ghostty":
-        notes.append("true cold blocked: tiled ghostty agent would die if all tiles closed")
+        notes.append(
+            "true cold blocked: tiled ghostty agent would die if all tiles closed"
+        )
     else:
         notes.append("true cold blocked: agent terminal not guake/float")
 
@@ -596,7 +610,8 @@ def capability_from_forest(
         try:
             from nested_wayland import can_nested_on_host
 
-            can_nested = bool(can_nested_on_host(env if env is not None else None))
+            can_nested = bool(
+                can_nested_on_host(env if env is not None else None))
         except Exception:
             can_nested = False
         if can_nested:
@@ -605,10 +620,8 @@ def capability_from_forest(
                 "`forge nested restart` (not logout). Dual-mon live still host desk."
             )
         else:
-            notes.append(
-                "Wayland: no HUP; nested unavailable — "
-                "`forge nested doctor` or logout once after install"
-            )
+            notes.append("Wayland: no HUP; nested unavailable — "
+                         "`forge nested doctor` or logout once after install")
     elif session == "x11":
         notes.append(
             "X11: reload via HUP (`killall -HUP gnome-shell`). "
@@ -745,12 +758,12 @@ def select_cases(
             # regression suite needs explicit R0xx or behaviors
             return Selection(
                 cases=[],
-                skipped=[
-                    {
-                        "id": "*",
-                        "reason": "suite=regression requires --tags R0xx and/or --behaviors",
-                    }
-                ],
+                skipped=[{
+                    "id":
+                    "*",
+                    "reason":
+                    "suite=regression requires --tags R0xx and/or --behaviors",
+                }],
                 suite=suite_s,
                 behaviors=beh,
                 tags=tag_set,
@@ -771,28 +784,32 @@ def select_cases(
         if id_set and c.id not in id_set:
             continue
         if tag_set and not (tag_set & c.tags()):
-            skipped.append({"id": c.id, "reason": f"tags filter {sorted(tag_set)}"})
+            skipped.append({
+                "id": c.id,
+                "reason": f"tags filter {sorted(tag_set)}"
+            })
             continue
         if beh and not (beh & set(c.behaviors)):
-            skipped.append(
-                {"id": c.id, "reason": f"behaviors filter {sorted(beh)}"}
-            )
+            skipped.append({
+                "id": c.id,
+                "reason": f"behaviors filter {sorted(beh)}"
+            })
             continue
         # Capability gates
         if c.requires_true_cold:
             if cap is None:
-                skipped.append({"id": c.id, "reason": "needs capability probe (true cold)"})
+                skipped.append({
+                    "id": c.id,
+                    "reason": "needs capability probe (true cold)"
+                })
                 continue
             if not cap.can_true_cold:
-                skipped.append(
-                    {
-                        "id": c.id,
-                        "reason": (
-                            f"true cold blocked (agent={cap.agent_terminal}"
-                            f" mode={cap.agent_mode})"
-                        ),
-                    }
-                )
+                skipped.append({
+                    "id":
+                    c.id,
+                    "reason": (f"true cold blocked (agent={cap.agent_terminal}"
+                               f" mode={cap.agent_mode})"),
+                })
                 continue
         selected.append(c)
 
@@ -816,7 +833,7 @@ def recommend_for_work(
         return select_cases(suite=SUITE_AUTO, capability=capability)
     if w in ("partial", "l1"):
         return select_cases(suite=SUITE_PARTIAL, capability=capability)
-    if w in ("l2",):
+    if w in ("l2", ):
         # Full L2 layer (includes clean) — use --from-work cold for cold-open only
         return select_cases(suite=SUITE_COLD, capability=capability)
     # regression id
@@ -848,18 +865,17 @@ def tabbed_groups(forest: Any) -> list[dict[str, Any]]:
         lay = str(n.get("layout") or "").upper()
         nt = str(n.get("nodeType") or "").upper()
         if nt == "CON" and lay == "TABBED":
-            out.append(
-                {
-                    "monitor": mon_i,
-                    "lastTabFocusId": n.get("lastTabFocusId"),
-                    "children": [
-                        c
-                        for c in (n.get("children") or [])
-                        if isinstance(c, dict)
-                        and str(c.get("nodeType") or "").upper() == "WINDOW"
-                    ],
-                }
-            )
+            out.append({
+                "monitor":
+                mon_i,
+                "lastTabFocusId":
+                n.get("lastTabFocusId"),
+                "children": [
+                    c for c in (n.get("children") or [])
+                    if isinstance(c, dict)
+                    and str(c.get("nodeType") or "").upper() == "WINDOW"
+                ],
+            })
         for c in n.get("children") or []:
             walk(c, mon_i)
 
@@ -908,7 +924,9 @@ def check_mon_open_leaf_contains(
     require_chrome_family (default True): open leaf must be chrome/PWA so agent
     Ghostty titles containing \"grok\" cannot false-pass mon0-open-leaf-grok.
     """
-    groups = [g for g in tabbed_groups(forest) if g.get("monitor") == mon_index]
+    groups = [
+        g for g in tabbed_groups(forest) if g.get("monitor") == mon_index
+    ]
     if not groups:
         return False, f"mon{mon_index}: no TABBED group"
     # first tabbed on that mon (profile mon0 left tab)
@@ -927,12 +945,14 @@ def check_mon_open_leaf_contains(
     return False, f"mon{mon_index} open leaf {title!r} missing {substring!r}"
 
 
-def check_agent_survives(
-    forest: Any, agent_window_id: Optional[str]
-) -> tuple[bool, str]:
+def check_agent_survives(forest: Any,
+                         agent_window_id: Optional[str]) -> tuple[bool, str]:
     if not agent_window_id:
         return True, "no agent id tracked"
-    ids = {str(w.get("windowId")) for w in iter_windows(forest) if w.get("windowId") is not None}
+    ids = {
+        str(w.get("windowId"))
+        for w in iter_windows(forest) if w.get("windowId") is not None
+    }
     if agent_window_id in ids:
         return True, f"agent {agent_window_id} present"
     return False, f"agent {agent_window_id} missing from tree"
@@ -955,12 +975,12 @@ def check_dual_ghostty_mons(forest: Any) -> tuple[bool, str]:
 
 
 def check_no_tile_windows(
-    forest: Any, *, allow_window_ids: Optional[set[str]] = None
-) -> tuple[bool, str]:
+        forest: Any,
+        *,
+        allow_window_ids: Optional[set[str]] = None) -> tuple[bool, str]:
     allow = allow_window_ids or set()
     tiles = [
-        w
-        for w in iter_windows(forest)
+        w for w in iter_windows(forest)
         if str(w.get("mode") or "").upper() == "TILE"
         and str(w.get("windowId")) not in allow
     ]
@@ -970,7 +990,8 @@ def check_no_tile_windows(
     return False, f"still tiled: {titles}"
 
 
-def _window_by_id(forest: Any, window_id: Optional[str]) -> Optional[dict[str, Any]]:
+def _window_by_id(forest: Any,
+                  window_id: Optional[str]) -> Optional[dict[str, Any]]:
     if not window_id:
         return None
     sid = str(window_id)
@@ -1012,22 +1033,21 @@ def check_no_tile_focus(forest: Any) -> tuple[bool, str]:
     return True, f"focus non-tile {mode} id={fid}"
 
 
-def check_closed_gone(forest: Any, closed_id: Optional[str]) -> tuple[bool, str]:
+def check_closed_gone(forest: Any,
+                      closed_id: Optional[str]) -> tuple[bool, str]:
     if not closed_id:
         return True, "no closed id tracked"
     ids = {
         str(w.get("windowId"))
-        for w in iter_windows(forest)
-        if w.get("windowId") is not None
+        for w in iter_windows(forest) if w.get("windowId") is not None
     }
     if str(closed_id) in ids:
         return False, f"closed id {closed_id} still in tree"
     return True, f"closed id {closed_id} gone"
 
 
-def check_lft_retained(
-    forest: Any, lft_before: Optional[str]
-) -> tuple[bool, str]:
+def check_lft_retained(forest: Any,
+                       lft_before: Optional[str]) -> tuple[bool, str]:
     """lastTileFocusWindowId still present when we had one (FC2: LFT not cleared)."""
     if not lft_before:
         return True, "no LFT before"
@@ -1062,21 +1082,21 @@ def evaluate_checks(
             ok = layout_ok
             detail = "actions/layout ok" if ok else "actions/layout failed"
         elif name == "mon0-open-leaf-grok":
-            ok, detail = check_mon_open_leaf_contains(forest, mon_index=0, substring="Grok")
+            ok, detail = check_mon_open_leaf_contains(forest,
+                                                      mon_index=0,
+                                                      substring="Grok")
         elif name == "mon1-open-leaf-youtube":
-            ok, detail = check_mon_open_leaf_contains(
-                forest, mon_index=1, substring="YouTube"
-            )
+            ok, detail = check_mon_open_leaf_contains(forest,
+                                                      mon_index=1,
+                                                      substring="YouTube")
         elif name == "agent-survives":
-            ok, detail = check_agent_survives(forest, capability.agent_window_id)
-            if (
-                not ok
-                and getattr(capability, "agent_window_optional", False)
-            ):
+            ok, detail = check_agent_survives(forest,
+                                              capability.agent_window_id)
+            if (not ok
+                    and getattr(capability, "agent_window_optional", False)):
                 ok = True
                 detail = (
-                    f"agent window optional (leader/true-cold): {detail}"
-                )
+                    f"agent window optional (leader/true-cold): {detail}")
         elif name == "dual-ghostty-mons":
             ok, detail = check_dual_ghostty_mons(forest)
         elif name == "profile-focus-if-set":
@@ -1123,7 +1143,8 @@ _HARD_READY_WARN_RE = re.compile(
 )
 _SOFT_TIMEOUT_RE = re.compile(r'"softTimeoutMs"\s*:\s*(\d+)')
 _CORRECTIONS_RE = re.compile(r'"corrections"\s*:\s*(\d+)')
-_SOFT_SETTLED_RE = re.compile(r'"softSettled"\s*:\s*(true|false)', re.IGNORECASE)
+_SOFT_SETTLED_RE = re.compile(r'"softSettled"\s*:\s*(true|false)',
+                              re.IGNORECASE)
 _ELAPSED_RE = re.compile(r'"elapsed_ms"\s*:\s*(\d+)')
 
 
@@ -1150,7 +1171,9 @@ def _try_parse_json_blobs(text: str) -> list[dict[str, Any]]:
     return out
 
 
-def extract_layout_metrics(output: str, *, wall_ms: Optional[int] = None) -> dict[str, Any]:
+def extract_layout_metrics(output: str,
+                           *,
+                           wall_ms: Optional[int] = None) -> dict[str, Any]:
     """
     Parse forge layout human + optional verbose JSON into compare metrics.
 
@@ -1196,8 +1219,7 @@ def extract_layout_metrics(output: str, *, wall_ms: Optional[int] = None) -> dic
     metrics["hardReadyWarnings"] = len(hard_hits)
     if re.search(r"not hard-ready \(moving anyway\)", text, re.I):
         metrics["hardReadyTimedOutMovingAnyway"] = len(
-            re.findall(r"not hard-ready \(moving anyway\)", text, re.I)
-        )
+            re.findall(r"not hard-ready \(moving anyway\)", text, re.I))
 
     blobs = _try_parse_json_blobs(text)
     apply: Optional[dict[str, Any]] = None
@@ -1226,21 +1248,23 @@ def extract_layout_metrics(output: str, *, wall_ms: Optional[int] = None) -> dic
             if soft.get("elapsed_ms") is not None:
                 metrics["softElapsedMs"] = int(soft["elapsed_ms"])
             # Quiet held after timeout with no residual → delay "timeout" was success.
-            if soft.get("softSettled") and int(soft.get("corrections") or 0) == 0:
+            if soft.get("softSettled") and int(soft.get("corrections")
+                                               or 0) == 0:
                 metrics["delayTimeoutsLikelyOk"] = 1
-            elif soft.get("softSettled") and int(soft.get("corrections") or 0) > 0:
+            elif soft.get("softSettled") and int(soft.get("corrections")
+                                                 or 0) > 0:
                 # Corrected thrash then quiet — still soft success after miss(es).
                 metrics["delayTimeoutsLikelyOk"] = 1
-        if metrics["softTimeoutMs"] is None and apply.get("finalFocusSoftTimeoutMs") is not None:
+        if metrics["softTimeoutMs"] is None and apply.get(
+                "finalFocusSoftTimeoutMs") is not None:
             try:
-                metrics["softTimeoutMs"] = int(apply["finalFocusSoftTimeoutMs"])
+                metrics["softTimeoutMs"] = int(
+                    apply["finalFocusSoftTimeoutMs"])
             except (TypeError, ValueError):
                 pass
         settle = apply.get("followUpSettle") or apply.get("finalFocusSettle")
         if isinstance(settle, dict) and settle.get("ok") is False:
-            metrics["hardReadyWarnings"] = max(
-                metrics["hardReadyWarnings"], 1
-            )
+            metrics["hardReadyWarnings"] = max(metrics["hardReadyWarnings"], 1)
             err = settle.get("error")
             if err:
                 metrics["hardReadyTimeoutHints"].append(str(err)[:200])
@@ -1321,9 +1345,8 @@ def default_live_report_path(
         if (p / "agents").is_dir() and (p / "scripts" / "forge").is_dir():
             repo = p
             break
-    base = (repo / "agents" / "test-results" / "wayland") if repo else Path(
-        "agents/test-results/wayland"
-    )
+    base = (repo / "agents" / "test-results" /
+            "wayland") if repo else Path("agents/test-results/wayland")
     base.mkdir(parents=True, exist_ok=True)
     return str(base / f"{host}-{session}-{stamp}.json")
 
@@ -1362,7 +1385,8 @@ def summarize_metrics(case_results: list[dict[str, Any]]) -> dict[str, Any]:
         "wallMsMax": max(walls) if walls else None,
         "wallMsAvg": int(sum(walls) / len(walls)) if walls else None,
         "softTimeoutMsMax": max(soft_to) if soft_to else None,
-        "softTimeoutMsAvg": int(sum(soft_to) / len(soft_to)) if soft_to else None,
+        "softTimeoutMsAvg":
+        int(sum(soft_to) / len(soft_to)) if soft_to else None,
         "softCorrectionsTotal": corrections,
         "expectationMissesTotal": misses,
         "hardReadyWarningsTotal": hard_warns,
@@ -1395,7 +1419,8 @@ def format_probe_text(cap: Capability) -> str:
     return "\n".join(lines)
 
 
-def format_selection_text(sel: Selection, cap: Optional[Capability] = None) -> str:
+def format_selection_text(sel: Selection,
+                          cap: Optional[Capability] = None) -> str:
     lines = [f"suite: {sel.suite}"]
     if sel.behaviors:
         lines.append(f"behaviors: {', '.join(sorted(sel.behaviors))}")
@@ -1404,8 +1429,7 @@ def format_selection_text(sel: Selection, cap: Optional[Capability] = None) -> s
     if cap is not None:
         lines.append(
             f"capability: session={cap.session} agent={cap.agent_terminal} "
-            f"true_cold={cap.can_true_cold}"
-        )
+            f"true_cold={cap.can_true_cold}")
     lines.append(f"selected ({len(sel.cases)}):")
     for c in sel.cases:
         reg = f" [{', '.join(c.regressions)}]" if c.regressions else ""

@@ -1,0 +1,1614 @@
+{
+  "capability": {
+    "agentMode": "TILE",
+    "agentTerminal": "ghostty",
+    "agentWindowId": "2262443532",
+    "agentWindowOptional": true,
+    "agentWmClass": "com.mitchellh.ghostty",
+    "canHup": true,
+    "canNested": false,
+    "canPartial": true,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-284-g7f365cd-dirty",
+    "focusWindowId": "2262443532",
+    "nTileWindows": 6,
+    "notes": [
+      "true cold OK: durable Grok leader (agent TILE may close; process survives \u2014 reattach after)",
+      "X11: reload via HUP (`killall -HUP gnome-shell`). `forge nested` refuses here (exit 2) \u2014 nest is Wayland-host only."
+    ],
+    "session": "x11"
+  },
+  "cases": [
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "mon0-open-leaf-grok",
+          "detail": "mon0 open leaf 'Grok'",
+          "ok": true
+        },
+        {
+          "check": "mon1-open-leaf-youtube",
+          "detail": "mon1 open leaf 'YouTube'",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 2262443532 present",
+          "ok": true
+        },
+        {
+          "check": "profile-focus-if-set",
+          "detail": "focusWindowId=2262443532",
+          "ok": true
+        }
+      ],
+      "id": "L1.ghosttys-only",
+      "layoutRc": 0,
+      "layoutTail": "  },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"Google-chrome\",\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  2   opened  4   moved  0\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "beltTreeStable",
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "followUpSettle",
+          "followUpStructure",
+          "followUpStructureSettle",
+          "layoutBatchBegin",
+          "layoutBatchEnd",
+          "layoutBatchRelease",
+          "layoutChromeClear",
+          "openMapWait",
+          "opens",
+          "postOpenRetry",
+          "treeStable"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 4,
+          "reused": 2
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 2083,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 2000,
+        "thrashRisk": null,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 3926
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": ["2262443558", "2262443559", "2262443556", "2262443557"],
+          "step": "close-chrome"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-ghostty-tiles"
+        }
+      ],
+      "title": "Ghosttys only \u2192 layout dev (Chrome reopen)"
+    },
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "mon0-open-leaf-grok",
+          "detail": "mon0 open leaf 'Grok'",
+          "ok": true
+        },
+        {
+          "check": "mon1-open-leaf-youtube",
+          "detail": "mon1 open leaf 'YouTube'",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 2262443532 present",
+          "ok": true
+        }
+      ],
+      "id": "L1.left-chrome",
+      "layoutRc": 0,
+      "layoutTail": "  },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"Google-chrome\",\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  4   opened  2   moved  0\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "beltTreeStable",
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "followUpSettle",
+          "followUpStructure",
+          "followUpStructureSettle",
+          "layoutBatchBegin",
+          "layoutBatchEnd",
+          "layoutBatchRelease",
+          "layoutChromeClear",
+          "openMapWait",
+          "opens",
+          "postOpenRetry",
+          "treeStable"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 2,
+          "reused": 4
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 2081,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 2000,
+        "thrashRisk": null,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 2945
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": ["2262443562", "2262443563"],
+          "monIndex": 1,
+          "step": "close-mon1-chrome"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        }
+      ],
+      "title": "Left chrome+ghostty, mon1 chrome closed \u2192 layout _forge-test-dual"
+    },
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "mon0-open-leaf-grok",
+          "detail": "mon0 open leaf 'Grok'",
+          "ok": true
+        },
+        {
+          "check": "mon1-open-leaf-youtube",
+          "detail": "mon1 open leaf 'YouTube'",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 2262443532 present",
+          "ok": true
+        }
+      ],
+      "id": "L1.right-ghostty",
+      "layoutRc": 0,
+      "layoutTail": "  },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"Google-chrome\",\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  4   opened  2   moved  0\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "beltTreeStable",
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "followUpSettle",
+          "followUpStructure",
+          "followUpStructureSettle",
+          "layoutBatchBegin",
+          "layoutBatchEnd",
+          "layoutBatchRelease",
+          "layoutChromeClear",
+          "openMapWait",
+          "opens",
+          "postOpenRetry",
+          "treeStable"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 2,
+          "reused": 4
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 2021,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 2000,
+        "thrashRisk": null,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 3223
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": ["2262443560", "2262443561"],
+          "monIndex": 0,
+          "step": "close-mon0-chrome"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-mon1"
+        }
+      ],
+      "title": "mon0 chrome closed; mon1 ghostty+tabs \u2192 layout _forge-test-dual"
+    },
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 2262443532 present",
+          "ok": true
+        }
+      ],
+      "id": "L1.t1-nautilus",
+      "layoutRc": 0,
+      "layoutTail": "e\",\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-nautilus source=host path=\u2026/black/_forge-test-nautilus.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  3   opened  4   moved  0   structure  1\n  thrashRisk  2 (structure:mon0.s1, open:google-chrome, open:Grok, open:YouTube)\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "beltTreeStable",
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "followUpSettle",
+          "followUpStructure",
+          "followUpStructureSettle",
+          "layoutBatchBegin",
+          "layoutBatchEnd",
+          "layoutBatchRelease",
+          "layoutChromeClear",
+          "openMapWait",
+          "opens",
+          "postOpenRetry",
+          "treeStable"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 4,
+          "reused": 3
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 2013,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 2000,
+        "thrashRisk": 2,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 3773
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": ["2262443566", "2262443567", "2262443564", "2262443565"],
+          "step": "close-chrome"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        },
+        {
+          "already": false,
+          "launched": true,
+          "ok": true,
+          "step": "ensure-nautilus",
+          "windowId": 2262443568
+        }
+      ],
+      "title": "Left ghostty + nautilus \u2192 layout _forge-test-nautilus"
+    },
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "mon0-open-leaf-grok",
+          "detail": "mon0 open leaf 'Grok'",
+          "ok": true
+        },
+        {
+          "check": "mon1-open-leaf-youtube",
+          "detail": "mon1 open leaf 'YouTube'",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent window optional (leader/true-cold): agent 2262443532 missing from tree",
+          "ok": true
+        },
+        {
+          "check": "profile-focus-if-set",
+          "detail": "focusWindowId=2262443575",
+          "ok": true
+        }
+      ],
+      "id": "L2.true-cold-dev",
+      "layoutRc": 0,
+      "layoutTail": "sVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  6   moved  0\n  thrashRisk  2 (skeleton, open:google-chrome, open:Grok, open:ghostty)\nforge layout: residual targets not hard-ready: ['2262443574', '2262443575', '2262443573', '2262443576', '2262443577', '2262443578'] (moving anyway)\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "beltTreeStable",
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "followUpSettle",
+          "followUpStructure",
+          "followUpStructureSettle",
+          "layoutBatchBegin",
+          "layoutBatchEnd",
+          "layoutBatchRelease",
+          "layoutChromeClear",
+          "openMapWait",
+          "opens",
+          "postOpenRetry",
+          "treeStable"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 6,
+          "reused": 0
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [
+          "hard-ready timeout after 5000ms (pending ['2262443574', '2262443575', '2262443573', '2262443576', '2262443577', '2262443578'])"
+        ],
+        "hardReadyWarnings": 3,
+        "softCorrections": 0,
+        "softElapsedMs": 2074,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 2000,
+        "thrashRisk": 2,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 13349
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": [
+            "2262443569",
+            "2262443570",
+            "2262443532",
+            "2262443568",
+            "2262443531",
+            "2262443571",
+            "2262443572"
+          ],
+          "keptAgent": false,
+          "step": "close-all-tiles"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        }
+      ],
+      "title": "True cold (no tiles) \u2192 layout _forge-test-dual open leaf + focus"
+    },
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "no-tiles-or-only-agent",
+          "detail": "no unexpected TILE windows",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent window optional (leader/true-cold): agent 2262443575 missing from tree",
+          "ok": true
+        }
+      ],
+      "id": "L2.layout-clean",
+      "layoutRc": 0,
+      "layoutTail": "_ms\": 408,\n      \"softTimeoutMs\": 400,\n      \"wallMs\": 3000,\n      \"error\": null,\n      \"pendingCount\": 0\n    },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-clean source=host path=\u2026/hosts/black/_forge-test-clean.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  0   moved  0   closed  6\n  thrashRisk  6\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "opens"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 0,
+          "reused": 0
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 408,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 400,
+        "thrashRisk": 6,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 912
+      },
+      "ok": true,
+      "setup": [
+        {
+          "action": "noop",
+          "hasTiles": true,
+          "step": "ensure-some-tiles"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        }
+      ],
+      "title": "Non-empty desk \u2192 layout _forge-test-clean empties tiles"
+    },
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "mon0-open-leaf-grok",
+          "detail": "mon0 open leaf 'Grok'",
+          "ok": true
+        },
+        {
+          "check": "mon1-open-leaf-youtube",
+          "detail": "mon1 open leaf 'YouTube'",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 2262443580 present",
+          "ok": true
+        }
+      ],
+      "id": "L1.settled-rerun",
+      "layoutRc": 0,
+      "layoutTail": "400,\n      \"wallMs\": 3000,\n      \"error\": null,\n      \"pendingCount\": 0\n    },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"Google-chrome\",\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  6   opened  0   moved  0\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "opens"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 0,
+          "reused": 6
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 417,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 400,
+        "thrashRisk": null,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 927
+      },
+      "ok": true,
+      "setup": [
+        {
+          "action": "layout-_forge-test-dual",
+          "detail": "dev-shape ok (tabbed mon0+mon1, ghostty+chrome tiles)",
+          "layoutRc": 0,
+          "layoutTail": "t path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  6   moved  0\n  thrashRisk  2 (skeleton, open:google-chrome, open:Grok, open:ghostty)\nforge layout: residual targets not hard-ready: ['2262443579', '2262443581', '2262443582', '2262443580', '2262443583', '2262443584'] (moving anyway)\n  ok\n",
+          "shaped": true,
+          "step": "ensure-dev-shape"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        }
+      ],
+      "title": "Settled desk \u2192 layout _forge-test-dual no thrash (focus soft)"
+    },
+    {
+      "actions": [
+        {
+          "ok": true,
+          "result": {
+            "chunks": [
+              {
+                "kind": "extension",
+                "ok": true,
+                "results": [
+                  {
+                    "candidate": {
+                      "nodeType": "WINDOW",
+                      "path": "mo0ws0/0/0",
+                      "title": "Thanks for your order - Walmart.com - Google Chrome",
+                      "windowId": 2262443581,
+                      "wmClass": "Google-chrome"
+                    },
+                    "index": 0,
+                    "keyboard": true,
+                    "ok": true
+                  }
+                ]
+              }
+            ],
+            "ok": true
+          },
+          "step": "focus-disposable-chrome",
+          "windowId": "2262443581"
+        },
+        {
+          "closed": "2262443581",
+          "ok": true,
+          "result": {
+            "chunks": [
+              {
+                "kind": "extension",
+                "ok": true,
+                "results": [
+                  {
+                    "candidate": {
+                      "nodeType": "WINDOW",
+                      "path": "mo0ws0/0/0",
+                      "title": "Thanks for your order - Walmart.com - Google Chrome",
+                      "windowId": 2262443581,
+                      "wmClass": "Google-chrome"
+                    },
+                    "closed": true,
+                    "force": false,
+                    "index": 0,
+                    "ok": true
+                  }
+                ]
+              }
+            ],
+            "ok": true
+          },
+          "step": "close-focus"
+        }
+      ],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "focus-is-tile",
+          "detail": "focus TILE id=2262443580 class='com.mitchellh.ghostty'",
+          "ok": true
+        },
+        {
+          "check": "closed-gone",
+          "detail": "closed id 2262443581 gone",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 2262443580 present",
+          "ok": true
+        }
+      ],
+      "id": "L1.close-focus-lft",
+      "layoutRc": null,
+      "ok": true,
+      "setup": [
+        {
+          "action": "noop",
+          "detail": "dev-shape ok (tabbed mon0+mon1, ghostty+chrome tiles)",
+          "shaped": true,
+          "step": "ensure-dev-shape"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        }
+      ],
+      "title": "Close focused chrome \u2192 focus lands on remaining TILE (LFT/sibling)"
+    },
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "dual-ghostty-mons",
+          "detail": "ghostty TILE mon0=1 mon1=1",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent 2262443580 present",
+          "ok": true
+        }
+      ],
+      "id": "L1.ghosttys-multi",
+      "layoutRc": 0,
+      "layoutTail": "      \"softTimeoutMs\": 400,\n      \"wallMs\": 3000,\n      \"error\": null,\n      \"pendingCount\": 0\n    },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-ghosttys source=host path=\u2026/black/_forge-test-ghosttys.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  2   opened  0   moved  0\n  ok\n",
+      "metrics": {
+        "applyKeys": [
+          "extension",
+          "finalFocus",
+          "finalFocusHeuristics",
+          "finalFocusReassert",
+          "finalFocusSettle",
+          "finalFocusSoft",
+          "finalFocusSoftTimeoutMs",
+          "finalFocusVerify",
+          "followUp",
+          "opens"
+        ],
+        "counts": {
+          "moved": 0,
+          "opened": 0,
+          "reused": 2
+        },
+        "delayTimeoutsLikelyOk": 1,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 412,
+        "softResiduals": 0,
+        "softSettled": true,
+        "softTimeoutMs": 400,
+        "thrashRisk": null,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 925
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": ["2262443582", "2262443583", "2262443584"],
+          "step": "close-chrome"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-ghostty-tiles"
+        }
+      ],
+      "title": "Chrome closed \u2192 layout _forge-test-ghosttys dual mon multi-instance"
+    }
+  ],
+  "env": {
+    "agentMode": "TILE",
+    "agentTerminal": "ghostty",
+    "canHup": true,
+    "canNested": false,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-284-g7f365cd-dirty",
+    "hostname": "black",
+    "nTileWindowsStart": 6,
+    "nestedGnome": false,
+    "session": "x11"
+  },
+  "kind": "forge-test-live",
+  "metricsSummary": {
+    "casesWithMetrics": 8,
+    "delayTimeoutsLikelyOkTotal": 8,
+    "expectationMissesTotal": 0,
+    "hardReadyTimedOutMovingAnywayTotal": 0,
+    "hardReadyWarningsTotal": 3,
+    "softCorrectionsTotal": 0,
+    "softTimeoutMsAvg": 1400,
+    "softTimeoutMsMax": 2000,
+    "wallMsAvg": 3747,
+    "wallMsMax": 13349,
+    "wallMsTotal": 29980
+  },
+  "reattach": {
+    "existingWindowId": 2262443580,
+    "hint": "grok -r <session-id>",
+    "launched": false,
+    "ok": true
+  },
+  "schemaVersion": 1,
+  "selection": {
+    "behaviors": [],
+    "selected": [
+      "L1.ghosttys-only",
+      "L1.left-chrome",
+      "L1.right-ghostty",
+      "L1.t1-nautilus",
+      "L2.true-cold-dev",
+      "L2.layout-clean",
+      "L1.settled-rerun",
+      "L1.close-focus-lft",
+      "L1.ghosttys-multi"
+    ],
+    "skipped": [],
+    "suite": "auto",
+    "tags": []
+  },
+  "summary": {
+    "cases": [
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "mon0-open-leaf-grok",
+            "detail": "mon0 open leaf 'Grok'",
+            "ok": true
+          },
+          {
+            "check": "mon1-open-leaf-youtube",
+            "detail": "mon1 open leaf 'YouTube'",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 2262443532 present",
+            "ok": true
+          },
+          {
+            "check": "profile-focus-if-set",
+            "detail": "focusWindowId=2262443532",
+            "ok": true
+          }
+        ],
+        "id": "L1.ghosttys-only",
+        "layoutRc": 0,
+        "layoutTail": "  },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"Google-chrome\",\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  2   opened  4   moved  0\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "beltTreeStable",
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "followUpSettle",
+            "followUpStructure",
+            "followUpStructureSettle",
+            "layoutBatchBegin",
+            "layoutBatchEnd",
+            "layoutBatchRelease",
+            "layoutChromeClear",
+            "openMapWait",
+            "opens",
+            "postOpenRetry",
+            "treeStable"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 4,
+            "reused": 2
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 2083,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 2000,
+          "thrashRisk": null,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 3926
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": ["2262443558", "2262443559", "2262443556", "2262443557"],
+            "step": "close-chrome"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-ghostty-tiles"
+          }
+        ],
+        "title": "Ghosttys only \u2192 layout dev (Chrome reopen)"
+      },
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "mon0-open-leaf-grok",
+            "detail": "mon0 open leaf 'Grok'",
+            "ok": true
+          },
+          {
+            "check": "mon1-open-leaf-youtube",
+            "detail": "mon1 open leaf 'YouTube'",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 2262443532 present",
+            "ok": true
+          }
+        ],
+        "id": "L1.left-chrome",
+        "layoutRc": 0,
+        "layoutTail": "  },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"Google-chrome\",\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  4   opened  2   moved  0\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "beltTreeStable",
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "followUpSettle",
+            "followUpStructure",
+            "followUpStructureSettle",
+            "layoutBatchBegin",
+            "layoutBatchEnd",
+            "layoutBatchRelease",
+            "layoutChromeClear",
+            "openMapWait",
+            "opens",
+            "postOpenRetry",
+            "treeStable"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 2,
+            "reused": 4
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 2081,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 2000,
+          "thrashRisk": null,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 2945
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": ["2262443562", "2262443563"],
+            "monIndex": 1,
+            "step": "close-mon1-chrome"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          }
+        ],
+        "title": "Left chrome+ghostty, mon1 chrome closed \u2192 layout _forge-test-dual"
+      },
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "mon0-open-leaf-grok",
+            "detail": "mon0 open leaf 'Grok'",
+            "ok": true
+          },
+          {
+            "check": "mon1-open-leaf-youtube",
+            "detail": "mon1 open leaf 'YouTube'",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 2262443532 present",
+            "ok": true
+          }
+        ],
+        "id": "L1.right-ghostty",
+        "layoutRc": 0,
+        "layoutTail": "  },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"Google-chrome\",\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  4   opened  2   moved  0\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "beltTreeStable",
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "followUpSettle",
+            "followUpStructure",
+            "followUpStructureSettle",
+            "layoutBatchBegin",
+            "layoutBatchEnd",
+            "layoutBatchRelease",
+            "layoutChromeClear",
+            "openMapWait",
+            "opens",
+            "postOpenRetry",
+            "treeStable"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 2,
+            "reused": 4
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 2021,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 2000,
+          "thrashRisk": null,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 3223
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": ["2262443560", "2262443561"],
+            "monIndex": 0,
+            "step": "close-mon0-chrome"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-mon1"
+          }
+        ],
+        "title": "mon0 chrome closed; mon1 ghostty+tabs \u2192 layout _forge-test-dual"
+      },
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 2262443532 present",
+            "ok": true
+          }
+        ],
+        "id": "L1.t1-nautilus",
+        "layoutRc": 0,
+        "layoutTail": "e\",\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-nautilus source=host path=\u2026/black/_forge-test-nautilus.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  3   opened  4   moved  0   structure  1\n  thrashRisk  2 (structure:mon0.s1, open:google-chrome, open:Grok, open:YouTube)\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "beltTreeStable",
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "followUpSettle",
+            "followUpStructure",
+            "followUpStructureSettle",
+            "layoutBatchBegin",
+            "layoutBatchEnd",
+            "layoutBatchRelease",
+            "layoutChromeClear",
+            "openMapWait",
+            "opens",
+            "postOpenRetry",
+            "treeStable"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 4,
+            "reused": 3
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 2013,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 2000,
+          "thrashRisk": 2,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 3773
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": ["2262443566", "2262443567", "2262443564", "2262443565"],
+            "step": "close-chrome"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          },
+          {
+            "already": false,
+            "launched": true,
+            "ok": true,
+            "step": "ensure-nautilus",
+            "windowId": 2262443568
+          }
+        ],
+        "title": "Left ghostty + nautilus \u2192 layout _forge-test-nautilus"
+      },
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "mon0-open-leaf-grok",
+            "detail": "mon0 open leaf 'Grok'",
+            "ok": true
+          },
+          {
+            "check": "mon1-open-leaf-youtube",
+            "detail": "mon1 open leaf 'YouTube'",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent window optional (leader/true-cold): agent 2262443532 missing from tree",
+            "ok": true
+          },
+          {
+            "check": "profile-focus-if-set",
+            "detail": "focusWindowId=2262443575",
+            "ok": true
+          }
+        ],
+        "id": "L2.true-cold-dev",
+        "layoutRc": 0,
+        "layoutTail": "sVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    },\n    \"layoutChromeClear\": {\n      \"ok\": true,\n      \"cleared\": true\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  6   moved  0\n  thrashRisk  2 (skeleton, open:google-chrome, open:Grok, open:ghostty)\nforge layout: residual targets not hard-ready: ['2262443574', '2262443575', '2262443573', '2262443576', '2262443577', '2262443578'] (moving anyway)\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "beltTreeStable",
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "followUpSettle",
+            "followUpStructure",
+            "followUpStructureSettle",
+            "layoutBatchBegin",
+            "layoutBatchEnd",
+            "layoutBatchRelease",
+            "layoutChromeClear",
+            "openMapWait",
+            "opens",
+            "postOpenRetry",
+            "treeStable"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 6,
+            "reused": 0
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [
+            "hard-ready timeout after 5000ms (pending ['2262443574', '2262443575', '2262443573', '2262443576', '2262443577', '2262443578'])"
+          ],
+          "hardReadyWarnings": 3,
+          "softCorrections": 0,
+          "softElapsedMs": 2074,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 2000,
+          "thrashRisk": 2,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 13349
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": [
+              "2262443569",
+              "2262443570",
+              "2262443532",
+              "2262443568",
+              "2262443531",
+              "2262443571",
+              "2262443572"
+            ],
+            "keptAgent": false,
+            "step": "close-all-tiles"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          }
+        ],
+        "title": "True cold (no tiles) \u2192 layout _forge-test-dual open leaf + focus"
+      },
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "no-tiles-or-only-agent",
+            "detail": "no unexpected TILE windows",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent window optional (leader/true-cold): agent 2262443575 missing from tree",
+            "ok": true
+          }
+        ],
+        "id": "L2.layout-clean",
+        "layoutRc": 0,
+        "layoutTail": "_ms\": 408,\n      \"softTimeoutMs\": 400,\n      \"wallMs\": 3000,\n      \"error\": null,\n      \"pendingCount\": 0\n    },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-clean source=host path=\u2026/hosts/black/_forge-test-clean.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  0   moved  0   closed  6\n  thrashRisk  6\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "opens"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 0,
+            "reused": 0
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 408,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 400,
+          "thrashRisk": 6,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 912
+        },
+        "ok": true,
+        "setup": [
+          {
+            "action": "noop",
+            "hasTiles": true,
+            "step": "ensure-some-tiles"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          }
+        ],
+        "title": "Non-empty desk \u2192 layout _forge-test-clean empties tiles"
+      },
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "mon0-open-leaf-grok",
+            "detail": "mon0 open leaf 'Grok'",
+            "ok": true
+          },
+          {
+            "check": "mon1-open-leaf-youtube",
+            "detail": "mon1 open leaf 'YouTube'",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 2262443580 present",
+            "ok": true
+          }
+        ],
+        "id": "L1.settled-rerun",
+        "layoutRc": 0,
+        "layoutTail": "400,\n      \"wallMs\": 3000,\n      \"error\": null,\n      \"pendingCount\": 0\n    },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"Google-chrome\",\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-dual source=host path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  6   opened  0   moved  0\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "opens"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 0,
+            "reused": 6
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 417,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 400,
+          "thrashRisk": null,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 927
+        },
+        "ok": true,
+        "setup": [
+          {
+            "action": "layout-_forge-test-dual",
+            "detail": "dev-shape ok (tabbed mon0+mon1, ghostty+chrome tiles)",
+            "layoutRc": 0,
+            "layoutTail": "t path=\u2026/hosts/black/_forge-test-dual.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  0   opened  6   moved  0\n  thrashRisk  2 (skeleton, open:google-chrome, open:Grok, open:ghostty)\nforge layout: residual targets not hard-ready: ['2262443579', '2262443581', '2262443582', '2262443580', '2262443583', '2262443584'] (moving anyway)\n  ok\n",
+            "shaped": true,
+            "step": "ensure-dev-shape"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          }
+        ],
+        "title": "Settled desk \u2192 layout _forge-test-dual no thrash (focus soft)"
+      },
+      {
+        "actions": [
+          {
+            "ok": true,
+            "result": {
+              "chunks": [
+                {
+                  "kind": "extension",
+                  "ok": true,
+                  "results": [
+                    {
+                      "candidate": {
+                        "nodeType": "WINDOW",
+                        "path": "mo0ws0/0/0",
+                        "title": "Thanks for your order - Walmart.com - Google Chrome",
+                        "windowId": 2262443581,
+                        "wmClass": "Google-chrome"
+                      },
+                      "index": 0,
+                      "keyboard": true,
+                      "ok": true
+                    }
+                  ]
+                }
+              ],
+              "ok": true
+            },
+            "step": "focus-disposable-chrome",
+            "windowId": "2262443581"
+          },
+          {
+            "closed": "2262443581",
+            "ok": true,
+            "result": {
+              "chunks": [
+                {
+                  "kind": "extension",
+                  "ok": true,
+                  "results": [
+                    {
+                      "candidate": {
+                        "nodeType": "WINDOW",
+                        "path": "mo0ws0/0/0",
+                        "title": "Thanks for your order - Walmart.com - Google Chrome",
+                        "windowId": 2262443581,
+                        "wmClass": "Google-chrome"
+                      },
+                      "closed": true,
+                      "force": false,
+                      "index": 0,
+                      "ok": true
+                    }
+                  ]
+                }
+              ],
+              "ok": true
+            },
+            "step": "close-focus"
+          }
+        ],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "focus-is-tile",
+            "detail": "focus TILE id=2262443580 class='com.mitchellh.ghostty'",
+            "ok": true
+          },
+          {
+            "check": "closed-gone",
+            "detail": "closed id 2262443581 gone",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 2262443580 present",
+            "ok": true
+          }
+        ],
+        "id": "L1.close-focus-lft",
+        "layoutRc": null,
+        "ok": true,
+        "setup": [
+          {
+            "action": "noop",
+            "detail": "dev-shape ok (tabbed mon0+mon1, ghostty+chrome tiles)",
+            "shaped": true,
+            "step": "ensure-dev-shape"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          }
+        ],
+        "title": "Close focused chrome \u2192 focus lands on remaining TILE (LFT/sibling)"
+      },
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "dual-ghostty-mons",
+            "detail": "ghostty TILE mon0=1 mon1=1",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent 2262443580 present",
+            "ok": true
+          }
+        ],
+        "id": "L1.ghosttys-multi",
+        "layoutRc": 0,
+        "layoutTail": "      \"softTimeoutMs\": 400,\n      \"wallMs\": 3000,\n      \"error\": null,\n      \"pendingCount\": 0\n    },\n    \"finalFocusHeuristics\": {\n      \"host\": \"black\",\n      \"classes\": [\n        \"com.mitchellh.ghostty\"\n      ],\n      \"residualSamples\": 0,\n      \"persist\": \"deferred\"\n    },\n    \"finalFocusVerify\": {\n      \"ok\": true,\n      \"steps\": 0,\n      \"skipped\": true,\n      \"reason\": \"post-settled open-leaf/profile match\"\n    },\n    \"finalFocusReassert\": {\n      \"skipped\": true,\n      \"reason\": \"soft barrier + post-settled verify is product path\"\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-ghosttys source=host path=\u2026/black/_forge-test-ghosttys.json\n  workspace  1 (current)\n  mode=A collect\n  residuals=close (default; non-layout windows closed)\n  reused  2   opened  0   moved  0\n  ok\n",
+        "metrics": {
+          "applyKeys": [
+            "extension",
+            "finalFocus",
+            "finalFocusHeuristics",
+            "finalFocusReassert",
+            "finalFocusSettle",
+            "finalFocusSoft",
+            "finalFocusSoftTimeoutMs",
+            "finalFocusVerify",
+            "followUp",
+            "opens"
+          ],
+          "counts": {
+            "moved": 0,
+            "opened": 0,
+            "reused": 2
+          },
+          "delayTimeoutsLikelyOk": 1,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 412,
+          "softResiduals": 0,
+          "softSettled": true,
+          "softTimeoutMs": 400,
+          "thrashRisk": null,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 925
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": ["2262443582", "2262443583", "2262443584"],
+            "step": "close-chrome"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-ghostty-tiles"
+          }
+        ],
+        "title": "Chrome closed \u2192 layout _forge-test-ghosttys dual mon multi-instance"
+      }
+    ],
+    "failed": 0,
+    "ok": true,
+    "passed": 9
+  }
+}

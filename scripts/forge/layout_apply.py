@@ -45,8 +45,7 @@ def detect_layout_mode(data: Any, *, force_launch: bool = False) -> str:
         if force_launch:
             raise ValueError(
                 "--force-launch requires profile steps[] (imperative path); "
-                "bare-array profiles use reconcile — omit --force-launch"
-            )
+                "bare-array profiles use reconcile — omit --force-launch")
         return MODE_RECONCILE
 
     if not isinstance(data, dict):
@@ -71,8 +70,7 @@ def detect_layout_mode(data: Any, *, force_launch: bool = False) -> str:
             return MODE_STEPS
         raise ValueError(
             "--force-launch requires profile steps[] (imperative path); "
-            "roles-only v2 profiles use reconcile — omit --force-launch"
-        )
+            "roles-only v2 profiles use reconcile — omit --force-launch")
 
     if mode_s == MODE_STEPS:
         if not has_steps:
@@ -103,8 +101,7 @@ def detect_layout_mode(data: Any, *, force_launch: bool = False) -> str:
 
     raise ValueError(
         "cannot determine layout mode: need version 1 + steps[], "
-        "or version 2 + roles[] / tiles / bare array (mode: reconcile)"
-    )
+        "or version 2 + roles[] / tiles / bare array (mode: reconcile)")
 
 
 def slot_to_monitor_path(slot: str, workspace: int = 0) -> str:
@@ -124,7 +121,7 @@ def slot_to_monitor_path(slot: str, workspace: int = 0) -> str:
 def slot_to_tree_path(slot: str, workspace: int = 0) -> str:
     """Bare mon path for PlaceNext (moNwsW), no path: prefix."""
     p = slot_to_monitor_path(slot, workspace)
-    return p[len("path:") :] if p.startswith("path:") else p
+    return p[len("path:"):] if p.startswith("path:") else p
 
 
 def window_tile_selector(action: dict[str, Any]) -> Optional[str]:
@@ -153,9 +150,9 @@ def _action_workspace(a: dict[str, Any], default: int = 0) -> int:
     return ws if ws >= 0 else default
 
 
-def _move_step_from_action(
-    a: dict[str, Any], *, workspace: int = 0
-) -> Optional[dict[str, Any]]:
+def _move_step_from_action(a: dict[str, Any],
+                           *,
+                           workspace: int = 0) -> Optional[dict[str, Any]]:
     """Build a move RunStep from plan move/park action (None if incomplete)."""
     tile = window_tile_selector(a)
     if not tile:
@@ -198,9 +195,10 @@ def _window_ids_to_selectors(wids: Any) -> list[str]:
     return out
 
 
-def actions_to_extension_steps(
-    actions: Any, *, force_close: bool = False, workspace: int = 0
-) -> list[dict[str, Any]]:
+def actions_to_extension_steps(actions: Any,
+                               *,
+                               force_close: bool = False,
+                               workspace: int = 0) -> list[dict[str, Any]]:
     """
     Map plan actions to extension RunSteps (move / layout / order / size / close).
     Skips open (CLI launch).
@@ -298,7 +296,8 @@ def actions_to_extension_steps(
             ph = a.get("placeholderId")
             if ph is not None and str(ph).strip() != "":
                 p = str(ph).strip()
-                bind_step["placeholder"] = p if p.startswith("id:") else f"id:{p}"
+                bind_step["placeholder"] = p if p.startswith(
+                    "id:") else f"id:{p}"
             bind_steps.append(bind_step)
             continue
         if op == "move":
@@ -336,22 +335,24 @@ def actions_to_extension_steps(
                 # activates. Prevents YouTube/Grok activate from stomping focus.
                 reason = str(a.get("reason") or "").strip().lower()
                 kbd = a.get("keyboard")
-                if kbd is False or kbd == 0 or reason in ("active", "survivor"):
+                if kbd is False or kbd == 0 or reason in ("active",
+                                                          "survivor"):
                     step_f["keyboard"] = False
                 focus_steps.append(step_f)
             continue
         if op == "ensure_order":
             id_sels = _window_ids_to_selectors(
-                a.get("windowIds") if a.get("windowIds") is not None else a.get("selectors")
-            )
+                a.get("windowIds") if a.get("windowIds") is not None else a.
+                get("selectors"))
             if len(id_sels) >= 2:
                 order_steps.append({"op": "order", "windowIds": id_sels})
             continue
         if op == "ensure_sizes":
             id_sels = _window_ids_to_selectors(
-                a.get("windowIds") if a.get("windowIds") is not None else a.get("selectors")
-            )
-            raw_shares = a.get("shares") if a.get("shares") is not None else a.get("share")
+                a.get("windowIds") if a.get("windowIds") is not None else a.
+                get("selectors"))
+            raw_shares = a.get("shares") if a.get(
+                "shares") is not None else a.get("share")
             shares: list[float] = []
             if isinstance(raw_shares, list):
                 for s in raw_shares:
@@ -365,9 +366,11 @@ def actions_to_extension_steps(
                         break
                     shares.append(f)
             if len(id_sels) >= 2 and len(shares) == len(id_sels):
-                size_steps.append(
-                    {"op": "size", "windowIds": id_sels, "shares": shares}
-                )
+                size_steps.append({
+                    "op": "size",
+                    "windowIds": id_sels,
+                    "shares": shares
+                })
             continue
         if op != "ensure_layout":
             continue
@@ -389,25 +392,37 @@ def actions_to_extension_steps(
             # the tail (YT←Gmail←Voice → YT,Voice,Gmail). Always re-order to
             # profile windowIds when ≥2 members.
             anchor = id_sels[0]
-            layout_steps.append({"op": "layout", "mode": mode, "selector": anchor})
+            layout_steps.append({
+                "op": "layout",
+                "mode": mode,
+                "selector": anchor
+            })
             for sel in id_sels[1:]:
-                layout_steps.append({"op": "move", "tile": sel, "dest": anchor})
+                layout_steps.append({
+                    "op": "move",
+                    "tile": sel,
+                    "dest": anchor
+                })
             if len(id_sels) >= 2:
                 order_steps.append({"op": "order", "windowIds": list(id_sels)})
             continue
 
         # Nested h/v split structure: join members onto first id (like tabbed).
         # Mon-level (slot mon0/mon1) only rewrites MONITOR layout — never join.
-        if (
-            mode in ("hsplit", "vsplit")
-            and id_sels
-            and len(id_sels) >= 2
-            and "." in slot
-        ):
+        if (mode in ("hsplit", "vsplit") and id_sels and len(id_sels) >= 2
+                and "." in slot):
             anchor = id_sels[0]
-            layout_steps.append({"op": "layout", "mode": mode, "selector": anchor})
+            layout_steps.append({
+                "op": "layout",
+                "mode": mode,
+                "selector": anchor
+            })
             for sel in id_sels[1:]:
-                layout_steps.append({"op": "move", "tile": sel, "dest": anchor})
+                layout_steps.append({
+                    "op": "move",
+                    "tile": sel,
+                    "dest": anchor
+                })
             if len(id_sels) >= 2:
                 order_steps.append({"op": "order", "windowIds": list(id_sels)})
             continue
@@ -419,16 +434,8 @@ def actions_to_extension_steps(
 
     # Focus last so lastTabFocus + keyboard focus stick after structure/order/size.
     # Bind before residual close/park (CT0 P5 after bind barrier).
-    return (
-        skeleton_steps
-        + role_place_steps
-        + bind_steps
-        + residual_steps
-        + layout_steps
-        + order_steps
-        + size_steps
-        + focus_steps
-    )
+    return (skeleton_steps + role_place_steps + bind_steps + residual_steps +
+            layout_steps + order_steps + size_steps + focus_steps)
 
 
 def _ghostty_stem(token: str) -> str:
@@ -439,7 +446,7 @@ def _ghostty_stem(token: str) -> str:
     # desktop id or path → stem
     name = Path(t).name
     if name.casefold().endswith(".desktop"):
-        name = name[: -len(".desktop")]
+        name = name[:-len(".desktop")]
     cf = name.casefold()
     if "." in cf:
         return cf.rsplit(".", 1)[-1]
@@ -454,7 +461,8 @@ def is_ghostty_launch_target(app: str, desktop: Optional[str] = None) -> bool:
     """
     if desktop:
         stem = Path(str(desktop)).stem.casefold()
-        if stem in _GHOSTTY_STEMS or stem.endswith(".ghostty") or _ghostty_stem(stem) == "ghostty":
+        if stem in _GHOSTTY_STEMS or stem.endswith(
+                ".ghostty") or _ghostty_stem(stem) == "ghostty":
             return True
     raw = (app or "").strip().strip("'\"")
     if not raw:
@@ -522,12 +530,14 @@ def rewrite_ghostty_launch_app(app: str) -> str:
     return shlex.join(ghostty_multi_instance_argv(app))
 
 
-def open_action_to_launch_fields(
-    action: dict[str, Any], *, workspace: int = 0
-) -> dict[str, Any]:
+def open_action_to_launch_fields(action: dict[str, Any],
+                                 *,
+                                 workspace: int = 0) -> dict[str, Any]:
     """Map plan open action → do_launch kwargs (+ role for reports)."""
-    open_spec = action.get("open") if isinstance(action.get("open"), dict) else {}
-    app = open_spec.get("app") or open_spec.get("desktop") or open_spec.get("command")
+    open_spec = action.get("open") if isinstance(action.get("open"),
+                                                 dict) else {}
+    app = open_spec.get("app") or open_spec.get("desktop") or open_spec.get(
+        "command")
     app_s = str(app).strip() if app is not None else ""
     # Ghostty: never hand bare id through to gio launch of single-instance desktop.
     if is_ghostty_launch_target(app_s):
@@ -540,14 +550,16 @@ def open_action_to_launch_fields(
         fields["wm_class"] = str(wc).strip()
     if "timeout" in open_spec and open_spec["timeout"] is not None:
         fields["timeout"] = int(open_spec["timeout"])
-    no_wait = open_spec.get("noWait") if "noWait" in open_spec else open_spec.get("no_wait")
+    no_wait = open_spec.get(
+        "noWait") if "noWait" in open_spec else open_spec.get("no_wait")
     if no_wait is not None:
         fields["no_wait"] = bool(no_wait)
     if open_spec.get("first") is not None:
         fields["first"] = bool(open_spec["first"])
 
     mon = open_spec.get("monitor")
-    tree = open_spec.get("treePath") or open_spec.get("path") or open_spec.get("tree_path")
+    tree = open_spec.get("treePath") or open_spec.get("path") or open_spec.get(
+        "tree_path")
     slot = action.get("slot")
     ws = _action_workspace(action, workspace)
     if mon is None and slot:
@@ -566,7 +578,8 @@ def open_action_to_launch_fields(
         s = str(attach).strip()
         fields["attach_selector"] = s if s.startswith("id:") else f"id:{s}"
     # Title identity for PlaceNext (Chrome multi-open / X11 shared wmClass).
-    oa_match = action.get("match") if isinstance(action.get("match"), dict) else {}
+    oa_match = action.get("match") if isinstance(action.get("match"),
+                                                 dict) else {}
     title_sub = oa_match.get("title~=")
     title_exact = oa_match.get("title")
     if title_sub is not None and str(title_sub).strip() != "":
@@ -577,8 +590,7 @@ def open_action_to_launch_fields(
 
 
 def partition_plan_actions(
-    actions: Any,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    actions: Any, ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Split plan actions into (extension-side, open) lists preserving order."""
     if not isinstance(actions, list):
         return [], []
@@ -610,49 +622,63 @@ def residual_follow_up(
     """
     ext = residual_ext if isinstance(residual_ext, list) else []
     opens = residual_open if isinstance(residual_open, list) else []
-    steps = actions_to_extension_steps(
-        ext, force_close=force_close, workspace=workspace
-    )
+    steps = actions_to_extension_steps(ext,
+                                       force_close=force_close,
+                                       workspace=workspace)
     still = [a.get("role") for a in opens if isinstance(a, dict)]
     return steps, still
 
 
 # RunSteps ops that rehome windows (must settle mon before structure).
-_PLACE_STEP_OPS = frozenset(
-    {
-        "move",
-        "park",
-        "close",
-        "float",
-        "unfloat",
-    }
-)
+_PLACE_STEP_OPS = frozenset({
+    "move",
+    "park",
+    "close",
+    "float",
+    "unfloat",
+})
 # RunSteps ops that rewrite topology / order / size after place.
-_STRUCTURE_STEP_OPS = frozenset(
-    {
-        "layout",
-        "order",
-        "size",
-        "bind",
-        "skeleton",
-        "ensure_layout",  # plan-level name if ever passed through
-        "ensure_order",
-        "ensure_sizes",
-    }
-)
+_STRUCTURE_STEP_OPS = frozenset({
+    "layout",
+    "order",
+    "size",
+    "bind",
+    "skeleton",
+    "ensure_layout",  # plan-level name if ever passed through
+    "ensure_order",
+    "ensure_sizes",
+})
+
+
+def _move_dest_is_window_join(step: dict[str, Any]) -> bool:
+    """
+    True when a move dest is a window id (tab/stack/group join).
+
+    ensure_layout expands to layout(anchor) then move(others → anchor). Those
+    join moves must stay with structure (after the wrap), not mon-place. A join
+    that runs before layout leaves the peer as a mon sibling of a solo TABBED
+    CON — first-shot open leaf stuck on chrome (partial reopen).
+    """
+    dest = str(step.get("dest") or "").strip()
+    return dest.startswith("id:")
 
 
 def partition_extension_steps_place_vs_structure(
-    steps: Any,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    steps: Any, ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
-    Split residual RunSteps into place (move/park/close) vs structure
-    (layout/order/size/bind/skeleton). Preserves relative order within each.
+    Split residual RunSteps into place (mon rehome / park / close) vs structure
+    (layout / tab-join moves / order / size / bind / skeleton). Preserves
+    relative order within each bucket.
 
     Wayland mon moves can report ok while tree paths still lag; running
     ensure_layout in the same batch then tabs on the pre-move mon and leaves
     mon1 flat. Apply place first, replan structure from a fresh GetTree, then
     structure-only (see forge residual path).
+
+    Window-dest moves (dest id:…) are structure: ensure_layout emits
+    layout(anchor) then move(peer → anchor). Peeling those joins into place
+    runs them *before* the TABBED wrap and leaves the peer flat next to a
+    solo tab CON (partial chrome reopen open-leaf miss).
     """
     if not isinstance(steps, list):
         return [], []
@@ -662,7 +688,9 @@ def partition_extension_steps_place_vs_structure(
         if not isinstance(s, dict):
             continue
         op = str(s.get("op") or "").strip().lower()
-        if op in _PLACE_STEP_OPS:
+        if op == "move" and _move_dest_is_window_join(s):
+            structure.append(s)
+        elif op in _PLACE_STEP_OPS:
             place.append(s)
         elif op in _STRUCTURE_STEP_OPS:
             structure.append(s)
@@ -690,7 +718,10 @@ def belt_actions_from_plan(
     if not isinstance(actions, list):
         return []
     pins = role_pins if isinstance(role_pins, dict) else {}
-    pin_roles = {str(k) for k in pins.keys() if k is not None and str(k).strip()}
+    pin_roles = {
+        str(k)
+        for k in pins.keys() if k is not None and str(k).strip()
+    }
     out: list[dict[str, Any]] = []
     for a in actions:
         if not isinstance(a, dict):
@@ -708,9 +739,8 @@ def focus_actions_from_plan(actions: Any) -> list[dict[str, Any]]:
     if not isinstance(actions, list):
         return []
     return [
-        a
-        for a in actions
-        if isinstance(a, dict) and str(a.get("op") or "").strip().lower() == "focus"
+        a for a in actions if isinstance(a, dict)
+        and str(a.get("op") or "").strip().lower() == "focus"
     ]
 
 
@@ -719,9 +749,8 @@ def without_focus_actions(actions: Any) -> list[dict[str, Any]]:
     if not isinstance(actions, list):
         return []
     return [
-        a
-        for a in actions
-        if isinstance(a, dict) and str(a.get("op") or "").strip().lower() != "focus"
+        a for a in actions if isinstance(a, dict)
+        and str(a.get("op") or "").strip().lower() != "focus"
     ]
 
 
@@ -751,19 +780,20 @@ def parent_last_tab_focus_by_window_id(forest: Any) -> dict[str, str]:
     def walk(n: Any) -> None:
         if not isinstance(n, dict):
             return
-        kids = n.get("children") if n.get("children") is not None else n.get("childNodes")
+        kids = n.get("children") if n.get("children") is not None else n.get(
+            "childNodes")
         if not isinstance(kids, list):
             kids = []
         layout = str(n.get("layout") or "").strip().upper()
         if layout in ("TABBED", "STACKED"):
             ltf = n.get("lastTabFocusId")
-            ltf_s = (
-                str(ltf).strip() if ltf is not None and str(ltf).strip() != "" else ""
-            )
+            ltf_s = (str(ltf).strip()
+                     if ltf is not None and str(ltf).strip() != "" else "")
             for c in kids:
                 if not isinstance(c, dict):
                     continue
-                ntype = str(c.get("nodeType") or c.get("type") or "").strip().upper()
+                ntype = str(c.get("nodeType") or c.get("type")
+                            or "").strip().upper()
                 if ntype and ntype != "WINDOW":
                     continue
                 wid = c.get("windowId")
@@ -879,9 +909,7 @@ def resolve_focus_soft_timeout_ms(
             store,
             make_key(host, c, process_kind, "focus"),
             residual_kind="focus",
-        )
-        for c in classes
-    )
+        ) for c in classes)
 
 
 def soft_focus_wall_ms(soft_timeout_ms: int) -> int:
@@ -917,9 +945,7 @@ def resolve_geom_soft_timeout_ms(
             store,
             make_key(host, c, process_kind, "geom"),
             residual_kind="geom",
-        )
-        for c in classes
-    )
+        ) for c in classes)
 
 
 def soft_geom_wall_ms(soft_timeout_ms: int) -> int:
@@ -951,12 +977,12 @@ def window_rect_fingerprint(win: Any) -> Optional[tuple[int, int, int, int]]:
     return (x, y, w, h)
 
 
-def rect_map_for_ids(windows: Any, window_ids: Any) -> dict[str, tuple[int, int, int, int]]:
+def rect_map_for_ids(windows: Any,
+                     window_ids: Any) -> dict[str, tuple[int, int, int, int]]:
     """windowId → rect fingerprint for ids present and usable."""
     want = {
         str(x).strip()
-        for x in (window_ids or [])
-        if x is not None and str(x).strip() != ""
+        for x in (window_ids or []) if x is not None and str(x).strip() != ""
     }
     out: dict[str, tuple[int, int, int, int]] = {}
     if not want or not isinstance(windows, list):
@@ -996,11 +1022,8 @@ def run_soft_geom_barrier(
         soft_ms = max(0, int(soft_timeout_ms))
     except (TypeError, ValueError):
         soft_ms = 0
-    wall_ms = (
-        max(0, int(max_wall_ms))
-        if max_wall_ms is not None
-        else soft_geom_wall_ms(soft_ms)
-    )
+    wall_ms = (max(0, int(max_wall_ms))
+               if max_wall_ms is not None else soft_geom_wall_ms(soft_ms))
     poll_s = max(0, int(poll_ms)) / 1000.0
     t0 = float(call_started_mono) if call_started_mono is not None else mono()
     last_act = t0
@@ -1010,8 +1033,7 @@ def run_soft_geom_barrier(
     last_map: dict[str, tuple[int, int, int, int]] = {}
     last_err: Optional[str] = None
     ids = [
-        str(x).strip()
-        for x in (window_ids or [])
+        str(x).strip() for x in (window_ids or [])
         if x is not None and str(x).strip() != ""
     ]
 
@@ -1046,19 +1068,16 @@ def run_soft_geom_barrier(
 
         if last_map and cur:
             changed = [
-                wid
-                for wid, fp in cur.items()
+                wid for wid, fp in cur.items()
                 if wid in last_map and last_map[wid] != fp
             ]
             if changed:
                 lat = quiet_elapsed_ms
-                residuals.append(
-                    {
-                        "latencyMs": lat,
-                        "windowIds": changed,
-                        "kind": "geom",
-                    }
-                )
+                residuals.append({
+                    "latencyMs": lat,
+                    "windowIds": changed,
+                    "kind": "geom",
+                })
                 last_act = mono()
                 last_map = cur
                 continue
@@ -1125,11 +1144,8 @@ def run_soft_focus_barrier(
         soft_ms = max(0, int(soft_timeout_ms))
     except (TypeError, ValueError):
         soft_ms = 0
-    wall_ms = (
-        max(0, int(max_wall_ms))
-        if max_wall_ms is not None
-        else soft_focus_wall_ms(soft_ms)
-    )
+    wall_ms = (max(0, int(max_wall_ms))
+               if max_wall_ms is not None else soft_focus_wall_ms(soft_ms))
     poll_s = max(0, int(poll_ms)) / 1000.0
     t0 = float(call_started_mono) if call_started_mono is not None else mono()
     last_act = t0
@@ -1137,7 +1153,6 @@ def run_soft_focus_barrier(
     residuals: list[dict[str, Any]] = []
     corrections = 0
     polls = 0
-    last_needed: list[Any] = []
     last_correct_err: Optional[str] = None
 
     while True:
@@ -1159,18 +1174,15 @@ def run_soft_focus_barrier(
             needed = [needed_raw]
         else:
             needed = []
-        last_needed = needed
 
         if needed:
             # Focus thrash: residual latency from last act; correct + reset quiet.
             latency_ms = int(max(0.0, (now - last_act) * 1000))
-            residuals.append(
-                {
-                    "latencyMs": latency_ms,
-                    "neededCount": len(needed),
-                    "elapsedFromCallMs": elapsed_ms,
-                }
-            )
+            residuals.append({
+                "latencyMs": latency_ms,
+                "neededCount": len(needed),
+                "elapsedFromCallMs": elapsed_ms,
+            })
             if corrections >= max_corrections:
                 return {
                     "ok": False,
@@ -1182,7 +1194,8 @@ def run_soft_focus_barrier(
                     "elapsed_ms": elapsed_ms,
                     "softTimeoutMs": soft_ms,
                     "wallMs": wall_ms,
-                    "error": f"soft focus: max corrections ({max_corrections})",
+                    "error":
+                    f"soft focus: max corrections ({max_corrections})",
                     "pendingCount": len(needed),
                 }
             try:
@@ -1229,7 +1242,8 @@ def run_soft_focus_barrier(
             return {
                 "ok": False,
                 "softSettled": False,
-                "clean": True,  # last check was clean but quiet not held long enough
+                "clean":
+                True,  # last check was clean but quiet not held long enough
                 "corrections": corrections,
                 "residuals": residuals,
                 "polls": polls,
@@ -1270,8 +1284,7 @@ def _rect_is_reasonable(rect: Any) -> bool:
         return False
     return w > 0 and h > 0 and all(
         isinstance(rect.get(k), (int, float)) or rect.get(k) is None
-        for k in ("x", "y")
-    )
+        for k in ("x", "y"))
 
 
 def window_is_settled(
@@ -1351,8 +1364,7 @@ def hard_ready_status(
     Hard expectations (D019): windowId present, TILE (default), sane rect, mon≥0.
     """
     ids = [
-        str(x).strip()
-        for x in (window_ids or [])
+        str(x).strip() for x in (window_ids or [])
         if x is not None and str(x).strip() != ""
     ]
     # Preserve order; unique
@@ -1365,7 +1377,9 @@ def hard_ready_status(
     settled: list[str] = []
     pending: list[str] = []
     for wid in ordered:
-        if find_settled_window(windows, window_id=wid, require_tile=require_tile):
+        if find_settled_window(windows,
+                               window_id=wid,
+                               require_tile=require_tile):
             settled.append(wid)
         else:
             pending.append(wid)
@@ -1397,8 +1411,7 @@ def wait_until_hard_ready(
     sleep = sleep_fn if sleep_fn is not None else time.sleep
     mono = monotonic_fn if monotonic_fn is not None else time.monotonic
     ids = [
-        str(x).strip()
-        for x in (window_ids or [])
+        str(x).strip() for x in (window_ids or [])
         if x is not None and str(x).strip() != ""
     ]
     t0 = float(call_started_mono) if call_started_mono is not None else mono()
@@ -1426,9 +1439,9 @@ def wait_until_hard_ready(
     while True:
         try:
             windows = load_windows()
-            last_status = hard_ready_status(
-                windows, ids, require_tile=require_tile
-            )
+            last_status = hard_ready_status(windows,
+                                            ids,
+                                            require_tile=require_tile)
             last_err = None
         except Exception as e:
             last_err = str(e)
@@ -1458,13 +1471,20 @@ def wait_until_hard_ready(
     elapsed_ms = int(max(0.0, (mono() - t0) * 1000))
     pending = list(last_status.get("pending") or ids)
     return {
-        "ok": False,
-        "settled": list(last_status.get("settled") or []),
-        "pending": pending,
-        "polls": polls,
-        "elapsed_ms": elapsed_ms,
-        "hardTimeoutMs": int(timeout_ms),
-        "error": last_err
+        "ok":
+        False,
+        "settled":
+        list(last_status.get("settled") or []),
+        "pending":
+        pending,
+        "polls":
+        polls,
+        "elapsed_ms":
+        elapsed_ms,
+        "hardTimeoutMs":
+        int(timeout_ms),
+        "error":
+        last_err
         or f"hard-ready timeout after {timeout_ms}ms (pending {pending})",
     }
 
@@ -1536,18 +1556,19 @@ def _stability_focus_id(node: dict[str, Any]) -> str:
         wid = lt.get("windowId")
         if wid is not None and str(wid).strip() != "":
             return str(wid).strip()
-    if lt is not None and not isinstance(lt, (dict, list)) and str(lt).strip() != "":
+    if lt is not None and not isinstance(
+            lt, (dict, list)) and str(lt).strip() != "":
         return str(lt).strip()
     return ""
 
 
-def _stability_walk_lines(
-    n: Any, path: str, mon_idx: Optional[int], lines: list[str]
-) -> None:
+def _stability_walk_lines(n: Any, path: str, mon_idx: Optional[int],
+                          lines: list[str]) -> None:
     if not isinstance(n, dict):
         return
     ntype = str(n.get("nodeType") or n.get("type") or "").strip().upper()
-    kids = n.get("children") if n.get("children") is not None else n.get("childNodes")
+    kids = n.get("children") if n.get("children") is not None else n.get(
+        "childNodes")
     if not isinstance(kids, list):
         kids = []
 
@@ -1558,7 +1579,7 @@ def _stability_walk_lines(
         m = mon_id
         if m.startswith("mo") and "ws" in m:
             try:
-                cur_mon = int(m[2 : m.index("ws")])
+                cur_mon = int(m[2:m.index("ws")])
             except ValueError:
                 pass
         elif n.get("monitor") is not None:
@@ -1570,7 +1591,8 @@ def _stability_walk_lines(
     if ntype == "WINDOW":
         wid = n.get("windowId")
         mode = n.get("mode") if n.get("mode") is not None else ""
-        mon = n.get("monitor") if isinstance(n.get("monitor"), int) else cur_mon
+        mon = n.get("monitor") if isinstance(n.get("monitor"),
+                                             int) else cur_mon
         if mon is None and n.get("monitor") is not None:
             try:
                 mon = int(n["monitor"])
@@ -1694,14 +1716,21 @@ def wait_for_tree_stable(
             sleep(poll_s)
 
     return {
-        "ok": False,
-        "fingerprint": last_fp,
-        "samples": streak,
-        "polls": polls,
-        "elapsed_ms": int((mono() - t0) * 1000),
-        "forest": last_forest,
-        "error": last_err
-        or f"tree not stable after {timeout_ms}ms (need {samples_need} equal samples)",
+        "ok":
+        False,
+        "fingerprint":
+        last_fp,
+        "samples":
+        streak,
+        "polls":
+        polls,
+        "elapsed_ms":
+        int((mono() - t0) * 1000),
+        "forest":
+        last_forest,
+        "error":
+        last_err or
+        f"tree not stable after {timeout_ms}ms (need {samples_need} equal samples)",
     }
 
 
@@ -1731,7 +1760,8 @@ def _pending_title_exact(item: dict[str, Any]) -> Optional[str]:
     if v is not None and str(v).strip() != "":
         return str(v).strip()
     # Bare title only when no substring field is set.
-    if item.get("title_contains") is not None or item.get("title~=") is not None:
+    if item.get("title_contains") is not None or item.get(
+            "title~=") is not None:
         return None
     v = item.get("title")
     if v is not None and str(v).strip() != "":
@@ -1748,7 +1778,8 @@ def _pending_title_contains(item: dict[str, Any]) -> Optional[str]:
     return None
 
 
-def window_matches_pin_title(win: dict[str, Any], item: dict[str, Any]) -> bool:
+def window_matches_pin_title(win: dict[str, Any], item: dict[str,
+                                                             Any]) -> bool:
     """
     Title identity for map-pin (X11 Chrome PWAs share wmClass=Google-chrome).
 
@@ -1811,18 +1842,17 @@ def assign_open_role_pins(
         pool.append(w)
 
     def _take_match(item: dict[str, Any]) -> Optional[dict[str, Any]]:
-        nonlocal pool
         classes = item.get("wait_classes")
         class_list: list[str] = []
         if isinstance(classes, str) and classes.strip():
             class_list = [classes.strip()]
         elif isinstance(classes, list):
-            class_list = [str(c).strip() for c in classes if c and str(c).strip()]
+            class_list = [
+                str(c).strip() for c in classes if c and str(c).strip()
+            ]
         accept_any = bool(item.get("accept_any_new"))
-        need_title = (
-            _pending_title_exact(item) is not None
-            or _pending_title_contains(item) is not None
-        )
+        need_title = (_pending_title_exact(item) is not None
+                      or _pending_title_contains(item) is not None)
 
         candidates = [w for w in pool if window_matches_pin_title(w, item)]
         if need_title and not candidates:
@@ -1830,9 +1860,8 @@ def assign_open_role_pins(
 
         def _pop_from_pool(w: dict[str, Any]) -> dict[str, Any]:
             for i, p in enumerate(pool):
-                if p is w or (
-                    str(p.get("windowId")).strip() == str(w.get("windowId")).strip()
-                ):
+                if p is w or (str(p.get("windowId")).strip() == str(
+                        w.get("windowId")).strip()):
                     return pool.pop(i)
             # Should not happen; remove by identity fallback
             pool.remove(w)
@@ -1842,7 +1871,8 @@ def assign_open_role_pins(
 
         if class_list:
             for w in search:
-                cls = w.get("wmClass") if w.get("wmClass") is not None else w.get("wm_class")
+                cls = w.get("wmClass") if w.get(
+                    "wmClass") is not None else w.get("wm_class")
                 if any(eq(cls, want) for want in class_list):
                     return _pop_from_pool(w)
             # Title identity alone is enough when class list never appears on
@@ -1902,10 +1932,7 @@ def wait_for_open_role_pins(
     used: set[str] = set(baseline)
     pins: dict[str, Any] = {}
     remaining = [
-        p
-        for p in pending
-        if isinstance(p, dict)
-        and p.get("role") is not None
+        p for p in pending if isinstance(p, dict) and p.get("role") is not None
         and str(p.get("role")).strip() != ""
     ]
     polls = 0
@@ -1921,7 +1948,10 @@ def wait_for_open_role_pins(
             last_err = str(e)
             wins = []
         polls += 1
-        assigned = assign_open_role_pins(remaining, wins, used, class_eq=class_eq)
+        assigned = assign_open_role_pins(remaining,
+                                         wins,
+                                         used,
+                                         class_eq=class_eq)
         if assigned:
             for rid, wid in assigned.items():
                 pins[rid] = wid
@@ -1936,15 +1966,17 @@ def wait_for_open_role_pins(
 
     missing = [str(p.get("role")) for p in remaining]
     return {
-        "ok": len(missing) == 0,
-        "role_pins": pins,
-        "missing": missing,
-        "polls": polls,
-        "elapsed_ms": int((mono() - t0) * 1000),
-        "error": None
-        if not missing
-        else (
-            last_err
-            or f"map wait timeout for roles: {missing}"
-        ),
+        "ok":
+        len(missing) == 0,
+        "role_pins":
+        pins,
+        "missing":
+        missing,
+        "polls":
+        polls,
+        "elapsed_ms":
+        int((mono() - t0) * 1000),
+        "error":
+        None if not missing else
+        (last_err or f"map wait timeout for roles: {missing}"),
     }
