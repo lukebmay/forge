@@ -5,8 +5,9 @@
 **Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Active:** **R015 empty-mon DnD** shipped (L0 green); host Wayland needs tip load
-(nest retest or one logout). Lifecycle residual optional.  
+**Active:** **R016** no-op monitor re-apply thrash (gdisplays load incident) queued —
+[task](./tasks/forge-monitor-noop-apply-thrash.md). R015 empty-mon DnD shipped;
+host tip load residual optional.  
 Architecture = cold spine + D019 hard/soft (not patch thrash).
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
@@ -18,7 +19,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **next** | Host load tip for R015 (nest dual-mon smoke or logout once); operator confirm empty-mon drag | [REGRESSIONS R015](./REGRESSIONS.md) |
+| **next** | **R016** no-op workareas / identical `ApplyMonitorsConfig` must not thrash tiles — unit + live | [task](./tasks/forge-monitor-noop-apply-thrash.md) · [REGRESSIONS R016](./REGRESSIONS.md) |
+| residual | Host load tip for R015 (nest dual-mon smoke or logout once) | [REGRESSIONS R015](./REGRESSIONS.md) |
 | optional | Per-window signals → WindowAttach | [plan](./plans/forge-lifecycle-abstractions.md) |
 | later | STACKED / resize-autotile | separate plans — do not mix into settle spine |
 | abandoned | `Ctrl+Super+Esc` unfocus (FC2) | keybind unbound |

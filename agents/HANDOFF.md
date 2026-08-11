@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-10 (**R015 empty-mon DnD shipped** — L0 green; host tip pending)  
+**Updated:** 2026-08-11 (**R016** no-op monitor re-apply thrash queued from gdisplays incident; R015 shipped)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -11,6 +11,16 @@
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Next — R016 (no-op monitor apply thrash)
+
+| Field | Detail |
+| --- | --- |
+| Task | [forge-monitor-noop-apply-thrash](./tasks/forge-monitor-noop-apply-thrash.md) |
+| Symptom | Identical monitor re-apply (gdisplays load when already correct) thrashes Forge tiles |
+| Expect | True no-op or structure-preserving **retile**, not H1 thrash recovery |
+| shellrc | gdisplays **6.4.2** skips no-op apply — Forge must still harden |
+| Guards | L0 pure fingerprint + live `--tags R016` |
 
 ---
 
