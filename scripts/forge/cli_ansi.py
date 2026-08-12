@@ -1,11 +1,23 @@
 #!/usr/bin/env python3
-"""Minimal ANSI for forge CLI help (auto|always|never). No third-party deps."""
+"""Minimal ANSI for forge CLI help (auto|always|never). No third-party deps.
+
+Color enablement follows the shellrc ansi-color contract via ansi_color.py
+(ANSI_COLOR_VERSION must match shellrc util/py/ansi_color.py).
+"""
 
 from __future__ import annotations
 
-import os
 import sys
 from typing import Optional
+
+from ansi_color import (  # noqa: E402
+    ANSI_COLOR_VERSION as _ANSI_COLOR_VERSION,
+    color_enabled as _contract_color_enabled,
+    parse_color_flag,
+)
+
+# Re-export for tests / callers
+ANSI_COLOR_VERSION = _ANSI_COLOR_VERSION
 
 # Roles: magenta headings, cyan ids/paths, blue commands, green ok, yellow warn, red err
 _RESET = "\033[0m"
@@ -18,7 +30,7 @@ _BLUE = "\033[34m"
 _MAGENTA = "\033[35m"
 _CYAN = "\033[36m"
 
-_COLOR_MODE = "auto"  # auto | always | never
+_COLOR_MODE = "auto"  # auto | always | never — from --color flag
 
 
 def set_color_mode(mode: Optional[str]) -> None:
@@ -33,18 +45,13 @@ def set_color_mode(mode: Optional[str]) -> None:
 
 
 def color_enabled(stream=None) -> bool:
-    if _COLOR_MODE == "always":
-        return True
-    if _COLOR_MODE == "never":
-        return False
-    # auto: NO_COLOR wins; else TTY on stream (default stderr for help on tty)
-    if os.environ.get("NO_COLOR", "").strip():
-        return False
+    """True when ANSI should be used on stream (default stdout)."""
     s = stream if stream is not None else sys.stdout
-    try:
-        return bool(s.isatty())
-    except Exception:
-        return False
+    return _contract_color_enabled(
+        s,
+        cli_mode=_COLOR_MODE,
+        tool_color_keys=("FORGE_COLOR",),
+    )
 
 
 def _wrap(code: str, text: str, *, stream=None) -> str:
@@ -97,30 +104,3 @@ def cmd(text: str, *, stream=None) -> str:
 def ident(text: str, *, stream=None) -> str:
     """Path, id, key, slot."""
     return cyan(text, stream=stream)
-
-
-def parse_color_flag(argv: list[str]) -> tuple[list[str], Optional[str]]:
-    """
-    Strip --color / --color=MODE from argv; return (rest, mode|None).
-    MODE defaults to always when bare --color is passed.
-    """
-    out: list[str] = []
-    mode: Optional[str] = None
-    i = 0
-    while i < len(argv):
-        a = argv[i]
-        if a == "--color":
-            if i + 1 < len(argv) and not argv[i + 1].startswith("-"):
-                mode = argv[i + 1]
-                i += 2
-            else:
-                mode = "always"
-                i += 1
-            continue
-        if a.startswith("--color="):
-            mode = a.split("=", 1)[1] or "always"
-            i += 1
-            continue
-        out.append(a)
-        i += 1
-    return out, mode

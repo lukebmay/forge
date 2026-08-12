@@ -56,6 +56,7 @@ from job_runner import (  # noqa: E402
     update_status,
     worker_env,
     worker_mark_done,
+    worker_should_force_color,
     write_pid,
 )
 
@@ -411,12 +412,52 @@ class SpawnAttach(unittest.TestCase):
             "DISPLAY": ":0"
         },
                          job_id="x",
-                         job_dir_path=Path("/tmp/x"))
+                         job_dir_path=Path("/tmp/x"),
+                         force_color=False)
         self.assertEqual(env["FORGE_JOB_WORKER"], "1")
         self.assertEqual(env["FORGE_JOB"], "0")
         self.assertEqual(env["FORGE_JOB_ID"], "x")
         self.assertEqual(env["DISPLAY"], ":0")
         self.assertFalse(job_mode_enabled(env))
+
+    def test_worker_env_forces_color_for_tty_attach(self):
+        env = worker_env(
+            {"FORGE_JOB": "1", "DISPLAY": ":0"},
+            job_id="x",
+            job_dir_path=Path("/tmp/x"),
+            force_color=True,
+        )
+        self.assertEqual(env["FORGE_COLOR"], "always")
+
+    def test_worker_env_respects_color_never(self):
+        env = worker_env(
+            {"FORGE_JOB": "1", "FORGE_COLOR": "never"},
+            job_id="x",
+            job_dir_path=Path("/tmp/x"),
+            force_color=None,
+            color_stream=io.StringIO(),  # not a TTY
+        )
+        self.assertEqual(env.get("FORGE_COLOR"), "never")
+        self.assertFalse(
+            worker_should_force_color({"FORGE_COLOR": "never"},
+                                      stream=io.StringIO()))
+
+    def test_worker_should_force_color_auto_tty(self):
+        class _Tty:
+            def isatty(self):
+                return True
+
+        self.assertTrue(
+            worker_should_force_color({"FORGE_COLOR": "auto"}, stream=_Tty()))
+        self.assertFalse(
+            worker_should_force_color({
+                "FORGE_COLOR": "auto",
+                "NO_COLOR": "1"
+            },
+                                      stream=_Tty()))
+        self.assertFalse(
+            worker_should_force_color({"FORGE_COLOR": "auto"},
+                                      stream=io.StringIO()))
 
     def test_worker_mark_done(self):
         with tempfile.TemporaryDirectory() as tmp:

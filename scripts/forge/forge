@@ -878,6 +878,11 @@ def _launch_home() -> str:
 # Desktop apps launched via `forge layout` / `forge launch` must not inherit them:
 # terminals (Ghostty) pass the env to interactive shells, and Grok TUI then stays
 # monochrome because NO_COLOR is set. Strip the common color-kill suite only.
+#
+# Also drop durable-job worker markers. Layout runs inside a job worker which sets
+# FORGE_JOB=0 + FORGE_JOB_WORKER=1; if those leak into Ghostty, interactive
+# `forge install` skips the job runner (always "foreground") and FORGE_JOB=1
+# cannot re-enable it. Guake (session-started) never saw those vars — inconsistent.
 _LAUNCH_ENV_DROP = frozenset(
     {
         "NO_COLOR",
@@ -889,6 +894,10 @@ _LAUNCH_ENV_DROP = frozenset(
         "NPM_CONFIG_COLOR",
         "PY_COLORS",
         "PYTHON_COLORS",
+        "FORGE_JOB",
+        "FORGE_JOB_WORKER",
+        "FORGE_JOB_ID",
+        "FORGE_JOB_DIR",
     }
 )
 
@@ -898,7 +907,8 @@ def _launch_env(base: Optional[dict[str, str]] = None) -> dict[str, str]:
     Environment for CLI-spawned desktop apps.
 
     Copy of the current process env (or base) with agent/CI color-suppression
-    variables removed so Ghostty/shell/Grok open as normal interactive sessions.
+    and durable-job worker variables removed so Ghostty/shell/Grok open as
+    normal interactive sessions (colors + default job mode for mutators).
     """
     env = dict(os.environ if base is None else base)
     for key in _LAUNCH_ENV_DROP:

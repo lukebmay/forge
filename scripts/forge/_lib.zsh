@@ -30,27 +30,51 @@ unset _forge_lib_file
 FORGE_VERSION="1.0.0"
 FORGE_COLOR="${FORGE_COLOR:-auto}"
 
-# --- ANSI ---
+# --- ANSI (shellrc ansi-color contract; see ansi_color.zsh / ansi-colors.md) ---
+_forge_ansi_color_lib="${FORGE_SCRIPTS_DIR}/ansi_color.zsh"
+if [[ -f ${_forge_ansi_color_lib} ]]; then
+  # shellcheck disable=SC1090
+  source "${_forge_ansi_color_lib}"
+fi
+unset _forge_ansi_color_lib
+
 _forge_use_color() {
-  case "$FORGE_COLOR" in
+  # Export so shared resolve sees tool mode + env kills/forces.
+  export FORGE_COLOR="${FORGE_COLOR:-auto}"
+  if typeset -f ansi_color_enabled >/dev/null 2>&1; then
+    # Status lines go to stderr; treat color on if either stream is a TTY under auto.
+    ansi_color_enabled 2 "" && return 0
+    ansi_color_enabled 1 ""
+    return $?
+  fi
+  # Fallback if vendored helper missing (should not happen in-tree).
+  case "${FORGE_COLOR:-auto}" in
     always) return 0 ;;
     never) return 1 ;;
-    auto|*) [[ -t 1 ]] && [[ -t 0 || ! -p /dev/stdout ]] ;;
+    auto|*)
+      [[ -n ${NO_COLOR:-} ]] && return 1
+      [[ -n ${FORCE_COLOR:-} && ${FORCE_COLOR} != 0 ]] && return 0
+      [[ -t 2 || -t 1 ]]
+      ;;
   esac
 }
 
-if _forge_use_color; then
-  c_reset=$'\e[0m'
-  c_bold=$'\e[1m'
-  c_red=$'\e[31m'
-  c_green=$'\e[32m'
-  c_yellow=$'\e[33m'
-  c_blue=$'\e[34m'
-  c_magenta=$'\e[35m'
-  c_cyan=$'\e[36m'
-else
-  c_reset= c_bold= c_red= c_green= c_yellow= c_blue= c_magenta= c_cyan=
-fi
+forge_apply_color() {
+  if _forge_use_color; then
+    c_reset=$'\e[0m'
+    c_bold=$'\e[1m'
+    c_red=$'\e[31m'
+    c_green=$'\e[32m'
+    c_yellow=$'\e[33m'
+    c_blue=$'\e[34m'
+    c_magenta=$'\e[35m'
+    c_cyan=$'\e[36m'
+  else
+    c_reset= c_bold= c_red= c_green= c_yellow= c_blue= c_magenta= c_cyan=
+  fi
+}
+
+forge_apply_color
 
 forge_is_verbose() { [[ "${FORGE_VERBOSE:-0}" == "1" ]]; }
 
@@ -696,10 +720,10 @@ forge_parse_common_args() {
       -V|--version) print -r -- "forge-manage $FORGE_VERSION"; exit 0 ;;
       --force) FORGE_FORCE=1; shift ;;
       --verbose|-v) FORGE_VERBOSE=1; shift ;;
-      --color=*) FORGE_COLOR="${1#--color=}"; shift ;;
+      --color=*) FORGE_COLOR="${1#--color=}"; export FORGE_COLOR; forge_apply_color; shift ;;
       --color)
         [[ -n "${2:-}" ]] || forge_die "--color needs a value"
-        FORGE_COLOR="$2"; shift 2
+        FORGE_COLOR="$2"; export FORGE_COLOR; forge_apply_color; shift 2
         ;;
       --backup-root=*) FORGE_BACKUP_ROOT="${1#--backup-root=}"; shift ;;
       --backup-root)

@@ -2874,6 +2874,31 @@ class TestLaunchAppGhostty(unittest.TestCase):
         # Does not mutate the input mapping
         self.assertEqual(poisoned.get("NO_COLOR"), "1")
 
+    def test_launch_env_strips_job_worker_markers(self):
+        """Layout job worker env must not poison Ghostty interactive shells."""
+        poisoned = {
+            "PATH": "/usr/bin",
+            "HOME": "/home/luke",
+            "DISPLAY": ":0",
+            "FORGE_JOB": "0",
+            "FORGE_JOB_WORKER": "1",
+            "FORGE_JOB_ID": "20260812T022209Z-8b0b3a",
+            "FORGE_JOB_DIR": "/tmp/forge-jobs/x",
+            "FORGE_LAYOUT_DIR": "/home/luke/layouts",
+            "KEEP_ME": "yes",
+        }
+        cleaned = self.forge._launch_env(poisoned)
+        self.assertEqual(cleaned.get("KEEP_ME"), "yes")
+        self.assertEqual(cleaned.get("FORGE_LAYOUT_DIR"), "/home/luke/layouts")
+        for key in (
+                "FORGE_JOB",
+                "FORGE_JOB_WORKER",
+                "FORGE_JOB_ID",
+                "FORGE_JOB_DIR",
+        ):
+            self.assertNotIn(key, cleaned)
+        self.assertEqual(poisoned.get("FORGE_JOB_WORKER"), "1")
+
 
 class TestEnsureSizesApply(unittest.TestCase):
 

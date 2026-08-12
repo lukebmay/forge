@@ -609,18 +609,57 @@ def prepare_job_dir(
     return jid, jdir, st
 
 
+def worker_should_force_color(
+    env: Optional[Mapping[str, str]] = None,
+    *,
+    stream: Optional[TextIO] = None,
+) -> bool:
+    """
+    True when the job worker should emit ANSI into log files.
+
+    Workers have no TTY (stdout/stderr are log files). Color auto then stays
+    off and attach streams monochrome text even when the parent terminal is a
+    real TTY (e.g. Guake). Force color when the parent session wants it:
+    FORGE_COLOR=always, or auto + attach stream is a TTY and NO_COLOR is unset.
+    """
+    e = env if env is not None else os.environ
+    mode = str(e.get("FORGE_COLOR", "auto") or "auto").strip().lower()
+    if mode == "never":
+        return False
+    if mode == "always":
+        return True
+    if str(e.get("NO_COLOR", "")).strip():
+        return False
+    s = stream if stream is not None else sys.stdout
+    try:
+        return bool(s.isatty())
+    except Exception:
+        return False
+
+
 def worker_env(
     base: Optional[Mapping[str, str]],
     *,
     job_id: str,
     job_dir_path: Path,
+    force_color: Optional[bool] = None,
+    color_stream: Optional[TextIO] = None,
 ) -> dict[str, str]:
-    """Env for worker: inherit session, mark worker, force in-process path."""
+    """Env for worker: inherit session, mark worker, force in-process path.
+
+    When the attaching parent wants color (TTY / FORGE_COLOR=always), set
+    FORGE_COLOR=always so install.zsh / cli_ansi emit ANSI into the logs that
+    attach then displays on the real terminal.
+    """
     env = dict(os.environ if base is None else base)
     env[ENV_JOB_WORKER] = "1"
     env[ENV_JOB_ID] = job_id
     env[ENV_JOB_DIR] = str(job_dir_path)
     env[ENV_JOB_ENABLE] = "0"  # never nest job runners
+    if force_color is None:
+        force_color = worker_should_force_color(env, stream=color_stream)
+    if force_color:
+        env["FORGE_COLOR"] = "always"
     return env
 
 
