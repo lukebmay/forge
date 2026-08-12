@@ -5478,6 +5478,19 @@ def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
                         action_ok = False
                         break
                     time.sleep(0.45)
+                elif act == "r016-noop-workareas-note":
+                    # No automated ApplyMonitorsConfig inject yet (L0 owns no-op).
+                    # Dual layout + structure checks; operator may force same-config apply.
+                    entry["actions"].append(
+                        {
+                            "step": act,
+                            "ok": True,
+                            "detail": (
+                                "noop inject pending; "
+                                "structure checks after dual layout (L0: bug-r016)"
+                            ),
+                        }
+                    )
                 else:
                     entry["actions"].append({"step": act, "unknown": True})
                     action_ok = False

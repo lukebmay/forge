@@ -1,26 +1,37 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-11 (**R016** no-op monitor re-apply thrash queued from gdisplays incident; R015 shipped)  
+**Updated:** 2026-08-11 (**R017** scale/entered-monitor thrash fix in tree; R016 shipped)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Last RC:** [forge-wayland-rc_r013-r014](./plans/forge-wayland-rc-test-suite/completed/forge-wayland-rc_r013-r014.md) · tip `…g89d5223-dirty` + R015 WIP.
+**Last RC:** [forge-wayland-rc_r013-r014](./plans/forge-wayland-rc-test-suite/completed/forge-wayland-rc_r013-r014.md) · tip needs `./install` (+ nest or logout) for R016/**R017** JS.
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
 
-### Next — R016 (no-op monitor apply thrash)
+### Shipped — R017 (scale/geom → no entered-monitor thrash)
 
 | Field | Detail |
 | --- | --- |
-| Task | [forge-monitor-noop-apply-thrash](./tasks/forge-monitor-noop-apply-thrash.md) |
-| Symptom | Identical monitor re-apply (gdisplays load when already correct) thrashes Forge tiles |
-| Expect | True no-op or structure-preserving **retile**, not H1 thrash recovery |
-| shellrc | gdisplays **6.4.2** skips no-op apply — Forge must still harden |
-| Guards | L0 pure fingerprint + live `--tags R016` |
+| Task | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) |
+| Behavior | Geom drift suppress; **defer** entered-monitor rehome; monitors-changed arms settle; no quiet-fp poison; settle R016 retile |
+| Code | `workareasGeometryEqual`, `displayGeometryChangedFromQuiet`, deferred rehome, monitors-changed queue |
+| Guards | L0 `bug-r017-…` (48 tests w/ R016/H1/R012); live note `--tags R017` |
+| Residual | **Logout once** after latest install to load tip (classify same-count→retile). Nest: both scale dirs log `workareas-retile`. Host reverse thrash was H1+stale frames. Restore: `gdisplays load default && forge layout dev` |
+
+### Shipped — R016 (display settle / no-op thrash)
+
+| Field | Detail |
+| --- | --- |
+| Task | [completed](./tasks/completed/forge-monitor-noop-apply-thrash.md) |
+| Behavior | **L0** fingerprint+homes no-op; **L1** retile; **mon loss** collect-to-end-as-group; **mon gain** empty; chaos → H1 |
+| Code | `workareas-policy.js` + `monitor-recovery.js` graduated settle |
+| Guards | L0 `workareas-policy` + `bug-r016-noop-workareas-no-thrash`; live `--tags R016` |
+| Residual | Automated ApplyMonitorsConfig inject not in harness; manual gdisplays smoke |
+| Related | Cross-mon tabs D0: [forge-tab-groups-cross-mon_d0-discussion](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 
 ---
 
@@ -56,7 +67,10 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **next** | Load R015 tip on host (nest dual-mon or one logout); confirm empty-mon drag | [PRIORITY](./PRIORITY.md) · [R015](./REGRESSIONS.md) |
+| **next** | Load tip (R016/R017 JS) + L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore default | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) · [task](./tasks/completed/forge-gdisplays-scale-change-thrash.md) |
+| later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
+| done | **R017** entered-monitor suppress on geom drift | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) |
+| done | **R016** no-op workareas + mon-loss collect | [completed](./tasks/completed/forge-monitor-noop-apply-thrash.md) |
 | done | **R015** empty-mon DnD (grab-end rehome when no TILE under pointer) | L0 `bug-r015-empty-mon-dnd`; live `L1.r015-empty-mon-dnd` |
 | done | Wayland RC R013/R014 + host logout + suite green | [completed](./plans/forge-wayland-rc-test-suite/completed/forge-wayland-rc_r013-r014.md) |
 | done | Nest isolation **N3→N1→N4→N2** (D022 v1) | [plan](./plans/forge-nested-isolation.md) · [completed/](./plans/forge-nested-isolation/completed/) |

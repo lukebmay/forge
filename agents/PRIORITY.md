@@ -1,14 +1,14 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-10  
+**Updated:** 2026-08-11  
 **Lens:** healthy codebase first — ownership, pure reuse, unit tests. Size is a symptom.  
 **Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Active:** **R016** no-op monitor re-apply thrash (gdisplays load incident) queued —
-[task](./tasks/forge-monitor-noop-apply-thrash.md). R015 empty-mon DnD shipped;
-host tip load residual optional.  
-Architecture = cold spine + D019 hard/soft (not patch thrash).
+**Active:** Queue clear of hard P1. **R017** scale/entered-monitor thrash fix in tree
+([completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md)); L0 green.
+Host **logout once** then gdisplays smoke residual. Cross-mon tabs later:
+[D0](./tasks/forge-tab-groups-cross-mon_d0-discussion.md).
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
@@ -19,8 +19,11 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **next** | **R016** no-op workareas / identical `ApplyMonitorsConfig` must not thrash tiles — unit + live | [task](./tasks/forge-monitor-noop-apply-thrash.md) · [REGRESSIONS R016](./REGRESSIONS.md) |
-| residual | Host load tip for R015 (nest dual-mon smoke or logout once) | [REGRESSIONS R015](./REGRESSIONS.md) |
+| residual | **Logout once** load tip (R017+R016 JS); smoke `gdisplays load default-no-scale` no thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) · [task](./tasks/completed/forge-gdisplays-scale-change-thrash.md) |
+| later | Cross-mon TABBED/STACKED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
+| residual | Host load tip for R015 if not already on tip | [REGRESSIONS R015](./REGRESSIONS.md) |
+| done | **R017** gdisplays scale → no entered-monitor thrash | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) · L0 48 green |
+| done | **R016** no-op workareas + mon-loss collect-to-end | [completed](./tasks/completed/forge-monitor-noop-apply-thrash.md) · L0 guards green |
 | optional | Per-window signals → WindowAttach | [plan](./plans/forge-lifecycle-abstractions.md) |
 | later | STACKED / resize-autotile | separate plans — do not mix into settle spine |
 | abandoned | `Ctrl+Super+Esc` unfocus (FC2) | keybind unbound |

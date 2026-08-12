@@ -221,24 +221,59 @@ piles under one monitor node and stays there after both heads return.
 **Approach:**
 
 1. On quiet renders, snapshot per-window **last-good**
-   `{ monitorIndex, stableKey?, frame }` from the tree (not thrashy Meta).
-2. On `workareas-changed` (with windows, no workspace add/remove), set a thrash
-   pending flag and debounce (~300ms; hybrid GPU thrash often exceeds 200ms).
-   While pending, ignore `window-entered-monitor` rehomes.
-3. On settle: **snapshot forest first** (stableKeys from pre-refresh map), then
-   refresh the T7 identity map, then resolve each window’s target monitor by
-   **stableKey** → max intersection of last-good frame → remapped index → Meta.
-4. **Tab/stack survival (T3):** majority-align outermost STACKED/TABBED members
+   `{ monitorIndex, stableKey?, frame }` from the tree (not thrashy Meta), plus a
+   **workareas fingerprint** (`workareas-policy.js` — stableKey + geometry +
+   primary per head).
+2. On `workareas-changed` (with windows, no workspace add/remove):
+   - **R016 no-op:** if fingerprint matches last quiet **and** tiled homes still
+     match Meta/tree/last-good → **return** (no thrash-pending, no H1). Log
+     `workareas-noop: fingerprint match`.
+   - Else set thrash pending and debounce (~300ms; hybrid often &gt;200ms).
+     While pending, ignore `window-entered-monitor` rehomes.
+2b. **R017 entered-monitor vs scale/mode:** Mutter often fires
+    `window-entered-monitor` **before** thrash-pending is armed (and sometimes
+    **before** monitor geometry updates). Mitigations (compose, not a third
+    recovery system):
+    - If live display geometry differs from last quiet
+      (`displayGeometryChangedFromQuiet` — geometry-only, fresh display collect),
+      arm thrash-pending + settle and **do not** rehome.
+    - Otherwise **defer** entered-monitor rehome (~80ms,
+      `ENTERED_MONITOR_REHOME_DEFER_MS`) so `layoutManager::monitors-changed`
+      / `workareas-changed` can arm thrash first; flush aborts if pending or
+      geom drift. True mon moves while geometry is quiet still rehome after defer.
+    - `monitors-changed` refreshes identity map **and** queues workareas settle
+      (no-op short-circuit still applies when geom quiet).
+    - R016 no-op check uses **fresh display** geometry (not a stale identity map).
+    - `snapshotLastGoodHomes` must **not** update quiet fp or last-good homes
+      while live ≠ quiet (or thrash pending) so a mid-storm `renderTree` cannot
+      poison the R016 baseline into a false no-op.
+3. On settle: refresh identity map, classify vs last quiet fingerprint:
+   - **noop** + homes OK → clear pending, update quiet fp, no rehome/render.
+   - **noop** + homes wrong (Meta pile, same final geom) → **H1** body.
+   - **Same mon count:** geometry change → **retile** (scale/mode/pos; includes
+     `geom:` key rewrite). Geometry quiet + key/index only → **renumber**.
+     Never treat same-count scale as thrash (false lost+gained on geom keys).
+   - **retile** / **mon_gain** → ensure mon roots (new mon stays empty), align
+     Meta mon to tree, single `renderTree`, arm post-settle entered-monitor grace.
+   - **mon_loss** → collect dead-mon mon-level children to **end of survivor**
+     (primary if present else lowest index) as a group (wrap N&gt;1 in CON; **no**
+     H/V from relative mon positions); prune empty dead mon; render.
+   - **thrash** / renumber / mon-count mixed / lock-shield chaos → **H1** body
+     (resolve: stableKey → last-good **index** → frame ∩ → Meta).
+4. **H1 body:** **snapshot forest first** (stableKeys from pre-refresh map), then
+   resolve each window’s target by **stableKey** → max intersection of last-good
+   frame → remapped index → Meta.
+5. **Tab/stack survival (T3):** majority-align outermost STACKED/TABBED members
    onto one target so `_containerFullyMigrates` moves the CON as a unit; dead
    siblings no longer block full migration.
-5. **Full tree snapshot (T6):** before rehome, capture the forest (H/V + tabs +
+6. **Full tree snapshot (T6):** before rehome, capture the forest (H/V + tabs +
    order + percent/`userSized` + window refs + optional mon `stableKey`). After
    reconcile, `restoreTreeIfNeeded` — skip intact mon topology (re-apply percents
    only), rebuild when flattened/peeled. Target mon is **remapped** via stableKey
    when `moN` is stale, else majority mon of survivors. `reloadTree` uses force
    `restoreTree` with a **fresh** snapshot around its own wipe.
-6. `move_to_monitor` then one `_reconcileWindowHomes()` + restore + render.
-7. If a target `moNwsW` node is missing → fall back to `reloadTree` (fresh
+7. `move_to_monitor` then one `_reconcileWindowHomes()` + restore + render.
+8. If a target `moNwsW` node is missing → fall back to `reloadTree` (fresh
    snapshot inside that path).
 
 While a **session shield** is active, monitor-recovery **reapplies the restored
@@ -248,9 +283,15 @@ forest** instead of snapshotting thrash topology (see session layout).
 placement and a two-window tab pair; retab after wake did not abort Shell.
 
 **Related:** T7 stable output keys (`monitor-identity.js`); gdisplays owns
-monitors.xml identity in shellrc — Forge does not import it.
+monitors.xml identity in shellrc — Forge does not import it. R016 fingerprint
+policy is signal-side resilience (compose with H1; not a third recovery system).
+R017 composes the same quiet fp: suppress entered-monitor rehome on geometry
+drift so scale/mode loads retile structure-preserving instead of pile+poison.
 
 **Tests:** `tests/regression/bug-h1-monitor-recovery-workareas-thrash.test.js`,
+`tests/regression/bug-r016-noop-workareas-no-thrash.test.js`,
+`tests/regression/bug-r017-display-geom-change-no-entered-monitor-thrash.test.js`,
+`tests/unit/extension/workareas-policy.test.js`,
 `tests/unit/extension/tree-snapshot.test.js`, `monitor-identity.test.js`,
 utils `bestMonitorIndexForRect`.
 

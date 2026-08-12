@@ -338,6 +338,67 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "Optional human: drag TILE from mon0 onto empty mon1 work area."
         ),
     ),
+    LiveCase(
+        id="L1.r016-noop-workareas",
+        layer=LAYER_L1,
+        title="No-op monitor re-apply must not thrash tiles (R016)",
+        behaviors=(
+            "structure-bind",
+            "mon-claim",
+            "settle-soft",
+        ),
+        regressions=("R016", ),
+        profile="_forge-test-dual",
+        setup=("ensure-dev-shape", "keep-agent"),
+        actions=("r016-noop-workareas-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+            "mon0-open-leaf-grok",
+            "mon1-open-leaf-youtube",
+        ),
+        notes=(
+            "R016: geometry-identical workareas re-apply → no H1 thrash. "
+            "L0: workareas-policy + bug-r016-noop-workareas-no-thrash. "
+            "No automated Mutter ApplyMonitorsConfig helper yet — after dual "
+            "desk settles, operator/harness may fire same-config apply "
+            "(gdisplays load when already correct, or D-Bus apply of live "
+            "serial). Expect structure/mon homes/focus stable; Mode B "
+            "thrash-recover must not count as success. "
+            "Action stub records intent until inject path exists."
+        ),
+    ),
+    LiveCase(
+        id="L1.r017-gdisplays-scale-retile",
+        layer=LAYER_L1,
+        title="gdisplays scale/mode change must retile without entered-monitor thrash (R017)",
+        behaviors=(
+            "structure-bind",
+            "mon-claim",
+            "settle-soft",
+        ),
+        regressions=("R017", ),
+        profile="_forge-test-dual",
+        setup=("ensure-dev-shape", "keep-agent"),
+        actions=("r017-gdisplays-scale-retile-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+            "mon0-open-leaf-grok",
+            "mon1-open-leaf-youtube",
+        ),
+        notes=(
+            "R017: scale/mode geometry change (e.g. gdisplays load default-no-scale "
+            "1.5→1.0) must keep mon homes + tabs; settle = workareas-retile only. "
+            "L0: bug-r017-display-geom-change-no-entered-monitor-thrash. "
+            "Manual: forge layout <dual profile>, capture topology signature, "
+            "gdisplays load default-no-scale, assert structure/mon intact, then "
+            "gdisplays load default && forge layout <same>. Do not treat Mode B "
+            "as success. No automated ApplyMonitorsConfig inject yet."
+        ),
+    ),
 )
 
 

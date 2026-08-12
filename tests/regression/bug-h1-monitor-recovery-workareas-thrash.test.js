@@ -112,6 +112,8 @@ describe("H1 monitor-recovery on workareas thrash", () => {
 
     wm()._workareasThrashPending = false;
     wm()._onWindowEnteredMonitor(ctx.display, 0, win);
+    // R017: rehome is deferred; flush timeout_add callbacks.
+    fireSettle();
     expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
   });
 
@@ -125,6 +127,7 @@ describe("H1 monitor-recovery on workareas thrash", () => {
 
     wm()._sessionLayoutRestoring = false;
     wm()._onWindowEnteredMonitor(ctx.display, 0, win);
+    fireSettle();
     expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
   });
 
@@ -320,6 +323,7 @@ describe("H1 monitor-recovery on workareas thrash", () => {
     expect(updateSpy).not.toHaveBeenCalled();
     wm()._sessionLayoutShield = null;
     wm()._onWindowEnteredMonitor(ctx.display, 0, win);
+    fireSettle();
     expect(updateSpy).toHaveBeenCalled();
   });
 

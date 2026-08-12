@@ -289,6 +289,34 @@ class TestSelect(unittest.TestCase):
         ids = {c.id for c in sel.cases}
         self.assertIn("L1.r015-empty-mon-dnd", ids)
 
+    def test_catalog_has_r016_noop_workareas(self):
+        c = next(x for x in LIVE_CASES if x.id == "L1.r016-noop-workareas")
+        self.assertIn("R016", c.regressions)
+        self.assertIn("structure-bind", c.behaviors)
+        self.assertIn("r016-noop-workareas-note", c.actions)
+        self.assertEqual(c.profile, "_forge-test-dual")
+
+    def test_tags_r016(self):
+        forest = _add_guake(_load("tree-perfect.json"))
+        cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
+        sel = select_cases(suite="regression", capability=cap, tags={"R016"})
+        ids = {c.id for c in sel.cases}
+        self.assertIn("L1.r016-noop-workareas", ids)
+
+    def test_catalog_has_r017_gdisplays_scale_retile(self):
+        c = next(x for x in LIVE_CASES if x.id == "L1.r017-gdisplays-scale-retile")
+        self.assertIn("R017", c.regressions)
+        self.assertIn("structure-bind", c.behaviors)
+        self.assertIn("r017-gdisplays-scale-retile-note", c.actions)
+        self.assertEqual(c.profile, "_forge-test-dual")
+
+    def test_tags_r017(self):
+        forest = _add_guake(_load("tree-perfect.json"))
+        cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
+        sel = select_cases(suite="regression", capability=cap, tags={"R017"})
+        ids = {c.id for c in sel.cases}
+        self.assertIn("L1.r017-gdisplays-scale-retile", ids)
+
     def test_work_hint_dnd(self):
         self.assertIn("cross-mon-dnd", behaviors_from_work_hint("dnd"))
         forest = _add_guake(_load("tree-perfect.json"))
