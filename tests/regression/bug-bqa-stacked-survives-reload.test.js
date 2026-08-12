@@ -78,6 +78,21 @@ describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
     expect(con.childNodes.map((n) => n.nodeValue)).toEqual(windows);
   });
 
+  it("restoreLayoutGroups keeps an extra sibling before the rebuilt group", () => {
+    const { monitor, windows } = buildGroup(LAYOUT_TYPES.TABBED, 2);
+    const extraMeta = makeWindow(9);
+    const snapshot = ctx.tree.snapshotLayoutGroups();
+    flattenUnderMonitor(monitor, windows);
+    const extraNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, extraMeta);
+    monitor.insertBefore(extraNode, monitor.firstChild);
+
+    ctx.tree.restoreLayoutGroups(snapshot);
+
+    expect(monitor.childNodes[0].nodeValue).toBe(extraMeta);
+    expect(monitor.childNodes[1].layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(monitor.childNodes[1].childNodes.map((n) => n.nodeValue)).toEqual(windows);
+  });
+
   it("restores a TABBED group and its lastTabFocus", () => {
     const { monitor, con, windows } = buildGroup(LAYOUT_TYPES.TABBED, 2);
     con.lastTabFocus = windows[1];

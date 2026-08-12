@@ -80,9 +80,9 @@ Extension reload wipes the in-memory tree. This fork keeps a **last-good**
 (window ids + splits/tabs + open leaf + keyboard focus) — **not** a named
 `forge layout` profile:
 
-- Written after quiet renders (debounced) and flushed before Shell HUP by
-  `./install` / `forge save-session-layout` only (install never runs
-  `forge layout`).
+- Written after quiet renders (debounced) and flushed before an **X11** Shell
+  HUP by `./install` / `forge save-session-layout` (install never runs
+  `forge layout`). Wayland install does not flush after enable (no host HUP).
 - On enable, windows are moved back to their snapshot monitors, then groups
   are rebuilt (so a Mutter pile-up on one head does not block restore).
 - Open tab/stack leaf and keyboard focus are restored from that snapshot.

@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-11 (**R017** scale/entered-monitor thrash fix in tree; R016 shipped)  
+**Updated:** 2026-08-12 (**R018** + `Node.replaceChildren` child-list contract; host JS still pre-R018 until nest/logout)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -44,6 +44,7 @@
 | Mode B as cold success | **Forbidden** — Mode B = true mid-session chaos only |
 | Belt after bind | **Moves-only** (D014) — no structure rewrite on happy path |
 | Profiles | Data only — no personal-layout product branches |
+| Child list (D023) | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` only |
 | Focus | Post-settle phase; open-leaf pin on steal (D018) |
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
 | Close → focus | **Kept** (FC1) — LFT/sibling restore |
@@ -67,7 +68,8 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **next** | Load tip (R016/R017 JS) + L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore default | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) · [task](./tasks/completed/forge-gdisplays-scale-change-thrash.md) |
+| **next** | Load tip (R018 + R016/R017 JS) via nest or one logout; do **not** host-`forge install` on old JS (swaps mon1 HSPLIT) | [R018](./REGRESSIONS.md) · [task](./tasks/completed/forge-install-hsplit-swap.md) |
+| later | L1 scale smoke after tip: `gdisplays load default-no-scale` must not thrash; restore default | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | done | **R017** entered-monitor suppress on geom drift | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) |
 | done | **R016** no-op workareas + mon-loss collect | [completed](./tasks/completed/forge-monitor-noop-apply-thrash.md) |

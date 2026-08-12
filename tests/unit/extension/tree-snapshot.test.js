@@ -543,6 +543,136 @@ describe("tree-snapshot cross-mon monitor-recovery recovery", () => {
     expect(monitor.childNodes[0].nodeValue).toBe(w0);
     expect(monitor.childNodes[0].percent).toBeCloseTo(1);
   });
+
+  function applyCtx() {
+    return {
+      findNode: (w) => ctx.tree.findNode(w),
+      createCon: () => {
+        const c = new Node(NODE_TYPES.CON, new Bin());
+        c.settings = ctx.tree.settings;
+        return c;
+      },
+      tabbedLayout: LAYOUT_TYPES.TABBED,
+    };
+  }
+
+  // R018: install restore on a mixed mon (extra sibling). insertBefore(first,
+  // first) is a no-op so a same-anchor loop swapped term|tabs → tabs|term.
+  it("applyMonitorSnapshot keeps term|tab order when an extra sits after the cohort", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const ghost = makeWindow(0);
+    const c0 = makeWindow(1);
+    const c1 = makeWindow(2);
+    const extra = makeWindow(9);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, ghost);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, c0);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, c1);
+    const extraNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, extra);
+
+    applyMonitorSnapshot(
+      monitor,
+      {
+        id: monitor.nodeValue,
+        layout: LAYOUT_TYPES.HSPLIT,
+        children: [
+          { window: ghost, percent: 0, userSized: false },
+          {
+            layout: LAYOUT_TYPES.TABBED,
+            percent: 0,
+            userSized: false,
+            children: [
+              { window: c0, percent: 0, userSized: false },
+              { window: c1, percent: 0, userSized: false },
+            ],
+          },
+        ],
+      },
+      applyCtx()
+    );
+
+    expect(monitor.childNodes).toHaveLength(3);
+    expect(monitor.childNodes[0].nodeValue).toBe(ghost);
+    expect(monitor.childNodes[1].layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(monitor.childNodes[1].childNodes.map((n) => n.nodeValue)).toEqual([c0, c1]);
+    expect(monitor.childNodes[2]).toBe(extraNode);
+  });
+
+  it("applyMonitorSnapshot keeps extras before the cohort span", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const extra = makeWindow(9);
+    const ghost = makeWindow(0);
+    const c0 = makeWindow(1);
+    const c1 = makeWindow(2);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, extra);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, ghost);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, c0);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, c1);
+
+    applyMonitorSnapshot(
+      monitor,
+      {
+        id: monitor.nodeValue,
+        layout: LAYOUT_TYPES.HSPLIT,
+        children: [
+          { window: ghost, percent: 0, userSized: false },
+          {
+            layout: LAYOUT_TYPES.TABBED,
+            percent: 0,
+            userSized: false,
+            children: [
+              { window: c0, percent: 0, userSized: false },
+              { window: c1, percent: 0, userSized: false },
+            ],
+          },
+        ],
+      },
+      applyCtx()
+    );
+
+    expect(monitor.childNodes[0].nodeValue).toBe(extra);
+    expect(monitor.childNodes[1].nodeValue).toBe(ghost);
+    expect(monitor.childNodes[2].layout).toBe(LAYOUT_TYPES.TABBED);
+  });
+
+  it("applyMonitorSnapshot keeps tab|term order with a trailing extra", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const ghost = makeWindow(0);
+    const c0 = makeWindow(1);
+    const c1 = makeWindow(2);
+    const extra = makeWindow(9);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, ghost);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, c0);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, c1);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, extra);
+
+    applyMonitorSnapshot(
+      monitor,
+      {
+        id: monitor.nodeValue,
+        layout: LAYOUT_TYPES.HSPLIT,
+        children: [
+          {
+            layout: LAYOUT_TYPES.TABBED,
+            percent: 0,
+            userSized: false,
+            children: [
+              { window: c0, percent: 0, userSized: false },
+              { window: c1, percent: 0, userSized: false },
+            ],
+          },
+          { window: ghost, percent: 0, userSized: false },
+        ],
+      },
+      applyCtx()
+    );
+
+    expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(monitor.childNodes[1].nodeValue).toBe(ghost);
+    expect(monitor.childNodes[2].nodeValue).toBe(extra);
+  });
 });
 
 /**

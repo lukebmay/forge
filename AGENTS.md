@@ -46,7 +46,7 @@ Load plan/task files **on demand** for the current work only.
 
 | Path | Title | Read when |
 | --- | --- | --- |
-| `agents/installed/general.md` | General process | Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches |
+| `agents/installed/general.md` | General process | Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs |
 | `agents/installed/security.md` | Security | Before SSH, secrets, sudo/root, credentials, or any important live-data mutation |
 | `agents/installed/secrets.md` | Secrets store notes | When handling project secret locations or agents/secrets.md finds |
 | `agents/installed/git.md` | Git | Before any commit, push, branch, merge, rebase, or release-ladder work |

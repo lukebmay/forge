@@ -19,7 +19,7 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| residual | **Logout once** load tip (R017+R016 JS); smoke `gdisplays load default-no-scale` no thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) · [task](./tasks/completed/forge-gdisplays-scale-change-thrash.md) |
+| residual | **Logout once** (or nest) load tip: **R018** install HSPLIT order + R017/R016 JS. Do not host-`forge install` on old JS. Then gdisplays scale smoke; restore `default` + `layout dev` | [R018](./REGRESSIONS.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED/STACKED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | residual | Host load tip for R015 if not already on tip | [REGRESSIONS R015](./REGRESSIONS.md) |
 | done | **R017** gdisplays scale → no entered-monitor thrash | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) · L0 48 green |

@@ -205,16 +205,15 @@ forge_restart_shell() {
   local st forge_cli
   st=$(forge_session_type)
   forge_cli="${FORGE_SCRIPTS_DIR:-$SCRIPT_DIR}/forge"
-  # Best-effort flush so install HUP can restore splits/tabs (disable may not run).
-  # Discard CLI JSON stdout so quiet install checklists stay clean.
-  if [[ -x $forge_cli ]]; then
-    forge_info "flushing session layout before Shell reload…"
-    if ! "$forge_cli" save-session-layout >/dev/null 2>&1; then
-      forge_is_quiet || forge_warn "session-layout flush skipped (extension offline or old build)"
-    fi
-  fi
   case "$st" in
     x11)
+      # Flush only when we will actually HUP (no Wayland post-enable rewrite).
+      if [[ -x $forge_cli ]]; then
+        forge_info "flushing session layout before Shell reload…"
+        if ! "$forge_cli" save-session-layout >/dev/null 2>&1; then
+          forge_is_quiet || forge_warn "session-layout flush skipped (extension offline or old build)"
+        fi
+      fi
       if ! command -v killall >/dev/null 2>&1; then
         forge_warn "killall not found; restart Shell manually (Alt+F2 → r)"
         return 1

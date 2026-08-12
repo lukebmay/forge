@@ -165,6 +165,39 @@ describe("Node", () => {
     });
   });
 
+  describe("replaceChildren", () => {
+    it("reorders existing children and drops unlisted ones", () => {
+      const parent = new Node(NODE_TYPES.ROOT, "parent");
+      const a = new Node(NODE_TYPES.CON, new St.Bin());
+      const b = new Node(NODE_TYPES.CON, new St.Bin());
+      const extra = new Node(NODE_TYPES.CON, new St.Bin());
+      parent.appendChild(a);
+      parent.appendChild(b);
+      parent.appendChild(extra);
+
+      parent.replaceChildren([b, a]);
+
+      expect(parent.childNodes).toEqual([b, a]);
+      expect(extra.parentNode).toBeNull();
+      expect(a.parentNode).toBe(parent);
+      expect(b.parentNode).toBe(parent);
+    });
+
+    it("adopts a node from another parent in listed order", () => {
+      const parent = new Node(NODE_TYPES.ROOT, "parent");
+      const other = new Node(NODE_TYPES.ROOT, "other");
+      const a = new Node(NODE_TYPES.CON, new St.Bin());
+      const b = new Node(NODE_TYPES.CON, new St.Bin());
+      parent.appendChild(a);
+      other.appendChild(b);
+
+      parent.replaceChildren([a, b]);
+
+      expect(parent.childNodes).toEqual([a, b]);
+      expect(other.childNodes).toHaveLength(0);
+    });
+  });
+
   describe("Navigation Properties", () => {
     let parent, child1, child2, child3;
 

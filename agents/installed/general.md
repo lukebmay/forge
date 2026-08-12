@@ -1,6 +1,6 @@
 ---
 title: General process
-read_when: Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches
+read_when: Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs
 order: 10
 ---
 
@@ -39,6 +39,23 @@ Prefer a strong architectural fix when the failure class will recur or band-aids
 If a warranted redesign looks **very expensive** (millions+ tokens, multi-session rewrite) vs a small patch: **stop**, present options, open a **hard** design blocker. Do not silently burn a huge redesign.
 
 When the real fix lands, remove competing crutches in the same effort when safe.
+
+## Canonical APIs (FIRM)
+
+Use the project’s existing API/contract for a job. Do **not** hand-roll a
+parallel path (direct field writes, one-off loops, a local helper that
+duplicates a named primitive).
+
+If the existing API is insufficient:
+
+1. Extend that API (or add a sibling on the same type/module).
+2. Convert callers to it.
+3. Then use it.
+
+Hand-roll only when no contract exists yet **and** extending would be a large
+unrelated redesign — say so in the task note. A one-off that “works here” but
+bypasses the shared path is a bug class: the next call site will drift
+(order swaps, missed cleanup, skipped invariants).
 
 ## Optional features in dev (FIRM)
 

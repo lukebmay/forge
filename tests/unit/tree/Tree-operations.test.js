@@ -211,6 +211,20 @@ describe("Tree Operations", () => {
 
       expect(ctx.tree.attachNode).toBe(node.parentNode);
     });
+
+    it("wraps the same window node (no value-twin)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const window = createMockWindow();
+      const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
+
+      ctx.tree.split(node, ORIENTATION_TYPES.HORIZONTAL, true);
+
+      const con = node.parentNode;
+      expect(con.childNodes).toEqual([node]);
+      expect(
+        ctx.tree.getNodeByType(NODE_TYPES.WINDOW).filter((n) => n.nodeValue === window)
+      ).toHaveLength(1);
+    });
   });
 
   describe("mergeWindowsIntoGroup", () => {

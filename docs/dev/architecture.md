@@ -41,6 +41,9 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 ```
 
 - **`Node`** (`tree.js`) — one monitor, workspace, container (`CON`), or window.
+  Child membership/order: `appendChild` / `insertBefore` / `removeChild` /
+  `replaceChildren` only (D023). Do not assign `childNodes` or `parentNode`
+  outside Node.
 - **`Tree`** (`tree.js`) `extends Node`; its constructor calls
   `super(NODE_TYPES.ROOT, …)` (`tree.js`), so **the `Tree` instance *is* the
   root node** — there is no `tree.root` property. Walk from `tree` itself.

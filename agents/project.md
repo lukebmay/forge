@@ -289,6 +289,18 @@ class keys only** (no titles, URLs, or personal role names).
 - Prefer fixing root causes over silencing crashes.
 - Do not re-run the upstream-vs-fork comparison unless the trees change materially.
 
+### Tree child list (FIRM)
+
+Child membership and order go through `Node` (`lib/extension/tree.js`):
+
+| Use | Do not |
+| --- | --- |
+| `appendChild` / `insertBefore` / `removeChild` / `replaceChildren` | Assign `childNodes` or `parentNode` outside Node methods |
+
+`replaceChildren(ordered)` is the replace/reorder primitive (session restore, mon order, hoist). Forest apply is `TreeSnapshot.applyMonitorSnapshot` (T6), not a new splice.
+
+`Tree.split` wraps via `insertBefore` + `appendChild` (same window node). `swapPairs` reorders via `replaceChildren` / insert. Do not assign `childNodes`/`parentNode` to copy either.
+
 ### Dev testing (live install / Shell reload)
 
 When agents run live tests that need install + Shell reload (`./install`,
