@@ -1,15 +1,15 @@
 schema = 1
 tool_version = "0.2.1"
-catalog_version = "0.3.3"
+catalog_version = "0.3.4"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-10T18:56:46+00:00"
+updated_at = "2026-08-12T17:04:53+00:00"
 
 [[files]]
 id = "ansi-colors"
 path = "ansi-colors.md"
-version = "2.1.0"
-sha256 = "2d2f54a86bf18a051242fe6132427a7a3f98e0cab5f367f619ccc5daeb3ed076"
+version = "3.0.0"
+sha256 = "abea03a15c1cd59487f0bbcc53844cf7085f1372cef03e7abcb8368ee81c70f5"
 title = "ANSI colors"
 read_when = "Adding terminal colors, formatting CLI output, or launching user-visible CLIs from a Grok agent"
 
