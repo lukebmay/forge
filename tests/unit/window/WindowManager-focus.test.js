@@ -881,6 +881,30 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(tab.lastTabFocus).toBe(wB);
   });
 
+  it("activateFromTab during a live layout pin adopts it (R026)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const wA = createMockWindow({ id: "pin-a", workspace: ctx.workspaces[0] });
+    const wB = createMockWindow({ id: "pin-b", workspace: ctx.workspaces[0] });
+    const nA = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wB);
+    nA.mode = WINDOW_MODES.TILE;
+    nB.mode = WINDOW_MODES.TILE;
+    wA.raise = vi.fn();
+    wB.raise = vi.fn();
+    wB.focus = vi.fn();
+    wB.activate = vi.fn();
+    tab.lastTabFocus = wA;
+    wm().pinLayoutOpenLeaf(tab, wA);
+
+    nB._activateFromTab(wB);
+
+    expect(tab.lastTabFocus).toBe(wB);
+    expect(wm().getLayoutOpenLeafPin(tab)?.meta).toBe(wB);
+    expect(wm().restoreLayoutOpenLeafIfStolen(nB)).toBe(false);
+  });
+
   it("focus-update uses focus-scoped decoration (not full hide/show)", () => {
     const metaWindow = createMockWindow({ wm_class: "App", workspace: ctx.workspaces[0] });
     wm().trackWindow(null, metaWindow);

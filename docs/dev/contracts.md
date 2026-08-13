@@ -32,7 +32,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Keyboard / tab / Meta focus | `wm.afterFocus(node, { source })` | `renderTree("focus")`; inline F+D+B |
 | Commit structure or size | `wm.commitLayout(reason, { force })` | Second `renderTree` in the same gesture |
 | Re-raise current / new open leaf after structure | `wm.settleTabFocus(node)` | Second full commit “for tabs” |
-| **Show a child in a TABBED/STACKED group** | `wm.revealGroupChild(node, { keyboard, pin })` (includes slot reassert, R025) | `parent.lastTabFocus =` + `raise()` in a new file |
+| **Show a child in a TABBED/STACKED group** | `wm.revealGroupChild(node, { keyboard, pin })` (includes slot reassert R025 + adopt live pin R026) | `parent.lastTabFocus =` + `raise()` in a new file |
 | Pin open leaf during layout residual | `wm.pinLayoutOpenLeaf` / `restoreLayoutOpenLeafIfStolen` | Adopt Meta steal as the new leaf |
 | Group two windows as tabs/stack | `tree.mergeWindowsIntoGroup(a, b, layout)` | Flip `parent.layout` in DnD/command |
 | Split a leaf H/V | `tree.split(node, orientation)` | Hand-built CON + splice |
@@ -45,6 +45,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Soft focus residual (CLI) | `run_soft_focus_barrier` | Fixed `sleep(0.4)` after hard-ready |
 | Soft geom residual (CLI) | `run_soft_geom_barrier` | Re-apply layout until rect “looks right” |
 | Soft timeout math | `settle-math.js` / `settle_heuristics.soft_timeout_from_latencies` | A third rolling-max helper |
+| First-ever soft wait | `soft_timeout_for_key` (peer-host same class seed, else learning trial) | Always 6–10s on a new hostname when the file already has another host |
 | Open-map quiet (extension) | `OpenCommitManager` + `layout-open.js` | Extra 250 ms sleep on create |
 | Forge-caused vs external geom | `isForgeCausedGeometrySignal` (`layout-sensors.js`) | Ad-hoc `_suppressGeom` reads |
 | TILE already at slot? | `shouldChromeOnlyGeometry` / `wm._tiledWindowAtTreeSlot` | Local ε compare |
@@ -80,6 +81,11 @@ Open leaf ≠ keyboard focus. Do not sync GetTree `lastTabFocus` from Meta focus
 Tab click (R025): reassert **only** the revealed child. Do **not** reassert
 from `afterFocus` / `updateTabbedFocus` (intra-tab PWA frame-lie). Skip when
 `zoomMode` is set (D030).
+
+If a layout pin is already live and reveal shows a **different** child
+(tab click, keyboard), **adopt** the pin onto that child (R026). Otherwise
+the following Meta `focus` looks like steal and snaps back to the layout
+leaf. Do not start a pin when none is live.
 
 `SessionApi._focusOp` is a thin caller (`pin` default true). Snapshot persist
 (`session-layout`, `tree-snapshot`) may still write LTF as **data**.

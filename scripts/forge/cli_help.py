@@ -149,6 +149,12 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
          dim("# live → profile JSON", **kw))
     _out(s, "  ", cmd("forge keybind apply vim", **kw), "       ",
          dim("# built-in kit → gsettings", **kw))
+    _out(s, "  ", cmd("forge keybind apply vim --reset", **kw),
+         dim("  # backup + wipe schema + apply", **kw))
+    _out(s, "  ", cmd("forge keybind status", **kw), "          ",
+         dim("# live vs vim/safe/i3 (warns if custom)", **kw))
+    _out(s, "  ", cmd("forge install --kit=vim", **kw), "     ",
+         dim("# install + reset/apply Vim", **kw))
     _out(s, "  ", cmd("forge keybind list", **kw), "            ",
          dim("# FORGE_KEYBIND_PROFILES_DIR", **kw))
     _out(

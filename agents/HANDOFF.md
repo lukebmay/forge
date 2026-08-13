@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-13 (**campaign:** first-layout FLOAT + Wave Z zoom + container insert design)  
+**Updated:** 2026-08-13 (**campaign:** first-layout FLOAT + Wave Z zoom + container insert; R026 pin adopt; R027 chrome-until-ready)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -84,7 +84,7 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Profiles | Data only — no personal-layout product branches |
 | Child list (D023) | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` only |
 | Job → API (D024–D026) | [contracts.md](../docs/dev/contracts.md) — extend the named API; no one-off twins |
-| Focus | Post-settle phase; open-leaf pin on steal (D018) |
+| Focus | Post-settle phase; open-leaf pin on steal (D018); user reveal adopts the pin (R026) |
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
 | Close → focus | **Kept** (FC1) — LFT/sibling restore |
 | CLI jobs | Durable mutators (D021) |
@@ -111,6 +111,9 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 | residual | FLOAT first-layout = host Shell not on tip (R024 on disk). One logout. Only if still FLOAT after: `endOpenLayoutBatch` vs CL5 `shouldCommit` | [task](./tasks/forge-layout-first-apply-float.md) |
 | residual | Wave Z zoom on master (D030). Same logout. Super+Space / C-S-Space / S-S-Space; Super+Enter = run | [task](./tasks/forge-zoom-maximize.md) |
 | residual | R025 tab-click slot: `revealGroupChild` reasserts revealed child. Same logout | [task](./tasks/forge-tab-click-slot.md) |
+| residual | **R026** tab-click during layout pin: first Chrome tab flash then Grok back. L0 shipped; same logout then click the other tab immediately after `layout dev` | [task](./tasks/forge-tab-click-pin-adopt.md) |
+| residual | **R027** overlay through focus/soft + block pointer; peer-host heuristic seed. Same logout. Super+Enter = `forge keybind apply vim` on green | [task](./tasks/forge-layout-chrome-until-ready.md) |
+| residual | Install `--kit=vim` (reset+apply) + stale-kit warning. Daily: `./install --kit=vim` | [task](./tasks/forge-install-reapply-kit.md) |
 | later | `./install` + nest (or logout) then smoke R021–R024 + leftover R019/R020 | [R021](./REGRESSIONS.md)–[R024](./REGRESSIONS.md) · [task](./tasks/completed/forge-dual-mon-open-drop-layout.md) |
 | later | Test-suite honesty analysis (tests that lock product, not patches) | [task](./tasks/forge-test-suite-honest-analysis.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |

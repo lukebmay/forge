@@ -198,7 +198,7 @@ Concrete failure classes (how they looked, what phase owned them):
 | Operator must run `forge layout` **two or three times** before the desk sticks | Accept multi-CLI as success; Mode B second pass on cold | **One spine per command.** Soft residual + verify-once catch late Meta *inside* that run. |
 | After thrash, mon children **swap order** (e.g. mon1 becomes `term \| tab` instead of `tab \| term`) | “Just run layout again” / ensure_order as the design | **Order is part of construction**, not a cleanup pass after chaos. No happy-path structure rewrite after bind. |
 | Post-open “belt” **rewrites topology** and stomps open leaf / mon order | More ensure_layout after residual | Belt = **wrong-mon moves for just-opened pin roles only** (D014). Structure stays with residual bind. |
-| Fixed quiet (250 ms / 2 s) works on one machine, fails on another or when Chrome is slow | Longer sleeps; per-app hardcode | **Hard wait ~5s** for TILE/rect/mon (call clock). **Soft wait** = rolling max residual latency × 1.25 per host+wm_class (file-backed), with floor/clamp and first-ever learning trial—not wall-clock from process start alone. |
+| Fixed quiet (250 ms / 2 s) works on one machine, fails on another or when Chrome is slow | Longer sleeps; per-app hardcode | **Hard wait ~5s** for TILE/rect/mon (call clock). **Soft wait** = rolling max residual latency × 1.25 per host+wm_class (file-backed), with floor/clamp; first-ever on this host seeds from another host’s same class if present, else a learning trial. |
 | Product code grows `if chrome / if ghostty` settle branches for one host desk | Ship personal layout as engine logic | Heuristics keys: `host\|class\|processKind\|residualKind`. Profiles name roles; **engine never keys on role names**. |
 | Cold empty desk treated as thrash → Mode B parks everything then “recovers” | Mode B as cold success path | Cold/just_opened: thrash **report-only**; skeleton-first one-shot. Mode B = true mid-session chaos only. |
 
@@ -251,7 +251,7 @@ class keys only** (no titles, URLs, or personal role names).
 | Store / soft timeout math | `scripts/forge/settle_heuristics.py` |
 | Hard-ready / soft barrier pure | `scripts/forge/layout_apply.py` (`wait_until_hard_ready`, `run_soft_focus_barrier`, `focus_actions_still_needed`) |
 | CLI focus phase | `scripts/forge/forge` → `_layout_final_focus_pass` |
-| Pin + meta-steal restore | `lib/extension/layout-open-leaf-pin.js`, `window.js`, `session-api.js` `_focusOp`, `action-pipeline.js` `afterFocus` |
+| Pin + meta-steal restore | `lib/extension/layout-open-leaf-pin.js`, `window.js`, `session-api.js` `_focusOp`, `action-pipeline.js` `afterFocus` / `revealGroupChild` (R026 adopt) |
 
 ### What we deliberately rejected
 

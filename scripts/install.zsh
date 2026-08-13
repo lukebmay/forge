@@ -70,6 +70,8 @@ Options:
   --no-reload-theme   Skip css-last-update stamp / css-updated bump
   --skip-npm          Skip npm install if node_modules missing
   --no-host-defaults  Skip apply-host-defaults.zsh
+  --kit=vim|safe|i3   Reset live keybinds and apply that kit (backup first)
+  --no-kit            Do not apply a kit (default). Still warns if live is custom
   --force             Non-interactive (default for this script; kept for CI flags)
   --verbose, -v       Detailed logs (make/npm/gsettings chatter)
   --color=auto|always|never
@@ -82,7 +84,9 @@ Examples:
   ./install
   ./install --no-restart          # copy files only; reload Shell yourself
   ./install --verbose             # full build chatter
+  ./install --kit=vim             # daily: install + reset/apply Vim kit
   forge install                   # re-run from install-origin
+  forge install --kit=vim
 
 $(forge_print_deps_help)
 EOF
@@ -97,6 +101,7 @@ DO_RESTART=1
 DO_RELOAD_THEME=1
 DO_HOST_DEFAULTS=1
 SKIP_NPM=0
+KIT=""
 
 forge_parse_common_args "$@"
 if (( ${#FORGE_ARGS[@]} > 0 )); then
@@ -118,10 +123,24 @@ while (( $# )); do
     --no-reload-theme) DO_RELOAD_THEME=0; shift ;;
     --no-host-defaults) DO_HOST_DEFAULTS=0; shift ;;
     --skip-npm) SKIP_NPM=1; shift ;;
+    --kit=*) KIT="${1#--kit=}"; shift ;;
+    --kit)
+      KIT="${2:-}"
+      [[ -n "$KIT" ]] || forge_die "--kit needs vim|safe|i3"
+      shift 2
+      ;;
+    --no-kit) KIT=""; shift ;;
     -*) forge_die "unknown option: $1" ;;
     *) forge_die "unexpected arg: $1" ;;
   esac
 done
+
+if [[ -n "$KIT" ]]; then
+  case "$KIT" in
+    vim|safe|i3) ;;
+    *) forge_die "--kit must be vim, safe, or i3 (got ${KIT})" ;;
+  esac
+fi
 
 [[ -f "$FORGE_REPO_ROOT/Makefile" && -f "$FORGE_REPO_ROOT/metadata.json" ]] \
   || forge_die "not a forge repo: $FORGE_REPO_ROOT"
@@ -163,6 +182,36 @@ _install_done() {
   fi
 }
 
+_install_keybind_kit() {
+  local py="$FORGE_SCRIPTS/keybind_kit.py"
+  if ! command -v python3 >/dev/null 2>&1; then
+    forge_step_warn "Keybind kit (python3 missing)"
+    return 0
+  fi
+  if [[ ! -f "$py" ]]; then
+    forge_step_warn "Keybind kit (script missing)"
+    return 0
+  fi
+  if [[ -n "$KIT" ]]; then
+    if forge_run_quiet python3 "$py" apply "$KIT" --reset; then
+      forge_step_ok "Keybind kit ($KIT)"
+    else
+      forge_step_warn "Keybind kit ($KIT apply failed)"
+    fi
+    return 0
+  fi
+  local st=0 json matched
+  json=$(python3 "$py" status --json) || st=$?
+  if (( st == 0 )); then
+    matched=$(print -r -- "$json" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("matched",""))' 2>/dev/null || print "")
+    forge_step_ok "Keybind kit (${matched:-ok})"
+  elif (( st == 2 )); then
+    forge_step_warn "Keybind kit (custom; ./install --kit=vim)"
+  else
+    forge_step_warn "Keybind kit (status failed)"
+  fi
+}
+
 print -u2 -- "${c_bold}forge install${c_reset}"
 
 case "$lineage" in
@@ -182,6 +231,7 @@ case "$lineage" in
     else
       forge_step_warn "CLI (non-fatal)"
     fi
+    _install_keybind_kit
     if (( DO_RESTART )); then
       st=$(forge_session_type)
       if [[ "$st" == "x11" ]]; then
@@ -308,6 +358,8 @@ if [[ -f "$FORGE_ORIGIN_PATH" ]] && forge_cli_bin_is_ours; then
 else
   forge_step_warn "CLI (non-fatal)"
 fi
+
+_install_keybind_kit
 
 if (( DO_RELOAD_THEME )) && [[ -f "$SCRIPT_DIR/reload-theme.zsh" ]]; then
   if forge_run_capture "$SCRIPT_DIR/reload-theme.zsh" --force; then

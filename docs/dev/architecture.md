@@ -145,16 +145,15 @@ Optional debug LF6 whole-tree fingerprint quiet:
 `--wait-tree-stable` / `FORGE_LAYOUT_WAIT_TREE_STABLE=1` (not the default gate).
 
 **CL10 layout-apply chrome (default on):** GSettings `layout-apply-chrome-enabled`
-(default **true**). During `beginOpenLayoutBatch` (depth ≥ 1) shows a
-non-reactive full-stage ~80% black dim with a large white spinner +
-“Forge: Loading layout…” centered on each monitor (`layout-apply-chrome.js`;
-title ≈ **7.5%** of that monitor’s **stage** height as **visual** size —
-CSS px = stage×ratio / `scale_factor` so St does not double-scale HiDPI —
-detail half that). Cleared after residual bind/place/structure (CLI
-`LayoutBatch chrome-clear` in finally after residual/belt; also on error).
-Batch end alone does not clear — cold residual is the long visual phase.
-Also `disable()` and a hard timer ≤ **30s**. Disable: Preferences → Settings →
-Debugging, or
+(default **true**). CLI `LayoutBatch chrome-show` at apply start (including
+no-open) shows a **reactive** full-stage ~80% black dim that eats pointer
+events, with a large white spinner + “Forge: Loading layout…” centered on
+each monitor (`layout-apply-chrome.js`; title ≈ **7.5%** of that monitor’s
+**stage** height as **visual** size — CSS px = stage×ratio / `scale_factor`
+so St does not double-scale HiDPI — detail half that). Cleared after
+focus/soft (`LayoutBatch chrome-clear` in finally; also on error).
+Batch end alone does not clear. Also `disable()` and a hard timer ≤ **30s**.
+Disable: Preferences → Settings → Debugging, or
 `gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled false`.
 
 ## Command dispatch flow

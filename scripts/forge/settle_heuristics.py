@@ -359,13 +359,40 @@ def get_or_create_entry(
     return ent
 
 
+def _class_process_residual(key: str) -> tuple[str, str, str]:
+    p = parse_key(key)
+    return (p.get("class") or "", p.get("processKind") or "", p.get("residualKind") or "")
+
+
+def peer_entries_for_key(store: Any, key: str) -> list[dict[str, Any]]:
+    """Other-host entries with the same class|process|residual (learned only)."""
+    target = _class_process_residual(key)
+    if not target[0] or not key:
+        return []
+    entries: Any = {}
+    if isinstance(store, dict):
+        raw = store.get("entries")
+        if isinstance(raw, dict):
+            entries = raw
+    out: list[dict[str, Any]] = []
+    for k, ent in entries.items():
+        if k == key or not isinstance(ent, dict):
+            continue
+        if _class_process_residual(str(k)) != target:
+            continue
+        if is_first_ever(ent):
+            continue
+        out.append(ent)
+    return out
+
+
 def soft_timeout_for_key(
     store: Any,
     key: str,
     *,
     residual_kind: Optional[str] = None,
 ) -> int:
-    """Lookup soft timeout; missing entry → first-ever learning trial."""
+    """Lookup soft timeout; missing entry → peer-host seed or first-ever trial."""
     entries: Any = {}
     if isinstance(store, dict):
         raw = store.get("entries")
@@ -375,7 +402,13 @@ def soft_timeout_for_key(
     rk = residual_kind
     if rk is None:
         rk = parse_key(key).get("residualKind") or "focus"
-    return soft_timeout_ms(entry if isinstance(entry, dict) else None, rk)
+    own = entry if isinstance(entry, dict) else None
+    if not is_first_ever(own):
+        return soft_timeout_ms(own, rk)
+    peers = peer_entries_for_key(store, key)
+    if peers:
+        return max(soft_timeout_ms(p, rk) for p in peers)
+    return soft_timeout_ms(own, rk)
 
 
 def schema_version_ok(version: Any) -> bool:

@@ -26,6 +26,7 @@ from settle_heuristics import (  # noqa: E402
     get_or_create_entry,
     heuristics_path,
     is_first_ever,
+    peer_entries_for_key,
     last_rolling_latencies,
     learning_trial_soft_cap_ms,
     load_store,
@@ -351,6 +352,47 @@ class StoreIo(unittest.TestCase):
         t = soft_timeout_for_key(empty_store(),
                                  make_key("h", "c", "focus-phase", "focus"))
         self.assertEqual(t, learning_trial_soft_cap_ms("focus"))
+
+    def test_first_ever_seeds_from_peer_host_same_class(self):
+        st = empty_store()
+        black = get_or_create_entry(
+            st,
+            make_key("black", "google-chrome", "focus-phase", "focus"),
+            host="black",
+            wm_class="google-chrome",
+            process_kind="focus-phase",
+            residual_kind="focus",
+        )
+        record_trial(black, had_residual=True, latency_ms=800)
+        green_key = make_key("green", "google-chrome", "focus-phase", "focus")
+        self.assertTrue(is_first_ever(st["entries"].get(green_key)))
+        self.assertEqual(len(peer_entries_for_key(st, green_key)), 1)
+        # 800 * 1.25 = 1000, not the 6s first-ever cap
+        self.assertEqual(soft_timeout_for_key(st, green_key), int(800 * PAD))
+
+    def test_own_host_samples_win_over_peer(self):
+        st = empty_store()
+        black = get_or_create_entry(
+            st,
+            make_key("black", "google-chrome", "focus-phase", "focus"),
+            host="black",
+            wm_class="google-chrome",
+            process_kind="focus-phase",
+            residual_kind="focus",
+        )
+        record_trial(black, had_residual=True, latency_ms=2000)
+        green = get_or_create_entry(
+            st,
+            make_key("green", "google-chrome", "focus-phase", "focus"),
+            host="green",
+            wm_class="google-chrome",
+            process_kind="focus-phase",
+            residual_kind="focus",
+        )
+        record_trial(green, had_residual=True, latency_ms=400)
+        green_key = make_key("green", "google-chrome", "focus-phase", "focus")
+        self.assertEqual(soft_timeout_for_key(st, green_key),
+                         max(soft_floor_ms("focus"), int(400 * PAD)))
 
     def test_no_personal_role_in_key(self):
         # keys are host|class|process|residual — never desk role names

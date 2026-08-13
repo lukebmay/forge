@@ -1457,13 +1457,15 @@ def _payload_has_cli_only(payload: Any) -> list[str]:
 
 def _layout_batch_call(backend: str, action: str) -> tuple[bool, dict[str, Any]]:
     """
-    DBus LayoutBatch(begin|end|release-deferred|chrome-clear) for layout apply.
+    DBus LayoutBatch(begin|end|release-deferred|chrome-show|chrome-clear)
+    for layout apply.
 
     begin: defer per-app open renderTree until end (or residual RunSteps commit).
     release-deferred / release / unhide: unhide CL8 deferred maps without ending
     the batch (CL9: before residual plan + RunSteps).
     end: batch depth 0 + deferred commit (does not clear apply chrome).
-    chrome-clear: hide apply chrome after residual/belt/retry (or finally).
+    chrome-show: dim overlay at apply start (including no-open).
+    chrome-clear: hide overlay after focus/soft (or finally).
     Returns (ok, payload). ok=false when DBus/extension fails (caller may continue).
     """
     try:
@@ -2747,6 +2749,62 @@ def _layout_run_reconcile_apply(
     wait_tree_stable: bool,
 ) -> int:
     """Apply half of reconcile (heuristics flush owned by caller)."""
+    chrome_clear_needed: list[bool] = [False]
+    show_action = f"chrome-show:{name}" if name else "chrome-show"
+    show_ok, show_payload = _layout_batch_call(backend, show_action)
+    apply_log["layoutChromeShow"] = show_payload
+    if show_ok:
+        chrome_clear_needed[0] = True
+    try:
+        return _layout_run_reconcile_body(
+            backend,
+            resolved,
+            data,
+            plan=plan,
+            name=name,
+            ext_actions=ext_actions,
+            open_actions=open_actions,
+            apply_log=apply_log,
+            clean=clean,
+            keep_others=keep_others,
+            force_close=force_close,
+            safe=safe,
+            verbose=verbose,
+            workspace=workspace,
+            wait_tree_stable=wait_tree_stable,
+            chrome_clear_needed=chrome_clear_needed,
+        )
+    finally:
+        if chrome_clear_needed[0]:
+            _clr_ok, clr_payload = _layout_batch_call(backend, "chrome-clear")
+            apply_log["layoutChromeClear"] = clr_payload
+            if not _clr_ok:
+                _eprint(
+                    "forge layout: LayoutBatch chrome-clear failed: "
+                    f"{clr_payload.get('error')}"
+                )
+
+
+def _layout_run_reconcile_body(
+    backend: str,
+    resolved: dict[str, Any],
+    data: dict[str, Any],
+    *,
+    plan: dict[str, Any],
+    name: str,
+    ext_actions: list,
+    open_actions: list,
+    apply_log: dict[str, Any],
+    clean: bool,
+    keep_others: bool,
+    force_close: bool,
+    safe: bool,
+    verbose: bool,
+    workspace: int,
+    wait_tree_stable: bool,
+    chrome_clear_needed: list,
+) -> int:
+    """Structure / open / focus. Caller owns apply-chrome lifetime."""
 
     # 1) Moves / parks / closes / ensure_layout for existing windows.
     # Always strip focus from structure batches: open-leaf + profile keyboard
@@ -2772,15 +2830,13 @@ def _layout_run_reconcile_apply(
     # 2–3) Opens under LayoutBatch (CL5/CL9): no per-app mid-batch renderTree.
     # Flow: begin → parallel PlaceNext+launch all → map-pin wait → optional
     # fingerprint quiet (--wait-tree-stable) → release-deferred → end batch →
-    # residual RunSteps (bind/place/structure) → chrome-clear. Apply chrome
-    # stays through residual: cold bind + structure is the long visual phase
-    # (clearing at batch end made the dim drop mid-thrash on Wayland cold).
-    # Batch must still end before residual so mon moves stick; chrome is
-    # independent of batch depth. Finally clears chrome if still up.
+    # residual RunSteps (bind/place/structure) → focus/soft. Apply chrome
+    # is shown by the caller for the whole apply (including no-open) and
+    # cleared after this function returns. Batch end does not clear chrome.
+    # Batch must still end before residual so mon moves stick.
     # Do not abort mid-loop: residual rehome still needs successful pins.
     role_pins: dict[str, Any] = {}
     open_failures: list[Any] = []
-    chrome_clear_needed = False
     if open_actions:
         begin_action = f"begin:{name}" if name else "begin"
         batch_ok, batch_begin = _layout_batch_call(backend, begin_action)
@@ -2791,7 +2847,7 @@ def _layout_run_reconcile_apply(
                 f"(continuing without batch: {batch_begin.get('error')})"
             )
         else:
-            chrome_clear_needed = True
+            chrome_clear_needed[0] = True
 
         try:
             # CL9: one baseline before all spawns; PlaceNext+launch without
@@ -3501,15 +3557,6 @@ def _layout_run_reconcile_apply(
                         "forge layout: LayoutBatch end failed: "
                         f"{batch_end.get('error')}"
                     )
-            # Clear apply chrome after residual/belt/retry (or error/early exit).
-            if chrome_clear_needed:
-                _clr_ok, clr_payload = _layout_batch_call(backend, "chrome-clear")
-                apply_log["layoutChromeClear"] = clr_payload
-                if not _clr_ok:
-                    _eprint(
-                        "forge layout: LayoutBatch chrome-clear failed: "
-                        f"{clr_payload.get('error')}"
-                    )
     else:
         # No opens: still one post-structure focus phase + soft barrier.
         focus_rc, focus_plan = _layout_final_focus_pass(
@@ -4203,6 +4250,9 @@ def cmd_install(_backend: Optional[str], args: argparse.Namespace) -> int:
         cmd.append("--skip-npm")
     if getattr(args, "no_host_defaults", False):
         cmd.append("--no-host-defaults")
+    kit = getattr(args, "kit", None)
+    if kit:
+        cmd.append(f"--kit={kit}")
     if verbose:
         cmd.append("--verbose")
     if getattr(args, "extra", None):
@@ -6486,6 +6536,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip host-defaults apply",
     )
     install_p.add_argument(
+        "--kit",
+        choices=("vim", "safe", "i3"),
+        default=None,
+        help="Reset live keybinds and apply this kit (backup first)",
+    )
+    install_p.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -6545,6 +6601,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         dest="no_host_defaults",
         help="Skip host-defaults apply",
+    )
+    update_p.add_argument(
+        "--kit",
+        choices=("vim", "safe", "i3"),
+        default=None,
+        help="Reset live keybinds and apply this kit after install",
     )
     update_p.add_argument(
         "--verbose",

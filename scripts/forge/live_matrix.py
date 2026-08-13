@@ -497,6 +497,57 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "as success. No automated ApplyMonitorsConfig inject yet."
         ),
     ),
+    LiveCase(
+        id="L1.r026-tab-click-adopts-pin",
+        layer=LAYER_L1,
+        title="After layout, tab-click of a sibling must stay (R026)",
+        behaviors=(
+            "open-leaf",
+            "settle-soft",
+            "layout-apply",
+        ),
+        regressions=("R026", ),
+        profile="_forge-test-dual",
+        setup=("ensure-dev-shape", "keep-agent"),
+        actions=("r026-tab-click-adopts-pin-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+        ),
+        notes=(
+            "R026: immediately after forge layout, click the non-open tab "
+            "(e.g. Chrome while Grok is pinned). It must stay; must not flash "
+            "and snap back. Second click must not be required. L0: "
+            "action-pipeline R026. 1-mon host: same on the single tab group. "
+            "Human: click the other tab right after layout returns."
+        ),
+    ),
+    LiveCase(
+        id="L1.r027-chrome-until-ready",
+        layer=LAYER_L1,
+        title="Apply chrome stays up through focus/soft and blocks clicks (R027)",
+        behaviors=(
+            "layout-apply",
+            "settle-soft",
+            "open-leaf",
+        ),
+        regressions=("R027", ),
+        profile="_forge-test-dual",
+        setup=("ensure-dev-shape", "keep-agent"),
+        actions=("r027-chrome-until-ready-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+        ),
+        notes=(
+            "R027: loading overlay must cover no-open apply through focus/soft "
+            "and eat pointer (no tab click-through). Clears when the command "
+            "returns. L0: session-api chrome-show. Human: layout a settled "
+            "desk; overlay visible until forge returns; clicks do nothing."
+        ),
+    ),
 )
 
 

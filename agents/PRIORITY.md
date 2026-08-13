@@ -21,6 +21,9 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | **P0** | Container insert + Chrome-like DnD — **operator pick A/B/C** before Shell motion | [task](./tasks/forge-container-insert-dnd-design.md) |
 | residual | First-layout FLOAT: **host not on tip** — logout (or nest) then one `_forge-test-*` / `dev` smoke. Do not re-patch R024 | [task](./tasks/forge-layout-first-apply-float.md) |
 | residual | Wave Z zoom shipped (L0 green) — same logout to try Super+Enter | [task](./tasks/forge-zoom-maximize.md) |
+| residual | **R026** first tab-click after layout snaps back — L0 shipped; same logout then click the other tab immediately | [task](./tasks/forge-tab-click-pin-adopt.md) |
+| residual | **R027** overlay until apply done + peer-host seed. Same logout. Super+Enter: `forge keybind apply vim` | [task](./tasks/forge-layout-chrome-until-ready.md) |
+| residual | Install `--kit=vim` + stale-kit warning shipped — use `./install --kit=vim` on green | [task](./tasks/forge-install-reapply-kit.md) |
 | residual | Load tip then smoke R021–R024 + leftover Grok→Chrome CENTER + VLC | [R021](./REGRESSIONS.md)–[R024](./REGRESSIONS.md) · [R019](./REGRESSIONS.md) |
 | later | Test-suite honesty analysis (product tests, not patch mirrors) | [task](./tasks/forge-test-suite-honest-analysis.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |

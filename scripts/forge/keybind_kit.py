@@ -15,11 +15,12 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Mapping, Optional, Sequence
 
 SCHEMA_KBD = "org.gnome.shell.extensions.forge.keybindings"
 DCONF_KBD = "/org/gnome/shell/extensions/forge/keybindings/"
 MOD_MASK_KEY = "mod-mask-mouse-tile"
+KIT_IDS = ("vim", "safe", "i3")
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent.parent
@@ -135,6 +136,18 @@ def gsettings_get(key: str, schema_dir: Optional[Path]) -> Optional[str]:
     return r.stdout.strip()
 
 
+def gsettings_reset_recursively(schema_dir: Optional[Path] = None) -> None:
+    r = subprocess.run(
+        ["gsettings", "reset-recursively", SCHEMA_KBD],
+        capture_output=True,
+        text=True,
+        env=_gsettings_env(schema_dir),
+    )
+    if r.returncode != 0:
+        err = (r.stderr or r.stdout or "").strip()
+        raise RuntimeError(f"gsettings reset-recursively: {err or 'failed'}")
+
+
 def gsettings_set(key: str, gvariant: str, schema_dir: Optional[Path]) -> None:
     r = subprocess.run(
         ["gsettings", "set", SCHEMA_KBD, key, gvariant],
@@ -217,25 +230,33 @@ def dconf_dump_kbd() -> dict[str, str]:
 def load_kit_from_presets(kit_id: str) -> dict[str, Any]:
     """Load built-in kit via Node import of keybind-presets.js."""
     kit_id = kit_id.strip().lower()
-    if kit_id not in ("vim", "safe", "i3"):
-        raise ValueError(f"unknown kit: {kit_id} (vim|safe|i3)")
+    if kit_id not in KIT_IDS:
+        raise ValueError(f"unknown kit: {kit_id} ({'|'.join(KIT_IDS)})")
+    return load_all_kits()[kit_id]
 
+
+def load_all_kits() -> dict[str, dict[str, Any]]:
+    """Load vim/safe/i3 kit props in one Node import."""
     node = shutil.which("node")
     if not node:
         raise RuntimeError(
             "node not found (needed to load keybind-presets.js)")
 
     script = f"""
-import {{ getKit, buildProfileProps, KEYBINDING_PRESET_KEYS }} from {_repo_url("lib/shared/keybind-presets.js")};
-const kit = getKit({kit_id!r});
-if (!kit) {{ throw new Error("kit not found"); }}
-const props = buildProfileProps({{
-  modMaskMouseTile: kit.modMaskMouseTile,
-  bindings: kit.bindings,
-  name: kit.id,
-}});
-props.keys = [...KEYBINDING_PRESET_KEYS];
-console.log(JSON.stringify(props));
+import {{ getKit, listKits, buildProfileProps, KEYBINDING_PRESET_KEYS }} from {_repo_url("lib/shared/keybind-presets.js")};
+const out = {{}};
+for (const {{ id }} of listKits()) {{
+  const kit = getKit(id);
+  if (!kit) continue;
+  const props = buildProfileProps({{
+    modMaskMouseTile: kit.modMaskMouseTile,
+    bindings: kit.bindings,
+    name: kit.id,
+  }});
+  props.keys = [...KEYBINDING_PRESET_KEYS];
+  out[id] = props;
+}}
+console.log(JSON.stringify(out));
 """
     r = subprocess.run(
         [node, "--input-type=module", "-e", script],
@@ -246,9 +267,11 @@ console.log(JSON.stringify(props));
     if r.returncode != 0:
         raise RuntimeError(
             f"node kit load failed: {(r.stderr or r.stdout or '').strip()}")
-    # node may print warnings on stderr; stdout is JSON
     line = r.stdout.strip().splitlines()[-1]
-    return json.loads(line)
+    data = json.loads(line)
+    if not isinstance(data, dict) or not data:
+        raise RuntimeError("node kit load returned empty")
+    return data
 
 
 def _repo_url(rel: str) -> str:
@@ -288,30 +311,17 @@ def build_profile_props(
     return props
 
 
-def backup_live(
-    name: Optional[str] = None,
+def load_live_snapshot(
     *,
     schema_dir: Optional[Path] = None,
-    out_dir: Optional[Path] = None,
-) -> Path:
-    """Dump live keybindings to profile JSON. Returns written path."""
-    if name is None:
-        stamp = datetime.now().strftime("%Y%m%d")
-        name = f"backup-before-vim-{stamp}"
-    safe = sanitize_profile_name(name)
-    if not safe:
-        raise ValueError(f"invalid profile name: {name!r}")
-
-    dest_dir = ensure_profiles_dir(out_dir)
-    dest = dest_dir / f"{safe}.json"
-
+) -> dict[str, Any]:
+    """Live keybindings as profile-shaped props (no write)."""
     if schema_dir is None:
         schema_dir = resolve_schema_dir()
 
     bindings: dict[str, list[str]] = {}
     mod_mask = "None"
 
-    # Prefer full KEYBINDING_KEYS list from presets when node works
     try:
         keys = keybinding_keys_from_presets()
     except Exception:
@@ -335,7 +345,6 @@ def backup_live(
         except ValueError:
             bindings[key] = []
 
-    # mod mask
     raw_mod = None
     if schema_dir is not None:
         raw_mod = gsettings_get(MOD_MASK_KEY, schema_dir)
@@ -344,7 +353,6 @@ def backup_live(
     if raw_mod is not None:
         mod_mask = _parse_gvariant_string(raw_mod)
 
-    # Include any extra dconf keys not in allowlist (forward-compat)
     for key, raw in dconf_raw.items():
         if key == MOD_MASK_KEY or key in bindings:
             continue
@@ -353,9 +361,32 @@ def backup_live(
         except ValueError:
             pass
 
+    return {
+        "mod-mask-mouse-tile": mod_mask or "None",
+        "bindings": bindings,
+    }
+
+
+def backup_live(
+    name: Optional[str] = None,
+    *,
+    schema_dir: Optional[Path] = None,
+    out_dir: Optional[Path] = None,
+) -> Path:
+    """Dump live keybindings to profile JSON. Returns written path."""
+    if name is None:
+        stamp = datetime.now().strftime("%Y%m%d")
+        name = f"backup-before-vim-{stamp}"
+    safe = sanitize_profile_name(name)
+    if not safe:
+        raise ValueError(f"invalid profile name: {name!r}")
+
+    dest_dir = ensure_profiles_dir(out_dir)
+    dest = dest_dir / f"{safe}.json"
+    snap = load_live_snapshot(schema_dir=schema_dir)
     props = build_profile_props(
-        mod_mask=mod_mask,
-        bindings=bindings,
+        mod_mask=str(snap.get("mod-mask-mouse-tile") or "None"),
+        bindings=snap.get("bindings") or {},
         name=safe,
         note="Live keybindings snapshot (forge keybind backup)",
     )
@@ -432,14 +463,141 @@ def apply_kit(
     *,
     schema_dir: Optional[Path] = None,
     dry_run: bool = False,
+    reset: bool = False,
 ) -> tuple[dict[str, Any], list[str]]:
     props = load_kit_from_presets(kit_id)
-    # drop helper field
     props.pop("keys", None)
+    if reset and not dry_run:
+        if schema_dir is None:
+            schema_dir = resolve_schema_dir(prefer_source=True)
+        gsettings_reset_recursively(schema_dir)
     applied = apply_profile_props(props,
                                   schema_dir=schema_dir,
                                   dry_run=dry_run)
     return props, applied
+
+
+def preset_keys_from_kits(kits: Mapping[str, Any]) -> list[str]:
+    for kit in kits.values():
+        if isinstance(kit, dict) and isinstance(kit.get("keys"), list):
+            return [str(k) for k in kit["keys"]]
+        bindings = kit.get("bindings") if isinstance(kit, dict) else None
+        if isinstance(bindings, dict) and bindings:
+            return sorted(str(k) for k in bindings.keys())
+    return []
+
+
+def bindings_equal(
+    a: Any,
+    b: Any,
+    *,
+    keys: Optional[Sequence[str]] = None,
+) -> bool:
+    """Same as JS bindingsEqual: compare listed keys, order-sensitive per key."""
+    if not isinstance(a, dict) or not isinstance(b, dict):
+        return False
+    if keys is None:
+        keys = sorted(set(a.keys()) | set(b.keys()))
+    for key in keys:
+        aa = a.get(key) if isinstance(a.get(key), list) else []
+        bb = b.get(key) if isinstance(b.get(key), list) else []
+        if [str(x) for x in aa] != [str(x) for x in bb]:
+            return False
+    return True
+
+
+def binding_diffs(
+    kit_bindings: Mapping[str, Any],
+    live_bindings: Mapping[str, Any],
+    *,
+    keys: Sequence[str],
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for key in keys:
+        kit_v = kit_bindings.get(key) if isinstance(kit_bindings.get(key),
+                                                    list) else []
+        live_v = live_bindings.get(key) if isinstance(live_bindings.get(key),
+                                                      list) else []
+        kit_s = [str(x) for x in kit_v]
+        live_s = [str(x) for x in live_v]
+        if kit_s != live_s:
+            out.append({"key": str(key), "kit": kit_s, "live": live_s})
+    return out
+
+
+def match_kit_id(
+    snap: Mapping[str, Any],
+    kits: Optional[Mapping[str, Any]] = None,
+) -> str:
+    """Which built-in kit matches the snapshot, or 'custom' (JS matchKitId)."""
+    if kits is None:
+        kits = load_all_kits()
+    live_bind = snap.get("bindings") if isinstance(snap.get("bindings"),
+                                                   dict) else {}
+    live_mod = str(snap.get("mod-mask-mouse-tile") or "None")
+    keys = preset_keys_from_kits(kits)
+    for kid in KIT_IDS:
+        kit = kits.get(kid)
+        if not isinstance(kit, dict):
+            continue
+        kit_mod = str(kit.get("mod-mask-mouse-tile") or "None")
+        if kit_mod != live_mod:
+            continue
+        kit_bind = kit.get("bindings") if isinstance(kit.get("bindings"),
+                                                     dict) else {}
+        if bindings_equal(kit_bind, live_bind, keys=keys):
+            return str(kid)
+    return "custom"
+
+
+def closest_kit(
+    snap: Mapping[str, Any],
+    kits: Optional[Mapping[str, Any]] = None,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Kit with fewest binding diffs vs live. Returns (id, diffs)."""
+    if kits is None:
+        kits = load_all_kits()
+    live_bind = snap.get("bindings") if isinstance(snap.get("bindings"),
+                                                   dict) else {}
+    keys = preset_keys_from_kits(kits)
+    best_id = "vim"
+    best_diffs: list[dict[str, Any]] = []
+    best_n = None
+    for kid in KIT_IDS:
+        kit = kits.get(kid)
+        if not isinstance(kit, dict):
+            continue
+        kit_bind = kit.get("bindings") if isinstance(kit.get("bindings"),
+                                                     dict) else {}
+        diffs = binding_diffs(kit_bind, live_bind, keys=keys)
+        n = len(diffs)
+        if best_n is None or n < best_n:
+            best_n = n
+            best_id = str(kid)
+            best_diffs = diffs
+    return best_id, best_diffs
+
+
+def inspect_live_kit(
+    *,
+    schema_dir: Optional[Path] = None,
+    snap: Optional[Mapping[str, Any]] = None,
+    kits: Optional[Mapping[str, Any]] = None,
+) -> dict[str, Any]:
+    """Compare live (or given) snapshot to current built-in kits."""
+    if kits is None:
+        kits = load_all_kits()
+    if snap is None:
+        snap = load_live_snapshot(schema_dir=schema_dir)
+    matched = match_kit_id(snap, kits)
+    closest, diffs = closest_kit(snap, kits)
+    return {
+        "matched": matched,
+        "closest": closest,
+        "diffCount": len(diffs),
+        "diffs": diffs,
+        "hint": "./install --kit=vim  (or: forge keybind apply vim --reset)",
+    }
 
 
 def apply_profile_file(
@@ -486,11 +644,14 @@ def cmd_apply(args: Any) -> int:
     kit = (args.kit or "").strip().lower()
     profile = getattr(args, "profile", None)
     dry = bool(getattr(args, "dry_run", False))
+    reset = bool(getattr(args, "reset", False))
     try:
         if profile:
+            if reset:
+                _eprint("forge keybind apply: --reset applies only with a kit")
+                return 1
             p = Path(profile).expanduser()
             if not p.is_file():
-                # try profiles dir
                 cand = profiles_dir(
                 ) / f"{sanitize_profile_name(profile) or profile}.json"
                 if cand.is_file():
@@ -502,7 +663,19 @@ def cmd_apply(args: Any) -> int:
             applied = apply_profile_file(p, dry_run=dry)
             label = str(p)
         elif kit:
-            _props, applied = apply_kit(kit, dry_run=dry)
+            if kit not in KIT_IDS:
+                _eprint(f"forge keybind apply: unknown kit {kit!r} "
+                        f"({ '|'.join(KIT_IDS) })")
+                return 1
+            if reset and not dry:
+                stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                try:
+                    dest = backup_live(f"backup-before-{kit}-{stamp}")
+                    _eprint(f"forge keybind: saved live → {dest}")
+                except Exception as e:
+                    _eprint(f"forge keybind: backup before reset failed: {e}")
+                    return 1
+            _props, applied = apply_kit(kit, dry_run=dry, reset=reset)
             label = f"kit:{kit}"
         else:
             _eprint(
@@ -514,11 +687,43 @@ def cmd_apply(args: Any) -> int:
         return 1
 
     mode = "dry-run " if dry else ""
-    _eprint(f"forge keybind: {mode}applied {label} ({len(applied)} keys)")
+    reset_bit = "reset+ " if reset and not dry else ""
+    _eprint(
+        f"forge keybind: {mode}{reset_bit}applied {label} ({len(applied)} keys)"
+    )
     if getattr(args, "verbose", False):
         for k in applied:
             print(k)
     return 0
+
+
+def cmd_status(args: Any) -> int:
+    as_json = bool(getattr(args, "json", False))
+    try:
+        info = inspect_live_kit()
+    except Exception as e:
+        _eprint(f"forge keybind status: {e}")
+        return 1
+    slim = {
+        "matched": info["matched"],
+        "closest": info["closest"],
+        "diffCount": info["diffCount"],
+        "hint": info["hint"],
+        "diffs": info["diffs"][:12],
+    }
+    if as_json:
+        print(json.dumps(slim))
+        return 0 if info["matched"] != "custom" else 2
+    matched = info["matched"]
+    if matched != "custom":
+        print(f"live kit: {matched}")
+        return 0
+    print("live kit: custom (does not match vim|safe|i3)")
+    print(f"closest: {info['closest']} ({info['diffCount']} keys differ)")
+    for d in info["diffs"][:8]:
+        print(f"  {d['key']}: live={d['live']}  kit={d['kit']}")
+    print(f"re-apply: {info['hint']}")
+    return 2
 
 
 def cmd_list(args: Any) -> int:
@@ -579,6 +784,11 @@ def build_keybind_subparser(sub: Any) -> None:
         help="Saved profile name or JSON path",
     )
     a.add_argument(
+        "--reset",
+        action="store_true",
+        help="Reset keybindings schema (backup first), then apply kit",
+    )
+    a.add_argument(
         "--dry-run",
         action="store_true",
         help="Resolve kit/schema only; do not write gsettings",
@@ -590,6 +800,17 @@ def build_keybind_subparser(sub: Any) -> None:
         help="List keys applied",
     )
     a.set_defaults(func=_dispatch_keybind, keybind_handler=cmd_apply)
+
+    st = kb_sub.add_parser(
+        "status",
+        help="Does live gsettings match vim/safe/i3?",
+    )
+    st.add_argument(
+        "--json",
+        action="store_true",
+        help="Machine JSON (exit 2 when custom)",
+    )
+    st.set_defaults(func=_dispatch_keybind, keybind_handler=cmd_status)
 
     ls = kb_sub.add_parser("list", help="List saved profile names")
     ls.add_argument("--dir",
@@ -638,9 +859,14 @@ def main(argv: Optional[list[str]] = None) -> int:
     a = sub.add_parser("apply")
     a.add_argument("kit", nargs="?", default=None)
     a.add_argument("--profile", "-p", default=None)
+    a.add_argument("--reset", action="store_true")
     a.add_argument("--dry-run", action="store_true")
     a.add_argument("-v", "--verbose", action="store_true")
     a.set_defaults(func=cmd_apply)
+
+    st = sub.add_parser("status")
+    st.add_argument("--json", action="store_true")
+    st.set_defaults(func=cmd_status)
 
     ls = sub.add_parser("list")
     ls.add_argument("--dir", default=None)

@@ -340,6 +340,37 @@ describe("action-pipeline revealGroupChild", () => {
     expect(wB.activate).not.toHaveBeenCalled();
   });
 
+  it("R026: tab-click reveal adopts a live pin so meta-focus does not snap back", () => {
+    const { tab, wA, wB, nA, nB } = tabbedPair();
+    revealGroupChild(wm(), nA, { pin: true });
+    expect(wm().getLayoutOpenLeafPin(tab)?.meta).toBe(wA);
+
+    revealGroupChild(wm(), nB, { keyboard: true, source: "tab-click" });
+    expect(tab.lastTabFocus).toBe(wB);
+    expect(wm().getLayoutOpenLeafPin(tab)?.meta).toBe(wB);
+
+    expect(wm().restoreLayoutOpenLeafIfStolen(nB)).toBe(false);
+    afterFocus(wm(), nB, { source: "meta-focus" });
+    expect(tab.lastTabFocus).toBe(wB);
+  });
+
+  it("R026: after adopt, late pin-sibling activate restores the clicked tab", () => {
+    const { tab, wA, wB, nA, nB } = tabbedPair();
+    revealGroupChild(wm(), nA, { pin: true });
+    revealGroupChild(wm(), nB, { keyboard: true, source: "tab-click" });
+
+    const restored = wm().restoreLayoutOpenLeafIfStolen(nA);
+    expect(restored).toBe(true);
+    expect(tab.lastTabFocus).toBe(wB);
+  });
+
+  it("R026: reveal without a live pin does not start one", () => {
+    const { tab, wB, nB } = tabbedPair();
+    revealGroupChild(wm(), nB, { keyboard: true, source: "tab-click" });
+    expect(tab.lastTabFocus).toBe(wB);
+    expect(wm().getLayoutOpenLeafPin(tab)).toBeNull();
+  });
+
   it("WindowManager.revealGroupChild delegates", () => {
     const { nB, wB, tab } = tabbedPair();
     wm().revealGroupChild(nB, { keyboard: false });

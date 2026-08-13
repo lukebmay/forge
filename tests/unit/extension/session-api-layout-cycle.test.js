@@ -246,6 +246,30 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     expect(ctx.windowManager.openLayoutBatchActive).toBe(false);
   });
 
+  it("chrome-show shows without begin; chrome-clear hides it", () => {
+    const a = api();
+    const wm = ctx.windowManager;
+    wm.layoutApplyChrome = {
+      visible: false,
+      setLayoutName: vi.fn(),
+      show: vi.fn(() => {
+        wm.layoutApplyChrome.visible = true;
+      }),
+      clear: vi.fn(() => {
+        wm.layoutApplyChrome.visible = false;
+      }),
+    };
+    ctx.settings.set_boolean("layout-apply-chrome-enabled", true);
+    const shown = JSON.parse(a.LayoutBatch("chrome-show:dev"));
+    expect(shown).toMatchObject({ ok: true, shown: true });
+    expect(wm.layoutApplyChrome.setLayoutName).toHaveBeenCalledWith("dev");
+    expect(wm.layoutApplyChrome.show).toHaveBeenCalled();
+    expect(wm.openLayoutBatchActive).toBe(false);
+    const clr = JSON.parse(a.LayoutBatch("chrome-clear"));
+    expect(clr).toMatchObject({ ok: true });
+    expect(wm.layoutApplyChrome.clear).toHaveBeenCalled();
+  });
+
   it("end does not clear chrome; chrome-clear hides it (CLI after end)", () => {
     const a = api();
     const wm = ctx.windowManager;
@@ -269,7 +293,7 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     JSON.parse(a.LayoutBatch("begin:dev"));
     expect(wm.layoutApplyChrome.syncFromBatch).toHaveBeenCalled();
     JSON.parse(a.LayoutBatch("end"));
-    // end() never auto-clears; product CLI clears after residual place (finally).
+    // end() never auto-clears; product CLI clears after focus/soft (finally).
     expect(wm.layoutApplyChrome.clear).not.toHaveBeenCalled();
     expect(wm.layoutApplyChrome.visible).toBe(true);
     const clr = JSON.parse(a.LayoutBatch("chrome-clear"));

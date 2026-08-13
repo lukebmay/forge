@@ -143,6 +143,7 @@ borders, CommandHandler, whitelist, theme, tree-query, Tree-layout, Node).
 run -- forge ping` ok. `forge nested status` → running: False.
 
 **Leftover:** Host Shell still needs logout (or nest) to load new JS.
-Until then Super+Return does nothing (swap-last already remapped). Live
-desk smoke not run. Snapshot persist of `zoomMode` not added (`forge
-layout` may clear; do not fight).
+`./install` does **not** re-apply kits — old Vim still has Super+Return
+= swap-last. On each desk: `forge keybind apply vim` so Super+Return is
+Run. Live desk smoke not run. Snapshot persist of `zoomMode` not added
+(`forge layout` may clear; do not fight).

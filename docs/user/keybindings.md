@@ -29,7 +29,7 @@ lists GNOME/custom entries.
 | **Tiling master = `Ctrl+Super+e`** | **e**nable / disable Forge tiling for the session. (Legacy `Super+w` meant “window” vaguely and fought Super+w habits; not a strong mnemonic.) |
 | **Vim kit** | Power map: vim-style focus on `Super+hjkl`, move on Shift, swap on Ctrl+Super. |
 | **i3 kit** | Approximate i3 muscle memory (focus hjkl, move Shift+hjkl, splits `b`/`v`/`e`, zoom on Space). Not a full i3 mode system. |
-| **No auto-migrate on upgrade** | Your dconf values stay until you Apply a kit, Restore Safe, or import. |
+| **No silent kit rewrite on install** | Live dconf stays until you apply a kit. `./install` **warns** when live chords match no kit (stale after we change Vim/i3). Re-apply: `./install --kit=vim` or `forge keybind apply vim --reset`. |
 
 Workflow we want: **load a kit → tweak → Save as your kit**.
 
@@ -174,7 +174,16 @@ when GNOME or other Forge actions share a chord.
 `$shellrc/configs/forge/keybinding-profiles`), else
 `~/.config/forge/config/keybinding-profiles/<name>.json`.
 
-CLI: `forge keybind backup [name]`, `forge keybind apply vim|safe|i3`.
+CLI: `forge keybind backup [name]`, `forge keybind apply vim|safe|i3`,
+`forge keybind apply vim --reset` (backup live, reset schema, apply),
+`forge keybind status` (does live match a built-in kit?).
+
+Daily install that also refreshes Vim:
+
+```bash
+./install --kit=vim
+# or: forge install --kit=vim
+```
 
 Same shape as portable `keybindings.json`.
 

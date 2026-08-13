@@ -149,9 +149,13 @@ the schemas allow.
 
 ```bash
 git pull
-forge install          # or: ./install
-# or: forge update     # clean master: fetch → pull if new → always install
+forge install --kit=vim   # or: ./install --kit=vim
+# or: forge update --kit=vim
 ```
+
+`--kit=vim` backups live chords, resets the keybind schema, and applies
+the current Vim kit. Omit `--kit` to keep your map; install then **warns**
+if live chords match no kit (`forge keybind status`).
 
 **Remove (keeps prefs):**
 
@@ -186,7 +190,7 @@ After any install that does not reload Shell: on **X11** use `Alt+F2` → `r`, o
 - **Merge into tabbed group:** Safe `Ctrl+Super+m` · Vim `Shift+Super+m`
 - **Layout debug overlay:** `Ctrl+Super+d`
 - **Preferences:** Extensions app → Forge, or `gnome-extensions prefs forge@jmmaranan.com`
-- **Keybind kits CLI:** `forge keybind apply vim` (also `safe` / `i3`; backup/list)
+- **Keybind kits CLI:** `forge keybind apply vim` (also `safe` / `i3`; `--reset` to wipe first; `status` / backup/list)
 
 User guide:
 
