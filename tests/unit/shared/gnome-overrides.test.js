@@ -48,6 +48,21 @@ describe("shouldApplyOverride (forge-9fo, forge-abk)", () => {
     expect(shouldApplyOverride(autoMaximize, settingsWith({}))).toBe(true);
   });
 
+  it("clears GNOME Super+Space input-source so Vim/i3 zoom can bind it", () => {
+    const fwd = SETTINGS_OVERRIDES.find((d) => d.key === "switch-input-source");
+    const back = SETTINGS_OVERRIDES.find((d) => d.key === "switch-input-source-backward");
+    expect(fwd).toMatchObject({
+      schemaId: "org.gnome.desktop.wm.keybindings",
+      type: "strv",
+      newValue: [],
+    });
+    expect(back).toMatchObject({
+      schemaId: "org.gnome.desktop.wm.keybindings",
+      type: "strv",
+      newValue: [],
+    });
+  });
+
   it("leaves every override except edge-tiling ungated", () => {
     const gated = SETTINGS_OVERRIDES.filter((d) => d.gatedBy);
     expect(gated).toEqual([edgeTiling]);

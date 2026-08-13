@@ -189,6 +189,24 @@ describe("shouldRestoreTileSlot", () => {
     expect(shouldRestoreTileSlot(node, meta)).toBe(false);
   });
 
+  it("false when node.zoomMode is set (D030), even if Meta-maxed", () => {
+    const node = { ...makeNode(), zoomMode: "full" };
+    const maxed = makeMeta({ x: 0, y: 0, width: 1920, height: 1080 }, { maximized: 3 });
+    const fs = makeMeta({ x: 0, y: 0, width: 1920, height: 1080 }, { fullscreen: true });
+    const drifted = makeMeta({ x: 0, y: 0, width: 400, height: 300 });
+    expect(shouldRestoreTileSlot(node, maxed)).toBe(false);
+    expect(shouldRestoreTileSlot(node, fs)).toBe(false);
+    expect(shouldRestoreTileSlot(node, drifted)).toBe(false);
+  });
+
+  it("true for unsolicited Meta max/fs on a non-zoomed TILE (R020)", () => {
+    const node = makeNode();
+    const maxed = makeMeta({ x: 0, y: 0, width: 1920, height: 1080 }, { maximized: 3 });
+    const fs = makeMeta({ x: 0, y: 0, width: 1920, height: 1080 }, { fullscreen: true });
+    expect(shouldRestoreTileSlot(node, maxed)).toBe(true);
+    expect(shouldRestoreTileSlot(node, fs)).toBe(true);
+  });
+
   it("forGrab is true only for max/fs, not bare size drift", () => {
     const node = makeNode();
     const drifted = makeMeta({ x: 200, y: 200, width: 400, height: 300 });

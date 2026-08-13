@@ -9,9 +9,12 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
-**2026-08-13:** Wave C/Z **paused** behind
-[canonical contracts](./forge-canonical-contracts.md). Tile-slot authority
-(D026 / IC3) is the prerequisite for zoom; do not start C0 this campaign.
+**2026-08-13:** Operator pulled **Wave Z forward** (Vim maximize chords +
+axis zoom + zoomed border). IC3/D026 is in tree — Z0/Z1 may start:
+[forge-zoom-maximize](../tasks/forge-zoom-maximize.md). Wave C still
+paused behind [container insert lock](../tasks/forge-container-insert-dnd-design.md)
+(3-way even HSPLIT / Chrome-tab DnD). Do not start C0 peel/move until
+that pick.
 
 User lock + i3 research (2026-07-31): containers first; no BC; monocle
 **remove**; split chrome focus-only + show-all + drag show-all; resize

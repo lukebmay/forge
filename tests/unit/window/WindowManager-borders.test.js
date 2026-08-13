@@ -160,6 +160,45 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       expect(mockBorder.set_style_class_name).toHaveBeenCalledWith("window-tiled-border");
     });
 
+    it("should apply zoomed border class when node.zoomMode is set", () => {
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      const windowActor = metaWindow.get_compositor_private();
+      windowActor.border = mockBorder;
+
+      global.display.get_focus_window.mockReturnValue(metaWindow);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow1.mode = WINDOW_MODES.TILE;
+      nodeWindow1.zoomMode = "full";
+
+      const metaWindow2 = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: ctx.workspaces[0],
+      });
+      ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2).mode =
+        WINDOW_MODES.TILE;
+
+      wm().showWindowBorders();
+
+      expect(mockBorder.set_style_class_name).toHaveBeenCalledWith("window-zoomed-border");
+    });
+
     it("should apply stacked border class for windows in stacked container", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),

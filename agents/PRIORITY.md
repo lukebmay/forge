@@ -5,9 +5,9 @@
 **Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Active:** R021–R024 shipped (empty-head open, leaf empty-mon, nest drop,
-first layout TILE). Next: load tip + smoke those four + leftover R019/R020.
-Test-suite honesty analysis is queued. IC4 later. FCC Wave C / zoom after.
+**Active:** Operator campaign **2026-08-13** — first-layout FLOAT residual,
+Wave Z zoom (Vim maximize), container insert + Chrome-DnD **design lock**.
+R021–R024 still in tree; tip-load/smoke stays residual behind this.
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
@@ -18,6 +18,9 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
+| **P0** | Container insert + Chrome-like DnD — **operator pick A/B/C** before Shell motion | [task](./tasks/forge-container-insert-dnd-design.md) |
+| residual | First-layout FLOAT: **host not on tip** — logout (or nest) then one `_forge-test-*` / `dev` smoke. Do not re-patch R024 | [task](./tasks/forge-layout-first-apply-float.md) |
+| residual | Wave Z zoom shipped (L0 green) — same logout to try Super+Enter | [task](./tasks/forge-zoom-maximize.md) |
 | residual | Load tip then smoke R021–R024 + leftover Grok→Chrome CENTER + VLC | [R021](./REGRESSIONS.md)–[R024](./REGRESSIONS.md) · [R019](./REGRESSIONS.md) |
 | later | Test-suite honesty analysis (product tests, not patch mirrors) | [task](./tasks/forge-test-suite-honest-analysis.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
@@ -25,7 +28,7 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | done | **IC3** tile-slot authority (R020) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
 | done | **IC1** drop-intent + CENTER group both directions (R019) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic1-drop-intent.md) |
 | later | **IC4** fold leftover CLI waiters | [task](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
-| later | FCC Wave C / zoom full-width/height (after contracts) | [plan](./plans/forge-first-class-containers.md) |
+| later | FCC Wave C (setLayout / group) after insert lock | [plan](./plans/forge-first-class-containers.md) |
 | residual | **Logout once** (or nest) load tip: **R018** install HSPLIT order + R017/R016 JS. Do not host-`forge install` on old JS. Then gdisplays scale smoke; restore `default` + `layout dev` | [R018](./REGRESSIONS.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED/STACKED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | residual | Host load tip for R015 if not already on tip | [REGRESSIONS R015](./REGRESSIONS.md) |
@@ -42,12 +45,14 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 ### Why this order
 
-1. **R021–R024 are in tree** (empty-head, leaf empty-mon, nest drop, first
-   layout TILE). Next is **load tip + host dual-mon smoke** of those four,
-   plus leftover R019/R020.  
-2. **Test-suite honesty** is queued — do not add more patch-mirror units.  
-3. **IC4** folds leftover CLI waiters — do not invent a third settle brain.  
-4. **Zoom / FCC Wave C** after live smoke. Host logout / R018 is residual.
+1. **First-layout FLOAT** — operator still needs a second `layout dev`.
+   Diagnose tip-vs-remaining-skip before more R024 paint crutches.  
+2. **Zoom** — operator asked now; D026 presentation flag (not Meta max).
+   Vim Super+Return currently swap-last — move that chord.  
+3. **Container insert** is a **design pick** (A slot-split / B sibling
+   never-equalize / C same-app tabs). Do not patch 3-Nautilus HSPLIT
+   until the pick. Chrome-tab DnD follows that lock.  
+4. R021–R024 tip smoke + test-suite honesty + IC4 stay queued.
 
 **Do not** start dual-mon nest by default. **Do not** nest for no-code host smokes.
 

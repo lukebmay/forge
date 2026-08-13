@@ -589,8 +589,9 @@ never lists extension shortcuts.
    **`Super+Delete` lock**. Primary **`Ctrl+Super`**; secondary
    **`Ctrl+Shift+Super`** for twins.
 2. **Shared rare chords:** lock `Super+Delete`; border `Ctrl+Super+b`; tiling
-   master `Ctrl+Super+e`; always-float `Ctrl+Shift+Super+Space`. **Float:**
-   Safe/Vim `Ctrl+Super+Space` (Ctrl-primary); i3 `Shift+Super+Space` (i3).
+   master `Ctrl+Super+e`; always-float `Ctrl+Shift+Super+Space`. **Zoom (Vim/i3):**
+   `Super+Space` / `Ctrl+Super+Space` / `Shift+Super+Space`. **Float:** Safe
+   `Ctrl+Super+Space`; Vim `Ctrl+Super+Enter`; i3 `Shift+Super+Enter`.
 3. **Kits:** `safe` / `vim` / `i3`; apply → tweak → save under
    `keybinding-profiles/`.
 4. **Conflict scan** + prefs banner; GNOME Settings never lists Forge binds.

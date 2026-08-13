@@ -66,6 +66,9 @@ describe("Keybindings", () => {
         "window-reset-sizes",
         "prefs-open",
         "window-swap-last-active",
+        "window-zoom-toggle",
+        "window-zoom-horizontal",
+        "window-zoom-vertical",
         "window-focus-next",
         "window-focus-prev",
         "window-swap-next",
@@ -150,6 +153,17 @@ describe("Keybindings", () => {
     it("window-gap-size-decrease should dispatch GapSize -1", () => {
       keybindings._bindings["window-gap-size-decrease"]();
       expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "GapSize", amount: -1 });
+    });
+
+    it("window-zoom keys dispatch Zoom commands", () => {
+      keybindings._bindings["window-zoom-toggle"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "ZoomToggle" });
+      mockExt.extWm.command.mockClear();
+      keybindings._bindings["window-zoom-horizontal"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "ZoomHorizontal" });
+      mockExt.extWm.command.mockClear();
+      keybindings._bindings["window-zoom-vertical"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "ZoomVertical" });
     });
 
     it("window-unfocus is not a product keybind (abandoned)", () => {

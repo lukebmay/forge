@@ -460,6 +460,21 @@
             <summary>Swap with last active</summary>
         </key>
 
+        <key type="as" name="window-zoom-toggle">
+            <default><![CDATA[[]]]></default>
+            <summary>Toggle presentation zoom (full workarea)</summary>
+        </key>
+
+        <key type="as" name="window-zoom-horizontal">
+            <default><![CDATA[[]]]></default>
+            <summary>Toggle horizontal presentation zoom</summary>
+        </key>
+
+        <key type="as" name="window-zoom-vertical">
+            <default><![CDATA[[]]]></default>
+            <summary>Toggle vertical presentation zoom</summary>
+        </key>
+
         <key type="as" name="window-focus-next">
             <default><![CDATA[[]]]></default>
             <summary>Focus next window (cyclic)</summary>

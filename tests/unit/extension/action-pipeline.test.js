@@ -281,6 +281,39 @@ describe("action-pipeline revealGroupChild", () => {
     expect(after).not.toHaveBeenCalled();
   });
 
+  it("R025: reasserts the revealed child to slot before raise", () => {
+    const { nB, wB } = tabbedPair();
+    const order = [];
+    const reassert = vi.spyOn(wm(), "reassertNodeToSlot").mockImplementation(() => {
+      order.push("reassert");
+      return true;
+    });
+    wB.raise = vi.fn(() => order.push("raise"));
+
+    revealGroupChild(wm(), nB, { keyboard: false });
+
+    expect(reassert).toHaveBeenCalledWith(nB);
+    expect(order[0]).toBe("reassert");
+    expect(order).toContain("raise");
+  });
+
+  it("R025: skips slot reassert when zoomMode is set", () => {
+    const { nB } = tabbedPair();
+    nB.zoomMode = "full";
+    const reassert = vi.spyOn(wm(), "reassertNodeToSlot");
+
+    revealGroupChild(wm(), nB, { keyboard: false });
+
+    expect(reassert).not.toHaveBeenCalled();
+  });
+
+  it("R025: afterFocus does not reassert (intra-tab PWA path)", () => {
+    const { nA } = tabbedPair();
+    const reassert = vi.spyOn(wm(), "reassertNodeToSlot");
+    afterFocus(wm(), nA, { source: "meta-focus" });
+    expect(reassert).not.toHaveBeenCalled();
+  });
+
   it("keyboard:true activates and afterFocus", () => {
     const { tab, wB, nB } = tabbedPair();
     const after = vi.spyOn(wm(), "afterFocus");

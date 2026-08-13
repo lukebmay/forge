@@ -32,7 +32,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Keyboard / tab / Meta focus | `wm.afterFocus(node, { source })` | `renderTree("focus")`; inline F+D+B |
 | Commit structure or size | `wm.commitLayout(reason, { force })` | Second `renderTree` in the same gesture |
 | Re-raise current / new open leaf after structure | `wm.settleTabFocus(node)` | Second full commit “for tabs” |
-| **Show a child in a TABBED/STACKED group** | `wm.revealGroupChild(node, { keyboard, pin })` | `parent.lastTabFocus =` + `raise()` in a new file |
+| **Show a child in a TABBED/STACKED group** | `wm.revealGroupChild(node, { keyboard, pin })` (includes slot reassert, R025) | `parent.lastTabFocus =` + `raise()` in a new file |
 | Pin open leaf during layout residual | `wm.pinLayoutOpenLeaf` / `restoreLayoutOpenLeafIfStolen` | Adopt Meta steal as the new leaf |
 | Group two windows as tabs/stack | `tree.mergeWindowsIntoGroup(a, b, layout)` | Flip `parent.layout` in DnD/command |
 | Split a leaf H/V | `tree.split(node, orientation)` | Hand-built CON + splice |
@@ -52,6 +52,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Unsolicited TILE geom | `shouldRestoreTileSlot` + `wm._restoreTileToSlot` | Skip fullscreen and leave it; float-on-max |
 | User TILE resize (mouse/key grab) | `_handleResizing` → owning-split percents + `userSized` | Treat grab resize as “external drift” |
 | Display / workareas settle | `workareas-policy.js` + `monitor-recovery.js` | Window TILE wait for mon remap |
+| Presentation zoom (full/H/V) | `wm.toggleZoom` + `zoomRect` (`zoom.js`); `tree.apply` paints | Compat.maximize / Meta fs / `toggleWorkspaceMonocle` |
 
 `settleTabFocus` is **chrome** (F+Dfocus+B). It is **not** D019 wait-for-quiet.
 
@@ -73,8 +74,12 @@ Open leaf ≠ keyboard focus. Do not sync GetTree `lastTabFocus` from Meta focus
 
 | `keyboard` | Effect |
 | --- | --- |
-| `false` | LTF + optional pin + raise + `settleTabFocus` |
+| `false` | LTF + optional pin + `reassertNodeToSlot` + raise + `settleTabFocus` |
 | `true` | Same, then activate + `afterFocus` |
+
+Tab click (R025): reassert **only** the revealed child. Do **not** reassert
+from `afterFocus` / `updateTabbedFocus` (intra-tab PWA frame-lie). Skip when
+`zoomMode` is set (D030).
 
 `SessionApi._focusOp` is a thin caller (`pin` default true). Snapshot persist
 (`session-layout`, `tree-snapshot`) may still write LTF as **data**.
@@ -132,7 +137,7 @@ For `mode === TILE`:
 | Live grab resize/move | Existing grab handlers (percents / preview) |
 | Unsolicited size / maximize / Meta fullscreen | Restore to `renderRect` (`reassertNodeToSlot`) |
 | Lone-tile maximize-on-single | Keep (existing) |
-| Forge zoom full/width/height | Later (Wave Z) — presentation flag, **not** Meta fullscreen |
+| Forge zoom full/width/height | `wm.toggleZoom` + `zoomRect` (D030) — presentation flag, **not** Meta fullscreen |
 
 `LayoutController.onExternalGeometry` stays **sensor-only** (AC1). Authority
 restore is a dedicated handler, not verify-driven reassert.

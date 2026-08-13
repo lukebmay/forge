@@ -106,6 +106,7 @@ describe("CommandHandler", () => {
       prefsTitle: "Forge Preferences",
       reloadWindowOverrides: vi.fn(),
       toggleWorkspaceMonocle: vi.fn(),
+      toggleZoom: vi.fn(),
       addFloatOverride: vi.fn(),
       resize: vi.fn(),
       expand: vi.fn(),
@@ -509,6 +510,17 @@ describe("CommandHandler", () => {
       commandHandler.execute({ name: "WorkspaceMonocleToggle" });
 
       expect(mockWm.toggleWorkspaceMonocle).toHaveBeenCalled();
+    });
+  });
+
+  describe("Zoom commands", () => {
+    it("ZoomToggle / Horizontal / Vertical call toggleZoom", () => {
+      commandHandler.execute({ name: "ZoomToggle" });
+      commandHandler.execute({ name: "ZoomHorizontal" });
+      commandHandler.execute({ name: "ZoomVertical" });
+      expect(mockWm.toggleZoom).toHaveBeenNthCalledWith(1, "full");
+      expect(mockWm.toggleZoom).toHaveBeenNthCalledWith(2, "horizontal");
+      expect(mockWm.toggleZoom).toHaveBeenNthCalledWith(3, "vertical");
     });
   });
 

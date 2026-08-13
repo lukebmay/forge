@@ -841,7 +841,7 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     );
   });
 
-  it("activateFromTab raises without move_resize reassert or focus render", () => {
+  it("activateFromTab reasserts the revealed child to slot (R025), no focus render", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
     tab.layout = LAYOUT_TYPES.TABBED;
@@ -868,8 +868,13 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
 
     nB._activateFromTab(wB);
 
-    // Focus/tab activate: no geometry reassert (raise + lastTabFocus only).
-    expect(moveSpy).not.toHaveBeenCalled();
+    expect(moveSpy).toHaveBeenCalledWith(
+      wB,
+      expect.objectContaining(slot),
+      null,
+      expect.objectContaining({ force: false })
+    );
+    expect(moveSpy).toHaveBeenCalledTimes(1);
     expect(renderSpy).not.toHaveBeenCalledWith("focus");
     expect(renderSpy.mock.calls.some((c) => c[0] === "focus")).toBe(false);
     expect(wB.raise).toHaveBeenCalled();

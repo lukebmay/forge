@@ -336,6 +336,7 @@ describe("ThemeManagerBase", () => {
       expect(palette.floated).toBeDefined();
       expect(palette.stacked).toBeDefined();
       expect(palette.tabbed).toBeDefined();
+      expect(palette.zoomed).toBeDefined();
     });
 
     it("should have correct values for tiled scheme", () => {

@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-13 (**R021–R024** empty-head / leaf DnD / nest drop / first layout TILE)  
+**Updated:** 2026-08-13 (**campaign:** first-layout FLOAT + Wave Z zoom + container insert design)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -107,13 +107,17 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **next** | `./install` + nest (or logout) then smoke R021–R024 on host dual-mon + leftover R019/R020 | [R021](./REGRESSIONS.md)–[R024](./REGRESSIONS.md) · [task](./tasks/completed/forge-dual-mon-open-drop-layout.md) |
+| **P0** | Container insert + Chrome-DnD — **wait for operator A/B/C** | [task](./tasks/forge-container-insert-dnd-design.md) |
+| residual | FLOAT first-layout = host Shell not on tip (R024 on disk). One logout. Only if still FLOAT after: `endOpenLayoutBatch` vs CL5 `shouldCommit` | [task](./tasks/forge-layout-first-apply-float.md) |
+| residual | Wave Z zoom on master (D030). Same logout. Super+Space / C-S-Space / S-S-Space; Super+Enter = run | [task](./tasks/forge-zoom-maximize.md) |
+| residual | R025 tab-click slot: `revealGroupChild` reasserts revealed child. Same logout | [task](./tasks/forge-tab-click-slot.md) |
+| later | `./install` + nest (or logout) then smoke R021–R024 + leftover R019/R020 | [R021](./REGRESSIONS.md)–[R024](./REGRESSIONS.md) · [task](./tasks/completed/forge-dual-mon-open-drop-layout.md) |
 | later | Test-suite honesty analysis (tests that lock product, not patches) | [task](./tasks/forge-test-suite-honest-analysis.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
 | done | **IC0** catalog + D024–D026 | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic0-catalog.md) |
 | done | **IC3** tile-slot / R020 (VLC fs → slot) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
 | done | **IC1** drop-intent / R019 (Grok→Chrome CENTER) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic1-drop-intent.md) |
-| later | IC4 fold CLI wait leftovers; FCC Wave C / zoom Z after contracts | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
+| later | IC4 fold leftover CLI waiters | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
 | residual | Load tip (R018 + R016/R017 JS) via nest or one logout; do **not** host-`forge install` on old JS | [R018](./REGRESSIONS.md) · [task](./tasks/completed/forge-install-hsplit-swap.md) |
 | later | L1 scale smoke after tip: `gdisplays load default-no-scale` must not thrash | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |

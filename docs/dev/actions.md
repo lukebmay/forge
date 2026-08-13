@@ -77,10 +77,12 @@ gate deferred open → (activate already done by entry)
 | Hover | Meta path only |
 
 **Show in group (D025):** `wm.revealGroupChild(node, { keyboard, pin })` —
-write LTF → optional pin → raise → `settleTabFocus`; keyboard → activate +
-`afterFocus`. Not a second C. Do not invent `raiseWindow()`.
+write LTF → optional pin → `reassertNodeToSlot` (R025) → raise →
+`settleTabFocus`; keyboard → activate + `afterFocus`. Not a second C.
+Do not invent `raiseWindow()`.
 
-**Forbidden:** `renderTree("focus")`, **Dfull**, reassert other monitors’ tab groups.
+**Forbidden:** `renderTree("focus")`, **Dfull**, reassert other monitors’
+tab groups, reassert from `afterFocus`.
 
 ---
 
