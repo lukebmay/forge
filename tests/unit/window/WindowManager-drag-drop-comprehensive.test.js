@@ -305,11 +305,22 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(100, 540);
       wm().nodeWinAtPointer = target;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(splitSpy).toHaveBeenCalled();
+      // Peel: remaining tabs stay on the TABBED mon; dragged is left of them.
+      expect(target.parentNode).toBe(monitor);
+      expect(other.parentNode).toBe(monitor);
+      expect(monitor.childNodes).toContain(target);
+      expect(monitor.childNodes).toContain(other);
+      expect(monitor.childNodes).not.toContain(dragged);
+      const peeled = dragged.parentNode;
+      expect(peeled).not.toBe(monitor);
+      expect(peeled.nodeType).toBe(NODE_TYPES.CON);
+      expect(peeled.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(peeled.childNodes).toContain(dragged);
+      expect(monitor.childNodes).toContain(peeled);
+      expect(monitor.childNodes.indexOf(peeled)).toBeLessThan(monitor.childNodes.indexOf(target));
+      expect(monitor.childNodes.indexOf(peeled)).toBeLessThan(monitor.childNodes.indexOf(other));
     });
 
     it("should detach window from tabbed container when dropping on RIGHT edge", () => {

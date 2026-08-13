@@ -227,6 +227,48 @@ describe("Tree Operations", () => {
     });
   });
 
+  describe("slotSplitUnit", () => {
+    it("wraps the last of two HSPLIT siblings", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const a = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const b = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      a.percent = 0.5;
+      b.percent = 0.5;
+      b.userSized = true;
+
+      const wrap = ctx.tree.slotSplitUnit(b, ORIENTATION_TYPES.HORIZONTAL);
+
+      expect(wrap).toBeTruthy();
+      expect(wrap.nodeType).toBe(NODE_TYPES.CON);
+      expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(wrap.percent).toBe(0.5);
+      expect(wrap.userSized).toBe(true);
+      expect(wrap.childNodes).toEqual([b]);
+      expect(monitor.childNodes).toEqual([a, wrap]);
+    });
+
+    it("no-ops when the parent has a single child", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const only = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const parent = only.parentNode;
+
+      expect(ctx.tree.slotSplitUnit(only, ORIENTATION_TYPES.HORIZONTAL)).toBeNull();
+      expect(only.parentNode).toBe(parent);
+    });
+
+    it("no-ops when the parent is TABBED", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const bag = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      bag.layout = LAYOUT_TYPES.TABBED;
+      const a = ctx.tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      ctx.tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+
+      expect(ctx.tree.slotSplitUnit(a, ORIENTATION_TYPES.HORIZONTAL)).toBeNull();
+      expect(a.parentNode).toBe(bag);
+    });
+  });
+
   describe("mergeWindowsIntoGroup", () => {
     it("should convert a two-window HSPLIT CON to TABBED in place", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);

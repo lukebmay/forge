@@ -73,6 +73,10 @@ export function mkdir_with_parents(path, mode) {
   return 0;
 }
 
+export function spawn_command_line_async(_command) {
+  return true;
+}
+
 export default {
   getenv,
   get_home_dir,
@@ -91,4 +95,5 @@ export default {
   source_remove,
   Source,
   mkdir_with_parents,
+  spawn_command_line_async,
 };

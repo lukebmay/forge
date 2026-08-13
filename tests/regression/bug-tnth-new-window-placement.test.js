@@ -3,7 +3,10 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createMockWindow,
+  setPointer,
 } from "../mocks/helpers/index.js";
+import { NODE_TYPES } from "../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../lib/extension/window.js";
 
 /**
  * forge-tnth (gh #299/#427/#388/#353): new windows open on the "wrong" monitor.
@@ -48,14 +51,33 @@ describe("forge-tnth: configurable new-window monitor placement", () => {
     return -1;
   };
 
-  it("default 'pointer': track-time homes to the pointer monitor", () => {
-    setup(); // default 'pointer'
-    const metaWindow = createMockWindow({ workspace: ctx.workspaces[0], monitor: 1 });
+  it("pointer on empty dest mon homes there, not to occupied LFT mon", () => {
+    setup();
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const lftMeta = createMockWindow({
+      workspace: ctx.workspaces[0],
+      monitor: 0,
+      id: "lft-mon0",
+    });
+    const lft = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, lftMeta);
+    lft.mode = WINDOW_MODES.TILE;
+    wm().movePointerWith(lft);
+    ctx.display.get_focus_window.mockReturnValue(lftMeta);
+    // Occupied head is 0; pointer sits on empty dest 1 (not fixture default 0).
+    ctx.display.get_current_monitor.mockReturnValue(0);
+    setPointer(2400, 400);
 
+    const metaWindow = createMockWindow({
+      workspace: ctx.workspaces[0],
+      monitor: 0,
+      id: "opened-on-empty",
+    });
     wm().trackWindow(null, metaWindow);
 
-    // Window's actual monitor is 1, but the pointer is on 0: placed on 0.
-    expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0);
+    const node = wm().findNodeWindow(metaWindow);
+    expect(monitorOf(node)).toBe(1);
+    expect(mon0.contains(node)).toBe(false);
+    expect(mon0.getNodeByType(NODE_TYPES.WINDOW)).toContain(lft);
   });
 
   it("'window-actual': track-time homes to the window's own monitor", () => {

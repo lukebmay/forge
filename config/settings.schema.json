@@ -297,8 +297,8 @@
         },
         "launch-app-command": {
           "type": "string",
-          "description": "Application to launch with hotkey",
-          "default": "gnome-terminal"
+          "description": "Command to run on Launch app; empty opens GNOME Run a Command",
+          "default": ""
         }
       },
       "additionalProperties": false

@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-13 (**campaign:** first-layout FLOAT + Wave Z zoom + container insert; R026 pin adopt; R027 chrome-until-ready)  
+**Updated:** 2026-08-13 (**campaign:** container insert A/B/C lock; tip loaded; FLOAT smoke ok; Wave Z / R025–R027 live gestures)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -38,7 +38,7 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Plan | [forge-canonical-contracts](./plans/forge-canonical-contracts.md) |
 | Catalog | [docs/dev/contracts.md](../docs/dev/contracts.md) — extend the named API first |
 | R019 | CENTER on H/V siblings groups via `mergeWindowsIntoGroup`; `dropChangesStructure` |
-| R020 | Unsolicited TILE max/fs/size → `shouldRestoreTileSlot` + `_restoreTileToSlot` |
+| R020 | Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling |
 | Reveal | `wm.revealGroupChild({ keyboard, pin })` (D025) |
 | Guards | L0 `drop-intent`, comprehensive CENTER both dirs, `bug-461-edge-snap`, `layout-sensors` restore |
 | Residual | **Load tip** then smoke Grok→Chrome CENTER + tiled VLC end-of-video. Live not run this session |
@@ -84,6 +84,7 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Profiles | Data only — no personal-layout product branches |
 | Child list (D023) | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` only |
 | Job → API (D024–D026) | [contracts.md](../docs/dev/contracts.md) — extend the named API; no one-off twins |
+| Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling |
 | Focus | Post-settle phase; open-leaf pin on steal (D018); user reveal adopts the pin (R026) |
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
 | Close → focus | **Kept** (FC1) — LFT/sibling restore |
@@ -107,21 +108,21 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | Container insert + Chrome-DnD — **wait for operator A/B/C** | [task](./tasks/forge-container-insert-dnd-design.md) |
-| residual | FLOAT first-layout = host Shell not on tip (R024 on disk). One logout. Only if still FLOAT after: `endOpenLayoutBatch` vs CL5 `shouldCommit` | [task](./tasks/forge-layout-first-apply-float.md) |
-| residual | Wave Z zoom on master (D030). Same logout. Super+Space / C-S-Space / S-S-Space; Super+Enter = run | [task](./tasks/forge-zoom-maximize.md) |
-| residual | R025 tab-click slot: `revealGroupChild` reasserts revealed child. Same logout | [task](./tasks/forge-tab-click-slot.md) |
-| residual | **R026** tab-click during layout pin: first Chrome tab flash then Grok back. L0 shipped; same logout then click the other tab immediately after `layout dev` | [task](./tasks/forge-tab-click-pin-adopt.md) |
-| residual | **R027** overlay through focus/soft + block pointer; peer-host heuristic seed. Same logout. Super+Enter = `forge keybind apply vim` on green | [task](./tasks/forge-layout-chrome-until-ready.md) |
-| residual | Install `--kit=vim` (reset+apply) + stale-kit warning. Daily: `./install --kit=vim` | [task](./tasks/forge-install-reapply-kit.md) |
-| later | `./install` + nest (or logout) then smoke R021–R024 + leftover R019/R020 | [R021](./REGRESSIONS.md)–[R024](./REGRESSIONS.md) · [task](./tasks/completed/forge-dual-mon-open-drop-layout.md) |
-| later | Test-suite honesty analysis (tests that lock product, not patches) | [task](./tasks/forge-test-suite-honest-analysis.md) |
+| **P0** | Insert A (D032) L0 green — `./install` + nest or logout, then 3rd Nautilus / same-axis edge | [task](./tasks/forge-container-insert-a.md) |
+| residual | Wave Z zoom (D030) on tip; Vim kit live. Super+Space / C-S-Space / S-S-Space; Super+Enter = Run | [task](./tasks/forge-zoom-maximize.md) |
+| residual | R025 tab-click slot: click a non-open tab — slot size, no ¼-height reflow | [task](./tasks/forge-tab-click-slot.md) |
+| residual | **R026** immediately after `layout dev`, click the other tab — must stay (no flash-then-Grok) | [task](./tasks/forge-tab-click-pin-adopt.md) |
+| residual | **R027** `layout dev` overlay stays until the command returns; clicks do nothing during it | [task](./tasks/forge-layout-chrome-until-ready.md) |
+| done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
+| done | First-layout FLOAT on tip: one `layout dev` TILE (R024). Do not re-patch `shouldCommit` | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
+| done | Install `--kit=vim` + stale-kit warning. Daily: `./install --kit=vim` | [task](./tasks/forge-install-reapply-kit.md) |
+| later | Smoke leftover R019/R020 (Grok→Chrome CENTER + tiled VLC) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
 | done | **IC0** catalog + D024–D026 | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic0-catalog.md) |
 | done | **IC3** tile-slot / R020 (VLC fs → slot) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
 | done | **IC1** drop-intent / R019 (Grok→Chrome CENTER) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic1-drop-intent.md) |
 | later | IC4 fold leftover CLI waiters | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
-| residual | Load tip (R018 + R016/R017 JS) via nest or one logout; do **not** host-`forge install` on old JS | [R018](./REGRESSIONS.md) · [task](./tasks/completed/forge-install-hsplit-swap.md) |
+| done | Host tip `7b9875e` (R018 + R016/R017 + R021–R027 JS) | `forge ping` versionName matches `git rev-parse --short HEAD` |
 | later | L1 scale smoke after tip: `gdisplays load default-no-scale` must not thrash | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | done | **R017** entered-monitor suppress on geom drift | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) |

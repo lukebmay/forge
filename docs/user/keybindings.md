@@ -71,7 +71,7 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Lock screen | `Super+Delete` (all kits) |
 | Reload config | `Ctrl+Super+r` |
 | Cheatsheet | `Ctrl+Super+/` |
-| Launch app | `Ctrl+Shift+Super+Enter` |
+| Launch app | `Ctrl+Shift+Super+Enter` (empty command = GNOME Run a Command) |
 | Equalize sizes | `Ctrl+Super+=` |
 | Expand / shrink | `Ctrl+Super+]` / `Ctrl+Super+[` |
 | Swap last active | `Ctrl+Super+Enter` |
@@ -110,7 +110,7 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Preferences | `Super+.` |
 | Lock screen | `Super+Delete` |
 | Reload / cheatsheet | `Shift+Super+r` / `Shift+Super+/` |
-| Launch app | `Super+Enter` |
+| Launch app | `Super+Enter` (empty command = GNOME Run a Command) |
 | Equalize / expand / shrink | `Super+=` / `]` / `[` |
 | Swap last active | `Super+Tab` |
 | Layout debug | `Ctrl+Super+d` |
@@ -142,7 +142,7 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | Merge into tabbed group | `Shift+Super+m` |
 | Tab decoration | `Shift+Super+w` |
 | “Fullscreen-ish” snap center | `Super+f` |
-| Launch app | `Super+Enter` |
+| Launch app | `Super+Enter` (empty command = GNOME Run a Command) |
 | Monocle | `Super+m` |
 | Lock | `Super+Delete` |
 | Cheatsheet / reload | `Shift+Super+/` / `Shift+Super+r` |

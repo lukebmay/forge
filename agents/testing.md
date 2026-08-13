@@ -26,6 +26,27 @@ When implementing/debugging an optional feature: **turn it on** in local/dev for
 
 Do not chase coverage numbers. Prefer one test that would have caught a real bug.
 
+## Real regression tests (FIRM)
+
+A test is real when inverting the **user-visible contract** fails it.
+Helper renames, call order, and “the fixture already does this” do not count.
+
+**Assert after the user sequence**
+
+1. Forest / GetTree — who is parent, which children, in what order
+1. Mode (TILE / FLOAT / GRAB_TILE) of the windows the user moved
+1. Child **identity** (this Nautilus, not “some WINDOW”)
+
+**Forbidden as the only assert**
+
+1. `toHaveBeenCalled` / call-order on internals
+1. “Homes to mon 0” when the fixture pointer is also 0
+1. `parent.layout` alone (HSPLIT vs VSPLIT without who sits where)
+
+**Rule:** new live bug → write the failing test **before** the patch,
+against the user gesture (open / drag / drop / apply), not the helper
+just changed. One such test beats twenty patch-mirrors.
+
 ## Lifecycle
 
 | Phase | Stance |

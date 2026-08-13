@@ -60,6 +60,7 @@ vi.mock("resource:///org/gnome/shell/ui/main.js", () => ({
   wm: mockWm,
   panel: mockPanel,
   notify: () => {},
+  openRunDialog: vi.fn(),
 }));
 
 // Also set global.Main to use the same overview object reference
@@ -68,6 +69,7 @@ global.Main = {
   wm: mockWm,
   panel: mockPanel,
   notify: () => {},
+  openRunDialog: vi.fn(),
 };
 
 // Mock Extension class for extension.js

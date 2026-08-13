@@ -229,19 +229,21 @@ describe("R015: empty-monitor drag-drop rehome", () => {
       expect(mon1.contains(nodeA)).toBe(false);
     });
 
-    it("updateMetaWorkspaceMonitor still skips rehome while GRAB_TILE (R012)", () => {
-      const { mon0, mon1, metaA, nodeA } = twoOnLeftEmptyRight();
+    it("entered-monitor during GRAB_TILE leaves source forest unchanged", () => {
+      const { mon0, mon1, metaA, nodeA, nodeB } = twoOnLeftEmptyRight();
       nodeA.mode = WINDOW_MODES.GRAB_TILE;
       wm()._draggedNodeWindow = nodeA;
       metaA.get_monitor = vi.fn(() => 1);
       metaA.monitor = 1;
 
-      const rehomeSpy = vi.spyOn(wm(), "_rehomeWindowPreservingContainer");
       wm().updateMetaWorkspaceMonitor("window-entered-monitor", 1, metaA);
 
-      expect(rehomeSpy).not.toHaveBeenCalled();
+      expect(nodeA.parentNode).toBe(mon0);
+      expect(nodeB.parentNode).toBe(mon0);
       expect(mon0.contains(nodeA)).toBe(true);
       expect(mon1.contains(nodeA)).toBe(false);
+      expect(nodeA.mode).toBe(WINDOW_MODES.GRAB_TILE);
+      expect(mon1.getNodeByType(NODE_TYPES.WINDOW)).toHaveLength(0);
     });
 
     it("grab-end re-resolves then empty-mon commits via moveWindowToPointer", () => {

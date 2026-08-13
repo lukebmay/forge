@@ -15,9 +15,13 @@ New windows tile side-by-side. A container is either a **horizontal split**
   (Vim kit: `Ctrl+Super+n`). Use the cheatsheet for your live chord.
 - Splits **nest**: split one pane vertically while its parent stays horizontal, and
   you get an L-shaped layout. This is how complex layouts are built.
-- New windows inherit the focused container's split. Enable **Auto Split /
-  Quarter Tiling** (`auto-split-enabled`, off by default) to alternate the split
-  direction automatically based on the focused pane's shape.
+- New windows inherit the focused container's split. The **third** tiled
+  window splits the focused slot in half (a nested pair), not an even
+  three-way across the monitor. Equal 3-way only after you resize those
+  siblings or run **reset sizes** (`window-reset-sizes`).
+- Enable **Auto Split / Quarter Tiling** (`auto-split-enabled`, off by
+  default) to alternate the split direction automatically based on the
+  focused pane's shape (1-child orientation toggle).
 
 ## Stacked and tabbed
 

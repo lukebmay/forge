@@ -3,6 +3,16 @@ import {
   dropChangesStructure,
   shouldMergeCenterGroup,
 } from "../../../lib/extension/drop-intent.js";
+import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+  createContainerNode,
+  setPointer,
+} from "../../mocks/helpers/index.js";
+import { Rectangle } from "../../mocks/gnome/Meta.js";
 
 function attach(parent, child) {
   child.parentNode = parent;
@@ -111,10 +121,56 @@ describe("dropChangesStructure", () => {
   });
 
   it("CENTER on VSPLIT siblings → change (both directions)", () => {
-    const { parent, a, b } = vsplitPair();
-    const op = centerOp({ containerNode: parent });
-    expect(dropChangesStructure(b, a, op, { stackedOrTabbed: false })).toBe(true);
-    expect(dropChangesStructure(a, b, op, { stackedOrTabbed: false })).toBe(true);
+    const ctx = createWindowManagerFixture({
+      settings: {
+        "dnd-center-layout": "TABBED",
+        "tiling-mode-enabled": true,
+      },
+    });
+    try {
+      const wm = ctx.windowManager;
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const split = createContainerNode(monitor, LAYOUT_TYPES.VSPLIT, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const top = ctx.tree.createNode(
+        split.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          id: "A",
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 540 }),
+          workspace: ctx.workspaces[0],
+        })
+      );
+      const bot = ctx.tree.createNode(
+        split.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          id: "B",
+          rect: new Rectangle({ x: 0, y: 540, width: 960, height: 540 }),
+          workspace: ctx.workspaces[0],
+        })
+      );
+      top.mode = WINDOW_MODES.TILE;
+      bot.mode = WINDOW_MODES.GRAB_TILE;
+
+      setPointer(480, 270);
+      wm.nodeWinAtPointer = top;
+      wm.moveWindowToPointer(bot, false);
+
+      expect(split.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(split.childNodes).toHaveLength(2);
+      expect(split.childNodes).toEqual(expect.arrayContaining([top, bot]));
+      expect(top.parentNode).toBe(split);
+      expect(bot.parentNode).toBe(split);
+      expect(monitor.childNodes).toContain(split);
+    } finally {
+      ctx.cleanup();
+    }
   });
 
   it("CENTER on HSPLIT siblings → change", () => {

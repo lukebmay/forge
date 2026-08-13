@@ -283,8 +283,8 @@
         </key>
 
         <key type="s" name="launch-app-command">
-            <default>'gnome-terminal'</default>
-            <summary>Application to launch with hotkey</summary>
+            <default>''</default>
+            <summary>Command to run on Launch app; empty opens GNOME Run a Command</summary>
         </key>
 
         <!-- Portable Config Sync Settings -->

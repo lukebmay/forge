@@ -43,6 +43,14 @@ tests/
 
 ## Writing Tests
 
+A regression is real when the **user-visible forest** would fail if the
+contract inverted (who is parent, which children, mode after the
+gesture). Do not lock call-order, `toHaveBeenCalled` alone, mon0 because
+the fixture pointer is 0, or `parent.layout` without child identity.
+New live bug: failing test against the user sequence **before** the
+patch. Full rubric: [agents/testing.md](../agents/testing.md) § Real
+regression tests.
+
 Tests use [Vitest](https://vitest.dev/). GNOME APIs are mocked automatically:
 
 ```javascript

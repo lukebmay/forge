@@ -5,9 +5,9 @@
 **Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Active:** Operator campaign **2026-08-13** — first-layout FLOAT residual,
-Wave Z zoom (Vim maximize), container insert + Chrome-DnD **design lock**.
-R021–R024 still in tree; tip-load/smoke stays residual behind this.
+**Active:** Operator campaign **2026-08-13** — insert **A** (D032)
+slot-split implement. Host tip `7b9875e`. Wave Z / R025–R027 live
+gestures only.
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
@@ -18,23 +18,25 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | Container insert + Chrome-like DnD — **operator pick A/B/C** before Shell motion | [task](./tasks/forge-container-insert-dnd-design.md) |
-| residual | First-layout FLOAT: **host not on tip** — logout (or nest) then one `_forge-test-*` / `dev` smoke. Do not re-patch R024 | [task](./tasks/forge-layout-first-apply-float.md) |
-| residual | Wave Z zoom shipped (L0 green) — same logout to try Super+Enter | [task](./tasks/forge-zoom-maximize.md) |
-| residual | **R026** first tab-click after layout snaps back — L0 shipped; same logout then click the other tab immediately | [task](./tasks/forge-tab-click-pin-adopt.md) |
-| residual | **R027** overlay until apply done + peer-host seed. Same logout. Super+Enter: `forge keybind apply vim` | [task](./tasks/forge-layout-chrome-until-ready.md) |
-| residual | Install `--kit=vim` + stale-kit warning shipped — use `./install --kit=vim` on green | [task](./tasks/forge-install-reapply-kit.md) |
-| residual | Load tip then smoke R021–R024 + leftover Grok→Chrome CENTER + VLC | [R021](./REGRESSIONS.md)–[R024](./REGRESSIONS.md) · [R019](./REGRESSIONS.md) |
-| later | Test-suite honesty analysis (product tests, not patch mirrors) | [task](./tasks/forge-test-suite-honest-analysis.md) |
+| **P0** | Insert A (D032) L0 green — install + nest/logout, then 3rd open / edge drop | [task](./tasks/forge-container-insert-a.md) |
+| done | Insert/DnD design lock: **A** + Chrome drag table | [task](./tasks/forge-container-insert-dnd-design.md) |
+| residual | Wave Z zoom on tip; Vim kit live — try Super+Space / C-S-Space / S-S-Space; Super+Enter = Run | [task](./tasks/forge-zoom-maximize.md) |
+| residual | **R025** tab-click slot size after tip | [task](./tasks/forge-tab-click-slot.md) |
+| residual | **R026** first tab-click after layout must stay | [task](./tasks/forge-tab-click-pin-adopt.md) |
+| residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
+| done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
+| done | First-layout FLOAT on tip: one `layout dev` TILE. Do not re-patch R024 | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
+| done | Install `--kit=vim` + stale-kit warning | [task](./tasks/forge-install-reapply-kit.md) |
+| later | Leftover Grok→Chrome CENTER + VLC slot (R019/R020) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
 | done | **IC0** catalog + D024–D026 | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic0-catalog.md) |
 | done | **IC3** tile-slot authority (R020) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
 | done | **IC1** drop-intent + CENTER group both directions (R019) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic1-drop-intent.md) |
 | later | **IC4** fold leftover CLI waiters | [task](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
 | later | FCC Wave C (setLayout / group) after insert lock | [plan](./plans/forge-first-class-containers.md) |
-| residual | **Logout once** (or nest) load tip: **R018** install HSPLIT order + R017/R016 JS. Do not host-`forge install` on old JS. Then gdisplays scale smoke; restore `default` + `layout dev` | [R018](./REGRESSIONS.md) · [R017](./REGRESSIONS.md) |
+| later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED/STACKED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
-| residual | Host load tip for R015 if not already on tip | [REGRESSIONS R015](./REGRESSIONS.md) |
+| done | Host tip loaded (`7b9875e`) — R015–R024 JS on host Shell | [REGRESSIONS](./REGRESSIONS.md) |
 | done | **R017** gdisplays scale → no entered-monitor thrash | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) · L0 48 green |
 | done | **R016** no-op workareas + mon-loss collect-to-end | [completed](./tasks/completed/forge-monitor-noop-apply-thrash.md) · L0 guards green |
 | optional | Per-window signals → WindowAttach | [plan](./plans/forge-lifecycle-abstractions.md) |
@@ -48,14 +50,11 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 ### Why this order
 
-1. **First-layout FLOAT** — operator still needs a second `layout dev`.
-   Diagnose tip-vs-remaining-skip before more R024 paint crutches.  
-2. **Zoom** — operator asked now; D026 presentation flag (not Meta max).
-   Vim Super+Return currently swap-last — move that chord.  
-3. **Container insert** is a **design pick** (A slot-split / B sibling
-   never-equalize / C same-app tabs). Do not patch 3-Nautilus HSPLIT
-   until the pick. Chrome-tab DnD follows that lock.  
-4. R021–R024 tip smoke + test-suite honesty + IC4 stay queued.
+1. **Insert A live** — `./install` + nest or logout, then 3rd Nautilus
+   and same-axis edge. TD1 strip reorder after that.
+2. **Live gestures** on current tip (zoom / R025–R027) — try those
+   **before** the next install if you have not yet.
+3. IC4 stay queued.
 
 **Do not** start dual-mon nest by default. **Do not** nest for no-code host smokes.
 

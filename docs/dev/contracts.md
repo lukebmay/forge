@@ -36,6 +36,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Pin open leaf during layout residual | `wm.pinLayoutOpenLeaf` / `restoreLayoutOpenLeafIfStolen` | Adopt Meta steal as the new leaf |
 | Group two windows as tabs/stack | `tree.mergeWindowsIntoGroup(a, b, layout)` | Flip `parent.layout` in DnD/command |
 | Split a leaf H/V | `tree.split(node, orientation)` | Hand-built CON + splice |
+| Slot-split focused/target unit (D032) | `tree.slotSplitUnit` / `wm.slotSplitForInsert` | Even 3rd H/V sibling; `createNode(bag)` as a tab |
 | Five-zone hit / paint | `drop-zones.js` `buildDropZones` / `hitTestDropZone` | Edge-band / grab-origin geometry |
 | **Would this drop change the tree?** | `dropChangesStructure` (`lib/extension/drop-intent.js`) | Positional `_isNoOpDrop` that ignores layout |
 | Execute a tile drop | `DragDropManager.moveWindowToPointer` → intent + merge/split | Parallel session-only structure |
@@ -53,7 +54,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Unsolicited TILE geom | `shouldRestoreTileSlot` + `wm._restoreTileToSlot` | Skip fullscreen and leave it; float-on-max |
 | User TILE resize (mouse/key grab) | `_handleResizing` → owning-split percents + `userSized` | Treat grab resize as “external drift” |
 | Display / workareas settle | `workareas-policy.js` + `monitor-recovery.js` | Window TILE wait for mon remap |
-| Presentation zoom (full/H/V) | `wm.toggleZoom` + `zoomRect` (`zoom.js`); `tree.apply` paints | Compat.maximize / Meta fs / `toggleWorkspaceMonocle` |
+| Presentation zoom (full/H/V) | `wm.toggleZoom` + `zoomRect` (`zoom.js`); `tree.apply` / borders use `tree.paintRectForWindow` | Compat.maximize / Meta fs / `toggleWorkspaceMonocle`; border from unzoomed slot |
 
 `settleTabFocus` is **chrome** (F+Dfocus+B). It is **not** D019 wait-for-quiet.
 

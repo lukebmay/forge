@@ -8,6 +8,7 @@ import {
 } from "../../mocks/helpers/index.js";
 import Meta, { Rectangle } from "../../mocks/gnome/Meta.js";
 import St from "../../mocks/gnome/St.js";
+import * as Utils from "../../../lib/extension/utils.js";
 
 /**
  * WindowManager border and focus indicator tests
@@ -197,6 +198,55 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       wm().showWindowBorders();
 
       expect(mockBorder.set_style_class_name).toHaveBeenCalledWith("window-zoomed-border");
+    });
+
+    it("zoomed border follows paintRectForWindow, not the unzoomed slot", () => {
+      const slot = { x: 0, y: 0, width: 960, height: 1080 };
+      const metaWindow = createMockWindow({
+        rect: new Rectangle(slot),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      metaWindow.get_compositor_private().border = mockBorder;
+      global.display.get_focus_window.mockReturnValue(metaWindow);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow1.mode = WINDOW_MODES.TILE;
+      nodeWindow1.zoomMode = "full";
+      nodeWindow1.renderRect = slot;
+      nodeWindow1.rect = slot;
+
+      const metaWindow2 = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: ctx.workspaces[0],
+      });
+      ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2).mode =
+        WINDOW_MODES.TILE;
+
+      const painted = ctx.tree.paintRectForWindow(nodeWindow1);
+      expect(painted.width).toBeGreaterThan(slot.width);
+
+      wm().showWindowBorders();
+
+      const inset = 3 * Utils.dpi();
+      expect(mockBorder.set_size).toHaveBeenCalledWith(
+        painted.width + inset * 2,
+        painted.height + inset * 2
+      );
+      expect(mockBorder.set_position).toHaveBeenCalledWith(painted.x - inset, painted.y - inset);
     });
 
     it("should apply stacked border class for windows in stacked container", () => {

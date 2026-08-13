@@ -308,10 +308,12 @@ describe("OP1 open-app placement policy", () => {
       wm().trackWindow(null, metaWindow);
       const node = wm().findNodeWindow(metaWindow);
 
-      expect(node.parentNode).toBe(con);
-      const kids = con.childNodes.filter((n) => n.isWindow());
-      expect(kids.indexOf(node)).toBe(kids.indexOf(mid.nodeWindow) + 1);
+      expect(monitorOf(node)).toBe(1);
+      expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(con.childNodes).not.toContain(node);
+      expect(node.parentNode).toBe(mon1);
       expect(first.nodeWindow.parentNode).toBe(con);
+      expect(mid.nodeWindow.parentNode).toBe(con);
     });
 
     it("dock hook refreshes active WM after disable/re-enable cycle", () => {
@@ -704,7 +706,7 @@ describe("OP1 open-app placement policy", () => {
   describe("tab-after and aspect split", () => {
     beforeEach(() => setup());
 
-    it("inserts after LFT when LFT parent is TABBED", () => {
+    it("does not join a TABBED bag; new tile is a sibling of the bag", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
       // Build TABBED CON with two windows
       const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, {});
@@ -738,14 +740,11 @@ describe("OP1 open-app placement policy", () => {
       wm().trackWindow(null, metaWindow);
       const node = wm().findNodeWindow(metaWindow);
 
-      expect(node.parentNode).toBe(con);
       expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
-      // createNode inserts after LFT (before nextSibling of a) → between a and b
-      const kids = con.childNodes.filter((n) => n.isWindow());
-      const idxNew = kids.indexOf(node);
-      const idxA = kids.indexOf(a.nodeWindow);
-      expect(idxNew).toBe(idxA + 1);
-      expect(b.nodeWindow); // still present
+      expect(con.childNodes).toContain(a.nodeWindow);
+      expect(con.childNodes).toContain(b.nodeWindow);
+      expect(con.childNodes).not.toContain(node);
+      expect(node.parentNode).toBe(monitor);
     });
 
     it("aspect: tall LFT → VSPLIT; wide LFT → HSPLIT", () => {

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Keybindings } from "../../../lib/extension/keybindings.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import GLib from "gi://GLib";
 
 /**
  * Keybindings behavioral tests
@@ -31,6 +32,8 @@ describe("Keybindings", () => {
     };
 
     keybindings = new Keybindings(mockExt);
+    Main.openRunDialog?.mockClear?.();
+    GLib.spawn_command_line_async = vi.fn(() => true);
   });
 
   describe("buildBindingDefinitions()", () => {
@@ -153,6 +156,21 @@ describe("Keybindings", () => {
     it("window-gap-size-decrease should dispatch GapSize -1", () => {
       keybindings._bindings["window-gap-size-decrease"]();
       expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "GapSize", amount: -1 });
+    });
+
+    it("prefs-app-launch with empty command opens GNOME run dialog", () => {
+      mockExt.settings.get_string.mockReturnValue("");
+      keybindings.buildBindingDefinitions();
+      keybindings._bindings["prefs-app-launch"]();
+      expect(Main.openRunDialog).toHaveBeenCalled();
+    });
+
+    it("prefs-app-launch with a command spawns it", () => {
+      mockExt.settings.get_string.mockReturnValue("ghostty");
+      keybindings.buildBindingDefinitions();
+      keybindings._bindings["prefs-app-launch"]();
+      expect(GLib.spawn_command_line_async).toHaveBeenCalledWith("ghostty");
+      expect(Main.openRunDialog).not.toHaveBeenCalled();
     });
 
     it("window-zoom keys dispatch Zoom commands", () => {

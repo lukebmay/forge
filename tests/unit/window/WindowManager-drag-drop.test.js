@@ -106,9 +106,18 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow3, false);
 
-      // A new container should have been created with HSPLIT
-      const containers = nodeWindow3.parentNode;
-      expect(containers.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      const nest = nodeWindow3.parentNode;
+      expect(nest.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(nest.nodeType).toBe(NODE_TYPES.CON);
+      expect(nest.childNodes).toEqual(expect.arrayContaining([nodeWindow1, nodeWindow3]));
+      expect(nest.childNodes).not.toContain(nodeWindow2);
+      expect(nest.childNodes.indexOf(nodeWindow3)).toBeLessThan(
+        nest.childNodes.indexOf(nodeWindow1)
+      );
+      expect(nodeWindow2.parentNode).toBe(monitor);
+      expect(monitor.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(monitor.childNodes).toContain(nest);
+      expect(monitor.childNodes).toContain(nodeWindow2);
     });
   });
 

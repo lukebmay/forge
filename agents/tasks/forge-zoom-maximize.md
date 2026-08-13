@@ -142,7 +142,9 @@ borders, CommandHandler, whitelist, theme, tree-query, Tree-layout, Node).
 **Nest:** `./install` (Wayland live-reload expected fail) + `forge nested
 run -- forge ping` ok. `forge nested status` → running: False.
 
-**Leftover:** Host Shell still needs logout (or nest) to load new JS.
+**Leftover:** Zoom border must use `paintRectForWindow` (not the unzoomed
+slot). Super+Enter Run = empty command → GNOME `openRunDialog`. Host
+needs `./install` + nest or logout for both JS fixes.
 `./install` does **not** re-apply kits — old Vim still has Super+Return
 = swap-last. On each desk: `forge keybind apply vim` so Super+Return is
 Run. Live desk smoke not run. Snapshot persist of `zoomMode` not added
