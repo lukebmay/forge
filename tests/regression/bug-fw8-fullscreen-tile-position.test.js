@@ -59,6 +59,23 @@ describe("Bug forge-fw8: fullscreen tiled window is not re-sliced", () => {
     expect(moveSpy).toHaveBeenCalledWith(second.metaWindow, second.nodeWindow.renderRect);
   });
 
+  it("apply() places a window after it is unfullscreened", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const [first, second] = createHorizontalLayout(ctx.tree, monitor, 2);
+    first.nodeWindow.renderRect = { x: 0, y: 0, width: 960, height: 1080 };
+    second.nodeWindow.renderRect = { x: 960, y: 0, width: 960, height: 1080 };
+    first.metaWindow.make_fullscreen();
+
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    ctx.tree.apply(ctx.tree);
+    expect(moveSpy.mock.calls.map((c) => c[0])).not.toContain(first.metaWindow);
+
+    first.metaWindow.unmake_fullscreen();
+    moveSpy.mockClear();
+    ctx.tree.apply(ctx.tree);
+    expect(moveSpy).toHaveBeenCalledWith(first.metaWindow, first.nodeWindow.renderRect);
+  });
+
   it("apply() still moves a normal (non-fullscreen) tiled window to its slice", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first, second] = createHorizontalLayout(ctx.tree, monitor, 2);

@@ -40,7 +40,8 @@ desync; leave it at 0 for daily use. Cancelled on extension disable / set to 0.
 | `_suppressGeometrySignalRetile` (Forge `move` / `tree.apply`) | Chrome only; **no** markUnsettled / layout (in-stack) |
 | Active command echo epoch for that window (`layout-epoch.js`, 350ms residual) | Chrome only after stack returns (client snap) |
 | TILE frame ≈ slot (ε) | Chrome only; skip full layout |
-| External drift (not grab, not maximize-reject, epoch expired) | `onExternalGeometry` → unsettled + diagnostic verify (**no** forest apply) |
+| Unsolicited TILE max / Meta-fs / size (IC3 / D026) | Dedicated restore via `reassertNodeToSlot` — **not** verify-driven |
+| Other external drift (FLOAT / leftover, epoch expired) | `onExternalGeometry` → unsettled + diagnostic verify (**no** forest apply) |
 
 Forge apply must not double-fire a layout storm: stack suppress covers
 `move()` / `tree.apply` re-entrancy; per-window **command echo epoch** covers
@@ -124,8 +125,8 @@ Every tiled window is positioned here. It early-returns on a missing/grabbed/
 
 A fullscreen window keeps `mode === TILE` (fullscreen doesn't change node mode), so:
 
-- `apply()` must **filter `is_fullscreen`** out of its tiled children, or it
-  re-slices the fullscreen window to a split rect.
+- `apply()` **skips** a still-live `is_fullscreen` TILE (move would fight
+  Mutter). IC3 unfullscreens first; then apply / `reassertNodeToSlot` places.
 - `handleMaximizeOnSingle()` (`window.js`) maximizes the sole tiled window per
   monitor — but must **skip a lone fullscreen window** (it reads as not-maximized).
 - `updateDecorationLayout()` (`window.js`) hides decorations on monitors with a

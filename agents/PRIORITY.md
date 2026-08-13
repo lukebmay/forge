@@ -1,14 +1,13 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-11  
-**Lens:** healthy codebase first — ownership, pure reuse, unit tests. Size is a symptom.  
+**Updated:** 2026-08-13  
+**Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.  
 **Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Active:** Queue clear of hard P1. **R017** scale/entered-monitor thrash fix in tree
-([completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md)); L0 green.
-Host **logout once** then gdisplays smoke residual. Cross-mon tabs later:
-[D0](./tasks/forge-tab-groups-cross-mon_d0-discussion.md).
+**Active:** Canonical contracts **IC0–IC3 done** (D024–D026, R019/R020).
+Catalog: [docs/dev/contracts.md](../docs/dev/contracts.md). Next: load tip
+and smoke Grok→Chrome CENTER + VLC. IC4 later. FCC Wave C / zoom after.
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
@@ -19,6 +18,13 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
+| residual | Load tip then smoke Grok→Chrome CENTER + VLC end-of-video | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
+| done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
+| done | **IC0** catalog + D024–D026 | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic0-catalog.md) |
+| done | **IC3** tile-slot authority (R020) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
+| done | **IC1** drop-intent + CENTER group both directions (R019) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic1-drop-intent.md) |
+| later | **IC4** fold leftover CLI waiters | [task](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
+| later | FCC Wave C / zoom full-width/height (after contracts) | [plan](./plans/forge-first-class-containers.md) |
 | residual | **Logout once** (or nest) load tip: **R018** install HSPLIT order + R017/R016 JS. Do not host-`forge install` on old JS. Then gdisplays scale smoke; restore `default` + `layout dev` | [R018](./REGRESSIONS.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED/STACKED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | residual | Host load tip for R015 if not already on tip | [REGRESSIONS R015](./REGRESSIONS.md) |
@@ -35,9 +41,10 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 ### Why this order
 
-1. **R015** was daily-driver (empty mon drag snap-back) — queue was empty of hard P1.  
-2. Host Shell on Wayland cannot HUP — load tip via nest retest (dual mon) or one logout.  
-3. Optional lifecycle residual only after operator can use cross-mon drag.
+1. **Contracts IC0–IC3 are in tree.** Next is host/nest **load tip + smoke** (R019/R020).  
+2. **IC4** folds leftover CLI waiters — do not invent a third settle brain.  
+3. **Zoom / FCC Wave C** after live smoke. Zoom is a presentation flag on D026.  
+4. Host logout / R018 remains residual, not a reason to skip the catalog.
 
 **Do not** start dual-mon nest by default. **Do not** nest for no-code host smokes.
 
@@ -53,6 +60,8 @@ forge nested status         # running: False
 | Doc | Role |
 | --- | --- |
 | [HANDOFF.md](./HANDOFF.md) | Start here |
+| [contracts](../docs/dev/contracts.md) | Job → API |
+| [canonical contracts plan](./plans/forge-canonical-contracts.md) | IC0–IC4 |
 | [nest isolation plan](./plans/forge-nested-isolation.md) | Nest isolation v1 (**done**) |
 | [Wayland RC suite](./plans/forge-wayland-rc-test-suite.md) | RC procedure (cleared) |
 | [lifecycle abstractions](./plans/forge-lifecycle-abstractions.md) | Health plan (done scope) |

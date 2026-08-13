@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-12 (**R018** + `Node.replaceChildren` child-list contract; host JS still pre-R018 until nest/logout)  
+**Updated:** 2026-08-13 (**canonical contracts** IC0–IC3 shipped; load tip to smoke R019/R020)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -11,6 +11,25 @@
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Shipped — canonical contracts (D024–D026)
+
+| Field | Detail |
+| --- | --- |
+| Plan | [forge-canonical-contracts](./plans/forge-canonical-contracts.md) |
+| Catalog | [docs/dev/contracts.md](../docs/dev/contracts.md) — extend the named API first |
+| R019 | CENTER on H/V siblings groups via `mergeWindowsIntoGroup`; `dropChangesStructure` |
+| R020 | Unsolicited TILE max/fs/size → `shouldRestoreTileSlot` + `_restoreTileToSlot` |
+| Reveal | `wm.revealGroupChild({ keyboard, pin })` (D025) |
+| Guards | L0 `drop-intent`, comprehensive CENTER both dirs, `bug-461-edge-snap`, `layout-sensors` restore |
+| Residual | **Load tip** then smoke Grok→Chrome CENTER + tiled VLC end-of-video. Live not run this session |
+
+```bash
+./install
+# Wayland: nest reload (or one logout), then host desk:
+# 1) VSPLIT Chrome above Grok → drag Grok onto Chrome CENTER → TABBED both ways
+# 2) tiled VLC finishes a video → stays in slot (not Meta fullscreen)
+```
 
 ### Shipped — R017 (scale/geom → no entered-monitor thrash)
 
@@ -45,6 +64,7 @@
 | Belt after bind | **Moves-only** (D014) — no structure rewrite on happy path |
 | Profiles | Data only — no personal-layout product branches |
 | Child list (D023) | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` only |
+| Job → API (D024–D026) | [contracts.md](../docs/dev/contracts.md) — extend the named API; no one-off twins |
 | Focus | Post-settle phase; open-leaf pin on steal (D018) |
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
 | Close → focus | **Kept** (FC1) — LFT/sibling restore |
@@ -68,8 +88,14 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **next** | Load tip (R018 + R016/R017 JS) via nest or one logout; do **not** host-`forge install` on old JS (swaps mon1 HSPLIT) | [R018](./REGRESSIONS.md) · [task](./tasks/completed/forge-install-hsplit-swap.md) |
-| later | L1 scale smoke after tip: `gdisplays load default-no-scale` must not thrash; restore default | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
+| **next** | Load tip (`./install` + nest or one logout) then smoke Grok→Chrome CENTER and VLC end-of-video | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
+| done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
+| done | **IC0** catalog + D024–D026 | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic0-catalog.md) |
+| done | **IC3** tile-slot / R020 (VLC fs → slot) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
+| done | **IC1** drop-intent / R019 (Grok→Chrome CENTER) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic1-drop-intent.md) |
+| later | IC4 fold CLI wait leftovers; FCC Wave C / zoom Z after contracts | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
+| residual | Load tip (R018 + R016/R017 JS) via nest or one logout; do **not** host-`forge install` on old JS | [R018](./REGRESSIONS.md) · [task](./tasks/completed/forge-install-hsplit-swap.md) |
+| later | L1 scale smoke after tip: `gdisplays load default-no-scale` must not thrash | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | done | **R017** entered-monitor suppress on geom drift | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) |
 | done | **R016** no-op workareas + mon-loss collect | [completed](./tasks/completed/forge-monitor-noop-apply-thrash.md) |
@@ -84,6 +110,8 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 | --- | --- |
 | [forge-wayland-rc-test-suite.md](./plans/forge-wayland-rc-test-suite.md) | RC procedure (last run green) |
 | [forge-nested-isolation.md](./plans/forge-nested-isolation.md) | Nest isolation v1 (**done**) |
+| [forge-canonical-contracts.md](./plans/forge-canonical-contracts.md) | **P0** job→API catalog; IC1–IC3 |
+| [docs/dev/contracts.md](../docs/dev/contracts.md) | Canonical APIs — extend these first |
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |
 
 ### R015 (empty-mon drag) — shipped in tree
@@ -231,4 +259,5 @@ No-code smoke → **host** only (no nest).
 | [Wayland RC suite](./plans/forge-wayland-rc-test-suite.md) | RC procedure (cleared) |
 | [lifecycle abstractions](./plans/forge-lifecycle-abstractions.md) | Health (done scope) |
 | [settle contract](./plans/forge-layout-settle-contract.md) | Hard/soft product |
+| [contracts](../docs/dev/contracts.md) | Job → API (extend first) |
 | [REGRESSIONS.md](./REGRESSIONS.md) | R0xx + guards |

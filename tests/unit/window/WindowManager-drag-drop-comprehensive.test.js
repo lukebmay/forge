@@ -569,6 +569,72 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
   });
 
   // ============================================================================
+  // SECTION 3b: CENTER group on 2-child VSPLIT (D024)
+  // ============================================================================
+
+  describe("CENTER group on 2-child VSPLIT", () => {
+    function vsplitPair(dragBottom) {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "tabbed";
+        return "";
+      });
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const split = createContainer(monitor, LAYOUT_TYPES.VSPLIT, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const metaTop = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 540 }),
+        workspace: workspace0(),
+      });
+      const metaBot = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 540, width: 960, height: 540 }),
+        workspace: workspace0(),
+      });
+      const top = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaTop);
+      const bot = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaBot);
+      top.mode = dragBottom ? WINDOW_MODES.TILE : WINDOW_MODES.GRAB_TILE;
+      bot.mode = dragBottom ? WINDOW_MODES.GRAB_TILE : WINDOW_MODES.TILE;
+      return { split, top, bot };
+    }
+
+    it("CENTER B onto A becomes TABBED (same parent, both children)", () => {
+      const { split, top, bot } = vsplitPair(true);
+      const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
+
+      setPointer(480, 270);
+      wm().nodeWinAtPointer = top;
+      wm().moveWindowToPointer(bot, false);
+
+      expect(mergeSpy).toHaveBeenCalledWith(bot, top, LAYOUT_TYPES.TABBED);
+      expect(split.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(top.parentNode).toBe(split);
+      expect(bot.parentNode).toBe(split);
+      expect(split.childNodes).toEqual(expect.arrayContaining([top, bot]));
+      expect(split.childNodes).toHaveLength(2);
+    });
+
+    it("CENTER A onto B becomes TABBED (same parent, both children)", () => {
+      const { split, top, bot } = vsplitPair(false);
+      const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
+
+      setPointer(480, 810);
+      wm().nodeWinAtPointer = bot;
+      wm().moveWindowToPointer(top, false);
+
+      expect(mergeSpy).toHaveBeenCalledWith(top, bot, LAYOUT_TYPES.TABBED);
+      expect(split.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(top.parentNode).toBe(split);
+      expect(bot.parentNode).toBe(split);
+      expect(split.childNodes).toEqual(expect.arrayContaining([top, bot]));
+      expect(split.childNodes).toHaveLength(2);
+    });
+  });
+
+  // ============================================================================
   // SECTION 4: Nested Container (CON) Parent
   // ============================================================================
 

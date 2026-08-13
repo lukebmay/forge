@@ -328,3 +328,99 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     expect(ghost.builtIn).toBe(true);
   });
 });
+
+describe("SessionApi _focusOp revealGroupChild (IC2)", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      settings: {
+        "tiling-mode-enabled": true,
+        "tabbed-tiling-mode-enabled": true,
+        "stacked-tiling-mode-enabled": true,
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    ctx.cleanup();
+  });
+
+  const wm = () => ctx.windowManager;
+
+  function api() {
+    return new SessionApi({
+      extWm: ctx.windowManager,
+      settings: ctx.settings,
+    });
+  }
+
+  function twoWindowTabbed() {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const con = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.TABBED;
+    const w1 = createMockWindow({ id: 11, wm_class: "A" });
+    const w2 = createMockWindow({ id: 12, wm_class: "B" });
+    const n1 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w1);
+    const n2 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w2);
+    n1.mode = WINDOW_MODES.TILE;
+    n2.mode = WINDOW_MODES.TILE;
+    con.lastTabFocus = w1;
+    w1.raise = vi.fn();
+    w1.activate = vi.fn();
+    w2.raise = vi.fn();
+    w2.activate = vi.fn();
+    return { con, w1, w2, n1, n2 };
+  }
+
+  it("keyboard:false does not activate and still pins", () => {
+    const { con, w2, n2 } = twoWindowTabbed();
+    const reveal = vi.spyOn(wm(), "revealGroupChild");
+    const out = api()._focusOp("id:12", { keyboard: false });
+    expect(out.ok).toBe(true);
+    expect(out.keyboard).toBe(false);
+    expect(reveal).toHaveBeenCalledWith(n2, {
+      keyboard: false,
+      pin: true,
+      source: "dbus-focus",
+    });
+    expect(con.lastTabFocus).toBe(w2);
+    expect(w2.raise).toHaveBeenCalled();
+    expect(w2.activate).not.toHaveBeenCalled();
+    expect(wm().getLayoutOpenLeafPin(con)?.meta).toBe(w2);
+  });
+
+  it("pins when asked (default) and can skip pin", () => {
+    const first = twoWindowTabbed();
+    const pinSpy = vi.spyOn(wm(), "pinLayoutOpenLeaf");
+    const a = api();
+    expect(a._focusOp("id:12", { keyboard: false }).ok).toBe(true);
+    expect(pinSpy).toHaveBeenCalled();
+    expect(wm().getLayoutOpenLeafPin(first.con)?.meta).toBe(first.w2);
+
+    pinSpy.mockClear();
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const con2 = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    con2.layout = LAYOUT_TYPES.TABBED;
+    const w3 = createMockWindow({ id: 13, wm_class: "C" });
+    const n3 = wm().tree.createNode(con2.nodeValue, NODE_TYPES.WINDOW, w3);
+    n3.mode = WINDOW_MODES.TILE;
+    con2.lastTabFocus = w3;
+    expect(a._focusOp("id:13", { keyboard: false, pin: false }).ok).toBe(true);
+    expect(pinSpy).not.toHaveBeenCalled();
+    expect(wm().getLayoutOpenLeafPin(con2)).toBeNull();
+  });
+
+  it("GetTree does not sync lastTabFocus from Meta focus (R014)", () => {
+    const { con, w1, w2 } = twoWindowTabbed();
+    con.lastTabFocus = w1;
+    ctx.display.get_focus_window.mockReturnValue(w2);
+
+    const raw = api().GetTree("{}");
+    const out = JSON.parse(raw);
+    expect(out.error).toBeUndefined();
+    expect(con.lastTabFocus).toBe(w1);
+    expect(con.lastTabFocus).not.toBe(w2);
+  });
+});

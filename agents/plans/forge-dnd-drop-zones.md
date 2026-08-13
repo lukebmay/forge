@@ -1,11 +1,15 @@
 # Plan: Stable DnD drop zones + indicators
 
-**Status:** complete  
-**Priority:** mid (post RC)  
+**Status:** complete (D0–D4) — **D024 residual in IC1**  
+**Priority:** mid (post RC); residual is P0 under canonical contracts  
 **Created:** 2026-08-08  
-**Updated:** 2026-08-08 (D4 done — plan closed)  
+**Updated:** 2026-08-13 (CENTER no-op residual → IC1)
 
 ### Session note
+
+**2026-08-13 residual:** `_isNoOpDrop` treats CENTER as “already after
+sibling,” so Grok→Chrome on a VSPLIT CON no-ops. Fix is D024 / IC1
+(`dropChangesStructure` + `mergeWindowsIntoGroup`), not a new zone system.
 
 **D0–D4 done.** Five-zone hit/paint/no-op + workspace-wide cross-mon targets.
 Pure filter: `isEligibleDragDropTargetNode` / `collectDragDropTargetMetaWindows`.
@@ -75,8 +79,10 @@ Target unit = destination tile’s frame rect `U` (the hovered window/unit).
 **No-op when:**
 
 - Pointer is not over another tile unit (gap / chrome / empty), or
-- Resulting parent + order + layout would match current structure (e.g. already
-  bottom of VSPLIT with that sibling; drop BOTTOM on top sibling again).
+- Resulting parent + order + **layout** would match current structure (e.g.
+  already bottom of VSPLIT with that sibling; drop BOTTOM on top sibling
+  again). CENTER on H/V siblings **changes layout** (group) — never no-op
+  just because the source is already after the target (D024).
 
 Nested tab/stack CONs: edge zones **wrap the whole group** (already fixed path
 `shouldWrapTargetCon`); center joins the group.

@@ -3,8 +3,15 @@ import {
   afterFocus,
   commitLayout,
   settleTabFocus,
+  revealGroupChild,
 } from "../../../lib/extension/action-pipeline.js";
-import { createMockWindow, createWindowManagerFixture } from "../../mocks/helpers/index.js";
+import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../../mocks/helpers/index.js";
+import { Bin } from "../../mocks/gnome/St.js";
 
 /**
  * AP1: afterFocus is the only FocusChanged body (F → Dfocus → B → P → A).
@@ -218,5 +225,93 @@ describe("action-pipeline commitLayout / settleTabFocus", () => {
     wm().freezeRender();
     settleTabFocus(wm(), node);
     expect(wm()._freezeRender).toBe(true);
+  });
+});
+
+describe("action-pipeline revealGroupChild", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      settings: {
+        "tiling-mode-enabled": true,
+        "tabbed-tiling-mode-enabled": true,
+        "stacked-tiling-mode-enabled": true,
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    ctx.cleanup();
+  });
+
+  const wm = () => ctx.windowManager;
+
+  function tabbedPair() {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const wA = createMockWindow({ id: 101, wm_class: "A" });
+    const wB = createMockWindow({ id: 102, wm_class: "B" });
+    const nA = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wB);
+    tab.lastTabFocus = wA;
+    wA.raise = vi.fn();
+    wA.activate = vi.fn();
+    wA.focus = vi.fn();
+    wB.raise = vi.fn();
+    wB.activate = vi.fn();
+    wB.focus = vi.fn();
+    return { tab, wA, wB, nA, nB };
+  }
+
+  it("keyboard:false writes LTF, raises, settle; does not activate", () => {
+    const { tab, wB, nB } = tabbedPair();
+    const settle = vi.spyOn(wm(), "settleTabFocus");
+    const after = vi.spyOn(wm(), "afterFocus");
+
+    revealGroupChild(wm(), nB, { keyboard: false });
+
+    expect(tab.lastTabFocus).toBe(wB);
+    expect(wB.raise).toHaveBeenCalled();
+    expect(settle).toHaveBeenCalledWith(nB);
+    expect(wB.activate).not.toHaveBeenCalled();
+    expect(wB.focus).not.toHaveBeenCalled();
+    expect(after).not.toHaveBeenCalled();
+  });
+
+  it("keyboard:true activates and afterFocus", () => {
+    const { tab, wB, nB } = tabbedPair();
+    const after = vi.spyOn(wm(), "afterFocus");
+
+    revealGroupChild(wm(), nB, { keyboard: true, source: "dbus-focus" });
+
+    expect(tab.lastTabFocus).toBe(wB);
+    expect(wB.raise).toHaveBeenCalled();
+    expect(wB.activate).toHaveBeenCalled();
+    expect(after).toHaveBeenCalledWith(nB, { source: "dbus-focus" });
+  });
+
+  it("pin:true pins open leaf so meta-focus steal restores", () => {
+    const { tab, wA, wB, nA, nB } = tabbedPair();
+    revealGroupChild(wm(), nA, { pin: true });
+    expect(tab.lastTabFocus).toBe(wA);
+    expect(wm().getLayoutOpenLeafPin(tab)?.meta).toBe(wA);
+
+    nB.parentNode = tab;
+    const restored = wm().restoreLayoutOpenLeafIfStolen(nB);
+    expect(restored).toBe(true);
+    expect(tab.lastTabFocus).toBe(wA);
+    expect(wA.raise).toHaveBeenCalled();
+    expect(wB.activate).not.toHaveBeenCalled();
+  });
+
+  it("WindowManager.revealGroupChild delegates", () => {
+    const { nB, wB, tab } = tabbedPair();
+    wm().revealGroupChild(nB, { keyboard: false });
+    expect(tab.lastTabFocus).toBe(wB);
+    expect(wB.raise).toHaveBeenCalled();
+    expect(wB.activate).not.toHaveBeenCalled();
   });
 });

@@ -296,6 +296,27 @@ describe("Tree Operations", () => {
       expect(group.parentNode).toBe(left);
     });
 
+    it("should convert in place when one sibling is GRAB_TILE (DnD CENTER)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      con.layout = LAYOUT_TYPES.VSPLIT;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const node1 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, window2);
+      node1.mode = WINDOW_MODES.TILE;
+      node2.mode = WINDOW_MODES.GRAB_TILE;
+
+      const group = ctx.tree.mergeWindowsIntoGroup(node2, node1, LAYOUT_TYPES.TABBED);
+
+      expect(group).toBe(con);
+      expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(node1.parentNode).toBe(con);
+      expect(node2.parentNode).toBe(con);
+      expect(con.childNodes).toEqual([node1, node2]);
+    });
+
     it("should no-op when already co-grouped", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());

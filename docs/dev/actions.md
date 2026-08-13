@@ -73,8 +73,12 @@ gate deferred open → (activate already done by entry)
 | --- | --- |
 | Meta focus | `afterFocus` (may idle-coalesce; must be idempotent) |
 | Keyboard / DBus | Activate then `afterFocus` (or rely on Meta if proven equivalent; prefer explicit) |
-| Tab click | **Immediate** `afterFocus` — raise buries strip; focus may not change |
+| Tab click | `revealGroupChild({ keyboard: true })` then extra `focus()` (LF2) |
 | Hover | Meta path only |
+
+**Show in group (D025):** `wm.revealGroupChild(node, { keyboard, pin })` —
+write LTF → optional pin → raise → `settleTabFocus`; keyboard → activate +
+`afterFocus`. Not a second C. Do not invent `raiseWindow()`.
 
 **Forbidden:** `renderTree("focus")`, **Dfull**, reassert other monitors’ tab groups.
 
@@ -153,7 +157,8 @@ commitLayout(reason, opts)  // Cq or Cf
 settleTabFocus(node)        // post-structure tab open leaf without 2nd C
 ```
 
-Until AP1–AP4 land, call sites may still inline stages — **new code must match formulas**.
+`settleTabFocus` is **chrome** (F+Dfocus+B). It is **not** D019
+wait-for-quiet. Job → API: [contracts.md](contracts.md).
 
 ---
 

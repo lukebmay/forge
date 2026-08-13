@@ -19,9 +19,8 @@ import { Rectangle, GrabOp } from "../mocks/gnome/Meta.js";
  * initRect (~half the monitor) drove focus percent toward 1.0 and normalization
  * baked in a ~0.67/0.33 skew that nothing restored on unmaximize.
  *
- * Fix: the grabMode branch ends the synthesized grab and resolves the maximize
- * (float for full maximize, unmaximize for edge-snap) instead of feeding the
- * maximized frame to _handleResizing.
+ * Fix: the grabMode branch ends the synthesized grab and restores the TILE
+ * slot (D026) instead of feeding the maximized frame to _handleResizing.
  */
 describe("forge-v4wh: maximize during keyboard-resize debounce keeps percents", () => {
   let ctx;
@@ -70,8 +69,10 @@ describe("forge-v4wh: maximize during keyboard-resize debounce keeps percents", 
     return { metaWindow1, node1, node2 };
   }
 
-  it("ends the grab and floats full maximize instead of skewing the split", () => {
+  it("ends the grab and restores the slot instead of skewing the split", () => {
     const { metaWindow1, node1, node2 } = buildResizingSplit();
+    node1.renderRect = { x: 0, y: 0, width: 960, height: 1080 };
+    node1.rect = { x: 0, y: 0, width: 960, height: 1080 };
 
     // The window maximizes mid-resize: full-monitor frame + maximized flags.
     metaWindow1.maximize();
@@ -81,9 +82,10 @@ describe("forge-v4wh: maximize during keyboard-resize debounce keeps percents", 
 
     // Sibling percent stays put (before the fix: ~0.67/0.33).
     expect(node2.percent).toBeCloseTo(0.5, 5);
-    // Full maximize floats out; grab ends; maximize sticks.
-    expect(metaWindow1.is_maximized()).toBe(true);
+    expect(metaWindow1.is_maximized()).toBe(false);
+    expect(node1.mode).toBe(WINDOW_MODES.TILE);
     expect(node1.grabMode).toBeNull();
+    expect(metaWindow1.get_frame_rect().width).toBe(960);
   });
 
   it("still resizes normally when the window is not maximized", () => {

@@ -113,14 +113,18 @@ describe("WindowManager - Pointer & Focus Management", () => {
       expect(result).toBe(null);
     });
 
-    it("should handle overlapping windows (return topmost)", () => {
+    it("skips the dragged window and returns the tile beneath", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { metaWindow: metaWindow1 } = createWindowNode(ctx.tree, monitor, {
-        windowOverrides: {
-          rect: new Rectangle({ x: 0, y: 0, width: 1000, height: 1000 }),
-          workspace: workspace0(),
-        },
-      });
+      const { nodeWindow: nodeWindow1, metaWindow: metaWindow1 } = createWindowNode(
+        ctx.tree,
+        monitor,
+        {
+          windowOverrides: {
+            rect: new Rectangle({ x: 0, y: 0, width: 1000, height: 1000 }),
+            workspace: workspace0(),
+          },
+        }
+      );
       const { nodeWindow: nodeWindow2, metaWindow: metaWindow2 } = createWindowNode(
         ctx.tree,
         monitor,
@@ -132,19 +136,44 @@ describe("WindowManager - Pointer & Focus Management", () => {
         }
       );
 
-      // Mock sortedWindows (window2 is on top)
       Object.defineProperty(wm(), "sortedWindows", {
         get: () => [metaWindow2, metaWindow1],
         configurable: true,
       });
 
-      // Pointer at overlapping area
       global.get_pointer.mockReturnValue([500, 500]);
 
       const result = wm().findNodeWindowAtPointer(nodeWindow2);
 
-      // Should return the topmost window (first in sorted list)
-      expect(result).toBe(nodeWindow2);
+      expect(result).toBe(nodeWindow1);
+    });
+
+    it("during grab prefers the target tree slot over a covering live frame", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow: nodeA, metaWindow: metaA } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 540, width: 960, height: 540 }),
+          workspace: workspace0(),
+        },
+      });
+      const { nodeWindow: nodeB, metaWindow: metaB } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 540 }),
+          workspace: workspace0(),
+        },
+      });
+      nodeA.renderRect = { x: 0, y: 0, width: 960, height: 540 };
+      nodeB.mode = WINDOW_MODES.GRAB_TILE;
+      wm()._draggedNodeWindow = nodeB;
+
+      Object.defineProperty(wm(), "sortedWindows", {
+        get: () => [metaB, metaA],
+        configurable: true,
+      });
+
+      global.get_pointer.mockReturnValue([480, 270]);
+
+      expect(wm().findNodeWindowAtPointer(nodeB)).toBe(nodeA);
     });
   });
 

@@ -75,22 +75,28 @@ describe("AP3 ExternalGeometry B-only / Cq", () => {
     expect(wm().updateBorderLayout).toHaveBeenCalled();
   });
 
-  it("external maximize resolution uses one commitLayout Cf (not ad-hoc double)", () => {
+  it("external maximize restores the slot once (not commitLayout / float)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
+    const slot = { x: 0, y: 0, width: 960, height: 1080 };
+    first.nodeWindow.renderRect = { ...slot };
+    first.nodeWindow.rect = { ...slot };
     const maxed = first.metaWindow;
     maxed.maximize();
+    maxed.move_resize_frame(false, 0, 0, 1920, 1080);
     ctx.display.get_focus_window.mockReturnValue(maxed);
 
-    const commitSpy = vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+    const commitSpy = vi.spyOn(wm(), "commitLayout");
     const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+    const reassertSpy = vi.spyOn(wm(), "reassertNodeToSlot");
 
     wm().updateMetaPositionSize(maxed, "size-changed");
 
-    expect(commitSpy).toHaveBeenCalledTimes(1);
-    expect(commitSpy.mock.calls[0][1]).toMatchObject({ force: true });
-    // commitLayout owns C; naked renderTree not also used from this path.
+    expect(reassertSpy).toHaveBeenCalledTimes(1);
+    expect(reassertSpy).toHaveBeenCalledWith(first.nodeWindow, { force: true });
+    expect(commitSpy).not.toHaveBeenCalled();
     expect(renderSpy).not.toHaveBeenCalled();
+    expect(first.nodeWindow.mode).toBe(WINDOW_MODES.TILE);
   });
 });
 

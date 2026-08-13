@@ -1,13 +1,8 @@
-"""Fullscreen-with-sibling regression (forge-fw8, gh-509).
+"""D026 / IC3: unsolicited Meta-fullscreen on a TILE restores the slot.
 
-When a tiled window goes fullscreen while a second app is open, Forge's
-in-fullscreen-changed -> renderTree -> tree.apply() used to re-slice the
-fullscreen window to its half-width split rect (shifting it right / cropping it).
-The fix excludes fullscreen windows from apply()'s slice application, so a
-fullscreen window keeps Mutter's full-monitor geometry.
-
-Behavioral assertion: a fullscreen window's frame rect spans (nearly) the whole
-work area width, not the ~half-width tile slice it had before going fullscreen.
+A tiled window that Meta-fullscreens without a live grab (VLC, F11) is
+unfullscreened and moved back to renderRect. apply() still skips a *live*
+fullscreen frame so move() does not fight Mutter before unmake.
 """
 
 from framework.constants import Timing
@@ -29,7 +24,7 @@ class TestFullscreenTiled:
     def test_fullscreen_window_fills_monitor_with_sibling(
         self, shell_proxy, restore_settings, two_windows
     ):
-        """A fullscreen tiled window is not re-sliced to its half-width tile slot."""
+        """A TILE that Meta-fullscreens is restored to its slot, not left full-monitor."""
         shell_proxy.ensure_focus()
 
         ws = shell_proxy.get_workspace_rect()
@@ -40,15 +35,15 @@ class TestFullscreenTiled:
         assert before["width"] < ws_width * 0.75, (
             f"expected a tiled (sub-full-width) window before fullscreen, got {before}"
         )
+        slot_width = before["width"]
 
         assert _make_focused_fullscreen(shell_proxy) == "ok"
 
-        # After fullscreen + Forge's render, the window must span ~the full width,
-        # NOT the ~half-width split slice it occupied while tiled.
         rect = wait_for(
             lambda: shell_proxy.get_focused_window()["rect"],
-            predicate=lambda r: r["width"] >= ws_width * 0.95,
+            predicate=lambda r: r["width"] < ws_width * 0.75,
             timeout=Timing.LAYOUT_CHANGE * 6,
-            message="fullscreen window was re-sliced to its tile slot instead of filling the monitor",
+            message="TILE fullscreen was left full-monitor instead of restoring the slot",
         )
-        assert rect["width"] >= ws_width * 0.95
+        assert rect["width"] < ws_width * 0.75
+        assert abs(rect["width"] - slot_width) < ws_width * 0.15

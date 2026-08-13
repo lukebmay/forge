@@ -9,11 +9,15 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
+**2026-08-13:** Wave C/Z **paused** behind
+[canonical contracts](./forge-canonical-contracts.md). Tile-slot authority
+(D026 / IC3) is the prerequisite for zoom; do not start C0 this campaign.
+
 User lock + i3 research (2026-07-31): containers first; no BC; monocle
 **remove**; split chrome focus-only + show-all + drag show-all; resize
 interleaved; float+placeholder zoom rejected. Added **i3 lessons** and
-**deferred regression registry** (surface we intentionally drop, restore after
-core is solid). Implementation branch still starts at first code task.
+**deferred regression registry**. Implementation branch still starts at first
+code task (after contracts).
 
 ---
 

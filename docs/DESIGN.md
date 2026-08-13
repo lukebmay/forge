@@ -20,6 +20,19 @@ still means “non-EGO git build,” with old stamps defaulting to `jcrussell`.
 Preferred install path: `./install` / `forge install`. Low-level helpers:
 `build-install.zsh`, `rebuild.zsh`, `migrate-from-ego.zsh`.
 
+## Canonical contracts
+
+**Why:** agents kept shipping one-off fixes (hand-rolled child-list splice,
+positional DnD no-op, no restore when a TILE Meta-fullscreens). The failure
+class is “bypass the named API.”
+
+**Choice (D023–D026):** one catalog — [docs/dev/contracts.md](dev/contracts.md).
+New behavior extends that API first. Drop CENTER on H/V siblings is a group
+op (`mergeWindowsIntoGroup`). Live show-in-group is one reveal helper. TILE
+slot is geometry authority; unsolicited Meta fullscreen/size snaps back.
+
+Plan: [forge-canonical-contracts](../agents/plans/forge-canonical-contracts.md).
+
 ## CLI job runner (durable mutators)
 
 **Why:** Long desk mutators (`forge layout`, install, live test run, …) used to

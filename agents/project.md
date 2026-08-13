@@ -46,17 +46,20 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 
 ## Priorities for agents
 
-1. **Install trial** of this fork on `black` (gate for daily driver).
-2. **Multi-monitor / tab-stack lifecycle** — blank/thrash + retab must not crash Shell.
-3. **Resize predictability** and **session scripting** (`layout dev`) — see harden plan.
-4. Prefer small, tested patches; `npm test` / `make unit-test` for logic changes.
-5. UUID `forge@jmmaranan.com` — installs **replace** the live extension in place.
-6. gdisplays / connector identity lives in **shellrc**, not here.
+1. **Use named APIs** — [docs/dev/contracts.md](../docs/dev/contracts.md). Extend
+   the catalog first; do not hand-roll a twin helper.
+2. **Install trial** of this fork on `black` (gate for daily driver).
+3. **Multi-monitor / tab-stack lifecycle** — blank/thrash + retab must not crash Shell.
+4. **Resize predictability** and **session scripting** (`layout dev`) — see harden plan.
+5. Prefer small, tested patches; `npm test` / `make unit-test` for logic changes.
+6. UUID `forge@jmmaranan.com` — installs **replace** the live extension in place.
+7. gdisplays / connector identity lives in **shellrc**, not here.
 
 ## Active work
 
 | Item | Status | Next |
 | --- | --- | --- |
+| **[Canonical contracts](./plans/forge-canonical-contracts.md)** | **P0** IC0–IC3 done | Live smoke; IC4 later |
 | **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
 | **STACKED layouts** | Major product | As PRIORITY allows |
 | `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive; mid-apply TTY death no longer aborts job |
@@ -126,6 +129,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | --- | --- |
 | Build / test / format | [CONTRIBUTING.md](../CONTRIBUTING.md), `make help` |
 | Architecture / render / Mutter | [docs/dev/](../docs/dev/) (`architecture.md`, `rendering.md`, `compat.md`) |
+| **Job → API (agents)** | **[docs/dev/contracts.md](../docs/dev/contracts.md)** — extend these first |
 | **Layout settle / cold spine (agents)** | **This file** § Layout apply architecture |
 | Unit / e2e tests | [tests/README.md](../tests/README.md), [tests/e2e/README.md](../tests/e2e/README.md) |
 | User behavior | [docs/user/](../docs/user/) (`layout.md` cold apply steps) |

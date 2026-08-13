@@ -7,15 +7,13 @@ import {
   getWorkspaceAndMonitor,
   createHorizontalLayout,
 } from "../mocks/helpers/index.js";
-import { LayoutController } from "../../lib/extension/layout-controller.js";
 import { isForgeCausedGeometrySignal } from "../../lib/extension/layout-sensors.js";
 
 /**
- * W-render-storm / CL2: full layout on noisy Meta geometry signals
- * (apply→size-changed feedback, TILE already in slot) thrashed Shell.
+ * W-render-storm / CL2 / D026: noisy Meta geometry must not storm layout.
  *
  * Guards: _suppressGeom around apply/move, TILE-in-slot chrome-only,
- * external drift → markUnsettled + diagnostic verify (no layout).
+ * unsolicited TILE drift restores the slot (not verify-driven).
  */
 describe("W-render-storm / CL2: geometry feedback attribution", () => {
   let ctx;
@@ -37,41 +35,6 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
   });
 
   const wm = () => ctx.windowManager;
-
-  /** Rebuild controller with fake clock so requestLayout does not need GLib fire. */
-  function installFakeTimers() {
-    let nextId = 1;
-    const timers = new Map();
-    let now = 0;
-    const schedule = (delayMs, cb) => {
-      const id = nextId++;
-      timers.set(id, { due: now + delayMs, cb });
-      return id;
-    };
-    const cancel = (id) => {
-      timers.delete(id);
-    };
-    wm().layoutController.destroy();
-    wm().layoutController = new LayoutController(wm(), { schedule, cancel });
-    return {
-      advance: (ms) => {
-        now += ms;
-        let progressed = true;
-        while (progressed) {
-          progressed = false;
-          const due = [...timers.entries()]
-            .filter(([, t]) => t.due <= now)
-            .sort((a, b) => a[1].due - b[1].due);
-          for (const [id, t] of due) {
-            if (!timers.has(id)) continue;
-            timers.delete(id);
-            t.cb();
-            progressed = true;
-          }
-        }
-      },
-    };
-  }
 
   it("size-changed during apply suppress does not schedule layout/retile", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
@@ -125,34 +88,35 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     expect(second.nodeWindow).toBeTruthy();
   });
 
-  it("TILE external drift → markUnsettled + verify only (no layout storm)", () => {
-    installFakeTimers();
+  it("TILE external drift restores the slot (no layout storm)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
     const slot = { x: 0, y: 0, width: 800, height: 600 };
     first.nodeWindow.mode = WINDOW_MODES.TILE;
     first.nodeWindow.renderRect = { ...slot };
+    first.nodeWindow.rect = { ...slot };
     first.metaWindow.move_resize_frame(true, 200, 200, 400, 300);
     ctx.display.get_focus_window.mockReturnValue(first.metaWindow);
 
     const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
     const layoutSpy = vi.spyOn(wm().layoutController, "requestLayout");
     const markSpy = vi.spyOn(wm().layoutController, "markUnsettled");
+    const onExt = vi.spyOn(wm().layoutController, "onExternalGeometry");
+    const reassertSpy = vi.spyOn(wm(), "reassertNodeToSlot");
 
     wm().updateMetaPositionSize(first.metaWindow, "size-changed");
 
-    expect(markSpy).toHaveBeenCalled();
-    expect(wm().layoutController.settled).toBe(false);
-    expect(wm().layoutController.agreementCount).toBe(0);
-    expect(wm().layoutController.layoutPending).toBe(false);
+    expect(reassertSpy).toHaveBeenCalledWith(first.nodeWindow, { force: true });
+    expect(onExt).not.toHaveBeenCalled();
+    expect(markSpy).not.toHaveBeenCalled();
     expect(layoutSpy).not.toHaveBeenCalled();
-    expect(wm().layoutController.verifyPending).toBe(true);
-    // Debounced — no immediate naked renderTree.
     expect(renderSpy).not.toHaveBeenCalled();
+    const frame = first.metaWindow.get_frame_rect();
+    expect(frame.width).toBe(slot.width);
+    expect(frame.height).toBe(slot.height);
   });
 
-  it("after SETTLED, external size-changed drops settled and schedules verify only", () => {
-    installFakeTimers();
+  it("after SETTLED, TILE size-changed restores the slot without verify reassert", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
     const slot = { x: 0, y: 0, width: 800, height: 600 };
@@ -166,14 +130,14 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     lc.settled = true;
     lc.agreementCount = 1;
     const layoutSpy = vi.spyOn(lc, "requestLayout");
+    const onExt = vi.spyOn(lc, "onExternalGeometry");
 
     wm().updateMetaPositionSize(first.metaWindow, "size-changed");
 
-    expect(lc.settled).toBe(false);
-    expect(lc.agreementCount).toBe(0);
-    expect(lc.layoutPending).toBe(false);
+    expect(onExt).not.toHaveBeenCalled();
     expect(layoutSpy).not.toHaveBeenCalled();
-    expect(lc.verifyPending).toBe(true);
+    expect(lc.settled).toBe(true);
+    expect(first.metaWindow.get_frame_rect().width).toBe(slot.width);
   });
 
   it("tree.apply sets geometry suppress so nested size-changed does not retile", () => {
@@ -244,8 +208,7 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     expect(wm().updateBorderLayout).toHaveBeenCalled();
   });
 
-  it("AC2: after echo residual expires, external geom may markUnsettled (no requestLayout)", () => {
-    installFakeTimers();
+  it("AC2: after echo residual expires, TILE geom restores the slot (no requestLayout)", () => {
     let now = 20_000;
     wm().layoutEpoch.setNow(() => now);
     const residual = wm().layoutEpoch.residualMs;
@@ -265,11 +228,13 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     meta.move_resize_frame(true, 200, 200, 400, 300);
     const markSpy = vi.spyOn(wm().layoutController, "markUnsettled");
     const layoutSpy = vi.spyOn(wm().layoutController, "requestLayout");
+    const onExt = vi.spyOn(wm().layoutController, "onExternalGeometry");
     wm().updateMetaPositionSize(meta, "size-changed");
 
-    expect(markSpy).toHaveBeenCalled();
+    expect(onExt).not.toHaveBeenCalled();
+    expect(markSpy).not.toHaveBeenCalled();
     expect(layoutSpy).not.toHaveBeenCalled();
-    expect(wm().layoutController.verifyPending).toBe(true);
+    expect(meta.get_frame_rect().width).toBe(slot.width);
   });
 
   it("AC2: LayoutBatch begin advances wave id", () => {

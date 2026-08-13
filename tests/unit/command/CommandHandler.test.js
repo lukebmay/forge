@@ -87,6 +87,15 @@ describe("CommandHandler", () => {
         this.updateDecorationLayout?.({ scope: "focus", focusNode: node });
         this.updateBorderLayout?.();
       }),
+      revealGroupChild: vi.fn(function (node, opts) {
+        const parent = node?.parentNode;
+        if (parent) parent.lastTabFocus = node.nodeValue;
+        this.settleTabFocus?.(node);
+        if (opts?.keyboard) {
+          node?.nodeValue?.activate?.();
+          this.afterFocus?.(node, { source: opts.source || "reveal" });
+        }
+      }),
       determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
       applyDefaultLayoutToContainer: vi.fn(),
       floatAllWindows: vi.fn(),
@@ -243,13 +252,18 @@ describe("CommandHandler", () => {
       );
     });
 
-    it("should clear lastTabFocus when switching from tabbed", () => {
+    it("should reveal lastChild when entering stacked from tabbed", () => {
       mockNodeWindow.parentNode.layout = LAYOUT_TYPES.TABBED;
       mockNodeWindow.parentNode.lastTabFocus = mockMetaWindow;
+      mockNodeWindow.parentNode.lastChild = mockNodeWindow;
 
       commandHandler.execute({ name: "LayoutStackedToggle" });
 
-      expect(mockNodeWindow.parentNode.lastTabFocus).toBeNull();
+      expect(mockWm.revealGroupChild).toHaveBeenCalledWith(mockNodeWindow, {
+        keyboard: true,
+        source: "command-layout",
+      });
+      expect(mockNodeWindow.parentNode.lastTabFocus).toBe(mockMetaWindow);
     });
 
     it("should call unfreezeRender", () => {
@@ -303,6 +317,7 @@ describe("CommandHandler", () => {
 
       commandHandler.execute({ name: "LayoutTabbedToggle" });
 
+      expect(mockWm.revealGroupChild).toHaveBeenCalledWith(mockNodeWindow);
       expect(mockNodeWindow.parentNode.lastTabFocus).toBe(mockMetaWindow);
     });
 
@@ -347,6 +362,7 @@ describe("CommandHandler", () => {
       commandHandler.execute({ name: "LayoutStackTabToggle" });
 
       expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(mockWm.revealGroupChild).toHaveBeenCalledWith(mockNodeWindow);
       expect(mockNodeWindow.parentNode.lastTabFocus).toBe(mockMetaWindow);
       expect(mockWm.commitLayout).toHaveBeenCalledWith("layout-stack-tab-toggle", { force: true });
     });
@@ -359,7 +375,11 @@ describe("CommandHandler", () => {
       commandHandler.execute({ name: "LayoutStackTabToggle" });
 
       expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.STACKED);
-      expect(mockNodeWindow.parentNode.lastTabFocus).toBeNull();
+      expect(mockWm.revealGroupChild).toHaveBeenCalledWith(mockNodeWindow, {
+        keyboard: true,
+        source: "command-layout",
+      });
+      expect(mockNodeWindow.parentNode.lastTabFocus).toBe(mockMetaWindow);
       expect(mockWm.commitLayout).toHaveBeenCalledWith("layout-stack-tab-toggle", { force: true });
     });
 
@@ -425,6 +445,7 @@ describe("CommandHandler", () => {
         LAYOUT_TYPES.TABBED
       );
       expect(mockWm.commitLayout).toHaveBeenCalledWith("window-merge-group", { force: true });
+      expect(mockWm.revealGroupChild).toHaveBeenCalledWith(mockNodeWindow);
       expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
       expect(mockWm.renderTree).toHaveBeenCalledWith("window-merge-group", true);
     });
