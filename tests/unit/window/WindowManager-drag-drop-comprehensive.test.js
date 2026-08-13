@@ -725,6 +725,44 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
+    it("BOTTOM on MONITOR HSPLIT nests VSPLIT — does not flatten to 3-wide (R023)", () => {
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const { nodeWindow: left } = createWindowWithRect(monitor, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const { nodeWindow: right } = createWindowWithRect(monitor, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 400, y: 400, width: 200, height: 200 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      setPointer(480, 1000);
+      wm().nodeWinAtPointer = left;
+      wm().moveWindowToPointer(dragged, false);
+
+      expect(monitor.childNodes.length).toBe(2);
+      expect(monitor.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(right.parentNode).toBe(monitor);
+      const nest = dragged.parentNode;
+      expect(nest).not.toBe(monitor);
+      expect(nest.nodeType).toBe(NODE_TYPES.CON);
+      expect(nest.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(nest.childNodes).toContain(left);
+      expect(nest.childNodes).toContain(dragged);
+      expect(nest.childNodes).not.toContain(right);
+    });
+
     it("should reuse existing CON when only one window remains", () => {
       const monitor = getMonitor();
       monitor.layout = LAYOUT_TYPES.HSPLIT;
@@ -1216,7 +1254,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       expect(dragged.parentNode.nodeType).toBe(NODE_TYPES.CON);
     });
 
-    it("should NOT create container when monitor has only 2 windows and same numChild", () => {
+    it("TOP on a 2-wide MONITOR HSPLIT wraps a VSPLIT (R023, no MONITOR reuse)", () => {
       const monitor = getMonitor();
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
@@ -1232,19 +1270,16 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
         WINDOW_MODES.GRAB_TILE
       );
 
-      // Drop TOP on target (only 2 windows)
       setPointer(480, 100);
       wm().nodeWinAtPointer = target;
-
-      const containersBefore = monitor.childNodes.filter(
-        (c) => c.nodeType === NODE_TYPES.CON
-      ).length;
-
       wm().moveWindowToPointer(dragged, false);
 
-      // Should reuse monitor as container, just change layout
-      // The parent of dragged should be monitor
-      expect(dragged.parentNode).toBe(monitor);
+      const nest = dragged.parentNode;
+      expect(nest).not.toBe(monitor);
+      expect(nest.nodeType).toBe(NODE_TYPES.CON);
+      expect(nest.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(nest.childNodes).toContain(target);
+      expect(nest.childNodes).toContain(dragged);
     });
   });
 

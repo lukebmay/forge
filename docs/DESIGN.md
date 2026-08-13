@@ -616,7 +616,11 @@ easy to poison with floats (Guake) and ignored per-monitor dock intent.
    `activate` / `open_new_window` / `activate_full` hook (skips overview).
    Dock mon = **pointer geometry** at launch (not focus/`get_current_monitor`
    alone). Open-under-focus must never rehome a dock plan off that mon.
-4. **Insert:** LFT in TABBED/STACKED → insert after LFT; else aspect split of LFT
+4. **Empty dest head (D027):** if the pointer (else the window’s Meta mon) is
+   on a monitor with **no TILE**, home there as mon-root. Beats LFT/focus so
+   a dock-miss cannot yank a right-head open onto the left tree’s last tile.
+   Does **not** change OP1 when the pointer sits on a tiled head.
+5. **Insert:** LFT in TABBED/STACKED → insert after LFT; else aspect split of LFT
    rect (taller → VSPLIT, else HSPLIT).
 
 ### Tiny-pane → tab fallback (OP-opt)

@@ -208,7 +208,7 @@ describe("AP3 OpenApp commitLayout Cq", () => {
     expect(renderSpy).not.toHaveBeenCalledWith("window-create", true);
   });
 
-  it("LayoutBatch end residual: one commitLayout Cq (not double)", () => {
+  it("LayoutBatch end residual: one commitLayout Cf (not double)", () => {
     const commitSpy = vi.spyOn(wm(), "commitLayout");
     const lcSpy = vi.spyOn(wm().layoutController, "requestLayout");
 
@@ -227,8 +227,8 @@ describe("AP3 OpenApp commitLayout Cq", () => {
     const end = wm().endOpenLayoutBatch("open-batch");
     expect(end.committed).toBe(true);
     expect(commitSpy).toHaveBeenCalledTimes(1);
-    expect(commitSpy).toHaveBeenCalledWith("open-batch", expect.objectContaining({ force: false }));
-    expect(lcSpy).toHaveBeenCalledTimes(1);
+    expect(commitSpy).toHaveBeenCalledWith("open-batch", expect.objectContaining({ force: true }));
+    expect(lcSpy).not.toHaveBeenCalled();
   });
 });
 

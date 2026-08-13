@@ -239,10 +239,10 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     expect(ctx.windowManager.openLayoutBatchActive).toBe(true);
 
     ctx.windowManager._openLayoutBatchNeedsCommit = true;
-    const lcSpy = vi.spyOn(ctx.windowManager.layoutController, "requestLayout");
+    const commitSpy = vi.spyOn(ctx.windowManager, "commitLayout");
     const end = JSON.parse(a.LayoutBatch("end"));
     expect(end).toMatchObject({ ok: true, depth: 0, committed: true });
-    expect(lcSpy).toHaveBeenCalledWith("open-batch");
+    expect(commitSpy).toHaveBeenCalledWith("open-batch", { force: true });
     expect(ctx.windowManager.openLayoutBatchActive).toBe(false);
   });
 

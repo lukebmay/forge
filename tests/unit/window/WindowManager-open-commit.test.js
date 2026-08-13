@@ -278,6 +278,7 @@ describe("WindowManager open commit (CL4)", () => {
     const requestSpy = vi.spyOn(wm(), "requestLayout");
     const renderSpy = vi.spyOn(wm(), "renderTree");
     const lcSpy = vi.spyOn(wm().layoutController, "requestLayout");
+    const commitSpy = vi.spyOn(wm(), "commitLayout");
     const insertSpy = vi.spyOn(wm().tree, "insertChildPercent");
     const scheduleSpy = vi.spyOn(wm(), "_scheduleOpenCommit");
 
@@ -332,13 +333,13 @@ describe("WindowManager open commit (CL4)", () => {
       wasActive: true,
     });
     expect(wm().openLayoutBatchActive).toBe(false);
-    // end releases deferred (opacity restored) + layoutController.requestLayout once
+    // end releases deferred (opacity restored) + force-paint (R024)
     expect(metas.every((m) => !wm()._isDeferredOpen(m))).toBe(true);
     for (const m of metas) {
       expect(m.get_compositor_private().opacity).toBe(255);
     }
-    expect(lcSpy).toHaveBeenCalledTimes(1);
-    expect(lcSpy).toHaveBeenCalledWith("open-batch");
+    expect(lcSpy).not.toHaveBeenCalled();
+    expect(commitSpy).toHaveBeenCalledWith("open-batch", { force: true });
     expect(wm()._openLayoutBatchNeedsCommit).toBe(false);
   });
 
@@ -617,7 +618,7 @@ describe("WindowManager open commit (CL4)", () => {
   });
 
   it("CL5 nest depth: only outermost end commits", () => {
-    const lcSpy = vi.spyOn(wm().layoutController, "requestLayout");
+    const commitSpy = vi.spyOn(wm(), "commitLayout");
     expect(wm().beginOpenLayoutBatch()).toMatchObject({ ok: true, depth: 1 });
     expect(wm().beginOpenLayoutBatch()).toMatchObject({ ok: true, depth: 2 });
     expect(wm().openLayoutBatchActive).toBe(true);
@@ -629,7 +630,7 @@ describe("WindowManager open commit (CL4)", () => {
       committed: false,
       wasActive: true,
     });
-    expect(lcSpy).not.toHaveBeenCalled();
+    expect(commitSpy).not.toHaveBeenCalled();
     expect(wm().openLayoutBatchActive).toBe(true);
 
     expect(wm().endOpenLayoutBatch("open-batch")).toMatchObject({
@@ -638,8 +639,7 @@ describe("WindowManager open commit (CL4)", () => {
       committed: true,
       wasActive: true,
     });
-    expect(lcSpy).toHaveBeenCalledTimes(1);
-    expect(lcSpy).toHaveBeenCalledWith("open-batch");
+    expect(commitSpy).toHaveBeenCalledWith("open-batch", { force: true });
     expect(wm().openLayoutBatchActive).toBe(false);
   });
 

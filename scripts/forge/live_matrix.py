@@ -339,6 +339,104 @@ LIVE_CASES: tuple[LiveCase, ...] = (
         ),
     ),
     LiveCase(
+        id="L1.r021-empty-head-open",
+        layer=LAYER_L1,
+        title="Open on empty mon1 must not attach left-tree end (R021)",
+        behaviors=(
+            "dock-open",
+            "mon-claim",
+            "cross-mon-dnd",
+        ),
+        regressions=("R021", ),
+        profile="_forge-test-ghosttys",
+        setup=("close-chrome", "keep-agent", "keep-ghostty-tiles"),
+        actions=("r021-empty-head-open-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+        ),
+        notes=(
+            "R021: pointer/dock on empty dest mon homes there, not after "
+            "occupied-mon LFT. L0: lft-mru + open-app-policy + "
+            "bug-r021-r024-open-drop-layout. Human: two tiles on left, "
+            "open from right dock onto empty right."
+        ),
+    ),
+    LiveCase(
+        id="L1.r022-nested-empty-mon-dnd",
+        layer=LAYER_L1,
+        title="Nested VSPLIT leaf to empty mon1 moves only that leaf (R022)",
+        behaviors=(
+            "cross-mon-dnd",
+            "structure-bind",
+            "mon-claim",
+        ),
+        regressions=("R022", ),
+        profile="_forge-test-ghosttys",
+        setup=("close-chrome", "keep-agent", "keep-ghostty-tiles",
+               "ensure-nautilus"),
+        actions=("r022-nested-empty-mon1-dnd", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+            "tile-on-mon1",
+        ),
+        notes=(
+            "R022: HSPLIT(A, VSPLIT(B,C)) drag C to empty mon1 → only C "
+            "moves. L0: bug-r015-empty-mon-dnd nested case. Human: same."
+        ),
+    ),
+    LiveCase(
+        id="L1.r023-bottom-nest-hsplit",
+        layer=LAYER_L1,
+        title="BOTTOM onto MONITOR HSPLIT nests VSPLIT (R023)",
+        behaviors=(
+            "cross-mon-dnd",
+            "structure-bind",
+        ),
+        regressions=("R023", ),
+        profile="_forge-test-ghosttys",
+        setup=("close-chrome", "keep-agent", "keep-ghostty-tiles",
+               "ensure-nautilus"),
+        actions=("r023-bottom-nest-hsplit", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+        ),
+        notes=(
+            "R023: BOTTOM on left of 2-wide HSPLIT → HSPLIT(VSPLIT, sibling), "
+            "not 3-wide HSPLIT. L0: drag-drop-comprehensive + "
+            "bug-r021-r024-open-drop-layout. Human: drop bottom zone."
+        ),
+    ),
+    LiveCase(
+        id="L1.r024-first-layout-tiles",
+        layer=LAYER_L1,
+        title="First layout apply must TILE (not FLOAT geometry) (R024)",
+        behaviors=(
+            "layout-apply",
+            "structure-bind",
+        ),
+        regressions=("R024", ),
+        profile="_forge-test-ghosttys",
+        setup=("close-chrome", "keep-agent", "keep-ghostty-tiles"),
+        actions=("r024-first-layout-tiles-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+        ),
+        notes=(
+            "R024: first forge layout must paint TILE slots. Leftover freeze "
+            "/ stale render idle must not skip commit. L0: "
+            "bug-r021-r024-open-drop-layout R024. Human: layout once after "
+            "a drag session; windows must not stay floated."
+        ),
+    ),
+    LiveCase(
         id="L1.r016-noop-workareas",
         layer=LAYER_L1,
         title="No-op monitor re-apply must not thrash tiles (R016)",

@@ -325,6 +325,29 @@ class TestSelect(unittest.TestCase):
         ids = {c.id for c in sel.cases}
         self.assertIn("L1.r012-cross-mon-tab-dnd", ids)
         self.assertIn("L1.r015-empty-mon-dnd", ids)
+        self.assertIn("L1.r022-nested-empty-mon-dnd", ids)
+        self.assertIn("L1.r023-bottom-nest-hsplit", ids)
+
+    def test_catalog_has_r021_r024(self):
+        by_id = {c.id: c for c in LIVE_CASES}
+        self.assertIn("R021", by_id["L1.r021-empty-head-open"].regressions)
+        self.assertIn("R022", by_id["L1.r022-nested-empty-mon-dnd"].regressions)
+        self.assertIn("R023", by_id["L1.r023-bottom-nest-hsplit"].regressions)
+        self.assertIn("R024", by_id["L1.r024-first-layout-tiles"].regressions)
+        self.assertIn("tile-on-mon1", by_id["L1.r022-nested-empty-mon-dnd"].checks)
+
+    def test_tags_r021_r024(self):
+        forest = _add_guake(_load("tree-perfect.json"))
+        cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
+        for tag, case_id in (
+            ("R021", "L1.r021-empty-head-open"),
+            ("R022", "L1.r022-nested-empty-mon-dnd"),
+            ("R023", "L1.r023-bottom-nest-hsplit"),
+            ("R024", "L1.r024-first-layout-tiles"),
+        ):
+            sel = select_cases(suite="regression", capability=cap, tags={tag})
+            ids = {c.id for c in sel.cases}
+            self.assertIn(case_id, ids)
 
 
 class TestChecks(unittest.TestCase):

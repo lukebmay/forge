@@ -39,7 +39,8 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Five-zone hit / paint | `drop-zones.js` `buildDropZones` / `hitTestDropZone` | Edge-band / grab-origin geometry |
 | **Would this drop change the tree?** | `dropChangesStructure` (`lib/extension/drop-intent.js`) | Positional `_isNoOpDrop` that ignores layout |
 | Execute a tile drop | `DragDropManager.moveWindowToPointer` → intent + merge/split | Parallel session-only structure |
-| Empty-monitor drop | `resolveEmptyMonitorDrop` + `_commitEmptyMonitorDrop` | Mid-drag rehome (R012) |
+| Empty-monitor drop | `resolveEmptyMonitorDrop` + `_commitEmptyMonitorDrop` (leaf only) | Mid-drag rehome (R012); `_rehomeWindowPreservingContainer` (R022) |
+| New-window home | `resolveOpenAppPlacement` (dock → empty-head → window-actual → LFT) | Pointer-on-empty falling through to other-mon LFT (R021) |
 | Hard-ready before a CLI act | `layout_apply.wait_until_hard_ready` | New TILE poll loop; `wait_for_wm_class` is the leftover to fold (IC4) |
 | Soft focus residual (CLI) | `run_soft_focus_barrier` | Fixed `sleep(0.4)` after hard-ready |
 | Soft geom residual (CLI) | `run_soft_geom_barrier` | Re-apply layout until rect “looks right” |
@@ -113,6 +114,11 @@ H/V siblings is a **layout change** (group), never “already after target.”
 
 Execute CENTER group via `mergeWindowsIntoGroup`, not a second flip in
 `_executeDropOperation`.
+
+Orientation-mismatch edges (BOTTOM onto HSPLIT, etc.) **wrap the target**
+in a new CON. Do not reuse a MONITOR that already has siblings (R023).
+
+Empty-mon drop moves the dragged **leaf** only (R022).
 
 ---
 

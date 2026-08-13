@@ -94,17 +94,21 @@ describe("forge-tnth: configurable new-window monitor placement", () => {
     expect(reloadSpy).not.toHaveBeenCalled();
   });
 
-  it("end-state is window-actual regardless of the setting (re-home wins) — documents MF-1", () => {
-    // Default 'pointer': track-time on 0, then updateMetaWorkspaceMonitor re-homes
-    // to the window's actual monitor (1). This is why a 'pointer'-only change at
-    // trackWindow can't, by itself, fix a "wrong monitor" report.
+  it("end-state is window-actual after empty-head sticky expires (MF-1)", () => {
+    // Empty desk: pointer mon 0 is empty-head (D027). Sticky holds Meta rehome
+    // during grace; after it expires, entered-monitor may take the window to 1.
     setup(); // default 'pointer'
     const metaWindow = createMockWindow({ workspace: ctx.workspaces[0], monitor: 1 });
 
     wm().trackWindow(null, metaWindow);
-    expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0); // transient
+    expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0);
 
     wm().updateMetaWorkspaceMonitor("window-entered-monitor", 1, metaWindow);
-    expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(1); // settled end-state
+    expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0); // sticky
+
+    metaWindow._forgeDockStickyUntil = 0;
+    metaWindow._monitor = 1;
+    wm().updateMetaWorkspaceMonitor("window-entered-monitor", 1, metaWindow);
+    expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(1);
   });
 });

@@ -4,6 +4,7 @@ import {
   getWorkspaceAndMonitor,
   createMockWindow,
   createWindowNode,
+  setPointer,
 } from "../../mocks/helpers/index.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
@@ -97,11 +98,13 @@ describe("OP1 open-app placement policy", () => {
   describe("generic open uses global LFT mon", () => {
     beforeEach(() => setup());
 
-    it("homes to global LFT mon, not pointer mon", () => {
+    it("homes to global LFT mon when pointer sits on a tiled head", () => {
+      tileOn(0, { id: "tiled-0" });
       const lft = tileOn(1, { id: "lft" });
       wm().movePointerWith(lft.nodeWindow);
-      // Pointer stays on mon 0
-      expect(ctx.display.get_current_monitor()).toBe(0);
+      ctx.display.get_focus_window.mockReturnValue(lft.metaWindow);
+      ctx.display.get_current_monitor.mockReturnValue(0);
+      setPointer(100, 100);
 
       const metaWindow = createMockWindow({
         workspace: ctx.workspaces[0],
@@ -112,6 +115,23 @@ describe("OP1 open-app placement policy", () => {
 
       const node = wm().findNodeWindow(metaWindow);
       expect(monitorOf(node)).toBe(1);
+    });
+
+    it("pointer on empty mon0 beats LFT on mon1 (D027 empty-head)", () => {
+      const lft = tileOn(1, { id: "lft" });
+      wm().movePointerWith(lft.nodeWindow);
+      ctx.display.get_current_monitor.mockReturnValue(1);
+      setPointer(100, 100);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        id: "new-on-empty",
+      });
+      wm().trackWindow(null, metaWindow);
+
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(0);
     });
 
     it("no LFT → mon 0 root", () => {
@@ -156,8 +176,11 @@ describe("OP1 open-app placement policy", () => {
     });
 
     it("mismatched class falls through to LFT", () => {
+      const on0 = tileOn(0, { id: "tiled-0" });
       const lft = tileOn(1, { id: "lft1" });
+      wm().movePointerWith(on0.nodeWindow);
       wm().movePointerWith(lft.nodeWindow);
+      setPointer(2000, 200);
 
       wm().placeNext({
         wmClass: "OtherApp",
@@ -167,7 +190,7 @@ describe("OP1 open-app placement policy", () => {
 
       const metaWindow = createMockWindow({
         workspace: ctx.workspaces[0],
-        monitor: 0,
+        monitor: 1,
         id: "no-match",
         wm_class: "NotOther",
       });
@@ -402,6 +425,30 @@ describe("OP1 open-app placement policy", () => {
       expect(plan.attachLft).toBe(on1.nodeWindow);
       // Focus mon0 must not replace home or attach.
       expect(plan.attachLft).not.toBe(on0.nodeWindow);
+    });
+
+    it("pointer on empty mon1 homes there, not after left LFT (R021)", () => {
+      const leftA = tileOn(0, { id: "left-a" });
+      tileOn(0, { id: "left-b" });
+      wm().movePointerWith(leftA.nodeWindow);
+      global.display.get_focus_window.mockReturnValue(leftA.metaWindow);
+      ctx.display.get_current_monitor.mockReturnValue(0);
+      setPointer(2000, 200);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "opened-on-right",
+      });
+      wm().trackWindow(null, metaWindow);
+
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+      const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+      expect(mon1.contains(node)).toBe(true);
+      expect(mon0.contains(node)).toBe(false);
+      expect(mon0.childNodes.filter((c) => c.isWindow?.()).length).toBe(2);
     });
 
     it("dock sticky grace rejects re-home flip", () => {

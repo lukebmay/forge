@@ -155,6 +155,67 @@ describe("R015: empty-monitor drag-drop rehome", () => {
       expect(mon0.contains(nodeB)).toBe(true);
     });
 
+    it("nested VSPLIT leaf drag to empty mon1 moves only that leaf (R022)", () => {
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      const mon1 = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+      const metaA = createMockWindow({
+        id: "A",
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+        monitor: 0,
+      });
+      const nodeA = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, metaA);
+      nodeA.mode = WINDOW_MODES.TILE;
+
+      const vsplit = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.CON, {});
+      vsplit.layout = LAYOUT_TYPES.VSPLIT;
+
+      const metaB = createMockWindow({
+        id: "B",
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 540 }),
+        workspace: workspace0(),
+        monitor: 0,
+      });
+      const nodeB = ctx.tree.createNode(vsplit.nodeValue, NODE_TYPES.WINDOW, metaB);
+      nodeB.mode = WINDOW_MODES.TILE;
+
+      const metaC = createMockWindow({
+        id: "C",
+        rect: new Rectangle({ x: 960, y: 540, width: 960, height: 540 }),
+        workspace: workspace0(),
+        monitor: 0,
+      });
+      metaC.get_work_area_for_monitor = vi.fn((idx) => {
+        if (idx === 1) return { x: 1920, y: 0, width: 1920, height: 1080 };
+        return { x: 0, y: 0, width: 1920, height: 1080 };
+      });
+      metaC.move_to_monitor = vi.fn((idx) => {
+        metaC.monitor = idx;
+      });
+      const nodeC = ctx.tree.createNode(vsplit.nodeValue, NODE_TYPES.WINDOW, metaC);
+      nodeC.mode = WINDOW_MODES.GRAB_TILE;
+      wm()._draggedNodeWindow = nodeC;
+      // After Meta move, sibling can report dest mon — must still move only C.
+      metaC.get_monitor = vi.fn(() => 1);
+      metaC.monitor = 1;
+      metaB.get_monitor = vi.fn(() => 1);
+      metaB.monitor = 1;
+
+      setPointer(2400, 500);
+      wm().nodeWinAtPointer = null;
+      wm().moveWindowToPointer(nodeC, false);
+
+      expect(mon1.contains(nodeC)).toBe(true);
+      expect(mon1.contains(nodeB)).toBe(false);
+      expect(mon0.contains(nodeA)).toBe(true);
+      expect(mon0.contains(nodeB)).toBe(true);
+      expect(mon0.contains(nodeC)).toBe(false);
+      expect(mon1.getNodeByType(NODE_TYPES.WINDOW).length).toBe(1);
+    });
+
     it("null target + pointer still on source mon does not rehome", () => {
       const { mon0, mon1, nodeA } = twoOnLeftEmptyRight();
       nodeA.mode = WINDOW_MODES.GRAB_TILE;

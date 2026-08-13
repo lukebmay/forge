@@ -5,9 +5,9 @@
 **Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Active:** Canonical contracts **IC0–IC3 done** (D024–D026, R019/R020).
-Catalog: [docs/dev/contracts.md](../docs/dev/contracts.md). Next: load tip
-and smoke Grok→Chrome CENTER + VLC. IC4 later. FCC Wave C / zoom after.
+**Active:** R021–R024 shipped (empty-head open, leaf empty-mon, nest drop,
+first layout TILE). Next: load tip + smoke those four + leftover R019/R020.
+Test-suite honesty analysis is queued. IC4 later. FCC Wave C / zoom after.
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
@@ -18,7 +18,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| residual | Load tip then smoke Grok→Chrome CENTER + VLC end-of-video | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
+| residual | Load tip then smoke R021–R024 + leftover Grok→Chrome CENTER + VLC | [R021](./REGRESSIONS.md)–[R024](./REGRESSIONS.md) · [R019](./REGRESSIONS.md) |
+| later | Test-suite honesty analysis (product tests, not patch mirrors) | [task](./tasks/forge-test-suite-honest-analysis.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
 | done | **IC0** catalog + D024–D026 | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic0-catalog.md) |
 | done | **IC3** tile-slot authority (R020) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
@@ -41,10 +42,12 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 ### Why this order
 
-1. **Contracts IC0–IC3 are in tree.** Next is host/nest **load tip + smoke** (R019/R020).  
-2. **IC4** folds leftover CLI waiters — do not invent a third settle brain.  
-3. **Zoom / FCC Wave C** after live smoke. Zoom is a presentation flag on D026.  
-4. Host logout / R018 remains residual, not a reason to skip the catalog.
+1. **R021–R024 are in tree** (empty-head, leaf empty-mon, nest drop, first
+   layout TILE). Next is **load tip + host dual-mon smoke** of those four,
+   plus leftover R019/R020.  
+2. **Test-suite honesty** is queued — do not add more patch-mirror units.  
+3. **IC4** folds leftover CLI waiters — do not invent a third settle brain.  
+4. **Zoom / FCC Wave C** after live smoke. Host logout / R018 is residual.
 
 **Do not** start dual-mon nest by default. **Do not** nest for no-code host smokes.
 

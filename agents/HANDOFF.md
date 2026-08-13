@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-13 (**canonical contracts** IC0–IC3 shipped; load tip to smoke R019/R020)  
+**Updated:** 2026-08-13 (**R021–R024** empty-head / leaf DnD / nest drop / first layout TILE)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -11,6 +11,25 @@
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Shipped — R021–R024 (empty-head open / leaf empty-mon / nest drop / first layout)
+
+| Field | Detail |
+| --- | --- |
+| Task | [completed](./tasks/completed/forge-dual-mon-open-drop-layout.md) |
+| R021 | Empty dest head (pointer then window mon) beats LFT/focus (D027) |
+| R022 | Empty-mon user drop is leaf-only (D028) — not `_rehomeWindowPreservingContainer` |
+| R023 | BOTTOM on MONITOR HSPLIT wraps a VSPLIT (D029) — never reuse multi-child MONITOR |
+| R024 | RunSteps + batch end always force-paint; `renderTree(force)` cancels stale idle |
+| Guards | L0 `bug-r021-r024-open-drop-layout` + nested R015 + comprehensive MONITOR BOTTOM |
+| Follow-up | [forge-test-suite-honest-analysis](./tasks/forge-test-suite-honest-analysis.md) |
+
+```bash
+npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
+  tests/regression/bug-r015-empty-mon-dnd.test.js \
+  tests/unit/extension/lft-mru.test.js \
+  tests/unit/window/WindowManager-open-app-policy.test.js
+```
 
 ### Shipped — canonical contracts (D024–D026)
 
@@ -88,7 +107,8 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **next** | Load tip (`./install` + nest or one logout) then smoke Grok→Chrome CENTER and VLC end-of-video | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
+| **next** | `./install` + nest (or logout) then smoke R021–R024 on host dual-mon + leftover R019/R020 | [R021](./REGRESSIONS.md)–[R024](./REGRESSIONS.md) · [task](./tasks/completed/forge-dual-mon-open-drop-layout.md) |
+| later | Test-suite honesty analysis (tests that lock product, not patches) | [task](./tasks/forge-test-suite-honest-analysis.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
 | done | **IC0** catalog + D024–D026 | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic0-catalog.md) |
 | done | **IC3** tile-slot / R020 (VLC fs → slot) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |

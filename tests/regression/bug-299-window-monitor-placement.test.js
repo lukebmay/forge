@@ -45,6 +45,11 @@ describe("Bug #299: Window monitor placement", () => {
 
   it("with LFT on mon 1: places next window on LFT mon (not pointer mon 0)", () => {
     ctx.display.get_current_monitor.mockReturnValue(0);
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    createWindowNode(ctx.tree, mon0, {
+      mode: "TILE",
+      windowOverrides: { workspace: ctx.workspaces[0], monitor: 0, id: "seed-0" },
+    });
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
     const { nodeWindow: lft } = createWindowNode(ctx.tree, mon1, {
       mode: "TILE",
@@ -58,7 +63,6 @@ describe("Bug #299: Window monitor placement", () => {
     const node = wm().findNodeWindow(metaWindow);
     expect(node).not.toBeNull();
 
-    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     expect(mon1.contains(node)).toBe(true);
     expect(mon0.contains(node)).toBe(false);
   });

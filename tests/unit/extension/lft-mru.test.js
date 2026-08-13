@@ -319,6 +319,77 @@ describe("resolveOpenAppPlacement", () => {
     expect(r.homeMonitor).toBe(0);
     expect(r.attachLft).toBe(lft0);
   });
+
+  it("empty pointer mon beats LFT on the occupied head (R021)", () => {
+    const r = resolveOpenAppPlacement({
+      dockMonitor: -1,
+      globalLft: lft0,
+      lftMonitor: 0,
+      windowMonitor: 0,
+      pointerMonitor: 1,
+      emptyMonitors: [1],
+      placement: "pointer",
+    });
+    expect(r.isEmptyHead).toBe(true);
+    expect(r.homeMonitor).toBe(1);
+    expect(r.attachMode).toBe("mon-root");
+    expect(r.attachLft).toBeNull();
+  });
+
+  it("empty window mon beats LFT when pointer mon is unknown (R021)", () => {
+    const r = resolveOpenAppPlacement({
+      dockMonitor: -1,
+      globalLft: lft0,
+      lftMonitor: 0,
+      windowMonitor: 1,
+      pointerMonitor: -1,
+      emptyMonitors: [1],
+    });
+    expect(r.isEmptyHead).toBe(true);
+    expect(r.homeMonitor).toBe(1);
+    expect(r.attachMode).toBe("mon-root");
+  });
+
+  it("pointer on a tiled head does not empty-head steal (OP1 LFT stays)", () => {
+    const r = resolveOpenAppPlacement({
+      dockMonitor: -1,
+      globalLft: lft0,
+      lftMonitor: 0,
+      windowMonitor: 0,
+      pointerMonitor: 0,
+      emptyMonitors: [1],
+    });
+    expect(r.isEmptyHead).toBe(false);
+    expect(r.homeMonitor).toBe(0);
+    expect(r.attachLft).toBe(lft0);
+  });
+
+  it("window-actual beats empty pointer mon", () => {
+    const r = resolveOpenAppPlacement({
+      placement: "window-actual",
+      windowMonitor: 1,
+      pointerMonitor: 0,
+      emptyMonitors: [0],
+      globalLft: lft0,
+      lftMonitor: 0,
+    });
+    expect(r.isEmptyHead).toBe(false);
+    expect(r.homeMonitor).toBe(1);
+  });
+
+  it("dock still wins over empty-head", () => {
+    const r = resolveOpenAppPlacement({
+      dockMonitor: 0,
+      monLft: lft0,
+      pointerMonitor: 1,
+      emptyMonitors: [1],
+      globalLft: lft0,
+      lftMonitor: 0,
+    });
+    expect(r.isDock).toBe(true);
+    expect(r.isEmptyHead).toBe(false);
+    expect(r.homeMonitor).toBe(0);
+  });
 });
 
 describe("monitorIndexFromPoint", () => {
