@@ -1,6 +1,6 @@
 # forge-layout-green-reuse-double — R029/R030 map-pin / untracked admit
 
-**Status:** in progress
+**Status:** done
 **Plan:** (none)
 **Branch:** master
 **Blocker:** (none)
@@ -20,7 +20,7 @@ on the second, and does not crash Chrome.
 - [x] `notify::title` re-renders like late wm-class
 - [x] Admit untracked Meta windows before plan + during map-wait (D035)
 - [x] L0 guards for the inverted user contract
-- [ ] Host/green live: `./install` then `layout dev` on an empty desk;
+- [x] Host/green live: `./install` then `layout dev` on an empty desk;
       second `layout dev` reuses (does not double)
 
 ## Context for the next agent (complete + succinct)
@@ -43,7 +43,7 @@ D034 + D035. Guards: `test_wait_class_fallback_*`, `TestClaimClassFallback`,
 
 ## Session note
 
-**2026-08-13 (2):** SSH green after R029 live fail. Implemented D035
-admit + dest fallback + map-wait dump. L0 JS+pytest green. Next: push,
-install+HUP on green, close leftover chrome/ghostty, empty-desk
-`layout dev` twice.
+**2026-08-13 (3):** Green live **PASS** on `1ed7290`. Empty-desk
+`layout dev`: TILE Chrome+Grok tab + Ghostty, exit 0 (hard-ready
+warning, still tiled). Second apply: reused 3 opened 0, same ids.
+Need `./install` + HUP (SSH install skips reload as session=tty).
