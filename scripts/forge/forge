@@ -1023,6 +1023,22 @@ def _is_chrome_family_class(s: str) -> bool:
     return _is_chrome_browser_class(s) or _is_chrome_pwa_class(s)
 
 
+def _open_action_is_chrome_family(action: Any) -> bool:
+    """True when a plan open will spawn Chrome or a Chrome PWA (same profile)."""
+    if not isinstance(action, dict):
+        return False
+    open_spec = action.get("open") if isinstance(action.get("open"), dict) else {}
+    for key in ("wmClass", "wm_class"):
+        v = open_spec.get(key)
+        if v is not None and _is_chrome_family_class(str(v)):
+            return True
+    match = action.get("match") if isinstance(action.get("match"), dict) else {}
+    v = match.get("class") or match.get("wmClass") or match.get("wm_class")
+    if v is not None and _is_chrome_family_class(str(v)):
+        return True
+    return False
+
+
 def _class_eq(a: Any, b: Any) -> bool:
     """Casefold + reverse-DNS stem + browser↔PWA / same PWA id / browser↔browser."""
     if a is None or b is None:
@@ -2852,14 +2868,57 @@ def _layout_run_reconcile_body(
         try:
             # CL9: one baseline before all spawns; PlaceNext+launch without
             # serial TILE-wait; then map/windowId pin wait for every role.
+            # Chrome-family opens are sequential: two gio launches of the
+            # same profile crash Chrome on slow X11 (green).
             open_baseline = _baseline_window_ids(backend)
             pending_pins: list[dict[str, Any]] = []
             open_timeout_ms = DEFAULT_LAUNCH_TIMEOUT_MS
+            chrome_roles: set[str] = set()
+
+            def _load_live_forest() -> dict[str, Any]:
+                return _layout_load_tree(backend, None)
+
+            def _load_live_windows() -> list[dict[str, Any]]:
+                return _iter_tree_windows(_load_live_forest())
+
+            def _merge_open_pins(pin_wait: dict[str, Any]) -> None:
+                for rid, wid in (pin_wait.get("role_pins") or {}).items():
+                    role_pins[str(rid)] = wid
+                    for entry in apply_log["opens"]:
+                        if (
+                            isinstance(entry, dict)
+                            and str(entry.get("role")) == str(rid)
+                            and entry.get("windowId") is None
+                        ):
+                            entry["windowId"] = wid
+                            entry["waited"] = True
+                            entry["requireSettled"] = False
+                            entry["matchedBy"] = "map-pin"
+                            break
 
             for oa in open_actions:
                 fields = open_action_to_launch_fields(oa, workspace=workspace)
                 role = oa.get("role")
-                # Parallel: never block on TILE settle per role.
+                if _open_action_is_chrome_family(oa) and chrome_roles:
+                    unpinned_chrome = [
+                        p
+                        for p in pending_pins
+                        if str(p.get("role")) in chrome_roles
+                        and str(p.get("role")) not in role_pins
+                    ]
+                    if unpinned_chrome:
+                        pre_wait = wait_for_open_role_pins(
+                            _load_live_windows,
+                            unpinned_chrome,
+                            baseline_ids=open_baseline,
+                            timeout_ms=open_timeout_ms,
+                            class_eq=_class_eq,
+                        )
+                        apply_log.setdefault("chromeSerialWaits", []).append(
+                            {k: v for k, v in pre_wait.items() if k != "role_pins"}
+                        )
+                        _merge_open_pins(pre_wait)
+                # Parallel vs other apps: never block on TILE settle per role.
                 fields = dict(fields)
                 fields["no_wait"] = True
                 _rc, result = do_launch(backend, print_result=False, **fields)
@@ -2898,44 +2957,34 @@ def _layout_run_reconcile_body(
                 if title_exact is not None and str(title_exact).strip() != "":
                     pin_entry["title_exact"] = str(title_exact).strip()
                 pending_pins.append(pin_entry)
+                if _open_action_is_chrome_family(oa):
+                    chrome_roles.add(str(role))
 
-            def _load_live_forest() -> dict[str, Any]:
-                return _layout_load_tree(backend, None)
-
-            def _load_live_windows() -> list[dict[str, Any]]:
-                return _iter_tree_windows(_load_live_forest())
-
-            if pending_pins:
+            leftover_pins = [
+                p for p in pending_pins if str(p.get("role")) not in role_pins
+            ]
+            pin_used = set(str(x) for x in open_baseline)
+            pin_used.update(str(v).strip() for v in role_pins.values())
+            if leftover_pins:
                 pin_wait = wait_for_open_role_pins(
                     _load_live_windows,
-                    pending_pins,
-                    baseline_ids=open_baseline,
+                    leftover_pins,
+                    baseline_ids=pin_used,
                     timeout_ms=open_timeout_ms,
                     class_eq=_class_eq,
                 )
                 apply_log["openMapWait"] = {
                     k: v for k, v in pin_wait.items() if k != "role_pins"
                 }
-                for rid, wid in (pin_wait.get("role_pins") or {}).items():
-                    role_pins[str(rid)] = wid
-                    # Annotate matching open log entry with pin.
-                    for entry in apply_log["opens"]:
-                        if (
-                            isinstance(entry, dict)
-                            and str(entry.get("role")) == str(rid)
-                            and entry.get("windowId") is None
-                        ):
-                            entry["windowId"] = wid
-                            entry["waited"] = True
-                            entry["requireSettled"] = False
-                            entry["matchedBy"] = "map-pin"
-                            break
+                _merge_open_pins(pin_wait)
                 for miss in pin_wait.get("missing") or []:
                     open_failures.append(miss)
                     _eprint(
                         f"forge layout: open map wait failed role={miss!r}: "
                         f"{pin_wait.get('error', 'timeout')}"
                     )
+            elif pending_pins:
+                apply_log["openMapWait"] = {"ok": True, "missing": [], "skipped": True}
 
             # Optional LF6 batch quiet (debug): whole GetTree fingerprint holds
             # N samples. Default off — tree owns slots; map-pin wait is enough.

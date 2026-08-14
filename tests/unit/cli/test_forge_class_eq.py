@@ -49,6 +49,18 @@ class TestForgeClassEq(unittest.TestCase):
         self.assertTrue(_class_eq("chrome-aaa-Default", "chrome-aaa-Default"))
         self.assertTrue(_class_eq("crx_a", "crx_a"))
 
+    def test_open_action_is_chrome_family(self):
+        fn = forge._open_action_is_chrome_family
+        self.assertTrue(
+            fn({
+                "open": {"app": "Grok", "wmClass": "Google-chrome"},
+                "match": {"title~=": "Grok"},
+            }))
+        self.assertTrue(
+            fn({"open": {"app": "YouTube", "wmClass": "chrome-abc-Default"}}))
+        self.assertFalse(fn({"open": {"app": "ghostty", "wmClass": "ghostty"}}))
+        self.assertFalse(fn({"open": {"app": "nautilus"}}))
+
     def test_same_pwa_crx_matches_chrome_default(self):
         self.assertTrue(
             _class_eq(

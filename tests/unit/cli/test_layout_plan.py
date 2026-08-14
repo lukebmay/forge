@@ -1852,6 +1852,102 @@ class TestTabRoleOrder(unittest.TestCase):
         self.assertTrue(window_matches(w, {"class": "com.mitchellh.ghostty"}))
 
 
+class TestClaimClassFallback(unittest.TestCase):
+    """R029: second apply must reuse untitled Chrome PWAs, not launch again."""
+
+    _GREEN = {
+        "version": 2,
+        "mode": "reconcile",
+        "roles": [
+            {
+                "id": "google-chrome",
+                "match": {"class": "Google-chrome", "title~=": "Google Chrome"},
+                "open": {"app": "google-chrome", "wmClass": "Google-chrome"},
+                "slot": "mon0.s0",
+            },
+            {
+                "id": "Grok",
+                "match": {"class": "Google-chrome", "title~=": "Grok"},
+                "open": {"app": "Grok", "wmClass": "Google-chrome"},
+                "slot": "mon0.s0",
+            },
+            {
+                "id": "ghostty",
+                "match": {"class": "ghostty"},
+                "open": {"app": "ghostty", "wmClass": "ghostty"},
+                "slot": "mon0.ghostty",
+            },
+        ],
+        "layout": {
+            "mon0": {
+                "children": [
+                    {
+                        "id": "s0",
+                        "layout": "tabbed",
+                        "roles": ["google-chrome", "Grok"],
+                        "active": "Grok",
+                    },
+                    {"id": "ghostty", "roles": ["ghostty"]},
+                ],
+                "split": "hsplit",
+            }
+        },
+    }
+
+    def _forest(self, windows):
+        kids = []
+        for w in windows:
+            kids.append({
+                "nodeType": "WINDOW",
+                "windowId": w["windowId"],
+                "wmClass": w["wmClass"],
+                "title": w.get("title") or "",
+                "mode": w.get("mode") or "FLOAT",
+                "monitor": 0,
+            })
+        return {
+            "apiVersion": 1,
+            "activeWorkspace": 0,
+            "monitors": [{
+                "nodeType": "MONITOR",
+                "layout": "HSPLIT",
+                "id": "mo0ws0",
+                "children": kids,
+            }],
+        }
+
+    def test_second_apply_reuses_new_tab_as_grok(self):
+        forest = self._forest([
+            {
+                "windowId": 1,
+                "wmClass": "Google-chrome",
+                "title": "New Tab - Google Chrome",
+                "mode": "FLOAT",
+            },
+            {
+                "windowId": 2,
+                "wmClass": "Google-chrome",
+                "title": "New Tab - Google Chrome",
+                "mode": "FLOAT",
+            },
+            {
+                "windowId": 3,
+                "wmClass": "com.mitchellh.ghostty",
+                "title": "Ghostty",
+                "mode": "FLOAT",
+            },
+        ])
+        plan = plan_reconcile(forest, self._GREEN)
+        by_id = {r["id"]: r for r in plan["roles"]}
+        self.assertEqual(by_id["google-chrome"]["status"], "reused")
+        self.assertEqual(by_id["Grok"]["status"], "reused")
+        self.assertEqual(by_id["ghostty"]["status"], "reused")
+        self.assertEqual(by_id["Grok"]["windowId"], 2)
+        self.assertEqual(plan["counts"]["opened"], 0)
+        self.assertFalse(
+            any(a.get("op") == "open" for a in plan["actions"]))
+
+
 class TestThrashModeMatrix(unittest.TestCase):
     """TZ-matrix: lock table for Mode A/B thrash plans (regression).
 

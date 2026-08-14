@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-13 (**campaign:** insert A R028 leftover-wrap / batch skip; Wave Z / R025–R027 live)  
+**Updated:** 2026-08-13 (**campaign:** R029 green layout double/FLOAT; D034)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -108,7 +108,8 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | Insert A R028 — `./install` + nest or logout, then `layout dev` + left-dock Nautilus (must VSPLIT the slot, not 3-wide HSPLIT) | [task](./tasks/forge-container-insert-a.md) |
+| **P0** | R029 green `layout dev` — install (X11 HUP), empty-desk apply, second apply must reuse | [task](./tasks/forge-layout-green-reuse-double.md) |
+| residual | Insert A R028 — `./install` + nest or logout, then `layout dev` + left-dock Nautilus (must VSPLIT the slot, not 3-wide HSPLIT) | [task](./tasks/forge-container-insert-a.md) |
 | residual | Wave Z zoom (D030) on tip; Vim kit live. Super+Enter / C-S-Enter / S-S-Enter; Super+Space = Run | [task](./tasks/forge-zoom-maximize.md) |
 | residual | R025 tab-click slot: click a non-open tab — slot size, no ¼-height reflow | [task](./tasks/forge-tab-click-slot.md) |
 | residual | **R026** immediately after `layout dev`, click the other tab — must stay (no flash-then-Grok) | [task](./tasks/forge-tab-click-pin-adopt.md) |

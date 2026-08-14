@@ -2064,6 +2064,8 @@ def plan_reconcile(
     role_windows = _two_pass_claim_windows(prof["roles"], windows)
     # Launch pins (by windowId) fill roles title match still misses after open.
     role_windows = _apply_role_pins(prof["roles"], windows, role_windows, pins)
+    # Untitled Chrome PWA (still "New Tab") must not force a second launch.
+    role_windows = _claim_class_only_windows(prof["roles"], windows, role_windows)
 
     for role, chosen in zip(prof["roles"], role_windows):
         rid = role["id"]
@@ -3410,6 +3412,66 @@ def _two_pass_claim_windows(
             claimed.add(_window_key(pick))
 
     return chosen
+
+
+def _role_class_want(role: dict[str, Any]) -> Optional[str]:
+    """Class token for leftover claim: match.class, else open.wmClass."""
+    match = role.get("match") if isinstance(role.get("match"), dict) else {}
+    cls = match.get("class") or match.get("wmClass") or match.get("wm_class")
+    if cls is not None and str(cls).strip():
+        return str(cls).strip()
+    open_spec = role.get("open") if isinstance(role.get("open"), dict) else {}
+    cls = open_spec.get("wmClass") or open_spec.get("wm_class")
+    if cls is not None and str(cls).strip():
+        return str(cls).strip()
+    return None
+
+
+def _claim_class_only_windows(
+        roles: list[dict[str, Any]],
+        windows: list[dict[str, Any]],
+        chosen: list[Optional[dict[str, Any]]],
+) -> list[Optional[dict[str, Any]]]:
+    """
+    After title match + pins, give leftover class-matching windows to
+    still-unclaimed roles so a second apply reuses a New Tab PWA.
+    """
+    if not roles or not windows:
+        return chosen
+    claimed: set[str] = set()
+    for w in chosen:
+        if w is not None:
+            claimed.add(_window_key(w))
+    out = list(chosen)
+
+    def pref_for(role: dict[str, Any]) -> Optional[int]:
+        slot = str(role.get("slot") or "")
+        desired_mon = mon_index_from_slot(slot)
+        return _match_mon_pref(role.get("match") or {}, desired_mon)
+
+    for i, role in enumerate(roles):
+        if out[i] is not None:
+            continue
+        want = _role_class_want(role)
+        if not want:
+            continue
+        candidates = []
+        for w in windows:
+            if not isinstance(w, dict) or _window_key(w) in claimed:
+                continue
+            if w.get("placeholder") is True:
+                continue
+            got = w.get("wmClass") or w.get("wm_class") or ""
+            if str(got).casefold().startswith("forge-placeholder"):
+                continue
+            if _class_eq(got, want):
+                candidates.append(w)
+        pick = _pick_window(candidates, pref_for(role), mon_only=False)
+        if pick is None:
+            continue
+        out[i] = pick
+        claimed.add(_window_key(pick))
+    return out
 
 
 def _normalize_role_pins(

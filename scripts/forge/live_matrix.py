@@ -437,6 +437,31 @@ LIVE_CASES: tuple[LiveCase, ...] = (
         ),
     ),
     LiveCase(
+        id="L1.r029-reuse-no-double",
+        layer=LAYER_L1,
+        title="Second layout apply reuses chrome-family windows (R029)",
+        behaviors=(
+            "layout-apply",
+            "chrome-map",
+            "structure-bind",
+        ),
+        regressions=("R029", ),
+        profile="_forge-test-dual",
+        setup=("keep-agent", "keep-ghostty-tiles"),
+        actions=("r029-reuse-no-double-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+        ),
+        notes=(
+            "R029: first apply may open; second apply must not launch extra "
+            "Chrome/Grok windows. L0: test_wait_class_fallback_*, "
+            "TestClaimClassFallback, bug-r029-late-title. Human on green: "
+            "empty desk layout, then layout again — count stays."
+        ),
+    ),
+    LiveCase(
         id="L1.r016-noop-workareas",
         layer=LAYER_L1,
         title="No-op monitor re-apply must not thrash tiles (R016)",

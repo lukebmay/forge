@@ -34,6 +34,7 @@ from layout_apply import (  # noqa: E402
     move_step_window_ids,
     open_action_to_launch_fields,
     parent_last_tab_focus_by_window_id,
+    pending_pins_without_title,
     partition_extension_steps_place_vs_structure,
     partition_plan_actions,
     residual_follow_up,
@@ -2747,6 +2748,93 @@ class TestCl9ParallelOpenPins(unittest.TestCase):
         self.assertTrue(out["ok"])
         self.assertEqual(out["role_pins"], {"Grok": 2, "Gmail": 1})
         self.assertGreaterEqual(out["polls"], 3)
+
+    def test_wait_class_fallback_pins_new_tab_after_timeout(self):
+        """R029: Grok PWA mapped as New Tab — pin it, do not leave the role missing."""
+        pending = [{
+            "role": "Grok",
+            "wait_classes": ["Google-chrome"],
+            "title_contains": "Grok",
+        }]
+        t = {"v": 0.0}
+
+        def load():
+            return [{
+                "windowId": 9,
+                "wmClass": "Google-chrome",
+                "title": "New Tab - Google Chrome",
+            }]
+
+        def mono() -> float:
+            return t["v"]
+
+        def sleep_fn(s: float) -> None:
+            t["v"] += max(s, 0.1)
+
+        out = wait_for_open_role_pins(
+            load,
+            pending,
+            baseline_ids=set(),
+            timeout_ms=200,
+            poll_ms=50,
+            sleep_fn=sleep_fn,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["role_pins"], {"Grok": 9})
+        self.assertEqual(out["missing"], [])
+
+    def test_wait_class_fallback_assigns_two_untitled_chromes(self):
+        pending = [
+            {
+                "role": "google-chrome",
+                "wait_classes": ["Google-chrome"],
+                "title_contains": "Google Chrome",
+            },
+            {
+                "role": "Grok",
+                "wait_classes": ["Google-chrome"],
+                "title_contains": "Grok",
+            },
+        ]
+        t = {"v": 0.0}
+
+        def load():
+            return [
+                {"windowId": 1, "wmClass": "Google-chrome", "title": ""},
+                {"windowId": 2, "wmClass": "Google-chrome", "title": ""},
+            ]
+
+        def mono() -> float:
+            return t["v"]
+
+        def sleep_fn(s: float) -> None:
+            t["v"] += max(s, 0.1)
+
+        out = wait_for_open_role_pins(
+            load,
+            pending,
+            baseline_ids=set(),
+            timeout_ms=200,
+            poll_ms=50,
+            sleep_fn=sleep_fn,
+            monotonic_fn=mono,
+        )
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["role_pins"]["google-chrome"], 1)
+        self.assertEqual(out["role_pins"]["Grok"], 2)
+        self.assertEqual(out["missing"], [])
+
+    def test_pending_pins_without_title_strips_identity(self):
+        stripped = pending_pins_without_title([{
+            "role": "Grok",
+            "wait_classes": ["Google-chrome"],
+            "title_contains": "Grok",
+            "title_exact": "Grok",
+        }])
+        self.assertEqual(stripped[0]["role"], "Grok")
+        self.assertNotIn("title_contains", stripped[0])
+        self.assertNotIn("title_exact", stripped[0])
 
 
 class TestLaunchAppGhostty(unittest.TestCase):

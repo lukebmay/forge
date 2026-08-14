@@ -5,9 +5,9 @@
 **Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Active:** Operator campaign **2026-08-13** — insert **A** R028
-(leftover wrap / batch skip). Host tip `b6cf05b` needs install + nest
-or logout for R028 JS. Wave Z / R025–R027 live gestures only.
+**Active:** Operator campaign **2026-08-13** — **R029** green layout
+double/FLOAT (D034). CLI live after pull; extension JS needs `./install`
+(+ HUP on green X11). Insert A R028 residual after that.
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
@@ -18,7 +18,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | Insert A R028 — install + nest/logout, then `layout dev` + left-dock Nautilus | [task](./tasks/forge-container-insert-a.md) |
+| **P0** | R029 green layout — install + `layout dev` reuses, tiles, no Chrome crash-double | [task](./tasks/forge-layout-green-reuse-double.md) |
+| residual | Insert A R028 — install + nest/logout, then `layout dev` + left-dock Nautilus | [task](./tasks/forge-container-insert-a.md) |
 | done | Insert/DnD design lock: **A** + Chrome drag table | [task](./tasks/forge-container-insert-dnd-design.md) |
 | residual | Wave Z zoom on tip; Vim kit live — try Super+Enter / C-S-Enter / S-S-Enter; Super+Space = Run | [task](./tasks/forge-zoom-maximize.md) |
 | residual | **R025** tab-click slot size after tip | [task](./tasks/forge-tab-click-slot.md) |
@@ -50,12 +51,10 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 ### Why this order
 
-1. **Insert A live** — `./install` + nest or logout, then `layout dev`
-   + left-dock Nautilus (R028: VSPLIT slot, not 3-wide HSPLIT). TD1
-   after that.
-2. **Live gestures** on current tip (zoom / R025–R027) — try those
-   **before** the next install if you have not yet.
-3. IC4 stay queued.
+1. **R029 live on green** — `./install` (X11 HUP), empty-desk
+   `layout dev`, then a second apply must reuse (no extra Chrome).
+2. **Insert A live** after that — left-dock Nautilus (R028 VSPLIT slot).
+3. Wave Z / R025–R027 gestures when the desk is stable. IC4 stays queued.
 
 **Do not** start dual-mon nest by default. **Do not** nest for no-code host smokes.
 

@@ -1908,6 +1908,19 @@ def assign_open_role_pins(
     return out
 
 
+def pending_pins_without_title(pending: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Copy pin specs with title identity removed (class-only leftover assign)."""
+    out: list[dict[str, Any]] = []
+    for item in pending or []:
+        if not isinstance(item, dict):
+            continue
+        q = dict(item)
+        for key in ("title_contains", "title~=", "title_exact", "title"):
+            q.pop(key, None)
+        out.append(q)
+    return out
+
+
 def wait_for_open_role_pins(
     load_windows: Callable[[], list[dict[str, Any]]],
     pending: list[dict[str, Any]],
@@ -1939,6 +1952,7 @@ def wait_for_open_role_pins(
     ]
     polls = 0
     last_err: Optional[str] = None
+    last_wins: list[dict[str, Any]] = []
 
     while remaining and mono() <= deadline:
         try:
@@ -1949,6 +1963,7 @@ def wait_for_open_role_pins(
         except Exception as e:
             last_err = str(e)
             wins = []
+        last_wins = wins
         polls += 1
         assigned = assign_open_role_pins(remaining,
                                          wins,
@@ -1965,6 +1980,24 @@ def wait_for_open_role_pins(
                 break
         if poll_s > 0 and remaining:
             sleep(poll_s)
+
+    # Title identity is for disambiguation while titles are still arriving.
+    # After the wait, claim leftover new maps by class so a New Tab PWA is
+    # not treated as missing (next apply would launch another Chrome).
+    if remaining and last_wins:
+        assigned = assign_open_role_pins(
+            pending_pins_without_title(remaining),
+            last_wins,
+            used,
+            class_eq=class_eq,
+        )
+        if assigned:
+            for rid, wid in assigned.items():
+                pins[rid] = wid
+                used.add(str(wid).strip())
+            remaining = [
+                p for p in remaining if str(p.get("role")) not in pins
+            ]
 
     missing = [str(p.get("role")) for p in remaining]
     return {

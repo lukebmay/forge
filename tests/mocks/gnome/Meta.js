@@ -115,6 +115,11 @@ export class Window extends withSignals() {
     return this.title;
   }
 
+  set_title(value) {
+    this.title = value;
+    this.emit("notify::title");
+  }
+
   get_workspace() {
     return this._workspace;
   }
