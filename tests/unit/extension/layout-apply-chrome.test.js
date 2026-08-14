@@ -5,6 +5,8 @@ import {
   LAYOUT_APPLY_CHROME_TITLE,
   LAYOUT_APPLY_CHROME_TITLE_HEIGHT_RATIO,
   LAYOUT_APPLY_CHROME_DETAIL_TITLE_RATIO,
+  LAYOUT_APPLY_CHROME_HINT_MS,
+  LAYOUT_APPLY_CHROME_FIRST_HINT,
   applyChromeMetrics,
   formatApplyChromeStatus,
   createApplyChromeState,
@@ -39,15 +41,30 @@ describe("chrome presentation constants", () => {
     expect(formatApplyChromeStatus("dev")).toEqual({
       title: "Forge",
       detail: 'Loading layout "dev"...',
+      hint: "",
     });
     expect(formatApplyChromeStatus(null)).toEqual({
       title: "Forge",
       detail: "Loading layout...",
+      hint: "",
     });
     expect(formatApplyChromeStatus("  ")).toEqual({
       title: "Forge",
       detail: "Loading layout...",
+      hint: "",
     });
+  });
+
+  it("adds a brief first-apply hint only when the load is long-running", () => {
+    expect(LAYOUT_APPLY_CHROME_HINT_MS).toBeGreaterThanOrEqual(1500);
+    expect(LAYOUT_APPLY_CHROME_HINT_MS).toBeLessThan(8000);
+    expect(LAYOUT_APPLY_CHROME_FIRST_HINT.toLowerCase()).toContain("later");
+    expect(formatApplyChromeStatus("dev", { longRunning: true })).toEqual({
+      title: "Forge",
+      detail: 'Loading layout "dev"...',
+      hint: LAYOUT_APPLY_CHROME_FIRST_HINT,
+    });
+    expect(formatApplyChromeStatus("dev", { longRunning: false }).hint).toBe("");
   });
 });
 

@@ -150,7 +150,8 @@ no-open) shows a **reactive** full-stage ~80% black dim that eats pointer
 events, with a large white spinner + “Forge: Loading layout…” centered on
 each monitor (`layout-apply-chrome.js`; title ≈ **7.5%** of that monitor’s
 **stage** height as **visual** size — CSS px = stage×ratio / `scale_factor`
-so St does not double-scale HiDPI — detail half that). Cleared after
+so St does not double-scale HiDPI — detail half that). After ~2.5s a brief
+first-apply note appears (later applies are faster). Cleared after
 focus/soft (`LayoutBatch chrome-clear` in finally; also on error).
 Batch end alone does not clear. Also `disable()` and a hard timer ≤ **30s**.
 Disable: Preferences → Settings → Debugging, or
