@@ -5983,9 +5983,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Set a portable setting/keybinding (DBus SetSetting)",
         description=(
             "Write one allowlisted key. Value is JSON when possible, else plain text:\n"
-            '  forge set tiling-mode-enabled true\n'
-            '  forge set window-gap-size 8\n'
-            '  forge set kbd:window-focus-left \'["<Super>h"]\''
+            "  forge set tiling-mode-enabled true\n"
+            "  forge set window-gap-size 8\n"
+            "  forge set launch-app-command 'guake -t'\n"
+            "  forge set kbd:window-focus-left '[\"<Super>h\"]'\n"
+            "Empty launch-app-command opens GNOME Run a Command."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

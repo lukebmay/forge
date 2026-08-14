@@ -70,6 +70,8 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
          dim("# list durable jobs", **kw))
     _out(s, "  ", cmd("forge tree", **kw))
     _out(s, "  ", cmd("forge launch nautilus", **kw))
+    _out(s, "  ", cmd("forge set launch-app-command 'guake -t'", **kw),
+         "  ", dim("# Super+Space toggles Guake", **kw))
     _blank(s)
 
     _out(s, heading("Acronyms & terms", **kw))
@@ -162,6 +164,33 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
         "  ",
         dim(
             "Vim Phase 1: Shift+Super+n = tab↔stack chrome; Shift+Super+m = merge→tabbed.",
+            **kw,
+        ),
+    )
+    _blank(s)
+
+    _out(s, heading("Launch app", **kw))
+    _out(
+        s,
+        "  ",
+        dim(
+            "Vim/i3 Super+Space runs launch-app-command. Empty opens GNOME Run a Command.",
+            **kw,
+        ),
+    )
+    _out(
+        s,
+        "  ",
+        cmd("forge set launch-app-command 'guake -t'", **kw),
+        "  ",
+        dim("# toggle Guake", **kw),
+    )
+    _out(s, "  ", cmd("forge get launch-app-command", **kw))
+    _out(
+        s,
+        "  ",
+        dim(
+            "Also: Preferences → Application Launcher. Survives on each host via gsettings.",
             **kw,
         ),
     )
