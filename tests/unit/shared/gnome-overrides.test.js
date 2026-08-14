@@ -48,7 +48,7 @@ describe("shouldApplyOverride (forge-9fo, forge-abk)", () => {
     expect(shouldApplyOverride(autoMaximize, settingsWith({}))).toBe(true);
   });
 
-  it("clears GNOME Super+Space input-source so Vim/i3 zoom can bind it", () => {
+  it("clears GNOME Super+Space input-source so Vim/i3 Run can bind it", () => {
     const fwd = SETTINGS_OVERRIDES.find((d) => d.key === "switch-input-source");
     const back = SETTINGS_OVERRIDES.find((d) => d.key === "switch-input-source-backward");
     expect(fwd).toMatchObject({
@@ -57,6 +57,15 @@ describe("shouldApplyOverride (forge-9fo, forge-abk)", () => {
       newValue: [],
     });
     expect(back).toMatchObject({
+      schemaId: "org.gnome.desktop.wm.keybindings",
+      type: "strv",
+      newValue: [],
+    });
+  });
+
+  it("clears GNOME toggle-maximized so Vim/i3 Super+Return zoom can bind it", () => {
+    const toggle = SETTINGS_OVERRIDES.find((d) => d.key === "toggle-maximized");
+    expect(toggle).toMatchObject({
       schemaId: "org.gnome.desktop.wm.keybindings",
       type: "strv",
       newValue: [],

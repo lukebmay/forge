@@ -257,7 +257,7 @@ if (( ! SKIP_APPLY )); then
   forge_restore_theme_from_backup "$BACKUP"
 fi
 
-# Host chords (lock Super+Delete, quit Super+q, maximize Super+Return, …)
+# Host chords (lock Super+Delete, quit Super+q, …)
 if [[ -f "$SCRIPT_DIR/host-defaults.conf" ]]; then
   forge_hdr "Apply host keyboard defaults"
   "$SCRIPT_DIR/apply-host-defaults.zsh" --force "$SCRIPT_DIR/host-defaults.conf"

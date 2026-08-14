@@ -198,7 +198,7 @@ forge install
 | --- | --- |
 | Lock screen | `Super+Delete` (Forge `prefs-lock-screen`) |
 | Close window | `Super+q` (GNOME) |
-| Toggle maximize | `Super+Return` (GNOME `toggle-maximized`) |
+| Toggle maximize | unbound (`toggle-maximized` cleared; Super+Return is Forge zoom) |
 
 Applied automatically after install/migrate; re-run anytime:
 

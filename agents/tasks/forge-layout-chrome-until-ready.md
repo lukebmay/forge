@@ -36,7 +36,7 @@ click (R026 adopts a live pin).
   class for the *wait only*; green still records its own trials.
 - **Not skipped by persist:** launching Chrome/Grok on a cold desk;
   hard-ready TILE (~5s cap); 2s cold focus floor when we opened apps.
-- **Super+Enter:** not this file. Vim kit now binds Run to Super+Return;
+- **Super+Space:** not this file. Vim kit now binds Run to Super+Space;
   `./install` does not re-apply kits. On green: `forge keybind apply vim`.
 - **Enable/test:**
 
@@ -50,5 +50,5 @@ python3 -m pytest tests/unit/cli/test_settle_heuristics.py \
 ## Session note
 
 2026-08-13: operator on green — overlay should stay if they must not
-click; load times should not pay 6s first-ever every boot; Super+Enter
-did not open Run.
+click; load times should not pay 6s first-ever every boot; Super+Space
+is Run (empty command = GNOME Run).

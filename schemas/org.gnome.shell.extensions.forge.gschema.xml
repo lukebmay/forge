@@ -422,7 +422,7 @@
         </key>
 
         <key type="as" name="window-toggle-float">
-          <default><![CDATA[['<Ctrl><Super>space']]]></default>
+          <default><![CDATA[['<Alt><Super>Return']]]></default>
             <summary>Toggle float</summary>
         </key>
 

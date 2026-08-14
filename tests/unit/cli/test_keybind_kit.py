@@ -65,7 +65,7 @@ class TestKitMatch(unittest.TestCase):
                 "mod-mask-mouse-tile": "None",
                 "keys": list(self.KEYS),
                 "bindings": {
-                    "prefs-app-launch": ["<Super>Return"],
+                    "prefs-app-launch": ["<Super>space"],
                     "window-swap-last-active": ["<Super>Tab"],
                 },
             },
@@ -81,7 +81,7 @@ class TestKitMatch(unittest.TestCase):
                 "mod-mask-mouse-tile": "None",
                 "keys": list(self.KEYS),
                 "bindings": {
-                    "prefs-app-launch": ["<Super>Return"],
+                    "prefs-app-launch": ["<Super>space"],
                     "window-swap-last-active": ["<Super>Tab"],
                 },
             },

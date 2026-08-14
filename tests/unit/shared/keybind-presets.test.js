@@ -113,8 +113,8 @@ describe("keybind kits", () => {
       expect(KITS.safe.bindings["window-move-left"]).toEqual(["<Ctrl><Shift><Super>Left"]);
     });
 
-    it("float uses Ctrl+Super+Space (Ctrl-primary kits)", () => {
-      expect(KITS.safe.bindings["window-toggle-float"]).toEqual(["<Ctrl><Super>space"]);
+    it("float uses Alt+Super+Enter (Safe)", () => {
+      expect(KITS.safe.bindings["window-toggle-float"]).toEqual(["<Alt><Super>Return"]);
     });
 
     it("covers every KEYBINDING_KEYS entry", () => {
@@ -136,7 +136,7 @@ describe("keybind kits", () => {
       }
     });
 
-    it("shared rare chords; float yields Space to zoom on Vim/i3", () => {
+    it("shared rare chords; float is Alt+Super+Enter on Safe/Vim", () => {
       for (const id of ["safe", "vim", "i3"]) {
         expect(KITS[id].bindings["focus-border-toggle"]).toEqual(["<Ctrl><Super>b"]);
         expect(KITS[id].bindings["prefs-tiling-toggle"]).toEqual(["<Ctrl><Super>e"]);
@@ -145,30 +145,30 @@ describe("keybind kits", () => {
         ]);
         expect(KITS[id].bindings["prefs-lock-screen"]).toEqual(["<Super>Delete"]);
       }
-      expect(KITS.safe.bindings["window-toggle-float"]).toEqual(["<Ctrl><Super>space"]);
-      expect(KITS.vim.bindings["window-toggle-float"]).toEqual(["<Ctrl><Super>Return"]);
-      expect(KITS.i3.bindings["window-toggle-float"]).toEqual(["<Shift><Super>Return"]);
+      expect(KITS.safe.bindings["window-toggle-float"]).toEqual(["<Alt><Super>Return"]);
+      expect(KITS.vim.bindings["window-toggle-float"]).toEqual(["<Alt><Super>Return"]);
+      expect(KITS.i3.bindings["window-toggle-float"]).toEqual(["<Shift><Super>space"]);
     });
   });
 
   describe("vim and i3 kits", () => {
-    it("vim has Super+h on focus-left, Space zoom, Super+Enter run", () => {
+    it("vim has Super+h on focus-left, Enter zoom, Super+Space run", () => {
       expect(KITS.vim.bindings["window-focus-left"]).toContain("<Super>h");
-      expect(KITS.vim.bindings["window-toggle-float"]).toEqual(["<Ctrl><Super>Return"]);
-      expect(KITS.vim.bindings["window-zoom-toggle"]).toEqual(["<Super>space"]);
-      expect(KITS.vim.bindings["window-zoom-horizontal"]).toEqual(["<Ctrl><Super>space"]);
-      expect(KITS.vim.bindings["window-zoom-vertical"]).toEqual(["<Shift><Super>space"]);
-      expect(KITS.vim.bindings["prefs-app-launch"]).toEqual(["<Super>Return"]);
+      expect(KITS.vim.bindings["window-toggle-float"]).toEqual(["<Alt><Super>Return"]);
+      expect(KITS.vim.bindings["window-zoom-toggle"]).toEqual(["<Super>Return"]);
+      expect(KITS.vim.bindings["window-zoom-horizontal"]).toEqual(["<Ctrl><Super>Return"]);
+      expect(KITS.vim.bindings["window-zoom-vertical"]).toEqual(["<Shift><Super>Return"]);
+      expect(KITS.vim.bindings["prefs-app-launch"]).toEqual(["<Super>space"]);
       expect(kitUsesBareSuper(KITS.vim)).toBe(true);
     });
 
-    it("i3 has Super+hjkl focus, Space zoom, Shift+Super+Enter float", () => {
+    it("i3 has Super+hjkl focus, Enter zoom, Shift+Super+Space float", () => {
       expect(KITS.i3.bindings["window-focus-left"]).toContain("<Super>h");
       expect(KITS.i3.bindings["con-split-horizontal"]).toEqual(["<Super>b"]);
       expect(KITS.i3.bindings["con-split-vertical"]).toEqual(["<Super>v"]);
-      expect(KITS.i3.bindings["window-toggle-float"]).toEqual(["<Shift><Super>Return"]);
-      expect(KITS.i3.bindings["window-zoom-toggle"]).toEqual(["<Super>space"]);
-      expect(KITS.i3.bindings["prefs-app-launch"]).toEqual(["<Super>Return"]);
+      expect(KITS.i3.bindings["window-toggle-float"]).toEqual(["<Shift><Super>space"]);
+      expect(KITS.i3.bindings["window-zoom-toggle"]).toEqual(["<Super>Return"]);
+      expect(KITS.i3.bindings["prefs-app-launch"]).toEqual(["<Super>space"]);
       expect(kitUsesBareSuper(KITS.i3)).toBe(true);
     });
 
@@ -227,7 +227,7 @@ describe("keybind kits", () => {
       expect(applyKit(kbd, "safe")).toBe(true);
       expect(kbd.set_string).toHaveBeenCalledWith("mod-mask-mouse-tile", "None");
       expect(kbd.set_strv).toHaveBeenCalledWith("window-focus-left", ["<Ctrl><Super>Left"]);
-      expect(kbd.set_strv).toHaveBeenCalledWith("window-toggle-float", ["<Ctrl><Super>space"]);
+      expect(kbd.set_strv).toHaveBeenCalledWith("window-toggle-float", ["<Alt><Super>Return"]);
       expect(kbd.set_strv).toHaveBeenCalledWith("prefs-lock-screen", ["<Super>Delete"]);
       expect(kbd.set_strv).toHaveBeenCalledWith("focus-border-toggle", ["<Ctrl><Super>b"]);
       expect(kbd.set_strv).toHaveBeenCalledWith("prefs-tiling-toggle", ["<Ctrl><Super>e"]);
@@ -236,9 +236,9 @@ describe("keybind kits", () => {
     it("applyPreset alias still works for vim", () => {
       expect(applyPreset(kbd, "vim")).toBe(true);
       expect(kbd.set_strv).toHaveBeenCalledWith("window-focus-left", ["<Super>h", "<Super>Left"]);
-      expect(kbd.set_strv).toHaveBeenCalledWith("window-toggle-float", ["<Ctrl><Super>Return"]);
-      expect(kbd.set_strv).toHaveBeenCalledWith("window-zoom-toggle", ["<Super>space"]);
-      expect(kbd.set_strv).toHaveBeenCalledWith("prefs-app-launch", ["<Super>Return"]);
+      expect(kbd.set_strv).toHaveBeenCalledWith("window-toggle-float", ["<Alt><Super>Return"]);
+      expect(kbd.set_strv).toHaveBeenCalledWith("window-zoom-toggle", ["<Super>Return"]);
+      expect(kbd.set_strv).toHaveBeenCalledWith("prefs-app-launch", ["<Super>space"]);
       expect(kbd.set_strv).toHaveBeenCalledWith("prefs-lock-screen", ["<Super>Delete"]);
     });
 

@@ -22,13 +22,14 @@ lists GNOME/custom entries.
 | **Safe ≠ recommended** | Install must not stomp. Daily tiling wants denser Super+ maps — those are **opt-in kits**, not the schema default. |
 | **One primary modifier family** | Safe uses **`Ctrl+Super`** for almost everything so the map is learnable. **`Ctrl+Shift+Super`** only for *twins* of the same key (move vs focus, always-float vs float). Random mix of Shift+Super vs Ctrl+Super without a rule was accidental legacy. |
 | **Lock = `Super+Delete` (all kits)** | Rare global action; keeps letter keys free. (Historical `Super+q` was a launcher collision.) |
-| **Zoom = Space (Vim / i3)** | Full / horizontal / vertical: `Super+Space` / `Ctrl+Super+Space` / `Shift+Super+Space`. Safe leaves Super+ free, so zoom stays unbound there. GNOME input-source Super+Space is cleared while Forge is enabled. |
-| **Float yields Space to zoom** | **Safe:** `Ctrl+Super+Space`. **Vim:** `Ctrl+Super+Enter`. **i3:** `Shift+Super+Enter`. Always-float twin: `Ctrl+Shift+Super+Space`. |
+| **Zoom = Enter (Vim / i3)** | Full / horizontal / vertical: `Super+Enter` / `Ctrl+Super+Enter` / `Shift+Super+Enter`. Safe leaves Super+ free, so zoom stays unbound there. GNOME `toggle-maximized` is cleared while Forge is enabled. |
+| **Run = Space (Vim / i3)** | `Super+Space` (empty command = GNOME Run a Command). GNOME input-source Super+Space is cleared while Forge is enabled. |
+| **Float = Alt+Super+Enter (Safe / Vim)** | Leaves zoom on Super+Enter. **i3:** `Shift+Super+Space`. Always-float: `Ctrl+Shift+Super+Space`. |
 | **Rare chrome off bare Super+** | **Focus border** and **tiling master toggle** almost never fire — multi-mod only. |
 | **Border = `Ctrl+Super+b`** | **b**order. (Legacy `Super+x` / `Ctrl+Super+x` was arbitrary.) |
 | **Tiling master = `Ctrl+Super+e`** | **e**nable / disable Forge tiling for the session. (Legacy `Super+w` meant “window” vaguely and fought Super+w habits; not a strong mnemonic.) |
 | **Vim kit** | Power map: vim-style focus on `Super+hjkl`, move on Shift, swap on Ctrl+Super. |
-| **i3 kit** | Approximate i3 muscle memory (focus hjkl, move Shift+hjkl, splits `b`/`v`/`e`, zoom on Space). Not a full i3 mode system. |
+| **i3 kit** | Approximate i3 muscle memory (focus hjkl, move Shift+hjkl, splits `b`/`v`/`e`, zoom on Enter). Not a full i3 mode system. |
 | **No silent kit rewrite on install** | Live dconf stays until you apply a kit. `./install` **warns** when live chords match no kit (stale after we change Vim/i3). Re-apply: `./install --kit=vim` or `forge keybind apply vim --reset`. |
 
 Workflow we want: **load a kit → tweak → Save as your kit**.
@@ -56,7 +57,7 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Focus ←↓↑→ | `Ctrl+Super+arrows` |
 | Move ←↓↑→ | `Ctrl+Shift+Super+arrows` |
 | Swap h/j/k/l | `Ctrl+Super+h/j/k/l` |
-| Toggle float | `Ctrl+Super+Space` |
+| Toggle float | `Alt+Super+Enter` |
 | Always-float (app) | `Ctrl+Shift+Super+Space` |
 | Group chrome (tab ↔ stack) | `Ctrl+Super+g` |
 | Split orientation (H ↔ V) | `Ctrl+Super+s` |
@@ -82,7 +83,7 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Snaps / monocle / cyclic focus | unbound |
 
 Forge still frees a few GNOME defaults while enabled (edge-tile keys, maximize,
-etc. — see `gnome-overrides`). Those restore on disable.
+toggle-maximized, etc. — see `gnome-overrides`). Those restore on disable.
 
 ---
 
@@ -95,9 +96,9 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Focus h/j/k/l (also arrows) | `Super+h/j/k/l`, `Super+arrows` |
 | Move h/j/k/l | `Shift+Super+h/j/k/l` |
 | Swap h/j/k/l | `Ctrl+Super+h/j/k/l` |
-| Toggle float | `Ctrl+Super+Enter` |
+| Toggle float | `Alt+Super+Enter` |
 | Always-float (app) | `Ctrl+Shift+Super+Space` |
-| Zoom full / H / V | `Super+Space` / `Ctrl+Super+Space` / `Shift+Super+Space` |
+| Zoom full / H / V | `Super+Enter` / `Ctrl+Super+Enter` / `Shift+Super+Enter` |
 | Group chrome (tab ↔ stack) | `Shift+Super+n` (**n**ode layout) |
 | Split orientation (H ↔ V) | `Ctrl+Super+n` |
 | Split H / V (force) | `Super+z` / `Super+v` |
@@ -110,7 +111,7 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Preferences | `Super+.` |
 | Lock screen | `Super+Delete` |
 | Reload / cheatsheet | `Shift+Super+r` / `Shift+Super+/` |
-| Launch app | `Super+Enter` (empty command = GNOME Run a Command) |
+| Launch app | `Super+Space` (empty command = GNOME Run a Command) |
 | Equalize / expand / shrink | `Super+=` / `]` / `[` |
 | Swap last active | `Super+Tab` |
 | Layout debug | `Ctrl+Super+d` |
@@ -133,16 +134,16 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | Focus h/j/k/l (+ arrows) | `Super+h/j/k/l`, arrows |
 | Move (+ arrows) | `Shift+Super+h/j/k/l` (+ arrows) |
 | Swap | `Ctrl+Super+h/j/k/l` (Forge-only; i3 has no exact twin) |
-| Float | `Shift+Super+Enter` (Space is zoom) |
+| Float | `Shift+Super+Space` (Enter is zoom) |
 | Always-float | `Ctrl+Shift+Super+Space` |
-| Zoom full / H / V | `Super+Space` / `Ctrl+Super+Space` / `Shift+Super+Space` |
+| Zoom full / H / V | `Super+Enter` / `Ctrl+Super+Enter` / `Shift+Super+Enter` |
 | Split toggle / H / V | `Super+e` / `Super+b` / `Super+v` |
 | Stacked / tabbed (to/from split) | `Super+s` / `Super+w` |
 | Group chrome (tab ↔ stack) | `Shift+Super+n` |
 | Merge into tabbed group | `Shift+Super+m` |
 | Tab decoration | `Shift+Super+w` |
 | “Fullscreen-ish” snap center | `Super+f` |
-| Launch app | `Super+Enter` (empty command = GNOME Run a Command) |
+| Launch app | `Super+Space` (empty command = GNOME Run a Command) |
 | Monocle | `Super+m` |
 | Lock | `Super+Delete` |
 | Cheatsheet / reload | `Shift+Super+/` / `Shift+Super+r` |

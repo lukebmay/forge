@@ -118,19 +118,19 @@ existing mode + any of the 3 chords clears. One zoomed TILE per monitor.
 `shouldRestoreTileSlot` false when `zoomMode` set; non-zoomed Meta max/fs
 still restores.
 
-**Vim / i3:** Super+Space zoom full; Ctrl+Super+Space zoom H; Shift+Super+Space
-zoom V. Super+Return = run. Vim float moved to Ctrl+Super+Return; i3 float
-to Shift+Super+Return (Space is zoom). Safe zoom still unbound; Safe float
-stays Ctrl+Super+Space. GNOME switch-input-source(+backward) cleared while
+**Vim / i3:** Super+Return zoom full; Ctrl+Super+Return zoom H;
+Shift+Super+Return zoom V. Super+Space = run. Vim/Safe float is Alt+Super+Return; i3 float is
+Shift+Super+Space (Enter is zoom). Safe zoom still unbound. GNOME
+switch-input-source(+backward) and toggle-maximized cleared while
 Forge is enabled.
 
 **gsettings (host, applied):**
 ```
-window-zoom-toggle ['<Super>space']
-window-zoom-horizontal ['<Ctrl><Super>space']
-window-zoom-vertical ['<Shift><Super>space']
-prefs-app-launch ['<Super>Return']
-window-toggle-float ['<Ctrl><Super>Return']
+window-zoom-toggle ['<Super>Return']
+window-zoom-horizontal ['<Ctrl><Super>Return']
+window-zoom-vertical ['<Shift><Super>Return']
+prefs-app-launch ['<Super>space']
+window-toggle-float ['<Alt><Super>Return']
 window-swap-last-active ['<Super>Tab']
 ```
 Stale `~/.local/share/glib-2.0/schemas/` copied + compiled so CLI saw the
@@ -143,9 +143,7 @@ borders, CommandHandler, whitelist, theme, tree-query, Tree-layout, Node).
 run -- forge ping` ok. `forge nested status` → running: False.
 
 **Leftover:** Zoom border must use `paintRectForWindow` (not the unzoomed
-slot). Super+Enter Run = empty command → GNOME `openRunDialog`. Host
-needs `./install` + nest or logout for both JS fixes.
-`./install` does **not** re-apply kits — old Vim still has Super+Return
-= swap-last. On each desk: `forge keybind apply vim` so Super+Return is
-Run. Live desk smoke not run. Snapshot persist of `zoomMode` not added
-(`forge layout` may clear; do not fight).
+slot). Super+Space Run = empty command → GNOME `openRunDialog`. Super+Return
+is Forge zoom; `toggle-maximized` cleared in gnome-overrides + host-defaults.
+Snapshot persist of `zoomMode` not added (`forge layout` may clear; do not
+fight).

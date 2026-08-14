@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# Apply host keyboard defaults (lock, quit, maximize, …) after Forge install.
+# Apply host keyboard defaults (lock, quit, …) after Forge install.
 emulate -L zsh
 set -euo pipefail
 SCRIPT_DIR=${0:A:h}
@@ -100,9 +100,13 @@ if (( ! DRY )); then
   close=$(gsettings get org.gnome.desktop.wm.keybindings close 2>/dev/null || true)
   forge_info "verify lock=$lock"
   forge_info "verify close=$close"
-  forge_info "verify toggle-maximized=$(gsettings get org.gnome.desktop.wm.keybindings toggle-maximized)"
+  toggle=$(gsettings get org.gnome.desktop.wm.keybindings toggle-maximized 2>/dev/null || true)
+  forge_info "verify toggle-maximized=$toggle"
   if [[ "$lock" == *"<Super>q"* ]]; then
     forge_warn "prefs-lock-screen still includes Super+q — edit $CONF"
+  fi
+  if [[ "$toggle" == *"<Super>Return"* ]]; then
+    forge_warn "toggle-maximized still includes Super+Return — steals Forge zoom"
   fi
 fi
 
