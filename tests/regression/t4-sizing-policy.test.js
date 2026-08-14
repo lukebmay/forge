@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import * as TreeLayout from "../../lib/extension/tree-layout.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
 import {
   createMockWindow,
@@ -102,6 +103,20 @@ describe("T4 sizing policy", () => {
 
       expect(children[0].percent).toBe(0.7);
       expect(children[1].percent).toBe(0.3);
+    });
+
+    it("skips min-size write-back when skipWriteBack is set", () => {
+      const { con, children } = buildSplit(
+        LAYOUT_TYPES.HSPLIT,
+        { x: 0, y: 0, width: 1800, height: 1080 },
+        [{ percent: 1 / 3, min_width: 900 }, { percent: 1 / 3 }, { percent: 1 / 3 }]
+      );
+
+      TreeLayout.computeSizes(con, children, (items) => items, { skipWriteBack: true });
+
+      expect(children[0].percent).toBeCloseTo(1 / 3, 5);
+      expect(children[1].percent).toBeCloseTo(1 / 3, 5);
+      expect(children[2].percent).toBeCloseTo(1 / 3, 5);
     });
 
     it("preserves intentional shares when any sibling is userSized", () => {

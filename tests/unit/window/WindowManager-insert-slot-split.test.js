@@ -163,6 +163,109 @@ describe("D032 slot-split insert", () => {
       expect(mon0.getNodeByType(NODE_TYPES.CON)).toHaveLength(0);
     });
 
+    it("leftover 1-child HSPLIT is the slot: join it as VSPLIT, not 3-wide MONITOR", () => {
+      // After a prior wrap+close, ghostty sits in a leftover HSPLIT CON.
+      // Next open joins that slot (retarget to VSPLIT from the tall rect).
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      const bag = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.CON, {});
+      bag.layout = LAYOUT_TYPES.TABBED;
+      tile(bag, {
+        id: "tab-a",
+        monitor: 0,
+        wm_class: "TabApp",
+        rect: { x: 0, y: 35, width: 1255, height: 1365 },
+      });
+      const leftover = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.CON, {});
+      leftover.layout = LAYOUT_TYPES.HSPLIT;
+      leftover._rect = { x: 1255, y: 0, width: 1255, height: 1400 };
+      const ghost = tile(leftover, {
+        id: "ghost",
+        monitor: 0,
+        wm_class: "com.mitchellh.ghostty",
+        rect: { x: 1255, y: 0, width: 1255, height: 1400 },
+      });
+      focusTile(ghost);
+
+      const opened = openTiled({
+        id: "nautilus",
+        wm_class: "org.gnome.Nautilus",
+        rect: { x: 100, y: 100, width: 800, height: 600 },
+      });
+
+      expect(mon0.childNodes.length).toBe(2);
+      expect(hvWideCount(mon0, 3)).toBe(0);
+      expect(bag.parentNode).toBe(mon0);
+      expect(opened.node.parentNode).toBe(leftover);
+      expect(leftover.isVSplit()).toBe(true);
+      expect(leftover.childNodes).toEqual(expect.arrayContaining([ghost.node, opened.node]));
+    });
+
+    it("layout-batch open still slot-splits (does not skip D032)", () => {
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      const a = tile(mon0, {
+        id: "tab-slot",
+        monitor: 0,
+        wm_class: "AppA",
+        rect: { x: 0, y: 0, width: 1255, height: 1400 },
+      });
+      const b = tile(mon0, {
+        id: "ghost-slot",
+        monitor: 0,
+        wm_class: "AppB",
+        rect: { x: 1255, y: 0, width: 1255, height: 1400 },
+      });
+      focusTile(b);
+      wm().beginOpenLayoutBatch("dev");
+      expect(wm().openLayoutBatchActive).toBe(true);
+
+      const c = openTiled({
+        id: "dock-nautilus",
+        wm_class: "org.gnome.Nautilus",
+        rect: { x: 100, y: 100, width: 800, height: 600 },
+      });
+
+      wm().endOpenLayoutBatch("test");
+      expect(mon0.childNodes.length).toBe(2);
+      expect(hvWideCount(mon0, 3)).toBe(0);
+      expect(a.node.parentNode).toBe(mon0);
+      const wrap = b.node.parentNode;
+      expect(wrap).not.toBe(mon0);
+      expect(wrap.childNodes).toEqual(expect.arrayContaining([b.node, c.node]));
+    });
+
+    it("wrap orientation follows the unit slot rect, not a stale wide frame", () => {
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      tile(mon0, {
+        id: "left-bag",
+        monitor: 0,
+        wm_class: "AppA",
+        rect: { x: 0, y: 0, width: 1255, height: 1400 },
+      });
+      const b = tile(mon0, {
+        id: "tall-slot",
+        monitor: 0,
+        wm_class: "AppB",
+        rect: { x: 1255, y: 0, width: 1255, height: 1400 },
+      });
+      b.node.rect = { x: 1255, y: 0, width: 1255, height: 1400 };
+      b.meta.get_frame_rect = () => ({ x: 1255, y: 0, width: 2000, height: 800 });
+      focusTile(b);
+
+      const c = openTiled({
+        id: "nautilus",
+        wm_class: "org.gnome.Nautilus",
+        rect: { x: 100, y: 100, width: 800, height: 600 },
+      });
+
+      const wrap = b.node.parentNode;
+      expect(wrap).not.toBe(mon0);
+      expect(wrap.isVSplit()).toBe(true);
+      expect(wrap.childNodes).toEqual(expect.arrayContaining([b.node, c.node]));
+    });
+
     it("tab bag + new tile: bag stays TABBED; new is sibling of the bag under a new H/V CON", () => {
       const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
       mon0.layout = LAYOUT_TYPES.HSPLIT;

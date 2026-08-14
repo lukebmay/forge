@@ -5,9 +5,9 @@
 **Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Active:** Operator campaign **2026-08-13** — insert **A** (D032)
-slot-split implement. Host tip `7b9875e`. Wave Z / R025–R027 live
-gestures only.
+**Active:** Operator campaign **2026-08-13** — insert **A** R028
+(leftover wrap / batch skip). Host tip `b6cf05b` needs install + nest
+or logout for R028 JS. Wave Z / R025–R027 live gestures only.
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
@@ -18,14 +18,14 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | Insert A (D032) L0 green — install + nest/logout, then 3rd open / edge drop | [task](./tasks/forge-container-insert-a.md) |
+| **P0** | Insert A R028 — install + nest/logout, then `layout dev` + left-dock Nautilus | [task](./tasks/forge-container-insert-a.md) |
 | done | Insert/DnD design lock: **A** + Chrome drag table | [task](./tasks/forge-container-insert-dnd-design.md) |
-| residual | Wave Z zoom on tip; Vim kit live — try Super+Space / C-S-Space / S-S-Space; Super+Enter = Run | [task](./tasks/forge-zoom-maximize.md) |
+| residual | Wave Z zoom on tip; Vim kit live — try Super+Enter / C-S-Enter / S-S-Enter; Super+Space = Run | [task](./tasks/forge-zoom-maximize.md) |
 | residual | **R025** tab-click slot size after tip | [task](./tasks/forge-tab-click-slot.md) |
 | residual | **R026** first tab-click after layout must stay | [task](./tasks/forge-tab-click-pin-adopt.md) |
 | residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
 | done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
-| done | First-layout FLOAT on tip: one `layout dev` TILE. Do not re-patch R024 | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
+| done | First-layout FLOAT (R024): always force-paint at batch end; skip mid-batch percent write-back | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
 | done | Install `--kit=vim` + stale-kit warning | [task](./tasks/forge-install-reapply-kit.md) |
 | later | Leftover Grok→Chrome CENTER + VLC slot (R019/R020) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
@@ -50,8 +50,9 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 ### Why this order
 
-1. **Insert A live** — `./install` + nest or logout, then 3rd Nautilus
-   and same-axis edge. TD1 strip reorder after that.
+1. **Insert A live** — `./install` + nest or logout, then `layout dev`
+   + left-dock Nautilus (R028: VSPLIT slot, not 3-wide HSPLIT). TD1
+   after that.
 2. **Live gestures** on current tip (zoom / R025–R027) — try those
    **before** the next install if you have not yet.
 3. IC4 stay queued.

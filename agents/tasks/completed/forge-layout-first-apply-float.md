@@ -44,12 +44,14 @@ Either tip is not loaded, or the fix is incomplete.
 
 ### Hygiene left (not this bug)
 
-`endOpenLayoutBatch` still skips `commitLayout` when
-`step.shouldCommit` is false (comment says always force). Only
-revisit if FLOAT returns after a one-shot apply on tip.
+Closed 2026-08-13 after green first-apply FLOAT: batch end always
+force-paints; mid-batch computeSizes does not write percents.
 
 ## Session note
 
-**2026-08-13 tip smoke:** host on tip. One `layout dev` TILE. Do not
-re-patch R024. Zoom / R025–R027 JS also on host; live gestures still
-operator.
+**2026-08-13 green FLOAT returned:** first `layout dev` FLOAT, second
+tiled with wrong sizes. Green `dev` is tab|ghostty with
+`share [0.687, 0.313]`. Mid-batch RunSteps cleared the latch so batch
+end skipped paint; incomplete min-size write-back overwrote those
+shares. R024 closed: always force-paint; no mid-batch write-back.
+Planner still emits ensure_sizes for that profile.

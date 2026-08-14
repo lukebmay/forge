@@ -55,6 +55,43 @@ describe("SessionApi layout-cycle / merge-group", () => {
     return { con, w1, w2, n1, n2 };
   }
 
+  it("green-dev shares survive first-apply batch paint (tab | ghostty)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const bag = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    bag.layout = LAYOUT_TYPES.TABBED;
+    const chrome = createMockWindow({ id: 10, wm_class: "google-chrome" });
+    const grok = createMockWindow({
+      id: 11,
+      wm_class: "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+    });
+    const ghost = createMockWindow({ id: 12, wm_class: "com.mitchellh.ghostty" });
+    const nChrome = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, chrome);
+    const nGrok = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, grok);
+    const nGhost = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, ghost);
+    nChrome.mode = WINDOW_MODES.TILE;
+    nGrok.mode = WINDOW_MODES.TILE;
+    nGhost.mode = WINDOW_MODES.TILE;
+    bag.percent = 0.5;
+    nGhost.percent = 0.5;
+
+    const sized = api()._sizeOp(["id:11", "id:12"], [0.687, 0.313], { quiet: true });
+    expect(sized.ok).toBe(true);
+    expect(bag.percent).toBeCloseTo(0.687, 3);
+    expect(nGhost.percent).toBeCloseTo(0.313, 3);
+    expect(bag.userSized).toBe(true);
+    expect(nGhost.userSized).toBe(true);
+
+    wm().beginOpenLayoutBatch("dev");
+    wm().renderTree("run-steps", true);
+    const end = wm().endOpenLayoutBatch("open-batch");
+    expect(end.committed).toBe(true);
+    expect(bag.percent).toBeCloseTo(0.687, 3);
+    expect(nGhost.percent).toBeCloseTo(0.313, 3);
+    expect(bag.userSized).toBe(true);
+    expect(nGhost.userSized).toBe(true);
+  });
+
   it("layout TABBED re-affirm preserves valid lastTabFocus (belt anchor ≠ active)", () => {
     // Belt ensure_layout anchors on first role (chrome); profile active is Grok.
     const { con, w1, w2 } = twoWindowTabbed();

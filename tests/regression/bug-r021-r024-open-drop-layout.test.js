@@ -218,5 +218,25 @@ describe("R021–R024: empty-head open, leaf empty-mon drag, nest drop, first la
       expect(end.committed).toBe(true);
       expect(floated.node.mode).toBe(WINDOW_MODES.TILE);
     });
+
+    it("mid-batch renderTree clearing the latch still force-paints at batch end", () => {
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      const floated = tile(mon0, {
+        id: "green-first",
+        monitor: 0,
+        rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
+      });
+      floated.node.mode = WINDOW_MODES.FLOAT;
+      const commit = vi.spyOn(wm(), "commitLayout");
+      wm().beginOpenLayoutBatch();
+      wm()._openLayoutBatchNeedsCommit = true;
+      wm().renderTree("run-steps", true);
+      expect(wm()._openLayoutBatchNeedsCommit).toBe(false);
+
+      const end = wm().endOpenLayoutBatch("open-batch");
+      expect(end.committed).toBe(true);
+      expect(commit).toHaveBeenCalledWith("open-batch", { force: true });
+      expect(floated.node.mode).toBe(WINDOW_MODES.TILE);
+    });
   });
 });

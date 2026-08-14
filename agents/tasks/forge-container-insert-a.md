@@ -4,7 +4,7 @@
 **Plan:** [forge-container-insert-dnd-design](./forge-container-insert-dnd-design.md)
 **Branch:** master
 **Blocker:** (none)
-**Updated:** 2026-08-13
+**Updated:** 2026-08-13 (R028 leftover wrap + batch skip)
 
 ## Goal
 
@@ -29,7 +29,7 @@ or ran `window-reset-sizes`.
       orientation toggle / quarter tiling
 - [x] L0 units green; no personal `dev`/`t1` layouts; nest only if JS
       live-retest is needed (mon=1, `forge nested run`, then stop)
-- [ ] Live after nest/logout (not run this session)
+- [ ] Live after nest/logout — `layout dev`, dock Nautilus on left (R028)
 
 ## Context for the next agent (complete + succinct)
 
@@ -43,9 +43,9 @@ on the wrap). Other mon siblings unchanged.
 
 ### Code
 
-- `tree.slotSplitUnit(unit, orientation)` — wrap via `tree.split` when
-  parent is H/V and already has 2+ children. No-op for lone child or
-  tab/stack parent.
+- `tree.slotSplitUnit` — wrap via `tree.split` when parent is H/V with
+  2+ children. 1-child leftover H/V is the slot: join it (retarget
+  aspect). No-op wrap for lone child or tab/stack parent.
 - `wm.slotSplitForInsert(unit)` — aspect of the unit’s slot rect
   (`aspectOrientationFromRect`). Pass the **resolved** unit (do not
   re-walk after tiny-pane tab wrap).
@@ -83,11 +83,9 @@ All green this session (plus drag-drop, open-commit, mhje, tnth).
 
 ## Session note
 
-**2026-08-13 implement:** D032 insert A on master. Named
-`tree.slotSplitUnit` + `wm.slotSplitForInsert`. Open wraps the focused
-unit when the H/V parent already has siblings; 2nd window stays a mon
-sibling; tab/stack focus wraps the bag (new tile is a sibling, not a
-tab). Same-axis edge drop wraps the target; same-parent reorder does
-not. Auto-split default still off (1-child toggle only). Catalog row +
-`docs/user/layouts.md` note. L0 green. Not committed. Live after nest
-or logout.
+**2026-08-13 R028:** Live `layout dev` + left-dock Nautilus was 3-wide
+even HSPLIT. Root: leftover 1-child H/V + attach to MONITOR; CL8
+skipped wrap mid-batch; orientation used a stale wide frame. Fix: join
+leftover 1-child H/V as the slot (retarget aspect); D032 still runs
+mid-batch; orientation from `unit.rect`. L0 leftover join + batch +
+slot-rect. Live still needs `./install` + nest or logout.

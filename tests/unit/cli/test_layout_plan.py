@@ -5341,6 +5341,93 @@ class TestShareSugar(unittest.TestCase):
         self.assertEqual(size_ops[0]["windowIds"], [1, 2])
         self.assertEqual(plan["counts"].get("sized"), 1)
 
+    def test_green_dev_tab_ghostty_resized_share(self):
+        # hosts/green/dev.json: tab(Chrome, Grok) | ghostty, tab resized ~69%.
+        profile = {
+            "tiles": {
+                "mon0": {
+                    "hsplit": [{
+                        "tab": ["google-chrome", "Grok"],
+                        "active": "Grok",
+                    }, "ghostty"],
+                    "share": [0.687, 0.313],
+                }
+            },
+            "focus": "ghostty",
+        }
+        ir = normalize_profile(profile)
+        self.assertEqual(ir["layout"]["mon0"].get("share"), [0.687, 0.313])
+        forest = {
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "HSPLIT",
+                "children": [
+                    {
+                        "nodeType":
+                        "CON",
+                        "layout":
+                        "TABBED",
+                        "percent":
+                        0.5,
+                        "userSized":
+                        False,
+                        "children": [
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 10,
+                                "wmClass": "google-chrome",
+                                "title": "New Tab - Google Chrome",
+                                "monitor": 0,
+                                "mode": "TILE",
+                                "children": [],
+                                "path": "mo0ws0/0/0",
+                            },
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 11,
+                                "wmClass":
+                                "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+                                "title": "Grok",
+                                "monitor": 0,
+                                "mode": "TILE",
+                                "children": [],
+                                "path": "mo0ws0/0/1",
+                            },
+                        ],
+                        "path":
+                        "mo0ws0/0",
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 12,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "term",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "percent": 0.5,
+                        "userSized": False,
+                        "children": [],
+                        "path": "mo0ws0/1",
+                    },
+                ],
+            }],
+        }
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"])
+        size_ops = [
+            a for a in plan["actions"] if a.get("op") == "ensure_sizes"
+        ]
+        self.assertEqual(len(size_ops), 1)
+        self.assertEqual(size_ops[0]["shares"], [0.687, 0.313])
+        # Rep for the tab bag is the first claimed child (Chrome), then Ghostty.
+        self.assertEqual(size_ops[0]["windowIds"], [10, 12])
+
 
 class TestClassEqChromeFamily(unittest.TestCase):
     """Chrome browser class matches PWA / crx ids for residual claim."""

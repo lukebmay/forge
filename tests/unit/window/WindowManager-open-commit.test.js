@@ -357,8 +357,10 @@ describe("WindowManager open commit (CL4)", () => {
     wm().renderTree("run-steps", true);
     expect(wm()._openLayoutBatchNeedsCommit).toBe(false);
 
+    const commitSpy = vi.spyOn(wm(), "commitLayout");
     const end = wm().endOpenLayoutBatch("open-batch");
-    expect(end.committed).toBe(false);
+    expect(end.committed).toBe(true);
+    expect(commitSpy).toHaveBeenCalledWith("open-batch", { force: true });
     expect(lcSpy).not.toHaveBeenCalled();
     expect(wm()._isDeferredOpen(meta)).toBe(false);
   });
@@ -383,15 +385,23 @@ describe("WindowManager open commit (CL4)", () => {
       expect(wm()._openLayoutBatchNeedsCommit).toBe(false);
       expect(treeRenderSpy).not.toHaveBeenCalled();
 
-      // End before idle flushes — must not requestLayout (residual owns commit).
-      const end = wm().endOpenLayoutBatch("open-batch");
-      expect(end.committed).toBe(false);
-      expect(lcSpy).not.toHaveBeenCalled();
+      const origRemove = GLib.Source.remove;
+      GLib.Source.remove = (id) => {
+        if (id >= 1 && id <= pending.length) pending[id - 1] = null;
+        return true;
+      };
+      try {
+        // End still force-paints after releasing deferred (R024).
+        const end = wm().endOpenLayoutBatch("open-batch");
+        expect(end.committed).toBe(true);
+        expect(lcSpy).not.toHaveBeenCalled();
+      } finally {
+        GLib.Source.remove = origRemove;
+      }
 
-      // Flush residual idle once.
       while (pending.length) {
         const cb = pending.shift();
-        cb();
+        if (cb) cb();
       }
       expect(treeRenderSpy).toHaveBeenCalledTimes(1);
       expect(lcSpy).not.toHaveBeenCalled();

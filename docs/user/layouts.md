@@ -17,8 +17,11 @@ New windows tile side-by-side. A container is either a **horizontal split**
   you get an L-shaped layout. This is how complex layouts are built.
 - New windows inherit the focused container's split. The **third** tiled
   window splits the focused slot in half (a nested pair), not an even
-  three-way across the monitor. Equal 3-way only after you resize those
-  siblings or run **reset sizes** (`window-reset-sizes`).
+  three-way across the monitor. The wrap follows the slot's shape
+  (taller than wide → stacked; otherwise side-by-side). Equal 3-way
+  only after you resize those siblings or run **reset sizes**
+  (`window-reset-sizes`). Reset-sizes equalizes the **current** split
+  (and its parent); it does not flatten a nest into three columns.
 - Enable **Auto Split / Quarter Tiling** (`auto-split-enabled`, off by
   default) to alternate the split direction automatically based on the
   focused pane's shape (1-child orientation toggle).

@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-13 (**campaign:** container insert A/B/C lock; tip loaded; FLOAT smoke ok; Wave Z / R025–R027 live gestures)  
+**Updated:** 2026-08-13 (**campaign:** insert A R028 leftover-wrap / batch skip; Wave Z / R025–R027 live)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -20,7 +20,7 @@
 | R021 | Empty dest head (pointer then window mon) beats LFT/focus (D027) |
 | R022 | Empty-mon user drop is leaf-only (D028) — not `_rehomeWindowPreservingContainer` |
 | R023 | BOTTOM on MONITOR HSPLIT wraps a VSPLIT (D029) — never reuse multi-child MONITOR |
-| R024 | RunSteps + batch end always force-paint; `renderTree(force)` cancels stale idle |
+| R024 | RunSteps + batch end **always** force-paint after deferred release; skip min-size percent write-back while batch active |
 | Guards | L0 `bug-r021-r024-open-drop-layout` + nested R015 + comprehensive MONITOR BOTTOM |
 | Follow-up | [forge-test-suite-honest-analysis](./tasks/forge-test-suite-honest-analysis.md) |
 
@@ -38,7 +38,7 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Plan | [forge-canonical-contracts](./plans/forge-canonical-contracts.md) |
 | Catalog | [docs/dev/contracts.md](../docs/dev/contracts.md) — extend the named API first |
 | R019 | CENTER on H/V siblings groups via `mergeWindowsIntoGroup`; `dropChangesStructure` |
-| R020 | Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling |
+| R020 | Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling. Join leftover 1-child H/V as the slot (R028). Orientation from slot rect |
 | Reveal | `wm.revealGroupChild({ keyboard, pin })` (D025) |
 | Guards | L0 `drop-intent`, comprehensive CENTER both dirs, `bug-461-edge-snap`, `layout-sensors` restore |
 | Residual | **Load tip** then smoke Grok→Chrome CENTER + tiled VLC end-of-video. Live not run this session |
@@ -84,7 +84,7 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Profiles | Data only — no personal-layout product branches |
 | Child list (D023) | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` only |
 | Job → API (D024–D026) | [contracts.md](../docs/dev/contracts.md) — extend the named API; no one-off twins |
-| Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling |
+| Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling. Join leftover 1-child H/V as the slot (R028). Orientation from slot rect |
 | Focus | Post-settle phase; open-leaf pin on steal (D018); user reveal adopts the pin (R026) |
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
 | Close → focus | **Kept** (FC1) — LFT/sibling restore |
@@ -108,13 +108,13 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | Insert A (D032) L0 green — `./install` + nest or logout, then 3rd Nautilus / same-axis edge | [task](./tasks/forge-container-insert-a.md) |
-| residual | Wave Z zoom (D030) on tip; Vim kit live. Super+Space / C-S-Space / S-S-Space; Super+Enter = Run | [task](./tasks/forge-zoom-maximize.md) |
+| **P0** | Insert A R028 — `./install` + nest or logout, then `layout dev` + left-dock Nautilus (must VSPLIT the slot, not 3-wide HSPLIT) | [task](./tasks/forge-container-insert-a.md) |
+| residual | Wave Z zoom (D030) on tip; Vim kit live. Super+Enter / C-S-Enter / S-S-Enter; Super+Space = Run | [task](./tasks/forge-zoom-maximize.md) |
 | residual | R025 tab-click slot: click a non-open tab — slot size, no ¼-height reflow | [task](./tasks/forge-tab-click-slot.md) |
 | residual | **R026** immediately after `layout dev`, click the other tab — must stay (no flash-then-Grok) | [task](./tasks/forge-tab-click-pin-adopt.md) |
 | residual | **R027** `layout dev` overlay stays until the command returns; clicks do nothing during it | [task](./tasks/forge-layout-chrome-until-ready.md) |
 | done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
-| done | First-layout FLOAT on tip: one `layout dev` TILE (R024). Do not re-patch `shouldCommit` | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
+| done | First-layout FLOAT (R024): batch end always force-paints; no mid-batch percent write-back | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
 | done | Install `--kit=vim` + stale-kit warning. Daily: `./install --kit=vim` | [task](./tasks/forge-install-reapply-kit.md) |
 | later | Smoke leftover R019/R020 (Grok→Chrome CENTER + tiled VLC) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
