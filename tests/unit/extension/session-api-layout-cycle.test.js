@@ -360,6 +360,15 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     expect(out.error).toMatch(/begin\|end\|release-deferred\|admit/);
   });
 
+  it("resolves id when the window is not under a MONITOR", () => {
+    const stray = createMockWindow({ id: 99, wm_class: "Google-chrome", title: "Grok" });
+    const ws = ctx.tree.findNode("ws0") || ctx.tree.root;
+    ctx.tree.createNode(ws.nodeValue ?? ws, NODE_TYPES.WINDOW, stray);
+    const out = api()._resolveWindow("id:99");
+    expect(out.ok).toBe(true);
+    expect(out.match.node.nodeValue).toBe(stray);
+  });
+
   it("LayoutBatch admit tracks untracked Meta windows", () => {
     const a = api();
     const wm = ctx.windowManager;

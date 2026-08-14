@@ -269,6 +269,29 @@ describe("tile-select matchWindows", () => {
     const all = collectWindows(forest);
     expect(all.map((c) => c.path).sort()).toEqual(["mo0ws0/0/0", "mo0ws0/0/1", "mo1ws0/0"].sort());
   });
+
+  it("collectWindows includes windows nested under a WINDOW", () => {
+    const nested = node({
+      nodeType: "WINDOW",
+      windowId: 9,
+      nodeValue: mockWin({ id: 9, title: "Grok", wmClass: "Google-chrome" }),
+    });
+    const ph = node({
+      nodeType: "WINDOW",
+      windowId: "forge-ph-1",
+      childNodes: [nested],
+    });
+    nested.parentNode = ph;
+    const mon = node({
+      nodeType: "MONITOR",
+      id: "mo0ws0",
+      nodeValue: "mo0ws0",
+      childNodes: [ph],
+    });
+    ph.parentNode = mon;
+    const ids = collectWindows([mon]).map((c) => c.windowId);
+    expect(ids).toContain(9);
+  });
 });
 
 describe("tile-select pickMatch / ambiguous", () => {
