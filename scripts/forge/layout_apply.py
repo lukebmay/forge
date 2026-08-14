@@ -1875,7 +1875,9 @@ def assign_open_role_pins(
             for w in search:
                 cls = w.get("wmClass") if w.get(
                     "wmClass") is not None else w.get("wm_class")
-                if any(eq(cls, want) for want in class_list):
+                inst = w.get("wmClassInstance") if w.get(
+                    "wmClassInstance") is not None else w.get("wm_class_instance")
+                if any(eq(cls, want) or eq(inst, want) for want in class_list):
                     return _pop_from_pool(w)
             # Title identity alone is enough when class list never appears on
             # X11 (all PWAs stay Google-chrome) but title~= is set.
@@ -1908,8 +1910,28 @@ def assign_open_role_pins(
     return out
 
 
+def _summarize_pin_windows(windows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Compact window rows for map-wait timeout dumps."""
+    out: list[dict[str, Any]] = []
+    for w in windows or []:
+        if not isinstance(w, dict):
+            continue
+        if w.get("placeholder") is True:
+            continue
+        row: dict[str, Any] = {
+            "windowId": w.get("windowId"),
+            "wmClass": w.get("wmClass") if w.get("wmClass") is not None else w.get("wm_class"),
+            "title": w.get("title"),
+            "mode": w.get("mode"),
+        }
+        inst = w.get("wmClassInstance")
+        if inst is not None:
+            row["wmClassInstance"] = inst
+        out.append(row)
+    return out
+
+
 def pending_pins_without_title(pending: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Copy pin specs with title identity removed (class-only leftover assign)."""
     out: list[dict[str, Any]] = []
     for item in pending or []:
         if not isinstance(item, dict):
@@ -2011,6 +2033,8 @@ def wait_for_open_role_pins(
         polls,
         "elapsed_ms":
         int((mono() - t0) * 1000),
+        "seen":
+        _summarize_pin_windows(last_wins),
         "error":
         None if not missing else
         (last_err or f"map wait timeout for roles: {missing}"),

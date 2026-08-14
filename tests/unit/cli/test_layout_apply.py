@@ -2824,6 +2824,29 @@ class TestCl9ParallelOpenPins(unittest.TestCase):
         self.assertEqual(out["role_pins"]["google-chrome"], 1)
         self.assertEqual(out["role_pins"]["Grok"], 2)
         self.assertEqual(out["missing"], [])
+        self.assertEqual(len(out["seen"]), 2)
+
+    def test_wait_pins_by_wm_class_instance(self):
+        pending = [{
+            "role": "ghostty",
+            "wait_classes": ["ghostty"],
+        }]
+        t = {"v": 0.0}
+        out = wait_for_open_role_pins(
+            lambda: [{
+                "windowId": 5,
+                "wmClass": "com.mitchellh.ghostty",
+                "wmClassInstance": "ghostty",
+                "title": "Ghostty",
+            }],
+            pending,
+            timeout_ms=50,
+            poll_ms=10,
+            sleep_fn=lambda s: t.__setitem__("v", t["v"] + s),
+            monotonic_fn=lambda: t["v"],
+        )
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["role_pins"], {"ghostty": 5})
 
     def test_pending_pins_without_title_strips_identity(self):
         stripped = pending_pins_without_title([{

@@ -54,6 +54,8 @@ export class Window extends withSignals() {
     this._rect = params.rect ?? new Rectangle();
     // Use 'in' operator to allow null/empty values to be explicitly set
     this.wm_class = "wm_class" in params ? params.wm_class : "MockApp";
+    this.wm_class_instance =
+      "wm_class_instance" in params ? params.wm_class_instance : this.wm_class;
     this.title = "title" in params ? params.title : "Mock Window";
     this.maximized_horizontally = params.maximized_horizontally ?? false;
     this.maximized_vertically = params.maximized_vertically ?? false;
@@ -101,6 +103,10 @@ export class Window extends withSignals() {
 
   get_wm_class() {
     return this.wm_class;
+  }
+
+  get_wm_class_instance() {
+    return this.wm_class_instance;
   }
 
   // Test helper: emulate a late-arriving wm_class (Anki/Opera/Flatpaks report

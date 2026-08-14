@@ -42,6 +42,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Execute a tile drop | `DragDropManager.moveWindowToPointer` → intent + merge/split | Parallel session-only structure |
 | Empty-monitor drop | `resolveEmptyMonitorDrop` + `_commitEmptyMonitorDrop` (leaf only) | Mid-drag rehome (R012); `_rehomeWindowPreservingContainer` (R022) |
 | New-window home | `resolveOpenAppPlacement` (dock → empty-head → window-actual → LFT) | Pointer-on-empty falling through to other-mon LFT (R021) |
+| Admit live Meta windows missing from the tree | `wm.admitUntrackedWindows` / LayoutBatch `admit` | Plan/map-pin from GetTree only (untracked X11 maps stay invisible) |
 | Hard-ready before a CLI act | `layout_apply.wait_until_hard_ready` | New TILE poll loop; `wait_for_wm_class` is the leftover to fold (IC4) |
 | Soft focus residual (CLI) | `run_soft_focus_barrier` | Fixed `sleep(0.4)` after hard-ready |
 | Soft geom residual (CLI) | `run_soft_geom_barrier` | Re-apply layout until rect “looks right” |

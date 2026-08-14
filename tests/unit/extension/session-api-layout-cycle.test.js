@@ -357,7 +357,21 @@ describe("SessionApi LayoutBatch (CL5)", () => {
   it("rejects unknown action", () => {
     const out = JSON.parse(api().LayoutBatch("nope"));
     expect(out.ok).toBe(false);
-    expect(out.error).toMatch(/begin\|end\|release-deferred/);
+    expect(out.error).toMatch(/begin\|end\|release-deferred\|admit/);
+  });
+
+  it("LayoutBatch admit tracks untracked Meta windows", () => {
+    const a = api();
+    const wm = ctx.windowManager;
+    const stray = createMockWindow({ id: 88, wm_class: "ghostty", title: "Ghostty" });
+    Object.defineProperty(wm, "windowsAllWorkspaces", {
+      configurable: true,
+      get: () => [stray],
+    });
+    const out = JSON.parse(a.LayoutBatch("admit"));
+    expect(out.ok).toBe(true);
+    expect(out.admitted).toBeGreaterThanOrEqual(1);
+    expect(wm.tree.findNode(stray)).toBeTruthy();
   });
 
   it("Ping reports apiVersion ≥ 9", () => {

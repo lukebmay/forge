@@ -5,9 +5,9 @@
 **Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Active:** Operator campaign **2026-08-13** — **R029** green layout
-double/FLOAT (D034). CLI live after pull; extension JS needs `./install`
-(+ HUP on green X11). Insert A R028 residual after that.
+**Active:** Operator campaign **2026-08-13** — **R029/R030** green layout
+double/FLOAT (D034+D035). CLI+JS need `./install` + HUP on green X11.
+Insert A R028 residual after that.
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
@@ -18,7 +18,7 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
-| **P0** | R029 green layout — install + `layout dev` reuses, tiles, no Chrome crash-double | [task](./tasks/forge-layout-green-reuse-double.md) |
+| **P0** | R029/R030 green layout — install + `layout dev` reuses, tiles, no extra windows | [task](./tasks/forge-layout-green-reuse-double.md) |
 | residual | Insert A R028 — install + nest/logout, then `layout dev` + left-dock Nautilus | [task](./tasks/forge-container-insert-a.md) |
 | done | Insert/DnD design lock: **A** + Chrome drag table | [task](./tasks/forge-container-insert-dnd-design.md) |
 | residual | Wave Z zoom on tip; Vim kit live — try Super+Enter / C-S-Enter / S-S-Enter; Super+Space = Run | [task](./tasks/forge-zoom-maximize.md) |

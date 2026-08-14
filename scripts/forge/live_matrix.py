@@ -445,7 +445,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "chrome-map",
             "structure-bind",
         ),
-        regressions=("R029", ),
+        regressions=("R029", "R030"),
         profile="_forge-test-dual",
         setup=("keep-agent", "keep-ghostty-tiles"),
         actions=("r029-reuse-no-double-note", ),
@@ -455,9 +455,10 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "agent-survives",
         ),
         notes=(
-            "R029: first apply may open; second apply must not launch extra "
+            "R029/R030: first apply may open; second apply must not launch extra "
             "Chrome/Grok windows. L0: test_wait_class_fallback_*, "
-            "TestClaimClassFallback, bug-r029-late-title. Human on green: "
+            "TestClaimClassFallback, bug-r029-late-title, "
+            "bug-r030-untracked-map-pin. Human on green: "
             "empty desk layout, then layout again — count stays."
         ),
     ),
