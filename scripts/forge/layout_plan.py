@@ -2934,6 +2934,10 @@ def collect_windows(forest: Any,
             if w["windowId"] is None and not w.get("path"):
                 return
             out.append(w)
+            kids = n.get("children") or n.get("childNodes") or []
+            if isinstance(kids, list):
+                for i, c in enumerate(kids):
+                    walk(c, f"{path}/{i}" if path else str(i), mon_idx)
             return
         kids = n.get("children") or n.get("childNodes") or []
         if not isinstance(kids, list):
@@ -2965,6 +2969,29 @@ def collect_windows(forest: Any,
     elif isinstance(forest, list):
         for m in _order_monitors(forest):
             walk(m, "", None)
+    if isinstance(forest, dict):
+        seen = {str(w.get("windowId")) for w in out if w.get("windowId") is not None}
+        for extra in (forest.get("orphanWindows") or []) + (forest.get("metaWindows") or []):
+            if not isinstance(extra, dict):
+                continue
+            if extra.get("placeholder") is True:
+                continue
+            if extra.get("tracked") is False:
+                continue
+            wid = extra.get("windowId")
+            if wid is None or str(wid) in seen:
+                continue
+            seen.add(str(wid))
+            out.append({
+                "windowId": wid,
+                "wmClass": extra.get("wmClass") or extra.get("wm_class"),
+                "title": extra.get("title"),
+                "path": extra.get("path"),
+                "monitor": extra.get("monitor")
+                if isinstance(extra.get("monitor"), int) else None,
+                "mode": extra.get("mode"),
+                "pid": extra.get("pid"),
+            })
     return out
 
 

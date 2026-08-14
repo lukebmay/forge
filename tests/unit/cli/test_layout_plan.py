@@ -6124,6 +6124,26 @@ class TestWorkspaceScope(unittest.TestCase):
         self.assertEqual([w["windowId"] for w in ws1], [2])
         self.assertEqual(window_workspace_index(ws1[0]), 1)
 
+    def test_collect_windows_includes_meta_windows(self):
+        """R030: tracked Meta windows omitted from MONITOR projection still claim."""
+        forest = {
+            "monitors": [{
+                "nodeType": "MONITOR",
+                "id": "mo0ws0",
+                "children": [],
+            }],
+            "metaWindows": [{
+                "windowId": 77,
+                "wmClass": "Google-chrome",
+                "title": "Grok",
+                "tracked": True,
+                "mode": "FLOAT",
+                "monitor": 0,
+            }],
+        }
+        wins = collect_windows(forest)
+        self.assertEqual([w["windowId"] for w in wins], [77])
+
     def test_role_on_other_ws_opens_not_claims(self):
         """Ghostty only on ws1 → plan for ws0 opens; does not move/claim ws1."""
         forest = _dual_ws_forest(ws1_windows=[{

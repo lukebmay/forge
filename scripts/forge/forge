@@ -1123,18 +1123,35 @@ def _iter_tree_windows(node: Any) -> list[dict[str, Any]]:
     """
     Collect WINDOW dicts from a GetTree forest/node.
     Annotates each with path moNwsW/i/j… (does not mutate input nodes).
+    Also unions metaWindows / orphanWindows when present (R030).
     """
     out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(w: dict[str, Any], path: str = "") -> None:
+        if not isinstance(w, dict):
+            return
+        row = dict(w)
+        if not row.get("path") and path:
+            row["path"] = path
+        wid = row.get("windowId")
+        if wid is not None and str(wid).strip() != "":
+            key = str(wid).strip()
+            if key in seen:
+                return
+            seen.add(key)
+        out.append(row)
 
     def walk(n: Any, path: str) -> None:
         if not isinstance(n, dict):
             return
         ntype = n.get("nodeType") or n.get("type")
         if ntype == "WINDOW":
-            w = dict(n)
-            if not w.get("path"):
-                w["path"] = path or None
-            out.append(w)
+            add(n, path)
+            kids = n.get("children") or n.get("childNodes") or []
+            if isinstance(kids, list):
+                for i, c in enumerate(kids):
+                    walk(c, f"{path}/{i}" if path else str(i))
             return
         kids = n.get("children") or n.get("childNodes") or []
         if not isinstance(kids, list):
@@ -1155,6 +1172,14 @@ def _iter_tree_windows(node: Any) -> list[dict[str, Any]]:
                 walk(m, "")
         else:
             walk(node, "")
+        for extra in (node.get("orphanWindows") or []) + (node.get("metaWindows") or []):
+            if not isinstance(extra, dict):
+                continue
+            if extra.get("placeholder") is True:
+                continue
+            if extra.get("tracked") is False:
+                continue
+            add(extra)
     elif isinstance(node, list):
         for m in node:
             walk(m, "")
@@ -2358,7 +2383,7 @@ def _layout_load_tree(
         return data
     if backend is None:
         raise RuntimeError("DBus backend required (or pass --tree-file)")
-    raw = call_method(backend, "GetTree", "{}")
+    raw = call_method(backend, "GetTree", '{"includeMeta":true}')
     data = json.loads(raw)
     if not isinstance(data, dict):
         raise ValueError("GetTree returned non-object")
