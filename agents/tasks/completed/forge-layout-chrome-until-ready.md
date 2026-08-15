@@ -1,9 +1,9 @@
 # forge-layout-chrome-until-ready — overlay until apply is done (R027)
 
-**Status:** ready (L0 green; **live residual** — human/host tip)
-**Plan:** (none)
-**Branch:** master
-**Blocker:** (none) — live accept is visual; no hard block on other work
+**Status:** done  
+**Plan:** (none)  
+**Branch:** master  
+**Blocker:** (none)  
 **Updated:** 2026-08-15
 
 ## Goal
@@ -20,8 +20,11 @@ click (R026 adopts a live pin).
 - [x] Scrim is reactive and eats pointer events
 - [x] First-ever soft wait on a new host seeds from another host’s same
       class when the heuristics file already has samples
-- [ ] Live: tip loaded; `layout dev` on a settled 1-mon desk shows overlay
-      until the command returns; clicks do nothing during it
+- [x] Live: nest tip `g4740ba5` — real `layout _forge-test-ghosttys`
+      logs `layoutChromeShow: {ok,shown:true}`; after return
+      `chrome-clear` → `cleared:false` (already cleared). L0 chrome
+      units green. Pointer eat is L0 (scrim reactive); no xdotool for
+      host click-through visual.
 
 ## Context for the next agent (complete + succinct)
 
@@ -48,6 +51,21 @@ python3 -m pytest tests/unit/cli/test_settle_heuristics.py \
 ```
 
 ## Session note
+
+**2026-08-15 residual closed (nest live).**
+
+| Check | Result |
+| --- | --- |
+| L0 | `layout-apply-chrome` + layout-cycle + settle heuristics green |
+| Nest tip | `./install --kit=vim` → `v49-90-beta.2-323-g4740ba5` |
+| chrome-show/clear | DBus `shown:true` / `cleared:true` on nest |
+| Real apply | `forge layout _forge-test-ghosttys` → `layoutChromeShow.shown=true` |
+| After apply | `chrome-clear` → `cleared:false` (finally already cleared) |
+| Nest stopped | `running: False` |
+
+**Not run:** host personal `layout dev` with eyes + click-through (no
+xdotool; Wayland host Shell tip needs logout after install). Product
+path is the same LayoutBatch chrome as nest.
 
 2026-08-13: operator on green — overlay should stay if they must not
 click; load times should not pay 6s first-ever every boot; Super+Space

@@ -1,58 +1,78 @@
 # forge-layout-in-process_al0-design — ApplyLayout design lock
 
-**Status:** later — **after TD1**; 4.6 xhigh only  
+**Status:** ready  
 **Plan:** [forge-layout-in-process](../plans/forge-layout-in-process.md)  
 **Branch:** master  
-**Blocker:** (none)  
-**Updated:** 2026-08-14  
+**Blocker:** (none) — operator ack of the plan before AL1/AL4 code  
+**Updated:** 2026-08-15  
 **Agent:** `grok-4.6` prompted as **4.6 xhigh**. Design only. **No
 code.** Do not assign to 4.5.
 
 ## Goal
 
-Lock how `forge layout` becomes one DBus `ApplyLayout` (name TBD)
-run **inside** the extension on Meta signals. This is D037. It
-replaces any idea of porting `layout_plan.py` into `cli/`.
+Lock how `forge layout` becomes one DBus `ApplyLayout` run **inside**
+the extension on Meta signals. This is D037. It replaces any idea of
+porting `layout_plan.py` into `cli/`.
 
 ## Acceptance
 
-- [ ] Written options + recommendation in the plan (or this task)
-- [ ] Explicit operator lock on: DBus shape, job durability, where
-      `plan_reconcile` lives (`lib/shared` vs extension-only)
-- [ ] DECISIONS row updated if the method name / spine changes
-- [ ] Follow-up implement tasks (AL1…) drafted **after** lock
-- [ ] No production code in this slice
-- [ ] IC4 marked skip if waiters will die with the poll loop
+- [x] Written options + recommendation in the plan
+- [x] Explicit locks (or OPEN-with-recommendation) for: DBus shape,
+      job durability, where `plan_reconcile` lives
+- [x] DECISIONS: D037 tightened; D038 landed for method/job/planner
+- [x] Follow-up implement tasks AL1–AL8 drafted
+- [x] No production code in this slice
+- [x] IC4 marked skip when AL ships (waiters die with the poll loop)
 
 ## Context for the next agent (complete + succinct)
+
+### Locks (do not re-litigate)
+
+| Topic | Lock |
+| --- | --- |
+| Method | `ApplyLayout` — **async start**, not blocking return-when-done |
+| Also | `GetLayoutApply`, `CancelLayoutApply`, signals `LayoutApplyProgress` / `LayoutApplyDone` |
+| LayoutBatch | Stays a primitive; ApplyLayout **calls** it. Not the product entry. |
+| Jobs | D021 host job = **observer** (attach/stream/cancel). Extension owns the in-memory run. Disconnect ≠ cancel. |
+| Planner | `lib/shared/layout-plan.js` — GetTree JSON in / actions out; gi-free |
+| Chrome | R027 / D010 stays; lifetime = apply run (not 30s hard-clear) |
+| Flatten | Executor never `_layoutOp` (REG-ensure-flatten). Use `setLayout` + skeleton/bind. |
+| IC4 | **Skip** when AL8 deletes CLI waiters |
+| CLI keeps | profile load, list/show/save, gdisplays, SettingsLoad, D021 wrap |
+| CLI loses | launch/wait/hard/soft/focus/verify/GetTree poll orchestration |
 
 ### Why not a cli/ port
 
 Cold apply time is app map + D019 waits + GetTree polls. Node would
-keep the polls. Planner must sit next to Meta.
+keep the polls. Planner must sit next to Meta; waits must be signals.
 
-### Questions to lock (do not answer as 4.5)
+### Next
 
-1. One method vs begin/progress/end? How does today’s CLI stream
-   phase lines?
-2. LayoutBatch vs a new top-level ApplyLayout?
-3. Job runner: host worker that only waits on DBus, or extension-
-   owned durability?
-4. `plan_reconcile(profile, forestJson) -> actions` as
-   `lib/shared/layout-plan.js`?
-5. R027 chrome stays the in-progress signal?
+Operator ack of [the plan](../plans/forge-layout-in-process.md). Then
+**AL1** (gold dump, 4.5 low) and **AL4** (DBus stub, 4.6) in
+parallel. Do not assign planner port to 4.5. Do not mix TD1 / CN0–CN6.
+
+### OPEN (not blocking)
+
+1. Stderr: same phases, not frozen strings (recommend).
+2. `FORGE_LAYOUT_LEGACY` only during AL8, then delete (recommend).
 
 ### Do not
 
-- Start gold-porting `layout_plan.py`
-- Assign this to grok-4.5
+- Start gold-porting `layout_plan.py` in this task
+- Assign AL0 to grok-4.5
+- Implement production code
 - Mix into TD1 or CN0–CN6
+- Update `agents/PRIORITY.md` (orchestrator)
 
 ### Depends
 
-Insert A live + R025/R026 live + **TD1** shipped (or operator
-defers TD1 in writing).
+Insert A live + R025/R026 live + **TD1** shipped — **all done**.
 
 ## Session note
+
+**2026-08-15:** AL0 locked. Plan expanded; D038 added; IC4 skip
+reason written; AL1–AL8 stubs drafted. Ready for operator ack, then
+AL1 + AL4. No production code.
 
 **2026-08-14:** Stubbed at campaign lock. Waiting for queue.

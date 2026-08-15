@@ -7,7 +7,7 @@ are how we get directional DnD no-ops and un-restored VLC geometry.
 
 Formulas for focus/structure/open: [actions.md](actions.md).
 Architecture: [architecture.md](architecture.md). Why: [DESIGN.md](../DESIGN.md).
-Decisions: [DECISIONS.md](../DECISIONS.md) (D018–D019, D023–D026).
+Decisions: [DECISIONS.md](../DECISIONS.md) (D018–D019, D023–D026, D037–D038).
 Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.md).
 
 ---
@@ -45,9 +45,10 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Empty-monitor drop | `resolveEmptyMonitorDrop` + `_commitEmptyMonitorDrop` (leaf only) | Mid-drag rehome (R012); `_rehomeWindowPreservingContainer` (R022) |
 | New-window home | `resolveOpenAppPlacement` (dock → empty-head → window-actual → LFT) | Pointer-on-empty falling through to other-mon LFT (R021) |
 | Admit live Meta windows missing from the tree | `wm.admitUntrackedWindows` / LayoutBatch `admit` | Plan/map-pin from GetTree only (untracked X11 maps stay invisible) |
-| Hard-ready before a CLI act | `layout_apply.wait_until_hard_ready` | New TILE poll loop; `wait_for_wm_class` is the leftover to fold (IC4) |
-| Soft focus residual (CLI) | `run_soft_focus_barrier` | Fixed `sleep(0.4)` after hard-ready |
-| Soft geom residual (CLI) | `run_soft_geom_barrier` | Re-apply layout until rect “looks right” |
+| **Reconcile / `forge layout` apply** | DBus `ApplyLayout` (async start) + in-process spine (D037/D038). Planner: `lib/shared/layout-plan.js` `planReconcile` | Port `layout_plan.py` into `cli/`; CLI GetTree poll loop; overload `LayoutBatch` as the product entry |
+| Hard-ready before a CLI act | `layout_apply.wait_until_hard_ready` (**dies in AL8**; do not fold — IC4 skip) | New TILE poll loop; JS GetTree `wait_until_hard_ready` twin |
+| Soft focus residual (CLI) | `run_soft_focus_barrier` (**dies in AL8**) | Fixed `sleep(0.4)` after hard-ready |
+| Soft geom residual (CLI) | `run_soft_geom_barrier` (**dies in AL8**) | Re-apply layout until rect “looks right” |
 | Soft timeout math | `settle-math.js` / `settle_heuristics.soft_timeout_from_latencies` | A third rolling-max helper |
 | First-ever soft wait | `soft_timeout_for_key` (peer-host same class seed, else learning trial) | Always 6–10s on a new hostname when the file already has another host |
 | Open-map quiet (extension) | `OpenCommitManager` + `layout-open.js` | Extra 250 ms sleep on create |
@@ -99,20 +100,23 @@ Do not call them on keyboard focus when a pin must win.
 
 ---
 
-## Settle (two brains, one formula)
+## Settle (two brains today; ApplyLayout collapses the CLI brain)
 
-Meta has no “settled” signal (D019). We do **not** want one JS+CLI waiter.
+Meta has no “settled” signal (D019). We do **not** want one JS+CLI *poll*
+waiter.
 
 | Layer | Waits? | Owner |
 | --- | --- | --- |
 | Formula | No | `settle-math.js` ≈ `settle_heuristics` |
-| CLI layout | Yes — poll GetTree | `wait_until_hard_ready`, `run_soft_*` |
+| CLI layout (today) | Yes — poll GetTree | `wait_until_hard_ready`, `run_soft_*` — **delete in AL8** |
+| ApplyLayout (D037/D038) | Yes — Meta signals + bags | Extension spine; same predicates, no GetTree poll |
 | Extension interactive | No poll — signals + echo + open-quiet | `layout-epoch`, `OpenCommitManager`, pin 15s |
 | Display | Fixed debounce | workareas / monitor-recovery |
 
 Interactive moves: `commitLayout` + echo suppress + (IC3) snap TILE back if
-the client then resizes. Do **not** add `wait_until_hard_ready` inside the
-Shell. Fold leftover CLI polls into the existing waiters (IC4).
+the client then resizes. Do **not** add a GetTree-polling
+`wait_until_hard_ready` inside the Shell. IC4 (fold leftover CLI polls
+into the Python waiters) is **skip** — ApplyLayout deletes those waiters.
 
 ---
 

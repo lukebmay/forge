@@ -1,19 +1,41 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-15 (**campaign:** CN0–CN6 + **FCC C0+C1** done · next = R027 / Wave Z live · AL0 later)  
+**Updated:** 2026-08-15 (**campaign:** residuals done · **AL0 locked** · next = operator ack → AL1+AL4)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed / host tip:** CN6 CLI on master; **C1 uncommitted** on working tree.
-Extension JS (C0+prior) on tip — Wayland needs logout for host Shell tip only.
+**Installed / host tip:** disk tip `g4740ba5` after `./install --kit=vim`;
+Wayland **host Shell** still needs one logout to load that tip. Nest already
+ran tip for R027.
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
 
-### Shipped — FCC C1 setLayout I1 (uncommitted)
+### Design lock — AL0 ApplyLayout (await operator ack)
+
+| Field | Detail |
+| --- | --- |
+| D037/D038 | In-process async `ApplyLayout`; host job = observer; planner `lib/shared/layout-plan.js` |
+| DBus | Start + Get/Cancel + Progress/Done signals (not blocking call) |
+| LayoutBatch | Stays primitive; ApplyLayout calls it |
+| IC4 | **Skip** when AL8 deletes poll waiters |
+| Plan | [forge-layout-in-process.md](./plans/forge-layout-in-process.md) |
+| Slices | AL1–AL8 stubs under `agents/tasks/forge-layout-in-process_al*.md` |
+| OPEN | stderr phase strings; `FORGE_LAYOUT_LEGACY` only during AL8 (recommended) |
+| Code | **None** yet — design only |
+
+### Shipped — R027 chrome until ready + Wave Z residual (nest)
+
+| Field | Detail |
+| --- | --- |
+| R027 | Nest tip: `layout _forge-test-ghosttys` → `layoutChromeShow.shown=true`; post-apply `chrome-clear` already cleared |
+| Wave Z | **Host live PASS** (operator); Vim zoom keys; L0; `paintRectForWindow` border |
+| Tasks | [R027](./tasks/completed/forge-layout-chrome-until-ready.md) · [Wave Z](./tasks/completed/forge-zoom-maximize.md) |
+
+### Shipped — FCC C1 setLayout I1 (`4740ba5`)
 
 | Field | Detail |
 | --- | --- |
@@ -203,16 +225,17 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**If you are Grok 4.5:** do **one** slice. Do not redesign D036/D037.
-Do not port `layout_plan.py`. Prefer residual R027 / Wave Z live smokes.
+**If you are Grok 4.5:** implement only after AL0 lock. Do not redesign
+D036/D037. Do not port `layout_plan.py`.
 
 | You can do | You must not |
 | --- | --- |
-| R027 / Wave Z tip/nest smokes | Drop Python `gi` until all cmds migrate |
+| Post-AL0 implement slices as drafted | Drop Python `gi` until all cmds migrate |
 | Host no-code smokes (no nest) | Port `layout_plan.py` to `cli/` |
-| CN7 skip (already documented) | Flip root `package.json` `"type"` / add `dbus-next` |
+| Thin CLI client after DBus exists | Flip root `package.json` `"type"` / add `dbus-next` |
 
-**If you are Grok 4.6 xhigh:** AL0 design (or operator defers).
+**If you are Grok 4.6 xhigh:** **AL0** ApplyLayout design (now). Design
+only; no large code; ask operator only when unobvious.
 
 | Pri | Work | Path |
 | --- | --- | --- |
@@ -221,13 +244,14 @@ Do not port `layout_plan.py`. Prefer residual R027 / Wave Z live smokes.
 | done | R025 / R026 host live | [R025](./tasks/forge-tab-click-slot.md) · [R026](./tasks/forge-tab-click-pin-adopt.md) |
 | done | R028 late-identity wrap nest + host | [task](./tasks/forge-container-insert-a.md) |
 | done | CN0–CN6 | [completed/](./plans/forge-cli-node/completed/) |
-| residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
-| residual | Wave Z zoom (D030) on tip; Vim kit live | [task](./tasks/forge-zoom-maximize.md) |
+| done | **R027** overlay until apply returns | [completed](./tasks/completed/forge-layout-chrome-until-ready.md) |
+| done | Wave Z zoom (D030) host live PASS | [completed](./tasks/completed/forge-zoom-maximize.md) |
+| done | **AL0** ApplyLayout design lock (D038) | [task](./tasks/forge-layout-in-process_al0-design.md) · [plan](./plans/forge-layout-in-process.md) |
+| next | AL1 gold + AL4 DBus stub (after ack) | [AL1](./tasks/forge-layout-in-process_al1-gold-dump.md) · [AL4](./tasks/forge-layout-in-process_al4-dbus-apply-layout.md) |
 | later | Smoke leftover R019/R020 (Grok→Chrome CENTER + tiled VLC) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
 | later | IC4 fold leftover CLI waiters — skip if ApplyLayout deletes them | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
-| later | AL0 ApplyLayout design (4.6 xhigh; do not port planner to `cli/`) | [task](./tasks/forge-layout-in-process_al0-design.md) |
 | done | FCC **C0** kill monocle + lossy inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
-| done | FCC **C1** `setLayout` I1 (uncommitted) | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
+| done | FCC **C1** `setLayout` I1 | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | done | Wayland RC R013/R014 + nest isolation N1–N4 + lifecycle W1–W5 | [REGRESSIONS](./REGRESSIONS.md) |

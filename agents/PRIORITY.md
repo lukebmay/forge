@@ -3,14 +3,13 @@
 **Updated:** 2026-08-15  
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.  
 **Branch:** **`master`** default  
-**Push:** only when human asks.  
-**Uncommitted:** FCC C1 (`setLayout` I1) — operator commit when ready.
+**Push:** only when human asks.
 
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
 not a `cli/` planner port).
 
-**Active:** Residuals **R027** / Wave Z live smokes. Later: AL0 (4.6
-xhigh), IC4 skip-if-ApplyLayout.
+**Active:** **AL0 locked** — operator ack, then **AL1** (gold) + **AL4**
+(DBus stub) in parallel. R027 / Wave Z **done** (Wave Z host live PASS).
 
 **Agents:** default implement = **Grok 4.5** (prompt as medium). Plan
 reshape / AL0 / C1 / messy DnD = **Grok 4.6** (xhigh for design).
@@ -39,8 +38,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | done | CLI-node **CN4** DBus + `ping`/`tree` | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn4-dbus-ping-tree.md) |
 | done | CLI-node **CN5** thin DBus verbs | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn5-thin-dbus.md) |
 | done | CLI-node **CN6** launch + run-steps (CN7 skip) | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn6-launch-run-steps.md) |
-| residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
-| residual | Wave Z zoom on tip; Vim kit live | [task](./tasks/forge-zoom-maximize.md) |
+| done | **R027** overlay until apply returns; clicks blocked | [completed](./tasks/completed/forge-layout-chrome-until-ready.md) |
+| done | Wave Z zoom on tip; Vim kit live | [completed](./tasks/completed/forge-zoom-maximize.md) |
 | done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
 | done | First-layout FLOAT (R024): always force-paint at batch end; skip mid-batch percent write-back | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
 | done | Install `--kit=vim` + stale-kit warning | [task](./tasks/forge-install-reapply-kit.md) |
@@ -50,7 +49,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | done | **IC3** tile-slot authority (R020) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
 | done | **IC1** drop-intent + CENTER group both directions (R019) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic1-drop-intent.md) |
 | later | **IC4** fold leftover CLI waiters — **skip** if ApplyLayout deletes them | [task](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
-| later | In-process `ApplyLayout` AL0 design (4.6 xhigh; **not** a cli/ port) | [task](./tasks/forge-layout-in-process_al0-design.md) |
+| done | In-process `ApplyLayout` AL0 design lock (D037/D038) | [task](./tasks/forge-layout-in-process_al0-design.md) · [plan](./plans/forge-layout-in-process.md) |
+| next | AL1 gold dump + AL4 DBus stub (after operator ack) | [AL1](./tasks/forge-layout-in-process_al1-gold-dump.md) · [AL4](./tasks/forge-layout-in-process_al4-dbus-apply-layout.md) |
 | done | FCC **C0** kill monocle + inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
 | done | FCC **C1** `setLayout` I1 | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) |
@@ -78,10 +78,10 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 8. **CN5** — **done** (focus/swap/move/get/set/settings Node bodies).
 9. **CN6** — **done** (launch/run/run-steps; CN7 skip).
 10. **FCC C0** — **done** (monocle deleted; inventory for C1).
-11. **FCC C1** — **done** (`tree.setLayout` / I1; uncommitted).
-12. **R027 / Wave Z** — remaining tip smokes (can interleave).
-13. **AL0 ApplyLayout design (4.6 xhigh)** — only layout rearch;
-    skips IC4 when it ships.
+11. **FCC C1** — **done** (`tree.setLayout` / I1; `4740ba5`).
+12. **R027 / Wave Z** — **done** (R027 nest; Wave Z host live PASS).
+13. **AL0** — **locked** (D038). Implement AL1–AL8 after operator ack.
+14. **IC4** — **skip** when AL8 deletes CLI waiters.
 
 Do not assign a 4.5 agent `layout_plan.py` → JS.
 

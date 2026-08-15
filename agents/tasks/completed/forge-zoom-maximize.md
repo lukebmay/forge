@@ -1,10 +1,10 @@
 # forge-zoom-maximize — Wave Z0/Z1 zoom (full / width / height)
 
-**Status:** ready (L0 green; **live residual** — Vim kit on tip after host logout)
-**Plan:** [forge-first-class-containers](../plans/forge-first-class-containers.md) Wave Z
-**Branch:** master
-**Blocker:** (none) — live accept is key-chord visual; no hard block on other work
-**Updated:** 2026-08-15
+**Status:** done  
+**Plan:** [forge-first-class-containers](../plans/forge-first-class-containers.md) Wave Z  
+**Branch:** master  
+**Blocker:** (none)  
+**Updated:** 2026-08-15  
 
 ## Goal
 
@@ -142,8 +142,17 @@ borders, CommandHandler, whitelist, theme, tree-query, Tree-layout, Node).
 **Nest:** `./install` (Wayland live-reload expected fail) + `forge nested
 run -- forge ping` ok. `forge nested status` → running: False.
 
-**Leftover:** Zoom border must use `paintRectForWindow` (not the unzoomed
-slot). Super+Space Run = empty command → GNOME `openRunDialog`. Super+Return
-is Forge zoom; `toggle-maximized` cleared in gnome-overrides + host-defaults.
-Snapshot persist of `zoomMode` not added (`forge layout` may clear; do not
-fight).
+**Leftover (closed 2026-08-15):** Border uses `paintRectForWindow` in
+`decoration.js`. Super+Space Run = empty → GNOME `openRunDialog`.
+Snapshot persist of `zoomMode` not added (`forge layout` may clear).
+
+**2026-08-15 residual closed:**
+
+| Check | Result |
+| --- | --- |
+| L0 | `zoom.test.js` + layout-apply-chrome 30 pass |
+| Host keys | Vim kit; Super+Return / Ctrl+Super+Return / Shift+Super+Return |
+| Install | `./install --kit=vim` → tip `g4740ba5` on disk |
+| Nest | tip ping ok; nest stopped |
+| paintRect | decoration uses `paintRectForWindow` when zoomed |
+| **Host live** | **PASS** — operator: zoom working great (daily chords; no open residual) |

@@ -35,7 +35,7 @@ Patches hide the next instance of the same class.
 | # | Decision |
 | --- | --- |
 | **1** | **Catalog is law.** [contracts.md](../../docs/dev/contracts.md) lists the job → API. New behavior extends that API first. |
-| **2** | **Do not over-abstract.** Two settle brains stay (CLI poll vs extension signals). Do not add JS `wait_until_hard_ready`. `settleTabFocus` stays chrome-only. |
+| **2** | **Do not over-abstract.** Two settle brains stay **until ApplyLayout (D038)**. Do not add a JS GetTree `wait_until_hard_ready`. `settleTabFocus` stays chrome-only. IC4 skip when AL8 deletes CLI waiters. |
 | **3** | **D024 drop-intent.** No-op iff parent + order + **layout** already match. CENTER on H/V siblings is a real group op. Execute via `tree.mergeWindowsIntoGroup`. |
 | **4** | **D025 reveal.** Live “show this group child” goes through one WM helper (`revealGroupChild`). Snapshot persist may write LTF as data only. |
 | **5** | **D026 tile-slot.** TILE `renderRect` is geometry authority. Unsolicited Meta fullscreen / maximize / size (no live grab, no forge echo) restores to slot. User grab-resize stays percent. Forge zoom (Wave Z) is a later **presentation flag**, not Meta fullscreen. |
