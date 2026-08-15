@@ -1,0 +1,366 @@
+{
+  "flags": {
+    "clean": true,
+    "keepOthers": false,
+    "safe": false
+  },
+  "forest": {
+    "apiVersion": 2,
+    "monitors": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "monitor": 0,
+                "nodeType": "WINDOW",
+                "title": "Google Chrome",
+                "windowId": 701,
+                "wmClass": "Google-chrome"
+              },
+              {
+                "children": [],
+                "monitor": 0,
+                "nodeType": "WINDOW",
+                "title": "Grok",
+                "windowId": 702,
+                "wmClass": "Google-chrome"
+              }
+            ],
+            "layout": "TABBED",
+            "nodeType": "CON"
+          },
+          {
+            "children": [],
+            "monitor": 0,
+            "nodeType": "WINDOW",
+            "title": "Google Chrome",
+            "windowId": 703,
+            "wmClass": "Google-chrome"
+          }
+        ],
+        "id": "mo0ws0",
+        "layout": "HSPLIT",
+        "nodeType": "MONITOR"
+      },
+      {
+        "children": [],
+        "id": "mo1ws0",
+        "layout": "HSPLIT",
+        "nodeType": "MONITOR"
+      }
+    ]
+  },
+  "forestFile": "tree-extra-role-copy.json",
+  "id": "extra-copy-clean",
+  "note": "duplicate role windows; clean closes residuals",
+  "plan": {
+    "actions": [
+      {
+        "mode": "tabbed",
+        "op": "ensure_layout",
+        "slot": "mon1.comms",
+        "windowIds": [703]
+      },
+      {
+        "op": "open",
+        "open": {
+          "app": "ghostty",
+          "timeout": 15000,
+          "wmClass": "com.mitchellh.ghostty"
+        },
+        "role": "ghostty-left",
+        "slot": "mon0.term",
+        "workspace": 0
+      },
+      {
+        "op": "open",
+        "open": {
+          "app": "ghostty",
+          "timeout": 15000,
+          "wmClass": "com.mitchellh.ghostty"
+        },
+        "role": "ghostty-right",
+        "slot": "mon1.term",
+        "workspace": 0
+      },
+      {
+        "childIndex": 1,
+        "op": "move",
+        "path": "mo0ws0/1",
+        "role": "youtube",
+        "slot": "mon1.comms",
+        "windowId": 703,
+        "workspace": 0
+      },
+      {
+        "match": {
+          "title~=": "Gmail"
+        },
+        "op": "open",
+        "open": {
+          "app": "Gmail",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "role": "gmail",
+        "slot": "mon1.comms",
+        "workspace": 0
+      },
+      {
+        "match": {
+          "title~=": "Voice"
+        },
+        "op": "open",
+        "open": {
+          "app": "Google Voice",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "role": "voice",
+        "slot": "mon1.comms",
+        "workspace": 0
+      },
+      {
+        "op": "focus",
+        "reason": "survivor",
+        "role": "youtube",
+        "selector": "id:703"
+      }
+    ],
+    "clean": true,
+    "coldEmpty": false,
+    "counts": {
+      "bound": 0,
+      "closed": 0,
+      "focused": 1,
+      "kept": 0,
+      "left": 0,
+      "moved": 1,
+      "opened": 4,
+      "ordered": 0,
+      "parked": 0,
+      "reused": 2,
+      "sized": 0,
+      "skeleton": 0,
+      "structure": 0
+    },
+    "keepOthers": false,
+    "kept": [],
+    "left": [],
+    "nothingToDo": false,
+    "ok": true,
+    "roles": [
+      {
+        "id": "chrome-luke",
+        "path": "mo0ws0/0/0",
+        "slot": "mon0.left-tab",
+        "status": "reused",
+        "title": "Google Chrome",
+        "windowId": 701,
+        "wmClass": "Google-chrome"
+      },
+      {
+        "id": "grok",
+        "path": "mo0ws0/0/1",
+        "slot": "mon0.left-tab",
+        "status": "reused",
+        "title": "Grok",
+        "windowId": 702,
+        "wmClass": "Google-chrome"
+      },
+      {
+        "id": "ghostty-left",
+        "slot": "mon0.term",
+        "status": "open"
+      },
+      {
+        "id": "ghostty-right",
+        "slot": "mon1.term",
+        "status": "open"
+      },
+      {
+        "id": "youtube",
+        "path": "mo0ws0/1",
+        "slot": "mon1.comms",
+        "status": "move",
+        "title": "Google Chrome",
+        "windowId": 703,
+        "wmClass": "Google-chrome"
+      },
+      {
+        "id": "gmail",
+        "slot": "mon1.comms",
+        "status": "open"
+      },
+      {
+        "id": "voice",
+        "slot": "mon1.comms",
+        "status": "open"
+      }
+    ],
+    "safe": false,
+    "structureMatch": false,
+    "structureMismatches": [
+      {
+        "detail": "role youtube on mon0, want mon1",
+        "got": 0,
+        "kind": "role-mon",
+        "slot": "mon1.comms",
+        "want": 1
+      }
+    ],
+    "thrashRisk": {
+      "crossMonMoves": 1,
+      "monEnsures": 0,
+      "parks": 0,
+      "reasons": [
+        "structure:mon1.comms",
+        "open:ghostty-left",
+        "open:ghostty-right",
+        "move:youtube",
+        "open:gmail",
+        "open:voice"
+      ],
+      "score": 5,
+      "structureGroups": 1
+    },
+    "thrashState": {
+      "reasons": [],
+      "score": 0,
+      "thrashed": false
+    },
+    "unclaimed": [],
+    "workspace": 0
+  },
+  "profile": {
+    "description": "Dual-mon morning on black (WR1 fixture)",
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "left-tab",
+            "layout": "tabbed",
+            "roles": ["chrome-luke", "grok"]
+          },
+          {
+            "id": "term",
+            "roles": ["ghostty-left"]
+          }
+        ],
+        "split": "hsplit"
+      },
+      "mon1": {
+        "children": [
+          {
+            "id": "term",
+            "roles": ["ghostty-right"]
+          },
+          {
+            "id": "comms",
+            "layout": "tabbed",
+            "roles": ["youtube", "gmail", "voice"]
+          }
+        ],
+        "split": "hsplit"
+      }
+    },
+    "mode": "reconcile",
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "chrome-luke",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Google Chrome"
+        },
+        "open": {
+          "app": "google-chrome",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.left-tab"
+      },
+      {
+        "id": "grok",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Grok"
+        },
+        "open": {
+          "app": "Grok",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.left-tab"
+      },
+      {
+        "id": "ghostty-left",
+        "match": {
+          "class": "com.mitchellh.ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "timeout": 15000
+        },
+        "slot": "mon0.term"
+      },
+      {
+        "id": "ghostty-right",
+        "match": {
+          "class": "com.mitchellh.ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "timeout": 15000
+        },
+        "slot": "mon1.term"
+      },
+      {
+        "id": "youtube",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "YouTube"
+        },
+        "open": {
+          "app": "YouTube",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      },
+      {
+        "id": "gmail",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Gmail"
+        },
+        "open": {
+          "app": "Gmail",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      },
+      {
+        "id": "voice",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Voice"
+        },
+        "open": {
+          "app": "Google Voice",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": "profile-dev-v2.json"
+}

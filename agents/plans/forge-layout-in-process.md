@@ -1,6 +1,6 @@
 # Plan: In-process `ApplyLayout` (layout rearchitecture)
 
-**Status:** **AL0 design locked** — implement after operator ack  
+**Status:** **AL0 locked** · **AL1 + AL4 code done** · next AL2  
 **Priority:** after Insert A live + tab-click residuals + **TD1** (all
 done)  
 **Decision:** [D037](../../docs/DECISIONS.md) · shape [D038](../../docs/DECISIONS.md)  
@@ -9,7 +9,7 @@ done)
 after DBus exists) · [project.md](../project.md) § Layout apply
 architecture · D008–D019 · D021 · D034–D036  
 **Created:** 2026-08-14  
-**Updated:** 2026-08-15 (AL0)
+**Updated:** 2026-08-15 (AL1+AL4)
 
 ## Why this exists
 
@@ -177,10 +177,10 @@ windows would be mid-chaos anyway.
   emits. ApplyLayout snapshots via the existing tree-query path
   (in-process; no DBus GetTree).
 - Output: today’s plan object (`ok`, `actions`, `roles`, `counts`,
-  `thrashState`, …). Gold fixtures freeze that JSON.
+  `thrashState`, …). Expected fixtures freeze that JSON.
 - Public names stay recognizable: `normalizeProfile`,
-  `validateReconcileProfile`, `planReconcile` (JS camelCase; gold
-  compares the **plan JSON**, not Python identifiers).
+  `validateReconcileProfile`, `planReconcile` (JS camelCase; expected fixtures
+  compare the **plan JSON**, not Python identifiers).
 - D036: no `gi://`, no `node:`, no `fs` in this module. Extension
   and (later) Node CLI both import it.
 - Do **not** plan against live `Node` / Meta objects. That would
@@ -189,7 +189,7 @@ windows would be mid-chaos anyway.
   Node store needs it (already called out in the CLI-node plan).
   Not a blocker for AL1.
 
-Python `layout_plan.py` stays until gold parity + live cutover.
+Python `layout_plan.py` stays until expected-fixture parity + live cutover.
 Then delete the apply/wait path; list/show/save stay until a thin
 Node facade (not this plan’s giant).
 
@@ -246,7 +246,7 @@ ApplyLayout is how the **cold path** stops flattening.
   (REG-ensure-flatten).
 - Map `ensure_layout` actions to `tree.setLayout` (I1) +
   `mergeWindowsIntoGroup` / order / size / skeleton+bind.
-- If a gold plan still *requires* flatten on the cold happy path,
+- If a expected plan still *requires* flatten on the cold happy path,
   that is a **planner** bug (AL3), not an executor flatten.
 - Mid-session keybind `layout` toggles already use `setLayout`.
   `_layoutOp` remains only until a later FCC slice deletes it.
@@ -255,7 +255,7 @@ ApplyLayout is how the **cold path** stops flattening.
 ### Migration (lock)
 
 ```text
-AL1 gold → AL2/AL3 planner pures
+AL1 expected → AL2/AL3 planner pures
          ↘
 AL4 DBus stub + chrome + signals   → AL5 structure (no-open)
                                    → AL6 open + map signals
@@ -273,13 +273,17 @@ AL4 DBus stub + chrome + signals   → AL5 structure (no-open)
   facade — do not block CN13 on planner port.
 - No feature-flag gsetting. Ping `apiVersion` is enough.
 
-### Gold / parity (lock)
+### Expected fixtures / parity (lock)
 
 Freeze **Python output**, then delete Python. Do not keep a live
 Python oracle (that blocks deletion).
 
+**Naming:** do not use color-like labels (including “gold”) for layout
+names or fixture dirs. Synthetic host = `forgetest`; synthetic layout
+profiles = `layoutA`, `layoutB`, … Real hosts stay colors/plants/heroes.
+
 - Existing inputs: `tests/unit/cli/fixtures/layout/`
-- New gold: `tests/unit/cli/fixtures/layout/gold/<case-id>.json`
+- Expected: `tests/unit/cli/fixtures/layout/expected/<case-id>.json`
   `{ profile, forest, flags, plan }`
 - Cover: empty / perfect / wrong-mon / extra copy / nested HSPLIT /
   thrash report-only / residual replan with `role_pins` /
@@ -359,9 +363,9 @@ None of these block AL1 or AL4. Ack the plan to start.
 ## Slice plan
 
 Implementers start **AL1** and **AL4** after operator ack (parallel
-OK: no shared files). Do not gold-port the planner in AL4.
+OK: no shared files). Do not port the planner in AL4.
 
-### AL1 — Gold dump of Python plans
+### AL1 — Expected plan dump of Python plans
 
 **Agent:** 4.5 low. **No port.**
 
@@ -369,33 +373,32 @@ OK: no shared files). Do not gold-port the planner in AL4.
       `tests/unit/cli/fixtures/layout/` (+ residual-pin cases)
       through current `plan_reconcile`
 - [ ] Writes
-      `tests/unit/cli/fixtures/layout/gold/<case-id>.json`
+      `tests/unit/cli/fixtures/layout/expected/<case-id>.json`
       `{ profile, forest, flags, plan }`
 - [ ] Document how to regenerate; do not “improve” plans
 - [ ] No JS planner; no DBus
 
 ### AL2 — Shared normalize / validate / desugar
 
-**Depends:** AL1 (or can start against live Python, then lock to
-gold). **Agent:** 4.6. **gi-free.**
+**Depends:** AL1 (or can start against live Python, then lock to expected fixtures). **Agent:** 4.6. **gi-free.**
 
 - [ ] `lib/shared/layout-plan.js` exports normalize + validate +
       desugar used by `validate_reconcile_profile`
-- [ ] Vitest gold: those stages match frozen profile IR
+- [ ] Vitest expected: those stages match frozen profile IR
 - [ ] No `gi://` / `node:` / `fs`
 - [ ] Python still owns apply
 
-### AL3 — Shared `planReconcile` gold parity
+### AL3 — Shared `planReconcile` expected-fixture parity
 
 **Depends:** AL1 + AL2. **Agent:** 4.6. Do not simplify D034/D035.
 
 - [ ] `planReconcile` matches frozen `plan` JSON (actions + roles +
-      counts + thrashState) for every gold case
+      counts + thrashState) for every expected case
 - [ ] Includes residual replan with `rolePins` / `justOpenedRoles`
 - [ ] `planActionsToSteps` port of `actions_to_extension_steps`
       (still unused by CLI)
 - [ ] Cold `ensure_layout` actions must be executable **without**
-      `_layoutOp` flatten (or the gold/planner is wrong — fix here)
+      `_layoutOp` flatten (or the expected/planner is wrong — fix here)
 
 ### AL4 — DBus `ApplyLayout` surface
 
@@ -421,7 +424,7 @@ gold). **Agent:** 4.6. **gi-free.**
 - [ ] No-open apply (already-mapped roles) runs the structure
       half of the spine
 - [ ] Does **not** call `_layoutOp`
-- [ ] L0: gold plan → mocked tree/WM steps
+- [ ] L0: expected plan → mocked tree/WM steps
 - [ ] Nest `_forge-test-*` no-open smoke when JS lands
 
 ### AL6 — Open + map on Meta signals
@@ -473,7 +476,7 @@ for the client; 4.6 for deletions.
 
 | Risk | Kill / response |
 | --- | --- |
-| Gold port of 5.5k-line planner drifts (“improve” D034/D035) | Stop. Match frozen gold. File a design note; do not silent-simplify. |
+| Expected-fixture port of 5.5k-line planner drifts (“improve” D034/D035) | Stop. Match frozen expected JSON. File a design note; do not silent-simplify. |
 | Implementer puts planner in `cli/` | Stop. D036. |
 | Blocking `ApplyLayout` “to keep it simple” | Stop. DBus timeout will flake live. |
 | `_layoutOp` used “because ensure_layout already works” | Stop. REG-ensure-flatten. Fix planner/executor mapping. |
@@ -488,10 +491,10 @@ for the client; 4.6 for deletions.
 | Slice | Path | Status |
 | --- | --- | --- |
 | AL0 design | [al0-design](../tasks/forge-layout-in-process_al0-design.md) | ready (ack to start AL1/AL4) |
-| AL1 gold | [al1-gold-dump](../tasks/forge-layout-in-process_al1-gold-dump.md) | ready after ack |
+| AL1 expected | [al1-expected-dump](./completed/forge-layout-in-process_al1-expected-dump.md) | done |
 | AL2 normalize | [al2-shared-plan-normalize](../tasks/forge-layout-in-process_al2-shared-plan-normalize.md) | next |
 | AL3 reconcile | [al3-shared-plan-reconcile](../tasks/forge-layout-in-process_al3-shared-plan-reconcile.md) | next |
-| AL4 DBus | [al4-dbus-apply-layout](../tasks/forge-layout-in-process_al4-dbus-apply-layout.md) | ready after ack |
+| AL4 DBus | [al4-dbus-apply-layout](./completed/forge-layout-in-process_al4-dbus-apply-layout.md) | done (L0; nest pending) |
 | AL5 structure | [al5-executor-structure](../tasks/forge-layout-in-process_al5-executor-structure.md) | draft |
 | AL6 open | [al6-executor-open](../tasks/forge-layout-in-process_al6-executor-open.md) | draft |
 | AL7 settle | [al7-executor-settle](../tasks/forge-layout-in-process_al7-executor-settle.md) | draft |
@@ -502,8 +505,8 @@ for the client; 4.6 for deletions.
 | Slice | `model` | Prompt as | Notes |
 | --- | --- | --- | --- |
 | AL0 design | `grok-4.6` | 4.6 **xhigh**; design only | This document |
-| AL1 gold dump | `grok-4.5` | 4.5 **low** | Fixture → JSON only; no port |
-| AL2–AL3 planner | `grok-4.6` | do not simplify D034/D035 | After gold |
+| AL1 expected plan dump | `grok-4.5` | 4.5 **low** | Fixture → JSON only; no port |
+| AL2–AL3 planner | `grok-4.6` | do not simplify D034/D035 | After AL1 expected dump |
 | AL4–AL7 executor | `grok-4.6` | named APIs in contracts.md | After / parallel as above |
 | AL8 thin CLI | `grok-4.5` | 4.5 medium | After DBus + settle live |
 | Review | `grok-4.6` | A then B if used | After first live `_forge-test-*` |

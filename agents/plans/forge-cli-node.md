@@ -168,7 +168,7 @@ vs do-not-redesign).
 | --- | --- | --- | --- |
 | Orchestrator / plan reshape | `grok-4.6` | 4.6 xhigh; no implement | Open questions, ApplyLayout lock, slice reorder |
 | Default implement | `grok-4.5` | 4.5 medium; one CN; follow FIRM | CN0–CN6 |
-| Mechanical only | `grok-4.5` | 4.5 low; no new files beyond the list | CN0 smoke, gold dumps, doc path updates |
+| Mechanical only | `grok-4.5` | 4.5 low; no new files beyond the list | CN0 smoke, expected dumps, doc path updates |
 | Hard implement / review | `grok-4.6` | review named APIs + tests | After CN2; after first DBus adapter |
 | ApplyLayout design | `grok-4.6` | 4.6 xhigh; design only | **Not this plan** |
 | Layout planner port | `grok-4.6` | after ApplyLayout lock | **Not this plan** |
@@ -737,7 +737,7 @@ be thrown away when ApplyLayout lands.
 | --- | --- |
 | CN8 list/show/save | Stays Python until in-process apply; then a thin Node facade |
 | CN9 settle store JS | Part of in-process apply (shared math already in `settle-math.js`) |
-| CN10 planner port | In-process apply — gold parity **into** `lib/shared` / extension, not `cli/` |
+| CN10 planner port | In-process apply — expected-fixture parity **into** `lib/shared` / extension, not `cli/` |
 | CN11 apply helpers | Extension signal waits, not Node poll twins |
 | CN12 cmd_layout spine | `cli/layout.mjs` calls DBus ApplyLayout only |
 

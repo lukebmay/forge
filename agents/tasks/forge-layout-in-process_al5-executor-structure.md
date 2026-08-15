@@ -23,7 +23,7 @@ No launch yet.
 - [ ] **Never** calls `SessionApi._layoutOp`
 - [ ] LayoutBatch used only if the plan/open path needs it; no-open
       still shows R027 chrome
-- [ ] L0: gold plan → mocked WM/tree
+- [ ] L0: expected plan → mocked WM/tree
 - [ ] Nest `_forge-test-*` no-open smoke when JS lands (mon=1
       unless the case is dual-mon)
 - [ ] Focus/soft may still be stubbed (AL7) if cheaper; do not

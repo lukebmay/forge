@@ -10,7 +10,7 @@
 ## Goal
 
 First planner slice: `normalizeProfile` / `validateReconcileProfile`
-/ desugar in `lib/shared/layout-plan.js`, gold-parity with frozen
+/ desugar in `lib/shared/layout-plan.js`, expected-fixture parity with frozen
 profile IR.
 
 ## Acceptance
@@ -18,16 +18,16 @@ profile IR.
 - [ ] `lib/shared/layout-plan.js` (or sibling under `lib/shared/`)
       exports normalize + validate + desugar
 - [ ] **No** `gi://`, `node:`, `fs`, or Meta/Node types
-- [ ] Vitest matches AL1 gold profile IR (or Python normalize if
-      gold not yet split at this stage)
+- [ ] Vitest matches AL1 expected profile IR (or Python normalize if
+      expected fixtures not yet split at this stage)
 - [ ] Mon-key / alias / bare-array sugar behavior preserved
 - [ ] Python `layout_plan.py` still owns `plan_reconcile` + apply
 - [ ] Does not live under `cli/`
 
 ## Context for the next agent (complete + succinct)
 
-- Depends: AL1 preferred (gold). Can start against Python tests
-  if gold is late — then re-lock to gold.
+- Depends: AL1 preferred (AL1 expected dump). Can start against Python tests
+  if expected dump is late — then re-lock to expected fixtures.
 - Source: `scripts/forge/layout_plan.py`
   `normalize_profile`, `validate_reconcile_profile`, `_desugar_*`
 - D036: product policy in `lib/shared/`

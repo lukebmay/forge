@@ -1,0 +1,404 @@
+{
+  "flags": {
+    "clean": true,
+    "keepOthers": false,
+    "safe": false
+  },
+  "forest": {
+    "apiVersion": 2,
+    "description": "TZ-matrix: ghostty-right + youtube on mon0 (wrong mon); other roles correct",
+    "monitors": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "mode": "TILE",
+                "monitor": 0,
+                "nodeType": "WINDOW",
+                "title": "Google Chrome",
+                "windowId": 101,
+                "wmClass": "Google-chrome"
+              },
+              {
+                "children": [],
+                "mode": "TILE",
+                "monitor": 0,
+                "nodeType": "WINDOW",
+                "title": "Grok",
+                "windowId": 102,
+                "wmClass": "Google-chrome"
+              }
+            ],
+            "layout": "TABBED",
+            "nodeType": "CON"
+          },
+          {
+            "children": [],
+            "mode": "TILE",
+            "monitor": 0,
+            "nodeType": "WINDOW",
+            "title": "Ghostty",
+            "windowId": 103,
+            "wmClass": "com.mitchellh.ghostty"
+          },
+          {
+            "children": [],
+            "mode": "TILE",
+            "monitor": 0,
+            "nodeType": "WINDOW",
+            "title": "Ghostty",
+            "windowId": 201,
+            "wmClass": "com.mitchellh.ghostty"
+          },
+          {
+            "children": [],
+            "mode": "TILE",
+            "monitor": 0,
+            "nodeType": "WINDOW",
+            "title": "YouTube",
+            "windowId": 202,
+            "wmClass": "Google-chrome"
+          }
+        ],
+        "id": "mo0ws0",
+        "layout": "HSPLIT",
+        "nodeType": "MONITOR",
+        "rect": {
+          "height": 2880,
+          "width": 5120,
+          "x": 0,
+          "y": 0
+        },
+        "stableKey": "geom:0,0,5120,2880#primary"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "mode": "TILE",
+                "monitor": 1,
+                "nodeType": "WINDOW",
+                "title": "Gmail - Inbox - Gmail",
+                "windowId": 203,
+                "wmClass": "Google-chrome"
+              },
+              {
+                "children": [],
+                "mode": "TILE",
+                "monitor": 1,
+                "nodeType": "WINDOW",
+                "title": "Google Voice - Messages",
+                "windowId": 204,
+                "wmClass": "Google-chrome"
+              }
+            ],
+            "layout": "TABBED",
+            "nodeType": "CON"
+          }
+        ],
+        "id": "mo1ws0",
+        "layout": "HSPLIT",
+        "nodeType": "MONITOR",
+        "rect": {
+          "height": 2880,
+          "width": 5120,
+          "x": 5120,
+          "y": 0
+        },
+        "stableKey": "geom:5120,0,5120,2880"
+      }
+    ]
+  },
+  "forestFile": "tree-wrong-mon-roles.json",
+  "id": "wrong-mon-clean",
+  "note": "roles on wrong monitors",
+  "plan": {
+    "actions": [
+      {
+        "mode": "tabbed",
+        "op": "ensure_layout",
+        "slot": "mon1.comms",
+        "windowIds": [202, 203, 204]
+      },
+      {
+        "childIndex": 0,
+        "op": "move",
+        "path": "mo0ws0/2",
+        "position": "start",
+        "role": "ghostty-right",
+        "slot": "mon1.term",
+        "windowId": 201,
+        "workspace": 0
+      },
+      {
+        "childIndex": 1,
+        "op": "move",
+        "path": "mo0ws0/3",
+        "role": "youtube",
+        "slot": "mon1.comms",
+        "windowId": 202,
+        "workspace": 0
+      }
+    ],
+    "clean": true,
+    "coldEmpty": false,
+    "counts": {
+      "bound": 0,
+      "closed": 0,
+      "focused": 0,
+      "kept": 0,
+      "left": 0,
+      "moved": 2,
+      "opened": 0,
+      "ordered": 0,
+      "parked": 0,
+      "reused": 5,
+      "sized": 0,
+      "skeleton": 0,
+      "structure": 1
+    },
+    "keepOthers": false,
+    "kept": [],
+    "left": [],
+    "nothingToDo": false,
+    "ok": true,
+    "roles": [
+      {
+        "id": "chrome-luke",
+        "path": "mo0ws0/0/0",
+        "slot": "mon0.left-tab",
+        "status": "reused",
+        "title": "Google Chrome",
+        "windowId": 101,
+        "wmClass": "Google-chrome"
+      },
+      {
+        "id": "grok",
+        "path": "mo0ws0/0/1",
+        "slot": "mon0.left-tab",
+        "status": "reused",
+        "title": "Grok",
+        "windowId": 102,
+        "wmClass": "Google-chrome"
+      },
+      {
+        "id": "ghostty-left",
+        "path": "mo0ws0/1",
+        "slot": "mon0.term",
+        "status": "reused",
+        "title": "Ghostty",
+        "windowId": 103,
+        "wmClass": "com.mitchellh.ghostty"
+      },
+      {
+        "id": "ghostty-right",
+        "path": "mo0ws0/2",
+        "slot": "mon1.term",
+        "status": "move",
+        "title": "Ghostty",
+        "windowId": 201,
+        "wmClass": "com.mitchellh.ghostty"
+      },
+      {
+        "id": "youtube",
+        "path": "mo0ws0/3",
+        "slot": "mon1.comms",
+        "status": "move",
+        "title": "YouTube",
+        "windowId": 202,
+        "wmClass": "Google-chrome"
+      },
+      {
+        "id": "gmail",
+        "path": "mo1ws0/0/0",
+        "slot": "mon1.comms",
+        "status": "reused",
+        "title": "Gmail - Inbox - Gmail",
+        "windowId": 203,
+        "wmClass": "Google-chrome"
+      },
+      {
+        "id": "voice",
+        "path": "mo1ws0/0/1",
+        "slot": "mon1.comms",
+        "status": "reused",
+        "title": "Google Voice - Messages",
+        "windowId": 204,
+        "wmClass": "Google-chrome"
+      }
+    ],
+    "safe": false,
+    "structureMatch": false,
+    "structureMismatches": [
+      {
+        "detail": "role ghostty-right on mon0, want mon1",
+        "got": 0,
+        "kind": "role-mon",
+        "slot": "mon1.term",
+        "want": 1
+      },
+      {
+        "detail": "role youtube on mon0, want mon1",
+        "got": 0,
+        "kind": "role-mon",
+        "slot": "mon1.comms",
+        "want": 1
+      },
+      {
+        "detail": "tabbed roles not co-grouped under one CON: mon1.comms",
+        "got": null,
+        "kind": "group",
+        "slot": "mon1.comms",
+        "want": "tabbed"
+      }
+    ],
+    "thrashRisk": {
+      "crossMonMoves": 2,
+      "monEnsures": 0,
+      "parks": 0,
+      "reasons": ["structure:mon1.comms", "move:ghostty-right", "move:youtube"],
+      "score": 8,
+      "structureGroups": 1
+    },
+    "thrashState": {
+      "reasons": ["roles-wrong-mon:2", "tabbed-roles-not-grouped:mon1.comms"],
+      "score": 7,
+      "thrashed": true
+    },
+    "unclaimed": [],
+    "workspace": 0
+  },
+  "profile": {
+    "description": "Dual-mon morning on black (WR1 fixture)",
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "left-tab",
+            "layout": "tabbed",
+            "roles": ["chrome-luke", "grok"]
+          },
+          {
+            "id": "term",
+            "roles": ["ghostty-left"]
+          }
+        ],
+        "split": "hsplit"
+      },
+      "mon1": {
+        "children": [
+          {
+            "id": "term",
+            "roles": ["ghostty-right"]
+          },
+          {
+            "id": "comms",
+            "layout": "tabbed",
+            "roles": ["youtube", "gmail", "voice"]
+          }
+        ],
+        "split": "hsplit"
+      }
+    },
+    "mode": "reconcile",
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "chrome-luke",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Google Chrome"
+        },
+        "open": {
+          "app": "google-chrome",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.left-tab"
+      },
+      {
+        "id": "grok",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Grok"
+        },
+        "open": {
+          "app": "Grok",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.left-tab"
+      },
+      {
+        "id": "ghostty-left",
+        "match": {
+          "class": "com.mitchellh.ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "timeout": 15000
+        },
+        "slot": "mon0.term"
+      },
+      {
+        "id": "ghostty-right",
+        "match": {
+          "class": "com.mitchellh.ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "timeout": 15000
+        },
+        "slot": "mon1.term"
+      },
+      {
+        "id": "youtube",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "YouTube"
+        },
+        "open": {
+          "app": "YouTube",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      },
+      {
+        "id": "gmail",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Gmail"
+        },
+        "open": {
+          "app": "Gmail",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      },
+      {
+        "id": "voice",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Voice"
+        },
+        "open": {
+          "app": "Google Voice",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": "profile-dev-v2.json"
+}

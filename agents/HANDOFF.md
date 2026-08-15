@@ -1,31 +1,46 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-15 (**campaign:** residuals done · **AL0 locked** · next = operator ack → AL1+AL4)  
+**Updated:** 2026-08-15 (**campaign:** AL1 expected + AL4 DBus stub **code done**; nest retest blocked)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed / host tip:** disk tip `g4740ba5` after `./install --kit=vim`;
-Wayland **host Shell** still needs one logout to load that tip. Nest already
-ran tip for R027.
+**Installed / host tip:** disk install `…-dirty` (AL1+AL4 uncommitted) after `./install --kit=vim`.
+Host Shell still **pre-AL4** until nest reload or logout. Nest failed this
+session (`Unable to open display ':1'`).
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
 
-### Design lock — AL0 ApplyLayout (await operator ack)
+### Shipped — AL1 expected plan dump + AL4 ApplyLayout DBus stub
 
 | Field | Detail |
 | --- | --- |
-| D037/D038 | In-process async `ApplyLayout`; host job = observer; planner `lib/shared/layout-plan.js` |
-| DBus | Start + Get/Cancel + Progress/Done signals (not blocking call) |
-| LayoutBatch | Stays primitive; ApplyLayout calls it |
-| IC4 | **Skip** when AL8 deletes poll waiters |
+| AL1 | `scripts/forge/dump_layout_expected.py` + `tests/unit/cli/fixtures/layout/expected/` (9 cases) |
+| AL1 tests | `tests/unit/cli/test_layout_expected.py` — 6 pass |
+| AL4 | `lib/extension/layout-apply-run.js` + SessionApi methods/signals; `SESSION_API_VERSION=10` |
+| AL4 chrome | Apply-run hard clear **300s** (`LAYOUT_APPLY_RUN_HARD_MS`); batch stays 30s |
+| AL4 tests | `tests/unit/extension/layout-apply-run.test.js` (13) + chrome hardMs re-arm |
+| Stub | Walks D008 phases; **no** planner yet (AL2/AL3) |
+| Nest live | **Blocked** this session (display `:1` auth); host logout also loads tip |
+| Tasks | [AL1](./plans/forge-layout-in-process/completed/forge-layout-in-process_al1-expected-dump.md) · [AL4](./plans/forge-layout-in-process/completed/forge-layout-in-process_al4-dbus-apply-layout.md) |
 | Plan | [forge-layout-in-process.md](./plans/forge-layout-in-process.md) |
-| Slices | AL1–AL8 stubs under `agents/tasks/forge-layout-in-process_al*.md` |
-| OPEN | stderr phase strings; `FORGE_LAYOUT_LEGACY` only during AL8 (recommended) |
-| Code | **None** yet — design only |
+
+```bash
+python3 -m pytest tests/unit/cli/test_layout_expected.py -q
+npm test -- tests/unit/extension/layout-apply-run.test.js
+# When nest works: ./install --kit=vim && forge nested run -- forge ping  # apiVersion 10
+```
+
+### Residual host smoke (tip loaded this Wayland session)
+
+| Check | Result |
+| --- | --- |
+| R019 CENTER both dirs | **PASS** via `forge run` dnd-drop (Grok↔Chrome peel BOTTOM then CENTER) |
+| R020 VLC end-of-video | L0 `layout-sensors` + `bug-461` green; full VLC video not run |
+| Host tip at session start | `g8766b19` matched git tip before dirty install |
 
 ### Shipped — R027 chrome until ready + Wave Z residual (nest)
 
@@ -225,17 +240,18 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**If you are Grok 4.5:** implement only after AL0 lock. Do not redesign
-D036/D037. Do not port `layout_plan.py`.
+**If you are Grok 4.5:** implement **AL2** next (pure JS normalize against
+expected fixtures). Do not redesign D036/D037. Do not port `layout_plan.py`
+wholesale.
 
 | You can do | You must not |
 | --- | --- |
-| Post-AL0 implement slices as drafted | Drop Python `gi` until all cmds migrate |
-| Host no-code smokes (no nest) | Port `layout_plan.py` to `cli/` |
-| Thin CLI client after DBus exists | Flip root `package.json` `"type"` / add `dbus-next` |
+| AL2 / AL3 pure planner slices | Drop Python `gi` until all cmds migrate |
+| Nest retest AL4 when nest works | Port `layout_plan.py` into `cli/` |
+| Host no-code smokes | Flip root `package.json` `"type"` / add `dbus-next` |
 
-**If you are Grok 4.6 xhigh:** **AL0** ApplyLayout design (now). Design
-only; no large code; ask operator only when unobvious.
+**If you are Grok 4.6 xhigh:** design only when AL2/AL3 reshape; otherwise
+4.5 implements against expected fixtures.
 
 | Pri | Work | Path |
 | --- | --- | --- |
@@ -247,8 +263,12 @@ only; no large code; ask operator only when unobvious.
 | done | **R027** overlay until apply returns | [completed](./tasks/completed/forge-layout-chrome-until-ready.md) |
 | done | Wave Z zoom (D030) host live PASS | [completed](./tasks/completed/forge-zoom-maximize.md) |
 | done | **AL0** ApplyLayout design lock (D038) | [task](./tasks/forge-layout-in-process_al0-design.md) · [plan](./plans/forge-layout-in-process.md) |
-| next | AL1 gold + AL4 DBus stub (after ack) | [AL1](./tasks/forge-layout-in-process_al1-gold-dump.md) · [AL4](./tasks/forge-layout-in-process_al4-dbus-apply-layout.md) |
-| later | Smoke leftover R019/R020 (Grok→Chrome CENTER + tiled VLC) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
+| done | AL1 expected + AL4 DBus stub (code; nest live pending) | [AL1](./plans/forge-layout-in-process/completed/forge-layout-in-process_al1-expected-dump.md) · [AL4](./plans/forge-layout-in-process/completed/forge-layout-in-process_al4-dbus-apply-layout.md) |
+| next | AL2 `normalizeProfile` pure JS (expected-backed) | [AL2](./tasks/forge-layout-in-process_al2-shared-plan-normalize.md) |
+| later | AL3 `planReconcile` pure JS | [AL3](./tasks/forge-layout-in-process_al3-shared-plan-reconcile.md) |
+| later | Nest/host smoke AL4 methods (`apiVersion` 10) | nest or one logout |
+| done | R019 CENTER both dirs host smoke | HANDOFF residual table |
+| later | R020 full VLC end-of-video (L0 green) | [R020](./REGRESSIONS.md) |
 | later | IC4 fold leftover CLI waiters — skip if ApplyLayout deletes them | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
 | done | FCC **C0** kill monocle + lossy inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
 | done | FCC **C1** `setLayout` I1 | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |

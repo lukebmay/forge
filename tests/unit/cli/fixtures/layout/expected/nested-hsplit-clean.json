@@ -1,0 +1,434 @@
+{
+  "flags": {
+    "clean": true,
+    "keepOthers": false,
+    "safe": false
+  },
+  "forest": {
+    "activeWorkspace": 0,
+    "apiVersion": 1,
+    "focusWindowId": 100,
+    "monitors": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "mode": "TILE",
+                    "monitor": 0,
+                    "nodeType": "WINDOW",
+                    "pid": 1,
+                    "rect": {
+                      "height": 1440,
+                      "width": 640,
+                      "x": 0,
+                      "y": 0
+                    },
+                    "title": "g0",
+                    "windowId": 100,
+                    "wmClass": "com.mitchellh.ghostty"
+                  }
+                ],
+                "layout": "VSPLIT",
+                "nodeType": "CON"
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "mode": "TILE",
+                    "monitor": 0,
+                    "nodeType": "WINDOW",
+                    "pid": 2,
+                    "rect": {
+                      "height": 1440,
+                      "width": 640,
+                      "x": 640,
+                      "y": 0
+                    },
+                    "title": "about:blank - Google Chrome",
+                    "windowId": 101,
+                    "wmClass": "google-chrome"
+                  },
+                  {
+                    "children": [],
+                    "mode": "TILE",
+                    "monitor": 0,
+                    "nodeType": "WINDOW",
+                    "pid": 2,
+                    "rect": {
+                      "height": 1440,
+                      "width": 640,
+                      "x": 640,
+                      "y": 0
+                    },
+                    "title": "Grok",
+                    "windowId": 102,
+                    "wmClass": "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default"
+                  }
+                ],
+                "layout": "TABBED",
+                "nodeType": "CON"
+              }
+            ],
+            "layout": "HSPLIT",
+            "nodeType": "CON"
+          }
+        ],
+        "id": "mo0ws0",
+        "layout": "HSPLIT",
+        "nodeType": "MONITOR",
+        "rect": {
+          "height": 1440,
+          "width": 2560,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "mode": "TILE",
+            "monitor": 1,
+            "nodeType": "WINDOW",
+            "pid": 3,
+            "rect": {
+              "height": 1440,
+              "width": 1280,
+              "x": 2560,
+              "y": 0
+            },
+            "title": "g1",
+            "windowId": 200,
+            "wmClass": "com.mitchellh.ghostty"
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "mode": "TILE",
+                "monitor": 1,
+                "nodeType": "WINDOW",
+                "pid": 2,
+                "rect": {
+                  "height": 1440,
+                  "width": 1280,
+                  "x": 3840,
+                  "y": 0
+                },
+                "title": "YouTube",
+                "windowId": 201,
+                "wmClass": "chrome-agimnkijcaahngcdmfeangaknmldooml-Default"
+              },
+              {
+                "children": [],
+                "mode": "TILE",
+                "monitor": 1,
+                "nodeType": "WINDOW",
+                "pid": 2,
+                "rect": {
+                  "height": 1440,
+                  "width": 1280,
+                  "x": 3840,
+                  "y": 0
+                },
+                "title": "Gmail",
+                "windowId": 202,
+                "wmClass": "chrome-fmgjjmmmlfnkbppncabfkddbjimcfncm-Default"
+              },
+              {
+                "children": [],
+                "mode": "TILE",
+                "monitor": 1,
+                "nodeType": "WINDOW",
+                "pid": 2,
+                "rect": {
+                  "height": 1440,
+                  "width": 1280,
+                  "x": 3840,
+                  "y": 0
+                },
+                "title": "Voice",
+                "windowId": 203,
+                "wmClass": "chrome-bojjonegeadjcbekpnkhoalecdkdohbo-Default"
+              }
+            ],
+            "layout": "TABBED",
+            "nodeType": "CON"
+          }
+        ],
+        "id": "mo1ws0",
+        "layout": "HSPLIT",
+        "nodeType": "MONITOR",
+        "rect": {
+          "height": 1440,
+          "width": 2560,
+          "x": 2560,
+          "y": 0
+        }
+      }
+    ],
+    "nWorkspaces": 4
+  },
+  "forestFile": "tree-mon0-nested-hsplit-collapse.json",
+  "id": "nested-hsplit-clean",
+  "note": "nested HSPLIT under mon0 left tab",
+  "plan": {
+    "actions": [
+      {
+        "mode": "hsplit",
+        "op": "ensure_order",
+        "slot": "mon0",
+        "windowIds": [101, 100]
+      }
+    ],
+    "clean": true,
+    "coldEmpty": false,
+    "counts": {
+      "bound": 0,
+      "closed": 0,
+      "focused": 0,
+      "kept": 0,
+      "left": 0,
+      "moved": 0,
+      "opened": 0,
+      "ordered": 1,
+      "parked": 0,
+      "reused": 7,
+      "sized": 0,
+      "skeleton": 0,
+      "structure": 0
+    },
+    "keepOthers": false,
+    "kept": [],
+    "left": [],
+    "nothingToDo": false,
+    "ok": true,
+    "roles": [
+      {
+        "id": "chrome-luke",
+        "path": "mo0ws0/0/1/0",
+        "slot": "mon0.left-tab",
+        "status": "reused",
+        "title": "about:blank - Google Chrome",
+        "windowId": 101,
+        "wmClass": "google-chrome"
+      },
+      {
+        "id": "grok",
+        "path": "mo0ws0/0/1/1",
+        "slot": "mon0.left-tab",
+        "status": "reused",
+        "title": "Grok",
+        "windowId": 102,
+        "wmClass": "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default"
+      },
+      {
+        "id": "ghostty-left",
+        "path": "mo0ws0/0/0/0",
+        "slot": "mon0.term",
+        "status": "reused",
+        "title": "g0",
+        "windowId": 100,
+        "wmClass": "com.mitchellh.ghostty"
+      },
+      {
+        "id": "ghostty-right",
+        "path": "mo1ws0/0",
+        "slot": "mon1.term",
+        "status": "reused",
+        "title": "g1",
+        "windowId": 200,
+        "wmClass": "com.mitchellh.ghostty"
+      },
+      {
+        "id": "youtube",
+        "path": "mo1ws0/1/0",
+        "slot": "mon1.comms",
+        "status": "reused",
+        "title": "YouTube",
+        "windowId": 201,
+        "wmClass": "chrome-agimnkijcaahngcdmfeangaknmldooml-Default"
+      },
+      {
+        "id": "gmail",
+        "path": "mo1ws0/1/1",
+        "slot": "mon1.comms",
+        "status": "reused",
+        "title": "Gmail",
+        "windowId": 202,
+        "wmClass": "chrome-fmgjjmmmlfnkbppncabfkddbjimcfncm-Default"
+      },
+      {
+        "id": "voice",
+        "path": "mo1ws0/1/2",
+        "slot": "mon1.comms",
+        "status": "reused",
+        "title": "Voice",
+        "windowId": 203,
+        "wmClass": "chrome-bojjonegeadjcbekpnkhoalecdkdohbo-Default"
+      }
+    ],
+    "safe": false,
+    "structureMatch": false,
+    "structureMismatches": [
+      {
+        "detail": "mon0 mon-child roles share mon-direct index (nested mon collapse): mo0ws0/0",
+        "got": {
+          "mo0ws0/0": ["left-tab", "term"]
+        },
+        "kind": "mon-child",
+        "slot": "mon0",
+        "want": ["left-tab", "term"]
+      }
+    ],
+    "thrashRisk": {
+      "crossMonMoves": 0,
+      "monEnsures": 0,
+      "parks": 0,
+      "reasons": ["order:mon0"],
+      "score": 1,
+      "structureGroups": 0
+    },
+    "thrashState": {
+      "reasons": ["nested-split-view:mon0.left-tab"],
+      "score": 4,
+      "thrashed": true
+    },
+    "unclaimed": [],
+    "workspace": 0
+  },
+  "profile": {
+    "description": "Dual-mon morning on black (WR1 fixture)",
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "left-tab",
+            "layout": "tabbed",
+            "roles": ["chrome-luke", "grok"]
+          },
+          {
+            "id": "term",
+            "roles": ["ghostty-left"]
+          }
+        ],
+        "split": "hsplit"
+      },
+      "mon1": {
+        "children": [
+          {
+            "id": "term",
+            "roles": ["ghostty-right"]
+          },
+          {
+            "id": "comms",
+            "layout": "tabbed",
+            "roles": ["youtube", "gmail", "voice"]
+          }
+        ],
+        "split": "hsplit"
+      }
+    },
+    "mode": "reconcile",
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "chrome-luke",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Google Chrome"
+        },
+        "open": {
+          "app": "google-chrome",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.left-tab"
+      },
+      {
+        "id": "grok",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Grok"
+        },
+        "open": {
+          "app": "Grok",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.left-tab"
+      },
+      {
+        "id": "ghostty-left",
+        "match": {
+          "class": "com.mitchellh.ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "timeout": 15000
+        },
+        "slot": "mon0.term"
+      },
+      {
+        "id": "ghostty-right",
+        "match": {
+          "class": "com.mitchellh.ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "timeout": 15000
+        },
+        "slot": "mon1.term"
+      },
+      {
+        "id": "youtube",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "YouTube"
+        },
+        "open": {
+          "app": "YouTube",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      },
+      {
+        "id": "gmail",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Gmail"
+        },
+        "open": {
+          "app": "Gmail",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      },
+      {
+        "id": "voice",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Voice"
+        },
+        "open": {
+          "app": "Google Voice",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": "profile-dev-v2.json"
+}

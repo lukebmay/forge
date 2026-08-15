@@ -1,9 +1,9 @@
 # forge-layout-in-process_al0-design — ApplyLayout design lock
 
-**Status:** ready  
+**Status:** done  
 **Plan:** [forge-layout-in-process](../plans/forge-layout-in-process.md)  
 **Branch:** master  
-**Blocker:** (none) — operator ack of the plan before AL1/AL4 code  
+**Blocker:** (none)  
 **Updated:** 2026-08-15  
 **Agent:** `grok-4.6` prompted as **4.6 xhigh**. Design only. **No
 code.** Do not assign to 4.5.
@@ -49,7 +49,7 @@ keep the polls. Planner must sit next to Meta; waits must be signals.
 ### Next
 
 Operator ack of [the plan](../plans/forge-layout-in-process.md). Then
-**AL1** (gold dump, 4.5 low) and **AL4** (DBus stub, 4.6) in
+**AL1** (expected dump, 4.5 low) and **AL4** (DBus stub, 4.6) in
 parallel. Do not assign planner port to 4.5. Do not mix TD1 / CN0–CN6.
 
 ### OPEN (not blocking)
@@ -59,7 +59,7 @@ parallel. Do not assign planner port to 4.5. Do not mix TD1 / CN0–CN6.
 
 ### Do not
 
-- Start gold-porting `layout_plan.py` in this task
+- Start fixture-porting `layout_plan.py` in this task
 - Assign AL0 to grok-4.5
 - Implement production code
 - Mix into TD1 or CN0–CN6
@@ -70,6 +70,9 @@ parallel. Do not assign planner port to 4.5. Do not mix TD1 / CN0–CN6.
 Insert A live + R025/R026 live + **TD1** shipped — **all done**.
 
 ## Session note
+
+**2026-08-15 (later):** AL1 + AL4 implemented (operator continued
+unblocked work on new Wayland session). See completed AL1/AL4 tasks.
 
 **2026-08-15:** AL0 locked. Plan expanded; D038 added; IC4 skip
 reason written; AL1–AL8 stubs drafted. Ready for operator ack, then

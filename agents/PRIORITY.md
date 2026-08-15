@@ -8,8 +8,8 @@
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
 not a `cli/` planner port).
 
-**Active:** **AL0 locked** — operator ack, then **AL1** (gold) + **AL4**
-(DBus stub) in parallel. R027 / Wave Z **done** (Wave Z host live PASS).
+**Active:** **AL1 + AL4 code done** (uncommitted). Next **AL2** normalize
+pure JS (expected-backed). Nest retest AL4 blocked this session (display :1).
 
 **Agents:** default implement = **Grok 4.5** (prompt as medium). Plan
 reshape / AL0 / C1 / messy DnD = **Grok 4.6** (xhigh for design).
@@ -42,15 +42,20 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | done | Wave Z zoom on tip; Vim kit live | [completed](./tasks/completed/forge-zoom-maximize.md) |
 | done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
 | done | First-layout FLOAT (R024): always force-paint at batch end; skip mid-batch percent write-back | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
-| done | Install `--kit=vim` + stale-kit warning | [task](./tasks/forge-install-reapply-kit.md) |
-| later | Leftover Grok→Chrome CENTER + VLC slot (R019/R020) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
+| done | Install `--kit=vim` + stale-kit warning | [completed](./tasks/completed/forge-install-reapply-kit.md) |
+| done | R019 CENTER both dirs host smoke (tip load) | HANDOFF residual |
+| later | R020 full VLC end-of-video (L0 green) | [R020](./REGRESSIONS.md) |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
 | done | **IC0** catalog + D024–D026 | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic0-catalog.md) |
 | done | **IC3** tile-slot authority (R020) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
 | done | **IC1** drop-intent + CENTER group both directions (R019) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic1-drop-intent.md) |
 | later | **IC4** fold leftover CLI waiters — **skip** if ApplyLayout deletes them | [task](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
 | done | In-process `ApplyLayout` AL0 design lock (D037/D038) | [task](./tasks/forge-layout-in-process_al0-design.md) · [plan](./plans/forge-layout-in-process.md) |
-| next | AL1 gold dump + AL4 DBus stub (after operator ack) | [AL1](./tasks/forge-layout-in-process_al1-gold-dump.md) · [AL4](./tasks/forge-layout-in-process_al4-dbus-apply-layout.md) |
+| done | AL1 expected plan dump (9 cases + parity pytest) | [completed](./plans/forge-layout-in-process/completed/forge-layout-in-process_al1-expected-dump.md) |
+| done | AL4 DBus stub (`ApplyLayout` + signals; L0; nest pending) | [completed](./plans/forge-layout-in-process/completed/forge-layout-in-process_al4-dbus-apply-layout.md) |
+| next | AL2 shared plan normalize (expected-backed pure JS) | [AL2](./tasks/forge-layout-in-process_al2-shared-plan-normalize.md) |
+| next | AL3 planReconcile pure JS (after AL2) | [AL3](./tasks/forge-layout-in-process_al3-shared-plan-reconcile.md) |
+| later | Nest/host smoke AL4 (`apiVersion` 10) | nest or logout |
 | done | FCC **C0** kill monocle + inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
 | done | FCC **C1** `setLayout` I1 | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) |
@@ -80,8 +85,10 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 10. **FCC C0** — **done** (monocle deleted; inventory for C1).
 11. **FCC C1** — **done** (`tree.setLayout` / I1; `4740ba5`).
 12. **R027 / Wave Z** — **done** (R027 nest; Wave Z host live PASS).
-13. **AL0** — **locked** (D038). Implement AL1–AL8 after operator ack.
-14. **IC4** — **skip** when AL8 deletes CLI waiters.
+13. **AL0** — **locked** (D038).
+14. **AL1 + AL4** — **code done** (expected dump + DBus stub). Nest live pending.
+15. **AL2 → AL3** — shared planner pure JS against expected fixtures.
+16. **IC4** — **skip** when AL8 deletes CLI waiters.
 
 Do not assign a 4.5 agent `layout_plan.py` → JS.
 
