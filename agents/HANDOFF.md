@@ -1,17 +1,36 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-14 (**campaign:** TD1+R028+CN0–CN5 done · next = CN6)  
+**Updated:** 2026-08-15 (**campaign:** TD1+R028+CN0–CN6 done · next = R027/Wave Z or AL0)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed / host tip:** `v49-90-beta.2-319-g81be493-dirty` (install fix + CN5 CLI;
-extension JS same lineage — Wayland needs logout for Shell tip only).
+**Installed / host tip:** CN6 CLI on master (launch/run/run-steps Node);
+extension JS same lineage — Wayland needs logout for Shell tip only.
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Shipped — CN6 launch + run / run-steps
+
+| Field | Detail |
+| --- | --- |
+| CN6 | `launch` / `run` / `run-steps` → Node (`cli/launch*.mjs`, `run.mjs`, `run-steps.mjs`); Python shims |
+| Jobs | PATH stays Python; worker `exec`s Node body (CN7 **skip** — flow in `cli/README.md`) |
+| Partition | JS `partitionMixedSteps`; `layout_lib.partition_mixed_steps` deleted |
+| Layout | Still Python `do_launch` / `run_mixed_steps` (not broken) |
+| Task | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn6-launch-run-steps.md) |
+| Guards | Vitest cli+run-steps 145; pytest cn6/cn5/layout_lib/job_runner/… 110 |
+
+```bash
+npm test -- tests/unit/cli/ tests/unit/extension/run-steps.test.js
+python3 -m pytest tests/unit/cli/test_cn6_shim.py \
+  tests/unit/cli/test_cn5_shim.py tests/unit/cli/test_node_exec.py \
+  tests/unit/cli/test_layout_lib.py tests/unit/cli/test_job_runner.py -q
+node cli/smoke-import.mjs
+```
 
 ### Shipped — CN5 thin DBus verbs + install keybind parse fix
 
@@ -149,16 +168,16 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 ## Start here (next agent)
 
 **If you are Grok 4.5:** do **one** slice. Do not redesign D036/D037.
-Do not port `layout_plan.py`. Prefer **CN6** (launch + run-steps).
+Do not port `layout_plan.py`. Prefer residual R027 / Wave Z, or FCC C0.
 
 | You can do | You must not |
 | --- | --- |
-| **CN6** launch + run-steps | Drop Python `gi` until all cmds migrate |
-| R027 / Wave Z smokes | Port `layout_plan.py` to `cli/` |
-| FCC C0 after CLI breath | Flip root `package.json` `"type"` / add `dbus-next` |
+| R027 / Wave Z smokes | Drop Python `gi` until all cmds migrate |
+| FCC C0 after CLI breath | Port `layout_plan.py` to `cli/` |
+| CN7 skip (already documented) | Flip root `package.json` `"type"` / add `dbus-next` |
 
-**If you are Grok 4.6 xhigh:** AL0 design after CN6 (or operator
-defers). C1 `setLayout` after C0.
+**If you are Grok 4.6 xhigh:** AL0 design (or operator defers). C1
+`setLayout` after C0.
 
 | Pri | Work | Path |
 | --- | --- | --- |
@@ -166,8 +185,7 @@ defers). C1 `setLayout` after C0.
 | done | TD1 strip reorder code + nest live | [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
 | done | R025 / R026 host live | [R025](./tasks/forge-tab-click-slot.md) · [R026](./tasks/forge-tab-click-pin-adopt.md) |
 | done | R028 late-identity wrap nest + host | [task](./tasks/forge-container-insert-a.md) |
-| done | CN0–CN5 | [completed/](./plans/forge-cli-node/completed/) |
-| **P0** | **CN6** launch + run-steps | [plan §CN6](./plans/forge-cli-node.md) |
+| done | CN0–CN6 | [completed/](./plans/forge-cli-node/completed/) |
 | residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
 | residual | Wave Z zoom (D030) on tip; Vim kit live | [task](./tasks/forge-zoom-maximize.md) |
 | later | Smoke leftover R019/R020 (Grok→Chrome CENTER + tiled VLC) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |

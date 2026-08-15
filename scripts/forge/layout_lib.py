@@ -523,27 +523,6 @@ def _validate_step_fields(i: int, op: str, step: dict[str, Any]) -> None:
             raise ValueError(f"steps[{i}]: wait-window requires wmClass")
 
 
-def partition_mixed_steps(steps: Any) -> list[dict[str, Any]]:
-    """
-    Split steps into extension vs CLI chunks (mirrors partitionMixedSteps in JS).
-    Returns [{kind: "extension"|"cli", steps: [...]}, …].
-    """
-    if not isinstance(steps, list):
-        return []
-    chunks: list[dict[str, Any]] = []
-    for step in steps:
-        op_raw = None
-        if isinstance(step, dict):
-            op_raw = step.get("op") or step.get("action") or step.get("type")
-        op = str(op_raw).strip().lower() if op_raw is not None else ""
-        kind = "cli" if op in CLI_ONLY_OPS else "extension"
-        if chunks and chunks[-1]["kind"] == kind:
-            chunks[-1]["steps"].append(step)
-        else:
-            chunks.append({"kind": kind, "steps": [step]})
-    return chunks
-
-
 def extract_steps_and_stop(payload: Any) -> tuple[list[Any], bool]:
     """
     From a run file payload (array or {steps, stopOnError?}), return

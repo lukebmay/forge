@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-14  
+**Updated:** 2026-08-15  
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.  
 **Branch:** **`master`** default  
 **Push:** only when human asks.
@@ -8,8 +8,8 @@
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
 not a `cli/` planner port).
 
-**Active:** TD1 · R028 · **CN0–CN5 done**. Next **CN6** launch +
-run-steps. Then AL0 (4.6 xhigh). Then FCC C0/C1.
+**Active:** TD1 · R028 · **CN0–CN6 done** (CN7 skip). Next residual
+**R027** / Wave Z, or AL0 (4.6 xhigh). Then FCC C0/C1.
 
 **Agents:** default implement = **Grok 4.5** (prompt as medium). Plan
 reshape / AL0 / C1 / messy DnD = **Grok 4.6** (xhigh for design).
@@ -37,7 +37,7 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | done | CLI-node **CN3** paths extract (`lib/shared/paths.js`) | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn3-paths.md) |
 | done | CLI-node **CN4** DBus + `ping`/`tree` | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn4-dbus-ping-tree.md) |
 | done | CLI-node **CN5** thin DBus verbs | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn5-thin-dbus.md) |
-| **P0** | CLI-node **CN6** launch + run-steps | [plan §CN6](./plans/forge-cli-node.md) |
+| done | CLI-node **CN6** launch + run-steps (CN7 skip) | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn6-launch-run-steps.md) |
 | residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
 | residual | Wave Z zoom on tip; Vim kit live | [task](./tasks/forge-zoom-maximize.md) |
 | done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
@@ -75,7 +75,7 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 6. **CN3** — **done** (`lib/shared/paths.js` pure config home).
 7. **CN4** — **done** (`cli/dbus.mjs` + ping/tree; live host green).
 8. **CN5** — **done** (focus/swap/move/get/set/settings Node bodies).
-9. **CN6** — launch + run-steps. 4.5.
+9. **CN6** — **done** (launch/run/run-steps; CN7 skip).
 10. **R027 / Wave Z** — remaining tip smokes (can interleave).
 11. **AL0 ApplyLayout design (4.6 xhigh)** — only layout rearch;
     skips IC4 when it ships.

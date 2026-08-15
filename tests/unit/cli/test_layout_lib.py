@@ -29,7 +29,6 @@ from layout_lib import (  # noqa: E402
     layout_dir,
     list_profiles,
     load_profile_file,
-    partition_mixed_steps,
     profile_path,
     validate_profile,
 )
@@ -162,66 +161,6 @@ class TestValidateProfile(unittest.TestCase):
     def test_string_version_1_ok(self):
         p = validate_profile({"version": "1", "steps": []})
         self.assertEqual(p["version"], 1)
-
-
-class TestPartitionMixedSteps(unittest.TestCase):
-
-    def test_empty(self):
-        self.assertEqual(partition_mixed_steps([]), [])
-        self.assertEqual(partition_mixed_steps(None), [])
-
-    def test_extension_only(self):
-        steps = [{
-            "op": "focus",
-            "selector": "focus"
-        }, {
-            "op": "layout",
-            "mode": "tabbed"
-        }]
-        chunks = partition_mixed_steps(steps)
-        self.assertEqual(len(chunks), 1)
-        self.assertEqual(chunks[0]["kind"], "extension")
-        self.assertEqual(len(chunks[0]["steps"]), 2)
-
-    def test_cli_only(self):
-        steps = [{"op": "launch", "app": "x"}, {"op": "wait", "ms": 1}]
-        chunks = partition_mixed_steps(steps)
-        self.assertEqual(len(chunks), 1)
-        self.assertEqual(chunks[0]["kind"], "cli")
-
-    def test_mixed_mirrors_js(self):
-        steps = [
-            {
-                "op": "set",
-                "key": "a",
-                "value": 1
-            },
-            {
-                "op": "launch",
-                "app": "x"
-            },
-            {
-                "op": "wait-window",
-                "wmClass": "X"
-            },
-            {
-                "op": "focus",
-                "selector": "class:X"
-            },
-            {
-                "op": "layout",
-                "mode": "tabbed"
-            },
-        ]
-        chunks = partition_mixed_steps(steps)
-        self.assertEqual(
-            [(c["kind"], len(c["steps"])) for c in chunks],
-            [("extension", 1), ("cli", 2), ("extension", 2)],
-        )
-
-    def test_action_alias(self):
-        chunks = partition_mixed_steps([{"action": "launch", "app": "x"}])
-        self.assertEqual(chunks[0]["kind"], "cli")
 
 
 class TestExtractAndLaunchFields(unittest.TestCase):

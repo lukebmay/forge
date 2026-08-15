@@ -853,13 +853,19 @@ taken — next free D0xx):
 
 ## Session note
 
+**2026-08-15:** CN6 done — `cli/launch-lib.mjs` + `launch`/`run`/
+`run-steps` `.mjs`; Python shims; job parent→worker→Node exec documented
+in `cli/README.md` (**CN7 skip**). `layout_lib.partition_mixed_steps`
+deleted; layout keeps Python `do_launch` + private chunker. Vitest
+cli+run-steps **145 PASS**; pytest cn6/cn5/layout_lib/job_runner **110**.
+Next residual R027/Wave Z or AL0.
+
 **2026-08-14:** CN5 done — thin DBus verbs via CN4 `callMethod`:
 `cli/cmd-result.mjs` (`withFirst`/`cmdResult`) + `focus`/`swap`/`move`/
 `get`/`set`/`settings` `.mjs`; Python `cmd_*` → `exec_cli` shims;
 those names in `_NO_DBUS_COMMANDS`. Python `_with_first`/`_cmd_result`
 kept for run-steps. Vitest cli **94 PASS**; pytest cn5/shim/node_exec/
-class_eq **38 PASS**. Live `forge get tiling-mode-enabled` ok. Next:
-**CN6** launch + run-steps.
+class_eq **38 PASS**. Live `forge get tiling-mode-enabled` ok.
 
 **2026-08-14 (earlier):** CN4 done — `cli/dbus.mjs` (gdbus + GVariant-ish
 parse mirroring Python `_call_gdbus`; `_METHOD_IN_ARGS`); `cli/ping.mjs`

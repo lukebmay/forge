@@ -28,7 +28,7 @@ _EXT_ORIGIN = (
     / "install-origin.json"
 )
 # Subcommands that do not need a DBus session (extension may be offline).
-# ping/tree + CN5 thin verbs: Node gdbus body via exec_cli; skip Python gi/_check_deps.
+# Node gdbus bodies via exec_cli (CN4–CN6); skip Python gi/_check_deps.
 _NO_DBUS_COMMANDS = frozenset(
     {
         "install",
@@ -46,6 +46,9 @@ _NO_DBUS_COMMANDS = frozenset(
         "get",
         "set",
         "settings",
+        "launch",
+        "run",
+        "run-steps",
     }
 )
 # layout list|show|help|save(--stdout/--tree-file) are offline; apply needs DBus.
@@ -163,7 +166,6 @@ from layout_lib import (  # noqa: E402
     layout_tree_root,
     list_profiles_resolved,
     load_profile_file,
-    partition_mixed_steps,
     resolve_host,
     resolve_profile,
     validate_profile,
@@ -1940,53 +1942,10 @@ def _layout_final_focus_pass(
     return 0, last_plan
 
 
-def cmd_run_steps(backend: str, args: argparse.Namespace) -> int:
-    """
-    DBus RunSteps: freeze → extension ops → unfreeze + one render.
-
-    launch / wait-window / wait are CLI-only — rejected here.
-    Mixed scripts: use `forge run` or `forge layout`.
-    """
-    raw: Optional[str] = None
-    if getattr(args, "file", None):
-        path = Path(args.file).expanduser()
-        if not path.is_file():
-            _eprint(f"forge run-steps: file not found: {path}")
-            return 1
-        try:
-            raw = path.read_text(encoding="utf-8")
-        except OSError as e:
-            _eprint(f"forge run-steps: cannot read {path}: {e}")
-            return 1
-    elif getattr(args, "json_arg", None) is not None:
-        raw = args.json_arg
-    else:
-        _eprint("forge run-steps: provide JSON string or --file PATH")
-        return 1
-
-    raw = (raw or "").strip()
-    if not raw:
-        _eprint("forge run-steps: empty payload")
-        return 1
-
-    try:
-        payload = _load_steps_payload(raw)
-    except ValueError as e:
-        _eprint(f"forge run-steps: {e}")
-        return 1
-
-    cli_ops = _payload_has_cli_only(payload)
-    if cli_ops:
-        _eprint(
-            "forge run-steps: launch/wait are CLI-only and not sent via DBus "
-            f"(found: {', '.join(cli_ops)}). Use `forge run` / `forge layout` "
-            "for mixed scripts, or `forge launch` then run-steps for tree ops."
-        )
-        return 1
-
-    # Re-serialize so bare arrays and objects round-trip cleanly.
-    steps_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
-    return _cmd_result(backend, "RunSteps", steps_json, label="run-steps")
+def cmd_run_steps(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/run-steps.mjs`` (CN6). Job parent still wraps first."""
+    exec_cli("run-steps.mjs", _argv_after_command("run-steps"))
+    return 1  # pragma: no cover — exec never returns
 
 
 def do_launch(
@@ -2185,6 +2144,24 @@ def _run_cli_step(backend: str, step: dict[str, Any], *, print_result: bool = Fa
     return {"ok": False, "op": op or None, "error": f"unknown CLI op: {op!r}"}
 
 
+def _partition_mixed_steps_layout(steps: Any) -> list[dict[str, Any]]:
+    """Layout-only chunker (CLI forge run uses JS partitionMixedSteps)."""
+    if not isinstance(steps, list):
+        return []
+    chunks: list[dict[str, Any]] = []
+    for step in steps:
+        op_raw = None
+        if isinstance(step, dict):
+            op_raw = step.get("op") or step.get("action") or step.get("type")
+        op = str(op_raw).strip().lower() if op_raw is not None else ""
+        kind = "cli" if op in CLI_ONLY_STEP_OPS else "extension"
+        if chunks and chunks[-1]["kind"] == kind:
+            chunks[-1]["steps"].append(step)
+        else:
+            chunks.append({"kind": kind, "steps": [step]})
+    return chunks
+
+
 def run_mixed_steps(
     backend: str,
     steps: list[Any],
@@ -2194,9 +2171,9 @@ def run_mixed_steps(
 ) -> tuple[int, dict[str, Any]]:
     """
     Partition mixed steps; run CLI ops here, extension chunks via DBus RunSteps.
-    Returns (exit_code, aggregate JSON).
+    Returns (exit_code, aggregate JSON). Layout apply still uses this path.
     """
-    chunks = partition_mixed_steps(steps)
+    chunks = _partition_mixed_steps_layout(steps)
     chunk_results: list[dict[str, Any]] = []
     all_ok = True
     step_index = 0
@@ -4709,58 +4686,16 @@ def cmd_uninstall(_backend: Optional[str], args: argparse.Namespace) -> int:
     return int(proc.returncode)
 
 
-def cmd_run(backend: str, args: argparse.Namespace) -> int:
-    """forge run <file.json> — mixed steps (CLI launch/wait + extension RunSteps)."""
-    path = Path(args.file).expanduser() if args.file else None
-    if not path:
-        _eprint("forge run: file required")
-        return 1
-    if not path.is_file():
-        _eprint(f"forge run: file not found: {path}")
-        return 1
-    try:
-        raw = path.read_text(encoding="utf-8")
-    except OSError as e:
-        _eprint(f"forge run: cannot read {path}: {e}")
-        return 1
-    raw = raw.strip()
-    if not raw:
-        _eprint("forge run: empty file")
-        return 1
-    try:
-        payload = _load_steps_payload(raw)
-        steps, stop_on_error = extract_steps_and_stop(payload)
-    except ValueError as e:
-        _eprint(f"forge run: {e}")
-        return 1
-
-    # Pure extension payload → single RunSteps (same as run-steps)
-    cli_ops = _payload_has_cli_only(payload if isinstance(payload, (list, dict)) else {"steps": steps})
-    if not cli_ops:
-        steps_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
-        return _cmd_result(backend, "RunSteps", steps_json, label="run")
-
-    rc, aggregate = run_mixed_steps(
-        backend, steps, stop_on_error=stop_on_error, print_each=False
-    )
-    aggregate["file"] = str(path)
-    _print_json(aggregate, compact=False)
-    return rc
+def cmd_run(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/run.mjs`` (CN6). Job parent still wraps first."""
+    exec_cli("run.mjs", _argv_after_command("run"))
+    return 1  # pragma: no cover — exec never returns
 
 
-def cmd_launch(backend: str, args: argparse.Namespace) -> int:
-    rc, _result = do_launch(
-        backend,
-        app=(args.app or "").strip().strip("'\""),
-        wm_class=(args.wm_class or "").strip() or None,
-        timeout=int(args.timeout if args.timeout is not None else DEFAULT_LAUNCH_TIMEOUT_MS),
-        no_wait=bool(args.no_wait),
-        monitor=args.monitor,
-        tree_path=args.tree_path,
-        first=bool(getattr(args, "first", False)),
-        print_result=True,
-    )
-    return rc
+def cmd_launch(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/launch.mjs`` (CN6)."""
+    exec_cli("launch.mjs", _argv_after_command("launch"))
+    return 1  # pragma: no cover — exec never returns
 
 
 _SELECTOR_HELP = """\

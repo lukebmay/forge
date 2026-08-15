@@ -13,6 +13,23 @@ This tree grows command facades (`fs`, `gsettings`, `gdbus`); it does
 1. Import **only** node-safe pures from `lib/shared/` (and a few pure
    helpers under `lib/extension/`). Never import `gi://` modules.
 
+## Job mutators (`run` / `run-steps`)
+
+Python stays on PATH so durable jobs wrap unchanged. Flow (CN6):
+
+```text
+TTY: python forge run-steps …     # job parent (maybe_run_as_job)
+  worker: python forge run-steps …  # FORGE_JOB_WORKER=1
+    exec node cli/run-steps.mjs …   # body; inherits job env/logs
+```
+
+Same pattern for `forge run`. `forge launch` is not a job mutator; it
+execs Node directly from the Python shim. Layout still uses Python
+`do_launch` / `run_mixed_steps` in-process (not a `cli/` port).
+
+CN7 can skip if this flow stays clean (worker argv remains Python;
+Node only replaces the body after the job gate).
+
 ## FIRM: `lib/shared/` purity
 
 **No `gi://`, no `node:`, no `process`, no `fs`** in new
