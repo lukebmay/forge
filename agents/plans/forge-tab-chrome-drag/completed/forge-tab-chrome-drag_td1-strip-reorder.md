@@ -1,6 +1,6 @@
 # forge-tab-chrome-drag_td1-strip-reorder — Reorder tabs on the strip
 
-**Status:** ready — **code shipped** (L0 green); live residual next  
+**Status:** done  
 **Plan:** [forge-tab-chrome-drag](../plans/forge-tab-chrome-drag.md)  
 **Branch:** master  
 **Blocker:** (none)  
@@ -26,12 +26,34 @@ today’s LX4 grab-tile (join / slot-split / empty mon).
 - [x] Close-button path unchanged (no arm)
 - [x] Pure insert-index helper unit-tested
 - [x] Suites below green
-- [ ] Live after `./install` + nest or logout: 3-tab group reorder,
+- [x] Live after `./install` + nest or logout: 3-tab group reorder,
       then peel one onto an edge
 
 ## Context for the next agent (complete + succinct)
 
-### Shipped (this session)
+### Live result (2026-08-14)
+
+**PASS** on tip `v49-90-beta.2-317-gb280f94` via
+`forge nested run` + Shell.Eval synthetic tab-drag (host has no
+xdotool/ydotool; host Shell.Eval disabled). Nest stopped after.
+
+| Step | Result |
+| --- | --- |
+| Setup | 3 zenity windows → unfloat → dnd-drop CENTER → TABBED |
+| Before | `[2105001302, 2105001304, 2105001305]` |
+| Reorder | middle tab along strip past 8px → `st1/st2=reorder`, `insertIndex=3` |
+| After reorder | `[2105001302, 2105001305, 2105001304]`; layout TABBED |
+| Open leaf | `lastTabFocusId` = dragged `2105001304` |
+| Peel | leave strip → `stOff=active` `mode=GRAB_TILE` synthetic; edge drop |
+| After peel | peeled WINDOW under mon HSPLIT; remaining 2 stay TABBED |
+
+Host desk already had mon1 3-tab Chrome group; not used (no pointer
+automation on host Wayland). Reorder is **not** dnd-drop — exercised
+`armTabDrag` / `noteTabDragMotion` / `finishTabDragRelease` on live
+tab actors. Peel forced synthetic grab (`begin_grab_op` → false) so
+drop could complete headless; strip→grab transition still real.
+
+### Shipped (code session)
 
 - Pure: `tabStripInsertIndex`, `applyTabStripReorder`,
   `pointerOnTabStrip`, `tabActorScreenRect` in
@@ -63,18 +85,20 @@ npm test -- tests/unit/extension/tab-strip-reorder.test.js \
   tests/unit/window/WindowManager-tab-drag.test.js \
   tests/unit/extension/layout-open-leaf-pin.test.js
 # 131 passed
+# Live (this residual): forge nested run -- python3 /tmp/td1-strip-reorder-live.py
 ```
-
-Live residual: `./install` + nest (or host logout) → 3-tab TABBED
-drag along strip → order changes; drag off → join/edge peel.
 
 ### Risks
 
 - Live hit-test uses `tab` actor x/y or transformed position; if Shell
   geometry is zero until map, reorder falls through to grab
 - Multi-row tabs (T9): still axis X only for TABBED
+- Host Wayland: no xdotool/ydotool; Shell.Eval off — nest or human
+  pointer for any further host smoke
 
 ## Session note
 
-**2026-08-14:** TD1 implemented. All listed L0 suites green (131). No
-live nest smoke. No escalations. Leave R028 wrap alone.
+**2026-08-14 (live residual):** TD1 live **PASS** nest tip
+`gb280f94`. Reorder middle→end; peel first tab off strip to edge →
+HSPLIT + 2-tab remainder. Code changes: none. Nest stopped. No
+escalations.

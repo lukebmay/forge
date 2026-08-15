@@ -8,10 +8,8 @@
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
 not a `cli/` planner port).
 
-**Active:** TD1 **code shipped** (`b280f94`) — **live nest/host residual**
-next. R028 late-identity wrap shipped (nest PASS; host logout residual).
-R025/R026 host live done. Then CN0–CN3. Then AL0 (4.6 xhigh). Then
-FCC C0/C1.
+**Active:** TD1 · R028 · **CN0–CN4 done**. Next **CN5** thin DBus
+verbs. Then CN6. Then AL0 (4.6 xhigh). Then FCC C0/C1.
 
 **Agents:** default implement = **Grok 4.5** (prompt as medium). Plan
 reshape / AL0 / C1 / messy DnD = **Grok 4.6** (xhigh for design).
@@ -27,15 +25,19 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | Pri | Item | Status |
 | --- | --- | --- |
 | done | R029/R030 green layout — first apply TILE, second reuses | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
-| done | TD1 strip reorder **code** (L0 131 green) | [task](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) |
-| done | R028 late-identity wrap **code** + nest VSPLIT | [task](./tasks/forge-container-insert-a.md) |
+| done | TD1 strip reorder **code** + nest live (L0 131) | [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
+| done | R028 late-identity wrap **code** + nest VSPLIT + **host** live PASS | [task](./tasks/forge-container-insert-a.md) |
 | done | **R025** tab-click slot (host live) | [task](./tasks/forge-tab-click-slot.md) |
 | done | **R026** first tab-click after layout stays (host live) | [task](./tasks/forge-tab-click-pin-adopt.md) |
 | done | Insert/DnD design lock: **A** + Chrome drag table | [task](./tasks/forge-container-insert-dnd-design.md) |
 | done | CLI language D0 lock (D036/D037) | [completed](./plans/forge-cli-node/completed/forge-cli-node_d0-discussion.md) |
-| **P0** | **TD1 live** — tip via install; nest or logout; 3-tab reorder + edge peel | [task](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) |
-| residual | R028 host after logout — `layout dev` + left Nautilus VSPLIT | [task](./tasks/forge-container-insert-a.md) |
-| next | CLI-node **CN0** scaffold (`lib/shared` gi-free) after TD1 live | [task](./tasks/forge-cli-node_cn0-scaffold.md) |
+| done | CLI-node **CN0** scaffold (`cli/` + gi-free canary) | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn0-scaffold.md) |
+| done | CLI-node **CN1** Python `node_exec` helper | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn1-exec.md) |
+| done | CLI-node **CN2** `keybind` (Node body + Python shim) | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn2-keybind.md) |
+| done | CLI-node **CN3** paths extract (`lib/shared/paths.js`) | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn3-paths.md) |
+| done | CLI-node **CN4** DBus + `ping`/`tree` | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn4-dbus-ping-tree.md) |
+| **P0** | CLI-node **CN5** thin DBus verbs | [plan §CN5](./plans/forge-cli-node.md) |
+| next | CLI-node **CN6** launch + run-steps | [plan §CN6](./plans/forge-cli-node.md) |
 | residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
 | residual | Wave Z zoom on tip; Vim kit live | [task](./tasks/forge-zoom-maximize.md) |
 | done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
@@ -52,9 +54,6 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | later | FCC **C1** `setLayout` I1 (worth — after C0) | [task](./tasks/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED/STACKED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
-| later | CLI-node CN1 exec helper | [task](./tasks/forge-cli-node_cn1-exec.md) |
-| later | CLI-node CN2 `keybind` | [task](./tasks/forge-cli-node_cn2-keybind.md) |
-| later | CLI-node CN3 paths extract (purity) | [task](./tasks/forge-cli-node_cn3-paths.md) |
 | done | **R017** gdisplays scale → no entered-monitor thrash | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) · L0 48 green |
 | done | **R016** no-op workareas + mon-loss collect-to-end | [completed](./tasks/completed/forge-monitor-noop-apply-thrash.md) · L0 guards green |
 | optional | Per-window signals → WindowAttach | [plan](./plans/forge-lifecycle-abstractions.md) |
@@ -68,17 +67,19 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 ### Why this order
 
-1. **TD1 live** — code is in tip after install; confirm strip reorder
-   + peel on nest/host before CN0.
-2. **R028 host re-smoke** — after logout loads late-identity wrap
-   (nest already PASS).
-3. **CN0–CN3** after TD1 live — shared purity rule + keybind. 4.5.
-4. **R027 / Wave Z** — remaining tip smokes (can interleave).
-5. **AL0 ApplyLayout design (4.6 xhigh)** — only layout rearch;
-   skips IC4 when it ships.
-6. **FCC C0 then C1** — monocle gone; `setLayout` I1. Worth; do not
-   drop off the queue.
-7. CN4–CN6 dbus/launch when CLI campaign resumes.
+1. **TD1 live** — **done** (nest on tip `b280f94`).
+2. **R028 host** — **done** (VSPLIT of left unit, not 3-wide mon).
+3. **CN0** — **done** (`cli/` + smoke-import; 2729 tests green).
+4. **CN1** — **done** (`node_exec.py`; 45 pytest green).
+5. **CN2** — **done** (`cli/keybind.mjs`; install kit via Node).
+6. **CN3** — **done** (`lib/shared/paths.js` pure config home).
+7. **CN4** — **done** (`cli/dbus.mjs` + ping/tree; live host green).
+8. **CN5–CN6** — thin DBus verbs + launch/run-steps. 4.5.
+9. **R027 / Wave Z** — remaining tip smokes (can interleave).
+10. **AL0 ApplyLayout design (4.6 xhigh)** — only layout rearch;
+    skips IC4 when it ships.
+11. **FCC C0 then C1** — monocle gone; `setLayout` I1. Worth; do not
+    drop off the queue.
 
 Do not assign a 4.5 agent `layout_plan.py` → JS.
 
@@ -88,7 +89,7 @@ Do not assign a 4.5 agent `layout_plan.py` → JS.
 | --- | --- | --- |
 | `lib/shared` gi-free | Kernel prefs+CLI can share | D036 · CN0 · CN3 |
 | ApplyLayout | Speed + one planner | D037 · AL0 |
-| TD1 strip reorder | Tabs match window DnD | TD1 live residual |
+| TD1 strip reorder | Tabs match window DnD | **done** |
 | FCC C1 `setLayout` I1 | Tabs stay groups when mode changes | C0 → C1 |
 | Skip IC4 if ApplyLayout | Do not fold waiters we will delete | IC4 note |
 

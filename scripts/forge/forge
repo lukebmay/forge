@@ -28,8 +28,19 @@ _EXT_ORIGIN = (
     / "install-origin.json"
 )
 # Subcommands that do not need a DBus session (extension may be offline).
+# ping/tree: Node gdbus body via exec_cli (CN4); skip Python gi/_check_deps.
 _NO_DBUS_COMMANDS = frozenset(
-    {"install", "uninstall", "update", "help", "keybind", "jobs", "nested"}
+    {
+        "install",
+        "uninstall",
+        "update",
+        "help",
+        "keybind",
+        "jobs",
+        "nested",
+        "ping",
+        "tree",
+    }
 )
 # layout list|show|help|save(--stdout/--tree-file) are offline; apply needs DBus.
 
@@ -172,6 +183,7 @@ from layout_save import (  # noqa: E402
 from cli_ansi import parse_color_flag, set_color_mode  # noqa: E402
 from cli_help import print_forge_help, print_layout_help  # noqa: E402
 from keybind_kit import build_keybind_subparser  # noqa: E402
+from node_exec import exec_cli  # noqa: E402
 
 
 def _eprint(*args: object) -> None:
@@ -343,21 +355,19 @@ def _cmd_result(backend: str, method: str, *dbus_args: str, label: str) -> int:
     return 1
 
 
-def cmd_ping(backend: str, _args: argparse.Namespace) -> int:
-    try:
-        raw = call_method(backend, "Ping")
-    except Exception as e:
-        _eprint(f"forge ping: bus call failed (is the extension enabled?): {e}")
-        return 1
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        print(raw)
-        return 1
-    _print_json(data, compact=False)
-    if isinstance(data, dict) and data.get("ok") is True:
-        return 0
-    return 1
+def _argv_after_command(cmd: str, argv: Optional[list[str]] = None) -> list[str]:
+    """Slice argv after the subcommand token (for Node exec shims)."""
+    a = list(sys.argv if argv is None else argv)
+    for i, tok in enumerate(a):
+        if tok == cmd:
+            return list(a[i + 1 :])
+    return list(a[1:]) if a else []
+
+
+def cmd_ping(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/ping.mjs`` (CN4)."""
+    exec_cli("ping.mjs", _argv_after_command("ping"))
+    return 1  # pragma: no cover — exec never returns
 
 
 def _project_node_to_portable(node: dict[str, Any]) -> dict[str, Any] | None:
@@ -490,31 +500,10 @@ def cmd_save_session_layout(backend: str, _args: argparse.Namespace) -> int:
         return 1
 
 
-def cmd_tree(backend: str, args: argparse.Namespace) -> int:
-    options: dict[str, Any] = {}
-    if args.monitor is not None:
-        options["monitor"] = args.monitor
-    if args.workspace is not None:
-        options["workspace"] = args.workspace
-    if args.max_depth is not None:
-        options["maxDepth"] = args.max_depth
-    options_json = json.dumps(options)
-    try:
-        raw = call_method(backend, "GetTree", options_json)
-    except Exception as e:
-        _eprint(f"forge tree: bus call failed (is the extension enabled?): {e}")
-        return 1
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        print(raw)
-        return 1
-    if isinstance(data, dict) and data.get("error"):
-        _eprint(f"forge tree: {data['error']}")
-        _print_json(data, compact=args.compact)
-        return 1
-    _print_json(data, compact=args.compact)
-    return 0
+def cmd_tree(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/tree.mjs`` (CN4)."""
+    exec_cli("tree.mjs", _argv_after_command("tree"))
+    return 1  # pragma: no cover — exec never returns
 
 
 def cmd_thrash(backend: Optional[str], args: argparse.Namespace) -> int:

@@ -1,6 +1,6 @@
 # Plan: Browser-like tab chrome drag
 
-**Status:** TD1 unit done — live smoke residual; TD2–TD4 later  
+**Status:** TD1 **done** (code + nest live); TD2–TD4 later  
 **Priority:** P1 product chrome (after Insert A live + tab-click
 residuals)  
 **Created:** 2026-08-06  
@@ -11,10 +11,14 @@ residuals)
 
 ### Session note (overwrite)
 
-**2026-08-14 (TD1 code):** Strip reorder landed in `drag-drop.js`
-(`tabStripInsertIndex` + arm/motion/release). Leave strip → existing
-`_startTabMoveGrab`. L0 suites green (131). Live 3-tab smoke still
-open on task. Do not invent a second DnD engine. Do not start TD2/FCC.
+**2026-08-14 (TD1 live PASS):** Nest tip `gb280f94` — 3 zenity TABBED,
+strip reorder middle→end, peel → mon HSPLIT + 2-tab remainder. Host
+pointer smoke not run (no xdotool; Shell.Eval off). Task →
+[completed](./completed/forge-tab-chrome-drag_td1-strip-reorder.md).
+Do not invent a second DnD engine. TD2 only if peel Model B mismatch.
+
+**2026-08-14 (TD1 code):** Strip reorder in `drag-drop.js`
+(`tabStripInsertIndex` + arm/motion/release). L0 131 green.
 
 **2026-08-06:** Mouse tab drag was not browser-like. LX4 landed
 unit-level tab→grab-tile plumbing.
@@ -61,7 +65,7 @@ Tabs must **reuse** that path when the pointer leaves the strip.
 | ID | Work | Agent | Status |
 | --- | --- | --- | --- |
 | **TD0** | Live inventory on tip: LX4 grab from a tab vs titlebar (join / edge / empty mon). Write 10-line note in this file if anything differs | `grok-4.5` low, or skip if operator already knows grab works | draft |
-| **TD1** | Strip reorder — see below + [task](../tasks/forge-tab-chrome-drag_td1-strip-reorder.md) | `grok-4.5` medium; escalate to `grok-4.6` if strip-vs-grab hit test fights preview | **unit done** (live residual) |
+| **TD1** | Strip reorder — [completed](./completed/forge-tab-chrome-drag_td1-strip-reorder.md) | `grok-4.5` medium | **done** (code + nest live) |
 | **TD2** | Peel-out — **only** if TD0/TD1 shows LX4 edge wrap ≠ locked Model B | `grok-4.6` | later / maybe skip |
 | **TD3** | Join another strip — **only** if LX4 CENTER miss | `grok-4.5` medium | later / maybe skip |
 | **TD4** | User docs + cheatsheet one-liner | `grok-4.5` low | after TD1 |

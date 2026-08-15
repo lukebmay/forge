@@ -1210,6 +1210,12 @@ def forge_worker_argv(
     *,
     python: Optional[str] = None,
 ) -> list[str]:
-    """Build worker argv: same interpreter + forge script + user args (no meta flags)."""
+    """Build Python forge worker argv: interpreter + script + user args (no meta flags).
+
+    Job workers take an opaque argv list: a future Node worker may start with
+    ``node`` and a ``cli/*.mjs`` path. ``spawn_worker`` / ``run_job`` never
+    prepend an interpreter — callers pass a complete argv. This helper remains
+    the production path for Python mutators until that migrates.
+    """
     py = python or sys.executable
     return [py, str(forge_script), *[str(a) for a in cleaned_argv]]

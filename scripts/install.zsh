@@ -183,17 +183,17 @@ _install_done() {
 }
 
 _install_keybind_kit() {
-  local py="$FORGE_SCRIPTS/keybind_kit.py"
-  if ! command -v python3 >/dev/null 2>&1; then
-    forge_step_warn "Keybind kit (python3 missing)"
+  local mjs="$FORGE_REPO_ROOT/cli/keybind.mjs"
+  if ! command -v node >/dev/null 2>&1; then
+    forge_step_warn "Keybind kit (node missing)"
     return 0
   fi
-  if [[ ! -f "$py" ]]; then
+  if [[ ! -f "$mjs" ]]; then
     forge_step_warn "Keybind kit (script missing)"
     return 0
   fi
   if [[ -n "$KIT" ]]; then
-    if forge_run_quiet python3 "$py" load "$KIT"; then
+    if forge_run_quiet node "$mjs" load "$KIT"; then
       forge_step_ok "Keybind kit ($KIT)"
     else
       forge_step_warn "Keybind kit ($KIT load failed)"
@@ -201,9 +201,9 @@ _install_keybind_kit() {
     return 0
   fi
   local st=0 json matched
-  json=$(python3 "$py" status --json) || st=$?
+  json=$(node "$mjs" status --json) || st=$?
   if (( st == 0 )); then
-    matched=$(print -r -- "$json" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("matched",""))' 2>/dev/null || print "")
+    matched=$(print -r -- "$json" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{try{console.log(JSON.parse(s).matched||"")}catch{console.log("")}}')
     forge_step_ok "Keybind kit (${matched:-ok})"
   elif (( st == 2 )); then
     forge_step_warn "Keybind kit (custom; ./install --kit=vim)"

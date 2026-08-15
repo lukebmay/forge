@@ -558,17 +558,17 @@ already import the same presets.
 
 **Accept**
 
-- [ ] `forge keybind dir` / `list` / `status --json` / `save` /
+- [x] `forge keybind dir` / `list` / `status --json` / `save` /
       `load --dry-run vim` behave as today
-- [ ] `node cli/keybind.mjs status --json` works without PATH forge
-- [ ] `./install --kit=vim` still loads via the new file (dry-run the
+- [x] `node cli/keybind.mjs status --json` works without PATH forge
+- [x] `./install --kit=vim` still loads via the new file (dry-run the
       function if you cannot live-load; at least the path exists and
       `--dry-run` works)
-- [ ] No `node -e` kit loader left
-- [ ] Python body of kit apply/match/save **gone** (shim only)
-- [ ] `npm test -- tests/unit/shared/keybind-presets.test.js
+- [x] No `node -e` kit loader left
+- [x] Python body of kit apply/match/save **gone** (shim only)
+- [x] `npm test -- tests/unit/shared/keybind-presets.test.js
       tests/unit/cli/keybind.test.js`
-- [ ] Remaining pytest green (`test_keybind_kit` removed or reduced
+- [x] Remaining pytest green (`test_keybind_kit` removed or reduced
       to spawn)
 
 **Refs:** `scripts/forge/keybind_kit.py`,
@@ -619,9 +619,9 @@ rules. `forge-config-home.js` imports `gi://GLib`.
 
 **Accept**
 
-- [ ] Node can resolve nest `FORGE_CONFIG_HOME` without `gi://`
-- [ ] Existing nest rule: env is the root (do **not** append `/forge`)
-- [ ] `npm test -- tests/unit/shared/forge-config-home.test.js`
+- [x] Node can resolve nest `FORGE_CONFIG_HOME` without `gi://`
+- [x] Existing nest rule: env is the root (do **not** append `/forge`)
+- [x] `npm test -- tests/unit/shared/forge-config-home.test.js`
 
 ---
 
@@ -654,8 +654,8 @@ still serves unmigrated commands.
 
 **Accept**
 
-- [ ] `forge ping` / `forge tree` help + dry mocked tests green
-- [ ] Python functions for ping/tree are shims only
+- [x] `forge ping` / `forge tree` help + dry mocked tests green
+- [x] Python functions for ping/tree are shims only
 
 ---
 
@@ -853,14 +853,27 @@ taken — next free D0xx):
 
 ## Session note
 
-**2026-08-14:** Drafted from D0 + tree survey (Grok 4.6). No code.
+**2026-08-14:** CN4 done — `cli/dbus.mjs` (gdbus + GVariant-ish parse
+mirroring Python `_call_gdbus`; `_METHOD_IN_ARGS`); `cli/ping.mjs` /
+`cli/tree.mjs`; Python `cmd_ping`/`cmd_tree` → `exec_cli` shims;
+ping/tree in `_NO_DBUS_COMMANDS` (Node owns gdbus). Vitest 35 +
+pytest shim 5 green; live `forge ping` ok + `tree --compact`. Python
+`gi` backend **kept** for unmigrated cmds. Next: **CN5** thin DBus
+verbs (`focus`/`swap`/`move`/`get`/`set`/settings).
 
-**2026-08-14 (later):** Operator asked shared-dir, more extracts,
-layout-rearch vs this plan, tab-strip GUI, agent classes. Locked in
-this file: keep `lib/shared/` (no new `pures/`); extract
-opportunistically; **cancel CN8–CN12**; ApplyLayout is a separate
-4.6 xhigh plan; 4.5 does CN0–CN6 only. Queue: tab TD1 after
-R025/R026, then cheap CLI, then ApplyLayout design.
+**2026-08-14 (earlier):** CN3 done — pure `lib/shared/paths.js`
+(`resolveForgeConfigHome` + `FORGE_CONFIG_HOME_ENV`); GJS
+`forge-config-home.js` wrapper only; `cli/keybind.mjs`
+`resolveProfilesDir` uses pure + `os.homedir()`/`.config`. Vitest
+28 PASS (pure + thin wrapper + keybind). Live dir + status matched
+vim.
 
-**2026-08-14 (lock):** Operator locked D036/D037 + ranking + worth
-queue (C0/C1, CN3, skip IC4). Tasks drafted. No product code.
+**2026-08-14 (earlier):** CN2 done — `cli/keybind.mjs` (shared presets +
+gsettings/dconf), Python `keybind_kit.py` shim → `exec_cli`, install
+`--kit=` via Node, Vitest + thin pytest. Live smoke: status matched
+vim, load dry-run 63 keys. Prefs Gio path unchanged.
+
+**2026-08-14 (earlier):** CN1 done — `scripts/forge/node_exec.py`
+(`find_node`, `cli_mjs`, `exec_cli`/`run_cli`, missing-node **127**),
+unit tests, `forge_worker_argv` opaque-argv docstring + `spawn_worker`
+node mock. Production worker argv unchanged.

@@ -12,6 +12,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _REPO = Path(__file__).resolve().parents[3]
 _FORGE_CLI = _REPO / "scripts" / "forge"
@@ -543,6 +544,27 @@ class CliHelpers(unittest.TestCase):
                                  python="/usr/bin/python3")
         self.assertEqual(argv,
                          ["/usr/bin/python3", "/path/forge", "layout", "dev"])
+
+    def test_spawn_worker_node_argv_opaque(self):
+        """Worker argv is opaque: node … is not rewritten with sys.executable."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            worker = ["node", str(_REPO / "cli" / "x.mjs"), "load", "vim"]
+            fake = mock.MagicMock()
+            fake.pid = 424242
+            with mock.patch("subprocess.Popen", return_value=fake) as popen:
+                handle = spawn_worker(
+                    worker,
+                    jobs_root=root,
+                    command="keybind",
+                    timeout_sec=30,
+                )
+            self.assertEqual(handle.pid, 424242)
+            popen.assert_called_once()
+            called_argv = popen.call_args[0][0]
+            self.assertEqual(called_argv, worker)
+            self.assertEqual(called_argv[0], "node")
+            self.assertNotIn(sys.executable, called_argv)
 
     def test_is_job_worker_pid_scoped(self):
         with tempfile.TemporaryDirectory() as tmp:

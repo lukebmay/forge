@@ -1,16 +1,14 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-14 (**campaign:** TD1 code shipped · R028 late-identity
-· R025/R026 host live · next = TD1/R028 live on tip)  
+**Updated:** 2026-08-14 (**campaign:** TD1+R028+CN0–CN4 done · next = CN5)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed:** `v49-90-beta.2-317-gb280f94` (`./install --kit=vim`). Host
-`forge ping` still reports prior tip until **logout** (or use nest).
-R025/R026 already green on prior tip `g4b2a374`.
+**Installed / host tip:** `v49-90-beta.2-317-gb280f94` (host matches;
+TD1 nest live + R028 host VSPLIT PASS).
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
@@ -19,10 +17,12 @@ R025/R026 already green on prior tip `g4b2a374`.
 
 | Field | Detail |
 | --- | --- |
-| TD1 | Drag tab along same-group strip → `replaceChildren` reorder; leave strip → LX4 grab-tile. Pure helpers in `drag-drop.js`. L0 131 green |
-| Task | [forge-tab-chrome-drag_td1-strip-reorder](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) — **live residual** |
-| R028 (4) | Null class/title at map still slot-splits (`_unknownOpenIdentity`); nest VSPLIT PASS; host logout re-smoke |
-| Task | [forge-container-insert-a](./tasks/forge-container-insert-a.md) |
+| TD1 | Code + nest live PASS on `gb280f94`: 3-tab reorder + peel→HSPLIT. Host pointer smoke not run (no xdotool; Shell.Eval off) |
+| Task | [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
+| R028 (4) | Null class/title at map still slot-splits; nest + **host** PASS (left unit VSPLIT, mon still 2) on `b280f94` |
+| Task | [forge-container-insert-a](./tasks/forge-container-insert-a.md) **done** |
+| CN0–CN4 | scaffold · `node_exec` · `keybind` · `paths` · **dbus+ping+tree** — [completed/](./plans/forge-cli-node/completed/) |
+| CN4 | `cli/dbus.mjs` via gdbus; Python ping/tree shims; live `forge ping` ok |
 | R025/R026 | Host live PASS on tip `g4b2a374` (slot size + pin adopt) |
 | Contracts | Strip reorder + D032 unknown-identity rows in [contracts.md](../docs/dev/contracts.md) |
 
@@ -30,9 +30,8 @@ R025/R026 already green on prior tip `g4b2a374`.
 npm test -- tests/unit/extension/tab-strip-reorder.test.js \
   tests/unit/window/WindowManager-insert-slot-split.test.js \
   tests/unit/extension/action-pipeline.test.js
-# Live (after tip loaded — nest or host logout):
-# 1) 3-tab TABBED: drag along strip → order changes; drag off edge → slot-split
-# 2) layout dev + left LFT + launch nautilus → VSPLIT slot, not 3-wide HSPLIT
+node cli/smoke-import.mjs   # safe vim i3
+python3 -m pytest tests/unit/cli/test_node_exec.py tests/unit/cli/test_job_runner.py -q
 ```
 
 ### Shipped — R021–R024 (empty-head open / leaf empty-mon / nest drop / first layout)
@@ -132,34 +131,33 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 ## Start here (next agent)
 
 **If you are Grok 4.5:** do **one** slice. Do not redesign D036/D037.
-Do not port `layout_plan.py`. Prefer live residual of TD1/R028, then CN0.
+Do not port `layout_plan.py`. Prefer **CN5**, then CN6.
 
 | You can do | You must not |
 | --- | --- |
-| **TD1 live** (install already done; nest or logout; 3-tab reorder + peel) | ApplyLayout / CN8–CN12 / IC4 |
-| Host R028 re-smoke after logout | New drop-intent twin; flatten tab groups |
-| **CN0** after TD1 live (or if operator defers live) | Flip root `package.json` `"type"` |
-| R027 / Wave Z smokes | Second DnD manager for strip reorder |
+| **CN5** thin DBus verbs (`focus`/`swap`/… + settings) | Add `dbus-next` npm dep |
+| **CN6** launch + run-steps after CN5 | Drop Python `gi` until all cmds migrate |
+| R027 / Wave Z smokes | Port `layout_plan.py` to `cli/` |
+| FCC C0 after CLI breath | Flip root `package.json` `"type"` |
 
-**If you are Grok 4.6 xhigh:** AL0 design only after TD1 is done or
-explicitly deferred. C1 `setLayout` after C0.
+**If you are Grok 4.6 xhigh:** AL0 design after CN5–CN6 (or operator
+defers). C1 `setLayout` after C0.
 
 | Pri | Work | Path |
 | --- | --- | --- |
 | done | R029/R030 green `layout dev` TILE + reuse | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
-| done | TD1 strip reorder **code** (L0 green) | [task](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) |
+| done | TD1 strip reorder code + nest live | [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
 | done | R025 / R026 host live | [R025](./tasks/forge-tab-click-slot.md) · [R026](./tasks/forge-tab-click-pin-adopt.md) |
-| done | R028 late-identity wrap **code** + nest VSPLIT | [task](./tasks/forge-container-insert-a.md) |
-| **P0** | **TD1 live** — tip loaded via install; nest or logout; 3-tab strip reorder then edge peel | [task](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) |
-| residual | R028 host after **logout** — `layout dev` + left Nautilus VSPLIT (not 3-wide) | [task](./tasks/forge-container-insert-a.md) |
-| next | CN0 after TD1 live | [CN0](./tasks/forge-cli-node_cn0-scaffold.md) |
+| done | R028 late-identity wrap nest + host | [task](./tasks/forge-container-insert-a.md) |
+| done | CN0–CN4 | [completed/](./plans/forge-cli-node/completed/) |
+| **P0** | **CN5** thin DBus verbs | [plan §CN5](./plans/forge-cli-node.md) |
+| next | CN6 launch + run-steps | [plan §CN6](./plans/forge-cli-node.md) |
 | residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
 | residual | Wave Z zoom (D030) on tip; Vim kit live | [task](./tasks/forge-zoom-maximize.md) |
 | later | Smoke leftover R019/R020 (Grok→Chrome CENTER + tiled VLC) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
 | later | IC4 fold leftover CLI waiters — skip if ApplyLayout deletes them | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
 | later | AL0 ApplyLayout design (4.6 xhigh; do not port planner to `cli/`) | [task](./tasks/forge-layout-in-process_al0-design.md) |
-| later | CN0–CN3 after TD1 (shared purity + keybind) | [CN0](./tasks/forge-cli-node_cn0-scaffold.md) |
-| later | FCC C0/C1 after TD1 (monocle + setLayout I1) | [C0](./tasks/forge-first-class-containers_c0-kill-monocle.md) · [C1](./tasks/forge-first-class-containers_c1-set-layout.md) |
+| later | FCC C0/C1 (monocle + setLayout I1) | [C0](./tasks/forge-first-class-containers_c0-kill-monocle.md) · [C1](./tasks/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | done | Wayland RC R013/R014 + nest isolation N1–N4 + lifecycle W1–W5 | [REGRESSIONS](./REGRESSIONS.md) |
@@ -173,8 +171,8 @@ explicitly deferred. C1 `setLayout` after C0.
 | [forge-canonical-contracts.md](./plans/forge-canonical-contracts.md) | **P0** job→API catalog; IC1–IC3 |
 | [docs/dev/contracts.md](../docs/dev/contracts.md) | Canonical APIs — extend these first |
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |
-| [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 — [task](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) |
-| [forge-cli-node.md](./plans/forge-cli-node.md) | Node CLI CN0–CN6; no layout port |
+| [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 done — [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
+| [forge-cli-node.md](./plans/forge-cli-node.md) | Node CLI CN0 done; CN1–CN6; no layout port |
 | [forge-layout-in-process.md](./plans/forge-layout-in-process.md) | ApplyLayout — 4.6 xhigh design first |
 
 ### R015 (empty-mon drag) — shipped in tree

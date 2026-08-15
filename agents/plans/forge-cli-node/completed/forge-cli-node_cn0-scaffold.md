@@ -1,8 +1,7 @@
 # forge-cli-node_cn0-scaffold — `cli/` + shared purity inventory
 
-**Status:** ready — start **after TD1** (or if TD1 files are idle and
-operator asks to parallel)  
-**Plan:** [forge-cli-node](../plans/forge-cli-node.md)  
+**Status:** done  
+**Plan:** [forge-cli-node](../../forge-cli-node.md)  
 **Branch:** master  
 **Blocker:** (none)  
 **Updated:** 2026-08-14  
@@ -16,23 +15,23 @@ docs + a canary import. No user-facing command yet.
 
 ## Acceptance
 
-- [ ] `cli/package.json` is `{ "name": "forge-cli", "private": true, "type": "module" }`
-- [ ] `lib/shared/package.json` is `{ "type": "module" }` (silences
+- [x] `cli/package.json` is `{ "name": "forge-cli", "private": true, "type": "module" }`
+- [x] `lib/shared/package.json` is `{ "type": "module" }` (silences
       typeless-package warning)
-- [ ] `cli/README.md` lists node-safe vs `gi://` files (copy from
+- [x] `cli/README.md` lists node-safe vs `gi://` files (copy from
       the plan table; update if you find another `gi://` import)
-- [ ] `cli/README.md` states FIRM: no `gi://` / `node:` / `fs` /
+- [x] `cli/README.md` states FIRM: no `gi://` / `node:` / `fs` /
       `process` in new `lib/shared/` files
-- [ ] `cli/smoke-import.mjs` imports `listKits` from
+- [x] `cli/smoke-import.mjs` imports `listKits` from
       `../lib/shared/keybind-presets.js` and prints kit ids
-- [ ] `node cli/smoke-import.mjs` exits 0; stdout includes
+- [x] `node cli/smoke-import.mjs` exits 0; stdout includes
       `safe`, `vim`, `i3`
-- [ ] `tests/unit/cli/smoke-import.test.js` spawns that file
-- [ ] Full `npm test` still green
-- [ ] **No** rename of `scripts/forge/*`
-- [ ] **No** change to `~/.local/bin/forge`
-- [ ] **No** extract of `forge-config-home` (that is CN3)
-- [ ] **No** new npm dependencies
+- [x] `tests/unit/cli/smoke-import.test.js` spawns that file
+- [x] Full `npm test` still green
+- [x] **No** rename of `scripts/forge/*`
+- [x] **No** change to `~/.local/bin/forge`
+- [x] **No** extract of `forge-config-home` (that is CN3)
+- [x] **No** new npm dependencies
 
 ## Context for the next agent (complete + succinct)
 
@@ -45,6 +44,16 @@ import { listKits } from "../lib/shared/keybind-presets.js";
 works from a repo-root `.mjs`. `forge-config-home.js` **fails**
 (`gi://` → `ERR_UNSUPPORTED_ESM_URL_SCHEME`).
 
+### Landed
+
+| Path | Role |
+| --- | --- |
+| `cli/package.json` | `"name": "forge-cli"`, private, `"type": "module"` |
+| `lib/shared/package.json` | `{ "type": "module" }` only |
+| `cli/README.md` | Node 20+; FIRM purity; node-safe vs gi-bound table |
+| `cli/smoke-import.mjs` | canary: prints kit ids (`safe vim i3`) |
+| `tests/unit/cli/smoke-import.test.js` | spawnSync canary, exit 0 + ids |
+
 ### Node-safe today
 
 `keybind-presets.js`, `settings-keys.js`, `settings-control.js`,
@@ -56,7 +65,7 @@ Also (in `lib/extension/`, not shared): `settle-math.js`,
 ### gi-bound (do not import from Node)
 
 `forge-config-home.js`, `settings.js`, `config-sync.js`, `theme.js`,
-`logger.js`.
+`logger.js` (logger pulls settings / GJS).
 
 ### Test
 
@@ -69,8 +78,10 @@ npm test
 ### Risks
 
 Do not flip root `package.json` `"type": "module"`. Only `cli/` and
-`lib/shared/` get `"type": "module"`.
+`lib/shared/` get `"type": "module"`. Next slice is CN1 (Python exec
+helper), not CN3.
 
 ## Session note
 
-**2026-08-14:** Task drafted at lock. No code.
+**2026-08-14:** CN0 done. Scaffold + canary + inventory. Full Vitest
+2729 green. No PATH / scripts/forge rename / forge-config-home extract.

@@ -1,10 +1,10 @@
 # forge-container-insert-a — slot-split insert + edge drop (D032)
 
-**Status:** ready (L0 + nest green; host desk needs logout for tip)
+**Status:** done
 **Plan:** [forge-container-insert-dnd-design](./forge-container-insert-dnd-design.md)
 **Branch:** master
 **Blocker:** (none)
-**Updated:** 2026-08-14 (R028 live + late-identity wrap)
+**Updated:** 2026-08-14 (R028 host live PASS on tip `b280f94`)
 
 ## Goal
 
@@ -31,8 +31,8 @@ or ran `window-reset-sizes`.
       live-retest is needed (mon=1, `forge nested run`, then stop)
 - [x] Nest live on new JS — focus left slot + Nautilus is VSPLIT of that
       slot, not 3-wide MONITOR HSPLIT
-- [ ] Host `layout dev` + left-dock Nautilus after **logout** (loads
-      late-identity wrap tip)
+- [x] Host `layout dev` + left-dock Nautilus on tip (late-identity wrap;
+      logout not required once `forge ping` shows tip)
 
 ## Context for the next agent (complete + succinct)
 
@@ -81,48 +81,38 @@ All green this session (10 insert-slot-split including late-identity).
 ### Risks
 
 - Host Wayland Shell needs logout (or nest) to load tip after install.
-  Nest already proved VSPLIT with the late-identity wrap.
+  Tip `b280f94` was already loaded this session; host residual PASS.
 - Do not implement TD1 strip-index reorder, peel Model B, or keyboard
   no-auto-pop here.
 
 ## Session note
 
-**2026-08-14 R028 live (host tip `g4b2a374`):** After `layout dev`, LFT
-on left TABBED Grok (`2946577601`), `forge launch nautilus` → **FAIL**.
-Phase: `trackWindow` insert. Nautilus TILE `2946577645` as **3rd even
-HSPLIT sibling** of `mo0ws0` (`path=mo0ws0/2`).
+**2026-08-14 R028 host residual — PASS** on tip
+`v49-90-beta.2-317-gb280f94` (logout not needed; tip already loaded).
 
-Before:
+Host smoke (no nest, no install, agent Ghostty `201816577` kept):
 
-```text
-mo0ws0 HSPLIT
-  CON TABBED lastTabFocus=Grok 2946577601 [Chrome 2946577600, Grok]
-  WINDOW Ghostty 2946577603
-```
+1. `forge layout dev` → mon0 HSPLIT 2: left TABBED [Chrome
+   `201816574`, Grok `201816575`] lastTabFocus=Grok; right 1-child
+   HSPLIT Ghostty agent.
+2. `forge focus title:Grok` → LFT left bag (`mo0ws0/0/1`).
+3. `forge launch nautilus` → Nautilus TILE `201816602`
+   `org.gnome.Nautilus`.
 
-After (host old JS):
-
-```text
-mo0ws0 HSPLIT
-  CON TABBED [Chrome 2946577600, Grok 2946577601]
-  WINDOW Ghostty 2946577603
-  WINDOW Nautilus 2946577645 TILE   # 3-wide even
-```
-
-Trace: `layout-track: attached class=null title=null dest=mo0ws0`.
-`isFloatingExempt` (null class/title) set `willTile=false` → D032 wrap
-skipped → `processFloats` tiled in place.
-
-**Fix:** slot-split when `willTile || _unknownOpenIdentity`. L0
-`late null class/title still slot-splits` green. `./install` + nest
-(mon=1) **PASS** on `g22c02e7-dirty`:
+After:
 
 ```text
-mo0ws0 HSPLIT
-  CON VSPLIT [TextEditor TILE, Nautilus TILE]
-  CON VSPLIT [eog TILE, Calculator FLOAT]
+mo0ws0 HSPLIT children=2
+  CON VSPLIT
+    CON TABBED lastTabFocus=Grok [Chrome, Grok]
+    WINDOW Nautilus TILE path=mo0ws0/0/1
+  CON HSPLIT [Ghostty agent 201816577]
 ```
 
-Nautilus `path=mo0ws0/0/1`, parent VSPLIT, monitor still 2 children.
-Nest stopped. Host desk still old tip — logout then re-smoke
-`layout dev` + left-dock. Do not start TD1 from this task.
+**PASS:** mon still 2 children; Nautilus under left-unit VSPLIT wrap,
+not `mo0ws0/2` 3-wide even HSPLIT. Closed Nautilus (TERM pid); tree
+peeled to TABBED+Ghostty; agent window intact. No code changes.
+
+Prior (same day, host old tip `g4b2a374`): FAIL as 3rd mon sibling —
+fixed by `_unknownOpenIdentity` + nest VSPLIT PASS; this session only
+re-smoked host on loaded tip.
