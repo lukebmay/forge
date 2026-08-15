@@ -51,7 +51,7 @@ It probably matches a rule. Check **Preferences → Windows** and
   Vim `Shift+Super+m`) to make a tabbed group first, or DnD center-drop.
 - After installing a build that adds keys, reload Shell (X11: `Alt+F2` → `r`, or
   `killall -HUP gnome-shell`) so the extension re-registers bindings; then
-  `forge keybind apply vim` (or Safe/i3) if dconf still lacks the new chords.
+  `forge keybind load vim` (or Safe/i3) if dconf still lacks the new chords.
 - Existing installs keep prior dconf values until you reset or re-apply a kit.
   See [layouts.md](layouts.md#stacked-vs-tabbed).
 

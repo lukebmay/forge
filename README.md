@@ -153,9 +153,9 @@ forge install --kit=vim   # or: ./install --kit=vim
 # or: forge update --kit=vim
 ```
 
-`--kit=vim` backups live chords, resets the keybind schema, and applies
-the current Vim kit. Omit `--kit` to keep your map; install then **warns**
-if live chords match no kit (`forge keybind status`).
+`--kit=vim` loads the current Vim kit into live keybindings. Omit `--kit`
+to keep your map; install then **warns** if live chords match no kit
+(`forge keybind status`). Snapshot a custom map with `forge keybind save my-kit`.
 
 **Remove (keeps prefs):**
 
@@ -190,7 +190,7 @@ After any install that does not reload Shell: on **X11** use `Alt+F2` → `r`, o
 - **Merge into tabbed group:** Safe `Ctrl+Super+m` · Vim `Shift+Super+m`
 - **Layout debug overlay:** `Ctrl+Super+d`
 - **Preferences:** Extensions app → Forge, or `gnome-extensions prefs forge@jmmaranan.com`
-- **Keybind kits CLI:** `forge keybind apply vim` (also `safe` / `i3`; `--reset` to wipe first; `status` / backup/list)
+- **Keybind kits CLI:** `forge keybind load vim` (also `safe` / `i3` / saved `my-kit`); `save my-kit` → `my-kit.json`; `status` / `list`
 
 User guide:
 

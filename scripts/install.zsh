@@ -70,8 +70,8 @@ Options:
   --no-reload-theme   Skip css-last-update stamp / css-updated bump
   --skip-npm          Skip npm install if node_modules missing
   --no-host-defaults  Skip apply-host-defaults.zsh
-  --kit=vim|safe|i3   Reset live keybinds and apply that kit (backup first)
-  --no-kit            Do not apply a kit (default). Still warns if live is custom
+  --kit=vim|safe|i3   Load that built-in keybind kit into live gsettings
+  --no-kit            Do not load a kit (default). Still warns if live is custom
   --force             Non-interactive (default for this script; kept for CI flags)
   --verbose, -v       Detailed logs (make/npm/gsettings chatter)
   --color=auto|always|never
@@ -84,7 +84,7 @@ Examples:
   ./install
   ./install --no-restart          # copy files only; reload Shell yourself
   ./install --verbose             # full build chatter
-  ./install --kit=vim             # daily: install + reset/apply Vim kit
+  ./install --kit=vim             # daily: install + load Vim kit
   forge install                   # re-run from install-origin
   forge install --kit=vim
 
@@ -193,10 +193,10 @@ _install_keybind_kit() {
     return 0
   fi
   if [[ -n "$KIT" ]]; then
-    if forge_run_quiet python3 "$py" apply "$KIT" --reset; then
+    if forge_run_quiet python3 "$py" load "$KIT"; then
       forge_step_ok "Keybind kit ($KIT)"
     else
-      forge_step_warn "Keybind kit ($KIT apply failed)"
+      forge_step_warn "Keybind kit ($KIT load failed)"
     fi
     return 0
   fi

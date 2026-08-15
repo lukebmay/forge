@@ -37,7 +37,7 @@ click (R026 adopts a live pin).
 - **Not skipped by persist:** launching Chrome/Grok on a cold desk;
   hard-ready TILE (~5s cap); 2s cold focus floor when we opened apps.
 - **Super+Space:** not this file. Vim kit now binds Run to Super+Space;
-  `./install` does not re-apply kits. On green: `forge keybind apply vim`.
+  `./install` does not re-apply kits. On green: `forge keybind load vim`.
 - **Enable/test:**
 
 ```bash

@@ -15,7 +15,7 @@ them up, version-control them, or copy them to another machine.
 
 GSettings remains the live source of truth; these files are an import/export layer.
 
-**Keybind kits:** `forge keybind backup|apply|list` writes/reads profiles under
+**Keybind kits:** `forge keybind save|load|list` writes/reads profiles under
 `FORGE_KEYBIND_PROFILES_DIR` when set (shellrc often exports
 `$shellrc/configs/forge/keybinding-profiles`), else
 `~/.config/forge/config/keybinding-profiles/`. See

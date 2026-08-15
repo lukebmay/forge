@@ -14,10 +14,10 @@ install keeps live chords and warns when they match no built-in kit.
 ## Acceptance
 
 - [x] `./install --kit=vim` / `forge install --kit=vim` / `forge update --kit=vim`
-- [x] `--kit` backups live, `gsettings reset-recursively` the keybind schema, applies kit
+- [x] `--kit` loads the built-in kit into live gsettings
 - [x] Default install does **not** rewrite keys
 - [x] After install, warn when `forge keybind status` is custom
-- [x] `forge keybind status` / `apply --reset`
+- [x] `forge keybind status` / `load vim|safe|i3`
 - [x] L0: match/diff without gsettings
 
 ## Context for the next agent (complete + succinct)

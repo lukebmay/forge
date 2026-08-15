@@ -40,7 +40,7 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
         ("launch", "Start app; place after LFT (or PlaceNext path/monitor)"),
         ("run / run-steps", "JSON step scripts (mixed CLI+ext / ext-only)"),
         ("get / set / settings", "Portable GSettings / named profiles"),
-        ("keybind", "Backup/apply keybind kits (vim|safe|i3; no DBus)"),
+        ("keybind", "Save/load keybind kits (vim|safe|i3; no DBus)"),
         ("ping", "Extension health"),
         ("test live", "AI live matrix (probe/plan/run by behaviors)"),
         ("nested", "Nested Wayland Shell for retests without host logout"),
@@ -147,16 +147,16 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
     _blank(s)
 
     _out(s, heading("Keybind kits", **kw))
-    _out(s, "  ", cmd("forge keybind backup [name]", **kw), "  ",
-         dim("# live → profile JSON", **kw))
-    _out(s, "  ", cmd("forge keybind apply vim", **kw), "       ",
+    _out(s, "  ", cmd("forge keybind save my-kit", **kw), "   ",
+         dim("# live → my-kit.json", **kw))
+    _out(s, "  ", cmd("forge keybind load vim", **kw), "        ",
          dim("# built-in kit → gsettings", **kw))
-    _out(s, "  ", cmd("forge keybind apply vim --reset", **kw),
-         dim("  # backup + wipe schema + apply", **kw))
+    _out(s, "  ", cmd("forge keybind load my-kit", **kw), "     ",
+         dim("# saved profile by name", **kw))
     _out(s, "  ", cmd("forge keybind status", **kw), "          ",
          dim("# live vs vim/safe/i3 (warns if custom)", **kw))
     _out(s, "  ", cmd("forge install --kit=vim", **kw), "     ",
-         dim("# install + reset/apply Vim", **kw))
+         dim("# install + load Vim kit", **kw))
     _out(s, "  ", cmd("forge keybind list", **kw), "            ",
          dim("# FORGE_KEYBIND_PROFILES_DIR", **kw))
     _out(

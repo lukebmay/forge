@@ -6685,7 +6685,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--kit",
         choices=("vim", "safe", "i3"),
         default=None,
-        help="Reset live keybinds and apply this kit (backup first)",
+        help="Load this built-in keybind kit after install",
     )
     install_p.add_argument(
         "--verbose",
@@ -6752,7 +6752,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--kit",
         choices=("vim", "safe", "i3"),
         default=None,
-        help="Reset live keybinds and apply this kit after install",
+        help="Load this built-in keybind kit after install",
     )
     update_p.add_argument(
         "--verbose",

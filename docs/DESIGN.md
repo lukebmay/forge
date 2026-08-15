@@ -566,7 +566,7 @@ casual “groupify this parent” dissolves nested units.
 
 Groups today are **window-leaf bags** — chrome flip is lossless. CLI parity via
 RunSteps: `layout-cycle` (axis `group`|`split`), `merge-group`, `float`.
-Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind backup|apply`.
+Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind save|load`.
 
 **Phase 2–3 (active plan):** first-class containers — non-destructive layout
 cycle, explicit group/ungroup, split chrome (focus ancestry + show-all + drag),

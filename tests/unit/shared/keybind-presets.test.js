@@ -16,8 +16,10 @@ import {
   isBareSuperLetterOrNumber,
   isBareSuperAccel,
   kitUsesBareSuper,
+  isReservedKitName,
   sanitizeProfileName,
   buildProfileProps,
+  liveProfileProps,
 } from "../../../lib/shared/keybind-presets.js";
 import { KEYBINDING_KEYS } from "../../../lib/shared/config-sync.js";
 import {
@@ -262,8 +264,19 @@ describe("keybind kits", () => {
       expect(sanitizeProfileName("my-kit")).toBe("my-kit");
     });
 
+    it("strips trailing .json", () => {
+      expect(sanitizeProfileName("my-kit.json")).toBe("my-kit");
+    });
+
     it("rejects pathy names", () => {
       expect(sanitizeProfileName("../evil")).toBeNull();
+    });
+
+    it("reserves built-in kit ids", () => {
+      expect(isReservedKitName("vim")).toBe(true);
+      expect(isReservedKitName("SAFE")).toBe(true);
+      expect(isReservedKitName("i3.json")).toBe(true);
+      expect(isReservedKitName("my-kit")).toBe(false);
     });
 
     it("buildProfileProps shape", () => {
@@ -279,6 +292,20 @@ describe("keybind kits", () => {
         bindings: { "window-focus-left": ["<Ctrl><Super>Left"] },
         name: "desk",
       });
+    });
+
+    it("liveProfileProps matches buildProfileProps from a store snapshot", () => {
+      const kbd = {
+        get_strv: (key) => (key === "window-focus-left" ? ["<Super>h"] : []),
+        get_string: () => "None",
+      };
+      const props = liveProfileProps(kbd, "desk");
+      expect(props.version).toBe(1);
+      expect(props.name).toBe("desk");
+      expect(props["mod-mask-mouse-tile"]).toBe("None");
+      expect(props.bindings["window-focus-left"]).toEqual(["<Super>h"]);
+      expect(props).not.toHaveProperty("savedAt");
+      expect(props).not.toHaveProperty("note");
     });
   });
 });

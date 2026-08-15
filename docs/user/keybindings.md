@@ -30,7 +30,7 @@ lists GNOME/custom entries.
 | **Tiling master = `Ctrl+Super+e`** | **e**nable / disable Forge tiling for the session. (Legacy `Super+w` meant “window” vaguely and fought Super+w habits; not a strong mnemonic.) |
 | **Vim kit** | Power map: vim-style focus on `Super+hjkl`, move on Shift, swap on Ctrl+Super. |
 | **i3 kit** | Approximate i3 muscle memory (focus hjkl, move Shift+hjkl, splits `b`/`v`/`e`, zoom on Enter). Not a full i3 mode system. |
-| **No silent kit rewrite on install** | Live dconf stays until you apply a kit. `./install` **warns** when live chords match no kit (stale after we change Vim/i3). Re-apply: `./install --kit=vim` or `forge keybind apply vim --reset`. |
+| **No silent kit rewrite on install** | Live dconf stays until you load a kit. `./install` **warns** when live chords match no kit (stale after we change Vim/i3). Re-load: `./install --kit=vim` or `forge keybind load vim`. |
 
 Workflow we want: **load a kit → tweak → Save as your kit**.
 
@@ -175,9 +175,18 @@ when GNOME or other Forge actions share a chord.
 `$shellrc/configs/forge/keybinding-profiles`), else
 `~/.config/forge/config/keybinding-profiles/<name>.json`.
 
-CLI: `forge keybind backup [name]`, `forge keybind apply vim|safe|i3`,
-`forge keybind apply vim --reset` (backup live, reset schema, apply),
-`forge keybind status` (does live match a built-in kit?).
+Prefs **Save** / **Load** and the CLI share the same files and rules:
+
+| Action | Prefs | CLI |
+| --- | --- | --- |
+| Save live map | **Save** with a name | `forge keybind save my-kit` |
+| Load saved map | **Load** | `forge keybind load my-kit` |
+| Load built-in | kit toggles, or **Load** `vim`/`safe`/`i3` | `forge keybind load vim` |
+
+Both write/read `…/keybinding-profiles/<name>.json` with the same JSON shape
+(`version`, `mod-mask-mouse-tile`, `bindings`, `name`). Built-in names
+`vim` / `safe` / `i3` are reserved (cannot overwrite as a user profile).
+`forge keybind status` reports whether live matches a built-in kit.
 
 Daily install that also refreshes Vim:
 

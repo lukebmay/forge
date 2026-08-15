@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keybind kit backup/apply — live gsettings ↔ profile JSON / built-in kits.
+"""Keybind kit save/load — live gsettings ↔ profile JSON / built-in kits.
 
 Profiles dir: FORGE_KEYBIND_PROFILES_DIR, else ~/.config/forge/config/keybinding-profiles.
 Kits (vim/safe/i3) load from lib/shared/keybind-presets.js via Node (no GJS).
@@ -13,14 +13,15 @@ import re
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence
 
 SCHEMA_KBD = "org.gnome.shell.extensions.forge.keybindings"
 DCONF_KBD = "/org/gnome/shell/extensions/forge/keybindings/"
 MOD_MASK_KEY = "mod-mask-mouse-tile"
+# Built-in kit ids — reserved; cannot be used as user profile stems.
 KIT_IDS = ("vim", "safe", "i3")
+RESERVED_KIT_NAMES = frozenset(KIT_IDS)
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent.parent
@@ -53,6 +54,16 @@ def ensure_profiles_dir(path: Optional[Path] = None) -> Path:
     return d
 
 
+def profile_stem(name: str) -> Optional[str]:
+    """Sanitize a profile stem; strips a trailing `.json` if present."""
+    if name is None:
+        return None
+    trimmed = str(name).strip()
+    if trimmed.lower().endswith(".json"):
+        trimmed = trimmed[:-5]
+    return sanitize_profile_name(trimmed)
+
+
 def sanitize_profile_name(name: str) -> Optional[str]:
     if name is None:
         return None
@@ -64,6 +75,11 @@ def sanitize_profile_name(name: str) -> Optional[str]:
     if not re.fullmatch(r"[A-Za-z0-9_-]+", trimmed):
         return None
     return trimmed
+
+
+def is_reserved_kit_name(name: str) -> bool:
+    stem = profile_stem(name)
+    return stem is not None and stem.lower() in RESERVED_KIT_NAMES
 
 
 def resolve_schema_dir(
@@ -134,18 +150,6 @@ def gsettings_get(key: str, schema_dir: Optional[Path]) -> Optional[str]:
     if r.returncode != 0:
         return None
     return r.stdout.strip()
-
-
-def gsettings_reset_recursively(schema_dir: Optional[Path] = None) -> None:
-    r = subprocess.run(
-        ["gsettings", "reset-recursively", SCHEMA_KBD],
-        capture_output=True,
-        text=True,
-        env=_gsettings_env(schema_dir),
-    )
-    if r.returncode != 0:
-        err = (r.stderr or r.stdout or "").strip()
-        raise RuntimeError(f"gsettings reset-recursively: {err or 'failed'}")
 
 
 def gsettings_set(key: str, gvariant: str, schema_dir: Optional[Path]) -> None:
@@ -295,8 +299,8 @@ def build_profile_props(
     mod_mask: str,
     bindings: dict[str, list[str]],
     name: Optional[str] = None,
-    note: Optional[str] = None,
 ) -> dict[str, Any]:
+    """Same shape as JS ``buildProfileProps`` (GUI + CLI parity)."""
     props: dict[str, Any] = {
         "version": 1,
         "mod-mask-mouse-tile": mod_mask or "None",
@@ -304,10 +308,6 @@ def build_profile_props(
     }
     if name:
         props["name"] = name
-    if note:
-        props["note"] = note
-    props["savedAt"] = datetime.now(
-        timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return props
 
 
@@ -315,7 +315,7 @@ def load_live_snapshot(
     *,
     schema_dir: Optional[Path] = None,
 ) -> dict[str, Any]:
-    """Live keybindings as profile-shaped props (no write)."""
+    """Live keybindings as a snapshot (same keys as JS ``bindingsFromSettings``)."""
     if schema_dir is None:
         schema_dir = resolve_schema_dir()
 
@@ -353,33 +353,26 @@ def load_live_snapshot(
     if raw_mod is not None:
         mod_mask = _parse_gvariant_string(raw_mod)
 
-    for key, raw in dconf_raw.items():
-        if key == MOD_MASK_KEY or key in bindings:
-            continue
-        try:
-            bindings[key] = _parse_gvariant_strv(raw)
-        except ValueError:
-            pass
-
     return {
         "mod-mask-mouse-tile": mod_mask or "None",
         "bindings": bindings,
     }
 
 
-def backup_live(
-    name: Optional[str] = None,
+def save_live(
+    name: str,
     *,
     schema_dir: Optional[Path] = None,
     out_dir: Optional[Path] = None,
 ) -> Path:
-    """Dump live keybindings to profile JSON. Returns written path."""
-    if name is None:
-        stamp = datetime.now().strftime("%Y%m%d")
-        name = f"backup-before-vim-{stamp}"
-    safe = sanitize_profile_name(name)
+    """Write live keybindings to ``<name>.json`` (same file shape as GUI Save)."""
+    safe = profile_stem(name)
     if not safe:
         raise ValueError(f"invalid profile name: {name!r}")
+    if safe.lower() in RESERVED_KIT_NAMES:
+        raise ValueError(
+            f"{safe!r} is a built-in kit name (reserved: {', '.join(KIT_IDS)})"
+        )
 
     dest_dir = ensure_profiles_dir(out_dir)
     dest = dest_dir / f"{safe}.json"
@@ -388,10 +381,44 @@ def backup_live(
         mod_mask=str(snap.get("mod-mask-mouse-tile") or "None"),
         bindings=snap.get("bindings") or {},
         name=safe,
-        note="Live keybindings snapshot (forge keybind backup)",
     )
     dest.write_text(json.dumps(props, indent=2) + "\n", encoding="utf-8")
     return dest
+
+
+def resolve_load_name(
+    name: str,
+    *,
+    out_dir: Optional[Path] = None,
+) -> tuple[str, Any]:
+    """Resolve load target: ``(\"kit\", id)`` or ``(\"profile\", Path)``."""
+    raw = (name or "").strip()
+    if not raw:
+        raise ValueError("need a kit or profile name")
+
+    # Explicit path (has separators or exists as a file)
+    path_cand = Path(raw).expanduser()
+    if ("/" in raw or "\\" in raw) or path_cand.is_file():
+        if path_cand.is_file():
+            return "profile", path_cand
+        raise FileNotFoundError(f"profile not found: {raw}")
+
+    stem = profile_stem(raw)
+    if not stem:
+        raise ValueError(f"invalid name: {name!r}")
+
+    # Built-in kits always win (reserved stems).
+    if stem.lower() in RESERVED_KIT_NAMES:
+        return "kit", stem.lower()
+
+    dest_dir = out_dir if out_dir is not None else profiles_dir()
+    dest = dest_dir / f"{stem}.json"
+    if dest.is_file():
+        return "profile", dest
+    raise FileNotFoundError(
+        f"unknown kit or profile {stem!r} "
+        f"(kits: {', '.join(KIT_IDS)}; no {dest.name})"
+    )
 
 
 def load_profile_json(path: Path) -> dict[str, Any]:
@@ -463,14 +490,9 @@ def apply_kit(
     *,
     schema_dir: Optional[Path] = None,
     dry_run: bool = False,
-    reset: bool = False,
 ) -> tuple[dict[str, Any], list[str]]:
     props = load_kit_from_presets(kit_id)
     props.pop("keys", None)
-    if reset and not dry_run:
-        if schema_dir is None:
-            schema_dir = resolve_schema_dir(prefer_source=True)
-        gsettings_reset_recursively(schema_dir)
     applied = apply_profile_props(props,
                                   schema_dir=schema_dir,
                                   dry_run=dry_run)
@@ -596,7 +618,7 @@ def inspect_live_kit(
         "closest": closest,
         "diffCount": len(diffs),
         "diffs": diffs,
-        "hint": "./install --kit=vim  (or: forge keybind apply vim --reset)",
+        "hint": "./install --kit=vim  (or: forge keybind load vim)",
     }
 
 
@@ -616,9 +638,12 @@ def list_profiles(out_dir: Optional[Path] = None) -> list[str]:
         return []
     names: list[str] = []
     for p in sorted(d.glob("*.json")):
-        stem = p.stem
-        if sanitize_profile_name(stem):
-            names.append(stem)
+        stem = sanitize_profile_name(p.stem)
+        if not stem:
+            continue
+        if stem.lower() in RESERVED_KIT_NAMES:
+            continue
+        names.append(stem)
     return names
 
 
@@ -629,68 +654,41 @@ def _eprint(*args: object) -> None:
     print(*args, file=sys.stderr)
 
 
-def cmd_backup(args: Any) -> int:
+def cmd_save(args: Any) -> int:
+    name = getattr(args, "name", None)
+    if not name or not str(name).strip():
+        _eprint("forge keybind save: need a profile name")
+        return 1
     try:
-        path = backup_live(args.name,
-                           out_dir=Path(args.dir) if args.dir else None)
+        path = save_live(str(name),
+                         out_dir=Path(args.dir) if getattr(args, "dir", None) else None)
     except Exception as e:
-        _eprint(f"forge keybind backup: {e}")
+        _eprint(f"forge keybind save: {e}")
         return 1
     print(path)
     return 0
 
 
-def cmd_apply(args: Any) -> int:
-    kit = (args.kit or "").strip().lower()
-    profile = getattr(args, "profile", None)
+def cmd_load(args: Any) -> int:
+    name = (getattr(args, "name", None) or "").strip()
     dry = bool(getattr(args, "dry_run", False))
-    reset = bool(getattr(args, "reset", False))
+    if not name:
+        _eprint("forge keybind load: need a kit or profile name")
+        return 1
     try:
-        if profile:
-            if reset:
-                _eprint("forge keybind apply: --reset applies only with a kit")
-                return 1
-            p = Path(profile).expanduser()
-            if not p.is_file():
-                cand = profiles_dir(
-                ) / f"{sanitize_profile_name(profile) or profile}.json"
-                if cand.is_file():
-                    p = cand
-                else:
-                    _eprint(
-                        f"forge keybind apply: profile not found: {profile}")
-                    return 1
-            applied = apply_profile_file(p, dry_run=dry)
-            label = str(p)
-        elif kit:
-            if kit not in KIT_IDS:
-                _eprint(f"forge keybind apply: unknown kit {kit!r} "
-                        f"({ '|'.join(KIT_IDS) })")
-                return 1
-            if reset and not dry:
-                stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-                try:
-                    dest = backup_live(f"backup-before-{kit}-{stamp}")
-                    _eprint(f"forge keybind: saved live → {dest}")
-                except Exception as e:
-                    _eprint(f"forge keybind: backup before reset failed: {e}")
-                    return 1
-            _props, applied = apply_kit(kit, dry_run=dry, reset=reset)
-            label = f"kit:{kit}"
+        kind, target = resolve_load_name(name)
+        if kind == "kit":
+            _props, applied = apply_kit(str(target), dry_run=dry)
+            label = f"kit:{target}"
         else:
-            _eprint(
-                "forge keybind apply: need kit name (vim|safe|i3) or --profile"
-            )
-            return 1
+            applied = apply_profile_file(Path(target), dry_run=dry)
+            label = str(target)
     except Exception as e:
-        _eprint(f"forge keybind apply: {e}")
+        _eprint(f"forge keybind load: {e}")
         return 1
 
     mode = "dry-run " if dry else ""
-    reset_bit = "reset+ " if reset and not dry else ""
-    _eprint(
-        f"forge keybind: {mode}{reset_bit}applied {label} ({len(applied)} keys)"
-    )
+    _eprint(f"forge keybind: {mode}loaded {label} ({len(applied)} keys)")
     if getattr(args, "verbose", False):
         for k in applied:
             print(k)
@@ -743,9 +741,9 @@ def build_keybind_subparser(sub: Any) -> None:
     """Attach `keybind` command group to forge argparse subparsers."""
     kb = sub.add_parser(
         "keybind",
-        help="Backup/apply keybind kits (gsettings; no DBus)",
+        help="Save/load keybind kits (gsettings; no DBus)",
         description=
-        ("Backup live Forge keybindings to a profile JSON, or apply a built-in "
+        ("Save live Forge keybindings to a profile JSON, or load a built-in "
          "kit (vim|safe|i3) / saved profile.\n"
          "Dir: FORGE_KEYBIND_PROFILES_DIR or ~/.config/forge/config/keybinding-profiles\n"
          "Schema: extension schemas/ or repo schemas/ (auto-compiles source if needed)."
@@ -754,39 +752,26 @@ def build_keybind_subparser(sub: Any) -> None:
     )
     kb_sub = kb.add_subparsers(dest="keybind_action", required=True)
 
-    b = kb_sub.add_parser("backup",
-                          help="Dump live keybindings to profile JSON")
+    b = kb_sub.add_parser("save",
+                          help="Save live keybindings to <name>.json")
     b.add_argument(
         "name",
-        nargs="?",
-        default=None,
-        help="Profile stem (default: backup-before-vim-YYYYMMDD)",
+        help="Profile name (writes <name>.json; not vim|safe|i3)",
     )
     b.add_argument(
         "--dir",
         metavar="PATH",
         help="Override profiles directory",
     )
-    b.set_defaults(func=_dispatch_keybind, keybind_handler=cmd_backup)
+    b.set_defaults(func=_dispatch_keybind, keybind_handler=cmd_save)
 
-    a = kb_sub.add_parser("apply",
-                          help="Apply kit or profile to live gsettings")
-    a.add_argument(
-        "kit",
-        nargs="?",
-        default=None,
-        help="Built-in kit: vim | safe | i3",
+    a = kb_sub.add_parser(
+        "load",
+        help="Load built-in kit (vim|safe|i3) or saved profile by name",
     )
     a.add_argument(
-        "--profile",
-        "-p",
-        metavar="NAME|PATH",
-        help="Saved profile name or JSON path",
-    )
-    a.add_argument(
-        "--reset",
-        action="store_true",
-        help="Reset keybindings schema (backup first), then apply kit",
+        "name",
+        help="Kit id or saved profile name (or path to .json)",
     )
     a.add_argument(
         "--dry-run",
@@ -797,9 +782,9 @@ def build_keybind_subparser(sub: Any) -> None:
         "-v",
         "--verbose",
         action="store_true",
-        help="List keys applied",
+        help="List keys loaded",
     )
-    a.set_defaults(func=_dispatch_keybind, keybind_handler=cmd_apply)
+    a.set_defaults(func=_dispatch_keybind, keybind_handler=cmd_load)
 
     st = kb_sub.add_parser(
         "status",
@@ -842,27 +827,25 @@ def main(argv: Optional[list[str]] = None) -> int:
         def add_parser(self, *a, **k):
             return sub.add_parser(*a, **k)
 
-    # Standalone: keybind_kit.py backup|apply|list|dir
+    # Standalone: keybind_kit.py save|load|list|dir
     for name, help_ in (
-        ("backup", "Dump live keybindings"),
-        ("apply", "Apply kit or profile"),
+        ("save", "Save live keybindings"),
+        ("load", "Load kit or profile"),
         ("list", "List profiles"),
         ("dir", "Print profiles dir"),
     ):
         pass
 
-    b = sub.add_parser("backup")
-    b.add_argument("name", nargs="?", default=None)
+    b = sub.add_parser("save")
+    b.add_argument("name")
     b.add_argument("--dir", default=None)
-    b.set_defaults(func=cmd_backup)
+    b.set_defaults(func=cmd_save)
 
-    a = sub.add_parser("apply")
-    a.add_argument("kit", nargs="?", default=None)
-    a.add_argument("--profile", "-p", default=None)
-    a.add_argument("--reset", action="store_true")
+    a = sub.add_parser("load")
+    a.add_argument("name")
     a.add_argument("--dry-run", action="store_true")
     a.add_argument("-v", "--verbose", action="store_true")
-    a.set_defaults(func=cmd_apply)
+    a.set_defaults(func=cmd_load)
 
     st = sub.add_parser("status")
     st.add_argument("--json", action="store_true")
