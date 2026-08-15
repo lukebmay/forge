@@ -8,8 +8,10 @@
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
 not a `cli/` planner port).
 
-**Active:** Insert A R028 live → R025/R026 live → **TD1** strip
-reorder. Then CN0–CN3. Then AL0 (4.6 xhigh). Then FCC C0/C1.
+**Active:** TD1 **code shipped** — **live nest/host residual** next.
+R028 late-identity wrap shipped (nest PASS; host logout residual).
+R025/R026 host live done. Then CN0–CN3. Then AL0 (4.6 xhigh). Then
+FCC C0/C1.
 
 **Agents:** default implement = **Grok 4.5** (prompt as medium). Plan
 reshape / AL0 / C1 / messy DnD = **Grok 4.6** (xhigh for design).
@@ -25,12 +27,15 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | Pri | Item | Status |
 | --- | --- | --- |
 | done | R029/R030 green layout — first apply TILE, second reuses | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
-| residual | Insert A R028 — install + nest/logout, then `layout dev` + left-dock Nautilus | [task](./tasks/forge-container-insert-a.md) |
+| done | TD1 strip reorder **code** (L0 131 green) | [task](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) |
+| done | R028 late-identity wrap **code** + nest VSPLIT | [task](./tasks/forge-container-insert-a.md) |
+| done | **R025** tab-click slot (host live) | [task](./tasks/forge-tab-click-slot.md) |
+| done | **R026** first tab-click after layout stays (host live) | [task](./tasks/forge-tab-click-pin-adopt.md) |
 | done | Insert/DnD design lock: **A** + Chrome drag table | [task](./tasks/forge-container-insert-dnd-design.md) |
 | done | CLI language D0 lock (D036/D037) | [completed](./plans/forge-cli-node/completed/forge-cli-node_d0-discussion.md) |
-| next | **TD1** tab-strip reorder (after R025/R026 live) | [task](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) |
-| residual | **R025** tab-click slot size after tip | [task](./tasks/forge-tab-click-slot.md) |
-| residual | **R026** first tab-click after layout must stay | [task](./tasks/forge-tab-click-pin-adopt.md) |
+| **P0** | **TD1 live** — tip via install; nest or logout; 3-tab reorder + edge peel | [task](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) |
+| residual | R028 host after logout — `layout dev` + left Nautilus VSPLIT | [task](./tasks/forge-container-insert-a.md) |
+| next | CLI-node **CN0** scaffold (`lib/shared` gi-free) after TD1 live | [task](./tasks/forge-cli-node_cn0-scaffold.md) |
 | residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
 | residual | Wave Z zoom on tip; Vim kit live | [task](./tasks/forge-zoom-maximize.md) |
 | done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
@@ -47,11 +52,9 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | later | FCC **C1** `setLayout` I1 (worth — after C0) | [task](./tasks/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED/STACKED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
-| later | CLI-node CN0 scaffold (`lib/shared` gi-free rule) | [task](./tasks/forge-cli-node_cn0-scaffold.md) |
 | later | CLI-node CN1 exec helper | [task](./tasks/forge-cli-node_cn1-exec.md) |
 | later | CLI-node CN2 `keybind` | [task](./tasks/forge-cli-node_cn2-keybind.md) |
 | later | CLI-node CN3 paths extract (purity) | [task](./tasks/forge-cli-node_cn3-paths.md) |
-| done | Host tip loaded (`7b9875e`) — R015–R024 JS on host Shell | [REGRESSIONS](./REGRESSIONS.md) |
 | done | **R017** gdisplays scale → no entered-monitor thrash | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) · L0 48 green |
 | done | **R016** no-op workareas + mon-loss collect-to-end | [completed](./tasks/completed/forge-monitor-noop-apply-thrash.md) · L0 guards green |
 | optional | Per-window signals → WindowAttach | [plan](./plans/forge-lifecycle-abstractions.md) |
@@ -65,18 +68,17 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 ### Why this order
 
-1. **Insert A live** — left-dock Nautilus (R028 VSPLIT slot).
-2. **R025 / R026 live** — tab click contracts; TD1 edits the same
-   actors.
-3. **TD1 strip reorder** — product chrome; reuses drop-intent /
-   grab-tile. Do not wait on CLI or ApplyLayout.
-4. **R027 / Wave Z** — remaining tip smokes.
-5. **CN0–CN3** after TD1 — shared purity rule + keybind. 4.5.
-6. **AL0 ApplyLayout design (4.6 xhigh)** — only layout rearch;
+1. **TD1 live** — code is in tip after install; confirm strip reorder
+   + peel on nest/host before CN0.
+2. **R028 host re-smoke** — after logout loads late-identity wrap
+   (nest already PASS).
+3. **CN0–CN3** after TD1 live — shared purity rule + keybind. 4.5.
+4. **R027 / Wave Z** — remaining tip smokes (can interleave).
+5. **AL0 ApplyLayout design (4.6 xhigh)** — only layout rearch;
    skips IC4 when it ships.
-7. **FCC C0 then C1** — monocle gone; `setLayout` I1. Worth; do not
+6. **FCC C0 then C1** — monocle gone; `setLayout` I1. Worth; do not
    drop off the queue.
-8. CN4–CN6 dbus/launch when CLI campaign resumes.
+7. CN4–CN6 dbus/launch when CLI campaign resumes.
 
 Do not assign a 4.5 agent `layout_plan.py` → JS.
 
@@ -86,7 +88,7 @@ Do not assign a 4.5 agent `layout_plan.py` → JS.
 | --- | --- | --- |
 | `lib/shared` gi-free | Kernel prefs+CLI can share | D036 · CN0 · CN3 |
 | ApplyLayout | Speed + one planner | D037 · AL0 |
-| TD1 strip reorder | Tabs match window DnD | TD1 |
+| TD1 strip reorder | Tabs match window DnD | TD1 live residual |
 | FCC C1 `setLayout` I1 | Tabs stay groups when mode changes | C0 → C1 |
 | Skip IC4 if ApplyLayout | Do not fold waiters we will delete | IC4 note |
 
@@ -97,8 +99,8 @@ Do not assign a 4.5 agent `layout_plan.py` → JS.
 ```bash
 forge nested run -- true    # campaign entry; always stops
 forge nested status         # running: False
-# After R015 JS install (dual-mon behavior under test):
-./install && forge nested run --monitors=2 -- forge test live plan --tags R015
+# After TD1/R028 JS install (structure under test):
+./install --kit=vim && forge nested run -- forge ping
 ```
 
 | Doc | Role |

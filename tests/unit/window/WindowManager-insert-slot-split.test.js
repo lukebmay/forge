@@ -308,6 +308,62 @@ describe("D032 slot-split insert", () => {
       expect(seed.node.parentNode).toBe(mon0);
       expect(wrap.childNodes).not.toContain(seed.node);
     });
+
+    it("late null class/title still slot-splits; processFloats tiles in the wrap", () => {
+      // Live R028: Nautilus maps class=null title=null → isFloatingExempt
+      // skips D032, attaches as MONITOR's 3rd sibling, then tiles in place.
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      const bag = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.CON, {});
+      bag.layout = LAYOUT_TYPES.TABBED;
+      bag._rect = { x: 0, y: 0, width: 1255, height: 1400 };
+      const tabA = tile(bag, {
+        id: "tab-a",
+        monitor: 0,
+        wm_class: "google-chrome",
+        rect: { x: 0, y: 35, width: 1255, height: 1365 },
+      });
+      tile(bag, {
+        id: "tab-b",
+        monitor: 0,
+        wm_class: "chrome-grok",
+        rect: { x: 0, y: 35, width: 1255, height: 1365 },
+      });
+      const ghost = tile(mon0, {
+        id: "ghost",
+        monitor: 0,
+        wm_class: "com.mitchellh.ghostty",
+        rect: { x: 1255, y: 0, width: 1255, height: 1400 },
+      });
+      focusTile(tabA);
+
+      const opened = openTiled({
+        id: "nautilus",
+        wm_class: null,
+        title: null,
+        rect: { x: 100, y: 100, width: 800, height: 600 },
+      });
+
+      expect(wm().isFloatingExempt(opened.meta)).toBe(true);
+      expect(mon0.childNodes.length).toBe(2);
+      expect(hvWideCount(mon0, 3)).toBe(0);
+      expect(bag.parentNode).not.toBe(mon0);
+      expect(opened.node.parentNode).toBe(bag.parentNode);
+
+      opened.meta.set_wm_class("org.gnome.Nautilus");
+      opened.meta.set_title("Home");
+      expect(wm().isFloatingExempt(opened.meta)).toBe(false);
+      wm().processFloats();
+
+      expect(opened.node.isTile()).toBe(true);
+      expect(mon0.childNodes.length).toBe(2);
+      expect(hvWideCount(mon0, 3)).toBe(0);
+      expect(ghost.node.parentNode).toBe(mon0);
+      const wrap = bag.parentNode;
+      expect(wrap).not.toBe(mon0);
+      expect(wrap.isHSplit() || wrap.isVSplit()).toBe(true);
+      expect(wrap.childNodes).toEqual(expect.arrayContaining([bag, opened.node]));
+    });
   });
 
   describe("same-axis edge drop", () => {

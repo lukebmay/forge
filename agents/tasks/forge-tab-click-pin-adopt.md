@@ -1,10 +1,10 @@
 # forge-tab-click-pin-adopt — tab click during layout pin snaps back (R026)
 
-**Status:** ready (L0 green; live after host tip)
+**Status:** done (L0 green; host live PASS 2026-08-14)
 **Plan:** (none)
 **Branch:** master
 **Blocker:** (none)
-**Updated:** 2026-08-13
+**Updated:** 2026-08-14
 
 ## Goal
 
@@ -21,7 +21,7 @@ click as Chrome/PWA steal.
 - [x] Late activate of the old leaf after adopt restores the clicked child
 - [x] Reveal with no live pin still does not start one
 - [x] `pin: true` still pins as before
-- [ ] Live: host tip loaded; immediately after `layout dev`, click the
+- [x] Live: host tip loaded; immediately after `layout dev`, click the
       other tab — it stays (no flash-then-Grok)
 
 ## Context for the next agent (complete + succinct)
@@ -38,7 +38,7 @@ click as Chrome/PWA steal.
 - **Not CLI soft-barrier:** if they click *while* `layout` is still in
   the soft wait, CLI can still re-apply profile `active`. After the
   command returns, only the extension pin remains — that is this bug.
-- **Enable/test:** L0 below. Live needs `./install` + nest or logout.
+- **Enable/test:** L0 below. Host live signed this session.
 
 ```bash
 npm test -- tests/unit/extension/action-pipeline.test.js
@@ -47,5 +47,16 @@ python3 -m pytest tests/unit/cli/test_live_matrix.py -q -k r026
 
 ## Session note
 
-2026-08-13: operator report on green after latest install. R025 was
-slot size; this is pin-vs-user-intent. Extends `revealGroupChild`.
+**2026-08-14 host live PASS** on tip `g4b2a374` (R026 JS already on
+host). `forge layout dev` (7 reused) then immediately
+`forge focus class:google-chrome --first` (DBus → `revealGroupChild`).
+
+| t | lastTabFocusId | focusWindowId |
+| --- | --- | --- |
+| +0.3s | Chrome `2946577600` | Chrome `2946577600` |
+| +1.8s | Chrome `2946577600` | Chrome `2946577600` |
+| +4.8s | Chrome `2946577600` | Ghostty `2946577603` |
+
+Did **not** snap back to Grok `2946577601`. Open leaf stayed Chrome
+even after keyboard focus moved to mon0 Ghostty. Agent Ghostty
+`2946577602` untouched on mon1. No nest used for this residual.

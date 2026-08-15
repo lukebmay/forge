@@ -62,7 +62,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | **[Canonical contracts](./plans/forge-canonical-contracts.md)** | **P0** IC0–IC3 done | IC4 **skip** if D037 ApplyLayout |
 | **[CLI → Node](./plans/forge-cli-node.md)** | **Locked** D036 | CN0–CN6 after TD1; no layout port |
 | **[ApplyLayout](./plans/forge-layout-in-process.md)** | **Locked** D037 | 4.6 xhigh AL0 design after TD1 |
-| **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 next product | After R025/R026 live |
+| **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **code** shipped | Live residual (nest/logout) |
 | **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
 | **STACKED layouts** | Major product | As PRIORITY allows |
 | `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive; mid-apply TTY death no longer aborts job |

@@ -29,6 +29,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Job | Canonical API | Do not |
 | --- | --- | --- |
 | Tree child list / order | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` | Assign `childNodes` or `parentNode` |
+| **TABBED/STACKED strip reorder** | `tabStripInsertIndex` + `parent.replaceChildren` (tab-drag path in `DragDropManager`) | `createNode` / `mergeWindowsIntoGroup` / assign `childNodes` for in-strip reorder |
 | Keyboard / tab / Meta focus | `wm.afterFocus(node, { source })` | `renderTree("focus")`; inline F+D+B |
 | Commit structure or size | `wm.commitLayout(reason, { force })` | Second `renderTree` in the same gesture |
 | Re-raise current / new open leaf after structure | `wm.settleTabFocus(node)` | Second full commit “for tabs” |
@@ -36,7 +37,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Pin open leaf during layout residual | `wm.pinLayoutOpenLeaf` / `restoreLayoutOpenLeafIfStolen` | Adopt Meta steal as the new leaf |
 | Group two windows as tabs/stack | `tree.mergeWindowsIntoGroup(a, b, layout)` | Flip `parent.layout` in DnD/command |
 | Split a leaf H/V | `tree.split(node, orientation)` | Hand-built CON + splice |
-| Slot-split focused/target unit (D032) | `tree.slotSplitUnit` / `wm.slotSplitForInsert` / leftover 1-child H/V join | Even 3rd H/V sibling; `createNode(bag)` as a tab |
+| Slot-split focused/target unit (D032) | `tree.slotSplitUnit` / `wm.slotSplitForInsert` / leftover 1-child H/V join; also on unknown map identity (`_unknownOpenIdentity`) | Even 3rd H/V sibling; `createNode(bag)` as a tab; late class/title tiling in place |
 | Five-zone hit / paint | `drop-zones.js` `buildDropZones` / `hitTestDropZone` | Edge-band / grab-origin geometry |
 | **Would this drop change the tree?** | `dropChangesStructure` (`lib/extension/drop-intent.js`) | Positional `_isNoOpDrop` that ignores layout |
 | Execute a tile drop | `DragDropManager.moveWindowToPointer` → intent + merge/split | Parallel session-only structure |

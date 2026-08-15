@@ -1,6 +1,6 @@
 # Plan: Browser-like tab chrome drag
 
-**Status:** ready — implement **TD1** after R025/R026 live  
+**Status:** TD1 unit done — live smoke residual; TD2–TD4 later  
 **Priority:** P1 product chrome (after Insert A live + tab-click
 residuals)  
 **Created:** 2026-08-06  
@@ -11,11 +11,10 @@ residuals)
 
 ### Session note (overwrite)
 
-**2026-08-14:** Operator wants tab **reorder** and tab **DnD** to
-match window DnD. LX4 already turns a tab drag into grab-tile (same
-drop-zones as titlebar). The gap is **strip-local reorder** (TD1).
-Do not invent a second DnD engine. Do not wait on ApplyLayout or
-CLI-node. Do not start FCC Wave C peel work for this.
+**2026-08-14 (TD1 code):** Strip reorder landed in `drag-drop.js`
+(`tabStripInsertIndex` + arm/motion/release). Leave strip → existing
+`_startTabMoveGrab`. L0 suites green (131). Live 3-tab smoke still
+open on task. Do not invent a second DnD engine. Do not start TD2/FCC.
 
 **2026-08-06:** Mouse tab drag was not browser-like. LX4 landed
 unit-level tab→grab-tile plumbing.
@@ -62,7 +61,7 @@ Tabs must **reuse** that path when the pointer leaves the strip.
 | ID | Work | Agent | Status |
 | --- | --- | --- | --- |
 | **TD0** | Live inventory on tip: LX4 grab from a tab vs titlebar (join / edge / empty mon). Write 10-line note in this file if anything differs | `grok-4.5` low, or skip if operator already knows grab works | draft |
-| **TD1** | Strip reorder — see below + [task](../tasks/forge-tab-chrome-drag_td1-strip-reorder.md) | `grok-4.5` medium; escalate to `grok-4.6` if strip-vs-grab hit test fights preview | **ready** |
+| **TD1** | Strip reorder — see below + [task](../tasks/forge-tab-chrome-drag_td1-strip-reorder.md) | `grok-4.5` medium; escalate to `grok-4.6` if strip-vs-grab hit test fights preview | **unit done** (live residual) |
 | **TD2** | Peel-out — **only** if TD0/TD1 shows LX4 edge wrap ≠ locked Model B | `grok-4.6` | later / maybe skip |
 | **TD3** | Join another strip — **only** if LX4 CENTER miss | `grok-4.5` medium | later / maybe skip |
 | **TD4** | User docs + cheatsheet one-liner | `grok-4.5` low | after TD1 |
@@ -120,13 +119,13 @@ new drop-intent rule or a second grab path, **stop** and escalate
 
 ### Accept
 
-- [ ] Drag tab along strip → child order changes; group layout
-      stays TABBED/STACKED
-- [ ] Percents / slot size of the group unchanged
-- [ ] Drag tab off strip onto another tile CENTER still joins
-      (existing LX4)
-- [ ] Click without drag still R025/R026
-- [ ] L0: `npm test --` tab-drag + drag-drop + reveal/pin tests
+- [x] Drag tab along strip → child order changes; group layout
+      stays TABBED/STACKED (unit)
+- [x] Percents / slot size of the group unchanged (unit)
+- [x] Drag tab off strip onto another tile CENTER still joins
+      (existing LX4 path; leave-strip → grab unit-tested)
+- [x] Click without drag still R025/R026 (arm path unchanged)
+- [x] L0: `npm test --` tab-drag + drag-drop + reveal/pin + strip-reorder
 - [ ] Live (after `./install` + nest or logout): 3-tab group,
       reorder, then peel one onto an edge (slot-split)
 

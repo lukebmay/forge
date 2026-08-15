@@ -110,6 +110,11 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
+/* TD1: insert-before marker while reordering on the strip */
+.window-tabbed-tab-reorder-insert {
+  box-shadow: -3px 0 0 2px rgba(17, 199, 224, 0.95);
+}
+
 .window-tabbed-tab-close {
   padding: 3px;
   margin: 4px;
