@@ -1,10 +1,13 @@
 # forge-canonical-contracts_ic4-settle-fold — Fold leftover CLI waiters
 
-**Status:** later
+**Status:** later — **skip** when D037 ApplyLayout ships (close as
+skipped, do not implement)
 **Plan:** [forge-canonical-contracts](../plans/forge-canonical-contracts.md)
 **Branch:** master
 **Blocker:** (none)
-**Updated:** 2026-08-13
+**Updated:** 2026-08-14  
+**Note:** If [ApplyLayout](../plans/forge-layout-in-process.md) ships, **close
+this as skipped** — do not fold waiters into a loop we are deleting.
 
 ## Goal
 

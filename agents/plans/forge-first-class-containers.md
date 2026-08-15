@@ -9,12 +9,17 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
+**2026-08-14:** Insert + drag table **locked** (D032). Operator
+campaign: TD1 strip reorder **before** Wave C. C0 (kill monocle) +
+**C1 `setLayout` I1** stay queued as **worth** work — do not forget;
+start after TD1. Tasks:
+[c0](../tasks/forge-first-class-containers_c0-kill-monocle.md) ·
+[c1](../tasks/forge-first-class-containers_c1-set-layout.md).
+Do not mix C0/C1 into TD1.
+
 **2026-08-13:** Operator pulled **Wave Z forward** (Vim maximize chords +
-axis zoom + zoomed border). IC3/D026 is in tree — Z0/Z1 may start:
-[forge-zoom-maximize](../tasks/forge-zoom-maximize.md). Wave C still
-paused behind [container insert lock](../tasks/forge-container-insert-dnd-design.md)
-(3-way even HSPLIT / Chrome-tab DnD). Do not start C0 peel/move until
-that pick.
+axis zoom + zoomed border). IC3/D026 is in tree — Z0/Z1 live residual:
+[forge-zoom-maximize](../tasks/forge-zoom-maximize.md).
 
 User lock + i3 research (2026-07-31): containers first; no BC; monocle
 **remove**; split chrome focus-only + show-all + drag show-all; resize

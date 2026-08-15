@@ -1,6 +1,7 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-13 (**campaign:** R029/R030 green layout double/FLOAT; D034+D035)  
+**Updated:** 2026-08-14 (**campaign lock:** D036 CLI-node · D037
+ApplyLayout · TD1 after tab-click live)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -84,6 +85,8 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Profiles | Data only — no personal-layout product branches |
 | Child list (D023) | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` only |
 | Job → API (D024–D026) | [contracts.md](../docs/dev/contracts.md) — extend the named API; no one-off twins |
+| CLI language (D036) | Node under `cli/`; `lib/shared/` gi-free; Python router until CN13; **no** layout port to `cli/` |
+| Layout rearch (D037) | In-process `ApplyLayout` (4.6 xhigh design first). IC4 skip if waiters die |
 | Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling. Join leftover 1-child H/V as the slot (R028). Orientation from slot rect |
 | Focus | Post-settle phase; open-leaf pin on steal (D018); user reveal adopts the pin (R026) |
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
@@ -106,14 +109,28 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
+**If you are Grok 4.5:** do **one** slice. Do not redesign D036/D037.
+Do not port `layout_plan.py`. Live residuals before new code.
+
+| You can do | You must not |
+| --- | --- |
+| Insert A R028 live smoke | ApplyLayout / CN8–CN12 / IC4 |
+| R025 / R026 live | Touch `cli/` before TD1 unless operator says parallel |
+| **TD1** (first new code) | New drop-intent twin; flatten tab groups |
+| CN0 after TD1 | Flip root `package.json` `"type"` |
+
+**If you are Grok 4.6 xhigh:** AL0 design only after TD1 is done or
+explicitly deferred. C1 `setLayout` after C0.
+
 | Pri | Work | Path |
 | --- | --- | --- |
 | done | R029/R030 green `layout dev` TILE + reuse | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
 | **P0** | Insert A R028 — `./install` + nest or logout, then `layout dev` + left-dock Nautilus (must VSPLIT the slot, not 3-wide HSPLIT) | [task](./tasks/forge-container-insert-a.md) |
-| residual | Wave Z zoom (D030) on tip; Vim kit live. Super+Enter / C-S-Enter / S-S-Enter; Super+Space = Run | [task](./tasks/forge-zoom-maximize.md) |
 | residual | R025 tab-click slot: click a non-open tab — slot size, no ¼-height reflow | [task](./tasks/forge-tab-click-slot.md) |
 | residual | **R026** immediately after `layout dev`, click the other tab — must stay (no flash-then-Grok) | [task](./tasks/forge-tab-click-pin-adopt.md) |
+| next | **TD1** drag tab along strip to reorder (after R025/R026 live) | [task](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) |
 | residual | **R027** `layout dev` overlay stays until the command returns; clicks do nothing during it | [task](./tasks/forge-layout-chrome-until-ready.md) |
+| residual | Wave Z zoom (D030) on tip; Vim kit live. Super+Enter / C-S-Enter / S-S-Enter; Super+Space = Run | [task](./tasks/forge-zoom-maximize.md) |
 | done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
 | done | First-layout FLOAT (R024): batch end always force-paints; no mid-batch percent write-back | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
 | done | Install `--kit=vim` + stale-kit warning. Daily: `./install --kit=vim` | [task](./tasks/forge-install-reapply-kit.md) |
@@ -122,7 +139,10 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 | done | **IC0** catalog + D024–D026 | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic0-catalog.md) |
 | done | **IC3** tile-slot / R020 (VLC fs → slot) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
 | done | **IC1** drop-intent / R019 (Grok→Chrome CENTER) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic1-drop-intent.md) |
-| later | IC4 fold leftover CLI waiters | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
+| later | IC4 fold leftover CLI waiters — skip if ApplyLayout deletes them | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
+| later | AL0 ApplyLayout design (4.6 xhigh; do not port planner to `cli/`) | [task](./tasks/forge-layout-in-process_al0-design.md) |
+| later | CN0–CN3 after TD1 (shared purity + keybind) | [CN0](./tasks/forge-cli-node_cn0-scaffold.md) |
+| later | FCC C0/C1 after TD1 (monocle + setLayout I1) | [C0](./tasks/forge-first-class-containers_c0-kill-monocle.md) · [C1](./tasks/forge-first-class-containers_c1-set-layout.md) |
 | done | Host tip `7b9875e` (R018 + R016/R017 + R021–R027 JS) | `forge ping` versionName matches `git rev-parse --short HEAD` |
 | later | L1 scale smoke after tip: `gdisplays load default-no-scale` must not thrash | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
@@ -142,6 +162,9 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 | [forge-canonical-contracts.md](./plans/forge-canonical-contracts.md) | **P0** job→API catalog; IC1–IC3 |
 | [docs/dev/contracts.md](../docs/dev/contracts.md) | Canonical APIs — extend these first |
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |
+| [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 — [task](./tasks/forge-tab-chrome-drag_td1-strip-reorder.md) |
+| [forge-cli-node.md](./plans/forge-cli-node.md) | Node CLI CN0–CN6; no layout port |
+| [forge-layout-in-process.md](./plans/forge-layout-in-process.md) | ApplyLayout — 4.6 xhigh design first |
 
 ### R015 (empty-mon drag) — shipped in tree
 

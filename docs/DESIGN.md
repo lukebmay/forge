@@ -665,10 +665,13 @@ scripting (Eval is disabled or unsafe on real sessions).
    **settings allowlist/coercion** in `settings-control.js`; **step schema
    + dispatch** in `run-steps.js` (unit-tested); export glue in
    `session-api.js` + wire from `extension.js`.
-4. **User CLI** `scripts/forge/forge` (`ping` / `tree` / `focus` / `swap` /
-   `move` / `launch` / `get` / `set` / `settings save|load` / `run` /
-   `run-steps` / **`layout`**) talks DBus via PyGObject or `gdbus` — distinct
-   from `forge-ctl`.
+4. **User CLI** today: `scripts/forge/forge` (Python) talks DBus via
+   PyGObject or `gdbus` — distinct from `forge-ctl`. **Locked (D036):**
+   migrate non-layout commands to Node under `cli/`; `lib/shared/` is
+   the gi-free kernel prefs + CLI import. **Do not** rewrite `layout`
+   in `cli/` — D037 moves apply **into** the extension
+   (`ApplyLayout`). Plans: [forge-cli-node](../agents/plans/forge-cli-node.md),
+   [forge-layout-in-process](../agents/plans/forge-layout-in-process.md).
 5. **wm_class is case-insensitive** for `class:` selectors, PlaceNext match,
    and `forge launch --wm-class` wait. Meta often reports `Eog` while desktop
    ids look like `org.gnome.eog` / `eog` — exact match made PlaceNext miss and
