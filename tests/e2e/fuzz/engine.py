@@ -584,9 +584,9 @@ class FuzzEngine:
             except Exception:  # noqa: BLE001
                 pass
         try:
-            # LayoutStackedToggle / WorkspaceMonocleToggle on a FLAT workspace stamp STACKED/TABBED
-            # onto the MONITOR (or WORKSPACE) node itself (command.js:327); that persists in the
-            # tree and bleeds into the next seed in a CONTINUE run. Revert to the natural split.
+            # LayoutStackedToggle / LayoutTabbedToggle on a FLAT workspace stamp STACKED/TABBED
+            # onto the MONITOR (or WORKSPACE) node itself; that persists in the tree and bleeds
+            # into the next seed in a CONTINUE run. Revert to the natural split.
             self.shell.fuzz_reset_node_layouts()
         except Exception:  # noqa: BLE001
             pass

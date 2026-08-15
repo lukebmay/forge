@@ -9,13 +9,11 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
-**2026-08-14:** Insert + drag table **locked** (D032). Operator
-campaign: TD1 strip reorder **before** Wave C. C0 (kill monocle) +
-**C1 `setLayout` I1** stay queued as **worth** work — do not forget;
-start after TD1. Tasks:
-[c0](../tasks/forge-first-class-containers_c0-kill-monocle.md) ·
+**2026-08-15:** **C0 done** — monocle deleted (REG-monocle,
+REG-i3-super-m). Super+m unbound on i3; zoom stays on Enter (Wave Z).
+Lossy layout inventory lives in completed C0 task. Next: **C1
+`setLayout` I1**. Task:
 [c1](../tasks/forge-first-class-containers_c1-set-layout.md).
-Do not mix C0/C1 into TD1.
 
 **2026-08-13:** Operator pulled **Wave Z forward** (Vim maximize chords +
 axis zoom + zoomed border). IC3/D026 is in tree — Z0/Z1 live residual:
@@ -120,8 +118,8 @@ Update rows when a slice actually drops or restores something.
 
 | ID | Surface | Drop when | Restore when | Notes |
 | --- | --- | --- | --- | --- |
-| **REG-monocle** | `workspace-monocle-toggle` + `toggleWorkspaceMonocle` + docs | **C0** | **Z** (only if still wanted; prefer zoom full) | Structure-destroying tab-all. **i3 kit `Super+m`** unbound until restore. |
-| **REG-i3-super-m** | i3 kit chord `<Super>m` → monocle | **C0** | **Z** (map to zoom full) | Explicit kit regression; document in kit changelog. |
+| **REG-monocle** | `workspace-monocle-toggle` + `toggleWorkspaceMonocle` + docs | **C0 done** | **Z** (only if still wanted; prefer zoom full) | Removed 2026-08-15. Structure-destroying tab-all. |
+| **REG-i3-super-m** | i3 kit chord `<Super>m` → monocle | **C0 done** | **Z** (map to zoom full; **not** rebind on C0) | Unbound 2026-08-15. Zoom uses Super+Enter today. |
 | **REG-i3-super-f** | i3 kit `<Super>f` → **snap center** (not fullscreen) | optional C5/Z | **Z** map to zoom full | i3 users expect fullscreen; current mapping is already non-i3. Fix when zoom lands, not with monocle. |
 | **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1** | never as silent behavior; percent policy explicit | Replacement: non-destructive `setLayout` + explicit ungroup. |
 | **REG-auto-exit-tabbed** | `auto-exit-tabbed` dissolving single-child tab CONs | **C1–C2** evaluate | optional later | Implicit structure change; may keep if it only flattens *empty* chrome, not user groups. Decide in C1 inventory. |
@@ -132,14 +130,14 @@ Update rows when a slice actually drops or restores something.
 | **REG-ratio-yuiop** | Proposed yuiop ratio keys | never ship in C | [resize-autotile](./forge-resize-and-autotile.md) optional | Not a regression of existing product; parked. |
 | **REG-focus-parent** | *(missing today — not a regression)* | — | **C4** add | Listed so we don’t ship C without a restore path for tree navigation. |
 
-### Kit / chord impact summary (at C0)
+### Kit / chord impact summary (at C0) — **applied 2026-08-15**
 
-| Kit | Chord | Today | After C0 |
+| Kit | Chord | Before C0 | After C0 |
 | --- | --- | --- | --- |
 | i3 | `Super+m` | monocle | **unbound** (REG-i3-super-m) |
 | i3 | `Super+f` | snap center | unchanged until Z (then prefer zoom) |
 | Safe / Vim | monocle | unbound | stays unbound |
-| All | monocle command | exists | **removed** |
+| All | monocle command | existed | **removed** |
 
 ### Restore policy (FIRM for implementers)
 
@@ -290,7 +288,7 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 
 | ID | Work | Done when | Clean / tests |
 | --- | --- | --- | --- |
-| **C0** | Inventory lossy paths; **delete monocle** (REG-monocle, REG-i3-super-m); sketch `setLayout` + unit helpers | Monocle gone; REG table updated; flatten call-site list | Delete monocle-only tests; no BC shims |
+| **C0** | Inventory lossy paths; **delete monocle** (REG-monocle, REG-i3-super-m) | **Done 2026-08-15** — inventory in completed C0 task | Monocle-only tests deleted; no `setLayout` yet |
 | **C1** | Non-destructive layout transitions (H/V/tab/stack) — i3 `layout toggle` class | Cycle keeps child node identity | **Test I1** |
 | **C2** | Explicit `group` / `ungroup` + CLI/RunSteps; cut silent CON invent where safe | Ungroup only dissolves CON | **Test I2** |
 | **C3** | Split chrome: focus ancestry; show-all; drag show-all (i3 indicator language) | Visible H vs V under focus | Manual/live; pure helpers tested if extracted |

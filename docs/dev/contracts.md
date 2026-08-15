@@ -56,7 +56,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Unsolicited TILE geom | `shouldRestoreTileSlot` + `wm._restoreTileToSlot` | Skip fullscreen and leave it; float-on-max |
 | User TILE resize (mouse/key grab) | `_handleResizing` → owning-split percents + `userSized` | Treat grab resize as “external drift” |
 | Display / workareas settle | `workareas-policy.js` + `monitor-recovery.js` | Window TILE wait for mon remap |
-| Presentation zoom (full/H/V) | `wm.toggleZoom` + `zoomRect` (`zoom.js`); `tree.apply` / borders use `tree.paintRectForWindow` | Compat.maximize / Meta fs / `toggleWorkspaceMonocle`; border from unzoomed slot |
+| Presentation zoom (full/H/V) | `wm.toggleZoom` + `zoomRect` (`zoom.js`); `tree.apply` / borders use `tree.paintRectForWindow` | Compat.maximize / Meta fs; border from unzoomed slot |
 
 `settleTabFocus` is **chrome** (F+Dfocus+B). It is **not** D019 wait-for-quiet.
 

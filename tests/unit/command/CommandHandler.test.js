@@ -105,7 +105,6 @@ describe("CommandHandler", () => {
       _isWorkspaceSkipped: vi.fn(() => false),
       prefsTitle: "Forge Preferences",
       reloadWindowOverrides: vi.fn(),
-      toggleWorkspaceMonocle: vi.fn(),
       toggleZoom: vi.fn(),
       addFloatOverride: vi.fn(),
       resize: vi.fn(),
@@ -502,14 +501,6 @@ describe("CommandHandler", () => {
       commandHandler.execute({ name: "MovePointerToFocus" });
 
       expect(mockWm.movePointerWith).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("WorkspaceMonocleToggle command", () => {
-    it("should call toggleWorkspaceMonocle", () => {
-      commandHandler.execute({ name: "WorkspaceMonocleToggle" });
-
-      expect(mockWm.toggleWorkspaceMonocle).toHaveBeenCalled();
     });
   });
 

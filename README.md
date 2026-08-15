@@ -41,7 +41,7 @@ development and installs stay on **this** repo.
 - Vim-style navigation, swap, and move keybindings
 - Drag-and-drop tiling with preview hints
 - Floating windows, smart gaps, and focus borders
-- Stacked and tabbed container layouts; workspace monocle
+- Stacked and tabbed container layouts
 - Per-workspace tiling; multi-monitor support
 - Window resize via keyboard; auto-split / quarter tiling
 - Customizable shortcuts in extension preferences
@@ -57,7 +57,7 @@ Improvements that land in this tree via the jcrussell lineage:
 - Arrow-key navigation alongside hjkl
 - Floating window rules UI in preferences
 - Screen edge margins (panels/docks)
-- Extra bindings: config reload, evenly distribute, workspace monocle, …
+- Extra bindings: config reload, evenly distribute, …
 - More appearance options (border radius, tab margins, gap limits, default layout)
 - Monitor exclusion from tiling
 

@@ -14,7 +14,6 @@ import { Rectangle, WindowType } from "../../mocks/gnome/Meta.js";
  *
  * Tests for behaviors:
  * - Default layout preferences for new workspaces
- * - Monocle mode toggling
  * - Focus behavior after window destruction
  * - Workspace layout independence
  */

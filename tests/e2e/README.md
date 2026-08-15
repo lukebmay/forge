@@ -148,7 +148,7 @@ It is **opt-in**: marked `fuzz` and excluded from `make e2e-test` (run-tests.sh 
 
 1. **Generate** — `fuzz/actions.py` emits fully-concrete, JSON-serializable steps from a
    seeded `random.Random`. Tiling commands (focus/move/swap/split/layout/resize/snap/gap/
-   float) at high weight, **workspace/global toggles** (tile-whole-workspace, monocle, global
+   float) at high weight, **workspace/global toggles** (tile-whole-workspace, global
    tiling-mode on/off),
    **window-state** ops (minimize/unminimize, fullscreen/unfullscreen — raw Meta.Window state
    that leaves/rejoins the tile tree), **misc command toggles** (show-tab-decoration, float-by-

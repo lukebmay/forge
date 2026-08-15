@@ -1188,10 +1188,6 @@ msgid "Move pointer to focus"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "Toggle monocle mode"
-msgstr ""
-
-#: schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "Expand window"
 msgstr ""
 

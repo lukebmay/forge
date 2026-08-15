@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-15 (**campaign:** TD1+R028+CN0–CN6 done · next = R027/Wave Z or AL0)  
+**Updated:** 2026-08-15 (**campaign:** CN0–CN6 + **FCC C0** done · next = C1 / R027 / Wave Z / AL0)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
@@ -12,6 +12,23 @@ extension JS same lineage — Wayland needs logout for Shell tip only.
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Shipped — FCC C0 kill monocle
+
+| Field | Detail |
+| --- | --- |
+| C0 | Deleted `toggleWorkspaceMonocle` / `workspace-monocle-toggle` / i3 `Super+m` |
+| REG | REG-monocle + REG-i3-super-m **C0 done**; Super+m free (zoom stays Enter) |
+| Inventory | Lossy layout call-site list in completed task (for C1 `setLayout`) |
+| Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
+| Next | **C1** `setLayout` I1 — [task](./tasks/forge-first-class-containers_c1-set-layout.md) |
+
+```bash
+npm test -- tests/unit/keybindings/ \
+  tests/unit/shared/keybind-presets.test.js \
+  tests/unit/command/CommandHandler.test.js \
+  tests/unit/extension/session-api-layout-cycle.test.js
+```
 
 ### Shipped — CN6 launch + run / run-steps
 
@@ -191,7 +208,8 @@ Do not port `layout_plan.py`. Prefer residual R027 / Wave Z, or FCC C0.
 | later | Smoke leftover R019/R020 (Grok→Chrome CENTER + tiled VLC) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |
 | later | IC4 fold leftover CLI waiters — skip if ApplyLayout deletes them | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
 | later | AL0 ApplyLayout design (4.6 xhigh; do not port planner to `cli/`) | [task](./tasks/forge-layout-in-process_al0-design.md) |
-| later | FCC C0/C1 (monocle + setLayout I1) | [C0](./tasks/forge-first-class-containers_c0-kill-monocle.md) · [C1](./tasks/forge-first-class-containers_c1-set-layout.md) |
+| done | FCC **C0** kill monocle + lossy inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
+| later | FCC **C1** `setLayout` I1 | [task](./tasks/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | done | Wayland RC R013/R014 + nest isolation N1–N4 + lifecycle W1–W5 | [REGRESSIONS](./REGRESSIONS.md) |

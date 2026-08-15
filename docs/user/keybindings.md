@@ -23,6 +23,7 @@ lists GNOME/custom entries.
 | **One primary modifier family** | Safe uses **`Ctrl+Super`** for almost everything so the map is learnable. **`Ctrl+Shift+Super`** only for *twins* of the same key (move vs focus, always-float vs float). Random mix of Shift+Super vs Ctrl+Super without a rule was accidental legacy. |
 | **Lock = `Super+Delete` (all kits)** | Rare global action; keeps letter keys free. (Historical `Super+q` was a launcher collision.) |
 | **Zoom = Enter (Vim / i3)** | Full / horizontal / vertical: `Super+Enter` / `Ctrl+Super+Enter` / `Shift+Super+Enter`. Safe leaves Super+ free, so zoom stays unbound there. GNOME `toggle-maximized` is cleared while Forge is enabled. |
+| **`Super+m` free (all kits)** | Workspace monocle was removed (structure-destroying flatten). Chord unbound; do not rebind to zoom — Enter already owns zoom. |
 | **Run = Space (Vim / i3)** | `Super+Space` (empty command = GNOME Run a Command). GNOME input-source Super+Space is cleared while Forge is enabled. |
 | **Float = Alt+Super+Enter (Safe / Vim)** | Leaves zoom on Super+Enter. **i3:** `Shift+Super+Space`. Always-float: `Ctrl+Shift+Super+Space`. |
 | **Rare chrome off bare Super+** | **Focus border** and **tiling master toggle** almost never fire — multi-mod only. |
@@ -80,7 +81,7 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Edge resize (grow) | `Ctrl+Super+y/u/i/o` (left/bottom/top/right) |
 | Edge resize (shrink) | `Ctrl+Shift+Super+o/i/u/y` |
-| Snaps / monocle / cyclic focus | unbound |
+| Snaps / cyclic focus | unbound |
 
 Forge still frees a few GNOME defaults while enabled (edge-tile keys, maximize,
 toggle-maximized, etc. — see `gnome-overrides`). Those restore on disable.
@@ -118,6 +119,7 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Snaps (center / thirds) | `Ctrl+Alt+c` / `d/e/g/t` |
 | Edge resize | same family as Safe (`Ctrl+Super` y/u/i/o + Shift twins) |
+| `Super+m` | **unbound** (monocle removed; zoom uses Enter) |
 
 **Why this shape:** focus is the hottest action → shortest chord (`Super+letter`).
 Move adds Shift (heavier). Swap adds Ctrl so three roles share hjkl without
@@ -144,7 +146,7 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | Tab decoration | `Shift+Super+w` |
 | “Fullscreen-ish” snap center | `Super+f` |
 | Launch app | `Super+Space` (empty command = GNOME Run a Command) |
-| Monocle | `Super+m` |
+| `Super+m` | **unbound** (was monocle; free for later — zoom uses Enter) |
 | Lock | `Super+Delete` |
 | Cheatsheet / reload | `Shift+Super+/` / `Shift+Super+r` |
 | Focus border / tiling master | `Ctrl+Super+b` / `Ctrl+Super+e` (shared; rare) |
