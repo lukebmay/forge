@@ -8,8 +8,8 @@
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
 not a `cli/` planner port).
 
-**Active:** TD1 · R028 · **CN0–CN4 done**. Next **CN5** thin DBus
-verbs. Then CN6. Then AL0 (4.6 xhigh). Then FCC C0/C1.
+**Active:** TD1 · R028 · **CN0–CN5 done**. Next **CN6** launch +
+run-steps. Then AL0 (4.6 xhigh). Then FCC C0/C1.
 
 **Agents:** default implement = **Grok 4.5** (prompt as medium). Plan
 reshape / AL0 / C1 / messy DnD = **Grok 4.6** (xhigh for design).
@@ -36,8 +36,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | done | CLI-node **CN2** `keybind` (Node body + Python shim) | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn2-keybind.md) |
 | done | CLI-node **CN3** paths extract (`lib/shared/paths.js`) | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn3-paths.md) |
 | done | CLI-node **CN4** DBus + `ping`/`tree` | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn4-dbus-ping-tree.md) |
-| **P0** | CLI-node **CN5** thin DBus verbs | [plan §CN5](./plans/forge-cli-node.md) |
-| next | CLI-node **CN6** launch + run-steps | [plan §CN6](./plans/forge-cli-node.md) |
+| done | CLI-node **CN5** thin DBus verbs | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn5-thin-dbus.md) |
+| **P0** | CLI-node **CN6** launch + run-steps | [plan §CN6](./plans/forge-cli-node.md) |
 | residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
 | residual | Wave Z zoom on tip; Vim kit live | [task](./tasks/forge-zoom-maximize.md) |
 | done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
@@ -74,11 +74,12 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 5. **CN2** — **done** (`cli/keybind.mjs`; install kit via Node).
 6. **CN3** — **done** (`lib/shared/paths.js` pure config home).
 7. **CN4** — **done** (`cli/dbus.mjs` + ping/tree; live host green).
-8. **CN5–CN6** — thin DBus verbs + launch/run-steps. 4.5.
-9. **R027 / Wave Z** — remaining tip smokes (can interleave).
-10. **AL0 ApplyLayout design (4.6 xhigh)** — only layout rearch;
+8. **CN5** — **done** (focus/swap/move/get/set/settings Node bodies).
+9. **CN6** — launch + run-steps. 4.5.
+10. **R027 / Wave Z** — remaining tip smokes (can interleave).
+11. **AL0 ApplyLayout design (4.6 xhigh)** — only layout rearch;
     skips IC4 when it ships.
-11. **FCC C0 then C1** — monocle gone; `setLayout` I1. Worth; do not
+12. **FCC C0 then C1** — monocle gone; `setLayout` I1. Worth; do not
     drop off the queue.
 
 Do not assign a 4.5 agent `layout_plan.py` → JS.

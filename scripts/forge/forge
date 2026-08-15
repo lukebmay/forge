@@ -28,7 +28,7 @@ _EXT_ORIGIN = (
     / "install-origin.json"
 )
 # Subcommands that do not need a DBus session (extension may be offline).
-# ping/tree: Node gdbus body via exec_cli (CN4); skip Python gi/_check_deps.
+# ping/tree + CN5 thin verbs: Node gdbus body via exec_cli; skip Python gi/_check_deps.
 _NO_DBUS_COMMANDS = frozenset(
     {
         "install",
@@ -40,6 +40,12 @@ _NO_DBUS_COMMANDS = frozenset(
         "nested",
         "ping",
         "tree",
+        "focus",
+        "swap",
+        "move",
+        "get",
+        "set",
+        "settings",
     }
 )
 # layout list|show|help|save(--stdout/--tree-file) are offline; apply needs DBus.
@@ -561,21 +567,22 @@ def cmd_thrash(backend: Optional[str], args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_focus(backend: str, args: argparse.Namespace) -> int:
-    sel = _with_first(args.selector, args.first)
-    return _cmd_result(backend, "Focus", sel, label="focus")
+def cmd_focus(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/focus.mjs`` (CN5)."""
+    exec_cli("focus.mjs", _argv_after_command("focus"))
+    return 1  # pragma: no cover — exec never returns
 
 
-def cmd_swap(backend: str, args: argparse.Namespace) -> int:
-    a = _with_first(args.selector_a, args.first)
-    b = _with_first(args.selector_b, args.first)
-    return _cmd_result(backend, "Swap", a, b, label="swap")
+def cmd_swap(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/swap.mjs`` (CN5)."""
+    exec_cli("swap.mjs", _argv_after_command("swap"))
+    return 1  # pragma: no cover — exec never returns
 
 
-def cmd_move(backend: str, args: argparse.Namespace) -> int:
-    tile = _with_first(args.tile, args.first)
-    dest = _with_first(args.dest, args.first)
-    return _cmd_result(backend, "Move", tile, dest, label="move")
+def cmd_move(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/move.mjs`` (CN5)."""
+    exec_cli("move.mjs", _argv_after_command("move"))
+    return 1  # pragma: no cover — exec never returns
 
 
 def _xdg_data_dirs() -> list[str]:
@@ -1419,40 +1426,22 @@ def _baseline_window_ids(backend: str) -> set[str]:
     return ids
 
 
-def cmd_get(backend: str, args: argparse.Namespace) -> int:
-    key = (args.key or "").strip()
-    if not key:
-        _eprint("forge get: key required")
-        return 1
-    return _cmd_result(backend, "GetSetting", key, label="get")
+def cmd_get(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/get.mjs`` (CN5)."""
+    exec_cli("get.mjs", _argv_after_command("get"))
+    return 1  # pragma: no cover — exec never returns
 
 
-def cmd_set(backend: str, args: argparse.Namespace) -> int:
-    key = (args.key or "").strip()
-    if not key:
-        _eprint("forge set: key required")
-        return 1
-    # Join remaining tokens so `forge set key true` and `forge set key '["a"]'` work
-    value = args.value
-    if isinstance(value, list):
-        value = " ".join(value)
-    if value is None:
-        _eprint("forge set: value required")
-        return 1
-    return _cmd_result(backend, "SetSetting", key, str(value), label="set")
+def cmd_set(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/set.mjs`` (CN5)."""
+    exec_cli("set.mjs", _argv_after_command("set"))
+    return 1  # pragma: no cover — exec never returns
 
 
-def cmd_settings(backend: str, args: argparse.Namespace) -> int:
-    action = (args.settings_action or "").strip().lower()
-    name = (args.name or "").strip()
-    if action not in ("save", "load"):
-        _eprint("forge settings: action must be save or load")
-        return 1
-    if not name:
-        _eprint(f"forge settings {action}: name required")
-        return 1
-    method = "SettingsSave" if action == "save" else "SettingsLoad"
-    return _cmd_result(backend, method, name, label=f"settings {action}")
+def cmd_settings(_backend: Optional[str], _args: argparse.Namespace) -> int:
+    """Shim: body in ``cli/settings.mjs`` (CN5)."""
+    exec_cli("settings.mjs", _argv_after_command("settings"))
+    return 1  # pragma: no cover — exec never returns
 
 
 def _load_steps_payload(raw: str) -> Any:

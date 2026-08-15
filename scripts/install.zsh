@@ -203,7 +203,7 @@ _install_keybind_kit() {
   local st=0 json matched
   json=$(node "$mjs" status --json) || st=$?
   if (( st == 0 )); then
-    matched=$(print -r -- "$json" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{try{console.log(JSON.parse(s).matched||"")}catch{console.log("")}}')
+    matched=$(print -r -- "$json" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{try{console.log(JSON.parse(s).matched||"")}catch{console.log("")}})')
     forge_step_ok "Keybind kit (${matched:-ok})"
   elif (( st == 2 )); then
     forge_step_warn "Keybind kit (custom; ./install --kit=vim)"

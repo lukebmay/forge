@@ -1,17 +1,35 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-14 (**campaign:** TD1+R028+CN0–CN4 done · next = CN5)  
+**Updated:** 2026-08-14 (**campaign:** TD1+R028+CN0–CN5 done · next = CN6)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed / host tip:** `v49-90-beta.2-317-gb280f94` (host matches;
-TD1 nest live + R028 host VSPLIT PASS).
+**Installed / host tip:** `v49-90-beta.2-319-g81be493-dirty` (install fix + CN5 CLI;
+extension JS same lineage — Wayland needs logout for Shell tip only).
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Shipped — CN5 thin DBus verbs + install keybind parse fix
+
+| Field | Detail |
+| --- | --- |
+| CN5 | `focus`/`swap`/`move`/`get`/`set`/`settings` → Node via `cli/cmd-result.mjs` + per-cmd `.mjs`; Python shims |
+| Task | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn5-thin-dbus.md) |
+| Install | `scripts/install.zsh` keybind status JSON one-liner missing `)` → fixed; kit shows `vim` |
+| Live | `forge get tiling-mode-enabled` → ok/value true |
+| Guards | Vitest cli 94; pytest CN5/shim/node_exec/class_eq 38 |
+
+```bash
+npm test -- tests/unit/cli/
+python3 -m pytest tests/unit/cli/test_cn5_shim.py \
+  tests/unit/cli/test_ping_tree_shim.py tests/unit/cli/test_node_exec.py \
+  tests/unit/cli/test_forge_class_eq.py -q
+forge get tiling-mode-enabled
+```
 
 ### Shipped — TD1 strip reorder + R028 late-identity + R025/R026 live
 
@@ -131,16 +149,15 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 ## Start here (next agent)
 
 **If you are Grok 4.5:** do **one** slice. Do not redesign D036/D037.
-Do not port `layout_plan.py`. Prefer **CN5**, then CN6.
+Do not port `layout_plan.py`. Prefer **CN6** (launch + run-steps).
 
 | You can do | You must not |
 | --- | --- |
-| **CN5** thin DBus verbs (`focus`/`swap`/… + settings) | Add `dbus-next` npm dep |
-| **CN6** launch + run-steps after CN5 | Drop Python `gi` until all cmds migrate |
+| **CN6** launch + run-steps | Drop Python `gi` until all cmds migrate |
 | R027 / Wave Z smokes | Port `layout_plan.py` to `cli/` |
-| FCC C0 after CLI breath | Flip root `package.json` `"type"` |
+| FCC C0 after CLI breath | Flip root `package.json` `"type"` / add `dbus-next` |
 
-**If you are Grok 4.6 xhigh:** AL0 design after CN5–CN6 (or operator
+**If you are Grok 4.6 xhigh:** AL0 design after CN6 (or operator
 defers). C1 `setLayout` after C0.
 
 | Pri | Work | Path |
@@ -149,9 +166,8 @@ defers). C1 `setLayout` after C0.
 | done | TD1 strip reorder code + nest live | [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
 | done | R025 / R026 host live | [R025](./tasks/forge-tab-click-slot.md) · [R026](./tasks/forge-tab-click-pin-adopt.md) |
 | done | R028 late-identity wrap nest + host | [task](./tasks/forge-container-insert-a.md) |
-| done | CN0–CN4 | [completed/](./plans/forge-cli-node/completed/) |
-| **P0** | **CN5** thin DBus verbs | [plan §CN5](./plans/forge-cli-node.md) |
-| next | CN6 launch + run-steps | [plan §CN6](./plans/forge-cli-node.md) |
+| done | CN0–CN5 | [completed/](./plans/forge-cli-node/completed/) |
+| **P0** | **CN6** launch + run-steps | [plan §CN6](./plans/forge-cli-node.md) |
 | residual | **R027** overlay until apply returns; clicks blocked | [task](./tasks/forge-layout-chrome-until-ready.md) |
 | residual | Wave Z zoom (D030) on tip; Vim kit live | [task](./tasks/forge-zoom-maximize.md) |
 | later | Smoke leftover R019/R020 (Grok→Chrome CENTER + tiled VLC) | [R019](./REGRESSIONS.md) · [R020](./REGRESSIONS.md) |

@@ -853,13 +853,20 @@ taken — next free D0xx):
 
 ## Session note
 
-**2026-08-14:** CN4 done — `cli/dbus.mjs` (gdbus + GVariant-ish parse
-mirroring Python `_call_gdbus`; `_METHOD_IN_ARGS`); `cli/ping.mjs` /
-`cli/tree.mjs`; Python `cmd_ping`/`cmd_tree` → `exec_cli` shims;
+**2026-08-14:** CN5 done — thin DBus verbs via CN4 `callMethod`:
+`cli/cmd-result.mjs` (`withFirst`/`cmdResult`) + `focus`/`swap`/`move`/
+`get`/`set`/`settings` `.mjs`; Python `cmd_*` → `exec_cli` shims;
+those names in `_NO_DBUS_COMMANDS`. Python `_with_first`/`_cmd_result`
+kept for run-steps. Vitest cli **94 PASS**; pytest cn5/shim/node_exec/
+class_eq **38 PASS**. Live `forge get tiling-mode-enabled` ok. Next:
+**CN6** launch + run-steps.
+
+**2026-08-14 (earlier):** CN4 done — `cli/dbus.mjs` (gdbus + GVariant-ish
+parse mirroring Python `_call_gdbus`; `_METHOD_IN_ARGS`); `cli/ping.mjs`
+/ `cli/tree.mjs`; Python `cmd_ping`/`cmd_tree` → `exec_cli` shims;
 ping/tree in `_NO_DBUS_COMMANDS` (Node owns gdbus). Vitest 35 +
 pytest shim 5 green; live `forge ping` ok + `tree --compact`. Python
-`gi` backend **kept** for unmigrated cmds. Next: **CN5** thin DBus
-verbs (`focus`/`swap`/`move`/`get`/`set`/settings).
+`gi` backend **kept** for unmigrated cmds.
 
 **2026-08-14 (earlier):** CN3 done — pure `lib/shared/paths.js`
 (`resolveForgeConfigHome` + `FORGE_CONFIG_HOME_ENV`); GJS
