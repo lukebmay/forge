@@ -8,8 +8,8 @@
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
 not a `cli/` planner port).
 
-**Active:** TD1 **code shipped** — **live nest/host residual** next.
-R028 late-identity wrap shipped (nest PASS; host logout residual).
+**Active:** TD1 **code shipped** (`b280f94`) — **live nest/host residual**
+next. R028 late-identity wrap shipped (nest PASS; host logout residual).
 R025/R026 host live done. Then CN0–CN3. Then AL0 (4.6 xhigh). Then
 FCC C0/C1.
 

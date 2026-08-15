@@ -8,8 +8,9 @@
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Tip:** after this session’s `./install`, host still needs **logout** (or
-nest) to load JS. R025/R026 already green on prior tip `g4b2a374`.
+**Installed:** `v49-90-beta.2-317-gb280f94` (`./install --kit=vim`). Host
+`forge ping` still reports prior tip until **logout** (or use nest).
+R025/R026 already green on prior tip `g4b2a374`.
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
