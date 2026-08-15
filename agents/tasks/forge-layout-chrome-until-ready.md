@@ -1,10 +1,10 @@
 # forge-layout-chrome-until-ready — overlay until apply is done (R027)
 
-**Status:** ready (L0 green; live after host tip)
+**Status:** ready (L0 green; **live residual** — human/host tip)
 **Plan:** (none)
 **Branch:** master
-**Blocker:** (none)
-**Updated:** 2026-08-13
+**Blocker:** (none) — live accept is visual; no hard block on other work
+**Updated:** 2026-08-15
 
 ## Goal
 

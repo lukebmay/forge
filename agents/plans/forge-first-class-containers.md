@@ -9,11 +9,15 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
+**2026-08-15:** **C1 done** — `tree.setLayout` / `Node.setLayout` I1;
+Layout*Toggle + layout-cycle converted; contracts row. `_layoutOp`
+still flattens for profile ensure (REG-ensure-flatten). Task:
+[c1 completed](./forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md).
+Next: **C2** group/ungroup or R1 / Wave Z as PRIORITY.
+
 **2026-08-15:** **C0 done** — monocle deleted (REG-monocle,
 REG-i3-super-m). Super+m unbound on i3; zoom stays on Enter (Wave Z).
-Lossy layout inventory lives in completed C0 task. Next: **C1
-`setLayout` I1**. Task:
-[c1](../tasks/forge-first-class-containers_c1-set-layout.md).
+Lossy layout inventory lives in completed C0 task.
 
 **2026-08-13:** Operator pulled **Wave Z forward** (Vim maximize chords +
 axis zoom + zoomed border). IC3/D026 is in tree — Z0/Z1 live residual:
@@ -121,7 +125,7 @@ Update rows when a slice actually drops or restores something.
 | **REG-monocle** | `workspace-monocle-toggle` + `toggleWorkspaceMonocle` + docs | **C0 done** | **Z** (only if still wanted; prefer zoom full) | Removed 2026-08-15. Structure-destroying tab-all. |
 | **REG-i3-super-m** | i3 kit chord `<Super>m` → monocle | **C0 done** | **Z** (map to zoom full; **not** rebind on C0) | Unbound 2026-08-15. Zoom uses Super+Enter today. |
 | **REG-i3-super-f** | i3 kit `<Super>f` → **snap center** (not fullscreen) | optional C5/Z | **Z** map to zoom full | i3 users expect fullscreen; current mapping is already non-i3. Fix when zoom lands, not with monocle. |
-| **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1** | never as silent behavior; percent policy explicit | Replacement: non-destructive `setLayout` + explicit ungroup. |
+| **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1 done** (user toggles + cycle) | never as silent behavior; percent policy explicit | User/keybind paths use `setLayout`. Profile `_layoutOp` still flattens (REG-ensure-flatten). |
 | **REG-auto-exit-tabbed** | `auto-exit-tabbed` dissolving single-child tab CONs | **C1–C2** evaluate | optional later | Implicit structure change; may keep if it only flattens *empty* chrome, not user groups. Decide in C1 inventory. |
 | **REG-ensure-flatten** | Layout ensure / thrash paths that collapse nested H/V into tab bags | **C0–C5** inventory; strip where not required for profiles | only as explicit `forge layout` repair flag | Profile apply may still reshape; user toggles must not. |
 | **REG-expand-dual-axis** | Current `[`/`]` grow both axes via child+parent without clear docs | **R1–R2** | **R2** as documented Size step | Not deleted forever — re-specified as dual owning-split steps. |
@@ -289,7 +293,7 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 | ID | Work | Done when | Clean / tests |
 | --- | --- | --- | --- |
 | **C0** | Inventory lossy paths; **delete monocle** (REG-monocle, REG-i3-super-m) | **Done 2026-08-15** — inventory in completed C0 task | Monocle-only tests deleted; no `setLayout` yet |
-| **C1** | Non-destructive layout transitions (H/V/tab/stack) — i3 `layout toggle` class | Cycle keeps child node identity | **Test I1** |
+| **C1** | Non-destructive layout transitions (H/V/tab/stack) — i3 `layout toggle` class | **Done 2026-08-15** — setLayout I1 + guards | **Test I1** green |
 | **C2** | Explicit `group` / `ungroup` + CLI/RunSteps; cut silent CON invent where safe | Ungroup only dissolves CON | **Test I2** |
 | **C3** | Split chrome: focus ancestry; show-all; drag show-all (i3 indicator language) | Visible H vs V under focus | Manual/live; pure helpers tested if extracted |
 | **C4** | Move into/out of group + **focus parent/child** | Tree navigation without debug overlay | Test focus target + reparent ids |

@@ -1,10 +1,10 @@
 # forge-zoom-maximize — Wave Z0/Z1 zoom (full / width / height)
 
-**Status:** ready (L0 green; live smoke after host logout)
+**Status:** ready (L0 green; **live residual** — Vim kit on tip after host logout)
 **Plan:** [forge-first-class-containers](../plans/forge-first-class-containers.md) Wave Z
 **Branch:** master
-**Blocker:** (none)
-**Updated:** 2026-08-13
+**Blocker:** (none) — live accept is key-chord visual; no hard block on other work
+**Updated:** 2026-08-15
 
 ## Goal
 

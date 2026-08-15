@@ -1,17 +1,36 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-15 (**campaign:** CN0–CN6 + **FCC C0** done · next = C1 / R027 / Wave Z / AL0)  
+**Updated:** 2026-08-15 (**campaign:** CN0–CN6 + **FCC C0+C1** done · next = R027 / Wave Z live · AL0 later)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed / host tip:** CN6 CLI on master (launch/run/run-steps Node);
-extension JS same lineage — Wayland needs logout for Shell tip only.
+**Installed / host tip:** CN6 CLI on master; **C1 uncommitted** on working tree.
+Extension JS (C0+prior) on tip — Wayland needs logout for host Shell tip only.
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Shipped — FCC C1 setLayout I1 (uncommitted)
+
+| Field | Detail |
+| --- | --- |
+| API | `Node.setLayout` / `Tree.setLayout` — layout field only; no reparent/flatten |
+| Converted | Layout* toggles, `_layoutCycleOp`, mode toggles, reset/auto-exit, etc. |
+| Residual | `_layoutOp` still flattens for profile ensure (**REG-ensure-flatten**) |
+| Contracts | row “Change CON layout mode” in [contracts.md](../docs/dev/contracts.md) |
+| Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
+| Guards | 223 pass (`set-layout-i1` + Tree-ops/layout + CommandHandler + layout-cycle) |
+
+```bash
+npm test -- tests/unit/tree/set-layout-i1.test.js \
+  tests/unit/tree/Tree-operations.test.js \
+  tests/unit/tree/Tree-layout.test.js \
+  tests/unit/command/CommandHandler.test.js \
+  tests/unit/extension/session-api-layout-cycle.test.js
+```
 
 ### Shipped — FCC C0 kill monocle
 
@@ -19,9 +38,9 @@ extension JS same lineage — Wayland needs logout for Shell tip only.
 | --- | --- |
 | C0 | Deleted `toggleWorkspaceMonocle` / `workspace-monocle-toggle` / i3 `Super+m` |
 | REG | REG-monocle + REG-i3-super-m **C0 done**; Super+m free (zoom stays Enter) |
-| Inventory | Lossy layout call-site list in completed task (for C1 `setLayout`) |
+| Inventory | Lossy layout call-site list in completed task (used by C1) |
 | Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
-| Next | **C1** `setLayout` I1 — [task](./tasks/forge-first-class-containers_c1-set-layout.md) |
+| Next | C1 **done** (above) |
 
 ```bash
 npm test -- tests/unit/keybindings/ \
@@ -185,16 +204,15 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 ## Start here (next agent)
 
 **If you are Grok 4.5:** do **one** slice. Do not redesign D036/D037.
-Do not port `layout_plan.py`. Prefer residual R027 / Wave Z, or FCC C0.
+Do not port `layout_plan.py`. Prefer residual R027 / Wave Z live smokes.
 
 | You can do | You must not |
 | --- | --- |
-| R027 / Wave Z smokes | Drop Python `gi` until all cmds migrate |
-| FCC C0 after CLI breath | Port `layout_plan.py` to `cli/` |
+| R027 / Wave Z tip/nest smokes | Drop Python `gi` until all cmds migrate |
+| Host no-code smokes (no nest) | Port `layout_plan.py` to `cli/` |
 | CN7 skip (already documented) | Flip root `package.json` `"type"` / add `dbus-next` |
 
-**If you are Grok 4.6 xhigh:** AL0 design (or operator defers). C1
-`setLayout` after C0.
+**If you are Grok 4.6 xhigh:** AL0 design (or operator defers).
 
 | Pri | Work | Path |
 | --- | --- | --- |
@@ -209,7 +227,7 @@ Do not port `layout_plan.py`. Prefer residual R027 / Wave Z, or FCC C0.
 | later | IC4 fold leftover CLI waiters — skip if ApplyLayout deletes them | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
 | later | AL0 ApplyLayout design (4.6 xhigh; do not port planner to `cli/`) | [task](./tasks/forge-layout-in-process_al0-design.md) |
 | done | FCC **C0** kill monocle + lossy inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
-| later | FCC **C1** `setLayout` I1 | [task](./tasks/forge-first-class-containers_c1-set-layout.md) |
+| done | FCC **C1** `setLayout` I1 (uncommitted) | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | done | Wayland RC R013/R014 + nest isolation N1–N4 + lifecycle W1–W5 | [REGRESSIONS](./REGRESSIONS.md) |

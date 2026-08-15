@@ -3,13 +3,14 @@
 **Updated:** 2026-08-15  
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.  
 **Branch:** **`master`** default  
-**Push:** only when human asks.
+**Push:** only when human asks.  
+**Uncommitted:** FCC C1 (`setLayout` I1) — operator commit when ready.
 
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
 not a `cli/` planner port).
 
-**Active:** **CN0–CN6 done** · **FCC C0 done**. Next residual
-**R027** / Wave Z, or AL0 (4.6 xhigh), or **FCC C1** `setLayout`.
+**Active:** Residuals **R027** / Wave Z live smokes. Later: AL0 (4.6
+xhigh), IC4 skip-if-ApplyLayout.
 
 **Agents:** default implement = **Grok 4.5** (prompt as medium). Plan
 reshape / AL0 / C1 / messy DnD = **Grok 4.6** (xhigh for design).
@@ -51,7 +52,7 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | later | **IC4** fold leftover CLI waiters — **skip** if ApplyLayout deletes them | [task](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
 | later | In-process `ApplyLayout` AL0 design (4.6 xhigh; **not** a cli/ port) | [task](./tasks/forge-layout-in-process_al0-design.md) |
 | done | FCC **C0** kill monocle + inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
-| later | FCC **C1** `setLayout` I1 (worth — after C0) | [task](./tasks/forge-first-class-containers_c1-set-layout.md) |
+| done | FCC **C1** `setLayout` I1 | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED/STACKED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
 | done | **R017** gdisplays scale → no entered-monitor thrash | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) · L0 48 green |
@@ -77,10 +78,10 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 8. **CN5** — **done** (focus/swap/move/get/set/settings Node bodies).
 9. **CN6** — **done** (launch/run/run-steps; CN7 skip).
 10. **FCC C0** — **done** (monocle deleted; inventory for C1).
-11. **R027 / Wave Z** — remaining tip smokes (can interleave).
-12. **AL0 ApplyLayout design (4.6 xhigh)** — only layout rearch;
+11. **FCC C1** — **done** (`tree.setLayout` / I1; uncommitted).
+12. **R027 / Wave Z** — remaining tip smokes (can interleave).
+13. **AL0 ApplyLayout design (4.6 xhigh)** — only layout rearch;
     skips IC4 when it ships.
-13. **FCC C1** — `setLayout` I1 (non-destructive). Worth; after C0.
 
 Do not assign a 4.5 agent `layout_plan.py` → JS.
 
@@ -91,7 +92,7 @@ Do not assign a 4.5 agent `layout_plan.py` → JS.
 | `lib/shared` gi-free | Kernel prefs+CLI can share | D036 · CN0 · CN3 |
 | ApplyLayout | Speed + one planner | D037 · AL0 |
 | TD1 strip reorder | Tabs match window DnD | **done** |
-| FCC C1 `setLayout` I1 | Tabs stay groups when mode changes | C0 done → C1 |
+| FCC C1 `setLayout` I1 | Tabs stay groups when mode changes | **done** |
 | Skip IC4 if ApplyLayout | Do not fold waiters we will delete | IC4 note |
 
 **Do not** start dual-mon nest by default. **Do not** nest for no-code host smokes.

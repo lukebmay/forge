@@ -36,6 +36,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | **Show a child in a TABBED/STACKED group** | `wm.revealGroupChild(node, { keyboard, pin })` (includes slot reassert R025 + adopt live pin R026) | `parent.lastTabFocus =` + `raise()` in a new file |
 | Pin open leaf during layout residual | `wm.pinLayoutOpenLeaf` / `restoreLayoutOpenLeafIfStolen` | Adopt Meta steal as the new leaf |
 | Group two windows as tabs/stack | `tree.mergeWindowsIntoGroup(a, b, layout)` | Flip `parent.layout` in DnD/command |
+| **Change CON layout mode** | `tree.setLayout(con, layout, opts?)` / `Node.setLayout` (I1: no reparent/flatten; optional `lastTabFocus`, `resetPercents` on H↔V) | Assign `parent.layout`; silent `replaceChildren` / flatten nested CONs for mode change |
 | Split a leaf H/V | `tree.split(node, orientation)` | Hand-built CON + splice |
 | Slot-split focused/target unit (D032) | `tree.slotSplitUnit` / `wm.slotSplitForInsert` / leftover 1-child H/V join; also on unknown map identity (`_unknownOpenIdentity`) | Even 3rd H/V sibling; `createNode(bag)` as a tab; late class/title tiling in place |
 | Five-zone hit / paint | `drop-zones.js` `buildDropZones` / `hitTestDropZone` | Edge-band / grab-origin geometry |

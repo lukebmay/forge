@@ -120,7 +120,7 @@ describe("CommandHandler", () => {
    * Creates a mock Tree with all required methods
    */
   function createMockTree(nodeWindow) {
-    return {
+    const tree = {
       getTiledChildren: vi.fn(() => [nodeWindow]),
       resetSiblingPercent: vi.fn(),
       move: vi.fn(() => true),
@@ -133,7 +133,18 @@ describe("CommandHandler", () => {
       processGap: vi.fn((node) => node.rect),
       findNode: vi.fn(() => nodeWindow),
       attachNode: null,
+      // I1: mock mirrors Tree.setLayout field write (+ optional chrome / percents)
+      setLayout: vi.fn((con, layout, opts = {}) => {
+        if (!con || !layout) return false;
+        con.layout = layout;
+        if (Object.prototype.hasOwnProperty.call(opts, "lastTabFocus")) {
+          con.lastTabFocus = opts.lastTabFocus;
+        }
+        if (opts.resetPercents) tree.resetSiblingPercent(con);
+        return true;
+      }),
     };
+    return tree;
   }
 
   beforeEach(() => {
