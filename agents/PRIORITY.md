@@ -36,6 +36,7 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | later | FCC Wave C (setLayout / group) after insert lock | [plan](./plans/forge-first-class-containers.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) |
 | later | Cross-mon TABBED/STACKED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
+| later | CLI language: gradual off-Python design (D0) | [task](./tasks/forge-cli-language_d0-discussion.md) |
 | done | Host tip loaded (`7b9875e`) — R015–R024 JS on host Shell | [REGRESSIONS](./REGRESSIONS.md) |
 | done | **R017** gdisplays scale → no entered-monitor thrash | [completed](./tasks/completed/forge-gdisplays-scale-change-thrash.md) · L0 48 green |
 | done | **R016** no-op workareas + mon-loss collect-to-end | [completed](./tasks/completed/forge-monitor-noop-apply-thrash.md) · L0 guards green |
