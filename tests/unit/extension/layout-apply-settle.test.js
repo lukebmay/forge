@@ -20,10 +20,12 @@ import {
   heuristicsRelPath,
   makeHeuristicsKey,
   parseHeuristicsStore,
+  partitionBeltStructureSteps,
   recordSoftFocusHeuristics,
   resolveFocusSoftTimeoutMs,
   resolveSettleHost,
   runBeltMovesOnly,
+  runBeltStructureRebind,
   runSoftFocusBarrierOnSignals,
   serializeHeuristicsStore,
   softFocusWallMs,
@@ -629,6 +631,103 @@ describe("runBeltMovesOnly", () => {
       runSteps: () => ({ ok: true }),
     });
     expect(out).toMatchObject({ ok: true, skipped: true, reason: "no-pins" });
+  });
+});
+
+describe("partitionBeltStructureSteps / runBeltStructureRebind (R013)", () => {
+  it("splits place moves from layout/order/join structure", () => {
+    const parts = partitionBeltStructureSteps([
+      { op: "move", dest: "path:mo1ws0" },
+      { op: "move", dest: "id:99" },
+      { op: "layout", mode: "TABBED" },
+      { op: "order", windowIds: [1, 2] },
+      { op: "focus", selector: "id:1" },
+      { op: "close", windowId: 9 },
+      { op: "bind", role: "a" },
+    ]);
+    expect(parts.place.map((s) => s.op)).toEqual(["move"]);
+    expect(parts.place[0].dest).toBe("path:mo1ws0");
+    expect(parts.structure.map((s) => s.op)).toEqual(["move", "layout", "order", "bind"]);
+    expect(parts.structure[0].dest).toBe("id:99");
+  });
+
+  it("no pins → skip structure rebind", () => {
+    const out = runBeltStructureRebind({
+      profile: {},
+      forest: { monitors: [] },
+      rolePins: {},
+      runSteps: () => ({ ok: true }),
+    });
+    expect(out).toMatchObject({ ok: true, skipped: true, reason: "no-pins" });
+  });
+
+  it("ungrouped mon1 tabs after mon moves → structure layout steps", () => {
+    // Host cold residual class: mon1 tab roles flat as mon HSPLIT siblings.
+    const d = loadExpected("perfect-clean");
+    const forest = structuredClone(d.forest);
+    const mon1 = (forest.monitors || []).find((m) => m.id === "mo1ws0");
+    expect(mon1).toBeTruthy();
+    mon1.children = [
+      {
+        nodeType: "WINDOW",
+        windowId: 201,
+        wmClass: "com.mitchellh.ghostty",
+        title: "Ghostty",
+        mode: "TILE",
+        monitor: 1,
+      },
+      {
+        nodeType: "WINDOW",
+        windowId: 202,
+        wmClass: "Google-chrome",
+        title: "YouTube",
+        mode: "TILE",
+        monitor: 1,
+      },
+      {
+        nodeType: "WINDOW",
+        windowId: 203,
+        wmClass: "Google-chrome",
+        title: "Gmail - Inbox - Gmail",
+        mode: "TILE",
+        monitor: 1,
+      },
+      {
+        nodeType: "WINDOW",
+        windowId: 204,
+        wmClass: "Google-chrome",
+        title: "Google Voice - Messages",
+        mode: "TILE",
+        monitor: 1,
+      },
+    ];
+    mon1.layout = "HSPLIT";
+
+    const pins = {
+      "chrome-luke": 101,
+      grok: 102,
+      "ghostty-left": 103,
+      "ghostty-right": 201,
+      youtube: 202,
+      gmail: 203,
+      voice: 204,
+    };
+    const ran = [];
+    const out = runBeltStructureRebind({
+      profile: d.profile,
+      forest,
+      flags: d.flags,
+      rolePins: pins,
+      runSteps: (steps, ctx) => {
+        ran.push({ ops: steps.map((s) => s.op), phase: ctx.phase });
+        return { ok: true };
+      },
+    });
+    expect(out.ok).toBe(true);
+    expect(out.skipped).toBe(false);
+    expect(out.structureSteps).toBeGreaterThan(0);
+    expect(ran.some((r) => r.ops.includes("layout"))).toBe(true);
+    expect(ran.find((r) => r.ops.includes("layout")).phase).toBe("order");
   });
 });
 

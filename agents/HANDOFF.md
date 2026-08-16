@@ -1,48 +1,76 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-16 (**R036** cold layout structure + soft fail — open)  
+**Updated:** 2026-08-16 (commit R036+overlay; queue triage; tab D0 parked)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed / host tip:** tip **loaded** on host after logout (`g75da70e-dirty`,
-`apiVersion` 10). Nest still loads install without logout.  
-**Live desk now:** Cold `forge layout dev` **failed** (R036). Mid-session re-apply
-can still look closer to `dev`; do not treat mid-session PASS as cold sign-off.
+**Installed / host tip:** after this push tip needs **logout** to load R036 + chrome/DnD UX.
+Nest loads install without logout.  
+**Live desk:** Mid-session mon0 `TABBED|ghostty` + mon1 tabs OK after layout job `…4893e8`.
+**Queue:** P0 = R036 cold human logout. Next product batch = **tab planning** (4.6
+xhigh) — no tab implement until lock. Parked optionals: [IDEAS.md](./IDEAS.md).
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
 
-### Hot — R036 cold Wayland `forge layout dev` structure + soft fail
+### Hot — post-apply UX (spinner residual + DnD overlay shipped)
 
 | Field | Detail |
 | --- | --- |
-| Symptom | New Wayland session (tip already loaded): `forge layout dev` fails; soft `max corrections (32)`; tree not `dev` |
-| Not open-miss | Open **7/7 pinned**; Voice multi-word + YouTube Name pick OK |
-| Actual tree | mon0: TABBED(chrome,Grok) \| VSPLIT(HSPLIT(ghostty,Voice), YouTube). mon1: ghostty \| TABBED(Gmail only) |
-| Expected | mon0: TABBED(chrome,Grok) \| ghostty. mon1: ghostty \| TABBED(YouTube,Gmail,Voice) |
-| Job | `~/.local/share/forge/jobs/20260816T031035Z-f91526` · `soft-error` |
-| Spine | skeleton → open 7/7 → bind 9 → order 9 → hard-ready 7 → focus 3 → **soft fail** |
-| Clues | Journal: mon0 right aspect-wrap thrash during open; `windowHomeReconcile` `get_workspace is not a function`; post-render `rect-mismatch` 3/7 |
-| Hypotheses | (A) OP1/R033 aspect mid LayoutBatch vs pin/PlaceNext (B) PH Meta incomplete (C) soft thrash secondary |
-| Fix order | Structure/open-attach first; soft only if still broken; no soft-only band-aid |
-| Task | [forge-layout-cold-apply-structure](./tasks/forge-layout-cold-apply-structure.md) · [R036](./REGRESSIONS.md) · [PRIORITY](./PRIORITY.md) |
-| Contrast | Mid-session job `20260816T013931Z-b40786` **ok** (soft corrections=2) |
-| CLI lie | stderr “nothing applied” is wrong after partial spine |
+| Symptom A (residual) | Operator: hover/layout spinners still long while using tabs after desk looks settled |
+| Fix A (code) | ApplyLayout `_clearChrome` after soft (skip/settle); Done clear idempotent |
+| Residual A | Parked for **tab planning D0** — may be soft floor still long vs clear gate wrong vs tip not loaded | [tab planning](./tasks/forge-tab-work-planning.md) |
+| Symptom B | DnD placement overlay ~1/6 height at top of mon0 left TABBED; mon1 right OK |
+| Root B | Zone paint used `get_frame_rect()`; inactive/Chrome Wayland frame can lag tiny vs full tree slot |
+| Fix B | `dropTargetHitRect` / slot for hit **and** `moveWindowToPointer` targetRect; session dnd-drop same |
+| Paths | `layout-apply-run.js`; `drag-drop.js`; `session-api.js`; `layout-apply-chrome.js` comment |
+| L0 | layout-apply-run + drag-drop comprehensive + drop-target-rect **211** related green |
+| Host | **Logout** then: drag onto mon0 tabs = full-height zones; spinner residual → tab D0 |
 
 ```bash
-forge ping   # expect apiVersion 10
-# Inspect last fail:
-cat ~/.local/share/forge/jobs/20260816T031035Z-f91526/stderr.log
-forge tree
-# After code fix:
 ./install --kit=vim
-forge nested run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
-# Host cold (logout if tip stale):
+# logout / nest, then:
 forge layout dev
-# mon1: ghostty | TABBED(YouTube,Gmail,Voice); job status ok
+# after soft settles: spinner/scrim gone before verify finishes
+# drag tile onto mon0 left TABBED: preview covers full content rect
+npm test -- tests/unit/extension/layout-apply-run.test.js \
+  tests/unit/extension/drop-target-rect.test.js \
+  tests/unit/window/WindowManager-drag-drop-comprehensive.test.js
+```
+
+### Hot — R036 cold Wayland `forge layout dev` (beltStructure + unwrap)
+
+| Field | Detail |
+| --- | --- |
+| Symptom | Cold job **ok** but tree wrong: mon0 `TABBED\|VSPLIT(ghostty)`; mon1 **flat** 4-wide. Soft OK. Mid re-apply fixes mon1 only |
+| Root A | PlaceNext mon-root / D032 thrash (PH pin helps) |
+| Root B | AL8 ApplyLayout belt mon moves **without** R013 `beltStructure` → mon1 TABBED flattened |
+| Root C | Lone mon-direct VSPLIT never unwrapped after structure |
+| Fix (code) | PH PlaceNext pin + pin no-D032; **runBeltStructureRebind** after belt moves; **unwrap mon-direct 1-child H/V** after order/size |
+| Paths | `layout-apply-settle.js` beltStructure; `layout-apply-run.js`; `session-api.js` unwrap; prior PH pin files |
+| L0 | settle + open + placeholder + open-app-policy **123** green |
+| Nest | dual mon0 unwrap PASS (ghostty mon-direct); chrome open-miss nest flake |
+| Host | **Logout** then cold `forge layout dev` for tip + cold sign-off |
+| Task | [forge-layout-cold-apply-structure](./tasks/forge-layout-cold-apply-structure.md) · [R036](./REGRESSIONS.md) |
+| Jobs | cold wrong-tree `…a3152f` / `…5aedd6`; mid mon1 `…41b16b` |
+
+```bash
+forge ping   # apiVersion 10; tip dirty until logout after install
+./install --kit=vim
+# Host cold (required):
+#   log out and back in, then:
+forge layout dev
+forge tree
+# mon0: TABBED(chrome,Grok) | ghostty
+# mon1: ghostty | TABBED(YouTube,Gmail,Voice)
+npm test -- tests/unit/extension/layout-apply-settle.test.js \
+  tests/unit/shared/layout-open.test.js \
+  tests/unit/extension/layout-apply-open.test.js \
+  tests/unit/extension/layout-placeholder.test.js \
+  tests/unit/window/WindowManager-open-app-policy.test.js
 ```
 
 ### Shipped — R033 open/launch LFT aspect → VSPLIT/HSPLIT
@@ -496,20 +524,25 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**If you are Grok 4.5 / 4.6:** AL1–AL8 **done** + open-miss hotfix + **R035**
-+ **R033** (in tree, installed). **Host needs logout** for cold tip (layout
-structure + open aspect). Desk may already be correct from mid-session re-apply.
-Do not redesign D036/D037. Never call `_layoutOp`.
-Do **not** put `hasLayoutPh` back into `skipWindowStructure`.
+**If you are Grok 4.5 / 4.6:** AL1–AL8 **done** + R033–R035 + **R036 code**
+(PH pin + beltStructure + mon unwrap + chrome-after-soft + DnD slot overlay)
+**committed**. **Host needs logout** for tip + cold `layout dev` sign-off.
+Mid-session mon1 PASS is not cold. **Do not implement tab work** until
+[tab planning](./tasks/forge-tab-work-planning.md) locks (4.6 xhigh). Do not
+redesign D036/D037. Never call `_layoutOp`. Do **not** put `hasLayoutPh` back
+into `skipWindowStructure`.
 
 | You can do | You must not |
 | --- | --- |
-| Logout → cold `forge layout dev` (R035 mon1 TABBED) | Personal `dev`/`t1` in live matrix |
-| Logout → tall/wide LFT + launch (R033 eyes-on) | GetTree poll twins of settle; Mode B as cold success |
-| Optional dual-mon `_forge-test-*` nest mon=2 | Reintroduce `skipWindowStructure \|\| hasLayoutPh` |
+| Logout → cold `forge layout dev` (R036 mon1 TABBED; mon0 no VSPLIT) | Personal `dev`/`t1` in live matrix |
+| Logout → tall/wide LFT + launch (R033 eyes-on); drag mon0 tabs = full zones | GetTree poll twins of settle; Mode B as cold success |
+| **Plan** tab D0 with high-reasoning model (spinner gate · cross-mon · TD triage) | Start tab **code** before tab planning locks |
+| Promote from [IDEAS](./IDEAS.md) only with a real need | Dual-mon nest by default; reintroduce `skipWindowStructure \|\| hasLayoutPh` |
 
 | Pri | Work | Path |
 | --- | --- | --- |
+| **P0** | **R036** host cold after logout (code shipped) | [task](./tasks/forge-layout-cold-apply-structure.md) |
+| **plan first** | Tab work D0 (spinner residual · cross-mon · TD2–4) | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
 | done | **R035** residual ensure_layout while layout PHs (mon1 flat tabs) | [completed](./tasks/completed/forge-layout-residual-tab-ensure.md) |
 | done | **R033** open/launch LFT aspect → VSPLIT/HSPLIT | [completed](./tasks/completed/forge-r033-open-aspect-split.md) |
 | done | R029/R030 green `layout dev` TILE + reuse | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
@@ -519,23 +552,11 @@ Do **not** put `hasLayoutPh` back into `skipWindowStructure`.
 | done | CN0–CN6 | [completed/](./plans/forge-cli-node/completed/) |
 | done | **R027** overlay until apply returns | [completed](./tasks/completed/forge-layout-chrome-until-ready.md) |
 | done | Wave Z zoom (D030) host live PASS | [completed](./tasks/completed/forge-zoom-maximize.md) |
-| done | **AL0** ApplyLayout design lock (D038) | [task](./tasks/forge-layout-in-process_al0-design.md) · [plan](./plans/forge-layout-in-process.md) |
-| done | AL1 expected + AL4 DBus stub + host live | [AL1](./plans/forge-layout-in-process/completed/forge-layout-in-process_al1-expected-dump.md) · [AL4](./plans/forge-layout-in-process/completed/forge-layout-in-process_al4-dbus-apply-layout.md) |
-| done | AL2 `normalizeProfile` pure JS | [AL2](./plans/forge-layout-in-process/completed/forge-layout-in-process_al2-shared-plan-normalize.md) |
-| done | AL3 `planReconcile` pure JS | [AL3](./plans/forge-layout-in-process/completed/forge-layout-in-process_al3-shared-plan-reconcile.md) |
-| done | AL5 structure executor (no-open) | [AL5](./plans/forge-layout-in-process/completed/forge-layout-in-process_al5-executor-structure.md) |
-| done | AL6 open/map + LayoutBatch + pin | [AL6](./plans/forge-layout-in-process/completed/forge-layout-in-process_al6-executor-open.md) |
-| done | AL7 settle (hard/soft/focus/verify) | [AL7](./plans/forge-layout-in-process/completed/forge-layout-in-process_al7-executor-settle.md) |
-| done | AL8 thin CLI cutover (nest `_forge-test-clean` PASS) | [AL8](./plans/forge-layout-in-process/completed/forge-layout-in-process_al8-cli-cutover.md) |
+| done | **AL0–AL8** ApplyLayout | [plan](./plans/forge-layout-in-process.md) |
 | done | **R032** tab-strip click dead (Done restack-only) | [completed](./tasks/completed/forge-tab-click-unresponsive.md) |
 | done | **R031** float-border ghost | [completed](./tasks/completed/forge-float-border-ghost-tile.md) |
-| done | R019 CENTER both dirs host smoke | HANDOFF residual table |
-| done | R020 VLC EOS nest live (post-AL8) | [R020](./REGRESSIONS.md) · fixture `tests/fixtures/media/` |
-| done | IC4 fold leftover CLI waiters — **skipped** (AL8) | [IC4](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic4-settle-fold.md) |
-| done | FCC **C0** kill monocle + lossy inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
-| done | FCC **C1** `setLayout` I1 | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
-| later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |
-| later | Cross-mon TABBED product design (D0) | [task](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
+| done | R019 CENTER · R020 VLC EOS nest · IC4 skipped · FCC C0/C1 | HANDOFF / REGRESSIONS |
+| later | Soft polish · L1 scale smoke · STACKED/resize | [PRIORITY](./PRIORITY.md) · [IDEAS](./IDEAS.md) |
 | done | Wayland RC R013/R014 + nest isolation N1–N4 + lifecycle W1–W5 | [REGRESSIONS](./REGRESSIONS.md) |
 
 ### Plan map

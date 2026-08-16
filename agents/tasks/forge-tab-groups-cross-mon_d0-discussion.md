@@ -4,8 +4,8 @@
 **Plan:** (none) — design discussion only  
 **Branch:** master (default)  
 **Blocker:** (none)  
-**Priority:** later (product edge; not daily-driver P1)  
-**Updated:** 2026-08-11
+**Priority:** later — folded into [tab planning](./forge-tab-work-planning.md) agenda §2  
+**Updated:** 2026-08-16
 
 ---
 

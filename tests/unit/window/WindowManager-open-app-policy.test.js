@@ -227,8 +227,49 @@ describe("OP1 open-app placement policy", () => {
 
       const node = wm().findNodeWindow(metaWindow);
       expect(monitorOf(node)).toBe(1);
-      // Inserted after path target (sibling of a)
+      // PlaceNext pin: no D032 wrap of path target (R036)
       expect(node.parentNode).toBe(a.nodeWindow.parentNode);
+      expect(a.nodeWindow.parentNode).toBe(getWorkspaceAndMonitor(ctx, 0, 1).monitor);
+    });
+
+    it("PlaceNext pin to mon window does not D032-wrap (R036)", () => {
+      // Skeleton-like: mon HSPLIT with two leaves; pin open to right leaf.
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      const left = tileOn(0, {
+        id: "tab-bag",
+        rect: { x: 0, y: 0, width: 960, height: 1080 },
+      });
+      const right = tileOn(0, {
+        id: "ghost-slot",
+        rect: { x: 960, y: 0, width: 960, height: 1080 },
+      });
+      wm().movePointerWith(left.nodeWindow);
+
+      wm().placeNext({
+        wmClass: "PinnedApp",
+        attachSelector: `id:${right.metaWindow.get_id()}`,
+        monitor: 0,
+        expiresAt: Date.now() + 60_000,
+      });
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "pinned-new",
+        wm_class: "PinnedApp",
+      });
+      wm().trackWindow(null, metaWindow);
+      const node = wm().findNodeWindow(metaWindow);
+
+      // Parent stays mon (no VSPLIT/HSPLIT wrap of right leaf)
+      expect(right.nodeWindow.parentNode).toBe(mon0);
+      expect(node.parentNode).toBe(mon0);
+      expect(mon0.childNodes.length).toBe(3);
+      // Pinned map inserted before the pin target
+      const idxNew = mon0.childNodes.indexOf(node);
+      const idxRight = mon0.childNodes.indexOf(right.nodeWindow);
+      expect(idxNew).toBeLessThan(idxRight);
     });
   });
 

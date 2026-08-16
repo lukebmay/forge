@@ -7,6 +7,7 @@ import {
   assignOpenRolePins,
   chromeSerialWaitPins,
   desktopLaunchTryIds,
+  findLayoutPlaceholderId,
   ghosttyMultiInstanceArgv,
   isGhosttyLaunchTarget,
   isPathLikeLaunchApp,
@@ -198,6 +199,83 @@ describe("openActionToLaunchFields", () => {
     expect(placeNextHasDest(place)).toBe(true);
     expect(place.titleContains).toBe("Grok");
     expect(place.attachSelector).toBe("id:42");
+  });
+});
+
+describe("findLayoutPlaceholderId (R036 PlaceNext pin)", () => {
+  const forest = {
+    monitors: [
+      {
+        nodeType: "MONITOR",
+        id: "mo0ws0",
+        children: [
+          {
+            nodeType: "CON",
+            layout: "TABBED",
+            children: [
+              {
+                nodeType: "WINDOW",
+                windowId: "forge-ph-1",
+                wmClass: "forge-placeholder",
+                placeholder: true,
+                layoutRole: "Grok",
+                layoutSlot: "mon0.s0",
+              },
+              {
+                nodeType: "WINDOW",
+                windowId: "forge-ph-2",
+                wmClass: "forge-placeholder",
+                placeholder: true,
+                layoutRole: "google-chrome",
+                layoutSlot: "mon0.s0",
+              },
+            ],
+          },
+          {
+            nodeType: "WINDOW",
+            windowId: "forge-ph-3",
+            wmClass: "forge-placeholder",
+            placeholder: true,
+            layoutRole: "ghostty",
+            layoutSlot: "mon0.ghostty",
+          },
+        ],
+      },
+      {
+        nodeType: "MONITOR",
+        id: "mo1ws0",
+        children: [
+          {
+            nodeType: "CON",
+            layout: "TABBED",
+            children: [
+              {
+                nodeType: "WINDOW",
+                windowId: "forge-ph-yt",
+                wmClass: "forge-placeholder",
+                placeholder: true,
+                layoutRole: "YouTube",
+                layoutSlot: "mon1.s0",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it("finds by role and prefers role+slot", () => {
+    expect(findLayoutPlaceholderId(forest, { role: "YouTube" })).toBe("forge-ph-yt");
+    expect(findLayoutPlaceholderId(forest, { role: "ghostty", slot: "mon0.ghostty" })).toBe(
+      "forge-ph-3"
+    );
+    expect(findLayoutPlaceholderId(forest, { role: "Grok", slot: "mon0.s0" })).toBe("forge-ph-1");
+  });
+
+  it("returns null when no PH matches", () => {
+    expect(findLayoutPlaceholderId(forest, { role: "missing" })).toBe(null);
+    expect(findLayoutPlaceholderId({ monitors: [] }, { role: "Grok" })).toBe(null);
+    expect(findLayoutPlaceholderId(forest, {})).toBe(null);
   });
 });
 

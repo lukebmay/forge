@@ -197,8 +197,74 @@ describe("startOpenPhase", () => {
       onComplete: (o) => done.push(o),
     });
     expect(done).toHaveLength(1);
-    expect(order).toEqual(["begin", "place", "spawn:ghostty-left", "release", "end", "replan"]);
+    // snapshotForest once for R036 PH attach lookup, again for residual replan.
+    expect(order).toEqual([
+      "begin",
+      "replan",
+      "place",
+      "spawn:ghostty-left",
+      "release",
+      "end",
+      "replan",
+    ]);
     expect(done[0].batch.ended).toBe(true);
+  });
+
+  it("PlaceNext attaches to layout PH id when skeleton PHs exist (R036)", () => {
+    const placed = [];
+    const phForest = {
+      monitors: [
+        {
+          nodeType: "MONITOR",
+          id: "mo0ws0",
+          children: [
+            {
+              nodeType: "WINDOW",
+              windowId: "forge-ph-term",
+              wmClass: "forge-placeholder",
+              placeholder: true,
+              layoutRole: "ghostty-left",
+              layoutSlot: "mon0.term",
+            },
+          ],
+        },
+      ],
+    };
+    startOpenPhase({
+      openActions: [
+        {
+          op: "open",
+          role: "ghostty-left",
+          slot: "mon0.term",
+          open: { app: "ghostty", wmClass: "com.mitchellh.ghostty" },
+        },
+      ],
+      profile: { version: 2, roles: [] },
+      flags: { clean: true },
+      deps: {
+        spawn: () => ({ ok: true, waitClasses: ["com.mitchellh.ghostty"] }),
+        placeNext: (opts) => {
+          placed.push(opts);
+          return { ok: true };
+        },
+        beginBatch: () => ({ ok: true }),
+        releaseDeferred: () => ({ ok: true }),
+        endBatch: () => ({ ok: true }),
+        // First call during spawnOne (PH lookup); later residual replan.
+        snapshotForest: () => phForest,
+        waitPins: (pending, _opts, done) => {
+          done({
+            ok: true,
+            rolePins: { "ghostty-left": 10 },
+            missing: [],
+          });
+        },
+      },
+      onComplete: () => {},
+    });
+    expect(placed).toHaveLength(1);
+    expect(placed[0].attachSelector).toBe("id:forge-ph-term");
+    expect(placed[0].monitor).toBe(0);
   });
 
   it("serializes chrome-family opens (no parallel Chrome+Grok)", () => {

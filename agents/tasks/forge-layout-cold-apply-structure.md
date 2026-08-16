@@ -1,6 +1,6 @@
 # forge-layout-cold-apply-structure — Cold ApplyLayout structure + soft (R036)
 
-**Status:** ready  
+**Status:** in progress  
 **Plan:** (none) · residual of AL6/AL8 open + R033 aspect + R035 ensure  
 **Branch:** master  
 **Blocker:** (none)  
@@ -15,119 +15,67 @@ soft settle finishes without max-corrections, verify structure+focus.
 
 ## Acceptance
 
-- [ ] Root confirmed in code (attach path during LayoutBatch open; PH Meta;
-      soft thrash only if still broken after structure)
-- [ ] Cold multi-open does **not** aspect-split OP1 against pin/PlaceNext slots
-      (product open/launch aspect still works outside apply)
-- [ ] Layout placeholders do not throw on `windowHomeReconcile` /
-      `get_workspace` (or equivalent Meta surface)
-- [ ] `forge layout dev` cold: exit 0; mon0 `TABBED(chrome,Grok) | ghostty`;
-      mon1 `ghostty | TABBED(YouTube,Gmail,Voice)` (or profile equivalent)
+- [x] Root confirmed in code (PlaceNext mon-root only → OP1/D032 thrash; PH
+      `get_workspace` throw; residual ensure can fix mon1 mid-session)
+- [x] Cold multi-open PlaceNext pins to layout PH (not mon-root only); pin
+      attach skips OP1 aspect / D032 wrap
+- [x] Layout placeholders: `get_workspace` stub + skip in `windowHomeReconcile`
+- [x] ApplyLayout **beltStructure** after pin-role belt moves (R013 port; AL8
+      dropped CLI path) so mon1 TABBED survives rehome
+- [x] Unwrap mon-direct 1-child H/V after order/size (lone VSPLIT around term)
+- [ ] `forge layout dev` **cold after logout** tip: mon0
+      `TABBED(chrome,Grok) | ghostty`; mon1
+      `ghostty | TABBED(YouTube,Gmail,Voice)`; exit 0
 - [ ] Soft settle: no `soft focus: max corrections (32)` on that path
-- [ ] L0: failing-then-green unit(s) for the chosen root(s)
-- [ ] Nest: multi-open structure smoke (`_forge-test-*` only in matrix)
-- [ ] Host: cold re-verify after install + logout tip (or nest if structure-only)
-- [ ] Optional: CLI “nothing applied” wording when spine partially ran
-
-## Work order (planning → implementation → testing)
-
-### 1. Plan / investigate (read-only first)
-
-1. Reproduce from job + tree evidence below (or fresh cold Guake/`FORGE_JOB`).
-2. Trace map→admit→attach during ApplyLayout open while `LayoutBatch` depth > 0:
-   - PlaceNext / pin dest for each role
-   - `_maybeAspectSplitForOpen` / D032 wrap / bag attach
-   - Whether LFT aspect runs when pin target already set
-3. Trace PH stubs: `layout-placeholder.js` vs `windowHomeReconcile` callers.
-4. Decide fix ownership (named API): suppress aspect mid-batch vs pin-only
-   attach vs replan after open — **not** soft-focus band-aid first.
-
-### 2. Implementation
-
-- Prefer one contract: during layout apply open, map attach obeys **slot pin**,
-  not dock OP1 aspect. Keep R033 for interactive open/launch.
-- Complete PH Meta surface or skip reconcile for non-Meta nodes.
-- Soft path: re-check after structure; only then touch soft focus if still thrashing
-  (historical R014 class: GetTree must not stomp LTF).
-
-### 3. Testing
-
-| Layer | What |
-| --- | --- |
-| L0 | Open-attach with batch active + PlaceNext/pin → no VSPLIT thrash of ghostty slot; PH `get_workspace` safe |
-| Nest | `forge nested run --` layout `_forge-test-clean` / multi-open profile; tree shape |
-| Host | Logout tip if JS changed; cold `forge layout dev`; `forge tree` + job ok |
-| Live matrix | Add `L1.r036-…` / tag R036 if not covered by existing cold cases |
-
-```bash
-# After fix install
-./install --kit=vim
-# Nest loop (no logout):
-forge nested run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
-# Host cold (logout if tip stale):
-forge ping   # apiVersion 10
-forge layout dev
-forge tree
-# Job dir: ~/.local/share/forge/jobs/<latest>/
-```
+- [x] L0: PH pin + beltStructure partition/rebind + open-app-policy (123 related)
+- [x] Nest: mon0 unwrap after dual open (ghosttys); chrome open-miss nest flake
+- [ ] Host: cold re-verify after install + **logout** tip
+- [ ] Optional: CLI “nothing applied” wording — parked [IDEAS](../IDEAS.md)
 
 ## Context for the next agent (complete + succinct)
 
-### Proven 2026-08-16 (host black, new Wayland session)
+### Live 2026-08-16 (fresh logout, tip dirty with R036 pin only)
 
 | Fact | Detail |
 | --- | --- |
-| Tip | Loaded: `g75da70e-dirty`, `apiVersion` 10 (logout worked) |
-| Job | `~/.local/share/forge/jobs/20260816T031035Z-f91526` |
-| Status | `failed` · `code=soft-error` · `soft focus: max corrections (32)` |
-| Spine | skeleton ok → open **7/7 pinned** → bind 9 → order 9 → size → hard-ready 7 → focus 3 → **soft fail** |
-| Spawn | Voice multi-word + YouTube Name pick **OK** (old open-miss/R034 path not this fail) |
-| Mid-session contrast | Job `20260816T013931Z-b40786` **ok** soft corrections=2 verify match |
-| CLI wording | stderr says “nothing applied” — **false**; windows opened and partial tree |
+| Cold job | `20260816T052835Z-a3152f` **ok** soft=3 verify match — tree wrong |
+| Actual cold tree | mon0 `TABBED \| VSPLIT(ghostty)`; mon1 **flat** 4-wide |
+| Mid-session | order ensure mon1 TABBED; mon0 VSPLIT remained |
+| Root A | PlaceNext mon-root / OP1 thrash (partial pin) |
+| Root B | **ApplyLayout missing R013 beltStructure** after belt 4 mon moves |
+| Root C | Lone mon-direct VSPLIT never unwrapped |
 
-### Tree after fail (actual)
+### Code fix (in tree, installed dirty; host needs **logout**)
 
-```text
-mo0ws0 HSPLIT
-  TABBED [chrome Fantasy…, Grok]
-  VSPLIT
-    HSPLIT [ghostty agent, Google Voice]
-    YouTube
-mo1ws0 HSPLIT
-  ghostty
-  TABBED [Gmail]   # only one tab child
+| Path | Change |
+| --- | --- |
+| `lib/shared/layout-open.js` | `findLayoutPlaceholderId` |
+| `lib/extension/layout-apply-open.js` | PlaceNext `id:<ph>` from forest |
+| `lib/extension/window.js` | pin skip D032; PH rehome skip |
+| `lib/extension/layout-placeholder.js` | `get_workspace` stub |
+| `lib/extension/layout-apply-settle.js` | `runBeltStructureRebind` + partition |
+| `lib/extension/layout-apply-run.js` | after belt moves → beltStructure; unwrap after order/size |
+| `lib/extension/session-api.js` | `_unwrapMonDirectSingleChildSplits` |
+
+### Verify
+
+```bash
+npm test -- tests/unit/extension/layout-apply-settle.test.js \
+  tests/unit/shared/layout-open.test.js \
+  tests/unit/extension/layout-apply-open.test.js \
+  tests/unit/extension/layout-placeholder.test.js \
+  tests/unit/window/WindowManager-open-app-policy.test.js
+./install --kit=vim
+# Host cold (required for tip):
+#   log out and back in, then:
+forge layout dev
+forge tree
+# mon1: ghostty | TABBED(YouTube,Gmail,Voice)
+# mon0: TABBED | ghostty (not VSPLIT wrap)
 ```
-
-### Expected (`dev` black)
-
-```text
-mon0 HSPLIT: TABBED(chrome, Grok) | ghostty
-mon1 HSPLIT: ghostty-2 | TABBED(YouTube, Gmail, Voice)
-focus: ghostty
-```
-
-### Journal clues (~23:10:35)
-
-- mon0 right: ghostty alone under VSPLIT → HSPLIT sibling wrap (aspect path)
-- `windowHomeReconcile`: `TypeError: metaWindow.get_workspace is not a function`
-- post-render `verify mismatch 3/7` `rect-mismatch` (sample chrome id)
-- Desktop Icons 1/2 admitted during apply
-
-### Not the primary story
-
-- R035 residual ensure shipped; mid-session mon1 tab group worked earlier
-- This cold fail is **structure during open** + soft secondary, not “ensure never planned”
-- Do not re-port planner to CLI; product path remains ApplyLayout (D037)
-
-### Paths to open first
-
-- `lib/extension/window.js` — open aspect / attach / batch
-- `lib/extension/session-api.js` — ApplyLayout open/pin spine
-- `lib/extension/layout-placeholder.js` — PH Meta stubs
-- `lib/shared/layout-open.js` — spawn (already OK for multi-word)
-- Soft: layout-controller / focus settle (only after structure)
 
 ## Session note
 
-2026-08-16: Host cold diagnose only (no code fix). PRIORITY + HANDOFF + R036
-filed for handoff. Operator asked priorities + commit/push.
+2026-08-16 later: Host cold after logout still wrong (job a3152f). Diagnosed
+missing ApplyLayout beltStructure (R013 CLI-only) + mon-direct unwrap. Nest
+dual mon0 unwrap PASS. Host needs one more logout for tip + cold sign-off.

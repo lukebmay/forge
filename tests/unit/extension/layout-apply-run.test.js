@@ -446,10 +446,10 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     });
   }
 
-  it("hard → focus steps → soft quiet → verify; chrome up through soft", () => {
+  it("hard → focus steps → soft quiet → verify; chrome up through soft, clear after soft", () => {
     const { profile, forest, flags } = grokActiveMismatch();
     const executed = [];
-    const chrome = { show: 0, clear: 0 };
+    const chrome = { show: 0, clear: 0, reasons: [] };
     const written = { text: null };
     let liveDuringSoft = null;
     const { bag, timers, flushZero, fireMs } = bagWithSettle(
@@ -489,8 +489,9 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
         onChromeShow: () => {
           chrome.show += 1;
         },
-        onChromeClear: () => {
+        onChromeClear: ({ reason } = {}) => {
           chrome.clear += 1;
+          if (reason) chrome.reasons.push(reason);
         },
       }
     );
@@ -518,7 +519,9 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.lastTerminal.terminal.result.heuristics.persist).toBe("ok");
     expect(written.text).toContain("testhost|google-chrome|focus-phase|focus");
     expect(liveDuringSoft).toBe(0);
+    // Soft settle clears chrome once; terminal Done must not double-clear.
     expect(chrome.clear).toBe(1);
+    expect(chrome.reasons[0]).toBe("soft");
   });
 
   it("hard-ready waits for TILE signal then continues (no poll interval)", () => {

@@ -1786,6 +1786,66 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       );
     });
 
+    it("uses tree slot for zone paint when Meta frame is tiny (inactive tab lag)", () => {
+      setupPreviewTest();
+      const monitor = getMonitor();
+      // Tree slot = full half-tile; Meta frame lagging at top ~1/6 height.
+      const { nodeWindow: target, metaWindow: targetMeta } = createWindowWithRect(monitor, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      target.renderRect = { x: 0, y: 0, width: 960, height: 1080 };
+      target.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      targetMeta.get_frame_rect = () => new Rectangle({ x: 0, y: 0, width: 960, height: 180 });
+
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 960, y: 0, width: 960, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      const makeZoneActor = () => ({
+        set_style_class_name: vi.fn(),
+        set_position: vi.fn(),
+        set_size: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      });
+      const zoneActors = {
+        TOP: makeZoneActor(),
+        RIGHT: makeZoneActor(),
+        BOTTOM: makeZoneActor(),
+        LEFT: makeZoneActor(),
+        CENTER: makeZoneActor(),
+      };
+      const previewHint = {
+        set_style_class_name: vi.fn(),
+        set_position: vi.fn(),
+        set_size: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+        remove_child: vi.fn(),
+        add_child: vi.fn(),
+      };
+      dragged.previewHint = previewHint;
+      dragged.previewZoneActors = zoneActors;
+
+      // Pointer mid-slot (would miss tiny frame zones if frame were used).
+      setPointer(480, 540);
+      wm().nodeWinAtPointer = target;
+      wm().moveWindowToPointer(dragged, true);
+
+      expect(previewHint.show).toHaveBeenCalled();
+      expect(previewHint.set_position).toHaveBeenCalledWith(0, 0);
+      expect(previewHint.set_size).toHaveBeenCalledWith(960, 1080);
+      // CENTER of full slot, not the squished frame.
+      expect(zoneActors.CENTER.set_style_class_name).toHaveBeenCalledWith(
+        expect.stringMatching(/window-tilepreview-/)
+      );
+    });
+
     it("clearAllPreviewHints destroys multi-zone actors", () => {
       setupPreviewTest();
       const monitor = getMonitor();

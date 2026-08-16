@@ -1,15 +1,19 @@
 # Plan: Browser-like tab chrome drag
 
-**Status:** TD1 **done** (code + nest live); TD2–TD4 later  
-**Priority:** P1 product chrome (after Insert A live + tab-click
-residuals)  
+**Status:** TD1 **done** (code + nest live); TD2–TD4 triage in tab D0  
+**Priority:** P1 product chrome — next batch via [tab planning](../tasks/forge-tab-work-planning.md)  
 **Created:** 2026-08-06  
-**Updated:** 2026-08-14  
+**Updated:** 2026-08-16  
 **Branch:** `master` (do not open `plan/forge-tab-chrome-drag`)  
 **Locks:** [insert + drag table](../tasks/forge-container-insert-dnd-design.md)
 (D032) · D023 child list · D024 drop-intent · D025 reveal
 
 ### Session note (overwrite)
+
+**2026-08-16:** Further tab work (TD2–4, hover-spinner residual, cross-mon)
+goes through [tab planning](../tasks/forge-tab-work-planning.md) with a
+high-reasoning model **before** implement. Do not start tab code until that
+locks.
 
 **2026-08-14 (TD1 live PASS):** Nest tip `gb280f94` — 3 zenity TABBED,
 strip reorder middle→end, peel → mon HSPLIT + 2-tab remainder. Host

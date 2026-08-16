@@ -52,6 +52,9 @@ describe("layout-placeholder pure helpers", () => {
     expect(s.get_window_type()).toBe(0);
     expect(s.showing_on_its_workspace()).toBe(true);
     expect(s.get_frame_rect()).toEqual({ x: 0, y: 0, width: 0, height: 0 });
+    // windowHomeReconcile calls get_workspace (R036)
+    expect(typeof s.get_workspace).toBe("function");
+    expect(s.get_workspace().index()).toBe(0);
   });
 
   it("slot-tagged skeleton stub encodes title and layout fields (CT1)", () => {
