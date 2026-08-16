@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-15  
+**Updated:** 2026-08-16  
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.  
 **Branch:** **`master`** default  
 **Push:** only when human asks.
@@ -8,13 +8,14 @@
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
 not a `cli/` planner port).
 
-**Active:** **AL1–AL8 done** (`apiVersion` 10; product layout =
-ApplyLayout). **R035** residual tab ensure **shipped** (host cold needs
-logout). **R033** open-app aspect split **shipped** (L0; host logout tip).
+**Active P0:** **R036** cold Wayland `forge layout dev` — open-attach structure
+thrash + soft max-corrections (tip loaded; open 7/7; tree wrong; soft fail).
+**Shipped recently:** AL1–AL8 · R033 · R034 · R035 (code; cold host still broken
+via R036, not “need logout for R035 tip” alone).
 
 **Agents:** default implement = **Grok 4.5** (prompt as medium). Plan
-reshape / AL0 / C1 / messy DnD = **Grok 4.6** (xhigh for design).
-See [cli-node Which agent](./plans/forge-cli-node.md#which-agent).
+reshape / attach-policy design / messy open-batch = **Grok 4.6** (xhigh if
+design forks). See [cli-node Which agent](./plans/forge-cli-node.md#which-agent).
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
@@ -25,6 +26,10 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 
 | Pri | Item | Status |
 | --- | --- | --- |
+| **P0** | **R036** cold ApplyLayout: pin-slot open attach (no OP1 aspect thrash mid batch); PH `get_workspace`; soft settle after structure | [task](./tasks/forge-layout-cold-apply-structure.md) · [R036](./REGRESSIONS.md) |
+| P0 | R036 L0 + nest multi-open structure + host cold `layout dev` PASS | same task |
+| later | Soft-only polish if structure green but soft still thrashing (R014 class) | after R036 structure |
+| later | CLI “nothing applied” wording when spine partially ran | same or tiny follow-up |
 | done | R029/R030 green layout — first apply TILE, second reuses | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
 | done | TD1 strip reorder **code** + nest live (L0 131) | [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
 | done | R028 late-identity wrap **code** + nest VSPLIT + **host** live PASS | [task](./tasks/forge-container-insert-a.md) |
@@ -106,6 +111,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 22. **R020** — **done** nest mon=1 EOS + D026 max/fs restore (post-AL8).
 23. **R035** — **done** residual ensure while layout PHs (mon1 tab group).
 24. **R033** — **done** open-app aspect orientation from LFT unit (L0).
+25. **R036** — **next** cold host layout after logout tip still fails: structure
+    during open (aspect vs pin) + soft max-corrections; not open-miss.
 
 Do not assign a 4.5 agent `layout_plan.py` → JS.
 

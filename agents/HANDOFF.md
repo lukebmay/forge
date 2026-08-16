@@ -1,17 +1,49 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-15 (**R033** open aspect split; R035 still needs host logout for cold)  
+**Updated:** 2026-08-16 (**R036** cold layout structure + soft fail — open)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed / host tip:** tip **installed** (`g75da70e-dirty` + R033). **Wayland host Shell needs logout** to load tip — nest loads install.  
-**Live desk now:** R035 mon1 may already be TABBED mid-session; cold layout + open aspect need logout tip.
+**Installed / host tip:** tip **loaded** on host after logout (`g75da70e-dirty`,
+`apiVersion` 10). Nest still loads install without logout.  
+**Live desk now:** Cold `forge layout dev` **failed** (R036). Mid-session re-apply
+can still look closer to `dev`; do not treat mid-session PASS as cold sign-off.
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Hot — R036 cold Wayland `forge layout dev` structure + soft fail
+
+| Field | Detail |
+| --- | --- |
+| Symptom | New Wayland session (tip already loaded): `forge layout dev` fails; soft `max corrections (32)`; tree not `dev` |
+| Not open-miss | Open **7/7 pinned**; Voice multi-word + YouTube Name pick OK |
+| Actual tree | mon0: TABBED(chrome,Grok) \| VSPLIT(HSPLIT(ghostty,Voice), YouTube). mon1: ghostty \| TABBED(Gmail only) |
+| Expected | mon0: TABBED(chrome,Grok) \| ghostty. mon1: ghostty \| TABBED(YouTube,Gmail,Voice) |
+| Job | `~/.local/share/forge/jobs/20260816T031035Z-f91526` · `soft-error` |
+| Spine | skeleton → open 7/7 → bind 9 → order 9 → hard-ready 7 → focus 3 → **soft fail** |
+| Clues | Journal: mon0 right aspect-wrap thrash during open; `windowHomeReconcile` `get_workspace is not a function`; post-render `rect-mismatch` 3/7 |
+| Hypotheses | (A) OP1/R033 aspect mid LayoutBatch vs pin/PlaceNext (B) PH Meta incomplete (C) soft thrash secondary |
+| Fix order | Structure/open-attach first; soft only if still broken; no soft-only band-aid |
+| Task | [forge-layout-cold-apply-structure](./tasks/forge-layout-cold-apply-structure.md) · [R036](./REGRESSIONS.md) · [PRIORITY](./PRIORITY.md) |
+| Contrast | Mid-session job `20260816T013931Z-b40786` **ok** (soft corrections=2) |
+| CLI lie | stderr “nothing applied” is wrong after partial spine |
+
+```bash
+forge ping   # expect apiVersion 10
+# Inspect last fail:
+cat ~/.local/share/forge/jobs/20260816T031035Z-f91526/stderr.log
+forge tree
+# After code fix:
+./install --kit=vim
+forge nested run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
+# Host cold (logout if tip stale):
+forge layout dev
+# mon1: ghostty | TABBED(YouTube,Gmail,Voice); job status ok
+```
 
 ### Shipped — R033 open/launch LFT aspect → VSPLIT/HSPLIT
 
@@ -46,9 +78,9 @@ npm test -- tests/unit/window/WindowManager-insert-slot-split.test.js \
 | Fix | `skipWindowStructure = coldEmpty` only; tab/stack ensure while PHs present; mon-level ensure still off while `hasLayoutPh`. Bind phase then order-phase ensure |
 | Paths | `lib/shared/layout-plan.js`, `scripts/forge/layout_plan.py` |
 | L0 | Vitest residual PH+ungrouped tab; pytest multi-role PH ensure; layout_plan 212; expected 6 |
-| Host | Mid-session re-apply grouped mon1. **Logout** for cold tip, then `forge layout dev` |
+| Host | Mid-session re-apply grouped mon1. Logout tip loaded 2026-08-16 |
 | Task | [completed](./tasks/completed/forge-layout-residual-tab-ensure.md) · [R035](./REGRESSIONS.md) |
-| Residual | Host cold still needs logout for R035 tip |
+| Residual | Cold host still fails as **R036** (structure/soft), not “tip missing” |
 
 ```bash
 npm test -- tests/unit/shared/layout-plan-reconcile.test.js
@@ -74,9 +106,9 @@ forge layout dev
 | Paths | `lib/extension/session-api.js`, `lib/shared/layout-open.js`, `lib/extension/layout-placeholder.js`, `lib/extension/window.js`, `lib/extension/decoration.js` |
 | L0 | `layout-open` (YouTube vs TV + multi-word) + `layout-placeholder` |
 | Nest | `_forge-test-clean` **PASS**; cold nest open map can flake (separate) |
-| Host | **Logout once** to load tip, then `forge layout dev` |
-| Open queue | **R033** shipped (see top); host logout for tip |
-| Job evidence | `~/.local/share/forge/jobs/20260816T010248Z-1fda4a` (`open spawn failed … "Google"`) |
+| Host | Logout tip loaded 2026-08-16; open-miss path fixed; **R036** is the cold residual |
+| Open queue | **R036** (structure + soft) — see hot section |
+| Job evidence | `~/.local/share/forge/jobs/20260816T010248Z-1fda4a` (`open spawn failed … "Google"`) — historical |
 
 ```bash
 ./install --kit=vim
