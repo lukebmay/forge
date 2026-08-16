@@ -20,8 +20,9 @@ implement slices. **Do not start tab implementation until this D0 lands.**
 | --- | --- |
 | Symptom | Layout-apply spinner(s) stay on a long time while hovering/using tabs after the desk looks settled enough to drop the modal |
 | Intent | Spinner/scrim must stop **as soon as** settle is far enough to remove the modal (same gate) |
-| Code already | ApplyLayout `_clearChrome` after soft (skip/settle); Done clear idempotent — see `layout-apply-run.js` |
-| Open questions | Is residual long **soft quiet** (floor/corrections) vs chrome not clearing on host tip vs a second spinner surface? Should chrome clear earlier (e.g. hard-ready + focus apply, not full soft quiet)? Interaction with tab strip reactivity under scrim? |
+| Code already | ApplyLayout `_clearChrome` after soft (skip/settle); Done clear idempotent — see `layout-apply-run.js` (`f4495fe`) |
+| Evidence | Operator 2026-08-16: report was on **fresh Wayland + pre-f4495fe tip** (`g8ecb0f6`). Current new Wayland session still not on tip. **Not yet a post-fix residual.** Re-verify after install+logout before spending plan time |
+| Open questions | If still long on tip: long **soft quiet** vs wrong clear gate vs second spinner surface? Clear earlier (hard-ready + focus)? Tab strip under scrim? |
 | Related | R027 chrome-until-ready; D010; post-apply UX in HANDOFF |
 
 **Acceptance direction (plan must lock):** one clear rule for when chrome drops; L0 + host repro steps.

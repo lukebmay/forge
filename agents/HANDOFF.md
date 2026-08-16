@@ -1,34 +1,38 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-16 (commit R036+overlay; queue triage; tab D0 parked)  
+**Updated:** 2026-08-16 (host tip still pre-f4495fe; spinner report not post-fix)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed / host tip:** after this push tip needs **logout** to load R036 + chrome/DnD UX.
-Nest loads install without logout.  
-**Live desk:** Mid-session mon0 `TABBED|ghostty` + mon1 tabs OK after layout job `…4893e8`.
-**Queue:** P0 = R036 cold human logout. Next product batch = **tab planning** (4.6
-xhigh) — no tab implement until lock. Parked optionals: [IDEAS.md](./IDEAS.md).
+**Repo tip:** `f4495fe` (R036 + chrome-after-soft + DnD slot overlay + queue triage).  
+**Host Shell tip (live):** `forge ping` → **`g8ecb0f6-dirty`** — **not** f4495fe.  
+Operator note 2026-08-16: **new Wayland session** right now; does **not** run the
+just-pushed fixes. Conversation start was also a **fresh install + fresh Wayland**
+on pre-f4495fe tip (spinner/overlay complaints were **not** measured on
+chrome-after-soft / slot-overlay). Disk under
+`~/.local/share/.../forge@jmmaranan.com` may already have newer files from a
+later `./install`; Shell still serves the session-start tip until **logout**.  
+**Queue:** P0 = `./install --kit=vim` → **logout** → cold `layout dev` (R036 +
+UX). Next product = **tab planning** only after tip load eyes-on. [IDEAS](./IDEAS.md).
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
 
-### Hot — post-apply UX (spinner residual + DnD overlay shipped)
+### Hot — post-apply UX (code on master; host not on tip yet)
 
 | Field | Detail |
 | --- | --- |
-| Symptom A (residual) | Operator: hover/layout spinners still long while using tabs after desk looks settled |
-| Fix A (code) | ApplyLayout `_clearChrome` after soft (skip/settle); Done clear idempotent |
-| Residual A | Parked for **tab planning D0** — may be soft floor still long vs clear gate wrong vs tip not loaded | [tab planning](./tasks/forge-tab-work-planning.md) |
-| Symptom B | DnD placement overlay ~1/6 height at top of mon0 left TABBED; mon1 right OK |
-| Root B | Zone paint used `get_frame_rect()`; inactive/Chrome Wayland frame can lag tiny vs full tree slot |
-| Fix B | `dropTargetHitRect` / slot for hit **and** `moveWindowToPointer` targetRect; session dnd-drop same |
-| Paths | `layout-apply-run.js`; `drag-drop.js`; `session-api.js`; `layout-apply-chrome.js` comment |
-| L0 | layout-apply-run + drag-drop comprehensive + drop-target-rect **211** related green |
-| Host | **Logout** then: drag onto mon0 tabs = full-height zones; spinner residual → tab D0 |
+| Symptom A (pre-tip) | Spinners long while hovering tabs after desk looked settled — reported on **pre-f4495fe** session, not after chrome-after-soft load |
+| Fix A (code, master) | ApplyLayout `_clearChrome` after soft (skip/settle); Done clear idempotent |
+| Residual A | **Re-check after tip load.** Only if still long on `gf4495fe` (or newer) → [tab planning](./tasks/forge-tab-work-planning.md). Do not treat pre-tip report as post-fix fail |
+| Symptom B (pre-tip) | DnD overlay ~1/6 height on mon0 left TABBED |
+| Fix B (code, master) | Tree slot for hit + zone paint (`dropTargetSlotRect` / `dropTargetHitRect`) |
+| Paths | `layout-apply-run.js`; `drag-drop.js`; `session-api.js`; `layout-apply-chrome.js` |
+| L0 | 211 related green at commit |
+| Host next | `./install --kit=vim` → **logout** → ping shows f4495fe (not 8ecb0f6) → layout + drag eyes-on |
 
 ```bash
 ./install --kit=vim
