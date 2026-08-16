@@ -446,12 +446,11 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     });
   }
 
-  it("hard → focus steps → soft quiet → verify; chrome up through soft, clear after soft", () => {
+  it("hard → focus steps → soft quiet → verify; chrome clears at soft-enter", () => {
     const { profile, forest, flags } = grokActiveMismatch();
     const executed = [];
     const chrome = { show: 0, clear: 0, reasons: [] };
     const written = { text: null };
-    let liveDuringSoft = null;
     const { bag, timers, flushZero, fireMs } = bagWithSettle(
       {
         snapshotForest: () => forest,
@@ -501,8 +500,9 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.live).toBeTruthy();
     expect(bag.live.phase).toBe("soft");
     expect(chrome.show).toBe(1);
-    expect(chrome.clear).toBe(0);
-    liveDuringSoft = chrome.clear;
+    // Scrim/spinner drop before soft quiet so tabs are not blocked.
+    expect(chrome.clear).toBe(1);
+    expect(chrome.reasons[0]).toBe("soft-enter");
     expect(executed.some((e) => e.phase === "focus" && e.ops.includes("focus"))).toBe(true);
     expect(bag.live.hardReadyRan).toBe(true);
     expect(bag.live.hardReady.ok).toBe(true);
@@ -518,10 +518,9 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.lastTerminal.terminal.result.verify.ok).toBe(true);
     expect(bag.lastTerminal.terminal.result.heuristics.persist).toBe("ok");
     expect(written.text).toContain("testhost|google-chrome|focus-phase|focus");
-    expect(liveDuringSoft).toBe(0);
-    // Soft settle clears chrome once; terminal Done must not double-clear.
+    // soft-enter cleared once; soft end + Done must not double-clear.
     expect(chrome.clear).toBe(1);
-    expect(chrome.reasons[0]).toBe("soft");
+    expect(chrome.reasons).toEqual(["soft-enter"]);
   });
 
   it("hard-ready waits for TILE signal then continues (no poll interval)", () => {
