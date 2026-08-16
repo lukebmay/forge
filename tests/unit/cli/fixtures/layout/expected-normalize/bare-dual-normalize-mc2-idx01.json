@@ -1,0 +1,137 @@
+{
+  "error": null,
+  "id": "bare-dual-normalize-mc2-idx01",
+  "input": null,
+  "ok": true,
+  "op": "normalize",
+  "opts": {
+    "mon_count": 2,
+    "mon_indices": [0, 1]
+  },
+  "output": {
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "s0",
+            "layout": "tabbed",
+            "roles": ["google-chrome", "Grok"]
+          },
+          {
+            "id": "ghostty",
+            "roles": ["ghostty"]
+          }
+        ],
+        "split": "hsplit"
+      },
+      "mon1": {
+        "children": [
+          {
+            "id": "ghostty-2",
+            "roles": ["ghostty-2"]
+          },
+          {
+            "id": "s0",
+            "layout": "tabbed",
+            "roles": ["YouTube", "Gmail", "Google-Voice"]
+          }
+        ],
+        "split": "hsplit"
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "google-chrome",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Google Chrome"
+        },
+        "open": {
+          "app": "google-chrome",
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.s0"
+      },
+      {
+        "id": "Grok",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Grok"
+        },
+        "open": {
+          "app": "Grok",
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.s0"
+      },
+      {
+        "id": "ghostty",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty"
+        },
+        "slot": "mon0.ghostty"
+      },
+      {
+        "id": "ghostty-2",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty"
+        },
+        "slot": "mon1.ghostty-2"
+      },
+      {
+        "id": "YouTube",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "YouTube"
+        },
+        "open": {
+          "app": "YouTube",
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.s0"
+      },
+      {
+        "id": "Gmail",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Gmail"
+        },
+        "open": {
+          "app": "Gmail",
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.s0"
+      },
+      {
+        "id": "Google-Voice",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Voice"
+        },
+        "open": {
+          "app": "Google Voice",
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.s0"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": "profile-bare-dual-mon.json"
+}

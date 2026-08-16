@@ -310,8 +310,9 @@ describe("D032 slot-split insert", () => {
     });
 
     it("late null class/title still slot-splits; processFloats tiles in the wrap", () => {
-      // Live R028: Nautilus maps class=null title=null → isFloatingExempt
-      // skips D032, attaches as MONITOR's 3rd sibling, then tiles in place.
+      // Live R028: Nautilus maps class=null title=null → isFloatingExempt.
+      // Do not reserve a TILE wrap at map (R031 always-float ghost). Adopt
+      // into D032 wrap when processFloats first tiles.
       const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
       mon0.layout = LAYOUT_TYPES.HSPLIT;
       const bag = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.CON, {});
@@ -345,10 +346,9 @@ describe("D032 slot-split insert", () => {
       });
 
       expect(wm().isFloatingExempt(opened.meta)).toBe(true);
-      expect(mon0.childNodes.length).toBe(2);
-      expect(hvWideCount(mon0, 3)).toBe(0);
-      expect(bag.parentNode).not.toBe(mon0);
-      expect(opened.node.parentNode).toBe(bag.parentNode);
+      expect(opened.node.isFloat()).toBe(true);
+      expect(bag.parentNode).toBe(mon0);
+      expect(opened.node.parentNode).toBe(mon0);
 
       opened.meta.set_wm_class("org.gnome.Nautilus");
       opened.meta.set_title("Home");

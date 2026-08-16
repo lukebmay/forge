@@ -116,13 +116,14 @@ describe("tab click activates associated window", () => {
     const actorB = { name: "actorB" };
     wA.get_compositor_private = () => actorA;
     wB.get_compositor_private = () => actorB;
-    wB.raise = vi.fn(() => {
-      const wg = global.window_group;
-      if (wg.contains(actorB)) wg.remove_child(actorB);
-      wg.add_child(actorB);
-    });
-    wB.focus = vi.fn();
-    wB.activate = vi.fn();
+    const bury = (actor) => {
+      const g = global.window_group;
+      if (g.contains(actor)) g.remove_child(actor);
+      g.add_child(actor);
+    };
+    wB.raise = vi.fn(() => bury(actorB));
+    wB.focus = vi.fn(() => bury(actorB));
+    wB.activate = vi.fn(() => bury(actorB));
 
     const deco = { name: "deco", show: vi.fn(), hide: vi.fn() };
     tab.decoration = deco;
@@ -290,6 +291,89 @@ describe("decoration restack above group (not global focus)", () => {
     expect(scheduleSpy).toHaveBeenCalled();
     // GLib.idle_add mock runs callbacks immediately.
     expect(settleSpy).toHaveBeenCalledWith(ctx.windowManager);
+  });
+
+  it("R032: ApplyLayout steps schedule WR14 tab settle", () => {
+    const api = new SessionApi({
+      extWm: ctx.windowManager,
+      settings: ctx.settings,
+    });
+    const settleSpy = vi.spyOn(api, "_settleAfterRunSteps").mockImplementation(() => {});
+    vi.spyOn(ctx.windowManager, "commitLayout").mockImplementation(() => {});
+
+    const out = api._runApplyLayoutSteps([{ op: "ping" }], { phase: "focus" });
+    expect(out.ok).toBe(true);
+    expect(settleSpy).toHaveBeenCalledWith(ctx.windowManager);
+  });
+
+  function tabbedGroupWithBuriedStrip(idPrefix) {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const con = ctx.windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.TABBED;
+
+    const wA = createMockWindow({ id: `${idPrefix}-a` });
+    const wB = createMockWindow({ id: `${idPrefix}-b` });
+    const nA = ctx.windowManager.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = ctx.windowManager.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, wB);
+    con.lastTabFocus = wB;
+
+    const actorA = { name: "actorA" };
+    const actorB = { name: "actorB" };
+    wA.get_compositor_private = () => actorA;
+    wB.get_compositor_private = () => actorB;
+    wB.raise = vi.fn(() => {
+      const g = global.window_group;
+      if (g.contains(actorB)) g.remove_child(actorB);
+      g.add_child(actorB);
+    });
+
+    const deco = { name: "deco", show: vi.fn(), hide: vi.fn() };
+    con.decoration = deco;
+
+    const wg = global.window_group;
+    wg.add_child(actorA);
+    wg.add_child(deco);
+    wg.add_child(actorB);
+
+    const api = new SessionApi({
+      extWm: ctx.windowManager,
+      settings: ctx.settings,
+    });
+    vi.spyOn(ctx.windowManager, "updateDecorationLayout").mockImplementation(() => {
+      const tiled = ctx.windowManager.tree.getTiledChildren(con.childNodes);
+      ctx.windowManager.decorationManager._restackDecorationAboveGroup(con, tiled);
+    });
+    vi.spyOn(ctx.windowManager, "updateBorderLayout").mockImplementation(() => {});
+    return { api, con, wB, nA, nB, deco, actorA, actorB, wg };
+  }
+
+  it("R032: ApplyLayout Done restacks chrome after last raise", () => {
+    const { api, wB, nA, nB, deco, actorA, actorB, wg } = tabbedGroupWithBuriedStrip("al");
+
+    const bag = api._ensureLayoutApplyRuns();
+    bag._onDone({ applyId: "r032", ok: true });
+
+    const children = wg.get_children();
+    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorA));
+    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorB));
+    // Restack-only: another raise here re-buries the strip on Wayland.
+    expect(wB.raise).not.toHaveBeenCalled();
+    expect(nA).toBeTruthy();
+    expect(nB).toBeTruthy();
+  });
+
+  it("R032: ApplyLayout Done restacks even while render is frozen", () => {
+    const { api, deco, actorA, actorB, wg } = tabbedGroupWithBuriedStrip("al-fz");
+    ctx.windowManager.freezeRender();
+    expect(ctx.windowManager._freezeRender).toBe(true);
+
+    const bag = api._ensureLayoutApplyRuns();
+    bag._onDone({ applyId: "r032-frozen", ok: true });
+
+    const children = wg.get_children();
+    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorA));
+    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorB));
+    expect(ctx.windowManager._freezeRender).toBe(true);
   });
 });
 

@@ -1,0 +1,98 @@
+{
+  "error": null,
+  "id": "nested-hsplit-normalize",
+  "input": {
+    "tiles": {
+      "mon0": [
+        {
+          "hsplit": [
+            "a",
+            {
+              "vsplit": ["b", "c"]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "ok": true,
+  "op": "normalize",
+  "opts": {},
+  "output": {
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "children": [
+              {
+                "id": "a",
+                "roles": ["a"]
+              },
+              {
+                "children": [
+                  {
+                    "id": "b",
+                    "roles": ["b"]
+                  },
+                  {
+                    "id": "c",
+                    "roles": ["c"]
+                  }
+                ],
+                "id": "s1",
+                "split": "vsplit"
+              }
+            ],
+            "id": "s0",
+            "split": "hsplit"
+          }
+        ]
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "monExplicit": true,
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "a",
+        "match": {
+          "class": "a"
+        },
+        "open": {
+          "app": "a"
+        },
+        "slot": "mon0.s0.a"
+      },
+      {
+        "id": "b",
+        "match": {
+          "class": "b"
+        },
+        "open": {
+          "app": "b"
+        },
+        "slot": "mon0.s0.s1.b"
+      },
+      {
+        "id": "c",
+        "match": {
+          "class": "c"
+        },
+        "open": {
+          "app": "c"
+        },
+        "slot": "mon0.s0.s1.c"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": null
+}

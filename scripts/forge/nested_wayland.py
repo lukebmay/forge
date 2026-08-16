@@ -47,8 +47,8 @@ from typing import Any, Mapping, Optional, Sequence
 FORGE_UUID = "forge@jmmaranan.com"
 DEFAULT_NAME = "forge"
 DEFAULT_DISPLAY = "wayland-forge"
-DEFAULT_SIZE = "1500x1000"
-DEFAULT_SCALE = "1"
+DEFAULT_SIZE = "1920x1080"  # Full HD per dummy mon; fixed, not host-matched
+DEFAULT_SCALE = "1"  # no scaling
 DEFAULT_MONITORS = 1
 MAX_DUMMY_MONITORS = 4  # Mutter clamps higher counts
 SHELL_READY_TIMEOUT_S = 30.0
@@ -138,12 +138,11 @@ def parse_size(spec: str) -> str:
 def host_primary_logical_size(
     env: Optional[Mapping[str, str]] = None, ) -> Optional[str]:
     """
-    Logical size of the host primary monitor as WWxHH (for nest dummy mons).
+    Logical size of the host primary monitor as WWxHH.
 
-    Prefer Forge GetTree stableKey geom when extension is up; else parse
-    gdisplays-style geometry. Each nest dummy mon should match this size so
-    dual-mon nests are full-size side-by-side (window may be large — drag ok;
-    layout tests do not need to "see" the nest UI).
+    Prefer Forge GetTree stableKey geom when extension is up. Nest defaults
+    use DEFAULT_SIZE (Full HD) + DEFAULT_SCALE (1); this probe is opt-in only
+    (e.g. ``--size`` after probing host), not the start/run default.
     """
     e = dict(env) if env is not None else dict(os.environ)
     # Avoid nest client env when probing host.
@@ -1258,12 +1257,11 @@ def run_campaign(
     )
     try:
         if not is_running(name):
-            sz = size or host_primary_logical_size() or DEFAULT_SIZE
             cfg = start(
                 name=name,
                 display=display,
-                size=sz,
-                scale=scale,
+                size=size or DEFAULT_SIZE,
+                scale=scale or DEFAULT_SCALE,
                 num_monitors=num_monitors,
                 unsafe_mode=unsafe_mode,
                 allow_x11=allow_x11,
@@ -1366,11 +1364,9 @@ def _cli_start(args: Any, name: str) -> int:
     nmon = getattr(args, "monitors", None)
     if nmon is None:
         nmon = DEFAULT_MONITORS
-    size = getattr(args, "size", None)
-    if not size:
-        # Default each dummy mon to host primary logical size (not a shrunk
-        # multi-mon fit). Dual-mon nest becomes ~2×W wide; drag the nest window.
-        size = host_primary_logical_size() or DEFAULT_SIZE
+    # Default Full HD @ scale 1 per dummy mon (not host-matched). Dual-mon
+    # nest is ~2×1920 wide; drag the nest window on the host desk.
+    size = getattr(args, "size", None) or DEFAULT_SIZE
     cfg = start(
         name=name,
         display=getattr(args, "display", None),

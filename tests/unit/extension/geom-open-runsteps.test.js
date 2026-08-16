@@ -297,4 +297,27 @@ describe("AP3 RunSteps one Cf + settleTabFocus", () => {
     // settleTabFocus owns Dfocus; settle path must not also do unscoped Dfull.
     expect(decoSpy).not.toHaveBeenCalled();
   });
+
+  it("R032: _settleAfterRunSteps still runs when render is frozen", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const con = ctx.windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.TABBED;
+    const wB = createMockWindow({ id: "r032-fz" });
+    const nB = ctx.windowManager.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, wB);
+    con.lastTabFocus = wB;
+
+    const api = new SessionApi({
+      extWm: ctx.windowManager,
+      settings: ctx.settings,
+    });
+    const settleSpy = vi.spyOn(ctx.windowManager, "settleTabFocus").mockImplementation(() => {
+      expect(ctx.windowManager._freezeRender).toBe(false);
+    });
+
+    ctx.windowManager.freezeRender();
+    api._settleAfterRunSteps(ctx.windowManager);
+
+    expect(settleSpy).toHaveBeenCalledWith(nB);
+    expect(ctx.windowManager._freezeRender).toBe(true);
+  });
 });

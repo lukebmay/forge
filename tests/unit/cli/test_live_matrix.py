@@ -336,9 +336,19 @@ class TestSelect(unittest.TestCase):
         self.assertIn("R024", by_id["L1.r024-first-layout-tiles"].regressions)
         self.assertIn("R026", by_id["L1.r026-tab-click-adopts-pin"].regressions)
         self.assertIn("R027", by_id["L1.r027-chrome-until-ready"].regressions)
+        self.assertIn("R032", by_id["L1.r032-tab-click-responsive"].regressions)
         self.assertIn("R029", by_id["L1.r029-reuse-no-double"].regressions)
         self.assertIn("R030", by_id["L1.r029-reuse-no-double"].regressions)
         self.assertIn("tile-on-mon1", by_id["L1.r022-nested-empty-mon-dnd"].checks)
+
+    def test_catalog_has_r020_r031(self):
+        by_id = {c.id: c for c in LIVE_CASES}
+        self.assertIn("R020", by_id["L1.r020-vlc-end-of-video"].regressions)
+        self.assertIn("r020-vlc-end-of-video-note", by_id["L1.r020-vlc-end-of-video"].actions)
+        self.assertIn("R031", by_id["L1.r031-float-border-follows"].regressions)
+        self.assertIn("r031-float-border-follows-note", by_id["L1.r031-float-border-follows"].actions)
+        self.assertIn("vlc-end-of-video.webm", by_id["L1.r020-vlc-end-of-video"].notes)
+        self.assertIn("Kooha", by_id["L1.r031-float-border-follows"].notes)
 
     def test_tags_r021_r024(self):
         forest = _add_guake(_load("tree-perfect.json"))
@@ -350,8 +360,11 @@ class TestSelect(unittest.TestCase):
             ("R024", "L1.r024-first-layout-tiles"),
             ("R026", "L1.r026-tab-click-adopts-pin"),
             ("R027", "L1.r027-chrome-until-ready"),
+            ("R032", "L1.r032-tab-click-responsive"),
             ("R029", "L1.r029-reuse-no-double"),
             ("R030", "L1.r029-reuse-no-double"),
+            ("R020", "L1.r020-vlc-end-of-video"),
+            ("R031", "L1.r031-float-border-follows"),
         ):
             sel = select_cases(suite="regression", capability=cap, tags={tag})
             ids = {c.id for c in sel.cases}

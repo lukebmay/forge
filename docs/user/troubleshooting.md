@@ -102,9 +102,9 @@ If it still flattens: check that the file exists **before** reload
 
 ## Tab click does nothing until I focus the window first
 
-Group tab strips are restacked above that group's window actors and should
-activate on click without a prior click into the content. If a tab still ignores
-clicks:
+Group tab strips are restacked above that group's window actors (WR14 after
+ApplyLayout / RunSteps; R032) and should activate on click without a prior
+click into the content. If a tab still ignores clicks:
 
 1. Confirm `showtab-decoration-enabled` and that the group is TABBED/STACKED.
 2. Toggle layout debug overlay (`Ctrl+Super+d`) to confirm which CON owns the strip.

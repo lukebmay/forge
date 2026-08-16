@@ -1,0 +1,70 @@
+{
+  "error": null,
+  "id": "share-ratio-validate",
+  "input": {
+    "tiles": {
+      "mon0": {
+        "hsplit": ["a", "b"],
+        "ratio": [1, 3]
+      }
+    }
+  },
+  "ok": true,
+  "op": "validate",
+  "opts": {},
+  "output": {
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "a",
+            "roles": ["a"]
+          },
+          {
+            "id": "b",
+            "roles": ["b"]
+          }
+        ],
+        "share": [0.25, 0.75],
+        "split": "hsplit"
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "monExplicit": true,
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "a",
+        "match": {
+          "class": "a"
+        },
+        "open": {
+          "app": "a",
+          "wmClass": "a"
+        },
+        "slot": "mon0.a"
+      },
+      {
+        "id": "b",
+        "match": {
+          "class": "b"
+        },
+        "open": {
+          "app": "b",
+          "wmClass": "b"
+        },
+        "slot": "mon0.b"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": null
+}

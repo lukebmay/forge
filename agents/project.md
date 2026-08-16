@@ -59,9 +59,9 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 
 | Item | Status | Next |
 | --- | --- | --- |
-| **[Canonical contracts](./plans/forge-canonical-contracts.md)** | **P0** IC0–IC3 done | IC4 **skip** if D037 ApplyLayout |
+| **[Canonical contracts](./plans/forge-canonical-contracts.md)** | **P0** IC0–IC3 done | IC4 **skipped** (AL8) |
 | **[CLI → Node](./plans/forge-cli-node.md)** | **Locked** D036 · CN0–CN6 **done** (CN7 skip) | no layout port; AL0 later |
-| **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL1+AL4 **code** | AL2 normalize → AL3 planReconcile; nest smoke AL4 |
+| **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R020 nest PASS; R031/R032 shipped; optional dual-mon / host tip |
 | **[First-class containers](./plans/forge-first-class-containers.md)** | C0+C1 **done** (C1 uncommitted) | Wave Z live residual; C2 later |
 | **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done** (nest live) | TD2 only if peel Model B mismatch |
 | **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
@@ -253,9 +253,9 @@ class keys only** (no titles, URLs, or personal role names).
 
 | Layer | Entry points |
 | --- | --- |
-| Store / soft timeout math | `scripts/forge/settle_heuristics.py` |
-| Hard-ready / soft barrier pure | `scripts/forge/layout_apply.py` (`wait_until_hard_ready`, `run_soft_focus_barrier`, `focus_actions_still_needed`) |
-| CLI focus phase | `scripts/forge/forge` → `_layout_final_focus_pass` |
+| Store / soft timeout math | `scripts/forge/settle_heuristics.py` / `lib/extension/settle-math.js` |
+| Hard-ready / soft (product) | `lib/extension/layout-apply-settle.js` (ApplyLayout) |
+| Thin CLI apply | `scripts/forge/layout_apply_client.py` → DBus `ApplyLayout` |
 | Pin + meta-steal restore | `lib/extension/layout-open-leaf-pin.js`, `window.js`, `session-api.js` `_focusOp`, `action-pipeline.js` `afterFocus` / `revealGroupChild` (R026 adopt) |
 
 ### What we deliberately rejected
@@ -282,10 +282,11 @@ class keys only** (no titles, URLs, or personal role names).
 
 | Concern | Where |
 | --- | --- |
-| Plan / two-pass mon claim / cold thrash suppress | `scripts/forge/layout_plan.py` |
-| Pure apply helpers, belt, hard/soft, focus still-needed | `scripts/forge/layout_apply.py` |
-| Heuristics store | `scripts/forge/settle_heuristics.py` |
-| CLI layout + focus phase | `scripts/forge/forge` (`cmd_layout`, `_layout_final_focus_pass`) |
+| Plan (Python dry-run / dump) | `scripts/forge/layout_plan.py` |
+| Plan (product) | `lib/shared/layout-plan.js` `planReconcile` |
+| Thin CLI apply | `scripts/forge/layout_apply_client.py` + `forge` `cmd_layout` |
+| Apply spine | `lib/extension/layout-apply-run.js` + structure/open/settle bags |
+| Heuristics store | `scripts/forge/settle_heuristics.py` / `forgeConfigDir()/settle-heuristics.json` |
 | Open-leaf pin / meta-steal restore | `lib/extension/layout-open-leaf-pin.js`, `window.js`, `session-api.js`, `action-pipeline.js` |
 | User-facing cold steps | [docs/user/layout.md](../docs/user/layout.md) |
 

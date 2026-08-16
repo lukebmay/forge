@@ -33,12 +33,13 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Keyboard / tab / Meta focus | `wm.afterFocus(node, { source })` | `renderTree("focus")`; inline F+D+B |
 | Commit structure or size | `wm.commitLayout(reason, { force })` | Second `renderTree` in the same gesture |
 | Re-raise current / new open leaf after structure | `wm.settleTabFocus(node)` | Second full commit “for tabs” |
+| After mass apply / last raise, restack all tab strips | `SessionApi._settleAfterRunSteps` (WR14 RunSteps) + `_restackTabDecorations` (ApplyLayout Done; **no** second raise) | Skip ApplyLayout; extra tab-click handler; Done-path `settleTabFocus` raise |
 | **Show a child in a TABBED/STACKED group** | `wm.revealGroupChild(node, { keyboard, pin })` (includes slot reassert R025 + adopt live pin R026) | `parent.lastTabFocus =` + `raise()` in a new file |
 | Pin open leaf during layout residual | `wm.pinLayoutOpenLeaf` / `restoreLayoutOpenLeafIfStolen` | Adopt Meta steal as the new leaf |
 | Group two windows as tabs/stack | `tree.mergeWindowsIntoGroup(a, b, layout)` | Flip `parent.layout` in DnD/command |
 | **Change CON layout mode** | `tree.setLayout(con, layout, opts?)` / `Node.setLayout` (I1: no reparent/flatten; optional `lastTabFocus`, `resetPercents` on H↔V) | Assign `parent.layout`; silent `replaceChildren` / flatten nested CONs for mode change |
 | Split a leaf H/V | `tree.split(node, orientation)` | Hand-built CON + splice |
-| Slot-split focused/target unit (D032) | `tree.slotSplitUnit` / `wm.slotSplitForInsert` / leftover 1-child H/V join; also on unknown map identity (`_unknownOpenIdentity`) | Even 3rd H/V sibling; `createNode(bag)` as a tab; late class/title tiling in place |
+| Slot-split focused/target unit (D032) | `tree.slotSplitUnit` / `wm.slotSplitForInsert` / leftover 1-child H/V join; late-identity TILE via `wm._adoptOpenIntoTileSlot` (not at unknown map) | Even 3rd H/V sibling; `createNode(bag)` as a tab; reserve a TILE wrap for a window that stays FLOAT (R031) |
 | Five-zone hit / paint | `drop-zones.js` `buildDropZones` / `hitTestDropZone` | Edge-band / grab-origin geometry |
 | **Would this drop change the tree?** | `dropChangesStructure` (`lib/extension/drop-intent.js`) | Positional `_isNoOpDrop` that ignores layout |
 | Execute a tile drop | `DragDropManager.moveWindowToPointer` → intent + merge/split | Parallel session-only structure |
@@ -46,9 +47,10 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | New-window home | `resolveOpenAppPlacement` (dock → empty-head → window-actual → LFT) | Pointer-on-empty falling through to other-mon LFT (R021) |
 | Admit live Meta windows missing from the tree | `wm.admitUntrackedWindows` / LayoutBatch `admit` | Plan/map-pin from GetTree only (untracked X11 maps stay invisible) |
 | **Reconcile / `forge layout` apply** | DBus `ApplyLayout` (async start) + in-process spine (D037/D038). Planner: `lib/shared/layout-plan.js` `planReconcile` | Port `layout_plan.py` into `cli/`; CLI GetTree poll loop; overload `LayoutBatch` as the product entry |
-| Hard-ready before a CLI act | `layout_apply.wait_until_hard_ready` (**dies in AL8**; do not fold — IC4 skip) | New TILE poll loop; JS GetTree `wait_until_hard_ready` twin |
-| Soft focus residual (CLI) | `run_soft_focus_barrier` (**dies in AL8**) | Fixed `sleep(0.4)` after hard-ready |
-| Soft geom residual (CLI) | `run_soft_geom_barrier` (**dies in AL8**) | Re-apply layout until rect “looks right” |
+| Hard-ready (ApplyLayout / product layout) | `waitHardReadyOnSignals` + `windowIsSettled` (`layout-apply-settle.js`) | CLI GetTree poll; JS GetTree twin of hard-ready |
+| Soft focus residual (ApplyLayout) | `runSoftFocusBarrierOnSignals` + `settle-math` + `pinLayoutOpenLeaf` | Third settle brain; twin of `revealGroupChild` |
+| Soft geom residual | in-process settle bag only (CLI geom poll removed AL8) | Re-apply layout until rect “looks right” |
+| Hard-ready before a non-layout CLI act (launch) | `wait_for_wm_class` + `window_is_settled` (launch/wait-window only) | New TILE poll on `forge layout` |
 | Soft timeout math | `settle-math.js` / `settle_heuristics.soft_timeout_from_latencies` | A third rolling-max helper |
 | First-ever soft wait | `soft_timeout_for_key` (peer-host same class seed, else learning trial) | Always 6–10s on a new hostname when the file already has another host |
 | Open-map quiet (extension) | `OpenCommitManager` + `layout-open.js` | Extra 250 ms sleep on create |
@@ -81,7 +83,7 @@ Open leaf ≠ keyboard focus. Do not sync GetTree `lastTabFocus` from Meta focus
 | `keyboard` | Effect |
 | --- | --- |
 | `false` | LTF + optional pin + `reassertNodeToSlot` + raise + `settleTabFocus` |
-| `true` | Same, then activate + `afterFocus` |
+| `true` | Same, then focus + activate + `afterFocus` (restack last; R032) |
 
 Tab click (R025): reassert **only** the revealed child. Do **not** reassert
 from `afterFocus` / `updateTabbedFocus` (intra-tab PWA frame-lie). Skip when
@@ -100,23 +102,23 @@ Do not call them on keyboard focus when a pin must win.
 
 ---
 
-## Settle (two brains today; ApplyLayout collapses the CLI brain)
+## Settle (ApplyLayout owns product layout waits)
 
-Meta has no “settled” signal (D019). We do **not** want one JS+CLI *poll*
-waiter.
+Meta has no “settled” signal (D019). Product `forge layout` does **not**
+poll GetTree for hard/soft/focus.
 
 | Layer | Waits? | Owner |
 | --- | --- | --- |
 | Formula | No | `settle-math.js` ≈ `settle_heuristics` |
-| CLI layout (today) | Yes — poll GetTree | `wait_until_hard_ready`, `run_soft_*` — **delete in AL8** |
-| ApplyLayout (D037/D038) | Yes — Meta signals + bags | Extension spine; same predicates, no GetTree poll |
+| CLI layout (product) | No — observe only | `layout_apply_client` → `ApplyLayout` + Progress/Done |
+| ApplyLayout (D037/D038) | Yes — Meta signals + bags | `layout-apply-settle.js` (`waitHardReadyOnSignals`, soft barrier, verify once, D014 belt) |
 | Extension interactive | No poll — signals + echo + open-quiet | `layout-epoch`, `OpenCommitManager`, pin 15s |
 | Display | Fixed debounce | workareas / monitor-recovery |
 
 Interactive moves: `commitLayout` + echo suppress + (IC3) snap TILE back if
 the client then resizes. Do **not** add a GetTree-polling
-`wait_until_hard_ready` inside the Shell. IC4 (fold leftover CLI polls
-into the Python waiters) is **skip** — ApplyLayout deletes those waiters.
+`wait_until_hard_ready` inside the Shell. IC4 (fold leftover CLI polls)
+is **skipped** — AL8 deleted the product layout poll path.
 
 ---
 

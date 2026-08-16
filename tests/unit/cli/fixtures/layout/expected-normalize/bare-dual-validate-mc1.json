@@ -1,0 +1,133 @@
+{
+  "error": null,
+  "id": "bare-dual-validate-mc1",
+  "input": null,
+  "ok": true,
+  "op": "validate",
+  "opts": {
+    "mon_count": 1
+  },
+  "output": {
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "s0",
+            "layout": "tabbed",
+            "roles": ["google-chrome", "Grok"]
+          },
+          {
+            "id": "ghostty",
+            "roles": ["ghostty"]
+          },
+          {
+            "id": "ghostty-2",
+            "roles": ["ghostty-2"]
+          },
+          {
+            "id": "s1",
+            "layout": "tabbed",
+            "roles": ["YouTube", "Gmail", "Google-Voice"]
+          }
+        ],
+        "split": "hsplit"
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "google-chrome",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Google Chrome"
+        },
+        "open": {
+          "app": "google-chrome",
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.s0"
+      },
+      {
+        "id": "Grok",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Grok"
+        },
+        "open": {
+          "app": "Grok",
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.s0"
+      },
+      {
+        "id": "ghostty",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "wmClass": "ghostty"
+        },
+        "slot": "mon0.ghostty"
+      },
+      {
+        "id": "ghostty-2",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "wmClass": "ghostty"
+        },
+        "slot": "mon0.ghostty-2"
+      },
+      {
+        "id": "YouTube",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "YouTube"
+        },
+        "open": {
+          "app": "YouTube",
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.s1"
+      },
+      {
+        "id": "Gmail",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Gmail"
+        },
+        "open": {
+          "app": "Gmail",
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.s1"
+      },
+      {
+        "id": "Google-Voice",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Voice"
+        },
+        "open": {
+          "app": "Google Voice",
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.s1"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": "profile-bare-dual-mon.json"
+}

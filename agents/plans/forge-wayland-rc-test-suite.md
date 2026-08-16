@@ -98,7 +98,7 @@ Do not leave subshells running across host matrix, wrap-up, or handoff. See
 [HANDOFF](../HANDOFF.md#nest-lifecycle--stop-after-tests-firm).
 
 **Proven on black:** `forge nested start --monitors=2` (or `run --monitors=2`)
-→ two dummy outputs (each ≈ host primary logical size) → layout
+→ two dummy outputs (each 1920×1080 @ scale 1) → layout
 `_forge-test-ghosttys` → one ghostty per mon.
 
 ### Phase 2 — Host L1 (X11 parity partial matrix + multi-instance)

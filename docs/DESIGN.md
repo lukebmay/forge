@@ -190,7 +190,7 @@ churn) are not raise-path cleanup.
 
 | Path | Where | What it does |
 | --- | --- | --- |
-| **Tab click** | `Node._activateFromTab` (`tree.js`) | `lastTabFocus` ← meta; `raise` + **`focus` + `activate`** (same as keyboard; activate-only failed on X11 after multi-mon); **immediately** `updateTabbedFocus` / `updateStackedFocus` + **`updateDecorationLayout`** (raise buries chrome; focus-update queue is deferred ~220ms and skips when focus did not change) |
+| **Tab click** | `Node._activateFromTab` → `revealGroupChild` | LTF + raise + **focus + activate** then **`afterFocus` / Dfocus** (restack last; trailing focus after Dfocus buries chrome — R032). Activate-only failed on X11 after multi-mon (LF2). |
 | **Focus manager** | `FocusManager` (`focus.js`) | `updateStackedFocus`: set `lastTabFocus` + **raise focused only** (stable `childNodes` / label order — no `appendChild` reordering); `updateTabbedFocus`: raise focused leaf when parent is TABBED; pointer hover: `focus` + `raise` under cursor |
 | **Session raise-after-restore** | `SessionLayoutRestoreManager.raiseAfterSessionRestore` (`session-layout-restore.js`) | DFS walk restored forest: `raise` each leaf, then `lastTabFocus` per CON; finally raise focused meta + tab/stack update so nothing stays buried under a sibling after HUP match |
 | **RunSteps settle (WR14)** | `SessionApi._settleAfterRunSteps` (`session-api.js`) | After quiet batch render idle: `updateTabbedFocus` / `updateStackedFocus` per TABBED/STACKED CON (`lastTabFocus` or first tiled), then `updateDecorationLayout` so tab strips stay pickable after mass move/layout |
@@ -426,6 +426,17 @@ sometimes still did nothing until a **dock** click. Two holes:
 **LF2 fix:** `_activateFromTab` does focus+activate, unfreezes, restacks
 decoration/border immediately; hover only focus/raises when the under-pointer
 window differs from desk focus.
+
+**R032 (2026-08-15):** After in-process ApplyLayout, strip clicks often
+no-op until a non-group or window-body click. ApplyLayout `_runApplyLayoutSteps`
+dropped WR14 `_scheduleRunStepsSettle`; focus / soft-pin / verify raise
+left chrome under window actors. Tab click also called `focus()` *after*
+`revealGroupChild` restack, so a successful click re-buried the strip.
+A Done-path `settleTabFocus` raise re-buried again on Wayland (compositor
+applies raise after the restack idle).
+Fix: schedule WR14 settle on ApplyLayout steps; Done restacks strips
+**without** another raise; keyboard `revealGroupChild` does focus+activate
+then `afterFocus` (no trailing focus).
 
 **Tests:** `tests/regression/bug-tab-click-activate.test.js`.
 

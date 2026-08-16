@@ -1,18 +1,191 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-15 (**campaign:** AL1 expected + AL4 DBus stub **code done**; nest retest blocked)  
+**Updated:** 2026-08-15 (**host layout-dev open-miss hotfix** on AL1–AL8 tip / apiVersion 10)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed / host tip:** disk install `…-dirty` (AL1+AL4 uncommitted) after `./install --kit=vim`.
-Host Shell still **pre-AL4** until nest reload or logout. Nest failed this
-session (`Unable to open display ':1'`).
+**Installed / host tip:** tip **installed** (`g1213cb7-dirty` + dirty AL5–AL8 + this hotfix). **Wayland host Shell still runs pre-hotfix JS until logout** — nest loads install.  
+**Post-refactor residuals only:** R020 nest live **PASS** (see residual table). **R031** float-border and **R032** tab-strip click **shipped** (nest smoke; host logout for tip).
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Hotfix — host `forge layout dev` no tile/resize (ApplyLayout open-miss)
+
+| Field | Detail |
+| --- | --- |
+| Symptom | New Wayland session: `forge layout dev` fails; windows do not tile/resize |
+| Not expected | AL8 product path is ApplyLayout; nest `_forge-test-clean` had passed — host personal `dev` still required to work |
+| Root A | `_spawnApplyLaunch` treated **any** space as shell argv → `"Google Voice"` → exec `Google` → spawn fail → `code=open-miss` aborts at hard-ready |
+| Root B | Skeleton placeholders lacked Meta surface (`get_window_type`, `showing_on_its_workspace`) → TypeError in `processFloats` / decoration paint |
+| Root C | Residual `close` / `bind` hard-failed on already-gone PH or window → `steps-failed` mid-spine |
+| Root D | **R034:** Name search `"YouTube"` can rank **YouTube TV** first — pick exact Name |
+| Fix | DesktopAppInfo first (chrome PWA id + exact Name search); path-only argv gate; expand PH stub + skip PH in `processFloats`; soft-ok residual close gone + bind no-PH |
+| Paths | `lib/extension/session-api.js`, `lib/shared/layout-open.js`, `lib/extension/layout-placeholder.js`, `lib/extension/window.js`, `lib/extension/decoration.js` |
+| L0 | `layout-open` (YouTube vs TV + multi-word) + `layout-placeholder` |
+| Nest | `_forge-test-clean` **PASS**; cold nest open map can flake (separate) |
+| Host | **Logout once** to load tip, then `forge layout dev` |
+| Open queue | **R033** open-app HSPLIT/VSPLIT from LFT aspect (taller→VSPLIT LFT first; wider→HSPLIT) — investigate, not fixed this slice |
+| Job evidence | `~/.local/share/forge/jobs/20260816T010248Z-1fda4a` (`open spawn failed … "Google"`) |
+
+```bash
+./install --kit=vim
+# Wayland host tip:
+#   log out and back in, then:
+forge ping   # apiVersion 10
+forge layout dev
+# Nest code loop (no logout):
+forge nested run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
+npm test -- tests/unit/shared/layout-open.test.js tests/unit/extension/layout-placeholder.test.js
+```
+
+### Shipped — R032 tab-strip click (ApplyLayout restack)
+
+| Field | Detail |
+| --- | --- |
+| Root | Last raise after ApplyLayout left deco under window actors; Chrome/stale frames often cover the strip. Trailing/`settleTabFocus` raise re-buried |
+| Fix | WR14 settle on ApplyLayout **steps**; **Done restack-only** (`_restackTabDecorations`, no second raise); keyboard `revealGroupChild` focus+activate then `afterFocus` |
+| L0 | `bug-tab-click-activate` 12; `action-pipeline` keyboard order; live_matrix `L1.r032-tab-click-responsive` |
+| Nest | After ApplyLayout: pick hitTab; repeated `_activateFromTab` switches LTF; chrome-clear. No XTEST (crashes nest). Nest stopped |
+| Host | Wayland tip still `g1213cb7` until logout |
+| Task | [completed](./tasks/completed/forge-tab-click-unresponsive.md) |
+
+### Shipped — AL8 thin CLI cutover
+
+| Field | Detail |
+| --- | --- |
+| Client | `scripts/forge/layout_apply_client.py` + `forge._layout_run_reconcile_apply_layout` |
+| Product path | preamble → `ApplyLayout` → Progress/Done (poll GetLayoutApply belt) |
+| Cancel | Ctrl+C → `CancelLayoutApply`; D021 `applyId` in status.json |
+| Deleted | CLI LayoutBatch product chrome/begin, `_layout_final_focus_pass`, GetTree waiters (`wait_until_hard_ready` / `run_soft_*` / `wait_for_open_role_pins`) |
+| GJS fix | `deepClone` without `structuredClone` (Shell) |
+| Live | nest mon=1 `_forge-test-clean` + `_forge-test-ghosttys` **PASS**; nest stopped |
+| IC4 | **skipped** (waiters deleted) |
+| Tests | client 21; layout_apply+cli+lib 185; plan normalize+reconcile 63 |
+| Task | [AL8](./plans/forge-layout-in-process/completed/forge-layout-in-process_al8-cli-cutover.md) |
+| Residual | dual-mon `_forge-test-dual` not re-run this slice; host logout for host tip |
+
+```bash
+./install --kit=vim
+# Nest (fix XAUTHORITY if :1 auth fails):
+forge nested start --replace
+forge nested exec -- forge ping   # apiVersion 10
+forge nested exec -- env FORGE_JOB=0 forge layout _forge-test-clean
+# also: forge nested exec -- env FORGE_JOB=0 forge layout _forge-test-ghosttys
+forge nested stop
+python3 -m pytest tests/unit/cli/test_layout_apply_client.py -q
+```
+
+### Shipped — AL7 settle (hard/soft/focus/verify)
+
+| Field | Detail |
+| --- | --- |
+| Bag | `lib/extension/layout-apply-settle.js` + `LayoutApplyRunBag` `settle` deps |
+| Hard-ready | `windowIsSettled` + `waitHardReadyOnSignals` (Meta TILE/rect/mon; 5s call clock; **not** GetTree poll) |
+| Focus | existing RunSteps → `revealGroupChild` + `pinLayoutOpenLeaf` |
+| Soft | `runSoftFocusBarrierOnSignals` + `settle-math`; steal → pin restore + reset quiet |
+| Heuristics | `forgeConfigDir()/settle-heuristics.json` (same Python shape; class/timings only) |
+| Verify / belt | verify once; D014 pin-role moves only |
+| LF6 | `waitTreeStable` opt-in only |
+| Tests | `layout-apply-settle.test.js` (27) + 5 bag cases; suite **157** |
+| Nest | **Not run** — retest: `forge nested run --monitors=1 -- …` after install |
+| Task | [AL7](./plans/forge-layout-in-process/completed/forge-layout-in-process_al7-executor-settle.md) |
+| Next | **AL8** thin CLI cutover |
+
+```bash
+npm test -- tests/unit/shared/layout-plan-normalize.test.js \
+  tests/unit/shared/layout-plan-reconcile.test.js \
+  tests/unit/shared/layout-open.test.js \
+  tests/unit/extension/layout-apply-run.test.js \
+  tests/unit/extension/layout-apply-structure.test.js \
+  tests/unit/extension/layout-apply-open.test.js \
+  tests/unit/extension/layout-apply-settle.test.js
+# After commit + nest/host load tip:
+# forge nested run --monitors=1 -- forge ping
+```
+
+### Shipped — AL6 open/map (ApplyLayout spawn + pin)
+
+| Field | Detail |
+| --- | --- |
+| Pure | `lib/shared/layout-open.js` — launch fields, Ghostty rewrite, chrome serialize, pin assign |
+| Bag | `lib/extension/layout-apply-open.js` + `LayoutApplyRunBag` `open` deps |
+| Session | GJS spawn / `wm.placeNext`; admit + census; Meta `window-created` + title/class |
+| Batch | begin → spawn → map-wait → `releaseDeferredOpens` → end **then** residual replan |
+| Pins | title wait then class leftover (D034); residual `rolePins` / `justOpenedRoles` |
+| Tests | `layout-open.test.js` (24) + `layout-apply-open.test.js` (10); suite **125** |
+| Nest | **Not run** — retest: `forge nested run --monitors=1 -- …` after install |
+| Task | [AL6](./plans/forge-layout-in-process/completed/forge-layout-in-process_al6-executor-open.md) |
+| Next | **AL7 done** → **AL8** |
+
+```bash
+npm test -- tests/unit/shared/layout-plan-normalize.test.js \
+  tests/unit/shared/layout-plan-reconcile.test.js \
+  tests/unit/shared/layout-open.test.js \
+  tests/unit/extension/layout-apply-run.test.js \
+  tests/unit/extension/layout-apply-structure.test.js \
+  tests/unit/extension/layout-apply-open.test.js
+# After commit + nest/host load tip:
+# forge nested run --monitors=1 -- forge ping
+```
+
+### Shipped — AL5 structure executor (no-open ApplyLayout)
+
+| Field | Detail |
+| --- | --- |
+| Pure | `lib/extension/layout-apply-structure.js` — `buildStructurePlan`, phase partition |
+| Bag | `LayoutApplyRunBag` `structure: { snapshotForest, runSteps }` |
+| Session | `_snapshotForestForApply` (`projectForest`); `_runApplyLayoutSteps`; **`_setLayoutStructureOp`** (I1 `setLayout`, wrap OK, **never** `_layoutOp` / flatten) |
+| Open | **AL6 done** (above) |
+| Settle | AL7 done (hard/soft/verify/belt) |
+| Tests | `layout-apply-structure.test.js` (9) + bag structure cases |
+| Nest | **Not run** — retest: `forge nested run --monitors=1 -- …` after install |
+| Task | [AL5](./plans/forge-layout-in-process/completed/forge-layout-in-process_al5-executor-structure.md) |
+| Next | **AL7 done** → **AL8** |
+
+```bash
+npm test -- tests/unit/shared/layout-plan-normalize.test.js \
+  tests/unit/shared/layout-plan-reconcile.test.js \
+  tests/unit/extension/layout-apply-run.test.js \
+  tests/unit/extension/layout-apply-structure.test.js
+# After commit + nest/host load tip:
+# forge nested run --monitors=1 -- forge ping
+```
+
+### Shipped — AL3 planReconcile + planActionsToSteps (expected parity)
+
+| Field | Detail |
+| --- | --- |
+| Module | `lib/shared/layout-plan.js` — `planReconcile`, `planActionsToSteps` (+ AL2 normalize) |
+| Parity | All 9 AL1 `expected/*.json` plans deep-equal (Vitest) |
+| Flatten | Cold empty → `ensure_skeleton` only; no happy-path flatten dependency |
+| Tests | `tests/unit/shared/layout-plan-reconcile.test.js` — **14 pass** |
+| Python | Apply path **unchanged** (still owns live apply) |
+| Task | [AL3](./plans/forge-layout-in-process/completed/forge-layout-in-process_al3-shared-plan-reconcile.md) |
+| Next | **AL7 done** → **AL8** |
+
+```bash
+npm test -- tests/unit/shared/layout-plan-normalize.test.js \
+  tests/unit/shared/layout-plan-reconcile.test.js
+python3 -m pytest tests/unit/cli/test_layout_expected.py -q
+```
+
+### Shipped — AL2 shared profile normalize/validate/desugar
+
+| Field | Detail |
+| --- | --- |
+| Module | `lib/shared/layout-plan.js` — `normalizeProfile`, `validateReconcileProfile` (pure JSON; no gi/node/fs) |
+| Oracle | `scripts/forge/dump_layout_normalize_expected.py` → `expected-normalize/` (46 cases) |
+| Tests | `tests/unit/shared/layout-plan-normalize.test.js` — **49 pass** |
+| Task | [AL2](./plans/forge-layout-in-process/completed/forge-layout-in-process_al2-shared-plan-normalize.md) |
+
+```bash
+npm test -- tests/unit/shared/layout-plan-normalize.test.js
+python3 scripts/forge/dump_layout_normalize_expected.py  # regen oracle
+```
 
 ### Shipped — AL1 expected plan dump + AL4 ApplyLayout DBus stub
 
@@ -23,13 +196,16 @@ session (`Unable to open display ':1'`).
 | AL4 | `lib/extension/layout-apply-run.js` + SessionApi methods/signals; `SESSION_API_VERSION=10` |
 | AL4 chrome | Apply-run hard clear **300s** (`LAYOUT_APPLY_RUN_HARD_MS`); batch stays 30s |
 | AL4 tests | `tests/unit/extension/layout-apply-run.test.js` (13) + chrome hardMs re-arm |
-| Stub | Walks D008 phases; **no** planner yet (AL2/AL3) |
-| Nest live | **Blocked** this session (display `:1` auth); host logout also loads tip |
-| Tasks | [AL1](./plans/forge-layout-in-process/completed/forge-layout-in-process_al1-expected-dump.md) · [AL4](./plans/forge-layout-in-process/completed/forge-layout-in-process_al4-dbus-apply-layout.md) |
+| Stub→structure | AL4 chrome/signals; AL5 fills structure (above) |
+| Nest live | AL4 host green earlier; AL5 nest **not** re-run this session |
+| Tasks | [AL1](./plans/forge-layout-in-process/completed/forge-layout-in-process_al1-expected-dump.md) · [AL2](./plans/forge-layout-in-process/completed/forge-layout-in-process_al2-shared-plan-normalize.md) · [AL3](./plans/forge-layout-in-process/completed/forge-layout-in-process_al3-shared-plan-reconcile.md) · [AL4](./plans/forge-layout-in-process/completed/forge-layout-in-process_al4-dbus-apply-layout.md) · [AL5](./plans/forge-layout-in-process/completed/forge-layout-in-process_al5-executor-structure.md) |
 | Plan | [forge-layout-in-process.md](./plans/forge-layout-in-process.md) |
+| Next | **AL8** thin CLI |
 
 ```bash
 python3 -m pytest tests/unit/cli/test_layout_expected.py -q
+npm test -- tests/unit/shared/layout-plan-normalize.test.js \
+  tests/unit/shared/layout-plan-reconcile.test.js
 npm test -- tests/unit/extension/layout-apply-run.test.js
 # When nest works: ./install --kit=vim && forge nested run -- forge ping  # apiVersion 10
 ```
@@ -38,9 +214,10 @@ npm test -- tests/unit/extension/layout-apply-run.test.js
 
 | Check | Result |
 | --- | --- |
-| R019 CENTER both dirs | **PASS** via `forge run` dnd-drop (Grok↔Chrome peel BOTTOM then CENTER) |
-| R020 VLC end-of-video | L0 `layout-sensors` + `bug-461` green; full VLC video not run |
-| Host tip at session start | `g8766b19` matched git tip before dirty install |
+| R019 CENTER both dirs | **PASS** (agent `dnd-drop`); no further human action required unless you want eyes-on |
+| R020 VLC end-of-video | **Nest mon=1 PASS (2026-08-15 post-AL8):** tile VLC + `tests/fixtures/media/vlc-end-of-video.webm` play-to-EOS stayed TILE in slot; Meta max+fs after EOS restored via D026. Nest vout weak — host eyes-on optional. L0 green. No code change. live `L1.r020-vlc-end-of-video` |
+| R031 float border (Kooha) | **Shipped** — no reserved TILE wrap; FLOAT border from Meta frame. L0 + nest Kooha FLOAT PASS. Host logout for tip |
+| Host tip | Wayland needs logout for host tip; nest loads install. Ping host still `g1213cb7-dirty` / apiVersion 10 until logout |
 
 ### Shipped — R027 chrome until ready + Wave Z residual (nest)
 
@@ -170,10 +347,10 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Plan | [forge-canonical-contracts](./plans/forge-canonical-contracts.md) |
 | Catalog | [docs/dev/contracts.md](../docs/dev/contracts.md) — extend the named API first |
 | R019 | CENTER on H/V siblings groups via `mergeWindowsIntoGroup`; `dropChangesStructure` |
-| R020 | Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling. Join leftover 1-child H/V as the slot (R028). Orientation from slot rect |
+| R020 | D026 TILE slot authority — unsolicited max/Meta-fs/size → `_restoreTileToSlot` |
 | Reveal | `wm.revealGroupChild({ keyboard, pin })` (D025) |
 | Guards | L0 `drop-intent`, comprehensive CENTER both dirs, `bug-461-edge-snap`, `layout-sensors` restore |
-| Residual | **Load tip** then smoke Grok→Chrome CENTER + tiled VLC end-of-video. Live not run this session |
+| Residual | R019 host PASS. R020 nest EOS PASS post-AL8. R031/R032 shipped. Host tip logout optional |
 
 ```bash
 ./install
@@ -240,18 +417,16 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**If you are Grok 4.5:** implement **AL2** next (pure JS normalize against
-expected fixtures). Do not redesign D036/D037. Do not port `layout_plan.py`
-wholesale.
+**If you are Grok 4.5 / 4.6:** AL1–AL8 **done** + **layout-dev open-miss hotfix**
+(in tree, installed). **Host needs logout** to load the tip, then re-verify
+`forge layout dev`. R020 nest live **PASS**; **R031** and **R032** shipped.
+Do not redesign D036/D037. Never call `_layoutOp`.
 
 | You can do | You must not |
 | --- | --- |
-| AL2 / AL3 pure planner slices | Drop Python `gi` until all cmds migrate |
-| Nest retest AL4 when nest works | Port `layout_plan.py` into `cli/` |
-| Host no-code smokes | Flip root `package.json` `"type"` / add `dbus-next` |
-
-**If you are Grok 4.6 xhigh:** design only when AL2/AL3 reshape; otherwise
-4.5 implements against expected fixtures.
+| Logout → host `forge layout dev` + R020/R031/R032 eyes-on | Personal `dev`/`t1` in live matrix |
+| Optional dual-mon `_forge-test-*` nest mon=2 | GetTree poll twins of settle; new parallel restore/float/tab-click brain |
+| Soft residual close/bind already soft-ok for gone targets | Reintroduce space→argv spawn for multi-word desktop Names |
 
 | Pri | Work | Path |
 | --- | --- | --- |
@@ -263,13 +438,18 @@ wholesale.
 | done | **R027** overlay until apply returns | [completed](./tasks/completed/forge-layout-chrome-until-ready.md) |
 | done | Wave Z zoom (D030) host live PASS | [completed](./tasks/completed/forge-zoom-maximize.md) |
 | done | **AL0** ApplyLayout design lock (D038) | [task](./tasks/forge-layout-in-process_al0-design.md) · [plan](./plans/forge-layout-in-process.md) |
-| done | AL1 expected + AL4 DBus stub (code; nest live pending) | [AL1](./plans/forge-layout-in-process/completed/forge-layout-in-process_al1-expected-dump.md) · [AL4](./plans/forge-layout-in-process/completed/forge-layout-in-process_al4-dbus-apply-layout.md) |
-| next | AL2 `normalizeProfile` pure JS (expected-backed) | [AL2](./tasks/forge-layout-in-process_al2-shared-plan-normalize.md) |
-| later | AL3 `planReconcile` pure JS | [AL3](./tasks/forge-layout-in-process_al3-shared-plan-reconcile.md) |
-| later | Nest/host smoke AL4 methods (`apiVersion` 10) | nest or one logout |
+| done | AL1 expected + AL4 DBus stub + host live | [AL1](./plans/forge-layout-in-process/completed/forge-layout-in-process_al1-expected-dump.md) · [AL4](./plans/forge-layout-in-process/completed/forge-layout-in-process_al4-dbus-apply-layout.md) |
+| done | AL2 `normalizeProfile` pure JS | [AL2](./plans/forge-layout-in-process/completed/forge-layout-in-process_al2-shared-plan-normalize.md) |
+| done | AL3 `planReconcile` pure JS | [AL3](./plans/forge-layout-in-process/completed/forge-layout-in-process_al3-shared-plan-reconcile.md) |
+| done | AL5 structure executor (no-open) | [AL5](./plans/forge-layout-in-process/completed/forge-layout-in-process_al5-executor-structure.md) |
+| done | AL6 open/map + LayoutBatch + pin | [AL6](./plans/forge-layout-in-process/completed/forge-layout-in-process_al6-executor-open.md) |
+| done | AL7 settle (hard/soft/focus/verify) | [AL7](./plans/forge-layout-in-process/completed/forge-layout-in-process_al7-executor-settle.md) |
+| done | AL8 thin CLI cutover (nest `_forge-test-clean` PASS) | [AL8](./plans/forge-layout-in-process/completed/forge-layout-in-process_al8-cli-cutover.md) |
+| done | **R032** tab-strip click dead (Done restack-only) | [completed](./tasks/completed/forge-tab-click-unresponsive.md) |
+| done | **R031** float-border ghost | [completed](./tasks/completed/forge-float-border-ghost-tile.md) |
 | done | R019 CENTER both dirs host smoke | HANDOFF residual table |
-| later | R020 full VLC end-of-video (L0 green) | [R020](./REGRESSIONS.md) |
-| later | IC4 fold leftover CLI waiters — skip if ApplyLayout deletes them | [IC4](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
+| done | R020 VLC EOS nest live (post-AL8) | [R020](./REGRESSIONS.md) · fixture `tests/fixtures/media/` |
+| done | IC4 fold leftover CLI waiters — **skipped** (AL8) | [IC4](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic4-settle-fold.md) |
 | done | FCC **C0** kill monocle + lossy inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
 | done | FCC **C1** `setLayout` I1 | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash | [PRIORITY](./PRIORITY.md) · [R017](./REGRESSIONS.md) |

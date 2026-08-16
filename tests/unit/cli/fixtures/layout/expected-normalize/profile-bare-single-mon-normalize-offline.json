@@ -1,0 +1,70 @@
+{
+  "error": null,
+  "id": "profile-bare-single-mon-normalize-offline",
+  "input": null,
+  "ok": true,
+  "op": "normalize",
+  "opts": {},
+  "output": {
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "s0",
+            "layout": "tabbed",
+            "roles": ["firefox", "code"]
+          },
+          {
+            "id": "ghostty",
+            "roles": ["ghostty"]
+          }
+        ],
+        "split": "hsplit"
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "firefox",
+        "match": {
+          "class": "firefox"
+        },
+        "open": {
+          "app": "firefox"
+        },
+        "slot": "mon0.s0"
+      },
+      {
+        "id": "code",
+        "match": {
+          "class": "code"
+        },
+        "open": {
+          "app": "code"
+        },
+        "slot": "mon0.s0"
+      },
+      {
+        "id": "ghostty",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty"
+        },
+        "slot": "mon0.ghostty"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": "profile-bare-single-mon.json"
+}

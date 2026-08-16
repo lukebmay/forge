@@ -1,0 +1,95 @@
+{
+  "error": null,
+  "id": "monitors-list-validate",
+  "input": {
+    "monitors": [[["a", "b"], "c"], ["d"]]
+  },
+  "ok": true,
+  "op": "validate",
+  "opts": {},
+  "output": {
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "s0",
+            "layout": "tabbed",
+            "roles": ["a", "b"]
+          },
+          {
+            "id": "c",
+            "roles": ["c"]
+          }
+        ],
+        "split": "hsplit"
+      },
+      "mon1": {
+        "children": [
+          {
+            "id": "d",
+            "roles": ["d"]
+          }
+        ]
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "monExplicit": true,
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "a",
+        "match": {
+          "class": "a"
+        },
+        "open": {
+          "app": "a",
+          "wmClass": "a"
+        },
+        "slot": "mon0.s0"
+      },
+      {
+        "id": "b",
+        "match": {
+          "class": "b"
+        },
+        "open": {
+          "app": "b",
+          "wmClass": "b"
+        },
+        "slot": "mon0.s0"
+      },
+      {
+        "id": "c",
+        "match": {
+          "class": "c"
+        },
+        "open": {
+          "app": "c",
+          "wmClass": "c"
+        },
+        "slot": "mon0.c"
+      },
+      {
+        "id": "d",
+        "match": {
+          "class": "d"
+        },
+        "open": {
+          "app": "d",
+          "wmClass": "d"
+        },
+        "slot": "mon1.d"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": null
+}

@@ -1,0 +1,29 @@
+{
+  "error": null,
+  "id": "empty-roles-validate",
+  "input": {
+    "layout": {},
+    "mode": "reconcile",
+    "roles": [],
+    "version": 2
+  },
+  "ok": true,
+  "op": "validate",
+  "opts": {},
+  "output": {
+    "layout": {},
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [],
+    "version": 2
+  },
+  "profileFile": null
+}

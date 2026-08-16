@@ -124,10 +124,11 @@ retests when `can_nested` is true.
 | Single-desk structure / open / focus retest | Nest **default 1 mon** — do not pay dual-mon cost |
 | Chrome open-leaf / real dual-4K RC authority | **Host** L1 (until nest chrome isolation proven) |
 
-Nest supports **1–4** dummy monitors (`--monitors`). **Default is 1.** Multi-mon
-nest is not a free substitute for host dual-4K geometry; host remains authority
-for physical dual-mon sign-off. Design: [D022](../docs/DECISIONS.md) ·
-[nest isolation plan](./plans/forge-nested-isolation.md).
+Nest supports **1–4** dummy monitors (`--monitors`). **Default is 1.** Each
+dummy mon is **1920×1080 @ scale 1** (Full HD, no scaling) unless `--size` /
+`--scale` override. Multi-mon nest is not a free substitute for host dual-4K
+geometry; host remains authority for physical dual-mon sign-off. Design:
+[D022](../docs/DECISIONS.md) · [nest isolation plan](./plans/forge-nested-isolation.md).
 
 ### Nest entrypoints (N3 — FIRM)
 

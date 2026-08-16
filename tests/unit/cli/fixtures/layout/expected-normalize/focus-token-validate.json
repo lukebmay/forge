@@ -1,0 +1,68 @@
+{
+  "error": null,
+  "id": "focus-token-validate",
+  "input": {
+    "focus": "firefox",
+    "tiles": {
+      "mon0": ["ghostty", "firefox"]
+    }
+  },
+  "ok": true,
+  "op": "validate",
+  "opts": {},
+  "output": {
+    "focus": "firefox",
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "ghostty",
+            "roles": ["ghostty"]
+          },
+          {
+            "id": "firefox",
+            "roles": ["firefox"]
+          }
+        ],
+        "split": "hsplit"
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "monExplicit": true,
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "ghostty",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "wmClass": "ghostty"
+        },
+        "slot": "mon0.ghostty"
+      },
+      {
+        "id": "firefox",
+        "match": {
+          "class": "firefox"
+        },
+        "open": {
+          "app": "firefox",
+          "wmClass": "firefox"
+        },
+        "slot": "mon0.firefox"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": null
+}

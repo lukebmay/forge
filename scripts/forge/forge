@@ -69,6 +69,9 @@ _METHOD_IN_ARGS: dict[str, int] = {
     "LayoutBatch": 1,
     "SaveSessionLayout": 0,
     "GetThrashCatalog": 0,
+    "ApplyLayout": 1,
+    "GetLayoutApply": 1,
+    "CancelLayoutApply": 1,
 }
 
 # Ops executed only by this CLI (not extension RunSteps). Documented for scripts.
@@ -102,53 +105,30 @@ from job_runner import (  # noqa: E402
     worker_mark_done,
 )
 from layout_apply import (  # noqa: E402
-    BELT_STABLE_POLL_MS,
-    BELT_STABLE_SAMPLES,
-    BELT_STABLE_TIMEOUT_MS,
-    COLD_FOCUS_SOFT_FLOOR_MS,
-    FINAL_FOCUS_QUIET_MS,
-    FINAL_FOCUS_REASSERT_MS,
-    HARD_TIMEOUT_MS,
     MODE_RECONCILE,
     MODE_STEPS,
-    SOFT_FOCUS_POLL_MS,
-    TREE_STABLE_POLL_MS,
-    TREE_STABLE_SAMPLES,
-    TREE_STABLE_TIMEOUT_MS,
-    actions_to_extension_steps,
-    belt_actions_from_plan,
     detect_layout_mode,
     find_settled_window,
-    focus_actions_from_plan,
-    focus_actions_still_needed,
     ghostty_multi_instance_argv,
     is_ghostty_launch_target,
-    move_step_window_ids,
-    open_action_to_launch_fields,
-    partition_plan_actions,
-    residual_follow_up,
-    partition_extension_steps_place_vs_structure,
-    resolve_focus_soft_timeout_ms,
-    resolve_geom_soft_timeout_ms,
-    run_soft_focus_barrier,
-    run_soft_geom_barrier,
     layout_wait_tree_stable_enabled,
-    wait_for_open_role_pins,
-    wait_for_tree_stable,
-    wait_until_hard_ready,
     window_is_settled,
-    without_focus_actions,
 )
 from settle_heuristics import (  # noqa: E402
-    GEOM_FIRST_EVER_OBSERVE_MS,
-    default_session,
-    is_first_ever,
-    make_key,
     reset_heuristics_file,
-    resolve_host as settle_resolve_host,
     store_file_status,
 )
 from nested_wayland import cmd_nested  # noqa: E402
+from layout_apply_client import (  # noqa: E402
+    APPLY_LAYOUT_MIN_API,
+    build_apply_layout_request,
+    host_job_id_from_env,
+    parse_json_obj,
+    ping_supports_apply_layout,
+    run_apply_layout_client,
+    start_gi_signal_watcher,
+    write_job_apply_id,
+)
 from layout_cli import (  # noqa: E402
     LayoutParseError,
     format_candidate_line,
@@ -1374,44 +1354,6 @@ def wait_for_wm_class(
     return out
 
 
-def wait_for_window_ids_settled(
-    backend: str,
-    window_ids: list[str] | set[str],
-    timeout_ms: int = HARD_TIMEOUT_MS,
-    *,
-    call_started_mono: Optional[float] = None,
-) -> dict[str, Any]:
-    """
-    Poll until every windowId is hard-ready (TILE+rect+mon) or hard timeout.
-
-    LF5 / SE2: used before residual/belt Move and focus phase hard-ready.
-    Default timeout HARD_TIMEOUT_MS (5s). Call clock from call_started_mono
-    when the forge act that needs hard-ready was just issued.
-    """
-    t0 = call_started_mono if call_started_mono is not None else time.monotonic()
-    last_err: Optional[str] = None
-
-    def load_windows() -> list[dict[str, Any]]:
-        nonlocal last_err
-        raw = call_method(backend, "GetTree", "{}")
-        data = json.loads(raw)
-        if isinstance(data, dict) and data.get("error"):
-            last_err = str(data["error"])
-            raise RuntimeError(last_err)
-        last_err = None
-        return list(_iter_tree_windows(data))
-
-    out = wait_until_hard_ready(
-        load_windows,
-        window_ids,
-        timeout_ms=timeout_ms,
-        call_started_mono=t0,
-    )
-    if not out.get("ok") and last_err and not out.get("error"):
-        out["error"] = f"hard-ready timeout ({last_err})"
-    return out
-
-
 def _baseline_window_ids(backend: str) -> set[str]:
     try:
         raw = call_method(backend, "GetTree", "{}")
@@ -1476,470 +1418,227 @@ def _payload_has_cli_only(payload: Any) -> list[str]:
     return found
 
 
-def _layout_apply_trace(msg: str, payload: Any = None) -> None:
-    """Append one line to layout-apply-trace.log (SSH/debug; never raises)."""
+def _layout_ping_payload(backend: str) -> dict[str, Any]:
+    """Best-effort Ping JSON for ApplyLayout feature detect."""
     try:
-        root = os.environ.get("FORGE_CONFIG_HOME") or os.path.join(
-            os.path.expanduser("~"), ".config", "forge")
-        path = os.path.join(root, "config", "layout-apply-trace.log")
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        line = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()) + " " + msg
-        if payload is not None:
-            line += " " + json.dumps(payload, default=str)
-        with open(path, "a", encoding="utf-8") as fh:
-            fh.write(line + "\n")
-    except Exception:
-        return
-
-
-def _layout_batch_call(backend: str, action: str) -> tuple[bool, dict[str, Any]]:
-    """
-    DBus LayoutBatch(begin|end|release-deferred|admit|chrome-show|chrome-clear)
-    for layout apply.
-
-    begin: defer per-app open renderTree until end (or residual RunSteps commit).
-    release-deferred / release / unhide: unhide CL8 deferred maps without ending
-    the batch (CL9: before residual plan + RunSteps).
-    admit: track valid Meta windows missing from the tree (R030).
-    end: batch depth 0 + deferred commit (does not clear apply chrome).
-    chrome-show: dim overlay at apply start (including no-open).
-    chrome-clear: hide overlay after focus/soft (or finally).
-    Returns (ok, payload). ok=false when DBus/extension fails (caller may continue).
-    """
-    try:
-        raw = call_method(backend, "LayoutBatch", str(action))
+        raw = call_method(backend, "Ping")
         data = json.loads(raw) if isinstance(raw, str) else raw
-    except Exception as e:
-        return False, {"ok": False, "error": str(e), "action": action}
-    if not isinstance(data, dict):
-        return False, {"ok": False, "error": "invalid LayoutBatch response", "raw": raw}
-    if data.get("ok") is True:
-        return True, data
-    return False, data
-
-
-def _layout_final_focus_reassert_ms() -> int:
-    """
-    Optional always-on second full focus pass delay (default 0 = off).
-
-    Product path uses verify-once (mismatch only). Debug/compare:
-    FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS=<ms>.
-    """
-    raw = os.environ.get("FORGE_LAYOUT_FINAL_FOCUS_REASSERT_MS", "").strip()
-    if raw:
-        try:
-            return max(0, int(raw))
-        except ValueError:
-            return 0
-    return max(0, int(FINAL_FOCUS_REASSERT_MS or 0))
-
-
-def _layout_focus_wm_classes(
-    forest: Any, focus_actions: Any
-) -> list[str]:
-    """wmClass values for focus action window ids (heuristic keys)."""
-    if not isinstance(focus_actions, list) or not focus_actions:
-        return []
-    want: set[str] = set()
-    for a in focus_actions:
-        if not isinstance(a, dict):
-            continue
-        sel = a.get("selector")
-        if sel is None:
-            continue
-        s = str(sel).strip()
-        if s.startswith("id:"):
-            wid = s[3:].strip()
-            if wid:
-                want.add(wid)
-    if not want:
-        return []
-    return _layout_wm_classes_for_ids(forest, want)
-
-
-def _layout_wm_classes_for_ids(forest: Any, window_ids: Any) -> list[str]:
-    """Unique wmClass list for window ids (heuristic keys; no personal roles)."""
-    want = {
-        str(x).strip()
-        for x in (window_ids or [])
-        if x is not None and str(x).strip() != ""
-    }
-    if not want:
-        return []
-    classes: list[str] = []
-    seen: set[str] = set()
-    for w in _iter_tree_windows(forest):
-        wid = w.get("windowId")
-        if wid is None or str(wid) not in want:
-            continue
-        cls = w.get("wmClass") or w.get("wm_class")
-        if cls is None or not str(cls).strip():
-            continue
-        c = str(cls).strip()
-        key = c.casefold()
-        if key not in seen:
-            seen.add(key)
-            classes.append(c)
-    return classes
-
-
-def _layout_soft_geom_pass(
-    backend: str,
-    window_ids: list[str],
-    *,
-    process_kind: str,
-    apply_log: dict[str, Any],
-    log_key: str,
-    call_started_mono: Optional[float] = None,
-) -> dict[str, Any]:
-    """
-    Soft geom barrier after hard-ready / move. Records to session store only.
-    Flush is top-level (SE6).
-    """
-    ids = [str(x).strip() for x in window_ids if x is not None and str(x).strip()]
-    if not ids:
-        out = {"skipped": True, "reason": "no-window-ids"}
-        apply_log[log_key] = out
-        return out
-
-    session = default_session()
-    host = settle_resolve_host()
-    t0 = call_started_mono if call_started_mono is not None else time.monotonic()
-
-    def load_windows() -> list[dict[str, Any]]:
-        raw = call_method(backend, "GetTree", "{}")
-        data = json.loads(raw)
-        if isinstance(data, dict) and data.get("error"):
-            raise RuntimeError(str(data["error"]))
-        return list(_iter_tree_windows(data))
-
-    try:
-        forest = _layout_load_tree(backend, None)
+        return data if isinstance(data, dict) else {}
     except Exception:
-        forest = None
-    wm_classes = _layout_wm_classes_for_ids(forest, ids) if forest else []
-    soft_ms = resolve_geom_soft_timeout_ms(
-        session.store(),
-        host=host,
-        wm_classes=wm_classes,
-        process_kind=process_kind,
-    )
-    # First-ever learning trial is up to 10s; post-move observe uses a short window.
-    entries = (session.store().get("entries") or {}) if session.store() else {}
-    classes_for_first = wm_classes or ["unknown"]
-    if any(
-        is_first_ever(entries.get(make_key(host, c, process_kind, "geom")))
-        for c in classes_for_first
-    ):
-        soft_ms = min(int(soft_ms), int(GEOM_FIRST_EVER_OBSERVE_MS))
-    soft = run_soft_geom_barrier(
-        load_windows,
-        ids,
-        soft_timeout_ms=soft_ms,
-        call_started_mono=t0,
-    )
-    for res in soft.get("residuals") or []:
-        lat = res.get("latencyMs")
-        for cls in wm_classes or ["unknown"]:
-            session.record(
-                host=host,
-                wm_class=cls,
-                process_kind=process_kind,
-                residual_kind="geom",
-                had_residual=True,
-                latency_ms=lat,
-            )
-    if soft.get("softSettled") and not soft.get("residuals"):
-        for cls in wm_classes or ["unknown"]:
-            session.record(
-                host=host,
-                wm_class=cls,
-                process_kind=process_kind,
-                residual_kind="geom",
-                had_residual=False,
-            )
-    out = {
-        "softTimeoutMs": soft_ms,
-        "classes": wm_classes,
-        "host": host,
-        "processKind": process_kind,
-        "persist": "deferred",
-        **{k: v for k, v in soft.items() if k not in ("softTimeoutMs",)},
-    }
-    apply_log[log_key] = out
-    return out
+        return {}
 
 
-def _layout_flush_settle_heuristics(apply_log: Optional[dict[str, Any]] = None) -> dict[str, Any]:
-    """Top-level write of dirty settle heuristics (once per CLI layout apply)."""
-    info = default_session().flush()
-    if isinstance(apply_log, dict):
-        apply_log["settleHeuristicsFlush"] = info
-    return info
+def _layout_profile_for_apply(data: Any) -> Any:
+    """Bare-array sugar → object (ApplyLayout rejects top-level arrays)."""
+    if isinstance(data, list):
+        return {"tiles": data}
+    return data
 
 
-def _layout_plan_focus_actions(
+def _layout_run_reconcile_apply_layout(
     backend: str,
+    resolved: dict[str, Any],
     data: dict[str, Any],
     *,
+    name: str,
+    workspace: int,
     clean: bool,
     keep_others: bool,
-    safe: bool,
-    workspace: int,
-    role_pins: Optional[dict[str, Any]],
-) -> tuple[Optional[dict[str, Any]], list[dict[str, Any]], Optional[dict[str, Any]]]:
-    """
-    Load forest + plan_reconcile → (plan, focus_actions, forest).
-    On plan error: (None, [], None) and caller logs non-fatal.
-    """
-    forest = _layout_load_tree(backend, None)
-    plan_f = plan_reconcile(
-        forest,
-        data,
-        clean=clean,
-        keep_others=keep_others,
-        safe=safe,
-        role_pins=role_pins or None,
-        just_opened_roles=set(role_pins.keys()) if role_pins else None,
-        workspace=workspace,
-    )
-    return plan_f, focus_actions_from_plan(plan_f.get("actions")), forest
-
-
-def _layout_final_focus_pass(
-    backend: str,
-    data: dict[str, Any],
-    *,
-    clean: bool,
-    keep_others: bool,
-    safe: bool,
-    workspace: int,
-    role_pins: Optional[dict[str, Any]],
     force_close: bool,
-    apply_log: dict[str, Any],
-) -> tuple[int, Optional[dict[str, Any]]]:
-    """
-    Focus phase (D019): hard-ready → apply once → soft residual barrier →
-    post-settled verify once.
-
-    Soft barrier uses settle-heuristics timeouts; focus steal corrects immediately
-    and resets quiet. Returns (rc, last plan) — rc non-zero only on hard RunSteps fail.
-    """
-    pin_ids = [
-        str(w)
-        for w in (role_pins or {}).values()
-        if w is not None and str(w).strip() != ""
-    ]
-    settle: dict[str, Any] = {"skipped": True}
-    if pin_ids:
-        settle = wait_for_window_ids_settled(backend, pin_ids)
-    apply_log["finalFocusSettle"] = settle
-
-    quiet_s = max(0, FINAL_FOCUS_QUIET_MS) / 1000.0
-    if quiet_s:
-        time.sleep(quiet_s)
-
-    last_plan: Optional[dict[str, Any]] = None
-    try:
-        plan_f, focus_acts, forest0 = _layout_plan_focus_actions(
-            backend,
-            data,
-            clean=clean,
-            keep_others=keep_others,
-            safe=safe,
-            workspace=workspace,
-            role_pins=role_pins,
-        )
-    except Exception as e:
-        apply_log["finalFocus"] = {"ok": False, "error": str(e)}
-        return 0, last_plan
-    last_plan = plan_f
-    steps = actions_to_extension_steps(
-        focus_acts, force_close=force_close, workspace=workspace
+    safe: bool,
+    verbose: bool,
+    wait_tree_stable: bool,
+) -> int:
+    """Product path: ApplyLayout + Progress/Done (extension owns spine)."""
+    request = build_apply_layout_request(
+        profile=_layout_profile_for_apply(data),
+        name=name,
+        workspace=workspace,
+        host_job_id=host_job_id_from_env(),
+        flags={
+            "clean": clean,
+            "keepOthers": keep_others,
+            "safe": safe,
+            "forceClose": force_close,
+            "waitTreeStable": wait_tree_stable,
+        },
     )
-    focus_t0 = time.monotonic()
-    if not steps:
-        apply_log["finalFocus"] = {"ok": True, "steps": 0, "skipped": True}
-    else:
-        rc, agg = run_mixed_steps(
-            backend, steps, stop_on_error=True, print_each=False
-        )
-        apply_log["finalFocus"] = {"ok": rc == 0, "steps": len(steps), "agg": agg}
-        if rc != 0:
-            return rc, last_plan
+    _eprint("  path=ApplyLayout")
 
-    # Soft expectation barrier (SE3): learned quiet; steal → correct + reset.
-    # Session store: load once, record in memory; flush at top-level layout end.
-    session = default_session()
-    host = settle_resolve_host()
-    heuristics = session.store()
-    wm_classes = _layout_focus_wm_classes(forest0, focus_acts)
-    soft_ms = resolve_focus_soft_timeout_ms(
-        heuristics, host=host, wm_classes=wm_classes
+    def apply_fn(req_json: str) -> dict[str, Any]:
+        return parse_json_obj(call_method(backend, "ApplyLayout", req_json))
+
+    def get_fn(apply_id: str) -> dict[str, Any]:
+        return parse_json_obj(call_method(backend, "GetLayoutApply", str(apply_id)))
+
+    def cancel_fn(apply_id: str) -> dict[str, Any]:
+        return parse_json_obj(
+            call_method(backend, "CancelLayoutApply", str(apply_id))
+        )
+
+    rc, done = run_apply_layout_client(
+        request=request,
+        apply_fn=apply_fn,
+        get_fn=get_fn,
+        cancel_fn=cancel_fn,
+        print_fn=_eprint,
+        write_apply_id_fn=write_job_apply_id,
+        start_watcher_fn=start_gi_signal_watcher,
+        timeout_s=float(default_timeout_for_command("layout") or 300),
     )
-    # Cold/partial open: learned floor (400ms) is too short for chrome late
-    # activate; keep soft quiet ≥ COLD_FOCUS_SOFT_FLOOR_MS while pins exist.
-    if pin_ids:
-        soft_ms = max(int(soft_ms), int(COLD_FOCUS_SOFT_FLOOR_MS))
-    apply_log["finalFocusSoftTimeoutMs"] = soft_ms
-    soft_rc_holder: list[int] = [0]
-    soft_state: dict[str, Any] = {"plan": last_plan}
-
-    def _check_needed() -> list[dict[str, Any]]:
-        plan_c, focus_c, forest_c = _layout_plan_focus_actions(
-            backend,
-            data,
-            clean=clean,
-            keep_others=keep_others,
-            safe=safe,
-            workspace=workspace,
-            role_pins=role_pins,
-        )
-        soft_state["plan"] = plan_c
-        return focus_actions_still_needed(forest_c, focus_c)
-
-    def _apply_correct(needed: Any) -> None:
-        s_steps = actions_to_extension_steps(
-            needed, force_close=force_close, workspace=workspace
-        )
-        if not s_steps:
-            return
-        rc, agg = run_mixed_steps(
-            backend, s_steps, stop_on_error=True, print_each=False
-        )
-        if rc != 0:
-            soft_rc_holder[0] = rc
-            soft_state["agg"] = agg
-            raise RuntimeError(f"soft focus correct RunSteps rc={rc}")
-
-    soft = run_soft_focus_barrier(
-        _check_needed,
-        _apply_correct,
-        soft_timeout_ms=soft_ms,
-        poll_ms=SOFT_FOCUS_POLL_MS,
-        call_started_mono=focus_t0,
-    )
-    last_plan = soft_state.get("plan") or last_plan
-    apply_log["finalFocusSoft"] = soft
-    if soft_rc_holder[0] != 0:
-        return soft_rc_holder[0], last_plan
-
-    # In-memory residual samples; flush once at top-level layout end (SE6/SE7).
-    for res in soft.get("residuals") or []:
-        lat = res.get("latencyMs")
-        for cls in wm_classes or ["unknown"]:
-            session.record(
-                host=host,
-                wm_class=cls,
-                process_kind="focus-phase",
-                residual_kind="focus",
-                had_residual=True,
-                latency_ms=lat,
-            )
-    if soft.get("softSettled") and not soft.get("residuals"):
-        for cls in wm_classes or ["unknown"]:
-            session.record(
-                host=host,
-                wm_class=cls,
-                process_kind="focus-phase",
-                residual_kind="focus",
-                had_residual=False,
-            )
-    apply_log["finalFocusHeuristics"] = {
-        "host": host,
-        "classes": wm_classes,
-        "residualSamples": len(soft.get("residuals") or []),
-        "persist": "deferred",
-    }
-
-    # Post-settled verify once (D019): one more mismatch check after soft settle.
-    try:
-        plan_v, focus_all, forest_v = _layout_plan_focus_actions(
-            backend,
-            data,
-            clean=clean,
-            keep_others=keep_others,
-            safe=safe,
-            workspace=workspace,
-            role_pins=role_pins,
-        )
-    except Exception as e:
-        apply_log["finalFocusVerify"] = {"ok": False, "error": str(e)}
-        return 0, last_plan
-    last_plan = plan_v
-    needed = focus_actions_still_needed(forest_v, focus_all)
-    if not needed:
-        apply_log["finalFocusVerify"] = {
-            "ok": True,
-            "steps": 0,
-            "skipped": True,
-            "reason": "post-settled open-leaf/profile match",
+    if rc != 0 or verbose:
+        out: dict[str, Any] = {
+            "ok": isinstance(done, dict) and done.get("ok") is True,
+            "name": name,
+            "path": str(resolved.get("path") or ""),
+            "source": resolved.get("source"),
+            "host": resolved.get("host"),
+            "mode": MODE_RECONCILE,
+            "workspace": workspace,
+            "applyId": (done or {}).get("applyId") if isinstance(done, dict) else None,
+            "phase": (done or {}).get("phase") if isinstance(done, dict) else None,
+            "done": done,
         }
-    else:
-        v_steps = actions_to_extension_steps(
-            needed, force_close=force_close, workspace=workspace
-        )
-        if not v_steps:
-            apply_log["finalFocusVerify"] = {
-                "ok": True,
-                "steps": 0,
-                "skipped": True,
-                "needed": len(needed),
-            }
-        else:
-            rc, agg = run_mixed_steps(
-                backend, v_steps, stop_on_error=True, print_each=False
-            )
-            apply_log["finalFocusVerify"] = {
-                "ok": rc == 0,
-                "steps": len(v_steps),
-                "neededRoles": [a.get("role") for a in needed if isinstance(a, dict)],
-                "agg": agg,
-            }
-            if rc != 0:
-                return rc, last_plan
+        if isinstance(done, dict):
+            if done.get("error") is not None:
+                out["error"] = done.get("error")
+            if done.get("code") is not None:
+                out["code"] = done.get("code")
+        _layout_maybe_print_json(out, verbose=verbose, force=rc != 0)
+    return int(rc)
 
-    # Optional debug: always-on second full focus (not the product path).
-    reassert_ms = _layout_final_focus_reassert_ms()
-    if reassert_ms > 0:
-        time.sleep(reassert_ms / 1000.0)
-        try:
-            plan_r, focus_r, _ = _layout_plan_focus_actions(
+
+def _layout_run_reconcile(
+    backend: Optional[str],
+    resolved: dict[str, Any],
+    data: dict[str, Any],
+    *,
+    dry_run: bool,
+    tree_file: Optional[str],
+    clean: bool = True,
+    keep_others: bool = False,
+    force_close: bool = False,
+    safe: bool = False,
+    verbose: bool = False,
+    workspace: Optional[int] = None,
+    forest: Optional[dict[str, Any]] = None,
+    wait_tree_stable: bool = False,
+) -> int:
+    """
+    Plan/apply one reconcile profile on a target workspace.
+
+    Live: ApplyLayout (AL8). Dry-run / --tree-file: host GetTree + plan only.
+    """
+    name = resolved["name"]
+    try:
+        profile = validate_reconcile_profile(data)
+    except ValueError as e:
+        _eprint(f"forge layout: {e}")
+        return 1
+
+    rc = _layout_optional_preamble(backend, profile, dry_run=dry_run)
+    if rc != 0:
+        return rc
+
+    if forest is None or workspace is None:
+        needs_bus = not tree_file
+        if needs_bus and backend is None:
+            backend = _check_deps()
+        if forest is None:
+            try:
+                forest = _layout_load_tree(backend, tree_file)
+            except Exception as e:
+                _eprint(f"forge layout: GetTree failed: {e}")
+                return 1
+    if workspace is None:
+        workspace = _layout_target_workspace(forest)
+    current_ws = _layout_target_workspace(forest)
+
+    _layout_print_header(resolved, name)
+    cur_bit = " (current)" if workspace == current_ws else ""
+    _eprint(f"  workspace  {workspace + 1}{cur_bit}")
+    if safe:
+        _eprint("  residuals=leave (--safe: open+move only)")
+    elif keep_others:
+        _eprint("  residuals=park (--keep-others: join last mon unit as tabs)")
+    else:
+        force_bit = " --force" if force_close else ""
+        _eprint(f"  residuals=close{force_bit} (default; non-layout windows closed)")
+
+    if not dry_run and not tree_file:
+        if backend is None:
+            backend = _check_deps()
+        ping = _layout_ping_payload(backend)
+        if ping_supports_apply_layout(ping):
+            return _layout_run_reconcile_apply_layout(
                 backend,
+                resolved,
                 data,
+                name=name,
+                workspace=int(workspace),
                 clean=clean,
                 keep_others=keep_others,
+                force_close=force_close,
                 safe=safe,
-                workspace=workspace,
-                role_pins=role_pins,
+                verbose=verbose,
+                wait_tree_stable=wait_tree_stable,
             )
-        except Exception as e:
-            apply_log["finalFocusReassert"] = {"ok": False, "error": str(e)}
-            return 0, last_plan
-        last_plan = plan_r
-        r_steps = actions_to_extension_steps(
-            focus_r, force_close=force_close, workspace=workspace
+        _eprint(
+            f"forge layout: ApplyLayout requires apiVersion "
+            f"{APPLY_LAYOUT_MIN_API}+ (got {ping.get('apiVersion')!r})"
         )
-        if r_steps:
-            rc, agg = run_mixed_steps(
-                backend, r_steps, stop_on_error=True, print_each=False
-            )
-            apply_log["finalFocusReassert"] = {
-                "ok": rc == 0,
-                "steps": len(r_steps),
-                "agg": agg,
-            }
-            if rc != 0:
-                return rc, last_plan
-        else:
-            apply_log["finalFocusReassert"] = {"ok": True, "steps": 0, "skipped": True}
-    else:
-        apply_log["finalFocusReassert"] = {
-            "skipped": True,
-            "reason": "soft barrier + post-settled verify is product path",
-        }
+        _eprint("  hint: ./install --kit=vim then nest/reload extension tip")
+        return 1
 
-    return 0, last_plan
+    try:
+        plan = plan_reconcile(
+            forest,
+            data,
+            clean=clean,
+            keep_others=keep_others,
+            safe=safe,
+            workspace=workspace,
+        )
+    except ValueError as e:
+        _eprint(f"forge layout: plan failed: {e}")
+        return 1
+
+    on_n, ignored = window_candidate_counts(forest, workspace)
+    _eprint(
+        "  "
+        + format_candidate_line(
+            workspace + 1,
+            on_n,
+            ignored,
+            is_current=workspace == current_ws,
+        )
+    )
+    _layout_print_thrash_mode(plan, safe=safe)
+    counts = plan.get("counts") or {}
+    _layout_print_counts(counts)
+    _layout_print_thrash_state(plan)
+    _layout_print_thrash_risk(plan)
+
+    if plan.get("nothingToDo"):
+        n = int(counts.get("reused") or 0)
+        left_n = int(counts.get("left") or 0)
+        left_bit = f", {left_n} residual left in place" if left_n else ""
+        _eprint(f"forge layout: nothing to do ({n} roles satisfied{left_bit})")
+        _layout_maybe_print_json(
+            _layout_plan_meta(resolved, name, plan, dry_run=dry_run),
+            verbose=verbose,
+        )
+        return 0
+
+    _eprint(
+        "  dry-run (no changes)" if dry_run else "  plan-only (--tree-file; no apply)"
+    )
+    _layout_maybe_print_json(
+        _layout_plan_meta(resolved, name, plan, dry_run=True),
+        verbose=verbose,
+        force=True,
+    )
+    return 0
 
 
 def cmd_run_steps(_backend: Optional[str], _args: argparse.Namespace) -> int:
@@ -2596,1096 +2295,6 @@ def _layout_run_steps(
     # Always dump on failure; success only when verbose
     _layout_maybe_print_json(aggregate, verbose=verbose, force=rc != 0)
     return rc
-
-
-def _layout_run_reconcile(
-    backend: Optional[str],
-    resolved: dict[str, Any],
-    data: dict[str, Any],
-    *,
-    dry_run: bool,
-    tree_file: Optional[str],
-    clean: bool = True,
-    keep_others: bool = False,
-    force_close: bool = False,
-    safe: bool = False,
-    verbose: bool = False,
-    workspace: Optional[int] = None,
-    forest: Optional[dict[str, Any]] = None,
-    wait_tree_stable: bool = False,
-) -> int:
-    """
-    Plan/apply one reconcile profile on a target workspace.
-
-    workspace: 0-based Meta index; None → activeWorkspace from forest (WS1).
-    forest: reuse a loaded GetTree (multi-target); else load via tree_file/bus.
-    wait_tree_stable: optional LF6 GetTree fingerprint quiet (debug; default off).
-    """
-    name = resolved["name"]
-    # Early validate for preamble / shape errors. Final IR uses mon_count from
-    # GetTree inside plan_reconcile (bare tab|split must not become dual mon).
-    try:
-        profile = validate_reconcile_profile(data)
-    except ValueError as e:
-        _eprint(f"forge layout: {e}")
-        return 1
-
-    rc = _layout_optional_preamble(backend, profile, dry_run=dry_run)
-    if rc != 0:
-        return rc
-
-    admit_before_plan: Optional[dict[str, Any]] = None
-    if forest is None:
-        needs_bus = not tree_file
-        if needs_bus and backend is None:
-            backend = _check_deps()
-        if needs_bus and not dry_run:
-            admit_ok, admit_payload = _layout_batch_call(backend, "admit")
-            admit_before_plan = admit_payload
-            _layout_apply_trace("admit-before-plan", admit_payload)
-            if admit_ok and int(admit_payload.get("admitted") or 0) > 0:
-                _eprint(
-                    f"forge layout: admitted {admit_payload.get('admitted')} "
-                    "untracked window(s) before plan"
-                )
-        try:
-            forest = _layout_load_tree(backend, tree_file)
-        except Exception as e:
-            _eprint(f"forge layout: GetTree failed: {e}")
-            return 1
-
-    # WS1/WS2: explicit target or current desk from forest meta.
-    if workspace is None:
-        workspace = _layout_target_workspace(forest)
-    current_ws = _layout_target_workspace(forest)
-
-    try:
-        # Pass raw sugar so mon_count can re-desugar; pre-validated IR loses tiles.
-        plan = plan_reconcile(
-            forest,
-            data,
-            clean=clean,
-            keep_others=keep_others,
-            safe=safe,
-            workspace=workspace,
-        )
-    except ValueError as e:
-        _eprint(f"forge layout: plan failed: {e}")
-        return 1
-
-    _layout_print_header(resolved, name)
-    # Human 1-based index; plan/tree use 0-based Meta.
-    cur_bit = " (current)" if workspace == current_ws else ""
-    _eprint(f"  workspace  {workspace + 1}{cur_bit}")
-    if dry_run:
-        on_n, ignored = window_candidate_counts(forest, workspace)
-        _eprint(
-            "  "
-            + format_candidate_line(
-                workspace + 1,
-                on_n,
-                ignored,
-                is_current=workspace == current_ws,
-            )
-        )
-    _layout_print_thrash_mode(plan, safe=safe)
-    if safe:
-        _eprint("  residuals=leave (--safe: open+move only)")
-    elif keep_others:
-        _eprint("  residuals=park (--keep-others: join last mon unit as tabs)")
-    else:
-        force_bit = " --force" if force_close else ""
-        _eprint(f"  residuals=close{force_bit} (default; non-layout windows closed)")
-    counts = plan.get("counts") or {}
-    _layout_print_counts(counts)
-    _layout_print_thrash_state(plan)
-    _layout_print_thrash_risk(plan)
-
-    if plan.get("nothingToDo"):
-        n = int(counts.get("reused") or 0)
-        left_n = int(counts.get("left") or 0)
-        left_bit = f", {left_n} residual left in place" if left_n else ""
-        _eprint(f"forge layout: nothing to do ({n} roles satisfied{left_bit})")
-        _layout_maybe_print_json(
-            _layout_plan_meta(resolved, name, plan, dry_run=dry_run),
-            verbose=verbose,
-        )
-        return 0
-
-    if dry_run:
-        _eprint("  dry-run (no changes)")
-        _layout_maybe_print_json(
-            _layout_plan_meta(resolved, name, plan, dry_run=True),
-            verbose=verbose,
-            force=True,
-        )
-        return 0
-
-    if backend is None:
-        backend = _check_deps()
-
-    ext_actions, open_actions = partition_plan_actions(plan.get("actions"))
-    apply_log: dict[str, Any] = {
-        "extension": None,
-        "opens": [],
-        "followUp": None,
-    }
-    if admit_before_plan is not None:
-        apply_log["admitBeforePlan"] = admit_before_plan
-    # Settle heuristics: load-on-first-use; flush once when this apply exits.
-    try:
-        return _layout_run_reconcile_apply(
-            backend,
-            resolved,
-            data,
-            plan=plan,
-            name=name,
-            ext_actions=ext_actions,
-            open_actions=open_actions,
-            apply_log=apply_log,
-            clean=clean,
-            keep_others=keep_others,
-            force_close=force_close,
-            safe=safe,
-            verbose=verbose,
-            workspace=workspace,
-            wait_tree_stable=wait_tree_stable,
-        )
-    finally:
-        _layout_flush_settle_heuristics(apply_log)
-
-
-def _layout_run_reconcile_apply(
-    backend: str,
-    resolved: dict[str, Any],
-    data: dict[str, Any],
-    *,
-    plan: dict[str, Any],
-    name: str,
-    ext_actions: list,
-    open_actions: list,
-    apply_log: dict[str, Any],
-    clean: bool,
-    keep_others: bool,
-    force_close: bool,
-    safe: bool,
-    verbose: bool,
-    workspace: int,
-    wait_tree_stable: bool,
-) -> int:
-    """Apply half of reconcile (heuristics flush owned by caller)."""
-    chrome_clear_needed: list[bool] = [False]
-    show_action = f"chrome-show:{name}" if name else "chrome-show"
-    show_ok, show_payload = _layout_batch_call(backend, show_action)
-    apply_log["layoutChromeShow"] = show_payload
-    if show_ok:
-        chrome_clear_needed[0] = True
-    try:
-        return _layout_run_reconcile_body(
-            backend,
-            resolved,
-            data,
-            plan=plan,
-            name=name,
-            ext_actions=ext_actions,
-            open_actions=open_actions,
-            apply_log=apply_log,
-            clean=clean,
-            keep_others=keep_others,
-            force_close=force_close,
-            safe=safe,
-            verbose=verbose,
-            workspace=workspace,
-            wait_tree_stable=wait_tree_stable,
-            chrome_clear_needed=chrome_clear_needed,
-        )
-    finally:
-        if chrome_clear_needed[0]:
-            _clr_ok, clr_payload = _layout_batch_call(backend, "chrome-clear")
-            apply_log["layoutChromeClear"] = clr_payload
-            if not _clr_ok:
-                _eprint(
-                    "forge layout: LayoutBatch chrome-clear failed: "
-                    f"{clr_payload.get('error')}"
-                )
-
-
-def _layout_run_reconcile_body(
-    backend: str,
-    resolved: dict[str, Any],
-    data: dict[str, Any],
-    *,
-    plan: dict[str, Any],
-    name: str,
-    ext_actions: list,
-    open_actions: list,
-    apply_log: dict[str, Any],
-    clean: bool,
-    keep_others: bool,
-    force_close: bool,
-    safe: bool,
-    verbose: bool,
-    workspace: int,
-    wait_tree_stable: bool,
-    chrome_clear_needed: list,
-) -> int:
-    """Structure / open / focus. Caller owns apply-chrome lifetime."""
-
-    # 1) Moves / parks / closes / ensure_layout for existing windows.
-    # Always strip focus from structure batches: open-leaf + profile keyboard
-    # focus is a post-settle phase (soft residual barrier). Mid-session no-open
-    # re-runs used to focus here without soft barrier → kbd thrash after actives.
-    structure_for_pre = without_focus_actions(ext_actions)
-    ext_steps = actions_to_extension_steps(
-        structure_for_pre, force_close=force_close, workspace=workspace
-    )
-    if ext_steps:
-        rc, agg = run_mixed_steps(
-            backend, ext_steps, stop_on_error=True, print_each=False
-        )
-        apply_log["extension"] = agg
-        if rc != 0:
-            _eprint("forge layout: extension steps failed")
-            out = _layout_plan_meta(resolved, name, plan, dry_run=False)
-            out["ok"] = False
-            out["apply"] = apply_log
-            _layout_maybe_print_json(out, verbose=verbose, force=True)
-            return rc
-
-    # 2–3) Opens under LayoutBatch (CL5/CL9): no per-app mid-batch renderTree.
-    # Flow: begin → parallel PlaceNext+launch all → map-pin wait → optional
-    # fingerprint quiet (--wait-tree-stable) → release-deferred → end batch →
-    # residual RunSteps (bind/place/structure) → focus/soft. Apply chrome
-    # is shown by the caller for the whole apply (including no-open) and
-    # cleared after this function returns. Batch end does not clear chrome.
-    # Batch must still end before residual so mon moves stick.
-    # Do not abort mid-loop: residual rehome still needs successful pins.
-    role_pins: dict[str, Any] = {}
-    open_failures: list[Any] = []
-    if open_actions:
-        begin_action = f"begin:{name}" if name else "begin"
-        batch_ok, batch_begin = _layout_batch_call(backend, begin_action)
-        apply_log["layoutBatchBegin"] = batch_begin
-        if not batch_ok:
-            _eprint(
-                "forge layout: LayoutBatch begin failed "
-                f"(continuing without batch: {batch_begin.get('error')})"
-            )
-        else:
-            chrome_clear_needed[0] = True
-
-        try:
-            # CL9: one baseline before all spawns; PlaceNext+launch without
-            # serial TILE-wait; then map/windowId pin wait for every role.
-            # Chrome-family opens are sequential: two gio launches of the
-            # same profile crash Chrome on slow X11 (green).
-            open_baseline = _baseline_window_ids(backend)
-            pending_pins: list[dict[str, Any]] = []
-            open_timeout_ms = DEFAULT_LAUNCH_TIMEOUT_MS
-            chrome_roles: set[str] = set()
-
-            def _load_live_forest() -> dict[str, Any]:
-                return _layout_load_tree(backend, None)
-
-            admit_polls = {"n": 0}
-
-            def _load_live_windows() -> list[dict[str, Any]]:
-                admit_polls["n"] += 1
-                if admit_polls["n"] == 1 or admit_polls["n"] % 20 == 0:
-                    _ok, payload = _layout_batch_call(backend, "admit")
-                    apply_log.setdefault("admitDuringWait", []).append(payload)
-                    if _ok and int(payload.get("admitted") or 0) > 0:
-                        _layout_apply_trace("admit-during-wait", payload)
-                return _iter_tree_windows(_load_live_forest())
-
-            def _merge_open_pins(pin_wait: dict[str, Any]) -> None:
-                for rid, wid in (pin_wait.get("role_pins") or {}).items():
-                    role_pins[str(rid)] = wid
-                    for entry in apply_log["opens"]:
-                        if (
-                            isinstance(entry, dict)
-                            and str(entry.get("role")) == str(rid)
-                            and entry.get("windowId") is None
-                        ):
-                            entry["windowId"] = wid
-                            entry["waited"] = True
-                            entry["requireSettled"] = False
-                            entry["matchedBy"] = "map-pin"
-                            break
-
-            for oa in open_actions:
-                fields = open_action_to_launch_fields(oa, workspace=workspace)
-                role = oa.get("role")
-                if _open_action_is_chrome_family(oa) and chrome_roles:
-                    unpinned_chrome = [
-                        p
-                        for p in pending_pins
-                        if str(p.get("role")) in chrome_roles
-                        and str(p.get("role")) not in role_pins
-                    ]
-                    if unpinned_chrome:
-                        pre_wait = wait_for_open_role_pins(
-                            _load_live_windows,
-                            unpinned_chrome,
-                            baseline_ids=open_baseline,
-                            timeout_ms=open_timeout_ms,
-                            class_eq=_class_eq,
-                        )
-                        apply_log.setdefault("chromeSerialWaits", []).append(
-                            {k: v for k, v in pre_wait.items() if k != "role_pins"}
-                        )
-                        _merge_open_pins(pre_wait)
-                # Parallel vs other apps: never block on TILE settle per role.
-                fields = dict(fields)
-                fields["no_wait"] = True
-                _rc, result = do_launch(backend, print_result=False, **fields)
-                entry = dict(result)
-                if role is not None:
-                    entry["role"] = role
-                entry["parallel"] = True
-                apply_log["opens"].append(entry)
-                if not result.get("ok"):
-                    open_failures.append(role if role is not None else entry.get("error"))
-                    _eprint(
-                        f"forge layout: open spawn failed role={role!r}: "
-                        f"{result.get('error', 'unknown')}"
-                    )
-                    continue
-                if role is None or str(role).strip() == "":
-                    continue
-                wait_classes = result.get("waitClasses")
-                accept_any = bool(result.get("acceptAnyNew", wait_classes is None))
-                try:
-                    t_ms = int(result.get("timeoutMs") or fields.get("timeout") or open_timeout_ms)
-                except (TypeError, ValueError):
-                    t_ms = open_timeout_ms
-                open_timeout_ms = max(open_timeout_ms, t_ms)
-                pin_entry: dict[str, Any] = {
-                    "role": str(role),
-                    "wait_classes": wait_classes,
-                    "accept_any_new": accept_any,
-                }
-                # Title identity from plan match (Chrome multi-open on X11).
-                oa_match = oa.get("match") if isinstance(oa.get("match"), dict) else {}
-                title_sub = oa_match.get("title~=")
-                title_exact = oa_match.get("title")
-                if title_sub is not None and str(title_sub).strip() != "":
-                    pin_entry["title_contains"] = str(title_sub).strip()
-                if title_exact is not None and str(title_exact).strip() != "":
-                    pin_entry["title_exact"] = str(title_exact).strip()
-                pending_pins.append(pin_entry)
-                if _open_action_is_chrome_family(oa):
-                    chrome_roles.add(str(role))
-
-            leftover_pins = [
-                p for p in pending_pins if str(p.get("role")) not in role_pins
-            ]
-            pin_used = set(str(x) for x in open_baseline)
-            pin_used.update(str(v).strip() for v in role_pins.values())
-            if leftover_pins:
-                pin_wait = wait_for_open_role_pins(
-                    _load_live_windows,
-                    leftover_pins,
-                    baseline_ids=pin_used,
-                    timeout_ms=open_timeout_ms,
-                    class_eq=_class_eq,
-                )
-                apply_log["openMapWait"] = {
-                    k: v for k, v in pin_wait.items() if k != "role_pins"
-                }
-                _merge_open_pins(pin_wait)
-                if pin_wait.get("missing"):
-                    _layout_apply_trace("map-wait-timeout", {
-                        "missing": pin_wait.get("missing"),
-                        "seen": pin_wait.get("seen"),
-                        "error": pin_wait.get("error"),
-                    })
-                    seen = pin_wait.get("seen") or []
-                    _eprint(
-                        "forge layout: map-wait saw "
-                        f"{len(seen)} live window(s): "
-                        + ", ".join(
-                            f"{w.get('wmClass')!r}/{w.get('title')!r}"
-                            for w in seen[:8]
-                        )
-                    )
-                    try:
-                        raw_meta = call_method(
-                            backend, "GetTree", '{"includeMeta":true}'
-                        )
-                        meta_forest = (
-                            json.loads(raw_meta)
-                            if isinstance(raw_meta, str)
-                            else raw_meta
-                        )
-                        if isinstance(meta_forest, dict):
-                            apply_log["openMapWaitMeta"] = meta_forest.get(
-                                "metaWindows")
-                            _layout_apply_trace(
-                                "map-wait-meta",
-                                meta_forest.get("metaWindows"),
-                            )
-                    except Exception as e:
-                        apply_log["openMapWaitMeta"] = {"error": str(e)}
-                for miss in pin_wait.get("missing") or []:
-                    open_failures.append(miss)
-                    _eprint(
-                        f"forge layout: open map wait failed role={miss!r}: "
-                        f"{pin_wait.get('error', 'timeout')}"
-                    )
-            elif pending_pins:
-                apply_log["openMapWait"] = {"ok": True, "missing": [], "skipped": True}
-
-            # Optional LF6 batch quiet (debug): whole GetTree fingerprint holds
-            # N samples. Default off — tree owns slots; map-pin wait is enough.
-            stable_info: dict[str, Any] = {"skipped": True}
-            if wait_tree_stable:
-                stable_info = wait_for_tree_stable(
-                    _load_live_forest,
-                    timeout_ms=TREE_STABLE_TIMEOUT_MS,
-                    poll_ms=TREE_STABLE_POLL_MS,
-                    stable_samples=TREE_STABLE_SAMPLES,
-                )
-                apply_log["treeStable"] = {
-                    k: v for k, v in stable_info.items() if k != "forest"
-                }
-                if not stable_info.get("ok"):
-                    _eprint(
-                        "forge layout: tree not fully stable after opens "
-                        f"(proceeding: {stable_info.get('error')})"
-                    )
-            else:
-                apply_log["treeStable"] = {"skipped": True}
-
-            # CL9: unhide deferred FLOAT maps before residual structure apply.
-            # Then end the open batch before residual place. Keeping depth>0
-            # through residual made cross-mon chrome moves report ok but not
-            # stick (Mode B thrash-recover without batch works). Batch only
-            # needs to suppress mid-open render flood through map-pin wait.
-            if batch_ok:
-                rel_ok, rel_payload = _layout_batch_call(backend, "release-deferred")
-                apply_log["layoutBatchRelease"] = rel_payload
-                if not rel_ok:
-                    _eprint(
-                        "forge layout: LayoutBatch release-deferred failed "
-                        f"(continuing: {rel_payload.get('error')})"
-                    )
-                end_ok, end_payload = _layout_batch_call(backend, "end")
-                apply_log["layoutBatchEnd"] = end_payload
-                if not end_ok:
-                    _eprint(
-                        "forge layout: LayoutBatch end before residual failed: "
-                        f"{end_payload.get('error')}"
-                    )
-                batch_ok = False  # finally: skip second end
-                # Keep apply chrome through residual bind/place/structure.
-                # chrome-clear runs in finally after residual/belt (or on error).
-
-            try:
-                # Prefer post-release GetTree so residual sees unhide modes,
-                # not a stale pre-release FLOAT snapshot from wait_for_tree_stable.
-                try:
-                    forest2 = _load_live_forest()
-                except Exception:
-                    forest2 = stable_info.get("forest")
-                if not isinstance(forest2, dict):
-                    forest2 = stable_info.get("forest")
-                if not isinstance(forest2, dict):
-                    forest2 = _load_live_forest()
-                plan2 = plan_reconcile(
-                    forest2,
-                    data,
-                    clean=clean,
-                    keep_others=keep_others,
-                    safe=safe,
-                    role_pins=role_pins or None,
-                    just_opened_roles=set(role_pins.keys()) if role_pins else None,
-                    workspace=workspace,
-                )
-            except Exception as e:
-                _eprint(f"forge layout: re-plan after open failed: {e}")
-                out = _layout_plan_meta(resolved, name, plan, dry_run=False)
-                out["ok"] = False
-                out["error"] = str(e)
-                out["apply"] = apply_log
-                _layout_maybe_print_json(out, verbose=verbose, force=True)
-                return 1
-            residual_ext, residual_open = partition_plan_actions(plan2.get("actions"))
-            # Structure/bind only here — no early focus (chrome late-activate steals
-            # lastTabFocus). Final focus pass after residual+belt settles.
-            residual_structure = without_focus_actions(residual_ext)
-            follow_steps, still_open = residual_follow_up(
-                residual_structure,
-                residual_open,
-                force_close=force_close,
-                workspace=workspace,
-            )
-            if still_open:
-                _eprint(f"forge layout: still missing roles after open: {still_open}")
-            # Split place vs structure: mon moves must stick before ensure_layout
-            # (Wayland partial reopen left mon1 flat when same-batch TABBED ran
-            # against pre-move mon0 paths).
-            place_steps, _struct_from_plan2 = (
-                partition_extension_steps_place_vs_structure(follow_steps)
-            )
-            if place_steps or follow_steps:
-                # After release-deferred, extension processFloats → TILE. Wait
-                # longer than LF5 default so structure ops see TILE not FLOAT.
-                settle_ids = move_step_window_ids(place_steps or follow_steps)
-                for _role, pin_wid in (role_pins or {}).items():
-                    if pin_wid is not None and str(pin_wid) not in settle_ids:
-                        settle_ids.append(str(pin_wid))
-                if settle_ids:
-                    settle_info = wait_for_window_ids_settled(backend, settle_ids)
-                    apply_log["followUpSettle"] = settle_info
-                    if settle_info.get("pending"):
-                        _eprint(
-                            "forge layout: residual targets not hard-ready: "
-                            f"{settle_info['pending']} (moving anyway)"
-                        )
-                move_t0 = time.monotonic()
-                if place_steps:
-                    rc, agg = run_mixed_steps(
-                        backend, place_steps, stop_on_error=True, print_each=False
-                    )
-                    apply_log["followUp"] = agg
-                    if rc != 0:
-                        _eprint("forge layout: follow-up place steps failed")
-                        out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
-                        out["ok"] = False
-                        out["apply"] = apply_log
-                        if still_open:
-                            out["error"] = (
-                                f"follow-up failed; roles still missing after launch: "
-                                f"{still_open}"
-                            )
-                        _layout_maybe_print_json(out, verbose=verbose, force=True)
-                        return rc
-                    # SE6: soft geom quiet after residual moves (learn + wait).
-                    geom_ids = move_step_window_ids(place_steps)
-                    if geom_ids:
-                        _layout_soft_geom_pass(
-                            backend,
-                            geom_ids,
-                            process_kind="move",
-                            apply_log=apply_log,
-                            log_key="followUpGeomSoft",
-                            call_started_mono=move_t0,
-                        )
-                else:
-                    apply_log["followUp"] = {"ok": True, "skipped": True, "reason": "no place"}
-
-                # Structure replan from post-place forest (fresh mon paths).
-                try:
-                    forest_struct = _load_live_forest()
-                    plan_struct = plan_reconcile(
-                        forest_struct,
-                        data,
-                        clean=clean,
-                        keep_others=keep_others,
-                        safe=safe,
-                        role_pins=role_pins or None,
-                        just_opened_roles=(
-                            set(role_pins.keys()) if role_pins else None
-                        ),
-                        workspace=workspace,
-                    )
-                except Exception as e:
-                    _eprint(f"forge layout: structure re-plan after place failed: {e}")
-                    plan_struct = plan2
-                struct_ext, _struct_open = partition_plan_actions(
-                    plan_struct.get("actions")
-                )
-                # Full residual sans focus from post-place forest. May still need
-                # moves when opens landed on the wrong mon (plan2 moved=0) — do
-                # not drop place ops. Split place→structure again so mon sticks
-                # before ensure_layout.
-                struct_structure = without_focus_actions(struct_ext)
-                struct_follow, _ = residual_follow_up(
-                    struct_structure,
-                    [],
-                    force_close=force_close,
-                    workspace=workspace,
-                )
-                place2, struct2 = partition_extension_steps_place_vs_structure(
-                    struct_follow
-                )
-                if place2:
-                    settle2_ids = move_step_window_ids(place2)
-                    if settle2_ids:
-                        apply_log["followUpPlace2Settle"] = (
-                            wait_for_window_ids_settled(backend, settle2_ids)
-                        )
-                    rc_p2, agg_p2 = run_mixed_steps(
-                        backend, place2, stop_on_error=True, print_each=False
-                    )
-                    apply_log["followUpPlace2"] = agg_p2
-                    if rc_p2 != 0:
-                        _eprint("forge layout: follow-up place2 steps failed")
-                        out = _layout_plan_meta(
-                            resolved, name, plan_struct, dry_run=False
-                        )
-                        out["ok"] = False
-                        out["apply"] = apply_log
-                        _layout_maybe_print_json(out, verbose=verbose, force=True)
-                        return rc_p2
-                    # Fresh structure plan after late mon rehome.
-                    try:
-                        forest_struct = _load_live_forest()
-                        plan_struct = plan_reconcile(
-                            forest_struct,
-                            data,
-                            clean=clean,
-                            keep_others=keep_others,
-                            safe=safe,
-                            role_pins=role_pins or None,
-                            just_opened_roles=(
-                                set(role_pins.keys()) if role_pins else None
-                            ),
-                            workspace=workspace,
-                        )
-                        struct_ext, _ = partition_plan_actions(
-                            plan_struct.get("actions")
-                        )
-                        struct_follow, _ = residual_follow_up(
-                            without_focus_actions(struct_ext),
-                            [],
-                            force_close=force_close,
-                            workspace=workspace,
-                        )
-                        _place3, struct2 = (
-                            partition_extension_steps_place_vs_structure(
-                                struct_follow
-                            )
-                        )
-                    except Exception as e:
-                        _eprint(
-                            f"forge layout: structure re-plan after place2 failed: {e}"
-                        )
-                if struct2:
-                    struct_ids = move_step_window_ids(struct2)
-                    for _role, pin_wid in (role_pins or {}).items():
-                        if pin_wid is not None and str(pin_wid) not in struct_ids:
-                            struct_ids.append(str(pin_wid))
-                    if struct_ids:
-                        apply_log["followUpStructureSettle"] = (
-                            wait_for_window_ids_settled(backend, struct_ids)
-                        )
-                    rc_s, agg_s = run_mixed_steps(
-                        backend, struct2, stop_on_error=True, print_each=False
-                    )
-                    apply_log["followUpStructure"] = agg_s
-                    if rc_s != 0:
-                        _eprint("forge layout: follow-up structure steps failed")
-                        out = _layout_plan_meta(
-                            resolved, name, plan_struct, dry_run=False
-                        )
-                        out["ok"] = False
-                        out["apply"] = apply_log
-                        _layout_maybe_print_json(out, verbose=verbose, force=True)
-                        return rc_s
-                else:
-                    apply_log["followUpStructure"] = {
-                        "ok": True,
-                        "skipped": True,
-                        "reason": "nothing to structure",
-                    }
-                plan2 = plan_struct
-            plan = plan2
-
-            # Belt: optional stable wait, then wrong-mon rehome for just-opened only.
-            # Pin mon-moves only (no ensure_* in the move batch — D014). After mon
-            # rehome, one structure rebind repairs TABBED groups that mon-root moves
-            # flatten (Wayland multi-open residual: residual structure tabs mon1,
-            # Meta rehomes pins to mon0, belt moves mon-root and leaves mon1 flat).
-            if role_pins and not still_open:
-                belt_stable: dict[str, Any] = {"skipped": True}
-                if wait_tree_stable:
-                    belt_stable = wait_for_tree_stable(
-                        _load_live_forest,
-                        timeout_ms=BELT_STABLE_TIMEOUT_MS,
-                        poll_ms=BELT_STABLE_POLL_MS,
-                        stable_samples=BELT_STABLE_SAMPLES,
-                    )
-                    apply_log["beltTreeStable"] = {
-                        k: v for k, v in belt_stable.items() if k != "forest"
-                    }
-                else:
-                    apply_log["beltTreeStable"] = {"skipped": True}
-                try:
-                    forest3 = belt_stable.get("forest")
-                    if not isinstance(forest3, dict):
-                        forest3 = _load_live_forest()
-                    plan3 = plan_reconcile(
-                        forest3,
-                        data,
-                        clean=clean,
-                        keep_others=keep_others,
-                        safe=safe,
-                        role_pins=role_pins,
-                        just_opened_roles=set(role_pins.keys()),
-                        workspace=workspace,
-                    )
-                except Exception as e:
-                    _eprint(f"forge layout: belt re-plan after residual failed: {e}")
-                else:
-                    belt_ext, _belt_open = partition_plan_actions(plan3.get("actions"))
-                    # Belt: pin-role moves only; focus is final pass after settle.
-                    belt_actions = belt_actions_from_plan(
-                        belt_ext, role_pins, include_focus=False
-                    )
-                    belt_steps, _ = residual_follow_up(
-                        belt_actions,
-                        [],
-                        force_close=force_close,
-                        workspace=workspace,
-                    )
-                    if belt_steps:
-                        belt_ids = move_step_window_ids(belt_steps)
-                        if belt_ids:
-                            belt_settle = wait_for_window_ids_settled(
-                                backend, belt_ids
-                            )
-                            apply_log["beltSettle"] = belt_settle
-                        belt_t0 = time.monotonic()
-                        rc, agg = run_mixed_steps(
-                            backend, belt_steps, stop_on_error=True, print_each=False
-                        )
-                        apply_log["beltFollowUp"] = agg
-                        if rc != 0:
-                            _eprint("forge layout: belt follow-up moves failed")
-                            out = _layout_plan_meta(resolved, name, plan3, dry_run=False)
-                            out["ok"] = False
-                            out["apply"] = apply_log
-                            _layout_maybe_print_json(out, verbose=verbose, force=True)
-                            return rc
-                        if belt_ids:
-                            _layout_soft_geom_pass(
-                                backend,
-                                belt_ids,
-                                process_kind="move",
-                                apply_log=apply_log,
-                                log_key="beltGeomSoft",
-                                call_started_mono=belt_t0,
-                            )
-                        # Structure rebind after belt mon-root moves (same
-                        # place→structure contract as residual follow-up).
-                        try:
-                            forest_bs = _load_live_forest()
-                            plan_bs = plan_reconcile(
-                                forest_bs,
-                                data,
-                                clean=clean,
-                                keep_others=keep_others,
-                                safe=safe,
-                                role_pins=role_pins,
-                                just_opened_roles=set(role_pins.keys()),
-                                workspace=workspace,
-                            )
-                            bs_ext, _ = partition_plan_actions(
-                                plan_bs.get("actions")
-                            )
-                            bs_follow, _ = residual_follow_up(
-                                without_focus_actions(bs_ext),
-                                [],
-                                force_close=force_close,
-                                workspace=workspace,
-                            )
-                            bs_place, bs_struct = (
-                                partition_extension_steps_place_vs_structure(
-                                    bs_follow
-                                )
-                            )
-                            if bs_place:
-                                bs_place_ids = move_step_window_ids(bs_place)
-                                if bs_place_ids:
-                                    apply_log["beltPlace2Settle"] = (
-                                        wait_for_window_ids_settled(
-                                            backend, bs_place_ids
-                                        )
-                                    )
-                                rc_bp, agg_bp = run_mixed_steps(
-                                    backend,
-                                    bs_place,
-                                    stop_on_error=True,
-                                    print_each=False,
-                                )
-                                apply_log["beltPlace2"] = agg_bp
-                                if rc_bp != 0:
-                                    _eprint(
-                                        "forge layout: belt place2 steps failed"
-                                    )
-                                    out = _layout_plan_meta(
-                                        resolved, name, plan_bs, dry_run=False
-                                    )
-                                    out["ok"] = False
-                                    out["apply"] = apply_log
-                                    _layout_maybe_print_json(
-                                        out, verbose=verbose, force=True
-                                    )
-                                    return rc_bp
-                                forest_bs = _load_live_forest()
-                                plan_bs = plan_reconcile(
-                                    forest_bs,
-                                    data,
-                                    clean=clean,
-                                    keep_others=keep_others,
-                                    safe=safe,
-                                    role_pins=role_pins,
-                                    just_opened_roles=set(role_pins.keys()),
-                                    workspace=workspace,
-                                )
-                                bs_ext, _ = partition_plan_actions(
-                                    plan_bs.get("actions")
-                                )
-                                bs_follow, _ = residual_follow_up(
-                                    without_focus_actions(bs_ext),
-                                    [],
-                                    force_close=force_close,
-                                    workspace=workspace,
-                                )
-                                _bp3, bs_struct = (
-                                    partition_extension_steps_place_vs_structure(
-                                        bs_follow
-                                    )
-                                )
-                            if bs_struct:
-                                bs_ids = move_step_window_ids(bs_struct)
-                                for _role, pin_wid in (role_pins or {}).items():
-                                    if (pin_wid is not None
-                                            and str(pin_wid) not in bs_ids):
-                                        bs_ids.append(str(pin_wid))
-                                if bs_ids:
-                                    apply_log["beltStructureSettle"] = (
-                                        wait_for_window_ids_settled(
-                                            backend, bs_ids
-                                        )
-                                    )
-                                rc_bs, agg_bs = run_mixed_steps(
-                                    backend,
-                                    bs_struct,
-                                    stop_on_error=True,
-                                    print_each=False,
-                                )
-                                apply_log["beltStructure"] = agg_bs
-                                if rc_bs != 0:
-                                    _eprint(
-                                        "forge layout: belt structure rebind failed"
-                                    )
-                                    out = _layout_plan_meta(
-                                        resolved, name, plan_bs, dry_run=False
-                                    )
-                                    out["ok"] = False
-                                    out["apply"] = apply_log
-                                    _layout_maybe_print_json(
-                                        out, verbose=verbose, force=True
-                                    )
-                                    return rc_bs
-                            else:
-                                apply_log["beltStructure"] = {
-                                    "ok": True,
-                                    "skipped": True,
-                                    "reason": "nothing to structure",
-                                }
-                            plan = plan_bs
-                        except Exception as e:
-                            _eprint(
-                                "forge layout: belt structure rebind failed: "
-                                f"{e}"
-                            )
-                            apply_log["beltStructure"] = {
-                                "ok": False,
-                                "error": str(e),
-                            }
-                            plan = plan3
-                    else:
-                        plan = plan3
-
-                # CT0/CT1: postOpenRetry Mode B thrash-recover is not the cold
-                # success path. Default after open: skeleton→bind residual only.
-                # Opt-in chaos recover: FORGE_LAYOUT_POST_OPEN_RETRY=1.
-                post_open_retry = (
-                    os.environ.get("FORGE_LAYOUT_POST_OPEN_RETRY", "")
-                    .strip()
-                    .lower()
-                    in ("1", "true", "yes", "on")
-                )
-                apply_log["postOpenRetry"] = {
-                    "needed": False,
-                    "skipped": not post_open_retry,
-                    "reason": (
-                        None
-                        if post_open_retry
-                        else "ct1-cold-path (set FORGE_LAYOUT_POST_OPEN_RETRY=1)"
-                    ),
-                }
-                if post_open_retry:
-                    try:
-                        time.sleep(0.45)
-                        forest4 = _load_live_forest()
-                        plan4 = plan_reconcile(
-                            forest4,
-                            data,
-                            clean=clean,
-                            keep_others=keep_others,
-                            safe=safe,
-                            role_pins=role_pins,
-                            just_opened_roles=set(role_pins.keys()),
-                            workspace=workspace,
-                        )
-                    except Exception as e:
-                        _eprint(f"forge layout: post-open re-plan failed: {e}")
-                    else:
-                        thrash4 = plan4.get("thrashState") or {}
-                        need_retry = bool(thrash4.get("thrashed")) or any(
-                            isinstance(a, dict)
-                            and (
-                                str(a.get("op") or "").strip().lower()
-                                in ("move", "ensure_order", "bind")
-                                or (
-                                    str(a.get("op") or "").strip().lower()
-                                    == "ensure_layout"
-                                    and a.get("windowIds")
-                                )
-                            )
-                            for a in (plan4.get("actions") or [])
-                        )
-                        apply_log["postOpenRetry"] = {
-                            "needed": need_retry,
-                            "skipped": False,
-                            "thrashed": bool(thrash4.get("thrashed")),
-                            "reasons": thrash4.get("reasons"),
-                        }
-                        if need_retry:
-                            retry_ext, _ = partition_plan_actions(
-                                plan4.get("actions")
-                            )
-                            retry_actions = [
-                                a
-                                for a in retry_ext
-                                if isinstance(a, dict)
-                                and str(a.get("op") or "").strip().lower()
-                                in (
-                                    "move",
-                                    "bind",
-                                    "ensure_layout",
-                                    "ensure_order",
-                                    "ensure_sizes",
-                                    "focus",
-                                )
-                            ]
-                            retry_steps, _ = residual_follow_up(
-                                retry_actions,
-                                [],
-                                force_close=force_close,
-                                workspace=workspace,
-                            )
-                            if retry_steps:
-                                retry_ids = move_step_window_ids(retry_steps)
-                                if retry_ids:
-                                    apply_log["postOpenRetrySettle"] = (
-                                        wait_for_window_ids_settled(
-                                            backend, retry_ids
-                                        )
-                                    )
-                                rc, agg = run_mixed_steps(
-                                    backend,
-                                    retry_steps,
-                                    stop_on_error=True,
-                                    print_each=False,
-                                )
-                                apply_log["postOpenRetryFollowUp"] = agg
-                                if rc != 0:
-                                    _eprint("forge layout: post-open retry failed")
-                                    out = _layout_plan_meta(
-                                        resolved, name, plan4, dry_run=False
-                                    )
-                                    out["ok"] = False
-                                    out["apply"] = apply_log
-                                    _layout_maybe_print_json(
-                                        out, verbose=verbose, force=True
-                                    )
-                                    return rc
-                                plan = plan4
-
-            if still_open:
-                out = _layout_plan_meta(resolved, name, plan2, dry_run=False)
-                out["ok"] = False
-                out["error"] = f"roles still missing after launch: {still_open}"
-                out["apply"] = apply_log
-                _layout_maybe_print_json(out, verbose=verbose, force=True)
-                return 1
-
-            if open_failures:
-                out = _layout_plan_meta(resolved, name, plan, dry_run=False)
-                out["ok"] = False
-                out["error"] = f"open failed for roles: {open_failures}"
-                out["apply"] = apply_log
-                _layout_maybe_print_json(out, verbose=verbose, force=True)
-                return 1
-
-            # Final open-leaf + profile focus after chrome/PWA map thrash settles.
-            focus_rc, focus_plan = _layout_final_focus_pass(
-                backend,
-                data,
-                clean=clean,
-                keep_others=keep_others,
-                safe=safe,
-                workspace=workspace,
-                role_pins=role_pins,
-                force_close=force_close,
-                apply_log=apply_log,
-            )
-            if focus_rc != 0:
-                out = _layout_plan_meta(
-                    resolved, name, focus_plan or plan, dry_run=False
-                )
-                out["ok"] = False
-                out["error"] = "final focus pass failed"
-                out["apply"] = apply_log
-                _layout_maybe_print_json(out, verbose=verbose, force=True)
-                return focus_rc
-            if isinstance(focus_plan, dict):
-                plan = focus_plan
-        finally:
-            if batch_ok:
-                _end_ok, batch_end = _layout_batch_call(backend, "end")
-                apply_log["layoutBatchEnd"] = batch_end
-                if not _end_ok:
-                    _eprint(
-                        "forge layout: LayoutBatch end failed: "
-                        f"{batch_end.get('error')}"
-                    )
-    else:
-        # No opens: still one post-structure focus phase + soft barrier.
-        focus_rc, focus_plan = _layout_final_focus_pass(
-            backend,
-            data,
-            clean=clean,
-            keep_others=keep_others,
-            safe=safe,
-            workspace=workspace,
-            role_pins=role_pins,
-            force_close=force_close,
-            apply_log=apply_log,
-        )
-        if focus_rc != 0:
-            out = _layout_plan_meta(
-                resolved, name, focus_plan or plan, dry_run=False
-            )
-            out["ok"] = False
-            out["error"] = "final focus pass failed"
-            out["apply"] = apply_log
-            _layout_maybe_print_json(out, verbose=verbose, force=True)
-            return focus_rc
-        if isinstance(focus_plan, dict):
-            plan = focus_plan
-
-    _eprint("  ok")
-    out = _layout_plan_meta(resolved, name, plan, dry_run=False)
-    out["apply"] = apply_log
-    _layout_maybe_print_json(out, verbose=verbose)
-    return 0
 
 
 def _layout_profile_write_path(name: str) -> Path:
@@ -5608,6 +4217,17 @@ def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
                             ),
                         }
                     )
+                elif act == "r032-tab-click-responsive-note":
+                    entry["actions"].append(
+                        {
+                            "step": act,
+                            "ok": True,
+                            "detail": (
+                                "human: after layout, repeated tab-strip "
+                                "clicks switch open leaf (no body click first)"
+                            ),
+                        }
+                    )
                 else:
                     entry["actions"].append({"step": act, "unknown": True})
                     action_ok = False
@@ -6444,7 +5064,7 @@ def build_parser() -> argparse.ArgumentParser:
     nested_p.add_argument(
         "--size",
         default=None,
-        help="Virtual mode size WxH per dummy mon (default: 1500x1000)",
+        help="Virtual mode size WxH per dummy mon (default: 1920x1080 Full HD)",
     )
     nested_p.add_argument(
         "--monitors",
@@ -6458,7 +5078,7 @@ def build_parser() -> argparse.ArgumentParser:
     nested_p.add_argument(
         "--scale",
         default=None,
-        help="Dummy monitor scale(s): one value or comma list (default: 1)",
+        help="Dummy monitor scale(s): one value or comma list (default: 1, no scaling)",
     )
     nested_p.add_argument(
         "--replace",

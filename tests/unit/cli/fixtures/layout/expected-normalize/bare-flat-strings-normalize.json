@@ -1,0 +1,59 @@
+{
+  "error": null,
+  "id": "bare-flat-strings-normalize",
+  "input": ["firefox", "ghostty"],
+  "ok": true,
+  "op": "normalize",
+  "opts": {},
+  "output": {
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "firefox",
+            "roles": ["firefox"]
+          },
+          {
+            "id": "ghostty",
+            "roles": ["ghostty"]
+          }
+        ],
+        "split": "hsplit"
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "firefox",
+        "match": {
+          "class": "firefox"
+        },
+        "open": {
+          "app": "firefox"
+        },
+        "slot": "mon0.firefox"
+      },
+      {
+        "id": "ghostty",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty"
+        },
+        "slot": "mon0.ghostty"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": null
+}

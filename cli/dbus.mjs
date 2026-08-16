@@ -27,6 +27,9 @@ export const METHOD_IN_ARGS = Object.freeze({
   LayoutBatch: 1,
   SaveSessionLayout: 0,
   GetThrashCatalog: 0,
+  ApplyLayout: 1,
+  GetLayoutApply: 1,
+  CancelLayoutApply: 1,
 });
 
 export const EXIT_GDBUS_MISSING = 127;

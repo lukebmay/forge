@@ -26,9 +26,9 @@ lifetime. Executor may be a stub that emits phases and Done.
 - [x] `SESSION_API_VERSION` bumped to **10**
 - [x] Units for parse / busy / cancel unwind / chrome hardMs re-arm
 - [x] No `layout_plan.py` port; stub does not call `planReconcile`
-- [ ] Nest live gdbus smoke — **blocked** this session (nest Shell
-      failed: `Unable to open display ':1'`). Host still needs
-      logout to load tip methods.
+- [x] Host live gdbus smoke — **PASS** 2026-08-15 after Wayland restart
+      (`apiVersion` 10; ApplyLayout stub → phases → terminal Done;
+      second start after Done OK). Nest optional (not required for AL4).
 
 ## Context for the next agent (complete + succinct)
 

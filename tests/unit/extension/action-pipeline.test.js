@@ -314,16 +314,23 @@ describe("action-pipeline revealGroupChild", () => {
     expect(reassert).not.toHaveBeenCalled();
   });
 
-  it("keyboard:true activates and afterFocus", () => {
+  it("keyboard:true focuses, activates, then afterFocus (R032 restack last)", () => {
     const { tab, wB, nB } = tabbedPair();
-    const after = vi.spyOn(wm(), "afterFocus");
+    const order = [];
+    wB.focus = vi.fn(() => order.push("focus"));
+    wB.activate = vi.fn(() => order.push("activate"));
+    const after = vi.spyOn(wm(), "afterFocus").mockImplementation(() => {
+      order.push("afterFocus");
+    });
 
     revealGroupChild(wm(), nB, { keyboard: true, source: "dbus-focus" });
 
     expect(tab.lastTabFocus).toBe(wB);
     expect(wB.raise).toHaveBeenCalled();
+    expect(wB.focus).toHaveBeenCalled();
     expect(wB.activate).toHaveBeenCalled();
     expect(after).toHaveBeenCalledWith(nB, { source: "dbus-focus" });
+    expect(order).toEqual(["focus", "activate", "afterFocus"]);
   });
 
   it("pin:true pins open leaf so meta-focus steal restores", () => {

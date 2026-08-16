@@ -1,0 +1,144 @@
+{
+  "error": null,
+  "id": "profile-dev-v2-validate-offline",
+  "input": null,
+  "ok": true,
+  "op": "validate",
+  "opts": {},
+  "output": {
+    "description": "Dual-mon morning on black (WR1 fixture)",
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "left-tab",
+            "layout": "tabbed",
+            "roles": ["chrome-luke", "grok"]
+          },
+          {
+            "id": "term",
+            "roles": ["ghostty-left"]
+          }
+        ],
+        "split": "hsplit"
+      },
+      "mon1": {
+        "children": [
+          {
+            "id": "term",
+            "roles": ["ghostty-right"]
+          },
+          {
+            "id": "comms",
+            "layout": "tabbed",
+            "roles": ["youtube", "gmail", "voice"]
+          }
+        ],
+        "split": "hsplit"
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "chrome-luke",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Google Chrome"
+        },
+        "open": {
+          "app": "google-chrome",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.left-tab"
+      },
+      {
+        "id": "grok",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Grok"
+        },
+        "open": {
+          "app": "Grok",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon0.left-tab"
+      },
+      {
+        "id": "ghostty-left",
+        "match": {
+          "class": "com.mitchellh.ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "timeout": 15000,
+          "wmClass": "com.mitchellh.ghostty"
+        },
+        "slot": "mon0.term"
+      },
+      {
+        "id": "ghostty-right",
+        "match": {
+          "class": "com.mitchellh.ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "timeout": 15000,
+          "wmClass": "com.mitchellh.ghostty"
+        },
+        "slot": "mon1.term"
+      },
+      {
+        "id": "youtube",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "YouTube"
+        },
+        "open": {
+          "app": "YouTube",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      },
+      {
+        "id": "gmail",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Gmail"
+        },
+        "open": {
+          "app": "Gmail",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      },
+      {
+        "id": "voice",
+        "match": {
+          "class": "Google-chrome",
+          "title~=": "Voice"
+        },
+        "open": {
+          "app": "Google Voice",
+          "timeout": 25000,
+          "wmClass": "Google-chrome"
+        },
+        "slot": "mon1.comms"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": "profile-dev-v2.json"
+}

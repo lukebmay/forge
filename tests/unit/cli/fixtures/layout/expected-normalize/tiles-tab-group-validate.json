@@ -1,0 +1,62 @@
+{
+  "error": null,
+  "id": "tiles-tab-group-validate",
+  "input": {
+    "tiles": {
+      "mon0": [["a", "b"]]
+    }
+  },
+  "ok": true,
+  "op": "validate",
+  "opts": {},
+  "output": {
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "s0",
+            "layout": "tabbed",
+            "roles": ["a", "b"]
+          }
+        ]
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "monExplicit": true,
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "a",
+        "match": {
+          "class": "a"
+        },
+        "open": {
+          "app": "a",
+          "wmClass": "a"
+        },
+        "slot": "mon0.s0"
+      },
+      {
+        "id": "b",
+        "match": {
+          "class": "b"
+        },
+        "open": {
+          "app": "b",
+          "wmClass": "b"
+        },
+        "slot": "mon0.s0"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": null
+}

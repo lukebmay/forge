@@ -8,8 +8,9 @@
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
 not a `cli/` planner port).
 
-**Active:** **AL1 + AL4 code done** (uncommitted). Next **AL2** normalize
-pure JS (expected-backed). Nest retest AL4 blocked this session (display :1).
+**Active:** **AL1–AL8 done** (`apiVersion` 10; product layout =
+ApplyLayout). **R020** nest EOS live PASS; **R031** float-border and
+**R032** tab-strip click **shipped** (nest smoke).
 
 **Agents:** default implement = **Grok 4.5** (prompt as medium). Plan
 reshape / AL0 / C1 / messy DnD = **Grok 4.6** (xhigh for design).
@@ -44,18 +45,24 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | done | First-layout FLOAT (R024): always force-paint at batch end; skip mid-batch percent write-back | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
 | done | Install `--kit=vim` + stale-kit warning | [completed](./tasks/completed/forge-install-reapply-kit.md) |
 | done | R019 CENTER both dirs host smoke (tip load) | HANDOFF residual |
-| later | R020 full VLC end-of-video (L0 green) | [R020](./REGRESSIONS.md) |
+| done | **R032** tab-strip click dead (WR14 on ApplyLayout + restack last) | [completed](./tasks/completed/forge-tab-click-unresponsive.md) |
+| done | **R031** float-border ghost tile | [completed](./tasks/completed/forge-float-border-ghost-tile.md) · [REG](./REGRESSIONS.md) |
+| done | R020 VLC EOS nest live residual | [R020](./REGRESSIONS.md) · `tests/fixtures/media/` |
 | done | **IC2** `revealGroupChild` (D025) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic2-reveal-open-leaf.md) |
 | done | **IC0** catalog + D024–D026 | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic0-catalog.md) |
 | done | **IC3** tile-slot authority (R020) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic3-tile-slot-authority.md) |
 | done | **IC1** drop-intent + CENTER group both directions (R019) | [task](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic1-drop-intent.md) |
-| later | **IC4** fold leftover CLI waiters — **skip** if ApplyLayout deletes them | [task](./tasks/forge-canonical-contracts_ic4-settle-fold.md) |
+| done | **IC4** fold leftover CLI waiters — **skipped** (AL8 deleted waiters) | [skipped](./plans/forge-canonical-contracts/completed/forge-canonical-contracts_ic4-settle-fold.md) |
 | done | In-process `ApplyLayout` AL0 design lock (D037/D038) | [task](./tasks/forge-layout-in-process_al0-design.md) · [plan](./plans/forge-layout-in-process.md) |
 | done | AL1 expected plan dump (9 cases + parity pytest) | [completed](./plans/forge-layout-in-process/completed/forge-layout-in-process_al1-expected-dump.md) |
-| done | AL4 DBus stub (`ApplyLayout` + signals; L0; nest pending) | [completed](./plans/forge-layout-in-process/completed/forge-layout-in-process_al4-dbus-apply-layout.md) |
-| next | AL2 shared plan normalize (expected-backed pure JS) | [AL2](./tasks/forge-layout-in-process_al2-shared-plan-normalize.md) |
-| next | AL3 planReconcile pure JS (after AL2) | [AL3](./tasks/forge-layout-in-process_al3-shared-plan-reconcile.md) |
-| later | Nest/host smoke AL4 (`apiVersion` 10) | nest or logout |
+| done | AL4 DBus stub (`ApplyLayout` + signals; L0; **host live PASS**) | [completed](./plans/forge-layout-in-process/completed/forge-layout-in-process_al4-dbus-apply-layout.md) |
+| done | AL2 shared plan normalize (expected-backed pure JS) | [AL2](./plans/forge-layout-in-process/completed/forge-layout-in-process_al2-shared-plan-normalize.md) |
+| done | AL3 planReconcile pure JS (AL1 expected parity) | [AL3](./plans/forge-layout-in-process/completed/forge-layout-in-process_al3-shared-plan-reconcile.md) |
+| done | AL5 structure executor (no-open; setLayout path) | [AL5](./plans/forge-layout-in-process/completed/forge-layout-in-process_al5-executor-structure.md) |
+| done | AL6 open/map (spawn + LayoutBatch + pin) | [AL6](./plans/forge-layout-in-process/completed/forge-layout-in-process_al6-executor-open.md) |
+| done | AL7 settle (hard/soft/focus/verify) | [AL7](./plans/forge-layout-in-process/completed/forge-layout-in-process_al7-executor-settle.md) |
+| done | AL8 thin CLI cutover (nest `_forge-test-clean` + `_forge-test-ghosttys` PASS) | [AL8](./plans/forge-layout-in-process/completed/forge-layout-in-process_al8-cli-cutover.md) |
+| optional | Open-heavy dual-mon `_forge-test-*` on nest mon=2 / host | live |
 | done | FCC **C0** kill monocle + inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
 | done | FCC **C1** `setLayout` I1 | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
 | later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) |
@@ -87,8 +94,14 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 12. **R027 / Wave Z** — **done** (R027 nest; Wave Z host live PASS).
 13. **AL0** — **locked** (D038).
 14. **AL1 + AL4** — **code done** (expected dump + DBus stub). Nest live pending.
-15. **AL2 → AL3** — shared planner pure JS against expected fixtures.
-16. **IC4** — **skip** when AL8 deletes CLI waiters.
+15. **AL2 + AL3** — **done** (normalize + planReconcile pure JS vs expected).
+16. **AL5** — **done** (structure executor; setLayout, no `_layoutOp`).
+17. **AL6** — **done** (open/map; LayoutBatch + pin wait).
+18. **AL7** — **done** (hard/soft/focus/verify; L0).
+19. **AL8** — **done** (thin CLI; nest `_forge-test-clean` PASS; IC4 skipped).
+20. **R032** — **done** (Done restack-only; nest smoke).
+21. **R031** — **done** (no ghost TILE wrap; float border = Meta frame).
+22. **R020** — **done** nest mon=1 EOS + D026 max/fs restore (post-AL8).
 
 Do not assign a 4.5 agent `layout_plan.py` → JS.
 

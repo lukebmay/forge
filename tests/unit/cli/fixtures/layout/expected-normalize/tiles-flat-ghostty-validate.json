@@ -1,0 +1,81 @@
+{
+  "error": null,
+  "id": "tiles-flat-ghostty-validate",
+  "input": {
+    "tiles": {
+      "mon0": ["ghostty", "ghostty", "ghostty"]
+    }
+  },
+  "ok": true,
+  "op": "validate",
+  "opts": {},
+  "output": {
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "ghostty",
+            "roles": ["ghostty"]
+          },
+          {
+            "id": "ghostty-2",
+            "roles": ["ghostty-2"]
+          },
+          {
+            "id": "ghostty-3",
+            "roles": ["ghostty-3"]
+          }
+        ],
+        "split": "hsplit"
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "monExplicit": true,
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "ghostty",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "wmClass": "ghostty"
+        },
+        "slot": "mon0.ghostty"
+      },
+      {
+        "id": "ghostty-2",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "wmClass": "ghostty"
+        },
+        "slot": "mon0.ghostty-2"
+      },
+      {
+        "id": "ghostty-3",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "wmClass": "ghostty"
+        },
+        "slot": "mon0.ghostty-3"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": null
+}

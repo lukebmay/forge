@@ -574,6 +574,87 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "desk; overlay visible until forge returns; clicks do nothing."
         ),
     ),
+    LiveCase(
+        id="L1.r032-tab-click-responsive",
+        layer=LAYER_L1,
+        title="After layout, tab-strip clicks switch open leaf (R032)",
+        behaviors=(
+            "open-leaf",
+            "settle-soft",
+            "layout-apply",
+        ),
+        regressions=("R032", ),
+        profile="_forge-test-dual",
+        setup=("ensure-dev-shape", "keep-agent"),
+        actions=("r032-tab-click-responsive-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+        ),
+        notes=(
+            "R032: immediately after forge layout returns, click tabs in the "
+            "strip (not the window body first). Each click must reveal that "
+            "child. Must not no-op until a non-group tile or app-surface "
+            "click. Distinct from R025 (wrong size) and R026 (pin snap-back). "
+            "L0: bug-tab-click-activate R032 (Done restack-only, freeze) + "
+            "action-pipeline keyboard order. "
+            "1-mon host: same on the single tab group. Human: repeated strip "
+            "clicks switch the open leaf."
+        ),
+    ),
+    LiveCase(
+        id="L1.r020-vlc-end-of-video",
+        layer=LAYER_L1,
+        title="Tiled VLC end-of-video stays in slot (R020)",
+        behaviors=(
+            "layout-apply",
+            "structure-bind",
+            "settle-soft",
+        ),
+        regressions=("R020", ),
+        profile="_forge-test-ghosttys",
+        setup=("close-chrome", "keep-agent", "keep-ghostty-tiles"),
+        actions=("r020-vlc-end-of-video-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+        ),
+        notes=(
+            "R020 (D026): tile VLC in a multi-tile slot, play "
+            "tests/fixtures/media/vlc-end-of-video.webm to EOS. Window must "
+            "stay TILE in its slot — not Meta fullscreen / off-slot max. "
+            "Nest mon=1 PASS 2026-08-15 post-AL8 (EOS stay + force max/fs "
+            "restore); nest vout weak — host eyes-on optional. Action is "
+            "note-only until harness can launch+wait EOS."
+        ),
+    ),
+    LiveCase(
+        id="L1.r031-float-border-follows",
+        layer=LAYER_L1,
+        title="Float app (Kooha) no blank tile; border follows float (R031)",
+        behaviors=(
+            "layout-apply",
+            "structure-bind",
+        ),
+        regressions=("R031", ),
+        profile="_forge-test-ghosttys",
+        setup=("close-chrome", "keep-agent", "keep-ghostty-tiles"),
+        actions=("r031-float-border-follows-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+        ),
+        notes=(
+            "R031: open Kooha (wmClass io.github.seadve.Kooha / kooha) while a "
+            "tiled desk exists. Expect: FLOAT only, no blank TILE sibling / "
+            "reserved wrap, floated red border tracks the Meta frame (not a "
+            "ghost slot). L0 bug-r031-float-border-ghost-tile. Optional "
+            "alternate: any always-float rule."
+        ),
+    ),
 )
 
 

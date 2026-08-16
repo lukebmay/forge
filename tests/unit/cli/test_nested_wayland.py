@@ -49,7 +49,7 @@ from nested_wayland import (  # noqa: E402
 
 
 def test_parse_size_ok() -> None:
-    assert parse_size("1500x1000") == "1500x1000"
+    assert parse_size("1920x1080") == "1920x1080"
     assert parse_size(" 1920X1080 ") == "1920x1080"
     assert parse_size("1280x720@60.0") == "1280x720@60.0"
 
@@ -73,15 +73,26 @@ def test_parse_num_monitors() -> None:
 def test_dummy_mode_specs_colon_not_comma() -> None:
     """Mutter g_strsplit(mode_specs, \":\") — commas are invalid."""
     assert dummy_mode_specs("1280x720", 2) == "1280x720"
-    assert ":" not in dummy_mode_specs("1500x1000", 1) or True
-    assert "," not in dummy_mode_specs("1500x1000", 2)
+    assert ":" not in dummy_mode_specs("1920x1080", 1) or True
+    assert "," not in dummy_mode_specs("1920x1080", 2)
     assert dummy_monitor_scales("1", 2) == "1,1"
     assert dummy_monitor_scales("1,2", 2) == "1,2"
 
 
+def test_default_size_and_scale_full_hd_no_scale() -> None:
+    """Nest defaults: Full HD per dummy mon, scale 1 (no scaling)."""
+    import nested_wayland as nw
+
+    assert nw.DEFAULT_SIZE == "1920x1080"
+    assert nw.DEFAULT_SCALE == "1"
+    assert parse_size(nw.DEFAULT_SIZE) == "1920x1080"
+    assert dummy_monitor_scales(nw.DEFAULT_SCALE, 1) == "1"
+    assert dummy_monitor_scales(nw.DEFAULT_SCALE, 2) == "1,1"
+
+
 def test_host_primary_logical_size_from_tree(
     monkeypatch: pytest.MonkeyPatch, ) -> None:
-    """Nest default size should track host primary logical WxH when forge tree works."""
+    """host_primary_logical_size still probes host tree (opt-in, not nest default)."""
     import nested_wayland as nw
 
     class FakeProc:
@@ -227,7 +238,7 @@ def test_format_status_text() -> None:
         "forge_ready": False,
         "display": "wayland-forge",
         "host_wayland": "wayland-0",
-        "size": "1500x1000",
+        "size": "1920x1080",
         "shell_pid": 1,
         "dbus_pid": 2,
         "bus_address": "unix:path=/tmp/bus",

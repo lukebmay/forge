@@ -1,6 +1,6 @@
 # Plan: In-process `ApplyLayout` (layout rearchitecture)
 
-**Status:** **AL0 locked** · **AL1 + AL4 code done** · next AL2  
+**Status:** **AL0 locked** · **AL1–AL8 done** (thin CLI cutover)  
 **Priority:** after Insert A live + tab-click residuals + **TD1** (all
 done)  
 **Decision:** [D037](../../docs/DECISIONS.md) · shape [D038](../../docs/DECISIONS.md)  
@@ -9,7 +9,7 @@ done)
 after DBus exists) · [project.md](../project.md) § Layout apply
 architecture · D008–D019 · D021 · D034–D036  
 **Created:** 2026-08-14  
-**Updated:** 2026-08-15 (AL1+AL4)
+**Updated:** 2026-08-15 (AL1–AL8; nest `_forge-test-clean` + `_forge-test-ghosttys` PASS)
 
 ## Why this exists
 
@@ -380,13 +380,13 @@ OK: no shared files). Do not port the planner in AL4.
 
 ### AL2 — Shared normalize / validate / desugar
 
-**Depends:** AL1 (or can start against live Python, then lock to expected fixtures). **Agent:** 4.6. **gi-free.**
+**Depends:** AL1 (or can start against live Python, then lock to expected fixtures). **Agent:** 4.6. **gi-free.** **Done 2026-08-15.**
 
-- [ ] `lib/shared/layout-plan.js` exports normalize + validate +
+- [x] `lib/shared/layout-plan.js` exports normalize + validate +
       desugar used by `validate_reconcile_profile`
-- [ ] Vitest expected: those stages match frozen profile IR
-- [ ] No `gi://` / `node:` / `fs`
-- [ ] Python still owns apply
+- [x] Vitest expected: those stages match frozen profile IR
+- [x] No `gi://` / `node:` / `fs`
+- [x] Python still owns apply
 
 ### AL3 — Shared `planReconcile` expected-fixture parity
 
@@ -402,18 +402,19 @@ OK: no shared files). Do not port the planner in AL4.
 
 ### AL4 — DBus `ApplyLayout` surface
 
-**Depends:** AL0 ack. **Parallel with AL1–AL3.** **Agent:** 4.6.
+**Depends:** AL0 ack. **Parallel with AL1–AL3.** **Agent:** 4.6. **Done 2026-08-15** (host live PASS).
 
-- [ ] SessionApi: `ApplyLayout` / `GetLayoutApply` /
+- [x] SessionApi: `ApplyLayout` / `GetLayoutApply` /
       `CancelLayoutApply` + Progress/Done signals
-- [ ] In-memory single-flight run bag (`LayoutApplyRun` or
+- [x] In-memory single-flight run bag (`LayoutApplyRun` or
       equivalent Lifetime/SourceBag — not new one-off timer fields
       on WM)
-- [ ] R027 show at start / clear on terminal; chrome safety cap
+- [x] R027 show at start / clear on terminal; chrome safety cap
       aligned to apply lifetime (not 30s)
-- [ ] Stub executor may emit phases and Done without planning
-- [ ] Units: parse request, busy, cancel unwind, chrome lifetime
-- [ ] Bump `SESSION_API_VERSION`
+- [x] Stub executor may emit phases and Done without planning
+- [x] Units: parse request, busy, cancel unwind, chrome lifetime
+- [x] Bump `SESSION_API_VERSION`
+- [x] Host live smoke (`apiVersion` 10 + stub phases)
 
 ### AL5 — Structure executor (no-open)
 
@@ -431,28 +432,28 @@ OK: no shared files). Do not port the planner in AL4.
 
 **Depends:** AL5. **Agent:** 4.6.
 
-- [ ] Port `open_action_to_launch_fields` / ghostty rewrite /
+- [x] Port `open_action_to_launch_fields` / ghostty rewrite /
       chrome-family serialize (D034) to `lib/shared`
-- [ ] GJS spawn + PlaceNext facade; no CLI launch fallback
-- [ ] Map wait: admit + Meta census (D035) + title-then-class pin
+- [x] GJS spawn + PlaceNext facade; no CLI launch fallback
+- [x] Map wait: admit + Meta census (D035) + title-then-class pin
       (D034) on signals, not GetTree poll
-- [ ] Residual replan with pins; LayoutBatch begin → release → end
+- [x] Residual replan with pins; LayoutBatch begin → release → end
       before residual structure
-- [ ] Nest/host `_forge-test-*` open path
+- [ ] Nest/host `_forge-test-*` open path (L0 done; nest not run)
 
 ### AL7 — D019 hard / soft / focus / verify in-process
 
 **Depends:** AL6 (no-open hard/soft may land at end of AL5 if
 cheaper). **Agent:** 4.6.
 
-- [ ] Hard-ready on Meta signals + shared settled predicate;
+- [x] Hard-ready on Meta signals + shared settled predicate;
       `HARD_TIMEOUT_MS` call clock
-- [ ] Focus once via `revealGroupChild` + pin (D018)
-- [ ] Soft barrier via `settle-math` + pin restore; heuristics
+- [x] Focus once via `revealGroupChild` + pin (D018)
+- [x] Soft barrier via `settle-math` + pin restore; heuristics
       write under `forgeConfigHome`
-- [ ] Verify once; belt moves-only (D014)
-- [ ] LF6 tree-stable stays **opt-in** (`waitTreeStable` flag)
-- [ ] No JS function named as a GetTree poll twin of
+- [x] Verify once; belt moves-only (D014)
+- [x] LF6 tree-stable stays **opt-in** (`waitTreeStable` flag)
+- [x] No JS function named as a GetTree poll twin of
       `wait_until_hard_ready`
 
 ### AL8 — Thin CLI cutover + delete Python waiters
@@ -460,17 +461,17 @@ cheaper). **Agent:** 4.6.
 **Depends:** AL7 live `_forge-test-*` PASS. **Agent:** 4.5 medium
 for the client; 4.6 for deletions.
 
-- [ ] Python (then Node) client: load profile, gdisplays,
+- [x] Python (then Node) client: load profile, gdisplays,
       `ApplyLayout`, stream Progress, wait Done, map cancel
-- [ ] Default new path; `FORGE_LAYOUT_LEGACY=1` only this slice
-- [ ] Delete CLI apply body: GetTree poll waiters,
+- [x] Default new path; `FORGE_LAYOUT_LEGACY` deleted after live PASS
+- [x] Delete CLI apply body: GetTree poll waiters,
       `_layout_final_focus_pass` sleep, LayoutBatch chrome/begin
       orchestration
-- [ ] Close IC4 as **skipped**
-- [ ] Contracts: collapse “two settle brains” — CLI layout no
+- [x] Close IC4 as **skipped**
+- [x] Contracts: collapse “two settle brains” — CLI layout no
       longer waits
-- [ ] Delete `FORGE_LAYOUT_LEGACY` before the slice is done
-- [ ] `layout list|show|save` may stay Python
+- [x] Delete `FORGE_LAYOUT_LEGACY` before the slice is done
+- [x] `layout list|show|save` may stay Python
 
 ## Risks / kill criteria
 
@@ -492,13 +493,13 @@ for the client; 4.6 for deletions.
 | --- | --- | --- |
 | AL0 design | [al0-design](../tasks/forge-layout-in-process_al0-design.md) | ready (ack to start AL1/AL4) |
 | AL1 expected | [al1-expected-dump](./completed/forge-layout-in-process_al1-expected-dump.md) | done |
-| AL2 normalize | [al2-shared-plan-normalize](../tasks/forge-layout-in-process_al2-shared-plan-normalize.md) | next |
-| AL3 reconcile | [al3-shared-plan-reconcile](../tasks/forge-layout-in-process_al3-shared-plan-reconcile.md) | next |
+| AL2 normalize | [al2-shared-plan-normalize](./completed/forge-layout-in-process_al2-shared-plan-normalize.md) | done |
+| AL3 reconcile | [al3-shared-plan-reconcile](./completed/forge-layout-in-process_al3-shared-plan-reconcile.md) | done |
 | AL4 DBus | [al4-dbus-apply-layout](./completed/forge-layout-in-process_al4-dbus-apply-layout.md) | done (L0; nest pending) |
-| AL5 structure | [al5-executor-structure](../tasks/forge-layout-in-process_al5-executor-structure.md) | draft |
-| AL6 open | [al6-executor-open](../tasks/forge-layout-in-process_al6-executor-open.md) | draft |
-| AL7 settle | [al7-executor-settle](../tasks/forge-layout-in-process_al7-executor-settle.md) | draft |
-| AL8 cutover | [al8-cli-cutover](../tasks/forge-layout-in-process_al8-cli-cutover.md) | draft |
+| AL5 structure | [al5-executor-structure](./completed/forge-layout-in-process_al5-executor-structure.md) | done |
+| AL6 open | [al6-executor-open](./completed/forge-layout-in-process_al6-executor-open.md) | done (L0; nest not run) |
+| AL7 settle | [al7-executor-settle](./completed/forge-layout-in-process_al7-executor-settle.md) | done (L0; nest not run) |
+| AL8 cutover | [al8-cli-cutover](./completed/forge-layout-in-process_al8-cli-cutover.md) | done |
 
 ## Which agent
 
@@ -512,6 +513,25 @@ for the client; 4.6 for deletions.
 | Review | `grok-4.6` | A then B if used | After first live `_forge-test-*` |
 
 ## Session note
+
+**2026-08-15 (AL8):** Thin CLI cutover. `layout_apply_client` +
+`forge` product path → ApplyLayout; deleted poll apply body +
+`_layout_final_focus_pass` + product LayoutBatch chrome + GetTree
+waiters; LEGACY gone; IC4 skipped; contracts Settle updated. Live nest
+mon=1 `_forge-test-clean` + `_forge-test-ghosttys` PASS.
+
+**2026-08-15 (AL7):** Settle bag + session deps live; L0
+`layout-apply-settle` 27 + run hard→soft→verify. Suite **157**.
+Nest not run. Next AL8 thin CLI.
+
+**2026-08-15 (AL6):** Open/map executor: `lib/shared/layout-open.js` +
+`layout-apply-open.js`; GJS spawn/PlaceNext; signal pin wait; residual
+replan. L0 125. Nest not run. Next AL7 settle.
+
+**2026-08-15 (AL2):** `lib/shared/layout-plan.js` normalize/validate/desugar
+ports Python; 46 oracle fixtures via
+`dump_layout_normalize_expected.py`; 49 Vitest pass. Next AL3
+`planReconcile`.
 
 **2026-08-15 (AL0):** Locked async `ApplyLayout` + signals; host D021
 job is observer; `planReconcile` in `lib/shared/layout-plan.js`;

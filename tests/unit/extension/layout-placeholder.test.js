@@ -47,6 +47,11 @@ describe("layout-placeholder pure helpers", () => {
     expect(s.get_id()).toMatch(/^forge-ph-/);
     expect(isPlaceholderValue(s)).toBe(true);
     expect(isPlaceholderWmClass(PLACEHOLDER_WM_CLASS)).toBe(true);
+    // Meta surface used by paint / processFloats / decoration paths
+    expect(typeof s.get_window_type).toBe("function");
+    expect(s.get_window_type()).toBe(0);
+    expect(s.showing_on_its_workspace()).toBe(true);
+    expect(s.get_frame_rect()).toEqual({ x: 0, y: 0, width: 0, height: 0 });
   });
 
   it("slot-tagged skeleton stub encodes title and layout fields (CT1)", () => {

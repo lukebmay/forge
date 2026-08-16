@@ -1,0 +1,20 @@
+{
+  "error": null,
+  "id": "empty-roles-normalize",
+  "input": {
+    "layout": {},
+    "mode": "reconcile",
+    "roles": [],
+    "version": 2
+  },
+  "ok": true,
+  "op": "normalize",
+  "opts": {},
+  "output": {
+    "layout": {},
+    "mode": "reconcile",
+    "roles": [],
+    "version": 2
+  },
+  "profileFile": null
+}

@@ -73,13 +73,13 @@ gate deferred open → (activate already done by entry)
 | --- | --- |
 | Meta focus | `afterFocus` (may idle-coalesce; must be idempotent) |
 | Keyboard / DBus | Activate then `afterFocus` (or rely on Meta if proven equivalent; prefer explicit) |
-| Tab click | `revealGroupChild({ keyboard: true })` then extra `focus()` (LF2) |
+| Tab click | `revealGroupChild({ keyboard: true })` (focus+activate inside; Dfocus last) |
 | Hover | Meta path only |
 
 **Show in group (D025):** `wm.revealGroupChild(node, { keyboard, pin })` —
 write LTF → pin or adopt live pin (R026) → `reassertNodeToSlot` (R025) →
-raise → `settleTabFocus`; keyboard → activate + `afterFocus`. Not a
-second C. Do not invent `raiseWindow()`.
+raise → `settleTabFocus`; keyboard → focus + activate + `afterFocus`.
+Restack is last (R032). Not a second C. Do not invent `raiseWindow()`.
 
 **Forbidden:** `renderTree("focus")`, **Dfull**, reassert other monitors’
 tab groups, reassert from `afterFocus`.
