@@ -753,6 +753,7 @@ describe("OP1 open-app placement policy", () => {
         id: "tall",
         rect: { x: 0, y: 0, width: 400, height: 900 },
       });
+      tall.nodeWindow.rect = { x: 0, y: 0, width: 400, height: 900 };
       wm().movePointerWith(tall.nodeWindow);
 
       const metaTall = createMockWindow({
@@ -765,6 +766,8 @@ describe("OP1 open-app placement policy", () => {
       const parentTall = tall.nodeWindow.parentNode;
       expect(parentTall.layout).toBe(LAYOUT_TYPES.VSPLIT);
       expect(parentTall.contains(nodeTall)).toBe(true);
+      expect(parentTall.childNodes[0]).toBe(tall.nodeWindow);
+      expect(parentTall.childNodes[1]).toBe(nodeTall);
 
       // Two existing tiles: aspect-split of LFT creates a real CON with HSPLIT.
       ctx.cleanup();
@@ -777,6 +780,7 @@ describe("OP1 open-app placement policy", () => {
         id: "wide",
         rect: { x: 600, y: 0, width: 1200, height: 400 },
       });
+      wide.nodeWindow.rect = { x: 600, y: 0, width: 1200, height: 400 };
       wm().movePointerWith(wide.nodeWindow);
       const metaWide = createMockWindow({
         workspace: ctx.workspaces[0],
@@ -784,10 +788,36 @@ describe("OP1 open-app placement policy", () => {
         id: "after-wide",
       });
       wm().trackWindow(null, metaWide);
+      const nodeWide = wm().findNodeWindow(metaWide);
       const parentWide = wide.nodeWindow.parentNode;
       expect(parentWide.nodeType).toBe(NODE_TYPES.CON);
       expect(parentWide.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentWide.childNodes[0]).toBe(wide.nodeWindow);
+      expect(parentWide.childNodes[1]).toBe(nodeWide);
       expect(seed.nodeWindow.parentNode).toBeTruthy();
+    });
+
+    it("R033: 1-child mon toggle uses slot rect, not stale wide frame", () => {
+      const tall = tileOn(0, {
+        id: "slot-tall",
+        rect: { x: 0, y: 0, width: 2000, height: 400 },
+      });
+      // Slot is portrait; Meta frame lies wide (pre-configure / restore).
+      tall.nodeWindow.rect = { x: 0, y: 0, width: 900, height: 1400 };
+      tall.metaWindow.get_frame_rect = () => ({ x: 0, y: 0, width: 2000, height: 400 });
+      wm().movePointerWith(tall.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "after-slot",
+      });
+      wm().trackWindow(null, meta);
+      const neu = wm().findNodeWindow(meta);
+      const mon = tall.nodeWindow.parentNode;
+      expect(mon.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(mon.childNodes[0]).toBe(tall.nodeWindow);
+      expect(mon.childNodes[1]).toBe(neu);
     });
   });
 

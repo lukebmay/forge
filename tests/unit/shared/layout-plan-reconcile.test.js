@@ -167,3 +167,185 @@ describe("planActionsToSteps pure mapping", () => {
     expect(steps.every((s) => s.op)).toBe(true);
   });
 });
+
+/**
+ * Residual after cold open: skeleton PHs still present, real windows mapped as
+ * mon siblings (map/PlaceNext missed the tab CON). Bind must run **and**
+ * ensure_layout for ungrouped multi-role tab slots (host mon1.s0 class).
+ */
+describe("planReconcile residual with layout PHs + ungrouped tab roles", () => {
+  function mon(id, children, monIndex) {
+    return {
+      nodeType: "MONITOR",
+      layout: "HSPLIT",
+      id,
+      stableKey: id,
+      children,
+      rect: { x: monIndex * 2560, y: 0, width: 2560, height: 1440 },
+      percent: 0,
+      userSized: false,
+    };
+  }
+  function win(windowId, wmClass, title, monitor) {
+    return {
+      nodeType: "WINDOW",
+      layout: null,
+      rect: { x: 0, y: 0, width: 100, height: 100 },
+      percent: 0,
+      userSized: false,
+      children: [],
+      wmClass,
+      wmClassInstance: wmClass,
+      title,
+      windowId,
+      pid: 1,
+      monitor,
+      mode: "TILE",
+    };
+  }
+  function ph(windowId, role, slot, monitor) {
+    return {
+      nodeType: "WINDOW",
+      layout: null,
+      rect: { x: 0, y: 0, width: 100, height: 100 },
+      percent: 0,
+      userSized: false,
+      children: [],
+      wmClass: "forge-placeholder",
+      title: role,
+      windowId,
+      pid: 0,
+      monitor,
+      mode: "TILE",
+      placeholder: true,
+      layoutRole: role,
+      layoutSlot: slot,
+    };
+  }
+  function tab(children) {
+    return {
+      nodeType: "CON",
+      layout: "TABBED",
+      rect: { x: 0, y: 0, width: 100, height: 100 },
+      percent: 0,
+      userSized: false,
+      children,
+    };
+  }
+
+  const profile = {
+    version: 2,
+    mode: "reconcile",
+    roles: [
+      {
+        id: "A",
+        match: { class: "app-a" },
+        open: { app: "A", wmClass: "app-a" },
+        slot: "mon0.s0",
+      },
+      {
+        id: "B",
+        match: { class: "app-b" },
+        open: { app: "B", wmClass: "app-b" },
+        slot: "mon0.s0",
+      },
+      {
+        id: "term",
+        match: { class: "term" },
+        open: { app: "term", wmClass: "term" },
+        slot: "mon0.term",
+      },
+      {
+        id: "Y",
+        match: { class: "app-y" },
+        open: { app: "Y", wmClass: "app-y" },
+        slot: "mon1.s0",
+      },
+      {
+        id: "G",
+        match: { class: "app-g" },
+        open: { app: "G", wmClass: "app-g" },
+        slot: "mon1.s0",
+      },
+      {
+        id: "V",
+        match: { class: "app-v" },
+        open: { app: "V", wmClass: "app-v" },
+        slot: "mon1.s0",
+      },
+    ],
+    layout: {
+      mon0: {
+        split: "hsplit",
+        children: [
+          { id: "s0", layout: "tabbed", roles: ["A", "B"], active: "B" },
+          { id: "term", roles: ["term"] },
+        ],
+      },
+      mon1: {
+        split: "hsplit",
+        children: [{ id: "s0", layout: "tabbed", roles: ["Y", "G", "V"], active: "Y" }],
+      },
+    },
+    focus: "term",
+  };
+
+  it("emits bind + ensure_layout for mon1.s0 when PHs remain and roles are mon siblings", () => {
+    const forest = {
+      apiVersion: 1,
+      monitors: [
+        mon(
+          "mo0ws0",
+          [
+            tab([ph(9001, "A", "mon0.s0", 0), ph(9002, "B", "mon0.s0", 0)]),
+            ph(9003, "term", "mon0.term", 0),
+            win(1, "app-a", "A", 0),
+            win(2, "app-b", "B", 0),
+            win(3, "term", "term", 0),
+          ],
+          0
+        ),
+        mon(
+          "mo1ws0",
+          [
+            tab([
+              ph(9004, "Y", "mon1.s0", 1),
+              ph(9005, "G", "mon1.s0", 1),
+              ph(9006, "V", "mon1.s0", 1),
+            ]),
+            win(4, "app-y", "Y", 1),
+            win(5, "app-g", "G", 1),
+            win(6, "app-v", "V", 1),
+          ],
+          1
+        ),
+      ],
+      focusWindowId: 3,
+      activeWorkspace: 0,
+      nWorkspaces: 1,
+    };
+    const pins = { A: 1, B: 2, term: 3, Y: 4, G: 5, V: 6 };
+    const plan = planReconcile(profile, forest, {
+      clean: true,
+      rolePins: pins,
+      justOpenedRoles: Object.keys(pins),
+      workspace: 0,
+    });
+    expect(plan.ok).toBe(true);
+    expect(plan.coldEmpty).toBe(false);
+    const binds = (plan.actions || []).filter((a) => a.op === "bind");
+    expect(binds.length).toBe(6);
+    const ensures = (plan.actions || []).filter((a) => a.op === "ensure_layout");
+    const mon1Tab = ensures.find((a) => a.slot === "mon1.s0" && a.mode === "tabbed");
+    expect(mon1Tab).toBeTruthy();
+    expect(mon1Tab.windowIds.map(String).sort()).toEqual(["4", "5", "6"]);
+    const mon0Tab = ensures.find((a) => a.slot === "mon0.s0" && a.mode === "tabbed");
+    expect(mon0Tab).toBeTruthy();
+    // Steps: binds before layout/join (partition order via planActionsToSteps).
+    const steps = planActionsToSteps(plan.actions, { workspace: 0 });
+    const firstLayout = steps.findIndex((s) => s.op === "layout");
+    const lastBind = steps.map((s) => s.op).lastIndexOf("bind");
+    expect(lastBind).toBeGreaterThanOrEqual(0);
+    expect(firstLayout).toBeGreaterThan(lastBind);
+  });
+});

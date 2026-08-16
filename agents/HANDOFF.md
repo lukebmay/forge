@@ -1,17 +1,64 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-15 (**host layout-dev open-miss hotfix** on AL1–AL8 tip / apiVersion 10)  
+**Updated:** 2026-08-15 (**R033** open aspect split; R035 still needs host logout for cold)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Installed / host tip:** tip **installed** (`g1213cb7-dirty` + dirty AL5–AL8 + this hotfix). **Wayland host Shell still runs pre-hotfix JS until logout** — nest loads install.  
-**Post-refactor residuals only:** R020 nest live **PASS** (see residual table). **R031** float-border and **R032** tab-strip click **shipped** (nest smoke; host logout for tip).
+**Installed / host tip:** tip **installed** (`g75da70e-dirty` + R033). **Wayland host Shell needs logout** to load tip — nest loads install.  
+**Live desk now:** R035 mon1 may already be TABBED mid-session; cold layout + open aspect need logout tip.
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Shipped — R033 open/launch LFT aspect → VSPLIT/HSPLIT
+
+| Field | Detail |
+| --- | --- |
+| Symptom | Dock / `forge launch` wrong split: tall LFT not VSPLIT [LFT, new]; or mon-sibling thrash |
+| Phase | OP1 open orientation + bag attach (`_maybeAspectSplitForOpen` / D032 `_orientationFromUnit`) |
+| Root | Frame-first / `unit.rect`-only aspect ignored `renderRect`; MONITOR `!isWindow` attach → workspace then mon-root rehome |
+| Fix | `_slotRectForUnit` (paint/renderRect/rect/frame); both open aspect paths use it; bag attach requires `isCon()` |
+| Paths | `lib/extension/window.js` |
+| L0 | insert-slot-split 12 + open-app-policy 30 (+ r021, lft-mru) **88** green |
+| Nest | Client maps did not enter nest tree this run; structure unit-proven |
+| Host | **Logout** then focus tall vs wide LFT + dock/`forge launch` |
+| Task | [completed](./tasks/completed/forge-r033-open-aspect-split.md) · [R033](./REGRESSIONS.md) |
+
+```bash
+npm test -- tests/unit/window/WindowManager-insert-slot-split.test.js \
+  tests/unit/window/WindowManager-open-app-policy.test.js
+./install --kit=vim
+# Wayland host tip:
+#   log out and back in, then:
+#   focus a tall half-tile → forge launch nautilus → VSPLIT [LFT, new]
+#   focus a wide unit → HSPLIT [LFT, new]
+```
+
+### Shipped — R035 residual tab ensure (cold mon1 flat tabs)
+
+| Field | Detail |
+| --- | --- |
+| Symptom | New Wayland session: `forge layout dev` “ok” but mon1 YouTube/Gmail/Voice are HSPLIT mon siblings (not one TABBED CON). mon0 tab OK |
+| Root | Residual `skipWindowStructure = coldEmpty \|\| hasLayoutPh` skipped all window-anchored `ensure_layout` while skeleton PHs lived. Bind alone when map missed PH CON left multi-role tabs flat. Verify = focus only → false ok |
+| Fix | `skipWindowStructure = coldEmpty` only; tab/stack ensure while PHs present; mon-level ensure still off while `hasLayoutPh`. Bind phase then order-phase ensure |
+| Paths | `lib/shared/layout-plan.js`, `scripts/forge/layout_plan.py` |
+| L0 | Vitest residual PH+ungrouped tab; pytest multi-role PH ensure; layout_plan 212; expected 6 |
+| Host | Mid-session re-apply grouped mon1. **Logout** for cold tip, then `forge layout dev` |
+| Task | [completed](./tasks/completed/forge-layout-residual-tab-ensure.md) · [R035](./REGRESSIONS.md) |
+| Residual | Host cold still needs logout for R035 tip |
+
+```bash
+npm test -- tests/unit/shared/layout-plan-reconcile.test.js
+python3 -m pytest tests/unit/cli/test_layout_plan.py -q -k 'has_layout_ph or residual_bind'
+./install --kit=vim
+# Wayland host tip:
+#   log out and back in, then cold:
+forge layout dev
+# mon1: ghostty | TABBED(YouTube,Gmail,Voice)
+```
 
 ### Hotfix — host `forge layout dev` no tile/resize (ApplyLayout open-miss)
 
@@ -28,7 +75,7 @@
 | L0 | `layout-open` (YouTube vs TV + multi-word) + `layout-placeholder` |
 | Nest | `_forge-test-clean` **PASS**; cold nest open map can flake (separate) |
 | Host | **Logout once** to load tip, then `forge layout dev` |
-| Open queue | **R033** open-app HSPLIT/VSPLIT from LFT aspect (taller→VSPLIT LFT first; wider→HSPLIT) — investigate, not fixed this slice |
+| Open queue | **R033** shipped (see top); host logout for tip |
 | Job evidence | `~/.local/share/forge/jobs/20260816T010248Z-1fda4a` (`open spawn failed … "Google"`) |
 
 ```bash
@@ -417,19 +464,22 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**If you are Grok 4.5 / 4.6:** AL1–AL8 **done** + **layout-dev open-miss hotfix**
-(in tree, installed). **Host needs logout** to load the tip, then re-verify
-`forge layout dev`. R020 nest live **PASS**; **R031** and **R032** shipped.
+**If you are Grok 4.5 / 4.6:** AL1–AL8 **done** + open-miss hotfix + **R035**
++ **R033** (in tree, installed). **Host needs logout** for cold tip (layout
+structure + open aspect). Desk may already be correct from mid-session re-apply.
 Do not redesign D036/D037. Never call `_layoutOp`.
+Do **not** put `hasLayoutPh` back into `skipWindowStructure`.
 
 | You can do | You must not |
 | --- | --- |
-| Logout → host `forge layout dev` + R020/R031/R032 eyes-on | Personal `dev`/`t1` in live matrix |
-| Optional dual-mon `_forge-test-*` nest mon=2 | GetTree poll twins of settle; new parallel restore/float/tab-click brain |
-| Soft residual close/bind already soft-ok for gone targets | Reintroduce space→argv spawn for multi-word desktop Names |
+| Logout → cold `forge layout dev` (R035 mon1 TABBED) | Personal `dev`/`t1` in live matrix |
+| Logout → tall/wide LFT + launch (R033 eyes-on) | GetTree poll twins of settle; Mode B as cold success |
+| Optional dual-mon `_forge-test-*` nest mon=2 | Reintroduce `skipWindowStructure \|\| hasLayoutPh` |
 
 | Pri | Work | Path |
 | --- | --- | --- |
+| done | **R035** residual ensure_layout while layout PHs (mon1 flat tabs) | [completed](./tasks/completed/forge-layout-residual-tab-ensure.md) |
+| done | **R033** open/launch LFT aspect → VSPLIT/HSPLIT | [completed](./tasks/completed/forge-r033-open-aspect-split.md) |
 | done | R029/R030 green `layout dev` TILE + reuse | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
 | done | TD1 strip reorder code + nest live | [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
 | done | R025 / R026 host live | [R025](./tasks/forge-tab-click-slot.md) · [R026](./tasks/forge-tab-click-pin-adopt.md) |

@@ -2289,11 +2289,13 @@ def plan_reconcile(
     # Tabbed/stacked + nested h/v: repair when not co-grouped; order when shared.
     # Mode B: kept empty → structure windowIds are roles only. --safe: skip.
     # Cold empty: skeleton owns structure (no window-anchored ensure_layout).
-    # LayoutRole PHs: prefer bind path — skip invent structure even without
-    # just_opened_roles (Mode B thrash only when no layout PHs).
+    # LayoutRole PHs: bind still runs first (bind phase before order), but do
+    # **not** skip ensure_layout — residual open often leaves multi-role tab
+    # slots as mon siblings when map/PlaceNext missed the PH CON. Order-phase
+    # ensure_layout repairs ungrouped roles after bind.
     structure_slots: dict[str, dict[str, Any]] = {}
     slot_order_actions: list[dict[str, Any]] = []
-    skip_window_structure = cold_empty or has_layout_ph
+    skip_window_structure = cold_empty
     if not safe and not skip_window_structure:
         slots_for_structure = set(layout_slot_modes.keys())
         for k in kept:
@@ -2487,8 +2489,9 @@ def plan_reconcile(
     # Cold empty: skeleton (not mon ensure). PH residual: bind after place.
     has_role_placement = counts["opened"] > 0 or counts["moved"] > 0
     # just_opened only drives mon ensure off --safe (safe path is open+move only).
-    # Skip mon ensure when skeleton/bind path owns topology.
-    has_mon_ensure = (not skip_window_structure and
+    # Skeleton already set mon H/V while layout PHs live — skip mon-level ensure
+    # until PHs are gone. Tab/stack structure repair still runs (above).
+    has_mon_ensure = (not skip_window_structure and not has_layout_ph and
                       (has_role_placement or (bool(opened_roles) and not safe)
                        or bool(mons_split_mismatch)
                        or bool(mon_child_peel_mons)))

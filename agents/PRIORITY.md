@@ -9,8 +9,8 @@
 not a `cli/` planner port).
 
 **Active:** **AL1–AL8 done** (`apiVersion` 10; product layout =
-ApplyLayout). **R020** nest EOS live PASS; **R031** float-border and
-**R032** tab-strip click **shipped** (nest smoke).
+ApplyLayout). **R035** residual tab ensure **shipped** (host cold needs
+logout). **R033** open-app aspect split **shipped** (L0; host logout tip).
 
 **Agents:** default implement = **Grok 4.5** (prompt as medium). Plan
 reshape / AL0 / C1 / messy DnD = **Grok 4.6** (xhigh for design).
@@ -62,6 +62,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 | done | AL6 open/map (spawn + LayoutBatch + pin) | [AL6](./plans/forge-layout-in-process/completed/forge-layout-in-process_al6-executor-open.md) |
 | done | AL7 settle (hard/soft/focus/verify) | [AL7](./plans/forge-layout-in-process/completed/forge-layout-in-process_al7-executor-settle.md) |
 | done | AL8 thin CLI cutover (nest `_forge-test-clean` + `_forge-test-ghosttys` PASS) | [AL8](./plans/forge-layout-in-process/completed/forge-layout-in-process_al8-cli-cutover.md) |
+| done | **R035** cold residual mon1 flat tabs — ensure_layout while layout PHs | [completed](./tasks/completed/forge-layout-residual-tab-ensure.md) · [R035](./REGRESSIONS.md) |
+| done | **R033** open/launch LFT aspect → VSPLIT/HSPLIT (LFT first) | [completed](./tasks/completed/forge-r033-open-aspect-split.md) · [R033](./REGRESSIONS.md) |
 | optional | Open-heavy dual-mon `_forge-test-*` on nest mon=2 / host | live |
 | done | FCC **C0** kill monocle + inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
 | done | FCC **C1** `setLayout` I1 | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
@@ -102,6 +104,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 20. **R032** — **done** (Done restack-only; nest smoke).
 21. **R031** — **done** (no ghost TILE wrap; float border = Meta frame).
 22. **R020** — **done** nest mon=1 EOS + D026 max/fs restore (post-AL8).
+23. **R035** — **done** residual ensure while layout PHs (mon1 tab group).
+24. **R033** — **done** open-app aspect orientation from LFT unit (L0).
 
 Do not assign a 4.5 agent `layout_plan.py` → JS.
 

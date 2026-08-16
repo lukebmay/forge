@@ -264,6 +264,115 @@ describe("D032 slot-split insert", () => {
       expect(wrap).not.toBe(mon0);
       expect(wrap.isVSplit()).toBe(true);
       expect(wrap.childNodes).toEqual(expect.arrayContaining([b.node, c.node]));
+      // R033: LFT first, new second
+      expect(wrap.childNodes[0]).toBe(b.node);
+      expect(wrap.childNodes[1]).toBe(c.node);
+    });
+
+    it("R033: tall LFT unit → VSPLIT [LFT, new]; wide → HSPLIT [LFT, new]", () => {
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      tile(mon0, {
+        id: "seed",
+        monitor: 0,
+        wm_class: "Seed",
+        rect: { x: 0, y: 0, width: 960, height: 1080 },
+      });
+      const tall = tile(mon0, {
+        id: "tall-lft",
+        monitor: 0,
+        wm_class: "TallApp",
+        rect: { x: 960, y: 0, width: 960, height: 1080 },
+      });
+      tall.node.rect = { x: 960, y: 0, width: 960, height: 1080 };
+      focusTile(tall);
+
+      const afterTall = openTiled({
+        id: "after-tall",
+        wm_class: "NewTall",
+        rect: { x: 100, y: 100, width: 400, height: 400 },
+      });
+      const wrapTall = tall.node.parentNode;
+      expect(wrapTall).not.toBe(mon0);
+      expect(wrapTall.isVSplit()).toBe(true);
+      expect(wrapTall.childNodes[0]).toBe(tall.node);
+      expect(wrapTall.childNodes[1]).toBe(afterTall.node);
+      expect(hvWideCount(mon0, 3)).toBe(0);
+
+      // Wide LFT unit on a fresh mon pair
+      ctx.cleanup();
+      ctx = createWindowManagerFixture({
+        globals: {
+          display: {
+            monitorCount: 2,
+            monitorGeometries: [
+              { x: 0, y: 0, width: 1920, height: 1080 },
+              { x: 1920, y: 0, width: 1920, height: 1080 },
+            ],
+          },
+        },
+      });
+      const monW = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      monW.layout = LAYOUT_TYPES.VSPLIT;
+      tile(monW, {
+        id: "top",
+        monitor: 0,
+        wm_class: "Top",
+        rect: { x: 0, y: 0, width: 1920, height: 540 },
+      });
+      const wide = tile(monW, {
+        id: "wide-lft",
+        monitor: 0,
+        wm_class: "WideApp",
+        rect: { x: 0, y: 540, width: 1920, height: 540 },
+      });
+      wide.node.rect = { x: 0, y: 540, width: 1920, height: 540 };
+      focusTile(wide);
+      const afterWide = openTiled({
+        id: "after-wide",
+        wm_class: "NewWide",
+        rect: { x: 100, y: 100, width: 400, height: 400 },
+      });
+      const wrapWide = wide.node.parentNode;
+      expect(wrapWide).not.toBe(monW);
+      expect(wrapWide.isHSplit()).toBe(true);
+      expect(wrapWide.childNodes[0]).toBe(wide.node);
+      expect(wrapWide.childNodes[1]).toBe(afterWide.node);
+      expect(hvWideCount(monW, 3)).toBe(0);
+    });
+
+    it("R033: renderRect-only tall slot beats stale wide frame", () => {
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      tile(mon0, {
+        id: "left",
+        monitor: 0,
+        wm_class: "AppA",
+        rect: { x: 0, y: 0, width: 960, height: 1080 },
+      });
+      const b = tile(mon0, {
+        id: "render-slot",
+        monitor: 0,
+        wm_class: "AppB",
+        // Frame claims wide landscape
+        rect: { x: 960, y: 0, width: 2000, height: 400 },
+      });
+      // Live paint path often has renderRect while node.rect is empty
+      b.node._rect = null;
+      b.node.renderRect = { x: 960, y: 0, width: 960, height: 1080 };
+      b.meta.get_frame_rect = () => ({ x: 960, y: 0, width: 2000, height: 400 });
+      focusTile(b);
+
+      const c = openTiled({
+        id: "new",
+        wm_class: "AppC",
+        rect: { x: 100, y: 100, width: 400, height: 400 },
+      });
+      const wrap = b.node.parentNode;
+      expect(wrap).not.toBe(mon0);
+      expect(wrap.isVSplit()).toBe(true);
+      expect(wrap.childNodes[0]).toBe(b.node);
+      expect(wrap.childNodes[1]).toBe(c.node);
     });
 
     it("tab bag + new tile: bag stays TABBED; new is sibling of the bag under a new H/V CON", () => {

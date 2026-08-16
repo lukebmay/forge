@@ -3861,16 +3861,118 @@ class TestColdSkeletonCt1(unittest.TestCase):
         # Junk deferred as left (residual replan after open/bind closes it).
         self.assertEqual(plan["counts"]["left"], 1)
 
-    def test_has_layout_ph_skips_structure_without_just_opened(self):
-        """layout PHs alone prefer bind path (no hybrid ensure_layout invent)."""
+    def test_has_layout_ph_single_role_no_spurious_ensure(self):
+        """Single-role PH residual: bind only (no mon ensure; no multi-win tab)."""
         forest = self._ph_ghostty_forest(with_junk=False, with_role_win=True)
         plan = plan_reconcile(forest, self._ghostty_only_profile())
         self.assertFalse(plan.get("coldEmpty"))
         ops = [a["op"] for a in plan["actions"]]
         self.assertIn("bind", ops)
+        # No multi-window group and mon split already owned by skeleton/PH tree.
         self.assertFalse(
             any(a["op"] == "ensure_layout" for a in plan["actions"]))
         self.assertNotIn("ensure_skeleton", ops)
+
+    def test_has_layout_ph_ungrouped_tab_emits_ensure_layout(self):
+        """Multi-role tab PHs + mon-sibling windows → bind + ensure_layout."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo0ws0",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "children": [
+                                {
+                                    "nodeType": "WINDOW",
+                                    "placeholder": True,
+                                    "layoutRole": "A",
+                                    "layoutSlot": "mon0.s0",
+                                    "windowId": "ph-a",
+                                    "wmClass": "forge-placeholder",
+                                    "mode": "TILE",
+                                },
+                                {
+                                    "nodeType": "WINDOW",
+                                    "placeholder": True,
+                                    "layoutRole": "B",
+                                    "layoutSlot": "mon0.s0",
+                                    "windowId": "ph-b",
+                                    "wmClass": "forge-placeholder",
+                                    "mode": "TILE",
+                                },
+                            ],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 1,
+                            "wmClass": "app-a",
+                            "title": "A",
+                            "mode": "TILE",
+                            "monitor": 0,
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 2,
+                            "wmClass": "app-b",
+                            "title": "B",
+                            "mode": "TILE",
+                            "monitor": 0,
+                        },
+                    ],
+                },
+            ],
+        }
+        profile = {
+            "version": 2,
+            "mode": "reconcile",
+            "layout": {
+                "mon0": {
+                    "split": "hsplit",
+                    "children": [{
+                        "id": "s0",
+                        "layout": "tabbed",
+                        "roles": ["A", "B"],
+                        "active": "A",
+                    }],
+                }
+            },
+            "roles": [
+                {
+                    "id": "A",
+                    "match": {"class": "app-a"},
+                    "open": {"app": "A", "wmClass": "app-a"},
+                    "slot": "mon0.s0",
+                },
+                {
+                    "id": "B",
+                    "match": {"class": "app-b"},
+                    "open": {"app": "B", "wmClass": "app-b"},
+                    "slot": "mon0.s0",
+                },
+            ],
+        }
+        plan = plan_reconcile(
+            forest,
+            profile,
+            clean=True,
+            role_pins={"A": 1, "B": 2},
+            just_opened_roles={"A", "B"},
+        )
+        ops = [a["op"] for a in plan["actions"]]
+        self.assertIn("bind", ops)
+        ensures = [a for a in plan["actions"] if a["op"] == "ensure_layout"]
+        tab = next((a for a in ensures if a.get("slot") == "mon0.s0"), None)
+        self.assertIsNotNone(tab)
+        self.assertEqual(tab.get("mode"), "tabbed")
+        self.assertEqual(sorted(str(x) for x in tab.get("windowIds") or []),
+                         ["1", "2"])
+        # Mon-level ensure must not fire while layout PHs remain.
+        self.assertFalse(any(a.get("slot") == "mon0" for a in ensures))
 
 
 class TestMarginalCoexist(unittest.TestCase):
