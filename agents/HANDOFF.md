@@ -1,75 +1,76 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-16 (chrome clear at soft-enter; tab restack on clear; logging)  
+**Updated:** 2026-08-16 (SM0 locked D039–D043; assign SM1)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Repo tip:** `a63cdb0` (+ docs `57cc497`). Disk install: **`v49-90-beta.2-332-g57cc497`**.  
-**Host Shell tip (live):** still **`g8ecb0f6-dirty` until logout** (Wayland).  
+**Repo tip:** `0a8e4a8` + **uncommitted** R036 `_layoutApplyLive` rehome gate. Disk install: **`v49-90-beta.2-333-g0a8e4a8-dirty`**.  
+**Host Shell tip (live):** still pre-`_layoutApplyLive` until **logout** (Wayland; disable/enable does **not** reload JS).  
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).  
-**Queue:** **Logout** → tip load → spinner/tab eyes-on + R036 cold. [IDEAS](./IDEAS.md).
+**Queue (agent):** **4.5 med orchestrator** assigns **SM1** (4.5 high) then **SM2** (4.6 high).  
+**Queue (human):** logout → Guake cold `layout dev` (R036). Mid host tree OK. [IDEAS](./IDEAS.md).
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
 
-### Hot — spinner + tab click (soft-enter chrome + restack)
+### Hot — SM1–SM7 implement (SM0 locked)
 
 | Field | Detail |
 | --- | --- |
-| Symptom | Spinner stays long; tab click often fails to activate app |
-| Root | (1) Host Shell pre-fix tip. (2) Apply scrim is **reactive** until clear. (3) Soft quiet multi-second — clear-after-soft still blocked tabs whole wait. (4) Strip buried under raises until restack (R032) |
-| Fix | Clear chrome at **soft-enter** (before quiet). Restack strips on chrome clear. INFO: chrome show/clear, `_activateFromTab`, restack, reveal adopt |
-| Logging | enabled + log-level 5. Follow: `journalctl --user -f \| rg 'Forge.*(chrome|tab|restack|activate)'` |
-| Paths | `layout-apply-run.js`; `session-api.js`; `tree.js`; `action-pipeline.js`; `window.js` |
-| L0 | layout-apply-run + action-pipeline + bug-tab-click-activate green |
-| Host | **Logout required.** Then ping ≠ g8ecb0f6; layout dev; spinner drops at soft-enter; tabs clickable |
+| Locked | Slot **not** window; hard = **in-slot**; `Done.ok` = required forest match; contracts SM1–SM3 before runtime SM4; belt dies at SM6; group chrome A = tab/FCC |
+| Decisions | [D039–D043](../docs/DECISIONS.md) · [plan](./plans/forge-layout-slot-machines.md) |
+| D0 | [completed](./plans/forge-layout-slot-machines/completed/forge-layout-slot-machines_d0-discussion.md) |
+| Orchestrator | **Grok 4.5 med** — assign only; do not re-litigate |
+| First assign | **SM1** [ApplyEpoch](./tasks/forge-layout-slot-machines_sm1-apply-epoch.md) → **4.5 high** |
+| Parallel OK | **SM2** [in-slot hard](./tasks/forge-layout-slot-machines_sm2-in-slot-hard.md) → **4.6 high** (no `window.js` rehome) |
+| Then | SM3 4.6 high (after SM1) → SM4 4.6 high (after SM2+SM3) → SM5/SM7 4.5 med → SM6 4.5 med |
+| Do not | SM4 before SM2+SM3; tab **code**; `layout_plan.py` → `cli/`; Mode B; dual-mon nest by default |
+
+### Hot — R036 cold Wayland `forge layout dev` (ApplyLayout owns mon placement)
+
+| Field | Detail |
+| --- | --- |
+| Symptom | Guake cold: exit 0 / belt reports moves while mon1 empty + mon0 thrash. Mid re-apply → correct dual-mon TABBED |
+| Live cold (force-belt tip) | open 7/7; soft max-32 continue; verify belt **4** + beltStructure **7**; mon1 still **EMPTY** |
+| Live mid (same session) | open=0; soft=0; belt skipped no-pins; mon0 TABBED\|ghostty; mon1 ghostty\|TABBED — **PASS** |
+| Root A–D | Soft abort / reentry / pre-soft belt / force belt verify — **signed** (progress + L0) |
+| Root E (active residual) | After open batch ends, entered-monitor rehome is free. Focus/soft Meta mon thrash rehomes mon1→mon0 (`window-entered-monitor` render). Force belt reparents but deferred mon0 rehomes / Meta lag empty mon1 after Done |
+| Fix (code, installed dirty) | `_layoutApplyLive` for full ApplyLayout; suppress enter/flush rehome; drop deferred on leave; Meta→tree mon align on Done |
+| Paths | `window.js` `setLayoutApplyLive`; `layout-apply-run.js` `onApplyLive`; `session-api.js` wire + align |
+| L0 | run **28** + settle **31** + H1 R036 rehome gate; related **77** green |
+| Nest | dual open chrome/ghostty map-miss flake (not structure); nest stopped |
+| Host | **Logout required** for tip. Cold not re-run this slice (user apps open; agent Guake). Do **not** claim cold pass without live tree after logout |
+| Task | [forge-layout-cold-apply-structure](./tasks/forge-layout-cold-apply-structure.md) · [R036](./REGRESSIONS.md) |
 
 ```bash
 ./install --kit=vim
 # Wayland: log out and back in, then:
-forge ping   # want a63cdb0 / 57cc497, not g8ecb0f6
-gsettings get org.gnome.shell.extensions.forge logging-enabled  # true
-gsettings get org.gnome.shell.extensions.forge log-level        # uint32 5
-forge layout dev
-journalctl --user -b --no-pager | rg 'Forge.*(chrome|soft-enter|_activateFromTab|restack)' | tail -40
-npm test -- tests/unit/extension/layout-apply-run.test.js \
-  tests/unit/extension/action-pipeline.test.js \
-  tests/regression/bug-tab-click-activate.test.js
-```
-
-### Hot — R036 cold Wayland `forge layout dev` (beltStructure + unwrap)
-
-| Field | Detail |
-| --- | --- |
-| Symptom | Cold job **ok** but tree wrong: mon0 `TABBED\|VSPLIT(ghostty)`; mon1 **flat** 4-wide. Soft OK. Mid re-apply fixes mon1 only |
-| Root A | PlaceNext mon-root / D032 thrash (PH pin helps) |
-| Root B | AL8 ApplyLayout belt mon moves **without** R013 `beltStructure` → mon1 TABBED flattened |
-| Root C | Lone mon-direct VSPLIT never unwrapped after structure |
-| Fix (code) | PH PlaceNext pin + pin no-D032; **runBeltStructureRebind** after belt moves; **unwrap mon-direct 1-child H/V** after order/size |
-| Paths | `layout-apply-settle.js` beltStructure; `layout-apply-run.js`; `session-api.js` unwrap; prior PH pin files |
-| L0 | settle + open + placeholder + open-app-policy **123** green |
-| Nest | dual mon0 unwrap PASS (ghostty mon-direct); chrome open-miss nest flake |
-| Host | **Logout** then cold `forge layout dev` for tip + cold sign-off |
-| Task | [forge-layout-cold-apply-structure](./tasks/forge-layout-cold-apply-structure.md) · [R036](./REGRESSIONS.md) |
-| Jobs | cold wrong-tree `…a3152f` / `…5aedd6`; mid mon1 `…41b16b` |
-
-```bash
-forge ping   # apiVersion 10; tip dirty until logout after install
-./install --kit=vim
-# Host cold (required):
-#   log out and back in, then:
+forge ping   # tip after logout, apiVersion 10
+# true cold (Guake only on desk — close chrome/Grok/ghostty/PWAs first):
 forge layout dev
 forge tree
 # mon0: TABBED(chrome,Grok) | ghostty
 # mon1: ghostty | TABBED(YouTube,Gmail,Voice)
-npm test -- tests/unit/extension/layout-apply-settle.test.js \
-  tests/unit/shared/layout-open.test.js \
-  tests/unit/extension/layout-apply-open.test.js \
-  tests/unit/extension/layout-placeholder.test.js \
-  tests/unit/window/WindowManager-open-app-policy.test.js
+# journal: no enteredMon rehome applying during apply; soft preferably low corr
+npm test -- tests/unit/extension/layout-apply-run.test.js \
+  tests/unit/extension/layout-apply-settle.test.js \
+  tests/regression/bug-h1-monitor-recovery-workareas-thrash.test.js
+```
+
+### Shipped — spinner chrome clear at soft-enter + tab restack
+
+| Field | Detail |
+| --- | --- |
+| Symptom | Spinner stays long; tab click often fails to activate app |
+| Fix | Clear chrome at **soft-enter** (before quiet). Restack strips on chrome clear |
+| Host mid | Soft quiet logs `chrome cleared`; mid layout ok on tip `g0a8e4a8` this session |
+| Residual | Eyes-on tab click after cold tip load (logout) |
+
+```bash
+journalctl --user -b --no-pager | rg 'Forge.*(chrome|soft-enter|restack|_activateFromTab)' | tail -40
 ```
 
 ### Shipped — R033 open/launch LFT aspect → VSPLIT/HSPLIT
@@ -492,15 +493,18 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 
 | Topic | Decision |
 | --- | --- |
-| Cold spine | `skeleton → open → bind → order/size → hard-ready → focus once → soft residual → verify once` |
+| Cold / apply execution | **D040:** ApplyEpoch → materialize forest → slot machines → forest-match `Done.ok` → focus/soft → release epoch. Old phase names may remain as logs |
+| Slot vs window | A slot is a TILE window **or** one TABBED/STACKED CON. Parallel only across independent slots |
+| Hard-ready | **In-slot** (TILE\|grab + desired mon + parent CON + ε). Timeout retries place (N=2). TILE-anywhere is not ready |
+| `Done.ok` | Required forest match (D041). Hard-failed → `ok: false`; peers still finish. No best-effort `ok` |
 | Soft residual (D019) | **Product** — Meta has no settle ACK; learned quiet + correct-on-miss. Not a bug class. |
 | Mode B as cold success | **Forbidden** — Mode B = true mid-session chaos only |
-| Belt after bind | **Moves-only** (D014) — no structure rewrite on happy path |
+| Belt after bind | **D014 superseded.** Not product. Delete leftover code in SM6 (D042) |
 | Profiles | Data only — no personal-layout product branches |
 | Child list (D023) | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` only |
 | Job → API (D024–D026) | [contracts.md](../docs/dev/contracts.md) — extend the named API; no one-off twins |
 | CLI language (D036) | Node under `cli/`; `lib/shared/` gi-free; Python router until CN13; **no** layout port to `cli/` |
-| Layout rearch (D037) | In-process `ApplyLayout` (4.6 xhigh design first). IC4 skip if waiters die |
+| Layout rearch (D037–D043) | ApplyLayout in-process **done**. Slot machines **locked**. IC4 skip |
 | Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling. Join leftover 1-child H/V as the slot (R028). Orientation from slot rect |
 | Focus | Post-settle phase; open-leaf pin on steal (D018); user reveal adopts the pin (R026) |
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
@@ -523,23 +527,39 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**If you are Grok 4.5 / 4.6:** tip **`a63cdb0`** ships soft-enter chrome clear +
-tab restack on clear + INFO logs. **Host Shell still g8ecb0f6 until logout.**
-AL1–AL8 + R033–R036 code done. Do not redesign D036/D037. Never call `_layoutOp`.
-Do **not** put `hasLayoutPh` back into `skipWindowStructure`.
+**If you are Grok 4.5 med (orchestrator):** assign **SM1** then **SM2**.
+Do **not** re-litigate D039–D043. Do **not** implement SM1–SM4 yourself.
+Queue: [PRIORITY](./PRIORITY.md). Plan:
+[slot machines](./plans/forge-layout-slot-machines.md).
 
+**If you are Grok 4.5 high:** implement **SM1** only —
+[ApplyEpoch](./tasks/forge-layout-slot-machines_sm1-apply-epoch.md).
+
+**If you are Grok 4.6 high:** implement the assigned SM2/SM3/SM4 task;
+stop if SM4 is assigned before SM2+SM3 exist in tree.
+
+Human residual: R036 cold after logout. Never call `_layoutOp`. Do **not** put
+`hasLayoutPh` back into `skipWindowStructure`. Do not redesign D036–D043.
+
+**Locked (D039–D043):** slot machines (not per-window); hard = in-slot retry;
+`Done.ok` = required forest match; ApplyEpoch home authority; open into slot;
+overlay through all-hard; group chrome A is tab/FCC.
 
 | You can do | You must not |
 | --- | --- |
-| Logout → cold `forge layout dev` (R036 mon1 TABBED; mon0 no VSPLIT) | Personal `dev`/`t1` in live matrix |
-| Logout → tall/wide LFT + launch (R033 eyes-on); drag mon0 tabs = full zones | GetTree poll twins of settle; Mode B as cold success |
-| **Plan** tab D0 with high-reasoning model (spinner gate · cross-mon · TD triage) | Start tab **code** before tab planning locks |
+| **4.5 med:** assign SM1 (4.5 high) then SM2 (4.6 high) | Redesign D039–D043; implement SM4 before SM2+SM3 |
+| **4.5 high:** SM1 ApplyEpoch | Tab **code**; `layout_plan.py` → `cli/` |
+| **4.6 high:** SM2 / SM3 / SM4 as tasked | Per-window machines; TILE-anywhere hard as success |
+| Logout → cold `forge layout dev` (R036) | Personal `dev`/`t1` in live matrix; Mode B as cold success |
+| **Plan** tab D0 after **SM7** | Start tab implement before tab planning locks |
 | Promote from [IDEAS](./IDEAS.md) only with a real need | Dual-mon nest by default; reintroduce `skipWindowStructure \|\| hasLayoutPh` |
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | **R036** host cold after logout (code shipped) | [task](./tasks/forge-layout-cold-apply-structure.md) |
-| **plan first** | Tab work D0 (spinner residual · cross-mon · TD2–4) | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
+| **P0** | **SM1** ApplyEpoch (4.5 high) | [task](./tasks/forge-layout-slot-machines_sm1-apply-epoch.md) |
+| **P0** | **SM2** in-slot hard (4.6 high; parallel OK) | [task](./tasks/forge-layout-slot-machines_sm2-in-slot-hard.md) |
+| human | **R036** host cold after logout (code shipped) | [task](./tasks/forge-layout-cold-apply-structure.md) |
+| **plan first** | Tab work D0 **after SM7** | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
 | done | **R035** residual ensure_layout while layout PHs (mon1 flat tabs) | [completed](./tasks/completed/forge-layout-residual-tab-ensure.md) |
 | done | **R033** open/launch LFT aspect → VSPLIT/HSPLIT | [completed](./tasks/completed/forge-r033-open-aspect-split.md) |
 | done | R029/R030 green `layout dev` TILE + reuse | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
@@ -567,7 +587,9 @@ Do **not** put `hasLayoutPh` back into `skipWindowStructure`.
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |
 | [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 done — [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
 | [forge-cli-node.md](./plans/forge-cli-node.md) | Node CLI CN0 done; CN1–CN6; no layout port |
-| [forge-layout-in-process.md](./plans/forge-layout-in-process.md) | ApplyLayout — 4.6 xhigh design first |
+| [forge-layout-in-process.md](./plans/forge-layout-in-process.md) | ApplyLayout AL0–AL8 **done** |
+| [forge-layout-slot-machines.md](./plans/forge-layout-slot-machines.md) | **P0** SM0 locked · SM1–SM7 implement |
+| [forge-layout-settle-contract.md](./plans/forge-layout-settle-contract.md) | D019 baseline; timeout-continue → D040 |
 
 ### R015 (empty-mon drag) — shipped in tree
 

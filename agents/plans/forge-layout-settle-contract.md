@@ -1,7 +1,9 @@
 # Plan: layout settle contract (hard Meta + soft expectations + verify)
 
-**Status:** active — design lock  
-**Priority:** **P0** (cold open leaf / focus thrash; unblocks reliable one-shot layout)  
+**Status:** shipped baseline (SE0–SE10) — **hard timeout-continue superseded
+by D040** (slot machines)  
+**Priority:** keep as D019 history; product executor is
+[slot machines](./forge-layout-slot-machines.md)  
 **Branch:** `plan/forge-layout-cold-topology` (or default when merging)  
 **Created:** 2026-08-08  
 **Related:** [forge-settle-learning.md](./forge-settle-learning.md) (SL1–SL2 geom samples; supersede/extend),  

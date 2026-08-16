@@ -60,8 +60,9 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | Item | Status | Next |
 | --- | --- | --- |
 | **[Canonical contracts](./plans/forge-canonical-contracts.md)** | **P0** IC0–IC3 done | IC4 **skipped** (AL8) |
-| **[CLI → Node](./plans/forge-cli-node.md)** | **Locked** D036 · CN0–CN6 **done** (CN7 skip) | no layout port; AL0 later |
-| **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R020 nest PASS; R031/R032 shipped; optional dual-mon / host tip |
+| **[CLI → Node](./plans/forge-cli-node.md)** | **Locked** D036 · CN0–CN6 **done** (CN7 skip) | no layout port; CN13 later |
+| **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold host residual (logout) |
+| **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM0 locked** D039–D043 | **SM1** 4.5 high → SM2 4.6 high |
 | **[First-class containers](./plans/forge-first-class-containers.md)** | C0+C1 **done** (C1 uncommitted) | Wave Z live residual; C2 later |
 | **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done** (nest live) | TD2 only if peel Model B mismatch |
 | **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
@@ -138,7 +139,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | **Layout settle / cold spine (agents)** | **This file** § Layout apply architecture |
 | Unit / e2e tests | [tests/README.md](../tests/README.md), [tests/e2e/README.md](../tests/e2e/README.md) |
 | User behavior | [docs/user/](../docs/user/) (`layout.md` cold apply steps) |
-| Durable “why” + decisions | [docs/DESIGN.md](../docs/DESIGN.md), [docs/DECISIONS.md](../docs/DECISIONS.md) (D008–D019) |
+| Durable “why” + decisions | [docs/DESIGN.md](../docs/DESIGN.md), [docs/DECISIONS.md](../docs/DECISIONS.md) (D039–D043 apply; D008–D009 forest-first) |
 | Priorities / plans / live matrix | [PRIORITY.md](./PRIORITY.md), [HANDOFF.md](./HANDOFF.md), `agents/plans/` |
 
 ---
@@ -187,11 +188,22 @@ races as event-driven thrash with learned timeouts). Goals:
 3. **Profiles = data**; product code stays generic (no “if Grok then …” branches).
 4. When the real fix lands, **delete** the crutches that only existed for that failure class.
 
-Decisions: **D008–D009** (cold spine), **D014** (belt moves-only), **D016**
-(mid-session lastTabFocus preserve on re-affirm), **D018** (pin open leaf on
-steal), **D019** (hard + soft settle). Plans:
-[forge-layout-cold-topology](./plans/forge-layout-cold-topology.md),
-[forge-layout-settle-contract](./plans/forge-layout-settle-contract.md).
+Decisions: **D008–D009** (forest before machines; no Mode B cold), **D014
+superseded** (belt is not product), **D016** (lastTabFocus preserve),
+**D018** (pin), **D019** (hard/soft *ideas*; execution → **D040/D041**),
+**D039–D043** (ApplyEpoch, slot machines, forest-match `ok`, open-into-slot,
+overlay).
+Plans: [forge-layout-cold-topology](./plans/forge-layout-cold-topology.md),
+[forge-layout-settle-contract](./plans/forge-layout-settle-contract.md),
+[forge-layout-slot-machines](./plans/forge-layout-slot-machines.md).
+
+**Locked apply architecture (SM0, 2026-08-16):** **slot** machines (a slot is
+a TILE window **or** a TABBED/STACKED CON), not per-window. ApplyEpoch is the
+only home writer during apply. Hard = **in-slot** (retry N=2). `Done.ok` =
+required forest match (hard-failed → `ok: false`; peers still finish). Open
+into slot; belt dies at SM6. Group chrome A is tab/FCC, not SM1–SM4.
+Implement: **SM1** (4.5 high) then **SM2** (4.6 high). Do not start SM4
+before SM2+SM3.
 
 ### Problems this architecture solves
 
@@ -199,11 +211,11 @@ Concrete failure classes (how they looked, what phase owned them):
 
 | What went wrong (observable) | Wrong fix (do not reintroduce) | Architecture answer |
 | --- | --- | --- |
-| After cold or partial `layout dev`, a **TABBED group shows the wrong window**: e.g. plain Chrome “New Tab” **visible over** the profile’s intended open leaf (Grok), or mon1 shows Voice content while the YouTube tab is lit (or the reverse). Profile wanted `active: Grok` / `active: YouTube`. | Mid-open focus; sleep 250 ms and re-focus forever; belt re-`ensure_layout` that rewrites the group | **Focus is post-structure.** After bind/order: hard-ready → apply open leaves **once** → soft barrier (late activate = thrash → correct + reset quiet) → **one** post-settled verify. Extension **pins** the intended open leaf (~15s) and restores on meta-focus steal; tab strip follows **lastTabFocus**, not keyboard-only. |
+| After cold or partial `layout dev`, a **TABBED group shows the wrong window**: e.g. plain Chrome “New Tab” **visible over** the profile’s intended open leaf (Grok), or mon1 shows Voice content while the YouTube tab is lit (or the reverse). Profile wanted `active: Grok` / `active: YouTube`. | Mid-open focus; sleep 250 ms and re-focus forever; belt re-`ensure_layout` that rewrites the group | **Focus after all required slots are terminal.** Pin the intended open leaf (~15s); restore on meta-focus steal; tab strip follows **lastTabFocus**, not keyboard-only. |
 | Operator must run `forge layout` **two or three times** before the desk sticks | Accept multi-CLI as success; Mode B second pass on cold | **One spine per command.** Soft residual + verify-once catch late Meta *inside* that run. |
 | After thrash, mon children **swap order** (e.g. mon1 becomes `term \| tab` instead of `tab \| term`) | “Just run layout again” / ensure_order as the design | **Order is part of construction**, not a cleanup pass after chaos. No happy-path structure rewrite after bind. |
-| Post-open “belt” **rewrites topology** and stomps open leaf / mon order | More ensure_layout after residual | Belt = **wrong-mon moves for just-opened pin roles only** (D014). Structure stays with residual bind. |
-| Fixed quiet (250 ms / 2 s) works on one machine, fails on another or when Chrome is slow | Longer sleeps; per-app hardcode | **Hard wait ~5s** for TILE/rect/mon (call clock). **Soft wait** = rolling max residual latency × 1.25 per host+wm_class (file-backed), with floor/clamp; first-ever on this host seeds from another host’s same class if present, else a learning trial. |
+| Post-open “belt” **rewrites topology** and stomps open leaf / mon order | More ensure_layout after residual; keep belt as the design | **Open into the slot** (D042). Belt is **deleted** (SM6), not the happy path |
+| Fixed quiet (250 ms / 2 s) works on one machine, fails on another or when Chrome is slow | Longer sleeps; per-app hardcode | **Hard** = in-slot retry (5s then 2s×2). **Soft** = rolling max residual latency × 1.25 per host+wm_class (file-backed) |
 | Product code grows `if chrome / if ghostty` settle branches for one host desk | Ship personal layout as engine logic | Heuristics keys: `host\|class\|processKind\|residualKind`. Profiles name roles; **engine never keys on role names**. |
 | Cold empty desk treated as thrash → Mode B parks everything then “recovers” | Mode B as cold success path | Cold/just_opened: thrash **report-only**; skeleton-first one-shot. Mode B = true mid-session chaos only. |
 
@@ -212,24 +224,26 @@ Concrete failure classes (how they looked, what phase owned them):
 Happy path for one reconcile apply (especially when roles need open):
 
 ```text
-skeleton → open (map pin) → bind → order/size → residual place
-         → hard-ready (TILE / rect / mon)
-         → focus once (open leaves + profile keyboard focus)
-         → soft residual barrier (steal → correct + reset quiet)
-         → post-settled verify once
-         → persist settle heuristics
+ApplyEpoch
+  → materialize forest (skeleton + bind existing + open INTO slots)
+  → slot machines (parallel independent slots; hard = in-slot retry)
+  → forest match (Done.ok)
+  → focus once + soft residual + verify once
+  → release epoch
 ```
+
+Historical phase names (skeleton / open / bind / …) may remain as logs.
+Product `ok` is forest match (D041), not “hard warned and focus passed.”
 
 | Phase | Responsibility | Must not |
 | --- | --- | --- |
-| **Skeleton** | Build mon splits + tab/stack groups with slot-tagged placeholders when the desk is empty | Invent mon-root as a third HSPLIT sibling for one dual-mon setup |
-| **Open** | Launch missing roles; wait for **map + windowId** (mode may stay FLOAT while deferred) | Require TILE mid-open; raise profile actives while other apps still mapping |
-| **Bind / order / size** | Attach windows to slots; mon-child order; size shares | Mid-flight focus; Mode B park as “construction succeeded” |
-| **Hard-ready** | Before move/focus targets: TILE (or grab), sane rect, mon ≥ 0; timeout ~5s from the call | Move FLOAT leaves that Meta will snap back |
-| **Focus once** | Set each TABBED/STACKED open leaf from profile `active`, then keyboard focus if profile asks | Focus during open thrash; always-on second full raise |
-| **Soft barrier** | After focus apply: wait learned quiet; if open leaf / kbd mismatches, **correct immediately**, record residual latency, **reset** quiet | Fixed reassert forever; Chrome-only product paths |
-| **Post-settled verify** | After soft settle: one full mismatch check; correct at most once more | Infinite reassert loop |
-| **Belt (optional)** | If just-opened roles still on wrong mon: **move only** | `ensure_layout` / `ensure_order` after bind on the happy path |
+| **ApplyEpoch** | Desired forest is the only writer of mon / TILE home (D039) | Entered-monitor rehome; interleave H1; D026 restore mid-apply |
+| **Materialize forest** | Skeleton + bind existing + open **into slots** (PH / slot id) | Mon-root-only PlaceNext; invent a fourth PH kind |
+| **Slot machines** | Per **slot** (window **or** tab/stack CON): place → in-slot hard → retry N=2 | Per-window machines for tab peers; TILE-anywhere as ready |
+| **Forest match** | `Done.ok` iff every required TILE slot is in-slot (D041) | Focus-only verify as success; best-effort `ok` on hard-fail |
+| **Focus once** | After all required slots terminal: open leaves + profile kbd | Focus during open/place |
+| **Soft barrier** | Learned quiet; steal → pin restore + reset quiet | Soft-fix wrong mon / flat tabs |
+| **Belt** | **Deleted at SM6** (D042). Until then, not the happy path | `ensure_layout` after bind; belt-as-success |
 
 Thrash mid-batch is **forbidden**. Multi-step work **inside one command** is fine
 only if ordered as above. “Operator runs layout again” is **not** the design.
@@ -238,7 +252,7 @@ only if ordered as above. “Operator runs layout again” is **not** the design
 
 | Kind | Meaning | Clock | Timeout |
 | --- | --- | --- | --- |
-| **Hard** | Required before the next act (map, TILE, mon, rect) | From the forge call that needs readiness | ~**5s** (`HARD_TIMEOUT_MS`) |
+| **Hard** | Required **in-slot** (TILE\|grab + desired mon + parent CON + ε rect). Timeout **retries place** (D040) | From our place act | First **5s**, retry **2s**, N=2 extra |
 | **Soft** | Residual that often follows focus/move (focus steal, geometry noise) | From last act (apply or correct); quiet **resets** when a residual fires | Learned: max(last **10** residual-positive latencies) × **1.25**, floored/clamped; **first-ever** class/key uses a longer learning trial (~6s for focus) |
 
 **Focus steal during the pin window is thrash, not “user intent.”** On layout
@@ -285,7 +299,7 @@ class keys only** (no titles, URLs, or personal role names).
 | Plan (Python dry-run / dump) | `scripts/forge/layout_plan.py` |
 | Plan (product) | `lib/shared/layout-plan.js` `planReconcile` |
 | Thin CLI apply | `scripts/forge/layout_apply_client.py` + `forge` `cmd_layout` |
-| Apply spine | `lib/extension/layout-apply-run.js` + structure/open/settle bags |
+| Apply spine | `lib/extension/layout-apply-run.js` + structure/open/settle bags; SM1+ adds epoch + slot machines |
 | Heuristics store | `scripts/forge/settle_heuristics.py` / `forgeConfigDir()/settle-heuristics.json` |
 | Open-leaf pin / meta-steal restore | `lib/extension/layout-open-leaf-pin.js`, `window.js`, `session-api.js`, `action-pipeline.js` |
 | User-facing cold steps | [docs/user/layout.md](../docs/user/layout.md) |

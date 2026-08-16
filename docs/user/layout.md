@@ -38,11 +38,11 @@ you close the terminal mid-apply, the job keeps running. Use `--foreground` or
 `FORGE_JOB=0` for the old in-process path.
 
 **Cold after reboot is still multi-second** even when settle heuristics exist:
-apps must map again, hard-ready (TILE/rect/mon) can wait up to ~5s per target,
-and open-leaf soft quiet floors at 2s while pins exist. Learned timings in
+apps must map again, and Forge retries placing each tiled slot until it is
+actually there (or gives up and reports which slots failed). Learned timings in
 `~/.config/forge/config/settle-heuristics.json` shorten **soft residual** quiet
-after focus/move (focus steal, geom noise)—they do **not** skip open/map or
-hard Meta readiness. Mid-session re-apply with windows already TILE is much
+after focus (focus steal, geom noise)—they do **not** skip open/map or
+in-slot placement. Mid-session re-apply with windows already in place is much
 faster than true cold.
 
 Tree root for `hosts/` + `common/` is `FORGE_LAYOUT_DIR` when set, else
@@ -369,29 +369,24 @@ Kept companions and claimed role windows are never closed.
 
 On a **cold empty** desk (no claimed role windows), one `forge layout <name>`:
 
-1. **Skeleton** — mon splits + tab/stack groups + slot-tagged placeholder tiles  
-2. **Open** missing roles (parallel under LayoutBatch)  
-3. **Bind** each mapped window into its skeleton slot  
-4. **Order / size** once; residual close/park after bind  
-5. **Hard-ready** pin roles (TILE + rect + mon; hard timeout ~5s)  
-6. **Focus once** (profile `active` / open leaf + keyboard `focus`)  
-7. **Soft residual barrier** — wait a learned quiet window (per host + app
-   class) for late **focus** steal and post-move **geometry** residual; on
-   focus steal, correct immediately and reset quiet. Geom quiet is observe +
-   learn (no re-apply). Heuristics file:
-   `~/.config/forge/config/settle-heuristics.json` (loaded once per CLI
-   process, accumulated in memory, written once at end of layout apply).
-   Schema version must match the engine; a mismatch is ignored as empty
-   (bump on timeout-semantics change). Operator wipe:
-   `forge thrash reset-heuristics` (or `… --unlink` to delete the file);
-   status: `forge thrash heuristics`.  
-8. **Post-settled verify once** — re-apply only still-mismatched open leaves /
-   keyboard focus; not a blind double raise  
+1. **Skeleton** — mon splits + tab/stack groups + slot-tagged placeholders  
+2. **Open** missing roles **into those slots** (chrome-family apps launch one
+   at a time so they do not crash each other)  
+3. **Place + hard-ready** each tiled slot (window, or a whole tab group):
+   TILE on the intended monitor in the intended pane. If Meta is slow, Forge
+   retries that slot a few times. A required slot that never lands fails the
+   command (`ok` is false) even if other slots succeeded  
+4. **Focus once** (profile `active` / open leaf + keyboard `focus`) after
+   every required slot has finished or failed  
+5. **Soft residual** — brief learned quiet for late focus steal; correct and
+   reset quiet. Heuristics:
+   `~/.config/forge/config/settle-heuristics.json`. Operator wipe:
+   `forge thrash reset-heuristics` (or `… --unlink`); status:
+   `forge thrash heuristics`  
 
-No happy-path second structure pass, Mode B recover, or stacked focus reassert.
-Optional belt after residual only rehomes just-opened roles still on the wrong
-monitor (moves only). Chaos recover: mid-session Mode B, or env
-`FORGE_LAYOUT_POST_OPEN_RETRY=1`.
+No happy-path second structure pass, Mode B recover, or “run layout again”
+as the fix. Chaos recover: mid-session Mode B only, or env
+`FORGE_LAYOUT_POST_OPEN_RETRY=1` (opt-in, not cold success).
 
 Thrash detection may still print on stderr for info; it does **not** force Mode B
 park mid-open or mid-bind. Mode B remains for true mid-session chaos (scrambled

@@ -4,7 +4,9 @@
 **Plan:** (none yet) — use high-reasoning model (Grok 4.6 xhigh) **before** code  
 **Branch:** master (default)  
 **Blocker:** (none)  
-**Priority:** after R036 host cold sign-off (or in parallel as design-only)  
+**Priority:** after **SM7** overlay-all-hard (D043 gate). Group chrome A
+is tab/FCC, not SM1–SM4. R036 cold is human residual. **Do not start**
+if SM1–SM7 still contend for the same agents.  
 **Updated:** 2026-08-16
 
 ## Goal
@@ -23,7 +25,7 @@ implement slices. **Do not start tab implementation until this D0 lands.**
 | Code already | `_clearChrome` at **soft-enter** (before quiet); restack on clear; Done idempotent |
 | Evidence | 2026-08-16: still failing on pre-tip Shell; soft-enter + restack installed to disk — needs logout. Re-verify after tip load |
 | Open questions | If still long/broken on tip after soft-enter: hard-ready clear? second spinner? strip z-order beyond restack? pin thrash? |
-| Related | R027 chrome-until-ready; D010; post-apply UX in HANDOFF |
+| Related | R027 chrome-until-ready; **D043** (D010 superseded — overlay dies at all-hard) |
 
 **Acceptance direction (plan must lock):** one clear rule for when chrome drops; L0 + host repro steps.
 
@@ -73,7 +75,8 @@ Planning may open a new regression only if host tip still fails after logout.
 
 ## Context for the next agent
 
-- Operator: plan with **high reasoning** before tabs; do not start tab code now
+- Operator: plan with **4.6 xhigh** after **SM7**; do not start tab code now
+- SM0 locked: group chrome A is this D0 / FCC, not SM1–SM4
 - Overlay DnD zone (slot rect) **fixed** and committed separately — not this batch
 - Host tip may still need **logout** for soft-clear chrome path to load
 

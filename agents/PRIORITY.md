@@ -5,93 +5,113 @@
 **Branch:** **`master`** default  
 **Push:** only when human asks.
 
-**Locked:** D036 (Node CLI + `lib/shared` pures) · D037 (ApplyLayout,
-not a `cli/` planner port).
+**Locked:** D036 (Node CLI + `lib/shared` pures) · D037/D038 ApplyLayout ·
+**D039–D043** slot machines (SM0).
 
-**Active P0:** **R036** host cold sign-off after beltStructure + mon unwrap (code
-in tree; **logout** for tip). Mid-session host tree OK after job `…4893e8`.
-**Shipped this push:** R036 code (PH pin + beltStructure + unwrap) · chrome clear
-after soft · DnD overlay from tree slot (not lagging Meta frame).
-**Parked for tab planning (no implement yet):** hover-spinner residual + cross-mon
-tabs + TD residuals — [tab planning](./tasks/forge-tab-work-planning.md).
-**Agents:** default implement = **Grok 4.5** (prompt as medium). Plan reshape /
-attach-policy design / **tab product D0** = **Grok 4.6** (xhigh if design forks).
-See [cli-node Which agent](./plans/forge-cli-node.md#which-agent).
+**Active P0 (orchestrator):** **SM1–SM7** implement — next session
+**Grok 4.5 med orchestrator** assigns work (does not re-litigate).
+**Human residual:** **R036** host cold after logout (`_layoutApplyLive` dirty;
+Guake-only `layout dev`). Mid-session host tree **PASS**.
+**Parked (after SM7 / structure):** tab product D0 · soft polish · scale smoke.
+**Agents:** default implement = **Grok 4.5**. Slot-machine **contracts +
+runtime** = **4.6 high**. Architecture locks = **4.6 xhigh** only.
 
 **FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.  
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
 
 ---
 
+## Orchestrator (this is you if 4.5 med)
+
+Read [HANDOFF](./HANDOFF.md) + [slot-machines plan](./plans/forge-layout-slot-machines.md).
+**Do not redesign D039–D043.** Spawn implementers; do not implement SM1–SM4
+yourself.
+
+| Assign next | Agent | Task |
+| --- | --- | --- |
+| **First** | **4.5 high** | [SM1 ApplyEpoch](./tasks/forge-layout-slot-machines_sm1-apply-epoch.md) |
+| **Then / parallel** | **4.6 high** | [SM2 in-slot hard](./tasks/forge-layout-slot-machines_sm2-in-slot-hard.md) — no `window.js` rehome overlap with SM1 |
+| After SM1 | **4.6 high** | [SM3 open-into-slot](./tasks/forge-layout-slot-machines_sm3-open-into-slot.md) |
+| After SM2+SM3 | **4.6 high** (+ later **4.6 high** review) | [SM4 runtime](./tasks/forge-layout-slot-machines_sm4-runtime.md) |
+| After SM4 | **4.5 med** | SM5 · SM7 (can be separate agents) |
+| After SM4+SM5 nest mon=1 | **4.5 med** | SM6 delete crutches |
+
+**Do not assign:** SM4 before SM2+SM3 · tab **code** · `layout_plan.py` →
+`cli/` · Mode B · dual-mon nest by default · FCC C2/resize/STACKED into this DAG.
+
+Prompt the role (`4.5 high`, `4.6 high`, …) in the spawn. There is no
+separate medium slug.
+
+---
+
 ## Queue
 
-| Pri | Item | Status |
-| --- | --- | --- |
-| **P0** | **R036** host cold `layout dev` after logout (beltStructure + unwrap in tree; L0 green) | [task](./tasks/forge-layout-cold-apply-structure.md) · [R036](./REGRESSIONS.md) · **human logout** |
-| done (code) | R036 PH pin + ApplyLayout beltStructure (R013) + mon-direct 1-child unwrap | same task |
-| done (code) | Chrome clear after soft; DnD overlay uses tree slot rect | HANDOFF post-apply UX |
-| **plan first** | **Tab work D0** — hover/spinner clear gate · cross-mon tabs · TD2–4 triage | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) · **Grok 4.6 xhigh** |
-| later | Soft-only polish if structure green but soft still thrashing (R014 class) | after R036 structure · [IDEAS](./IDEAS.md) |
-| done | R029/R030 green layout — first apply TILE, second reuses | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
-| done | TD1 strip reorder **code** + nest live (L0 131) | [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
-| done | R028 late-identity wrap **code** + nest VSPLIT + **host** live PASS | [task](./tasks/forge-container-insert-a.md) |
-| done | **R025** tab-click slot (host live) | [task](./tasks/forge-tab-click-slot.md) |
-| done | **R026** first tab-click after layout stays (host live) | [task](./tasks/forge-tab-click-pin-adopt.md) |
-| done | Insert/DnD design lock: **A** + Chrome drag table | [task](./tasks/forge-container-insert-dnd-design.md) |
-| done | CLI language D0 lock (D036/D037) | [completed](./plans/forge-cli-node/completed/forge-cli-node_d0-discussion.md) |
-| done | CLI-node **CN0–CN6** (CN7 skip) | [completed/](./plans/forge-cli-node/completed/) |
-| done | **R027** overlay until apply returns; clicks blocked | [completed](./tasks/completed/forge-layout-chrome-until-ready.md) |
-| done | Wave Z zoom on tip; Vim kit live | [completed](./tasks/completed/forge-zoom-maximize.md) |
-| done | Test-suite honesty: rubric + 5 forest rewrites (do not re-sample) | [completed](./tasks/completed/forge-test-suite-honest-analysis.md) |
-| done | First-layout FLOAT (R024): always force-paint at batch end; skip mid-batch percent write-back | [completed](./tasks/completed/forge-layout-first-apply-float.md) |
-| done | Install `--kit=vim` + stale-kit warning | [completed](./tasks/completed/forge-install-reapply-kit.md) |
-| done | R019 CENTER both dirs host smoke (tip load) | HANDOFF residual |
-| done | **R032** tab-strip click dead (WR14 on ApplyLayout + restack last) | [completed](./tasks/completed/forge-tab-click-unresponsive.md) |
-| done | **R031** float-border ghost tile | [completed](./tasks/completed/forge-float-border-ghost-tile.md) · [REG](./REGRESSIONS.md) |
-| done | R020 VLC EOS nest live residual | [R020](./REGRESSIONS.md) · `tests/fixtures/media/` |
-| done | IC0–IC3 · IC4 **skipped** (AL8) | [canonical](./plans/forge-canonical-contracts.md) |
-| done | In-process `ApplyLayout` AL0–AL8 | [plan](./plans/forge-layout-in-process.md) |
-| done | **R035** cold residual mon1 flat tabs — ensure_layout while layout PHs | [completed](./tasks/completed/forge-layout-residual-tab-ensure.md) · [R035](./REGRESSIONS.md) |
-| done | **R033** open/launch LFT aspect → VSPLIT/HSPLIT (LFT first) | [completed](./tasks/completed/forge-r033-open-aspect-split.md) · [R033](./REGRESSIONS.md) |
-| done | FCC **C0** kill monocle + inventory | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c0-kill-monocle.md) |
-| done | FCC **C1** `setLayout` I1 | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
-| later | L1 scale smoke: `gdisplays load default-no-scale` must not thrash; restore `default` + `layout dev` | [R017](./REGRESSIONS.md) · [IDEAS](./IDEAS.md) |
-| later | STACKED / resize-autotile | separate plans · [blocker](./blockers/resize-autotile-design.md) — do not mix into settle spine |
-| abandoned | `Ctrl+Super+Esc` unfocus (FC2) | keybind unbound |
-| done | **R015** empty-mon drag snap-back | L0 `bug-r015-empty-mon-dnd`; live `L1.r015-empty-mon-dnd` |
-| done | Wayland RC **R013/R014** + host logout + suite | [completed](./plans/forge-wayland-rc-test-suite/completed/forge-wayland-rc_r013-r014.md) |
-| done | Nest isolation **N3→N1→N4→N2** (D022 v1) | [plan](./plans/forge-nested-isolation.md) · [completed/](./plans/forge-nested-isolation/completed/) |
-| done | Pure bags + **W1–W5** + **L8/L11**; **R011/R012**; D019; CLI jobs | [completed/](./plans/forge-lifecycle-abstractions/completed/) · [REGRESSIONS](./REGRESSIONS.md) |
+| Pri | Item | Agent | Status |
+| --- | --- | --- | --- |
+| **P0** | **SM1** ApplyEpoch / home authority | **4.5 high** | [task](./tasks/forge-layout-slot-machines_sm1-apply-epoch.md) · D039 |
+| **P0** | **SM2** in-slot hard + forest-match `Done.ok` | **4.6 high** | [task](./tasks/forge-layout-slot-machines_sm2-in-slot-hard.md) · D040/D041 |
+| **P0** | **SM3** open into slot (no mon-root PlaceNext) | **4.6 high** | [task](./tasks/forge-layout-slot-machines_sm3-open-into-slot.md) · D042 · after SM1 |
+| **P0** | **SM4** slot-machine runtime + retry | **4.6 high** | [task](./tasks/forge-layout-slot-machines_sm4-runtime.md) · after SM2+SM3 |
+| **P1** | **SM5** focus + soft after all-hard | **4.5 med** | [task](./tasks/forge-layout-slot-machines_sm5-focus-after-hard.md) |
+| **P1** | **SM7** overlay clear = all-hard | **4.5 med** | [task](./tasks/forge-layout-slot-machines_sm7-overlay-all-hard.md) |
+| **P1** | **SM6** delete belt / continue-on-timeout / focus-only-ok | **4.5 med** | [task](./tasks/forge-layout-slot-machines_sm6-delete-crutches.md) |
+| human | **R036** host cold `layout dev` after logout | Human | [task](./tasks/forge-layout-cold-apply-structure.md) · [R036](./REGRESSIONS.md) |
+| **plan first** | **Tab work D0** after **SM7** | **4.6 xhigh** | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
+| P2 | FCC **C2** group/ungroup | **4.6 med** if ops reshape, else **4.5 high** | [FCC plan](./plans/forge-first-class-containers.md) · after apply honesty |
+| P2 | FCC **C4** move-in/out + focus parent | **4.5 high** | after C2 |
+| P2 | **R1** owning-split resize | **4.6 med** | after C2; not yuiop |
+| P2 | FCC **C3** split chrome | **4.5 med** | after C2 · group chrome A |
+| P3 | Strip `_layoutOp` flatten | **4.5 high** | after C2 explicit ungroup |
+| P3 | Session restore vs ApplyLayout | **4.6 high** | after SM honest |
+| P3 | Freeze Python `layout_plan.py` as dump/oracle | **4.5 lo** | after SM6 · **never** `cli/` port |
+| P3 | **CN13** Node PATH `forge` + jobs | **4.6 med** | after apply thin client is boring |
+| later | CN14 nest/live; CN15 delete Python CLI | **4.6 med** / **4.5 lo** | after CN13 |
+| later | Soft-only polish (R014 class) | **4.5 med** | only if cold forest green and soft still burns |
+| later | L1 scale smoke | Human + **4.5 lo** notes | R017 shipped |
+| later | **STACKED** product D0 | **4.6 xhigh** | own plan |
+| later | Ratio / autotile (yuiop) | Human blocker → **4.6 xhigh** D0 | [blocker](./blockers/resize-autotile-design.md) |
+| done | **SM0** slot-machines D0 | 4.6 xhigh | [completed](./plans/forge-layout-slot-machines/completed/forge-layout-slot-machines_d0-discussion.md) |
+| done (code) | R036 PH pin + beltStructure + unwrap + live rehome suppress | — | same R036 task; host logout residual |
+| done | R035 residual tab ensure · R033 aspect split · R029–R032 | — | HANDOFF / REGRESSIONS |
+| done | TD1 strip reorder · R025/R026 · R028 | — | completed |
+| done | CLI-node **CN0–CN6** (CN7 skip) · AL0–AL8 · FCC C0/C1 | — | completed |
+| done | IC0–IC3 · IC4 skipped · nest isolation · Wayland RC | — | completed |
 
 ### Dropped from active queue (not deleted — see IDEAS)
 
 | Was | Disposition |
 | --- | --- |
-| optional dual-mon open-heavy nest mon=2 | → [IDEAS](./IDEAS.md) live coverage — not needed before tab planning |
-| optional per-window signals → WindowAttach | → [IDEAS](./IDEAS.md) lifecycle residual — plan scope already complete |
-| CLI “nothing applied” wording | → [IDEAS](./IDEAS.md) — promote if false-ok wording bites |
-| Cross-mon TABBED D0 as lone later row | folded into **Tab work D0** planning task |
+| optional dual-mon open-heavy nest mon=2 | → [IDEAS](./IDEAS.md) |
+| optional per-window signals → WindowAttach | → [IDEAS](./IDEAS.md) |
+| CLI “nothing applied” wording | → [IDEAS](./IDEAS.md) |
+| Cross-mon TABBED D0 as lone later row | folded into **Tab work D0** (after SM7) |
 
 ### Why this order
 
-1. **R036 host cold** — code in tree; only **logout + cold `layout dev`** left (human).
-2. **Tab product planning (4.6 xhigh)** — before any tab implement; includes spinner clear gate.
-3. Soft polish / scale smoke / STACKED — after structure green or design locks.
-4. Do not assign a 4.5 agent `layout_plan.py` → JS.
+1. **SM1–SM3 contracts** — epoch, in-slot hard, `Done.ok`, open-into-slot.
+   Machines on today’s predicates retry into the same lie.
+2. **SM4 runtime** — parallel independent slots, hard retry.
+3. **SM5–SM7** — focus after barrier, overlay, delete crutches.
+4. **R036 host cold** — human logout; does not block SM assign.
+5. **Tab D0** — after SM7 overlay gate. Chrome A is not SM1–SM4.
+6. FCC / resize / CN13 / STACKED — after apply is honest, or later.
 
 ### Worth (do not forget)
 
 | Item | Why | Task |
 | --- | --- | --- |
+| ApplyEpoch | One writer of home during apply | SM1 · D039 |
+| In-slot hard + honest `ok` | TILE-anywhere + false-ok was R036 | SM2 · D040/D041 |
+| Open into slot | Kill four-pass place | SM3 · D042 |
+| Slot machines | Parallel place + hard retry | SM4 |
 | `lib/shared` gi-free | Kernel prefs+CLI can share | D036 · CN0 · CN3 |
-| ApplyLayout | Speed + one planner | D037 · AL0 |
-| TD1 strip reorder | Tabs match window DnD | **done** |
-| FCC C1 `setLayout` I1 | Tabs stay groups when mode changes | **done** |
-| Skip IC4 if ApplyLayout | Do not fold waiters we will delete | IC4 note |
-| Tab D0 before implement | Spinner gate + cross-mon + TD triage | [planning](./tasks/forge-tab-work-planning.md) |
+| ApplyLayout | Speed + one planner | D037 · AL0 **done** |
+| Skip IC4 if ApplyLayout | Waiters deleted | IC4 note |
+| Tab D0 before implement | Spinner gate + cross-mon + TD triage | after SM7 |
 
 **Do not** start dual-mon nest by default. **Do not** nest for no-code host smokes.  
-**Do not** start tab implementation until [tab planning](./tasks/forge-tab-work-planning.md) locks.
+**Do not** start tab implementation until [tab planning](./tasks/forge-tab-work-planning.md) locks.  
+**Do not** start SM4 until SM2+SM3 land.
 
 **Handoff:** [HANDOFF.md](./HANDOFF.md).  
 **Parked ideas:** [IDEAS.md](./IDEAS.md).
@@ -107,13 +127,8 @@ forge nested status         # running: False
 | [HANDOFF.md](./HANDOFF.md) | Start here |
 | [IDEAS.md](./IDEAS.md) | Parked optionals / promote-later |
 | [contracts](../docs/dev/contracts.md) | Job → API |
-| [canonical contracts plan](./plans/forge-canonical-contracts.md) | IC0–IC4 |
-| [nest isolation plan](./plans/forge-nested-isolation.md) | Nest isolation v1 (**done**) |
-| [Wayland RC suite](./plans/forge-wayland-rc-test-suite.md) | RC procedure (cleared) |
-| [lifecycle abstractions](./plans/forge-lifecycle-abstractions.md) | Health plan (done scope) |
-| [settle contract](./plans/forge-layout-settle-contract.md) | Hard/soft — product |
+| [slot machines](./plans/forge-layout-slot-machines.md) | **P0** SM1–SM7 |
+| [ApplyLayout](./plans/forge-layout-in-process.md) | AL0–AL8 done |
 | [cli-node](./plans/forge-cli-node.md) | D036 CN0–CN6 |
-| [ApplyLayout](./plans/forge-layout-in-process.md) | D037 |
-| [tab chrome](./plans/forge-tab-chrome-drag.md) | TD1 done; more via tab planning |
-| [tab planning](./tasks/forge-tab-work-planning.md) | Spinner · cross-mon · TD triage |
+| [tab planning](./tasks/forge-tab-work-planning.md) | After SM7 |
 | [REGRESSIONS.md](./REGRESSIONS.md) | R0xx + guards |

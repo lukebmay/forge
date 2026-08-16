@@ -1,15 +1,16 @@
 # Plan: In-process `ApplyLayout` (layout rearchitecture)
 
 **Status:** **AL0 locked** · **AL1–AL8 done** (thin CLI cutover)  
-**Priority:** after Insert A live + tab-click residuals + **TD1** (all
-done)  
-**Decision:** [D037](../../docs/DECISIONS.md) · shape [D038](../../docs/DECISIONS.md)  
+**Priority:** residual R036 host cold; **next architecture** is
+[slot machines](./forge-layout-slot-machines.md) (SM0 **locked**)  
+**Decision:** [D037](../../docs/DECISIONS.md) · shape [D038](../../docs/DECISIONS.md)
+· amend [D039–D043](../../docs/DECISIONS.md)  
 **Branch:** `master`  
 **Related:** [forge-cli-node](./forge-cli-node.md) (thin client only
 after DBus exists) · [project.md](../project.md) § Layout apply
 architecture · D008–D019 · D021 · D034–D036  
 **Created:** 2026-08-14  
-**Updated:** 2026-08-15 (AL1–AL8; nest `_forge-test-clean` + `_forge-test-ghosttys` PASS)
+**Updated:** 2026-08-16 (AL1–AL8 done; SM0 takes the product executor next)
 
 ## Why this exists
 
@@ -32,12 +33,14 @@ User still types `forge layout <name>`.
 
 ## Recommended design (locked)
 
-One coherent architecture. Options that lost are below so implementers
-do not re-open them.
+AL0–AL8 **shipped**. Product **executor** after 2026-08-16 is
+[slot machines](./forge-layout-slot-machines.md) (**D039–D043**).
+The phase table below is **AL7 history**. Do not add belt features or
+TILE-anywhere hard-continue. **D010/D014 superseded.**
 
-### Spine ownership
+### Spine ownership (AL7 — superseded as product executor by D040)
 
-Extension owns the **whole** D008 spine, in-process:
+Extension owned the D008 spine, in-process:
 
 ```text
 skeleton → open → bind → order/size → hard-ready → focus once
@@ -53,7 +56,7 @@ skeleton → open → bind → order/size → hard-ready → focus once
 | Focus once | `revealGroupChild` + pin | D018 / D025 / R025 / R026 |
 | Soft | learned quiet; steal → pin restore + reset quiet | `settle-math` + open-leaf pin; heuristics file write |
 | Verify | one mismatch pass | existing verify helpers; correct at most once |
-| Belt | only if just-opened pin roles still wrong mon | D014 moves-only |
+| Belt | AL7 leftover — **not product** (D014 superseded / D042) | Delete in SM6 |
 
 Waits are **SignalBag / SourceBag / OpenCommitManager / pin / sensors**.
 Not CLI `time.sleep` + GetTree.

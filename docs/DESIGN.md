@@ -734,8 +734,7 @@ process and often maps the new window onto mon0 next to the existing
 instance — PlaceNext stem match alone cannot fix it. Layout open and
 `launch_app` therefore spawn `ghostty --gtk-single-instance=false`
 (argv) for Ghostty targets, still using the desktop only for
-StartupWMClass wait hints. Residual move + optional belt re-plan remain
-the safety net if Meta mon is still wrong.
+StartupWMClass wait hints. Apply opens bind into the slot (D042); do not treat belt as the safety net.
 
 **Launch env (terminals / Grok):** `_popen_detached` always uses
 `cwd=$HOME` **and** strips agent/CI color-suppression variables
@@ -744,22 +743,20 @@ the safety net if Meta mon is still wrong.
 Agent shells set those so tool output is monochrome; without stripping,
 Ghostty inherits them and interactive shells/Grok stay monochrome.
 
-**Open-then-place (apply contract):** Per-window TILE settle (LF5) is not
-enough when Ghostty (or Meta) **moves itself** after first tile, but whole-forest
-Meta-stable is **not** the product default (LF6 fingerprint was correct but
-jumpy). Reconcile apply when roles need open:
+**Open-then-place (historical AL7 spine — superseded by D039–D043):**
+the numbered belt + one-shot hard-ready list is **not** the product
+contract. Residual move + belt were a safety net; they hid empty-mon
+false-ok (R036).
 
-1. Extension steps for **already-present** tiles only (cold empty: skeleton first).
-2. **Open all** missing apps (launch + pin windowIds); no residual Move mid-open.
-3. Map-pin wait per role (windowId identity); tree owns intended slots.
-4. Release-deferred → re-plan with `role_pins` → residual bind/order/size (no mid-flight focus).
-5. Optional belt: pin-role wrong-mon **moves only** (no ensure_layout rewrite).
-6. Focus phase (D019): hard-ready → apply open leaves once → soft residual
-   barrier (focus steal = thrash correct; post-move geom quiet learn) →
-   post-settled verify once. Heuristics:
-   `~/.config/forge/config/settle-heuristics.json` (CLI: load once / flush at
-   end of layout apply; schema mismatch → empty; wipe with
-   `forge thrash reset-heuristics`; extension may seed open quiet from file once).
+**Apply contract (locked SM0, D039–D043):** **ApplyEpoch → materialize
+forest → slot machines → forest-match `Done.ok` → focus/soft**. A slot
+is a TILE window **or** a TABBED/STACKED CON (not N independent apps).
+Hard means **in the desired slot**; timeout retries place (N=2).
+Required hard-fail → `Done.ok` false; other machines still finish. Open
+binds into the slot; belt is deleted (SM6), not evolved. Group chrome
+option A is tab/FCC work, not the apply executor. Soft heuristics file
+still applies **after** all-hard focus. Plan:
+[forge-layout-slot-machines](../agents/plans/forge-layout-slot-machines.md).
 
 **Agent-facing contract (why + anti-patches + code map):**
 [agents/project.md](../agents/project.md) § Layout apply architecture.

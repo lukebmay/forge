@@ -7,7 +7,7 @@ are how we get directional DnD no-ops and un-restored VLC geometry.
 
 Formulas for focus/structure/open: [actions.md](actions.md).
 Architecture: [architecture.md](architecture.md). Why: [DESIGN.md](../DESIGN.md).
-Decisions: [DECISIONS.md](../DECISIONS.md) (D018–D019, D023–D026, D037–D038).
+Decisions: [DECISIONS.md](../DECISIONS.md) (D018–D019, D023–D026, D037–D043).
 Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.md).
 
 ---
@@ -46,8 +46,11 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Empty-monitor drop | `resolveEmptyMonitorDrop` + `_commitEmptyMonitorDrop` (leaf only) | Mid-drag rehome (R012); `_rehomeWindowPreservingContainer` (R022) |
 | New-window home | `resolveOpenAppPlacement` (dock → empty-head → window-actual → LFT) | Pointer-on-empty falling through to other-mon LFT (R021) |
 | Admit live Meta windows missing from the tree | `wm.admitUntrackedWindows` / LayoutBatch `admit` | Plan/map-pin from GetTree only (untracked X11 maps stay invisible) |
-| **Reconcile / `forge layout` apply** | DBus `ApplyLayout` (async start) + in-process spine (D037/D038). Planner: `lib/shared/layout-plan.js` `planReconcile` | Port `layout_plan.py` into `cli/`; CLI GetTree poll loop; overload `LayoutBatch` as the product entry |
-| Hard-ready (ApplyLayout / product layout) | `waitHardReadyOnSignals` + `windowIsSettled` (`layout-apply-settle.js`) | CLI GetTree poll; JS GetTree twin of hard-ready |
+| **Reconcile / `forge layout` apply** | DBus `ApplyLayout` (async start) + ApplyEpoch + slot machines (D037–D043). Planner: `lib/shared/layout-plan.js` `planReconcile` | Port `layout_plan.py` into `cli/`; CLI GetTree poll loop; overload `LayoutBatch` as the product entry |
+| Apply-time home authority | `beginApplyEpoch` / `endApplyEpoch` (SM1; D039). Desired forest is the only mon/TILE-home writer while apply is live | Extra `_layoutApplyLive2` flag; entered-monitor rehome during apply |
+| Hard-ready (ApplyLayout / product layout) | In-slot predicate (SM2; D040): TILE\|grab + desired mon + parent CON + ε rect. Retry place on timeout (SM4) | TILE-anywhere `windowIsSettled` as apply success; CLI GetTree poll; warn-and-continue |
+| Apply `Done.ok` | Forest match for every **required** TILE slot (D041). Required `hard-failed` → `ok: false` | Focus-only verify as success; standing best-effort `ok: true` |
+| Apply open dest | PlaceNext / bind **into slot or skeleton PH** (SM3; D042) | Mon-root-only PlaceNext + belt as happy path |
 | Soft focus residual (ApplyLayout) | `runSoftFocusBarrierOnSignals` + `settle-math` + `pinLayoutOpenLeaf` | Third settle brain; twin of `revealGroupChild` |
 | Soft geom residual | in-process settle bag only (CLI geom poll removed AL8) | Re-apply layout until rect “looks right” |
 | Hard-ready before a non-layout CLI act (launch) | `wait_for_wm_class` + `window_is_settled` (launch/wait-window only) | New TILE poll on `forge layout` |
@@ -111,7 +114,7 @@ poll GetTree for hard/soft/focus.
 | --- | --- | --- |
 | Formula | No | `settle-math.js` ≈ `settle_heuristics` |
 | CLI layout (product) | No — observe only | `layout_apply_client` → `ApplyLayout` + Progress/Done |
-| ApplyLayout (D037/D038) | Yes — Meta signals + bags | `layout-apply-settle.js` (`waitHardReadyOnSignals`, soft barrier, verify once, D014 belt) |
+| ApplyLayout (D037–D043) | Yes — Meta signals + bags | ApplyEpoch + in-slot hard + slot machines (SM1–SM4). Soft after all-hard. Belt is **not** the API (D014 superseded; delete SM6) |
 | Extension interactive | No poll — signals + echo + open-quiet | `layout-epoch`, `OpenCommitManager`, pin 15s |
 | Display | Fixed debounce | workareas / monitor-recovery |
 
