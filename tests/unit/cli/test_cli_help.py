@@ -33,6 +33,47 @@ class ForgeHelpLaunchApp(unittest.TestCase):
         self.assertIn("forge get launch-app-command", text)
         self.assertIn("Empty opens GNOME Run a Command", text)
 
+    def test_help_has_no_test_or_nested_command_row(self):
+        buf = io.StringIO()
+        cli_help.print_forge_help(stream=buf)
+        text = buf.getvalue()
+        self.assertNotIn("live matrix", text)
+        self.assertNotIn("nested Wayland", text)
+        # Commands table must not list test / nested as product verbs.
+        rows = []
+        in_cmds = False
+        for line in text.splitlines():
+            if line.strip() == "Commands":
+                in_cmds = True
+                continue
+            if in_cmds and line.strip() == "Quick start":
+                break
+            if in_cmds:
+                rows.append(line)
+        joined = "\n".join(rows)
+        self.assertNotRegex(joined, r"\btest\b")
+        self.assertNotRegex(joined, r"\bnested\b")
+
+
+class ForgeTestHelp(unittest.TestCase):
+    def setUp(self):
+        cli_ansi.set_color_mode("never")
+
+    def tearDown(self):
+        cli_ansi.set_color_mode("auto")
+
+    def test_forge_test_help_lists_nested_and_live_only(self):
+        import test_cli
+
+        buf = io.StringIO()
+        test_cli.print_forge_test_help(stream=buf)
+        text = buf.getvalue()
+        self.assertIn("forge-test", text)
+        self.assertIn("nested", text)
+        self.assertIn("live", text)
+        self.assertIn("./scripts/forge/forge-test", text)
+        self.assertIn("--with-test-cli", text)
+
 
 if __name__ == "__main__":
     unittest.main()

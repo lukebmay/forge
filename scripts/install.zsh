@@ -72,6 +72,7 @@ Options:
   --no-host-defaults  Skip apply-host-defaults.zsh
   --kit=vim|safe|i3   Load that built-in keybind kit into live gsettings
   --no-kit            Do not load a kit (default). Still warns if live is custom
+  --with-test-cli     Also symlink ~/.local/bin/forge-test (dev/agent; off by default)
   --force             Non-interactive (default for this script; kept for CI flags)
   --verbose, -v       Detailed logs (make/npm/gsettings chatter)
   --color=auto|always|never
@@ -102,6 +103,7 @@ DO_RELOAD_THEME=1
 DO_HOST_DEFAULTS=1
 SKIP_NPM=0
 KIT=""
+WITH_TEST_CLI=0
 
 forge_parse_common_args "$@"
 if (( ${#FORGE_ARGS[@]} > 0 )); then
@@ -130,6 +132,7 @@ while (( $# )); do
       shift 2
       ;;
     --no-kit) KIT=""; shift ;;
+    --with-test-cli) WITH_TEST_CLI=1; shift ;;
     -*) forge_die "unknown option: $1" ;;
     *) forge_die "unexpected arg: $1" ;;
   esac
@@ -357,6 +360,13 @@ if [[ -f "$FORGE_ORIGIN_PATH" ]] && forge_cli_bin_is_ours; then
   forge_step_ok "CLI"
 else
   forge_step_warn "CLI (non-fatal)"
+fi
+if (( WITH_TEST_CLI )); then
+  if forge_install_test_cli_bin; then
+    forge_step_ok "Test CLI"
+  else
+    forge_step_warn "Test CLI (non-fatal)"
+  fi
 fi
 
 _install_keybind_kit

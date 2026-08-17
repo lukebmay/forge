@@ -42,7 +42,6 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
         ("get / set / settings", "Portable GSettings / named profiles"),
         ("keybind", "Save/load keybind kits (vim|safe|i3; no DBus)"),
         ("ping", "Extension health"),
-        ("test", "Dev/agent: live matrix + nested Wayland retest"),
         ("jobs",
          "List/attach/cancel durable CLI jobs (layout/install survive TTY death)"
          ),

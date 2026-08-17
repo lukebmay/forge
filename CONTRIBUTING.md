@@ -24,12 +24,13 @@ logging out of the host session:
 
 ```bash
 # Preferred (durable bus + Forge enable; restartable) — host must be Wayland
-make nested-start          # or: forge test nested start
-eval $(forge test nested env --export)
+# Dev CLI (not user forge): ./scripts/forge/forge-test
+make nested-start          # or: ./scripts/forge/forge-test nested start
+eval $(./scripts/forge/forge-test nested env --export)
 forge ping
 make nested-restart        # reload extension JS after rebuild/install
 make nested-stop
-forge test nested doctor        # can_nested? (exits 2 on X11 with HUP guidance)
+./scripts/forge/forge-test nested doctor   # can_nested? (exits 2 on X11)
 
 # On X11: do not use nested — killall -HUP gnome-shell / make test-x
 # Legacy foreground nest (blocks the terminal; no private state dir)

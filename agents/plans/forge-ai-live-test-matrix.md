@@ -34,14 +34,14 @@
 L0  Unit + focused integration     cheap, always first for the blast radius
      ↑ scripts / vitest / pytest
 L1–L2  AI live matrix              expensive, selective; scripted setup + checks
-     ↑ forge test live + agent judgment
+     ↑ ./scripts/forge/forge-test live + agent judgment
 L3  Wayland / human CT             rarer; same cases when capability allows
 ```
 
 | Layer | Who runs it | Role |
 | --- | --- | --- |
 | **L0** | CI / agent on every logic change | Rule out pure / contract bugs first |
-| **L1–L2** | Agent via `forge test live` | E2E desk behavior scripts can’t fully own |
+| **L1–L2** | Agent via `./scripts/forge/forge-test live` | E2E desk behavior scripts can’t fully own |
 | **Script inside L1–L2** | `forge layout`, `forge tree`, close steps, check helpers | Repeatable setup and hard assertions |
 | **Agent inside L1–L2** | Choose cases, interpret FAIL, add logs, fix phase | Judgment + iteration |
 
@@ -55,17 +55,17 @@ broken.
 ## CLI (shipped)
 
 ```bash
-forge test live probe                 # session, agent, can_hup, can_true_cold
-forge test live list                  # full catalog JSON
-forge test live plan                  # auto: all cases allowed for this capability
-forge test live plan --suite partial  # L1 only
-forge test live plan --suite cold     # L2 only (needs can_true_cold)
-forge test live plan --from-work open-leaf
-forge test live plan --from-work cold
-forge test live plan --tags R008
-forge test live plan --behaviors open-leaf,settle-soft
-forge test live run --from-work open-leaf   # destructive execute
-forge test live plan --tree-file F.json     # offline
+./scripts/forge/forge-test live probe                 # session, agent, can_hup, can_true_cold
+./scripts/forge/forge-test live list                  # full catalog JSON
+./scripts/forge/forge-test live plan                  # auto: all cases allowed for this capability
+./scripts/forge/forge-test live plan --suite partial  # L1 only
+./scripts/forge/forge-test live plan --suite cold     # L2 only (needs can_true_cold)
+./scripts/forge/forge-test live plan --from-work open-leaf
+./scripts/forge/forge-test live plan --from-work cold
+./scripts/forge/forge-test live plan --tags R008
+./scripts/forge/forge-test live plan --behaviors open-leaf,settle-soft
+./scripts/forge/forge-test live run --from-work open-leaf   # destructive execute
+./scripts/forge/forge-test live plan --tree-file F.json     # offline
 ```
 
 Implementation:
@@ -73,7 +73,7 @@ Implementation:
 | Piece | Path |
 | --- | --- |
 | Pure catalog + probe + select + checks | `scripts/forge/live_matrix.py` |
-| CLI | `forge test live …` in `scripts/forge/forge` |
+| CLI | `./scripts/forge/forge-test live …` (`scripts/forge/forge-test`) |
 | Units | `tests/unit/cli/test_live_matrix.py` |
 
 ---
@@ -113,9 +113,9 @@ Implementation:
 1. Name the behaviors this change can affect (phase + surface).
 2. Run L0 for that blast radius first (pytest/vitest paths that touch the change).
    Stop and fix L0 failures before live E2E.
-3. forge test live plan --from-work <hint>   # or --behaviors / --tags R0xx
+3. ./scripts/forge/forge-test live plan --from-work <hint>   # or --behaviors / --tags R0xx
 4. If plan is empty, widen once or fix tags on the new case.
-5. forge test live run … only for selected cases (not auto-all unless release).
+5. ./scripts/forge/forge-test live run … only for selected cases (not auto-all unless release).
 6. On FAIL: use scripts (verbose layout, tree, pin logs) + agent judgment;
    fix the named phase; re-run L0 then the same live subset.
 ```
@@ -142,7 +142,7 @@ reload (single virtual monitor), not a dual-mon CT substitute.
 
 | Layer | Cases | Notes |
 | --- | --- | --- |
-| **L0** | pytest/vitest | not via `forge test live` |
+| **L0** | pytest/vitest | not via `./scripts/forge/forge-test live` |
 | **L1** | ghosttys-only, left-chrome, right-ghostty, t1-nautilus, settled-rerun, close-focus-lft, unfocus | partial + focus |
 | **L2** | true-cold-dev, layout-clean | needs `can_true_cold` |
 
@@ -189,7 +189,7 @@ Still optional for day-to-day X11 matrix. Use before Wayland CT / logout-heavy r
 | ID | Task | Status |
 | --- | --- | --- |
 | **AT0** | Capability probe + catalog + select + docs | **done** (this slice) |
-| **AT1** | `forge test live run` L1/L2 execute path | **done** (v1 harness) |
+| **AT1** | `./scripts/forge/forge-test live run` L1/L2 execute path | **done** (v1 harness) |
 | **AT2** | Tighten L1 setups (close mon0/mon1 only; nautilus ensure) | **done** |
 | **AT3** | Agent rule: regression → catalog case (REGRESSIONS + testing.md) | **done** |
 | **AT-W1** | Nested Wayland Shell retest harness | **done** (spike + CLI; dual-mon CT still human) |

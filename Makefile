@@ -17,6 +17,7 @@ HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 
 .PHONY: all clean install schemas uninstall enable disable log debug check-deps \
 	dev prod build metadata compilemsgs update-pot update-po dist purge restart test test-x test-open \
+	nested-start nested-stop nested-restart nested-status install-test-cli \
 	format lint unit-test unit-test-watch unit-test-coverage \
 	docker-test-build unit-test-docker unit-test-docker-watch unit-test-docker-coverage \
 	e2e-test e2e-test-fast e2e-fuzz e2e-test-all e2e-test-multimonitor e2e-test-record e2e-debug e2e-clean e2e-build e2e-versions \
@@ -202,10 +203,11 @@ journal:
 	journalctl -b 0 -r --since "1 hour ago"
 
 # Nested Wayland GNOME Shell for repeated retests (no host logout).
-# Preferred: durable private bus + restartable nest via forge CLI (AT-W1).
+# Dev CLI: ./scripts/forge/forge-test (not the user forge product).
 #   make nested-start   / nested-stop / nested-restart / nested-status
 # Legacy foreground (blocks; dbus-run-session; no forge enable):
 #   make test-nested
+FORGE_TEST := ./scripts/forge/forge-test
 test-nested: horizontal-line
 	env GNOME_SHELL_SLOWDOWN_FACTOR=2 \
 		MUTTER_DEBUG_DUMMY_MODE_SPECS=1500x1000 \
@@ -215,16 +217,20 @@ test-nested: horizontal-line
 		dbus-run-session -- gnome-shell --nested --wayland --wayland-display=wayland-forge
 
 nested-start:
-	./scripts/forge/forge test nested start --replace $(NESTED_FLAGS)
+	$(FORGE_TEST) nested start --replace $(NESTED_FLAGS)
 
 nested-stop:
-	./scripts/forge/forge test nested stop --force
+	$(FORGE_TEST) nested stop --force
 
 nested-restart:
-	./scripts/forge/forge test nested restart $(NESTED_FLAGS)
+	$(FORGE_TEST) nested restart $(NESTED_FLAGS)
 
 nested-status:
-	./scripts/forge/forge test nested status
+	$(FORGE_TEST) nested status
+
+install-test-cli:
+	$(FORGE_TEST) --help >/dev/null
+	ln -sfn "$(CURDIR)/scripts/forge/forge-test" "$(HOME)/.local/bin/forge-test"
 
 # Usage:
 #   make nested-start
@@ -232,11 +238,11 @@ nested-status:
 #   make test-open CMD=gnome-text-editor
 #   make test-open CMD=gnome-terminal ARGS='--app-id app.x'
 #   make test-open CMD=firefox ARGS='--safe-mode' ENVVARS='MOZ_DBUS_REMOTE=1 MOZ_ENABLE_WAYLAND=1'
-#   eval $$(./scripts/forge/forge test nested env --export) && forge ping
+#   eval $$(./scripts/forge/forge-test nested env --export) && forge ping
 #
 test-open: CMD=gnome-text-editor
 test-open:
-	@eval $$(./scripts/forge/forge test nested env --export 2>/dev/null) && \
+	@eval $$($(FORGE_TEST) nested env --export 2>/dev/null) && \
 		GDK_BACKEND=wayland $(ENVVARS) $(CMD) $(ARGS) & \
 	|| (echo "make test-open: nested session not running; try: make nested-start" >&2; exit 1)
 
@@ -473,6 +479,8 @@ help:
 	@echo "  prod             Build, install, enable, and restart shell"
 	@echo "  test             Build and test in nested Wayland session"
 	@echo "  test-x           Build and test on X11 (restarts gnome-shell)"
+	@echo "  nested-start     Start forge-test nest (dev CLI; not user forge)"
+	@echo "  install-test-cli Symlink ~/.local/bin/forge-test (opt-in)"
 	@echo "  test-open        Open an app in the nested test session"
 	@echo "  log              Follow extension logs from journalctl"
 	@echo ""

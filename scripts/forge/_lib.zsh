@@ -16,6 +16,7 @@ FORGE_ORIGIN_PATH="${FORGE_ORIGIN_PATH:-$FORGE_MANAGE_DIR/install-origin.json}"
 # User-facing CLI on PATH (XDG user bin).
 FORGE_CLI_BIN_DIR="${FORGE_CLI_BIN_DIR:-$HOME/.local/bin}"
 FORGE_CLI_BIN="${FORGE_CLI_BIN:-$FORGE_CLI_BIN_DIR/forge}"
+FORGE_TEST_CLI_BIN="${FORGE_TEST_CLI_BIN:-$FORGE_CLI_BIN_DIR/forge-test}"
 FORGE_EGO_UUID="${FORGE_EGO_UUID:-$FORGE_UUID}"
 FORGE_EGO_API="${FORGE_EGO_API:-https://extensions.gnome.org/extension-info/}"
 FORGE_EGO_BASE="${FORGE_EGO_BASE:-https://extensions.gnome.org}"
@@ -227,19 +228,16 @@ forge_restart_shell() {
       return 1
       ;;
     wayland)
-      # Host Shell cannot HUP. Prefer nested retest over logout for extension JS.
+      # Host Shell cannot HUP. User path is logout; nest is a separate dev CLI.
       if forge_is_quiet; then
         :
       else
-        forge_warn "Wayland: host Shell cannot HUP. Retest path:"
-        forge_warn "  forge test nested restart   # reload extension in nest (no logout)"
-        forge_warn "  # dual-mon host CT still needs host desk (logout once if host never loaded tip)"
-        forge_warn "  forge test nested doctor    # capability / refuse reasons"
+        forge_warn "Wayland: host Shell cannot HUP. Log out and back in to load the new tip."
       fi
       return 2
       ;;
     *)
-      forge_is_quiet || forge_warn "session=$st: X11 → killall -HUP gnome-shell; Wayland → forge test nested restart"
+      forge_is_quiet || forge_warn "session=$st: X11 → killall -HUP gnome-shell; Wayland → log out/in"
       return 2
       ;;
   esac
@@ -933,6 +931,67 @@ forge_uninstall_cli_bin() {
     forge_ok "removed ${c_cyan}$FORGE_CLI_BIN${c_reset}"
   else
     forge_warn "left ${c_cyan}$FORGE_CLI_BIN${c_reset} (not owned by forge install)"
+  fi
+  forge_uninstall_test_cli_bin
+  return 0
+}
+
+forge_test_cli_repo_path() {
+  print -r -- "${FORGE_REPO_ROOT:A}/scripts/forge/forge-test"
+}
+
+forge_test_cli_bin_is_ours() {
+  local target="${1:-$FORGE_TEST_CLI_BIN}"
+  [[ -e "$target" || -L "$target" ]] || return 1
+  if [[ -L "$target" ]]; then
+    local link dest
+    link=$(readlink "$target" 2>/dev/null) || return 1
+    if [[ "$link" == /* ]]; then
+      dest="$link"
+    else
+      dest="${target:A:h}/$link"
+    fi
+    [[ "$dest" == */scripts/forge/forge-test ]] && return 0
+    [[ "$link" == */scripts/forge/forge-test ]] && return 0
+    local expect
+    expect=$(forge_test_cli_repo_path)
+    [[ "$dest" == "$expect" || "$link" == "$expect" ]] && return 0
+    return 1
+  fi
+  return 1
+}
+
+forge_install_test_cli_bin() {
+  local src
+  src=$(forge_test_cli_repo_path)
+  src="${src:A}"
+  if [[ ! -f "$src" ]]; then
+    forge_warn "test CLI source missing: $src"
+    return 1
+  fi
+  chmod +x "$src" 2>/dev/null || true
+  mkdir -p "$FORGE_CLI_BIN_DIR"
+  if [[ -e "$FORGE_TEST_CLI_BIN" || -L "$FORGE_TEST_CLI_BIN" ]]; then
+    if forge_test_cli_bin_is_ours; then
+      ln -sfn "$src" "$FORGE_TEST_CLI_BIN"
+    else
+      forge_warn "refusing to overwrite non-forge ${c_cyan}$FORGE_TEST_CLI_BIN${c_reset}"
+      return 1
+    fi
+  else
+    ln -sfn "$src" "$FORGE_TEST_CLI_BIN"
+  fi
+  forge_ok "test CLI → ${c_cyan}$FORGE_TEST_CLI_BIN${c_reset} → ${c_cyan}$src${c_reset}"
+  return 0
+}
+
+forge_uninstall_test_cli_bin() {
+  if [[ ! -e "$FORGE_TEST_CLI_BIN" && ! -L "$FORGE_TEST_CLI_BIN" ]]; then
+    return 0
+  fi
+  if forge_test_cli_bin_is_ours; then
+    rm -f "$FORGE_TEST_CLI_BIN"
+    forge_ok "removed ${c_cyan}$FORGE_TEST_CLI_BIN${c_reset}"
   fi
   return 0
 }

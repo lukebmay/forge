@@ -1,27 +1,28 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-17 (tab drag visual contract locked)
+**Updated:** 2026-08-17 (user CLI = product only; nest/live = `forge-test`)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent this session).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
-**`forge test nested …`** (not top-level `forge nested`). Primary logout is
-**rare** (tip load only after nest already green). Default nest **1 mon**; dual
-only when multi-mon is under test. Stale Guake `XAUTHORITY` used to break nest;
-`resolve_host_xauthority` picks a live mutter cookie.
+**`./scripts/forge/forge-test nested …`** (not user `forge`; not `forge test`).
+Primary logout is **rare** (tip load only after nest already green). Default nest
+**1 mon**; dual only when multi-mon is under test. Stale Guake `XAUTHORITY`
+used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.
 **Jobs (shipped):** Mutating `forge` durable by default.
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
-[CLI surface](./plans/forge-nested-cli-separation.md) (**done** — testing tools only).
-**Repo tip:** SM1–SM7 + R036 + D044 + PR1 tab chrome + nested CLI separation on
+[nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
+[user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
+**Repo tip:** SM1–SM7 + R036 + D044 + PR1–PR4 tab chrome + user-CLI cut on
 `master`. Host tip needs logout after install.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
-**Queue (agent):** Tab click-drag **PR1–PR4 done**; **PR5 next** (2D +
-wrap default 20) · [plan](./plans/forge-tab-click-drag.md).
-Completed: [completed/](./plans/forge-tab-click-drag/completed/).
-**2026-08-17:** Chrome float+gap locked + implemented (PR4 nest PASS).
-PR3 wires wrap planner (schema still 0 until PR5). PR6 foreign strip =
-4.6 high.
+**Queue (agent):** User CLI surface **shipped** (`forge` product-only;
+`./scripts/forge/forge-test` for nest/live). Next: tab click-drag **PR5**
+(2D + wrap default 20) · [plan](./plans/forge-tab-click-drag.md).
+PR1–PR4 done: [completed/](./plans/forge-tab-click-drag/completed/).
+**2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
+`forge-test` (clone path; `./install --with-test-cli` opt-in).
 **Queue (human):** Host lock/overview “no tab titles” after tip load. X11
 input-region unproven on Wayland. [IDEAS](./IDEAS.md) for parked optionals.
 
@@ -524,6 +525,7 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Child list (D023) | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` only |
 | Job → API (D024–D026) | [contracts.md](../docs/dev/contracts.md) — extend the named API; no one-off twins |
 | CLI language (D036) | Node under `cli/`; `lib/shared/` gi-free; Python router until CN13; **no** layout port to `cli/` |
+| User CLI (D045) | `forge` product-only; nest/live = `./scripts/forge/forge-test`; normal install does not ship `forge-test` |
 | Layout rearch (D037–D043) | ApplyLayout in-process **done**. Slot machines **locked**. IC4 skip |
 | Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling. Join leftover 1-child H/V as the slot (R028). Orientation from slot rect |
 | TABBED/STACKED mon (D044) | Mon-local. Mixed members rehome to CON MONITOR ancestor (keep group). Join = move-then-join onto dest. One-tab mon-move peels that leaf. No span chrome |
@@ -532,11 +534,11 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
 | Close → focus | **Kept** (FC1) — LFT/sibling restore |
 | CLI jobs | Durable mutators (D021) |
-| Wayland retest | Prefer `forge test nested run` (or `restart`+stop); never logout loops for JS |
+| Wayland retest | Prefer `./scripts/forge/forge-test nested run` (or `restart`+stop); never logout loops for JS |
 | Nest purpose (D022) | Code/test loop only (avoid logout); no-code smokes on **host** |
 | Nest mon count | **Default 1.** `--monitors=N` only when testing multi-mon behavior |
 | Nest mon size | Default size policy may shrink later; dual: each dummy ≈ primary logical historically |
-| Nest after tests | **FIRM** — prefer `forge test nested run` (always stops); interactive → `stop` |
+| Nest after tests | **FIRM** — prefer `./scripts/forge/forge-test nested run` (always stops); interactive → `stop` |
 | Nest isolation v1 | `FORGE_HOST=…-sub-…` + `FORGE_CONFIG_HOME` on CLI **and** nest Shell (N1/N2); extension `forgeConfigHome()`; shared layout profiles + install UUID OK; **no** UNIX test user |
 
 ### Why patches are bad (still FIRM)
@@ -549,13 +551,12 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-Tab click-drag **PR1–PR4 shipped this tree** (operator session). **PR5
-next:** 2D multi-row drag + flip wrap default to 20. Nested-off-user-CLI
-**shipped**. Host lock residual is **human**.
+**Next:** Tab click-drag **PR5** (2D + wrap default 20). User CLI surface
+**shipped** — `forge` is product-only; nest/live = `./scripts/forge/forge-test`.
+Host lock residual is **human**.
 
-Nest FIRM entry: **`forge test nested run -- …`** (top-level `forge nested`
-hard-breaks). Do not reshape PR1 attach or PR4 float+gap. Do **not**
-re-litigate D039–D044.
+Do not reshape PR1 attach or PR4 float+gap. Do **not** re-litigate D039–D044.
+Do **not** teach `forge test` / top-level `forge nested`.
 
 Queue: [PRIORITY](./PRIORITY.md). Parked optionals: [IDEAS](./IDEAS.md).
 
@@ -569,16 +570,17 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 
 | You can do | You must not |
 | --- | --- |
-| PR5 2D + wrap-on; then PR6 | Redesign D039–D044; restack latch; hit plates |
-| Nest for JS retest (`forge test nested`, mon=1) | Top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
+| Tab click-drag PR5 (2D + wrap 20) | Redesign D039–D044; restack latch; hit plates |
+| Nest for JS retest (`./scripts/forge/forge-test nested`, mon=1) | `forge test` / top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
 | FCC C2+ when product need | Implement parked IDEAS without promote |
 | | Second DnD engine; outline-on-neighbor as product |
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **next** | PR5 2D multi-row + wrap default 20 | [plan](./plans/forge-tab-click-drag.md) § PR5 |
+| done | User CLI: no test/dev toolkit | [plan](./plans/forge-cli-user-surface.md) |
+| P1 | PR5 2D multi-row + wrap default 20 | [plan](./plans/forge-tab-click-drag.md) § PR5 |
 | done | Tab click-drag PR2 + PR3 + PR4 | [completed/](./plans/forge-tab-click-drag/completed/) |
-| done | Nested off user CLI | [plan](./plans/forge-nested-cli-separation.md) |
+| done | Nested off top-level CLI | [plan](./plans/forge-nested-cli-separation.md) |
 | done | Tab chrome layer (PR1) | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
 | done | Same-mon TABBED/STACKED (D044) | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |
 | done | Tab work D0 lock | [completed](./tasks/completed/forge-tab-work-planning.md) |
@@ -607,7 +609,8 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | --- | --- |
 | [forge-wayland-rc-test-suite.md](./plans/forge-wayland-rc-test-suite.md) | RC procedure (last run green) |
 | [forge-nested-isolation.md](./plans/forge-nested-isolation.md) | Nest isolation v1 (**done**) |
-| [forge-nested-cli-separation.md](./plans/forge-nested-cli-separation.md) | Nested off user CLI → testing tools (P0 ready) |
+| [forge-nested-cli-separation.md](./plans/forge-nested-cli-separation.md) | Nested off top-level (superseded by user surface) |
+| [forge-cli-user-surface.md](./plans/forge-cli-user-surface.md) | User `forge` product-only; nest/live = `forge-test` (**done**) |
 | [forge-canonical-contracts.md](./plans/forge-canonical-contracts.md) | **P0** job→API catalog; IC1–IC3 |
 | [docs/dev/contracts.md](../docs/dev/contracts.md) | Canonical APIs — extend these first |
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |
@@ -635,7 +638,7 @@ Empty dest → null target → grab-end no-op → render snaps back.
 npm test -- tests/regression/bug-r015-empty-mon-dnd.test.js
 python3 -m pytest tests/unit/cli/test_live_matrix.py -q -k r015
 # Load tip + dual-mon live (Wayland):
-./install && forge test nested run --monitors=2 -- forge test live run --tags R015
+./install && ./scripts/forge/forge-test nested run --monitors=2 -- ./scripts/forge/forge-test live run --tags R015
 # Or host after one logout loads tip: human drag mon0 TILE onto empty mon1
 ```
 
@@ -649,7 +652,7 @@ python3 -m pytest tests/unit/cli/test_live_matrix.py -q -k r015
 | N2 | Nest Shell/extension honor same data root (`forgeConfigHome`) | done |
 
 **CLI + nest Shell:** `FORGE_HOST` / `FORGE_CONFIG_HOME`; extension writes under nest
-`…/forge-config`, not parent `~/.config/forge`. Prefer `forge test nested run` for campaigns.
+`…/forge-config`, not parent `~/.config/forge`. Prefer `./scripts/forge/forge-test nested run` for campaigns.
 Shared intentionally: install UUID, layout profiles, gsettings.
 
 ### Wayland RC (cleared 2026-08-10)
@@ -662,20 +665,20 @@ process: [testing.md](./testing.md) § Wayland.
 | Host first | L1 / dual-mon open-leaf / chrome RC authority on **host** desk |
 | Layouts | **`_forge-test-*` only** — never personal `dev` / `t1` |
 | Nest | Code→reload or multi-mon structure only; default **mon=1** |
-| Campaign entry | `forge test nested run -- …` (always stops); dual: `--monitors=2` only when needed |
+| Campaign entry | `./scripts/forge/forge-test nested run -- …` (always stops); dual: `--monitors=2` only when needed |
 | Isolation | Nest CLI+Shell use nest `forge-config`; parent `~/.config/forge` not rewritten |
 | Results | `agents/test-results/wayland/<host>-wayland-<UTC>.json` |
-| Wrap-up | `forge test nested status` → `running: False` |
+| Wrap-up | `./scripts/forge/forge-test nested status` → `running: False` |
 
 ```bash
 echo "$XDG_SESSION_TYPE"          # wayland
-forge test live probe             # can_nested / can_retest
+./scripts/forge/forge-test live probe             # can_nested / can_retest
 # L0
 python3 -m pytest tests/unit/cli/test_layout_apply.py \
   tests/unit/cli/test_live_matrix.py tests/unit/cli/test_nested_wayland.py -q
 # Host L1 / partial (no nest if no JS change)
-forge test live plan --from-work wayland-rc
-# After extension JS change: ./install && forge test nested run -- …
+./scripts/forge/forge-test live plan --from-work wayland-rc
+# After extension JS change: ./install && ./scripts/forge/forge-test nested run -- …
 # Host dual-mon RC needs tip already on host (one logout after install if needed)
 ```
 
@@ -702,15 +705,15 @@ thrash **not** reproduced.
 
 ```bash
 # Prefer campaign entry (always stops unless --keep):
-forge test nested run -- forge ping
-forge test nested status   # want: running: False
+./scripts/forge/forge-test nested run -- forge ping
+./scripts/forge/forge-test nested status   # want: running: False
 
 # Interactive multi-step still ends with:
-forge test nested stop
-forge test nested status   # want: running: False
+./scripts/forge/forge-test nested stop
+./scripts/forge/forge-test nested status   # want: running: False
 ```
 
-**Prefer** `forge test nested run -- …` for one-shot campaigns.
+**Prefer** `./scripts/forge/forge-test nested run -- …` for one-shot campaigns.
 Use `exec` / `restart` only when the nest must stay up for multi-step work; **still stop** when done.
 **Never** leave nest env on durable agent shells.
 **Default** mon=1. Dual only: `--monitors=2` when testing dual-mon behavior.
@@ -721,7 +724,7 @@ Nest client + Shell env: `FORGE_HOST=…-sub-…`, `FORGE_CONFIG_HOME=<session>/
 Durable Grok leader (or Guake/float). After suites that close agent TILE: leader reopens ghostty; `grok -r`.
 
 ```bash
-forge test live probe
+./scripts/forge/forge-test live probe
 # L0 before expensive live
 python3 -m pytest tests/unit/cli/test_layout_apply.py tests/unit/cli/test_live_matrix.py -q
 ```
@@ -730,13 +733,13 @@ python3 -m pytest tests/unit/cli/test_layout_apply.py tests/unit/cli/test_live_m
 
 ```bash
 # Code changed → one-shot retest without logout (preferred):
-./install && forge test nested run -- forge ping          # mon=1; auto stop
+./install && ./scripts/forge/forge-test nested run -- forge ping          # mon=1; auto stop
 # Multi-mon behavior under test only:
-forge test nested run --monitors=2 -- forge tree
+./scripts/forge/forge-test nested run --monitors=2 -- forge tree
 # Multi-step interactive:
-./install && forge test nested restart
-forge test nested exec -- forge ping
-forge test nested stop                                   # FIRM
+./install && ./scripts/forge/forge-test nested restart
+./scripts/forge/forge-test nested exec -- forge ping
+./scripts/forge/forge-test nested stop                                   # FIRM
 ```
 
 No-code smoke → **host** only (no nest).

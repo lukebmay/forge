@@ -68,7 +68,7 @@ Closing *all* session windows is optional, not required.
 Prefer nested retest (no host logout) when only meta-probe / Forge JS must reload:
 
 ```bash
-forge test nested restart          # or: forge test nested start  (first time this login)
+./scripts/forge/forge-test nested restart          # or: ./scripts/forge/forge-test nested start
 # host dual-mon / real apps still use the host session after tip is loaded
 ```
 

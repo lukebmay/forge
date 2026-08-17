@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""forge-test — developer / agent test CLI (nested + live). Not user product."""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+from typing import Optional
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+from cli_ansi import parse_color_flag, set_color_mode  # noqa: E402
+from job_runner import (  # noqa: E402
+    BusyError,
+    default_jobs_root,
+    default_timeout_for_command,
+    extract_job_meta_flags,
+    is_job_worker,
+    is_mutating_job_command,
+    maybe_run_as_job,
+    reap_stale_jobs,
+    worker_install_signal_policy,
+)
+from test_cli import (  # noqa: E402
+    build_parser,
+    hoist_nested_action_flags,
+    print_forge_test_help,
+)
+
+
+def _eprint(*args: object) -> None:
+    print(*args, file=sys.stderr)
+
+
+def _dispatch(args) -> int:
+    cmd_name = getattr(args, "command", None) or ""
+    if cmd_name == "nested" or cmd_name == "help":
+        return int(args.func(None, args))
+    if cmd_name == "live":
+        action = str(getattr(args, "live_action", "plan") or "plan").strip().lower()
+        tree_file = getattr(args, "tree_file", None)
+        if action == "list" or tree_file:
+            return int(args.func(None, args))
+        return int(args.func(None, args))
+    return int(args.func(None, args))
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    cleaned_argv, detach, foreground = extract_job_meta_flags(raw_argv)
+    argv = cleaned_argv
+    argv, color_mode = parse_color_flag(argv)
+    if color_mode is not None:
+        try:
+            set_color_mode(color_mode)
+        except ValueError as e:
+            _eprint(f"forge-test: {e}")
+            return 1
+
+    if not argv or argv[0] in ("-h", "--help", "help"):
+        print_forge_test_help()
+        return 0
+
+    argv = hoist_nested_action_flags(argv)
+
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if getattr(args, "color", None):
+        try:
+            set_color_mode(args.color)
+        except ValueError as e:
+            _eprint(f"forge-test: {e}")
+            return 1
+
+    cmd_name = getattr(args, "command", None) or ""
+    if (
+        cmd_name == "live"
+        and is_mutating_job_command(
+            "live",
+            test_action=str(getattr(args, "live_action", "plan") or "plan"),
+        )
+        and not is_job_worker()
+        and not foreground
+    ):
+        try:
+            reap_stale_jobs(default_jobs_root())
+        except OSError:
+            pass
+        worker_argv = [sys.executable, str(Path(__file__).resolve()), *argv]
+        timeout_sec = default_timeout_for_command("live")
+        try:
+            job_rc = maybe_run_as_job(
+                worker_argv,
+                detach=detach,
+                foreground=False,
+                command="live",
+                timeout_sec=timeout_sec,
+            )
+        except BusyError as e:
+            _eprint(f"forge-test: another mutating job is running: {e.job_id}")
+            _eprint(
+                f"  status: {default_jobs_root() / e.job_id / 'status.json'}"
+            )
+            _eprint("  wait for it to finish, or set FORGE_JOB=0 / --foreground to bypass")
+            return 1
+        except Exception as e:
+            _eprint(f"forge-test: job runner failed: {e}")
+            return 1
+        if job_rc is not None:
+            return int(job_rc)
+
+    return _dispatch(args)
+
+
+if __name__ == "__main__":
+    _exit = 1
+    try:
+        if is_job_worker():
+            worker_install_signal_policy()
+        _exit = int(main())
+    except SystemExit as e:
+        code = e.code
+        if code is None:
+            _exit = 0
+        elif isinstance(code, int):
+            _exit = code
+        else:
+            _exit = 1
+    except KeyboardInterrupt:
+        _exit = 130
+    except BrokenPipeError:
+        try:
+            sys.stdout.close()
+        except Exception:
+            pass
+        _exit = 0
+    sys.exit(_exit)

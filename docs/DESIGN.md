@@ -980,6 +980,9 @@ wrapper) so a foreign `forge` binary is never deleted. Origin stamp is kept so
 breaks imports. **Why not PATH the repo:** multiple clones and moves make that
 ambiguous; XDG user bin is the stable entry.
 
+Nest + live matrix are **not** on user `forge` (D045). Dev entry is
+`scripts/forge/forge-test`; normal install does not symlink it.
+
 ## User stylesheet vs `make dev` (production flag)
 
 **Problem:** `make dev` sets `production = false` for logging / DEV banner.

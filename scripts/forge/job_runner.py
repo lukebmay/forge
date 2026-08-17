@@ -1143,7 +1143,8 @@ DEFAULT_TIMEOUT_BY_COMMAND: Mapping[str, float] = {
     "install": 900.0,
     "update": 1200.0,
     "uninstall": 600.0,
-    "test": 1800.0,
+    "live": 1800.0,
+    "test": 1800.0,  # historical job records only
 }
 
 
@@ -1185,7 +1186,7 @@ def is_mutating_job_command(
                                 "save"):
             return False
         return True  # apply targets (incl. profile named clean)
-    if cmd == "test":
+    if cmd in ("live", "test"):
         return (test_action or "").strip().lower() == "run"
     return False
 

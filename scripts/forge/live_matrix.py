@@ -666,7 +666,7 @@ class Capability:
     agent_mode: Optional[str] = None  # TILE | FLOAT | …
     agent_wm_class: Optional[str] = None
     can_hup: bool = False
-    can_nested: bool = False  # host Wayland → forge test nested for JS reload
+    can_nested: bool = False  # host Wayland → forge-test nested for JS reload
     can_retest: bool = False  # can_hup or can_nested
     can_true_cold: bool = False
     # Durable leader: agent TILE may close; process survives (reattach after).
@@ -1113,7 +1113,7 @@ def capability_from_forest(
         notes.append("true cold blocked: agent terminal not guake/float")
 
     can_hup = session == "x11"
-    # Nested Wayland retest (AT-W1): prefer forge test nested over logout on Wayland.
+    # Nested Wayland retest (AT-W1): prefer forge-test nested over logout on Wayland.
     can_nested = False
     if session == "wayland":
         try:
@@ -1126,15 +1126,15 @@ def capability_from_forest(
         if can_nested:
             notes.append(
                 "Wayland: no HUP — reload extension via "
-                "`forge test nested restart` (not logout). Dual-mon live still host desk."
+                "`forge-test nested restart` (not logout). Dual-mon live still host desk."
             )
         else:
             notes.append("Wayland: no HUP; nested unavailable — "
-                         "`forge test nested doctor` or logout once after install")
+                         "`forge-test nested doctor` or logout once after install")
     elif session == "x11":
         notes.append(
             "X11: reload via HUP (`killall -HUP gnome-shell`). "
-            "`forge test nested` refuses here (exit 2) — nest is Wayland-host only."
+            "`forge-test nested` refuses here (exit 2) — nest is Wayland-host only."
         )
 
     can_retest = bool(can_hup or can_nested)

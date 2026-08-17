@@ -65,16 +65,16 @@ judgment, and debug. They **do not replace** unit/integration tests.
 **Order (FIRM for layout work):**
 
 1. **L0** — relevant unit/integration for the blast radius  
-2. **`forge test live plan/run`** — selected E2E cases only  
+2. **`./scripts/forge/forge-test live plan/run`** — selected E2E cases only  
 3. Fix phase → re-run L0 → re-run same live subset  
 
 ```bash
 # L0 example (adjust to touch paths)
 python3 -m pytest tests/unit/cli/test_layout_apply.py -q
 # then live
-forge test live probe
-forge test live plan --from-work <hint>   # or --behaviors / --tags R0xx
-forge test live run --from-work <hint>    # only selected cases
+./scripts/forge/forge-test live probe
+./scripts/forge/forge-test live plan --from-work <hint>   # or --behaviors / --tags R0xx
+./scripts/forge/forge-test live run --from-work <hint>    # only selected cases
 ```
 
 | Rule | Detail |
@@ -98,6 +98,9 @@ Handoff quick ref: `agents/HANDOFF.md` § Nested Wayland / Wayland smoke loop.
 
 ## Wayland live testing workflow (FIRM when on Wayland)
 
+Nest + live matrix are **`forge-test`**, not user `forge`. Always-works clone
+entry: `./scripts/forge/forge-test`. Opt-in PATH: `./install --with-test-cli`.
+
 Use this whenever the login session is **Wayland** and work needs **install / extension
 JS reload / dual-mon desk smoke**.
 
@@ -108,7 +111,7 @@ treat primary logout/login as the ordinary way to load a dirty tip mid-campaign.
 
 | Rule | Detail |
 | --- | --- |
-| **Nest first** | After `./install` for JS changes: `forge test nested run` / `restart` + retest |
+| **Nest first** | After `./install` for JS changes: `./scripts/forge/forge-test nested run` / `restart` + retest |
 | **Host logout** | Only when nest cannot prove the behavior (true host dual-4K cold / chrome open-leaf RC) **or** occasional tip load after nest already green |
 | **Never** | Invent logout loops for mid-campaign retests when nest works |
 
@@ -116,7 +119,7 @@ treat primary logout/login as the ordinary way to load a dirty tip mid-campaign.
 
 | Layer | What it proves | Where it runs | How extension code reloads |
 | --- | --- | --- | --- |
-| **A — Nest retest** | Extension loads, DBus Forge works; structure/open/focus retest | Nested Shell window (`forge test nested`) | `forge test nested restart` / `run` (**default** code→reload; no host logout) |
+| **A — Nest retest** | Extension loads, DBus Forge works; structure/open/focus retest | Nested Shell window (`./scripts/forge/forge-test nested`) | `./scripts/forge/forge-test nested restart` / `run` (**default** code→reload; no host logout) |
 | **B — Host dual-mon live** | Real dual 4K desk: layout, open leaf, focus, cold/partial | **Host** Wayland session | Tip already loaded, **or** occasional logout after nest green |
 
 | Also | Role |
@@ -144,17 +147,17 @@ geometry; host remains authority for physical dual-mon sign-off. Design:
 
 | Entry | When | Cleanup |
 | --- | --- | --- |
-| **`forge test nested run -- <cmd…>`** | **Prefer** for one-shot campaigns | Starts if needed → cmd → **always stops** (unless `--keep`) |
-| **`forge test nested exec -- <cmd…>`** | Nest already up; multi-step interactive | No auto-stop — **stop** when done |
-| **`forge test nested restart` / `start`** | Long interactive retest loop | **stop** when campaign ends |
+| **`./scripts/forge/forge-test nested run -- <cmd…>`** | **Prefer** for one-shot campaigns | Starts if needed → cmd → **always stops** (unless `--keep`) |
+| **`./scripts/forge/forge-test nested exec -- <cmd…>`** | Nest already up; multi-step interactive | No auto-stop — **stop** when done |
+| **`./scripts/forge/forge-test nested restart` / `start`** | Long interactive retest loop | **stop** when campaign ends |
 
 ```bash
 # One-shot campaign (default mon=1; auto cleanup)
-./install && forge test nested run -- forge ping
+./install && ./scripts/forge/forge-test nested run -- forge ping
 # Multi-mon campaign only when testing multi-mon:
-forge test nested run --monitors=2 -- forge tree
+./scripts/forge/forge-test nested run --monitors=2 -- forge tree
 # Keep nest up intentionally:
-forge test nested run --keep -- forge ping   # then stop yourself later
+./scripts/forge/forge-test nested run --keep -- forge ping   # then stop yourself later
 ```
 
 `status` / `start` / `exec` also **reap stale** pid/bus residue (N3).
@@ -175,81 +178,81 @@ and gsettings are intentional.
 ### Capability gates
 
 ```bash
-forge test live probe          # host desk + can_hup / can_nested / can_retest
-forge test nested doctor            # nest host tools only (exit 0 if can nest)
+./scripts/forge/forge-test live probe          # host desk + can_hup / can_nested / can_retest
+./scripts/forge/forge-test nested doctor            # nest host tools only (exit 0 if can nest)
 ```
 
 | Field | Meaning |
 | --- | --- |
 | `can_hup` | X11 only — `killall -HUP gnome-shell` reloads host extension |
-| `can_nested` | Wayland host + tools — `forge test nested` allowed |
+| `can_nested` | Wayland host + tools — `./scripts/forge/forge-test nested` allowed |
 | `can_retest` | `can_hup` **or** `can_nested` — agent can iterate without fantasy reboot |
 
-On **X11:** use HUP; `forge test nested start` **exits 2** with HUP guidance (not a crash).
+On **X11:** use HUP; `./scripts/forge/forge-test nested start` **exits 2** with HUP guidance (not a crash).
 
 ### Extensive Wayland smoke loop (default agent campaign)
 
 ```text
-0. Confirm: XDG_SESSION_TYPE=wayland; forge test live probe → can_nested=true
+0. Confirm: XDG_SESSION_TYPE=wayland; ./scripts/forge/forge-test live probe → can_nested=true
 1. L0 for blast radius (pytest/vitest)
 2. If NO extension JS change this iteration:
      host-only live / forge layout / probe — skip nest entirely
 3. If extension JS changed (code/test loop):
      ./install
-     forge test nested doctor
+     ./scripts/forge/forge-test nested doctor
      # Prefer one-shot campaign entry (auto stop):
-     forge test nested run -- forge ping
-     # multi-mon case only: forge test nested run --monitors=2 -- …
+     ./scripts/forge/forge-test nested run -- forge ping
+     # multi-mon case only: ./scripts/forge/forge-test nested run --monitors=2 -- …
      # Multi-step interactive (keep nest up):
-     #   forge test nested restart            # mon=1 default
-     #   forge test nested exec -- forge tree
+     #   ./scripts/forge/forge-test nested restart            # mon=1 default
+     #   ./scripts/forge/forge-test nested exec -- forge tree
      #   … more nest cases …
-     #   forge test nested stop               # FIRM when interactive loop ends
+     #   ./scripts/forge/forge-test nested stop               # FIRM when interactive loop ends
 4. Host dual-mon / chrome RC (host env only — nest NOT exported):
-     forge test nested stop               # if nest still up
-     forge test live plan --from-work <hint>
-     forge test live run  --from-work <hint>
-5. Code change → re-install → prefer `forge test nested run -- …` or
+     ./scripts/forge/forge-test nested stop               # if nest still up
+     ./scripts/forge/forge-test live plan --from-work <hint>
+     ./scripts/forge/forge-test live run  --from-work <hint>
+5. Code change → re-install → prefer `./scripts/forge/forge-test nested run -- …` or
    `restart`+`exec`+`stop` (mon=1 unless multi-mon case)
 6. Logout only if host Shell never loaded this tip and host dual-mon needs host tip.
 7. ALWAYS before wrap-up / handoff / idle: nest down
-     forge test nested status         # running: False (reaps stale)
+     ./scripts/forge/forge-test nested status         # running: False (reaps stale)
 ```
 
 ### Nest stop after tests (FIRM)
 
 | Rule | Detail |
 | --- | --- |
-| **Prefer `run`** | One-shot campaigns use `forge test nested run -- …` (mechanical stop) |
-| **Interactive still stop** | `exec` / `restart` / `start` leave nest up — `forge test nested stop` when done |
-| **Stop before host matrix** | Do not run host `forge layout` / `forge test live` with nest env exported |
-| **Verify** | `forge test nested status` → `running: False` |
-| **No durable export** | Prefer `run` / `exec`; avoid long-lived `eval $(forge test nested env --export)` on agent shells |
+| **Prefer `run`** | One-shot campaigns use `./scripts/forge/forge-test nested run -- …` (mechanical stop) |
+| **Interactive still stop** | `exec` / `restart` / `start` leave nest up — `./scripts/forge/forge-test nested stop` when done |
+| **Stop before host matrix** | Do not run host `forge layout` / `./scripts/forge/forge-test live` with nest env exported |
+| **Verify** | `./scripts/forge/forge-test nested status` → `running: False` |
+| **No durable export** | Prefer `run` / `exec`; avoid long-lived `eval $(./scripts/forge/forge-test nested env --export)` on agent shells |
 | **Wrap-up gate** | Commit/handoff only after nest is stopped (or status proves already down) |
 
 Leaving nests up wastes resources and can leave orphan session buses;
 `status` reaps stale pids, but prefer `run` so cleanup is not memory-only.
 
-**Shell env trap:** `eval $(forge test nested env --export)` points `WAYLAND_DISPLAY` +
+**Shell env trap:** `eval $(./scripts/forge/forge-test nested env --export)` points `WAYLAND_DISPLAY` +
 `DBUS_SESSION_BUS_ADDRESS` at the **nest**. Host dual-mon commands must use the
 **host** bus/display. Prefer a separate terminal for nest health, or unset nest
-exports before host `forge tree` / `forge layout` / `forge test live run`.
+exports before host `forge tree` / `forge layout` / `./scripts/forge/forge-test live run`.
 
 ### Minimal commands (cheat sheet)
 
 ```bash
 # One-shot nest campaign (Wayland; auto cleanup)
-./install && forge test nested run -- forge ping
+./install && ./scripts/forge/forge-test nested run -- forge ping
 
 # Multi-step retest loop (stop yourself)
-./install && forge test nested restart
-forge test nested exec -- forge tree
-forge test nested stop
-forge test nested status            # running: False
+./install && ./scripts/forge/forge-test nested restart
+./scripts/forge/forge-test nested exec -- forge tree
+./scripts/forge/forge-test nested stop
+./scripts/forge/forge-test nested status            # running: False
 
 # Host live (dual-mon) — host env only
-forge test live probe
-forge test live run --from-work open-leaf   # example
+./scripts/forge/forge-test live probe
+./scripts/forge/forge-test live run --from-work open-leaf   # example
 # Prefer _forge-test-* layouts, not personal dev/t1
 
 # Make aliases
@@ -261,21 +264,21 @@ make nested-start | nested-restart | nested-stop | nested-status
 | Situation | Action |
 | --- | --- |
 | Host never loaded this build this boot, and case needs **host** dual-mon extension | One logout/in, then prefer nest for further JS reloads |
-| `can_nested=false` (`forge test nested doctor`) | Fix tools/host Wayland, or logout once |
+| `can_nested=false` (`./scripts/forge/forge-test nested doctor`) | Fix tools/host Wayland, or logout once |
 | Changing only CLI Python (no extension JS) | No nest restart, no logout |
 
 ### X11 contrast (same product)
 
 ```bash
 ./install && killall -HUP gnome-shell    # host reloads
-forge test live run --from-work <hint>
+./scripts/forge/forge-test live run --from-work <hint>
 ```
 
 ### Ownership
 
 | Piece | Path |
 | --- | --- |
-| Nest module / CLI | `scripts/forge/nested_wayland.py`, `forge test nested …` |
+| Nest module / CLI | `scripts/forge/nested_wayland.py`, `./scripts/forge/forge-test nested …` |
 | Units | `tests/unit/cli/test_nested_wayland.py`, live_matrix probe fields |
 | Plan | `agents/plans/forge-ai-live-test-matrix.md` (AT-W1) |
 | CT2 host cold | `agents/tasks/forge-layout-cold-topology_ct2-wayland-live.md` |

@@ -525,6 +525,8 @@ class CliHelpers(unittest.TestCase):
             is_mutating_job_command("layout", layout_head="dev", dry_run=True))
         self.assertTrue(is_mutating_job_command("install"))
         self.assertTrue(is_mutating_job_command("run"))
+        self.assertTrue(is_mutating_job_command("live", test_action="run"))
+        self.assertFalse(is_mutating_job_command("live", test_action="plan"))
         self.assertTrue(is_mutating_job_command("test", test_action="run"))
         self.assertFalse(is_mutating_job_command("test", test_action="plan"))
         self.assertFalse(is_mutating_job_command("ping"))
