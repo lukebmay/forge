@@ -11,10 +11,14 @@
 
 ### Session note (overwrite)
 
+**2026-08-16 tab click-drag design:** Next tab product is
+[forge-tab-click-drag.md](./forge-tab-click-drag.md) (reorder + peel +
+pickability + wrap). TD1 stays the reorder engine. TD4 folds into that
+series PR6.
+
 **2026-08-16 Tab D0:** TD0 skip (grab trusted). TD2 **skip** (LX4/TD1 peel
 = Model B wrap-in-slot). TD3 **skip** (CENTER join shipped). TD4 **defer**
-until D044 same-mon ships. Next tab code is
-[same-mon](../tasks/forge-tab-groups-same-mon.md), not TD2–TD3.
+until the click-drag docs PR. Same-mon D044 is shipped.
 
 **2026-08-14 (TD1 live PASS):** Nest tip `gb280f94` — 3 zenity TABBED,
 strip reorder middle→end, peel → mon HSPLIT + 2-tab remainder. Host

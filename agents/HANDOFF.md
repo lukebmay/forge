@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-16 (D044 same-mon TABBED/STACKED shipped)
+**Updated:** 2026-08-17 (tab click-drag PR1 handoff)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent this session).
 **Retest (FIRM):** **Nest is the code→reload loop.** Primary logout is **rare** (tip load only after nest already green). Default nest **1 mon**; dual only when multi-mon is under test. Stale Guake `XAUTHORITY` used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
@@ -8,10 +8,14 @@
 **Jobs (shipped):** Mutating `forge` durable by default.
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).
-**Repo tip:** SM1–SM7 + R036 + D044 (group home/normalize). Still **uncommitted** dirty on disk; host live tip after reinstall/logout: `…-gf30e8c9-dirty` apiVersion 10.
+**Repo tip:** SM1–SM7 + R036 + D044 on `master`. Tab click-drag is
+docs/plan only until PR1.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
-**Queue (agent):** Open — optional bag-API review; FCC C2; TD4 docs. D044 [completed](./tasks/completed/forge-tab-groups-same-mon.md).
-**Queue (human):** Optional commit when ready. [IDEAS](./IDEAS.md).
+**Queue (agent):** **PR1** tab chrome layer —
+[task](./tasks/forge-tab-click-drag_pr1-chrome-layer.md)
+(`grok-4.5` medium). Plan:
+[forge-tab-click-drag](./plans/forge-tab-click-drag.md).
+**Queue (human):** Host lock-screen “no strip” after PR1. [IDEAS](./IDEAS.md).
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
@@ -536,19 +540,19 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Next:** queue open — optional bag-API review of `layout-apply-slot.js`,
-FCC C2, or TD4 docs. D044 same-mon groups
-[completed](./tasks/completed/forge-tab-groups-same-mon.md). Tab D0
-[locked](./tasks/forge-tab-work-planning.md). SM1–SM7 + R036 cold host
-are **done**.
+**Next:** implement **PR1 only** —
+[forge-tab-click-drag_pr1-chrome-layer](./tasks/forge-tab-click-drag_pr1-chrome-layer.md).
+Read the plan attach algorithm and do not reshape it. No wrap, no 2D
+drag, no pressed CSS. Escalate to 4.6 only if attach cannot work.
+D044 / Tab D0 / SM1–SM7 / R036 remain **done**.
 
 Do **not** re-litigate D039–D044. Do **not** reintroduce belt / TILE-anywhere
 hard / mon-root PlaceNext / soft-enter chrome / map-time PlaceNext
 `move_to_monitor` / spanning tab chrome.
 
 Queue: [PRIORITY](./PRIORITY.md). Plan:
-[slot machines](./plans/forge-layout-slot-machines.md) ·
-[completed tasks](./plans/forge-layout-slot-machines/completed/).
+[tab click-drag](./plans/forge-tab-click-drag.md) ·
+[slot machines](./plans/forge-layout-slot-machines.md).
 
 Never call `_layoutOp`. Do **not** put `hasLayoutPh` back into
 `skipWindowStructure`.
@@ -560,13 +564,15 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 
 | You can do | You must not |
 | --- | --- |
-| Optional bag-API review of `layout-apply-slot.js` | Redesign D039–D044; reintroduce belt as happy path |
+| PR1 chrome layer from the locked attach algorithm | Redesign D039–D044; restack latch; hit plates |
 | Nest for JS retest (default mon=1) | Personal `dev`/`t1` in live matrix; Mode B as cold success |
-| Promote from [IDEAS](./IDEAS.md) only with a real need | Dual-mon nest by default; `layout_plan.py` → `cli/` |
-| Commit dirty tip when human asks | Reintroduce map-time PlaceNext `move_to_monitor`; spanning tab chrome |
+| Rewrite deco tests off `window_group` Z | Wrap / 2D insert / pressed CSS (PR2–PR5) |
+| | Parent CON deco into `window_group`; `trackChrome` the host |
 
 | Pri | Work | Path |
 | --- | --- | --- |
+| **next** | Tab chrome layer (PR1) | [task](./tasks/forge-tab-click-drag_pr1-chrome-layer.md) |
+| later | Wrap pures / wire / 2D / CSS / docs | [plan](./plans/forge-tab-click-drag.md) PR2–PR6 |
 | done | Same-mon TABBED/STACKED (D044) | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |
 | done | Tab work D0 lock | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
 | done | **R036** nest multi-open + host cold | [completed](./tasks/completed/forge-layout-cold-host-verify.md) |
@@ -584,6 +590,7 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | done | **R032** tab-strip click dead (Done restack-only) | [completed](./tasks/completed/forge-tab-click-unresponsive.md) |
 | done | **R031** float-border ghost | [completed](./tasks/completed/forge-float-border-ghost-tile.md) |
 | done | R019 CENTER · R020 VLC EOS nest · IC4 skipped · FCC C0/C1 | HANDOFF / REGRESSIONS |
+| P1 | Tab click-drag PR1 (chrome layer) | [task](./tasks/forge-tab-click-drag_pr1-chrome-layer.md) |
 | later | Soft polish · L1 scale smoke · STACKED/resize · TD4 docs | [PRIORITY](./PRIORITY.md) · [IDEAS](./IDEAS.md) |
 | done | Wayland RC R013/R014 + nest isolation N1–N4 + lifecycle W1–W5 | [REGRESSIONS](./REGRESSIONS.md) |
 
@@ -596,7 +603,8 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | [forge-canonical-contracts.md](./plans/forge-canonical-contracts.md) | **P0** job→API catalog; IC1–IC3 |
 | [docs/dev/contracts.md](../docs/dev/contracts.md) | Canonical APIs — extend these first |
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |
-| [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 done; TD2/TD3 skip; TD4 defer |
+| [forge-tab-click-drag.md](./plans/forge-tab-click-drag.md) | Click-drag design; PR1 ready |
+| [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 done; TD2/TD3 skip; TD4 → click-drag PR6 |
 | [forge-cli-node.md](./plans/forge-cli-node.md) | Node CLI CN0 done; CN1–CN6; no layout port |
 | [forge-layout-in-process.md](./plans/forge-layout-in-process.md) | ApplyLayout AL0–AL8 **done** |
 | [forge-layout-slot-machines.md](./plans/forge-layout-slot-machines.md) | **P0** SM0 locked · SM1–SM7 implement **done** |

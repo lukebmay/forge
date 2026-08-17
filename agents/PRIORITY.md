@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-16 (D044 same-mon groups shipped)
+**Updated:** 2026-08-17 (tab click-drag PR1 handoff)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -9,9 +9,9 @@
 **D039–D043** slot machines (SM0) · **SM1–SM7 implement landed** ·
 **R036 cold PASS** · **D044** TABBED/STACKED mon-local **shipped**.
 
-**Active next:** queue open — optional bag-API review; FCC C2 when reshaping
-groups; TD4 docs one-liner. Tab D0 lock:
-[forge-tab-work-planning](./tasks/forge-tab-work-planning.md).
+**Active next:** [PR1 chrome layer](./tasks/forge-tab-click-drag_pr1-chrome-layer.md)
+— `grok-4.5` **medium**. Design is locked; do not reshape attach.
+Wrap-on waits for PR4 (`min-tab-label-chars=20`); `max-tab-rows=0` unbounded.
 **Retest (FIRM):** nest = normal Wayland code→reload; primary logout = rare tip load.
 **Parked:** soft polish · scale smoke · FCC C2+ · CN13 · TD4 docs.
 **Agents:** default implement = **Grok 4.5**. Architecture locks = **4.6 xhigh** only.
@@ -34,6 +34,7 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 | R036 host cold | **done** | [completed](./tasks/completed/forge-layout-cold-host-verify.md) |
 | Tab D0 | **done** | [planning](./tasks/forge-tab-work-planning.md) |
 | Same-mon groups | **done** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) · D044 |
+| Tab click-drag | **PR1 ready** | [task](./tasks/forge-tab-click-drag_pr1-chrome-layer.md) · 4.5 med |
 
 **L0:** D044 suite **159** green (tree ops + DnD + normalize + LX3 + H1).
 **Host cold:** R036 **PASS**. Overlay clear = all-hard (no chrome implement).
@@ -44,6 +45,8 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
+| P1 | **Tab click-drag PR1** (chrome layer) | **4.5 med** | [task](./tasks/forge-tab-click-drag_pr1-chrome-layer.md) — escalate 4.6 if attach reshape |
+| later | Tab click-drag PR2–PR6 | **4.5 med** | [plan](./plans/forge-tab-click-drag.md) after PR1 |
 | done | **Same-mon TABBED/STACKED** (D044) | **4.5 high** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |
 | done | Tab work D0 lock | **4.6 xhigh** | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
 | done | **R036** nest multi-open + host cold | **4.5** | [completed](./tasks/completed/forge-layout-cold-host-verify.md) |
@@ -58,7 +61,7 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 | P3 | **CN13** Node PATH `forge` + jobs | **4.6 med** | after apply thin client is boring |
 | later | CN14 nest/live; CN15 delete Python CLI | **4.6 med** / **4.5 lo** | after CN13 |
 | later | Soft-only polish (R014 class) | **4.5 med** | only if cold forest green and soft still burns |
-| later | TD4 user-docs one-liner | **4.5 lo** | after D044 ships |
+| later | TD4 user-docs one-liner | **4.5 lo** | folds into click-drag PR6 |
 | later | L1 scale smoke | Human + **4.5 lo** notes | R017 shipped |
 | later | **STACKED** product D0 | **4.6 xhigh** | own plan |
 | later | Ratio / autotile (yuiop) | Human blocker → **4.6 xhigh** D0 | [blocker](./blockers/resize-autotile-design.md) |

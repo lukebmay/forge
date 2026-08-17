@@ -62,9 +62,10 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | **[Canonical contracts](./plans/forge-canonical-contracts.md)** | **P0** IC0–IC3 done | IC4 **skipped** (AL8) |
 | **[CLI → Node](./plans/forge-cli-node.md)** | **Locked** D036 · CN0–CN6 **done** (CN7 skip) | no layout port; CN13 later |
 | **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold **PASS** |
-| **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM1–SM7 code done** (uncommitted) | D044 shipped |
-| **[First-class containers](./plans/forge-first-class-containers.md)** | C0+C1 **done** (C1 uncommitted) | C2 later |
-| **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done**; TD2/TD3 skip | D044 shipped; TD4 defer |
+| **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM1–SM7 done** | D044 shipped |
+| **[First-class containers](./plans/forge-first-class-containers.md)** | C0+C1 **done** | C2 later |
+| **[Tab click-drag](./plans/forge-tab-click-drag.md)** | Design consensus | [PR1 task](./tasks/forge-tab-click-drag_pr1-chrome-layer.md) |
+| **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done**; TD2/TD3 skip | TD4 folds into click-drag PR6 |
 | **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
 | **STACKED layouts** | Major product | As PRIORITY allows |
 | `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive; mid-apply TTY death no longer aborts job |
