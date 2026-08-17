@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-17 (nested CLI separation shipped)
+**Updated:** 2026-08-17 (tab drag visual contract locked)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent this session).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -16,8 +16,12 @@ only when multi-mon is under test. Stale Guake `XAUTHORITY` used to break nest;
 **Repo tip:** SM1–SM7 + R036 + D044 + PR1 tab chrome + nested CLI separation on
 `master`. Host tip needs logout after install.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
-**Queue (agent):** Open queue is thin — tab click-drag **PR2+** only when
-operator asks · [plan](./plans/forge-tab-click-drag.md). PR1 shipped.
+**Queue (agent):** Tab click-drag **PR1–PR4 done**; **PR5 next** (2D +
+wrap default 20) · [plan](./plans/forge-tab-click-drag.md).
+Completed: [completed/](./plans/forge-tab-click-drag/completed/).
+**2026-08-17:** Chrome float+gap locked + implemented (PR4 nest PASS).
+PR3 wires wrap planner (schema still 0 until PR5). PR6 foreign strip =
+4.6 high.
 **Queue (human):** Host lock/overview “no tab titles” after tip load. X11
 input-region unproven on Wayland. [IDEAS](./IDEAS.md) for parked optionals.
 
@@ -545,14 +549,13 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Open agent queue is thin.** Product hygiene Nested-off-user-CLI **shipped**
-([plan](./plans/forge-nested-cli-separation.md)). Tab chrome **PR1 shipped**;
-**PR2+ only when operator asks**. Host lock residual is **human**.
+Tab click-drag **PR1–PR4 shipped this tree** (operator session). **PR5
+next:** 2D multi-row drag + flip wrap default to 20. Nested-off-user-CLI
+**shipped**. Host lock residual is **human**.
 
 Nest FIRM entry: **`forge test nested run -- …`** (top-level `forge nested`
-hard-breaks). Do not reshape PR1 attach. Do **not** re-litigate D039–D044.
-Do **not** reintroduce belt / TILE-anywhere hard / mon-root PlaceNext /
-soft-enter chrome / map-time PlaceNext `move_to_monitor` / spanning tab chrome.
+hard-breaks). Do not reshape PR1 attach or PR4 float+gap. Do **not**
+re-litigate D039–D044.
 
 Queue: [PRIORITY](./PRIORITY.md). Parked optionals: [IDEAS](./IDEAS.md).
 
@@ -566,14 +569,15 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 
 | You can do | You must not |
 | --- | --- |
-| Host lock smoke; PR2 when operator asks | Redesign D039–D044; restack latch; hit plates |
+| PR5 2D + wrap-on; then PR6 | Redesign D039–D044; restack latch; hit plates |
 | Nest for JS retest (`forge test nested`, mon=1) | Top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
 | FCC C2+ when product need | Implement parked IDEAS without promote |
-| | Skip PR order without ask (wrap/2D/CSS are PR2+) |
+| | Second DnD engine; outline-on-neighbor as product |
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **next** | Host lock smoke (human) · PR2+ when asked | [plan](./plans/forge-tab-click-drag.md) |
+| **next** | PR5 2D multi-row + wrap default 20 | [plan](./plans/forge-tab-click-drag.md) § PR5 |
+| done | Tab click-drag PR2 + PR3 + PR4 | [completed/](./plans/forge-tab-click-drag/completed/) |
 | done | Nested off user CLI | [plan](./plans/forge-nested-cli-separation.md) |
 | done | Tab chrome layer (PR1) | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
 | done | Same-mon TABBED/STACKED (D044) | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |

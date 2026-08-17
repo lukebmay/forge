@@ -110,9 +110,24 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
-/* TD1: insert-before marker while reordering on the strip */
+/* Dead TD1 outline cue — live reorder uses float+gap (PR4). */
 .window-tabbed-tab-reorder-insert {
-  box-shadow: -3px 0 0 2px rgba(17, 199, 224, 0.95);
+  box-shadow: none;
+}
+
+.window-tabbed-tab-pressed {
+  background-color: rgba(17, 199, 224, 0.55);
+  color: black;
+}
+
+.window-tabbed-tab-dragging {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.window-tabbed-tab-reorder-gap {
+  min-width: 1px;
+  min-height: 1px;
+  background-color: transparent;
 }
 
 .window-tabbed-tab-close {

@@ -1,22 +1,34 @@
 # Plan: Click-drag moving tabs
 
-**Status:** design consensus — **PR1 shipped**; PR2+ next when asked
+**Status:** design consensus — **PR1 shipped**; visual drag contract
+**locked 2026-08-17** (Chrome float+gap; supersedes outline marker)
 **Priority:** P1 product chrome
 **Created:** 2026-08-16
 **Updated:** 2026-08-17
 **Branch:** `master`
-**Locks:** D018, D023–D026, D032, D039–D044; Tab D0
+**Locks:** D018, D023–D026, D032, D039–D044; Tab D0; **Chrome live
+reorder visual** (this plan § Product feeling + § Chrome live reorder)
 **Supersedes (product next):** [forge-tab-chrome-drag](./forge-tab-chrome-drag.md)
-TD1 remains the reorder engine; this plan is pickability + wrap + 2D drag.
-**PR1 shipped:** [chrome layer](./completed/forge-tab-click-drag_pr1-chrome-layer.md). Next: PR2+ when operator asks.
-**Do not start wrap-on** until PR4 (`min-tab-label-chars` schema
-stays 0 until then). Q1/Q2 locked (wrap-on in PR4;
-`max-tab-rows` default 0 = unbounded).
+TD1 remains the **commit** engine (`applyTabStripReorder` +
+`replaceChildren`); this plan is pickability + wrap + 2D +
+**Chrome-like live preview** (float tab + centerline gap).
+**PR1 shipped:** [chrome layer](./completed/forge-tab-click-drag_pr1-chrome-layer.md).
+**Reference video:** [chrome-tab-drag-reference.webm](./forge-tab-click-drag/chrome-tab-drag-reference.webm)
+(source: operator Kooha of Google Chrome tabs, 2026-08-17).
+**Do not start wrap-on** until the PR that ships 2D insert
+(`min-tab-label-chars` schema stays 0 until then). Q1/Q2 locked
+(wrap-on with 2D; `max-tab-rows` default 0 = unbounded).
 
 ### Session note (overwrite)
 
-**2026-08-17:** PR1 chrome layer **shipped** on master (L0 89/89,
-nest mon=1 PASS). Host lock residual. Do not reshape attach.
+**2026-08-17 (orchestrator):** Operator asked to work the plan.
+**PR2 done** · **PR3 done** · **PR4 done** (this session).
+Tasks under [completed/](./completed/). L0 rechecked: Tree-layout 76 +
+tab-strip-reorder 29 + click-activate 12. Nest mon=1 PR4 float+gap PASS
+(stopped). **Next:** PR5 (2D multi-row + peel union + flip
+`min-tab-label-chars` default to **20**). Host lock residual human.
+**Visual lock:** float+gap + centerline; tree commit on release.
+Do not reshape PR1 attach / PR4 float.
 
 ---
 ---
@@ -83,10 +95,13 @@ no longer depends on raise/restack order.
 `revealGroupChild` stays the only live show-in-group API
 (D025).
 
-North star: **Chrome’s gesture and 2D strip feel**; Forge’s
-**equal-fill** layout (no overflow chevron, no strip scroll).
-Peel does not create an OS window — it is grab-tile + Forge
-drop zones.
+North star: **Chrome’s live tab drag** (float chip under the
+pointer, centerline sibling slides, gap = chip width) and
+**2D strip** feel; Forge’s **equal-fill** settled layout (no
+overflow chevron, no strip scroll). Peel does not create an
+OS window — it is grab-tile + Forge drop zones, with
+foreign-strip gap insert when the pointer is over another
+group’s bar.
 
 ---
 
@@ -108,10 +123,14 @@ drop zones.
 | Apply overlay | dies at all-hard (D043) | not a tab bug |
 | Groups | mon-local (D044) | shipped |
 
-TD1 is the product reorder path. It is not a prototype to
-replace. What it is missing is Chrome-like *feel* (pressed
-state, 2D insert marker, multi-row hit test) and a wrap model
-that matches the operator’s “readable label” intent.
+TD1 is the product **commit** path (`applyTabStripReorder` +
+`replaceChildren`). It is not a prototype to replace. What it is
+missing is Chrome-like **live** feel: the tab chip follows the
+pointer, siblings **slide** and leave a **gap** (not an outline on
+a neighbor), multi-row hit test, foreign-strip gap insert while
+peeling, and a wrap model that matches the operator’s “readable
+label” intent. Reference:
+[chrome-tab-drag-reference.webm](./forge-tab-click-drag/chrome-tab-drag-reference.webm).
 
 ### Why click still cannot be trusted as architecture
 
@@ -207,12 +226,15 @@ rows.
 
 ### Goals
 
-1. **Mouse-first in-group reorder** that feels first-class
-   (pressed, 8px threshold, insert marker, release commits
-   sibling order). Keybinds remain.
-1. **Leave-strip = window move.** Same grab-tile + drop zones
-   as titlebar. CENTER / edge / empty-mon / wrap-in-slot
-   unchanged.
+1. **Mouse-first in-group reorder** that feels like Chrome:
+   pressed, 8px threshold, **floating dragged chip**, **gap +
+   sibling slide** from centerline crossings, release commits
+   sibling order into the gap. Keybinds remain.
+1. **Leave strip-union = move app.** Same grab-tile path as
+   titlebar while off every strip. When the pointer enters
+   **another** group’s strip, that strip shows the same gap
+   insert (not only a tile CENTER zone). Edge / empty-mon /
+   wrap-in-slot otherwise unchanged.
 1. **Durable pickability invariant** so “click does nothing
    until I click the body / another tile” cannot recur from
    raise/restack races.
@@ -246,51 +268,135 @@ rows.
 
 ### Product feeling (locked)
 
-**Like Chrome**
+**Reference (FIRM).** Operator video of Google Chrome:
+[chrome-tab-drag-reference.webm](./forge-tab-click-drag/chrome-tab-drag-reference.webm).
+Any implementer who has not watched it must watch before coding
+reorder preview. The **outline-on-neighbor** CSS
+(`.window-tabbed-tab-reorder-insert`) is **not** the product
+preview. It is a TD1 scaffold to **delete** once float+gap
+lands.
 
-- Press on a tab (not the close control): immediate visual
-  armed/pressed **and** immediate reveal (already
-  `clickFn()` on `button-press-event` in
-  `_createWindowTab` / `_ensureConTab`). Do not defer reveal
-  until release.
-- Small movement (≥ 8px Euclidean,
-  `tabDragExceededThreshold`) while still over the strip
-  union = **reorder**.
-- Leave the strip union (+ hit pad) = **tear-off** into the
-  existing window-move path.
-- Reorder preview is a **gap / insert marker on the strip**,
-  not tile drop-zones (`window-tabbed-tab-reorder-insert`
-  today).
-- Release on strip: `replaceChildren`; group stays TABBED;
-  percents travel with nodes (do not `resetSiblingPercent`).
-- Click without crossing the threshold: reveal only (focus +
-  raise + open leaf). No reorder, no grab.
-- Close button is not a drag handle (already: `isCloseControl`
-  → `EVENT_PROPAGATE` / `EVENT_STOP` on the close control).
-- Multi-row: row1 → row2 is **same-group reorder**, not peel,
-  until the pointer leaves the **union of all rows** plus pad.
+#### What the operator must see (same-strip REORDER)
 
-**Unlike Chrome**
+Frame-by-frame contract (Chrome parity, Forge equal-fill):
 
-- Tabs in a row **share the row width equally** (`x_expand` on
-  `.window-tabbed-tab`). No ghost tab actors. Existing tabs
-  always fill the row (a last row with fewer tabs is **wider**,
-  not left-aligned with empty pixels). Peel uses decoration ∪
-  tab AABB so 1px margins stay on-strip.
-- No overflow chevron / strip scroll as the default product.
-  Wrap to another row instead.
-- Peel uses grab-tile + Forge drop zones. It does not undock an
-  OS window.
+1. **Press** on a tab body (not close): tab looks pressed/armed
+   **and** the leaf reveals immediately (`clickFn` on
+   `button-press-event`). Do not defer reveal until release.
+1. **Travel < 8px** Euclidean: stay ARMED. Release = click only
+   (no reorder, no peel).
+1. **Travel ≥ 8px** while pointer is still inside the **strip
+   band** (decoration height ± pad — see “modes” below):
+   enter **REORDER**.
+1. **Floating chip.** The dragged tab **leaves the layout flow
+   and follows the pointer** (grab offset preserved: chip does
+   not jump so the click point snaps to the chip corner). The
+   real chip is elevated (slightly above siblings / slight
+   shadow or active style) so it is obvious *this* is what is
+   moving — like Chrome, not a ghost outline on a neighbor.
+1. **Shrink while dragging.** As soon as REORDER (and while
+   PEEL float is over a strip), the floating chip width is the
+   **minimum tab width** for the current bar metrics
+   (`measureMinTabWidth` / icon+close+min label — same floor
+   the wrap planner uses when wrap is on; when wrap is off,
+   use the same chrome floor the planner would use at
+   `minChars` product default). Sibling layout during the
+   gesture treats the gap as that min width. **After release**,
+   `processTabbed` equal-fill redistributes as today — do not
+   invent a second sizing brain for the settled strip.
+1. **Gap.** Where the tab will land, the strip shows an empty
+   slot whose **width equals the floating chip’s current
+   width** (exact, not a 2px bar). Remaining tabs do **not**
+   expand into that gap during the gesture (equal-fill is
+   **post-commit only**).
+1. **Centerline slide (FIRM, the clarity rule).** While the
+   pointer stays in the strip band:
+   - Track the floating chip’s **leading edge** in the drag
+     axis: **right edge** when the chip is moving right,
+     **left edge** when moving left (TABBED X). STACKED uses
+     **bottom/top** edge on Y the same way.
+   - When that leading edge **crosses the vertical (TABBED) /
+     horizontal (STACKED) centerline** of a sibling tab that
+     is still in the strip flow, that sibling **animates** to
+     the other side of the gap. The gap moves with the
+     crossing. One sibling at a time per crossing; no
+     hysteresis that leaves “which side?” ambiguous.
+   - After a slide, the gap is still exactly the chip width
+     and sits where release would insert.
+1. **Release on strip.** Chip drops into the gap (short ease
+   optional). Commit: `applyTabStripReorder` +
+   `group.replaceChildren` + `commitLayout("tab-strip-reorder")`
+   + `settleTabFocus` on the dragged child only. Group stays
+   TABBED/STACKED. Percents travel (do not
+   `resetSiblingPercent`). Then equal-fill runs as normal
+   layout.
+1. **Cancel / destroy tab:** abort float, restore strip
+   geometry, no `replaceChildren`.
+
+**Why this replaces the outline marker.** Today’s painter puts
+`.window-tabbed-tab-reorder-insert` on `kids[insertIndex]`.
+That outlines a *neighbor*, so the operator cannot tell
+“insert before this tab” vs “insert after,” and 1D mid-tab
+math can flip either side of the same visual. Chrome never
+outlines a stationary tab as the only cue — it **moves the
+dragged tab** and **slides neighbors**, leaving an obvious
+gap. That is the locked product.
+
+#### Two gesture modes (strip band vs desk)
+
+| Mode | Enter when | Visual | Commit |
+| --- | --- | --- | --- |
+| **REORDER** (in-group or foreign-strip) | After ≥8px, pointer **Y** (TABBED) / **X** (STACKED) is inside the **strip band**: strip rect ∪ pad (`TAB_STRIP_HIT_PAD_PX`, may add a small extra vertical pad named once if 4px feels tight — one constant). Multi-row: **union of all rows** of that group. | Floating min-width chip + gap + centerline slides on **that** group’s strip. No tile drop-zones. | `replaceChildren` at gap index (same group) or join/move into foreign group at gap index (see below). |
+| **MOVE APP** (peel / grab-tile) | Pointer leaves every strip band (origin and any foreign). | Floating chip may continue or hand off to Mutter grab; **window** follows pointer as titlebar move. Tile drop-zones as today. | Existing `_startTabMoveGrab` → drop-zones / drop-intent (CENTER join, edge split, empty-mon, wrap-in-slot). |
+
+**Re-entry.** If MOVE APP was entered and the pointer later
+enters a strip band again **before** grab end:
+
+- **Same origin group:** re-enter REORDER on that strip
+  (float+gap). Clear tile drop-zones.
+- **Foreign group strip:** REORDER-on-foreign — that strip
+  opens a gap for this chip (wrap rows if the planner would
+  wrap with one more child). Release commits insert into that
+  group at the gap index (move-then-join / existing merge
+  path; D044 mon-local still applies).
+
+Once a **synthetic or Mutter grab** has fully taken over
+window move, follow the existing grab end path; do not fight
+Mutter mid-grab with strip REORDER. Prefer: peel starts only
+when leaving the strip; if re-entering a strip mid-drag
+**before** `begin_grab_op` succeeds, stay on Forge-owned
+pointer tracking and paint foreign gap. If grab already
+began, foreign strip gap is a **stretch goal in the same PR
+series** only if grab motion can still hit-test strips
+without a second DnD engine — escalate rather than invent one.
+
+#### Like Chrome (locked checklist)
+
+- Press → reveal + arm (not release-to-reveal).
+- ≥8px on strip band → REORDER float+gap.
+- Leave strip band → MOVE APP (grab-tile).
+- Close control is never a drag handle.
+- Multi-row same group: row1 → row2 is REORDER until pointer
+  leaves the **union of all rows** + pad.
+
+#### Unlike Chrome (locked)
+
+- Settled tabs in a row **equal-fill** the row (`x_expand`).
+  During drag, gap is min-chip width; after commit, equal-fill
+  again. No overflow chevron / strip scroll as default —
+  wrap instead.
+- Peel does not undock an OS window; it is grab-tile + Forge
+  drop zones (and foreign-strip gap when on a strip).
+- D044: mon-local groups; no spanning chrome.
 
 **STACKED.** Out of the wrap model. Column of full-width
-labels. Drag stays 1D Y via existing `tabStripInsertIndex`.
-Peel still uses the same grab-tile path.
+labels. Drag axis is Y: float chip, gap height = chip height,
+centerline is horizontal midline, siblings slide vertically.
+Peel still grab-tile.
 
-**CON-rep tabs.** Reorder already moves the CON unit
-(`_resolveTabStripReorderContext` walks up to the stacked/tabbed
-parent). Peel continues to grab the **representative Meta
-window** (LX4 / titlebar). Do not invent CON-as-drag-unit for
-peel here (FCC C4 later).
+**CON-rep tabs.** Reorder still moves the CON unit
+(`_resolveTabStripReorderContext`). Peel still grabs the
+**representative Meta window**. No CON-as-drag-unit (FCC C4).
 
 ### Architecture at a glance
 
@@ -307,23 +413,26 @@ flowchart TB
   subgraph gesture [DragDropManager — one engine]
     Arm["armTabDrag"]
     Armed["ARMED"]
-    Reorder["REORDER\n2D insert marker"]
-    Peel["PEEL\n_startTabMoveGrab"]
+    Reorder["REORDER\nfloat chip + gap + centerline slide"]
+    Peel["MOVE APP / PEEL\n_startTabMoveGrab"]
+    Foreign["foreign strip\nsame gap visual"]
   end
 
   subgraph commit [Commit]
     RC["replaceChildren + commitLayout"]
-    DZ["drop-zones / drop-intent"]
+    DZ["drop-zones / drop-intent / join-at-index"]
   end
 
   Press --> RGC
   Press --> Arm --> Armed
   Armed -->|"travel &lt; 8px, release"| RGC
-  Armed -->|"≥8px and on strip union"| Reorder
-  Armed -->|"≥8px and off union"| Peel
-  Reorder -->|"stay on union"| Reorder
-  Reorder -->|"leave union + pad"| Peel
-  Reorder -->|"release"| RC
+  Armed -->|"≥8px and on strip band"| Reorder
+  Armed -->|"≥8px and off band"| Peel
+  Reorder -->|"stay on band"| Reorder
+  Reorder -->|"leave band"| Peel
+  Reorder -->|"release on origin strip"| RC
+  Peel -->|"pointer over foreign strip band"| Foreign
+  Foreign -->|"release"| DZ
   Peel --> DZ
 ```
 
@@ -624,33 +733,38 @@ it; extend hit-test only.
 ```text
 press (tab, not close)
   → reveal immediately (clickFn / _activateFromTab)
-  → armTabDrag
+  → armTabDrag (+ pressed class)
   → ARMED
 
 ARMED + motion < 8px
   → stay ARMED
 
 ARMED + release
-  → disarm; no replaceChildren; no grab
+  → disarm; no replaceChildren; no grab; no float
 
-ARMED + motion ≥ 8px + pointerOnTabStrip(union, pad)
+ARMED + motion ≥ 8px + pointer in strip band (origin)
   → REORDER
-  → paint insert marker
-  → on motion: update 2D insert index
+  → detach visual chip; shrink to min width; show gap
+  → on motion: float chip to pointer (grab offset)
+               recompute gap via centerline pure
+               animate siblings that must slide
   → on release: applyTabStripReorder + replaceChildren
                + commitLayout("tab-strip-reorder")
                + settleTabFocus(dragged child) only
-                 (do not reveal a different tab)
+               + destroy float; equal-fill via processTabbed
 
-ARMED or REORDER + pointer leaves union+pad
-  → clear insert marker
+ARMED or REORDER + pointer leaves every strip band
+  → clear strip gap / float ownership handoff
   → _startTabMoveGrab
-  → PEEL (Mutter grab or synthetic)
+  → MOVE APP / PEEL (Mutter grab or synthetic)
   → drop-zones / drop-intent from here
-  → do not re-enter REORDER on later motion
+  → if pointer re-enters a strip band *before* grab owns
+    motion: prefer foreign/origin gap REORDER (see Product
+    feeling); do not invent a second DnD engine
 
 destroy tab / cancelTabDrag
-  → disarm; if synthetic peel started, end grab
+  → destroy float; restore sibling geometry; disarm;
+    if synthetic peel started, end grab
 ```
 
 Threshold stays `TAB_DRAG_THRESHOLD_PX = 8` (Euclidean). Do
@@ -658,11 +772,10 @@ not add a separate X-only / Y-only threshold.
 
 **Pressed visual.** One owner: `DragDropManager`.
 `armTabDrag` adds `window-tabbed-tab-pressed` on the armed
-tab actor. `_disarmTabDrag` and `_startTabMoveGrab` clear it.
-Do **not** add/clear in `clickFn` (`_createWindowTab` and
-`_ensureConTab` would desync CON-rep vs window tabs). Reveal
-already applies `window-tabbed-tab-active`; pressed is the
-armed affordance on the already-open tab too.
+tab actor. REORDER may promote the same actor (or a clone) to
+the float chip and keep pressed/active styling. `_disarmTabDrag`
+and successful commit clear pressed. Do **not** add/clear in
+`clickFn`. Reveal already applies `window-tabbed-tab-active`.
 
 #### One reveal sequence, one owner
 
@@ -701,48 +814,168 @@ pointer. That is already the code and the LF2 contract.
 - `addChrome(..., { affectsStruts: true })` on strips
 - Leaving the layer visible when `window_group` is hidden
 
-### 2. In-strip reorder (TD1 is the product)
+### 2. In-strip reorder (TD1 commits; Chrome live is the preview)
 
-TD1 stays the engine. Gaps vs Chrome-like feel:
+TD1 stays the **tree commit** engine
+(`tabStripInsertIndex` / `applyTabStripReorder` /
+`replaceChildren`). The **preview** is no longer “outline a
+neighbor.” Preview is Chrome live reorder (float + gap +
+centerline slide). Tree order updates **on release** (or when
+a foreign-strip join commits) — not on every centerline cross
+(avoids thrash / pin races). Visual order during the gesture
+tracks the pure’s gap index.
 
-| Gap | Today | This design |
+| Gap | Today (TD1) | This design |
 | --- | --- | --- |
-| Insert math | 1D X (TABBED) / 1D Y (STACKED) |
-  TABBED → **2D** sibling on the same module; STACKED stays 1D Y |
-| Peel region | AABB of tab rects + 4px
-  (`pointerOnTabStrip`) | Same definition, now explicitly the
-  **union of all rows** (AABB of tab rects *or* decoration
-  rect, whichever is larger) + pad |
-| Preview | Left box-shadow on the insert-before sibling |
-  Keep class; add a right-edge variant when inserting after
-  the last tab of a row |
-| Pressed | Active class only | Add pressed class |
-| Live slide | Tabs do not slide under the cursor | v1: marker
-  only (no second layout during drag). Do not move actors
-  ahead of `replaceChildren` |
-| Multi-row hosts | Exist when `max-tabs-per-line >= 1` |
-  Also used when readable-fill wrap produces `rowCount > 1` |
+| Insert math | 1D X (TABBED) / 1D Y (STACKED) via
+  **pointer mid-tab** | **Centerline pure** driven by
+  **floating chip edges** (see below). TABBED also gains
+  **2D** row pick; STACKED stays 1D Y |
+| Peel / mode region | AABB of tab rects + 4px | **Strip band**
+  = AABB of tab rects ∪ decoration + pad. Explicitly union of
+  all rows. Inside band = REORDER; outside = MOVE APP |
+| Preview | `.window-tabbed-tab-reorder-insert` on
+  `kids[insertIndex]` (ambiguous before/after) | **Delete**
+  as product UI. Float chip + gap spacer + animated sibling
+  shifts. Optional CSS: float elevation only |
+| Pressed | Active class only | Pressed class on arm; float
+  keeps active/pressed look |
+| Live slide | None (marker only) | **Required.** Siblings
+  ease-translate when centerline crosses; gap width =
+  chip width (min while dragging) |
+| Dragged size | Full equal-fill width | **Min tab width** for
+  the gesture; post-commit equal-fill redistributes |
+| Multi-row hosts | `max-tabs-per-line >= 1` | Also when
+  readable-fill wrap produces `rowCount > 1` |
+| Foreign strip | Peel only → tile zones | Strip band of
+  **another** group → same gap insert; release joins at index |
 
-#### 2D insert index
+#### Chrome live reorder (implementation contract)
 
-`tabStripInsertIndex` remains the 1D primitive (STACKED, and
-as the per-row subroutine). Add a **sibling** on the same
-module — do not put this in `decoration.js` or `tree.js`:
+**Ownership.** `DragDropManager` owns gesture state, float
+actor lifecycle, gap index, and commit. Do not put float
+ownership in `decoration.js` or a second manager.
+`processTabbed` remains the only settled layout brain.
+
+**Float actor**
+
+1. On REORDER enter: capture grab offset
+   (`pointer - tabOrigin`).
+1. Prefer **reparenting the existing tab actor** onto the
+   tab-chrome layer (or a drag sublayer under it) and
+   `set_position` in stage coords each motion. Clone only if
+   reparent breaks St allocation badly — one approach, not
+   both.
+1. Hide or zero the in-strip slot for the dragged child
+   (spacer / collapsed allocation) so the strip does not
+   paint two copies.
+1. Chip width → min tab width (see Product feeling). Height
+   stays bar row height.
+1. Z: float above other tabs on the layer; still below
+   `top_window_group` and apply overlay.
+1. On disarm/commit: reparent back / destroy clone; clear
+   spacers; clear transforms.
+
+**Centerline pure (new, same module as insert math)**
 
 ```js
 // lib/extension/drag-drop.js
-export function tabStripInsertIndex2D({ tabs, pointer } = {}) {
+export function tabStripGapFromFloatingChip({
+  tabs,          // strip-flow rects in child order, excluding
+                 // the dragged slot (or with dragged marked skip)
+  chip,          // { x, y, width, height } stage rect of float
+  axis,          // "x" | "y"
+  dragDirection, // -1 | 0 | 1 along axis (from last motion)
+} = {}) {
+  // returns { index } // insert-before in 0..n for applyTabStripReorder
+}
+```
+
+**Algorithm (lock)**
+
+1. Build strip-flow list: every sibling **except** the dragged
+   unit, in **current visual order** (starts as childNodes
+   order minus dragged; updates only when a slide commits
+   visually — or equivalently always derive from last gap
+   index). Each entry has a layout rect **as if the gap were
+   already reserved** (width/height of chip on the drag axis).
+1. **Leading edge:** if `dragDirection ≥ 0` (or 0 with last
+   non-zero ≥ 0), leading = chip’s max edge on axis; else
+   leading = chip’s min edge.
+1. Walk strip-flow tabs; for each, `center = min + size/2` on
+   axis. Gap index is the first tab whose center is **strictly
+   after** the leading edge when moving positive, and
+   symmetrically when moving negative — equivalent to:
+   insert before the first tab whose center the leading edge
+   has crossed past in the drag direction. Ends: leading
+   before all centers → index 0; after all → index n.
+1. Map gap index back to **child-list insert-before**
+   including the dragged node’s fromIndex
+   (`applyTabStripReorder` already accounts for remove-then-
+   insert). Unit-test this mapping hard.
+1. **Do not** use “outline kids[insertIndex]” as the
+   decision UI. Pointer mid-tab (`tabStripInsertIndex` alone)
+   may remain a **subroutine** for 2D row pick (which row
+   contains pointer.y) but **within a row** the gap index
+   comes from the chip edge + centers, not from pointer X
+   alone.
+
+**Worked example (TABBED, three equal tabs A B C, drag B)**
+
+| Chip motion | Leading edge | Centers | Gap / visual order |
+| --- | --- | --- | --- |
+| Still over B’s home | (armed) | — | gap at B’s slot; float over it |
+| Move right; chip right edge passes C center | → | C slides left into old gap; gap now after C | A C _ _  float(B) |
+| Move left; chip left edge passes C center again | ← | C slides right; gap between A and C | A _ _ C  float(B) |
+| Release | — | — | `replaceChildren` to match gap; equal-fill |
+
+**Sibling animation**
+
+- When gap index changes, siblings that must change visual
+  slot ease their translation (or allocation) over a short
+  duration (~120–180ms, one named constant). Do not block
+  pointer sampling on the animation.
+- Gap spacer is always chip-sized (min width while dragging).
+- No tile drop-zone paint during REORDER.
+
+**Commit path (unchanged tree APIs)**
+
+```
+gapIndex → applyTabStripReorder(kids, fromIndex, gapIndex)
+        → group.replaceChildren(next)
+        → commitLayout("tab-strip-reorder", { force: true })
+        → settleTabFocus(dragged)
+```
+
+Percents travel. Open leaf and pin stay on the dragged child.
+
+#### 2D row pick + centerline gap (TABBED multi-row)
+
+`tabStripInsertIndex` remains useful as a **row-local helper**
+only where pointer mid-slot is still correct (STACKED Y can
+use centerline pure alone). TABBED multi-row needs:
+
+1. **Which row** holds the pointer (or nearest row) — 2D
+   clustering.
+1. **Where in that row** the gap sits — **centerline pure**
+   on the floating chip, not “outline neighbor.”
+
+```js
+// lib/extension/drag-drop.js
+export function tabStripInsertIndex2D({
+  tabs, pointer, chip, dragDirection,
+} = {}) {
   // tabs: one entry per childNodes slot (never compact).
   // Missing actor → placeholder inheriting sibling / deco Y.
-  // returns { index, paint: "before"|"after" }
-  // index is insert-before in 0..tabs.length (child-list).
+  // returns { index }  // insert-before in 0..n (child-list)
+  // No paint: "before"|"after" — gap UI makes that moot.
 }
 ```
 
 **Algorithm (lock)**
 
 1. **Length.** `n = tabs.length`. If `n === 0`, return
-   `{ index: 0, paint: "before" }`.
+   `{ index: 0 }`.
 1. **Placeholders (child-list alignment).** Walk `tabs` in
    **childNodes order**. Do not drop slots. A missing /
    zero-size rect is a placeholder: copy the previous
@@ -766,39 +999,33 @@ export function tabStripInsertIndex2D({ tabs, pointer } = {}) {
    it as the row algorithm. Equal-height T9 rows bucket
    correctly after the Y sort.
 1. **Order rows** by each row’s `minY` (top → bottom).
-1. **Pick row.** The row whose Y band contains `pointer.y`.
-   If none, the nearest row by Y distance (inter-row margin
-   reorders, not peels).
-1. **Row-local insert.**
-   `rowLocal = tabStripInsertIndex({ tabs: rowSlots,
-   pointer, axis: "x" })` — `0..row.length`.
+1. **Pick row.** The row whose Y band contains `pointer.y`
+   (or chip center Y). If none, the nearest row by Y distance
+   (inter-row margin reorders, not peels).
+1. **Row-local gap.**
+   `rowLocal = tabStripGapFromFloatingChip({ tabs: rowSlots,
+   chip, axis: "x", dragDirection })` — `0..row.length`.
 1. **Global map (child-list, not compacted).**
    `index = Σ(slotCount of rows strictly above) + rowLocal`.
    `Σ` uses **child-list slot counts** (placeholders
    included). `index` is in `0..n`.
-1. **Paint discriminant.** A single integer cannot tell
-   “after last of row 1” from “before first of row 2”
-   (`index` is the same). Return
-   `paint: "after"` iff `rowLocal === row.length`
-   (insert after the last slot of the **chosen** row);
-   else `paint: "before"` (marker on `tabs[index]`).
-   `_paintTabReorderPreview` uses
-   `.window-tabbed-tab-reorder-insert` vs
-   `-insert-after`. When `index === n`, paint after the
-   last child (today’s painter no-ops here — fix it).
+1. **No paint discriminant.** “After last of row 1” vs
+   “before first of row 2” is the **same** child-list index
+   when rows are compact; the **gap** sits at the end of row
+   1 or start of row 2 based on which row was picked. Visual
+   gap follows the picked row.
 
-**Who calls 2D.** TABBED → always `tabStripInsertIndex2D`.
-STACKED → existing `tabStripInsertIndex({ axis: "y" })`
-**only**. Never “call 2D when more than one Y-band exists”
-— STACKED *is* a column of Y-bands.
+**Who calls 2D.** TABBED → always `tabStripInsertIndex2D`
+(with chip). STACKED → `tabStripGapFromFloatingChip({ axis:
+"y" })` only. Never “call 2D when more than one Y-band
+exists” — STACKED *is* a column of Y-bands.
 
-Unit table (required with the pure): two rows; pointer on
-row 2 col 1; between rows (nearest); after last of row 1
-(`paint: "after"`, same `index` as before first of row 2);
-missing-tab placeholder stays on the sibling Y band;
-missing **first** slot inherits next real sibling Y (else
-decoration rect), not `y: 0`; STACKED fixture does not
-call 2D.
+Unit table (required): two rows; chip on row 2; between rows
+(nearest); after last of row 1 vs before first of row 2 (same
+index, different row pick); centerline crosses mid-sibling;
+missing-tab placeholder stays on sibling Y band; missing
+**first** slot inherits next real sibling Y (else decoration
+rect), not `y: 0`; STACKED fixture does not call 2D.
 
 `applyTabStripReorder` is unchanged (1D child-list splice).
 Commit path is unchanged: `group.replaceChildren(next)` +
@@ -830,21 +1057,27 @@ a second pad constant unless nest proves 4px is too tight at
 the outer edge; if so, raise `TAB_STRIP_HIT_PAD_PX` in one
 place (it is already the named pad).
 
-Once PEEL starts, drop-zones appear. Strip insert marker is
-cleared. Motion does not re-enter REORDER (already tested in
-`tab-strip-reorder.test.js`).
+Once MOVE APP / PEEL starts, tile drop-zones appear. Origin
+strip gap/float hand off as specified under Product feeling.
+If the pointer is over a **foreign** strip band, prefer foreign
+gap REORDER visual over tile zones (see §3). Do not invent a
+second DnD engine — extend hit-test and commit on the existing
+grab path where possible; escalate if Mutter grab forbids it.
 
 #### Preview CSS
 
-Keep `.window-tabbed-tab-reorder-insert` (left bar). Add
-`.window-tabbed-tab-reorder-insert-after` (right bar).
-`_paintTabReorderPreview(group, { index, paint })` picks the
-class from the 2D result. Do not paint tile drop-zones
-during REORDER.
+| Class | Role after this design |
+| --- | --- |
+| `.window-tabbed-tab-pressed` | Armed / floating chip affordance |
+| `.window-tabbed-tab-dragging` (new, optional) | Elevation / shadow on the float chip only |
+| `.window-tabbed-tab-reorder-insert` | **Remove** as product UI when float+gap ships. May remain briefly as dead CSS until cleanup PR |
+| `.window-tabbed-tab-reorder-insert-after` | **Do not add** — superseded by gap |
 
-### 3. Relocate = existing window-move path
+Do not paint tile drop-zones during origin-strip REORDER.
 
-No new drop math. Leave-strip is `_startTabMoveGrab`:
+### 3. Relocate = existing window-move path (+ foreign strip gap)
+
+Leave-strip band is `_startTabMoveGrab` (MOVE APP):
 
 1. `raise` + `focus` + `activate` the Meta window so grab begin
    matches `trackCurrentMonWs`.
@@ -856,6 +1089,28 @@ No new drop math. Leave-strip is `_startTabMoveGrab`:
 1. End: `_handleGrabOpEnd` → `dropChangesStructure` /
    `mergeWindowsIntoGroup` / `slotSplitForInsert` /
    `_commitEmptyMonitorDrop` / wrap-in-slot.
+
+**Foreign strip gap (product, same series).** When the pointer
+is inside another TABBED/STACKED group’s strip band during
+MOVE APP (or Forge-owned tracking before grab owns motion):
+
+1. Hide or de-emphasize tile drop-zones for that hover.
+1. Paint the **same** float chip + **gap** on the **foreign**
+   strip using `tabStripGapFromFloatingChip` /
+   `tabStripInsertIndex2D` against that group’s children (chip
+   min width; wrap planner may open a new row if adding one
+   child would wrap — visual may show the gap on the last row
+   or a new row host; settled wrap is `processTabbed` after
+   join).
+1. On release over foreign strip: commit **insert at gap
+   index** into that group (move-then-join if needed; D044
+   mon-local: cross-mon = move onto dest mon first, then join).
+   Prefer extending `mergeWindowsIntoGroup` / drop-intent with
+   an **insert index** rather than always appending then
+   reordering.
+1. On release over tile CENTER (not strip): existing join
+   behavior (append / merge as today).
+1. Edge / empty-mon / no-target: unchanged D032 / R022.
 
 D044 still applies: CENTER join across mons is move-then-join
 onto **dest**. Empty-mon is leaf-only. Mixed-mon groups are a
@@ -1043,11 +1298,11 @@ Locked product defaults (operator 2026-08-17):
 
 **Schema vs product default.** PR2 lands keys with
 `min-tab-label-chars` schema default **0** and
-`max-tab-rows` schema default **0**. PR4 flips
+`max-tab-rows` schema default **0**. **PR5** flips
 `min-tab-label-chars` to **20** in the same change that
-ships `tabStripInsertIndex2D`. Shipping wrap-on in PR3 while
-`_updateTabReorderFromPointer` is still 1D X would break
-daily-driver strip drag.
+ships multi-row 2D + chip gap. Shipping wrap-on in PR3 while
+reorder is still single-row 1D would break daily-driver strip
+drag. PR4 may land Chrome float+gap on single-row first.
 
 No profile / session-layout migration. Wrap is chrome, not
 forest. `tabbedChildRect` already insets by total bar height,
@@ -1114,13 +1369,18 @@ sequenceDiagram
   Node->>DD: armTabDrag
   alt travel < 8px, release
     DD->>DD: disarm
-  else on strip union
-    DD->>DD: tabStripInsertIndex2D
-    DD->>Node: replaceChildren
-    Note over Lay,Deco: processTabbed replans rows
-  else leave union
+  else on strip band
+    DD->>DD: float chip + tabStripGapFromFloatingChip
+    Note over DD: siblings slide; no tree mutate yet
+    DD->>Node: replaceChildren on release
+    Note over Lay,Deco: processTabbed equal-fill
+  else leave band
     DD->>DD: _startTabMoveGrab
     DD->>DZ: moveWindowToPointer
+    opt foreign strip band
+      DD->>DD: gap on foreign strip
+      DD->>DZ: join at gap index
+    end
   end
 ```
 
@@ -1134,12 +1394,12 @@ Extend named APIs. Do not invent twins.
 
 | Job | After this design | Still do not |
 | --- | --- | --- |
-| **TABBED/STACKED strip reorder** | `tabStripInsertIndex`
-  (STACKED Y, TABBED 1D subroutine) + **`tabStripInsertIndex2D`
-  (TABBED multi-row)** + `applyTabStripReorder` +
-  `parent.replaceChildren` in `DragDropManager` | `createNode` /
-  `mergeWindowsIntoGroup` / assign `childNodes`; a reorder
-  helper in `decoration.js` |
+| **TABBED/STACKED strip reorder** | `tabStripGapFromFloatingChip`
+  + `tabStripInsertIndex2D` (TABBED multi-row) +
+  `applyTabStripReorder` + `parent.replaceChildren` in
+  `DragDropManager`; live preview = float chip + gap (not
+  outline CSS) | `createNode` / assign `childNodes`; a reorder
+  helper in `decoration.js`; second DnD engine |
 | **Show a child in a TABBED/STACKED group** | unchanged:
   `wm.revealGroupChild` | `parent.lastTabFocus =` + `raise()`
   in a new file |
@@ -1206,9 +1466,11 @@ implement PR; do it in the docs PR.
   layer children + untrack + layer |
 | `lib/extension/window.js` | Settings switch; `disable()`
   destroys layer before tree drop |
-| `lib/extension/drag-drop.js` | `tabStripInsertIndex2D`;
-  TABBED-only 2D; peel union; **pressed class only here**
-  (`armTabDrag` / `_disarmTabDrag` / `_startTabMoveGrab`) |
+| `lib/extension/drag-drop.js` | `tabStripGapFromFloatingChip`;
+  `tabStripInsertIndex2D`; float chip lifecycle; gap spacer +
+  sibling slide; peel union; foreign-strip gap; **pressed /
+  dragging classes only here** (`armTabDrag` /
+  `_disarmTabDrag` / `_startTabMoveGrab`) |
 | `lib/extension/session-api.js` | Done restack stays
   restack-only; do **not** move the layer toward overlay |
 | `lib/extension/layout-apply-chrome.js` | On show,
@@ -1217,9 +1479,10 @@ implement PR; do it in the docs PR.
   `set_child_below_sibling(layer, overlay)` |
 | `lib/prefs/appearance.js` | New spins; rewrite max-tabs
   subtitle |
-| `stylesheet.css` | pressed + insert-after |
+| `stylesheet.css` | pressed + float elevation; remove
+  insert-outline as product UI |
 | schemas / `settings-keys.js` / `settings.schema.json` |
-  two uint keys (PR2 default 0; PR4 flips chars to 20) |
+  two uint keys (PR2 default 0; PR5 flips chars to 20) |
 | Tests listed under Rollout | |
 
 No `scripts/forge/layout_*.py`, no `cli/`, no `_layoutOp`.
@@ -1237,15 +1500,17 @@ data (`replaceChildren`). Wrap is chrome. Open leaf remains
 | Key | Type | Range | Recommended default |
 | --- | --- | --- | --- |
 | `min-tab-label-chars` | `u` | 0–80 | Schema **0** until
-  PR4; product **20** after 2D (`0` = width wrap off) |
+  PR5; product **20** after multi-row 2D (`0` = width wrap
+  off) |
 | `max-tab-rows` | `u` | 0–10 | **0** = unbounded
   (product default). `≥ 1` is an optional cap |
 | `max-tabs-per-line` | `u` | 0–50 | **0** (no count cap;
   already shipped) |
 
 **Migration.** None on disk. Wrap-on is the product change
-and lands in **PR4** with 2D insert. Users who already set
-`max-tabs-per-line ≥ 1` keep that as a cap ANDed with width.
+and lands in **PR5** with multi-row 2D + chip gap. Users who
+already set `max-tabs-per-line ≥ 1` keep that as a cap ANDed
+with width.
 
 **Actors**
 
@@ -1345,6 +1610,20 @@ Changing it would feel slower and reopen “first click does
 nothing” reports.
 
 **Verdict.** Rejected. Press reveals.
+
+### J. Keep outline-on-neighbor as the only reorder preview
+
+**Idea.** Ship `.window-tabbed-tab-reorder-insert` (+ after
+variant) and skip float/gap. Plan PR5 as of 2026-08-16.
+
+**Pros.** Small CSS delta; no float actor lifecycle.
+
+**Cons.** Operator repro 2026-08-17: cannot tell before vs
+after; insert index flips against the same outline. Fails
+Chrome reference video. Not a feel polish — a clarity failure.
+
+**Verdict.** **Rejected as product UI.** Outline may die in the
+same PR that lands float+gap. Centerline gap is mandatory.
 
 ### G. `addChrome` the host (`affectsStruts: false`)
 
@@ -1473,27 +1752,29 @@ either world. Ship the layer in one PR, default on. Nest
 `L1.r032-tab-click-responsive` plus a lock-screen “no strip
 visible / no title leak” check.
 
-Wrap **schema** default stays 0 through PR3. PR4 flips
-`min-tab-label-chars` to 20 in the same change as 2D insert.
-Do not ship wrap-on with 1D X reorder.
+Wrap **schema** default stays 0 through PR4. **PR5** flips
+`min-tab-label-chars` to 20 with multi-row 2D. Do not ship
+wrap-on before multi-row chip gap works. PR4 may ship Chrome
+float+gap on single-row with schema still 0.
 
 ### Stages
 
-1. **PR1 — chrome layer + I-TabPickable + teardown.** Click
-   reliability first. Wrap still T9 count (default 0 = one
-   row). Drag still 1D. Host X11 + lock check required.
+1. **PR1 — chrome layer + I-TabPickable + teardown.** **Done.**
+   Click reliability first.
 1. **PR2 — pure wrap planner + settings keys.** Schema
    default `min-tab-label-chars=0`. Units include
    `minChars=0 → rowCount=1` on a 200px tile.
 1. **PR3 — wire `planTabbedWrap` into `processTabbed`.**
    Planner live, wrap still **off** at schema 0. Optional
-   nest with a **forced** `min-tab-label-chars` to paint
-   rows; strip drag on that tip is still 1D (do not leave
-   that as the daily default).
-1. **PR4 — 2D insert + peel union + flip wrap default to 20.**
-   Closes the broken-drag window. Product wrap-on lands here.
-1. **PR5 — pressed + 2D insert-after marker.** Feel.
-1. **PR6 — contracts / DESIGN / user docs / prefs copy.**
+   nest with forced chars to paint rows.
+1. **PR4 — Chrome live reorder (same-strip).** Float chip +
+   centerline gap + min shrink + pressed. Outline preview
+   dies. Single-row is enough. **Feel gate.**
+1. **PR5 — 2D multi-row + peel union + flip wrap default to
+   20.** Product wrap-on lands here.
+1. **PR6 — foreign-strip gap + join-at-index.** Cross-group
+   slot-in while dragging.
+1. **PR7 — contracts / DESIGN / user docs / prefs copy.**
 
 ### Rollback
 
@@ -1504,8 +1785,11 @@ Do not ship wrap-on with 1D X reorder.
 | Wrap | `gsettings set … min-tab-label-chars 0` restores
   single-row (with `max-tabs-per-line=0`). Revert PR3 if
   layout inset is wrong. |
-| 2D drag / wrap-on | Revert PR4 (schema returns to 0).
-  1D insert still works on a single row. |
+| Live float+gap | Revert PR4. TD1 outline path may return
+  briefly — not product. |
+| 2D / wrap-on | Revert PR5 (schema returns to 0). Single-row
+  Chrome float from PR4 still works. |
+| Foreign gap join | Revert PR6. Tile CENTER join remains. |
 
 ### Test strategy
 
@@ -1525,9 +1809,12 @@ Add:
   shrink, `minChars=0` → `rowCount=1` even on a 200px tile,
   empty, `rowInnerWidth < minTabWidth` → one per row until
   cap.
-- `tabStripInsertIndex2D`: two rows; row 2 col 1; between
-  rows (nearest); after last of row 1 (`paint: "after"`,
-  same index as before first of row 2); missing-tab
+- `tabStripGapFromFloatingChip`: leading edge past mid-sibling
+  moves gap; ends (index 0 / n); direction flip; chip width
+  changes gap size; STACKED Y axis.
+- `tabStripInsertIndex2D`: two rows; chip on row 2; between
+  rows (nearest); after last of row 1 vs before first of row 2
+  (same child-list index, row pick differs); missing-tab
   placeholder stays on sibling Y band; missing first slot
   inherits next real sibling Y (else decoration rect),
   not `y: 0`; STACKED does not call 2D.
@@ -1591,16 +1878,23 @@ Add:
   Medium | `rowInnerWidth = this.processGap(con).width`
   (Tree wrapper + `calculateGaps`);
   `measureMinTabWidth` multiplies slots by `Utils.dpi()` |
-| Wrap-on before 2D insert | Medium | Schema default 0 until
-  PR4 |
+| Wrap-on before multi-row chip gap | Medium | Schema default
+  0 until PR5 |
 | Short TILE + many tabs, unbounded rows eat the pane |
   Medium (default-on wrap) | Accept; no min-content clamp.
   Escape `max-tab-rows=1` or wrap keys 0 |
 | `uiGroup` / `window_group` HiDPI parent drift | Low
   (overstated) | Same `NO_LAYOUT` parent in GNOME 46; not
   the scale bug |
-| 2D insert off-by-one at row boundaries | Low | Unit table
-  including last-of-row paint discriminant |
+| 2D / centerline off-by-one at row ends | Low | Unit table:
+  gap size, leading-edge crosses, row pick |
+| Float actor desync / double-paint tab | Medium | One
+  ownership path; hide in-strip slot while float live |
+| replaceChildren every motion thrash | High | Visual-only
+  during gesture; tree commit on release only |
+| Foreign strip vs Mutter grab fight | Medium | Prefer
+  Forge-owned tracking until grab required; escalate if
+  second engine appears necessary |
 | Glyph cache stale after theme reload | Low | Invalidate on
   `css-updated` |
 | CON-rep peel still grabs the inner window | Low (pre-existing)
@@ -1616,31 +1910,54 @@ Product forks. **Resolved 2026-08-17** (operator). History
 kept.
 
 1. **Wrap default-on?** **Resolved: yes.** Flip
-   `min-tab-label-chars` schema default to **20** in **PR4**
-   (same PR as 2D insert). Escape hatch remains both wrap
-   keys at 0. Do not ship wrap-on before 2D insert.
+   `min-tab-label-chars` schema default to **20** in **PR5**
+   (same PR as multi-row 2D + chip gap). Escape hatch remains
+   both wrap keys at 0. Do not ship wrap-on before multi-row
+   chip gap works.
 1. **`max-tab-rows` default 3 vs 2 vs unbounded?**
    **Resolved: unbounded.** Schema default **0**. Not 3. A
    large group on a short tile can eat the pane; escape is
    still `max-tab-rows=1` or wrap keys 0.
 
 Not open: wrap metric (slot × N, not live Pango — Key
-decision 6); pressed CSS; second DnD engine; spanning
-chrome; STACKED wrap; Done-path raise; `window_group` as
-the long-term parent; count-only wrap as the only brain;
-attach algorithm.
+decision 6); second DnD engine; spanning chrome; STACKED
+wrap; Done-path raise; `window_group` as the long-term
+parent; count-only wrap as the only brain; attach algorithm;
+**outline-on-neighbor as product preview** (rejected J);
+Chrome float+gap centerline rule (locked 2026-08-17).
+
+**Still slightly open (implementer may pick and document in
+task note — not product forks):**
+
+1. Float = reparent real tab actor vs clone. Prefer reparent;
+   clone only if St allocation forces it.
+1. Sibling slide = `ease` translation vs temporary allocation
+   offsets. Either OK if gap is exact chip width and release
+   slots cleanly.
+1. Foreign-strip gap during **active Mutter grab** — ship in
+   PR6 if feasible without a second engine; else document
+   blocker and keep tile CENTER join.
 
 ---
 
 ## Key decisions
 
-1. **TD1 is the product reorder path.** Extend
-   `tabStripInsertIndex` / `applyTabStripReorder` /
-   `armTabDrag`. Do not replace it or add a decoration.js
-   twin.
-1. **Leave-strip is the existing grab-tile engine.**
-   `_startTabMoveGrab` + `drop-zones.js` + `drop-intent.js`.
-   Peel does not create an OS window.
+1. **TD1 is the product reorder *commit* path.** Extend
+   `applyTabStripReorder` / `armTabDrag`. Live preview is
+   **Chrome float+gap**, not outline CSS. Do not add a
+   decoration.js twin or a second DnD engine.
+1. **Chrome live reorder is mandatory product UI** (2026-08-17).
+   Dragged tab follows the pointer as a **min-width chip**.
+   Strip shows a **gap = chip width**. When the chip’s
+   **leading edge** crosses a sibling’s **centerline**, that
+   sibling **slides** across the gap. Release commits into
+   the gap. Reference video in plan dir. Outline-on-neighbor
+   is rejected (Alt J).
+1. **Strip band vs MOVE APP.** Pointer inside strip union +
+   pad → REORDER. Outside every strip band → MOVE APP
+   (`_startTabMoveGrab` + drop-zones). Foreign strip band →
+   same gap insert into that group (PR6). Peel does not
+   create an OS window.
 1. **I-TabPickable is attach + track + visibility, not
    restack.** Host is an untracked `NO_LAYOUT` `uiGroup`
    sibling immediately above `window_group` and below
@@ -1661,27 +1978,27 @@ attach algorithm.
    cap shrinks and ellipsizes. STACKED is not this model.
 1. **20 characters = min label slot, not live title width.**
    Cached font metric × `min-tab-label-chars`. `minChars ===
-   0` ⇒ `minTabWidth = 0` (no chrome-only floor).
+   0` ⇒ `minTabWidth = 0` (no chrome-only floor) for the
+   **planner**; the **drag chip** still uses a real min width
+   (icon+close+label floor at product chars, or chrome floor)
+   so shrink-while-dragging has a stable size.
    `rowInnerWidth = this.processGap(con).width` (Tree
-   wrapper + `calculateGaps`, not the one-arg pure). Chrome slots use
-   the same physical space (`Utils.dpi()`). Avoids
-   title-change reflow and scale=2 mis-wrap.
-1. **Equal-fill rows, no strip scroll, no ghost slots.** Last
-   row with fewer tabs gets wider tabs. Default row count is
-   unbounded. If the user sets `max-tab-rows ≥ 1`, shrink
-   below 20 and ellipsize. Short tiles can lose pane to a
-   tall bar (escape `max-tab-rows=1` or wrap keys 0).
-1. **2D insert is a sibling pure on `drag-drop.js`.** TABBED
-   always 2D; STACKED always 1D Y. Returns
-   `{ index, paint }`. Placeholders inherit previous
-   sibling Y; first slot inherits next real sibling Y else
-   decoration rect (never `y: 0`).
-   Rows are sort+greedy-bucket. Peel region is AABB union of
-   tab rects + decoration + existing pad.
+   wrapper + `calculateGaps`, not the one-arg pure). Chrome
+   slots use the same physical space (`Utils.dpi()`).
+1. **Equal-fill is settled layout only.** During drag, gap is
+   min-chip width (siblings do not expand into it). After
+   commit, equal-fill redistributes as today. No strip scroll
+   as default — wrap instead.
+1. **2D + centerline pures live on `drag-drop.js`.** TABBED
+   always 2D row pick + chip gap; STACKED always Y chip gap.
+   Placeholders inherit previous sibling Y; first slot
+   inherits next real sibling Y else decoration rect (never
+   `y: 0`). Rows are sort+greedy-bucket. Tree order mutates
+   on **release only**.
 1. **Press reveals immediately.** Close is not a drag handle.
-   Threshold stays 8px Euclidean. Pressed class is owned
-   only by `armTabDrag` / `_disarmTabDrag` /
-   `_startTabMoveGrab`.
+   Threshold stays 8px Euclidean. Pressed / dragging classes
+   owned only by `armTabDrag` / `_disarmTabDrag` /
+   `_startTabMoveGrab` / float lifecycle.
 1. **D044 / D023 / D024 / D032 / D039–D043 untouched.**
    Mon-local groups. `replaceChildren` only. No belt, no
    `_layoutOp`, no spanning chrome.
@@ -1705,7 +2022,10 @@ attach algorithm.
 - `agents/REGRESSIONS.md` — R025, R026, R032
 - `lib/extension/drag-drop.js` — `tabStripInsertIndex`,
   `applyTabStripReorder`, `pointerOnTabStrip`, `armTabDrag`,
-  `_startTabMoveGrab`
+  `_startTabMoveGrab` (extend: `tabStripGapFromFloatingChip`,
+  float lifecycle)
+- [chrome-tab-drag-reference.webm](./forge-tab-click-drag/chrome-tab-drag-reference.webm)
+  — operator Chrome tab drag (2026-08-17)
 - `lib/extension/tree.js` — `_activateFromTab`,
   `_createWindowTab`, `_applyDecorationRect`, `processTabbed`
 - `lib/extension/tree-layout.js` — `planTabRows`,
@@ -1726,38 +2046,70 @@ attach algorithm.
 
 ---
 
+## Work division (agents)
+
+Prompt the **role + reasoning lever** in the spawn. Default
+implement model = **Grok 4.5**. Use **4.6** only where the
+table says so (structure / join contracts). **xhigh** is for
+architecture lock only — this visual contract is already
+locked by the operator; do not reopen with xhigh unless a
+hard design conflict appears.
+
+| ID | Work | Agent | Reasoning | Depends | Status |
+| --- | --- | --- | --- | --- | --- |
+| **PR1** | Tab chrome layer (I-TabPickable) | 4.5 | med | — | **done** |
+| **PR2** | Readable-fill wrap pures + settings keys | 4.5 | med | — | **done** |
+| **PR3** | Wire `planTabbedWrap` into `processTabbed` | 4.5 | med | PR2 (PR1 preferred) | **done** |
+| **PR4** | Chrome live reorder same-strip (float + gap + centerline + min shrink + pressed) | 4.5 | **high** | PR1 | **done** |
+| **PR5** | 2D multi-row row pick + peel strip-band + wrap default-on | 4.5 | **high** | PR3 + PR4 | ready — **next** |
+| **PR6** | Foreign-strip gap insert during MOVE APP + join-at-index | 4.6 | **high** | PR4 (PR5 preferred) | ready |
+| **PR7** | Contracts / DESIGN / user docs / DECISIONS | 4.5 | low | PR1–PR6 (or incremental) | ready |
+
+**Orchestrator:** Grok **4.5 med**. Assign PR2 and PR4 in
+parallel after PR1 (they do not share hot files if PR4 stays
+in `drag-drop.js` / CSS and PR2 in `tree-layout` / schema).
+Do **not** flip wrap-on until PR5. Do **not** assign PR6 to
+4.5 (join-at-index + D044). Do **not** re-litigate float+gap
+vs outline.
+
+**Spawn note template (copy into task agent prompt)**
+
+```text
+Plan: agents/plans/forge-tab-click-drag.md
+Slice: PRN — <title>
+Model: Grok 4.5|4.6  Reasoning: med|high|low
+Watch: agents/plans/forge-tab-click-drag/chrome-tab-drag-reference.webm
+  (required for PR4/PR5/PR6)
+Locks: float+gap centerline; tree commit on release only;
+  no second DnD engine; D044 mon-local; no outline product UI
+Acceptance: checklist in plan § PR plan for this slice
+L0: named unit suites green; nest mon=1 when pointer-adjacent
+```
+
+---
+
 ## PR plan
 
 Each PR is independently reviewable and mergeable. PR2/PR3
-must **not** flip wrap-on; daily driver stays single-row
-until PR4. A tip that only has T9 wrap (schema 0) remains
-correct for 1D drag.
+must **not** flip wrap-on; daily driver stays single-row until
+PR5. Outline marker must not ship as “done” feel — PR4 is the
+feel gate.
 
-### PR1 — Tab chrome layer (I-TabPickable)
+### PR1 — Tab chrome layer (I-TabPickable) — **done**
 
+- **Agent:** Grok **4.5** · reasoning **med**
 - **Title:** Tab chrome layer: trackChrome + window_group visibility
-- **Files / components:** `lib/extension/decoration.js`
-  (layer, attach, `trackChrome`, `notify::visible`, rewrite
-  restack, layer-aware orphan sweep),
-  `lib/extension/tree.js` (`_createDecoration` stop
-  `window_group.add_child`), `lib/extension/utils.js`
-  (`_disableDecorations`), `lib/extension/window.js`
-  (`disable()` destroys layer first),
-  `lib/extension/session-api.js` (Done sync still no-raise),
-  `lib/extension/layout-apply-chrome.js`
-  (`set_child_above_sibling(overlay, layer)` only),
-  `tests/regression/bug-tab-click-activate.test.js`,
-  `tests/regression/bug-auto-exit-tabbed-ghost-decoration.test.js`
+- **Files / components:** `lib/extension/decoration.js`,
+  `tree.js`, `utils.js`, `window.js`, `session-api.js`,
+  `layout-apply-chrome.js`, tab-click + ghost-deco tests
 - **Depends on:** none
-- **Changes:** Implement the attach algorithm.
-  `attachTabDecoration` is idempotent (unit: restack twice,
-  no throw). Rewrite restack tests to parent + **tracked**
-  + visibility bind. Host X11 `L1.r032` + lock-screen
-  check required. Keep `revealGroupChild` sequence. No
-  wrap/drag behavior change.
+- **Status:** [completed](./forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md)
+- **Changes:** Attach algorithm; I-TabPickable; no wrap/drag
+  feel change. Host lock residual OK.
 
 ### PR2 — Readable-fill wrap pures and settings
 
+- **Agent:** Grok **4.5** · reasoning **med**
 - **Title:** TABBED wrap planner: min label chars + row cap
 - **Files / components:** `lib/extension/tree-layout.js`
   (`planTabbedWrap`, `minTabWidthFromChars`),
@@ -1765,74 +2117,129 @@ correct for 1D drag.
   `config/settings.schema.json`,
   `lib/shared/settings-keys.js`, `lib/prefs/appearance.js`,
   `tests/mocks/helpers/testFixtures.js`
-- **Depends on:** none (can land parallel to PR1)
+- **Depends on:** none (parallel to PR4)
 - **Changes:** Pure planner + keys. Schema
-  `min-tab-label-chars` default **0** (flip to 20 in PR4).
-  Schema `max-tab-rows` default **0** (unbounded; do not
-  land 3). Prefs: chars “0 = width wrap off”; rows
-  “0 = unbounded”. Unit:
+  `min-tab-label-chars` default **0** (flip to 20 in **PR5**).
+  Schema `max-tab-rows` default **0**. Prefs copy for 0 =
+  off / unbounded. Unit:
   `minChars=0, maxPerLine=0, width=200 → rowCount=1`. Do
   not switch `processTabbed` yet.
+- **Acceptance:** L0 Tree-layout units green; no live wrap.
 
 ### PR3 — Wire wrap into TABBED chrome
 
+- **Agent:** Grok **4.5** · reasoning **med**
 - **Title:** Equal-fill multi-row TABBED strip from wrap planner
 - **Files / components:** `lib/extension/tree.js`
   (`processTabbed`, `measureMinTabWidth`, settings),
   `lib/extension/window.js` (settings switch → render),
-  `tests/unit/tree/Tree-layout.test.js` processTabbed cases
-- **Depends on:** PR2. PR1 preferred so a taller strip is
-  already on the layer.
+  processTabbed unit cases
+- **Depends on:** PR2. PR1 preferred.
 - **Changes:** `processTabbed` calls `planTabbedWrap`.
-  `totalBar = stackedHeight * plan.rowCount` (not
-  `tabbedBarHeight(count, max-tabs-per-line)`).
+  `totalBar = stackedHeight * plan.rowCount`.
   `rowCount > 1` → row hosts. Schema default still 0 —
   **product wrap does not go live**. Forced-setting nest OK.
+- **Acceptance:** Forced `min-tab-label-chars` nest paints
+  multi-row; default schema still single-row.
 
-### PR4 — 2D strip reorder, peel union, wrap default-on
+### PR4 — Chrome live reorder (same-strip float + gap)
 
-- **Title:** TABBED strip drag: 2D insert; enable readable wrap
+- **Agent:** Grok **4.5** · reasoning **high**
+- **Title:** Tab strip drag: Chrome float chip, centerline gap, min shrink
+- **Watch first:** [chrome-tab-drag-reference.webm](./forge-tab-click-drag/chrome-tab-drag-reference.webm)
 - **Files / components:** `lib/extension/drag-drop.js`
-  (`tabStripInsertIndex2D`, `_updateTabReorderFromPointer`,
-  `_tabDragPointerOnStrip`),
-  `tests/unit/extension/tab-strip-reorder.test.js`, gschema
-  default flip for `min-tab-label-chars`
-- **Depends on:** PR3 for real multi-row actors; 2D pures
-  can be unit-tested after PR2
-- **Changes:** TABBED always 2D; STACKED 1D Y. Flip
-  `min-tab-label-chars` schema default to **20** (Q1 locked).
-  `max-tab-rows` stays **0** (Q2 locked). Peel still
-  `_startTabMoveGrab`. Unit table includes last-of-row paint
-  + missing-tab Y inherit + missing first-slot inherits next
-  sibling / deco rect (not `y: 0`).
+  (`tabStripGapFromFloatingChip`, float lifecycle,
+  `_updateTabReorderFromPointer`, `_paintTabReorderPreview`
+  → gap/slide, pressed/dragging classes, strip-band hit),
+  `stylesheet.css`,
+  `tests/unit/extension/tab-strip-reorder.test.js`
+- **Depends on:** PR1 (layer for float Z). Independent of wrap.
+- **Changes (FIRM visual):**
+  1. On REORDER: float the dragged tab under the pointer
+     (grab offset); shrink chip to min tab width; hide
+     in-strip duplicate.
+  1. Gap in the strip = **exact chip width**; siblings do not
+     equal-fill into it during the gesture.
+  1. When chip **leading edge** crosses a sibling
+     **centerline**, that sibling **animates** to the other
+     side of the gap.
+  1. Release: `applyTabStripReorder` + `replaceChildren` +
+     commit + settle; then equal-fill as normal layout.
+  1. Remove product use of
+     `.window-tabbed-tab-reorder-insert` (outline neighbor).
+  1. Pressed class on arm. MOVE APP still `_startTabMoveGrab`
+     when leaving strip band.
+  1. **No** tree mutate on every motion. **No** foreign-strip
+     join in this PR (PR6). **No** wrap default flip.
+- **Acceptance:**
+  - [ ] Unit: centerline pure table (direction, ends, width)
+  - [ ] Nest mon=1: 3-tab reorder — operator can *see* which
+        gap the chip will fill; release matches gap
+  - [ ] Outline-on-neighbor is gone as the live cue
+  - [ ] Click without 8px still reveal-only
+  - [ ] Peel off strip still grab-tile
+- **Do not:** second DnD engine; `replaceChildren` per
+  motion; invent CON peel unit.
 
-### PR5 — Gesture chrome (pressed + insert-after)
+### PR5 — 2D multi-row + peel band + wrap default-on
 
-- **Title:** Tab drag affordances: pressed state and 2D insert marker
-- **Files / components:** `stylesheet.css`,
-  `lib/extension/drag-drop.js` only (`armTabDrag` /
-  `_disarmTabDrag` / `_startTabMoveGrab` /
-  `_paintTabReorderPreview`)
-- **Depends on:** PR4 (marker needs `{ index, paint }`)
-- **Changes:** `window-tabbed-tab-pressed`;
-  `window-tabbed-tab-reorder-insert-after`. No tree mutations.
+- **Agent:** Grok **4.5** · reasoning **high**
+- **Title:** TABBED multi-row drag + enable readable wrap
+- **Files / components:** `lib/extension/drag-drop.js`
+  (`tabStripInsertIndex2D` wired to chip gap), peel strip
+  band = union of rows, gschema flip
+  `min-tab-label-chars` → **20**
+- **Depends on:** PR3 (real multi-row actors) + PR4 (float+gap)
+- **Changes:** TABBED always 2D row pick + chip gap; STACKED
+  Y chip gap only. Flip wrap schema default to 20. Peel only
+  after leaving **union of all rows** + pad. Unit table for
+  multi-row + missing-tab Y inherit.
+- **Acceptance:**
+  - [ ] 5 tabs forced multi-row: row1→row2 reorders, stays
+        TABBED, float+gap works across rows
+  - [ ] Drag south of union peels
+  - [ ] Fresh install wrap-on (20); escape both keys 0
 
-### PR6 — Contracts and user docs
+### PR6 — Foreign-strip gap + join-at-index
 
-- **Title:** Document tab chrome layer, wrap settings, and 2D drag
+- **Agent:** Grok **4.6** · reasoning **high**
+- **Title:** Peel over another tab strip: gap insert + indexed join
+- **Watch first:** same Chrome reference (cross-window tab
+  drop is analogous; Forge uses mon-local groups)
+- **Files / components:** `lib/extension/drag-drop.js`,
+  `drop-intent.js` / `drop-zones.js` as needed,
+  `window.js` merge path (`mergeWindowsIntoGroup` insert
+  index), unit + nest
+- **Depends on:** PR4; PR5 preferred so multi-row foreign
+  strips exist under wrap-on
+- **Changes:** While MOVE APP / Forge tracking, pointer over
+  **another** group’s strip band → paint gap on that strip;
+  release → move-then-join (D044) **at gap index**. Edge /
+  empty-mon / wrap-in-slot unchanged. If Mutter grab blocks
+  strip hit-test, stop and open a hard design note — do not
+  add a second DnD engine.
+- **Acceptance:**
+  - [ ] Drag tab from group A onto group B’s strip: gap
+        appears; release inserts at gap (not always append)
+  - [ ] Cross-mon still rehomes then joins (D044)
+  - [ ] Tile CENTER (not strip) still existing join
+  - [ ] No spanning chrome
+
+### PR7 — Contracts and user docs
+
+- **Agent:** Grok **4.5** · reasoning **low**
+- **Title:** Document tab chrome layer, Chrome live drag, wrap
 - **Files / components:** `docs/dev/contracts.md`,
-  `docs/dev/actions.md`, `docs/DESIGN.md` (§ clickability +
-  raise/restack decoration row), `docs/user/layouts.md`
-  (stacked vs tabbed product), `docs/user/troubleshooting.md`
-  (tab-click: leftover overlay vs `trackChrome` failure),
-  `docs/user/layout.md` (cold apply: taller bars shrink TILE
-  slots via `tabbedChildRect`), `docs/DECISIONS.md` (new D0xx
-  when shipping), `agents/plans/forge-tab-chrome-drag.md`
-- **Depends on:** PR1–PR5 (or incremental notes per PR)
-- **Changes:** Catalog rows listed above. User-facing wrap
-  prefs. Troubleshooting distinguishes overlay leftover after
-  `all-hard` from layer/`trackChrome` failure. TD4 one-liner
-  can fold in here.
+  `docs/dev/actions.md`, `docs/DESIGN.md`,
+  `docs/user/layouts.md`, `docs/user/troubleshooting.md`,
+  `docs/user/layout.md`, `docs/DECISIONS.md` (new D0xx for
+  Chrome live reorder when shipping), 
+  `agents/plans/forge-tab-chrome-drag.md`
+- **Depends on:** PR1–PR6 (or incremental notes per PR)
+- **Changes:** Catalog rows; user-facing wrap prefs;
+  troubleshooting overlay leftover vs trackChrome; TD4
+  one-liner; describe float+gap (not outline).
 
 **Not a PR in this series:** ApplyLayout, FCC C2+, STACKED
-product, TD2/TD3 (skipped), spanning chrome, layout CLI.
+product redesign, TD2/TD3 (skipped), spanning chrome, layout
+CLI.

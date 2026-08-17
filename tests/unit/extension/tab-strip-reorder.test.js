@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   TAB_DRAG_THRESHOLD_PX,
   tabStripInsertIndex,
+  tabStripGapFromFloatingChip,
+  tabStripInsertIndexFromGap,
+  tabStripFlowLayoutWithGap,
   applyTabStripReorder,
   pointerOnTabStrip,
   tabActorScreenRect,
@@ -86,6 +89,176 @@ describe("applyTabStripReorder (pure)", () => {
   });
 });
 
+describe("tabStripGapFromFloatingChip (pure)", () => {
+  // Remaining A,C with gap reserved at home of B (100–180 chip).
+  const flowHome = [
+    { x: 0, y: 0, width: 100, height: 30 },
+    { x: 180, y: 0, width: 100, height: 30 },
+  ];
+  // After slide: gap after C
+  const flowAfterC = [
+    { x: 0, y: 0, width: 100, height: 30 },
+    { x: 100, y: 0, width: 100, height: 30 },
+  ];
+
+  it("home: leading before C center → gap between A and C", () => {
+    // Chip over B home; right edge 180, C center 230
+    const chip = { x: 100, y: 0, width: 80, height: 30 };
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs: flowHome,
+        chip,
+        axis: "x",
+        dragDirection: 1,
+      }).index
+    ).toBe(1);
+  });
+
+  it("leading right edge past C center → gap after all", () => {
+    const chip = { x: 200, y: 0, width: 80, height: 30 }; // leading 280
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs: flowHome,
+        chip,
+        axis: "x",
+        dragDirection: 1,
+      }).index
+    ).toBe(2);
+  });
+
+  it("leading left edge before A center → gap at start", () => {
+    const chip = { x: 0, y: 0, width: 80, height: 30 }; // leading 0 when dir -1
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs: flowAfterC,
+        chip,
+        axis: "x",
+        dragDirection: -1,
+      }).index
+    ).toBe(0);
+  });
+
+  it("direction flip uses min edge when moving left", () => {
+    // Chip straddling C; left edge at 140, C center 150 → still before C
+    const chip = { x: 140, y: 0, width: 80, height: 30 };
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs: flowAfterC,
+        chip,
+        axis: "x",
+        dragDirection: -1,
+      }).index
+    ).toBe(1);
+    // Left edge past C center (151) → after C
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs: flowAfterC,
+        chip: { x: 151, y: 0, width: 80, height: 30 },
+        axis: "x",
+        dragDirection: -1,
+      }).index
+    ).toBe(2);
+  });
+
+  it("STACKED Y axis", () => {
+    const tabsY = [
+      { x: 0, y: 40, width: 200, height: 40 },
+      { x: 0, y: 80, width: 200, height: 40 },
+    ];
+    // Drag first tab down; chip bottom past last center (100)
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs: tabsY,
+        chip: { x: 0, y: 70, width: 200, height: 40 },
+        axis: "y",
+        dragDirection: 1,
+      }).index
+    ).toBe(2);
+  });
+
+  it("skips marked skip tabs and empty → 0", () => {
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs: [{ skip: true, x: 0, y: 0, width: 50, height: 20 }],
+        chip: { x: 0, y: 0, width: 40, height: 20 },
+        axis: "x",
+        dragDirection: 1,
+      }).index
+    ).toBe(0);
+    expect(tabStripGapFromFloatingChip({ tabs: [], chip: null }).index).toBe(0);
+  });
+
+  it("chip width only affects leading edge (gap size is layout input)", () => {
+    const tabs = [
+      { x: 0, y: 0, width: 100, height: 30 },
+      { x: 200, y: 0, width: 100, height: 30 },
+    ];
+    // Narrow chip still crosses second center when right edge does
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs,
+        chip: { x: 160, y: 0, width: 50, height: 30 },
+        axis: "x",
+        dragDirection: 1,
+      }).index
+    ).toBe(1);
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs,
+        chip: { x: 160, y: 0, width: 100, height: 30 },
+        axis: "x",
+        dragDirection: 1,
+      }).index
+    ).toBe(2);
+  });
+});
+
+describe("tabStripInsertIndexFromGap + applyTabStripReorder", () => {
+  it("maps remaining gap + fromIndex for drag B in [A,B,C]", () => {
+    const kids = ["a", "b", "c"];
+    const from = 1;
+    // gap 0 → before A
+    expect(tabStripInsertIndexFromGap(from, 0)).toBe(0);
+    expect(applyTabStripReorder(kids, from, 0)).toEqual(["b", "a", "c"]);
+    // gap 1 → between A and C (home)
+    expect(tabStripInsertIndexFromGap(from, 1)).toBe(2);
+    expect(applyTabStripReorder(kids, from, 2)).toEqual(["a", "b", "c"]);
+    // gap 2 → after C
+    expect(tabStripInsertIndexFromGap(from, 2)).toBe(3);
+    expect(applyTabStripReorder(kids, from, 3)).toEqual(["a", "c", "b"]);
+  });
+
+  it("maps drag A (from 0) to end", () => {
+    expect(tabStripInsertIndexFromGap(0, 2)).toBe(3);
+    expect(applyTabStripReorder(["a", "b", "c"], 0, 3)).toEqual(["b", "c", "a"]);
+  });
+});
+
+describe("tabStripFlowLayoutWithGap (pure)", () => {
+  it("inserts chip-sized hole at gapIndex", () => {
+    const segs = tabStripFlowLayoutWithGap({
+      sizes: [100, 100],
+      gapIndex: 1,
+      chipSize: 80,
+      origin: 0,
+    });
+    expect(segs).toEqual([
+      { start: 0, end: 100 },
+      { start: 180, end: 280 },
+    ]);
+    const end = tabStripFlowLayoutWithGap({
+      sizes: [100, 100],
+      gapIndex: 2,
+      chipSize: 80,
+      origin: 10,
+    });
+    expect(end).toEqual([
+      { start: 10, end: 110 },
+      { start: 110, end: 210 },
+    ]);
+  });
+});
+
 describe("pointerOnTabStrip (pure)", () => {
   const tabs = [
     { x: 10, y: 20, width: 80, height: 30 },
@@ -166,12 +339,65 @@ describe("DragDropManager strip reorder", () => {
       y,
       width,
       height,
+      x_expand: true,
+      y_expand: false,
+      translation_x: 0,
+      translation_y: 0,
       style_class: "",
+      _parent: null,
+      children: [],
       add_style_class_name(name) {
         if (!this.style_class.includes(name)) this.style_class += ` ${name}`;
       },
       remove_style_class_name(name) {
         this.style_class = this.style_class.replace(name, "").trim();
+      },
+      get_parent() {
+        return this._parent;
+      },
+      set_width(w) {
+        this.width = w;
+      },
+      set_height(h) {
+        this.height = h;
+      },
+      set_position(px, py) {
+        this.x = px;
+        this.y = py;
+      },
+      remove_all_transitions() {},
+      ease(params = {}) {
+        for (const [k, v] of Object.entries(params)) {
+          if (k === "duration" || k === "mode" || k === "onComplete") continue;
+          this[k] = v;
+        }
+        params.onComplete?.();
+      },
+      add_child(child) {
+        if (!child) return;
+        if (!this.children.includes(child)) this.children.push(child);
+        child._parent = this;
+      },
+      remove_child(child) {
+        const i = this.children.indexOf(child);
+        if (i !== -1) this.children.splice(i, 1);
+        if (child && child._parent === this) child._parent = null;
+      },
+      contains(child) {
+        return this.children.includes(child);
+      },
+      get_children() {
+        return this.children;
+      },
+      insert_child_at_index(child, index) {
+        if (!child) return;
+        if (child._parent && child._parent !== this) {
+          child._parent.remove_child?.(child);
+        }
+        const i = this.children.indexOf(child);
+        if (i !== -1) this.children.splice(i, 1);
+        this.children.splice(Math.max(0, index), 0, child);
+        child._parent = this;
       },
     };
   }
@@ -183,6 +409,9 @@ describe("DragDropManager strip reorder", () => {
     const group = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, groupBin);
     group.layout = LAYOUT_TYPES.TABBED;
     group.rect = { x: 0, y: 0, width: 900, height: 600 };
+    // Strip host for reparent/spacer (Chrome float lifecycle).
+    const deco = makeTabActor(0, 0, 300, 30);
+    group.decoration = deco;
 
     const nodes = [];
     for (let i = 0; i < 3; i++) {
@@ -197,6 +426,7 @@ describe("DragDropManager strip reorder", () => {
       node.mode = WINDOW_MODES.TILE;
       node.percent = 0.2 + i * 0.1;
       node.tab = makeTabActor(i * 100, 0, 100, 30);
+      deco.add_child(node.tab);
       nodes.push({ node, meta });
     }
     group.lastTabFocus = nodes[1].meta;
@@ -213,13 +443,18 @@ describe("DragDropManager strip reorder", () => {
 
     // Press on middle tab center (x=150)
     dd().armTabDrag(b.meta, makePressEvent(150, 15));
-    // Travel right past threshold, still on strip → over tab c right half
+    expect(b.node.tab.style_class).toContain("window-tabbed-tab-pressed");
+    // Travel right past threshold, still on strip → REORDER float+gap
     const status = dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15);
     expect(status).toBe("reorder");
     expect(b.node.mode).toBe(WINDOW_MODES.TILE);
     expect(wm()._draggedNodeWindow).toBeFalsy();
+    expect(b.node.tab.style_class).toContain("window-tabbed-tab-dragging");
+    // Outline-on-neighbor is not the live cue
+    expect(a.node.tab.style_class).not.toContain("window-tabbed-tab-reorder-insert");
+    expect(c.node.tab.style_class).not.toContain("window-tabbed-tab-reorder-insert");
 
-    // Move to right of last tab midpoint (250) so insertIndex = 3
+    // Chip leading edge past C center → gap after C → insertIndex 3
     expect(dd().noteTabDragMotion(280, 15)).toBe("reorder");
     dd().finishTabDragRelease();
 
@@ -231,17 +466,20 @@ describe("DragDropManager strip reorder", () => {
     expect(group.lastTabFocus).toBe(b.meta);
     expect(commit).toHaveBeenCalledWith("tab-strip-reorder", { force: true });
     expect(dd()._tabDrag).toBeNull();
+    expect(b.node.tab.style_class).not.toContain("window-tabbed-tab-pressed");
   });
 
   it("short click on strip does not reorder or grab", () => {
     const { group, nodes } = makeTabbedTrio();
     const order = [...group.childNodes];
     dd().armTabDrag(nodes[0].meta, makePressEvent(20, 15));
+    expect(nodes[0].node.tab.style_class).toContain("window-tabbed-tab-pressed");
     expect(dd().noteTabDragMotion(24, 15)).toBe("armed");
     dd().finishTabDragRelease();
     expect(group.childNodes).toEqual(order);
     expect(nodes[0].node.mode).toBe(WINDOW_MODES.TILE);
     expect(dd()._tabDrag).toBeNull();
+    expect(nodes[0].node.tab.style_class).not.toContain("window-tabbed-tab-pressed");
   });
 
   it("pointer leaving strip starts grab-tile once", () => {
@@ -273,6 +511,8 @@ describe("DragDropManager strip reorder", () => {
     const groupBin = new Bin();
     const group = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, groupBin);
     group.layout = LAYOUT_TYPES.STACKED;
+    const deco = makeTabActor(0, 0, 200, 120);
+    group.decoration = deco;
 
     const nodes = [];
     for (let i = 0; i < 3; i++) {
@@ -285,6 +525,7 @@ describe("DragDropManager strip reorder", () => {
       const node = ctx.tree.createNode(groupBin, NODE_TYPES.WINDOW, meta);
       node.mode = WINDOW_MODES.TILE;
       node.tab = makeTabActor(0, i * 40, 200, 40);
+      deco.add_child(node.tab);
       nodes.push({ node, meta });
     }
 
@@ -292,7 +533,7 @@ describe("DragDropManager strip reorder", () => {
     ctx.display.get_focus_window = vi.fn(() => a.meta);
     vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
 
-    // Press top tab; drag down past mid of last
+    // Press top tab; drag down past last centerline
     dd().armTabDrag(a.meta, makePressEvent(20, 10));
     expect(dd().noteTabDragMotion(20, 10 + TAB_DRAG_THRESHOLD_PX + 2)).toBe("reorder");
     expect(dd().noteTabDragMotion(20, 110)).toBe("reorder");

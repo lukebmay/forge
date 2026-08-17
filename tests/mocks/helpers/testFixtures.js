@@ -31,6 +31,8 @@ export const DEFAULT_SETTINGS = {
   "default-window-layout": "split",
   "stacked-tab-bar-height": 35,
   "max-tabs-per-line": 0,
+  "min-tab-label-chars": 0,
+  "max-tab-rows": 0,
   "tab-position": "top",
 
   // Borders

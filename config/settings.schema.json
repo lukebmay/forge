@@ -224,6 +224,20 @@
           "maximum": 50,
           "default": 0
         },
+        "min-tab-label-chars": {
+          "type": "integer",
+          "description": "Min readable tab label characters before width-wrap (0 = width wrap off)",
+          "minimum": 0,
+          "maximum": 80,
+          "default": 0
+        },
+        "max-tab-rows": {
+          "type": "integer",
+          "description": "Max tab bar rows in tabbed mode (0 = unbounded)",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 0
+        },
         "tab-position": {
           "type": "string",
           "description": "Position of the stacked/tabbed title bar within its container (top or bottom)",

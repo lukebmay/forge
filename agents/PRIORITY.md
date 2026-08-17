@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-17 (nested CLI separation shipped)
+**Updated:** 2026-08-17 (tab drag visual contract locked)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -11,10 +11,10 @@
 **PR1** tab chrome layer **shipped** · Nested entry **`forge test nested`**
 (P0/P1 **shipped**).
 
-**Active next:** Tab click-drag **PR2+** when operator asks —
-[plan](./plans/forge-tab-click-drag.md). Host lock residual = human.
-Do not reshape PR1 attach. Wrap-on waits for PR4
-(`min-tab-label-chars=20`); `max-tab-rows=0` unbounded.
+**Active next:** Tab click-drag **PR5** (2D multi-row + wrap default 20) —
+[plan](./plans/forge-tab-click-drag.md). **PR1–PR4 done**. Visual
+contract: Chrome **float+gap**. Host lock residual = human.
+Do not reshape PR1 attach / PR4 float.
 **Retest (FIRM):** nest = normal Wayland code→reload via **`forge test nested`**;
 primary logout = rare tip load.
 **Parked:** soft polish · scale smoke · FCC C2+ · CN13 · TD4 docs · bag-API
@@ -55,7 +55,9 @@ all-hard (no chrome implement).
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
-| later | Tab click-drag PR2–PR6 | **4.5 med** | [plan](./plans/forge-tab-click-drag.md) — **only when operator asks** |
+| P1 | Tab click-drag **PR5** 2D + wrap-on (20) | 4.5 **high** | [plan](./plans/forge-tab-click-drag.md) § PR5 |
+| later | Tab click-drag PR6–PR7 | 4.6 high / 4.5 lo | PR6 foreign strip; PR7 docs |
+| done | Tab click-drag **PR2 + PR3 + PR4** | 4.5 | [completed/](./plans/forge-tab-click-drag/completed/) |
 | done | **Nested off user CLI** | **4.5 high** | [plan](./plans/forge-nested-cli-separation.md) · [completed/](./plans/forge-nested-cli-separation/completed/) |
 | done | **Tab click-drag PR1** (chrome layer) | **4.5 med** | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
 | done | **Same-mon TABBED/STACKED** (D044) | **4.5 high** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |

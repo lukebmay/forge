@@ -263,6 +263,18 @@
             <summary>Max tab labels per row in tabbed mode (0 = unlimited single row; wrap into more rows when set).</summary>
         </key>
 
+        <key type="u" name="min-tab-label-chars">
+            <range min="0" max="80"/>
+            <default>0</default>
+            <summary>Min readable tab label characters before width-wrap (0 = width wrap off).</summary>
+        </key>
+
+        <key type="u" name="max-tab-rows">
+            <range min="0" max="10"/>
+            <default>0</default>
+            <summary>Max tab bar rows in tabbed mode (0 = unbounded; ≥1 shrinks tabs to fit).</summary>
+        </key>
+
         <key type="s" name="tab-position">
             <choices>
                 <choice value="top"/>
