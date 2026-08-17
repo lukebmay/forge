@@ -17,14 +17,16 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Repo tip:** SM1–SM7 + R036 + D044 + PR1–PR4 tab chrome + user-CLI cut on
 `master`. Host tip needs logout after install.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
-**Queue (agent):** User CLI surface **shipped** (`forge` product-only;
-`./scripts/forge/forge-test` for nest/live). Next: tab click-drag **PR5**
-(2D + wrap default 20) · [plan](./plans/forge-tab-click-drag.md).
-PR1–PR4 done: [completed/](./plans/forge-tab-click-drag/completed/).
+**Queue (agent):** Tab click-drag **PR5 shipped** (2D + wrap default 20).
+PR1–PR5 done: [completed/](./plans/forge-tab-click-drag/completed/).
+**Next:** PR6 foreign-strip gap + join-at-index (or stop) ·
+[plan](./plans/forge-tab-click-drag.md). User CLI **shipped**
+(`forge` product-only; nest/live = `./scripts/forge/forge-test`).
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
 `forge-test` (clone path; `./install --with-test-cli` opt-in).
 **Queue (human):** Host lock/overview “no tab titles” after tip load. X11
-input-region unproven on Wayland. [IDEAS](./IDEAS.md) for parked optionals.
+input-region unproven on Wayland. Optional nest multi-row PR5 eyes-on.
+[IDEAS](./IDEAS.md) for parked optionals.
 
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.
@@ -551,12 +553,13 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Next:** Tab click-drag **PR5** (2D + wrap default 20). User CLI surface
-**shipped** — `forge` is product-only; nest/live = `./scripts/forge/forge-test`.
+**Next:** Tab click-drag **PR6** (foreign-strip gap + join-at-index) when
+product wants it — else stop / park. PR1–**PR5** shipped. User CLI
+**shipped** — `forge` product-only; nest/live = `./scripts/forge/forge-test`.
 Host lock residual is **human**.
 
-Do not reshape PR1 attach or PR4 float+gap. Do **not** re-litigate D039–D044.
-Do **not** teach `forge test` / top-level `forge nested`.
+Do not reshape PR1 attach, PR4 float+gap, or PR5 2D/wrap-on. Do **not**
+re-litigate D039–D044. Do **not** teach `forge test` / top-level `forge nested`.
 
 Queue: [PRIORITY](./PRIORITY.md). Parked optionals: [IDEAS](./IDEAS.md).
 
@@ -570,7 +573,7 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 
 | You can do | You must not |
 | --- | --- |
-| Tab click-drag PR5 (2D + wrap 20) | Redesign D039–D044; restack latch; hit plates |
+| Tab click-drag PR6 (foreign strip + join index) | Redesign D039–D044; restack latch; hit plates |
 | Nest for JS retest (`./scripts/forge/forge-test nested`, mon=1) | `forge test` / top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
 | FCC C2+ when product need | Implement parked IDEAS without promote |
 | | Second DnD engine; outline-on-neighbor as product |
@@ -578,8 +581,9 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | Pri | Work | Path |
 | --- | --- | --- |
 | done | User CLI: no test/dev toolkit | [plan](./plans/forge-cli-user-surface.md) |
-| P1 | PR5 2D multi-row + wrap default 20 | [plan](./plans/forge-tab-click-drag.md) § PR5 |
-| done | Tab click-drag PR2 + PR3 + PR4 | [completed/](./plans/forge-tab-click-drag/completed/) |
+| done | PR5 2D multi-row + wrap default 20 | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr5-2d-wrap-default.md) |
+| later | Tab click-drag PR6–PR7 | [plan](./plans/forge-tab-click-drag.md) § PR6 |
+| done | Tab click-drag PR1–PR4 | [completed/](./plans/forge-tab-click-drag/completed/) |
 | done | Nested off top-level CLI | [plan](./plans/forge-nested-cli-separation.md) |
 | done | Tab chrome layer (PR1) | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
 | done | Same-mon TABBED/STACKED (D044) | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |

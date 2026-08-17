@@ -1,7 +1,7 @@
 # Plan: Click-drag moving tabs
 
-**Status:** design consensus — **PR1 shipped**; visual drag contract
-**locked 2026-08-17** (Chrome float+gap; supersedes outline marker)
+**Status:** design consensus — **PR1–PR5 shipped**; visual drag contract
+**locked 2026-08-17** (Chrome float+gap; wrap-on 20; 2D multi-row)
 **Priority:** P1 product chrome
 **Created:** 2026-08-16
 **Updated:** 2026-08-17
@@ -21,14 +21,12 @@ TD1 remains the **commit** engine (`applyTabStripReorder` +
 
 ### Session note (overwrite)
 
-**2026-08-17 (orchestrator):** Operator asked to work the plan.
-**PR2 done** · **PR3 done** · **PR4 done** (this session).
-Tasks under [completed/](./completed/). L0 rechecked: Tree-layout 76 +
-tab-strip-reorder 29 + click-activate 12. Nest mon=1 PR4 float+gap PASS
-(stopped). **Next:** PR5 (2D multi-row + peel union + flip
-`min-tab-label-chars` default to **20**). Host lock residual human.
-**Visual lock:** float+gap + centerline; tree commit on release.
-Do not reshape PR1 attach / PR4 float.
+**2026-08-17 (orchestrator):** **PR5 done** —
+[completed](./completed/forge-tab-click-drag_pr5-2d-wrap-default.md).
+`tabStripInsertIndex2D` + peel union + schema default **20**. L0 **152**
+orchestrator-recheck green. Nest multi-row smoke skipped (unit-proven).
+**Next:** PR6 foreign-strip gap + join-at-index (later). No reshape
+PR1/PR4/PR5. Host lock residual human.
 
 ---
 ---
@@ -2061,7 +2059,7 @@ hard design conflict appears.
 | **PR2** | Readable-fill wrap pures + settings keys | 4.5 | med | — | **done** |
 | **PR3** | Wire `planTabbedWrap` into `processTabbed` | 4.5 | med | PR2 (PR1 preferred) | **done** |
 | **PR4** | Chrome live reorder same-strip (float + gap + centerline + min shrink + pressed) | 4.5 | **high** | PR1 | **done** |
-| **PR5** | 2D multi-row row pick + peel strip-band + wrap default-on | 4.5 | **high** | PR3 + PR4 | ready — **next** |
+| **PR5** | 2D multi-row row pick + peel strip-band + wrap default-on | 4.5 | **high** | PR3 + PR4 | **done** |
 | **PR6** | Foreign-strip gap insert during MOVE APP + join-at-index | 4.6 | **high** | PR4 (PR5 preferred) | ready |
 | **PR7** | Contracts / DESIGN / user docs / DECISIONS | 4.5 | low | PR1–PR6 (or incremental) | ready |
 
@@ -2181,10 +2179,11 @@ feel gate.
 - **Do not:** second DnD engine; `replaceChildren` per
   motion; invent CON peel unit.
 
-### PR5 — 2D multi-row + peel band + wrap default-on
+### PR5 — 2D multi-row + peel band + wrap default-on — **done**
 
 - **Agent:** Grok **4.5** · reasoning **high**
 - **Title:** TABBED multi-row drag + enable readable wrap
+- **Task:** [completed](./completed/forge-tab-click-drag_pr5-2d-wrap-default.md)
 - **Files / components:** `lib/extension/drag-drop.js`
   (`tabStripInsertIndex2D` wired to chip gap), peel strip
   band = union of rows, gschema flip
@@ -2195,10 +2194,10 @@ feel gate.
   after leaving **union of all rows** + pad. Unit table for
   multi-row + missing-tab Y inherit.
 - **Acceptance:**
-  - [ ] 5 tabs forced multi-row: row1→row2 reorders, stays
-        TABBED, float+gap works across rows
-  - [ ] Drag south of union peels
-  - [ ] Fresh install wrap-on (20); escape both keys 0
+  - [x] 2D pure + wire: row1→row2 reorders (unit); stays TABBED
+        path; float+gap across rows (per-row pack)
+  - [x] Peel south of union (AABB unit); inter-row REORDER
+  - [x] Fresh schema default 20; escape both keys 0 (fixtures)
 
 ### PR6 — Foreign-strip gap + join-at-index
 

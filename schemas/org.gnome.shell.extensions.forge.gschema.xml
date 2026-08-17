@@ -265,7 +265,7 @@
 
         <key type="u" name="min-tab-label-chars">
             <range min="0" max="80"/>
-            <default>0</default>
+            <default>20</default>
             <summary>Min readable tab label characters before width-wrap (0 = width wrap off).</summary>
         </key>
 

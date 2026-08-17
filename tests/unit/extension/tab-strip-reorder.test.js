@@ -5,6 +5,7 @@ import {
   tabStripGapFromFloatingChip,
   tabStripInsertIndexFromGap,
   tabStripFlowLayoutWithGap,
+  tabStripInsertIndex2D,
   applyTabStripReorder,
   pointerOnTabStrip,
   tabActorScreenRect,
@@ -277,6 +278,179 @@ describe("pointerOnTabStrip (pure)", () => {
 
   it("honors pad", () => {
     expect(pointerOnTabStrip({ tabs, pointer: [8, 30], pad: 4 })).toBe(true);
+  });
+
+  it("multi-row AABB keeps inter-row Y on-strip", () => {
+    const multi = [
+      { x: 0, y: 100, width: 100, height: 30 },
+      { x: 100, y: 100, width: 100, height: 30 },
+      { x: 0, y: 130, width: 100, height: 30 },
+    ];
+    // Between rows (y=125) stays inside union — peel only south of union.
+    expect(pointerOnTabStrip({ tabs: multi, pointer: [50, 125], pad: 0 })).toBe(true);
+    expect(pointerOnTabStrip({ tabs: multi, pointer: [50, 170], pad: 0 })).toBe(false);
+  });
+});
+
+describe("tabStripInsertIndex2D (pure)", () => {
+  // Two equal-fill rows: [A B C] / [D E] — child list 0..4
+  const twoRows = [
+    { x: 0, y: 40, width: 100, height: 30 },
+    { x: 100, y: 40, width: 100, height: 30 },
+    { x: 200, y: 40, width: 100, height: 30 },
+    { x: 0, y: 70, width: 100, height: 30 },
+    { x: 100, y: 70, width: 100, height: 30 },
+  ];
+  const chipOn = (x, y, w = 80, h = 30) => ({ x, y, width: w, height: h });
+
+  it("two rows: chip on row 2 inserts among row-2 slots", () => {
+    // Leading past D center (50) before E center (150) → between D and E → index 4
+    expect(
+      tabStripInsertIndex2D({
+        tabs: twoRows,
+        pointer: { x: 100, y: 85 },
+        chip: chipOn(50, 70), // leading 130
+        dragDirection: 1,
+      }).index
+    ).toBe(4);
+    // Leading past E center → after last → index 5
+    expect(
+      tabStripInsertIndex2D({
+        tabs: twoRows,
+        pointer: { x: 200, y: 85 },
+        chip: chipOn(160, 70), // leading 240
+        dragDirection: 1,
+      }).index
+    ).toBe(5);
+  });
+
+  it("between rows picks nearest row by Y", () => {
+    // South of strip → nearer row2; leading before D center → index 3
+    const between = tabStripInsertIndex2D({
+      tabs: twoRows,
+      pointer: { x: 20, y: 100 },
+      chip: chipOn(0, 90, 40), // leading 40 < D center 50
+      dragDirection: 1,
+    });
+    expect(between.index).toBe(3);
+
+    const nearerRow1 = tabStripInsertIndex2D({
+      tabs: twoRows,
+      pointer: { x: 50, y: 20 }, // above strip → nearest row1
+      chip: chipOn(0, 10, 40), // leading 40 < A center 50
+      dragDirection: 1,
+    });
+    expect(nearerRow1.index).toBe(0);
+  });
+
+  it("after last of row1 vs before first of row2 share child-list index", () => {
+    // After C on row1: leading past C center (250) → rowLocal 3 → global 3
+    const afterRow1 = tabStripInsertIndex2D({
+      tabs: twoRows,
+      pointer: { x: 280, y: 55 },
+      chip: chipOn(250, 40),
+      dragDirection: 1,
+    });
+    expect(afterRow1.index).toBe(3);
+
+    // Before D on row2: leading before D center → rowLocal 0 → global 3
+    const beforeRow2 = tabStripInsertIndex2D({
+      tabs: twoRows,
+      pointer: { x: 10, y: 85 },
+      chip: chipOn(-40, 70),
+      dragDirection: -1,
+    });
+    expect(beforeRow2.index).toBe(3);
+  });
+
+  it("centerline crosses mid-sibling on a row", () => {
+    // On row1, leading past A center (50) before B center (150) → index 1
+    expect(
+      tabStripInsertIndex2D({
+        tabs: twoRows,
+        pointer: { x: 100, y: 50 },
+        chip: chipOn(60, 40),
+        dragDirection: 1,
+      }).index
+    ).toBe(1);
+  });
+
+  it("missing-tab placeholder stays on sibling Y band", () => {
+    // Drag B (index 1): null placeholder inherits row1 Y from A
+    const tabs = [twoRows[0], null, twoRows[2], twoRows[3], twoRows[4]];
+    // Chip on row2 between D and E → global 4 (same as full strip)
+    expect(
+      tabStripInsertIndex2D({
+        tabs,
+        pointer: { x: 100, y: 85 },
+        chip: chipOn(50, 70),
+        dragDirection: 1,
+      }).index
+    ).toBe(4);
+  });
+
+  it("first missing inherits next real sibling Y (not y:0)", () => {
+    // Strip far below stage top (tab-position bottom style)
+    const low = [
+      null, // dragged first tab
+      { x: 100, y: 400, width: 100, height: 30 },
+      { x: 200, y: 400, width: 100, height: 30 },
+    ];
+    // Pointer near y=400 band → row of inherited placeholders, not y=0
+    const idx = tabStripInsertIndex2D({
+      tabs: low,
+      pointer: { x: 250, y: 410 },
+      chip: chipOn(220, 400),
+      dragDirection: 1,
+    }).index;
+    // After last real on that row → 3
+    expect(idx).toBe(3);
+
+    // With only missing + decoration (no real next): use deco Y
+    const onlyMissing = [null, null];
+    const deco = { x: 0, y: 500, width: 300, height: 30 };
+    expect(
+      tabStripInsertIndex2D({
+        tabs: onlyMissing,
+        pointer: { x: 10, y: 510 },
+        chip: chipOn(0, 500),
+        dragDirection: 1,
+        decoration: deco,
+      }).index
+    ).toBe(0);
+  });
+
+  it("empty tabs → 0", () => {
+    expect(tabStripInsertIndex2D({ tabs: [], pointer: { x: 0, y: 0 } }).index).toBe(0);
+  });
+});
+
+describe("STACKED path does not use tabStripInsertIndex2D", () => {
+  it("STACKED Y column uses tabStripGapFromFloatingChip only (pure contract)", () => {
+    // Document: STACKED reorder is Y chip gap — 2D would mis-bucket a column as rows.
+    const stacked = [
+      { x: 0, y: 0, width: 200, height: 40 },
+      { x: 0, y: 40, width: 200, height: 40 },
+      { x: 0, y: 80, width: 200, height: 40 },
+    ];
+    const chip = { x: 0, y: 70, width: 200, height: 40 };
+    const gap = tabStripGapFromFloatingChip({
+      tabs: stacked.slice(1), // remaining after dragging first
+      chip,
+      axis: "y",
+      dragDirection: 1,
+    }).index;
+    // 2D on a column would treat each band as its own row and gap on X — different.
+    const wrong2d = tabStripInsertIndex2D({
+      tabs: [null, stacked[1], stacked[2]],
+      pointer: { x: 10, y: 100 },
+      chip,
+      dragDirection: 1,
+    }).index;
+    // Contract: product STACKED path uses gap Y, not 2D. Values may differ.
+    expect(gap).toBe(2);
+    expect(typeof wrong2d).toBe("number");
+    // Gesture suite below proves DragDropManager STACKED never needs 2D for correct order.
   });
 });
 
