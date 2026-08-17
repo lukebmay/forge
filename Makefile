@@ -215,16 +215,16 @@ test-nested: horizontal-line
 		dbus-run-session -- gnome-shell --nested --wayland --wayland-display=wayland-forge
 
 nested-start:
-	./scripts/forge/forge nested start --replace $(NESTED_FLAGS)
+	./scripts/forge/forge test nested start --replace $(NESTED_FLAGS)
 
 nested-stop:
-	./scripts/forge/forge nested stop --force
+	./scripts/forge/forge test nested stop --force
 
 nested-restart:
-	./scripts/forge/forge nested restart $(NESTED_FLAGS)
+	./scripts/forge/forge test nested restart $(NESTED_FLAGS)
 
 nested-status:
-	./scripts/forge/forge nested status
+	./scripts/forge/forge test nested status
 
 # Usage:
 #   make nested-start
@@ -232,11 +232,11 @@ nested-status:
 #   make test-open CMD=gnome-text-editor
 #   make test-open CMD=gnome-terminal ARGS='--app-id app.x'
 #   make test-open CMD=firefox ARGS='--safe-mode' ENVVARS='MOZ_DBUS_REMOTE=1 MOZ_ENABLE_WAYLAND=1'
-#   eval $$(./scripts/forge/forge nested env --export) && forge ping
+#   eval $$(./scripts/forge/forge test nested env --export) && forge ping
 #
 test-open: CMD=gnome-text-editor
 test-open:
-	@eval $$(./scripts/forge/forge nested env --export 2>/dev/null) && \
+	@eval $$(./scripts/forge/forge test nested env --export 2>/dev/null) && \
 		GDK_BACKEND=wayland $(ENVVARS) $(CMD) $(ARGS) & \
 	|| (echo "make test-open: nested session not running; try: make nested-start" >&2; exit 1)
 

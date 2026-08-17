@@ -232,14 +232,14 @@ forge_restart_shell() {
         :
       else
         forge_warn "Wayland: host Shell cannot HUP. Retest path:"
-        forge_warn "  forge nested restart   # reload extension in nest (no logout)"
+        forge_warn "  forge test nested restart   # reload extension in nest (no logout)"
         forge_warn "  # dual-mon host CT still needs host desk (logout once if host never loaded tip)"
-        forge_warn "  forge nested doctor    # capability / refuse reasons"
+        forge_warn "  forge test nested doctor    # capability / refuse reasons"
       fi
       return 2
       ;;
     *)
-      forge_is_quiet || forge_warn "session=$st: X11 → killall -HUP gnome-shell; Wayland → forge nested restart"
+      forge_is_quiet || forge_warn "session=$st: X11 → killall -HUP gnome-shell; Wayland → forge test nested restart"
       return 2
       ;;
   esac

@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-17 (PR1 chrome layer shipped)
+**Updated:** 2026-08-17 (nested CLI separation shipped)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -8,40 +8,46 @@
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037/D038 ApplyLayout ·
 **D039–D043** slot machines (SM0) · **SM1–SM7 implement landed** ·
 **R036 cold PASS** · **D044** TABBED/STACKED mon-local **shipped** ·
-**PR1** tab chrome layer **shipped**.
+**PR1** tab chrome layer **shipped** · Nested entry **`forge test nested`**
+(P0/P1 **shipped**).
 
 **Active next:** Tab click-drag **PR2+** when operator asks —
 [plan](./plans/forge-tab-click-drag.md). Host lock residual = human.
 Do not reshape PR1 attach. Wrap-on waits for PR4
 (`min-tab-label-chars=20`); `max-tab-rows=0` unbounded.
-**Product hygiene (queued):** Nested **off user CLI** — plan then separate —
-[plan](./plans/forge-nested-cli-separation.md) · [P0](./tasks/forge-nested-cli-separation_p0-plan.md).
-**Retest (FIRM):** nest = normal Wayland code→reload; primary logout = rare tip load.
-**Parked:** soft polish · scale smoke · FCC C2+ · CN13 · TD4 docs.
+**Retest (FIRM):** nest = normal Wayland code→reload via **`forge test nested`**;
+primary logout = rare tip load.
+**Parked:** soft polish · scale smoke · FCC C2+ · CN13 · TD4 docs · bag-API
+review · MD1 motion prototype — [IDEAS](./IDEAS.md).
 **Agents:** default implement = **Grok 4.5**. Architecture locks = **4.6 xhigh** only.
 
-**FIRM:** Prefer `forge nested run -- …` (auto stop). Interactive nest → `stop` when done.
+**FIRM:** Prefer `forge test nested run -- …` (auto stop). Interactive nest →
+`forge test nested stop` when done.
 Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [HANDOFF](./HANDOFF.md).
 **FIRM:** Host `forge layout dev` is not a crash repro harness — use nest.
+**FIRM:** Top-level `forge nested` is **not** product (hard break → use `forge test nested`).
 
 ---
 
 ## Orchestrator note
 
-SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** **done**. Do **not**
-re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard /
-mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
+SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **nested off user CLI**
+**done**. Do **not** re-litigate D039–D044. Do not reintroduce belt /
+TILE-anywhere hard / mon-root apply PlaceNext / soft-enter chrome clear /
+spanning tab chrome. Do not teach bare `forge nested`.
 
 | Slice | Status | Note |
 | --- | --- | --- |
 | SM1–SM7 | **done** | [completed/](./plans/forge-layout-slot-machines/completed/) |
 | R036 host cold | **done** | [completed](./tasks/completed/forge-layout-cold-host-verify.md) |
-| Tab D0 | **done** | [planning](./tasks/forge-tab-work-planning.md) |
+| Tab D0 | **done** | [completed](./tasks/completed/forge-tab-work-planning.md) |
 | Same-mon groups | **done** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) · D044 |
 | Tab click-drag | **PR1 shipped** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) · host lock residual |
+| Nested off user CLI | **done** | [plan](./plans/forge-nested-cli-separation.md) · entry `forge test nested` |
 
 **L0:** D044 suite **159** green (tree ops + DnD + normalize + LX3 + H1).
-**Host cold:** R036 **PASS**. Overlay clear = all-hard (no chrome implement).
+Nested CLI units **27** green. **Host cold:** R036 **PASS**. Overlay clear =
+all-hard (no chrome implement).
 
 ---
 
@@ -49,13 +55,12 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
-| ready | **Nested off user CLI** (plan → separate) | **4.5 high** | [plan](./plans/forge-nested-cli-separation.md) · [P0](./tasks/forge-nested-cli-separation_p0-plan.md) · [P1](./tasks/forge-nested-cli-separation_p1-separate.md) |
-| done | **Tab click-drag PR1** (chrome layer) | **4.5 med** | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) — L0+nest PASS; host lock residual |
-| later | Tab click-drag PR2–PR6 | **4.5 med** | [plan](./plans/forge-tab-click-drag.md) after PR1 |
+| later | Tab click-drag PR2–PR6 | **4.5 med** | [plan](./plans/forge-tab-click-drag.md) — **only when operator asks** |
+| done | **Nested off user CLI** | **4.5 high** | [plan](./plans/forge-nested-cli-separation.md) · [completed/](./plans/forge-nested-cli-separation/completed/) |
+| done | **Tab click-drag PR1** (chrome layer) | **4.5 med** | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
 | done | **Same-mon TABBED/STACKED** (D044) | **4.5 high** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |
-| done | Tab work D0 lock | **4.6 xhigh** | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
+| done | Tab work D0 lock | **4.6 xhigh** | [completed](./tasks/completed/forge-tab-work-planning.md) |
 | done | **R036** nest multi-open + host cold | **4.5** | [completed](./tasks/completed/forge-layout-cold-host-verify.md) |
-| optional | Bag-API review `layout-apply-slot.js` | **4.6 high** | after SM4 note |
 | P2 | FCC **C2** group/ungroup | **4.6 med** if ops reshape, else **4.5 high** | [FCC plan](./plans/forge-first-class-containers.md) |
 | P2 | FCC **C4** move-in/out + focus parent | **4.5 high** | after C2 |
 | P2 | **R1** owning-split resize | **4.6 med** | after C2; not yuiop |
@@ -71,7 +76,6 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 | later | **STACKED** product D0 | **4.6 xhigh** | own plan |
 | later | Ratio / autotile (yuiop) | Human blocker → **4.6 xhigh** D0 | [blocker](./blockers/resize-autotile-design.md) |
 | done | **SM0–SM7** slot machines | multi | [completed/](./plans/forge-layout-slot-machines/completed/) |
-| done (code) | R036 PH pin + beltStructure + unwrap + live rehome → evolved into SM1–SM6 | — | host logout residual |
 | done | R035 residual tab ensure · R033 aspect split · R029–R032 | — | HANDOFF / REGRESSIONS |
 | done | TD1 strip reorder · TD2/TD3 skip · R025/R026 · R028 | — | completed |
 | done | CLI-node **CN0–CN6** (CN7 skip) · AL0–AL8 · FCC C0/C1 | — | completed |
@@ -81,10 +85,13 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 
 | Was | Disposition |
 | --- | --- |
+| optional bag-API review `layout-apply-slot.js` | → [IDEAS](./IDEAS.md) — no failure; park |
 | optional dual-mon open-heavy nest mon=2 | → [IDEAS](./IDEAS.md) |
 | optional per-window signals → WindowAttach | → [IDEAS](./IDEAS.md) |
+| MD1 container-motion HTML prototype | → [IDEAS](./IDEAS.md) — not PRIORITY |
 | CLI “nothing applied” wording | → [IDEAS](./IDEAS.md) |
 | Cross-mon TABBED as product | **rejected** (D044) — implement is same-mon normalize |
+| Top-level `forge nested` as product | **rejected** — `forge test nested` only |
 | Hover-spinner / tab-click residuals | **none** unless post-R036 overlay/click repro |
 
 ### Why this order
@@ -93,7 +100,8 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 2. **R036 cold done** — nest multi-open + host `layout dev` forest match without Shell death.
 3. **Tab D0 locked** — overlay=all-hard; groups mon-local; TD2/TD3 skip; click none.
 4. **Same-mon (D044)** — shipped.
-5. FCC / resize / CN13 / STACKED — after apply is honest, or later.
+5. **Nested off user CLI** — shipped (`forge test nested`).
+6. FCC / resize / CN13 / STACKED / PR2+ — only when operator asks or product need.
 
 ### Worth (do not forget)
 
@@ -107,6 +115,7 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 | Overlay = all-hard | Spinner not soft | SM7 · D043 · **done** |
 | Belt deleted | No dual spine | SM6 · **done** |
 | Groups mon-local | One strip cannot span heads | D044 · shipped |
+| Nested = testing tools | User CLI is not a dev toolkit | nest CLI separation · **done** |
 | `lib/shared` gi-free | Kernel prefs+CLI can share | D036 · CN0 · CN3 |
 | ApplyLayout | Speed + one planner | D037 · AL0 **done** |
 
@@ -115,11 +124,16 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 **Do not** reintroduce belt as happy path.
 **Do not** drop overlay before all-hard.
 **Do not** build spanning tab chrome.
+**Do not** teach top-level `forge nested`.
 
 **Handoff:** [HANDOFF.md](./HANDOFF.md).
 **Parked ideas:** [IDEAS.md](./IDEAS.md).
 
 ```bash
+# Nest campaign (product entry)
+forge test nested run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
+forge test nested status   # running: False
+
 # SM L0
 npm test -- tests/unit/extension/layout-apply-epoch.test.js \
   tests/unit/extension/layout-apply-slot.test.js \
@@ -130,13 +144,7 @@ npm test -- tests/unit/extension/layout-apply-epoch.test.js \
   tests/unit/extension/place-hint.test.js \
   tests/regression/bug-h1-monitor-recovery-workareas-thrash.test.js
 
-./install --kit=vim
-# Wayland host tip: log out and back in, then cold:
-forge layout dev
-forge tree
-
-forge nested run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
-forge nested status   # running: False
+python3 -m pytest tests/unit/cli/test_nested_wayland.py -q
 ```
 
 | Doc | Role |
@@ -144,9 +152,10 @@ forge nested status   # running: False
 | [HANDOFF.md](./HANDOFF.md) | Start here |
 | [IDEAS.md](./IDEAS.md) | Parked optionals / promote-later |
 | [contracts](../docs/dev/contracts.md) | Job → API |
+| [nested CLI separation](./plans/forge-nested-cli-separation.md) | Nested off user CLI (**done**) |
 | [slot machines](./plans/forge-layout-slot-machines.md) | SM0–SM7 |
 | [ApplyLayout](./plans/forge-layout-in-process.md) | AL0–AL8 done |
 | [cli-node](./plans/forge-cli-node.md) | D036 CN0–CN6 |
-| [tab planning](./tasks/forge-tab-work-planning.md) | D0 locked |
+| [tab planning](./tasks/completed/forge-tab-work-planning.md) | D0 locked |
 | [same-mon](./tasks/completed/forge-tab-groups-same-mon.md) | D044 shipped |
 | [REGRESSIONS.md](./REGRESSIONS.md) | R0xx + guards |

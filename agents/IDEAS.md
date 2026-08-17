@@ -4,7 +4,7 @@
 promote to PRIORITY or drop after a real need appears. Do **not** treat this
 file as a work queue.
 
-**Updated:** 2026-08-16
+**Updated:** 2026-08-17
 
 ---
 
@@ -13,7 +13,7 @@ file as a work queue.
 | Item | Why parked | Promote when |
 | --- | --- | --- |
 | CLI “nothing applied” wording when spine partially ran | Tiny copy polish; no clear false-ok message path locked after AL8 | A host job reports ok while structure/soft partially failed and wording misleads |
-| Soft-only polish if structure green but soft thrashing (R014 class) | Depends on R036 cold structure sign-off first | Cold tree green and soft still max-corrections / sticky open leaf |
+| Soft-only polish if structure green but soft thrashing (R014 class) | Cold structure (R036) green; soft residual is product (D019) | Soft still max-corrections / sticky open leaf on green forest and operator wants polish |
 
 ---
 
@@ -26,13 +26,22 @@ file as a work queue.
 
 ---
 
-## Lifecycle health (optional residual)
+## Lifecycle / bag health (optional residual)
 
 | Item | Why parked | Promote when |
 | --- | --- | --- |
 | Per-window `windowSignals` / `actorSignals` → WindowAttach | Lifecycle plan scope complete (W1–W5, L8/L11); optional residual only | Disable/leak bug tied to per-window signal arrays, or a window-domain extract |
+| Bag-API review `layout-apply-slot.js` (was PRIORITY optional after SM4) | SM1–SM7 + R036 + D044 shipped without bag pain; review without a failure is pure hygiene | Ownership bug, FCC C2 reshape needs slot bag API, or contracts row drift |
 
 See [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) “Optional later”.
+
+---
+
+## Design prototypes (not product queue)
+
+| Item | Why parked | Promote when |
+| --- | --- | --- |
+| MD1 HTML container-motion prototype | Old design track; not on PRIORITY; insert/DnD locks already landed (D032/TD1/D044) | Operator re-opens container-motion plan before Shell peel/move redesign |
 
 ---
 
@@ -40,9 +49,12 @@ See [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) �
 
 | Item | Home |
 | --- | --- |
-| TD4 tab-drag user-docs one-liner | [tab-chrome-drag](./plans/forge-tab-chrome-drag.md) — after D044 |
+| Tab click-drag PR2–PR6 | [tab-click-drag](./plans/forge-tab-click-drag.md) — **only when operator asks**; PR1 shipped |
+| TD4 tab-drag user-docs one-liner | [tab-chrome-drag](./plans/forge-tab-chrome-drag.md) — folds into click-drag PR6 |
 | STACKED layouts | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 | Resize + autotile | [plan](./plans/forge-resize-and-autotile.md) · [blocker](./blockers/resize-autotile-design.md) |
+| FCC C2+ / strip `_layoutOp` | [FCC](./plans/forge-first-class-containers.md) — after apply honest (done); still P2+ product |
+| CN13 Node PATH forge | [cli-node](./plans/forge-cli-node.md) — after apply thin client boring |
 
 ---
 
@@ -55,3 +67,5 @@ See [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) �
 | Personal `dev`/`t1` in live matrix | Use `_forge-test-*` only |
 | Cross-mon TABBED/STACKED as product | **D044** — mon-local only; no spanning chrome |
 | Overlay clear before all-hard | **D043** — spinner is not soft |
+| Top-level `forge nested` as product | **P0 locked** — use `forge test nested`; hard break |
+| Belt after bind / TILE-anywhere hard / mon-root PlaceNext map move | D039–D043 + R036 |

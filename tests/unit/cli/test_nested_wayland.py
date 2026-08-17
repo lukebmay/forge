@@ -322,7 +322,7 @@ def test_host_session_and_x11_refuse() -> None:
     assert host_session_type({"XDG_SESSION_TYPE": "wayland"}) == "wayland"
     msg = x11_refuse_message("x11")
     assert "killall -HUP" in msg
-    assert "forge nested start" in msg
+    assert "forge test nested start" in msg
     with pytest.raises(NestedUnsupported) as ei:
         require_wayland_host(env={"XDG_SESSION_TYPE": "x11"})
     assert ei.value.exit_code == 2
@@ -363,8 +363,7 @@ def test_wait_nest_client_ready_true_when_workarea(monkeypatch: pytest.MonkeyPat
     assert calls["n"] >= 2
 
 
-def test_hoist_nested_action_flags() -> None:
-    """Flags after nested action must hoist so argparse nested_cmd works."""
+def _load_forge_cli_mod():
     import importlib.util
     from importlib.machinery import SourceFileLoader
 
@@ -374,8 +373,30 @@ def test_hoist_nested_action_flags() -> None:
     assert spec is not None
     mod = importlib.util.module_from_spec(spec)
     loader.exec_module(mod)
-    hoist = mod.hoist_nested_action_flags
+    return mod
 
+
+def test_normalize_nested_argv_product_entry() -> None:
+    """Product entry is forge test nested; top-level nested hard-breaks."""
+    mod = _load_forge_cli_mod()
+    norm = mod.normalize_nested_argv
+    assert norm(["test", "nested", "run", "--", "true"]) == [
+        "nested",
+        "run",
+        "--",
+        "true",
+    ]
+    assert norm(["test", "nested", "status"]) == ["nested", "status"]
+    assert norm(["nested", "status"]) is None
+    assert norm(["ping"]) == ["ping"]
+    assert norm(["test", "live", "probe"]) == ["test", "live", "probe"]
+
+
+def test_hoist_nested_action_flags() -> None:
+    """Flags after nested action must hoist so argparse nested_cmd works."""
+    mod = _load_forge_cli_mod()
+    hoist = mod.hoist_nested_action_flags
+    # Product entry rewrites to internal nested before hoist
     assert hoist(["nested", "run", "--monitors=1", "--", "true"]) == [
         "nested",
         "--monitors=1",
@@ -383,16 +404,11 @@ def test_hoist_nested_action_flags() -> None:
         "--",
         "true",
     ]
-    assert hoist([
-        "nested",
-        "run",
-        "--monitors=2",
-        "env",
-        "FORGE_JOB=0",
-        "forge",
-        "layout",
-        "x",
-    ]) == [
+    product = mod.normalize_nested_argv(
+        ["test", "nested", "run", "--monitors=2", "env", "FORGE_JOB=0", "forge", "layout", "x"]
+    )
+    assert product is not None
+    assert hoist(product) == [
         "nested",
         "--monitors=2",
         "run",

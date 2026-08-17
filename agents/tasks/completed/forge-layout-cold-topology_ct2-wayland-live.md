@@ -1,6 +1,6 @@
 # CT2 — Live Wayland one-shot cold layout
 
-**Status:** in progress — code green on X11 matrix; Wayland cold re-smoke  
+**Status:** superseded — Wayland RC cleared + R036 host cold done (2026-08-16/17)
 **Plan:** [forge-layout-cold-topology.md](../plans/forge-layout-cold-topology.md)  
 **Depends:** CT1  
 **Host:** `black` Wayland dual 4K  

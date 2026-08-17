@@ -1,6 +1,6 @@
 # forge-nested-cli-separation — Nest out of user CLI, into testing tools
 
-**Status:** ready (P0 plan lock next)  
+**Status:** **done** 2026-08-17 (P0 lock + P1 separate)  
 **Priority:** product hygiene — user CLI surface  
 **Branch:** `master`  
 **Related:** [forge-nested-isolation](./forge-nested-isolation.md) (D022 nest behavior stays);
@@ -37,107 +37,116 @@ CLI surface + docs**, not a nest redesign.
 
 ---
 
-## Current state (inventory seed for P0)
+## Inventory (P0 complete)
 
 | Piece | Path / surface | Role today |
 | --- | --- | --- |
-| Nest harness | `scripts/forge/nested_wayland.py` (~1.7k lines) | Full lifecycle |
-| Top-level CLI | `forge nested …` in `scripts/forge/forge` | User-visible subcommand |
-| Help | `cli_help.py` lists `nested` next to product cmds | User-facing |
-| Live matrix | `live_matrix.py` + `forge test live` | Probe/plan/run; imports nest |
-| Units | `tests/unit/cli/test_nested_wayland.py` | Harness tests |
-| Make | `nested-start/stop/restart/status`, `test-nested` | Dev shortcuts |
-| User docs | `docs/user/troubleshooting.md` | Mentions `forge nested restart` |
-| Dev docs | CONTRIBUTING, `agents/testing.md`, HANDOFF, PRIORITY | Primary consumers |
-| Install | `./install` → `~/.local/bin/forge` → full CLI | Nested rides along |
+| Nest harness | `scripts/forge/nested_wayland.py` (~1.7k lines) | Full lifecycle; `cmd_nested` |
+| Top-level CLI | `forge nested …` in `scripts/forge/forge` | User-visible subcommand + `hoist_nested_action_flags` |
+| Help | `cli_help.py` lists `nested` next to product cmds | User-facing Commands |
+| Test CLI | `forge test live …` (flat `test_which` / `live_action`) | Same binary; live matrix |
+| Live matrix | `live_matrix.py` | Probe notes advertise `forge nested restart` / doctor |
+| Units | `tests/unit/cli/test_nested_wayland.py` | Harness + hoist; refuse msg mentions `forge nested start` |
+| Make | `nested-start` / `stop` / `restart` / `status`, `test-nested`, `test-open` | Call `./scripts/forge/forge nested …` |
+| Install / reload msgs | `_lib.zsh`, `rebuild.zsh`, `migrate-from-ego.zsh` | Wayland guidance → `forge nested restart` |
+| User docs | `docs/user/troubleshooting.md` | Recommends Nested for Wayland reload |
+| Dev docs | CONTRIBUTING, `agents/testing.md`, HANDOFF, PRIORITY, project, meta-probe PROTOCOL, test-results README | FIRM `forge nested run` / restart |
+| Install stamp | `./install` → `~/.local/bin/forge` full CLI | Nested rides along (no separate kit) |
 
-P0 must expand this inventory (grep call sites, install stamps, migrate messages,
-agent rules) before locking the ship shape.
-
----
-
-## Non-goals
-
-- Changing nest isolation, mon policy, or D022 process rules.
-- Porting Nested to Node (CN14) — optional later; separation must not require it.
-- Removing Nested from the **repo** or from agent workflows.
-- Reworking the entire `forge test live` matrix (only relocate Nested’s home).
-- UNIX test user / bubblewrap (still rejected for nest v1).
+**Out of inventory noise:** layout profile name `layout-tiles-nested.json` and tree
+shape “nested HSPLIT” are **not** this product surface.
 
 ---
 
-## Design questions (P0 must lock)
+## Locked decisions (P0)
 
-1. **Entry point after separation**
-   - Preferred candidates to evaluate (pick one primary + optional thin aliases):
-     - `forge test nested …` (fold under existing test tree)
-     - Standalone `forge-nested` / `scripts/forge/forge-nested` on dev PATH only
-     - Repo-only: Makefile + `python3 -m` / script path; no top-level product verb
-   - Agents and CONTRIBUTING must keep a **stable, typed** command string after P1.
+### 1. Entry point (primary FIRM string)
 
-2. **What “ships with testing tools” means**
-   - Same git tree, gated surface (help + install message)?
-   - Separate install kit / flag (`./install --dev` / `make dev-tools`)?
-   - Always present under `scripts/` for clone-based developers, absent from
-     minimal user install if such a path exists later?
-   - Hard requirement: **everyday user `forge help` and user docs do not present Nested.**
+| | |
+| --- | --- |
+| **Primary** | **`forge test nested <action> …`** |
+| Examples | `forge test nested run -- forge ping` · `forge test nested status` · `forge test nested restart` · `forge test nested doctor` |
+| Flags | Same as today after the action (`--monitors=N`, `--replace`, `--keep`, …); hoist still rewrites flags-after-action |
+| Module | `nested_wayland.py` stays; no Node port (CN14 later, non-goal here) |
+| Make | `make nested-*` → `forge test nested …` |
+| Rejected | Standalone `forge-nested` binary (extra PATH surface); repo-only `python3 -m` (agents need install PATH) |
 
-3. **Compat for `forge nested`**
-   - Hard break (unknown command) vs hidden shim vs deprecation period.
-   - Default stance in this product: **clean break is OK** during active
-     development unless real users depend on the surface (GUIDELINE in general.md).
-     P0 still records the choice and any one-line migration note.
+### 2. Ship rule
 
-4. **Coupling to `forge test`**
-   - Nested is test infrastructure; `forge test live` already lives on the CLI.
-   - P0 decides whether this slice only moves Nested, or also marks **all**
-     `forge test *` as non-user tooling (docs/help grouping). Prefer **Nested-first**
-     scope unless the same help pass is trivial.
+| | |
+| --- | --- |
+| **Everyday user bundle** | Top-level **Commands** help + **user docs** do **not** present Nested as a product verb |
+| **How testing tools still get it** | Same `./install` / `~/.local/bin/forge` binary (clone/dev). Nested is reachable only as **`forge test nested`** (and Makefile wrappers). No second package/kit in this plan |
+| **User Wayland tip load** | Log out / log in — not Nested |
+| **Agent / CONTRIBUTING** | Always the locked primary string |
 
-5. **Agent / Makefile / live matrix update scope**
-   - Every FIRM string (`forge nested run`, `nested restart`, doctor) must move
-     in the same implement slice so agents do not teach the dead verb.
+### 3. Compat for top-level `forge nested`
+
+| | |
+| --- | --- |
+| **Choice** | **Hard break** — top-level `nested` is **not** a working product command |
+| **Migration** | Exit **2** + one-line stderr: use `forge test nested …` (error-only; **no** working alias) |
+| **Argparse** | Nested may remain an internal parse path after rewrite from `test nested`, or live as a hidden subparser — must not appear in user help Commands |
+
+### 4. `forge test` help / scope
+
+| | |
+| --- | --- |
+| **Scope** | **Nested-first** — this slice moves Nested only; does **not** delete or hide `forge test live` |
+| **Help** | Drop separate top-level `nested` row. Reword top-level `test` row to cover live matrix **and** nested retest (dev/agent). Nested detail under `forge test nested --help` / testing docs |
+| **Not in this plan** | Separate install kit, Node nest port, D022 behavior changes |
+
+### 5. Agent string rewrite scope (same implement slice as code)
+
+Every FIRM / teachable string moves with P1:
+
+- `agents/testing.md`, `HANDOFF.md`, `PRIORITY.md`, `project.md` (process lines)
+- CONTRIBUTING, Makefile, live_matrix probe notes
+- `_lib.zsh` / `rebuild.zsh` / `migrate-from-ego.zsh` Wayland guidance
+- `docs/user/troubleshooting.md` — user path = logout; Nested only if we keep a
+  **dev** pointer out of user first-steps (prefer drop Nested from user doc)
+- Units: hoist prefix `test nested`; refuse/migration message strings
+- Historical completed task bodies may keep old strings (archive); do not teach them
 
 ---
 
-## Implement slices (after P0)
+## Implement slices
 
-| Id | Task | Goal |
-| --- | --- | --- |
-| **P0** | Plan lock | Inventory complete; entry point + ship rule + compat locked; acceptance written |
-| **P1** | Separate surface | Nested not on user CLI help/top-level product parser; available via testing tools entry |
-| **P2** | Docs + agent rules | User docs drop Nested; CONTRIBUTING/testing/HANDOFF/PRIORITY/Makefile/live matrix use new entry |
-| **P3** | Tests + smoke | Units/help asserts; developer path still start→run→status False; no residual nest |
+| Id | Task | Goal | Status |
+| --- | --- | --- | --- |
+| **P0** | Plan lock | Inventory + decisions above | **done** |
+| **P1** | Separate surface + docs + tests | Code + help + Makefile + agent FIRM + user docs + units in one coherent slice | **done** |
 
-P1–P3 may merge into one implement task if the diff stays coherent. P0 is a hard
-gate: **do not implement until entry point and ship rule are locked on disk.**
+P2/P3 from earlier draft are **merged into P1** (diff stays one surface cut).
 
 ---
 
 ## Acceptance (plan-level)
 
-- [ ] P0: design locked in this plan (or D0 task note) — entry point, ship rule, compat
-- [ ] User-facing `forge help` / top-level command list has **no** Nested
-- [ ] Nested remains usable for developers/agents via the locked testing-tools entry
-- [ ] User docs do not instruct Nested as a daily-driver step
-- [ ] Agent FIRM commands, Makefile, live matrix probe text match the new entry
-- [ ] Units cover help surface + nest entry; live/dev smoke path documented
-- [ ] Everyday install path does not present Nested as product (per ship rule)
+- [x] P0: design locked — entry point, ship rule, compat, help scope
+- [x] User-facing `forge help` / Commands list has **no** Nested product row
+- [x] Nested usable as `forge test nested …` (start/run/stop/status/env/doctor/…)
+- [x] Top-level `forge nested` → exit 2 + migration line (not a working alias)
+- [x] User docs do not instruct Nested as daily-driver reload
+- [x] Agent FIRM, Makefile, live matrix probe text use `forge test nested`
+- [x] Units cover help surface + hoist + migration; campaign still ends `running: False`
+- [x] Nest isolation semantics unchanged (D022)
 
 ---
 
-## Code map (expected touch list — refine in P0)
+## Code map (P1 touch list)
 
-| Area | Likely paths |
+| Area | Paths |
 | --- | --- |
-| CLI router / help | `scripts/forge/forge`, `cli_help.py` |
-| Nest module | `scripts/forge/nested_wayland.py` (entry rename/messages; logic stays) |
-| Live / test | `live_matrix.py`, `cmd_test` wiring |
-| Install / messages | `install.zsh`, `_lib.zsh`, `migrate-from-ego.zsh` if they advertise nest |
+| CLI router / hoist / main | `scripts/forge/forge` |
+| Help | `scripts/forge/cli_help.py` |
+| Nest messages | `scripts/forge/nested_wayland.py` (brand strings → `forge test nested`) |
+| Live / test | `scripts/forge/live_matrix.py` |
+| Install / reload msgs | `scripts/forge/_lib.zsh`, `rebuild.zsh`, `migrate-from-ego.zsh` |
 | Make | `Makefile` nest targets |
-| Units | `tests/unit/cli/test_nested_wayland.py`, help tests if any |
-| User docs | `docs/user/troubleshooting.md` (and any other user mentions) |
-| Dev / agent docs | CONTRIBUTING, `agents/testing.md`, HANDOFF, PRIORITY, project |
+| Units | `tests/unit/cli/test_nested_wayland.py` (+ help assert if easy) |
+| User docs | `docs/user/troubleshooting.md` |
+| Dev / agent | CONTRIBUTING, `agents/testing.md`, HANDOFF, PRIORITY, project process lines |
 
 ---
 
@@ -145,10 +154,10 @@ gate: **do not implement until entry point and ship rule are locked on disk.**
 
 | Risk | Mitigation |
 | --- | --- |
-| Agents keep typing `forge nested` | Update FIRM strings + help in same slice; optional short-lived shim only if P0 requires |
-| Live matrix breaks import/entry | Keep `nested_wayland` module path stable; only CLI surface moves |
-| User still needs “reload on Wayland” | User docs: logout/in for host tip; Nested stays **dev-only** |
-| Scope creep into Node port | Explicit non-goal; stay on Python harness |
+| Agents keep typing `forge nested` | Migration exit 2 + rewrite all FIRM strings in P1 |
+| Live matrix / hoist break | Keep module path; rewrite `test nested` → internal nested parse; update hoist tests |
+| Scope creep into Node port | Explicit non-goal |
+| User needs host tip reload | User docs: logout/in only |
 
 ---
 
@@ -156,13 +165,15 @@ gate: **do not implement until entry point and ship rule are locked on disk.**
 
 | Task | Status | Path |
 | --- | --- | --- |
-| P0 plan lock | **ready** | [tasks/forge-nested-cli-separation_p0-plan.md](../tasks/forge-nested-cli-separation_p0-plan.md) |
-| P1+ implement separate | **next** (after P0) | [tasks/forge-nested-cli-separation_p1-separate.md](../tasks/forge-nested-cli-separation_p1-separate.md) |
+| P0 plan lock | **done** | [completed/…](./completed/forge-nested-cli-separation_p0-plan.md) |
+| P1 separate + docs | **done** | [completed/…](./completed/forge-nested-cli-separation_p1-separate.md) |
 
 ---
 
 ## Session note
 
-**2026-08-17:** Operator asked to remove Nested from what ships in the user-facing
-Forge CLI and ship it with testing tools. Plan + P0/P1 tasks created; no code
-change yet. Nest behavior (D022) unchanged.
+**2026-08-17 (done):** P0 locked then P1 shipped same day. Entry
+**`forge test nested`**. Top-level `forge nested` hard-breaks (exit 2 + migration).
+Help/Commands: Nested only under `test`. User troubleshooting: logout for host tip.
+L0 nested units **27** green. Live: `forge test nested run -- forge ping` ok; nest
+stopped. D022 unchanged.

@@ -278,11 +278,11 @@ if (( RESTART_SHELL )); then
       "$SCRIPT_DIR/apply-host-defaults.zsh" --force "$SCRIPT_DIR/host-defaults.conf"
     fi
   elif (( rc == 2 )); then
-    forge_warn "--restart-shell: Wayland host cannot HUP — use: forge nested restart"
+    forge_warn "--restart-shell: Wayland host cannot HUP — use: forge test nested restart"
   fi
 else
   forge_warn "Shell not reloaded (--no-restart). Files are installed; reload to activate."
-  forge_warn "X11: killall -HUP gnome-shell  |  Wayland: forge nested restart  |  $SCRIPT_DIR/status.zsh"
+  forge_warn "X11: killall -HUP gnome-shell  |  Wayland: forge test nested restart  |  $SCRIPT_DIR/status.zsh"
   forge_warn "If colors look stock: $SCRIPT_DIR/restore-theme.zsh $BACKUP && Super+Shift+r"
 fi
 

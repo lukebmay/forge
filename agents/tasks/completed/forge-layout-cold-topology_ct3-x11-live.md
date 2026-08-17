@@ -1,6 +1,6 @@
 # CT3 — Live X11 one-shot cold layout
 
-**Status:** ready  
+**Status:** superseded — Wayland RC cleared + R036 host cold done (2026-08-16/17)
 **Plan:** [forge-layout-cold-topology.md](../plans/forge-layout-cold-topology.md)  
 **Depends:** CT1 (can parallel CT2)  
 **Hosts:** `black` X11 session and/or older X11 daily-driver machines  

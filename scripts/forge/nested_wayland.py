@@ -274,7 +274,7 @@ def x11_refuse_message(session: str = "x11") -> str:
         f"host session is {session} — nested Wayland needs a Wayland login "
         f"(parent compositor socket).\n"
         f"  X11 reload:  killall -HUP gnome-shell   # or Alt+F2 → r\n"
-        f"  Wayland:     log into GNOME on Wayland, then:  forge nested start\n"
+        f"  Wayland:     log into GNOME on Wayland, then:  forge test nested start\n"
         f"  Dual-mon CT: still runs on the host desk after extension is loaded;\n"
         f"               use nest to reload JS without logout, not as dual-mon desk.\n"
         f"  Experimental nest under X11 parent: FORGE_NESTED_ALLOW_X11=1 "
@@ -305,7 +305,7 @@ def nested_tools_available() -> bool:
 
 
 def can_nested_on_host(env: Optional[Mapping[str, str]] = None) -> bool:
-    """True when agent docs should recommend ``forge nested`` for retest."""
+    """True when agent docs should recommend ``forge test nested`` for retest."""
     e = env if env is not None else os.environ
     if host_session_type(e) != "wayland":
         return False
@@ -333,7 +333,7 @@ def host_wayland_display(env: Optional[Mapping[str, str]] = None) -> str:
     """Parent compositor display for embedding the nested shell window.
 
     Ignores nest displays and ``WAYLAND_DISPLAY`` when it already points at a
-    nest (common after ``eval $(forge nested env --export)``).
+    nest (common after ``eval $(forge test nested env --export)``).
     Override: ``HOST_WAYLAND_DISPLAY`` or ``FORGE_NESTED_HOST_WAYLAND``.
     """
     e = env if env is not None else os.environ
@@ -1409,7 +1409,7 @@ def format_status_text(st: Mapping[str, Any]) -> str:
 
 
 def cmd_nested(_backend: Any, args: Any) -> int:
-    """Entry from ``forge nested …`` (short name for nested Wayland GNOME Shell)."""
+    """Entry from ``forge test nested …`` (short name for nested Wayland GNOME Shell)."""
     action = getattr(args, "nested_action", None) or "status"
     name = getattr(args, "nested_name", None) or DEFAULT_NAME
     try:
@@ -1418,7 +1418,7 @@ def cmd_nested(_backend: Any, args: Any) -> int:
         if action == "stop":
             was = stop(name=name, force=bool(getattr(args, "force", False)))
             print(
-                f"forge nested: {'stopped' if was else 'not running'} ({name})"
+                f"forge test nested: {'stopped' if was else 'not running'} ({name})"
             )
             return 0
         if action == "restart":
@@ -1444,13 +1444,13 @@ def cmd_nested(_backend: Any, args: Any) -> int:
             return _cli_wait(args, name)
         if action == "doctor":
             return _cli_doctor(args)
-        print(f"forge nested: unknown action {action!r}", file=sys.stderr)
+        print(f"forge test nested: unknown action {action!r}", file=sys.stderr)
         return 2
     except NestedUnsupported as e:
-        print(f"forge nested: {e}", file=sys.stderr)
+        print(f"forge test nested: {e}", file=sys.stderr)
         return int(getattr(e, "exit_code", 2) or 2)
     except NestedError as e:
-        print(f"forge nested: {e}", file=sys.stderr)
+        print(f"forge test nested: {e}", file=sys.stderr)
         return int(getattr(e, "exit_code", 1) or 1)
 
 
@@ -1471,7 +1471,7 @@ def _cli_start(args: Any, name: str) -> int:
         replace=bool(getattr(args, "replace", False)),
         allow_x11=bool(getattr(args, "allow_x11", False)),
     )
-    print(f"forge nested: started {cfg.name}")
+    print(f"forge test nested: started {cfg.name}")
     print(f"  display:  {cfg.display} (host {cfg.host_wayland})")
     print(f"  size:     {cfg.size}")
     print(f"  monitors: {cfg.num_monitors}")
@@ -1479,7 +1479,7 @@ def _cli_start(args: Any, name: str) -> int:
     print(f"  state:    {cfg.state_dir}")
     print(f"  env:      source {cfg.state_dir}/env.sh")
     print(
-        "  clients:  forge nested exec -- <cmd>   # or eval $(forge nested env --export)"
+        "  clients:  forge test nested exec -- <cmd>   # or eval $(forge test nested env --export)"
     )
 
     if not bool(getattr(args, "no_enable", False)):
@@ -1490,7 +1490,7 @@ def _cli_start(args: Any, name: str) -> int:
         if not result["forge_ready"]:
             print(
                 "  hint:     install extension on host (./install), then: "
-                "forge nested enable-forge  OR  forge nested restart",
+                "forge test nested enable-forge  OR  forge test nested restart",
                 file=sys.stderr,
             )
             # Not a hard failure — nest is usable for plain shell tests.
@@ -1519,10 +1519,10 @@ def _cli_restart(args: Any, name: str) -> int:
     if not bool(getattr(args, "no_enable", False)):
         result = enable_forge_extension(cfg.bus_address)
         print(
-            f"forge nested: restarted {cfg.name} forge_ready={result['forge_ready']}"
+            f"forge test nested: restarted {cfg.name} forge_ready={result['forge_ready']}"
         )
     else:
-        print(f"forge nested: restarted {cfg.name}")
+        print(f"forge test nested: restarted {cfg.name}")
     print(f"  display:  {cfg.display}")
     print(f"  monitors: {cfg.num_monitors}")
     print(f"  env:      source {cfg.state_dir}/env.sh")
@@ -1532,7 +1532,7 @@ def _cli_restart(args: Any, name: str) -> int:
 def _cli_env(args: Any, name: str) -> int:
     cfg = load_config(name)
     if not cfg or not is_running(name):
-        print(f"forge nested: session {name!r} not running", file=sys.stderr)
+        print(f"forge test nested: session {name!r} not running", file=sys.stderr)
         return 1
     if getattr(args, "json", False):
         print(json.dumps(client_env(cfg), indent=2))
@@ -1550,19 +1550,19 @@ def _cli_exec(args: Any, name: str) -> int:
     """Run *cmd* in nest client env. Nest must already be running.
 
     Does not start or stop the nest (interactive use). Prefer
-    ``forge nested run`` for campaign entry that always cleans up.
+    ``forge test nested run`` for campaign entry that always cleans up.
     """
     # Heal lying pids so we do not exec against a dead session.
     reap_stale(name)
     cfg = load_config(name)
     if not cfg or not is_running(name):
-        print(f"forge nested: session {name!r} not running", file=sys.stderr)
+        print(f"forge test nested: session {name!r} not running", file=sys.stderr)
         return 1
     argv = list(getattr(args, "nested_cmd", None) or [])
     if argv and argv[0] == "--":
         argv = argv[1:]
     if not argv:
-        print("forge nested exec: need a command after --", file=sys.stderr)
+        print("forge test nested exec: need a command after --", file=sys.stderr)
         return 2
     return exec_in(cfg, argv)
 
@@ -1573,7 +1573,7 @@ def _cli_run(args: Any, name: str) -> int:
     if argv and argv[0] == "--":
         argv = argv[1:]
     if not argv:
-        print("forge nested run: need a command after --", file=sys.stderr)
+        print("forge test nested run: need a command after --", file=sys.stderr)
         return 2
     nmon = getattr(args, "monitors", None)
     if nmon is None:
@@ -1593,7 +1593,7 @@ def _cli_run(args: Any, name: str) -> int:
         enable_forge=not bool(getattr(args, "no_enable", False)),
     )
     if keep:
-        print(f"forge nested run: kept session {name!r} (--keep)",
+        print(f"forge test nested run: kept session {name!r} (--keep)",
               file=sys.stderr)
     return rc
 
@@ -1601,7 +1601,7 @@ def _cli_run(args: Any, name: str) -> int:
 def _cli_enable_forge(name: str) -> int:
     cfg = load_config(name)
     if not cfg or not is_running(name):
-        print(f"forge nested: session {name!r} not running", file=sys.stderr)
+        print(f"forge test nested: session {name!r} not running", file=sys.stderr)
         return 1
     result = enable_forge_extension(cfg.bus_address)
     print(json.dumps(result, indent=2))
@@ -1612,7 +1612,7 @@ def _cli_logs(args: Any, name: str) -> int:
     d = session_dir(name)
     log = d / "shell.log"
     if not log.is_file():
-        print(f"forge nested: no log at {log}", file=sys.stderr)
+        print(f"forge test nested: no log at {log}", file=sys.stderr)
         return 1
     follow = bool(getattr(args, "follow", False))
     if follow:
@@ -1626,15 +1626,15 @@ def _cli_logs(args: Any, name: str) -> int:
 def _cli_wait(args: Any, name: str) -> int:
     cfg = load_config(name)
     if not cfg:
-        print(f"forge nested: no session {name!r}", file=sys.stderr)
+        print(f"forge test nested: no session {name!r}", file=sys.stderr)
         return 1
     want_forge = bool(getattr(args, "wait_forge", False))
     timeout = float(getattr(args, "timeout", None) or SHELL_READY_TIMEOUT_S)
     if not wait_shell_ready(cfg.bus_address, timeout_s=timeout):
-        print("forge nested: shell not ready", file=sys.stderr)
+        print("forge test nested: shell not ready", file=sys.stderr)
         return 1
     if want_forge and not wait_forge_ready(cfg.bus_address, timeout_s=timeout):
-        print("forge nested: forge DBus not ready", file=sys.stderr)
+        print("forge test nested: forge DBus not ready", file=sys.stderr)
         return 1
     print("ready")
     return 0
@@ -1665,7 +1665,7 @@ def _cli_doctor(args: Any) -> int:
         "allowX11Env":
         allow_x11_host(),
         "command":
-        "forge nested",
+        "forge test nested",
         "note": ("Short name for nested Wayland GNOME Shell retests "
                  "(not nested X11). On X11 use HUP instead."),
     }
@@ -1678,7 +1678,7 @@ def _cli_doctor(args: Any) -> int:
         print(f"host_wayland:   {host_wl or '—'}")
         if host_err:
             print(f"host_wl_error:  {host_err}")
-        print("command:        forge nested   # nested Wayland GNOME Shell")
+        print("command:        forge test nested   # nested Wayland GNOME Shell")
         if not can:
             print("guidance:")
             for line in x11_refuse_message(session).splitlines():

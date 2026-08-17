@@ -1,23 +1,26 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-17 (PR1 chrome layer shipped)
+**Updated:** 2026-08-17 (nested CLI separation shipped)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent this session).
-**Retest (FIRM):** **Nest is the code→reload loop.** Primary logout is **rare** (tip load only after nest already green). Default nest **1 mon**; dual only when multi-mon is under test. Stale Guake `XAUTHORITY` used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
+**Retest (FIRM):** **Nest is the code→reload loop.** Entry:
+**`forge test nested …`** (not top-level `forge nested`). Primary logout is
+**rare** (tip load only after nest already green). Default nest **1 mon**; dual
+only when multi-mon is under test. Stale Guake `XAUTHORITY` used to break nest;
+`resolve_host_xauthority` picks a live mutter cookie.
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.
 **Jobs (shipped):** Mutating `forge` durable by default.
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.
-**Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).
-**Repo tip:** SM1–SM7 + R036 + D044 + **PR1 tab chrome layer** on `master`. Host tip needs logout after install.
+**Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
+[CLI surface](./plans/forge-nested-cli-separation.md) (**done** — testing tools only).
+**Repo tip:** SM1–SM7 + R036 + D044 + PR1 tab chrome + nested CLI separation on
+`master`. Host tip needs logout after install.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
-**Queue (agent):** Tab click-drag **PR2+** when operator wants —
-[plan](./plans/forge-tab-click-drag.md). PR1:
-[task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) **shipped**.
-**Queue (product hygiene):** Nested **out of user Forge CLI** — plan then
-separate into testing tools —
-[plan](./plans/forge-nested-cli-separation.md) ·
-[P0](./tasks/forge-nested-cli-separation_p0-plan.md) (**ready**).
-**Queue (human):** Host lock/overview “no tab titles” after tip load. X11 input-region unproven on Wayland. [IDEAS](./IDEAS.md).
+**Queue (agent):** Open queue is thin — tab click-drag **PR2+** only when
+operator asks · [plan](./plans/forge-tab-click-drag.md). PR1 shipped.
+**Queue (human):** Host lock/overview “no tab titles” after tip load. X11
+input-region unproven on Wayland. [IDEAS](./IDEAS.md) for parked optionals.
+
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
@@ -64,11 +67,11 @@ separate into testing tools —
 ```bash
 # Nest prove (code loop):
 ./install --kit=vim
-forge nested --monitors=1 run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
-forge nested --monitors=2 start --replace
-forge nested exec -- env FORGE_JOB=0 forge layout _forge-test-ghosttys
+forge test nested --monitors=1 run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
+forge test nested --monitors=2 start --replace
+forge test nested exec -- env FORGE_JOB=0 forge layout _forge-test-ghosttys
 rg 'place-hint' ~/.local/state/forge/nested/forge/shell.log | tail -40
-forge nested stop
+forge test nested stop
 # Host cold (tip already loaded):
 forge layout dev && forge tree
 ```
@@ -158,7 +161,7 @@ forge layout dev
 forge ping   # apiVersion 10
 forge layout dev
 # Nest code loop (no logout):
-forge nested run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
+forge test nested run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
 npm test -- tests/unit/shared/layout-open.test.js tests/unit/extension/layout-placeholder.test.js
 ```
 
@@ -191,11 +194,11 @@ npm test -- tests/unit/shared/layout-open.test.js tests/unit/extension/layout-pl
 ```bash
 ./install --kit=vim
 # Nest (fix XAUTHORITY if :1 auth fails):
-forge nested start --replace
-forge nested exec -- forge ping   # apiVersion 10
-forge nested exec -- env FORGE_JOB=0 forge layout _forge-test-clean
-# also: forge nested exec -- env FORGE_JOB=0 forge layout _forge-test-ghosttys
-forge nested stop
+forge test nested start --replace
+forge test nested exec -- forge ping   # apiVersion 10
+forge test nested exec -- env FORGE_JOB=0 forge layout _forge-test-clean
+# also: forge test nested exec -- env FORGE_JOB=0 forge layout _forge-test-ghosttys
+forge test nested stop
 python3 -m pytest tests/unit/cli/test_layout_apply_client.py -q
 ```
 
@@ -211,7 +214,7 @@ python3 -m pytest tests/unit/cli/test_layout_apply_client.py -q
 | Verify / belt | verify once; D014 pin-role moves only |
 | LF6 | `waitTreeStable` opt-in only |
 | Tests | `layout-apply-settle.test.js` (27) + 5 bag cases; suite **157** |
-| Nest | **Not run** — retest: `forge nested run --monitors=1 -- …` after install |
+| Nest | **Not run** — retest: `forge test nested run --monitors=1 -- …` after install |
 | Task | [AL7](./plans/forge-layout-in-process/completed/forge-layout-in-process_al7-executor-settle.md) |
 | Next | **AL8** thin CLI cutover |
 
@@ -224,7 +227,7 @@ npm test -- tests/unit/shared/layout-plan-normalize.test.js \
   tests/unit/extension/layout-apply-open.test.js \
   tests/unit/extension/layout-apply-settle.test.js
 # After commit + nest/host load tip:
-# forge nested run --monitors=1 -- forge ping
+# forge test nested run --monitors=1 -- forge ping
 ```
 
 ### Shipped — AL6 open/map (ApplyLayout spawn + pin)
@@ -237,7 +240,7 @@ npm test -- tests/unit/shared/layout-plan-normalize.test.js \
 | Batch | begin → spawn → map-wait → `releaseDeferredOpens` → end **then** residual replan |
 | Pins | title wait then class leftover (D034); residual `rolePins` / `justOpenedRoles` |
 | Tests | `layout-open.test.js` (24) + `layout-apply-open.test.js` (10); suite **125** |
-| Nest | **Not run** — retest: `forge nested run --monitors=1 -- …` after install |
+| Nest | **Not run** — retest: `forge test nested run --monitors=1 -- …` after install |
 | Task | [AL6](./plans/forge-layout-in-process/completed/forge-layout-in-process_al6-executor-open.md) |
 | Next | **AL7 done** → **AL8** |
 
@@ -249,7 +252,7 @@ npm test -- tests/unit/shared/layout-plan-normalize.test.js \
   tests/unit/extension/layout-apply-structure.test.js \
   tests/unit/extension/layout-apply-open.test.js
 # After commit + nest/host load tip:
-# forge nested run --monitors=1 -- forge ping
+# forge test nested run --monitors=1 -- forge ping
 ```
 
 ### Shipped — AL5 structure executor (no-open ApplyLayout)
@@ -262,7 +265,7 @@ npm test -- tests/unit/shared/layout-plan-normalize.test.js \
 | Open | **AL6 done** (above) |
 | Settle | AL7 done (hard/soft/verify/belt) |
 | Tests | `layout-apply-structure.test.js` (9) + bag structure cases |
-| Nest | **Not run** — retest: `forge nested run --monitors=1 -- …` after install |
+| Nest | **Not run** — retest: `forge test nested run --monitors=1 -- …` after install |
 | Task | [AL5](./plans/forge-layout-in-process/completed/forge-layout-in-process_al5-executor-structure.md) |
 | Next | **AL7 done** → **AL8** |
 
@@ -272,7 +275,7 @@ npm test -- tests/unit/shared/layout-plan-normalize.test.js \
   tests/unit/extension/layout-apply-run.test.js \
   tests/unit/extension/layout-apply-structure.test.js
 # After commit + nest/host load tip:
-# forge nested run --monitors=1 -- forge ping
+# forge test nested run --monitors=1 -- forge ping
 ```
 
 ### Shipped — AL3 planReconcile + planActionsToSteps (expected parity)
@@ -327,7 +330,7 @@ python3 -m pytest tests/unit/cli/test_layout_expected.py -q
 npm test -- tests/unit/shared/layout-plan-normalize.test.js \
   tests/unit/shared/layout-plan-reconcile.test.js
 npm test -- tests/unit/extension/layout-apply-run.test.js
-# When nest works: ./install --kit=vim && forge nested run -- forge ping  # apiVersion 10
+# When nest works: ./install --kit=vim && forge test nested run -- forge ping  # apiVersion 10
 ```
 
 ### Residual host smoke (tip loaded this Wayland session)
@@ -525,11 +528,11 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
 | Close → focus | **Kept** (FC1) — LFT/sibling restore |
 | CLI jobs | Durable mutators (D021) |
-| Wayland retest | Prefer `forge nested run` (or `restart`+stop); never logout loops for JS |
+| Wayland retest | Prefer `forge test nested run` (or `restart`+stop); never logout loops for JS |
 | Nest purpose (D022) | Code/test loop only (avoid logout); no-code smokes on **host** |
 | Nest mon count | **Default 1.** `--monitors=N` only when testing multi-mon behavior |
 | Nest mon size | Default size policy may shrink later; dual: each dummy ≈ primary logical historically |
-| Nest after tests | **FIRM** — prefer `forge nested run` (always stops); interactive → `stop` |
+| Nest after tests | **FIRM** — prefer `forge test nested run` (always stops); interactive → `stop` |
 | Nest isolation v1 | `FORGE_HOST=…-sub-…` + `FORGE_CONFIG_HOME` on CLI **and** nest Shell (N1/N2); extension `forgeConfigHome()`; shared layout profiles + install UUID OK; **no** UNIX test user |
 
 ### Why patches are bad (still FIRM)
@@ -542,19 +545,16 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**PR1 chrome layer shipped** on `master` —
-[forge-tab-click-drag_pr1-chrome-layer](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md).
-L0 **89/89**; nest mon=1 layer attach + `_activateFromTab` LTF **PASS**.
-Host lock/overview residual is **operator** (Wayland). Next product
-slice is click-drag **PR2+** only when asked. Do not reshape attach.
+**Open agent queue is thin.** Product hygiene Nested-off-user-CLI **shipped**
+([plan](./plans/forge-nested-cli-separation.md)). Tab chrome **PR1 shipped**;
+**PR2+ only when operator asks**. Host lock residual is **human**.
 
-Do **not** re-litigate D039–D044. Do **not** reintroduce belt / TILE-anywhere
-hard / mon-root PlaceNext / soft-enter chrome / map-time PlaceNext
-`move_to_monitor` / spanning tab chrome.
+Nest FIRM entry: **`forge test nested run -- …`** (top-level `forge nested`
+hard-breaks). Do not reshape PR1 attach. Do **not** re-litigate D039–D044.
+Do **not** reintroduce belt / TILE-anywhere hard / mon-root PlaceNext /
+soft-enter chrome / map-time PlaceNext `move_to_monitor` / spanning tab chrome.
 
-Queue: [PRIORITY](./PRIORITY.md). Plan:
-[tab click-drag](./plans/forge-tab-click-drag.md) ·
-[slot machines](./plans/forge-layout-slot-machines.md).
+Queue: [PRIORITY](./PRIORITY.md). Parked optionals: [IDEAS](./IDEAS.md).
 
 Never call `_layoutOp`. Do **not** put `hasLayoutPh` back into
 `skipWindowStructure`.
@@ -567,16 +567,17 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | You can do | You must not |
 | --- | --- |
 | Host lock smoke; PR2 when operator asks | Redesign D039–D044; restack latch; hit plates |
-| Nest for JS retest (default mon=1) | Personal `dev`/`t1` in live matrix; Mode B as cold success |
-| Rewrite deco tests for layer (already done) | Parent CON deco into `window_group`; `trackChrome` the host |
+| Nest for JS retest (`forge test nested`, mon=1) | Top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
+| FCC C2+ when product need | Implement parked IDEAS without promote |
 | | Skip PR order without ask (wrap/2D/CSS are PR2+) |
 
 | Pri | Work | Path |
 | --- | --- | --- |
 | **next** | Host lock smoke (human) · PR2+ when asked | [plan](./plans/forge-tab-click-drag.md) |
+| done | Nested off user CLI | [plan](./plans/forge-nested-cli-separation.md) |
 | done | Tab chrome layer (PR1) | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
 | done | Same-mon TABBED/STACKED (D044) | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |
-| done | Tab work D0 lock | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
+| done | Tab work D0 lock | [completed](./tasks/completed/forge-tab-work-planning.md) |
 | done | **R036** nest multi-open + host cold | [completed](./tasks/completed/forge-layout-cold-host-verify.md) |
 | done | **SM1–SM7** slot machines implement | [completed/](./plans/forge-layout-slot-machines/completed/) |
 | done | **R035** residual ensure_layout while layout PHs (mon1 flat tabs) | [completed](./tasks/completed/forge-layout-residual-tab-ensure.md) |
@@ -630,7 +631,7 @@ Empty dest → null target → grab-end no-op → render snaps back.
 npm test -- tests/regression/bug-r015-empty-mon-dnd.test.js
 python3 -m pytest tests/unit/cli/test_live_matrix.py -q -k r015
 # Load tip + dual-mon live (Wayland):
-./install && forge nested run --monitors=2 -- forge test live run --tags R015
+./install && forge test nested run --monitors=2 -- forge test live run --tags R015
 # Or host after one logout loads tip: human drag mon0 TILE onto empty mon1
 ```
 
@@ -644,7 +645,7 @@ python3 -m pytest tests/unit/cli/test_live_matrix.py -q -k r015
 | N2 | Nest Shell/extension honor same data root (`forgeConfigHome`) | done |
 
 **CLI + nest Shell:** `FORGE_HOST` / `FORGE_CONFIG_HOME`; extension writes under nest
-`…/forge-config`, not parent `~/.config/forge`. Prefer `forge nested run` for campaigns.
+`…/forge-config`, not parent `~/.config/forge`. Prefer `forge test nested run` for campaigns.
 Shared intentionally: install UUID, layout profiles, gsettings.
 
 ### Wayland RC (cleared 2026-08-10)
@@ -657,10 +658,10 @@ process: [testing.md](./testing.md) § Wayland.
 | Host first | L1 / dual-mon open-leaf / chrome RC authority on **host** desk |
 | Layouts | **`_forge-test-*` only** — never personal `dev` / `t1` |
 | Nest | Code→reload or multi-mon structure only; default **mon=1** |
-| Campaign entry | `forge nested run -- …` (always stops); dual: `--monitors=2` only when needed |
+| Campaign entry | `forge test nested run -- …` (always stops); dual: `--monitors=2` only when needed |
 | Isolation | Nest CLI+Shell use nest `forge-config`; parent `~/.config/forge` not rewritten |
 | Results | `agents/test-results/wayland/<host>-wayland-<UTC>.json` |
-| Wrap-up | `forge nested status` → `running: False` |
+| Wrap-up | `forge test nested status` → `running: False` |
 
 ```bash
 echo "$XDG_SESSION_TYPE"          # wayland
@@ -670,7 +671,7 @@ python3 -m pytest tests/unit/cli/test_layout_apply.py \
   tests/unit/cli/test_live_matrix.py tests/unit/cli/test_nested_wayland.py -q
 # Host L1 / partial (no nest if no JS change)
 forge test live plan --from-work wayland-rc
-# After extension JS change: ./install && forge nested run -- …
+# After extension JS change: ./install && forge test nested run -- …
 # Host dual-mon RC needs tip already on host (one logout after install if needed)
 ```
 
@@ -697,15 +698,15 @@ thrash **not** reproduced.
 
 ```bash
 # Prefer campaign entry (always stops unless --keep):
-forge nested run -- forge ping
-forge nested status   # want: running: False
+forge test nested run -- forge ping
+forge test nested status   # want: running: False
 
 # Interactive multi-step still ends with:
-forge nested stop
-forge nested status   # want: running: False
+forge test nested stop
+forge test nested status   # want: running: False
 ```
 
-**Prefer** `forge nested run -- …` for one-shot campaigns.
+**Prefer** `forge test nested run -- …` for one-shot campaigns.
 Use `exec` / `restart` only when the nest must stay up for multi-step work; **still stop** when done.
 **Never** leave nest env on durable agent shells.
 **Default** mon=1. Dual only: `--monitors=2` when testing dual-mon behavior.
@@ -725,13 +726,13 @@ python3 -m pytest tests/unit/cli/test_layout_apply.py tests/unit/cli/test_live_m
 
 ```bash
 # Code changed → one-shot retest without logout (preferred):
-./install && forge nested run -- forge ping          # mon=1; auto stop
+./install && forge test nested run -- forge ping          # mon=1; auto stop
 # Multi-mon behavior under test only:
-forge nested run --monitors=2 -- forge tree
+forge test nested run --monitors=2 -- forge tree
 # Multi-step interactive:
-./install && forge nested restart
-forge nested exec -- forge ping
-forge nested stop                                   # FIRM
+./install && forge test nested restart
+forge test nested exec -- forge ping
+forge test nested stop                                   # FIRM
 ```
 
 No-code smoke → **host** only (no nest).

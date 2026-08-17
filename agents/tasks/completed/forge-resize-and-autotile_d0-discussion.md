@@ -1,6 +1,6 @@
 # Task — D0: Discussion lock for resize keys + auto-tile
 
-**Status:** draft  
+**Status:** draft parked — human blocker agents/blockers/resize-autotile-design.md
 **Plan:** [forge-resize-and-autotile.md](../plans/forge-resize-and-autotile.md)  
 **Priority:** P3  
 **Kind:** Plan-linked discussion (human)  

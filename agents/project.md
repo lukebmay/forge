@@ -65,6 +65,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM1–SM7 done** | D044 shipped |
 | **[First-class containers](./plans/forge-first-class-containers.md)** | C0+C1 **done** | C2 later |
 | **[Tab click-drag](./plans/forge-tab-click-drag.md)** | **PR1 shipped** | PR2+ when asked · [PR1](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
+| **[Nested off user CLI](./plans/forge-nested-cli-separation.md)** | **Done** | Entry `forge test nested`; top-level hard break |
 | **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done**; TD2/TD3 skip | TD4 folds into click-drag PR6 |
 | **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
 | **STACKED layouts** | Major product | As PRIORITY allows |
@@ -341,7 +342,7 @@ When agents run live tests that need install + Shell reload (`./install`,
 
 3. **Reload path by session:**
    - **X11:** `killall -HUP gnome-shell` (or Alt+F2 → r).
-   - **Wayland:** `forge nested restart` between code changes; dual-mon live on
+   - **Wayland:** `forge test nested restart` between code changes; dual-mon live on
      **host** desk. Full procedure: [testing.md](./testing.md) § Wayland live
      testing workflow and [HANDOFF](./HANDOFF.md) § Wayland extensive smoke loop.
 4. **Session-layout file trace** (debug builds only): append-only log at

@@ -42,7 +42,7 @@ Examples:
   ./scripts/forge/rebuild.zsh
   ./scripts/forge/rebuild.zsh --no-restart
 
-Wayland: host Shell cannot HUP — after install use ${c_blue}forge nested restart${c_reset}
+Wayland: host Shell cannot HUP — after install use ${c_blue}forge test nested restart${c_reset}
   (reload extension in a nest; dual-mon host CT may still need one logout if host never loaded tip).
 Toggle layout overlay: ${c_blue}Ctrl+Super+d${c_reset}
 
@@ -174,8 +174,8 @@ if (( DO_RESTART )); then
     forge_ok "shell reloaded; extension should be running the new build"
   elif (( rc == 2 )); then
     forge_warn "code is installed; host Wayland cannot HUP — retest with:"
-    forge_warn "  ${c_blue}forge nested restart${c_reset}   # or start if no nest yet"
-    forge_warn "  ${c_blue}forge nested doctor${c_reset}"
+    forge_warn "  ${c_blue}forge test nested restart${c_reset}   # or start if no nest yet"
+    forge_warn "  ${c_blue}forge test nested doctor${c_reset}"
   fi
 else
   forge_hdr "Shell not reloaded (--no-restart)"
@@ -185,7 +185,7 @@ else
     forge_warn "  ${c_blue}Alt+F2${c_reset} → ${c_blue}r${c_reset}  or  ${c_blue}killall -HUP gnome-shell${c_reset}"
   else
     forge_warn "Files updated (session=${c_cyan}$st${c_reset}); reload path:"
-    forge_warn "  ${c_blue}forge nested restart${c_reset}  # preferred Wayland retest"
+    forge_warn "  ${c_blue}forge test nested restart${c_reset}  # preferred Wayland retest"
     forge_warn "  # host dual-mon: logout once if host Shell never loaded this tip"
   fi
 fi

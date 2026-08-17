@@ -1,6 +1,6 @@
 # Task: MD1 — HTML container-motion prototype
 
-**Status:** ready  
+**Status:** parked — see agents/IDEAS.md; not PRIORITY
 **Plan:** [forge-container-motion-design.md](../plans/forge-container-motion-design.md)  
 **Branch:** `plan/forge-container-motion-design` (or docs on master until locks)  
 **Priority:** P1 design (after or parallel with workspace-scope; **before** peel/move Shell work)  

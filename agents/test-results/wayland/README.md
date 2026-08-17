@@ -63,13 +63,13 @@ Wayland host dual-mon RC still next (need Wayland login + nest).
 ### Nest multi-mon (proven 2026-08-09)
 
 ```bash
-forge nested start --monitors=2 --replace   # mon size = 1920x1080 @ scale 1
-eval $(forge nested env --export)   # throwaway shell only
+forge test nested start --monitors=2 --replace   # mon size = 1920x1080 @ scale 1
+eval $(forge test nested env --export)   # throwaway shell only
 forge ping                          # tip version on nest
 forge layout _forge-test-ghosttys   # mon0 ghostty | mon1 ghostty
 forge tree                          # mo0ws0 + mo1ws0 stableKeys
-forge nested stop                   # FIRM after nest tests
-forge nested status                 # running: False
+forge test nested stop                   # FIRM after nest tests
+forge test nested status                 # running: False
 ```
 
 Physical dual 4K host desk remains authority for full chrome open-leaf CT.
