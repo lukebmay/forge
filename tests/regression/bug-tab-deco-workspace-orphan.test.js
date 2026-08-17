@@ -9,7 +9,7 @@ import {
 
 /**
  * Tab chrome must not follow the user across workspaces, and orphan forge-deco
- * actors left in window_group after thrash must be swept.
+ * actors left on the tab-chrome layer after thrash must be swept.
  */
 describe("Tab decoration: active workspace + orphan sweep", () => {
   let ctx;
@@ -33,7 +33,15 @@ describe("Tab decoration: active workspace + orphan sweep", () => {
     // Mark monitor as ws1 while active is ws0 (fixture default).
     monitor.nodeValue = "mo0ws1";
     const con = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
-    con.decoration = { show: vi.fn(), hide: vi.fn(), set_size: vi.fn(), reactive: true };
+    con.decoration = {
+      show: vi.fn(),
+      hide: vi.fn(),
+      set_size: vi.fn(),
+      reactive: true,
+      get_parent() {
+        return this._parent || null;
+      },
+    };
     createWindowNode(ctx.tree, con, { windowOverrides: { id: "a" } });
     createWindowNode(ctx.tree, con, { windowOverrides: { id: "b" } });
 
@@ -47,7 +55,15 @@ describe("Tab decoration: active workspace + orphan sweep", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     monitor.nodeValue = "mo0ws0";
     const con = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
-    con.decoration = { show: vi.fn(), hide: vi.fn(), set_size: vi.fn(), reactive: true };
+    con.decoration = {
+      show: vi.fn(),
+      hide: vi.fn(),
+      set_size: vi.fn(),
+      reactive: true,
+      get_parent() {
+        return this._parent || null;
+      },
+    };
     createWindowNode(ctx.tree, con, { windowOverrides: { id: "a" } });
     createWindowNode(ctx.tree, con, { windowOverrides: { id: "b" } });
 
@@ -66,6 +82,9 @@ describe("Tab decoration: active workspace + orphan sweep", () => {
       set_size: vi.fn(),
       destroy: vi.fn(),
       reactive: true,
+      get_parent() {
+        return this._parent || null;
+      },
     };
     con.decoration = live;
     createWindowNode(ctx.tree, con, { windowOverrides: { id: "a" } });
@@ -74,16 +93,21 @@ describe("Tab decoration: active workspace + orphan sweep", () => {
       type: "forge-deco",
       hide: vi.fn(),
       destroy: vi.fn(),
+      get_parent() {
+        return this._parent || null;
+      },
     };
-    const removeChild = vi.fn();
-    global.window_group.get_children = () => [live, orphan];
-    global.window_group.contains = (a) => a === live || a === orphan;
-    global.window_group.remove_child = removeChild;
+
+    const dm = ctx.windowManager.decorationManager;
+    dm.ensureTabChromeLayer();
+    const layer = dm.tabChromeLayer;
+    layer.add_child(live);
+    layer.add_child(orphan);
 
     ctx.windowManager.updateDecorationLayout();
 
-    expect(removeChild).toHaveBeenCalledWith(orphan);
     expect(orphan.destroy).toHaveBeenCalled();
     expect(live.destroy).not.toHaveBeenCalled();
+    expect(layer.contains(orphan)).toBe(false);
   });
 });

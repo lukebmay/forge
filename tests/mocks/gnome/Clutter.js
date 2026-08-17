@@ -59,6 +59,11 @@ export const ActorAlign = {
   END: 3,
 };
 
+export const ActorFlags = {
+  NONE: 0,
+  NO_LAYOUT: 1 << 0,
+};
+
 export const Orientation = {
   HORIZONTAL: 0,
   VERTICAL: 1,
@@ -117,6 +122,7 @@ export { _defaultSeat as mockSeat };
 export default {
   Actor,
   ActorAlign,
+  ActorFlags,
   Orientation,
   AnimationMode,
   KEY_Escape,

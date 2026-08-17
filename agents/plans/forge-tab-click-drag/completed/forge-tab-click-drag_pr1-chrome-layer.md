@@ -1,6 +1,6 @@
 # forge-tab-click-drag_pr1-chrome-layer — Tab chrome layer
 
-**Status:** ready
+**Status:** done (shipped on master; host lock residual)
 **Plan:** [forge-tab-click-drag](../plans/forge-tab-click-drag.md)
 **Branch:** master (default)
 **Blocker:** (none)
@@ -21,45 +21,45 @@ CSS, no schema defaults.
 
 ## Acceptance
 
-- [ ] `#forge-tab-chrome` host: `NO_LAYOUT`, `reactive: false`,
+- [x] `#forge-tab-chrome` host: `NO_LAYOUT`, `reactive: false`,
       not sized to the stage, **not** `addChrome`/`trackChrome`d
-- [ ] Host parented in `Main.layoutManager.uiGroup` immediately
+- [x] Host parented in `Main.layoutManager.uiGroup` immediately
       **above** `window_group` and **below** `top_window_group`
       (never a bare `add_child` at end of `uiGroup`)
-- [ ] `_createDecoration` does **not**
+- [x] `_createDecoration` does **not**
       `window_group.add_child`. It builds the `St.BoxLayout`
       and calls `decorationManager.attachTabDecoration(con)`
-- [ ] `attachTabDecoration` is **idempotent**: reparent if
+- [x] `attachTabDecoration` is **idempotent**: reparent if
       needed; `trackChrome` only if a `DecorationManager`
       WeakSet does not already hold the deco. Second attach on
       a live deco does **not** throw (GNOME 46 `_trackActor`
       throws on re-track). Parent change does not untrack
-- [ ] First track:
+- [x] First track:
       `trackChrome(decoration, { affectsStruts: false,
       trackFullscreen: false, affectsInputRegion: true })`
-- [ ] `untrackChrome` + WeakSet delete in `_destroyDecoration`
+- [x] `untrackChrome` + WeakSet delete in `_destroyDecoration`
       and orphan sweep
-- [ ] `layer.visible === window_group.visible` via
+- [x] `layer.visible === window_group.visible` via
       `notify::visible` (Overview / lock / greeter). Overview
       hide is backup only, not the only path
-- [ ] Apply overlay show: only
+- [x] Apply overlay show: only
       `set_child_above_sibling(overlay, layer)`. **Never**
       `set_child_below_sibling(layer, overlay)`
-- [ ] `_restackDecorationAboveGroup` is attach + optional
+- [x] `_restackDecorationAboveGroup` is attach + optional
       layer sibling order. **Delete** `insert_child_above` vs
       window actors. Early-return on
       `window_group.contains(deco)` is gone
-- [ ] Teardown walks the **layer**:
+- [x] Teardown walks the **layer**:
       `Utils._disableDecorations`, `_sweepOrphanDecorations`,
       `WindowManager.disable` (layer gone before tree drop),
       `Tree.reload`
-- [ ] Split/window **borders** and tree `rootBin` stay in
+- [x] Split/window **borders** and tree `rootBin` stay in
       `window_group`. Only `type === "forge-deco"` CON strips
       move
-- [ ] `revealGroupChild` sequence unchanged (R025/R026/R032)
-- [ ] ApplyLayout Done restack stays **no-raise**
-- [ ] Suites below green
-- [ ] Nest (mon=1): after ApplyLayout / raise, repeated
+- [x] `revealGroupChild` sequence unchanged (R025/R026/R032)
+- [x] ApplyLayout Done restack stays **no-raise**
+- [x] Suites below green
+- [x] Nest (mon=1): after ApplyLayout / raise, repeated
       `_activateFromTab` switches LTF; deco parent is the
       layer; deco not in `window_group`
 - [ ] Host: lock/overview — no tab titles visible. If the
@@ -200,6 +200,49 @@ not `_trackActor`; or a half-moved world (some decos still in
 
 ## Session note
 
-**2026-08-17:** Task opened for handoff. Design consensus in
-the plan (Q1 wrap-on in PR4; Q2 `max-tab-rows=0` unbounded).
-No PR1 code yet.
+**2026-08-17 (ship):** Committed + pushed on `master`. Escalate: no.
+
+**2026-08-17 (PR1 implementer):** Ready for review. Escalate: no.
+
+**Paths / symbols**
+- `DecorationManager`: `ensureTabChromeLayer`,
+  `attachTabDecoration`, `untrackTabDecoration`,
+  `destroyTabChromeLayer`, `_parkTabChromeLayer`,
+  `_bindTabChromeVisibility` / `_syncTabChromeVisibility`,
+  `_trackedTabDecos` WeakSet; `_restackDecorationAboveGroup`
+  → attach only; `_sweepOrphanDecorations` walks layer
+- `Node._createDecoration` / `_destroyDecoration`;
+  `Utils._disableDecorations(dm)`; `WindowManager.disable`;
+  `Tree.reload`; overlay lifts above layer in
+  `layout-apply-chrome._ensureActor`
+- Mocks: `createMockLayoutManager` +
+  `window_group`/`top_window_group`/`visible`/`notify::visible`
+  in `tests/mocks/helpers/globalSetup.js`
+
+**Proven (L0)** — 89/89 green on listed suites (attach twice,
+layer visibility, restack→attach rewrites, orphans on layer,
+ghost gate, borders still in `window_group`).
+
+**Proven (nest mon=1 Wayland)**
+- `forge nested --monitors=1 run` → `_forge-test-clean` **ok**
+- Live: 2× ghostty → TABBED CON; Shell.Eval:
+  `layerName=forge-tab-chrome`, `layerReactive=false`,
+  parent=`uiGroup`; deco `parentIsLayer=true`,
+  `decoInWg=false`, `tracked=true`; repeated
+  `_activateFromTab` A↔B both LTF switch; after activate
+  still layer parent. Nest **stopped**.
+
+**Not proven / residual**
+- Host lock/overview “no tab titles” — **operator** (session
+  is **Wayland**). X11 stage input-region (`trackChrome`
+  pickability) **unproven** on this host/nest.
+- Host tip needs logout to load PR1 (install said Wayland
+  live reload blocked); nest used installed extension tree.
+
+**Risks**
+- First attach before Node parent link is deferred to
+  restack/show (`_createDecoration` best-effort).
+- Host chrome/input-region still the Wayland gap.
+
+**Orchestrator:** merge review / move task complete; open
+host lock smoke for human; do not start PR2–PR6.

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
 import { SessionApi } from "../../lib/extension/session-api.js";
 import {
@@ -103,7 +104,7 @@ describe("tab click activates associated window", () => {
     expect(wA.activate).toHaveBeenCalled();
   });
 
-  it("tab click restacks chrome above group after raise buries it (LF2)", () => {
+  it("tab click attaches chrome to layer so raise cannot bury it (LF2 / I-TabPickable)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
     const wA = createMockWindow({ id: "lf2a", wm_class: "A" });
@@ -125,14 +126,21 @@ describe("tab click activates associated window", () => {
     wB.focus = vi.fn(() => bury(actorB));
     wB.activate = vi.fn(() => bury(actorB));
 
-    const deco = { name: "deco", show: vi.fn(), hide: vi.fn() };
+    const deco = {
+      name: "deco",
+      type: "forge-deco",
+      show: vi.fn(),
+      hide: vi.fn(),
+      get_parent() {
+        return this._parent || null;
+      },
+    };
     tab.decoration = deco;
     const wg = global.window_group;
     wg.add_child(actorA);
     wg.add_child(actorB);
-    wg.add_child(deco);
 
-    // Real decoration restack (not a no-op spy).
+    // Real decoration attach (not a no-op spy).
     vi.spyOn(wm(), "updateDecorationLayout").mockImplementation(() => {
       const tiled = wm().tree.getTiledChildren(tab.childNodes);
       wm().decorationManager._restackDecorationAboveGroup(tab, tiled);
@@ -141,9 +149,13 @@ describe("tab click activates associated window", () => {
 
     nB._activateFromTab(wB);
 
-    const children = wg.get_children();
-    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorA));
-    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorB));
+    const layer = wm().decorationManager.tabChromeLayer;
+    expect(layer).toBeTruthy();
+    expect(wg.contains(deco)).toBe(false);
+    expect(deco.get_parent()).toBe(layer);
+    expect(Main.layoutManager._trackedChrome.has(deco)).toBe(true);
+    // Raise still reorders window actors; deco is not among them.
+    expect(wg.get_children().indexOf(actorB)).toBeGreaterThan(wg.get_children().indexOf(actorA));
     expect(nA).toBeTruthy();
   });
 
@@ -193,7 +205,7 @@ describe("decoration restack above group (not global focus)", () => {
     ctx.cleanup();
   });
 
-  it("_restackDecorationAboveGroup inserts decoration above group actors", () => {
+  it("_restackDecorationAboveGroup attaches decoration to tab chrome layer", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const con = ctx.windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
     con.layout = LAYOUT_TYPES.TABBED;
@@ -208,26 +220,38 @@ describe("decoration restack above group (not global focus)", () => {
     wA.get_compositor_private = () => actorA;
     wB.get_compositor_private = () => actorB;
 
-    const deco = { name: "deco", show: vi.fn(), hide: vi.fn() };
+    const deco = {
+      name: "deco",
+      type: "forge-deco",
+      show: vi.fn(),
+      hide: vi.fn(),
+      get_parent() {
+        return this._parent || null;
+      },
+    };
     con.decoration = deco;
 
     const wg = global.window_group;
     wg.add_child(actorA);
     wg.add_child(actorB);
-    wg.add_child(deco);
 
     const dm = ctx.windowManager.decorationManager;
     dm._restackDecorationAboveGroup(con, [nA, nB]);
 
-    const children = wg.get_children();
-    const decoIdx = children.indexOf(deco);
-    const aIdx = children.indexOf(actorA);
-    const bIdx = children.indexOf(actorB);
-    expect(decoIdx).toBeGreaterThan(aIdx);
-    expect(decoIdx).toBeGreaterThan(bIdx);
+    const layer = dm.tabChromeLayer;
+    expect(layer).toBeTruthy();
+    expect(layer.name).toBe("forge-tab-chrome");
+    expect(wg.contains(deco)).toBe(false);
+    expect(deco.get_parent()).toBe(layer);
+    expect(Main.layoutManager._trackedChrome.has(deco)).toBe(true);
+    // Layer parked above window_group in uiGroup.
+    const uiKids = Main.layoutManager.uiGroup.get_children();
+    expect(uiKids.indexOf(layer)).toBeGreaterThan(uiKids.indexOf(wg));
+    expect(nA).toBeTruthy();
+    expect(nB).toBeTruthy();
   });
 
-  it("RunSteps settle restacks chrome after tab raise (WR14)", () => {
+  it("RunSteps settle attaches chrome after tab raise (WR14)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const con = ctx.windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
     con.layout = LAYOUT_TYPES.TABBED;
@@ -243,19 +267,26 @@ describe("decoration restack above group (not global focus)", () => {
     wA.get_compositor_private = () => actorA;
     wB.get_compositor_private = () => actorB;
     wB.raise = vi.fn(() => {
-      // Simulate Meta.raise burying chrome under the window actor.
+      // Simulate Meta.raise reordering window actors (cannot bury layer strip).
       const wg = global.window_group;
       if (wg.contains(actorB)) wg.remove_child(actorB);
       wg.add_child(actorB);
     });
 
-    const deco = { name: "deco", show: vi.fn(), hide: vi.fn() };
+    const deco = {
+      name: "deco",
+      type: "forge-deco",
+      show: vi.fn(),
+      hide: vi.fn(),
+      get_parent() {
+        return this._parent || null;
+      },
+    };
     con.decoration = deco;
 
     const wg = global.window_group;
     wg.add_child(actorA);
-    wg.add_child(deco);
-    wg.add_child(actorB); // window above chrome (broken post-batch state)
+    wg.add_child(actorB);
 
     const api = new SessionApi({
       extWm: ctx.windowManager,
@@ -271,9 +302,10 @@ describe("decoration restack above group (not global focus)", () => {
     api._settleAfterRunSteps(ctx.windowManager);
 
     expect(wB.raise).toHaveBeenCalled();
-    const children = wg.get_children();
-    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorA));
-    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorB));
+    const layer = ctx.windowManager.decorationManager.tabChromeLayer;
+    expect(wg.contains(deco)).toBe(false);
+    expect(deco.get_parent()).toBe(layer);
+    expect(Main.layoutManager._trackedChrome.has(deco)).toBe(true);
     expect(nA).toBeTruthy();
     expect(nB).toBeTruthy();
   });
@@ -306,7 +338,7 @@ describe("decoration restack above group (not global focus)", () => {
     expect(settleSpy).toHaveBeenCalledWith(ctx.windowManager);
   });
 
-  function tabbedGroupWithBuriedStrip(idPrefix) {
+  function tabbedGroupWithStrip(idPrefix) {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const con = ctx.windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
     con.layout = LAYOUT_TYPES.TABBED;
@@ -327,12 +359,19 @@ describe("decoration restack above group (not global focus)", () => {
       g.add_child(actorB);
     });
 
-    const deco = { name: "deco", show: vi.fn(), hide: vi.fn() };
+    const deco = {
+      name: "deco",
+      type: "forge-deco",
+      show: vi.fn(),
+      hide: vi.fn(),
+      get_parent() {
+        return this._parent || null;
+      },
+    };
     con.decoration = deco;
 
     const wg = global.window_group;
     wg.add_child(actorA);
-    wg.add_child(deco);
     wg.add_child(actorB);
 
     const api = new SessionApi({
@@ -347,32 +386,33 @@ describe("decoration restack above group (not global focus)", () => {
     return { api, con, wB, nA, nB, deco, actorA, actorB, wg };
   }
 
-  it("R032: ApplyLayout Done restacks chrome after last raise", () => {
-    const { api, wB, nA, nB, deco, actorA, actorB, wg } = tabbedGroupWithBuriedStrip("al");
+  it("R032: ApplyLayout Done attaches chrome after last raise (no second raise)", () => {
+    const { api, wB, nA, nB, deco, wg } = tabbedGroupWithStrip("al");
 
     const bag = api._ensureLayoutApplyRuns();
     bag._onDone({ applyId: "r032", ok: true });
 
-    const children = wg.get_children();
-    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorA));
-    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorB));
-    // Restack-only: another raise here re-buries the strip on Wayland.
+    const layer = ctx.windowManager.decorationManager.tabChromeLayer;
+    expect(wg.contains(deco)).toBe(false);
+    expect(deco.get_parent()).toBe(layer);
+    expect(Main.layoutManager._trackedChrome.has(deco)).toBe(true);
+    // Attach-only: another raise here must not run on Done path.
     expect(wB.raise).not.toHaveBeenCalled();
     expect(nA).toBeTruthy();
     expect(nB).toBeTruthy();
   });
 
-  it("R032: ApplyLayout Done restacks even while render is frozen", () => {
-    const { api, deco, actorA, actorB, wg } = tabbedGroupWithBuriedStrip("al-fz");
+  it("R032: ApplyLayout Done attaches even while render is frozen", () => {
+    const { api, deco, wg } = tabbedGroupWithStrip("al-fz");
     ctx.windowManager.freezeRender();
     expect(ctx.windowManager._freezeRender).toBe(true);
 
     const bag = api._ensureLayoutApplyRuns();
     bag._onDone({ applyId: "r032-frozen", ok: true });
 
-    const children = wg.get_children();
-    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorA));
-    expect(children.indexOf(deco)).toBeGreaterThan(children.indexOf(actorB));
+    const layer = ctx.windowManager.decorationManager.tabChromeLayer;
+    expect(wg.contains(deco)).toBe(false);
+    expect(deco.get_parent()).toBe(layer);
     expect(ctx.windowManager._freezeRender).toBe(true);
   });
 });

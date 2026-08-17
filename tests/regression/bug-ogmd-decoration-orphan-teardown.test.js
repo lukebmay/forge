@@ -10,13 +10,12 @@ import {
 /**
  * Bug forge-ogmd: the processStacked/processTabbed self-heal catch blocks set
  * node.decoration = null on a render-time throw to force recreation, but never
- * destroyed the existing St.BoxLayout first. _createDecoration's
- * window_group.contains() guard tests the NEW actor (always false), so the old
- * header stayed parented in window_group forever — one orphaned BoxLayout leaked
- * per self-heal.
+ * destroyed the existing St.BoxLayout first. After PR1 strips live on the
+ * tab-chrome layer; without teardown the old header stayed parented forever.
  *
- * Fix: _destroyDecoration() tears the orphan down (in its own try/catch so a
- * second throw on a finalized actor can't escape the render loop) before nulling.
+ * Fix: _destroyDecoration() untracks + tears the orphan down (in its own
+ * try/catch so a second throw on a finalized actor can't escape the render
+ * loop) before nulling.
  */
 describe("Bug forge-ogmd: a decoration that throws mid-update is destroyed before recreation", () => {
   let ctx;

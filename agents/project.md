@@ -64,7 +64,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold **PASS** |
 | **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM1–SM7 done** | D044 shipped |
 | **[First-class containers](./plans/forge-first-class-containers.md)** | C0+C1 **done** | C2 later |
-| **[Tab click-drag](./plans/forge-tab-click-drag.md)** | Design consensus | [PR1 task](./tasks/forge-tab-click-drag_pr1-chrome-layer.md) |
+| **[Tab click-drag](./plans/forge-tab-click-drag.md)** | **PR1 shipped** | PR2+ when asked · [PR1](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
 | **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done**; TD2/TD3 skip | TD4 folds into click-drag PR6 |
 | **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
 | **STACKED layouts** | Major product | As PRIORITY allows |

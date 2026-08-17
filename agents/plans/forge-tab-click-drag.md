@@ -1,6 +1,6 @@
 # Plan: Click-drag moving tabs
 
-**Status:** design consensus — **PR1 ready**
+**Status:** design consensus — **PR1 shipped**; PR2+ next when asked
 **Priority:** P1 product chrome
 **Created:** 2026-08-16
 **Updated:** 2026-08-17
@@ -8,17 +8,17 @@
 **Locks:** D018, D023–D026, D032, D039–D044; Tab D0
 **Supersedes (product next):** [forge-tab-chrome-drag](./forge-tab-chrome-drag.md)
 TD1 remains the reorder engine; this plan is pickability + wrap + 2D drag.
-**Implement now:** [PR1 chrome layer](../tasks/forge-tab-click-drag_pr1-chrome-layer.md)
-(`grok-4.5` medium). Escalate to 4.6 only if attach cannot work.
+**PR1 shipped:** [chrome layer](./completed/forge-tab-click-drag_pr1-chrome-layer.md). Next: PR2+ when operator asks.
 **Do not start wrap-on** until PR4 (`min-tab-label-chars` schema
 stays 0 until then). Q1/Q2 locked (wrap-on in PR4;
 `max-tab-rows` default 0 = unbounded).
 
 ### Session note (overwrite)
 
-**2026-08-17:** Handoff to 4.5 medium for **PR1 only**. No PR1
-code in this commit. Attach algorithm is locked in §1.
+**2026-08-17:** PR1 chrome layer **shipped** on master (L0 89/89,
+nest mon=1 PASS). Host lock residual. Do not reshape attach.
 
+---
 ---
 
 # Click-drag moving tabs (reorder, peel, pickability, wrap)

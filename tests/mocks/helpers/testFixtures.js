@@ -10,6 +10,7 @@ import { vi } from "vitest";
 import { installGnomeGlobals } from "./globalSetup.js";
 import { WindowManager } from "../../../lib/extension/window.js";
 import { Tree, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { DecorationManager } from "../../../lib/extension/decoration.js";
 
 /**
  * Default settings values used across tests
@@ -286,6 +287,11 @@ export function createTreeFixture(options = {}) {
 
   // Create Tree
   const tree = new Tree(mockWindowManager);
+
+  // Tab chrome attach needs DecorationManager (layer + trackChrome).
+  if (fullExtWm) {
+    mockWindowManager.decorationManager = new DecorationManager(tree, mockWindowManager);
+  }
 
   return {
     tree,

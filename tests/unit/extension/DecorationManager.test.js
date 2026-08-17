@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
   createWindowManagerFixture,
@@ -31,7 +32,14 @@ describe("DecorationManager.updateDecorationLayout", () => {
     });
     const { monitor } = getWorkspaceAndMonitor(ctx);
     con = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
-    con.decoration = { show: vi.fn(), hide: vi.fn() };
+    con.decoration = {
+      show: vi.fn(),
+      hide: vi.fn(),
+      type: "forge-deco",
+      get_parent() {
+        return this._parent || null;
+      },
+    };
     createWindowNode(ctx.tree, con, { windowOverrides: { id: "tab-a" } });
     createWindowNode(ctx.tree, con, { windowOverrides: { id: "tab-b" } });
   }
@@ -334,5 +342,62 @@ describe("DecorationManager border lifecycle", () => {
       const actor = { border: null };
       expect(() => wm()._destroyActorBorder(actor, "border")).not.toThrow();
     });
+  });
+});
+
+describe("DecorationManager.attachTabDecoration (I-TabPickable)", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      settings: { "tiling-mode-enabled": true, "showtab-decoration-enabled": true },
+    });
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it("attach twice does not throw and trackChrome runs once", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const con = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
+    const deco = new St.BoxLayout();
+    deco.type = "forge-deco";
+    con.decoration = deco;
+
+    const dm = ctx.windowManager.decorationManager;
+    const trackSpy = Main.layoutManager.trackChrome;
+
+    expect(() => dm.attachTabDecoration(con)).not.toThrow();
+    expect(() => dm.attachTabDecoration(con)).not.toThrow();
+
+    expect(trackSpy).toHaveBeenCalledTimes(1);
+    expect(trackSpy).toHaveBeenCalledWith(deco, {
+      affectsStruts: false,
+      trackFullscreen: false,
+      affectsInputRegion: true,
+    });
+    const layer = dm.tabChromeLayer;
+    expect(layer).toBeTruthy();
+    expect(layer.name).toBe("forge-tab-chrome");
+    expect(layer.reactive).toBe(false);
+    expect(global.window_group.contains(deco)).toBe(false);
+    expect(deco.get_parent()).toBe(layer);
+    expect(Main.layoutManager._trackedChrome.has(deco)).toBe(true);
+    // Host is not tracked.
+    expect(Main.layoutManager._trackedChrome.has(layer)).toBe(false);
+  });
+
+  it("layer visibility follows window_group.visible", () => {
+    const dm = ctx.windowManager.decorationManager;
+    const layer = dm.ensureTabChromeLayer();
+    expect(layer.visible).toBe(true);
+
+    global.window_group.visible = false;
+    expect(layer.visible).toBe(false);
+
+    global.window_group.visible = true;
+    expect(layer.visible).toBe(true);
   });
 });

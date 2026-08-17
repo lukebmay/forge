@@ -8,11 +8,22 @@ export class Widget extends withSignals() {
     this.style_class = params.style_class || "";
     this.visible = params.visible !== false;
     this.reactive = params.reactive !== undefined ? params.reactive : true;
+    this.clip_to_allocation =
+      params.clip_to_allocation !== undefined ? params.clip_to_allocation : true;
     this.children = [];
     this.x = params.x || 0;
     this.y = params.y || 0;
     this.width = params.width || 0;
     this.height = params.height || 0;
+    this._flags = 0;
+  }
+
+  set_flags(flags) {
+    this._flags = flags;
+  }
+
+  get_flags() {
+    return this._flags;
   }
 
   get_style_class_name() {
@@ -191,7 +202,9 @@ export class BoxLayout extends Widget {
   }
 
   add_child(child) {
-    this.children.push(child);
+    if (!child) return;
+    if (!this.children.includes(child)) this.children.push(child);
+    child._parent = this;
   }
 
   remove_child(child) {
@@ -199,6 +212,7 @@ export class BoxLayout extends Widget {
     if (index !== -1) {
       this.children.splice(index, 1);
     }
+    if (child && child._parent === this) child._parent = null;
   }
 
   get_children() {
@@ -216,7 +230,10 @@ export class BoxLayout extends Widget {
   destroy_all_children() {
     // Mirror Clutter: destroy and detach every child.
     const kids = this.children.splice(0);
-    kids.forEach((c) => c.destroy && c.destroy());
+    kids.forEach((c) => {
+      if (c && c._parent === this) c._parent = null;
+      c.destroy && c.destroy();
+    });
   }
 }
 

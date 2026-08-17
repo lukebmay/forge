@@ -6,6 +6,7 @@
  */
 
 import { vi } from "vitest";
+import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { Workspace, Rectangle } from "../gnome/Meta.js";
 import { addSignalSupport } from "./signalMixin.js";
 
@@ -89,30 +90,76 @@ export function createMockWorkspaceManager(options = {}) {
 }
 
 /**
- * Create a mock window_group object
- * @returns {Object} Mock window_group
+ * Create a mock actor group (window_group / uiGroup / top_window_group)
+ * with child-list + sibling order helpers matching Clutter enough for tests.
+ * @param {Object} [options]
+ * @param {boolean} [options.visible=true]
+ * @returns {Object} Mock group
  */
-export function createMockWindowGroup() {
+export function createMockWindowGroup(options = {}) {
   const children = [];
-  return {
+  const signals = {};
+  let visible = options.visible !== false;
+  const group = {
     _children: children,
+    get visible() {
+      return visible;
+    },
+    set visible(v) {
+      if (visible === !!v) return;
+      visible = !!v;
+      for (const h of signals["notify::visible"] || []) {
+        try {
+          h.callback(group, null);
+        } catch (_e) {
+          // ignore
+        }
+      }
+    },
+    connect: vi.fn((signal, callback) => {
+      if (!signals[signal]) signals[signal] = [];
+      const id = Math.random();
+      signals[signal].push({ id, callback });
+      return id;
+    }),
+    disconnect: vi.fn((id) => {
+      for (const signal of Object.keys(signals)) {
+        signals[signal] = signals[signal].filter((s) => s.id !== id);
+      }
+    }),
     get_children: vi.fn(() => [...children]),
     contains: vi.fn((child) => children.includes(child)),
     add_child: vi.fn((child) => {
-      if (!children.includes(child)) children.push(child);
+      if (!child) return;
+      if (children.includes(child)) return;
+      // Clutter: already-parented actors must be removed first.
+      if (
+        child._parent &&
+        child._parent !== group &&
+        typeof child._parent.remove_child === "function"
+      ) {
+        child._parent.remove_child(child);
+      }
+      children.push(child);
+      child._parent = group;
     }),
     insert_child_below: vi.fn((child, sibling) => {
-      if (children.includes(child)) return;
+      if (!child) return;
+      if (children.includes(child)) {
+        children.splice(children.indexOf(child), 1);
+      }
       const index = children.indexOf(sibling);
       children.splice(index === -1 ? children.length : index, 0, child);
+      child._parent = group;
     }),
     insert_child_above: vi.fn((child, sibling) => {
+      if (!child) return;
       if (children.includes(child)) {
-        const old = children.indexOf(child);
-        children.splice(old, 1);
+        children.splice(children.indexOf(child), 1);
       }
       const index = children.indexOf(sibling);
       children.splice(index === -1 ? children.length : index + 1, 0, child);
+      child._parent = group;
     }),
     set_child_above_sibling: vi.fn((child, sibling) => {
       if (!children.includes(child)) return;
@@ -120,10 +167,56 @@ export function createMockWindowGroup() {
       const index = children.indexOf(sibling);
       children.splice(index === -1 ? children.length : index + 1, 0, child);
     }),
+    set_child_below_sibling: vi.fn((child, sibling) => {
+      if (!children.includes(child)) return;
+      children.splice(children.indexOf(child), 1);
+      const index = children.indexOf(sibling);
+      children.splice(index === -1 ? 0 : index, 0, child);
+    }),
     remove_child: vi.fn((child) => {
       const index = children.indexOf(child);
       if (index !== -1) children.splice(index, 1);
+      if (child && child._parent === group) child._parent = null;
     }),
+  };
+  return group;
+}
+
+/**
+ * layoutManager with uiGroup + trackChrome that throws on re-track (Shell 46).
+ * @param {Object} [options]
+ * @param {Object} [options.windowGroup]
+ * @param {Object} [options.topWindowGroup]
+ * @returns {Object}
+ */
+export function createMockLayoutManager(options = {}) {
+  const uiGroup = createMockWindowGroup();
+  const tracked = new Set();
+  const windowGroup = options.windowGroup || null;
+  const topWindowGroup = options.topWindowGroup || null;
+
+  // Seed uiGroup with window/top groups when provided (real Shell order).
+  if (windowGroup && !uiGroup.contains(windowGroup)) {
+    uiGroup.add_child(windowGroup);
+  }
+  if (topWindowGroup && !uiGroup.contains(topWindowGroup)) {
+    uiGroup.add_child(topWindowGroup);
+  }
+
+  return {
+    uiGroup,
+    _trackedChrome: tracked,
+    trackChrome: vi.fn((actor, _params) => {
+      if (tracked.has(actor)) {
+        throw new Error("trying to re-track existing chrome actor");
+      }
+      tracked.add(actor);
+    }),
+    untrackChrome: vi.fn((actor) => {
+      tracked.delete(actor);
+    }),
+    monitors: [{ x: 0, y: 0, width: 1920, height: 1080 }],
+    primaryMonitor: { x: 0, y: 0, width: 1920, height: 1080 },
   };
 }
 
@@ -217,8 +310,16 @@ export function installGnomeGlobals(options = {}) {
   // Optional globals
   let windowGroup = null;
   if (options.windowGroup !== false) {
-    windowGroup = createMockWindowGroup();
+    windowGroup = createMockWindowGroup(
+      typeof options.windowGroup === "object" ? options.windowGroup : {}
+    );
     global.window_group = windowGroup;
+  }
+
+  let topWindowGroup = null;
+  if (options.topWindowGroup !== false) {
+    topWindowGroup = createMockWindowGroup();
+    global.top_window_group = topWindowGroup;
   }
 
   let stage = null;
@@ -242,6 +343,19 @@ export function installGnomeGlobals(options = {}) {
     overview = global.Main.overview;
   }
 
+  // layoutManager for tab-chrome + apply overlay (resource Main + global.Main).
+  let layoutManager = null;
+  if (options.layoutManager !== false) {
+    layoutManager = createMockLayoutManager({
+      windowGroup,
+      topWindowGroup,
+    });
+    if (!global.Main) global.Main = {};
+    global.Main.layoutManager = layoutManager;
+    // Module-namespace Main (decoration.js / layout-apply-chrome import * as Main).
+    Main.layoutManager = layoutManager;
+  }
+
   // Common global functions
   global.get_current_time = vi.fn(() => 12345);
   global.get_pointer = vi.fn(() => [0, 0, 0]);
@@ -254,6 +368,7 @@ export function installGnomeGlobals(options = {}) {
     delete global.workspace_manager;
     delete global.window_manager;
     delete global.window_group;
+    delete global.top_window_group;
     delete global.stage;
     delete global.get_current_time;
     delete global.get_pointer;
@@ -261,6 +376,12 @@ export function installGnomeGlobals(options = {}) {
     // Reset visibility in place; do NOT delete — that would sever the shared
     // reference module readers rely on (forge-7u3).
     if (global.Main && global.Main.overview) global.Main.overview.visible = false;
+    if (global.Main) delete global.Main.layoutManager;
+    try {
+      delete Main.layoutManager;
+    } catch (_e) {
+      Main.layoutManager = undefined;
+    }
   };
 
   return {
@@ -268,6 +389,8 @@ export function installGnomeGlobals(options = {}) {
     workspaceManager,
     workspaces,
     windowGroup,
+    topWindowGroup,
+    layoutManager,
     stage,
     overview,
     cleanup,
@@ -279,6 +402,7 @@ export default {
   createMockDisplay,
   createMockWorkspaceManager,
   createMockWindowGroup,
+  createMockLayoutManager,
   createMockStage,
   createMockOverview,
   installGnomeGlobals,

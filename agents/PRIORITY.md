@@ -1,17 +1,19 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-17 (tab click-drag PR1 handoff)
+**Updated:** 2026-08-17 (PR1 chrome layer shipped)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
 
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037/D038 ApplyLayout ·
 **D039–D043** slot machines (SM0) · **SM1–SM7 implement landed** ·
-**R036 cold PASS** · **D044** TABBED/STACKED mon-local **shipped**.
+**R036 cold PASS** · **D044** TABBED/STACKED mon-local **shipped** ·
+**PR1** tab chrome layer **shipped**.
 
-**Active next:** [PR1 chrome layer](./tasks/forge-tab-click-drag_pr1-chrome-layer.md)
-— `grok-4.5` **medium**. Design is locked; do not reshape attach.
-Wrap-on waits for PR4 (`min-tab-label-chars=20`); `max-tab-rows=0` unbounded.
+**Active next:** Tab click-drag **PR2+** when operator asks —
+[plan](./plans/forge-tab-click-drag.md). Host lock residual = human.
+Do not reshape PR1 attach. Wrap-on waits for PR4
+(`min-tab-label-chars=20`); `max-tab-rows=0` unbounded.
 **Retest (FIRM):** nest = normal Wayland code→reload; primary logout = rare tip load.
 **Parked:** soft polish · scale smoke · FCC C2+ · CN13 · TD4 docs.
 **Agents:** default implement = **Grok 4.5**. Architecture locks = **4.6 xhigh** only.
@@ -34,7 +36,7 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 | R036 host cold | **done** | [completed](./tasks/completed/forge-layout-cold-host-verify.md) |
 | Tab D0 | **done** | [planning](./tasks/forge-tab-work-planning.md) |
 | Same-mon groups | **done** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) · D044 |
-| Tab click-drag | **PR1 ready** | [task](./tasks/forge-tab-click-drag_pr1-chrome-layer.md) · 4.5 med |
+| Tab click-drag | **PR1 shipped** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) · host lock residual |
 
 **L0:** D044 suite **159** green (tree ops + DnD + normalize + LX3 + H1).
 **Host cold:** R036 **PASS**. Overlay clear = all-hard (no chrome implement).
@@ -45,7 +47,7 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
-| P1 | **Tab click-drag PR1** (chrome layer) | **4.5 med** | [task](./tasks/forge-tab-click-drag_pr1-chrome-layer.md) — escalate 4.6 if attach reshape |
+| done | **Tab click-drag PR1** (chrome layer) | **4.5 med** | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) — L0+nest PASS; host lock residual |
 | later | Tab click-drag PR2–PR6 | **4.5 med** | [plan](./plans/forge-tab-click-drag.md) after PR1 |
 | done | **Same-mon TABBED/STACKED** (D044) | **4.5 high** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |
 | done | Tab work D0 lock | **4.6 xhigh** | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |

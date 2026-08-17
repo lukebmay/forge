@@ -14,7 +14,7 @@ import {
  * decoration was gone for the rest of the session (an orphaned, unhideable bar).
  *
  * The fix self-heals at the top of processTabbed: if node.decoration is null it
- * is rebuilt before use, and re-added to global.window_group.
+ * is rebuilt before use, and re-attached to the tab-chrome layer.
  */
 describe("Bug forge-s7qo: processTabbed recreates a nulled decoration", () => {
   let ctx;
@@ -40,6 +40,8 @@ describe("Bug forge-s7qo: processTabbed recreates a nulled decoration", () => {
 
     // A CON builds its decoration in the Node constructor.
     expect(tabbedCon.decoration).toBeTruthy();
+    // Attach once parent is linked (constructor may run before appendChild).
+    ctx.extWm.decorationManager.attachTabDecoration(tabbedCon);
 
     // Force a throw inside the tab loop: make add_child throw once.
     const decoration = tabbedCon.decoration;
@@ -54,9 +56,12 @@ describe("Bug forge-s7qo: processTabbed recreates a nulled decoration", () => {
     // The catch nulled the decoration.
     expect(tabbedCon.decoration).toBeNull();
 
-    // Next render must rebuild it (and re-add it to the window group).
+    // Next render must rebuild it on the tab-chrome layer (not window_group).
     expect(() => ctx.tree.processTabbed(tabbedCon, a.nodeWindow, params, 0)).not.toThrow();
     expect(tabbedCon.decoration).toBeTruthy();
-    expect(global.window_group.contains(tabbedCon.decoration)).toBe(true);
+    expect(global.window_group.contains(tabbedCon.decoration)).toBe(false);
+    const layer = ctx.extWm.decorationManager.tabChromeLayer;
+    expect(layer).toBeTruthy();
+    expect(tabbedCon.decoration.get_parent()).toBe(layer);
   });
 });
