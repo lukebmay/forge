@@ -92,6 +92,65 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(nGhost.userSized).toBe(true);
   });
 
+  it("post-size mon unwrap no-op keeps mon-level shares (green layout dev)", () => {
+    // ApplyLayout runs unwrapMonDegenerate after size; must not equalize.
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const bag = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    bag.layout = LAYOUT_TYPES.TABBED;
+    const chrome = createMockWindow({ id: 20, wm_class: "Google-chrome" });
+    const grok = createMockWindow({ id: 21, wm_class: "Google-chrome" });
+    const ghost = createMockWindow({ id: 22, wm_class: "com.mitchellh.ghostty" });
+    const nChrome = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, chrome);
+    const nGrok = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, grok);
+    const nGhost = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, ghost);
+    nChrome.mode = WINDOW_MODES.TILE;
+    nGrok.mode = WINDOW_MODES.TILE;
+    nGhost.mode = WINDOW_MODES.TILE;
+
+    const sized = api()._sizeOp(["id:20", "id:22"], [0.687, 0.313], { quiet: true });
+    expect(sized.ok).toBe(true);
+    expect(bag.percent).toBeCloseTo(0.687, 3);
+    expect(nGhost.percent).toBeCloseTo(0.313, 3);
+
+    const out = api()._unwrapMonDirectSingleChildSplits();
+    expect(out.unwrapped).toBe(0);
+    expect(bag.percent).toBeCloseTo(0.687, 3);
+    expect(nGhost.percent).toBeCloseTo(0.313, 3);
+    expect(bag.userSized).toBe(true);
+    expect(nGhost.userSized).toBe(true);
+  });
+
+  it("unwrap mon-direct 1-child H/V transfers wrapper shares to leaf", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const bag = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    bag.layout = LAYOUT_TYPES.TABBED;
+    const chrome = createMockWindow({ id: 30, wm_class: "Google-chrome" });
+    const nChrome = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, chrome);
+    nChrome.mode = WINDOW_MODES.TILE;
+    bag.percent = 0.687;
+    bag.userSized = true;
+
+    const wrap = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    wrap.layout = LAYOUT_TYPES.VSPLIT;
+    wrap.percent = 0.313;
+    wrap.userSized = true;
+    const ghost = createMockWindow({ id: 31, wm_class: "com.mitchellh.ghostty" });
+    const nGhost = wm().tree.createNode(wrap.nodeValue, NODE_TYPES.WINDOW, ghost);
+    nGhost.mode = WINDOW_MODES.TILE;
+    nGhost.percent = 0;
+    nGhost.userSized = false;
+
+    const out = api()._unwrapMonDirectSingleChildSplits();
+    expect(out.unwrapped).toBe(1);
+    expect(nGhost.parentNode).toBe(monitor);
+    expect(bag.percent).toBeCloseTo(0.687, 3);
+    expect(bag.userSized).toBe(true);
+    expect(nGhost.percent).toBeCloseTo(0.313, 3);
+    expect(nGhost.userSized).toBe(true);
+  });
+
   it("R036 setLayout structure: lift nested H/V bag then TABBED wrap (no flatten refuse)", () => {
     // Free-open aspect-split shape: mon → HSPLIT CON → [chrome, VSPLIT→Grok]
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
