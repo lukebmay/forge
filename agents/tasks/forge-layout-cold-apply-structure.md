@@ -1,7 +1,7 @@
 # forge-layout-cold-apply-structure — Cold ApplyLayout structure + soft (R036)
 
-**Status:** in progress  
-**Plan:** (none) · residual of AL6/AL8 open + R033 aspect + R035 ensure  
+**Status:** ready (host cold verify → [forge-layout-cold-host-verify](./forge-layout-cold-host-verify.md))  
+**Plan:** (none) · residual of AL6/AL8 open + R033 aspect + R035 ensure → SM1–SM7  
 **Branch:** master  
 **Blocker:** (none)  
 **Updated:** 2026-08-16  
@@ -10,72 +10,33 @@
 ## Goal
 
 True-cold Wayland host `forge layout dev` exits **ok** with topology matching
-the profile (not nested mon0 aspect thrash; mon1 multi-role tabs co-grouped),
-soft settle finishes without max-corrections, verify structure+focus.
+the profile. Code path is SM1–SM7 (ApplyEpoch, in-slot hard, open-into-slot,
+machines, focus, overlay, no belt). Live host sign-off is the agent task
+[forge-layout-cold-host-verify](./forge-layout-cold-host-verify.md).
 
 ## Acceptance
 
-- [x] Root confirmed in code (PlaceNext mon-root only → OP1/D032 thrash; PH
-      `get_workspace` throw; residual ensure can fix mon1 mid-session)
-- [x] Cold multi-open PlaceNext pins to layout PH (not mon-root only); pin
-      attach skips OP1 aspect / D032 wrap
-- [x] Layout placeholders: `get_workspace` stub + skip in `windowHomeReconcile`
-- [x] ApplyLayout **beltStructure** after pin-role belt moves (R013 port; AL8
-      dropped CLI path) so mon1 TABBED survives rehome
-- [x] Unwrap mon-direct 1-child H/V after order/size (lone VSPLIT around term)
-- [ ] `forge layout dev` **cold after logout** tip: mon0
-      `TABBED(chrome,Grok) | ghostty`; mon1
-      `ghostty | TABBED(YouTube,Gmail,Voice)`; exit 0
-- [ ] Soft settle: no `soft focus: max corrections (32)` on that path
-- [x] L0: PH pin + beltStructure partition/rebind + open-app-policy (123 related)
-- [x] Nest: mon0 unwrap after dual open (ghosttys); chrome open-miss nest flake
-- [ ] Host: cold re-verify after install + **logout** tip
-- [ ] Optional: CLI “nothing applied” wording — parked [IDEAS](../IDEAS.md)
+- [x] Root confirmed in code (PlaceNext mon thrash; PH stubs; soft abort;
+      entered-monitor rehome during apply)
+- [x] SM1–SM7 implement (epoch · in-slot · open-into-slot · machines ·
+      focus · overlay · belt delete) — see
+      [completed/](../plans/forge-layout-slot-machines/completed/)
+- [x] L0 combined SM suite green (epoch/slot/settle/run/open/H1 …)
+- [x] Nest mon=1 `_forge-test-clean` PASS (this session)
+- [x] Mid-session host (pre-SM tip era): structure green after re-apply
+- [ ] Host cold after logout tip — **agent-owned**:
+      [forge-layout-cold-host-verify](./forge-layout-cold-host-verify.md)
 
-## Context for the next agent (complete + succinct)
+## Context
 
-### Live 2026-08-16 (fresh logout, tip dirty with R036 pin only)
+Historical cold fail: mon1 empty / mon0 thrash while CLI said ok (belt-era).
+Product fix is slot-machine apply (D039–D043), not more belt.
 
-| Fact | Detail |
-| --- | --- |
-| Cold job | `20260816T052835Z-a3152f` **ok** soft=3 verify match — tree wrong |
-| Actual cold tree | mon0 `TABBED \| VSPLIT(ghostty)`; mon1 **flat** 4-wide |
-| Mid-session | order ensure mon1 TABBED; mon0 VSPLIT remained |
-| Root A | PlaceNext mon-root / OP1 thrash (partial pin) |
-| Root B | **ApplyLayout missing R013 beltStructure** after belt 4 mon moves |
-| Root C | Lone mon-direct VSPLIT never unwrapped |
-
-### Code fix (in tree, installed dirty; host needs **logout**)
-
-| Path | Change |
-| --- | --- |
-| `lib/shared/layout-open.js` | `findLayoutPlaceholderId` |
-| `lib/extension/layout-apply-open.js` | PlaceNext `id:<ph>` from forest |
-| `lib/extension/window.js` | pin skip D032; PH rehome skip |
-| `lib/extension/layout-placeholder.js` | `get_workspace` stub |
-| `lib/extension/layout-apply-settle.js` | `runBeltStructureRebind` + partition |
-| `lib/extension/layout-apply-run.js` | after belt moves → beltStructure; unwrap after order/size |
-| `lib/extension/session-api.js` | `_unwrapMonDirectSingleChildSplits` |
-
-### Verify
-
-```bash
-npm test -- tests/unit/extension/layout-apply-settle.test.js \
-  tests/unit/shared/layout-open.test.js \
-  tests/unit/extension/layout-apply-open.test.js \
-  tests/unit/extension/layout-placeholder.test.js \
-  tests/unit/window/WindowManager-open-app-policy.test.js
-./install --kit=vim
-# Host cold (required for tip):
-#   log out and back in, then:
-forge layout dev
-forge tree
-# mon1: ghostty | TABBED(YouTube,Gmail,Voice)
-# mon0: TABBED | ghostty (not VSPLIT wrap)
-```
+Human only: **logout + login**, restart agents. Agents install (already done
+pre-commit), cold-apply, tree, journal, fix or residual.
 
 ## Session note
 
-2026-08-16 later: Host cold after logout still wrong (job a3152f). Diagnosed
-missing ApplyLayout beltStructure (R013 CLI-only) + mon-direct unwrap. Nest
-dual mon0 unwrap PASS. Host needs one more logout for tip + cold sign-off.
+**2026-08-16:** Code + nest clean done in SM1–SM7 session. Live host cold
+moved to agent task `forge-layout-cold-host-verify` so human does not run
+layout manually.

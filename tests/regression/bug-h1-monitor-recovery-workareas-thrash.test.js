@@ -131,6 +131,69 @@ describe("H1 monitor-recovery on workareas thrash", () => {
     expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
   });
 
+  it("R036/SM1: beginApplyEpoch suppresses rehome; end drops pending", () => {
+    const { win } = addTiled("R036", 1, { x: 2000, y: 0, width: 400, height: 400 });
+    const updateSpy = vi.spyOn(wm(), "updateMetaWorkspaceMonitor").mockImplementation(() => {});
+
+    wm().beginApplyEpoch({ applyId: "al-r036" });
+    expect(wm().isApplyEpochLive()).toBe(true);
+    wm()._onWindowEnteredMonitor(ctx.display, 0, win);
+    fireSettle();
+    expect(updateSpy).not.toHaveBeenCalled();
+
+    // Soft-era mon0 events must not flush after Done.
+    wm()._pendingEnteredMons = new Map([[win, 0]]);
+    wm().endApplyEpoch({ applyId: "al-r036" });
+    expect(wm().isApplyEpochLive()).toBe(false);
+    expect(wm()._pendingEnteredMons).toBeNull();
+    fireSettle();
+    expect(updateSpy).not.toHaveBeenCalled();
+
+    wm()._onWindowEnteredMonitor(ctx.display, 0, win);
+    fireSettle();
+    expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
+  });
+
+  it("SM1: workareas during ApplyEpoch cancel apply and skip H1", () => {
+    const cancelCodes = [];
+    wm().setApplyEpochCancelHook((code) => cancelCodes.push(code));
+    wm().beginApplyEpoch({ applyId: "al-disp" });
+    expect(wm().isApplyEpochLive()).toBe(true);
+
+    // Force non-noop path (no quiet fingerprint → shouldSkipWorkareasAsNoop false).
+    wm()._lastQuietWorkareasFp = null;
+    const recoverSpy = vi.spyOn(wm(), "_recoverAfterWorkareas").mockImplementation(() => {});
+
+    wm()._queueMonitorRecoveryOnWorkareas();
+
+    expect(cancelCodes).toEqual(["displays-changed"]);
+    expect(wm()._workareasThrashPending).toBeFalsy();
+    fireSettle();
+    expect(recoverSpy).not.toHaveBeenCalled();
+
+    wm().endApplyEpoch({ applyId: "al-disp" });
+  });
+
+  it("SM1: D026 restore skipped while ApplyEpoch live", () => {
+    const { win, node } = addTiled("D026", 0, { x: 10, y: 10, width: 400, height: 400 });
+    node.renderRect = { x: 10, y: 10, width: 400, height: 400 };
+    node.rect = { ...node.renderRect };
+    win.get_frame_rect = () => ({ x: 50, y: 50, width: 300, height: 300 });
+    win.get_maximized = () => 0;
+    win.get_maximize_flags = () => 0;
+    win.is_fullscreen = () => false;
+
+    wm().beginApplyEpoch({ applyId: "al-d026" });
+    expect(wm()._shouldRestoreTileSlot(node, win)).toBe(false);
+    const reassert = vi.spyOn(wm(), "reassertNodeToSlot").mockImplementation(() => true);
+    wm()._restoreTileToSlot(node, win);
+    expect(reassert).not.toHaveBeenCalled();
+
+    wm().endApplyEpoch({ applyId: "al-d026" });
+    // Drifted frame should restore when idle (tiling on in fixture).
+    expect(wm()._shouldRestoreTileSlot(node, win)).toBe(true);
+  });
+
   it("seeded last-good from session frames keeps dual Ghosttys on mon0+mon1 after monitor-recovery", () => {
     // Mirrors HUP: thrash piles both on mon1; empty WeakMap would use thrash frames;
     // seed from portable mon0/mon1 frames so monitor-recovery does not undo session restore.

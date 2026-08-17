@@ -15,6 +15,9 @@ import {
   consumePlaceHint,
   enqueuePlaceHint,
   resolvePlaceMonitorIndex,
+  isMonRootTreePath,
+  placeNextDestKind,
+  placeNextHasSlotDest,
   PLACE_HINT_TTL_MS,
   PLACE_HINT_MAX,
 } from "../../../lib/extension/place-hint.js";
@@ -267,6 +270,21 @@ describe("normalizePlaceHint", () => {
     const r = normalizePlaceHint({ monitor: 0, expiresAt: 999, ttlMs: 1 }, now);
     expect(r.ok).toBe(true);
     expect(r.hint.expiresAt).toBe(999);
+  });
+
+  it("apply dest kind: slot attach vs mon-root-only", () => {
+    expect(isMonRootTreePath("mo0ws0")).toBe(true);
+    expect(isMonRootTreePath("mo0ws0/1")).toBe(false);
+    const monRoot = normalizePlaceHint({ monitor: 1, treePath: "mo1ws0" }, now);
+    expect(monRoot.ok).toBe(true);
+    expect(placeNextDestKind(monRoot.hint)).toBe("mon-root");
+    expect(placeNextHasSlotDest(monRoot.hint)).toBe(false);
+    const slot = normalizePlaceHint({ attachSelector: "id:forge-ph-1", monitor: 0 }, now);
+    expect(slot.ok).toBe(true);
+    expect(placeNextDestKind(slot.hint)).toBe("slot");
+    expect(placeNextHasSlotDest(slot.hint)).toBe(true);
+    const slotPath = normalizePlaceHint({ treePath: "mo0ws0/0" }, now);
+    expect(placeNextDestKind(slotPath.hint)).toBe("slot");
   });
 });
 

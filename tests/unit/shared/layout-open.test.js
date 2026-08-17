@@ -7,7 +7,13 @@ import {
   assignOpenRolePins,
   chromeSerialWaitPins,
   desktopLaunchTryIds,
+  applyPlaceNextOptions,
+  collectLayoutSlotPlaceholders,
   findLayoutPlaceholderId,
+  findLayoutSlotDest,
+  isMonRootTreePath,
+  placeNextDestKind,
+  placeNextHasSlotDest,
   ghosttyMultiInstanceArgv,
   isGhosttyLaunchTarget,
   isPathLikeLaunchApp,
@@ -276,6 +282,92 @@ describe("findLayoutPlaceholderId (R036 PlaceNext pin)", () => {
     expect(findLayoutPlaceholderId(forest, { role: "missing" })).toBe(null);
     expect(findLayoutPlaceholderId({ monitors: [] }, { role: "Grok" })).toBe(null);
     expect(findLayoutPlaceholderId(forest, {})).toBe(null);
+  });
+
+  it("TABBED members dest to the same CON/PH, not N mon-roots", () => {
+    const grok = findLayoutSlotDest(forest, { role: "Grok", slot: "mon0.s0" });
+    const chrome = findLayoutSlotDest(forest, { role: "google-chrome", slot: "mon0.s0" });
+    expect(grok).toBeTruthy();
+    expect(chrome).toBeTruthy();
+    expect(grok.attachSelector).toBe(chrome.attachSelector);
+    expect(grok.attachSelector).toBe("id:forge-ph-1");
+    expect(grok.shared).toBe(true);
+    expect(chrome.shared).toBe(true);
+    expect(grok.parentPath).toBe(chrome.parentPath);
+    expect(isMonRootTreePath(grok.parentPath)).toBe(false);
+  });
+
+  it("solo TILE dest is that role PH (slot, not mon-root)", () => {
+    const dest = findLayoutSlotDest(forest, { role: "ghostty", slot: "mon0.ghostty" });
+    expect(dest.attachSelector).toBe("id:forge-ph-3");
+    expect(dest.destKind).toBe("slot");
+    expect(dest.shared).toBe(false);
+  });
+});
+
+describe("apply PlaceNext dest contract (D042)", () => {
+  it("classifies mon-root vs slot dest", () => {
+    expect(isMonRootTreePath("mo0ws0")).toBe(true);
+    expect(isMonRootTreePath("mo1")).toBe(true);
+    expect(isMonRootTreePath("path:mo0ws0")).toBe(true);
+    expect(isMonRootTreePath("mo0ws0/0")).toBe(false);
+    expect(isMonRootTreePath("mo0ws0/0/1")).toBe(false);
+    expect(placeNextDestKind({ monitor: 0, treePath: "mo0ws0" })).toBe("mon-root");
+    expect(placeNextDestKind({ treePath: "mo1ws0" })).toBe("mon-root");
+    expect(placeNextHasSlotDest({ monitor: 1, treePath: "mo1ws0" })).toBe(false);
+    expect(placeNextDestKind({ attachSelector: "id:forge-ph-1" })).toBe("slot");
+    expect(placeNextDestKind({ treePath: "mo0ws0/0" })).toBe("slot");
+    expect(placeNextHasSlotDest({ attachSelector: "id:x", monitor: 0 })).toBe(true);
+    expect(placeNextDestKind({})).toBe("none");
+    expect(placeNextHasDest({ monitor: 0 })).toBe(true);
+  });
+
+  it("apply dest fails when forest has no slot PH (mon-root-only)", () => {
+    const r = applyPlaceNextOptions(
+      { op: "open", role: "ghostty-left", slot: "mon0.term", open: { app: "ghostty" } },
+      null,
+      { monitors: [] }
+    );
+    expect(r.ok).toBe(false);
+    expect(r.destKind).toBe("mon-root");
+    expect(placeNextHasSlotDest(r.placeOpts)).toBe(false);
+    expect(r.placeOpts.attachSelector).toBeUndefined();
+  });
+
+  it("apply dest pins attachSelector to skeleton PH and drops mon-root treePath", () => {
+    const forest = {
+      monitors: [
+        {
+          nodeType: "MONITOR",
+          id: "mo0ws0",
+          children: [
+            {
+              nodeType: "WINDOW",
+              windowId: "forge-ph-term",
+              wmClass: "forge-placeholder",
+              placeholder: true,
+              layoutRole: "ghostty-left",
+              layoutSlot: "mon0.term",
+            },
+          ],
+        },
+      ],
+    };
+    const r = applyPlaceNextOptions(
+      {
+        op: "open",
+        role: "ghostty-left",
+        slot: "mon0.term",
+        open: { app: "ghostty", wmClass: "ghostty" },
+      },
+      null,
+      forest
+    );
+    expect(r.ok).toBe(true);
+    expect(r.destKind).toBe("slot");
+    expect(r.placeOpts.attachSelector).toBe("id:forge-ph-term");
+    expect(r.placeOpts.treePath).toBeUndefined();
+    expect(collectLayoutSlotPlaceholders(forest)).toHaveLength(1);
   });
 });
 

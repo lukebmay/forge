@@ -91,6 +91,55 @@ describe("waitPinsOnSignals", () => {
   });
 });
 
+function phWin(id, role, slot) {
+  return {
+    nodeType: "WINDOW",
+    windowId: id,
+    wmClass: "forge-placeholder",
+    placeholder: true,
+    layoutRole: role,
+    layoutSlot: slot,
+  };
+}
+
+function emptyCleanPhForest() {
+  return {
+    monitors: [
+      {
+        nodeType: "MONITOR",
+        id: "mo0ws0",
+        children: [
+          {
+            nodeType: "CON",
+            layout: "TABBED",
+            children: [
+              phWin("ph-chrome", "chrome-luke", "mon0.left-tab"),
+              phWin("ph-grok", "grok", "mon0.left-tab"),
+            ],
+          },
+          phWin("ph-gt-left", "ghostty-left", "mon0.term"),
+        ],
+      },
+      {
+        nodeType: "MONITOR",
+        id: "mo1ws0",
+        children: [
+          phWin("ph-gt-right", "ghostty-right", "mon1.term"),
+          {
+            nodeType: "CON",
+            layout: "TABBED",
+            children: [
+              phWin("ph-yt", "youtube", "mon1.comms"),
+              phWin("ph-gmail", "gmail", "mon1.comms"),
+              phWin("ph-voice", "voice", "mon1.comms"),
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
 describe("startOpenPhase", () => {
   function mockDeps(extra = {}) {
     const batch = { begin: 0, release: 0, end: 0, admit: 0 };
@@ -142,6 +191,7 @@ describe("startOpenPhase", () => {
           return { ok: true, depth: 0 };
         },
         snapshotForest: extra.snapshotForest || (() => extra.forest || { monitors: [] }),
+        desiredForest: extra.desiredForest,
         census: () => extra.census || [],
         ...extra.deps,
       },
@@ -153,7 +203,15 @@ describe("startOpenPhase", () => {
     const windows = [{ windowId: 10, wmClass: "com.mitchellh.ghostty", title: "t" }];
     const { deps } = mockDeps({
       windows,
-      forest: { monitors: [] },
+      forest: {
+        monitors: [
+          {
+            nodeType: "MONITOR",
+            id: "mo0ws0",
+            children: [phWin("ph-gt-left", "ghostty-left", "mon0.term")],
+          },
+        ],
+      },
       deps: {
         beginBatch: () => {
           order.push("begin");
@@ -177,7 +235,15 @@ describe("startOpenPhase", () => {
         },
         snapshotForest: () => {
           order.push("replan");
-          return { monitors: [] };
+          return {
+            monitors: [
+              {
+                nodeType: "MONITOR",
+                id: "mo0ws0",
+                children: [phWin("ph-gt-left", "ghostty-left", "mon0.term")],
+              },
+            ],
+          };
         },
       },
     });
@@ -265,6 +331,109 @@ describe("startOpenPhase", () => {
     expect(placed).toHaveLength(1);
     expect(placed[0].attachSelector).toBe("id:forge-ph-term");
     expect(placed[0].monitor).toBe(0);
+    expect(placed[0].treePath).toBeUndefined();
+  });
+
+  it("fails the unit when dest is mon-root-only (no slot PH)", () => {
+    const placed = [];
+    const spawned = [];
+    const done = [];
+    startOpenPhase({
+      openActions: [
+        {
+          op: "open",
+          role: "ghostty-left",
+          slot: "mon0.term",
+          open: { app: "ghostty", wmClass: "com.mitchellh.ghostty" },
+        },
+      ],
+      profile: { version: 2, roles: [] },
+      flags: { clean: true },
+      deps: {
+        spawn: (_f, action) => {
+          spawned.push(action.role);
+          return { ok: true, waitClasses: ["com.mitchellh.ghostty"] };
+        },
+        placeNext: (opts) => {
+          placed.push(opts);
+          return { ok: true };
+        },
+        beginBatch: () => ({ ok: true }),
+        releaseDeferred: () => ({ ok: true }),
+        endBatch: () => ({ ok: true }),
+        snapshotForest: () => ({ monitors: [] }),
+        waitPins: (_p, _o, d) => d({ ok: true, rolePins: {}, missing: [] }),
+      },
+      onComplete: (o) => done.push(o),
+    });
+    expect(placed).toHaveLength(0);
+    expect(spawned).toHaveLength(0);
+    expect(done[0].failures).toContain("ghostty-left");
+    expect(done[0].opens[0].destKind).toBe("mon-root");
+  });
+
+  it("TABBED members PlaceNext the same CON/PH dest", () => {
+    const placed = [];
+    const tabForest = {
+      monitors: [
+        {
+          nodeType: "MONITOR",
+          id: "mo0ws0",
+          children: [
+            {
+              nodeType: "CON",
+              layout: "TABBED",
+              children: [
+                phWin("ph-chrome", "chrome-luke", "mon0.left-tab"),
+                phWin("ph-grok", "grok", "mon0.left-tab"),
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    startOpenPhase({
+      openActions: [
+        {
+          op: "open",
+          role: "chrome-luke",
+          slot: "mon0.left-tab",
+          open: { app: "google-chrome", wmClass: "Google-chrome" },
+        },
+        {
+          op: "open",
+          role: "grok",
+          slot: "mon0.left-tab",
+          match: { "title~=": "Grok" },
+          open: { app: "Grok", wmClass: "Google-chrome" },
+        },
+      ],
+      profile: { version: 2, roles: [] },
+      flags: { clean: true },
+      deps: {
+        spawn: () => ({ ok: true, waitClasses: ["Google-chrome"] }),
+        placeNext: (opts) => {
+          placed.push(opts);
+          return { ok: true };
+        },
+        beginBatch: () => ({ ok: true }),
+        releaseDeferred: () => ({ ok: true }),
+        endBatch: () => ({ ok: true }),
+        snapshotForest: () => tabForest,
+        waitPins: (pending, _o, d) =>
+          d({
+            ok: true,
+            rolePins: Object.fromEntries(pending.map((p, i) => [p.role, 100 + i])),
+            missing: [],
+          }),
+      },
+      onComplete: () => {},
+    });
+    expect(placed).toHaveLength(2);
+    expect(placed[0].attachSelector).toBe("id:ph-chrome");
+    expect(placed[1].attachSelector).toBe("id:ph-chrome");
+    expect(placed[0].treePath).toBeUndefined();
+    expect(placed[1].treePath).toBeUndefined();
   });
 
   it("serializes chrome-family opens (no parallel Chrome+Grok)", () => {
@@ -305,7 +474,24 @@ describe("startOpenPhase", () => {
         beginBatch: () => ({ ok: true }),
         releaseDeferred: () => ({ ok: true }),
         endBatch: () => ({ ok: true }),
-        snapshotForest: () => ({ monitors: [] }),
+        snapshotForest: () => ({
+          monitors: [
+            {
+              nodeType: "MONITOR",
+              id: "mo0ws0",
+              children: [
+                {
+                  nodeType: "CON",
+                  layout: "TABBED",
+                  children: [
+                    phWin("ph-chrome", "chrome-luke", "mon0"),
+                    phWin("ph-grok", "grok", "mon0"),
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
         waitPins: (pending, _opts, done) => {
           waitCalls.push(pending.map((p) => p.role));
           const wins = windowsByTick[Math.min(tick, windowsByTick.length - 1)];
@@ -350,7 +536,15 @@ describe("startOpenPhase", () => {
         beginBatch: () => ({ ok: true }),
         releaseDeferred: () => ({ ok: true }),
         endBatch: () => ({ ok: true }),
-        snapshotForest: () => ({ monitors: [] }),
+        snapshotForest: () => ({
+          monitors: [
+            {
+              nodeType: "MONITOR",
+              id: "mo0ws0",
+              children: [phWin("ph-bad", "bad", "mon0"), phWin("ph-gt", "ghostty-left", "mon0")],
+            },
+          ],
+        }),
         waitPins: (pending, _o, d) =>
           d({
             ok: true,
@@ -451,6 +645,7 @@ describe("LayoutApplyRunBag open executor", () => {
           }
           done({ ok: true, rolePins: pins, missing: [] });
         },
+        desiredForest: () => emptyCleanPhForest(),
         snapshotForest: () => pinForest,
       },
       { onProgress: (p) => progress.push(p) }
@@ -490,6 +685,7 @@ describe("LayoutApplyRunBag open executor", () => {
             rolePins: {},
             missing: pending.map((p) => p.role),
           }),
+        desiredForest: () => emptyCleanPhForest(),
         snapshotForest: () => d.forest,
       }
     );

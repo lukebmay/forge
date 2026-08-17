@@ -4,9 +4,9 @@
 **Plan:** (none yet) — use high-reasoning model (Grok 4.6 xhigh) **before** code  
 **Branch:** master (default)  
 **Blocker:** (none)  
-**Priority:** after **SM7** overlay-all-hard (D043 gate). Group chrome A
-is tab/FCC, not SM1–SM4. R036 cold is human residual. **Do not start**
-if SM1–SM7 still contend for the same agents.  
+**Priority:** **SM7 overlay-all-hard landed** (D043 gate). Group chrome A
+is tab/FCC, not SM1–SM4. R036 cold is human residual. Ready for
+**4.6 xhigh** planning when SM6 does not contend.  
 **Updated:** 2026-08-16
 
 ## Goal
@@ -22,9 +22,9 @@ implement slices. **Do not start tab implementation until this D0 lands.**
 | --- | --- |
 | Symptom | Layout-apply spinner(s) stay on a long time while hovering/using tabs after the desk looks settled enough to drop the modal |
 | Intent | Spinner/scrim must stop **as soon as** settle is far enough to remove the modal (same gate) |
-| Code already | `_clearChrome` at **soft-enter** (before quiet); restack on clear; Done idempotent |
-| Evidence | 2026-08-16: still failing on pre-tip Shell; soft-enter + restack installed to disk — needs logout. Re-verify after tip load |
-| Open questions | If still long/broken on tip after soft-enter: hard-ready clear? second spinner? strip z-order beyond restack? pin thrash? |
+| Code already | **SM7:** `_clearChrome` reason `all-hard` after slot machines terminal; restack on clear (R032); soft may still run after clear; Done idempotent |
+| Evidence | 2026-08-16: L0 green (clear at all-hard; not mid-place). Host/nest tip re-verify after install+logout |
+| Open questions | If still long/broken on tip after all-hard clear: second spinner? strip z-order beyond restack? pin thrash? |
 | Related | R027 chrome-until-ready; **D043** (D010 superseded — overlay dies at all-hard) |
 
 **Acceptance direction (plan must lock):** one clear rule for when chrome drops; L0 + host repro steps.

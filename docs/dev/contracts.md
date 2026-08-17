@@ -48,7 +48,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Admit live Meta windows missing from the tree | `wm.admitUntrackedWindows` / LayoutBatch `admit` | Plan/map-pin from GetTree only (untracked X11 maps stay invisible) |
 | **Reconcile / `forge layout` apply** | DBus `ApplyLayout` (async start) + ApplyEpoch + slot machines (D037–D043). Planner: `lib/shared/layout-plan.js` `planReconcile` | Port `layout_plan.py` into `cli/`; CLI GetTree poll loop; overload `LayoutBatch` as the product entry |
 | Apply-time home authority | `beginApplyEpoch` / `endApplyEpoch` (SM1; D039). Desired forest is the only mon/TILE-home writer while apply is live | Extra `_layoutApplyLive2` flag; entered-monitor rehome during apply |
-| Hard-ready (ApplyLayout / product layout) | In-slot predicate (SM2; D040): TILE\|grab + desired mon + parent CON + ε rect. Retry place on timeout (SM4) | TILE-anywhere `windowIsSettled` as apply success; CLI GetTree poll; warn-and-continue |
+| Hard-ready (ApplyLayout / product layout) | In-slot predicate (SM2; D040): TILE\|grab + desired mon + parent CON + ε rect. Slot machines in `layout-apply-slot.js` (`startSlotMachines` / `collectSlotMachines`): parallel independent slots; TABBED/STACKED = one machine; retry place N=2 (SM4) | TILE-anywhere `windowIsSettled` as apply success; per-window machines for tab peers; CLI GetTree poll; warn-and-continue |
 | Apply `Done.ok` | Forest match for every **required** TILE slot (D041). Required `hard-failed` → `ok: false` | Focus-only verify as success; standing best-effort `ok: true` |
 | Apply open dest | PlaceNext / bind **into slot or skeleton PH** (SM3; D042) | Mon-root-only PlaceNext + belt as happy path |
 | Soft focus residual (ApplyLayout) | `runSoftFocusBarrierOnSignals` + `settle-math` + `pinLayoutOpenLeaf` | Third settle brain; twin of `revealGroupChild` |
@@ -114,7 +114,7 @@ poll GetTree for hard/soft/focus.
 | --- | --- | --- |
 | Formula | No | `settle-math.js` ≈ `settle_heuristics` |
 | CLI layout (product) | No — observe only | `layout_apply_client` → `ApplyLayout` + Progress/Done |
-| ApplyLayout (D037–D043) | Yes — Meta signals + bags | ApplyEpoch + in-slot hard + slot machines (SM1–SM4). Soft after all-hard. Belt is **not** the API (D014 superseded; delete SM6) |
+| ApplyLayout (D037–D043) | Yes — Meta signals + bags | ApplyEpoch + in-slot hard + slot machines (SM1–SM4). Focus/soft once after all-hard (SM5 / L4.6); overlay clear = all-hard (SM7 / D043); verify ≠ Done.ok. Belt deleted (D042/SM6; D014 superseded) |
 | Extension interactive | No poll — signals + echo + open-quiet | `layout-epoch`, `OpenCommitManager`, pin 15s |
 | Display | Fixed debounce | workareas / monitor-recovery |
 

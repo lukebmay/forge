@@ -1,6 +1,6 @@
 /**
- * AL7 / D019: hard-ready, soft residual, verify once, belt moves-only.
- * Signal-driven — not a GetTree poll twin of wait_until_hard_ready.
+ * AL7 / D019 / SM2: in-slot hard-ready, soft residual, verify once.
+ * Done.ok = forest-match (not focus-only). Belt deleted (D042/SM6).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -11,7 +11,6 @@ import {
   HEURISTICS_SCHEMA_VERSION,
   HeuristicsMemorySession,
   applyFocusSteps,
-  beltActionsFromPlan,
   collectHardReadyWindowIds,
   emptyHeuristicsStore,
   focusActionWindowId,
@@ -20,12 +19,9 @@ import {
   heuristicsRelPath,
   makeHeuristicsKey,
   parseHeuristicsStore,
-  partitionBeltStructureSteps,
   recordSoftFocusHeuristics,
   resolveFocusSoftTimeoutMs,
   resolveSettleHost,
-  runBeltMovesOnly,
-  runBeltStructureRebind,
   runSoftFocusBarrierOnSignals,
   serializeHeuristicsStore,
   softFocusWallMs,
@@ -37,6 +33,10 @@ import {
   withoutFocusActions,
   hardReadyStatus,
   wmClassesForWindowIds,
+  matchRequiredTileSlots,
+  collectHardReadySlotTargets,
+  isRequiredTileRole,
+  desiredMonitorFromSlot,
 } from "../../../lib/extension/layout-apply-settle.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -138,6 +138,93 @@ describe("windowIsSettled / hardReadyStatus", () => {
     expect(st).toEqual({ ok: false, settled: ["1"], pending: ["2"] });
     expect(hardReadyStatus([tileWin("a"), tileWin("b")], ["a", "b"]).ok).toBe(true);
   });
+
+  it("TILE on the wrong mon is pending when desired mon is set", () => {
+    const win = tileWin("201", { monitor: 0 });
+    expect(windowIsSettled(win)).toBe(true);
+    expect(windowIsSettled(win, { monitor: 1 })).toBe(false);
+    const st = hardReadyStatus([win], ["201"], { slots: { 201: { monitor: 1 } } });
+    expect(st).toEqual({ ok: false, settled: [], pending: ["201"] });
+    expect(desiredMonitorFromSlot("mon1.term")).toBe(1);
+  });
+
+  it("in-slot requires TILE|grab + desired mon + parent CON + ε rect", () => {
+    const slot = {
+      monitor: 1,
+      parentId: "mo1ws0/1",
+      parentLayout: "TABBED",
+      parentType: "CON",
+      slotRect: { x: 10, y: 20, width: 400, height: 300 },
+    };
+    const inSlot = tileWin("202", {
+      monitor: 1,
+      parentId: "mo1ws0/1",
+      parentLayout: "TABBED",
+      parentType: "CON",
+      rect: { x: 11, y: 21, width: 398, height: 302 },
+    });
+    expect(windowIsSettled(inSlot, slot)).toBe(true);
+    expect(windowIsSettled(tileWin("202", { ...inSlot, monitor: 0 }), slot)).toBe(false);
+    expect(
+      windowIsSettled(
+        tileWin("202", { ...inSlot, parentLayout: "HSPLIT", parentType: "CON" }),
+        slot
+      )
+    ).toBe(false);
+    expect(
+      windowIsSettled(
+        tileWin("202", { ...inSlot, rect: { x: 80, y: 20, width: 400, height: 300 } }),
+        slot
+      )
+    ).toBe(false);
+    expect(windowIsSettled(tileWin("202", { ...inSlot, mode: "GRAB_TILE" }), slot)).toBe(true);
+  });
+});
+
+describe("matchRequiredTileSlots (D041)", () => {
+  it("empty required mon fails; FLOAT/ignore are not required", () => {
+    const d = loadExpected("wrong-mon-clean");
+    const match = matchRequiredTileSlots({
+      profile: d.profile,
+      forest: d.forest,
+      flags: d.flags,
+    });
+    expect(match.ok).toBe(false);
+    expect(match.failed.some((s) => String(s).startsWith("mon1"))).toBe(true);
+
+    expect(isRequiredTileRole({ id: "voice", slot: "mon1.comms" }, d.profile)).toBe(true);
+    expect(isRequiredTileRole({ id: "kooha", mode: "float" }, d.profile)).toBe(false);
+    expect(isRequiredTileRole({ id: "mpv", mode: "ignore" }, d.profile)).toBe(false);
+    const floatProf = { ...d.profile, floating: ["kooha"] };
+    expect(isRequiredTileRole({ id: "kooha", slot: "mon0.term" }, floatProf)).toBe(false);
+  });
+
+  it("hard-ready timeout pending is not a match", () => {
+    const d = loadExpected("perfect-clean");
+    const match = matchRequiredTileSlots({
+      profile: d.profile,
+      forest: d.forest,
+      flags: d.flags,
+      hardReady: { ok: false, timedOut: true, pending: ["201"] },
+    });
+    expect(match.ok).toBe(false);
+    expect(match.failed.length).toBeGreaterThan(0);
+  });
+
+  it("collectHardReadySlotTargets attaches desired mon for ApplyLayout", () => {
+    const d = loadExpected("perfect-clean");
+    const { ids, slots } = collectHardReadySlotTargets(
+      {
+        profile: d.profile,
+        flags: d.flags,
+        residualPlan: { actions: [{ op: "focus", selector: "id:201" }] },
+      },
+      d.forest
+    );
+    expect(ids).toEqual(["201"]);
+    expect(slots["201"].monitor).toBe(1);
+    expect(slots["201"].slot).toBe("mon1.term");
+  });
 });
 
 describe("focusActionsStillNeeded", () => {
@@ -218,25 +305,17 @@ describe("focusActionsStillNeeded", () => {
   });
 });
 
-describe("beltActionsFromPlan / applyFocusSteps", () => {
+describe("focusActionsFromPlan / applyFocusSteps", () => {
   const actions = [
     { op: "ensure_layout", slot: "mon0.s0", mode: "tabbed", windowIds: [10, 20] },
     { op: "ensure_order", slot: "mon0", mode: "hsplit", windowIds: [1, 2] },
     { op: "move", role: "Grok", windowId: 20, slot: "mon0.s0" },
-    { op: "move", role: "other", windowId: 99, slot: "mon1.x" },
     { op: "focus", selector: "id:20", role: "Grok", reason: "active" },
     { op: "focus", selector: "id:1", role: "ghostty", reason: "profile" },
     { op: "park", windowId: 5, slot: "mon1" },
-    { op: "bind", windowId: 20, layoutRole: "Grok" },
   ];
 
-  it("D014: pin-role moves only (no structure / focus)", () => {
-    const belt = beltActionsFromPlan(actions, { Grok: 20 });
-    expect(belt.map((a) => a.op)).toEqual(["move"]);
-    expect(belt[0].role).toBe("Grok");
-    expect(
-      belt.some((a) => ["park", "bind", "focus", "ensure_layout", "ensure_order"].includes(a.op))
-    ).toBe(false);
+  it("extracts focus actions; withoutFocus strips them", () => {
     expect(focusActionsFromPlan(actions)).toHaveLength(2);
     expect(withoutFocusActions(actions).every((a) => a.op !== "focus")).toBe(true);
     expect(focusActionWindowId({ selector: "id:20" })).toBe("20");
@@ -513,6 +592,46 @@ describe("runSoftFocusBarrierOnSignals", () => {
     expect(done[0].corrections).toBe(1);
     expect(done[0].softSettled).toBe(true);
   });
+
+  it("sync reentry from applyCorrect does not burn max corrections", () => {
+    let listener = null;
+    let corrects = 0;
+    const done = [];
+    const t = timerBag();
+    runSoftFocusBarrierOnSignals(
+      {
+        checkNeeded: () => [{ op: "focus", selector: "id:1" }],
+        applyCorrect: () => {
+          corrects += 1;
+          // Meta focus signals often fire while reveal is still in-stack.
+          if (typeof listener === "function") listener();
+        },
+        onFocusEvent: (cb) => {
+          listener = cb;
+          return () => {
+            listener = null;
+          };
+        },
+        schedule: t.schedule,
+        cancel: t.cancel,
+        nowMs: () => 0,
+        softTimeoutMs: 50,
+        maxWallMs: 5000,
+        maxCorrections: 32,
+      },
+      (out) => done.push(out)
+    );
+    // One correct on start; nested ticks ignored; quiet then re-check once more.
+    expect(corrects).toBe(1);
+    expect(done).toHaveLength(0);
+    t.fireMs(50);
+    expect(corrects).toBe(2);
+    expect(done).toHaveLength(0);
+    // Still needed after second correct → another quiet cycle (not 32).
+    t.fireMs(50);
+    expect(corrects).toBe(3);
+    expect(done).toHaveLength(0);
+  });
 });
 
 describe("verifyFocusOnce + waitTreeFingerprintQuietOnSignals", () => {
@@ -599,70 +718,21 @@ describe("verifyFocusOnce + waitTreeFingerprintQuietOnSignals", () => {
   });
 });
 
-describe("runBeltMovesOnly", () => {
-  it("wrong-mon pins → move steps only", () => {
+describe("matchRequiredTileSlots forest-match (wrong mon / flat mon1)", () => {
+  it("wrong-mon-clean fails required forest match (not belt repair)", () => {
     const d = loadExpected("wrong-mon-clean");
-    const ran = [];
-    const out = runBeltMovesOnly({
+    const match = matchRequiredTileSlots({
       profile: d.profile,
       forest: d.forest,
       flags: d.flags,
       rolePins: { "ghostty-right": 201, youtube: 202 },
-      runSteps: (steps, ctx) => {
-        ran.push({ ops: steps.map((s) => s.op), phase: ctx.phase });
-        return { ok: true };
-      },
     });
-    expect(out.ok).toBe(true);
-    if (!out.skipped) {
-      expect(ran[0].ops.every((op) => op === "move")).toBe(true);
-      expect(ran[0].phase).toBe("verify");
-      expect(out.steps).toBeGreaterThan(0);
-    }
+    expect(match.ok).toBe(false);
+    expect(match.failed.length).toBeGreaterThan(0);
   });
 
-  it("no pins → skip", () => {
-    const d = loadExpected("perfect-clean");
-    const out = runBeltMovesOnly({
-      profile: d.profile,
-      forest: d.forest,
-      flags: d.flags,
-      rolePins: {},
-      runSteps: () => ({ ok: true }),
-    });
-    expect(out).toMatchObject({ ok: true, skipped: true, reason: "no-pins" });
-  });
-});
-
-describe("partitionBeltStructureSteps / runBeltStructureRebind (R013)", () => {
-  it("splits place moves from layout/order/join structure", () => {
-    const parts = partitionBeltStructureSteps([
-      { op: "move", dest: "path:mo1ws0" },
-      { op: "move", dest: "id:99" },
-      { op: "layout", mode: "TABBED" },
-      { op: "order", windowIds: [1, 2] },
-      { op: "focus", selector: "id:1" },
-      { op: "close", windowId: 9 },
-      { op: "bind", role: "a" },
-    ]);
-    expect(parts.place.map((s) => s.op)).toEqual(["move"]);
-    expect(parts.place[0].dest).toBe("path:mo1ws0");
-    expect(parts.structure.map((s) => s.op)).toEqual(["move", "layout", "order", "bind"]);
-    expect(parts.structure[0].dest).toBe("id:99");
-  });
-
-  it("no pins → skip structure rebind", () => {
-    const out = runBeltStructureRebind({
-      profile: {},
-      forest: { monitors: [] },
-      rolePins: {},
-      runSteps: () => ({ ok: true }),
-    });
-    expect(out).toMatchObject({ ok: true, skipped: true, reason: "no-pins" });
-  });
-
-  it("ungrouped mon1 tabs after mon moves → structure layout steps", () => {
-    // Host cold residual class: mon1 tab roles flat as mon HSPLIT siblings.
+  it("flat mon1 tabs without TABBED CON fails forest match", () => {
+    // R013 residual class: mon1 tab roles flat as mon HSPLIT siblings.
     const d = loadExpected("perfect-clean");
     const forest = structuredClone(d.forest);
     const mon1 = (forest.monitors || []).find((m) => m.id === "mo1ws0");
@@ -702,32 +772,22 @@ describe("partitionBeltStructureSteps / runBeltStructureRebind (R013)", () => {
       },
     ];
     mon1.layout = "HSPLIT";
-
-    const pins = {
-      "chrome-luke": 101,
-      grok: 102,
-      "ghostty-left": 103,
-      "ghostty-right": 201,
-      youtube: 202,
-      gmail: 203,
-      voice: 204,
-    };
-    const ran = [];
-    const out = runBeltStructureRebind({
+    const match = matchRequiredTileSlots({
       profile: d.profile,
       forest,
       flags: d.flags,
-      rolePins: pins,
-      runSteps: (steps, ctx) => {
-        ran.push({ ops: steps.map((s) => s.op), phase: ctx.phase });
-        return { ok: true };
+      rolePins: {
+        "chrome-luke": 101,
+        grok: 102,
+        "ghostty-left": 103,
+        "ghostty-right": 201,
+        youtube: 202,
+        gmail: 203,
+        voice: 204,
       },
     });
-    expect(out.ok).toBe(true);
-    expect(out.skipped).toBe(false);
-    expect(out.structureSteps).toBeGreaterThan(0);
-    expect(ran.some((r) => r.ops.includes("layout"))).toBe(true);
-    expect(ran.find((r) => r.ops.includes("layout")).phase).toBe("order");
+    expect(match.ok).toBe(false);
+    expect(match.failed.length).toBeGreaterThan(0);
   });
 });
 

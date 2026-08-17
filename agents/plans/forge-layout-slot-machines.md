@@ -1,7 +1,7 @@
 # Plan: layout slot machines (per-slot hard place + ApplyEpoch)
 
-**Status:** **SM0 locked** (2026-08-16) — implement SM1–SM7  
-**Priority:** **P0**  
+**Status:** **SM1–SM7 implement done** (2026-08-16, uncommitted) — SM0 locked D039–D043  
+**Priority:** residual host R036 + tab D0  
 **Branch:** `master`  
 **Created:** 2026-08-16  
 **Decisions:** [D039](../../docs/DECISIONS.md)–[D043](../../docs/DECISIONS.md)
@@ -13,12 +13,11 @@ R036 [task](../tasks/forge-layout-cold-apply-structure.md) ·
 
 ### Session note (overwrite)
 
-**2026-08-16:** Operator locked SM0. Slot **not** window; hard = in-slot;
-`Done.ok` = required forest match; contracts (SM1–SM3) before machine
-runtime (SM4); belt dies after open-into-slot; group chrome A is tab/FCC.
-**Next:** 4.5 **med orchestrator** assigns SM1 then SM2. **No SM4 before
-SM2+SM3.** D0 in
-[completed](./forge-layout-slot-machines/completed/forge-layout-slot-machines_d0-discussion.md).
+**2026-08-16 SM1–SM7 done.** SM6 deleted product belt / beltStructure /
+belt-as-success tests (D042). Machines + forest-match are the only spine.
+Nest mon=1 clean PASS without belt; ghosttys open-miss residual.
+No R036 cold PASS claim. D0 + SM tasks in
+[completed](./forge-layout-slot-machines/completed/).
 
 ---
 
@@ -226,10 +225,10 @@ Prompt the **role** in the spawn (no separate “medium” slug).
 | **SM1** | Named ApplyEpoch | **4.5 high** | SM0 |
 | **SM2** | In-slot hard + forest-match `Done.ok` | **4.6 high** | SM0 (may overlap SM1 if no `window.js` rehome edit) |
 | **SM3** | Open into slot; no mon-root PlaceNext | **4.6 high** | SM1 |
-| **SM4** | Slot-machine runtime + retry | **4.6 high** implement; **4.6 high** review of the bag API | SM2 + SM3 |
-| **SM5** | Focus + soft after all-hard | **4.5 med** | SM4 |
-| **SM6** | Delete belt / continue-on-timeout / focus-only-as-ok | **4.5 med** | SM4 + SM5 nest mon=1 green |
-| **SM7** | Overlay clear = all-hard | **4.5 med** | SM4 barrier |
+| **SM4** | Slot-machine runtime + retry | **done** | SM2 + SM3 |
+| **SM5** | Focus + soft after all-hard | **done** | SM4 |
+| **SM6** | Delete belt / continue-on-timeout / focus-only-as-ok | **done** | SM5 + nest mon=1 green |
+| **SM7** | Overlay clear = all-hard | **done** | SM4 barrier |
 
 **Orchestrator (next session):** **Grok 4.5 med**. Assign SM1, then SM2
 (parallel OK). Do **not** assign SM4 before SM2+SM3. Do **not** start tab
@@ -244,7 +243,7 @@ orchestrator unless a 4.5-med slice is the only eligible work.
 - [x] DECISIONS D039–D043 written; D019 amended
 - [x] SM1–SM7 tasks drafted
 - [x] PRIORITY queue updated
-- [ ] SM1–SM7 implement (blocked on assignment)
+- [x] SM1–SM7 implement (code; uncommitted on master)
 - [ ] R036 host cold still human (logout)
 
 ---
@@ -257,10 +256,10 @@ orchestrator unless a 4.5-med slice is the only eligible work.
 | **SM1** | [ApplyEpoch](../tasks/forge-layout-slot-machines_sm1-apply-epoch.md) | ready | 4.5 high |
 | **SM2** | [In-slot hard + Done.ok](../tasks/forge-layout-slot-machines_sm2-in-slot-hard.md) | ready | 4.6 high |
 | **SM3** | [Open into slot](../tasks/forge-layout-slot-machines_sm3-open-into-slot.md) | ready | 4.6 high |
-| **SM4** | [Slot-machine runtime](../tasks/forge-layout-slot-machines_sm4-runtime.md) | ready (blocked SM2+SM3) | 4.6 high |
-| **SM5** | [Focus after all-hard](../tasks/forge-layout-slot-machines_sm5-focus-after-hard.md) | ready (blocked SM4) | 4.5 med |
-| **SM6** | [Delete crutches](../tasks/forge-layout-slot-machines_sm6-delete-crutches.md) | ready (blocked SM4+SM5) | 4.5 med |
-| **SM7** | [Overlay all-hard](../tasks/forge-layout-slot-machines_sm7-overlay-all-hard.md) | ready (blocked SM4) | 4.5 med |
+| **SM4** | [Slot-machine runtime](./forge-layout-slot-machines/completed/forge-layout-slot-machines_sm4-runtime.md) | **done** | 4.6 high |
+| **SM5** | [Focus after all-hard](./forge-layout-slot-machines/completed/forge-layout-slot-machines_sm5-focus-after-hard.md) | **done** | 4.5 |
+| **SM6** | [Delete crutches](./forge-layout-slot-machines/completed/forge-layout-slot-machines_sm6-delete-crutches.md) | **done** | 4.5 med |
+| **SM7** | [Overlay all-hard](./forge-layout-slot-machines/completed/forge-layout-slot-machines_sm7-overlay-all-hard.md) | **done** | 4.5 |
 
 ---
 

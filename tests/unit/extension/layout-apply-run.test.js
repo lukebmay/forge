@@ -8,6 +8,7 @@ import {
   LayoutApplyRunBag,
   busyResult,
   donePayload,
+  focusAfterAllHardAllowed,
   newApplyId,
   parseApplyLayoutRequest,
   progressPayload,
@@ -93,6 +94,19 @@ describe("payload shapes", () => {
     expect(APPLY_LAYOUT_PHASES[0]).toBe("skeleton");
     expect(APPLY_LAYOUT_PHASES).toContain("hard-ready");
     expect(APPLY_LAYOUT_PHASES[APPLY_LAYOUT_PHASES.length - 1]).toBe("verify");
+    const hard = APPLY_LAYOUT_PHASES.indexOf("hard-ready");
+    const focus = APPLY_LAYOUT_PHASES.indexOf("focus");
+    const soft = APPLY_LAYOUT_PHASES.indexOf("soft");
+    expect(hard).toBeGreaterThan(-1);
+    expect(focus).toBeGreaterThan(hard);
+    expect(soft).toBeGreaterThan(focus);
+  });
+
+  it("focusAfterAllHardAllowed requires hardReadyRan when hard-ready is on the list", () => {
+    expect(focusAfterAllHardAllowed({ hardReadyRan: false })).toBe(false);
+    expect(focusAfterAllHardAllowed({ hardReadyRan: true })).toBe(true);
+    expect(focusAfterAllHardAllowed({}, ["skeleton", "focus"])).toBe(true);
+    expect(focusAfterAllHardAllowed(null)).toBe(false);
   });
 
   it("LAYOUT_APPLY_RUN_HARD_MS is job-class ceiling (~300s)", () => {
@@ -156,6 +170,45 @@ describe("LayoutApplyRunBag", () => {
       code: "cancel",
     });
     flushAll();
+  });
+
+  it("onApplyLive enter at start and leave on Done (R036 rehome gate)", () => {
+    const live = [];
+    const { bag, flushAll } = bagWithQueue({
+      onApplyLive: (active) => live.push(!!active),
+    });
+    bag.start({ profile: { roles: [] }, name: "dev" });
+    expect(live).toEqual([true]);
+    expect(bag.live).toBeTruthy();
+    flushAll();
+    expect(bag.live).toBeNull();
+    expect(live).toEqual([true, false]);
+  });
+
+  it("cancel with code displays-changed finishes Done with that code (SM1)", () => {
+    const done = [];
+    const live = [];
+    const { bag, flushOne } = bagWithQueue({
+      onDone: (p) => done.push(p),
+      onApplyLive: (active) => live.push(!!active),
+    });
+    const start = bag.start({ profile: { roles: [] }, name: "dev" });
+    expect(start.ok).toBe(true);
+    expect(live).toEqual([true]);
+    expect(bag.cancel(start.applyId, { code: "displays-changed" })).toMatchObject({
+      ok: true,
+      cancelRequested: true,
+      code: "displays-changed",
+    });
+    flushOne();
+    expect(bag.live).toBeNull();
+    expect(live).toEqual([true, false]);
+    expect(done).toHaveLength(1);
+    expect(done[0]).toMatchObject({
+      ok: false,
+      code: "displays-changed",
+      error: "displays changed",
+    });
   });
 
   it("emits progress and done; chrome show/clear", () => {
@@ -255,7 +308,10 @@ describe("LayoutApplyRunBag structure (AL5)", () => {
       workspace: 0,
     });
     flushAll();
-    expect(bag.lastTerminal.terminal.ok).toBe(true);
+    // Order steps ran; mocked runSteps do not rewrite the forest, so Done is hard-failed.
+    expect(bag.lastTerminal.terminal.ok).toBe(false);
+    expect(bag.lastTerminal.terminal.code).toBe("hard-failed");
+    expect(bag.lastTerminal.terminal.result.hardFailed).toContain("mon0");
     expect(bag.lastTerminal.terminal.result.structure).toBe(true);
     const orderBatch = executed.find((e) => e.phase === "order");
     expect(orderBatch).toBeTruthy();
@@ -416,7 +472,15 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
       }
       return n;
     };
-    return { bag, timers, fireMs, flushZero };
+    const drainSlotHard = (max = 8) => {
+      for (let i = 0; i < max && bag.live && bag.live.phase === "hard-ready"; i++) {
+        const hard = timers.filter((t) => t.ms === 50 || t.ms === 2000 || t.ms === 5000);
+        if (!hard.length) break;
+        fireMs(Math.min(...hard.map((t) => t.ms)));
+        flushZero();
+      }
+    };
+    return { bag, timers, fireMs, flushZero, drainSlotHard };
   }
 
   function grokActiveMismatch() {
@@ -446,7 +510,7 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     });
   }
 
-  it("hard → focus steps → soft quiet → verify; chrome clears at soft-enter", () => {
+  it("hard → focus steps → soft quiet → verify; chrome clears at all-hard", () => {
     const { profile, forest, flags } = grokActiveMismatch();
     const executed = [];
     const chrome = { show: 0, clear: 0, reasons: [] };
@@ -500,12 +564,14 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.live).toBeTruthy();
     expect(bag.live.phase).toBe("soft");
     expect(chrome.show).toBe(1);
-    // Scrim/spinner drop before soft quiet so tabs are not blocked.
+    // D043/SM7: scrim/spinner drop at all-hard; soft residual stays after clear.
     expect(chrome.clear).toBe(1);
-    expect(chrome.reasons[0]).toBe("soft-enter");
+    expect(chrome.reasons[0]).toBe("all-hard");
     expect(executed.some((e) => e.phase === "focus" && e.ops.includes("focus"))).toBe(true);
     expect(bag.live.hardReadyRan).toBe(true);
     expect(bag.live.hardReady.ok).toBe(true);
+    expect(Array.isArray(bag.live.hardReady.machines)).toBe(true);
+    expect(executed.some((e) => e.phase === "hard-ready" && e.ops.includes("focus"))).toBe(false);
 
     const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
     expect(Number.isFinite(quietMs)).toBe(true);
@@ -518,9 +584,9 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.lastTerminal.terminal.result.verify.ok).toBe(true);
     expect(bag.lastTerminal.terminal.result.heuristics.persist).toBe("ok");
     expect(written.text).toContain("testhost|google-chrome|focus-phase|focus");
-    // soft-enter cleared once; soft end + Done must not double-clear.
+    // all-hard cleared once; soft end + Done must not double-clear.
     expect(chrome.clear).toBe(1);
-    expect(chrome.reasons).toEqual(["soft-enter"]);
+    expect(chrome.reasons).toEqual(["all-hard"]);
   });
 
   it("hard-ready waits for TILE signal then continues (no poll interval)", () => {
@@ -535,6 +601,7 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
       },
     ];
     let winCb = null;
+    const chrome = { show: 0, clear: 0, reasons: [] };
     const { bag, timers, flushZero, fireMs } = bagWithSettle(
       {
         snapshotForest: () => forest,
@@ -552,6 +619,15 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
         readHeuristics: () => learnedHeuristics(),
         writeHeuristics: () => {},
         resolveHost: () => "testhost",
+      },
+      {
+        onChromeShow: () => {
+          chrome.show += 1;
+        },
+        onChromeClear: ({ reason } = {}) => {
+          chrome.clear += 1;
+          if (reason) chrome.reasons.push(reason);
+        },
       }
     );
     bag.start({ profile, flags });
@@ -560,15 +636,21 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.live.settleHeld).toBe(true);
     expect(timers.some((t) => t.ms === 5000)).toBe(true);
     expect(timers.every((t) => t.ms === 0 || t.ms === 5000)).toBe(true);
+    // SM7: overlay stays up mid-place / mid-hard wait.
+    expect(chrome.show).toBe(1);
+    expect(chrome.clear).toBe(0);
     wins[0] = { ...wins[0], mode: "TILE", rect: { width: 100, height: 80 } };
     winCb();
     flushZero();
     expect(bag.live.phase).toBe("soft");
+    expect(chrome.clear).toBe(1);
+    expect(chrome.reasons).toEqual(["all-hard"]);
     const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
     fireMs(quietMs);
     flushZero();
     expect(bag.lastTerminal.terminal.ok).toBe(true);
     expect(bag.lastTerminal.terminal.result.hardReady.ok).toBe(true);
+    expect(chrome.clear).toBe(1);
   });
 
   it("steal during soft restores pin and verify corrects at most once", () => {
@@ -629,6 +711,66 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.lastTerminal.terminal.result.verify.ok).toBe(true);
   });
 
+  it("soft max-corrections warns and continues to verify (does not abort)", () => {
+    const { profile, flags } = grokActiveMismatch();
+    const forest = JSON.parse(JSON.stringify(loadExpected("perfect-clean").forest));
+    // Permanent LTF mismatch → soft keeps needing correct.
+    forest.monitors[0].children[0].lastTabFocusId = 101;
+    const progress = [];
+    const { bag, timers, flushZero, fireMs } = bagWithSettle(
+      {
+        snapshotForest: () => forest,
+        runSteps: () => ({ ok: true }),
+      },
+      {
+        snapshotForest: () => forest,
+        loadWindows: () => [
+          {
+            windowId: 102,
+            mode: "TILE",
+            monitor: 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "Google-chrome",
+          },
+        ],
+        readHeuristics: () => learnedHeuristics(),
+        writeHeuristics: () => {},
+        resolveHost: () => "testhost",
+        restorePin: () => false,
+        softTimeoutMs: 10,
+        maxWallMs: 50,
+      },
+      {
+        onProgress: (p) => {
+          if (p?.message) progress.push(String(p.message));
+        },
+      }
+    );
+    bag.start({ profile, flags, name: "_forge-test-soft-continue" });
+    flushZero();
+    // Drain soft wall / quiet timers.
+    for (let i = 0; i < 40; i++) {
+      if (!bag.live) break;
+      const ms = timers.map((t) => t.ms).filter((m) => m > 0);
+      if (!ms.length) break;
+      fireMs(Math.min(...ms));
+      flushZero();
+    }
+    // Soft may still be held if wall not fired; force remaining timers.
+    while (bag.live && timers.length) {
+      const t = timers[0];
+      fireMs(t.ms);
+      flushZero();
+    }
+    expect(bag.live).toBeNull();
+    // Must not hard-fail at soft with soft-error.
+    expect(bag.lastTerminal.terminal.ok).toBe(true);
+    expect(bag.lastTerminal.terminal.phase).not.toBe("soft");
+    expect(
+      progress.some((m) => m.includes("continuing to verify") || m.includes("soft settled"))
+    ).toBe(true);
+  });
+
   it("waitTreeStable stays opt-in (default off)", () => {
     const d = loadExpected("perfect-clean");
     const { bag, flushZero } = bagWithSettle(
@@ -656,6 +798,172 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.lastTerminal.terminal.ok).toBe(true);
     expect(bag.lastTerminal.terminal.result.hardReady.skipped).toBe(true);
     expect(bag.lastTerminal.terminal.result.soft.skipped).toBe(true);
+  });
+
+  it("SM6: product path never emits belt / beltStructure progress", () => {
+    const d = loadExpected("wrong-mon-clean");
+    const progress = [];
+    const forest = JSON.parse(JSON.stringify(d.forest));
+    forest.monitors[0].children[0].lastTabFocusId = 102;
+    const profile = JSON.parse(JSON.stringify(d.profile));
+    const left = profile.layout?.mon0?.children?.find?.((c) => c.id === "left-tab");
+    if (left) left.active = "grok";
+    const { bag, timers, flushZero, fireMs, drainSlotHard } = bagWithSettle(
+      {
+        snapshotForest: () => forest,
+        runSteps: (steps, ctx) => {
+          if (ctx.phase === "order" && ctx.run) {
+            ctx.run.rolePins = { "ghostty-right": 201, youtube: 202 };
+          }
+          return { ok: true };
+        },
+      },
+      {
+        snapshotForest: () => forest,
+        loadWindows: () => [
+          {
+            windowId: 102,
+            mode: "TILE",
+            monitor: 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "Google-chrome",
+          },
+          {
+            windowId: 201,
+            mode: "TILE",
+            monitor: 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "com.mitchellh.ghostty",
+          },
+          {
+            windowId: 202,
+            mode: "TILE",
+            monitor: 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "Google-chrome",
+          },
+        ],
+        readHeuristics: () => learnedHeuristics(),
+        writeHeuristics: () => {},
+        resolveHost: () => "testhost",
+        restorePin: () => false,
+      },
+      {
+        onProgress: (p) => {
+          progress.push({ phase: p?.phase, message: p?.message || "" });
+        },
+      }
+    );
+
+    bag.start({ profile, flags: d.flags, name: "_forge-test-no-belt" });
+    flushZero();
+    drainSlotHard();
+    const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
+    if (Number.isFinite(quietMs)) fireMs(quietMs);
+    flushZero();
+    expect(progress.some((p) => /belt/i.test(String(p.message)))).toBe(false);
+    expect(bag.lastTerminal.terminal.ok).toBe(false);
+    expect(bag.lastTerminal.terminal.code).toBe("hard-failed");
+    expect(bag.lastTerminal.terminal.result.hardFailed.length).toBeGreaterThan(0);
+    expect(bag.lastTerminal.terminal.result.belt).toBeUndefined();
+    expect(bag.lastTerminal.terminal.result.forestMatch.ok).toBe(false);
+    // Focus verify may still pass; it is not Done.ok.
+    expect(bag.lastTerminal.terminal.result.verify.ok).toBe(true);
+  });
+
+  it("SM6: soft Meta rehome wrong-mon fails forest-match Done.ok (no belt repair)", () => {
+    // R036 residual class: pins look right at focus, Meta rehomes before Done.
+    const d = loadExpected("wrong-mon-clean");
+    const progress = [];
+
+    const forestOk = JSON.parse(JSON.stringify(d.forest));
+    {
+      const mon0 = forestOk.monitors[0];
+      const mon1 = forestOk.monitors[1];
+      mon0.children[0].lastTabFocusId = 102;
+      const w201 = mon0.children.find((c) => c.windowId === 201);
+      const w202 = mon0.children.find((c) => c.windowId === 202);
+      mon0.children = mon0.children.filter((c) => c.windowId !== 201 && c.windowId !== 202);
+      if (w201) {
+        w201.monitor = 1;
+        mon1.children.unshift(w201);
+      }
+      if (w202) {
+        w202.monitor = 1;
+        mon1.children.push(w202);
+      }
+    }
+    const forestWrong = JSON.parse(JSON.stringify(d.forest));
+    forestWrong.monitors[0].children[0].lastTabFocusId = 102;
+
+    let snapPhase = "focus";
+    const snap = () => (snapPhase === "focus" ? forestOk : forestWrong);
+
+    const { bag, timers, flushZero, fireMs, drainSlotHard } = bagWithSettle(
+      {
+        snapshotForest: snap,
+        runSteps: (steps, ctx) => {
+          if (ctx.phase === "order" && ctx.run) {
+            ctx.run.rolePins = { "ghostty-right": 201, youtube: 202 };
+          }
+          return { ok: true };
+        },
+      },
+      {
+        snapshotForest: snap,
+        loadWindows: () => [
+          {
+            windowId: 102,
+            mode: "TILE",
+            monitor: 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "Google-chrome",
+          },
+          {
+            windowId: 201,
+            mode: "TILE",
+            monitor: snapPhase === "focus" ? 1 : 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "com.mitchellh.ghostty",
+          },
+          {
+            windowId: 202,
+            mode: "TILE",
+            monitor: snapPhase === "focus" ? 1 : 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "Google-chrome",
+          },
+        ],
+        readHeuristics: () => learnedHeuristics(),
+        writeHeuristics: () => {},
+        resolveHost: () => "testhost",
+        restorePin: () => false,
+      },
+      {
+        onProgress: (p) => {
+          const phase = p?.phase;
+          const message = p?.message || "";
+          progress.push({ phase, message });
+          if (phase === "soft" && snapPhase === "focus") snapPhase = "verify";
+        },
+      }
+    );
+
+    bag.start({ profile: d.profile, flags: d.flags, name: "_forge-test-rehome-forest" });
+    flushZero();
+    drainSlotHard();
+    const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
+    if (Number.isFinite(quietMs)) fireMs(quietMs);
+    flushZero();
+
+    expect(progress.some((p) => /belt/i.test(String(p.message)))).toBe(false);
+    expect(bag.lastTerminal.terminal.ok).toBe(false);
+    expect(bag.lastTerminal.terminal.code).toBe("hard-failed");
+    expect(bag.lastTerminal.terminal.result.forestMatch.ok).toBe(false);
+    expect(bag.lastTerminal.terminal.result.hardFailed.length).toBeGreaterThan(0);
+    expect(bag.lastTerminal.terminal.result.belt).toBeUndefined();
+    // Verify-once is not the success contract (may still ok when focus leaf matches).
+    expect(bag.lastTerminal.terminal.result.verify).toBeTruthy();
   });
 
   it("waitTreeStable flag runs LF6 fingerprint quiet before verify", () => {
@@ -699,6 +1007,267 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     flushZero();
     expect(bag.lastTerminal.terminal.ok).toBe(true);
     expect(bag.lastTerminal.terminal.result.verify.ok).toBe(true);
+  });
+
+  it("hard-ready retry then hard-failed is not Done success", () => {
+    const { profile, forest, flags } = grokActiveMismatch();
+    const progress = [];
+    const { bag, timers, flushZero, fireMs, drainSlotHard } = bagWithSettle(
+      {
+        snapshotForest: () => forest,
+        runSteps: () => ({ ok: true }),
+      },
+      {
+        snapshotForest: () => forest,
+        loadWindows: () => [
+          {
+            windowId: 102,
+            mode: "FLOAT",
+            monitor: 0,
+            rect: { width: 10, height: 10 },
+            wmClass: "Google-chrome",
+          },
+        ],
+        readHeuristics: () => learnedHeuristics(),
+        writeHeuristics: () => {},
+        resolveHost: () => "testhost",
+        hardTimeoutMs: 50,
+        hardRetryTimeoutMs: 50,
+      },
+      {
+        onProgress: (p) => {
+          if (p?.message) progress.push(String(p.message));
+        },
+      }
+    );
+    bag.start({ profile, flags, name: "_forge-test-hard-timeout" });
+    flushZero();
+    expect(bag.live.phase).toBe("hard-ready");
+    drainSlotHard();
+    const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
+    if (Number.isFinite(quietMs)) fireMs(quietMs);
+    flushZero();
+    expect(bag.live).toBeNull();
+    expect(bag.lastTerminal.terminal.ok).toBe(false);
+    expect(bag.lastTerminal.terminal.code).toBe("hard-failed");
+    expect(bag.lastTerminal.terminal.result.hardFailed.length).toBeGreaterThan(0);
+    expect(progress.some((m) => m.includes("(continuing)"))).toBe(false);
+    expect(progress.some((m) => m.includes("not success"))).toBe(true);
+    expect(progress.filter((m) => /slot .+ place attempt=/.test(m)).length).toBeGreaterThanOrEqual(
+      3
+    );
+    expect(bag.lastTerminal.terminal.result.verify).toBeTruthy();
+  });
+
+  it("TILE on the wrong mon stays pending (does not settle hard-ready)", () => {
+    const d = loadExpected("wrong-mon-clean");
+    const forest = JSON.parse(JSON.stringify(d.forest));
+    forest.monitors[0].children[0].lastTabFocusId = 102;
+    const { bag, timers, flushZero } = bagWithSettle(
+      {
+        snapshotForest: () => forest,
+        runSteps: (steps, ctx) => {
+          if (ctx.phase === "order" && ctx.run) {
+            ctx.run.rolePins = { "ghostty-right": 201 };
+          }
+          return { ok: true };
+        },
+      },
+      {
+        snapshotForest: () => forest,
+        loadWindows: () => [
+          {
+            windowId: 201,
+            mode: "TILE",
+            monitor: 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "com.mitchellh.ghostty",
+          },
+        ],
+        readHeuristics: () => learnedHeuristics(),
+        writeHeuristics: () => {},
+        resolveHost: () => "testhost",
+      }
+    );
+    bag.start({
+      profile: d.profile,
+      flags: d.flags,
+      name: "_forge-test-wrong-mon-pending",
+    });
+    flushZero();
+    expect(bag.live).toBeTruthy();
+    expect(bag.live.phase).toBe("hard-ready");
+    expect(bag.live.settleHeld).toBe(true);
+    expect(timers.some((t) => t.ms === 5000)).toBe(true);
+    expect(bag.lastTerminal).toBeFalsy();
+    bag.cancel(bag.live.applyId);
+    flushZero();
+  });
+
+  it("empty required mon fails Done even if focus verify passed", () => {
+    const d = loadExpected("wrong-mon-clean");
+    const forest = JSON.parse(JSON.stringify(d.forest));
+    forest.monitors[0].children[0].lastTabFocusId = 102;
+    const { bag, timers, flushZero, fireMs } = bagWithSettle(
+      {
+        snapshotForest: () => forest,
+        runSteps: () => ({ ok: true }),
+      },
+      {
+        snapshotForest: () => forest,
+        loadWindows: () => [
+          {
+            windowId: 102,
+            mode: "TILE",
+            monitor: 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "Google-chrome",
+          },
+        ],
+        readHeuristics: () => learnedHeuristics(),
+        writeHeuristics: () => {},
+        resolveHost: () => "testhost",
+      }
+    );
+    bag.start({ profile: d.profile, flags: d.flags, name: "_forge-test-empty-mon1" });
+    flushZero();
+    const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
+    if (Number.isFinite(quietMs)) fireMs(quietMs);
+    flushZero();
+    expect(bag.live).toBeNull();
+    expect(bag.lastTerminal.terminal.ok).toBe(false);
+    expect(bag.lastTerminal.terminal.code).toBe("hard-failed");
+    const failed = bag.lastTerminal.terminal.result.hardFailed;
+    expect(failed.some((s) => String(s).startsWith("mon1"))).toBe(true);
+    expect(bag.lastTerminal.terminal.result.verify.ok).toBe(true);
+  });
+
+  it("SM5: focus ops only after all-hard; never mid open/place/hard-ready", () => {
+    const { profile, forest, flags } = grokActiveMismatch();
+    const executed = [];
+    const { bag, timers, flushZero, fireMs } = bagWithSettle(
+      {
+        snapshotForest: () => forest,
+        runSteps: (steps, ctx) => {
+          executed.push({
+            phase: ctx.phase,
+            ops: steps.map((s) => s.op),
+            hardReadyRan: !!(ctx.run && ctx.run.hardReadyRan),
+            focusRan: !!(ctx.run && ctx.run.focusRan),
+          });
+          return { ok: true };
+        },
+      },
+      {
+        snapshotForest: () => forest,
+        loadWindows: () => [
+          {
+            windowId: 102,
+            mode: "TILE",
+            monitor: 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "Google-chrome",
+          },
+          {
+            windowId: 101,
+            mode: "TILE",
+            monitor: 0,
+            rect: { width: 100, height: 80 },
+            wmClass: "Google-chrome",
+          },
+        ],
+        readHeuristics: () => learnedHeuristics(),
+        writeHeuristics: () => {},
+        resolveHost: () => "testhost",
+        restorePin: () => false,
+      }
+    );
+
+    bag.start({ profile, flags, name: "_forge-test-sm5-focus-order" });
+    flushZero();
+    expect(bag.live).toBeTruthy();
+    expect(bag.live.hardReadyRan).toBe(true);
+    expect(bag.live.focusRan).toBe(true);
+    expect(bag.live.focusCallAt).not.toBeNull();
+    expect(bag.live.phase).toBe("soft");
+
+    const focusBatches = executed.filter((e) => e.ops.includes("focus"));
+    expect(focusBatches.length).toBeGreaterThanOrEqual(1);
+    expect(
+      focusBatches.every((e) => e.phase === "focus" || e.phase === "soft" || e.phase === "verify")
+    ).toBe(true);
+    // Product first focus is the focus phase after all-hard (soft/verify only correct residual).
+    expect(focusBatches[0].phase).toBe("focus");
+    expect(focusBatches[0].hardReadyRan).toBe(true);
+    expect(
+      executed.some(
+        (e) =>
+          ["skeleton", "open", "bind", "order", "size", "hard-ready"].includes(e.phase) &&
+          e.ops.includes("focus")
+      )
+    ).toBe(false);
+
+    const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
+    fireMs(quietMs);
+    flushZero();
+    expect(bag.lastTerminal.terminal.ok).toBe(true);
+    expect(bag.lastTerminal.terminal.result.soft).toBeTruthy();
+    expect(bag.lastTerminal.terminal.result.verify.ok).toBe(true);
+  });
+
+  it("SM5: hard-failed slots still get post-hard focus + soft; Done.ok is forest-match", () => {
+    const { profile, forest, flags } = grokActiveMismatch();
+    const executed = [];
+    const { bag, timers, flushZero, fireMs, drainSlotHard } = bagWithSettle(
+      {
+        snapshotForest: () => forest,
+        runSteps: (steps, ctx) => {
+          executed.push({ phase: ctx.phase, ops: steps.map((s) => s.op) });
+          return { ok: true };
+        },
+      },
+      {
+        snapshotForest: () => forest,
+        loadWindows: () => [
+          {
+            windowId: 102,
+            mode: "FLOAT",
+            monitor: 0,
+            rect: { width: 10, height: 10 },
+            wmClass: "Google-chrome",
+          },
+        ],
+        readHeuristics: () => learnedHeuristics(),
+        writeHeuristics: () => {},
+        resolveHost: () => "testhost",
+        hardTimeoutMs: 50,
+        hardRetryTimeoutMs: 50,
+      }
+    );
+    bag.start({ profile, flags, name: "_forge-test-sm5-hard-fail-still-focus" });
+    flushZero();
+    expect(bag.live.phase).toBe("hard-ready");
+    drainSlotHard();
+    // After machines terminal, focus/soft continue on what landed.
+    expect(bag.live === null || bag.live.hardReadyRan === true).toBe(true);
+    const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
+    if (Number.isFinite(quietMs)) fireMs(quietMs);
+    flushZero();
+    expect(bag.live).toBeNull();
+    expect(bag.lastTerminal.terminal.ok).toBe(false);
+    expect(bag.lastTerminal.terminal.code).toBe("hard-failed");
+    expect(executed.some((e) => e.phase === "focus" && e.ops.includes("focus"))).toBe(true);
+    expect(
+      executed.some(
+        (e) =>
+          ["open", "bind", "order", "size", "hard-ready"].includes(e.phase) &&
+          e.ops.includes("focus")
+      )
+    ).toBe(false);
+    // Verify ran; it does not define ok (forest-match does).
+    expect(bag.lastTerminal.terminal.result.verify).toBeTruthy();
+    expect(bag.lastTerminal.terminal.result.soft).toBeTruthy();
+    expect(bag.lastTerminal.terminal.result.forestMatch.ok).toBe(false);
   });
 });
 

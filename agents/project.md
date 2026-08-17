@@ -62,7 +62,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | **[Canonical contracts](./plans/forge-canonical-contracts.md)** | **P0** IC0–IC3 done | IC4 **skipped** (AL8) |
 | **[CLI → Node](./plans/forge-cli-node.md)** | **Locked** D036 · CN0–CN6 **done** (CN7 skip) | no layout port; CN13 later |
 | **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold host residual (logout) |
-| **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM0 locked** D039–D043 | **SM1** 4.5 high → SM2 4.6 high |
+| **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM1–SM7 code done** (uncommitted) | human R036 cold; tab D0 |
 | **[First-class containers](./plans/forge-first-class-containers.md)** | C0+C1 **done** (C1 uncommitted) | Wave Z live residual; C2 later |
 | **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done** (nest live) | TD2 only if peel Model B mismatch |
 | **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
@@ -201,7 +201,7 @@ Plans: [forge-layout-cold-topology](./plans/forge-layout-cold-topology.md),
 a TILE window **or** a TABBED/STACKED CON), not per-window. ApplyEpoch is the
 only home writer during apply. Hard = **in-slot** (retry N=2). `Done.ok` =
 required forest match (hard-failed → `ok: false`; peers still finish). Open
-into slot; belt dies at SM6. Group chrome A is tab/FCC, not SM1–SM4.
+into slot; belt deleted (SM6/D042). Group chrome A is tab/FCC, not SM1–SM4.
 Implement: **SM1** (4.5 high) then **SM2** (4.6 high). Do not start SM4
 before SM2+SM3.
 
@@ -243,7 +243,7 @@ Product `ok` is forest match (D041), not “hard warned and focus passed.”
 | **Forest match** | `Done.ok` iff every required TILE slot is in-slot (D041) | Focus-only verify as success; best-effort `ok` on hard-fail |
 | **Focus once** | After all required slots terminal: open leaves + profile kbd | Focus during open/place |
 | **Soft barrier** | Learned quiet; steal → pin restore + reset quiet | Soft-fix wrong mon / flat tabs |
-| **Belt** | **Deleted at SM6** (D042). Until then, not the happy path | `ensure_layout` after bind; belt-as-success |
+| **Belt** | **Deleted** (SM6/D042) | `ensure_layout` after bind; belt-as-success |
 
 Thrash mid-batch is **forbidden**. Multi-step work **inside one command** is fine
 only if ordered as above. “Operator runs layout again” is **not** the design.

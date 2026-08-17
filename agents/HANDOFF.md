@@ -1,63 +1,53 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-16 (SM0 locked D039–D043; assign SM1)  
+**Updated:** 2026-08-16 (SM1–SM7 shipped; agent cold verify next)  
 **Branch:** **`master`** (default).  
 **Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
 **Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
 **Jobs (shipped):** Mutating `forge` durable by default.  
 **Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
 **Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Repo tip:** `0a8e4a8` + **uncommitted** R036 `_layoutApplyLive` rehome gate. Disk install: **`v49-90-beta.2-333-g0a8e4a8-dirty`**.  
-**Host Shell tip (live):** still pre-`_layoutApplyLive` until **logout** (Wayland; disable/enable does **not** reload JS).  
+**Repo tip:** SM1–SM7 slot machines (commit this session). Disk: `./install --kit=vim` done; host tip after **logout**.  
+**Host Shell tip (live):** **logout once** to load install (Wayland).  
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).  
-**Queue (agent):** **4.5 med orchestrator** assigns **SM1** (4.5 high) then **SM2** (4.6 high).  
-**Queue (human):** logout → Guake cold `layout dev` (R036). Mid host tree OK. [IDEAS](./IDEAS.md).
+**Queue (agent):** After human logout+login → **P0** [cold host verify](./tasks/forge-layout-cold-host-verify.md). Then tab D0 plan. SM1–SM7 [completed](./plans/forge-layout-slot-machines/completed/).  
+**Queue (human):** **Logout + login only**, then start agents. Do **not** run layout yourself. [IDEAS](./IDEAS.md).
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
 
-### Hot — SM1–SM7 implement (SM0 locked)
+### Shipped — SM1–SM7 slot machines
 
 | Field | Detail |
 | --- | --- |
-| Locked | Slot **not** window; hard = **in-slot**; `Done.ok` = required forest match; contracts SM1–SM3 before runtime SM4; belt dies at SM6; group chrome A = tab/FCC |
+| Locked | Slot **not** window; hard = **in-slot**; `Done.ok` = required forest match; belt **deleted** (SM6/D042); overlay = all-hard (SM7); group chrome A = tab/FCC |
 | Decisions | [D039–D043](../docs/DECISIONS.md) · [plan](./plans/forge-layout-slot-machines.md) |
-| D0 | [completed](./plans/forge-layout-slot-machines/completed/forge-layout-slot-machines_d0-discussion.md) |
-| Orchestrator | **Grok 4.5 med** — assign only; do not re-litigate |
-| First assign | **SM1** [ApplyEpoch](./tasks/forge-layout-slot-machines_sm1-apply-epoch.md) → **4.5 high** |
-| Parallel OK | **SM2** [in-slot hard](./tasks/forge-layout-slot-machines_sm2-in-slot-hard.md) → **4.6 high** (no `window.js` rehome) |
-| Then | SM3 4.6 high (after SM1) → SM4 4.6 high (after SM2+SM3) → SM5/SM7 4.5 med → SM6 4.5 med |
-| Do not | SM4 before SM2+SM3; tab **code**; `layout_plan.py` → `cli/`; Mode B; dual-mon nest by default |
+| Bags | `layout-apply-epoch.js` · `layout-apply-slot.js` · settle in-slot/forest-match · open-into-slot dest |
+| Tasks | [completed/](./plans/forge-layout-slot-machines/completed/) SM1–SM7 |
+| L0 | Combined SM suite **235** green |
+| Nest | mon=1 `_forge-test-clean` **PASS**; ghosttys cold open-miss residual |
+| Next | **Agent** cold host verify after logout · then tab D0 plan |
+| Do not | Restore belt; Mode B as cold success; claim R036 cold PASS without live tree; tab **code** before tab D0 locks |
 
-### Hot — R036 cold Wayland `forge layout dev` (ApplyLayout owns mon placement)
+### Hot — R036 cold host verify (**agent task**)
 
 | Field | Detail |
 | --- | --- |
-| Symptom | Guake cold: exit 0 / belt reports moves while mon1 empty + mon0 thrash. Mid re-apply → correct dual-mon TABBED |
-| Live cold (force-belt tip) | open 7/7; soft max-32 continue; verify belt **4** + beltStructure **7**; mon1 still **EMPTY** |
-| Live mid (same session) | open=0; soft=0; belt skipped no-pins; mon0 TABBED\|ghostty; mon1 ghostty\|TABBED — **PASS** |
-| Root A–D | Soft abort / reentry / pre-soft belt / force belt verify — **signed** (progress + L0) |
-| Root E (active residual) | After open batch ends, entered-monitor rehome is free. Focus/soft Meta mon thrash rehomes mon1→mon0 (`window-entered-monitor` render). Force belt reparents but deferred mon0 rehomes / Meta lag empty mon1 after Done |
-| Fix (code, installed dirty) | `_layoutApplyLive` for full ApplyLayout; suppress enter/flush rehome; drop deferred on leave; Meta→tree mon align on Done |
-| Paths | `window.js` `setLayoutApplyLive`; `layout-apply-run.js` `onApplyLive`; `session-api.js` wire + align |
-| L0 | run **28** + settle **31** + H1 R036 rehome gate; related **77** green |
-| Nest | dual open chrome/ghostty map-miss flake (not structure); nest stopped |
-| Host | **Logout required** for tip. Cold not re-run this slice (user apps open; agent Guake). Do **not** claim cold pass without live tree after logout |
-| Task | [forge-layout-cold-apply-structure](./tasks/forge-layout-cold-apply-structure.md) · [R036](./REGRESSIONS.md) |
+| Symptom (historical) | Guake cold: exit 0 while mon1 empty + mon0 thrash. Mid re-apply correct |
+| Product fix path | SM1–SM7 (epoch · in-slot · open-into-slot · machines · focus · overlay · no belt) |
+| **Human** | Logout + login only, then start agents |
+| **Agent** | Full cold: close layout apps, `forge layout dev`, `forge tree`, journal, fix if needed |
+| Task | [forge-layout-cold-host-verify](./tasks/forge-layout-cold-host-verify.md) · [R036](./REGRESSIONS.md) |
+| Prep | Install already run this session; logout loads tip |
 
 ```bash
-./install --kit=vim
-# Wayland: log out and back in, then:
-forge ping   # tip after logout, apiVersion 10
-# true cold (Guake only on desk — close chrome/Grok/ghostty/PWAs first):
+# Human: log out and back in, start agents.
+# Agent then:
+forge ping
 forge layout dev
 forge tree
 # mon0: TABBED(chrome,Grok) | ghostty
 # mon1: ghostty | TABBED(YouTube,Gmail,Voice)
-# journal: no enteredMon rehome applying during apply; soft preferably low corr
-npm test -- tests/unit/extension/layout-apply-run.test.js \
-  tests/unit/extension/layout-apply-settle.test.js \
-  tests/regression/bug-h1-monitor-recovery-workareas-thrash.test.js
 ```
 
 ### Shipped — spinner chrome clear at soft-enter + tab restack
@@ -527,39 +517,37 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**If you are Grok 4.5 med (orchestrator):** assign **SM1** then **SM2**.
-Do **not** re-litigate D039–D043. Do **not** implement SM1–SM4 yourself.
+**If human just logged out/in:** run **P0**
+[forge-layout-cold-host-verify](./tasks/forge-layout-cold-host-verify.md)
+(R036). Human does **not** run layout — you do.
+
+SM1–SM7 implement is **done**. Do **not** re-litigate D039–D043. Do **not**
+reintroduce belt / TILE-anywhere hard / mon-root PlaceNext / soft-enter chrome.
+
 Queue: [PRIORITY](./PRIORITY.md). Plan:
-[slot machines](./plans/forge-layout-slot-machines.md).
+[slot machines](./plans/forge-layout-slot-machines.md) ·
+[completed tasks](./plans/forge-layout-slot-machines/completed/).
 
-**If you are Grok 4.5 high:** implement **SM1** only —
-[ApplyEpoch](./tasks/forge-layout-slot-machines_sm1-apply-epoch.md).
-
-**If you are Grok 4.6 high:** implement the assigned SM2/SM3/SM4 task;
-stop if SM4 is assigned before SM2+SM3 exist in tree.
-
-Human residual: R036 cold after logout. Never call `_layoutOp`. Do **not** put
-`hasLayoutPh` back into `skipWindowStructure`. Do not redesign D036–D043.
+Never call `_layoutOp`. Do **not** put `hasLayoutPh` back into
+`skipWindowStructure`.
 
 **Locked (D039–D043):** slot machines (not per-window); hard = in-slot retry;
 `Done.ok` = required forest match; ApplyEpoch home authority; open into slot;
-overlay through all-hard; group chrome A is tab/FCC.
+overlay through all-hard; belt deleted; group chrome A is tab/FCC.
 
 | You can do | You must not |
 | --- | --- |
-| **4.5 med:** assign SM1 (4.5 high) then SM2 (4.6 high) | Redesign D039–D043; implement SM4 before SM2+SM3 |
-| **4.5 high:** SM1 ApplyEpoch | Tab **code**; `layout_plan.py` → `cli/` |
-| **4.6 high:** SM2 / SM3 / SM4 as tasked | Per-window machines; TILE-anywhere hard as success |
-| Logout → cold `forge layout dev` (R036) | Personal `dev`/`t1` in live matrix; Mode B as cold success |
-| **Plan** tab D0 after **SM7** | Start tab implement before tab planning locks |
-| Promote from [IDEAS](./IDEAS.md) only with a real need | Dual-mon nest by default; reintroduce `skipWindowStructure \|\| hasLayoutPh` |
+| **Cold host verify** (agent owns layout+tree) | Redesign D039–D043; reintroduce belt as happy path |
+| Fix R036 if cold still fails (name phase first) | Personal `dev`/`t1` in live matrix; Mode B as cold success |
+| **Plan** tab D0 after cold green (or parallel if cold blocked) | Start tab **code** before tab planning locks |
+| Optional bag-API review of `layout-apply-slot.js` | Dual-mon nest by default; `layout_plan.py` → `cli/` |
+| Promote from [IDEAS](./IDEAS.md) only with a real need | Reintroduce `skipWindowStructure \|\| hasLayoutPh` |
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | **SM1** ApplyEpoch (4.5 high) | [task](./tasks/forge-layout-slot-machines_sm1-apply-epoch.md) |
-| **P0** | **SM2** in-slot hard (4.6 high; parallel OK) | [task](./tasks/forge-layout-slot-machines_sm2-in-slot-hard.md) |
-| human | **R036** host cold after logout (code shipped) | [task](./tasks/forge-layout-cold-apply-structure.md) |
-| **plan first** | Tab work D0 **after SM7** | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
+| **P0** | **R036 cold host verify** (after logout) | [task](./tasks/forge-layout-cold-host-verify.md) |
+| **plan first** | Tab work D0 (**after SM7** — gate open) | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
+| done | **SM1–SM7** slot machines implement | [completed/](./plans/forge-layout-slot-machines/completed/) |
 | done | **R035** residual ensure_layout while layout PHs (mon1 flat tabs) | [completed](./tasks/completed/forge-layout-residual-tab-ensure.md) |
 | done | **R033** open/launch LFT aspect → VSPLIT/HSPLIT | [completed](./tasks/completed/forge-r033-open-aspect-split.md) |
 | done | R029/R030 green `layout dev` TILE + reuse | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
