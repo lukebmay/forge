@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   matchesPlaceHint,
   metaWmClass,
+  metaHasPlaceIdentity,
   wmClassEqual,
   isChromeBrowserClass,
   isChromePwaClass,
@@ -12,12 +13,18 @@ import {
   normalizePlaceHint,
   pruneExpiredPlaceHints,
   findMatchingPlaceHintIndex,
+  findProvisionalPlaceHintIndex,
   consumePlaceHint,
+  consumeProvisionalPlaceHint,
   enqueuePlaceHint,
   resolvePlaceMonitorIndex,
   isMonRootTreePath,
   placeNextDestKind,
   placeNextHasSlotDest,
+  placeHintHasSlotDest,
+  placeHintIdentityReady,
+  isLoadingPlaceTitle,
+  formatPlaceHint,
   PLACE_HINT_TTL_MS,
   PLACE_HINT_MAX,
 } from "../../../lib/extension/place-hint.js";
@@ -318,6 +325,69 @@ describe("queue consume", () => {
     const q = [{ wmClass: "A", monitor: 0, expiresAt: now + 100 }];
     expect(consumePlaceHint(q, { wm_class: "B" }, now)).toBeNull();
     expect(q).toHaveLength(1);
+  });
+
+  it("R036 provisional FIFO claims oldest slot, skips mon-root-only", () => {
+    const q = [
+      { wmClass: "chrome-a", monitor: 0, expiresAt: now + 100 }, // mon-root only
+      {
+        wmClass: "chrome-b",
+        attachSelector: "id:ph-mon0-s0",
+        monitor: 0,
+        expiresAt: now + 100,
+      },
+      {
+        wmClass: "chrome-c",
+        treePath: "mo1ws0/1",
+        monitor: 1,
+        expiresAt: now + 100,
+      },
+    ];
+    expect(metaHasPlaceIdentity({ wm_class: null, title: null })).toBe(false);
+    expect(metaHasPlaceIdentity({ wm_class: "X" })).toBe(true);
+    expect(placeHintHasSlotDest(q[0])).toBe(false);
+    expect(placeHintHasSlotDest(q[1])).toBe(true);
+    expect(findProvisionalPlaceHintIndex(q, now)).toBe(1);
+    const first = consumeProvisionalPlaceHint(q, now);
+    expect(first.attachSelector).toBe("id:ph-mon0-s0");
+    expect(q).toHaveLength(2);
+    const second = consumeProvisionalPlaceHint(q, now);
+    expect(second.treePath).toBe("mo1ws0/1");
+    expect(consumeProvisionalPlaceHint(q, now)).toBeNull();
+    expect(q).toHaveLength(1);
+    expect(q[0].wmClass).toBe("chrome-a");
+  });
+
+  it("R036 placeHintIdentityReady waits for class and title constraints", () => {
+    const hint = {
+      wmClass: "chrome-bbb-Default",
+      titleContains: "YouTube",
+      attachSelector: "id:ph",
+      monitor: 1,
+    };
+    expect(placeHintIdentityReady({ wm_class: null, title: null }, hint)).toBe(false);
+    expect(placeHintIdentityReady({ wm_class: "chrome-bbb-Default", title: null }, hint)).toBe(
+      false
+    );
+    expect(placeHintIdentityReady({ wm_class: null, title: "YouTube" }, hint)).toBe(false);
+    expect(placeHintIdentityReady({ wm_class: "chrome-bbb-Default", title: "YouTube" }, hint)).toBe(
+      true
+    );
+    // Loading titles are not ready when the hint requires a title (crash thrash).
+    expect(placeHintIdentityReady({ wm_class: "chrome-bbb-Default", title: "New Tab" }, hint)).toBe(
+      false
+    );
+    expect(
+      placeHintIdentityReady({ wm_class: "chrome-bbb-Default", title: "about:blank" }, hint)
+    ).toBe(false);
+    expect(isLoadingPlaceTitle("New Tab")).toBe(true);
+    expect(isLoadingPlaceTitle("YouTube")).toBe(false);
+    expect(formatPlaceHint(hint)).toContain("title~=YouTube");
+    // Class-only hint
+    expect(
+      placeHintIdentityReady({ wm_class: "ghostty" }, { wmClass: "ghostty", monitor: 0 })
+    ).toBe(true);
+    expect(placeHintIdentityReady({ title: "x" }, { wmClass: "ghostty", monitor: 0 })).toBe(false);
   });
 
   it("enqueue caps and prunes", () => {

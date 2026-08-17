@@ -61,10 +61,10 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | --- | --- | --- |
 | **[Canonical contracts](./plans/forge-canonical-contracts.md)** | **P0** IC0–IC3 done | IC4 **skipped** (AL8) |
 | **[CLI → Node](./plans/forge-cli-node.md)** | **Locked** D036 · CN0–CN6 **done** (CN7 skip) | no layout port; CN13 later |
-| **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold host residual (logout) |
-| **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM1–SM7 code done** (uncommitted) | human R036 cold; tab D0 |
-| **[First-class containers](./plans/forge-first-class-containers.md)** | C0+C1 **done** (C1 uncommitted) | Wave Z live residual; C2 later |
-| **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done** (nest live) | TD2 only if peel Model B mismatch |
+| **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold **PASS** |
+| **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM1–SM7 code done** (uncommitted) | D044 shipped |
+| **[First-class containers](./plans/forge-first-class-containers.md)** | C0+C1 **done** (C1 uncommitted) | C2 later |
+| **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done**; TD2/TD3 skip | D044 shipped; TD4 defer |
 | **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
 | **STACKED layouts** | Major product | As PRIORITY allows |
 | `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive; mid-apply TTY death no longer aborts job |
@@ -74,7 +74,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | [forge-codebase-audit](./plans/forge-codebase-audit.md) | Wave 1 + B1 **Done** | B2 optional |
 | [personal fork](./plans/forge-fork-eval/completed/forge-fork-eval_personal-fork.md) | **Done** | lukebmay/forge · lineage `luke` · master |
 
-**Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).  
+**Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).
 **Host `black`:** GNOME Shell 46, X11, dual 4K; **this tree** installed in place (not EGO v89).
 
 ## CLI jobs (agents)
@@ -139,7 +139,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | **Layout settle / cold spine (agents)** | **This file** § Layout apply architecture |
 | Unit / e2e tests | [tests/README.md](../tests/README.md), [tests/e2e/README.md](../tests/e2e/README.md) |
 | User behavior | [docs/user/](../docs/user/) (`layout.md` cold apply steps) |
-| Durable “why” + decisions | [docs/DESIGN.md](../docs/DESIGN.md), [docs/DECISIONS.md](../docs/DECISIONS.md) (D039–D043 apply; D008–D009 forest-first) |
+| Durable “why” + decisions | [docs/DESIGN.md](../docs/DESIGN.md), [docs/DECISIONS.md](../docs/DECISIONS.md) (D039–D044 apply/tabs; D008–D009 forest-first) |
 | Priorities / plans / live matrix | [PRIORITY.md](./PRIORITY.md), [HANDOFF.md](./HANDOFF.md), `agents/plans/` |
 
 ---
@@ -192,7 +192,7 @@ Decisions: **D008–D009** (forest before machines; no Mode B cold), **D014
 superseded** (belt is not product), **D016** (lastTabFocus preserve),
 **D018** (pin), **D019** (hard/soft *ideas*; execution → **D040/D041**),
 **D039–D043** (ApplyEpoch, slot machines, forest-match `ok`, open-into-slot,
-overlay).
+overlay), **D044** (TABBED/STACKED mon-local).
 Plans: [forge-layout-cold-topology](./plans/forge-layout-cold-topology.md),
 [forge-layout-settle-contract](./plans/forge-layout-settle-contract.md),
 [forge-layout-slot-machines](./plans/forge-layout-slot-machines.md).
@@ -201,9 +201,9 @@ Plans: [forge-layout-cold-topology](./plans/forge-layout-cold-topology.md),
 a TILE window **or** a TABBED/STACKED CON), not per-window. ApplyEpoch is the
 only home writer during apply. Hard = **in-slot** (retry N=2). `Done.ok` =
 required forest match (hard-failed → `ok: false`; peers still finish). Open
-into slot; belt deleted (SM6/D042). Group chrome A is tab/FCC, not SM1–SM4.
-Implement: **SM1** (4.5 high) then **SM2** (4.6 high). Do not start SM4
-before SM2+SM3.
+into slot; belt deleted (SM6/D042). Overlay dies at all-hard (D043). Group
+chrome A is the existing CON strip. TABBED/STACKED is mon-local (D044).
+SM1–SM7 + D044 same-mon groups **done**.
 
 ### Problems this architecture solves
 
@@ -284,12 +284,12 @@ class keys only** (no titles, URLs, or personal role names).
 
 ### Rules for future agents (FIRM)
 
-1. **Name the phase** that broke before coding (skeleton \| open \| bind \| order \| size \| focus \| residual).  
-2. **Fix that phase’s contract** so the failure class cannot recur; then **delete** the band-aid that only papered it.  
-3. **No personal-layout product code.** Reproduce with abstract roles or profile JSON; never ship `if role == Grok`.  
-4. **No new cold-path pass** without removing an obsolete one (or documenting why it stays).  
-5. **Temporary** only if the operator **explicitly** asks for temp/stopgap.  
-6. Unit-test pure helpers; **sign off layout** with the **partial reload matrix** below—not unit tests alone.  
+1. **Name the phase** that broke before coding (skeleton \| open \| bind \| order \| size \| focus \| residual).
+2. **Fix that phase’s contract** so the failure class cannot recur; then **delete** the band-aid that only papered it.
+3. **No personal-layout product code.** Reproduce with abstract roles or profile JSON; never ship `if role == Grok`.
+4. **No new cold-path pass** without removing an obsolete one (or documenting why it stays).
+5. **Temporary** only if the operator **explicitly** asks for temp/stopgap.
+6. Unit-test pure helpers; **sign off layout** with the **partial reload matrix** below—not unit tests alone.
 7. Prefer **X11** for agent live tests (`./install` + HUP). **Wayland:** full loop in [testing.md](./testing.md) § Wayland live testing workflow — nest restart between installs; dual-mon on host.
 
 ### Code map (entry points)

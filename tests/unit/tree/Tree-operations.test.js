@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import St from "gi://St";
 import {
   Tree,
@@ -373,6 +373,96 @@ describe("Tree Operations", () => {
 
       expect(group).toBe(con);
       expect(con.childNodes.length).toBe(2);
+    });
+  });
+
+  describe("groupHomeMonitor (D044)", () => {
+    it("returns MONITOR ancestor index for CON and WINDOW", () => {
+      const mon = getWorkspaceAndMonitor(ctx).monitor;
+      const con = ctx.tree.createNode(mon.nodeValue, NODE_TYPES.CON, new Bin());
+      con.layout = LAYOUT_TYPES.TABBED;
+      const win = createMockWindow();
+      const node = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, win);
+
+      expect(ctx.tree.groupHomeMonitor(mon)).toBe(0);
+      expect(ctx.tree.groupHomeMonitor(con)).toBe(0);
+      expect(ctx.tree.groupHomeMonitor(node)).toBe(0);
+      expect(ctx.tree.groupHomeMonitor(null)).toBe(-1);
+    });
+  });
+
+  describe("D044 same-mon groups", () => {
+    let dual;
+
+    beforeEach(() => {
+      dual = createTreeFixture({
+        fullExtWm: true,
+        globals: { display: { monitorCount: 2 } },
+      });
+    });
+
+    afterEach(() => {
+      dual.cleanup();
+    });
+
+    it("merge across mons lands TABBED on focus mon (dest)", () => {
+      const mon0 = getWorkspaceAndMonitor(dual, 0, 0).monitor;
+      const mon1 = getWorkspaceAndMonitor(dual, 0, 1).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+      const win0 = createMockWindow({ id: "focus", monitor: 0, workspace: dual.workspaces[0] });
+      const win1 = createMockWindow({ id: "partner", monitor: 1, workspace: dual.workspaces[0] });
+      const focus = dual.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, win0);
+      const partner = dual.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, win1);
+      focus.mode = WINDOW_MODES.TILE;
+      partner.mode = WINDOW_MODES.TILE;
+
+      expect(dual.tree.groupHomeMonitor(focus)).toBe(0);
+      expect(dual.tree.groupHomeMonitor(partner)).toBe(1);
+
+      const group = dual.tree.mergeWindowsIntoGroup(focus, partner, LAYOUT_TYPES.TABBED);
+
+      expect(group).toBeTruthy();
+      expect(group.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(group.parentNode === mon0 || mon0.contains(group)).toBe(true);
+      expect(focus.parentNode).toBe(group);
+      expect(partner.parentNode).toBe(group);
+      expect(dual.tree.groupHomeMonitor(group)).toBe(0);
+      expect(dual.tree.groupHomeMonitor(partner)).toBe(0);
+      expect(mon1.contains(partner)).toBe(false);
+      expect(mon1.contains(group)).toBe(false);
+    });
+
+    it("TABBED last member mon-move peels that leaf only (LX3)", () => {
+      const mon0 = getWorkspaceAndMonitor(dual, 0, 0).monitor;
+      const mon1 = getWorkspaceAndMonitor(dual, 0, 1).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      mon1.layout = LAYOUT_TYPES.HSPLIT;
+      mon0.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+      mon1.rect = { x: 1920, y: 0, width: 1920, height: 1080 };
+      dual.extWm.currentMonWsNode = mon0;
+      dual.extWm.rectForMonitor.mockReturnValue({ x: 1920, y: 0, width: 960, height: 1080 });
+
+      const tab = new Node(NODE_TYPES.CON, new Bin());
+      tab.layout = LAYOUT_TYPES.TABBED;
+      mon0.appendChild(tab);
+      for (const id of ["a", "b", "nautilus"]) {
+        const w = createMockWindow({ id, monitor: 0, workspace: dual.workspaces[0] });
+        const n = new Node(NODE_TYPES.WINDOW, w);
+        n.mode = WINDOW_MODES.TILE;
+        n.rect = { x: 0, y: 0, width: 400, height: 1080 };
+        tab.appendChild(n);
+      }
+      const node = tab.lastChild;
+
+      const moved = dual.tree.move(node, MotionDirection.RIGHT);
+      expect(moved).toBe(true);
+      expect(mon1.contains(node)).toBe(true);
+      expect(node.parentNode).toBe(mon1);
+      expect(tab.parentNode === mon0 || mon0.contains(tab)).toBe(true);
+      expect(tab.childNodes.length).toBe(2);
+      expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
     });
   });
 

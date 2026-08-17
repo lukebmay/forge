@@ -56,6 +56,31 @@ describe("parseApplyLayoutRequest", () => {
     expect(r.ok).toBe(true);
     expect(r.request.flags.clean).toBe(false);
   });
+
+  it("normalizes tiles sugar so mon tab slots have layout for hard machines", () => {
+    const r = parseApplyLayoutRequest({
+      profile: {
+        tiles: [
+          [{ tab: ["chrome", "Grok"], active: "Grok" }, "ghostty"],
+          [
+            "ghostty",
+            {
+              tab: ["YouTube", "Gmail", "Voice"],
+              active: "YouTube",
+            },
+          ],
+        ],
+      },
+    });
+    expect(r.ok).toBe(true);
+    const mon1 = r.request.profile?.layout?.mon1;
+    expect(mon1).toBeTruthy();
+    const tabChild = (mon1.children || []).find(
+      (c) => c && String(c.layout || "").toLowerCase() === "tabbed"
+    );
+    expect(tabChild).toBeTruthy();
+    expect(tabChild.id).toBeTruthy();
+  });
 });
 
 describe("payload shapes", () => {

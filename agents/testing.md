@@ -99,15 +99,25 @@ Handoff quick ref: `agents/HANDOFF.md` § Nested Wayland / Wayland smoke loop.
 ## Wayland live testing workflow (FIRM when on Wayland)
 
 Use this whenever the login session is **Wayland** and work needs **install / extension
-JS reload / dual-mon desk smoke**. Do **not** invent logout loops for mid-campaign
-retests when `can_nested` is true.
+JS reload / dual-mon desk smoke**.
+
+**Normal reload loop = nest (or X11 HUP). Host logout is occasional, not the
+default.** When `can_nested` is true, agents **must** prove extension JS changes
+in nest before asking the human to log out of the primary session. Do **not**
+treat primary logout/login as the ordinary way to load a dirty tip mid-campaign.
+
+| Rule | Detail |
+| --- | --- |
+| **Nest first** | After `./install` for JS changes: `forge nested run` / `restart` + retest |
+| **Host logout** | Only when nest cannot prove the behavior (true host dual-4K cold / chrome open-leaf RC) **or** occasional tip load after nest already green |
+| **Never** | Invent logout loops for mid-campaign retests when nest works |
 
 ### Two layers (do not conflate)
 
 | Layer | What it proves | Where it runs | How extension code reloads |
 | --- | --- | --- | --- |
-| **A — Nest retest** | Extension loads, DBus Forge works; structure/open/focus retest | Nested Shell window (`forge nested`) | `forge nested restart` (no host logout) |
-| **B — Host dual-mon live** | Real dual 4K desk: layout, open leaf, focus, cold/partial | **Host** Wayland session | Host cannot HUP — tip must already be on host **or** one logout after first install this boot |
+| **A — Nest retest** | Extension loads, DBus Forge works; structure/open/focus retest | Nested Shell window (`forge nested`) | `forge nested restart` / `run` (**default** code→reload; no host logout) |
+| **B — Host dual-mon live** | Real dual 4K desk: layout, open leaf, focus, cold/partial | **Host** Wayland session | Tip already loaded, **or** occasional logout after nest green |
 
 | Also | Role |
 | --- | --- |

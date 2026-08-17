@@ -434,6 +434,36 @@ def client_env(cfg: NestedConfig) -> dict[str, str]:
     }
 
 
+def resolve_host_xauthority(env: Optional[Mapping[str, str]] = None) -> Optional[str]:
+    """Host Xwayland auth cookie for nested gnome-shell embedding.
+
+    Mutter rotates ``.mutter-Xwaylandauth.*`` under ``$XDG_RUNTIME_DIR``. Agent
+    shells (e.g. Guake) often keep a stale ``XAUTHORITY`` path after the cookie
+    file is gone → nest fails with ``Unable to open display ':1'``. Prefer a
+    live cookie path when the current one is missing.
+    """
+    e = dict(env) if env is not None else dict(os.environ)
+    cur = str(e.get("XAUTHORITY") or "").strip()
+    if cur and Path(cur).is_file():
+        return cur
+    rt = runtime_dir()
+    try:
+        cands = sorted(
+            rt.glob(".mutter-Xwaylandauth.*"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+    except OSError:
+        cands = []
+    for p in cands:
+        if p.is_file():
+            return str(p)
+    home_xa = Path.home() / ".Xauthority"
+    if home_xa.is_file():
+        return str(home_xa)
+    return cur or None
+
+
 def shell_start_env(cfg: NestedConfig) -> dict[str, str]:
     """Environment for the nested gnome-shell process itself."""
     env = os.environ.copy()
@@ -442,6 +472,12 @@ def shell_start_env(cfg: NestedConfig) -> dict[str, str]:
     env["WAYLAND_DISPLAY"] = cfg.host_wayland
     env["GDK_BACKEND"] = "wayland"
     env["XDG_SESSION_TYPE"] = "wayland"
+    # Stale Guake/agent XAUTHORITY breaks nest ("Unable to open display").
+    xa = resolve_host_xauthority(env)
+    if xa:
+        env["XAUTHORITY"] = xa
+    else:
+        env.pop("XAUTHORITY", None)
     # N2: forge-specific root only (not full XDG_CONFIG_HOME rewrite).
     ensure_nest_cli_dirs(cfg)
     env["FORGE_HOST"] = nest_forge_host(cfg.name)

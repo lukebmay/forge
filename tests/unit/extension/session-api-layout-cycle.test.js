@@ -92,6 +92,35 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(nGhost.userSized).toBe(true);
   });
 
+  it("R036 setLayout structure: lift nested H/V bag then TABBED wrap (no flatten refuse)", () => {
+    // Free-open aspect-split shape: mon → HSPLIT CON → [chrome, VSPLIT→Grok]
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const bag = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    bag.layout = LAYOUT_TYPES.HSPLIT;
+    const chrome = createMockWindow({ id: 101, wm_class: "google-chrome" });
+    const grok = createMockWindow({
+      id: 102,
+      wm_class: "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+    });
+    const nChrome = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, chrome);
+    const inner = wm().tree.createNode(bag.nodeValue, NODE_TYPES.CON, new Bin());
+    inner.layout = LAYOUT_TYPES.VSPLIT;
+    const nGrok = wm().tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, grok);
+    nChrome.mode = WINDOW_MODES.TILE;
+    nGrok.mode = WINDOW_MODES.TILE;
+
+    // Old refuse: parent bag has nested CON → ensure-flatten-refused
+    const out = api()._setLayoutStructureOp("tabbed", "id:101", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(out.error).toBeUndefined();
+    const liveChrome = wm().tree.findNode(chrome);
+    const tabParent = liveChrome?.parentNode;
+    expect(tabParent).toBeTruthy();
+    expect(tabParent.isMonitor?.() || tabParent.nodeType === NODE_TYPES.MONITOR).toBe(false);
+    expect(tabParent.layout).toBe(LAYOUT_TYPES.TABBED);
+  });
+
   it("layout TABBED re-affirm preserves valid lastTabFocus (belt anchor ≠ active)", () => {
     // Belt ensure_layout anchors on first role (chrome); profile active is Grok.
     const { con, w1, w2 } = twoWindowTabbed();

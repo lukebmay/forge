@@ -1,53 +1,70 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-16 (SM1–SM7 shipped; agent cold verify next)  
-**Branch:** **`master`** (default).  
-**Sessions:** **Wayland** daily driver; nest for **code→reload** loops only (default **1 mon**).  
-**Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.  
-**Jobs (shipped):** Mutating `forge` durable by default.  
-**Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.  
-**Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).  
-**Repo tip:** SM1–SM7 slot machines (commit this session). Disk: `./install --kit=vim` done; host tip after **logout**.  
-**Host Shell tip (live):** **logout once** to load install (Wayland).  
-**Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).  
-**Queue (agent):** After human logout+login → **P0** [cold host verify](./tasks/forge-layout-cold-host-verify.md). Then tab D0 plan. SM1–SM7 [completed](./plans/forge-layout-slot-machines/completed/).  
-**Queue (human):** **Logout + login only**, then start agents. Do **not** run layout yourself. [IDEAS](./IDEAS.md).
+**Updated:** 2026-08-16 (D044 same-mon TABBED/STACKED shipped)
+**Branch:** **`master`** (default).
+**Sessions:** **Wayland** daily driver (Guake agent this session).
+**Retest (FIRM):** **Nest is the code→reload loop.** Primary logout is **rare** (tip load only after nest already green). Default nest **1 mon**; dual only when multi-mon is under test. Stale Guake `XAUTHORITY` used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
+**Agent terminal:** Durable **Grok leader** for true cold (closes agent TILE). Guake/float also OK.
+**Jobs (shipped):** Mutating `forge` durable by default.
+**Layouts for tests:** only **`_forge-test-*`** — never personal `dev` / `t1` in matrix.
+**Nest design:** [D022](../docs/DECISIONS.md) · [plan](./plans/forge-nested-isolation.md) · [D0](./tasks/completed/forge-nested-isolation_d0-discussion.md).
+**Repo tip:** SM1–SM7 + R036 + D044 (group home/normalize). Still **uncommitted** dirty on disk; host live tip after reinstall/logout: `…-gf30e8c9-dirty` apiVersion 10.
+**Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
+**Queue (agent):** Open — optional bag-API review; FCC C2; TD4 docs. D044 [completed](./tasks/completed/forge-tab-groups-same-mon.md).
+**Queue (human):** Optional commit when ready. [IDEAS](./IDEAS.md).
 
-**Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.  
+**Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.
 **Lens (FIRM):** **Size is a symptom, not the disease.** Prefer healthy abstractions and tests over “make the file smaller.”
+
+### Shipped — D044 same-mon TABBED/STACKED
+
+| Field | Detail |
+| --- | --- |
+| Product | TABBED/STACKED CON is mon-local; no spanning chrome |
+| APIs | `tree.groupHomeMonitor` · `wm.normalizeGroupToHomeMonitor` · merge rehome+join |
+| Paths | `tree.js` · `window.js` · `command.js` · `session-api.js` · `drag-drop.js` |
+| L0 | tree ops + DnD + normalize + LX3 + H1 **159** green |
+| Nest | not required (structure unit-proven) |
+| Task | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |
+| Do not | Auto-peel on mix; Meta `sameParentMonitor` as home; profile span sugar |
 
 ### Shipped — SM1–SM7 slot machines
 
 | Field | Detail |
 | --- | --- |
-| Locked | Slot **not** window; hard = **in-slot**; `Done.ok` = required forest match; belt **deleted** (SM6/D042); overlay = all-hard (SM7); group chrome A = tab/FCC |
-| Decisions | [D039–D043](../docs/DECISIONS.md) · [plan](./plans/forge-layout-slot-machines.md) |
+| Locked | Slot **not** window; hard = **in-slot**; `Done.ok` = required forest match; belt **deleted** (SM6/D042); overlay = all-hard (SM7); group chrome A = existing CON strip |
+| Decisions | [D039–D044](../docs/DECISIONS.md) · [plan](./plans/forge-layout-slot-machines.md) |
 | Bags | `layout-apply-epoch.js` · `layout-apply-slot.js` · settle in-slot/forest-match · open-into-slot dest |
 | Tasks | [completed/](./plans/forge-layout-slot-machines/completed/) SM1–SM7 |
 | L0 | Combined SM suite **235** green |
-| Nest | mon=1 `_forge-test-clean` **PASS**; ghosttys cold open-miss residual |
-| Next | **Agent** cold host verify after logout · then tab D0 plan |
-| Do not | Restore belt; Mode B as cold success; claim R036 cold PASS without live tree; tab **code** before tab D0 locks |
+| Nest | mon=1 clean **PASS**; mon=2 ghosttys **PASS** (re-apply after clean) |
+| Host cold | **PASS** 2026-08-16 — see R036 shipped below |
+| Next | Queue open (FCC C2 / bag review / TD4) |
+| Do not | Restore belt; Mode B as cold success; spanning tab chrome; overlay before all-hard |
 
-### Hot — R036 cold host verify (**agent task**)
+### Shipped — R036 cold host SEGV + forest match
 
 | Field | Detail |
 | --- | --- |
-| Symptom (historical) | Guake cold: exit 0 while mon1 empty + mon0 thrash. Mid re-apply correct |
-| Product fix path | SM1–SM7 (epoch · in-slot · open-into-slot · machines · focus · overlay · no belt) |
-| **Human** | Logout + login only, then start agents |
-| **Agent** | Full cold: close layout apps, `forge layout dev`, `forge tree`, journal, fix if needed |
-| Task | [forge-layout-cold-host-verify](./tasks/forge-layout-cold-host-verify.md) · [R036](./REGRESSIONS.md) |
-| Prep | Install already run this session; logout loads tip |
+| Host deaths (pre-fix) | Jobs `…-f380d0` + `…-af18e4` (`layout dev` → NoReply / session death) |
+| Stack | `trackWindow` → PlaceNext sticky **move:true** → `move_to_monitor` SEGV on null chrome |
+| Fix | No map-time PlaceNext Meta move; late tree + **idle** move; loading titles not ready; place-hint INFO |
+| L0 | place-hint + open-app-policy + layout-cycle + apply-run **128** green |
+| Nest | mon=1 clean PASS; mon=2 ghosttys PASS (sticky **move=false** + late idle) |
+| Host cold | `forge layout dev` **ok** · open 7/7 · verify match · chrome clear **all-hard** |
+| Host tree | mon0 TABBED(Chrome,Grok)\|ghostty; mon1 ghostty\|TABBED(YouTube,Gmail,Voice) |
+| Task | [completed](./tasks/completed/forge-layout-cold-host-verify.md) · [R036](./REGRESSIONS.md) |
 
 ```bash
-# Human: log out and back in, start agents.
-# Agent then:
-forge ping
-forge layout dev
-forge tree
-# mon0: TABBED(chrome,Grok) | ghostty
-# mon1: ghostty | TABBED(YouTube,Gmail,Voice)
+# Nest prove (code loop):
+./install --kit=vim
+forge nested --monitors=1 run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
+forge nested --monitors=2 start --replace
+forge nested exec -- env FORGE_JOB=0 forge layout _forge-test-ghosttys
+rg 'place-hint' ~/.local/state/forge/nested/forge/shell.log | tail -40
+forge nested stop
+# Host cold (tip already loaded):
+forge layout dev && forge tree
 ```
 
 ### Shipped — spinner chrome clear at soft-enter + tab restack
@@ -57,7 +74,7 @@ forge tree
 | Symptom | Spinner stays long; tab click often fails to activate app |
 | Fix | Clear chrome at **soft-enter** (before quiet). Restack strips on chrome clear |
 | Host mid | Soft quiet logs `chrome cleared`; mid layout ok on tip `g0a8e4a8` this session |
-| Residual | Eyes-on tab click after cold tip load (logout) |
+| Residual | **Superseded by D043/SM7:** overlay now dies at **all-hard**, not soft-enter. Tab D0: no extra chrome implement unless leftover actor after `all-hard` |
 
 ```bash
 journalctl --user -b --no-pager | rg 'Forge.*(chrome|soft-enter|restack|_activateFromTab)' | tail -40
@@ -475,7 +492,7 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Code | `workareas-policy.js` + `monitor-recovery.js` graduated settle |
 | Guards | L0 `workareas-policy` + `bug-r016-noop-workareas-no-thrash`; live `--tags R016` |
 | Residual | Automated ApplyMonitorsConfig inject not in harness; manual gdisplays smoke |
-| Related | Cross-mon tabs D0: [forge-tab-groups-cross-mon_d0-discussion](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
+| Related | Cross-mon tabs **D044** (unsupported product): [same-mon](./tasks/forge-tab-groups-same-mon.md) |
 
 ---
 
@@ -496,6 +513,8 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | CLI language (D036) | Node under `cli/`; `lib/shared/` gi-free; Python router until CN13; **no** layout port to `cli/` |
 | Layout rearch (D037–D043) | ApplyLayout in-process **done**. Slot machines **locked**. IC4 skip |
 | Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling. Join leftover 1-child H/V as the slot (R028). Orientation from slot rect |
+| TABBED/STACKED mon (D044) | Mon-local. Mixed members rehome to CON MONITOR ancestor (keep group). Join = move-then-join onto dest. One-tab mon-move peels that leaf. No span chrome |
+| Overlay (D043) | Dies at all-hard (or cancel/error). Soft does not keep it. Existing CON strip is group chrome A |
 | Focus | Post-settle phase; open-leaf pin on steal (D018); user reveal adopts the pin (R026) |
 | Unfocus key (`Ctrl+Super+Esc`) | **Abandoned** — not product; keybind unbound |
 | Close → focus | **Kept** (FC1) — LFT/sibling restore |
@@ -517,12 +536,15 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**If human just logged out/in:** run **P0**
-[forge-layout-cold-host-verify](./tasks/forge-layout-cold-host-verify.md)
-(R036). Human does **not** run layout — you do.
+**Next:** queue open — optional bag-API review of `layout-apply-slot.js`,
+FCC C2, or TD4 docs. D044 same-mon groups
+[completed](./tasks/completed/forge-tab-groups-same-mon.md). Tab D0
+[locked](./tasks/forge-tab-work-planning.md). SM1–SM7 + R036 cold host
+are **done**.
 
-SM1–SM7 implement is **done**. Do **not** re-litigate D039–D043. Do **not**
-reintroduce belt / TILE-anywhere hard / mon-root PlaceNext / soft-enter chrome.
+Do **not** re-litigate D039–D044. Do **not** reintroduce belt / TILE-anywhere
+hard / mon-root PlaceNext / soft-enter chrome / map-time PlaceNext
+`move_to_monitor` / spanning tab chrome.
 
 Queue: [PRIORITY](./PRIORITY.md). Plan:
 [slot machines](./plans/forge-layout-slot-machines.md) ·
@@ -531,27 +553,28 @@ Queue: [PRIORITY](./PRIORITY.md). Plan:
 Never call `_layoutOp`. Do **not** put `hasLayoutPh` back into
 `skipWindowStructure`.
 
-**Locked (D039–D043):** slot machines (not per-window); hard = in-slot retry;
+**Locked (D039–D044):** slot machines (not per-window); hard = in-slot retry;
 `Done.ok` = required forest match; ApplyEpoch home authority; open into slot;
-overlay through all-hard; belt deleted; group chrome A is tab/FCC.
+overlay through all-hard; belt deleted; group chrome A is existing CON strip;
+TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`).
 
 | You can do | You must not |
 | --- | --- |
-| **Cold host verify** (agent owns layout+tree) | Redesign D039–D043; reintroduce belt as happy path |
-| Fix R036 if cold still fails (name phase first) | Personal `dev`/`t1` in live matrix; Mode B as cold success |
-| **Plan** tab D0 after cold green (or parallel if cold blocked) | Start tab **code** before tab planning locks |
-| Optional bag-API review of `layout-apply-slot.js` | Dual-mon nest by default; `layout_plan.py` → `cli/` |
-| Promote from [IDEAS](./IDEAS.md) only with a real need | Reintroduce `skipWindowStructure \|\| hasLayoutPh` |
+| Optional bag-API review of `layout-apply-slot.js` | Redesign D039–D044; reintroduce belt as happy path |
+| Nest for JS retest (default mon=1) | Personal `dev`/`t1` in live matrix; Mode B as cold success |
+| Promote from [IDEAS](./IDEAS.md) only with a real need | Dual-mon nest by default; `layout_plan.py` → `cli/` |
+| Commit dirty tip when human asks | Reintroduce map-time PlaceNext `move_to_monitor`; spanning tab chrome |
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| **P0** | **R036 cold host verify** (after logout) | [task](./tasks/forge-layout-cold-host-verify.md) |
-| **plan first** | Tab work D0 (**after SM7** — gate open) | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
+| done | Same-mon TABBED/STACKED (D044) | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |
+| done | Tab work D0 lock | [forge-tab-work-planning](./tasks/forge-tab-work-planning.md) |
+| done | **R036** nest multi-open + host cold | [completed](./tasks/completed/forge-layout-cold-host-verify.md) |
 | done | **SM1–SM7** slot machines implement | [completed/](./plans/forge-layout-slot-machines/completed/) |
 | done | **R035** residual ensure_layout while layout PHs (mon1 flat tabs) | [completed](./tasks/completed/forge-layout-residual-tab-ensure.md) |
 | done | **R033** open/launch LFT aspect → VSPLIT/HSPLIT | [completed](./tasks/completed/forge-r033-open-aspect-split.md) |
 | done | R029/R030 green `layout dev` TILE + reuse | [completed](./tasks/completed/forge-layout-green-reuse-double.md) |
-| done | TD1 strip reorder code + nest live | [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
+| done | TD1 strip reorder · TD2/TD3 skip | [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
 | done | R025 / R026 host live | [R025](./tasks/forge-tab-click-slot.md) · [R026](./tasks/forge-tab-click-pin-adopt.md) |
 | done | R028 late-identity wrap nest + host | [task](./tasks/forge-container-insert-a.md) |
 | done | CN0–CN6 | [completed/](./plans/forge-cli-node/completed/) |
@@ -561,7 +584,7 @@ overlay through all-hard; belt deleted; group chrome A is tab/FCC.
 | done | **R032** tab-strip click dead (Done restack-only) | [completed](./tasks/completed/forge-tab-click-unresponsive.md) |
 | done | **R031** float-border ghost | [completed](./tasks/completed/forge-float-border-ghost-tile.md) |
 | done | R019 CENTER · R020 VLC EOS nest · IC4 skipped · FCC C0/C1 | HANDOFF / REGRESSIONS |
-| later | Soft polish · L1 scale smoke · STACKED/resize | [PRIORITY](./PRIORITY.md) · [IDEAS](./IDEAS.md) |
+| later | Soft polish · L1 scale smoke · STACKED/resize · TD4 docs | [PRIORITY](./PRIORITY.md) · [IDEAS](./IDEAS.md) |
 | done | Wayland RC R013/R014 + nest isolation N1–N4 + lifecycle W1–W5 | [REGRESSIONS](./REGRESSIONS.md) |
 
 ### Plan map
@@ -573,10 +596,10 @@ overlay through all-hard; belt deleted; group chrome A is tab/FCC.
 | [forge-canonical-contracts.md](./plans/forge-canonical-contracts.md) | **P0** job→API catalog; IC1–IC3 |
 | [docs/dev/contracts.md](../docs/dev/contracts.md) | Canonical APIs — extend these first |
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |
-| [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 done — [completed](./plans/forge-tab-chrome-drag/completed/forge-tab-chrome-drag_td1-strip-reorder.md) |
+| [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 done; TD2/TD3 skip; TD4 defer |
 | [forge-cli-node.md](./plans/forge-cli-node.md) | Node CLI CN0 done; CN1–CN6; no layout port |
 | [forge-layout-in-process.md](./plans/forge-layout-in-process.md) | ApplyLayout AL0–AL8 **done** |
-| [forge-layout-slot-machines.md](./plans/forge-layout-slot-machines.md) | **P0** SM0 locked · SM1–SM7 implement |
+| [forge-layout-slot-machines.md](./plans/forge-layout-slot-machines.md) | **P0** SM0 locked · SM1–SM7 implement **done** |
 | [forge-layout-settle-contract.md](./plans/forge-layout-settle-contract.md) | D019 baseline; timeout-continue → D040 |
 
 ### R015 (empty-mon drag) — shipped in tree
@@ -671,10 +694,10 @@ forge nested stop
 forge nested status   # want: running: False
 ```
 
-**Prefer** `forge nested run -- …` for one-shot campaigns.  
-Use `exec` / `restart` only when the nest must stay up for multi-step work; **still stop** when done.  
-**Never** leave nest env on durable agent shells.  
-**Default** mon=1. Dual only: `--monitors=2` when testing dual-mon behavior.  
+**Prefer** `forge nested run -- …` for one-shot campaigns.
+Use `exec` / `restart` only when the nest must stay up for multi-step work; **still stop** when done.
+**Never** leave nest env on durable agent shells.
+**Default** mon=1. Dual only: `--monitors=2` when testing dual-mon behavior.
 Nest client + Shell env: `FORGE_HOST=…-sub-…`, `FORGE_CONFIG_HOME=<session>/forge-config` (N1/N2).
 
 ### Headless / true cold
@@ -712,6 +735,7 @@ No-code smoke → **host** only (no nest).
 | Mode B as cold success | Forbidden |
 | Personal layouts in live matrix | Use `_forge-test-*` only |
 | Separate UNIX nest user (v1) | Rejected until data-root isolation fails |
+| Cross-mon TABBED/STACKED as product | **D044** — mon-local only |
 
 ---
 
@@ -720,6 +744,8 @@ No-code smoke → **host** only (no nest).
 | Doc | Role |
 | --- | --- |
 | [PRIORITY.md](./PRIORITY.md) | Queue |
+| [tab D0](./tasks/forge-tab-work-planning.md) | Tab locks (done) |
+| [same-mon](./tasks/forge-tab-groups-same-mon.md) | D044 implement |
 | [nest isolation](./plans/forge-nested-isolation.md) | Nest isolation v1 (**done**) |
 | [Wayland RC suite](./plans/forge-wayland-rc-test-suite.md) | RC procedure (cleared) |
 | [lifecycle abstractions](./plans/forge-lifecycle-abstractions.md) | Health (done scope) |

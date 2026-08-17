@@ -1,61 +1,70 @@
 # forge-tab-groups-cross-mon_d0-discussion — Tab/stack groups that straddle monitors
 
-**Status:** ready  
-**Plan:** (none) — design discussion only  
-**Branch:** master (default)  
-**Blocker:** (none)  
-**Priority:** later — folded into [tab planning](./forge-tab-work-planning.md) agenda §2  
+**Status:** done (locked 2026-08-16)
+**Plan:** (none) — lock also in
+[tab planning](./forge-tab-work-planning.md) · [D044](../../docs/DECISIONS.md)
+**Branch:** master (default)
+**Blocker:** (none)
+**Priority:** folded into tab D0 — implement
+[same-mon](./forge-tab-groups-same-mon.md)
 **Updated:** 2026-08-16
-
----
 
 ## Goal
 
-Capture a **design lock** for TABBED/STACKED (and nested CON) groups whose members live on **different monitors** — intentional multi-mon tab groups, peel after thrash, or “app spanning monitors.” **No implementation in this task.**
+Design lock for TABBED/STACKED groups whose members live on different
+monitors. **No implementation in this task.**
 
----
+## Lock (2026-08-16)
 
-## Why this exists
+**Unsupported as product.** One TABBED/STACKED CON = one monitor
+(one strip + one pane + one slot). No spanning chrome. A single app
+across heads is FLOAT/Meta, not a tab group.
 
-R016 / display-settle work assumed mon-scoped forests. Monitor-recovery already **majority-aligns** outermost STACKED/TABBED targets so a group migrates as a unit during thrash — that is a **survival** rule, not a product feature for intentional cross-mon tabs.
+**Survival only:** H1 majority-align
+(`alignMonitorRecoveryGroupTargets`); R016 mon-loss collect-to-end as
+a group. Do not change those defaults.
 
-Operator note (2026-08-11): “I didn’t know tab groups could straddle monitors. We probably need a design discussion on how to handle that (if someone wants an app to span monitors).”
+**Normalize:** mixed-mon members rehome to the CON’s MONITOR ancestor;
+keep the group; do not auto-peel. Home is the **tree** ancestor, not
+Meta `get_monitor()`.
 
----
+**Join across mons:** move-then-join onto dest (DnD CENTER +
+`merge-group`). One-tab keyboard mon-move peels that leaf (LX3).
+Whole-group move is FCC C4 later. No profile span sugar.
 
-## Discussion agenda (fill during D0)
+**Human lock:** operator asked because straddles were surprising
+(2026-08-11). D0 treats that as “should not happen,” not “build span.”
 
-1. **Is cross-mon TABBED/STACKED a supported product feature**, or only an accidental thrash state?
-2. If supported: how does chrome (tab strip) render across heads? Focus / open-leaf? DnD join across mons?
-3. If unsupported: **normalize** on detect — force group onto one mon (which?), or forbid join across mons in drag/keyboard?
-4. Interaction with **mon-loss collect** (collect-to-end-of-survivor as group) and H1 majority-align.
-5. Session layout / layout profiles: portable mon fields per leaf already exist — any sugar for “span”?
-6. Tests: L0 cases for peel vs intentional join; live only if product-on.
+## Agenda (closed)
 
----
+1. Supported product? **No** — accidental / thrash only.
+2. Chrome / open-leaf / DnD across heads? **No** spanning strip.
+   Join = dest-mon merge. Open-leaf stays `lastTabFocus` on that CON.
+3. Normalize: **yes** — all members → CON MONITOR ancestor.
+4. Mon-loss collect + H1: **unchanged**.
+5. Profile span sugar: **none**.
+6. Tests: L0 peel vs dest-mon join on the implement task. Live only
+   if that slice needs nest `--monitors=2`.
 
 ## Acceptance
 
-- [ ] Options + **recommendation** written in this file (or linked plan) after human discussion.
-- [ ] Explicit **user lock** on supported vs unsupported.
-- [ ] Follow-up implement tasks drafted only after lock.
-- [ ] No production code required for D0 completion.
-
----
+- [x] Options + recommendation written
+- [x] Explicit lock: unsupported + normalize
+- [x] Follow-up implement:
+      [forge-tab-groups-same-mon](./forge-tab-groups-same-mon.md)
+- [x] No production code in this D0 file
 
 ## Non-goals
 
-- Implementing cross-mon tab chrome.
-- Changing mon-loss collect default (collect missing mon → end of survivor tree as group — locked under R016).
-
----
+- Implementing cross-mon tab chrome (rejected).
+- Changing mon-loss collect default (R016 locked).
 
 ## Context for the next agent
 
-- H1 majority-align: `MonitorRecoveryManager.alignMonitorRecoveryGroupTargets` — thrash survival only.
-- Mon-loss product (R016): collect dead mon apps to **end of survivor mon tree as a group**; new mon stays empty; no H/V geometry inference.
-- Related: [forge-monitor-noop-apply-thrash](./forge-monitor-noop-apply-thrash.md), DESIGN § Monitor-recovery (H1).
+Implement [same-mon](./forge-tab-groups-same-mon.md). Full write-up:
+[tab planning](./forge-tab-work-planning.md).
 
 ## Session note
 
-**2026-08-11:** Opened from R016 display-settle product discussion. Design only.
+**2026-08-16:** Tab D0 locked unsupported + D044 normalize. Implement
+task opened. Historical open note 2026-08-11 superseded by the lock.

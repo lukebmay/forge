@@ -40,8 +40,7 @@ See [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) �
 
 | Item | Home |
 | --- | --- |
-| Cross-mon TABBED/STACKED design | [tab planning](./tasks/forge-tab-work-planning.md) · [cross-mon D0](./tasks/forge-tab-groups-cross-mon_d0-discussion.md) |
-| Tab chrome / hover-spinner residual | [tab planning](./tasks/forge-tab-work-planning.md) |
+| TD4 tab-drag user-docs one-liner | [tab-chrome-drag](./plans/forge-tab-chrome-drag.md) — after D044 |
 | STACKED layouts | [forge-stacked-layouts.md](./plans/forge-stacked-layouts.md) |
 | Resize + autotile | [plan](./plans/forge-resize-and-autotile.md) · [blocker](./blockers/resize-autotile-design.md) |
 
@@ -54,3 +53,5 @@ See [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) �
 | `Ctrl+Super+Esc` unfocus (FC2) | Abandoned; keybind unbound |
 | Mode B as cold success | Forbidden |
 | Personal `dev`/`t1` in live matrix | Use `_forge-test-*` only |
+| Cross-mon TABBED/STACKED as product | **D044** — mon-local only; no spanning chrome |
+| Overlay clear before all-hard | **D043** — spinner is not soft |

@@ -1,25 +1,26 @@
 # Plan: Browser-like tab chrome drag
 
-**Status:** TD1 **done** (code + nest live); TD2–TD4 triage in tab D0  
-**Priority:** P1 product chrome — next batch via [tab planning](../tasks/forge-tab-work-planning.md)  
-**Created:** 2026-08-06  
-**Updated:** 2026-08-16  
-**Branch:** `master` (do not open `plan/forge-tab-chrome-drag`)  
+**Status:** TD1 **done**; TD0/TD2/TD3 **skip**; TD4 **defer** (Tab D0)
+**Priority:** P1 product chrome — D0 lock
+[tab planning](../tasks/forge-tab-work-planning.md)
+**Created:** 2026-08-06
+**Updated:** 2026-08-16
+**Branch:** `master` (do not open `plan/forge-tab-chrome-drag`)
 **Locks:** [insert + drag table](../tasks/forge-container-insert-dnd-design.md)
-(D032) · D023 child list · D024 drop-intent · D025 reveal
+(D032) · D023 child list · D024 drop-intent · D025 reveal · D044 mon-local
 
 ### Session note (overwrite)
 
-**2026-08-16:** Further tab work (TD2–4, hover-spinner residual, cross-mon)
-goes through [tab planning](../tasks/forge-tab-work-planning.md) with a
-high-reasoning model **before** implement. Do not start tab code until that
-locks.
+**2026-08-16 Tab D0:** TD0 skip (grab trusted). TD2 **skip** (LX4/TD1 peel
+= Model B wrap-in-slot). TD3 **skip** (CENTER join shipped). TD4 **defer**
+until D044 same-mon ships. Next tab code is
+[same-mon](../tasks/forge-tab-groups-same-mon.md), not TD2–TD3.
 
 **2026-08-14 (TD1 live PASS):** Nest tip `gb280f94` — 3 zenity TABBED,
 strip reorder middle→end, peel → mon HSPLIT + 2-tab remainder. Host
 pointer smoke not run (no xdotool; Shell.Eval off). Task →
 [completed](./completed/forge-tab-chrome-drag_td1-strip-reorder.md).
-Do not invent a second DnD engine. TD2 only if peel Model B mismatch.
+Do not invent a second DnD engine.
 
 **2026-08-14 (TD1 code):** Strip reorder in `drag-drop.js`
 (`tabStripInsertIndex` + arm/motion/release). L0 131 green.
@@ -35,15 +36,15 @@ Expected UX (browser tab model + locked drag table):
 
 | Gesture | Intent | Today |
 | --- | --- | --- |
-| Drag tab **along the strip** | **Reorder** siblings in that TABBED/STACKED CON (`replaceChildren`); percents travel | Missing — after 8px becomes window grab |
+| Drag tab **along the strip** | **Reorder** siblings in that TABBED/STACKED CON (`replaceChildren`); percents travel | **TD1 done** |
 | Drag tab **off** the strip onto a tile CENTER | **Join** (`mergeWindowsIntoGroup`) | LX4 grab + D024 |
 | Drag tab/window onto a tile **edge** | **Slot-split** the target (D032) | LX4 + insert A |
 | Drop on empty monitor | Leaf-only (R022) | shipped |
-| Peel with no target | Model B wrap-in-slot (locked) | LX4 edge wrap path |
+| Peel with no target | Model B wrap-in-slot (locked) | LX4 / TD1 peel path |
 | Click without drag | Reveal only (`revealGroupChild`) | LF2 + R025/R026 |
 
 Window titlebar grab already does join / slot-split / empty-mon.
-Tabs must **reuse** that path when the pointer leaves the strip.
+Tabs reuse that path when the pointer leaves the strip.
 
 ## Depends on (do not start TD1 early)
 
@@ -57,7 +58,7 @@ Tabs must **reuse** that path when the pointer leaves the strip.
 
 ## Non-goals (v1)
 
-- Cross-mon TABBED as a product (separate D0).
+- Cross-mon TABBED as a product (**D044 rejected** — mon-local only).
 - Firefox pinned tabs / OS-level tear-off windows.
 - Replacing keybind move/swap.
 - New drop-zone geometry (use `drop-zones.js` / `drop-intent.js`).
@@ -68,11 +69,11 @@ Tabs must **reuse** that path when the pointer leaves the strip.
 
 | ID | Work | Agent | Status |
 | --- | --- | --- | --- |
-| **TD0** | Live inventory on tip: LX4 grab from a tab vs titlebar (join / edge / empty mon). Write 10-line note in this file if anything differs | `grok-4.5` low, or skip if operator already knows grab works | draft |
+| **TD0** | Live inventory tab vs titlebar grab | — | **skip** (Tab D0) |
 | **TD1** | Strip reorder — [completed](./completed/forge-tab-chrome-drag_td1-strip-reorder.md) | `grok-4.5` medium | **done** (code + nest live) |
-| **TD2** | Peel-out — **only** if TD0/TD1 shows LX4 edge wrap ≠ locked Model B | `grok-4.6` | later / maybe skip |
-| **TD3** | Join another strip — **only** if LX4 CENTER miss | `grok-4.5` medium | later / maybe skip |
-| **TD4** | User docs + cheatsheet one-liner | `grok-4.5` low | after TD1 |
+| **TD2** | Peel-out if LX4 ≠ Model B | — | **skip** (Tab D0) |
+| **TD3** | Join another strip if CENTER miss | — | **skip** (Tab D0) |
+| **TD4** | User docs + cheatsheet one-liner | `grok-4.5` low | **defer** (after D044) |
 
 ---
 
@@ -134,8 +135,7 @@ new drop-intent rule or a second grab path, **stop** and escalate
       (existing LX4 path; leave-strip → grab unit-tested)
 - [x] Click without drag still R025/R026 (arm path unchanged)
 - [x] L0: `npm test --` tab-drag + drag-drop + reveal/pin + strip-reorder
-- [ ] Live (after `./install` + nest or logout): 3-tab group,
-      reorder, then peel one onto an edge (slot-split)
+- [x] Live nest: 3-tab reorder, then peel one onto an edge
 
 ```bash
 npm test -- tests/unit/extension/drop-intent.test.js \
@@ -156,5 +156,6 @@ npm test -- tests/unit/extension/drop-intent.test.js \
   [forge-layout-live-x11_lx4-tab-drag](./forge-layout-live-x11/completed/forge-layout-live-x11_lx4-tab-drag.md)
 - Insert / drag lock:
   [forge-container-insert-dnd-design](../tasks/forge-container-insert-dnd-design.md)
+- Tab D0: [forge-tab-work-planning](../tasks/forge-tab-work-planning.md)
 - Do not mix: [forge-layout-in-process](./forge-layout-in-process.md),
   [FCC Wave C](./forge-first-class-containers.md)

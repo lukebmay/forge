@@ -7,7 +7,7 @@ are how we get directional DnD no-ops and un-restored VLC geometry.
 
 Formulas for focus/structure/open: [actions.md](actions.md).
 Architecture: [architecture.md](architecture.md). Why: [DESIGN.md](../DESIGN.md).
-Decisions: [DECISIONS.md](../DECISIONS.md) (D018–D019, D023–D026, D037–D043).
+Decisions: [DECISIONS.md](../DECISIONS.md) (D018–D019, D023–D026, D037–D044).
 Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.md).
 
 ---
@@ -37,6 +37,8 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | **Show a child in a TABBED/STACKED group** | `wm.revealGroupChild(node, { keyboard, pin })` (includes slot reassert R025 + adopt live pin R026) | `parent.lastTabFocus =` + `raise()` in a new file |
 | Pin open leaf during layout residual | `wm.pinLayoutOpenLeaf` / `restoreLayoutOpenLeafIfStolen` | Adopt Meta steal as the new leaf |
 | Group two windows as tabs/stack | `tree.mergeWindowsIntoGroup(a, b, layout)` | Flip `parent.layout` in DnD/command |
+| **TABBED/STACKED group home mon** | `tree.groupHomeMonitor(con)` → tree MONITOR index (`treeMonitorIndexOfNode`) | Meta `get_monitor()` / `sameParentMonitor` as home (can lie mid-thrash) |
+| **Normalize mon-local group (D044)** | `wm.normalizeGroupToHomeMonitor(con)` / `wm.normalizeTabGroupsToHomeMonitors()` — rehome Meta members to CON MONITOR ancestor; **keep group** (no auto-peel) | Auto-peel on mix; spanning chrome; profile span sugar |
 | **Change CON layout mode** | `tree.setLayout(con, layout, opts?)` / `Node.setLayout` (I1: no reparent/flatten; optional `lastTabFocus`, `resetPercents` on H↔V) | Assign `parent.layout`; silent `replaceChildren` / flatten nested CONs for mode change |
 | Split a leaf H/V | `tree.split(node, orientation)` | Hand-built CON + splice |
 | Slot-split focused/target unit (D032) | `tree.slotSplitUnit` / `wm.slotSplitForInsert` / leftover 1-child H/V join; late-identity TILE via `wm._adoptOpenIntoTileSlot` (not at unknown map) | Even 3rd H/V sibling; `createNode(bag)` as a tab; reserve a TILE wrap for a window that stays FLOAT (R031) |

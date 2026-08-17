@@ -271,6 +271,137 @@ describe("OP1 open-app placement policy", () => {
       const idxRight = mon0.childNodes.indexOf(right.nodeWindow);
       expect(idxNew).toBeLessThan(idxRight);
     });
+
+    it("R036 late class: null map free-opens mon0 then PlaceNext adopt moves to mon1", () => {
+      tileOn(0, { id: "lft0" });
+      const slot = tileOn(1, { id: "mon1-slot" });
+      wm().movePointerWith(tileOn(0, { id: "focus0" }).nodeWindow);
+
+      // mon-root-only PlaceNext (no slot dest) — cannot provisional-claim;
+      // null map free-opens mon0, late identity adopt moves to mon1.
+      const placed = wm().placeNext({
+        wmClass: "chrome-latepwa-Default",
+        titleContains: "YouTube",
+        monitor: 1,
+        expiresAt: Date.now() + 60_000,
+      });
+      expect(placed.ok).toBe(true);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "late-pwa",
+        wm_class: null,
+        title: null,
+      });
+      wm().trackWindow(null, metaWindow);
+      let node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(0);
+      expect(wm()._pendingPlaceHints.length).toBe(1);
+
+      metaWindow.set_wm_class("chrome-latepwa-Default");
+      metaWindow.set_title("YouTube");
+      node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      expect(wm()._pendingPlaceHints.length).toBe(0);
+      // mon-root plan falls back to mon LFT attach (slot leaf on mon1)
+      expect(node.parentNode).toBe(slot.nodeWindow.parentNode);
+    });
+
+    it("R036 provisional: null identity maps into slot PH (not free mon0)", () => {
+      tileOn(0, { id: "lft0" });
+      const mon0Slot = tileOn(0, { id: "ph-mon0" });
+      const mon1Slot = tileOn(1, { id: "ph-mon1" });
+      wm().movePointerWith(tileOn(0, { id: "focus0" }).nodeWindow);
+
+      expect(
+        wm().placeNext({
+          wmClass: "chrome-aaa-Default",
+          titleContains: "Grok",
+          monitor: 0,
+          attachSelector: `id:${mon0Slot.metaWindow.get_id()}`,
+          expiresAt: Date.now() + 60_000,
+        }).ok
+      ).toBe(true);
+      expect(
+        wm().placeNext({
+          wmClass: "chrome-bbb-Default",
+          titleContains: "YouTube",
+          monitor: 1,
+          attachSelector: `id:${mon1Slot.metaWindow.get_id()}`,
+          expiresAt: Date.now() + 60_000,
+        }).ok
+      ).toBe(true);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "null-first",
+        wm_class: null,
+        title: null,
+      });
+      wm().trackWindow(null, metaWindow);
+      let node = wm().findNodeWindow(metaWindow);
+      // FIFO oldest slot hint = mon0 PH (not free LFT aspect bag on mon0 alone)
+      expect(monitorOf(node)).toBe(0);
+      expect(node.parentNode).toBe(mon0Slot.nodeWindow.parentNode);
+      expect(wm()._pendingPlaceHints.length).toBe(1);
+      expect(metaWindow._forgeProvisionalPlaceHint?.titleContains).toBe("Grok");
+
+      // Partial identity must keep provisional (crash class: re-queue on incomplete).
+      metaWindow.set_wm_class("chrome-bbb-Default");
+      expect(metaWindow._forgeProvisionalPlaceHint?.titleContains).toBe("Grok");
+      expect(wm()._pendingPlaceHints.length).toBe(1);
+      expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0);
+
+      // Loading title is not ready — keep provisional (do not re-queue on New Tab).
+      metaWindow.set_title("New Tab");
+      expect(metaWindow._forgeProvisionalPlaceHint?.titleContains).toBe("Grok");
+      expect(wm()._pendingPlaceHints.length).toBe(1);
+      expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0);
+
+      // Wrong provisional: full identity is YouTube → re-queue Grok, adopt mon1
+      metaWindow.set_title("YouTube");
+      node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      expect(node.parentNode).toBe(mon1Slot.nodeWindow.parentNode);
+      expect(wm()._pendingPlaceHints.length).toBe(1);
+      expect(wm()._pendingPlaceHints[0].titleContains).toBe("Grok");
+      expect(metaWindow._forgeProvisionalPlaceHint).toBeFalsy();
+    });
+
+    it("R036 provisional: matching identity confirms without re-queue thrash", () => {
+      const mon0Slot = tileOn(0, { id: "ph-match" });
+      wm().movePointerWith(tileOn(0, { id: "focus-m" }).nodeWindow);
+      expect(
+        wm().placeNext({
+          wmClass: "chrome-aaa-Default",
+          titleContains: "Grok",
+          monitor: 0,
+          attachSelector: `id:${mon0Slot.metaWindow.get_id()}`,
+          expiresAt: Date.now() + 60_000,
+        }).ok
+      ).toBe(true);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "null-match",
+        wm_class: null,
+        title: null,
+      });
+      wm().trackWindow(null, metaWindow);
+      expect(metaWindow._forgeProvisionalPlaceHint?.titleContains).toBe("Grok");
+      expect(wm()._pendingPlaceHints.length).toBe(0);
+
+      metaWindow.set_wm_class("chrome-aaa-Default");
+      metaWindow.set_title("Grok");
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(0);
+      expect(node.parentNode).toBe(mon0Slot.nodeWindow.parentNode);
+      expect(metaWindow._forgeProvisionalPlaceHint).toBeFalsy();
+      expect(wm()._pendingPlaceHints.length).toBe(0);
+    });
   });
 
   describe("dock sticky mon + LFT(m)", () => {

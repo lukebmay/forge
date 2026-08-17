@@ -40,6 +40,7 @@ from nested_wayland import (  # noqa: E402
     parse_size,
     reap_stale,
     require_wayland_host,
+    resolve_host_xauthority,
     session_dir,
     shell_start_env,
     should_stop_on_exit,
@@ -183,6 +184,44 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
     assert "DBUS_SESSION_BUS_ADDRESS=" in export
     assert "FORGE_HOST=" in export
     assert "FORGE_CONFIG_HOME=" in export
+
+
+def test_resolve_host_xauthority_prefers_live_cookie(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stale Guake XAUTHORITY path → pick newest live mutter cookie."""
+    rt = tmp_path / "run"
+    rt.mkdir()
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(rt))
+    stale = rt / ".mutter-Xwaylandauth.stale"
+    live = rt / ".mutter-Xwaylandauth.live"
+    live.write_text("cookie")
+    # Prefer live path even when env points at missing file.
+    got = resolve_host_xauthority({"XAUTHORITY": str(stale)})
+    assert got == str(live)
+    # Keep a valid current path.
+    assert resolve_host_xauthority({"XAUTHORITY": str(live)}) == str(live)
+
+
+def test_shell_start_env_sets_live_xauthority(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    rt = tmp_path / "run"
+    rt.mkdir()
+    live = rt / ".mutter-Xwaylandauth.live"
+    live.write_text("cookie")
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(rt))
+    monkeypatch.setenv("XAUTHORITY", str(rt / "missing"))
+    cfg = NestedConfig(
+        name="forge",
+        display="wayland-forge",
+        size="1280x800",
+        scale="1",
+        host_wayland="wayland-0",
+        unsafe_mode=True,
+        state_dir=str(tmp_path),
+        bus_address=f"unix:path={tmp_path / 'bus'}",
+        created_at=0.0,
+        num_monitors=1,
+    )
+    senv = shell_start_env(cfg)
+    assert senv.get("XAUTHORITY") == str(live)
 
 
 def test_merge_client_env_isolation(tmp_path: Path) -> None:

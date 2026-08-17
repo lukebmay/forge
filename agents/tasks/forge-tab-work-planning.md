@@ -1,86 +1,143 @@
 # forge-tab-work-planning — Tab product batch (plan before implement)
 
-**Status:** ready (planning first)  
-**Plan:** (none yet) — use high-reasoning model (Grok 4.6 xhigh) **before** code  
-**Branch:** master (default)  
-**Blocker:** (none)  
-**Priority:** **SM7 overlay-all-hard landed** (D043 gate). Group chrome A
-is tab/FCC, not SM1–SM4. R036 cold is human residual. Ready for
-**4.6 xhigh** planning when SM6 does not contend.  
+**Status:** done (planning locked 2026-08-16)
+**Plan:** (none) — locks live here + [D044](../../docs/DECISIONS.md)
+**Branch:** master (default)
+**Blocker:** (none)
+**Priority:** D0 complete. Only implement slice:
+[forge-tab-groups-same-mon](./forge-tab-groups-same-mon.md).
 **Updated:** 2026-08-16
 
-## Goal
+## Decision lock (2026-08-16)
 
-One planning session that locks tab-adjacent residuals and product edges, then
-implement slices. **Do not start tab implementation until this D0 lands.**
+Gates were open: SM1–SM7 done; R036 host cold `forge layout dev` **PASS**
+(chrome clear `all-hard`; mon0 TABBED(Chrome,Grok)|ghostty; mon1
+ghostty|TABBED(YouTube,Gmail,Voice); place-hint sticky `move=false`).
+Do **not** re-litigate D039–D043.
 
-## Agenda (planning session)
+### 1. Chrome clear gate
 
-### 1. Apply chrome / “hover spinners” on tabs (UX residual)
+**Lock:** apply overlay **is** the modal. One gate.
 
-| Field | Detail |
+| Event | Overlay |
 | --- | --- |
-| Symptom | Layout-apply spinner(s) stay on a long time while hovering/using tabs after the desk looks settled enough to drop the modal |
-| Intent | Spinner/scrim must stop **as soon as** settle is far enough to remove the modal (same gate) |
-| Code already | **SM7:** `_clearChrome` reason `all-hard` after slot machines terminal; restack on clear (R032); soft may still run after clear; Done idempotent |
-| Evidence | 2026-08-16: L0 green (clear at all-hard; not mid-place). Host/nest tip re-verify after install+logout |
-| Open questions | If still long/broken on tip after all-hard clear: second spinner? strip z-order beyond restack? pin thrash? |
-| Related | R027 chrome-until-ready; **D043** (D010 superseded — overlay dies at all-hard) |
+| ApplyLayout start (R027) | Show scrim + per-mon spinner; eat pointer |
+| All required slots hard-done **or** hard-failed | `_clearChrome(run, "all-hard")` — D043/SM7 |
+| Cancel / apply error / hard-timeout | Clear (not `all-hard`) |
+| Soft residual (D019) | Runs **after** clear; must not show or keep overlay |
+| Done / second clear | Idempotent |
 
-**Acceptance direction (plan must lock):** one clear rule for when chrome drops; L0 + host repro steps.
+Restack strips on clear stays (R032). Soft-enter clear is **dead**.
 
-### 2. Cross-mon TABBED / STACKED product (D0)
+**Not a second gate.** “Desk looks settled” is not a user-eyeball
+heuristic. If the overlay is still up, hard is not terminal — or a
+leftover actor (then a **new** regression, not a retimed gate).
 
-Existing task: [forge-tab-groups-cross-mon_d0-discussion.md](./forge-tab-groups-cross-mon_d0-discussion.md).
+**Hover / tabs.** There is no tab-local spinner. Overlay covers the
+stage and eats pointer until clear; then `revealGroupChild` (D025).
+Long overlay after R036 is **all-hard wait** (identity / in-slot), not
+tab chrome. Do **not** drop overlay earlier than all-hard.
 
-- Supported product vs thrash-only survival (H1 majority-align)?
-- Normalize vs intentional span; chrome / open-leaf / DnD across mons
+**Group chrome A (D043 L4).** Already the existing CON strip + pane
+(`decoration` / `_restackDecorationAboveGroup`). Partial A already
+draws when the CON has members. Overlay hides it until all-hard.
+**No new apply-time group chrome.** FCC C3 stays later (H/V split
+chrome), not this batch.
 
-### 3. Tab chrome drag residuals (only if still real)
+**Implement:** none.
 
-From [forge-tab-chrome-drag.md](../plans/forge-tab-chrome-drag.md):
+**Repro (only if overlay survives `all-hard`):**
 
-| ID | Work | Note |
+```bash
+npm test -- tests/unit/extension/layout-apply-run.test.js \
+  tests/unit/extension/layout-apply-chrome.test.js
+forge layout dev
+journalctl --user -b --no-pager | rg 'Forge.*(chrome|all-hard)' | tail -40
+```
+
+Open a regression only with journal `reason=all-hard` **and** a still-
+visible `#forge-layout-apply-chrome` actor.
+
+### 2. Cross-mon TABBED / STACKED
+
+**Product:** **unsupported.** A TABBED/STACKED CON is **mon-local**
+(one strip + one pane + one slot machine). Spanning a group across
+heads is not a feature. A single Meta window spanning heads is
+FLOAT/Meta — not a tab-group problem.
+
+**Survival (keep):** H1
+`alignMonitorRecoveryGroupTargets` majority-align; R016 mon-loss
+collect-to-end-of-survivor as a group. Those are thrash repair, not
+span chrome.
+
+**Normalize (D044):** members of a TABBED/STACKED CON must share the
+CON’s **MONITOR ancestor**. Mixed-mon is a defect. Repair = rehome
+**all** WINDOW descendants onto that mon; **keep the group**; do not
+auto-peel. Home = tree MONITOR ancestor — not Meta `get_monitor()`
+(`sameParentMonitor` can lie mid-thrash).
+
+| Gesture | Rule |
+| --- | --- |
+| DnD CENTER join across mons | Move-then-join onto **dest** mon |
+| Keyboard `merge-group` | Same: dest = focus mon (today `get_tab_next` is workspace-wide) |
+| Keyboard mon-move of **one** tab | Peel that **leaf** (LX3 / R022 class); remainder stays |
+| Move the whole group | CON move (FCC C4 later) — not a leaf drag |
+| Profile / planner | No span sugar. TABBED body stays under one mon |
+| Empty-mon drop | Unchanged leaf-only (R022) |
+
+**Implement:** [forge-tab-groups-same-mon](./forge-tab-groups-same-mon.md)
+(**next**).
+
+### 3. TD2–TD4
+
+| ID | Verdict | One line |
 | --- | --- | --- |
-| TD0 | Grab inventory tab vs titlebar | draft / skip if operator already confident |
-| TD2 | Peel Model B mismatch | **only if** LX4 ≠ locked model |
-| TD3 | Join another strip | **only if** CENTER miss |
-| TD4 | User docs one-liner | after behavior stable |
+| TD2 | **skip** | LX4/TD1 peel is grab-tile + wrap-in-slot (Model B / D032); nest peel→HSPLIT PASS; no mismatch |
+| TD3 | **skip** | CENTER join is D024/`mergeWindowsIntoGroup`; R012/R019 shipped; no CENTER miss after R036 |
+| TD4 | **defer** | Docs one-liner after D044 ships; not a ready slice |
 
-TD1 strip reorder **done** (code + nest).
+TD0 inventory: **skip** (operator + nest already trust grab vs titlebar).
+TD1 remains **done**.
 
-### 4. Tab click / strip interactivity (already shipped — recheck only if repro)
+### 4. Tab click residuals
 
-| ID | Status |
-| --- | --- |
-| R025 slot | done host |
-| R026 pin adopt | done host |
-| R032 strip click dead | done (Done restack-only) |
+**None.** R025/R026 host PASS; R032 Done restack-only shipped; R036
+cold forest has real TABBED groups on both mons. Do not open a new
+regression without a post-PASS host repro.
 
-Planning may open a new regression only if host tip still fails after logout.
+## Follow-up implement
 
-## Non-goals for this planning task
-
-- Implement before lock
-- STACKED product chrome polish (separate plan)
-- Resize/autotile design (separate blocker)
+| Path | Status | Why |
+| --- | --- | --- |
+| [forge-tab-groups-same-mon.md](./forge-tab-groups-same-mon.md) | **next** | Enforce D044 |
+| chrome / group-chrome A / TD2–TD4 / click | **none** | Locked above |
 
 ## Acceptance (planning complete)
 
-- [ ] Written recommendation for chrome clear gate (when spinner dies vs modal)
-- [ ] Cross-mon tabs: supported vs unsupported + normalize rule
-- [ ] TD2–TD4: implement / skip / defer with one-line each
-- [ ] Follow-up implement tasks drafted (or “none”) on master queue
-- [ ] PRIORITY updated after lock
+- [x] Written recommendation for chrome clear gate
+- [x] Cross-mon tabs: unsupported + normalize rule (D044)
+- [x] TD2 skip / TD3 skip / TD4 defer
+- [x] Follow-up implement drafted (one task)
+- [x] PRIORITY + HANDOFF queue updated
+
+## Non-goals (unchanged)
+
+- Implement in this planning file
+- STACKED product chrome polish
+- Resize / autotile
 
 ## Context for the next agent
 
-- Operator: plan with **4.6 xhigh** after **SM7**; do not start tab code now
-- SM0 locked: group chrome A is this D0 / FCC, not SM1–SM4
-- Overlay DnD zone (slot rect) **fixed** and committed separately — not this batch
-- Host tip may still need **logout** for soft-clear chrome path to load
+- Implement **only** [same-mon](./forge-tab-groups-same-mon.md).
+- Do not retarget overlay before all-hard.
+- Do not invent spanning tab chrome.
+- Do not reopen R025/R026/R032 without a new repro.
+- Discussion lock also in
+  [cross-mon D0](./forge-tab-groups-cross-mon_d0-discussion.md).
 
 ## Session note
 
-**2026-08-16:** Opened from operator: hover spinners still long on tabs; park with
-other tab work; planning session before implement. Overlay fix shipped.
+**2026-08-16 D0 locked (4.6 xhigh).** Overlay = all-hard (already
+shipped + R036 verified). Cross-mon groups unsupported; normalize to
+CON MONITOR ancestor (D044). TD2/TD3 skip; TD4 defer. Tab click none.
+One implement task: same-mon groups.

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
@@ -642,6 +642,77 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       expect(bot.parentNode).toBe(split);
       expect(split.childNodes).toEqual(expect.arrayContaining([top, bot]));
       expect(split.childNodes).toHaveLength(2);
+    });
+  });
+
+  // ============================================================================
+  // SECTION 3c: D044 cross-mon CENTER → one TABBED on dest
+  // ============================================================================
+
+  describe("D044 cross-mon CENTER join", () => {
+    let dual;
+    const dualGeoms = [
+      { x: 0, y: 0, width: 1920, height: 1080 },
+      { x: 1920, y: 0, width: 1920, height: 1080 },
+    ];
+
+    beforeEach(() => {
+      dual = createWindowManagerFixture({
+        globals: {
+          display: {
+            monitorCount: 2,
+            monitorGeometries: dualGeoms,
+          },
+        },
+        settings: {
+          "dnd-center-layout": "tabbed",
+          "preview-hint-enabled": true,
+          "tabbed-tiling-mode-enabled": true,
+        },
+      });
+    });
+
+    afterEach(() => {
+      dual.cleanup();
+    });
+
+    it("CENTER from mon0 onto mon1 window is one TABBED on dest mon", () => {
+      const mon0 = getWorkspaceAndMonitor(dual, 0, 0).monitor;
+      const mon1 = getWorkspaceAndMonitor(dual, 0, 1).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+      const metaSrc = createMockWindow({
+        id: "src",
+        monitor: 0,
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: dual.workspaces[0],
+      });
+      const metaDst = createMockWindow({
+        id: "dst",
+        monitor: 1,
+        rect: new Rectangle({ x: 1920, y: 0, width: 960, height: 1080 }),
+        workspace: dual.workspaces[0],
+      });
+      const src = dual.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, metaSrc);
+      const dst = dual.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, metaDst);
+      src.mode = WINDOW_MODES.GRAB_TILE;
+      dst.mode = WINDOW_MODES.TILE;
+      src.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      dst.rect = { x: 1920, y: 0, width: 960, height: 1080 };
+
+      setPointer(2400, 540);
+      dual.windowManager.nodeWinAtPointer = dst;
+      dual.windowManager.moveWindowToPointer(src, false);
+
+      expect(src.parentNode).toBe(dst.parentNode);
+      const group = src.parentNode;
+      expect(group.isTabbed?.() || group.layout === LAYOUT_TYPES.TABBED).toBe(true);
+      expect(mon1.contains(group)).toBe(true);
+      expect(mon0.contains(src)).toBe(false);
+      expect(dual.tree.groupHomeMonitor(group)).toBe(1);
+      expect(dual.tree.groupHomeMonitor(src)).toBe(1);
+      expect(dual.tree.groupHomeMonitor(dst)).toBe(1);
     });
   });
 
