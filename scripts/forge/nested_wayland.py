@@ -429,6 +429,10 @@ def client_env(cfg: NestedConfig) -> dict[str, str]:
         "WAYLAND_DISPLAY": cfg.display,
         "GDK_BACKEND": "wayland",
         "XDG_SESSION_TYPE": "wayland",
+        # GTK4 GL on nested Mutter often never maps (ghostty hangs after
+        # xdg_wm_base bind). Cairo + software GL keep nest open/map reliable.
+        "GSK_RENDERER": "cairo",
+        "LIBGL_ALWAYS_SOFTWARE": "1",
         "FORGE_HOST": nest_forge_host(cfg.name),
         "FORGE_CONFIG_HOME": str(nest_forge_config_home(cfg)),
     }
@@ -472,6 +476,10 @@ def shell_start_env(cfg: NestedConfig) -> dict[str, str]:
     env["WAYLAND_DISPLAY"] = cfg.host_wayland
     env["GDK_BACKEND"] = "wayland"
     env["XDG_SESSION_TYPE"] = "wayland"
+    # Inherit to GJS DesktopAppInfo / Subprocess launches: nest GL path
+    # often leaves ghostty alive with zero Meta windows (open-miss).
+    env["GSK_RENDERER"] = "cairo"
+    env["LIBGL_ALWAYS_SOFTWARE"] = "1"
     # Stale Guake/agent XAUTHORITY breaks nest ("Unable to open display").
     xa = resolve_host_xauthority(env)
     if xa:
@@ -768,6 +776,50 @@ def wait_forge_ready(
     while time.monotonic() < deadline:
         if name_has_owner(bus_address, "org.gnome.Shell.Extensions.Forge"):
             return True
+        time.sleep(0.25)
+    return False
+
+
+def wait_nest_client_ready(
+    bus_address: str,
+    *,
+    timeout_s: float = 12.0,
+    min_monitors: int = 1,
+) -> bool:
+    """Wait until nested Meta has real workareas (clients can map).
+
+    Cold campaigns that open apps immediately after enable often open-miss:
+    ghostty/GTK connect but never create a Meta window until the dummy
+    output workareas exist. Poll work area width via Shell.Eval.
+    """
+    # Avoid import/ top-level issues in module Eval (GNOME 45+).
+    js = (
+        "(function(){ try { "
+        "const n = global.display.get_n_monitors(); "
+        "if (n < 1) return '0'; "
+        "const ws = global.workspace_manager.get_active_workspace(); "
+        "const r = ws.get_work_area_for_monitor(0); "
+        "if (!r || r.width < 64 || r.height < 64) return '0'; "
+        "return String(n); "
+        "} catch (e) { return '0'; } })()"
+    )
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        ok, payload = shell_eval(bus_address, js, timeout=3.0)
+        if ok and payload:
+            # payload like (true, '2') or (true, "2")
+            text = str(payload)
+            digits = "".join(ch for ch in text if ch.isdigit())
+            try:
+                n = int(digits) if digits else 0
+            except ValueError:
+                n = 0
+            if n >= int(min_monitors):
+                # Dummy outputs report workareas well before GTK/OpenGL clients
+                # (esp. ghostty) can map on nested Mutter. Live repro: workarea
+                # at ~0s still open-miss; ~4s settle → map ok.
+                time.sleep(4.0)
+                return True
         time.sleep(0.25)
     return False
 
@@ -1293,6 +1345,7 @@ def run_campaign(
     )
     try:
         if not is_running(name):
+            # replace=True clears stale sockets/pids left by a prior stop race.
             cfg = start(
                 name=name,
                 display=display,
@@ -1301,10 +1354,15 @@ def run_campaign(
                 num_monitors=num_monitors,
                 unsafe_mode=unsafe_mode,
                 allow_x11=allow_x11,
-                replace=False,
+                replace=True,
             )
             if enable_forge:
                 enable_forge_extension(cfg.bus_address)
+            # Cold open (ghostty) needs workareas before map-wait.
+            wait_nest_client_ready(
+                cfg.bus_address,
+                min_monitors=int(num_monitors or DEFAULT_MONITORS),
+            )
         cfg = load_config(name)
         if not cfg or not is_running(name):
             raise NestedError(

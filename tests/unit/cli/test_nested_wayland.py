@@ -45,6 +45,7 @@ from nested_wayland import (  # noqa: E402
     shell_start_env,
     should_stop_on_exit,
     state_root,
+    wait_nest_client_ready,
     x11_refuse_message,
 )
 
@@ -156,6 +157,8 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
     assert env["DBUS_SESSION_BUS_ADDRESS"] == cfg.bus_address
     assert env["GDK_BACKEND"] == "wayland"
     assert env["XDG_SESSION_TYPE"] == "wayland"
+    assert env["GSK_RENDERER"] == "cairo"
+    assert env["LIBGL_ALWAYS_SOFTWARE"] == "1"
     # N1: logical host + nest-scoped CLI config root
     assert env["FORGE_HOST"] == nest_forge_host("forge")
     assert env["FORGE_HOST"].endswith("-sub-forge")
@@ -172,6 +175,8 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
     assert senv["MUTTER_DEBUG_DUMMY_MODE_SPECS"] == "1280x800"
     assert senv["MUTTER_DEBUG_NUM_DUMMY_MONITORS"] == "2"
     assert senv["MUTTER_DEBUG_DUMMY_MONITOR_SCALES"] == "1,1"
+    assert senv["GSK_RENDERER"] == "cairo"
+    assert senv["LIBGL_ALWAYS_SOFTWARE"] == "1"
     # N2: Shell inherits same forge isolation as client_env (no full XDG rewrite)
     assert senv["FORGE_CONFIG_HOME"] == str(tmp_path / "forge-config")
     assert senv["FORGE_HOST"] == nest_forge_host("forge")
@@ -339,6 +344,84 @@ def test_should_stop_on_exit_policy() -> None:
     assert should_stop_on_exit(always_stop=False, started_nest=False) is False
     assert should_stop_on_exit(always_stop=False, started_nest=True,
                                keep=True) is False
+
+
+def test_wait_nest_client_ready_true_when_workarea(monkeypatch: pytest.MonkeyPatch) -> None:
+    import nested_wayland as nw
+
+    calls = {"n": 0}
+
+    def fake_eval(_bus: str, _js: str, timeout: float = 5.0):
+        calls["n"] += 1
+        if calls["n"] < 2:
+            return True, "(true, '0')"
+        return True, "(true, '2')"
+
+    monkeypatch.setattr(nw, "shell_eval", fake_eval)
+    monkeypatch.setattr(nw.time, "sleep", lambda _s: None)
+    assert wait_nest_client_ready("unix:path=/tmp/bus", timeout_s=2.0, min_monitors=2) is True
+    assert calls["n"] >= 2
+
+
+def test_hoist_nested_action_flags() -> None:
+    """Flags after nested action must hoist so argparse nested_cmd works."""
+    import importlib.util
+    from importlib.machinery import SourceFileLoader
+
+    forge_path = _FORGE_CLI / "forge"
+    loader = SourceFileLoader("forge_cli_hoist", str(forge_path))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    assert spec is not None
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    hoist = mod.hoist_nested_action_flags
+
+    assert hoist(["nested", "run", "--monitors=1", "--", "true"]) == [
+        "nested",
+        "--monitors=1",
+        "run",
+        "--",
+        "true",
+    ]
+    assert hoist([
+        "nested",
+        "run",
+        "--monitors=2",
+        "env",
+        "FORGE_JOB=0",
+        "forge",
+        "layout",
+        "x",
+    ]) == [
+        "nested",
+        "--monitors=2",
+        "run",
+        "env",
+        "FORGE_JOB=0",
+        "forge",
+        "layout",
+        "x",
+    ]
+    # Already pre-action: no change
+    assert hoist(["nested", "--monitors=1", "run", "--", "true"]) == [
+        "nested",
+        "--monitors=1",
+        "run",
+        "--",
+        "true",
+    ]
+    # No flags after action: no change
+    assert hoist(["nested", "run", "true"]) == ["nested", "run", "true"]
+    # start with trailing options (no campaign cmd)
+    assert hoist(["nested", "start", "--monitors=2", "--replace"]) == [
+        "nested",
+        "--monitors=2",
+        "--replace",
+        "start",
+    ]
+    # non-nested argv untouched
+    assert hoist(["ping"]) == ["ping"]
+    assert hoist(["layout", "dev"]) == ["layout", "dev"]
 
 
 def test_is_running_false_when_pids_dead(
