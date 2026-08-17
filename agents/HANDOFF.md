@@ -13,6 +13,10 @@
 **Queue (agent):** Tab click-drag **PR2+** when operator wants —
 [plan](./plans/forge-tab-click-drag.md). PR1:
 [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) **shipped**.
+**Queue (product hygiene):** Nested **out of user Forge CLI** — plan then
+separate into testing tools —
+[plan](./plans/forge-nested-cli-separation.md) ·
+[P0](./tasks/forge-nested-cli-separation_p0-plan.md) (**ready**).
 **Queue (human):** Host lock/overview “no tab titles” after tip load. X11 input-region unproven on Wayland. [IDEAS](./IDEAS.md).
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.
@@ -598,6 +602,7 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | --- | --- |
 | [forge-wayland-rc-test-suite.md](./plans/forge-wayland-rc-test-suite.md) | RC procedure (last run green) |
 | [forge-nested-isolation.md](./plans/forge-nested-isolation.md) | Nest isolation v1 (**done**) |
+| [forge-nested-cli-separation.md](./plans/forge-nested-cli-separation.md) | Nested off user CLI → testing tools (P0 ready) |
 | [forge-canonical-contracts.md](./plans/forge-canonical-contracts.md) | **P0** job→API catalog; IC1–IC3 |
 | [docs/dev/contracts.md](../docs/dev/contracts.md) | Canonical APIs — extend these first |
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |

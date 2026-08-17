@@ -14,6 +14,8 @@
 [plan](./plans/forge-tab-click-drag.md). Host lock residual = human.
 Do not reshape PR1 attach. Wrap-on waits for PR4
 (`min-tab-label-chars=20`); `max-tab-rows=0` unbounded.
+**Product hygiene (queued):** Nested **off user CLI** — plan then separate —
+[plan](./plans/forge-nested-cli-separation.md) · [P0](./tasks/forge-nested-cli-separation_p0-plan.md).
 **Retest (FIRM):** nest = normal Wayland code→reload; primary logout = rare tip load.
 **Parked:** soft polish · scale smoke · FCC C2+ · CN13 · TD4 docs.
 **Agents:** default implement = **Grok 4.5**. Architecture locks = **4.6 xhigh** only.
@@ -47,6 +49,7 @@ mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
+| ready | **Nested off user CLI** (plan → separate) | **4.5 high** | [plan](./plans/forge-nested-cli-separation.md) · [P0](./tasks/forge-nested-cli-separation_p0-plan.md) · [P1](./tasks/forge-nested-cli-separation_p1-separate.md) |
 | done | **Tab click-drag PR1** (chrome layer) | **4.5 med** | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) — L0+nest PASS; host lock residual |
 | later | Tab click-drag PR2–PR6 | **4.5 med** | [plan](./plans/forge-tab-click-drag.md) after PR1 |
 | done | **Same-mon TABBED/STACKED** (D044) | **4.5 high** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |
