@@ -36,7 +36,10 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | After mass apply / last raise, restack all tab strips | `SessionApi._settleAfterRunSteps` (WR14 RunSteps) + `_restackTabDecorations` (ApplyLayout Done; **no** second raise) | Skip ApplyLayout; extra tab-click handler; Done-path `settleTabFocus` raise |
 | **Show a child in a TABBED/STACKED group** | `wm.revealGroupChild(node, { keyboard, pin })` (includes slot reassert R025 + adopt live pin R026) | `parent.lastTabFocus =` + `raise()` in a new file |
 | Pin open leaf during layout residual | `wm.pinLayoutOpenLeaf` / `restoreLayoutOpenLeafIfStolen` | Adopt Meta steal as the new leaf |
-| Group two windows as tabs/stack | `tree.mergeWindowsIntoGroup(a, b, layout)` | Flip `parent.layout` in DnD/command |
+| **Group two windows as tabs/stack** | `tree.group(a, b, layout?, opts?)` — named I2 op; implements via `mergeWindowsIntoGroup`. Default **TABBED**; **STACKED** when stacked mode + `dnd-center-layout` stacked, or opts | Flip `parent.layout` in DnD/command; new wrap twin of merge |
+| **Ungroup / dissolve a CON** | `tree.ungroup(node)` — promote children to grandparent (order preserved). WINDOW uses parent CON. No-op MONITOR/ROOT/WORKSPACE. One CON only (not recursive flatten; no Meta mon peel) | `_layoutOp` / `_flattenLayoutParentToWindows`; `cleanTree` / `auto-exit-tabbed` as product ungroup |
+| **Focus parent / child (C4)** | `tree.focusParent` / `tree.focusChild` — elevate/descend `tree.focusUnit`; activate leaf via `revealGroupChild` (tab/stack) or `_activateWindowNode` + `afterFocus`. No-op at MONITOR/ROOT/WORKSPACE | Twin focus stack; Meta-focus a CON; skip `afterFocus` / `revealGroupChild` |
+| **Move in / out of CON (C4)** | `tree.moveIn` / `tree.moveOut` — reparent **layout unit** (`layoutUnit` / elevated `focusUnit`) into existing sibling CON / out to grandparent via Node child-list APIs. Tab/stack dest → `normalizeGroupToHomeMonitor` (D044). No invent-group (use `group`) | Directional edge auto-pop; assign `childNodes`; second DnD engine; spanning tab chrome |
 | **TABBED/STACKED group home mon** | `tree.groupHomeMonitor(con)` → tree MONITOR index (`treeMonitorIndexOfNode`) | Meta `get_monitor()` / `sameParentMonitor` as home (can lie mid-thrash) |
 | **Normalize mon-local group (D044)** | `wm.normalizeGroupToHomeMonitor(con)` / `wm.normalizeTabGroupsToHomeMonitors()` — rehome Meta members to CON MONITOR ancestor; **keep group** (no auto-peel) | Auto-peel on mix; spanning chrome; profile span sugar |
 | **Change CON layout mode** | `tree.setLayout(con, layout, opts?)` / `Node.setLayout` (I1: no reparent/flatten; optional `lastTabFocus`, `resetPercents` on H↔V) | Assign `parent.layout`; silent `replaceChildren` / flatten nested CONs for mode change |
@@ -63,9 +66,10 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | TILE already at slot? | `shouldChromeOnlyGeometry` / `wm._tiledWindowAtTreeSlot` | Local ε compare |
 | **Restore TILE to its slot** | `wm.reassertNodeToSlot` (unmaximize / unfullscreen first when needed) | `onExternalGeometry` reassert (AC1: verify is log-only) |
 | Unsolicited TILE geom | `shouldRestoreTileSlot` + `wm._restoreTileToSlot` | Skip fullscreen and leave it; float-on-max |
-| User TILE resize (mouse/key grab) | `_handleResizing` → owning-split percents + `userSized` | Treat grab resize as “external drift” |
+| User TILE resize (mouse/key/expand) | `tree.resolveOwningSplit(unit, axis\|edge)` + `wm.applyOwningSplit` (I3). Grab keeps cumulative `_handleResizing` / `_applyOwningSplitFromGrab`. Expand/shrink = two calls (H then V; REG-expand-dual-axis). Unit = window or tab/stack bag | Twin percent math; treat grab as “external drift”; child+parent expand walk |
 | Display / workareas settle | `workareas-policy.js` + `monitor-recovery.js` | Window TILE wait for mon remap |
 | Presentation zoom (full/H/V) | `wm.toggleZoom` + `zoomRect` (`zoom.js`); `tree.apply` / borders use `tree.paintRectForWindow` | Compat.maximize / Meta fs; border from unzoomed slot |
+| **H/V split chrome (I5)** | `resolveSplitChromeMode` / `collectSplitAncestry` / `splitChromeForWindow` (`split-chrome.js`) + `DecorationsManager` paint; setting `split-chrome-show-all`; grab forces show-all via `setSplitChromeForceShowAll` | Second chrome actor system; spanning tab chrome; paint outside `.window-split-border` vocabulary |
 
 `settleTabFocus` is **chrome** (F+Dfocus+B). It is **not** D019 wait-for-quiet.
 

@@ -96,6 +96,15 @@ class TestValidateProfile(unittest.TestCase):
                     "with": "id:2"
                 },
                 {
+                    "op": "group",
+                    "selector": "focus",
+                    "with": "id:3"
+                },
+                {
+                    "op": "ungroup",
+                    "selector": "focus"
+                },
+                {
                     "op": "float",
                     "selector": "focus",
                     "scope": "window"
@@ -106,7 +115,7 @@ class TestValidateProfile(unittest.TestCase):
                 },
             ],
         })
-        self.assertEqual(len(p["steps"]), 4)
+        self.assertEqual(len(p["steps"]), 6)
 
     def test_launch_requires_app(self):
         with self.assertRaisesRegex(ValueError, "launch requires app"):

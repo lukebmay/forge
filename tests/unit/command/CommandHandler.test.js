@@ -443,6 +443,8 @@ describe("CommandHandler", () => {
         return null;
       });
       mockTree.mergeWindowsIntoGroup = vi.fn(() => mockNodeWindow.parentNode);
+      mockTree.group = vi.fn(() => mockNodeWindow.parentNode);
+      mockTree.ungroup = vi.fn(() => mockNodeWindow.parentNode.parentNode);
       mockTree.getTiledChildren.mockReturnValue([mockNodeWindow, partnerNode]);
       ctx.display.get_tab_next = vi.fn(() => partnerMeta);
     });
@@ -450,11 +452,7 @@ describe("CommandHandler", () => {
     it("should merge focus with last-active into a tabbed group", () => {
       commandHandler.execute({ name: "WindowMergeGroup" });
 
-      expect(mockTree.mergeWindowsIntoGroup).toHaveBeenCalledWith(
-        mockNodeWindow,
-        partnerNode,
-        LAYOUT_TYPES.TABBED
-      );
+      expect(mockTree.group).toHaveBeenCalledWith(mockNodeWindow, partnerNode);
       expect(mockWm.commitLayout).toHaveBeenCalledWith("window-merge-group", { force: true });
       expect(mockWm.revealGroupChild).toHaveBeenCalledWith(mockNodeWindow);
       expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
@@ -466,11 +464,7 @@ describe("CommandHandler", () => {
 
       commandHandler.execute({ name: "WindowMergeGroup" });
 
-      expect(mockTree.mergeWindowsIntoGroup).toHaveBeenCalledWith(
-        mockNodeWindow,
-        partnerNode,
-        LAYOUT_TYPES.TABBED
-      );
+      expect(mockTree.group).toHaveBeenCalledWith(mockNodeWindow, partnerNode);
     });
 
     it("should do nothing if tabbed mode disabled", () => {
@@ -478,7 +472,7 @@ describe("CommandHandler", () => {
 
       commandHandler.execute({ name: "WindowMergeGroup" });
 
-      expect(mockTree.mergeWindowsIntoGroup).not.toHaveBeenCalled();
+      expect(mockTree.group).not.toHaveBeenCalled();
     });
 
     it("should do nothing if no partner", () => {
@@ -487,7 +481,100 @@ describe("CommandHandler", () => {
 
       commandHandler.execute({ name: "WindowMergeGroup" });
 
-      expect(mockTree.mergeWindowsIntoGroup).not.toHaveBeenCalled();
+      expect(mockTree.group).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("WindowUngroup command", () => {
+    beforeEach(() => {
+      mockTree.ungroup = vi.fn(() => mockNodeWindow.parentNode.parentNode);
+    });
+
+    it("should ungroup the focused window's parent CON", () => {
+      commandHandler.execute({ name: "WindowUngroup" });
+
+      expect(mockTree.ungroup).toHaveBeenCalledWith(mockNodeWindow);
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("window-ungroup", { force: true });
+      expect(mockWm.renderTree).toHaveBeenCalledWith("window-ungroup", true);
+    });
+
+    it("should no-op when ungroup returns null", () => {
+      mockTree.ungroup = vi.fn(() => null);
+
+      commandHandler.execute({ name: "WindowUngroup" });
+
+      expect(mockTree.ungroup).toHaveBeenCalledWith(mockNodeWindow);
+      expect(mockWm.commitLayout).not.toHaveBeenCalled();
+    });
+
+    it("should no-op without focus", () => {
+      mockWm.findNodeWindow.mockReturnValue(null);
+      mockTree.ungroup = vi.fn();
+
+      commandHandler.execute({ name: "WindowUngroup" });
+
+      expect(mockTree.ungroup).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("FocusParent / FocusChild commands", () => {
+    beforeEach(() => {
+      mockTree.focusParent = vi.fn(() => mockNodeWindow);
+      mockTree.focusChild = vi.fn(() => mockNodeWindow);
+      mockTree._activateWindowNode = vi.fn(() => mockNodeWindow);
+      mockNodeWindow.parentNode.isStackedOrTabbed = vi.fn(() => false);
+    });
+
+    it("FocusParent activates the resolved leaf", () => {
+      commandHandler.execute({ name: "FocusParent" });
+
+      expect(mockTree.focusParent).toHaveBeenCalledWith(mockNodeWindow);
+      expect(mockTree._activateWindowNode).toHaveBeenCalledWith(mockNodeWindow, undefined);
+      expect(mockWm.afterFocus).toHaveBeenCalledWith(mockNodeWindow, {
+        source: "command-focus-parent",
+      });
+    });
+
+    it("FocusChild no-ops when tree returns null", () => {
+      mockTree.focusChild = vi.fn(() => null);
+
+      commandHandler.execute({ name: "FocusChild" });
+
+      expect(mockTree.focusChild).toHaveBeenCalledWith(mockNodeWindow);
+      expect(mockWm.afterFocus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("WindowMoveIn / WindowMoveOut commands", () => {
+    beforeEach(() => {
+      const dest = mockNodeWindow.parentNode;
+      dest.isStackedOrTabbed = vi.fn(() => true);
+      mockTree.moveIn = vi.fn(() => dest);
+      mockTree.moveOut = vi.fn(() => mockNodeWindow);
+      mockWm.normalizeGroupToHomeMonitor = vi.fn();
+    });
+
+    it("WindowMoveIn commits and normalizes tab dest", () => {
+      commandHandler.execute({ name: "WindowMoveIn" });
+
+      expect(mockTree.moveIn).toHaveBeenCalledWith(mockNodeWindow);
+      expect(mockWm.normalizeGroupToHomeMonitor).toHaveBeenCalled();
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("window-move-in", { force: true });
+    });
+
+    it("WindowMoveOut commits structure", () => {
+      commandHandler.execute({ name: "WindowMoveOut" });
+
+      expect(mockTree.moveOut).toHaveBeenCalledWith(mockNodeWindow);
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("window-move-out", { force: true });
+    });
+
+    it("WindowMoveIn no-ops when moveIn returns null", () => {
+      mockTree.moveIn = vi.fn(() => null);
+
+      commandHandler.execute({ name: "WindowMoveIn" });
+
+      expect(mockWm.commitLayout).not.toHaveBeenCalled();
     });
   });
 

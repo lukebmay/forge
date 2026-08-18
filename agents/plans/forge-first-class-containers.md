@@ -9,11 +9,29 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
+**2026-08-17:** **C4 done** — `focusParent`/`focusChild` + `moveIn`/`moveOut`;
+elevated `focusUnit`; RunSteps + kits (`Super+a` i3/Vim). REG-focus-parent
+**added**. Task:
+[c4 completed](./forge-first-class-containers/completed/forge-first-class-containers_c4-move-focus-parent.md).
+Next **C5** docs/kits polish. No yuiop / MD1 in C4.
+
+**2026-08-17:** **C3 done** — split chrome I5 (focus-ancestry default;
+`split-chrome-show-all` + grab force show-all). Task:
+[c3 completed](./forge-first-class-containers/completed/forge-first-class-containers_c3-split-chrome.md).
+
+**2026-08-17:** **R1 done** — `tree.layoutUnit` / `tree.resolveOwningSplit` +
+`wm.applyOwningSplit` I3. Task:
+[r1 completed](./forge-first-class-containers/completed/forge-first-class-containers_r1-owning-split-resize.md).
+
+**2026-08-17:** **C2 done** — `tree.group` / `tree.ungroup` I2; command +
+RunSteps `group`/`ungroup`; contracts rows. REG-auto-exit-tabbed **kept**
+(single-child chrome exit). Task:
+[c2 completed](./forge-first-class-containers/completed/forge-first-class-containers_c2-group-ungroup.md).
+
 **2026-08-15:** **C1 done** — `tree.setLayout` / `Node.setLayout` I1;
 Layout*Toggle + layout-cycle converted; contracts row. `_layoutOp`
 still flattens for profile ensure (REG-ensure-flatten). Task:
 [c1 completed](./forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md).
-Next: **C2** group/ungroup or R1 / Wave Z as PRIORITY.
 
 **2026-08-15:** **C0 done** — monocle deleted (REG-monocle,
 REG-i3-super-m). Super+m unbound on i3; zoom stays on Enter (Wave Z).
@@ -126,13 +144,13 @@ Update rows when a slice actually drops or restores something.
 | **REG-i3-super-m** | i3 kit chord `<Super>m` → monocle | **C0 done** | **Z** (map to zoom full; **not** rebind on C0) | Unbound 2026-08-15. Zoom uses Super+Enter today. |
 | **REG-i3-super-f** | i3 kit `<Super>f` → **snap center** (not fullscreen) | optional C5/Z | **Z** map to zoom full | i3 users expect fullscreen; current mapping is already non-i3. Fix when zoom lands, not with monocle. |
 | **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1 done** (user toggles + cycle) | never as silent behavior; percent policy explicit | User/keybind paths use `setLayout`. Profile `_layoutOp` still flattens (REG-ensure-flatten). |
-| **REG-auto-exit-tabbed** | `auto-exit-tabbed` dissolving single-child tab CONs | **C1–C2** evaluate | optional later | Implicit structure change; may keep if it only flattens *empty* chrome, not user groups. Decide in C1 inventory. |
+| **REG-auto-exit-tabbed** | `auto-exit-tabbed` single-child TABBED chrome exit | **C2 decided: keep** | optional later if we want last-tab to stay TABBED | **Keep.** `removeNode` + `setLayout` + strip drop when one child remains. Not multi-child flatten; not a substitute for `ungroup`. |
 | **REG-ensure-flatten** | Layout ensure / thrash paths that collapse nested H/V into tab bags | **C0–C5** inventory; strip where not required for profiles | only as explicit `forge layout` repair flag | Profile apply may still reshape; user toggles must not. |
-| **REG-expand-dual-axis** | Current `[`/`]` grow both axes via child+parent without clear docs | **R1–R2** | **R2** as documented Size step | Not deleted forever — re-specified as dual owning-split steps. |
+| **REG-expand-dual-axis** | `[`/`]` grow both axes | **R1 done** — two `applyOwningSplit` calls (H then V) | **R2** Size step docs | Not deleted. No child+parent walk. |
 | **REG-snap-as-fullscreen-ish** | Teaching snap-center as “fullscreen-ish” (docs/kits) | **Z** | n/a | Snaps stay as snaps; zoom owns peek. |
 | **REG-golden-ratio** | `window-golden-ratio` (already unbound) | keep unbound through C | **R3** optional | Low priority ratio preset. |
 | **REG-ratio-yuiop** | Proposed yuiop ratio keys | never ship in C | [resize-autotile](./forge-resize-and-autotile.md) optional | Not a regression of existing product; parked. |
-| **REG-focus-parent** | *(missing today — not a regression)* | — | **C4** add | Listed so we don’t ship C without a restore path for tree navigation. |
+| **REG-focus-parent** | `focusParent` / `focusChild` + keys (was missing) | — | **C4 done** | Added 2026-08-17. Elevated `focusUnit` + leaf `afterFocus`/`revealGroupChild`. |
 
 ### Kit / chord impact summary (at C0) — **applied 2026-08-15**
 
@@ -294,16 +312,16 @@ layout ∈ { HSPLIT, VSPLIT, TABBED, STACKED }
 | --- | --- | --- | --- |
 | **C0** | Inventory lossy paths; **delete monocle** (REG-monocle, REG-i3-super-m) | **Done 2026-08-15** — inventory in completed C0 task | Monocle-only tests deleted; no `setLayout` yet |
 | **C1** | Non-destructive layout transitions (H/V/tab/stack) — i3 `layout toggle` class | **Done 2026-08-15** — setLayout I1 + guards | **Test I1** green |
-| **C2** | Explicit `group` / `ungroup` + CLI/RunSteps; cut silent CON invent where safe | Ungroup only dissolves CON | **Test I2** |
-| **C3** | Split chrome: focus ancestry; show-all; drag show-all (i3 indicator language) | Visible H vs V under focus | Manual/live; pure helpers tested if extracted |
-| **C4** | Move into/out of group + **focus parent/child** | Tree navigation without debug overlay | Test focus target + reparent ids |
+| **C2** | Explicit `group` / `ungroup` + CLI/RunSteps; cut silent CON invent where safe | **Done 2026-08-17** — ungroup dissolves one CON only | **Test I2** green |
+| **C3** | Split chrome: focus ancestry; show-all; drag show-all (i3 indicator language) | **Done 2026-08-17** — I5 helpers + paint + setting/toggle + grab force | Pure I5 + decoration L0 green; nest visual optional |
+| **C4** | Move into/out of group + **focus parent/child** | **Done 2026-08-17** — focusUnit + moveIn/Out + kits/RunSteps | **Test** focus target + reparent ids green |
 | **C5** | Kits, docs, DESIGN; REG restore notes; strip residual lossy toggles | Docs + kits match; REG table current | Docs + smoke |
 
 ### Wave R — Resize (interleaved with C1–C3)
 
 | ID | Work | Done when | Clean / tests |
 | --- | --- | --- | --- |
-| **R1** | Single owning-split resolver; wire keyboard + mouse | Nested off-axis edge resizes ancestor | **Test I3** (tree percent math pure) |
+| **R1** | Single owning-split resolver; wire keyboard + mouse | **Done 2026-08-17** — nested off-axis hits ancestor | **Test I3** green |
 | **R2** | Prefs/cheatsheet: Resize vs Size; shrink/grow order | Sane grouping | No empty snapshot tests |
 | **R3** (optional later) | Ratio-step / yuiop | Only if still wanted | See resize-autotile plan |
 

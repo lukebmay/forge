@@ -267,6 +267,38 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(n2.parentNode).toBe(con);
   });
 
+  it("ungroup dissolves TABBED CON and keeps child order", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const con = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.TABBED;
+    const w1 = createMockWindow({ id: 61, wm_class: "L" });
+    const w2 = createMockWindow({ id: 62, wm_class: "R" });
+    const n1 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w1);
+    const n2 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w2);
+    n1.mode = WINDOW_MODES.TILE;
+    n2.mode = WINDOW_MODES.TILE;
+
+    const out = api()._ungroupOp("id:61", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(out.changed).toBe(true);
+    expect(n1.parentNode).toBe(monitor);
+    expect(n2.parentNode).toBe(monitor);
+    expect(monitor.childNodes).toEqual([n1, n2]);
+    expect(con.parentNode).toBeNull();
+  });
+
+  it("ungroup no-ops a mon-direct window", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const w = createMockWindow({ id: 71 });
+    const n = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, w);
+    n.mode = WINDOW_MODES.TILE;
+
+    const out = api()._ungroupOp("id:71", { quiet: true });
+    expect(out.ok).toBe(true);
+    expect(out.changed).toBe(false);
+    expect(n.parentNode).toBe(monitor);
+  });
+
   it("merge-group fails without partner", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const con = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());

@@ -3646,8 +3646,8 @@ def build_parser() -> argparse.ArgumentParser:
         "Batch **extension-only** ops via DBus RunSteps (freezeRender → ops → one render).\n"
         "\n"
         "Payload JSON: a steps array, or { \"steps\": [...], \"stopOnError\": true }.\n"
-        "Ops: ping, focus, swap, move, layout, layout-cycle, merge-group, float,\n"
-        "     place-next, set, order, close, unfocus.\n"
+        "Ops: ping, focus, swap, move, layout, layout-cycle, merge-group, group,\n"
+        "     ungroup, float, place-next, set, order, close, unfocus.\n"
         "\n"
         "CLI-only ops (launch, wait-window, wait) are **rejected** here.\n"
         "Use `forge run FILE` or `forge layout <name>` for mixed scripts.\n"
@@ -3660,6 +3660,8 @@ def build_parser() -> argparse.ArgumentParser:
         '  {"op":"layout","mode":"tabbed","selector":"focus"}\n'
         '  {"op":"layout-cycle","axis":"group","selector":"focus"}\n'
         '  {"op":"merge-group","selector":"focus","with":"id:2"}\n'
+        '  {"op":"group","selector":"focus","with":"id:2"}\n'
+        '  {"op":"ungroup","selector":"focus"}\n'
         '  {"op":"float","selector":"focus","scope":"window"}\n'
         '  {"op":"place-next","wmClass":"X","monitor":0}\n'
         '  {"op":"set","key":"window-gap-size","value":8}\n'

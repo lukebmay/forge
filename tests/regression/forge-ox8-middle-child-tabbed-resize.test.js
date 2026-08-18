@@ -12,8 +12,7 @@ import { Rectangle, GrabOp } from "../mocks/gnome/Meta.js";
 /**
  * forge-ox8 (#64): resize a tabbed/stacked container that is a MIDDLE child —
  * i.e. it has split siblings on BOTH sides. This is the scenario #64 asks about,
- * which the #497 fix (forge-pak, _resizeContainerAgainstSibling) should already
- * cover via nextVisible(container, direction): dragging right resizes against the
+ * which I3 `resolveOwningSplit` covers: dragging right resizes against the
  * RIGHT neighbor, dragging left resizes against the LEFT neighbor, and the
  * opposite (non-adjacent) sibling must stay untouched.
  *

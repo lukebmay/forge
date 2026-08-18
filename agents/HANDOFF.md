@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-17 (PR15 host residual lock done; later PR7 docs)
+**Updated:** 2026-08-17 (FCC C4 done; C5 next; PR7 docs parked)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -14,36 +14,73 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** SM1–SM7 + R036 + D044 + PR1–**PR15** + user-CLI cut.
-**Install:** dirty tip on master (PR6–PR15 uncommitted). Host tip is
-**pre-PR15** (operator loaded PR14). Nest `running: False` unless agent starts it.
-**L0 last:** tab-strip + Tree-layout + tab-drag + DnD + normalize + Tree-ops
-→ **297 green** (PR15 residual lock).
+**Repo tip:** SM1–SM7 + R036 + D044 + PR1–**PR15** + user-CLI cut + **C2/R1/C3/C4 done**.
+**Install:** tip on master (PR6–PR15 + FCC C2/R1/C3/C4). Nest `running: False` unless
+agent starts it. **Do not close** durable-agent ghostty windows.
+**L0 last:** C4 move-focus-parent-c4 **12** (+ CommandHandler/run-steps/keybinds suite **244**).
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
 **Host settings:** `preview-hint-enabled=false`, `mod-mask-mouse-tile=None`.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
 `forge-test` (clone path; `./install --with-test-cli` opt-in).
 
-### Active — tab click-drag
+### Active — FCC C5 docs/kits
 
 | Pri | Slice | Status | Task |
 | --- | --- | --- | --- |
-| later | PR7 docs | park | plan § PR7 |
+| P2 | C5 kits/docs/DESIGN polish | **next** | [plan](./plans/forge-first-class-containers.md) § C5 |
+| later | Tab click-drag PR7 docs | park | plan § PR7 |
 
-**PR15 done (unit):** chip track, chip∩strip gap (origin+foreign),
-pointer×center scoot, `clearTabDragResiduals`. L0 **297**. Host needs
-reload to pick up PR15 JS.
-**PR12–PR15 unit-shipped** (uncommitted). Do not reopen PR10/PR12/PR13
-ownership unless a new host repro.
-**Completed notes:** [PR15](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr15-host-residual-lock.md) ·
-[PR14](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr14-crossmon-prove.md) ·
-[PR13](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr13-peel-pointer-coords.md) ·
-[PR12](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr12-one-layout-owner.md) ·
-[PR11](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr11-mid-drag-gap-equalize.md) ·
-[PR10](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr10-peel-slot-crossmon.md) ·
-[PR9](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr9-move-app-crossmon-safety.md) ·
-[PR8](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr8-chip-width-equal-fill.md) ·
-[PR6](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr6-foreign-strip-join.md).
+### Shipped — FCC C4 move + focus parent
+
+| Field | Detail |
+| --- | --- |
+| API | `tree.focusParent` / `focusChild` / `moveIn` / `moveOut` + `focusUnit` |
+| Focus | Elevate/descend unit; leaf via `revealGroupChild` / `afterFocus` |
+| Move | Layout unit → sibling CON / out to grandparent; D044 normalize on tab dest |
+| Command | `FocusParent` / `FocusChild` / `WindowMoveIn` / `WindowMoveOut` |
+| RunSteps | `focus-parent` / `focus-child` / `move-in` / `move-out` |
+| Keys | i3/Vim `Super+a` / `Shift+Super+a`; move `,` family; Safe `Ctrl+Super+a`/`,` |
+| L0 | move-focus-parent-c4 **12**; touched suite **244** |
+| Nest | skipped (unit); `running: False` |
+| Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c4-move-focus-parent.md) |
+
+### Shipped — FCC C3 split chrome (I5)
+
+| Field | Detail |
+| --- | --- |
+| API | `resolveSplitChromeMode` · `collectSplitAncestry` · `splitChromeForWindow` (`split-chrome.js`) |
+| Paint | existing `.window-split-border` on tiled leaves under qualifying H/V |
+| Modes | focus-ancestry (default); `split-chrome-show-all`; grab `setSplitChromeForceShowAll` |
+| Toggle | `SplitChromeShowAllToggle` / kbd unbound; prefs Appearance switch |
+| L0 | touched **219** (I5 pure 8 + decoration/borders/commands/keybinds/…) |
+| Nest | skipped (unit); `running: False` |
+| Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c3-split-chrome.md) |
+
+### Shipped — FCC R1 owning-split resize (I3)
+
+| Field | Detail |
+| --- | --- |
+| API | `tree.layoutUnit` · `tree.resolveOwningSplit` · `wm.applyOwningSplit` |
+| Grab | `_handleResizing` → resolver + `_applyOwningSplitFromGrab` (cumulative) |
+| Expand | two `applyOwningSplit` calls (H then V; REG-expand-dual-axis) |
+| Keyboard | `WindowResize*` → `wm.resize` grab → same `_handleResizing` resolver |
+| L0 | owning-split-i3 **13**; touched resize/command **180** total |
+| Nest | not required; `running: False` |
+| Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_r1-owning-split-resize.md) |
+
+### Shipped — FCC C2 group/ungroup (I2)
+
+| Field | Detail |
+| --- | --- |
+| API | `tree.group` → `mergeWindowsIntoGroup`; `tree.ungroup` dissolves one CON |
+| Command | `WindowMergeGroup` → `group`; `WindowUngroup` + `window-ungroup` (`Ctrl+Shift+Super+m`) |
+| RunSteps | `merge-group` + alias `group`; `ungroup` |
+| REG-auto-exit-tabbed | **kept** (single-child chrome exit, not multi-child flatten) |
+| L0 | ungroup-i2 + C1/ops/command/session/run-steps **210** (orch recheck) |
+| Nest | not required; `running: False` |
+| Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c2-group-ungroup.md) |
+
+**Do not reopen** PR10/PR12/PR13/PR15 tab-drag ownership unless new host repro.
 [IDEAS](./IDEAS.md) parked.
 
 
@@ -74,7 +111,7 @@ ownership unless a new host repro.
 | L0 | Combined SM suite **235** green |
 | Nest | mon=1 clean **PASS**; mon=2 ghosttys **PASS** (re-apply after clean) |
 | Host cold | **PASS** 2026-08-16 — see R036 shipped below |
-| Next | Queue open (FCC C2 / bag review / TD4) |
+| Next | Queue open (FCC C4 / R1 / C3) |
 | Do not | Restore belt; Mode B as cold success; spanning tab chrome; overlay before all-hard |
 
 ### Shipped — R036 cold host SEGV + forest match
@@ -572,17 +609,15 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Next:** Tab click-drag **PR7 docs** (park) / FCC C2. PR1–**PR15**
-unit-shipped (PR6–PR15 uncommitted). Host tip is **pre-PR15** until
-operator reload. User CLI **shipped** — `forge` product-only;
-nest/live = `./scripts/forge/forge-test`.
+**Next:** FCC **C5** kits/docs/DESIGN polish. PR7 docs parked.
+PR1–**PR15** + FCC C2/R1/C3/C4 shipped. User CLI **shipped** —
+`forge` product-only; nest/live = `./scripts/forge/forge-test`.
 
 Do not reshape PR1 attach, PR5 2D/wrap-on, PR10 peel synthetic,
 PR11/PR12 mid-drag pack, PR13 chip+event coords, or PR15 residual
-locks (pointer-center scoot; chip∩strip gap; release clear; chip
-track). Preserve PR9 foreign spacer-only.
+locks. Preserve PR9 foreign spacer-only.
 Do **not** re-litigate D039–D044. Do **not** teach `forge test` / top-level
-`forge nested`.
+`forge nested`. Do **not** close durable-agent ghostty windows.
 
 Queue: [PRIORITY](./PRIORITY.md). Parked optionals: [IDEAS](./IDEAS.md).
 
@@ -596,13 +631,18 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 
 | You can do | You must not |
 | --- | --- |
-| PR7 docs; nest for JS retest | Redesign D039–D044; restack latch; hit plates |
+| C5 docs/kits; nest for JS retest | Redesign D039–D044; restack latch; hit plates |
 | Nest (`./scripts/forge/forge-test nested`, mon=1) | `forge test` / top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
-| FCC C2+ when product need | Implement parked IDEAS without promote |
-| | Second DnD engine; live-tab reparent on foreign mid-grab; reopen peel ownership without cause |
+| PR7 docs later | Implement parked IDEAS without promote; close agent ghosttys |
+| | Second chrome system; reopen peel ownership; reopen C4 APIs |
 
 | Pri | Work | Path |
 | --- | --- | --- |
+| P2 | FCC **C5** kits/docs | [plan](./plans/forge-first-class-containers.md) |
+| done | FCC **C4** move + focus parent | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c4-move-focus-parent.md) |
+| done | FCC **C3** split chrome | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c3-split-chrome.md) |
+| done | FCC **R1** owning-split resize | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_r1-owning-split-resize.md) |
+| done | FCC **C2** group/ungroup | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c2-group-ungroup.md) |
 | done | Tab **PR15** host residual lock | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr15-host-residual-lock.md) |
 | done | Tab **PR14** cross-mon / foreign prove | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr14-crossmon-prove.md) |
 | done | Tab **PR13** peel chip + event coords | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr13-peel-pointer-coords.md) |

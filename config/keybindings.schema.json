@@ -38,6 +38,10 @@
           "$ref": "#/definitions/keybinding",
           "description": "Toggle focused window border"
         },
+        "split-chrome-show-all-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle show-all H/V split chrome"
+        },
         "window-gap-size-increase": {
           "$ref": "#/definitions/keybinding",
           "description": "Increase gap size between windows"
@@ -73,6 +77,26 @@
         "window-merge-group": {
           "$ref": "#/definitions/keybinding",
           "description": "Merge focused and last-active windows into a tabbed group"
+        },
+        "window-ungroup": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Ungroup: dissolve the parent container, keep child order"
+        },
+        "window-focus-parent": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Focus parent container (i3 $mod+a class)"
+        },
+        "window-focus-child": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Focus child container or leaf under elevated parent"
+        },
+        "window-move-in": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Move layout unit into an existing sibling container"
+        },
+        "window-move-out": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Move layout unit out to the grandparent"
         },
         "con-tabbed-showtab-decoration-toggle": {
           "$ref": "#/definitions/keybinding",

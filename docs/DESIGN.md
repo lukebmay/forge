@@ -572,11 +572,13 @@ casual “groupify this parent” dissolves nested units.
 | --- | --- | --- | --- |
 | Group chrome cycle | `Ctrl+Super+g` | `Shift+Super+n` | **TABBED ↔ STACKED only**; no-op on H/V |
 | Split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` | H ↔ V only (no group exit yet) |
-| Merge two windows | `Ctrl+Super+m` | `Shift+Super+m` | Last-active (or sibling) → tabbed group |
+| Merge two windows | `Ctrl+Super+m` | `Shift+Super+m` | Last-active (or sibling) → tabbed group (`tree.group`) |
+| Ungroup | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` | Dissolve parent CON; children keep order (`tree.ungroup`) |
 | Tab force (to/from split) | `Ctrl+Super+t` | `Shift+Super+t` | Existing LayoutTabbedToggle |
 
 Groups today are **window-leaf bags** — chrome flip is lossless. CLI parity via
-RunSteps: `layout-cycle` (axis `group`|`split`), `merge-group`, `float`.
+RunSteps: `layout-cycle` (axis `group`|`split`), `merge-group` / `group`,
+`ungroup`, `float`.
 Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind save|load`.
 
 **Phase 2–3 (active plan):** first-class containers — non-destructive layout

@@ -112,6 +112,12 @@ describe("run-steps pure helpers (FC4)", () => {
       expect(EXTENSION_OPS).toContain("layout");
       expect(EXTENSION_OPS).toContain("layout-cycle");
       expect(EXTENSION_OPS).toContain("merge-group");
+      expect(EXTENSION_OPS).toContain("group");
+      expect(EXTENSION_OPS).toContain("ungroup");
+      expect(EXTENSION_OPS).toContain("focus-parent");
+      expect(EXTENSION_OPS).toContain("focus-child");
+      expect(EXTENSION_OPS).toContain("move-in");
+      expect(EXTENSION_OPS).toContain("move-out");
       expect(EXTENSION_OPS).toContain("dnd-drop");
       expect(EXTENSION_OPS).toContain("float");
       expect(EXTENSION_OPS).toContain("order");
@@ -141,6 +147,26 @@ describe("run-steps pure helpers (FC4)", () => {
         op: "merge-group",
         with: "class:X",
       });
+      expect(validateStep({ op: "group", selector: "focus", with: "id:2" }).step).toEqual({
+        op: "group",
+        selector: "focus",
+        with: "id:2",
+      });
+      expect(validateStep({ op: "ungroup", selector: "focus" }).step).toEqual({
+        op: "ungroup",
+        selector: "focus",
+      });
+      expect(validateStep({ op: "ungroup" }).ok).toBe(true);
+      expect(validateStep({ op: "focus-parent", selector: "focus" }).step).toEqual({
+        op: "focus-parent",
+        selector: "focus",
+      });
+      expect(validateStep({ op: "focus-child" }).ok).toBe(true);
+      expect(validateStep({ op: "move-in", selector: "id:1" }).step).toEqual({
+        op: "move-in",
+        selector: "id:1",
+      });
+      expect(validateStep({ op: "move-out" }).ok).toBe(true);
       expect(
         validateStep({
           op: "dnd-drop",

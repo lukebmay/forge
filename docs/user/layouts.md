@@ -53,12 +53,14 @@ nested structure and is deferred).
 | --- | --- | --- |
 | Flip tab ↔ stack on current group | `Ctrl+Super+g` | `Shift+Super+n` |
 | Merge focus + last-active → tabbed group | `Ctrl+Super+m` | `Shift+Super+m` |
+| Ungroup parent container (keep child order) | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` |
 | Make parent tabbed / back to split | `Ctrl+Super+t` | `Shift+Super+t` |
 | H ↔ V split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` |
 | Center-drop onto another window | DnD center (default **tabbed**) | same |
 
 CLI / DBus parity (RunSteps): `layout-cycle` (`axis: group|split`),
-`merge-group`, `float` (`scope: window|class`), plus absolute `layout`.
+`merge-group` / `group`, `ungroup`, `float` (`scope: window|class`), plus
+absolute `layout`.
 
 Move windows into or out of an existing group with the usual move/swap binds.
 

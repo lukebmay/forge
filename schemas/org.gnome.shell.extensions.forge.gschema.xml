@@ -12,6 +12,11 @@
             <summary>Show split direction border on focused window</summary>
         </key>
 
+        <key type="b" name="split-chrome-show-all">
+            <default>false</default>
+            <summary>Show H/V split chrome on every split CON (not only focus ancestry)</summary>
+        </key>
+
         <key type="u" name="window-gap-size">
             <default>4</default>
             <summary>
@@ -323,6 +328,11 @@
             <summary>Toggle focus border</summary>
         </key>
 
+        <key type="as" name="split-chrome-show-all-toggle">
+            <default><![CDATA[[]]]></default>
+            <summary>Toggle show-all split chrome</summary>
+        </key>
+
         <key type="as" name="window-gap-size-increase">
             <default><![CDATA[['<Ctrl><Super>plus']]]></default>
             <summary>Increase gap size</summary>
@@ -366,6 +376,31 @@
         <key type="as" name="window-merge-group">
             <default><![CDATA[['<Ctrl><Super>m']]]></default>
             <summary>Merge focused and last-active windows into a tabbed group</summary>
+        </key>
+
+        <key type="as" name="window-ungroup">
+            <default><![CDATA[['<Ctrl><Shift><Super>m']]]></default>
+            <summary>Ungroup: dissolve the parent container, keep child order</summary>
+        </key>
+
+        <key type="as" name="window-focus-parent">
+            <default><![CDATA[['<Ctrl><Super>a']]]></default>
+            <summary>Focus parent container (i3 $mod+a class)</summary>
+        </key>
+
+        <key type="as" name="window-focus-child">
+            <default><![CDATA[['<Ctrl><Shift><Super>a']]]></default>
+            <summary>Focus child container / leaf under elevated parent</summary>
+        </key>
+
+        <key type="as" name="window-move-in">
+            <default><![CDATA[['<Ctrl><Super>comma']]]></default>
+            <summary>Move layout unit into an existing sibling container</summary>
+        </key>
+
+        <key type="as" name="window-move-out">
+            <default><![CDATA[['<Ctrl><Shift><Super>comma']]]></default>
+            <summary>Move layout unit out to the grandparent</summary>
         </key>
 
         <key type="as" name="con-tabbed-showtab-decoration-toggle">
