@@ -120,7 +120,7 @@ open, PR2–PR6 as later). Rejected product: cross-mon TABBED (D044); top-level
 
 1. **SM1–SM7 + R036 + D044 + user CLI + PR1–PR15 + FCC C0–C5/R1 + P3 + Wave Z0/Z1** — shipped.
 2. **Required queue empty** — no next implement slice unless promoted.
-3. **Optional later** — PR7 docs (paper) · CN13 CLI PATH finish · yuiop (human lock).
+3. **Optional next session** — CN13 CLI PATH finish · then CN14/CN15 · yuiop (human lock).
 
 ### Worth (do not forget)
 
