@@ -7,7 +7,8 @@ are how we get directional DnD no-ops and un-restored VLC geometry.
 
 Formulas for focus/structure/open: [actions.md](actions.md).
 Architecture: [architecture.md](architecture.md). Why: [DESIGN.md](../DESIGN.md).
-Decisions: [DECISIONS.md](../DECISIONS.md) (D018–D019, D023–D026, D037–D044).
+Decisions: [DECISIONS.md](../DECISIONS.md) (D018–D019, D023–D026,
+D037–D044, D046).
 Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.md).
 
 ---
@@ -29,7 +30,12 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Job | Canonical API | Do not |
 | --- | --- | --- |
 | Tree child list / order | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` | Assign `childNodes` or `parentNode` |
-| **TABBED/STACKED strip reorder** | `tabStripInsertIndex` + `parent.replaceChildren` (tab-drag path in `DragDropManager`) | `createNode` / `mergeWindowsIntoGroup` / assign `childNodes` for in-strip reorder |
+| **Tab chrome layer / pickability** | `#forge-tab-chrome` host + `DecorationManager.attachTabDecoration` / `trackChrome` (idempotent WeakSet). Strips leave `window_group`; host sits above `window_group` / below `top_window_group` | Restack latch vs window actors; second `trackChrome` without WeakSet; `addChrome` on the host; borders/`rootBin` on the tab layer |
+| **TABBED wrap plan (rows)** | `planTabbedWrap` / `minTabWidthFromChars` (`tree-layout.js`) via `processTabbed`; prefs `min-tab-label-chars` (default **20**), `max-tabs-per-line`, `max-tab-rows` (`0` = off / unbounded as keyed) | Hand-rolled row buckets; count-only wrap that ignores min width |
+| **TABBED/STACKED strip reorder (commit)** | `applyTabStripReorder` + `parent.replaceChildren` + `wm.commitLayout("tab-strip-reorder")` + `wm.settleTabFocus` (dragged child). Arm: `armTabDrag`. Index pures: `tabStripGapFromFloatingChip` / `tabStripInsertIndex2D` / `tabStripInsertIndexFromGap` / `foreignStripInsertIndex` (`drag-drop.js`) | `createNode` / `mergeWindowsIntoGroup` for same-strip reorder; outline-on-neighbor as product UI; `replaceChildren` on every motion; assign `childNodes` |
+| **Chrome live reorder (preview)** | Float min-width chip + gap (= chip size) + sibling pack via `_syncReorderSiblingPack` / `tabStripEqualFillSizesWithGap` / `tabStripFlowLayoutWithGap`. Gap scoot = **pointer × sibling center** (PR15). Membership = `chipIntersectsTabStrip` / `findTabStripIntersectingChip` / `pointerOnTabStrip` (strip ∪ `TAB_STRIP_HIT_PAD_PX`; multi-row = union of rows) | `.window-tabbed-tab-reorder-insert` product paint; leading-edge scoot; pointer-only strip membership; dual `set_width` + stale `translation_*` mid-drag |
+| **Peel / MOVE APP (leave strip)** | Forge synthetic peel → `_startTabMoveGrab` (no Meta `begin_grab_op` ownership). Chip tracks via `_syncTabDragChipToPointer` / stage-event coords (`getDragPointer`). Tile drop-zones when not over a strip; re-enter strip ⇒ REORDER float+gap again | Hand off peel motion to `begin_grab_op`; freeze chip on fast leave; skip origin re-entry gap |
+| **Tab drag release residual clear** | `clearTabDragResiduals` on every button-release / disarm (pressed/dragging classes, reorder preview, drop-zone paint) | Per-path partial teardown that leaves stuck highlight or zones |
 | Keyboard / tab / Meta focus | `wm.afterFocus(node, { source })` | `renderTree("focus")`; inline F+D+B |
 | Commit structure or size | `wm.commitLayout(reason, { force })` | Second `renderTree` in the same gesture |
 | Re-raise current / new open leaf after structure | `wm.settleTabFocus(node)` | Second full commit “for tabs” |
@@ -37,7 +43,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | **Show a child in a TABBED/STACKED group** | `wm.revealGroupChild(node, { keyboard, pin })` (includes slot reassert R025 + adopt live pin R026) | `parent.lastTabFocus =` + `raise()` in a new file |
 | Pin open leaf during layout residual | `wm.pinLayoutOpenLeaf` / `restoreLayoutOpenLeafIfStolen` | Adopt Meta steal as the new leaf |
 | **Group two windows as tabs/stack** | `tree.group(a, b, layout?, opts?)` — named I2 op; implements via `mergeWindowsIntoGroup`. Default **TABBED**; **STACKED** when stacked mode + `dnd-center-layout` stacked, or opts | Flip `parent.layout` in DnD/command; new wrap twin of merge |
-| **Ungroup / dissolve a CON** | `tree.ungroup(node)` — promote children to grandparent (order preserved). WINDOW uses parent CON. No-op MONITOR/ROOT/WORKSPACE. One CON only (not recursive flatten; no Meta mon peel) | `_layoutOp` / `_flattenLayoutParentToWindows`; `cleanTree` / `auto-exit-tabbed` as product ungroup |
+| **Ungroup / dissolve a CON** | `tree.ungroup(node)` — promote children to grandparent (order preserved). WINDOW uses parent CON. No-op MONITOR/ROOT/WORKSPACE. One CON only (not recursive flatten; no Meta mon peel) | `_layoutOp` silent peel (deleted P3); `cleanTree` / `auto-exit-tabbed` as product ungroup |
 | **Focus parent / child (C4)** | `tree.focusParent` / `tree.focusChild` — elevate/descend `tree.focusUnit`; activate leaf via `revealGroupChild` (tab/stack) or `_activateWindowNode` + `afterFocus`. No-op at MONITOR/ROOT/WORKSPACE | Twin focus stack; Meta-focus a CON; skip `afterFocus` / `revealGroupChild` |
 | **Move in / out of CON (C4)** | `tree.moveIn` / `tree.moveOut` — reparent **layout unit** (`layoutUnit` / elevated `focusUnit`) into existing sibling CON / out to grandparent via Node child-list APIs. Tab/stack dest → `normalizeGroupToHomeMonitor` (D044). No invent-group (use `group`) | Directional edge auto-pop; assign `childNodes`; second DnD engine; spanning tab chrome |
 | **TABBED/STACKED group home mon** | `tree.groupHomeMonitor(con)` → tree MONITOR index (`treeMonitorIndexOfNode`) | Meta `get_monitor()` / `sameParentMonitor` as home (can lie mid-thrash) |

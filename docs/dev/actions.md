@@ -86,10 +86,50 @@ tab groups, reassert from `afterFocus`.
 
 ---
 
+### TabChromeDrag (D046)
+
+**Entries:** primary press on a group tab (not close), stage motion / release
+on the armed tab gesture (`DragDropManager.armTabDrag`).
+
+**Press (< 8px travel):** reveal only — `revealGroupChild` (same as tab
+click). Arm pressed chrome; do not mutate tree order.
+
+**REORDER (float+gap):** after ≥8px while the **floating chip** intersects a
+strip band (origin or foreign; multi-row = union of rows + pad):
+
+```text
+preview only mid-drag (float chip + gap + pointer×center scoot)
+  → on release over strip:
+      M (applyTabStripReorder + replaceChildren)
+      → exactly one C ("tab-strip-reorder")
+      → settleTabFocus on dragged child
+  → clearTabDragResiduals
+```
+
+Product preview is **Chrome live** (floating chip + empty gap). Outline /
+`.window-tabbed-tab-reorder-insert` is not product UI. Do **not**
+`replaceChildren` on every motion. Mid-drag sibling pack is BoxLayout +
+fixed widths (`_syncReorderSiblingPack`); zero stale `translation_*`.
+
+**MOVE APP (peel):** chip leaves every strip band → synthetic peel →
+`_startTabMoveGrab` → existing tile drop-intent (CENTER join, edge
+slot-split, empty-mon, wrap-in-slot). Chip must keep tracking the pointer
+(`_syncTabDragChipToPointer`). Re-enter a strip band before grab end →
+back to REORDER float+gap (gap must reappear).
+
+**Any release / abort:** `clearTabDragResiduals` (pressed/dragging,
+reorder preview, drop-zone paint). Click-only must not leave stuck chrome.
+
+**Forbidden:** second DnD engine; Meta `begin_grab_op` as peel motion
+owner; spanning tab chrome; twin layout owner mid-drag.
+
+---
+
 ### StructureChanged
 
-**Entries:** Move, Swap, Split, layout toggles, float toggle, merge, drag-drop end,
-DBus Move/Swap/Layout, RunSteps residual ops.
+**Entries:** Move, Swap, Split, layout toggles, float toggle, merge,
+drag-drop end (including tab-strip reorder commit), DBus Move/Swap/Layout,
+RunSteps residual ops.
 
 ```text
 M → exactly one C (Cf if interactive; else Cq)

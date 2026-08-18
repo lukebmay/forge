@@ -89,6 +89,32 @@ Other settings:
 - `default-window-layout` (`tiled` | `tabbed` | `stacked`) sets the layout a newly
   *split* container starts in.
 
+### Tab strip drag (Chrome-like)
+
+Drag a **tab label** (not the close control):
+
+1. **Click** (no real travel) — switches to that tab only.
+1. **Drag along the strip** — the tab floats under the pointer; siblings
+   slide and leave a gap where it will land. Release commits the new order
+   in that group.
+1. **Drag off the strip** onto the desk — peels that window into normal
+   tile drag (center join, edge split, empty monitor), same as dragging a
+   titlebar.
+1. Drag onto **another group’s** tab bar to insert into that group at the
+   gap (groups stay on one monitor).
+
+Tabbed bars can **wrap** into multiple rows when labels would get too
+narrow. Preferences → Appearance:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `min-tab-label-chars` | **20** | Width-wrap when equal-fill tabs would show fewer characters (`0` = width wrap off) |
+| `max-tabs-per-line` | `0` | Cap labels per row (`0` = no count cap; with width wrap off → single row) |
+| `max-tab-rows` | `0` | Hard row cap (`0` = unbounded; ≥1 shrinks tabs to fit) |
+
+Stacked groups use a vertical title column; the same drag rules apply along
+that column.
+
 ## Snap / quarter presets
 
 Snap the focused window to a region without restructuring the tree (defaults use
@@ -138,12 +164,16 @@ window keeps its place in the tree and re-tiles when you toggle it back.
 
 ## Drag to tile
 
-Drag a window over another and Forge shows a **preview hint** (left / right / top /
-bottom / center) of where it will land; drop to tile it there. A center drop creates
-a tabbed or stacked container (`dnd-center-layout`, default `tabbed`). With stack
-mode off, center drop is forced to **tabbed** regardless of that setting. Whether
+Drag a window **titlebar** (or a tab peeled off its strip) over another and
+Forge shows a **preview hint** (left / right / top / bottom / center) of
+where it will land; drop to tile it there. A center drop creates a tabbed or
+stacked container (`dnd-center-layout`, default `tabbed`). With stack mode
+off, center drop is forced to **tabbed** regardless of that setting. Whether
 you must hold a modifier while dragging is set by the drag mask — see
 [keybindings.md](keybindings.md#drag-to-tile).
+
+**Tab labels** use the Chrome-like strip gesture above (float + gap), not the
+five-zone tile preview, while the pointer stays over a tab bar.
 
 **Empty monitor:** drag a tile onto another monitor’s empty work area (no window
 under the pointer) and release — the window rehomes onto that monitor (same

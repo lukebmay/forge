@@ -1,24 +1,25 @@
 # Plan: Browser-like tab chrome drag
 
-**Status:** TD1 **done**; TD0/TD2/TD3 **skip**; TD4 **defer** (Tab D0)
+**Status:** TD1 **done**; TD0/TD2/TD3 **skip**; TD4 **done** (via PR7 docs)
 **Priority:** P1 product chrome — D0 lock
 [tab planning](../tasks/forge-tab-work-planning.md)
 **Created:** 2026-08-06
-**Updated:** 2026-08-16
+**Updated:** 2026-08-18
 **Branch:** `master` (do not open `plan/forge-tab-chrome-drag`)
 **Locks:** [insert + drag table](../tasks/forge-container-insert-dnd-design.md)
 (D032) · D023 child list · D024 drop-intent · D025 reveal · D044 mon-local
 
 ### Session note (overwrite)
 
-**2026-08-16 tab click-drag design:** Next tab product is
-[forge-tab-click-drag.md](./forge-tab-click-drag.md) (reorder + peel +
-pickability + wrap). TD1 stays the reorder engine. TD4 folds into that
-series PR6.
+**2026-08-18 TD4 done via PR7:** User docs + cheatsheet one-liner in
+`docs/user/layouts.md` (tab strip drag + wrap prefs) and
+`docs/user/keybindings.md` § Drag to tile. Contracts/DESIGN/**D046** via
+[forge-tab-click-drag PR7](./forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md).
+TD1 remains the reorder **commit** engine.
 
 **2026-08-16 Tab D0:** TD0 skip (grab trusted). TD2 **skip** (LX4/TD1 peel
-= Model B wrap-in-slot). TD3 **skip** (CENTER join shipped). TD4 **defer**
-until the click-drag docs PR. Same-mon D044 is shipped.
+= Model B wrap-in-slot). TD3 **skip** (CENTER join shipped). Same-mon D044
+shipped.
 
 **2026-08-14 (TD1 live PASS):** Nest tip `gb280f94` — 3 zenity TABBED,
 strip reorder middle→end, peel → mon HSPLIT + 2-tab remainder. Host
@@ -77,7 +78,7 @@ Tabs reuse that path when the pointer leaves the strip.
 | **TD1** | Strip reorder — [completed](./completed/forge-tab-chrome-drag_td1-strip-reorder.md) | `grok-4.5` medium | **done** (code + nest live) |
 | **TD2** | Peel-out if LX4 ≠ Model B | — | **skip** (Tab D0) |
 | **TD3** | Join another strip if CENTER miss | — | **skip** (Tab D0) |
-| **TD4** | User docs + cheatsheet one-liner | `grok-4.5` low | **defer** (after D044) |
+| **TD4** | User docs + cheatsheet one-liner | `grok-4.5` low | **done** (PR7 docs) |
 
 ---
 

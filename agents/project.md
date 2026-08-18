@@ -59,16 +59,16 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 
 | Item | Status | Next |
 | --- | --- | --- |
-| **[Canonical contracts](./plans/forge-canonical-contracts.md)** | **P0** IC0–IC3 done | IC4 **skipped** (AL8) |
-| **[CLI → Node](./plans/forge-cli-node.md)** | **Locked** D036 · CN0–CN6 **done** (CN7 skip) | no layout port; CN13 later |
+| **[Canonical contracts](./plans/forge-canonical-contracts.md)** | IC0–IC3 done · IC4 skipped | — |
+| **[CLI → Node](./plans/forge-cli-node.md)** | D036 · CN0–CN6 **done** (CN7 skip) | **CN13 next session**; no layout port |
 | **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold **PASS** |
 | **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM1–SM7 done** | D044 shipped |
-| **[First-class containers](./plans/forge-first-class-containers.md)** | C0+C1 **done** | C2 later |
-| **[Tab click-drag](./plans/forge-tab-click-drag.md)** | **PR1 shipped** | PR2+ when asked · [PR1](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
-| **[User CLI surface](./plans/forge-cli-user-surface.md)** | **P1** | `forge` product-only; nest/live = `forge-test` |
-| **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done**; TD2/TD3 skip | TD4 folds into click-drag PR6 |
+| **[First-class containers](./plans/forge-first-class-containers.md)** | C0–C5 + R1 + P3 **done** · Wave Z0/Z1 shipped | Kit chord leftovers = FCC REG only |
+| **[Tab click-drag](./plans/forge-tab-click-drag.md)** | **PR1–PR15 + PR7 docs (D046)** | — |
+| **[User CLI surface](./plans/forge-cli-user-surface.md)** | **Done** | `forge` product-only; nest/live = `forge-test` |
+| **[Tab strip DnD](./plans/forge-tab-chrome-drag.md)** | TD1 **done**; TD2/TD3 skip; TD4 **done** via PR7 | — |
 | **[CLI attachable jobs](./plans/forge-cli-jobs.md)** | **Done** (CJ1–CJ6) | Durable mutators default; `forge jobs`; see § CLI jobs below |
-| **STACKED layouts** | Major product | As PRIORITY allows |
+| **[STACKED layouts](./plans/forge-stacked-layouts.md)** | Phase 1 + SL5 live **done** | No open product gap |
 | `forge layout` (was workon) | **Done** rename + mon L/R order | Live-drive; mid-apply TTY death no longer aborts job |
 | [forge-workon-reconcile](./plans/forge-workon-reconcile.md) | **Complete** (historical name) | — |
 | [forge-command](./plans/forge-command.md) | FC0–FC5 **Done** | Jobs extend CLI process model |

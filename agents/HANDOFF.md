@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-18 (FCC C5 done; Wave C closed; PR7 / P3 next)
+**Updated:** 2026-08-18 (PR7 docs done; CN13 prepped for next session)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -14,10 +14,11 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** SM1–SM7 + R036 + D044 + PR1–**PR15** + user-CLI cut + **FCC C0–C5 + R1**.
+**Repo tip:** SM1–SM7 + R036 + D044 + PR1–**PR15** + **PR7/D046** + user-CLI cut +
+**FCC C0–C5 + R1 + P3**.
 **Install:** tip on master. Nest `running: False` unless agent starts it.
 **Do not close** durable-agent ghostty windows.
-**L0 last:** C5 keybind-presets + Keybindings **92**.
+**L0 last:** P3 flatten strip touched suite **123**.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
 **Host settings:** `preview-hint-enabled=false`, `mod-mask-mouse-tile=None`.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
@@ -27,9 +28,44 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 
 | Pri | Slice | Status | Note |
 | --- | --- | --- | --- |
-| later | Tab click-drag PR7 docs | park | plan § PR7 |
-| P3 | Strip `_layoutOp` flatten | next substantive | REG-ensure-flatten |
-| park | FCC Wave Z (zoom) | parked | promote via PRIORITY |
+| optional | **CN13** Node PATH `forge` | **next session** | [cli-node](./plans/forge-cli-node.md) § CN13 · prep below |
+| later | CN14 / CN15 | after CN13 | nest/live harness; delete Python router |
+| blocked | Ratio / autotile (yuiop) | hard blocker | [blocker](./blockers/resize-autotile-design.md) |
+| — | *(none required)* | empty | required queue still empty |
+
+### Prep — CN13 (next session)
+
+| Field | Detail |
+| --- | --- |
+| Plan | [forge-cli-node.md](./plans/forge-cli-node.md) § CN13–CN15 |
+| Agent | **4.6 med** (PATH + job runner) |
+| Today | `~/.local/bin/forge` → `scripts/forge/forge` (Python router); CN0–CN6 Node bodies via `exec_cli` |
+| Do | `cli/forge.mjs` PATH entry; `_lib.zsh` `forge_cli_repo_path` / `forge_cli_bin_is_ours` match `*/cli/forge(.mjs)`; port or wrap `job_runner`; one PATH entry |
+| Accept | `./install` retargets symlink; `forge ping` + `forge layout list`; ours-detect true; foreign bin refused |
+| D045 | Nest/live stay on **`forge-test`** — do not put them back on user `forge` |
+| Do not | Port layout planner to `cli/`; two PATH entries; flip root `package.json` `"type"` casually |
+| Docs after | `scripts/forge/README.md`, DESIGN CLI path, `project.md` jobs path |
+
+### Shipped — PR7 tab click-drag docs (D046)
+
+| Field | Detail |
+| --- | --- |
+| Docs | contracts · actions · DESIGN · layouts · troubleshooting · keybindings TD4 |
+| Decision | **D046** Chrome live tab strip DnD |
+| Plan | TD4 done via PR7 (`forge-tab-chrome-drag.md`) |
+| Code | none (docs only) |
+| Task | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) |
+
+### Shipped — P3 strip `_layoutOp` flatten (REG-ensure-flatten)
+
+| Field | Detail |
+| --- | --- |
+| API | `_layoutOp` TABBED/STACKED: lift focus to mon then wrap, or `ensure-flatten-refused` |
+| Deleted | `_flattenLayoutParentToWindows` |
+| REG | REG-ensure-flatten **dropped** (FCC plan + DESIGN + contracts) |
+| L0 | tz-tab + set-layout-i1 + layout-cycle + layout-apply-structure + CommandHandler **123** |
+| Nest | not required; `running: False` |
+| Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_p3-strip-layoutop-flatten.md) |
 
 ### Shipped — FCC C5 kits/docs/DESIGN
 
@@ -38,7 +74,7 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 | Docs | `keybindings.md` (no Unfocus; show-all; R2 Resize≠Size); `layouts.md` RunSteps + focus/move parent |
 | DESIGN | Wave C (+R1) **shipped** through C5; zoom/float later |
 | Kits | unchanged — already matched presets; no Super+m/+f → zoom |
-| REG | ensure-flatten → P3; expand-dual-axis R2 docs done; i3-super-f still Z |
+| REG | ensure-flatten P3 done; expand-dual-axis R2 docs done; i3-super-f still Z |
 | L0 | keybind-presets **37** + Keybindings **55** = **92** |
 | Nest | not required; `running: False` |
 | Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c5-kits-docs.md) |
@@ -445,7 +481,7 @@ npm test -- tests/unit/extension/layout-apply-run.test.js
 | --- | --- |
 | API | `Node.setLayout` / `Tree.setLayout` — layout field only; no reparent/flatten |
 | Converted | Layout* toggles, `_layoutCycleOp`, mode toggles, reset/auto-exit, etc. |
-| Residual | `_layoutOp` still flattens for profile ensure (**REG-ensure-flatten**) |
+| Residual | `_layoutOp` peel **dropped** (P3); lift/refuse parity with structure op |
 | Contracts | row “Change CON layout mode” in [contracts.md](../docs/dev/contracts.md) |
 | Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c1-set-layout.md) |
 | Guards | 223 pass (`set-layout-i1` + Tree-ops/layout + CommandHandler + layout-cycle) |
@@ -635,10 +671,12 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Next:** PR7 docs (park) · **P3** strip `_layoutOp` flatten (REG-ensure-flatten)
-when taking substantive work · Wave Z only if PRIORITY promotes it.
-**FCC Wave C (+R1/R2-docs) closed through C5.** PR1–**PR15** + user CLI shipped —
-`forge` product-only; nest/live = `./scripts/forge/forge-test`.
+**Next / active:** **Required queue empty.** Optional **next session: CN13**
+(Node PATH `forge`) — prep table above. Then CN14/CN15 · yuiop (blocked).
+See [IDEAS](./IDEAS.md) (pruned 2026-08-18).
+**FCC Wave C (+R1/R2-docs) closed through C5; P3 done; PR7/D046 done; Wave Z0/Z1
+shipped.** PR1–**PR15** + user CLI shipped — `forge` product-only; nest/live =
+`./scripts/forge/forge-test`.
 
 Do not reshape PR1 attach, PR5 2D/wrap-on, PR10 peel synthetic,
 PR11/PR12 mid-drag pack, PR13 chip+event coords, or PR15 residual
@@ -646,11 +684,11 @@ locks. Preserve PR9 foreign spacer-only.
 Do **not** re-litigate D039–D044. Do **not** teach `forge test` / top-level
 `forge nested`. Do **not** close durable-agent ghostty windows.
 
-Queue: [PRIORITY](./PRIORITY.md). Parked optionals: [IDEAS](./IDEAS.md).
+Queue: [PRIORITY](./PRIORITY.md). Later/ideas: [IDEAS](./IDEAS.md).
 
-User toggles must not call `_layoutOp` (use `setLayout`). Profile/ensure
-flatten remains until **P3**. Do **not** put `hasLayoutPh` back into
-`skipWindowStructure`.
+User toggles / `_layoutOp` must not peel nested CONs (`setLayout` /
+lift+refuse). Do **not** put `hasLayoutPh` back into `skipWindowStructure`.
+Do **not** reintroduce `_flattenLayoutParentToWindows`.
 
 **Locked (D039–D044):** slot machines (not per-window); hard = in-slot retry;
 `Done.ok` = required forest match; ApplyEpoch home authority; open into slot;
@@ -659,15 +697,17 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 
 | You can do | You must not |
 | --- | --- |
-| P3 `_layoutOp` strip; nest for JS retest | Redesign D039–D044; restack latch; hit plates |
+| CN13 when asked; nest for JS retest | Redesign D039–D044; restack latch; hit plates |
 | Nest (`./scripts/forge/forge-test nested`, mon=1) | `forge test` / top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
-| PR7 docs later | Implement parked IDEAS without promote; close agent ghosttys |
-| | Second chrome system; reopen peel ownership; reopen C4 APIs |
+| Promote from IDEAS only with need | Re-queue pruned hygiene rows; close agent ghosttys |
+| | Second chrome system; reopen peel ownership; reopen C4 APIs; silent flatten |
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| later | Tab click-drag PR7 docs | [plan](./plans/forge-tab-click-drag.md) |
-| P3 | Strip `_layoutOp` flatten | REG-ensure-flatten · PRIORITY |
+| next session | CN13 Node PATH `forge` | [cli-node](./plans/forge-cli-node.md) § CN13 |
+| blocked | Ratio / autotile (yuiop) | [blocker](./blockers/resize-autotile-design.md) |
+| done | Tab click-drag **PR7** docs | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |
+| done | P3 strip `_layoutOp` flatten | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_p3-strip-layoutop-flatten.md) |
 | done | FCC **C5** kits/docs | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c5-kits-docs.md) |
 | done | FCC **C4** move + focus parent | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c4-move-focus-parent.md) |
 | done | FCC **C3** split chrome | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c3-split-chrome.md) |
@@ -681,7 +721,6 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | done | Tab **PR10** peel slot place + cross-mon | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr10-peel-slot-crossmon.md) |
 | done | User CLI: no test/dev toolkit | [plan](./plans/forge-cli-user-surface.md) |
 | done | PR5–PR9 (chip/peel/foreign partial) | [completed/](./plans/forge-tab-click-drag/completed/) |
-| later | Tab click-drag PR7 docs | [plan](./plans/forge-tab-click-drag.md) |
 | done | Tab click-drag PR1–PR4 | [completed/](./plans/forge-tab-click-drag/completed/) |
 | done | Nested off top-level CLI | [plan](./plans/forge-nested-cli-separation.md) |
 | done | Tab chrome layer (PR1) | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
@@ -702,7 +741,6 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | done | **R032** tab-strip click dead (Done restack-only) | [completed](./tasks/completed/forge-tab-click-unresponsive.md) |
 | done | **R031** float-border ghost | [completed](./tasks/completed/forge-float-border-ghost-tile.md) |
 | done | R019 CENTER · R020 VLC EOS nest · IC4 skipped · FCC C0/C1 | HANDOFF / REGRESSIONS |
-| later | Soft polish · L1 scale smoke · STACKED/resize · TD4 docs | [PRIORITY](./PRIORITY.md) · [IDEAS](./IDEAS.md) |
 | done | Wayland RC R013/R014 + nest isolation N1–N4 + lifecycle W1–W5 | [REGRESSIONS](./REGRESSIONS.md) |
 
 ### Plan map
@@ -717,8 +755,8 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | [docs/dev/contracts.md](../docs/dev/contracts.md) | Canonical APIs — extend these first |
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |
 | [forge-tab-click-drag.md](./plans/forge-tab-click-drag.md) | Click-drag design; PR1 shipped |
-| [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 done; TD2/TD3 skip; TD4 → click-drag PR6 |
-| [forge-cli-node.md](./plans/forge-cli-node.md) | Node CLI CN0 done; CN1–CN6; no layout port |
+| [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 done; TD2/TD3 skip; TD4 done via PR7 |
+| [forge-cli-node.md](./plans/forge-cli-node.md) | Node CLI CN0–CN6; **CN13 next session**; no layout port |
 | [forge-layout-in-process.md](./plans/forge-layout-in-process.md) | ApplyLayout AL0–AL8 **done** |
 | [forge-layout-slot-machines.md](./plans/forge-layout-slot-machines.md) | **P0** SM0 locked · SM1–SM7 implement **done** |
 | [forge-layout-settle-contract.md](./plans/forge-layout-settle-contract.md) | D019 baseline; timeout-continue → D040 |

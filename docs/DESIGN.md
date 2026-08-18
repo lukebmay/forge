@@ -449,6 +449,41 @@ focus). Fix: gate re-show; destroy decoration on auto-exit; hide/zero/disarm
 leftover decorations on non-tab layouts; re-arm `reactive` in `_ensureDecoration`.
 Tests: `tests/regression/bug-auto-exit-tabbed-ghost-decoration.test.js`.
 
+## Tab chrome layer + Chrome live drag (D046)
+
+**Why:** Meta `raise` / focus / activate on windows in `global.window_group`
+buried CON strips that lived as siblings of those windows. Outline-on-neighbor
+reorder preview also lied about insert side. Product drag should feel like a
+browser tab strip.
+
+**Layer (PR1):** TABBED/STACKED decorations attach to `#forge-tab-chrome`
+(`DecorationManager.attachTabDecoration` + idempotent `trackChrome`). The host
+is `NO_LAYOUT`, not itself tracked, and is parked in `uiGroup` immediately
+above `window_group` and below `top_window_group`. Apply overlay may only
+`set_child_above_sibling(overlay, layer)` — never shove the layer under the
+overlay. Borders and `rootBin` stay in `window_group`. Pickability is attach +
+track + visibility, not another restack-vs-window latch.
+
+**Wrap (PR2–PR5):** `processTabbed` sizes rows through `planTabbedWrap` /
+`minTabWidthFromChars`. Product default `min-tab-label-chars=20` turns
+width-wrap on; `max-tabs-per-line` / `max-tab-rows` cap count and height
+(`0` = unlimited / unbounded). Escape hatch: both `min-tab-label-chars=0` and
+`max-tabs-per-line=0` → single row.
+
+**Chrome live reorder (PR4–PR15):** After ≥8px, if the floating chip intersects
+a strip band, preview is float chip + gap (= chip width) + sibling scoot when
+the **pointer** crosses a sibling **center** (not leading-edge; not outline
+CSS). Tree commit is release-only: `applyTabStripReorder` + `replaceChildren` +
+`commitLayout("tab-strip-reorder")` + `settleTabFocus`. Mid-drag pack has one
+owner (`_syncReorderSiblingPack` / equal-fill-with-gap). Leave every strip →
+MOVE APP via Forge synthetic peel + `_startTabMoveGrab` (chip keeps tracking).
+Re-enter a strip → float+gap again. Every release runs
+`clearTabDragResiduals`. Groups stay **mon-local** (D044).
+
+Catalog: [contracts.md](dev/contracts.md). Formulas:
+[actions.md](dev/actions.md) § TabChromeDrag. Plan:
+[forge-tab-click-drag](../agents/plans/forge-tab-click-drag.md).
+
 ## Full in-memory tree snapshot (T6)
 
 **Map:** [Recovery architecture](#recovery-architecture) — production thrash
@@ -585,9 +620,9 @@ Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind save|load`.
 non-destructive `setLayout` cycle (C1), explicit `group` / `ungroup` (C2),
 split chrome focus-ancestry + show-all + grab force (C3 / I5), owning-split
 resize (R1 / I3), focus parent/child + move in/out (C4), kits/docs polish (C5).
-Monocle **removed** (C0). Profile `_layoutOp` flatten remains
-(REG-ensure-flatten → P3). Zoom + floating groups designed in; Wave Z / F
-next. No BC obligation. Plan:
+Monocle **removed** (C0). Profile `_layoutOp` silent flatten **dropped**
+(REG-ensure-flatten / P3 — lift+wrap or `ensure-flatten-refused`). Zoom +
+floating groups designed in; Wave Z / F next. No BC obligation. Plan:
 [agents/plans/forge-first-class-containers.md](../agents/plans/forge-first-class-containers.md).
 
 **Float:** mode on the tree node (keeps slot). Re-tile = same parent. If parent
@@ -942,8 +977,8 @@ H/V→tab flattens lossily; tab→H/V makes slivers). **Sane desk:** re-seat rol
 and **tab marginals** (non-role windows) into the profile **view area** they
 overlap (partial → first view) so `layout` cleans the desk. **Detected thrash:**
 roles only + soft-park everything else on last mon last group — no archaeology.
-Tab ensure must yield TABBED, not nested HSPLIT (`_layoutOp` flattens nested
-CONs on TABBED/STACKED). CLI: `plan.thrashState` + stderr mode A/B; `--safe`
+Tab ensure uses structure `setLayout` / lift+wrap (no silent nested peel;
+`_layoutOp` matches). CLI: `plan.thrashState` + stderr mode A/B; `--safe`
 is open+move only. **Single-role view + nested H/V companions** (Ghostty with
 Nautilus/FB/Chess under VSPLIT or nested CON) is **Mode A** — not thrash;
 collect by mon-child containment + tab the view. Nested-split thrash only for

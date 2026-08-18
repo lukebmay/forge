@@ -1,9 +1,9 @@
 # Plan: Click-drag moving tabs
 
-**Status:** design consensus — **PR1–PR15 shipped**; later PR7 docs
-**Priority:** later PR7 docs
+**Status:** design consensus — **PR1–PR15 + PR7 docs (D046) shipped**
+**Priority:** done (optional CN13 is separate plan)
 **Created:** 2026-08-16
-**Updated:** 2026-08-17
+**Updated:** 2026-08-18
 **Branch:** `master`
 **Locks:** D018, D023–D026, D032, D039–D044; Tab D0; **Chrome live
 reorder visual** (this plan § Product feeling + § Chrome live reorder);

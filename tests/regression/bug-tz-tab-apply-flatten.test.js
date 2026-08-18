@@ -9,22 +9,12 @@ import {
 import { Bin } from "../mocks/gnome/St.js";
 
 /**
- * TZ-tab-apply: H/V → TABBED must flatten nested CONs into one window bag.
- *
- * Live thrash shape after structure ensure without flatten:
- *   CON HSPLIT
- *     Ghostty
- *     CON HSPLIT
- *       Facebook
- *       Chess
- * wanted:
- *   CON TABBED  Ghostty | Facebook | Chess
- *
- * Repro (CLI workon ensure_layout windowIds):
- *   layout tabbed on first id → _layoutOp flattens then sets TABBED
- *   move remaining ids onto first (mon-direct siblings join the bag)
+ * TZ-tab-apply (P3): `_layoutOp` TABBED/STACKED must not peel nested CONs.
+ * Nested bags lift *this window* to the monitor then wrap (parity with
+ * `_setLayoutStructureOp`), or refuse with `ensure-flatten-refused`.
+ * Mon-direct / multi-window H/V wrap-before-tab + sibling moves stay.
  */
-describe("TZ-tab-apply: layout tabbed flattens nested HSPLIT", () => {
+describe("TZ-tab-apply: layout tabbed no silent nested peel", () => {
   let ctx;
 
   beforeEach(() => {
@@ -58,7 +48,7 @@ describe("TZ-tab-apply: layout tabbed flattens nested HSPLIT", () => {
     });
   }
 
-  it("nested HSPLIT → TABBED bag with all window leaves", () => {
+  it("nested HSPLIT → lift focus + wrap; siblings stay nested (no flat 3-tab bag)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const outer = createCon(monitor.nodeValue, LAYOUT_TYPES.HSPLIT);
     const wGhost = createMockWindow({ id: 201, wm_class: "Ghostty" });
@@ -75,16 +65,25 @@ describe("TZ-tab-apply: layout tabbed flattens nested HSPLIT", () => {
 
     const out = api()._layoutOp("TABBED", "id:201", { quiet: true });
     expect(out.ok).toBe(true);
+    expect(out.error).toBeUndefined();
+    expect(out.code).not.toBe("ensure-flatten-refused");
     expect(out.mode).toBe(LAYOUT_TYPES.TABBED);
 
-    expect(nGhost.parentNode).toBe(outer);
-    expect(nFb.parentNode).toBe(outer);
-    expect(nChess.parentNode).toBe(outer);
-    expect(outer.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(outer.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
-    expect(outer.childNodes).toHaveLength(3);
-    expect(outer.childNodes.map((c) => c.nodeValue)).toEqual([wGhost, wFb, wChess]);
-    expect(outer.lastTabFocus).toBe(wGhost);
+    const liveGhost = wm().tree.findNode(wGhost);
+    const tabParent = liveGhost.parentNode;
+    expect(tabParent).toBeTruthy();
+    expect(tabParent).not.toBe(outer);
+    expect(tabParent.nodeType).toBe(NODE_TYPES.CON);
+    expect(tabParent.layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(tabParent.childNodes.map((c) => c.nodeValue)).toEqual([wGhost]);
+    expect(tabParent.lastTabFocus).toBe(wGhost);
+
+    // Sibling CON not peeled into the tab bag
+    expect(nFb.parentNode).toBe(inner);
+    expect(nChess.parentNode).toBe(inner);
+    expect(inner.parentNode).toBe(outer);
+    expect(outer.childNodes).not.toContain(nGhost);
+    expect(outer.layout).not.toBe(LAYOUT_TYPES.TABBED);
   });
 
   it("mon-direct window: wrap then TABBED (single leaf); moves fold siblings", () => {

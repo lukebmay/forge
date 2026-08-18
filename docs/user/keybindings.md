@@ -236,6 +236,10 @@ wm/shell/mutter (+ custom shortcuts when readable).
 
 ## Drag to tile
 
+**Tab strip:** drag a tab along its bar to reorder (float + gap); drag off
+the bar to peel into normal tile drag — see
+[layouts.md](layouts.md#tab-strip-drag-chrome-like).
+
 **`mod-mask-mouse-tile`:** `None` (default — any drag can tile) or hold
 `Super` / `Ctrl` / `Alt` / `Shift` for the tile preview.
 `preview-hint-enabled` draws the drop-zone hint.

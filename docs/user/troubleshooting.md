@@ -102,14 +102,31 @@ If it still flattens: check that the file exists **before** reload
 
 ## Tab click does nothing until I focus the window first
 
-Group tab strips are restacked above that group's window actors (WR14 after
-ApplyLayout / RunSteps; R032) and should activate on click without a prior
-click into the content. If a tab still ignores clicks:
+Group tab strips live on the `#forge-tab-chrome` layer (above window actors,
+below the shell top window group) and should activate on click without a
+prior click into the content. If a tab still ignores clicks:
 
 1. Confirm `showtab-decoration-enabled` and that the group is TABBED/STACKED.
-2. Toggle layout debug overlay (`Ctrl+Super+d`) to confirm which CON owns the strip.
-3. After a Shell reload, click the tab again; if it still fails, note whether
-   focus was on another monitor and capture `journalctl -e -u gnome-shell`.
+1. Toggle layout debug overlay (`Ctrl+Super+d`) to confirm which CON owns the strip.
+1. After a Shell reload / tip install, click the tab again; if it still fails,
+   note whether focus was on another monitor and capture
+   `journalctl -e -u gnome-shell`.
+
+Do **not** confuse a leftover **layout apply dim** (full-screen scrim while
+`forge layout` runs — see below) with a missing tab strip. Apply overlay
+sits above the tab-chrome layer on purpose; stuck dim is an overlay bug,
+not a `trackChrome` / restack issue.
+
+## Tab stays pressed / floating chip or drop zones stick
+
+After a click or tab drag, pressed highlight, a floating chip, or tile
+drop-zone paint should clear on mouse release. If chrome sticks:
+
+1. Click elsewhere once, or press Escape if a grab is still live.
+1. Reload the extension tip (`./install --kit=…` then Shell reload / session
+   as usual) — release cleanup is `clearTabDragResiduals` on every path.
+1. If it still sticks after tip reload, capture whether it was click-only
+   vs peel vs strip reorder, plus `journalctl -e -u gnome-shell`.
 
 ## Focus borders / colors look stock after install
 

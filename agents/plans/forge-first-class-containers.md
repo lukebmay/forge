@@ -1,6 +1,6 @@
 # Plan: First-class containers (zoom & float later)
 
-**Status:** Wave C (+ R1) **shipped** through C5; Zoom = Wave Z  
+**Status:** Wave C (+ R1) **shipped** through C5; P3 flatten strip **done**; Zoom = Wave Z  
 **Updated:** 2026-08-18  
 **Branch:** master (plan branch historical; code on master)  
 **Kind:** Core product architecture → phased implement  
@@ -9,15 +9,19 @@ shims. May diverge hard from classic Forge surface if that yields a simpler core
 
 ### Session note (overwrite)
 
+**2026-08-18:** **P3 done** — `_layoutOp` no longer peels nested CONs. Nested
+TABBED/STACKED: lift focus to monitor then wrap (parity `_setLayoutStructureOp`)
+or `ensure-flatten-refused`. Helper `_flattenLayoutParentToWindows` **deleted**.
+REG-ensure-flatten **dropped**. Wave Z0/Z1 shipped. Required queue empty;
+optional later in [IDEAS](../IDEAS.md) / [PRIORITY](../PRIORITY.md).
+
 **2026-08-18:** **C5 done** — kits/docs/DESIGN polish. User keybindings: dropped
 abandoned Unfocus; documented split-chrome show-all + R2 Resize vs Window Size;
 kits already matched presets (no rebind). layouts.md RunSteps + focus/move
 parent rows. DESIGN Wave C (+R1) **shipped** through C5. REG-expand-dual-axis
-R2 docs via this slice; REG-ensure-flatten stays profile `_layoutOp` → PRIORITY
-P3 (user toggles already `setLayout`; no strip). REG-i3-super-f still optional Z.
+R2 docs via this slice; REG-i3-super-f still optional Z.
 Task:
 [c5 completed](./forge-first-class-containers/completed/forge-first-class-containers_c5-kits-docs.md).
-Next: PRIORITY queue (PR7 docs park · P3 `_layoutOp` · Wave Z when promoted).
 
 **2026-08-17:** **C4 done** — `focusParent`/`focusChild` + `moveIn`/`moveOut`;
 elevated `focusUnit`; RunSteps + kits (`Super+a` i3/Vim). REG-focus-parent
@@ -152,9 +156,9 @@ Update rows when a slice actually drops or restores something.
 | **REG-monocle** | `workspace-monocle-toggle` + `toggleWorkspaceMonocle` + docs | **C0 done** | **Z** (only if still wanted; prefer zoom full) | Removed 2026-08-15. Structure-destroying tab-all. |
 | **REG-i3-super-m** | i3 kit chord `<Super>m` → monocle | **C0 done** | **Z** (map to zoom full; **not** rebind on C0) | Unbound 2026-08-15. Zoom uses Super+Enter today. |
 | **REG-i3-super-f** | i3 kit `<Super>f` → **snap center** (not fullscreen) | optional Z | **Z** map to zoom full | Docs note in C5 (not fullscreen). Fix chord when zoom lands. |
-| **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1 done** (user toggles + cycle) | never as silent behavior; percent policy explicit | User/keybind paths use `setLayout`. Profile `_layoutOp` still flattens (REG-ensure-flatten). |
+| **REG-lossy-tab-toggle** | Tab/stack ↔ split paths that flatten nested CONs / hard-reset percents as side effect | **C1 done** (user toggles + cycle) | never as silent behavior; percent policy explicit | User/keybind paths use `setLayout`. `_layoutOp` peel **dropped** (P3). |
 | **REG-auto-exit-tabbed** | `auto-exit-tabbed` single-child TABBED chrome exit | **C2 decided: keep** | optional later if we want last-tab to stay TABBED | **Keep.** `removeNode` + `setLayout` + strip drop when one child remains. Not multi-child flatten; not a substitute for `ungroup`. |
-| **REG-ensure-flatten** | Layout ensure / thrash paths that collapse nested H/V into tab bags | **C5 inventory** — stays profile/ensure `_layoutOp` | PRIORITY **P3** strip; only as explicit `forge layout` repair flag | User toggles already `setLayout`. Do not strip in Wave C. |
+| **REG-ensure-flatten** | Layout ensure / thrash paths that collapse nested H/V into tab bags | **P3 dropped** | never silent; use `ungroup` / structure fix | `_layoutOp` lift+wrap or `ensure-flatten-refused`. Helper deleted. No repair-flag peel. |
 | **REG-expand-dual-axis** | `[`/`]` grow both axes | **R1 done** — two `applyOwningSplit` calls (H then V) | **R2 docs done (C5)** | Not deleted. User docs: Resize ≠ Window Size. |
 | **REG-snap-as-fullscreen-ish** | Teaching snap-center as “fullscreen-ish” (docs/kits) | **C5** wording softened (i3 `Super+f` = snap center) | **Z** zoom owns peek | Snaps stay as snaps. |
 | **REG-golden-ratio** | `window-golden-ratio` (already unbound) | keep unbound through C | **R3** optional | Low priority ratio preset. |
