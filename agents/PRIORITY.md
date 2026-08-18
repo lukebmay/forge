@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-17 (user CLI product-only; nest/live = forge-test)
+**Updated:** 2026-08-17 (PR15 done; later PR7 docs)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -8,13 +8,15 @@
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037/D038 ApplyLayout ·
 **D039–D043** slot machines (SM0) · **SM1–SM7 implement landed** ·
 **R036 cold PASS** · **D044** TABBED/STACKED mon-local **shipped** ·
-**PR1** tab chrome layer **shipped** · User CLI surface **shipped**
-(`forge` product-only; nest/live = **`forge-test`**).
+**PR1–PR15** tab chrome / click-drag **unit-shipped** (PR6–PR15 uncommitted) ·
+User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**).
 
-**Active next:** Tab click-drag **PR6** (foreign-strip gap + join-at-index)
-when wanted — [plan](./plans/forge-tab-click-drag.md). **PR1–PR5 done**.
-Visual: Chrome float+gap; wrap default 20; 2D multi-row. Host lock residual
-= human. Do not reshape PR1 attach / PR4 float / PR5 2D.
+**Active next (ordered):**
+1. later PR7 docs · park / FCC C2
+
+**PR15 done (unit):** chip track, chip∩strip gap, pointer×center scoot,
+`clearTabDragResiduals`. L0 **297**. Host tip still pre-PR15 until reload.
+**PR12–PR15 done (unit).** Leave-strip is product.
 **Retest (FIRM):** nest = normal Wayland code→reload via
 `./scripts/forge/forge-test nested`; primary logout = rare tip load.
 **Parked:** soft polish · scale smoke · FCC C2+ · CN13 · TD4 docs · bag-API
@@ -34,10 +36,11 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 ## Orchestrator note
 
 SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **user CLI no test toolkit**
-+ **tab click-drag PR1–PR5** **done**. **Next:** PR6 foreign-strip (or stop).
-Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard /
-mon-root apply PlaceNext / soft-enter chrome clear / spanning tab chrome.
-Do not teach `forge test` / `forge nested`.
++ **tab click-drag PR1–PR15** landed (PR6–PR15 uncommitted). Preserve PR9
+foreign spacer-only and PR10 synthetic peel ownership.
+Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
+/ mon-root PlaceNext / soft-enter chrome clear / spanning tab chrome. Do not
+teach `forge test` / `forge nested`.
 
 | Slice | Status | Note |
 | --- | --- | --- |
@@ -45,13 +48,12 @@ Do not teach `forge test` / `forge nested`.
 | R036 host cold | **done** | [completed](./tasks/completed/forge-layout-cold-host-verify.md) |
 | Tab D0 | **done** | [completed](./tasks/completed/forge-tab-work-planning.md) |
 | Same-mon groups | **done** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) · D044 |
-| Tab click-drag | **PR1–PR5 shipped** | [completed/](./plans/forge-tab-click-drag/completed/) · PR6 later · host lock residual |
+| Tab click-drag | **PR15 done** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr15-host-residual-lock.md) · L0 297 |
 | Nested off top-level CLI | **done** | [plan](./plans/forge-nested-cli-separation.md) · superseded by user surface |
 | User CLI: no test toolkit | **done** | [plan](./plans/forge-cli-user-surface.md) · `forge-test` |
 
-**L0:** D044 suite **159** green (tree ops + DnD + normalize + LX3 + H1).
-Nested CLI units **27** green. **Host cold:** R036 **PASS**. Overlay clear =
-all-hard (no chrome implement).
+**L0 last:** PR15 suite **297** green. **Host cold:** R036 **PASS**. Overlay
+clear = all-hard (no chrome implement). Host tip pre-PR15 until reload.
 
 ---
 
@@ -59,10 +61,17 @@ all-hard (no chrome implement).
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
+| done | Tab click-drag **PR15** host residual lock | **4.6 xhigh** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr15-host-residual-lock.md) · L0 297 |
+| done | Tab click-drag **PR14** cross-mon prove | 4.5 med | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr14-crossmon-prove.md) · L0 289 |
+| done | Tab click-drag **PR13** peel chip + event coords | **4.6 high** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr13-peel-pointer-coords.md) · L0 289 |
+| done | Tab click-drag **PR12** one layout owner | 4.5 high | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr12-one-layout-owner.md) · L0 284 |
+| done | Tab click-drag **PR11** mid-drag gap equalize | 4.5 | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr11-mid-drag-gap-equalize.md) · L0 283 |
+| done | Tab click-drag **PR10** peel slot + cross-mon | 4.5 **high** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr10-peel-slot-crossmon.md) · L0 202 |
 | done | Tab click-drag **PR5** 2D + wrap-on (20) | 4.5 **high** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr5-2d-wrap-default.md) · L0 152 |
 | done | **User CLI: strip all test/dev utilities** | **4.6 high** | [plan](./plans/forge-cli-user-surface.md) · `forge-test` |
-| later | Tab click-drag PR6–PR7 | 4.6 high / 4.5 lo | PR6 foreign strip; PR7 docs |
-| done | Tab click-drag **PR1–PR4** | 4.5 | [completed/](./plans/forge-tab-click-drag/completed/) |
+| done | Tab click-drag **PR6–PR9** | 4.5 | foreign strip; peel freeze; chip floor + equal-fill · [completed/](./plans/forge-tab-click-drag/completed/) |
+| later | Tab click-drag PR7 docs | 4.5 lo | docs only |
+| done | Tab click-drag **PR1–PR5** | 4.5 | [completed/](./plans/forge-tab-click-drag/completed/) |
 | done | **Nested off top-level CLI** (under `forge test`) | **4.5 high** | [plan](./plans/forge-nested-cli-separation.md) · [completed/](./plans/forge-nested-cli-separation/completed/) |
 | done | **Tab click-drag PR1** (chrome layer) | **4.5 med** | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
 | done | **Same-mon TABBED/STACKED** (D044) | **4.5 high** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |

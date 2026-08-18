@@ -111,7 +111,37 @@ describe("DragDropManager tab drag arm → synthetic grab", () => {
     expect(wm().grabOp).toBeNull();
   });
 
-  it("uses begin_grab_op when present and does not force synthetic", () => {
+  it("PR10: begin_grab_op true still uses synthetic GRAB_TILE (tab chrome peel)", () => {
+    const meta = createMockWindow({
+      rect: new Rectangle({ x: 0, y: 0, width: 400, height: 400 }),
+      workspace: ctx.workspaces[0],
+    });
+    // Host Wayland: begin_grab_op can return true without grab-op-begin.
+    // Tab peel must not trust that as ownership (PR10).
+    meta.begin_grab_op = vi.fn(() => true);
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta);
+    node.mode = WINDOW_MODES.TILE;
+    ctx.display.get_focus_window = vi.fn(() => meta);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(false);
+
+    const device = { id: "pointer-dev" };
+    const press = makePressEvent(10, 10);
+    press.get_device = () => device;
+    dd().armTabDrag(meta, press);
+    expect(dd()._tabDrag?.device).toBe(device);
+    const status = dd().noteTabDragMotion(10 + TAB_DRAG_THRESHOLD_PX + 1, 10);
+    expect(status).toBe("active");
+    // Forge owns peel: GRAB_TILE now, not wait-for-Mutter.
+    expect(node.mode).toBe(WINDOW_MODES.GRAB_TILE);
+    expect(dd()._tabDrag?.synthetic).toBe(true);
+    expect(meta.begin_grab_op).not.toHaveBeenCalled();
+    dd().finishTabDragRelease();
+    expect(dd()._tabDrag).toBeNull();
+    expect(node.mode).toBe(WINDOW_MODES.TILE);
+  });
+
+  it("PR13: synthetic peel getDragPointer returns event coords, not parked pointer", () => {
     const meta = createMockWindow({
       rect: new Rectangle({ x: 0, y: 0, width: 400, height: 400 }),
       workspace: ctx.workspaces[0],
@@ -121,15 +151,21 @@ describe("DragDropManager tab drag arm → synthetic grab", () => {
     const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta);
     node.mode = WINDOW_MODES.TILE;
     ctx.display.get_focus_window = vi.fn(() => meta);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(false);
 
+    setPointer(10, 10);
     dd().armTabDrag(meta, makePressEvent(10, 10));
-    const status = dd().noteTabDragMotion(10 + TAB_DRAG_THRESHOLD_PX + 1, 10);
-    expect(status).toBe("started");
-    expect(meta.begin_grab_op).toHaveBeenCalled();
-    // Mutter would emit grab-op-begin; we do not synthesize GRAB_TILE here.
-    expect(node.mode).toBe(WINDOW_MODES.TILE);
+    expect(dd().noteTabDragMotion(10 + TAB_DRAG_THRESHOLD_PX + 1, 10)).toBe("active");
+    expect(node.mode).toBe(WINDOW_MODES.GRAB_TILE);
+    expect(meta.begin_grab_op).not.toHaveBeenCalled();
+
+    setPointer(10, 10);
+    expect(dd().noteTabDragMotion(320, 240)).toBe("active");
+    const ptr = dd().getDragPointer(node);
+    expect(ptr[0]).toBe(320);
+    expect(ptr[1]).toBe(240);
     dd().finishTabDragRelease();
-    expect(dd()._tabDrag).toBeNull();
+    expect(dd()._syntheticDragPointer).toBeNull();
   });
 
   it("does not arm when tiling mode is disabled", () => {

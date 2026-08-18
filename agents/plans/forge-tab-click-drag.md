@@ -1,13 +1,14 @@
 # Plan: Click-drag moving tabs
 
-**Status:** design consensus — **PR1–PR5 shipped**; visual drag contract
-**locked 2026-08-17** (Chrome float+gap; wrap-on 20; 2D multi-row)
-**Priority:** P1 product chrome
+**Status:** design consensus — **PR1–PR15 shipped**; later PR7 docs
+**Priority:** later PR7 docs
 **Created:** 2026-08-16
 **Updated:** 2026-08-17
 **Branch:** `master`
 **Locks:** D018, D023–D026, D032, D039–D044; Tab D0; **Chrome live
-reorder visual** (this plan § Product feeling + § Chrome live reorder)
+reorder visual** (this plan § Product feeling + § Chrome live reorder);
+**PR15 operator lock** — pointer-center gap scoot; chip∩strip ⇒ gap;
+release clears all residual chrome
 **Supersedes (product next):** [forge-tab-chrome-drag](./forge-tab-chrome-drag.md)
 TD1 remains the **commit** engine (`applyTabStripReorder` +
 `replaceChildren`); this plan is pickability + wrap + 2D +
@@ -21,12 +22,13 @@ TD1 remains the **commit** engine (`applyTabStripReorder` +
 
 ### Session note (overwrite)
 
-**2026-08-17 (orchestrator):** **PR5 done** —
-[completed](./completed/forge-tab-click-drag_pr5-2d-wrap-default.md).
-`tabStripInsertIndex2D` + peel union + schema default **20**. L0 **152**
-orchestrator-recheck green. Nest multi-row smoke skipped (unit-proven).
-**Next:** PR6 foreign-strip gap + join-at-index (later). No reshape
-PR1/PR4/PR5. Host lock residual human.
+**2026-08-17 (PR15 done):** Four host residuals locked (unit + nest
+ping). Chip follows stage-event coords on every motion; chip∩strip
+⇒ gap (origin re-entry + foreign); scoot = pointer×sibling center;
+`clearTabDragResiduals` on every release. L0 **297**. Host tip is
+pre-PR15 until operator reload. Next: PR7 docs. Uncommitted with
+PR6–PR14.
+Task: [PR15](./completed/forge-tab-click-drag_pr15-host-residual-lock.md).
 
 ---
 ---
@@ -307,18 +309,20 @@ Frame-by-frame contract (Chrome parity, Forge equal-fill):
    width** (exact, not a 2px bar). Remaining tabs do **not**
    expand into that gap during the gesture (equal-fill is
    **post-commit only**).
-1. **Centerline slide (FIRM, the clarity rule).** While the
-   pointer stays in the strip band:
-   - Track the floating chip’s **leading edge** in the drag
-     axis: **right edge** when the chip is moving right,
-     **left edge** when moving left (TABBED X). STACKED uses
-     **bottom/top** edge on Y the same way.
-   - When that leading edge **crosses the vertical (TABBED) /
-     horizontal (STACKED) centerline** of a sibling tab that
-     is still in the strip flow, that sibling **animates** to
-     the other side of the gap. The gap moves with the
-     crossing. One sibling at a time per crossing; no
-     hysteresis that leaves “which side?” ambiguous.
+1. **Centerline slide (FIRM, PR15 operator lock).** While the
+   floating chip **intersects** the strip band (any part of the
+   chip over the bar — not pointer-only):
+   - Gap insert index is driven by the **pointer** along the
+     drag axis vs each remaining sibling’s **center**
+     (TABBED X mid; STACKED Y mid). When the pointer crosses
+     a sibling center, that sibling **animates** to the other
+     side of the gap. The gap moves with the crossing.
+   - **Supersedes** the earlier “chip leading edge × sibling
+     centerline” rule (PR4 lock). Host eyes-on showed left-edge
+     feel and made index-0 hard; operator requires pointer ×
+     center so the start of the list is reachable like mid/end.
+   - One sibling at a time per crossing; no hysteresis that
+     leaves “which side?” ambiguous.
    - After a slide, the gap is still exactly the chip width
      and sits where release would insert.
 1. **Release on strip.** Chip drops into the gap (short ease
@@ -344,29 +348,34 @@ gap. That is the locked product.
 
 | Mode | Enter when | Visual | Commit |
 | --- | --- | --- | --- |
-| **REORDER** (in-group or foreign-strip) | After ≥8px, pointer **Y** (TABBED) / **X** (STACKED) is inside the **strip band**: strip rect ∪ pad (`TAB_STRIP_HIT_PAD_PX`, may add a small extra vertical pad named once if 4px feels tight — one constant). Multi-row: **union of all rows** of that group. | Floating min-width chip + gap + centerline slides on **that** group’s strip. No tile drop-zones. | `replaceChildren` at gap index (same group) or join/move into foreign group at gap index (see below). |
-| **MOVE APP** (peel / grab-tile) | Pointer leaves every strip band (origin and any foreign). | Floating chip may continue or hand off to Mutter grab; **window** follows pointer as titlebar move. Tile drop-zones as today. | Existing `_startTabMoveGrab` → drop-zones / drop-intent (CENTER join, edge split, empty-mon, wrap-in-slot). |
+| **REORDER** (in-group or foreign-strip) | After ≥8px, **any part of the floating chip** intersects the **strip band**: strip rect ∪ pad (`TAB_STRIP_HIT_PAD_PX`). Multi-row: **union of all rows** of that group. Pointer-only membership is insufficient (PR15). | Floating min-width chip + gap + pointer-center slides on **that** group’s strip. No tile drop-zones. | `replaceChildren` at gap index (same group) or join/move into foreign group at gap index (see below). |
+| **MOVE APP** (peel / grab-tile) | Chip leaves every strip band (origin and any foreign). | Floating chip **must keep following the pointer** (no freeze / lag-stick on fast motion — PR15). Tile drop-zones as today when not over a strip. | Existing `_startTabMoveGrab` → drop-zones / drop-intent (CENTER join, edge split, empty-mon, wrap-in-slot). |
 
-**Re-entry.** If MOVE APP was entered and the pointer later
-enters a strip band again **before** grab end:
+**Re-entry (FIRM, PR15).** If MOVE APP was entered and the
+chip later intersects a strip band again **before** grab end:
 
 - **Same origin group:** re-enter REORDER on that strip
-  (float+gap). Clear tile drop-zones.
+  (float+gap). Clear tile drop-zones. Gap **must** reappear.
 - **Foreign group strip:** REORDER-on-foreign — that strip
   opens a gap for this chip (wrap rows if the planner would
-  wrap with one more child). Release commits insert into that
+  wrap with one more child). Gap **must** appear while the
+  chip overlaps that bar. Release commits insert into that
   group at the gap index (move-then-join / existing merge
   path; D044 mon-local still applies).
 
-Once a **synthetic or Mutter grab** has fully taken over
-window move, follow the existing grab end path; do not fight
-Mutter mid-grab with strip REORDER. Prefer: peel starts only
-when leaving the strip; if re-entering a strip mid-drag
-**before** `begin_grab_op` succeeds, stay on Forge-owned
-pointer tracking and paint foreign gap. If grab already
-began, foreign strip gap is a **stretch goal in the same PR
-series** only if grab motion can still hit-test strips
-without a second DnD engine — escalate rather than invent one.
+Forge-owned synthetic peel (PR10) already owns motion —
+foreign / re-entry gap is **product required**, not a stretch
+goal. Do not add a second DnD engine. Chip position updates
+must use the same stage-event coord owner as PR13
+(`getDragPointer` / `_syntheticDragPointer`) on **every**
+motion, including fast leave-strip and re-entry.
+
+**Release residual clear (FIRM, PR15).** Any mouse
+`button-release` (click-only, reorder commit, peel drop,
+abort) must run **one** cleanup path that clears: pressed /
+highlight tab classes, reorder preview, and tile drop-zone
+paint. No path may leave a stuck highlight or drop-zone on
+for the clicked tab.
 
 #### Like Chrome (locked checklist)
 
@@ -826,9 +835,9 @@ tracks the pure’s gap index.
 | Gap | Today (TD1) | This design |
 | --- | --- | --- |
 | Insert math | 1D X (TABBED) / 1D Y (STACKED) via
-  **pointer mid-tab** | **Centerline pure** driven by
-  **floating chip edges** (see below). TABBED also gains
-  **2D** row pick; STACKED stays 1D Y |
+  **pointer mid-tab** | **Pointer × sibling center** gap
+  scoot (PR15; supersedes chip leading-edge). TABBED also
+  gains **2D** row pick; STACKED stays 1D Y |
 | Peel / mode region | AABB of tab rects + 4px | **Strip band**
   = AABB of tab rects ∪ decoration + pad. Explicitly union of
   all rows. Inside band = REORDER; outside = MOVE APP |
@@ -1079,14 +1088,16 @@ Leave-strip band is `_startTabMoveGrab` (MOVE APP):
 
 1. `raise` + `focus` + `activate` the Meta window so grab begin
    matches `trackCurrentMonWs`.
-1. `begin_grab_op(MOVING_UNCONSTRAINED)` if it returns
-   **explicit** `true`; else synthetic
-   `_beginSyntheticTabMove` → `_handleGrabOpBegin`.
-1. Motion: `_handleMoving` → `moveWindowToPointer` →
-   `buildDropZones` / `hitTestDropZone`.
-1. End: `_handleGrabOpEnd` → `dropChangesStructure` /
-   `mergeWindowsIntoGroup` / `slotSplitForInsert` /
-   `_commitEmptyMonitorDrop` / wrap-in-slot.
+1. **Always** Forge synthetic GRAB_TILE
+   (`_beginSyntheticTabMove` → `_handleGrabOpBegin`). Tab press is
+   St chrome — do **not** hand ownership to `begin_grab_op` (PR10:
+   ok===true without grab-op-begin left TILE, no paint/commit).
+   Titlebar moves still use real Mutter grabs.
+1. Motion: stage/`noteTabDragMotion` → `_handleMoving` →
+   `moveWindowToPointer` → `buildDropZones` / `hitTestDropZone`.
+1. End: `finishTabDragRelease` → `_handleGrabOpEnd` →
+   `dropChangesStructure` / `mergeWindowsIntoGroup` /
+   `slotSplitForInsert` / `_commitEmptyMonitorDrop` / wrap-in-slot.
 
 **Foreign strip gap (product, same series).** When the pointer
 is inside another TABBED/STACKED group’s strip band during
@@ -1944,18 +1955,21 @@ task note — not product forks):**
    `applyTabStripReorder` / `armTabDrag`. Live preview is
    **Chrome float+gap**, not outline CSS. Do not add a
    decoration.js twin or a second DnD engine.
-1. **Chrome live reorder is mandatory product UI** (2026-08-17).
-   Dragged tab follows the pointer as a **min-width chip**.
-   Strip shows a **gap = chip width**. When the chip’s
-   **leading edge** crosses a sibling’s **centerline**, that
-   sibling **slides** across the gap. Release commits into
-   the gap. Reference video in plan dir. Outline-on-neighbor
-   is rejected (Alt J).
-1. **Strip band vs MOVE APP.** Pointer inside strip union +
-   pad → REORDER. Outside every strip band → MOVE APP
+1. **Chrome live reorder is mandatory product UI** (2026-08-17;
+   **PR15 refine 2026-08-17**). Dragged tab follows the
+   pointer as a **min-width chip** with **no lag-stick** on
+   fast motion. Strip shows a **gap = chip width** whenever
+   **any part of the chip** intersects a strip band (same or
+   foreign, including re-entry after peel). Gap scoot =
+   **pointer** crosses sibling **center** (not tab left edge;
+   not chip leading-edge). Release commits into the gap.
+   Reference video in plan dir. Outline-on-neighbor rejected.
+1. **Strip band vs MOVE APP.** Chip∩strip union+pad →
+   REORDER (+ gap). Chip outside every strip band → MOVE APP
    (`_startTabMoveGrab` + drop-zones). Foreign strip band →
-   same gap insert into that group (PR6). Peel does not
-   create an OS window.
+   same gap insert (PR6; re-entry required PR15). Peel does
+   not create an OS window. Any button-release clears pressed
+   + drop-zone residual (PR15).
 1. **I-TabPickable is attach + track + visibility, not
    restack.** Host is an untracked `NO_LAYOUT` `uiGroup`
    sibling immediately above `window_group` and below
@@ -2049,9 +2063,8 @@ task note — not product forks):**
 Prompt the **role + reasoning lever** in the spawn. Default
 implement model = **Grok 4.5**. Use **4.6** only where the
 table says so (structure / join contracts). **xhigh** is for
-architecture lock only — this visual contract is already
-locked by the operator; do not reopen with xhigh unless a
-hard design conflict appears.
+architecture lock / hard design conflict — **PR15** qualifies
+(operator override of gap scoot + chip∩strip + release clear).
 
 | ID | Work | Agent | Reasoning | Depends | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -2060,8 +2073,10 @@ hard design conflict appears.
 | **PR3** | Wire `planTabbedWrap` into `processTabbed` | 4.5 | med | PR2 (PR1 preferred) | **done** |
 | **PR4** | Chrome live reorder same-strip (float + gap + centerline + min shrink + pressed) | 4.5 | **high** | PR1 | **done** |
 | **PR5** | 2D multi-row row pick + peel strip-band + wrap default-on | 4.5 | **high** | PR3 + PR4 | **done** |
-| **PR6** | Foreign-strip gap insert during MOVE APP + join-at-index | 4.6 | **high** | PR4 (PR5 preferred) | ready |
-| **PR7** | Contracts / DESIGN / user docs / DECISIONS | 4.5 | low | PR1–PR6 (or incremental) | ready |
+| **PR6** | Foreign-strip gap insert during MOVE APP + join-at-index | 4.6 | **high** | PR4 (PR5 preferred) | **done** |
+| **PR8–PR14** | Chip width, cross-mon safety, peel slot, mid-drag pack, peel coords, cross-mon prove | 4.5/4.6 | — | — | **done** |
+| **PR15** | Host residual lock: chip track, re-entry gap, pointer-center scoot, release clear | 4.6 | **xhigh** | PR14 | **next** |
+| **PR7** | Contracts / DESIGN / user docs / DECISIONS | 4.5 | low | PR1–PR6 + PR15 | ready |
 
 **Orchestrator:** Grok **4.5 med**. Assign PR2 and PR4 in
 parallel after PR1 (they do not share hot files if PR4 stays
@@ -2218,11 +2233,49 @@ feel gate.
   strip hit-test, stop and open a hard design note — do not
   add a second DnD engine.
 - **Acceptance:**
-  - [ ] Drag tab from group A onto group B’s strip: gap
+  - [x] Drag tab from group A onto group B’s strip: gap
         appears; release inserts at gap (not always append)
-  - [ ] Cross-mon still rehomes then joins (D044)
-  - [ ] Tile CENTER (not strip) still existing join
-  - [ ] No spanning chrome
+  - [x] Cross-mon still rehomes then joins (D044)
+  - [x] Tile CENTER (not strip) still existing join
+  - [x] No spanning chrome
+
+### PR15 — Host residual lock (chip track + gap + release clear)
+
+- **Agent:** Grok **4.6** · reasoning **xhigh**
+- **Title:** Tab drag host residuals after tip eyes-on
+- **Status:** **done** (unit L0 297; host reload still needed)
+- **Task:** [completed](./completed/forge-tab-click-drag_pr15-host-residual-lock.md)
+- **Depends on:** PR14 (unit done; tip loaded on host)
+- **Operator evidence (2026-08-17):** install + Wayland reset
+  done. Mid-drag gap/sibling resize looks good. Failures:
+  1. Peel away → chip often **freezes / lags** behind fast
+     pointer; stuck until release (sometimes recoverable if
+     slow before release).
+  2. Re-enter same or foreign strip → **gap does not
+     reappear**.
+  3. Scoot feels like **pointer × left edge** of a tab;
+     index-0 hard. Lock = **pointer × sibling center**.
+  4. Plain click sometimes leaves **pressed/highlight**
+     and/or **drop-zone** stuck for that tab.
+- **Changes (FIRM):**
+  1. Chip follows pointer on every motion (peel + re-entry);
+     no lag-stick ownership hole.
+  2. Chip∩strip-band ⇒ REORDER gap (same + foreign +
+     re-entry). Clear tile zones while gap is shown.
+  3. Replace leading-edge gap pure with **pointer-center**
+     scoot; unit table includes index 0 / end / mid.
+  4. One `button-release` residual clear: pressed classes,
+     reorder preview, drop-zone paint — all paths.
+- **Do not:** second DnD engine; reopen PR10 synthetic peel
+  ownership; PR9 foreign spacer-only mid-grab live reparent;
+  `_layoutOp`; spanning chrome.
+- **Acceptance:**
+  - [ ] Fast peel: chip stays under pointer until release
+  - [ ] Leave strip then re-enter same/foreign: gap returns
+  - [ ] Pointer past sibling center scoots; index 0 easy
+  - [ ] Click-only: no stuck highlight / drop-zone
+  - [ ] L0 tab-drag / reorder / DnD suites green
+  - [ ] Nest or host prove note in task
 
 ### PR7 — Contracts and user docs
 
@@ -2234,10 +2287,11 @@ feel gate.
   `docs/user/layout.md`, `docs/DECISIONS.md` (new D0xx for
   Chrome live reorder when shipping), 
   `agents/plans/forge-tab-chrome-drag.md`
-- **Depends on:** PR1–PR6 (or incremental notes per PR)
+- **Depends on:** PR1–PR6 + PR15 (or incremental notes per PR)
 - **Changes:** Catalog rows; user-facing wrap prefs;
   troubleshooting overlay leftover vs trackChrome; TD4
-  one-liner; describe float+gap (not outline).
+  one-liner; describe float+gap (not outline); document
+  pointer-center scoot + release residual clear.
 
 **Not a PR in this series:** ApplyLayout, FCC C2+, STACKED
 product redesign, TD2/TD3 (skipped), spanning chrome, layout

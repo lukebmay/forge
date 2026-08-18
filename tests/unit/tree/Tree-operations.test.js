@@ -374,6 +374,76 @@ describe("Tree Operations", () => {
       expect(group).toBe(con);
       expect(con.childNodes.length).toBe(2);
     });
+
+    it("joins partner into existing TABBED at insertIndex (not always append)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const dest = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      dest.layout = LAYOUT_TYPES.TABBED;
+      const src = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      src.layout = LAYOUT_TYPES.HSPLIT;
+
+      const d0 = ctx.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const d1 = ctx.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const d2 = ctx.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const dragged = ctx.tree.createNode(src.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      for (const n of [d0, d1, d2, dragged]) n.mode = WINDOW_MODES.TILE;
+
+      const group = ctx.tree.mergeWindowsIntoGroup(d0, dragged, LAYOUT_TYPES.TABBED, {
+        insertIndex: 1,
+        group: dest,
+      });
+
+      expect(group).toBe(dest);
+      expect(dest.childNodes).toEqual([d0, dragged, d1, d2]);
+      expect(dragged.parentNode).toBe(dest);
+      expect(src.contains(dragged)).toBe(false);
+    });
+
+    it("insertWindowIntoGroup appends when index omitted", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const dest = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      dest.layout = LAYOUT_TYPES.TABBED;
+      const src = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      const a = ctx.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const b = ctx.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const extra = ctx.tree.createNode(src.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      for (const n of [a, b, extra]) n.mode = WINDOW_MODES.TILE;
+
+      expect(ctx.tree.insertWindowIntoGroup(dest, extra)).toBe(dest);
+      expect(dest.childNodes).toEqual([a, b, extra]);
+    });
+
+    it("insertWindowIntoGroup inserts at 0 and mid", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const dest = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      dest.layout = LAYOUT_TYPES.TABBED;
+      const src = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      const a = ctx.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const b = ctx.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const first = ctx.tree.createNode(src.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const mid = ctx.tree.createNode(src.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      for (const n of [a, b, first, mid]) n.mode = WINDOW_MODES.TILE;
+
+      ctx.tree.insertWindowIntoGroup(dest, first, 0);
+      expect(dest.childNodes).toEqual([first, a, b]);
+      ctx.tree.insertWindowIntoGroup(dest, mid, 2);
+      expect(dest.childNodes).toEqual([first, a, mid, b]);
+    });
+
+    it("merge without insertIndex still wraps at focus (append partner)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const left = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      const right = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      left.layout = LAYOUT_TYPES.HSPLIT;
+      right.layout = LAYOUT_TYPES.HSPLIT;
+      const node1 = ctx.tree.createNode(left.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const node2 = ctx.tree.createNode(right.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      node1.mode = WINDOW_MODES.TILE;
+      node2.mode = WINDOW_MODES.TILE;
+
+      const group = ctx.tree.mergeWindowsIntoGroup(node1, node2, LAYOUT_TYPES.TABBED);
+      expect(group.childNodes).toEqual([node1, node2]);
+    });
   });
 
   describe("groupHomeMonitor (D044)", () => {
@@ -432,6 +502,32 @@ describe("Tree Operations", () => {
       expect(dual.tree.groupHomeMonitor(partner)).toBe(0);
       expect(mon1.contains(partner)).toBe(false);
       expect(mon1.contains(group)).toBe(false);
+    });
+
+    it("join-at-index across mons lands on dest group (D044, no span)", () => {
+      const mon0 = getWorkspaceAndMonitor(dual, 0, 0).monitor;
+      const mon1 = getWorkspaceAndMonitor(dual, 0, 1).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+      const dest = dual.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, new Bin());
+      dest.layout = LAYOUT_TYPES.TABBED;
+      const a = dual.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const b = dual.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const src = dual.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      for (const n of [a, b, src]) n.mode = WINDOW_MODES.TILE;
+
+      const group = dual.tree.mergeWindowsIntoGroup(a, src, LAYOUT_TYPES.TABBED, {
+        insertIndex: 1,
+        group: dest,
+      });
+
+      expect(group).toBe(dest);
+      expect(dest.childNodes).toEqual([a, src, b]);
+      expect(dual.tree.groupHomeMonitor(dest)).toBe(1);
+      expect(dual.tree.groupHomeMonitor(src)).toBe(1);
+      expect(mon0.contains(src)).toBe(false);
+      expect(mon1.contains(dest)).toBe(true);
     });
 
     it("TABBED last member mon-move peels that leaf only (LX3)", () => {

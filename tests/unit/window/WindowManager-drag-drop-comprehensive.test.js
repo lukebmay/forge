@@ -717,6 +717,341 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
   });
 
   // ============================================================================
+  // SECTION 3d: Foreign-strip join at insert index (PR6)
+  // ============================================================================
+
+  describe("foreign-strip join at insert index", () => {
+    function makeTab(x, y, width, height) {
+      return { x, y, width, height };
+    }
+
+    it("release on dest strip inserts at gap (not always append)", () => {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "tabbed";
+        return "";
+      });
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const dest = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      dest.decoration = makeTab(0, 0, 300, 30);
+      const d0 = ctx.tree.createNode(
+        dest.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          rect: new Rectangle({ x: 0, y: 40, width: 960, height: 1040 }),
+          workspace: workspace0(),
+        })
+      );
+      const d1 = ctx.tree.createNode(
+        dest.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          rect: new Rectangle({ x: 0, y: 40, width: 960, height: 1040 }),
+          workspace: workspace0(),
+        })
+      );
+      const d2 = ctx.tree.createNode(
+        dest.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          rect: new Rectangle({ x: 0, y: 40, width: 960, height: 1040 }),
+          workspace: workspace0(),
+        })
+      );
+      d0.mode = WINDOW_MODES.TILE;
+      d1.mode = WINDOW_MODES.TILE;
+      d2.mode = WINDOW_MODES.TILE;
+      d0.tab = makeTab(0, 0, 100, 30);
+      d1.tab = makeTab(100, 0, 100, 30);
+      d2.tab = makeTab(200, 0, 100, 30);
+
+      const srcCon = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      srcCon.decoration = makeTab(960, 0, 200, 30);
+      const src = ctx.tree.createNode(
+        srcCon.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          rect: new Rectangle({ x: 960, y: 40, width: 960, height: 1040 }),
+          workspace: workspace0(),
+        })
+      );
+      const srcPeer = ctx.tree.createNode(
+        srcCon.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          rect: new Rectangle({ x: 960, y: 40, width: 960, height: 1040 }),
+          workspace: workspace0(),
+        })
+      );
+      src.mode = WINDOW_MODES.GRAB_TILE;
+      srcPeer.mode = WINDOW_MODES.TILE;
+      src.tab = makeTab(960, 0, 100, 30);
+      srcPeer.tab = makeTab(1060, 0, 100, 30);
+
+      const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
+      // Chip over dest mid: insert before d1 (index 1), not append.
+      setPointer(120, 15);
+      wm().nodeWinAtPointer = d1;
+      wm().moveWindowToPointer(src, false);
+
+      expect(mergeSpy).toHaveBeenCalled();
+      const opts = mergeSpy.mock.calls[0][3];
+      expect(opts).toMatchObject({ group: dest });
+      expect(typeof opts.insertIndex).toBe("number");
+      expect(opts.insertIndex).toBeLessThan(3);
+      expect(src.parentNode).toBe(dest);
+      expect(dest.childNodes).toContain(src);
+      expect(dest.childNodes.indexOf(src)).toBe(opts.insertIndex);
+      expect(dest.childNodes[dest.childNodes.length - 1]).not.toBe(src);
+    });
+
+    it("tile CENTER (not strip) still existing join/append", () => {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "tabbed";
+        return "";
+      });
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const dest = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      dest.decoration = makeTab(0, 0, 300, 30);
+      const d0 = ctx.tree.createNode(
+        dest.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          rect: new Rectangle({ x: 0, y: 40, width: 960, height: 1040 }),
+          workspace: workspace0(),
+        })
+      );
+      const d1 = ctx.tree.createNode(
+        dest.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          rect: new Rectangle({ x: 0, y: 40, width: 960, height: 1040 }),
+          workspace: workspace0(),
+        })
+      );
+      d0.mode = WINDOW_MODES.TILE;
+      d1.mode = WINDOW_MODES.TILE;
+      d0.tab = makeTab(0, 0, 150, 30);
+      d1.tab = makeTab(150, 0, 150, 30);
+      dest.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      d0.rect = { x: 0, y: 40, width: 960, height: 1040 };
+
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 960, y: 0, width: 960, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
+      // Tile body, south of strip.
+      setPointer(480, 540);
+      wm().nodeWinAtPointer = d0;
+      wm().moveWindowToPointer(dragged, false);
+
+      expect(mergeSpy).not.toHaveBeenCalled();
+      expect(dragged.parentNode).toBe(dest);
+      expect(dest.childNodes[dest.childNodes.length - 1]).toBe(dragged);
+    });
+
+    it("PR9: foreign strip preview during GRAB_TILE is spacer-only (no live reparent)", () => {
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const dest = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      dest.decoration = makeTab(0, 0, 300, 30);
+      const d0 = ctx.tree.createNode(
+        dest.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          rect: new Rectangle({ x: 0, y: 40, width: 960, height: 1040 }),
+          workspace: workspace0(),
+        })
+      );
+      d0.mode = WINDOW_MODES.TILE;
+      d0.tab = makeTab(0, 0, 100, 30);
+      d0.rect = { x: 0, y: 40, width: 960, height: 1040 };
+
+      const srcCon = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      srcCon.decoration = makeTab(960, 0, 200, 30);
+      const src = ctx.tree.createNode(
+        srcCon.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          rect: new Rectangle({ x: 960, y: 40, width: 960, height: 1040 }),
+          workspace: workspace0(),
+        })
+      );
+      const srcPeer = ctx.tree.createNode(
+        srcCon.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          rect: new Rectangle({ x: 960, y: 40, width: 960, height: 1040 }),
+          workspace: workspace0(),
+        })
+      );
+      src.mode = WINDOW_MODES.GRAB_TILE;
+      srcPeer.mode = WINDOW_MODES.TILE;
+      const homeParent = { name: "src-deco" };
+      src.tab = { ...makeTab(960, 0, 100, 30), get_parent: () => homeParent, _parent: homeParent };
+      srcPeer.tab = makeTab(1060, 0, 100, 30);
+
+      setPointer(50, 15);
+      wm().nodeWinAtPointer = d0;
+      wm()._handleMoving(src);
+
+      const fs = wm().dragDrop._foreignStrip;
+      expect(fs?.groupNode).toBe(dest);
+      expect(fs?.chipFloating).toBe(false);
+      expect(fs?.gapSpacer).toBeTruthy();
+      expect(src.tab.get_parent()).toBe(homeParent);
+      expect(fs?.insertIndex).toBeDefined();
+
+      // Commit still joins at index when pointer on strip.
+      const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
+      wm().moveWindowToPointer(src, false);
+      expect(mergeSpy).toHaveBeenCalled();
+      expect(src.parentNode).toBe(dest);
+    });
+
+    it("PR10: peel from tab group then cross-mon CENTER joins on dest mon", () => {
+      const dualGeoms = [
+        { x: 0, y: 0, width: 1920, height: 1080 },
+        { x: 1920, y: 0, width: 1920, height: 1080 },
+      ];
+      const dual = createWindowManagerFixture({
+        globals: {
+          display: {
+            monitorCount: 2,
+            monitorGeometries: dualGeoms,
+          },
+        },
+        settings: {
+          "dnd-center-layout": "tabbed",
+          "preview-hint-enabled": true,
+          "tabbed-tiling-mode-enabled": true,
+          "tiling-mode-enabled": true,
+        },
+      });
+      try {
+        const mon0 = getWorkspaceAndMonitor(dual, 0, 0).monitor;
+        const mon1 = getWorkspaceAndMonitor(dual, 0, 1).monitor;
+        mon0.layout = LAYOUT_TYPES.HSPLIT;
+        mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+        const groupCon = createContainerNode(mon0, LAYOUT_TYPES.TABBED, {
+          x: 0,
+          y: 0,
+          width: 960,
+          height: 1080,
+        });
+
+        const metaA = createMockWindow({
+          id: "tab-a",
+          monitor: 0,
+          rect: new Rectangle({ x: 0, y: 40, width: 960, height: 1040 }),
+          workspace: dual.workspaces[0],
+        });
+        const metaB = createMockWindow({
+          id: "tab-b",
+          monitor: 0,
+          rect: new Rectangle({ x: 0, y: 40, width: 960, height: 1040 }),
+          workspace: dual.workspaces[0],
+        });
+        const metaDst = createMockWindow({
+          id: "dst-mon1",
+          monitor: 1,
+          rect: new Rectangle({ x: 1920, y: 0, width: 1920, height: 1080 }),
+          workspace: dual.workspaces[0],
+        });
+        const a = dual.tree.createNode(groupCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+        const b = dual.tree.createNode(groupCon.nodeValue, NODE_TYPES.WINDOW, metaB);
+        const dst = dual.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, metaDst);
+        a.mode = WINDOW_MODES.TILE;
+        b.mode = WINDOW_MODES.TILE;
+        dst.mode = WINDOW_MODES.TILE;
+        a.rect = { x: 0, y: 40, width: 960, height: 1040 };
+        b.rect = { x: 0, y: 40, width: 960, height: 1040 };
+        dst.rect = { x: 1920, y: 0, width: 1920, height: 1080 };
+        a.tab = { x: 0, y: 0, width: 100, height: 30 };
+        b.tab = { x: 100, y: 0, width: 100, height: 30 };
+        groupCon.decoration = { x: 0, y: 0, width: 200, height: 30 };
+
+        const ddm = dual.windowManager.dragDrop;
+        vi.spyOn(dual.windowManager, "allowDragDropTile").mockReturnValue(true);
+        vi.spyOn(dual.windowManager, "commitLayout").mockImplementation(() => {});
+        dual.display.get_focus_window = vi.fn(() => metaB);
+
+        // Host can return begin_grab_op true; peel must still be Forge synthetic.
+        metaB.begin_grab_op = vi.fn(() => true);
+        ddm.armTabDrag(metaB, {
+          get_coords: () => [150, 15],
+          get_button: () => 1,
+          get_time: () => 1,
+          get_device: () => null,
+        });
+        expect(ddm.noteTabDragMotion(150 + 10, 15)).toBe("reorder");
+        expect(ddm.noteTabDragMotion(150, 200)).toBe("active");
+        expect(b.mode).toBe(WINDOW_MODES.GRAB_TILE);
+        expect(ddm._tabDrag?.synthetic).toBe(true);
+        expect(metaB.begin_grab_op).not.toHaveBeenCalled();
+        // PR13: chip stays under pointer after peel (no snap-back).
+        expect(ddm._tabDrag?.chipFloating).toBe(true);
+
+        // Motion over mon1 tile; release commits CENTER join on dest (D044).
+        // Parked global pointer must not win — PR13 event-coord owner.
+        setPointer(150, 200);
+        dual.windowManager.sortedWindows = [metaA, metaB, metaDst];
+        dual.windowManager.trackCurrentMonWs = vi.fn();
+        expect(ddm.noteTabDragMotion(2400, 540)).toBe("active");
+        const synPtr = ddm.getDragPointer(b);
+        expect(synPtr[0]).toBe(2400);
+        expect(synPtr[1]).toBe(540);
+        dual.windowManager.nodeWinAtPointer = dst;
+        ddm.finishTabDragRelease();
+
+        expect(b.parentNode).toBe(dst.parentNode);
+        const joined = b.parentNode;
+        expect(joined.isTabbed?.() || joined.layout === LAYOUT_TYPES.TABBED).toBe(true);
+        expect(mon1.contains(joined)).toBe(true);
+        expect(mon0.contains(b)).toBe(false);
+        expect(groupCon.childNodes).not.toContain(b);
+        expect(b.mode).toBe(WINDOW_MODES.TILE);
+        expect(ddm._tabDrag).toBeNull();
+      } finally {
+        dual.cleanup();
+      }
+    });
+  });
+
+  // ============================================================================
   // SECTION 4: Nested Container (CON) Parent
   // ============================================================================
 

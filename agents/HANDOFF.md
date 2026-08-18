@@ -1,8 +1,8 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-17 (user CLI = product only; nest/live = `forge-test`)
+**Updated:** 2026-08-17 (PR15 host residual lock done; later PR7 docs)
 **Branch:** **`master`** (default).
-**Sessions:** **Wayland** daily driver (Guake agent this session).
+**Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
 **`./scripts/forge/forge-test nested …`** (not user `forge`; not `forge test`).
 Primary logout is **rare** (tip load only after nest already green). Default nest
@@ -14,19 +14,38 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** SM1–SM7 + R036 + D044 + PR1–PR4 tab chrome + user-CLI cut on
-`master`. Host tip needs logout after install.
+**Repo tip:** SM1–SM7 + R036 + D044 + PR1–**PR15** + user-CLI cut.
+**Install:** dirty tip on master (PR6–PR15 uncommitted). Host tip is
+**pre-PR15** (operator loaded PR14). Nest `running: False` unless agent starts it.
+**L0 last:** tab-strip + Tree-layout + tab-drag + DnD + normalize + Tree-ops
+→ **297 green** (PR15 residual lock).
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
-**Queue (agent):** Tab click-drag **PR5 shipped** (2D + wrap default 20).
-PR1–PR5 done: [completed/](./plans/forge-tab-click-drag/completed/).
-**Next:** PR6 foreign-strip gap + join-at-index (or stop) ·
-[plan](./plans/forge-tab-click-drag.md). User CLI **shipped**
-(`forge` product-only; nest/live = `./scripts/forge/forge-test`).
+**Host settings:** `preview-hint-enabled=false`, `mod-mask-mouse-tile=None`.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
 `forge-test` (clone path; `./install --with-test-cli` opt-in).
-**Queue (human):** Host lock/overview “no tab titles” after tip load. X11
-input-region unproven on Wayland. Optional nest multi-row PR5 eyes-on.
-[IDEAS](./IDEAS.md) for parked optionals.
+
+### Active — tab click-drag
+
+| Pri | Slice | Status | Task |
+| --- | --- | --- | --- |
+| later | PR7 docs | park | plan § PR7 |
+
+**PR15 done (unit):** chip track, chip∩strip gap (origin+foreign),
+pointer×center scoot, `clearTabDragResiduals`. L0 **297**. Host needs
+reload to pick up PR15 JS.
+**PR12–PR15 unit-shipped** (uncommitted). Do not reopen PR10/PR12/PR13
+ownership unless a new host repro.
+**Completed notes:** [PR15](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr15-host-residual-lock.md) ·
+[PR14](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr14-crossmon-prove.md) ·
+[PR13](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr13-peel-pointer-coords.md) ·
+[PR12](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr12-one-layout-owner.md) ·
+[PR11](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr11-mid-drag-gap-equalize.md) ·
+[PR10](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr10-peel-slot-crossmon.md) ·
+[PR9](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr9-move-app-crossmon-safety.md) ·
+[PR8](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr8-chip-width-equal-fill.md) ·
+[PR6](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr6-foreign-strip-join.md).
+[IDEAS](./IDEAS.md) parked.
+
 
 
 **Default:** fix the **real problem** (ownership, contracts, pure reuse). Temporary only if operator **explicitly** asks.
@@ -553,13 +572,17 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Next:** Tab click-drag **PR6** (foreign-strip gap + join-at-index) when
-product wants it — else stop / park. PR1–**PR5** shipped. User CLI
-**shipped** — `forge` product-only; nest/live = `./scripts/forge/forge-test`.
-Host lock residual is **human**.
+**Next:** Tab click-drag **PR7 docs** (park) / FCC C2. PR1–**PR15**
+unit-shipped (PR6–PR15 uncommitted). Host tip is **pre-PR15** until
+operator reload. User CLI **shipped** — `forge` product-only;
+nest/live = `./scripts/forge/forge-test`.
 
-Do not reshape PR1 attach, PR4 float+gap, or PR5 2D/wrap-on. Do **not**
-re-litigate D039–D044. Do **not** teach `forge test` / top-level `forge nested`.
+Do not reshape PR1 attach, PR5 2D/wrap-on, PR10 peel synthetic,
+PR11/PR12 mid-drag pack, PR13 chip+event coords, or PR15 residual
+locks (pointer-center scoot; chip∩strip gap; release clear; chip
+track). Preserve PR9 foreign spacer-only.
+Do **not** re-litigate D039–D044. Do **not** teach `forge test` / top-level
+`forge nested`.
 
 Queue: [PRIORITY](./PRIORITY.md). Parked optionals: [IDEAS](./IDEAS.md).
 
@@ -573,16 +596,22 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 
 | You can do | You must not |
 | --- | --- |
-| Tab click-drag PR6 (foreign strip + join index) | Redesign D039–D044; restack latch; hit plates |
-| Nest for JS retest (`./scripts/forge/forge-test nested`, mon=1) | `forge test` / top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
+| PR7 docs; nest for JS retest | Redesign D039–D044; restack latch; hit plates |
+| Nest (`./scripts/forge/forge-test nested`, mon=1) | `forge test` / top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
 | FCC C2+ when product need | Implement parked IDEAS without promote |
-| | Second DnD engine; outline-on-neighbor as product |
+| | Second DnD engine; live-tab reparent on foreign mid-grab; reopen peel ownership without cause |
 
 | Pri | Work | Path |
 | --- | --- | --- |
+| done | Tab **PR15** host residual lock | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr15-host-residual-lock.md) |
+| done | Tab **PR14** cross-mon / foreign prove | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr14-crossmon-prove.md) |
+| done | Tab **PR13** peel chip + event coords | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr13-peel-pointer-coords.md) |
+| done | Tab **PR12** one layout owner | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr12-one-layout-owner.md) |
+| done | Tab **PR11** mid-drag gap + remaining equal-fill | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr11-mid-drag-gap-equalize.md) |
+| done | Tab **PR10** peel slot place + cross-mon | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr10-peel-slot-crossmon.md) |
 | done | User CLI: no test/dev toolkit | [plan](./plans/forge-cli-user-surface.md) |
-| done | PR5 2D multi-row + wrap default 20 | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr5-2d-wrap-default.md) |
-| later | Tab click-drag PR6–PR7 | [plan](./plans/forge-tab-click-drag.md) § PR6 |
+| done | PR5–PR9 (chip/peel/foreign partial) | [completed/](./plans/forge-tab-click-drag/completed/) |
+| later | Tab click-drag PR7 docs | [plan](./plans/forge-tab-click-drag.md) |
 | done | Tab click-drag PR1–PR4 | [completed/](./plans/forge-tab-click-drag/completed/) |
 | done | Nested off top-level CLI | [plan](./plans/forge-nested-cli-separation.md) |
 | done | Tab chrome layer (PR1) | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
@@ -603,7 +632,6 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | done | **R032** tab-strip click dead (Done restack-only) | [completed](./tasks/completed/forge-tab-click-unresponsive.md) |
 | done | **R031** float-border ghost | [completed](./tasks/completed/forge-float-border-ghost-tile.md) |
 | done | R019 CENTER · R020 VLC EOS nest · IC4 skipped · FCC C0/C1 | HANDOFF / REGRESSIONS |
-| P1 | Tab click-drag PR1 (chrome layer) | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
 | later | Soft polish · L1 scale smoke · STACKED/resize · TD4 docs | [PRIORITY](./PRIORITY.md) · [IDEAS](./IDEAS.md) |
 | done | Wayland RC R013/R014 + nest isolation N1–N4 + lifecycle W1–W5 | [REGRESSIONS](./REGRESSIONS.md) |
 

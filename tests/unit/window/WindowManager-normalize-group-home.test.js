@@ -109,6 +109,36 @@ describe("normalizeGroupToHomeMonitor (D044)", () => {
     expect(partner.parentNode).toBe(group);
   });
 
+  it("insert-at-index join across mons rehomes Meta to dest (D044)", () => {
+    const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const mon1 = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
+    mon0.layout = LAYOUT_TYPES.HSPLIT;
+    mon1.layout = LAYOUT_TYPES.HSPLIT;
+
+    const dest = new Node(NODE_TYPES.CON, new Bin());
+    dest.layout = LAYOUT_TYPES.TABBED;
+    mon1.appendChild(dest);
+
+    const metaA = createMockWindow({ id: "a", monitor: 1, workspace: ctx.workspaces[0] });
+    const metaB = createMockWindow({ id: "b", monitor: 1, workspace: ctx.workspaces[0] });
+    const metaSrc = createMockWindow({ id: "src", monitor: 0, workspace: ctx.workspaces[0] });
+    const a = ctx.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, metaA);
+    const b = ctx.tree.createNode(dest.nodeValue, NODE_TYPES.WINDOW, metaB);
+    const src = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, metaSrc);
+    for (const n of [a, b, src]) n.mode = WINDOW_MODES.TILE;
+
+    const group = ctx.tree.mergeWindowsIntoGroup(a, src, LAYOUT_TYPES.TABBED, {
+      insertIndex: 1,
+      group: dest,
+    });
+
+    expect(group).toBe(dest);
+    expect(dest.childNodes).toEqual([a, src, b]);
+    expect(ctx.tree.groupHomeMonitor(dest)).toBe(1);
+    expect(metaSrc.get_monitor()).toBe(1);
+    expect(mon0.contains(src)).toBe(false);
+  });
+
   it("no-op when Meta already on home", () => {
     const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
     const tab = new Node(NODE_TYPES.CON, new Bin());

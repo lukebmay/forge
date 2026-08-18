@@ -5,10 +5,15 @@ import {
   tabStripGapFromFloatingChip,
   tabStripInsertIndexFromGap,
   tabStripFlowLayoutWithGap,
+  tabStripEqualFillSizesWithGap,
   tabStripInsertIndex2D,
   applyTabStripReorder,
   pointerOnTabStrip,
+  chipIntersectsTabStrip,
   tabActorScreenRect,
+  foreignStripInsertIndex,
+  findForeignTabStripAtPointer,
+  findTabStripIntersectingChip,
 } from "../../../lib/extension/drag-drop.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree.js";
@@ -91,90 +96,87 @@ describe("applyTabStripReorder (pure)", () => {
 });
 
 describe("tabStripGapFromFloatingChip (pure)", () => {
-  // Remaining A,C with gap reserved at home of B (100–180 chip).
+  // Remaining A (center 50), C (center 230). Chip size is layout-only.
   const flowHome = [
     { x: 0, y: 0, width: 100, height: 30 },
     { x: 180, y: 0, width: 100, height: 30 },
   ];
-  // After slide: gap after C
-  const flowAfterC = [
-    { x: 0, y: 0, width: 100, height: 30 },
-    { x: 100, y: 0, width: 100, height: 30 },
-  ];
+  const chip = { x: 100, y: 0, width: 80, height: 30 };
 
-  it("home: leading before C center → gap between A and C", () => {
-    // Chip over B home; right edge 180, C center 230
-    const chip = { x: 100, y: 0, width: 80, height: 30 };
+  it("index 0: pointer left of first sibling center", () => {
     expect(
       tabStripGapFromFloatingChip({
         tabs: flowHome,
         chip,
+        pointer: { x: 49, y: 15 },
         axis: "x",
-        dragDirection: 1,
-      }).index
-    ).toBe(1);
-  });
-
-  it("leading right edge past C center → gap after all", () => {
-    const chip = { x: 200, y: 0, width: 80, height: 30 }; // leading 280
-    expect(
-      tabStripGapFromFloatingChip({
-        tabs: flowHome,
-        chip,
-        axis: "x",
-        dragDirection: 1,
-      }).index
-    ).toBe(2);
-  });
-
-  it("leading left edge before A center → gap at start", () => {
-    const chip = { x: 0, y: 0, width: 80, height: 30 }; // leading 0 when dir -1
-    expect(
-      tabStripGapFromFloatingChip({
-        tabs: flowAfterC,
-        chip,
-        axis: "x",
-        dragDirection: -1,
       }).index
     ).toBe(0);
   });
 
-  it("direction flip uses min edge when moving left", () => {
-    // Chip straddling C; left edge at 140, C center 150 → still before C
-    const chip = { x: 140, y: 0, width: 80, height: 30 };
+  it("mid: pointer past first center, before last", () => {
     expect(
       tabStripGapFromFloatingChip({
-        tabs: flowAfterC,
+        tabs: flowHome,
         chip,
+        pointer: { x: 51, y: 15 },
         axis: "x",
-        dragDirection: -1,
       }).index
     ).toBe(1);
-    // Left edge past C center (151) → after C
     expect(
       tabStripGapFromFloatingChip({
-        tabs: flowAfterC,
-        chip: { x: 151, y: 0, width: 80, height: 30 },
+        tabs: flowHome,
+        chip,
+        pointer: { x: 229, y: 15 },
         axis: "x",
-        dragDirection: -1,
+      }).index
+    ).toBe(1);
+  });
+
+  it("end: pointer past last sibling center", () => {
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs: flowHome,
+        chip,
+        pointer: { x: 231, y: 15 },
+        axis: "x",
       }).index
     ).toBe(2);
   });
 
-  it("STACKED Y axis", () => {
+  it("direction does not change pointer×center index", () => {
+    const opts = {
+      tabs: flowHome,
+      chip,
+      pointer: { x: 51, y: 15 },
+      axis: "x",
+    };
+    expect(tabStripGapFromFloatingChip({ ...opts, dragDirection: 1 }).index).toBe(1);
+    expect(tabStripGapFromFloatingChip({ ...opts, dragDirection: -1 }).index).toBe(1);
+  });
+
+  it("STACKED Y: pointer past last center → end", () => {
     const tabsY = [
       { x: 0, y: 40, width: 200, height: 40 },
       { x: 0, y: 80, width: 200, height: 40 },
     ];
-    // Drag first tab down; chip bottom past last center (100)
     expect(
       tabStripGapFromFloatingChip({
         tabs: tabsY,
         chip: { x: 0, y: 70, width: 200, height: 40 },
+        pointer: { x: 10, y: 101 },
         axis: "y",
         dragDirection: 1,
       }).index
     ).toBe(2);
+    expect(
+      tabStripGapFromFloatingChip({
+        tabs: tabsY,
+        chip: { x: 0, y: 70, width: 200, height: 40 },
+        pointer: { x: 10, y: 59 },
+        axis: "y",
+      }).index
+    ).toBe(0);
   });
 
   it("skips marked skip tabs and empty → 0", () => {
@@ -182,35 +184,22 @@ describe("tabStripGapFromFloatingChip (pure)", () => {
       tabStripGapFromFloatingChip({
         tabs: [{ skip: true, x: 0, y: 0, width: 50, height: 20 }],
         chip: { x: 0, y: 0, width: 40, height: 20 },
+        pointer: { x: 10, y: 10 },
         axis: "x",
-        dragDirection: 1,
       }).index
     ).toBe(0);
     expect(tabStripGapFromFloatingChip({ tabs: [], chip: null }).index).toBe(0);
   });
 
-  it("chip width only affects leading edge (gap size is layout input)", () => {
-    const tabs = [
-      { x: 0, y: 0, width: 100, height: 30 },
-      { x: 200, y: 0, width: 100, height: 30 },
-    ];
-    // Narrow chip still crosses second center when right edge does
+  it("chip-only fallback uses chip center (index 0 reachable)", () => {
+    // Center 40 < A 50 → 0. Old leading-edge (80) would have been 1.
     expect(
       tabStripGapFromFloatingChip({
-        tabs,
-        chip: { x: 160, y: 0, width: 50, height: 30 },
+        tabs: flowHome,
+        chip: { x: 0, y: 0, width: 80, height: 30 },
         axis: "x",
-        dragDirection: 1,
       }).index
-    ).toBe(1);
-    expect(
-      tabStripGapFromFloatingChip({
-        tabs,
-        chip: { x: 160, y: 0, width: 100, height: 30 },
-        axis: "x",
-        dragDirection: 1,
-      }).index
-    ).toBe(2);
+    ).toBe(0);
   });
 });
 
@@ -260,6 +249,44 @@ describe("tabStripFlowLayoutWithGap (pure)", () => {
   });
 });
 
+describe("tabStripEqualFillSizesWithGap (pure)", () => {
+  it("equal-fills remaining with chip reserved; sum + chip = available", () => {
+    // 3 equal homes of 100; drag one → chip 80; remaining share 220.
+    const sizes = tabStripEqualFillSizesWithGap({
+      count: 2,
+      available: 300,
+      chipSize: 80,
+    });
+    expect(sizes).toHaveLength(2);
+    expect(sizes.reduce((a, b) => a + b, 0)).toBe(220);
+    expect(sizes[0] + sizes[1] + 80).toBe(300);
+    // Remainder pixels go to the leading slots.
+    expect(sizes).toEqual([110, 110]);
+  });
+
+  it("distributes remainder pixels across first slots", () => {
+    expect(tabStripEqualFillSizesWithGap({ count: 3, available: 100, chipSize: 10 })).toEqual([
+      30, 30, 30,
+    ]);
+    expect(tabStripEqualFillSizesWithGap({ count: 3, available: 101, chipSize: 10 })).toEqual([
+      31, 30, 30,
+    ]);
+  });
+
+  it("no gap → full equal-fill; empty count → []", () => {
+    expect(tabStripEqualFillSizesWithGap({ count: 2, available: 200, chipSize: 0 })).toEqual([
+      100, 100,
+    ]);
+    expect(tabStripEqualFillSizesWithGap({ count: 0, available: 200, chipSize: 40 })).toEqual([]);
+  });
+
+  it("chip larger than available → zero remaining sizes", () => {
+    expect(tabStripEqualFillSizesWithGap({ count: 2, available: 50, chipSize: 80 })).toEqual([
+      0, 0,
+    ]);
+  });
+});
+
 describe("pointerOnTabStrip (pure)", () => {
   const tabs = [
     { x: 10, y: 20, width: 80, height: 30 },
@@ -289,6 +316,64 @@ describe("pointerOnTabStrip (pure)", () => {
     // Between rows (y=125) stays inside union — peel only south of union.
     expect(pointerOnTabStrip({ tabs: multi, pointer: [50, 125], pad: 0 })).toBe(true);
     expect(pointerOnTabStrip({ tabs: multi, pointer: [50, 170], pad: 0 })).toBe(false);
+  });
+});
+
+describe("chipIntersectsTabStrip (pure)", () => {
+  const strip = [{ x: 0, y: 0, width: 300, height: 30 }];
+
+  it("true when any part of the chip overlaps the band", () => {
+    expect(
+      chipIntersectsTabStrip({
+        chip: { x: 10, y: 20, width: 80, height: 30 },
+        tabs: strip,
+        pad: 0,
+      })
+    ).toBe(true);
+    // Pointer is south of the bar; chip still overlaps.
+    expect(
+      chipIntersectsTabStrip({
+        chip: { x: 10, y: 20, width: 80, height: 30 },
+        tabs: strip,
+        pad: 4,
+      })
+    ).toBe(true);
+  });
+
+  it("false when chip is fully off the band", () => {
+    expect(
+      chipIntersectsTabStrip({
+        chip: { x: 10, y: 80, width: 80, height: 30 },
+        tabs: strip,
+        pad: 4,
+      })
+    ).toBe(false);
+  });
+});
+
+describe("findTabStripIntersectingChip (pure)", () => {
+  const groupA = { id: "A" };
+  const groupB = { id: "B" };
+  const strips = [
+    { group: groupA, rects: [{ x: 0, y: 0, width: 300, height: 30 }] },
+    { group: groupB, rects: [{ x: 400, y: 0, width: 300, height: 30 }] },
+  ];
+
+  it("hits dest when chip overlaps even if pointer is off-band", () => {
+    expect(
+      findTabStripIntersectingChip({
+        strips,
+        chip: { x: 420, y: 18, width: 80, height: 30 },
+        excludeGroup: groupA,
+      })
+    ).toBe(groupB);
+    expect(
+      findForeignTabStripAtPointer({
+        strips,
+        pointer: { x: 450, y: 40 },
+        excludeGroup: groupA,
+      })
+    ).toBeNull();
   });
 });
 
@@ -336,8 +421,8 @@ describe("tabStripInsertIndex2D (pure)", () => {
 
     const nearerRow1 = tabStripInsertIndex2D({
       tabs: twoRows,
-      pointer: { x: 50, y: 20 }, // above strip → nearest row1
-      chip: chipOn(0, 10, 40), // leading 40 < A center 50
+      pointer: { x: 49, y: 20 }, // above strip → nearest row1; 49 < A center 50
+      chip: chipOn(0, 10, 40),
       dragDirection: 1,
     });
     expect(nearerRow1.index).toBe(0);
@@ -437,6 +522,7 @@ describe("STACKED path does not use tabStripInsertIndex2D", () => {
     const gap = tabStripGapFromFloatingChip({
       tabs: stacked.slice(1), // remaining after dragging first
       chip,
+      pointer: { x: 10, y: 110 },
       axis: "y",
       dragDirection: 1,
     }).index;
@@ -451,6 +537,107 @@ describe("STACKED path does not use tabStripInsertIndex2D", () => {
     expect(gap).toBe(2);
     expect(typeof wrong2d).toBe("number");
     // Gesture suite below proves DragDropManager STACKED never needs 2D for correct order.
+  });
+});
+
+describe("foreignStripInsertIndex (pure)", () => {
+  const destTabs = [
+    { x: 0, y: 0, width: 100, height: 30 },
+    { x: 100, y: 0, width: 100, height: 30 },
+    { x: 200, y: 0, width: 100, height: 30 },
+  ];
+
+  it("TABBED: chip leading edge before first center → 0", () => {
+    const chip = { x: -40, y: 0, width: 80, height: 30 };
+    expect(
+      foreignStripInsertIndex({
+        tabs: destTabs,
+        pointer: { x: 10, y: 15 },
+        chip,
+        dragDirection: 1,
+        axis: "x",
+      }).index
+    ).toBe(0);
+  });
+
+  it("TABBED: chip past first center, before second → mid index", () => {
+    const chip = { x: 20, y: 0, width: 80, height: 30 };
+    expect(
+      foreignStripInsertIndex({
+        tabs: destTabs,
+        pointer: { x: 80, y: 15 },
+        chip,
+        dragDirection: 1,
+        axis: "x",
+      }).index
+    ).toBe(1);
+  });
+
+  it("TABBED: chip past last center → append", () => {
+    const chip = { x: 260, y: 0, width: 80, height: 30 };
+    expect(
+      foreignStripInsertIndex({
+        tabs: destTabs,
+        pointer: { x: 300, y: 15 },
+        chip,
+        dragDirection: 1,
+        axis: "x",
+      }).index
+    ).toBe(3);
+  });
+
+  it("STACKED uses Y chip gap, not 2D", () => {
+    const stacked = [
+      { x: 0, y: 0, width: 200, height: 40 },
+      { x: 0, y: 40, width: 200, height: 40 },
+      { x: 0, y: 80, width: 200, height: 40 },
+    ];
+    const chip = { x: 0, y: 50, width: 200, height: 40 };
+    expect(
+      foreignStripInsertIndex({
+        tabs: stacked,
+        pointer: { x: 10, y: 70 },
+        chip,
+        dragDirection: 1,
+        axis: "y",
+      }).index
+    ).toBe(2);
+  });
+});
+
+describe("findForeignTabStripAtPointer (pure)", () => {
+  const groupA = { id: "A" };
+  const groupB = { id: "B" };
+  const strips = [
+    { group: groupA, rects: [{ x: 0, y: 0, width: 300, height: 30 }] },
+    { group: groupB, rects: [{ x: 400, y: 0, width: 300, height: 30 }] },
+  ];
+
+  it("hits dest strip and skips origin", () => {
+    expect(
+      findForeignTabStripAtPointer({
+        strips,
+        pointer: { x: 450, y: 15 },
+        excludeGroup: groupA,
+      })
+    ).toBe(groupB);
+    expect(
+      findForeignTabStripAtPointer({
+        strips,
+        pointer: { x: 50, y: 15 },
+        excludeGroup: groupA,
+      })
+    ).toBeNull();
+  });
+
+  it("misses when pointer is in tile body, not strip", () => {
+    expect(
+      findForeignTabStripAtPointer({
+        strips,
+        pointer: { x: 450, y: 200 },
+        excludeGroup: groupA,
+      })
+    ).toBeNull();
   });
 });
 
@@ -508,7 +695,7 @@ describe("DragDropManager strip reorder", () => {
   }
 
   function makeTabActor(x, y, width, height) {
-    return {
+    const actor = {
       x,
       y,
       width,
@@ -531,9 +718,11 @@ describe("DragDropManager strip reorder", () => {
       },
       set_width(w) {
         this.width = w;
+        this._parent?._forgeRelayoutStrip?.();
       },
       set_height(h) {
         this.height = h;
+        this._parent?._forgeRelayoutStrip?.();
       },
       set_position(px, py) {
         this.x = px;
@@ -547,19 +736,34 @@ describe("DragDropManager strip reorder", () => {
         }
         params.onComplete?.();
       },
+      // Mimic St.BoxLayout: after remove/insert/set_width, pack children by width.
+      _forgeRelayoutStrip() {
+        let cursor = Number(this.x) || 0;
+        for (const child of this.children) {
+          if (!child) continue;
+          const w = Math.max(0, Number(child.width) || 0);
+          child.x = cursor;
+          child.y = Number(this.y) || 0;
+          cursor += w;
+        }
+      },
       add_child(child) {
         if (!child) return;
         if (!this.children.includes(child)) this.children.push(child);
         child._parent = this;
+        this._forgeRelayoutStrip();
       },
       remove_child(child) {
         const i = this.children.indexOf(child);
         if (i !== -1) this.children.splice(i, 1);
         if (child && child._parent === this) child._parent = null;
+        this._forgeRelayoutStrip();
       },
       contains(child) {
         return this.children.includes(child);
       },
+      hide() {},
+      show() {},
       get_children() {
         return this.children;
       },
@@ -572,8 +776,27 @@ describe("DragDropManager strip reorder", () => {
         if (i !== -1) this.children.splice(i, 1);
         this.children.splice(Math.max(0, index), 0, child);
         child._parent = this;
+        this._forgeRelayoutStrip();
       },
     };
+    return actor;
+  }
+
+  /** Painted range along X: allocation + translation (dual-layout failure detector). */
+  function paintedXRange(tab) {
+    const start = (Number(tab.x) || 0) + (Number(tab.translation_x) || 0);
+    return { start, end: start + (Number(tab.width) || 0) };
+  }
+
+  function assertNoOverlapPainted(tabs, stripStart, stripEnd) {
+    const ranges = tabs.map(paintedXRange).sort((a, b) => a.start - b.start);
+    for (let i = 0; i < ranges.length; i++) {
+      expect(ranges[i].start).toBeGreaterThanOrEqual(stripStart - 0.5);
+      expect(ranges[i].end).toBeLessThanOrEqual(stripEnd + 0.5);
+      if (i > 0) {
+        expect(ranges[i].start).toBeGreaterThanOrEqual(ranges[i - 1].end - 0.5);
+      }
+    }
   }
 
   function makeTabbedTrio() {
@@ -628,7 +851,7 @@ describe("DragDropManager strip reorder", () => {
     expect(a.node.tab.style_class).not.toContain("window-tabbed-tab-reorder-insert");
     expect(c.node.tab.style_class).not.toContain("window-tabbed-tab-reorder-insert");
 
-    // Chip leading edge past C center → gap after C → insertIndex 3
+    // Pointer past C center → gap after C → insertIndex 3
     expect(dd().noteTabDragMotion(280, 15)).toBe("reorder");
     dd().finishTabDragRelease();
 
@@ -678,6 +901,286 @@ describe("DragDropManager strip reorder", () => {
     setPointer(300, 300);
     dd().finishTabDragRelease();
     expect(dd()._tabDrag).toBeNull();
+  });
+
+  it("floating chip under pointer does not block peel (strip AABB excludes chip)", () => {
+    const { nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    setPointer(150, 15);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd()._tabDrag?.chipFloating).toBe(true);
+    // Chip tracks pointer far south — pre-fix peel AABB contained the chip.
+    const status = dd().noteTabDragMotion(150, 400);
+    expect(status).toBe("active");
+    expect(b.node.mode).toBe(WINDOW_MODES.GRAB_TILE);
+    expect(wm()._draggedNodeWindow).toBe(b.node);
+    expect(dd()._tabDrag?.reorder).toBeFalsy();
+  });
+
+  it("peel with preview-hint off still paints zones when tile mod is None", () => {
+    const { nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    setPointer(150, 15);
+    // Host: preview-hint-enabled=false, mod-mask-mouse-tile=None → allow true.
+    const origGet = wm().ext.settings.get_boolean;
+    wm().ext.settings.get_boolean = vi.fn((key) => {
+      if (key === "preview-hint-enabled") return false;
+      if (key === "tiling-mode-enabled") return true;
+      return origGet.call(wm().ext.settings, key);
+    });
+    // DragDropManager.allowDragDropTile (kbd path), not only WM wrapper.
+    vi.spyOn(dd(), "allowDragDropTile").mockReturnValue(true);
+    const moveSpy = vi.spyOn(wm(), "moveWindowToPointer").mockImplementation(() => {});
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd().noteTabDragMotion(150, 250)).toBe("active");
+    expect(b.node.mode).toBe(WINDOW_MODES.GRAB_TILE);
+
+    setPointer(300, 300);
+    expect(dd().noteTabDragMotion(300, 300)).toBe("active");
+    expect(moveSpy).toHaveBeenCalled();
+    expect(moveSpy.mock.calls.some((c) => c[1] === true)).toBe(true);
+  });
+
+  it("PR10: peel with begin_grab_op true still enters synthetic GRAB_TILE", () => {
+    const { nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    // Simulate host Meta.Window: begin_grab_op exists and claims success.
+    b.meta.begin_grab_op = vi.fn(() => true);
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    setPointer(150, 15);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    const status = dd().noteTabDragMotion(150, 250);
+    expect(status).toBe("active");
+    expect(b.node.mode).toBe(WINDOW_MODES.GRAB_TILE);
+    expect(dd()._tabDrag?.synthetic).toBe(true);
+    expect(dd()._tabDrag?.started).toBe(true);
+    // Must not hand ownership to a silent Mutter grab (stage still drives motion).
+    expect(b.meta.begin_grab_op).not.toHaveBeenCalled();
+    expect(wm()._draggedNodeWindow).toBe(b.node);
+  });
+
+  it("PR10: peel then edge drop commits structure (not no-op)", () => {
+    const { group, nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    // Sibling tile on mon for edge drop target (outside the tab group body).
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const targetMeta = createMockWindow({
+      rect: new Rectangle({ x: 900, y: 0, width: 900, height: 600 }),
+      workspace: ctx.workspaces[0],
+      id: "peel-edge-target",
+    });
+    delete targetMeta.begin_grab_op;
+    const target = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, targetMeta);
+    target.mode = WINDOW_MODES.TILE;
+    target.rect = { x: 900, y: 0, width: 900, height: 600 };
+
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+    vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+    // Sorted targets for findNodeWindowAtPointer during motion/commit.
+    wm().sortedWindows = [b.meta, targetMeta, nodes[0].meta, nodes[2].meta];
+    wm().trackCurrentMonWs = vi.fn();
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd().noteTabDragMotion(150, 200)).toBe("active");
+    expect(b.node.mode).toBe(WINDOW_MODES.GRAB_TILE);
+
+    // LEFT edge of target tile → slot-split / peel-out structure change.
+    setPointer(920, 300);
+    expect(dd().noteTabDragMotion(920, 300)).toBe("active");
+    // Preview path used zone hit (target under pointer).
+    expect(wm().nodeWinAtPointer).toBe(target);
+
+    dd().finishTabDragRelease();
+
+    expect(group.childNodes).not.toContain(b.node);
+    expect(group.childNodes.length).toBe(2);
+    expect(b.node.parentNode).not.toBe(group);
+    expect(b.node.mode).toBe(WINDOW_MODES.TILE);
+    expect(dd()._tabDrag).toBeNull();
+  });
+
+  it("PR10: peel CENTER onto sibling tile joins (structure change)", () => {
+    const { group, nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const targetMeta = createMockWindow({
+      rect: new Rectangle({ x: 900, y: 0, width: 900, height: 600 }),
+      workspace: ctx.workspaces[0],
+      id: "peel-center-target",
+    });
+    delete targetMeta.begin_grab_op;
+    const target = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, targetMeta);
+    target.mode = WINDOW_MODES.TILE;
+    target.rect = { x: 900, y: 0, width: 900, height: 600 };
+
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+    vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+    wm().sortedWindows = [b.meta, targetMeta, nodes[0].meta, nodes[2].meta];
+    wm().trackCurrentMonWs = vi.fn();
+    // dnd-center-layout tabbed (fixture default may vary).
+    const origStr = wm().ext.settings.get_string;
+    wm().ext.settings.get_string = vi.fn((key) => {
+      if (key === "dnd-center-layout") return "tabbed";
+      return origStr?.call?.(wm().ext.settings, key) ?? "";
+    });
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd().noteTabDragMotion(150, 200)).toBe("active");
+
+    // Center of target.
+    setPointer(1350, 300);
+    expect(dd().noteTabDragMotion(1350, 300)).toBe("active");
+    dd().finishTabDragRelease();
+
+    expect(group.childNodes).not.toContain(b.node);
+    // Joined with target into a TABBED/STACKED group.
+    expect(b.node.parentNode).toBe(target.parentNode);
+    expect(b.node.parentNode?.isStackedOrTabbed?.() || b.node.parentNode?.isTabbed?.()).toBe(true);
+    expect(b.node.mode).toBe(WINDOW_MODES.TILE);
+    expect(dd()._tabDrag).toBeNull();
+  });
+
+  it("PR13: peel keeps chipFloating under pointer (no snap-back)", () => {
+    const { group, nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    setPointer(150, 15);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd()._tabDrag?.chipFloating).toBe(true);
+    const grabY = Number(dd()._tabDrag.grabOffsetY) || 0;
+
+    const status = dd().noteTabDragMotion(150, 400);
+    expect(status).toBe("active");
+    expect(b.node.mode).toBe(WINDOW_MODES.GRAB_TILE);
+    expect(dd()._tabDrag?.synthetic).toBe(true);
+    expect(dd()._tabDrag?.chipFloating).toBe(true);
+    expect(dd()._tabDrag?.gapSpacer).toBeFalsy();
+    expect(b.node.tab.style_class).toContain("window-tabbed-tab-dragging");
+    expect(b.node.tab.y).toBeCloseTo(400 - grabY, 0);
+    // Origin siblings unfrozen; chip still the float.
+    expect(nodes[0].node.tab.x_expand).toBe(true);
+    expect(b.node.tab.x_expand).toBe(false);
+
+    dd().noteTabDragMotion(180, 420);
+    expect(dd()._tabDrag?.chipFloating).toBe(true);
+    expect(b.node.tab.y).toBeCloseTo(420 - grabY, 0);
+    expect(group.decoration.contains(b.node.tab) || b.node.tab.get_parent()).toBeTruthy();
+  });
+
+  it("PR13: after peel, getDragPointer prefers event coords over parked pointer", () => {
+    const { nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const targetMeta = createMockWindow({
+      rect: new Rectangle({ x: 900, y: 0, width: 900, height: 600 }),
+      workspace: ctx.workspaces[0],
+      id: "peel-zone-target",
+    });
+    delete targetMeta.begin_grab_op;
+    const target = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, targetMeta);
+    target.mode = WINDOW_MODES.TILE;
+    target.rect = { x: 900, y: 0, width: 900, height: 600 };
+
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    vi.spyOn(dd(), "allowDragDropTile").mockReturnValue(true);
+    wm().sortedWindows = [b.meta, targetMeta, nodes[0].meta, nodes[2].meta];
+    wm().trackCurrentMonWs = vi.fn();
+    const moveSpy = vi.spyOn(wm(), "moveWindowToPointer");
+
+    setPointer(150, 15);
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd().noteTabDragMotion(150, 200)).toBe("active");
+
+    // Host Wayland: global pointer stays parked on the origin strip.
+    setPointer(150, 15);
+    expect(dd().noteTabDragMotion(920, 300)).toBe("active");
+    const ptr = dd().getDragPointer(b.node);
+    expect(ptr[0]).toBe(920);
+    expect(ptr[1]).toBe(300);
+    expect(wm().nodeWinAtPointer).toBe(target);
+    expect(moveSpy).toHaveBeenCalled();
+    expect(moveSpy.mock.calls.some((c) => c[1] === true)).toBe(true);
+  });
+
+  it("PR13: peel then edge drop commits from event coords (parked get_pointer ignored)", () => {
+    const { group, nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const targetMeta = createMockWindow({
+      rect: new Rectangle({ x: 900, y: 0, width: 900, height: 600 }),
+      workspace: ctx.workspaces[0],
+      id: "peel-edge-parked",
+    });
+    delete targetMeta.begin_grab_op;
+    const target = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, targetMeta);
+    target.mode = WINDOW_MODES.TILE;
+    target.rect = { x: 900, y: 0, width: 900, height: 600 };
+
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+    vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+    wm().sortedWindows = [b.meta, targetMeta, nodes[0].meta, nodes[2].meta];
+    wm().trackCurrentMonWs = vi.fn();
+    b.meta.begin_grab_op = vi.fn(() => true);
+
+    setPointer(150, 15);
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd().noteTabDragMotion(150, 200)).toBe("active");
+    expect(b.meta.begin_grab_op).not.toHaveBeenCalled();
+
+    // Leave global pointer parked; only event coords sit on the LEFT edge.
+    setPointer(150, 15);
+    expect(dd().noteTabDragMotion(920, 300)).toBe("active");
+    expect(wm().nodeWinAtPointer).toBe(target);
+    dd().finishTabDragRelease();
+
+    expect(group.childNodes).not.toContain(b.node);
+    expect(group.childNodes.length).toBe(2);
+    expect(b.node.parentNode).not.toBe(group);
+    expect(b.node.mode).toBe(WINDOW_MODES.TILE);
+    expect(dd()._tabDrag).toBeNull();
+    expect(dd()._syntheticDragPointer).toBeNull();
+  });
+
+  it("PR13: peel AABB uses planned strip, not inflated decoration", () => {
+    const { group, nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    setPointer(150, 15);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd()._tabDrag?.chipFloating).toBe(true);
+
+    // Live deco transform covers the whole tile — pre-fix this trapped peel.
+    group.decoration.get_transformed_position = () => [0, 0];
+    group.decoration.get_transformed_size = () => [900, 600];
+
+    const status = dd().noteTabDragMotion(150, 200);
+    expect(status).toBe("active");
+    expect(b.node.mode).toBe(WINDOW_MODES.GRAB_TILE);
+    expect(dd()._tabDrag?.chipFloating).toBe(true);
+    expect(dd()._tabDrag?.reorder).toBeFalsy();
   });
 
   it("STACKED group uses Y axis for reorder", () => {
@@ -767,5 +1270,468 @@ describe("DragDropManager strip reorder", () => {
 
     expect(group.childNodes.map((n) => n)).toEqual([winA, winC, conB]);
     expect(conB.childNodes[0]).toBe(winB);
+  });
+
+  it("peel onto foreign strip paints gap and joins at index (not append)", () => {
+    const { group: groupA, nodes: nodesA } = makeTabbedTrio();
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const groupBin = new Bin();
+    const groupB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, groupBin);
+    groupB.layout = LAYOUT_TYPES.TABBED;
+    groupB.rect = { x: 400, y: 0, width: 900, height: 600 };
+    // Wide strip so chip floor (~20-char) leaves room for mid-index hit tests.
+    const homeW = 300;
+    const stripW = homeW * 3;
+    const decoB = makeTabActor(400, 0, stripW, 30);
+    groupB.decoration = decoB;
+    const nodesB = [];
+    for (let i = 0; i < 3; i++) {
+      const meta = createMockWindow({
+        rect: new Rectangle({ x: 400, y: 40, width: 900, height: 560 }),
+        workspace: ctx.workspaces[0],
+        id: `dest-tab-${i}`,
+      });
+      delete meta.begin_grab_op;
+      const node = ctx.tree.createNode(groupBin, NODE_TYPES.WINDOW, meta);
+      node.mode = WINDOW_MODES.TILE;
+      node.tab = makeTabActor(400 + i * homeW, 0, homeW, 30);
+      decoB.add_child(node.tab);
+      nodesB.push({ node, meta });
+    }
+    ctx.settings.set_uint("min-tab-label-chars", 20);
+
+    const dragged = nodesA[1];
+    ctx.display.get_focus_window = vi.fn(() => dragged.meta);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+    vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+    const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
+
+    dd().armTabDrag(dragged.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd().noteTabDragMotion(150, 200)).toBe("active");
+
+    const srcTabParentBefore = dragged.node.tab.get_parent?.() || dragged.node.tab._parent;
+    setPointer(400, 15);
+    expect(dd().noteTabDragMotion(400, 15)).toBe("active");
+    expect(dd()._foreignStrip?.groupNode).toBe(groupB);
+    expect(dd()._foreignStrip?.gapSpacer).toBeTruthy();
+    // PR9: foreign preview is spacer-only — never reparent the live tab.
+    expect(dd()._foreignStrip?.chipFloating).toBe(false);
+    expect(dd()._foreignStrip?.foreign).toBe(true);
+    const srcTabParentMid = dragged.node.tab.get_parent?.() || dragged.node.tab._parent;
+    expect(srcTabParentMid).toBe(srcTabParentBefore);
+    // Dest remaining equal-fill; no dual-translation overlap.
+    for (const s of dd()._foreignStrip?.siblingSnap || []) {
+      expect(s.tab.translation_x).toBe(0);
+    }
+    assertNoOverlapPainted(
+      (dd()._foreignStrip?.siblingSnap || []).map((s) => s.tab),
+      400,
+      400 + stripW
+    );
+    const firstGap = dd()._foreignStrip?.insertIndex;
+    expect(firstGap).toBeGreaterThanOrEqual(0);
+    expect(firstGap).toBeLessThan(3);
+
+    // Farther right → insert index must move toward the end (not stuck / not only append).
+    setPointer(400 + homeW * 2.2, 15);
+    expect(dd().noteTabDragMotion(400 + homeW * 2.2, 15)).toBe("active");
+    const gap = dd()._foreignStrip?.insertIndex;
+    expect(gap).toBeGreaterThanOrEqual(1);
+    expect(gap).toBeLessThanOrEqual(3);
+    expect(gap).toBeGreaterThanOrEqual(firstGap);
+
+    dd().finishTabDragRelease();
+
+    expect(mergeSpy).toHaveBeenCalled();
+    const last = mergeSpy.mock.calls[mergeSpy.mock.calls.length - 1];
+    expect(last[2]).toBe(LAYOUT_TYPES.TABBED);
+    expect(last[3]).toMatchObject({ insertIndex: gap, group: groupB });
+    expect(groupB.childNodes).toContain(dragged.node);
+    expect(groupB.childNodes.indexOf(dragged.node)).toBe(gap);
+    expect(groupA.childNodes).not.toContain(dragged.node);
+    expect(groupA.layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(groupB.layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(dd()._tabDrag).toBeNull();
+    expect(dd()._foreignStrip).toBeNull();
+  });
+
+  it("Mutter-owned GRAB_TILE foreign hover never reparents source tab", () => {
+    const { group: groupA, nodes: nodesA } = makeTabbedTrio();
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const groupBin = new Bin();
+    const groupB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, groupBin);
+    groupB.layout = LAYOUT_TYPES.TABBED;
+    groupB.rect = { x: 400, y: 0, width: 900, height: 600 };
+    const decoB = makeTabActor(400, 0, 300, 30);
+    groupB.decoration = decoB;
+    for (let i = 0; i < 2; i++) {
+      const meta = createMockWindow({
+        rect: new Rectangle({ x: 400, y: 40, width: 900, height: 560 }),
+        workspace: ctx.workspaces[0],
+        id: `mutter-dest-${i}`,
+      });
+      delete meta.begin_grab_op;
+      const node = ctx.tree.createNode(groupBin, NODE_TYPES.WINDOW, meta);
+      node.mode = WINDOW_MODES.TILE;
+      node.tab = makeTabActor(400 + i * 100, 0, 100, 30);
+      decoB.add_child(node.tab);
+    }
+
+    const dragged = nodesA[0];
+    // Simulate real titlebar/Mutter grab (no synthetic _tabDrag).
+    dragged.node.mode = WINDOW_MODES.GRAB_TILE;
+    wm()._draggedNodeWindow = dragged.node;
+    const parentBefore =
+      typeof dragged.node.tab.get_parent === "function"
+        ? dragged.node.tab.get_parent()
+        : dragged.node.tab._parent;
+
+    setPointer(450, 15);
+    dd()._handleMoving(dragged.node);
+
+    expect(dd()._foreignStrip?.groupNode).toBe(groupB);
+    expect(dd()._foreignStrip?.chipFloating).toBe(false);
+    expect(dd()._foreignStrip?.gapSpacer).toBeTruthy();
+    const parentAfter =
+      typeof dragged.node.tab.get_parent === "function"
+        ? dragged.node.tab.get_parent()
+        : dragged.node.tab._parent;
+    expect(parentAfter).toBe(parentBefore);
+    expect(groupA.childNodes).toContain(dragged.node);
+
+    dd()._clearForeignStripPreview();
+    dragged.node.mode = WINDOW_MODES.TILE;
+    wm()._draggedNodeWindow = null;
+  });
+
+  it("chip min width uses measureMinTabWidth(min-tab-label-chars), not 80px hardcode", () => {
+    const { nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    // Product floor (~20 chars) — fixtures default wrap-off (0).
+    ctx.settings.set_uint("min-tab-label-chars", 20);
+    const measured = ctx.tree.measureMinTabWidth({ minChars: 20 });
+    expect(measured).toBeGreaterThan(80);
+
+    const floor = dd()._tabDragChipMinWidth(100);
+    expect(floor).toBe(Math.max(Math.round(measured), 1));
+    // Prefer floor over tiny home (prior stuck-ellipsis bug).
+    expect(dd()._tabDragChipMinWidth(40)).toBe(floor);
+
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd()._tabDrag?.chipW).toBe(floor);
+    expect(b.node.tab.width).toBe(floor);
+    dd().cancelTabDrag();
+  });
+
+  it("enter REORDER: gap spacer == chipW; remaining equal-fill strip − chipW", () => {
+    const { group, nodes } = makeTabbedTrio();
+    const [a, b, c] = nodes;
+    // Wide equal-fill homes so chip min is smaller than home (host feel case).
+    const homeW = 200;
+    const stripW = homeW * 3;
+    a.node.tab.width = homeW;
+    a.node.tab.x = 0;
+    b.node.tab.width = homeW;
+    b.node.tab.x = homeW;
+    c.node.tab.width = homeW;
+    c.node.tab.x = homeW * 2;
+    if (group.decoration) {
+      group.decoration.width = stripW;
+    }
+    ctx.settings.set_uint("min-tab-label-chars", 20);
+    const chipW = dd()._tabDragChipMinWidth(homeW);
+    expect(chipW).toBeGreaterThan(0);
+    expect(chipW).toBeLessThan(homeW);
+
+    const pressX = homeW + homeW / 2;
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    dd().armTabDrag(b.meta, makePressEvent(pressX, 15));
+    expect(dd().noteTabDragMotion(pressX + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+
+    const state = dd()._tabDrag;
+    expect(state.chipW).toBe(chipW);
+    expect(state.gapSpacer?.width).toBe(chipW);
+    expect(state.stripAvailable).toBe(stripW);
+
+    const remaining = (state.siblingSnap || []).map((s) => s.size);
+    expect(remaining).toHaveLength(2);
+    const remSum = remaining.reduce((s, n) => s + n, 0);
+    expect(remSum).toBe(stripW - chipW);
+    expect(a.node.tab.width + c.node.tab.width).toBe(stripW - chipW);
+    expect(a.node.tab.width).toBe(remaining[0]);
+    expect(c.node.tab.width).toBe(remaining[1]);
+    // Siblings must not claim the gap slot.
+    expect(remSum + chipW).toBe(stripW);
+    expect(a.node.tab.x_expand).toBe(false);
+    expect(c.node.tab.x_expand).toBe(false);
+    // PR12: one layout owner — no dual translation vs BoxLayout pack.
+    expect(a.node.tab.translation_x).toBe(0);
+    expect(c.node.tab.translation_x).toBe(0);
+    assertNoOverlapPainted([a.node.tab, c.node.tab], 0, stripW);
+    const paintedSum =
+      paintedXRange(a.node.tab).end -
+      paintedXRange(a.node.tab).start +
+      paintedXRange(c.node.tab).end -
+      paintedXRange(c.node.tab).start;
+    expect(paintedSum + chipW).toBe(stripW);
+
+    dd().cancelTabDrag();
+  });
+
+  it("REORDER after BoxLayout reallocate: remaining painted ranges stay disjoint", () => {
+    const { group, nodes } = makeTabbedTrio();
+    const [a, b, c] = nodes;
+    const homeW = 200;
+    const stripW = homeW * 3;
+    a.node.tab.width = homeW;
+    a.node.tab.x = 0;
+    b.node.tab.width = homeW;
+    b.node.tab.x = homeW;
+    c.node.tab.width = homeW;
+    c.node.tab.x = homeW * 2;
+    group.decoration.width = stripW;
+    group.decoration.x = 0;
+    ctx.settings.set_uint("min-tab-label-chars", 20);
+
+    const pressX = homeW + homeW / 2;
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    dd().armTabDrag(b.meta, makePressEvent(pressX, 15));
+    expect(dd().noteTabDragMotion(pressX + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+
+    const chipW = dd()._tabDrag.chipW;
+    // Host reallocate after chip leave + width change (St.BoxLayout class).
+    group.decoration._forgeRelayoutStrip();
+    assertNoOverlapPainted([a.node.tab, c.node.tab], 0, stripW);
+    expect(a.node.tab.translation_x).toBe(0);
+    expect(c.node.tab.translation_x).toBe(0);
+
+    // Slide gap toward C — still one owner, no overlap.
+    expect(dd().noteTabDragMotion(stripW - 10, 15)).toBe("reorder");
+    group.decoration._forgeRelayoutStrip();
+    assertNoOverlapPainted([a.node.tab, c.node.tab], 0, stripW);
+    const remW = a.node.tab.width + c.node.tab.width;
+    expect(remW + chipW).toBe(stripW);
+    expect(remW + chipW).toBeLessThanOrEqual(stripW + 0.5);
+
+    dd().cancelTabDrag();
+  });
+
+  it("minChars=0 still yields readable chrome+short-label chip floor", () => {
+    ctx.settings.set_uint("min-tab-label-chars", 0);
+    const short = ctx.tree.measureMinTabWidth({ minChars: 1 });
+    expect(short).toBeGreaterThan(0);
+    expect(dd()._tabDragChipMinWidth(0)).toBe(Math.max(Math.round(short), 1));
+  });
+
+  it("commit restore: chip+siblings regain x_expand, clear fixed width; same-order still layouts", () => {
+    const { group, nodes } = makeTabbedTrio();
+    const [a, b, c] = nodes;
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    const commit = vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+
+    // Freeze-visible start widths
+    a.node.tab.width = 100;
+    b.node.tab.width = 100;
+    c.node.tab.width = 100;
+    a.node.tab.x_expand = true;
+    b.node.tab.x_expand = true;
+    c.node.tab.x_expand = true;
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    // During drag: siblings frozen, chip fixed/non-expand.
+    expect(a.node.tab.x_expand).toBe(false);
+    expect(c.node.tab.x_expand).toBe(false);
+    expect(b.node.tab.x_expand).toBe(false);
+    expect(b.node.tab.width).toBe(dd()._tabDrag?.chipW);
+
+    // Same-order release (stay at home gap).
+    dd().noteTabDragMotion(150, 15);
+    dd().finishTabDragRelease();
+
+    expect(group.childNodes.map((n) => n)).toEqual([a.node, b.node, c.node]);
+    expect(a.node.tab.x_expand).toBe(true);
+    expect(b.node.tab.x_expand).toBe(true);
+    expect(c.node.tab.x_expand).toBe(true);
+    expect(a.node.tab.width).toBe(-1);
+    expect(b.node.tab.width).toBe(-1);
+    expect(c.node.tab.width).toBe(-1);
+    expect(commit).toHaveBeenCalledWith("tab-strip-reorder", { force: true });
+    expect(dd()._tabDrag).toBeNull();
+  });
+
+  it("PR15: peel then re-enter origin strip shows gap again", () => {
+    const { group, nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    setPointer(150, 15);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+    vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd().noteTabDragMotion(150, 200)).toBe("active");
+    expect(dd()._tabDrag?.gapSpacer).toBeFalsy();
+    expect(dd()._originStripCommit).toBeFalsy();
+
+    expect(dd().noteTabDragMotion(150, 15)).toBe("active");
+    expect(dd()._tabDrag?.gapSpacer).toBeTruthy();
+    expect(dd()._originStripCommit?.group).toBe(group);
+    expect(dd()._originStripCommit?.insertIndex).toBeGreaterThanOrEqual(0);
+
+    dd().finishTabDragRelease();
+    expect(dd()._tabDrag).toBeNull();
+    expect(dd()._originStripCommit).toBeNull();
+    expect(b.node.parentNode).toBe(group);
+  });
+
+  it("PR15: chip∩foreign strip shows gap when pointer is off the band", () => {
+    const { nodes: nodesA } = makeTabbedTrio();
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const groupBin = new Bin();
+    const groupB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, groupBin);
+    groupB.layout = LAYOUT_TYPES.TABBED;
+    groupB.rect = { x: 400, y: 0, width: 900, height: 600 };
+    const decoB = makeTabActor(400, 0, 300, 30);
+    groupB.decoration = decoB;
+    for (let i = 0; i < 2; i++) {
+      const meta = createMockWindow({
+        rect: new Rectangle({ x: 400, y: 40, width: 900, height: 560 }),
+        workspace: ctx.workspaces[0],
+        id: `chip-dest-${i}`,
+      });
+      delete meta.begin_grab_op;
+      const node = ctx.tree.createNode(groupBin, NODE_TYPES.WINDOW, meta);
+      node.mode = WINDOW_MODES.TILE;
+      node.tab = makeTabActor(400 + i * 150, 0, 150, 30);
+      decoB.add_child(node.tab);
+    }
+
+    const dragged = nodesA[1];
+    ctx.display.get_focus_window = vi.fn(() => dragged.meta);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+    vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+
+    dd().armTabDrag(dragged.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(dd().noteTabDragMotion(150, 200)).toBe("active");
+
+    // Pointer y=40 is south of dest bar (0–30+4); chip still overlaps.
+    expect(dd().noteTabDragMotion(450, 40)).toBe("active");
+    expect(dd()._foreignStrip?.groupNode).toBe(groupB);
+    expect(dd()._foreignStrip?.gapSpacer).toBeTruthy();
+    expect(dragged.node.tab.previewHint || wm()._draggedNodeWindow?.previewHint).toBeFalsy();
+
+    dd().finishTabDragRelease();
+    expect(dd()._foreignStrip).toBeNull();
+  });
+
+  it("PR15: parked pointer after peel does not stick the chip", () => {
+    const { nodes } = makeTabbedTrio();
+    const b = nodes[1];
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    setPointer(150, 15);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    const grabX = Number(dd()._tabDrag.grabOffsetX) || 0;
+    const grabY = Number(dd()._tabDrag.grabOffsetY) || 0;
+
+    expect(dd().noteTabDragMotion(220, 180)).toBe("active");
+    expect(b.node.tab.x).toBeCloseTo(220 - grabX, 0);
+    expect(b.node.tab.y).toBeCloseTo(180 - grabY, 0);
+
+    // Size-changed / parked Wayland pointer must not yank the chip back.
+    setPointer(150, 15);
+    dd()._handleMoving(b.node);
+    expect(dd().getDragPointer(b.node)[0]).toBe(220);
+    expect(dd().getDragPointer(b.node)[1]).toBe(180);
+    expect(b.node.tab.x).toBeCloseTo(220 - grabX, 0);
+    expect(b.node.tab.y).toBeCloseTo(180 - grabY, 0);
+
+    dd().noteTabDragMotion(300, 240);
+    expect(b.node.tab.x).toBeCloseTo(300 - grabX, 0);
+    expect(b.node.tab.y).toBeCloseTo(240 - grabY, 0);
+    dd().cancelTabDrag();
+  });
+
+  it("PR15: click-only clears pressed and leftover drop-zone paint", () => {
+    const { nodes } = makeTabbedTrio();
+    const a = nodes[0];
+    ctx.display.get_focus_window = vi.fn(() => a.meta);
+
+    dd().armTabDrag(a.meta, makePressEvent(20, 15));
+    expect(a.node.tab.style_class).toContain("window-tabbed-tab-pressed");
+    expect(dd().noteTabDragMotion(22, 15)).toBe("armed");
+    // Leftover zone from a prior gesture — release must wipe it.
+    a.node.previewHint = {
+      hidden: false,
+      hide() {
+        this.hidden = true;
+      },
+      destroy() {
+        this.destroyed = true;
+      },
+    };
+    a.node.previewZoneActors = {
+      CENTER: {
+        hide() {
+          this.hidden = true;
+        },
+        destroy() {},
+      },
+    };
+    wm()._draggedNodeWindow = a.node;
+    dd().finishTabDragRelease();
+
+    expect(dd()._tabDrag).toBeNull();
+    expect(a.node.tab.style_class).not.toContain("window-tabbed-tab-pressed");
+    expect(a.node.tab.style_class).not.toContain("window-tabbed-tab-dragging");
+    expect(a.node.previewHint).toBeNull();
+    expect(a.node.previewZoneActors).toBeNull();
+  });
+
+  it("PR15: pointer past first remaining center scoots; index 0 is easy", () => {
+    const { group, nodes } = makeTabbedTrio();
+    const [a, b, c] = nodes;
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+
+    // Left of A's center → insert before A (index 0).
+    expect(dd().noteTabDragMotion(20, 15)).toBe("reorder");
+    expect(dd()._tabDrag?.insertIndex).toBe(0);
+
+    dd().finishTabDragRelease();
+    expect(group.childNodes.map((n) => n)).toEqual([b.node, a.node, c.node]);
+  });
+
+  it("abort restore: cancelTabDrag restores expand/widths and re-layouts", () => {
+    const { nodes } = makeTabbedTrio();
+    const [a, b, c] = nodes;
+    ctx.display.get_focus_window = vi.fn(() => b.meta);
+    const commit = vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+
+    dd().armTabDrag(b.meta, makePressEvent(150, 15));
+    expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
+    expect(a.node.tab.x_expand).toBe(false);
+    expect(b.node.tab.x_expand).toBe(false);
+
+    dd().cancelTabDrag();
+
+    expect(a.node.tab.x_expand).toBe(true);
+    expect(b.node.tab.x_expand).toBe(true);
+    expect(c.node.tab.x_expand).toBe(true);
+    expect(a.node.tab.width).toBe(-1);
+    expect(b.node.tab.width).toBe(-1);
+    expect(c.node.tab.width).toBe(-1);
+    expect(commit).toHaveBeenCalledWith("tab-strip-reorder-cancel", { force: true });
+    expect(dd()._tabDrag).toBeNull();
   });
 });
