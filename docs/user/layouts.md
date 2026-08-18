@@ -49,20 +49,25 @@ nested structure and is deferred).
 
 ### Creating / reshaping groups from the keyboard
 
-| Goal | Safe | Vim |
+| Goal | Safe | Vim / i3 |
 | --- | --- | --- |
 | Flip tab ↔ stack on current group | `Ctrl+Super+g` | `Shift+Super+n` |
 | Merge focus + last-active → tabbed group | `Ctrl+Super+m` | `Shift+Super+m` |
 | Ungroup parent container (keep child order) | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` |
-| Make parent tabbed / back to split | `Ctrl+Super+t` | `Shift+Super+t` |
-| H ↔ V split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` |
+| Focus parent / child | `Ctrl+Super+a` / `Ctrl+Shift+Super+a` | `Super+a` / `Shift+Super+a` |
+| Move in / out of container | `Ctrl+Super+,` / `Ctrl+Shift+Super+,` | `Shift+Super+,` / `Ctrl+Shift+Super+,` |
+| Make parent tabbed / back to split | `Ctrl+Super+t` | `Shift+Super+t` (i3: `Super+w`) |
+| H ↔ V split orientation | `Ctrl+Super+s` | Vim: `Ctrl+Super+n` · i3: `Super+e` |
 | Center-drop onto another window | DnD center (default **tabbed**) | same |
 
 CLI / DBus parity (RunSteps): `layout-cycle` (`axis: group|split`),
-`merge-group` / `group`, `ungroup`, `float` (`scope: window|class`), plus
-absolute `layout`.
+`merge-group` / `group`, `ungroup`, `focus-parent` / `focus-child`,
+`move-in` / `move-out`, `float` (`scope: window|class`), plus absolute
+`layout`.
 
-Move windows into or out of an existing group with the usual move/swap binds.
+**Move in** reparents the focused layout unit into a sibling container;
+**move out** peels it to the grandparent. Directional move/swap still move
+within a parent.
 
 ### Layout profiles (sugar)
 
@@ -98,6 +103,11 @@ Splits share space by **percentage**. Until you resize a tile, siblings stay
 **equal**. After you resize with the mouse, keyboard expand/shrink, or golden
 ratio, those tiles keep your proportions when new windows open (default).
 
+**Resize vs Window Size:** edge `window-resize-*` grows/shrinks **one side** on
+the owning split (mouse edge-drag and keyboard y/u/i/o). Expand / shrink /
+golden (`[`/`]` family) are **Window Size** — both axes via owning-split steps.
+Cheatsheet categories match that split.
+
 **Named layouts** (`forge layout save` / load) remember custom shares as
 `"share": [0.67, 0.33]` on `{ "hsplit" | "vsplit": … }` when any sibling was
 user-resized. Equal desks stay bare lists. Install/update session restore also
@@ -106,7 +116,9 @@ keeps `percent` + `userSized` on the tree. See [layout.md](./layout.md).
 | Action | Default |
 | --- | --- |
 | Reset sibling sizes to equal | `Ctrl+Super+=` (`window-reset-sizes`; Vim: `Super+=`) |
+| Expand / shrink | Safe: `Ctrl+Super+]` / `[` · Vim/i3: `Super+]` / `[` |
 | Golden-ratio resize | unbound by default (`window-golden-ratio`) |
+| Edge resize (grow / shrink) | `Ctrl+Super` y/u/i/o + Shift twins (all kits) |
 
 **New window size** (Preferences → Tiling → Behavior, `new-window-size-policy`):
 

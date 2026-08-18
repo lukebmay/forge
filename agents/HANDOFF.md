@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-17 (FCC C4 done; C5 next; PR7 docs parked)
+**Updated:** 2026-08-18 (FCC C5 done; Wave C closed; PR7 / P3 next)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -14,21 +14,47 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** SM1–SM7 + R036 + D044 + PR1–**PR15** + user-CLI cut + **C2/R1/C3/C4 done**.
-**Install:** tip on master (PR6–PR15 + FCC C2/R1/C3/C4). Nest `running: False` unless
-agent starts it. **Do not close** durable-agent ghostty windows.
-**L0 last:** C4 move-focus-parent-c4 **12** (+ CommandHandler/run-steps/keybinds suite **244**).
+**Repo tip:** SM1–SM7 + R036 + D044 + PR1–**PR15** + user-CLI cut + **FCC C0–C5 + R1**.
+**Install:** tip on master. Nest `running: False` unless agent starts it.
+**Do not close** durable-agent ghostty windows.
+**L0 last:** C5 keybind-presets + Keybindings **92**.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
 **Host settings:** `preview-hint-enabled=false`, `mod-mask-mouse-tile=None`.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
 `forge-test` (clone path; `./install --with-test-cli` opt-in).
 
-### Active — FCC C5 docs/kits
+### Active next
 
-| Pri | Slice | Status | Task |
+| Pri | Slice | Status | Note |
 | --- | --- | --- | --- |
-| P2 | C5 kits/docs/DESIGN polish | **next** | [plan](./plans/forge-first-class-containers.md) § C5 |
 | later | Tab click-drag PR7 docs | park | plan § PR7 |
+| P3 | Strip `_layoutOp` flatten | next substantive | REG-ensure-flatten |
+| park | FCC Wave Z (zoom) | parked | promote via PRIORITY |
+
+### Shipped — FCC C5 kits/docs/DESIGN
+
+| Field | Detail |
+| --- | --- |
+| Docs | `keybindings.md` (no Unfocus; show-all; R2 Resize≠Size); `layouts.md` RunSteps + focus/move parent |
+| DESIGN | Wave C (+R1) **shipped** through C5; zoom/float later |
+| Kits | unchanged — already matched presets; no Super+m/+f → zoom |
+| REG | ensure-flatten → P3; expand-dual-axis R2 docs done; i3-super-f still Z |
+| L0 | keybind-presets **37** + Keybindings **55** = **92** |
+| Nest | not required; `running: False` |
+| Task | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c5-kits-docs.md) |
+
+### Verify — fresh Wayland session (2026-08-18)
+
+Guake agent; tip `…-gdf07302`; `can_true_cold` / `can_nested` true.
+
+| Layer | Result |
+| --- | --- |
+| Host L2 true-cold | `L2.true-cold-dev` + `L2.layout-clean` **PASS** → `agents/test-results/wayland/black-wayland-20260818T073850Z.json` |
+| L0 pytest | nested_wayland + layout_apply + live_matrix **170** |
+| L0 vitest | C4-touched **156**; C5 presets/keybindings **92** |
+| Nest mon=1 | ping + `_forge-test-clean` **PASS** |
+| Nest mon=2 | `_forge-test-ghosttys` verify match **PASS** |
+| Nest status | `running: False` |
 
 ### Shipped — FCC C4 move + focus parent
 
@@ -609,8 +635,9 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Next:** FCC **C5** kits/docs/DESIGN polish. PR7 docs parked.
-PR1–**PR15** + FCC C2/R1/C3/C4 shipped. User CLI **shipped** —
+**Next:** PR7 docs (park) · **P3** strip `_layoutOp` flatten (REG-ensure-flatten)
+when taking substantive work · Wave Z only if PRIORITY promotes it.
+**FCC Wave C (+R1/R2-docs) closed through C5.** PR1–**PR15** + user CLI shipped —
 `forge` product-only; nest/live = `./scripts/forge/forge-test`.
 
 Do not reshape PR1 attach, PR5 2D/wrap-on, PR10 peel synthetic,
@@ -621,7 +648,8 @@ Do **not** re-litigate D039–D044. Do **not** teach `forge test` / top-level
 
 Queue: [PRIORITY](./PRIORITY.md). Parked optionals: [IDEAS](./IDEAS.md).
 
-Never call `_layoutOp`. Do **not** put `hasLayoutPh` back into
+User toggles must not call `_layoutOp` (use `setLayout`). Profile/ensure
+flatten remains until **P3**. Do **not** put `hasLayoutPh` back into
 `skipWindowStructure`.
 
 **Locked (D039–D044):** slot machines (not per-window); hard = in-slot retry;
@@ -631,14 +659,16 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 
 | You can do | You must not |
 | --- | --- |
-| C5 docs/kits; nest for JS retest | Redesign D039–D044; restack latch; hit plates |
+| P3 `_layoutOp` strip; nest for JS retest | Redesign D039–D044; restack latch; hit plates |
 | Nest (`./scripts/forge/forge-test nested`, mon=1) | `forge test` / top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
 | PR7 docs later | Implement parked IDEAS without promote; close agent ghosttys |
 | | Second chrome system; reopen peel ownership; reopen C4 APIs |
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| P2 | FCC **C5** kits/docs | [plan](./plans/forge-first-class-containers.md) |
+| later | Tab click-drag PR7 docs | [plan](./plans/forge-tab-click-drag.md) |
+| P3 | Strip `_layoutOp` flatten | REG-ensure-flatten · PRIORITY |
+| done | FCC **C5** kits/docs | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c5-kits-docs.md) |
 | done | FCC **C4** move + focus parent | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c4-move-focus-parent.md) |
 | done | FCC **C3** split chrome | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c3-split-chrome.md) |
 | done | FCC **R1** owning-split resize | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_r1-owning-split-resize.md) |

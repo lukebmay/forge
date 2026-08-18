@@ -84,7 +84,17 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Edge resize (grow) | `Ctrl+Super+y/u/i/o` (left/bottom/top/right) |
 | Edge resize (shrink) | `Ctrl+Shift+Super+o/i/u/y` |
+| Split chrome show-all | unbound (`split-chrome-show-all-toggle`; prefs Appearance) |
 | Snaps / cyclic focus | unbound |
+
+**Resize vs Window Size:** cheatsheet **Resize** is edge
+`window-resize-*` (grow/shrink one side on the owning split). **Window Size** is
+expand / shrink / golden (`[`/`]` family) — both axes via owning-split steps.
+Same category split as the live cheatsheet.
+
+**Split chrome show-all:** Preferences → Appearance → **Show all split chrome**
+(`split-chrome-show-all`). Kit toggle is unbound by default; a drag-tile grab
+forces show-all for the grab.
 
 Forge still frees a few GNOME defaults while enabled (edge-tile keys, maximize,
 toggle-maximized, etc. — see `gnome-overrides`). Those restore on disable.
@@ -125,6 +135,7 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Snaps (center / thirds) | `Ctrl+Alt+c` / `d/e/g/t` |
 | Edge resize | same family as Safe (`Ctrl+Super` y/u/i/o + Shift twins) |
+| Split chrome show-all | unbound (prefs Appearance; grab forces show-all) |
 | `Super+m` | **unbound** (monocle removed; zoom uses Enter) |
 
 **Why this shape:** focus is the hottest action → shortest chord (`Super+letter`).
@@ -153,17 +164,20 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | Focus parent / child | `Super+a` / `Shift+Super+a` (i3 `$mod+a` class) |
 | Move in / out of container | `Shift+Super+,` / `Ctrl+Shift+Super+,` |
 | Tab decoration | `Shift+Super+w` |
-| “Fullscreen-ish” snap center | `Super+f` |
+| Snap center (not fullscreen) | `Super+f` (Wave Z may map to zoom full) |
+| Expand / shrink | `Super+]` / `Super+[` |
+| Edge resize | same family as Safe (`Ctrl+Super` y/u/i/o + Shift twins) |
+| Split chrome show-all | unbound (prefs Appearance; grab forces show-all) |
 | Launch app | `Super+Space` (empty command = GNOME Run a Command) |
 | `Super+m` | **unbound** (was monocle; free for later — zoom uses Enter) |
 | Lock | `Super+Delete` |
 | Cheatsheet / reload | `Shift+Super+/` / `Shift+Super+r` |
 | Focus border / tiling master | `Ctrl+Super+b` / `Ctrl+Super+e` (shared; rare) |
-| Unfocus tiles (or exit mode) | `Ctrl+Super+Esc` (all kits) |
 
 **Why this shape:** i3 users expect Super+hjkl and Shift to move containers.
 `Super+b/v/e` and `s/w` mirror common i3 split/layout keys. Where Forge actions
 have no i3 twin, we pick free Super+ keys or keep Forge’s Ctrl+Super swap row.
+(`window-unfocus` / `Ctrl+Super+Esc` is abandoned — not in any kit.)
 
 ---
 

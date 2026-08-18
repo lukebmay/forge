@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-17 (FCC C4 done; C5 next; PR7 docs parked)
+**Updated:** 2026-08-18 (FCC C5 done; Wave C closed; PR7 docs / P3 next)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -9,21 +9,23 @@
 **D039–D043** slot machines (SM0) · **SM1–SM7 implement landed** ·
 **R036 cold PASS** · **D044** TABBED/STACKED mon-local **shipped** ·
 **PR1–PR15** tab chrome / click-drag **unit-shipped** (committed) ·
-User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**).
+User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**) ·
+**FCC C0–C5 + R1 + R2-docs shipped**.
 
 **Active next (ordered):**
-1. **FCC C5** kits/docs/DESIGN polish — next
-2. later PR7 docs · park
+1. later PR7 docs · park
+2. P3 strip `_layoutOp` flatten (REG-ensure-flatten)
+3. FCC Wave Z when promoted (parked)
 
 **PR15 done (unit):** chip track, chip∩strip gap, pointer×center scoot,
 `clearTabDragResiduals`. Host tip may need reload for PR15 JS.
 **PR12–PR15 done (unit).** Leave-strip is product.
 **Retest (FIRM):** nest = normal Wayland code→reload via
 `./scripts/forge/forge-test nested`; primary logout = rare tip load.
-**Parked:** soft polish · scale smoke · FCC after C5 · CN13 · TD4 docs · bag-API
+**Parked:** soft polish · scale smoke · FCC Wave Z · CN13 · TD4 docs · bag-API
 review · MD1 motion prototype · PR7 docs — [IDEAS](./IDEAS.md).
 **Agents:** default implement = **Grok 4.5**. Architecture locks = **4.6 xhigh**
-or **4.6 high** when PRIORITY says so. C2 = **4.6** (ops reshape).
+or **4.6 high** when PRIORITY says so.
 
 **FIRM:** Prefer `./scripts/forge/forge-test nested run -- …` (auto stop).
 Interactive nest → `./scripts/forge/forge-test nested stop` when done.
@@ -37,7 +39,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 ## Orchestrator note
 
 SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **user CLI no test toolkit**
-+ **tab click-drag PR1–PR15** landed. **C2+R1+C3+C4 done.** Next **C5**.
++ **tab click-drag PR1–PR15** landed. **FCC Wave C (+R1/R2-docs) closed through
+C5.** Next: PR7 docs (park) · P3 `_layoutOp` · Wave Z when promoted.
 Preserve PR9 foreign spacer-only and PR10 synthetic peel ownership.
 Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 / mon-root PlaceNext / soft-enter chrome clear / spanning tab chrome. Do not
@@ -56,10 +59,10 @@ teach `forge test` / `forge nested`.
 | FCC R1 owning-split | **done** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_r1-owning-split-resize.md) · I3 |
 | FCC C3 split chrome | **done** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c3-split-chrome.md) · I5 |
 | FCC C4 move/focus parent | **done** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c4-move-focus-parent.md) |
+| FCC C5 kits/docs | **done** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c5-kits-docs.md) |
 
-**L0 last:** C4 touched **244** (move-focus-parent-c4 12 + CommandHandler +
-run-steps + keybinds/presets + ungroup + session-api). **Host cold:** R036 **PASS**.
-Host tip may lag until reload (new gschema + JS).
+**L0 last:** C5 keybind-presets + Keybindings **92**. Prior C4 suite **244**.
+**Host cold:** R036 **PASS**. Nest not required for C5 (docs only).
 
 ---
 
@@ -67,7 +70,7 @@ Host tip may lag until reload (new gschema + JS).
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
-| P2 | FCC **C5** kits/docs/DESIGN | **4.5** | plan § C5 · next |
+| done | FCC **C5** kits/docs/DESIGN | **4.5** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c5-kits-docs.md) |
 | done | FCC **C4** move-in/out + focus parent | **4.5** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c4-move-focus-parent.md) |
 | done | FCC **C3** split chrome (I5) | **4.5** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c3-split-chrome.md) · I5 |
 | done | FCC **R1** owning-split resize (I3) | **4.6** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_r1-owning-split-resize.md) · I3 |
@@ -102,7 +105,7 @@ Host tip may lag until reload (new gschema + JS).
 | done | **SM0–SM7** slot machines | multi | [completed/](./plans/forge-layout-slot-machines/completed/) |
 | done | R035 residual tab ensure · R033 aspect split · R029–R032 | — | HANDOFF / REGRESSIONS |
 | done | TD1 strip reorder · TD2/TD3 skip · R025/R026 · R028 | — | completed |
-| done | CLI-node **CN0–CN6** (CN7 skip) · AL0–AL8 · FCC C0/C1/C2/R1 | — | completed |
+| done | CLI-node **CN0–CN6** (CN7 skip) · AL0–AL8 · FCC C0–C5/R1 | — | completed |
 | done | IC0–IC3 · IC4 skipped · nest isolation · Wayland RC | — | completed |
 
 ### Dropped from active queue (not deleted — see IDEAS)

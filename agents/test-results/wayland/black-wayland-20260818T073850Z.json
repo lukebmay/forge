@@ -1,0 +1,393 @@
+{
+  "capability": {
+    "agentMode": "FLOAT",
+    "agentTerminal": "guake",
+    "agentWindowId": "3664961529",
+    "agentWindowOptional": false,
+    "agentWmClass": "Guake",
+    "canHup": false,
+    "canNested": true,
+    "canPartial": true,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-348-gdf07302",
+    "focusWindowId": "3664961529",
+    "nTileWindows": 0,
+    "notes": [
+      "Wayland: no HUP \u2014 reload extension via `forge-test nested restart` (not logout). Dual-mon live still host desk."
+    ],
+    "session": "wayland"
+  },
+  "cases": [
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "mon0-open-leaf-grok",
+          "detail": "mon0 open leaf 'Grok'",
+          "ok": true
+        },
+        {
+          "check": "mon1-open-leaf-youtube",
+          "detail": "mon1 open leaf 'YouTube'",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent window optional (leader/true-cold): agent 3664961529 missing from tree",
+          "ok": true
+        },
+        {
+          "check": "profile-focus-if-set",
+          "detail": "focusWindowId=3664961534",
+          "ok": true
+        }
+      ],
+      "id": "L2.true-cold-dev",
+      "layoutRc": 0,
+      "layoutTail": "y serialize wait before Gmail\n  open  spawned Gmail\n  open  map-wait 3 role(s)\n  open pinned 6/6\n  open  leave open\n  bind  enter bind\n  bind  run 3 step(s)\n  bind  leave bind\n  order  enter order\n  order  run 6 step(s)\n  order  leave order\n  size  enter size\n  size  leave size\n  hard-ready  enter hard-ready\n  hard-ready  slot mon0.s0 place attempt=1 steps=0\n  hard-ready  slot mon1.s0 place attempt=1 steps=0\n  hard-ready  slot id:3664961533 place attempt=1 steps=0\n  hard-ready  slot id:3664961534 place attempt=1 steps=0\n  hard-ready 6 window(s)\n  hard-ready  leave hard-ready\n  focus  enter focus\n  focus  run 3 step(s)\n  focus  leave focus\n  soft  enter soft\n  soft quiet 2000ms\n  soft settled corrections=0\n  soft  leave soft\n  verify  enter verify\n  verify match\n  verify  leave verify\n  ok\n",
+      "metrics": {
+        "applyKeys": [],
+        "counts": {},
+        "delayTimeoutsLikelyOk": 0,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": 0,
+        "softElapsedMs": 2001,
+        "softResiduals": null,
+        "softSettled": true,
+        "softTimeoutMs": 2000,
+        "thrashRisk": null,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 3388
+      },
+      "ok": true,
+      "setup": [
+        {
+          "closed": [],
+          "keptAgent": true,
+          "step": "close-all-tiles"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        }
+      ],
+      "title": "True cold (no tiles) \u2192 layout _forge-test-dual open leaf + focus"
+    },
+    {
+      "actions": [],
+      "checks": [
+        {
+          "check": "ok",
+          "detail": "actions/layout ok",
+          "ok": true
+        },
+        {
+          "check": "no-tiles-or-only-agent",
+          "detail": "no unexpected TILE windows",
+          "ok": true
+        },
+        {
+          "check": "agent-survives",
+          "detail": "agent window optional (leader/true-cold): agent 3664961534 missing from tree",
+          "ok": true
+        }
+      ],
+      "id": "L2.layout-clean",
+      "layoutRc": 0,
+      "layoutTail": "\"\n      }\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-clean source=host path=\u2026/hosts/black/_forge-test-clean.json\n  workspace  1 (current)\n  residuals=close (default; non-layout windows closed)\n  path=ApplyLayout\n  applyId  al-msycpwno-002\n  skeleton  enter skeleton\n  skeleton  plan ok actions=8 steps=8 open=0\n  skeleton  leave skeleton\n  open  enter open\n  open  leave open\n  bind  enter bind\n  bind  run 8 step(s)\n  bind  leave bind\n  order  enter order\n  order  leave order\n  size  enter size\n  size  leave size\n  hard-ready  enter hard-ready\n  hard-ready skip (no TILE/rect/mon targets)\n  hard-ready  leave hard-ready\n  focus  enter focus\n  focus  leave focus\n  soft  enter soft\n  soft skip (no focus actions)\n  soft  leave soft\n  verify  enter verify\n  verify  leave verify\n  ok\n",
+      "metrics": {
+        "applyKeys": [],
+        "counts": {},
+        "delayTimeoutsLikelyOk": 0,
+        "expectationMisses": 0,
+        "hardReadyTimedOutMovingAnyway": 0,
+        "hardReadyTimeoutHints": [],
+        "hardReadyWarnings": 0,
+        "softCorrections": null,
+        "softElapsedMs": null,
+        "softResiduals": null,
+        "softSettled": null,
+        "softTimeoutMs": null,
+        "thrashRisk": null,
+        "thrashScore": null,
+        "thrashState": null,
+        "wallMs": 331
+      },
+      "ok": true,
+      "setup": [
+        {
+          "action": "noop",
+          "hasTiles": true,
+          "step": "ensure-some-tiles"
+        },
+        {
+          "note": "declarative",
+          "step": "keep-agent"
+        }
+      ],
+      "title": "Non-empty desk \u2192 layout _forge-test-clean empties tiles"
+    }
+  ],
+  "env": {
+    "agentMode": "FLOAT",
+    "agentTerminal": "guake",
+    "canHup": false,
+    "canNested": true,
+    "canRetest": true,
+    "canTrueCold": true,
+    "extensionOk": true,
+    "extensionVersion": "v49-90-beta.2-348-gdf07302",
+    "hostname": "black",
+    "nTileWindowsStart": 0,
+    "nestedGnome": false,
+    "session": "wayland"
+  },
+  "kind": "forge-test-live",
+  "metricsSummary": {
+    "casesWithMetrics": 2,
+    "delayTimeoutsLikelyOkTotal": 0,
+    "expectationMissesTotal": 0,
+    "hardReadyTimedOutMovingAnywayTotal": 0,
+    "hardReadyWarningsTotal": 0,
+    "softCorrectionsTotal": 0,
+    "softTimeoutMsAvg": 2000,
+    "softTimeoutMsMax": 2000,
+    "wallMsAvg": 1859,
+    "wallMsMax": 3388,
+    "wallMsTotal": 3719
+  },
+  "reattach": {
+    "hint": "grok -r <session-id>",
+    "launched": true,
+    "ok": true
+  },
+  "schemaVersion": 1,
+  "selection": {
+    "behaviors": [],
+    "selected": ["L2.true-cold-dev", "L2.layout-clean"],
+    "skipped": [
+      {
+        "id": "L1.ghosttys-only",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.left-chrome",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.right-ghostty",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.t1-nautilus",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.settled-rerun",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.close-focus-lft",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.ghosttys-multi",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r012-cross-mon-tab-dnd",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r015-empty-mon-dnd",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r021-empty-head-open",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r022-nested-empty-mon-dnd",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r023-bottom-nest-hsplit",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r024-first-layout-tiles",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r029-reuse-no-double",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r016-noop-workareas",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r017-gdisplays-scale-retile",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r026-tab-click-adopts-pin",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r027-chrome-until-ready",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r032-tab-click-responsive",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r020-vlc-end-of-video",
+        "reason": "tags filter ['true-cold']"
+      },
+      {
+        "id": "L1.r031-float-border-follows",
+        "reason": "tags filter ['true-cold']"
+      }
+    ],
+    "suite": "auto",
+    "tags": ["true-cold"]
+  },
+  "summary": {
+    "cases": [
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "mon0-open-leaf-grok",
+            "detail": "mon0 open leaf 'Grok'",
+            "ok": true
+          },
+          {
+            "check": "mon1-open-leaf-youtube",
+            "detail": "mon1 open leaf 'YouTube'",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent window optional (leader/true-cold): agent 3664961529 missing from tree",
+            "ok": true
+          },
+          {
+            "check": "profile-focus-if-set",
+            "detail": "focusWindowId=3664961534",
+            "ok": true
+          }
+        ],
+        "id": "L2.true-cold-dev",
+        "layoutRc": 0,
+        "layoutTail": "y serialize wait before Gmail\n  open  spawned Gmail\n  open  map-wait 3 role(s)\n  open pinned 6/6\n  open  leave open\n  bind  enter bind\n  bind  run 3 step(s)\n  bind  leave bind\n  order  enter order\n  order  run 6 step(s)\n  order  leave order\n  size  enter size\n  size  leave size\n  hard-ready  enter hard-ready\n  hard-ready  slot mon0.s0 place attempt=1 steps=0\n  hard-ready  slot mon1.s0 place attempt=1 steps=0\n  hard-ready  slot id:3664961533 place attempt=1 steps=0\n  hard-ready  slot id:3664961534 place attempt=1 steps=0\n  hard-ready 6 window(s)\n  hard-ready  leave hard-ready\n  focus  enter focus\n  focus  run 3 step(s)\n  focus  leave focus\n  soft  enter soft\n  soft quiet 2000ms\n  soft settled corrections=0\n  soft  leave soft\n  verify  enter verify\n  verify match\n  verify  leave verify\n  ok\n",
+        "metrics": {
+          "applyKeys": [],
+          "counts": {},
+          "delayTimeoutsLikelyOk": 0,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": 0,
+          "softElapsedMs": 2001,
+          "softResiduals": null,
+          "softSettled": true,
+          "softTimeoutMs": 2000,
+          "thrashRisk": null,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 3388
+        },
+        "ok": true,
+        "setup": [
+          {
+            "closed": [],
+            "keptAgent": true,
+            "step": "close-all-tiles"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          }
+        ],
+        "title": "True cold (no tiles) \u2192 layout _forge-test-dual open leaf + focus"
+      },
+      {
+        "actions": [],
+        "checks": [
+          {
+            "check": "ok",
+            "detail": "actions/layout ok",
+            "ok": true
+          },
+          {
+            "check": "no-tiles-or-only-agent",
+            "detail": "no unexpected TILE windows",
+            "ok": true
+          },
+          {
+            "check": "agent-survives",
+            "detail": "agent window optional (leader/true-cold): agent 3664961534 missing from tree",
+            "ok": true
+          }
+        ],
+        "id": "L2.layout-clean",
+        "layoutRc": 0,
+        "layoutTail": "\"\n      }\n    }\n  }\n}\n\nforge layout: host=black profile=_forge-test-clean source=host path=\u2026/hosts/black/_forge-test-clean.json\n  workspace  1 (current)\n  residuals=close (default; non-layout windows closed)\n  path=ApplyLayout\n  applyId  al-msycpwno-002\n  skeleton  enter skeleton\n  skeleton  plan ok actions=8 steps=8 open=0\n  skeleton  leave skeleton\n  open  enter open\n  open  leave open\n  bind  enter bind\n  bind  run 8 step(s)\n  bind  leave bind\n  order  enter order\n  order  leave order\n  size  enter size\n  size  leave size\n  hard-ready  enter hard-ready\n  hard-ready skip (no TILE/rect/mon targets)\n  hard-ready  leave hard-ready\n  focus  enter focus\n  focus  leave focus\n  soft  enter soft\n  soft skip (no focus actions)\n  soft  leave soft\n  verify  enter verify\n  verify  leave verify\n  ok\n",
+        "metrics": {
+          "applyKeys": [],
+          "counts": {},
+          "delayTimeoutsLikelyOk": 0,
+          "expectationMisses": 0,
+          "hardReadyTimedOutMovingAnyway": 0,
+          "hardReadyTimeoutHints": [],
+          "hardReadyWarnings": 0,
+          "softCorrections": null,
+          "softElapsedMs": null,
+          "softResiduals": null,
+          "softSettled": null,
+          "softTimeoutMs": null,
+          "thrashRisk": null,
+          "thrashScore": null,
+          "thrashState": null,
+          "wallMs": 331
+        },
+        "ok": true,
+        "setup": [
+          {
+            "action": "noop",
+            "hasTiles": true,
+            "step": "ensure-some-tiles"
+          },
+          {
+            "note": "declarative",
+            "step": "keep-agent"
+          }
+        ],
+        "title": "Non-empty desk \u2192 layout _forge-test-clean empties tiles"
+      }
+    ],
+    "failed": 0,
+    "ok": true,
+    "passed": 2
+  }
+}

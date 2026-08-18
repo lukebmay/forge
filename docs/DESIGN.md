@@ -581,10 +581,13 @@ RunSteps: `layout-cycle` (axis `group`|`split`), `merge-group` / `group`,
 `ungroup`, `float`.
 Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind save|load`.
 
-**Phase 2–3 (active plan):** first-class containers — non-destructive layout
-cycle, explicit group/ungroup, split chrome (focus ancestry + show-all + drag),
-owning-split resize, monocle **removed**. Zoom + floating groups designed in,
-built after. No BC obligation. Plan:
+**Phase 2–3 / Wave C (+ R1) — shipped (C0–C5):** first-class containers —
+non-destructive `setLayout` cycle (C1), explicit `group` / `ungroup` (C2),
+split chrome focus-ancestry + show-all + grab force (C3 / I5), owning-split
+resize (R1 / I3), focus parent/child + move in/out (C4), kits/docs polish (C5).
+Monocle **removed** (C0). Profile `_layoutOp` flatten remains
+(REG-ensure-flatten → P3). Zoom + floating groups designed in; Wave Z / F
+next. No BC obligation. Plan:
 [agents/plans/forge-first-class-containers.md](../agents/plans/forge-first-class-containers.md).
 
 **Float:** mode on the tree node (keeps slot). Re-tile = same parent. If parent
