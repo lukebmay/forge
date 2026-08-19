@@ -816,7 +816,7 @@ data = {
     "source": source,  # git | ego (ego reserved for future)
     "repo": str(repo),
     "install_script": install_script,
-    "cli": "scripts/forge/forge",
+    "cli": "cli/forge.mjs",
     "cli_bin": cli_bin,
     "uuid": uuid,
     "version-name": version_name,
@@ -843,8 +843,8 @@ PY
 # --- User CLI (~/.local/bin/forge) ---
 
 forge_cli_repo_path() {
-  # Absolute path to scripts/forge/forge under FORGE_REPO_ROOT.
-  print -r -- "${FORGE_REPO_ROOT:A}/scripts/forge/forge"
+  # Absolute path to cli/forge.mjs under FORGE_REPO_ROOT.
+  print -r -- "${FORGE_REPO_ROOT:A}/cli/forge.mjs"
 }
 
 forge_cli_bin_is_ours() {
@@ -861,7 +861,12 @@ forge_cli_bin_is_ours() {
     else
       dest="${target:A:h}/$link"
     fi
-    # Ours: …/scripts/forge/forge (even if clone moved later and link is stale).
+    # Ours: …/cli/forge.mjs or …/cli/forge. Stale Python PATH still ours
+    # so install can retarget.
+    [[ "$dest" == */cli/forge.mjs ]] && return 0
+    [[ "$dest" == */cli/forge ]] && return 0
+    [[ "$link" == */cli/forge.mjs ]] && return 0
+    [[ "$link" == */cli/forge ]] && return 0
     [[ "$dest" == */scripts/forge/forge ]] && return 0
     [[ "$link" == */scripts/forge/forge ]] && return 0
     local expect
@@ -878,7 +883,7 @@ forge_cli_bin_is_ours() {
 }
 
 forge_install_cli_bin() {
-  # Symlink $FORGE_CLI_BIN → repo scripts/forge/forge. Refuses foreign files.
+  # Symlink $FORGE_CLI_BIN → repo cli/forge.mjs. Refuses foreign files.
   local src="${1:-}"
   if [[ -z "$src" ]]; then
     src=$(forge_cli_repo_path)

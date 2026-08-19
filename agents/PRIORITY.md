@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-18 (PR7 docs done; CN13 next session)
+**Updated:** 2026-08-18 (CN13 Node PATH `forge` landed)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -14,16 +14,15 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 **FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped.
 
 **Active next (ordered):**
-1. **CN13** Node PATH `forge` · **next session** (optional; user parked after PR7)
-2. later CN14/CN15 · after CN13
-3. blocked Ratio / autotile (yuiop) · human design blocker
+1. later CN14/CN15 · after CN13 PATH
+2. blocked Ratio / autotile (yuiop) · human design blocker
 
 **PR15 done (unit):** chip track, chip∩strip gap, pointer×center scoot,
 `clearTabDragResiduals`. Host tip may need reload for PR15 JS.
 **PR12–PR15 done (unit).** Leave-strip is product.
 **Retest (FIRM):** nest = normal Wayland code→reload via
 `./scripts/forge/forge-test nested`; primary logout = rare tip load.
-**Later (real only):** CN13(+14/15) · yuiop blocker — [IDEAS](./IDEAS.md).
+**Later (real only):** CN14/CN15 · yuiop blocker — [IDEAS](./IDEAS.md).
 Hygiene / eyes-on / superseded rows were **pruned** 2026-08-18 (see IDEAS
 “Dropped”).
 **Agents:** default implement = **Grok 4.5**. Architecture locks = **4.6 xhigh**
@@ -43,8 +42,8 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **user CLI no test toolkit**
 + **tab click-drag PR1–PR15 + PR7 docs (D046)** landed. **FCC Wave C (+R1/R2-docs)
 closed through C5; P3 `_layoutOp` flatten strip done.** Wave Z0/Z1 shipped.
-**Required queue empty.** Optional next session: **CN13** · then CN14/CN15 ·
-yuiop (blocked). Preserve PR9 foreign spacer-only and PR10 synthetic peel
+**Required queue empty.** Optional later: CN14/CN15 · yuiop (blocked).
+Preserve PR9 foreign spacer-only and PR10 synthetic peel
 ownership.
 Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 / mon-root PlaceNext / soft-enter chrome clear / spanning tab chrome / silent
@@ -66,9 +65,10 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 | FCC C5 kits/docs | **done** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c5-kits-docs.md) |
 | P3 `_layoutOp` strip | **done** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_p3-strip-layoutop-flatten.md) |
 | Tab PR7 docs | **done** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |
+| CN13 Node PATH | **done** | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
 
-**L0 last:** P3 touched suite **123**. Prior C5 presets/keybindings **92**.
-**Host cold:** R036 **PASS**. Nest not required for P3/PR7 (unit/docs).
+**L0 last:** CN13 Vitest cli **169** + pytest job/node/install **56**. Prior P3 **123**.
+**Host cold:** R036 **PASS**. Nest not required for CN13 (PATH/CLI units + live ping).
 
 ---
 
@@ -76,7 +76,8 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
-| optional | **CN13** Node PATH `forge` (+ CN14/CN15) | **4.6 med** | **next session** · [cli-node](./plans/forge-cli-node.md) § CN13 |
+| later | CN14 / CN15 | **4.6 med** | after CN13 · [cli-node](./plans/forge-cli-node.md) § CN14 |
+| done | **CN13** Node PATH `forge` | **4.6 med** | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
 | done | Tab click-drag **PR7** docs | 4.5 lo | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |
 | blocked | Ratio / autotile (yuiop) | **4.6 xhigh** | [blocker](./blockers/resize-autotile-design.md) |
 | done | P3 strip `_layoutOp` flatten | **4.5 high** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_p3-strip-layoutop-flatten.md) |
@@ -118,9 +119,9 @@ open, PR2–PR6 as later). Rejected product: cross-mon TABBED (D044); top-level
 
 ### Why this order
 
-1. **SM1–SM7 + R036 + D044 + user CLI + PR1–PR15 + FCC C0–C5/R1 + P3 + Wave Z0/Z1** — shipped.
+1. **SM1–SM7 + R036 + D044 + user CLI + PR1–PR15 + FCC C0–C5/R1 + P3 + Wave Z0/Z1 + CN13** — shipped.
 2. **Required queue empty** — no next implement slice unless promoted.
-3. **Optional next session** — CN13 CLI PATH finish · then CN14/CN15 · yuiop (human lock).
+3. **Optional later** — CN14/CN15 · yuiop (human lock).
 
 ### Worth (do not forget)
 
@@ -176,7 +177,7 @@ python3 -m pytest tests/unit/cli/test_nested_wayland.py -q
 | [user CLI surface](./plans/forge-cli-user-surface.md) | All test utilities off user `forge` (**done**; `forge-test`) |
 | [slot machines](./plans/forge-layout-slot-machines.md) | SM0–SM7 |
 | [ApplyLayout](./plans/forge-layout-in-process.md) | AL0–AL8 done |
-| [cli-node](./plans/forge-cli-node.md) | D036 CN0–CN6 |
+| [cli-node](./plans/forge-cli-node.md) | D036 CN0–CN6 + CN13 |
 | [tab planning](./tasks/completed/forge-tab-work-planning.md) | D0 locked |
 | [same-mon](./tasks/completed/forge-tab-groups-same-mon.md) | D044 shipped |
 | [REGRESSIONS.md](./REGRESSIONS.md) | R0xx + guards |

@@ -60,7 +60,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | Item | Status | Next |
 | --- | --- | --- |
 | **[Canonical contracts](./plans/forge-canonical-contracts.md)** | IC0–IC3 done · IC4 skipped | — |
-| **[CLI → Node](./plans/forge-cli-node.md)** | D036 · CN0–CN6 **done** (CN7 skip) | **CN13 next session**; no layout port |
+| **[CLI → Node](./plans/forge-cli-node.md)** | D036 · CN0–CN6 **done** (CN7 skip) · **CN13 PATH** | CN14/CN15 later; no layout port |
 | **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold **PASS** |
 | **[Slot machines](./plans/forge-layout-slot-machines.md)** | **SM1–SM7 done** | D044 shipped |
 | **[First-class containers](./plans/forge-first-class-containers.md)** | C0–C5 + R1 + P3 **done** · Wave Z0/Z1 shipped | Kit chord leftovers = FCC REG only |
@@ -91,8 +91,8 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 | **Single-flight** | One mutator at a time; busy → error with job id |
 | **Job dir** | `~/.local/share/forge/jobs/<id>/` (`status.json`, `pid`, logs) or `$FORGE_JOBS_DIR` |
 | **Signals** | Attached Ctrl+C cancels worker; SIGHUP/TTY death does **not** kill worker; `forge jobs cancel` |
-| **Code** | `scripts/forge/job_runner.py`; D021 |
-| **Tests** | Units `tests/unit/cli/test_job_runner.py`; live parent-HUP smoke green (CJ5) |
+| **Code** | `cli/job-runner.mjs` (Node PATH router, CN13); leftover Python still uses `scripts/forge/job_runner.py` (`forge jobs` spawn). D021 |
+| **Tests** | Vitest `tests/unit/cli/job-runner.test.js`; pytest `tests/unit/cli/test_job_runner.py` for leftover Python; live parent-HUP smoke green (CJ5) |
 | **True cold** | Still cares about agent **window** placement (Guake/float), not apply process survival |
 
 ## Layout

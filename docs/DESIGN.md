@@ -57,7 +57,9 @@ FORGE_JOB=0 | --foreground   # old in-process path (debug)
 Logout/reboot ends jobs (session DBus/DISPLAY). Idempotent re-apply remains the
 heal path after hard kill/OOM.
 
-**Code:** `scripts/forge/job_runner.py`; wire in `scripts/forge/forge`.
+**Code:** `cli/job-runner.mjs` (PATH router); Python
+`scripts/forge/job_runner.py` still serves leftover `scripts/forge/forge`
+(`forge jobs` spawn) until that CLI moves.
 
 ## Recovery architecture
 
@@ -716,12 +718,13 @@ scripting (Eval is disabled or unsafe on real sessions).
    **settings allowlist/coercion** in `settings-control.js`; **step schema
    + dispatch** in `run-steps.js` (unit-tested); export glue in
    `session-api.js` + wire from `extension.js`.
-4. **User CLI** today: `scripts/forge/forge` (Python) talks DBus via
-   PyGObject or `gdbus` — distinct from `forge-ctl`. **Locked (D036):**
-   migrate non-layout commands to Node under `cli/`; `lib/shared/` is
-   the gi-free kernel prefs + CLI import. **Do not** rewrite `layout`
-   in `cli/` — D037 moves apply **into** the extension
-   (`ApplyLayout`). Plans: [forge-cli-node](../agents/plans/forge-cli-node.md),
+4. **User CLI** PATH entry is `cli/forge.mjs` (CN13). Node bodies
+   (`ping`/`tree`/`focus`/…/`run`) run in-process; leftover Python
+   (`layout`, install family, `jobs`) via `spawnSync`. Distinct from
+   `forge-ctl`. **Locked (D036):** `lib/shared/` is the gi-free kernel
+   prefs + CLI import. **Do not** rewrite `layout` in `cli/` — D037
+   moved apply **into** the extension (`ApplyLayout`). Plans:
+   [forge-cli-node](../agents/plans/forge-cli-node.md),
    [forge-layout-in-process](../agents/plans/forge-layout-in-process.md).
 5. **wm_class is case-insensitive** for `class:` selectors, PlaceNext match,
    and `forge launch --wm-class` wait. Meta often reports `Eog` while desktop
@@ -1010,15 +1013,15 @@ layout profiles, shadowing shellrc domain tools, killing surplus windows (park o
 `cd` into the clone or PATH'ing `scripts/forge/`.
 
 **Approach:** `./install` (and any path that writes install-origin) symlinks
-`~/.local/bin/forge` → `$repo/scripts/forge/forge`. Source of truth stays in the
-git tree (`layout_lib.py` is a sibling import). Uninstall removes that path
-**only when forge-owned** (symlink into `…/scripts/forge/forge` or a marked
-wrapper) so a foreign `forge` binary is never deleted. Origin stamp is kept so
-`forge install` can reinstall after uninstall.
+`~/.local/bin/forge` → `$repo/cli/forge.mjs`. Source of truth stays in the
+git tree. Uninstall removes that path **only when forge-owned** (symlink
+into `…/cli/forge.mjs`, `…/cli/forge`, or a stale `…/scripts/forge/forge`
+so install can retarget) so a foreign `forge` binary is never deleted.
+Origin stamp is kept so `forge install` can reinstall after uninstall.
 
-**Why not copy into bin:** the CLI is a multi-file Python entry; a bare copy
-breaks imports. **Why not PATH the repo:** multiple clones and moves make that
-ambiguous; XDG user bin is the stable entry.
+**Why not copy into bin:** the CLI is a multi-file tree (`cli/*.mjs` +
+leftover Python). **Why not PATH the repo:** multiple clones and moves
+make that ambiguous; XDG user bin is the stable entry.
 
 Nest + live matrix are **not** on user `forge` (D045). Dev entry is
 `scripts/forge/forge-test`; normal install does not symlink it.

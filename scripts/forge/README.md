@@ -25,7 +25,8 @@ forge uninstall           # extension + forge-owned CLI; keeps prefs
 
 `./install` (and `forge install`) stamps
 `~/.local/share/forge-manage/install-origin.json` so later reinstalls know which
-git tree to use. It also symlinks `~/.local/bin/forge` → this tree’s CLI.
+git tree to use. It also symlinks `~/.local/bin/forge` → this tree’s
+`cli/forge.mjs` (Node PATH entry; leftover Python via spawn).
 
 | Current install | What `./install` does |
 | --- | --- |

@@ -349,5 +349,104 @@ class TestInstallHelpMentionsSafeReplace(unittest.TestCase):
         self.assertRegex(out, r"jcrussell|luke")
 
 
+class TestCliBinOurs(unittest.TestCase):
+    """CN13: PATH entry is cli/forge.mjs; stale Python symlink still ours."""
+
+    def setUp(self) -> None:
+        self._td = tempfile.TemporaryDirectory(prefix="forge-cli-ours-")
+        self.root = Path(self._td.name)
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        self.env = {
+            **os.environ,
+            "FORGE_REPO_ROOT": str(_REPO),
+            "FORGE_CLI_BIN_DIR": str(self.bin),
+            "FORGE_CLI_BIN": str(self.bin / "forge"),
+            "FORGE_COLOR": "never",
+            "HOME": str(self.root / "home"),
+        }
+        (self.root / "home").mkdir()
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+
+    def _ours(self, target: Path) -> subprocess.CompletedProcess[str]:
+        script = textwrap.dedent(f"""\
+            emulate -L zsh
+            set -euo pipefail
+            source {_LIB!s}
+            if forge_cli_bin_is_ours '{target}'; then
+              print OURS
+            else
+              print FOREIGN
+              exit 1
+            fi
+            """)
+        return _run_zsh(script, self.env)
+
+    def test_repo_path_is_cli_mjs(self) -> None:
+        script = textwrap.dedent(f"""\
+            emulate -L zsh
+            set -euo pipefail
+            source {_LIB!s}
+            forge_cli_repo_path
+            """)
+        r = _run_zsh(script, self.env)
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertEqual(r.stdout.strip(), str(_REPO / "cli" / "forge.mjs"))
+
+    def test_mjs_symlink_is_ours(self) -> None:
+        dest = self.bin / "forge"
+        dest.symlink_to(_REPO / "cli" / "forge.mjs")
+        r = self._ours(dest)
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertEqual(r.stdout.strip(), "OURS")
+
+    def test_stale_python_symlink_is_ours(self) -> None:
+        dest = self.bin / "forge"
+        dest.symlink_to(_REPO / "scripts" / "forge" / "forge")
+        r = self._ours(dest)
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertEqual(r.stdout.strip(), "OURS")
+
+    def test_foreign_file_refused(self) -> None:
+        dest = self.bin / "forge"
+        dest.write_text("#!/bin/sh\necho foreign\n")
+        dest.chmod(dest.stat().st_mode | stat.S_IXUSR)
+        r = self._ours(dest)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), "FOREIGN")
+
+    def test_install_retargets_stale_python(self) -> None:
+        dest = self.bin / "forge"
+        dest.symlink_to(_REPO / "scripts" / "forge" / "forge")
+        script = textwrap.dedent(f"""\
+            emulate -L zsh
+            set -euo pipefail
+            source {_LIB!s}
+            forge_install_cli_bin
+            readlink -- "$FORGE_CLI_BIN"
+            """)
+        r = _run_zsh(script, self.env)
+        self.assertEqual(r.returncode, 0, msg=r.stderr + r.stdout)
+        self.assertTrue(r.stdout.strip().endswith("cli/forge.mjs"))
+
+    def test_install_refuses_foreign(self) -> None:
+        dest = self.bin / "forge"
+        dest.write_text("#!/bin/sh\necho foreign\n")
+        dest.chmod(dest.stat().st_mode | stat.S_IXUSR)
+        script = textwrap.dedent(f"""\
+            emulate -L zsh
+            set -euo pipefail
+            source {_LIB!s}
+            forge_install_cli_bin
+            """)
+        r = _run_zsh(script, self.env)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertTrue(dest.is_file())
+        self.assertFalse(dest.is_symlink())
+
+
 if __name__ == "__main__":
     unittest.main()
+

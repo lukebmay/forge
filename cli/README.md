@@ -8,27 +8,36 @@ This tree grows command facades (`fs`, `gsettings`, `gdbus`); it does
 ## How to add a command
 
 1. Add `cli/<cmd>.mjs` (or a small module it imports).
-1. Until CN13, keep a thin Python exec shim under `scripts/forge/` so
-   `~/.local/bin/forge` still routes the same argv.
+1. Wire it in `cli/forge.mjs` `NODE_COMMANDS` (PATH entry). Leftover
+   Python verbs stay on `spawnSync(python3, [scripts/forge/forge, …])`.
 1. Import **only** node-safe pures from `lib/shared/` (and a few pure
    helpers under `lib/extension/`). Never import `gi://` modules.
 
-## Job mutators (`run` / `run-steps`)
+## PATH entry
 
-Python stays on PATH so durable jobs wrap unchanged. Flow (CN6):
+`./install` symlinks `~/.local/bin/forge` → `cli/forge.mjs`. That
+router parses global `--color` / `--first` / `--version`, dispatches
+Node bodies, and spawns leftover Python (`layout`, install family,
+`jobs`, `thrash`, `save-session-layout`). Nest/live stay on
+`forge-test` (D045) — `forge test` / `forge nested` hard-break.
+
+## Job mutators (`run` / `run-steps` / layout apply / install)
+
+Node router owns durable jobs (`cli/job-runner.mjs`). Worker argv:
 
 ```text
-TTY: python forge run-steps …     # job parent (maybe_run_as_job)
-  worker: python forge run-steps …  # FORGE_JOB_WORKER=1
-    exec node cli/run-steps.mjs …   # body; inherits job env/logs
+[node, $repo/cli/forge.mjs, …cleaned]
 ```
 
-Same pattern for `forge run`. `forge launch` is not a job mutator; it
-execs Node directly from the Python shim. Layout still uses Python
-`do_launch` / `run_mixed_steps` in-process (not a `cli/` port).
+```text
+TTY: node cli/forge.mjs run-steps …   # job parent (maybeRunAsJob)
+  worker: node cli/forge.mjs run-steps …  # FORGE_JOB_WORKER=1
+    Node body in-process (or leftover Python with FORGE_JOB=0)
+```
 
-CN7 can skip if this flow stays clean (worker argv remains Python;
-Node only replaces the body after the job gate).
+`forge launch` is not a job mutator. Layout planner/apply stay Python
+(not a `cli/` port). Python `scripts/forge/forge` remains for spawn
+until CN15.
 
 ## FIRM: `lib/shared/` purity
 

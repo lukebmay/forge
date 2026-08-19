@@ -853,6 +853,11 @@ taken — next free D0xx):
 
 ## Session note
 
+**2026-08-18:** CN13 done — PATH `cli/forge.mjs`; job runner port
+`cli/job-runner.mjs`; `_lib.zsh` retarget. Worker argv
+`[node, cli/forge.mjs, …]`. Leftover Python spawn (`layout`/install/
+`jobs`). Vitest cli **169**; live ping + layout list. Next CN14/CN15.
+
 **2026-08-15:** CN6 done — `cli/launch-lib.mjs` + `launch`/`run`/
 `run-steps` `.mjs`; Python shims; job parent→worker→Node exec documented
 in `cli/README.md` (**CN7 skip**). `layout_lib.partition_mixed_steps`

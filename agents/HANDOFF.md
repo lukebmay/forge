@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-18 (PR7 docs done; CN13 prepped for next session)
+**Updated:** 2026-08-18 (CN13 Node PATH `forge` landed)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -15,10 +15,10 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
 **Repo tip:** SM1–SM7 + R036 + D044 + PR1–**PR15** + **PR7/D046** + user-CLI cut +
-**FCC C0–C5 + R1 + P3**.
+**FCC C0–C5 + R1 + P3** + **CN13** Node PATH.
 **Install:** tip on master. Nest `running: False` unless agent starts it.
 **Do not close** durable-agent ghostty windows.
-**L0 last:** P3 flatten strip touched suite **123**.
+**L0 last:** CN13 Vitest cli **169** + pytest job/node/install **56**.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
 **Host settings:** `preview-hint-enabled=false`, `mod-mask-mouse-tile=None`.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
@@ -28,23 +28,23 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 
 | Pri | Slice | Status | Note |
 | --- | --- | --- | --- |
-| optional | **CN13** Node PATH `forge` | **next session** | [cli-node](./plans/forge-cli-node.md) § CN13 · prep below |
 | later | CN14 / CN15 | after CN13 | nest/live harness; delete Python router |
 | blocked | Ratio / autotile (yuiop) | hard blocker | [blocker](./blockers/resize-autotile-design.md) |
 | — | *(none required)* | empty | required queue still empty |
 
-### Prep — CN13 (next session)
+### Shipped — CN13 Node PATH `forge`
 
 | Field | Detail |
 | --- | --- |
-| Plan | [forge-cli-node.md](./plans/forge-cli-node.md) § CN13–CN15 |
-| Agent | **4.6 med** (PATH + job runner) |
-| Today | `~/.local/bin/forge` → `scripts/forge/forge` (Python router); CN0–CN6 Node bodies via `exec_cli` |
-| Do | `cli/forge.mjs` PATH entry; `_lib.zsh` `forge_cli_repo_path` / `forge_cli_bin_is_ours` match `*/cli/forge(.mjs)`; port or wrap `job_runner`; one PATH entry |
-| Accept | `./install` retargets symlink; `forge ping` + `forge layout list`; ours-detect true; foreign bin refused |
-| D045 | Nest/live stay on **`forge-test`** — do not put them back on user `forge` |
-| Do not | Port layout planner to `cli/`; two PATH entries; flip root `package.json` `"type"` casually |
-| Docs after | `scripts/forge/README.md`, DESIGN CLI path, `project.md` jobs path |
+| PATH | `~/.local/bin/forge` → `$repo/cli/forge.mjs` (one entry) |
+| Jobs | `cli/job-runner.mjs`; worker argv `[node, cli/forge.mjs, …cleaned]` |
+| Leftover Python | spawn `scripts/forge/forge` (`layout`, install family, `jobs`, `thrash`, help) |
+| D045 | Nest/live still **`forge-test` only**; `forge test`/`nested` exit 2 |
+| L0 | Vitest cli **169**; pytest job_runner/node_exec/install_safe **56** |
+| Live | `forge ping` ok; `forge layout list` ok; ours-detect true; foreign refused |
+| Residual | Node O_EXCL vs Python `fcntl` on same mutator.lock if `python3 scripts/forge/forge layout` runs beside a Node job — PATH `forge` safe (`FORGE_JOB=0` on leftover spawn) |
+| Task | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
+| Next | optional CN14/CN15 |
 
 ### Shipped — PR7 tab click-drag docs (D046)
 
@@ -644,7 +644,7 @@ npm test -- tests/regression/bug-r021-r024-open-drop-layout.test.js \
 | Profiles | Data only — no personal-layout product branches |
 | Child list (D023) | `Node.appendChild` / `insertBefore` / `removeChild` / `replaceChildren` only |
 | Job → API (D024–D026) | [contracts.md](../docs/dev/contracts.md) — extend the named API; no one-off twins |
-| CLI language (D036) | Node under `cli/`; `lib/shared/` gi-free; Python router until CN13; **no** layout port to `cli/` |
+| CLI language (D036) | Node under `cli/`; PATH `cli/forge.mjs` (CN13); leftover Python via spawn; `lib/shared/` gi-free; **no** layout port to `cli/` |
 | User CLI (D045) | `forge` product-only; nest/live = `./scripts/forge/forge-test`; normal install does not ship `forge-test` |
 | Layout rearch (D037–D043) | ApplyLayout in-process **done**. Slot machines **locked**. IC4 skip |
 | Insert / same-axis edge (D032) | Slot-split the focused/target unit when H/V parent already has siblings — never even 3rd sibling. Join leftover 1-child H/V as the slot (R028). Orientation from slot rect |
@@ -671,8 +671,8 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Next / active:** **Required queue empty.** Optional **next session: CN13**
-(Node PATH `forge`) — prep table above. Then CN14/CN15 · yuiop (blocked).
+**Next / active:** **Required queue empty.** Optional later: CN14/CN15
+(nest/live harness; delete Python router). yuiop blocked.
 See [IDEAS](./IDEAS.md) (pruned 2026-08-18).
 **FCC Wave C (+R1/R2-docs) closed through C5; P3 done; PR7/D046 done; Wave Z0/Z1
 shipped.** PR1–**PR15** + user CLI shipped — `forge` product-only; nest/live =
@@ -697,14 +697,14 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 
 | You can do | You must not |
 | --- | --- |
-| CN13 when asked; nest for JS retest | Redesign D039–D044; restack latch; hit plates |
+| CN14/CN15 when asked; nest for JS retest | Redesign D039–D044; restack latch; hit plates |
 | Nest (`./scripts/forge/forge-test nested`, mon=1) | `forge test` / top-level `forge nested`; personal `dev`/`t1` in matrix; Mode B as cold success |
 | Promote from IDEAS only with need | Re-queue pruned hygiene rows; close agent ghosttys |
 | | Second chrome system; reopen peel ownership; reopen C4 APIs; silent flatten |
 
 | Pri | Work | Path |
 | --- | --- | --- |
-| next session | CN13 Node PATH `forge` | [cli-node](./plans/forge-cli-node.md) § CN13 |
+| done | CN13 Node PATH `forge` | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
 | blocked | Ratio / autotile (yuiop) | [blocker](./blockers/resize-autotile-design.md) |
 | done | Tab click-drag **PR7** docs | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |
 | done | P3 strip `_layoutOp` flatten | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_p3-strip-layoutop-flatten.md) |
@@ -756,7 +756,7 @@ TABBED/STACKED is mon-local (`groupHomeMonitor` + `normalizeGroupToHomeMonitor`)
 | [forge-lifecycle-abstractions.md](./plans/forge-lifecycle-abstractions.md) | Health plan (scope complete; optional residual) |
 | [forge-tab-click-drag.md](./plans/forge-tab-click-drag.md) | Click-drag design; PR1 shipped |
 | [forge-tab-chrome-drag.md](./plans/forge-tab-chrome-drag.md) | TD1 done; TD2/TD3 skip; TD4 done via PR7 |
-| [forge-cli-node.md](./plans/forge-cli-node.md) | Node CLI CN0–CN6; **CN13 next session**; no layout port |
+| [forge-cli-node.md](./plans/forge-cli-node.md) | Node CLI CN0–CN6 + **CN13 PATH**; CN14/CN15 later; no layout port |
 | [forge-layout-in-process.md](./plans/forge-layout-in-process.md) | ApplyLayout AL0–AL8 **done** |
 | [forge-layout-slot-machines.md](./plans/forge-layout-slot-machines.md) | **P0** SM0 locked · SM1–SM7 implement **done** |
 | [forge-layout-settle-contract.md](./plans/forge-layout-settle-contract.md) | D019 baseline; timeout-continue → D040 |
