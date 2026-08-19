@@ -1,34 +1,34 @@
 {
   "error": null,
-  "id": "tagged-vsplit-normalize",
+  "id": "bare-sole-hsplit-share-normalize",
   "input": {
-    "tiles": {
-      "mon0": [
-        {
-          "share": [2, 1],
-          "vsplit": ["a", "b"]
-        }
-      ]
-    }
+    "focus": "ghostty",
+    "tiles": [
+      {
+        "hsplit": ["ghostty", "nautilus"],
+        "share": [0.691, 0.309]
+      }
+    ]
   },
   "ok": true,
   "op": "normalize",
   "opts": {},
   "output": {
+    "focus": "ghostty",
     "layout": {
       "mon0": {
         "children": [
           {
-            "id": "a",
-            "roles": ["a"]
+            "id": "ghostty",
+            "roles": ["ghostty"]
           },
           {
-            "id": "b",
-            "roles": ["b"]
+            "id": "nautilus",
+            "roles": ["nautilus"]
           }
         ],
-        "share": [0.667, 0.333],
-        "split": "vsplit"
+        "share": [0.691, 0.309],
+        "split": "hsplit"
       }
     },
     "marginal": {
@@ -37,31 +37,30 @@
       "roleOrder": "first"
     },
     "mode": "reconcile",
-    "monExplicit": true,
     "overflow": {
       "layout": "tabbed",
       "slot": "mon0.overflow"
     },
     "roles": [
       {
-        "id": "a",
+        "id": "ghostty",
         "match": {
-          "class": "a"
+          "class": "ghostty"
         },
         "open": {
-          "app": "a"
+          "app": "ghostty"
         },
-        "slot": "mon0.a"
+        "slot": "mon0.ghostty"
       },
       {
-        "id": "b",
+        "id": "nautilus",
         "match": {
-          "class": "b"
+          "class": "nautilus"
         },
         "open": {
-          "app": "b"
+          "app": "nautilus"
         },
-        "slot": "mon0.b"
+        "slot": "mon0.nautilus"
       }
     ],
     "version": 2

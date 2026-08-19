@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-18 (CN13 Node PATH `forge` landed)
+**Updated:** 2026-08-18 (R038 share + tab-drag event owner)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -17,9 +17,9 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 1. later CN14/CN15 · after CN13 PATH
 2. blocked Ratio / autotile (yuiop) · human design blocker
 
-**PR15 done (unit):** chip track, chip∩strip gap, pointer×center scoot,
-`clearTabDragResiduals`. Host tip may need reload for PR15 JS.
-**PR12–PR15 done (unit).** Leave-strip is product.
+**Tab-drag event owner done:** `DragDropManager` sole gesture sink (stage
+capture + `tabDragPointer` poll); tree press-arm only. Host logout for tip.
+**PR15 + event-owner:** chip track + leave-behind class closed (unit+nest).
 **Retest (FIRM):** nest = normal Wayland code→reload via
 `./scripts/forge/forge-test nested`; primary logout = rare tip load.
 **Later (real only):** CN14/CN15 · yuiop blocker — [IDEAS](./IDEAS.md).
@@ -76,6 +76,8 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
+| done | Layout `share` restore (R038) | **4.5** | [completed](./tasks/completed/forge-layout-share-restore-green-gray.md) · nest + gray/green live |
+| done | Tab-drag one event owner (fast leave-behind) | **4.5** | [completed](./tasks/completed/forge-tab-drag-event-owner.md) |
 | later | CN14 / CN15 | **4.6 med** | after CN13 · [cli-node](./plans/forge-cli-node.md) § CN14 |
 | done | **CN13** Node PATH `forge` | **4.6 med** | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
 | done | Tab click-drag **PR7** docs | 4.5 lo | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |

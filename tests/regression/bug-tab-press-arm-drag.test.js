@@ -101,4 +101,20 @@ describe("Tab press activates and arms drag (not release-only)", () => {
       expect(dd._tabDrag.started).toBe(false);
     }
   });
+
+  it("tab actor does not wire motion/release — DragDropManager owns the gesture", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const tabbed = createContainerNode(monitor, LAYOUT_TYPES.TABBED, {
+      x: 0,
+      y: 0,
+      width: 800,
+      height: 600,
+    });
+    const { nodeWindow } = createWindowNode(ctx.tree, tabbed);
+    const tab = nodeWindow.tab;
+    expect(tab._signals?.["motion-event"]?.length ?? 0).toBe(0);
+    expect(tab._signals?.["button-release-event"]?.length ?? 0).toBe(0);
+    expect(typeof nodeWindow._noteTabDragFromEvent).toBe("undefined");
+    expect(typeof nodeWindow._finishTabDragFromEvent).toBe("undefined");
+  });
 });

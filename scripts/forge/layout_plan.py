@@ -709,7 +709,21 @@ def _desugar_tiles(
         content: Any
         mon_share_src: Any = None
         if isinstance(mon_body, list):
-            content = mon_body
+            # Sole [{hsplit|vsplit, share?}] → mon-level split (same as {monN:{hsplit…}})
+            sole = mon_body[0] if len(mon_body) == 1 and isinstance(
+                mon_body[0], dict) else None
+            sole_tag = _tagged_container_mode(sole) if sole else None
+            if sole_tag in ("hsplit", "vsplit"):
+                mon_share_src = sole
+                split_override = sole_tag
+                content = None
+                for k, v in sole.items():
+                    if (str(k).strip().lower() in _CONTAINER_TAG_KEYS
+                            and isinstance(v, list)):
+                        content = v
+                        break
+            else:
+                content = mon_body
         elif isinstance(mon_body, dict):
             mon_share_src = mon_body
             tag = _tagged_container_mode(mon_body)

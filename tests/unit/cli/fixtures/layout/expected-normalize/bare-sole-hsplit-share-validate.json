@@ -1,0 +1,71 @@
+{
+  "error": null,
+  "id": "bare-sole-hsplit-share-validate",
+  "input": {
+    "focus": "ghostty",
+    "tiles": [
+      {
+        "hsplit": ["ghostty", "nautilus"],
+        "share": [0.691, 0.309]
+      }
+    ]
+  },
+  "ok": true,
+  "op": "validate",
+  "opts": {},
+  "output": {
+    "focus": "ghostty",
+    "layout": {
+      "mon0": {
+        "children": [
+          {
+            "id": "ghostty",
+            "roles": ["ghostty"]
+          },
+          {
+            "id": "nautilus",
+            "roles": ["nautilus"]
+          }
+        ],
+        "share": [0.691, 0.309],
+        "split": "hsplit"
+      }
+    },
+    "marginal": {
+      "mode": "coexist",
+      "residual": "leave",
+      "roleOrder": "first"
+    },
+    "mode": "reconcile",
+    "overflow": {
+      "layout": "tabbed",
+      "slot": "mon0.overflow"
+    },
+    "roles": [
+      {
+        "id": "ghostty",
+        "match": {
+          "class": "ghostty"
+        },
+        "open": {
+          "app": "ghostty",
+          "wmClass": "ghostty"
+        },
+        "slot": "mon0.ghostty"
+      },
+      {
+        "id": "nautilus",
+        "match": {
+          "class": "nautilus"
+        },
+        "open": {
+          "app": "nautilus",
+          "wmClass": "nautilus"
+        },
+        "slot": "mon0.nautilus"
+      }
+    ],
+    "version": 2
+  },
+  "profileFile": null
+}

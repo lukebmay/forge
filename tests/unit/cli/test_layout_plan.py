@@ -5475,6 +5475,138 @@ class TestShareSugar(unittest.TestCase):
         self.assertEqual(nested.get("share"), [0.667, 0.333])
         self.assertNotIn("share", ir["layout"]["mon0"])
 
+    def test_bare_array_sole_hsplit_share_lifts_to_mon(self):
+        """Gray-shaped sugar: [{hsplit, share}] ≡ {mon0:{hsplit, share}} (R038)."""
+        gray = {
+            "tiles": [{
+                "hsplit": [{
+                    "tab": [
+                        "google-chrome",
+                        {
+                            "app": "Grok",
+                            "class":
+                            "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+                            "title~=": "Grok",
+                        },
+                    ],
+                    "active": "Grok",
+                }, "ghostty"],
+                "share": [0.691, 0.309],
+            }],
+            "focus": "ghostty",
+        }
+        green = {
+            "tiles": {
+                "mon0": {
+                    "hsplit": [{
+                        "tab": ["google-chrome", "Grok"],
+                        "active": "Grok",
+                    }, "ghostty"],
+                    "share": [0.691, 0.309],
+                }
+            },
+            "focus": "ghostty",
+        }
+        ir_gray = normalize_profile(gray)
+        ir_green = normalize_profile(green)
+        mon_g = ir_gray["layout"]["mon0"]
+        mon_n = ir_green["layout"]["mon0"]
+        self.assertEqual(mon_g.get("split"), "hsplit")
+        self.assertEqual(mon_g.get("share"), [0.691, 0.309])
+        self.assertEqual(len(mon_g["children"]), 2)
+        self.assertEqual(mon_g["children"][0].get("layout"), "tabbed")
+        self.assertEqual(mon_g.get("share"), mon_n.get("share"))
+        self.assertEqual(mon_g.get("split"), mon_n.get("split"))
+        self.assertEqual(
+            [c.get("id") for c in mon_g["children"]],
+            [c.get("id") for c in mon_n["children"]],
+        )
+        # Nested sole under explicit mon array form also lifts
+        wrapped = {
+            "tiles": {
+                "mon0": [{
+                    "hsplit": ["ghostty", "nautilus"],
+                    "share": [0.7, 0.3],
+                }]
+            }
+        }
+        ir_w = normalize_profile(wrapped)
+        self.assertEqual(ir_w["layout"]["mon0"].get("share"), [0.7, 0.3])
+        self.assertEqual(ir_w["layout"]["mon0"].get("split"), "hsplit")
+        self.assertEqual(len(ir_w["layout"]["mon0"]["children"]), 2)
+
+        forest = {
+            "apiVersion":
+            2,
+            "monitors": [{
+                "nodeType":
+                "MONITOR",
+                "id":
+                "mo0ws0",
+                "layout":
+                "HSPLIT",
+                "children": [
+                    {
+                        "nodeType":
+                        "CON",
+                        "layout":
+                        "TABBED",
+                        "percent":
+                        0.5,
+                        "userSized":
+                        False,
+                        "children": [
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 10,
+                                "wmClass": "google-chrome",
+                                "title": "New Tab - Google Chrome",
+                                "monitor": 0,
+                                "mode": "TILE",
+                                "children": [],
+                                "path": "mo0ws0/0/0",
+                            },
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": 11,
+                                "wmClass":
+                                "chrome-ggjocahimgaohmigbfhghnlfcnjemagj-Default",
+                                "title": "Grok",
+                                "monitor": 0,
+                                "mode": "TILE",
+                                "children": [],
+                                "path": "mo0ws0/0/1",
+                            },
+                        ],
+                        "path":
+                        "mo0ws0/0",
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 12,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "term",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "percent": 0.5,
+                        "userSized": False,
+                        "children": [],
+                        "path": "mo0ws0/1",
+                    },
+                ],
+            }],
+        }
+        plan = plan_reconcile(forest, gray)
+        self.assertTrue(plan["ok"])
+        self.assertTrue(plan.get("structureMatch"))
+        size_ops = [
+            a for a in plan["actions"] if a.get("op") == "ensure_sizes"
+        ]
+        self.assertEqual(len(size_ops), 1)
+        self.assertEqual(size_ops[0]["slot"], "mon0")
+        self.assertEqual(size_ops[0]["shares"], [0.691, 0.309])
+        self.assertEqual(size_ops[0]["windowIds"], [10, 12])
+
     def test_bare_list_no_share(self):
         ir = normalize_profile({"tiles": {"mon0": ["ghostty", "nautilus"]}})
         self.assertNotIn("share", ir["layout"]["mon0"])

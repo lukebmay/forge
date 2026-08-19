@@ -83,6 +83,14 @@ def _catalog() -> list[dict[str, Any]]:
         "tagged-vsplit": {
             "tiles": {"mon0": [{"vsplit": ["a", "b"], "share": [2, 1]}]}
         },
+        # Gray-shaped bare sole hsplit+share (must lift to mon0, not nest s0)
+        "bare-sole-hsplit-share": {
+            "tiles": [{
+                "hsplit": ["ghostty", "nautilus"],
+                "share": [0.691, 0.309],
+            }],
+            "focus": "ghostty",
+        },
         "pwa-chrome": {
             "tiles": {"mon0": ["google-chrome", "Grok", "YouTube"]}
         },

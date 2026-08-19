@@ -184,4 +184,81 @@ describe("DragDropManager tab drag arm → synthetic grab", () => {
 
     expect(dd().armTabDrag(meta, makePressEvent(0, 0))).toBe(false);
   });
+
+  it("stage owner keeps tracking after pointer leaves the tab actor", () => {
+    const meta = createMockWindow({
+      rect: new Rectangle({ x: 0, y: 0, width: 400, height: 400 }),
+      workspace: ctx.workspaces[0],
+    });
+    delete meta.begin_grab_op;
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta);
+    node.mode = WINDOW_MODES.TILE;
+    ctx.display.get_focus_window = vi.fn(() => meta);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(false);
+
+    // Mock stage capture like Shell: arm registers captured-event.
+    const handlers = [];
+    global.stage = {
+      connect: (_sig, cb) => {
+        handlers.push(cb);
+        return handlers.length;
+      },
+      disconnect: () => {},
+    };
+
+    dd().armTabDrag(meta, makePressEvent(50, 50));
+    expect(handlers.length).toBe(1);
+
+    // Fast leave: motion far from the tab actor, delivered only via stage.
+    const motion = {
+      type: () => "motion",
+      get_coords: () => [50 + TAB_DRAG_THRESHOLD_PX + 40, 200],
+      get_button: () => 1,
+    };
+    const stop = handlers[0](null, motion);
+    expect(stop).toBeTruthy();
+    expect(dd()._tabDrag?.lastX).toBe(50 + TAB_DRAG_THRESHOLD_PX + 40);
+    expect(dd()._tabDrag?.lastY).toBe(200);
+
+    const release = {
+      type: () => "button-release",
+      get_coords: () => [400, 300],
+      get_button: () => 1,
+    };
+    handlers[0](null, release);
+    expect(dd()._tabDrag).toBeNull();
+  });
+
+  it("pointer poll updates chip when stage motion is silent", () => {
+    const meta = createMockWindow({
+      rect: new Rectangle({ x: 0, y: 0, width: 400, height: 400 }),
+      workspace: ctx.workspaces[0],
+    });
+    delete meta.begin_grab_op;
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta);
+    node.mode = WINDOW_MODES.TILE;
+    ctx.display.get_focus_window = vi.fn(() => meta);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(false);
+
+    // No stage.connect → poll must carry the gesture alone.
+    global.stage = { connect: undefined, disconnect: () => {} };
+
+    const setSpy = vi.spyOn(wm()._wmSources, "set");
+    setPointer(10, 10);
+    dd().armTabDrag(meta, makePressEvent(10, 10));
+    expect(wm()._wmSources.has("tabDragPointer")).toBe(true);
+
+    const pollCall = setSpy.mock.calls.find((c) => c[0] === "tabDragPointer");
+    expect(pollCall).toBeTruthy();
+    const tick = pollCall[2];
+    setPointer(10 + TAB_DRAG_THRESHOLD_PX + 5, 80);
+    tick();
+
+    expect(dd()._tabDrag?.lastX).toBe(10 + TAB_DRAG_THRESHOLD_PX + 5);
+    expect(dd()._tabDrag?.lastY).toBe(80);
+    dd().finishTabDragRelease();
+    expect(wm()._wmSources.has("tabDragPointer")).toBe(false);
+  });
 });

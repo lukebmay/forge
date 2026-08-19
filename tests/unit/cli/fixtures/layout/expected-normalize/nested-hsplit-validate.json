@@ -23,30 +23,25 @@
       "mon0": {
         "children": [
           {
+            "id": "a",
+            "roles": ["a"]
+          },
+          {
             "children": [
               {
-                "id": "a",
-                "roles": ["a"]
+                "id": "b",
+                "roles": ["b"]
               },
               {
-                "children": [
-                  {
-                    "id": "b",
-                    "roles": ["b"]
-                  },
-                  {
-                    "id": "c",
-                    "roles": ["c"]
-                  }
-                ],
-                "id": "s1",
-                "split": "vsplit"
+                "id": "c",
+                "roles": ["c"]
               }
             ],
             "id": "s0",
-            "split": "hsplit"
+            "split": "vsplit"
           }
-        ]
+        ],
+        "split": "hsplit"
       }
     },
     "marginal": {
@@ -70,7 +65,7 @@
           "app": "a",
           "wmClass": "a"
         },
-        "slot": "mon0.s0.a"
+        "slot": "mon0.a"
       },
       {
         "id": "b",
@@ -81,7 +76,7 @@
           "app": "b",
           "wmClass": "b"
         },
-        "slot": "mon0.s0.s1.b"
+        "slot": "mon0.s0.b"
       },
       {
         "id": "c",
@@ -92,7 +87,7 @@
           "app": "c",
           "wmClass": "c"
         },
-        "slot": "mon0.s0.s1.c"
+        "slot": "mon0.s0.c"
       }
     ],
     "version": 2

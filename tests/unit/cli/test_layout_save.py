@@ -387,10 +387,12 @@ class TestCaptureTilesProfile(unittest.TestCase):
                 "vsplit": ["ghostty", "firefox"]
             },
         ):
+            # Sole [{hsplit|vsplit}] lifts to mon0 (same as {mon0:{hsplit…}})
             ir = validate_reconcile_profile([sugar])
-            kids = ir["layout"]["mon0"]["children"]
-            self.assertEqual(len(kids), 1)
-            self.assertIn(kids[0].get("split"), ("hsplit", "vsplit"))
+            mon = ir["layout"]["mon0"]
+            kids = mon["children"]
+            self.assertEqual(len(kids), 2)
+            self.assertIn(mon.get("split"), ("hsplit", "vsplit"))
 
     def test_empty_desk_saves_empty_profile(self):
         """Empty forest → bare [] so `forge layout clean` can close everything."""

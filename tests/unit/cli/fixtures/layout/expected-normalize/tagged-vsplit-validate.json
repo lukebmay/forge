@@ -19,21 +19,16 @@
       "mon0": {
         "children": [
           {
-            "children": [
-              {
-                "id": "a",
-                "roles": ["a"]
-              },
-              {
-                "id": "b",
-                "roles": ["b"]
-              }
-            ],
-            "id": "s0",
-            "share": [0.667, 0.333],
-            "split": "vsplit"
+            "id": "a",
+            "roles": ["a"]
+          },
+          {
+            "id": "b",
+            "roles": ["b"]
           }
-        ]
+        ],
+        "share": [0.667, 0.333],
+        "split": "vsplit"
       }
     },
     "marginal": {
@@ -57,7 +52,7 @@
           "app": "a",
           "wmClass": "a"
         },
-        "slot": "mon0.s0.a"
+        "slot": "mon0.a"
       },
       {
         "id": "b",
@@ -68,7 +63,7 @@
           "app": "b",
           "wmClass": "b"
         },
-        "slot": "mon0.s0.b"
+        "slot": "mon0.b"
       }
     ],
     "version": 2

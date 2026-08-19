@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-18 (CN13 Node PATH `forge` landed)
+**Updated:** 2026-08-18 (R038 share bare-array lift)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -15,10 +15,10 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
 **Repo tip:** SM1–SM7 + R036 + D044 + PR1–**PR15** + **PR7/D046** + user-CLI cut +
-**FCC C0–C5 + R1 + P3** + **CN13** Node PATH.
-**Install:** tip on master. Nest `running: False` unless agent starts it.
+**FCC C0–C5 + R1 + P3** + **CN13** + **R038** share bare-array lift.
+**Install:** tip on master (dirty). Nest `running: False` unless agent starts it.
 **Do not close** durable-agent ghostty windows.
-**L0 last:** CN13 Vitest cli **169** + pytest job/node/install **56**.
+**L0 last:** R038 layout_plan/save/apply **363** + Vitest normalize/reconcile **66**.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
 **Host settings:** `preview-hint-enabled=false`, `mod-mask-mouse-tile=None`.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
@@ -30,7 +30,32 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 | --- | --- | --- | --- |
 | later | CN14 / CN15 | after CN13 | nest/live harness; delete Python router |
 | blocked | Ratio / autotile (yuiop) | hard blocker | [blocker](./blockers/resize-autotile-design.md) |
-| — | *(none required)* | empty | required queue still empty |
+| — | *(none required)* | empty | R038 + tab-drag event owner shipped |
+
+### Shipped — tab-drag event owner (fast leave-behind)
+
+| Field | Detail |
+| --- | --- |
+| Bug | Fast drag left chip behind; dual tree actor + stage handlers |
+| Fix | `DragDropManager` only: stage `captured-event` (STOP) + `tabDragPointer` poll; tree press→`armTabDrag` only |
+| L0 | tab-drag + press-arm + strip-reorder + comprehensive DnD **152** |
+| Nest | ping + `_forge-test-clean` **ok**; `running: False` |
+| Docs | contracts row “Tab drag pointer events” |
+| Task | [completed](./tasks/completed/forge-tab-drag-event-owner.md) |
+| Residual | Host Wayland **logout** once for tip desk feel |
+
+### Shipped — R038 layout share bare-array lift
+
+| Field | Detail |
+| --- | --- |
+| Bug | Gray `tiles:[{hsplit,share}]` nested under mon0 `s0`; green mon-keyed OK |
+| Fix | Desugar lifts sole mon-body `[{hsplit\|vsplit}]` to mon-level (JS+Python) |
+| L0 | TestShareSugar gray fixture; layout_* **363**; normalize vitest **66** |
+| Nest | `_forge-test-share-gray` bare share → **0.691/0.309**; stopped |
+| Live | Gray mon-keyed rewrite + apply **ok**; green **0.687/0.313** still |
+| REG | [R038](./REGRESSIONS.md) |
+| Task | [completed](./tasks/completed/forge-layout-share-restore-green-gray.md) |
+| Residual | Host Wayland logout to load dirty tip for bare-array ApplyLayout on gray/black host Shell |
 
 ### Shipped — CN13 Node PATH `forge`
 
