@@ -1476,7 +1476,8 @@ def _layout_run_reconcile_apply_layout(
             "waitTreeStable": wait_tree_stable,
         },
     )
-    _eprint("  path=ApplyLayout")
+    if verbose:
+        _eprint("  path=ApplyLayout")
 
     def apply_fn(req_json: str) -> dict[str, Any]:
         return parse_json_obj(call_method(backend, "ApplyLayout", req_json))
@@ -1498,7 +1499,10 @@ def _layout_run_reconcile_apply_layout(
         write_apply_id_fn=write_job_apply_id,
         start_watcher_fn=start_gi_signal_watcher,
         timeout_s=float(default_timeout_for_command("layout") or 300),
+        verbose=verbose,
     )
+    if rc == 0 and not verbose:
+        _eprint("forge layout: ok")
     if rc != 0 or verbose:
         out: dict[str, Any] = {
             "ok": isinstance(done, dict) and done.get("ok") is True,
@@ -1567,16 +1571,19 @@ def _layout_run_reconcile(
         workspace = _layout_target_workspace(forest)
     current_ws = _layout_target_workspace(forest)
 
-    _layout_print_header(resolved, name)
-    cur_bit = " (current)" if workspace == current_ws else ""
-    _eprint(f"  workspace  {workspace + 1}{cur_bit}")
-    if safe:
-        _eprint("  residuals=leave (--safe: open+move only)")
-    elif keep_others:
-        _eprint("  residuals=park (--keep-others: join last mon unit as tabs)")
-    else:
-        force_bit = " --force" if force_close else ""
-        _eprint(f"  residuals=close{force_bit} (default; non-layout windows closed)")
+    # Header/context: dry-run always; live apply only with -v.
+    show_context = bool(verbose or dry_run or tree_file)
+    if show_context:
+        _layout_print_header(resolved, name)
+        cur_bit = " (current)" if workspace == current_ws else ""
+        _eprint(f"  workspace  {workspace + 1}{cur_bit}")
+        if safe:
+            _eprint("  residuals=leave (--safe: open+move only)")
+        elif keep_others:
+            _eprint("  residuals=park (--keep-others: join last mon unit as tabs)")
+        else:
+            force_bit = " --force" if force_close else ""
+            _eprint(f"  residuals=close{force_bit} (default; non-layout windows closed)")
 
     if not dry_run and not tree_file:
         if backend is None:
@@ -3711,7 +3718,7 @@ def build_parser() -> argparse.ArgumentParser:
         "  forge layout help             # colorized guide + minimal example\n"
         "  forge layout <name>           # reconcile (v2) or steps (v1); quiet by default\n"
         "  forge layout <name> --dry-run # print plan only (no launch/RunSteps)\n"
-        "  forge layout <name> --verbose # full plan/apply JSON on stdout\n"
+        "  forge layout <name> -v        # phase progress + plan/apply JSON\n"
         "  forge layout a b              # sequential: a→current, b→current+1\n"
         "  forge layout 1:a 3:b          # static 1-based workspaces (or a@1 b@3)\n"
         "  forge layout list             # this host: Name + Description (JSON on stdout)\n"
@@ -3773,7 +3780,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--verbose",
         "-v",
         action="store_true",
-        help="Print full plan/apply JSON on stdout (also FORGE_VERBOSE=1)",
+        help="Phase progress + full plan/apply JSON (also FORGE_VERBOSE=1)",
     )
     layout_p.add_argument(
         "--force-launch",

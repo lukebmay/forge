@@ -116,11 +116,11 @@ Profile names must **not** contain `:` or `@` (reserved for workspace targeting)
 | `forge layout save <name> --stdout` | Print JSON only (no write) |
 | `forge layout save <name> --tree-file F` | Offline save from a GetTree forest file |
 | `forge layout <name> --dry-run` | Plan only; human counts + plan JSON; **no** mutations |
-| `forge layout <name>` | Apply on **current** workspace; short human summary on stderr |
+| `forge layout <name>` | Apply on **current** workspace; one `forge layout: ok` line (quiet) |
 | `forge layout a b` | Sequential: `a` → current, `b` → current+1 (all bare) |
 | `forge layout 1:a 3:b` | Static: explicit 1-based workspaces (all numbered) |
 | `forge layout a@1 b@3` | Static: same as `1:a 3:b` |
-| `forge layout <name> --verbose` | Apply (or dry-run) with full plan/apply JSON on stdout; also `FORGE_VERBOSE=1` |
+| `forge layout <name> -v` / `--verbose` | Phase progress + plan/apply JSON; also `FORGE_VERBOSE=1` |
 | `forge layout <name> --safe` | Open missing roles + move wrong-mon roles only (no park / structure / mon ensure) |
 | `forge layout <name> --focus TOKEN` | Override profile keyboard focus on load (`ghostty`, `ghostty,0`, JSON `[token, n]`) |
 | `forge layout <name> --wait-tree-stable` | Debug: wait for whole GetTree fingerprint quiet before residual place (also `FORGE_LAYOUT_WAIT_TREE_STABLE=1`) |
@@ -532,7 +532,7 @@ shell init when you keep a multi-machine tree outside XDG.
 - Dry-run shows `candidates: N on wsK (ignored M on other workspaces)` per target.
 - Title matchers (`title~=`) disambiguate several windows of the same class.
 - Counts: `reused` / `opened` / `moved` / `kept` / `closed` (default) / `parked` (`--keep-others`) / `structure`.
-- Default apply is quiet (stderr only); use `--verbose` or `FORGE_VERBOSE=1` for plan JSON.
+- Default apply is quiet (`forge layout: ok`); use `-v` / `--verbose` or `FORGE_VERBOSE=1` for phase progress + plan JSON.
 - Optional: `displays` → `gdisplays load`; `settings` → DBus SettingsLoad.
 - Offline plan: `--tree-file path/to/GetTree.json` with `--dry-run` (uses forest `meta` for active/n workspaces when present).
 - Help color: `forge --color=always layout help` (or `never` / `auto`).

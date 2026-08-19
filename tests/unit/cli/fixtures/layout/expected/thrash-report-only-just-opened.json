@@ -177,6 +177,18 @@
         "op": "close",
         "path": "mo1ws0/2",
         "windowId": 302
+      },
+      {
+        "op": "ensure_sizes",
+        "shares": [0.5, 0.5],
+        "slot": "mon0",
+        "windowIds": [101, 103]
+      },
+      {
+        "op": "ensure_sizes",
+        "shares": [0.5, 0.5],
+        "slot": "mon1",
+        "windowIds": [201, 202]
       }
     ],
     "clean": true,
@@ -192,7 +204,7 @@
       "ordered": 0,
       "parked": 0,
       "reused": 5,
-      "sized": 0,
+      "sized": 2,
       "skeleton": 0,
       "structure": 1
     },
@@ -299,7 +311,9 @@
         "structure:mon0.left-tab",
         "structure:mon1.comms",
         "move:ghostty-right",
-        "move:youtube"
+        "move:youtube",
+        "size:mon0",
+        "size:mon1"
       ],
       "score": 12,
       "structureGroups": 2

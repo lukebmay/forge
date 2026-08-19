@@ -552,6 +552,20 @@ export function prepareJobDir(
   return { jobId: jid, jobDir: jdir, status: st };
 }
 
+/** Node WriteStream uses `.isTTY`; Python-style mocks may expose `.isatty()`. */
+export function streamIsTTY(stream) {
+  if (stream == null) return false;
+  if (typeof stream.isTTY === "boolean") return stream.isTTY;
+  if (typeof stream.isatty === "function") {
+    try {
+      return Boolean(stream.isatty());
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 export function workerShouldForceColor(env, { stream = null } = {}) {
   const e = envMap(env);
   const mode = String(e.FORGE_COLOR || "auto" || "auto")
@@ -561,11 +575,7 @@ export function workerShouldForceColor(env, { stream = null } = {}) {
   if (mode === "always") return true;
   if (String(e.NO_COLOR || "").trim()) return false;
   const s = stream != null ? stream : process.stdout;
-  try {
-    return Boolean(s && typeof s.isatty === "function" && s.isatty());
-  } catch {
-    return false;
-  }
+  return streamIsTTY(s);
 }
 
 export function workerEnv(base, { jobId, jobDirPath, forceColor = null, colorStream = null } = {}) {
@@ -591,6 +601,7 @@ export function spawnWorker(
     jobId = null,
     now = null,
     spawnFn = null,
+    colorStream = null,
   } = {}
 ) {
   const root = String(jobsRoot);
@@ -629,7 +640,11 @@ export function spawnWorker(
     throw exc;
   }
 
-  const wenv = workerEnv(env, { jobId: jid, jobDirPath: jdir });
+  const wenv = workerEnv(env, {
+    jobId: jid,
+    jobDirPath: jdir,
+    colorStream: colorStream != null ? colorStream : process.stdout,
+  });
   const outPath = path.join(jdir, STDOUT_LOG);
   const errPath = path.join(jdir, STDERR_LOG);
   const outFd = fs.openSync(outPath, "a");
@@ -982,6 +997,7 @@ export async function runJob(
   } = {}
 ) {
   const root = jobsRoot != null ? String(jobsRoot) : defaultJobsRoot(env);
+  const out = streamOut != null ? streamOut : process.stdout;
   const handle = spawnWorker(workerArgv, {
     jobsRoot: root,
     command,
@@ -989,10 +1005,10 @@ export async function runJob(
     env,
     cwd,
     spawnFn,
+    colorStream: out,
   });
   if (detach) {
     const msg = `job ${handle.jobId} started\n`;
-    const out = streamOut != null ? streamOut : process.stdout;
     if (typeof out.write === "function") out.write(msg);
     return 0;
   }

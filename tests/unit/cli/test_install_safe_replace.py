@@ -147,6 +147,47 @@ class TestForgeDisableExtension(unittest.TestCase):
         self.assertEqual(r2.returncode, 0, msg=r2.stderr)
         self.assertEqual(r2.stdout.strip(), "already-off")
 
+    def test_flush_session_layout_before_disable(self) -> None:
+        """R041: unload must flush open leaves before disable (Wayland restore)."""
+        flush_log = self.root / "flush.log"
+        flush_log.write_text("")
+        forge_cli = self.bin / "forge"
+        _write_executable(
+            forge_cli,
+            textwrap.dedent(f"""\
+                #!/usr/bin/env zsh
+                emulate -L zsh
+                set -euo pipefail
+                print -r -- "$*" >>{flush_log!s}
+                exit 0
+                """),
+        )
+        env = {
+            **self.env,
+            "FORGE_SCRIPTS_DIR": str(self.bin),
+        }
+        # Point forge_flush at our stub: FORGE_SCRIPTS_DIR/forge
+        (self.bin / "forge").write_text(forge_cli.read_text())
+        forge_cli.chmod(forge_cli.stat().st_mode | stat.S_IXUSR)
+        r = _run_zsh(
+            textwrap.dedent(f"""\
+                emulate -L zsh
+                set -euo pipefail
+                source {_LIB!s}
+                forge_disable_extension
+                """),
+            env,
+        )
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertEqual(r.stdout.strip(), "disabled")
+        flush = flush_log.read_text()
+        self.assertIn("save-session-layout", flush)
+        # Flush must happen before gnome-extensions disable.
+        ge_lines = [
+            ln for ln in self.log.read_text().splitlines() if ln.strip()
+        ]
+        self.assertTrue(any(ln.startswith("disable") for ln in ge_lines))
+
     def test_not_installed(self) -> None:
         import shutil
 

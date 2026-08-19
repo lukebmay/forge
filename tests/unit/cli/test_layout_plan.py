@@ -5611,6 +5611,54 @@ class TestShareSugar(unittest.TestCase):
         ir = normalize_profile({"tiles": {"mon0": ["ghostty", "nautilus"]}})
         self.assertNotIn("share", ir["layout"]["mon0"])
 
+    def test_plan_equal_sizes_when_share_missing(self):
+        """R039: bare split (no share) still ensure_sizes to equal siblings."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [{
+                "nodeType": "MONITOR",
+                "id": "mo0ws0",
+                "layout": "HSPLIT",
+                "children": [
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 1,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "Ghostty",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "percent": 0.75,
+                        "userSized": True,
+                        "children": [],
+                        "path": "mo0ws0/0",
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 2,
+                        "wmClass": "org.gnome.Nautilus",
+                        "title": "Home",
+                        "monitor": 0,
+                        "mode": "TILE",
+                        "percent": 0.25,
+                        "userSized": True,
+                        "children": [],
+                        "path": "mo0ws0/1",
+                    },
+                ],
+            }],
+        }
+        profile = {"tiles": {"mon0": {"hsplit": ["ghostty", "nautilus"]}}}
+        plan = plan_reconcile(forest, profile)
+        self.assertTrue(plan["ok"])
+        size_ops = [
+            a for a in plan["actions"] if a.get("op") == "ensure_sizes"
+        ]
+        self.assertEqual(len(size_ops), 1)
+        self.assertEqual(size_ops[0]["slot"], "mon0")
+        self.assertEqual(size_ops[0]["shares"], [0.5, 0.5])
+        self.assertEqual(size_ops[0]["windowIds"], [1, 2])
+        self.assertEqual(plan["counts"].get("sized"), 1)
+
     def test_plan_ensure_sizes_when_claimed(self):
         forest = {
             "apiVersion":

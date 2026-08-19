@@ -367,6 +367,23 @@ sys.exit(0)
 PY
 }
 
+# Persist live open leaves / topology before unload (Wayland disable+enable too).
+# Best-effort: missing CLI / offline extension → false (caller continues).
+forge_flush_session_layout() {
+  local forge_cli
+  forge_cli="${FORGE_SCRIPTS_DIR:-}/forge"
+  if [[ ! -x $forge_cli ]]; then
+    forge_cli="$(command -v forge 2>/dev/null || true)"
+  fi
+  [[ -n $forge_cli && -x $forge_cli ]] || return 1
+  forge_info "flushing session layout before extension unload…"
+  if "$forge_cli" save-session-layout >/dev/null 2>&1; then
+    return 0
+  fi
+  forge_is_quiet || forge_warn "session-layout flush skipped (extension offline or old build)"
+  return 1
+}
+
 # Disable Forge (or $1 UUID) before replacing/removing extension files.
 # Unloading first avoids Shell thrash when the same UUID dir is rm -rf'd
 # while the extension is still loaded.
@@ -393,6 +410,12 @@ forge_disable_extension() {
     forge_info "disable: $uuid already off"
     print -r -- "already-off"
     return 0
+  fi
+
+  # Wayland has no HUP; disable→enable still restores from session-layout.
+  # Flush while healthy so open leaves (e.g. YouTube tab) survive unload.
+  if [[ "$uuid" == "$FORGE_UUID" ]]; then
+    forge_flush_session_layout || true
   fi
 
   if gnome-extensions disable "$uuid" 2>/dev/null; then

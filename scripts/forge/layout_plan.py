@@ -4116,8 +4116,9 @@ def _size_actions(
     prof: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """
-    ensure_sizes for layout nodes that carry share[] (mon or nested split).
+    ensure_sizes for multi-child layout splits (mon or nested).
 
+    Explicit share[] wins. Missing share ⇒ equal siblings (desired state).
     Emits only when every profile child under that node has a claimed window
     and len(windowIds) matches len(share) (≥2).
     """
@@ -4128,6 +4129,9 @@ def _size_actions(
             return
         children = node.get("children")
         shares = normalize_shares(node.get("share"))
+        if (shares is None and isinstance(children, list)
+                and len(children) >= 2):
+            shares = normalize_shares([1] * len(children))
         if (shares is not None and isinstance(children, list)
                 and len(children) >= 2 and len(shares) == len(children)):
             reps = _layout_node_child_reps(role_results, node)

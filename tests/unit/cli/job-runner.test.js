@@ -39,6 +39,7 @@ import {
   spawnWorker,
   statusExitCode,
   updateStatus,
+  streamIsTTY,
   workerEnv,
   workerMarkDone,
   workerShouldForceColor,
@@ -445,6 +446,28 @@ describe("spawn / attach", () => {
         { stream: { write() {}, isatty: () => false } }
       )
     ).toBe(false);
+  });
+
+  it("streamIsTTY accepts Node isTTY boolean (CN13 color regression)", () => {
+    expect(streamIsTTY({ isTTY: true })).toBe(true);
+    expect(streamIsTTY({ isTTY: false })).toBe(false);
+    expect(streamIsTTY({ isatty: () => true })).toBe(true);
+    expect(streamIsTTY({ isatty: () => false })).toBe(false);
+    expect(streamIsTTY({})).toBe(false);
+    expect(streamIsTTY(null)).toBe(false);
+    expect(workerShouldForceColor({ FORGE_COLOR: "auto" }, { stream: { isTTY: true } })).toBe(true);
+    expect(workerShouldForceColor({ FORGE_COLOR: "auto" }, { stream: { isTTY: false } })).toBe(
+      false
+    );
+    const env = workerEnv(
+      { FORGE_JOB: "1" },
+      {
+        jobId: "x",
+        jobDirPath: "/tmp/x",
+        colorStream: { isTTY: true },
+      }
+    );
+    expect(env.FORGE_COLOR).toBe("always");
   });
 
   it("workerMarkDone", () => {

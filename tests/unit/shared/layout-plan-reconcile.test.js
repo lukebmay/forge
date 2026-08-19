@@ -168,6 +168,62 @@ describe("planActionsToSteps pure mapping", () => {
   });
 });
 
+/** R039: profile split without share still restores equal sibling sizes. */
+describe("planReconcile equal sizes when share missing (R039)", () => {
+  it("emits ensure_sizes [0.5,0.5] for bare hsplit with user-resized live tree", () => {
+    const profile = {
+      tiles: {
+        mon0: { hsplit: ["ghostty", "nautilus"] },
+      },
+    };
+    const forest = {
+      apiVersion: 2,
+      monitors: [
+        {
+          nodeType: "MONITOR",
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              nodeType: "WINDOW",
+              windowId: 1,
+              wmClass: "com.mitchellh.ghostty",
+              title: "Ghostty",
+              monitor: 0,
+              mode: "TILE",
+              percent: 0.75,
+              userSized: true,
+              children: [],
+              path: "mo0ws0/0",
+            },
+            {
+              nodeType: "WINDOW",
+              windowId: 2,
+              wmClass: "org.gnome.Nautilus",
+              title: "Home",
+              monitor: 0,
+              mode: "TILE",
+              percent: 0.25,
+              userSized: true,
+              children: [],
+              path: "mo0ws0/1",
+            },
+          ],
+        },
+      ],
+    };
+    const plan = planReconcile(profile, forest, { clean: true });
+    expect(plan.ok).toBe(true);
+    const sizeOps = (plan.actions || []).filter((a) => a.op === "ensure_sizes");
+    expect(sizeOps).toHaveLength(1);
+    expect(sizeOps[0].shares).toEqual([0.5, 0.5]);
+    expect(sizeOps[0].windowIds).toEqual([1, 2]);
+    expect(plan.counts.sized).toBe(1);
+    const steps = planActionsToSteps(plan.actions);
+    expect(steps.some((s) => s.op === "size" && s.shares?.[0] === 0.5)).toBe(true);
+  });
+});
+
 /**
  * Residual after cold open: skeleton PHs still present, real windows mapped as
  * mon siblings (map/PlaceNext missed the tab CON). Bind must run **and**

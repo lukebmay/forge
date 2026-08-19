@@ -142,6 +142,18 @@
         "slot": "mon1.comms",
         "windowId": 202,
         "workspace": 0
+      },
+      {
+        "op": "ensure_sizes",
+        "shares": [0.5, 0.5],
+        "slot": "mon0",
+        "windowIds": [101, 103]
+      },
+      {
+        "op": "ensure_sizes",
+        "shares": [0.5, 0.5],
+        "slot": "mon1",
+        "windowIds": [201, 202]
       }
     ],
     "clean": true,
@@ -157,7 +169,7 @@
       "ordered": 0,
       "parked": 0,
       "reused": 5,
-      "sized": 0,
+      "sized": 2,
       "skeleton": 0,
       "structure": 1
     },
@@ -260,7 +272,13 @@
       "crossMonMoves": 2,
       "monEnsures": 0,
       "parks": 0,
-      "reasons": ["structure:mon1.comms", "move:ghostty-right", "move:youtube"],
+      "reasons": [
+        "structure:mon1.comms",
+        "move:ghostty-right",
+        "move:youtube",
+        "size:mon0",
+        "size:mon1"
+      ],
       "score": 8,
       "structureGroups": 1
     },

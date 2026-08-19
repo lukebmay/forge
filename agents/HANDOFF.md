@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-19 (DnD min-size gate partial + Luke palette)
+**Updated:** 2026-08-19 (R039 equal sizes + R040 install job colors)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -14,9 +14,10 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** prior + **DnD min-size gate wiring** + Luke palette + titlebar pointer
-track (red zones still **inert** on Wayland without readable mins).
-**Install:** tip on master. Nest `running: False` unless agent starts it.
+**Repo tip:** **R039/R040** shipped (install ANSI + bare-split equal sizes). Prior DnD
+min-size gate still partial (no red without readable mins).
+**Install:** tip installed this session. Nest `running: False`. **Host Wayland logout**
+once so host ApplyLayout picks up R039 JS (nest already green).
 **Do not close** durable-agent ghostty windows.
 **L0 last:** drop-intent + drag-drop + tab-drag + tree-ops / comprehensive DnD green.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
@@ -31,6 +32,20 @@ track (red zones still **inert** on Wayland without readable mins).
 | **next** | **DnD min-size red zones live** | pickup | Gate wired but **no red on host** — Wayland mins unread (`get_size_hints` missing); learn path not proving. See task residual |
 | later | CN14 / CN15 | after CN13 | nest/live harness; delete Python router |
 | blocked | Ratio / autotile (yuiop) | hard blocker | [blocker](./blockers/resize-autotile-design.md) |
+
+### Shipped — R039/R040/R041 + quiet layout
+
+| Field | Detail |
+| --- | --- |
+| R040 | Node job `.isatty()` vs `.isTTY` → no `FORGE_COLOR=always` |
+| R039 | Bare splits (no `share[]`) skipped `ensure_sizes` → enlarge stuck |
+| R041 | Wayland install disable→enable restored **stale** open leaf (YouTube→Voice) |
+| Quiet | `forge layout` default = `forge layout: ok`; `-v` for phase trace |
+| Fix | streamIsTTY; equal sizeActions; flush session-layout before disable (`force:true`) |
+| L0 | job-runner · layout-plan R039 · layout_apply_client quiet · install flush-before-disable |
+| Live | PTY install colors; nest equal sizes; host: install must keep visible tab |
+| Residual | **Logout once** if host ApplyLayout tip still pre-R039 |
+| Task | [completed](./tasks/completed/forge-install-color-layout-size.md) · R039–R041 |
 
 ### Shipped — DnD min-size gate + palette (partial)
 

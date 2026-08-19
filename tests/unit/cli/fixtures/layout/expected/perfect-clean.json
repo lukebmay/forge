@@ -234,7 +234,20 @@
   "id": "perfect-clean",
   "note": "already matches profile",
   "plan": {
-    "actions": [],
+    "actions": [
+      {
+        "op": "ensure_sizes",
+        "shares": [0.5, 0.5],
+        "slot": "mon0",
+        "windowIds": [101, 103]
+      },
+      {
+        "op": "ensure_sizes",
+        "shares": [0.5, 0.5],
+        "slot": "mon1",
+        "windowIds": [201, 202]
+      }
+    ],
     "clean": true,
     "coldEmpty": false,
     "counts": {
@@ -248,14 +261,14 @@
       "ordered": 0,
       "parked": 0,
       "reused": 7,
-      "sized": 0,
+      "sized": 2,
       "skeleton": 0,
       "structure": 0
     },
     "keepOthers": false,
     "kept": [],
     "left": [],
-    "nothingToDo": true,
+    "nothingToDo": false,
     "ok": true,
     "roles": [
       {
@@ -329,7 +342,7 @@
       "crossMonMoves": 0,
       "monEnsures": 0,
       "parks": 0,
-      "reasons": [],
+      "reasons": ["size:mon0", "size:mon1"],
       "score": 0,
       "structureGroups": 0
     },

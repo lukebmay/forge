@@ -125,7 +125,7 @@ class TestProgressAndDone(unittest.TestCase):
 
 
 class TestRunClient(unittest.TestCase):
-    def _run(self, *, apply_ret, snaps, cancel_ret=None, sleep_raises=None):
+    def _run(self, *, apply_ret, snaps, cancel_ret=None, sleep_raises=None, verbose=True):
         lines: list[str] = []
         apply_ids: list[str] = []
         gets: list[str] = []
@@ -166,6 +166,7 @@ class TestRunClient(unittest.TestCase):
             timeout_s=5.0,
             sleep_fn=sleep_fn,
             now_fn=now_fn,
+            verbose=verbose,
         )
         return rc, done, lines, apply_ids, gets, cancels
 
@@ -187,6 +188,7 @@ class TestRunClient(unittest.TestCase):
                     "terminal": {"applyId": "al-1", "ok": True, "phase": "verify"},
                 },
             ],
+            verbose=True,
         )
         self.assertEqual(rc, 0)
         self.assertTrue(done and done.get("ok") is True)
@@ -197,6 +199,34 @@ class TestRunClient(unittest.TestCase):
         self.assertIn("applyId  al-1", joined)
         self.assertIn("skeleton", joined)
         self.assertIn("  ok", joined)
+
+    def test_ok_quiet_hides_phase_trace(self):
+        rc, done, lines, ids, _gets, _cancels = self._run(
+            apply_ret={
+                "ok": True,
+                "applyId": "al-1",
+                "started": True,
+                "phase": "skeleton",
+            },
+            snaps=[
+                {
+                    "ok": True,
+                    "live": False,
+                    "applyId": "al-1",
+                    "phase": "verify",
+                    "terminal": {"applyId": "al-1", "ok": True, "phase": "verify"},
+                },
+            ],
+            verbose=False,
+        )
+        self.assertEqual(rc, 0)
+        self.assertTrue(done and done.get("ok") is True)
+        self.assertEqual(ids, ["al-1"])
+        joined = "\n".join(lines)
+        self.assertNotIn("applyId", joined)
+        self.assertNotIn("skeleton", joined)
+        self.assertNotIn("  ok", joined)
+        self.assertEqual(lines, [])
 
     def test_busy(self):
         rc, _done, lines, ids, _g, _c = self._run(
@@ -393,8 +423,10 @@ class TestForgeApplyLayoutShim(unittest.TestCase):
                 )
         self.assertEqual(rc, 0)
         joined = "\n".join(lines)
-        self.assertIn("ApplyLayout", joined)
-        self.assertIn("al-live", joined)
+        self.assertEqual(joined.strip(), "forge layout: ok")
+        self.assertNotIn("ApplyLayout", joined)
+        self.assertNotIn("al-live", joined)
+        self.assertNotIn("skeleton", joined)
 
 
 if __name__ == "__main__":

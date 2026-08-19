@@ -255,12 +255,14 @@ def run_apply_layout_client(
     timeout_s: float = DEFAULT_TIMEOUT_S,
     sleep_fn: Callable[[float], None] = time.sleep,
     now_fn: Callable[[], float] = time.monotonic,
+    verbose: bool = False,
 ) -> tuple[int, Optional[dict[str, Any]]]:
     """
     ApplyLayout → stream Progress → wait Done.
 
     apply/get/cancel take/return JSON objects (callers wrap DBus strings).
     Ctrl+C / KeyboardInterrupt → CancelLayoutApply, exit 130.
+    Phase/applyId lines only when verbose; errors always print.
     """
     events: "queue.Queue[tuple[str, dict[str, Any]]]" = queue.Queue()
     apply_id_holder: dict[str, Any] = {"id": None}
@@ -277,9 +279,11 @@ def run_apply_layout_client(
 
     def _emit(payload: Any) -> None:
         nonlocal last_line, last_phase
-        line = format_progress_line(payload)
         if isinstance(payload, dict) and payload.get("phase"):
             last_phase = str(payload.get("phase") or last_phase)
+        if not verbose:
+            return
+        line = format_progress_line(payload)
         if not line or line == last_line:
             return
         last_line = line
@@ -308,7 +312,8 @@ def run_apply_layout_client(
             return (1 if rc is None else rc), None
         code = done_exit_code(done) if rc is None else rc
         if done.get("ok") is True:
-            print_fn("  ok")
+            if verbose:
+                print_fn("  ok")
         else:
             phase = str(done.get("phase") or last_phase or "?")
             err = str(done.get("error") or done.get("code") or "apply failed")
@@ -351,7 +356,8 @@ def run_apply_layout_client(
             write_apply_id_fn(apply_id)
         except Exception:
             pass
-    print_fn(f"  applyId  {apply_id}")
+    if verbose:
+        print_fn(f"  applyId  {apply_id}")
     start_phase = str(start.get("phase") or "").strip()
     if start_phase:
         _emit({"phase": start_phase, "event": "enter", "message": f"enter {start_phase}"})

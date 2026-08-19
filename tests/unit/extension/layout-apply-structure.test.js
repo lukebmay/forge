@@ -35,21 +35,23 @@ describe("layout-apply-structure pure", () => {
     expect(isPlaceMove({ op: "move", tile: "id:1", dest: "id:2" })).toBe(false);
   });
 
-  it("perfect-clean: empty steps, no open", () => {
+  it("perfect-clean: equal size steps only (R039), no open", () => {
     const d = loadExpected("perfect-clean");
     const r = buildStructurePlan(d.profile, d.forest, d.flags);
     expect(r.ok).toBe(true);
-    expect(r.steps).toEqual([]);
+    expect(r.steps.map((s) => s.op)).toEqual(["size", "size"]);
+    expect(r.steps.every((s) => s.shares?.length === 2)).toBe(true);
     expect(r.openCount).toBe(0);
   });
 
-  it("nested-hsplit-clean: order step only", () => {
+  it("nested-hsplit-clean: order then equal sizes (R039)", () => {
     const d = loadExpected("nested-hsplit-clean");
     const r = buildStructurePlan(d.profile, d.forest, d.flags);
     expect(r.ok).toBe(true);
-    expect(r.steps.map((s) => s.op)).toEqual(["order"]);
+    expect(r.steps.map((s) => s.op)).toEqual(["order", "size", "size"]);
     const b = partitionStepsByPhase(r.steps);
     expect(stepsForPhase(b, "order")).toHaveLength(1);
+    expect(stepsForPhase(b, "size")).toHaveLength(2);
     expect(stepsForPhase(b, "skeleton")).toHaveLength(0);
   });
 

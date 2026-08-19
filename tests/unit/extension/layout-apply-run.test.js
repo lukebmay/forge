@@ -368,7 +368,7 @@ describe("LayoutApplyRunBag structure (AL5)", () => {
     expect(executed.every((e) => !e.ops.includes("open"))).toBe(true);
   });
 
-  it("perfect-clean: no steps; still walks phases and chrome clear", () => {
+  it("perfect-clean: equal size steps (R039); walks phases and chrome clear", () => {
     const d = loadExpected("perfect-clean");
     const runSteps = vi.fn(() => ({ ok: true }));
     const chrome = { show: 0, clear: 0 };
@@ -388,7 +388,9 @@ describe("LayoutApplyRunBag structure (AL5)", () => {
     );
     bag.start({ profile: d.profile, flags: d.flags });
     flushAll();
-    expect(runSteps).not.toHaveBeenCalled();
+    expect(runSteps).toHaveBeenCalled();
+    const sizeCall = runSteps.mock.calls.find((c) => c[1]?.phase === "size");
+    expect(sizeCall?.[0]?.every((s) => s.op === "size")).toBe(true);
     expect(bag.lastTerminal.terminal.ok).toBe(true);
     expect(bag.lastTerminal.terminal.result.hardReady).toMatchObject({
       skipped: true,
