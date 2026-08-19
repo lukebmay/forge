@@ -949,6 +949,133 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       expect(live[1]).toBe(500);
     });
 
+    it("grab-begin does not start min-size probe during MOVING grab", async () => {
+      const MetaMod = await import("../../mocks/gnome/Meta.js");
+      const GrabOp = MetaMod.GrabOp;
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const b = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaB);
+      b.mode = WINDOW_MODES.TILE;
+
+      const probe = vi.fn();
+      wm().ensureWindowMinSizeKnown = probe;
+      wm()._handleGrabOpBegin(global.display, metaB, GrabOp.WINDOW_BASE);
+      expect(b.mode).toBe(WINDOW_MODES.GRAB_TILE);
+      expect(probe).not.toHaveBeenCalled();
+      expect(metaB._forgeMinProbing).toBeFalsy();
+    });
+
+    it("preview motion does not queue dest min probes", () => {
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const a = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaA);
+      const b = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaB);
+      a.mode = WINDOW_MODES.GRAB_TILE;
+      b.mode = WINDOW_MODES.TILE;
+      b.rect = { x: 960, y: 0, width: 960, height: 1080 };
+      b.renderRect = b.rect;
+
+      const queue = vi.spyOn(wm(), "_queueMinSizeProbe");
+      setPointer(1000, 540);
+      wm().nodeWinAtPointer = b;
+      wm().moveWindowToPointer(a, true);
+      expect(queue).not.toHaveBeenCalled();
+    });
+
+    it("grab-begin cancels in-flight min probes", async () => {
+      const MetaMod = await import("../../mocks/gnome/Meta.js");
+      const GrabOp = MetaMod.GrabOp;
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const b = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaB);
+      b.mode = WINDOW_MODES.TILE;
+
+      const cancel = vi.spyOn(wm(), "_cancelMinSizeProbes");
+      wm()._handleGrabOpBegin(global.display, metaB, GrabOp.WINDOW_BASE);
+      expect(cancel).toHaveBeenCalled();
+      expect(b.mode).toBe(WINDOW_MODES.GRAB_TILE);
+    });
+
+    it("grab-end queues only dragged window with delayed flush (no immediate flush)", async () => {
+      const MetaMod = await import("../../mocks/gnome/Meta.js");
+      const GrabOp = MetaMod.GrabOp;
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const a = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaA);
+      const b = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaB);
+      a.mode = WINDOW_MODES.TILE;
+      b.mode = WINDOW_MODES.TILE;
+
+      wm()._handleGrabOpBegin(global.display, metaA, GrabOp.WINDOW_BASE);
+      const queue = vi.spyOn(wm(), "_queueMinSizeProbe");
+      const flush = vi.spyOn(wm(), "_flushMinSizeProbeQueue");
+      // Leftover dest in queue must be cleared; only dragged is re-queued.
+      wm()._minSizeProbeQueue.add(metaB);
+      wm()._handleGrabOpEnd(global.display, metaA, GrabOp.WINDOW_BASE);
+
+      expect(queue).toHaveBeenCalledTimes(1);
+      expect(queue.mock.calls[0][0]).toBe(metaA);
+      expect(queue.mock.calls[0][1]?.delayMs).toBeGreaterThanOrEqual(400);
+      expect(flush).not.toHaveBeenCalled();
+      expect(wm()._minSizeProbeQueue.has(metaB)).toBe(false);
+      expect(wm()._minSizeProbeQueue.has(metaA)).toBe(true);
+    });
+
+    it("failed shrink probe sets gave-up so ensure does not retry", () => {
+      const meta = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
+        workspace: workspace0(),
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta);
+
+      const pending = [];
+      wm()._wmSchedule = (_ms, cb) => {
+        pending.push(cb);
+        return pending.length;
+      };
+      wm()._wmCancel = () => {};
+
+      // Frame never shrinks (Chrome/Wayland ignore tiny resize).
+      meta.move_resize_frame = vi.fn();
+      meta.get_frame_rect = vi.fn(() => ({ x: 0, y: 0, width: 800, height: 600 }));
+
+      wm().ensureWindowMinSizeKnown(meta);
+      expect(meta._forgeMinProbing).toBe(true);
+      expect(pending.length).toBeGreaterThanOrEqual(1);
+      // Fire probe settle timer.
+      pending[0]();
+      expect(meta._forgeMinProbeGaveUp).toBe(true);
+
+      // Clear flags as clear timer would.
+      meta._forgeMinProbing = false;
+      meta._forgeMinProbePending = false;
+      const before = meta.move_resize_frame.mock.calls.length;
+      wm().ensureWindowMinSizeKnown(meta);
+      expect(meta.move_resize_frame.mock.calls.length).toBe(before);
+      expect(meta._forgeMinProbing).toBeFalsy();
+    });
+
     it("peels TABBED leaf onto foreign TILE via titlebar-style GRAB_TILE", () => {
       ctx.settings.get_string.mockImplementation((key) => {
         if (key === "dnd-center-layout") return "TABBED";

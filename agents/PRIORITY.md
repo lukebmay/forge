@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-19 (DnD min-size red zones Wayland)
+**Updated:** 2026-08-19 (DnD min-probe grab fight)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -14,7 +14,7 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 **FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped.
 
 **Active next (ordered):**
-1. Host eyes-on DnD red zones after logout ([task](./tasks/completed/forge-dnd-minsize-red-zones-wayland.md))
+1. Host eyes-on after **logout** (min-probe grab fight + open-min tip) — [task](./tasks/completed/forge-dnd-minprobe-grab-fight.md)
 2. later CN14/CN15 · after CN13 PATH
 3. blocked Ratio / autotile (yuiop) · human design blocker
 
@@ -77,7 +77,10 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
-| **next** | Host eyes-on DnD red zones (logout tip) | human | Nest green; [task](./tasks/completed/forge-dnd-minsize-red-zones-wayland.md) |
+| **next** | Host eyes-on min-probe grab fight | human | Logout once; [task](./tasks/completed/forge-dnd-minprobe-grab-fight.md) |
+| done | DnD min-probe grab fight (forever-retry / tile race) | **4.5** | Cancel on grab; no dest mid-drag probe; gave-up; L0 **116** |
+| done | Open-min/DnD cold Wayland (probe/grab/persist) | **4.5** | No mid-grab probe; titlebar stage paint; window-mins.json |
+| done | Free open mins → tab BFS → float | **4.5** | Always-on when mins known; PlaceNext/DnD excluded |
 | done | DnD min-size **red zones** Wayland | **4.5** | Probe + learn + per-zone paint; nest Nautilus 360×380 |
 | done | Layout `share` restore (R038) | **4.5** | [completed](./tasks/completed/forge-layout-share-restore-green-gray.md) · nest + gray/green live |
 | done | Tab-drag one event owner (fast leave-behind) | **4.5** | [completed](./tasks/completed/forge-tab-drag-event-owner.md) |

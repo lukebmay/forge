@@ -689,6 +689,22 @@ Default **off** (`tiny-pane-tab-fallback-enabled`); min-edge default **320**.
 Only on open-app aspect path — not manual split keybinds. Min-edge, not area
 fraction (ultrawide-safe). Pure helper: `shouldTabInsteadOfSplit` in `lft-mru.js`.
 
+### Free open min-size → tab walk → float
+
+**Problem:** Dock / `forge launch` / focus-LFT opens can still H/V split into a
+pane illegal for the new app or the dest unit (same mins as DnD red zones).
+
+**Rule (always on when mins known):** If the intended edge split would overflow,
+do not carve it. BFS same-monitor tab-join units from LFT; first full pane that
+fits both mins wins (`resolveOpenMinPlacement`). None fit → float with a
+per-window override. Unknown mins → fail-open (keep split). Wayland has no
+Mutter size hints: class floors live in `window-mins.json` and are refreshed by
+post-open / post-grab probe (never mid MOVING grab; cancel in-flight on
+grab-begin; grab-end queues dragged only after settle; failed shrink gives
+up — no forever-retry). PlaceNext / ApplyLayout slot pins are excluded
+(desired forest owns dest). DnD still refuses on red. Tiny-pane above stays a
+separate earlier-tab QoL setting.
+
 `new-window-placement=window-actual` remains an escape hatch for restore geometry;
 default path is LFT policy. `lastFocusedWindow` still exists for pointer helpers.
 

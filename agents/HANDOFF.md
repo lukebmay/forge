@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-19 (DnD min-size red zones Wayland)
+**Updated:** 2026-08-19 (DnD min-probe grab fight)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -14,14 +14,15 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** DnD min-size **red zones** live on Wayland (probe + learn + per-zone paint).
-**Install:** dirty tip installed; nest green then **stopped**. **Host Wayland logout**
-once so host Shell loads `-dirty` (host ping still pre-dirty).
+**Repo tip:** DnD min-probe grab fight (cancel on grab-begin; no mid-drag dest
+probes; delayed dragged-only queue; gave-up on failed shrink). Prior: open-min /
+titlebar stage paint / `window-mins.json`.
+**Install:** dirty tip — **host logout once** for Shell load (nest already green).
 **Do not close** durable-agent ghostty windows.
-**L0 last:** drop-intent + drag-drop (54) green.
+**L0 last:** drag-drop + drop-intent + open-min + open-app-policy (**116**).
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
-**Host settings:** `preview-hint-enabled=true` (for red-zone eyes-on),
-`mod-mask-mouse-tile=None`.
+**Host settings:** `preview-hint-enabled=true`, `mod-mask-mouse-tile=None`.
+**Host seed:** `~/.config/forge/config/window-mins.json` has Nautilus 360×380.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
 `forge-test` (clone path; `./install --with-test-cli` opt-in).
 
@@ -29,9 +30,46 @@ once so host Shell loads `-dirty` (host ping still pre-dirty).
 
 | Pri | Slice | Status | Note |
 | --- | --- | --- | --- |
-| **next** | Host eyes-on DnD red zones | logout tip | Nest proved; host needs logout once |
+| **next** | Host eyes-on after logout | tip load | After layout+Nautilus: titlebar+tab DnD; no minProbe spam; sizes stick |
 | later | CN14 / CN15 | after CN13 | nest/live harness; delete Python router |
 | blocked | Ratio / autotile (yuiop) | hard blocker | [blocker](./blockers/resize-autotile-design.md) |
+
+### Shipped — DnD min-probe grab fight
+
+| Field | Detail |
+| --- | --- |
+| Bugs | After layout+Nautilus: tab stuck / no zones; titlebar DnD dead; wrong tile sizes; recovered later in-session |
+| Root | Grab-end flushed dest shrink probes; Chrome never learns → forever-retry raced tile/`move()` |
+| Fix | `_cancelMinSizeProbes` on grab-begin; no mid-drag dest queue; grab-end dragged-only delayed; `_forgeMinProbeGaveUp` |
+| Paths | `window.js` · `drag-drop.js` · contracts/DESIGN |
+| L0 | drag-drop (+drop-intent/open-min/open-app) **116** |
+| Nest | mon=1 `_forge-test-clean` **ok**; `running: False` |
+| Host | **Logout once**; then `layout dev` → Nautilus → titlebar+tab DnD |
+| Task | [completed](./tasks/completed/forge-dnd-minprobe-grab-fight.md) |
+
+### Shipped — Open-min / DnD cold Wayland
+
+| Field | Detail |
+| --- | --- |
+| Bugs | Fresh Wayland: dock Nautilus kept splitting (mins unknown); titlebar DnD dead until tab peel (probe mid-grab + no stage paint); false reds (premature learn of prior frame) |
+| Fix | No min probe during MOVING grab (queue after); titlebar `_armGrabPointerTrack` → `_handleMoving`; durable `window-mins.json` + post-open probe; clamp learn skips glued-to-prior; ratchet-down on accept |
+| Paths | `drag-drop.js` · `window.js` · `tree-layout.js` · contracts/DESIGN |
+| L0 | drop-intent + open-min + open-app-policy + drag-drop **112** |
+| Nest | mon=1 `_forge-test-clean` **ok**; `running: False` |
+| Host | **Logout once** for tip; then titlebar DnD before any tab; dock Nautilus ×N onto short/tall LFT |
+| Task | [completed](./tasks/completed/forge-open-min-dnd-cold-wayland.md) |
+
+### Shipped — Free open min → tab walk → float
+
+| Field | Detail |
+| --- | --- |
+| Product | Free open: illegal split → BFS same-mon tab → else float override |
+| Scope | Dock / forge launch / focus LFT; **not** PlaceNext pins; **not** DnD |
+| Pure | `open-min-place.js` `resolveOpenMinPlacement` + BFS candidates |
+| Wire | `trackWindow` + `_rehomeAttachAfterMonLft`; tiny-pane QoL unchanged |
+| L0 | open-min-place + open-app-policy (+ drop-intent/lft-mru) **123** |
+| Task | [completed](./tasks/completed/forge-open-min-tab-walk-float.md) |
+| Residual | Nest/host tip load; mins still fail-open until class floor/learn |
 
 ### Shipped — R039/R040/R041 + quiet layout
 

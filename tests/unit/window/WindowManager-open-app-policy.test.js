@@ -1092,6 +1092,188 @@ describe("OP1 open-app placement policy", () => {
     });
   });
 
+  describe("open-min placement (split → tab walk → float)", () => {
+    beforeEach(() => setup());
+
+    it("VSPLIT would overflow mins → TABBED with LFT", () => {
+      // Tall slot → aspect VSPLIT; half height 450 < min 500 → tab instead.
+      const lft = tileOn(0, {
+        id: "lft-tall",
+        rect: { x: 0, y: 0, width: 400, height: 900 },
+        size_hints: { min_width: 100, min_height: 100 },
+      });
+      lft.nodeWindow.rect = { x: 0, y: 0, width: 400, height: 900 };
+      lft.nodeWindow.renderRect = { x: 0, y: 0, width: 400, height: 900 };
+      wm().movePointerWith(lft.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "tall-min-open",
+        size_hints: { min_width: 0, min_height: 500 },
+      });
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      wm().processFloats();
+      const parent = lft.nodeWindow.parentNode;
+      expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parent.contains(lft.nodeWindow)).toBe(true);
+      expect(parent.contains(node)).toBe(true);
+      expect(node.mode).toBe(WINDOW_MODES.TILE);
+    });
+
+    it("LFT tab too small → tab onto roomy neighbor", () => {
+      const mon = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon.layout = LAYOUT_TYPES.HSPLIT;
+      const tiny = tileOn(0, {
+        id: "tiny",
+        rect: { x: 0, y: 0, width: 400, height: 300 },
+        size_hints: { min_width: 50, min_height: 50 },
+      });
+      tiny.nodeWindow.rect = { x: 0, y: 0, width: 400, height: 300 };
+      tiny.nodeWindow.renderRect = { x: 0, y: 0, width: 400, height: 300 };
+      const roomy = tileOn(0, {
+        id: "roomy",
+        rect: { x: 400, y: 0, width: 1400, height: 900 },
+        size_hints: { min_width: 50, min_height: 50 },
+      });
+      roomy.nodeWindow.rect = { x: 400, y: 0, width: 1400, height: 900 };
+      roomy.nodeWindow.renderRect = { x: 400, y: 0, width: 1400, height: 900 };
+      wm().movePointerWith(tiny.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "needs-room",
+        size_hints: { min_width: 0, min_height: 400 },
+      });
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      const parent = roomy.nodeWindow.parentNode;
+      expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parent.contains(roomy.nodeWindow)).toBe(true);
+      expect(parent.contains(node)).toBe(true);
+      expect(parent.contains(tiny.nodeWindow)).toBe(false);
+    });
+
+    it("no same-mon tab fits → float override", () => {
+      const only = tileOn(0, {
+        id: "only-small",
+        rect: { x: 0, y: 0, width: 500, height: 300 },
+        size_hints: { min_width: 50, min_height: 50 },
+      });
+      only.nodeWindow.rect = { x: 0, y: 0, width: 500, height: 300 };
+      only.nodeWindow.renderRect = { x: 0, y: 0, width: 500, height: 300 };
+      wm().movePointerWith(only.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "cannot-fit",
+        size_hints: { min_width: 0, min_height: 400 },
+      });
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      expect(node.mode).toBe(WINDOW_MODES.FLOAT);
+      expect(wm().isFloatingExempt(meta)).toBe(true);
+      // No TABBED/HSPLIT wrap carved for the open
+      expect(only.nodeWindow.parentNode.layout).not.toBe(LAYOUT_TYPES.TABBED);
+      expect(only.nodeWindow.parentNode).not.toBe(node.parentNode?.parentNode);
+      expect(node.parentNode?.isStackedOrTabbed?.() ?? false).toBe(false);
+    });
+
+    it("PlaceNext pin ignores open-min walk (still attaches)", () => {
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      const left = tileOn(0, {
+        id: "pin-left",
+        rect: { x: 0, y: 0, width: 400, height: 300 },
+        size_hints: { min_width: 50, min_height: 50 },
+      });
+      left.nodeWindow.rect = { x: 0, y: 0, width: 400, height: 300 };
+      const right = tileOn(0, {
+        id: "pin-right",
+        rect: { x: 400, y: 0, width: 400, height: 300 },
+        size_hints: { min_width: 50, min_height: 50 },
+      });
+      right.nodeWindow.rect = { x: 400, y: 0, width: 400, height: 300 };
+      wm().movePointerWith(left.nodeWindow);
+
+      wm().placeNext({
+        wmClass: "PinnedMinApp",
+        attachSelector: `id:${right.metaWindow.get_id()}`,
+        monitor: 0,
+        expiresAt: Date.now() + 60_000,
+      });
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "pinned-min",
+        wm_class: "PinnedMinApp",
+        size_hints: { min_width: 0, min_height: 400 },
+      });
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      // Pin path: under mon beside target (no open-min float / neighbor retarget)
+      expect(node.parentNode).toBe(mon0);
+      expect(wm().isFloatingExempt(meta)).toBe(false);
+      expect(mon0.childNodes).toContain(node);
+      expect(right.nodeWindow.parentNode).toBe(mon0);
+    });
+
+    it("unknown mins fail-open to normal aspect split", () => {
+      const tall = tileOn(0, {
+        id: "tall-nomins",
+        rect: { x: 0, y: 0, width: 400, height: 900 },
+      });
+      tall.nodeWindow.rect = { x: 0, y: 0, width: 400, height: 900 };
+      wm().movePointerWith(tall.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "nomins-open",
+      });
+      wm().trackWindow(null, meta);
+      const parent = tall.nodeWindow.parentNode;
+      expect(parent.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parent.contains(wm().findNodeWindow(meta))).toBe(true);
+    });
+
+    it("class floor alone (no hints) → tab when VSPLIT would overflow", async () => {
+      const { rememberClassMin, clearClassMinFloorForTests } = await import(
+        "../../../lib/extension/tree-layout.js"
+      );
+      clearClassMinFloorForTests();
+      rememberClassMin("org.gnome.Nautilus", 360, 500, { silent: true });
+
+      const lft = tileOn(0, {
+        id: "lft-floor",
+        rect: { x: 0, y: 0, width: 400, height: 900 },
+        size_hints: { min_width: 100, min_height: 100 },
+      });
+      lft.nodeWindow.rect = { x: 0, y: 0, width: 400, height: 900 };
+      lft.nodeWindow.renderRect = { x: 0, y: 0, width: 400, height: 900 };
+      wm().movePointerWith(lft.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "nautilus-floor",
+        wm_class: "org.gnome.Nautilus",
+      });
+      meta.get_size_hints = () => null;
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      const parent = lft.nodeWindow.parentNode;
+      expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parent.contains(lft.nodeWindow)).toBe(true);
+      expect(parent.contains(node)).toBe(true);
+      clearClassMinFloorForTests();
+    });
+  });
+
   describe("focus-on-create chains next open", () => {
     beforeEach(() => setup());
 

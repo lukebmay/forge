@@ -10,8 +10,11 @@ import {
   MIN_CLAMP_LEARN_DELAY_MS,
   clearClassMinFloorForTests,
   noteWindowMinFromClamp,
+  parseWindowMinsJson,
   readWindowMinSize,
   rememberClassMin,
+  loadClassMinFloor,
+  exportClassMinFloor,
 } from "../../../lib/extension/tree-layout.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
@@ -403,12 +406,27 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
     expect(readWindowMinSize(meta)).toEqual({ width: 120, height: 340 });
   });
 
-  it("ignores immediate race; learns after delay", () => {
+  it("ignores immediate race; does not learn while still at prior", () => {
     clearClassMinFloorForTests();
     const meta = {};
     const req = { width: 200, height: 150, at: 1000, priorW: 200, priorH: 380 };
     noteWindowMinFromClamp(meta, req, { width: 200, height: 380 }, 4, 1000 + 10);
     expect(meta._forgeKnownMinH).toBeFalsy();
+    // Frame still glued to prior → resize not applied; do not poison with prior.
+    noteWindowMinFromClamp(
+      meta,
+      req,
+      { width: 200, height: 380 },
+      4,
+      1000 + MIN_CLAMP_LEARN_DELAY_MS + 1
+    );
+    expect(meta._forgeKnownMinH).toBeFalsy();
+  });
+
+  it("learns clamp when frame settles between request and prior", () => {
+    clearClassMinFloorForTests();
+    const meta = {};
+    const req = { width: 200, height: 150, at: 1000, priorW: 200, priorH: 800 };
     noteWindowMinFromClamp(
       meta,
       req,
@@ -417,6 +435,20 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
       1000 + MIN_CLAMP_LEARN_DELAY_MS + 1
     );
     expect(readWindowMinSize(meta)).toEqual({ width: 0, height: 380 });
+  });
+
+  it("ratchets known min down when request is accepted", () => {
+    clearClassMinFloorForTests();
+    const meta = { _forgeKnownMinH: 700 };
+    const req = { width: 400, height: 500, at: 1000, priorW: 800, priorH: 800 };
+    noteWindowMinFromClamp(
+      meta,
+      req,
+      { width: 400, height: 500 },
+      4,
+      1000 + MIN_CLAMP_LEARN_DELAY_MS + 1
+    );
+    expect(meta._forgeKnownMinH).toBe(500);
   });
 
   it("discards absurd learned mins", () => {
@@ -433,5 +465,22 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
       get_size_hints: () => null,
     };
     expect(readWindowMinSize(meta)).toEqual({ width: 360, height: 380 });
+  });
+
+  it("parseWindowMinsJson caps absurd and loads", () => {
+    clearClassMinFloorForTests();
+    const parsed = parseWindowMinsJson(
+      JSON.stringify({
+        v: 1,
+        classes: {
+          "org.gnome.Nautilus": { width: 360, height: 380 },
+          Huge: { width: 2000, height: 900 },
+        },
+      })
+    );
+    expect(parsed["org.gnome.Nautilus"]).toEqual({ width: 360, height: 380 });
+    expect(parsed.Huge).toBeUndefined();
+    loadClassMinFloor(parsed);
+    expect(exportClassMinFloor()["org.gnome.Nautilus"]).toEqual({ width: 360, height: 380 });
   });
 });
