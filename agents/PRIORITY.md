@@ -77,6 +77,7 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
+| **next** | DnD min-size **red zones live** (Wayland mins) | **4.5** | Partial: [task](./tasks/completed/forge-dnd-minsize-gate-titlebar.md) — pickup readable mins/learn |
 | done | Layout `share` restore (R038) | **4.5** | [completed](./tasks/completed/forge-layout-share-restore-green-gray.md) · nest + gray/green live |
 | done | Tab-drag one event owner (fast leave-behind) | **4.5** | [completed](./tasks/completed/forge-tab-drag-event-owner.md) |
 | later | CN14 / CN15 | **4.6 med** | after CN13 · [cli-node](./plans/forge-cli-node.md) § CN14 |
