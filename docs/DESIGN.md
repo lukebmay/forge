@@ -620,7 +620,7 @@ Portable kits: `FORGE_KEYBIND_PROFILES_DIR` + `forge keybind save|load`.
 
 **Phase 2–3 / Wave C (+ R1) — shipped (C0–C5):** first-class containers —
 non-destructive `setLayout` cycle (C1), explicit `group` / `ungroup` (C2),
-split chrome focus-ancestry + show-all + grab force (C3 / I5), owning-split
+split chrome shipped then **removed** (C3 / I5 → D047), owning-split
 resize (R1 / I3), focus parent/child + move in/out (C4), kits/docs polish (C5).
 Monocle **removed** (C0). Profile `_layoutOp` silent flatten **dropped**
 (REG-ensure-flatten / P3 — lift+wrap or `ensure-flatten-refused`). Zoom +

@@ -29,7 +29,6 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       settings: {
         "focus-border-toggle": true,
         "focus-border-hidden-on-single": false,
-        "split-border-toggle": false,
         "window-gap-size": 4,
       },
     });

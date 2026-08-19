@@ -572,7 +572,7 @@ class FuzzEngine:
             pass
         try:
             # FocusBorderToggle persists focus-border-toggle; restore the default (True) so later
-            # focus/split-border assertions aren't broken by a leaked toggle (forge-4b6).
+            # focus-border assertions aren't broken by a leaked toggle (forge-4b6).
             self.shell.set_focus_border(True)
         except Exception:  # noqa: BLE001
             pass

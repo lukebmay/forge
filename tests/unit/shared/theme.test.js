@@ -173,14 +173,14 @@ describe("ThemeManagerBase", () => {
     it("should create defaultPalette on construction", () => {
       expect(themeManager.defaultPalette).toBeDefined();
       expect(themeManager.defaultPalette.tiled).toBeDefined();
-      expect(themeManager.defaultPalette.split).toBeDefined();
       expect(themeManager.defaultPalette.floated).toBeDefined();
       expect(themeManager.defaultPalette.stacked).toBeDefined();
       expect(themeManager.defaultPalette.tabbed).toBeDefined();
+      expect(themeManager.defaultPalette.split).toBeUndefined();
     });
 
     it("should set cssTag", () => {
-      expect(themeManager.cssTag).toBe(38);
+      expect(themeManager.cssTag).toBe(39);
     });
   });
 
@@ -332,11 +332,11 @@ describe("ThemeManagerBase", () => {
     it("should return palette for all color schemes", () => {
       const palette = themeManager.getDefaultPalette();
       expect(palette.tiled).toBeDefined();
-      expect(palette.split).toBeDefined();
       expect(palette.floated).toBeDefined();
       expect(palette.stacked).toBeDefined();
       expect(palette.tabbed).toBeDefined();
       expect(palette.zoomed).toBeDefined();
+      expect(palette.split).toBeUndefined();
     });
 
     it("should have correct values for tiled scheme", () => {

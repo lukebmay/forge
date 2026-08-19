@@ -392,19 +392,6 @@ describe("WindowManager - Command System", () => {
     });
   });
 
-  describe("SplitChromeShowAllToggle Command", () => {
-    it("should toggle split-chrome-show-all", () => {
-      ctx.settings.get_boolean.mockImplementation((key) => {
-        if (key === "split-chrome-show-all") return false;
-        return false;
-      });
-
-      wm().command({ name: "SplitChromeShowAllToggle" });
-
-      expect(ctx.settings.set_boolean).toHaveBeenCalledWith("split-chrome-show-all", true);
-    });
-  });
-
   describe("TilingModeToggle Command", () => {
     it("should toggle tiling mode off and float all windows", () => {
       ctx.settings.get_boolean.mockImplementation((key) => {

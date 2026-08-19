@@ -38,10 +38,6 @@
           "$ref": "#/definitions/keybinding",
           "description": "Toggle focused window border"
         },
-        "split-chrome-show-all-toggle": {
-          "$ref": "#/definitions/keybinding",
-          "description": "Toggle show-all H/V split chrome"
-        },
         "window-gap-size-increase": {
           "$ref": "#/definitions/keybinding",
           "description": "Increase gap size between windows"

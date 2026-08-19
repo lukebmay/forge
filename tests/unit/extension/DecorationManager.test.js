@@ -185,7 +185,6 @@ describe("DecorationManager border lifecycle", () => {
         "tiling-mode-enabled": true,
         "focus-border-toggle": true,
         "focus-border-hidden-on-single": false,
-        "split-border-toggle": false,
         "window-gap-size": 4,
       },
     });
@@ -342,90 +341,6 @@ describe("DecorationManager border lifecycle", () => {
       const actor = { border: null };
       expect(() => wm()._destroyActorBorder(actor, "border")).not.toThrow();
     });
-  });
-});
-
-describe("DecorationManager split chrome I5", () => {
-  let ctx;
-
-  beforeEach(() => {
-    ctx = createWindowManagerFixture({
-      settings: {
-        "tiling-mode-enabled": true,
-        "focus-border-toggle": true,
-        "focus-border-hidden-on-single": false,
-        "split-border-toggle": true,
-        "split-chrome-show-all": false,
-        "window-gap-size": 4,
-      },
-    });
-  });
-
-  afterEach(() => {
-    ctx.cleanup();
-    vi.restoreAllMocks();
-  });
-
-  const wm = () => ctx.windowManager;
-
-  function mockBorder() {
-    return {
-      set_style_class_name: vi.fn(),
-      add_style_class_name: vi.fn(),
-      remove_style_class_name: vi.fn(),
-      set_size: vi.fn(),
-      set_position: vi.fn(),
-      show: vi.fn(),
-      hide: vi.fn(),
-    };
-  }
-
-  it("ancestry paints split borders on both HSPLIT siblings", () => {
-    const { monitor } = getWorkspaceAndMonitor(ctx);
-    monitor.layout = LAYOUT_TYPES.HSPLIT;
-    const { metaWindow: focusedMeta, nodeWindow: focusedNode } = createWindowNode(
-      ctx.tree,
-      monitor,
-      {
-        windowOverrides: { id: "focused", wm_class: "TestApp" },
-      }
-    );
-    const { metaWindow: sibMeta, nodeWindow: sibNode } = createWindowNode(ctx.tree, monitor, {
-      windowOverrides: { id: "sibling", wm_class: "TestApp" },
-    });
-    focusedMeta.appears_focused = true;
-    focusedMeta.minimized = false;
-    sibMeta.appears_focused = false;
-    sibMeta.minimized = false;
-    focusedNode.renderRect = { x: 0, y: 0, width: 960, height: 1080 };
-    sibNode.renderRect = { x: 960, y: 0, width: 960, height: 1080 };
-    focusedMeta.get_compositor_private().border = mockBorder();
-    global.display.get_focus_window.mockReturnValue(focusedMeta);
-
-    wm().showWindowBorders();
-
-    const focusSplit = focusedMeta.get_compositor_private().splitBorder;
-    const sibSplit = sibMeta.get_compositor_private().splitBorder;
-    expect(focusSplit).toBeTruthy();
-    expect(sibSplit).toBeTruthy();
-    expect(focusSplit.get_style_class_name()).toContain("window-split-horizontal");
-    expect(sibSplit.get_style_class_name()).toContain("window-split-horizontal");
-    expect(focusSplit.visible).toBe(true);
-    expect(sibSplit.visible).toBe(true);
-  });
-
-  it("setSplitChromeForceShowAll toggles the force flag and refreshes", () => {
-    const dm = wm().decorationManager;
-    const spy = vi.spyOn(dm, "updateBorderLayout");
-    expect(dm._splitChromeForceShowAll).toBe(false);
-    dm.setSplitChromeForceShowAll(true);
-    expect(dm._splitChromeForceShowAll).toBe(true);
-    expect(spy).toHaveBeenCalledTimes(1);
-    dm.setSplitChromeForceShowAll(true);
-    expect(spy).toHaveBeenCalledTimes(1);
-    dm.setSplitChromeForceShowAll(false);
-    expect(dm._splitChromeForceShowAll).toBe(false);
-    expect(spy).toHaveBeenCalledTimes(2);
   });
 });
 

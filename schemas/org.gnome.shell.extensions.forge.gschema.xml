@@ -7,16 +7,6 @@
             <summary>Show window border on focused window</summary>
         </key>
 
-        <key type="b" name="split-border-toggle">
-            <default>true</default>
-            <summary>Show split direction border on focused window</summary>
-        </key>
-
-        <key type="b" name="split-chrome-show-all">
-            <default>false</default>
-            <summary>Show H/V split chrome on every split CON (not only focus ancestry)</summary>
-        </key>
-
         <key type="u" name="window-gap-size">
             <default>4</default>
             <summary>
@@ -326,11 +316,6 @@
         <key type="as" name="focus-border-toggle">
             <default><![CDATA[['<Ctrl><Super>b']]]></default>
             <summary>Toggle focus border</summary>
-        </key>
-
-        <key type="as" name="split-chrome-show-all-toggle">
-            <default><![CDATA[[]]]></default>
-            <summary>Toggle show-all split chrome</summary>
         </key>
 
         <key type="as" name="window-gap-size-increase">

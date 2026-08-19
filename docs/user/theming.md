@@ -6,12 +6,12 @@ override Forge's stylesheet.
 
 ## Preferences
 
-Appearance settings (focus-hint borders, split borders, gaps, screen-edge margins,
-tab margins) update live. When you change a focus-hint **color or size**, it
-propagates everywhere that hint is drawn: the tiled/stacked/tabbed window borders,
-the drag **preview hints**, and the overview / workspace-thumbnail hints. Each hint
-group has a **Reset** that **clears your override** so the bundled default shows
-again (not a sticky copy of the default into your file).
+Appearance settings (focus-hint borders, gaps, screen-edge margins, tab margins)
+update live. When you change a focus-hint **color or size**, it propagates
+everywhere that hint is drawn: the tiled/stacked/tabbed window borders, the drag
+**preview hints**, and the overview / workspace-thumbnail hints. Each hint group
+has a **Reset** that **clears your override** so the bundled default shows again
+(not a sticky copy of the default into your file).
 
 ## Gaps
 
@@ -61,14 +61,12 @@ Restore colors from a backup if needed:
 | Selector | What it styles |
 | --- | --- |
 | `.window-tiled-border` | Border of a tiled window |
-| `.window-split-border` | Split-container border |
-| `.window-split-horizontal` / `.window-split-vertical` | One-edge add/split indicator (**no** border-radius — straight edge) |
 | `.window-stacked-border` / `.window-tabbed-border` | Stacked / tabbed container border |
 | `.window-floated-border` | Floating-window border |
 | `.window-tabbed-tab`, `.window-tabbed-tab-active`, `.window-tabbed-tab-icon`, `.window-tabbed-tab-close` | Tab strip elements |
 | `.window-tilepreview-tiled` / `-stacked` / `-tabbed` / `-swap` / `-zoomed` | Drag/drop preview hints |
 | `.window-tilepreview-invalid` | Drop refused (app min size would overflow the slot) |
-| `.tiled`, `.split`, `.stacked`, `.tabbed`, `.floated` | Palette classes (color/opacity) |
+| `.tiled`, `.stacked`, `.tabbed`, `.floated` | Palette classes (color/opacity) |
 
 Border width, color, radius, and opacity are plain CSS properties; colors accept
 `rgba(...)` or hex. Prefer only the rules you customize — the base supplies the rest.

@@ -22,7 +22,6 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
       settings: {
         "focus-border-toggle": true,
         "focus-border-hidden-on-single": false,
-        "split-border-toggle": false,
         "window-gap-size": 4,
       },
     });

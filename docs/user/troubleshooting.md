@@ -5,8 +5,9 @@
 - **Reload config** — `Super+Shift+r` re-reads `windows.json` / `keybindings.json`
   from disk without restarting.
 - **Restart GNOME Shell** — on X11, `Alt+F2` → `r` → Enter (or `killall -HUP gnome-shell`).
-  On Wayland the host Shell cannot HUP; log out and back in to load a new extension
-  tip on the host session (daily driver).
+  On Wayland the host Shell cannot HUP. `./install` copies files only and does
+  **not** end the session (D048); load a new tip via nest, or log out later when
+  you choose.
 - **Check it's enabled** — `gnome-extensions list --enabled` should include
   `forge@jmmaranan.com`.
 
@@ -25,7 +26,7 @@ gsettings get org.gnome.shell disable-user-extensions   # true → all user exte
 gsettings set org.gnome.shell disable-user-extensions false
 gnome-extensions enable forge@jmmaranan.com
 # X11: Alt+F2 → r, or killall -HUP gnome-shell
-# Wayland host tip: log out and back in once
+# Wayland: nest for code loop, or log out later for host tip (install never forces this)
 ```
 
 Also confirm Extensions app master toggle is on (same setting).

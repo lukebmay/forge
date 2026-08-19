@@ -38,8 +38,6 @@ export const DEFAULT_SETTINGS = {
   // Borders
   "focus-border-toggle": false,
   "focus-border-hidden-on-single": false,
-  "split-border-toggle": false,
-  "split-chrome-show-all": false,
 
   // Gaps
   "window-gap-size": 0,

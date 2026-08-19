@@ -84,17 +84,12 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Edge resize (grow) | `Ctrl+Super+y/u/i/o` (left/bottom/top/right) |
 | Edge resize (shrink) | `Ctrl+Shift+Super+o/i/u/y` |
-| Split chrome show-all | unbound (`split-chrome-show-all-toggle`; prefs Appearance) |
 | Snaps / cyclic focus | unbound |
 
 **Resize vs Window Size:** cheatsheet **Resize** is edge
 `window-resize-*` (grow/shrink one side on the owning split). **Window Size** is
 expand / shrink / golden (`[`/`]` family) — both axes via owning-split steps.
 Same category split as the live cheatsheet.
-
-**Split chrome show-all:** Preferences → Appearance → **Show all split chrome**
-(`split-chrome-show-all`). Kit toggle is unbound by default; a drag-tile grab
-forces show-all for the grab.
 
 Forge still frees a few GNOME defaults while enabled (edge-tile keys, maximize,
 toggle-maximized, etc. — see `gnome-overrides`). Those restore on disable.

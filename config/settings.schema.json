@@ -131,16 +131,6 @@
           "maximum": 30,
           "default": 14
         },
-        "split-border-toggle": {
-          "type": "boolean",
-          "description": "Show split direction border on focused window",
-          "default": true
-        },
-        "split-chrome-show-all": {
-          "type": "boolean",
-          "description": "Show H/V split chrome on every split CON (not only focus ancestry)",
-          "default": false
-        },
         "window-gap-size": {
           "type": "integer",
           "description": "Gap size between windows in pixels",

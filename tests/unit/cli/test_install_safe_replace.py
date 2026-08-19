@@ -1,4 +1,4 @@
-"""Install safe-replace: disable before rm (mocked FORGE_EXT_DIR / gnome-extensions).
+"""Install replace: X11 disables before rm; Wayland overlays without live cycle.
 
 Does not touch the live GNOME extension install. Uses PATH stubs and temp dirs.
 """
@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import stat
 import subprocess
 import tempfile
@@ -121,6 +122,8 @@ class TestForgeDisableExtension(unittest.TestCase):
             "FORGE_COLOR": "never",
             "FORGE_INSTALL_QUIET": "0",
             "HOME": str(self.root / "home"),
+            # Disable helper itself is session-agnostic; pin x11 for clarity.
+            "XDG_SESSION_TYPE": "x11",
         }
         (self.root / "home").mkdir(exist_ok=True)
 
@@ -215,7 +218,7 @@ class TestForgeDisableExtension(unittest.TestCase):
 
 
 class TestForgeDoInstallDisableBeforeRm(unittest.TestCase):
-    """forge_do_install must call disable before removing FORGE_EXT_DIR."""
+    """X11: forge_do_install must call disable before removing FORGE_EXT_DIR."""
 
     def setUp(self) -> None:
         self._td = tempfile.TemporaryDirectory(prefix="forge-do-install-")
@@ -317,6 +320,7 @@ class TestForgeDoInstallDisableBeforeRm(unittest.TestCase):
             "FORGE_COLOR": "never",
             "FORGE_INSTALL_QUIET": "1",
             "HOME": str(self.root / "home"),
+            "XDG_SESSION_TYPE": "x11",
             # Avoid writing origin into real manage dir
             "FORGE_MANAGE_DIR": str(self.root / "manage"),
             "FORGE_ORIGIN_PATH":
@@ -369,6 +373,152 @@ class TestForgeDoInstallDisableBeforeRm(unittest.TestCase):
         self.assertRegex(log, rf"disable\s+{_UUID}")
 
 
+class TestForgeDoInstallWaylandNoLiveCycle(unittest.TestCase):
+    """Wayland: overlay files; never gnome-extensions disable while replacing."""
+
+    def setUp(self) -> None:
+        self._td = tempfile.TemporaryDirectory(prefix="forge-do-install-wl-")
+        self.root = Path(self._td.name)
+        self.repo = self.root / "repo"
+        self.repo.mkdir()
+        (self.repo / "Makefile").write_text("# fake\n")
+        (self.repo / "metadata.json").write_text(
+            json.dumps({"uuid": _UUID, "name": "Forge"}))
+        temp = self.repo / "temp"
+        temp.mkdir()
+        (temp / "extension.js").write_text("\n".join(
+            f"// line {i}" for i in range(200)))
+        (temp / "metadata.json").write_text(
+            json.dumps({
+                "uuid": _UUID,
+                "name": "Forge",
+                "version-name": "from-temp-wl",
+                "shell-version": ["46"],
+            }))
+        (temp / "schemas").mkdir()
+        (temp / "schemas" / "gschemas.compiled").write_bytes(b"fake")
+
+        self.ext = self.root / "extensions" / _UUID
+        self.ext.mkdir(parents=True)
+        (self.ext / "metadata.json").write_text(
+            json.dumps({
+                "uuid": _UUID,
+                "name": "Forge",
+                "version-name": "old-install",
+                "shell-version": ["46"],
+            }))
+        (self.ext / "old-marker.txt").write_text("stale")
+
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        self.log = self.root / "ops.log"
+        self.log.write_text("")
+        state = self.bin / "enabled-state.txt"
+        state.write_text(_UUID + "\n")
+        _write_executable(
+            self.bin / "gnome-extensions",
+            textwrap.dedent(f"""\
+                #!/usr/bin/env zsh
+                emulate -L zsh
+                set -euo pipefail
+                LOG={self.log!s}
+                STATE={state!s}
+                print -r -- "$*" >>"$LOG"
+                case "${{1:-}}" in
+                  list)
+                    if [[ "${{2:-}}" == "--enabled" ]]; then
+                      [[ -f "$STATE" ]] && cat "$STATE"
+                    fi
+                    ;;
+                  disable)
+                    print -r -- "UNEXPECTED-DISABLE" >>"$LOG"
+                    exit 1
+                    ;;
+                  enable)
+                    print -r -- "$2" >>"$STATE"
+                    ;;
+                esac
+                exit 0
+                """),
+        )
+        self.env = {
+            **os.environ,
+            "PATH": f"{self.bin}:{os.environ.get('PATH', '')}",
+            "FORGE_EXT_DIR": str(self.ext),
+            "FORGE_REPO_ROOT": str(self.repo),
+            "FORGE_UUID": _UUID,
+            "FORGE_FORCE": "1",
+            "FORGE_COLOR": "never",
+            "FORGE_INSTALL_QUIET": "1",
+            "HOME": str(self.root / "home"),
+            "XDG_SESSION_TYPE": "wayland",
+            "FORGE_MANAGE_DIR": str(self.root / "manage"),
+            "FORGE_ORIGIN_PATH":
+            str(self.root / "manage" / "install-origin.json"),
+        }
+        (self.root / "home").mkdir(exist_ok=True)
+        (self.root / "manage").mkdir(exist_ok=True)
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+
+    def test_wayland_install_only_skips_disable_and_updates_files(self) -> None:
+        r = subprocess.run(
+            [
+                _zsh_bin(),
+                str(_BUILD_INSTALL),
+                "--force",
+                "--install-only",
+                "--no-enable",
+                "--no-host-defaults",
+            ],
+            env=self.env,
+            text=True,
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(r.returncode,
+                         0,
+                         msg=f"stdout={r.stdout}\nstderr={r.stderr}")
+        log = self.log.read_text()
+        self.assertNotIn("disable", log)
+        self.assertNotIn("UNEXPECTED-DISABLE", log)
+        self.assertFalse((self.ext / "old-marker.txt").exists())
+        self.assertTrue((self.ext / "extension.js").is_file())
+        meta = json.loads((self.ext / "metadata.json").read_text())
+        self.assertEqual(meta.get("version-name"), "from-temp-wl")
+
+
+class TestLiveExtensionCycleGate(unittest.TestCase):
+
+    def test_cycle_ok_only_on_x11_unless_override(self) -> None:
+        script = textwrap.dedent(f"""\
+            emulate -L zsh
+            set -euo pipefail
+            source {_LIB!s}
+            if forge_live_extension_cycle_ok; then print yes; else print no; fi
+            """)
+        env_base = {
+            **os.environ,
+            "FORGE_COLOR": "never",
+            "FORGE_INSTALL_QUIET": "1",
+            "HOME": "/tmp",
+        }
+        r = _run_zsh(script, {**env_base, "XDG_SESSION_TYPE": "x11",
+                              "FORGE_ALLOW_LIVE_EXTENSION_CYCLE": "0"})
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertEqual(r.stdout.strip(), "yes")
+        r = _run_zsh(script, {**env_base, "XDG_SESSION_TYPE": "wayland",
+                              "FORGE_ALLOW_LIVE_EXTENSION_CYCLE": "0"})
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertEqual(r.stdout.strip(), "no")
+        r = _run_zsh(script, {**env_base, "XDG_SESSION_TYPE": "wayland",
+                              "FORGE_ALLOW_LIVE_EXTENSION_CYCLE": "1"})
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertEqual(r.stdout.strip(), "yes")
+
+
 class TestInstallHelpMentionsSafeReplace(unittest.TestCase):
 
     def test_install_zsh_help(self) -> None:
@@ -385,7 +535,8 @@ class TestInstallHelpMentionsSafeReplace(unittest.TestCase):
         )
         self.assertEqual(r.returncode, 0, msg=r.stderr)
         out = r.stdout + r.stderr
-        self.assertIn("disables", out.lower())
+        self.assertRegex(out, r"Wayland")
+        self.assertRegex(out, r"never|D048|tip", re.I)
         self.assertRegex(out, r"EGO|ego")
         self.assertRegex(out, r"jcrussell|luke")
 

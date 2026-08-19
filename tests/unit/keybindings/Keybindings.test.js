@@ -67,7 +67,6 @@ describe("Keybindings", () => {
         "window-move-out",
         "con-tabbed-showtab-decoration-toggle",
         "focus-border-toggle",
-        "split-chrome-show-all-toggle",
         "prefs-tiling-toggle",
         "window-gap-size-increase",
         "window-gap-size-decrease",

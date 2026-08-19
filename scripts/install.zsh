@@ -26,22 +26,22 @@ usage() {
   cat <<EOF
 ${c_bold}install${c_reset} — install on-disk Forge from this git tree
 
-Default (no flags): build → disable previous (if any) → install → enable →
-disable rival tilers → host defaults → CLI → reload
-Shell on X11. Quiet checklist UX (no prompts for routine paths).
+Default (no flags): build → install files → enable if needed → rival tilers →
+host defaults → CLI. On ${c_bold}X11${c_reset}: may disable → replace → HUP Shell.
+On ${c_bold}Wayland${c_reset}: ${c_bold}never${c_reset} disable/enable a live Forge
+(files overlay only) — tip loads via nest or a later logout (D048). Quiet
+checklist UX (no prompts for routine paths).
 
-Safely replaces any prior EGO / jcrussell / luke / unknown install of the same
-UUID (${c_cyan}forge@jmmaranan.com${c_reset}): detects lineage, ${c_bold}disables${c_reset}
-the loaded extension, then replaces files (avoids Shell thrash/logout from
-rm -rf under a still-enabled extension). ${c_blue}forge update${c_reset} uses this path.
+Replaces any prior EGO / jcrussell / luke / unknown install of the same UUID
+(${c_cyan}forge@jmmaranan.com${c_reset}). ${c_blue}forge update${c_reset} uses this path.
 
 Disables other GNOME Shell tiling extensions (Tiling Assistant, Pop Shell,
 PaperWM, …) so they cannot fight Forge. Does not touch session WMs (i3/sway).
 
   none               → build + install this tree
-  luke / jcrussell   → disable → rebuild this tree over the live extension
-  unknown            → disable → replace (backup by default)
-  ego (SweetTooth)   → migrate with auto-backup (migrate-from-ego; disable first)
+  luke / jcrussell   → rebuild this tree over the live extension dir
+  unknown            → replace (backup by default)
+  ego (SweetTooth)   → migrate with auto-backup (migrate-from-ego)
 
 Records install origin at:
   ${c_cyan}~/.local/share/forge-manage/install-origin.json${c_reset}
@@ -64,8 +64,8 @@ Options:
   --dev               Debug build (default)
   --save              Backup before replace (always on for EGO migrate)
   --no-save           Skip pre-update backup when already luke/jcrussell
-  --no-restart        Do not HUP/reload Shell (files only; code stays old until you reload)
-  --restart-shell     Same as default (explicit)
+  --no-restart        Skip X11 HUP (files only). Wayland never HUPs/logouts anyway
+  --restart-shell     X11: HUP after install. Wayland: still files-only (no session end)
   --reload-theme      Stamp/reload user stylesheet after install (default)
   --no-reload-theme   Skip css-last-update stamp / css-updated bump
   --skip-npm          Skip npm install if node_modules missing
@@ -83,7 +83,7 @@ Env:
 
 Examples:
   ./install
-  ./install --no-restart          # copy files only; reload Shell yourself
+  ./install --no-restart          # X11: skip HUP; Wayland: same as default files-only
   ./install --verbose             # full build chatter
   ./install --kit=vim             # daily: install + load Vim kit
   forge install                   # re-run from install-origin
@@ -95,7 +95,7 @@ EOF
 
 MODE="dev"
 DO_SAVE="" # empty = default by lineage
-# Default: reload Shell so the extension is actually running the new build.
+# X11 default: HUP after install. Wayland: never ends the session (D048).
 DO_RESTART=1
 # Always stamp css-last-update + bump css-updated so user overrides reload
 # after HUP (otherwise dual-load can leave bundled base colors looking "wiped").
@@ -235,18 +235,10 @@ case "$lineage" in
       forge_step_warn "CLI (non-fatal)"
     fi
     _install_keybind_kit
-    if (( DO_RESTART )); then
-      st=$(forge_session_type)
-      if [[ "$st" == "x11" ]]; then
-        forge_step_ok "Live reload"
-      else
-        forge_step_fail "Live reload"
-        if [[ "$st" == "wayland" ]]; then
-          forge_warn "must log out and back in to complete install on Wayland"
-        else
-          forge_warn "must log out and back in to complete install (session=$st)"
-        fi
-      fi
+    if (( DO_RESTART )) && forge_live_extension_cycle_ok; then
+      forge_step_ok "Live reload"
+    elif (( DO_RESTART )); then
+      forge_step_skip "Live reload (Wayland: tip deferred; nest or later logout)"
     else
       forge_step_skip "Live reload (--no-restart)"
     fi
@@ -279,8 +271,11 @@ build_args=(--force --build-only)
 (( SKIP_NPM )) && build_args+=(--skip-npm)
 _install_step "Build" "$SCRIPT_DIR/build-install.zsh" "${build_args[@]}"
 
-# Unload before install-only rm (defense-in-depth also inside forge_do_install).
-if [[ "$lineage" != "none" ]]; then
+_was_enabled=0
+forge_ext_enabled && _was_enabled=1
+
+# X11: unload before replace. Wayland: never cycle a live extension (D048).
+if [[ "$lineage" != "none" ]] && forge_live_extension_cycle_ok; then
   _dis_st=$(forge_disable_extension "$FORGE_UUID" || true)
   case "$_dis_st" in
     disabled|already-off|not-installed)
@@ -294,6 +289,8 @@ if [[ "$lineage" != "none" ]]; then
       ;;
   esac
   unset _dis_st
+elif [[ "$lineage" != "none" ]]; then
+  forge_step_skip "Disable previous ($lineage; live cycle skipped)"
 fi
 
 install_args=(--force --install-only --no-enable --no-host-defaults)
@@ -314,8 +311,10 @@ case "$_block_st" in
 esac
 unset _block_st
 
-# Enable: soft when we will HUP (often fails until reload); hard otherwise.
-if (( DO_RESTART )); then
+# Enable only when needed. Never disable→enable a live Wayland Forge.
+if (( _was_enabled )) && ! forge_live_extension_cycle_ok; then
+  forge_step_ok "Enable (left live; tip deferred)"
+elif (( DO_RESTART )) && forge_live_extension_cycle_ok; then
   if forge_run_capture forge_enable_extension "$FORGE_UUID"; then
     forge_step_ok "Enable"
   else
@@ -330,6 +329,7 @@ else
     forge_warn "then: gnome-extensions enable $FORGE_UUID"
   fi
 fi
+unset _was_enabled
 
 # Rival GNOME Shell tilers (not i3/sway) — install/update must not leave two WMs.
 _install_rivals=()
@@ -379,7 +379,7 @@ if (( DO_RELOAD_THEME )) && [[ -f "$SCRIPT_DIR/reload-theme.zsh" ]]; then
   fi
 fi
 
-if (( DO_RESTART )); then
+if (( DO_RESTART )) && forge_live_extension_cycle_ok; then
   rc=0
   forge_restart_shell || rc=$?
   if (( rc == 0 )); then
@@ -390,21 +390,13 @@ if (( DO_RESTART )); then
       "$SCRIPT_DIR/reload-theme.zsh" --force >/dev/null 2>&1 || true
     fi
     forge_step_ok "Live reload"
-  elif (( rc == 2 )); then
-    # Expected on Wayland: red X step + one warning line; not a die.
-    forge_step_fail "Live reload"
-    st=$(forge_session_type)
-    if [[ "$st" == "wayland" ]]; then
-      forge_warn "must log out and back in to complete install on Wayland"
-    else
-      forge_warn "must log out and back in to complete install (session=$st)"
-    fi
   else
     forge_step_fail "Live reload"
     forge_die "Shell reload failed"
   fi
+elif (( DO_RESTART )); then
+  forge_step_skip "Live reload (Wayland: tip deferred; nest or later logout)"
 else
-  # Explicit --no-restart: skip only (user opted out; no second warning).
   forge_step_skip "Live reload (--no-restart)"
 fi
 

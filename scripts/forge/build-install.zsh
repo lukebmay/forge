@@ -30,8 +30,9 @@ Options:
   --color=auto|always|never
   -h, --help
 
-Any replace of an existing install disables $FORGE_UUID first, then rm + copy
-temp/ (safe for EGO / jcrussell / luke / unknown sharing the same UUID).
+On X11, replace disables $FORGE_UUID first, then rm + copy temp/. On Wayland,
+install never disables/enables a live extension (files overlay only) — tip loads
+via nest or a later logout (D048).
 
 Safe migrate order (EGO → this tree):
   1. build-install.zsh --build-only     # old Forge still running
@@ -142,24 +143,26 @@ forge_do_build() {
 forge_do_install() {
   forge_verify_temp_build
 
-  local _replace_lineage="none" _dis_st
+  local _replace_lineage="none" _dis_st _was_enabled=0
+  if forge_ext_enabled; then
+    _was_enabled=1
+  fi
   if forge_ext_installed; then
     if ! forge_confirm "Replace installed Forge with built temp/?"; then
       forge_die "aborted"
     fi
-    # Same UUID for EGO / jcrussell / luke — never rm while Shell still has it loaded.
     _replace_lineage=$(forge_detect_lineage)
-    _dis_st=$(forge_disable_extension "$FORGE_UUID" || true)
-    forge_info "pre-replace disable: $_dis_st (lineage=$_replace_lineage)"
+    if forge_live_extension_cycle_ok; then
+      _dis_st=$(forge_disable_extension "$FORGE_UUID" || true)
+      forge_info "pre-replace disable: $_dis_st (lineage=$_replace_lineage)"
+    else
+      forge_info "pre-replace: skip live disable (session=$(forge_session_type); tip deferred)"
+    fi
   fi
 
   forge_hdr "Install temp/ → $FORGE_EXT_DIR"
   cd "$FORGE_REPO_ROOT"
-  mkdir -p "$FORGE_EXT_DIR"
-  # Replace contents cleanly (avoid stale files from older layouts)
-  rm -rf "$FORGE_EXT_DIR"
-  mkdir -p "$FORGE_EXT_DIR"
-  cp -a temp/. "$FORGE_EXT_DIR"/
+  forge_install_temp_to_ext_dir || forge_die "install failed: could not copy temp/ → $FORGE_EXT_DIR"
 
   [[ -f "$FORGE_EXT_DIR/extension.js" ]] || forge_die "install failed: no extension.js"
   forge_ok "installed lineage=$(forge_detect_lineage)"
@@ -169,13 +172,14 @@ forge_do_install() {
   fi
 
   if (( DO_ENABLE )); then
-    if forge_enable_extension "$FORGE_UUID"; then
+    if (( _was_enabled )) && ! forge_live_extension_cycle_ok; then
+      forge_ok "left enabled (live cycle skipped; tip still previous until nest/logout)"
+    elif forge_enable_extension "$FORGE_UUID"; then
       forge_ok "enabled $FORGE_UUID"
     else
-      forge_warn "enable failed — clear session block + restart shell, then: gnome-extensions enable $FORGE_UUID"
+      forge_warn "enable failed — clear session block, then: gnome-extensions enable $FORGE_UUID"
       forge_warn "  gsettings set org.gnome.shell disable-user-extensions false"
     fi
-    # Same as ./install: drop rival GNOME Shell tilers (not session WMs).
     _bi_rivals=()
     while IFS= read -r _bi_line; do
       [[ -n "$_bi_line" ]] && _bi_rivals+=("$_bi_line")
@@ -192,7 +196,6 @@ forge_do_install() {
       forge_warn "host-defaults apply failed (non-fatal)"
   fi
 
-  # So `forge install` can find this tree later (also written by scripts/install.zsh).
   forge_write_install_origin "$FORGE_REPO_ROOT" git || \
     forge_warn "could not write install-origin (non-fatal)"
 }
@@ -206,7 +209,11 @@ fi
 
 if (( INSTALL_ONLY )); then
   forge_do_install
-  forge_warn "Shell may still show stale Version until restart (X11: killall -HUP gnome-shell or log out)."
+  if forge_live_extension_cycle_ok; then
+    forge_warn "Shell may still show stale Version until HUP (killall -HUP gnome-shell)."
+  else
+    forge_warn "Files installed; host tip deferred (nest or later logout). Install does not unload live Shell."
+  fi
   print -r -- "$FORGE_EXT_DIR"
   exit 0
 fi

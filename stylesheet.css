@@ -4,12 +4,6 @@
   border-width: 2px;
 }
 
-.split {
-  color: rgba(26, 95, 180, 1);
-  opacity: 1;
-  border-width: 3px;
-}
-
 .stacked {
   color: rgba(247, 162, 43, 1);
   opacity: 1;
@@ -50,30 +44,6 @@
   background-color: rgba(0, 0, 0, 0.78);
   border-radius: 4px;
   padding: 3px 8px;
-}
-
-.window-split-border {
-  border-width: 3px;
-  border-color: rgba(26, 95, 180, 1);
-  border-style: solid;
-  border-radius: 14px;
-}
-
-/* forge-36le: St does not paint an asymmetric (single-side) border when a
- * border-radius is set, so the directional hint never rendered. Drop the radius
- * on the one-edge variants; St paints a straight single-side border reliably. */
-.window-split-horizontal {
-  border-left-width: 0;
-  border-top-width: 0;
-  border-bottom-width: 0;
-  border-radius: 0;
-}
-
-.window-split-vertical {
-  border-left-width: 0;
-  border-top-width: 0;
-  border-right-width: 0;
-  border-radius: 0;
 }
 
 .window-stacked-border {

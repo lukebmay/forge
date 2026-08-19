@@ -198,17 +198,77 @@ forge_session_type() {
   print -r -- "${XDG_SESSION_TYPE:-unknown}"
 }
 
+# Whether install may disable/enable the live extension (X11 + optional override).
+# Wayland default: no — disable→enable has SIGTRAP'd host Shell and ended the session.
+forge_live_extension_cycle_ok() {
+  [[ "${FORGE_ALLOW_LIVE_EXTENSION_CYCLE:-0}" == "1" ]] && return 0
+  [[ "$(forge_session_type)" == "x11" ]]
+}
+
+# Copy repo temp/ into FORGE_EXT_DIR. Live-safe path avoids rm -rf of a loaded tree.
+forge_install_temp_to_ext_dir() {
+  local src="$FORGE_REPO_ROOT/temp" dst="$FORGE_EXT_DIR"
+  [[ -d "$src" ]] || {
+    forge_warn "forge_install_temp_to_ext_dir: missing $src"
+    return 1
+  }
+  mkdir -p "$dst"
+  if forge_live_extension_cycle_ok; then
+    rm -rf "$dst"
+    mkdir -p "$dst"
+    cp -a "$src"/. "$dst"/
+    return 0
+  fi
+  # Overlay + drop stale names; do not unlink the extension directory itself.
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete "$src"/ "$dst"/
+  else
+    python3 - "$src" "$dst" <<'PY'
+import os, shutil, sys
+src, dst = sys.argv[1], sys.argv[2]
+wanted = set()
+for root, dirs, files in os.walk(src):
+    rel = os.path.relpath(root, src)
+    target_root = dst if rel == "." else os.path.join(dst, rel)
+    os.makedirs(target_root, exist_ok=True)
+    if rel == ".":
+        wanted.add(".")
+    else:
+        wanted.add(rel)
+    for name in files:
+        s = os.path.join(root, name)
+        d = os.path.join(target_root, name)
+        shutil.copy2(s, d)
+        wanted.add(name if rel == "." else os.path.join(rel, name))
+    for name in dirs:
+        wanted.add(name if rel == "." else os.path.join(rel, name))
+for root, dirs, files in os.walk(dst, topdown=False):
+    rel = os.path.relpath(root, dst)
+    for name in files:
+        key = name if rel == "." else os.path.join(rel, name)
+        if key not in wanted:
+            os.remove(os.path.join(root, name))
+    for name in dirs:
+        key = name if rel == "." else os.path.join(rel, name)
+        if key not in wanted:
+            p = os.path.join(root, name)
+            try:
+                os.rmdir(p)
+            except OSError:
+                pass
+PY
+  fi
+}
+
 # Reload GNOME Shell so a replaced extension is actually loaded.
-# X11: killall -HUP. Wayland: cannot HUP host Shell — returns 2 with nested guidance.
-# Returns 0 on HUP sent, 1 on failure, 2 if session needs nested restart or logout.
-# Quiet install: no chatter for expected non-HUP cases — caller owns one checklist line.
+# X11: killall -HUP. Wayland: never HUP/logout — returns 2 (tip via nest or later logout).
+# Returns 0 on HUP sent, 1 on failure, 2 if tip load is deferred.
 forge_restart_shell() {
   local st forge_cli
   st=$(forge_session_type)
   forge_cli="${FORGE_SCRIPTS_DIR:-$SCRIPT_DIR}/forge"
   case "$st" in
     x11)
-      # Flush only when we will actually HUP (no Wayland post-enable rewrite).
       if [[ -x $forge_cli ]]; then
         forge_info "flushing session layout before Shell reload…"
         if ! "$forge_cli" save-session-layout >/dev/null 2>&1; then
@@ -224,20 +284,15 @@ forge_restart_shell() {
         sleep 2
         return 0
       fi
-      forge_warn "HUP failed — try Alt+F2 → r, or log out"
+      forge_warn "HUP failed — try Alt+F2 → r"
       return 1
       ;;
     wayland)
-      # Host Shell cannot HUP. User path is logout; nest is a separate dev CLI.
-      if forge_is_quiet; then
-        :
-      else
-        forge_warn "Wayland: host Shell cannot HUP. Log out and back in to load the new tip."
-      fi
+      # Install must not end the session. Tip loads via nest or a later logout.
       return 2
       ;;
     *)
-      forge_is_quiet || forge_warn "session=$st: X11 → killall -HUP gnome-shell; Wayland → log out/in"
+      forge_is_quiet || forge_warn "session=$st: no automatic Shell reload"
       return 2
       ;;
   esac
@@ -412,8 +467,7 @@ forge_disable_extension() {
     return 0
   fi
 
-  # Wayland has no HUP; disable→enable still restores from session-layout.
-  # Flush while healthy so open leaves (e.g. YouTube tab) survive unload.
+  # Flush while healthy so open leaves survive unload (X11 HUP / explicit cycle).
   if [[ "$uuid" == "$FORGE_UUID" ]]; then
     forge_flush_session_layout || true
   fi
@@ -435,7 +489,8 @@ forge_disable_extension() {
   return 1
 }
 
-# Enable Forge after clearing session block. Retries once if still off.
+# Enable Forge after clearing session block. Never force-disable first (Wayland
+# disable→enable has crashed host Shell). Idempotent if already enabled.
 # Returns 0 when list --enabled contains UUID.
 forge_enable_extension() {
   local uuid="${1:-$FORGE_UUID}"
@@ -455,10 +510,11 @@ forge_enable_extension() {
     return 1
   fi
 
-  # Force off first so ERROR/stale state can re-bind (best-effort).
-  gnome-extensions disable "$uuid" 2>/dev/null || true
+  if forge_ext_enabled; then
+    return 0
+  fi
+
   if ! gnome-extensions enable "$uuid" 2>/dev/null; then
-    # Second chance after another clear (race with shell still writing true).
     forge_clear_shell_extension_block "$uuid" >/dev/null 2>&1 || true
     gnome-extensions enable "$uuid" 2>/dev/null || true
   fi
@@ -467,14 +523,13 @@ forge_enable_extension() {
     return 0
   fi
 
-  # Still blocked? Report gsettings for the operator.
   local still
   still=$(gsettings get org.gnome.shell disable-user-extensions 2>/dev/null || print unknown)
   if [[ "$still" == "true" ]]; then
     forge_warn "user extensions still disabled (disable-user-extensions=true)"
     forge_warn "run: gsettings set org.gnome.shell disable-user-extensions false"
   else
-    forge_warn "enable did not stick — log out/in, then: gnome-extensions enable $uuid"
+    forge_warn "enable did not stick — try: gnome-extensions enable $uuid"
   fi
   return 1
 }
@@ -1180,9 +1235,7 @@ if focus:
         ".window-tiled-border",
         {"border-color": focus, "border-width": f"{size}px" if size else ""},
     )
-if split:
-    text = set_rule_props(text, ".split", {"color": split})
-    text = set_rule_props(text, ".window-split-border", {"border-color": split})
+# split-border-color was EGO; split chrome removed (D047) — ignore migrate.
 
 Path(dst).parent.mkdir(parents=True, exist_ok=True)
 Path(dst).write_text(text)

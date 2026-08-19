@@ -79,9 +79,11 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | User TILE resize (mouse/key/expand) | `tree.resolveOwningSplit(unit, axis\|edge)` + `wm.applyOwningSplit` (I3). Grab keeps cumulative `_handleResizing` / `_applyOwningSplitFromGrab`. Expand/shrink = two calls (H then V; REG-expand-dual-axis). Unit = window or tab/stack bag | Twin percent math; treat grab as “external drift”; child+parent expand walk |
 | Display / workareas settle | `workareas-policy.js` + `monitor-recovery.js` | Window TILE wait for mon remap |
 | Presentation zoom (full/H/V) | `wm.toggleZoom` + `zoomRect` (`zoom.js`); `tree.apply` / borders use `tree.paintRectForWindow` | Compat.maximize / Meta fs; border from unzoomed slot |
-| **H/V split chrome (I5)** | `resolveSplitChromeMode` / `collectSplitAncestry` / `splitChromeForWindow` (`split-chrome.js`) + `DecorationsManager` paint; setting `split-chrome-show-all`; grab forces show-all via `setSplitChromeForceShowAll` | Second chrome actor system; spanning tab chrome; paint outside `.window-split-border` vocabulary |
 
 `settleTabFocus` is **chrome** (F+Dfocus+B). It is **not** D019 wait-for-quiet.
+
+H/V **split chrome** (FCC C3 / I5 one-edge blue borders) was **removed** (D047) —
+focus borders and drag/place preview hints remain.
 
 ---
 
