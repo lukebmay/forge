@@ -1,9 +1,9 @@
 schema = 1
 tool_version = "0.2.1"
-catalog_version = "0.3.4"
+catalog_version = "0.3.6"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-12T18:05:36+00:00"
+updated_at = "2026-08-19T22:17:53+00:00"
 
 [[files]]
 id = "ansi-colors"
@@ -32,8 +32,8 @@ read_when = "Writing design docs, DECISIONS, user docs, or choosing where “why
 [[files]]
 id = "general"
 path = "general.md"
-version = "2.2.0"
-sha256 = "80639ff21428b7105131300b4340c2664c2ebc63d11066e4622dce3ab3cda586"
+version = "2.3.0"
+sha256 = "7ddefababdb746b255730abf5e8226b09f97d74a194e2b0ddefcb7bdd10807f6"
 title = "General process"
 read_when = "Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs"
 
@@ -264,8 +264,8 @@ read_when = "Editing nvim config, Lua plugins, or editor tooling in this stack"
 [[files]]
 id = "scripting"
 path = "scripting.md"
-version = "2.2.0"
-sha256 = "1d3674628d8150f412b3515f1f9fcd61c8908d116d4eea44f367ce235c2702a5"
+version = "2.3.0"
+sha256 = "562b6a909993f86462ba202b814ef3b9ad8c624e680056678f4d7f6983ee3727"
 title = "Scripting"
 read_when = "Writing or changing shell/Python scripts, installers, CLI tools, bin entries, or launching user-visible apps from a Grok agent"
 
@@ -280,8 +280,8 @@ read_when = "When handling project secret locations or agents/secrets.md finds"
 [[files]]
 id = "security"
 path = "security.md"
-version = "2.0.0"
-sha256 = "32e1a94166ba85c613a7cdbd113f22a5ab8f53589d1991dcb920eae9ec8422e1"
+version = "2.1.0"
+sha256 = "36cce910ba2b549d36deab5a2ae10246c21d4224557cee5bc32e97f44211738a"
 title = "Security"
 read_when = "Before SSH, secrets, sudo/root, credentials, or any important live-data mutation"
 

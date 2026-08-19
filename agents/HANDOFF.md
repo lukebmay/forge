@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-19 (DnD min-probe grab fight)
+**Updated:** 2026-08-19 (D049 min-size floor plan approved)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -14,13 +14,14 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** DnD min-probe grab fight (cancel on grab-begin; no mid-drag dest
-probes; delayed dragged-only queue; gave-up on failed shrink). Prior: open-min /
-titlebar stage paint / `window-mins.json`.
+**Repo tip:** Tab-drag poll starve shipped. **Next implement:** [D049 min-size
+floor](./plans/forge-min-size-floor.md) — kill shrink-probe; env 320×240; passive
+learn; BFS/float + remove gap. M0 done; start **M1**.
 **Install:** dirty tip — **host logout once** for Shell load (nest already green).
 **Do not close** durable-agent ghostty windows.
-**L0 last:** drag-drop + drop-intent + open-min + open-app-policy (**116**).
-**Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
+**L0 last:** tab-drag + sources + DnD suites (**197**).
+**Logging:** `logging-enabled=true`, `log-level=5` (DEBUG). SourceBag set/fire is
+TRACE — daily DEBUG no longer spams `tabDragPointer` / failsafe replace.
 **Host settings:** `preview-hint-enabled=true`, `mod-mask-mouse-tile=None`.
 **Host seed:** `~/.config/forge/config/window-mins.json` has Nautilus 360×380.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
@@ -30,9 +31,25 @@ titlebar stage paint / `window-mins.json`.
 
 | Pri | Slice | Status | Note |
 | --- | --- | --- | --- |
-| **next** | Host eyes-on after logout | tip load | After layout+Nautilus: titlebar+tab DnD; no minProbe spam; sizes stick |
+| **next** | **D049 M1** env floor + `readWindowMinSize` | ready | [task](./plans/forge-min-size-floor/forge-min-size-floor_m1-env-floor.md) · then M2 probe delete |
+| next | D049 M2–M5 | queued | [plan](./plans/forge-min-size-floor.md) · M3 = **4.6 high** |
+| optional | Host eyes-on tab-drag poll tip | tip load | After logout; or defer until D049 tip |
 | later | CN14 / CN15 | after CN13 | nest/live harness; delete Python router |
 | blocked | Ratio / autotile (yuiop) | hard blocker | [blocker](./blockers/resize-autotile-design.md) |
+
+### Shipped — Tab-drag poll starve (chip lag / stuck release)
+
+| Field | Detail |
+| --- | --- |
+| Bugs | Fresh Wayland: 1st tab DnD OK; 2nd/3rd chip far behind pointer; stayed dragging after release |
+| Root | 8 ms `tabDragPointer` + DEBUG SourceBag set/fire/replace (+ failsafe) starved main loop |
+| Fix | SourceBag routine logs → TRACE; poll skip when xy synced; poll primary-up → finish |
+| Owner | Still only `DragDropManager` (tree press-arm; stage capture + poll) |
+| Paths | `sources.js` · `drag-drop.js` · contracts |
+| L0 | tab-drag + sources + DnD **197** |
+| Nest | mon=1 `_forge-test-clean` **ok**; `running: False` |
+| Host | **Logout once**; then `layout dev` → Nautilus → peel tab repeatedly |
+| Task | [completed](./tasks/completed/forge-tab-drag-poll-starve.md) |
 
 ### Shipped — DnD min-probe grab fight
 
@@ -769,12 +786,11 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Next / active:** **Required queue empty.** Optional later: CN14/CN15
-(nest/live harness; delete Python router). yuiop blocked.
-See [IDEAS](./IDEAS.md) (pruned 2026-08-18).
+**Next / active:** **D049 M1** — [plan](./plans/forge-min-size-floor.md)
+(env floor → kill probe → overflow rehome). M0 done. Optional later: CN14/CN15;
+yuiop blocked. See [IDEAS](./IDEAS.md).
 **FCC Wave C (+R1/R2-docs) closed through C5; P3 done; PR7/D046 done; Wave Z0/Z1
-shipped.** PR1–**PR15** + user CLI shipped — `forge` product-only; nest/live =
-`./scripts/forge/forge-test`.
+shipped.** Tab-drag poll starve shipped. **Do not** reintroduce shrink-probe.
 
 Do not reshape PR1 attach, PR5 2D/wrap-on, PR10 peel synthetic,
 PR11/PR12 mid-drag pack, PR13 chip+event coords, or PR15 residual

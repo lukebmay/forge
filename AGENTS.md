@@ -17,6 +17,7 @@ These apply even before other files are opened. **Full** rules: open the file in
 | **No secrets outbound** | Never put real secrets in chat, commits, logs, or prompts. |
 | **No SSH without explicit** | Remote SSH only if the **current** user message contains a form of **explicit**. |
 | **No silent live-data destroy** | Important live data: backup or dry-run first — see `agents/installed/security.md`. |
+| **No root-owned `$HOME`** | Never leave root-owned files under a user’s home; repair only this tool’s dests — `security.md`. |
 | **Git: no force-push published** | No force-push/amend of published history unless the user clearly asks. |
 | **Git: no auto test/prod** | Never auto-promote `test` or `prod`. |
 | **Handoffs** | Agent↔agent notes: functionally detailed, unambiguous, succinct — not padded, not incomplete. |
@@ -46,6 +47,7 @@ Load plan/task files **on demand** for the current work only.
 
 | Path | Title | Read when |
 | --- | --- | --- |
+| `agents/general.md` | General process (user override) | Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs |
 | `agents/installed/general.md` | General process | Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs |
 | `agents/installed/security.md` | Security | Before SSH, secrets, sudo/root, credentials, or any important live-data mutation |
 | `agents/installed/secrets.md` | Secrets store notes | When handling project secret locations or agents/secrets.md finds |

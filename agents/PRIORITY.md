@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-19 (DnD min-probe grab fight)
+**Updated:** 2026-08-19 (D049 min-size floor approved)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -9,18 +9,20 @@
 **D039–D043** slot machines (SM0) · **SM1–SM7 implement landed** ·
 **R036 cold PASS** · **D044** TABBED/STACKED mon-local **shipped** ·
 **D046** Chrome live tab strip DnD **docs shipped** ·
+**D049** mins env floor + passive learn (**approved**; implement M1+) ·
 **PR1–PR15** tab chrome / click-drag **unit-shipped** · PR7 docs **done** ·
 User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**) ·
 **FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped.
 
 **Active next (ordered):**
-1. Host eyes-on after **logout** (min-probe grab fight + open-min tip) — [task](./tasks/completed/forge-dnd-minprobe-grab-fight.md)
-2. later CN14/CN15 · after CN13 PATH
-3. blocked Ratio / autotile (yuiop) · human design blocker
+1. **D049 M1** env floor — [task](./plans/forge-min-size-floor/forge-min-size-floor_m1-env-floor.md) · [plan](./plans/forge-min-size-floor.md)
+2. D049 M2 delete shrink-probe (**4.5**, serial after M1)
+3. D049 M3 overflow rehome + gap (**4.6 high**)
+4. D049 M4 docs · M5 verify (+ human tiny-env Nautilus)
+5. later CN14/CN15 · blocked yuiop
 
-**Tab-drag event owner done:** `DragDropManager` sole gesture sink (stage
-capture + `tabDragPointer` poll); tree press-arm only. Host logout for tip.
-**PR15 + event-owner:** chip track + leave-behind class closed (unit+nest).
+**Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
+tree press-arm only. Poll skips synced xy; SourceBag hot logs are TRACE.
 **Retest (FIRM):** nest = normal Wayland code→reload via
 `./scripts/forge/forge-test nested`; primary logout = rare tip load.
 **Later (real only):** CN14/CN15 · yuiop blocker — [IDEAS](./IDEAS.md).
@@ -43,9 +45,9 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **user CLI no test toolkit**
 + **tab click-drag PR1–PR15 + PR7 docs (D046)** landed. **FCC Wave C (+R1/R2-docs)
 closed through C5; P3 `_layoutOp` flatten strip done.** Wave Z0/Z1 shipped.
-**Required queue empty.** Optional later: CN14/CN15 · yuiop (blocked).
-Preserve PR9 foreign spacer-only and PR10 synthetic peel
-ownership.
+**Active:** **D049** min-size floor (M0 done → M1). Optional later: CN14/CN15 ·
+yuiop (blocked). Preserve PR9 foreign spacer-only and PR10 synthetic peel
+ownership. Do **not** reintroduce shrink-probe.
 Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 / mon-root PlaceNext / soft-enter chrome clear / spanning tab chrome / silent
 `_layoutOp` peel. Do not teach `forge test` / `forge nested`.
@@ -77,7 +79,12 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
-| **next** | Host eyes-on min-probe grab fight | human | Logout once; [task](./tasks/completed/forge-dnd-minprobe-grab-fight.md) |
+| **next** | **D049 M1** env min floor + `readWindowMinSize` | **4.5** | [task](./plans/forge-min-size-floor/forge-min-size-floor_m1-env-floor.md) |
+| next | D049 M2 excise shrink-probe | **4.5** | after M1; [task](./plans/forge-min-size-floor/forge-min-size-floor_m2-excise-probe.md) |
+| next | D049 M3 overflow BFS + remove gap | **4.6 high** | after M2; [task](./plans/forge-min-size-floor/forge-min-size-floor_m3-overflow-rehome.md) |
+| next | D049 M4 docs · M5 verify | **4.5** | + human tiny-env Nautilus |
+| done | D049 M0 decision + plan disk | **4.5** | D049 row; [plan](./plans/forge-min-size-floor.md) |
+| done | Tab-drag poll starve (chip lag / stuck release) | **4.5** | TRACE SourceBag hot; poll skip; button-up finish; L0 **197** |
 | done | DnD min-probe grab fight (forever-retry / tile race) | **4.5** | Cancel on grab; no dest mid-drag probe; gave-up; L0 **116** |
 | done | Open-min/DnD cold Wayland (probe/grab/persist) | **4.5** | No mid-grab probe; titlebar stage paint; window-mins.json |
 | done | Free open mins → tab BFS → float | **4.5** | Always-on when mins known; PlaceNext/DnD excluded |

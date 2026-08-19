@@ -261,4 +261,66 @@ describe("DragDropManager tab drag arm → synthetic grab", () => {
     dd().finishTabDragRelease();
     expect(wm()._wmSources.has("tabDragPointer")).toBe(false);
   });
+
+  it("pointer poll skips noteTabDragMotion when xy already synced", () => {
+    const meta = createMockWindow({
+      rect: new Rectangle({ x: 0, y: 0, width: 400, height: 400 }),
+      workspace: ctx.workspaces[0],
+    });
+    delete meta.begin_grab_op;
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta);
+    node.mode = WINDOW_MODES.TILE;
+    ctx.display.get_focus_window = vi.fn(() => meta);
+
+    global.stage = { connect: undefined, disconnect: () => {} };
+    const setSpy = vi.spyOn(wm()._wmSources, "set");
+    setPointer(40, 40, 256);
+    dd().armTabDrag(meta, makePressEvent(40, 40));
+    const tick = setSpy.mock.calls.find((c) => c[0] === "tabDragPointer")[2];
+    const motionSpy = vi.spyOn(dd(), "noteTabDragMotion");
+
+    // Same coords as arm lastX/Y — must not re-enter motion (starve fix).
+    setPointer(40, 40, 256);
+    tick();
+    expect(motionSpy).not.toHaveBeenCalled();
+
+    setPointer(40 + TAB_DRAG_THRESHOLD_PX + 1, 40, 256);
+    tick();
+    expect(motionSpy).toHaveBeenCalledTimes(1);
+    dd().finishTabDragRelease();
+  });
+
+  it("pointer poll finishes gesture when primary button goes up after down", () => {
+    const meta = createMockWindow({
+      rect: new Rectangle({ x: 0, y: 0, width: 400, height: 400 }),
+      workspace: ctx.workspaces[0],
+    });
+    delete meta.begin_grab_op;
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta);
+    node.mode = WINDOW_MODES.TILE;
+    ctx.display.get_focus_window = vi.fn(() => meta);
+    vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(false);
+
+    global.stage = { connect: undefined, disconnect: () => {} };
+    const setSpy = vi.spyOn(wm()._wmSources, "set");
+    setPointer(10, 10, 0);
+    // Press event carries BUTTON1_MASK so arm marks seenPrimaryDown.
+    const press = makePressEvent(10, 10);
+    press.get_state = () => 256;
+    dd().armTabDrag(meta, press);
+    expect(dd()._tabDrag?.seenPrimaryDown).toBe(true);
+
+    const tick = setSpy.mock.calls.find((c) => c[0] === "tabDragPointer")[2];
+    setPointer(10 + TAB_DRAG_THRESHOLD_PX + 20, 60, 256);
+    tick();
+    expect(dd()._tabDrag).toBeTruthy();
+
+    // Release missed by stage: mods clear → poll ends gesture.
+    setPointer(10 + TAB_DRAG_THRESHOLD_PX + 20, 60, 0);
+    tick();
+    expect(dd()._tabDrag).toBeNull();
+    expect(wm()._wmSources.has("tabDragPointer")).toBe(false);
+  });
 });

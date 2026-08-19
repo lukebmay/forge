@@ -150,13 +150,19 @@ Functionally complete + unambiguous + succinct. Overwrite, don’t pile. Explora
 
 ## Plans
 
-`agents/plans/<plan>.md`; completed tasks under `agents/plans/<plan>/completed/`.
+**Canonical home (FIRM):** `agents/plans/<plan>.md` in the **project repo**.
+Completed tasks: `agents/plans/<plan>/completed/`.
 
 | Rule | Detail |
 | --- | --- |
+| **Source of truth** | **FIRM.** `agents/plans/` is always the durable plan. Operators and agents look there **first** whenever anyone says “the plan” / “look at the plan” / names a plan. |
+| **In-repo only** | **FIRM.** Do **not** leave the only (or canonical) copy under `~/.grok/sessions/`, `/tmp`, or any path outside the repo unless the **current** user message explicitly says to. |
+| **Mirror after every edit** | **FIRM.** After **any** create/update of a plan (including Grok `/plan` mode scratch `plan.md`), **copy** into `agents/plans/<plan>.md` in the same turn (`cp` is fine — saves tokens vs rewriting). Session/scratch paths are disposable; the repo file is what the next session opens. |
+| **Read path** | When told to read a plan: open `agents/plans/…` first. Use a session scratch copy only if the repo file is missing — then **immediately** `cp` it into `agents/plans/` and continue from the repo path. |
+| `/plan` mode | Allowed. Still mirror to `agents/plans/` on every material edit and before ending the turn / exiting plan mode. Do not treat session `plan.md` as handoff. |
 | Major redesigns | Plan first; implement after approval |
 | Plan reshape discovery | Stop and ask |
-| Progress note | Overwrite one note when code changes |
+| Progress note | Overwrite one note when code changes (on the **repo** plan file) |
 
 ### Orchestrator + taskforces (when plans / priorities)
 

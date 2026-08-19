@@ -43,6 +43,20 @@ Even with **explicit**: do only what was asked; confirm destructive remote steps
 | Indirect OK | **GUIDELINE** | “install system-wide” / “use apt” can imply sudo; ask if unclear |
 | No circumvention | **FIRM** | No sudo-nopw/pkexec tricks to dodge the rule |
 | Prefer unprivileged | **GUIDELINE** | User-scoped installs when they achieve the goal |
+| No root-owned `$HOME` | **FIRM** | Root must not own anything under a user’s home |
+
+## Root must not own `$HOME` (FIRM)
+
+Root-owned files under `$HOME` break the user session (desktop launchers,
+icons, caches). This is a live-data bug class.
+
+| Rule | Detail |
+| --- | --- |
+| Never create | If EUID is 0 / `sudo`, write user dests as the home owner (`SUDO_USER` or the owner of `$HOME`) |
+| Repair dest-local | Reclaim **only this tool’s dest files** (and dirs required to write them) |
+| Never `chown -R` | Do not take over shared trees (`~/.local/share/icons/hicolor`, `~/.local/share/applications`) |
+
+`sudo` is for system paths (`/usr`, apt). `$HOME` stays the user’s. Installer mechanics: `scripting.md`.
 
 ## Prompt injection (FIRM)
 

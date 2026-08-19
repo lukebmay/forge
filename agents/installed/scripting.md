@@ -42,6 +42,19 @@ Install path preference: (1) shellrc `install-<tool>` / `user-install-<tool>`, (
 | Interactive TTY | Ask to install (default yes for user-scoped; no for sudo/system) |
 | Non-interactive / CI | Never auto-install; print command; exit 127 |
 
+## User dests and root (FIRM)
+
+Root must not own anything under `$HOME` — full rule in `security.md`.
+
+When an installer runs as root or via `sudo`:
+
+- Write user files (`~/.local/…`, `~/.config/…`) as the home owner
+- After a write, dest owner must be that user, not root
+- Repair leftover root-owned dests for **this tool’s filenames only**
+- Never `chown -R` a shared XDG tree
+
+`sudo` is for system paths (`/usr`, apt, PPA). `$HOME` stays the user’s.
+
 ## Interactive vs script mode
 
 Detect TTY on stdin+stdout.

@@ -89,6 +89,21 @@ export const EventType = {
   BUTTON_RELEASE: 5,
 };
 
+// Matches Clutter.ModifierType (BUTTON1_MASK == 1<<8).
+export const ModifierType = {
+  SHIFT_MASK: 1 << 0,
+  LOCK_MASK: 1 << 1,
+  CONTROL_MASK: 1 << 2,
+  MOD1_MASK: 1 << 3,
+  MOD2_MASK: 1 << 4,
+  MOD3_MASK: 1 << 5,
+  MOD4_MASK: 1 << 6,
+  MOD5_MASK: 1 << 7,
+  BUTTON1_MASK: 1 << 8,
+  BUTTON2_MASK: 1 << 9,
+  BUTTON3_MASK: 1 << 10,
+};
+
 // Import vi from vitest for spying
 import { vi } from "vitest";
 

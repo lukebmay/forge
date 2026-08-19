@@ -253,13 +253,15 @@ export function createContainerNode(parent, layout, rect = null) {
  *
  * @param {number} x - X coordinate
  * @param {number} y - Y coordinate
+ * @param {number} [mods=0] - Clutter modifier / button mask
  *
  * @example
  * setPointer(960, 540); // Center of 1920x1080 screen
  * setPointer(100, 540); // Left edge
+ * setPointer(100, 100, 256); // primary button held (BUTTON1_MASK)
  */
-export function setPointer(x, y) {
-  global.get_pointer = vi.fn(() => [x, y]);
+export function setPointer(x, y, mods = 0) {
+  global.get_pointer = vi.fn(() => [x, y, mods]);
 }
 
 export default {
