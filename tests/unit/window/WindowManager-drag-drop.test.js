@@ -805,4 +805,182 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       expect(swapSpy).toHaveBeenCalled();
     });
   });
+
+  describe("moveWindowToPointer - min-size refuse", () => {
+    it("preview paints invalid and execute does not reparent", () => {
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "preview-hint-enabled") return true;
+        return key === "tiling-mode-enabled";
+      });
+
+      const metaTarget = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
+        workspace: workspace0(),
+      });
+      const metaDrag = createMockWindow({
+        rect: new Rectangle({ x: 800, y: 0, width: 800, height: 600 }),
+        workspace: workspace0(),
+        size_hints: { min_width: 0, min_height: 400 },
+      });
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const target = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaTarget);
+      target.mode = WINDOW_MODES.TILE;
+      target.rect = { x: 0, y: 0, width: 800, height: 600 };
+      target.renderRect = target.rect;
+
+      const dragged = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaDrag);
+      dragged.mode = WINDOW_MODES.GRAB_TILE;
+      dragged.previewHint = {
+        set_style_class_name: vi.fn(),
+        set_position: vi.fn(),
+        set_size: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      dragged.previewZoneActors = {
+        TOP: {
+          set_style_class_name: vi.fn(),
+          show: vi.fn(),
+          hide: vi.fn(),
+          set_position: vi.fn(),
+          set_size: vi.fn(),
+        },
+        BOTTOM: {
+          set_style_class_name: vi.fn(),
+          show: vi.fn(),
+          hide: vi.fn(),
+          set_position: vi.fn(),
+          set_size: vi.fn(),
+        },
+        LEFT: {
+          set_style_class_name: vi.fn(),
+          show: vi.fn(),
+          hide: vi.fn(),
+          set_position: vi.fn(),
+          set_size: vi.fn(),
+        },
+        RIGHT: {
+          set_style_class_name: vi.fn(),
+          show: vi.fn(),
+          hide: vi.fn(),
+          set_position: vi.fn(),
+          set_size: vi.fn(),
+        },
+        CENTER: {
+          set_style_class_name: vi.fn(),
+          show: vi.fn(),
+          hide: vi.fn(),
+          set_position: vi.fn(),
+          set_size: vi.fn(),
+        },
+      };
+
+      // TOP edge of target (half height 300 < min 400)
+      setPointer(400, 80);
+      wm().nodeWinAtPointer = target;
+      wm().moveWindowToPointer(dragged, true);
+
+      const hoverCalls = Object.values(dragged.previewZoneActors).flatMap((a) =>
+        a.set_style_class_name.mock.calls.map((c) => c[0])
+      );
+      expect(hoverCalls.some((c) => c === "window-tilepreview-invalid")).toBe(true);
+
+      const parentBefore = dragged.parentNode;
+      wm().moveWindowToPointer(dragged, false);
+      expect(dragged.parentNode).toBe(parentBefore);
+      expect(dragged.parentNode.layout).not.toBe(LAYOUT_TYPES.VSPLIT);
+    });
+  });
+
+  describe("titlebar grab from TABBED", () => {
+    it("WINDOW_BASE grab sets GRAB_TILE and arms pointer track", async () => {
+      const MetaMod = await import("../../mocks/gnome/Meta.js");
+      const GrabOp = MetaMod.GrabOp;
+
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const tabCon = createContainerNode(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const a = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+      const b = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaB);
+      a.mode = WINDOW_MODES.TILE;
+      b.mode = WINDOW_MODES.TILE;
+
+      wm()._handleGrabOpBegin(global.display, metaB, GrabOp.WINDOW_BASE);
+      expect(b.mode).toBe(WINDOW_MODES.GRAB_TILE);
+      expect(wm().dragDrop._grabPointerTrack).toBeTruthy();
+
+      wm()._grabStartPointer = [100, 100];
+      setPointer(100, 100); // parked at grab start
+      wm().dragDrop._grabPointerTrack.lastX = 1440;
+      wm().dragDrop._grabPointerTrack.lastY = 540;
+      const ptr = wm().dragDrop.getDragPointer(b);
+      expect(ptr[0]).toBe(1440);
+      expect(ptr[1]).toBe(540);
+
+      // Live pointer moved → prefer it over stale track.
+      setPointer(500, 500);
+      const live = wm().dragDrop.getDragPointer(b);
+      expect(live[0]).toBe(500);
+      expect(live[1]).toBe(500);
+    });
+
+    it("peels TABBED leaf onto foreign TILE via titlebar-style GRAB_TILE", () => {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "TABBED";
+        return "";
+      });
+
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaC = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const tabCon = createContainerNode(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const a = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+      const b = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaB);
+      const c = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaC);
+      a.mode = WINDOW_MODES.TILE;
+      b.mode = WINDOW_MODES.GRAB_TILE;
+      c.mode = WINDOW_MODES.TILE;
+      c.rect = { x: 960, y: 0, width: 960, height: 1080 };
+      c.renderRect = c.rect;
+
+      // LEFT edge of C → HSPLIT peel out of tab group
+      setPointer(1000, 540);
+      wm().nodeWinAtPointer = c;
+      wm().moveWindowToPointer(b, false);
+
+      expect(b.parentNode).not.toBe(tabCon);
+      expect(tabCon.childNodes.includes(b)).toBe(false);
+      expect(b.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+    });
+  });
 });

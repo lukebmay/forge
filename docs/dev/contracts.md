@@ -54,6 +54,9 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Slot-split focused/target unit (D032) | `tree.slotSplitUnit` / `wm.slotSplitForInsert` / leftover 1-child H/V join; late-identity TILE via `wm._adoptOpenIntoTileSlot` (not at unknown map) | Even 3rd H/V sibling; `createNode(bag)` as a tab; reserve a TILE wrap for a window that stays FLOAT (R031) |
 | Five-zone hit / paint | `drop-zones.js` `buildDropZones` / `hitTestDropZone` | Edge-band / grab-origin geometry |
 | **Would this drop change the tree?** | `dropChangesStructure` (`lib/extension/drop-intent.js`) | Positional `_isNoOpDrop` that ignores layout |
+| **Would this drop overflow app mins?** | `dropWouldOverflowMins` / `swapWouldOverflowMins` / `unitMins` (`drop-intent.js`) + `readWindowMinSize` / `noteWindowMinFromClamp` (`tree-layout.js`); preview `.window-tilepreview-invalid`; refuse execute. Checks **dragged + dest window/group**. Tab join = full pane; edge = half on axis. Unreadable mins = fail-open | Poisoned full-frame “mins”; refuse path outside `moveWindowToPointer` |
+| Keybind move/swap past min overflow | `tree.move` / `tree.swap` / `swapSibling` skip candidates via `swapWouldOverflowMins` until a legal slot (or none) | Applying a move that leaves any involved app below its min |
+| Titlebar/CSD move pointer | Real Mutter grab; `getDragPointer` prefers **live** pointer when it moved; `_armGrabPointerTrack` only if parked *and* track moved | Preferring stuck grab-start track over live pointer (hides drop zones) |
 | Execute a tile drop | `DragDropManager.moveWindowToPointer` → intent + merge/split | Parallel session-only structure |
 | Empty-monitor drop | `resolveEmptyMonitorDrop` + `_commitEmptyMonitorDrop` (leaf only) | Mid-drag rehome (R012); `_rehomeWindowPreservingContainer` (R022) |
 | New-window home | `resolveOpenAppPlacement` (dock → empty-head → window-actual → LFT) | Pointer-on-empty falling through to other-mon LFT (R021) |

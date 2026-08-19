@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-18 (R038 share + tab-drag event owner)
+**Updated:** 2026-08-19 (DnD min-size gate partial)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -14,8 +14,9 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 **FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped.
 
 **Active next (ordered):**
-1. later CN14/CN15 · after CN13 PATH
-2. blocked Ratio / autotile (yuiop) · human design blocker
+1. **DnD min-size red zones live** — wiring shipped; Wayland mins unread → no red yet ([task](./tasks/completed/forge-dnd-minsize-gate-titlebar.md) residual)
+2. later CN14/CN15 · after CN13 PATH
+3. blocked Ratio / autotile (yuiop) · human design blocker
 
 **Tab-drag event owner done:** `DragDropManager` sole gesture sink (stage
 capture + `tabDragPointer` poll); tree press-arm only. Host logout for tip.

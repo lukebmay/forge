@@ -1,8 +1,16 @@
 import { describe, it, expect } from "vitest";
 import {
   dropChangesStructure,
+  dropWouldOverflowMins,
   shouldMergeCenterGroup,
+  swapWouldOverflowMins,
+  unitMins,
 } from "../../../lib/extension/drop-intent.js";
+import {
+  MIN_CLAMP_LEARN_DELAY_MS,
+  noteWindowMinFromClamp,
+  readWindowMinSize,
+} from "../../../lib/extension/tree-layout.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
@@ -254,5 +262,146 @@ describe("shouldMergeCenterGroup", () => {
     const m1 = attach(mon, { id: "M1" });
     const m2 = attach(mon, { id: "M2" });
     expect(shouldMergeCenterGroup(m2, m1, centerOp())).toBe(false);
+  });
+});
+
+describe("dropWouldOverflowMins", () => {
+  function win(id, minW, minH) {
+    return {
+      id,
+      nodeValue: {
+        get_size_hints: () =>
+          minW || minH ? { min_width: minW || 0, min_height: minH || 0 } : null,
+      },
+    };
+  }
+
+  it("fail-open when mins unreadable", () => {
+    const a = win("A", 0, 0);
+    a.nodeValue.get_size_hints = () => null;
+    expect(
+      dropWouldOverflowMins(a, win("B", 0, 0), edgeOp({ isHorizontal: false }), {
+        targetRect: { width: 200, height: 200 },
+      })
+    ).toBe(false);
+  });
+
+  it("TOP/BOTTOM half too short for dragged min height", () => {
+    const a = win("A", 0, 400);
+    const b = win("B", 0, 0);
+    expect(
+      dropWouldOverflowMins(a, b, edgeOp({ isHorizontal: false }), {
+        targetRect: { width: 800, height: 600 },
+      })
+    ).toBe(true);
+  });
+
+  it("TOP/BOTTOM OK when half fits", () => {
+    const a = win("A", 0, 200);
+    const b = win("B", 0, 200);
+    expect(
+      dropWouldOverflowMins(a, b, edgeOp({ isHorizontal: false }), {
+        targetRect: { width: 800, height: 600 },
+      })
+    ).toBe(false);
+  });
+
+  it("CENTER tab join uses full pane (not half)", () => {
+    const a = win("A", 0, 400);
+    const b = win("B", 0, 0);
+    // Half of 600 is 300 → would overflow; full pane 600 → OK.
+    expect(
+      dropWouldOverflowMins(a, b, centerOp(), {
+        targetRect: { width: 800, height: 600 },
+      })
+    ).toBe(false);
+    expect(
+      dropWouldOverflowMins(a, b, centerOp(), {
+        targetRect: { width: 800, height: 300 },
+      })
+    ).toBe(true);
+  });
+
+  it("quarter-slot LEFT/CENTER/RIGHT legal for ~380 min height", () => {
+    const a = win("A", 200, 380);
+    const b = win("B", 100, 100);
+    const quarter = { width: 960, height: 540 };
+    expect(dropWouldOverflowMins(a, b, centerOp(), { targetRect: quarter })).toBe(false);
+    expect(
+      dropWouldOverflowMins(a, b, edgeOp({ isHorizontal: true }), { targetRect: quarter })
+    ).toBe(false);
+  });
+
+  it("blocks when destination app cannot fit half", () => {
+    const a = win("A", 100, 100);
+    const b = win("B", 0, 400);
+    expect(
+      dropWouldOverflowMins(a, b, edgeOp({ isHorizontal: false }), {
+        targetRect: { width: 800, height: 600 },
+      })
+    ).toBe(true);
+  });
+
+  it("LEFT/RIGHT blocks when either min exceeds half width", () => {
+    const a = win("A", 500, 0);
+    const b = win("B", 500, 0);
+    expect(
+      dropWouldOverflowMins(a, b, edgeOp({ isHorizontal: true }), {
+        targetRect: { width: 900, height: 800 },
+      })
+    ).toBe(true);
+  });
+
+  it("empty-mon blocks when work area shorter than min", () => {
+    const a = win("A", 0, 900);
+    expect(
+      dropWouldOverflowMins(a, null, centerOp(), {
+        emptyMonitor: true,
+        workArea: { width: 1920, height: 800 },
+      })
+    ).toBe(true);
+  });
+
+  it("swapWouldOverflowMins checks both slots", () => {
+    const a = {
+      rect: { width: 400, height: 1000 },
+      nodeValue: { get_size_hints: () => ({ min_width: 0, min_height: 800 }) },
+    };
+    const b = {
+      rect: { width: 400, height: 200 },
+      nodeValue: { get_size_hints: () => ({ min_width: 0, min_height: 100 }) },
+    };
+    expect(swapWouldOverflowMins(a, b)).toBe(true);
+    b.rect = { width: 400, height: 900 };
+    expect(swapWouldOverflowMins(a, b)).toBe(false);
+  });
+});
+
+describe("readWindowMinSize / noteWindowMinFromClamp", () => {
+  it("reads size hints", () => {
+    const meta = {
+      get_size_hints: () => ({ min_width: 120, min_height: 340 }),
+    };
+    expect(readWindowMinSize(meta)).toEqual({ width: 120, height: 340 });
+  });
+
+  it("ignores immediate race; learns after delay", () => {
+    const meta = {};
+    const req = { width: 200, height: 150, at: 1000, priorW: 200, priorH: 380 };
+    noteWindowMinFromClamp(meta, req, { width: 200, height: 380 }, 4, 1000 + 10);
+    expect(meta._forgeKnownMinH).toBeFalsy();
+    noteWindowMinFromClamp(
+      meta,
+      req,
+      { width: 200, height: 380 },
+      4,
+      1000 + MIN_CLAMP_LEARN_DELAY_MS + 1
+    );
+    expect(readWindowMinSize(meta)).toEqual({ width: 0, height: 380 });
+  });
+
+  it("discards absurd learned mins", () => {
+    const meta = { _forgeKnownMinH: 1032, _forgeKnownMinW: 1800 };
+    expect(readWindowMinSize(meta)).toEqual({ width: 0, height: 0 });
   });
 });

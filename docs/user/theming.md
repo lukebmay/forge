@@ -66,7 +66,8 @@ Restore colors from a backup if needed:
 | `.window-stacked-border` / `.window-tabbed-border` | Stacked / tabbed container border |
 | `.window-floated-border` | Floating-window border |
 | `.window-tabbed-tab`, `.window-tabbed-tab-active`, `.window-tabbed-tab-icon`, `.window-tabbed-tab-close` | Tab strip elements |
-| `.window-tilepreview-tiled` / `-stacked` / `-tabbed` / `-swap` | Drag/drop preview hints |
+| `.window-tilepreview-tiled` / `-stacked` / `-tabbed` / `-swap` / `-zoomed` | Drag/drop preview hints |
+| `.window-tilepreview-invalid` | Drop refused (app min size would overflow the slot) |
 | `.tiled`, `.split`, `.stacked`, `.tabbed`, `.floated` | Palette classes (color/opacity) |
 
 Border width, color, radius, and opacity are plain CSS properties; colors accept

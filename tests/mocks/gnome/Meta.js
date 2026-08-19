@@ -443,8 +443,8 @@ export const GrabOp = {
   KEYBOARD_RESIZING_SE: 17,
   KEYBOARD_RESIZING_SW: 18,
   // Distinct non-colliding sentinels (real Mutter uses bitfield values; tests only
-  // need identity). WINDOW_BASE = window-decoration drag, COMPOSITOR = shell grab.
-  WINDOW_BASE: 1024,
+  // Mutter 46: WINDOW_BASE === MOVING (1). Older mocks used 1024 (UNCONSTRAINED bit).
+  WINDOW_BASE: 1,
   COMPOSITOR: 2048,
 };
 

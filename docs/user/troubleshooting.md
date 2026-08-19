@@ -163,6 +163,17 @@ present.
 Use this to confirm 1:2 vs 50–50 shares and which `moNwsW` a window sits under
 after blank/wake. Disabling the extension removes all overlay actors.
 
+## Drop zone turns deep red / drop snaps back
+
+Forge refuses a tile drop when the post-drop slot would be smaller than the
+app’s known minimum size (preview class `.window-tilepreview-invalid`). Use a
+taller/wider target, fewer vertical stacks, or drop **CENTER** into a tab group
+(shared full pane) instead of a thin edge split.
+
+On some Wayland builds Mutter does not expose size hints up front; Forge learns
+mins after a client refuses a shrink, so the red refuse cue may appear only after
+the first overflow layout for that app.
+
 ## Layout apply chrome (multi-open dim)
 
 ~80% black full-screen dim with a spinner and “Forge: Loading layout…” while
