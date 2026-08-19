@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-19 (DnD min-size gate partial)
+**Updated:** 2026-08-19 (DnD min-size red zones Wayland)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -14,7 +14,7 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 **FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped.
 
 **Active next (ordered):**
-1. **DnD min-size red zones live** — wiring shipped; Wayland mins unread → no red yet ([task](./tasks/completed/forge-dnd-minsize-gate-titlebar.md) residual)
+1. Host eyes-on DnD red zones after logout ([task](./tasks/completed/forge-dnd-minsize-red-zones-wayland.md))
 2. later CN14/CN15 · after CN13 PATH
 3. blocked Ratio / autotile (yuiop) · human design blocker
 
@@ -77,7 +77,8 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
-| **next** | DnD min-size **red zones live** (Wayland mins) | **4.5** | Partial: [task](./tasks/completed/forge-dnd-minsize-gate-titlebar.md) — pickup readable mins/learn |
+| **next** | Host eyes-on DnD red zones (logout tip) | human | Nest green; [task](./tasks/completed/forge-dnd-minsize-red-zones-wayland.md) |
+| done | DnD min-size **red zones** Wayland | **4.5** | Probe + learn + per-zone paint; nest Nautilus 360×380 |
 | done | Layout `share` restore (R038) | **4.5** | [completed](./tasks/completed/forge-layout-share-restore-green-gray.md) · nest + gray/green live |
 | done | Tab-drag one event owner (fast leave-behind) | **4.5** | [completed](./tasks/completed/forge-tab-drag-event-owner.md) |
 | later | CN14 / CN15 | **4.6 med** | after CN13 · [cli-node](./plans/forge-cli-node.md) § CN14 |

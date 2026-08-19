@@ -881,10 +881,21 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm().nodeWinAtPointer = target;
       wm().moveWindowToPointer(dragged, true);
 
-      const hoverCalls = Object.values(dragged.previewZoneActors).flatMap((a) =>
-        a.set_style_class_name.mock.calls.map((c) => c[0])
+      // VSPLIT edges (TOP/BOTTOM) invalid; HSPLIT (LEFT/RIGHT) and TAB (CENTER) ok.
+      expect(dragged.previewZoneActors.TOP.set_style_class_name).toHaveBeenCalledWith(
+        "window-tilepreview-invalid"
       );
-      expect(hoverCalls.some((c) => c === "window-tilepreview-invalid")).toBe(true);
+      expect(dragged.previewZoneActors.BOTTOM.set_style_class_name).toHaveBeenCalledWith(
+        "window-tilepreview-invalid"
+      );
+      const leftCalls = dragged.previewZoneActors.LEFT.set_style_class_name.mock.calls.map(
+        (c) => c[0]
+      );
+      const centerCalls = dragged.previewZoneActors.CENTER.set_style_class_name.mock.calls.map(
+        (c) => c[0]
+      );
+      expect(leftCalls.every((c) => c !== "window-tilepreview-invalid")).toBe(true);
+      expect(centerCalls.every((c) => c !== "window-tilepreview-invalid")).toBe(true);
 
       const parentBefore = dragged.parentNode;
       wm().moveWindowToPointer(dragged, false);

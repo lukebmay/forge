@@ -166,13 +166,16 @@ after blank/wake. Disabling the extension removes all overlay actors.
 ## Drop zone turns deep red / drop snaps back
 
 Forge refuses a tile drop when the post-drop slot would be smaller than the
-app’s known minimum size (preview class `.window-tilepreview-invalid`). Use a
-taller/wider target, fewer vertical stacks, or drop **CENTER** into a tab group
-(shared full pane) instead of a thin edge split.
+app’s known minimum size (preview class `.window-tilepreview-invalid`). HSPLIT,
+VSPLIT, and TAB (CENTER) zones are checked separately — a red TOP/BOTTOM does
+not imply LEFT/RIGHT or CENTER are also refused. Use a taller/wider target,
+fewer vertical stacks, or drop **CENTER** into a tab group (shared full pane)
+instead of a thin edge split.
 
-On some Wayland builds Mutter does not expose size hints up front; Forge learns
-mins after a client refuses a shrink, so the red refuse cue may appear only after
-the first overflow layout for that app.
+On Wayland (GNOME 46), Mutter often does not expose size hints up front. Forge
+learns mins when a client refuses a shrink, and briefly probes on grab when
+mins are still unknown, so red zones can appear on the first drag after an app
+has been seen.
 
 ## Layout apply chrome (multi-open dim)
 

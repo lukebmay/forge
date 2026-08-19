@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-19 (R039 equal sizes + R040 install job colors)
+**Updated:** 2026-08-19 (DnD min-size red zones Wayland)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -14,14 +14,14 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** **R039/R040** shipped (install ANSI + bare-split equal sizes). Prior DnD
-min-size gate still partial (no red without readable mins).
-**Install:** tip installed this session. Nest `running: False`. **Host Wayland logout**
-once so host ApplyLayout picks up R039 JS (nest already green).
+**Repo tip:** DnD min-size **red zones** live on Wayland (probe + learn + per-zone paint).
+**Install:** dirty tip installed; nest green then **stopped**. **Host Wayland logout**
+once so host Shell loads `-dirty` (host ping still pre-dirty).
 **Do not close** durable-agent ghostty windows.
-**L0 last:** drop-intent + drag-drop + tab-drag + tree-ops / comprehensive DnD green.
+**L0 last:** drop-intent + drag-drop (54) green.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG).
-**Host settings:** `preview-hint-enabled=false`, `mod-mask-mouse-tile=None`.
+**Host settings:** `preview-hint-enabled=true` (for red-zone eyes-on),
+`mod-mask-mouse-tile=None`.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
 `forge-test` (clone path; `./install --with-test-cli` opt-in).
 
@@ -29,7 +29,7 @@ once so host ApplyLayout picks up R039 JS (nest already green).
 
 | Pri | Slice | Status | Note |
 | --- | --- | --- | --- |
-| **next** | **DnD min-size red zones live** | pickup | Gate wired but **no red on host** — Wayland mins unread (`get_size_hints` missing); learn path not proving. See task residual |
+| **next** | Host eyes-on DnD red zones | logout tip | Nest proved; host needs logout once |
 | later | CN14 / CN15 | after CN13 | nest/live harness; delete Python router |
 | blocked | Ratio / autotile (yuiop) | hard blocker | [blocker](./blockers/resize-autotile-design.md) |
 
@@ -47,17 +47,25 @@ once so host ApplyLayout picks up R039 JS (nest already green).
 | Residual | **Logout once** if host ApplyLayout tip still pre-R039 |
 | Task | [completed](./tasks/completed/forge-install-color-layout-size.md) · R039–R041 |
 
-### Shipped — DnD min-size gate + palette (partial)
+### Shipped — DnD min-size red zones (Wayland)
 
 | Field | Detail |
 | --- | --- |
-| Product intent | Invalid drop preview + refuse when post-drop slot &lt; app mins; keybind move skips bad slots; Luke palette defaults |
-| In tree | `dropWouldOverflowMins` / `swapWouldOverflowMins` / `unitMins`; `.window-tilepreview-invalid`; `readWindowMinSize` + delayed `noteWindowMinFromClamp`; titlebar `_armGrabPointerTrack` (live pointer preferred); `tree.move`/`swap`/`swapSibling` skip |
-| Host | DnD zones **work again** after pointer-track fix. **No red zones yet** (fail-open without mins) |
-| Nest probe | GNOME 46: `get_size_hints` / `get_min_size` undefined; Nautilus still clamps ~380px height |
-| L0 | drop-intent + drag-drop + tab-drag + tree-ops + comprehensive DnD |
-| Task | [completed](./tasks/completed/forge-dnd-minsize-gate-titlebar.md) |
-| **Pickup** | Make mins readable or reliable learn on Wayland → red + keybind skip become visible. Do not re-break live-pointer preference. Caps discard absurd learns (&gt;1200w/&gt;800h) |
+| Product | Per-zone red preview when drop would shrink any involved app below min; HSPLIT / VSPLIT / TAB independent; refuse commit |
+| Wayland mins | No `get_size_hints`/`get_min_size` on Mutter 14 → learn from clamp + grab `ensureWindowMinSizeKnown` probe + `wm_class` floor |
+| Fix | Learn on forge-caused size signals; `_scheduleMinClampLearn`; probe restore must not re-poison known mins |
+| Nest | Nautilus probe → **360×380**; 800×600 target → VSPLIT overflow, HSPLIT/TAB OK |
+| L0 | drop-intent + drag-drop **54** |
+| Tasks | [gate](./tasks/completed/forge-dnd-minsize-gate-titlebar.md) · [red zones](./tasks/completed/forge-dnd-minsize-red-zones-wayland.md) |
+| Residual | **Logout once** for host tip; then drag Nautilus onto a short pane’s TOP/BOTTOM (red) vs LEFT/RIGHT/CENTER (not red) |
+
+### Shipped — DnD min-size gate + palette (earlier)
+
+| Field | Detail |
+| --- | --- |
+| Product intent | Invalid drop preview + refuse; keybind skip; Luke palette; titlebar peel |
+| In tree | `dropWouldOverflowMins` / wiring / `.window-tilepreview-invalid` / live-pointer preference |
+| Follow-up | Red zones live — see above |
 
 ### Shipped — tab-drag event owner (fast leave-behind)
 

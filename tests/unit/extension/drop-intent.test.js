@@ -8,8 +8,10 @@ import {
 } from "../../../lib/extension/drop-intent.js";
 import {
   MIN_CLAMP_LEARN_DELAY_MS,
+  clearClassMinFloorForTests,
   noteWindowMinFromClamp,
   readWindowMinSize,
+  rememberClassMin,
 } from "../../../lib/extension/tree-layout.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
@@ -362,6 +364,21 @@ describe("dropWouldOverflowMins", () => {
     ).toBe(true);
   });
 
+  it("HSPLIT can fit when only VSPLIT overflows height", () => {
+    // Dragged min height 400: half of 600 = 300 → VSPLIT (TOP) overflow;
+    // half width of 800 = 400 → HSPLIT (LEFT) OK; CENTER full pane OK.
+    const a = win("A", 0, 400);
+    const b = win("B", 0, 0);
+    const slot = { width: 800, height: 600 };
+    expect(dropWouldOverflowMins(a, b, edgeOp({ isHorizontal: false }), { targetRect: slot })).toBe(
+      true
+    );
+    expect(dropWouldOverflowMins(a, b, edgeOp({ isHorizontal: true }), { targetRect: slot })).toBe(
+      false
+    );
+    expect(dropWouldOverflowMins(a, b, centerOp(), { targetRect: slot })).toBe(false);
+  });
+
   it("swapWouldOverflowMins checks both slots", () => {
     const a = {
       rect: { width: 400, height: 1000 },
@@ -379,6 +396,7 @@ describe("dropWouldOverflowMins", () => {
 
 describe("readWindowMinSize / noteWindowMinFromClamp", () => {
   it("reads size hints", () => {
+    clearClassMinFloorForTests();
     const meta = {
       get_size_hints: () => ({ min_width: 120, min_height: 340 }),
     };
@@ -386,6 +404,7 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
   });
 
   it("ignores immediate race; learns after delay", () => {
+    clearClassMinFloorForTests();
     const meta = {};
     const req = { width: 200, height: 150, at: 1000, priorW: 200, priorH: 380 };
     noteWindowMinFromClamp(meta, req, { width: 200, height: 380 }, 4, 1000 + 10);
@@ -401,7 +420,18 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
   });
 
   it("discards absurd learned mins", () => {
+    clearClassMinFloorForTests();
     const meta = { _forgeKnownMinH: 1032, _forgeKnownMinW: 1800 };
     expect(readWindowMinSize(meta)).toEqual({ width: 0, height: 0 });
+  });
+
+  it("falls back to class floor when meta has no hints", () => {
+    clearClassMinFloorForTests();
+    rememberClassMin("org.gnome.Nautilus", 360, 380);
+    const meta = {
+      get_wm_class: () => "org.gnome.Nautilus",
+      get_size_hints: () => null,
+    };
+    expect(readWindowMinSize(meta)).toEqual({ width: 360, height: 380 });
   });
 });
