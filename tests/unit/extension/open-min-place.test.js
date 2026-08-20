@@ -103,8 +103,8 @@ describe("resolveOpenMinPlacement", () => {
   it("env floor on tiny LFT → float when split and tab overflow", () => {
     const bare = unit("bare", 0, 0, rect(200, 200));
     bare.nodeValue.get_size_hints = () => null;
-    // Product floor 320×240 (setup uses tiny env for other fixtures).
-    const productMins = () => mins(320, 240);
+    // Product floor 256×144 (setup uses tiny env for other fixtures).
+    const productMins = () => mins(256, 144);
     expect(
       resolveOpenMinPlacement({
         lftUnit: bare,

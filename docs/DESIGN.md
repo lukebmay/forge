@@ -697,7 +697,7 @@ hints; shrink-probe to discover mins raced grabs and forever-retried.
 
 **Mins input (always defined):** `readWindowMinSize` =
 hints ∪ per-window known ∪ class floor (`window-mins.json`) ∪ **env floor**
-(`FORGE_MIN_TILE_WIDTH` / `FORGE_MIN_TILE_HEIGHT`; unset → **320×240**). Floor is
+(`FORGE_MIN_TILE_WIDTH` / `FORGE_MIN_TILE_HEIGHT`; unset → **256×144**). Floor is
 a policy lower bound, not a claim about the app. Passive learn only:
 `noteWindowMinFromClamp` when the frame stays larger than a forge resize
 request, or larger than its tree slot after settle → raises known + class floor.

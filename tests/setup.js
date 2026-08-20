@@ -2,7 +2,7 @@
 import { vi } from "vitest";
 import * as GnomeMocks from "./mocks/gnome/index.js";
 
-// D049: product default floor is 320×240, but most fixtures use ~100px rects.
+// D049: product default floor is 256×144, but most fixtures use ~100px rects.
 // Tiny env keeps overflow/DnD/open-min from retargeting every unit test.
 // Tests that need the product floor inject opts.env (or set process.env).
 if (process.env.FORGE_MIN_TILE_WIDTH == null || process.env.FORGE_MIN_TILE_WIDTH === "") {

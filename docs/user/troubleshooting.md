@@ -175,7 +175,7 @@ group (shared full pane) instead of a thin edge split.
 
 Effective mins = Mutter hints (if any) ∪ learned per-window ∪ class floor in
 `~/.config/forge/config/window-mins.json` ∪ env floor
-(`FORGE_MIN_TILE_WIDTH` / `FORGE_MIN_TILE_HEIGHT`; unset → **320×240**). On
+(`FORGE_MIN_TILE_WIDTH` / `FORGE_MIN_TILE_HEIGHT`; unset → **256×144**). On
 Wayland, Mutter often omits hints: Forge **passively learns** when a client
 stays larger than a forge resize or its tree slot, and writes class floors into
 `window-mins.json`. There is **no** shrink-probe. If a TILE pane is still too

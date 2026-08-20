@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-19 (D049 M1–M5 agent done; soft human tiny-env)
+**Updated:** 2026-08-20 (DnD titlebar focus-lag; min floor 256×144)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -14,13 +14,14 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** D049 M1–M5 **agent** shipped (env floor; probe deleted; overflow
-rehome; docs; L0+nest green).
-**Next:** soft human — [tiny-env Nautilus](./blockers/d049-tiny-env-nautilus.md)
-(logout once; session `FORGE_MIN_TILE_*=1`). Optional later CN14/CN15 · yuiop.
+**Repo tip:** Cold titlebar drop zones fixed (geom path uses `_draggedNodeWindow`
+when focus lags). Env floor unset → **256×144**. Probe stays deleted (D049).
+**Next:** host eyes-on — titlebar DnD **before** any tab peel (logout once).
+Soft — [tiny-env Nautilus](./blockers/d049-tiny-env-nautilus.md).
 **Install:** tip installed this session — **host logout once** for host Shell.
 **Do not close** durable-agent ghostty windows.
-**L0 last:** D049 suites **135**; nest ping+clean **PASS**; nest `running: False`.
+**L0 last:** min-tile + drop + open-min + drag-drop + tab-drag **167**; nest
+ping+clean **PASS**; nest `running: False`.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG). SourceBag set/fire is
 TRACE — daily DEBUG no longer spams `tabDragPointer` / failsafe replace.
 **Host settings:** `preview-hint-enabled=true`, `mod-mask-mouse-tile=None`.
@@ -28,10 +29,24 @@ TRACE — daily DEBUG no longer spams `tabDragPointer` / failsafe replace.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
 `forge-test` (clone path; `./install --with-test-cli` opt-in).
 
+### Shipped — DnD cold titlebar zones + min floor 256×144 (2026-08-20)
+
+| Field | Detail |
+| --- | --- |
+| Bug | Titlebar drag: no drop zones until a tab peel; then titlebar worked |
+| Root | `updateMetaPositionSize` used display focus, not `_draggedNodeWindow` (Wayland focus lag). Stage track armed before drag snapshot |
+| Fix | Grab node = `_draggedNodeWindow` when `grabMode` set; snapshot before `_armGrabPointerTrack` |
+| Mins | Unset `FORGE_MIN_TILE_*` → **256×144** (was 320×240) |
+| L0 | **167** (min-tile + drop-intent + open-min + drag-drop + tab-drag) |
+| Nest | mon=1 ping + `_forge-test-clean` **ok**; `running: False` |
+| Host | **Logout once**; titlebar DnD before any tab peel |
+| Task | [completed](./tasks/completed/forge-dnd-titlebar-focus-lag.md) |
+
 ### Active next
 
 | Pri | Slice | Status | Note |
 | --- | --- | --- | --- |
+| soft | Host eyes-on titlebar DnD (post-logout) | open | before any tab peel |
 | soft | D049 tiny-env Nautilus | open | [blocker](./blockers/d049-tiny-env-nautilus.md) |
 | done | D049 M5 L0 + nest | done | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m5-verify.md) |
 | done | **D049 M4** docs/contracts/DESIGN | done | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m4-docs.md) |

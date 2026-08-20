@@ -284,7 +284,7 @@ describe("dropWouldOverflowMins", () => {
   it("env floor overflows tiny slots (no fail-open on unknown)", () => {
     const a = win("A", 0, 0);
     a.nodeValue.get_size_hints = () => null;
-    // Product 320×240 (Vitest setup uses tiny FORGE_MIN_TILE_* for other fixtures).
+    // Product 256×144 (Vitest setup uses tiny FORGE_MIN_TILE_* for other fixtures).
     const productMin = (m) => readWindowMinSize(m, { env: {} });
     expect(
       dropWouldOverflowMins(
@@ -418,7 +418,7 @@ describe("dropWouldOverflowMins", () => {
 });
 
 describe("readWindowMinSize / noteWindowMinFromClamp", () => {
-  /** Tiny floor so merge/hint tests are not masked by the 320×240 default. */
+  /** Tiny floor so merge/hint tests are not masked by the 256×144 default. */
   const tinyEnv = {
     FORGE_MIN_TILE_WIDTH: "1",
     FORGE_MIN_TILE_HEIGHT: "1",
@@ -429,12 +429,12 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
   it("applies default env floor when unset", () => {
     clearClassMinFloorForTests();
     expect(readWindowMinSize(null, { env: productEnv })).toEqual({
-      width: 320,
-      height: 240,
+      width: 256,
+      height: 144,
     });
     expect(readWindowMinSize({}, { env: productEnv })).toEqual({
-      width: 320,
-      height: 240,
+      width: 256,
+      height: 144,
     });
   });
 
@@ -452,7 +452,7 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
     };
     expect(readWindowMinSize(meta, { env: tinyEnv })).toEqual({ width: 120, height: 340 });
     expect(readWindowMinSize(meta, { env: productEnv })).toEqual({
-      width: 320,
+      width: 256,
       height: 340,
     });
   });
@@ -487,7 +487,7 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
     );
     expect(readWindowMinSize(meta, { env: tinyEnv })).toEqual({ width: 1, height: 380 });
     expect(readWindowMinSize(meta, { env: productEnv })).toEqual({
-      width: 320,
+      width: 256,
       height: 380,
     });
   });
@@ -511,8 +511,8 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
     const meta = { _forgeKnownMinH: 1032, _forgeKnownMinW: 1800 };
     expect(readWindowMinSize(meta, { env: tinyEnv })).toEqual({ width: 1, height: 1 });
     expect(readWindowMinSize(meta, { env: productEnv })).toEqual({
-      width: 320,
-      height: 240,
+      width: 256,
+      height: 144,
     });
   });
 

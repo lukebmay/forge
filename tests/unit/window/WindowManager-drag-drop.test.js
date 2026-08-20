@@ -949,6 +949,43 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       expect(live[1]).toBe(500);
     });
 
+    it("titlebar position-changed paints when display focus lags drag node", async () => {
+      const MetaMod = await import("../../mocks/gnome/Meta.js");
+      const GrabOp = MetaMod.GrabOp;
+
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const a = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaA);
+      const b = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaB);
+      a.mode = WINDOW_MODES.TILE;
+      b.mode = WINDOW_MODES.TILE;
+      a.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      b.rect = { x: 960, y: 0, width: 960, height: 1080 };
+
+      // Focus stays on A while B is grabbed (Wayland focus lag).
+      Object.defineProperty(wm(), "focusMetaWindow", {
+        configurable: true,
+        get: () => metaA,
+      });
+
+      wm()._handleGrabOpBegin(global.display, metaB, GrabOp.WINDOW_BASE);
+      expect(b.mode).toBe(WINDOW_MODES.GRAB_TILE);
+      expect(wm()._draggedNodeWindow).toBe(b);
+
+      setPointer(200, 540);
+      const moving = vi.spyOn(wm().dragDrop, "_handleMoving");
+      wm().updateMetaPositionSize(metaB, "position-changed");
+      expect(moving).toHaveBeenCalledWith(b);
+      moving.mockRestore();
+    });
+
     it("grab-begin/end has no shrink-probe APIs (D049)", async () => {
       const MetaMod = await import("../../mocks/gnome/Meta.js");
       const GrabOp = MetaMod.GrabOp;

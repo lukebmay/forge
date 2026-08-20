@@ -8,12 +8,14 @@ import {
 } from "../../../lib/shared/min-tile-size.js";
 
 describe("defaultMinTileSize", () => {
-  it("defaults to 320×240 when env unset", () => {
+  it("defaults to 256×144 when env unset", () => {
+    expect(DEFAULT_MIN_TILE_WIDTH).toBe(256);
+    expect(DEFAULT_MIN_TILE_HEIGHT).toBe(144);
     expect(defaultMinTileSize({ env: {} })).toEqual({
       width: DEFAULT_MIN_TILE_WIDTH,
       height: DEFAULT_MIN_TILE_HEIGHT,
     });
-    expect(defaultMinTileSize()).toEqual({ width: 320, height: 240 });
+    expect(defaultMinTileSize()).toEqual({ width: 256, height: 144 });
   });
 
   it("uses positive int env overrides", () => {
@@ -35,7 +37,7 @@ describe("defaultMinTileSize", () => {
           [FORGE_MIN_TILE_HEIGHT]: "-10",
         },
       })
-    ).toEqual({ width: 320, height: 240 });
+    ).toEqual({ width: 256, height: 144 });
     expect(
       defaultMinTileSize({
         env: {
@@ -43,7 +45,7 @@ describe("defaultMinTileSize", () => {
           [FORGE_MIN_TILE_HEIGHT]: "  ",
         },
       })
-    ).toEqual({ width: 320, height: 240 });
+    ).toEqual({ width: 256, height: 144 });
     expect(
       defaultMinTileSize({
         env: {
@@ -51,7 +53,7 @@ describe("defaultMinTileSize", () => {
           [FORGE_MIN_TILE_HEIGHT]: null,
         },
       })
-    ).toEqual({ width: 320, height: 240 });
+    ).toEqual({ width: 256, height: 144 });
   });
 
   it("allows custom keys and per-axis override", () => {
@@ -66,6 +68,6 @@ describe("defaultMinTileSize", () => {
       defaultMinTileSize({
         env: { [FORGE_MIN_TILE_WIDTH]: "100" },
       })
-    ).toEqual({ width: 100, height: 240 });
+    ).toEqual({ width: 100, height: 144 });
   });
 });
