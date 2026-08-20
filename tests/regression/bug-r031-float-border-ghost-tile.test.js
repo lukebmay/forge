@@ -210,6 +210,7 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
     wm().trackWindow(null, meta);
     const node = wm().findNodeWindow(meta);
     wm().processFloats();
+    // D032: open beside focused tab bag wraps the bag (split-or-tab on the CON).
     expect(node.isTile()).toBe(true);
     expect(bag.parentNode).not.toBe(mon0);
 

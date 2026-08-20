@@ -1,7 +1,11 @@
 // Mock GLib namespace
 
 export function getenv(variable) {
-  // Return mock environment variables
+  // Prefer process.env so Vitest can set FORGE_MIN_TILE_* (fixtures use ~100px slots).
+  if (variable != null && typeof process !== "undefined" && process.env) {
+    const fromProc = process.env[variable];
+    if (fromProc != null && String(fromProc).length) return String(fromProc);
+  }
   const mockEnv = {
     HOME: "/home/test",
     USER: "testuser",

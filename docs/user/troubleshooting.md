@@ -167,16 +167,21 @@ after blank/wake. Disabling the extension removes all overlay actors.
 ## Drop zone turns deep red / drop snaps back
 
 Forge refuses a tile drop when the post-drop slot would be smaller than the
-app’s known minimum size (preview class `.window-tilepreview-invalid`). HSPLIT,
-VSPLIT, and TAB (CENTER) zones are checked separately — a red TOP/BOTTOM does
-not imply LEFT/RIGHT or CENTER are also refused. Use a taller/wider target,
-fewer vertical stacks, or drop **CENTER** into a tab group (shared full pane)
-instead of a thin edge split.
+app’s effective minimum size (preview class `.window-tilepreview-invalid`).
+HSPLIT, VSPLIT, and TAB (CENTER) zones are checked separately — a red
+TOP/BOTTOM does not imply LEFT/RIGHT or CENTER are also refused. Use a
+taller/wider target, fewer vertical stacks, or drop **CENTER** into a tab
+group (shared full pane) instead of a thin edge split.
 
-On Wayland (GNOME 46), Mutter often does not expose size hints up front. Forge
-learns mins when a client refuses a shrink, and briefly probes on grab when
-mins are still unknown, so red zones can appear on the first drag after an app
-has been seen.
+Effective mins = Mutter hints (if any) ∪ learned per-window ∪ class floor in
+`~/.config/forge/config/window-mins.json` ∪ env floor
+(`FORGE_MIN_TILE_WIDTH` / `FORGE_MIN_TILE_HEIGHT`; unset → **320×240**). On
+Wayland, Mutter often omits hints: Forge **passively learns** when a client
+stays larger than a forge resize or its tree slot, and writes class floors into
+`window-mins.json`. There is **no** shrink-probe. If a TILE pane is still too
+small mid-session, Forge rehomes (same-mon tab, else float) and collapses the
+vacated gap. Env overrides must be visible to the GNOME session (not only a
+terminal); logout/restart Shell after changing them.
 
 ## Layout apply chrome (multi-open dim)
 

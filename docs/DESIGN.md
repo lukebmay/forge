@@ -689,21 +689,33 @@ Default **off** (`tiny-pane-tab-fallback-enabled`); min-edge default **320**.
 Only on open-app aspect path — not manual split keybinds. Min-edge, not area
 fraction (ultrawide-safe). Pure helper: `shouldTabInsteadOfSplit` in `lft-mru.js`.
 
-### Free open min-size → tab walk → float
+### Free open / mins → env floor + passive learn + overflow rehome (D049)
 
-**Problem:** Dock / `forge launch` / focus-LFT opens can still H/V split into a
-pane illegal for the new app or the dest unit (same mins as DnD red zones).
+**Problem:** Dock / `forge launch` / focus-LFT opens (and mid-session TILE
+settle) can leave a pane illegal for the app. Wayland often lacks Mutter size
+hints; shrink-probe to discover mins raced grabs and forever-retried.
 
-**Rule (always on when mins known):** If the intended edge split would overflow,
-do not carve it. BFS same-monitor tab-join units from LFT; first full pane that
-fits both mins wins (`resolveOpenMinPlacement`). None fit → float with a
-per-window override. Unknown mins → fail-open (keep split). Wayland has no
-Mutter size hints: class floors live in `window-mins.json` and are refreshed by
-post-open / post-grab probe (never mid MOVING grab; cancel in-flight on
-grab-begin; grab-end queues dragged only after settle; failed shrink gives
-up — no forever-retry). PlaceNext / ApplyLayout slot pins are excluded
-(desired forest owns dest). DnD still refuses on red. Tiny-pane above stays a
-separate earlier-tab QoL setting.
+**Mins input (always defined):** `readWindowMinSize` =
+hints ∪ per-window known ∪ class floor (`window-mins.json`) ∪ **env floor**
+(`FORGE_MIN_TILE_WIDTH` / `FORGE_MIN_TILE_HEIGHT`; unset → **320×240**). Floor is
+a policy lower bound, not a claim about the app. Passive learn only:
+`noteWindowMinFromClamp` when the frame stays larger than a forge resize
+request, or larger than its tree slot after settle → raises known + class floor.
+**No shrink-probe** (no tiny `move_resize` to discover mins).
+
+**Open rule:** If the intended edge split would overflow, do not carve it. BFS
+same-monitor tab-join units from LFT; first full pane that fits both mins wins
+(`resolveOpenMinPlacement`). None fit → float (`addFloatOverride`). PlaceNext /
+ApplyLayout slot pins are excluded (desired forest owns dest).
+
+**Mid-session:** When a TILE slot is too small for effective mins,
+`wm.rehomeIfSlotTooSmall` learns, then same-mon tab BFS / float, and removes the
+vacated gap (`resolveTileOverflowPlacement` / Node child join). Skips ApplyEpoch,
+GRAB_TILE, max/fs/zoom. Mins overflow is **instead of** D026 restore-to-slot.
+
+**DnD:** Per-zone red + refuse via `dropWouldOverflowMins` using the same
+effective mins (never “unknown → allow”). Tiny-pane above stays a separate
+earlier-tab QoL setting.
 
 `new-window-placement=window-actual` remains an escape hatch for restore geometry;
 default path is LFT policy. `lastFocusedWindow` still exists for pointer helpers.

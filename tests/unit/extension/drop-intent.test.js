@@ -281,13 +281,33 @@ describe("dropWouldOverflowMins", () => {
     };
   }
 
-  it("fail-open when mins unreadable", () => {
+  it("env floor overflows tiny slots (no fail-open on unknown)", () => {
     const a = win("A", 0, 0);
     a.nodeValue.get_size_hints = () => null;
+    // Product 320×240 (Vitest setup uses tiny FORGE_MIN_TILE_* for other fixtures).
+    const productMin = (m) => readWindowMinSize(m, { env: {} });
     expect(
-      dropWouldOverflowMins(a, win("B", 0, 0), edgeOp({ isHorizontal: false }), {
-        targetRect: { width: 200, height: 200 },
-      })
+      dropWouldOverflowMins(
+        a,
+        win("B", 0, 0),
+        edgeOp({ isHorizontal: false }),
+        { targetRect: { width: 200, height: 200 } },
+        productMin
+      )
+    ).toBe(true);
+  });
+
+  it("custom getMin zeros still fail-open", () => {
+    const zero = () => ({ width: 0, height: 0 });
+    const a = win("A", 0, 0);
+    expect(
+      dropWouldOverflowMins(
+        a,
+        win("B", 0, 0),
+        edgeOp({ isHorizontal: false }),
+        { targetRect: { width: 200, height: 200 } },
+        zero
+      )
     ).toBe(false);
   });
 
@@ -398,12 +418,43 @@ describe("dropWouldOverflowMins", () => {
 });
 
 describe("readWindowMinSize / noteWindowMinFromClamp", () => {
-  it("reads size hints", () => {
+  /** Tiny floor so merge/hint tests are not masked by the 320×240 default. */
+  const tinyEnv = {
+    FORGE_MIN_TILE_WIDTH: "1",
+    FORGE_MIN_TILE_HEIGHT: "1",
+  };
+  /** Empty env → product defaults (Vitest setup sets process FORGE_MIN_TILE_*=1). */
+  const productEnv = {};
+
+  it("applies default env floor when unset", () => {
+    clearClassMinFloorForTests();
+    expect(readWindowMinSize(null, { env: productEnv })).toEqual({
+      width: 320,
+      height: 240,
+    });
+    expect(readWindowMinSize({}, { env: productEnv })).toEqual({
+      width: 320,
+      height: 240,
+    });
+  });
+
+  it("honors env floor override", () => {
+    clearClassMinFloorForTests();
+    expect(
+      readWindowMinSize({}, { env: { FORGE_MIN_TILE_WIDTH: "100", FORGE_MIN_TILE_HEIGHT: "50" } })
+    ).toEqual({ width: 100, height: 50 });
+  });
+
+  it("reads size hints (floored by env)", () => {
     clearClassMinFloorForTests();
     const meta = {
       get_size_hints: () => ({ min_width: 120, min_height: 340 }),
     };
-    expect(readWindowMinSize(meta)).toEqual({ width: 120, height: 340 });
+    expect(readWindowMinSize(meta, { env: tinyEnv })).toEqual({ width: 120, height: 340 });
+    expect(readWindowMinSize(meta, { env: productEnv })).toEqual({
+      width: 320,
+      height: 340,
+    });
   });
 
   it("ignores immediate race; does not learn while still at prior", () => {
@@ -434,7 +485,11 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
       4,
       1000 + MIN_CLAMP_LEARN_DELAY_MS + 1
     );
-    expect(readWindowMinSize(meta)).toEqual({ width: 0, height: 380 });
+    expect(readWindowMinSize(meta, { env: tinyEnv })).toEqual({ width: 1, height: 380 });
+    expect(readWindowMinSize(meta, { env: productEnv })).toEqual({
+      width: 320,
+      height: 380,
+    });
   });
 
   it("ratchets known min down when request is accepted", () => {
@@ -451,13 +506,17 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
     expect(meta._forgeKnownMinH).toBe(500);
   });
 
-  it("discards absurd learned mins", () => {
+  it("discards absurd learned mins then applies env floor", () => {
     clearClassMinFloorForTests();
     const meta = { _forgeKnownMinH: 1032, _forgeKnownMinW: 1800 };
-    expect(readWindowMinSize(meta)).toEqual({ width: 0, height: 0 });
+    expect(readWindowMinSize(meta, { env: tinyEnv })).toEqual({ width: 1, height: 1 });
+    expect(readWindowMinSize(meta, { env: productEnv })).toEqual({
+      width: 320,
+      height: 240,
+    });
   });
 
-  it("falls back to class floor when meta has no hints", () => {
+  it("falls back to class floor when meta has no hints; learned can raise above env", () => {
     clearClassMinFloorForTests();
     rememberClassMin("org.gnome.Nautilus", 360, 380);
     const meta = {
@@ -465,6 +524,7 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
       get_size_hints: () => null,
     };
     expect(readWindowMinSize(meta)).toEqual({ width: 360, height: 380 });
+    expect(readWindowMinSize(meta, { env: tinyEnv })).toEqual({ width: 360, height: 380 });
   });
 
   it("parseWindowMinsJson caps absurd and loads", () => {

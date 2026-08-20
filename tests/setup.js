@@ -2,6 +2,16 @@
 import { vi } from "vitest";
 import * as GnomeMocks from "./mocks/gnome/index.js";
 
+// D049: product default floor is 320×240, but most fixtures use ~100px rects.
+// Tiny env keeps overflow/DnD/open-min from retargeting every unit test.
+// Tests that need the product floor inject opts.env (or set process.env).
+if (process.env.FORGE_MIN_TILE_WIDTH == null || process.env.FORGE_MIN_TILE_WIDTH === "") {
+  process.env.FORGE_MIN_TILE_WIDTH = "1";
+}
+if (process.env.FORGE_MIN_TILE_HEIGHT == null || process.env.FORGE_MIN_TILE_HEIGHT === "") {
+  process.env.FORGE_MIN_TILE_HEIGHT = "1";
+}
+
 // Mock the gi:// import scheme used by GNOME Shell ESM
 // The extension uses: import Meta from "gi://Meta"
 vi.mock("gi://Meta", () => GnomeMocks.Meta);

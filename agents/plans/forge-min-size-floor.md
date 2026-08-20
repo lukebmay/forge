@@ -1,6 +1,6 @@
 # Plan: Min-size floor + passive learn (kill shrink-probe)
 
-**Status:** **approved** — implement next session (M0 done)  
+**Status:** **shipped (agent)** — M1–M5 agent done; soft human tiny-env open verify  
 **Priority:** P0  
 **Branch:** `master`  
 **Created:** 2026-08-19  
@@ -234,19 +234,25 @@ FORGE_MIN_TILE_WIDTH=1 FORGE_MIN_TILE_HEIGHT=1   # or tiny values
 ## Acceptance (whole plan)
 
 - [x] D049 in DECISIONS; plan on disk under `agents/plans/` (M0)
-- [ ] No shrink-probe symbols in `lib/`
-- [ ] Env floor 320×240 + override works
+- [x] No shrink-probe symbols in `lib/`
+- [x] Env floor 320×240 + override works
 - [ ] Passive learn still raises class floors into `window-mins.json`
-- [ ] Open + mid-session overflow: BFS tab → float; gap removed
-- [ ] DnD red zones use effective mins (floor ∪ learn)
-- [ ] Docs/contracts/DESIGN/HANDOFF updated; L0 + nest green; host eyes-on with tiny env
+- [x] Open + mid-session overflow: BFS tab → float; gap removed
+- [x] DnD red zones use effective mins (floor ∪ learn) (L0; host eyes-on soft)
+- [x] Docs/contracts/DESIGN/HANDOFF updated (M4); L0 + nest green; host eyes-on with tiny env — **M5**
 
 ### Session note (overwrite)
 
-**2026-08-19 M0 done.** Plan approved as **D049** (not D047 — that id is
-split-chrome). DECISIONS row + `agents/plans/forge-min-size-floor.md` + M1–M5
-tasks stubbed. PRIORITY/HANDOFF point at M1. **No code yet** — implement next
-session starting M1.
+**2026-08-19 M1–M5 agent done. No commit/push.** Soft human blocker open.
+
+- **M1–M2:** env floor 320×240 + shrink-probe deleted
+- **M3:** `rehomeIfSlotTooSmall` overflow → tab/float + gap collapse
+- **M4:** docs/contracts/DESIGN; `rg` probe clean under docs/lib
+- **M5 agent:** L0 **135**; nest ping+clean **ok**; nest stopped
+- **Human:** [blocker](../blockers/d049-tiny-env-nautilus.md) tiny-env Nautilus
+- **Passive learn → window-mins.json:** unit paths exist; host prove on blocker
+- **Next queue:** optional CN14/CN15 · yuiop blocked
+
 
 ## Prior plans (mirrored; shipped)
 

@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-19 (D049 min-size floor plan approved)
+**Updated:** 2026-08-19 (D049 M1–M5 agent done; soft human tiny-env)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -14,12 +14,13 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** Tab-drag poll starve shipped. **Next implement:** [D049 min-size
-floor](./plans/forge-min-size-floor.md) — kill shrink-probe; env 320×240; passive
-learn; BFS/float + remove gap. M0 done; start **M1**.
-**Install:** dirty tip — **host logout once** for Shell load (nest already green).
+**Repo tip:** D049 M1–M5 **agent** shipped (env floor; probe deleted; overflow
+rehome; docs; L0+nest green).
+**Next:** soft human — [tiny-env Nautilus](./blockers/d049-tiny-env-nautilus.md)
+(logout once; session `FORGE_MIN_TILE_*=1`). Optional later CN14/CN15 · yuiop.
+**Install:** tip installed this session — **host logout once** for host Shell.
 **Do not close** durable-agent ghostty windows.
-**L0 last:** tab-drag + sources + DnD suites (**197**).
+**L0 last:** D049 suites **135**; nest ping+clean **PASS**; nest `running: False`.
 **Logging:** `logging-enabled=true`, `log-level=5` (DEBUG). SourceBag set/fire is
 TRACE — daily DEBUG no longer spams `tabDragPointer` / failsafe replace.
 **Host settings:** `preview-hint-enabled=true`, `mod-mask-mouse-tile=None`.
@@ -31,11 +32,62 @@ TRACE — daily DEBUG no longer spams `tabDragPointer` / failsafe replace.
 
 | Pri | Slice | Status | Note |
 | --- | --- | --- | --- |
-| **next** | **D049 M1** env floor + `readWindowMinSize` | ready | [task](./plans/forge-min-size-floor/forge-min-size-floor_m1-env-floor.md) · then M2 probe delete |
-| next | D049 M2–M5 | queued | [plan](./plans/forge-min-size-floor.md) · M3 = **4.6 high** |
+| soft | D049 tiny-env Nautilus | open | [blocker](./blockers/d049-tiny-env-nautilus.md) |
+| done | D049 M5 L0 + nest | done | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m5-verify.md) |
+| done | **D049 M4** docs/contracts/DESIGN | done | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m4-docs.md) |
+| done | D049 M3 overflow rehome + gap | done | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m3-overflow-rehome.md) · L0 **135** |
+| done | D049 M1+M2 env floor + probe delete | done | [completed/](./plans/forge-min-size-floor/completed/) |
 | optional | Host eyes-on tab-drag poll tip | tip load | After logout; or defer until D049 tip |
 | later | CN14 / CN15 | after CN13 | nest/live harness; delete Python router |
 | blocked | Ratio / autotile (yuiop) | hard blocker | [blocker](./blockers/resize-autotile-design.md) |
+
+### Shipped — D049 M5 agent verify (L0 + nest)
+
+| Field | Detail |
+| --- | --- |
+| L0 | min-tile + drop-intent + open-min + open-app + drag-drop + overflow-rehome **135** |
+| Nest | mon=1 ping + `_forge-test-clean` **ok**; `running: False` |
+| Probe journal | nest shell.log: **no** minProbe / `_forgeMinProb` |
+| Host | tip installed; **logout once**; soft eyes-on [blocker](./blockers/d049-tiny-env-nautilus.md) |
+| Task | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m5-verify.md) |
+
+### Shipped — D049 M4 docs (env floor + learn + overflow; no probe)
+
+| Field | Detail |
+| --- | --- |
+| Product docs | DESIGN / contracts / troubleshooting / DECISIONS match D049 L1–L8 |
+| APIs named | `defaultMinTileSize` · `readWindowMinSize` · `noteWindowMinFromClamp` · overflow rehome |
+| Forbidden | Shrink-probe / `ensureWindowMinSizeKnown` / fail-open “unknown mins” as product |
+| Paths | `docs/DESIGN.md` · `docs/dev/contracts.md` · `docs/user/troubleshooting.md` · comments |
+| Task | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m4-docs.md) |
+| Next | **M5** nest/host tiny-env Nautilus prove |
+
+### Shipped — D049 M3 mid-session overflow rehome
+
+| Field | Detail |
+| --- | --- |
+| Product | TILE slot too small for mins → same-mon tab BFS → else float; vacated gap collapsed |
+| APIs | `slotOverflowsMins` · `resolveTileOverflowPlacement` · `wm.rehomeIfSlotTooSmall` |
+| D026 | Mins overflow **instead of** `_restoreTileToSlot`; max/fs/zoom still restore |
+| Skip | ApplyEpoch · GRAB_TILE · fullscreen/maximized · zoom |
+| Debounce | SourceBag `overflowRehome:<id>` |
+| Paths | `open-min-place.js` · `window.js` · contracts mid-session + D026 rows |
+| L0 | open-min + min-tile + drop + open-app + drag-drop + overflow-rehome **135** |
+| Nest | not run (unit) |
+| Task | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m3-overflow-rehome.md) |
+
+### Shipped — D049 M1+M2 env floor + shrink-probe delete
+
+| Field | Detail |
+| --- | --- |
+| Product | Always-on env floor **320×240** (`FORGE_MIN_TILE_WIDTH`/`HEIGHT`); no gsettings |
+| API | `defaultMinTileSize` (`lib/shared/min-tile-size.js`); `readWindowMinSize` = hints∪known∪class∪**floor** |
+| Deleted | All shrink-probe (`ensureWindowMinSizeKnown` + queue/cancel/abort + `_forgeMinProb*`) |
+| Keep | Passive `noteWindowMinFromClamp` / class `window-mins.json`; DnD red zones; open-min BFS/float |
+| Paths | `min-tile-size.js` · `tree-layout.js` · `window.js` · `drag-drop.js` |
+| L0 | min-tile + drop-intent + open-min + open-app-policy + drag-drop **120** |
+| Nest | not required (unit + dead-code) |
+| Tasks | [M1](./plans/forge-min-size-floor/completed/forge-min-size-floor_m1-env-floor.md) · [M2](./plans/forge-min-size-floor/completed/forge-min-size-floor_m2-excise-probe.md) |
 
 ### Shipped — Tab-drag poll starve (chip lag / stuck release)
 
@@ -53,11 +105,13 @@ TRACE — daily DEBUG no longer spams `tabDragPointer` / failsafe replace.
 
 ### Shipped — DnD min-probe grab fight
 
+> **Superseded by D049:** shrink-probe APIs deleted; product is env floor + passive learn.
+
 | Field | Detail |
 | --- | --- |
 | Bugs | After layout+Nautilus: tab stuck / no zones; titlebar DnD dead; wrong tile sizes; recovered later in-session |
 | Root | Grab-end flushed dest shrink probes; Chrome never learns → forever-retry raced tile/`move()` |
-| Fix | `_cancelMinSizeProbes` on grab-begin; no mid-drag dest queue; grab-end dragged-only delayed; `_forgeMinProbeGaveUp` |
+| Fix (historical) | `_cancelMinSizeProbes` on grab-begin; no mid-drag dest queue; grab-end dragged-only delayed; `_forgeMinProbeGaveUp` |
 | Paths | `window.js` · `drag-drop.js` · contracts/DESIGN |
 | L0 | drag-drop (+drop-intent/open-min/open-app) **116** |
 | Nest | mon=1 `_forge-test-clean` **ok**; `running: False` |
@@ -66,10 +120,12 @@ TRACE — daily DEBUG no longer spams `tabDragPointer` / failsafe replace.
 
 ### Shipped — Open-min / DnD cold Wayland
 
+> **Superseded by D049** for probe/persist path: env floor always; passive learn only; no post-open/grab probe. Titlebar stage paint + `window-mins.json` **kept**.
+
 | Field | Detail |
 | --- | --- |
 | Bugs | Fresh Wayland: dock Nautilus kept splitting (mins unknown); titlebar DnD dead until tab peel (probe mid-grab + no stage paint); false reds (premature learn of prior frame) |
-| Fix | No min probe during MOVING grab (queue after); titlebar `_armGrabPointerTrack` → `_handleMoving`; durable `window-mins.json` + post-open probe; clamp learn skips glued-to-prior; ratchet-down on accept |
+| Fix (historical) | No min probe during MOVING grab (queue after); titlebar `_armGrabPointerTrack` → `_handleMoving`; durable `window-mins.json` + post-open probe; clamp learn skips glued-to-prior; ratchet-down on accept |
 | Paths | `drag-drop.js` · `window.js` · `tree-layout.js` · contracts/DESIGN |
 | L0 | drop-intent + open-min + open-app-policy + drag-drop **112** |
 | Nest | mon=1 `_forge-test-clean` **ok**; `running: False` |
@@ -77,6 +133,8 @@ TRACE — daily DEBUG no longer spams `tabDragPointer` / failsafe replace.
 | Task | [completed](./tasks/completed/forge-open-min-dnd-cold-wayland.md) |
 
 ### Shipped — Free open min → tab walk → float
+
+> **Policy kept (D049).** Residual “fail-open until class floor” is **obsolete** — env floor always applies.
 
 | Field | Detail |
 | --- | --- |
@@ -86,7 +144,6 @@ TRACE — daily DEBUG no longer spams `tabDragPointer` / failsafe replace.
 | Wire | `trackWindow` + `_rehomeAttachAfterMonLft`; tiny-pane QoL unchanged |
 | L0 | open-min-place + open-app-policy (+ drop-intent/lft-mru) **123** |
 | Task | [completed](./tasks/completed/forge-open-min-tab-walk-float.md) |
-| Residual | Nest/host tip load; mins still fail-open until class floor/learn |
 
 ### Shipped — R039/R040/R041 + quiet layout
 
@@ -104,12 +161,14 @@ TRACE — daily DEBUG no longer spams `tabDragPointer` / failsafe replace.
 
 ### Shipped — DnD min-size red zones (Wayland)
 
+> **Red zones kept (D049).** Mins input **superseded**: env floor ∪ passive learn ∪ class `window-mins.json` — **no** `ensureWindowMinSizeKnown` probe.
+
 | Field | Detail |
 | --- | --- |
 | Product | Per-zone red preview when drop would shrink any involved app below min; HSPLIT / VSPLIT / TAB independent; refuse commit |
-| Wayland mins | No `get_size_hints`/`get_min_size` on Mutter 14 → learn from clamp + grab `ensureWindowMinSizeKnown` probe + `wm_class` floor |
-| Fix | Learn on forge-caused size signals; `_scheduleMinClampLearn`; probe restore must not re-poison known mins |
-| Nest | Nautilus probe → **360×380**; 800×600 target → VSPLIT overflow, HSPLIT/TAB OK |
+| Wayland mins (historical) | No `get_size_hints`/`get_min_size` on Mutter 14 → learn from clamp + grab probe + `wm_class` floor |
+| Fix (historical) | Learn on forge-caused size signals; `_scheduleMinClampLearn`; probe restore must not re-poison known mins |
+| Nest | Nautilus class floor → **360×380**; 800×600 target → VSPLIT overflow, HSPLIT/TAB OK |
 | L0 | drop-intent + drag-drop **54** |
 | Tasks | [gate](./tasks/completed/forge-dnd-minsize-gate-titlebar.md) · [red zones](./tasks/completed/forge-dnd-minsize-red-zones-wayland.md) |
 | Residual | **Logout once** for host tip; then drag Nautilus onto a short pane’s TOP/BOTTOM (red) vs LEFT/RIGHT/CENTER (not red) |
@@ -786,9 +845,9 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Next / active:** **D049 M1** — [plan](./plans/forge-min-size-floor.md)
-(env floor → kill probe → overflow rehome). M0 done. Optional later: CN14/CN15;
-yuiop blocked. See [IDEAS](./IDEAS.md).
+**Next / active:** soft human D049 tiny-env — [blocker](./blockers/d049-tiny-env-nautilus.md).
+D049 M1–M5 **agent** done. Optional later: CN14/CN15; yuiop blocked. See [IDEAS](./IDEAS.md).
+
 **FCC Wave C (+R1/R2-docs) closed through C5; P3 done; PR7/D046 done; Wave Z0/Z1
 shipped.** Tab-drag poll starve shipped. **Do not** reintroduce shrink-probe.
 

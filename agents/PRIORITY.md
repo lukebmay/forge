@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-19 (D049 min-size floor approved)
+**Updated:** 2026-08-19 (D049 M1–M5 agent done; soft human tiny-env)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -9,17 +9,14 @@
 **D039–D043** slot machines (SM0) · **SM1–SM7 implement landed** ·
 **R036 cold PASS** · **D044** TABBED/STACKED mon-local **shipped** ·
 **D046** Chrome live tab strip DnD **docs shipped** ·
-**D049** mins env floor + passive learn (**approved**; implement M1+) ·
+**D049** mins env floor + passive learn (**M1–M5 agent done**; soft human) ·
 **PR1–PR15** tab chrome / click-drag **unit-shipped** · PR7 docs **done** ·
 User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**) ·
 **FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped.
 
 **Active next (ordered):**
-1. **D049 M1** env floor — [task](./plans/forge-min-size-floor/forge-min-size-floor_m1-env-floor.md) · [plan](./plans/forge-min-size-floor.md)
-2. D049 M2 delete shrink-probe (**4.5**, serial after M1)
-3. D049 M3 overflow rehome + gap (**4.6 high**)
-4. D049 M4 docs · M5 verify (+ human tiny-env Nautilus)
-5. later CN14/CN15 · blocked yuiop
+1. soft human — D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md)
+2. later CN14/CN15 · blocked yuiop
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
 tree press-arm only. Poll skips synced xy; SourceBag hot logs are TRACE.
@@ -45,7 +42,7 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **user CLI no test toolkit**
 + **tab click-drag PR1–PR15 + PR7 docs (D046)** landed. **FCC Wave C (+R1/R2-docs)
 closed through C5; P3 `_layoutOp` flatten strip done.** Wave Z0/Z1 shipped.
-**Active:** **D049** min-size floor (M0 done → M1). Optional later: CN14/CN15 ·
+**Active:** **D049** M1–M5 agent shipped; soft human tiny-env. Optional later: CN14/CN15 ·
 yuiop (blocked). Preserve PR9 foreign spacer-only and PR10 synthetic peel
 ownership. Do **not** reintroduce shrink-probe.
 Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
@@ -70,8 +67,8 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 | Tab PR7 docs | **done** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |
 | CN13 Node PATH | **done** | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
 
-**L0 last:** CN13 Vitest cli **169** + pytest job/node/install **56**. Prior P3 **123**.
-**Host cold:** R036 **PASS**. Nest not required for CN13 (PATH/CLI units + live ping).
+**L0 last:** D049 M1–M3 min-tile + drop/open/DnD + overflow-rehome **135** (M4 docs-only).
+**Host cold:** R036 **PASS**. M5 = nest + host tiny-env Nautilus prove.
 
 ---
 
@@ -79,16 +76,18 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
-| **next** | **D049 M1** env min floor + `readWindowMinSize` | **4.5** | [task](./plans/forge-min-size-floor/forge-min-size-floor_m1-env-floor.md) |
-| next | D049 M2 excise shrink-probe | **4.5** | after M1; [task](./plans/forge-min-size-floor/forge-min-size-floor_m2-excise-probe.md) |
-| next | D049 M3 overflow BFS + remove gap | **4.6 high** | after M2; [task](./plans/forge-min-size-floor/forge-min-size-floor_m3-overflow-rehome.md) |
-| next | D049 M4 docs · M5 verify | **4.5** | + human tiny-env Nautilus |
+| soft | D049 tiny-env Nautilus (human) | human | [blocker](./blockers/d049-tiny-env-nautilus.md) |
+| done | D049 M5 L0 + nest | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m5-verify.md) |
+| done | D049 M4 docs/contracts/DESIGN | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m4-docs.md) |
+| done | D049 M3 overflow BFS + remove gap | **4.6 high** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m3-overflow-rehome.md) |
+| done | D049 M2 excise shrink-probe | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m2-excise-probe.md) |
+| done | D049 M1 env min floor + `readWindowMinSize` | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m1-env-floor.md) |
 | done | D049 M0 decision + plan disk | **4.5** | D049 row; [plan](./plans/forge-min-size-floor.md) |
 | done | Tab-drag poll starve (chip lag / stuck release) | **4.5** | TRACE SourceBag hot; poll skip; button-up finish; L0 **197** |
-| done | DnD min-probe grab fight (forever-retry / tile race) | **4.5** | Cancel on grab; no dest mid-drag probe; gave-up; L0 **116** |
-| done | Open-min/DnD cold Wayland (probe/grab/persist) | **4.5** | No mid-grab probe; titlebar stage paint; window-mins.json |
-| done | Free open mins → tab BFS → float | **4.5** | Always-on when mins known; PlaceNext/DnD excluded |
-| done | DnD min-size **red zones** Wayland | **4.5** | Probe + learn + per-zone paint; nest Nautilus 360×380 |
+| done | DnD min-probe grab fight (forever-retry / tile race) | **4.5** | **Superseded by D049** (probe deleted) · historical L0 **116** |
+| done | Open-min/DnD cold Wayland (probe/grab/persist) | **4.5** | **Superseded by D049** for probe; titlebar paint + window-mins.json kept |
+| done | Free open mins → tab BFS → float | **4.5** | Policy kept; env floor always (fail-open obsolete) |
+| done | DnD min-size **red zones** Wayland | **4.5** | Red zones kept; mins = floor ∪ learn (no probe) |
 | done | Layout `share` restore (R038) | **4.5** | [completed](./tasks/completed/forge-layout-share-restore-green-gray.md) · nest + gray/green live |
 | done | Tab-drag one event owner (fast leave-behind) | **4.5** | [completed](./tasks/completed/forge-tab-drag-event-owner.md) |
 | later | CN14 / CN15 | **4.6 med** | after CN13 · [cli-node](./plans/forge-cli-node.md) § CN14 |
@@ -135,7 +134,7 @@ open, PR2–PR6 as later). Rejected product: cross-mon TABBED (D044); top-level
 ### Why this order
 
 1. **SM1–SM7 + R036 + D044 + user CLI + PR1–PR15 + FCC C0–C5/R1 + P3 + Wave Z0/Z1 + CN13** — shipped.
-2. **Required queue empty** — no next implement slice unless promoted.
+2. **D049 M1–M5** agent shipped (soft human tiny-env open).
 3. **Optional later** — CN14/CN15 · yuiop (human lock).
 
 ### Worth (do not forget)

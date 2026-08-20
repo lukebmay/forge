@@ -2,7 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   splitWouldOverflowMins,
   tabWouldOverflowMins,
+  slotOverflowsMins,
   resolveOpenMinPlacement,
+  resolveTileOverflowPlacement,
   tabJoinUnit,
   bfsOpenMinTabCandidates,
 } from "../../../lib/extension/open-min-place.js";
@@ -50,6 +52,23 @@ describe("splitWouldOverflowMins", () => {
   });
 });
 
+describe("slotOverflowsMins", () => {
+  it("true when min exceeds slot by more than ε", () => {
+    expect(slotOverflowsMins(rect(800, 200), mins(0, 400), 4)).toBe(true);
+    expect(slotOverflowsMins(rect(200, 800), mins(360, 0), 4)).toBe(true);
+  });
+
+  it("false when overage is within ε", () => {
+    expect(slotOverflowsMins(rect(800, 396), mins(0, 400), 4)).toBe(false);
+    expect(slotOverflowsMins(rect(800, 400), mins(0, 400), 4)).toBe(false);
+  });
+
+  it("fail-open on missing/zero rect", () => {
+    expect(slotOverflowsMins(null, mins(400, 400))).toBe(false);
+    expect(slotOverflowsMins(rect(0, 200), mins(400, 400))).toBe(false);
+  });
+});
+
 describe("tabWouldOverflowMins", () => {
   it("full pane OK when half would overflow", () => {
     expect(tabWouldOverflowMins(mins(0, 400), mins(0, 0), rect(800, 600))).toBe(false);
@@ -75,8 +94,27 @@ describe("resolveOpenMinPlacement", () => {
         orientation: "vertical",
         slotRectFor,
         candidates: [bare],
+        // Bypass env floor so this asserts the pure unknown-mins path.
+        unitMinsFor: () => mins(0, 0),
       })
     ).toEqual({ kind: "split" });
+  });
+
+  it("env floor on tiny LFT → float when split and tab overflow", () => {
+    const bare = unit("bare", 0, 0, rect(200, 200));
+    bare.nodeValue.get_size_hints = () => null;
+    // Product floor 320×240 (setup uses tiny env for other fixtures).
+    const productMins = () => mins(320, 240);
+    expect(
+      resolveOpenMinPlacement({
+        lftUnit: bare,
+        newMins: productMins(),
+        orientation: "vertical",
+        slotRectFor,
+        candidates: [bare],
+        unitMinsFor: productMins,
+      })
+    ).toEqual({ kind: "float" });
   });
 
   it("legal split → split", () => {
@@ -87,6 +125,21 @@ describe("resolveOpenMinPlacement", () => {
         orientation: "horizontal",
         slotRectFor,
         candidates: [lft],
+      })
+    ).toEqual({ kind: "split" });
+  });
+
+  it("unknown slot geom → split (D032; do not tab blindly)", () => {
+    const bare = unit("bare", 0, 0, null);
+    bare.renderRect = null;
+    bare.rect = null;
+    expect(
+      resolveOpenMinPlacement({
+        lftUnit: bare,
+        newMins: mins(320, 240),
+        orientation: "horizontal",
+        slotRectFor: () => null,
+        candidates: [bare],
       })
     ).toEqual({ kind: "split" });
   });
@@ -141,6 +194,61 @@ describe("resolveOpenMinPlacement", () => {
       candidates: [lft],
     });
     expect(r).toEqual({ kind: "tab", targetUnit: lft });
+  });
+});
+
+describe("resolveTileOverflowPlacement", () => {
+  const slotRectFor = (u) => u.renderRect || u.rect;
+
+  it("never splits even when half would fit", () => {
+    const self = unit("self", 100, 100, rect(800, 600));
+    const neighbor = unit("n", 50, 50, rect(1200, 800));
+    const r = resolveTileOverflowPlacement({
+      selfUnit: self,
+      lftUnit: self,
+      newMins: mins(200, 200),
+      slotRectFor,
+      candidates: [self, neighbor],
+    });
+    expect(r).toEqual({ kind: "tab", targetUnit: neighbor });
+  });
+
+  it("skips self and a group that already contains self", () => {
+    const self = unit("self", 50, 50, rect(400, 200));
+    const group = {
+      layout: "TABBED",
+      isStackedOrTabbed: () => true,
+      contains: (n) => n === self,
+    };
+    const roomy = unit("roomy", 50, 50, rect(1200, 800));
+    const r = resolveTileOverflowPlacement({
+      selfUnit: self,
+      lftUnit: self,
+      newMins: mins(0, 400),
+      slotRectFor,
+      candidates: [self, group, roomy],
+    });
+    expect(r).toEqual({ kind: "tab", targetUnit: roomy });
+  });
+
+  it("all remaining candidates illegal → float", () => {
+    const self = unit("self", 50, 50, rect(400, 200));
+    const tiny = unit("tiny", 50, 50, rect(400, 300));
+    expect(
+      resolveTileOverflowPlacement({
+        selfUnit: self,
+        lftUnit: self,
+        newMins: mins(0, 400),
+        slotRectFor,
+        candidates: [self, tiny],
+      })
+    ).toEqual({ kind: "float" });
+  });
+
+  it("missing self → float", () => {
+    expect(resolveTileOverflowPlacement({ newMins: mins(200, 200) })).toEqual({
+      kind: "float",
+    });
   });
 });
 

@@ -792,8 +792,10 @@ describe("OP1 open-app placement policy", () => {
       mon1.layout = LAYOUT_TYPES.HSPLIT;
       const left = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, {});
       left.layout = LAYOUT_TYPES.VSPLIT;
+      left.renderRect = { x: 1920, y: 0, width: 960, height: 1080 };
       const right = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, {});
       right.layout = LAYOUT_TYPES.TABBED;
+      right.renderRect = { x: 2880, y: 0, width: 960, height: 1080 };
       const ghost = createWindowNode(ctx.tree, left, {
         mode: "TILE",
         windowOverrides: {
@@ -803,6 +805,7 @@ describe("OP1 open-app placement policy", () => {
           rect: { x: 1920, y: 0, width: 960, height: 1080 },
         },
       });
+      ghost.nodeWindow.renderRect = { x: 1920, y: 0, width: 960, height: 1080 };
       createWindowNode(ctx.tree, right, {
         mode: "TILE",
         windowOverrides: {
@@ -1065,18 +1068,19 @@ describe("OP1 open-app placement policy", () => {
       setup({
         settings: {
           "tiny-pane-tab-fallback-enabled": false,
-          "tiny-pane-min-edge": 320,
+          "tiny-pane-min-edge": 400,
         },
       });
       tileOn(0, {
         id: "seed",
-        rect: { x: 0, y: 0, width: 1400, height: 600 },
+        rect: { x: 0, y: 0, width: 1220, height: 600 },
       });
-      // Wider than tall → HSPLIT; halfW 250 would be under thresh if fallback on.
+      // Wider than tall → HSPLIT; halfW 350 ≥ env floor 320, but under tiny-pane 400.
       const small = tileOn(0, {
         id: "small-lft",
-        rect: { x: 1400, y: 0, width: 500, height: 400 },
+        rect: { x: 1220, y: 0, width: 700, height: 400 },
       });
+      small.nodeWindow.renderRect = { x: 1220, y: 0, width: 700, height: 400 };
       wm().movePointerWith(small.nodeWindow);
 
       const meta = createMockWindow({
