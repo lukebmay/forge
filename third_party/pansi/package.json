@@ -1,0 +1,6 @@
+{
+  "name": "forge-vendored-pansi",
+  "private": true,
+  "type": "module",
+  "description": "Pinned shellrc pansi/plog snapshot — see VERSION"
+}

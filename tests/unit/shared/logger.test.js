@@ -324,16 +324,31 @@ describe("Logger", () => {
   });
 
   describe("without initialization", () => {
-    it("should not log when settings is not initialized", () => {
-      // Re-initialize Logger with null settings
+    it("dev default is DEBUG when settings is null (!production)", () => {
       Logger.init(null);
 
-      Logger.fatal("test");
-      Logger.error("test");
-      Logger.warn("test");
+      Logger.info("info");
+      Logger.debug("debug");
+      Logger.trace("trace");
 
-      // Should not throw, just not log
-      expect(logSpy).not.toHaveBeenCalled();
+      expect(logSpy).toHaveBeenCalledWith("[Forge] [INFO]", "info");
+      expect(logSpy).toHaveBeenCalledWith("[Forge] [DEBUG]", "debug");
+      expect(logSpy).not.toHaveBeenCalledWith("[Forge] [TRACE]", "trace");
+    });
+  });
+
+  describe("info level hides debug and trace", () => {
+    it("emits info but not debug/trace", () => {
+      mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.INFO);
+      Logger.init(mockSettings);
+      logSpy.mockClear();
+
+      Logger.info("i");
+      Logger.debug("d");
+      Logger.trace("t");
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      expect(logSpy).toHaveBeenCalledWith("[Forge] [INFO]", "i");
     });
   });
 });

@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-19 (D049 M1–M5 agent done; soft human tiny-env)
+**Updated:** 2026-08-21 (P0 observability plan + OH1–OH3 tasks)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -15,8 +15,10 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 **FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped.
 
 **Active next (ordered):**
-1. soft human — D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md)
-2. later CN14/CN15 · blocked yuiop
+1. **P0** observability — [plan](./plans/forge-observability-hardening.md) · OH1 plog **4.6 high** → OH3 asserts **4.6 high** → OH2 checkJs **4.5 high**
+2. multi-ws / monitor / DnD / same-mon launch — **after OH1 usable** (parked sibling [ws-orphan task](./tasks/forge-layout-ws-orphan-min-float-dnd.md))
+3. soft human — D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md)
+4. later CN14/CN15 · blocked yuiop
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
 tree press-arm only. Poll skips synced xy; SourceBag hot logs are TRACE.
@@ -76,6 +78,10 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
+| **P0** | **OH1** vendor+adapter **done**; finish CLI + pepper | **4.6 high** | [task](./tasks/forge-observability-hardening_oh1-plog-logging.md) |
+| **P0** | **OH3** debug/trace assertions | **4.6 high** | [task](./tasks/forge-observability-hardening_oh3-assertions.md) |
+| **P0** | **OH2** JSDoc + checkJs; no casual `any` | **4.5 high** | [task](./tasks/forge-observability-hardening_oh2-typescript-checkjs.md) |
+| P0 later | multi-ws layout + monitor + DnD + same-mon launch | after OH1 | [plan](./plans/forge-observability-hardening.md) § Downstream · [ws-orphan](./tasks/forge-layout-ws-orphan-min-float-dnd.md) |
 | soft | D049 tiny-env Nautilus (human) | human | [blocker](./blockers/d049-tiny-env-nautilus.md) |
 | done | D049 M5 L0 + nest | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m5-verify.md) |
 | done | D049 M4 docs/contracts/DESIGN | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m4-docs.md) |
@@ -133,9 +139,11 @@ open, PR2–PR6 as later). Rejected product: cross-mon TABBED (D044); top-level
 
 ### Why this order
 
-1. **SM1–SM7 + R036 + D044 + user CLI + PR1–PR15 + FCC C0–C5/R1 + P3 + Wave Z0/Z1 + CN13** — shipped.
-2. **D049 M1–M5** agent shipped (soft human tiny-env open).
-3. **Optional later** — CN14/CN15 · yuiop (human lock).
+1. **P0 observability (OH1→OH3/OH2)** — stop blind multi-ws/DnD patches; instrument first.
+2. **Then** multi-ws / monitor / DnD / same-mon launch with debug/trace evidence.
+3. **SM1–SM7 + R036 + D044 + user CLI + PR1–PR15 + FCC C0–C5/R1 + P3 + Wave Z0/Z1 + CN13** — shipped.
+4. **D049 M1–M5** agent shipped (soft human tiny-env open).
+5. **Optional later** — CN14/CN15 · yuiop (human lock).
 
 ### Worth (do not forget)
 

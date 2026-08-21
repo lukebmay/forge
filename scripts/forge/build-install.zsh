@@ -196,6 +196,17 @@ forge_do_install() {
       forge_warn "host-defaults apply failed (non-fatal)"
   fi
 
+  # Dev install: debug-level logging (not trace). Production builds stay quiet
+  # via production=true even if these keys are set.
+  if [[ "$MODE" == "dev" ]] && command -v gsettings >/dev/null 2>&1; then
+    if gsettings set org.gnome.shell.extensions.forge logging-enabled true 2>/dev/null \
+      && gsettings set org.gnome.shell.extensions.forge log-level 5 2>/dev/null; then
+      forge_ok "dev logging: enabled, log-level=5 (DEBUG)"
+    else
+      forge_warn "could not set dev log-level via gsettings (schemas may need reload)"
+    fi
+  fi
+
   forge_write_install_origin "$FORGE_REPO_ROOT" git || \
     forge_warn "could not write install-origin (non-fatal)"
 }

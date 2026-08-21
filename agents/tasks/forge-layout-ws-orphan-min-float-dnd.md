@@ -1,10 +1,10 @@
 # forge-layout-ws-orphan-min-float-dnd — Layout thrash, false float, dead dropzones
 
-**Status:** in progress
-**Plan:** (none)
+**Status:** parked — resume after OH1 plog logging is usable
+**Plan:** (none) · blocked-on [forge-observability-hardening](../plans/forge-observability-hardening.md)
 **Branch:** master
-**Blocker:** (none)
-**Updated:** 2026-08-20
+**Blocker:** (none) — priority gate: OH1 first
+**Updated:** 2026-08-21
 
 ## Goal
 

@@ -105,22 +105,23 @@
 
         <!-- Development Settings -->
         <key type="u" name="log-level">
-            <default>0</default>
+            <default>4</default>
             <summary>
                 Provide log4j-like logging levels:
                 0 - OFF
                 1 - FATAL
                 2 - ERROR
                 3 - WARN
-                4 - INFO
-                5 - DEBUG
-                6 - TRACE
+                4 - INFO (schema / product baseline)
+                5 - DEBUG (dev install default — set by ./install)
+                6 - TRACE (nuclear; stuck failures only)
                 7 - ALL
+                Calls below the selected level are not emitted.
             </summary>
         </key>
         <key type="b" name="logging-enabled">
-            <default>false</default>
-            <summary>Enable logging</summary>
+            <default>true</default>
+            <summary>Enable logging (production builds still force OFF via production flag)</summary>
         </key>
 
         <key type="b" name="layout-debug-overlay-enabled">

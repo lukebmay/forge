@@ -59,6 +59,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 
 | Item | Status | Next |
 | --- | --- | --- |
+| **[Observability hardening](./plans/forge-observability-hardening.md)** | **P0** OH1–OH3 ready | OH1 plog (**4.6 high**) then asserts / checkJs; multi-ws/DnD after |
 | **[Canonical contracts](./plans/forge-canonical-contracts.md)** | IC0–IC3 done · IC4 skipped | — |
 | **[CLI → Node](./plans/forge-cli-node.md)** | D036 · CN0–CN6 **done** (CN7 skip) · **CN13 PATH** | CN14/CN15 later; no layout port |
 | **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold **PASS** |
@@ -332,13 +333,18 @@ Child membership and order go through `Node` (`lib/extension/tree.js`):
 When agents run live tests that need install + Shell reload (`./install`,
 `forge save-session-layout`, dual-mon thrash):
 
-1. **Use a debug install** — `./install` / `make dev` set `production=false`.
-2. **Turn logging on** before the run (otherwise `Logger` stays silent):
+1. **Use a debug install** — `./install` / `make dev` set `production=false` and
+   set **log-level=5 (DEBUG)** (not TRACE). Schema baseline is INFO when logging
+   is enabled; production builds still force logging OFF via `production=true`.
+2. **Escalate only when stuck** — TRACE is nuclear:
 
    ```sh
    gsettings set org.gnome.shell.extensions.forge logging-enabled true
-   gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO
+   gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG (dev default)
+   gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE (stuck only)
    ```
+
+   Below the selected level, those lines do not appear (info hides debug+trace).
 
 3. **Reload path by session:**
    - **X11:** `killall -HUP gnome-shell` (or Alt+F2 → r).
