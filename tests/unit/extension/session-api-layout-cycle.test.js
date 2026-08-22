@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree.js";
 import { SessionApi } from "../../../lib/extension/session-api.js";
+import { collectWindows } from "../../../lib/shared/layout-plan.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
@@ -149,6 +150,22 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(bag.userSized).toBe(true);
     expect(nGhost.percent).toBeCloseTo(0.313, 3);
     expect(nGhost.userSized).toBe(true);
+  });
+
+  it("_sizeOp soft-skips when mon-directs lack a common parent", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    const w0 = createMockWindow({ id: 41, wm_class: "A" });
+    const w1 = createMockWindow({ id: 42, wm_class: "B" });
+    const n0 = wm().tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, w0);
+    const n1 = wm().tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w1);
+    n0.mode = WINDOW_MODES.TILE;
+    n1.mode = WINDOW_MODES.TILE;
+    const sized = api()._sizeOp(["id:41", "id:42"], [0.5, 0.5], { quiet: true });
+    expect(sized.ok).toBe(true);
+    expect(sized.sized).toBe(false);
+    expect(sized.reason).toBe("size targets not under common parent");
+    expect(sized.error).toBeUndefined();
   });
 
   it("R036 setLayout structure: lift nested H/V bag then TABBED wrap (no flatten refuse)", () => {
@@ -626,5 +643,59 @@ describe("SessionApi _focusOp revealGroupChild (IC2)", () => {
     expect(out.error).toBeUndefined();
     expect(con.lastTabFocus).toBe(w1);
     expect(con.lastTabFocus).not.toBe(w2);
+  });
+});
+
+describe("SessionApi workspace orphan isolation", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      globals: {
+        display: { monitorCount: 1 },
+        workspaceManager: { workspaceCount: 2 },
+      },
+      settings: {
+        "tiling-mode-enabled": true,
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    ctx.cleanup();
+  });
+
+  const wm = () => ctx.windowManager;
+
+  function api() {
+    return new SessionApi({
+      extWm: ctx.windowManager,
+      settings: ctx.settings,
+    });
+  }
+
+  it("ApplyLayout snapshot / GetTree do not claim other-workspace windows", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 1, 0);
+    const w0 = createMockWindow({ id: 101, wm_class: "DeskA", workspace: ctx.workspaces[0] });
+    const w1 = createMockWindow({ id: 202, wm_class: "DeskB", workspace: ctx.workspaces[1] });
+    const n0 = wm().tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, w0);
+    const n1 = wm().tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w1);
+    n0.mode = WINDOW_MODES.TILE;
+    n1.mode = WINDOW_MODES.TILE;
+
+    const forest = api()._snapshotForestForApply({ workspace: 1 });
+    const orphanIds = (forest.orphanWindows || []).map((w) => String(w.windowId));
+    expect(orphanIds).not.toContain("101");
+    const collected = collectWindows(forest, { workspace: 1 }).map((w) => String(w.windowId));
+    expect(collected).toContain("202");
+    expect(collected).not.toContain("101");
+
+    const raw = api().GetTree(JSON.stringify({ workspace: 1 }));
+    const out = JSON.parse(raw);
+    expect(out.error).toBeUndefined();
+    const getIds = (out.orphanWindows || []).map((w) => String(w.windowId));
+    expect(getIds).not.toContain("101");
   });
 });

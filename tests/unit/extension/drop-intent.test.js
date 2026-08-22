@@ -15,6 +15,8 @@ import {
   rememberClassMin,
   loadClassMinFloor,
   exportClassMinFloor,
+  CLASS_MIN_ABSURD_W,
+  CLASS_MIN_ABSURD_H,
 } from "../../../lib/extension/tree-layout.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
@@ -490,6 +492,57 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
       width: 256,
       height: 380,
     });
+  });
+
+  it("does not learn without a finite prior that already moved", () => {
+    clearClassMinFloorForTests();
+    const meta = {};
+    const req = { width: 400, height: 150, at: 1000 };
+    noteWindowMinFromClamp(
+      meta,
+      req,
+      { width: 700, height: 380 },
+      4,
+      1000 + MIN_CLAMP_LEARN_DELAY_MS + 1
+    );
+    expect(meta._forgeKnownMinW).toBeFalsy();
+    expect(meta._forgeKnownMinH).toBeFalsy();
+  });
+
+  it("does not learn when frame grew or stayed flat vs prior", () => {
+    clearClassMinFloorForTests();
+    const meta = {};
+    const req = { width: 400, height: 150, at: 1000, priorW: 500, priorH: 300 };
+    noteWindowMinFromClamp(
+      meta,
+      req,
+      { width: 700, height: 380 },
+      4,
+      1000 + MIN_CLAMP_LEARN_DELAY_MS + 1
+    );
+    expect(meta._forgeKnownMinW).toBeFalsy();
+    expect(meta._forgeKnownMinH).toBeFalsy();
+  });
+
+  it("rejects half-pane frames above absurd caps", () => {
+    clearClassMinFloorForTests();
+    const meta = {};
+    const req = {
+      width: 400,
+      height: 200,
+      at: 1000,
+      priorW: 1920,
+      priorH: 1080,
+    };
+    const now = 1000 + MIN_CLAMP_LEARN_DELAY_MS + 1;
+    noteWindowMinFromClamp(meta, req, { width: 900, height: 700 }, 4, now);
+    expect(meta._forgeKnownMinW).toBeFalsy();
+    expect(meta._forgeKnownMinH).toBeFalsy();
+    expect(900).toBeGreaterThan(CLASS_MIN_ABSURD_W);
+    expect(700).toBeGreaterThan(CLASS_MIN_ABSURD_H);
+    noteWindowMinFromClamp(meta, req, { width: 700, height: 500 }, 4, now);
+    expect(meta._forgeKnownMinW).toBe(700);
+    expect(meta._forgeKnownMinH).toBe(500);
   });
 
   it("ratchets known min down when request is accepted", () => {

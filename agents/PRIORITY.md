@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-21 (P0 observability plan + OH1–OH3 tasks)
+**Updated:** 2026-08-22 (OH1–OH3 + ws-orphan shipped; human host verify)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -12,11 +12,12 @@
 **D049** mins env floor + passive learn (**M1–M5 agent done**; soft human) ·
 **PR1–PR15** tab chrome / click-drag **unit-shipped** · PR7 docs **done** ·
 User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**) ·
-**FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped.
+**FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped ·
+**OH1–OH3 + ws-orphan shipped**.
 
 **Active next (ordered):**
-1. **P0** observability — [plan](./plans/forge-observability-hardening.md) · OH1 plog **4.6 high** → OH3 asserts **4.6 high** → OH2 checkJs **4.5 high**
-2. multi-ws / monitor / DnD / same-mon launch — **after OH1 usable** (parked sibling [ws-orphan task](./tasks/forge-layout-ws-orphan-min-float-dnd.md))
+1. soft human — host verify OH + ws-orphan tip — [blocker](./blockers/oh-ws-orphan-host-verify.md)
+2. **P0** remaining OH downstream — monitor identity + same-mon dock launch **with traces** — [plan](./plans/forge-observability-hardening.md) § Downstream
 3. soft human — D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md)
 4. later CN14/CN15 · blocked yuiop
 
@@ -44,9 +45,11 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **user CLI no test toolkit**
 + **tab click-drag PR1–PR15 + PR7 docs (D046)** landed. **FCC Wave C (+R1/R2-docs)
 closed through C5; P3 `_layoutOp` flatten strip done.** Wave Z0/Z1 shipped.
-**Active:** **D049** M1–M5 agent shipped; soft human tiny-env. Optional later: CN14/CN15 ·
-yuiop (blocked). Preserve PR9 foreign spacer-only and PR10 synthetic peel
-ownership. Do **not** reintroduce shrink-probe.
+**Active:** **OH1–OH3 + ws-orphan shipped.** Soft human host verify —
+[blocker](./blockers/oh-ws-orphan-host-verify.md). Then monitor identity +
+same-mon dock launch. **D049** M1–M5 agent shipped; soft tiny-env. Optional
+later: CN14/CN15 · yuiop (blocked). Preserve PR9 foreign spacer-only and PR10
+synthetic peel ownership. Do **not** reintroduce shrink-probe.
 Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 / mon-root PlaceNext / soft-enter chrome clear / spanning tab chrome / silent
 `_layoutOp` peel. Do not teach `forge test` / `forge nested`.
@@ -69,7 +72,7 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 | Tab PR7 docs | **done** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |
 | CN13 Node PATH | **done** | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
 
-**L0 last:** D049 M1–M3 min-tile + drop/open/DnD + overflow-rehome **135** (M4 docs-only).
+**L0 last:** ws-orphan focused **110** (workspace + drop-intent + overflow-rehome + session-api + drag-drop). `typecheck:oh2` green.
 **Host cold:** R036 **PASS**. M5 = nest + host tiny-env Nautilus prove.
 
 ---
@@ -78,10 +81,12 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
-| **P0** | **OH1** vendor+adapter **done**; finish CLI + pepper | **4.6 high** | [task](./tasks/forge-observability-hardening_oh1-plog-logging.md) |
-| **P0** | **OH3** debug/trace assertions | **4.6 high** | [task](./tasks/forge-observability-hardening_oh3-assertions.md) |
-| **P0** | **OH2** JSDoc + checkJs; no casual `any` | **4.5 high** | [task](./tasks/forge-observability-hardening_oh2-typescript-checkjs.md) |
-| P0 later | multi-ws layout + monitor + DnD + same-mon launch | after OH1 | [plan](./plans/forge-observability-hardening.md) § Downstream · [ws-orphan](./tasks/forge-layout-ws-orphan-min-float-dnd.md) |
+| **P0** | **OH1** vendor+adapter+CLI+pepper | **4.6 high** | **done** · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh1-plog-logging.md) |
+| **P0** | **OH3** debug/trace assertions | **4.6 high** | **done** · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh3-assertions.md) |
+| **P0** | **OH2** JSDoc + checkJs; no casual `any` | **4.5 high** | **done** · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh2-typescript-checkjs.md) · `npm run typecheck:oh2` |
+| done | ws-orphan multi-ws / min-float / DnD grab | **4.5** | [completed](./tasks/completed/forge-layout-ws-orphan-min-float-dnd.md) |
+| soft | Host verify OH + ws-orphan tip | human | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
+| P0 next | monitor identity + same-mon dock launch | with traces | after host verify · [plan](./plans/forge-observability-hardening.md) § Downstream |
 | soft | D049 tiny-env Nautilus (human) | human | [blocker](./blockers/d049-tiny-env-nautilus.md) |
 | done | D049 M5 L0 + nest | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m5-verify.md) |
 | done | D049 M4 docs/contracts/DESIGN | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m4-docs.md) |
@@ -139,8 +144,8 @@ open, PR2–PR6 as later). Rejected product: cross-mon TABBED (D044); top-level
 
 ### Why this order
 
-1. **P0 observability (OH1→OH3/OH2)** — stop blind multi-ws/DnD patches; instrument first.
-2. **Then** multi-ws / monitor / DnD / same-mon launch with debug/trace evidence.
+1. **P0 observability (OH1–OH3 done)** — instrument first.
+2. **ws-orphan done.** Remaining: monitor identity + same-mon dock launch with traces.
 3. **SM1–SM7 + R036 + D044 + user CLI + PR1–PR15 + FCC C0–C5/R1 + P3 + Wave Z0/Z1 + CN13** — shipped.
 4. **D049 M1–M5** agent shipped (soft human tiny-env open).
 5. **Optional later** — CN14/CN15 · yuiop (human lock).

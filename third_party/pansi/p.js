@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-nocheck — vendored; forge does not typecheck pansi internals
 
 /**
  * p.js — High-performance colored printer (library + CLI)

@@ -225,6 +225,11 @@ gsettings set org.gnome.shell.extensions.forge logging-enabled true
 gsettings set org.gnome.shell.extensions.forge log-level 5   # 0=OFF … 5=DEBUG 6=TRACE 7=ALL
 ```
 
+Debug/trace **assertions** (`lib/shared/assert.js`) are active at log-level ≥ debug
+or in a `!production` (dev) install. A failed invariant logs `[Forge] [ERROR] assert`
+and sets `assertionFailed` so apply / DnD commit / launch insert **stop without
+throwing** (no Shell logout). Production info-and-below is a noop.
+
 Then watch the logs:
 
 ```bash

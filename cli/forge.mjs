@@ -21,6 +21,7 @@ import {
   workerInstallSignalPolicy,
   workerMarkDone,
 } from "./job-runner.mjs";
+import { initForgePlog } from "./plog.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -212,6 +213,12 @@ export async function main(rawArgv, deps = {}) {
       writeLine(stderr, `forge: ${e.message}`);
       return 1;
     }
+  }
+
+  try {
+    initForgePlog({ env });
+  } catch {
+    /* logging must never throw */
   }
 
   if (!argv.length || argv[0] === "-h" || argv[0] === "--help") {

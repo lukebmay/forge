@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored; typed boundary is cli/plog.mjs + lib/shared/plog-adapter.js
 /**
  * plog.js — product logger (pansi). ESM-only; vendoring pin next to p.js.
  * File bytes are always ANSI; tee honors ansi_color / NO_COLOR.

@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-21 (OH1 partial: vendor+adapter+dev DEBUG default; pepper/CLI next)
+**Updated:** 2026-08-22 (wrap-up: OH1–OH3 + ws-orphan shipped; human host verify)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
@@ -14,25 +14,28 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Nest design:** [D022](../docs/DECISIONS.md) · [isolation](./plans/forge-nested-isolation.md) ·
 [nested under test](./plans/forge-nested-cli-separation.md) (**done**) ·
 [user surface](./plans/forge-cli-user-surface.md) (**done** — `forge-test`).
-**Repo tip:** Cold titlebar drop zones fixed (geom path uses `_draggedNodeWindow`
-when focus lags). Env floor unset → **256×144**. Probe stays deleted (D049).
-**Next (FIRM order):** finish **OH1** (CLI→vendored plog + pepper hot paths)
-→ **OH3** asserts (log+flag, **no throw**) → **OH2** checkJs —
-[plan](./plans/forge-observability-hardening.md). Then multi-ws / monitor / DnD
-/ same-mon launch with traces. Soft — [tiny-env
-Nautilus](./blockers/d049-tiny-env-nautilus.md).
-**Do not** keep blind-patching layout/DnD before OH1 pepper is usable.
-**WIP left uncommitted:** multi-ws orphan filter edits in `session-api.js` /
-`layout-plan.js` / `window.js` / `tree-layout.js` / `scripts/forge/forge` —
-parked under [ws-orphan](./tasks/forge-layout-ws-orphan-min-float-dnd.md); do
-not mix into OH1.
-**Install:** tip may need logout after OH1 lands for host Shell.
+**Repo tip:** OH1–OH3 observability + ws-orphan multi-ws/min-float/DnD grab on
+`master`. Env floor unset → **256×144**. Probe stays deleted (D049).
+**Next (FIRM order):** **human host verify** —
+[blocker](./blockers/oh-ws-orphan-host-verify.md) (logout once for tip). Then
+monitor identity + same-mon dock launch **with traces** —
+[plan](./plans/forge-observability-hardening.md) § Downstream. Soft —
+[tiny-env Nautilus](./blockers/d049-tiny-env-nautilus.md).
+**Shipped this wrap:** OH1–OH3 +
+[ws-orphan](./tasks/completed/forge-layout-ws-orphan-min-float-dnd.md).
+**Install:** **logout once** for host Shell tip before eyes-on.
 **Do not close** durable-agent ghostty windows.
-**L0 last:** min-tile + drop + open-min + drag-drop + tab-drag **167**; nest
-ping+clean **PASS**; nest `running: False`.
-**Logging (OH1 partial):** `third_party/pansi/` pinned (shellrc `3226f7c`);
-`lib/shared/plog-adapter.js` + `Logger` shim. Schema baseline INFO;
-**dev install sets DEBUG (5)**. TRACE=6 nuclear. Pepper/CLI still open.
+**L0 last:** ws-orphan focused **110** + observability suites; `typecheck:oh2`
+green. Nest not required for this ship; keep `running: False` if nest used.
+**Logging (OH1 done):** `third_party/pansi/` pinned (shellrc `3226f7c`);
+GJS `plog-adapter` + `Logger` shim; Node CLI `cli/plog.mjs` (default warn;
+`FORGE_LOG_LEVEL` / `FORGE_LOG_TEE` / `FORGE_LOG_FILE`). Schema baseline INFO;
+**dev install sets DEBUG (5)**. TRACE=6 nuclear. Hot-path debug/trace peppered.
+**Asserts (OH3 done):** `lib/shared/assert.js` — active `!production` or
+log-level ≥ debug; failure = plog error + `assertionFailed` (**never throw**);
+apply / DnD commit / launch insert skip.
+**Types (OH2 done):** focused gate `npm run typecheck:oh2` (`tsconfig.check.json`);
+root `tsconfig.json` stays loose (no full-tree boil). Escape: gi/pansi/`LayoutJson`.
 **Host settings:** `preview-hint-enabled=true`, `mod-mask-mouse-tile=None`.
 **Host seed:** `~/.config/forge/config/window-mins.json` has Nautilus 360×380.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
@@ -55,11 +58,13 @@ ping+clean **PASS**; nest `running: False`.
 
 | Pri | Slice | Status | Note |
 | --- | --- | --- | --- |
-| **P0** | OH1 pansi/plog + logging | **partial** | **4.6 high** · vendor+adapter done; CLI+pepper open · [task](./tasks/forge-observability-hardening_oh1-plog-logging.md) |
-| **P0** | OH3 assertions (debug/trace) | ready | **4.6 high** · [task](./tasks/forge-observability-hardening_oh3-assertions.md) |
-| **P0** | OH2 JSDoc + checkJs / no `any` | ready | **4.5 high** · [task](./tasks/forge-observability-hardening_oh2-typescript-checkjs.md) |
-| P0 later | multi-ws + monitor + DnD + same-mon launch | parked | after OH1 · [ws-orphan](./tasks/forge-layout-ws-orphan-min-float-dnd.md) |
-| soft | Host eyes-on titlebar DnD (post-logout) | open | before any tab peel |
+| **P0** | OH1 pansi/plog + logging | **done** | **4.6 high** · vendor+adapter+CLI+pepper · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh1-plog-logging.md) |
+| **P0** | OH3 assertions (debug/trace) | **done** | **4.6 high** · log+flag, no throw · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh3-assertions.md) |
+| **P0** | OH2 JSDoc + checkJs / no `any` | **done** | **4.5 high** · `typecheck:oh2` green · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh2-typescript-checkjs.md) |
+| done | ws-orphan multi-ws / min-float / DnD grab | done | [completed](./tasks/completed/forge-layout-ws-orphan-min-float-dnd.md) |
+| soft | **Human host verify OH + ws-orphan tip** | open | [blocker](./blockers/oh-ws-orphan-host-verify.md) · logout once |
+| P0 next | monitor identity + same-mon dock launch | ready | after host verify · [plan](./plans/forge-observability-hardening.md) § Downstream |
+| soft | Host eyes-on titlebar DnD (post-logout) | open | before any tab peel · fold into host-verify |
 | soft | D049 tiny-env Nautilus | open | [blocker](./blockers/d049-tiny-env-nautilus.md) |
 | done | D049 M5 L0 + nest | done | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m5-verify.md) |
 | done | **D049 M4** docs/contracts/DESIGN | done | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m4-docs.md) |
@@ -873,17 +878,16 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 ## Start here (next agent)
 
-**Next / active:** finish **OH1** —
-[task](./tasks/forge-observability-hardening_oh1-plog-logging.md) (**4.6 high**):
-wire `cli/*.mjs` to `third_party/pansi/plog.js`; pepper layout / DnD / monitor /
-workspace / launch with `debug`/`trace`. Then OH3 → OH2. Do **not** prioritize
-multi-ws/DnD product patches until OH1 pepper is usable. Soft human D049
-tiny-env — [blocker](./blockers/d049-tiny-env-nautilus.md). Optional later:
-CN14/CN15; yuiop blocked. See [IDEAS](./IDEAS.md).
+**Next / active:** **human host verify** —
+[blocker](./blockers/oh-ws-orphan-host-verify.md) (logout for tip; multi-ws +
+mins + titlebar DnD). Agents: after verify (or in parallel if soft), monitor
+identity + same-mon dock launch **with debug/trace**. Soft D049 tiny-env —
+[blocker](./blockers/d049-tiny-env-nautilus.md). Optional later: CN14/CN15;
+yuiop blocked. See [IDEAS](./IDEAS.md).
 
-**Proven this session:** shellrc `PANSI_VERSION` push `3226f7c`; forge
-`third_party/pansi/`; `plog-adapter` + `Logger` shim; schema INFO; rem install
-→ DEBUG; L0 logger+adapter **40** green.
+**Proven this wrap-up:** OH1–OH3 + ws-orphan **shipped** on `master` — CLI
+`plog.mjs`; assert log+flag; `typecheck:oh2`; same-ws orphans; size soft-skip;
+800×600 min caps; ratchet not float; mid-grab unmanaged clear.
 
 **FCC Wave C (+R1/R2-docs) closed through C5; P3 done; PR7/D046 done; Wave Z0/Z1
 shipped.** Tab-drag poll starve shipped. **Do not** reintroduce shrink-probe.

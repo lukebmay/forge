@@ -6,6 +6,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { ensureForgePlog } from "./plog.mjs";
 
 export const BUS_NAME = "org.gnome.Shell.Extensions.Forge";
 export const OBJECT_PATH = "/org/gnome/Shell/Extensions/Forge";
@@ -256,9 +257,11 @@ export function callMethod(method, args = [], deps = {}) {
     argv[0] = gdbusPath;
   }
 
+  ensureForgePlog({ env }).debug(`dbus ${method}`);
   const result = run(argv, { env });
   if (result.code !== 0) {
     const err = (result.stderr || result.stdout || "").trim() || `exit ${result.code}`;
+    ensureForgePlog({ env }).warn(`dbus ${method} failed: ${err}`);
     throw new Error(err);
   }
   return parseGdbusStdout(result.stdout);

@@ -1062,8 +1062,11 @@ in that mode, so `~/.config/forge/stylesheet/forge/stylesheet.css` (real colors)
 never applied after a debug install — looked like “need a reboot.”
 
 **Approach:** Always prefer the user profile stylesheet when present; keep
-`production` for logger level and prefs Logger group only. Live reload:
-`css-updated` gsettings, Super+Shift+r (`ConfigReload` re-imports CSS), or
+`production` for logger level, debug asserts (OH3 / O9), and prefs Logger group
+only. Asserts: `lib/shared/assert.js` — active at log-level ≥ debug or
+`!production`; failure is plog error + `assertionFailed` (never throw; skip
+further apply / DnD commit / launch insert). Live reload: `css-updated`
+gsettings, Super+Shift+r (`ConfigReload` re-imports CSS), or
 `scripts/forge/reload-theme.zsh`.
 
 ## CSS: base + user overrides (D001)

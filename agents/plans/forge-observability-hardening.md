@@ -1,16 +1,16 @@
 # Plan: Observability hardening (plog + types + asserts)
 
-**Status:** active — P0 before further multi-ws / monitor / DnD product fixes  
+**Status:** active — OH1–OH3 **done**; ws-orphan **done**; monitor + same-mon launch next  
 **Priority:** **P0** (highest)  
 **Branch:** `master`  
 **Created:** 2026-08-21  
 **Updated:** 2026-08-21  
-**Related bugs (blocked on this plan):** multi-workspace layout (`dev` on ws1 /
-`vinyl` on ws2), monitor confusion, DnD breakage, same-monitor dock launch
+**Related bugs (unblocked for traced fixes):** multi-workspace layout (`dev` on
+ws1 / `vinyl` on ws2), monitor confusion, DnD breakage, same-monitor dock launch
 placement (left dock → left side; single-dock fallback chain).  
-**In-progress sibling (park under this):**
-[`forge-layout-ws-orphan-min-float-dnd`](../tasks/forge-layout-ws-orphan-min-float-dnd.md)
-— do not keep chasing host layout/DnD without Task 1 logging.
+**Sibling (shipped):**
+[`forge-layout-ws-orphan-min-float-dnd`](../tasks/completed/forge-layout-ws-orphan-min-float-dnd.md)
+— stash `ws-orphan WIP park` dropped after reapply.
 
 ---
 
@@ -50,16 +50,13 @@ instead of another blind patch.
 
 | ID | Slice | Model | Reasoning | Task file |
 | --- | --- | --- | --- | --- |
-| **OH1** | Vendor pansi/plog + forge adapter + replace Logger + pepper layout/DnD/monitor/ws/launch + CLI switch | **Grok 4.6** | **high** | [OH1](../tasks/forge-observability-hardening_oh1-plog-logging.md) |
-| **OH2** | JSDoc + checkJs hygiene; no casual `any` | **Grok 4.5** | **high** | [OH2](../tasks/forge-observability-hardening_oh2-typescript-checkjs.md) |
-| **OH3** | Shared assertions gated by level / production | **Grok 4.6** | **high** | [OH3](../tasks/forge-observability-hardening_oh3-assertions.md) |
+| **OH1** | Vendor pansi/plog + forge adapter + replace Logger + pepper layout/DnD/monitor/ws/launch + CLI switch | **Grok 4.6** | **high** | [OH1](./completed/forge-observability-hardening_oh1-plog-logging.md) **done** |
+| **OH2** | JSDoc + checkJs hygiene; no casual `any` | **Grok 4.5** | **high** | [OH2](./completed/forge-observability-hardening_oh2-typescript-checkjs.md) **done** |
+| **OH3** | Shared assertions gated by level / production | **Grok 4.6** | **high** | [OH3](./completed/forge-observability-hardening_oh3-assertions.md) **done** |
 
-**Order:** OH1 first (unblocks diagnosis). OH2 and OH3 may overlap after the
-logger adapter exists (asserts should log via plog). Prefer OH3 shortly after
-OH1 so new logs and asserts land together on hot paths.
-
-**After OH1 is usable:** resume multi-ws / monitor / DnD / same-mon launch with
-debug/trace evidence — do not treat unit green alone as sign-off.
+**Order:** OH1 → OH3 → OH2 all **done**. Resume multi-ws / monitor / DnD /
+same-mon launch with debug/trace evidence — do not treat unit green alone as
+sign-off.
 
 ---
 
@@ -69,8 +66,8 @@ Capture so we do not lose the operator’s failure report:
 
 | Symptom | Desired / suspected |
 | --- | --- |
-| `layout dev` on ws1 + `layout vinyl` on ws2 lays out wrong | Workspace isolation in snapshot/apply (see existing ws-orphan task) |
-| DnD often broken under multi-ws / confusion | Trace grab, dest mon/ws, drop commit, mins |
+| `layout dev` on ws1 + `layout vinyl` on ws2 lays out wrong | **Done** — [ws-orphan](../tasks/completed/forge-layout-ws-orphan-min-float-dnd.md) |
+| DnD often broken under multi-ws / confusion | Grab unmanaged + min-learn/ratchet **done** with ws-orphan; residual: dest mon/ws traces |
 | Same-monitor dock launch | Left dock → left insert; **if only one dock:** last-focused insert → end-of-tree insert → nearest groupable to last focused → float |
 
 ---
@@ -86,12 +83,8 @@ Capture so we do not lose the operator’s failure report:
 
 ## Session note
 
-2026-08-21 — Plan + three P0 tasks created; PRIORITY/HANDOFF to point here.
-Operator ACK: JSDoc+checkJs; vendor current shellrc JS snapshot.
-Further ACK: asserts = log+flag+graceful stop (**no throw**); shellrc version
-commit+push then snap; **dev install default log level = debug** (trace nuclear);
-level filter hides debug/trace when below debug.
+2026-08-21 — **ws-orphan done** (uncommitted; stash dropped). Next: monitor
+identity + same-mon dock launch with traces. OH1–OH3 still uncommitted.
 
-OH1 partial landed: shellrc `PANSI_VERSION` pushed `3226f7c`; forge
-`third_party/pansi/`; plog-adapter + Logger shim; rem install → log-level 5.
-Still open: CLI plog, hot-path pepper.
+Prior: OH3 asserts log+flag never throw; OH1 CLI plog + pansi `3226f7c`; rem
+install DEBUG=5.

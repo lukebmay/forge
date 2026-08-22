@@ -7,6 +7,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "typecheck:oh2": "tsc -p tsconfig.check.json --noEmit",
     "lint": "prettier --list-different \"./**/*.{js,jsx,ts,tsx,json}\"",
     "lint:e2e": "eslint tests/e2e/framework",
     "prepare": "husky install",

@@ -8,6 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { callMethod, createDefaultRun } from "./dbus.mjs";
+import { ensureForgePlog } from "./plog.mjs";
 
 export const DEFAULT_LAUNCH_TIMEOUT_MS = 15000;
 export const GHOSTTY_MULTI_INSTANCE_FLAG = "--gtk-single-instance=false";
@@ -699,8 +700,9 @@ export function preferLaunchPlaceClass(explicit, hints) {
 export function rectIsReasonable(rect) {
   if (rect == null) return true;
   if (typeof rect !== "object" || Array.isArray(rect)) return false;
-  const w = Number(/** @type {any} */ (rect).width);
-  const h = Number(/** @type {any} */ (rect).height);
+  const r = /** @type {Record<string, unknown>} */ (rect);
+  const w = Number(r.width);
+  const h = Number(r.height);
   if (!Number.isFinite(w) || !Number.isFinite(h)) return false;
   return w > 0 && h > 0;
 }
@@ -714,15 +716,16 @@ export function windowIsSettled(win, opts = {}) {
   const requireTile = opts.requireTile !== false;
   const allowGrab = opts.allowGrab !== false;
   if (!win || typeof win !== "object" || Array.isArray(win)) return false;
-  const wid = /** @type {any} */ (win).windowId;
+  const w = /** @type {Record<string, unknown>} */ (win);
+  const wid = w.windowId;
   if (wid == null || String(wid).trim() === "") return false;
   if (requireTile) {
-    const mode = /** @type {any} */ (win).mode;
+    const mode = w.mode;
     const modes = allowGrab ? SETTLED_MODES_LOOSE : SETTLED_MODES;
     if (mode == null || !modes.has(String(mode))) return false;
   }
-  if (!rectIsReasonable(/** @type {any} */ (win).rect)) return false;
-  const mon = /** @type {any} */ (win).monitor;
+  if (!rectIsReasonable(w.rect)) return false;
+  const mon = w.monitor;
   if (mon != null) {
     const n = Number(mon);
     if (!Number.isFinite(n) || n < 0) return false;
@@ -778,19 +781,20 @@ export function iterTreeWindows(node) {
   };
 
   if (node && typeof node === "object" && !Array.isArray(node)) {
-    if (Array.isArray(/** @type {any} */ (node).monitors)) {
-      for (const m of /** @type {any} */ (node).monitors) walk(m, "");
+    const root = /** @type {Record<string, unknown>} */ (node);
+    if (Array.isArray(root.monitors)) {
+      for (const m of root.monitors) walk(m, "");
     } else {
       walk(node, "");
     }
-    for (const extra of [
-      .../** @type {any} */ ((node).orphanWindows || []),
-      .../** @type {any} */ ((node).metaWindows || []),
-    ]) {
+    const orphans = Array.isArray(root.orphanWindows) ? root.orphanWindows : [];
+    const metas = Array.isArray(root.metaWindows) ? root.metaWindows : [];
+    for (const extra of [...orphans, ...metas]) {
       if (!extra || typeof extra !== "object") continue;
-      if (extra.placeholder === true) continue;
-      if (extra.tracked === false) continue;
-      add(extra);
+      const ex = /** @type {Record<string, unknown>} */ (extra);
+      if (ex.placeholder === true) continue;
+      if (ex.tracked === false) continue;
+      add(ex);
     }
   } else if (Array.isArray(node)) {
     for (const m of node) walk(m, "");
@@ -1145,6 +1149,11 @@ export function doLaunch(opts) {
     placeOpts &&
     ("monitor" in placeOpts || "treePath" in placeOpts || "attachSelector" in placeOpts)
   ) {
+    ensureForgePlog({ env }).debug(
+      `launch PlaceNext app=${app} mon=${placeOpts.monitor ?? "-"} path=${
+        placeOpts.treePath ?? "-"
+      }`
+    );
     let raw;
     let data;
     try {
@@ -1180,6 +1189,11 @@ export function doLaunch(opts) {
   let baseline = new Set();
   if (!opts.noWait) baseline = baselineWindowIds(deps);
 
+  ensureForgePlog({ env }).debug(
+    `launch spawn app=${app} wait=${opts.noWait ? "no" : "yes"} classes=${
+      Array.isArray(waitClasses) ? waitClasses.join(",") : waitClasses || "-"
+    }`
+  );
   let proc;
   try {
     proc = launchApp(app, {
@@ -1327,12 +1341,12 @@ export function runMixedStepsWithPartition(steps, opts = {}) {
       /** @type {{ kind: string, steps: unknown[] }[]} */
       const chunks = [];
       for (const step of s) {
-        const opRaw =
-          step && typeof step === "object" && !Array.isArray(step)
-            ? /** @type {any} */ (step).op ??
-              /** @type {any} */ (step).action ??
-              /** @type {any} */ (step).type
-            : null;
+        /** @type {unknown} */
+        let opRaw = null;
+        if (step && typeof step === "object" && !Array.isArray(step)) {
+          const st = /** @type {Record<string, unknown>} */ (step);
+          opRaw = st.op ?? st.action ?? st.type;
+        }
         const op = opRaw != null ? String(opRaw).trim().toLowerCase() : "";
         const kind = CLI_ONLY_OP_SET.has(op) ? "cli" : "extension";
         const last = chunks[chunks.length - 1];
@@ -1464,19 +1478,17 @@ export function payloadHasCliOnly(payload) {
   /** @type {unknown[]} */
   let steps;
   if (Array.isArray(payload)) steps = payload;
-  else if (
-    payload &&
-    typeof payload === "object" &&
-    Array.isArray(/** @type {any} */ (payload).steps)
-  ) {
-    steps = /** @type {any} */ (payload).steps;
+  else if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const bag = /** @type {Record<string, unknown>} */ (payload);
+    if (!Array.isArray(bag.steps)) return [];
+    steps = bag.steps;
   } else return [];
   /** @type {string[]} */
   const found = [];
   for (const s of steps) {
     if (!s || typeof s !== "object" || Array.isArray(s)) continue;
-    const op =
-      /** @type {any} */ (s).op || /** @type {any} */ (s).action || /** @type {any} */ (s).type;
+    const row = /** @type {Record<string, unknown>} */ (s);
+    const op = row.op || row.action || row.type;
     if (op == null) continue;
     const name = String(op).trim().toLowerCase();
     if (CLI_ONLY_OP_SET.has(name) && !found.includes(name)) found.push(name);
@@ -1490,12 +1502,13 @@ export function payloadHasCliOnly(payload) {
  */
 export function extractStepsAndStop(payload) {
   if (Array.isArray(payload)) return { steps: payload, stopOnError: true };
-  if (payload && typeof payload === "object") {
-    const steps = /** @type {any} */ (payload).steps;
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const bag = /** @type {Record<string, unknown>} */ (payload);
+    const steps = bag.steps;
     if (!Array.isArray(steps)) {
       throw new Error("payload must be a steps array or {steps: [...]}");
     }
-    const soe = /** @type {any} */ (payload).stopOnError;
+    const soe = bag.stopOnError;
     if (soe !== undefined && typeof soe !== "boolean") {
       throw new Error("stopOnError must be a boolean");
     }

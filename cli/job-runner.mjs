@@ -9,6 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ensureForgePlog } from "./plog.mjs";
 
 export const SCHEMA_VERSION = 1;
 export const DEFAULT_JOBS_SUBPATH = path.join("forge", "jobs");
@@ -627,6 +628,7 @@ export function spawnWorker(
     claimMutator(root, jid, { now });
   } catch (exc) {
     if (exc instanceof BusyError) {
+      ensureForgePlog({ env }).debug(`job busy id=${exc.jobId} cmd=${command}`);
       try {
         for (const name of [STATUS_FILENAME, ARGV_FILENAME, STDOUT_LOG, STDERR_LOG]) {
           const p = path.join(jdir, name);
@@ -649,6 +651,7 @@ export function spawnWorker(
   const errPath = path.join(jdir, STDERR_LOG);
   const outFd = fs.openSync(outPath, "a");
   const errFd = fs.openSync(errPath, "a");
+  ensureForgePlog({ env }).debug(`job spawn id=${jid} cmd=${command}`);
   const spawnImpl = spawnFn || spawn;
   let proc;
   try {

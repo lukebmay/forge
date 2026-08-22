@@ -6426,6 +6426,53 @@ class TestWorkspaceScope(unittest.TestCase):
         wins = collect_windows(forest)
         self.assertEqual([w["windowId"] for w in wins], [77])
 
+    def test_filter_forest_workspace_drops_other_ws_orphans(self):
+        forest = _dual_ws_forest(ws0_windows=[{
+            "wmClass": "Foo",
+            "title": "A",
+            "windowId": 1,
+            "pid": 1,
+            "monitor": 0,
+        }])
+        forest["orphanWindows"] = [{
+            "windowId": 10,
+            "wmClass": "Same",
+            "workspace": 0,
+        }, {
+            "windowId": 11,
+            "wmClass": "Other",
+            "workspace": 1,
+        }, {
+            "windowId": 12,
+            "wmClass": "Unknown",
+        }]
+        scoped = filter_forest_workspace(forest, 0)
+        self.assertEqual([w["windowId"] for w in scoped["orphanWindows"]], [10])
+        wins = collect_windows(forest, workspace=0)
+        self.assertNotIn(11, [w["windowId"] for w in wins])
+        self.assertNotIn(12, [w["windowId"] for w in wins])
+
+    def test_plan_reconcile_clean_does_not_close_other_ws_orphans(self):
+        forest = _dual_ws_forest(ws0_windows=[{
+            "wmClass": "com.mitchellh.ghostty",
+            "title": "Ghostty",
+            "windowId": 1,
+            "pid": 1,
+            "monitor": 0,
+        }])
+        forest["orphanWindows"] = [{
+            "windowId": 902,
+            "wmClass": "org.inkscape.Inkscape",
+            "title": "Inkscape",
+            "workspace": 1,
+        }]
+        plan = plan_reconcile(forest, _TERM_ONLY_PROFILE, workspace=0, clean=True)
+        close_ids = [
+            a.get("windowId") for a in plan.get("actions") or [] if a.get("op") == "close"
+        ]
+        self.assertNotIn(902, close_ids)
+        self.assertEqual(plan["counts"]["closed"], 0)
+
     def test_role_on_other_ws_opens_not_claims(self):
         """Ghostty only on ws1 → plan for ws0 opens; does not move/claim ws1."""
         forest = _dual_ws_forest(ws1_windows=[{

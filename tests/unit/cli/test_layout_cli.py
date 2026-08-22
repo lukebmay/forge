@@ -316,5 +316,13 @@ class TestCandidateCounts(unittest.TestCase):
         self.assertEqual(s2, "candidates: 3 on ws1")
 
 
+class TestMultiLayoutFailureCopy(unittest.TestCase):
+
+    def test_failure_does_not_claim_nothing_applied(self):
+        text = (_FORGE_CLI / "forge").read_text(encoding="utf-8")
+        self.assertIn("earlier phases may have already mutated the desk", text)
+        self.assertNotIn("nothing applied", text)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1008,6 +1008,31 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       expect(wm()._minSizeProbeQueue).toBeUndefined();
     });
 
+    it("unmanaged mid-grab clears dragged node / GRAB_TILE / stage track", async () => {
+      const MetaMod = await import("../../mocks/gnome/Meta.js");
+      const GrabOp = MetaMod.GrabOp;
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const b = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaB);
+      b.mode = WINDOW_MODES.TILE;
+
+      wm()._handleGrabOpBegin(global.display, metaB, GrabOp.WINDOW_BASE);
+      expect(b.mode).toBe(WINDOW_MODES.GRAB_TILE);
+      expect(wm()._draggedNodeWindow).toBe(b);
+      expect(wm().dragDrop._grabPointerTrack).toBeTruthy();
+      wm().freezeRender();
+
+      wm()._clearGrabOnUnmanaged(metaB);
+      expect(wm()._draggedNodeWindow).toBeNull();
+      expect(wm().grabOp).toBeNull();
+      expect(b.mode).toBe(WINDOW_MODES.TILE);
+      expect(wm().dragDrop._grabPointerTrack).toBeFalsy();
+      expect(wm()._freezeRender).toBe(false);
+    });
+
     it("peels TABBED leaf onto foreign TILE via titlebar-style GRAB_TILE", () => {
       ctx.settings.get_string.mockImplementation((key) => {
         if (key === "dnd-center-layout") return "TABBED";

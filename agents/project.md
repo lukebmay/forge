@@ -59,7 +59,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 
 | Item | Status | Next |
 | --- | --- | --- |
-| **[Observability hardening](./plans/forge-observability-hardening.md)** | **P0** OH1–OH3 ready | OH1 plog (**4.6 high**) then asserts / checkJs; multi-ws/DnD after |
+| **[Observability hardening](./plans/forge-observability-hardening.md)** | **P0** OH1–OH3 + ws-orphan **done** | monitor + same-mon launch · `npm run typecheck:oh2` |
 | **[Canonical contracts](./plans/forge-canonical-contracts.md)** | IC0–IC3 done · IC4 skipped | — |
 | **[CLI → Node](./plans/forge-cli-node.md)** | D036 · CN0–CN6 **done** (CN7 skip) · **CN13 PATH** | CN14/CN15 later; no layout port |
 | **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold **PASS** |

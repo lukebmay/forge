@@ -1,7 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import St from "gi://St";
+import {
+  assertionFailed,
+  resetAssertForTests,
+  setAssertActiveForTests,
+} from "../../../lib/shared/assert.js";
 
 describe("Node", () => {
   describe("appendChild", () => {
@@ -367,6 +372,24 @@ describe("Node", () => {
       const monitors = root.getNodeByType(NODE_TYPES.MONITOR);
 
       expect(monitors).toEqual([]);
+    });
+  });
+
+  describe("OH3 parent consistency", () => {
+    afterEach(() => {
+      resetAssertForTests();
+    });
+
+    it("append/remove do not set assertionFailed on the happy path", () => {
+      setAssertActiveForTests(true);
+      const parent = new Node(NODE_TYPES.ROOT, "parent");
+      const child = new Node(NODE_TYPES.CON, new St.Bin());
+      parent.appendChild(child);
+      expect(child.parentNode).toBe(parent);
+      expect(assertionFailed()).toBe(false);
+      parent.removeChild(child);
+      expect(child.parentNode).toBeNull();
+      expect(assertionFailed()).toBe(false);
     });
   });
 });

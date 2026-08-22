@@ -1,4 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
+import {
+  ASSERT_FAILED_CODE,
+  assert,
+  resetAssertForTests,
+  setAssertActiveForTests,
+} from "../../../lib/shared/assert.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -169,6 +175,38 @@ describe("LayoutApplyRunBag", () => {
       queue,
     };
   }
+
+  it("skips start when assertionFailed is set", () => {
+    setAssertActiveForTests(true);
+    assert(false, "test-apply-stop");
+    try {
+      const { bag } = bagWithQueue();
+      const a = bag.start({ profile: { roles: [] }, name: "t" });
+      expect(a).toMatchObject({ ok: false, code: ASSERT_FAILED_CODE });
+      expect(bag.live).toBeFalsy();
+    } finally {
+      resetAssertForTests();
+    }
+  });
+
+  it("aborts a live run at the next phase when assertionFailed is set", () => {
+    const { bag, flushOne } = bagWithQueue();
+    const a = bag.start({ profile: { roles: [] }, name: "t" });
+    expect(a.ok).toBe(true);
+    expect(bag.live).toBeTruthy();
+    setAssertActiveForTests(true);
+    assert(false, "test-apply-mid");
+    try {
+      flushOne();
+      expect(bag.live).toBeNull();
+      expect(bag.lastTerminal?.terminal).toMatchObject({
+        ok: false,
+        code: ASSERT_FAILED_CODE,
+      });
+    } finally {
+      resetAssertForTests();
+    }
+  });
 
   it("starts immediately and is single-flight busy", () => {
     const { bag, flushAll } = bagWithQueue();

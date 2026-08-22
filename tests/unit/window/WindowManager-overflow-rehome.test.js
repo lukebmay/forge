@@ -136,6 +136,47 @@ describe("D049 overflow rehome", () => {
     expect(overflow.node.mode).toBe(WINDOW_MODES.GRAB_TILE);
   });
 
+  it("ratchets poisoned mins when Meta frame already fits the slot", () => {
+    const { overflow } = vsplitPairPlusRoomy();
+    overflow.meta._size_hints = null;
+    overflow.meta._forgeKnownMinW = 50;
+    overflow.meta._forgeKnownMinH = 400;
+    const parent = overflow.node.parentNode;
+
+    expect(wm()._slotTooSmallForTile(overflow.node, overflow.meta)).toBe(true);
+    expect(wm().rehomeIfSlotTooSmall(overflow.node)).toBe(false);
+    expect(overflow.node.mode).toBe(WINDOW_MODES.TILE);
+    expect(overflow.node.parentNode).toBe(parent);
+    expect(overflow.meta._forgeKnownMinH).toBe(200);
+    expect(wm()._slotTooSmallForTile(overflow.node, overflow.meta)).toBe(false);
+  });
+
+  it("does not schedule min-clamp learn during ApplyEpoch", () => {
+    const { overflow } = vsplitPairPlusRoomy();
+    wm().beginApplyEpoch({ id: "min-learn-epoch" });
+    const set = vi.spyOn(wm()._wmSources, "set");
+    wm()._scheduleMinClampLearn(overflow.meta);
+    expect(set.mock.calls.some(([slot]) => String(slot).startsWith("minClampLearn:"))).toBe(false);
+    wm().endApplyEpoch({ id: "min-learn-epoch" });
+  });
+
+  it("size-changed does not live-learn mins", () => {
+    const mon = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const pair = tileOn(mon, {
+      id: "live-learn",
+      rect: { x: 0, y: 0, width: 200, height: 380 },
+    });
+    pair.meta._forgeLastResizeRequest = {
+      width: 200,
+      height: 150,
+      at: 0,
+      priorW: 200,
+      priorH: 800,
+    };
+    wm().updateMetaPositionSize(pair.meta, "size-changed");
+    expect(pair.meta._forgeKnownMinH).toBeFalsy();
+  });
+
   it("no-ops when mins already fit the slot", () => {
     const mon = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
     const legal = tileOn(mon, {

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored; forge does not typecheck pansi internals
 /**
  * ansi_color.js — portable color enablement (shellrc contract).
  * Decision order: agents-catalog ansi-colors.md

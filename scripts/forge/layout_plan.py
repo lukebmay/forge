@@ -1901,7 +1901,12 @@ def monitor_workspace_index(m: dict[str, Any]) -> Optional[int]:
 
 
 def window_workspace_index(w: dict[str, Any]) -> Optional[int]:
-    """Workspace from window path mon id (moNwsW/...)."""
+    """Workspace from explicit field, else path mon id (moNwsW/...)."""
+    if not isinstance(w, dict):
+        return None
+    ws = w.get("workspace")
+    if isinstance(ws, int) and not isinstance(ws, bool):
+        return ws
     path = w.get("path")
     if path is None or str(path).strip() == "":
         return None
@@ -1913,6 +1918,19 @@ def window_workspace_index(w: dict[str, Any]) -> Optional[int]:
     if parsed is None:
         return None
     return parsed[1]
+
+
+def _filter_extra_windows_by_workspace(lst: Any, ws: int) -> Any:
+    if not isinstance(lst, list):
+        return lst
+    out: list[Any] = []
+    for w in lst:
+        if not isinstance(w, dict):
+            continue
+        # Fail-closed: unknown-ws extras must not leak into a filtered desk.
+        if window_workspace_index(w) == ws:
+            out.append(w)
+    return out
 
 
 def filter_forest_workspace(forest: Any, workspace: int = 0) -> Any:
@@ -1941,6 +1959,12 @@ def filter_forest_workspace(forest: Any, workspace: int = 0) -> Any:
             kept.append(m)
     out = dict(forest)
     out["monitors"] = kept
+    if isinstance(forest.get("orphanWindows"), list):
+        out["orphanWindows"] = _filter_extra_windows_by_workspace(
+            forest.get("orphanWindows"), ws)
+    if isinstance(forest.get("metaWindows"), list):
+        out["metaWindows"] = _filter_extra_windows_by_workspace(
+            forest.get("metaWindows"), ws)
     return out
 
 
@@ -2988,6 +3012,7 @@ def collect_windows(forest: Any,
             walk(m, "", None)
     if isinstance(forest, dict):
         seen = {str(w.get("windowId")) for w in out if w.get("windowId") is not None}
+        want_ws = _normalize_workspace(workspace) if workspace is not None else None
         for extra in (forest.get("orphanWindows") or []) + (forest.get("metaWindows") or []):
             if not isinstance(extra, dict):
                 continue
@@ -2998,8 +3023,10 @@ def collect_windows(forest: Any,
             wid = extra.get("windowId")
             if wid is None or str(wid) in seen:
                 continue
+            if want_ws is not None and window_workspace_index(extra) != want_ws:
+                continue
             seen.add(str(wid))
-            out.append({
+            row = {
                 "windowId": wid,
                 "wmClass": extra.get("wmClass") or extra.get("wm_class"),
                 "title": extra.get("title"),
@@ -3008,7 +3035,11 @@ def collect_windows(forest: Any,
                 if isinstance(extra.get("monitor"), int) else None,
                 "mode": extra.get("mode"),
                 "pid": extra.get("pid"),
-            })
+            }
+            extra_ws = extra.get("workspace")
+            if isinstance(extra_ws, int) and not isinstance(extra_ws, bool):
+                row["workspace"] = extra_ws
+            out.append(row)
     return out
 
 

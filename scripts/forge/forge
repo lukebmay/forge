@@ -2734,7 +2734,8 @@ def _layout_run_multi(
             else:
                 _eprint(
                     f"forge layout: failed on {target.name!r} "
-                    f"(ws {target.workspace_1based}); nothing applied"
+                    f"(ws {target.workspace_1based}); "
+                    f"earlier phases may have already mutated the desk"
                 )
             return rc
         applied.append(f"{target.name}@ws{target.workspace_1based}")
