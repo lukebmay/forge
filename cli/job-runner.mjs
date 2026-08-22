@@ -538,6 +538,8 @@ export function prepareJobDir(
 ) {
   const jid = jobId || newJobId({ now });
   const jdir = jobDir(jobsRoot, jid);
+  // Python parity: parents=True, exist_ok=False
+  fs.mkdirSync(path.dirname(jdir), { recursive: true });
   fs.mkdirSync(jdir, { recursive: false });
   const st = emptyStatus({
     jobId: jid,

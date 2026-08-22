@@ -135,6 +135,25 @@ describe("status machine", () => {
     }
   });
 
+  it("prepareJobDir creates missing jobs root", () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "forge-job-"));
+    const root = path.join(base, "forge", "jobs");
+    try {
+      expect(fs.existsSync(root)).toBe(false);
+      const { jobId, jobDir } = prepareJobDir(root, {
+        jobId: "fresh",
+        command: "install",
+      });
+      expect(jobId).toBe("fresh");
+      expect(fs.existsSync(jobDir)).toBe(true);
+      expect(() => prepareJobDir(root, { jobId: "fresh", command: "install" })).toThrow(
+        /EEXIST|file already exists/i
+      );
+    } finally {
+      rmrf(base);
+    }
+  });
+
   it("statusExitCode defaults", () => {
     expect(statusExitCode({ status: STATUS_OK })).toBe(0);
     expect(statusExitCode({ status: STATUS_CANCELLED })).toBe(130);
