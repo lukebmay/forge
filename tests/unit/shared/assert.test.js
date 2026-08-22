@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-vi.mock("../../../lib/shared/settings.js", () => ({
+vi.mock("../../../lib/shared/production.js", () => ({
   production: false,
 }));
 
@@ -30,7 +30,7 @@ describe("assert (OH3)", () => {
         get_boolean: () => true,
         get_uint: () => LOG_LEVELS.DEBUG,
       },
-      { sink }
+      { sink, file: null }
     );
   });
 

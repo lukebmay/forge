@@ -1,10 +1,15 @@
-// @ts-nocheck — vendored; forge does not typecheck pansi internals
 /**
  * ansi_color.js — portable color enablement (shellrc contract).
  * Decision order: agents-catalog ansi-colors.md
  * Keep ANSI_COLOR_VERSION in sync with util/python/ansi_color.py etc.
+ *
+ * @typedef {"always"|"never"|"auto"} ColorMode
+ * @typedef {{env?: Record<string, string|undefined>, toolColorKeys?: string[]}} ColorResolveOpts
+ * @typedef {ColorResolveOpts & {cliMode?: string|null, enabled?: boolean}} ColorEnabledOpts
+ * @typedef {{red: string, green: string, yellow: string, blue: string, magenta: string, cyan: string, reset: string, bold: string, dim: string}} ColorCodesMap
  */
 
+/** @type {string} */
 export const ANSI_COLOR_VERSION = "1.0.0";
 
 const FALSEY = new Set(["", "0", "false", "no", "off"]);
@@ -29,8 +34,8 @@ function envMode(env, toolColorKeys) {
 
 /**
  * @param {string|null|undefined} cliMode
- * @param {{env?: Record<string,string>, toolColorKeys?: string[]}} [opts]
- * @returns {"always"|"never"|"auto"}
+ * @param {ColorResolveOpts} [opts]
+ * @returns {ColorMode}
  */
 export function resolveColorMode(cliMode, opts = {}) {
   const env = opts.env || (typeof process !== "undefined" ? process.env : {});
@@ -54,7 +59,8 @@ export function resolveColorMode(cliMode, opts = {}) {
 
 /**
  * @param {{isTTY?: boolean}|null|undefined} stream
- * @param {{cliMode?: string|null, env?: Record<string,string>, toolColorKeys?: string[]}} [opts]
+ * @param {ColorEnabledOpts} [opts]
+ * @returns {boolean}
  */
 export function colorEnabled(stream, opts = {}) {
   const mode = resolveColorMode(opts.cliMode, opts);
@@ -86,6 +92,9 @@ const CODE_SEQS = Object.freeze({
 /**
  * Role sequences, or empty strings when color is off.
  * opts.enabled optional override; else colorEnabled(stream, opts).
+ * @param {{isTTY?: boolean}|null|undefined} stream
+ * @param {ColorEnabledOpts} [opts]
+ * @returns {ColorCodesMap}
  */
 export function colorCodes(stream, opts = {}) {
   const on = opts.enabled !== undefined ? !!opts.enabled : colorEnabled(stream, opts);

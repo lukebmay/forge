@@ -1,7 +1,7 @@
 # Pinned pansi family snapshot from shellrc (do not edit by hand — re-snap).
-# Source: ~/dev/me/shellrc util/js/{ansi_color,p,plog}.js
-shellrc_rev=3226f7c89b67289cae8e187d0e2bd02f5c5dfb33
-shellrc_date=2026-08-21
+# Source: ~/dev/me/shellrc util/js/{ansi_color,p,plog*}.{js,d.ts}
+shellrc_rev=b15b6f0ba3014aad9c75b5b02620b975e48747db
+shellrc_date=2026-08-22
 ANSI_COLOR_VERSION=1.0.0
 PANSI_VERSION=1.0.0
-PLOG_VERSION=1.0.0
+PLOG_VERSION=1.2.0

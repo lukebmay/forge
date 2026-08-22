@@ -1,17 +1,32 @@
 // Mock GLib namespace
 
+const mockEnvDefaults = {
+  HOME: "/home/test",
+  USER: "testuser",
+  SHELL: "/bin/bash",
+};
+
 export function getenv(variable) {
   // Prefer process.env so Vitest can set FORGE_MIN_TILE_* (fixtures use ~100px slots).
   if (variable != null && typeof process !== "undefined" && process.env) {
     const fromProc = process.env[variable];
     if (fromProc != null && String(fromProc).length) return String(fromProc);
   }
-  const mockEnv = {
-    HOME: "/home/test",
-    USER: "testuser",
-    SHELL: "/bin/bash",
-  };
-  return mockEnv[variable] || null;
+  return mockEnvDefaults[variable] || null;
+}
+
+export function setenv(variable, value, _overwrite) {
+  if (variable == null) return;
+  if (typeof process !== "undefined" && process.env) {
+    process.env[variable] = value == null ? "" : String(value);
+  }
+}
+
+export function unsetenv(variable) {
+  if (variable == null) return;
+  if (typeof process !== "undefined" && process.env) {
+    delete process.env[variable];
+  }
 }
 
 export function get_home_dir() {
@@ -83,6 +98,8 @@ export function spawn_command_line_async(_command) {
 
 export default {
   getenv,
+  setenv,
+  unsetenv,
   get_home_dir,
   get_user_data_dir,
   get_user_config_dir,

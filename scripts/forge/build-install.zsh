@@ -18,8 +18,8 @@ Usage:
 
 Options:
   --repo=PATH      Repo root (default: $FORGE_REPO_ROOT)
-  --prod           Release-style build (production=true); default is dev (debug)
-  --dev            Debug build (production=false) — default
+  --prod           Release-style build (production=true → logging OFF)
+  --dev            Debug build (production=false) — default; sets log-level=TRACE
   --build-only     npm/make build (+ debug) into repo temp/; do NOT install
   --install-only   Copy existing temp/ into extension dir (no rebuild)
   --skip-npm       Skip npm install even if node_modules missing
@@ -196,12 +196,13 @@ forge_do_install() {
       forge_warn "host-defaults apply failed (non-fatal)"
   fi
 
-  # Dev install: debug-level logging (not trace). Production builds stay quiet
-  # via production=true even if these keys are set.
+  # Dev install: TRACE so the independent forge.log gets hot-path detail.
+  # Journal stays INFO+ only (D050). Production builds stay quiet via
+  # production=true even if these keys are set.
   if [[ "$MODE" == "dev" ]] && command -v gsettings >/dev/null 2>&1; then
     if gsettings set org.gnome.shell.extensions.forge logging-enabled true 2>/dev/null \
-      && gsettings set org.gnome.shell.extensions.forge log-level 5 2>/dev/null; then
-      forge_ok "dev logging: enabled, log-level=5 (DEBUG)"
+      && gsettings set org.gnome.shell.extensions.forge log-level 6 2>/dev/null; then
+      forge_ok "dev logging: enabled, log-level=6 (TRACE → forge.log; journal INFO+)"
     else
       forge_warn "could not set dev log-level via gsettings (schemas may need reload)"
     fi

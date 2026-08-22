@@ -113,10 +113,11 @@
                 2 - ERROR
                 3 - WARN
                 4 - INFO (schema / product baseline)
-                5 - DEBUG (dev install default — set by ./install)
-                6 - TRACE (nuclear; stuck failures only)
+                5 - DEBUG
+                6 - TRACE (./install --dev default; detail → forge.log only)
                 7 - ALL
-                Calls below the selected level are not emitted.
+                Calls below the selected level are not emitted anywhere.
+                Journal sink is INFO+ only regardless (D050).
             </summary>
         </key>
         <key type="b" name="logging-enabled">

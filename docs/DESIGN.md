@@ -1063,12 +1063,25 @@ in that mode, so `~/.config/forge/stylesheet/forge/stylesheet.css` (real colors)
 never applied after a debug install — looked like “need a reboot.”
 
 **Approach:** Always prefer the user profile stylesheet when present; keep
-`production` for logger level, debug asserts (OH3 / O9), and prefs Logger group
-only. Asserts: `lib/shared/assert.js` — active at log-level ≥ debug or
-`!production`; failure is plog error + `assertionFailed` (never throw; skip
-further apply / DnD commit / launch insert). Live reload: `css-updated`
-gsettings, Super+Shift+r (`ConfigReload` re-imports CSS), or
-`scripts/forge/reload-theme.zsh`.
+`production` (`lib/shared/production.js`) for logger level, debug asserts
+(OH3 / O9), and prefs Logger group only. Asserts: `lib/shared/assert.js` —
+active at log-level ≥ debug or `!production`; failure is plog error +
+`assertionFailed` (never throw; skip further apply / DnD commit / launch
+insert). Live reload: `css-updated` gsettings, Super+Shift+r (`ConfigReload`
+re-imports CSS), or `scripts/forge/reload-theme.zsh`.
+
+## Logging sinks (dual-sink plog)
+
+**Problem:** A single journal sink at DEBUG/TRACE made `journalctl` unusable
+for eyes-on while hunting layout/DnD races.
+
+**Approach:** Vendored shellrc plog **1.2.0** (D064 action pipelines; GJS Gio
+`toFile`). Extension `plog-adapter` fans out per level: **file** =
+TRACE…ERROR (default `~/.local/state/forge/forge.log`); **journal** =
+INFO/WARN/ERROR only. Custom plog `levels` table mirrors prefs labels
+(all/trace/…/fatal). Call-site rules: INFO = install/startup/layout
+load-save/ApplyLayout outcome; TRACE = launch/map/move/rehome/verify ids;
+DEBUG = named temporary hunts; WARN = soft miss; ERROR = hard fail.
 
 ## CSS: base + user overrides (D001)
 

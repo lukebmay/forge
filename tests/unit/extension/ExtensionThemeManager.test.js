@@ -4,12 +4,16 @@ import { File } from "../../mocks/gnome/Gio.js";
 import { ExtensionThemeManager } from "../../../lib/extension/extension-theme-manager.js";
 import { Logger } from "../../../lib/shared/logger.js";
 
-// production is still mocked for ThemeManagerBase / logger imports; stylesheet
-// load no longer branches on it (make dev must still use user colors).
-vi.mock("../../../lib/shared/settings.js", () => ({
+// production mocked for ThemeManagerBase / logger imports; stylesheet load no
+// longer branches on it (make dev must still use user colors).
+vi.mock("../../../lib/shared/production.js", () => ({
   production: true,
-  PERMISSIONS_MODE: 0o744,
+  setProductionForTests: () => {},
 }));
+vi.mock("../../../lib/shared/settings.js", async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, production: true, PERMISSIONS_MODE: 0o744 };
+});
 
 // Minimal CSS so ThemeManagerBase._importCss() succeeds in the constructor.
 const sampleCss = `.tiled { color: rgba(255,255,255,0.8); border-width: 1px; opacity: 0.8; }`;

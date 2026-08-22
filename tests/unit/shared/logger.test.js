@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-// Mock production mode to false for testing
-vi.mock("../../../lib/shared/settings.js", () => ({
+vi.mock("../../../lib/shared/production.js", () => ({
   production: false,
 }));
 
@@ -26,8 +25,8 @@ describe("Logger", () => {
     mockSettings.get_boolean.mockReturnValue(true);
     mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.ALL);
 
-    // Initialize logger with mock settings
-    Logger.init(mockSettings);
+    // Journal-only in unit tests (no forge.log side effects)
+    Logger.init(mockSettings, { file: null });
   });
 
   afterEach(() => {
@@ -87,7 +86,7 @@ describe("Logger", () => {
 
     it("should not log when logging is disabled", () => {
       mockSettings.get_boolean.mockReturnValue(false);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.fatal("test message");
       expect(logSpy).not.toHaveBeenCalled();
@@ -100,7 +99,7 @@ describe("Logger", () => {
 
     it("should always log when level is ALL", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.ALL);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.fatal("message");
       expect(logSpy).toHaveBeenCalled();
@@ -110,7 +109,7 @@ describe("Logger", () => {
   describe("error", () => {
     it("should log when level is ERROR or higher", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.ERROR);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.error("test error");
       expect(logSpy).toHaveBeenCalledWith("[Forge] [ERROR]", "test error");
@@ -118,7 +117,7 @@ describe("Logger", () => {
 
     it("should not log when level is FATAL", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.FATAL);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.error("test error");
       expect(logSpy).not.toHaveBeenCalled();
@@ -126,7 +125,7 @@ describe("Logger", () => {
 
     it("should log when level is higher than ERROR", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.WARN);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.error("test error");
       expect(logSpy).toHaveBeenCalled();
@@ -136,7 +135,7 @@ describe("Logger", () => {
   describe("warn", () => {
     it("should log when level is WARN or higher", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.WARN);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.warn("test warning");
       expect(logSpy).toHaveBeenCalledWith("[Forge] [WARN]", "test warning");
@@ -144,7 +143,7 @@ describe("Logger", () => {
 
     it("should not log when level is ERROR", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.ERROR);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.warn("test warning");
       expect(logSpy).not.toHaveBeenCalled();
@@ -152,7 +151,7 @@ describe("Logger", () => {
 
     it("should log when level is INFO", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.INFO);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.warn("test warning");
       expect(logSpy).toHaveBeenCalled();
@@ -162,7 +161,7 @@ describe("Logger", () => {
   describe("info", () => {
     it("should log when level is INFO or higher", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.INFO);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.info("test info");
       expect(logSpy).toHaveBeenCalledWith("[Forge] [INFO]", "test info");
@@ -170,7 +169,7 @@ describe("Logger", () => {
 
     it("should not log when level is WARN", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.WARN);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.info("test info");
       expect(logSpy).not.toHaveBeenCalled();
@@ -178,7 +177,7 @@ describe("Logger", () => {
 
     it("should log when level is DEBUG", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.DEBUG);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.info("test info");
       expect(logSpy).toHaveBeenCalled();
@@ -186,54 +185,38 @@ describe("Logger", () => {
   });
 
   describe("debug", () => {
-    it("should log when level is DEBUG or higher", () => {
+    it("does not hit journal (dual-sink file-only)", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.DEBUG);
-      Logger.init(mockSettings);
-
-      Logger.debug("test debug");
-      expect(logSpy).toHaveBeenCalledWith("[Forge] [DEBUG]", "test debug");
-    });
-
-    it("should not log when level is INFO", () => {
-      mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.INFO);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.debug("test debug");
       expect(logSpy).not.toHaveBeenCalled();
     });
 
-    it("should log when level is TRACE", () => {
-      mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.TRACE);
-      Logger.init(mockSettings);
+    it("should not emit when level is INFO", () => {
+      mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.INFO);
+      Logger.init(mockSettings, { file: null });
 
       Logger.debug("test debug");
-      expect(logSpy).toHaveBeenCalled();
+      expect(logSpy).not.toHaveBeenCalled();
     });
   });
 
   describe("trace", () => {
-    it("should log when level is TRACE or higher", () => {
+    it("does not hit journal (dual-sink file-only)", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.TRACE);
-      Logger.init(mockSettings);
-
-      Logger.trace("test trace");
-      expect(logSpy).toHaveBeenCalledWith("[Forge] [TRACE]", "test trace");
-    });
-
-    it("should not log when level is DEBUG", () => {
-      mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.DEBUG);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.trace("test trace");
       expect(logSpy).not.toHaveBeenCalled();
     });
 
-    it("should log when level is ALL", () => {
-      mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.ALL);
-      Logger.init(mockSettings);
+    it("should not emit when level is DEBUG", () => {
+      mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.DEBUG);
+      Logger.init(mockSettings, { file: null });
 
       Logger.trace("test trace");
-      expect(logSpy).toHaveBeenCalled();
+      expect(logSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -245,7 +228,7 @@ describe("Logger", () => {
 
     it("should not log when level is OFF", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.OFF);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.log("generic message");
       expect(logSpy).not.toHaveBeenCalled();
@@ -253,7 +236,7 @@ describe("Logger", () => {
 
     it("should log at any level above OFF", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.FATAL);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.log("generic message");
       expect(logSpy).toHaveBeenCalled();
@@ -267,7 +250,7 @@ describe("Logger", () => {
 
     it("should only log fatal when level is FATAL", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.FATAL);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.fatal("fatal");
       Logger.error("error");
@@ -282,7 +265,7 @@ describe("Logger", () => {
 
     it("should log fatal and error when level is ERROR", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.ERROR);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.fatal("fatal");
       Logger.error("error");
@@ -292,9 +275,9 @@ describe("Logger", () => {
       expect(logSpy).toHaveBeenCalledTimes(2);
     });
 
-    it("should log all messages when level is ALL", () => {
+    it("journal gets INFO+ only at ALL; TRACE/DEBUG are file-only", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.ALL);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.fatal("fatal");
       Logger.error("error");
@@ -304,12 +287,15 @@ describe("Logger", () => {
       Logger.trace("trace");
       Logger.log("log");
 
-      expect(logSpy).toHaveBeenCalledTimes(7);
+      // fatal, error, warn, info, log → journal; debug/trace excluded
+      expect(logSpy).toHaveBeenCalledTimes(5);
+      expect(logSpy).not.toHaveBeenCalledWith("[Forge] [DEBUG]", "debug");
+      expect(logSpy).not.toHaveBeenCalledWith("[Forge] [TRACE]", "trace");
     });
 
     it("should not log anything when level is OFF", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.OFF);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
 
       Logger.fatal("fatal");
       Logger.error("error");
@@ -325,14 +311,15 @@ describe("Logger", () => {
 
   describe("without initialization", () => {
     it("dev default is DEBUG when settings is null (!production)", () => {
-      Logger.init(null);
+      Logger.init(null, { file: null });
 
       Logger.info("info");
       Logger.debug("debug");
       Logger.trace("trace");
 
+      // Journal is INFO+ only; debug/trace are file-only
       expect(logSpy).toHaveBeenCalledWith("[Forge] [INFO]", "info");
-      expect(logSpy).toHaveBeenCalledWith("[Forge] [DEBUG]", "debug");
+      expect(logSpy).not.toHaveBeenCalledWith("[Forge] [DEBUG]", "debug");
       expect(logSpy).not.toHaveBeenCalledWith("[Forge] [TRACE]", "trace");
     });
   });
@@ -340,7 +327,7 @@ describe("Logger", () => {
   describe("info level hides debug and trace", () => {
     it("emits info but not debug/trace", () => {
       mockSettings.get_uint.mockReturnValue(Logger.LOG_LEVELS.INFO);
-      Logger.init(mockSettings);
+      Logger.init(mockSettings, { file: null });
       logSpy.mockClear();
 
       Logger.info("i");

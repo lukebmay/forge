@@ -1,18 +1,27 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-22 (install refuses `~/.grok`; PATH retargeted to durable clone)
-**Branch:** **`master`** (default). Shipped: preflight · slot-id remap ·
-oversized-frame learn · DnD FLOAT skip diagnostics · **install no-`~/.grok`**.
-**Sessions:** **Wayland** daily driver (Guake agent; tip loaded).
-**Logging (P0, blocked):** journal = INFO/WARN/ERROR only; independent forge
-file = TRACE…ERROR; plog **hooks** fan-out. Design:
-`~/dev/me/shellrc/agents/blockers/B-plog-hooks-design.md`. Forge task:
-[forge-log-level-retarget](./tasks/forge-log-level-retarget.md). Circle back
-after shellrc hooks ship + vendor.
+**Updated:** 2026-08-22 (D051 Meta max≠no-resize; vinyl + sole-max)
+**Branch:** **`master`** (default). Shipped: dual-sink plog · preflight ·
+slot-id remap · oversized-frame learn · DnD FLOAT skip · install no-`~/.grok`.
+**Sessions:** **Wayland** daily driver (Guake agent; tip installed — **logout
+once** for eyes-on).
+**Logging (D050 done):** journal = INFO/WARN/ERROR only; file =
+`~/.local/state/forge/forge.log` (TRACE…ERROR). Vendored shellrc PLOG 1.2.0
+(GJS Gio). Task:
+[completed](./tasks/completed/forge-log-level-retarget.md).
+**Vinyl / sole-max (D051):** Host tip after prior fixes still failed. Vinyl job
+`…T224233Z-f105e4`: Inkscape late-adopt `floatReason=no-resize` (Meta max →
+`allows_resize=false`). Lone Nautilus maximize: `TILE→FLOAT reason=no-resize`
+(D026 never saw TILE). Root: gatherer treated covering max/fs as permanent
+no-resize. Fix: `allowsResizeForFloatPolicy` (D051). Prior
+late-adopt/`_ensureTiledForSlotPlace` + lone-max D026 gate remain valid and
+compose. Task:
+[forge-layout-vinyl-inkscape-float](./tasks/forge-layout-vinyl-inkscape-float.md).
+**Hunt (TEMP):** keep `HUNT_TILE_SLOT_FLOAT` until host vinyl green. After tip:
+`forge layout vinyl` on WS2; sole-tile maximize should snap back (purple stays).
 **No operator questions** unless critical new finding (prefs locked in tasks).
 **Jobs:** `~/.local/share/forge/jobs/<id>/`.
-**Host:** recreate vinyl on WS2 (dual-mon JSON); `min-tab-label-chars` 12 if
-still 20. Logout once to load tip before eyes-on.
+**Host:** logout once for tip; verify vinyl + sole maximize snap-back.
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
 **`./scripts/forge/forge-test nested …`** (not user `forge`; not `forge test`).
 Primary logout is **rare** (tip load only after nest already green). Default nest
@@ -32,25 +41,26 @@ titlebar DnD + FLOAT skip log + vinyl WS2 recreate). Then **P0** monitor
 identity + same-mon dock launch **with traces** —
 [plan](./plans/forge-observability-hardening.md) § Downstream. Soft —
 [tiny-env Nautilus](./blockers/d049-tiny-env-nautilus.md) (also oversized
-frame learn eyes-on). Logging still blocked on shellrc hooks.
-**Shipped this session:** layout preflight · slot-id late-adopt remap ·
-oversized-frame min learn · DnD FLOAT grab skip diagnostics. Prior:
-OH1–OH3 + [ws-orphan](./tasks/completed/forge-layout-ws-orphan-min-float-dnd.md).
-**Install:** **logout once** for host Shell tip before eyes-on.
+frame learn eyes-on).
+**Shipped this session:** **D050** dual-sink plog · **D051** max/fs≠no-resize ·
+vinyl late-adopt/`_ensureTiledForSlotPlace`/`ensureMetaInSlot` · lone-max D026
+gate on `window-maximize-on-single` · apply chrome UX (D043). Prior: preflight ·
+slot-id remap · oversized-frame learn · DnD FLOAT skip · OH1–OH3 · ws-orphan.
+**Install:** tip on disk (`./install --dev`); **logout once** before eyes-on.
 **Do not close** durable-agent ghostty windows.
-**L0 last:** combined #2–#5 focused **291** vitest + preflight pytest **19**;
-slot-id nest mon=2 `_forge-test-clean`+`_forge-test-ghosttys` **ok**
-(`running: False`).
-**Logging (OH1 done):** `third_party/pansi/` pinned (shellrc `3226f7c`);
-GJS `plog-adapter` + `Logger` shim; Node CLI `cli/plog.mjs` (default warn;
-`FORGE_LOG_LEVEL` / `FORGE_LOG_TEE` / `FORGE_LOG_FILE`). Schema baseline INFO;
-**dev install sets DEBUG (5)**. TRACE=6 nuclear. Hot-path debug/trace peppered.
+**L0 last:** float-reason + floating + dyt2(+461) **94** green (D051). Broader
+chrome/slot/run suite green earlier this tip.
+**Logging (OH1 + D050 done):** `third_party/pansi/` pinned (shellrc `b15b6f0`,
+PLOG **1.2.0** + GJS Gio); dual-sink adapter (journal INFO+; file TRACE…ERROR);
+CLI shares default file. Schema baseline **INFO (4)** = no DEBUG/TRACE anywhere.
+**`./install --dev` sets TRACE (6)** for forge.log hunts (journal stays quiet).
 **Asserts (OH3 done):** `lib/shared/assert.js` — active `!production` or
 log-level ≥ debug; failure = plog error + `assertionFailed` (**never throw**);
 apply / DnD commit / launch insert skip.
 **Types (OH2 done):** focused gate `npm run typecheck:oh2` (`tsconfig.check.json`);
 root `tsconfig.json` stays loose (no full-tree boil). Escape: gi/pansi/`LayoutJson`.
-**Host settings:** `preview-hint-enabled=true`, `mod-mask-mouse-tile=None`.
+**Host settings:** `preview-hint-enabled=true`, `mod-mask-mouse-tile=None`,
+`window-maximize-on-single=false` (schema default).
 **Host seed:** `~/.config/forge/config/window-mins.json` has Nautilus 360×380.
 **2026-08-17:** User `forge` hard-breaks `test`/`nested`. Nest/live =
 `forge-test` (clone path; `./install --with-test-cli` opt-in).
@@ -902,9 +912,8 @@ WS2. Agents (after verify or soft-parallel): **P0** monitor identity +
 same-mon dock launch **with debug/trace** —
 [plan](./plans/forge-observability-hardening.md) § Downstream. Soft D049
 tiny-env (+ oversized learn eyes-on) —
-[blocker](./blockers/d049-tiny-env-nautilus.md). Logging still blocked on
-shellrc plog hooks. Optional later: CN14/CN15; yuiop blocked. See
-[IDEAS](./IDEAS.md).
+[blocker](./blockers/d049-tiny-env-nautilus.md). Dual-sink logging **done**
+(D050). Optional later: CN14/CN15; yuiop blocked. See [IDEAS](./IDEAS.md).
 
 **Proven this session on `master`:** layout preflight · slot-id late-adopt
 remap · oversized-frame learn · DnD FLOAT skip diagnostics. L0 **291** +

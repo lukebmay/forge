@@ -20,6 +20,7 @@ import {
   placeSlotWindows,
   remapSlotMachineWindowId,
   slotMachineKey,
+  slotPlaceHollowSummary,
   startSlotMachines,
   syncSlotMachineRoleWindowIds,
 } from "../../../lib/extension/layout-apply-slot.js";
@@ -347,6 +348,64 @@ describe("placeSlotWindows (SM5: no mid-place focus)", () => {
       expect(batch.ops.includes("focus")).toBe(false);
       expect(batch.phase).toBe("hard-ready");
     }
+  });
+
+  it("slotPlaceHollowSummary names mode/mon for machine windows", () => {
+    const summary = slotPlaceHollowSummary(
+      { windowIds: ["9", "8"] },
+      {
+        monitors: [
+          {
+            children: [
+              { windowId: 9, mode: "FLOAT", monitor: 1 },
+              { windowId: 8, mode: "TILE", monitor: 0 },
+            ],
+          },
+        ],
+      }
+    );
+    expect(summary).toContain("9:mode=FLOAT,mon=1");
+    expect(summary).toContain("8:mode=TILE,mon=0");
+  });
+
+  it("unsettled hollow calls ensureMetaInSlot (not a twin plan)", () => {
+    const d = loadExpected("perfect-clean");
+    const forest = JSON.parse(JSON.stringify(d.forest));
+    const ensured = [];
+    const out = placeSlotWindows({
+      profile: d.profile,
+      forest,
+      rolePins: {
+        "chrome-luke": 101,
+        grok: 102,
+        "ghostty-left": 103,
+        "ghostty-right": 201,
+        youtube: 202,
+        gmail: 203,
+        voice: 204,
+      },
+      flags: d.flags,
+      workspace: 0,
+      unsettled: true,
+      machine: {
+        key: "mon0.inkscape",
+        roles: ["chrome-luke"],
+        windowIds: ["101"],
+        slots: { 101: { windowId: "101", monitor: 0 } },
+      },
+      runSteps: () => {
+        throw new Error("runSteps must not run on hollow ensure-meta path");
+      },
+      ensureMetaInSlot: (machine) => {
+        ensured.push(machine.key);
+        return { ok: true, steps: 2 };
+      },
+      phase: "hard-ready",
+    });
+    expect(out.ok).toBe(true);
+    expect(out.reason).toBe("ensure-meta");
+    expect(out.steps).toBe(2);
+    expect(ensured).toEqual(["mon0.inkscape"]);
   });
 });
 

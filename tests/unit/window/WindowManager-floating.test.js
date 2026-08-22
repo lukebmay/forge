@@ -81,6 +81,19 @@ describe("WindowManager - Floating Mode", () => {
       expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
+    it("D051: Meta max/fs false allows_resize is not float-exempt", () => {
+      const window = createMockWindow({ allows_resize: true });
+      window.maximize();
+      expect(window.allows_resize()).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
+      expect(wm().floatExemptReason(window)).toBeNull();
+
+      window.unmaximize();
+      window.make_fullscreen();
+      expect(window.allows_resize()).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
+    });
+
     it("should return true for null window", () => {
       expect(wm().isFloatingExempt(null)).toBe(true);
     });

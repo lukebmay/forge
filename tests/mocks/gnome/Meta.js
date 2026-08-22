@@ -252,6 +252,9 @@ export class Window extends withSignals() {
   }
 
   allows_resize() {
+    // Mutter: covering max/fs reports false until unmaximize (D051).
+    if (this.fullscreen) return false;
+    if (this.maximized_horizontally || this.maximized_vertically) return false;
     return this._allows_resize;
   }
 

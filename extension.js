@@ -22,7 +22,10 @@ import { Extension, gettext as _ } from "resource:///org/gnome/shell/extensions/
 import Gio from "gi://Gio";
 
 // Shared state
+import GLib from "gi://GLib";
+import { createGjsRuntime } from "./third_party/pansi/plog-runtime-gjs.js";
 import { Logger } from "./lib/shared/logger.js";
+import { setPlogRuntime } from "./lib/shared/plog-adapter.js";
 import { ConfigManager } from "./lib/shared/settings.js";
 import { ConfigSync } from "./lib/shared/config-sync.js";
 import {
@@ -32,6 +35,8 @@ import {
   reconcileAction,
 } from "./lib/shared/gnome-overrides.js";
 import { disableRivalTilers } from "./lib/shared/rival-tilers.js";
+
+setPlogRuntime(createGjsRuntime);
 
 // Application imports
 import { Cheatsheet } from "./lib/extension/cheatsheet.js";
@@ -48,7 +53,15 @@ export default class ForgeExtension extends Extension {
   enable() {
     this.settings = this.getSettings();
     this.kbdSettings = this.getSettings("org.gnome.shell.extensions.forge.keybindings");
-    Logger.init(this.settings);
+    Logger.init(this.settings, {
+      ensureDir: (dir) => {
+        try {
+          GLib.mkdir_with_parents(dir, 0o755);
+        } catch (_e) {
+          /* best-effort */
+        }
+      },
+    });
     Logger.info("enable");
 
     // Disable GNOME features and keybindings that conflict with Forge (#461, #288)

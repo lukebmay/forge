@@ -9,29 +9,14 @@ import {
 import { Rectangle } from "../mocks/gnome/Meta.js";
 
 /**
- * forge-dyt2: a lone tiled window's external maximize is kept by the signal path
- * (_shouldRejectExternalMaximize deliberately exempts the lone case) but silently
- * reverted by the next renderTree -> tree.apply -> move(), which unmaximizes any
- * window with getMaximizeFlags != 0. So the maximize survived until some later
- * event, then snapped back — the guards and the render pipeline disagreed.
- *
- * Fix: tree.apply skips re-slicing a lone maximized tiled window (via the shared
- * _tiledWindowsOnMonitor predicate), the same way it already skips fullscreen.
- * Multi-window maximize is still re-tiled (handled/reverted by
- * _shouldRejectExternalMaximize at signal time).
+ * forge-dyt2: with maximize-on-single ON, signal + tree.apply must agree that
+ * a lone Meta-max TILE is left alone (apply used to unmaximize every render).
+ * With the setting OFF (schema default), D026 restores like multi-pane tiles.
  */
 describe("forge-dyt2: tree.apply preserves a lone tiled window's maximize", () => {
   let ctx;
 
-  beforeEach(() => {
-    // window-maximize-on-single OFF, else handleMaximizeOnSingle re-maximizes and
-    // masks the revert. tiling-mode-enabled ON so the predicates engage.
-    ctx = createWindowManagerFixture({
-      settings: { "tiling-mode-enabled": true, "window-maximize-on-single": false },
-    });
-  });
-
-  afterEach(() => ctx.cleanup());
+  afterEach(() => ctx?.cleanup());
 
   function tileWindow(monitor, id) {
     const metaWindow = createMockWindow({
@@ -46,61 +31,109 @@ describe("forge-dyt2: tree.apply preserves a lone tiled window's maximize", () =
     return { metaWindow, node };
   }
 
-  it("does not unmaximize the sole tiled window on render", () => {
-    const { monitor } = getWorkspaceAndMonitor(ctx);
-    monitor.layout = LAYOUT_TYPES.HSPLIT;
-    monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
-    const { metaWindow, node } = tileWindow(monitor, 7001);
+  describe("maximize-on-single ON", () => {
+    beforeEach(() => {
+      ctx = createWindowManagerFixture({
+        settings: { "tiling-mode-enabled": true, "window-maximize-on-single": true },
+      });
+    });
 
-    metaWindow.maximize();
-    metaWindow.move_resize_frame(false, 0, 0, 1920, 1080);
+    it("does not unmaximize the sole tiled window on render", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+      const { metaWindow, node } = tileWindow(monitor, 7001);
 
-    // The signal path intentionally leaves the lone maximize alone.
-    expect(ctx.windowManager._shouldRejectExternalMaximize(node, metaWindow)).toBe(false);
+      metaWindow.maximize();
+      metaWindow.move_resize_frame(false, 0, 0, 1920, 1080);
 
-    ctx.tree.apply(ctx.tree);
-    expect(metaWindow.is_maximized()).toBe(true);
+      expect(ctx.windowManager._isLoneMaximizedTile(node)).toBe(true);
+      expect(ctx.windowManager._shouldRejectExternalMaximize(node, metaWindow)).toBe(false);
 
-    // Convergence: repeated renders keep it maximized (no unmaximize<->maximize loop).
-    ctx.tree.apply(ctx.tree);
-    ctx.tree.apply(ctx.tree);
-    expect(metaWindow.is_maximized()).toBe(true);
+      ctx.tree.apply(ctx.tree);
+      expect(metaWindow.is_maximized()).toBe(true);
+
+      ctx.tree.apply(ctx.tree);
+      ctx.tree.apply(ctx.tree);
+      expect(metaWindow.is_maximized()).toBe(true);
+    });
+
+    it("still re-tiles (unmaximizes) a maximized window when it is NOT alone", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+
+      const { metaWindow: win1, node: node1 } = tileWindow(monitor, 7101);
+      tileWindow(monitor, 7102);
+      node1.renderRect = { x: 0, y: 0, width: 960, height: 1080 };
+
+      win1.maximize();
+
+      expect(ctx.windowManager._isLoneMaximizedTile(node1)).toBe(false);
+      ctx.tree.apply(ctx.tree);
+      expect(win1.is_maximized()).toBe(false);
+    });
+
+    it("OP2: firstRender lone max still places once (dock/new map)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+      const { metaWindow, node } = tileWindow(monitor, 7201);
+      metaWindow.maximize();
+      metaWindow.move_resize_frame(false, 100, 100, 400, 300);
+      metaWindow.firstRender = true;
+      node.renderRect = { x: 0, y: 0, width: 1920, height: 1080 };
+
+      expect(ctx.windowManager._isLoneMaximizedTile(node)).toBe(true);
+      ctx.tree.apply(ctx.tree);
+      expect(metaWindow.firstRender).toBe(false);
+      const frame = metaWindow.get_frame_rect();
+      expect(frame.width).toBe(1920);
+      expect(frame.height).toBe(1080);
+    });
   });
 
-  it("still re-tiles (unmaximizes) a maximized window when it is NOT alone", () => {
-    const { monitor } = getWorkspaceAndMonitor(ctx);
-    monitor.layout = LAYOUT_TYPES.HSPLIT;
-    monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+  describe("maximize-on-single OFF (schema default)", () => {
+    beforeEach(() => {
+      ctx = createWindowManagerFixture({
+        settings: { "tiling-mode-enabled": true, "window-maximize-on-single": false },
+      });
+    });
 
-    const { metaWindow: win1, node: node1 } = tileWindow(monitor, 7101);
-    tileWindow(monitor, 7102); // second tiled window -> not lone
-    node1.renderRect = { x: 0, y: 0, width: 960, height: 1080 };
+    it("treats sole Meta-max as restore (D026), not lone exemption", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+      const { metaWindow, node } = tileWindow(monitor, 7301);
+      metaWindow.maximize();
+      metaWindow.move_resize_frame(false, 0, 0, 1920, 1080);
 
-    win1.maximize();
+      expect(ctx.windowManager._isLoneMaximizedTile(node)).toBe(false);
+      expect(ctx.windowManager._shouldRestoreTileSlot(node, metaWindow)).toBe(true);
 
-    // With a sibling present the lone exemption does not apply; apply re-slices it.
-    expect(ctx.windowManager._isLoneMaximizedTile(node1)).toBe(false);
-    ctx.tree.apply(ctx.tree);
-    expect(win1.is_maximized()).toBe(false);
-  });
+      ctx.windowManager.updateMetaPositionSize(metaWindow, "size-changed");
+      expect(metaWindow.is_maximized()).toBe(false);
 
-  it("OP2: firstRender lone max still places once (dock/new map)", () => {
-    const { monitor } = getWorkspaceAndMonitor(ctx);
-    monitor.layout = LAYOUT_TYPES.HSPLIT;
-    monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
-    const { metaWindow, node } = tileWindow(monitor, 7201);
-    // Drifted Meta frame (restore-geometry / wrong mon size) while maximized alone.
-    metaWindow.maximize();
-    metaWindow.move_resize_frame(false, 100, 100, 400, 300);
-    metaWindow.firstRender = true;
-    node.renderRect = { x: 0, y: 0, width: 1920, height: 1080 };
+      ctx.tree.apply(ctx.tree);
+      expect(metaWindow.is_maximized()).toBe(false);
+    });
 
-    expect(ctx.windowManager._isLoneMaximizedTile(node)).toBe(true);
-    ctx.tree.apply(ctx.tree);
-    // First placement must run even for lone max; move() unmaximizes.
-    expect(metaWindow.firstRender).toBe(false);
-    const frame = metaWindow.get_frame_rect();
-    expect(frame.width).toBe(1920);
-    expect(frame.height).toBe(1080);
+    it("D051: processFloats keeps TILE while Meta max reports no-resize", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+      const { metaWindow, node } = tileWindow(monitor, 7302);
+      metaWindow.maximize();
+      expect(metaWindow.allows_resize()).toBe(false);
+
+      ctx.windowManager.processFloats();
+      expect(node.mode).toBe(WINDOW_MODES.TILE);
+      expect(ctx.windowManager.isFloatingExempt(metaWindow)).toBe(false);
+      expect(ctx.windowManager._shouldRestoreTileSlot(node, metaWindow)).toBe(true);
+
+      ctx.windowManager.updateMetaPositionSize(metaWindow, "size-changed");
+      expect(metaWindow.is_maximized()).toBe(false);
+      expect(node.mode).toBe(WINDOW_MODES.TILE);
+    });
   });
 });

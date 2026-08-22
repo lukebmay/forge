@@ -1,6 +1,7 @@
 {
   "include": [
     "lib/shared/assert.js",
+    "lib/shared/production.js",
     "lib/shared/plog-adapter.js",
     "lib/shared/min-tile-size.js",
     "lib/shared/paths.js",

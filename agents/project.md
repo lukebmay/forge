@@ -349,18 +349,23 @@ Child membership and order go through `Node` (`lib/extension/tree.js`):
 When agents run live tests that need install + Shell reload (`./install`,
 `forge save-session-layout`, dual-mon thrash):
 
-1. **Use a debug install** — `./install` / `make dev` set `production=false` and
-   set **log-level=5 (DEBUG)** (not TRACE). Schema baseline is INFO when logging
-   is enabled; production builds still force logging OFF via `production=true`.
-2. **Escalate only when stuck** — TRACE is nuclear:
+1. **Use a debug install** — `./install` / `./install --dev` / `make dev` set
+   `production=false` and **log-level=6 (TRACE)**. Schema baseline is **INFO
+   (4)** — no DEBUG/TRACE anywhere until raised. Production builds
+   (`./install --prod`) force logging OFF via `production=true`.
+   **Dual-sink (D050):** journal = INFO/WARN/ERROR only; TRACE/DEBUG detail
+   goes only to `~/.local/state/forge/forge.log` (or `$FORGE_LOG_FILE`).
+2. **Levels:**
 
    ```sh
    gsettings set org.gnome.shell.extensions.forge logging-enabled true
-   gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG (dev default)
-   gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE (stuck only)
+   gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO (schema / quiet file)
+   gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE (./install --dev)
+   tail -f ~/.local/state/forge/forge.log
    ```
 
-   Below the selected level, those lines do not appear (info hides debug+trace).
+   Below the selected level, those lines are not emitted **anywhere** (file or
+   journal). Journal never gets TRACE/DEBUG even when the file does.
 
 3. **Reload path by session:**
    - **X11:** `killall -HUP gnome-shell` (or Alt+F2 → r).

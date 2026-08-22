@@ -97,6 +97,26 @@ describe("Bug #461 / D026: TILE slot authority", () => {
     expect(reassertSpy).not.toHaveBeenCalled();
   });
 
+  it("restores sole tiled maximize when maximize-on-single is OFF", () => {
+    ctx.settings.set_boolean("window-maximize-on-single", false);
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const [only] = createHorizontalLayout(ctx.tree, monitor, 1);
+    const slot = { x: 0, y: 0, width: 1920, height: 1080 };
+    only.nodeWindow.renderRect = { ...slot };
+    only.nodeWindow.rect = { ...slot };
+
+    const maxed = only.metaWindow;
+    maxed.maximize();
+    maxed.move_resize_frame(false, 0, 0, 1920, 1080);
+    ctx.display.get_focus_window.mockReturnValue(maxed);
+
+    const reassertSpy = vi.spyOn(wm(), "reassertNodeToSlot");
+    wm().updateMetaPositionSize(maxed, "size-changed");
+
+    expect(maxed.is_maximized()).toBe(false);
+    expect(reassertSpy).toHaveBeenCalledWith(only.nodeWindow, { force: true });
+  });
+
   it("unfullscreens a tiled window and restores the slot (size-changed)", () => {
     const { first, slot } = twoTiles();
     const fs = first.metaWindow;

@@ -69,6 +69,7 @@ build: clean metadata.json schemas compilemsgs metadata
 	cp -r schemas temp
 	cp -r config temp
 	cp -r lib temp
+	cp -r third_party temp
 	cp extension.js prefs.js temp
 	cp *.css temp
 	cp LICENSE temp
@@ -86,7 +87,7 @@ build: clean metadata.json schemas compilemsgs metadata
 	msgfmt -c $< -o $@
 
 debug:
-	sed -i 's/export const production = true/export const production = false/' temp/lib/shared/settings.js
+	sed -i 's/export let production = true/export let production = false/' temp/lib/shared/production.js
 	#sed -i 's|1.*-alpha|4999|' temp/metadata.json
 
 # Regenerate the translation template (po/forge.pot) from source. Run this

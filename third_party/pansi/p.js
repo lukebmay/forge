@@ -1,18 +1,17 @@
 #!/usr/bin/env node
-// @ts-nocheck — vendored; forge does not typecheck pansi internals
 
 /**
  * p.js — High-performance colored printer (library + CLI)
  * Matches zsh `p` behavior when run directly as a script.
  *
- * - ESM by default
- * - CJS shim at the bottom for require()
- * - Works in Node, Bun, browsers, etc.
+ * - ESM primary; no top-level await (sync `require()` via Node require(esm) / Bun)
+ * - CJS shim at the bottom for dual-module hosts that define `module.exports`
  * - When run directly: behaves like the zsh version
  *
  * Library usage (options object for kwargs-like):
  *   p("+r", "err")
- *   const s = p("+g", "ok", {str: true})
+ *   const s = pstr("+g", "ok")                 // prefer; alias: ps
+ *   const s = p("+g", "ok", {str: true})       // compat
  *   p("a", "b", {sep: "|", end: "", color: "always"})
  *
  * CLI / --opt strings still fully supported and unchanged.
@@ -22,6 +21,29 @@
  */
 
 import { colorEnabled } from "./ansi_color.js";
+
+/** Path of this module for CLI-main detection (no node:url — GJS-loadable). */
+function metaFilePath() {
+  try {
+    return decodeURIComponent(new URL(import.meta.url).pathname);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Trailing options for library calls (`p` / `pstr` / `ps`).
+ * @typedef {Object} POptions
+ * @property {string} [sep] Separator between items (default space).
+ * @property {string} [end] Suffix after the last item (default newline).
+ * @property {"auto"|"always"|"never"|string} [color] Color mode override.
+ * @property {boolean} [str] Return string; do not write (compat with as_str).
+ * @property {boolean} [as_str] Alias of str.
+ * @property {boolean} [stderr] Write to stderr instead of stdout.
+ * @property {boolean} ["--stderr"] CLI-shaped alias of stderr.
+ * @property {boolean} [escaped] Escape ANSI in the output string.
+ * @property {string} [default] Default style when no +token is active.
+ */
 
 /** Contract implementation version — pinable for vendoring. */
 export const PANSI_VERSION = "1.0.0";
@@ -209,6 +231,13 @@ function renderCurrentStyle() {
 const hasStdoutWrite =
   typeof process !== "undefined" && process.stdout && typeof process.stdout.write === "function";
 
+/**
+ * Colored print (or string build when `{ str: true }` / `{ as_str: true }`).
+ * Variadic style tokens (`+r`, …) and text; optional trailing {@link POptions}.
+ *
+ * @param {...(string|number|boolean|bigint|symbol|POptions|null|undefined)} args
+ * @returns {string} Rendered line (including `end`), whether or not it was written.
+ */
 export function p(...args) {
   // Support trailing options object for library use: p("text", {sep: "|", end: "", str: true, color: "always"})
   // This provides pythonic-kwargs equivalent without breaking variadic string API or CLI.
@@ -325,7 +354,12 @@ export function p(...args) {
   }
   let useColor = false;
   try {
-    const ttyStream = useStderr && process.stderr ? process.stderr : process.stdout || {};
+    const hasProcess = typeof process !== "undefined";
+    const ttyStream = hasProcess
+      ? useStderr && process.stderr
+        ? process.stderr
+        : process.stdout || {}
+      : {};
     useColor = colorEnabled(ttyStream, {
       cliMode,
       toolColorKeys: ["P_COLOR"],
@@ -420,10 +454,44 @@ export function p(...args) {
   return output;
 }
 
+/** Render styled string without printing. Prefer over p(..., {str: true}). Alias: ps. */
+/**
+ * Build a styled string without printing. Alias: {@link ps}.
+ *
+ * @param {...(string|number|boolean|bigint|symbol|POptions|null|undefined)} args
+ * @returns {string}
+ */
+export function pstr(...args) {
+  let opts = {};
+  if (args.length > 0) {
+    const last = args[args.length - 1];
+    if (last && typeof last === "object" && !Array.isArray(last) && typeof last !== "string") {
+      opts = { ...last };
+      args.pop();
+    }
+  }
+  opts.str = true;
+  opts.as_str = true;
+  return p(...args, opts);
+}
+
+/** @type {typeof pstr} */
+export const ps = pstr;
+
+/**
+ * Strip ANSI CSI sequences from a string.
+ * @param {string} [str]
+ * @returns {string}
+ */
 export function ansiStrip(str = "") {
   return str.replace(/\x1b\[[0-9;]*[@-~]/g, "");
 }
 
+/**
+ * Escape control characters for readable dumps (`\x1b`, `\n`, …).
+ * @param {string} [str]
+ * @returns {string}
+ */
 export function ansiEscape(str = "") {
   if (typeof str !== "string") str = String(str);
 
@@ -435,6 +503,11 @@ export function ansiEscape(str = "") {
     .replace(/\x07/g, "\\a"); // Bell → \a (rare but complete)
 }
 
+/**
+ * Inverse of {@link ansiEscape} (also accepts `\\e` / `\\033`).
+ * @param {string} [str]
+ * @returns {string}
+ */
 export function ansiUnescape(str = "") {
   if (typeof str !== "string") str = String(str);
 
@@ -448,10 +521,9 @@ export function ansiUnescape(str = "") {
     .replace(/\\a/g, "\x07");
 }
 
-// === Direct script execution (CLI parity with zsh) ===
+// === Direct script execution (CLI parity with zsh); sync — no top-level await ===
 try {
-  const { fileURLToPath } = await import("url");
-  if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  if (typeof process !== "undefined" && process.argv[1] && process.argv[1] === metaFilePath()) {
     const cliArgs = process.argv.slice(2);
 
     if (cliArgs.includes("--help") || cliArgs.includes("-?")) {
@@ -471,13 +543,15 @@ try {
     p(...cliArgs);
   }
 } catch (_) {
-  // Not direct ESM execution — ignore
+  // Not direct script execution (or import.meta unavailable) — ignore
 }
 
-// === CJS shim for require() ===
+// === CJS shim for hosts that define module.exports while evaluating this graph ===
 if (typeof module !== "undefined" && module.exports) {
   module.exports = p;
   module.exports.p = p;
+  module.exports.pstr = pstr;
+  module.exports.ps = ps;
   module.exports.PANSI_VERSION = PANSI_VERSION;
   module.exports.ansiStrip = ansiStrip;
   module.exports.ansiEscape = ansiEscape;

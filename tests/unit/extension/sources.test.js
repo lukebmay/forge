@@ -4,6 +4,7 @@ import {
   glibSchedule,
   glibCancel,
   glibIdleSchedule,
+  sourceTraceInteresting,
 } from "../../../lib/extension/sources.js";
 import {
   glibSchedule as lcSchedule,
@@ -61,6 +62,18 @@ describe("sources re-export", () => {
 
   it("exports glibIdleSchedule", () => {
     expect(typeof glibIdleSchedule).toBe("function");
+  });
+});
+
+describe("sourceTraceInteresting", () => {
+  it("quiets high-churn names and keeps place-hint / hunt slots", () => {
+    expect(sourceTraceInteresting("renderTree")).toBe(false);
+    expect(sourceTraceInteresting("queue")).toBe(false);
+    expect(sourceTraceInteresting("sessionLayoutSave")).toBe(false);
+    expect(sourceTraceInteresting("wsWindowAdd")).toBe(false);
+    expect(sourceTraceInteresting("tabDragPointer")).toBe(false);
+    expect(sourceTraceInteresting("latePlaceHintApply:123")).toBe(true);
+    expect(sourceTraceInteresting("windowHomeReconcile")).toBe(true);
   });
 });
 

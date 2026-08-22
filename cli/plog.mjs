@@ -2,8 +2,13 @@
  * Node CLI plog init. Imports vendored third_party/pansi/plog.js (Node builtins).
  * GJS / extension must not import this module — use lib/shared/plog-adapter.js.
  */
+// @ts-nocheck — Node builtins; typed boundary is forgeLog / parseForgeLogLevel.
 
-import { log, logInit, LEVELS } from "../third_party/pansi/plog.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { log, logInit, LEVELS, actions } from "../third_party/pansi/plog.js";
+import { resolveDefaultLogFile } from "../lib/shared/plog-adapter.js";
 
 export { log, LEVELS };
 
@@ -22,6 +27,9 @@ const GSETTINGS_TO_PLOG = Object.freeze({
   7: "trace",
 });
 
+/** Mirror forge prefs labels as plog custom levels (emit via stock methods). */
+const FORGE_PLOG_LEVELS = ["all", "trace", "debug", "info", "warn", "error", "fatal"];
+
 let ready = false;
 let quiet = false;
 
@@ -38,6 +46,7 @@ function normalizeLevel(raw) {
     .toLowerCase();
   if (s === "off") return "off";
   if (s === "fatal") return "error";
+  if (s === "all") return "trace";
   if (LEVEL_NAMES.has(s)) return s;
   const n = Number(s);
   if (Number.isFinite(n) && n >= 0 && n <= 7) {
@@ -79,12 +88,57 @@ function resolveTee(env, opts) {
   return "none";
 }
 
+/**
+ * @param {NodeJS.ProcessEnv|Record<string, string|undefined>} env
+ * @param {{ file?: string | null }} opts
+ * @returns {string | null}
+ */
 function resolveFile(env, opts) {
   if (opts.file !== undefined) return opts.file;
   const raw = env.FORGE_LOG_FILE;
   if (raw === "") return null;
   if (raw != null) return String(raw);
-  return null;
+  // Same default as extension dual-sink file
+  return resolveDefaultLogFile({
+    envGet: (k) => env[k],
+    homeDir: () => os.homedir(),
+    pathJoin: (a, b) => path.join(a, b),
+    dirname: (p) => path.dirname(p),
+  });
+}
+
+function ensureParentDir(filePath) {
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  } catch {
+    /* best-effort */
+  }
+}
+
+/**
+ * Dual-sink pipelines: file gets all levels at/above min; stderr/console
+ * (tee) only for info/warn/error — mirrors extension journal policy.
+ * @param {string | null} file
+ * @param {boolean} wantConsole
+ */
+function buildDualActions(file, wantConsole) {
+  const fileAction = file ? actions.toFile(file) : null;
+  /** @param {string} level */
+  function pipeline(level) {
+    /** @type {import("../third_party/pansi/plog.js").PlogAction[]} */
+    const list = [];
+    if (fileAction) list.push(fileAction);
+    const journalish =
+      level === "info" || level === "warn" || level === "error" || level === "fatal";
+    if (wantConsole && journalish) list.push(actions.toConsole);
+    return list;
+  }
+  /** @type {Record<string, ReturnType<typeof pipeline>>} */
+  const out = {};
+  for (const level of FORGE_PLOG_LEVELS) {
+    out[level] = pipeline(level);
+  }
+  return out;
 }
 
 /**
@@ -109,11 +163,19 @@ export function initForgePlog(opts = {}) {
   const level = quiet ? "error" : parsed;
   const tee = quiet ? "none" : resolveTee(env, opts);
   const file = quiet ? null : resolveFile(env, opts);
+  const wantConsole = tee !== "none";
+
+  if (file) ensureParentDir(file);
+
   /** @type {Record<string, unknown>} */
   const initOpts = {
     level,
-    tee,
-    file,
+    file: null,
+    console: false,
+    levels: [...FORGE_PLOG_LEVELS],
+    actions: quiet
+      ? Object.fromEntries(FORGE_PLOG_LEVELS.map((l) => [l, []]))
+      : buildDualActions(file, wantConsole),
     errorFile: opts.errorFile !== undefined ? opts.errorFile : null,
   };
   if (opts.sessionId !== undefined) initOpts.sessionId = opts.sessionId;
@@ -123,7 +185,12 @@ export function initForgePlog(opts = {}) {
     logInit(initOpts);
   } catch {
     try {
-      logInit({ level: "warn", tee: "none", file: null, errorFile: null });
+      logInit({
+        level: "warn",
+        file: null,
+        console: false,
+        actions: { warn: [actions.toConsole], error: [actions.toConsole] },
+      });
       quiet = false;
     } catch {
       quiet = true;
@@ -163,9 +230,15 @@ export function resetForgePlogForTests() {
   try {
     logInit({
       level: "warn",
-      tee: "none",
       file: null,
-      errorFile: null,
+      console: false,
+      actions: {
+        trace: [],
+        debug: [],
+        info: [],
+        warn: [],
+        error: [],
+      },
       sessionId: "test0",
     });
   } catch {

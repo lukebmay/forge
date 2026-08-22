@@ -39,6 +39,10 @@ It probably matches a rule. Check **Preferences → Windows** and
 (`workspace-skip-tile` / `monitor-skip-tile`). See [rules.md](rules.md) and
 [monitors.md](monitors.md).
 
+Maximized or fullscreen Meta often reports “cannot resize” until unmaximized —
+Forge does **not** treat that as a permanent float (D051). Sole-tile maximize
+snaps back when `window-maximize-on-single` is off (default).
+
 ## Stacked / tabbed shortcuts do nothing
 
 - **Tabbed** and **stacked** modes are both **on** by default. Tabbed remains the
@@ -186,12 +190,13 @@ terminal); logout/restart Shell after changing them.
 ## Layout apply chrome (multi-open dim)
 
 ~80% black full-screen dim with a spinner and “Forge: Loading layout…” while
-`forge layout` multi-open maps windows and residual bind/place runs. If the
-overlay is still up after a couple of seconds, a short note explains that the
-first apply can take a while and later ones are faster. **On by default**.
-Chrome eats pointer events and clears after residual place finishes, on
-extension disable, or a hard timer ≤ **30s** — it must never stick and leave the
-session unusable.
+`forge layout` runs. **On by default**. There is no timed “first apply is slow”
+note — applies are usually fast. If settle retries or soft residual fail, the
+modal shows a short notice (e.g. settle jitter / soft-failure; check logs).
+Dev installs (`./install --dev`) also show a stage checklist on the modal.
+Chrome eats pointer events and clears after hard+soft finish, on extension
+disable, or a hard timer ≤ **30s** — it must never stick and leave the session
+unusable.
 
 ```bash
 # disable if the dim is annoying:
@@ -222,8 +227,21 @@ Logging is **off by default** and only active in development builds. Turn it on:
 
 ```bash
 gsettings set org.gnome.shell.extensions.forge logging-enabled true
-gsettings set org.gnome.shell.extensions.forge log-level 5   # 0=OFF … 5=DEBUG 6=TRACE 7=ALL
+gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO — schema default; no DEBUG/TRACE
+gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE — ./install --dev default
 ```
+
+Forge uses **dual-sink** logging:
+
+| Sink | What you get |
+| --- | --- |
+| **Journal** (`journalctl`) | INFO / WARN / ERROR only (quiet eyes-on) |
+| **File** | Levels at/above `log-level` — default `~/.local/state/forge/forge.log` (override `$FORGE_LOG_FILE`; nest uses the nest state dir) |
+
+Schema / quiet tip = **INFO**: DEBUG and TRACE are not written anywhere.
+`./install --dev` (the install default) raises to **TRACE** so hunts hit the
+file; the journal stays sparse. `./install --prod` keeps `production=true` →
+logging off. CLI shares the same file when unset/`FORGE_LOG_FILE`.
 
 Debug/trace **assertions** (`lib/shared/assert.js`) are active at log-level ≥ debug
 or in a `!production` (dev) install. A failed invariant logs `[Forge] [ERROR] assert`
@@ -233,14 +251,14 @@ throwing** (no Shell logout). Production info-and-below is a noop.
 Then watch the logs:
 
 ```bash
-# X11
+# Quiet journal (lifecycle / failures)
 journalctl -f -o cat /usr/bin/gnome-shell
-# or, generally
-journalctl -f -u gnome-shell        # follow
-journalctl -e -u gnome-shell        # jump to the end (Wayland)
+# Full hunt log
+tail -f ~/.local/state/forge/forge.log
 ```
 
-(`make log` wraps this during development.) Set `log-level` back to `0` when done.
+(`make log` wraps journal follow during development.) Set `log-level` back to
+`0` when done.
 
 ## Reporting a bug
 

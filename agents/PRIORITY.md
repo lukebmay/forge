@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-22 (#2–#5 shipped on master; logging still blocked)
+**Updated:** 2026-08-22 (dual-sink logging D050 shipped; #2–#5 prior)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -18,19 +18,17 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 DnD FLOAT skip diagnostics **agent done**.
 
 **Active next (ordered):**
-1. **P0 blocked** dual-sink logging + level retarget — [task](./tasks/forge-log-level-retarget.md)
-   (waits shellrc [B-plog-hooks-design](../../shellrc/agents/blockers/B-plog-hooks-design.md);
-   journal=INFO+ only; independent file=TRACE…ERROR via plog hooks)
-2. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
-3. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
-4. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
-5. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
-6. later CN14/CN15 · blocked yuiop
-**Agents:** while logging is blocked, do **#3** (OH downstream) with traces —
-do **not** wait on soft human verify. Do **not** start #5 until the operator
-schedules that design meeting. Do **not** stop to ask the operator unless a
-**critical new finding**. Decisions already locked in task files.
-**Host:** recreate vinyl on WS2; `gsettings … min-tab-label-chars 12` if still 20.
+1. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
+2. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
+3. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
+4. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
+5. later CN14/CN15 · blocked yuiop
+**Agents:** do **#2** (OH downstream) with traces — do **not** wait on soft
+human verify. Do **not** start #4 until the operator schedules that design
+meeting. Do **not** stop to ask the operator unless a **critical new finding**.
+Decisions already locked in task files. Dual-sink logging **done** (D050).
+**Host:** logout once for tip (D051 max≠no-resize + vinyl/sole-max);
+then `forge layout vinyl` on WS2 + lone maximize snap-back.
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
 tree press-arm only. Poll skips synced xy; SourceBag hot logs are TRACE.
@@ -94,6 +92,7 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 
 | Pri | Item | Agent | Status |
 | --- | --- | --- | --- |
+| done | dual-sink + level retarget (D050) | **4.5** | [completed](./tasks/completed/forge-log-level-retarget.md) · PLOG 1.2.0 |
 | **P0** | **OH1** vendor+adapter+CLI+pepper | **4.6 high** | **done** · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh1-plog-logging.md) |
 | **P0** | **OH3** debug/trace assertions | **4.6 high** | **done** · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh3-assertions.md) |
 | **P0** | **OH2** JSDoc + checkJs; no casual `any` | **4.5 high** | **done** · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh2-typescript-checkjs.md) · `npm run typecheck:oh2` |

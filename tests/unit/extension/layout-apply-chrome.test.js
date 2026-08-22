@@ -5,10 +5,11 @@ import {
   LAYOUT_APPLY_CHROME_TITLE,
   LAYOUT_APPLY_CHROME_TITLE_HEIGHT_RATIO,
   LAYOUT_APPLY_CHROME_DETAIL_TITLE_RATIO,
-  LAYOUT_APPLY_CHROME_HINT_MS,
-  LAYOUT_APPLY_CHROME_FIRST_HINT,
+  LAYOUT_APPLY_CHROME_JITTER_NOTICE,
+  LAYOUT_APPLY_CHROME_SOFT_FAIL_NOTICE,
   applyChromeMetrics,
   formatApplyChromeStatus,
+  formatApplyChromeStageLine,
   createApplyChromeState,
   shouldShowChrome,
   transitionShow,
@@ -42,29 +43,45 @@ describe("chrome presentation constants", () => {
       title: "Forge",
       detail: 'Loading layout "dev"...',
       hint: "",
+      stagesText: "",
     });
     expect(formatApplyChromeStatus(null)).toEqual({
       title: "Forge",
       detail: "Loading layout...",
       hint: "",
+      stagesText: "",
     });
     expect(formatApplyChromeStatus("  ")).toEqual({
       title: "Forge",
       detail: "Loading layout...",
       hint: "",
+      stagesText: "",
     });
   });
 
-  it("adds a brief first-apply hint only when the load is long-running", () => {
-    expect(LAYOUT_APPLY_CHROME_HINT_MS).toBeGreaterThanOrEqual(1500);
-    expect(LAYOUT_APPLY_CHROME_HINT_MS).toBeLessThan(8000);
-    expect(LAYOUT_APPLY_CHROME_FIRST_HINT.toLowerCase()).toContain("later");
-    expect(formatApplyChromeStatus("dev", { longRunning: true })).toEqual({
+  it("shows settle/jitter notice and optional stage checklist (no timed first-apply hint)", () => {
+    expect(LAYOUT_APPLY_CHROME_JITTER_NOTICE.toLowerCase()).toContain("jitter");
+    expect(LAYOUT_APPLY_CHROME_SOFT_FAIL_NOTICE.toLowerCase()).toContain("soft");
+    expect(formatApplyChromeStatus("dev", { notice: LAYOUT_APPLY_CHROME_JITTER_NOTICE })).toEqual({
       title: "Forge",
       detail: 'Loading layout "dev"...',
-      hint: LAYOUT_APPLY_CHROME_FIRST_HINT,
+      hint: LAYOUT_APPLY_CHROME_JITTER_NOTICE,
+      stagesText: "",
     });
-    expect(formatApplyChromeStatus("dev", { longRunning: false }).hint).toBe("");
+    expect(formatApplyChromeStageLine({ label: "hard-ready", status: "ok" })).toBe("hard-ready ✓");
+    expect(formatApplyChromeStageLine({ label: "open", status: "fail" })).toBe("open ✗");
+    expect(formatApplyChromeStageLine({ label: "hard-ready", status: "retry" })).toBe(
+      "hard-ready ↻"
+    );
+    expect(
+      formatApplyChromeStatus("vinyl", {
+        stages: [
+          { label: "skeleton", status: "ok" },
+          { label: "open", status: "ok" },
+          { label: "hard-ready", status: "retry" },
+        ],
+      }).stagesText
+    ).toBe("skeleton ✓\nopen ✓\nhard-ready ↻");
   });
 });
 

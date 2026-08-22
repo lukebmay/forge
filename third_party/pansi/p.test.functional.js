@@ -5,7 +5,13 @@
  * Functional tests for p.js (Node version)
  */
 
-import { PANSI_VERSION, ansiEscape, ansiStrip, ansiUnescape, p } from "./p.js";
+import { createRequire } from "node:module";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { PANSI_VERSION, ansiEscape, ansiStrip, ansiUnescape, p, pstr, ps } from "./p.js";
+
+const require = createRequire(import.meta.url);
+const P_SRC = fileURLToPath(new URL("./p.js", import.meta.url));
 
 let testNum = 0;
 let passed = 0;
@@ -320,6 +326,147 @@ function testPansiVersion() {
   }
 }
 testPansiVersion();
+
+function testPstrNoPrint() {
+  testNum++;
+  const origWrite = process.stdout.write;
+  const origErrWrite = process.stderr.write;
+  let out = "",
+    errOut = "";
+  process.stdout.write = (s) => {
+    out += s;
+    return true;
+  };
+  process.stderr.write = (s) => {
+    errOut += s;
+    return true;
+  };
+  try {
+    const s = pstr("+g", "ok", { color: "always" });
+    const success = s === "\x1b[32mok\x1b[0m\n" && out === "" && errOut === "";
+    if (!success || !quietOnPass) {
+      printTestHeader(testNum, "pstr renders without printing");
+      console.log(
+        "s:",
+        JSON.stringify(s),
+        "out:",
+        JSON.stringify(out),
+        "err:",
+        JSON.stringify(errOut)
+      );
+      recordResult(success);
+    } else {
+      passed++;
+    }
+  } finally {
+    process.stdout.write = origWrite;
+    process.stderr.write = origErrWrite;
+  }
+}
+testPstrNoPrint();
+
+function testPstrOptsObject() {
+  testNum++;
+  const origWrite = process.stdout.write;
+  let out = "";
+  process.stdout.write = (s) => {
+    out += s;
+    return true;
+  };
+  try {
+    const s = pstr("+r", "a", "b", { sep: "|", end: "", color: "always" });
+    const success = s === "\x1b[31ma\x1b[0m|b" && out === "";
+    if (!success || !quietOnPass) {
+      printTestHeader(testNum, "pstr options object (sep/end), no print");
+      console.log("s:", JSON.stringify(s), "out:", JSON.stringify(out));
+      recordResult(success);
+    } else {
+      passed++;
+    }
+  } finally {
+    process.stdout.write = origWrite;
+  }
+}
+testPstrOptsObject();
+
+function testPsAlias() {
+  testNum++;
+  const origWrite = process.stdout.write;
+  let out = "";
+  process.stdout.write = (s) => {
+    out += s;
+    return true;
+  };
+  try {
+    const s = ps("+b", "x", { color: "always", end: "" });
+    const success = s === "\x1b[34mx\x1b[0m" && out === "" && ps === pstr;
+    if (!success || !quietOnPass) {
+      printTestHeader(testNum, "ps is alias of pstr");
+      console.log("s:", JSON.stringify(s), "same:", ps === pstr);
+      recordResult(success);
+    } else {
+      passed++;
+    }
+  } finally {
+    process.stdout.write = origWrite;
+  }
+}
+testPsAlias();
+
+function testPStrCompat() {
+  testNum++;
+  const origWrite = process.stdout.write;
+  let out = "";
+  process.stdout.write = (s) => {
+    out += s;
+    return true;
+  };
+  try {
+    const a = p("+r", "c", { color: "always", str: true, end: "" });
+    const b = p("+r", "c", { color: "always", as_str: true, end: "" });
+    const success = a === b && a === "\x1b[31mc\x1b[0m" && out === "";
+    if (!success || !quietOnPass) {
+      printTestHeader(testNum, "p {str}/{as_str} compat unchanged");
+      console.log("a:", JSON.stringify(a), "b:", JSON.stringify(b));
+      recordResult(success);
+    } else {
+      passed++;
+    }
+  } finally {
+    process.stdout.write = origWrite;
+  }
+}
+testPStrCompat();
+
+function testRequireP() {
+  testNum++;
+  const src = fs.readFileSync(P_SRC, "utf8");
+  const noTla = !src.includes("await import");
+  let mod;
+  let err = null;
+  try {
+    mod = require("./p.js");
+  } catch (e) {
+    err = e;
+  }
+  const success =
+    noTla &&
+    !err &&
+    typeof mod?.p === "function" &&
+    typeof mod?.pstr === "function" &&
+    mod.ps === mod.pstr &&
+    mod.PANSI_VERSION === PANSI_VERSION &&
+    typeof mod.ansiStrip === "function" &&
+    mod.pstr("+g", "ok", { color: "always", end: "" }) === "\x1b[32mok\x1b[0m";
+  if (!success || !quietOnPass) {
+    printTestHeader(testNum, 'require("./p.js") sync (no TLA)');
+    console.log("noTla:", noTla, "err:", err && err.message, "keys:", mod && Object.keys(mod));
+    recordResult(success);
+  } else {
+    passed++;
+  }
+}
+testRequireP();
 
 // =============================================================================
 // Results
