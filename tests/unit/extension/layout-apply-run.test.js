@@ -63,6 +63,14 @@ describe("parseApplyLayoutRequest", () => {
     expect(r.request.flags.clean).toBe(false);
   });
 
+  it("refuses float-class roles in tiles before apply start", () => {
+    const r = parseApplyLayoutRequest({
+      profile: { tiles: ["ghostty", "Guake"] },
+    });
+    expect(r.ok).toBe(false);
+    expect(String(r.error || "")).toMatch(/float\/ignore-class/i);
+  });
+
   it("normalizes tiles sugar so mon tab slots have layout for hard machines", () => {
     const r = parseApplyLayoutRequest({
       profile: {

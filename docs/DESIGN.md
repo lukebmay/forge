@@ -700,7 +700,8 @@ hints ∪ per-window known ∪ class floor (`window-mins.json`) ∪ **env floor*
 (`FORGE_MIN_TILE_WIDTH` / `FORGE_MIN_TILE_HEIGHT`; unset → **256×144**). Floor is
 a policy lower bound, not a claim about the app. Passive learn only:
 `noteWindowMinFromClamp` when the frame stays larger than a forge resize
-request, or larger than its tree slot after settle → raises known + class floor.
+request; `noteWindowMinFromOversizedFrame` when a settled TILE frame is larger
+than its tree slot → raises known + class floor on those axes.
 **No shrink-probe** (no tiny `move_resize` to discover mins).
 
 **Open rule:** If the intended edge split would overflow, do not carve it. BFS

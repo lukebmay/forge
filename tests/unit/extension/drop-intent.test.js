@@ -10,11 +10,14 @@ import {
   MIN_CLAMP_LEARN_DELAY_MS,
   clearClassMinFloorForTests,
   noteWindowMinFromClamp,
+  noteWindowMinFromOversizedFrame,
+  frameOverflowsSlotForLearn,
   parseWindowMinsJson,
   readWindowMinSize,
   rememberClassMin,
   loadClassMinFloor,
   exportClassMinFloor,
+  classMinFloor,
   CLASS_MIN_ABSURD_W,
   CLASS_MIN_ABSURD_H,
 } from "../../../lib/extension/tree-layout.js";
@@ -567,6 +570,37 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
       width: 256,
       height: 144,
     });
+  });
+
+  it("learns mins from settled frame larger than slot on overflow axes only", () => {
+    clearClassMinFloorForTests();
+    const meta = { get_wm_class: () => "org.gnome.Nautilus" };
+    const slot = { width: 800, height: 200 };
+    const frame = { width: 800, height: 380 };
+    expect(frameOverflowsSlotForLearn(frame, slot, 4)).toBe(true);
+    expect(noteWindowMinFromOversizedFrame(meta, frame, slot, 4)).toBe(true);
+    expect(meta._forgeKnownMinW).toBeFalsy();
+    expect(meta._forgeKnownMinH).toBe(380);
+    expect(classMinFloor("org.gnome.Nautilus").height).toBe(380);
+    expect(readWindowMinSize(meta, { env: tinyEnv })).toEqual({ width: 1, height: 380 });
+  });
+
+  it("skips oversized-frame learn above absurd caps", () => {
+    clearClassMinFloorForTests();
+    const meta = {};
+    expect(
+      noteWindowMinFromOversizedFrame(
+        meta,
+        { width: 900, height: 700 },
+        { width: 400, height: 200 },
+        4
+      )
+    ).toBe(false);
+    expect(
+      frameOverflowsSlotForLearn({ width: 900, height: 700 }, { width: 400, height: 200 }, 4)
+    ).toBe(false);
+    expect(meta._forgeKnownMinW).toBeFalsy();
+    expect(meta._forgeKnownMinH).toBeFalsy();
   });
 
   it("falls back to class floor when meta has no hints; learned can raise above env", () => {

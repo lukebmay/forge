@@ -1033,6 +1033,85 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       expect(wm()._freezeRender).toBe(false);
     });
 
+    it("FLOAT titlebar MOVING skips GRAB_TILE / stage track / grab-op-end commit", async () => {
+      const { Logger } = await import("../../../lib/shared/logger.js");
+      const MetaMod = await import("../../mocks/gnome/Meta.js");
+      const GrabOp = MetaMod.GrabOp;
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const b = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaB);
+      b.mode = WINDOW_MODES.FLOAT;
+      b.rect = null;
+
+      const debugSpy = vi.spyOn(Logger, "debug").mockImplementation(() => {});
+      const commitSpy = vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+
+      wm()._handleGrabOpBegin(global.display, metaB, GrabOp.WINDOW_BASE);
+      expect(b.mode).toBe(WINDOW_MODES.FLOAT);
+      expect(wm()._draggedNodeWindow).toBe(b);
+      expect(wm().dragDrop._grabPointerTrack).toBeFalsy();
+      expect(
+        debugSpy.mock.calls.some((c) => String(c[0]).includes("dnd grab MOVING skip mode=FLOAT"))
+      ).toBe(true);
+
+      wm()._handleGrabOpEnd(global.display, metaB, GrabOp.WINDOW_BASE);
+      expect(commitSpy).not.toHaveBeenCalled();
+      expect(
+        debugSpy.mock.calls.some((c) =>
+          String(c[0]).includes("dnd grab-op-end skip reason=no-grab-tile")
+        )
+      ).toBe(true);
+      expect(wm()._draggedNodeWindow).toBeNull();
+
+      debugSpy.mockRestore();
+      commitSpy.mockRestore();
+    });
+
+    it("TILE titlebar MOVING logs grab and commits grab-op-end", async () => {
+      const { Logger } = await import("../../../lib/shared/logger.js");
+      const MetaMod = await import("../../mocks/gnome/Meta.js");
+      const GrabOp = MetaMod.GrabOp;
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const a = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaA);
+      const b = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaB);
+      a.mode = WINDOW_MODES.TILE;
+      b.mode = WINDOW_MODES.TILE;
+      a.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      b.rect = { x: 960, y: 0, width: 960, height: 1080 };
+
+      const debugSpy = vi.spyOn(Logger, "debug").mockImplementation(() => {});
+      const commitSpy = vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
+      vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
+
+      wm()._handleGrabOpBegin(global.display, metaB, GrabOp.WINDOW_BASE);
+      expect(b.mode).toBe(WINDOW_MODES.GRAB_TILE);
+      expect(wm()._draggedNodeWindow).toBe(b);
+      expect(wm().dragDrop._grabPointerTrack).toBeTruthy();
+      expect(
+        debugSpy.mock.calls.some((c) => String(c[0]).includes("dnd grab MOVING mode=TILE"))
+      ).toBe(true);
+
+      setPointer(200, 540);
+      wm().nodeWinAtPointer = a;
+      wm()._handleGrabOpEnd(global.display, metaB, GrabOp.WINDOW_BASE);
+      expect(commitSpy).toHaveBeenCalledWith("grab-op-end", { force: true });
+      expect(wm()._draggedNodeWindow).toBeNull();
+
+      debugSpy.mockRestore();
+      commitSpy.mockRestore();
+    });
+
     it("peels TABBED leaf onto foreign TILE via titlebar-style GRAB_TILE", () => {
       ctx.settings.get_string.mockImplementation((key) => {
         if (key === "dnd-center-layout") return "TABBED";

@@ -45,6 +45,57 @@ SUGAR_VSPLIT = "vsplit"
 # Dict key on a pane object → canonical mode (value is content array).
 _CONTAINER_TAG_KEYS = frozenset(_SPLIT_ALIASES.keys())
 
+# Role-cell object keys kept by desugar; others are refused.
+_ROLE_CELL_KEYS = frozenset({
+    "id",
+    "open",
+    "app",
+    "match",
+    "class",
+    "title",
+    "title~=",
+    "slot",
+})
+
+# Top-level profile keys validate keeps / sugar consumes.
+_PROFILE_TOP_KEYS = frozenset({
+    "version",
+    "mode",
+    "roles",
+    "layout",
+    "overflow",
+    "marginal",
+    "floating",
+    "description",
+    "tiles",
+    "monitors",
+    "monExplicit",
+    "displays",
+    "settings",
+    "focus",
+})
+
+# Class-wide float/ignore apps that must not appear as tiled roles.
+_FLOAT_OR_IGNORE_CLASSES = frozenset({
+    "guake",
+    "com.github.amezin.ddterm",
+    "conky",
+    "jetbrains-toolbox",
+    "org.gnome.calculator",
+    "variety",
+    "update-manager",
+    "evolution-alarm-notify",
+    "gnome-initial-setup",
+    "org.gnome.shell.extensions",
+    "com.github.donadigo.eddy",
+    "gnome-terminal-preferences",
+})
+
+_DUAL_MON_HINT = (
+    'use [[mon0…],[mon1…]] '
+    '(e.g. [["inkscape"],[{"hsplit":["ghostty","YouTube"]}]])'
+)
+
 # String-cell open.app → Chrome class (casefold keys).
 _CHROME_LAUNCHERS = frozenset({
     "google-chrome",
@@ -1282,6 +1333,14 @@ def _cell_to_role(cell: Any, used_ids: set[str], where: str) -> dict[str, Any]:
     if not isinstance(cell, dict):
         raise ValueError(f"{where}: role cell must be string or object")
 
+    unknown_keys = [k for k in cell.keys() if k not in _ROLE_CELL_KEYS]
+    if unknown_keys:
+        listed = ", ".join(repr(k) for k in unknown_keys)
+        raise ValueError(
+            f"{where}: unknown key(s) {listed} "
+            "(want id|open|app|match|class|title|title~=|slot)"
+        )
+
     open_spec = cell.get("open")
     if open_spec is None and cell.get("app") is not None:
         open_spec = cell.get("app")
@@ -1426,11 +1485,162 @@ def _normalize_split_alias(val: Any, where: str) -> Optional[str]:
     return _SPLIT_ALIASES[s]
 
 
+def _raw_tiles_array(raw: Any) -> Optional[list[Any]]:
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, dict) and isinstance(raw.get("tiles"), list):
+        return raw["tiles"]
+    return None
+
+
+def _is_allowed_profile_top_key(k: Any) -> bool:
+    if k in _PROFILE_TOP_KEYS:
+        return True
+    if not isinstance(k, str):
+        return False
+    ks = k.strip()
+    # Top-level monN / primary / stableKey / geom-role sugar (no tiles wrapper).
+    return (_is_builtin_mon_key(ks) or _is_stable_key(ks)
+            or _is_geom_role_key(ks))
+
+
+def _preflight_unknown_top_keys(raw: Any) -> None:
+    if not isinstance(raw, dict):
+        return
+    unknown = [k for k in raw.keys() if not _is_allowed_profile_top_key(k)]
+    if not unknown:
+        return
+    listed = ", ".join(repr(k) for k in unknown)
+    raise ValueError(
+        f"profile unknown key(s): {listed} "
+        "(normalize would drop them; remove or rename)"
+    )
+
+
+def _is_h_or_v_split_body(item: Any) -> bool:
+    if not isinstance(item, dict):
+        return False
+    tag = _tagged_container_mode(item)
+    if tag in ("hsplit", "vsplit"):
+        return True
+    mode_raw = item.get("split")
+    if mode_raw is None:
+        mode_raw = item.get("layout")
+    if mode_raw is None:
+        return False
+    key = str(mode_raw).strip().lower()
+    mode = _SPLIT_ALIASES.get(key, key)
+    return mode in ("hsplit", "vsplit")
+
+
+def _preflight_ambiguous_dual_mon(
+    raw: Any,
+    *,
+    mon_count: Optional[int],
+    warnings: Optional[list[str]],
+    strict_ambiguous_dual_mon: bool,
+) -> None:
+    tiles_arr = _raw_tiles_array(raw)
+    if not tiles_arr or len(tiles_arr) < 2:
+        return
+    if all(isinstance(x, list) for x in tiles_arr):
+        return
+    n = None
+    if mon_count is not None:
+        try:
+            n = int(mon_count)
+        except (TypeError, ValueError):
+            n = None
+    if (n is not None and n >= 2 and len(tiles_arr) == n
+            and all(_looks_like_mon_body(x) for x in tiles_arr)):
+        return
+    # Vinyl-style: flat [role, hsplit|vsplit] → one mon; dual needs [[…],[…]].
+    # Tab/stack beside a role is a normal single-mon pattern — do not warn.
+    if not (any(_is_role_cell(x) for x in tiles_arr)
+            and any(_is_h_or_v_split_body(x) for x in tiles_arr)):
+        return
+    msg = (
+        "ambiguous dual-mon tiles: flat array loads as one monitor; "
+        f"if you meant one desk per head, {_DUAL_MON_HINT}"
+    )
+    if strict_ambiguous_dual_mon:
+        raise ValueError(msg)
+    if warnings is not None:
+        warnings.append(msg)
+
+
+def _class_tokens_from_role(role: Any) -> list[str]:
+    out: list[str] = []
+    if not isinstance(role, dict):
+        return out
+    match = role.get("match") if isinstance(role.get("match"), dict) else {}
+    for k in ("class", "wmClass", "wm_class"):
+        v = match.get(k)
+        if v is not None and str(v).strip():
+            out.append(str(v).strip())
+    open_spec = role.get("open") if isinstance(role.get("open"), dict) else {}
+    for k in ("wmClass", "wm_class", "app", "desktop", "command"):
+        v = open_spec.get(k)
+        if v is not None and str(v).strip():
+            out.append(str(v).strip())
+    rid = role.get("id")
+    if rid is not None and str(rid).strip():
+        out.append(str(rid).strip())
+    return out
+
+
+def _is_float_or_ignore_class_token(token: Any) -> bool:
+    raw = str(token or "").strip()
+    if not raw:
+        return False
+    cf = raw.casefold()
+    if cf in _FLOAT_OR_IGNORE_CLASSES:
+        return True
+    if "guake" in cf:
+        return True
+    stem = cf.split()[0] if cf.split() else cf
+    if stem in _FLOAT_OR_IGNORE_CLASSES:
+        return True
+    short = stem.split(".")[-1] if "." in stem else stem
+    return bool(short and short in _FLOAT_OR_IGNORE_CLASSES)
+
+
+def _preflight_float_tiles(
+    roles: Any,
+    *,
+    allow_float_tiles: bool,
+) -> None:
+    if allow_float_tiles or not isinstance(roles, list):
+        return
+    hits: list[str] = []
+    for role in roles:
+        if not isinstance(role, dict):
+            continue
+        for tok in _class_tokens_from_role(role):
+            if _is_float_or_ignore_class_token(tok):
+                label = str(role.get("id") or tok)
+                hits.append(label)
+                break
+    if not hits:
+        return
+    uniq = list(dict.fromkeys(hits))
+    raise ValueError(
+        "float/ignore-class role(s) in tiles: "
+        + ", ".join(uniq)
+        + " (move to floating[] via `forge layout save --keep-floats`, or remove; "
+        "Guake/ddterm/etc. are not tiled layout targets)"
+    )
+
+
 def validate_reconcile_profile(
     data: Any,
     *,
     mon_count: Optional[int] = None,
     mon_indices: Optional[list[int]] = None,
+    warnings: Optional[list[str]] = None,
+    strict_ambiguous_dual_mon: bool = False,
+    allow_float_tiles: bool = False,
+    keep_floats: bool = False,
 ) -> dict[str, Any]:
     """
     Validate version-2 reconcile profile; return normalized dict.
@@ -1439,6 +1649,10 @@ def validate_reconcile_profile(
     Runs normalize_profile first (tiles sugar → IR + defaults).
     mon_count / mon_indices are forwarded for bare-array dual mon binding
     (see forest_profile_mon_kwargs).
+
+    Preflight (before open/bind): unknown keys, float-class tiled roles,
+    ambiguous dual-mon flat tiles (warn; strict_ambiguous_dual_mon refuses).
+    Pass warnings=[] to collect non-fatal messages.
 
     Human-friendly defaults (no app-specific hardcoding in Forge):
       - version omitted + roles[] → 2
@@ -1452,9 +1666,22 @@ def validate_reconcile_profile(
       - marginal omitted → coexist / first (via normalize)
       - role.slot from layout.roles listing when omitted
     """
+    _preflight_unknown_top_keys(data)
+    _preflight_ambiguous_dual_mon(
+        data,
+        mon_count=mon_count,
+        warnings=warnings,
+        strict_ambiguous_dual_mon=bool(strict_ambiguous_dual_mon),
+    )
+
     data = normalize_profile(data,
                              mon_count=mon_count,
                              mon_indices=mon_indices)
+
+    _preflight_float_tiles(
+        data.get("roles"),
+        allow_float_tiles=bool(allow_float_tiles or keep_floats),
+    )
 
     has_roles = isinstance(data.get("roles"), list) and len(
         data.get("roles") or []) > 0

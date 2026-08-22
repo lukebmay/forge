@@ -1547,15 +1547,6 @@ def _layout_run_reconcile(
     Live: ApplyLayout (AL8). Dry-run / --tree-file: host GetTree + plan only.
     """
     name = resolved["name"]
-    try:
-        profile = validate_reconcile_profile(data)
-    except ValueError as e:
-        _eprint(f"forge layout: {e}")
-        return 1
-
-    rc = _layout_optional_preamble(backend, profile, dry_run=dry_run)
-    if rc != 0:
-        return rc
 
     if forest is None or workspace is None:
         needs_bus = not tree_file
@@ -1569,6 +1560,25 @@ def _layout_run_reconcile(
                 return 1
     if workspace is None:
         workspace = _layout_target_workspace(forest)
+
+    from layout_plan import forest_profile_mon_kwargs
+
+    try:
+        mon_kwargs = forest_profile_mon_kwargs(forest)
+    except Exception:
+        mon_kwargs = {}
+    warnings: list[str] = []
+    try:
+        profile = validate_reconcile_profile(data, warnings=warnings, **mon_kwargs)
+    except ValueError as e:
+        _eprint(f"forge layout: {e}")
+        return 1
+    for w in warnings:
+        _eprint(f"forge layout: warning: {w}")
+
+    rc = _layout_optional_preamble(backend, profile, dry_run=dry_run)
+    if rc != 0:
+        return rc
     current_ws = _layout_target_workspace(forest)
 
     # Header/context: dry-run always; live apply only with -v.
@@ -2490,6 +2500,7 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
             _eprint(f"forge layout show: profile not found: {name}")
             return 1
         path = resolved["path"]
+        warnings: list[str] = []
         try:
             data = load_profile_file(path)
             mode = detect_layout_mode(data, force_launch=False)
@@ -2503,7 +2514,9 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
                     mon_count = forest_physical_mon_count(forest)
                 except Exception:
                     mon_count = None
-                profile = validate_reconcile_profile(data, mon_count=mon_count)
+                profile = validate_reconcile_profile(
+                    data, mon_count=mon_count, warnings=warnings
+                )
             else:
                 profile = validate_profile(data)
         except FileNotFoundError as e:
@@ -2512,6 +2525,8 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         except ValueError as e:
             _eprint(f"forge layout show: {e}")
             return 1
+        for w in warnings:
+            _eprint(f"forge layout show: warning: {w}")
         show_desc = _layout_display_description(data, profile if isinstance(profile, dict) else None)
         _layout_print_header(resolved, name, description=show_desc or None)
         _eprint(f"  mode={mode}")
@@ -2671,6 +2686,26 @@ def _layout_run_multi(
             )
             return 1
         payloads.append((target, resolved, data, layout_mode))
+
+    # All-or-nothing profile shape preflight before any ApplyLayout / desk mutate.
+    from layout_plan import forest_profile_mon_kwargs
+
+    try:
+        mon_kwargs = forest_profile_mon_kwargs(forest)
+    except Exception:
+        mon_kwargs = {}
+    for target, _resolved, data, layout_mode in payloads:
+        if layout_mode != MODE_RECONCILE:
+            continue
+        try:
+            # Errors only here (all-or-nothing). Warnings print in _layout_run_reconcile.
+            validate_reconcile_profile(data, **mon_kwargs)
+        except ValueError as e:
+            _layout_eprint_error(
+                f"profile {target.name!r}: {e}\n"
+                "  (refused before ApplyLayout; no desk mutation)"
+            )
+            return 1
 
     # Single steps profile (legacy path).
     if len(payloads) == 1 and payloads[0][3] == MODE_STEPS:

@@ -1,0 +1,4 @@
+{
+  "description": "Float-contaminated: Guake baked into tiles (not floating[])",
+  "tiles": ["ghostty", "Guake"]
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { LAYOUT_TYPES, ORIENTATION_TYPES } from "../../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { clearClassMinFloorForTests } from "../../../lib/extension/tree-layout.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
@@ -14,6 +15,7 @@ describe("D049 overflow rehome", () => {
   let ctx;
 
   beforeEach(() => {
+    clearClassMinFloorForTests();
     ctx = createWindowManagerFixture({
       globals: { display: { monitorCount: 1 } },
       settings: { "auto-split-enabled": true },
@@ -22,6 +24,7 @@ describe("D049 overflow rehome", () => {
 
   afterEach(() => {
     ctx.cleanup();
+    clearClassMinFloorForTests();
   });
 
   const wm = () => ctx.windowManager;
@@ -90,6 +93,62 @@ describe("D049 overflow rehome", () => {
     expect(sibling.node.parentNode).toBe(mon);
     expect(tab.parentNode).toBe(mon);
     expect(mon.contains(vsplit)).toBe(false);
+  });
+
+  it("oversized settled frame learns mins then tabs (no clamp request)", () => {
+    const { mon, overflow, sibling, roomy, vsplit } = vsplitPairPlusRoomy();
+    // Floor/class only — no hints / known / last resize. Frame taller than slot.
+    overflow.meta._size_hints = null;
+    delete overflow.meta._forgeKnownMinW;
+    delete overflow.meta._forgeKnownMinH;
+    delete overflow.meta._forgeLastResizeRequest;
+    overflow.meta.wm_class = "org.gnome.Nautilus";
+    overflow.meta.move_resize_frame(true, 0, 0, 800, 380);
+    setSlot(overflow, { x: 0, y: 0, width: 800, height: 200 });
+
+    expect(wm()._slotTooSmallForTile(overflow.node, overflow.meta)).toBe(false);
+    expect(wm()._frameOverflowsTileSlot(overflow.node, overflow.meta)).toBe(true);
+    expect(wm()._needsOverflowRehome(overflow.node, overflow.meta)).toBe(true);
+
+    expect(wm().rehomeIfSlotTooSmall(overflow.node)).toBe(true);
+    expect(overflow.meta._forgeKnownMinH).toBe(380);
+    expect(overflow.meta._forgeKnownMinW).toBeFalsy();
+
+    const tab = roomy.node.parentNode;
+    expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(tab.contains(roomy.node)).toBe(true);
+    expect(tab.contains(overflow.node)).toBe(true);
+    expect(overflow.node.mode).toBe(WINDOW_MODES.TILE);
+    expect(vsplit.parentNode).toBeNull();
+    expect(sibling.node.parentNode).toBe(mon);
+    expect(mon.contains(vsplit)).toBe(false);
+  });
+
+  it("oversized settled frame floats when no same-mon tab fits", () => {
+    const mon = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    mon.layout = LAYOUT_TYPES.VSPLIT;
+    const overflow = tileOn(mon, {
+      id: "frame-overflow",
+      rect: { x: 0, y: 0, width: 800, height: 200 },
+    });
+    const sibling = tileOn(mon, {
+      id: "frame-sib",
+      rect: { x: 0, y: 200, width: 800, height: 200 },
+    });
+    const vsplit = ctx.tree.split(overflow.node, ORIENTATION_TYPES.VERTICAL, true);
+    vsplit.appendChild(sibling.node);
+    setSlot(overflow, { x: 0, y: 0, width: 800, height: 200 });
+    setSlot(sibling, { x: 0, y: 200, width: 800, height: 200 });
+    overflow.meta._size_hints = null;
+    delete overflow.meta._forgeLastResizeRequest;
+    overflow.meta.move_resize_frame(true, 0, 0, 800, 380);
+
+    expect(wm().rehomeIfSlotTooSmall(overflow.node)).toBe(true);
+    expect(overflow.meta._forgeKnownMinH).toBe(380);
+    expect(overflow.node.mode).toBe(WINDOW_MODES.FLOAT);
+    expect(wm().isFloatingExempt(overflow.meta)).toBe(true);
+    expect(vsplit.parentNode).toBeNull();
+    expect(sibling.node.parentNode).toBe(mon);
   });
 
   it("floats when no same-mon tab fits and collapses the vacated split", () => {

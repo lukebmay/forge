@@ -18,8 +18,10 @@ import {
   hardWaitMsForAttempt,
   isSlotTerminal,
   placeSlotWindows,
+  remapSlotMachineWindowId,
   slotMachineKey,
   startSlotMachines,
+  syncSlotMachineRoleWindowIds,
 } from "../../../lib/extension/layout-apply-slot.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -146,7 +148,165 @@ describe("collectSlotMachines", () => {
     expect(slotMachineKey({ parentLayout: "TABBED", slot: "mon0.left-tab", windowId: 101 })).toBe(
       "mon0.left-tab"
     );
-    expect(slotMachineKey({ windowId: 103, slot: "mon0.term" })).toBe("id:103");
+    expect(slotMachineKey({ windowId: 103, slot: "mon0.term" })).toBe("mon0.term");
+    expect(terms.map((m) => m.key).sort()).toEqual(["mon0.term", "mon1.term"]);
+  });
+});
+
+describe("late adopt remaps slot machine window id", () => {
+  it("remapSlotMachineWindowId updates windowIds + slots map", () => {
+    const machine = {
+      key: "mon0.s0.YouTube",
+      id: "mon0.s0.YouTube",
+      kind: "TILE",
+      roles: ["YouTube"],
+      windowIds: ["858367299"],
+      slots: {
+        858367299: {
+          windowId: "858367299",
+          role: "YouTube",
+          slot: "mon0.s0.YouTube",
+          monitor: 0,
+        },
+      },
+    };
+    expect(remapSlotMachineWindowId(machine, "858367299", "858367307")).toBe(true);
+    expect(machine.windowIds).toEqual(["858367307"]);
+    expect(machine.slots["858367299"]).toBeUndefined();
+    expect(machine.slots["858367307"].role).toBe("YouTube");
+    expect(machine.slots["858367307"].windowId).toBe("858367307");
+  });
+
+  it("syncSlotMachineRoleWindowIds remaps TILE role after late adopt", () => {
+    const machine = {
+      key: "mon0.s0.ghostty",
+      roles: ["ghostty"],
+      windowIds: ["858367300"],
+      slots: {
+        858367300: {
+          windowId: "858367300",
+          role: "ghostty",
+          slot: "mon0.s0.ghostty",
+          monitor: 0,
+        },
+      },
+    };
+    expect(
+      syncSlotMachineRoleWindowIds(
+        machine,
+        { ghostty: "858367308" },
+        {
+          858367308: {
+            windowId: "858367308",
+            role: "ghostty",
+            slot: "mon0.s0.ghostty",
+            monitor: 0,
+          },
+        }
+      )
+    ).toBe(true);
+    expect(machine.windowIds).toEqual(["858367308"]);
+    expect(machine.slots["858367308"].monitor).toBe(0);
+  });
+
+  it("startSlotMachines hard-wait tracks remapped id (not stale pre-adopt)", () => {
+    const done = [];
+    const timers = timerBag();
+    let winCb = null;
+    const wins = {
+      stale: tileWin("299", { monitor: 1 }),
+      live: tileWin("307", { monitor: 0 }),
+    };
+    const machine = {
+      id: "mon0.s0.YouTube",
+      key: "mon0.s0.YouTube",
+      kind: "TILE",
+      roles: ["YouTube"],
+      windowIds: ["299"],
+      slots: { 299: { windowId: "299", role: "YouTube", monitor: 0 } },
+    };
+    const session = startSlotMachines(
+      [machine],
+      {
+        placeSlot: () => {},
+        refreshMachineIds: (m) =>
+          syncSlotMachineRoleWindowIds(
+            m,
+            { YouTube: "307" },
+            {
+              307: { windowId: "307", role: "YouTube", monitor: 0 },
+            }
+          ),
+        loadWindows: () => [wins.stale, wins.live],
+        onWindowEvent: (cb) => {
+          winCb = cb;
+          return () => {
+            winCb = null;
+          };
+        },
+        schedule: (ms, cb) => timers.schedule(ms, cb),
+        cancel: (id) => timers.cancel(id),
+      },
+      (out) => done.push(out)
+    );
+    expect(session.machines[0].windowIds).toEqual(["307"]);
+    expect(done).toHaveLength(1);
+    expect(done[0].ok).toBe(true);
+    expect(done[0].settled).toEqual(["307"]);
+    expect(done[0].machines[0].windowIds).toEqual(["307"]);
+
+    // Mid-wait remap: start on stale, adopt fires, then live settles.
+    const done2 = [];
+    const timers2 = timerBag();
+    let winCb2 = null;
+    let adopted = false;
+    const m2 = {
+      id: "mon0.s0.ghostty",
+      key: "mon0.s0.ghostty",
+      kind: "TILE",
+      roles: ["ghostty"],
+      windowIds: ["300"],
+      slots: { 300: { windowId: "300", role: "ghostty", monitor: 0 } },
+    };
+    const live2 = {
+      stale: tileWin("300", { monitor: 1 }),
+      live: tileWin("308", { monitor: 0 }),
+    };
+    const session2 = startSlotMachines(
+      [m2],
+      {
+        placeSlot: () => {},
+        refreshMachineIds: (m) => {
+          if (!adopted) return false;
+          return syncSlotMachineRoleWindowIds(
+            m,
+            { ghostty: "308" },
+            {
+              308: { windowId: "308", role: "ghostty", monitor: 0 },
+            }
+          );
+        },
+        loadWindows: () => (adopted ? [live2.stale, live2.live] : [live2.stale]),
+        onWindowEvent: (cb) => {
+          winCb2 = cb;
+          return () => {
+            winCb2 = null;
+          };
+        },
+        schedule: (ms, cb) => timers2.schedule(ms, cb),
+        cancel: (id) => timers2.cancel(id),
+      },
+      (out) => done2.push(out)
+    );
+    expect(done2).toHaveLength(0);
+    expect(session2.machines[0].windowIds).toEqual(["300"]);
+    adopted = true;
+    winCb2();
+    expect(session2.machines[0].windowIds).toEqual(["308"]);
+    expect(done2).toHaveLength(1);
+    expect(done2[0].ok).toBe(true);
+    expect(done2[0].settled).toEqual(["308"]);
+    expect(winCb).toBeTruthy();
   });
 });
 

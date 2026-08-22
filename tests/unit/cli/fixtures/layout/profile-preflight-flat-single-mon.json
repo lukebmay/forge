@@ -1,0 +1,4 @@
+{
+  "description": "Valid flat single-mon (tabbed pair + companion)",
+  "tiles": ["ghostty", { "tab": ["firefox", "code"] }]
+}

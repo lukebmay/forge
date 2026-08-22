@@ -474,6 +474,12 @@ bare array) is present, it wins for structure.
 
 Prefer **v2 reconcile** for daily use.
 
+**Validation (show/apply):** refuse float/ignore-class apps (Guake, …) in
+`tiles`; surface unknown role keys; warn on vinyl-style flat
+`[app, {hsplit:…}]` (loads as one monitor — dual-mon wants
+`[[mon0…],[mon1…]]`). Floats belong under `floating[]`
+(`forge layout save --keep-floats`).
+
 Examples in-tree:
 
 - `scripts/forge/examples/layout-tiles-minimal.json` — dual-mon bare array  

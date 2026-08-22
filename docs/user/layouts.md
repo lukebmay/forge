@@ -81,6 +81,12 @@ within a parent.
 (with optional `"active"` for the open leaf, and top-level `"focus"` for keyboard focus)
 (not bare-array tab sugar).
 
+**Validation:** `forge layout show` / apply refuse float/ignore-class apps (e.g. Guake)
+baked into `tiles`, surface unknown role keys, and warn on vinyl-style flat
+`[app, {hsplit:…}]` that loads as one monitor — dual-mon needs
+`[[mon0…],[mon1…]]` (e.g. `[["inkscape"],[{"hsplit":["ghostty","YouTube"]}]]`).
+Put floats under `floating[]` via `forge layout save --keep-floats`.
+
 Other settings:
 
 - Turn a mode off and its toggle shortcut does nothing.

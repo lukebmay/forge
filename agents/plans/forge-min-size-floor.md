@@ -236,22 +236,25 @@ FORGE_MIN_TILE_WIDTH=1 FORGE_MIN_TILE_HEIGHT=1   # or tiny values
 - [x] D049 in DECISIONS; plan on disk under `agents/plans/` (M0)
 - [x] No shrink-probe symbols in `lib/`
 - [x] Env floor 320×240 + override works
-- [ ] Passive learn still raises class floors into `window-mins.json`
+- [x] Passive learn still raises class floors into `window-mins.json` (clamp + oversized-frame L0; host soft)
 - [x] Open + mid-session overflow: BFS tab → float; gap removed
 - [x] DnD red zones use effective mins (floor ∪ learn) (L0; host eyes-on soft)
 - [x] Docs/contracts/DESIGN/HANDOFF updated (M4); L0 + nest green; host eyes-on with tiny env — **M5**
 
 ### Session note (overwrite)
 
-**2026-08-19 M1–M5 agent done. No commit/push.** Soft human blocker open.
+**2026-08-22 residual oversized-frame learn done. No commit/push.** Soft human
+blocker still open.
 
-- **M1–M2:** env floor 320×240 + shrink-probe deleted
-- **M3:** `rehomeIfSlotTooSmall` overflow → tab/float + gap collapse
-- **M4:** docs/contracts/DESIGN; `rg` probe clean under docs/lib
-- **M5 agent:** L0 **135**; nest ping+clean **ok**; nest stopped
-- **Human:** [blocker](../blockers/d049-tiny-env-nautilus.md) tiny-env Nautilus
-- **Passive learn → window-mins.json:** unit paths exist; host prove on blocker
-- **Next queue:** optional CN14/CN15 · yuiop blocked
+- **M1–M5:** as before (env floor + probe delete + overflow + docs + nest)
+- **Residual:** `noteWindowMinFromOversizedFrame` when settled frame > slot;
+  `_needsOverflowRehome` → same tab/float path —
+  [completed](./forge-min-size-floor/completed/forge-min-learn-oversized-frame.md)
+- **L0:** overflow-rehome + drop-intent + open-min + min-tile **81**; open-app +
+  drag-drop **67**
+- **Human:** [blocker](../blockers/d049-tiny-env-nautilus.md) (+ stack Nautilus
+  eyes-on for oversized learn)
+- **Next queue:** layout preflight · slot-id hard-fail · DnD preview
 
 
 ## Prior plans (mirrored; shipped)

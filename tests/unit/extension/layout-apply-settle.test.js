@@ -30,6 +30,7 @@ import {
   waitHardReadyOnSignals,
   waitTreeFingerprintQuietOnSignals,
   windowIsSettled,
+  windowSettleFailureReasons,
   withoutFocusActions,
   hardReadyStatus,
   wmClassesForWindowIds,
@@ -37,6 +38,7 @@ import {
   collectHardReadySlotTargets,
   isRequiredTileRole,
   desiredMonitorFromSlot,
+  syncRolePinsFromForest,
 } from "../../../lib/extension/layout-apply-settle.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -148,6 +150,39 @@ describe("windowIsSettled / hardReadyStatus", () => {
     expect(desiredMonitorFromSlot("mon1.term")).toBe(1);
   });
 
+  it("windowSettleFailureReasons names mode / mon / parent / ε", () => {
+    const slot = {
+      monitor: 1,
+      parentId: "con-a",
+      parentLayout: "TABBED",
+      slotRect: { x: 0, y: 0, width: 100, height: 80 },
+    };
+    expect(windowSettleFailureReasons(null, slot)).toEqual(["missing"]);
+    expect(
+      windowSettleFailureReasons(
+        tileWin("1", { mode: "FLOAT", monitor: 0, parentId: "x", parentLayout: "HSPLIT" }),
+        slot
+      ).join(" ")
+    ).toMatch(/mode=FLOAT/);
+    expect(
+      windowSettleFailureReasons(
+        tileWin("1", { monitor: 0, parentId: "con-a", parentLayout: "TABBED" }),
+        slot
+      )
+    ).toEqual(expect.arrayContaining([expect.stringMatching(/^mon=/)]));
+    expect(
+      windowSettleFailureReasons(
+        tileWin("1", {
+          monitor: 1,
+          parentId: "con-a",
+          parentLayout: "TABBED",
+          rect: { x: 9, y: 9, width: 10, height: 10 },
+        }),
+        slot
+      )
+    ).toContain("rect-ε");
+  });
+
   it("in-slot requires TILE|grab + desired mon + parent CON + ε rect", () => {
     const slot = {
       monitor: 1,
@@ -209,6 +244,51 @@ describe("matchRequiredTileSlots (D041)", () => {
     });
     expect(match.ok).toBe(false);
     expect(match.failed.length).toBeGreaterThan(0);
+  });
+
+  it("stale hardReady pending ids after late-adopt remap do not veto match", () => {
+    const d = loadExpected("perfect-clean");
+    const match = matchRequiredTileSlots({
+      profile: d.profile,
+      forest: d.forest,
+      flags: d.flags,
+      rolePins: {
+        "chrome-luke": 101,
+        grok: 102,
+        "ghostty-left": 103,
+        "ghostty-right": 201,
+        youtube: 202,
+        gmail: 203,
+        voice: 204,
+      },
+      // Pre-adopt ids no longer in rolePins / plan.roles
+      hardReady: { ok: false, timedOut: true, pending: ["858367299", "858367300"] },
+    });
+    expect(match.pending.every((id) => !["858367299", "858367300"].includes(String(id)))).toBe(
+      true
+    );
+  });
+
+  it("syncRolePinsFromForest remaps pins to identity-matched windows", () => {
+    const d = loadExpected("perfect-clean");
+    const run = {
+      profile: d.profile,
+      flags: d.flags,
+      workspace: 0,
+      rolePins: {
+        "chrome-luke": 999,
+        grok: 102,
+        "ghostty-left": 103,
+        "ghostty-right": 201,
+        youtube: 202,
+        gmail: 203,
+        voice: 204,
+      },
+    };
+    const out = syncRolePinsFromForest(run, d.forest);
+    expect(out.changed).toBe(true);
+    expect(out.remaps.some((r) => r.role === "chrome-luke" && r.to === "101")).toBe(true);
+    expect(String(run.rolePins["chrome-luke"])).toBe("101");
   });
 
   it("collectHardReadySlotTargets attaches desired mon for ApplyLayout", () => {

@@ -6648,5 +6648,56 @@ class TestWorkspaceScope(unittest.TestCase):
         self.assertEqual(plan["counts"]["opened"], 0)
 
 
+class TestProfilePreflight(unittest.TestCase):
+    """Refuse/warn bad layout JSON before ApplyLayout."""
+
+    def test_dual_mon_good(self):
+        warnings: list[str] = []
+        p = validate_reconcile_profile(
+            _load("profile-preflight-dual-mon-good.json"), warnings=warnings
+        )
+        self.assertEqual(sorted(p["layout"].keys()), ["mon0", "mon1"])
+        self.assertEqual(warnings, [])
+
+    def test_flat_single_mon_ok(self):
+        warnings: list[str] = []
+        p = validate_reconcile_profile(
+            _load("profile-preflight-flat-single-mon.json"), warnings=warnings
+        )
+        self.assertEqual(list(p["layout"].keys()), ["mon0"])
+        self.assertEqual(warnings, [])
+
+    def test_float_guake_refused(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_reconcile_profile(_load("profile-preflight-float-guake.json"))
+        self.assertRegex(str(ctx.exception), r"float/ignore-class role\(s\) in tiles")
+        self.assertRegex(str(ctx.exception), r"Guake")
+
+    def test_vinyl_flat_warns_strict_refuses(self):
+        warnings: list[str] = []
+        p = validate_reconcile_profile(
+            _load("profile-preflight-vinyl-flat-dual.json"), warnings=warnings
+        )
+        self.assertEqual(list(p["layout"].keys()), ["mon0"])
+        self.assertEqual(len(warnings), 1)
+        self.assertRegex(warnings[0], r"ambiguous dual-mon")
+        with self.assertRaises(ValueError) as ctx:
+            validate_reconcile_profile(
+                _load("profile-preflight-vinyl-flat-dual.json"),
+                strict_ambiguous_dual_mon=True,
+            )
+        self.assertRegex(str(ctx.exception), r"ambiguous dual-mon")
+
+    def test_unknown_role_key(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_reconcile_profile({"tiles": [{"app": "ghostty", "timeout": 5000}]})
+        self.assertRegex(str(ctx.exception), r"unknown key\(s\).*timeout")
+
+    def test_unknown_top_key(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_reconcile_profile({"tiles": ["ghostty"], "junkField": True})
+        self.assertRegex(str(ctx.exception), r"profile unknown key\(s\).*junkField")
+
+
 if __name__ == "__main__":
     unittest.main()

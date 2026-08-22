@@ -1,0 +1,4 @@
+{
+  "description": "Vinyl-style: flat [app, hsplit] loads as one mon; intent was dual",
+  "tiles": ["inkscape", { "hsplit": ["ghostty", "YouTube"] }]
+}

@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-22 (logging P0 blocked on shellrc plog hooks; other queue runs)
+**Updated:** 2026-08-22 (#2–#5 shipped on master; logging still blocked)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -9,28 +9,27 @@
 **D039–D043** slot machines (SM0) · **SM1–SM7 implement landed** ·
 **R036 cold PASS** · **D044** TABBED/STACKED mon-local **shipped** ·
 **D046** Chrome live tab strip DnD **docs shipped** ·
-**D049** mins env floor + passive learn (**M1–M5 agent done**; soft human) ·
+**D049** mins env floor + passive learn (**M1–M5 agent done**; oversized-frame
+learn **done**; soft human tiny-env) ·
 **PR1–PR15** tab chrome / click-drag **unit-shipped** · PR7 docs **done** ·
 User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**) ·
 **FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped ·
-**OH1–OH3 + ws-orphan shipped**.
+**OH1–OH3 + ws-orphan shipped** · layout preflight · slot-id late-adopt remap ·
+DnD FLOAT skip diagnostics **agent done**.
 
 **Active next (ordered):**
 1. **P0 blocked** dual-sink logging + level retarget — [task](./tasks/forge-log-level-retarget.md)
    (waits shellrc [B-plog-hooks-design](../../shellrc/agents/blockers/B-plog-hooks-design.md);
    journal=INFO+ only; independent file=TRACE…ERROR via plog hooks)
-2. **P0** layout profile preflight — [task](./tasks/forge-layout-profile-preflight.md)
-3. **P0** ApplyLayout slot-id desync hard-fail — [task](./tasks/forge-layout-vinyl-hardfail-slot-ids.md)
-4. **P0** oversized settled frame → learn mins + overflow — [task](./tasks/forge-min-learn-oversized-frame.md)
-5. soft — DnD preview miss (titlebar) — [task](./tasks/forge-dnd-preview-miss-titlebar.md)
-6. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
-7. soft human — D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md)
-8. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
-9. later CN14/CN15 · blocked yuiop
-**Agents:** while logging is blocked, **implement #2–#5** without waiting.
-Do **not** start #8 until the operator schedules that design meeting.
-Do **not** stop to ask the operator unless a **critical new finding**.
-Decisions already locked in task files.
+2. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
+3. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
+4. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
+5. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
+6. later CN14/CN15 · blocked yuiop
+**Agents:** while logging is blocked, do **#3** (OH downstream) with traces —
+do **not** wait on soft human verify. Do **not** start #5 until the operator
+schedules that design meeting. Do **not** stop to ask the operator unless a
+**critical new finding**. Decisions already locked in task files.
 **Host:** recreate vinyl on WS2; `gsettings … min-tab-label-chars 12` if still 20.
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
@@ -57,11 +56,12 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **user CLI no test toolkit**
 + **tab click-drag PR1–PR15 + PR7 docs (D046)** landed. **FCC Wave C (+R1/R2-docs)
 closed through C5; P3 `_layoutOp` flatten strip done.** Wave Z0/Z1 shipped.
-**Active:** **OH1–OH3 + ws-orphan shipped.** Soft human host verify —
-[blocker](./blockers/oh-ws-orphan-host-verify.md). Then monitor identity +
-same-mon dock launch. **D049** M1–M5 agent shipped; soft tiny-env. Optional
-later: CN14/CN15 · yuiop (blocked). Preserve PR9 foreign spacer-only and PR10
-synthetic peel ownership. Do **not** reintroduce shrink-probe.
+**Active:** Queue #2–#5 **shipped**. Soft human host verify —
+[blocker](./blockers/oh-ws-orphan-host-verify.md). Next code: monitor identity +
+same-mon dock launch. **D049** M1–M5 + oversized-frame learn agent shipped;
+soft tiny-env. Optional later: CN14/CN15 · yuiop (blocked). Preserve PR9
+foreign spacer-only and PR10 synthetic peel ownership. Do **not** reintroduce
+shrink-probe.
 Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 / mon-root PlaceNext / soft-enter chrome clear / spanning tab chrome / silent
 `_layoutOp` peel. Do not teach `forge test` / `forge nested`.
@@ -84,8 +84,9 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 | Tab PR7 docs | **done** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |
 | CN13 Node PATH | **done** | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
 
-**L0 last:** ws-orphan focused **110** (workspace + drop-intent + overflow-rehome + session-api + drag-drop). `typecheck:oh2` green.
-**Host cold:** R036 **PASS**. M5 = nest + host tiny-env Nautilus prove.
+**L0 last:** queue #2–#5 focused **291** vitest + preflight pytest **19**.
+`typecheck:oh2` not re-run this slice.
+**Host cold:** R036 **PASS**. Soft: logout tip + vinyl WS2 + tiny-env Nautilus.
 
 ---
 
@@ -97,8 +98,12 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 | **P0** | **OH3** debug/trace assertions | **4.6 high** | **done** · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh3-assertions.md) |
 | **P0** | **OH2** JSDoc + checkJs; no casual `any` | **4.5 high** | **done** · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh2-typescript-checkjs.md) · `npm run typecheck:oh2` |
 | done | ws-orphan multi-ws / min-float / DnD grab | **4.5** | [completed](./tasks/completed/forge-layout-ws-orphan-min-float-dnd.md) |
-| soft | Host verify OH + ws-orphan tip | human | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
-| P0 next | monitor identity + same-mon dock launch | with traces | after host verify · [plan](./plans/forge-observability-hardening.md) § Downstream |
+| done | layout profile preflight | **4.5** | [completed](./tasks/completed/forge-layout-profile-preflight.md) |
+| done | slot-id late-adopt hard-fail | **4.5** | [completed](./tasks/completed/forge-layout-vinyl-hardfail-slot-ids.md) · nest mon=2 ok |
+| done | oversized settled frame → learn | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-learn-oversized-frame.md) |
+| done | DnD titlebar preview miss | **4.5** | [completed](./tasks/completed/forge-dnd-preview-miss-titlebar.md) · FLOAT skip log |
+| soft | Host verify OH + tip (+ vinyl/DnD) | human | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
+| P0 next | monitor identity + same-mon dock launch | with traces | [plan](./plans/forge-observability-hardening.md) § Downstream |
 | soft | D049 tiny-env Nautilus (human) | human | [blocker](./blockers/d049-tiny-env-nautilus.md) |
 | done | D049 M5 L0 + nest | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m5-verify.md) |
 | done | D049 M4 docs/contracts/DESIGN | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m4-docs.md) |

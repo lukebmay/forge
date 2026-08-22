@@ -1,18 +1,18 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-22 (wrap-up: logging P0→shellrc hooks; forge queue continues)
-**Branch:** **`master`** (default).
+**Updated:** 2026-08-22 (queue #2–#5 shipped on master; logging still blocked)
+**Branch:** **`master`** (default). Shipped: preflight · slot-id remap ·
+oversized-frame learn · DnD FLOAT skip diagnostics.
 **Sessions:** **Wayland** daily driver (Guake agent; tip loaded).
 **Logging (P0, blocked):** journal = INFO/WARN/ERROR only; independent forge
 file = TRACE…ERROR; plog **hooks** fan-out. Design:
 `~/dev/me/shellrc/agents/blockers/B-plog-hooks-design.md`. Forge task:
 [forge-log-level-retarget](./tasks/forge-log-level-retarget.md). Circle back
 after shellrc hooks ship + vendor.
-**While blocked — implement:** layout preflight · slot-id hard-fail ·
-oversized-frame min learn · DnD preview. **No operator questions** unless
-critical new finding (prefs locked in tasks).
+**No operator questions** unless critical new finding (prefs locked in tasks).
 **Jobs:** `~/.local/share/forge/jobs/<id>/`.
-**Host:** recreate vinyl on WS2; `min-tab-label-chars` 12 if still 20.
+**Host:** recreate vinyl on WS2 (dual-mon JSON); `min-tab-label-chars` 12 if
+still 20. Logout once to load tip before eyes-on.
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
 **`./scripts/forge/forge-test nested …`** (not user `forge`; not `forge test`).
 Primary logout is **rare** (tip load only after nest already green). Default nest
@@ -27,16 +27,20 @@ used to break nest; `resolve_host_xauthority` picks a live mutter cookie.
 **Repo tip:** OH1–OH3 observability + ws-orphan multi-ws/min-float/DnD grab on
 `master`. Env floor unset → **256×144**. Probe stays deleted (D049).
 **Next (FIRM order):** **human host verify** —
-[blocker](./blockers/oh-ws-orphan-host-verify.md) (logout once for tip). Then
-monitor identity + same-mon dock launch **with traces** —
+[blocker](./blockers/oh-ws-orphan-host-verify.md) (logout once for tip; fold
+titlebar DnD + FLOAT skip log + vinyl WS2 recreate). Then **P0** monitor
+identity + same-mon dock launch **with traces** —
 [plan](./plans/forge-observability-hardening.md) § Downstream. Soft —
-[tiny-env Nautilus](./blockers/d049-tiny-env-nautilus.md).
-**Shipped this wrap:** OH1–OH3 +
-[ws-orphan](./tasks/completed/forge-layout-ws-orphan-min-float-dnd.md).
+[tiny-env Nautilus](./blockers/d049-tiny-env-nautilus.md) (also oversized
+frame learn eyes-on). Logging still blocked on shellrc hooks.
+**Shipped this session:** layout preflight · slot-id late-adopt remap ·
+oversized-frame min learn · DnD FLOAT grab skip diagnostics. Prior:
+OH1–OH3 + [ws-orphan](./tasks/completed/forge-layout-ws-orphan-min-float-dnd.md).
 **Install:** **logout once** for host Shell tip before eyes-on.
 **Do not close** durable-agent ghostty windows.
-**L0 last:** ws-orphan focused **110** + observability suites; `typecheck:oh2`
-green. Nest not required for this ship; keep `running: False` if nest used.
+**L0 last:** combined #2–#5 focused **291** vitest + preflight pytest **19**;
+slot-id nest mon=2 `_forge-test-clean`+`_forge-test-ghosttys` **ok**
+(`running: False`).
 **Logging (OH1 done):** `third_party/pansi/` pinned (shellrc `3226f7c`);
 GJS `plog-adapter` + `Logger` shim; Node CLI `cli/plog.mjs` (default warn;
 `FORGE_LOG_LEVEL` / `FORGE_LOG_TEE` / `FORGE_LOG_FILE`). Schema baseline INFO;
@@ -72,10 +76,13 @@ root `tsconfig.json` stays loose (no full-tree boil). Escape: gi/pansi/`LayoutJs
 | **P0** | OH3 assertions (debug/trace) | **done** | **4.6 high** · log+flag, no throw · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh3-assertions.md) |
 | **P0** | OH2 JSDoc + checkJs / no `any` | **done** | **4.5 high** · `typecheck:oh2` green · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh2-typescript-checkjs.md) |
 | done | ws-orphan multi-ws / min-float / DnD grab | done | [completed](./tasks/completed/forge-layout-ws-orphan-min-float-dnd.md) |
-| soft | **Human host verify OH + ws-orphan tip** | open | [blocker](./blockers/oh-ws-orphan-host-verify.md) · logout once |
+| done | layout profile preflight | done | [completed](./tasks/completed/forge-layout-profile-preflight.md) · refuse Guake-in-tiles; vinyl flat dual-mon warn |
+| done | slot-id late-adopt hard-fail | done | [completed](./tasks/completed/forge-layout-vinyl-hardfail-slot-ids.md) · remap pins; nest mon=2 ok |
+| done | oversized settled frame → learn | done | [completed](./plans/forge-min-size-floor/completed/forge-min-learn-oversized-frame.md) |
+| done | DnD titlebar preview miss | done | [completed](./tasks/completed/forge-dnd-preview-miss-titlebar.md) · root=FLOAT after bad apply; skip log |
+| soft | **Human host verify OH + tip** | open | [blocker](./blockers/oh-ws-orphan-host-verify.md) · logout; vinyl WS2; TILE DnD; FLOAT skip |
 | P0 next | monitor identity + same-mon dock launch | ready | after host verify · [plan](./plans/forge-observability-hardening.md) § Downstream |
-| soft | Host eyes-on titlebar DnD (post-logout) | open | before any tab peel · fold into host-verify |
-| soft | D049 tiny-env Nautilus | open | [blocker](./blockers/d049-tiny-env-nautilus.md) |
+| soft | D049 tiny-env Nautilus (+ oversized learn) | open | [blocker](./blockers/d049-tiny-env-nautilus.md) |
 | done | D049 M5 L0 + nest | done | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m5-verify.md) |
 | done | **D049 M4** docs/contracts/DESIGN | done | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m4-docs.md) |
 | done | D049 M3 overflow rehome + gap | done | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m3-overflow-rehome.md) · L0 **135** |
@@ -890,14 +897,19 @@ Lifecycle: prefer **owned bags** (sources/signals/lifetime/attach) so disable/de
 
 **Next / active:** **human host verify** —
 [blocker](./blockers/oh-ws-orphan-host-verify.md) (logout for tip; multi-ws +
-mins + titlebar DnD). Agents: after verify (or in parallel if soft), monitor
-identity + same-mon dock launch **with debug/trace**. Soft D049 tiny-env —
-[blocker](./blockers/d049-tiny-env-nautilus.md). Optional later: CN14/CN15;
-yuiop blocked. See [IDEAS](./IDEAS.md).
+mins + TILE titlebar DnD + FLOAT skip log). Recreate **vinyl** dual-mon on
+WS2. Agents (after verify or soft-parallel): **P0** monitor identity +
+same-mon dock launch **with debug/trace** —
+[plan](./plans/forge-observability-hardening.md) § Downstream. Soft D049
+tiny-env (+ oversized learn eyes-on) —
+[blocker](./blockers/d049-tiny-env-nautilus.md). Logging still blocked on
+shellrc plog hooks. Optional later: CN14/CN15; yuiop blocked. See
+[IDEAS](./IDEAS.md).
 
-**Proven this wrap-up:** OH1–OH3 + ws-orphan **shipped** on `master` — CLI
-`plog.mjs`; assert log+flag; `typecheck:oh2`; same-ws orphans; size soft-skip;
-800×600 min caps; ratchet not float; mid-grab unmanaged clear.
+**Proven this session on `master`:** layout preflight · slot-id late-adopt
+remap · oversized-frame learn · DnD FLOAT skip diagnostics. L0 **291** +
+pytest **19**. Nest mon=2 clean+ghosttys ok (slot-id). Prior wrap: OH1–OH3 +
+ws-orphan.
 
 **FCC Wave C (+R1/R2-docs) closed through C5; P3 done; PR7/D046 done; Wave Z0/Z1
 shipped.** Tab-drag poll starve shipped. **Do not** reintroduce shrink-probe.
