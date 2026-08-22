@@ -638,6 +638,61 @@ class TestCliBinOurs(unittest.TestCase):
         self.assertTrue(dest.is_file())
         self.assertFalse(dest.is_symlink())
 
+    def test_install_refuses_grok_ephemeral_repo(self) -> None:
+        grok_repo = Path.home() / ".grok" / "worktrees" / "forge-install-refuse-test"
+        grok_cli = grok_repo / "cli"
+        grok_cli.mkdir(parents=True, exist_ok=True)
+        src = grok_cli / "forge.mjs"
+        src.write_text("#!/usr/bin/env node\n")
+        src.chmod(src.stat().st_mode | stat.S_IXUSR)
+        try:
+            script = textwrap.dedent(f"""\
+                emulate -L zsh
+                set -euo pipefail
+                source {_LIB!s}
+                forge_install_cli_bin {src!s}
+                """)
+            r = _run_zsh(script, self.env)
+            self.assertNotEqual(r.returncode, 0, msg=r.stderr + r.stdout)
+            self.assertIn("~/.grok", r.stderr)
+            self.assertFalse(self.bin.joinpath("forge").exists())
+        finally:
+            if src.exists():
+                src.unlink()
+            try:
+                grok_cli.rmdir()
+                grok_repo.rmdir()
+            except OSError:
+                pass
+
+
+class TestRefuseEphemeralRepoPython(unittest.TestCase):
+    @staticmethod
+    def _load_forge():
+        from importlib.machinery import SourceFileLoader
+        import importlib.util
+
+        path = _REPO / "scripts" / "forge" / "forge"
+        loader = SourceFileLoader("forge_cli_ephemeral", str(path))
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        assert spec is not None
+        mod = importlib.util.module_from_spec(spec)
+        loader.exec_module(mod)
+        return mod
+
+    def test_repo_is_ephemeral_under_grok(self) -> None:
+        forge_mod = self._load_forge()
+        grok = Path("/tmp/.grok/worktrees/fake-forge")
+        self.assertTrue(forge_mod._repo_is_ephemeral(grok))
+        self.assertFalse(forge_mod._repo_is_ephemeral(_REPO))
+
+    def test_resolve_install_refuses_grok_origin(self) -> None:
+        forge_mod = self._load_forge()
+        grok = Path("/tmp/.grok/worktrees/fake-forge-origin")
+        with self.assertRaises(FileNotFoundError) as ctx:
+            forge_mod._refuse_ephemeral_repo(grok)
+        self.assertIn("~/.grok", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

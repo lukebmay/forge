@@ -829,6 +829,22 @@ EOF
 
 # --- Install origin (git tree awareness for forge install / reinstall) ---
 
+forge_repo_is_ephemeral() {
+  # True when $1 resolves under a /.grok/ segment (agent worktrees/sessions).
+  # Match path shape, not $HOME — tests may override HOME.
+  local path="${1:-}"
+  [[ -n "$path" ]] || return 1
+  path="${path:A}"
+  [[ "$path" == */.grok || "$path" == */.grok/* ]]
+}
+
+forge_refuse_ephemeral_repo() {
+  # Fatal if repo/CLI path is under ~/.grok — never stamp PATH/origin there.
+  local path="${1:-}"
+  forge_repo_is_ephemeral "$path" || return 0
+  forge_die "refusing install from ephemeral path under ~/.grok:\n  ${path:A}\nUse the durable clone (e.g. ~/dev/me/forge) and run ./install from there."
+}
+
 forge_write_install_origin() {
   # Record where the live extension was installed from so `forge install`
   # can re-run scripts/install.zsh after the CLI is on PATH.
@@ -837,6 +853,7 @@ forge_write_install_origin() {
   local source="${2:-git}"
   [[ -n "$repo" ]] || forge_die "forge_write_install_origin: empty repo"
   repo="${repo:A}"
+  forge_refuse_ephemeral_repo "$repo"
   mkdir -p "$FORGE_MANAGE_DIR"
   FORGE_CLI_BIN="$FORGE_CLI_BIN" python3 - "$repo" "$FORGE_ORIGIN_PATH" "$FORGE_EXT_DIR" "$source" "$FORGE_UUID" <<'PY'
 import json, os, subprocess, sys, time
@@ -971,6 +988,7 @@ forge_install_cli_bin() {
     forge_warn "CLI source missing: $src"
     return 1
   fi
+  forge_refuse_ephemeral_repo "${src:h:h}"
   chmod +x "$src" 2>/dev/null || true
 
   mkdir -p "$FORGE_CLI_BIN_DIR"

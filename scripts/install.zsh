@@ -147,6 +147,7 @@ fi
 
 [[ -f "$FORGE_REPO_ROOT/Makefile" && -f "$FORGE_REPO_ROOT/metadata.json" ]] \
   || forge_die "not a forge repo: $FORGE_REPO_ROOT"
+forge_refuse_ephemeral_repo "$FORGE_REPO_ROOT"
 [[ -x "$SCRIPT_DIR/build-install.zsh" || -f "$SCRIPT_DIR/build-install.zsh" ]] \
   || forge_die "missing install helpers under $SCRIPT_DIR"
 

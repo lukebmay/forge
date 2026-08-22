@@ -14,6 +14,22 @@
 
 Local path: `~/dev/me/forge`. Reference clone of upstream: `~/dev/me/forge_original`.
 
+### No `~/.grok/` install / PATH targets (FIRM)
+
+Never install Forge, symlink `~/.local/bin/forge`, or write `install-origin.json`
+from a path under `~/.grok/` (agent worktrees, sessions, scratch). Those trees
+are disposable; host tip and PATH must point at the durable clone
+(`~/dev/me/forge`).
+
+| Do | Do not |
+| --- | --- |
+| `cd ~/dev/me/forge && ./install …` | `./install` / `forge install` from a Grok worktree |
+| Retarget PATH from the durable clone | Leave `~/.local/bin/forge` → `~/.grok/worktrees/…` |
+
+Install refuses ephemeral `~/.grok` repos in zsh + Python resolution. If a
+subagent used `isolation=worktree`, copy/merge back and install only from the
+durable tree.
+
 Compose rules into root `AGENTS.md` (shellrc `agents`):
 
 ```sh

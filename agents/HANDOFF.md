@@ -1,8 +1,8 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-22 (queue #2–#5 shipped on master; logging still blocked)
+**Updated:** 2026-08-22 (install refuses `~/.grok`; PATH retargeted to durable clone)
 **Branch:** **`master`** (default). Shipped: preflight · slot-id remap ·
-oversized-frame learn · DnD FLOAT skip diagnostics.
+oversized-frame learn · DnD FLOAT skip diagnostics · **install no-`~/.grok`**.
 **Sessions:** **Wayland** daily driver (Guake agent; tip loaded).
 **Logging (P0, blocked):** journal = INFO/WARN/ERROR only; independent forge
 file = TRACE…ERROR; plog **hooks** fan-out. Design:

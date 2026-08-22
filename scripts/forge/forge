@@ -2828,6 +2828,26 @@ def _find_install_script(repo: Path, rel: str = "scripts/install.zsh") -> Option
     return None
 
 
+def _repo_is_ephemeral(repo: Path) -> bool:
+    """True when repo path contains a /.grok/ segment (agent worktrees/sessions)."""
+    try:
+        resolved = repo.expanduser().resolve()
+    except OSError:
+        return False
+    return ".grok" in resolved.parts
+
+
+def _refuse_ephemeral_repo(repo: Path) -> None:
+    """Raise if install would stamp PATH/origin from ~/.grok."""
+    if not _repo_is_ephemeral(repo):
+        return
+    raise FileNotFoundError(
+        "refusing install from ephemeral path under ~/.grok:\n"
+        f"  {repo.expanduser().resolve()}\n"
+        "Use the durable clone (e.g. ~/dev/me/forge) and run ./install from there."
+    )
+
+
 def _resolve_install_script(origin: Optional[dict[str, Any]]) -> tuple[Path, Path]:
     """
     Return (repo, install_script_path).
@@ -2840,6 +2860,7 @@ def _resolve_install_script(origin: Optional[dict[str, Any]]) -> tuple[Path, Pat
     env_repo = os.environ.get("FORGE_REPO_ROOT")
     if env_repo:
         repo = Path(env_repo).expanduser().resolve()
+        _refuse_ephemeral_repo(repo)
         script = _find_install_script(repo)
         if script is not None:
             return repo, script
@@ -2876,6 +2897,7 @@ def _resolve_install_script(origin: Optional[dict[str, Any]]) -> tuple[Path, Pat
                 "Restore the clone or re-run ./install from a valid forge tree."
             )
         repo = repo.resolve()
+        _refuse_ephemeral_repo(repo)
         rel = str(origin.get("install_script") or "scripts/install.zsh")
         script = _find_install_script(repo, rel)
         if script is None:
@@ -2891,6 +2913,7 @@ def _resolve_install_script(origin: Optional[dict[str, Any]]) -> tuple[Path, Pat
     # No origin stamp: allow CLI living inside a repo (first-time / dev path)
     cli_repo = _repo_from_this_cli()
     if cli_repo is not None:
+        _refuse_ephemeral_repo(cli_repo)
         script = _find_install_script(cli_repo)
         if script is not None:
             return cli_repo, script
