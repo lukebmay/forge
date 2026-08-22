@@ -25,8 +25,10 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 5. soft — DnD preview miss (titlebar) — [task](./tasks/forge-dnd-preview-miss-titlebar.md)
 6. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
 7. soft human — D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md)
-8. later CN14/CN15 · blocked yuiop
+8. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
+9. later CN14/CN15 · blocked yuiop
 **Agents:** while logging is blocked, **implement #2–#5** without waiting.
+Do **not** start #8 until the operator schedules that design meeting.
 Do **not** stop to ask the operator unless a **critical new finding**.
 Decisions already locked in task files.
 **Host:** recreate vinyl on WS2; `gsettings … min-tab-label-chars 12` if still 20.

@@ -4,7 +4,7 @@
 promote to PRIORITY or drop after a real need appears. Do **not** treat this
 file as a work queue.
 
-**Updated:** 2026-08-18 (PR7 shipped; CN13 parked for next session)
+**Updated:** 2026-08-22 (multi-ws pinned slots design parked)
 
 ---
 
@@ -12,8 +12,9 @@ file as a work queue.
 
 | Item | Home | Note |
 | --- | --- | --- |
-| **CN13** Node PATH `forge` (+ CN14 nest/live, CN15 delete Python CLI) | [cli-node](./plans/forge-cli-node.md) | **Next session** — HANDOFF prep table; after CN0–CN6 |
+| **Multi-ws pinned slots** | [blocker](./blockers/pinned-slots-multi-ws-design.md) · [D0 task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md) | **P2 mid** design meeting — shared slot (e.g. YT/mail/voice) follows across ws; other slots stay per-ws. Not D044 cross-mon. |
 | Ratio / autotile (yuiop) | [plan](./plans/forge-resize-and-autotile.md) · [blocker](./blockers/resize-autotile-design.md) | **Hard** human design lock before any implement |
+| CN14 / CN15 | [cli-node](./plans/forge-cli-node.md) | After CN13 shipped; optional later |
 
 ---
 
