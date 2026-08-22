@@ -24,6 +24,13 @@ Agent↔agent text (handoffs, spawn notes, PRIORITY, session notes): **functiona
 
 `AGENTS.md` is a **routing index** (when to open files under `agents/`). Full rules live in those files. Open them when triggers match.
 
+## User Questions (FIRM)
+
+Never use the `ask_user_question` tool.
+If something is truly blocking, ask in normal chat with full context.
+After we discuss, write the decision down and continue from that written result.
+Do not re-ask or ignore prior answers; Only re-ask if new context changed the meaning of the original answer.
+
 ## Residue (FIRM)
 
 Before finishing: remove temp paths, debug prints, failed-attempt code, fake fixtures, and live-env residue you added. Failed attempts: delete dead code everywhere it landed.

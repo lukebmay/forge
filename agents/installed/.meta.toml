@@ -1,9 +1,9 @@
 schema = 1
 tool_version = "0.2.1"
-catalog_version = "0.3.6"
+catalog_version = "0.3.7"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-19T22:17:53+00:00"
+updated_at = "2026-08-22T18:20:31+00:00"
 
 [[files]]
 id = "ansi-colors"
@@ -32,8 +32,8 @@ read_when = "Writing design docs, DECISIONS, user docs, or choosing where “why
 [[files]]
 id = "general"
 path = "general.md"
-version = "2.3.0"
-sha256 = "7ddefababdb746b255730abf5e8226b09f97d74a194e2b0ddefcb7bdd10807f6"
+version = "2.4.0"
+sha256 = "cca55ab6c72410fc43f2b3c5aab9d87090e8ca4105689514cf5c2c01c9f08a36"
 title = "General process"
 read_when = "Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs"
 
