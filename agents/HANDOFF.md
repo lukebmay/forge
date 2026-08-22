@@ -1,8 +1,16 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-22 (wrap-up: OH1–OH3 + ws-orphan shipped; human host verify)
+**Updated:** 2026-08-22 (wrap-up: tab 12 + multi-row height; queue for next)
 **Branch:** **`master`** (default).
-**Sessions:** **Wayland** daily driver (Guake agent; fresh session after reboot).
+**Sessions:** **Wayland** daily driver (Guake agent; tip loaded).
+**Logs:** GJS → journal via Shell `log()` (OH1). **Next:** retarget levels —
+[task](./tasks/forge-log-level-retarget.md) (INFO lifecycle; TRACE hot path;
+DEBUG not a firehose). Jobs: `~/.local/share/forge/jobs/<id>/`.
+**Shipped this wrap:** `min-tab-label-chars` default **12**; multi-row tab
+`set_height(barH)` pin. Host: set gsettings 12 if key still 20; recreate
+vinyl on WS2 (no floats unless `--keep-floats`).
+**Next session (ordered):** log retarget · layout preflight · slot-id
+hard-fail · oversized-frame min learn · DnD preview miss — see PRIORITY.
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
 **`./scripts/forge/forge-test nested …`** (not user `forge`; not `forge test`).
 Primary logout is **rare** (tip load only after nest already green). Default nest

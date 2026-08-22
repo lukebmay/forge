@@ -467,7 +467,7 @@ overlay. Borders and `rootBin` stay in `window_group`. Pickability is attach +
 track + visibility, not another restack-vs-window latch.
 
 **Wrap (PR2–PR5):** `processTabbed` sizes rows through `planTabbedWrap` /
-`minTabWidthFromChars`. Product default `min-tab-label-chars=20` turns
+`minTabWidthFromChars`. Product default `min-tab-label-chars=12` turns
 width-wrap on; `max-tabs-per-line` / `max-tab-rows` cap count and height
 (`0` = unlimited / unbounded). Escape hatch: both `min-tab-label-chars=0` and
 `max-tabs-per-line=0` → single row.

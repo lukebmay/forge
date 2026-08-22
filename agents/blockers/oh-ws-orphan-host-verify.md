@@ -1,6 +1,6 @@
 # B-oh-ws-orphan-host-verify — Host verify OH1–OH3 + ws-orphan tip
 
-**Status:** open
+**Status:** done (follow-up tasks filed)
 **Severity:** soft
 **Owner:** human
 **Kind:** verify
@@ -9,6 +9,13 @@
 **Priority:** P0 soft (eyes-on; does not block agent queue)
 **Created:** 2026-08-22
 **Updated:** 2026-08-22
+
+## Host verify outcome (2026-08-22)
+
+Tip loaded; DEBUG on; `layout dev` felt good. `layout vinyl` **hard-failed**
+(job `…T104904Z-e208d5`) — product: slot ids ≠ late-adopt; config: vinyl.json
+is single-mon. Titlebar preview miss + tab multi-row height + min-width wrap
+filed under `agents/tasks/`. See PRIORITY.
 
 ## Why this is human-only
 

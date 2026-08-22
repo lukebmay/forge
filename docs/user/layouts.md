@@ -108,7 +108,7 @@ narrow. Preferences → Appearance:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `min-tab-label-chars` | **20** | Width-wrap when equal-fill tabs would show fewer characters (`0` = width wrap off) |
+| `min-tab-label-chars` | **12** | Width-wrap when equal-fill tabs would show fewer characters (`0` = width wrap off) |
 | `max-tabs-per-line` | `0` | Cap labels per row (`0` = no count cap; with width wrap off → single row) |
 | `max-tab-rows` | `0` | Hard row cap (`0` = unbounded; ≥1 shrinks tabs to fit) |
 

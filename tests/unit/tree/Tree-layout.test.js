@@ -830,12 +830,18 @@ describe("Tree Layout Algorithms", () => {
       kids.forEach((child) => {
         expect(child.rect.y).toBe(totalBar);
         expect(child.rect.height).toBe(800 - totalBar);
+        expect(child.tab.height).toBe(stackedHeight);
+        expect(child.tab.y_expand).toBe(false);
       });
       expect(container.decoration.orientation).toBe(Clutter.Orientation.VERTICAL);
       expect(container.decoration.height).toBe(totalBar);
       expect(container._tabRowHosts).toHaveLength(2);
       expect(container._tabRowHosts[0].children).toHaveLength(3);
       expect(container._tabRowHosts[1].children).toHaveLength(2);
+      container._tabRowHosts.forEach((row) => {
+        expect(row.height).toBe(stackedHeight);
+        expect(row.y_expand).toBe(false);
+      });
     });
 
     it("max=1 with K tabs: K bar rows (stack-like height) still TABBED", () => {
@@ -973,11 +979,15 @@ describe("Tree Layout Algorithms", () => {
       kids.forEach((child) => {
         expect(child.rect.y).toBe(totalBar);
         expect(child.rect.height).toBe(800 - totalBar);
+        expect(child.tab.height).toBe(stackedHeight);
       });
       expect(container.decoration.orientation).toBe(Clutter.Orientation.VERTICAL);
       expect(container._tabRowHosts).toHaveLength(2);
       expect(container._tabRowHosts[0].children).toHaveLength(5);
       expect(container._tabRowHosts[1].children).toHaveLength(1);
+      container._tabRowHosts.forEach((row) => {
+        expect(row.height).toBe(stackedHeight);
+      });
     });
 
     it("max-tab-rows caps plan.rowCount and still multi-row hosts", () => {

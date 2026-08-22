@@ -224,7 +224,7 @@
           "description": "Min readable tab label characters before width-wrap (0 = width wrap off)",
           "minimum": 0,
           "maximum": 80,
-          "default": 20
+          "default": 12
         },
         "max-tab-rows": {
           "type": "integer",
