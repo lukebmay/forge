@@ -1,16 +1,18 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-22 (wrap-up: tab 12 + multi-row height; queue for next)
+**Updated:** 2026-08-22 (wrap-up: logging P0→shellrc hooks; forge queue continues)
 **Branch:** **`master`** (default).
 **Sessions:** **Wayland** daily driver (Guake agent; tip loaded).
-**Logs:** GJS → journal via Shell `log()` (OH1). **Next:** retarget levels —
-[task](./tasks/forge-log-level-retarget.md) (INFO lifecycle; TRACE hot path;
-DEBUG not a firehose). Jobs: `~/.local/share/forge/jobs/<id>/`.
-**Shipped this wrap:** `min-tab-label-chars` default **12**; multi-row tab
-`set_height(barH)` pin. Host: set gsettings 12 if key still 20; recreate
-vinyl on WS2 (no floats unless `--keep-floats`).
-**Next session (ordered):** log retarget · layout preflight · slot-id
-hard-fail · oversized-frame min learn · DnD preview miss — see PRIORITY.
+**Logging (P0, blocked):** journal = INFO/WARN/ERROR only; independent forge
+file = TRACE…ERROR; plog **hooks** fan-out. Design:
+`~/dev/me/shellrc/agents/blockers/B-plog-hooks-design.md`. Forge task:
+[forge-log-level-retarget](./tasks/forge-log-level-retarget.md). Circle back
+after shellrc hooks ship + vendor.
+**While blocked — implement:** layout preflight · slot-id hard-fail ·
+oversized-frame min learn · DnD preview. **No operator questions** unless
+critical new finding (prefs locked in tasks).
+**Jobs:** `~/.local/share/forge/jobs/<id>/`.
+**Host:** recreate vinyl on WS2; `min-tab-label-chars` 12 if still 20.
 **Retest (FIRM):** **Nest is the code→reload loop.** Entry:
 **`./scripts/forge/forge-test nested …`** (not user `forge`; not `forge test`).
 Primary logout is **rare** (tip load only after nest already green). Default nest

@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-22 (wrap-up: tab 12/height shipped; next-session queue)
+**Updated:** 2026-08-22 (logging P0 blocked on shellrc plog hooks; other queue runs)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -16,18 +16,20 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 **OH1–OH3 + ws-orphan shipped**.
 
 **Active next (ordered):**
-1. **P0** log level retarget (INFO lifecycle / TRACE hot) — [task](./tasks/forge-log-level-retarget.md)
-2. **P0** layout profile preflight (bad JSON before apply) — [task](./tasks/forge-layout-profile-preflight.md)
+1. **P0 blocked** dual-sink logging + level retarget — [task](./tasks/forge-log-level-retarget.md)
+   (waits shellrc [B-plog-hooks-design](../../shellrc/agents/blockers/B-plog-hooks-design.md);
+   journal=INFO+ only; independent file=TRACE…ERROR via plog hooks)
+2. **P0** layout profile preflight — [task](./tasks/forge-layout-profile-preflight.md)
 3. **P0** ApplyLayout slot-id desync hard-fail — [task](./tasks/forge-layout-vinyl-hardfail-slot-ids.md)
 4. **P0** oversized settled frame → learn mins + overflow — [task](./tasks/forge-min-learn-oversized-frame.md)
 5. soft — DnD preview miss (titlebar) — [task](./tasks/forge-dnd-preview-miss-titlebar.md)
 6. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
 7. soft human — D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md)
 8. later CN14/CN15 · blocked yuiop
-**Shipped this wrap:** `min-tab-label-chars` default **12**; multi-row tab
-height pin — [completed](./tasks/completed/forge-tab-min-width-wrap-tune.md) ·
-[completed](./tasks/completed/forge-tab-multirow-double-height.md).
-**Host next:** recreate vinyl on WS2; `gsettings set org.gnome.shell.extensions.forge min-tab-label-chars 12` if still 20.
+**Agents:** while logging is blocked, **implement #2–#5** without waiting.
+Do **not** stop to ask the operator unless a **critical new finding**.
+Decisions already locked in task files.
+**Host:** recreate vinyl on WS2; `gsettings … min-tab-label-chars 12` if still 20.
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
 tree press-arm only. Poll skips synced xy; SourceBag hot logs are TRACE.
