@@ -29,6 +29,14 @@ Status: active | superseded | rejected.
 
 When shipping a non-obvious choice, add/update a DECISIONS row (and DESIGN if narrative changed).
 
+### Precedence (FIRM)
+
+**Newest design meeting / DECISIONS row for a topic wins.** Supersede older
+rows in place (`Status=superseded` + new ID); do not silently edit history.
+Accepted meeting locks and plan “Status: Accepted” sections outrank older plan
+draft prose on the same question. Full rule: catalog **`general.md`** § Design
+decisions.
+
 ## Hygiene
 
 - Short titled sections in DESIGN

@@ -1,15 +1,15 @@
 schema = 1
 tool_version = "0.2.1"
-catalog_version = "0.3.7"
+catalog_version = "0.4.0"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-22T18:20:31+00:00"
+updated_at = "2026-08-23T21:32:17+00:00"
 
 [[files]]
 id = "ansi-colors"
 path = "ansi-colors.md"
-version = "3.0.0"
-sha256 = "abea03a15c1cd59487f0bbcc53844cf7085f1372cef03e7abcb8368ee81c70f5"
+version = "3.1.0"
+sha256 = "08ee94d5c82f4f429215a943d44c688175b83f7911f697e23d76ef3cf5a98613"
 title = "ANSI colors"
 read_when = "Adding terminal colors, formatting CLI output, or launching user-visible CLIs from a Grok agent"
 
@@ -24,16 +24,16 @@ read_when = "Adding or editing source comments"
 [[files]]
 id = "documentation"
 path = "documentation.md"
-version = "2.0.0"
-sha256 = "ff50da0d958cb1ca30a4858b156817d74f94eaf67ba1a3302180a685f1176da4"
+version = "2.1.0"
+sha256 = "60093aeac563c9969b2c245bb8a48cc62b6e05c80b884b334a9aa0a127118d68"
 title = "Documentation"
 read_when = "Writing design docs, DECISIONS, user docs, or choosing where “why” lives"
 
 [[files]]
 id = "general"
 path = "general.md"
-version = "2.4.0"
-sha256 = "cca55ab6c72410fc43f2b3c5aab9d87090e8ca4105689514cf5c2c01c9f08a36"
+version = "2.5.0"
+sha256 = "c54e821158a6546aa8b6839770af9345582180744f4660442fc551f4dd0bbd36"
 title = "General process"
 read_when = "Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs"
 
@@ -262,10 +262,26 @@ title = "Neovim"
 read_when = "Editing nvim config, Lua plugins, or editor tooling in this stack"
 
 [[files]]
+id = "pansi"
+path = "pansi.md"
+version = "1.0.0"
+sha256 = "f161e0a4518972f070693a154a90117d6eb65e34e433c38a7c780d8a361d08e9"
+title = "pansi (print / string)"
+read_when = "Adding colored CLI output, printing user-facing text, or choosing a print/string library when the project has no color system (or a bad one)"
+
+[[files]]
+id = "plog"
+path = "plog.md"
+version = "1.0.0"
+sha256 = "63a0ce0f7ab137897db4b6d59125508a9bc88ca5b8ffa0470d8bee782e85e7ad"
+title = "plog (logger + dual-tape query)"
+read_when = "Adding logging, choosing a logger, reading or hunting logs, or working in a repo that uses plog / forge log / plog-query"
+
+[[files]]
 id = "scripting"
 path = "scripting.md"
-version = "2.3.0"
-sha256 = "562b6a909993f86462ba202b814ef3b9ad8c624e680056678f4d7f6983ee3727"
+version = "2.3.1"
+sha256 = "4fc68ef80cc401a62bb88109da8e76fa5ec55ebfd4f2068a786e6a7646a1acd6"
 title = "Scripting"
 read_when = "Writing or changing shell/Python scripts, installers, CLI tools, bin entries, or launching user-visible apps from a Grok agent"
 

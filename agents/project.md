@@ -96,6 +96,70 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 **Day-to-day ranking:** [PRIORITY.md](./PRIORITY.md).
 **Host `black`:** GNOME Shell 46, X11, dual 4K; **this tree** installed in place (not EGO v89).
 
+## Logging (plog dual-tape) — agents
+
+Forge uses shellrc **plog** (vendored under `third_party/pansi` +
+`third_party/plog-query`). Catalog: `agents install pansi plog` (see
+shellrc agents-catalog). **Newest DECISIONS row wins** (D050/D053/D054/D067/D068).
+
+### Two sinks (do not conflate)
+
+| Sink | What | Policy |
+| --- | --- | --- |
+| **Hunt file + JSONL** | `~/.local/state/forge/forge.log` + sibling `forge.jsonl` (or `$FORGE_LOG_FILE` / `$FORGE_LOG_JSONL`) | Everything at/above **effective** level. JSONL **on by default** (`FORGE_LOG_JSONL=0` to disable) — forge opts in (D054); library default elsewhere is opt-in (D066) |
+| **journald** | `journalctl` / GNOME Shell journal | **WARN / ERROR / fatal only** — never INFO/DEBUG/TRACE (D050) |
+
+Enable truncates the hunt tapes (fresh session). Production does **not** force
+logging OFF; `--prod` sets level **WARN** and keeps dual-sink.
+
+### Levels (D068)
+
+| Install / command | Level |
+| --- | --- |
+| Regular `./install` | **INFO (4)** |
+| `./install --dev` / `forge update --dev` | **TRACE (6)** |
+| `./install --prod` | **WARN (3)** |
+| Live bump (no tip reload) | `forge log trace\|debug\|info\|…` (session) · `--persist` → gsettings · `forge log reset` |
+
+Session override wins until reset. CLI `FORGE_LOG_LEVEL` is process-only (never Shell).
+
+### Query-first (FIRM) — never hunt with `tail`
+
+**TRACE is useful with queries; useless as raw `tail` / unfiltered `--last`.**
+
+At TRACE, Shell can emit tens of lines/sec (`float-reason` fanout, title-changed
+renders, session-layout saves). Dig with filters:
+
+```sh
+forge log                         # status: durable / session / effective / paths
+forge log --session F7UjZ --level info+ --last 80
+forge log --grep 'place-hint|verify mismatch' --level debug+ --since 15m
+forge log --level warn+ --last 50
+forge log query --session F7UjZ --grep slot --last 40
+forge log --truncate              # empty tapes when starting a clean hunt
+```
+
+| Do | Do not |
+| --- | --- |
+| `--session` after tip/nest / new Wayland session | Mix sessions blindly |
+| `--level info+` / `warn+` then tighten | `tail -f ~/.local/state/forge/forge.log` as the hunt |
+| `--grep` for place-hint / verify / slot / ApplyLayout | Expect `forge log --last 80` alone to be readable at TRACE |
+| `--json` for machine follow-ups | Assume journal has INFO hunts (it does not) |
+
+Pretty/hilight are **view-time** (D067). WARN/ERROR: values in the message
+(no structured fields — journal parity). INFO+: short title + optional
+`{ fields }` for JSONL (D054).
+
+Code: `lib/shared/plog-adapter.js`, `lib/shared/logger.js`, `cli/log.mjs`.
+User tips: `docs/user/troubleshooting.md`. Decisions: D050, D053, D054, D067, D068.
+
+### Dialing TRACE noise
+
+Default `--dev` → TRACE stays (D068: queryable dual-tape made it useful). When
+TRACE call sites drown hunts (e.g. per-window `float-reason` on every
+title-changed), **narrow emitters** or temporarily `forge log debug` — do not
+abandon query discipline. Queued dig work: [PRIORITY.md](./PRIORITY.md).
+
 ## CLI jobs (agents)
 
 | Rule | Detail |
@@ -350,36 +414,23 @@ When agents run live tests that need install + Shell reload (`./install`,
 `forge save-session-layout`, dual-mon thrash):
 
 1. **Use a debug install** — `./install` / `./install --dev` / `make dev` set
-   `production=false`. Regular install sets **log-level=4 (INFO)**; `./install
-   --dev` sets **6 (TRACE)** (D068). `./install --prod` builds
-   `production=true` **and** sets log-level **WARN (3)** (logging stays on —
-   production does not force OFF). **Dual-sink (D050):** journal =
-   WARN/ERROR/fatal only; INFO/DEBUG/TRACE go to
-   `~/.local/state/forge/forge.log` (or `$FORGE_LOG_FILE`) when at/above
-   effective level. Enable **truncates** that file (fresh session).
-2. **Levels:**
+   `production=false`. Levels: regular **INFO**; `--dev` **TRACE**; `--prod`
+   **WARN** (D068). Dual-sink + query-first: **§ Logging** above — **never**
+   hunt with `tail -f` at TRACE.
+2. **Live level / query (D053/D054)** — prefer CLI over raw gsettings:
 
    ```sh
-   gsettings set org.gnome.shell.extensions.forge logging-enabled true
-   gsettings set org.gnome.shell.extensions.forge log-level 3   # WARN (./install --prod)
-   gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO (regular ./install)
-   gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG (forge log debug)
-   gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE (./install --dev)
-   tail -f ~/.local/state/forge/forge.log
+   forge log                          # status + tape paths
+   forge log trace                    # session TRACE (or debug/info/…)
+   forge log trace --persist          # also write gsettings
+   forge log reset                    # clear session → durable
+   forge log --truncate               # empty forge.log + forge.jsonl
+   forge log --grep PAT --level info+ --last 80
    ```
 
-   Below the selected level, those lines are not emitted **anywhere** (file,
-   jsonl, or journal). Journal never gets INFO/DEBUG/TRACE even when the file
-   does. Dual-tape (D054): sibling `forge.jsonl` is ON by default
-   (`FORGE_LOG_JSONL=0` to disable). **`--dev` already starts at TRACE**; live
-   bump still via `forge log trace` / `--persist`. Query with
-   `forge log --grep …` / `forge log query --last 50`. WARN/ERROR: put values
-   in the message (no structured fields); INFO+: `{ fields }` OK for JSONL.
-
-   Live level (D053, no tip reload): `forge log` / `forge log trace` (session)
-   / `forge log trace --persist` / `forge log reset` / `forge log --truncate`.
-   Query: `forge log query` / `forge log --last N --grep PAT`. Settings
-   `changed::log-level`/`logging-enabled` → plog `reconfigure()`.
+   gsettings still works (`logging-enabled`, `log-level` 3–6) and triggers
+   plog `reconfigure()` live. Below effective level → not emitted anywhere.
+   Journal never gets INFO/DEBUG/TRACE.
 
 3. **Reload path by session:**
    - **X11:** `killall -HUP gnome-shell` (or Alt+F2 → r).

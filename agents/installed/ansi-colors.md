@@ -6,9 +6,12 @@ order: 80
 
 # ANSI Colors
 
-Portable **color contract** for shellrc, forge, and all CLIs in this stack.
+Portable **color contract** for this stack (shellrc, forge, and other CLIs).
 Implement via the shared **`ansi_color`** helpers when available (see
 **Shared library**). Do not invent a third policy per script.
+
+This fragment is **library-agnostic**: it does not require pansi/plog. It only
+defines *whether* and *which roles* to color.
 
 ## Modes
 
@@ -70,12 +73,28 @@ step 4 / mode override: values `always|never|auto` only. Same decision order.
 Tables: default keys, colored values. Times: default parens, blue number.
 Green `✓` only for step ticks — not overall success lines.
 
+## Choosing a print / log stack (GUIDELINE)
+
+**ansi-colors** = enablement + role palette. Pair with a printer/logger:
+
+| Need | Prefer | Catalog |
+| --- | --- | --- |
+| Styled print / string build | **pansi** (`p` / `pstr`) when the project has no color printer, or the existing one is ad-hoc / inconsistent | `pansi` |
+| Levels, files, sessions, searchable logs | **plog** (+ dual-tape / `plog-query`) when there is no real logger, or logging is `print`/`console.log` soup | `plog` |
+| Project already standardized | **Keep that system** — do not dual-stack | — |
+
+Install `pansi` / `plog` into a repo with `agents install` only when that repo
+uses (or is adopting) them. Do **not** force them into unrelated projects.
+
+Hunt logs with **query** (`plog-query` / `app log --grep …`), never raw `tail`
+at TRACE — see **`plog`**.
+
 ## Rules
 
 - Reset after every sequence (`\033[0m` / equivalent)
 - No external ANSI libs unless the project already standardized on one
-- Prefer project `util/<lang>/p.*` for *printing*; prefer **`ansi_color`** for
-  *whether* to color
+- Prefer **pansi** / project `p`·`pstr` for *printing* when adopted; prefer
+  **`ansi_color`** for *whether* to color
 - Prefix portable helper ids with `ansi_` when not in a dedicated module
 
 ## Personal preference vs machines
@@ -142,7 +161,7 @@ Canonical implementations live in shellrc (versioned; same contract):
 
 | Lang | Path |
 | --- | --- |
-| Python | `util/py/ansi_color.py` |
+| Python | `util/python/ansi_color.py` |
 | Zsh | `util/zsh/script-utils/ansi_color.zsh` |
 | JS | `util/js/ansi_color.js` |
 | Lua | `util/lua/ansi_color.lua` |

@@ -1,23 +1,26 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-23 (**D068** `--dev`→TRACE / `--prod`→WARN; D067 query pretty done)
-**Branch:** **`master`** (default). After `forge update --dev` + **logout**, tip
-loads D068 levels + prior D054/Q6 write path.
-**Sessions:** **Wayland** daily driver (Guake agent). **green** = X11 NVIDIA.
+**Updated:** 2026-08-23 (plog dig backlog + catalog `pansi`/`plog`; D068; tip live)
+**Branch:** **`master`** (default). Tip on Wayland after `forge update --dev`
+(session **`F7UjZ`**, build `v49-90-beta.2-387-geb3cf7d`).
+**Sessions:** **Wayland** daily driver. **green** = X11 NVIDIA.
 
 ## Next session (FIRM)
 
 1. **P0** OH downstream — monitor identity + same-mon dock launch
-   ([plan](./plans/forge-observability-hardening.md) § Downstream). Use
-   `forge log trace` + `forge log --grep …` for hunts. Agent **4.5**.
-2. Soft human (does not block #1): [host verify](./blockers/oh-ws-orphan-host-verify.md)
-   after logout — vinyl WS2, sole-max, TILE DnD, FLOAT skip; optional 3× Nautilus
-   open-min eyes-on; confirm `forge log` / apiVersion **11** + jsonl on tip;
-   interactive `forge log --last 1` should color (Q0); pretty body when payload
-   present (Q5/Q6 after tip reload).
-3. Soft: D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md).
-4. Soft: green overnight HDMI sleep eyes-on after lock-shield fix —
+   ([plan](./plans/forge-observability-hardening.md) § Downstream). Agent **4.5**.
+2. **P0 dig** TRACE call-site dial-back → title-changed tax → place-hint
+   `title=null` → bad-slot YouTube — [task](./tasks/forge-plog-trace-hunts.md).
+   Interleave when hunting layout / when OH blocked.
+3. Soft human (does not block #1/#2): [host verify](./blockers/oh-ws-orphan-host-verify.md)
+   — vinyl WS2, sole-max, TILE DnD, FLOAT skip; optional 3× Nautilus open-min;
+   confirm `forge log` / apiVersion **11** + jsonl; pretty when payload present.
+4. Soft: D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md).
+5. Soft: green overnight HDMI sleep eyes-on after lock-shield fix —
    [task](./tasks/forge-x11-green-sleep-lock-shield.md).
+
+**Hunts (FIRM):** `forge log --session/--grep/--level` only — **never** `tail`
+at TRACE. See [project.md](./project.md) § Logging. Catalog: `agents/installed/plog.md`.
 
 **Retest (FIRM):** nest = `./scripts/forge/forge-test nested …`. No user
 `forge test` / `forge nested`. Default nest mon=1. After code install on
@@ -30,7 +33,7 @@ Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
 | Journal | **WARN/ERROR/fatal only** (not INFO); message-only (no structured fields) |
 | File | `~/.local/state/forge/forge.log` (ANSI); enable **truncates** both tapes |
 | JSONL | Sibling `forge.jsonl` **default ON** (`FORGE_LOG_JSONL=0` off) |
-| Query | `forge log query` / `--last`/`--grep`/`--level`/`--since` → vendored plog-query |
+| Query | `forge log query` / `--session`/`--last`/`--grep`/`--level`/`--since` → vendored plog-query (**not** `tail`) |
 | Color | **Q0 done** — `runPlogQuery` inherits TTY stdout/stderr for `--color=auto` |
 | Pretty | **Q5 done** — vendored plog-query **1.1.0** (`--pretty`/`--hilight`/bat) |
 | Fields | INFO+ `{ fields }` → JSONL payload; warn+ flattened (D054). **Q6:** hunts structured |

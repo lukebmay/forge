@@ -24,6 +24,20 @@ Agent↔agent text (handoffs, spawn notes, PRIORITY, session notes): **functiona
 
 `AGENTS.md` is a **routing index** (when to open files under `agents/`). Full rules live in those files. Open them when triggers match.
 
+## Design decisions (FIRM)
+
+Architecture locks live in `docs/DECISIONS.md` (+ narrative in `docs/DESIGN.md`
+and accepted design-meeting / plan lock docs under `agents/plans/`).
+
+| Rule | Detail |
+| --- | --- |
+| **Newest wins** | The **most recent** design meeting lock or DECISIONS row for a topic **supersedes** older rows, plan prose, and handoff guesses on that topic |
+| **Mark history** | When replacing a decision: set the old row `Status=superseded`, add a **new** ID/row — do not silently rewrite history |
+| **Read order** | Active DECISIONS for the topic → latest accepted meeting/plan lock → then older plan text |
+| **Conflict** | If code and an older doc disagree, believe **code + newest decision**; fix the stale doc in the same effort when you touch the area |
+
+Example: shellrc plog **D064** supersedes **D060**; **D066** amends optional JSONL vs older “no JSON” notes for the twin tape only.
+
 ## User Questions (FIRM)
 
 Never use the `ask_user_question` tool.
