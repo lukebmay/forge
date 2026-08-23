@@ -1090,15 +1090,17 @@ message so journal text matches the human line. INFO/DEBUG/TRACE may use a
 short title + `{ fields: {…} }` for searchable JSONL `payload`.
 
 Call-site rules: INFO = install/startup/layout load-save/ApplyLayout outcome;
-DEBUG = feature/hunt narrative (silent on prod INFO); TRACE = opt-in path/id
-detail — useful, not junk. **D052:** regular/`--prod` → INFO; `--dev` → DEBUG;
-TRACE is opt-in. `production=true` does not force logging OFF. Extension enable
-**truncates** both hunt tapes (CLI appends, no wipe). **D053:** `forge log` /
-DBus `Log` for live level — session override (default) or `--persist`;
-gsettings `changed::` → plog `reconfigure()`. **D054/D067:** `forge log query …`
-(or query flags) forwards to vendored `third_party/plog-query` **1.1.0**
-(pretty/bat/hilight; TTY inherit for auto color). Hunt helpers pass
-`{ fields }` so JSONL `payload` is searchable (warn+ still flattened).
+DEBUG = feature/hunt narrative; TRACE = path/id detail — useful, not junk.
+**D068:** regular → INFO; `--dev` → TRACE; `--prod` → WARN. Dual-sink stays on
+in all modes (level gates volume; journal remains WARN+ only). Do not collapse
+prod to journal-only — raising level for a hunt must keep file+jsonl.
+`production=true` does not force logging OFF. Extension enable **truncates**
+both hunt tapes (CLI appends, no wipe). **D053:** `forge log` / DBus `Log` for
+live level — session override (default) or `--persist`; gsettings `changed::`
+→ plog `reconfigure()`. **D054/D067:** `forge log query …` (or query flags)
+forwards to vendored `third_party/plog-query` **1.1.0** (pretty/bat/hilight;
+TTY inherit for auto color). Hunt helpers pass `{ fields }` so JSONL `payload`
+is searchable (warn+ still flattened).
 
 ## CSS: base + user overrides (D001)
 

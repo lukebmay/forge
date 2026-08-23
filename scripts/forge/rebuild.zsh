@@ -22,8 +22,8 @@ Usage:
 
 Options:
   --repo=PATH         Repo root (default: $FORGE_REPO_ROOT)
-  --prod              Release-style build (production=true) + log-level=INFO
-  --dev               Debug build + log-level=DEBUG (hunts). Default: INFO
+  --prod              Release-style build (production=true) + log-level=WARN
+  --dev               Debug build + log-level=TRACE (hunts). Default: INFO
   --save              Backup extension + dconf + config before replace
   --restart-shell     X11 HUP after install (default)
   --no-restart        Do not HUP gnome-shell (files only until you reload)

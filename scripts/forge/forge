@@ -3969,7 +3969,7 @@ def build_parser() -> argparse.ArgumentParser:
     install_p.add_argument(
         "--dev",
         action="store_true",
-        help="Debug build + log-level=DEBUG (default install: INFO)",
+        help="Debug build + log-level=TRACE (default install: INFO)",
     )
     install_p.add_argument("--save", action="store_true", help="Backup before replace")
     install_p.add_argument(
@@ -4058,7 +4058,7 @@ def build_parser() -> argparse.ArgumentParser:
     update_p.add_argument(
         "--dev",
         action="store_true",
-        help="Debug build + log-level=DEBUG (default install: INFO)",
+        help="Debug build + log-level=TRACE (default install: INFO)",
     )
     update_p.add_argument("--save", action="store_true", help="Backup before replace")
     update_p.add_argument(

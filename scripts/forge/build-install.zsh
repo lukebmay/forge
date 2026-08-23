@@ -18,8 +18,8 @@ Usage:
 
 Options:
   --repo=PATH      Repo root (default: $FORGE_REPO_ROOT)
-  --prod           Release-style build (production=true) + log-level=INFO
-  --dev            Debug build + log-level=DEBUG (hunts)
+  --prod           Release-style build (production=true) + log-level=WARN
+  --dev            Debug build + log-level=TRACE (hunts)
   (default)        Debug build (production=false) + log-level=INFO
   --build-only     npm/make build (+ debug) into repo temp/; do NOT install
   --install-only   Copy existing temp/ into extension dir (no rebuild)
@@ -48,7 +48,7 @@ $(forge_print_deps_help)
 EOF
 }
 
-# regular = production=false + INFO; --dev = DEBUG; --prod = production=true + INFO
+# regular = production=false + INFO; --dev = TRACE; --prod = production=true + WARN
 MODE="regular"
 SKIP_NPM=0
 DO_ENABLE=1
@@ -199,13 +199,16 @@ forge_do_install() {
       forge_warn "host-defaults apply failed (non-fatal)"
   fi
 
-  # Logging defaults (D052): regular/prod → INFO; --dev → DEBUG; TRACE opt-in.
-  # Journal = WARN+ only (D050). production=true does not force logging OFF.
+  # Logging defaults (D068): regular → INFO; --dev → TRACE; --prod → WARN.
+  # Journal = WARN+ only (D050). Dual-sink always on; level gates volume.
   if command -v gsettings >/dev/null 2>&1; then
     local _log_n=4 _log_name=INFO
     if [[ "$MODE" == "dev" ]]; then
-      _log_n=5
-      _log_name=DEBUG
+      _log_n=6
+      _log_name=TRACE
+    elif [[ "$MODE" == "prod" ]]; then
+      _log_n=3
+      _log_name=WARN
     fi
     if gsettings set org.gnome.shell.extensions.forge logging-enabled true 2>/dev/null \
       && gsettings set org.gnome.shell.extensions.forge log-level "$_log_n" 2>/dev/null; then

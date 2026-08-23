@@ -40,7 +40,7 @@ instead of another blind patch.
 | **O4** | Before snap: version shellrc JS (`ANSI_COLOR_VERSION`, `PANSI_VERSION` on `p.js`, `PLOG_VERSION`), **commit + push shellrc**, then snap. Record pinned versions + shellrc rev in forge `third_party/pansi/VERSION`. |
 | **O5** | **Node CLI** (`cli/*.mjs`, leftover Node helpers) imports vendored plog/pansi directly where Node APIs are available. |
 | **O6** | **GJS / extension** must **not** import Node-only `node:fs` / `node:crypto` plog as-is. Thin forge adapter: same levels + method names; sink to Shell `log()` / journal (and optional file under `forgeConfigDir()` if cheap). Keep call-site API uniform. |
-| **O7** | gsettings / prefs: keep `logging-enabled` + `log-level` (map to plog levels). Regular `./install` → **INFO**; `./install --dev` → **DEBUG** (D052). |
+| **O7** | gsettings / prefs: keep `logging-enabled` + `log-level` (map to plog levels). Regular `./install` → **INFO**; `./install --dev` → **TRACE**; `./install --prod` → **WARN** (D068). |
 | **O8** | TypeScript posture: keep `.js` for GJS; enable / tighten **JSDoc + `checkJs`**; ban `any` except rare escape hatches that would otherwise require huge hand-written types. Prefer `unknown` + narrow. |
 | **O9** | Assertions: **never throw** (Shell logout risk is untenable). On failure when active: **plog error** + set a **global assertion-failure flag** so the rest of the code can **stop gracefully** and the operator can fix without endless login loops. Active in debug/trace (and/or `!production`); **noop** at info-and-below. Never use asserts as the only user-facing validation of bad external input. |
 

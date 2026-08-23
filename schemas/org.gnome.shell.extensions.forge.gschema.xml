@@ -111,10 +111,10 @@
                 0 - OFF
                 1 - FATAL
                 2 - ERROR
-                3 - WARN
+                3 - WARN (./install --prod)
                 4 - INFO (schema / regular ./install)
-                5 - DEBUG (./install --dev)
-                6 - TRACE (opt-in; detail → forge.log only)
+                5 - DEBUG (forge log debug / prefs)
+                6 - TRACE (./install --dev; detail → forge.log/jsonl)
                 7 - ALL
                 Calls below the selected level are not emitted anywhere.
                 Journal sink is WARN/ERROR/fatal only regardless (D050).
@@ -122,7 +122,7 @@
         </key>
         <key type="b" name="logging-enabled">
             <default>true</default>
-            <summary>Enable logging (production builds respect this + log-level; default INFO)</summary>
+            <summary>Enable logging (gated by log-level; dual-sink always available)</summary>
         </key>
 
         <key type="b" name="layout-debug-overlay-enabled">

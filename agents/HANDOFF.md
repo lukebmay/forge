@@ -1,9 +1,8 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-23 (D054 shipped; **D067 Q0–Q6** done — pretty query + hunt fields)
-**Branch:** **`master`** (default). Tip on disk; **logout / nest restart** needed
-to load D054 write path + Q6 hunt `{ fields }` emits. Query CLI works from tree
-immediately (plog-query **1.1.0**).
+**Updated:** 2026-08-23 (**D068** `--dev`→TRACE / `--prod`→WARN; D067 query pretty done)
+**Branch:** **`master`** (default). After `forge update --dev` + **logout**, tip
+loads D068 levels + prior D054/Q6 write path.
 **Sessions:** **Wayland** daily driver (Guake agent). **green** = X11 NVIDIA.
 
 ## Next session (FIRM)
@@ -24,7 +23,7 @@ immediately (plog-query **1.1.0**).
 `forge test` / `forge nested`. Default nest mon=1. After code install on
 Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
 
-## Logging (D050 + D052 + D053 + D054 dual-tape)
+## Logging (D050 + D053 + D054 dual-tape + D068 levels)
 
 | Item | Detail |
 | --- | --- |
@@ -35,8 +34,9 @@ Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
 | Color | **Q0 done** — `runPlogQuery` inherits TTY stdout/stderr for `--color=auto` |
 | Pretty | **Q5 done** — vendored plog-query **1.1.0** (`--pretty`/`--hilight`/bat) |
 | Fields | INFO+ `{ fields }` → JSONL payload; warn+ flattened (D054). **Q6:** hunts structured |
-| Regular/`--prod` | **INFO (4)**; prod does **not** force logs OFF |
-| `--dev` | **DEBUG (5)**; TRACE = `forge log trace` or gsettings 6 |
+| Regular | **INFO (4)**; does **not** force logs OFF |
+| `--prod` | **WARN (3)**; dual-sink stays; raise via `forge log` for hunts |
+| `--dev` | **TRACE (6)** (D068) |
 | Live level | `forge log` session / `--persist` / `--truncate`; `changed::` → `reconfigure()` |
 | DBus | `Log` · apiVersion **11** |
 | Vendored | `third_party/pansi` PLOG **1.3.0** · `third_party/plog-query` **1.1.0** (re-snapped shellrc `042419f`) |
@@ -45,6 +45,7 @@ Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
 
 | Item | Commit / note |
 | --- | --- |
+| **D068** | `--dev`→TRACE · `--prod`→WARN · keep dual-sink (not journal-only) |
 | **D067 Q0–Q6** | `0807963` — TTY inherit + plog-query **1.1.0** + hunt `{ fields }` · [completed](./tasks/completed/forge-log-query-pretty-wire.md) |
 | **D054 dual-tape + query** | `4306974` — PLOG 1.3.0 + plog-query + `forge log` forward · [completed](./tasks/completed/forge-log-dual-tape-query.md) |
 | Open-min late-adopt | `98538d9` — null map skipped mins; `_adoptOpenIntoTileSlot` tab/float · [completed](./tasks/completed/forge-open-min-late-adopt.md) |

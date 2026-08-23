@@ -223,8 +223,8 @@ journal detail (`logging-enabled` / `log-level` below).
 
 ## Enabling debug logs
 
-Logging is only active in development builds (`production=false`). Preferred
-live control (no tip reload / logout):
+Logging stays enabled in all installs (including `--prod`); **level** gates
+volume. Preferred live control (no tip reload / logout):
 
 ```bash
 forge log                 # durable / session / effective / file+jsonl paths
@@ -245,9 +245,10 @@ Or write prefs directly (also live — extension reconfigures on change):
 
 ```bash
 gsettings set org.gnome.shell.extensions.forge logging-enabled true
-gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO — schema default; no DEBUG/TRACE
-gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG — ./install --dev (D052)
-gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE — opt-in hot-path firehose
+gsettings set org.gnome.shell.extensions.forge log-level 3   # WARN — ./install --prod
+gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO — schema / regular ./install
+gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG — forge log debug
+gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE — ./install --dev (D068)
 ```
 
 Forge uses **dual-sink + dual-tape** logging:
@@ -258,16 +259,16 @@ Forge uses **dual-sink + dual-tape** logging:
 | **File** (`.log`) | ANSI human tape — default `~/.local/state/forge/forge.log` (`$FORGE_LOG_FILE`; nest sibling) |
 | **JSONL** (`.jsonl`) | Machine tape beside the `.log` (forge default ON; `FORGE_LOG_JSONL=0` disables) |
 
-Schema / quiet tip = **INFO**: DEBUG and TRACE are not written anywhere; INFO
-goes to the file/jsonl only (not journal). Regular `./install` and
-`./install --prod` stay **INFO**; `./install --dev` raises to **DEBUG** for
-episode hunts; use **TRACE** (`forge log trace` / gsettings 6) when hunting
-path/id detail. The journal stays sparse. On each extension **enable**, both
-hunt tapes are **truncated** (fresh session); CLI appends and does not wipe
+Install defaults (**D068**): regular → **INFO**; `--dev` → **TRACE**; `--prod`
+→ **WARN**. Dual-sink stays on in all modes — quiet prod is a **level**, not a
+missing file tape (so `forge log trace` can still write searchable JSONL).
+Below the selected level, lines are not emitted anywhere; INFO/DEBUG/TRACE
+never go to the journal. On each extension **enable**, both hunt tapes are
+**truncated** (fresh session); CLI appends and does not wipe
 (`forge log --truncate` empties mid-session). Session override from
 `forge log LEVEL` wins over durable until `forge log reset` or disable/enable.
 `./install --prod` still builds `production=true` (assert policy) but keeps
-logging enabled at INFO.
+logging enabled at WARN.
 
 **WARN/ERROR** lines keep values in the message text (so journal matches the
 human log). **INFO/DEBUG/TRACE** may attach structured `fields` for

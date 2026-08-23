@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-23 (D054 shipped; D067 Q0–Q6 done; OH downstream P0)
+**Updated:** 2026-08-23 (D068 `--dev` TRACE / `--prod` WARN; D067 done; OH P0)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -11,7 +11,7 @@
 **D046** Chrome live tab strip DnD **docs shipped** ·
 **D049** mins env floor + passive learn (**M1–M5 agent done**; oversized-frame
 learn **done**; soft human tiny-env) ·
-**D050** dual-sink (journal WARN+) · **D052** regular/prod INFO · `--dev`→DEBUG ·
+**D050** dual-sink (journal WARN+) · **D068** regular INFO · `--dev`→TRACE · `--prod`→WARN ·
 **D053** `forge log` session + persist + live reconfigure **shipped** ·
 **D054** dual-tape JSONL + `forge log` query forward **shipped** ·
 **sink policy** prod no longer forces logs OFF **shipped** ·

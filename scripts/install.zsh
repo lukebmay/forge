@@ -60,8 +60,8 @@ Usage:
 
 Options:
   --repo=PATH         Override repo root (default: this tree)
-  --prod              Production build (production=true) + log-level=INFO
-  --dev               Debug build + log-level=DEBUG (hunts). Default: DEBUG build + INFO
+  --prod              Production build (production=true) + log-level=WARN
+  --dev               Debug build + log-level=TRACE (hunts). Default: DEBUG build + INFO
   --save              Backup before replace (always on for EGO migrate)
   --no-save           Skip pre-update backup when already luke/jcrussell
   --no-restart        Skip X11 HUP (files only). Wayland never HUPs/logouts anyway
@@ -93,7 +93,7 @@ $(forge_print_deps_help)
 EOF
 }
 
-MODE="regular" # production=false + INFO; --dev → DEBUG; --prod → production=true + INFO
+MODE="regular" # production=false + INFO; --dev → TRACE; --prod → production=true + WARN
 DO_SAVE="" # empty = default by lineage
 # X11 default: HUP after install. Wayland: never ends the session (D048).
 DO_RESTART=1

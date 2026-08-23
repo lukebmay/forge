@@ -351,30 +351,30 @@ When agents run live tests that need install + Shell reload (`./install`,
 
 1. **Use a debug install** — `./install` / `./install --dev` / `make dev` set
    `production=false`. Regular install sets **log-level=4 (INFO)**; `./install
-   --dev` sets **5 (DEBUG)** (D052). TRACE (6) is opt-in for path/id detail.
-   `./install --prod` builds `production=true` **and** sets log-level INFO
-   (logging stays on — production does not force OFF). **Dual-sink (D050):**
-   journal = WARN/ERROR/fatal only; INFO/DEBUG/TRACE go to
+   --dev` sets **6 (TRACE)** (D068). `./install --prod` builds
+   `production=true` **and** sets log-level **WARN (3)** (logging stays on —
+   production does not force OFF). **Dual-sink (D050):** journal =
+   WARN/ERROR/fatal only; INFO/DEBUG/TRACE go to
    `~/.local/state/forge/forge.log` (or `$FORGE_LOG_FILE`) when at/above
    effective level. Enable **truncates** that file (fresh session).
 2. **Levels:**
 
    ```sh
    gsettings set org.gnome.shell.extensions.forge logging-enabled true
-   gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO (regular ./install / --prod)
-   gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG (./install --dev)
-   gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE (opt-in path/id)
+   gsettings set org.gnome.shell.extensions.forge log-level 3   # WARN (./install --prod)
+   gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO (regular ./install)
+   gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG (forge log debug)
+   gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE (./install --dev)
    tail -f ~/.local/state/forge/forge.log
    ```
 
    Below the selected level, those lines are not emitted **anywhere** (file,
    jsonl, or journal). Journal never gets INFO/DEBUG/TRACE even when the file
    does. Dual-tape (D054): sibling `forge.jsonl` is ON by default
-   (`FORGE_LOG_JSONL=0` to disable). **When testing/hunting**, raise to TRACE
-   (`forge log trace` or gsettings 6) and query with `forge log --grep …` /
-   `forge log query --last 50`. `debug` = feature/hunt (silent on prod INFO);
-   `trace` = opt-in useful path/id noise, not junk. WARN/ERROR: put values in
-   the message (no structured fields); INFO+: `{ fields }` OK for JSONL.
+   (`FORGE_LOG_JSONL=0` to disable). **`--dev` already starts at TRACE**; live
+   bump still via `forge log trace` / `--persist`. Query with
+   `forge log --grep …` / `forge log query --last 50`. WARN/ERROR: put values
+   in the message (no structured fields); INFO+: `{ fields }` OK for JSONL.
 
    Live level (D053, no tip reload): `forge log` / `forge log trace` (session)
    / `forge log trace --persist` / `forge log reset` / `forge log --truncate`.

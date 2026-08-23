@@ -33,7 +33,7 @@ DnD are desk-feel bugs; journal/eyes-on is the sign-off.
 ## What the human must do
 
 1. **Load tip** — log out and back in (Wayland) so Shell picks up the install.
-2. **Logging** — confirm prefs/gsettings: logging enabled; log-level **5 (DEBUG)** after rem `./install` (TRACE only if stuck).
+2. **Logging** — confirm prefs/gsettings: logging enabled; log-level **6 (TRACE)** after `./install --dev` (D068).
 3. **CLI plog (optional)** — `FORGE_LOG_LEVEL=debug FORGE_LOG_TEE=stderr forge ping` should tee debug without breaking JSON/protocol on normal `forge ping`.
 4. **Multi-ws layout** — on ws1 run `forge layout dev`; on ws2 run `forge layout vinyl` (or your second profile). Confirm ws1 desk is **not** closed/mutated by the ws2 apply; no hard abort on `size targets not under common parent` after bind already ran.
 5. **False float / mins** — after layouts + dock Nautilus, windows should **not** spuriously float from poisoned mins; if a tile already fits its slot, it stays tiled (ratchet, not float).
