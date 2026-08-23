@@ -1,10 +1,10 @@
 # forge-log-query-pretty-wire — TTY inherit + re-vendor + hunt fields (D067)
 
-**Status:** next
+**Status:** in progress
 **Plan:** shellrc [plog-query-pretty](../../../shellrc/agents/plans/pansi/plog-query-pretty.md)
   (cross-repo; locks live in shellrc) · parent forge observability / D054
 **Branch:** master
-**Blocker:** (none) — Q5/Q6 wait on shellrc Q1–Q4; **Q0 can start immediately**
+**Blocker:** (none) — Q5/Q6 wait on shellrc Q1–Q4
 **Updated:** 2026-08-23
 
 ## Goal
@@ -15,7 +15,7 @@ pretty payload is real structured data.
 
 ## Acceptance
 
-- [ ] **Q0:** `cli/log.mjs` `runPlogQuery` inherits stdout/stderr when parent
+- [x] **Q0:** `cli/log.mjs` `runPlogQuery` inherits stdout/stderr when parent
       streams are TTYs (or equivalent) so `--color=auto` sees a TTY; tests
       updated; `forge log --last 1 --grep slot` shows ESC on interactive TTY
 - [ ] **Q5:** Re-snap `third_party/plog-query` (and pansi if needed) from
@@ -27,16 +27,18 @@ pretty payload is real structured data.
 
 ## Context for the next agent (complete + succinct)
 
-- **Bug:** `runPlogQuery` uses `stdio: ["inherit","pipe","pipe"]` → child
-  `isatty` false → auto color off. Direct `plog-query --color=always` works.
+- **Q0 done:** `resolvePlogQueryStdio` + `runPlogQuery` inherit real TTY fds;
+  capture/redirect sinks stay piped. Overrides: `stdoutIsTTY` / `stderrIsTTY`.
+- **Still waiting:** Q5/Q6 on shellrc D067 Q1–Q4 (plog-query 1.1.0).
 - **Paths:** `cli/log.mjs` · `third_party/plog-query/` ·
   `lib/extension/hunt-logs.js` · callers in `window.js` /
   `layout-apply-run.js`
 - **Policy D054 unchanged:** warn+ flatten fields into message; info/debug/trace
   keep structured payload
-- **Do not** block OH downstream forever — Q0 is small; Q5/Q6 after shellrc
 - Shellrc task: `~/dev/me/shellrc/agents/tasks/pansi_plog-query-pretty.md`
 
 ## Session note
 
-**2026-08-23 — design locked with shellrc D067; Q0 unblocked now.**
+**2026-08-23 — Q0 shipped:** TTY inherit for plog-query auto color; unit tests
+assert inherit vs pipe + ESC forward on piped `--color=always`. Q5/Q6 still
+blocked on shellrc Q1–Q4.

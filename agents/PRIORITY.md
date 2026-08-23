@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-23 (D054 shipped; D067 query-pretty locked — forge Q0 TTY inherit next/parallel; OH downstream still P0)
+**Updated:** 2026-08-23 (D054 shipped; D067 Q0 TTY inherit shipped; OH downstream P0; Q5/Q6 wait shellrc)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -22,20 +22,19 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 DnD FLOAT skip · open-min late-adopt **agent done**.
 
 **Active next (ordered):**
-1. **Q0 (small):** `forge log` TTY inherit for plog-query auto color — [task](./tasks/forge-log-query-pretty-wire.md) (shellrc D067; Q5/Q6 after shellrc 1.1.0)
-2. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
-3. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD + `forge log` apiVersion 11 + jsonl) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
-4. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
-5. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
+1. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
+2. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD + `forge log` apiVersion 11 + jsonl + Q0 color) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
+3. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
+4. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
+5. later: D067 **Q5/Q6** after shellrc plog-query 1.1.0 — [task](./tasks/forge-log-query-pretty-wire.md) (Q0 done)
 6. later CN14/CN15 · blocked yuiop
-**Agents:** **Q0** is cheap and unblocks colored hunts — do it when in forge.
-OH downstream (#2) remains the product P0; do **not** wait on soft human
-verify. Do **not** start #5 until the operator schedules that design
+**Agents:** OH downstream (#1) is the product P0; do **not** wait on soft human
+verify. Do **not** start #4 until the operator schedules that design
 meeting. Do **not** stop to ask the operator unless a **critical new finding**.
-Use `forge log trace` + `forge log --grep` for hunts (D053/D054). **Commit
-D054** (+ prior D053/sink-policy) when operator asks (uncommitted on master).
-**Host:** logout/nest restart for tip (D051–D054 + open-min late-adopt); then vinyl
-WS2 + lone maximize; optional Nautilus ×3 open-min eyes-on.
+Use `forge log trace` + `forge log --grep` for hunts (D053/D054); interactive
+query color works after Q0. **Host:** logout/nest restart for tip (D051–D054 +
+open-min late-adopt); then vinyl WS2 + lone maximize; optional Nautilus ×3
+open-min eyes-on.
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
 tree press-arm only. Poll skips synced xy; SourceApp hot logs are TRACE.

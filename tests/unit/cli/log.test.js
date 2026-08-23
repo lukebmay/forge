@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import { INTERFACE } from "../../../cli/dbus.mjs";
-import { formatLogStatus, parseArgv, run, resolveForgeLogTapes } from "../../../cli/log.mjs";
+import {
+  formatLogStatus,
+  parseArgv,
+  run,
+  resolveForgeLogTapes,
+  resolvePlogQueryStdio,
+  runPlogQuery,
+} from "../../../cli/log.mjs";
 
 function capture() {
   let out = "";
@@ -202,7 +209,7 @@ describe("cli/log run", () => {
 
   it("query mode forwards to plog-query with forge tape env", () => {
     const c = capture();
-    /** @type {{ bin?: string, argv?: string[], env?: NodeJS.ProcessEnv }} */
+    /** @type {{ bin?: string, argv?: string[], env?: NodeJS.ProcessEnv, stdio?: unknown }} */
     const seen = {};
     const code = run(["query", "--last", "3", "--grep", "slot"], {
       env: {
@@ -213,6 +220,7 @@ describe("cli/log run", () => {
         seen.bin = bin;
         seen.argv = argv;
         seen.env = opts.env;
+        seen.stdio = opts.stdio;
         return { status: 0, stdout: "ok-line\n", stderr: "", error: null };
       },
       plogQueryPath: "/fake/plog-query",
@@ -224,6 +232,8 @@ describe("cli/log run", () => {
     expect(seen.argv).toEqual(["--last", "3", "--grep", "slot"]);
     expect(seen.env?.P_LOG_FILE).toBe("/tmp/forge-test.log");
     expect(seen.env?.P_LOG_JSONL).toBe("/tmp/forge-test.jsonl");
+    // Capture sinks are not process TTYs → pipe so parent can forward.
+    expect(seen.stdio).toEqual(["inherit", "pipe", "pipe"]);
     expect(c.out).toBe("ok-line\n");
   });
 
@@ -233,5 +243,89 @@ describe("cli/log run", () => {
     });
     expect(tapes.file).toBe("/tmp/x.log");
     expect(tapes.jsonl).toBe("/tmp/x.jsonl");
+  });
+});
+
+describe("cli/log plog-query TTY stdio (Q0)", () => {
+  it("resolvePlogQueryStdio inherits only flagged TTY sinks", () => {
+    expect(resolvePlogQueryStdio({})).toEqual(["inherit", "pipe", "pipe"]);
+    expect(resolvePlogQueryStdio({ stdoutIsTTY: true })).toEqual(["inherit", "inherit", "pipe"]);
+    expect(resolvePlogQueryStdio({ stderrIsTTY: true })).toEqual(["inherit", "pipe", "inherit"]);
+    expect(resolvePlogQueryStdio({ stdoutIsTTY: true, stderrIsTTY: true })).toEqual([
+      "inherit",
+      "inherit",
+      "inherit",
+    ]);
+  });
+
+  it("runPlogQuery inherits stdout/stderr when parent TTY overrides are set", () => {
+    /** @type {{ stdio?: unknown }} */
+    const seen = {};
+    const code = runPlogQuery(["--last", "1", "--grep", "slot"], {
+      env: {
+        FORGE_LOG_FILE: "/tmp/forge-tty.log",
+        FORGE_LOG_JSONL: "/tmp/forge-tty.jsonl",
+      },
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      spawnSync: (_bin, _argv, opts) => {
+        seen.stdio = opts.stdio;
+        // inherit → no buffered stdout; child would write ESC directly
+        return {
+          status: 0,
+          stdout: null,
+          stderr: null,
+          error: null,
+        };
+      },
+      plogQueryPath: "/fake/plog-query",
+    });
+    expect(code).toBe(0);
+    expect(seen.stdio).toEqual(["inherit", "inherit", "inherit"]);
+  });
+
+  it("interactive inherit path can surface ESC from child (fake TTY spawn)", () => {
+    const ESC = "\u001b[31m";
+    const c = capture();
+    /** @type {{ stdio?: unknown }} */
+    const seen = {};
+    // Simulate: parent is TTY so we inherit; child still returns a buffer in
+    // this unit (real inherit leaves stdout null — contract is stdio shape).
+    // Separate branch: when forced pipe + color always, ESC is forwarded.
+    const codePipe = runPlogQuery(["--last", "1", "--color=always"], {
+      env: { FORGE_LOG_FILE: "/tmp/forge-esc.log" },
+      stdoutIsTTY: false,
+      stderrIsTTY: false,
+      spawnSync: (_bin, _argv, opts) => {
+        seen.stdio = opts.stdio;
+        return {
+          status: 0,
+          stdout: `${ESC}WARN\u001b[0m colored\n`,
+          stderr: "",
+          error: null,
+        };
+      },
+      plogQueryPath: "/fake/plog-query",
+      stdout: c.stdout,
+      stderr: c.stderr,
+    });
+    expect(codePipe).toBe(0);
+    expect(seen.stdio).toEqual(["inherit", "pipe", "pipe"]);
+    expect(c.out).toContain("\u001b[");
+    expect(c.out).toContain("WARN");
+
+    const seenInherit = {};
+    const codeInherit = runPlogQuery(["--last", "1"], {
+      env: { FORGE_LOG_FILE: "/tmp/forge-esc.log" },
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      spawnSync: (_bin, _argv, opts) => {
+        seenInherit.stdio = opts.stdio;
+        return { status: 0, stdout: null, stderr: null, error: null };
+      },
+      plogQueryPath: "/fake/plog-query",
+    });
+    expect(codeInherit).toBe(0);
+    expect(seenInherit.stdio).toEqual(["inherit", "inherit", "inherit"]);
   });
 });

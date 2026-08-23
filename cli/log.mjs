@@ -363,18 +363,30 @@ export function resolveForgeLogTapes(env = process.env) {
 }
 
 /**
+ * --color=auto needs child isatty; inherit TTY sinks, pipe captures/redirects.
+ * @param {{ stdoutIsTTY?: boolean, stderrIsTTY?: boolean }} [opts]
+ * @returns {["inherit", "inherit"|"pipe", "inherit"|"pipe"]}
+ */
+export function resolvePlogQueryStdio(opts = {}) {
+  return ["inherit", opts.stdoutIsTTY ? "inherit" : "pipe", opts.stderrIsTTY ? "inherit" : "pipe"];
+}
+
+/**
  * @param {string[]} queryArgv
  * @param {{
  *   env?: NodeJS.ProcessEnv,
  *   spawnSync?: typeof spawnSync,
  *   plogQueryPath?: string,
- *   stdout?: { write: (s: string) => void },
- *   stderr?: { write: (s: string) => void },
+ *   stdout?: { write: (s: string) => void, isTTY?: boolean },
+ *   stderr?: { write: (s: string) => void, isTTY?: boolean },
+ *   stdoutIsTTY?: boolean,
+ *   stderrIsTTY?: boolean,
  * }} [deps]
  * @returns {number}
  */
 export function runPlogQuery(queryArgv, deps = {}) {
   const env = { ...(deps.env ?? process.env) };
+  const stdout = deps.stdout ?? process.stdout;
   const stderr = deps.stderr ?? process.stderr;
   const writeErr = (s) => {
     stderr.write(s.endsWith("\n") ? s : `${s}\n`);
@@ -390,19 +402,26 @@ export function runPlogQuery(queryArgv, deps = {}) {
     writeErr(`forge log: missing plog-query at ${bin}`);
     return 1;
   }
+
+  // Capture sinks stay piped; real TTY fds inherit so child isatty is true.
+  const stdoutIsTTY =
+    deps.stdoutIsTTY ?? (stdout === process.stdout && Boolean(process.stdout.isTTY));
+  const stderrIsTTY =
+    deps.stderrIsTTY ?? (stderr === process.stderr && Boolean(process.stderr.isTTY));
+  const stdio = resolvePlogQueryStdio({ stdoutIsTTY, stderrIsTTY });
+
   const result = spawn(bin, queryArgv, {
     env,
     encoding: "utf8",
-    stdio: ["inherit", "pipe", "pipe"],
+    stdio,
   });
 
   if (result.error) {
     writeErr(`forge log: plog-query failed: ${result.error.message || result.error}`);
     return 1;
   }
-  const stdout = deps.stdout ?? process.stdout;
-  if (result.stdout) stdout.write(result.stdout);
-  if (result.stderr) stderr.write(result.stderr);
+  if (stdio[1] === "pipe" && result.stdout) stdout.write(result.stdout);
+  if (stdio[2] === "pipe" && result.stderr) stderr.write(result.stderr);
   const code = typeof result.status === "number" ? result.status : 1;
   return code;
 }
