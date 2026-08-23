@@ -94,6 +94,11 @@ describe("cli/log parseArgv", () => {
       error: null,
     });
     expect(parseArgv(["show"])).toMatchObject({ mode: "query", queryArgv: [] });
+    expect(parseArgv(["--pretty", "internal", "--hilight", "off", "--compact"])).toMatchObject({
+      mode: "query",
+      error: null,
+    });
+    expect(parseArgv(["--pretty=bat", "--bat-theme", "Monokai Extended"]).mode).toBe("query");
   });
 
   it("keeps positional level as level mode (not query)", () => {

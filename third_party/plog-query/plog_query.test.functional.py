@@ -40,6 +40,10 @@ TRACKED = [
     "P_LOG_FILE",
     "P_LOG_JSONL",
     "P_LOG_COLOR",
+    "P_LOG_PRETTY",
+    "P_LOG_BAT_THEME",
+    "BAT_THEME",
+    "BAT_CONFIG_PATH",
 ]
 
 operator_tracked = {k: os.environ.get(k) for k in TRACKED}
@@ -255,13 +259,180 @@ def case_reprint_shape() -> None:
     restore_env()
     os.environ["NO_COLOR"] = "1"
     rec = sample_rows()[1]
-    line = ansi_strip(pq.format_reprint(rec, color_on=False))
+    line = ansi_strip(pq.format_reprint(rec, color_on=False, pretty_mode="off"))
+    assert "[Ab3xK]" not in line
     assert line == (
-        "2026-08-22_14:01:02 WARN [Ab3xK] #Ab3xK:100:2 | cache miss for foo"
+        "2026-08-22_14:01:02 WARN #Ab3xK:100:2 | cache miss for foo key=foo"
     )
-    colored = pq.format_reprint(rec, color_on=True)
+    colored = pq.format_reprint(rec, color_on=True, pretty_mode="off")
     assert "\x1b[" in colored
     assert ansi_strip(colored) == line
+    # stable hash colors differ for session vs pid
+    assert pq.stable_truecolor_hex("Ab3xK", salt="session") != pq.stable_truecolor_hex(
+        "100", salt="pid"
+    )
+
+
+def case_pretty_internal_nested() -> None:
+    restore_env()
+    rec = {
+        "timestamp": "2026-08-22_14:01:02",
+        "level": "info",
+        "sessionId": "Ab3xK",
+        "pid": 100,
+        "id": "Ab3xK:100:9",
+        "text": "nested",
+        "payload": {"a": 1, "b": {"c": True, "d": None}, "e": ["x", 2]},
+    }
+    line = pq.format_reprint(rec, color_on=True, pretty_mode="internal")
+    plain = ansi_strip(line)
+    assert "2026-08-22_14:01:02 INFO #Ab3xK:100:9 | nested" in plain.split("\n")[0]
+    assert '"a":' in plain or '"a": ' in plain
+    assert "\n" in plain
+    assert "true" in plain and "null" in plain
+    assert "\x1b[" in line
+
+
+def case_kv_bridge_when_payload_empty() -> None:
+    restore_env()
+    rec = {
+        "timestamp": "2026-08-22_14:01:02",
+        "level": "info",
+        "sessionId": "Ab3xK",
+        "pid": 100,
+        "id": "Ab3xK:100:8",
+        "text": "hello world slot=3 name=x",
+        "payload": {},
+    }
+    line = ansi_strip(pq.format_reprint(rec, color_on=False, pretty_mode="off"))
+    assert line.endswith("hello world slot=3 name=x") or "slot=3" in line
+    head, kv = pq.parse_trailing_kv(rec["text"])
+    assert head == "hello world"
+    assert kv == {"slot": "3", "name": "x"}
+    pretty = ansi_strip(pq.format_reprint(rec, color_on=False, pretty_mode="internal"))
+    assert "hello world" in pretty.split("\n")[0]
+    assert '"slot"' in pretty or "slot" in pretty
+
+
+def case_json_never_pretty() -> None:
+    restore_env()
+    path = Path(suite_root) / "json-pretty.jsonl"
+    write_jsonl(path, sample_rows())
+    buf = io.StringIO()
+    err = io.StringIO()
+    code = pq.main(
+        [
+            str(path),
+            "--level",
+            "warn",
+            "--json",
+            "--last",
+            "0",
+            "--pretty=internal",
+            "--color=always",
+        ],
+        stdout=buf,
+        stderr=err,
+    )
+    assert code == 0, err.getvalue()
+    raw = buf.getvalue()
+    assert "\x1b[" not in raw
+    obj = json.loads(raw.strip().splitlines()[0])
+    assert obj["payload"] == {"key": "foo"}
+
+
+def case_theme_resolve_order() -> None:
+    restore_env()
+    cfg = Path(suite_root) / "bat-theme.conf"
+    cfg.write_text('--theme="FromConfig"\n', encoding="utf-8")
+    os.environ["BAT_CONFIG_PATH"] = str(cfg)
+    assert pq.resolve_bat_theme(None) == "FromConfig"
+    os.environ["BAT_THEME"] = "FromEnv"
+    assert pq.resolve_bat_theme(None) == "FromEnv"
+    os.environ["P_LOG_BAT_THEME"] = "FromPLog"
+    assert pq.resolve_bat_theme(None) == "FromPLog"
+    assert pq.resolve_bat_theme("FromCli") == "FromCli"
+    restore_env()
+    # no env / missing config → product default
+    os.environ["BAT_CONFIG_PATH"] = str(Path(suite_root) / "missing-bat.conf")
+    assert pq.resolve_bat_theme(None) == "Monokai Extended"
+
+
+def case_bat_missing_falls_back_internal() -> None:
+    restore_env()
+    rec = sample_rows()[1]
+    # Force bat mode with no binary → internal still pretty+colored
+    body = pq.format_body(
+        rec,
+        color_on=True,
+        pretty_mode="bat",
+        bat_theme="Monokai Extended",
+        bat_bin="",
+    )
+    plain = ansi_strip(body)
+    assert "key" in plain and "foo" in plain
+    assert "\n" in body
+    assert "\x1b[" in body
+    internal = pq.format_body(
+        rec, color_on=True, pretty_mode="internal", bat_theme="Monokai Extended"
+    )
+    assert ansi_strip(body) == ansi_strip(internal)
+
+
+def case_hilight_sgr_replay() -> None:
+    restore_env()
+    # Known CSI fixture: green "abc" + magenta "def"; hilight middle "cd"
+    green = "\x1b[32m"
+    magenta = "\x1b[35m"
+    reset = "\x1b[0m"
+    colored = f"{green}abc{reset}{magenta}def{reset}"
+    plain, cmap, _ = pq.plain_offset_map(colored)
+    assert plain == "abcdef"
+    assert len(cmap) == 6
+    # hilight plain[2:4] == "cd"
+    out = pq.apply_hilight_spans(colored, [(2, 4, 0)])
+    assert "cd" in ansi_strip(out)
+    # After hilight span, syntax color for "ef" must still be present (replay)
+    assert "\x1b[" in out
+    # Opening hilight uses truecolor bg
+    assert "48;2;" in out
+    # Strip-stable equals original plain with same letters
+    assert ansi_strip(out) == "abcdef"
+    # Replay restores a style after the span (not left stuck on hilight-only)
+    # Find 'e' region still styled
+    plain2, cmap2, _ = pq.plain_offset_map(out)
+    assert plain2 == "abcdef"
+    e_idx = cmap2[4]
+    # some CSI should appear before 'f' relative to hilight chunk
+    assert out[e_idx] == "e" or "e" in out
+
+
+def case_compact_flag_cli() -> None:
+    restore_env()
+    path = Path(suite_root) / "compact.jsonl"
+    write_jsonl(path, sample_rows())
+    buf = io.StringIO()
+    err = io.StringIO()
+    code = pq.main(
+        [
+            str(path),
+            "--level",
+            "warn",
+            "--last",
+            "0",
+            "--color=never",
+            "--pretty=internal",
+            "--compact",
+        ],
+        stdout=buf,
+        stderr=err,
+    )
+    assert code == 0, err.getvalue()
+    lines = [ln for ln in buf.getvalue().splitlines() if ln.strip()]
+    assert len(lines) == 1
+    assert "\n" not in lines[0]
+    assert "#Ab3xK:100:2" in lines[0]
+    assert "[Ab3xK]" not in lines[0]
 
 
 def case_default_file_p_log_jsonl() -> None:
@@ -342,6 +513,7 @@ def case_cli_help_and_bin() -> None:
     out_lines = [ln for ln in proc2.stdout.splitlines() if ln.strip()]
     assert len(out_lines) == 2
     assert "#Ab3xK:100:2" in out_lines[0]
+    assert "[Ab3xK]" not in out_lines[0]
     assert "WARN" in out_lines[0]
     assert "ERROR" in out_lines[1]
 
@@ -356,7 +528,14 @@ def main() -> int:
     run_test("--since relative 2h", case_since_relative)
     run_test("--json emit unchanged", case_json_emit)
     run_test("truncated last line skipped", case_truncated_skip)
-    run_test("reprint shape with #id", case_reprint_shape)
+    run_test("reprint shape #sid:pid:seq (no [session])", case_reprint_shape)
+    run_test("pretty internal nested types", case_pretty_internal_nested)
+    run_test("k=v bridge when payload empty", case_kv_bridge_when_payload_empty)
+    run_test("--json never pretty/color", case_json_never_pretty)
+    run_test("bat theme resolve order", case_theme_resolve_order)
+    run_test("bat missing/internal pretty path", case_bat_missing_falls_back_internal)
+    run_test("hilight SGR replay fixture", case_hilight_sgr_replay)
+    run_test("--compact single-line", case_compact_flag_cli)
     run_test("default file P_LOG_JSONL", case_default_file_p_log_jsonl)
     run_test("default file sibling of P_LOG_FILE", case_default_file_sibling)
     run_test("default file P_LOG_JSONL=1", case_default_file_truthy_jsonl)

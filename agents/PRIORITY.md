@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-23 (D054 shipped; D067 Q0 TTY inherit shipped; OH downstream P0; Q5/Q6 wait shellrc)
+**Updated:** 2026-08-23 (D054 shipped; D067 Q0–Q6 done; OH downstream P0)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -23,18 +23,17 @@ DnD FLOAT skip · open-min late-adopt **agent done**.
 
 **Active next (ordered):**
 1. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
-2. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD + `forge log` apiVersion 11 + jsonl + Q0 color) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
+2. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD + `forge log` apiVersion 11 + jsonl + Q0 color + Q5/Q6 pretty/fields) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
 3. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
 4. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
-5. later: D067 **Q5/Q6** after shellrc plog-query 1.1.0 — [task](./tasks/forge-log-query-pretty-wire.md) (Q0 done)
-6. later CN14/CN15 · blocked yuiop
+5. later CN14/CN15 · blocked yuiop
 **Agents:** OH downstream (#1) is the product P0; do **not** wait on soft human
 verify. Do **not** start #4 until the operator schedules that design
 meeting. Do **not** stop to ask the operator unless a **critical new finding**.
 Use `forge log trace` + `forge log --grep` for hunts (D053/D054); interactive
-query color works after Q0. **Host:** logout/nest restart for tip (D051–D054 +
-open-min late-adopt); then vinyl WS2 + lone maximize; optional Nautilus ×3
-open-min eyes-on.
+query color + pretty (D067). **Host:** logout/nest restart for tip (D051–D054 +
+Q6 hunt fields + open-min late-adopt); then vinyl WS2 + lone maximize; optional
+Nautilus ×3 open-min eyes-on.
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
 tree press-arm only. Poll skips synced xy; SourceApp hot logs are TRACE.

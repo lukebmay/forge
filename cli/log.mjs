@@ -35,7 +35,8 @@ const LEVEL_TOKENS = new Set([
 const QUERY_HEADS = new Set(["query", "q", "show", "tail"]);
 
 /** Flags that mean “this is a plog-query invocation”. */
-const QUERY_FLAG_RE = /^--(session|level|since|until|last|grep|json|color|version|help)(=|$)/;
+const QUERY_FLAG_RE =
+  /^--(session|level|since|until|last|grep|json|color|pretty|compact|hilight|bat-theme|version|help)(=|$)/;
 
 /**
  * @param {string[]} argv
@@ -105,7 +106,10 @@ export function parseArgv(argv) {
           a === "--until" ||
           a === "--last" ||
           a === "--grep" ||
-          a === "--color") &&
+          a === "--color" ||
+          a === "--pretty" ||
+          a === "--hilight" ||
+          a === "--bat-theme") &&
         i + 1 < argv.length &&
         !String(argv[i + 1]).startsWith("-")
       ) {
@@ -312,7 +316,8 @@ Options (level):
   --truncate      Truncate hunt tapes (alone or with a level change)
   -h, --help      Show this help
 
-plog-query flags: --session --level --since --until --last --grep --json --color
+plog-query flags: --session --level --since --until --last --grep --json
+  --color --pretty --compact --hilight --bat-theme --version
 `);
 }
 

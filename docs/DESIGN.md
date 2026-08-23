@@ -1095,8 +1095,10 @@ detail — useful, not junk. **D052:** regular/`--prod` → INFO; `--dev` → DE
 TRACE is opt-in. `production=true` does not force logging OFF. Extension enable
 **truncates** both hunt tapes (CLI appends, no wipe). **D053:** `forge log` /
 DBus `Log` for live level — session override (default) or `--persist`;
-gsettings `changed::` → plog `reconfigure()`. **D054:** `forge log query …`
-(or query flags) forwards to vendored `third_party/plog-query`.
+gsettings `changed::` → plog `reconfigure()`. **D054/D067:** `forge log query …`
+(or query flags) forwards to vendored `third_party/plog-query` **1.1.0**
+(pretty/bat/hilight; TTY inherit for auto color). Hunt helpers pass
+`{ fields }` so JSONL `payload` is searchable (warn+ still flattened).
 
 ## CSS: base + user overrides (D001)
 
