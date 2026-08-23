@@ -1,8 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-22 (D051 Meta max≠no-resize; vinyl + sole-max)
-**Branch:** **`master`** (default). Shipped: dual-sink plog · preflight ·
-slot-id remap · oversized-frame learn · DnD FLOAT skip · install no-`~/.grok`.
+**Updated:** 2026-08-22 (open-min late-adopt; D051 vinyl)
+**Branch:** **`master`** (default). Shipped: late-identity open-min adopt ·
+dual-sink plog · preflight · slot-id remap · oversized-frame learn · DnD FLOAT
+skip · install no-`~/.grok`.
 **Sessions:** **Wayland** daily driver (Guake agent; tip installed — **logout
 once** for eyes-on).
 **Logging (D050 done):** journal = INFO/WARN/ERROR only; file =
@@ -42,10 +43,12 @@ identity + same-mon dock launch **with traces** —
 [plan](./plans/forge-observability-hardening.md) § Downstream. Soft —
 [tiny-env Nautilus](./blockers/d049-tiny-env-nautilus.md) (also oversized
 frame learn eyes-on).
-**Shipped this session:** **D050** dual-sink plog · **D051** max/fs≠no-resize ·
-vinyl late-adopt/`_ensureTiledForSlotPlace`/`ensureMetaInSlot` · lone-max D026
-gate on `window-maximize-on-single` · apply chrome UX (D043). Prior: preflight ·
-slot-id remap · oversized-frame learn · DnD FLOAT skip · OH1–OH3 · ws-orphan.
+**Shipped this session:** **open-min late-adopt** — null map skipped mins;
+`_adoptOpenIntoTileSlot` now tab/float like free open (host: 3× Nautilus no
+longer stack-then-`overflow-tab` into right chrome). Task:
+[completed](./tasks/completed/forge-open-min-late-adopt.md). Prior: **D050**
+dual-sink · **D051** max/fs≠no-resize · vinyl · preflight · slot-id remap ·
+oversized-frame learn · DnD FLOAT skip · OH1–OH3 · ws-orphan.
 **Install:** tip on disk (`./install --dev`); **logout once** before eyes-on.
 **Do not close** durable-agent ghostty windows.
 **L0 last:** float-reason + floating + dyt2(+461) **94** green (D051). Broader

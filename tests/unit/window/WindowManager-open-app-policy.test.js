@@ -1276,6 +1276,70 @@ describe("OP1 open-app placement policy", () => {
       expect(parent.contains(node)).toBe(true);
       clearClassMinFloorForTests();
     });
+
+    it("late null identity adopt: VSPLIT would overflow mins → TABBED with LFT (not distant tab)", async () => {
+      // Host: Nautilus maps class/title null → willTile false → open-min skipped at
+      // track; FLOAT→TILE adopt must still open-min (else stacks then overflow-tabs
+      // every sibling into an unrelated roomy group).
+      const { rememberClassMin, clearClassMinFloorForTests } = await import(
+        "../../../lib/extension/tree-layout.js"
+      );
+      clearClassMinFloorForTests();
+      // Half of post-layout ~960×1080 HSPLIT leaf is 540; 600 forces tab.
+      rememberClassMin("org.gnome.Nautilus", 360, 600, { silent: true });
+
+      const mon = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon.layout = LAYOUT_TYPES.HSPLIT;
+      const lft = tileOn(0, {
+        id: "lft-late",
+        rect: { x: 0, y: 0, width: 960, height: 1080 },
+        size_hints: { min_width: 100, min_height: 100 },
+      });
+      // Roomy TABBED neighbor — a bad adopt BFS would dump into this bag.
+      const roomyBag = ctx.tree.createNode(mon.nodeValue, NODE_TYPES.CON, {});
+      roomyBag.layout = LAYOUT_TYPES.TABBED;
+      const roomy = createWindowNode(ctx.tree, roomyBag, {
+        mode: "TILE",
+        windowOverrides: {
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          id: "roomy-chrome",
+          rect: { x: 960, y: 0, width: 960, height: 1080 },
+          size_hints: { min_width: 50, min_height: 50 },
+        },
+      });
+      wm().movePointerWith(lft.nodeWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "nautilus-late",
+        wm_class: null,
+        title: null,
+      });
+      meta.get_size_hints = () => null;
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      expect(wm().isFloatingExempt(meta)).toBe(true);
+      expect(node.mode).toBe(WINDOW_MODES.FLOAT);
+      expect(node._tileInsertUnit).toBeTruthy();
+
+      meta.set_wm_class("org.gnome.Nautilus");
+      meta.set_title("Home");
+      expect(wm().isFloatingExempt(meta)).toBe(false);
+      // notify::title already renderTree→processFloats→adopt; ensure settled.
+      wm().processFloats();
+
+      expect(node.mode).toBe(WINDOW_MODES.TILE);
+      const parent = lft.nodeWindow.parentNode;
+      expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parent.contains(lft.nodeWindow)).toBe(true);
+      expect(parent.contains(node)).toBe(true);
+      expect(parent.contains(roomy.nodeWindow)).toBe(false);
+      expect(roomyBag.contains(node)).toBe(false);
+      expect(roomyBag.childNodes).toContain(roomy.nodeWindow);
+      clearClassMinFloorForTests();
+    });
   });
 
   describe("focus-on-create chains next open", () => {
