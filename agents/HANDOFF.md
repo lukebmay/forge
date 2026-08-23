@@ -1,9 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-23 (log sink policy shipped; OH downstream next)
+**Updated:** 2026-08-23 (green X11 sleep hunt; lock-shield restore fix)
 **Branch:** **`master`** (default). Tip on disk; **logout once** still needed for
 eyes-on (Wayland tip deferred) — includes D053 host tip load.
-**Sessions:** **Wayland** daily driver (Guake agent).
+**Sessions:** **Wayland** daily driver (Guake agent). **green** = X11 NVIDIA.
 
 ## Next session (FIRM)
 
@@ -14,6 +14,8 @@ eyes-on (Wayland tip deferred) — includes D053 host tip load.
    after logout — vinyl WS2, sole-max, TILE DnD, FLOAT skip; optional 3× Nautilus
    open-min eyes-on; confirm `forge log` / apiVersion **11** on tip.
 3. Soft: D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md).
+4. Soft: green overnight HDMI sleep eyes-on after lock-shield fix —
+   [task](./tasks/forge-x11-green-sleep-lock-shield.md).
 
 **Retest (FIRM):** nest = `./scripts/forge/forge-test nested …`. No user
 `forge test` / `forge nested`. Default nest mon=1. After code install on

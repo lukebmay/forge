@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import GLib from "gi://GLib";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
+import * as Utils from "../../lib/extension/utils.js";
+import { toPortableForest, makeEnvelope } from "../../lib/extension/session-layout.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -741,5 +743,49 @@ describe("H1 monitor-recovery on workareas thrash", () => {
     expect(mon1After.contains(rightNode)).toBe(true);
     expect(leftWin.get_monitor()).toBe(0);
     expect(rightWin.get_monitor()).toBe(1);
+  });
+
+  it("fromLock keeps shield active while locked even after untilMonoUs (contract)", () => {
+    addTiled("A", 0, { x: 10, y: 10, width: 400, height: 400 });
+    wm()._sessionLocked = true;
+
+    // Short post-HUP shield without fromLock expires while still locked.
+    const forest = wm().tree.snapshotTree();
+    wm()._sessionLayoutShield = {
+      liveForest: forest,
+      focusMeta: null,
+      untilMonoUs: Utils.monoTimeUs() - 1,
+    };
+    expect(wm().sessionLayoutRestore.sessionLayoutShieldActive()).toBe(false);
+
+    // Real lock shield stays active for the whole locked period.
+    expect(wm().sessionLayoutRestore.armLockLayoutShield()).toBe(true);
+    expect(wm()._sessionLayoutShield?.fromLock).toBe(true);
+    wm()._sessionLayoutShield.untilMonoUs = Utils.monoTimeUs() - 1;
+    expect(wm().sessionLayoutRestore.sessionLayoutShieldActive()).toBe(true);
+  });
+
+  it("restore while locked arms fromLock shield (enable/HUP during unlock-dialog)", () => {
+    const frame = { x: 10, y: 10, width: 800, height: 600 };
+    const { win } = addTiled("A", 0, frame);
+    global.display.get_tab_list = vi.fn(() => [win]);
+
+    const portable = toPortableForest(wm().tree.snapshotTree());
+    const env = makeEnvelope(portable, Utils.monoTimeUs(), Date.now(), {
+      focusWindowId: win.get_id(),
+    });
+    wm().ext.configMgr.loadSessionLayout = () => env;
+    wm().ext.configMgr.clearSessionLayout = vi.fn();
+
+    // Enable/HUP while already locked: empty arm, then restore.
+    wm()._sessionLocked = true;
+    wm()._sessionLayoutShield = null;
+
+    expect(wm()._restoreSessionLayoutAfterTrack()).toBe(true);
+    expect(wm()._sessionLayoutShield?.fromLock).toBe(true);
+    expect(wm()._sessionLayoutShield?.liveForest?.monitors?.length).toBeGreaterThan(0);
+    // Must survive past a 3s post-HUP TTL while still locked.
+    wm()._sessionLayoutShield.untilMonoUs = Utils.monoTimeUs() - 1;
+    expect(wm().sessionLayoutRestore.sessionLayoutShieldActive()).toBe(true);
   });
 });
