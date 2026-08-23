@@ -39,7 +39,7 @@ Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
 | `--dev` | **DEBUG (5)**; TRACE = `forge log trace` or gsettings 6 |
 | Live level | `forge log` session / `--persist` / `--truncate`; `changed::` → `reconfigure()` |
 | DBus | `Log` · apiVersion **11** |
-| Vendored | `third_party/pansi` PLOG **1.3.0** · `third_party/plog-query` **1.1.0** |
+| Vendored | `third_party/pansi` PLOG **1.3.0** · `third_party/plog-query` **1.1.0** (re-snapped shellrc `042419f`) |
 
 ## Shipped this session
 
