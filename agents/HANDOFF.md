@@ -45,7 +45,7 @@ Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
 
 | Item | Commit / note |
 | --- | --- |
-| **D068** | `--dev`→TRACE · `--prod`→WARN · keep dual-sink (not journal-only) |
+| **D068** | `545a926` — `--dev`→TRACE · `--prod`→WARN · keep dual-sink (not journal-only) |
 | **D067 Q0–Q6** | `0807963` — TTY inherit + plog-query **1.1.0** + hunt `{ fields }` · [completed](./tasks/completed/forge-log-query-pretty-wire.md) |
 | **D054 dual-tape + query** | `4306974` — PLOG 1.3.0 + plog-query + `forge log` forward · [completed](./tasks/completed/forge-log-dual-tape-query.md) |
 | Open-min late-adopt | `98538d9` — null map skipped mins; `_adoptOpenIntoTileSlot` tab/float · [completed](./tasks/completed/forge-open-min-late-adopt.md) |
