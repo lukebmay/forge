@@ -1,20 +1,23 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-23 (D054 dual-tape + `forge log` query)
+**Updated:** 2026-08-23 (D054 shipped; **D067** query-pretty locked in shellrc)
 **Branch:** **`master`** (default). Tip on disk; **logout / nest restart** needed
 to load D054 write path (jsonl). Query CLI works from tree immediately.
 **Sessions:** **Wayland** daily driver (Guake agent). **green** = X11 NVIDIA.
 
 ## Next session (FIRM)
 
-1. **P0** OH downstream — monitor identity + same-mon dock launch
+1. **Small / parallel:** **Q0** `forge log` TTY inherit so auto color works —
+   [forge-log-query-pretty-wire](./tasks/forge-log-query-pretty-wire.md)
+   (shellrc D067; Q5/Q6 after shellrc plog-query 1.1.0).
+2. **P0** OH downstream — monitor identity + same-mon dock launch
    ([plan](./plans/forge-observability-hardening.md) § Downstream). Use
    `forge log trace` + `forge log --grep …` for hunts. Agent **4.5**.
-2. Soft human (does not block #1): [host verify](./blockers/oh-ws-orphan-host-verify.md)
+3. Soft human (does not block #1/#2): [host verify](./blockers/oh-ws-orphan-host-verify.md)
    after logout — vinyl WS2, sole-max, TILE DnD, FLOAT skip; optional 3× Nautilus
    open-min eyes-on; confirm `forge log` / apiVersion **11** + jsonl on tip.
-3. Soft: D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md).
-4. Soft: green overnight HDMI sleep eyes-on after lock-shield fix —
+4. Soft: D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md).
+5. Soft: green overnight HDMI sleep eyes-on after lock-shield fix —
    [task](./tasks/forge-x11-green-sleep-lock-shield.md).
 
 **Retest (FIRM):** nest = `./scripts/forge/forge-test nested …`. No user
@@ -29,6 +32,8 @@ Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
 | File | `~/.local/state/forge/forge.log` (ANSI); enable **truncates** both tapes |
 | JSONL | Sibling `forge.jsonl` **default ON** (`FORGE_LOG_JSONL=0` off) |
 | Query | `forge log query` / `--last`/`--grep`/`--level`/`--since` → vendored plog-query |
+| Color bug | `runPlogQuery` pipes stdout → auto color off; **Q0** inherit TTY (D067 wire) |
+| Pretty | shellrc D067 ([plog-query-pretty](../../../shellrc/agents/plans/pansi/plog-query-pretty.md)); re-vendor after 1.1.0 |
 | Fields | INFO+ may use `{ fields }`; warn+ flattened into message (D054) |
 | Regular/`--prod` | **INFO (4)**; prod does **not** force logs OFF |
 | `--dev` | **DEBUG (5)**; TRACE = `forge log trace` or gsettings 6 |
@@ -56,7 +61,9 @@ Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
 
 | Pri | Slice | Status |
 | --- | --- | --- |
+| **Q0** | `forge log` TTY inherit (D067) | **next** · [task](./tasks/forge-log-query-pretty-wire.md) |
 | **P0** | monitor identity + same-mon dock | **next** · [plan](./plans/forge-observability-hardening.md) § Downstream |
+| later | Q5 re-vendor + Q6 hunt `{ fields }` | after shellrc D067 Q1–Q4 |
 | soft | Host verify OH + tip (+ `forge log` eyes-on) | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
 | soft | D049 tiny-env Nautilus | [blocker](./blockers/d049-tiny-env-nautilus.md) |
 
