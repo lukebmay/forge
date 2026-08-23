@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-22 (dual-sink logging D050 shipped; #2–#5 prior)
+**Updated:** 2026-08-22 (`forge log` session CLI next; D052 + open-min late-adopt)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -11,24 +11,26 @@
 **D046** Chrome live tab strip DnD **docs shipped** ·
 **D049** mins env floor + passive learn (**M1–M5 agent done**; oversized-frame
 learn **done**; soft human tiny-env) ·
+**D050** dual-sink · **D052** `--dev`→DEBUG + enable truncate ·
 **PR1–PR15** tab chrome / click-drag **unit-shipped** · PR7 docs **done** ·
 User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**) ·
 **FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped ·
 **OH1–OH3 + ws-orphan shipped** · layout preflight · slot-id late-adopt remap ·
-DnD FLOAT skip diagnostics **agent done**.
+DnD FLOAT skip · open-min late-adopt **agent done**.
 
 **Active next (ordered):**
-1. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
-2. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
-3. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
-4. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
-5. later CN14/CN15 · blocked yuiop
-**Agents:** do **#2** (OH downstream) with traces — do **not** wait on soft
-human verify. Do **not** start #4 until the operator schedules that design
-meeting. Do **not** stop to ask the operator unless a **critical new finding**.
-Decisions already locked in task files. Dual-sink logging **done** (D050).
-**Host:** logout once for tip (D051 max≠no-resize + vinyl/sole-max);
-then `forge layout vinyl` on WS2 + lone maximize snap-back.
+1. **P0** **`forge log` live level** (session override + `--persist` + settings→reconfigure) — [task](./tasks/forge-log-cli-session.md)
+2. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
+3. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
+4. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
+5. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
+6. later CN14/CN15 · blocked yuiop
+**Agents:** start **#1** (`forge log`) next session — do **not** wait on soft
+human verify. After #1, resume #3 (OH downstream) with traces. Do **not**
+start #5 until the operator schedules that design meeting. Do **not** stop
+to ask the operator unless a **critical new finding**. UX locked in the task.
+**Host:** logout once for tip (D051 + D052 + open-min late-adopt); then vinyl
+WS2 + lone maximize; optional Nautilus ×3 open-min eyes-on.
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
 tree press-arm only. Poll skips synced xy; SourceBag hot logs are TRACE.
@@ -54,9 +56,10 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **user CLI no test toolkit**
 + **tab click-drag PR1–PR15 + PR7 docs (D046)** landed. **FCC Wave C (+R1/R2-docs)
 closed through C5; P3 `_layoutOp` flatten strip done.** Wave Z0/Z1 shipped.
-**Active:** Queue #2–#5 **shipped**. Soft human host verify —
-[blocker](./blockers/oh-ws-orphan-host-verify.md). Next code: monitor identity +
-same-mon dock launch. **D049** M1–M5 + oversized-frame learn agent shipped;
+**Active:** Next code = **`forge log` session CLI**
+([task](./tasks/forge-log-cli-session.md)). Soft human host verify —
+[blocker](./blockers/oh-ws-orphan-host-verify.md). Then OH downstream (monitor
+identity + same-mon dock). **D049** M1–M5 + oversized learn agent shipped;
 soft tiny-env. Optional later: CN14/CN15 · yuiop (blocked). Preserve PR9
 foreign spacer-only and PR10 synthetic peel ownership. Do **not** reintroduce
 shrink-probe.
@@ -101,9 +104,12 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 | done | slot-id late-adopt hard-fail | **4.5** | [completed](./tasks/completed/forge-layout-vinyl-hardfail-slot-ids.md) · nest mon=2 ok |
 | done | oversized settled frame → learn | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-learn-oversized-frame.md) |
 | done | DnD titlebar preview miss | **4.5** | [completed](./tasks/completed/forge-dnd-preview-miss-titlebar.md) · FLOAT skip log |
+| **P0 next** | **`forge log` session + persist + live reconfigure** | **4.5** | [task](./tasks/forge-log-cli-session.md) · D052 follow-on |
 | soft | Host verify OH + tip (+ vinyl/DnD) | human | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
-| P0 next | monitor identity + same-mon dock launch | with traces | [plan](./plans/forge-observability-hardening.md) § Downstream |
+| P0 | monitor identity + same-mon dock launch | with traces | after `forge log` · [plan](./plans/forge-observability-hardening.md) § Downstream |
 | soft | D049 tiny-env Nautilus (human) | human | [blocker](./blockers/d049-tiny-env-nautilus.md) |
+| done | open-min late-identity adopt | **4.5** | [completed](./tasks/completed/forge-open-min-late-adopt.md) |
+| done | D052 `--dev` DEBUG + enable truncate | **4.5** | D052 · `531db43` |
 | done | D049 M5 L0 + nest | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m5-verify.md) |
 | done | D049 M4 docs/contracts/DESIGN | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m4-docs.md) |
 | done | D049 M3 overflow BFS + remove gap | **4.6 high** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m3-overflow-rehome.md) |
