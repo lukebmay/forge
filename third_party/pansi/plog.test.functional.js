@@ -53,6 +53,7 @@ const TRACKED = [
   "P_COLOR",
   "P_LOG_FILE",
   "P_LOG_FILE_STDERR",
+  "P_LOG_JSONL",
   "P_LOG_LEVEL",
   "P_LOG_DEBUG",
   "P_LOG_TEE",
@@ -429,7 +430,7 @@ await run('L1a-12 first " | " split round-trips message containing " | "', async
   assert(msg === "keep | pipes | here", msg);
 });
 
-await run("L1a-13 newlines in message become \\\\n", async ({ logFile }) => {
+await run("L1a-13 newlines in message become \\\\n", async ({ caseDir, logFile }) => {
   const { log } = await loadPlog();
   standardInit(log, { file: logFile });
   const line = log.info("a\nb\rc");
@@ -438,6 +439,26 @@ await run("L1a-13 newlines in message become \\\\n", async ({ logFile }) => {
   const m = plain.match(RECORD_RE);
   assert(m, plain);
   assert(m[4] === "a\\nb\\rc", m[4]);
+
+  const jsonlPath = path.join(caseDir, "app.jsonl");
+  const { log: logDual } = await loadPlog();
+  standardInit(logDual, { file: logFile + ".dual", jsonl: jsonlPath });
+  logDual.info("a\nb\rc");
+  const dualPlain = ansiStrip(fs.readFileSync(logFile + ".dual", "utf8"))
+    .trim()
+    .split("\n")
+    .pop();
+  const dm = dualPlain.match(RECORD_RE);
+  assert(dm, dualPlain);
+  assert(dm[4] === "a\\nb\\rc", dm[4]);
+  const rows = fs
+    .readFileSync(jsonlPath, "utf8")
+    .split("\n")
+    .filter((l) => l.length > 0)
+    .map((l) => JSON.parse(l));
+  assert(rows.length === 1);
+  assert(rows[0].text === "a\nb\rc", JSON.stringify(rows[0].text));
+  assert(rows[0].text.includes("\n") && rows[0].text.includes("\r"));
 });
 
 await run("L1a-14 distinct errorFile gets error user lines only", async ({ caseDir, logFile }) => {
@@ -600,7 +621,7 @@ await run("L1a-19 no $shellrc / SHELLRC_* / pscript in JS", async () => {
 });
 
 await run('L1a-20 ESM import { log } from "./plog.js"', async ({ logFile }) => {
-  assert(PLOG_VERSION === "1.2.0");
+  assert(PLOG_VERSION === "1.3.0");
   assert(importedLog === plog);
   assert(importedLog === logDefault);
   assert(typeof logInit === "function");
@@ -610,6 +631,7 @@ await run('L1a-20 ESM import { log } from "./plog.js"', async ({ logFile }) => {
   assert(STOCK_LEVELS.join(",") === "trace,debug,info,warn,error");
   assert(typeof actions.toConsole === "function");
   assert(typeof actions.toFile === "function");
+  assert(typeof actions.toJsonl === "function");
   assert(defaults.pipelines.info[0] === actions.toConsole);
   logInit({
     file: logFile,
@@ -640,9 +662,10 @@ await run('L1a-21 require("./p.js") and require("./plog.js")', async ({ logFile 
   const reqLog = plogMod.log || plogMod.default || plogMod;
   assert(typeof reqLog.init === "function", "require(plog).log.init");
   assert(typeof reqLog.info === "function");
-  assert(plogMod.PLOG_VERSION === "1.2.0");
+  assert(plogMod.PLOG_VERSION === "1.3.0");
   assert(plogMod.LEVELS.info === 30);
   assert(typeof plogMod.actions.toConsole === "function");
+  assert(typeof plogMod.actions.toJsonl === "function");
   assert(plogMod.defaults.pipelines.warn[0] === plogMod.actions.toConsole);
 
   reqLog.init({
@@ -662,8 +685,9 @@ await run('L1a-21 require("./p.js") and require("./plog.js")', async ({ logFile 
       "-e",
       `const m=require(${JSON.stringify(path.join(jsDir, "plog.js"))});` +
         `if(!m.log||typeof m.log.info!=="function") process.exit(2);` +
-        `if(m.PLOG_VERSION!=="1.2.0") process.exit(3);` +
-        `if(!m.actions||typeof m.actions.toFile!=="function") process.exit(4);`,
+        `if(m.PLOG_VERSION!=="1.3.0") process.exit(3);` +
+        `if(!m.actions||typeof m.actions.toFile!=="function") process.exit(4);` +
+        `if(typeof m.actions.toJsonl!=="function") process.exit(5);`,
     ],
     { encoding: "utf8" }
   );
@@ -724,6 +748,10 @@ await run("A-3 payload fields on custom action", async ({ logFile }) => {
   assert(seen.originalArgs[0] === "+c");
   assert(seen.originalArgs[1] === "payload-check");
   assert(seen.plainText.includes("payload-check"));
+  assert(seen.fields && typeof seen.fields === "object");
+  assert(Object.keys(seen.fields).length === 0);
+  assert(seen.levelN === 30);
+  assert(seen.id === `${SID}:${process.pid}:1`, seen.id);
 });
 
 await run("A-4 add/remove/set/clear/listActions; init replaces", async ({ logFile }) => {
@@ -970,6 +998,254 @@ await run(
     );
   }
 );
+
+printHeader("plog L3 dual-tape write path (D066)");
+
+await run("L3-1 peel fields; no [object Object]; payload + id", async ({ caseDir, logFile }) => {
+  const jsonlPath = path.join(caseDir, "peel.jsonl");
+  const { log } = await loadPlog();
+  standardInit(log, { file: logFile, jsonl: jsonlPath, level: "debug" });
+  const line = log.info("hello", { fields: { key: "foo", n: 12 } });
+  assert(!ansiStrip(line).includes("[object Object]"), line);
+  assert(records(logFile).some((l) => l.endsWith("| hello")));
+  assert(!records(logFile).some((l) => l.includes("object Object")));
+  const row = JSON.parse(fs.readFileSync(jsonlPath, "utf8").trim().split("\n")[0]);
+  assert(row.v === 1);
+  assert(row.payload.key === "foo" && row.payload.n === 12);
+  assert(row.text === "hello");
+  assert(row.level === "info" && row.levelN === 30);
+  assert(row.sessionId === SID);
+  assert(row.pid === process.pid);
+  assert(row.id === `${SID}:${process.pid}:1`, row.id);
+  assert(row.timestamp === TS);
+  assert(typeof row.unix === "number");
+  {
+    const m = /^(\d{4})-(\d{2})-(\d{2})_(\d{2}):(\d{2}):(\d{2})$/.exec(TS);
+    const expectUnix = Math.floor(
+      new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime() / 1000
+    );
+    assert(row.unix === expectUnix, `unix=${row.unix} expected=${expectUnix}`);
+  }
+  assert(!Object.prototype.hasOwnProperty.call(row, "ansiText"));
+  assert(!Object.prototype.hasOwnProperty.call(row, "type"));
+
+  const printOpts = { color: "always", end: "", sep: " " };
+  log.info("keep-opts", printOpts);
+  assert(records(logFile).some((l) => l.includes("keep-opts")));
+  const rows = fs
+    .readFileSync(jsonlPath, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
+  assert(rows[1].id === `${SID}:${process.pid}:2`);
+  assert(rows[1].payload && Object.keys(rows[1].payload).length === 0);
+});
+
+await run("L3-2 init sugar K3b; file alone still toFile only", async ({ caseDir, logFile }) => {
+  const { log, actions: acts } = await loadPlog();
+  standardInit(log, { file: logFile });
+  assert(log.options.jsonl === null);
+  assert(log.listActions("info").length === 1);
+  assert(log.listActions("info")[0].name === "toFile");
+  assert(!fs.existsSync(logFile.replace(/\.log$/, ".jsonl")));
+
+  const dest = path.join(caseDir, "sugar.log");
+  const { log: logTrue } = await loadPlog();
+  standardInit(logTrue, { file: dest, jsonl: true });
+  const sibling = path.join(caseDir, "sugar.jsonl");
+  assert(logTrue.options.jsonl === sibling, String(logTrue.options.jsonl));
+  const fns = logTrue.listActions("info");
+  assert(fns.length === 2);
+  assert(fns[0].name === "toFile");
+  assert(fns[1].name === "toJsonl");
+  logTrue.info("dual");
+  assert(fs.existsSync(dest) && fs.existsSync(sibling));
+
+  const custom = path.join(caseDir, "custom.jsonl");
+  const { log: logPath } = await loadPlog();
+  standardInit(logPath, { file: dest + ".2", jsonl: custom });
+  assert(logPath.options.jsonl === custom);
+  logPath.info("c");
+  assert(fs.existsSync(custom));
+
+  const only = path.join(caseDir, "only.jsonl");
+  const { log: logOnly } = await loadPlog();
+  standardInit(logOnly, { jsonl: only, file: null });
+  assert(logOnly.options.file === null);
+  assert(logOnly.options.jsonl === only);
+  assert(logOnly.listActions("info").length === 1);
+  assert(logOnly.listActions("info")[0].name === "toJsonl");
+  const { out } = captureStdio(() => logOnly.info("jsonl-only"));
+  assert(!out.includes("jsonl-only"));
+  assert(fs.existsSync(only));
+
+  const { log: logFalse } = await loadPlog();
+  standardInit(logFalse, { file: dest + ".3", jsonl: false });
+  assert(logFalse.options.jsonl === null);
+  assert(logFalse.listActions("info")[0].name === "toFile");
+  assert(acts.toJsonl(only).name === "toJsonl");
+});
+
+await run("L3-3 env P_LOG_JSONL; file alone ≠ jsonl", async ({ caseDir, logFile }) => {
+  process.env.P_LOG_FILE = logFile;
+  delete process.env.P_LOG_JSONL;
+  const { log } = await loadPlog();
+  log.init({
+    tee: "none",
+    sessionId: SID,
+    sessionFg: FG,
+    sessionBg: BG,
+    now: () => TS,
+  });
+  assert(log.options.file === logFile);
+  assert(log.options.jsonl === null);
+  log.info("env-file-only");
+  assert(!fs.existsSync(logFile.replace(/\.log$/, ".jsonl")));
+
+  process.env.P_LOG_JSONL = "1";
+  const { log: log1 } = await loadPlog();
+  log1.init({
+    tee: "none",
+    sessionId: SID,
+    sessionFg: FG,
+    sessionBg: BG,
+    now: () => TS,
+  });
+  const sibling = path.join(caseDir, "app.jsonl");
+  assert(log1.options.jsonl === sibling, String(log1.options.jsonl));
+  log1.info("env-one");
+  assert(fs.existsSync(sibling));
+
+  const custom = path.join(caseDir, "from-env.jsonl");
+  process.env.P_LOG_JSONL = custom;
+  const { log: logP } = await loadPlog();
+  logP.init({
+    tee: "none",
+    sessionId: SID,
+    sessionFg: FG,
+    sessionBg: BG,
+    now: () => TS,
+  });
+  assert(logP.options.jsonl === custom);
+  logP.info("env-path");
+  assert(fs.existsSync(custom));
+
+  process.env.P_LOG_JSONL = "0";
+  const { log: log0 } = await loadPlog();
+  log0.init({
+    file: logFile + ".z",
+    tee: "none",
+    sessionId: SID,
+    sessionFg: FG,
+    sessionBg: BG,
+    now: () => TS,
+  });
+  assert(log0.options.jsonl === null);
+});
+
+await run("L3-4 clear both tapes; missing jsonl success", async ({ caseDir, logFile }) => {
+  const jsonlPath = path.join(caseDir, "clear.jsonl");
+  const { log } = await loadPlog();
+  standardInit(log, { file: logFile, jsonl: jsonlPath });
+  log.info("wipe");
+  assert(fs.statSync(logFile).size > 0);
+  assert(fs.statSync(jsonlPath).size > 0);
+  log.clear();
+  assert(fs.statSync(logFile).size === 0);
+  assert(fs.statSync(jsonlPath).size === 0);
+
+  log.info("a-line");
+  const { log: logB } = await loadPlog();
+  standardInit(logB, {
+    file: logFile,
+    jsonl: jsonlPath,
+    sessionId: "Other1",
+  });
+  logB.info("b-line");
+  log.clear({ sessions: [SID] });
+  assert(records(logFile).every((l) => l.includes("[Other1]")));
+  const jrows = fs
+    .readFileSync(jsonlPath, "utf8")
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+  assert(jrows.every((r) => r.sessionId === "Other1"));
+
+  const missing = path.join(caseDir, "no.jsonl");
+  assert(!fs.existsSync(missing));
+  const { log: logM } = await loadPlog();
+  standardInit(logM, { file: logFile, jsonl: missing });
+  logM.clear();
+  assert(!fs.existsSync(missing));
+});
+
+await run("L3-5 cyclic fields → payload {}; never throw", async ({ caseDir, logFile }) => {
+  const jsonlPath = path.join(caseDir, "cyc.jsonl");
+  const { log } = await loadPlog();
+  standardInit(log, { file: logFile, jsonl: jsonlPath });
+  const cyclic = { a: 1 };
+  cyclic.self = cyclic;
+  const { result, err } = captureStdio(() => log.info("cyc", { fields: cyclic }));
+  assert(result !== "" && ansiStrip(result).includes("cyc"));
+  assert(fs.readFileSync(logFile, "utf8").includes("cyc"));
+  assert(err.includes("non-serializable") || err.includes("toJsonl"), err);
+  const row = JSON.parse(fs.readFileSync(jsonlPath, "utf8").trim());
+  assert(row.text === "cyc");
+  assert(row.payload && Object.keys(row.payload).length === 0);
+});
+
+await run("L3-6 two processes same session → distinct ids via pid", async ({ caseDir }) => {
+  const jsonlPath = path.join(caseDir, "inherit.jsonl");
+  const jsDir = path.dirname(PLOG_SRC_PATH);
+  const childCode = `
+    const { pathToFileURL } = require("node:url");
+    const path = require("node:path");
+    (async () => {
+      const m = await import(pathToFileURL(path.join(${JSON.stringify(jsDir)}, "plog.js")).href);
+      m.log.init({
+        file: null,
+        jsonl: ${JSON.stringify(jsonlPath)},
+        tee: "none",
+        sessionId: ${JSON.stringify(SID)},
+        sessionFg: ${JSON.stringify(FG)},
+        sessionBg: ${JSON.stringify(BG)},
+        now: () => ${JSON.stringify(TS)},
+      });
+      m.log.info("child-" + process.pid);
+      process.stdout.write(String(process.pid));
+    })().catch((e) => { console.error(e); process.exit(1); });
+  `;
+  const runChild = () =>
+    spawnSync(process.execPath, ["-e", childCode], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        P_LOG_SESSION_ID: SID,
+        P_LOG_SESSION_COLOR_FG: FG,
+        P_LOG_SESSION_COLOR_BG: BG,
+      },
+    });
+  const a = runChild();
+  const b = runChild();
+  assert(a.status === 0, a.stderr || a.stdout);
+  assert(b.status === 0, b.stderr || b.stdout);
+  const pidA = String(a.stdout).trim();
+  const pidB = String(b.stdout).trim();
+  assert(pidA !== pidB, `pids ${pidA} ${pidB}`);
+  const rows = fs
+    .readFileSync(jsonlPath, "utf8")
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+  assert(rows.length === 2, JSON.stringify(rows));
+  const ids = new Set(rows.map((r) => r.id));
+  assert(ids.size === 2, [...ids].join(","));
+  assert(rows.every((r) => r.sessionId === SID));
+  assert(rows.every((r) => r.id.startsWith(`${SID}:${r.pid}:`)));
+  assert(String(rows[0].pid) === pidA || String(rows[0].pid) === pidB);
+});
 
 function operatorLogsUntouched() {
   for (const snap of operatorLogs) {

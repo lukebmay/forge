@@ -1,5 +1,5 @@
 /**
- * plog-core — action-pipeline logger (D064). Runtime-agnostic factory.
+ * plog-core — action-pipeline logger (D064/D066). Runtime-agnostic factory.
  * Node entry: plog.js; GJS entry: plog.gjs.js (Gio toFile).
  */
 
@@ -51,12 +51,16 @@ export function createPlog(rt) {
    * @property {string} sessionId
    * @property {number} pid
    * @property {any[]} originalArgs
+   * @property {any} fields
+   * @property {string} id
+   * @property {number} levelN
    *
    * @typedef {(record: PlogRecord) => any} PlogAction
    *
    * @typedef {Object} PlogInitOptions
    * @property {string|null|false} [file] Log file path; null|false|"" disables. No home default.
    * @property {string|null|false} [errorFile] Extra error-file; null|false|"" disables.
+   * @property {boolean|string|null|false} [jsonl] Opt-in JSONL tape (D066); true → sibling of file.
    * @property {PlogLevel|string} [level] Minimum level (default info / env).
    * @property {boolean} [console] With file sugar: keep console actions after toFile.
    * @property {PlogTee|string} [tee] Legacy; non-none ⇒ console:true when using file sugar.
@@ -86,6 +90,7 @@ export function createPlog(rt) {
    * @typedef {Object} PlogOptionsSnapshot
    * @property {string|null} file
    * @property {string|null} errorFile
+   * @property {string|null} jsonl
    * @property {PlogLevel|string} level
    * @property {PlogTee|string} tee
    * @property {boolean} console
@@ -121,7 +126,9 @@ export function createPlog(rt) {
    */
 
   /** @type {string} */
-  const PLOG_VERSION = "1.2.0";
+  const PLOG_VERSION = "1.3.0";
+
+  const JSONL_TRUTHY = new Set(["1", "true", "yes", "on"]);
 
   /** @type {Readonly<{trace: number, debug: number, info: number, warn: number, error: number}>} */
   const LEVELS = Object.freeze({
@@ -176,6 +183,16 @@ export function createPlog(rt) {
       `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_` +
       `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
     );
+  }
+
+  /** Local stamp `YYYY-MM-DD_HH:MM:SS` → unix seconds; wall clock if unparseable. */
+  function timestampToUnix(ts) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})_(\d{2}):(\d{2}):(\d{2})$/.exec(String(ts));
+    if (!m) return Math.floor(Date.now() / 1000);
+    const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+    const ms = d.getTime();
+    if (Number.isNaN(ms)) return Math.floor(Date.now() / 1000);
+    return Math.floor(ms / 1000);
   }
 
   function defaultRandomId() {
@@ -358,6 +375,70 @@ export function createPlog(rt) {
     return base.slice(0, i);
   }
 
+  /** Replace final extension with `.jsonl`, else append `.jsonl`. */
+  function siblingJsonlPath(filePath) {
+    const base = rt.basename(filePath);
+    const dir = rt.dirname(filePath);
+    const i = base.lastIndexOf(".");
+    if (i > 0) return rt.pathJoin(dir, base.slice(0, i) + ".jsonl");
+    return rt.pathJoin(dir, base + ".jsonl");
+  }
+
+  /**
+   * @param {boolean|string|null|false|undefined} explicit
+   * @param {string|null} fileDest
+   * @returns {string|null}
+   */
+  function resolveJsonlDest(explicit, fileDest) {
+    if (explicit === false || explicit === null || explicit === "") return null;
+    if (explicit === true) {
+      return fileDest != null ? siblingJsonlPath(fileDest) : null;
+    }
+    if (typeof explicit === "string") return String(explicit);
+    if (explicit !== undefined) return null;
+
+    if (!envDefined("P_LOG_JSONL")) return null;
+    const v = rt.envGet("P_LOG_JSONL");
+    if (v == null || v === "") return null;
+    const s = String(v).trim();
+    const lower = s.toLowerCase();
+    if (FALSEY.has(lower)) return null;
+    if (JSONL_TRUTHY.has(lower)) {
+      return fileDest != null ? siblingJsonlPath(fileDest) : null;
+    }
+    return s;
+  }
+
+  /** Peel trailing `{ fields }` before pstr (own-key only; not print options). */
+  function peelFieldsArg(args) {
+    if (args.length === 0) {
+      return { messageArgs: args, fields: {} };
+    }
+    const last = args[args.length - 1];
+    if (
+      last != null &&
+      typeof last === "object" &&
+      !Array.isArray(last) &&
+      Object.prototype.hasOwnProperty.call(last, "fields")
+    ) {
+      const raw = last.fields;
+      return {
+        messageArgs: args.slice(0, -1),
+        fields: raw === undefined ? {} : raw,
+      };
+    }
+    return { messageArgs: args.slice(), fields: {} };
+  }
+
+  function resolvePid() {
+    try {
+      const n = rt.pid();
+      return typeof n === "number" && Number.isFinite(n) ? n : 0;
+    } catch {
+      return 0;
+    }
+  }
+
   function splitContentLines(text) {
     if (text === "") return [];
     const lines = text.split("\n");
@@ -511,11 +592,56 @@ export function createPlog(rt) {
     };
   }
 
-  /** @type {{ toConsole: PlogAction, toStdio: PlogAction, toFile: (path: string) => PlogAction }} */
+  /**
+   * @param {string} filePath
+   * @returns {PlogAction}
+   */
+  function toJsonl(filePath) {
+    const dest = String(filePath);
+    return function toJsonl(record) {
+      let payload = record.fields;
+      if (payload === undefined) payload = {};
+      let text;
+      try {
+        text = ansiStrip(pstrAlways(...record.originalArgs));
+      } catch {
+        text = "";
+      }
+      const row = {
+        v: 1,
+        id: record.id,
+        timestamp: record.timestamp,
+        unix: timestampToUnix(record.timestamp),
+        level: record.level,
+        levelN: record.levelN,
+        sessionId: record.sessionId,
+        pid: record.pid,
+        text,
+        payload,
+      };
+      let line;
+      try {
+        line = JSON.stringify(row) + "\n";
+      } catch (err) {
+        warnLine(`plog: action toJsonl: non-serializable fields (${err.message || err})`);
+        try {
+          row.payload = {};
+          line = JSON.stringify(row) + "\n";
+        } catch (err2) {
+          warnLine(`plog: action toJsonl: skip row (${err2.message || err2})`);
+          return;
+        }
+      }
+      appendAnsi(dest, line);
+    };
+  }
+
+  /** @type {{ toConsole: PlogAction, toStdio: PlogAction, toFile: (path: string) => PlogAction, toJsonl: (path: string) => PlogAction }} */
   const actions = Object.freeze({
     toConsole,
     toStdio,
     toFile,
+    toJsonl,
   });
 
   /** @type {{ pipelines: Readonly<Object.<string, readonly PlogAction[]>> }} */
@@ -530,6 +656,8 @@ export function createPlog(rt) {
   });
 
   let actionIdSeq = 0;
+  /** Process-local emit seq for JSONL id (not env; starts at 1). */
+  let emitSeq = 0;
 
   /** @param {PlogAction} fn @param {string} [name] */
   function makeEntry(fn, name) {
@@ -560,6 +688,7 @@ export function createPlog(rt) {
     materialized: false,
     file: null,
     errorFile: null,
+    jsonl: null,
     level: "info",
     tee: "none",
     console: false,
@@ -578,6 +707,7 @@ export function createPlog(rt) {
     state.errorFile = resolveDest(opts.errorFile, "P_LOG_FILE_STDERR", state.file);
     state.level = resolveLevel(opts.level);
     state.tee = resolveTee(opts.tee);
+    state.jsonl = resolveJsonlDest(opts.jsonl, state.file);
   }
 
   function applyHooks(opts) {
@@ -636,8 +766,9 @@ export function createPlog(rt) {
     const actionsProvided =
       actionsOpt != null && typeof actionsOpt === "object" && !Array.isArray(actionsOpt);
     const hasFile = state.file != null;
+    const hasJsonl = state.jsonl != null;
     const consoleFlag = resolveConsoleFlag(opts);
-    state.console = hasFile ? consoleFlag : consoleFlag || !actionsProvided;
+    state.console = hasFile || hasJsonl ? consoleFlag : consoleFlag || !actionsProvided;
 
     /** @type {Object.<string, {id: string, fn: PlogAction, name: string}[]>} */
     const pipelines = {};
@@ -647,11 +778,15 @@ export function createPlog(rt) {
         pipelines[level] = normalizeActionList(actionsOpt[level]);
         continue;
       }
-      if (hasFile) {
-        const list = [makeEntry(toFile(state.file))];
-        if (level === "error" && state.errorFile && !pathsEqual(state.errorFile, state.file)) {
-          list.push(makeEntry(toFile(state.errorFile)));
+      if (hasFile || hasJsonl) {
+        const list = [];
+        if (hasFile) {
+          list.push(makeEntry(toFile(state.file)));
+          if (level === "error" && state.errorFile && !pathsEqual(state.errorFile, state.file)) {
+            list.push(makeEntry(toFile(state.errorFile)));
+          }
         }
+        if (hasJsonl) list.push(makeEntry(toJsonl(state.jsonl)));
         if (consoleFlag) list.push(makeEntry(toConsole));
         pipelines[level] = list;
       } else if (!actionsProvided && opts.console !== false) {
@@ -745,12 +880,18 @@ export function createPlog(rt) {
 
     sessionEnsure();
     const ts = state.now();
-    const originalArgs = args.slice();
-    const msg = pstrAlways(...args)
+    const peeled = peelFieldsArg(args);
+    const originalArgs = peeled.messageArgs;
+    const fields = peeled.fields;
+    const msg = pstrAlways(...originalArgs)
       .replaceAll("\n", "\\n")
       .replaceAll("\r", "\\r");
     const ansiText = prefixFor(level, ts) + msg + "\n";
     const plainText = ansiStrip(ansiText);
+    const pid = resolvePid();
+    const levelN = levelRank(level);
+    emitSeq += 1;
+    const id = `${state.sessionId}:${pid}:${emitSeq}`;
 
     /** @type {PlogRecord} */
     const record = {
@@ -759,8 +900,11 @@ export function createPlog(rt) {
       plainText,
       timestamp: ts,
       sessionId: state.sessionId,
-      pid: rt.pid(),
+      pid,
       originalArgs,
+      fields,
+      id,
+      levelN,
     };
 
     const list = (state.pipelines[level] || []).slice();
@@ -955,17 +1099,14 @@ export function createPlog(rt) {
   }
 
   /**
-   * Truncate the log file, or rewrite without selected sessions.
-   * @param {PlogClearOptions|null} [opts]
-   * @returns {void}
+   * @param {string} filePath
+   * @param {string[]} sessions
+   * @param {boolean} asJsonl
    */
-  function clear(opts) {
-    if (opts == null || typeof opts !== "object" || Array.isArray(opts)) opts = {};
-    const filePath = resolveViewClearFile(opts.file);
+  function clearOne(filePath, sessions, asJsonl) {
     if (filePath == null) return;
     if (!rt.exists(filePath)) return;
 
-    const sessions = Array.isArray(opts.sessions) ? opts.sessions.map(String) : [];
     if (sessions.length === 0) {
       truncateInPlace(filePath);
       return;
@@ -975,12 +1116,47 @@ export function createPlog(rt) {
     const text = rt.readFile(filePath);
     const kept = [];
     for (const raw of splitContentLines(text)) {
-      const sid = sessionIdOfLine(raw);
+      let sid = null;
+      if (asJsonl) {
+        try {
+          const obj = JSON.parse(raw);
+          if (obj && obj.sessionId != null) sid = String(obj.sessionId);
+        } catch {
+          /* keep malformed */
+        }
+      } else {
+        sid = sessionIdOfLine(raw);
+      }
       if (sid != null && drop.has(sid)) continue;
       kept.push(raw);
     }
     const out = kept.length === 0 ? "" : kept.join("\n") + "\n";
     rewriteLogFile(filePath, out);
+  }
+
+  /**
+   * Truncate configured tapes, or rewrite without selected sessions.
+   * @param {PlogClearOptions|null} [opts]
+   * @returns {void}
+   */
+  function clear(opts) {
+    if (opts == null || typeof opts !== "object" || Array.isArray(opts)) opts = {};
+    materializeConfig();
+    const sessions = Array.isArray(opts.sessions) ? opts.sessions.map(String) : [];
+
+    if (opts.file !== undefined) {
+      if (opts.file === null || opts.file === false || opts.file === "") return;
+      const filePath = String(opts.file);
+      const asJsonl = state.jsonl != null && pathsEqual(filePath, state.jsonl);
+      clearOne(filePath, sessions, asJsonl);
+      if (state.file != null && state.jsonl != null && pathsEqual(filePath, state.file)) {
+        clearOne(state.jsonl, sessions, true);
+      }
+      return;
+    }
+
+    if (state.file != null) clearOne(state.file, sessions, false);
+    if (state.jsonl != null) clearOne(state.jsonl, sessions, true);
   }
 
   function filePath(p0) {
@@ -1065,6 +1241,7 @@ export function createPlog(rt) {
       return {
         file: state.file,
         errorFile: state.errorFile,
+        jsonl: state.jsonl,
         level: state.level,
         tee: state.tee,
         console: state.console,

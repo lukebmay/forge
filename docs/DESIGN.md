@@ -1070,23 +1070,33 @@ active at log-level ≥ debug or `!production`; failure is plog error +
 insert). Live reload: `css-updated` gsettings, Super+Shift+r (`ConfigReload`
 re-imports CSS), or `scripts/forge/reload-theme.zsh`.
 
-## Logging sinks (dual-sink plog)
+## Logging sinks (dual-sink + dual-tape plog)
 
 **Problem:** A single journal sink at DEBUG/TRACE made `journalctl` unusable
-for eyes-on while hunting layout/DnD races.
+for eyes-on while hunting layout/DnD races. Operators also needed typed
+search (session/level/time/fields) without a TUI.
 
-**Approach:** Vendored shellrc plog **1.2.0** (D064 action pipelines; GJS Gio
-`toFile`). Extension `plog-adapter` fans out per level: **file** =
-at/above effective (default `~/.local/state/forge/forge.log`); **journal** =
-WARN/ERROR/fatal only (not INFO). Custom plog `levels` table mirrors prefs
-labels (all/trace/…/fatal). Call-site rules: INFO = install/startup/layout
-load-save/ApplyLayout outcome; DEBUG = feature/hunt narrative (silent on prod
-INFO); TRACE = opt-in path/id detail (layout modes, jitter, install steps) —
-useful, not junk. **D052:** regular/`--prod` → INFO; `--dev` → DEBUG; TRACE is
-opt-in. `production=true` does not force logging OFF. Extension enable
-**truncates** the hunt file (CLI appends, no wipe). **D053:** `forge log` /
+**Approach:** Vendored shellrc plog **1.3.0** (D064 actions + D066 dual-tape;
+GJS Gio `toFile`/`toJsonl`). Extension `plog-adapter` fans out per level:
+
+| Sink | Content |
+| --- | --- |
+| **`.log`** (ANSI) | At/above effective — default `~/.local/state/forge/forge.log` |
+| **`.jsonl`** (opt-in, forge default ON) | Sibling machine tape; `FORGE_LOG_JSONL=0` disables |
+| **Journal** | WARN/ERROR/fatal only (not INFO) |
+
+**Fields policy (D054):** WARN/ERROR/fatal flatten any `{ fields }` into the
+message so journal text matches the human line. INFO/DEBUG/TRACE may use a
+short title + `{ fields: {…} }` for searchable JSONL `payload`.
+
+Call-site rules: INFO = install/startup/layout load-save/ApplyLayout outcome;
+DEBUG = feature/hunt narrative (silent on prod INFO); TRACE = opt-in path/id
+detail — useful, not junk. **D052:** regular/`--prod` → INFO; `--dev` → DEBUG;
+TRACE is opt-in. `production=true` does not force logging OFF. Extension enable
+**truncates** both hunt tapes (CLI appends, no wipe). **D053:** `forge log` /
 DBus `Log` for live level — session override (default) or `--persist`;
-gsettings `changed::` → plog `reconfigure()` so TRACE applies without tip reload.
+gsettings `changed::` → plog `reconfigure()`. **D054:** `forge log query …`
+(or query flags) forwards to vendored `third_party/plog-query`.
 
 ## CSS: base + user overrides (D001)
 

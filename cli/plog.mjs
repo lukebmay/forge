@@ -8,7 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { log, logInit, LEVELS, actions } from "../third_party/pansi/plog.js";
-import { resolveDefaultLogFile } from "../lib/shared/plog-adapter.js";
+import { resolveDefaultLogFile, resolveJsonlFile } from "../lib/shared/plog-adapter.js";
 
 export { log, LEVELS };
 
@@ -116,18 +116,21 @@ function ensureParentDir(filePath) {
 }
 
 /**
- * Dual-sink pipelines: file gets all levels at/above min; stderr/console
- * (tee) only for info/warn/error — mirrors extension journal policy.
+ * Dual-tape + optional console tee: file/jsonl get all levels at/above min;
+ * stderr/console (tee) for info/warn/error — mirrors extension journal policy.
  * @param {string | null} file
+ * @param {string | null} jsonl
  * @param {boolean} wantConsole
  */
-function buildDualActions(file, wantConsole) {
+function buildDualActions(file, jsonl, wantConsole) {
   const fileAction = file ? actions.toFile(file) : null;
+  const jsonlAction = jsonl ? actions.toJsonl(jsonl) : null;
   /** @param {string} level */
   function pipeline(level) {
     /** @type {import("../third_party/pansi/plog.js").PlogAction[]} */
     const list = [];
     if (fileAction) list.push(fileAction);
+    if (jsonlAction) list.push(jsonlAction);
     const journalish =
       level === "info" || level === "warn" || level === "error" || level === "fatal";
     if (wantConsole && journalish) list.push(actions.toConsole);
@@ -163,19 +166,28 @@ export function initForgePlog(opts = {}) {
   const level = quiet ? "error" : parsed;
   const tee = quiet ? "none" : resolveTee(env, opts);
   const file = quiet ? null : resolveFile(env, opts);
+  const jsonl = quiet
+    ? null
+    : resolveJsonlFile(file, {
+        envGet: (k) => env[k],
+        pathJoin: (a, b) => path.join(a, b),
+        dirname: (p) => path.dirname(p),
+      });
   const wantConsole = tee !== "none";
 
   if (file) ensureParentDir(file);
+  if (jsonl) ensureParentDir(jsonl);
 
   /** @type {Record<string, unknown>} */
   const initOpts = {
     level,
     file: null,
+    jsonl: false,
     console: false,
     levels: [...FORGE_PLOG_LEVELS],
     actions: quiet
       ? Object.fromEntries(FORGE_PLOG_LEVELS.map((l) => [l, []]))
-      : buildDualActions(file, wantConsole),
+      : buildDualActions(file, jsonl, wantConsole),
     errorFile: opts.errorFile !== undefined ? opts.errorFile : null,
   };
   if (opts.sessionId !== undefined) initOpts.sessionId = opts.sessionId;

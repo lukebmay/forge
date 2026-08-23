@@ -22,6 +22,10 @@ import {
   warn,
   error,
   resolveDefaultLogFile,
+  siblingJsonlPath,
+  resolveJsonlFile,
+  peelTrailingFields,
+  formatFieldsSuffix,
   plog,
 } from "../../../lib/shared/plog-adapter.js";
 
@@ -29,10 +33,13 @@ describe("plog-adapter", () => {
   let sink;
   /** @type {string | null} */
   let tmpFile;
+  /** @type {string | undefined} */
+  let prevJsonlEnv;
 
   beforeEach(() => {
     sink = vi.fn();
     tmpFile = null;
+    prevJsonlEnv = process.env.FORGE_LOG_JSONL;
     setProductionForTests(false);
     resetForTests();
     init(
@@ -47,11 +54,15 @@ describe("plog-adapter", () => {
   afterEach(() => {
     setProductionForTests(false);
     resetForTests();
+    if (prevJsonlEnv === undefined) delete process.env.FORGE_LOG_JSONL;
+    else process.env.FORGE_LOG_JSONL = prevJsonlEnv;
     if (tmpFile) {
-      try {
-        fs.unlinkSync(tmpFile);
-      } catch {
-        /* ignore */
+      for (const p of [tmpFile, siblingJsonlPath(tmpFile)]) {
+        try {
+          fs.unlinkSync(p);
+        } catch {
+          /* ignore */
+        }
       }
       tmpFile = null;
     }
@@ -295,5 +306,84 @@ describe("plog-adapter", () => {
     );
     expect(sessionLevel()).toBeNull();
     expect(effectiveLevel()).toBe(LOG_LEVELS.INFO);
+  });
+
+  it("resolveJsonlFile defaults on beside hunt file; FORGE_LOG_JSONL=0 disables", () => {
+    expect(siblingJsonlPath("/tmp/forge.log")).toBe("/tmp/forge.jsonl");
+    expect(
+      resolveJsonlFile("/tmp/forge.log", {
+        envGet: () => undefined,
+        pathJoin: (a, b) => `${a}/${b}`,
+        dirname: (p) => p.replace(/\/[^/]+$/, "") || "/",
+      })
+    ).toBe("/tmp/forge.jsonl");
+    expect(
+      resolveJsonlFile("/tmp/forge.log", {
+        envGet: (k) => (k === "FORGE_LOG_JSONL" ? "0" : undefined),
+      })
+    ).toBeNull();
+    expect(
+      resolveJsonlFile("/tmp/forge.log", {
+        envGet: (k) => (k === "FORGE_LOG_JSONL" ? "/var/forge.jsonl" : undefined),
+      })
+    ).toBe("/var/forge.jsonl");
+  });
+
+  it("dual-tape: info fields land in JSONL payload; warn fields flatten into journal", () => {
+    tmpFile = path.join(os.tmpdir(), `forge-plog-jsonl-${process.pid}-${Date.now()}.log`);
+    delete process.env.FORGE_LOG_JSONL;
+    init(
+      {
+        get_boolean: () => true,
+        get_uint: () => LOG_LEVELS.TRACE,
+      },
+      { sink, file: tmpFile }
+    );
+
+    info("layout-apply start", { fields: { applyId: "a1", ws: 2 } });
+    warn("soft-miss", { fields: { slotId: "s1", mon: 0 } });
+
+    expect(sink).toHaveBeenCalledTimes(1);
+    expect(sink.mock.calls[0]).toEqual(["[Forge] [WARN]", "soft-miss", "slotId=s1 mon=0"]);
+
+    const jsonlPath = siblingJsonlPath(tmpFile);
+    expect(getLogStatus().jsonl).toBe(jsonlPath);
+    const lines = fs
+      .readFileSync(jsonlPath, "utf8")
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+    const infoRow = lines.find((r) => r.level === "info");
+    const warnRow = lines.find((r) => r.level === "warn");
+    expect(infoRow?.text).toBe("layout-apply start");
+    expect(infoRow?.payload).toEqual({ applyId: "a1", ws: 2 });
+    expect(warnRow?.text).toMatch(/soft-miss/);
+    expect(warnRow?.text).toMatch(/slotId=s1/);
+    // warn flattened — no structured payload
+    expect(warnRow?.payload).toEqual({});
+
+    const peeled = peelTrailingFields(["msg", { fields: { a: 1 } }]);
+    expect(peeled).toEqual({ messageArgs: ["msg"], fields: { a: 1 } });
+    expect(formatFieldsSuffix({ a: 1, b: "x" })).toBe("a=1 b=x");
+  });
+
+  it("truncateFile:true empties both .log and .jsonl", () => {
+    tmpFile = path.join(os.tmpdir(), `forge-plog-both-${process.pid}-${Date.now()}.log`);
+    const jsonlPath = siblingJsonlPath(tmpFile);
+    fs.writeFileSync(tmpFile, "STALE LOG\n", "utf8");
+    fs.writeFileSync(jsonlPath, '{"v":1,"text":"STALE JSONL"}\n', "utf8");
+    delete process.env.FORGE_LOG_JSONL;
+    init(
+      {
+        get_boolean: () => true,
+        get_uint: () => LOG_LEVELS.DEBUG,
+      },
+      { sink, file: tmpFile, truncateFile: true }
+    );
+    info("fresh", { fields: { n: 1 } });
+    expect(fs.readFileSync(tmpFile, "utf8")).not.toMatch(/STALE LOG/);
+    expect(fs.readFileSync(jsonlPath, "utf8")).not.toMatch(/STALE JSONL/);
+    expect(fs.readFileSync(jsonlPath, "utf8")).toMatch(/fresh/);
   });
 });

@@ -7,7 +7,7 @@
 export type PlogLevel = "trace" | "debug" | "info" | "warn" | "error";
 export type PlogTee = "none" | "stderr" | "stdout" | "both";
 
-/** Variadic p-style args (tokens + text). No trailing options object in v1. */
+/** Variadic p-style args (tokens + text). Optional trailing `{ fields }` peeled (D066). */
 export type PlogWriteArg = string | number | boolean | bigint | symbol | object | null | undefined;
 
 export interface PlogRecord {
@@ -18,6 +18,11 @@ export interface PlogRecord {
   sessionId: string;
   pid: number;
   originalArgs: PlogWriteArg[];
+  /** Caller fields after peel; default `{}`. */
+  fields: unknown;
+  /** `{sessionId}:{pid}:{seq}` */
+  id: string;
+  levelN: number;
 }
 
 export type PlogAction = (record: PlogRecord) => unknown;
@@ -27,6 +32,11 @@ export interface PlogInitOptions {
   file?: string | null | false;
   /** Extra error-file; null | false | "" disables. */
   errorFile?: string | null | false;
+  /**
+   * Opt-in JSONL tape (D066). `true` → sibling of `file`; string path;
+   * false/omit → none. Does not amend K3 (`file` alone ≠ jsonl).
+   */
+  jsonl?: boolean | string | null | false;
   level?: PlogLevel | string;
   /** With file sugar: keep console after toFile (file then console). */
   console?: boolean;
@@ -75,6 +85,8 @@ export interface PlogClearOptions {
 export interface PlogOptionsSnapshot {
   file: string | null;
   errorFile: string | null;
+  /** Configured JSONL path, or null. */
+  jsonl: string | null;
   level: PlogLevel | string;
   tee: PlogTee | string;
   console: boolean;
@@ -122,6 +134,7 @@ export const actions: Readonly<{
   toConsole: PlogAction;
   toStdio: PlogAction;
   toFile: (path: string) => PlogAction;
+  toJsonl: (path: string) => PlogAction;
 }>;
 
 export const defaults: Readonly<{

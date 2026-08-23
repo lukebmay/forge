@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-23 (log sink policy shipped; OH downstream next)
+**Updated:** 2026-08-23 (D054 dual-tape + forge log query shipped; OH downstream next)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -13,6 +13,7 @@
 learn **done**; soft human tiny-env) ·
 **D050** dual-sink (journal WARN+) · **D052** regular/prod INFO · `--dev`→DEBUG ·
 **D053** `forge log` session + persist + live reconfigure **shipped** ·
+**D054** dual-tape JSONL + `forge log` query forward **shipped** ·
 **sink policy** prod no longer forces logs OFF **shipped** ·
 **PR1–PR15** tab chrome / click-drag **unit-shipped** · PR7 docs **done** ·
 User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**) ·
@@ -22,16 +23,16 @@ DnD FLOAT skip · open-min late-adopt **agent done**.
 
 **Active next (ordered):**
 1. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
-2. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD + `forge log` apiVersion 11) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
+2. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD + `forge log` apiVersion 11 + jsonl) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
 3. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
 4. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
 5. later CN14/CN15 · blocked yuiop
 **Agents:** start **#1** (OH downstream) next — do **not** wait on soft
 human verify. Do **not** start #4 until the operator schedules that design
 meeting. Do **not** stop to ask the operator unless a **critical new finding**.
-Use `forge log trace` for hunts (D053). **Commit D053** when operator asks
-(uncommitted on master).
-**Host:** logout once for tip (D051 + D052 + D053 + open-min late-adopt); then vinyl
+Use `forge log trace` + `forge log --grep` for hunts (D053/D054). **Commit
+D054** (+ prior D053/sink-policy) when operator asks (uncommitted on master).
+**Host:** logout/nest restart for tip (D051–D054 + open-min late-adopt); then vinyl
 WS2 + lone maximize; optional Nautilus ×3 open-min eyes-on.
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
@@ -88,8 +89,8 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 | Tab PR7 docs | **done** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |
 | CN13 Node PATH | **done** | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
 
-**L0 last:** `forge log` slice — plog-adapter + cli/log + dbus **40** green.
-Nest prove apiVersion **11** + session/reset/persist/truncate.
+**L0 last:** D054 dual-tape — plog-adapter + cli/log + plog-query **42** green.
+Nest/tip reload needed for extension jsonl write; query CLI works from tree now.
 **Host cold:** R036 **PASS**. Soft: logout tip + vinyl WS2 + tiny-env Nautilus.
 
 ---

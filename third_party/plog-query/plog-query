@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+"""Thin launcher → vendored plog_query.py (forge third_party/plog-query)."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+_util = str(Path(__file__).resolve().parent)
+if _util not in sys.path:
+    sys.path.insert(0, _util)
+
+from plog_query import main  # noqa: E402
+
+if __name__ == "__main__":
+    raise SystemExit(main())

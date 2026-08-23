@@ -1,13 +1,24 @@
 #!/usr/bin/env node
 /**
- * forge log — session / durable Shell log level (no tip reload).
+ * forge log — Shell level control (D053) + plog-query forward (D066).
+ *
+ * Level ops (DBus): bare status, LEVEL, reset, --persist, --truncate.
+ * Query ops: `query`/`show`/`q` or plog-query flags → vendored plog-query
+ * defaulting to forge hunt tapes (~/.local/state/forge/forge.{log,jsonl}).
  */
 
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EXIT_GDBUS_MISSING, callMethod, createDefaultRun, gdbusMissingMessage } from "./dbus.mjs";
+import { resolveDefaultLogFile, resolveJsonlFile } from "../lib/shared/plog-adapter.js";
 
 const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const REPO_ROOT = path.resolve(__dirname, "..");
+const PLOG_QUERY = path.join(REPO_ROOT, "third_party", "plog-query", "plog-query");
 
 const LEVEL_TOKENS = new Set([
   "off",
@@ -21,14 +32,21 @@ const LEVEL_TOKENS = new Set([
   "all",
 ]);
 
+const QUERY_HEADS = new Set(["query", "q", "show", "tail"]);
+
+/** Flags that mean “this is a plog-query invocation”. */
+const QUERY_FLAG_RE = /^--(session|level|since|until|last|grep|json|color|version|help)(=|$)/;
+
 /**
  * @param {string[]} argv
  * @returns {{
  *   help: boolean,
+ *   mode: "level" | "query",
  *   op: "status" | "set" | "reset" | "truncate",
  *   level: string | null,
  *   persist: boolean,
  *   truncate: boolean,
+ *   queryArgv: string[],
  *   error: string | null,
  * }}
  */
@@ -38,10 +56,32 @@ export function parseArgv(argv) {
   let truncate = false;
   /** @type {string[]} */
   const positionals = [];
+  /** @type {string[]} */
+  const queryArgv = [];
   /** @type {string | null} */
   let error = null;
+  let sawQueryFlag = false;
+  let queryHead = false;
 
-  for (const a of argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+
+    if (i === 0 && QUERY_HEADS.has(String(a).toLowerCase())) {
+      queryHead = true;
+      // drop the head token; remainder is plog-query argv
+      queryArgv.push(...argv.slice(1));
+      return {
+        help: false,
+        mode: "query",
+        op: "status",
+        level: null,
+        persist: false,
+        truncate: false,
+        queryArgv,
+        error: null,
+      };
+    }
+
     if (a === "-h" || a === "--help") {
       help = true;
       continue;
@@ -54,6 +94,25 @@ export function parseArgv(argv) {
       truncate = true;
       continue;
     }
+    if (QUERY_FLAG_RE.test(a) || a === "--json") {
+      sawQueryFlag = true;
+      queryArgv.push(a);
+      // take option values that are separate argv tokens
+      if (
+        (a === "--session" ||
+          a === "--level" ||
+          a === "--since" ||
+          a === "--until" ||
+          a === "--last" ||
+          a === "--grep" ||
+          a === "--color") &&
+        i + 1 < argv.length &&
+        !String(argv[i + 1]).startsWith("-")
+      ) {
+        queryArgv.push(argv[++i]);
+      }
+      continue;
+    }
     if (a.startsWith("-")) {
       error = `forge log: unexpected option: ${a}`;
       break;
@@ -62,18 +121,71 @@ export function parseArgv(argv) {
   }
 
   if (error) {
-    return { help, op: "status", level: null, persist, truncate, error };
-  }
-  if (help) {
-    return { help, op: "status", level: null, persist, truncate, error: null };
-  }
-  if (positionals.length > 1) {
     return {
       help,
+      mode: "level",
       op: "status",
       level: null,
       persist,
       truncate,
+      queryArgv: [],
+      error,
+    };
+  }
+
+  // Positional .jsonl / .log file with no level-op tokens → query
+  const looksLikeFile =
+    positionals.length === 1 &&
+    /\.(jsonl|log)$/i.test(positionals[0]) &&
+    !LEVEL_TOKENS.has(positionals[0].toLowerCase()) &&
+    positionals[0].toLowerCase() !== "reset";
+
+  if (sawQueryFlag || looksLikeFile) {
+    // Rebuild query argv from original (minus forge-only --persist/--truncate)
+    const forwarded = [];
+    for (let i = 0; i < argv.length; i++) {
+      const a = argv[i];
+      if (a === "--persist" || a === "--truncate") continue;
+      if (a === "-h" || a === "--help") {
+        forwarded.push("--help");
+        continue;
+      }
+      forwarded.push(a);
+    }
+    return {
+      help: false,
+      mode: "query",
+      op: "status",
+      level: null,
+      persist: false,
+      truncate: false,
+      queryArgv: forwarded,
+      error: null,
+    };
+  }
+
+  if (help) {
+    return {
+      help: true,
+      mode: "level",
+      op: "status",
+      level: null,
+      persist,
+      truncate,
+      queryArgv: [],
+      error: null,
+    };
+  }
+
+  if (positionals.length > 1) {
+    return {
+      help,
+      mode: "level",
+      op: "status",
+      level: null,
+      persist,
+      truncate,
+      queryArgv: [],
       error: `forge log: unexpected argument(s): ${positionals.slice(1).join(" ")}`,
     };
   }
@@ -82,69 +194,125 @@ export function parseArgv(argv) {
 
   if (!head) {
     if (truncate && !persist) {
-      return { help, op: "truncate", level: null, persist: false, truncate: true, error: null };
+      return {
+        help,
+        mode: "level",
+        op: "truncate",
+        level: null,
+        persist: false,
+        truncate: true,
+        queryArgv: [],
+        error: null,
+      };
     }
     if (persist) {
       return {
         help,
+        mode: "level",
         op: "status",
         level: null,
         persist,
         truncate,
+        queryArgv: [],
         error: "forge log: --persist requires a level (e.g. forge log trace --persist)",
       };
     }
-    return { help, op: "status", level: null, persist: false, truncate: false, error: null };
+    return {
+      help,
+      mode: "level",
+      op: "status",
+      level: null,
+      persist: false,
+      truncate: false,
+      queryArgv: [],
+      error: null,
+    };
   }
 
   if (head === "reset") {
     if (persist) {
       return {
         help,
+        mode: "level",
         op: "reset",
         level: null,
         persist,
         truncate,
+        queryArgv: [],
         error: "forge log: reset clears session only (do not pass --persist)",
       };
     }
-    return { help, op: "reset", level: null, persist: false, truncate, error: null };
+    return {
+      help,
+      mode: "level",
+      op: "reset",
+      level: null,
+      persist: false,
+      truncate,
+      queryArgv: [],
+      error: null,
+    };
   }
 
   if (LEVEL_TOKENS.has(head) || /^\d+$/.test(head)) {
-    return { help, op: "set", level: head, persist, truncate, error: null };
+    return {
+      help,
+      mode: "level",
+      op: "set",
+      level: head,
+      persist,
+      truncate,
+      queryArgv: [],
+      error: null,
+    };
   }
 
   return {
     help,
+    mode: "level",
     op: "status",
     level: null,
     persist,
     truncate,
+    queryArgv: [],
     error: `forge log: unknown level or action ${JSON.stringify(
       positionals[0]
-    )} (off|error|warn|info|debug|trace|reset)`,
+    )} (off|error|warn|info|debug|trace|reset|query …)`,
   };
 }
 
 function printHelp(out) {
-  out.write(`Usage: forge log [LEVEL | reset] [--persist] [--truncate]
+  out.write(`Usage:
+  forge log [LEVEL | reset] [--persist] [--truncate]
+  forge log query|show|q [plog-query flags…]
+  forge log --last N | --grep PAT | --since WHEN | …
 
-Change extension log level without tip reload / logout.
+Shell log level (no tip reload) and searchable dual-tape query.
 
-  forge log                 Status: durable / session / effective
+Level control:
+  forge log                 Status: durable / session / effective / files
   forge log trace           Session-only (until disable/enable or reset)
   forge log debug|info|warn|error|off
   forge log reset           Clear session → durable
   forge log trace --persist Write gsettings (multi-session)
-  forge log --truncate      Empty forge.log now (same as enable)
+  forge log --truncate      Empty forge.log + forge.jsonl now
+
+Query (forwards to vendored plog-query; defaults to forge JSONL tape):
+  forge log query                     Last 30 records (color reprint)
+  forge log --last 50 --grep slot
+  forge log --level warn+ --since 2h
+  forge log --json --last 10
+  forge log show --session Ab3xK
 
 Session wins when set. CLI FORGE_LOG_LEVEL is process-only (never Shell).
+JSONL is on by default beside the hunt file (FORGE_LOG_JSONL=0 to disable).
 
-Options:
+Options (level):
   --persist       Write logging-enabled + log-level via gsettings
-  --truncate      Truncate hunt file (alone or with a level change)
+  --truncate      Truncate hunt tapes (alone or with a level change)
   -h, --help      Show this help
+
+plog-query flags: --session --level --since --until --last --grep --json --color
 `);
 }
 
@@ -154,6 +322,7 @@ Options:
  *   session: { level: number, levelName: string } | null,
  *   effective: { level: number, levelName: string },
  *   file: string | null,
+ *   jsonl?: string | null,
  * }} status
  * @param {{ write: (s: string) => void }} out
  */
@@ -170,6 +339,72 @@ export function formatLogStatus(status, out) {
   out.write(`session:   ${sessionLine}\n`);
   out.write(`effective: ${eff.levelName} (${eff.level})\n`);
   if (status.file) out.write(`file:      ${status.file}\n`);
+  if (status.jsonl) out.write(`jsonl:     ${status.jsonl}\n`);
+  else if (status.file) out.write(`jsonl:     (off)\n`);
+}
+
+/**
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {{ file: string | null, jsonl: string | null }}
+ */
+export function resolveForgeLogTapes(env = process.env) {
+  const file = resolveDefaultLogFile({
+    envGet: (k) => env[k],
+    homeDir: () => os.homedir(),
+    pathJoin: (a, b) => path.join(a, b),
+    dirname: (p) => path.dirname(p),
+  });
+  const jsonl = resolveJsonlFile(file, {
+    envGet: (k) => env[k],
+    pathJoin: (a, b) => path.join(a, b),
+    dirname: (p) => path.dirname(p),
+  });
+  return { file, jsonl };
+}
+
+/**
+ * @param {string[]} queryArgv
+ * @param {{
+ *   env?: NodeJS.ProcessEnv,
+ *   spawnSync?: typeof spawnSync,
+ *   plogQueryPath?: string,
+ *   stdout?: { write: (s: string) => void },
+ *   stderr?: { write: (s: string) => void },
+ * }} [deps]
+ * @returns {number}
+ */
+export function runPlogQuery(queryArgv, deps = {}) {
+  const env = { ...(deps.env ?? process.env) };
+  const stderr = deps.stderr ?? process.stderr;
+  const writeErr = (s) => {
+    stderr.write(s.endsWith("\n") ? s : `${s}\n`);
+  };
+  const tapes = resolveForgeLogTapes(env);
+  if (tapes.file && env.P_LOG_FILE == null) env.P_LOG_FILE = tapes.file;
+  if (tapes.jsonl && env.P_LOG_JSONL == null) env.P_LOG_JSONL = tapes.jsonl;
+
+  const bin = deps.plogQueryPath ?? PLOG_QUERY;
+  const spawn = deps.spawnSync ?? spawnSync;
+  // Skip exists check when tests inject spawnSync.
+  if (!deps.spawnSync && !fs.existsSync(bin)) {
+    writeErr(`forge log: missing plog-query at ${bin}`);
+    return 1;
+  }
+  const result = spawn(bin, queryArgv, {
+    env,
+    encoding: "utf8",
+    stdio: ["inherit", "pipe", "pipe"],
+  });
+
+  if (result.error) {
+    writeErr(`forge log: plog-query failed: ${result.error.message || result.error}`);
+    return 1;
+  }
+  const stdout = deps.stdout ?? process.stdout;
+  if (result.stdout) stdout.write(result.stdout);
+  if (result.stderr) stderr.write(result.stderr);
+  const code = typeof result.status === "number" ? result.status : 1;
+  return code;
 }
 
 /**
@@ -240,6 +475,8 @@ function callLog(req, deps) {
  *   which?: () => string | null,
  *   stdout?: { write: (s: string) => void },
  *   stderr?: { write: (s: string) => void },
+ *   spawnSync?: typeof spawnSync,
+ *   plogQueryPath?: string,
  * }} [deps]
  * @returns {number}
  */
@@ -258,6 +495,10 @@ export function run(argv, deps = {}) {
   if (opts.error) {
     writeErr(opts.error);
     return 1;
+  }
+
+  if (opts.mode === "query") {
+    return runPlogQuery(opts.queryArgv, deps);
   }
 
   /** @type {Record<string, unknown>} */
@@ -284,6 +525,7 @@ export function run(argv, deps = {}) {
       session: data.session ?? null,
       effective: /** @type {*} */ (data.effective),
       file: data.file ?? null,
+      jsonl: data.jsonl ?? null,
     },
     stdout
   );

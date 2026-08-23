@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { INTERFACE } from "../../../cli/dbus.mjs";
-import { formatLogStatus, parseArgv, run } from "../../../cli/log.mjs";
+import { formatLogStatus, parseArgv, run, resolveForgeLogTapes } from "../../../cli/log.mjs";
 
 function capture() {
   let out = "";
@@ -71,6 +71,27 @@ describe("cli/log parseArgv", () => {
   it("rejects unknown level", () => {
     expect(parseArgv(["loud"]).error).toMatch(/unknown level/);
   });
+
+  it("routes query head and plog-query flags to query mode", () => {
+    expect(parseArgv(["query", "--last", "5"])).toMatchObject({
+      mode: "query",
+      queryArgv: ["--last", "5"],
+      error: null,
+    });
+    expect(parseArgv(["--grep", "slot", "--last", "10"])).toMatchObject({
+      mode: "query",
+      error: null,
+    });
+    expect(parseArgv(["--level", "warn+"])).toMatchObject({
+      mode: "query",
+      error: null,
+    });
+    expect(parseArgv(["show"])).toMatchObject({ mode: "query", queryArgv: [] });
+  });
+
+  it("keeps positional level as level mode (not query)", () => {
+    expect(parseArgv(["warn"])).toMatchObject({ mode: "level", op: "set", level: "warn" });
+  });
 });
 
 describe("cli/log formatLogStatus", () => {
@@ -82,6 +103,7 @@ describe("cli/log formatLogStatus", () => {
         session: { level: 6, levelName: "TRACE" },
         effective: { level: 6, levelName: "TRACE" },
         file: "/tmp/forge.log",
+        jsonl: "/tmp/forge.jsonl",
       },
       c.stdout
     );
@@ -89,6 +111,7 @@ describe("cli/log formatLogStatus", () => {
     expect(c.out).toMatch(/session:\s+TRACE \(6\)/);
     expect(c.out).toMatch(/effective:\s+TRACE \(6\)/);
     expect(c.out).toMatch(/file:\s+\/tmp\/forge\.log/);
+    expect(c.out).toMatch(/jsonl:\s+\/tmp\/forge\.jsonl/);
   });
 });
 
@@ -168,11 +191,47 @@ describe("cli/log run", () => {
   it("help exits 0", () => {
     const c = capture();
     expect(run(["--help"], { stdout: c.stdout, stderr: c.stderr })).toBe(0);
-    expect(c.out).toMatch(/Usage: forge log/);
+    expect(c.out).toMatch(/Usage:/);
+    expect(c.out).toMatch(/forge log/);
   });
 
   it("exits 127 when gdbus missing", () => {
     const c = capture();
     expect(run([], { which: () => null, stdout: c.stdout, stderr: c.stderr })).toBe(127);
+  });
+
+  it("query mode forwards to plog-query with forge tape env", () => {
+    const c = capture();
+    /** @type {{ bin?: string, argv?: string[], env?: NodeJS.ProcessEnv }} */
+    const seen = {};
+    const code = run(["query", "--last", "3", "--grep", "slot"], {
+      env: {
+        FORGE_LOG_FILE: "/tmp/forge-test.log",
+        FORGE_LOG_JSONL: "/tmp/forge-test.jsonl",
+      },
+      spawnSync: (bin, argv, opts) => {
+        seen.bin = bin;
+        seen.argv = argv;
+        seen.env = opts.env;
+        return { status: 0, stdout: "ok-line\n", stderr: "", error: null };
+      },
+      plogQueryPath: "/fake/plog-query",
+      stdout: c.stdout,
+      stderr: c.stderr,
+    });
+    expect(code).toBe(0);
+    expect(seen.bin).toBe("/fake/plog-query");
+    expect(seen.argv).toEqual(["--last", "3", "--grep", "slot"]);
+    expect(seen.env?.P_LOG_FILE).toBe("/tmp/forge-test.log");
+    expect(seen.env?.P_LOG_JSONL).toBe("/tmp/forge-test.jsonl");
+    expect(c.out).toBe("ok-line\n");
+  });
+
+  it("resolveForgeLogTapes mirrors adapter defaults", () => {
+    const tapes = resolveForgeLogTapes({
+      FORGE_LOG_FILE: "/tmp/x.log",
+    });
+    expect(tapes.file).toBe("/tmp/x.log");
+    expect(tapes.jsonl).toBe("/tmp/x.jsonl");
   });
 });

@@ -367,15 +367,19 @@ When agents run live tests that need install + Shell reload (`./install`,
    tail -f ~/.local/state/forge/forge.log
    ```
 
-   Below the selected level, those lines are not emitted **anywhere** (file or
-   journal). Journal never gets INFO/DEBUG/TRACE even when the file does.
-   **When testing/hunting**, raise to TRACE for more detail (`forge log trace`
-   or gsettings 6). `debug` = feature/hunt (silent on prod INFO); `trace` =
-   opt-in useful path/id noise, not junk.
+   Below the selected level, those lines are not emitted **anywhere** (file,
+   jsonl, or journal). Journal never gets INFO/DEBUG/TRACE even when the file
+   does. Dual-tape (D054): sibling `forge.jsonl` is ON by default
+   (`FORGE_LOG_JSONL=0` to disable). **When testing/hunting**, raise to TRACE
+   (`forge log trace` or gsettings 6) and query with `forge log --grep …` /
+   `forge log query --last 50`. `debug` = feature/hunt (silent on prod INFO);
+   `trace` = opt-in useful path/id noise, not junk. WARN/ERROR: put values in
+   the message (no structured fields); INFO+: `{ fields }` OK for JSONL.
 
    Live level (D053, no tip reload): `forge log` / `forge log trace` (session)
    / `forge log trace --persist` / `forge log reset` / `forge log --truncate`.
-   Settings `changed::log-level`/`logging-enabled` → plog `reconfigure()`.
+   Query: `forge log query` / `forge log --last N --grep PAT`. Settings
+   `changed::log-level`/`logging-enabled` → plog `reconfigure()`.
 
 3. **Reload path by session:**
    - **X11:** `killall -HUP gnome-shell` (or Alt+F2 → r).
