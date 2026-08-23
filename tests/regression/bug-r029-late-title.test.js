@@ -65,4 +65,20 @@ describe("R029: late title re-tiles", () => {
 
     expect(renderSpy).toHaveBeenCalledWith("title-changed");
   });
+
+  it("skips full renderTree on non-empty title churn (spinner)", () => {
+    const tracked = createMockWindow({
+      wm_class: "com.mitchellh.ghostty",
+      id: 3003,
+      title: "forge",
+      allows_resize: true,
+    });
+    ctx.windowManager.trackWindow(null, tracked);
+
+    const renderSpy = vi.spyOn(ctx.windowManager, "renderTree");
+    tracked.set_title("⠋ Responding…");
+    tracked.set_title("⠙ Responding…");
+
+    expect(renderSpy).not.toHaveBeenCalled();
+  });
 });

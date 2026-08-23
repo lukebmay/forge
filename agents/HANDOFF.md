@@ -1,30 +1,27 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-23 (plog dig backlog + catalog `pansi`/`plog`; D068; tip live)
-**Branch:** **`master`** (default). Tip on Wayland after `forge update --dev`
-(session **`F7UjZ`**, build `v49-90-beta.2-387-geb3cf7d`).
+**Updated:** 2026-08-23 (OH Downstream + plog TRACE hunts shipped; soft human next)
+**Branch:** **`master`** (default). Tip needs **Wayland logout once** after push
+to load this build into host Shell (nest already proved ping). Nest **stopped**.
 **Sessions:** **Wayland** daily driver. **green** = X11 NVIDIA.
 
 ## Next session (FIRM)
 
-1. **P0** OH downstream — monitor identity + same-mon dock launch
-   ([plan](./plans/forge-observability-hardening.md) § Downstream). Agent **4.5**.
-2. **P0 dig** TRACE call-site dial-back → title-changed tax → place-hint
-   `title=null` → bad-slot YouTube — [task](./tasks/forge-plog-trace-hunts.md).
-   Interleave when hunting layout / when OH blocked.
-3. Soft human (does not block #1/#2): [host verify](./blockers/oh-ws-orphan-host-verify.md)
+1. Soft human: [host verify](./blockers/oh-ws-orphan-host-verify.md)
    — vinyl WS2, sole-max, TILE DnD, FLOAT skip; optional 3× Nautilus open-min;
+   optional dual-mon left-dock eyes-on (Downstream units+nest already green);
    confirm `forge log` / apiVersion **11** + jsonl; pretty when payload present.
-4. Soft: D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md).
-5. Soft: green overnight HDMI sleep eyes-on after lock-shield fix —
+2. Soft: D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md).
+3. Soft: green overnight HDMI sleep eyes-on after lock-shield fix —
    [task](./tasks/forge-x11-green-sleep-lock-shield.md).
 
 **Hunts (FIRM):** `forge log --session/--grep/--level` only — **never** `tail`
 at TRACE. See [project.md](./project.md) § Logging. Catalog: `agents/installed/plog.md`.
 
 **Retest (FIRM):** nest = `./scripts/forge/forge-test nested …`. No user
-`forge test` / `forge nested`. Default nest mon=1. After code install on
-Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
+`forge test` / `forge nested`. Default nest mon=1. Nest/hunt installs:
+`./install --dev` (TRACE). After code install on Wayland: `forge-test nested
+restart` (or stop/run) so extension reloads. See [testing.md](./testing.md).
 
 ## Logging (D050 + D053 + D054 dual-tape + D068 levels)
 
@@ -48,6 +45,9 @@ Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
 
 | Item | Commit / note |
 | --- | --- |
+| **plog TRACE hunts** | float-reason keep TRACE gated; title churn skip render; place-hint FIFO accept+test + `winClass=` logs; P2 bad-slot = settle jitter · [completed](./tasks/completed/forge-plog-trace-hunts.md) |
+| **OH Downstream** | dock chain last-focus→LFT(m)→end-of-tree→open-min; `listIndexRemaps`/wrong-mon TRACE · [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh-downstream-mon-dock.md) |
+| Nest `--dev` docs | `agents/testing.md` + `project.md` FIRM: nest/hunt = `./install --dev` |
 | **D068** | `545a926` — `--dev`→TRACE · `--prod`→WARN · keep dual-sink (not journal-only) |
 | **D067 Q0–Q6** | `0807963` — TTY inherit + plog-query **1.1.0** + hunt `{ fields }` · [completed](./tasks/completed/forge-log-query-pretty-wire.md) |
 | **D054 dual-tape + query** | `4306974` — PLOG 1.3.0 + plog-query + `forge log` forward · [completed](./tasks/completed/forge-log-dual-tape-query.md) |
@@ -63,8 +63,7 @@ Wayland: `forge-test nested restart` (or stop/run) so extension reloads.
 
 | Pri | Slice | Status |
 | --- | --- | --- |
-| **P0** | monitor identity + same-mon dock | **next** · [plan](./plans/forge-observability-hardening.md) § Downstream |
-| soft | Host verify OH + tip (+ `forge log` pretty/fields eyes-on) | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
+| soft | Host verify OH + tip (+ optional dual-mon dock eyes-on) | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
 | soft | D049 tiny-env Nautilus | [blocker](./blockers/d049-tiny-env-nautilus.md) |
 
 **FIRM:** Prefer nest for code→reload. Host `forge layout dev` ≠ crash harness.

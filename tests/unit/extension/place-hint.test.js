@@ -388,6 +388,22 @@ describe("queue consume", () => {
       placeHintIdentityReady({ wm_class: "ghostty" }, { wmClass: "ghostty", monitor: 0 })
     ).toBe(true);
     expect(placeHintIdentityReady({ title: "x" }, { wmClass: "ghostty", monitor: 0 })).toBe(false);
+    // F7UjZ: class-only is ready with title still null (mismatch uses matchesPlaceHint).
+    expect(
+      placeHintIdentityReady(
+        { wm_class: "chrome-agimnkijcaahngcdmfeangaknmldooml-Default", title: null },
+        { wmClass: "ghostty", monitor: 0 }
+      )
+    ).toBe(true);
+    expect(
+      matchesPlaceHint(
+        { wm_class: "chrome-agimnkijcaahngcdmfeangaknmldooml-Default", title: null },
+        { wmClass: "ghostty", monitor: 0 }
+      )
+    ).toBe(false);
+    expect(
+      matchesPlaceHint({ wm_class: "ghostty", title: null }, { wmClass: "ghostty", monitor: 0 })
+    ).toBe(true);
   });
 
   it("enqueue caps and prunes", () => {

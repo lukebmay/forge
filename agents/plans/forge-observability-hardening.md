@@ -1,13 +1,13 @@
 # Plan: Observability hardening (plog + types + asserts)
 
-**Status:** active — OH1–OH3 **done**; ws-orphan **done**; monitor + same-mon launch next  
+**Status:** active — OH1–OH3 **done**; ws-orphan **done**; monitor + same-mon launch **done**  
 **Priority:** **P0** (highest)  
 **Branch:** `master`  
 **Created:** 2026-08-21  
-**Updated:** 2026-08-21  
+**Updated:** 2026-08-23  
 **Related bugs (unblocked for traced fixes):** multi-workspace layout (`dev` on
-ws1 / `vinyl` on ws2), monitor confusion, DnD breakage, same-monitor dock launch
-placement (left dock → left side; single-dock fallback chain).  
+ws1 / `vinyl` on ws2), monitor confusion, DnD breakage; same-monitor dock launch
+**done** (Downstream task completed).  
 **Sibling (shipped):**
 [`forge-layout-ws-orphan-min-float-dnd`](../tasks/completed/forge-layout-ws-orphan-min-float-dnd.md)
 — stash `ws-orphan WIP park` dropped after reapply.
@@ -60,15 +60,16 @@ sign-off.
 
 ---
 
-## Downstream product backlog (not this plan’s implement scope)
+## Downstream product backlog
 
-Capture so we do not lose the operator’s failure report:
+Implement task:
+[`forge-observability-hardening_oh-downstream-mon-dock`](../tasks/forge-observability-hardening_oh-downstream-mon-dock.md).
 
 | Symptom | Desired / suspected |
 | --- | --- |
 | `layout dev` on ws1 + `layout vinyl` on ws2 lays out wrong | **Done** — [ws-orphan](../tasks/completed/forge-layout-ws-orphan-min-float-dnd.md) |
 | DnD often broken under multi-ws / confusion | Grab unmanaged + min-learn/ratchet **done** with ws-orphan; residual: dest mon/ws traces |
-| Same-monitor dock launch | Left dock → left insert; **if only one dock:** last-focused insert → end-of-tree insert → nearest groupable to last focused → float |
+| Same-monitor dock launch | Left dock → left insert; **if only one dock:** last-focused → end-of-tree → nearest-groupable → float — **done** ([task](./completed/forge-observability-hardening_oh-downstream-mon-dock.md)) |
 
 ---
 
@@ -83,8 +84,13 @@ Capture so we do not lose the operator’s failure report:
 
 ## Session note
 
-2026-08-21 — **ws-orphan done** (uncommitted; stash dropped). Next: monitor
-identity + same-mon dock launch with traces. OH1–OH3 still uncommitted.
+2026-08-23 — Downstream **done**
+([completed](./completed/forge-observability-hardening_oh-downstream-mon-dock.md)):
+dock chain order + units; `listIndexRemaps` / wrong-mon TRACE; L0 99; nest ping
+after `./install --dev`; nest stopped. Soft host dual-mon eyes-on remains on
+host-verify blocker.
 
-Prior: OH3 asserts log+flag never throw; OH1 CLI plog + pansi `3226f7c`; rem
-install DEBUG=5.
+2026-08-23 — Downstream task opened (earlier same day). Nest/hunt installs FIRM
+`./install --dev`.
+
+2026-08-21 — **ws-orphan done**. OH1–OH3 shipped since.

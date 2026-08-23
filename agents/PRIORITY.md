@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-23 (plog dig backlog + agents catalog `pansi`/`plog`; D068; OH P0)
+**Updated:** 2026-08-23 (plog TRACE hunts closed; D068)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -22,27 +22,28 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 DnD FLOAT skip · open-min late-adopt **agent done**.
 
 **Active next (ordered):**
-1. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
-2. **P0 dig** TRACE call-site dial-back + title-changed render tax → place-hint `title=null` → bad-slot YouTube — [task](./tasks/forge-plog-trace-hunts.md) (session `F7UjZ` evidence)
-3. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD + `forge log` apiVersion 11 + jsonl + Q0 color + Q5/Q6 pretty/fields) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
-4. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
-5. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
-6. later CN14/CN15 · blocked yuiop
-**Agents:** OH downstream (#1) remains product P0; **#2** is the plog/TRACE
-hunt backlog from the fresh Wayland tip — interleave when OH is blocked or
-when hunting layout. Do **not** wait on soft human verify. Do **not** start #5
-until the operator schedules that design meeting. Do **not** stop to ask the
-operator unless a **critical new finding**. **Hunts:** `forge log --grep` /
-`--session` / `--level` only — never `tail` at TRACE (project.md § Logging;
-catalog `plog`). Interactive query color + pretty (D067). **Host:** tip already
-on Wayland `F7UjZ` after `forge update --dev`; vinyl WS2 + lone maximize +
-optional Nautilus ×3 still soft.
+1. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD + optional dual-mon dock eyes-on + `forge log` apiVersion 11 + jsonl + Q0 color + Q5/Q6 pretty/fields) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
+2. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
+3. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
+4. later CN14/CN15 · blocked yuiop
+**Agents:** plog TRACE dig **done**
+([completed](./tasks/completed/forge-plog-trace-hunts.md)) — place-hint FIFO
+wrong-window **accepted**+test; P2 bad-slot = late-adopt settle jitter.
+Uncommitted with OH Downstream. Soft human verify is next eyes-on only. Do
+**not** start #3 until the operator schedules that design meeting. Do **not**
+stop to ask the operator unless a **critical new finding**.
+**Hunts:** `forge log --grep` / `--session` / `--level` only — never `tail` at
+TRACE (project.md § Logging; catalog `plog`). Prefer JSONL `text` when pretty
+collapses duplicate `class=` (place-hint now logs `winClass=`). Interactive
+query color + pretty (D067). **Host:** dirty tip installed `--dev`; nest ping
+green / **stopped**; primary tip reload via nest restart or later logout.
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
 tree press-arm only. Poll skips synced xy; SourceApp hot logs are TRACE.
 **Retest (FIRM):** nest = normal Wayland code→reload via
 `./scripts/forge/forge-test nested`; primary logout = rare tip load.
-After nest `./install`, **`forge-test nested restart`** so extension reloads.
+After nest **`./install --dev`**, **`forge-test nested restart`** so extension
+reloads (TRACE for hunts — [testing.md](./testing.md)).
 **Later (real only):** CN14/CN15 · yuiop blocker — [IDEAS](./IDEAS.md).
 Hygiene / eyes-on / superseded rows were **pruned** 2026-08-18 (see IDEAS
 “Dropped”).
@@ -64,15 +65,18 @@ SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **user CLI no test toolki
 + **tab click-drag PR1–PR15 + PR7 docs (D046)** landed. **FCC Wave C (+R1/R2-docs)
 closed through C5; P3 `_layoutOp` flatten strip done.** Wave Z0/Z1 shipped.
 **D053 `forge log` shipped** ([completed](./tasks/completed/forge-log-cli-session.md)).
-**Active:** Next code = OH downstream (monitor identity + same-mon dock) —
-[plan](./plans/forge-observability-hardening.md) § Downstream. Soft human host
+**Active:** OH Downstream **done**
+([completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh-downstream-mon-dock.md)).
+plog TRACE hunts **done**
+([completed](./tasks/completed/forge-plog-trace-hunts.md)). Soft human host
 verify — [blocker](./blockers/oh-ws-orphan-host-verify.md). **D049** M1–M5 +
 oversized learn agent shipped; soft tiny-env. Optional later: CN14/CN15 · yuiop
 (blocked). Preserve PR9 foreign spacer-only and PR10 synthetic peel ownership.
 Do **not** reintroduce shrink-probe.
 Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 / mon-root PlaceNext / soft-enter chrome clear / spanning tab chrome / silent
-`_layoutOp` peel. Do not teach `forge test` / `forge nested`.
+`_layoutOp` peel. Do not teach `forge test` / `forge nested`. Nest hunts:
+`./install --dev` then `forge-test nested` ([testing.md](./testing.md)).
 
 | Slice | Status | Note |
 | --- | --- | --- |
@@ -112,8 +116,8 @@ Nest/tip reload needed for extension jsonl write; query CLI works from tree now.
 | done | oversized settled frame → learn | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-learn-oversized-frame.md) |
 | done | DnD titlebar preview miss | **4.5** | [completed](./tasks/completed/forge-dnd-preview-miss-titlebar.md) · FLOAT skip log |
 | done | **`forge log` session + persist + live reconfigure** | **4.5** | [completed](./tasks/completed/forge-log-cli-session.md) · **D053** |
-| **P0 next** | monitor identity + same-mon dock launch | with traces | [plan](./plans/forge-observability-hardening.md) § Downstream |
-| **P0 dig** | TRACE dial-back + place-hint / bad-slot hunts | **4.5** | [task](./tasks/forge-plog-trace-hunts.md) |
+| done | monitor identity + same-mon dock launch | **4.5** | [completed](./plans/forge-observability-hardening/completed/forge-observability-hardening_oh-downstream-mon-dock.md) |
+| done | TRACE dial-back + place-hint / bad-slot hunts | **4.5** | [completed](./tasks/completed/forge-plog-trace-hunts.md) |
 | soft | Host verify OH + tip (+ vinyl/DnD + forge log) | human | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
 | soft | D049 tiny-env Nautilus (human) | human | [blocker](./blockers/d049-tiny-env-nautilus.md) |
 | done | open-min late-identity adopt | **4.5** | [completed](./tasks/completed/forge-open-min-late-adopt.md) |
@@ -129,8 +133,8 @@ Nest/tip reload needed for extension jsonl write; query CLI works from tree now.
 
 ### Why this order
 
-1. **P0 observability (OH1–OH3 + D053 done)** — instrument first; live `forge log`.
-2. **ws-orphan done.** Remaining: monitor identity + same-mon dock launch with traces.
+1. **P0 observability (OH1–OH3 + D053 + TRACE hunts done)** — instrument first; live `forge log`.
+2. **ws-orphan + Downstream mon/dock done.** Remaining OH: soft host verify.
 3. **SM1–SM7 + R036 + D044 + user CLI + PR1–PR15 + FCC C0–C5/R1 + P3 + Wave Z0/Z1 + CN13** — shipped.
 4. **D049 M1–M5** agent shipped (soft human tiny-env open).
 5. **Optional later** — CN14/CN15 · yuiop (human lock).

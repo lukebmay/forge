@@ -402,6 +402,88 @@ describe("OP1 open-app placement policy", () => {
       expect(metaWindow._forgeProvisionalPlaceHint).toBeFalsy();
       expect(wm()._pendingPlaceHints.length).toBe(0);
     });
+
+    // F7UjZ: null-map YouTube FIFO-claimed class-only ghostty/inkscape; class
+    // landed with title still null → mismatch re-queue; real role adopts.
+    it("R036 class-only: wrong FIFO window mismatches on class alone (title still null)", () => {
+      const ghostSlot = tileOn(0, { id: "ph-ghost" });
+      const ytSlot = tileOn(1, { id: "ph-yt" });
+      wm().movePointerWith(tileOn(0, { id: "focus-co" }).nodeWindow);
+
+      expect(
+        wm().placeNext({
+          wmClass: "ghostty",
+          monitor: 0,
+          attachSelector: `id:${ghostSlot.metaWindow.get_id()}`,
+          expiresAt: Date.now() + 60_000,
+        }).ok
+      ).toBe(true);
+      expect(
+        wm().placeNext({
+          wmClass: "chrome-agimnkijcaahngcdmfeangaknmldooml-Default",
+          titleContains: "YouTube",
+          monitor: 1,
+          attachSelector: `id:${ytSlot.metaWindow.get_id()}`,
+          expiresAt: Date.now() + 60_000,
+        }).ok
+      ).toBe(true);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "yt-null-first",
+        wm_class: null,
+        title: null,
+      });
+      wm().trackWindow(null, metaWindow);
+      expect(metaWindow._forgeProvisionalPlaceHint?.wmClass).toBe("ghostty");
+      expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0);
+      expect(wm()._pendingPlaceHints.length).toBe(1);
+
+      // Class-only hint is ready as soon as any class lands — wrong class re-queues.
+      metaWindow.set_wm_class("chrome-agimnkijcaahngcdmfeangaknmldooml-Default");
+      expect(metaWindow._forgeProvisionalPlaceHint).toBeFalsy();
+      expect(wm()._pendingPlaceHints.some((h) => h.wmClass === "ghostty")).toBe(true);
+      // Title still null: cannot identity-match the YouTube PlaceNext yet.
+      expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0);
+
+      metaWindow.set_title("YouTube");
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(1);
+      expect(node.parentNode).toBe(ytSlot.nodeWindow.parentNode);
+      expect(wm()._pendingPlaceHints).toHaveLength(1);
+      expect(wm()._pendingPlaceHints[0].wmClass).toBe("ghostty");
+    });
+
+    it("R036 class-only: matching class confirms with title still null", () => {
+      const ghostSlot = tileOn(0, { id: "ph-ghost-ok" });
+      wm().movePointerWith(tileOn(0, { id: "focus-gok" }).nodeWindow);
+      expect(
+        wm().placeNext({
+          wmClass: "ghostty",
+          monitor: 0,
+          attachSelector: `id:${ghostSlot.metaWindow.get_id()}`,
+          expiresAt: Date.now() + 60_000,
+        }).ok
+      ).toBe(true);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "ghost-null",
+        wm_class: null,
+        title: null,
+      });
+      wm().trackWindow(null, metaWindow);
+      expect(metaWindow._forgeProvisionalPlaceHint?.wmClass).toBe("ghostty");
+
+      metaWindow.set_wm_class("ghostty");
+      expect(metaWindow._forgeProvisionalPlaceHint).toBeFalsy();
+      expect(wm()._pendingPlaceHints.length).toBe(0);
+      const node = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(node)).toBe(0);
+      expect(node.parentNode).toBe(ghostSlot.nodeWindow.parentNode);
+    });
   });
 
   describe("dock sticky mon + LFT(m)", () => {
@@ -705,6 +787,68 @@ describe("OP1 open-app placement policy", () => {
       expect(node.parentNode).not.toBe(mon0);
       expect(metaWindow._forgeDockStickyMon).toBe(0);
       void chrome;
+    });
+
+    it("single-dock: same-mon focus beats LFT(m) and end-of-tree", () => {
+      const older = tileOn(0, { id: "older" });
+      const focused = tileOn(0, { id: "focused" });
+      wm().movePointerWith(older.nodeWindow);
+      wm().movePointerWith(focused.nodeWindow);
+      // Make LFT(m) = older while focus stays on focused.
+      wm().lftMru.touch(older.nodeWindow, 0);
+      expect(wm().lftMru.monHead(0)).toBe(older.nodeWindow);
+      global.display.get_focus_window.mockReturnValue(focused.metaWindow);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "dock-same-mon-focus",
+      });
+      metaWindow._forgeDockMonitor = 0;
+      const plan = wm()._planOpenAppPlacement(metaWindow);
+      expect(plan.isDock).toBe(true);
+      expect(plan.homeMonitor).toBe(0);
+      expect(plan.attachLft).toBe(focused.nodeWindow);
+      expect(plan.attachLft).not.toBe(older.nodeWindow);
+    });
+
+    it("single-dock: empty LFT(m) + no same-mon focus → end-of-tree", () => {
+      const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+      const left = createWindowNode(ctx.tree, mon0, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "left-leaf",
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          rect: { x: 0, y: 0, width: 900, height: 1000 },
+        },
+      });
+      const right = createWindowNode(ctx.tree, mon0, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "right-leaf",
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          rect: { x: 900, y: 0, width: 900, height: 1000 },
+        },
+      });
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      const other = tileOn(1, { id: "focus-other-mon" });
+      wm().movePointerWith(other.nodeWindow);
+      expect(wm().lftMru.monHead(0)).toBeNull();
+      global.display.get_focus_window.mockReturnValue(other.metaWindow);
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        id: "dock-end-tree",
+      });
+      metaWindow._forgeDockMonitor = 0;
+      const plan = wm()._planOpenAppPlacement(metaWindow);
+      expect(plan.isDock).toBe(true);
+      expect(plan.homeMonitor).toBe(0);
+      expect(plan.attachLft).toBe(right.nodeWindow);
+      expect(plan.attachLft).not.toBe(left.nodeWindow);
     });
 
     it("OP2: second dock Ghostty on mon1 tiles without drag", () => {
@@ -1184,6 +1328,69 @@ describe("OP1 open-app placement policy", () => {
       expect(only.nodeWindow.parentNode.layout).not.toBe(LAYOUT_TYPES.TABBED);
       expect(only.nodeWindow.parentNode).not.toBe(node.parentNode?.parentNode);
       expect(node.parentNode?.isStackedOrTabbed?.() ?? false).toBe(false);
+    });
+
+    it("dock open: overflow → nearest-groupable neighbor tab (chain step 3)", () => {
+      const mon = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon.layout = LAYOUT_TYPES.HSPLIT;
+      const tiny = tileOn(0, {
+        id: "dock-tiny",
+        rect: { x: 0, y: 0, width: 400, height: 300 },
+        size_hints: { min_width: 50, min_height: 50 },
+      });
+      tiny.nodeWindow.rect = { x: 0, y: 0, width: 400, height: 300 };
+      tiny.nodeWindow.renderRect = { x: 0, y: 0, width: 400, height: 300 };
+      const roomy = tileOn(0, {
+        id: "dock-roomy",
+        rect: { x: 400, y: 0, width: 1400, height: 900 },
+        size_hints: { min_width: 50, min_height: 50 },
+      });
+      roomy.nodeWindow.rect = { x: 400, y: 0, width: 1400, height: 900 };
+      roomy.nodeWindow.renderRect = { x: 400, y: 0, width: 1400, height: 900 };
+      wm().movePointerWith(tiny.nodeWindow);
+      global.display.get_focus_window.mockReturnValue(tiny.metaWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "dock-needs-room",
+        size_hints: { min_width: 0, min_height: 400 },
+      });
+      meta._forgeDockMonitor = 0;
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      expect(monitorOf(node)).toBe(0);
+      expect(meta._forgeDockStickyMon).toBe(0);
+      const parent = roomy.nodeWindow.parentNode;
+      expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parent.contains(roomy.nodeWindow)).toBe(true);
+      expect(parent.contains(node)).toBe(true);
+    });
+
+    it("dock open: no groupable fit → float (chain step 4)", () => {
+      const only = tileOn(0, {
+        id: "dock-only-small",
+        rect: { x: 0, y: 0, width: 500, height: 300 },
+        size_hints: { min_width: 50, min_height: 50 },
+      });
+      only.nodeWindow.rect = { x: 0, y: 0, width: 500, height: 300 };
+      only.nodeWindow.renderRect = { x: 0, y: 0, width: 500, height: 300 };
+      wm().movePointerWith(only.nodeWindow);
+      global.display.get_focus_window.mockReturnValue(only.metaWindow);
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "dock-cannot-fit",
+        size_hints: { min_width: 0, min_height: 400 },
+      });
+      meta._forgeDockMonitor = 0;
+      wm().trackWindow(null, meta);
+      const node = wm().findNodeWindow(meta);
+      expect(monitorOf(node)).toBe(0);
+      expect(meta._forgeDockStickyMon).toBe(0);
+      expect(node.mode).toBe(WINDOW_MODES.FLOAT);
+      expect(wm().isFloatingExempt(meta)).toBe(true);
     });
 
     it("PlaceNext pin ignores open-min walk (still attaches)", () => {

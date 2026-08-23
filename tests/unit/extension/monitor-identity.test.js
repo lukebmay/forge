@@ -3,6 +3,7 @@ import {
   fingerprintMonitor,
   buildLiveMap,
   remapIndex,
+  listIndexRemaps,
   resolveIndexByStableKey,
   resolveMonWsIdByStableKey,
   monIndexFromId,
@@ -148,6 +149,28 @@ describe("monitor-identity renumber remap", () => {
     ]);
     expect(remapIndex(1, prev.fingerprints, live)).toBe(-1);
     expect(resolveIndexByStableKey("conn:HDMI-1", live)).toBe(-1);
+  });
+
+  it("listIndexRemaps reports flips and losses only", () => {
+    const prev = buildLiveMap([
+      { index: 0, connector: "DP-1", x: 0, y: 0, width: 1920, height: 1080 },
+      { index: 1, connector: "HDMI-1", x: 1920, y: 0, width: 1920, height: 1080 },
+    ]);
+    const flipped = buildLiveMap([
+      { index: 0, connector: "HDMI-1", x: 1920, y: 0, width: 1920, height: 1080 },
+      { index: 1, connector: "DP-1", x: 0, y: 0, width: 1920, height: 1080 },
+    ]);
+    expect(listIndexRemaps(prev.fingerprints, flipped)).toEqual([
+      { from: 0, to: 1, stableKey: "conn:DP-1" },
+      { from: 1, to: 0, stableKey: "conn:HDMI-1" },
+    ]);
+    const lost = buildLiveMap([
+      { index: 0, connector: "DP-1", x: 0, y: 0, width: 1920, height: 1080 },
+    ]);
+    expect(listIndexRemaps(prev.fingerprints, lost)).toEqual([
+      { from: 1, to: -1, stableKey: "conn:HDMI-1" },
+    ]);
+    expect(listIndexRemaps(prev.fingerprints, prev)).toEqual([]);
   });
 });
 

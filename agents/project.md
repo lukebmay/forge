@@ -75,7 +75,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 
 | Item | Status | Next |
 | --- | --- | --- |
-| **[Observability hardening](./plans/forge-observability-hardening.md)** | **P0** OH1–OH3 + ws-orphan + **D053 `forge log` done** | monitor + same-mon launch · `npm run typecheck:oh2` |
+| **[Observability hardening](./plans/forge-observability-hardening.md)** | **P0** OH1–OH3 + ws-orphan + Downstream mon/dock + **D053 `forge log` done** | soft host verify · plog TRACE dig · `npm run typecheck:oh2` |
 | **[Canonical contracts](./plans/forge-canonical-contracts.md)** | IC0–IC3 done · IC4 skipped | — |
 | **[CLI → Node](./plans/forge-cli-node.md)** | D036 · CN0–CN6 **done** (CN7 skip) · **CN13 PATH** | CN14/CN15 later; no layout port |
 | **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold **PASS** |
@@ -417,7 +417,13 @@ When agents run live tests that need install + Shell reload (`./install`,
    `production=false`. Levels: regular **INFO**; `--dev` **TRACE**; `--prod`
    **WARN** (D068). Dual-sink + query-first: **§ Logging** above — **never**
    hunt with `tail -f` at TRACE.
-2. **Live level / query (D053/D054)** — prefer CLI over raw gsettings:
+2. **Nest / agent live-with-traces (FIRM)** — install with **`./install --dev`**
+   (or `forge update --dev` from `~/dev/me/forge`) before
+   `./scripts/forge/forge-test nested …` campaigns that need hunts. Nest without
+   `--dev` only gets INFO; TRACE is required for place-hint / slot / dock /
+   monitor digs. Same rule on X11 HUP loops when hunting. Details:
+   [testing.md](./testing.md) § Wayland live testing workflow.
+3. **Live level / query (D053/D054)** — prefer CLI over raw gsettings:
 
    ```sh
    forge log                          # status + tape paths
@@ -432,17 +438,17 @@ When agents run live tests that need install + Shell reload (`./install`,
    plog `reconfigure()` live. Below effective level → not emitted anywhere.
    Journal never gets INFO/DEBUG/TRACE.
 
-3. **Reload path by session:**
+4. **Reload path by session:**
    - **X11:** `killall -HUP gnome-shell` (or Alt+F2 → r).
    - **Wayland:** `./scripts/forge/forge-test nested restart` between code changes; dual-mon live on
      **host** desk. Full procedure: [testing.md](./testing.md) § Wayland live
      testing workflow and [HANDOFF](./HANDOFF.md) § Wayland extensive smoke loop.
-4. **Session-layout file trace** (debug builds only): append-only log at
+5. **Session-layout file trace** (debug builds only): append-only log at
    `~/.config/forge/config/session-layout-trace.log` during restore / shield /
    rehome. Prefer this over journal guessing after HUP.
-5. **Post-HUP collectors** (X11) must survive `killall -HUP gnome-shell` (`nohup` /
+6. **Post-HUP collectors** (X11) must survive `killall -HUP gnome-shell` (`nohup` /
    background script writing under `/tmp/...`), then compare `forge tree`.
-6. Do not rely on the user to re-layout windows for verification.
+7. Do not rely on the user to re-layout windows for verification.
 
 ### Agent live E2E (most important)
 

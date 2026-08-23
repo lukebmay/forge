@@ -1,6 +1,6 @@
 # forge-plog-trace-hunts — Dial TRACE call-site noise + layout hunt backlog
 
-**Status:** ready
+**Status:** done
 **Plan:** (none) — follow-up from 2026-08-23 fresh Wayland `F7UjZ` dig after
 `forge update --dev`
 **Branch:** master
@@ -57,12 +57,57 @@ narrowing emitters. `forge log debug` remains the operator escape hatch.
 
 ## Acceptance
 
-- [ ] Noisy TRACE emitters narrowed or gated; `--dev` tip stays queryable without multi‑MB/minute spam from title churn alone
-- [ ] place-hint title=null race understood + fixed or explicitly accepted with test
-- [ ] bad-slot YouTube sample reproduced or explained
-- [ ] Hunts documented as `forge log --grep/--session/--level` only (project.md already)
+- [x] Noisy TRACE emitters narrowed or gated; `--dev` tip stays queryable without multi‑MB/minute spam from title churn alone
+- [x] place-hint title=null race understood + fixed or explicitly accepted with test
+- [x] bad-slot YouTube sample reproduced or explained
+- [x] Hunts documented as `forge log --grep/--session/--level` only (project.md already)
 
 ## Session note
 
-Queued after shellrc agents-catalog pansi/plog install. Fresh dig used session
-`F7UjZ` on Wayland tip `v49-90-beta.2-387-geb3cf7d`.
+**All acceptance closed (uncommitted with prior P0/P1 + OH Downstream).** D068 kept.
+
+### Place-hint `title=null` / late mismatch (accepted + test)
+
+**Proven (JSONL raw `text`, not pretty reprint):** F7UjZ mismatches were **FIFO
+wrong-window**, not ghostty/inkscape self-mismatch.
+
+| Raw line | Meaning |
+| --- | --- |
+| `late mismatch re-queue class=ghostty … win=chrome-…YouTube title=null` | YouTube null-map claimed ghostty ph-3; class landed → class-only ready → mismatch re-queue |
+| Same pattern for inkscape ph-8 | Same YouTube steal |
+| Dest recovery | Ghostty/inkscape later re-claim → confirm; YouTube late-adopts own ph |
+
+`placeHintIdentityReady` already waits when the **hint** wants title (Gmail/Voice
+`late wait` with class + `title=null`). Class-only hints correctly decide on class
+alone — including mismatch while title still null. Brief wrong-slot then rehome is
+intentional R036; final dest correct.
+
+**Pretty-log footgun:** `forge log` reprint collapsed duplicate `class=` keys so
+mismatch looked like `class=ghostty title=null` (self). Prefer JSONL `text`, or
+new labels below.
+
+| Change | Where |
+| --- | --- |
+| Late/match logs use `winClass=` / `winTitle=` | `window.js` `_tryPlanFromPlaceHint` / `_tryAdoptLatePlaceHint` |
+| Regression: class-only wrong FIFO + matching confirm w/ null title | `WindowManager-open-app-policy` + `place-hint.test.js` |
+
+### P2 bad-slot YouTube / rect-mismatch (explained)
+
+YouTube `244879615`: `bad-slot`+`mon-mismatch` on same tick as
+`late apply tree mon 0→1`, **before** `late idle move mon→1`. Tree/home already
+mon1; Meta still mon0; slot mid-reparent → verify noise. Next second:
+`verify ok → SETTLED`. Not sticky.
+
+Inkscape/Nautilus `rect-mismatch` samples also brief settle jitter around map /
+vinyl (same tape pattern). No code change.
+
+### Prior (unchanged)
+
+| Change | Where |
+| --- | --- |
+| Keep `float-reason` TRACE gated off | `HUNT_FLOAT_REASON_KEEP=false` |
+| Spinner / non-empty title churn skips `renderTree` | `notify::title`; empty↔nonempty + late-adopt still render |
+| R029 | `tests/regression/bug-r029-late-title.test.js` |
+
+**Verify:** place-hint + open-app-policy L0 green (81). `./install --dev` → nest
+`forge ping` ok (apiVersion 11); **nest stopped**.

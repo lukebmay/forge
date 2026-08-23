@@ -111,7 +111,8 @@ treat primary logout/login as the ordinary way to load a dirty tip mid-campaign.
 
 | Rule | Detail |
 | --- | --- |
-| **Nest first** | After `./install` for JS changes: `./scripts/forge/forge-test nested run` / `restart` + retest |
+| **Nest first** | After `./install --dev` for JS changes: `./scripts/forge/forge-test nested run` / `restart` + retest |
+| **Nest install = `--dev` (FIRM)** | Agent nest / live-with-traces campaigns install with **`./install --dev`** (or `forge update --dev` from the durable clone). That sets **TRACE (6)** (D068) so `forge log` hunts work. Plain `./install` is INFO-only — insufficient when the campaign needs traces. Host tip after nest green may stay `--dev` until you intentionally switch. |
 | **Host logout** | Only when nest cannot prove the behavior (true host dual-4K cold / chrome open-leaf RC) **or** occasional tip load after nest already green |
 | **Never** | Invent logout loops for mid-campaign retests when nest works |
 
@@ -152,8 +153,8 @@ geometry; host remains authority for physical dual-mon sign-off. Design:
 | **`./scripts/forge/forge-test nested restart` / `start`** | Long interactive retest loop | **stop** when campaign ends |
 
 ```bash
-# One-shot campaign (default mon=1; auto cleanup)
-./install && ./scripts/forge/forge-test nested run -- forge ping
+# One-shot campaign (default mon=1; auto cleanup) — --dev → TRACE (D068)
+./install --dev && ./scripts/forge/forge-test nested run -- forge ping
 # Multi-mon campaign only when testing multi-mon:
 ./scripts/forge/forge-test nested run --monitors=2 -- forge tree
 # Keep nest up intentionally:
@@ -198,7 +199,7 @@ On **X11:** use HUP; `./scripts/forge/forge-test nested start` **exits 2** with 
 2. If NO extension JS change this iteration:
      host-only live / forge layout / probe — skip nest entirely
 3. If extension JS changed (code/test loop):
-     ./install
+     ./install --dev
      ./scripts/forge/forge-test nested doctor
      # Prefer one-shot campaign entry (auto stop):
      ./scripts/forge/forge-test nested run -- forge ping
@@ -212,7 +213,7 @@ On **X11:** use HUP; `./scripts/forge/forge-test nested start` **exits 2** with 
      ./scripts/forge/forge-test nested stop               # if nest still up
      ./scripts/forge/forge-test live plan --from-work <hint>
      ./scripts/forge/forge-test live run  --from-work <hint>
-5. Code change → re-install → prefer `./scripts/forge/forge-test nested run -- …` or
+5. Code change → `./install --dev` → prefer `./scripts/forge/forge-test nested run -- …` or
    `restart`+`exec`+`stop` (mon=1 unless multi-mon case)
 6. Logout only if host Shell never loaded this tip and host dual-mon needs host tip.
 7. ALWAYS before wrap-up / handoff / idle: nest down
@@ -241,11 +242,11 @@ exports before host `forge tree` / `forge layout` / `./scripts/forge/forge-test 
 ### Minimal commands (cheat sheet)
 
 ```bash
-# One-shot nest campaign (Wayland; auto cleanup)
-./install && ./scripts/forge/forge-test nested run -- forge ping
+# One-shot nest campaign (Wayland; auto cleanup) — --dev for TRACE hunts
+./install --dev && ./scripts/forge/forge-test nested run -- forge ping
 
 # Multi-step retest loop (stop yourself)
-./install && ./scripts/forge/forge-test nested restart
+./install --dev && ./scripts/forge/forge-test nested restart
 ./scripts/forge/forge-test nested exec -- forge tree
 ./scripts/forge/forge-test nested stop
 ./scripts/forge/forge-test nested status            # running: False
@@ -270,7 +271,7 @@ make nested-start | nested-restart | nested-stop | nested-status
 ### X11 contrast (same product)
 
 ```bash
-./install && killall -HUP gnome-shell    # host reloads
+./install --dev && killall -HUP gnome-shell    # host reloads; TRACE for hunts
 ./scripts/forge/forge-test live run --from-work <hint>
 ```
 
