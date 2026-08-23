@@ -60,8 +60,8 @@ Usage:
 
 Options:
   --repo=PATH         Override repo root (default: this tree)
-  --prod              Production build (logging OFF via production flag)
-  --dev               Debug build (default); also sets log-level=DEBUG for forge.log
+  --prod              Production build (production=true) + log-level=INFO
+  --dev               Debug build + log-level=DEBUG (hunts). Default: DEBUG build + INFO
   --save              Backup before replace (always on for EGO migrate)
   --no-save           Skip pre-update backup when already luke/jcrussell
   --no-restart        Skip X11 HUP (files only). Wayland never HUPs/logouts anyway
@@ -93,7 +93,7 @@ $(forge_print_deps_help)
 EOF
 }
 
-MODE="dev"
+MODE="regular" # production=false + INFO; --dev → DEBUG; --prod → production=true + INFO
 DO_SAVE="" # empty = default by lineage
 # X11 default: HUP after install. Wayland: never ends the session (D048).
 DO_RESTART=1
@@ -117,6 +117,7 @@ while (( $# )); do
   case "$1" in
     --prod) MODE="prod"; shift ;;
     --dev) MODE="dev"; shift ;;
+    --regular) MODE="regular"; shift ;;
     --save) DO_SAVE=1; shift ;;
     --no-save) DO_SAVE=0; shift ;;
     --no-restart|--no-restart-shell) DO_RESTART=0; shift ;;
@@ -223,6 +224,7 @@ case "$lineage" in
     print -u2 -- "  ${c_cyan}note:${c_reset} migrating EGO → this tree (auto-backup)"
     args=(--force)
     [[ "$MODE" == "prod" ]] && args+=(--prod)
+    [[ "$MODE" == "dev" ]] && args+=(--dev)
     if (( DO_RESTART )); then
       args+=(--restart-shell)
     else
@@ -268,7 +270,9 @@ if (( DO_SAVE )); then
 fi
 
 build_args=(--force --build-only)
-[[ "$MODE" == "prod" ]] && build_args+=(--prod) || build_args+=(--dev)
+[[ "$MODE" == "prod" ]] && build_args+=(--prod)
+[[ "$MODE" == "dev" ]] && build_args+=(--dev)
+[[ "$MODE" == "regular" ]] && build_args+=(--regular)
 (( SKIP_NPM )) && build_args+=(--skip-npm)
 _install_step "Build" "$SCRIPT_DIR/build-install.zsh" "${build_args[@]}"
 
@@ -295,6 +299,9 @@ elif [[ "$lineage" != "none" ]]; then
 fi
 
 install_args=(--force --install-only --no-enable --no-host-defaults)
+[[ "$MODE" == "prod" ]] && install_args+=(--prod)
+[[ "$MODE" == "dev" ]] && install_args+=(--dev)
+[[ "$MODE" == "regular" ]] && install_args+=(--regular)
 _install_step "Install extension" "$SCRIPT_DIR/build-install.zsh" "${install_args[@]}"
 
 # Clear GNOME post-crash session block (disable-user-extensions) before enable.

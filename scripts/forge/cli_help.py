@@ -40,6 +40,7 @@ def print_forge_help(*, stream: TextIO | None = None) -> None:
         ("launch", "Start app; place after LFT (or PlaceNext path/monitor)"),
         ("run / run-steps", "JSON step scripts (mixed CLI+ext / ext-only)"),
         ("get / set / settings", "Portable GSettings / named profiles"),
+        ("log", "Shell log level (session / --persist / --truncate)"),
         ("keybind", "Save/load keybind kits (vim|safe|i3; no DBus)"),
         ("ping", "Extension health"),
         ("jobs",

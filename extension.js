@@ -25,7 +25,7 @@ import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import { createGjsRuntime } from "./third_party/pansi/plog-runtime-gjs.js";
 import { Logger } from "./lib/shared/logger.js";
-import { setPlogRuntime } from "./lib/shared/plog-adapter.js";
+import { setPlogRuntime, shutdownLogging } from "./lib/shared/plog-adapter.js";
 import { ConfigManager } from "./lib/shared/settings.js";
 import { ConfigSync } from "./lib/shared/config-sync.js";
 import {
@@ -272,6 +272,7 @@ export default class ForgeExtension extends Extension {
     this.theme = null;
     this.configMgr = null;
     this.configSync = null;
+    shutdownLogging();
     this.settings = null;
     this.kbdSettings = null;
   }

@@ -19,6 +19,7 @@ describe("cli/dbus METHOD_IN_ARGS", () => {
     expect(METHOD_IN_ARGS.ApplyLayout).toBe(1);
     expect(METHOD_IN_ARGS.GetLayoutApply).toBe(1);
     expect(METHOD_IN_ARGS.CancelLayoutApply).toBe(1);
+    expect(METHOD_IN_ARGS.Log).toBe(1);
   });
 });
 

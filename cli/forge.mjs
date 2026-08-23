@@ -40,6 +40,7 @@ const NODE_COMMANDS = {
   get: "./get.mjs",
   set: "./set.mjs",
   settings: "./settings.mjs",
+  log: "./log.mjs",
   launch: "./launch.mjs",
   run: "./run.mjs",
   "run-steps": "./run-steps.mjs",

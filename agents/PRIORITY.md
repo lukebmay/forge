@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-22 (`forge log` session CLI next; D052 + open-min late-adopt)
+**Updated:** 2026-08-23 (log sink policy shipped; OH downstream next)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -11,7 +11,9 @@
 **D046** Chrome live tab strip DnD **docs shipped** ·
 **D049** mins env floor + passive learn (**M1–M5 agent done**; oversized-frame
 learn **done**; soft human tiny-env) ·
-**D050** dual-sink · **D052** `--dev`→DEBUG + enable truncate ·
+**D050** dual-sink (journal WARN+) · **D052** regular/prod INFO · `--dev`→DEBUG ·
+**D053** `forge log` session + persist + live reconfigure **shipped** ·
+**sink policy** prod no longer forces logs OFF **shipped** ·
 **PR1–PR15** tab chrome / click-drag **unit-shipped** · PR7 docs **done** ·
 User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**) ·
 **FCC C0–C5 + R1 + R2-docs + P3 flatten strip shipped** · Wave Z0/Z1 (D030) shipped ·
@@ -19,23 +21,24 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 DnD FLOAT skip · open-min late-adopt **agent done**.
 
 **Active next (ordered):**
-1. **P0** **`forge log` live level** (session override + `--persist` + settings→reconfigure) — [task](./tasks/forge-log-cli-session.md)
-2. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
-3. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
-4. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
-5. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
-6. later CN14/CN15 · blocked yuiop
-**Agents:** start **#1** (`forge log`) next session — do **not** wait on soft
-human verify. After #1, resume #3 (OH downstream) with traces. Do **not**
-start #5 until the operator schedules that design meeting. Do **not** stop
-to ask the operator unless a **critical new finding**. UX locked in the task.
-**Host:** logout once for tip (D051 + D052 + open-min late-adopt); then vinyl
+1. **P0** OH downstream — monitor identity + same-mon dock launch — [plan](./plans/forge-observability-hardening.md) § Downstream
+2. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD + `forge log` apiVersion 11) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
+3. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
+4. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
+5. later CN14/CN15 · blocked yuiop
+**Agents:** start **#1** (OH downstream) next — do **not** wait on soft
+human verify. Do **not** start #4 until the operator schedules that design
+meeting. Do **not** stop to ask the operator unless a **critical new finding**.
+Use `forge log trace` for hunts (D053). **Commit D053** when operator asks
+(uncommitted on master).
+**Host:** logout once for tip (D051 + D052 + D053 + open-min late-adopt); then vinyl
 WS2 + lone maximize; optional Nautilus ×3 open-min eyes-on.
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
-tree press-arm only. Poll skips synced xy; SourceBag hot logs are TRACE.
+tree press-arm only. Poll skips synced xy; SourceApp hot logs are TRACE.
 **Retest (FIRM):** nest = normal Wayland code→reload via
 `./scripts/forge/forge-test nested`; primary logout = rare tip load.
+After nest `./install`, **`forge-test nested restart`** so extension reloads.
 **Later (real only):** CN14/CN15 · yuiop blocker — [IDEAS](./IDEAS.md).
 Hygiene / eyes-on / superseded rows were **pruned** 2026-08-18 (see IDEAS
 “Dropped”).
@@ -56,13 +59,13 @@ Never leave subshells running. Default mon=1. See [testing.md](./testing.md) + [
 SM1–SM7 + R036 + Tab D0 + **D044 same-mon groups** + **user CLI no test toolkit**
 + **tab click-drag PR1–PR15 + PR7 docs (D046)** landed. **FCC Wave C (+R1/R2-docs)
 closed through C5; P3 `_layoutOp` flatten strip done.** Wave Z0/Z1 shipped.
-**Active:** Next code = **`forge log` session CLI**
-([task](./tasks/forge-log-cli-session.md)). Soft human host verify —
-[blocker](./blockers/oh-ws-orphan-host-verify.md). Then OH downstream (monitor
-identity + same-mon dock). **D049** M1–M5 + oversized learn agent shipped;
-soft tiny-env. Optional later: CN14/CN15 · yuiop (blocked). Preserve PR9
-foreign spacer-only and PR10 synthetic peel ownership. Do **not** reintroduce
-shrink-probe.
+**D053 `forge log` shipped** ([completed](./tasks/completed/forge-log-cli-session.md)).
+**Active:** Next code = OH downstream (monitor identity + same-mon dock) —
+[plan](./plans/forge-observability-hardening.md) § Downstream. Soft human host
+verify — [blocker](./blockers/oh-ws-orphan-host-verify.md). **D049** M1–M5 +
+oversized learn agent shipped; soft tiny-env. Optional later: CN14/CN15 · yuiop
+(blocked). Preserve PR9 foreign spacer-only and PR10 synthetic peel ownership.
+Do **not** reintroduce shrink-probe.
 Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 / mon-root PlaceNext / soft-enter chrome clear / spanning tab chrome / silent
 `_layoutOp` peel. Do not teach `forge test` / `forge nested`.
@@ -85,8 +88,8 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 | Tab PR7 docs | **done** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |
 | CN13 Node PATH | **done** | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
 
-**L0 last:** queue #2–#5 focused **291** vitest + preflight pytest **19**.
-`typecheck:oh2` not re-run this slice.
+**L0 last:** `forge log` slice — plog-adapter + cli/log + dbus **40** green.
+Nest prove apiVersion **11** + session/reset/persist/truncate.
 **Host cold:** R036 **PASS**. Soft: logout tip + vinyl WS2 + tiny-env Nautilus.
 
 ---
@@ -104,9 +107,9 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 | done | slot-id late-adopt hard-fail | **4.5** | [completed](./tasks/completed/forge-layout-vinyl-hardfail-slot-ids.md) · nest mon=2 ok |
 | done | oversized settled frame → learn | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-learn-oversized-frame.md) |
 | done | DnD titlebar preview miss | **4.5** | [completed](./tasks/completed/forge-dnd-preview-miss-titlebar.md) · FLOAT skip log |
-| **P0 next** | **`forge log` session + persist + live reconfigure** | **4.5** | [task](./tasks/forge-log-cli-session.md) · D052 follow-on |
-| soft | Host verify OH + tip (+ vinyl/DnD) | human | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
-| P0 | monitor identity + same-mon dock launch | with traces | after `forge log` · [plan](./plans/forge-observability-hardening.md) § Downstream |
+| done | **`forge log` session + persist + live reconfigure** | **4.5** | [completed](./tasks/completed/forge-log-cli-session.md) · **D053** |
+| **P0 next** | monitor identity + same-mon dock launch | with traces | [plan](./plans/forge-observability-hardening.md) § Downstream |
+| soft | Host verify OH + tip (+ vinyl/DnD + forge log) | human | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
 | soft | D049 tiny-env Nautilus (human) | human | [blocker](./blockers/d049-tiny-env-nautilus.md) |
 | done | open-min late-identity adopt | **4.5** | [completed](./tasks/completed/forge-open-min-late-adopt.md) |
 | done | D052 `--dev` DEBUG + enable truncate | **4.5** | D052 · `531db43` |
@@ -116,117 +119,16 @@ Do **not** re-litigate D039–D044. Do not reintroduce belt / TILE-anywhere hard
 | done | D049 M2 excise shrink-probe | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m2-excise-probe.md) |
 | done | D049 M1 env min floor + `readWindowMinSize` | **4.5** | [completed](./plans/forge-min-size-floor/completed/forge-min-size-floor_m1-env-floor.md) |
 | done | D049 M0 decision + plan disk | **4.5** | D049 row; [plan](./plans/forge-min-size-floor.md) |
-| done | Tab-drag poll starve (chip lag / stuck release) | **4.5** | TRACE SourceBag hot; poll skip; button-up finish; L0 **197** |
-| done | DnD min-probe grab fight (forever-retry / tile race) | **4.5** | **Superseded by D049** (probe deleted) · historical L0 **116** |
-| done | Open-min/DnD cold Wayland (probe/grab/persist) | **4.5** | **Superseded by D049** for probe; titlebar paint + window-mins.json kept |
-| done | Free open mins → tab BFS → float | **4.5** | Policy kept; env floor always (fail-open obsolete) |
-| done | DnD min-size **red zones** Wayland | **4.5** | Red zones kept; mins = floor ∪ learn (no probe) |
-| done | Layout `share` restore (R038) | **4.5** | [completed](./tasks/completed/forge-layout-share-restore-green-gray.md) · nest + gray/green live |
-| done | Tab-drag one event owner (fast leave-behind) | **4.5** | [completed](./tasks/completed/forge-tab-drag-event-owner.md) |
 | later | CN14 / CN15 | **4.6 med** | after CN13 · [cli-node](./plans/forge-cli-node.md) § CN14 |
-| done | **CN13** Node PATH `forge` | **4.6 med** | [completed](./plans/forge-cli-node/completed/forge-cli-node_cn13-path-entry.md) |
-| done | Tab click-drag **PR7** docs | 4.5 lo | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr7-docs.md) · D046 |
 | blocked | Ratio / autotile (yuiop) | **4.6 xhigh** | [blocker](./blockers/resize-autotile-design.md) |
-| done | P3 strip `_layoutOp` flatten | **4.5 high** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_p3-strip-layoutop-flatten.md) |
-| done | FCC **C5** kits/docs/DESIGN | **4.5** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c5-kits-docs.md) |
-| done | FCC **C4** move-in/out + focus parent | **4.5** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c4-move-focus-parent.md) |
-| done | FCC **C3** split chrome (I5) | **4.5** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c3-split-chrome.md) · I5 |
-| done | FCC **R1** owning-split resize (I3) | **4.6** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_r1-owning-split-resize.md) · I3 |
-| done | FCC **C2** group/ungroup (I2) | **4.6** | [completed](./plans/forge-first-class-containers/completed/forge-first-class-containers_c2-group-ungroup.md) · I2 |
-| done | Tab click-drag **PR15** host residual lock | **4.6 xhigh** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr15-host-residual-lock.md) · L0 297 |
-| done | Tab click-drag **PR14** cross-mon prove | 4.5 med | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr14-crossmon-prove.md) · L0 289 |
-| done | Tab click-drag **PR13** peel chip + event coords | **4.6 high** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr13-peel-pointer-coords.md) · L0 289 |
-| done | Tab click-drag **PR12** one layout owner | 4.5 high | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr12-one-layout-owner.md) · L0 284 |
-| done | Tab click-drag **PR11** mid-drag gap equalize | 4.5 | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr11-mid-drag-gap-equalize.md) · L0 283 |
-| done | Tab click-drag **PR10** peel slot + cross-mon | 4.5 **high** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr10-peel-slot-crossmon.md) · L0 202 |
-| done | Tab click-drag **PR5** 2D + wrap-on (20) | 4.5 **high** | [completed](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr5-2d-wrap-default.md) · L0 152 |
-| done | **User CLI: strip all test/dev utilities** | **4.6 high** | [plan](./plans/forge-cli-user-surface.md) · `forge-test` |
-| done | Tab click-drag **PR6–PR9** | 4.5 | foreign strip; peel freeze; chip floor + equal-fill · [completed/](./plans/forge-tab-click-drag/completed/) |
-| done | Tab click-drag **PR1–PR5** | 4.5 | [completed/](./plans/forge-tab-click-drag/completed/) |
-| done | **Nested off top-level CLI** (under `forge test`) | **4.5 high** | [plan](./plans/forge-nested-cli-separation.md) · [completed/](./plans/forge-nested-cli-separation/completed/) |
-| done | **Tab click-drag PR1** (chrome layer) | **4.5 med** | [task](./plans/forge-tab-click-drag/completed/forge-tab-click-drag_pr1-chrome-layer.md) |
-| done | **Same-mon TABBED/STACKED** (D044) | **4.5 high** | [completed](./tasks/completed/forge-tab-groups-same-mon.md) |
-| done | Tab work D0 lock | **4.6 xhigh** | [completed](./tasks/completed/forge-tab-work-planning.md) |
-| done | **R036** nest multi-open + host cold | **4.5** | [completed](./tasks/completed/forge-layout-cold-host-verify.md) |
-| done | **SM0–SM7** slot machines | multi | [completed/](./plans/forge-layout-slot-machines/completed/) |
-| done | Wave Z0/Z1 zoom (D030) | — | [completed](./tasks/completed/forge-zoom-maximize.md) |
-| done | STACKED Phase 1 + SL5 live | — | [plan](./plans/forge-stacked-layouts.md) |
-| done | R035 residual tab ensure · R033 aspect split · R029–R032 | — | HANDOFF / REGRESSIONS |
-| done | TD1 strip reorder · TD2/TD3 skip · R025/R026 · R028 | — | completed |
-| done | CLI-node **CN0–CN6** (CN7 skip) · AL0–AL8 · FCC C0–C5/R1 · P3 | — | completed |
-| done | IC0–IC3 · IC4 skipped · nest isolation · Wayland RC | — | completed |
-
-### Pruned from queue (2026-08-18) — see [IDEAS](./IDEAS.md) “Dropped”
-
-Hygiene, eyes-on, and superseded rows removed (soft polish, scale smoke,
-bag-API, MD1, dual-mon nest optional, Wave Z “promote”, STACKED D0, session
-restore vs ApplyLayout, freeze `layout_plan.py`, TD4 separate, FCC C2+/P3 as
-open, PR2–PR6 as later). Rejected product: cross-mon TABBED (D044); top-level
-`forge test` / `forge nested` (`forge-test` only).
 
 ### Why this order
 
-1. **P0 observability (OH1–OH3 done)** — instrument first.
+1. **P0 observability (OH1–OH3 + D053 done)** — instrument first; live `forge log`.
 2. **ws-orphan done.** Remaining: monitor identity + same-mon dock launch with traces.
 3. **SM1–SM7 + R036 + D044 + user CLI + PR1–PR15 + FCC C0–C5/R1 + P3 + Wave Z0/Z1 + CN13** — shipped.
 4. **D049 M1–M5** agent shipped (soft human tiny-env open).
 5. **Optional later** — CN14/CN15 · yuiop (human lock).
 
-### Worth (do not forget)
-
-| Item | Why | Task |
-| --- | --- | --- |
-| ApplyEpoch | One writer of home during apply | SM1 · D039 · **done** |
-| In-slot hard + honest `ok` | TILE-anywhere + false-ok was R036 | SM2 · D040/D041 · **done** |
-| Open into slot | Kill four-pass place | SM3 · D042 · **done** |
-| Slot machines | Parallel place + hard retry | SM4 · **done** |
-| Focus after all-hard | Soft residual only | SM5 · **done** |
-| Overlay = all-hard | Spinner not soft | SM7 · D043 · **done** |
-| Belt deleted | No dual spine | SM6 · **done** |
-| Groups mon-local | One strip cannot span heads | D044 · shipped |
-| Nested = testing tools | User CLI is not a dev toolkit | `forge-test nested` · [user surface](./plans/forge-cli-user-surface.md) |
-| User `forge` product-only | Ordinary install must not ship test harness | user surface · **done** |
-| `lib/shared` gi-free | Kernel prefs+CLI can share | D036 · CN0 · CN3 |
-| ApplyLayout | Speed + one planner | D037 · AL0 **done** |
-
-**Do not** start dual-mon nest by default.
-**Do not** nest for no-code host smokes.
-**Do not** reintroduce belt as happy path.
-**Do not** drop overlay before all-hard.
-**Do not** build spanning tab chrome.
-**Do not** teach `forge test` or top-level `forge nested`.
-
 **Handoff:** [HANDOFF.md](./HANDOFF.md).
 **Parked ideas:** [IDEAS.md](./IDEAS.md).
-
-```bash
-# Nest campaign (dev CLI; not user forge)
-./scripts/forge/forge-test nested run -- bash -lc 'env FORGE_JOB=0 forge layout _forge-test-clean'
-./scripts/forge/forge-test nested status   # running: False
-
-# SM L0
-npm test -- tests/unit/extension/layout-apply-epoch.test.js \
-  tests/unit/extension/layout-apply-slot.test.js \
-  tests/unit/extension/layout-apply-settle.test.js \
-  tests/unit/extension/layout-apply-run.test.js \
-  tests/unit/extension/layout-apply-open.test.js \
-  tests/unit/shared/layout-open.test.js \
-  tests/unit/extension/place-hint.test.js \
-  tests/regression/bug-h1-monitor-recovery-workareas-thrash.test.js
-
-python3 -m pytest tests/unit/cli/test_nested_wayland.py -q
-```
-
-| Doc | Role |
-| --- | --- |
-| [HANDOFF.md](./HANDOFF.md) | Start here |
-| [IDEAS.md](./IDEAS.md) | Parked optionals / promote-later |
-| [contracts](../docs/dev/contracts.md) | Job → API |
-| [nested CLI separation](./plans/forge-nested-cli-separation.md) | Nested off top-level (**done**; superseded by user surface) |
-| [user CLI surface](./plans/forge-cli-user-surface.md) | All test utilities off user `forge` (**done**; `forge-test`) |
-| [slot machines](./plans/forge-layout-slot-machines.md) | SM0–SM7 |
-| [ApplyLayout](./plans/forge-layout-in-process.md) | AL0–AL8 done |
-| [cli-node](./plans/forge-cli-node.md) | D036 CN0–CN6 + CN13 |
-| [tab planning](./tasks/completed/forge-tab-work-planning.md) | D0 locked |
-| [same-mon](./tasks/completed/forge-tab-groups-same-mon.md) | D044 shipped |
-| [REGRESSIONS.md](./REGRESSIONS.md) | R0xx + guards |

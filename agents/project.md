@@ -75,7 +75,7 @@ Day-to-day agents implement on **`master`**. Do not open a side branch for ordin
 
 | Item | Status | Next |
 | --- | --- | --- |
-| **[Observability hardening](./plans/forge-observability-hardening.md)** | **P0** OH1–OH3 + ws-orphan **done** | monitor + same-mon launch · `npm run typecheck:oh2` |
+| **[Observability hardening](./plans/forge-observability-hardening.md)** | **P0** OH1–OH3 + ws-orphan + **D053 `forge log` done** | monitor + same-mon launch · `npm run typecheck:oh2` |
 | **[Canonical contracts](./plans/forge-canonical-contracts.md)** | IC0–IC3 done · IC4 skipped | — |
 | **[CLI → Node](./plans/forge-cli-node.md)** | D036 · CN0–CN6 **done** (CN7 skip) · **CN13 PATH** | CN14/CN15 later; no layout port |
 | **[ApplyLayout](./plans/forge-layout-in-process.md)** | AL0–AL8 **done** | R036 cold **PASS** |
@@ -350,24 +350,32 @@ When agents run live tests that need install + Shell reload (`./install`,
 `forge save-session-layout`, dual-mon thrash):
 
 1. **Use a debug install** — `./install` / `./install --dev` / `make dev` set
-   `production=false` and **log-level=5 (DEBUG)** (D052). Schema baseline is
-   **INFO (4)** — no DEBUG/TRACE until raised. TRACE (6) is opt-in for deep
-   races. Production builds (`./install --prod`) force logging OFF via
-   `production=true`. **Dual-sink (D050):** journal = INFO/WARN/ERROR only;
-   DEBUG/TRACE detail goes only to `~/.local/state/forge/forge.log` (or
-   `$FORGE_LOG_FILE`). Enable **truncates** that file (fresh session).
+   `production=false`. Regular install sets **log-level=4 (INFO)**; `./install
+   --dev` sets **5 (DEBUG)** (D052). TRACE (6) is opt-in for path/id detail.
+   `./install --prod` builds `production=true` **and** sets log-level INFO
+   (logging stays on — production does not force OFF). **Dual-sink (D050):**
+   journal = WARN/ERROR/fatal only; INFO/DEBUG/TRACE go to
+   `~/.local/state/forge/forge.log` (or `$FORGE_LOG_FILE`) when at/above
+   effective level. Enable **truncates** that file (fresh session).
 2. **Levels:**
 
    ```sh
    gsettings set org.gnome.shell.extensions.forge logging-enabled true
-   gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO (schema / quiet file)
+   gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO (regular ./install / --prod)
    gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG (./install --dev)
-   gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE (opt-in firehose)
+   gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE (opt-in path/id)
    tail -f ~/.local/state/forge/forge.log
    ```
 
    Below the selected level, those lines are not emitted **anywhere** (file or
-   journal). Journal never gets TRACE/DEBUG even when the file does.
+   journal). Journal never gets INFO/DEBUG/TRACE even when the file does.
+   **When testing/hunting**, raise to TRACE for more detail (`forge log trace`
+   or gsettings 6). `debug` = feature/hunt (silent on prod INFO); `trace` =
+   opt-in useful path/id noise, not junk.
+
+   Live level (D053, no tip reload): `forge log` / `forge log trace` (session)
+   / `forge log trace --persist` / `forge log reset` / `forge log --truncate`.
+   Settings `changed::log-level`/`logging-enabled` → plog `reconfigure()`.
 
 3. **Reload path by session:**
    - **X11:** `killall -HUP gnome-shell` (or Alt+F2 → r).

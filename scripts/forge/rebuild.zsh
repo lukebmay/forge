@@ -22,8 +22,8 @@ Usage:
 
 Options:
   --repo=PATH         Repo root (default: $FORGE_REPO_ROOT)
-  --prod              Release-style build (production=true); default is --dev
-  --dev               Debug build (default)
+  --prod              Release-style build (production=true) + log-level=INFO
+  --dev               Debug build + log-level=DEBUG (hunts). Default: INFO
   --save              Backup extension + dconf + config before replace
   --restart-shell     X11 HUP after install (default)
   --no-restart        Do not HUP gnome-shell (files only until you reload)
@@ -50,7 +50,7 @@ $(forge_print_deps_help)
 EOF
 }
 
-MODE="dev"
+MODE="regular"
 DO_SAVE=0
 # Default: reload Shell so the new build is active (opt out with --no-restart).
 DO_RESTART=1
@@ -71,6 +71,7 @@ while (( $# )); do
   case "$1" in
     --prod) MODE="prod"; shift ;;
     --dev) MODE="dev"; shift ;;
+    --regular) MODE="regular"; shift ;;
     --save) DO_SAVE=1; shift ;;
     --no-restart|--no-restart-shell) DO_RESTART=0; shift ;;
     --restart-shell) DO_RESTART=1; shift ;;
@@ -131,7 +132,9 @@ if (( DO_SAVE )); then
 fi
 
 install_args=(--force)
-[[ "$MODE" == "prod" ]] && install_args+=(--prod) || install_args+=(--dev)
+[[ "$MODE" == "prod" ]] && install_args+=(--prod)
+[[ "$MODE" == "dev" ]] && install_args+=(--dev)
+[[ "$MODE" == "regular" ]] && install_args+=(--regular)
 (( SKIP_NPM )) && install_args+=(--skip-npm)
 (( ! DO_HOST_DEFAULTS )) && install_args+=(--no-host-defaults)
 

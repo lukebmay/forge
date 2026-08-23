@@ -223,12 +223,24 @@ journal detail (`logging-enabled` / `log-level` below).
 
 ## Enabling debug logs
 
-Logging is **off by default** and only active in development builds. Turn it on:
+Logging is only active in development builds (`production=false`). Preferred
+live control (no tip reload / logout):
+
+```bash
+forge log                 # durable / session / effective
+forge log trace           # session-only bump until reset or disable/enable
+forge log debug           # session DEBUG
+forge log reset           # clear session → durable gsettings
+forge log trace --persist # write gsettings (survives new enable)
+forge log --truncate      # empty forge.log now
+```
+
+Or write prefs directly (also live — extension reconfigures on change):
 
 ```bash
 gsettings set org.gnome.shell.extensions.forge logging-enabled true
 gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO — schema default; no DEBUG/TRACE
-gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG — ./install --dev default (D052)
+gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG — ./install --dev (D052)
 gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE — opt-in hot-path firehose
 ```
 
@@ -236,15 +248,19 @@ Forge uses **dual-sink** logging:
 
 | Sink | What you get |
 | --- | --- |
-| **Journal** (`journalctl`) | INFO / WARN / ERROR only (quiet eyes-on) |
-| **File** | Levels at/above `log-level` — default `~/.local/state/forge/forge.log` (override `$FORGE_LOG_FILE`; nest uses the nest state dir) |
+| **Journal** (`journalctl`) | WARN / ERROR / fatal only (quiet eyes-on) |
+| **File** | Levels at/above effective level — default `~/.local/state/forge/forge.log` (override `$FORGE_LOG_FILE`; nest uses the nest state dir) |
 
-Schema / quiet tip = **INFO**: DEBUG and TRACE are not written anywhere.
-`./install --dev` raises to **DEBUG** so episode hunts hit the file; use
-**TRACE** only when stuck on SourceBag / keep=TILE noise. The journal stays
-sparse. On each extension **enable**, `forge.log` is **truncated** (fresh
-session); CLI appends to the same path and does not wipe it.
-`./install --prod` keeps `production=true` → logging off.
+Schema / quiet tip = **INFO**: DEBUG and TRACE are not written anywhere; INFO
+goes to the file only (not journal). Regular `./install` and `./install --prod`
+stay **INFO**; `./install --dev` raises to **DEBUG** for episode hunts; use
+**TRACE** (`forge log trace` / gsettings 6) when hunting path/id detail. The
+journal stays sparse. On each extension **enable**, `forge.log` is **truncated**
+(fresh session); CLI appends to the same path and does not wipe it (`forge log
+--truncate` empties mid-session). Session override from `forge log LEVEL`
+wins over durable until `forge log reset` or disable/enable.
+`./install --prod` still builds `production=true` (assert policy) but keeps
+logging enabled at INFO.
 
 Debug/trace **assertions** (`lib/shared/assert.js`) are active at log-level ≥ debug
 or in a `!production` (dev) install. A failed invariant logs `[Forge] [ERROR] assert`

@@ -6,6 +6,6 @@ import { createNodeRuntime } from "../third_party/pansi/plog-runtime-node.js";
 import { setPlogRuntime } from "../lib/shared/plog-adapter.js";
 import { setProductionForTests } from "../lib/shared/production.js";
 
-// Unit tests expect logging; production builds keep production=true.
+// Unit tests default to !production (asserts always on). Prod no longer forces logs OFF.
 setProductionForTests(false);
 setPlogRuntime(createNodeRuntime);

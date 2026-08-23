@@ -18,8 +18,9 @@ Usage:
 
 Options:
   --repo=PATH      Repo root (default: $FORGE_REPO_ROOT)
-  --prod           Release-style build (production=true → logging OFF)
-  --dev            Debug build (production=false) — default; sets log-level=DEBUG
+  --prod           Release-style build (production=true) + log-level=INFO
+  --dev            Debug build + log-level=DEBUG (hunts)
+  (default)        Debug build (production=false) + log-level=INFO
   --build-only     npm/make build (+ debug) into repo temp/; do NOT install
   --install-only   Copy existing temp/ into extension dir (no rebuild)
   --skip-npm       Skip npm install even if node_modules missing
@@ -47,7 +48,8 @@ $(forge_print_deps_help)
 EOF
 }
 
-MODE="dev"
+# regular = production=false + INFO; --dev = DEBUG; --prod = production=true + INFO
+MODE="regular"
 SKIP_NPM=0
 DO_ENABLE=1
 DO_HOST_DEFAULTS=1
@@ -65,6 +67,7 @@ while (( $# )); do
   case "$1" in
     --prod) MODE="prod"; shift ;;
     --dev) MODE="dev"; shift ;;
+    --regular) MODE="regular"; shift ;;
     --build-only) BUILD_ONLY=1; shift ;;
     --install-only) INSTALL_ONLY=1; shift ;;
     --skip-npm) SKIP_NPM=1; shift ;;
@@ -123,7 +126,7 @@ forge_do_build() {
   forge_info "make build…"
   make build
 
-  if [[ "$MODE" == "dev" ]]; then
+  if [[ "$MODE" != "prod" ]]; then
     forge_info "make debug (production=false)…"
     make debug
   fi
@@ -196,16 +199,21 @@ forge_do_install() {
       forge_warn "host-defaults apply failed (non-fatal)"
   fi
 
-  # Dev install: DEBUG for episode hunts in forge.log (D052). TRACE is opt-in
-  # (`gsettings set … log-level 6`) for SourceBag / keep=TILE firehose.
-  # Journal stays INFO+ only (D050). Production stays quiet via production=true.
-  if [[ "$MODE" == "dev" ]] && command -v gsettings >/dev/null 2>&1; then
-    if gsettings set org.gnome.shell.extensions.forge logging-enabled true 2>/dev/null \
-      && gsettings set org.gnome.shell.extensions.forge log-level 5 2>/dev/null; then
-      forge_ok "dev logging: enabled, log-level=5 (DEBUG → forge.log; journal INFO+)"
-    else
-      forge_warn "could not set dev log-level via gsettings (schemas may need reload)"
+  # Logging defaults (D052): regular/prod → INFO; --dev → DEBUG; TRACE opt-in.
+  # Journal = WARN+ only (D050). production=true does not force logging OFF.
+  if command -v gsettings >/dev/null 2>&1; then
+    local _log_n=4 _log_name=INFO
+    if [[ "$MODE" == "dev" ]]; then
+      _log_n=5
+      _log_name=DEBUG
     fi
+    if gsettings set org.gnome.shell.extensions.forge logging-enabled true 2>/dev/null \
+      && gsettings set org.gnome.shell.extensions.forge log-level "$_log_n" 2>/dev/null; then
+      forge_ok "logging: enabled, log-level=${_log_n} (${_log_name} → forge.log; journal WARN+)"
+    else
+      forge_warn "could not set log-level via gsettings (schemas may need reload)"
+    fi
+    unset _log_n _log_name
   fi
 
   forge_write_install_origin "$FORGE_REPO_ROOT" git || \

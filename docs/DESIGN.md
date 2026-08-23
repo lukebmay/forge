@@ -1077,13 +1077,16 @@ for eyes-on while hunting layout/DnD races.
 
 **Approach:** Vendored shellrc plog **1.2.0** (D064 action pipelines; GJS Gio
 `toFile`). Extension `plog-adapter` fans out per level: **file** =
-TRACE…ERROR (default `~/.local/state/forge/forge.log`); **journal** =
-INFO/WARN/ERROR only. Custom plog `levels` table mirrors prefs labels
-(all/trace/…/fatal). Call-site rules: INFO = install/startup/layout
-load-save/ApplyLayout outcome; DEBUG = episode narrative (open-plan, min
-placement, mode changes, overflow rehome); TRACE = hot-path ids (SourceBag,
-keep=TILE, verify). **D052:** `./install --dev` defaults to DEBUG; TRACE is
-opt-in. Extension enable **truncates** the hunt file (CLI appends, no wipe).
+at/above effective (default `~/.local/state/forge/forge.log`); **journal** =
+WARN/ERROR/fatal only (not INFO). Custom plog `levels` table mirrors prefs
+labels (all/trace/…/fatal). Call-site rules: INFO = install/startup/layout
+load-save/ApplyLayout outcome; DEBUG = feature/hunt narrative (silent on prod
+INFO); TRACE = opt-in path/id detail (layout modes, jitter, install steps) —
+useful, not junk. **D052:** regular/`--prod` → INFO; `--dev` → DEBUG; TRACE is
+opt-in. `production=true` does not force logging OFF. Extension enable
+**truncates** the hunt file (CLI appends, no wipe). **D053:** `forge log` /
+DBus `Log` for live level — session override (default) or `--persist`;
+gsettings `changed::` → plog `reconfigure()` so TRACE applies without tip reload.
 
 ## CSS: base + user overrides (D001)
 

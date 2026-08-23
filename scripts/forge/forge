@@ -71,6 +71,7 @@ _METHOD_IN_ARGS: dict[str, int] = {
     "ApplyLayout": 1,
     "GetLayoutApply": 1,
     "CancelLayoutApply": 1,
+    "Log": 1,
 }
 
 # Ops executed only by this CLI (not extension RunSteps). Documented for scripts.
@@ -3965,7 +3966,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Non-interactive (default for install; kept for CI flags)",
     )
     install_p.add_argument("--prod", action="store_true", help="Production build")
-    install_p.add_argument("--dev", action="store_true", help="Debug build (default)")
+    install_p.add_argument(
+        "--dev",
+        action="store_true",
+        help="Debug build + log-level=DEBUG (default install: INFO)",
+    )
     install_p.add_argument("--save", action="store_true", help="Backup before replace")
     install_p.add_argument(
         "--no-save",
@@ -4050,7 +4055,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Non-interactive install (default for update)",
     )
     update_p.add_argument("--prod", action="store_true", help="Production build")
-    update_p.add_argument("--dev", action="store_true", help="Debug build (default)")
+    update_p.add_argument(
+        "--dev",
+        action="store_true",
+        help="Debug build + log-level=DEBUG (default install: INFO)",
+    )
     update_p.add_argument("--save", action="store_true", help="Backup before replace")
     update_p.add_argument(
         "--no-restart",
