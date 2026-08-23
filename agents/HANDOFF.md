@@ -56,7 +56,8 @@ chrome/slot/run suite green earlier this tip.
 **Logging (OH1 + D050 done):** `third_party/pansi/` pinned (shellrc `b15b6f0`,
 PLOG **1.2.0** + GJS Gio); dual-sink adapter (journal INFO+; file TRACE…ERROR);
 CLI shares default file. Schema baseline **INFO (4)** = no DEBUG/TRACE anywhere.
-**`./install --dev` sets TRACE (6)** for forge.log hunts (journal stays quiet).
+**`./install --dev` sets DEBUG (5)** for forge.log hunts (D052; TRACE opt-in;
+enable truncates file; journal stays quiet).
 **Asserts (OH3 done):** `lib/shared/assert.js` — active `!production` or
 log-level ≥ debug; failure = plog error + `assertionFailed` (**never throw**);
 apply / DnD commit / launch insert skip.

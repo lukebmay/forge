@@ -350,17 +350,19 @@ When agents run live tests that need install + Shell reload (`./install`,
 `forge save-session-layout`, dual-mon thrash):
 
 1. **Use a debug install** — `./install` / `./install --dev` / `make dev` set
-   `production=false` and **log-level=6 (TRACE)**. Schema baseline is **INFO
-   (4)** — no DEBUG/TRACE anywhere until raised. Production builds
-   (`./install --prod`) force logging OFF via `production=true`.
-   **Dual-sink (D050):** journal = INFO/WARN/ERROR only; TRACE/DEBUG detail
-   goes only to `~/.local/state/forge/forge.log` (or `$FORGE_LOG_FILE`).
+   `production=false` and **log-level=5 (DEBUG)** (D052). Schema baseline is
+   **INFO (4)** — no DEBUG/TRACE until raised. TRACE (6) is opt-in for deep
+   races. Production builds (`./install --prod`) force logging OFF via
+   `production=true`. **Dual-sink (D050):** journal = INFO/WARN/ERROR only;
+   DEBUG/TRACE detail goes only to `~/.local/state/forge/forge.log` (or
+   `$FORGE_LOG_FILE`). Enable **truncates** that file (fresh session).
 2. **Levels:**
 
    ```sh
    gsettings set org.gnome.shell.extensions.forge logging-enabled true
    gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO (schema / quiet file)
-   gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE (./install --dev)
+   gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG (./install --dev)
+   gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE (opt-in firehose)
    tail -f ~/.local/state/forge/forge.log
    ```
 

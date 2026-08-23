@@ -1080,8 +1080,10 @@ for eyes-on while hunting layout/DnD races.
 TRACE…ERROR (default `~/.local/state/forge/forge.log`); **journal** =
 INFO/WARN/ERROR only. Custom plog `levels` table mirrors prefs labels
 (all/trace/…/fatal). Call-site rules: INFO = install/startup/layout
-load-save/ApplyLayout outcome; TRACE = launch/map/move/rehome/verify ids;
-DEBUG = named temporary hunts; WARN = soft miss; ERROR = hard fail.
+load-save/ApplyLayout outcome; DEBUG = episode narrative (open-plan, min
+placement, mode changes, overflow rehome); TRACE = hot-path ids (SourceBag,
+keep=TILE, verify). **D052:** `./install --dev` defaults to DEBUG; TRACE is
+opt-in. Extension enable **truncates** the hunt file (CLI appends, no wipe).
 
 ## CSS: base + user overrides (D001)
 

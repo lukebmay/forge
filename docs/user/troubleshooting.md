@@ -228,7 +228,8 @@ Logging is **off by default** and only active in development builds. Turn it on:
 ```bash
 gsettings set org.gnome.shell.extensions.forge logging-enabled true
 gsettings set org.gnome.shell.extensions.forge log-level 4   # INFO — schema default; no DEBUG/TRACE
-gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE — ./install --dev default
+gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG — ./install --dev default (D052)
+gsettings set org.gnome.shell.extensions.forge log-level 6   # TRACE — opt-in hot-path firehose
 ```
 
 Forge uses **dual-sink** logging:
@@ -239,9 +240,11 @@ Forge uses **dual-sink** logging:
 | **File** | Levels at/above `log-level` — default `~/.local/state/forge/forge.log` (override `$FORGE_LOG_FILE`; nest uses the nest state dir) |
 
 Schema / quiet tip = **INFO**: DEBUG and TRACE are not written anywhere.
-`./install --dev` (the install default) raises to **TRACE** so hunts hit the
-file; the journal stays sparse. `./install --prod` keeps `production=true` →
-logging off. CLI shares the same file when unset/`FORGE_LOG_FILE`.
+`./install --dev` raises to **DEBUG** so episode hunts hit the file; use
+**TRACE** only when stuck on SourceBag / keep=TILE noise. The journal stays
+sparse. On each extension **enable**, `forge.log` is **truncated** (fresh
+session); CLI appends to the same path and does not wipe it.
+`./install --prod` keeps `production=true` → logging off.
 
 Debug/trace **assertions** (`lib/shared/assert.js`) are active at log-level ≥ debug
 or in a `!production` (dev) install. A failed invariant logs `[Forge] [ERROR] assert`

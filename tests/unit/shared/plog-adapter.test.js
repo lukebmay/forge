@@ -134,6 +134,38 @@ describe("plog-adapter", () => {
     expect(text).toMatch(/hard-fail/);
   });
 
+  it("truncateFile:true empties the hunt file on init (session start)", () => {
+    tmpFile = path.join(os.tmpdir(), `forge-plog-trunc-${process.pid}-${Date.now()}.log`);
+    fs.writeFileSync(tmpFile, "STALE SESSION\n", "utf8");
+    init(
+      {
+        get_boolean: () => true,
+        get_uint: () => LOG_LEVELS.DEBUG,
+      },
+      { sink, file: tmpFile, truncateFile: true }
+    );
+    info("fresh-enable");
+    const text = fs.readFileSync(tmpFile, "utf8");
+    expect(text).not.toMatch(/STALE SESSION/);
+    expect(text).toMatch(/fresh-enable/);
+  });
+
+  it("truncateFile omitted leaves prior file contents (CLI share)", () => {
+    tmpFile = path.join(os.tmpdir(), `forge-plog-keep-${process.pid}-${Date.now()}.log`);
+    fs.writeFileSync(tmpFile, "KEEP ME\n", "utf8");
+    init(
+      {
+        get_boolean: () => true,
+        get_uint: () => LOG_LEVELS.DEBUG,
+      },
+      { sink, file: tmpFile }
+    );
+    info("appended");
+    const text = fs.readFileSync(tmpFile, "utf8");
+    expect(text).toMatch(/KEEP ME/);
+    expect(text).toMatch(/appended/);
+  });
+
   it("resolveDefaultLogFile: FORGE_LOG_FILE, nest sibling, XDG state", () => {
     expect(
       resolveDefaultLogFile({

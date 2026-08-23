@@ -54,6 +54,7 @@ export default class ForgeExtension extends Extension {
     this.settings = this.getSettings();
     this.kbdSettings = this.getSettings("org.gnome.shell.extensions.forge.keybindings");
     Logger.init(this.settings, {
+      truncateFile: true,
       ensureDir: (dir) => {
         try {
           GLib.mkdir_with_parents(dir, 0o755);

@@ -61,7 +61,7 @@ Usage:
 Options:
   --repo=PATH         Override repo root (default: this tree)
   --prod              Production build (logging OFF via production flag)
-  --dev               Debug build (default); also sets log-level=TRACE for forge.log
+  --dev               Debug build (default); also sets log-level=DEBUG for forge.log
   --save              Backup before replace (always on for EGO migrate)
   --no-save           Skip pre-update backup when already luke/jcrussell
   --no-restart        Skip X11 HUP (files only). Wayland never HUPs/logouts anyway
