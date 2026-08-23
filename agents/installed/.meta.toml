@@ -3,7 +3,7 @@ tool_version = "0.2.1"
 catalog_version = "0.4.0"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-23T21:32:17+00:00"
+updated_at = "2026-08-23T22:04:31+00:00"
 
 [[files]]
 id = "ansi-colors"
@@ -308,3 +308,7 @@ version = "2.2.0"
 sha256 = "c0273f93481bf0183540b37837f74b98e76a185c9be60f0ed07dbf1f384b391c"
 title = "Testing"
 read_when = "Adding tests, changing test strategy, enabling optional features, checking Grok durable --leader mode, or reattaching headless Grok for the human"
+
+[[kits]]
+id = "logging"
+files = ["ansi-colors", "pansi", "plog"]
