@@ -263,8 +263,10 @@ describe("Tree Cleanup and Container Management", () => {
       expect(node3.percent).toBe(0);
     });
 
-    it("should not reset percents across workspace boundary", () => {
-      // This tests Bug #470 fix
+    it("scales monitor siblings instead of wiping them (Bug #470)", () => {
+      // resetSiblingPercent (zero/equalize) must not run on MONITOR parents.
+      // Remaining shares are scaled to unit so a removed DING/peer cannot leave
+      // childPctSum < 1 (Ghostty stuck at ~⅓ after enable thrash).
       const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
@@ -274,15 +276,78 @@ describe("Tree Cleanup and Container Management", () => {
 
       node1.percent = 0.6;
       node2.percent = 0.4;
+      node2.userSized = true;
 
-      // Remove node1 - since the parent is a MONITOR, the boundary guard
-      // (tree.js: !isWorkspace() && !isMonitor()) must skip resetSiblingPercent.
       ctx.tree.removeNode(node1);
 
-      // node2 survives AND keeps its percent untouched (Bug #470): zeroing it
-      // here is what disrupted tiling in other workspaces.
       expect(monitor.childNodes).toContain(node2);
-      expect(node2.percent).toBe(0.4);
+      expect(node2.percent).toBe(1);
+      expect(node2.userSized).toBe(true);
+    });
+
+    it("scales multiple userSized monitor survivors after a peer leaves", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const tab = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      tab.layout = LAYOUT_TYPES.HSPLIT;
+      const ghostty = ctx.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({ wm_class: "com.mitchellh.ghostty", title: "Ghostty" })
+      );
+      const ding = ctx.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({ wm_class: "gjs", title: "Desktop Icons 1" })
+      );
+      tab.percent = 0.5;
+      tab.userSized = true;
+      ghostty.percent = 1 / 3;
+      ghostty.userSized = true;
+      ding.percent = 1 / 6;
+      ding.userSized = false;
+
+      ctx.tree.removeNode(ding);
+
+      const sum = tab.percent + ghostty.percent;
+      expect(sum).toBeCloseTo(1, 6);
+      expect(tab.percent / ghostty.percent).toBeCloseTo(0.5 / (1 / 3), 5);
+      expect(tab.userSized).toBe(true);
+      expect(ghostty.userSized).toBe(true);
+    });
+  });
+
+  describe("cleanTree - DING Desktop Icons", () => {
+    it("removes DING surfaces and scales remaining mon shares", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const ghostty = ctx.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({ wm_class: "com.mitchellh.ghostty", title: "Ghostty" })
+      );
+      const ding = ctx.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({ wm_class: "gjs", title: "Desktop Icons 1" })
+      );
+      ghostty.percent = 2 / 3;
+      ghostty.userSized = true;
+      ding.percent = 1 / 3;
+
+      expect(ctx.tree.cleanTree()).toBe(true);
+      expect(monitor.childNodes).toEqual([ghostty]);
+      expect(ghostty.percent).toBeCloseTo(1, 6);
+    });
+
+    it("does not strip unrelated gjs windows", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const extWin = ctx.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({ wm_class: "gjs", title: "Some Extension" })
+      );
+      extWin.percent = 1;
+      expect(ctx.tree.cleanTree()).toBe(false);
+      expect(monitor.childNodes).toContain(extWin);
     });
   });
 

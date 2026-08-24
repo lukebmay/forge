@@ -6,6 +6,12 @@ and moving windows between workspaces.
 """
 
 from framework.constants import Tolerance
+from framework.log_contract import (
+    assert_log_tokens,
+    nest_forge_log_paths,
+    read_jsonl_texts,
+    wait_for_log_token,
+)
 from framework.wait import (
     wait_for,
     wait_for_stable,
@@ -57,6 +63,35 @@ class TestWorkspaceNavigation:
         assert abs(rect_before[2] - rect_after[2]) < Tolerance.SIZE, (
             f"Window width changed after roundtrip: {rect_before[2]} -> {rect_after[2]}"
         )
+
+    def test_workspace_switch_emits_active_workspace_changed_log(self, shell_proxy, test_window):
+        """Log-contract: nest JSONL records active-workspace-changed (hunt token)."""
+        _log, jsonl = nest_forge_log_paths()
+        if jsonl is None or not jsonl.parent.is_dir():
+            import pytest
+
+            pytest.skip(f"no nest forge.jsonl parent ({jsonl})")
+
+        before = read_jsonl_texts(jsonl)
+        start_ws = shell_proxy.get_active_workspace_index()
+        target = 1 if start_ws == 0 else 0
+        shell_proxy.activate_workspace(target)
+        wait_for(shell_proxy.get_active_workspace_index, predicate=lambda i: i == target)
+
+        wait_for_log_token(
+            "active-workspace-changed",
+            jsonl_path=jsonl,
+            since_texts=before,
+            timeout=8.0,
+        )
+        assert_log_tokens(
+            ["active-workspace-changed"],
+            jsonl_path=jsonl,
+            since_texts=before,
+        )
+
+        shell_proxy.activate_workspace(start_ws)
+        wait_for(shell_proxy.get_active_workspace_index, predicate=lambda i: i == start_ws)
 
     def test_workspace_switch_preserves_layout(
         self, shell_proxy, input_sim, window_helper, two_windows

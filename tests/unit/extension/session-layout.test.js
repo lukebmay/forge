@@ -281,6 +281,82 @@ describe("session-layout portable round-trip", () => {
     ).toBe(true);
   });
 
+  it("omits DING Desktop Icons from portable forest and renormalizes shares", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
+    const wChrome = createMockWindow({
+      id: 1,
+      wm_class: "google-chrome",
+      title: "Grok",
+    });
+    const wGhostty = createMockWindow({
+      id: 2,
+      wm_class: "com.mitchellh.ghostty",
+      title: "Ghostty",
+    });
+    const wDing = createMockWindow({
+      id: 3,
+      wm_class: "gjs",
+      title: "Desktop Icons 1",
+    });
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wChrome);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wGhostty);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wDing);
+    tab.percent = 0.5;
+    tab.userSized = true;
+    const ghosttyNode = ctx.tree.findNode(wGhostty);
+    const dingNode = ctx.tree.findNode(wDing);
+    ghosttyNode.percent = 1 / 3;
+    ghosttyNode.userSized = true;
+    dingNode.percent = 1 / 6;
+
+    const portable = toPortableForest(ctx.tree.snapshotTree());
+    const ids = [];
+    const walk = (d) => {
+      if (isPortableWindow(d)) ids.push(d.id);
+      else (d.children || []).forEach(walk);
+    };
+    portable.monitors.forEach((m) => (m.children || []).forEach(walk));
+    expect(ids.sort((a, b) => a - b)).toEqual([1, 2]);
+
+    const monKids = portable.monitors[0].children;
+    const sum = monKids.reduce((s, c) => s + (c.percent || 0), 0);
+    expect(sum).toBeCloseTo(1, 6);
+
+    // Poisoned on-disk leaf (old save) is dropped on toLiveForest too.
+    const poisoned = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            { id: 1, percent: 0.5, userSized: true, wmClass: "google-chrome", title: "Grok" },
+            {
+              id: 2,
+              percent: 1 / 3,
+              userSized: true,
+              wmClass: "com.mitchellh.ghostty",
+              title: "Ghostty",
+            },
+            {
+              id: 3,
+              percent: 1 / 6,
+              userSized: false,
+              wmClass: "gjs",
+              title: "Desktop Icons 1",
+            },
+          ],
+        },
+      ],
+    };
+    const live = toLiveForest(poisoned, indexWindowsById([wChrome, wGhostty, wDing]));
+    expect(live.monitors[0].children).toHaveLength(2);
+    const liveSum = live.monitors[0].children.reduce((s, c) => s + (c.percent || 0), 0);
+    expect(liveSum).toBeCloseTo(1, 6);
+  });
+
   it("drops closed windows and still restores survivors", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);

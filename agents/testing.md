@@ -285,6 +285,21 @@ make nested-start | nested-restart | nested-stop | nested-status
 | CT2 host cold | `agents/tasks/forge-layout-cold-topology_ct2-wayland-live.md` |
 | shellrc twin (optional) | `nested-gnome` — not a forge dependency |
 
+### Log-contract tests (GUIDELINE → FIRM when hunt-found)
+
+When a bug was confirmed via `forge log` / JSONL, lock the **stable hunt token**
+in the same change when the harness can see the tape:
+
+| Layer | Where | What |
+| --- | --- | --- |
+| L0 | `tests/unit/extension/log-contract-hunt-tokens.test.js` | Spy `Logger.trace`; assert tokens like `ws-change preserve hit`, `lastTabFocus tab` |
+| Nest / e2e | `tests/e2e/framework/log_contract.py` + callers (e.g. `test_workspace_operations.py`) | Read nest `forge.jsonl` (`FORGE_CONFIG_HOME` → sibling of `forge-config/`); `wait_for_log_token` / `assert_log_tokens` |
+
+**Do:** assert greppable tokens / one field; pair with a state oracle.  
+**Do not:** snapshot full TRACE, ANSI pretty, titles, or pointer coords.  
+E2E session fixture sets **TRACE (6)** so these tokens emit (D068 / `--dev`).  
+Practice source: shellrc `plog-log-contract-tests` (+ catalog hunt practices).
+
 ## Do / don’t
 
 **Do:** boundaries, invariants, critical paths once stable, focused regressions.  

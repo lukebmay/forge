@@ -1,10 +1,10 @@
 # forge-ws-open-leaf-silent-lasttabfocus — silent lastTabFocus clobber before WS preserve
 
-**Status:** in progress (agent done — soft host retest)
+**Status:** done (host PASS session `G2DXn`)
 **Plan:** (none)
 **Branch:** master
-**Blocker:** (none) — host retest soft after tip reload
-**Updated:** 2026-08-23
+**Blocker:** (none)
+**Updated:** 2026-08-24
 
 ## Goal
 
@@ -23,6 +23,7 @@ Stop mon1 open leaf flipping YouTube→Voice across `layout dev` → `layout vin
 - [x] L0: action-pipeline + WindowManager-focus (+ regression if cheap)
 - [x] Overwrite this task session note + HANDOFF; host retest soft
 - [x] `./install --dev` staged for human logout (do not commit unless asked)
+- [x] Host PASS `G2DXn`: `ws-change preserve hit open=…YouTube stealer=…Voice`
 
 ## Context for the next agent (complete + succinct)
 
@@ -64,6 +65,7 @@ npm test -- tests/unit/extension/action-pipeline.test.js \
 
 ## Session note
 
-**Implement done.** Save sync no longer rewrites live open leaf from keyboard;
-reveal/pin LTF go through `setOpenLeaf` (TRACE). Host logout + Voice/YouTube
-hunt still required — do not mark task completed until eyes-on PASS.
+**Host PASS (`G2DXn` 2026-08-24):** return from vinyl
+`ws-change preserve hit open=…YouTube stealer=…Voice` — open leaf stayed
+YouTube. Super+2 fakout is a **separate** bug — see
+[forge-ws-super2-bounce](./forge-ws-super2-bounce.md).

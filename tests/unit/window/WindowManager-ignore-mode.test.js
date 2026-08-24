@@ -75,9 +75,45 @@ describe("WindowManager - ignore mode (D020)", () => {
     it("returns false for null", () => {
       expect(wm().isWindowIgnored(null)).toBe(false);
     });
+
+    it("product-ignores DING Desktop Icons without an override", () => {
+      setOverrides([]);
+      const ding = createMockWindow({
+        wm_class: "gjs",
+        title: "Desktop Icons 1",
+        allows_resize: true,
+        window_type: WindowType.NORMAL,
+      });
+      const otherGjs = createMockWindow({
+        wm_class: "gjs",
+        title: "Some Extension",
+        allows_resize: true,
+        window_type: WindowType.NORMAL,
+      });
+      expect(wm().isWindowIgnored(ding)).toBe(true);
+      expect(wm().isWindowIgnored(otherGjs)).toBe(false);
+    });
   });
 
   describe("trackWindow", () => {
+    it("does not create a tree node for DING Desktop Icons", () => {
+      setOverrides([]);
+      const metaWindow = createMockWindow({
+        wm_class: "gjs",
+        title: "Desktop Icons 2",
+        window_type: WindowType.NORMAL,
+        allows_resize: true,
+      });
+      const createSpy = vi.spyOn(ctx.tree, "createNode");
+      const before = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
+
+      wm().trackWindow(null, metaWindow);
+
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length).toBe(before);
+      expect(wm().findNodeWindow(metaWindow)).toBeFalsy();
+    });
+
     it("does not create a tree node for ignored windows", () => {
       setOverrides([{ wmClass: "OverlayApp", mode: "ignore" }]);
       const metaWindow = createMockWindow({

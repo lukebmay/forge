@@ -207,13 +207,11 @@ def _windows_json_safety_net(shell_proxy, check_forge_ready):
 
 @pytest.fixture(scope="session", autouse=True)
 def enable_forge_debug_logging(shell_proxy, check_forge_ready):
-    """Enable forge debug logging for the E2E session.
+    """Enable forge dual-tape logging for the E2E / nest session.
 
-    Toggles the GSettings logging-enabled / log-level keys so forge's
-    Logger.debug() output reaches gnome-shell.log. run-tests.sh greps
-    that into forge-trace.log alongside the full log. Requires the
-    extension to be built with production=false (make debug after make
-    build) — otherwise Logger.debug is hard-disabled at compile time.
+    Sets logging-enabled + log-level **TRACE (6)** so hunt tokens
+    (`active-workspace-changed`, `ws-change preserve`, …) land in nest
+    ``forge.jsonl`` for log-contract tests. Matches ``./install --dev`` (D068).
     """
     js = """
     (function() {
@@ -222,7 +220,7 @@ def enable_forge_debug_logging(shell_proxy, check_forge_ready):
             const settings = ext && ext.stateObj && ext.stateObj.settings;
             if (!settings) return 'no_settings';
             settings.set_boolean('logging-enabled', true);
-            settings.set_uint('log-level', 5);  // DEBUG
+            settings.set_uint('log-level', 6);  // TRACE (D068 --dev)
             return 'enabled';
         } catch(e) { return 'error: ' + e.message; }
     })();
@@ -230,9 +228,9 @@ def enable_forge_debug_logging(shell_proxy, check_forge_ready):
     try:
         result = shell_proxy.eval(js)
         if result != "enabled":
-            warnings.warn(f"Could not enable forge debug logging: {result}")
+            warnings.warn(f"Could not enable forge TRACE logging: {result}")
     except Exception as e:
-        warnings.warn(f"Could not enable forge debug logging: {e}")
+        warnings.warn(f"Could not enable forge TRACE logging: {e}")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -288,7 +286,9 @@ def input_sim(display, shell_proxy, dispatch_mode) -> InputSimulator:
     where xdotool cannot trigger compositor keybindings. Uses xdotool in
     X11 mode where it's proven stable.
     """
-    is_wayland = os.environ.get("WAYLAND_DISPLAY") and not os.environ.get("DISPLAY")
+    # Nest client_env keeps host DISPLAY for embedding but sets WAYLAND_DISPLAY;
+    # prefer Clutter/DBus whenever Wayland is active (xdotool is X11-only).
+    is_wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
     if is_wayland:
         return InputSimulator(display=display, shell_proxy=shell_proxy, dispatch_mode=dispatch_mode)
     return InputSimulator(display=display, idle_proxy=shell_proxy, dispatch_mode=dispatch_mode)

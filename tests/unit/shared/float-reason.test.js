@@ -3,10 +3,21 @@ import {
   allowsResizeForFloatPolicy,
   floatExemptReasonFromFlags,
   formatFloatFlagTags,
+  isDingDesktopIconsSurface,
   processFloatDecisionFromFlags,
 } from "../../../lib/shared/float-reason.js";
 
 describe("float-reason", () => {
+  it("isDingDesktopIconsSurface matches DING titles only", () => {
+    expect(isDingDesktopIconsSurface({ wmClass: "gjs", title: "Desktop Icons 1" })).toBe(true);
+    expect(isDingDesktopIconsSurface({ wmClass: "gjs", title: "Desktop Icons 2" })).toBe(true);
+    expect(isDingDesktopIconsSurface({ wmClass: "gjs", title: "Some Extension" })).toBe(false);
+    expect(
+      isDingDesktopIconsSurface({ wmClass: "com.mitchellh.ghostty", title: "Desktop Icons 1" })
+    ).toBe(false);
+    expect(isDingDesktopIconsSurface({})).toBe(false);
+  });
+
   it("allowsResizeForFloatPolicy ignores Meta false-while-max/fs", () => {
     expect(allowsResizeForFloatPolicy({ allowsResize: false, maximized: true })).toBe(true);
     expect(allowsResizeForFloatPolicy({ allowsResize: false, fullscreen: true })).toBe(true);
