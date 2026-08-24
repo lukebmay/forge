@@ -2428,6 +2428,8 @@ def plan_reconcile(
     # Cold empty: every role needs open (no claimed windows). CT1 skeleton path.
     cold_empty = (not safe and bool(role_results) and all(
         str(r.get("status") or "") == "open" for r in role_results))
+    any_role_open = any(
+        str(r.get("status") or "") == "open" for r in role_results)
     # Residual after open batch (just_opened_roles) or cold empty: thrash must not
     # force residual park (CT0 P0–P5 cold; Mode B only mid-session / --recover).
     suppress_thrash_park = cold_empty or bool(opened_roles)
@@ -2438,6 +2440,11 @@ def plan_reconcile(
                              and not suppress_thrash_park)) and not safe
     # Slot-tagged layout PHs (from ensure_skeleton): residual prefers bind.
     has_layout_ph = bool(layout_placeholders)
+    # Partial flat desk (e.g. one Ghostty after enable): still need PH for PlaceNext.
+    # Skip when tab/stack groups already exist — those use ensure_layout (extra-copy).
+    need_open_skeleton = (not safe and any_role_open and not has_layout_ph
+                          and not thrashed
+                          and not _forest_has_tab_or_stack_group(forest))
 
     # floating[]: claim matching windows so clean/park residuals leave them alone.
     _claim_floating_windows(prof.get("floating") or [], windows, claimed)
@@ -2560,7 +2567,7 @@ def plan_reconcile(
     # ensure_layout repairs ungrouped roles after bind.
     structure_slots: dict[str, dict[str, Any]] = {}
     slot_order_actions: list[dict[str, Any]] = []
-    skip_window_structure = cold_empty
+    skip_window_structure = cold_empty or need_open_skeleton
     if not safe and not skip_window_structure:
         slots_for_structure = set(layout_slot_modes.keys())
         for k in kept:
@@ -2761,7 +2768,7 @@ def plan_reconcile(
                        or bool(mons_split_mismatch)
                        or bool(mon_child_peel_mons)))
     skeleton_actions: list[dict[str, Any]] = []
-    if cold_empty and not safe:
+    if (cold_empty or need_open_skeleton) and not safe:
         sk = build_ensure_skeleton_action(prof, workspace=workspace)
         if sk is not None:
             skeleton_actions.append(sk)
@@ -3335,6 +3342,28 @@ def _iter_forest_monitors(forest: Any) -> list[Any]:
     if isinstance(forest, list):
         return _order_monitors(forest)
     return []
+
+
+def _forest_has_tab_or_stack_group(forest: Any) -> bool:
+    """True when forest already has a TABBED/STACKED group."""
+    found = False
+
+    def walk(n: Any) -> None:
+        nonlocal found
+        if found or not isinstance(n, dict):
+            return
+        lay = str(n.get("layout") or "").strip().upper()
+        if lay in ("TABBED", "STACKED"):
+            found = True
+            return
+        kids = n.get("children") or n.get("childNodes")
+        if isinstance(kids, list):
+            for c in kids:
+                walk(c)
+
+    for m in _iter_forest_monitors(forest):
+        walk(m)
+    return found
 
 
 def _monitor_node_index(m: dict[str, Any]) -> Optional[int]:

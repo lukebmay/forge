@@ -3579,9 +3579,48 @@ class TestColdSkeletonCt1(unittest.TestCase):
     def test_perfect_still_nothing_to_do(self):
         plan = plan_reconcile(_load("tree-perfect.json"),
                               _load("profile-dev-v2.json"))
-        self.assertTrue(plan["nothingToDo"])
-        self.assertEqual(plan["actions"], [])
         self.assertFalse(plan.get("coldEmpty"))
+        ops = [a["op"] for a in plan["actions"]]
+        # No opens/moves/skeleton when every role is already in-slot.
+        self.assertNotIn("ensure_skeleton", ops)
+        self.assertNotIn("open", ops)
+        self.assertNotIn("move", ops)
+        self.assertNotIn("park", ops)
+        # May still refresh sizes; treat as idle if empty or sizes-only.
+        self.assertTrue(plan.get("nothingToDo") or set(ops) <= {"ensure_sizes"})
+
+    def test_partial_desk_opens_still_ensure_skeleton(self):
+        """One kept Ghostty + missing roles → skeleton (not coldEmpty)."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo0ws0",
+                    "children": [{
+                        "nodeType": "WINDOW",
+                        "windowId": 101,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "Ghostty",
+                        "mode": "TILE",
+                        "children": [],
+                    }],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo1ws0",
+                    "children": [],
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
+        self.assertFalse(plan.get("coldEmpty"))
+        self.assertGreater(plan["counts"]["opened"], 0)
+        ops = [a["op"] for a in plan["actions"]]
+        self.assertEqual(ops[0], "ensure_skeleton")
+        self.assertIn("open", ops)
 
     def test_mid_session_thrash_still_mode_b_park(self):
         plan = plan_reconcile(

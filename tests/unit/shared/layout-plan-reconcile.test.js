@@ -90,6 +90,47 @@ describe("planActionsToSteps pure mapping", () => {
     ]);
   });
 
+  it("partial desk with opens still emits ensure_skeleton (enable→layout)", () => {
+    // One matching Ghostty kept; other roles open — not coldEmpty, but PlaceNext
+    // still needs PH slots (host open-miss after disable→enable).
+    const profile = loadJson(join(__dirname, "../cli/fixtures/layout/profile-dev-v2.json"));
+    const forest = {
+      apiVersion: 2,
+      monitors: [
+        {
+          nodeType: "MONITOR",
+          layout: "HSPLIT",
+          id: "mo0ws0",
+          children: [
+            {
+              nodeType: "WINDOW",
+              windowId: 101,
+              wmClass: "com.mitchellh.ghostty",
+              title: "Ghostty",
+              mode: "TILE",
+              children: [],
+            },
+          ],
+        },
+        {
+          nodeType: "MONITOR",
+          layout: "HSPLIT",
+          id: "mo1ws0",
+          children: [],
+        },
+      ],
+    };
+    const plan = planReconcile(structuredClone(profile), forest, { workspace: 0 });
+    expect(plan.ok).toBe(true);
+    expect(plan.coldEmpty).toBe(false);
+    expect(plan.counts.opened).toBeGreaterThan(0);
+    const ops = (plan.actions || []).map((a) => a.op);
+    expect(ops[0]).toBe("ensure_skeleton");
+    expect(ops).toContain("open");
+    const steps = planActionsToSteps(plan.actions, { workspace: 0 });
+    expect(steps.some((s) => s.op === "skeleton")).toBe(true);
+  });
+
   it("maps move/park/close/ensure_layout/order/size/focus", () => {
     const steps = planActionsToSteps(
       [
