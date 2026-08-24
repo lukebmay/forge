@@ -43,7 +43,9 @@ actually there (or gives up and reports which slots failed). Learned timings in
 `~/.config/forge/config/settle-heuristics.json` shorten **soft residual** quiet
 after focus (focus steal, geom noise)—they do **not** skip open/map or
 in-slot placement. Mid-session re-apply with windows already in place is much
-faster than true cold.
+faster than true cold. Switching workspace too soon after a cold apply can
+flash-and-snap back — that is GNOME urgency/busy settle, not Forge; see
+[troubleshooting.md](troubleshooting.md#workspace-switch-supern-flashes-then-snaps-back).
 
 Tree root for `hosts/` + `common/` is `FORGE_LAYOUT_DIR` when set, else
 `~/.config/forge/layout` (same root `layout save` uses). Apply/show still

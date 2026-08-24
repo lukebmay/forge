@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-24 (tip `29c39cd`; host verify open-miss + DING; Super+2 external)
+**Updated:** 2026-08-24 (Super+2 settle/urgency race; open-miss PASS)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** @ **`29c39cd`** (pushed)
 **Push:** only when human asks.
@@ -22,15 +22,13 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 DnD FLOAT skip · open-min late-adopt **agent done**.
 
 **Active next (ordered):**
-1. **soft host** — tip load then verify:
-   - enable→`layout:dev` no open-miss
-     ([task](./tasks/forge-layout-enable-open-miss.md)) — **agent fix landed**
-   - optional DING ⅓ after disable→enable
-     ([task](./tasks/forge-enable-ding-percent-thrash.md))
-2. **P0** — Super+2 fakout ([task](./tasks/forge-ws-super2-bounce.md)) —
-   **external**; Guake-off **still bounces**. Do **not** add forge WS
+1. **P0** — Super+2 fakout ([task](./tasks/forge-ws-super2-bounce.md)) —
+   **settle/urgency race** (quiet desk = no bounce; non-forge place = no bounce).
+   Next: early-vs-late Super+2 same session. Do **not** add forge WS
    activate/pin fallbacks. Soft eyes-on remainder —
    [blocker](./blockers/oh-ws-orphan-host-verify.md).
+2. soft — optional DING ⅓ after disable→enable
+   ([task](./tasks/forge-enable-ding-percent-thrash.md)); open-miss host **PASS**.
 3. soft human — D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md)
 4. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
 5. later CN14/CN15 · blocked yuiop

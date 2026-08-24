@@ -207,6 +207,23 @@ gsettings set org.gnome.shell.extensions.forge layout-apply-chrome-enabled true
 
 Or **Preferences → Settings → Debugging → Layout apply chrome**.
 
+## Workspace switch (Super+N) flashes then snaps back
+
+After a cold `forge layout` (many apps opening at once), switching workspace
+with **Super+2** (or similar) can briefly show the target desk and then bounce
+back to the layout desk.
+
+**This is GNOME Shell / Mutter behavior, not Forge driving the workspace.**
+Forge does not own `switch-to-workspace-N`. The apply modal clearing only means
+Forge finished placing windows; Chrome/PWAs (and the dock) may still be **busy**
+or showing **urgency** (busy cursor on dock hover, icons “wiggling”). An urgent
+or activating window on the layout workspace can pull focus — and the active
+workspace — back.
+
+**What to do:** wait until the dock is quiet (no busy cursor, no urgency wiggle),
+then switch. If you switch during that busy window, the snapback can happen even
+with Forge disabled.
+
 ## Periodic layout verify (debug only)
 
 Optional **debug** timer that re-checks Meta frames against tree slots. Production
