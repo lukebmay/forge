@@ -1,8 +1,8 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-24 (enable→layout open-miss fix; Super+2 Guake ruled out)
+**Updated:** 2026-08-24 (tip `29c39cd`; host verify open-miss + DING; Super+2 external)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
-**Branch:** **`master`** default
+**Branch:** **`master`** @ **`29c39cd`** (pushed)
 **Push:** only when human asks.
 
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037/D038 ApplyLayout ·
