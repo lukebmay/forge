@@ -237,6 +237,43 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     expect(meta.get_frame_rect().width).toBe(slot.width);
   });
 
+  it("D026: mid-echo unmaximize snapback is healed by post-echo slot reassert", () => {
+    let now = 40_000;
+    wm().layoutEpoch.setNow(() => now);
+    const residual = wm().layoutEpoch.residualMs;
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
+    const meta = first.metaWindow;
+    const slot = { x: 0, y: 0, width: 900, height: 700 };
+    first.nodeWindow.mode = WINDOW_MODES.TILE;
+    first.nodeWindow.renderRect = { ...slot };
+    first.nodeWindow.rect = { ...slot };
+    ctx.display.get_focus_window.mockReturnValue(meta);
+
+    const setSpy = vi.spyOn(wm()._wmSources, "set");
+    meta.maximize();
+    meta.move_resize_frame(true, 0, 0, 1920, 1080);
+    wm().updateMetaPositionSize(meta, "size-changed");
+    expect(meta.is_maximized()).toBe(false);
+
+    const post = setSpy.mock.calls.find((c) => String(c[0]).startsWith("postEchoSlot:"));
+    expect(post).toBeTruthy();
+    expect(post[1]).toBeGreaterThanOrEqual(residual);
+    const postCb = post[2];
+
+    // Client applies unmaximize restore-size during echo (chrome-only).
+    meta.move_resize_frame(true, 40, 40, 640, 480);
+    wm().updateMetaPositionSize(meta, "size-changed");
+    expect(meta.get_frame_rect().width).toBe(640);
+    expect(wm().layoutEpoch.isEchoActive(meta)).toBe(true);
+
+    now += post[1];
+    expect(wm().layoutEpoch.isEchoActive(meta)).toBe(false);
+    postCb();
+    expect(meta.get_frame_rect().width).toBe(slot.width);
+    expect(meta.get_frame_rect().height).toBe(slot.height);
+  });
+
   it("AC2: LayoutBatch begin advances wave id", () => {
     expect(wm().layoutEpoch.waveId).toBe(0);
     const begin = wm().beginOpenLayoutBatch("demo");

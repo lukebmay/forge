@@ -905,6 +905,39 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(wm().restoreLayoutOpenLeafIfStolen(nB)).toBe(false);
   });
 
+  it("workspace focus steal re-reveals lastTabFocus without adopting", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const wOpen = createMockWindow({ id: "ws-open", workspace: ctx.workspaces[0] });
+    const wSteal = createMockWindow({ id: "ws-steal", workspace: ctx.workspaces[0] });
+    const nOpen = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wOpen);
+    const nSteal = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wSteal);
+    nOpen.mode = WINDOW_MODES.TILE;
+    nSteal.mode = WINDOW_MODES.TILE;
+    wOpen.raise = vi.fn();
+    wSteal.raise = vi.fn();
+    tab.lastTabFocus = wOpen;
+
+    expect(wm().restoreOpenLeafIfWorkspaceFocusSteal(nSteal)).toBe(true);
+    expect(tab.lastTabFocus).toBe(wOpen);
+    expect(wOpen.raise).toHaveBeenCalled();
+    expect(wm().restoreOpenLeafIfWorkspaceFocusSteal(nOpen)).toBe(false);
+  });
+
+  it("reassertOpenLeavesOnActiveWs raises each group open leaf", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const wOpen = createMockWindow({ id: "settle-open", workspace: ctx.workspaces[0] });
+    wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wOpen);
+    wOpen.raise = vi.fn();
+    tab.lastTabFocus = wOpen;
+
+    wm().reassertOpenLeavesOnActiveWs("workspace-settle");
+    expect(wOpen.raise).toHaveBeenCalled();
+  });
+
   it("focus-update uses focus-scoped decoration (not full hide/show)", () => {
     const metaWindow = createMockWindow({ wm_class: "App", workspace: ctx.workspaces[0] });
     wm().trackWindow(null, metaWindow);

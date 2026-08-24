@@ -163,25 +163,50 @@ describe("session-layout portable round-trip", () => {
     return windows.map((meta) => ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta));
   }
 
-  it("syncLastTabFocusFromFocus corrects stale lastTabFocus before portable save", () => {
-    // Live bug: browsing Chrome while lastTabFocus still Grok (deferred focus-update).
+  it("syncLastTabFocusFromFocus keeps live open leaf when Mutter focus diverges (D018)", () => {
+    // Voice steal: keyboard=Voice must not rewrite LTF=YouTube on session save.
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
+    const wYouTube = createMockWindow({ id: 1, title: "YouTube", wm_class: "Google-chrome" });
+    const wVoice = createMockWindow({ id: 2, title: "Voice", wm_class: "Google-chrome" });
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wYouTube);
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wVoice);
+    tab.lastTabFocus = wYouTube;
+
+    expect(syncLastTabFocusFromFocus(ctx.tree, wVoice)).toBe(false);
+    expect(tab.lastTabFocus).toBe(wYouTube);
+
+    const portable = toPortableForest(ctx.tree.snapshotTree());
+    const tabPortable = portable.monitors[0].children[0];
+    expect(tabPortable.lastTabFocusId).toBe(1);
+    const env = makeEnvelope(portable, 1, Date.now(), { focusWindowId: 2 });
+    expect(env.focusWindowId).toBe(2);
+    expect(env.forest.monitors[0].children[0].lastTabFocusId).toBe(1);
+  });
+
+  it("syncLastTabFocusFromFocus fills empty open leaf from focus", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
     const wGrok = createMockWindow({ id: 1, title: "Grok", wm_class: "Google-chrome" });
     const wChrome = createMockWindow({ id: 2, title: "Docs", wm_class: "Google-chrome" });
     ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wGrok);
     ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wChrome);
-    tab.lastTabFocus = wGrok;
+    tab.lastTabFocus = null;
 
     expect(syncLastTabFocusFromFocus(ctx.tree, wChrome)).toBe(true);
     expect(tab.lastTabFocus).toBe(wChrome);
+  });
 
-    const portable = toPortableForest(ctx.tree.snapshotTree());
-    const tabPortable = portable.monitors[0].children[0];
-    expect(tabPortable.lastTabFocusId).toBe(2);
-    const env = makeEnvelope(portable, 1, Date.now(), { focusWindowId: 2 });
-    expect(env.focusWindowId).toBe(2);
-    expect(env.forest.monitors[0].children[0].lastTabFocusId).toBe(2);
+  it("syncLastTabFocusFromFocus replaces dead open leaf not in group", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
+    const wLive = createMockWindow({ id: 1, title: "Live" });
+    const wGone = createMockWindow({ id: 99, title: "Gone" });
+    ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wLive);
+    tab.lastTabFocus = wGone;
+
+    expect(syncLastTabFocusFromFocus(ctx.tree, wLive)).toBe(true);
+    expect(tab.lastTabFocus).toBe(wLive);
   });
 
   it("syncLastTabFocusFromFocus is no-op when focus not in tree", () => {

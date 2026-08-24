@@ -151,6 +151,39 @@ describe("action-pipeline afterFocus", () => {
     afterFocus(wm(), node, { source: "meta-focus" });
     expect(stacked).toHaveBeenCalledWith(node);
   });
+
+  it("meta-focus during workspace change preserves open leaf (no adopt)", () => {
+    const node = trackOne();
+    wm()._workspaceChanging = true;
+    vi.spyOn(wm(), "restoreLayoutOpenLeafIfStolen").mockReturnValue(false);
+    const order = [];
+    vi.spyOn(wm(), "restoreOpenLeafIfWorkspaceFocusSteal").mockImplementation(() => {
+      order.push("ws-preserve");
+      return true;
+    });
+    vi.spyOn(wm(), "updateStackedFocus").mockImplementation(() => order.push("F"));
+    vi.spyOn(wm(), "updateTabbedFocus").mockImplementation(() => order.push("Ftab"));
+    vi.spyOn(wm(), "updateDecorationLayout").mockImplementation(() => order.push("D"));
+    vi.spyOn(wm(), "updateBorderLayout").mockImplementation(() => order.push("B"));
+    vi.spyOn(wm(), "movePointerWith").mockImplementation(() => order.push("P"));
+
+    afterFocus(wm(), node, { source: "meta-focus" });
+
+    expect(wm().restoreOpenLeafIfWorkspaceFocusSteal).toHaveBeenCalledWith(node);
+    expect(order).toEqual(["ws-preserve", "B"]);
+    expect(wm().updateTabbedFocus).not.toHaveBeenCalled();
+    expect(wm().movePointerWith).not.toHaveBeenCalled();
+  });
+
+  it("meta-focus during workspace change still adopts when focus is open leaf", () => {
+    const node = trackOne();
+    wm()._workspaceChanging = true;
+    vi.spyOn(wm(), "restoreLayoutOpenLeafIfStolen").mockReturnValue(false);
+    vi.spyOn(wm(), "restoreOpenLeafIfWorkspaceFocusSteal").mockReturnValue(false);
+    const stacked = vi.spyOn(wm(), "updateStackedFocus");
+    afterFocus(wm(), node, { source: "meta-focus" });
+    expect(stacked).toHaveBeenCalledWith(node);
+  });
 });
 
 describe("action-pipeline commitLayout / settleTabFocus", () => {

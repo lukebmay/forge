@@ -1,6 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-23 (plog TRACE hunts closed; D068)
+**Updated:** 2026-08-24 (open-leaf + D026 + silent-LTF committed; logout retest)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
 **Branch:** **`master`** default
 **Push:** only when human asks.
@@ -22,21 +22,26 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 DnD FLOAT skip · open-min late-adopt **agent done**.
 
 **Active next (ordered):**
-1. soft human — host verify OH + tip (+ vinyl WS2 + TILE DnD + optional dual-mon dock eyes-on + `forge log` apiVersion 11 + jsonl + Q0 color + Q5/Q6 pretty/fields) — [blocker](./blockers/oh-ws-orphan-host-verify.md)
+1. **P0 soft host** — open-leaf Voice steal: agent fix staged
+   ([task](./tasks/forge-ws-open-leaf-silent-lasttabfocus.md)) — **logout** +
+   YouTube/Voice hunt. Soft eyes-on remainder (TILE DnD / FLOAT / open-min /
+   dock) — [blocker](./blockers/oh-ws-orphan-host-verify.md). **D026 sole-max
+   host PASS** (`NTJ5d`).
 2. soft human — D049 tiny-env Nautilus (+ oversized learn eyes-on) — [blocker](./blockers/d049-tiny-env-nautilus.md)
 3. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
 4. later CN14/CN15 · blocked yuiop
 **Agents:** plog TRACE dig **done**
 ([completed](./tasks/completed/forge-plog-trace-hunts.md)) — place-hint FIFO
 wrong-window **accepted**+test; P2 bad-slot = late-adopt settle jitter.
-Uncommitted with OH Downstream. Soft human verify is next eyes-on only. Do
-**not** start #3 until the operator schedules that design meeting. Do **not**
-stop to ask the operator unless a **critical new finding**.
+**Tip committed + pushed** (open-leaf + silent-LTF + D026 + hunt TRACE).
+`./install --dev` was staged; **logout** to load. Do **not** start #3 until
+the operator schedules that design meeting. Do **not** stop to ask the
+operator unless a **critical new finding**.
 **Hunts:** `forge log --grep` / `--session` / `--level` only — never `tail` at
 TRACE (project.md § Logging; catalog `plog`). Prefer JSONL `text` when pretty
 collapses duplicate `class=` (place-hint now logs `winClass=`). Interactive
-query color + pretty (D067). **Host:** dirty tip installed `--dev`; nest ping
-green / **stopped**; primary tip reload via nest restart or later logout.
+query color + pretty (D067). **Host:** dirty tip needs `--dev` + logout; nest
+ping green / **stopped**.
 
 **Tab-drag owner:** `DragDropManager` sole gesture sink (stage capture + poll);
 tree press-arm only. Poll skips synced xy; SourceApp hot logs are TRACE.
