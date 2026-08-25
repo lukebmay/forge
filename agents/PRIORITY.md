@@ -2,7 +2,7 @@
 
 **Updated:** 2026-08-24 (Super+2 settle/urgency race; open-miss PASS)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
-**Branch:** **`master`** @ **`27f1933`** (pushed)
+**Branch:** **`master`** @ **`0471889`** (pushed; D069 = `27f1933`)
 **Push:** only when human asks.
 
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037/D038 ApplyLayout ·

@@ -1,8 +1,7 @@
 # Handoff — forge (lukebmay)
 
 **Updated:** 2026-08-24 (**D069** tab peer geometry shipped; tip retest open)
-**Branch:** **`master`** @ **`27f1933`** (D069 + tab-peer heal + DnD log fix). Nest
-**stopped**.
+**Branch:** **`master`** @ **`0471889`** (D069 in **`27f1933`**). Nest **stopped**.
 **Sessions:** **Wayland** daily driver. **green** = X11 NVIDIA.
 
 ## Next session (FIRM)
