@@ -109,7 +109,10 @@ If it still flattens: check that the file exists **before** reload
 
 Group tab strips live on the `#forge-tab-chrome` layer (above window actors,
 below the shell top window group) and should activate on click without a
-prior click into the content. If a tab still ignores clicks:
+prior click into the content. Strips on a monitor hide while that monitor has
+a covering window (Meta maximize/fullscreen or Forge zoom via Super+Enter) so
+the covering app stays on top of chrome; the layout-apply modal is the
+exception and stays above. If a tab still ignores clicks:
 
 1. Confirm `showtab-decoration-enabled` and that the group is TABBED/STACKED.
 1. Toggle layout debug overlay (`Ctrl+Super+d`) to confirm which CON owns the strip.

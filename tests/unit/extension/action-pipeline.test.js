@@ -330,14 +330,14 @@ describe("action-pipeline revealGroupChild", () => {
     expect(order).toContain("raise");
   });
 
-  it("R025: skips slot reassert when zoomMode is set", () => {
+  it("R025: still reasserts when zoomMode is set (paint-aware dest)", () => {
     const { nB } = tabbedPair();
     nB.zoomMode = "full";
-    const reassert = vi.spyOn(wm(), "reassertNodeToSlot");
+    const reassert = vi.spyOn(wm(), "reassertNodeToSlot").mockReturnValue(true);
 
     revealGroupChild(wm(), nB, { keyboard: false });
 
-    expect(reassert).not.toHaveBeenCalled();
+    expect(reassert).toHaveBeenCalledWith(nB);
   });
 
   it("R025: afterFocus does not reassert (intra-tab PWA path)", () => {

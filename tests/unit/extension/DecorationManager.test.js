@@ -104,6 +104,36 @@ describe("DecorationManager.updateDecorationLayout", () => {
     expect(con.decoration.show).not.toHaveBeenCalled();
   });
 
+  it("suppresses decorations on a monitor that has a Forge-zoomed window (D030)", () => {
+    buildTabbedCon();
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+      windowOverrides: { id: "zoomed-sibling" },
+    });
+    nodeWindow.zoomMode = "full";
+
+    ctx.windowManager.updateDecorationLayout();
+
+    expect(con.decoration.show).not.toHaveBeenCalled();
+  });
+
+  it("scope:focus does not re-show chrome when the monitor has a Forge-zoomed window", () => {
+    buildTabbedCon();
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+      windowOverrides: { id: "zoomed-sibling" },
+    });
+    nodeWindow.zoomMode = "full";
+    const focusChild = con.childNodes[0];
+
+    ctx.windowManager.updateDecorationLayout({
+      scope: "focus",
+      focusNode: focusChild,
+    });
+
+    expect(con.decoration.show).not.toHaveBeenCalled();
+  });
+
   it("still shows decorations when the maximized window is merely minimized (forge-iwi)", () => {
     buildTabbedCon();
     addMonitorWindow({ maximize: true, minimized: true });

@@ -189,14 +189,30 @@ describe("shouldRestoreTileSlot", () => {
     expect(shouldRestoreTileSlot(node, meta)).toBe(false);
   });
 
-  it("false when node.zoomMode is set (D030), even if Meta-maxed", () => {
+  it("zoomed TILE restores to paint target when frame is still at layout slot (D030)", () => {
+    const paint = { x: 0, y: 0, width: 1920, height: 1080 };
     const node = { ...makeNode(), zoomMode: "full" };
-    const maxed = makeMeta({ x: 0, y: 0, width: 1920, height: 1080 }, { maximized: 3 });
-    const fs = makeMeta({ x: 0, y: 0, width: 1920, height: 1080 }, { fullscreen: true });
-    const drifted = makeMeta({ x: 0, y: 0, width: 400, height: 300 });
-    expect(shouldRestoreTileSlot(node, maxed)).toBe(false);
-    expect(shouldRestoreTileSlot(node, fs)).toBe(false);
-    expect(shouldRestoreTileSlot(node, drifted)).toBe(false);
+    const atSlot = makeMeta({ ...slot });
+    const atPaint = makeMeta({ ...paint });
+    expect(shouldRestoreTileSlot(node, atSlot, 4, { targetRect: paint })).toBe(true);
+    expect(shouldRestoreTileSlot(node, atPaint, 4, { targetRect: paint })).toBe(false);
+  });
+
+  it("zoomed TILE still restores Meta max/fs (unmax then paint reassert)", () => {
+    const paint = { x: 0, y: 0, width: 1920, height: 1080 };
+    const node = { ...makeNode(), zoomMode: "full" };
+    const maxed = makeMeta({ ...paint }, { maximized: 3 });
+    const fs = makeMeta({ ...paint }, { fullscreen: true });
+    expect(shouldRestoreTileSlot(node, maxed, 4, { targetRect: paint })).toBe(true);
+    expect(shouldRestoreTileSlot(node, fs, 4, { targetRect: paint })).toBe(true);
+  });
+
+  it("shouldChromeOnlyGeometry uses options.targetRect when provided", () => {
+    const paint = { x: 0, y: 0, width: 1920, height: 1080 };
+    const node = makeNode();
+    const atPaint = makeMeta({ ...paint });
+    expect(shouldChromeOnlyGeometry(node, atPaint)).toBe(false);
+    expect(shouldChromeOnlyGeometry(node, atPaint, 4, { targetRect: paint })).toBe(true);
   });
 
   it("true for unsolicited Meta max/fs on a non-zoomed TILE (R020)", () => {
