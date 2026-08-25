@@ -1,7 +1,7 @@
 # Handoff — forge (lukebmay)
 
 **Updated:** 2026-08-24 (**D069** tab peer geometry shipped; tip retest open)
-**Branch:** **`master`** @ **`bdd0a44`** (D069 + tab-peer heal + DnD log fix). Nest
+**Branch:** **`master`** @ **`27f1933`** (D069 + tab-peer heal + DnD log fix). Nest
 **stopped**.
 **Sessions:** **Wayland** daily driver. **green** = X11 NVIDIA.
 
@@ -52,7 +52,7 @@ quiet.
 | --- | --- |
 | `67eaedc` | DING Desktop Icons product-ignore; mon percent scale on remove |
 | `29c39cd` | Partial-flat desk → `ensure_skeleton` so enable→`layout:dev` can PlaceNext |
-| `bdd0a44` | **D069** tab peer shared-slot + visible-first heal; DnD empty-mon log |
+| `27f1933` | **D069** tab peer shared-slot + visible-first heal; DnD empty-mon log |
 
 ## Active next (summary)
 
