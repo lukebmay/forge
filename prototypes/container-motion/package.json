@@ -1,0 +1,18 @@
+{
+  "name": "forge-container-motion-proto",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sandbox for forge 2D tree motion / container atomics",
+  "scripts": {
+    "start": "vite --port 5177 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --port 5177 --strictPort"
+  },
+  "dependencies": {
+    "cytoscape": "^3.33.1"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}

@@ -20,6 +20,8 @@ an i3/sway-style tiling window manager for GNOME Shell. Start with the top-level
 - **[compat.md](dev/compat.md)** — the Mutter API version-drift map and the
   `compat.js` shim recipe (GNOME 45+ support).
 
+Design sandboxes (not product docs): [`prototypes/`](../prototypes/).
+
 ## User guide (`docs/user/`)
 
 - **[layouts.md](user/layouts.md)** — how tiling works: splits, stacked, tabbed,

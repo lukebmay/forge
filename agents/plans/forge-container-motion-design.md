@@ -226,7 +226,7 @@ Do not block peel on fear of nesting; normalize is a separate cleanup pass.
 ### Acceptance for prototype
 
 1. Single static page (vanilla HTML/JS/CSS) openable in a browser — e.g.
-   `docs/dev/prototypes/container-motion.html` (or `temp/` until locked).
+   `prototypes/container-motion/` (self-contained; not under `docs/` or `lib/`).
 2. Render a mon as nested **boxes**: leaf units + CON frames labeled H/V/TAB/STACK.
 3. Keys (configurable): focus leaf; elevate parent; clear; move L/R/U/D; peel/move-out;
    move-in; group; ungroup; optional tag cyan / commit merge.
@@ -241,7 +241,7 @@ Do not block peel on fear of nesting; normalize is a separate cleanup pass.
 | ID | Work | Status |
 | --- | --- | --- |
 | **MD0** | Write this plan + open decisions (this file) | **done** (draft) |
-| **MD1** | Build HTML prototype + README how to open | pending |
+| **MD1** | Build HTML prototype + README how to open | **done** (`prototypes/container-motion/`) |
 | **MD2** | Operator play session — lock D1–D9 in table | pending |
 | **MD3** | Implement tasks spawned only after MD2 (peel B, edge no-op, …) | blocked on MD2 |
 

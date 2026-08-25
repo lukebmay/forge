@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Forge — container motion</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <button
+        type="button"
+        id="btn-toggle-settings"
+        class="icon-btn"
+        aria-label="Settings"
+        title="Settings"
+      >
+        ☰
+      </button>
+      <h1>Forge container motion</h1>
+      <div class="view-toggle" title="Main view">
+        <button type="button" data-view="desk">Desk</button>
+        <button type="button" data-view="tree">Tree</button>
+        <button type="button" data-view="split" class="active">Split</button>
+      </div>
+      <div class="top-actions">
+        <button type="button" id="btn-toggle-atomics" title="Atomics">Atomics</button>
+        <button type="button" id="btn-toggle-keys" title="Keybinds">Keybinds</button>
+        <button type="button" id="btn-dump-tree" title="console.log tree">Dump tree</button>
+      </div>
+    </header>
+
+    <div class="stage">
+      <aside id="drawer-settings" class="drawer-overlay" hidden>
+        <div class="drawer-side-scroll">
+          <h2>Settings</h2>
+          <div class="settings-block">
+            <label class="row"
+              >Preset
+              <select id="mon-preset"></select>
+            </label>
+            <label class="row"
+              >Count
+              <input id="mon-count" type="number" min="1" max="4" value="2" />
+            </label>
+            <div class="settings-actions">
+              <button type="button" id="btn-seed">Reseed black</button>
+              <button type="button" id="btn-reset" class="danger">Reset all</button>
+            </div>
+          </div>
+          <h2>Monitors</h2>
+          <div id="mon-list" class="mon-list"></div>
+          <h2>Decisions</h2>
+          <div class="settings-block decisions">
+            <label class="row"
+              >Peel
+              <select id="dec-peel">
+                <option value="B">B wrap-in-slot</option>
+                <option value="A">A reparent</option>
+              </select>
+            </label>
+            <label class="row"
+              >Edge move
+              <select id="dec-edge">
+                <option value="noop">no-op</option>
+                <option value="wrap">wrap</option>
+                <option value="pop">pop out</option>
+              </select>
+            </label>
+            <span class="legend">
+              <span class="swatch focus"></span> focus
+              <span class="swatch selection"></span> selection
+              <span class="swatch tag"></span> merge tag
+            </span>
+          </div>
+        </div>
+      </aside>
+
+      <aside id="drawer-atomics" class="drawer-side drawer-left" hidden>
+        <div class="drawer-side-scroll">
+          <h2>Atomics</h2>
+          <div class="btn-grid">
+            <button type="button" data-action="focus:left">Focus ←</button>
+            <button type="button" data-action="focus:down">Focus ↓</button>
+            <button type="button" data-action="focus:up">Focus ↑</button>
+            <button type="button" data-action="focus:right">Focus →</button>
+
+            <button type="button" data-action="move:left">Move ←</button>
+            <button type="button" data-action="move:down">Move ↓</button>
+            <button type="button" data-action="move:up">Move ↑</button>
+            <button type="button" data-action="move:right">Move →</button>
+
+            <button type="button" data-action="swap:left">Swap ←</button>
+            <button type="button" data-action="swap:down">Swap ↓</button>
+            <button type="button" data-action="swap:up">Swap ↑</button>
+            <button type="button" data-action="swap:right">Swap →</button>
+
+            <button type="button" data-action="focusParent">Focus parent</button>
+            <button type="button" data-action="focusChild">Focus child</button>
+            <button type="button" data-action="moveIn">Move in</button>
+            <button type="button" data-action="moveOut">Move out</button>
+
+            <button type="button" data-action="group">Group</button>
+            <button type="button" data-action="ungroup">Ungroup</button>
+            <button type="button" data-action="wrap:HSPLIT">Wrap H</button>
+            <button type="button" data-action="wrap:VSPLIT">Wrap V</button>
+            <button type="button" data-action="wrap:TABBED">Wrap TAB</button>
+
+            <button type="button" data-action="setLayout:HSPLIT">→ HSPLIT</button>
+            <button type="button" data-action="setLayout:VSPLIT">→ VSPLIT</button>
+            <button type="button" data-action="setLayout:TABBED">→ TABBED</button>
+            <button type="button" data-action="setLayout:STACKED">→ STACKED</button>
+
+            <button type="button" data-action="createGroup">Empty tab group</button>
+            <button type="button" data-action="createStack">Empty stack</button>
+            <button type="button" data-action="flatten">Flatten</button>
+            <button type="button" data-action="flattenAll">Flatten all</button>
+            <button type="button" data-action="close">Close win</button>
+            <button type="button" data-action="toggleTag">Tag cyan</button>
+            <button type="button" data-action="clearTags">Clear tags</button>
+          </div>
+
+          <div class="launch-row">
+            <label
+              >Launch →
+              <select id="launch-mon"></select>
+            </label>
+            <button type="button" id="btn-launch">Launch</button>
+          </div>
+
+          <h2>Composed</h2>
+          <div class="macro-form">
+            <input id="macro-name" placeholder="name" />
+            <input id="macro-steps" placeholder="moveOut group flatten …" />
+            <button type="button" id="btn-add-macro">Save</button>
+          </div>
+          <div id="macro-list"></div>
+        </div>
+      </aside>
+
+      <section id="views" class="views" data-mode="split">
+        <div class="view-pane">
+          <div id="desk-view"></div>
+        </div>
+        <div class="view-pane">
+          <div id="tree-view"></div>
+        </div>
+      </section>
+
+      <aside id="drawer-keys" class="drawer-overlay" hidden>
+        <div class="drawer-side-scroll">
+          <h2>Keybinds</h2>
+          <p class="hint">
+            Vim kit without Super. <kbd>hjkl</kbd> focus · <kbd>Shift</kbd> move ·
+            <kbd>Ctrl</kbd> swap.
+          </p>
+          <button type="button" id="btn-reset-keys">Reset Vim − Super</button>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Chord</th>
+                  <th>Label</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="keybind-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <script type="module" src="./src/main.mjs"></script>
+  </body>
+</html>

@@ -1,32 +1,29 @@
 # Task: MD1 — HTML container-motion prototype
 
-**Status:** parked — see agents/IDEAS.md; not PRIORITY
-**Plan:** [forge-container-motion-design.md](../plans/forge-container-motion-design.md)  
-**Branch:** `plan/forge-container-motion-design` (or docs on master until locks)  
-**Priority:** P1 design (after or parallel with workspace-scope; **before** peel/move Shell work)  
-**Created:** 2026-08-06  
+**Status:** done (2026-08-25) — `prototypes/container-motion/` (repo-hosted sandbox only)
+**Plan:** [forge-container-motion-design.md](../../plans/forge-container-motion-design.md)
+**Priority:** design sandbox (operator-requested; not Shell motion implement)
 
 ## Goal
 
-Interactive single-page prototype so operator and agents can try peel Model B,
-edge no-op, sibling move, join, and multi-tag selection **without** GNOME Shell.
+Interactive sandbox so operator and agents can try peel Model B, edge no-op,
+sibling move, wrap/group/flatten, multi-monitor geometry, and composed macros
+**without** GNOME Shell.
 
-## Acceptance
+## Shipped
 
-1. Page at `docs/dev/prototypes/container-motion.html` (vanilla HTML/JS/CSS).
-2. Nested boxes for H/V/TAB/STACK + leaf units; keyboard driven.
-3. Layers: focus, selection (magenta), merge tags (cyan).
-4. Ops: move L/R/U/D, peel/move-out (Model B toggle vs reparent), move-in, group,
-   ungroup, elevate parent, clear; optional multi-tag + commit merge.
-5. Presets for tall-tab|term mon and nested cases; op log on screen.
-6. Toggles for open decisions D1–D5 from the plan.
-7. Short `docs/dev/prototypes/README.md` how to open (`file://` or local server).
+| Item | Where |
+| --- | --- |
+| App | `prototypes/container-motion/` (`npm start` → :5177) |
+| Desk + cytoscape tree views | linked highlights |
+| Atomics + macros + Vim−Super keys | panels |
+| Monitor presets (`black` default) | App panel |
+| Peel B/A + edge toggles | view bar |
+| README | same folder + `prototypes/README.md` |
 
-## Out of scope
+MD2 (operator play → lock D1–D9) still open — no Shell motion patches from this alone.
 
-- Shell / extension code changes
-- Locking D1–D9 (MD2 operator session after this ships)
+## Out of scope (still)
 
-## Session note
-
-(ready — not started)
+- Shell / extension motion changes
+- Locking D1–D9 (MD2)
