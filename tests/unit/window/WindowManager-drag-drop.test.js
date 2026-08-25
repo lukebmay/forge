@@ -933,6 +933,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm()._handleGrabOpBegin(global.display, metaB, GrabOp.WINDOW_BASE);
       expect(b.mode).toBe(WINDOW_MODES.GRAB_TILE);
       expect(wm().dragDrop._grabPointerTrack).toBeTruthy();
+      expect(wm()._wmSources.has("grabPointerPoll")).toBe(true);
 
       wm()._grabStartPointer = [100, 100];
       setPointer(100, 100); // parked at grab start
@@ -947,6 +948,58 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       const live = wm().dragDrop.getDragPointer(b);
       expect(live[0]).toBe(500);
       expect(live[1]).toBe(500);
+    });
+
+    it("titlebar poll paints zones without a prior tab peel (cold Wayland)", async () => {
+      const MetaMod = await import("../../mocks/gnome/Meta.js");
+      const GrabOp = MetaMod.GrabOp;
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "tiling-mode-enabled") return true;
+        if (key === "preview-hint-enabled") return true;
+        return false;
+      });
+      // Stage silent — poll alone must paint (Mutter grab often eats motion).
+      global.stage = { connect: undefined, disconnect: () => {} };
+
+      const metaGrok = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+        wm_class: "Google-chrome",
+      });
+      const metaGhost = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+        wm_class: "com.mitchellh.ghostty",
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const grok = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaGrok);
+      const ghost = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaGhost);
+      grok.mode = WINDOW_MODES.TILE;
+      ghost.mode = WINDOW_MODES.TILE;
+      grok.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      grok.renderRect = { ...grok.rect };
+      ghost.rect = { x: 960, y: 0, width: 960, height: 1080 };
+      ghost.renderRect = { ...ghost.rect };
+
+      const setSpy = vi.spyOn(wm()._wmSources, "set");
+      setPointer(100, 100);
+      wm()._handleGrabOpBegin(global.display, metaGrok, GrabOp.WINDOW_BASE);
+      expect(grok.mode).toBe(WINDOW_MODES.GRAB_TILE);
+      expect(grok.previewHint).toBeFalsy();
+      expect(wm()._wmSources.has("grabPointerPoll")).toBe(true);
+
+      const pollCall = setSpy.mock.calls.find((c) => c[0] === "grabPointerPoll");
+      expect(pollCall).toBeTruthy();
+      const tick = pollCall[2];
+
+      // Poll sees pointer over Ghostty; cold path must create actors + show.
+      wm()._grabStartPointer = [100, 100];
+      setPointer(1440, 540);
+      tick();
+
+      expect(grok.previewHint).toBeTruthy();
+      expect(grok.previewZoneActors).toBeTruthy();
+      expect(Object.keys(grok.previewZoneActors).length).toBeGreaterThan(0);
     });
 
     it("titlebar position-changed paints when display focus lags drag node", async () => {
