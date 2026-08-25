@@ -44,6 +44,7 @@ Plan: [forge-canonical-contracts](../../agents/plans/forge-canonical-contracts.m
 | Re-raise current / new open leaf after structure | `wm.settleTabFocus(node)` | Second full commit “for tabs” |
 | After mass apply / last raise, restack all tab strips | `SessionApi._settleAfterRunSteps` (WR14 RunSteps) + `_restackTabDecorations` (ApplyLayout Done; **no** second raise) | Skip ApplyLayout; extra tab-click handler; Done-path `settleTabFocus` raise |
 | **Show a child in a TABBED/STACKED group** | `wm.revealGroupChild(node, { keyboard, pin })` (includes slot reassert R025 + adopt live pin R026) | `parent.lastTabFocus =` + `raise()` in a new file |
+| **Size all TABBED/STACKED peers to the group slot** | `wm.reassertAllTabStackSlots` after `tree.render` / apply (+ coalesced post-echo heal). Join and slot move/resize go through `commitLayout` → render. Tab click stays raise/focus | Reassert all peers on focus / `updateTabbedFocus`; rely on tab click alone to first-size hidden peers |
 | Pin open leaf during layout residual | `wm.pinLayoutOpenLeaf` / `restoreLayoutOpenLeafIfStolen` | Adopt Meta steal as the new leaf |
 | **Group two windows as tabs/stack** | `tree.group(a, b, layout?, opts?)` — named I2 op; implements via `mergeWindowsIntoGroup`. Default **TABBED**; **STACKED** when stacked mode + `dnd-center-layout` stacked, or opts | Flip `parent.layout` in DnD/command; new wrap twin of merge |
 | **Ungroup / dissolve a CON** | `tree.ungroup(node)` — promote children to grandparent (order preserved). WINDOW uses parent CON. No-op MONITOR/ROOT/WORKSPACE. One CON only (not recursive flatten; no Meta mon peel) | `_layoutOp` silent peel (deleted P3); `cleanTree` / `auto-exit-tabbed` as product ungroup |
@@ -114,9 +115,18 @@ Open leaf ≠ keyboard focus. Do not sync GetTree `lastTabFocus` from Meta focus
 | `false` | LTF + optional pin + `reassertNodeToSlot` + raise + `settleTabFocus` |
 | `true` | Same, then focus + activate + `afterFocus` (restack last; R032) |
 
-Tab click (R025): reassert **only** the revealed child. Do **not** reassert
-from `afterFocus` / `updateTabbedFocus` (intra-tab PWA frame-lie). Skip when
-`zoomMode` is set (D030).
+**Geometry authority (D069 — FIRM):** every TILE peer in a TABBED/STACKED group
+shares the group content rect. Size on **join** and whenever the **group slot**
+moves/resizes via `commitLayout` → `tree.render`/`apply` →
+`reassertAllTabStackSlots` (+ post-echo heal). **Visible-first:** open leaf
+before buried peers (buried stay mapped; heal while under the open leaf is
+OK). Tab click must not be the first size. **No drift** without a very
+significant reason + written trade-offs + explicit go
+(`agents/plans/forge-tab-peer-geometry.md`).
+
+Tab click (R025): reassert **only** the revealed child as a safety net. Do
+**not** reassert from `afterFocus` / `updateTabbedFocus` (intra-tab PWA
+frame-lie). Skip when `zoomMode` is set (D030).
 
 If a layout pin is already live and reveal shows a **different** child
 (tab click, keyboard), **adopt** the pin onto that child (R026). Otherwise

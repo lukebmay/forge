@@ -1,19 +1,26 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-24 (Super+2: settle/urgency race; quiet desk = no bounce)
-**Branch:** **`master`** @ **`29c39cd`** (pushed). Nest **stopped**.
+**Updated:** 2026-08-24 (**D069** tab peer geometry shipped; tip retest open)
+**Branch:** **`master`** @ **`bdd0a44`** (D069 + tab-peer heal + DnD log fix). Nest
+**stopped**.
 **Sessions:** **Wayland** daily driver. **green** = X11 NVIDIA.
 
 ## Next session (FIRM)
 
-1. **Super+2** — confirm early-vs-late in one session ([task](./tasks/forge-ws-super2-bounce.md)):
+1. **Tip reload** then host-check tab peer sizing
+   ([completed](./tasks/completed/forge-tab-peer-slot-size.md) ·
+   [plan](./plans/forge-tab-peer-geometry.md) **D069**): left-mon TABBED
+   Chrome+Grok full slot **without** click; hunt
+   `post-render-tab-slots|rect-mismatch|dnd empty-mon|zone-none`.
+   **No drift** on D069 without written trade-offs + explicit go.
+2. **Super+2** — confirm early-vs-late in one session ([task](./tasks/forge-ws-super2-bounce.md)):
    - After `layout:dev` modal clears, Super+2 **while dock hover still spins /
      icons wiggle** → expect bounce.
    - After spinner gone + no wiggle → expect stick (already observed once).
    - Do **not** add forge WS activate/pin fallbacks unless a forge-owned residual
      remains after urgency/busy is ruled in or out.
-2. Soft: OH remainder — [blocker](./blockers/oh-ws-orphan-host-verify.md).
-3. Soft: D049 tiny-env — [blocker](./blockers/d049-tiny-env-nautilus.md).
+3. Soft: OH remainder — [blocker](./blockers/oh-ws-orphan-host-verify.md).
+4. Soft: D049 tiny-env — [blocker](./blockers/d049-tiny-env-nautilus.md).
 
 ## Super+2 (current picture)
 
@@ -45,11 +52,13 @@ quiet.
 | --- | --- |
 | `67eaedc` | DING Desktop Icons product-ignore; mon percent scale on remove |
 | `29c39cd` | Partial-flat desk → `ensure_skeleton` so enable→`layout:dev` can PlaceNext |
+| `bdd0a44` | **D069** tab peer shared-slot + visible-first heal; DnD empty-mon log |
 
 ## Active next (summary)
 
 | Pri | Slice | Status |
 | --- | --- | --- |
+| P0 | Tab peer slot size (host tip) | [completed](./tasks/completed/forge-tab-peer-slot-size.md) — tip eyes-on |
 | P0 | Super+2 settle/urgency | [task](./tasks/forge-ws-super2-bounce.md) |
 | soft | OH host verify | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
 | soft | D049 tiny-env | [blocker](./blockers/d049-tiny-env-nautilus.md) |

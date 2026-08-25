@@ -72,6 +72,42 @@ describe("R015: empty-monitor drag-drop rehome", () => {
     });
   });
 
+  describe("empty-mon same-mon miss (no false commit)", () => {
+    let ctx;
+    const wm = () => ctx.windowManager;
+
+    beforeEach(() => {
+      ctx = createWindowManagerFixture({
+        globals: {
+          display: { get_n_monitors: () => 2 },
+        },
+      });
+    });
+
+    afterEach(() => {
+      ctx.cleanup();
+    });
+
+    it("same-mon null target does not rehome and returns false", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+      const meta = createMockWindow({
+        id: "same-mon-dnd",
+        rect: new Rectangle({ x: 10, y: 10, width: 400, height: 300 }),
+        workspace: ctx.workspaces[0],
+      });
+      const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta);
+      node.mode = WINDOW_MODES.GRAB_TILE;
+      wm()._draggedNodeWindow = node;
+      setPointer(100, 100);
+      meta.get_monitor = vi.fn(() => 0);
+      meta.monitor = 0;
+
+      const ok = wm().dragDrop._commitEmptyMonitorDrop(node);
+      expect(ok).toBe(false);
+      expect(node.parentNode).toBe(monitor);
+    });
+  });
+
   describe("moveWindowToPointer empty mon commit", () => {
     let ctx;
 

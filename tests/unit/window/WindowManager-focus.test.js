@@ -841,6 +841,108 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     );
   });
 
+  it("reassertAllTabStackSlots moves every off-slot TILE peer in a TABBED group", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+
+    const slot = { x: 0, y: 0, width: 900, height: 700 };
+    const half = { x: 0, y: 0, width: 900, height: 350 };
+    const full = { ...slot };
+
+    const wChrome = createMockWindow({
+      id: "peer-chrome",
+      rect: half,
+      workspace: ctx.workspaces[0],
+    });
+    const wGrok = createMockWindow({
+      id: "peer-grok",
+      rect: full,
+      workspace: ctx.workspaces[0],
+    });
+    const nChrome = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wChrome);
+    const nGrok = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wGrok);
+    nChrome.mode = WINDOW_MODES.TILE;
+    nGrok.mode = WINDOW_MODES.TILE;
+    nChrome.rect = { ...slot };
+    nChrome.renderRect = { ...slot };
+    nGrok.rect = { ...slot };
+    nGrok.renderRect = { ...slot };
+    tab.lastTabFocus = wGrok;
+
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    const groups = wm().reassertAllTabStackSlots({ force: false });
+
+    expect(groups).toBe(1);
+    expect(moveSpy).toHaveBeenCalledTimes(1);
+    expect(moveSpy).toHaveBeenCalledWith(
+      wChrome,
+      expect.objectContaining(slot),
+      null,
+      expect.objectContaining({ force: false })
+    );
+  });
+
+  it("reassertAllTabStackSlots sizes open leaf before buried peers (D069)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const slot = { x: 0, y: 0, width: 900, height: 700 };
+    const half = { x: 0, y: 0, width: 900, height: 350 };
+
+    const wOpen = createMockWindow({
+      id: "vis-open",
+      rect: half,
+      workspace: ctx.workspaces[0],
+    });
+    const wBuried = createMockWindow({
+      id: "vis-buried",
+      rect: half,
+      workspace: ctx.workspaces[0],
+    });
+    const nOpen = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wOpen);
+    const nBuried = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wBuried);
+    nOpen.mode = WINDOW_MODES.TILE;
+    nBuried.mode = WINDOW_MODES.TILE;
+    for (const n of [nOpen, nBuried]) {
+      n.rect = { ...slot };
+      n.renderRect = { ...slot };
+    }
+    tab.lastTabFocus = wOpen;
+
+    const order = [];
+    vi.spyOn(wm(), "move").mockImplementation((meta) => {
+      order.push(meta);
+    });
+    wm().reassertAllTabStackSlots({ force: false });
+    expect(order[0]).toBe(wOpen);
+    expect(order).toContain(wBuried);
+    expect(order.indexOf(wOpen)).toBeLessThan(order.indexOf(wBuried));
+  });
+
+  it("updateTabbedFocus still does not reassert peers (commit owns geometry)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const slot = { x: 0, y: 0, width: 800, height: 600 };
+    const off = { x: 0, y: 0, width: 800, height: 300 };
+    const wA = createMockWindow({ id: "focus-a", rect: off, workspace: ctx.workspaces[0] });
+    const wB = createMockWindow({ id: "focus-b", rect: off, workspace: ctx.workspaces[0] });
+    const nA = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wB);
+    nA.mode = WINDOW_MODES.TILE;
+    nB.mode = WINDOW_MODES.TILE;
+    nA.rect = { ...slot };
+    nA.renderRect = { ...slot };
+    nB.rect = { ...slot };
+    nB.renderRect = { ...slot };
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    wB.raise = vi.fn();
+    wm().updateTabbedFocus(nB);
+    expect(moveSpy).not.toHaveBeenCalled();
+    expect(wB.raise).toHaveBeenCalled();
+  });
+
   it("activateFromTab reasserts the revealed child to slot (R025), no focus render", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());

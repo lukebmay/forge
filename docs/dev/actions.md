@@ -84,6 +84,13 @@ Restack is last (R032). Not a second C. Do not invent `raiseWindow()`.
 **Forbidden:** `renderTree("focus")`, **Dfull**, reassert other monitors’
 tab groups, reassert from `afterFocus`.
 
+**Tab/stack geometry (D069 — FIRM, commit not focus):** after `tree.render` in
+the **C** body, `reassertAllTabStackSlots` sizes TABBED/STACKED TILE peers to
+the shared slot (ε), **open leaf first**, then buried peers. Post-echo heal
+repeats for late Meta snaps. Buried peers may heal same-turn after visible
+and/or idle — never block open-leaf sizing behind them. Focus/tab-click stay
+raise + optional R025 on the revealed child only. No silent contract drift.
+
 ---
 
 ### TabChromeDrag (D046)

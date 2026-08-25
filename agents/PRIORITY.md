@@ -2,7 +2,7 @@
 
 **Updated:** 2026-08-24 (Super+2 settle/urgency race; open-miss PASS)
 **Lens:** healthy codebase first — ownership, **named APIs**, unit tests. Size is a symptom.
-**Branch:** **`master`** @ **`29c39cd`** (pushed)
+**Branch:** **`master`** @ **`bdd0a44`** (pushed after D069)
 **Push:** only when human asks.
 
 **Locked:** D036 (Node CLI + `lib/shared` pures) · D037/D038 ApplyLayout ·
@@ -22,16 +22,22 @@ User CLI surface **shipped** (`forge` product-only; nest/live = **`forge-test`**
 DnD FLOAT skip · open-min late-adopt **agent done**.
 
 **Active next (ordered):**
-1. **P0** — Super+2 fakout ([task](./tasks/forge-ws-super2-bounce.md)) —
+1. **P0** — Tab peer slot size **host tip** (**D069** FIRM —
+   [plan](./plans/forge-tab-peer-geometry.md) ·
+   [completed](./tasks/completed/forge-tab-peer-slot-size.md)) — agent done:
+   shared-slot on commit; visible-first then buried; post-echo heal; DnD
+   empty-mon commit log only on real rehome. Tip reload then eyes-on. **No
+   silent drift** on D069.
+2. **P0** — Super+2 fakout ([task](./tasks/forge-ws-super2-bounce.md)) —
    **settle/urgency race** (quiet desk = no bounce; non-forge place = no bounce).
    Next: early-vs-late Super+2 same session. Do **not** add forge WS
    activate/pin fallbacks. Soft eyes-on remainder —
    [blocker](./blockers/oh-ws-orphan-host-verify.md).
-2. soft — optional DING ⅓ after disable→enable
+3. soft — optional DING ⅓ after disable→enable
    ([task](./tasks/forge-enable-ding-percent-thrash.md)); open-miss host **PASS**.
-3. soft human — D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md)
-4. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
-5. later CN14/CN15 · blocked yuiop
+4. soft human — D049 tiny-env Nautilus — [blocker](./blockers/d049-tiny-env-nautilus.md)
+5. **P2 mid** (design only) — multi-ws pinned slots — [blocker](./blockers/pinned-slots-multi-ws-design.md) · [task](./tasks/forge-pinned-slots-multi-ws_d0-discussion.md)
+6. later CN14/CN15 · blocked yuiop
 **Agents:** Do **not** start #4 until the operator schedules that design
 meeting. Do **not** stop to ask the operator unless a **critical new finding**.
 **Hunts:** `forge log --grep` / `--session` / `--level` only — never `tail` at

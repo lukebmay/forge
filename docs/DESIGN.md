@@ -175,6 +175,20 @@ Full inventory (queue, workspace, Wayland stack, keyboard resize, …) and
 No orphan recovery timers found at audit time; keep teardown lists in sync when
 extracting monitor-recovery / session-restore modules.
 
+### Tab / stack peer geometry (D069 — FIRM)
+
+TABBED/STACKED children share **one** content rect. That rect is assigned on
+`tree.render`; Meta frames must match after commit. **Do not** treat tab click
+as the first size of a peer.
+
+| Rule | Detail |
+| --- | --- |
+| **When** | Join the group; whenever the group slot moves or resizes (`commitLayout` → render/apply → `reassertAllTabStackSlots` + post-echo heal) |
+| **Visible-first** | Open leaf (`lastTabFocus`) before buried peers. Never queue open-leaf `move_resize` behind buried work |
+| **Buried heal** | Peers stay **mapped** (under the open leaf in Z-order, not withdrawn). Mutter accepts `move_resize_frame` while buried — heal same-turn after visible and/or idle/post-echo so the next reveal is already in-slot |
+| **Click / reveal** | Raise + focus; R025 reassert of the revealed child only (safety net). No all-peer reassert on focus (PWA thrash) |
+| **No silent drift** | Changing this needs a very significant reason, written trade-offs, and explicit go — see `agents/plans/forge-tab-peer-geometry.md` |
+
 ### Raise / restack
 
 **Why this section exists:** Z-order is not one API. Tab click, focus manager,
