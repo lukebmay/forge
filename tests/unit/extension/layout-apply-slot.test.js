@@ -312,7 +312,7 @@ describe("late adopt remaps slot machine window id", () => {
 });
 
 describe("placeSlotWindows (SM5: no mid-place focus)", () => {
-  it("runs move steps only — never focus", () => {
+  it("runs place/structure steps only — never focus", () => {
     const d = loadExpected("perfect-clean");
     const forest = JSON.parse(JSON.stringify(d.forest));
     // Push open leaf off profile so plan may emit focus; place must still drop it.
@@ -343,8 +343,9 @@ describe("placeSlotWindows (SM5: no mid-place focus)", () => {
       phase: "hard-ready",
     });
     expect(out.ok).toBe(true);
+    const allowed = new Set(["move", "layout", "order"]);
     for (const batch of ran) {
-      expect(batch.ops.every((op) => op === "move")).toBe(true);
+      expect(batch.ops.every((op) => allowed.has(String(op).toLowerCase()))).toBe(true);
       expect(batch.ops.includes("focus")).toBe(false);
       expect(batch.phase).toBe("hard-ready");
     }
@@ -406,6 +407,74 @@ describe("placeSlotWindows (SM5: no mid-place focus)", () => {
     expect(out.reason).toBe("ensure-meta");
     expect(out.steps).toBe(2);
     expect(ensured).toEqual(["mon0.inkscape"]);
+  });
+
+  it("R042: same-mon tab peer as MONITOR sibling runs ensure_layout (not hollow meta)", () => {
+    // Host thrash: mon1 = ghostty | TABBED(YouTube,Gmail) | Voice — Voice should
+    // join mon1.comms. Replan emits ensure_layout (0 moves); old hollow path only
+    // called ensureMetaInSlot and left a 3-column desk.
+    const d = loadExpected("perfect-clean");
+    const forest = JSON.parse(JSON.stringify(d.forest));
+    const mon1 = (forest.monitors || []).find((m) => m.id === "mo1ws0");
+    expect(mon1).toBeTruthy();
+    const tab = (mon1.children || []).find(
+      (c) => c && c.nodeType === "CON" && String(c.layout).toUpperCase() === "TABBED"
+    );
+    expect(tab).toBeTruthy();
+    const voice = (tab.children || []).find((c) => c && Number(c.windowId) === 204);
+    expect(voice).toBeTruthy();
+    tab.children = (tab.children || []).filter((c) => Number(c?.windowId) !== 204);
+    mon1.children = [...(mon1.children || []), voice];
+
+    const ran = [];
+    const ensured = [];
+    const out = placeSlotWindows({
+      profile: d.profile,
+      forest,
+      rolePins: {
+        "chrome-luke": 101,
+        grok: 102,
+        "ghostty-left": 103,
+        "ghostty-right": 201,
+        youtube: 202,
+        gmail: 203,
+        voice: 204,
+      },
+      flags: { ...d.flags, clean: false },
+      workspace: 0,
+      unsettled: true,
+      machine: {
+        key: "mon1.comms",
+        roles: ["youtube", "gmail", "voice"],
+        windowIds: ["202", "203", "204"],
+        slots: {
+          202: { windowId: "202", monitor: 1, parentLayout: "TABBED", parentType: "CON" },
+          203: { windowId: "203", monitor: 1, parentLayout: "TABBED", parentType: "CON" },
+          204: { windowId: "204", monitor: 1, parentLayout: "TABBED", parentType: "CON" },
+        },
+      },
+      runSteps: (steps) => {
+        ran.push(...steps);
+        return { ok: true };
+      },
+      ensureMetaInSlot: (machine) => {
+        ensured.push(machine.key);
+        return { ok: true, steps: 3 };
+      },
+      phase: "hard-ready",
+    });
+    expect(out.ok).toBe(true);
+    expect(out.reason).toBe("structure");
+    expect(ensured).toEqual([]);
+    expect(ran.some((s) => String(s.op).toLowerCase() === "layout")).toBe(true);
+    expect(
+      ran.some(
+        (s) =>
+          String(s.op).toLowerCase() === "move" &&
+          String(s.tile || "").includes("204") &&
+          String(s.dest || "").startsWith("id:")
+      )
+    ).toBe(true);
   });
 });
 

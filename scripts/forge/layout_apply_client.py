@@ -50,6 +50,12 @@ def build_apply_layout_request(
         "forceClose": bool(src.get("forceClose")),
         "waitTreeStable": bool(src.get("waitTreeStable")),
     }
+    if "forestFailsafe" in src:
+        out_flags["forestFailsafe"] = bool(src.get("forestFailsafe"))
+    if src.get("chaos"):
+        out_flags["chaos"] = True
+    if src.get("chaosSeed") is not None and str(src.get("chaosSeed")).strip() != "":
+        out_flags["chaosSeed"] = str(src.get("chaosSeed")).strip()
     req: dict[str, Any] = {
         "profile": profile,
         "workspace": int(workspace) if workspace is not None else 0,

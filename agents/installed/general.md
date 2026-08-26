@@ -171,17 +171,27 @@ Functionally complete + unambiguous + succinct. Overwrite, don’t pile. Explora
 
 ## Plans
 
+When the operator says “plan” they mean either ordinary English (“I was
+planning…”) or the durable in-repo system under `agents/plans/` (“Create a plan
+to…”). **Never** use Grok `/plan` mode (`enter_plan_mode` /
+`~/.grok/sessions/…/plan.md`); that scratch is not a handoff. Plans are authored
+in conversation and design meetings and stored under `agents/plans/`. The
+shellrc `bin/grok` wrapper injects `--no-plan` by default (D063); pass
+wrapper-only `--plan` only when intentionally opting into Grok plan mode.
+
 **Canonical home (FIRM):** `agents/plans/<plan>.md` in the **project repo**.
 Completed tasks: `agents/plans/<plan>/completed/`.
+
+**Keep up-to-date (FIRM):** when a design decision lands, update or remove
+conflicting plans/tasks in the same effort (or immediately after). Before
+implementing from an older plan, skim current decisions + code for drift.
 
 | Rule | Detail |
 | --- | --- |
 | **Source of truth** | **FIRM.** `agents/plans/` is always the durable plan. Operators and agents look there **first** whenever anyone says “the plan” / “look at the plan” / names a plan. |
-| **In-repo only** | **FIRM.** Do **not** leave the only (or canonical) copy under `~/.grok/sessions/`, `/tmp`, or any path outside the repo unless the **current** user message explicitly says to. |
-| **Mirror after every edit** | **FIRM.** After **any** create/update of a plan (including Grok `/plan` mode scratch `plan.md`), **copy** into `agents/plans/<plan>.md` in the same turn (`cp` is fine — saves tokens vs rewriting). Session/scratch paths are disposable; the repo file is what the next session opens. |
-| **Read path** | When told to read a plan: open `agents/plans/…` first. Use a session scratch copy only if the repo file is missing — then **immediately** `cp` it into `agents/plans/` and continue from the repo path. |
-| `/plan` mode | Allowed. Still mirror to `agents/plans/` on every material edit and before ending the turn / exiting plan mode. Do not treat session `plan.md` as handoff. |
-| Major redesigns | Plan first; implement after approval |
+| **In-repo only** | **FIRM.** Keep plans in this repo’s `agents/plans/`; if work spans another repo, put that plan in **that** repo’s `agents/plans/`. Do **not** leave the only copy under `~/.grok/sessions/`, `/tmp`, or outside the repo unless the **current** user message explicitly says to. |
+| **Grok `/plan` mode** | **FIRM — never.** Do **not** call `enter_plan_mode` / Grok `/plan`. Do not treat session `plan.md` as handoff. |
+| Major redesigns | Plan first under `agents/plans/`; implement after approval (conversation / design meeting) |
 | Plan reshape discovery | Stop and ask |
 | Progress note | Overwrite one note when code changes (on the **repo** plan file) |
 
@@ -224,6 +234,32 @@ them with the task.
 
 Wrap-up on success: residue → notes → docs as needed → tests → commit/push per git.md.
 
-## AGENTS.md setup (FIRM)
+## Agents layout ownership (FIRM)
 
-Do not gitignore root `AGENTS.md`. After fragment changes: `agents build`. Index only — full rules stay under `agents/installed/` and user overrides.
+Root `AGENTS.md` is **generated** (`agents build` / `python3 agents.py build`) —
+a routing index (TOC + hard kernel), **not** the rulebook. Do not edit it by
+hand; do not gitignore it (Grok skips gitignored project instructions).
+
+| Path | Role | Who edits |
+| --- | --- | --- |
+| **`AGENTS.md`** | Transpiled index: hard kernel + session/queue pointers + guideline TOC | **Only** `agents build` |
+| **`agents/project.md`** | Project-specific conventions / stack | Project (hand) — **never** from catalog |
+| **`agents/HANDOFF.md`**, **`PRIORITY.md`**, **`IDEAS.md`**, **`REGRESSIONS.md`**, … | Session / priority / hunt notes | Project (hand) |
+| **`agents/plans/`**, **`tasks/`**, **`blockers/`**, **`archive/`** | Plans, tasks, human blockers | Project (hand) — not catalog |
+| **`agents/installed/*`** | Portable guideline bodies from shellrc **agents-catalog** | **Only** `agents install` / `agents update` — **never** hand-edit |
+| **`agents/<same-rel-as-installed>`** | Rare **user override** of a catalog file (wins over `installed/`) | Prefer **improve the catalog** then `agents update`. Override only for durable project forks; do not treat as the normal edit path |
+
+**Hard kernel** (always-on rows at the top of `AGENTS.md`) is **baked into the
+composer** (`agents.py` / shellrc `compose.py`), not into `general.md`. It is a
+short non-negotiable checklist (secrets, SSH, live-data, git force/promote,
+handoffs) that **points at** full rules in `agents/installed/security.md`,
+`git.md`, etc. Open those files when the domain matches — do not invent parallel
+rules.
+
+**Split-brain ban:** do not maintain a second copy of a catalog guideline under
+`agents/` “just because.” Either update the catalog (then `agents update` into
+projects) or document a deliberate override. `agents reclaim` exists to pull
+accidental `installed/` edits into an override — then fold into catalog or keep
+as a true fork.
+
+After install/update/override changes: `agents build`.

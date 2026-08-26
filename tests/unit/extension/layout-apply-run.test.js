@@ -611,7 +611,7 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     });
   }
 
-  it("hard → focus steps → soft quiet → verify; chrome clears after soft", () => {
+  it("hard → focus steps → soft quiet → verify; chrome clears at Done (D071)", () => {
     const { profile, forest, flags } = grokActiveMismatch();
     const executed = [];
     const chrome = { show: 0, clear: 0, reasons: [] };
@@ -665,7 +665,7 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.live).toBeTruthy();
     expect(bag.live.phase).toBe("soft");
     expect(chrome.show).toBe(1);
-    // Chrome stays through soft so jitter/soft notices can show.
+    // Chrome stays through soft + verify; clear only at Done (D071).
     expect(chrome.clear).toBe(0);
     expect(executed.some((e) => e.phase === "focus" && e.ops.includes("focus"))).toBe(true);
     expect(bag.live.hardReadyRan).toBe(true);
@@ -684,9 +684,8 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.lastTerminal.terminal.result.verify.ok).toBe(true);
     expect(bag.lastTerminal.terminal.result.heuristics.persist).toBe("ok");
     expect(written.text).toContain("testhost|google-chrome|focus-phase|focus");
-    // Cleared once after soft; Done must not double-clear.
     expect(chrome.clear).toBe(1);
-    expect(chrome.reasons).toEqual(["all-hard"]);
+    expect(chrome.reasons).toEqual(["done"]);
   });
 
   it("hard-ready waits for TILE signal then continues (no poll interval)", () => {
@@ -750,7 +749,7 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.lastTerminal.terminal.ok).toBe(true);
     expect(bag.lastTerminal.terminal.result.hardReady.ok).toBe(true);
     expect(chrome.clear).toBe(1);
-    expect(chrome.reasons).toEqual(["all-hard"]);
+    expect(chrome.reasons).toEqual(["done"]);
   });
 
   it("steal during soft restores pin and verify corrects at most once", () => {
@@ -955,7 +954,11 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
       }
     );
 
-    bag.start({ profile, flags: d.flags, name: "_forge-test-no-belt" });
+    bag.start({
+      profile,
+      flags: { ...d.flags, forestFailsafe: false },
+      name: "_forge-test-no-belt",
+    });
     flushZero();
     drainSlotHard();
     const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
@@ -1049,7 +1052,11 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
       }
     );
 
-    bag.start({ profile: d.profile, flags: d.flags, name: "_forge-test-rehome-forest" });
+    bag.start({
+      profile: d.profile,
+      flags: { ...d.flags, forestFailsafe: false },
+      name: "_forge-test-rehome-forest",
+    });
     flushZero();
     drainSlotHard();
     const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
@@ -1344,7 +1351,11 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
         hardRetryTimeoutMs: 50,
       }
     );
-    bag.start({ profile, flags, name: "_forge-test-sm5-hard-fail-still-focus" });
+    bag.start({
+      profile,
+      flags: { ...flags, forestFailsafe: false },
+      name: "_forge-test-sm5-hard-fail-still-focus",
+    });
     flushZero();
     expect(bag.live.phase).toBe("hard-ready");
     drainSlotHard();
@@ -1368,6 +1379,164 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.lastTerminal.terminal.result.verify).toBeTruthy();
     expect(bag.lastTerminal.terminal.result.soft).toBeTruthy();
     expect(bag.lastTerminal.terminal.result.forestMatch.ok).toBe(false);
+  });
+
+  it("D070: prod forest-failsafe recovers R042 partial tab peel once", () => {
+    // mon1.comms peers split: YouTube+Gmail in TABBED, Voice under MONITOR.
+    const d = loadExpected("perfect-clean");
+    const forest = JSON.parse(JSON.stringify(d.forest));
+    const mon1 = forest.monitors.find((m) => m.id === "mo1ws0");
+    const tab = (mon1.children || []).find(
+      (c) => c && c.nodeType === "CON" && String(c.layout).toUpperCase() === "TABBED"
+    );
+    const voice = (tab.children || []).find((c) => Number(c.windowId) === 204);
+    tab.children = (tab.children || []).filter((c) => Number(c?.windowId) !== 204);
+    mon1.children = [...(mon1.children || []), voice];
+
+    const pins = {
+      "chrome-luke": 101,
+      grok: 102,
+      "ghostty-left": 103,
+      "ghostty-right": 201,
+      youtube: 202,
+      gmail: 203,
+      voice: 204,
+    };
+    let forestLive = forest;
+    const failsafePhases = [];
+    const { bag, timers, flushZero, fireMs, drainSlotHard } = bagWithSettle(
+      {
+        snapshotForest: () => forestLive,
+        runSteps: (steps, ctx) => {
+          if (ctx.run) ctx.run.rolePins = { ...pins };
+          if (ctx.phase === "forest-failsafe") {
+            failsafePhases.push(steps.map((s) => s.op));
+            // Simulate ensure_layout regrouping Voice into the tab CON.
+            const m1 = forestLive.monitors.find((m) => m.id === "mo1ws0");
+            const t = (m1.children || []).find(
+              (c) => c && c.nodeType === "CON" && String(c.layout).toUpperCase() === "TABBED"
+            );
+            const peeled = (m1.children || []).find((c) => Number(c?.windowId) === 204);
+            if (t && peeled) {
+              m1.children = (m1.children || []).filter((c) => Number(c?.windowId) !== 204);
+              t.children = [...(t.children || []), peeled];
+            }
+            forestLive = JSON.parse(JSON.stringify(forestLive));
+          }
+          return { ok: true };
+        },
+      },
+      {
+        snapshotForest: () => forestLive,
+        loadWindows: () => {
+          const wins = [];
+          const walk = (n, parentLayout, parentType) => {
+            if (!n) return;
+            if (n.windowId != null) {
+              wins.push({
+                windowId: n.windowId,
+                mode: n.mode || "TILE",
+                monitor: n.monitor,
+                rect: n.rect || { width: 100, height: 80 },
+                wmClass: n.wmClass,
+                parentLayout,
+                parentType,
+              });
+            }
+            const lay = n.layout != null ? String(n.layout) : parentLayout;
+            const typ = n.nodeType != null ? String(n.nodeType) : parentType;
+            for (const c of n.children || []) walk(c, lay, typ);
+          };
+          for (const m of forestLive.monitors || []) walk(m, null, "MONITOR");
+          return wins;
+        },
+        readHeuristics: () => learnedHeuristics(),
+        writeHeuristics: () => {},
+        resolveHost: () => "testhost",
+        restorePin: () => false,
+      }
+    );
+
+    bag.start({
+      profile: d.profile,
+      flags: { ...d.flags, clean: false, forestFailsafe: true },
+      name: "_forge-test-failsafe-r042",
+    });
+    flushZero();
+    drainSlotHard();
+    const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
+    if (Number.isFinite(quietMs)) fireMs(quietMs);
+    flushZero();
+
+    expect(failsafePhases.length).toBeGreaterThan(0);
+    expect(failsafePhases.some((ops) => ops.includes("layout") || ops.includes("move"))).toBe(true);
+    expect(bag.lastTerminal.terminal.ok).toBe(true);
+    expect(bag.lastTerminal.terminal.result.failsafe?.recovered).toBe(true);
+    expect(bag.lastTerminal.terminal.result.forestMatch.ok).toBe(true);
+  });
+
+  it("D070: forestFailsafe:false keeps loud hard-failed (dev primary path)", () => {
+    const d = loadExpected("perfect-clean");
+    const forest = JSON.parse(JSON.stringify(d.forest));
+    const mon1 = forest.monitors.find((m) => m.id === "mo1ws0");
+    const tab = (mon1.children || []).find(
+      (c) => c && c.nodeType === "CON" && String(c.layout).toUpperCase() === "TABBED"
+    );
+    const voice = (tab.children || []).find((c) => Number(c.windowId) === 204);
+    tab.children = (tab.children || []).filter((c) => Number(c?.windowId) !== 204);
+    mon1.children = [...(mon1.children || []), voice];
+
+    const pins = {
+      "chrome-luke": 101,
+      grok: 102,
+      "ghostty-left": 103,
+      "ghostty-right": 201,
+      youtube: 202,
+      gmail: 203,
+      voice: 204,
+    };
+    let failsafeRan = false;
+    const { bag, timers, flushZero, fireMs, drainSlotHard } = bagWithSettle(
+      {
+        snapshotForest: () => forest,
+        runSteps: (steps, ctx) => {
+          if (ctx.run) ctx.run.rolePins = { ...pins };
+          if (ctx.phase === "forest-failsafe") failsafeRan = true;
+          return { ok: true };
+        },
+      },
+      {
+        snapshotForest: () => forest,
+        loadWindows: () => [
+          {
+            windowId: 204,
+            mode: "TILE",
+            monitor: 1,
+            rect: { width: 100, height: 80 },
+            wmClass: "Google-chrome",
+            parentLayout: "HSPLIT",
+            parentType: "MONITOR",
+          },
+        ],
+        readHeuristics: () => learnedHeuristics(),
+        writeHeuristics: () => {},
+        resolveHost: () => "testhost",
+      }
+    );
+
+    bag.start({
+      profile: d.profile,
+      flags: { ...d.flags, clean: false, forestFailsafe: false },
+    });
+    flushZero();
+    drainSlotHard();
+    const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
+    if (Number.isFinite(quietMs)) fireMs(quietMs);
+    flushZero();
+
+    expect(failsafeRan).toBe(false);
+    expect(bag.lastTerminal.terminal.ok).toBe(false);
+    expect(bag.lastTerminal.terminal.code).toBe("hard-failed");
   });
 });
 

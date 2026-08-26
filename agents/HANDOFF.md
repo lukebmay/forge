@@ -1,25 +1,28 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-24 (**D069** tab peer geometry shipped; tip retest open)
-**Branch:** **`master`** (pushed). Feature tip **`27f1933`** (D069). Nest **stopped**.
+**Updated:** 2026-08-26 (**R042/R043** + D070–D072; tip install pending logout)
+**Branch:** **`master`**. Nest **stopped**.
 **Sessions:** **Wayland** daily driver. **green** = X11 NVIDIA.
 
 ## Next session (FIRM)
 
-1. **Tip reload** then host-check tab peer sizing
-   ([completed](./tasks/completed/forge-tab-peer-slot-size.md) ·
-   [plan](./plans/forge-tab-peer-geometry.md) **D069**): left-mon TABBED
-   Chrome+Grok full slot **without** click; hunt
-   `post-render-tab-slots|rect-mismatch|dnd empty-mon|zone-none`.
-   **No drift** on D069 without written trade-offs + explicit go.
-2. **Super+2** — confirm early-vs-late in one session ([task](./tasks/forge-ws-super2-bounce.md)):
+1. **Tip reload (logout)** then:
+   - R042: Chrome already open → `forge layout:dev` → mon1 **2 columns**.
+   - R043/D071: overlay stays until Done; after clear, click Grok **body**
+     (not only tab) → full slot width (no ⅓ + Chrome behind).
+   - Hunt `chrome clear|epoch-end tab-slot|forest-failsafe|rect-mismatch`.
+2. Chaos nest (opt-in): `FORGE_LAYOUT_CHAOS=1` — queue
+   [forge-layout-chaos-nest-queue.md](./tasks/forge-layout-chaos-nest-queue.md).
+3. Soft: D069 tip eyes-on still open
+   ([completed](./tasks/completed/forge-tab-peer-slot-size.md)).
+4. **Super+2** — confirm early-vs-late in one session ([task](./tasks/forge-ws-super2-bounce.md)):
    - After `layout:dev` modal clears, Super+2 **while dock hover still spins /
      icons wiggle** → expect bounce.
    - After spinner gone + no wiggle → expect stick (already observed once).
    - Do **not** add forge WS activate/pin fallbacks unless a forge-owned residual
      remains after urgency/busy is ruled in or out.
-3. Soft: OH remainder — [blocker](./blockers/oh-ws-orphan-host-verify.md).
-4. Soft: D049 tiny-env — [blocker](./blockers/d049-tiny-env-nautilus.md).
+5. Soft: OH remainder — [blocker](./blockers/oh-ws-orphan-host-verify.md).
+6. Soft: D049 tiny-env — [blocker](./blockers/d049-tiny-env-nautilus.md).
 
 ## Super+2 (current picture)
 

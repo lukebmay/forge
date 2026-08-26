@@ -5,7 +5,19 @@
 
 # Agent routing index
 
-This file is a **map**, not the full rulebook. Guideline bodies live under `agents/` (project) and `agents/installed/` (catalog). **When a row's trigger matches, open that path and follow it** before acting.
+This file is a **map**, not the full rulebook. It is **transpiled** by `agents build` from `agents/project.md` (session pointers) + `agents/installed/` (catalog guidelines) + optional user overrides. **When a row's trigger matches, open that path and follow it** before acting.
+
+## Ownership (FIRM)
+
+| Path | Edit how |
+| --- | --- |
+| `AGENTS.md` (this file) | **Never** by hand — only `agents build` |
+| `agents/project.md` | Project hand (conventions/stack) — **not** from catalog |
+| `agents/HANDOFF.md`, `PRIORITY.md`, queues | Project hand (session / plans / tasks / blockers) |
+| `agents/installed/*` | **Only** `agents install` / `agents update` — never hand-edit |
+| `agents/<same-as-installed>` | Rare override (wins over installed); prefer catalog fix |
+
+Hard kernel below is composer-baked (not `general.md`); full security/git rules live under `agents/installed/` — open them when the domain matches.
 
 ## Hard kernel (always on)
 
@@ -91,6 +103,7 @@ Load plan/task files **on demand** for the current work only.
 
 1. Match your action to **Read when**.
 2. **Open the Path** (Read tool / editor) and follow that file.
-3. User overrides at `agents/<same-rel-as-installed>` win over `agents/installed/…` when both exist — the table lists the override path.
+3. Prefer catalog → `agents update` for portable rules. User overrides at `agents/<same-rel-as-installed>` win over `agents/installed/…` when both exist — use sparingly; fold improvements into the catalog.
 4. Do not paste entire guideline files into chat; follow them in place.
 5. Rebuild after install/update: `agents build` or `python3 agents.py build`.
+6. Full ownership table: `agents/installed/general.md` § Agents layout ownership.

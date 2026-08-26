@@ -21,8 +21,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 AGENTS_DIR = PROJECT_ROOT / "agents"
 INSTALLED_DIR = AGENTS_DIR / "installed"
 
-__version__ = "0.2.1"
-# agents-tool-version: 0.2.1
+__version__ = "0.2.2"
+# agents-tool-version: 0.2.2
 
 CORE_INSTALLED_RELS = (
     "general.md",
@@ -44,7 +44,8 @@ HEADER = (
     "     Routing index only: full rules live under agents/ and agents/installed/.\n"
     "     Open linked files when their trigger matches; do not invent rules.\n"
     "     Do not gitignore this file: Grok skips gitignored project instructions. -->\n"
-    "\n")
+    "\n"
+)
 
 HARD_KERNEL = """## Hard kernel (always on)
 
@@ -56,6 +57,7 @@ These apply even before other files are opened. **Full** rules: open the file in
 | **No secrets outbound** | Never put real secrets in chat, commits, logs, or prompts. |
 | **No SSH without explicit** | Remote SSH only if the **current** user message contains a form of **explicit**. |
 | **No silent live-data destroy** | Important live data: backup or dry-run first — see `agents/installed/security.md`. |
+| **No root-owned `$HOME`** | Never leave root-owned files under a user’s home; repair only this tool’s dests — `security.md`. |
 | **Git: no force-push published** | No force-push/amend of published history unless the user clearly asks. |
 | **Git: no auto test/prod** | Never auto-promote `test` or `prod`. |
 | **Handoffs** | Agent↔agent notes: functionally detailed, unambiguous, succinct — not padded, not incomplete. |
@@ -67,8 +69,7 @@ _FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?", re.DOTALL)
 
 def is_volatile(rel: str) -> bool:
     norm = rel.replace("\\", "/")
-    return any(norm == p.rstrip("/") or norm.startswith(p)
-               for p in VOLATILE_PREFIXES)
+    return any(norm == p.rstrip("/") or norm.startswith(p) for p in VOLATILE_PREFIXES)
 
 
 def _rel_posix(base: Path, path: Path) -> str:
@@ -204,8 +205,7 @@ def collect_fragments(
     for arg in paths:
         target = _resolve_under_agents(arg)
         if target is None:
-            print(f"warning: path not found under agents/: {arg}",
-                  file=sys.stderr)
+            print(f"warning: path not found under agents/: {arg}", file=sys.stderr)
             continue
         if target.is_file():
             extras.append(target)
@@ -227,10 +227,13 @@ def collect_fragments(
                 if not p.is_relative_to(AGENTS_DIR.resolve()):
                     continue
                 rel_agents = _rel_posix(AGENTS_DIR, p)
-                if (has_installed and not rel_agents.startswith("installed/")
-                        and not is_volatile(rel_agents)
-                        and rel_agents != "project.md"
-                        and (INSTALLED_DIR / rel_agents).is_file()):
+                if (
+                    has_installed
+                    and not rel_agents.startswith("installed/")
+                    and not is_volatile(rel_agents)
+                    and rel_agents != "project.md"
+                    and (INSTALLED_DIR / rel_agents).is_file()
+                ):
                     installed_rels.add(rel_agents)
                     continue
                 label = _label_for(p)
@@ -238,8 +241,10 @@ def collect_fragments(
             continue
         if label in seen:
             continue
-        if is_volatile(label) or (label.startswith("installed/")
-                                  and is_volatile(label[len("installed/"):])):
+        if is_volatile(label) or (
+            label.startswith("installed/")
+            and is_volatile(label[len("installed/"):])
+        ):
             volatile.append((label, p))
         else:
             stable.append((label, p))
@@ -271,9 +276,23 @@ def compose_index(fragments: Sequence[Tuple[str, Path]]) -> str:
         "",
         "# Agent routing index",
         "",
-        "This file is a **map**, not the full rulebook. Guideline bodies live under "
-        "`agents/` (project) and `agents/installed/` (catalog). "
+        "This file is a **map**, not the full rulebook. It is **transpiled** by "
+        "`agents build` from `agents/project.md` (session pointers) + "
+        "`agents/installed/` (catalog guidelines) + optional user overrides. "
         "**When a row's trigger matches, open that path and follow it** before acting.",
+        "",
+        "## Ownership (FIRM)",
+        "",
+        "| Path | Edit how |",
+        "| --- | --- |",
+        "| `AGENTS.md` (this file) | **Never** by hand — only `agents build` |",
+        "| `agents/project.md` | Project hand (conventions/stack) — **not** from catalog |",
+        "| `agents/HANDOFF.md`, `PRIORITY.md`, queues | Project hand (session / plans / tasks / blockers) |",
+        "| `agents/installed/*` | **Only** `agents install` / `agents update` — never hand-edit |",
+        "| `agents/<same-as-installed>` | Rare override (wins over installed); prefer catalog fix |",
+        "",
+        "Hard kernel below is composer-baked (not `general.md`); full security/git "
+        "rules live under `agents/installed/` — open them when the domain matches.",
         "",
         HARD_KERNEL.rstrip("\n"),
         "",
@@ -318,7 +337,7 @@ def compose_index(fragments: Sequence[Tuple[str, Path]]) -> str:
             continue
         title, read_when, order = route_from_path(path)
         if label.endswith(" (user)"):
-            rel_read = "agents/" + label[:-len(" (user)")]
+            rel_read = "agents/" + label[: -len(" (user)")]
             title = f"{title} (user override)"
         rows.append((order, rel_read, title, read_when))
     rows.sort(key=lambda r: (r[0], r[1]))
@@ -327,21 +346,23 @@ def compose_index(fragments: Sequence[Tuple[str, Path]]) -> str:
         we = read_when.replace("|", "\\|")
         parts.append(f"| `{rel_read}` | {te} | {we} |")
     if not rows:
-        parts.append(
-            "| *(none installed)* | — | Run `agents init` / `agents install` |"
-        )
-    parts.extend([
-        "",
-        "## How to use this index",
-        "",
-        "1. Match your action to **Read when**.",
-        "2. **Open the Path** (Read tool / editor) and follow that file.",
-        "3. User overrides at `agents/<same-rel-as-installed>` win over "
-        "`agents/installed/…` when both exist — the table lists the override path.",
-        "4. Do not paste entire guideline files into chat; follow them in place.",
-        "5. Rebuild after install/update: `agents build` or `python3 agents.py build`.",
-        "",
-    ])
+        parts.append("| *(none installed)* | — | Run `agents init` / `agents install` |")
+    parts.extend(
+        [
+            "",
+            "## How to use this index",
+            "",
+            "1. Match your action to **Read when**.",
+            "2. **Open the Path** (Read tool / editor) and follow that file.",
+            "3. Prefer catalog → `agents update` for portable rules. User overrides "
+            "at `agents/<same-rel-as-installed>` win over `agents/installed/…` when "
+            "both exist — use sparingly; fold improvements into the catalog.",
+            "4. Do not paste entire guideline files into chat; follow them in place.",
+            "5. Rebuild after install/update: `agents build` or `python3 agents.py build`.",
+            "6. Full ownership table: `agents/installed/general.md` § Agents layout ownership.",
+            "",
+        ]
+    )
     return "\n".join(parts).rstrip() + "\n"
 
 
@@ -353,9 +374,9 @@ def write_atomic(target: Path, content: str) -> bool:
                 return False
         except OSError:
             pass
-    fd, tmp_name = tempfile.mkstemp(prefix=".AGENTS.",
-                                    suffix=".tmp",
-                                    dir=str(target.parent))
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=".AGENTS.", suffix=".tmp", dir=str(target.parent)
+    )
     tmp_path = Path(tmp_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
@@ -375,12 +396,9 @@ def write_atomic(target: Path, content: str) -> bool:
 def cmd_build(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="agents.py build",
-        description=
-        "Compose AGENTS.md routing index from agents/ + installed guidelines.",
+        description="Compose AGENTS.md routing index from agents/ + installed guidelines.",
     )
-    parser.add_argument("paths",
-                        nargs="*",
-                        help="Extra paths under agents/ to index")
+    parser.add_argument("paths", nargs="*", help="Extra paths under agents/ to index")
     parser.add_argument("--preset", choices=PRESETS, default="core")
     parser.add_argument("--readme", action="store_true")
     parser.add_argument("-o", "--output")
@@ -389,13 +407,10 @@ def cmd_build(argv: Sequence[str]) -> int:
     args = parser.parse_args(list(argv))
 
     if not AGENTS_DIR.is_dir():
-        print(f"error: agents/ not found under {PROJECT_ROOT}",
-              file=sys.stderr)
+        print(f"error: agents/ not found under {PROJECT_ROOT}", file=sys.stderr)
         return 2
 
-    frags = collect_fragments(args.preset,
-                              args.paths,
-                              include_readme=args.readme)
+    frags = collect_fragments(args.preset, args.paths, include_readme=args.readme)
     if args.list:
         for label, _ in frags:
             print(label)
@@ -429,7 +444,8 @@ def cmd_build(argv: Sequence[str]) -> int:
 
 
 def usage() -> None:
-    print(f"""agents.py {__version__} — project agents routing-index composer
+    print(
+        f"""agents.py {__version__} — project agents routing-index composer
 
 Commands:
   build [paths…]     Compose root AGENTS.md index (default --preset=core)
@@ -438,7 +454,8 @@ Commands:
 
 AGENTS.md is a **when-to-read map**. Full rules stay in agents/installed/.
 Install/update fragments with the shellrc `agents` tool.
-""")
+"""
+    )
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
