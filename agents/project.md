@@ -222,7 +222,7 @@ abandon query discipline. Queued dig work: [PRIORITY.md](./PRIORITY.md).
 | **Layout settle / cold spine (agents)** | **This file** § Layout apply architecture |
 | Unit / e2e tests | [tests/README.md](../tests/README.md), [tests/e2e/README.md](../tests/e2e/README.md) |
 | User behavior | [docs/user/](../docs/user/) (`layout.md` cold apply steps) |
-| Durable “why” + decisions | [docs/DESIGN.md](../docs/DESIGN.md), [docs/DECISIONS.md](../docs/DECISIONS.md) (D039–D044 apply/tabs; D008–D009 forest-first) |
+| Durable “why” + decisions | [design.md](./design.md), [design/CHANGELOG.md](./design/CHANGELOG.md) (D039–D044 apply/tabs; D008–D009 forest-first) |
 | Priorities / plans / live matrix | [PRIORITY.md](./PRIORITY.md), [HANDOFF.md](./HANDOFF.md), `agents/plans/` |
 
 ---

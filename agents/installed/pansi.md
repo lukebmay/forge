@@ -69,5 +69,5 @@ Env prefixes for related tooling stay **`P_*`**. Logging envs are **`P_LOG_*`**
 
 shellrc: **D061–D062** (plog line/env; print via `p`/`pstr` only for log
 messages), **D064** (plog actions). Plan: `agents/plans/pansi.md`.
-**Newest design meeting / DECISIONS row wins** over older plan prose — see
+**Newest design meeting / CHANGELOG row wins** over older plan prose — see
 `general.md` § Design decisions.

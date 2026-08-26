@@ -1129,5 +1129,10 @@ personal purple under bundled red.) User path seeds a minimal comment only — n
 a full default copy. `patchCss` may stamp version / rename-migrate; it must
 **never** overwrite user CSS with defaults. Prefs write into the user file; C1
 aims for delta-only rules. See
-[agents/plans/forge-css-overrides.md](../agents/plans/forge-css-overrides.md)
-and [docs/DECISIONS.md](./DECISIONS.md) D001.
+[forge-css-overrides](./plans/archived/completed/forge-css-overrides.md)
+and [design/CHANGELOG.md](./design/CHANGELOG.md) D001.
+
+
+## Overview
+
+Short compass for agents — inlined into `AGENTS.md` by `agents build`. Keep this section small.

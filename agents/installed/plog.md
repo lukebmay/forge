@@ -110,8 +110,87 @@ Pretty is **view-time only** — durable `.log` / JSONL unchanged (D067).
    journal (forge D054).
 4. Do not invent a second log path beside an existing plog init.
 5. Vendored apps: pin plog + plog-query; bump with shellrc deliberately.
-6. **Newest design meeting / DECISIONS row wins** (D064 superseded D060; D066
+6. **Newest design meeting / CHANGELOG row wins** (D064 superseded D060; D066
    amended optional JSONL vs older “no JSON” notes). See `general.md`.
+
+## Hunt / instrumentation practices (FIRM where noted)
+
+Close observability gaps instead of re-guessing across sessions.
+
+1. **Gap ⇒ durable TRACE (FIRM)** — If a hunt cannot answer “what happened?”
+   from the tape (missing branch, missing before→after, missing reason for
+   early return), that is a **product observability gap**. Prefer a small
+   permanent TRACE/DEBUG line with stable `grep` tokens over another blind
+   expensive repro.
+2. **Temporary debug OK — clean up (FIRM before ship)** — During a hunt, add
+   generous temporary logs. Before merge / tip ship: remove or dial them down;
+   do not leave `console.log` / one-off spam in the hot path. Prefer promoting
+   the *useful* lines to named TRACE with `fields`.
+3. **Query tokens (GUIDELINE)** — New lines should be greppable (`ws-change
+   preserve`, `lastTabFocus tab`, `soft quiet`) and stable across refactors
+   when possible.
+4. **Hunt with query (FIRM)** — Never `tail` at TRACE; use `plog-query` /
+   `app log --grep/--since/--session`.
+5. **Expensive repro loops (FIRM)** — Before logout / nest restart / cold
+   layout, ask: “will the next tape tell us the miss reason?” If not, **add
+   the miss log first**.
+6. **Log-contract tests (GUIDELINE)** — Apps **may** assert a few critical log
+   tokens in integration tests. See **Log-contract testing** below; cross-link
+   only — not a plog library requirement on every path.
+
+## Log-contract testing (GUIDELINE)
+
+Complement unit tests on decision logic: logs prove the **branch was taken /
+instrumentation still fires**; state asserts prove the **outcome**. Prefer both
+when cheap; never replace state oracles with prose logs alone.
+
+### When to use
+
+- A hunt failed because the tape lacked one stable line; after filling the gap,
+  lock that seam so the next agent cannot silently delete it.
+- A bug was found (or confirmed) by reading plogs — prefer a focused
+  log-contract regression **in the same fix** when the harness can emit JSONL.
+
+### Anti-brittleness
+
+| Do | Do not |
+| --- | --- |
+| Assert **stable tokens** / `fields` keys | Assert full message prose, window titles, pointer coords |
+| Prefer **JSONL** presence (+ one field) after a focused action | Parse human `.log` ANSI lines as the oracle |
+| Couple to **hunt contracts** (same strings agents `--grep`) | Freeze ordering of unrelated TRACE fanout |
+| Pair with a **state assert** when cheap | Use logs as the only proof of correct behavior |
+| Keep the allowlist **small** — contract lines only | Grow a second mirror of the implementation in expectations |
+| On rename of a token: update hunt docs + test in the **same** change | Leave greps/tests on dead strings |
+
+### Regression discipline
+
+1. Prefer a focused log-contract regression in the same fix if the missing or
+   wrong line is stable and CI/unit/nest can see JSONL.
+2. If the repro needs full host Shell / logout: still add the durable TRACE
+   line + note the exact `plog-query` / `app log` hunt; automate later when a
+   cheaper harness exists.
+3. Quality bar: fail if someone deletes/bypasses the instrumentation **or**
+   reintroduces the bad branch without the expected token — not if titles or
+   timing jitter change.
+
+### Suggested test shape
+
+```text
+arrange: temp P_LOG_FILE + P_LOG_JSONL (or app nest fixture)
+act:     one focused API / layout / CLI path
+assert:  JSONL contains token X (and optional fields.reason == …)
+assert:  one state oracle (focus id / exit 0 / tree field) when available
+```
+
+Name tests after the bug or hunt, not after the logger. Consumers own harnesses;
+shellrc owns the practice (+ optional helpers). See also `testing.md`.
+
+### Out of scope
+
+- Mandating log asserts on every consumer path
+- Snapshotting full TRACE transcripts
+- Asserting ANSI / pretty / view-time formatting
+- Replacing eyes-on with log greps alone
 
 ## Where the code lives
 
@@ -119,7 +198,7 @@ Pretty is **view-time only** — durable `.log` / JSONL unchanged (D067).
 | --- | --- | --- |
 | Logger | `util/<lang>/plog.*` | `third_party/pansi/plog*.js` (etc.) |
 | Query CLI | `bin/plog-query` · `util/python/plog_query.py` | `third_party/plog-query/` |
-| Design | `agents/plans/pansi/plog-*.md` | Project DECISIONS (e.g. forge D050+) |
+| Design | `agents/plans/pansi/plog-*.md` | Project DESIGN / `agents/design/CHANGELOG.md` |
 
 ## Decisions (shellrc)
 

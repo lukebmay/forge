@@ -43,6 +43,15 @@ Do not chase coverage numbers. Prefer one test that would have caught a real bug
 
 Prefer observable outputs, stable fixtures, injected time/random, temp dirs. Avoid real clocks, important live data (see `security.md`).
 
+## plog log-contract tests (GUIDELINE)
+
+When the project uses **plog** / `plog-query` / an app log wrapper: bugs found
+via hunts should prefer a small **log-contract** regression (stable JSONL
+token + optional field + state oracle) when the harness can see the tape.
+Anti-brittleness, regression discipline, and out-of-scope rules live in
+catalog **`plog.md`** § Log-contract testing — do not snapshot full TRACE or
+assert ANSI/pretty.
+
 ## CI (GUIDELINE)
 
 Unit green on every change when CI exists. Critical integration should not be “never run.”

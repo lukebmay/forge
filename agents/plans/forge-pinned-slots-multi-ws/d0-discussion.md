@@ -1,3 +1,5 @@
+<!-- migrated from agents/tasks/forge-pinned-slots-multi-ws_d0-discussion.md by agents migrate-layout -->
+
 # forge-pinned-slots-multi-ws_d0-discussion — Design meeting: multi-ws pinned slots
 
 **Status:** blocked

@@ -1,3 +1,5 @@
+<!-- migrated from agents/tasks/forge-enable-ding-percent-thrash.md by agents migrate-layout -->
+
 # forge-enable-ding-percent-thrash — re-enable Ghostty ~⅓ width
 
 **Status:** agent done — host verify after `./install --dev` (+ logout or disable/enable)

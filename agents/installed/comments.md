@@ -18,7 +18,7 @@ Keep comments **short and non-specific**.
 Good: `# Grok` · `# Update check (quiet on no-op)`  
 Bad: long banners, “expensive: …” essays
 
-Design/history → `docs/DESIGN.md` / `docs/DECISIONS.md` / plans — not source novels.
+Design/history → `agents/design.md` / `agents/design/CHANGELOG.md` / plans — not source novels.
 
 ## General
 

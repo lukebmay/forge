@@ -1,3 +1,5 @@
+<!-- migrated from agents/tasks/forge-ws-super2-bounce.md by agents migrate-layout -->
+
 # forge-ws-super2-bounce — Super+2 fakout (WS2 flash → back to WS1)
 
 **Status:** in progress — **likely settle/urgency race**, not Guake; forge WS activate ruled out

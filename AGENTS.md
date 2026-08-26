@@ -5,34 +5,43 @@
 
 # Agent routing index
 
-This file is a **map**, not the full rulebook. It is **transpiled** by `agents build` from `agents/project.md` (session pointers) + `agents/installed/` (catalog guidelines) + optional user overrides. **When a row's trigger matches, open that path and follow it** before acting.
+This file is a **map**, not the full rulebook. It is **transpiled** by `agents build` from `agents/project.md` (session pointers) + `agents/installed/` (catalog guidelines) + optional user **extensions** / rare **overrides**. **When a row's trigger matches, open that path and follow it** before acting.
 
 ## Ownership (FIRM)
 
 | Path | Edit how |
 | --- | --- |
 | `AGENTS.md` (this file) | **Never** by hand — only `agents build` |
-| `agents/project.md` | Project hand (conventions/stack) — **not** from catalog |
-| `agents/HANDOFF.md`, `PRIORITY.md`, queues | Project hand (session / plans / tasks / blockers) |
+| `agents/project.md` | **User** conventions/stack — only required hand-fill |
+| CAPS under `agents/` (`HANDOFF.md`, `PRIORITY.md`, `CHANGELOG.md`, …) | **Agent-managed** (user may edit; not the intended workflow) |
+| `agents/design.md` | Guiding-light design (agent-primary; optional until first design meeting) |
+| `agents/plans/`, `ideas/`, `blockers/`, `design/` | Plans / parking / human stops / changelog dir |
 | `agents/installed/*` | **Only** `agents install` / `agents update` — never hand-edit |
-| `agents/<same-as-installed>` | Rare override (wins over installed); prefer catalog fix |
+| `agents/<same-as-installed>` | **Extension** (default) — amends installed; wins on conflict |
+| `agents/<stem>.extend.md` | Explicit extension (same rules; do not mix with same-name) |
+| `agents/<stem>.override.md` | **Override** — replaces installed for that id (rare fork) |
 
-Hard kernel below is composer-baked (not `general.md`); full security/git rules live under `agents/installed/` — open them when the domain matches.
+Hard kernel below is inlined from `agents/installed/always.md` (catalog `always`); full security/git rules live under `agents/installed/` — open them when the domain matches.
 
 ## Hard kernel (always on)
 
-These apply even before other files are opened. **Full** rules: open the file in the index when the trigger matches.
+These apply even before other files are opened. **Full** rules: open the file
+in the index when the trigger matches.
 
 | Rule | Detail |
 | --- | --- |
 | **Follow the index** | When a trigger matches, **open and follow** that file before acting in that domain. Do not rely on memory of old sessions. |
 | **No secrets outbound** | Never put real secrets in chat, commits, logs, or prompts. |
 | **No SSH without explicit** | Remote SSH only if the **current** user message contains a form of **explicit**. |
-| **No silent live-data destroy** | Important live data: backup or dry-run first — see `agents/installed/security.md`. |
+| **No silent live-data destroy** | Important live data: backup or dry-run first — see `security.md`. |
 | **No root-owned `$HOME`** | Never leave root-owned files under a user’s home; repair only this tool’s dests — `security.md`. |
-| **Git: no force-push published** | No force-push/amend of published history unless the user clearly asks. |
-| **Git: no auto test/prod** | Never auto-promote `test` or `prod`. |
+| **Git: no force-push published** | No force-push/amend of published history unless the user clearly asks — `git.md`. |
+| **Git: no auto test/prod** | Never auto-promote `test` or `prod` — `git.md`. |
 | **Handoffs** | Agent↔agent notes: functionally detailed, unambiguous, succinct — not padded, not incomplete. |
+
+## Design compass
+
+Short compass for agents — inlined into `AGENTS.md` by `agents build`. Keep this section small.
 
 ## Session start
 
@@ -40,70 +49,58 @@ Read these when beginning or resuming work on this project:
 
 | Path | Read when |
 | --- | --- |
-| `agents/HANDOFF.md` | Starting/resuming — cold-continue context |
-| `agents/PRIORITY.md` | Choosing what to do next |
-| `agents/project.md` | Project-specific conventions and stack |
+| `agents/HANDOFF.md` | Starting/resuming — agent-managed cold-continue |
+| `agents/PRIORITY.md` | Execution queue — next plan / slice (agent-managed) |
+| `agents/project.md` | Project-specific conventions and stack (user) |
+| `agents/design.md` | Guiding-light design when present (Overview may be above) |
 
 ## Queue paths (not auto-loaded)
 
 | Path | Role |
 | --- | --- |
-| `agents/plans/` | Plans + `completed/` |
-| `agents/tasks/` | Active agent tasks |
+| `agents/PRIORITY.md` / `HANDOFF.md` | Agent-managed execution queue (points at plans) |
+| `agents/plans/` | Active plans (+ optional `plans/<id>/` weight) |
+| `agents/plans/archived/{completed,abandoned}/` | Finished / dropped plans |
+| `agents/ideas/` | Parked ideas |
 | `agents/blockers/` | Human blockers |
-| `agents/archive/` | Ship summaries (when used) |
+| `agents/design.md` | Guiding-light design (not a full decision novel) |
+| `agents/design/CHANGELOG.md` | Design history / supersessions (agent-managed) |
+| `agents/archive/` | Other ship summaries (when used) |
 
-Load plan/task files **on demand** for the current work only.
+Load plan files **on demand** for the current work only. `agents/tasks/` is legacy if present — prefer plans + PRIORITY. **CAPS filenames** under `agents/` are agent-managed.
 
 ## Guidelines (open when trigger matches)
 
 | Path | Title | Read when |
 | --- | --- | --- |
-| `agents/installed/general.md` | General process | Always for multi-step work — tasks, plans, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs |
+| `agents/installed/general.md` | General process | Always for multi-step work — plans, slices, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs |
 | `agents/installed/security.md` | Security | Before SSH, secrets, sudo/root, credentials, or any important live-data mutation |
 | `agents/installed/secrets.md` | Secrets store notes | When handling project secret locations or agents/secrets.md finds |
 | `agents/installed/git.md` | Git | Before any commit, push, branch, merge, rebase, or release-ladder work |
 | `agents/installed/scripting.md` | Scripting | Writing or changing shell/Python scripts, installers, CLI tools, bin entries, or launching user-visible apps from a Grok agent |
 | `agents/installed/comments.md` | Comments | Adding or editing source comments |
-| `agents/installed/documentation.md` | Documentation | Writing design docs, DECISIONS, user docs, or choosing where “why” lives |
+| `agents/installed/documentation.md` | Documentation | Writing design docs, design CHANGELOG, user docs, or choosing where “why” lives |
 | `agents/installed/testing.md` | Testing | Adding tests, changing test strategy, enabling optional features, checking Grok durable --leader mode, or reattaching headless Grok for the human |
-| `agents/testing.md` | Testing (user override) | Adding tests, changing test strategy, or enabling optional features for verification |
+| `agents/testing.md` | Testing (extension) | Adding tests, changing test strategy, enabling optional features, forge live matrix / nest Wayland smoke, or layout regression work |
 | `agents/installed/ansi-colors.md` | ANSI colors | Adding terminal colors, formatting CLI output, or launching user-visible CLIs from a Grok agent |
 | `agents/installed/pansi.md` | pansi (print / string) | Adding colored CLI output, printing user-facing text, or choosing a print/string library when the project has no color system (or a bad one) |
 | `agents/installed/plog.md` | plog (logger + dual-tape query) | Adding logging, choosing a logger, reading or hunting logs, or working in a repo that uses plog / forge log / plog-query |
 | `agents/installed/markdown.md` | Markdown | Writing or editing markdown docs, plans, tasks, or README prose |
 | `agents/installed/nvim.md` | Neovim | Editing nvim config, Lua plugins, or editor tooling in this stack |
 | `agents/installed/languages/bash.md` | Bash | Writing or reviewing Bash scripts |
-| `agents/installed/languages/c.md` | C | Writing or reviewing C code |
-| `agents/installed/languages/cpp.md` | C++ | Writing or reviewing C++ code |
 | `agents/installed/languages/css.md` | CSS | Writing or reviewing CSS |
 | `agents/installed/languages/docker.md` | Docker | Dockerfile, compose, or container image work |
-| `agents/installed/languages/go.md` | Go | Writing or reviewing Go |
 | `agents/installed/languages/html.md` | HTML | Writing or reviewing HTML |
 | `agents/installed/languages/javascript.md` | JavaScript | Writing or reviewing JavaScript |
-| `agents/installed/languages/kubernetes.md` | Kubernetes | k8s manifests, cluster ops, or kubectl workflows |
-| `agents/installed/languages/lua.md` | Lua | Writing or reviewing Lua (including nvim) |
-| `agents/installed/languages/mongodb.md` | MongoDB | MongoDB schemas, queries, or ops |
-| `agents/installed/languages/mysql.md` | MySQL | MySQL/MariaDB schemas, queries, or ops |
-| `agents/installed/languages/podman.md` | Podman | Podman containers or rootless container work |
-| `agents/installed/languages/postgres.md` | PostgreSQL | Postgres schemas, queries, migrations, or ops |
 | `agents/installed/languages/python.md` | Python | Writing or reviewing Python |
-| `agents/installed/languages/qemu.md` | QEMU | QEMU/KVM VMs or related scripts |
-| `agents/installed/languages/react.md` | React | React components or app structure |
-| `agents/installed/languages/redis.md` | Redis | Redis usage, keys, or ops |
-| `agents/installed/languages/rust.md` | Rust | Writing or reviewing Rust |
-| `agents/installed/languages/sqlite.md` | SQLite | SQLite schemas, queries, or embedded DB work |
 | `agents/installed/languages/typescript.md` | TypeScript | Writing or reviewing TypeScript |
-| `agents/installed/languages/web-backend.md` | Web backend | Server-side web app architecture |
-| `agents/installed/languages/web-frontend.md` | Web frontend | Client-side web app architecture |
-| `agents/installed/languages/zig.md` | Zig | Writing or reviewing Zig |
 | `agents/installed/languages/zsh.md` | Zsh | Writing or reviewing zsh scripts/functions |
 
 ## How to use this index
 
 1. Match your action to **Read when**.
 2. **Open the Path** (Read tool / editor) and follow that file.
-3. Prefer catalog → `agents update` for portable rules. User overrides at `agents/<same-rel-as-installed>` win over `agents/installed/…` when both exist — use sparingly; fold improvements into the catalog.
+3. Prefer catalog → `agents update` for portable rules. **Extensions** (`agents/<same-as-installed>` or `*.extend.md`) amend the matching `agents/installed/…` file and **take precedence on conflict**. **Overrides** (`*.override.md`) replace installed for that id — rare; prefer extension or a catalog fix. Do not mix the three forms for one id (`agents update` errors if you do).
 4. Do not paste entire guideline files into chat; follow them in place.
 5. Rebuild after install/update: `agents build` or `python3 agents.py build`.
 6. Full ownership table: `agents/installed/general.md` § Agents layout ownership.

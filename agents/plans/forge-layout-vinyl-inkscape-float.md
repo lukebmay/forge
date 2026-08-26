@@ -1,3 +1,5 @@
+<!-- migrated from agents/tasks/forge-layout-vinyl-inkscape-float.md by agents migrate-layout -->
+
 # forge-layout-vinyl-inkscape-float — vinyl WS2 Inkscape FLOAT hard-fail + apply chrome UX
 
 **Status:** in progress (D051 landed; host tip verify open)

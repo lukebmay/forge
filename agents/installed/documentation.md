@@ -1,6 +1,6 @@
 ---
 title: Documentation
-read_when: Writing design docs, DECISIONS, user docs, or choosing where “why” lives
+read_when: Writing design docs, design CHANGELOG, user docs, or choosing where “why” lives
 order: 60
 ---
 
@@ -10,35 +10,58 @@ order: 60
 
 | Doc | Role |
 | --- | --- |
-| `docs/DESIGN.md` | Architecture narrative |
-| `docs/DECISIONS.md` | Compact decision log (retro source) |
-| `agents/HANDOFF.md` / plan·task notes | Cold-continue (complete + succinct) |
-| `agents/plans/` · `agents/tasks/` | Execution |
+| `agents/design.md` | **Guiding light** — high-level picture, key inner workings, important tech choices + reasoning. Not every decision in the project. |
+| DESIGN `## Overview` / `## AGENTS.md View` | Small compass; `agents build` **parses and inlines** into `AGENTS.md` |
+| `agents/design/CHANGELOG.md` | Thin dated locks / supersessions (was `docs/DECISIONS.md`; **agent-managed**) |
+| `agents/design/*` | Optional topic detail |
+| `docs/user/*` | Human/user-facing docs after meetings; examples; benefits |
+| `agents/HANDOFF.md` / plan notes | Cold-continue (**agent-managed** CAPS) |
+| `agents/plans/` · `agents/PRIORITY.md` | Execution |
+| `agents/project.md` | User conventions / stack |
 | Source comments | Minimal *why* only — `comments.md` |
 
-Put in DESIGN/DECISIONS when a future reader would ask *why*. Keep volatile checklists out.
+Put durable guiding *why* in `agents/design.md`; history in CHANGELOG. Keep
+volatile checklists out of design.md.
 
-## DECISIONS.md shape
+## `agents/design.md` (guiding light)
 
-| ID | Date | Topic | Imp | Status | Decision | Why |
-| --- | --- | --- | --- | --- | --- | --- |
-| D001 | YYYY-MM-DD | deploy | P0 | active | … | one line |
+- High-level picture of how things should work
+- Important details of key inner workings
+- Key tech choices and reasoning
+- **Not** a comprehensive document of all design choices in every aspect
+- Keep Overview / AGENTS.md View **small** (token budget)
+- Create after the first design meeting (agents or user) — optional on fresh init
+- When design changes **user-visible** behavior: update `docs/user/*` in the
+  same effort. Do **not** auto-generate user prose from design bullets.
 
-Imp: P0 architecture/security · P1 product default · P2 implementation · P3 note.  
+## CAPS files (agent-managed)
+
+`HANDOFF.md`, `PRIORITY.md`, `CHANGELOG.md`, generated `AGENTS.md`, and other
+**ALL-CAPS** names under `agents/` are **agent-managed**. Manual edits are
+allowed but not the intended workflow.
+
+## `agents/design/CHANGELOG.md` shape
+
+Thin history — not a rival design novel:
+
+| Date | ID | Topic | Status | Lock / supersession | Why |
+| --- | --- | --- | --- | --- | --- |
+| YYYY-MM-DD | D001 | deploy | active | … | one line |
+
 Status: active | superseded | rejected.
 
-When shipping a non-obvious choice, add/update a DECISIONS row (and DESIGN if narrative changed).
+When shipping a non-obvious choice: update `agents/design.md` if the guiding
+narrative changed; add a CHANGELOG row for the lock/supersession.
 
 ### Precedence (FIRM)
 
-**Newest design meeting / DECISIONS row for a topic wins.** Supersede older
-rows in place (`Status=superseded` + new ID); do not silently edit history.
-Accepted meeting locks and plan “Status: Accepted” sections outrank older plan
-draft prose on the same question. Full rule: catalog **`general.md`** § Design
-decisions.
+**Newest design meeting / CHANGELOG row for a topic wins.** Mark older rows
+superseded; do not silently edit history. Accepted meeting locks and plan
+“Status: Accepted” sections outrank older plan draft prose on the same
+question. Full rule: catalog **`general.md`** § Design.
 
 ## Hygiene
 
-- Short titled sections in DESIGN
-- Update or delete stale claims when code changes
 - No secrets or real credentials
+- Prefer archive of superseded plans over delete
+- Fix stale design.md / CHANGELOG / user-doc claims when you touch the area
