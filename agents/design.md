@@ -33,6 +33,57 @@ slot is geometry authority; unsolicited Meta fullscreen/size snaps back.
 
 Plan: [forge-canonical-contracts](../agents/plans/forge-canonical-contracts.md).
 
+## Tiling Object Model (TOM)
+
+**Why:** Directional move/join/peel kept regressing because policy lived in
+the same functions as tree mutation, and the HTML prototype was treated as a
+scratch pad instead of a dual-use kernel. Mutter is a presenter, not the
+model.
+
+**Choice (D073/D074):** A **TOM** is the in-memory tiling tree (DOM analogue).
+
+```text
+ROOT → WORKSPACE* → MONITOR (0 or 1 child) → CON | WINDOW
+```
+
+ROOT and WORKSPACE are spine nodes, not Forge containers. MONITOR is a
+Forge container that may be empty and may have at most one child. **TreeOps**
+are DOM-like atomics plus composed helpers. **OpSets** are named control
+surfaces. After an OpSet mutates the TOM, a presenter paints.
+
+**Breakout** and **Promote** are the same operation: a node becomes a sibling
+of its parent. **Unary collapse:** if a CON has exactly one child, that child
+takes the CON’s place and the CON is deleted.
+
+Each OpSet has one design doc (Mark 2:
+[`prototypes/container-motion/src/opsets/mark2.md`](../prototypes/container-motion/src/opsets/mark2.md)).
+Changing that doc requires the same-effort code + tests. Glossary lives
+there — not in handoff paraphrases.
+
+H/V **in-axis share** is `percent` on each child (equal until `userSized`).
+Cross-axis size is the parent container’s share in its split. Float = not
+userSized; leftover splits equally. Floor 10%. Proto resize: `Alt+hjkl`.
+TAB/STACK leaf size ops target the bag’s slot (peers share one pane).
+Leave a split → node becomes a floater (sized shares do not follow).
+Last floater gone → remaining sized shares rescale to fill 100%. Unary
+collapse still copies the CON’s slot onto the survivor. Float chords:
+`Alt+yuio` (this / this+sibs / sibs / +parent) and `Alt+nm,.` (parent /
+parent group / parent sibs / both groups). `Alt+/` floats every node.
+**Parent** here is the ancestor whose share is this node’s cross-axis
+size.
+
+Mark 2 **Launch** (WINDOW or CON selected on that monitor; else end of
+that tree): TAB/STACK → next sibling; H + wider-than-tall → sibling else
+wrap V; V + taller-than-wide → sibling else wrap H; 10% floor → wrap TAB.
+MONITOR max-1 wraps in place. Same-type wrap of an H/V CON: MONITOR →
+opposite split; nested → last child of that CON. Rules:
+`src/opsets/mark2.md`.
+
+Proto kernel: `prototypes/container-motion/src/tom/`. gi-free, presenter-free.
+Green abstract tests + a wrong desk = paint, not the TOM.
+
+Plan: [forge-container-motion-design](../agents/plans/forge-container-motion-design.md).
+
 ## CLI job runner (durable mutators)
 
 **Why:** Long desk mutators (`forge layout`, install, live test run, …) used to

@@ -101,11 +101,14 @@ export function renderDesk(root, forest, api, onSelect, opts = {}) {
  * @param {import('./tree.mjs').TreeApi} api
  * @param {(id: string) => void} onSelect
  * @param {boolean} isMonChild
+ * @param {{ fill?: boolean }} [opts] — fill: sole tab/stack pane child; ignore sibling percent
  */
-function renderNode(node, forest, api, onSelect, isMonChild) {
+function renderNode(node, forest, api, onSelect, isMonChild, opts = {}) {
   const el = document.createElement("div");
   el.dataset.id = node.id;
-  const pct = node.percent ?? 1;
+  // Tab/stack peers share one full content slot. Stale 0.5 percents from a
+  // former H/V split must not shrink the open pane (forge half-width tab bug).
+  const pct = opts.fill ? 1 : node.percent ?? 1;
   el.style.flex = `${pct} 1 0`;
   el.style.minWidth = "0";
   el.style.minHeight = "0";
@@ -184,7 +187,7 @@ function renderNode(node, forest, api, onSelect, isMonChild) {
     const pane = document.createElement("div");
     pane.className = "tab-pane";
     const open = kids.find((k) => k.id === openId) || kids[0];
-    pane.appendChild(renderNode(open, forest, api, onSelect, false));
+    pane.appendChild(renderNode(open, forest, api, onSelect, false, { fill: true }));
     el.appendChild(pane);
     el.style.display = "flex";
     el.style.flexDirection = layout === "STACKED" ? "row" : "column";

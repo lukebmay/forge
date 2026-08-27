@@ -1,62 +1,44 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-26 — **`agents migrate-layout` applied**
-**Branch:** **`master`**. Nest **stopped**.
-**Sessions:** **Wayland** daily driver. **green** = X11 NVIDIA.
+**Updated:** 2026-08-27 — Firm abstractions (planning next)
+**Branch:** **`master`**. Nest **stopped**. **Push:** only when human asks.
+**Active stream:** **planning** — major refactor for clean, firm
+abstractions. Not implement. Not proto desk bugs.
 
-## Layout migrate (done this session)
+## Pain (read this first)
 
-- `migrate-layout` → `update --all` → `build` (catalog **0.5.1**, tool **0.4.0**)
-- Design: `docs/DESIGN.md` → `agents/design.md`; `docs/DECISIONS.md` → `agents/design/CHANGELOG.md`
-- Tasks peer queue removed; completed tasks → `plans/archived/completed/migrated-tasks/`
-- Languages pruned (kept scripting + bash/zsh + js/ts/python + docker/css/html)
-- ~39 completed plans → `plans/archived/completed/`; `IDEAS.md` → `ideas/IDEAS.md`
+The next session is a **planning meeting**. The critical priority is
+**clean, firm abstractions**: named APIs, one word one meaning, policy
+out of the kernel, presenter ≠ model, no hand-rolled twins.
 
-## Next session (FIRM)
+Do **not** resume Mark 2 proto slices, Shell Move, D069 tip, Super+2, or
+other PRIORITY leftovers until the scan below says they belong.
 
-1. **Tip reload (logout)** then:
-   - R042: Chrome already open → `forge layout:dev` → mon1 **2 columns**.
-   - R043/D071: overlay stays until Done; after clear, click Grok **body**
-     (not only tab) → full slot width (no ⅓ + Chrome behind).
-   - Hunt `chrome clear|epoch-end tab-slot|forest-failsafe|rect-mismatch`.
-2. Chaos nest (opt-in): `FORGE_LAYOUT_CHAOS=1` —
-   [forge-layout-chaos-nest-queue.md](./plans/forge-layout-chaos-nest-queue.md).
-3. Soft: D069 tip eyes-on —
-   [forge-tab-peer-geometry.md](./plans/forge-tab-peer-geometry.md) ·
-   [migrated](./plans/archived/completed/migrated-tasks/forge-tab-peer-slot-size.md).
-4. **Super+2** — early-vs-late same session
-   ([forge-ws-super2-bounce.md](./plans/forge-ws-super2-bounce.md)):
-   - After `layout:dev` modal clears, Super+2 **while dock hover still spins /
-     icons wiggle** → expect bounce.
-   - After spinner gone + no wiggle → expect stick.
-   - Do **not** add forge WS activate/pin fallbacks unless a forge-owned residual
-     remains after urgency/busy is ruled in or out.
-5. Soft: OH remainder — [blocker](./blockers/oh-ws-orphan-host-verify.md).
-6. Soft: D049 tiny-env — [blocker](./blockers/d049-tiny-env-nautilus.md).
+## Next session
 
-## Super+2 (current picture)
+1. **Write the refactor plan(s)** for firm abstractions (TOM / OpSet /
+   presenter / Shell / contracts). Scope and slices live on that plan,
+   not in this file.
+2. **Scan every still-open plan** under `agents/plans/` plus PRIORITY,
+   blockers, and ideas. For each: **close**, **abandon**, or **pull in**
+   (into the refactor, or as explicit **post-refactor** work). The scan
+   **is** a required slice of the planning session. Output is a new
+   ordered queue — no shadow lists left behind.
+3. Only after (1)+(2) exist: implement. Not before.
 
-| Trial | Bounce? |
+Mark 2 proto is **paused** until that plan says port / reshape / park.
+
+## Where parked context lives
+
+| What | Where |
 | --- | --- |
-| Guake killed / never started, forge off | **yes** (earlier; settle not controlled) |
-| Non-forge `~/Desktop/gnome-launch-test.py` | **no** |
-| Forge on + Guake on + wait until dock quiet | **no** |
+| Mark 2 rules + process | [`prototypes/container-motion/src/opsets/mark2.md`](../prototypes/container-motion/src/opsets/mark2.md) · proto README · [container-motion plan § Parked HANDOFF extract](./plans/forge-container-motion-design.md#parked-handoff-extract-2026-08-27) |
+| Design locks | [`design.md`](./design.md) · [`design/CHANGELOG.md`](./design/CHANGELOG.md) (D073–D078) |
+| Old P0 leftovers | [`PRIORITY.md`](./PRIORITY.md) § Parked until plan scan |
 
-**Working theory:** race — Super+2 during post-layout **busy cursor / dock
-urgency**, not Guake-only and not forge `activate_workspace`. Modal clear ≠ desk
-quiet.
+## Do not
 
-## Active next (summary)
-
-| Pri | Slice | Status |
-| --- | --- | --- |
-| P0 | Tab peer geometry (host tip) | [plan](./plans/forge-tab-peer-geometry.md) — tip eyes-on |
-| P0 | Super+2 settle/urgency | [plan](./plans/forge-ws-super2-bounce.md) |
-| soft | OH host verify | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
-| soft | D049 tiny-env | [blocker](./blockers/d049-tiny-env-nautilus.md) |
-| soft | DING ⅓ thrash | [plan](./plans/forge-enable-ding-percent-thrash.md) |
-| next | X11 green sleep/lock | [plan](./plans/forge-x11-green-sleep-lock-shield.md) |
-
-**FIRM:** Prefer nest for code→reload. Host `forge layout:dev` ≠ crash harness.
-User `forge test` / `forge nested` are not product → `forge-test`.
-**Hunts:** `forge log --grep/--session/--level` only — never `tail` at TRACE.
+- Start the refactor implementation this session (plan first)
+- Port Mark 2 into Shell
+- Invent a second glossary
+- Skip the plan scan

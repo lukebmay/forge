@@ -34,14 +34,16 @@ export function renderTreeGraph(container, forest, api, onSelect) {
       container,
       elements,
       style: graphStyles(),
-      layout: { name: "breadthfirst", directed: true, padding: 16, spacingFactor: 1.05 },
+      layout: layoutConfig(forest),
       userZoomingEnabled: true,
       userPanningEnabled: true,
       boxSelectionEnabled: false,
     });
     cy.on("tap", "node", (evt) => {
       const id = evt.target.id();
-      if (id && id !== "__root__") onSelectCb(id);
+      const kind = evt.target.data("kind");
+      if (!id || kind === "ROOT" || kind === "WORKSPACE") return;
+      onSelectCb(id);
     });
   } else {
     cy.json({ elements });
@@ -51,13 +53,7 @@ export function renderTreeGraph(container, forest, api, onSelect) {
 
   // Critical after desk pane resizes the leftover tree area.
   cy.resize();
-  cy.layout({
-    name: "breadthfirst",
-    directed: true,
-    padding: 16,
-    spacingFactor: 1.05,
-    animate: false,
-  }).run();
+  cy.layout(layoutConfig(forest, cy)).run();
   cy.fit(undefined, 20);
 }
 
@@ -82,6 +78,30 @@ function applyHighlights(forest) {
   });
 }
 
+/**
+ * @param {import('./tree.mjs').Forest} forest
+ * @param {import('cytoscape').Core} [core]
+ */
+function layoutConfig(forest, core) {
+  /** @type {object} */
+  const cfg = {
+    name: "breadthfirst",
+    directed: true,
+    padding: 16,
+    spacingFactor: 1.05,
+    animate: false,
+  };
+  if (forest.rootId) {
+    if (core) {
+      const r = core.getElementById(forest.rootId);
+      if (r.nonempty()) cfg.roots = r;
+    } else {
+      cfg.roots = `#${forest.rootId}`;
+    }
+  }
+  return cfg;
+}
+
 function graphStyles() {
   return [
     {
@@ -101,6 +121,24 @@ function graphStyles() {
         shape: "roundrectangle",
         "text-wrap": "wrap",
         "text-max-width": 80,
+      },
+    },
+    {
+      selector: "node[kind = 'ROOT']",
+      style: {
+        "background-color": "#1a1a1e",
+        "border-color": "#888",
+        width: 88,
+        height: 32,
+      },
+    },
+    {
+      selector: "node[kind = 'WORKSPACE']",
+      style: {
+        "background-color": "#243044",
+        "border-color": "#6a8aaa",
+        width: 88,
+        height: 32,
       },
     },
     {
@@ -175,15 +213,8 @@ function buildElements(forest) {
   /** @type {object[]} */
   const elements = [];
   for (const n of Object.values(forest.nodes)) {
-    let label = n.id;
-    if (n.kind === "WINDOW") label = `${n.label || "?"}\n${n.id}`;
-    else if (n.kind === "MONITOR") label = `${n.id}\nMONITOR`;
-    else if (n.kind === "CON") {
-      const empty = n.childIds.length === 0 ? " ∅" : "";
-      label = `${n.layout || "CON"}${empty}\n${n.id}`;
-    }
     elements.push({
-      data: { id: n.id, label, kind: n.kind },
+      data: { id: n.id, label: nodeLabel(forest, n), kind: n.kind },
     });
   }
   for (const n of Object.values(forest.nodes)) {
@@ -194,11 +225,31 @@ function buildElements(forest) {
       });
     }
   }
-  if (forest.monitors.length > 1) {
-    elements.push({ data: { id: "__root__", label: "forest", kind: "MONITOR" } });
-    for (const m of forest.monitors) {
-      elements.push({ data: { id: `__root__->${m.id}`, source: "__root__", target: m.id } });
-    }
-  }
   return elements;
+}
+
+/** @param {import('./tree.mjs').Forest} forest @param {import('./tree.mjs').Node} n */
+function nodeLabel(forest, n) {
+  const pct = shareLabel(forest, n);
+  if (n.kind === "ROOT") return "ROOT";
+  if (n.kind === "WORKSPACE") return n.label || n.id || "WS";
+  if (n.kind === "MONITOR") return `${n.id}\nMONITOR`;
+  if (n.kind === "WINDOW") {
+    return pct ? `${n.label || "?"}\n${pct}` : `${n.label || "?"}`;
+  }
+  if (n.kind === "CON") {
+    const empty = n.childIds.length === 0 ? " ∅" : "";
+    const lay = (n.layout || "CON").replace("SPLIT", "");
+    return pct ? `${lay}${empty}\n${pct}` : `${lay}${empty}`;
+  }
+  return n.id;
+}
+
+/** @param {import('./tree.mjs').Forest} forest @param {import('./tree.mjs').Node} n */
+function shareLabel(forest, n) {
+  const p = n.parentId ? forest.nodes[n.parentId] : null;
+  if (!p || (p.layout !== "HSPLIT" && p.layout !== "VSPLIT")) return "";
+  const pct = Math.round((n.percent ?? 0) * 1000) / 10;
+  const mark = n.userSized ? "*" : "";
+  return `${pct}%${mark}`;
 }

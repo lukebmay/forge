@@ -17,14 +17,16 @@
       >
         ☰
       </button>
-      <h1>Forge container motion</h1>
+      <h1>Forge TOM / container motion</h1>
       <div class="view-toggle" title="Main view">
         <button type="button" data-view="desk">Desk</button>
         <button type="button" data-view="tree">Tree</button>
         <button type="button" data-view="split" class="active">Split</button>
       </div>
       <div class="top-actions">
-        <button type="button" id="btn-toggle-atomics" title="Atomics">Atomics</button>
+        <button type="button" id="btn-toggle-atomics" class="active" title="TreeOps">
+          TreeOps
+        </button>
         <button type="button" id="btn-toggle-keys" title="Keybinds">Keybinds</button>
         <button type="button" id="btn-dump-tree" title="console.log tree">Dump tree</button>
       </div>
@@ -49,9 +51,13 @@
             </div>
           </div>
           <h2>Monitors</h2>
+          <p class="hint">Sibling axis (from geometry): <strong id="mon-sibling-axis">—</strong></p>
           <div id="mon-list" class="mon-list"></div>
-          <h2>Decisions</h2>
+          <h2>Mark 2 OpSet / Decisions</h2>
           <div class="settings-block decisions">
+            <label class="row"
+              ><input id="dec-policy" type="checkbox" checked /> Mark 2 OpSet on</label
+            >
             <label class="row"
               >Peel
               <select id="dec-peel">
@@ -63,8 +69,22 @@
               >Edge move
               <select id="dec-edge">
                 <option value="noop">no-op</option>
-                <option value="wrap">wrap</option>
+                <option value="wrap" selected>wrap</option>
                 <option value="pop">pop out</option>
+              </select>
+            </label>
+            <label class="row"
+              >Aspect tie-break
+              <select id="dec-tie">
+                <option value="HSPLIT" selected>HSPLIT</option>
+                <option value="VSPLIT">VSPLIT</option>
+              </select>
+            </label>
+            <label class="row"
+              >Default join container
+              <select id="dec-join">
+                <option value="SPLIT" selected>SPLIT (anti-parent)</option>
+                <option value="TAB">TAB</option>
               </select>
             </label>
             <span class="legend">
@@ -76,24 +96,24 @@
         </div>
       </aside>
 
-      <aside id="drawer-atomics" class="drawer-side drawer-left" hidden>
+      <aside id="drawer-atomics" class="drawer-side drawer-left">
         <div class="drawer-side-scroll">
-          <h2>Atomics</h2>
+          <h2>TreeOps</h2>
           <div class="btn-grid">
             <button type="button" data-action="focus:left">Focus ←</button>
             <button type="button" data-action="focus:down">Focus ↓</button>
             <button type="button" data-action="focus:up">Focus ↑</button>
             <button type="button" data-action="focus:right">Focus →</button>
 
-            <button type="button" data-action="move:left">Move ←</button>
-            <button type="button" data-action="move:down">Move ↓</button>
-            <button type="button" data-action="move:up">Move ↑</button>
-            <button type="button" data-action="move:right">Move →</button>
-
             <button type="button" data-action="swap:left">Swap ←</button>
             <button type="button" data-action="swap:down">Swap ↓</button>
             <button type="button" data-action="swap:up">Swap ↑</button>
             <button type="button" data-action="swap:right">Swap →</button>
+
+            <button type="button" data-action="breakout:left">Breakout ←</button>
+            <button type="button" data-action="breakout:down">Breakout ↓</button>
+            <button type="button" data-action="breakout:up">Breakout ↑</button>
+            <button type="button" data-action="breakout:right">Breakout →</button>
 
             <button type="button" data-action="focusParent">Focus parent</button>
             <button type="button" data-action="focusChild">Focus child</button>
@@ -116,17 +136,61 @@
             <button type="button" data-action="flatten">Flatten</button>
             <button type="button" data-action="flattenAll">Flatten all</button>
             <button type="button" data-action="close">Close win</button>
+            <button type="button" data-action="deleteNode">Destroy node (Del)</button>
+            <button type="button" data-action="equalizeChildren">Equalize kids</button>
+            <button type="button" data-action="unsetSizeInAxis">Unset size ‖</button>
+            <button type="button" data-action="unsetSizeCrossAxis">Unset size ⊥</button>
+            <button type="button" data-action="size:x:-">x− (Alt+h)</button>
+            <button type="button" data-action="size:x:+">x+ (Alt+l)</button>
+            <button type="button" data-action="size:y:-">y− (Alt+j)</button>
+            <button type="button" data-action="size:y:+">y+ (Alt+k)</button>
+            <button type="button" data-action="size:float">Float this (Alt+y)</button>
+            <button type="button" data-action="size:floatSiblings">Float this+sibs (Alt+u)</button>
+            <button type="button" data-action="size:floatSiblingsOnly">
+              Float sibs only (Alt+i)
+            </button>
+            <button type="button" data-action="size:floatSelfSiblingsParent">
+              Float this+sibs+parent (Alt+o)
+            </button>
+            <button type="button" data-action="size:floatParent">Float parent (Alt+n)</button>
+            <button type="button" data-action="size:floatParentGroup">
+              Float parent group (Alt+m)
+            </button>
+            <button type="button" data-action="size:floatParentSiblingsOnly">
+              Float parent sibs (Alt+,)
+            </button>
+            <button type="button" data-action="size:floatBothGroups">
+              Float both groups (Alt+.)
+            </button>
+            <button type="button" data-action="size:preset:7">75% (Alt+7)</button>
+            <button type="button" data-action="size:preset:8">67% (Alt+8)</button>
+            <button type="button" data-action="size:preset:9">50% (Alt+9)</button>
+            <button type="button" data-action="size:preset:0">33% (Alt+0)</button>
+            <button type="button" data-action="cycleLayout:-1">Layout [</button>
+            <button type="button" data-action="cycleLayout:+1">Layout ]</button>
             <button type="button" data-action="toggleTag">Tag cyan</button>
             <button type="button" data-action="clearTags">Clear tags</button>
           </div>
 
-          <div class="launch-row">
-            <label
-              >Launch →
-              <select id="launch-mon"></select>
-            </label>
-            <button type="button" id="btn-launch">Launch</button>
+          <h2>Mark 2 OpSet</h2>
+          <div class="btn-grid">
+            <button type="button" data-action="opset:move:left">Move ←</button>
+            <button type="button" data-action="opset:move:down">Move ↓</button>
+            <button type="button" data-action="opset:move:up">Move ↑</button>
+            <button type="button" data-action="opset:move:right">Move →</button>
+            <button type="button" data-action="opset:join:left">Join ←</button>
+            <button type="button" data-action="opset:join:down">Join ↓</button>
+            <button type="button" data-action="opset:join:up">Join ↑</button>
+            <button type="button" data-action="opset:join:right">Join →</button>
+            <button type="button" data-action="opset:toggleSplit">Toggle split (m)</button>
+            <button type="button" data-action="opset:toggleTabStack">Toggle tab/stack (n)</button>
+            <button type="button" data-action="opset:promote">Promote kids ({)</button>
+            <button type="button" data-action="opset:promoteRecursive">Promote all (})</button>
+            <button type="button" data-action="opset:remove">Remove + settle (q)</button>
+            <button type="button" data-action="launch">Launch selected (a)</button>
           </div>
+
+          <div id="launch-docks" class="btn-grid launch-docks"></div>
 
           <h2>Composed</h2>
           <div class="macro-form">
@@ -151,8 +215,14 @@
         <div class="drawer-side-scroll">
           <h2>Keybinds</h2>
           <p class="hint">
-            Vim kit without Super. <kbd>hjkl</kbd> focus · <kbd>Shift</kbd> move ·
-            <kbd>Ctrl</kbd> swap.
+            <kbd>hjkl</kbd> select · <kbd>Shift+hjkl</kbd> OpSet move · <kbd>Ctrl+hjkl</kbd> OpSet
+            join · <kbd>yuio</kbd> focus · <kbd>Ctrl+yuio</kbd> TreeOp swap · <kbd>p</kbd> parent ·
+            <kbd>a</kbd> launch selected · <kbd>q</kbd> OpSet remove · <kbd>Delete</kbd> destroy
+            node · <kbd>[</kbd>/<kbd>]</kbd> layout · <kbd>m</kbd>/<kbd>n</kbd> toggles ·
+            <kbd>{</kbd>/<kbd>}</kbd> promote · <kbd>Alt+hjkl</kbd> size · <kbd>Alt+yuio</kbd>/<kbd
+              >nm,.</kbd
+            >
+            float · <kbd>Alt+7890</kbd> presets.
           </p>
           <button type="button" id="btn-reset-keys">Reset Vim − Super</button>
           <div class="table-wrap">

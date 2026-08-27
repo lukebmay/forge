@@ -8,11 +8,168 @@
 
 ### Session note (overwrite)
 
-**2026-08-06:** Operator + agent discussion on peel model B, directional move
-past siblings, join messiness, selection multi-target colors. **Do not code
-tree motion** until design locks and interactive HTML prototype agree.
-Related code today: LX2 peel reorient (incomplete for multi-sibling mon), C4
-move-in/out + focus parent/child, S0–S2 selection sticky unit (containers branch).
+**2026-08-27g — Proto stream parked:** Mark 2 proto + TOM kernel committed.
+Next session is **firm-abstractions refactor planning** (scan all open
+plans: close / abandon / pull in). Cold-continue for this proto lives in
+**§ Parked HANDOFF extract** below and
+[`prototypes/container-motion/src/opsets/mark2.md`](../../prototypes/container-motion/src/opsets/mark2.md).
+Do not re-copy locks into `HANDOFF.md`.
+
+**2026-08-27f — Share rescale + dock launch:** Leave an H/V → node
+floats (sized shares do not follow). Last floater gone → rescale remaining
+sized to 100% (ratios kept). Unary collapse still copies the CON slot.
+Dock launch = `Launch(MonN)` (per-monitor buttons). Guake/`a` = `Launch()`
+on the selection’s monitor. `q` = OpSet Remove. `npm test` 144 green.
+
+**2026-08-27e — Launch CON slot + TAB size + float-all:** Launch selected =
+WINDOW or CON on that monitor (`p` counts). Treat CON as the slot. Worked:
+`H(TAB(A,B),C)` select TAB → `H(V(TAB(A,B),D),C)`. Same-type wrap of H/V
+CON: MONITOR → opposite split; nested → last child. TAB/STACK size ops
+(nudge/preset/float/`e`) target the bag slot. `Alt+/` floats every node.
+`npm test` in the proto dir (140 green).
+
+**2026-08-27d — Launch + float parent:** Mark 2 Launch in `mark2.md`:
+selected = WINDOW leaf on that monitor; else append at end. TAB/STACK next
+sibling; H wider-than-tall → sibling else wrap V; V taller-than-wide →
+sibling else wrap H; 10% floor → TAB wrap. MONITOR sole window wraps in
+place. Float **parent** = ancestor whose share is the child’s cross-axis.
+Keys: `Alt+yuio` / `Alt+nm,.`. **Launch leaf-only superseded by 2026-08-27e.**
+
+**2026-08-27c — tree graph + sizing:** Renderer uses real ROOT→WS1→MONITOR
+(no fake “forest” node). In-axis shares on H/V children; cross-axis is the
+parent container’s share. Float = not userSized. Floor 10%. Resize
+`Alt+hjkl` / presets `7890`. Float keys **superseded** by 2026-08-27d.
+
+**2026-08-27b — Mark 2 design doc + Join tab:** Source of truth is
+[`src/opsets/mark2.md`](../../prototypes/container-motion/src/opsets/mark2.md).
+Breakout = Promote. Unary collapse = 1-child CON deleted, child takes its
+place. Spine ROOT→WS→MONITOR. Join `H(TAB(A,B),TAB(C,D))` C← →
+`H(TAB(A,B,C),D)` (was throw/no-op: missing `insertBefore`; enter at near
+edge). Changing mark2.md ⇒ same-effort code + tests. `npm test` is the brake.
+
+**2026-08-27 — TOM / OpSets:** Prototype kernel is `src/tom/` (atomics +
+composed TreeOps + shorthand). Mark 2 is an **OpSet** (`src/opsets/mark2.mjs`),
+not “molecular.” Green + wrong desk ⇒ paint. “Molecule” retired; do not put
+wrap/cross-mon/join into TOM atomics.
+
+**2026-08-26l — proto plog + abstract regressions:** Prototype-local single-sink
+plog (`src/plog.mjs`, not forge tapes). `npm test` runs Given/Action cases on
+the abstract tree — green suite + wrong desk ⇒ paint bug, not policy.
+
+**2026-08-26k — join edge breakout + cross-axis promote:** `H(V(A,B),V(C,D))`
+C Join← must **not** wrap-pair into `TAB(C,D)`. Nested pair wrap-pair only when
+breakout is impossible (mon sole-child). Else: breakout → unary cleanup → join
+in dir. Join into **cross-axis** sibling CON promotes that CON’s kids into the
+parent and inserts the leaf at the boundary → `H(A,B,C,D)`. In-axis sibling CON
+still enter-con.
+
+**2026-08-26j — edge wrap rotate + Move→OpSet:** `H(A,B)` A← must become
+`H(B,A)` (in-axis edge **rotate**, not cross-mon / not silent fail). Causes of
+apparent no-op: (1) persisted Mark 1 `edgeMove=noop` — migrate once to `wrap`
+under Mark 2 policy; (2) TreeOp **Move** used cross-mon-first while OpSet move
+wrapped — with policy on, `move:*` now calls OpSet `Move`. TreeOp `moveDir`
+is in-axis swap only (no wrap). Wrap is rotate-to-other-end (n=2 ≡ swap).
+
+**2026-08-26i — move wrap before cross-mon:** Mark 2 move in-axis edge
+**wrap** (pref) must beat monitor transfer. Was: `isAtMonitorEdge` first →
+`TAB(A,B)` A← and `H(A,B)|H(C,D)` B→ stole to the other mon. Now: in-axis
+swap/wrap → then cross-mon (only if parent cannot wrap) → breakout.
+`isAtMonitorEdge` requires in-axis at each ancestor (no false edge on VSPLIT←).
+
+**2026-08-26h — half-width tab:** Proto desk applied sibling `percent` flex to
+the open tab pane child (stale 0.5 from former split). Fix: `fill: true` for
+tab/stack pane; `setLayout` into TAB/STACK equalizes. Forge: enter TAB/STACK
+`setLayout` clears sibling percents; `computeSizes` returns full slot for bags
+(paint already ignored percent — D069 Meta lag is separate).
+
+**2026-08-26g — H(A,TAB(B,C)) join B↔C → V:** Emptied TAB/STACK invents vs
+**host** (Join under H→V), not aspect-vs-TAB (which coerced H under H→TAB no-op).
+Emptied H/V still invents opposite of former split.
+
+**2026-08-26f — prune empty after OpSet ops:** `mark2CleanupUnder` prunes
+**any** 0-child CON (H/V/TAB/STACK) then collapses unary (loop). Emptied parent
+on 2-leaf join is replaced in place. Empties remain atomic-only escape hatches.
+
+**2026-08-26e — join TAB fallback + 2-leaf any-dir:** Same-type H/V repair is
+**TABBED** (not H↔V flip) — flipping on unary promote undid invent
+(VSPLIT(A,B)→H→promote into H parent→was V again). Invent join wrap: opposite
+vs host; if that layout equals a CON child → TAB. Two window leaves under one
+parent: any join dir wraps the pair (not only toward-sibling). Under mon,
+2-leaf V→net H / H→net V; nested under same-orient CON → TAB bag.
+
+**2026-08-26d — abstract settle + 2-leaf join:** OpSet ops mutate a
+**cloned** forest then `applyForestSnapshot` once (no mid-gesture display
+thrash). 2-leaf VSPLIT↔join→HSPLIT uses full invent+unary path; **deferred
+opt** = detect and flip parent layout in place. Same-type coerce is CON↔CON
+only (never vs MONITOR layout).
+
+**2026-08-26c — monitors as siblings:** Display geometry decides implicit
+monitor sibling axis (centers spread → **HSPLIT** side-by-side vs **VSPLIT**
+stacked; tie → `aspectTieBreak`). TreeOp + OpSet move/join (and focus)
+cross that edge like moving toward a sibling CON. Helpers in
+`prototypes/container-motion/src/monitors.mjs`.
+
+**2026-08-26b — Mark 2 locks (prototype-only):** Named lineage Mark 0 / 1 / 2
+(see below). Mark 2 is **HTML prototype experiment only** — may be adopted,
+changed, or abandoned before any Shell ship. Locked answers from this meeting
+folded into § Mark 2. Proto gained Mark 2 OpSet (`src/opsets/mark2.mjs`), size atomics, layout
+cycle `[`/`]`, OpSet `m`/`n`/`{`/`}`, prefs (tie-break H, default join
+SPLIT|TAB, policy toggle).
+
+**2026-08-26a — rules draft:** Operator proposed Mark 2 policy (monitor
+max-1-child, no same-type, no unary CON, directional move/join). Explicitly
+**supersedes** 2026-08-06 leans on D3/D5 for the *prototype* track.
+
+**2026-08-06:** Mark 1 design discussion (peel B, edge noop lean, explicit
+join). Superseded for proto by Mark 2; Shell still runs Mark 0 Move + Mark 1 C4.
+
+---
+
+## Parked HANDOFF extract (2026-08-27)
+
+Moved out of `HANDOFF.md` so the next session can start on **firm
+abstractions**. Use this during the plan scan; **do not** treat it as the
+live queue.
+
+**Stream:** `prototypes/container-motion/` — TOM kernel + Mark 2 OpSet.
+Not Shell Move. Proto: `npm start` → http://localhost:5177/ (port **5177**).
+Settings: Mark 2 on, **Edge move = wrap**. Hard-refresh after edits.
+Suite **144 green** (`cd prototypes/container-motion && npm test`).
+
+**FIRM process (until the refactor plan supersedes it):**
+
+1. OpSet source of truth: `prototypes/container-motion/src/opsets/mark2.md`.
+   Edit that file ⇒ edit `mark2.mjs` + tests in the same effort.
+2. TOM stays clean. No wrap/cross-mon/join in `src/tom/` atomics.
+3. Before any OpSet/TOM edit: `cd prototypes/container-motion && npm test`.
+4. New desk bug: failing case first, then fix.
+5. Green suite + wrong desk ⇒ paint, not the TOM.
+
+**Locked behaviors:** `mark2.md` + proto README. Newest CHANGELOG row for
+the topic wins (D073–D078). Do not duplicate the case table here.
+
+**Known seam:** monitor neighbor / `transferLeafToMonitor` still in
+`src/monitors.mjs` (world + a bit of max-1 wrap). Optional cleanup: that
+transfer should be TreeOps + Mark 2 wrap, not a world-module splice.
+
+**Host leftovers (not this proto):** D069 tab-peer tip, Super+2 settle,
+DING ⅓, D049 tiny-env, OH host verify, chaos nest. Prefer nest for Shell
+code→reload. Hunts: `forge log` only.
+
+**Paths:** `src/tom/` kernel · `src/opsets/mark2.mjs` · `src/tree.mjs`
+presenter · `test/` four-layer suite.
+
+---
+
+## Design lineage (names)
+
+| Mark | Meaning | Where it lives |
+| --- | --- | --- |
+| **Mark 0** | EGO / jcrussell directional Move: i3-like climb, swap sibling, **auto-join CON**, **auto-peel** on edge/perpendicular, mon wrap / cross-mon | Shell `tree.move` / `next` (still the live Move path) |
+| **Mark 1** | Luke FCC + C4: keep Mark 0 Move; add explicit `moveIn` / `moveOut` / focus parent; LX2 pair peel aspect; 2026-08-06 design lean toward tame edges + explicit join | Shell C4 + motion-design early leans |
+| **Mark 2** | Prototype policy pack: unary forbid, same-type forbid, mon max-1, in-axis wrap, cross-axis breakout, directional invent-join, mins→TAB→float | **`prototypes/container-motion/` only** until MD2 says ship |
+
+Newest design meeting **wins** for the prototype track. Shell stays Mark 0+1 until an explicit adopt decision.
 
 ---
 
@@ -203,19 +360,105 @@ Do not block peel on fear of nesting; normalize is a separate cleanup pass.
 
 ---
 
-## Open decisions (must close before implement)
+## Mark 2 (2026-08-26 — prototype locks)
 
-| ID | Question | Options | Lean |
-| --- | --- | --- | --- |
-| D1 | Peel structure | A reparent vs **B wrap-in-slot** | **B** |
-| D2 | Peel axis | aspect only vs direction+aspect | direction if any, else aspect |
-| D3 | Move at sibling edge | no-op vs pop-out vs wrap | **no-op** |
-| D4 | L/R U/D model | M1–M4 | **M2 + bag strip M4**; no M3 invent |
-| D5 | Join invent | directional invent vs explicit group only | **explicit** |
-| D6 | CON+CON merge | absorb rules vs new parent | **new parent** / multi-tag |
-| D7 | Multi-select colors | S0 single only vs magenta+cyan set | prototype multi; S0 single until proven |
-| D8 | Single-child CON | allow vs auto-collapse | **collapse** (existing auto-exit direction) |
-| D9 | Normalize same-axis | never vs idle merge | never in v1 |
+**Scope:** HTML prototype only. TOM atomics remain rule-free; Mark 2 is a
+**toggleable OpSet** (`src/opsets/mark2.mjs`).
+
+### Vocabulary
+
+**Do not redefine terms here.** Use
+[`src/opsets/mark2.md`](../../prototypes/container-motion/src/opsets/mark2.md).
+
+Breakout = Promote (node becomes sibling of its parent). Unary collapse is
+the 1-child-CON settle rule, not another name for promote. Parent container
+not “host.”
+
+### Structural invariants (Mark 2 OpSet only)
+
+1. Monitor children ∈ {0, 1}; second insert wraps under monitor.
+2. Aspect for invent: taller→V, wider→H, **tie→`aspectTieBreak` (default HSPLIT)**.
+3. No same-type CON nesting. Join under H → V (else TAB); under V → H (else TAB).
+   If desired split equals a CON child, or unary promote would same-type vs new
+   CON parent: **TABBED** (do **not** H↔V-flip — that undoes invent). Pref
+   `defaultJoinContainer`: `SPLIT` \| `TAB`. Mins→TAB still later.
+4. No unary CON (except monitor’s 0/1 child). Empty CON spacers = proto atomic escape only.
+5. STACKED treated like TABBED for axis / join rules.
+6. Shared monitors across workspaces: **DEFER**.
+7. Mins in effect; fallback invent TAB, then locate join, then FLOAT.
+
+### Directional move / join (leaves first)
+
+- **v1 OpSet targets: WINDOW leaves only** — no CON join-move, no CON breakout yet.
+- Move in-axis: reorder / edge **wrap** (pref = rotate item to other end;
+  `H(A,B)` A← → `H(B,A)`). **Before** cross-mon — a parent with ≥2 children
+  wraps in-place; cross-mon only when wrap cannot apply (sole child /
+  edgeMove pop after edge / etc.).
+- Move cross-axis: breakout (not past mon / mon sole child).
+- Cross-mon move: when at true monitor edge (in-axis through ancestors) and
+  no in-parent wrap applied.
+- Join in-axis + sibling window: wrap both in new CON (different type).
+- Join in-axis + sibling CON: **enter** CON (near end for dir).
+- Join toward **cross-axis** sibling CON: **promote** that CON’s children into
+  the parent and insert the leaf at the join boundary
+  (`H(V(A,B),C,D)` Join← → `H(A,B,C,D)`).
+- Join at edge / cross-axis: **breakout then join** in pressed direction (not
+  bare breakout; unary cleanup before the follow-up join). Two-leaf wrap-pair
+  on any dir only when breakout is impossible (mon sole-child CON).
+- Join TAB siblings (for now): pull the two items out into a SPLIT beside the TAB in parent order — **not** nested TAB-in-TAB; nested tab chrome deferred.
+- After OpSet ops: selection stays on the **moved leaf**.
+- Two leaves under mon joining H→V (or V→H): outer unary dies → effective H/V swap.
+
+### Post-op cleanup order (Mark 2)
+
+After an OpSet invent/wrap/reparent:
+
+1. **Choose / coerce type** of any new CON (opposite split; same-type → TAB;
+   mins→TAB).
+2. **Commit** tree links (children under new parent, parent in grandparent).
+3. **Prune empty** CONs, then **collapse unary** (walk until stable).
+4. **Re-coerce** if a promote created a new same-type pair.
+
+(Atomics skip this pipeline.)
+
+### Prefs (proto Settings)
+
+| Pref | Default |
+| --- | --- |
+| Mark 2 policy enabled | on |
+| `aspectTieBreak` | HSPLIT |
+| `defaultJoinContainer` | SPLIT |
+| edge move | wrap |
+| peel model | B (legacy toggle) |
+
+### Proto keybinds (Mark 2 extras)
+
+| Chord | Action |
+| --- | --- |
+| `[` / `]` | Atomic cycle layout H→V→TAB→STACK |
+| `m` | OpSet toggle split (H↔V; bag→allowed split) |
+| `n` | OpSet toggle tab/stack (TAB↔STACK; H/V→TAB) |
+| `{` / `}` | OpSet promote children / recursive |
+| `e` | Equalize children |
+| `u` / `Shift+u` | Unset size in-axis / cross-axis |
+
+### Explicit divergences from 2026-08-06 (acknowledged)
+
+Mark 2 **supersedes** edge-noop and explicit-only-join for the **prototype**.
+Shell remains Mark 0 Move + Mark 1 C4 until adopt/abandon.
+
+---
+
+## Open decisions (remaining)
+
+| ID | Question | Status |
+| --- | --- | --- |
+| D1 | Peel Model B | still lean **B** |
+| D6 | CON+CON merge | deferred (no CON join-move yet) |
+| D7 | Multi-select cyan | later |
+| D11 | Shared monitors | **defer** |
+| D12 | Empty CON in product | open |
+| MD2 | Play Mark 2 in proto; adopt / revise / abandon for forge | **next** |
 
 ---
 

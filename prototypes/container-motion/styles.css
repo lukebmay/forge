@@ -301,13 +301,8 @@ body {
   padding: 0.35rem 0.25rem;
 }
 
-.launch-row {
-  display: flex;
-  gap: 0.35rem;
-  align-items: center;
+.launch-docks {
   margin: 0.65rem 0;
-  flex-wrap: wrap;
-  font-size: 0.8rem;
 }
 
 .macro-form {

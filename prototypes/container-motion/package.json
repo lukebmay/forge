@@ -3,11 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Sandbox for forge 2D tree motion / container atomics",
+  "description": "TOM / OpSet sandbox for forge tiling control surfaces",
   "scripts": {
     "start": "vite --port 5177 --strictPort",
     "build": "vite build",
-    "preview": "vite preview --port 5177 --strictPort"
+    "preview": "vite preview --port 5177 --strictPort",
+    "test": "node test/run.mjs",
+    "test:atomics": "node test/run.mjs --layer atomics",
+    "test:composed": "node test/run.mjs --layer composed",
+    "test:mark2": "node test/run.mjs --layer opset",
+    "test:workflows": "node test/run.mjs --layer workflow"
   },
   "dependencies": {
     "cytoscape": "^3.33.1"
