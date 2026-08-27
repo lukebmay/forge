@@ -79,6 +79,31 @@ describe("setLayout I1 — child identity stable", () => {
     expect(inner.childNodes).toHaveLength(1);
   });
 
+  it("Tree.setLayout into TABBED/STACKED clears stale sibling percents", () => {
+    const { con, kids } = nestedGroup();
+    const before = kids();
+    before[0].percent = 0.5;
+    before[0].userSized = true;
+    before[1].percent = 0.3;
+    before[1].userSized = true;
+    before[2].percent = 0.2;
+    before[2].userSized = true;
+
+    expect(tree().setLayout(con, LAYOUT_TYPES.TABBED)).toBe(true);
+    for (const c of con.childNodes) {
+      expect(c.percent).toBe(0);
+      expect(c.userSized).toBe(false);
+    }
+
+    before[0].percent = 0.7;
+    before[0].userSized = true;
+    expect(tree().setLayout(con, LAYOUT_TYPES.STACKED, { lastTabFocus: null })).toBe(true);
+    for (const c of con.childNodes) {
+      expect(c.percent).toBe(0);
+      expect(c.userSized).toBe(false);
+    }
+  });
+
   it("Tree.setLayout TABBED → STACKED keeps child order and nested CON", () => {
     const { con, inner, kids } = nestedGroup();
     tree().setLayout(con, LAYOUT_TYPES.TABBED);
