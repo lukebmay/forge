@@ -1,0 +1,198 @@
+# Target layers (working draft)
+
+**Status:** locked D079 + D080
+**As of:** 2026-08-27
+**Sources:** explore/01–06, D073/D074/D079/D080.
+**RuleSet:** [ruleset.md](./ruleset.md) · **Keybinds:** [keybinds.md](./keybinds.md)
+
+## Layer table
+
+| Layer | Owns | Must not own | From |
+| --- | --- | --- | --- |
+| **TOM** | Plain forest: kinds, `parentId`/`childIds`, layout, percent/`userSized`, lastTabFocusId, spine ROOT→WS→MONITOR | GObject, Meta, St, DOM, keybinds, OpSet policy, paint, settle laws | 01, 02 |
+| **Atomics + composed** | Child-list atomics; breakout, wrap, promoteChildren (**no settle**) | Super+h; `move_resize`; “after promote, collapse” | 01, D080 |
+| **RuleSet** | Named settle: order of prune / unary / coerce / MONITOR max-1. Bound by an OpSet | Launch/Move policy; keybinds; Meta | D080 |
+| **OpSet** | Mark 2 first. Glossary = `mark2.md`. Calls atomics + RuleSet | Child-list splicing; presenter; a private settle | 01, D080 |
+| **Keybind core** | Action id → Super-bearing chord (Mark 2 table) | Proto `a`/`q`; Forge lock/zoom/run | D080 |
+| **Presenter** | Slots from TOM + workarea → paint | Topology mutation | 04 |
+| **Host** | Meta.Window ↔ WINDOW id, signals, workarea/mon/ws, bags, `move_resize_frame` | Tiling policy; `createNode` | 03 |
+| **Epochs** | Apply, session restore, H1 — three forest writers | Idle keybind; merging the two monitor-resolves | 05 |
+| **Surfaces** | DnD gesture, CLI, DBus, prefs, host key overlays | A second tree mutator; a second Mark 2 chord table | 06 |
+| **Product data** | Profiles, settings, windows.json, mins, heuristics | Role-name branches | 03, 05 |
+
+Physical lift (P1): proto `src/tom/` → `lib/tom/`; settle →
+`lib/rulesets/`; Mark 2 kit → `lib/keybinds/`. gi-free ESM. Proto tests
+and proto key table point at those. Forge `Node`/`Tree` are **not** that
+kernel.
+
+## TOM (01+02 — meeting-ready)
+
+Proto `Forest` + POJO `Node` **is** the product tree. Forge `Node`
+extends GObject, stores Meta/St in `_data`, constructs decorations in
+the ctor, and `Tree` *is* ROOT. That object cannot be shared TOM.
+
+| In TOM | Not in TOM |
+| --- | --- |
+| kinds ROOT/WS/MONITOR/CON/WINDOW | `GObject.registerClass` |
+| `percent` + `userSized` (float share ≠ Forge `mode: FLOAT`) | `mode` FLOAT/GRAB_TILE (Host/product) |
+| `lastTabFocusId` (id string) | `lastTabFocus` as Meta.Window |
+| child list via atomics only | `childNodes` setter; actor teardown on detach |
+| placeholder flag as **data** | St.Bin CON value |
+| | `Forest.decisions` / `mergeTags` / `peelModel` (OpSet session) |
+| | MONITOR `geom` as world (Host) |
+| | `zoomMode` (Presenter) |
+| | `PRESET` layout (drop) |
+
+**Spine:** ROOT → WORKSPACE* → MONITOR → CON|WINDOW. MONITOR max-1 is a
+**mark2 RuleSet** post-settle invariant, not an atomic. Adopt wraps
+n-child MONITOR once.
+
+`tree-query.js` is already a Surface projection (keep). `tree-snapshot.js`
+is an Epoch forest document still keyed by live Meta.Window (reshape).
+
+## Atomics + composed (core spine)
+
+| Op | Home | Notes |
+| --- | --- | --- |
+| append/insert/remove/replace | `tom/atomics` | Same names as D023. No actor teardown |
+| breakout | `tom/composed` | One node becomes sibling of parent. **Does not settle** |
+| wrapNodes / promoteChildren | composed | wrap = insert CON; ungroup = promoteChildren |
+| sizing / float shares / 10% floor | `tom/sizing` | Leave-split clears `userSized` |
+
+Unary collapse, prune empty, same-type coerce, MONITOR max-1 repair are
+**RuleSet**, not atomics. See [ruleset.md](./ruleset.md).
+
+Forge `cleanTree` is **not** the RuleSet. Replace it.
+
+Product **Move is Mark 2 Move** (D080). Forge `tree.move` is discarded
+as a twin, not parked as a second OpSet.
+
+## RuleSet (D080)
+
+Named module `lib/rulesets/{core,mark2}.js`. OpSet **binds** one.
+Mark 2 binds `mark2` = core (prune → unary → share repair) + coerce
+TABBED + MONITOR max-1. Detail: [ruleset.md](./ruleset.md).
+
+## OpSet (01 + D080)
+
+Mark 2: `mark2.md` (FIRM glossary) + `mark2.mjs`. Ops: Move, Join,
+Launch, Toggle*, Promote*, Remove. After each mutating op: bound
+RuleSet `settle()`. Cross-mon neighbor math stays World/Host;
+`transferLeafToMonitor` splits into composed place + RuleSet max-1.
+
+CommandHandler / proto keys dispatch **shared action ids**
+([keybinds.md](./keybinds.md)).
+
+## Keybind core (D080)
+
+One Super-bearing Mark 2 table. Proto = `stripSuper` + proto overlay
+(`a`/`q`). Forge Safe/i3 = host overlays on the **same action ids**.
+Detail: [keybinds.md](./keybinds.md).
+
+## Presenter (04 — meeting-ready)
+
+Same TOM, two presenters. Proto = CSS flex + open-tab-only DOM. Forge =
+every mapped TILE (D069 buried peers stay mapped — **presenter**, not
+TOM invariant).
+
+| Piece | Keep as |
+| --- | --- |
+| percent → AABB / tab wrap | gi-free Presenter math beside TOM (`paneRect` sibling). Stop `computeSizes` write-back of `child.percent` |
+| workarea fetch | Host |
+| `apply` → `wm.move` → `move_resize_frame` | Host paint chokepoint |
+| `Node.rect` setter painting St | **leak** — split |
+| `_createDecoration` in Node ctor | **leak** |
+| `#forge-tab-chrome` / D046 | Presenter + Host (St) |
+| D069 visible-first + shared slot | Presenter |
+| D030 zoom | Presenter flag |
+| Apply overlay | Epoch chrome |
+| Raise paths | Host, **do not unify** |
+
+## Host (03 — meeting-ready)
+
+Reshape `WindowManager` into a thin Mutter adapter. Do not pare
+`window.js` in place.
+
+**Host keeps:** signal bind, Meta↔WINDOW id, `move_resize_frame`,
+workarea/mon/ws lists, SourceBag/SignalBag/SuppressFlag, census,
+`_validWindow`, paced `queueEvent`.
+
+**Host drops (today inlined):** `trackWindow` placement policy,
+`processFloats`, I3 owning-split, D026/overflow decisions, CommandHandler
+bodies, DnD execute, ApplyEpoch logic (epoch owns it; WM only flags).
+
+`disable()` is still a checklist — wire **Lifetime at Host scope**.
+WindowAttach is only the `"stack"` slot; per-window Meta signals still
+live on the Meta object.
+
+WorkspaceManager / MonitorManager: keep as Host list+signals+geometry;
+drop St.Bin + `createNode`.
+
+A façade still named `WindowManager` **may** remain for GJS spies;
+it must not own policy.
+
+**Strategies to import onto Host+OpSet+Presenter+Epochs** (not rewrite):
+open-app home sequence; OpenCommit vs ApplyLayout as two brains;
+D026+overflow; D044 group home; H1 dual resolve + session shield;
+ApplyEpoch sole writer; AC4 placeholders; I3 owning-split; action-pipeline
+stages; multi-path raise; open leaf ≠ keyboard focus.
+
+## Epochs (05 — meeting-ready)
+
+Three writers of a forest, on purpose. Not the TOM.
+
+| Writer | Forest | Monitor resolve |
+| --- | --- | --- |
+| **ApplyEpoch** | Desired profile | N/A (desired mon is data) |
+| **Session disk** | Last-good after HUP | `resolveStrictMonitor` (exact; no majority) |
+| **H1 / T6** | Live thrash | `resolveTargetMonitor` (stableKey / majority) |
+
+Do **not** merge the two resolve functions. Shield: while session shield
+is live, H1 **reapplies** the restored forest and does not snapshot Meta
+pile. Displays-changed during apply: **cancel apply, skip H1**.
+
+Product apply spine (import as strategy, not the `APPLY_LAYOUT_PHASES`
+walk): epoch → materialize → slot machines (slot = WINDOW \| TAB/STACK
+CON) → forest-match `Done.ok` → focus/soft. Belt / Mode-B-as-cold /
+TILE-anywhere success = **discard**.
+
+T6 capture is the closest in-memory TOM snapshot — strip Meta/St from
+the pure module. Session portable should become **TOM serialization +
+identity adapter** (today a third JSON shape). Apply today plans against
+GetTree `projectForest` (a Surface projection) — later: desired TOM;
+do not block kernel lift on a planner rewrite.
+
+`LayoutCommandEpoch` is command **echo**, not a forest writer. D070
+failsafe is a prod guardrail, never kernel.
+
+## Surfaces (06 — meeting-ready)
+
+Surfaces translate intent → OpSet / epoch. They do not splice the tree.
+
+| Surface | Becomes |
+| --- | --- |
+| Keybinds + CommandHandler | Shared Mark 2 table ([keybinds.md](./keybinds.md)) → OpSet ids + `commitLayout`. Host overlays only |
+| DnD gesture / zones / intent | Keep. `_executeDropOperation` **discard** as mutator — zone → Mark 2 Join/Move/wrap |
+| Tab-strip reorder | Keep: `replaceChildren` + one commit |
+| RunSteps | One dispatcher; ops rename toward OpSet |
+| DBus product | Ping, GetTree, Focus, Swap, Move, PlaceNext, settings, RunSteps, ApplyLayout family, Log |
+| DBus accident | LayoutBatch, RunSteps `dnd-drop`/`skeleton`/`bind` as user API |
+| LFT / open-min / PlaceNext | Product policy + Launch/Join, not TOM |
+| `lib/shared/` | gi-free **product** kernel (settings/plan), **not** the TOM |
+| Prefs GTK | Keep as prefs surface |
+
+**Three Moves today** (keybind directional, DBus reparent, DnD zone) must
+become Mark 2 Move/Join plus atomics. `lib/shared` staying ≠ TOM is the
+split D036 did not name.
+
+## Open (do not block P1)
+
+1. **WINDOW identity in TOM:** Meta.Window vs stable windowId vs both
+   during adapter period?
+2. **Host façade name:** keep `WindowManager` for spies vs `ForgeHost`?
+3. Proto vs Forge TAB paint (open-only vs mapped peers) — Presenter
+   product lock, not TOM.
+
+**Locked this meeting (were open):** MONITOR max-1 = mark2 RuleSet after
+settle (migrate n-child MONITOR once on adopt). Product Move = Mark 2
+Move.

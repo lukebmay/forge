@@ -16,15 +16,23 @@ truth for the OpSet’s words, tree shape, invariants, and SurfaceOps.
 
 | OpSet | Design doc | Code |
 | --- | --- | --- |
-| Mark 2 | [prototypes/container-motion/src/opsets/mark2.md](../prototypes/container-motion/src/opsets/mark2.md) | `src/opsets/mark2.mjs` |
+| Mark 2 | [prototypes/container-motion/src/opsets/mark2.md](../prototypes/container-motion/src/opsets/mark2.md) | OpSet `src/opsets/mark2.mjs` · RuleSet lift `lib/rulesets/mark2.js` |
 
 **Changing an OpSet design doc without updating that OpSet, its tests, and
 shorthand/UI in the same effort is a bug.** Do not “clarify later.” Do not
 leave handoffs using the old words.
 
-TOM kernel rules (ROOT / WS / MONITOR / unary collapse / breakout = promote)
-live in that OpSet doc plus `agents/design.md` § Tiling Object Model. Do not
-invent a second glossary in PRIORITY or session notes.
+**Where laws live (do not mix):**
+
+| What | Home |
+| --- | --- |
+| Spine kinds, atomics | TOM (`lib/tom/`, design.md § TOM) |
+| Settle order, unary collapse, MONITOR max-1 after settle | **RuleSet** (`lib/rulesets/`, [ruleset.md](plans/forge-firm-abstractions/ruleset.md)); Mark 2 lists invariants in `mark2.md` |
+| Move / Join / Launch / words | OpSet doc (`mark2.md`) |
+| Shared chords | [keybinds.md](plans/forge-firm-abstractions/keybinds.md) |
+
+Do not invent a second glossary in PRIORITY or session notes. Unary
+collapse is RuleSet, not a second meaning of Promote.
 
 ## One word, one meaning (FIRM)
 

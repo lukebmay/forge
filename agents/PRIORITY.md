@@ -1,75 +1,65 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-27 — Firm abstractions (planning next)
+**Updated:** 2026-08-27 — **begin P1a** (TOM lift)
 **Cross-session handoff:** [`HANDOFF.md`](./HANDOFF.md) ← **read first**
-**Lens:** **clean, firm abstractions** — named APIs, one word one meaning,
-kernel vs OpSet vs presenter. Not “next proto bug.”
+**Lens:** TOM+atomics core; RuleSet settle; Mark 2 OpSet; one keybind table.
 **Branch:** **`master`**. **Push:** only when human asks.
 
-Design = [`design.md`](./design.md) · history =
-[`design/CHANGELOG.md`](./design/CHANGELOG.md). Parked ideas =
-[`ideas/`](./ideas/). Completed =
-[`plans/archived/completed/`](./plans/archived/completed/).
+Design = [`design.md`](./design.md) · layers =
+[`plans/forge-firm-abstractions/layers.md`](./plans/forge-firm-abstractions/layers.md)
+· history = [`design/CHANGELOG.md`](./design/CHANGELOG.md) (D079, D080).
+Scan merge =
+[`plans/forge-firm-abstractions/explore/07-plan-scan.md`](./plans/forge-firm-abstractions/explore/07-plan-scan.md).
 
 ---
 
 ## Active next (ordered)
 
-1. **P0** — **Firm abstractions refactor — planning session**
-   ([`HANDOFF`](./HANDOFF.md)). Required slices:
-   1. Author the refactor plan(s) (TOM / OpSet / presenter / Shell /
-      contracts — firm boundaries).
-   1. **Scan all still-open plans** (`agents/plans/`, this file’s parked
-      list, `blockers/`, `ideas/`): **close**, **abandon**, or **pull
-      in** (refactor or post-refactor). Rebuild this queue from that
-      scan. No shadow PRIORITY.
+1. **P0** — **P1a TOM lift**
+   ([`forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
+   · [`HANDOFF`](./HANDOFF.md)).
+   `prototypes/container-motion/src/tom/` → `lib/tom/`; proto tests
+   import it; `cd prototypes/container-motion && npm test` green. No
+   Forge `tree.js` yet. Then **P1b** `lib/rulesets/`, **P1c**
+   `lib/keybinds/`.
 
-Do **not** start implement slices, Mark 2 proto, or Shell Move until
-that plan exists and the scan has run.
+Do **not** start pinned-slots design until the operator schedules that
+meeting. Do **not** keep ding / Super+2 / vinyl / D069 tip as next work.
 
-**Agents:** Default implement (when the plan says so) = **Grok 4.5**.
-Do **not** start multi-ws pinned-slots design until the operator
-schedules that meeting.
+**Agents:** Default implement = **Grok 4.5**. Architecture reshape of a
+slice → 4.6.
 
 ---
 
-## Parked until plan scan
+## Keep-parallel (not a work row)
 
-These stay listed so the scan does not miss them. They are **not** next
-work.
+Use when a slice needs a live gate. Do not expand as the P0 campaign.
 
 | Item | Path |
 | --- | --- |
-| Mark 2 / TOM proto (paused) | [forge-container-motion-design.md](./plans/forge-container-motion-design.md) · [mark2.md](../prototypes/container-motion/src/opsets/mark2.md) |
-| Tab peer geometry host tip (D069) | [forge-tab-peer-geometry.md](./plans/forge-tab-peer-geometry.md) |
-| Super+2 settle/urgency | [forge-ws-super2-bounce.md](./plans/forge-ws-super2-bounce.md) |
-| optional DING ⅓ | [forge-enable-ding-percent-thrash.md](./plans/forge-enable-ding-percent-thrash.md) |
-| D049 tiny-env | [blocker](./blockers/d049-tiny-env-nautilus.md) |
-| OH host verify | [blocker](./blockers/oh-ws-orphan-host-verify.md) |
-| multi-ws pinned slots (design only) | [blocker](./blockers/pinned-slots-multi-ws-design.md) |
-| CN14/CN15 | [cli-node](./plans/forge-cli-node.md) |
-| yuiop resize/autotile | [blocker](./blockers/resize-autotile-design.md) |
-| X11 green sleep/lock | [forge-x11-green-sleep-lock-shield.md](./plans/forge-x11-green-sleep-lock-shield.md) |
-
-**FIRM (until the refactor plan says otherwise):** proto suite is the
-Mark 2 brake (`prototypes/container-motion && npm test`). Green + wrong
-desk ⇒ paint, not the TOM. Shell hunts: `forge log` only. Nest for
-code→reload. See [testing.md](./testing.md).
+| AI live matrix | [forge-ai-live-test-matrix.md](./plans/forge-ai-live-test-matrix.md) |
+| Wayland RC runbook | [forge-wayland-rc-test-suite.md](./plans/forge-wayland-rc-test-suite.md) |
 
 ---
 
-## Still-open plan files (scan these)
+## Parked post-refactor
 
-| Plan | Why it was kept (pre-scan) |
-| --- | --- |
-| container-motion-design | Mark 2 proto / locks — **paused** |
-| tab-peer-geometry, ws-super2-bounce, enable-ding, chaos-nest | old PRIORITY |
-| min-size-floor, observability-hardening | soft human / host remainder |
-| cli-node, resize-and-autotile | later / blocked |
-| vinyl-inkscape-float, x11-green-sleep-lock-shield | in progress / next |
-| ai-live-test-matrix, wayland-rc-test-suite | living harness/procedure |
-| canonical-contracts, lifecycle-abstractions | open design |
-| open-min-* , layout-enable-open-miss | recent residual / PASS record |
+| Item | Path | Gate |
+| --- | --- | --- |
+| CN14 / CN15 leftover Python | [forge-cli-node.md](./plans/forge-cli-node.md) | after kernel/import |
+| yuiop resize / autotile | [forge-resize-and-autotile.md](./plans/forge-resize-and-autotile.md) · [blocker](./blockers/resize-autotile-design.md) | hard human design lock |
+| multi-ws pinned slots | [d0](./plans/forge-pinned-slots-multi-ws/d0-discussion.md) · [blocker](./blockers/pinned-slots-multi-ws-design.md) | scheduled design meeting |
+| layout chaos nest queue | [forge-layout-chaos-nest-queue.md](./plans/forge-layout-chaos-nest-queue.md) | append on failure |
+| D069 host tip verify | design.md § tab peer geometry | eyes-on only |
+
+---
+
+**FIRM:** proto brake is `cd prototypes/container-motion && npm test`.
+Green + wrong desk ⇒ paint, not the TOM. Glossary =
+[`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
+Shell hunts: `forge log` only. Nest for code→reload. See
+[testing.md](./testing.md).
 
 Archive: [`plans/archived/completed/`](./plans/archived/completed/).
-Parked ideas: [`ideas/IDEAS.md`](./ideas/IDEAS.md).
+Abandoned: [`plans/archived/abandoned/`](./plans/archived/abandoned/).
+Ideas (not a queue): [`ideas/IDEAS.md`](./ideas/IDEAS.md).

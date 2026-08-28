@@ -31,7 +31,40 @@ New behavior extends that API first. Drop CENTER on H/V siblings is a group
 op (`mergeWindowsIntoGroup`). Live show-in-group is one reveal helper. TILE
 slot is geometry authority; unsolicited Meta fullscreen/size snaps back.
 
-Plan: [forge-canonical-contracts](../agents/plans/forge-canonical-contracts.md).
+Catalog: [docs/dev/contracts.md](../docs/dev/contracts.md). Plan archived
+(absorbed into firm-abstractions).
+
+## Firm architecture (D079)
+
+**Why:** Lifecycle bags, canonical contracts, and FCC extracts still left
+GObject `Node` (Meta/St/decoration) and a 7.5k `WindowManager` as the
+center of gravity. Refining that object does not produce a TOM.
+
+**Choice (option 2):** Product kernel is the proto TOM (plain forest),
+lifted to `lib/tom/`. Then **import** apply / H1 / session / CLI / chrome
+as layers. Same tree in proto and Forge. Presenters differ.
+
+Layers (allowed/forbidden): 
+[`plans/forge-firm-abstractions/layers.md`](plans/forge-firm-abstractions/layers.md).
+Import: [`import-map.md`](plans/forge-firm-abstractions/import-map.md).
+Notes: [`explore/`](plans/forge-firm-abstractions/explore/) — do not rescan
+`tree.js` / `window.js`.
+
+| Layer | Owns |
+| --- | --- |
+| **TOM + atomics** | POJO forest + child-list. No settle, no Launch, no Meta |
+| **RuleSet** | Named settle (prune / unary / coerce). OpSets bind or replace it |
+| **OpSet** | Mark 2 first. Glossary = `mark2.md`. Calls atomics + RuleSet |
+| **Keybind core** | Action id → Super-bearing Mark 2 chords. Proto = strip Super |
+| **Presenter** | Slots → paint (D069/D046/D030 live here) |
+| **Host** | Meta ↔ WINDOW, signals, `move_resize_frame`, bags |
+| **Epochs** | Apply, session restore, H1 — three forest writers |
+| **Surfaces** | DnD *gesture*, CLI, DBus, Forge/proto key **overlays** |
+
+DnD execute is not a second OpSet. Product Move **is** Mark 2 Move
+(D080). RuleSet + keybinds:
+[`ruleset.md`](plans/forge-firm-abstractions/ruleset.md),
+[`keybinds.md`](plans/forge-firm-abstractions/keybinds.md).
 
 ## Tiling Object Model (TOM)
 
@@ -40,16 +73,20 @@ the same functions as tree mutation, and the HTML prototype was treated as a
 scratch pad instead of a dual-use kernel. Mutter is a presenter, not the
 model.
 
-**Choice (D073/D074):** A **TOM** is the in-memory tiling tree (DOM analogue).
+**Choice (D073/D074, product kernel D079, RuleSet/keybinds D080):** A
+**TOM** is the in-memory tiling tree (DOM analogue). Atomics mutate it.
+A **RuleSet** restores invariants (unary collapse is here, not a second
+Promote). An **OpSet** is the control surface.
 
 ```text
 ROOT → WORKSPACE* → MONITOR (0 or 1 child) → CON | WINDOW
 ```
 
-ROOT and WORKSPACE are spine nodes, not Forge containers. MONITOR is a
-Forge container that may be empty and may have at most one child. **TreeOps**
-are DOM-like atomics plus composed helpers. **OpSets** are named control
-surfaces. After an OpSet mutates the TOM, a presenter paints.
+ROOT and WORKSPACE are spine nodes, not Forge containers. MONITOR may be
+empty; **after Mark 2 RuleSet settle** it has at most one child (atomics
+may violate that mid-op). **Atomics + composed** (breakout, wrap) do not
+settle. **RuleSet** settle restores invariants. **OpSets** bind a RuleSet
+and name SurfaceOps. After an OpSet mutates the TOM, a presenter paints.
 
 **Breakout** and **Promote** are the same operation: a node becomes a sibling
 of its parent. **Unary collapse:** if a CON has exactly one child, that child
@@ -79,10 +116,12 @@ MONITOR max-1 wraps in place. Same-type wrap of an H/V CON: MONITOR →
 opposite split; nested → last child of that CON. Rules:
 `src/opsets/mark2.md`.
 
-Proto kernel: `prototypes/container-motion/src/tom/`. gi-free, presenter-free.
-Green abstract tests + a wrong desk = paint, not the TOM.
+Proto kernel: `prototypes/container-motion/src/tom/` (lift target
+`lib/tom/`). gi-free, presenter-free. Green abstract tests + a wrong
+desk = paint, not the TOM.
 
-Plan: [forge-container-motion-design](../agents/plans/forge-container-motion-design.md).
+Plan: [forge-firm-abstractions](plans/forge-firm-abstractions.md).
+Glossary: [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
 
 ## CLI job runner (durable mutators)
 
@@ -163,7 +202,7 @@ layout, T6, T7). This section is the **map** so those pieces stay complementary.
          │                    │
          │              raise DFS + focus
          │                    │
-         │              seed last-good + shield ~3s
+         │              seed last-good + shield (fromLock while locked; ~3s after unlock)
          │                    │
          └──── while shield: monitor-recovery REAPPLIES forest
                (does not snapshot thrash topology)
@@ -179,7 +218,7 @@ layout, T6, T7). This section is the **map** so those pieces stay complementary.
 | Session-layout disk | disable / install flush | portable match + **strict** mon | HUP wipes memory; different failure than thrash |
 | Richness guard | save / flush | refuse thrash-flat overwrite | prevents last-good file becoming “all columns” |
 | 12s save hold | post-enable | suppress auto-save | thrash after enable must not clobber disk |
-| Session shield ~3s | post-restore | monitor-recovery **reapplies** forest | empty last-good + Meta peel after correct restore |
+| Session shield | post-restore **and** restore-while-locked | monitor-recovery **reapplies** forest | empty last-good + Meta peel; enable-while-locked must not get a 3s shield that expires overnight (D079 / `fromLock`) |
 | entered-monitor suppress | thrash pending / restore / shield | ignore Meta rehomes | Meta shoves windows; tree must not follow mid-flight |
 
 ### Two monitor resolve policies (do not merge)
@@ -216,7 +255,7 @@ substitute overnight hybrid-GPU thrash. Removing any of the three without
 | workareas settle | **300ms** — hybrid thrash often &gt;200ms |
 | session-layout save debounce | 1500ms |
 | session-layout save hold | **12s** mono after enable |
-| session shield | **~3s** sliding; monitor-recovery reapplies forest |
+| session shield | while-locked `fromLock` long TTL; ~3s / 8s after unlock; monitor-recovery reapplies forest |
 | entered-monitor / home reconcile | idle coalesce during thrash/restore/shield |
 | renderTree / reloadTree | idle coalesce / low |
 
@@ -238,7 +277,7 @@ as the first size of a peer.
 | **Visible-first** | Open leaf (`lastTabFocus`) before buried peers. Never queue open-leaf `move_resize` behind buried work |
 | **Buried heal** | Peers stay **mapped** (under the open leaf in Z-order, not withdrawn). Mutter accepts `move_resize_frame` while buried — heal same-turn after visible and/or idle/post-echo so the next reveal is already in-slot |
 | **Click / reveal** | Raise + focus; R025 reassert of the revealed child only (safety net). No all-peer reassert on focus (PWA thrash) |
-| **No silent drift** | Changing this needs a very significant reason, written trade-offs, and explicit go — see `agents/plans/forge-tab-peer-geometry.md` |
+| **No silent drift** | Changing this needs a very significant reason, written trade-offs, and explicit go — see archived [`forge-tab-peer-geometry.md`](plans/archived/completed/forge-tab-peer-geometry.md) / D069 |
 
 ### Raise / restack
 
@@ -452,7 +491,7 @@ or drop both on tied frames. Fix: forest-aware **global assignment**
 **Post-restore monitor-recovery race:** After HUP, `_lastGoodHomes` is empty (new
 `Meta.Window`s). Meta thrash can peel a window after a correct restore; monitor-recovery
 then `snapshotTree()` freezes broken topology. Fix: restore transaction +
-seed last-good + **session shield** (~3s sliding) re-applying the restored
+seed last-good + **session shield** (`fromLock` while locked; short after unlock) re-applying the restored
 forest. Live agent loop confirmed dual Ghostty mon placement.
 
 **Collapse percent trap:** single-child CON (e.g. VSPLIT wrapping one Ghostty)
