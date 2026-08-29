@@ -70,14 +70,13 @@ describe("AP2 StructureChanged one-commit", () => {
     return con;
   }
 
-  it("Move: ≤1 renderTree per gesture (incl. deferred tabbed settle)", () => {
+  it("Move: ≤1 renderTree per gesture", () => {
     const { winA, nodeA, nodeB } = tiledPair();
     putInTabbedCon(nodeA, nodeB);
     ctx.display.get_focus_window.mockReturnValue(winA);
 
     const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
     const commitSpy = vi.spyOn(wm(), "commitLayout");
-    vi.spyOn(ctx.tree, "move").mockReturnValue(true);
 
     wm().command({ name: "Move", direction: "Right" });
     flushTimeouts();
@@ -86,6 +85,7 @@ describe("AP2 StructureChanged one-commit", () => {
     expect(commitSpy).toHaveBeenCalledWith("move-window", { force: true });
     expect(renderSpy).toHaveBeenCalledTimes(1);
     expect(renderSpy).toHaveBeenCalledWith("move-window", true);
+    expect(nodeA.parentNode.childNodes).toEqual([nodeB, nodeA]);
     expect(renderSpy.mock.calls.some((c) => String(c[0]).includes("move-tabbed-queue"))).toBe(
       false
     );
@@ -94,37 +94,35 @@ describe("AP2 StructureChanged one-commit", () => {
     );
   });
 
-  it("Move tabbed: deferred settle sets lastTabFocus without second C", () => {
+  it("Move tabbed: settle sets lastTabFocus without second C", () => {
     const { winA, nodeA, nodeB } = tiledPair();
     const con = putInTabbedCon(nodeA, nodeB);
     ctx.display.get_focus_window.mockReturnValue(winA);
 
     vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
-    vi.spyOn(ctx.tree, "move").mockImplementation((node) => {
-      // Stay in tabbed group for deferred path.
-      if (node.parentNode !== con) con.appendChild(node);
-      return true;
-    });
 
     wm().command({ name: "Move", direction: "Right" });
     flushTimeouts();
 
     expect(con.lastTabFocus).toBe(winA);
+    expect(con.childNodes).toEqual([nodeB, nodeA]);
     expect(wm().renderTree).toHaveBeenCalledTimes(1);
   });
 
-  it("Swap: exactly one renderTree", () => {
+  it("Join (directional Swap): exactly one renderTree", () => {
     const { winA, nodeA, nodeB } = tiledPair();
     ctx.display.get_focus_window.mockReturnValue(winA);
-    vi.spyOn(ctx.tree, "swap").mockImplementation(() => {});
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
 
     const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
     wm().command({ name: "Swap", direction: "Right" });
 
     expect(renderSpy).toHaveBeenCalledTimes(1);
-    expect(renderSpy).toHaveBeenCalledWith("swap", true);
-    expect(wm().tree.swap).toHaveBeenCalledWith(nodeA, expect.anything());
-    void nodeB;
+    expect(renderSpy).toHaveBeenCalledWith("join", true);
+    expect(monitor.childNodes).toHaveLength(1);
+    expect(monitor.childNodes[0].childNodes).toEqual([nodeA, nodeB]);
+    void winA;
   });
 
   it("SwapNext: exactly one renderTree when swapped", () => {

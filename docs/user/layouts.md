@@ -54,7 +54,7 @@ nested structure and is deferred).
 | Flip tab ↔ stack on current group | `Ctrl+Super+g` | `Shift+Super+n` |
 | Merge focus + last-active → tabbed group | `Ctrl+Super+m` | `Shift+Super+m` |
 | Ungroup parent container (keep child order) | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` |
-| Focus parent / child | `Ctrl+Super+a` / `Ctrl+Shift+Super+a` | `Super+a` / `Shift+Super+a` |
+| Focus parent / child | `Ctrl+Super+a` / `Ctrl+Shift+Super+a` | Vim: `Super+p` / `Shift+Super+p` · i3: `Super+a` / `Shift+Super+a` |
 | Move in / out of container | `Ctrl+Super+,` / `Ctrl+Shift+Super+,` | `Shift+Super+,` / `Ctrl+Shift+Super+,` |
 | Make parent tabbed / back to split | `Ctrl+Super+t` | `Shift+Super+t` (i3: `Super+w`) |
 | H ↔ V split orientation | `Ctrl+Super+s` | Vim: `Ctrl+Super+n` · i3: `Super+e` |
@@ -66,7 +66,7 @@ CLI / DBus parity (RunSteps): `layout-cycle` (`axis: group|split`),
 `layout`.
 
 **Move in** reparents the focused layout unit into a sibling container;
-**move out** peels it to the grandparent. Directional move/swap still move
+**move out** peels it to the grandparent. Directional move/join still move
 within a parent.
 
 ### Layout profiles (sugar)

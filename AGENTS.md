@@ -42,10 +42,13 @@ in the index when the trigger matches.
 ## Design compass
 
 Kernel = TOM + RuleSet + OpSet + keybind **action ids** (host- and
-language-portable; JS `lib/` is the reference impl). **ForgeAdapterGnome**
-/ **ForgeAdapterWebView** bind a window system. **KeybindAdapterGnome** /
-**KeybindAdapterWebView** map the same ids to platform chords. Do not put
-Mutter, DOM, or GNOME accels in the kernel.
+language-portable; JS `lib/` is the reference impl). Forest document =
+**META + FLOATS + TILES** (TILES = ROOT→WS→MONITOR; FLOAT windows are
+not under a monitor). **ForgeAdapterGnome** / **ForgeAdapterWebView**
+bind and extend a host. **KeybindAdapterGnome** /
+**KeybindAdapterWebView** map the kernel table plus a host overlay
+(WebView `Super+a`/`q`; Gnome `Super+q` = quit). Do not put Mutter, DOM,
+or GNOME accels in the kernel.
 
 ## Session start
 

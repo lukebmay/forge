@@ -397,22 +397,22 @@
 
         <key type="as" name="window-swap-left">
             <default><![CDATA[['<Ctrl><Super>h']]]></default>
-            <summary>Swap window left</summary>
+            <summary>Join window left</summary>
         </key>
 
         <key type="as" name="window-swap-down">
             <default><![CDATA[['<Ctrl><Super>j']]]></default>
-            <summary>Swap window down</summary>
+            <summary>Join window down</summary>
         </key>
 
         <key type="as" name="window-swap-up">
             <default><![CDATA[['<Ctrl><Super>k']]]></default>
-            <summary>Swap window up</summary>
+            <summary>Join window up</summary>
         </key>
 
         <key type="as" name="window-swap-right">
             <default><![CDATA[['<Ctrl><Super>l']]]></default>
-            <summary>Swap window right</summary>
+            <summary>Join window right</summary>
         </key>
 
         <key type="as" name="window-move-left">

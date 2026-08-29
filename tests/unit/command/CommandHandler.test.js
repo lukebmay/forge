@@ -6,6 +6,8 @@ import {
   createMockWindow,
   installGnomeGlobals,
   createMockSettings,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
 } from "../../mocks/helpers/index.js";
 import { GrabOp } from "../../mocks/gnome/Meta.js";
 
@@ -948,5 +950,77 @@ describe("CommandHandler", () => {
       expect(mockWm.commitLayout).not.toHaveBeenCalled();
       expect(mockWm.renderTree).not.toHaveBeenCalled();
     });
+  });
+
+  describe("P6a dotted ids and aliases", () => {
+    it("move.left does not call tree.move", () => {
+      commandHandler.execute({ name: "move.left" });
+      expect(mockTree.move).not.toHaveBeenCalled();
+    });
+
+    it("join.left does not call tree.swap", () => {
+      commandHandler.execute({ name: "join.left" });
+      expect(mockTree.swap).not.toHaveBeenCalled();
+    });
+
+    it("Move/Swap direction aliases do not throw", () => {
+      expect(() => commandHandler.execute({ name: "Move", direction: "Left" })).not.toThrow();
+      expect(() => commandHandler.execute({ name: "Swap", direction: "left" })).not.toThrow();
+    });
+
+    it("focus.parent aliases FocusParent", () => {
+      mockTree.focusParent = vi.fn(() => mockNodeWindow);
+      mockTree._activateWindowNode = vi.fn(() => mockNodeWindow);
+      mockNodeWindow.parentNode.isStackedOrTabbed = vi.fn(() => false);
+      commandHandler.execute({ name: "focus.parent" });
+      expect(mockTree.focusParent).toHaveBeenCalledWith(mockNodeWindow);
+    });
+  });
+});
+
+describe("CommandHandler Mark 2 move/join on a live tree", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      settings: { "tiling-mode-enabled": true },
+    });
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
+    vi.restoreAllMocks();
+  });
+
+  function hsplitPair() {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const winA = createMockWindow({ id: 1, wm_class: "AppA" });
+    const winB = createMockWindow({ id: 2, wm_class: "AppB" });
+    const nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
+    const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
+    nodeA.mode = WINDOW_MODES.TILE;
+    nodeB.mode = WINDOW_MODES.TILE;
+    ctx.display.get_focus_window.mockReturnValue(winA);
+    ctx.windowManager.renderTree = vi.fn();
+    ctx.windowManager.movePointerWith = vi.fn();
+    return { monitor, nodeA, nodeB };
+  }
+
+  it("execute move.left swaps in-axis siblings", () => {
+    const { monitor, nodeA, nodeB } = hsplitPair();
+    ctx.windowManager.command({ name: "move.left" });
+    // Focus A is already leftmost; wrap-rotate to end: H(B,A)
+    expect(monitor.childNodes).toHaveLength(1);
+    expect(monitor.childNodes[0].childNodes).toEqual([nodeB, nodeA]);
+  });
+
+  it("execute join.left wraps the pair", () => {
+    const { monitor, nodeA, nodeB } = hsplitPair();
+    ctx.windowManager.command({ name: "join.left" });
+    expect(monitor.childNodes).toHaveLength(1);
+    const wrap = monitor.childNodes[0];
+    expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(wrap.childNodes).toEqual([nodeA, nodeB]);
   });
 });

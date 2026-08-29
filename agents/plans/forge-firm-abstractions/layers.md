@@ -1,22 +1,22 @@
 # Target layers (working draft)
 
-**Status:** locked D079 + D080 + D082 + D083 + D084 + D085 + **D086**
+**Status:** locked D079 + D080 + D082 + D083 + D084 + D085 + D086 + **D087** + **D088**
 **As of:** 2026-08-28
-**Sources:** explore/01–06, D073/D074/D079/D080/D082/D083/D084/D085/D086.
+**Sources:** explore/01–06, D073/D074/D079/D080/D082/D083/D084/D085/D086/D087/D088.
 **RuleSet:** [ruleset.md](./ruleset.md) · **Keybinds:** [keybinds.md](./keybinds.md)
 
 ## Layer table
 
 | Layer | Owns | Must not own | From |
 | --- | --- | --- | --- |
-| **TOM** | Plain forest: kinds, `parentId`/`childIds`, layout, percent/`userSized`, lastTabFocusId, spine ROOT→WS→MONITOR | GObject, Meta, St, DOM, keybinds, OpSet policy, paint, settle laws, session prefs, workarea | 01, 02 |
+| **TOM** | Forest envelope META + FLOATS + TILES; TILES spine ROOT→WS→MONITOR; kinds, `parentId`/`childIds`, layout, percent/`userSized`, lastTabFocusId | GObject, Meta, St, DOM, keybinds, OpSet policy, paint, settle laws, session prefs, workarea; FLOAT windows under MONITOR | 01, 02, D087 |
 | **Session** | WeakMap bag: `decisions`, `mergeTags` (`lib/session/`) | Topology; RuleSet; Meta | D082 |
 | **World** | WeakMap bag: MONITOR workarea (`lib/world/`); neighbor / edge / sibling-axis queries | Topology mutation; RuleSet; paint; session | D083, D084 |
 | **Atomics + composed** | Child-list atomics; breakout, wrap, promoteChildren (**no settle**) | Super+h; `move_resize`; “after promote, collapse” | 01, D080 |
 | **RuleSet** | Named settle: order of prune / unary / coerce / MONITOR max-1. Bound by an OpSet | Launch/Move policy; keybinds; Meta | D080 |
 | **OpSet** | Mark 2 first (`lib/opsets/`). Glossary = `mark2.md`. Calls atomics + RuleSet | Child-list splicing; presenter; a private settle | 01, D080, D084 |
-| **Keybind core** | Action id → Super-bearing chord (Mark 2 table) | Platform accel grammar; proto `a`/`q`; Gnome lock/zoom/run | D080, D085 |
-| **Keybind adapter** | Map that table to a host: **KeybindAdapterGnome**, **KeybindAdapterWebView** | A second action-id table | D085 |
+| **Keybind core** | Action id → Super-bearing chord (Mark 2 table) | Platform accel grammar; host overlays (`Super+a`/`q`, lock, quit) | D080, D085, D088 |
+| **Keybind adapter** | Kernel table ∪ host overlay: **KeybindAdapterGnome**, **KeybindAdapterWebView** | A second Mark 2 table; importing the other host's overlay | D085, D088 |
 | **Presenter math** | Slots from TOM + workarea → AABB (`lib/presenter/` paneRect) | Topology mutation; Mutter/DOM paint | 04, D083 |
 | **Host adapter** | **ForgeAdapterGnome** / **ForgeAdapterWebView**: native window ↔ WINDOW, signals, fill world, paint | Tiling policy; `createNode` | 03, D085 |
 | **Epochs** | Apply, session restore, H1 — three forest writers | Idle keybind; merging the two monitor-resolves | 05 |
@@ -42,8 +42,8 @@ the ctor, and `Tree` *is* ROOT. That object cannot be shared TOM.
 
 | In TOM | Not in TOM |
 | --- | --- |
-| kinds ROOT/WS/MONITOR/CON/WINDOW | `GObject.registerClass` |
-| `percent` + `userSized` (float share ≠ Forge `mode: FLOAT`) | `mode` FLOAT/GRAB_TILE (Host/product) |
+| kinds FOREST/META/FLOATS + TILES (ROOT/WS/MONITOR/CON/WINDOW) | `GObject.registerClass` |
+| `percent` + `userSized` (**share floater** ≠ **FLOAT window**) | `mode` FLOAT/GRAB_TILE as a TILES child (goes in FLOATS, D087) |
 | `lastTabFocusId` (id string) | `lastTabFocus` as Meta.Window |
 | child list via atomics only | `childNodes` setter; actor teardown on detach |
 | placeholder flag as **data** | St.Bin CON value |
@@ -52,9 +52,11 @@ the ctor, and `Tree` *is* ROOT. That object cannot be shared TOM.
 | | `zoomMode` (Presenter) |
 | | `PRESET` layout (drop) |
 
-**Spine:** ROOT → WORKSPACE* → MONITOR → CON|WINDOW. MONITOR max-1 is a
-**mark2 RuleSet** post-settle invariant, not an atomic. Adopt wraps
-n-child MONITOR once.
+**Envelope (D087):** FOREST → META + FLOATS + TILES. **TILES spine:**
+ROOT → WORKSPACE* → MONITOR → CON|WINDOW (WebView ROOT = TILES).
+FLOATS holds unmanaged WINDOW*; not under a MONITOR. MONITOR max-1 is a
+**mark2 RuleSet** post-settle invariant on TILES, not an atomic. Adopt
+wraps n-child MONITOR once. Mark 2 mutates TILES only.
 
 `tree-query.js` is already a Surface projection (keep). T6 document is
 `lib/epochs/` keyed by `windowId` (D086). `tree-snapshot.js` is the
@@ -94,12 +96,15 @@ is OpSet place + RuleSet max-1.
 CommandHandler / proto keys dispatch **shared action ids**
 ([keybinds.md](./keybinds.md)).
 
-## Keybind core + adapters (D080, D085)
+## Keybind core + adapters (D080, D085, D088)
 
-One Super-bearing Mark 2 **action-id** table (kernel). Adapters:
+One Super-bearing Mark 2 **action-id** table (kernel). Each adapter
+**unions** a host overlay (not a second Mark 2 table):
 
-- **KeybindAdapterGnome** — table as GNOME accels; Safe/i3 = overlays
-- **KeybindAdapterWebView** — `stripSuper` + proto overlay (`a`/`q`)
+- **KeybindAdapterGnome** — kernel table as GNOME accels; Safe/i3 +
+  lock/zoom/run/prefs; **`Super+q` = quit**
+- **KeybindAdapterWebView** — `stripSuper(kernel ∪ overlay)`; overlay
+  **`Super+a` launch**, **`Super+q` remove** (proto keys `a` / `q`)
 
 Detail: [keybinds.md](./keybinds.md).
 
@@ -202,11 +207,13 @@ Surfaces translate intent → OpSet / epoch. They do not splice the tree.
 become Mark 2 Move/Join plus atomics. `lib/shared` staying ≠ TOM is the
 split D036 did not name.
 
-## Open (do not block P6)
+## Open (do not block P6 remainder)
 
 1. **WINDOW identity on live Forge `Node`:** snapshot is `windowId`
    (D086). `Node.nodeValue` is still Meta until surface import.
-2. Proto vs Forge TAB paint (open-only vs mapped peers) — **adapter**
+2. **Forest envelope (D087):** META + FLOATS + TILES is locked; code
+   still treats Forest as TILES ROOT. P6a skip-untiled is the stopgap.
+3. Proto vs Forge TAB paint (open-only vs mapped peers) — **adapter**
    product lock, not TOM.
 
 **Locked (were open):** MONITOR max-1 = mark2 RuleSet after settle.

@@ -4,6 +4,7 @@ import { MARK2_TABLE } from "../../../lib/keybinds/mark2.js";
 import { PROTO_OVERLAY } from "../../../lib/keybinds/proto-overlay.js";
 import { asAccels, stripSuper, stripSuperTable } from "../../../lib/keybinds/strip-super.js";
 import { defaultVimMinusSuper } from "../../../prototypes/container-motion/src/keybinds.mjs";
+import { KITS } from "../../../lib/shared/keybind-presets.js";
 
 function sortedChords(arr) {
   return [...arr].map((c) => String(c).toLowerCase()).sort();
@@ -55,8 +56,31 @@ describe("MARK2_TABLE", () => {
     }
   });
 
-  it("maps join.left to Ctrl+Super+h (Join chord; shipping vim kit still swap)", () => {
+  it("maps join.left to Ctrl+Super+h", () => {
     expect(asAccels(MARK2_TABLE["join.left"])).toEqual(["<Ctrl><Super>h"]);
+  });
+
+  it("vim kit chords match MARK2_TABLE for focus/move/join/parent/child", () => {
+    const vim = KITS.vim.bindings;
+    const keys = {
+      "focus.left": "window-focus-left",
+      "focus.down": "window-focus-down",
+      "focus.up": "window-focus-up",
+      "focus.right": "window-focus-right",
+      "focus.parent": "window-focus-parent",
+      "focus.child": "window-focus-child",
+      "move.left": "window-move-left",
+      "move.down": "window-move-down",
+      "move.up": "window-move-up",
+      "move.right": "window-move-right",
+      "join.left": "window-swap-left",
+      "join.down": "window-swap-down",
+      "join.up": "window-swap-up",
+      "join.right": "window-swap-right",
+    };
+    for (const [id, key] of Object.entries(keys)) {
+      expect(vim[key], id).toEqual(asAccels(MARK2_TABLE[id]));
+    }
   });
 
   it("puts proto right-hand reach on the table", () => {

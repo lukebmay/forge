@@ -120,14 +120,29 @@ describe("Keybindings", () => {
   });
 
   describe("command dispatch", () => {
-    it("window-focus-left should dispatch Focus Left command", () => {
+    it("window-focus-left should dispatch focus.left", () => {
       keybindings._bindings["window-focus-left"]();
-      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "Focus", direction: "Left" });
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "focus.left" });
     });
 
-    it("window-swap-right should dispatch Swap Right command", () => {
+    it("window-swap-right should dispatch join.right", () => {
       keybindings._bindings["window-swap-right"]();
-      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "Swap", direction: "Right" });
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "join.right" });
+    });
+
+    it("window-move-left should dispatch move.left", () => {
+      keybindings._bindings["window-move-left"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "move.left" });
+    });
+
+    it("window-focus-parent should dispatch focus.parent", () => {
+      keybindings._bindings["window-focus-parent"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "focus.parent" });
+    });
+
+    it("window-focus-child should dispatch focus.child", () => {
+      keybindings._bindings["window-focus-child"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "focus.child" });
     });
 
     it("window-toggle-float should dispatch FloatToggle command", () => {
@@ -459,24 +474,24 @@ describe("Keybindings", () => {
       ]);
     });
 
-    it("should dispatch correct command with capitalized direction", () => {
-      const bindings = keybindings._directionalBindings("Swap", "window-swap");
+    it("should dispatch dotted join ids", () => {
+      const bindings = keybindings._directionalBindings("join", "window-swap");
       bindings["window-swap-up"]();
-      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "Swap", direction: "Up" });
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "join.up" });
     });
 
-    it("should dispatch all four directions correctly", () => {
-      const bindings = keybindings._directionalBindings("Move", "window-move");
+    it("should dispatch all four move directions as dotted ids", () => {
+      const bindings = keybindings._directionalBindings("move", "window-move");
       const expected = [
-        ["window-move-left", "Left"],
-        ["window-move-down", "Down"],
-        ["window-move-up", "Up"],
-        ["window-move-right", "Right"],
+        ["window-move-left", "move.left"],
+        ["window-move-down", "move.down"],
+        ["window-move-up", "move.up"],
+        ["window-move-right", "move.right"],
       ];
-      for (const [key, dir] of expected) {
+      for (const [key, name] of expected) {
         mockExt.extWm.command.mockClear();
         bindings[key]();
-        expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "Move", direction: dir });
+        expect(mockExt.extWm.command).toHaveBeenCalledWith({ name });
       }
     });
   });

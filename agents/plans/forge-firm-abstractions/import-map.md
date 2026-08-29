@@ -13,7 +13,7 @@ Do not implement this session. This is what P1+ consumes.
 | proto `tom/{kernel,atomics,composed,queries,sizing,api,index}` | **port** → `lib/tom/` | Product TOM. **No settle**. `decisions`/`mergeTags` stripped (P2 / D082) |
 | `composed.cleanupStructure` / `collapseUnary` / `pruneEmptyCons` | **port** → `lib/rulesets/core.js` | Core RuleSet, not atomics |
 | `mark2CleanupUnder` / `coerceSameTypeUnder` | **port** → `lib/rulesets/mark2.js` | Mark 2 RuleSet extends core |
-| proto `keybinds.mjs` vim-minus-Super table | **reshape** | Shared table is Super-bearing; proto `stripSuper` + overlay `a`/`q` |
+| proto `keybinds.mjs` vim-minus-Super table | **reshape** | Kernel Super-bearing; WebView `stripSuper` ∪ overlay `Super+a`/`q` (D088) |
 | Forge vim kit chords | **reshape** | Same action ids as Mark 2 table; Join chord wins over swap |
 | proto `tom/shorthand.mjs` | **port** tests/chat only | Not a CLI/DBus DSL |
 | proto `opsets/mark2.mjs` + `mark2.md` | **port** OpSet / **keep** glossary | Binds mark2 RuleSet; no private settle |
@@ -25,7 +25,8 @@ Do not implement this session. This is what P1+ consumes.
 | proto HTML presenter (`render-desk`, keys, storage) | **park** | Possible later settings/tree editor |
 | proto `plog.mjs` | **discard** | Forge dual-tape already exists |
 | Forge `Node` class | **discard** as TOM | Port fields only (kinds, percent, userSized, lastTabFocusId, placeholder) |
-| Forge `Tree` class | **discard** as kernel | Replace with Forest document + Host that *holds* it |
+| Forge `Tree` class | **discard** as kernel | Replace with Forest document (META + FLOATS + TILES) + Host that *holds* it |
+| Forge `mode: FLOAT` on a tiling child | **reshape** → FLOATS bag | D087; floats must not sit under MONITOR |
 | Forge `Queue` | **discard** | JS array |
 | `NODE_TYPES` / `LAYOUT_TYPES` minus PRESET | **keep** names | Same words as Mark 2 |
 | `enum.js` | **keep** | Tiny |

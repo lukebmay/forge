@@ -164,6 +164,12 @@ describe("keybind kits", () => {
       expect(kitUsesBareSuper(KITS.vim)).toBe(true);
     });
 
+    it("vim parent is Super+p; Ctrl+Super+h stays on window-swap-left (Join)", () => {
+      expect(KITS.vim.bindings["window-focus-parent"]).toEqual(["<Super>p"]);
+      expect(KITS.vim.bindings["window-focus-child"]).toEqual(["<Shift><Super>p"]);
+      expect(KITS.vim.bindings["window-swap-left"]).toEqual(["<Ctrl><Super>h"]);
+    });
+
     it("i3 has Super+hjkl focus, Enter zoom, Shift+Super+Space float", () => {
       expect(KITS.i3.bindings["window-focus-left"]).toContain("<Super>h");
       expect(KITS.i3.bindings["con-split-horizontal"]).toEqual(["<Super>b"]);

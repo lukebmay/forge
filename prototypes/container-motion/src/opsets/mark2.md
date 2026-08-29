@@ -15,8 +15,12 @@ change it on purpose.
 
 ## TOM shape Mark 2 assumes
 
+Mark 2 mutates **TILES** only (D087). The forest document is
+`META + FLOATS + TILES`. FLOAT windows live in FLOATS — they are not
+MONITOR children. TILES is today's spine (WebView ROOT):
+
 ```text
-ROOT                not a Forge container
+ROOT                not a Forge container   (= TILES)
   └── WS1, WS2, …   not Forge containers (count from the OS)
         └── MONITOR   Forge container: may be empty; at most one child
               └── WINDOW  or  CON (HSPLIT | VSPLIT | TABBED | STACKED)
@@ -25,7 +29,7 @@ ROOT                not a Forge container
 ```
 
 The prototype document object is still called a forest in JS. The **tree
-root node** is `ROOT`. Shorthand prints monitors only:
+root node** is `ROOT` (TILES). Shorthand prints monitors only:
 
 `Mon1(H(TAB(A,B),TAB(C,D)))` means that shape under `ROOT / WS1 / Mon1`.
 

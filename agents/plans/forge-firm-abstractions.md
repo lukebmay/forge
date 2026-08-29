@@ -1,6 +1,6 @@
 # forge-firm-abstractions — Firm kernel, then import
 
-**Status:** accepted — **P5 done** (P5c parked); **P6 next**
+**Status:** accepted — **P6a done**; **P7 next kernel** (D087/D088); P6 rest on TILES
 **Branch:** master
 **Blocker:** (none)
 **Updated:** 2026-08-28
@@ -60,7 +60,8 @@ hub + policy + paint scheduler. The wrong object is the center of gravity.
 | **P3** | Presenter adapter (stop `Node.rect`/decoration in TOM) | done |
 | **P4** | OpSet port (Mark 2) onto `lib/tom` + RuleSet — product Move **is** Mark 2 | done |
 | **P5** | Epoch import (Apply / session / H1) onto TOM snapshots | **done** (P5c parked) |
-| **P6** | Surface import (DnD/DBus/host overlays) → OpSet action ids | **next** |
+| **P6** | Surface import (DnD/DBus/host overlays) → OpSet action ids | **P6a done** |
+| **P7** | Forest envelope META + FLOATS + TILES (D087); key overlay D088 | **next kernel** |
 
 **P1b acceptance:** `lib/rulesets/{core,mark2}.js` owns settle; proto
 OpSet binds it; MONITOR max-1 wired; `npm test` 145 green; `tree.js`
@@ -101,6 +102,7 @@ untouched.
 | [P4.md](./forge-firm-abstractions/P4.md) | P4 working note (lib/opsets) |
 | [P5.md](./forge-firm-abstractions/P5.md) | P5 working note (epochs / T6 snapshot) |
 | [P6.md](./forge-firm-abstractions/P6.md) | P6 working note (CommandHandler / vim kit) |
+| [P7.md](./forge-firm-abstractions/P7.md) | P7 working note (FLOATS/TILES envelope + overlays) |
 
 ## Context for the next agent
 
@@ -110,8 +112,11 @@ untouched.
   (D083). Neighbor queries: `lib/world/neighbors.js`. Slot AABB:
   `lib/presenter/` `paneRect`.
 - Mark 2 OpSet: `lib/opsets/` (D084). Proto `src/opsets/` re-exports.
-- Mark 2 chords: `lib/keybinds/` (Super-bearing). Proto =
-  `stripSuper(table) ∪ proto-overlay`.
+- Mark 2 chords: `lib/keybinds/` kernel table (Super-bearing). Each
+  KeybindAdapter ∪ overlay (D088). Proto =
+  `stripSuper(kernel ∪ WebView overlay)`.
+- Forest envelope (D087, not in code yet): META + FLOATS + TILES.
+  Mark 2 mutates TILES. P6a skip-untiled is the FLOATS stopgap.
 - Mark 2 glossary: `prototypes/container-motion/src/opsets/mark2.md` (FIRM).
 - Forge contamination: `lib/extension/tree.js` `Node` extends GObject and
   constructs decorations/actors in the constructor.
@@ -127,6 +132,19 @@ untouched.
   `windowId` in `lib/epochs/`.
 
 ## Session note
+
+**2026-08-28j:** Design lock **D087** (META + FLOATS + TILES) and
+**D088** (kernel key table ∪ adapter overlay; WebView `Super+a`/`q`,
+Gnome `Super+q` = quit). P7 next kernel. P6 remainder may continue on
+TILES. Wrap-up commit this session.
+
+**2026-08-28i:** **P6a landed** (Grok 4.6). CommandHandler vim-kit ids
+→ Mark 2 OpSet + `tom-live` project/apply-back; shipping vim kit from
+`MARK2_TABLE` (Join chord wins; Safe/i3 overlays also fire Join on
+`window-swap-*`). Orchestrator: skip FLOAT/GRAB_TILE/minimized on
+project; hoist extras when dropping a CON. Brake proto **154**;
+tom-live **4**. Working note:
+[`P6.md`](./forge-firm-abstractions/P6.md).
 
 **2026-08-28h:** Wrap-up **local commit**. P5 done (P5c parked). Next
 **P6**. Not pushed.

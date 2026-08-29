@@ -104,41 +104,49 @@ describe("WindowManager - Command System", () => {
   });
 
   describe("Move Command", () => {
+    let nodeWindow2;
+
     beforeEach(() => {
-      // Create second window for moving
       const metaWindow2 = createMockWindow({
         wm_class: "TestApp2",
         title: "Test Window 2",
       });
 
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
     });
 
-    it("should move window in direction", () => {
-      const action = { name: "Move", direction: "right" };
+    it("in-axis Move swaps sibling order (Mark 2)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const moveSpy = vi.spyOn(ctx.tree, "move");
 
-      wm().command(action);
+      wm().command({ name: "Move", direction: "right" });
 
-      expect(moveSpy).toHaveBeenCalledWith(nodeWindow, MotionDirection.RIGHT);
+      expect(moveSpy).not.toHaveBeenCalled();
+      expect(monitor.childNodes).toHaveLength(1);
+      const wrap = monitor.childNodes[0];
+      expect(wrap.childNodes.map((n) => n.nodeValue)).toEqual([
+        nodeWindow2.nodeValue,
+        nodeWindow.nodeValue,
+      ]);
+      expect(wrap.childNodes[0]).toBe(nodeWindow2);
+      expect(wrap.childNodes[1]).toBe(nodeWindow);
     });
 
     it("should call unfreezeRender before move", () => {
-      const action = { name: "Move", direction: "left" };
-
-      wm().command(action);
+      wm().command({ name: "Move", direction: "left" });
 
       expect(wm().unfreezeRender).toHaveBeenCalled();
     });
 
     it("should commit layout after move", () => {
       const commitSpy = vi.spyOn(wm(), "commitLayout");
-      const action = { name: "Move", direction: "down" };
 
-      wm().command(action);
+      wm().command({ name: "Move", direction: "right" });
 
+      expect(commitSpy).toHaveBeenCalledTimes(1);
       expect(commitSpy).toHaveBeenCalledWith("move-window", { force: true });
       expect(wm().renderTree).toHaveBeenCalled();
     });
@@ -178,72 +186,75 @@ describe("WindowManager - Command System", () => {
     });
   });
 
-  describe("Swap Command", () => {
+  describe("Swap Command (Join)", () => {
+    let nodeWindow2;
+
     beforeEach(() => {
-      // Create second window for swapping
       const metaWindow2 = createMockWindow({
         wm_class: "TestApp2",
         title: "Test Window 2",
       });
 
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
     });
 
-    it("should swap windows in direction", () => {
-      const action = { name: "Swap", direction: "right" };
+    it("directional Swap dispatches Join and wraps the pair", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const swapSpy = vi.spyOn(ctx.tree, "swap");
 
-      wm().command(action);
+      wm().command({ name: "Swap", direction: "right" });
 
-      expect(swapSpy).toHaveBeenCalledWith(nodeWindow, MotionDirection.RIGHT);
+      expect(swapSpy).not.toHaveBeenCalled();
+      expect(monitor.childNodes).toHaveLength(1);
+      const wrap = monitor.childNodes[0];
+      expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(wrap.childNodes).toEqual([nodeWindow, nodeWindow2]);
     });
 
-    it("should call unfreezeRender before swap", () => {
-      const action = { name: "Swap", direction: "left" };
-
-      wm().command(action);
+    it("should call unfreezeRender before join", () => {
+      wm().command({ name: "Swap", direction: "left" });
 
       expect(wm().unfreezeRender).toHaveBeenCalled();
     });
 
-    it("should raise window after swap", () => {
-      const action = { name: "Swap", direction: "right" };
+    it("should raise window after join", () => {
       const raiseSpy = vi.spyOn(metaWindow, "raise");
 
-      wm().command(action);
+      wm().command({ name: "Swap", direction: "right" });
 
       expect(raiseSpy).toHaveBeenCalled();
     });
 
     it("should update tabbed and stacked focus", () => {
-      const action = { name: "Swap", direction: "right" };
-
-      wm().command(action);
+      wm().command({ name: "Swap", direction: "right" });
 
       expect(wm().updateTabbedFocus).toHaveBeenCalled();
       expect(wm().updateStackedFocus).toHaveBeenCalled();
     });
 
-    it("should commit layout after swap", () => {
+    it("should commit layout after join", () => {
       const commitSpy = vi.spyOn(wm(), "commitLayout");
-      const action = { name: "Swap", direction: "right" };
 
-      wm().command(action);
+      wm().command({ name: "Swap", direction: "right" });
 
-      expect(commitSpy).toHaveBeenCalledWith("swap", { force: true });
-      expect(wm().renderTree).toHaveBeenCalledWith("swap", true);
+      expect(commitSpy).toHaveBeenCalledTimes(1);
+      expect(commitSpy).toHaveBeenCalledWith("join", { force: true });
+      expect(wm().renderTree).toHaveBeenCalledWith("join", true);
     });
 
-    it("should not swap if no focus window", () => {
+    it("should not join if no focus window", () => {
       global.display.get_focus_window.mockReturnValue(null);
-      const action = { name: "Swap", direction: "right" };
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const before = [...monitor.childNodes];
       const swapSpy = vi.spyOn(ctx.tree, "swap");
 
-      wm().command(action);
+      wm().command({ name: "Swap", direction: "right" });
 
       expect(swapSpy).not.toHaveBeenCalled();
+      expect(monitor.childNodes).toEqual(before);
     });
   });
 

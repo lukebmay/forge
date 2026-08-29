@@ -1,14 +1,15 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-28 — **P6 next**. **P5 done** (P5c parked).
+**Updated:** 2026-08-28 — **P6a done.** **D087 / D088 locked.** Next
+**P7** forest envelope (or P6 remainder on TILES).
 **Cross-session handoff:** [`HANDOFF.md`](./HANDOFF.md) ← **read first**
-**Lens:** portable kernel (TOM/RuleSet/OpSet/action ids); Gnome + WebView
-adapters; T6 in `lib/epochs/`; surfaces dispatch those ids.
+**Lens:** portable kernel (TOM/RuleSet/OpSet/action ids); adapters
+**extend** that kernel; T6 in `lib/epochs/`; FLOATS off TILES.
 **Branch:** **`master`**. **Push:** only when human asks.
 
 Design = [`design.md`](./design.md) · layers =
 [`plans/forge-firm-abstractions/layers.md`](./plans/forge-firm-abstractions/layers.md)
-· history = [`design/CHANGELOG.md`](./design/CHANGELOG.md) (D079–D086).
+· history = [`design/CHANGELOG.md`](./design/CHANGELOG.md) (D079–D088).
 Scan merge =
 [`plans/forge-firm-abstractions/explore/07-plan-scan.md`](./plans/forge-firm-abstractions/explore/07-plan-scan.md).
 
@@ -16,15 +17,17 @@ Scan merge =
 
 ## Active next (ordered)
 
-1. **P0** — **P6** CommandHandler + shipping vim kit
+1. **P0** — **P7** Forest envelope META + FLOATS + TILES (D087) and
+   adapter key overlays (D088)
    ([`forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
-   · [`P6.md`](./plans/forge-firm-abstractions/P6.md)
+   · [`P7.md`](./plans/forge-firm-abstractions/P7.md)
    · [`keybinds.md`](./plans/forge-firm-abstractions/keybinds.md)
    · [`HANDOFF`](./HANDOFF.md)).
-   P1a–P5 + **D082–D086** done. Kernel =
-   `lib/{tom,rulesets,opsets,keybinds}`. T6 = `lib/epochs/`. Join chord
-   wins over swap. Do not merge the two monitor-resolves. Do not grow
-   tiling policy in ForgeAdapterGnome.
+   FLOAT windows must not sit under a MONITOR. WebView overlay
+   `Super+a`/`q`; Gnome `Super+q` = quit. P6a skip-untiled is the
+   stopgap. Architecture reshape → **Grok 4.6**.
+2. **P6 remainder** — size / toggleSplit / promote CommandHandler; DnD
+   execute → OpSet (TILES only). Same kernel ids.
 
 Do **not** start pinned-slots design until the operator schedules that
 meeting. Do **not** keep ding / Super+2 / vinyl / D069 tip as next work.

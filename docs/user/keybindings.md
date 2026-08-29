@@ -29,7 +29,7 @@ lists GNOME/custom entries.
 | **Rare chrome off bare Super+** | **Focus border** and **tiling master toggle** almost never fire — multi-mod only. |
 | **Border = `Ctrl+Super+b`** | **b**order. (Legacy `Super+x` / `Ctrl+Super+x` was arbitrary.) |
 | **Tiling master = `Ctrl+Super+e`** | **e**nable / disable Forge tiling for the session. (Legacy `Super+w` meant “window” vaguely and fought Super+w habits; not a strong mnemonic.) |
-| **Vim kit** | Power map: vim-style focus on `Super+hjkl`, move on Shift, swap on Ctrl+Super. |
+| **Vim kit** | Power map: vim-style focus on `Super+hjkl`, move on Shift, join on Ctrl+Super. |
 | **i3 kit** | Approximate i3 muscle memory (focus hjkl, move Shift+hjkl, splits `b`/`v`/`e`, zoom on Enter). Not a full i3 mode system. |
 | **No silent kit rewrite on install** | Live dconf stays until you load a kit. `./install` **warns** when live chords match no kit (stale after we change Vim/i3). Re-load: `./install --kit=vim` or `forge keybind load vim`. |
 
@@ -57,7 +57,7 @@ Fresh installs and **Restore Safe defaults** use **Safe** only so Super+ stays f
 | --- | --- |
 | Focus ←↓↑→ | `Ctrl+Super+arrows` |
 | Move ←↓↑→ | `Ctrl+Shift+Super+arrows` |
-| Swap h/j/k/l | `Ctrl+Super+h/j/k/l` |
+| Join h/j/k/l | `Ctrl+Super+h/j/k/l` |
 | Toggle float | `Alt+Super+Enter` |
 | Always-float (app) | `Ctrl+Shift+Super+Space` |
 | Group chrome (tab ↔ stack) | `Ctrl+Super+g` |
@@ -104,7 +104,7 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | --- | --- |
 | Focus h/j/k/l (also arrows) | `Super+h/j/k/l`, `Super+arrows` |
 | Move h/j/k/l | `Shift+Super+h/j/k/l` |
-| Swap h/j/k/l | `Ctrl+Super+h/j/k/l` |
+| Join h/j/k/l | `Ctrl+Super+h/j/k/l` |
 | Toggle float | `Alt+Super+Enter` |
 | Always-float (app) | `Ctrl+Shift+Super+Space` |
 | Zoom full / H / V | `Super+Enter` / `Ctrl+Super+Enter` / `Shift+Super+Enter` |
@@ -114,7 +114,7 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Stacked / tabbed (to/from split) | `Shift+Super+s` / `Shift+Super+t` |
 | Merge into tabbed group | `Shift+Super+m` |
 | Ungroup parent container | `Ctrl+Shift+Super+m` |
-| Focus parent / child | `Super+a` / `Shift+Super+a` |
+| Focus parent / child | `Super+p` / `Shift+Super+p` |
 | Move in / out of container | `Shift+Super+,` / `Ctrl+Shift+Super+,` |
 | Tab decoration | `Ctrl+Alt+y` |
 | Focus border | `Ctrl+Super+b` |
@@ -134,8 +134,9 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | `Super+m` | **unbound** (monocle removed; zoom uses Enter) |
 
 **Why this shape:** focus is the hottest action → shortest chord (`Super+letter`).
-Move adds Shift (heavier). Swap adds Ctrl so three roles share hjkl without
-colliding. Letter keys for float/split/tab match old Forge muscle memory.
+Move adds Shift (heavier). Join adds Ctrl so three roles share hjkl without
+colliding. Parent/child is `p` / `Shift+p`. Letter keys for float/split/tab
+match old Forge muscle memory.
 
 ---
 
@@ -147,7 +148,7 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 | --- | --- |
 | Focus h/j/k/l (+ arrows) | `Super+h/j/k/l`, arrows |
 | Move (+ arrows) | `Shift+Super+h/j/k/l` (+ arrows) |
-| Swap | `Ctrl+Super+h/j/k/l` (Forge-only; i3 has no exact twin) |
+| Join | `Ctrl+Super+h/j/k/l` (Forge-only; i3 has no exact twin) |
 | Float | `Shift+Super+Space` (Enter is zoom) |
 | Always-float | `Ctrl+Shift+Super+Space` |
 | Zoom full / H / V | `Super+Enter` / `Ctrl+Super+Enter` / `Shift+Super+Enter` |
@@ -171,7 +172,7 @@ Approximate i3 layout on Forge actions (not a full i3 config).
 
 **Why this shape:** i3 users expect Super+hjkl and Shift to move containers.
 `Super+b/v/e` and `s/w` mirror common i3 split/layout keys. Where Forge actions
-have no i3 twin, we pick free Super+ keys or keep Forge’s Ctrl+Super swap row.
+have no i3 twin, we pick free Super+ keys or keep Forge’s Ctrl+Super join row.
 (`window-unfocus` / `Ctrl+Super+Esc` is abandoned — not in any kit.)
 
 ---
