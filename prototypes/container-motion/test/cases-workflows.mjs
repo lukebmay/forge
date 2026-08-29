@@ -142,7 +142,7 @@ export const WORKFLOW_CASES = [
     byOpSet: { mark2: ["Select(A)", "SelectParent()", "Launch()"] },
   },
   {
-    id: "wf-close-floater-rescales-sized",
+    id: "wf-close-share-rescales-sized",
     layer: "workflow",
     given: "Mon1(H(A,B,C))",
     expect: "Mon1(H(A,B))",

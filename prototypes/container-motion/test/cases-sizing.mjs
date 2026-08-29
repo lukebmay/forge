@@ -17,7 +17,7 @@ export const SIZING_CASES = [
     expect: "Mon1(H(A,B,C))",
     check(t) {
       if (!near(t.win("A").percent, 1 / 3)) return "A not equal share";
-      if (t.win("A").userSized) return "A should float";
+      if (t.win("A").userSized) return "A should share";
     },
   },
   {
@@ -32,7 +32,7 @@ export const SIZING_CASES = [
     },
     check(t) {
       if (!near(t.win("A").percent, 0.5) || !t.win("A").userSized) return "A not 50% sized";
-      if (!near(t.win("B").percent, 0.5) || t.win("B").userSized) return "B should float 50%";
+      if (!near(t.win("B").percent, 0.5) || t.win("B").userSized) return "B should share 50%";
     },
   },
   {
@@ -47,11 +47,11 @@ export const SIZING_CASES = [
     },
     check(t) {
       if (!near(t.win("A").percent, 0.75)) return "A not 75%";
-      if (!near(t.win("B").percent, 0.25)) return "B not 25% float";
+      if (!near(t.win("B").percent, 0.25)) return "B not 25% share";
     },
   },
   {
-    id: "size-floater-min-blocks",
+    id: "size-share-min-blocks",
     layer: "atomics",
     given: "Mon1(H(A,B))",
     expect: "Mon1(H(A,B))",
@@ -64,7 +64,7 @@ export const SIZING_CASES = [
     },
   },
   {
-    id: "size-75-three-floaters-ok",
+    id: "size-75-three-shares-ok",
     layer: "atomics",
     given: "Mon1(H(A,B,C))",
     expect: "Mon1(H(A,B,C))",
@@ -87,7 +87,7 @@ export const SIZING_CASES = [
     run(t) {
       t.api.setFocus(t.f, t.win("A").id);
       const r = t.api.setInAxisShare(t.f, 0.75);
-      if (r.ok) return "75% with 3 floaters is 8.3% each — noop";
+      if (r.ok) return "75% with 3 share siblings is 8.3% each — noop";
     },
   },
   {
@@ -151,7 +151,7 @@ export const SIZING_CASES = [
     },
   },
   {
-    id: "size-float-one",
+    id: "size-share-one",
     layer: "atomics",
     given: "Mon1(H(A,B,C))",
     expect: "Mon1(H(A,B,C))",
@@ -162,12 +162,12 @@ export const SIZING_CASES = [
       if (!r.ok) return r.reason;
     },
     check(t) {
-      if (t.win("A").userSized) return "A should float";
-      if (!near(t.win("A").percent, 1 / 3)) return "all float → equal";
+      if (t.win("A").userSized) return "A should share";
+      if (!near(t.win("A").percent, 1 / 3)) return "all share → equal";
     },
   },
   {
-    id: "size-float-siblings",
+    id: "size-share-siblings",
     layer: "atomics",
     given: "Mon1(H(A,B,C))",
     expect: "Mon1(H(A,B,C))",
@@ -180,7 +180,7 @@ export const SIZING_CASES = [
       if (!r.ok) return r.reason;
     },
     check(t) {
-      if (t.win("A").userSized || t.win("B").userSized) return "all should float";
+      if (t.win("A").userSized || t.win("B").userSized) return "all should share";
       if (!near(t.win("A").percent, 1 / 3)) return "not equalized";
     },
   },
@@ -232,7 +232,7 @@ export const SIZING_CASES = [
     },
   },
   {
-    id: "size-float-siblings-only",
+    id: "size-share-siblings-only",
     layer: "atomics",
     given: "Mon1(H(A,B,C))",
     expect: "Mon1(H(A,B,C))",
@@ -249,14 +249,14 @@ export const SIZING_CASES = [
       if (!t.win("A").userSized || !near(t.win("A").percent, 0.5)) {
         return "A should stay 50% sized";
       }
-      if (t.win("B").userSized || t.win("C").userSized) return "sibs should float";
+      if (t.win("B").userSized || t.win("C").userSized) return "sibs should share";
       if (!near(t.win("B").percent, 0.25) || !near(t.win("C").percent, 0.25)) {
         return "share siblings should split leftover";
       }
     },
   },
   {
-    id: "size-float-parent-only",
+    id: "size-share-parent-only",
     layer: "atomics",
     given: "Mon1(H(V(A,B),C))",
     expect: "Mon1(H(V(A,B),C))",
@@ -273,7 +273,7 @@ export const SIZING_CASES = [
     },
     check(t) {
       const v = t.parent(t.win("A"));
-      if (v.userSized) return "V should float";
+      if (v.userSized) return "V should share";
       if (!near(v.percent, 0.5)) return "V/C should equalize";
       if (!t.win("A").userSized || !near(t.win("A").percent, 0.7)) {
         return "A in-axis should stay sized";
@@ -281,7 +281,7 @@ export const SIZING_CASES = [
     },
   },
   {
-    id: "size-float-parent-siblings-only",
+    id: "size-share-parent-siblings-only",
     layer: "atomics",
     given: "Mon1(H(V(A,B),C))",
     expect: "Mon1(H(V(A,B),C))",
@@ -299,12 +299,12 @@ export const SIZING_CASES = [
     check(t) {
       const v = t.parent(t.win("A"));
       if (!v.userSized || !near(v.percent, 0.6)) return "V should stay 60%";
-      if (t.win("C").userSized) return "C should float";
+      if (t.win("C").userSized) return "C should share";
       if (!near(t.win("C").percent, 0.4)) return "C leftover 40%";
     },
   },
   {
-    id: "size-float-self-siblings-parent",
+    id: "size-share-self-siblings-parent",
     layer: "atomics",
     given: "Mon1(H(V(A,B),C))",
     expect: "Mon1(H(V(A,B),C))",
@@ -324,9 +324,9 @@ export const SIZING_CASES = [
     },
     check(t) {
       const v = t.parent(t.win("A"));
-      if (t.win("A").userSized || t.win("B").userSized) return "V kids should float";
+      if (t.win("A").userSized || t.win("B").userSized) return "V kids should share";
       if (!near(t.win("A").percent, 0.5)) return "A/B should equalize";
-      if (v.userSized) return "V should float";
+      if (v.userSized) return "V should share";
       if (!t.win("C").userSized || !near(t.win("C").percent, 0.4)) {
         return "C should stay 40% sized";
       }
@@ -334,7 +334,7 @@ export const SIZING_CASES = [
     },
   },
   {
-    id: "size-float-both-groups",
+    id: "size-share-both-groups",
     layer: "atomics",
     given: "Mon1(H(V(A,B),C))",
     expect: "Mon1(H(V(A,B),C))",
@@ -355,14 +355,14 @@ export const SIZING_CASES = [
     },
     check(t) {
       const v = t.parent(t.win("A"));
-      if (t.win("A").userSized || t.win("B").userSized) return "V kids should float";
-      if (v.userSized || t.win("C").userSized) return "H kids should float";
+      if (t.win("A").userSized || t.win("B").userSized) return "V kids should share";
+      if (v.userSized || t.win("C").userSized) return "H kids should share";
       if (!near(t.win("A").percent, 0.5)) return "A not equal in V";
       if (!near(v.percent, 0.5)) return "V not equal in H";
     },
   },
   {
-    id: "size-float-parent-on-pure-h-fails",
+    id: "size-share-parent-on-pure-h-fails",
     layer: "atomics",
     given: "Mon1(H(A,B))",
     expect: "Mon1(H(A,B))",
@@ -475,7 +475,7 @@ export const SIZING_CASES = [
     },
   },
   {
-    id: "size-float-all",
+    id: "size-share-all",
     layer: "atomics",
     given: "Mon1(H(V(A,B),C))",
     expect: "Mon1(H(V(A,B),C))",
@@ -492,14 +492,14 @@ export const SIZING_CASES = [
     },
     check(t) {
       const v = t.parent(t.win("A"));
-      if (t.win("A").userSized || t.win("B").userSized) return "V kids should float";
-      if (v.userSized || t.win("C").userSized) return "H kids should float";
+      if (t.win("A").userSized || t.win("B").userSized) return "V kids should share";
+      if (v.userSized || t.win("C").userSized) return "H kids should share";
       if (!near(t.win("A").percent, 0.5)) return "A not equal in V";
       if (!near(v.percent, 0.5)) return "V not equal in H";
     },
   },
   {
-    id: "size-rescale-when-last-floater-removed",
+    id: "size-rescale-when-last-share-removed",
     layer: "atomics",
     given: "Mon1(H(A,B,C))",
     expect: "Mon1(H(A,B))",
@@ -534,7 +534,7 @@ export const SIZING_CASES = [
     },
     actions: ["Select(A)", "Move(left)"],
     check(t) {
-      if (t.win("A").userSized) return "A must float after leaving V";
+      if (t.win("A").userSized) return "A must share after leaving V";
     },
   },
   {
@@ -556,7 +556,7 @@ export const SIZING_CASES = [
         }`;
       }
       if (!near(t.win("C").percent, 0.3) || t.win("C").userSized) {
-        return "C should stay 30% float";
+        return "C should stay 30% share";
       }
     },
   },

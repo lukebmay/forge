@@ -134,7 +134,8 @@ untouched.
 ## Session note
 
 **2026-08-29:** **D091** leftover-size ids are `size.share*` (not
-`size.float*`). Helpers `shareSize` / `shareCombo`.
+`size.float*`) in kernel **and** proto. Helpers `shareSize` /
+`shareCombo`. Proto `runAction` does not remap `size.float*`.
 
 **2026-08-28l:** **D090** supersedes D089. Size is **percent** or
 **`share`** (leftover split among share siblings). Not “spread.”

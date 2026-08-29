@@ -48,16 +48,29 @@ if (saved?.forest?.nodes && saved.forest.monitors?.length) {
     api.hydrateSeq(forest);
   }
 }
-if (Array.isArray(saved?.macros)) macros = saved.macros;
+if (Array.isArray(saved?.macros)) {
+  macros = saved.macros.map((m) => ({
+    ...m,
+    steps: Array.isArray(m.steps) ? m.steps.map(migrateSizeShareAction) : m.steps,
+  }));
+}
 if (Array.isArray(saved?.keybinds)) keybinds = migrateKeybinds(saved.keybinds);
 if (saved?.viewMode === "desk" || saved?.viewMode === "tree" || saved?.viewMode === "split") {
   viewMode = saved.viewMode;
 }
 
+/** @param {string} action */
+function migrateSizeShareAction(action) {
+  return action.replace(/^size\.float/, "size.share").replace(/^size:float/, "size:share");
+}
+
 /** Bring persisted keybinds up to current defaults for renamed/new actions. */
 function migrateKeybinds(savedBinds) {
   /** @type {import('./keybinds.mjs').Keybind[]} */
-  let binds = savedBinds.map((b) => ({ ...b }));
+  let binds = savedBinds.map((b) => ({
+    ...b,
+    action: migrateSizeShareAction(b.action),
+  }));
   for (const b of binds) {
     if (b.action === "focusParent" && b.chord.toLowerCase() === "a") {
       b.chord = "p";
@@ -148,8 +161,8 @@ function migrateKeybinds(savedBinds) {
     binds.push({ chord: "Delete", action: "deleteNode", label: "TreeOp destroy node" });
   }
   const altN = binds.find((b) => b.chord.toLowerCase() === "alt+n");
-  if (altN && altN.action === "size:share") {
-    const floatChords = new Set([
+  if (altN && (altN.action === "size:share" || altN.action === "size.share")) {
+    const shareChords = new Set([
       "alt+y",
       "alt+u",
       "alt+i",
@@ -160,9 +173,9 @@ function migrateKeybinds(savedBinds) {
       "alt+.",
       "alt+/",
     ]);
-    binds = binds.filter((b) => !floatChords.has(b.chord.toLowerCase()));
+    binds = binds.filter((b) => !shareChords.has(b.chord.toLowerCase()));
     for (const d of defaultVimMinusSuper()) {
-      if (floatChords.has(d.chord.toLowerCase())) binds.push({ ...d });
+      if (shareChords.has(d.chord.toLowerCase())) binds.push({ ...d });
     }
   }
   const extras = defaultVimMinusSuper().filter(
@@ -318,9 +331,6 @@ function runAction(action) {
   /** @type {import('./tree.mjs').Dir} */
   let dir;
   let r;
-  if (action.startsWith("size.float") || action.startsWith("size:float")) {
-    action = action.replace(/^size\.float/, "size.share").replace(/^size:float/, "size:share");
-  }
   if (action.startsWith("focus.") || action.startsWith("focus:")) {
     dir = /** @type {import('./tree.mjs').Dir} */ (action.slice(6));
     r = api.focusDir(forest, dir);

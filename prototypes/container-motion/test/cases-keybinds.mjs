@@ -72,7 +72,7 @@ export const KEYBIND_CASES = [
     run() {
       const y = findChord(defaultVimMinusSuper(), "y");
       if (y && (y.action === "focus:left" || y.action === "focus.left")) {
-        return "bare y must not be extra focus (Alt+y floats)";
+        return "bare y must not be extra focus (Alt+y is size.share)";
       }
     },
   },

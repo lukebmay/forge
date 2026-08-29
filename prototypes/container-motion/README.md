@@ -202,15 +202,15 @@ Hard floor **10%**, ceiling **100%**. If a `share` child would drop below
 | --- | --- |
 | `Alt+h` / `Alt+l` | Decrease / increase **x** share |
 | `Alt+j` / `Alt+k` | Decrease / increase **y** share |
-| `Alt+y` | This node floats |
-| `Alt+u` | This node and siblings float |
-| `Alt+i` | Only siblings float |
-| `Alt+o` | This node, siblings, and parent float |
-| `Alt+n` | Parent floats |
-| `Alt+m` | Parent and parent’s siblings float |
-| `Alt+,` | Only parent’s siblings float |
-| `Alt+.` | This node + siblings, and parent + parent’s siblings |
-| `Alt+/` | Float every node in the tree (equalize each H/V) |
+| `Alt+y` | This node → `share` |
+| `Alt+u` | This node and siblings → `share` |
+| `Alt+i` | Only siblings → `share` |
+| `Alt+o` | This node, siblings, and parent → `share` |
+| `Alt+n` | Parent → `share` |
+| `Alt+m` | Parent and parent’s siblings → `share` |
+| `Alt+,` | Only parent’s siblings → `share` |
+| `Alt+.` | This node + siblings, and parent + parent’s siblings → `share` |
+| `Alt+/` | Every node → `share` (equalize each H/V) |
 | `Alt+7` `8` `9` `0` | In-axis 75% / 66.7% / 50% / 33.3% |
 
 ## Keys (Vim − Super)

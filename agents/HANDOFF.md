@@ -28,8 +28,9 @@ Product Move **is** Mark 2 Move. Glossary =
 [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
 
 **Size** (D090) = **percent** or **`share`**. `share` splits leftover
-unused space among other `share` siblings. **FLOAT window** = FLOATS
-bag. Do not say float or “spread” for leftover size.
+unused space among other `share` siblings. Action ids **`size.share*`**
+(D091) in kernel **and** proto. **FLOAT window** = FLOATS bag. Do not
+say float or “spread” for leftover size.
 
 ## Next session
 
