@@ -1,6 +1,7 @@
 # forge-firm-abstractions — Firm kernel, then import
 
-**Status:** accepted — **P7 done** (D087/D088); next **P6 remainder** on TILES
+**Status:** accepted — **P7 done** (D087/D088); **P6 remainder done**
+(DnD leftover)
 **Branch:** master
 **Blocker:** (none)
 **Updated:** 2026-08-29
@@ -60,7 +61,7 @@ hub + policy + paint scheduler. The wrong object is the center of gravity.
 | **P3** | Presenter adapter (stop `Node.rect`/decoration in TOM) | done |
 | **P4** | OpSet port (Mark 2) onto `lib/tom` + RuleSet — product Move **is** Mark 2 | done |
 | **P5** | Epoch import (Apply / session / H1) onto TOM snapshots | **done** (P5c parked) |
-| **P6** | Surface import (DnD/DBus/host overlays) → OpSet action ids | **P6a done** |
+| **P6** | Surface import (DnD/DBus/host overlays) → OpSet action ids | **remainder done** (DnD leftover) |
 | **P7** | Forest envelope META + FLOATS + TILES (D087); key overlay D088 | **done** |
 
 **P1b acceptance:** `lib/rulesets/{core,mark2}.js` owns settle; proto
@@ -133,11 +134,19 @@ untouched.
 
 ## Session note
 
+**2026-08-29c:** **P6 remainder done.** CommandHandler `runLiveForest`
+dispatches `toggleSplit` / `toggleTabStack` / `promote` /
+`promoteRecursive` / `layout.cycle±` / `size.*` on TILES (FLOATS refuse).
+Vim kit overlay from `MARK2_TABLE`. DnD execute **not** OpSet (leftover).
+Brake proto **154**; CommandHandler **81**; Keybindings **64**;
+keybind-presets **39**; mark2-table **14**. Working note:
+[`P6.md`](./forge-firm-abstractions/P6.md).
+
 **2026-08-29b:** **P7 done** (Grok 4.6). Envelope META + FLOATS + TILES
 in `lib/tom/kernel.js`; `tom-live` projects FLOAT/GRAB_TILE → FLOATS;
 WebView overlay Super-bearing; Gnome overlay `host.quit` on `<Super>q`.
 Brake proto **154**; forest-envelope **7**; tom-live **7**; mark2-table
-**14**. Next **P6 remainder**. Working note:
+**14**. Working note:
 [`P7.md`](./forge-firm-abstractions/P7.md).
 
 **2026-08-29:** **D091** leftover-size ids are `size.share*` (not

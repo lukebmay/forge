@@ -304,14 +304,7 @@ function presenterOps(tom) {
 
     /** @param {Forest} f @param {number} [delta] */
     cycleLayout(f, delta = 1) {
-      const cur = selectionNode(f);
-      if (!cur) return fail("no selection");
-      const con = cur.kind === "CON" ? cur : parent(f, cur);
-      if (!con || con.kind !== "CON") return fail("no CON");
-      const order = ["HSPLIT", "VSPLIT", "TABBED", "STACKED"];
-      const i = Math.max(0, order.indexOf(con.layout || "HSPLIT"));
-      const next = order[(i + delta + order.length * 8) % order.length];
-      return tom.setLayout(f, /** @type {Layout} */ (next));
+      return tom.cycleLayout(f, delta);
     },
 
     /** @param {Forest} f */

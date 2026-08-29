@@ -49,11 +49,11 @@ snaps back when `window-maximize-on-single` is off (default).
   default **group** type (DnD center, bare-array sugar, merge-group).
 - If a toggle no-ops, confirm the matching flag in **Preferences → Tiling →
   Behavior**: `tabbed-tiling-mode-enabled` / `stacked-tiling-mode-enabled`.
-- **Group chrome cycle** (`con-stack-tab-layout-toggle`: Safe `Ctrl+Super+g`,
-  Vim `Shift+Super+n`) only flips an **existing** tab/stack group — no-op on a
-  plain H/V split. Use **merge** (`window-merge-group`: Safe `Ctrl+Super+m`,
-  Vim `Shift+Super+m`) to make a tabbed group first, or DnD center-drop.
-  Dissolve a group with **ungroup** (`window-ungroup`: `Ctrl+Shift+Super+m`).
+- **Toggle tab/stack** (`con-stack-tab-layout-toggle`: Safe `Ctrl+Super+g`,
+  Vim `Super+n`) is Mark 2 `toggleTabStack` (TABBED ↔ STACKED, or TABBED from
+  a split). Needs `tabbed-tiling-mode-enabled` / `stacked-tiling-mode-enabled`.
+  Dissolve with **promote** (`window-ungroup`: Safe `Ctrl+Shift+Super+m`,
+  Vim `Super+{`).
 - After installing a build that adds keys, reload Shell (X11: `Alt+F2` → `r`, or
   `killall -HUP gnome-shell`) so the extension re-registers bindings; then
   `forge keybind load vim` (or Safe/i3) if dconf still lacks the new chords.

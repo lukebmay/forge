@@ -1,9 +1,8 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-29 — **P7 done.** Envelope META + FLOATS + TILES
-(D087) + key overlays (D088). Next **P6 remainder** on TILES.
-**Branch:** **`master`**. Nest **stopped**. **Push:** only if the human
-asks.
+**Updated:** 2026-08-29 — **P6 remainder done** (toggle/promote/size/
+layout.cycle + vim kit). **DnD leftover.** **Branch:** **`master`**.
+Nest **stopped**. **Push:** only if the human asks.
 
 ## Pain
 
@@ -24,7 +23,8 @@ ForgeAdapterWebView (proto desk); KeybindAdapterGnome /
 KeybindAdapterWebView (kernel table ∪ host overlay).
 **Live projection:** `lib/extension/tom-live.js` — TILES normally;
 FLOAT/GRAB_TILE → FLOATS. Apply parks live floats on ROOT, not MONITOR.
-Product Move **is** Mark 2 Move. Glossary =
+Product Move **is** Mark 2 Move. CommandHandler `runLiveForest` is the
+TILES mutate path (move/join/toggle/promote/size/layout.cycle). Glossary =
 [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
 
 **Size** (D090) = **percent** or **`share`**. `share` splits leftover
@@ -43,20 +43,21 @@ D079–**D091**
 | --- | --- |
 | P1–P4 | `lib/{tom,rulesets,keybinds,session,world,presenter,opsets}/` |
 | P5 | [`P5.md`](./plans/forge-firm-abstractions/P5.md) · `lib/epochs/` |
-| P6a | [`P6.md`](./plans/forge-firm-abstractions/P6.md) · `lib/extension/tom-live.js` |
+| P6 | [`P6.md`](./plans/forge-firm-abstractions/P6.md) · remainder done; **DnD leftover** |
 | P7 | [`P7.md`](./plans/forge-firm-abstractions/P7.md) **done** |
 
-**Brake (P7):**
+**Brake:**
 `cd prototypes/container-motion && npm test` → **154**.
-Vitest forest-envelope **7** + tom-live **7** + mark2-table **14** +
-keybind-presets **38** + CommandHandler **82** + Keybindings **58** +
-WindowManager-commands **41** + structure-one-commit **6** + opsets **3**
-+ world **6** + presenter **2** + session **6** + epochs **10**.
+Vitest: mark2-table **14** + keybind-presets **39** + CommandHandler
+**81** + Keybindings **64** + WindowManager-commands **40** +
+structure-one-commit **6** + opsets **3** + tom-live **7** +
+forest-envelope **7**.
 
 ### Do
 
-1. **P6 remainder** on TILES: size / toggleSplit / promote
-   CommandHandler; DnD execute → OpSet. Same kernel ids.
+1. Optional: DnD **execute/commit** onto Mark 2 Join/Move (TILES only)
+   without rewriting `drag-drop.js` gesture/preview. If still a redesign,
+   leave it leftover.
 2. Keep proto tests green (154+).
 3. Do **not** retarget Apply onto T6. Do **not** merge monitor-resolves.
 
@@ -115,7 +116,8 @@ max-1. Proto `src/opsets/*.mjs` re-export. No proto `plog.mjs` in `lib/`.
 Product table = proto right-hand: `hjkl` focus, `Shift+hjkl` Move,
 `Ctrl+hjkl` Join, `p`/`Shift+p`, `m`/`n`, `[`/`]`, `{`/`}`,
 `Alt+hjkl`/`yuio`/`nm,.`/`/`/`7890`. Overlay chords (`a`/`q`/quit) are
-**D088**, not kit.
+**D088**, not kit. Vim overlay is loaded; live dconf needs
+`forge keybind load vim`.
 
 ## D082 session (do not rediscover)
 
@@ -138,13 +140,14 @@ Keybind: **KeybindAdapterGnome** / **KeybindAdapterWebView**. GJS
 `WindowManager` may stay as a façade; the **role** is ForgeAdapterGnome.
 Adapters **extend** the kernel; they do not fork it.
 
-## Open (do not block P6 remainder)
+## Open (do not block)
 
 1. WINDOW identity on live Forge `Node` (Meta vs id) — snapshot is D086
-2. Live dconf vim users still have Super+a until they reload the kit
-3. WebApp overlays beyond proto `a`/`q` — later, not P7-blocking
+2. Live dconf vim users still have old chords until they reload the kit
+3. WebApp overlays beyond proto `a`/`q` — later
 4. Live GObject tree still has no FLOATS node; apply parks floats on
    ROOT (TOM FLOATS is the document of record)
+5. DnD execute still Host (`drag-drop.js` `_executeDropOperation`)
 
 ## Where context lives
 

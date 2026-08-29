@@ -800,10 +800,10 @@ casual “groupify this parent” dissolves nested units.
 
 | Verb | Safe | Vim | Behavior |
 | --- | --- | --- | --- |
-| Group chrome cycle | `Ctrl+Super+g` | `Shift+Super+n` | **TABBED ↔ STACKED only**; no-op on H/V |
-| Split orientation | `Ctrl+Super+s` | `Ctrl+Super+n` | H ↔ V only (no group exit yet) |
+| Group chrome cycle | `Ctrl+Super+g` | `Super+n` (`toggleTabStack`) | Mark 2 tab ↔ stack (settings-gated) |
+| Split orientation | `Ctrl+Super+s` | `Super+m` (`toggleSplit`) | H ↔ V via OpSet |
 | Merge two windows | `Ctrl+Super+m` | `Shift+Super+m` | Last-active (or sibling) → tabbed group (`tree.group`) |
-| Ungroup | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` | Dissolve parent CON; children keep order (`tree.ungroup`) |
+| Promote | `Ctrl+Shift+Super+m` | `Super+{` (`promote`) | Dissolve parent CON via OpSet |
 | Tab force (to/from split) | `Ctrl+Super+t` | `Shift+Super+t` | Existing LayoutTabbedToggle |
 
 Groups today are **window-leaf bags** — chrome flip is lossless. CLI parity via

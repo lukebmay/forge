@@ -170,6 +170,20 @@ describe("keybind kits", () => {
       expect(KITS.vim.bindings["window-swap-left"]).toEqual(["<Ctrl><Super>h"]);
     });
 
+    it("vim Mark 2 overlay uses Super+m/n, [ ] cycle, and Alt size", () => {
+      expect(KITS.vim.bindings["con-split-layout-toggle"]).toEqual(["<Super>m"]);
+      expect(KITS.vim.bindings["con-stack-tab-layout-toggle"]).toEqual(["<Super>n"]);
+      expect(KITS.vim.bindings["con-layout-cycle-prev"]).toEqual(["<Super>bracketleft"]);
+      expect(KITS.vim.bindings["con-layout-cycle-next"]).toEqual(["<Super>bracketright"]);
+      expect(KITS.vim.bindings["window-ungroup"]).toEqual([
+        "<Super>braceleft",
+        "<Shift><Super>bracketleft",
+      ]);
+      expect(KITS.vim.bindings["size-nudge-x-minus"]).toEqual(["<Alt><Super>h"]);
+      expect(KITS.vim.bindings["window-expand"]).toEqual([]);
+      expect(KITS.vim.bindings["window-shrink"]).toEqual([]);
+    });
+
     it("i3 has Super+hjkl focus, Enter zoom, Shift+Super+Space float", () => {
       expect(KITS.i3.bindings["window-focus-left"]).toContain("<Super>h");
       expect(KITS.i3.bindings["con-split-horizontal"]).toEqual(["<Super>b"]);

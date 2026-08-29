@@ -357,7 +357,17 @@
 
         <key type="as" name="con-stack-tab-layout-toggle">
             <default><![CDATA[['<Ctrl><Super>g']]]></default>
-            <summary>Toggle group chrome between stacked and tabbed (group containers only)</summary>
+            <summary>Toggle tab/stack layout</summary>
+        </key>
+
+        <key type="as" name="con-layout-cycle-prev">
+            <default><![CDATA[[]]]></default>
+            <summary>Cycle layout previous (H/V/tab/stack)</summary>
+        </key>
+
+        <key type="as" name="con-layout-cycle-next">
+            <default><![CDATA[[]]]></default>
+            <summary>Cycle layout next (H/V/tab/stack)</summary>
         </key>
 
         <key type="as" name="window-merge-group">
@@ -367,7 +377,12 @@
 
         <key type="as" name="window-ungroup">
             <default><![CDATA[['<Ctrl><Shift><Super>m']]]></default>
-            <summary>Ungroup: dissolve the parent container, keep child order</summary>
+            <summary>Promote: dissolve the parent container, keep child order</summary>
+        </key>
+
+        <key type="as" name="window-ungroup-recursive">
+            <default><![CDATA[[]]]></default>
+            <summary>Promote recursively (flatten nested containers)</summary>
         </key>
 
         <key type="as" name="window-focus-parent">
@@ -652,6 +667,75 @@
         <key type="as" name="window-unfocus">
             <default><![CDATA[['<Ctrl><Super>Escape']]]></default>
             <summary>Unfocus tiles (or exit mode)</summary>
+        </key>
+
+        <key type="as" name="size-nudge-x-minus">
+            <default><![CDATA[[]]]></default>
+            <summary>Decrease x share</summary>
+        </key>
+        <key type="as" name="size-nudge-x-plus">
+            <default><![CDATA[[]]]></default>
+            <summary>Increase x share</summary>
+        </key>
+        <key type="as" name="size-nudge-y-minus">
+            <default><![CDATA[[]]]></default>
+            <summary>Decrease y share</summary>
+        </key>
+        <key type="as" name="size-nudge-y-plus">
+            <default><![CDATA[[]]]></default>
+            <summary>Increase y share</summary>
+        </key>
+        <key type="as" name="size-share">
+            <default><![CDATA[[]]]></default>
+            <summary>Size: share this pane</summary>
+        </key>
+        <key type="as" name="size-share-siblings">
+            <default><![CDATA[[]]]></default>
+            <summary>Size: share this and siblings</summary>
+        </key>
+        <key type="as" name="size-share-siblings-only">
+            <default><![CDATA[[]]]></default>
+            <summary>Size: share siblings only</summary>
+        </key>
+        <key type="as" name="size-share-self-siblings-parent">
+            <default><![CDATA[[]]]></default>
+            <summary>Size: share this, siblings, and parent</summary>
+        </key>
+        <key type="as" name="size-share-parent">
+            <default><![CDATA[[]]]></default>
+            <summary>Size: share parent</summary>
+        </key>
+        <key type="as" name="size-share-parent-group">
+            <default><![CDATA[[]]]></default>
+            <summary>Size: share parent group</summary>
+        </key>
+        <key type="as" name="size-share-parent-siblings-only">
+            <default><![CDATA[[]]]></default>
+            <summary>Size: share parent siblings</summary>
+        </key>
+        <key type="as" name="size-share-both-groups">
+            <default><![CDATA[[]]]></default>
+            <summary>Size: share both groups</summary>
+        </key>
+        <key type="as" name="size-share-all">
+            <default><![CDATA[[]]]></default>
+            <summary>Size: share all</summary>
+        </key>
+        <key type="as" name="size-preset-7">
+            <default><![CDATA[[]]]></default>
+            <summary>In-axis 75%</summary>
+        </key>
+        <key type="as" name="size-preset-8">
+            <default><![CDATA[[]]]></default>
+            <summary>In-axis 66.7%</summary>
+        </key>
+        <key type="as" name="size-preset-9">
+            <default><![CDATA[[]]]></default>
+            <summary>In-axis 50%</summary>
+        </key>
+        <key type="as" name="size-preset-0">
+            <default><![CDATA[[]]]></default>
+            <summary>In-axis 33.3%</summary>
         </key>
     </schema>
 </schemalist>

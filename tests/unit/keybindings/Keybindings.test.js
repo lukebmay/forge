@@ -59,8 +59,11 @@ describe("Keybindings", () => {
         "con-stacked-layout-toggle",
         "con-tabbed-layout-toggle",
         "con-stack-tab-layout-toggle",
+        "con-layout-cycle-prev",
+        "con-layout-cycle-next",
         "window-merge-group",
         "window-ungroup",
+        "window-ungroup-recursive",
         "window-focus-parent",
         "window-focus-child",
         "window-move-in",
@@ -103,6 +106,23 @@ describe("Keybindings", () => {
         "prefs-cheatsheet-toggle",
         "prefs-lock-screen",
         "layout-debug-overlay-toggle",
+        "size-nudge-x-minus",
+        "size-nudge-x-plus",
+        "size-nudge-y-minus",
+        "size-nudge-y-plus",
+        "size-share",
+        "size-share-siblings",
+        "size-share-siblings-only",
+        "size-share-self-siblings-parent",
+        "size-share-parent",
+        "size-share-parent-group",
+        "size-share-parent-siblings-only",
+        "size-share-both-groups",
+        "size-share-all",
+        "size-preset-7",
+        "size-preset-8",
+        "size-preset-9",
+        "size-preset-0",
         // window-unfocus abandoned — no product keybind
       ];
 
@@ -143,6 +163,36 @@ describe("Keybindings", () => {
     it("window-focus-child should dispatch focus.child", () => {
       keybindings._bindings["window-focus-child"]();
       expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "focus.child" });
+    });
+
+    it("con-split-layout-toggle should dispatch toggleSplit", () => {
+      keybindings._bindings["con-split-layout-toggle"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "toggleSplit" });
+    });
+
+    it("con-stack-tab-layout-toggle should dispatch toggleTabStack", () => {
+      keybindings._bindings["con-stack-tab-layout-toggle"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "toggleTabStack" });
+    });
+
+    it("window-ungroup should dispatch promote", () => {
+      keybindings._bindings["window-ungroup"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "promote" });
+    });
+
+    it("window-ungroup-recursive should dispatch promoteRecursive", () => {
+      keybindings._bindings["window-ungroup-recursive"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "promoteRecursive" });
+    });
+
+    it("con-layout-cycle-next should dispatch layout.cycle+", () => {
+      keybindings._bindings["con-layout-cycle-next"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "layout.cycle+" });
+    });
+
+    it("size-nudge-x-plus should dispatch size.nudge.x+", () => {
+      keybindings._bindings["size-nudge-x-plus"]();
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "size.nudge.x+" });
     });
 
     it("window-toggle-float should dispatch FloatToggle command", () => {

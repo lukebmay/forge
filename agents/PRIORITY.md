@@ -1,7 +1,8 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-29 — **P7 done.** Next **P6 remainder** on TILES.
-**Cross-session handoff:** [`HANDOFF.md`](./HANDOFF.md) ← **read first**
+**Updated:** 2026-08-29 — **P6 remainder done.** Leftover: DnD execute
+→ OpSet (not a thin path). **Cross-session handoff:**
+[`HANDOFF.md`](./HANDOFF.md) ← **read first**
 **Lens:** portable kernel (TOM/RuleSet/OpSet/action ids); adapters
 **extend** that kernel; T6 in `lib/epochs/`; FLOATS off TILES.
 **Branch:** **`master`**. **Push:** only when human asks.
@@ -16,10 +17,10 @@ Scan merge =
 
 ## Active next (ordered)
 
-1. **P0** — **P6 remainder** — size / toggleSplit / promote
-   CommandHandler; DnD execute → OpSet (TILES only). Same kernel ids
-   ([`forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
-   · [`P6.md`](./plans/forge-firm-abstractions/P6.md)
+1. **P0** — **P6 DnD leftover** (optional pickup) — wire completed-drop
+   **execute/commit** onto Mark 2 Join/Move (TILES only) without rewriting
+   `drag-drop.js` gesture/preview. If it is still a redesign, leave it.
+   ([`P6.md`](./plans/forge-firm-abstractions/P6.md)
    · [`HANDOFF`](./HANDOFF.md)).
    FLOAT windows stay in FLOATS, not under a MONITOR.
 

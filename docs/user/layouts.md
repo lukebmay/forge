@@ -43,21 +43,20 @@ Instead of splitting space, a container can show one child at a time.
 layout-profile bare arrays (`["app1", "app2"]`), and merge-group all prefer
 tabs. Stacks are available; they are not the ambient default.
 
-**Phase 1:** group chrome cycle only flips an **existing** tab/stack container
-(window-leaf bag). It does **not** groupify an H/V split (that path dissolves
-nested structure and is deferred).
+**Mark 2:** `toggleTabStack` (`con-stack-tab-layout-toggle`) flips TABBED ↔
+STACKED, or turns a split TABBED. Settings still gate tab/stack modes.
 
 ### Creating / reshaping groups from the keyboard
 
 | Goal | Safe | Vim / i3 |
 | --- | --- | --- |
-| Flip tab ↔ stack on current group | `Ctrl+Super+g` | `Shift+Super+n` |
+| Flip tab ↔ stack on current group | `Ctrl+Super+g` | Vim: `Super+n` · i3: `Shift+Super+n` |
 | Merge focus + last-active → tabbed group | `Ctrl+Super+m` | `Shift+Super+m` |
-| Ungroup parent container (keep child order) | `Ctrl+Shift+Super+m` | `Ctrl+Shift+Super+m` |
+| Promote (ungroup parent container) | `Ctrl+Shift+Super+m` | Vim: `Super+{` · i3: `Ctrl+Shift+Super+m` |
 | Focus parent / child | `Ctrl+Super+a` / `Ctrl+Shift+Super+a` | Vim: `Super+p` / `Shift+Super+p` · i3: `Super+a` / `Shift+Super+a` |
 | Move in / out of container | `Ctrl+Super+,` / `Ctrl+Shift+Super+,` | `Shift+Super+,` / `Ctrl+Shift+Super+,` |
 | Make parent tabbed / back to split | `Ctrl+Super+t` | `Shift+Super+t` (i3: `Super+w`) |
-| H ↔ V split orientation | `Ctrl+Super+s` | Vim: `Ctrl+Super+n` · i3: `Super+e` |
+| H ↔ V split orientation | `Ctrl+Super+s` | Vim: `Super+m` · i3: `Super+e` |
 | Center-drop onto another window | DnD center (default **tabbed**) | same |
 
 CLI / DBus parity (RunSteps): `layout-cycle` (`axis: group|split`),

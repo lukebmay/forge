@@ -8,7 +8,7 @@ import { MARK2_TABLE } from "../../../lib/keybinds/mark2.js";
 import { PROTO_OVERLAY } from "../../../lib/keybinds/proto-overlay.js";
 import { asAccels, stripSuper, stripSuperTable } from "../../../lib/keybinds/strip-super.js";
 import { defaultVimMinusSuper } from "../../../prototypes/container-motion/src/keybinds.mjs";
-import { KITS } from "../../../lib/shared/keybind-presets.js";
+import { KITS, MARK2_VIM_KEYS } from "../../../lib/shared/keybind-presets.js";
 
 const KEYBINDS_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../../lib/keybinds");
 
@@ -66,25 +66,12 @@ describe("MARK2_TABLE", () => {
     expect(asAccels(MARK2_TABLE["join.left"])).toEqual(["<Ctrl><Super>h"]);
   });
 
-  it("vim kit chords match MARK2_TABLE for focus/move/join/parent/child", () => {
+  it("vim kit chords match MARK2_TABLE for every mapped id", () => {
     const vim = KITS.vim.bindings;
-    const keys = {
-      "focus.left": "window-focus-left",
-      "focus.down": "window-focus-down",
-      "focus.up": "window-focus-up",
-      "focus.right": "window-focus-right",
-      "focus.parent": "window-focus-parent",
-      "focus.child": "window-focus-child",
-      "move.left": "window-move-left",
-      "move.down": "window-move-down",
-      "move.up": "window-move-up",
-      "move.right": "window-move-right",
-      "join.left": "window-swap-left",
-      "join.down": "window-swap-down",
-      "join.up": "window-swap-up",
-      "join.right": "window-swap-right",
-    };
-    for (const [id, key] of Object.entries(keys)) {
+    for (const id of Object.keys(MARK2_TABLE)) {
+      expect(MARK2_VIM_KEYS[id], id).toBeTruthy();
+    }
+    for (const [id, key] of Object.entries(MARK2_VIM_KEYS)) {
       expect(vim[key], id).toEqual(asAccels(MARK2_TABLE[id]));
     }
   });

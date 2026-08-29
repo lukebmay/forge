@@ -23,7 +23,7 @@ lists GNOME/custom entries.
 | **One primary modifier family** | Safe uses **`Ctrl+Super`** for almost everything so the map is learnable. **`Ctrl+Shift+Super`** only for *twins* of the same key (move vs focus, always-float vs float). Random mix of Shift+Super vs Ctrl+Super without a rule was accidental legacy. |
 | **Lock = `Super+Delete` (all kits)** | Rare global action; keeps letter keys free. (Historical `Super+q` was a launcher collision.) |
 | **Zoom = Enter (Vim / i3)** | Full / horizontal / vertical: `Super+Enter` / `Ctrl+Super+Enter` / `Shift+Super+Enter`. Safe leaves Super+ free, so zoom stays unbound there. GNOME `toggle-maximized` is cleared while Forge is enabled. |
-| **`Super+m` free (all kits)** | Workspace monocle was removed (structure-destroying flatten). Chord unbound; do not rebind to zoom — Enter already owns zoom. |
+| **`Super+m` (Vim)** | Mark 2 `toggleSplit`. Safe/i3 leave `Super+m` unbound (monocle was removed). |
 | **Run = Space (Vim / i3)** | `Super+Space` (empty command = GNOME Run a Command). GNOME input-source Super+Space is cleared while Forge is enabled. |
 | **Float = Alt+Super+Enter (Safe / Vim)** | Leaves zoom on Super+Enter. **i3:** `Shift+Super+Space`. Always-float: `Ctrl+Shift+Super+Space`. |
 | **Rare chrome off bare Super+** | **Focus border** and **tiling master toggle** almost never fire — multi-mod only. |
@@ -108,12 +108,15 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Toggle float | `Alt+Super+Enter` |
 | Always-float (app) | `Ctrl+Shift+Super+Space` |
 | Zoom full / H / V | `Super+Enter` / `Ctrl+Super+Enter` / `Shift+Super+Enter` |
-| Group chrome (tab ↔ stack) | `Shift+Super+n` (**n**ode layout) |
-| Split orientation (H ↔ V) | `Ctrl+Super+n` |
+| Toggle split (H ↔ V) | `Super+m` |
+| Toggle tab/stack | `Super+n` |
+| Cycle layout | `Super+[` / `Super+]` |
+| Promote / promote recursive | `Super+{` / `Super+}` |
+| Size nudge | `Alt+Super+hjkl` |
+| Size share / presets | `Alt+Super+yuio` / `nm,.` / `/` / `7890` |
 | Split H / V (force) | `Super+z` / `Super+v` |
 | Stacked / tabbed (to/from split) | `Shift+Super+s` / `Shift+Super+t` |
 | Merge into tabbed group | `Shift+Super+m` |
-| Ungroup parent container | `Ctrl+Shift+Super+m` |
 | Focus parent / child | `Super+p` / `Shift+Super+p` |
 | Move in / out of container | `Shift+Super+,` / `Ctrl+Shift+Super+,` |
 | Tab decoration | `Ctrl+Alt+y` |
@@ -124,19 +127,18 @@ Prior Forge power-user map. Uses bare Super+ freely.
 | Lock screen | `Super+Delete` |
 | Reload / cheatsheet | `Shift+Super+r` / `Shift+Super+/` |
 | Launch app | `Super+Space` (empty command = GNOME Run a Command) |
-| Equalize / expand / shrink | `Super+=` / `]` / `[` |
+| Equalize sizes | `Super+=` |
 | Swap last active | `Super+Tab` |
 | Layout debug | `Ctrl+Super+d` |
 | Gap ± | `Ctrl+Super++` / `Ctrl+Super+-` |
 | Snaps (center / thirds) | `Ctrl+Alt+c` / `d/e/g/t` |
 | Edge resize | same family as Safe (`Ctrl+Super` y/u/i/o + Shift twins) |
 | Split chrome show-all | unbound (prefs Appearance; grab forces show-all) |
-| `Super+m` | **unbound** (monocle removed; zoom uses Enter) |
 
 **Why this shape:** focus is the hottest action → shortest chord (`Super+letter`).
 Move adds Shift (heavier). Join adds Ctrl so three roles share hjkl without
-colliding. Parent/child is `p` / `Shift+p`. Letter keys for float/split/tab
-match old Forge muscle memory.
+colliding. Parent/child is `p` / `Shift+p`. `m`/`n` toggle split and
+tab/stack; `[`/`]` cycle layout. Size is Alt+Super (D081).
 
 ---
 

@@ -328,40 +328,45 @@ describe("WindowManager - Command System", () => {
   });
 
   describe("LayoutToggle Command", () => {
+    function pairOnMonitor() {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const other = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, wm_class: "OtherApp" },
+      });
+      other.nodeWindow.mode = WINDOW_MODES.TILE;
+      return { monitor, other };
+    }
+
     it("should toggle from HSPLIT to VSPLIT", () => {
-      nodeWindow.parentNode.layout = LAYOUT_TYPES.HSPLIT;
+      const { monitor } = pairOnMonitor();
       const action = { name: "LayoutToggle" };
 
       wm().command(action);
 
-      expect(nodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(monitor.childNodes).toHaveLength(1);
+      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("should toggle from VSPLIT to HSPLIT", () => {
-      nodeWindow.parentNode.layout = LAYOUT_TYPES.VSPLIT;
+      const { monitor } = pairOnMonitor();
+      monitor.layout = LAYOUT_TYPES.VSPLIT;
       const action = { name: "LayoutToggle" };
 
       wm().command(action);
 
-      expect(nodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
-    });
-
-    it("should set attachNode to parent", () => {
-      const action = { name: "LayoutToggle" };
-
-      wm().command(action);
-
-      expect(ctx.tree.attachNode).toBe(nodeWindow.parentNode);
+      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should commit layout after toggle", () => {
+      pairOnMonitor();
       const commitSpy = vi.spyOn(wm(), "commitLayout");
       const action = { name: "LayoutToggle" };
 
       wm().command(action);
 
-      expect(commitSpy).toHaveBeenCalledWith("layout-split-toggle", { force: true });
-      expect(wm().renderTree).toHaveBeenCalledWith("layout-split-toggle", true);
+      expect(commitSpy).toHaveBeenCalledWith("toggleSplit", { force: true });
+      expect(wm().renderTree).toHaveBeenCalledWith("toggleSplit", true);
     });
 
     it("should not toggle if no focus window", () => {
