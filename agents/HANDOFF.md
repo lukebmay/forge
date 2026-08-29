@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-28 — **P6a done.** **D087 / D088 locked.** Next
+**Updated:** 2026-08-28 — **P6a done.** **D087–D089 locked.** Next
 **P7** (forest envelope + key overlays) or P6 remainder on TILES.
 **Branch:** **`master`**. Nest **stopped**. **Push:** only if the human
 asks.
@@ -27,15 +27,15 @@ skip FLOAT/GRAB_TILE/minimized until FLOATS exists).
 Product Move **is** Mark 2 Move. Glossary =
 [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
 
-**Two float words:** share floater = TILES `userSized === false`.
-FLOAT window = FLOATS bag.
+**Spread** (D089) = TILES leftover percent (`userSized === false`).
+**FLOAT window** = FLOATS bag. Do not say float for leftover percent.
 
 ## Next session
 
 **Plan:** [`plans/forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
 **Locks:** [`layers.md`](./plans/forge-firm-abstractions/layers.md) ·
 [`keybinds.md`](./plans/forge-firm-abstractions/keybinds.md) ·
-D079–**D088**
+D079–**D089**
 
 | Slice | Disk |
 | --- | --- |
@@ -72,6 +72,11 @@ presenter **2** + session **6** + epochs **10**.
 - Ding / Super+2 / vinyl / D069 / unify raise
 - Commit or push unless asked
 - Re-do P2–P6a
+
+## D089 spread (do not rediscover)
+
+**Spread** = leftover TILES percent (`userSized === false`). **Sized** =
+locked. **FLOAT window** = FLOATS bag. Action ids still `size.float*`.
 
 ## D088 key overlays (do not rediscover)
 
@@ -135,6 +140,7 @@ Adapters **extend** the kernel; they do not fork it.
 1. WINDOW identity on live Forge `Node` (Meta vs id) — snapshot is D086
 2. Live dconf vim users still have Super+a until they reload the kit
 3. Forest envelope not in code yet (D087 / P7)
+4. WebApp overlays beyond proto `a`/`q` — later, not P7-blocking
 
 ## Where context lives
 

@@ -139,12 +139,17 @@ FOREST
 / Launch mutate **TILES only**. FLOAT windows **must not** sit under a
 MONITOR: a float can span heads, so a mon-local parent is a lie.
 
-Two different “float” words (do not collapse):
+Two different words (do not collapse):
 
 | Word | Where | Meaning |
 | --- | --- | --- |
-| **Share floater** | TILES child, `userSized === false` | In-axis leftover share (D075 / D078) |
+| **Spread** | TILES child, `userSized === false` | Leftover in-axis percent splits equally among spread siblings (D089) |
+| **Sized** | TILES child, `userSized === true` | Locked percent |
 | **FLOAT window** | FLOATS bag | Unmanaged window; no tiling slot |
+
+**Why spread, not share or float:** *share* is already the percent
+number. *float* is the unmanaged window. Leftover **spreads** across
+unsized siblings. Action ids still `size.float*` until a rename slice.
 
 P6a `tom-live` skipping FLOAT/GRAB_TILE is the Gnome stopgap until
 FLOATS exists. Re-tile = place into TILES (Launch / Join), not “keep a
@@ -171,17 +176,17 @@ Changing that doc requires the same-effort code + tests. Glossary lives
 there — not in handoff paraphrases.
 
 H/V **in-axis share** is `percent` on each child (equal until `userSized`).
-Cross-axis size is the parent container’s share in its split. **Share
-floater** = not `userSized`; leftover splits equally. Floor 10%. Proto
-resize: `Alt+hjkl`.
+Cross-axis size is the parent container’s share in its split. **Spread**
+= not `userSized`; leftover splits equally among spread siblings. Floor
+10%. Proto resize: `Alt+hjkl`.
 TAB/STACK leaf size ops target the bag’s slot (peers share one pane).
-Leave a split → node becomes a floater (sized shares do not follow).
-Last floater gone → remaining sized shares rescale to fill 100%. Unary
-collapse still copies the CON’s slot onto the survivor. Float chords:
-`Alt+yuio` (this / this+sibs / sibs / +parent) and `Alt+nm,.` (parent /
-parent group / parent sibs / both groups). `Alt+/` floats every node.
-**Parent** here is the ancestor whose share is this node’s cross-axis
-size.
+Leave a split → node becomes **spread** (sized shares do not follow).
+Last spread sibling gone → remaining sized shares rescale to fill 100%.
+Unary collapse still copies the CON’s slot onto the survivor. Spread
+chords: `Alt+yuio` (this / this+sibs / sibs / +parent) and `Alt+nm,.`
+(parent / parent group / parent sibs / both groups). `Alt+/` spreads
+every node. **Parent** here is the ancestor whose share is this node’s
+cross-axis size.
 
 Mark 2 **Launch** (WINDOW or CON selected on that monitor; else end of
 that tree): TAB/STACK → next sibling; H + wider-than-tall → sibling else
@@ -821,8 +826,8 @@ floating groups designed in; Wave Z / F next. No BC obligation. Plan:
 MONITOR (a float can span heads). No tiling slot while floating. Re-tile
 = place into **TILES** (Launch / Join). Gnome `mode: FLOAT` on a tiling
 child is the old Host representation — stopgap until FLOATS ships.
-**Share floater** (`userSized === false`) is a different word and stays
-on TILES.
+**Spread** (`userSized === false`) is a different word and stays on
+TILES.
 
 ## Keybind kits (T5 + grammar)
 
@@ -1340,7 +1345,8 @@ and [design/CHANGELOG.md](./design/CHANGELOG.md) D001.
 Kernel = TOM + RuleSet + OpSet + keybind **action ids** (host- and
 language-portable; JS `lib/` is the reference impl). Forest document =
 **META + FLOATS + TILES** (TILES = ROOT→WS→MONITOR; FLOAT windows are
-not under a monitor). **ForgeAdapterGnome** / **ForgeAdapterWebView**
+not under a monitor; leftover TILES percent is **spread**, not float).
+**ForgeAdapterGnome** / **ForgeAdapterWebView**
 bind and extend a host. **KeybindAdapterGnome** /
 **KeybindAdapterWebView** map the kernel table plus a host overlay
 (WebView `Super+a`/`q`; Gnome `Super+q` = quit). Do not put Mutter, DOM,

@@ -133,10 +133,13 @@ untouched.
 
 ## Session note
 
+**2026-08-28k:** **D089** leftover percent is **spread** (not float).
+FLOAT stays unmanaged windows. `size.float*` ids kept until rename.
+
 **2026-08-28j:** Design lock **D087** (META + FLOATS + TILES) and
 **D088** (kernel key table ∪ adapter overlay; WebView `Super+a`/`q`,
 Gnome `Super+q` = quit). P7 next kernel. P6 remainder may continue on
-TILES. Wrap-up commit this session.
+TILES.
 
 **2026-08-28i:** **P6a landed** (Grok 4.6). CommandHandler vim-kit ids
 → Mark 2 OpSet + `tom-live` project/apply-back; shipping vim kit from

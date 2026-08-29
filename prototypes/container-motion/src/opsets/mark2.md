@@ -74,6 +74,14 @@ and their current parent.”
 **Parent container:** the CON (or MONITOR) that currently contains the
 node. Do not say “host.”
 
+**Spread** (`userSized === false`): leftover in-axis percent splits
+equally among spread siblings. Opposite **sized** (`userSized === true`).
+Leave a split → the node is spread (sized percent does not follow). Last
+spread sibling gone → remaining sized percents rescale to 100%. Do
+**not** say float for this — FLOAT is an unmanaged window (FLOATS bag).
+*Share* is the percent number. Code still uses `floatSize` /
+`size.float*` ids until a rename.
+
 **Settle:** prune empty CONs, unary-collapse 1-child CONs, then repair
 same-type CON nesting. Repeat until stable. Mark 2 settle also wraps an
 n-child MONITOR into one CON (that MONITOR’s layout, else HSPLIT).
@@ -246,14 +254,14 @@ of that H/V CON (10% floor → wrap TAB around the CON).
 taller-than-wide, so HSPLIT wraps VSPLIT and VSPLIT wraps HSPLIT.
 
 **Size floor (10%):** if an HSPLIT/VSPLIT sibling-insert or wrap would
-put a floater below 10% of that split, or would make a wrap child
+put a spread child below 10% of that split, or would make a wrap child
 shorter than 10% of the MONITOR on the wrap's in-axis, do **not**
 split. Instead add a **TABBED** as next sibling, move the selected slot
 into it, and add the new WINDOW as a sibling in that TAB. TABBED /
 STACKED inserts never hit this floor (peers share one pane).
 
 The wrap CON inherits the selected slot's in-axis share and
-`userSized` flag. The new WINDOW is a floater. After Launch, settle and
+`userSized` flag. The new WINDOW is spread. After Launch, settle and
 focus the new WINDOW.
 
 Default prototype geom is 1920×1080. Worked:

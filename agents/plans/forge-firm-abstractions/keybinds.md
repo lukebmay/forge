@@ -65,8 +65,8 @@ table):
 | `[` / `]` | `layout.cycle-` / `layout.cycle+` |
 | `{` / `}` | `promote` / `promoteRecursive` |
 | `Alt+hjkl` | size nudge |
-| `Alt+yuio` | share-float this / +sibs / sibs / +parent |
-| `Alt+nm,.` / `Alt+/` | share-float parent family / all |
+| `Alt+yuio` | spread this / +sibs / sibs / +parent |
+| `Alt+nm,.` / `Alt+/` | spread parent family / all |
 | `Alt+7890` | in-axis presets |
 
 **Not** the kernel kit: leftover proto `yuio` extra-focus, `Ctrl+yuio`

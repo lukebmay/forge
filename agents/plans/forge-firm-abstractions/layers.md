@@ -1,6 +1,6 @@
 # Target layers (working draft)
 
-**Status:** locked D079 + D080 + D082 + D083 + D084 + D085 + D086 + **D087** + **D088**
+**Status:** locked D079 + D080 + D082 + D083 + D084 + D085 + D086 + D087 + D088 + **D089**
 **As of:** 2026-08-28
 **Sources:** explore/01–06, D073/D074/D079/D080/D082/D083/D084/D085/D086/D087/D088.
 **RuleSet:** [ruleset.md](./ruleset.md) · **Keybinds:** [keybinds.md](./keybinds.md)
@@ -43,7 +43,7 @@ the ctor, and `Tree` *is* ROOT. That object cannot be shared TOM.
 | In TOM | Not in TOM |
 | --- | --- |
 | kinds FOREST/META/FLOATS + TILES (ROOT/WS/MONITOR/CON/WINDOW) | `GObject.registerClass` |
-| `percent` + `userSized` (**share floater** ≠ **FLOAT window**) | `mode` FLOAT/GRAB_TILE as a TILES child (goes in FLOATS, D087) |
+| `percent` + `userSized` (**spread** ≠ **FLOAT window**, D089) | `mode` FLOAT/GRAB_TILE as a TILES child (goes in FLOATS, D087) |
 | `lastTabFocusId` (id string) | `lastTabFocus` as Meta.Window |
 | child list via atomics only | `childNodes` setter; actor teardown on detach |
 | placeholder flag as **data** | St.Bin CON value |
@@ -69,7 +69,7 @@ Gnome adapter (may attach live Meta extras).
 | append/insert/remove/replace | `tom/atomics` | Same names as D023. No actor teardown |
 | breakout | `tom/composed` | One node becomes sibling of parent. **Does not settle** |
 | wrapNodes / promoteChildren | composed | wrap = insert CON; ungroup = promoteChildren |
-| sizing / float shares / 10% floor | `tom/sizing` | Leave-split clears `userSized` |
+| sizing / spread leftover / 10% floor | `tom/sizing` | Leave-split clears `userSized` (spread) |
 
 Unary collapse, prune empty, same-type coerce, MONITOR max-1 repair are
 **RuleSet**, not atomics. See [ruleset.md](./ruleset.md).
