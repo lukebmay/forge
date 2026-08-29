@@ -220,6 +220,71 @@ describe("session-layout portable round-trip", () => {
     expect(tab.lastTabFocus).toBe(w0);
   });
 
+  it("toPortableForest on windowId-only epoch forest; toLiveForest emits kind + windowId", () => {
+    const wA = createMockWindow({ id: 42, wm_class: "App", title: "Alpha" });
+    const wB = createMockWindow({ id: 43, wm_class: "App", title: "Beta" });
+    const epochForest = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            { kind: "WINDOW", windowId: "42", percent: 0.6, userSized: true },
+            {
+              kind: "CON",
+              layout: "TABBED",
+              percent: 0.4,
+              userSized: false,
+              lastTabFocusId: "43",
+              children: [{ kind: "WINDOW", windowId: "43", percent: 1, userSized: false }],
+            },
+          ],
+        },
+      ],
+    };
+    const portable = toPortableForest(epochForest);
+    const leafA = portable.monitors[0].children[0];
+    expect(isPortableWindow(leafA)).toBe(true);
+    expect(leafA.id).toBe("42");
+    expect(leafA.percent).toBeCloseTo(0.6);
+    expect(leafA.userSized).toBe(true);
+    expect(leafA.window).toBeUndefined();
+    const tabP = portable.monitors[0].children[1];
+    expect(tabP.lastTabFocusId).toBe("43");
+    expect(tabP.children[0].id).toBe("43");
+
+    const live = toLiveForest(portable, createWindowResolver([wA, wB], portable));
+    const liveA = live.monitors[0].children[0];
+    expect(liveA.kind).toBe("WINDOW");
+    expect(liveA.windowId).toBe("42");
+    expect(liveA.window).toBe(wA);
+    const liveTab = live.monitors[0].children[1];
+    expect(liveTab.kind).toBe("CON");
+    expect(liveTab.lastTabFocusId).toBe("43");
+    expect(liveTab.lastTabFocus).toBe(wB);
+    expect(liveTab.children[0].kind).toBe("WINDOW");
+    expect(liveTab.children[0].windowId).toBe("43");
+    expect(liveTab.children[0].window).toBe(wB);
+
+    // On-disk leaves (`id`, no kind) must still parse.
+    const oldDisk = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [{ id: 42, percent: 1, userSized: false }],
+        },
+      ],
+    };
+    expect(isPortableWindow(oldDisk.monitors[0].children[0])).toBe(true);
+    const liveOld = toLiveForest(oldDisk, createWindowResolver([wA], oldDisk));
+    expect(liveOld.monitors[0].children[0].kind).toBe("WINDOW");
+    expect(liveOld.monitors[0].children[0].windowId).toBe("42");
+    expect(liveOld.monitors[0].children[0].window).toBe(wA);
+  });
+
   it("toPortableForest → toLiveForest preserves multi-mon topology and lastTabFocus", () => {
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);

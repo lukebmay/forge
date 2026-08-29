@@ -1,6 +1,6 @@
 # forge-firm-abstractions — Firm kernel, then import
 
-**Status:** accepted — **P3 done**; **P4 done**
+**Status:** accepted — **P5 done** (P5c parked); **P6 next**
 **Branch:** master
 **Blocker:** (none)
 **Updated:** 2026-08-28
@@ -59,8 +59,8 @@ hub + policy + paint scheduler. The wrong object is the center of gravity.
 | **P2** | Strip `decisions`/`mergeTags` off kernel; Host holds a Forest | done |
 | **P3** | Presenter adapter (stop `Node.rect`/decoration in TOM) | done |
 | **P4** | OpSet port (Mark 2) onto `lib/tom` + RuleSet — product Move **is** Mark 2 | done |
-| **P5** | Epoch import (Apply / session / H1) onto TOM snapshots | ready |
-| **P6** | Surface import (DnD/DBus/host overlays) → OpSet action ids | ready |
+| **P5** | Epoch import (Apply / session / H1) onto TOM snapshots | **done** (P5c parked) |
+| **P6** | Surface import (DnD/DBus/host overlays) → OpSet action ids | **next** |
 
 **P1b acceptance:** `lib/rulesets/{core,mark2}.js` owns settle; proto
 OpSet binds it; MONITOR max-1 wired; `npm test` 145 green; `tree.js`
@@ -99,6 +99,8 @@ untouched.
 | [P2.md](./forge-firm-abstractions/P2.md) | P2 working note (D082) |
 | [P3.md](./forge-firm-abstractions/P3.md) | P3 working note (D083) |
 | [P4.md](./forge-firm-abstractions/P4.md) | P4 working note (lib/opsets) |
+| [P5.md](./forge-firm-abstractions/P5.md) | P5 working note (epochs / T6 snapshot) |
+| [P6.md](./forge-firm-abstractions/P6.md) | P6 working note (CommandHandler / vim kit) |
 
 ## Context for the next agent
 
@@ -118,12 +120,30 @@ untouched.
 - Existing locks that **stay** as product strategy unless the import map
   says otherwise: D023 child-list, D039–D044 apply, D069 tab geometry,
   H1 dual monitor-resolve, D036 gi-free `lib/shared/`.
-- D073/D074/D079/D080/D081/D082/D083/D084/**D085**: portable kernel
+- D073/D074/D079/D080/D081/D082/D083/D084/D085/**D086**: portable kernel
   (TOM/RuleSet/OpSet/action ids); ForgeAdapterGnome /
   ForgeAdapterWebView; KeybindAdapterGnome / KeybindAdapterWebView;
-  session off Forest; world + paneRect off Node.
+  session off Forest; world + paneRect off Node; T6 snapshot
+  `windowId` in `lib/epochs/`.
 
 ## Session note
+
+**2026-08-28h:** Wrap-up **local commit**. P5 done (P5c parked). Next
+**P6**. Not pushed.
+
+**2026-08-28g:** **P5 done.** P5b identity adapter landed. P5c
+**parked** (Apply stays GetTree). Next **P6**.
+
+**2026-08-28f:** **P5b landed** (Grok 4.6). Session portable as
+identity adapter on the epoch document. Keep strict resolve. session-layout
+**37**.
+
+**2026-08-28e:** **P5a done** (D086). `lib/epochs/` T6 algorithm
+(`windowId`); `tree-snapshot.js` Gnome adapter (Meta extras). Brakes:
+epochs **10**, tree-snapshot **25**, session-layout **36**, proto
+**154**, kernel vitest **3+6+2+6+9**. Orchestrator re-ran. Next
+**P5b**. Working note:
+[`P5.md`](./forge-firm-abstractions/P5.md).
 
 **2026-08-28d:** **D085** kernel vs adapters locked (operator). Next
 **P5**. Wrap-up commit this session.

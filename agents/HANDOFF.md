@@ -1,21 +1,22 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-28 — **P5 next** (epoch import). **D085** adapters.
-**Branch:** **`master`**. Nest **stopped**. **Push:** only if the human asks.
+**Updated:** 2026-08-28 — **P6 next** (CommandHandler / vim kit). **P5 done.**
+**Branch:** **`master`**. Nest **stopped**. **Wrap-up:** local commit this
+session. **Push:** only if the human asks.
 
 ## Pain
 
-P1–P4 kernel lift + D085 adapters. Next **P5**: epoch import onto
-TOM snapshots. Do not merge the two monitor-resolves. Do
-not rescan `tree.js`/`window.js` — use `explore/05-apply-recovery.md`.
-CommandHandler / shipping vim kit is **P6**. Do not put Mutter/DOM in
-the kernel (D085).
+P1–P5 kernel + adapters + T6/session snapshots. Next **P6**: CommandHandler
+and shipping vim kit speak Mark 2 action ids (Join, not swap). Do not
+merge the two monitor-resolves. Do not retarget Apply onto T6 (P5c
+parked). Do not put Mutter/DOM in the kernel (D085).
 
 **Kernel** = `lib/tom/` + `lib/rulesets/` + `lib/opsets/` + keybind
 action ids (`lib/keybinds/`). Language-portable contract; JS is the
 reference impl.
 **World** = `lib/world/` (host adapter **fills**). **Slot math** =
 `lib/presenter/` `paneRect`.
+**Epochs** = `lib/epochs/` (T6 document + H1 majority resolve).
 **Adapters:** ForgeAdapterGnome (GJS `WindowManager` façade) /
 ForgeAdapterWebView (proto desk); KeybindAdapterGnome /
 KeybindAdapterWebView (`stripSuper` ∪ overlay).
@@ -26,44 +27,49 @@ Product Move **is** Mark 2 Move. Glossary =
 
 **Plan:** [`plans/forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
 **Locks:** [`layers.md`](./plans/forge-firm-abstractions/layers.md) ·
-[`ruleset.md`](./plans/forge-firm-abstractions/ruleset.md) ·
 [`keybinds.md`](./plans/forge-firm-abstractions/keybinds.md) ·
-D079 / D080 / D081 / D082 / D083 / D084 / **D085**
+D079–**D086**
 
 | Slice | Disk |
 | --- | --- |
-| P1a | [`P1a.md`](./plans/forge-firm-abstractions/P1a.md) · `lib/tom/` |
-| P1b | [`P1b.md`](./plans/forge-firm-abstractions/P1b.md) · `lib/rulesets/` |
-| P1c | [`P1c.md`](./plans/forge-firm-abstractions/P1c.md) · `lib/keybinds/` |
-| P2 | [`P2.md`](./plans/forge-firm-abstractions/P2.md) · `lib/session/` |
-| P3 | [`P3.md`](./plans/forge-firm-abstractions/P3.md) · `lib/world/` · `lib/presenter/` |
-| P4 | [`P4.md`](./plans/forge-firm-abstractions/P4.md) · `lib/opsets/` |
+| P1–P4 | `lib/{tom,rulesets,keybinds,session,world,presenter,opsets}/` |
+| P5 | [`P5.md`](./plans/forge-firm-abstractions/P5.md) · `lib/epochs/` |
+| P6 | [`P6.md`](./plans/forge-firm-abstractions/P6.md) |
 
-**Brake (P4, orchestrator re-ran):**
+**Brake (P5, orchestrator re-ran):**
 `cd prototypes/container-motion && npm test` → **154**.
-Vitest opsets **3** + world **6** + presenter **2** + session **6** +
+Vitest epochs **10** + tree-snapshot **25** + session-layout **37** +
+opsets **3** + world **6** + presenter **2** + session **6** +
 keybinds **9**.
 
-### Do (P5)
+### Do (P6)
 
-1. Epoch import onto TOM snapshots. Map:
-   [`explore/05-apply-recovery.md`](./plans/forge-firm-abstractions/explore/05-apply-recovery.md).
-   Three writers stay three (Apply / session-strict / H1-majority).
-2. First bite is T6-shaped capture as TOM snapshot (strip Meta/St from
-   the **pure** module). Do not merge `resolveTargetMonitor` and
-   `resolveStrictMonitor`.
+1. CommandHandler dispatch of shared action ids → Mark 2 OpSet +
+   `commitLayout`. First bite: vim-kit ids (`move.*` / `join.*` /
+   `focus.*`), not a full `command.js` rewrite.
+2. Shipping `keybind-presets.js` vim kit = Mark 2 table (D081). Join
+   chord wins over swap. Safe/i3 = overlays on the same ids.
 3. Keep proto tests green (154+). Architecture reshape → **Grok 4.6**.
-4. Do **not** wire CommandHandler or rewrite `keybind-presets.js` (P6).
+4. Do **not** retarget Apply onto T6. Do **not** merge monitor-resolves.
 
 ### Do not
 
-- Pare GObject `Node` / `window.js` in place (import onto TOM)
-- Merge `resolveTargetMonitor` (H1) and `resolveStrictMonitor` (session)
-- `lib/shared/keybind-presets.js` / `command.js` (P6; Join chord still swap)
+- Pare GObject `Node` / `window.js` in place
+- Merge `resolveTargetMonitor` and `resolveStrictMonitor`
+- Planner → TOM / Apply GetTree rewrite (P5c parked)
 - A second glossary or a second chord table
 - Ding / Super+2 / vinyl / D069 / unify raise
 - Commit or push unless asked
-- Re-do P2–P4 (session/world/opsets homes stay)
+- Re-do P2–P5
+
+## D086 T6 snapshot (do not rediscover)
+
+`lib/epochs/` is the T6 algorithm. WINDOW key = `windowId` (string).
+Adapter `tree-snapshot.js` attaches `.window` / `.lastTabFocus` Meta for
+in-process use. Epochs never read those. Session portable is identity
+adapter (`toPortableForest` / `toLiveForest`); `id` = `windowId`.
+`resolveStrictMonitor` stays in `session-layout.js`. Live
+`Node.nodeValue` is still Meta.
 
 ## D084 OpSet (do not rediscover)
 
@@ -100,9 +106,9 @@ Keybind: **KeybindAdapterGnome** / **KeybindAdapterWebView**. GJS
 `WindowManager` may stay as a façade; the **role** is ForgeAdapterGnome.
 Do not rename files this slice.
 
-## Open (do not block P5)
+## Open (do not block P6)
 
-1. WINDOW identity in TOM (Meta vs id vs both)
+1. WINDOW identity on live Forge `Node` (Meta vs id) — snapshot is D086
 
 ## Where context lives
 

@@ -256,7 +256,7 @@ layout, T6, T7). This section is the **map** so those pieces stay complementary.
 | --- | --- | --- | --- |
 | Last-good homes | quiet render | tree frame + mon + stableKey | H1 needs pre-thrash truth; Meta lies mid-burst |
 | Monitor-recovery (H1) | `workareas-changed` settle | last-good geometry + T6 | dual-head thrash without full disk restore |
-| T6 in-memory forest | monitor-recovery + `reloadTree` | full H/V/tabs/order/percents | topology survives rehome when Meta peels windows |
+| T6 in-memory forest | monitor-recovery + `reloadTree` | full H/V/tabs/order/percents; **document** `lib/epochs/` `windowId` (D086) | topology survives rehome when Meta peels windows |
 | T7 stableKey | thrash / renumber | fingerprint → current index | `moN` ids go stale after hybrid GPU renumber |
 | Majority mon remap | **T6 only** (`resolveTargetMonitor`) | survivors’ mon / stableKey | rebuild cohort when `moN` is gone — **not** session |
 | Session-layout disk | disable / install flush | portable match + **strict** mon | HUP wipes memory; different failure than thrash |
@@ -269,7 +269,7 @@ layout, T6, T7). This section is the **map** so those pieces stay complementary.
 
 | Function | Module | When | Behavior |
 | --- | --- | --- | --- |
-| `resolveTargetMonitor` | `tree-snapshot.js` | T6 restore after thrash / reload | Prefer snapshot mon if survivors live there; else **stableKey**; else **majority** mon of survivors |
+| `resolveTargetMonitor` | `lib/epochs/` (adapter: `tree-snapshot.js`) | T6 restore after thrash / reload | Prefer snapshot mon if survivors live there; else **stableKey**; else **majority** mon of survivors |
 | `resolveStrictMonitor` | `session-layout.js` | session restore after HUP | Portable leaf → **exact** mon from disk match; **no majority** pile-up |
 
 Majority is correct when in-memory survivors still know where they belong but

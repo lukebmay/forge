@@ -37,6 +37,7 @@ leave handoffs using the old words.
 | Shared chords (action ids) | [keybinds.md](plans/forge-firm-abstractions/keybinds.md) — kernel |
 | Platform chords | **KeybindAdapterGnome** / **KeybindAdapterWebView** (D085) |
 | Native window / paint | **ForgeAdapterGnome** / **ForgeAdapterWebView** (D085) — not TOM |
+| T6 snapshot / H1 majority resolve | **Epochs** (`lib/epochs/`, D086) — `windowId`; not Meta |
 
 Do not invent a second glossary in PRIORITY or session notes. Unary
 collapse is RuleSet, not a second meaning of Promote.

@@ -1,14 +1,14 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-28 — **P5 next**. **D085** kernel vs adapters.
+**Updated:** 2026-08-28 — **P6 next**. **P5 done** (P5c parked).
 **Cross-session handoff:** [`HANDOFF.md`](./HANDOFF.md) ← **read first**
 **Lens:** portable kernel (TOM/RuleSet/OpSet/action ids); Gnome + WebView
-**adapters**; session off Forest; world + paneRect off Node.
+adapters; T6 in `lib/epochs/`; surfaces dispatch those ids.
 **Branch:** **`master`**. **Push:** only when human asks.
 
 Design = [`design.md`](./design.md) · layers =
 [`plans/forge-firm-abstractions/layers.md`](./plans/forge-firm-abstractions/layers.md)
-· history = [`design/CHANGELOG.md`](./design/CHANGELOG.md) (D079–D085).
+· history = [`design/CHANGELOG.md`](./design/CHANGELOG.md) (D079–D086).
 Scan merge =
 [`plans/forge-firm-abstractions/explore/07-plan-scan.md`](./plans/forge-firm-abstractions/explore/07-plan-scan.md).
 
@@ -16,13 +16,15 @@ Scan merge =
 
 ## Active next (ordered)
 
-1. **P0** — **P5** epoch import (Apply / session / H1 → TOM snapshots)
+1. **P0** — **P6** CommandHandler + shipping vim kit
    ([`forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
-   · [`explore/05-apply-recovery.md`](./plans/forge-firm-abstractions/explore/05-apply-recovery.md)
+   · [`P6.md`](./plans/forge-firm-abstractions/P6.md)
+   · [`keybinds.md`](./plans/forge-firm-abstractions/keybinds.md)
    · [`HANDOFF`](./HANDOFF.md)).
-   P1a–P4 + **D082–D085** done. Kernel = `lib/{tom,rulesets,opsets,keybinds}`.
-   Do not merge the two monitor-resolves. CommandHandler / shipping vim
-   kit = **P6**. Do not grow tiling policy in ForgeAdapterGnome.
+   P1a–P5 + **D082–D086** done. Kernel =
+   `lib/{tom,rulesets,opsets,keybinds}`. T6 = `lib/epochs/`. Join chord
+   wins over swap. Do not merge the two monitor-resolves. Do not grow
+   tiling policy in ForgeAdapterGnome.
 
 Do **not** start pinned-slots design until the operator schedules that
 meeting. Do **not** keep ding / Super+2 / vinyl / D069 tip as next work.
@@ -52,6 +54,7 @@ Use when a slice needs a live gate. Do not expand as the P0 campaign.
 | multi-ws pinned slots | [d0](./plans/forge-pinned-slots-multi-ws/d0-discussion.md) · [blocker](./blockers/pinned-slots-multi-ws-design.md) | scheduled design meeting |
 | layout chaos nest queue | [forge-layout-chaos-nest-queue.md](./plans/forge-layout-chaos-nest-queue.md) | append on failure |
 | D069 host tip verify | design.md § tab peer geometry | eyes-on only |
+| Apply planner → TOM | P5c / import-map | later; GetTree stays Surface |
 
 ---
 

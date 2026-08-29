@@ -1,8 +1,8 @@
 # Target layers (working draft)
 
-**Status:** locked D079 + D080 + D082 + D083 + D084 + **D085**
+**Status:** locked D079 + D080 + D082 + D083 + D084 + D085 + **D086**
 **As of:** 2026-08-28
-**Sources:** explore/01–06, D073/D074/D079/D080/D082/D083/D084/D085.
+**Sources:** explore/01–06, D073/D074/D079/D080/D082/D083/D084/D085/D086.
 **RuleSet:** [ruleset.md](./ruleset.md) · **Keybinds:** [keybinds.md](./keybinds.md)
 
 ## Layer table
@@ -23,10 +23,10 @@
 | **Surfaces** | DnD gesture, CLI, DBus, prefs, host key overlays | A second tree mutator; a second Mark 2 chord table | 06 |
 | **Product data** | Profiles, settings, windows.json, mins, heuristics | Role-name branches | 03, 05 |
 
-Physical lift (P1–P4): proto `src/tom/` → `lib/tom/`; settle →
+Physical lift (P1–P5a): proto `src/tom/` → `lib/tom/`; settle →
 `lib/rulesets/`; Mark 2 kit → `lib/keybinds/`; session bag →
 `lib/session/`; world bag → `lib/world/`; paneRect → `lib/presenter/`;
-Mark 2 OpSet → `lib/opsets/`.
+Mark 2 OpSet → `lib/opsets/`; T6 snapshot → `lib/epochs/`.
 gi-free ESM. Proto tests and proto key table point at those. Forge
 `Node`/`Tree` are **not** that kernel.
 
@@ -56,8 +56,9 @@ the ctor, and `Tree` *is* ROOT. That object cannot be shared TOM.
 **mark2 RuleSet** post-settle invariant, not an atomic. Adopt wraps
 n-child MONITOR once.
 
-`tree-query.js` is already a Surface projection (keep). `tree-snapshot.js`
-is an Epoch forest document still keyed by live Meta.Window (reshape).
+`tree-query.js` is already a Surface projection (keep). T6 document is
+`lib/epochs/` keyed by `windowId` (D086). `tree-snapshot.js` is the
+Gnome adapter (may attach live Meta extras).
 
 ## Atomics + composed (core spine)
 
@@ -171,11 +172,12 @@ walk): epoch → materialize → slot machines (slot = WINDOW \| TAB/STACK
 CON) → forest-match `Done.ok` → focus/soft. Belt / Mode-B-as-cold /
 TILE-anywhere success = **discard**.
 
-T6 capture is the closest in-memory TOM snapshot — strip Meta/St from
-the pure module. Session portable should become **TOM serialization +
-identity adapter** (today a third JSON shape). Apply today plans against
-GetTree `projectForest` (a Surface projection) — later: desired TOM;
-do not block kernel lift on a planner rewrite.
+T6 capture is a TOM-shaped snapshot in `lib/epochs/` (`windowId`; D086).
+Gnome adapter `tree-snapshot.js` may attach Meta extras; createCon may
+birth `St.Bin`. Session portable is **TOM/epoch serialize + identity
+adapter** (`session-layout.js`; P5b). Apply still plans against GetTree
+`projectForest` (Surface; P5c parked). Do not merge the two
+monitor-resolves.
 
 `LayoutCommandEpoch` is command **echo**, not a forest writer. D070
 failsafe is a prod guardrail, never kernel.
@@ -200,10 +202,10 @@ Surfaces translate intent → OpSet / epoch. They do not splice the tree.
 become Mark 2 Move/Join plus atomics. `lib/shared` staying ≠ TOM is the
 split D036 did not name.
 
-## Open (do not block P5)
+## Open (do not block P6)
 
-1. **WINDOW identity in TOM:** Meta.Window vs stable windowId vs both
-   during adapter period?
+1. **WINDOW identity on live Forge `Node`:** snapshot is `windowId`
+   (D086). `Node.nodeValue` is still Meta until surface import.
 2. Proto vs Forge TAB paint (open-only vs mapped peers) — **adapter**
    product lock, not TOM.
 

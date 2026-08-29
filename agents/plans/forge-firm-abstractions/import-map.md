@@ -81,9 +81,9 @@ From 03. Epochs 05 may add more.
 | Placeholders / pin / overlay | **keep** beside tree | Not TOM kinds |
 | D070 failsafe / chaos | **park** | Never kernel |
 | Belt / Mode B cold | **discard** | |
-| Session portable | **reshape** | TOM serialize + identity adapter; keep strict mon |
+| Session portable | **reshape** (P5b) | Identity adapter on epoch document; keep strict mon |
 | Richness / 12s hold / shield | **keep** | Distinct dual-head races |
-| T6 capture/restore | **port** | TOM snapshot API; strip Meta from pure module |
+| T6 capture/restore | **port** (P5a) | `lib/epochs/` windowId document; adapter `tree-snapshot.js` |
 | `resolveTargetMonitor` vs `resolveStrictMonitor` | **keep** both | Do not merge |
 | Last-good + T7 + workareas classify | **keep** Host | |
 | `layout_plan.py` | **park** | Oracle / leftover CLI |
