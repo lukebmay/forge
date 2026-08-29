@@ -1,7 +1,6 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-29 — **P6a done.** **D087 / D088 / D090 / D091.**
-Next **P7** forest envelope (or P6 remainder on TILES).
+**Updated:** 2026-08-29 — **P7 done.** Next **P6 remainder** on TILES.
 **Cross-session handoff:** [`HANDOFF.md`](./HANDOFF.md) ← **read first**
 **Lens:** portable kernel (TOM/RuleSet/OpSet/action ids); adapters
 **extend** that kernel; T6 in `lib/epochs/`; FLOATS off TILES.
@@ -17,17 +16,12 @@ Scan merge =
 
 ## Active next (ordered)
 
-1. **P0** — **P7** Forest envelope META + FLOATS + TILES (D087) and
-   adapter key overlays (D088)
+1. **P0** — **P6 remainder** — size / toggleSplit / promote
+   CommandHandler; DnD execute → OpSet (TILES only). Same kernel ids
    ([`forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
-   · [`P7.md`](./plans/forge-firm-abstractions/P7.md)
-   · [`keybinds.md`](./plans/forge-firm-abstractions/keybinds.md)
+   · [`P6.md`](./plans/forge-firm-abstractions/P6.md)
    · [`HANDOFF`](./HANDOFF.md)).
-   FLOAT windows must not sit under a MONITOR. WebView overlay
-   `Super+a`/`q`; Gnome `Super+q` = quit. P6a skip-untiled is the
-   stopgap. Architecture reshape → **Grok 4.6**.
-2. **P6 remainder** — size / toggleSplit / promote CommandHandler; DnD
-   execute → OpSet (TILES only). Same kernel ids.
+   FLOAT windows stay in FLOATS, not under a MONITOR.
 
 Do **not** start pinned-slots design until the operator schedules that
 meeting. Do **not** keep ding / Super+2 / vinyl / D069 tip as next work.

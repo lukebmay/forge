@@ -117,6 +117,7 @@ lib/keybinds/actions.js     # kernel id list
 lib/keybinds/mark2.js       # Super-bearing kernel table
 lib/keybinds/strip-super.js
 lib/keybinds/proto-overlay.js   # WebView overlay (not imported by Gnome)
+lib/keybinds/gnome-overlay.js   # Gnome overlay (not imported by WebView)
 ```
 
 Proto: `stripSuper(mark2Table ∪ webViewOverlay)`.

@@ -1,10 +1,16 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ACTIONS, ACTION_SET } from "../../../lib/keybinds/actions.js";
+import { GNOME_OVERLAY } from "../../../lib/keybinds/gnome-overlay.js";
 import { MARK2_TABLE } from "../../../lib/keybinds/mark2.js";
 import { PROTO_OVERLAY } from "../../../lib/keybinds/proto-overlay.js";
 import { asAccels, stripSuper, stripSuperTable } from "../../../lib/keybinds/strip-super.js";
 import { defaultVimMinusSuper } from "../../../prototypes/container-motion/src/keybinds.mjs";
 import { KITS } from "../../../lib/shared/keybind-presets.js";
+
+const KEYBINDS_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../../lib/keybinds");
 
 function sortedChords(arr) {
   return [...arr].map((c) => String(c).toLowerCase()).sort();
@@ -114,10 +120,46 @@ describe("proto ≡ stripSuper(Forge Mark 2 table)", () => {
     );
     expect(core.has("a")).toBe(false);
     expect(core.has("q")).toBe(false);
-    const overlayChords = new Set(PROTO_OVERLAY.map((b) => b.chord.toLowerCase()));
+    const overlayChords = new Set(PROTO_OVERLAY.map((b) => stripSuper(b.chord).toLowerCase()));
     expect(overlayChords.has("a")).toBe(true);
     expect(overlayChords.has("q")).toBe(true);
     expect(overlayChords.has("y")).toBe(false);
     expect(overlayChords.has("p")).toBe(false);
+  });
+
+  it("stores WebView overlay Super-bearing for a/q", () => {
+    const launch = PROTO_OVERLAY.find((b) => b.action === "launch");
+    expect(launch?.chord).toBe("<Super>a");
+    const remove = PROTO_OVERLAY.find((b) => stripSuper(b.chord) === "q");
+    expect(remove?.chord).toBe("<Super>q");
+    expect(remove?.action).toBe("remove");
+  });
+
+  it("builds proto desk from stripSuper(MARK2_TABLE ∪ WebView overlay)", () => {
+    const binds = defaultVimMinusSuper();
+    expect(binds.find((b) => b.chord === "a")?.action).toBe("launch");
+    expect(binds.find((b) => b.chord === "q")?.action).toBe("remove");
+    expect(binds.find((b) => b.chord === "f")?.action).toBe("flatten");
+  });
+});
+
+describe("KeybindAdapterGnome overlay", () => {
+  it("owns Super+q as host.quit, not a kernel id", () => {
+    const q = GNOME_OVERLAY.find((b) => stripSuper(b.chord).toLowerCase() === "q");
+    expect(q?.chord).toBe("<Super>q");
+    expect(q?.action).toBe("host.quit");
+    expect(ACTION_SET.has("host.quit")).toBe(false);
+    expect(Object.keys(MARK2_TABLE)).not.toContain("host.quit");
+    const kernelQ = Object.values(MARK2_TABLE)
+      .flatMap((v) => asAccels(v))
+      .some((a) => stripSuper(a).toLowerCase() === "q");
+    expect(kernelQ).toBe(false);
+  });
+
+  it("does not import the WebView overlay (or the reverse)", () => {
+    const gnomeSrc = readFileSync(join(KEYBINDS_DIR, "gnome-overlay.js"), "utf8");
+    const protoSrc = readFileSync(join(KEYBINDS_DIR, "proto-overlay.js"), "utf8");
+    expect(gnomeSrc).not.toMatch(/proto-overlay/);
+    expect(protoSrc).not.toMatch(/gnome-overlay/);
   });
 });

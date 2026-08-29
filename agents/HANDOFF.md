@@ -1,7 +1,7 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-29 — **P6a done.** **D087 / D088 / D090 / D091.**
-Next **P7** (forest envelope + key overlays) or P6 remainder on TILES.
+**Updated:** 2026-08-29 — **P7 done.** Envelope META + FLOATS + TILES
+(D087) + key overlays (D088). Next **P6 remainder** on TILES.
 **Branch:** **`master`**. Nest **stopped**. **Push:** only if the human
 asks.
 
@@ -9,9 +9,9 @@ asks.
 
 Kernel is generic; adapters **extend** it (D085/D087/D088). Forest
 document = **META + FLOATS + TILES**. FLOAT windows are not under a
-MONITOR (they can span heads). P6a skip-untiled is the stopgap until
-P7. Join chord wins over swap. Do not merge the two monitor-resolves.
-Do not retarget Apply onto T6. Do not put Mutter/DOM in the kernel.
+MONITOR (they can span heads). Join chord wins over swap. Do not merge
+the two monitor-resolves. Do not retarget Apply onto T6. Do not put
+Mutter/DOM in the kernel.
 
 **Kernel** = `lib/tom/` + `lib/rulesets/` + `lib/opsets/` + keybind
 action ids (`lib/keybinds/`). Language-portable contract; JS is the
@@ -22,8 +22,8 @@ reference impl.
 **Adapters:** ForgeAdapterGnome (GJS `WindowManager` façade) /
 ForgeAdapterWebView (proto desk); KeybindAdapterGnome /
 KeybindAdapterWebView (kernel table ∪ host overlay).
-**P6a live projection:** `lib/extension/tom-live.js` (GObject ↔ TOM;
-skip FLOAT/GRAB_TILE/minimized until FLOATS exists).
+**Live projection:** `lib/extension/tom-live.js` — TILES normally;
+FLOAT/GRAB_TILE → FLOATS. Apply parks live floats on ROOT, not MONITOR.
 Product Move **is** Mark 2 Move. Glossary =
 [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
 
@@ -44,24 +44,21 @@ D079–**D091**
 | P1–P4 | `lib/{tom,rulesets,keybinds,session,world,presenter,opsets}/` |
 | P5 | [`P5.md`](./plans/forge-firm-abstractions/P5.md) · `lib/epochs/` |
 | P6a | [`P6.md`](./plans/forge-firm-abstractions/P6.md) · `lib/extension/tom-live.js` |
-| P7 | [`P7.md`](./plans/forge-firm-abstractions/P7.md) |
+| P7 | [`P7.md`](./plans/forge-firm-abstractions/P7.md) **done** |
 
-**Brake (P6a, orchestrator re-ran):**
+**Brake (P7):**
 `cd prototypes/container-motion && npm test` → **154**.
-Vitest tom-live **4** + mark2-table **10** + keybind-presets **38** +
-CommandHandler **82** + Keybindings **58** + WindowManager-commands
-**41** + structure-one-commit **6** + opsets **3** + world **6** +
-presenter **2** + session **6** + epochs **10**.
+Vitest forest-envelope **7** + tom-live **7** + mark2-table **14** +
+keybind-presets **38** + CommandHandler **82** + Keybindings **58** +
+WindowManager-commands **41** + structure-one-commit **6** + opsets **3**
++ world **6** + presenter **2** + session **6** + epochs **10**.
 
 ### Do
 
-1. **P7** forest envelope (META + FLOATS + TILES) and/or D088 overlay
-   wiring (Gnome `Super+q` quit; WebView overlay Super-bearing).
-   Architecture reshape → **Grok 4.6**.
-2. P6 remainder may continue on TILES: size / toggleSplit / promote
+1. **P6 remainder** on TILES: size / toggleSplit / promote
    CommandHandler; DnD execute → OpSet. Same kernel ids.
-3. Keep proto tests green (154+).
-4. Do **not** retarget Apply onto T6. Do **not** merge monitor-resolves.
+2. Keep proto tests green (154+).
+3. Do **not** retarget Apply onto T6. Do **not** merge monitor-resolves.
 
 ### Do not
 
@@ -73,7 +70,7 @@ presenter **2** + session **6** + epochs **10**.
 - Import WebView overlay into Gnome (or the reverse)
 - Ding / Super+2 / vinyl / D069 / unify raise
 - Commit or push unless asked
-- Re-do P2–P6a
+- Re-do P2–P7
 
 ## D090 size (do not rediscover)
 
@@ -85,15 +82,18 @@ split leftover (100% minus percent children) equally. Code may keep
 ## D088 key overlays (do not rediscover)
 
 Kernel table = Mark 2 Super-bearing ids. Each KeybindAdapter ∪ overlay.
-WebView: `Super+a` launch toy, `Super+q` remove (`stripSuper` → `a`/`q`).
-Gnome: `Super+q` quit/close app; lock/zoom/run/prefs. Safe/i3 = Gnome
-overlays on the **same kernel ids**.
+WebView: `lib/keybinds/proto-overlay.js` Super-bearing; proto
+`stripSuper` → `a`/`q`. Gnome: `lib/keybinds/gnome-overlay.js`
+`Super+q` = `host.quit`; lock/zoom/run/prefs. Safe/i3 = Gnome overlays
+on the **same kernel ids**. Adapters do not import each other.
 
 ## D087 forest envelope (do not rediscover)
 
-FOREST → META + FLOATS + TILES. TILES = today's ROOT→WS→MONITOR.
-FLOATS = unmanaged WINDOW* (may span monitors). Mark 2 mutates TILES
-only. Session/world stay WeakMaps, not META children.
+FOREST → META + FLOATS + TILES. TILES = today's ROOT→WS→MONITOR
+(`tilesOf`; kind stays ROOT). FLOATS = unmanaged WINDOW* (may span
+monitors). META = document facts. Helpers `metaOf` / `floatsOf` /
+`tilesOf`. Mark 2 mutates TILES only. Session/world stay WeakMaps, not
+META children.
 
 ## D086 T6 snapshot (do not rediscover)
 
@@ -114,9 +114,8 @@ max-1. Proto `src/opsets/*.mjs` re-export. No proto `plog.mjs` in `lib/`.
 
 Product table = proto right-hand: `hjkl` focus, `Shift+hjkl` Move,
 `Ctrl+hjkl` Join, `p`/`Shift+p`, `m`/`n`, `[`/`]`, `{`/`}`,
-`Alt+hjkl`/`yuio`/`nm,.`/`/`/`7890`. **P6a shipped** those
-focus/move/join/parent/child chords on the vim kit; `window-swap-*` is
-the Join surface. Overlay chords (`a`/`q`/quit) are **D088**, not kit.
+`Alt+hjkl`/`yuio`/`nm,.`/`/`/`7890`. Overlay chords (`a`/`q`/quit) are
+**D088**, not kit.
 
 ## D082 session (do not rediscover)
 
@@ -143,8 +142,9 @@ Adapters **extend** the kernel; they do not fork it.
 
 1. WINDOW identity on live Forge `Node` (Meta vs id) — snapshot is D086
 2. Live dconf vim users still have Super+a until they reload the kit
-3. Forest envelope not in code yet (D087 / P7)
-4. WebApp overlays beyond proto `a`/`q` — later, not P7-blocking
+3. WebApp overlays beyond proto `a`/`q` — later, not P7-blocking
+4. Live GObject tree still has no FLOATS node; apply parks floats on
+   ROOT (TOM FLOATS is the document of record)
 
 ## Where context lives
 

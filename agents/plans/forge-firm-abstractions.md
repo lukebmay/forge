@@ -1,9 +1,9 @@
 # forge-firm-abstractions — Firm kernel, then import
 
-**Status:** accepted — **P6a done**; **P7 next kernel** (D087/D088); P6 rest on TILES
+**Status:** accepted — **P7 done** (D087/D088); next **P6 remainder** on TILES
 **Branch:** master
 **Blocker:** (none)
-**Updated:** 2026-08-28
+**Updated:** 2026-08-29
 
 ## Goal
 
@@ -61,7 +61,7 @@ hub + policy + paint scheduler. The wrong object is the center of gravity.
 | **P4** | OpSet port (Mark 2) onto `lib/tom` + RuleSet — product Move **is** Mark 2 | done |
 | **P5** | Epoch import (Apply / session / H1) onto TOM snapshots | **done** (P5c parked) |
 | **P6** | Surface import (DnD/DBus/host overlays) → OpSet action ids | **P6a done** |
-| **P7** | Forest envelope META + FLOATS + TILES (D087); key overlay D088 | **next kernel** |
+| **P7** | Forest envelope META + FLOATS + TILES (D087); key overlay D088 | **done** |
 
 **P1b acceptance:** `lib/rulesets/{core,mark2}.js` owns settle; proto
 OpSet binds it; MONITOR max-1 wired; `npm test` 145 green; `tree.js`
@@ -115,8 +115,8 @@ untouched.
 - Mark 2 chords: `lib/keybinds/` kernel table (Super-bearing). Each
   KeybindAdapter ∪ overlay (D088). Proto =
   `stripSuper(kernel ∪ WebView overlay)`.
-- Forest envelope (D087, not in code yet): META + FLOATS + TILES.
-  Mark 2 mutates TILES. P6a skip-untiled is the FLOATS stopgap.
+- Forest envelope (D087 / P7): META + FLOATS + TILES. Mark 2 mutates
+  TILES. `tom-live` projects FLOAT/GRAB_TILE into FLOATS.
 - Mark 2 glossary: `prototypes/container-motion/src/opsets/mark2.md` (FIRM).
 - Forge contamination: `lib/extension/tree.js` `Node` extends GObject and
   constructs decorations/actors in the constructor.
@@ -132,6 +132,13 @@ untouched.
   `windowId` in `lib/epochs/`.
 
 ## Session note
+
+**2026-08-29b:** **P7 done** (Grok 4.6). Envelope META + FLOATS + TILES
+in `lib/tom/kernel.js`; `tom-live` projects FLOAT/GRAB_TILE → FLOATS;
+WebView overlay Super-bearing; Gnome overlay `host.quit` on `<Super>q`.
+Brake proto **154**; forest-envelope **7**; tom-live **7**; mark2-table
+**14**. Next **P6 remainder**. Working note:
+[`P7.md`](./forge-firm-abstractions/P7.md).
 
 **2026-08-29:** **D091** leftover-size ids are `size.share*` (not
 `size.float*`) in kernel **and** proto. Helpers `shareSize` /

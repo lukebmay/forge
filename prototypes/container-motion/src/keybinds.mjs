@@ -1,5 +1,5 @@
 /**
- * Proto chords = stripSuper(Mark 2 table) ∪ proto overlay.
+ * Proto chords = stripSuper(MARK2_TABLE ∪ WebView overlay).
  * @typedef {{ chord: string, action: string, label: string }} Keybind
  */
 
@@ -25,10 +25,11 @@ export function defaultVimMinusSuper() {
   }
   const overlay = [];
   for (const b of PROTO_OVERLAY) {
-    const key = b.chord.toLowerCase();
-    if (seen.has(key)) continue;
+    const chord = stripSuper(b.chord);
+    const key = chord.toLowerCase();
+    if (!chord || seen.has(key)) continue;
     seen.add(key);
-    overlay.push({ ...b });
+    overlay.push({ chord, action: b.action, label: b.label });
   }
   return [...fromTable, ...overlay];
 }

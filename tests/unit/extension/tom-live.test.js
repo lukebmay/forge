@@ -7,6 +7,7 @@ import {
 } from "../../../lib/extension/tom-live.js";
 import { getOpSet, runOpAbstract } from "../../../lib/opsets/index.js";
 import { wrapMonitorMax1 } from "../../../lib/rulesets/mark2.js";
+import { floatsOf, isUnderFloats, isUnderTiles, tilesOf } from "../../../lib/tom/kernel.js";
 
 function makeLive(type, value, extra = {}) {
   const node = {
@@ -24,6 +25,7 @@ function makeLive(type, value, extra = {}) {
     isWorkspace: () => type === "WORKSPACE",
     isRoot: () => type === "ROOT",
     isFloat: () => false,
+    isGrabTile: () => false,
     appendChild(child) {
       if (child.parentNode) child.parentNode.removeChild(child);
       this.childNodes.push(child);
@@ -162,21 +164,63 @@ describe("tom-live project + apply-back", () => {
     expect(idsOf(wrap)).toEqual(["A", "B"]);
   });
 
-  it("float sibling stays outside the tiled wrap", () => {
+  it("projects FLOAT windows into FLOATS, not TILES", () => {
+    const { root, con, winA } = twoSplitTree();
+    const winF = makeLive("WINDOW", { id: "F", title: "float" });
+    winF.isFloat = () => true;
+    winF.mode = "FLOAT";
+    con.appendChild(winF);
+    const projected = projectLiveForest(root, { windowIdOf, createCon, focusId: "A" });
+    const bag = floatsOf(projected.forest);
+    const tiles = tilesOf(projected.forest);
+    const fNode = projected.forest.nodes.F;
+    expect(bag.childIds).toContain("F");
+    expect(fNode.parentId).toBe(bag.id);
+    expect(isUnderFloats(projected.forest, fNode)).toBe(true);
+    expect(isUnderTiles(projected.forest, fNode)).toBe(false);
+    expect(isUnderTiles(projected.forest, projected.forest.nodes.A)).toBe(true);
+    expect(projected.liveById.get("F")).toBe(winF);
+    expect(projected.liveById.get("A")).toBe(winA);
+  });
+
+  it("float sibling stays outside the tiled wrap and not under MONITOR", () => {
     const { root, mon, con, winA, winB } = twoSplitTree();
     const floatMeta = { id: "F", title: "float" };
     const winF = makeLive("WINDOW", floatMeta);
     winF.isFloat = () => true;
     winF.mode = "FLOAT";
     con.appendChild(winF);
-    const { r } = runOp(root, "join", "right", "A");
+    const { r, forest } = runOp(root, "join", "right", "A");
     expect(r?.ok).toBe(true);
     expect(winF.isFloat()).toBe(true);
     const wrap = mon.childNodes.find((n) => liveKind(n) === "CON" && n !== winF);
     expect(wrap).toBeTruthy();
     expect(wrap.childNodes).toEqual([winA, winB]);
     expect(wrap.childNodes).not.toContain(winF);
-    expect(winF.parentNode).toBeTruthy();
+    expect(mon.childNodes).not.toContain(winF);
+    expect(winF.parentNode).toBe(root);
     expect(childrenOf(winF.parentNode)).toContain(winF);
+    expect(floatsOf(forest).childIds).toContain("F");
+    expect(isUnderFloats(forest, forest.nodes.F)).toBe(true);
+  });
+
+  it("GRAB_TILE projects into FLOATS", () => {
+    const { root, con } = twoSplitTree();
+    const winG = makeLive("WINDOW", { id: "G", title: "grab" });
+    winG.isGrabTile = () => true;
+    winG.mode = "GRAB_TILE";
+    con.appendChild(winG);
+    const projected = projectLiveForest(root, { windowIdOf, createCon });
+    expect(floatsOf(projected.forest).childIds).toContain("G");
+    expect(isUnderTiles(projected.forest, projected.forest.nodes.G)).toBe(false);
+  });
+
+  it("minimized tiled WINDOW stays in TILES", () => {
+    const { root, winA } = twoSplitTree();
+    winA.nodeValue.minimized = true;
+    const projected = projectLiveForest(root, { windowIdOf, createCon, focusId: "A" });
+    expect(projected.forest.nodes.A).toBeTruthy();
+    expect(isUnderTiles(projected.forest, projected.forest.nodes.A)).toBe(true);
+    expect(floatsOf(projected.forest).childIds).not.toContain("A");
   });
 });

@@ -88,9 +88,8 @@ there.
 
 **Finish-before-redesign (D087 / D088):** P6a stays shipped. P6 remainder
 (size / toggleSplit / promote / DnD) may continue on **TILES**. Forest
-envelope (META / FLOATS / TILES) is a **new kernel slice** — do not put
-FLOAT windows under MONITOR while waiting. P6a `tom-live` skip-untiled
-is the stopgap until FLOATS exists.
+envelope is **P7**: META + FLOATS + TILES. Do not put FLOAT windows under
+MONITOR. `tom-live` projects FLOAT/GRAB_TILE into FLOATS.
 
 Layers (allowed/forbidden):
 [`plans/forge-firm-abstractions/layers.md`](plans/forge-firm-abstractions/layers.md).
@@ -153,9 +152,8 @@ Do not say **float** for this (FLOAT = unmanaged window, FLOATS bag).
 Today’s fields `percent` + `userSized` (`false` = share) may stay until
 the field is `size: number | "share"`. Action ids are `size.share*` (D091).
 
-P6a `tom-live` skipping FLOAT/GRAB_TILE is the Gnome stopgap until
-FLOATS exists. Re-tile = place into TILES (Launch / Join), not “keep a
-ghost slot on the old parent.”
+`tom-live` projects FLOAT/GRAB_TILE into **FLOATS** (P7). Re-tile = place
+into TILES (Launch / Join), not “keep a ghost slot on the old parent.”
 
 META is a spine node for document-level TOM facts (version, seq, …).
 Session prefs stay `lib/session/` (D082). MONITOR workarea stays
@@ -824,8 +822,8 @@ floating groups designed in; Wave Z / F next. No BC obligation. Plan:
 
 **FLOAT window (D087):** lives in the forest **FLOATS** bag, not under a
 MONITOR (a float can span heads). No tiling slot while floating. Re-tile
-= place into **TILES** (Launch / Join). Gnome `mode: FLOAT` on a tiling
-child is the old Host representation — stopgap until FLOATS ships.
+= place into **TILES** (Launch / Join). Live GObject may still flag
+`mode: FLOAT`; `tom-live` projects those windows into FLOATS (P7).
 **Size `share`** (D090) is a different word and stays on TILES.
 
 ## Keybind kits (T5 + grammar)

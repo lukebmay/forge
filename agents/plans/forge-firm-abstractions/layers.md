@@ -211,11 +211,11 @@ split D036 did not name.
 
 1. **WINDOW identity on live Forge `Node`:** snapshot is `windowId`
    (D086). `Node.nodeValue` is still Meta until surface import.
-2. **Forest envelope (D087):** META + FLOATS + TILES is locked; code
-   still treats Forest as TILES ROOT. P6a skip-untiled is the stopgap.
-3. Proto vs Forge TAB paint (open-only vs mapped peers) — **adapter**
+2. Proto vs Forge TAB paint (open-only vs mapped peers) — **adapter**
    product lock, not TOM.
 
 **Locked (were open):** MONITOR max-1 = mark2 RuleSet after settle.
 Product Move = Mark 2 Move. Host **role** = ForgeAdapterGnome
-(`WindowManager` façade may stay for spies — D085).
+(`WindowManager` façade may stay for spies — D085). Forest envelope
+META + FLOATS + TILES (D087 / P7); `tom-live` projects FLOAT/GRAB_TILE
+into FLOATS.
