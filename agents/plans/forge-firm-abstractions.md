@@ -133,8 +133,11 @@ untouched.
 
 ## Session note
 
+**2026-08-28l:** **D090** supersedes D089. Size is **percent** or
+**`share`** (leftover split among share siblings). Not “spread.”
+
 **2026-08-28k:** **D089** leftover percent is **spread** (not float).
-FLOAT stays unmanaged windows. `size.float*` ids kept until rename.
+**Superseded by D090.**
 
 **2026-08-28j:** Design lock **D087** (META + FLOATS + TILES) and
 **D088** (kernel key table ∪ adapter overlay; WebView `Super+a`/`q`,

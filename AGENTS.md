@@ -44,7 +44,7 @@ in the index when the trigger matches.
 Kernel = TOM + RuleSet + OpSet + keybind **action ids** (host- and
 language-portable; JS `lib/` is the reference impl). Forest document =
 **META + FLOATS + TILES** (TILES = ROOT→WS→MONITOR; FLOAT windows are
-not under a monitor; leftover TILES percent is **spread**, not float).
+not under a monitor; TILES size is a **percent** or **`share`**).
 **ForgeAdapterGnome** / **ForgeAdapterWebView**
 bind and extend a host. **KeybindAdapterGnome** /
 **KeybindAdapterWebView** map the kernel table plus a host overlay

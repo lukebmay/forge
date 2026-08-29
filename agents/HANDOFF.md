@@ -1,7 +1,7 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-28 — **P6a done.** **D087–D089 locked.** Next
-**P7** (forest envelope + key overlays) or P6 remainder on TILES.
+**Updated:** 2026-08-28 — **P6a done.** **D087 / D088 / D090 locked.**
+Next **P7** (forest envelope + key overlays) or P6 remainder on TILES.
 **Branch:** **`master`**. Nest **stopped**. **Push:** only if the human
 asks.
 
@@ -27,15 +27,16 @@ skip FLOAT/GRAB_TILE/minimized until FLOATS exists).
 Product Move **is** Mark 2 Move. Glossary =
 [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
 
-**Spread** (D089) = TILES leftover percent (`userSized === false`).
-**FLOAT window** = FLOATS bag. Do not say float for leftover percent.
+**Size** (D090) = **percent** or **`share`**. `share` splits leftover
+unused space among other `share` siblings. **FLOAT window** = FLOATS
+bag. Do not say float or “spread” for leftover size.
 
 ## Next session
 
 **Plan:** [`plans/forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
 **Locks:** [`layers.md`](./plans/forge-firm-abstractions/layers.md) ·
 [`keybinds.md`](./plans/forge-firm-abstractions/keybinds.md) ·
-D079–**D089**
+D079–**D090**
 
 | Slice | Disk |
 | --- | --- |
@@ -73,10 +74,12 @@ presenter **2** + session **6** + epochs **10**.
 - Commit or push unless asked
 - Re-do P2–P6a
 
-## D089 spread (do not rediscover)
+## D090 size (do not rediscover)
 
-**Spread** = leftover TILES percent (`userSized === false`). **Sized** =
-locked. **FLOAT window** = FLOATS bag. Action ids still `size.float*`.
+A TILES child’s size is a **percent** or **`share`**. Share children
+split leftover (100% minus percent children) equally. Code may keep
+`percent` + `userSized` (`false` = share). Not FLOAT. D089 “spread” is
+superseded.
 
 ## D088 key overlays (do not rediscover)
 

@@ -1,7 +1,7 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-28 — **P6a done.** **D087–D089 locked.** Next
-**P7** forest envelope (or P6 remainder on TILES).
+**Updated:** 2026-08-28 — **P6a done.** **D087 / D088 / D090 locked.**
+Next **P7** forest envelope (or P6 remainder on TILES).
 **Cross-session handoff:** [`HANDOFF.md`](./HANDOFF.md) ← **read first**
 **Lens:** portable kernel (TOM/RuleSet/OpSet/action ids); adapters
 **extend** that kernel; T6 in `lib/epochs/`; FLOATS off TILES.
@@ -9,7 +9,7 @@
 
 Design = [`design.md`](./design.md) · layers =
 [`plans/forge-firm-abstractions/layers.md`](./plans/forge-firm-abstractions/layers.md)
-· history = [`design/CHANGELOG.md`](./design/CHANGELOG.md) (D079–D089).
+· history = [`design/CHANGELOG.md`](./design/CHANGELOG.md) (D079–D090).
 Scan merge =
 [`plans/forge-firm-abstractions/explore/07-plan-scan.md`](./plans/forge-firm-abstractions/explore/07-plan-scan.md).
 

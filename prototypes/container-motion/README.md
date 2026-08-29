@@ -225,9 +225,9 @@ op is a no-op. Step is 5%. Proto keys omit Super (`Alt+…` not `Super+Alt+…`)
 | `m` / `n` | Toggle split / tab-stack |
 | `{` / `}` | PromoteChildren / recursive |
 | `Alt+hjkl` | Resize x/y share |
-| `Alt+yuio` | Spread this / this+sibs / sibs / this+sibs+parent |
-| `Alt+nm,.` | Spread parent / parent group / parent sibs / both groups |
-| `Alt+/` | Spread all shares in the tree |
+| `Alt+yuio` | Size: share this / this+sibs / sibs / this+sibs+parent |
+| `Alt+nm,.` | Size: share parent / parent group / parent sibs / both groups |
+| `Alt+/` | Size: share all |
 | `Alt+7890` | In-axis presets |
 
 This **is** the product vim / Mark 2 kit (add Super on Forge). Proto overlay

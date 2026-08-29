@@ -28,7 +28,7 @@ leave handoffs using the old words.
 | --- | --- |
 | Spine kinds, atomics | TOM (`lib/tom/`, design.md § TOM). Envelope META + FLOATS + TILES (D087) |
 | FLOAT windows | **FLOATS** bag — not under a MONITOR (D087) |
-| Spread | TILES leftover percent (`userSized === false`, D089). Not FLOAT. Not *share* (the number) |
+| Size | TILES in-axis: **percent** or **`share`** (D090). `share` splits leftover. Not FLOAT |
 | Settle order, unary collapse, MONITOR max-1 after settle | **RuleSet** (`lib/rulesets/`, [ruleset.md](plans/forge-firm-abstractions/ruleset.md)); Mark 2 lists invariants in `mark2.md` |
 | Move / Join / Launch / words | OpSet doc (`mark2.md`) |
 | Move / Join / Launch implementation | **OpSet** (`lib/opsets/`, D084) |
