@@ -175,28 +175,28 @@ Prefs: Mark 1 `edgeMove=noop` migrates once to `wrap` under Mark 2.
 
 ## Sizing (TreeOps, not Mark 2)
 
-HSPLIT/VSPLIT children have an **in-axis** share (`percent`). Default is
-equal split among siblings. A **float** child is not `userSized`: leftover
-space after sized siblings is split equally among floaters.
+HSPLIT/VSPLIT children have an in-axis **size**: a **percent** or
+**`share`**. Percent children take that fraction. `share` children split
+leftover unused space equally (`userSized` false in code today).
 
-When a child **leaves** an H/V (close, move, breakout), it becomes a
-floater; sized shares do not follow it into the new parent. If that
-leave leaves **no floaters**, remaining sized shares **rescale** to fill
-100% at the same ratios (`H(A 25%*, B 50%*, C float)` close C →
-`H(A 33%*, B 67%*)`). Unary collapse still copies the CON’s slot share
-onto the surviving child.
+When a child **leaves** an H/V (close, move, breakout), it becomes
+`share`; percents do not follow it. If that leave leaves **no `share`
+siblings**, remaining percents **rescale** to fill 100% at the same
+ratios (`H(A 25%*, B 50%*, C share)` close C → `H(A 33%*, B 67%*)`).
+Unary collapse still copies the CON’s slot onto the surviving child.
 
-Cross-axis size is the **parent container’s** share in *its* split. TAB/STACK
+Cross-axis size is the **parent container’s** size in *its* split. TAB/STACK
 peers share one pane; **all** size ops from a tab/stack leaf (nudge, preset,
-float this, equalize) target the TAB/STACK node, not the leaf. Equalize
+size=`share`, equalize) target the TAB/STACK node, not the leaf. Equalize
 on a selected H/V CON still equalizes that CON’s children.
 
-For float chords, **parent** means the ancestor whose share controls this
+For size=`share` chords, **parent** means the ancestor whose size controls this
 node’s **cross-axis** size (e.g. the V in `H(V(A,B),C)` when A is selected).
 Not the immediate CON if that CON only splits the other axis.
 
-Hard floor **10%**, ceiling **100%**. If a floater would drop below 10%, the
-op is a no-op. Step is 5%. Proto keys omit Super (`Alt+…` not `Super+Alt+…`).
+Hard floor **10%**, ceiling **100%**. If a `share` child would drop below
+10%, the op is a no-op. Step is 5%. Proto keys omit Super (`Alt+…` not
+`Super+Alt+…`).
 
 | Keys | Action |
 | --- | --- |

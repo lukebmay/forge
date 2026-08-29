@@ -438,7 +438,7 @@ export const MARK2_CASES = [
     actions: ["Select(A)", "Launch()"],
     expect: "Mon1(H(TAB(A,C),B))",
     expectMode: "wrap-tab",
-    note: "wider than tall but leftover 15% / 2 floaters < 10%",
+    note: "wider than tall but leftover 15% / 2 share children < 10%",
   },
   {
     id: "launch-end-ten-kids-tab",

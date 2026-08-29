@@ -316,12 +316,12 @@ function presenterOps(tom) {
 
     /** @param {Forest} f */
     unsetSizeInAxis(f) {
-      return tom.floatSize(f);
+      return tom.shareSize(f);
     },
 
     /** @param {Forest} f */
     unsetSizeCrossAxis(f) {
-      return tom.floatCombo(f, { parent: true });
+      return tom.shareCombo(f, { parent: true });
     },
 
     /** @param {Forest} f @param {Dir} dir */

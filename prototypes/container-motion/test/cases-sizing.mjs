@@ -158,7 +158,7 @@ export const SIZING_CASES = [
     run(t) {
       t.api.setFocus(t.f, t.win("A").id);
       t.api.setInAxisShare(t.f, 0.5);
-      const r = t.api.floatSize(t.f);
+      const r = t.api.shareSize(t.f);
       if (!r.ok) return r.reason;
     },
     check(t) {
@@ -176,7 +176,7 @@ export const SIZING_CASES = [
       t.api.setInAxisShare(t.f, 0.5);
       t.api.setFocus(t.f, t.win("B").id);
       t.api.setInAxisShare(t.f, 0.3);
-      const r = t.api.floatSiblingSizes(t.f);
+      const r = t.api.shareSiblingSizes(t.f);
       if (!r.ok) return r.reason;
     },
     check(t) {
@@ -242,7 +242,7 @@ export const SIZING_CASES = [
       t.api.setFocus(t.f, t.win("B").id);
       t.api.setInAxisShare(t.f, 0.3);
       t.api.setFocus(t.f, t.win("A").id);
-      const r = t.api.floatCombo(t.f, { siblings: true });
+      const r = t.api.shareCombo(t.f, { siblings: true });
       if (!r.ok) return r.reason;
     },
     check(t) {
@@ -251,7 +251,7 @@ export const SIZING_CASES = [
       }
       if (t.win("B").userSized || t.win("C").userSized) return "sibs should float";
       if (!near(t.win("B").percent, 0.25) || !near(t.win("C").percent, 0.25)) {
-        return "sib floaters should share leftover";
+        return "share siblings should split leftover";
       }
     },
   },
@@ -268,7 +268,7 @@ export const SIZING_CASES = [
       const r = t.api.setInAxisShare(t.f, 0.7);
       if (!r.ok) return r.reason;
       t.api.setFocus(t.f, t.win("A").id);
-      const f = t.api.floatCombo(t.f, { parent: true });
+      const f = t.api.shareCombo(t.f, { parent: true });
       if (!f.ok) return f.reason;
     },
     check(t) {
@@ -293,7 +293,7 @@ export const SIZING_CASES = [
       t.api.setFocus(t.f, t.win("C").id);
       t.api.setInAxisShare(t.f, 0.4);
       t.api.setFocus(t.f, t.win("A").id);
-      const f = t.api.floatCombo(t.f, { parentSiblings: true });
+      const f = t.api.shareCombo(t.f, { parentSiblings: true });
       if (!f.ok) return f.reason;
     },
     check(t) {
@@ -319,7 +319,7 @@ export const SIZING_CASES = [
       const rc = t.api.setInAxisShare(t.f, 0.4);
       if (!rc.ok) return rc.reason;
       t.api.setFocus(t.f, t.win("A").id);
-      const r = t.api.floatCombo(t.f, { self: true, siblings: true, parent: true });
+      const r = t.api.shareCombo(t.f, { self: true, siblings: true, parent: true });
       if (!r.ok) return r.reason;
     },
     check(t) {
@@ -345,7 +345,7 @@ export const SIZING_CASES = [
       t.f.selectionId = v.id;
       t.api.setInAxisShare(t.f, 0.7);
       t.api.setFocus(t.f, t.win("A").id);
-      const r = t.api.floatCombo(t.f, {
+      const r = t.api.shareCombo(t.f, {
         self: true,
         siblings: true,
         parent: true,
@@ -368,7 +368,7 @@ export const SIZING_CASES = [
     expect: "Mon1(H(A,B))",
     run(t) {
       t.api.setFocus(t.f, t.win("A").id);
-      const r = t.api.floatCombo(t.f, { parent: true });
+      const r = t.api.shareCombo(t.f, { parent: true });
       if (r.ok) return "no cross-axis parent — should fail";
     },
   },
@@ -487,7 +487,7 @@ export const SIZING_CASES = [
       t.f.selectionId = v.id;
       const rv = t.api.setInAxisShare(t.f, 0.7);
       if (!rv.ok) return rv.reason;
-      const r = t.api.floatAllSizes(t.f);
+      const r = t.api.shareAllSizes(t.f);
       if (!r.ok) return r.reason;
     },
     check(t) {

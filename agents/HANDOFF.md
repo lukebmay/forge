@@ -1,6 +1,6 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-28 — **P6a done.** **D087 / D088 / D090 locked.**
+**Updated:** 2026-08-29 — **P6a done.** **D087 / D088 / D090 / D091.**
 Next **P7** (forest envelope + key overlays) or P6 remainder on TILES.
 **Branch:** **`master`**. Nest **stopped**. **Push:** only if the human
 asks.
@@ -36,7 +36,7 @@ bag. Do not say float or “spread” for leftover size.
 **Plan:** [`plans/forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
 **Locks:** [`layers.md`](./plans/forge-firm-abstractions/layers.md) ·
 [`keybinds.md`](./plans/forge-firm-abstractions/keybinds.md) ·
-D079–**D090**
+D079–**D091**
 
 | Slice | Disk |
 | --- | --- |
@@ -78,8 +78,8 @@ presenter **2** + session **6** + epochs **10**.
 
 A TILES child’s size is a **percent** or **`share`**. Share children
 split leftover (100% minus percent children) equally. Code may keep
-`percent` + `userSized` (`false` = share). Not FLOAT. D089 “spread” is
-superseded.
+`percent` + `userSized` (`false` = share). Action ids **`size.share*`**
+(D091). Not FLOAT. D089 “spread” is superseded.
 
 ## D088 key overlays (do not rediscover)
 

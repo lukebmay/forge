@@ -90,8 +90,8 @@ describe("MARK2_TABLE", () => {
     expect(asAccels(MARK2_TABLE.toggleTabStack)).toEqual(["<Super>n"]);
     expect(asAccels(MARK2_TABLE["layout.cycle-"])).toEqual(["<Super>bracketleft"]);
     expect(asAccels(MARK2_TABLE["size.nudge.x-"])).toEqual(["<Alt><Super>h"]);
-    expect(asAccels(MARK2_TABLE["size.float"])).toEqual(["<Alt><Super>y"]);
-    expect(asAccels(MARK2_TABLE["size.floatParent"])).toEqual(["<Alt><Super>n"]);
+    expect(asAccels(MARK2_TABLE["size.share"])).toEqual(["<Alt><Super>y"]);
+    expect(asAccels(MARK2_TABLE["size.shareParent"])).toEqual(["<Alt><Super>n"]);
     expect(asAccels(MARK2_TABLE["size.preset.7"])).toEqual(["<Alt><Super>7"]);
   });
 });

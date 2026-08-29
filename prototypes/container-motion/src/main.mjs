@@ -148,7 +148,7 @@ function migrateKeybinds(savedBinds) {
     binds.push({ chord: "Delete", action: "deleteNode", label: "TreeOp destroy node" });
   }
   const altN = binds.find((b) => b.chord.toLowerCase() === "alt+n");
-  if (altN && altN.action === "size:float") {
+  if (altN && altN.action === "size:share") {
     const floatChords = new Set([
       "alt+y",
       "alt+u",
@@ -318,6 +318,9 @@ function runAction(action) {
   /** @type {import('./tree.mjs').Dir} */
   let dir;
   let r;
+  if (action.startsWith("size.float") || action.startsWith("size:float")) {
+    action = action.replace(/^size\.float/, "size.share").replace(/^size:float/, "size:share");
+  }
   if (action.startsWith("focus.") || action.startsWith("focus:")) {
     dir = /** @type {import('./tree.mjs').Dir} */ (action.slice(6));
     r = api.focusDir(forest, dir);
@@ -375,28 +378,28 @@ function runAction(action) {
     r = api.nudgeSize(forest, "y", -api.sizeStep());
   else if (action === "size.nudge.y+" || action === "size:y:+")
     r = api.nudgeSize(forest, "y", api.sizeStep());
-  else if (action === "size.float" || action === "size:float")
-    r = api.floatCombo(forest, { self: true });
-  else if (action === "size.floatSiblings" || action === "size:floatSiblings")
-    r = api.floatCombo(forest, { self: true, siblings: true });
-  else if (action === "size.floatSiblingsOnly" || action === "size:floatSiblingsOnly")
-    r = api.floatCombo(forest, { siblings: true });
-  else if (action === "size.floatSelfSiblingsParent" || action === "size:floatSelfSiblingsParent")
-    r = api.floatCombo(forest, { self: true, siblings: true, parent: true });
-  else if (action === "size.floatParent" || action === "size:floatParent")
-    r = api.floatCombo(forest, { parent: true });
-  else if (action === "size.floatParentGroup" || action === "size:floatParentGroup")
-    r = api.floatCombo(forest, { parent: true, parentSiblings: true });
-  else if (action === "size.floatParentSiblingsOnly" || action === "size:floatParentSiblingsOnly")
-    r = api.floatCombo(forest, { parentSiblings: true });
-  else if (action === "size.floatBothGroups" || action === "size:floatBothGroups")
-    r = api.floatCombo(forest, {
+  else if (action === "size.share" || action === "size:share")
+    r = api.shareCombo(forest, { self: true });
+  else if (action === "size.shareSiblings" || action === "size:shareSiblings")
+    r = api.shareCombo(forest, { self: true, siblings: true });
+  else if (action === "size.shareSiblingsOnly" || action === "size:shareSiblingsOnly")
+    r = api.shareCombo(forest, { siblings: true });
+  else if (action === "size.shareSelfSiblingsParent" || action === "size:shareSelfSiblingsParent")
+    r = api.shareCombo(forest, { self: true, siblings: true, parent: true });
+  else if (action === "size.shareParent" || action === "size:shareParent")
+    r = api.shareCombo(forest, { parent: true });
+  else if (action === "size.shareParentGroup" || action === "size:shareParentGroup")
+    r = api.shareCombo(forest, { parent: true, parentSiblings: true });
+  else if (action === "size.shareParentSiblingsOnly" || action === "size:shareParentSiblingsOnly")
+    r = api.shareCombo(forest, { parentSiblings: true });
+  else if (action === "size.shareBothGroups" || action === "size:shareBothGroups")
+    r = api.shareCombo(forest, {
       self: true,
       siblings: true,
       parent: true,
       parentSiblings: true,
     });
-  else if (action === "size.floatAll" || action === "size:floatAll") r = api.floatAllSizes(forest);
+  else if (action === "size.shareAll" || action === "size:shareAll") r = api.shareAllSizes(forest);
   else if (action.startsWith("size.preset.") || action.startsWith("size:preset:")) {
     const key = Number(
       action.startsWith("size.preset.")

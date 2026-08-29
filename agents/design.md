@@ -151,7 +151,7 @@ are `share` → A 50%, B 25%, C 25%. All-`share` → equal split.
 
 Do not say **float** for this (FLOAT = unmanaged window, FLOATS bag).
 Today’s fields `percent` + `userSized` (`false` = share) may stay until
-the field is `size: number | "share"`. Action ids still `size.float*`.
+the field is `size: number | "share"`. Action ids are `size.share*` (D091).
 
 P6a `tom-live` skipping FLOAT/GRAB_TILE is the Gnome stopgap until
 FLOATS exists. Re-tile = place into TILES (Launch / Join), not “keep a

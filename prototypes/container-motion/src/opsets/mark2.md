@@ -80,7 +80,7 @@ with every sibling also set to `share`. Unused = 100% minus sum of
 percents. Leave a split → `share` (percent does not follow). Last
 `share` sibling gone → remaining percents rescale to 100%. Do **not**
 say float for this — FLOAT is an unmanaged window. Code may keep
-`percent` + `userSized` (`false` = share); ids still `size.float*`.
+`percent` + `userSized` (`false` = share). Ids are `size.share*` (D091).
 
 **Settle:** prune empty CONs, unary-collapse 1-child CONs, then repair
 same-type CON nesting. Repeat until stable. Mark 2 settle also wraps an
