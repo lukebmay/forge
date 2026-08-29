@@ -1,5 +1,6 @@
 // @ts-check
-import { SIZE_MIN, SIZE_STEP, crossAxisSplit, paneRect } from "../src/tom/sizing.mjs";
+import { paneRect } from "../src/presenter.mjs";
+import { SIZE_MIN, SIZE_STEP, crossAxisSplit } from "../src/tom/sizing.mjs";
 
 /** @typedef {import('./harness.mjs').Case} Case */
 

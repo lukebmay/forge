@@ -1,12 +1,14 @@
 # Mark 2 OpSet
 
 **Status:** prototype lock (not Shell yet)
-**Code:** `mark2.mjs` · **Tests:** `test/cases-mark2.mjs`, `test/cases-workflows.mjs`
-**Updated:** 2026-08-27
+**Code:** `lib/opsets/mark2.js` (proto `src/opsets/mark2.mjs` re-exports)
+**Tests:** `test/cases-mark2.mjs`, `test/cases-workflows.mjs`
+**Updated:** 2026-08-28
 
-This file is the source of truth for Mark 2. Changing a rule here **requires
-the same effort** to update `mark2.mjs`, tests, and any shorthand/UI that
-exposes the op. If code and this file disagree, this file wins until you
+This file is the source of truth for Mark 2. Implementation lives at
+`lib/opsets/`. Changing a rule here **requires the same effort** to
+update `lib/opsets/mark2.js`, tests, and any shorthand/UI that exposes
+the op. If code and this file disagree, this file wins until you
 change it on purpose.
 
 ---
@@ -69,8 +71,9 @@ and their current parent.”
 node. Do not say “host.”
 
 **Settle:** prune empty CONs, unary-collapse 1-child CONs, then repair
-same-type CON nesting. Repeat until stable. TreeOp `Delete` does not
-settle; Mark 2 `Remove` does.
+same-type CON nesting. Repeat until stable. Mark 2 settle also wraps an
+n-child MONITOR into one CON (that MONITOR’s layout, else HSPLIT).
+TreeOp `Delete` does not settle; Mark 2 `Remove` does.
 
 ---
 
@@ -327,6 +330,8 @@ Wrap V around V would same-type; insert as last child of V.
 ---
 
 ## Prefs
+
+Session bag (`lib/session/`), not Forest fields.
 
 | Pref | Default | Effect |
 | --- | --- | --- |

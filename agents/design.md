@@ -34,17 +34,48 @@ slot is geometry authority; unsolicited Meta fullscreen/size snaps back.
 Catalog: [docs/dev/contracts.md](../docs/dev/contracts.md). Plan archived
 (absorbed into firm-abstractions).
 
-## Firm architecture (D079)
+## Firm architecture (D079, D085)
 
 **Why:** Lifecycle bags, canonical contracts, and FCC extracts still left
 GObject `Node` (Meta/St/decoration) and a 7.5k `WindowManager` as the
-center of gravity. Refining that object does not produce a TOM.
+center of gravity. Refining that object does not produce a TOM. Mutter
+is one environment, not the product.
 
-**Choice (option 2):** Product kernel is the proto TOM (plain forest),
-lifted to `lib/tom/`. Then **import** apply / H1 / session / CLI / chrome
-as layers. Same tree in proto and Forge. Presenters differ.
+**Choice (option 2 + adapters):** The product **kernel** is the tiling
+contract — TOM forest, atomics, RuleSet, OpSet, keybind **action ids**.
+It must stay free of GNOME, DOM, and key-grammar. Today's JS under
+`lib/tom/`, `lib/rulesets/`, `lib/opsets/`, `lib/keybinds/` is the
+**reference implementation**, not a GNOME module. In principle the same
+kernel can be rewritten in another language; Forge still tiles if
+someone writes an adapter for that host.
 
-Layers (allowed/forbidden): 
+```text
+          keybind action ids ──► OpSet ──► RuleSet ──► TOM
+                    ▲                         │
+                    │                         ▼
+         KeybindAdapter*              paneRect (shared slot math)
+                    │                         │
+                    ▼                         ▼
+              HostAdapter*  ◄──────── world workareas (host fills)
+```
+
+| Role | Names | Owns |
+| --- | --- | --- |
+| **Kernel** | TOM + atomics + RuleSet + OpSet + action-id table | Forest, settle, Move/Join/Launch, shared chords as ids. No Meta, no DOM, no GNOME accels |
+| **Host adapter** | **ForgeAdapterGnome** (today `WindowManager` + St). **ForgeAdapterWebView** (proto HTML desk) | WINDOW ↔ native window, signals, workarea feed, paint (`move_resize_frame` vs CSS flex) |
+| **Keybind adapter** | **KeybindAdapterGnome** (Super-bearing accels). **KeybindAdapterWebView** (`stripSuper` + proto overlay) | Platform chords → the **same** action ids. Host-only overlay (lock/zoom/run vs `a`/`q`) |
+| **Slot math** | `lib/presenter/` `paneRect` | Percent → AABB. Both adapters may call it. Not topology |
+
+A third environment (wlroots, macOS, a GTK embed, another language's
+WM) is in scope **when someone writes ForgeAdapterX + KeybindAdapterX**.
+Do not special-case GNOME inside the kernel "because that is where we
+run today."
+
+GJS class name `WindowManager` **may** stay as a façade for spies
+(D085). Its **role** is ForgeAdapterGnome. Do not grow tiling policy
+there.
+
+Layers (allowed/forbidden):
 [`plans/forge-firm-abstractions/layers.md`](plans/forge-firm-abstractions/layers.md).
 Import: [`import-map.md`](plans/forge-firm-abstractions/import-map.md).
 Notes: [`explore/`](plans/forge-firm-abstractions/explore/) — do not rescan
@@ -52,14 +83,15 @@ Notes: [`explore/`](plans/forge-firm-abstractions/explore/) — do not rescan
 
 | Layer | Owns |
 | --- | --- |
-| **TOM + atomics** | POJO forest + child-list. No settle, no Launch, no Meta |
-| **RuleSet** | Named settle (prune / unary / coerce). OpSets bind or replace it |
-| **OpSet** | Mark 2 first. Glossary = `mark2.md`. Calls atomics + RuleSet |
-| **Keybind core** | Action id → Super-bearing Mark 2 chords. Proto = strip Super |
-| **Presenter** | Slots → paint (D069/D046/D030 live here) |
-| **Host** | Meta ↔ WINDOW, signals, `move_resize_frame`, bags |
-| **Epochs** | Apply, session restore, H1 — three forest writers |
-| **Surfaces** | DnD *gesture*, CLI, DBus, Forge/proto key **overlays** |
+| **TOM + atomics** | POJO forest + child-list. No settle, no Launch, no Meta, no session prefs, no workarea |
+| **RuleSet** | Named settle (prune / unary / coerce). OpSets bind or replace it. Tie-break is an argument |
+| **OpSet** | Mark 2 first (`lib/opsets/`). Glossary = `mark2.md`. Calls atomics + RuleSet |
+| **Keybind core** | Action id → Super-bearing Mark 2 table (D081). Adapters map that table |
+| **World** | MONITOR workarea (`lib/world/` WeakMap; not Node.geom); neighbor queries. **Host adapter fills** the bag |
+| **Presenter math** | Slots → AABB (`lib/presenter/` paneRect). D069/D046/D030 are **Gnome adapter** paint policy |
+| **Host adapter** | Native window ↔ WINDOW, signals, `move_resize` / CSS, bags |
+| **Epochs** | Apply, session restore, H1 — three forest writers (product; Meta wait is Gnome adapter) |
+| **Surfaces** | DnD *gesture*, CLI, DBus, adapter key overlays |
 
 DnD execute is not a second OpSet. Product Move **is** Mark 2 Move
 (D080). RuleSet + keybinds:
@@ -116,9 +148,21 @@ MONITOR max-1 wraps in place. Same-type wrap of an H/V CON: MONITOR →
 opposite split; nested → last child of that CON. Rules:
 `src/opsets/mark2.md`.
 
-Proto kernel: `prototypes/container-motion/src/tom/` (lift target
-`lib/tom/`). gi-free, presenter-free. Green abstract tests + a wrong
-desk = paint, not the TOM.
+Product **kernel** (D085): `lib/tom/` + `lib/rulesets/` + `lib/opsets/`
++ `lib/keybinds/` action-id table. gi-free, host-free, presenter-free.
+MONITOR nodes have **no** `geom` — workarea is `lib/world/` (WeakMap;
+D083; **host adapter fills**). Slot AABB (`paneRect`) is
+`lib/presenter/` (shared math both adapters may call). Percent /
+`userSized` / 10% share floor stay on TOM `sizing.js`. Session prefs:
+`lib/session/` (D082). Neighbor queries: `lib/world/neighbors.js`
+(tie-break string). Glossary still `mark2.md`.
+
+**Adapters (not kernel):** **ForgeAdapterGnome** / **KeybindAdapterGnome**
+(GJS Host, St, GNOME accels — today `WindowManager` +
+`keybind-presets.js`). **ForgeAdapterWebView** /
+**KeybindAdapterWebView** (proto HTML desk, `stripSuper` ∪ overlay).
+Proto `src/tom/` and `src/opsets/` re-export the kernel. Green abstract
+tests + a wrong desk = **adapter paint**, not the TOM.
 
 Plan: [forge-firm-abstractions](plans/forge-firm-abstractions.md).
 Glossary: [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
@@ -755,6 +799,12 @@ never lists extension shortcuts.
 
 **Grammar rule:** change modifier families only when two actions share a base key.
 
+**Vim / Mark 2 kit (D081):** chords come from the proto right-hand
+main-reach table (`lib/keybinds/mark2.js`), not the T5 historical vim
+map (Super+a parent, Ctrl+Super+hjkl swap). Safe kit overlay stays T5
+Ctrl+Super grammar. Shipping `keybind-presets.js` vim apply waits until
+CommandHandler dispatches those ids (P4/P6).
+
 ## Open-app placement: LFT MRU + dock sticky (OP1)
 
 **Problem:** New windows jumped monitors (dock vs pointer vs restore geometry)
@@ -1225,4 +1275,8 @@ and [design/CHANGELOG.md](./design/CHANGELOG.md) D001.
 
 ## Overview
 
-Short compass for agents — inlined into `AGENTS.md` by `agents build`. Keep this section small.
+Kernel = TOM + RuleSet + OpSet + keybind **action ids** (host- and
+language-portable; JS `lib/` is the reference impl). **ForgeAdapterGnome**
+/ **ForgeAdapterWebView** bind a window system. **KeybindAdapterGnome** /
+**KeybindAdapterWebView** map the same ids to platform chords. Do not put
+Mutter, DOM, or GNOME accels in the kernel.

@@ -4,6 +4,8 @@
  * previously regressed.
  */
 
+import { MARK2_OPSET } from "../src/opsets/index.mjs";
+
 /** @typedef {import('./harness.mjs').Case} Case */
 
 /** @type {Case[]} */
@@ -323,6 +325,16 @@ export const MARK2_CASES = [
     actions: ["Select(B)", "Delete()"],
     expect: "Mon1(H(V(A),C))",
     note: "TreeOp destroy does not run OpSet settle",
+  },
+  {
+    id: "settle-monitor-max1-wrap",
+    layer: "opset",
+    given: "Mon1(A,B)",
+    run(t) {
+      MARK2_OPSET.settle(t.f);
+    },
+    expect: "Mon1(H(A,B))",
+    note: "mark2 RuleSet wraps n-child MONITOR (layout = MONITOR.layout)",
   },
 
   // --- Launch (1920×1080 default geom) ---

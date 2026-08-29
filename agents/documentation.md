@@ -16,7 +16,7 @@ truth for the OpSet’s words, tree shape, invariants, and SurfaceOps.
 
 | OpSet | Design doc | Code |
 | --- | --- | --- |
-| Mark 2 | [prototypes/container-motion/src/opsets/mark2.md](../prototypes/container-motion/src/opsets/mark2.md) | OpSet `src/opsets/mark2.mjs` · RuleSet lift `lib/rulesets/mark2.js` |
+| Mark 2 | [prototypes/container-motion/src/opsets/mark2.md](../prototypes/container-motion/src/opsets/mark2.md) | OpSet `lib/opsets/mark2.js` · RuleSet `lib/rulesets/mark2.js` |
 
 **Changing an OpSet design doc without updating that OpSet, its tests, and
 shorthand/UI in the same effort is a bug.** Do not “clarify later.” Do not
@@ -29,7 +29,14 @@ leave handoffs using the old words.
 | Spine kinds, atomics | TOM (`lib/tom/`, design.md § TOM) |
 | Settle order, unary collapse, MONITOR max-1 after settle | **RuleSet** (`lib/rulesets/`, [ruleset.md](plans/forge-firm-abstractions/ruleset.md)); Mark 2 lists invariants in `mark2.md` |
 | Move / Join / Launch / words | OpSet doc (`mark2.md`) |
-| Shared chords | [keybinds.md](plans/forge-firm-abstractions/keybinds.md) |
+| Move / Join / Launch implementation | **OpSet** (`lib/opsets/`, D084) |
+| Session prefs (`edgeMove`, tags, peelModel) | **Session bag** (`lib/session/`, D082) — not Forest fields |
+| MONITOR workarea | **World bag** (`lib/world/`, D083) — not Node.geom |
+| Cross-mon neighbor / edge / sibling-axis | **World** (`lib/world/neighbors.js`, D084) — tie-break string |
+| Slot AABB (`paneRect` / wrap min) | **Presenter** (`lib/presenter/`, D083) — not TOM sizing |
+| Shared chords (action ids) | [keybinds.md](plans/forge-firm-abstractions/keybinds.md) — kernel |
+| Platform chords | **KeybindAdapterGnome** / **KeybindAdapterWebView** (D085) |
+| Native window / paint | **ForgeAdapterGnome** / **ForgeAdapterWebView** (D085) — not TOM |
 
 Do not invent a second glossary in PRIORITY or session notes. Unary
 collapse is RuleSet, not a second meaning of Promote.

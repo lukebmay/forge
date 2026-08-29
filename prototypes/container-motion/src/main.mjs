@@ -7,6 +7,8 @@ import { loadState, saveState, clearState } from "./storage.mjs";
 import { ensureMark2Decisions, getOpSet, runOpAbstract } from "./opsets/index.mjs";
 import { monitorsSiblingAxis } from "./monitors.mjs";
 import { initMotionPlog, motionLog } from "./plog.mjs";
+import { attachSession, copySession, mergeTagsOf, sessionOf } from "./session.mjs";
+import { attachWorld, geomOf, worldOf } from "./world.mjs";
 
 initMotionPlog({ level: "debug", sessionId: "motion", console: true });
 
@@ -16,7 +18,7 @@ function opsetTxn(fn) {
 }
 
 function activeOpSet() {
-  return getOpSet(forest.decisions?.opsetId || "mark2");
+  return getOpSet(sessionOf(forest).decisions.opsetId || "mark2");
 }
 
 const api = createTreeApi();
@@ -37,8 +39,10 @@ if (saved?.forest?.nodes && saved.forest.monitors?.length) {
   try {
     forest = saved.forest;
     api.hydrateSeq(forest);
+    if (saved.session) attachSession(forest, saved.session);
+    if (saved.world) attachWorld(forest, saved.world);
+    else worldOf(forest);
     ensureMark2Decisions(forest);
-    if (!forest.mergeTags) forest.mergeTags = [];
   } catch {
     forest = seedBlackDesk(api);
     api.hydrateSeq(forest);
@@ -173,7 +177,18 @@ const deskEl = () => /** @type {HTMLElement} */ ($("#desk-view"));
 const treeEl = () => /** @type {HTMLElement} */ ($("#tree-view"));
 
 function persist() {
-  saveState({ forest, macros, keybinds, viewMode });
+  const s = sessionOf(forest);
+  const w = worldOf(forest);
+  saveState({
+    forest: dumpForest(forest),
+    session: { mergeTags: [...s.mergeTags], decisions: { ...s.decisions } },
+    world: {
+      geoms: Object.fromEntries(Object.entries(w.geoms).map(([id, g]) => [id, { ...g }])),
+    },
+    macros,
+    keybinds,
+    viewMode,
+  });
 }
 
 function log(msg) {
@@ -250,8 +265,8 @@ function summarize(f) {
   return {
     focus: f.focusId,
     selection: f.selectionId,
-    tags: f.mergeTags,
-    decisions: f.decisions,
+    tags: mergeTagsOf(f),
+    decisions: sessionOf(f).decisions,
     monitors: f.monitors.map(node),
   };
 }
@@ -292,7 +307,7 @@ function launchApp(dockMonIndex) {
     );
   }
   const label = nextAppLabel(forest);
-  if (forest.decisions?.policyEnabled !== false && activeOpSet().ops.launch) {
+  if (sessionOf(forest).decisions.policyEnabled !== false && activeOpSet().ops.launch) {
     return opsetTxn((draft) => activeOpSet().ops.launch(draft, api, { label, monIndex }));
   }
   return api.launch(forest, label, monIndex);
@@ -303,12 +318,15 @@ function runAction(action) {
   /** @type {import('./tree.mjs').Dir} */
   let dir;
   let r;
-  if (action.startsWith("focus:")) {
+  if (action.startsWith("focus.") || action.startsWith("focus:")) {
     dir = /** @type {import('./tree.mjs').Dir} */ (action.slice(6));
     r = api.focusDir(forest, dir);
+  } else if (action.startsWith("move.")) {
+    dir = /** @type {import('./tree.mjs').Dir} */ (action.slice(5));
+    r = opsetTxn((draft) => activeOpSet().ops.move(draft, api, dir));
   } else if (action.startsWith("move:")) {
     dir = /** @type {import('./tree.mjs').Dir} */ (action.slice(5));
-    if (forest.decisions?.policyEnabled !== false) {
+    if (sessionOf(forest).decisions.policyEnabled !== false) {
       const set = activeOpSet();
       r = opsetTxn((draft) => set.ops.move(draft, api, dir));
     } else {
@@ -320,20 +338,22 @@ function runAction(action) {
   } else if (action.startsWith("breakout:")) {
     dir = /** @type {import('./tree.mjs').Dir} */ (action.slice("breakout:".length));
     r = api.breakoutDir(forest, dir);
+  } else if (action.startsWith("join.") || action.startsWith("opset:join:")) {
+    dir = /** @type {import('./tree.mjs').Dir} */ (
+      action.startsWith("join.") ? action.slice(5) : action.slice("opset:join:".length)
+    );
+    r = opsetTxn((draft) => activeOpSet().ops.join(draft, api, dir));
   } else if (action.startsWith("opset:move:")) {
     dir = /** @type {import('./tree.mjs').Dir} */ (action.slice("opset:move:".length));
     r = opsetTxn((draft) => activeOpSet().ops.move(draft, api, dir));
-  } else if (action.startsWith("opset:join:")) {
-    dir = /** @type {import('./tree.mjs').Dir} */ (action.slice("opset:join:".length));
-    r = opsetTxn((draft) => activeOpSet().ops.join(draft, api, dir));
   } else if (action.startsWith("setLayout:")) {
     r = api.setLayout(forest, /** @type {any} */ (action.slice(10)));
   } else if (action.startsWith("wrap:")) {
-    r = api.wrap(forest, /** @type {any} */ (action.slice(5)), forest.mergeTags.length > 0);
+    r = api.wrap(forest, /** @type {any} */ (action.slice(5)), mergeTagsOf(forest).length > 0);
   } else if (action === "launch" || action.startsWith("launch:")) {
     r = launchApp(action === "launch" ? null : Number(action.slice(7)));
-  } else if (action === "focusParent") r = api.focusParent(forest);
-  else if (action === "focusChild") r = api.focusChild(forest);
+  } else if (action === "focus.parent" || action === "focusParent") r = api.focusParent(forest);
+  else if (action === "focus.child" || action === "focusChild") r = api.focusChild(forest);
   else if (action === "moveIn") r = api.moveIn(forest);
   else if (action === "moveOut") r = api.moveOut(forest);
   else if (action === "group") r = api.group(forest);
@@ -342,46 +362,63 @@ function runAction(action) {
   else if (action === "flattenAll") r = api.flatten(forest, true);
   else if (action === "close") r = api.close(forest);
   else if (action === "deleteNode") r = api.deleteNode(forest);
-  else if (action === "opset:remove") r = opsetTxn((draft) => activeOpSet().ops.remove(draft, api));
+  else if (action === "remove" || action === "opset:remove")
+    r = opsetTxn((draft) => activeOpSet().ops.remove(draft, api));
   else if (action === "equalizeChildren") r = api.equalizeChildren(forest);
   else if (action === "unsetSizeInAxis") r = api.unsetSizeInAxis(forest);
   else if (action === "unsetSizeCrossAxis") r = api.unsetSizeCrossAxis(forest);
-  else if (action === "size:x:-") r = api.nudgeSize(forest, "x", -api.sizeStep());
-  else if (action === "size:x:+") r = api.nudgeSize(forest, "x", api.sizeStep());
-  else if (action === "size:y:-") r = api.nudgeSize(forest, "y", -api.sizeStep());
-  else if (action === "size:y:+") r = api.nudgeSize(forest, "y", api.sizeStep());
-  else if (action === "size:float") r = api.floatCombo(forest, { self: true });
-  else if (action === "size:floatSiblings")
+  else if (action === "size.nudge.x-" || action === "size:x:-")
+    r = api.nudgeSize(forest, "x", -api.sizeStep());
+  else if (action === "size.nudge.x+" || action === "size:x:+")
+    r = api.nudgeSize(forest, "x", api.sizeStep());
+  else if (action === "size.nudge.y-" || action === "size:y:-")
+    r = api.nudgeSize(forest, "y", -api.sizeStep());
+  else if (action === "size.nudge.y+" || action === "size:y:+")
+    r = api.nudgeSize(forest, "y", api.sizeStep());
+  else if (action === "size.float" || action === "size:float")
+    r = api.floatCombo(forest, { self: true });
+  else if (action === "size.floatSiblings" || action === "size:floatSiblings")
     r = api.floatCombo(forest, { self: true, siblings: true });
-  else if (action === "size:floatSiblingsOnly") r = api.floatCombo(forest, { siblings: true });
-  else if (action === "size:floatSelfSiblingsParent")
+  else if (action === "size.floatSiblingsOnly" || action === "size:floatSiblingsOnly")
+    r = api.floatCombo(forest, { siblings: true });
+  else if (action === "size.floatSelfSiblingsParent" || action === "size:floatSelfSiblingsParent")
     r = api.floatCombo(forest, { self: true, siblings: true, parent: true });
-  else if (action === "size:floatParent") r = api.floatCombo(forest, { parent: true });
-  else if (action === "size:floatParentGroup")
+  else if (action === "size.floatParent" || action === "size:floatParent")
+    r = api.floatCombo(forest, { parent: true });
+  else if (action === "size.floatParentGroup" || action === "size:floatParentGroup")
     r = api.floatCombo(forest, { parent: true, parentSiblings: true });
-  else if (action === "size:floatParentSiblingsOnly")
+  else if (action === "size.floatParentSiblingsOnly" || action === "size:floatParentSiblingsOnly")
     r = api.floatCombo(forest, { parentSiblings: true });
-  else if (action === "size:floatBothGroups")
+  else if (action === "size.floatBothGroups" || action === "size:floatBothGroups")
     r = api.floatCombo(forest, {
       self: true,
       siblings: true,
       parent: true,
       parentSiblings: true,
     });
-  else if (action === "size:floatAll") r = api.floatAllSizes(forest);
-  else if (action.startsWith("size:preset:")) {
-    const key = Number(action.slice("size:preset:".length));
+  else if (action === "size.floatAll" || action === "size:floatAll") r = api.floatAllSizes(forest);
+  else if (action.startsWith("size.preset.") || action.startsWith("size:preset:")) {
+    const key = Number(
+      action.startsWith("size.preset.")
+        ? action.slice("size.preset.".length)
+        : action.slice("size:preset:".length)
+    );
     r = api.sizePreset(forest, key);
-  } else if (action === "cycleLayout:+1" || action === "cycleLayout:1")
+  } else if (
+    action === "layout.cycle+" ||
+    action === "cycleLayout:+1" ||
+    action === "cycleLayout:1"
+  )
     r = api.cycleLayout(forest, 1);
-  else if (action === "cycleLayout:-1") r = api.cycleLayout(forest, -1);
-  else if (action === "opset:toggleSplit")
+  else if (action === "layout.cycle-" || action === "cycleLayout:-1")
+    r = api.cycleLayout(forest, -1);
+  else if (action === "toggleSplit" || action === "opset:toggleSplit")
     r = opsetTxn((draft) => activeOpSet().ops.toggleSplit(draft, api));
-  else if (action === "opset:toggleTabStack")
+  else if (action === "toggleTabStack" || action === "opset:toggleTabStack")
     r = opsetTxn((draft) => activeOpSet().ops.toggleTabStack(draft, api));
-  else if (action === "opset:promote")
+  else if (action === "promote" || action === "opset:promote")
     r = opsetTxn((draft) => activeOpSet().ops.promote(draft, api));
-  else if (action === "opset:promoteRecursive")
+  else if (action === "promoteRecursive" || action === "opset:promoteRecursive")
     r = opsetTxn((draft) => activeOpSet().ops.promoteRecursive(draft, api));
   else if (action === "createGroup") r = api.createGroup(forest, "TABBED");
   else if (action === "createStack") r = api.createGroup(forest, "STACKED");
@@ -426,11 +463,12 @@ function syncDecisionToggles() {
   const tie = /** @type {HTMLSelectElement} */ ($("#dec-tie"));
   const join = /** @type {HTMLSelectElement} */ ($("#dec-join"));
   const policy = /** @type {HTMLInputElement} */ ($("#dec-policy"));
-  if (peel) peel.value = forest.decisions.peelModel;
-  if (edge) edge.value = forest.decisions.edgeMove;
-  if (tie) tie.value = forest.decisions.aspectTieBreak || "HSPLIT";
-  if (join) join.value = forest.decisions.defaultJoinContainer || "SPLIT";
-  if (policy) policy.checked = forest.decisions.policyEnabled !== false;
+  const d = sessionOf(forest).decisions;
+  if (peel) peel.value = d.peelModel;
+  if (edge) edge.value = d.edgeMove;
+  if (tie) tie.value = d.aspectTieBreak || "HSPLIT";
+  if (join) join.value = d.defaultJoinContainer || "SPLIT";
+  if (policy) policy.checked = d.policyEnabled !== false;
 }
 
 function syncMonitorPanel() {
@@ -440,7 +478,13 @@ function syncMonitorPanel() {
   const axisEl = $("#mon-sibling-axis");
   if (axisEl) axisEl.textContent = monitorsSiblingAxis(forest);
   forest.monitors.forEach((m, i) => {
-    const g = m.geom || { x: 0, y: 0, width: 1920, height: 1080, primary: false };
+    const g = geomOf(forest, m) || {
+      x: 0,
+      y: 0,
+      width: 1920,
+      height: 1080,
+      primary: false,
+    };
     const row = document.createElement("div");
     row.className = "mon-row";
     row.innerHTML = `
@@ -475,7 +519,7 @@ function syncMonitorPanel() {
 function rebuildMonitors(count) {
   const geoms = [];
   for (let i = 0; i < count; i++) {
-    const existing = forest.monitors[i]?.geom;
+    const existing = forest.monitors[i] ? geomOf(forest, forest.monitors[i]) : null;
     if (existing) geoms.push({ ...existing, id: `mon${i}` });
     else {
       geoms.push({
@@ -491,7 +535,7 @@ function rebuildMonitors(count) {
   // Keep windows: naive — new forest, lose structure if count shrinks mid-play; OK for proto
   const old = dumpForest(forest);
   const next = api.createForest(geoms);
-  next.decisions = forest.decisions;
+  copySession(forest, next);
   // Try to preserve children of overlapping monitors by index
   for (let i = 0; i < Math.min(forest.monitors.length, next.monitors.length); i++) {
     const src = forest.monitors[i];
@@ -516,7 +560,8 @@ function rebuildMonitors(count) {
 function cloneSubtree(src, id, dst) {
   const n = src.nodes[id];
   if (!n) return null;
-  const copy = { ...n, childIds: [], geom: n.geom ? { ...n.geom } : undefined };
+  const copy = { ...n, childIds: [] };
+  delete copy.geom;
   dst.nodes[copy.id] = copy;
   for (const cid of n.childIds) {
     const ch = cloneSubtree(src, cid, dst);
@@ -588,38 +633,34 @@ function wire() {
   });
 
   $("#dec-peel")?.addEventListener("change", (e) => {
-    forest.decisions.peelModel = /** @type {any} */ (
-      /** @type {HTMLSelectElement} */ (e.target).value
-    );
-    log(`peelModel=${forest.decisions.peelModel}`);
+    const d = sessionOf(forest).decisions;
+    d.peelModel = /** @type {any} */ (/** @type {HTMLSelectElement} */ (e.target).value);
+    log(`peelModel=${d.peelModel}`);
     persist();
   });
   $("#dec-edge")?.addEventListener("change", (e) => {
-    forest.decisions.edgeMove = /** @type {any} */ (
-      /** @type {HTMLSelectElement} */ (e.target).value
-    );
-    // Intentional pref — don't re-migrate Mark 1 noop → wrap on next ensure.
-    forest.decisions._edgeNoopMigrated = true;
-    log(`edgeMove=${forest.decisions.edgeMove}`);
-    persist();
-  });
-  $("#dec-tie")?.addEventListener("change", (e) => {
-    forest.decisions.aspectTieBreak = /** @type {any} */ (
-      /** @type {HTMLSelectElement} */ (e.target).value
-    );
-    log(`aspectTieBreak=${forest.decisions.aspectTieBreak}`);
-    persist();
-  });
-  $("#dec-join")?.addEventListener("change", (e) => {
-    forest.decisions.defaultJoinContainer = /** @type {any} */ (
-      /** @type {HTMLSelectElement} */ (e.target).value
-    );
-    log(`defaultJoinContainer=${forest.decisions.defaultJoinContainer}`);
+    const d = sessionOf(forest).decisions;
+    d.edgeMove = /** @type {any} */ (/** @type {HTMLSelectElement} */ (e.target).value);
+    d._edgeNoopMigrated = true;
+    log(`edgeMove=${d.edgeMove}`);
     persist();
   });
   $("#dec-policy")?.addEventListener("change", (e) => {
-    forest.decisions.policyEnabled = /** @type {HTMLInputElement} */ (e.target).checked;
-    log(`policyEnabled=${forest.decisions.policyEnabled}`);
+    const d = sessionOf(forest).decisions;
+    d.policyEnabled = /** @type {HTMLInputElement} */ (e.target).checked;
+    log(`policyEnabled=${d.policyEnabled}`);
+    persist();
+  });
+  $("#dec-tie")?.addEventListener("change", (e) => {
+    const d = sessionOf(forest).decisions;
+    d.aspectTieBreak = /** @type {any} */ (/** @type {HTMLSelectElement} */ (e.target).value);
+    log(`aspectTieBreak=${d.aspectTieBreak}`);
+    persist();
+  });
+  $("#dec-join")?.addEventListener("change", (e) => {
+    const d = sessionOf(forest).decisions;
+    d.defaultJoinContainer = /** @type {any} */ (/** @type {HTMLSelectElement} */ (e.target).value);
+    log(`defaultJoinContainer=${d.defaultJoinContainer}`);
     persist();
   });
 
@@ -655,13 +696,15 @@ function wire() {
     const preset = MONITOR_PRESETS[key];
     if (!preset) return;
     forest = api.createForest(preset.monitors.map((m) => ({ ...m })));
-    forest.decisions = {
-      peelModel: "B",
-      edgeMove: "wrap",
-      aspectTieBreak: "HSPLIT",
-      defaultJoinContainer: "SPLIT",
-      policyEnabled: true,
-    };
+    attachSession(forest, {
+      decisions: {
+        peelModel: "B",
+        edgeMove: "wrap",
+        aspectTieBreak: "HSPLIT",
+        defaultJoinContainer: "SPLIT",
+        policyEnabled: true,
+      },
+    });
     if (key === "black") forest = seedBlackDesk(api);
     api.hydrateSeq(forest);
     log(`preset ${key}`);
@@ -674,12 +717,18 @@ function wire() {
     const f = t.dataset.f;
     if (f == null || Number.isNaN(i)) return;
     const mon = forest.monitors[i];
-    if (!mon?.geom) return;
+    const g = mon ? geomOf(forest, mon) : null;
+    if (!g) return;
     if (f === "primary") {
-      mon.geom.primary = t.checked;
-      for (const m of forest.monitors) if (m !== mon && m.geom) m.geom.primary = false;
+      g.primary = t.checked;
+      for (const m of forest.monitors) {
+        if (m !== mon) {
+          const og = geomOf(forest, m);
+          if (og) og.primary = false;
+        }
+      }
     } else {
-      mon.geom[f] = Number(t.value);
+      g[f] = Number(t.value);
     }
     refresh();
   });
@@ -689,8 +738,8 @@ function wire() {
     const i = t.getAttribute("data-orient");
     if (i == null) return;
     const mon = forest.monitors[Number(i)];
-    if (!mon?.geom) return;
-    const g = mon.geom;
+    const g = mon ? geomOf(forest, mon) : null;
+    if (!g) return;
     const w = g.width;
     g.width = g.height;
     g.height = w;

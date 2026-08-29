@@ -10,7 +10,7 @@ Do not implement this session. This is what P1+ consumes.
 
 | Piece | Rec | Note |
 | --- | --- | --- |
-| proto `tom/{kernel,atomics,composed,queries,sizing,api,index}` | **port** → `lib/tom/` | Product TOM. **No settle** in this package. Strip `decisions`/`mergeTags` |
+| proto `tom/{kernel,atomics,composed,queries,sizing,api,index}` | **port** → `lib/tom/` | Product TOM. **No settle**. `decisions`/`mergeTags` stripped (P2 / D082) |
 | `composed.cleanupStructure` / `collapseUnary` / `pruneEmptyCons` | **port** → `lib/rulesets/core.js` | Core RuleSet, not atomics |
 | `mark2CleanupUnder` / `coerceSameTypeUnder` | **port** → `lib/rulesets/mark2.js` | Mark 2 RuleSet extends core |
 | proto `keybinds.mjs` vim-minus-Super table | **reshape** | Shared table is Super-bearing; proto `stripSuper` + overlay `a`/`q` |

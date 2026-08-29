@@ -1,4 +1,5 @@
 import cytoscape from "cytoscape";
+import { mergeTagsOf } from "./session.mjs";
 
 /** @type {import('cytoscape').Core|null} */
 let cy = null;
@@ -73,7 +74,7 @@ function applyHighlights(forest) {
       if (n.kind === "CON" && n.childIds.length === 0) node.addClass("empty");
       if (n.id === forest.focusId) node.addClass("focus");
       if (n.id === forest.selectionId) node.addClass("selection");
-      if (forest.mergeTags.includes(n.id)) node.addClass("tag");
+      if (mergeTagsOf(forest).includes(n.id)) node.addClass("tag");
     }
   });
 }

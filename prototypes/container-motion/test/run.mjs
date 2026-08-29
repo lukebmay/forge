@@ -16,6 +16,7 @@ import { MARK2_CASES } from "./cases-mark2.mjs";
 import { SHORTHAND_CASES } from "./cases-shorthand.mjs";
 import { WORKFLOW_CASES } from "./cases-workflows.mjs";
 import { SIZING_CASES } from "./cases-sizing.mjs";
+import { KEYBIND_CASES } from "./cases-keybinds.mjs";
 import { runCase } from "./harness.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,7 @@ const ALL = [
   ...MARK2_CASES,
   ...WORKFLOW_CASES,
   ...SIZING_CASES,
+  ...KEYBIND_CASES,
 ];
 
 function parseArgs(argv) {

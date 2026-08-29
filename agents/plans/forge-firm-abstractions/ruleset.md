@@ -78,6 +78,8 @@ the invariant.
 
 - Launch aspect / wrap-TAB floor (OpSet)
 - Move wrap-before-cross-mon (OpSet)
+- Forest session / `decisions` / `mergeTags` — `aspectTieBreak` is an
+  argument (D082)
 - Keybinds, Meta, DOM, GObject
 - Presenter mapped-vs-open tab paint (D069)
 
@@ -85,6 +87,7 @@ the invariant.
 
 ```text
 lib/tom/            Forest, atomics, composed (no settle)
+lib/session/        OpSet/Host prefs (not TOM)
 lib/rulesets/core.js
 lib/rulesets/mark2.js   # extends core
 ```

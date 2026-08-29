@@ -1,3 +1,6 @@
+import { mergeTagsOf } from "./session.mjs";
+import { geomOf } from "./world.mjs";
+
 /**
  * @typedef {'contain'|'split'} DeskFit
  *
@@ -14,7 +17,7 @@ export function renderDesk(root, forest, api, onSelect, opts = {}) {
   root.replaceChildren();
   root.className = "desk";
 
-  const geoms = forest.monitors.map((m) => m.geom).filter(Boolean);
+  const geoms = forest.monitors.map((m) => geomOf(forest, m)).filter(Boolean);
   if (!geoms.length) return;
 
   const minX = Math.min(...geoms.map((g) => g.x));
@@ -65,7 +68,7 @@ export function renderDesk(root, forest, api, onSelect, opts = {}) {
   }
 
   for (const mon of forest.monitors) {
-    const g = mon.geom;
+    const g = geomOf(forest, mon);
     if (!g) continue;
     const el = document.createElement("div");
     el.className = "monitor";
@@ -115,7 +118,7 @@ function renderNode(node, forest, api, onSelect, isMonChild, opts = {}) {
 
   const isFocus = forest.focusId === node.id;
   const isSel = forest.selectionId === node.id;
-  const isTag = forest.mergeTags.includes(node.id);
+  const isTag = mergeTagsOf(forest).includes(node.id);
 
   if (node.kind === "WINDOW") {
     el.className = "leaf";
@@ -174,7 +177,7 @@ function renderNode(node, forest, api, onSelect, isMonChild, opts = {}) {
       tab.className = "tab";
       if (k.id === openId) tab.classList.add("active");
       if (forest.focusId === k.id) tab.classList.add("is-focus");
-      if (forest.mergeTags.includes(k.id)) tab.classList.add("is-tag");
+      if (mergeTagsOf(forest).includes(k.id)) tab.classList.add("is-tag");
       tab.textContent = k.kind === "WINDOW" ? k.label || "?" : (k.layout || "CON").slice(0, 4);
       tab.addEventListener("click", (e) => {
         e.stopPropagation();

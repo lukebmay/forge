@@ -41,7 +41,11 @@ in the index when the trigger matches.
 
 ## Design compass
 
-Short compass for agents — inlined into `AGENTS.md` by `agents build`. Keep this section small.
+Kernel = TOM + RuleSet + OpSet + keybind **action ids** (host- and
+language-portable; JS `lib/` is the reference impl). **ForgeAdapterGnome**
+/ **ForgeAdapterWebView** bind a window system. **KeybindAdapterGnome** /
+**KeybindAdapterWebView** map the same ids to platform chords. Do not put
+Mutter, DOM, or GNOME accels in the kernel.
 
 ## Session start
 

@@ -1,20 +1,25 @@
 # Shared keybind core
 
-**Status:** locked (D080)
-**As of:** 2026-08-27
+**Status:** locked (D080, **D081** kit content, **D085** adapters)
+**As of:** 2026-08-28
 
 Proto exists to find Forge bugs. Two chord tables with the same labels
-and different actions is a failed prototype.
+and different actions is a failed prototype. Historical Forge vim kit
+(Super+a parent, Ctrl+Super+hjkl swap, …) is **not** the kit — proto
+right-hand reach is.
 
 ## Decision
 
 One **gi-free** table: **action id → chord**, Super-bearing (product).
+**Vim / Mark 2 kit = proto right-hand main-reach** (D081). Proto is the
+condensed app; as proto goes, so does Forge proper.
 
 | Adapter | What it does |
 | --- | --- |
-| **Forge Mark 2 kit** | The table as GNOME accels |
-| **Proto** | `stripSuper(table)` plus a **proto overlay** |
-| **Forge Safe / i3** | Host overlays on the **same action ids** — not a second Mark 2 table |
+| **Keybind core** (kernel) | Action id → Super-bearing Mark 2 table |
+| **KeybindAdapterGnome** | That table as GNOME accels |
+| **KeybindAdapterWebView** | `stripSuper(table)` plus a **proto overlay** |
+| **Gnome Safe / i3** | Host overlays on the **same action ids** — not a second Mark 2 table |
 
 `stripSuper`: drop Super/Meta from each chord; leave Ctrl/Shift/Alt/key.
 
@@ -33,15 +38,36 @@ Ids are OpSet (or core query) names, not `window-move-left` and not
 `focus.left` · `move.left` · `join.left` · `launch` · `remove` ·
 `toggleSplit` · `size.nudge.x-`
 
-Forge CommandHandler and proto `keybinds.mjs` both dispatch these ids
-into the **same** OpSet. Drift of id → behavior is a bug.
+Both keybind adapters dispatch these ids into the **same** OpSet.
+Drift of id → behavior is a bug.
+
+## Vim kit (right-hand reach — D081)
+
+Product chords (Forge = Super-bearing; proto = stripSuper):
+
+| Reach | Action |
+| --- | --- |
+| `hjkl` (+ arrows) | `focus.*` |
+| `Shift+hjkl` | `move.*` (Mark 2 Move) |
+| `Ctrl+hjkl` | `join.*` (Mark 2 Join — **not** swap) |
+| `p` / `Shift+p` | `focus.parent` / `focus.child` |
+| `m` / `n` | `toggleSplit` / `toggleTabStack` |
+| `[` / `]` | `layout.cycle-` / `layout.cycle+` |
+| `{` / `}` | `promote` / `promoteRecursive` |
+| `Alt+hjkl` | size nudge |
+| `Alt+yuio` | float this / +sibs / sibs / +parent |
+| `Alt+nm,.` / `Alt+/` | float parent family / all |
+| `Alt+7890` | in-axis presets |
+
+**Not** the kit: leftover proto `yuio` extra-focus, `Ctrl+yuio` TreeOp
+swap, `z`/`v` setLayout, peel moveIn/Out, merge-group. Those were proto
+sandbox or old Forge vim.
 
 ## Overlays (domain cruft — keep off the core table)
 
 **Proto only:** `a` = launch toy WINDOW, `q` / Backspace = Remove,
-merge-tag `t` / Escape, TreeOp `Delete` without settle, maybe `f`
-flatten. These exercise the kernel in a browser; they are not product
-chords.
+merge-tag `t` / Escape, TreeOp `Delete` without settle, `f` flatten.
+Browser/test. Not product chords.
 
 **Forge only:** lock `Super+Delete`, zoom `Super+Return` family, run
 dialog `Super+Space`, tiling master, prefs, cheatsheet. Host/session —

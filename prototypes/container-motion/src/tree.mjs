@@ -5,7 +5,9 @@
  */
 
 import { neighborMonitor, nearLeafOnMonitor } from "./monitors.mjs";
+import { clearMergeTags, mergeTagsOf, sessionOf } from "./session.mjs";
 import { createTomApi } from "./tom/api.mjs";
+import { geomOf } from "./world.mjs";
 import {
   children,
   fail,
@@ -16,20 +18,15 @@ import {
   selectionNode,
 } from "./tom/index.mjs";
 
-export {
-  applyForestSnapshot,
-  cloneForest,
-  defaultDecisions,
-  dumpForest,
-  nextAppLabel,
-} from "./tom/index.mjs";
+export { defaultDecisions } from "./session.mjs";
+export { applyForestSnapshot, cloneForest, dumpForest, nextAppLabel } from "./tom/index.mjs";
 
 /** @typedef {import('./tom/kernel.mjs').NodeKind} NodeKind */
 /** @typedef {import('./tom/kernel.mjs').Layout} Layout */
 /** @typedef {import('./tom/kernel.mjs').Dir} Dir */
-/** @typedef {import('./tom/kernel.mjs').MonitorGeom} MonitorGeom */
+/** @typedef {import('./world.mjs').MonitorGeom} MonitorGeom */
 /** @typedef {import('./tom/kernel.mjs').Node} Node */
-/** @typedef {import('./tom/kernel.mjs').Decisions} Decisions */
+/** @typedef {import('./session.mjs').Decisions} Decisions */
 /** @typedef {import('./tom/kernel.mjs').Forest} Forest */
 
 /**
@@ -80,8 +77,8 @@ function presenterOps(tom) {
       const p = parent(f, last);
       if (!p) return fail("slot has no parent");
       if (p.kind === "MONITOR") {
-        const tie = f.decisions?.aspectTieBreak || "HSPLIT";
-        const geom = mon.geom;
+        const tie = sessionOf(f).decisions.aspectTieBreak || "HSPLIT";
+        const geom = geomOf(f, mon);
         const w = geom?.width ?? 2;
         const h = geom?.height ?? 1;
         /** @type {Layout} */
@@ -186,7 +183,10 @@ function presenterOps(tom) {
       const grand = parent(f, p);
       if (!grand) return fail("no grandparent");
 
-      if (f.decisions.peelModel === "B" && (p.layout === "TABBED" || p.layout === "STACKED")) {
+      if (
+        sessionOf(f).decisions.peelModel === "B" &&
+        (p.layout === "TABBED" || p.layout === "STACKED")
+      ) {
         const wrap = tom.makeCon(pickPeelAxis(p), []);
         registerTree(f, wrap);
         tom.replaceChild(f, grand, p, wrap);
@@ -249,7 +249,7 @@ function presenterOps(tom) {
       /** @type {Node[]} */
       const members = [cur];
       if (withTagged) {
-        for (const tid of f.mergeTags) {
+        for (const tid of mergeTagsOf(f)) {
           const t = f.nodes[tid];
           if (t && t.id !== cur.id && parent(f, t) === p) members.push(t);
         }
@@ -265,7 +265,7 @@ function presenterOps(tom) {
       if (!r.ok) return r;
       if (members[0]) wrap.lastTabFocusId = members[0].id;
       f.selectionId = wrap.id;
-      tom.clearMergeTags(f);
+      clearMergeTags(f);
       return ok("group", { id: wrap.id, n: members.length });
     },
 

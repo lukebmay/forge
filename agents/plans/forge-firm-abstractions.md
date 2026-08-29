@@ -1,9 +1,9 @@
 # forge-firm-abstractions — Firm kernel, then import
 
-**Status:** accepted — **P1a next** (begin implement)
+**Status:** accepted — **P3 done**; **P4 done**
 **Branch:** master
 **Blocker:** (none)
-**Updated:** 2026-08-27
+**Updated:** 2026-08-28
 
 ## Goal
 
@@ -53,21 +53,37 @@ hub + policy + paint scheduler. The wrong object is the center of gravity.
 | **P0b** | Synthesize `layers.md` + `import-map.md` | done |
 | **P0c** | Open-plan scan → PRIORITY/HANDOFF | done |
 | **P0d** | `agents/design.md` + CHANGELOG D079 | done |
-| **P1a** | Lift proto `src/tom/` data+atomics+composed (no settle) → `lib/tom/` | next |
-| **P1b** | `lib/rulesets/{core,mark2}.js`; proto tests call the same settle | ready |
-| **P1c** | `lib/keybinds/` Mark 2 Super-bearing table; proto `stripSuper` + `a`/`q`; CI: proto ≡ stripSuper(Forge) for shared ids | ready |
-| **P2** | Strip `decisions`/`mergeTags` off kernel; Host holds a Forest | ready |
-| **P3** | Presenter adapter (stop `Node.rect`/decoration in TOM) | ready |
-| **P4** | OpSet port (Mark 2) onto `lib/tom` + RuleSet — product Move **is** Mark 2 | ready |
+| **P1a** | Lift proto `src/tom/` data+atomics+composed (no settle) → `lib/tom/` | done |
+| **P1b** | `lib/rulesets/{core,mark2}.js`; proto tests call the same settle | done |
+| **P1c** | `lib/keybinds/` Mark 2 Super-bearing table; proto `stripSuper` + `a`/`q`; CI: proto ≡ stripSuper(Forge) for shared ids | done |
+| **P2** | Strip `decisions`/`mergeTags` off kernel; Host holds a Forest | done |
+| **P3** | Presenter adapter (stop `Node.rect`/decoration in TOM) | done |
+| **P4** | OpSet port (Mark 2) onto `lib/tom` + RuleSet — product Move **is** Mark 2 | done |
 | **P5** | Epoch import (Apply / session / H1) onto TOM snapshots | ready |
 | **P6** | Surface import (DnD/DBus/host overlays) → OpSet action ids | ready |
 
-**P1a acceptance:** `lib/tom/` is the proto kernel source; proto tests
-import it (shim OK); `cd prototypes/container-motion && npm test`
-green; Forge `tree.js` untouched. Settle may still live in `composed`
-until P1b.
+**P1b acceptance:** `lib/rulesets/{core,mark2}.js` owns settle; proto
+OpSet binds it; MONITOR max-1 wired; `npm test` 145 green; `tree.js`
+untouched.
 
-P1b/P1c before Shell Move so proto and Forge cannot drift.
+**P1c acceptance:** `lib/keybinds/` Super-bearing table (D081 right-hand
+kit); proto generated from `stripSuper ∪ overlay`; proto **154** green;
+vitest mark2-table **9**; `keybind-presets.js` untouched.
+
+**P2 acceptance:** Forest has no `decisions`/`mergeTags`; session bag
+`lib/session/`; RuleSet takes `aspectTieBreak` string; proto **154**
+green; vitest session **6**; `tree.js` untouched.
+
+**P3 acceptance:** MONITOR nodes have no `geom`; world bag `lib/world/`;
+`paneRect` in `lib/presenter/` (not `lib/tom/`); proto **154** green;
+vitest world **6** + presenter **2** + session **6** + keybinds **9**;
+`tree.js` untouched.
+
+**P4 acceptance:** Mark 2 OpSet at `lib/opsets/`; neighbor queries in
+`lib/world/neighbors.js`; proto shims; proto **154** green; vitest
+opsets **3** + world **6** + presenter **2** + session **6** +
+keybinds **9**; `tree.js` / `command.js` / `keybind-presets.js`
+untouched.
 
 ## Working weight
 
@@ -80,10 +96,20 @@ P1b/P1c before Shell Move so proto and Forge cannot drift.
 | [ruleset.md](./forge-firm-abstractions/ruleset.md) | RuleSet module (D080) |
 | [keybinds.md](./forge-firm-abstractions/keybinds.md) | Shared chord table (D080) |
 | [import-map.md](./forge-firm-abstractions/import-map.md) | Keep / port / discard |
+| [P2.md](./forge-firm-abstractions/P2.md) | P2 working note (D082) |
+| [P3.md](./forge-firm-abstractions/P3.md) | P3 working note (D083) |
+| [P4.md](./forge-firm-abstractions/P4.md) | P4 working note (lib/opsets) |
 
 ## Context for the next agent
 
-- Proto kernel: `prototypes/container-motion/src/tom/` (gi-free, presenter-free).
+- Product kernel: `lib/tom/` (gi-free). Proto `src/tom/` re-exports.
+- Session bag: `lib/session/` (WeakMap). Not Forest fields (D082).
+- World bag: `lib/world/` (WeakMap). MONITOR workarea, not Node.geom
+  (D083). Neighbor queries: `lib/world/neighbors.js`. Slot AABB:
+  `lib/presenter/` `paneRect`.
+- Mark 2 OpSet: `lib/opsets/` (D084). Proto `src/opsets/` re-exports.
+- Mark 2 chords: `lib/keybinds/` (Super-bearing). Proto =
+  `stripSuper(table) ∪ proto-overlay`.
 - Mark 2 glossary: `prototypes/container-motion/src/opsets/mark2.md` (FIRM).
 - Forge contamination: `lib/extension/tree.js` `Node` extends GObject and
   constructs decorations/actors in the constructor.
@@ -92,10 +118,83 @@ P1b/P1c before Shell Move so proto and Forge cannot drift.
 - Existing locks that **stay** as product strategy unless the import map
   says otherwise: D023 child-list, D039–D044 apply, D069 tab geometry,
   H1 dual monitor-resolve, D036 gi-free `lib/shared/`.
-- D073/D074/D079/D080: TOM+atomics core; RuleSet settle; Mark 2 OpSet;
-  one Super-bearing keybind table.
+- D073/D074/D079/D080/D081/D082/D083/D084/**D085**: portable kernel
+  (TOM/RuleSet/OpSet/action ids); ForgeAdapterGnome /
+  ForgeAdapterWebView; KeybindAdapterGnome / KeybindAdapterWebView;
+  session off Forest; world + paneRect off Node.
 
 ## Session note
+
+**2026-08-28d:** **D085** kernel vs adapters locked (operator). Next
+**P5**. Wrap-up commit this session.
+
+**2026-08-28c:** **P4 done** (D084). Mark 2 OpSet `lib/opsets/`; neighbor
+queries `lib/world/neighbors.js`; proto `src/opsets/*.mjs` re-export.
+Brake proto **154** + vitest opsets **3** + world **6** + presenter
+**2** + session **6** + keybinds **9**. Next: **P5** (epochs) / **P6**
+(CommandHandler). Working note:
+[`P4.md`](./forge-firm-abstractions/P4.md). No commit (human did not
+ask).
+
+**2026-08-28b:** **P4 started** (Grok 4.6). Port Mark 2 + transact to
+`lib/opsets/`; neighbor math off proto `monitors.mjs`. Do not wire
+CommandHandler. Working note:
+[`P4.md`](./forge-firm-abstractions/P4.md).
+
+**2026-08-28:** **P3 done** (D083). World bag `lib/world/`; presenter
+`paneRect` `lib/presenter/`; MONITOR nodes have no `geom`. Brake proto
+**154** (orchestrator re-ran) + vitest world **6** + presenter **2** +
+session **6** + keybinds **9**. Next: **P4**. Working note:
+[`P3.md`](./forge-firm-abstractions/P3.md). No commit (human did not
+ask).
+
+**2026-08-27o:** **P2 done** (D082). Session bag `lib/session/`;
+kernel Forest has no `decisions`/`mergeTags`. Brake proto **154** +
+vitest session **6** + keybinds **9**. Next: **P3**. Working note:
+[`P2.md`](./forge-firm-abstractions/P2.md). No commit (human did not
+ask).
+
+**2026-08-27n:** Handoff overwritten for next session. **P2 next.**
+Working tree uncommitted on `master` (ahead 3). Do not re-do P1.
+
+**2026-08-27m:** **D081** — vim kit = proto right-hand reach. Table
+gained `p`/`Shift+p`, `[`/`]`; dropped leftover `yuio` extra-focus.
+Brake proto **154** + vitest **9**. Shipping presets still not
+rewritten (P4/P6). Next: **P2**.
+
+**2026-08-27l:** Orchestrator **re-ran** P1c brakes: proto **149**
+green, vitest mark2-table **7**. P1 complete. Next session **P2**.
+No commit (human did not ask).
+
+**2026-08-27k:** P1c **done**. `lib/keybinds/{actions,mark2,strip-super,proto-overlay}.js`;
+proto `defaultVimMinusSuper()` generated; `runAction` shared ids + aliases.
+Brake **ALL PASSED (149 cases)** + vitest mark2-table **7**. Shipping vim
+kit swap chords **untouched**. Next: **P2**. Working note:
+[`P1c.md`](./forge-firm-abstractions/P1c.md).
+
+**2026-08-27j:** P1b **verified green** (orchestrator re-ran 145).
+P1c **started** (Grok 4.6). Working note:
+[`P1c.md`](./forge-firm-abstractions/P1c.md). Do not rewrite live
+vim kit swap chords this slice.
+
+**2026-08-27i:** P1b **done**. `lib/rulesets/{core,mark2}.js`; proto
+OpSet imports settle; MONITOR max-1 **wired**; brake **ALL PASSED
+(145 cases)**. Next: **P1c**. Working note:
+[`P1b.md`](./forge-firm-abstractions/P1b.md).
+
+**2026-08-27h:** P1a **verified green** (orchestrator re-ran 144).
+P1b **started** (Grok 4.6). Working note:
+[`P1b.md`](./forge-firm-abstractions/P1b.md).
+
+**2026-08-27g:** P1a **done**. Kernel at `lib/tom/*.js`; proto
+`src/tom/*.mjs` re-export shims; vite `fs.allow` repo root;
+`npm test` **ALL PASSED (144 cases)**. Next: **P1b** RuleSet extract.
+Working note: [`P1a.md`](./forge-firm-abstractions/P1a.md).
+
+**2026-08-27f:** P1a **started**. Mechanical lift of proto `src/tom/`
+→ `lib/tom/*.js` (Grok 4.5 implementer). Working note:
+[`P1a.md`](./forge-firm-abstractions/P1a.md). Do **not** extract
+RuleSet (P1b) or strip `decisions` (P2) in this slice.
 
 **2026-08-27e:** Handoff prepped. Next session **begins P1a**. No
 implement this commit.

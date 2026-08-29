@@ -1,13 +1,14 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-27 — **begin P1a** (TOM lift)
+**Updated:** 2026-08-28 — **P5 next**. **D085** kernel vs adapters.
 **Cross-session handoff:** [`HANDOFF.md`](./HANDOFF.md) ← **read first**
-**Lens:** TOM+atomics core; RuleSet settle; Mark 2 OpSet; one keybind table.
+**Lens:** portable kernel (TOM/RuleSet/OpSet/action ids); Gnome + WebView
+**adapters**; session off Forest; world + paneRect off Node.
 **Branch:** **`master`**. **Push:** only when human asks.
 
 Design = [`design.md`](./design.md) · layers =
 [`plans/forge-firm-abstractions/layers.md`](./plans/forge-firm-abstractions/layers.md)
-· history = [`design/CHANGELOG.md`](./design/CHANGELOG.md) (D079, D080).
+· history = [`design/CHANGELOG.md`](./design/CHANGELOG.md) (D079–D085).
 Scan merge =
 [`plans/forge-firm-abstractions/explore/07-plan-scan.md`](./plans/forge-firm-abstractions/explore/07-plan-scan.md).
 
@@ -15,13 +16,13 @@ Scan merge =
 
 ## Active next (ordered)
 
-1. **P0** — **P1a TOM lift**
+1. **P0** — **P5** epoch import (Apply / session / H1 → TOM snapshots)
    ([`forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
+   · [`explore/05-apply-recovery.md`](./plans/forge-firm-abstractions/explore/05-apply-recovery.md)
    · [`HANDOFF`](./HANDOFF.md)).
-   `prototypes/container-motion/src/tom/` → `lib/tom/`; proto tests
-   import it; `cd prototypes/container-motion && npm test` green. No
-   Forge `tree.js` yet. Then **P1b** `lib/rulesets/`, **P1c**
-   `lib/keybinds/`.
+   P1a–P4 + **D082–D085** done. Kernel = `lib/{tom,rulesets,opsets,keybinds}`.
+   Do not merge the two monitor-resolves. CommandHandler / shipping vim
+   kit = **P6**. Do not grow tiling policy in ForgeAdapterGnome.
 
 Do **not** start pinned-slots design until the operator schedules that
 meeting. Do **not** keep ding / Super+2 / vinyl / D069 tip as next work.

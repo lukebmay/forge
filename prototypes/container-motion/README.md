@@ -42,16 +42,24 @@ compositions of atomics are **composed TreeOps**. OpSet-specific work is
 
 ## Layers (do not collapse)
 
+This proto is **ForgeAdapterWebView** + **KeybindAdapterWebView** on the
+shared kernel (`lib/tom/`, `lib/rulesets/`, `lib/opsets/`,
+`lib/keybinds/`). GNOME Shell is **ForgeAdapterGnome**, not a second
+TOM.
+
 ```text
-Presenters     HTML desk / tree graph / (later) Forge + Mutter
+ForgeAdapterWebView   HTML desk / tree graph
+ForgeAdapterGnome     Mutter / Meta / St   (not this proto)
      ↑
-OpSets         Mark 2 (now) · future i3-like / vim-like / …
-               SurfaceOps + tree rules + keybind map
+Keybind adapters      WebView = stripSuper ∪ overlay
+                      Gnome = Super-bearing accels
      ↑
-TreeOps        atomics + composed (swap, wrap, breakout, unary, …)
+OpSet (kernel)        Mark 2 SurfaceOps + bound RuleSet
      ↑
-TOM kernel     Forest + Node (MONITOR | CON | WINDOW)
-World          monitor geometry (neighbor head) — not TOM topology
+TreeOps (kernel)      atomics + composed (no settle)
+     ↑
+TOM kernel            Forest + Node (MONITOR | CON | WINDOW)
+World                 workarea bag — host adapter fills
 ```
 
 | Layer | Owns | Must not |
@@ -62,8 +70,9 @@ World          monitor geometry (neighbor head) — not TOM topology
 | **Presenter** | Paint, keys, launch *button* | Encode tiling policy "because the desk looked wrong" |
 
 Forge D023 names (`appendChild` / `insertBefore` / `removeChild` /
-`replaceChildren`) are the atomics. Port path is `src/tom/` → gi-free
-shared module, then a thin GJS facade.
+`replaceChildren`) are the atomics. Kernel lives at `lib/tom/` (this
+tree's `src/tom/` re-exports). D085: kernel is host-portable; this
+desk is one adapter.
 
 ## Run
 
@@ -179,8 +188,8 @@ onto the surviving child.
 
 Cross-axis size is the **parent container’s** share in *its* split. TAB/STACK
 peers share one pane; **all** size ops from a tab/stack leaf (nudge, preset,
-float this, equalize) target the TAB/STACK node, not the leaf. `e` on a
-selected H/V CON still equalizes that CON’s children.
+float this, equalize) target the TAB/STACK node, not the leaf. Equalize
+on a selected H/V CON still equalizes that CON’s children.
 
 For float chords, **parent** means the ancestor whose share controls this
 node’s **cross-axis** size (e.g. the V in `H(V(A,B),C)` when A is selected).
@@ -211,12 +220,7 @@ op is a no-op. Step is 5%. Proto keys omit Super (`Alt+…` not `Super+Alt+…`)
 | `hjkl` | Select (focus) |
 | `Shift+hjkl` | Mark 2 `Move` |
 | `Ctrl+hjkl` | Mark 2 `Join` |
-| `yuio` | Focus |
-| `Ctrl+yuio` | TreeOp swap |
 | `p` / `Shift+p` | Parent / child |
-| `a` | Launch next to selection (guake; not a dock) |
-| `q` / `Backspace` | OpSet remove (settle) |
-| `Delete` | TreeOp destroy (no settle) |
 | `[` / `]` | Cycle layout |
 | `m` / `n` | Toggle split / tab-stack |
 | `{` / `}` | PromoteChildren / recursive |
@@ -225,6 +229,10 @@ op is a no-op. Step is 5%. Proto keys omit Super (`Alt+…` not `Super+Alt+…`)
 | `Alt+nm,.` | Float parent / parent group / parent sibs / both groups |
 | `Alt+/` | Float all shares in the tree |
 | `Alt+7890` | In-axis presets |
+
+This **is** the product vim / Mark 2 kit (add Super on Forge). Proto overlay
+only: `a` launch, `q`/`Backspace` remove, `Delete` destroy, `t`/`Escape`
+tags, `f` flatten. Not product: leftover `yuio` extra-focus, TreeOp swap.
 
 Proto plog is **local only** (`src/plog.mjs`). Tests write
 `logs/motion-test.log`. Not forge dual-tape.
@@ -243,7 +251,7 @@ Proto plog is **local only** (`src/plog.mjs`). Tests write
 - Monitor neighbor / `transferLeafToMonitor` still live in `monitors.mjs`
   (world + a bit of max-1 wrap). Next cleanup: transfer should be TreeOps
   + Mark 2 wrap rule, not a world-module splice.
-- `f.decisions` is session/OpSet prefs hanging on the forest. Eventually
-  OpSet-scoped, not TOM structure.
+- Session prefs (`decisions`, `mergeTags`, `peelModel`) live in
+  `lib/session/` (WeakMap), not on Forest (D082).
 - Peel Model A vs B / merge-tags are presenter or Mark 1 leftovers, not TOM
   atomics. Mark 2 owns Launch.

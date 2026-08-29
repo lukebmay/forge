@@ -4,6 +4,7 @@
  */
 
 import { ensureMark2Decisions, getOpSet, runOpAbstract } from "../src/opsets/index.mjs";
+import { mergeTagsOf } from "../src/session.mjs";
 import { nextAppLabel } from "../src/tom/index.mjs";
 import {
   buildGiven,
@@ -19,7 +20,7 @@ import {
 /**
  * @typedef {{
  *   id: string,
- *   layer: 'atomics'|'composed'|'opset'|'workflow'|'shorthand',
+ *   layer: 'atomics'|'composed'|'opset'|'workflow'|'shorthand'|'keybinds',
  *   given?: string,
  *   actions?: string[],
  *   expect?: string,
@@ -92,7 +93,7 @@ export function runStep(f, api, byLabel, opsetId, step) {
     case "SetLayout":
       return api.setLayout(f, step.layout);
     case "Wrap":
-      return api.wrap(f, step.layout, f.mergeTags.length > 0);
+      return api.wrap(f, step.layout, mergeTagsOf(f).length > 0);
     case "Ungroup":
       return api.ungroup(f);
     case "Group":
