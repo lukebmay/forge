@@ -1,7 +1,7 @@
 # forge-firm-abstractions — Firm kernel, then import
 
 **Status:** accepted — **P7 done** (D087/D088); **P6 remainder done**
-(DnD leftover)
+(DnD Join/Move mapped; fallback leftover)
 **Branch:** master
 **Blocker:** (none)
 **Updated:** 2026-08-29
@@ -61,7 +61,7 @@ hub + policy + paint scheduler. The wrong object is the center of gravity.
 | **P3** | Presenter adapter (stop `Node.rect`/decoration in TOM) | done |
 | **P4** | OpSet port (Mark 2) onto `lib/tom` + RuleSet — product Move **is** Mark 2 | done |
 | **P5** | Epoch import (Apply / session / H1) onto TOM snapshots | **done** (P5c parked) |
-| **P6** | Surface import (DnD/DBus/host overlays) → OpSet action ids | **remainder done** (DnD leftover) |
+| **P6** | Surface import (DnD/DBus/host overlays) → OpSet action ids | **remainder done** (DnD Join/Move mapped) |
 | **P7** | Forest envelope META + FLOATS + TILES (D087); key overlay D088 | **done** |
 
 **P1b acceptance:** `lib/rulesets/{core,mark2}.js` owns settle; proto
@@ -117,7 +117,8 @@ untouched.
   KeybindAdapter ∪ overlay (D088). Proto =
   `stripSuper(kernel ∪ WebView overlay)`.
 - Forest envelope (D087 / P7): META + FLOATS + TILES. Mark 2 mutates
-  TILES. `tom-live` projects FLOAT/GRAB_TILE into FLOATS.
+  TILES. `tom-live` projects FLOAT/GRAB_TILE into FLOATS; DnD commit
+  may set `treatGrabTileAsTiles`.
 - Mark 2 glossary: `prototypes/container-motion/src/opsets/mark2.md` (FIRM).
 - Forge contamination: `lib/extension/tree.js` `Node` extends GObject and
   constructs decorations/actors in the constructor.
@@ -134,12 +135,19 @@ untouched.
 
 ## Session note
 
+**2026-08-29d:** **P6 DnD leftover.** Shared `lib/extension/forest-run.js`
+`runLiveForest`. DnD commit: `resolveDropMark2` → Mark 2 Join/Move when
+mapped (`treatGrabTileAsTiles`); else `_executeDropOperation`. Mapped:
+CENTER into adjacent TABBED/STACKED CON **under a CON parent** (join
+enter-con); same-parent CON in-axis adjacent edge (move). Fallback:
+swap, `shouldMergeCenterGroup` (Join ≠ tab merge), wrap/detach/createCon,
+empty-mon, cross-mon, MONITOR-parent edge/CENTER-into-group. Working
+note: [`P6.md`](./forge-firm-abstractions/P6.md).
+
 **2026-08-29c:** **P6 remainder done.** CommandHandler `runLiveForest`
 dispatches `toggleSplit` / `toggleTabStack` / `promote` /
 `promoteRecursive` / `layout.cycle±` / `size.*` on TILES (FLOATS refuse).
-Vim kit overlay from `MARK2_TABLE`. DnD execute **not** OpSet (leftover).
-Brake proto **154**; CommandHandler **81**; Keybindings **64**;
-keybind-presets **39**; mark2-table **14**. Working note:
+Vim kit overlay from `MARK2_TABLE`. Working note:
 [`P6.md`](./forge-firm-abstractions/P6.md).
 
 **2026-08-29b:** **P7 done** (Grok 4.6). Envelope META + FLOATS + TILES

@@ -722,7 +722,15 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
   describe("foreign-strip join at insert index", () => {
     function makeTab(x, y, width, height) {
-      return { x, y, width, height };
+      return {
+        x,
+        y,
+        width,
+        height,
+        hide() {},
+        destroy_all_children() {},
+        destroy() {},
+      };
     }
 
     it("release on dest strip inserts at gap (not always append)", () => {

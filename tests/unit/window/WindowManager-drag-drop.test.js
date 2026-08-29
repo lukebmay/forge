@@ -508,6 +508,83 @@ describe("WindowManager - Drag and Drop Tiling", () => {
     });
   });
 
+  describe("moveWindowToPointer - Mark 2 mapped drops", () => {
+    it("same-parent HSPLIT adjacent RIGHT reorders siblings", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const split = createContainerNode(monitor, LAYOUT_TYPES.HSPLIT, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const a = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaA);
+      const b = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaB);
+      a.mode = WINDOW_MODES.GRAB_TILE;
+      b.mode = WINDOW_MODES.TILE;
+      a.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      b.rect = { x: 960, y: 0, width: 960, height: 1080 };
+
+      setPointer(1800, 540);
+      wm().nodeWinAtPointer = b;
+      wm().moveWindowToPointer(a, false);
+
+      expect(split.childNodes).toEqual([b, a]);
+      expect(a.parentNode).toBe(split);
+      expect(b.parentNode).toBe(split);
+    });
+
+    it("CENTER into TABBED CON from adjacent CON sibling joins the group", () => {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "TABBED";
+        return "";
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const row = createContainerNode(monitor, LAYOUT_TYPES.HSPLIT, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const tabCon = createContainerNode(row, LAYOUT_TYPES.TABBED, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const target = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+      target.mode = WINDOW_MODES.TILE;
+      target.rect = { x: 960, y: 0, width: 960, height: 1080 };
+      const dragged = ctx.tree.createNode(row.nodeValue, NODE_TYPES.WINDOW, metaB);
+      dragged.mode = WINDOW_MODES.GRAB_TILE;
+      dragged.rect = { x: 0, y: 0, width: 960, height: 1080 };
+
+      setPointer(1440, 540);
+      wm().nodeWinAtPointer = target;
+      wm().moveWindowToPointer(dragged, false);
+
+      expect(dragged.parentNode).toBe(tabCon);
+      expect(tabCon.childNodes).toContain(target);
+      expect(tabCon.childNodes).toContain(dragged);
+    });
+  });
+
   describe("moveWindowToPointer - Preview Mode", () => {
     it("should not modify tree when preview is true", () => {
       ctx.settings.get_boolean.mockImplementation((key) => {

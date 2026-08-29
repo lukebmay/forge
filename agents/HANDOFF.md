@@ -1,7 +1,8 @@
 # Handoff — forge (lukebmay)
 
 **Updated:** 2026-08-29 — **P6 remainder done** (toggle/promote/size/
-layout.cycle + vim kit). **DnD leftover.** **Branch:** **`master`**.
+layout.cycle + vim kit). **DnD leftover:** clear TILES Join/Move
+mapped; rest still `_executeDropOperation`. **Branch:** **`master`**.
 Nest **stopped**. **Push:** only if the human asks.
 
 ## Pain
@@ -22,9 +23,11 @@ reference impl.
 ForgeAdapterWebView (proto desk); KeybindAdapterGnome /
 KeybindAdapterWebView (kernel table ∪ host overlay).
 **Live projection:** `lib/extension/tom-live.js` — TILES normally;
-FLOAT/GRAB_TILE → FLOATS. Apply parks live floats on ROOT, not MONITOR.
-Product Move **is** Mark 2 Move. CommandHandler `runLiveForest` is the
-TILES mutate path (move/join/toggle/promote/size/layout.cycle). Glossary =
+FLOAT/GRAB_TILE → FLOATS. DnD commit may set **`treatGrabTileAsTiles`**
+so GRAB_TILE stays on the live TILES parent (true FLOAT still FLOATS).
+Apply parks live floats on ROOT, not MONITOR.
+Product Move **is** Mark 2 Move. Shared `runLiveForest` (`forest-run.js`)
+is the TILES mutate path (CommandHandler + mapped DnD). Glossary =
 [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
 
 **Size** (D090) = **percent** or **`share`**. `share` splits leftover
@@ -43,23 +46,23 @@ D079–**D091**
 | --- | --- |
 | P1–P4 | `lib/{tom,rulesets,keybinds,session,world,presenter,opsets}/` |
 | P5 | [`P5.md`](./plans/forge-firm-abstractions/P5.md) · `lib/epochs/` |
-| P6 | [`P6.md`](./plans/forge-firm-abstractions/P6.md) · remainder done; **DnD leftover** |
+| P6 | [`P6.md`](./plans/forge-firm-abstractions/P6.md) · remainder done; DnD Join/Move mapped |
 | P7 | [`P7.md`](./plans/forge-firm-abstractions/P7.md) **done** |
 
 **Brake:**
 `cd prototypes/container-motion && npm test` → **154**.
 Vitest: mark2-table **14** + keybind-presets **39** + CommandHandler
 **81** + Keybindings **64** + WindowManager-commands **40** +
-structure-one-commit **6** + opsets **3** + tom-live **7** +
-forest-envelope **7**.
+structure-one-commit **6** + opsets **3** + tom-live **9** +
+forest-envelope **7** + drop-intent **47** + WindowManager-drag-drop
+**32** + comprehensive **65**.
 
 ### Do
 
-1. Optional: DnD **execute/commit** onto Mark 2 Join/Move (TILES only)
-   without rewriting `drag-drop.js` gesture/preview. If still a redesign,
-   leave it leftover.
-2. Keep proto tests green (154+).
-3. Do **not** retarget Apply onto T6. Do **not** merge monitor-resolves.
+1. Keep proto tests green (154+).
+2. Do **not** retarget Apply onto T6. Do **not** merge monitor-resolves.
+3. DnD leftover remainder is fallback-only (swap/merge-group/wrap/
+   detach/invent/empty-mon). Do not rewrite gesture/preview.
 
 ### Do not
 
@@ -147,7 +150,9 @@ Adapters **extend** the kernel; they do not fork it.
 3. WebApp overlays beyond proto `a`/`q` — later
 4. Live GObject tree still has no FLOATS node; apply parks floats on
    ROOT (TOM FLOATS is the document of record)
-5. DnD execute still Host (`drag-drop.js` `_executeDropOperation`)
+5. DnD execute: mapped Join/Move via `resolveDropMark2`; else Host
+   `_executeDropOperation` (swap / merge-group / wrap / detach / invent /
+   empty-mon)
 
 ## Where context lives
 

@@ -215,6 +215,38 @@ describe("tom-live project + apply-back", () => {
     expect(isUnderTiles(projected.forest, projected.forest.nodes.G)).toBe(false);
   });
 
+  it("treatGrabTileAsTiles keeps GRAB_TILE under TILES", () => {
+    const { root, con } = twoSplitTree();
+    const winG = makeLive("WINDOW", { id: "G", title: "grab" });
+    winG.isGrabTile = () => true;
+    winG.mode = "GRAB_TILE";
+    con.appendChild(winG);
+    const projected = projectLiveForest(root, {
+      windowIdOf,
+      createCon,
+      treatGrabTileAsTiles: true,
+    });
+    expect(floatsOf(projected.forest).childIds).not.toContain("G");
+    expect(isUnderTiles(projected.forest, projected.forest.nodes.G)).toBe(true);
+    expect(projected.forest.nodes.G.parentId).not.toBe(floatsOf(projected.forest).id);
+    expect(con.childNodes).toContain(winG);
+  });
+
+  it("treatGrabTileAsTiles still parks true FLOAT in FLOATS", () => {
+    const { root, con } = twoSplitTree();
+    const winF = makeLive("WINDOW", { id: "F", title: "float" });
+    winF.isFloat = () => true;
+    winF.mode = "FLOAT";
+    con.appendChild(winF);
+    const projected = projectLiveForest(root, {
+      windowIdOf,
+      createCon,
+      treatGrabTileAsTiles: true,
+    });
+    expect(floatsOf(projected.forest).childIds).toContain("F");
+    expect(isUnderTiles(projected.forest, projected.forest.nodes.F)).toBe(false);
+  });
+
   it("minimized tiled WINDOW stays in TILES", () => {
     const { root, winA } = twoSplitTree();
     winA.nodeValue.minimized = true;

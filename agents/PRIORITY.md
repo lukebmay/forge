@@ -1,7 +1,7 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-29 — **P6 remainder done.** Leftover: DnD execute
-→ OpSet (not a thin path). **Cross-session handoff:**
+**Updated:** 2026-08-29 — **P6 remainder done.** DnD leftover: clear
+TILES Join/Move mapped; rest still Host execute. **Cross-session handoff:**
 [`HANDOFF.md`](./HANDOFF.md) ← **read first**
 **Lens:** portable kernel (TOM/RuleSet/OpSet/action ids); adapters
 **extend** that kernel; T6 in `lib/epochs/`; FLOATS off TILES.
@@ -17,12 +17,9 @@ Scan merge =
 
 ## Active next (ordered)
 
-1. **P0** — **P6 DnD leftover** (optional pickup) — wire completed-drop
-   **execute/commit** onto Mark 2 Join/Move (TILES only) without rewriting
-   `drag-drop.js` gesture/preview. If it is still a redesign, leave it.
-   ([`P6.md`](./plans/forge-firm-abstractions/P6.md)
-   · [`HANDOFF`](./HANDOFF.md)).
-   FLOAT windows stay in FLOATS, not under a MONITOR.
+1. **P0** — none queued. P6 DnD leftover: mapped CENTER-into-group Join
+   + same-parent in-axis adjacent Move; fallback for swap / merge-group /
+   wrap / detach / invent / empty-mon. Do not start pinned-slots.
 
 Do **not** start pinned-slots design until the operator schedules that
 meeting. Do **not** keep ding / Super+2 / vinyl / D069 tip as next work.
