@@ -77,7 +77,8 @@ gate deferred open → (activate already done by entry)
 | Hover | Meta path only |
 
 **Show in group (D025):** `wm.revealGroupChild(node, { keyboard, pin })` —
-write LTF → pin or adopt live pin (R026) → `reassertNodeToSlot` (R025) →
+write LTF → pin or adopt live pin (R026) → raise → optional `reassertNodeToSlot`
+(R025 safety net; tab-click raises first then heals only if still off-slot) →
 raise → `settleTabFocus`; keyboard → focus + activate + `afterFocus`.
 Restack is last (R032). Not a second C. Do not invent `raiseWindow()`.
 

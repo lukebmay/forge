@@ -943,7 +943,7 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(wB.raise).toHaveBeenCalled();
   });
 
-  it("activateFromTab reasserts the revealed child to slot (R025), no focus render", () => {
+  it("activateFromTab heals off-slot peer after raise (R025), no focus render", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
     tab.layout = LAYOUT_TYPES.TABBED;
@@ -962,14 +962,19 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     nB.rect = { ...slot };
     nB.renderRect = { ...slot };
 
-    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    const order = [];
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {
+      order.push("move");
+    });
     const renderSpy = vi.spyOn(wm(), "renderTree");
-    wB.raise = vi.fn();
+    wB.raise = vi.fn(() => order.push("raise"));
     wB.focus = vi.fn();
     wB.activate = vi.fn();
 
     nB._activateFromTab(wB);
 
+    expect(order[0]).toBe("raise");
+    expect(order).toContain("move");
     expect(moveSpy).toHaveBeenCalledWith(
       wB,
       expect.objectContaining(slot),
@@ -979,7 +984,35 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(moveSpy).toHaveBeenCalledTimes(1);
     expect(renderSpy).not.toHaveBeenCalledWith("focus");
     expect(renderSpy.mock.calls.some((c) => c[0] === "focus")).toBe(false);
+    expect(tab.lastTabFocus).toBe(wB);
+  });
+
+  it("activateFromTab skips move when peer is already in-slot (D069 raise-only)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+
+    const slot = { x: 0, y: 0, width: 900, height: 700 };
+    const wA = createMockWindow({ id: "inslot-a", rect: slot, workspace: ctx.workspaces[0] });
+    const wB = createMockWindow({ id: "inslot-b", rect: slot, workspace: ctx.workspaces[0] });
+    const nA = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wA);
+    const nB = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wB);
+    nA.mode = WINDOW_MODES.TILE;
+    nB.mode = WINDOW_MODES.TILE;
+    nA.rect = { ...slot };
+    nA.renderRect = { ...slot };
+    nB.rect = { ...slot };
+    nB.renderRect = { ...slot };
+
+    const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
+    wB.raise = vi.fn();
+    wB.focus = vi.fn();
+    wB.activate = vi.fn();
+
+    nB._activateFromTab(wB);
+
     expect(wB.raise).toHaveBeenCalled();
+    expect(moveSpy).not.toHaveBeenCalled();
     expect(tab.lastTabFocus).toBe(wB);
   });
 

@@ -314,7 +314,7 @@ describe("action-pipeline revealGroupChild", () => {
     expect(after).not.toHaveBeenCalled();
   });
 
-  it("R025: reasserts the revealed child to slot before raise", () => {
+  it("R025: non-tab reveal reasserts before raise", () => {
     const { nB, wB } = tabbedPair();
     const order = [];
     const reassert = vi.spyOn(wm(), "reassertNodeToSlot").mockImplementation(() => {
@@ -328,6 +328,24 @@ describe("action-pipeline revealGroupChild", () => {
     expect(reassert).toHaveBeenCalledWith(nB);
     expect(order[0]).toBe("reassert");
     expect(order).toContain("raise");
+  });
+
+  it("R025: tab-click raises first, then reasserts only as safety net", () => {
+    const { nB, wB } = tabbedPair();
+    const order = [];
+    const reassert = vi.spyOn(wm(), "reassertNodeToSlot").mockImplementation(() => {
+      order.push("reassert");
+      return false; // already in-slot after raise
+    });
+    wB.raise = vi.fn(() => order.push("raise"));
+    wB.focus = vi.fn();
+    wB.activate = vi.fn();
+
+    revealGroupChild(wm(), nB, { keyboard: true, source: "tab-click" });
+
+    expect(reassert).toHaveBeenCalledWith(nB);
+    expect(order[0]).toBe("raise");
+    expect(order[1]).toBe("reassert");
   });
 
   it("R025: still reasserts when zoomMode is set (paint-aware dest)", () => {

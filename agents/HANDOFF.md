@@ -1,10 +1,10 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-30 — Host eyes-on: `dev` + `vinyl` + Nautilus tab
-joins OK; RIGHT edge on TAB group felt thrashy (nest matrix now green);
-`dev` apply ~10s from soft-heuristic poison (**fixed**). **P0 leftover:**
-toggleTabStack nest; host logout for soft+edge tip; inkscape vs indigo
-slot size. **Do not resave loadouts.** **Plan:**
+**Updated:** 2026-08-30 — Soft poison + TABBED edge nest committed
+(`de517f32`). Tab-click: raise-first then R025 only if still off-slot
+(D069); CENTER join force-heals peers. **P0 leftover:** toggleTabStack
+nest; host logout for tip; inkscape vs indigo; Chrome peer heal if
+tab-click still resizes. **Do not resave loadouts.** **Plan:**
 [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
 **Architecture:** [architecture-verdict-2026-08-29.md](./plans/forge-live-layout-dnd-proof/architecture-verdict-2026-08-29.md)
 **Branch:** **`master`**. **Push:** only if asked.
