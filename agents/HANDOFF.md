@@ -1,11 +1,13 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-30 — Soft poison + TABBED edge nest committed
-(`de517f32`). Tab-click: raise-first then R025 only if still off-slot
-(D069); CENTER join force-heals peers. **P0 leftover:** toggleTabStack
-nest; host logout for tip; inkscape vs indigo; Chrome peer heal if
-tab-click still resizes. **Do not resave loadouts.** **Plan:**
-[forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
+**Updated:** 2026-08-30 — Soft poison + TABBED edge nest (`de517f32`) +
+tab-click raise-first (`e21e174d`). **P0:** design meeting —
+[settled slot authority](./plans/forge-settled-slot-authority.md)
+([blocker](./blockers/settled-slot-authority-design.md)). Do **not**
+delete heal waves without that lock. Then toggleTabStack nest / host
+logout. **Do not resave loadouts.** **Plan:**
+[forge-settled-slot-authority](./plans/forge-settled-slot-authority.md)
+· [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
 **Architecture:** [architecture-verdict-2026-08-29.md](./plans/forge-live-layout-dnd-proof/architecture-verdict-2026-08-29.md)
 **Branch:** **`master`**. **Push:** only if asked.
 

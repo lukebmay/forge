@@ -1,9 +1,12 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-30 — H5 nest edge matrix green; soft-heuristic poison
-fixed. **P0** toggleTabStack nest; host logout for soft+edge tip. **Do not
-resave loadouts.**
+**Updated:** 2026-08-30 — Soft poison + TABBED edge nest + tab-click
+raise-first committed. **P0:** brief design meeting — settled slot
+authority (no opportunistic re-resize). Then toggleTabStack nest / host
+logout. **Do not resave loadouts.**
 **Plan:**
+[forge-settled-slot-authority](./plans/forge-settled-slot-authority.md)
+(meeting) ·
 [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
 **Cross-session handoff:** [`HANDOFF.md`](./HANDOFF.md) ← **read first**
 **Lens:** portable kernel; **live = POJO Forest** (D092); **AGREE or
@@ -19,12 +22,15 @@ Design = [`design.md`](./design.md) · D092 · D093 · D094 · layers =
 
 ## Active next (ordered)
 
-1. **[forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
-   toggleTabStack nest** — H5 TABBED edge nest
-   (`smoke-layout-tabbed-edge`) landed. Optional: archive cutover +
-   agree-resync. Host logout for soft quiet + RIGHT-edge eyes-on (not
-   from agents). Vinyl inkscape-vs-indigo size is soft leftover.
-2. Do **not** start pinned-slots / resize-autotile until those meetings.
+1. **[forge-settled-slot-authority](./plans/forge-settled-slot-authority.md)
+   design meeting** — Blocker:
+   [`blockers/settled-slot-authority-design.md`](./blockers/settled-slot-authority-design.md).
+   Thesis: settled slot → no `move_resize` unless Forge **knows** drift
+   (or the slot changed). Do not code the cleanup until the lock lands.
+2. **[forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
+   toggleTabStack nest** — H5 edge nest green. Host logout for soft+edge
+   tip. Vinyl inkscape-vs-indigo soft leftover.
+3. Do **not** start pinned-slots / resize-autotile until those meetings.
    Do **not** revive hybrid dual-run as steady state.
 
 **Agents:** Default implement = **Grok 4.5**. Architecture reshape of a
@@ -36,7 +42,8 @@ slice → **4.6** (+ high/`xhigh` reasoning when reshaping TILES/live Forest).
 
 | Item | Path |
 | --- | --- |
-| Live layout + DnD proof (P0; H5 nest edge green; toggleTabStack leftover) | [forge-live-layout-dnd-proof.md](./plans/forge-live-layout-dnd-proof.md) |
+| Settled slot authority (design meeting) | [forge-settled-slot-authority.md](./plans/forge-settled-slot-authority.md) |
+| Live layout + DnD proof (H5 nest edge green; toggleTabStack leftover) | [forge-live-layout-dnd-proof.md](./plans/forge-live-layout-dnd-proof.md) |
 | Live TOM cutover (C7 code; archive when operator wants) | [forge-live-tom-cutover.md](./plans/forge-live-tom-cutover.md) |
 | Agree/resync (R0–R4+R6; live proof PASS; archive with cutover) | [forge-tom-agree-resync.md](./plans/forge-tom-agree-resync.md) |
 | AI live matrix | [forge-ai-live-test-matrix.md](./plans/forge-ai-live-test-matrix.md) |

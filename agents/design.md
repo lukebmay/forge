@@ -397,6 +397,16 @@ Full inventory (queue, workspace, Wayland stack, keyboard resize, …) and
 No orphan recovery timers found at audit time; keep teardown lists in sync when
 extracting monitor-recovery / session-restore modules.
 
+### Settled slot authority (meeting queued)
+
+Operator thesis (2026-08-30): once a TILE is settled in a slot, do **not**
+re-issue `move_resize` to that slot unless Forge **knows** drift (or the slot
+changed). No “maybe Meta lied → heal everything” default. Plan + blocker:
+[`plans/forge-settled-slot-authority.md`](plans/forge-settled-slot-authority.md)
+· [`blockers/settled-slot-authority-design.md`](blockers/settled-slot-authority-design.md).
+**Do not implement the cleanup until the meeting locks a D0xx** (will amend
+D069 heal posture).
+
 ### Tab / stack peer geometry (D069 — FIRM)
 
 TABBED/STACKED children share **one** content rect. That rect is assigned on
