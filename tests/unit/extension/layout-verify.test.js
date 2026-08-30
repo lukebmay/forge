@@ -3,6 +3,8 @@ import {
   LAYOUT_VERIFY_EPSILON_PX,
   LAYOUT_VERIFY_AGREEMENT_NEEDED,
   normalizeRect,
+  rectsEqual,
+  cloneRect,
   rectsAgree,
   windowAgrees,
   scanForest,
@@ -25,10 +27,20 @@ describe("layout-verify constants", () => {
   });
 });
 
-describe("normalizeRect / rectsAgree", () => {
+describe("normalizeRect / rectsAgree / rectsEqual", () => {
   it("exact match agrees", () => {
     expect(rectsAgree(slot, slot)).toBe(true);
     expect(rectsAgree({ ...slot }, slot, 0)).toBe(true);
+  });
+
+  it("rectsEqual is exact; cloneRect copies", () => {
+    expect(rectsEqual(slot, { ...slot })).toBe(true);
+    expect(rectsEqual(slot, { ...slot, x: 101 })).toBe(false);
+    expect(rectsEqual(null, slot)).toBe(false);
+    const c = cloneRect(slot);
+    expect(c).toEqual(slot);
+    expect(c).not.toBe(slot);
+    expect(cloneRect(null)).toBeNull();
   });
 
   it("within ε=4 agrees", () => {

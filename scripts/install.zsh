@@ -62,6 +62,8 @@ Options:
   --repo=PATH         Override repo root (default: this tree)
   --prod              Production build (production=true) + log-level=WARN
   --dev               Debug build + log-level=TRACE (hunts). Default: DEBUG build + INFO
+  --dev=MODES         Same as --dev plus comma modes (strict-geometry, geom-epsilon-measure,
+                      fault-inject-geometry, geom-trace). Legacy --dev leaves modes empty.
   --save              Backup before replace (always on for EGO migrate)
   --no-save           Skip pre-update backup when already luke/jcrussell
   --no-restart        Skip X11 HUP (files only). Wayland never HUPs/logouts anyway
@@ -86,6 +88,7 @@ Examples:
   ./install --no-restart          # X11: skip HUP; Wayland: same as default files-only
   ./install --verbose             # full build chatter
   ./install --kit=vim             # daily: install + load Vim kit
+  ./install --dev=strict-geometry # TRACE + gate opportunistic geometry heals
   forge install                   # re-run from install-origin
   forge install --kit=vim
 
@@ -94,6 +97,8 @@ EOF
 }
 
 MODE="regular" # production=false + INFO; --dev → TRACE; --prod → production=true + WARN
+FORGE_DEV_MODES_CSV=""
+FORGE_DEV_MODES_GSETTINGS="@as []"
 DO_SAVE="" # empty = default by lineage
 # X11 default: HUP after install. Wayland: never ends the session (D048).
 DO_RESTART=1
@@ -115,9 +120,18 @@ fi
 
 while (( $# )); do
   case "$1" in
-    --prod) MODE="prod"; shift ;;
-    --dev) MODE="dev"; shift ;;
-    --regular) MODE="regular"; shift ;;
+    --prod) MODE="prod"; FORGE_DEV_MODES_CSV=""; FORGE_DEV_MODES_GSETTINGS="@as []"; shift ;;
+    --dev)
+      MODE="dev"
+      forge_parse_dev_modes_csv ""
+      shift
+      ;;
+    --dev=*)
+      MODE="dev"
+      forge_parse_dev_modes_csv "${1#--dev=}"
+      shift
+      ;;
+    --regular) MODE="regular"; FORGE_DEV_MODES_CSV=""; FORGE_DEV_MODES_GSETTINGS="@as []"; shift ;;
     --save) DO_SAVE=1; shift ;;
     --no-save) DO_SAVE=0; shift ;;
     --no-restart|--no-restart-shell) DO_RESTART=0; shift ;;
@@ -224,7 +238,7 @@ case "$lineage" in
     print -u2 -- "  ${c_cyan}note:${c_reset} migrating EGO → this tree (auto-backup)"
     args=(--force)
     [[ "$MODE" == "prod" ]] && args+=(--prod)
-    [[ "$MODE" == "dev" ]] && args+=(--dev)
+    forge_append_dev_mode_arg args "$MODE" "$FORGE_DEV_MODES_CSV"
     if (( DO_RESTART )); then
       args+=(--restart-shell)
     else
@@ -271,7 +285,7 @@ fi
 
 build_args=(--force --build-only)
 [[ "$MODE" == "prod" ]] && build_args+=(--prod)
-[[ "$MODE" == "dev" ]] && build_args+=(--dev)
+forge_append_dev_mode_arg build_args "$MODE" "$FORGE_DEV_MODES_CSV"
 [[ "$MODE" == "regular" ]] && build_args+=(--regular)
 (( SKIP_NPM )) && build_args+=(--skip-npm)
 _install_step "Build" "$SCRIPT_DIR/build-install.zsh" "${build_args[@]}"
@@ -300,7 +314,7 @@ fi
 
 install_args=(--force --install-only --no-enable --no-host-defaults)
 [[ "$MODE" == "prod" ]] && install_args+=(--prod)
-[[ "$MODE" == "dev" ]] && install_args+=(--dev)
+forge_append_dev_mode_arg install_args "$MODE" "$FORGE_DEV_MODES_CSV"
 [[ "$MODE" == "regular" ]] && install_args+=(--regular)
 _install_step "Install extension" "$SCRIPT_DIR/build-install.zsh" "${install_args[@]}"
 

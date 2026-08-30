@@ -827,6 +827,63 @@ Dependencies:
 EOF
 }
 
+# D095: validate ./install --dev=a,b CSV; set FORGE_DEV_MODES_GSETTINGS for gsettings.
+# Empty CSV → @as [] (legacy --dev). Dies on unknown tokens.
+forge_parse_dev_modes_csv() {
+  local raw="${1-}"
+  local mod="$FORGE_REPO_ROOT/lib/shared/dev-modes.js"
+  [[ -f "$mod" ]] || forge_die "missing $mod"
+  FORGE_DEV_MODES_CSV="$raw"
+  FORGE_DEV_MODES_GSETTINGS=$(
+    cd "$FORGE_REPO_ROOT" &&
+      FORGE_DEV_MODES_RAW="$raw" node --input-type=module <<'JS'
+import { parseDevModesArg, formatGSettingsStrv } from "./lib/shared/dev-modes.js";
+const raw = process.env.FORGE_DEV_MODES_RAW ?? "";
+const r = parseDevModesArg(raw);
+if (!r.ok) {
+  console.error(r.error);
+  process.exit(1);
+}
+process.stdout.write(formatGSettingsStrv(r.modes));
+JS
+  ) || forge_die "invalid --dev modes${raw:+: $raw}"
+}
+
+# Persist / clear org.gnome.shell.extensions.forge dev-modes after install.
+# MODE=dev → set FORGE_DEV_MODES_GSETTINGS (default @as []); else clear.
+forge_apply_dev_modes_gsettings() {
+  if ! command -v gsettings >/dev/null 2>&1; then
+    return 0
+  fi
+  local val="@as []"
+  if [[ "${1:-}" == "dev" ]]; then
+    val="${FORGE_DEV_MODES_GSETTINGS:-@as []}"
+  fi
+  if gsettings set "$FORGE_SCHEMA_MAIN" dev-modes "$val" 2>/dev/null; then
+    if [[ "$val" == "@as []" || "$val" == "[]" ]]; then
+      forge_ok "dev-modes: (none)"
+    else
+      forge_ok "dev-modes: $val"
+    fi
+  else
+    forge_warn "could not set dev-modes via gsettings (schemas may need reload)"
+  fi
+}
+
+# Append --dev or --dev=csv onto an args array name for child install scripts.
+# No nameref: some zsh builds reject `local -n` (Ubuntu 5.9 here).
+forge_append_dev_mode_arg() {
+  local __arr_name=$1
+  local mode="${2:-}"
+  local csv="${3-}"
+  [[ "$mode" == "dev" ]] || return 0
+  if [[ -n "$csv" ]]; then
+    eval "${__arr_name}+=( \"--dev=\${csv}\" )"
+  else
+    eval "${__arr_name}+=( --dev )"
+  fi
+}
+
 # --- Install origin (git tree awareness for forge install / reinstall) ---
 
 forge_repo_is_ephemeral() {

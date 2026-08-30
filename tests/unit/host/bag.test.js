@@ -108,4 +108,35 @@ describe("createHostBag", () => {
     expect(b.get("n1")).toBeUndefined();
     expect(b.size).toBe(0);
   });
+
+  it("geometry fields shallow-merge; rect objects replace wholly", () => {
+    const bag = createHostBag();
+    const meta = { id: 3 };
+    const desired1 = { x: 0, y: 0, width: 100, height: 80 };
+    const observed1 = { x: 0, y: 0, width: 100, height: 80 };
+    bag.set("n1", {
+      meta,
+      windowId: "3",
+      desiredRect: desired1,
+      observed: observed1,
+      commanded: null,
+      slotGen: 1,
+      healTrail: null,
+    });
+    const desired2 = { x: 10, y: 20, width: 200, height: 160 };
+    const commanded2 = { x: 10, y: 20, width: 200, height: 160 };
+    const merged = bag.set("n1", {
+      desiredRect: desired2,
+      commanded: commanded2,
+      slotGen: 2,
+    });
+    expect(merged.meta).toBe(meta);
+    expect(merged.desiredRect).toBe(desired2);
+    expect(merged.desiredRect).not.toBe(desired1);
+    expect(merged.observed).toBe(observed1);
+    expect(merged.commanded).toBe(commanded2);
+    expect(merged.slotGen).toBe(2);
+    expect(merged.healTrail).toBeNull();
+    expect(bag.idFromMeta(meta)).toBe("n1");
+  });
 });

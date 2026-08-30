@@ -920,6 +920,60 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(order.indexOf(wOpen)).toBeLessThan(order.indexOf(wBuried));
   });
 
+  it("Tree.apply sizes open leaf before buried peers (D095 S3 / D069)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const hsplit = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    hsplit.layout = LAYOUT_TYPES.HSPLIT;
+    const tab = wm().tree.createNode(hsplit.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+
+    const slot = { x: 0, y: 0, width: 900, height: 700 };
+    const siblingSlot = { x: 900, y: 0, width: 900, height: 700 };
+    const half = { x: 0, y: 0, width: 900, height: 350 };
+
+    // Buried before open in childNodes so BFS alone would move buried first.
+    const wBuried = createMockWindow({
+      id: "apply-vis-buried",
+      rect: half,
+      workspace: ctx.workspaces[0],
+    });
+    const wOpen = createMockWindow({
+      id: "apply-vis-open",
+      rect: half,
+      workspace: ctx.workspaces[0],
+    });
+    const wSibling = createMockWindow({
+      id: "apply-vis-sibling",
+      rect: siblingSlot,
+      workspace: ctx.workspaces[0],
+    });
+    const nBuried = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wBuried);
+    const nOpen = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wOpen);
+    const nSibling = wm().tree.createNode(hsplit.nodeValue, NODE_TYPES.WINDOW, wSibling);
+    nBuried.mode = WINDOW_MODES.TILE;
+    nOpen.mode = WINDOW_MODES.TILE;
+    nSibling.mode = WINDOW_MODES.TILE;
+    for (const n of [nBuried, nOpen]) {
+      n.rect = { ...slot };
+      n.renderRect = { ...slot };
+    }
+    nSibling.rect = { ...siblingSlot };
+    nSibling.renderRect = { ...siblingSlot };
+    tab.lastTabFocus = wOpen;
+
+    const order = [];
+    vi.spyOn(wm(), "move").mockImplementation((meta) => {
+      order.push(meta);
+    });
+    wm().tree.apply(wm().tree);
+
+    expect(order).toContain(wOpen);
+    expect(order).toContain(wBuried);
+    expect(order).toContain(wSibling);
+    expect(order.indexOf(wOpen)).toBeLessThan(order.indexOf(wBuried));
+    expect(order.indexOf(wSibling)).toBeLessThan(order.indexOf(wBuried));
+  });
+
   it("updateTabbedFocus still does not reassert peers (commit owns geometry)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());

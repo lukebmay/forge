@@ -102,19 +102,8 @@ describe("D030 zoom paint vs slot reassert", () => {
     expect(reassertSpy).toHaveBeenCalledWith(nodeWindow, { force: true });
   });
 
-  it("_reassertZoomedTiles force-moves drifted zoom paint", () => {
-    const { nodeWindow, metaWindow, slot } = tabbedChromeWithSiblingSlot();
-    nodeWindow.zoomMode = "full";
-    metaWindow.move_resize_frame(true, slot.x, slot.y, slot.width, slot.height);
-    const painted = ctx.tree.paintRectForWindow(nodeWindow);
-
-    const moved = [];
-    vi.spyOn(wm(), "move").mockImplementation((_mw, rect) => {
-      moved.push({ ...rect });
-      return true;
-    });
-
-    expect(wm()._reassertZoomedTiles()).toBe(1);
-    expect(moved[0]?.width).toBe(painted.width);
+  it("D095 S5: opportunistic zoom reassert path is removed", () => {
+    expect(typeof wm()._reassertZoomedTiles).toBe("undefined");
+    expect(typeof wm()._schedulePostRenderTabSlotHeal).toBe("undefined");
   });
 });

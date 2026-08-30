@@ -405,25 +405,26 @@ model: projected desired, commands sent, observed frames, heal trail. Writes
 only with **evidence** (observed disagree after desired recompute). **No**
 blanket reassert. **No** geometry `force: true` (ε-bypass sledgehammer) —
 failed acceptance enters data-backed heal phases. ε is **measured from
-sent↔observed logs**, then locked; progressive near-miss forgiveness is a
-later slice with mandatory fault-inject. Untestable fallbacks/zoom-reasserts
-are off or removed. Reveal/select (tab click **and** keybind) = raise →
-verify → correct if needed → WARN. Zoom: ≤1 per monitor; TABBED zooms the
-leaf not the group slot; chrome stays under the zoomed window; unzoom
-restores placement.
+sent↔observed logs**, then locked; progressive near-miss forgiveness is
+**per wm-class** with mandatory fault-inject (S6). Untestable
+fallbacks/zoom-reasserts are off or removed. Reveal/select (tab click
+**and** keybind) = raise → verify → correct if needed → WARN. Zoom: ≤1
+per monitor; TABBED zooms the leaf not the group slot; chrome stays under
+the zoomed window; unzoom restores placement.
 
 **ε₀ = 4 px** (Meta): `max(4, ceil(worst_settle_in_band_dMax × 1.2))`;
-nest ghostty settle residual was 0 (2026-08-30). Progressive bumps are
-**per wm-class**. Install modes: `./install --dev=strict-geometry,…`.
-Nest smokes use **nest** logs only. Nest **client_env** isolates
-`XDG_RUNTIME_DIR` / config / Chrome profile so Nautilus/Chrome map in-nest
+nest ghostty settle residual was 0 (2026-08-30). **Near-band** =
+`max(2×ε, ε+8)` (ε₀ → 12). Progressive bumps are **per wm-class**
+(session; after 3 near-miss retries; cap at ε₀ near-band). Install modes:
+`./install --dev=strict-geometry,fault-inject-geometry,…`. Nest smokes use
+**nest** logs only. Nest **client_env** isolates `XDG_RUNTIME_DIR` /
+config / Chrome profile so Nautilus/Chrome map in-nest
 (`forge-test nested smoke-nest-apps`).
 
-**Finish-before:** do not delete heal waves until visible-first lives on
-primary present (S3). Plan:
-[`plans/forge-settled-slot-authority.md`](plans/forge-settled-slot-authority.md)
-(S1 landed; next S2–S4). Amends D069 heal posture + chrome D071
-epoch-leave force-heal note.
+Plan (archived):
+[`plans/archived/completed/forge-settled-slot-authority.md`](plans/archived/completed/forge-settled-slot-authority.md)
+— **S1–S6 shipped**; **S7 deferred** until zoom regress; S8 closeout done.
+Amends D069 heal posture + chrome D071 epoch-leave force-heal note.
 
 ### Tab / stack peer geometry (D069 — FIRM)
 
@@ -433,7 +434,7 @@ as the first size of a peer.
 
 | Rule | Detail |
 | --- | --- |
-| **When** | Join the group; whenever the group slot moves or resizes — **primary present** sizes peers (D095). Opportunistic post-render / epoch-end heals are debt to remove |
+| **When** | Join the group; whenever the group slot moves or resizes — **primary present** sizes peers (D095). Opportunistic post-render / epoch-end heals **removed** (D095 S5) |
 | **Visible-first** | Open leaf (`lastTabFocus`) before buried peers on **primary present**. Never queue open-leaf `move_resize` behind buried work |
 | **Buried peers** | Stay **mapped**. Size via primary present when desired changes; no standing “heal until sure” |
 | **Click / keybind reveal** | Raise + focus first; verify vs desired; correct only if outside ε; **WARN** on correct (D095). No all-peer reassert on focus (PWA thrash) |

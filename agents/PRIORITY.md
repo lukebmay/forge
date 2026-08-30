@@ -1,16 +1,15 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-30 — **D095** Accepted; S1 landed; **ε₀ = 4** locked.
-**P0 next:** S2 host-bag window model → S3 visible-first → S4 `--dev=` modes.
-Then heal demotion / toggleTabStack nest. **Do not resave loadouts. Do not
-delete heal waves until S3.** Nest multi-app: `smoke-nest-apps` (isolation).
-**Plan:**
-[forge-settled-slot-authority](./plans/forge-settled-slot-authority.md)
-·
+**Updated:** 2026-08-30 — **D095 S8 closeout.** S1–S6 shipped; S7 skipped
+(no zoom repro); opportunistic heals deleted. **P0 next:** toggleTabStack
+nest / live-layout leftover. **Do not resave loadouts.** Nest multi-app:
+`smoke-nest-apps` (isolation). **Plan:**
 [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
+· D095 archive:
+[forge-settled-slot-authority](./plans/archived/completed/forge-settled-slot-authority.md)
 **Cross-session handoff:** [`HANDOFF.md`](./HANDOFF.md) ← **read first**
 **Lens:** portable kernel; **live = POJO Forest** (D092); **AGREE or
-RESYNC toward REALITY** (D093); geometry = **D095**. **Branch:**
+RESYNC toward REALITY** (D093); geometry = **D095** (shipped). **Branch:**
 **`master`**. **Push:** only when human asks.
 
 Design = [`design.md`](./design.md) · D092 · D093 · D094 · **D095** · layers =
@@ -22,13 +21,17 @@ Design = [`design.md`](./design.md) · D092 · D093 · D094 · **D095** · layer
 
 ## Active next (ordered)
 
-1. **[forge-settled-slot-authority](./plans/forge-settled-slot-authority.md)
-   S2→S4** — Host-bag geometry model; `Tree.apply` visible-first; `--dev=`
-   composable modes. **No** heal deletion until S3. Progressive ε = S6.
-2. **[forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
-   toggleTabStack nest** — May run in parallel. Host logout for soft+edge tip.
-3. Do **not** start pinned-slots / resize-autotile. Do **not** revive hybrid
-   dual-run. Do **not** add geometry `force: true`.
+1. **[forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
+   toggleTabStack nest** — Host logout for soft+edge tip. Parallel keep
+   below for reference only.
+2. Do **not** start pinned-slots / resize-autotile. Do **not** revive hybrid
+   dual-run. Do **not** add geometry `force: true`. Do **not** reintroduce
+   opportunistic heals.
+
+**Leftover (not a work row):** D026 `_restoreTileToSlot` /
+`_schedulePostEchoSlotReassert` still `{ force: true }` — known debt outside
+D095 opportunistic-heal scope; thin follow-up if/when that path is touched.
+S7 zoom only if primary path regresses.
 
 **Agents:** Default implement = **Grok 4.5**. Architecture reshape of a
 slice → **4.6** (+ high/`xhigh` reasoning when reshaping TILES/live Forest).
@@ -39,7 +42,7 @@ slice → **4.6** (+ high/`xhigh` reasoning when reshaping TILES/live Forest).
 
 | Item | Path |
 | --- | --- |
-| Settled slot authority (D095; S1 in tree) | [forge-settled-slot-authority.md](./plans/forge-settled-slot-authority.md) |
+| Settled slot authority (D095; S1–S6 shipped; S7 deferred; archived) | [forge-settled-slot-authority.md](./plans/archived/completed/forge-settled-slot-authority.md) |
 | Live layout + DnD proof (H5 nest edge green; toggleTabStack leftover) | [forge-live-layout-dnd-proof.md](./plans/forge-live-layout-dnd-proof.md) |
 | Live TOM cutover (C7 code; archive when operator wants) | [forge-live-tom-cutover.md](./plans/forge-live-tom-cutover.md) |
 | Agree/resync (R0–R4+R6; live proof PASS; archive with cutover) | [forge-tom-agree-resync.md](./plans/forge-tom-agree-resync.md) |

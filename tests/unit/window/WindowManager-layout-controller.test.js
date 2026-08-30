@@ -121,16 +121,14 @@ describe("WindowManager layout controller (CL0)", () => {
     expect(lc.lastVerifyReasons).toContain("post-render");
   });
 
-  it("successful renderTree reasserts tab peers and arms post-echo heal", () => {
+  it("successful renderTree does not opportunistic reassert or post-echo heal (D095 S5)", () => {
     installFakeTimersOnController(wm());
     const reassertSpy = vi.spyOn(wm(), "reassertAllTabStackSlots").mockReturnValue(0);
-    const healSpy = vi.spyOn(wm(), "_schedulePostRenderTabSlotHeal");
 
     wm().renderTree("unit-tab-slots");
 
-    expect(reassertSpy).toHaveBeenCalledWith({ force: false });
-    expect(healSpy).toHaveBeenCalled();
-    expect(wm()._wmSources.has("postRenderTabSlots")).toBe(true);
+    expect(reassertSpy).not.toHaveBeenCalled();
+    expect(wm()._wmSources.has("postRenderTabSlots")).toBe(false);
   });
 
   it("does not schedule post-render verify when render body throws", () => {

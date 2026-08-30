@@ -19,8 +19,9 @@ Usage:
 Options:
   --repo=PATH      Repo root (default: $FORGE_REPO_ROOT)
   --prod           Release-style build (production=true) + log-level=WARN
-  --dev            Debug build + log-level=TRACE (hunts)
-  (default)        Debug build (production=false) + log-level=INFO
+  --dev            Debug build + log-level=TRACE (hunts); clears extra modes
+  --dev=MODES      Same as --dev plus comma modes (strict-geometry, …)
+  (default)        Debug build (production=false) + log-level=INFO; clears modes
   --build-only     npm/make build (+ debug) into repo temp/; do NOT install
   --install-only   Copy existing temp/ into extension dir (no rebuild)
   --skip-npm       Skip npm install even if node_modules missing
@@ -50,6 +51,8 @@ EOF
 
 # regular = production=false + INFO; --dev = TRACE; --prod = production=true + WARN
 MODE="regular"
+FORGE_DEV_MODES_CSV=""
+FORGE_DEV_MODES_GSETTINGS="@as []"
 SKIP_NPM=0
 DO_ENABLE=1
 DO_HOST_DEFAULTS=1
@@ -65,9 +68,18 @@ fi
 
 while (( $# )); do
   case "$1" in
-    --prod) MODE="prod"; shift ;;
-    --dev) MODE="dev"; shift ;;
-    --regular) MODE="regular"; shift ;;
+    --prod) MODE="prod"; FORGE_DEV_MODES_CSV=""; FORGE_DEV_MODES_GSETTINGS="@as []"; shift ;;
+    --dev)
+      MODE="dev"
+      forge_parse_dev_modes_csv ""
+      shift
+      ;;
+    --dev=*)
+      MODE="dev"
+      forge_parse_dev_modes_csv "${1#--dev=}"
+      shift
+      ;;
+    --regular) MODE="regular"; FORGE_DEV_MODES_CSV=""; FORGE_DEV_MODES_GSETTINGS="@as []"; shift ;;
     --build-only) BUILD_ONLY=1; shift ;;
     --install-only) INSTALL_ONLY=1; shift ;;
     --skip-npm) SKIP_NPM=1; shift ;;
@@ -216,6 +228,7 @@ forge_do_install() {
     else
       forge_warn "could not set log-level via gsettings (schemas may need reload)"
     fi
+    forge_apply_dev_modes_gsettings "$MODE"
     unset _log_n _log_name
   fi
 

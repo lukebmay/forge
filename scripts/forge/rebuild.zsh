@@ -24,6 +24,7 @@ Options:
   --repo=PATH         Repo root (default: $FORGE_REPO_ROOT)
   --prod              Release-style build (production=true) + log-level=WARN
   --dev               Debug build + log-level=TRACE (hunts). Default: INFO
+  --dev=MODES         Same as --dev plus comma modes (strict-geometry, …)
   --save              Backup extension + dconf + config before replace
   --restart-shell     X11 HUP after install (default)
   --no-restart        Do not HUP gnome-shell (files only until you reload)
@@ -51,6 +52,8 @@ EOF
 }
 
 MODE="regular"
+FORGE_DEV_MODES_CSV=""
+FORGE_DEV_MODES_GSETTINGS="@as []"
 DO_SAVE=0
 # Default: reload Shell so the new build is active (opt out with --no-restart).
 DO_RESTART=1
@@ -69,9 +72,18 @@ fi
 
 while (( $# )); do
   case "$1" in
-    --prod) MODE="prod"; shift ;;
-    --dev) MODE="dev"; shift ;;
-    --regular) MODE="regular"; shift ;;
+    --prod) MODE="prod"; FORGE_DEV_MODES_CSV=""; FORGE_DEV_MODES_GSETTINGS="@as []"; shift ;;
+    --dev)
+      MODE="dev"
+      forge_parse_dev_modes_csv ""
+      shift
+      ;;
+    --dev=*)
+      MODE="dev"
+      forge_parse_dev_modes_csv "${1#--dev=}"
+      shift
+      ;;
+    --regular) MODE="regular"; FORGE_DEV_MODES_CSV=""; FORGE_DEV_MODES_GSETTINGS="@as []"; shift ;;
     --save) DO_SAVE=1; shift ;;
     --no-restart|--no-restart-shell) DO_RESTART=0; shift ;;
     --restart-shell) DO_RESTART=1; shift ;;
@@ -133,7 +145,7 @@ fi
 
 install_args=(--force)
 [[ "$MODE" == "prod" ]] && install_args+=(--prod)
-[[ "$MODE" == "dev" ]] && install_args+=(--dev)
+forge_append_dev_mode_arg install_args "$MODE" "$FORGE_DEV_MODES_CSV"
 [[ "$MODE" == "regular" ]] && install_args+=(--regular)
 (( SKIP_NPM )) && install_args+=(--skip-npm)
 (( ! DO_HOST_DEFAULTS )) && install_args+=(--no-host-defaults)

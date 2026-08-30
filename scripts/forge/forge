@@ -3022,8 +3022,12 @@ def cmd_install(_backend: Optional[str], args: argparse.Namespace) -> int:
         cmd.append("--force")
     if getattr(args, "prod", False):
         cmd.append("--prod")
-    if getattr(args, "dev", False):
-        cmd.append("--dev")
+    _dev = getattr(args, "dev", None)
+    if _dev is not None:
+        if _dev == "":
+            cmd.append("--dev")
+        else:
+            cmd.append(f"--dev={_dev}")
     if getattr(args, "save", False):
         cmd.append("--save")
     if getattr(args, "no_save", False):
@@ -3968,8 +3972,14 @@ def build_parser() -> argparse.ArgumentParser:
     install_p.add_argument("--prod", action="store_true", help="Production build")
     install_p.add_argument(
         "--dev",
-        action="store_true",
-        help="Debug build + log-level=TRACE (default install: INFO)",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="MODES",
+        help=(
+            "Debug build + log-level=TRACE; optional comma modes "
+            "(strict-geometry,geom-epsilon-measure,fault-inject-geometry,geom-trace)"
+        ),
     )
     install_p.add_argument("--save", action="store_true", help="Backup before replace")
     install_p.add_argument(
@@ -4057,8 +4067,14 @@ def build_parser() -> argparse.ArgumentParser:
     update_p.add_argument("--prod", action="store_true", help="Production build")
     update_p.add_argument(
         "--dev",
-        action="store_true",
-        help="Debug build + log-level=TRACE (default install: INFO)",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="MODES",
+        help=(
+            "Debug build + log-level=TRACE; optional comma modes "
+            "(strict-geometry,geom-epsilon-measure,fault-inject-geometry,geom-trace)"
+        ),
     )
     update_p.add_argument("--save", action="store_true", help="Backup before replace")
     update_p.add_argument(

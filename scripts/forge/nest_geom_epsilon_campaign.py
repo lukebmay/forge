@@ -359,6 +359,7 @@ def summarize_epsilon(
 ) -> dict[str, Any]:
     settle_all: list[dict[str, Any]] = []
     by_tag: Counter[str] = Counter()
+    by_phase: Counter[str] = Counter()
     by_class: dict[str, list[float]] = defaultdict(list)
     all_dmax: list[float] = []
 
@@ -370,10 +371,18 @@ def summarize_epsilon(
         ):
             continue
         phase = str(bag.get("phase") or "")
+        if not phase and "phase=" in text:
+            try:
+                phase = text.split("phase=", 1)[1].split()[0]
+            except IndexError:
+                phase = ""
         tag = str(bag.get("tag") or "-")
         wm = str(bag.get("wmClass") or "-")
+        if phase:
+            by_phase[phase] += 1
         dmax = _dmax_from_rec(r)
         if dmax is None:
+            # skip-stable / skip-agree still count toward bag-skip proof
             continue
         all_dmax.append(dmax)
         by_tag[tag] += 1
@@ -404,6 +413,8 @@ def summarize_epsilon(
         recommended = int(floor_px)
 
     class_worst = {k: max(vs) for k, vs in sorted(by_class.items()) if vs}
+    skip_stable = int(by_phase.get("skip-stable", 0))
+    skip_agree = int(by_phase.get("skip-agree", 0))
     return {
         "sampleCount": len(all_dmax),
         "settleCount": len(settle_all),
@@ -412,6 +423,10 @@ def summarize_epsilon(
         "outlierPx": outlier_px,
         "floorPx": floor_px,
         "byTag": dict(by_tag),
+        "byPhase": dict(by_phase),
+        "skipStableCount": skip_stable,
+        "skipAgreeCount": skip_agree,
+        "bagSkipEvidence": skip_stable > 0 or skip_agree > 0,
         "worstSettleDMaxInBand": worst,
         "factor": factor,
         "recommendedEpsilonPx": recommended,
@@ -494,6 +509,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             f"outliers={summary.get('outlierCount')})"
         )
         print(f"  byTag:     {summary.get('byTag')}")
+        print(f"  byPhase:   {summary.get('byPhase')}")
+        print(
+            f"  bag-skip:  stable={summary.get('skipStableCount')} "
+            f"agree={summary.get('skipAgreeCount')} "
+            f"evidence={summary.get('bagSkipEvidence')}"
+        )
         print(f"  worst in-band dMax: {summary.get('worstSettleDMaxInBand')}")
         print(f"  class max: {summary.get('classWorstDMax')}")
         print(f"  formula:   {summary.get('formula')}")

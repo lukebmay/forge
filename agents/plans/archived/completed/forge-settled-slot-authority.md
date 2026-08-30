@@ -1,11 +1,12 @@
 # forge-settled-slot-authority — Presenter SoT + Forge window model + evidence-only geometry
 
-**Status:** Accepted (design meeting 2026-08-30) — **architecture lock**. Implementation is sliced below; do **not** delete heal waves until S3.
+**Status:** Accepted — **implementation complete** (S1–S6); S7 skipped; S8
+closeout done; leftover D026 force noted.
 **Branch:** master
 **Decision:** **D095**
-**Blocker:** [`../blockers/settled-slot-authority-design.md`](../blockers/settled-slot-authority-design.md) (close only when implementation slices below say so)
-**Updated:** 2026-08-30
-**Related:** D069 (tab peer geometry — heal posture amended) · chrome D071 (epoch-leave force-heal note amended) · D026 (known drift restore) · D030 (zoom — behavior clarified here) · D092/D093 (Forest + AGREE) · R025 (reveal verify)
+**Blocker:** [`../../../blockers/settled-slot-authority-design.md`](../../../blockers/settled-slot-authority-design.md) — **closed** (S8)
+**Updated:** 2026-08-30 — S8 closeout
+**Related:** D069 (tab peer geometry — heal posture amended) · chrome D071 (epoch-leave force-heal note amended) · D026 (known drift restore — **leftover force debt**) · D030 (zoom — behavior clarified here) · D092/D093 (Forest + AGREE) · R025 (reveal verify)
 
 ---
 
@@ -167,7 +168,7 @@ Env vars are **not** required for v1; add later only if needed. Fallbacks may re
 | Work | Stance |
 | --- | --- |
 | toggleTabStack nest / live-layout leftover | May continue **in parallel**; not blocked by D095 docs |
-| Deleting heal waves / `force` sites | **Blocked** until: window-model fields + measurement campaign direction clear + visible-first on primary present |
+| Deleting heal waves / `force` sites | **Unblocked for S5** (S1–S3 landed). Prefer gating removals with S4 `--dev=` modes when practical. |
 | Progressive ε forgiveness | **Blocked** until starting ε locked from real samples + fault-inject harness |
 | Pinned-slots / resize-autotile | Still parked (unchanged) |
 
@@ -178,7 +179,7 @@ Env vars are **not** required for v1; add later only if needed. Fallbacks may re
 ### S0 — Docs lock (this meeting)
 
 - [x] Plan Accepted + D095 row + `design.md` geometry section
-- [ ] Blocker stays open until S3+ (or explicit split) — docs alone do not close it
+- [x] Blocker closed at S8 (not on docs alone)
 
 ### S1 — Epsilon measurement (debug instrumentation) — **landed**
 
@@ -202,33 +203,84 @@ Env vars are **not** required for v1; add later only if needed. Fallbacks may re
 | Recommended | `max(4, ceil(0×1.2))` → **4** |
 | Nest tapes | `~/.local/state/forge/nested/forge/forge.{log,jsonl}` |
 
-### S2 — Window model in host bag
+### S2 — Window model in host bag — **landed**
 
 Projected / commanded / observed (+ trail stubs) on `HostBagEntry`. Pre-move skip when desired unchanged **and** observed within ε. Settle observed on skip and on write.
 
-### S3 — Primary present visible-first
+- [x] `HostBagEntry`: `desiredRect` / `commanded` / `observed` / `slotGen` / `healTrail` stub (`lib/host/bag.js`)
+- [x] Pure `decideGeomWrite` + `rectsEqual` / `cloneRect` (`geom-epsilon.js`, `layout-verify.js`)
+- [x] `_moveImpl` bag-aware skip; `_settleHostBagGeometry`; settle observe updates bag
+- [x] Units: `bag.test.js`, `geom-epsilon.test.js`, `layout-verify.test.js`
+- [x] Nest: `smoke-geom-epsilon` — `skip-stable=39`, `bagSkipEvidence=true` (2026-08-30)
+
+**Out of scope for S2:** `Tree.apply` reorder (S3); heal demotion / `force` removal (S5); `--dev=` modes (S4).
+
+### S3 — Primary present visible-first — **landed**
 
 Move open-leaf-before-buried into `Tree.apply` (or present move-list owner). Nest smoke. **Required before** demoting heal waves that currently provide visible-first.
 
-### S4 — Run-mode plumbing
+- [x] `Tree.apply` global open-then-buried buckets (`lib/extension/tree.js`)
+- [x] Unit: `Tree.apply sizes open leaf before buried peers` (`WindowManager-focus.test.js`)
+- [x] Nest: `smoke-layout-tabbed-edge` green; `smoke-geom-epsilon` still ε=4 / `skip-stable` (2026-08-30)
+
+**Out of scope for S3:** heal demotion / `force` removal (S5); `--dev=` modes (S4).
+
+### S4 — Run-mode plumbing — **landed**
 
 Composible `--dev` / install modes from L7. `strict-geometry` disables fallbacks. `fault-inject-geometry` scaffold (may no-op until S6).
 
-### S5 — Demote / delete opportunistic heals
+- [x] `lib/shared/dev-modes.js` (`parseDevModesArg` / `hasDevMode` / install flag parse)
+- [x] Schema + settings-keys + `config/settings.schema.json` `dev-modes` (`as` strv)
+- [x] `./install --dev` / `--dev=a,b` → gsettings (legacy `--dev` → modes `[]`; unknown tokens rejected)
+- [x] Gate opportunistic heals under `strict-geometry` (renderTree reassert, post-render heal, epoch-end force, CENTER join force)
+- [x] Units: `dev-modes.test.js` + layout-controller strict gate
+- [ ] Nest: prefer `./install --dev=strict-geometry` + existing nest smoke (optional thin campaign)
 
-Gate or remove: second-wave `reassertAllTabStackSlots`, post-render heal, epoch-end geometry-force, CENTER join geometry-force. Replace verify give-up `force` with logged heal phases. Zoom reassert off / deleted until zoom has its own tests.
+**Out of scope for S4:** deleting heal waves (S5); progressive ε / fault-inject behavior (S6).
+
+### S5 — Demote / delete opportunistic heals — **landed**
+
+- [x] Deleted renderTree second-wave `reassertAllTabStackSlots` + post-render heal scheduler
+- [x] Deleted epoch-end geometry-force + CENTER join geometry-force
+- [x] `_ensureApplySlotMetaInSlot` evidence-only (`force: false`) + logged write/skip
+- [x] Deleted `_reassertZoomedTiles` / `_schedulePostRenderTabSlotHeal` (zoom reassert off)
+- [x] Kept `reassertAllTabStackSlots` for explicit/debug only
+- [x] Units + nest `smoke-layout-tabbed-edge` / `smoke-geom-epsilon` green under `./install --dev` and `--dev=strict-geometry`
+- [x] Install fix: `forge_append_dev_mode_arg` no `local -n` (Ubuntu zsh rejects nameref)
+
+**Note:** production default now matches `strict-geometry` for opportunistic waves (deleted, not gated). Mode token remains for future explicit-strict use. **Known leftover (not S5 scope):** D026 `_restoreTileToSlot` / `_schedulePostEchoSlotReassert` still `{ force: true }` — record only; not opportunistic heal waves.
 
 ### S6 — Lock starting ε + progressive forgiveness
 
-From S1 logs: pick starting ε → CHANGELOG lock → implement near-miss retry + ε bump with fault-inject tests. Production forgiveness only when harness green.
+- [x] Starting ε locked ε₀=4 (S1 campaign; product paths + class store base)
+- [x] Near-band locked: `max(2×ε, ε+8)` (ε₀ → **12**); open point #2 closed
+- [x] Session per-wm-class store (`createClassEpsilonStore` in `geom-epsilon.js`); thin class → window mirror
+- [x] Near-miss → adjusted retry; after 3 still near → bump class ε (cap = ε₀ near-band); no bump on far / min-known / ambiguous
+- [x] `--dev=fault-inject-geometry` lies near-miss on settle observe; unit harness asserts bump
+- [x] `_moveImpl` / settle observe use effective class ε; no geometry `force`
 
-### S7 — Zoom product fixes (if still wrong after S5)
+### S7 — Zoom product fixes — **skipped** (only if regresses)
 
-Chrome stacking, unzoom restore, TABBED leaf-only zoom — fix primary path; no reassert cover-up.
+Chrome stacking, unzoom restore, TABBED leaf-only zoom — fix primary path; no
+reassert cover-up. **Skipped:** no evidence the zoom primary path is wrong after
+S5 deleted `_reassertZoomedTiles`. Do not invent zoom bugs. Reopen only if zoom
+regresses.
 
-### S8 — Closeout
+- [x] Skipped / deferred until zoom regress
 
-HANDOFF / PRIORITY / blocker done only when opportunistic blanket heals are gone (or explicitly wontfix with metrics) and S1→S2 direction is recorded.
+### S8 — Closeout — **done**
+
+HANDOFF / PRIORITY / blocker done only when opportunistic blanket heals are gone
+(or explicitly wontfix with metrics) and S1→S2 direction is recorded.
+
+- [x] Opportunistic blanket heals **gone** (S5 delete — not wontfix)
+- [x] S1→S2 direction recorded (ε measure → host-bag window model → evidence skip)
+- [x] HANDOFF / PRIORITY updated; blocker closed
+- [x] Leftover noted: D026 `_restoreTileToSlot` /
+      `_schedulePostEchoSlotReassert` still `{ force: true }` (not part of
+      opportunistic heal waves; thin follow-up — PRIORITY/HANDOFF one-liner)
+
+**Accepted — implementation complete; leftover D026 force noted.**
 
 ---
 
@@ -248,7 +300,7 @@ HANDOFF / PRIORITY / blocker done only when opportunistic blanket heals are gone
 ## Open points (narrow — do not invent)
 
 1. ~~**Progressive bump scope**~~ — **Locked: per wm-class.**
-2. **“Reasonably close” band** — define in S6 from histograms (e.g. within max(2×ε, N px)).
+2. ~~**“Reasonably close” band**~~ — **Locked: `max(2×ε, ε+8)`** (ε₀=4 → 12). S1 nest residuals were 0; default band kept.
 3. ~~**Baseline ε**~~ — **Locked: ε₀ = 4** (formula + nest campaign). Host Chrome revisit may revise via new CHANGELOG row.
 4. ~~**`--dev=` surface**~~ — **Locked: comma-separated modes on `./install --dev=`** (S4 implements).
 
@@ -256,4 +308,49 @@ HANDOFF / PRIORITY / blocker done only when opportunistic blanket heals are gone
 
 ## Context for the next agent
 
-Operator meeting (2026-08-30) locked D095. Scratch design-skill draft under `/tmp` is **not** authoritative — **this plan + CHANGELOG D095 + `design.md`** are. First code = **S1 measurement only**.
+**Plan complete (S8).** Archive → `agents/plans/archived/completed/`. **P0 next:**
+toggleTabStack nest / live-layout leftover. **S7** only if zoom regresses.
+
+| | |
+| --- | --- |
+| **Paths (S6)** | `geom-epsilon.js` store/forgive/fault-inject · `window.js` `_moveImpl` + `_scheduleGeomEpsilonObserve` · units `geom-epsilon.test.js` |
+| **Paths (S5)** | `window.js` renderTree (no second wave) · deleted heal/zoom reassert helpers · `session-api.js` epoch-end · `drag-drop.js` CENTER join · `_ensureApplySlotMetaInSlot` evidence · `_lib.zsh` nameref fix |
+| **Paths (S4)** | `lib/shared/dev-modes.js` · schema `dev-modes` · install/rebuild/build-install |
+| **Force debt left** | D026 `_restoreTileToSlot` + `_schedulePostEchoSlotReassert` still `{ force: true }` — known leftover; not closed as done |
+| **Proven** | S6 units (classify/near-band/bump/fault-inject); nest `smoke-geom-epsilon` under `./install --dev` |
+| **Enable** | `./install --dev` · `./install --dev=fault-inject-geometry` (lies near on settle) |
+| **Do not** | Reintroduce opportunistic heals; invent S7 zoom fixes without repro; delete D026 force without a thin follow-up; add geometry `force`; resave loadouts |
+
+## Session note
+
+S8 (2026-08-30): Closeout. S1–S6 shipped (ε measure → host-bag model →
+visible-first → `--dev=` modes → opportunistic heals **deleted** → progressive
+ε + fault-inject green). **S7 skipped** — no zoom primary-path repro after S5
+removed `_reassertZoomedTiles` (revisit only if zoom regresses). **Leftover:**
+D026 `_restoreTileToSlot` / `_schedulePostEchoSlotReassert` still
+`{ force: true }` (not opportunistic heal; PRIORITY one-liner). Blocker closed;
+plan archived. No commit.
+
+S6 (2026-08-30): Starting ε confirmed ε₀=4. Near-band locked `max(2×ε, ε+8)`
+(=12 at ε₀). Session `createClassEpsilonStore` per wm-class; thin → window
+mirror. Near-miss adjusted retry; bump after 3; cap at ε₀ near-band. No bump
+on far/min-known/ambiguous. `--dev=fault-inject-geometry` + unit bump assert
+green → production forgiveness enabled. No commit.
+
+S5 (2026-08-30): **Deleted** opportunistic heals (renderTree second-wave,
+`_schedulePostRenderTabSlotHeal`, `_reassertZoomedTiles`, epoch-end force,
+CENTER join force). Ensure-meta reassert is evidence-only + debug logs.
+`reassertAllTabStackSlots` kept for explicit/debug. Install `--dev=` fixed
+(`local -n` → eval append). Nest green both mode installs. No commit.
+
+S4 (2026-08-30): `--dev=a,b` → gsettings `dev-modes`; `strict-geometry` gates
+opportunistic heals (superseded by S5 delete).
+
+S3 (2026-08-30): `Tree.apply` open-leaf-before-buried (global buckets). Unit
+asserts move order (buried created first). Nest `smoke-layout-tabbed-edge` ok;
+`smoke-geom-epsilon` samples 160, `skip-stable=38`, recommend ε=4. Heals
+untouched. No commit.
+
+S2 (2026-08-30): host-bag window model + evidence skip in `_moveImpl`. Nest
+`smoke-geom-epsilon` after `./install --dev`: samples 161, settle in-band worst 0,
+`byPhase.skip-stable=39`, `bagSkipEvidence=true`. No commit.

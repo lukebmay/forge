@@ -289,6 +289,31 @@
           "type": "boolean",
           "description": "Show per-window layout debug overlay (parent layout, percent, monitor id)",
           "default": false
+        },
+        "layout-apply-chrome-enabled": {
+          "type": "boolean",
+          "description": "Dim scrim during multi-open LayoutBatch apply",
+          "default": true
+        },
+        "layout-verify-interval-ms": {
+          "type": "integer",
+          "description": "Debug periodic Meta↔slot verify interval in ms (0 = off)",
+          "minimum": 0,
+          "default": 0
+        },
+        "dev-modes": {
+          "type": "array",
+          "description": "Composable ./install --dev= modes (strict-geometry, geom-epsilon-measure, fault-inject-geometry, geom-trace)",
+          "items": {
+            "type": "string",
+            "enum": [
+              "strict-geometry",
+              "geom-epsilon-measure",
+              "fault-inject-geometry",
+              "geom-trace"
+            ]
+          },
+          "default": []
         }
       },
       "additionalProperties": false

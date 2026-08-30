@@ -64,6 +64,8 @@ fi
 while (( $# )); do
   case "$1" in
     --prod) MODE_ARGS+=(--prod); shift ;;
+    --dev) MODE_ARGS+=(--dev); shift ;;
+    --dev=*) MODE_ARGS+=("$1"); shift ;;
     --skip-save) SKIP_SAVE=1; shift ;;
     --skip-apply) SKIP_APPLY=1; shift ;;
     --skip-build) SKIP_BUILD=1; shift ;;

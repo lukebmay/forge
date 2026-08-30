@@ -60,6 +60,9 @@ export const DEFAULT_SETTINGS = {
   // Resize
   "resize-amount": 10,
   "launch-app-command": "",
+
+  // D095 run modes (./install --dev=…)
+  "dev-modes": [],
 };
 
 /**
@@ -88,6 +91,10 @@ export function createMockSettings(overrides = {}) {
       const value = values[key];
       return typeof value === "string" ? value : "";
     }),
+    get_strv: vi.fn((key) => {
+      const value = values[key];
+      return Array.isArray(value) ? value : [];
+    }),
     set_boolean: vi.fn((key, value) => {
       values[key] = value;
     }),
@@ -96,6 +103,9 @@ export function createMockSettings(overrides = {}) {
     }),
     set_string: vi.fn((key, value) => {
       values[key] = value;
+    }),
+    set_strv: vi.fn((key, value) => {
+      values[key] = Array.isArray(value) ? value : [];
     }),
     // Access to internal values for testing
     _values: values,

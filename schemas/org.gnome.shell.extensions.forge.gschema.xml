@@ -149,6 +149,17 @@
             </description>
         </key>
 
+        <key type="as" name="dev-modes">
+            <default>[]</default>
+            <summary>Composable ./install --dev= modes (D095)</summary>
+            <description>
+                Tokens from ./install --dev=a,b (strict-geometry, geom-epsilon-measure,
+                fault-inject-geometry, geom-trace). Legacy ./install --dev leaves this empty.
+                Cleared on regular/prod install. Shell gates opportunistic geometry heals when
+                strict-geometry is present.
+            </description>
+        </key>
+
         <key type="s" name="css-updated">
             <default>''</default>
             <summary>Timestamp when css is last updated. Also triggers reload of St</summary>
