@@ -1463,6 +1463,15 @@ def cmd_nested(_backend: Any, args: Any) -> int:
                 args.monitors = 2
             args.nested_cmd = layout_ws_argv()
             return _cli_run(args, name)
+        if action == "smoke-layout-occupied":
+            from nest_layout_occupied_smoke import (
+                smoke_script_argv as layout_occupied_argv,
+            )
+
+            if getattr(args, "monitors", None) is None:
+                args.monitors = 2
+            args.nested_cmd = layout_occupied_argv()
+            return _cli_run(args, name)
         if action == "enable-forge":
             return _cli_enable_forge(name)
         if action == "logs":

@@ -1,12 +1,14 @@
 # forge-live-layout-dnd-proof — Live layout + DnD after TOM cutover
 
-**Status:** in progress — host `dev` + Nautilus TILE DnD **PASS**
-(2026-08-29). Remaining: nest TABBED TOP/BOTTOM slotSplit (H5);
-toggleTabStack nest.
+**Status:** in progress — host `dev` + Nautilus TILE DnD **PASS** on
+the prior tip. **S8 landed** (vinyl unmatched/float-class skeleton;
+CENTER wrap dest beside a TABBED bag). **P0 now:** H5 TABBED
+TOP/BOTTOM; toggleTabStack nest. Host `vinyl` eyes-on after logout
+(not from agents).
 **Branch:** master
 **Blocker:** (none) — not a redesign meeting. Twin child-list atomics
 still forbidden.
-**Updated:** 2026-08-29
+**Updated:** 2026-08-30
 **Depends on:** D092 live Forest · D093 AGREE/RESYNC (cutover C7 +
 agree-resync R0–R4+R6 **on the desk**)
 
@@ -34,6 +36,11 @@ gate — unit green is not sign-off.
       eyes-on 2026-08-29): desk good; Nautilus TILE DnD works. Do not
       resave loadouts.
 - [x] Proto brake `cd prototypes/container-motion && npm test` → **154**
+- [x] Occupied skeleton: unmatched / float-class live WINDOW does not
+      fill a TILE role; PlaceNext dest stays PH (S8 units + nest
+      `smoke-layout-occupied` **ilGIo**)
+- [x] CENTER onto a TILE whose H/V parent also holds a TABBED CON wraps
+      dest+source only (parent stays H/V; no TABBED-in-TABBED)
 
 Do **not** treat personal `dev`/`t1` as the nest profile. Do **not**
 run host `forge layout dev` from agents (desk already thrashed).
@@ -150,6 +157,8 @@ bag), not a nested split inside the bag.
 | **S4** | Apply forest-match: after S1–S3, `mon0`/`mon1` structureMismatches gone on `_forge-test-nest-dual`. If still failing, hunt `compareLayoutStructure` vs `projectForestFromTom` | `layout-apply-run.js` / `layout-plan.js` only if snapshot IR is wrong | nest + host `dev` **PASS** |
 | **S5** | DnD: no-decision TRACE; source mon Meta fallback; dest-with-tiles rehome; TABBED slotSplit uses bag slot | `drag-drop.js`; `forestSlotSplit`/`forestSplit` in `tom-live.js` (S2 owner if same PR) | occupied dest nest + host Nautilus **PASS**; H5 TABBED TOP/BOTTOM still open |
 | **S6** | Nest campaign `--monitors=2` + dnd-drop dest-monitor; stop nest after | `scripts/forge/nest_layout_dnd_smoke.py` | **green** (`smoke-layout-dnd` + `smoke-layout-ws`) |
+| **S7** | WS2 occupied 2-slot apply: skeleton must not greedy-fill a live WINDOW into the **wrong** role; missing role keeps a PH so PlaceNext is slot not mon-root; apply does not `open-miss` | `tom-live.js` `takeSkeletonLiveWin` / `forestSkeletonPlaceWin`; nest `_forge-test-*` 2-class HSPLIT on WS2 | **landed** (units + nest `smoke-layout-occupied`) |
+| **S8** | Vinyl empty dest + Guake FLOAT leftover: no FIFO fill, no FLOATS→TILES align for float-class; CENTER onto TILE sibling of TABBED wraps dest only (not parent→TABBED insert) | `tom-live.js` `takeSkeletonLiveWin` / `alignForestToLiveConParent`; `drag-drop.js` `_buildDropOperation` CENTER; `drop-intent` wrap | **landed** (units + nest occupied **ilGIo** + `smoke-layout-dnd`; host vinyl after logout) |
 
 ### S0 oracles (write before the patch)
 
@@ -248,6 +257,8 @@ No commit/push. No host `forge layout dev`.
 **Still open**
 - Nest TOP/BOTTOM onto a TABBED bag (H5)
 - Nest toggleTabStack / CENTER TABBED bag
+- Host `vinyl` eyes-on (agents must not `forge layout vinyl`)
+- forest-match `mon1` not-in-slot after occupied 2-slot (MONITOR wraps H/V CON; dest is slot)
 
 **Host eyes-on PASS (2026-08-29):** `forge layout dev` + Nautilus TILE
 DnD. Do not resave loadouts.
@@ -326,3 +337,28 @@ ogmd/s7qo/auto-exit/6asv/gdsz/tab-deco/iwi/tab-click + Tree-cleanup +
 tom-live + Tree-layout + WindowManager-focus + metrics + wrot/Node →
 **317 green**. No commit/push. Did not re-enable host extensions. Did
 not edit `observe-reality.js`.
+
+### S7 — occupied 2-slot role match (2026-08-29)
+
+**Failed first:** FIFO `takeSkeletonLiveWin` stuffed YouTube into ghostty
+slot; PlaceNext dest mon-root (`open-miss`). Unit inverted that; also
+hyphenated role id `org-gnome-TextEditor` vs class `org.gnome.TextEditor`.
+
+**Patch**
+- `windowMatchesRoleToken` (classEq / title~= / bind tag; hyphen→dot)
+- `takeSkeletonLiveWin` prefers role match; no greedy fill of a later
+  role; FIFO only when no remaining identity
+- nest `_forge-test-occupied-2slot` + `smoke-layout-occupied`
+
+**L0:** `tom-live.test.js` 53, `layout-open.test.js` 37,
+`test_nest_layout_occupied.py` 18.
+
+**Nest:** `./scripts/forge/forge-test nested smoke-layout-occupied`
+(or `nested exec -- python3 scripts/forge/nest_layout_occupied_smoke.py`).
+Session **WK0Ih**. Two green campaign runs. Hunt: `skeleton ph` /
+`skeleton take`; **no** `PlaceNext dest failed` / `open-miss`.
+`metric apply ok=false phase=verify` `forest-match failed slots=mon1`
+(MONITOR H/V wrap CON; dest still slot). Nest **stopped**.
+
+**Do not** host `forge layout vinyl`. Stale agent `XAUTHORITY` can
+block nest start — use host gnome-shell auth.

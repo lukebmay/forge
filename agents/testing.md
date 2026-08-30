@@ -139,6 +139,7 @@ geometry; host remains authority for physical dual-mon sign-off. Design:
 | **`./scripts/forge/forge-test nested dnd-drop …`** | Synthetic tile drop via session `_dndDropOp` → `_commitResolvedDrop` (empty-mon: `--dest-monitor` → `_commitEmptyMonitorDrop`) | Nest must already be up |
 | **`./scripts/forge/forge-test nested smoke-mark2`** | Two clients → invoke `join.right` → `forge tree` | Same as `nested run` (always stops) |
 | **`./scripts/forge/forge-test nested smoke-layout-ws`** | WS1 layout A → WS2 B → back → nautilus/ghostty → join tab → close → re-run A; CTS after each step | Same as `nested run` (always stops; defaults `--monitors=2`) |
+| **`./scripts/forge/forge-test nested smoke-layout-occupied`** | WS2 occupied 2-slot: seed dest-mon second role, `forge layout _forge-test-occupied-2slot`, no open-miss / PlaceNext mon-root | Same as `nested run` (always stops; defaults `--monitors=2`) |
 | **`./scripts/forge/forge-test nested restart` / `start`** | Long interactive retest loop | **stop** when campaign ends |
 
 ```bash
@@ -250,6 +251,7 @@ exports before host `forge tree` / `forge layout` / `./scripts/forge/forge-test 
 ./install --dev && ./scripts/forge/forge-test nested run --monitors=2 -- \
   python3 ./scripts/forge/nest_layout_ws_campaign.py
 ./scripts/forge/forge-test nested smoke-layout-ws   # same 8-step WS/layout CTS; always stops
+./scripts/forge/forge-test nested smoke-layout-occupied  # WS2 occupied 2-slot; always stops
 
 # Multi-step retest loop (stop yourself)
 ./install --dev && ./scripts/forge/forge-test nested restart

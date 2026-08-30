@@ -193,6 +193,78 @@ describe("dropChangesStructure", () => {
     }
   });
 
+  it("CENTER onto TILE sibling of TABBED does not convert parent to TABBED", () => {
+    const ctx = createWindowManagerFixture({
+      settings: {
+        "dnd-center-layout": "TABBED",
+        "tiling-mode-enabled": true,
+      },
+    });
+    try {
+      const wm = ctx.windowManager;
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const split = createContainerNode(monitor, LAYOUT_TYPES.HSPLIT, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const ghostty = ctx.tree.createNode(
+        split.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          id: "g",
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: ctx.workspaces[0],
+        })
+      );
+      const tabs = createContainerNode(split, LAYOUT_TYPES.TABBED, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const yt = ctx.tree.createNode(
+        tabs.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          id: "yt",
+          rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+          workspace: ctx.workspaces[0],
+        })
+      );
+      const nautilus = ctx.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          id: "n",
+          rect: new Rectangle({ x: 0, y: 0, width: 400, height: 400 }),
+          workspace: ctx.workspaces[0],
+        })
+      );
+      ghostty.mode = WINDOW_MODES.TILE;
+      yt.mode = WINDOW_MODES.TILE;
+      nautilus.mode = WINDOW_MODES.GRAB_TILE;
+
+      setPointer(480, 540);
+      wm.nodeWinAtPointer = ghostty;
+      wm.moveWindowToPointer(nautilus, false);
+
+      expect(split.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      const wrap = ghostty.parentNode;
+      expect(wrap).not.toBe(split);
+      expect(wrap.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(wrap.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
+      expect(wrap.childNodes).toEqual(expect.arrayContaining([ghostty, nautilus]));
+      expect(tabs.parentNode).toBe(split);
+      expect(tabs.childNodes).toEqual([yt]);
+      expect(split.childNodes).toEqual(expect.arrayContaining([wrap, tabs]));
+    } finally {
+      ctx.cleanup();
+    }
+  });
+
   it("CENTER on HSPLIT siblings → change", () => {
     const parent = makeParent("HSPLIT");
     const a = attach(parent, { id: "A" });
@@ -386,6 +458,16 @@ describe("resolveDropSurface", () => {
     const b = attach(mon, { id: "B", nodeType: "WINDOW" });
     expect(
       resolveDropSurface(a, b, centerOp({ shouldCreateCon: true, containerNode: mon }))
+    ).toEqual({ op: "wrap" });
+  });
+
+  it("CENTER different-parent dest H/V CON with shouldCreateCon → wrap", () => {
+    const { a } = hsplitPair();
+    const other = makeParent("HSPLIT");
+    const c = attach(other, { id: "C", nodeType: "WINDOW" });
+    expect(shouldMergeCenterGroup(c, a, centerOp())).toBe(false);
+    expect(
+      resolveDropSurface(c, a, centerOp({ shouldCreateCon: true, containerNode: a.parentNode }))
     ).toEqual({ op: "wrap" });
   });
 

@@ -1,8 +1,9 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-29 — Host **eyes-on PASS:** `forge layout dev` and
-Nautilus TILE DnD. D092/D093 live Forest + AGREE/RESYNC + D094 nested-TAB
-fix are on the desk. **Do not resave loadouts.** **Plan:**
+**Updated:** 2026-08-30 — **S8 landed** (vinyl open-miss + CENTER
+nested TABBED). Nest occupied **ilGIo** + dnd green. Host Shell still
+on the previous tip until logout. **P0:** H5 TABBED TOP/BOTTOM. **Do
+not resave loadouts.** **Plan:**
 [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
 **Architecture:** [architecture-verdict-2026-08-29.md](./plans/forge-live-layout-dnd-proof/architecture-verdict-2026-08-29.md)
 **Branch:** **`master`**. **Push:** only if asked.
@@ -39,7 +40,8 @@ KeybindAdapterWebView.
 [`forge-tom-agree-resync.md`](./plans/forge-tom-agree-resync.md).
 **Active remainder:**
 [`forge-live-layout-dnd-proof.md`](./plans/forge-live-layout-dnd-proof.md)
-(H5 nest TABBED slotSplit; toggleTabStack).
+(H5 nest TABBED slotSplit; toggleTabStack). S8 is in the
+tree (identity-only skeleton take; CENTER wrap dest, not parent→TABBED).
 
 Product Move **is** Mark 2 Move. Glossary =
 [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
@@ -72,10 +74,13 @@ only.
 | **Decoration** | destroy clears `con.decoration`; attach does not rethrow; `metric warn deco-disposed` |
 | **Borders** | `showWindowBorders` null-safe on FLOATS detach |
 | **Hunt** | `metric warn settle-jitter` / `settle-soft-fail`; `bag-con-child` invariant scan |
-| **Nest** | `smoke-layout-dnd` · `smoke-layout-ws` (8-step) + `nest_log_query.py` |
+| **Nest** | `smoke-layout-dnd` · `smoke-layout-ws` · `smoke-layout-occupied` + `nest_log_query.py` |
+| **S8 skeleton** | Identity-only take; Guake/float-class stays FLOATS (`skeleton skip-float`); unmatched leftover does not fill a role |
+| **S8 CENTER** | H/V CON dest CENTER → wrap dest+source (`shouldCreateCon`); insert no longer converts H/V parent to TABBED |
 
-**Nest green:** `smoke-layout-dnd` · `smoke-layout-ws`. Expected WARN:
-`float-promote-denied` on entered-monitor. Proto brake **154**.
+**Nest green:** `smoke-layout-dnd` · `smoke-layout-occupied` (**ilGIo**,
+2026-08-30). Expected WARN: `float-promote-denied` on entered-monitor.
+Proto brake **154**.
 
 ## Nest vs host logout (FIRM)
 
@@ -85,6 +90,28 @@ only.
 | When is host logout needed? | Host Shell never loaded this tip this boot **and** you need host dual-mon / personal `dev` eyes-on. |
 | After crash | Re-enable user extensions (`gsettings set org.gnome.shell disable-user-extensions false` + `gnome-extensions enable forge@jmmaranan.com`). Nest shared that dconf key. |
 
+## Host vinyl + nested TABBED (session jwuvx, 2026-08-30)
+
+`forge layout vinyl` on WS2: `ApplyLayout start name=vinyl ws=1`
+`orphans=3`. `skeleton take role=inkscape` then
+`open PlaceNext dest failed role=inkscape` (ghostty/YouTube PlaceNext
+ok). `metric apply ok=false ms=76 phase=open` `reason=open-miss`
+roles `inkscape,ghostty,YouTube`. Hunt: `forge log --session jwuvx`.
+
+Cause: `align-floats-to-tiles` pulled Guake (FLOATS) onto empty
+`mo0ws1`; leftover FIFO filled that window as inkscape so there was no
+PH. **S8:** skip float-class align; take identity only; float-class →
+FLOATS (`skeleton skip-float`).
+
+Same session DnD: dock Nautilus then `dnd commit zone=CENTER`
+`surface=insert layout=TABBED stackedOrTabbed=false`. Right head became
+TABBED(Ghostty, TABBED(YT,Gmail,Voice), Nautilus). Cause: CENTER insert
+set the dest H/V CON to TABBED and swallowed the tab bag. **S8:**
+CENTER on H/V CON/MONITOR wraps dest+source only.
+
+Do **not** resave `vinyl.json` / `dev`. Host needs **logout** to load
+this tip; then eyes-on `forge layout vinyl` on WS2. Agents: nest only.
+
 ## Next session
 
 **Plan:** [`plans/forge-live-layout-dnd-proof.md`](./plans/forge-live-layout-dnd-proof.md)
@@ -93,12 +120,13 @@ only.
 | --- | --- |
 | **H5 nest** | `dnd-drop` TOP/BOTTOM onto a TABBED **slot** must not nest H/V CON inside the bag |
 | **toggleTabStack nest** | CENTER drop groups; TABBED bag still soft in WS campaign (Mark 2 toggle may no-op) |
+| **S8 host eyes-on** | After logout: `forge layout vinyl` on WS2; CENTER Nautilus onto dest TILE beside a TABBED bag. Not from agents. |
 | **Archive (optional)** | cutover + agree-resync when operator wants |
 
 ### Do
 
 1. Nest first for JS reload (`./install --dev` + `forge-test nested …`).
-2. Hunt `forge log` only (`float-promote-denied`, `deco-disposed`, `settle-jitter`, `render-throw`, `forest-match`).
+2. Hunt `forge log` only (`float-promote-denied`, `deco-disposed`, `settle-jitter`, `render-throw`, `forest-match`, `skeleton skip-float`, `PlaceNext dest`).
 3. Use `_forge-test-*` in nest, never personal `dev`.
 
 ### Do not
@@ -118,4 +146,5 @@ live-proof gate for that verdict.
 ## Brake
 
 `cd prototypes/container-motion && npm test` → **154**.
-`./scripts/forge/forge-test nested smoke-layout-ws` · `smoke-layout-dnd`.
+`./scripts/forge/forge-test nested smoke-layout-ws` · `smoke-layout-dnd`
+· `smoke-layout-occupied`.

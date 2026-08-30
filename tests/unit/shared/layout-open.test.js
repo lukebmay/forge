@@ -29,7 +29,11 @@ import {
   windowHasMapId,
   windowMatchesPinTitle,
 } from "../../../lib/shared/layout-open.js";
-import { classEq, isChromeFamilyClass } from "../../../lib/shared/layout-plan.js";
+import {
+  classEq,
+  isChromeFamilyClass,
+  windowMatchesRoleToken,
+} from "../../../lib/shared/layout-plan.js";
 
 describe("DesktopAppInfo search pick (YouTube vs YouTube TV)", () => {
   const youtube = "chrome-agimnkijcaahngcdmfeangaknmldooml-Default.desktop";
@@ -521,6 +525,21 @@ describe("assignOpenRolePins / title then class leftover (D034)", () => {
     expect(classEq("ghostty", "com.mitchellh.ghostty")).toBe(true);
     expect(classEq("Google-chrome", "chrome-ggjoabcdef-Default")).toBe(true);
     expect(classEq("chrome-aaa-Default", "chrome-bbb-Default")).toBe(false);
+  });
+
+  it("windowMatchesRoleToken uses classEq and title~= (not FIFO class-blind)", () => {
+    const yt = { wmClass: "Google-chrome", title: "YouTube" };
+    const term = { wmClass: "com.mitchellh.ghostty", title: "ghostty" };
+    expect(windowMatchesRoleToken(yt, "YouTube")).toBe(true);
+    expect(windowMatchesRoleToken(yt, "ghostty")).toBe(false);
+    expect(windowMatchesRoleToken(term, "ghostty")).toBe(true);
+    expect(windowMatchesRoleToken(term, "YouTube")).toBe(false);
+    expect(windowMatchesRoleToken({ layoutRole: "ghostty" }, "ghostty")).toBe(true);
+    expect(windowMatchesRoleToken(yt, "_slot")).toBe(false);
+    expect(
+      windowMatchesRoleToken({ wmClass: "org.gnome.TextEditor" }, "org-gnome-TextEditor")
+    ).toBe(true);
+    expect(windowMatchesRoleToken(term, "ghostty-2")).toBe(false);
   });
 });
 

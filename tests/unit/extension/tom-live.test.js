@@ -30,9 +30,11 @@ import {
   seedLiveForest,
   syncForestFromTree,
 } from "../../../lib/extension/tom-live.js";
+import { projectForestFromTom } from "../../../lib/extension/forest-apply-snapshot.js";
 import { createHostBag } from "../../../lib/host/index.js";
 import { getOpSet, runOpAbstract } from "../../../lib/opsets/index.js";
 import { wrapMonitorMax1 } from "../../../lib/rulesets/mark2.js";
+import { applyPlaceNextOptions, findLayoutSlotDest } from "../../../lib/shared/layout-open.js";
 import {
   createTomApi,
   floatsOf,
@@ -140,6 +142,19 @@ function twoSplitTree() {
   con.appendChild(winA);
   con.appendChild(winB);
   return { root, ws, mon, con, winA, winB, metaA, metaB };
+}
+
+function occupiedOneWinTree(meta) {
+  const root = makeLive("ROOT", "ROOT");
+  const ws = makeLive("WORKSPACE", "ws0");
+  const mon = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+  const con = makeLive("CON", { id: "split" }, { layout: "HSPLIT" });
+  const win = makeLive("WINDOW", meta);
+  root.appendChild(ws);
+  ws.appendChild(mon);
+  mon.appendChild(con);
+  con.appendChild(win);
+  return { root, ws, mon, con, win, meta };
 }
 
 function idsOf(parent) {
@@ -358,6 +373,21 @@ describe("tom-live seed + mutate live forest", () => {
     expect(wm.hostBag.get(nid)?.floating).toBe(false);
   });
 
+  it("alignForestFloatsToLiveTiles does not pull float-class Guake onto TILES", () => {
+    const metaG = { id: "G", title: "Guake!", wm_class: "Guake" };
+    const { root, mon, win, meta } = occupiedOneWinTree(metaG);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const nid = wm.hostBag.idFromMeta(meta);
+    expect(forestSetWindowFloating(wm, win, true)).toBe(true);
+    expect(isUnderFloats(wm.forest, wm.forest.nodes[nid])).toBe(true);
+    mon.appendChild(win);
+    expect(forestSetLayout(wm, mon, "HSPLIT")).toBe(true);
+    expect(isUnderFloats(wm.forest, wm.forest.nodes[nid])).toBe(true);
+    expect(isUnderTiles(wm.forest, wm.forest.nodes[nid])).toBe(false);
+    expect(wm.hostBag.get(nid)?.floating).toBe(true);
+  });
+
   it("alignForestFloatsToLiveTiles repairs bag.floating when live is TILES-parented", () => {
     const infoSpy = vi.spyOn(Logger, "info").mockImplementation(() => {});
     const { root, mon, winA, metaA } = twoSplitTree();
@@ -524,6 +554,40 @@ describe("tom-live seed + mutate live forest", () => {
     expect(wm.forest.nodes[conId].childIds).toEqual(
       expect.arrayContaining([wm.hostBag.idFromMeta(metaA), wm.hostBag.idFromMeta(metaB)])
     );
+  });
+
+  it("forestWrapInsert TABBED wrap does not swallow a TABBED sibling CON", () => {
+    const { root, mon, con, winA, winB, metaA, metaB } = twoSplitTree();
+    con.removeChild(winB);
+    const tab = makeLive("CON", { id: "tabs" }, { layout: "TABBED" });
+    const winC = makeLive("WINDOW", { id: "C", title: "YouTube" });
+    tab.appendChild(winC);
+    con.appendChild(tab);
+    mon.appendChild(winB);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    expect(forestWrapInsert(wm, winA, winB, "TABBED")).toBe(true);
+    expect(con.layout).toBe("HSPLIT");
+    const wrap = winA.parentNode;
+    expect(wrap.layout).toBe("TABBED");
+    expect(wrap.childNodes.every((c) => liveKind(c) === "WINDOW")).toBe(true);
+    expect(wrap.childNodes).toEqual(expect.arrayContaining([winA, winB]));
+    expect(tab.parentNode).toBe(con);
+    expect(tab.childNodes).toEqual([winC]);
+    expect(con.childNodes).toEqual(expect.arrayContaining([wrap, tab]));
+    const idA = wm.hostBag.idFromMeta(metaA);
+    const idB = wm.hostBag.idFromMeta(metaB);
+    const wrapId = wm.forest.nodes[idA].parentId;
+    const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
+    expect(wm.forest.nodes[wrapId].layout).toBe("TABBED");
+    expect(wm.forest.nodes[wrapId].childIds).toEqual(expect.arrayContaining([idA, idB]));
+    expect(wm.forest.nodes[conId].layout).toBe("HSPLIT");
+    expect(
+      wm.forest.nodes[conId].childIds.every((id) => {
+        const n = wm.forest.nodes[id];
+        return n.kind === "CON" && (n.layout === "TABBED" ? true : n.layout === "HSPLIT");
+      })
+    ).toBe(true);
   });
 
   it("forestWrapInsert wraps pointer then inserts focus before it", () => {
@@ -922,6 +986,8 @@ describe("tom-live paint contract (Forest SoT)", () => {
 describe("tom-live occupied skeleton + TABBED slot", () => {
   it("forestApplySkeletonMon on occupied MONITOR is spec children, not spec plus old CONs", () => {
     const { root, mon, con, winA, winB, metaA, metaB } = twoSplitTree();
+    metaA.wm_class = "term";
+    metaB.wm_class = "files";
     const wm = makeWm(root);
     seedLiveForest(wm, { windowIdOf, createCon });
     const out = forestApplySkeletonMon(wm, mon, {
@@ -946,6 +1012,8 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
 
   it("occupied nest-dual-like TABBED|TILE lifts live windows into spec", () => {
     const { root, mon, con, winA, winB, metaA, metaB } = twoSplitTree();
+    metaA.wm_class = "a";
+    metaB.wm_class = "b";
     const wm = makeWm(root);
     seedLiveForest(wm, { windowIdOf, createCon });
     const out = forestApplySkeletonMon(wm, mon, {
@@ -971,6 +1039,147 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     expect(tabLive).toBeTruthy();
     expect(tabLive.childNodes.every((c) => liveKind(c) === "WINDOW")).toBe(true);
     expect(tabLive.childNodes).toEqual(expect.arrayContaining([winA, winB]));
+  });
+
+  it("unmatched float-class live WINDOW does not fill a TILE role; PlaceNext dest is PH", () => {
+    const metaG = { id: "G", title: "Guake!", wm_class: "Guake" };
+    const { root, mon, con, win, meta } = occupiedOneWinTree(metaG);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const out = forestApplySkeletonMon(wm, mon, {
+      split: "hsplit",
+      children: [{ slot: "mon0.inkscape", roles: ["inkscape"] }],
+    });
+    expect(out.ok).toBe(true);
+    const monTom = wm.forest.nodes.mo0ws0;
+    const kids = monTom.childIds.map((id) => wm.forest.nodes[id]);
+    expect(kids).toHaveLength(1);
+    expect(kids[0].kind).toBe("WINDOW");
+    expect(kids[0].wmClass).toBe("forge-placeholder");
+    expect(wm.liveById.get(kids[0].id)?.layoutRole).toBe("inkscape");
+    const idG = wm.hostBag.idFromMeta(meta);
+    expect(isUnderFloats(wm.forest, wm.forest.nodes[idG])).toBe(true);
+    expect(isUnderTiles(wm.forest, wm.forest.nodes[idG])).toBe(false);
+    expect(wm.hostBag.get(idG)?.floating).toBe(true);
+    expect(con.parentNode).toBeNull();
+    expect(mon.childNodes).not.toContain(win);
+    const json = projectForestFromTom(wm.forest, wm.hostBag, { liveById: wm.liveById });
+    const placed = applyPlaceNextOptions(
+      { op: "open", role: "inkscape", slot: "mon0.inkscape", open: { app: "inkscape" } },
+      null,
+      json
+    );
+    expect(placed.ok).toBe(true);
+    expect(placed.destKind).toBe("slot");
+    expect(placed.error).toBeUndefined();
+  });
+
+  it("unmatched TILE leftover does not fill a role; PH dest stays slot", () => {
+    const metaN = { id: "N", title: "Home", wm_class: "org.gnome.Nautilus" };
+    const { root, mon, con, win, meta } = occupiedOneWinTree(metaN);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const out = forestApplySkeletonMon(wm, mon, {
+      split: "hsplit",
+      children: [{ slot: "mon0.inkscape", roles: ["inkscape"] }],
+    });
+    expect(out.ok).toBe(true);
+    const monTom = wm.forest.nodes.mo0ws0;
+    const kids = monTom.childIds.map((id) => wm.forest.nodes[id]);
+    const idN = wm.hostBag.idFromMeta(meta);
+    const ph = kids.find((k) => k.wmClass === "forge-placeholder");
+    expect(ph).toBeTruthy();
+    expect(wm.liveById.get(ph.id)?.layoutRole).toBe("inkscape");
+    expect(monTom.childIds).toContain(idN);
+    expect(con.parentNode).toBeNull();
+    const json = projectForestFromTom(wm.forest, wm.hostBag, { liveById: wm.liveById });
+    const placed = applyPlaceNextOptions(
+      { op: "open", role: "inkscape", slot: "mon0.inkscape", open: { app: "inkscape" } },
+      null,
+      json
+    );
+    expect(placed.ok).toBe(true);
+    expect(placed.destKind).toBe("slot");
+  });
+
+  it("occupied 2-slot skeleton matches live WINDOW to second role; first stays PH", () => {
+    const metaY = { id: "Y", title: "YouTube", wm_class: "Google-chrome" };
+    const { root, mon, con, win, meta } = occupiedOneWinTree(metaY);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const out = forestApplySkeletonMon(wm, mon, {
+      split: "hsplit",
+      children: [
+        { slot: "mon1.ghostty", roles: ["ghostty"] },
+        { slot: "mon1.s0", roles: ["YouTube"] },
+      ],
+    });
+    expect(out.ok).toBe(true);
+    const monTom = wm.forest.nodes.mo0ws0;
+    const kids = monTom.childIds.map((id) => wm.forest.nodes[id]);
+    expect(kids.map((k) => k.kind)).toEqual(["WINDOW", "WINDOW"]);
+    expect(kids).toHaveLength(2);
+    expect(con.parentNode).toBeNull();
+    const idY = wm.hostBag.idFromMeta(meta);
+    expect(monTom.childIds[1]).toBe(idY);
+    const ph = kids[0];
+    expect(ph.wmClass).toBe("forge-placeholder");
+    const phLive = wm.liveById.get(ph.id);
+    expect(phLive?.layoutRole).toBe("ghostty");
+    expect(wm.hostBag.get(ph.id)?.layoutRole).toBe("ghostty");
+    expect(wm.hostBag.get(idY)?.layoutRole).toBe("YouTube");
+    expect(mon.childNodes.every((n) => liveKind(n) === "WINDOW")).toBe(true);
+    expect(mon.childNodes).toHaveLength(2);
+    expect(mon.childNodes[1]).toBe(win);
+
+    const json = projectForestFromTom(wm.forest, wm.hostBag, { liveById: wm.liveById });
+    const dest = findLayoutSlotDest(json, { role: "ghostty", slot: "mon1.ghostty" });
+    expect(dest).toBeTruthy();
+    expect(dest.destKind).toBe("slot");
+    const placed = applyPlaceNextOptions(
+      { op: "open", role: "ghostty", slot: "mon1.ghostty", open: { app: "ghostty" } },
+      null,
+      json
+    );
+    expect(placed.ok).toBe(true);
+    expect(placed.destKind).toBe("slot");
+    expect(placed.error).toBeUndefined();
+  });
+
+  it("occupied 2-slot matches hyphenated reverse-DNS role id to live class", () => {
+    const metaE = {
+      id: "E",
+      title: "Text Editor",
+      wm_class: "org.gnome.TextEditor",
+    };
+    const { root, mon, con, win, meta } = occupiedOneWinTree(metaE);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const out = forestApplySkeletonMon(wm, mon, {
+      split: "hsplit",
+      children: [
+        { slot: "mon1.ghostty-2", roles: ["ghostty-2"] },
+        { slot: "mon1.org-gnome-TextEditor", roles: ["org-gnome-TextEditor"] },
+      ],
+    });
+    expect(out.ok).toBe(true);
+    const monTom = wm.forest.nodes.mo0ws0;
+    const kids = monTom.childIds.map((id) => wm.forest.nodes[id]);
+    expect(kids.map((k) => k.kind)).toEqual(["WINDOW", "WINDOW"]);
+    const idE = wm.hostBag.idFromMeta(meta);
+    expect(monTom.childIds[1]).toBe(idE);
+    expect(kids[0].wmClass).toBe("forge-placeholder");
+    expect(wm.liveById.get(kids[0].id)?.layoutRole).toBe("ghostty-2");
+    expect(con.parentNode).toBeNull();
+    expect(mon.childNodes[1]).toBe(win);
+    const json = projectForestFromTom(wm.forest, wm.hostBag, { liveById: wm.liveById });
+    const placed = applyPlaceNextOptions(
+      { op: "open", role: "ghostty-2", slot: "mon1.ghostty-2", open: { app: "ghostty" } },
+      null,
+      json
+    );
+    expect(placed.ok).toBe(true);
+    expect(placed.destKind).toBe("slot");
   });
 
   it("forestSlotSplit on a TABBED leaf does not wrap a CON inside the bag", () => {

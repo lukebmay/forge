@@ -1,7 +1,8 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-29 — Host `forge layout dev` + Nautilus TILE DnD
-**eyes-on PASS.** D092/D093/D094 on the desk. **Do not resave loadouts.**
+**Updated:** 2026-08-30 — **S8 landed** (vinyl open-miss + CENTER wrap).
+**P0** H5 TABBED TOP/BOTTOM. Host needs logout for this tip. **Do not
+resave loadouts.**
 **Plan:**
 [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
 **Cross-session handoff:** [`HANDOFF.md`](./HANDOFF.md) ← **read first**
@@ -18,10 +19,10 @@ Design = [`design.md`](./design.md) · D092 · D093 · D094 · layers =
 
 ## Active next (ordered)
 
-1. **[forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)**
-   Host `dev` + Nautilus DnD **done**. Remaining: nest TABBED TOP/BOTTOM
-   slotSplit (**H5**); nest toggleTabStack / CENTER bag. Optional:
-   archive cutover + agree-resync.
+1. **[forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
+   #H5** — TABBED TOP/BOTTOM nest; then toggleTabStack nest. Optional:
+   archive cutover + agree-resync. Host `vinyl` / CENTER eyes-on after
+   logout (not from agents).
 2. Do **not** start pinned-slots / resize-autotile until those meetings.
    Do **not** revive hybrid dual-run as steady state.
 

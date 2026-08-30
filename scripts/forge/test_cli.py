@@ -30,6 +30,7 @@ _NESTED_ACTIONS = frozenset(
         "smoke-mark2",
         "smoke-layout-dnd",
         "smoke-layout-ws",
+        "smoke-layout-occupied",
         "enable-forge",
         "logs",
         "wait",
@@ -189,6 +190,10 @@ def print_forge_test_help(*, stream: TextIO | None = None) -> None:
                      "scripts/forge/nest_layout_ws_campaign.py", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} smoke-layout-ws", **kw), "       ",
          dim("# WS1 A → WS2 B → back → nautilus/ghostty → join tab → close → A", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} run --monitors=2 -- python3 "
+                     "scripts/forge/nest_layout_occupied_smoke.py", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-layout-occupied", **kw), " ",
+         dim("# WS2 occupied 2-slot apply; no open-miss", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} restart", **kw), "                 ",
          dim("# interactive loop; stop when done", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} status", **kw), "                  ",
@@ -242,6 +247,7 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             f"  {NESTED_CLI} smoke-mark2           # two clients → invoke → forge tree\n"
             f"  {NESTED_CLI} smoke-layout-dnd      # dual-mon ghosttys + occupied dest dnd\n"
             f"  {NESTED_CLI} smoke-layout-ws       # WS1 A → WS2 B → nautilus/join/close → A\n"
+            f"  {NESTED_CLI} smoke-layout-occupied # WS2 occupied 2-slot apply (no open-miss)\n"
             f"  {NESTED_CLI} restart               # reload shell/extension\n"
             f"  {NESTED_CLI} stop\n"
             "\n"
@@ -250,6 +256,8 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             "_commitEmptyMonitorDrop). Occupied dest-monitor drop is smoke-layout-dnd\n"
             "(dest already has a tile — not L1.r015 empty-mon). Not a Mark 2 action id.\n"
             "smoke-layout-ws is the 8-step WS/layout campaign (CTS after each step).\n"
+            "smoke-layout-occupied is WS2 occupied 2-slot apply (seed second role,\n"
+            "assert no open-miss / PlaceNext mon-root).\n"
             "Do not use product `forge Move` (dest-reparent) as move.left.\n"
             f"Campaign entry: prefer `{NESTED_CLI} run` (always stops on exit).\n"
             "Multi-monitor: MUTTER_DEBUG_NUM_DUMMY_MONITORS (not host desks).\n"
@@ -265,6 +273,7 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
         help=(
             "start | stop | restart | status | env | exec | run | invoke | "
             "dnd-drop | smoke-mark2 | smoke-layout-dnd | smoke-layout-ws | "
+            "smoke-layout-occupied | "
             "enable-forge | "
             "logs | wait | doctor  (default: status)"
         ),
