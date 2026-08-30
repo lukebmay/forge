@@ -1,130 +1,57 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-30 — Soft poison + TABBED edge nest (`de517f32`) +
-tab-click raise-first (`e21e174d`). **P0:** design meeting —
-[settled slot authority](./plans/forge-settled-slot-authority.md)
-([blocker](./blockers/settled-slot-authority-design.md)). Do **not**
-delete heal waves without that lock. Then toggleTabStack nest / host
-logout. **Do not resave loadouts.** **Plan:**
+**Updated:** 2026-08-30 — **D095 Accepted** (settled slot / presenter SoT).
+S1 `geom-epsilon` + nest `smoke-geom-epsilon` landed; **ε₀ = 4** locked.
+**P0 next:** S2 host-bag window model → S3 `Tree.apply` visible-first →
+S4 `--dev=` modes. **Do not** delete heal waves until S3. Parallel:
+toggleTabStack nest. **Do not resave loadouts.** **Do not** launch
+Chrome/Nautilus/Inkscape from nest (host leak). **Plan:**
 [forge-settled-slot-authority](./plans/forge-settled-slot-authority.md)
 · [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
 **Architecture:** [architecture-verdict-2026-08-29.md](./plans/forge-live-layout-dnd-proof/architecture-verdict-2026-08-29.md)
 **Branch:** **`master`**. **Push:** only if asked.
 
-Cutover C7 + agree-resync R0–R4+R6 are in the tree. Archive those plans
-when the operator wants. Proof plan still owns nest toggleTabStack.
+## Pain / architecture
 
-## Pain
+Kernel generic; adapters extend (D085/D087/D088/**D092**). Live topology =
+POJO Forest. **D093** present → observe → AGREE/RESYNC. **D095** geometry:
+presenter = reality feedback; Forge always owns projected/commanded/observed;
+evidence-only writes; no geometry-force; ε₀=4; nest logs separate.
 
-Kernel is generic; adapters **extend** it (D085/D087/D088/**D092**).
-Forest document = **META + FLOATS + TILES**. **Live topology = POJO
-Forest** (D092). FLOAT windows in FLOATS (no ROOT parking). Host Meta/St
-via `Map<id, bag>`. Nanoid per node (envelope singletons may keep
-META/FLOATS/ROOT literals). **D093:** present → observe → AGREE or
-RESYNC (TOM toward REALITY; FLOAT terminator). No twin presenter
-atomics.
-Join chord wins over swap. Do not merge the two monitor-resolves. Do not
-put Mutter/DOM in the kernel. **Big bang** — no dual-run steady state;
-no BC obligation. Apply desired state is TOM.
+## D095 locks agents must not rediscover
 
-**Kernel** = `lib/tom/` + `lib/rulesets/` + `lib/opsets/` + keybind
-action ids (`lib/keybinds/`). Language-portable contract; JS is the
-reference impl.
-**World** = `lib/world/` (host adapter **fills**). **Slot math** =
-`lib/presenter/` `paneRect`.
-**Epochs** = `lib/epochs/` (portable key → nanoid under D092).
-**Adapters:** ForgeAdapterGnome (GJS `WindowManager` façade) /
-ForgeAdapterWebView (proto desk); KeybindAdapterGnome /
-KeybindAdapterWebView.
-**Cutover:**
-[`plans/forge-live-tom-cutover.md`](./plans/forge-live-tom-cutover.md)
-(C7 code). **Agree:**
-[`forge-tom-agree-resync.md`](./plans/forge-tom-agree-resync.md).
-**Active remainder:**
-[`forge-live-layout-dnd-proof.md`](./plans/forge-live-layout-dnd-proof.md)
-(H5 nest edge matrix landed; toggleTabStack nest). S8 is in the
-tree (identity-only skeleton take; CENTER wrap dest, not parent→TABBED).
-
-Product Move **is** Mark 2 Move. Glossary =
-[`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
-
-**Size** (D090) = **percent** or **`share`**. Action ids **`size.share*`**
-(D091). **FLOAT window** = FLOATS bag. Do not say float for leftover size.
-
-## Host eyes-on (2026-08-30, session `9m9Kw`)
-
-Human: `forge layout dev` **works**; `vinyl` **works** (Inkscape content
-smaller than indigo slot outline — soft size leftover). Nautilus DnD
-**CENTER** join / create TAB groups **works**. RIGHT horizontal DnD onto
-a TAB group (`dnd surface=slotSplit stackedOrTabbed=true`) **felt like
-tab thrash** on host; nest synthetic edge matrix is green (see below).
-
-`dev` apply `ok=true ms=10046` with
-`settle-soft-fail … soft focus wall timeout after 9000ms`. Cause:
-quiet-expiry corrections were recorded as residual latencies (~3002ms at
-soft clamp) → softTimeout→clamp → wall=`soft×3`=9000. **Fix:** do not
-record quiet-expiry as residual; do not learn when `softSettled=false`.
-Host heuristics trimmed (backup
-`~/.config/forge/config/settle-heuristics.json.bak-20260830`). After
-scrub, focus soft≈1261 wall≈3783 (still ≥2s when open-leaf pin floor
-applies). Host needs **logout** to load soft+edge tip.
-
-Do **not** resave `dev` / `t1` / `vinyl` loadouts.
-
-## Fixes in this tip (nest + soft)
-
-| Area | What |
+| Lock | Value |
 | --- | --- |
-| **Soft poison** | `runSoftFocusBarrierOnSignals`: quiet-expiry corrections skip residual push; `recordSoftFocusHeuristics` no-op unless `softSettled` |
-| **H5 nest matrix** | `smoke-layout-tabbed-edge`: seed 3 ghosttys → CENTER bag → LEFT/RIGHT/TOP/BOTTOM; bag WINDOW-only; dragged is H/V sibling of bag |
-| **H5 units** | RIGHT multi-tab + RIGHT peel keep bag WINDOW peers (`WindowManager-drag-drop-comprehensive`) |
-| **S8** (prior) | Identity-only skeleton; CENTER wrap dest beside TABBED |
+| Reality | Presenter frame when queryable |
+| Forge store | Always (not optional cache) |
+| Writes | Evidence only; **no** `force: true` geometry |
+| ε₀ | **4** px Meta; formula `max(4, ceil(worst_settle_in_band×1.2))` |
+| Progressive bump | **Per wm-class** (S6 + fault-inject) |
+| `--dev=` | Comma modes: `strict-geometry`, `geom-epsilon-measure`, `fault-inject-geometry`, `geom-trace` |
+| Nest | Separate tapes; ghostty-only launches; close nest tiles on exit |
 
-**Nest green:** `smoke-layout-dnd` · `smoke-layout-occupied` ·
-`smoke-layout-tabbed-edge` (LEFT,RIGHT,TOP,BOTTOM). Proto brake **154**.
+## Next session (start here)
 
-## Nest vs host logout (FIRM)
+1. Read plan [`forge-settled-slot-authority.md`](./plans/forge-settled-slot-authority.md) § Agent read-this-first + S2–S4.
+2. **S2** — host bag `desiredRect` / `commanded` / `observed` / `slotGen`; pre-move skip.
+3. **S3** — visible-first on `Tree.apply` **before** heal demotion.
+4. **S4** — parse `./install --dev=a,b`; wire `strict-geometry`.
+5. Nest smoke per slice; hunt nest logs only:
+   `eval $(forge-test nested env --export)` then `forge log --grep geom-epsilon`
+   or `nest_log_query` under nest `FORGE_CONFIG_HOME`.
 
-| Question | Answer |
+### Do / do not
+
+| Do | Do not |
 | --- | --- |
-| Does nest need host Wayland logout to pick up JS? | **No.** `./install --dev` then `forge-test nested restart\|run` loads tip into nest Shell. |
-| When is host logout needed? | Host Shell never loaded this tip this boot **and** you need host dual-mon / personal `dev` eyes-on / soft-quiet speed. |
-| After crash | Re-enable user extensions (`gsettings set org.gnome.shell disable-user-extensions false` + `gnome-extensions enable forge@jmmaranan.com`). Nest shared that dconf key. |
-
-## Next session
-
-**Plan:** [`plans/forge-live-layout-dnd-proof.md`](./plans/forge-live-layout-dnd-proof.md)
-
-| Slice | Disk |
-| --- | --- |
-| **toggleTabStack nest** | CENTER drop groups; TABBED bag still soft in WS campaign (Mark 2 toggle may no-op) |
-| **Host RIGHT thrash eyes-on** | After logout: rebuild TAB group, RIGHT-drop Nautilus; if still weird, hunt deco/geometry (nest structure path is green) |
-| **Vinyl inkscape slot** | Content smaller than indigo outline — size/slot leftover, not H5 |
-| **Archive (optional)** | cutover + agree-resync when operator wants |
-
-### Do
-
-1. Nest first for JS reload (`./install --dev` + `forge-test nested …`).
-2. Hunt `forge log` only (`float-promote-denied`, `deco-disposed`, `settle-jitter`, `render-throw`, `forest-match`, `skeleton skip-float`, `PlaceNext dest`, `settle-soft-fail`, `soft quiet`).
-3. Use `_forge-test-*` in nest, never personal `dev`.
-
-### Do not
-
-- Twin child-list atomics
-- Treat host logout as the ordinary reload loop
-- Resave personal loadouts
-- Commit or push unless asked
-- Re-learn soft residuals from wall timeouts
-
-## Architecture verdict (do not rediscover)
-
-D093 stays. No redesign meeting. Failure class was unfinished presenter
-observe/chrome (bag vs Forest votes; St deco lifecycle), not kernel FLOAT
-terminator. Verdict file above. Host `dev` + Nautilus DnD closed the
-live-proof gate for that verdict.
+| Nest first for JS (`./install --dev` + `forge-test nested …`) | Launch Chrome/Nautilus/Inkscape from nest |
+| Close nest TILE windows campaigns open | Leave nest-style ghostty on **host** |
+| Hunt `forge log` / nest jsonl | `cat`/`rg` tape files |
+| | Delete heal waves before S3 |
+| | Resave personal loadouts |
+| | Commit/push unless asked |
 
 ## Brake
 
 `cd prototypes/container-motion && npm test` → **154**.
-`./scripts/forge/forge-test nested smoke-layout-ws` · `smoke-layout-dnd`
-· `smoke-layout-occupied` · `smoke-layout-tabbed-edge`.
+`forge-test nested smoke-geom-epsilon` · `smoke-layout-dnd` · `smoke-layout-tabbed-edge`.

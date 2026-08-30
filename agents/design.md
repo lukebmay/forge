@@ -397,15 +397,32 @@ Full inventory (queue, workspace, Wayland stack, keyboard resize, …) and
 No orphan recovery timers found at audit time; keep teardown lists in sync when
 extracting monitor-recovery / session-restore modules.
 
-### Settled slot authority (meeting queued)
+### Settled slot authority (D095 — FIRM)
 
-Operator thesis (2026-08-30): once a TILE is settled in a slot, do **not**
-re-issue `move_resize` to that slot unless Forge **knows** drift (or the slot
-changed). No “maybe Meta lied → heal everything” default. Plan + blocker:
+**Presenter** (Meta/Mutter, WebView renderer, …) is reality for on-screen
+geometry when queryable. **Forge always** owns a presenter-specific window
+model: projected desired, commands sent, observed frames, heal trail. Writes
+only with **evidence** (observed disagree after desired recompute). **No**
+blanket reassert. **No** geometry `force: true` (ε-bypass sledgehammer) —
+failed acceptance enters data-backed heal phases. ε is **measured from
+sent↔observed logs**, then locked; progressive near-miss forgiveness is a
+later slice with mandatory fault-inject. Untestable fallbacks/zoom-reasserts
+are off or removed. Reveal/select (tab click **and** keybind) = raise →
+verify → correct if needed → WARN. Zoom: ≤1 per monitor; TABBED zooms the
+leaf not the group slot; chrome stays under the zoomed window; unzoom
+restores placement.
+
+**ε₀ = 4 px** (Meta): `max(4, ceil(worst_settle_in_band_dMax × 1.2))`;
+nest ghostty settle residual was 0 (2026-08-30). Progressive bumps are
+**per wm-class**. Install modes: `./install --dev=strict-geometry,…`.
+Nest smokes use **nest** logs only; never launch Chrome/Nautilus/Inkscape
+from nest (host leak).
+
+**Finish-before:** do not delete heal waves until visible-first lives on
+primary present (S3). Plan:
 [`plans/forge-settled-slot-authority.md`](plans/forge-settled-slot-authority.md)
-· [`blockers/settled-slot-authority-design.md`](blockers/settled-slot-authority-design.md).
-**Do not implement the cleanup until the meeting locks a D0xx** (will amend
-D069 heal posture).
+(S1 landed; next S2–S4). Amends D069 heal posture + chrome D071
+epoch-leave force-heal note.
 
 ### Tab / stack peer geometry (D069 — FIRM)
 
@@ -415,11 +432,11 @@ as the first size of a peer.
 
 | Rule | Detail |
 | --- | --- |
-| **When** | Join the group; whenever the group slot moves or resizes (`commitLayout` → render/apply → `reassertAllTabStackSlots` + post-echo heal) |
-| **Visible-first** | Open leaf (`lastTabFocus`) before buried peers. Never queue open-leaf `move_resize` behind buried work |
-| **Buried heal** | Peers stay **mapped** (under the open leaf in Z-order, not withdrawn). Mutter accepts `move_resize_frame` while buried — heal same-turn after visible and/or idle/post-echo so the next reveal is already in-slot |
-| **Click / reveal** | Raise + focus; R025 reassert of the revealed child only (safety net). No all-peer reassert on focus (PWA thrash) |
-| **No silent drift** | Changing this needs a very significant reason, written trade-offs, and explicit go — see archived [`forge-tab-peer-geometry.md`](plans/archived/completed/forge-tab-peer-geometry.md) / D069 |
+| **When** | Join the group; whenever the group slot moves or resizes — **primary present** sizes peers (D095). Opportunistic post-render / epoch-end heals are debt to remove |
+| **Visible-first** | Open leaf (`lastTabFocus`) before buried peers on **primary present**. Never queue open-leaf `move_resize` behind buried work |
+| **Buried peers** | Stay **mapped**. Size via primary present when desired changes; no standing “heal until sure” |
+| **Click / keybind reveal** | Raise + focus first; verify vs desired; correct only if outside ε; **WARN** on correct (D095). No all-peer reassert on focus (PWA thrash) |
+| **No silent drift** | Changing this needs a very significant reason, written trade-offs, and explicit go — D069 + **D095** |
 
 ### Raise / restack
 

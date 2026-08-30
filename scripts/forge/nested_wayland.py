@@ -1481,6 +1481,15 @@ def cmd_nested(_backend: Any, args: Any) -> int:
                 args.monitors = 2
             args.nested_cmd = layout_tabbed_edge_argv()
             return _cli_run(args, name)
+        if action == "smoke-geom-epsilon":
+            from nest_geom_epsilon_campaign import (
+                smoke_script_argv as geom_epsilon_argv,
+            )
+
+            if getattr(args, "monitors", None) is None:
+                args.monitors = 2
+            args.nested_cmd = geom_epsilon_argv()
+            return _cli_run(args, name)
         if action == "enable-forge":
             return _cli_enable_forge(name)
         if action == "logs":

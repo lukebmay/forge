@@ -32,6 +32,7 @@ _NESTED_ACTIONS = frozenset(
         "smoke-layout-ws",
         "smoke-layout-occupied",
         "smoke-layout-tabbed-edge",
+        "smoke-geom-epsilon",
         "enable-forge",
         "logs",
         "wait",
@@ -252,6 +253,7 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             f"  {NESTED_CLI} smoke-layout-ws       # WS1 A → WS2 B → nautilus/join/close → A\n"
             f"  {NESTED_CLI} smoke-layout-occupied # WS2 occupied 2-slot apply (no open-miss)\n"
             f"  {NESTED_CLI} smoke-layout-tabbed-edge # TABBED × edge zones (H5)\n"
+            f"  {NESTED_CLI} smoke-geom-epsilon   # D095 S1 sent↔observed ε campaign\n"
             f"  {NESTED_CLI} restart               # reload shell/extension\n"
             f"  {NESTED_CLI} stop\n"
             "\n"
@@ -262,6 +264,7 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             "smoke-layout-ws is the 8-step WS/layout campaign (CTS after each step).\n"
             "smoke-layout-occupied is WS2 occupied 2-slot apply (seed second role,\n"
             "assert no open-miss / PlaceNext mon-root).\n"
+            "smoke-geom-epsilon measures Meta sent↔observed drift (nest logs only).\n"
             "Do not use product `forge Move` (dest-reparent) as move.left.\n"
             f"Campaign entry: prefer `{NESTED_CLI} run` (always stops on exit).\n"
             "Multi-monitor: MUTTER_DEBUG_NUM_DUMMY_MONITORS (not host desks).\n"
@@ -278,7 +281,7 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             "start | stop | restart | status | env | exec | run | invoke | "
             "dnd-drop | smoke-mark2 | smoke-layout-dnd | smoke-layout-ws | "
             "smoke-layout-occupied | smoke-layout-tabbed-edge | "
-            "enable-forge | "
+            "smoke-geom-epsilon | enable-forge | "
             "logs | wait | doctor  (default: status)"
         ),
     )
