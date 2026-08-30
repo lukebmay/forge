@@ -845,14 +845,22 @@ class ShellProxy:
         opts = json.dumps({"op": op, "focus": focus_window})
         return self.eval("globalThis._forgeTestBridge.fuzzWindowState(%s)" % opts)
 
-    def fuzz_drag(self, src: str = None, tgt: str = None, zone: str = "center") -> dict:
-        """Simulate a drag-drop tile: drag the SRC window onto ZONE of the TGT window,
-        exercising Forge's drop/reparent logic (the only path keybindings can't reach).
-        src/tgt are positional hints (leftmost/...). See bridge.fuzzDrag. Returns {'ok',...}.
+    def fuzz_drag(
+        self,
+        src: str = None,
+        tgt: str = None,
+        zone: str = "center",
+        dest_monitor: int = None,
+    ) -> dict:
+        """Synthetic tile drop via session _dndDropOp → _commitResolvedDrop.
+        src/tgt are positional hints (leftmost/...). dest_monitor without tgt is
+        empty-mon (_commitEmptyMonitorDrop). See bridge.fuzzDrag. Returns {'ok',...}.
         """
         self._ensure_bridge()
-        opts = json.dumps({"src": src, "tgt": tgt, "zone": zone})
-        return self.eval("globalThis._forgeTestBridge.fuzzDrag(%s)" % opts)
+        opts = {"src": src, "tgt": tgt, "zone": zone}
+        if dest_monitor is not None:
+            opts["destMonitor"] = dest_monitor
+        return self.eval("globalThis._forgeTestBridge.fuzzDrag(%s)" % json.dumps(opts))
 
     def fuzz_drag_path(
         self, src: str = None, tgt: str = None, zone: str = "center", vias=None

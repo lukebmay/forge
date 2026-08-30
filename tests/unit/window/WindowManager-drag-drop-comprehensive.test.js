@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import { DROP_ZONES } from "../../../lib/extension/drop-zones.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -348,11 +350,14 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(1800, 540);
       wm().nodeWinAtPointer = target;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(splitSpy).toHaveBeenCalled();
+      expect(dragged.parentNode).not.toBe(monitor);
+      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(monitor.childNodes).toContain(dragged.parentNode);
+      expect(monitor.childNodes.indexOf(dragged.parentNode)).toBeGreaterThan(
+        monitor.childNodes.indexOf(target)
+      );
     });
 
     it("should detach window from tabbed container when dropping on TOP edge", () => {
@@ -380,11 +385,14 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(960, 100);
       wm().nodeWinAtPointer = target;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(splitSpy).toHaveBeenCalled();
+      expect(dragged.parentNode).not.toBe(monitor);
+      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(monitor.childNodes).toContain(dragged.parentNode);
+      expect(monitor.childNodes.indexOf(dragged.parentNode)).toBeLessThan(
+        monitor.childNodes.indexOf(target)
+      );
     });
 
     it("should detach window from tabbed container when dropping on BOTTOM edge", () => {
@@ -412,11 +420,14 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(960, 1000);
       wm().nodeWinAtPointer = target;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(splitSpy).toHaveBeenCalled();
+      expect(dragged.parentNode).not.toBe(monitor);
+      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(monitor.childNodes).toContain(dragged.parentNode);
+      expect(monitor.childNodes.indexOf(dragged.parentNode)).toBeGreaterThan(
+        monitor.childNodes.indexOf(target)
+      );
     });
 
     it("should add window to tabbed container when dropping on CENTER", () => {
@@ -508,6 +519,126 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       expect(sibling.parentNode).toBe(monitor);
       expect(monitor.childNodes).toContain(wrap);
       expect(monitor.childNodes).toContain(sibling);
+    });
+
+    it("TOP on a tab uses the TABBED bag as the slot (not a wrap inside the bag)", () => {
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const tabCon = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const target = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+      target.mode = WINDOW_MODES.TILE;
+      const otherTab = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaB);
+      otherTab.mode = WINDOW_MODES.TILE;
+
+      const { nodeWindow: sibling } = createWindowWithRect(monitor, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 400, y: 400, width: 400, height: 300 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      seedLiveForest(wm());
+      setPointer(480, 40);
+      wm().nodeWinAtPointer = target;
+      wm().moveWindowToPointer(dragged, false);
+
+      const wrap = dragged.parentNode;
+      expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(wrap.parentNode).toBe(monitor);
+      expect(tabCon.parentNode).toBe(wrap);
+      expect(tabCon.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(tabCon.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
+      expect(tabCon.childNodes).toContain(target);
+      expect(tabCon.childNodes).toContain(otherTab);
+      expect(tabCon.childNodes).not.toContain(dragged);
+      expect(wrap.childNodes).toContain(tabCon);
+      expect(wrap.childNodes).toContain(dragged);
+      expect(wrap.childNodes.indexOf(dragged)).toBeLessThan(wrap.childNodes.indexOf(tabCon));
+      expect(sibling.parentNode).toBe(monitor);
+    });
+
+    it("commit TOP targeting a tab WINDOW still splits vs the TABBED bag", () => {
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const tabCon = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const target = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+      target.mode = WINDOW_MODES.TILE;
+      const otherTab = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaB);
+      otherTab.mode = WINDOW_MODES.TILE;
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 960, y: 0, width: 960, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      seedLiveForest(wm());
+      const ctxDrop = {
+        nodeWinAtPointer: target,
+        parentNodeTarget: tabCon,
+        focusNodeWindow: dragged,
+        horizontal: true,
+        isMonParent: false,
+        isConParent: true,
+        stacked: false,
+        stackedOrTabbed: true,
+        centerLayout: "TABBED",
+        dropZones: null,
+        targetRect: { x: 0, y: 0, width: 960, height: 1080 },
+      };
+      const operation = {
+        zone: DROP_ZONES.TOP,
+        isCenter: false,
+        isHorizontal: false,
+        isBefore: true,
+        shouldWrapTargetCon: true,
+        containerNode: tabCon,
+        referenceNode: target,
+      };
+
+      expect(wm().dragDrop._commitResolvedDrop(dragged, target, operation, ctxDrop)).toBe(true);
+
+      const wrap = dragged.parentNode;
+      expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(wrap.parentNode).toBe(monitor);
+      expect(tabCon.parentNode).toBe(wrap);
+      expect(tabCon.childNodes).toEqual(expect.arrayContaining([target, otherTab]));
+      expect(tabCon.childNodes).not.toContain(dragged);
+      expect(tabCon.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
+      expect(wrap.childNodes).toContain(tabCon);
+      expect(wrap.childNodes).toContain(dragged);
     });
 
     it("LEFT edge on nested TABBED CON under mon HSPLIT wraps into HSPLIT", () => {
@@ -614,13 +745,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
     it("CENTER B onto A becomes TABBED (same parent, both children)", () => {
       const { split, top, bot } = vsplitPair(true);
-      const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
 
       setPointer(480, 270);
       wm().nodeWinAtPointer = top;
       wm().moveWindowToPointer(bot, false);
 
-      expect(mergeSpy).toHaveBeenCalledWith(bot, top, LAYOUT_TYPES.TABBED);
       expect(split.layout).toBe(LAYOUT_TYPES.TABBED);
       expect(top.parentNode).toBe(split);
       expect(bot.parentNode).toBe(split);
@@ -630,13 +759,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
     it("CENTER A onto B becomes TABBED (same parent, both children)", () => {
       const { split, top, bot } = vsplitPair(false);
-      const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
 
       setPointer(480, 810);
       wm().nodeWinAtPointer = bot;
       wm().moveWindowToPointer(top, false);
 
-      expect(mergeSpy).toHaveBeenCalledWith(top, bot, LAYOUT_TYPES.TABBED);
       expect(split.layout).toBe(LAYOUT_TYPES.TABBED);
       expect(top.parentNode).toBe(split);
       expect(bot.parentNode).toBe(split);
@@ -807,20 +934,14 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       src.tab = makeTab(960, 0, 100, 30);
       srcPeer.tab = makeTab(1060, 0, 100, 30);
 
-      const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
       // Chip over dest mid: insert before d1 (index 1), not append.
       setPointer(120, 15);
       wm().nodeWinAtPointer = d1;
       wm().moveWindowToPointer(src, false);
 
-      expect(mergeSpy).toHaveBeenCalled();
-      const opts = mergeSpy.mock.calls[0][3];
-      expect(opts).toMatchObject({ group: dest });
-      expect(typeof opts.insertIndex).toBe("number");
-      expect(opts.insertIndex).toBeLessThan(3);
       expect(src.parentNode).toBe(dest);
       expect(dest.childNodes).toContain(src);
-      expect(dest.childNodes.indexOf(src)).toBe(opts.insertIndex);
+      expect(dest.childNodes.indexOf(src)).toBeLessThan(3);
       expect(dest.childNodes[dest.childNodes.length - 1]).not.toBe(src);
     });
 
@@ -868,13 +989,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
         WINDOW_MODES.GRAB_TILE
       );
 
-      const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
       // Tile body, south of strip.
       setPointer(480, 540);
       wm().nodeWinAtPointer = d0;
       wm().moveWindowToPointer(dragged, false);
 
-      expect(mergeSpy).not.toHaveBeenCalled();
       expect(dragged.parentNode).toBe(dest);
       expect(dest.childNodes[dest.childNodes.length - 1]).toBe(dragged);
     });
@@ -943,9 +1062,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       expect(fs?.insertIndex).toBeDefined();
 
       // Commit still joins at index when pointer on strip.
-      const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
       wm().moveWindowToPointer(src, false);
-      expect(mergeSpy).toHaveBeenCalled();
       expect(src.parentNode).toBe(dest);
     });
 
@@ -1258,16 +1375,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(100, 540);
       wm().nodeWinAtPointer = target;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(dragged, false);
 
-      // Should call split to detach from stacked
-      expect(splitSpy).toHaveBeenCalled();
-      // A LEFT drop prepends: the dragged window is detached into a new CON
-      // that lands BEFORE target in the monitor (split-called alone passed for
-      // an append too — assert the ordering the test name promises).
       const leftMonitor = target.parentNode;
+      expect(dragged.parentNode).not.toBe(monitor);
       expect(leftMonitor.childNodes.indexOf(dragged.parentNode)).toBeLessThan(
         leftMonitor.childNodes.indexOf(target)
       );
@@ -1298,13 +1409,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(1800, 540);
       wm().nodeWinAtPointer = target;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(splitSpy).toHaveBeenCalled();
-      // A RIGHT drop appends: the detached dragged CON lands AFTER target.
       const rightMonitor = target.parentNode;
+      expect(dragged.parentNode).not.toBe(monitor);
       expect(rightMonitor.childNodes.indexOf(dragged.parentNode)).toBeGreaterThan(
         rightMonitor.childNodes.indexOf(target)
       );
@@ -1335,13 +1443,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(960, 100);
       wm().nodeWinAtPointer = target;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(splitSpy).toHaveBeenCalled();
-      // A TOP drop prepends: the detached dragged CON lands BEFORE target.
       const topMonitor = target.parentNode;
+      expect(dragged.parentNode).not.toBe(monitor);
       expect(topMonitor.childNodes.indexOf(dragged.parentNode)).toBeLessThan(
         topMonitor.childNodes.indexOf(target)
       );
@@ -1372,13 +1477,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(960, 1000);
       wm().nodeWinAtPointer = target;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(splitSpy).toHaveBeenCalled();
-      // A BOTTOM drop appends: the detached dragged CON lands AFTER target.
       const bottomMonitor = target.parentNode;
+      expect(dragged.parentNode).not.toBe(monitor);
       expect(bottomMonitor.childNodes.indexOf(dragged.parentNode)).toBeGreaterThan(
         bottomMonitor.childNodes.indexOf(target)
       );
@@ -2319,16 +2421,14 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       const dragged = ctx.tree.createNode(container2.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       dragged.mode = WINDOW_MODES.GRAB_TILE;
 
-      const resetSpy = vi.spyOn(ctx.tree, "resetSiblingPercent");
-
       setPointer(100, 540);
       wm().nodeWinAtPointer = target;
 
       wm().moveWindowToPointer(dragged, false);
 
-      // Should be called for both the new container and the old parent
-      expect(resetSpy).toHaveBeenCalled();
-      expect(resetSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+      expect(dragged.parentNode).toBe(container1);
+      expect(target.parentNode).toBe(container1);
+      expect(container1.childNodes).toEqual(expect.arrayContaining([target, dragged]));
     });
   });
 
@@ -2459,11 +2559,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(480, 540);
       wm().nodeWinAtPointer = target;
 
-      const swapSpy = vi.spyOn(ctx.tree, "swapPairs");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(swapSpy).toHaveBeenCalledWith(target, dragged);
+      expect(target.parentNode).toBe(monitor);
+      expect(dragged.parentNode).toBe(monitor);
+      expect(monitor.childNodes).toEqual([dragged, target]);
     });
 
     it("should swap windows when center drop with SWAP mode in VSPLIT", () => {
@@ -2485,11 +2585,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(960, 270);
       wm().nodeWinAtPointer = target;
 
-      const swapSpy = vi.spyOn(ctx.tree, "swapPairs");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(swapSpy).toHaveBeenCalledWith(target, dragged);
+      expect(target.parentNode).toBe(monitor);
+      expect(dragged.parentNode).toBe(monitor);
+      expect(monitor.childNodes).toEqual([dragged, target]);
     });
 
     it("should swap windows in nested containers", () => {
@@ -2526,11 +2626,12 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(480, 540);
       wm().nodeWinAtPointer = target;
 
-      const swapSpy = vi.spyOn(ctx.tree, "swapPairs");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(swapSpy).toHaveBeenCalledWith(target, dragged);
+      expect(target.parentNode).toBe(container2);
+      expect(dragged.parentNode).toBe(container1);
+      expect(container1.childNodes).toContain(dragged);
+      expect(container2.childNodes).toContain(target);
     });
   });
 
@@ -2589,11 +2690,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(350, 500);
       wm().nodeWinAtPointer = target;
 
-      const swapSpy = vi.spyOn(ctx.tree, "swapPairs");
-
       wm().moveWindowToPointer(dragged, false);
 
-      expect(swapSpy).toHaveBeenCalled();
+      expect(target.parentNode).toBe(monitor);
+      expect(dragged.parentNode).toBe(monitor);
+      expect(monitor.childNodes).toEqual([dragged, target]);
     });
 
     it("top-left fan: above UL→cUL diagonal is TOP (VSPLIT), not left-band HSPLIT", () => {

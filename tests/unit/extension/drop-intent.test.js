@@ -3,6 +3,7 @@ import {
   dropChangesStructure,
   dropWouldOverflowMins,
   resolveDropMark2,
+  resolveDropSurface,
   shouldMergeCenterGroup,
   swapWouldOverflowMins,
   unitMins,
@@ -289,9 +290,38 @@ describe("resolveDropMark2", () => {
     expect(resolveDropMark2(a, b, centerOp())).toBeNull();
   });
 
-  it("swap / wrap / detach / createCon → null", () => {
+  it("adjacent HSPLIT SWAP → move (in-axis neighbor)", () => {
     const { a, b } = hsplitPair();
-    expect(resolveDropMark2(b, a, centerOp({ isSwap: true }))).toBeNull();
+    expect(resolveDropMark2(b, a, centerOp({ isSwap: true }))).toEqual({
+      op: "move",
+      dir: "left",
+    });
+    expect(resolveDropMark2(a, b, centerOp({ isSwap: true }))).toEqual({
+      op: "move",
+      dir: "right",
+    });
+  });
+
+  it("SWAP MONITOR / TABBED / non-adjacent → null", () => {
+    const mon = makeParent("HSPLIT", "MONITOR");
+    const m1 = attach(mon, { id: "M1", nodeType: "WINDOW" });
+    const m2 = attach(mon, { id: "M2", nodeType: "WINDOW" });
+    expect(resolveDropMark2(m1, m2, centerOp({ isSwap: true }))).toBeNull();
+
+    const tab = makeParent("TABBED");
+    const t1 = attach(tab, { id: "T1", nodeType: "WINDOW" });
+    const t2 = attach(tab, { id: "T2", nodeType: "WINDOW" });
+    expect(resolveDropMark2(t2, t1, centerOp({ isSwap: true }))).toBeNull();
+
+    const parent = makeParent("HSPLIT");
+    const a = attach(parent, { id: "A", nodeType: "WINDOW" });
+    attach(parent, { id: "B", nodeType: "WINDOW" });
+    const c = attach(parent, { id: "C", nodeType: "WINDOW" });
+    expect(resolveDropMark2(a, c, centerOp({ isSwap: true }))).toBeNull();
+  });
+
+  it("wrap / detach / createCon → null", () => {
+    const { a, b } = hsplitPair();
     expect(
       resolveDropMark2(a, b, edgeOp({ shouldWrapTargetCon: true, isHorizontal: true }))
     ).toBeNull();
@@ -328,6 +358,58 @@ describe("resolveDropMark2", () => {
     expect(
       resolveDropMark2(a, b, edgeOp({ isHorizontal: true }), { emptyMonitor: true })
     ).toBeNull();
+  });
+});
+
+describe("resolveDropSurface", () => {
+  function hsplitPair() {
+    const parent = makeParent("HSPLIT");
+    const a = attach(parent, { id: "A", nodeType: "WINDOW" });
+    const b = attach(parent, { id: "B", nodeType: "WINDOW" });
+    return { parent, a, b };
+  }
+
+  it("SWAP → swapPairs (Mark 2 may still take adjacent H/V CON first)", () => {
+    const { a, b } = hsplitPair();
+    expect(resolveDropSurface(b, a, centerOp({ isSwap: true }))).toEqual({ op: "swapPairs" });
+  });
+
+  it("CENTER H/V siblings → group", () => {
+    const { a, b } = hsplitPair();
+    expect(shouldMergeCenterGroup(b, a, centerOp())).toBe(true);
+    expect(resolveDropSurface(b, a, centerOp())).toEqual({ op: "group" });
+  });
+
+  it("CENTER invent on MONITOR → wrap (dest CON, not source-parent group)", () => {
+    const mon = makeParent("HSPLIT", "MONITOR");
+    const a = attach(mon, { id: "A", nodeType: "WINDOW" });
+    const b = attach(mon, { id: "B", nodeType: "WINDOW" });
+    expect(
+      resolveDropSurface(a, b, centerOp({ shouldCreateCon: true, containerNode: mon }))
+    ).toEqual({ op: "wrap" });
+  });
+
+  it("edge wrap-target / detach / invent / insert / empty-mon", () => {
+    const { a, b } = hsplitPair();
+    expect(
+      resolveDropSurface(a, b, edgeOp({ shouldWrapTargetCon: true, isHorizontal: true }))
+    ).toEqual({ op: "slotSplit" });
+    expect(resolveDropSurface(a, b, edgeOp({ shouldDetachWindow: true }))).toEqual({
+      op: "split",
+    });
+    expect(
+      resolveDropSurface(
+        a,
+        b,
+        edgeOp({ shouldCreateCon: true, isHorizontal: true, isBefore: true })
+      )
+    ).toEqual({ op: "wrap" });
+    expect(resolveDropSurface(a, b, edgeOp({ isBefore: false, isHorizontal: true }))).toEqual({
+      op: "insert",
+    });
+    expect(
+      resolveDropSurface(a, b, edgeOp({ isHorizontal: true }), { emptyMonitor: true })
+    ).toEqual({ op: "emptyMonitorDrop" });
   });
 });
 

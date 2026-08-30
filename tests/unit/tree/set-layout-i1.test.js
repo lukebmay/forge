@@ -10,10 +10,9 @@ import { Bin } from "../../mocks/gnome/St.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 
 /**
- * FCC C1 / invariant I1: setLayout never reparents or flattens children.
- * Child node identity and order stay stable across H↔tab↔stack cycles.
+ * Host/helper: Tree.setLayout (I1). Product layout toggles use command().
  */
-describe("setLayout I1 — child identity stable", () => {
+describe("setLayout I1 — child identity stable (Host/helper)", () => {
   let ctx;
 
   beforeEach(() => {

@@ -1,10 +1,22 @@
 # forge-firm-abstractions — Firm kernel, then import
 
 **Status:** accepted — **P7 done** (D087/D088); **P6 remainder done**
-(DnD Join/Move mapped; fallback leftover)
+(DnD `_commitResolvedDrop`; execute name gone). Post-P7 sole-source
+work moved to thin sibling plans (see below).
 **Branch:** master
-**Blocker:** (none)
+**Blocker:** (none) — cutover design closed; D093 if AGREE/RESYNC fails live
 **Updated:** 2026-08-29
+
+### Post-P7 thin plans (PRIORITY owns order)
+
+| Plan | Role |
+| --- | --- |
+| [forge-mark2-one-tiles-path.md](./forge-mark2-one-tiles-path.md) | **done** T1–T5 — leftover `tree.*` is DnD / RunSteps / open |
+| [forge-dnd-mark2-complete.md](./archived/completed/forge-dnd-mark2-complete.md) | **done** D1–D4 — `_executeDropOperation` removed |
+| [forge-nest-mark2-invoke.md](./forge-nest-mark2-invoke.md) | Nest/e2e call Mark 2 ids without keys |
+| [forge-live-tom-cutover.md](./forge-live-tom-cutover.md) | Sole-source live Forest — C7 done; leftover → D093 |
+| [forge-tom-agree-resync.md](./forge-tom-agree-resync.md) | **D093** AGREE/DRIFT/RESYNC — **R1 next** |
+| [explore/08-tom-sole-source-audit.md](./forge-firm-abstractions/explore/08-tom-sole-source-audit.md) | Hybrid dual-run evidence |
 
 ## Goal
 
@@ -134,6 +146,10 @@ untouched.
   `windowId` in `lib/epochs/`.
 
 ## Session note
+
+**2026-08-29e:** **D4.** `_executeDropOperation` removed. Pointer +
+synthetic mutate: `_commitResolvedDrop` → Mark 2 or `_commitDropSurface`.
+Empty-mon: `_commitEmptyMonitorDrop`.
 
 **2026-08-29d:** **P6 DnD leftover.** Shared `lib/extension/forest-run.js`
 `runLiveForest`. DnD commit: `resolveDropMark2` → Mark 2 Join/Move when

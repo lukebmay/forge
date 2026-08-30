@@ -792,24 +792,20 @@
       }
     },
 
-    // Simulate a drag-and-drop tile: drag the SRC window and drop it onto a ZONE of the TGT
-    // window, exercising Forge's drop/reparent logic (moveWindowToPointer -> calculateDropRegions
-    // /detectDropZone/_executeDropOperation) — the only path real keybindings can't reach
-    // (forge-cnrc). opts: {src, tgt, zone}. Approach (robust + headless-deterministic): a real
-    // pointer drag is flaky headless, so instead we (1) focus SRC (the grab handlers act on the
-    // focused window), (2) _handleGrabOpBegin -> GRAB_TILE, (3) MONKEYPATCH wm.getPointer to
-    // return a point inside the chosen drop ZONE of TGT (all drop math routes through getPointer
-    // via getDragPointer), (4) call moveWindowToPointer directly (bypasses the held-modifier
-    // allowDragDropTile gate — we want the reparent logic, not the gate), (5) restore + end grab.
+    // Synthetic tile drop (forge-cnrc): sessionApi._dndDropOp → _commitResolvedDrop
+    // (same mutate as RunSteps dnd-drop / nest dnd-drop). Empty-mon: destMonitor
+    // without tgt → _commitEmptyMonitorDrop. Fallback: grab + moveWindowToPointer
+    // (also _commitResolvedDrop). opts: {src, tgt, zone, destMonitor}.
     fuzzDrag(opts) {
       const o = opts || {};
-      const wm = forgeExt() && forgeExt().extWm;
+      const ext = forgeExt();
+      const wm = ext && ext.extWm;
       if (!wm) return JSON.stringify({ ok: false, reason: "no-wm" });
       const origGetPointer = wm.getPointer;
       let origFocus = null;
       try {
         const wins = global.workspace_manager.get_active_workspace().list_windows();
-        if (wins.length < 2) return JSON.stringify({ ok: false, reason: "need-2-windows" });
+        if (!wins.length) return JSON.stringify({ ok: false, reason: "need-window" });
         const pick = (hint) => {
           if (hint === "leftmost")
             return wins.reduce(
@@ -834,47 +830,85 @@
           return wins[0];
         };
         const src = pick(o.src);
-        let tgt = pick(o.tgt);
-        if (tgt === src) tgt = wins.find((x) => x !== src) || src;
-        if (tgt === src) return JSON.stringify({ ok: false, reason: "src==tgt" });
+        const destMon =
+          typeof o.destMonitor === "number" && o.destMonitor >= 0 ? o.destMonitor : null;
+        const emptyMon = destMon != null && (o.tgt == null || o.tgt === "");
+        let tgt = null;
+        if (!emptyMon) {
+          if (wins.length < 2) return JSON.stringify({ ok: false, reason: "need-2-windows" });
+          tgt = pick(o.tgt);
+          if (tgt === src) tgt = wins.find((x) => x !== src) || src;
+          if (tgt === src) return JSON.stringify({ ok: false, reason: "src==tgt" });
+        }
 
-        // Drop point inside TGT for the requested zone (regions are computed at 0.3 inset).
-        const tr = tgt.get_frame_rect();
+        const zone = o.zone || "center";
+        const zoneKey = String(zone).toUpperCase();
+        const srcSel = "id:" + src.get_id();
+        const api = ext.sessionApi;
+        if (api && typeof api._dndDropOp === "function") {
+          const out = emptyMon
+            ? api._dndDropOp(srcSel, "", zoneKey, { destMonitor: destMon, quiet: true })
+            : api._dndDropOp(srcSel, "id:" + tgt.get_id(), zoneKey, { quiet: true });
+          const ok = !!(out && out.ok && !out.error);
+          return JSON.stringify({
+            ok,
+            zone: (out && out.zone) || zoneKey,
+            dropped: ok,
+            path: emptyMon || (out && out.emptyMon) ? "empty-mon" : "commitResolved",
+            error: out && out.error ? String(out.error) : undefined,
+            dbg: { destMonitor: destMon, emptyMon: !!(out && out.emptyMon) },
+          });
+        }
+
         const fx = { center: 0.5, left: 0.12, right: 0.88, top: 0.5, bottom: 0.5 };
         const fy = { center: 0.5, left: 0.5, right: 0.5, top: 0.12, bottom: 0.88 };
-        const zone = o.zone in fx ? o.zone : "center";
-        const px = Math.round(tr.x + tr.width * fx[zone]);
-        const py = Math.round(tr.y + tr.height * fy[zone]);
+        const zonePt = zone in fx ? zone : "center";
+        let px;
+        let py;
+        if (emptyMon) {
+          const g =
+            typeof global.display.get_monitor_geometry === "function"
+              ? global.display.get_monitor_geometry(destMon)
+              : null;
+          if (!g) return JSON.stringify({ ok: false, reason: "dest-monitor-geom" });
+          px = Math.round(g.x + g.width / 2);
+          py = Math.round(g.y + g.height / 2);
+        } else {
+          const tr = tgt.get_frame_rect();
+          px = Math.round(tr.x + tr.width * fx[zonePt]);
+          py = Math.round(tr.y + tr.height * fy[zonePt]);
+        }
 
         const display = global.display;
         const grabOp = Meta.GrabOp.MOVING_UNCONSTRAINED;
-        // Override focus to SRC for the whole grab (synchronous; src.focus() is async, so the
-        // grab handlers — which act on focusMetaWindow — could otherwise grab the wrong window).
-        // Mirrors invokeForgeAction's get_focus_window shim. Restored below / in catch.
         origFocus = display.get_focus_window;
         display.get_focus_window = function () {
           return src;
         };
-        wm._handleGrabOpBegin(display, src, grabOp); // SRC -> GRAB_TILE, _draggedNodeWindow = src
-        // Route the drop-ZONE math (calculateDropRegions/detectDropZone via getDragPointer) to the
-        // chosen point inside TGT.
+        wm._handleGrabOpBegin(display, src, grabOp);
         wm.getPointer = function () {
           return [px, py, 0];
         };
         const dragged = wm._draggedNodeWindow || wm.findNodeWindow(src);
-        // Drop target is deterministically TGT's node — we do NOT use _findNodeWindowAtPointer,
-        // whose sortedWindows/isWindowAlive/getNodeByValue chain is built for a live pointer drag
-        // and resolves null in this synthetic path. moveWindowToPointer just needs nodeWinAtPointer
-        // + a GRAB_TILE dragged node + the (overridden) drag pointer for zone detection.
-        wm.nodeWinAtPointer = wm.findNodeWindow(tgt);
-        // Capture BEFORE _handleGrabOpEnd, which nulls nodeWinAtPointer (window.js:2997).
-        const dropped = !!(dragged && wm.nodeWinAtPointer);
+        wm.nodeWinAtPointer = emptyMon ? null : wm.findNodeWindow(tgt);
+        const dropped = !!(dragged && (emptyMon || wm.nodeWinAtPointer));
         if (dropped) wm.moveWindowToPointer(dragged);
-        const dbg = { zone, draggedMode: dragged ? dragged.mode : null, tgtNode: dropped };
+        const dbg = {
+          zone: zonePt,
+          draggedMode: dragged ? dragged.mode : null,
+          tgtNode: !emptyMon && dropped,
+          destMonitor: destMon,
+        };
         wm.getPointer = origGetPointer;
         wm._handleGrabOpEnd(display, src, grabOp);
         display.get_focus_window = origFocus;
-        return JSON.stringify({ ok: true, zone, dropped, dbg });
+        return JSON.stringify({
+          ok: true,
+          zone: zonePt,
+          dropped,
+          path: emptyMon ? "empty-mon" : "commitResolved",
+          dbg,
+        });
       } catch (e) {
         wm.getPointer = origGetPointer;
         if (origFocus) global.display.get_focus_window = origFocus;
@@ -886,10 +920,11 @@
     },
 
     // Like fuzzDrag, but drives the REAL grab LOOP across multiple waypoints instead of just
-    // the two endpoints (forge-v9o7). fuzzDrag jumps straight to the drop math; this one walks
-    // src-center -> via-centers -> a zone of TGT, invoking _handleMoving at each point so the
-    // preview-hint St.Bin lifecycle, the debounce path, and the live-preview branch
-    // (moveWindowToPointer(...,true)) all run across positions. opts: {src, tgt, zone, vias:[hint,...]}.
+    // the two endpoints (forge-v9o7). fuzzDrag uses session _dndDropOp → _commitResolvedDrop;
+    // this one walks src-center -> via-centers -> a zone of TGT, invoking _handleMoving at each
+    // point so the preview-hint St.Bin lifecycle, the debounce path, and the live-preview branch
+    // (moveWindowToPointer(...,true) → _commitResolvedDrop on grab-end) all run. opts:
+    // {src, tgt, zone, vias:[hint,...]}.
     //
     // Monkeypatches, all restored in finally (mirrors fuzzDrag's gate-bypass philosophy):
     //  - get_focus_window -> SRC (grab handlers act on focusMetaWindow; src.focus() is async).

@@ -4,6 +4,7 @@ import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
 import * as Utils from "../../lib/extension/utils.js";
 import { toPortableForest, makeEnvelope } from "../../lib/extension/session-layout.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -76,6 +77,11 @@ describe("H1 monitor-recovery on workareas thrash", () => {
     const rightFrame = { x: 2000, y: 100, width: 800, height: 600 };
     const { win: leftWin, node: leftNode } = addTiled("L", 0, leftFrame);
     const { win: rightWin, node: rightNode } = addTiled("R", 1, rightFrame);
+    seedLiveForest(wm());
+    const nidL = wm().hostBag.idFromMeta(leftWin);
+    const nidR = wm().hostBag.idFromMeta(rightWin);
+    expect(nidL).toBeTruthy();
+    expect(nidR).toBeTruthy();
 
     // Quiet snapshot (as after a normal render).
     wm()._workareasThrashPending = false;
@@ -101,6 +107,12 @@ describe("H1 monitor-recovery on workareas thrash", () => {
     expect(rightWin.get_monitor()).toBe(1);
     expect(wm()._workareasThrashPending).toBe(false);
     expect(wm().renderTree).toHaveBeenCalledWith("workareas-monitor-recovery");
+    expect(wm().hostBag.idFromMeta(leftWin)).toBe(nidL);
+    expect(wm().hostBag.idFromMeta(rightWin)).toBe(nidR);
+    expect(wm().forest.nodes[nidL]?.kind).toBe("WINDOW");
+    expect(wm().forest.nodes[nidR]?.kind).toBe("WINDOW");
+    expect(wm().forest.nodes[nidL].parentId).toBe(mon0After.nodeValue);
+    expect(wm().forest.nodes[nidR].parentId).toBe(mon1After.nodeValue);
   });
 
   it("suppresses window-entered-monitor rehome while thrash is pending", () => {

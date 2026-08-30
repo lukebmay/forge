@@ -1,163 +1,121 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-29 — **P6 remainder done** (toggle/promote/size/
-layout.cycle + vim kit). **DnD leftover:** clear TILES Join/Move
-mapped; rest still `_executeDropOperation`. **Branch:** **`master`**.
-Nest **stopped**. **Push:** only if the human asks.
+**Updated:** 2026-08-29 — Host **eyes-on PASS:** `forge layout dev` and
+Nautilus TILE DnD. D092/D093 live Forest + AGREE/RESYNC + D094 nested-TAB
+fix are on the desk. **Do not resave loadouts.** **Plan:**
+[forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
+**Architecture:** [architecture-verdict-2026-08-29.md](./plans/forge-live-layout-dnd-proof/architecture-verdict-2026-08-29.md)
+**Branch:** **`master`**. **Push:** only if asked.
+
+Cutover C7 + agree-resync R0–R4+R6 are in the tree. Archive those plans
+when the operator wants. Proof plan still owns nest TABBED TOP/BOTTOM
+(H5) and toggleTabStack.
 
 ## Pain
 
-Kernel is generic; adapters **extend** it (D085/D087/D088). Forest
-document = **META + FLOATS + TILES**. FLOAT windows are not under a
-MONITOR (they can span heads). Join chord wins over swap. Do not merge
-the two monitor-resolves. Do not retarget Apply onto T6. Do not put
-Mutter/DOM in the kernel.
+Kernel is generic; adapters **extend** it (D085/D087/D088/**D092**).
+Forest document = **META + FLOATS + TILES**. **Live topology = POJO
+Forest** (D092). FLOAT windows in FLOATS (no ROOT parking). Host Meta/St
+via `Map<id, bag>`. Nanoid per node (envelope singletons may keep
+META/FLOATS/ROOT literals). **D093:** present → observe → AGREE or
+RESYNC (TOM toward REALITY; FLOAT terminator). No twin presenter
+atomics.
+Join chord wins over swap. Do not merge the two monitor-resolves. Do not
+put Mutter/DOM in the kernel. **Big bang** — no dual-run steady state;
+no BC obligation. Apply desired state is TOM.
 
 **Kernel** = `lib/tom/` + `lib/rulesets/` + `lib/opsets/` + keybind
 action ids (`lib/keybinds/`). Language-portable contract; JS is the
 reference impl.
 **World** = `lib/world/` (host adapter **fills**). **Slot math** =
 `lib/presenter/` `paneRect`.
-**Epochs** = `lib/epochs/` (T6 document + H1 majority resolve).
+**Epochs** = `lib/epochs/` (portable key → nanoid under D092).
 **Adapters:** ForgeAdapterGnome (GJS `WindowManager` façade) /
 ForgeAdapterWebView (proto desk); KeybindAdapterGnome /
-KeybindAdapterWebView (kernel table ∪ host overlay).
-**Live projection:** `lib/extension/tom-live.js` — TILES normally;
-FLOAT/GRAB_TILE → FLOATS. DnD commit may set **`treatGrabTileAsTiles`**
-so GRAB_TILE stays on the live TILES parent (true FLOAT still FLOATS).
-Apply parks live floats on ROOT, not MONITOR.
-Product Move **is** Mark 2 Move. Shared `runLiveForest` (`forest-run.js`)
-is the TILES mutate path (CommandHandler + mapped DnD). Glossary =
+KeybindAdapterWebView.
+**Cutover:**
+[`plans/forge-live-tom-cutover.md`](./plans/forge-live-tom-cutover.md)
+(C7 code). **Agree:**
+[`forge-tom-agree-resync.md`](./plans/forge-tom-agree-resync.md).
+**Active remainder:**
+[`forge-live-layout-dnd-proof.md`](./plans/forge-live-layout-dnd-proof.md)
+(H5 nest TABBED slotSplit; toggleTabStack).
+
+Product Move **is** Mark 2 Move. Glossary =
 [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
 
-**Size** (D090) = **percent** or **`share`**. `share` splits leftover
-unused space among other `share` siblings. Action ids **`size.share*`**
-(D091) in kernel **and** proto. **FLOAT window** = FLOATS bag. Do not
-say float or “spread” for leftover size.
+**Size** (D090) = **percent** or **`share`**. Action ids **`size.share*`**
+(D091). **FLOAT window** = FLOATS bag. Do not say float for leftover size.
+
+## Host eyes-on (2026-08-29)
+
+Human: `forge layout dev` **works** after this tip. **DnD with Nautilus
+works.** Right-mon double TAB chrome (EZmFr) is gone on this tip. Do
+**not** resave `dev` / `t1` loadouts (v2 `roles` +
+`layout.mon*.children` / `layout: tabbed` unchanged).
+
+Earlier host crash (session ScLRi, ~18:39): `float-mismatch` →
+`moveWindowToFloats` → `render-throw parentNode is null`; later
+`attachTabDecoration` on disposed St.BoxLayout logged out Shell. Those
+paths are patched (H1 Forest-wins, deco lifecycle). Hunt `forge log`
+only.
+
+## Fixes in this tip (nest + host)
+
+| Area | What |
+| --- | --- |
+| **D092** | Live Forest sole topology; `lib/host` bag; nanoid |
+| **D093** | `lib/agree` present → observe → AGREE or RESYNC |
+| **D094** | Same-type coerce unwraps mixed H/H; wrapMonitorMax1 absorb; ensure_layout bag-join; forest-match max-1 peel |
+| **H1 observe** | Forest TILES wins; stale `bag.floating` repaired; `metric warn float-promote-denied` |
+| **align FLOATS→TILES** | `hostBag.set`; `align-floats-to-tiles` |
+| **Decoration** | destroy clears `con.decoration`; attach does not rethrow; `metric warn deco-disposed` |
+| **Borders** | `showWindowBorders` null-safe on FLOATS detach |
+| **Hunt** | `metric warn settle-jitter` / `settle-soft-fail`; `bag-con-child` invariant scan |
+| **Nest** | `smoke-layout-dnd` · `smoke-layout-ws` (8-step) + `nest_log_query.py` |
+
+**Nest green:** `smoke-layout-dnd` · `smoke-layout-ws`. Expected WARN:
+`float-promote-denied` on entered-monitor. Proto brake **154**.
+
+## Nest vs host logout (FIRM)
+
+| Question | Answer |
+| --- | --- |
+| Does nest need host Wayland logout to pick up JS? | **No.** `./install --dev` then `forge-test nested restart\|run` loads tip into nest Shell. |
+| When is host logout needed? | Host Shell never loaded this tip this boot **and** you need host dual-mon / personal `dev` eyes-on. |
+| After crash | Re-enable user extensions (`gsettings set org.gnome.shell disable-user-extensions false` + `gnome-extensions enable forge@jmmaranan.com`). Nest shared that dconf key. |
 
 ## Next session
 
-**Plan:** [`plans/forge-firm-abstractions.md`](./plans/forge-firm-abstractions.md)
-**Locks:** [`layers.md`](./plans/forge-firm-abstractions/layers.md) ·
-[`keybinds.md`](./plans/forge-firm-abstractions/keybinds.md) ·
-D079–**D091**
+**Plan:** [`plans/forge-live-layout-dnd-proof.md`](./plans/forge-live-layout-dnd-proof.md)
 
 | Slice | Disk |
 | --- | --- |
-| P1–P4 | `lib/{tom,rulesets,keybinds,session,world,presenter,opsets}/` |
-| P5 | [`P5.md`](./plans/forge-firm-abstractions/P5.md) · `lib/epochs/` |
-| P6 | [`P6.md`](./plans/forge-firm-abstractions/P6.md) · remainder done; DnD Join/Move mapped |
-| P7 | [`P7.md`](./plans/forge-firm-abstractions/P7.md) **done** |
-
-**Brake:**
-`cd prototypes/container-motion && npm test` → **154**.
-Vitest: mark2-table **14** + keybind-presets **39** + CommandHandler
-**81** + Keybindings **64** + WindowManager-commands **40** +
-structure-one-commit **6** + opsets **3** + tom-live **9** +
-forest-envelope **7** + drop-intent **47** + WindowManager-drag-drop
-**32** + comprehensive **65**.
+| **H5 nest** | `dnd-drop` TOP/BOTTOM onto a TABBED **slot** must not nest H/V CON inside the bag |
+| **toggleTabStack nest** | CENTER drop groups; TABBED bag still soft in WS campaign (Mark 2 toggle may no-op) |
+| **Archive (optional)** | cutover + agree-resync when operator wants |
 
 ### Do
 
-1. Keep proto tests green (154+).
-2. Do **not** retarget Apply onto T6. Do **not** merge monitor-resolves.
-3. DnD leftover remainder is fallback-only (swap/merge-group/wrap/
-   detach/invent/empty-mon). Do not rewrite gesture/preview.
+1. Nest first for JS reload (`./install --dev` + `forge-test nested …`).
+2. Hunt `forge log` only (`float-promote-denied`, `deco-disposed`, `settle-jitter`, `render-throw`, `forest-match`).
+3. Use `_forge-test-*` in nest, never personal `dev`.
 
 ### Do not
 
-- Put FLOAT windows under MONITOR
-- Pare GObject `Node` / `window.js` in place
-- Merge `resolveTargetMonitor` and `resolveStrictMonitor`
-- Planner → TOM / Apply GetTree rewrite (P5c parked)
-- A second glossary or a second Mark 2 chord table
-- Import WebView overlay into Gnome (or the reverse)
-- Ding / Super+2 / vinyl / D069 / unify raise
+- Twin child-list atomics
+- Treat host logout as the ordinary reload loop
+- Resave personal loadouts
 - Commit or push unless asked
-- Re-do P2–P7
 
-## D090 size (do not rediscover)
+## Architecture verdict (do not rediscover)
 
-A TILES child’s size is a **percent** or **`share`**. Share children
-split leftover (100% minus percent children) equally. Code may keep
-`percent` + `userSized` (`false` = share). Action ids **`size.share*`**
-(D091). Not FLOAT. D089 “spread” is superseded.
+D093 stays. No redesign meeting. Failure class was unfinished presenter
+observe/chrome (bag vs Forest votes; St deco lifecycle), not kernel FLOAT
+terminator. Verdict file above. Host `dev` + Nautilus DnD closed the
+live-proof gate for that verdict.
 
-## D088 key overlays (do not rediscover)
+## Brake
 
-Kernel table = Mark 2 Super-bearing ids. Each KeybindAdapter ∪ overlay.
-WebView: `lib/keybinds/proto-overlay.js` Super-bearing; proto
-`stripSuper` → `a`/`q`. Gnome: `lib/keybinds/gnome-overlay.js`
-`Super+q` = `host.quit`; lock/zoom/run/prefs. Safe/i3 = Gnome overlays
-on the **same kernel ids**. Adapters do not import each other.
-
-## D087 forest envelope (do not rediscover)
-
-FOREST → META + FLOATS + TILES. TILES = today's ROOT→WS→MONITOR
-(`tilesOf`; kind stays ROOT). FLOATS = unmanaged WINDOW* (may span
-monitors). META = document facts. Helpers `metaOf` / `floatsOf` /
-`tilesOf`. Mark 2 mutates TILES only. Session/world stay WeakMaps, not
-META children.
-
-## D086 T6 snapshot (do not rediscover)
-
-`lib/epochs/` is the T6 algorithm. WINDOW key = `windowId` (string).
-Adapter `tree-snapshot.js` attaches `.window` / `.lastTabFocus` Meta for
-in-process use. Epochs never read those. Session portable is identity
-adapter (`toPortableForest` / `toLiveForest`); `id` = `windowId`.
-`resolveStrictMonitor` stays in `session-layout.js`. Live
-`Node.nodeValue` is still Meta.
-
-## D084 OpSet (do not rediscover)
-
-`lib/opsets/` is Mark 2. Neighbor queries `lib/world/neighbors.js`
-(tie-break **string**). `transferLeafToMonitor` is OpSet place + RuleSet
-max-1. Proto `src/opsets/*.mjs` re-export. No proto `plog.mjs` in `lib/`.
-
-## D081 kit (do not rediscover)
-
-Product table = proto right-hand: `hjkl` focus, `Shift+hjkl` Move,
-`Ctrl+hjkl` Join, `p`/`Shift+p`, `m`/`n`, `[`/`]`, `{`/`}`,
-`Alt+hjkl`/`yuio`/`nm,.`/`/`/`7890`. Overlay chords (`a`/`q`/quit) are
-**D088**, not kit. Vim overlay is loaded; live dconf needs
-`forge keybind load vim`.
-
-## D082 session (do not rediscover)
-
-`lib/session/` WeakMap keyed by Forest. `sessionOf` / `copySession` /
-`attachSession`. Transact copies session around clone+commit. RuleSet
-`aspectTieBreak` is a string argument. Old proto dumps peel leftover
-fields on first `sessionOf`.
-
-## D083 world (do not rediscover)
-
-`lib/world/` WeakMap keyed by Forest. `worldOf` / `copyWorld` /
-`attachWorld` / `geomOf`. Transact copies world. `paneRect` is
-`lib/presenter/`. MONITOR nodes have no `geom`. Old dumps peel leftover
-`node.geom` on first `worldOf`.
-
-## D085 adapters (do not rediscover)
-
-Kernel ≠ GNOME. Host: **ForgeAdapterGnome** / **ForgeAdapterWebView**.
-Keybind: **KeybindAdapterGnome** / **KeybindAdapterWebView**. GJS
-`WindowManager` may stay as a façade; the **role** is ForgeAdapterGnome.
-Adapters **extend** the kernel; they do not fork it.
-
-## Open (do not block)
-
-1. WINDOW identity on live Forge `Node` (Meta vs id) — snapshot is D086
-2. Live dconf vim users still have old chords until they reload the kit
-3. WebApp overlays beyond proto `a`/`q` — later
-4. Live GObject tree still has no FLOATS node; apply parks floats on
-   ROOT (TOM FLOATS is the document of record)
-5. DnD execute: mapped Join/Move via `resolveDropMark2`; else Host
-   `_executeDropOperation` (swap / merge-group / wrap / detach / invent /
-   empty-mon)
-
-## Where context lives
-
-| What | Where |
-| --- | --- |
-| Layers / import | [`layers.md`](./plans/forge-firm-abstractions/layers.md) · [`import-map.md`](./plans/forge-firm-abstractions/import-map.md) |
-| Explore notes | [`explore/`](./plans/forge-firm-abstractions/explore/) — open instead of rescanning |
-| Design | [`design.md`](./design.md) · [`CHANGELOG.md`](./design/CHANGELOG.md) |
+`cd prototypes/container-motion && npm test` → **154**.
+`./scripts/forge/forge-test nested smoke-layout-ws` · `smoke-layout-dnd`.

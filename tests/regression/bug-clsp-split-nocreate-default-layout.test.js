@@ -8,15 +8,8 @@ import {
 } from "../mocks/helpers/index.js";
 
 /**
- * Bug forge-clsp: the Split command unconditionally applies default-window-layout
- * to focusNodeWindow.parentNode even when tree.split did NOT create a container.
- * tree.split has two non-creating exits — a FLOAT focus (plain return) and a
- * single-child parent (toggles the EXISTING parent's orientation, often the
- * MONITOR node). With default-window-layout=tabbed/stacked, applyDefaultLayout
- * then turns that pre-existing container (the monitor) TABBED, permanently.
- *
- * Fix: tree.split returns the newly-created CON (null otherwise); Split applies
- * the default layout only when a container was actually created.
+ * Bug forge-clsp: Split must not tab a pre-existing MONITOR.
+ * Product Split is command() → toggleSplit (not tree.split).
  */
 describe("Bug forge-clsp: Split does not tab a pre-existing container", () => {
   let ctx;

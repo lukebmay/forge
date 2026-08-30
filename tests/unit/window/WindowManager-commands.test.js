@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
-import { NODE_TYPES, LAYOUT_TYPES, ORIENTATION_TYPES } from "../../../lib/extension/tree.js";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -10,9 +10,7 @@ import {
 import { MotionDirection } from "../../mocks/gnome/Meta.js";
 
 /**
- * WindowManager command system tests
- *
- * Tests for the command() method that handles all tiling commands
+ * WindowManager command() — product TILES via action ids + forest structure.
  */
 describe("WindowManager - Command System", () => {
   let ctx;
@@ -120,11 +118,9 @@ describe("WindowManager - Command System", () => {
 
     it("in-axis Move swaps sibling order (Mark 2)", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const moveSpy = vi.spyOn(ctx.tree, "move");
 
       wm().command({ name: "Move", direction: "right" });
 
-      expect(moveSpy).not.toHaveBeenCalled();
       expect(monitor.childNodes).toHaveLength(1);
       const wrap = monitor.childNodes[0];
       expect(wrap.childNodes.map((n) => n.nodeValue)).toEqual([
@@ -203,11 +199,9 @@ describe("WindowManager - Command System", () => {
 
     it("directional Swap dispatches Join and wraps the pair", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const swapSpy = vi.spyOn(ctx.tree, "swap");
 
       wm().command({ name: "Swap", direction: "right" });
 
-      expect(swapSpy).not.toHaveBeenCalled();
       expect(monitor.childNodes).toHaveLength(1);
       const wrap = monitor.childNodes[0];
       expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
@@ -249,81 +243,53 @@ describe("WindowManager - Command System", () => {
       global.display.get_focus_window.mockReturnValue(null);
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const before = [...monitor.childNodes];
-      const swapSpy = vi.spyOn(ctx.tree, "swap");
 
       wm().command({ name: "Swap", direction: "right" });
 
-      expect(swapSpy).not.toHaveBeenCalled();
       expect(monitor.childNodes).toEqual(before);
     });
   });
 
   describe("Split Command", () => {
-    it("should split horizontally", () => {
-      const action = { name: "Split", orientation: "horizontal" };
-      const splitSpy = vi.spyOn(ctx.tree, "split");
+    function pairOnMonitor() {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const other = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, wm_class: "OtherApp" },
+      });
+      other.nodeWindow.mode = WINDOW_MODES.TILE;
+      return { monitor, other };
+    }
 
-      wm().command(action);
+    it("aliases toggleSplit and wraps the pair as VSPLIT", () => {
+      const { monitor } = pairOnMonitor();
 
-      expect(splitSpy).toHaveBeenCalledWith(nodeWindow, ORIENTATION_TYPES.HORIZONTAL);
+      wm().command({ name: "Split", orientation: "vertical" });
+
+      expect(monitor.childNodes).toHaveLength(1);
+      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
-    it("should split vertically", () => {
-      const action = { name: "Split", orientation: "vertical" };
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
-      wm().command(action);
-
-      expect(splitSpy).toHaveBeenCalledWith(nodeWindow, ORIENTATION_TYPES.VERTICAL);
+    it("ignores orientation (same as toggleSplit)", () => {
+      const { monitor } = pairOnMonitor();
+      wm().command({ name: "Split", orientation: "horizontal" });
+      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
-    it("should use NONE orientation if not specified", () => {
-      const action = { name: "Split" };
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
-      wm().command(action);
-
-      expect(splitSpy).toHaveBeenCalledWith(nodeWindow, ORIENTATION_TYPES.NONE);
-    });
-
-    it("should not split in stacked layout", () => {
-      nodeWindow.parentNode.layout = LAYOUT_TYPES.STACKED;
-      const action = { name: "Split", orientation: "horizontal" };
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
-      wm().command(action);
-
-      expect(splitSpy).not.toHaveBeenCalled();
-    });
-
-    it("should not split in tabbed layout", () => {
-      nodeWindow.parentNode.layout = LAYOUT_TYPES.TABBED;
-      const action = { name: "Split", orientation: "horizontal" };
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
-      wm().command(action);
-
-      expect(splitSpy).not.toHaveBeenCalled();
-    });
-
-    it("should commit layout after split", () => {
+    it("commits as toggleSplit", () => {
+      pairOnMonitor();
       const commitSpy = vi.spyOn(wm(), "commitLayout");
-      const action = { name: "Split", orientation: "horizontal" };
-
-      wm().command(action);
-
-      expect(commitSpy).toHaveBeenCalledWith("split", { force: true });
-      expect(wm().renderTree).toHaveBeenCalledWith("split", true);
+      wm().command({ name: "Split" });
+      expect(commitSpy).toHaveBeenCalledWith("toggleSplit", { force: true });
+      expect(wm().renderTree).toHaveBeenCalledWith("toggleSplit", true);
     });
 
     it("should not split if no focus window", () => {
+      const { monitor } = pairOnMonitor();
+      const before = [...monitor.childNodes];
       global.display.get_focus_window.mockReturnValue(null);
-      const action = { name: "Split", orientation: "horizontal" };
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
-      wm().command(action);
-
-      expect(splitSpy).not.toHaveBeenCalled();
+      wm().command({ name: "Split", orientation: "horizontal" });
+      expect(monitor.childNodes).toEqual(before);
     });
   });
 

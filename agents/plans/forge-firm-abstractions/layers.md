@@ -1,15 +1,17 @@
 # Target layers (working draft)
 
-**Status:** locked D079 + D080 + D082 + D083 + D084 + D085 + D086 + D087 + D088 + **D090**
-**As of:** 2026-08-28
-**Sources:** explore/01–06, D073/D074/D079/D080/D082/D083/D084/D085/D086/D087/D088.
+**Status:** locked D079–D088 + D090 + **D092** (live POJO Forest) +
+**D093** (AGREE / DRIFT / RESYNC)
+**As of:** 2026-08-29
+**Sources:** explore/01–06/08, D073/D074/D079–D088/D090/D092/D093.
 **RuleSet:** [ruleset.md](./ruleset.md) · **Keybinds:** [keybinds.md](./keybinds.md)
 
 ## Layer table
 
 | Layer | Owns | Must not own | From |
 | --- | --- | --- | --- |
-| **TOM** | Forest envelope META + FLOATS + TILES; TILES spine ROOT→WS→MONITOR; kinds, `parentId`/`childIds`, layout, percent/`userSized`, lastTabFocusId | GObject, Meta, St, DOM, keybinds, OpSet policy, paint, settle laws, session prefs, workarea; FLOAT windows under MONITOR | 01, 02, D087 |
+| **TOM** | Live POJO Forest (D092): envelope META + FLOATS + TILES; nanoid per content node; kinds, `parentId`/`childIds`, layout, percent/`userSized`, lastTabFocusId | GObject, Meta, St, DOM, keybinds, OpSet policy, paint, settle laws, session prefs, workarea; FLOAT windows under MONITOR; Meta on the node | 01, 02, D087, D092 |
+| **Host bag** | Adapter `Map<nanoid, bag>` for Meta/St/volatile host facts (D092) | Topology; RuleSet | D092 |
 | **Session** | WeakMap bag: `decisions`, `mergeTags` (`lib/session/`) | Topology; RuleSet; Meta | D082 |
 | **World** | WeakMap bag: MONITOR workarea (`lib/world/`); neighbor / edge / sibling-axis queries | Topology mutation; RuleSet; paint; session | D083, D084 |
 | **Atomics + composed** | Child-list atomics; breakout, wrap, promoteChildren (**no settle**) | Super+h; `move_resize`; “after promote, collapse” | 01, D080 |
@@ -18,7 +20,8 @@
 | **Keybind core** | Action id → Super-bearing chord (Mark 2 table) | Platform accel grammar; host overlays (`Super+a`/`q`, lock, quit) | D080, D085, D088 |
 | **Keybind adapter** | Kernel table ∪ host overlay: **KeybindAdapterGnome**, **KeybindAdapterWebView** | A second Mark 2 table; importing the other host's overlay | D085, D088 |
 | **Presenter math** | Slots from TOM + workarea → AABB (`lib/presenter/` paneRect) | Topology mutation; Mutter/DOM paint | 04, D083 |
-| **Host adapter** | **ForgeAdapterGnome** / **ForgeAdapterWebView**: native window ↔ WINDOW, signals, fill world, paint | Tiling policy; `createNode` | 03, D085 |
+| **Host adapter** | **ForgeAdapterGnome** / **ForgeAdapterWebView**: native window ↔ WINDOW, signals, fill world, `present`/`observe` | Tiling policy; `createNode`; a second child-list | 03, D085, D093 |
+| **AGREE / RESYNC** | Predicate + TOM-toward-REALITY atomics + present loop; FLOAT terminator; Mark 2 only after AGREE | Twin AtomicsGnome/WebApp; Mark 2 while DRIFT; GObject-first close | D093 |
 | **Epochs** | Apply, session restore, H1 — three forest writers | Idle keybind; merging the two monitor-resolves | 05 |
 | **Surfaces** | DnD gesture, CLI, DBus, prefs, host key overlays | A second tree mutator; a second Mark 2 chord table | 06 |
 | **Product data** | Profiles, settings, windows.json, mins, heuristics | Role-name branches | 03, 05 |
@@ -180,9 +183,9 @@ TILE-anywhere success = **discard**.
 T6 capture is a TOM-shaped snapshot in `lib/epochs/` (`windowId`; D086).
 Gnome adapter `tree-snapshot.js` may attach Meta extras; createCon may
 birth `St.Bin`. Session portable is **TOM/epoch serialize + identity
-adapter** (`session-layout.js`; P5b). Apply still plans against GetTree
-`projectForest` (Surface; P5c parked). Do not merge the two
-monitor-resolves.
+adapter** (`session-layout.js`; P5b). Apply plans against TOM IR
+(`projectForestFromTom`). DBus GetTree `projectForest` is Surface only.
+Do not merge the two monitor-resolves.
 
 `LayoutCommandEpoch` is command **echo**, not a forest writer. D070
 failsafe is a prod guardrail, never kernel.
@@ -194,7 +197,7 @@ Surfaces translate intent → OpSet / epoch. They do not splice the tree.
 | Surface | Becomes |
 | --- | --- |
 | Keybinds + CommandHandler | Shared Mark 2 table ([keybinds.md](./keybinds.md)) → OpSet ids + `commitLayout`. Host overlays only |
-| DnD gesture / zones / intent | Keep. `_executeDropOperation` **discard** as mutator — zone → Mark 2 Join/Move/wrap |
+| DnD gesture / zones / intent | Keep. Mutate via `_commitResolvedDrop` (Mark 2 or named `_commitDropSurface`). `_executeDropOperation` discarded (D4) |
 | Tab-strip reorder | Keep: `replaceChildren` + one commit |
 | RunSteps | One dispatcher; ops rename toward OpSet |
 | DBus product | Ping, GetTree, Focus, Swap, Move, PlaceNext, settings, RunSteps, ApplyLayout family, Log |

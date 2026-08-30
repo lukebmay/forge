@@ -10,16 +10,10 @@ import { MotionDirection } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
 
 /**
- * LX3: directional Move across monitors.
- *
- * Root cause: Tree.move MONITOR case required node === mon firstChild|lastChild.
- * next() already means "directional edge of mon tree", so nested windows (tab
- * members, children of a mon CON) and VSPLIT-mon middle panes never crossed —
- * they only reparented to own-mon edge (often a no-op look) or required extra
- * gestures. Fix: when next is a neighbor MONITOR, always geometry-move then
- * reparent (e3k1 order). Tab-at-edge → one gesture peel+cross.
+ * Host/helper: tree.move cross-monitor reparent (DnD leftover Host path).
+ * Product TILES Move is command() → Mark 2 (wrap beats cross-mon).
  */
-describe("LX3: cross-monitor directional Move", () => {
+describe("LX3: tree.move cross-monitor (Host/helper)", () => {
   let ctx;
   let monA;
   let monB;
@@ -204,7 +198,7 @@ describe("LX3: cross-monitor directional Move", () => {
   });
 });
 
-describe("LX3: rectForMonitor hardening", () => {
+describe("LX3: rectForMonitor hardening (Host/helper)", () => {
   let ctx;
 
   beforeEach(() => {

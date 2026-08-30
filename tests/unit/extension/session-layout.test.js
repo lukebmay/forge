@@ -24,6 +24,8 @@ import {
   resolveFocusMetaForSessionSave,
 } from "../../../lib/extension/session-layout.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import * as Utils from "../../../lib/extension/utils.js";
 import {
   createTreeFixture,
   createWindowManagerFixture,
@@ -736,6 +738,64 @@ describe("session-layout portable round-trip", () => {
     expect(tab.children.map((c) => c.window)).toEqual([wFocus, wOther]);
   });
 
+  it("resolves nanoid focusWindowId / lastTabFocusId after Meta id churn", () => {
+    const wFocus = createMockWindow({
+      id: 9991,
+      wm_class: "Google-chrome",
+      title: "Grok",
+    });
+    const wOther = createMockWindow({
+      id: 9992,
+      wm_class: "Google-chrome",
+      title: "Gmail",
+    });
+    const portable = {
+      version: 1,
+      monitors: [
+        {
+          id: "mo0ws0",
+          layout: "HSPLIT",
+          children: [
+            {
+              layout: "TABBED",
+              lastTabFocusId: "nanoGrok",
+              percent: 1,
+              userSized: false,
+              children: [
+                {
+                  id: "nanoGrok",
+                  metaWindowId: 111,
+                  wmClass: "Google-chrome",
+                  title: "Grok",
+                  percent: 0,
+                  userSized: false,
+                },
+                {
+                  id: "nanoGmail",
+                  metaWindowId: 222,
+                  wmClass: "Google-chrome",
+                  title: "Gmail",
+                  percent: 0,
+                  userSized: false,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const resolve = createWindowResolver([wFocus, wOther], portable);
+    expect(resolve({ id: "nanoGrok" })).toBe(wFocus);
+    expect(resolve({ id: "nanoGmail" })).toBe(wOther);
+    expect(resolve({ id: 111 })).toBe(wFocus);
+    expect(resolve({ id: "111" })).toBe(wFocus);
+    expect(resolve({ id: 222 })).toBe(wOther);
+    const live = toLiveForest(portable, resolve);
+    const tab = live.monitors[0].children[0];
+    expect(tab.lastTabFocus).toBe(wFocus);
+    expect(tab.children.map((c) => c.window)).toEqual([wFocus, wOther]);
+  });
+
   it("preserves tab sibling order + open leaf when same-pid frames match (install HUP)", () => {
     // Chrome tabs: one pid, identical frames; ids churn; titles stay unique.
     // Live candidate order is reversed vs forest children — title match must win.
@@ -1400,5 +1460,90 @@ describe("session-layout raise prefers focusWindowId over stale lastTab", () => 
     const lastChromeRaise = raiseChrome.mock.invocationCallOrder.at(-1);
     const lastGrokRaise = raiseGrok.mock.invocationCallOrder.at(-1);
     expect(lastChromeRaise).toBeGreaterThan(lastGrokRaise);
+  });
+});
+
+describe("session-layout nanoid identity (C6.5)", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture();
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
+  });
+
+  it("saveSessionLayoutForReload writes bag nanoid as focusWindowId", () => {
+    const wm = ctx.windowManager;
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const win = createMockWindow({
+      id: 55,
+      title: "Grok",
+      wm_class: "Google-chrome",
+      workspace: ctx.workspaces[0],
+    });
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win);
+    seedLiveForest(wm);
+    const nid = wm.hostBag.idFromMeta(win);
+    expect(nid).toBeTruthy();
+    expect(String(nid)).not.toBe("55");
+
+    global.display.get_focus_window = vi.fn(() => win);
+    let saved = null;
+    wm.ext.configMgr.saveSessionLayout = (env) => {
+      saved = env;
+    };
+
+    expect(wm._saveSessionLayoutForReload({ immediate: true, force: true })).toBe(true);
+    expect(saved?.focusWindowId).toBe(nid);
+    expect(saved.forest.monitors[0].children[0].id).toBe(nid);
+    expect(String(saved.forest.monitors[0].children[0].metaWindowId)).toBe("55");
+  });
+
+  it("restore writes Forest then paints chrome (nanoid disk)", () => {
+    const wm = ctx.windowManager;
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const ws = ctx.workspaces[0];
+    const wA = createMockWindow({
+      id: 101,
+      title: "A",
+      wm_class: "AppA",
+      workspace: ws,
+      monitor: 0,
+    });
+    const wB = createMockWindow({
+      id: 202,
+      title: "B",
+      wm_class: "AppB",
+      workspace: ws,
+      monitor: 0,
+    });
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wA);
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wB);
+    seedLiveForest(wm);
+    const nidA = wm.hostBag.idFromMeta(wA);
+    const nidB = wm.hostBag.idFromMeta(wB);
+    expect(nidA).toBeTruthy();
+    expect(nidB).toBeTruthy();
+
+    const portable = toPortableForest(wm.tree.snapshotTree());
+    expect(portable.monitors[0].children.map((c) => c.id)).toEqual([nidA, nidB]);
+    const env = makeEnvelope(portable, Utils.monoTimeUs(), Date.now(), {
+      focusWindowId: nidA,
+    });
+    wm.ext.configMgr.loadSessionLayout = () => env;
+    wm.ext.configMgr.clearSessionLayout = vi.fn();
+    global.display.get_tab_list = vi.fn(() => [wA, wB]);
+
+    expect(wm._restoreSessionLayoutAfterTrack()).toBe(true);
+    expect(wm.hostBag.idFromMeta(wA)).toBe(nidA);
+    expect(wm.hostBag.idFromMeta(wB)).toBe(nidB);
+    expect(wm.forest.nodes[nidA]?.kind).toBe("WINDOW");
+    expect(wm.forest.nodes[nidB]?.kind).toBe("WINDOW");
+    expect(wm.forest.nodes[nidA].parentId).toBe(monitor.nodeValue);
+    expect(wm.forest.nodes[nidB].parentId).toBe(monitor.nodeValue);
+    expect(ctx.tree.findNode(wA)?.parentNode).toBe(monitor);
+    expect(ctx.tree.findNode(wB)?.parentNode).toBe(monitor);
   });
 });

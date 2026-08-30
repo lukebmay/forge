@@ -25,6 +25,11 @@ _NESTED_ACTIONS = frozenset(
         "env",
         "exec",
         "run",
+        "invoke",
+        "dnd-drop",
+        "smoke-mark2",
+        "smoke-layout-dnd",
+        "smoke-layout-ws",
         "enable-forge",
         "logs",
         "wait",
@@ -168,6 +173,22 @@ def print_forge_test_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  ", cmd(f"{NESTED_CLI} run -- forge ping", **kw), "  ",
          dim("# one-shot; always stops", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} run --monitors=2 -- forge tree", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} invoke join.right --hint leftmost", **kw),
+         "  ", dim("# Mark 2 command({name}); no Super+key", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} dnd-drop leftmost rightmost --zone center", **kw),
+         "  ", dim("# synthetic drop → _commitResolvedDrop", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} run -- python3 scripts/forge/nest_mark2_smoke.py",
+                     **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-mark2", **kw), "            ",
+         dim("# same campaign; always stops", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} run --monitors=2 -- python3 "
+                     "scripts/forge/nest_layout_dnd_smoke.py", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-layout-dnd", **kw), "      ",
+         dim("# dual-mon layout + occupied dest-monitor dnd; always stops", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} run --monitors=2 -- python3 "
+                     "scripts/forge/nest_layout_ws_campaign.py", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-layout-ws", **kw), "       ",
+         dim("# WS1 A → WS2 B → back → nautilus/ghostty → join tab → close → A", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} restart", **kw), "                 ",
          dim("# interactive loop; stop when done", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} status", **kw), "                  ",
@@ -213,9 +234,23 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             "  forge ping                              # talks to nested Forge\n"
             f"  {NESTED_CLI} exec -- gnome-text-editor\n"
             f"  {NESTED_CLI} run -- true           # campaign: start→cmd→always stop\n"
+            f"  {NESTED_CLI} invoke join.right --hint leftmost  # Mark 2 command({{name}})\n"
+            f"  {NESTED_CLI} invoke move.left --window-id 42 --activate\n"
+            f"  {NESTED_CLI} invoke toggleSplit --selector 'class:org.gnome.Nautilus'\n"
+            f"  {NESTED_CLI} dnd-drop leftmost rightmost --zone center\n"
+            f"  {NESTED_CLI} dnd-drop leftmost --dest-monitor 1\n"
+            f"  {NESTED_CLI} smoke-mark2           # two clients → invoke → forge tree\n"
+            f"  {NESTED_CLI} smoke-layout-dnd      # dual-mon ghosttys + occupied dest dnd\n"
+            f"  {NESTED_CLI} smoke-layout-ws       # WS1 A → WS2 B → nautilus/join/close → A\n"
             f"  {NESTED_CLI} restart               # reload shell/extension\n"
             f"  {NESTED_CLI} stop\n"
             "\n"
+            "Mark 2 invoke uses Shell.Eval → extWm.command (e2e dbus path), not Super+key.\n"
+            "dnd-drop is sessionApi._dndDropOp → _commitResolvedDrop (empty-mon:\n"
+            "_commitEmptyMonitorDrop). Occupied dest-monitor drop is smoke-layout-dnd\n"
+            "(dest already has a tile — not L1.r015 empty-mon). Not a Mark 2 action id.\n"
+            "smoke-layout-ws is the 8-step WS/layout campaign (CTS after each step).\n"
+            "Do not use product `forge Move` (dest-reparent) as move.left.\n"
             f"Campaign entry: prefer `{NESTED_CLI} run` (always stops on exit).\n"
             "Multi-monitor: MUTTER_DEBUG_NUM_DUMMY_MONITORS (not host desks).\n"
             "Independent of shellrc. State: ~/.local/state/forge/nested/<name>/\n"
@@ -228,7 +263,9 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
         nargs="?",
         default="status",
         help=(
-            "start | stop | restart | status | env | exec | run | enable-forge | "
+            "start | stop | restart | status | env | exec | run | invoke | "
+            "dnd-drop | smoke-mark2 | smoke-layout-dnd | smoke-layout-ws | "
+            "enable-forge | "
             "logs | wait | doctor  (default: status)"
         ),
     )

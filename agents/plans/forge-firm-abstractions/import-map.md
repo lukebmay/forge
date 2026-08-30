@@ -97,7 +97,7 @@ From 03. Epochs 05 may add more.
 | keybindings / command | **reshape** | OpSet names; no LTF field writes |
 | drop-zones / drop-intent | **keep** | Gesture math + preflight |
 | drag-drop gesture / tab chrome | **keep** | |
-| `_executeDropOperation` | **discard** as mutator | Zone → Mark 2 Join/Move |
+| `_executeDropOperation` | **discarded** (D4) | `_commitResolvedDrop` → Mark 2 or `_commitDropSurface` |
 | run-steps | **port** | One dispatcher |
 | DBus product methods | **keep** | See 06 list |
 | LayoutBatch as product entry | **park** / **discard** | ApplyLayout owns reconcile |

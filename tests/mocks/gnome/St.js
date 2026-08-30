@@ -53,7 +53,8 @@ export class Widget extends withSignals() {
   }
 
   destroy() {
-    // Mock destroy
+    this._forgeDisposed = true;
+    this.emit?.("destroy");
   }
 
   grab_key_focus() {

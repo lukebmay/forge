@@ -209,12 +209,9 @@ describe("Keybindings", () => {
       );
     });
 
-    it("con-split-vertical should dispatch Split vertical command", () => {
+    it("con-split-vertical should dispatch toggleSplit", () => {
       keybindings._bindings["con-split-vertical"]();
-      expect(mockExt.extWm.command).toHaveBeenCalledWith({
-        name: "Split",
-        orientation: "vertical",
-      });
+      expect(mockExt.extWm.command).toHaveBeenCalledWith({ name: "toggleSplit" });
     });
 
     it("window-gap-size-increase should dispatch GapSize +1", () => {

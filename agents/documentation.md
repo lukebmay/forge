@@ -33,13 +33,15 @@ leave handoffs using the old words.
 | Move / Join / Launch / words | OpSet doc (`mark2.md`) |
 | Move / Join / Launch implementation | **OpSet** (`lib/opsets/`, D084) |
 | Session prefs (`edgeMove`, tags, peelModel) | **Session bag** (`lib/session/`, D082) — not Forest fields |
+| Meta/St / volatile host facts | **Host bag** (`lib/host/`, D092) — `Map<nanoid, bag>`; not on TOM nodes |
 | MONITOR workarea | **World bag** (`lib/world/`, D083) — not Node.geom |
 | Cross-mon neighbor / edge / sibling-axis | **World** (`lib/world/neighbors.js`, D084) — tie-break string |
 | Slot AABB (`paneRect` / wrap min) | **Presenter** (`lib/presenter/`, D083) — not TOM sizing |
 | Shared chords (action ids) | [keybinds.md](plans/forge-firm-abstractions/keybinds.md) — **kernel** table |
 | Adapter key overlays | **KeybindAdapterGnome** / **KeybindAdapterWebView** (D088). WebView `Super+a`/`q`; Gnome `Super+q` = quit |
 | Platform chords | Those adapters map kernel ∪ overlay (D085) |
-| Native window / paint | **ForgeAdapterGnome** / **ForgeAdapterWebView** (D085) — not TOM |
+| Native window / paint | **ForgeAdapterGnome** / **ForgeAdapterWebView** (D085) — `present`/`observe`, not TOM |
+| AGREE / DRIFT / RESYNC | D093 — TOM toward REALITY; FLOAT terminator; no twin child-list atomics |
 | T6 snapshot / H1 majority resolve | **Epochs** (`lib/epochs/`, D086) — `windowId`; not Meta |
 
 Do not invent a second glossary in PRIORITY or session notes. Unary

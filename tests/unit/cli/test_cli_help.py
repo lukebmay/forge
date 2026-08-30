@@ -71,6 +71,7 @@ class ForgeTestHelp(unittest.TestCase):
         self.assertIn("forge-test", text)
         self.assertIn("nested", text)
         self.assertIn("live", text)
+        self.assertIn("invoke", text)
         self.assertIn("./scripts/forge/forge-test", text)
         self.assertIn("--with-test-cli", text)
 

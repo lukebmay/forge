@@ -93,7 +93,8 @@ describe("Bug #57: nested split-con siblings in tabbed/stacked containers", () =
       ctx.display.get_focus_window.mockReturnValue(nodeW.nodeValue);
       vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
 
-      wm().command({ name: "LayoutStackedToggle" });
+      wm().command({ name: "toggleTabStack" });
+      wm().command({ name: "toggleTabStack" });
 
       expect(parentCon.layout).toBe(LAYOUT_TYPES.STACKED);
       expect(parentCon.childNodes.length).toBe(2);

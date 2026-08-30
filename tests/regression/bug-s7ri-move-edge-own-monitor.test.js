@@ -9,16 +9,10 @@ import {
 import { MotionDirection } from "../mocks/gnome/Meta.js";
 
 /**
- * forge-s7ri: Tree.move()'s edge-wrap branch and MONITOR fallback both used
- * extWm.currentMonWsNode, which resolves via display.get_current_monitor() — the
- * monitor under the POINTER, not the focused node's monitor. With the pointer on
- * a different monitor than the focused window, a keyboard move at a display edge
- * appended the window to the pointer's monitor, teleporting it across monitors.
- *
- * Fix: resolve the node's OWN monitor from the tree (findAncestorMonitor) and use
- * it for the edge-wrap, the firstChild/lastChild edge test, and the fallback.
+ * Host/helper: tree.move edge-wrap uses the node's monitor, not the pointer's.
+ * Product TILES Move is command() → Mark 2 (wrap / transfer).
  */
-describe("forge-s7ri: edge move keeps the window on its own monitor", () => {
+describe("forge-s7ri: tree.move edge keeps the window on its own monitor (Host/helper)", () => {
   let ctx;
   let monA; // mo0ws0 (pointer rests here)
   let monB; // mo1ws0 (focused window lives here)

@@ -10,7 +10,7 @@ import {
   resetForTests,
   siblingJsonlPath,
 } from "../../../lib/shared/plog-adapter.js";
-import { huntTileSlotFloat } from "../../../lib/extension/hunt-logs.js";
+import { HUNT_TILE_SLOT_FLOAT, huntTileSlotFloat } from "../../../lib/extension/hunt-logs.js";
 
 describe("hunt-logs tile-slot-float fields (D067 Q6)", () => {
   /** @type {string | null} */
@@ -43,7 +43,8 @@ describe("hunt-logs tile-slot-float fields (D067 Q6)", () => {
     }
   });
 
-  it("emits debug JSONL with non-empty payload fields", () => {
+  it("is a no-op when HUNT_TILE_SLOT_FLOAT is off", () => {
+    expect(HUNT_TILE_SLOT_FLOAT).toBe(false);
     tmpFile = path.join(os.tmpdir(), `forge-hunt-fields-${process.pid}-${Date.now()}.log`);
     delete process.env.FORGE_LOG_JSONL;
     init(
@@ -62,21 +63,8 @@ describe("hunt-logs tile-slot-float fields (D067 Q6)", () => {
     });
 
     const jsonlPath = siblingJsonlPath(tmpFile);
-    const lines = fs
-      .readFileSync(jsonlPath, "utf8")
-      .trim()
-      .split("\n")
-      .filter(Boolean)
-      .map((l) => JSON.parse(l));
-    const row = lines.find((r) => String(r.text || "").includes("hunt:tile-slot-float"));
-    expect(row).toBeTruthy();
-    expect(row.level).toBe("debug");
-    expect(row.text).toBe("hunt:tile-slot-float processFloats");
-    expect(row.payload).toEqual({
-      id: "w9",
-      action: "float",
-      metaMon: 1,
-      applyLive: true,
-    });
+    if (!fs.existsSync(jsonlPath)) return;
+    const text = fs.readFileSync(jsonlPath, "utf8");
+    expect(text).not.toContain("hunt:tile-slot-float");
   });
 });

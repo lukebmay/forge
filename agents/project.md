@@ -143,8 +143,9 @@ forge log --truncate              # empty tapes when starting a clean hunt
 | --- | --- |
 | `--session` after tip/nest / new Wayland session | Mix sessions blindly |
 | `--level info+` / `warn+` then tighten | `tail -f ~/.local/state/forge/forge.log` as the hunt |
-| `--grep` for place-hint / verify / slot / ApplyLayout | Expect `forge log --last 80` alone to be readable at TRACE |
+| `--grep` for place-hint / verify / slot / ApplyLayout / `metric ` | Expect `forge log --last 80` alone to be readable at TRACE |
 | `--json` for machine follow-ups | Assume journal has INFO hunts (it does not) |
+| **Only** `forge log` / `plog-query` to hunt tapes | **Read tapes as files** (`read_file`, `cat`, `python open()`, `rg` on `forge.log` / `forge.jsonl`) |
 
 Pretty/hilight are **view-time** (D067). WARN/ERROR: values in the message
 (no structured fields — journal parity). INFO+: short title + optional

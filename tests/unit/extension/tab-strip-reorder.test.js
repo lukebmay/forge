@@ -1304,7 +1304,6 @@ describe("DragDropManager strip reorder", () => {
     ctx.display.get_focus_window = vi.fn(() => dragged.meta);
     vi.spyOn(wm(), "allowDragDropTile").mockReturnValue(true);
     vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
-    const mergeSpy = vi.spyOn(ctx.tree, "mergeWindowsIntoGroup");
 
     dd().armTabDrag(dragged.meta, makePressEvent(150, 15));
     expect(dd().noteTabDragMotion(150 + TAB_DRAG_THRESHOLD_PX + 2, 15)).toBe("reorder");
@@ -1343,10 +1342,6 @@ describe("DragDropManager strip reorder", () => {
 
     dd().finishTabDragRelease();
 
-    expect(mergeSpy).toHaveBeenCalled();
-    const last = mergeSpy.mock.calls[mergeSpy.mock.calls.length - 1];
-    expect(last[2]).toBe(LAYOUT_TYPES.TABBED);
-    expect(last[3]).toMatchObject({ insertIndex: gap, group: groupB });
     expect(groupB.childNodes).toContain(dragged.node);
     expect(groupB.childNodes.indexOf(dragged.node)).toBe(gap);
     expect(groupA.childNodes).not.toContain(dragged.node);

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { SessionApi } from "../../../lib/extension/session-api.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -342,11 +343,11 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().nodeWinAtPointer = nodeWindow1;
 
-      const swapSpy = vi.spyOn(ctx.tree, "swapPairs");
-
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      expect(swapSpy).toHaveBeenCalledWith(nodeWindow1, nodeWindow2);
+      expect(monitor.childNodes).toEqual([nodeWindow2, nodeWindow1]);
+      expect(nodeWindow1.parentNode).toBe(monitor);
+      expect(nodeWindow2.parentNode).toBe(monitor);
     });
   });
 
@@ -535,11 +536,15 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       setPointer(1800, 540);
       wm().nodeWinAtPointer = b;
+      const commitMark2 = vi.spyOn(wm().dragDrop, "_commitDropMark2");
+      const surface = vi.spyOn(wm().dragDrop, "_commitDropSurface");
       wm().moveWindowToPointer(a, false);
 
       expect(split.childNodes).toEqual([b, a]);
       expect(a.parentNode).toBe(split);
       expect(b.parentNode).toBe(split);
+      expect(commitMark2).toHaveBeenCalled();
+      expect(surface).not.toHaveBeenCalled();
     });
 
     it("CENTER into TABBED CON from adjacent CON sibling joins the group", () => {
@@ -577,11 +582,247 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       setPointer(1440, 540);
       wm().nodeWinAtPointer = target;
+      const commitMark2 = vi.spyOn(wm().dragDrop, "_commitDropMark2");
+      const surface = vi.spyOn(wm().dragDrop, "_commitDropSurface");
       wm().moveWindowToPointer(dragged, false);
 
       expect(dragged.parentNode).toBe(tabCon);
       expect(tabCon.childNodes).toContain(target);
       expect(tabCon.childNodes).toContain(dragged);
+      expect(commitMark2).toHaveBeenCalled();
+      expect(surface).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("synthetic dnd-drop — Mark 2 mapped", () => {
+    function api() {
+      return new SessionApi({
+        extWm: ctx.windowManager,
+        settings: ctx.settings,
+      });
+    }
+
+    it("RIGHT adjacent HSPLIT reorders via Mark 2, not SurfaceOp", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const split = createContainerNode(monitor, LAYOUT_TYPES.HSPLIT, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        id: "dnd-move-a",
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        id: "dnd-move-b",
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const a = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaA);
+      const b = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaB);
+      a.mode = WINDOW_MODES.TILE;
+      b.mode = WINDOW_MODES.TILE;
+      a.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      b.rect = { x: 960, y: 0, width: 960, height: 1080 };
+
+      const commitMark2 = vi.spyOn(wm().dragDrop, "_commitDropMark2");
+      const surface = vi.spyOn(wm().dragDrop, "_commitDropSurface");
+      const out = api()._dndDropOp("id:dnd-move-a", "id:dnd-move-b", "RIGHT", {
+        quiet: true,
+        simulateEnteredMonitor: false,
+      });
+
+      expect(out.ok).toBe(true);
+      expect(split.childNodes).toEqual([b, a]);
+      expect(a.parentNode).toBe(split);
+      expect(b.parentNode).toBe(split);
+      expect(commitMark2).toHaveBeenCalledWith(
+        a,
+        expect.anything(),
+        expect.objectContaining({ op: "move", dir: "right" })
+      );
+      expect(surface).not.toHaveBeenCalled();
+    });
+
+    it("CENTER into TABBED CON from adjacent sibling joins via Mark 2, not SurfaceOp", () => {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "TABBED";
+        return "";
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const row = createContainerNode(monitor, LAYOUT_TYPES.HSPLIT, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        id: "dnd-join-t",
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        id: "dnd-join-s",
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const dragged = ctx.tree.createNode(row.nodeValue, NODE_TYPES.WINDOW, metaB);
+      dragged.mode = WINDOW_MODES.TILE;
+      dragged.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      const tabCon = createContainerNode(row, LAYOUT_TYPES.TABBED, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const target = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+      target.mode = WINDOW_MODES.TILE;
+      target.rect = { x: 960, y: 0, width: 960, height: 1080 };
+
+      const commitMark2 = vi.spyOn(wm().dragDrop, "_commitDropMark2");
+      const surface = vi.spyOn(wm().dragDrop, "_commitDropSurface");
+      const out = api()._dndDropOp("id:dnd-join-s", "id:dnd-join-t", "CENTER", {
+        quiet: true,
+        simulateEnteredMonitor: false,
+      });
+
+      expect(out.ok).toBe(true);
+      expect(dragged.parentNode).toBe(tabCon);
+      expect(tabCon.childNodes).toContain(target);
+      expect(tabCon.childNodes).toContain(dragged);
+      expect(commitMark2).toHaveBeenCalledWith(
+        dragged,
+        expect.anything(),
+        expect.objectContaining({ op: "join", dir: "right" })
+      );
+      expect(surface).not.toHaveBeenCalled();
+    });
+
+    it("CENTER SWAP on adjacent HSPLIT CON reorders via Move, not SurfaceOp", () => {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "SWAP";
+        return "";
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const split = createContainerNode(monitor, LAYOUT_TYPES.HSPLIT, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        id: "dnd-swap-a",
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        id: "dnd-swap-b",
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const a = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaA);
+      const b = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaB);
+      a.mode = WINDOW_MODES.TILE;
+      b.mode = WINDOW_MODES.TILE;
+      a.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      b.rect = { x: 960, y: 0, width: 960, height: 1080 };
+
+      const commitMark2 = vi.spyOn(wm().dragDrop, "_commitDropMark2");
+      const surface = vi.spyOn(wm().dragDrop, "_commitDropSurface");
+      const out = api()._dndDropOp("id:dnd-swap-a", "id:dnd-swap-b", "CENTER", {
+        quiet: true,
+        simulateEnteredMonitor: false,
+      });
+
+      expect(out.ok).toBe(true);
+      expect(split.childNodes).toEqual([b, a]);
+      expect(commitMark2).toHaveBeenCalledWith(
+        a,
+        expect.anything(),
+        expect.objectContaining({ op: "move", dir: "right" })
+      );
+      expect(surface).not.toHaveBeenCalled();
+    });
+
+    it("CENTER HSPLIT pair groups via named SurfaceOp", () => {
+      ctx.settings.get_string.mockImplementation((key) => {
+        if (key === "dnd-center-layout") return "TABBED";
+        return "";
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const split = createContainerNode(monitor, LAYOUT_TYPES.HSPLIT, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        id: "dnd-group-a",
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        id: "dnd-group-b",
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const a = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaA);
+      const b = ctx.tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, metaB);
+      a.mode = WINDOW_MODES.TILE;
+      b.mode = WINDOW_MODES.TILE;
+      a.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      b.rect = { x: 960, y: 0, width: 960, height: 1080 };
+
+      const commitMark2 = vi.spyOn(wm().dragDrop, "_commitDropMark2");
+      const surface = vi.spyOn(wm().dragDrop, "_commitDropSurface");
+      const out = api()._dndDropOp("id:dnd-group-a", "id:dnd-group-b", "CENTER", {
+        quiet: true,
+        simulateEnteredMonitor: false,
+      });
+
+      expect(out.ok).toBe(true);
+      expect(split.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(split.childNodes).toEqual(expect.arrayContaining([a, b]));
+      expect(a.parentNode).toBe(split);
+      expect(b.parentNode).toBe(split);
+      expect(commitMark2).not.toHaveBeenCalled();
+      expect(surface).toHaveBeenCalledWith(
+        a,
+        expect.anything(),
+        b,
+        expect.anything(),
+        expect.objectContaining({ op: "group" })
+      );
+    });
+
+    it("emptyMonitor ctx commits via _commitEmptyMonitorDrop", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const meta = createMockWindow({
+        id: "dnd-empty-src",
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const src = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta);
+      src.mode = WINDOW_MODES.GRAB_TILE;
+
+      const empty = vi.spyOn(wm().dragDrop, "_commitEmptyMonitorDrop").mockReturnValue(true);
+      const surface = vi.spyOn(wm().dragDrop, "_commitDropSurface");
+      const ok = wm().dragDrop._commitResolvedDrop(
+        src,
+        null,
+        { isCenter: true },
+        {
+          emptyMonitor: true,
+          destMonitor: 1,
+        }
+      );
+
+      expect(ok).toBe(true);
+      expect(empty).toHaveBeenCalledWith(src, 1);
+      expect(surface).not.toHaveBeenCalled();
     });
   });
 
@@ -704,12 +945,14 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().nodeWinAtPointer = nodeWindow1;
 
-      const splitSpy = vi.spyOn(ctx.tree, "split");
-
       wm().moveWindowToPointer(nodeWindow3, false);
 
-      // Should have called split to detach window
-      expect(splitSpy).toHaveBeenCalled();
+      expect(nodeWindow3.parentNode).not.toBe(monitor);
+      expect(nodeWindow3.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(monitor.childNodes).toContain(nodeWindow3.parentNode);
+      expect(monitor.childNodes.indexOf(nodeWindow3.parentNode)).toBeLessThan(
+        monitor.childNodes.indexOf(nodeWindow1)
+      );
     });
 
     it("should keep stacked container valid after window detachment", () => {
@@ -875,11 +1118,13 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().nodeWinAtPointer = nodeWindow1;
 
-      const swapSpy = vi.spyOn(ctx.tree, "swapPairs");
-
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      expect(swapSpy).toHaveBeenCalled();
+      expect(nodeWindow1.parentNode).toBe(nodeWindow2.parentNode);
+      expect(nodeWindow1.parentNode.childNodes).toEqual(
+        expect.arrayContaining([nodeWindow1, nodeWindow2])
+      );
+      expect(nodeWindow1.parentNode.childNodes).toEqual([nodeWindow2, nodeWindow1]);
     });
   });
 

@@ -34,20 +34,61 @@ slot is geometry authority; unsolicited Meta fullscreen/size snaps back.
 Catalog: [docs/dev/contracts.md](../docs/dev/contracts.md). Plan archived
 (absorbed into firm-abstractions).
 
-## Firm architecture (D079, D085, D087, D088)
+## Firm architecture (D079, D085, D087, D088, D092)
 
 **Why:** Lifecycle bags, canonical contracts, and FCC extracts still left
 GObject `Node` (Meta/St/decoration) and a 7.5k `WindowManager` as the
 center of gravity. Refining that object does not produce a TOM. Mutter
-is one environment, not the product.
+is one environment, not the product. Hybrid project→mutate→apply-back
+kept two trees that could disagree.
 
-**Choice (option 2 + adapters):** The product **kernel** is the generic
-contract — TOM forest, atomics, RuleSet, OpSet, keybind **action ids**.
-It must stay free of GNOME, DOM, and key-grammar. Today's JS under
-`lib/tom/`, `lib/rulesets/`, `lib/opsets/`, `lib/keybinds/` is the
+**Choice (option 2 + adapters + live Forest):** The product **kernel** is
+the generic contract — TOM forest, atomics, RuleSet, OpSet, keybind
+**action ids**. It must stay free of GNOME, DOM, and key-grammar. Today's
+JS under `lib/tom/`, `lib/rulesets/`, `lib/opsets/`, `lib/keybinds/` is the
 **reference implementation**, not a GNOME module. In principle the same
 kernel can be rewritten in another language; Forge still tiles if
 someone writes an adapter for that host.
+
+**Live sole-source (D092):** The POJO Forest **is** the live topology.
+Every node has a nanoid for its lifetime. Adapter `Map<id, bag>` holds
+Meta/St and other volatile host facts (refresh after re-HUP). FLOATS is
+a live bag — never park floats under TILES ROOT. GObject `Node`/`Tree`
+are not the document. **Big bang** cutover; no dual-run steady state; no
+back-compat obligation. Apply's desired state is TOM (ex-P5c in-scope).
+
+**TOM ↔ reality (D092, D093):** One topology — the POJO Forest.
+The presenter is **paint + host verbs** (`present` / `observe`), not a
+second child-list. Mark 2 mutates TOM only. After a SurfaceOp **or** a
+host event: `present` → `observe` → **AGREE** or **DRIFT**. **RESYNC**
+applies **TOM-only** atomics + RuleSet **toward REALITY** (host will not
+grow a tiling tree), then `present` again. **FLOAT is the terminator.**
+Mark 2 / Launch retry only after AGREE. Close, map, dock, Meta rehome
+are DRIFT into RESYNC — not GObject-first topology writes.
+
+C5 (slot vs mins → share / tab / FLOAT) is the constraint loop **inside**
+RESYNC, not a second architecture. WebView `renderDesk` is already
+`present`. Gnome `paintWmForest` is `present` while GObject `childNodes`
+is still a leftover tree — retire that as topology (D092 leftover), do
+not wrap it as `AtomicsGnome`.
+
+```text
+Mark 2 + RuleSet  →  TOM Forest
+                       │
+                  present(forest)    Gnome: bags + frames; WebView: renderDesk
+                       │
+                  observe(host)      existence, float, mon, mins
+                       │
+                  AGREE? ── yes → next SurfaceOp allowed
+                       │
+                      no → RESYNC (TOM atomics + settle) → present → loop
+                           terminator: FLOAT
+```
+
+**Forbidden:** twin child-list atomics (Gnome/WebApp `appendChild` as a
+second TOM); Mark 2 on the presenter while TOM still disagrees; hybrid
+project→mutate→apply-back. If AGREE/RESYNC cannot keep host honest,
+**redesign meeting** — do not add a second tiling tree without it.
 
 **Kernel vs adapter (the law):** every layer is a **core** that works
 the same in every environment, plus an **adapter** that binds and
@@ -73,7 +114,7 @@ DOM into `lib/tom`, or grow a second Mark 2 table.
 | Role | Names | Owns |
 | --- | --- | --- |
 | **Kernel** | TOM + atomics + RuleSet + OpSet + action-id table | Forest envelope, settle, Move/Join/Launch, **shared** chords as ids. No Meta, no DOM, no GNOME accels |
-| **Host adapter** | **ForgeAdapterGnome** (today `WindowManager` + St). **ForgeAdapterWebView** (proto HTML desk) | WINDOW ↔ native window, signals, workarea feed, paint (`move_resize_frame` vs CSS flex), map FLOATS ↔ host floats |
+| **Host adapter** | **ForgeAdapterGnome** (today `WindowManager` + St). **ForgeAdapterWebView** (proto HTML desk) | WINDOW ↔ native window, signals, workarea feed, `present`/`observe` (`move_resize_frame` vs CSS flex), FLOATS paint. Not a second child-list (D093) |
 | **Keybind adapter** | **KeybindAdapterGnome**. **KeybindAdapterWebView** | Kernel table **plus** a host overlay. Same kernel ids; overlay ids may be host-only |
 | **Slot math** | `lib/presenter/` `paneRect` | Percent → AABB. Both adapters may call it. Not topology |
 
@@ -86,10 +127,12 @@ GJS class name `WindowManager` **may** stay as a façade for spies
 (D085). Its **role** is ForgeAdapterGnome. Do not grow tiling policy
 there.
 
-**Finish-before-redesign (D087 / D088):** P6a stays shipped. P6 remainder
-(size / toggleSplit / promote / DnD) may continue on **TILES**. Forest
-envelope is **P7**: META + FLOATS + TILES. Do not put FLOAT windows under
-MONITOR. `tom-live` projects FLOAT/GRAB_TILE into FLOATS.
+**Finish-before-redesign:** Cutover C7 is shipped. **D093** AGREE/RESYNC
+is the next coding path. If it cannot keep TOM and host honest →
+**redesign meeting** (no twin tiling trees without that meeting).
+Pinned-slots and resize-autotile stay parked. Optional nest N4 is not a
+gate. Plan:
+[`forge-tom-agree-resync.md`](plans/forge-tom-agree-resync.md).
 
 Layers (allowed/forbidden):
 [`plans/forge-firm-abstractions/layers.md`](plans/forge-firm-abstractions/layers.md).
@@ -106,11 +149,11 @@ Notes: [`explore/`](plans/forge-firm-abstractions/explore/) — do not rescan
 | **Keybind overlay** | Per-adapter extra chords (D088). WebView `Super+a`/`Super+q`; Gnome `Super+q` = quit |
 | **World** | MONITOR workarea (`lib/world/` WeakMap; not Node.geom); neighbor queries. **Host adapter fills** the bag |
 | **Presenter math** | Slots → AABB (`lib/presenter/` paneRect). D069/D046/D030 are **Gnome adapter** paint policy |
-| **Host adapter** | Native window ↔ WINDOW, signals, `move_resize` / CSS, bags, FLOATS paint |
+| **Host adapter** | Native window ↔ WINDOW, signals, `present`/`observe`, bags, FLOATS paint. **D093** AGREE/RESYNC toward REALITY (TOM atomics only). Not a second child-list |
 | **Epochs** | Apply, session restore, H1 — three forest writers (product; Meta wait is Gnome adapter) |
 | **Surfaces** | DnD *gesture*, CLI, DBus, adapter key overlays |
 
-DnD execute is not a second OpSet. Product Move **is** Mark 2 Move
+DnD commit (`_commitResolvedDrop`) is not a second OpSet. Product Move **is** Mark 2 Move
 (D080). RuleSet + keybinds:
 [`ruleset.md`](plans/forge-firm-abstractions/ruleset.md),
 [`keybinds.md`](plans/forge-firm-abstractions/keybinds.md).
@@ -820,11 +863,12 @@ Monocle **removed** (C0). Profile `_layoutOp` silent flatten **dropped**
 floating groups designed in; Wave Z / F next. No BC obligation. Plan:
 [agents/plans/forge-first-class-containers.md](../agents/plans/forge-first-class-containers.md).
 
-**FLOAT window (D087):** lives in the forest **FLOATS** bag, not under a
-MONITOR (a float can span heads). No tiling slot while floating. Re-tile
-= place into **TILES** (Launch / Join). Live GObject may still flag
-`mode: FLOAT`; `tom-live` projects those windows into FLOATS (P7).
-**Size `share`** (D090) is a different word and stays on TILES.
+**FLOAT window (D087 / D092):** lives in the forest **FLOATS** bag, not
+under a MONITOR (a float can span heads). No tiling slot while floating.
+Re-tile = place into **TILES** (Launch / Join). Live document has a real
+FLOATS bag — no ROOT parking. FLOAT is also the **reconcile fail-safe**
+when host cannot honor a TILES placement. **Size `share`** (D090) is a
+different word and stays on TILES.
 
 ## Keybind kits (T5 + grammar)
 
@@ -1000,8 +1044,9 @@ Options: plain string, or JSON `{"selector":"…","first":true}`. **N>1** →
 `error: ambiguous` + candidate list (title/class/path) unless `first`.
 
 **Move semantics:** source must be WINDOW. Dest WINDOW → reparent **after**
-dest in dest’s parent (not `swapPairs`). Dest CON/MONITOR (path) →
-`appendChild` + `resetSiblingPercent`. **Swap** always uses `tree.swapPairs`.
+dest in dest’s parent (not a pair swap). Dest CON/MONITOR (path) →
+`appendChild` + `resetSiblingPercent`. **Swap** is `forestSwapWindows`
+(GObject `swapPairs` only if Forest ids miss).
 
 ### Launch + PlaceNext (FC2)
 
@@ -1343,6 +1388,10 @@ Kernel = TOM + RuleSet + OpSet + keybind **action ids** (host- and
 language-portable; JS `lib/` is the reference impl). Forest document =
 **META + FLOATS + TILES** (TILES = ROOT→WS→MONITOR; FLOAT windows are
 not under a monitor; TILES size is a **percent** or **`share`**).
+**Live topology is the POJO Forest** (D092): nanoid per node; host
+Meta/St in adapter maps. **D093:** present → observe → AGREE or
+RESYNC (TOM toward REALITY; FLOAT terminator). No twin presenter
+atomics.
 **ForgeAdapterGnome** / **ForgeAdapterWebView**
 bind and extend a host. **KeybindAdapterGnome** /
 **KeybindAdapterWebView** map the kernel table plus a host overlay

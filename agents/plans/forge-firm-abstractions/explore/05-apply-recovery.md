@@ -1,6 +1,7 @@
 # Exploration notes — apply / recovery (epochs)
 
-**As of:** 2026-08-27
+**As of:** 2026-08-27 — Apply IR superseded 2026-08-29 (C6.6):
+`projectForestFromTom`, not GetTree `projectForest` (Surface only).
 **Domain:** apply-recovery
 **Audience:** P0b layers / import-map. Epochs write a forest; they are
 **not** the tiling model.

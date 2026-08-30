@@ -126,15 +126,17 @@ describe("AP2 StructureChanged one-commit", () => {
   });
 
   it("SwapNext: exactly one renderTree when swapped", () => {
-    const { winA, nodeA } = tiledPair();
+    const { winA, nodeA, nodeB, monitor } = tiledPair();
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
     ctx.display.get_focus_window.mockReturnValue(winA);
-    vi.spyOn(ctx.tree, "swapSibling").mockReturnValue(nodeA);
 
     const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
     wm().command({ name: "SwapNext" });
 
     expect(renderSpy).toHaveBeenCalledTimes(1);
-    expect(renderSpy).toHaveBeenCalledWith("swap-sibling", true);
+    expect(renderSpy).toHaveBeenCalledWith("move-window", true);
+    expect(monitor.childNodes).toHaveLength(1);
+    expect(monitor.childNodes[0].childNodes).toEqual([nodeB, nodeA]);
   });
 
   it("drag drop swap path: ≤1 renderTree for full grab-end gesture", () => {

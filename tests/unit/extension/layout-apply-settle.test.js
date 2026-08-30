@@ -869,6 +869,71 @@ describe("matchRequiredTileSlots forest-match (wrong mon / flat mon1)", () => {
     expect(match.ok).toBe(false);
     expect(match.failed.length).toBeGreaterThan(0);
   });
+
+  const PERFECT_PINS = {
+    "chrome-luke": 101,
+    grok: 102,
+    "ghostty-left": 103,
+    "ghostty-right": 201,
+    youtube: 202,
+    gmail: 203,
+    voice: 204,
+  };
+
+  function wrapMonMax1(mon) {
+    const kids = mon.children || [];
+    mon.children = [
+      {
+        nodeType: "CON",
+        layout: mon.layout || "HSPLIT",
+        children: kids,
+        percent: 1,
+        userSized: false,
+      },
+    ];
+  }
+
+  it("MONITOR max-1 HSPLIT wrap still forest-matches (not nested-mon collapse)", () => {
+    const d = loadExpected("perfect-clean");
+    const forest = structuredClone(d.forest);
+    for (const mon of forest.monitors || []) {
+      if ((mon.children || []).length >= 2) wrapMonMax1(mon);
+    }
+    const match = matchRequiredTileSlots({
+      profile: d.profile,
+      forest,
+      flags: d.flags,
+      rolePins: PERFECT_PINS,
+    });
+    expect(match.ok).toBe(true);
+    expect(match.failed).toEqual([]);
+  });
+
+  it("TABBED wrapping a TABBED CON fails forest-match (double tab chrome)", () => {
+    const d = loadExpected("perfect-clean");
+    const forest = structuredClone(d.forest);
+    const mon1 = (forest.monitors || []).find((m) => m.id === "mo1ws0");
+    expect(mon1).toBeTruthy();
+    const ghost = mon1.children[0];
+    const inner = mon1.children[1];
+    mon1.children = [
+      {
+        nodeType: "CON",
+        layout: "TABBED",
+        percent: 1,
+        userSized: false,
+        children: [ghost, inner],
+      },
+    ];
+    const match = matchRequiredTileSlots({
+      profile: d.profile,
+      forest,
+      flags: d.flags,
+      rolePins: PERFECT_PINS,
+    });
+    expect(match.ok).toBe(false);
+    expect(match.failed.length).toBeGreaterThan(0);
+  });
 });
 
 describe("collectHardReadyWindowIds", () => {

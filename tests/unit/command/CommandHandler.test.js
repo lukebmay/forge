@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { CommandHandler } from "../../../lib/extension/command.js";
-import { NODE_TYPES, LAYOUT_TYPES, ORIENTATION_TYPES } from "../../../lib/extension/tree.js";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import {
   createMockWindow,
@@ -11,12 +11,13 @@ import {
 } from "../../mocks/helpers/index.js";
 import { GrabOp } from "../../mocks/gnome/Meta.js";
 import { Bin } from "../../mocks/gnome/St.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 
 /**
  * CommandHandler unit tests
  *
- * Tests for the CommandHandler class which processes keyboard and action commands.
- * Uses mocked WindowManager/Tree to verify CommandHandler calls the right methods.
+ * Mock tree: dispatch guards (Host tree.* is not the TILES path).
+ * Live tree: product TILES via wm.command + forest structure.
  */
 describe("CommandHandler", () => {
   let commandHandler;
@@ -189,6 +190,19 @@ describe("CommandHandler", () => {
     });
   });
 
+  describe("FloatToggle command", () => {
+    it("calls toggleFloatingMode and commits even when FLOATS-detached", () => {
+      mockNodeWindow.parentNode = null;
+      commandHandler.execute({ name: "FloatToggle" });
+      expect(mockWm.toggleFloatingMode).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "FloatToggle" }),
+        mockMetaWindow
+      );
+      expect(mockWm.commitLayout).toHaveBeenCalledWith("float-toggle", { force: true });
+      expect(mockTree.resetSiblingPercent).not.toHaveBeenCalled();
+    });
+  });
+
   describe("WindowResetSizes command", () => {
     it("should reset sibling percentages for parent node", () => {
       commandHandler.execute({ name: "WindowResetSizes" });
@@ -230,134 +244,18 @@ describe("CommandHandler", () => {
     });
   });
 
-  describe("LayoutStackedToggle command", () => {
-    beforeEach(() => {
-      mockSettings.get_boolean.mockImplementation((key) => {
-        if (key === "stacked-tiling-mode-enabled") return true;
-        return false;
-      });
-    });
-
-    it("should toggle from HSPLIT to STACKED", () => {
-      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.HSPLIT;
-
+  describe("LayoutStackedToggle / LayoutTabbedToggle aliases (dispatch guard)", () => {
+    it("does not call tree.split or tree.setLayout", () => {
       commandHandler.execute({ name: "LayoutStackedToggle" });
-
-      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.STACKED);
+      commandHandler.execute({ name: "LayoutTabbedToggle" });
+      expect(mockTree.split).not.toHaveBeenCalled();
+      expect(mockTree.setLayout).not.toHaveBeenCalled();
     });
 
-    it("should toggle from STACKED to split layout", () => {
-      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.STACKED;
-
-      commandHandler.execute({ name: "LayoutStackedToggle" });
-
-      expect(mockWm.determineSplitLayout).toHaveBeenCalled();
-    });
-
-    it("should split first if parent is monitor", () => {
-      mockNodeWindow.parentNode.isMonitor.mockReturnValue(true);
-
-      commandHandler.execute({ name: "LayoutStackedToggle" });
-
-      expect(mockTree.split).toHaveBeenCalledWith(
-        mockNodeWindow,
-        ORIENTATION_TYPES.HORIZONTAL,
-        true
-      );
-    });
-
-    it("should reveal lastChild when entering stacked from tabbed", () => {
-      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.TABBED;
-      mockNodeWindow.parentNode.lastTabFocus = mockMetaWindow;
-      mockNodeWindow.parentNode.lastChild = mockNodeWindow;
-
-      commandHandler.execute({ name: "LayoutStackedToggle" });
-
-      expect(mockWm.revealGroupChild).toHaveBeenCalledWith(mockNodeWindow, {
-        keyboard: true,
-        source: "command-layout",
-      });
-      expect(mockNodeWindow.parentNode.lastTabFocus).toBe(mockMetaWindow);
-    });
-
-    it("should call unfreezeRender", () => {
-      commandHandler.execute({ name: "LayoutStackedToggle" });
-
-      expect(mockWm.unfreezeRender).toHaveBeenCalled();
-    });
-
-    it("should commit layout once after toggle", () => {
-      commandHandler.execute({ name: "LayoutStackedToggle" });
-
-      expect(mockWm.commitLayout).toHaveBeenCalledWith("layout-stacked-toggle", { force: true });
-      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
-    });
-
-    it("should do nothing if stacked mode disabled", () => {
-      mockSettings.get_boolean.mockReturnValue(false);
-
-      commandHandler.execute({ name: "LayoutStackedToggle" });
-
-      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
-    });
-
-    it("should do nothing if no focus window", () => {
+    it("no-ops without focus", () => {
       mockWm.findNodeWindow.mockReturnValue(null);
-
-      expect(() => {
-        commandHandler.execute({ name: "LayoutStackedToggle" });
-      }).not.toThrow();
-    });
-  });
-
-  describe("LayoutTabbedToggle command", () => {
-    beforeEach(() => {
-      mockSettings.get_boolean.mockImplementation((key) => {
-        if (key === "tabbed-tiling-mode-enabled") return true;
-        return false;
-      });
-    });
-
-    it("should toggle from HSPLIT to TABBED", () => {
-      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.HSPLIT;
-
-      commandHandler.execute({ name: "LayoutTabbedToggle" });
-
-      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
-    });
-
-    it("should set lastTabFocus when enabling tabbed", () => {
-      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.HSPLIT;
-
-      commandHandler.execute({ name: "LayoutTabbedToggle" });
-
-      expect(mockWm.revealGroupChild).toHaveBeenCalledWith(mockNodeWindow);
-      expect(mockNodeWindow.parentNode.lastTabFocus).toBe(mockMetaWindow);
-    });
-
-    it("should toggle from TABBED to split layout and clear lastTabFocus", () => {
-      mockNodeWindow.parentNode.layout = LAYOUT_TYPES.TABBED;
-      mockNodeWindow.parentNode.lastTabFocus = mockMetaWindow;
-
-      commandHandler.execute({ name: "LayoutTabbedToggle" });
-
-      expect(mockWm.determineSplitLayout).toHaveBeenCalled();
-      expect(mockNodeWindow.parentNode.lastTabFocus).toBeNull();
-    });
-
-    it("should commit layout once after toggle", () => {
-      commandHandler.execute({ name: "LayoutTabbedToggle" });
-
-      expect(mockWm.commitLayout).toHaveBeenCalledWith("layout-tabbed-toggle", { force: true });
-      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
-    });
-
-    it("should do nothing if tabbed mode disabled", () => {
-      mockSettings.get_boolean.mockReturnValue(false);
-
-      commandHandler.execute({ name: "LayoutTabbedToggle" });
-
-      expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(() => commandHandler.execute({ name: "LayoutStackedToggle" })).not.toThrow();
+      expect(() => commandHandler.execute({ name: "LayoutTabbedToggle" })).not.toThrow();
     });
   });
 
@@ -373,64 +271,20 @@ describe("CommandHandler", () => {
     });
   });
 
-  describe("WindowMergeGroup command", () => {
-    let partnerMeta;
-    let partnerNode;
-
-    beforeEach(() => {
-      mockSettings.get_boolean.mockImplementation((key) => {
-        if (key === "tabbed-tiling-mode-enabled") return true;
-        return false;
-      });
-      partnerMeta = createMockWindow({ wm_class: "Partner", title: "Partner" });
-      partnerNode = createMockNodeWindow(partnerMeta);
-      partnerNode.parentNode = mockNodeWindow.parentNode;
-      mockNodeWindow.parentNode.childNodes = [mockNodeWindow, partnerNode];
-      mockTree.findNode.mockImplementation((win) => {
-        if (win === partnerMeta) return partnerNode;
-        if (win === mockMetaWindow) return mockNodeWindow;
-        return null;
-      });
-      mockTree.mergeWindowsIntoGroup = vi.fn(() => mockNodeWindow.parentNode);
-      mockTree.group = vi.fn(() => mockNodeWindow.parentNode);
-      mockTree.ungroup = vi.fn(() => mockNodeWindow.parentNode.parentNode);
-      mockTree.getTiledChildren.mockReturnValue([mockNodeWindow, partnerNode]);
-      ctx.display.get_tab_next = vi.fn(() => partnerMeta);
-    });
-
-    it("should merge focus with last-active into a tabbed group", () => {
+  describe("WindowMergeGroup command (dispatch guard)", () => {
+    it("does not call tree.group", () => {
+      mockTree.group = vi.fn();
       commandHandler.execute({ name: "WindowMergeGroup" });
-
-      expect(mockTree.group).toHaveBeenCalledWith(mockNodeWindow, partnerNode);
-      expect(mockWm.commitLayout).toHaveBeenCalledWith("window-merge-group", { force: true });
-      expect(mockWm.revealGroupChild).toHaveBeenCalledWith(mockNodeWindow);
-      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
-      expect(mockWm.renderTree).toHaveBeenCalledWith("window-merge-group", true);
-    });
-
-    it("should fall back to tiled sibling when last-active missing", () => {
-      ctx.display.get_tab_next = vi.fn(() => null);
-
-      commandHandler.execute({ name: "WindowMergeGroup" });
-
-      expect(mockTree.group).toHaveBeenCalledWith(mockNodeWindow, partnerNode);
-    });
-
-    it("should do nothing if tabbed mode disabled", () => {
-      mockSettings.get_boolean.mockReturnValue(false);
-
-      commandHandler.execute({ name: "WindowMergeGroup" });
-
       expect(mockTree.group).not.toHaveBeenCalled();
     });
 
-    it("should do nothing if no partner", () => {
+    it("no-ops without a window sibling", () => {
+      mockTree.group = vi.fn();
+      mockNodeWindow.parentNode.childNodes = [mockNodeWindow];
       ctx.display.get_tab_next = vi.fn(() => null);
-      mockTree.getTiledChildren.mockReturnValue([mockNodeWindow]);
-
       commandHandler.execute({ name: "WindowMergeGroup" });
-
       expect(mockTree.group).not.toHaveBeenCalled();
+      expect(mockWm.commitLayout).not.toHaveBeenCalled();
     });
   });
 
@@ -474,35 +328,25 @@ describe("CommandHandler", () => {
     });
   });
 
-  describe("WindowMoveIn / WindowMoveOut commands", () => {
+  describe("WindowMoveIn / WindowMoveOut commands (dispatch guard)", () => {
     beforeEach(() => {
-      const dest = mockNodeWindow.parentNode;
-      dest.isStackedOrTabbed = vi.fn(() => true);
-      mockTree.moveIn = vi.fn(() => dest);
+      mockTree.moveIn = vi.fn(() => mockNodeWindow.parentNode);
       mockTree.moveOut = vi.fn(() => mockNodeWindow);
-      mockWm.normalizeGroupToHomeMonitor = vi.fn();
+      mockNodeWindow.parentNode.childNodes = [mockNodeWindow];
     });
 
-    it("WindowMoveIn commits and normalizes tab dest", () => {
+    it("WindowMoveIn does not call tree.moveIn", () => {
       commandHandler.execute({ name: "WindowMoveIn" });
-
-      expect(mockTree.moveIn).toHaveBeenCalledWith(mockNodeWindow);
-      expect(mockWm.normalizeGroupToHomeMonitor).toHaveBeenCalled();
-      expect(mockWm.commitLayout).toHaveBeenCalledWith("window-move-in", { force: true });
+      expect(mockTree.moveIn).not.toHaveBeenCalled();
     });
 
-    it("WindowMoveOut commits structure", () => {
+    it("WindowMoveOut does not call tree.moveOut", () => {
       commandHandler.execute({ name: "WindowMoveOut" });
-
-      expect(mockTree.moveOut).toHaveBeenCalledWith(mockNodeWindow);
-      expect(mockWm.commitLayout).toHaveBeenCalledWith("window-move-out", { force: true });
+      expect(mockTree.moveOut).not.toHaveBeenCalled();
     });
 
-    it("WindowMoveIn no-ops when moveIn returns null", () => {
-      mockTree.moveIn = vi.fn(() => null);
-
+    it("WindowMoveIn no-ops without an adjacent sibling CON", () => {
       commandHandler.execute({ name: "WindowMoveIn" });
-
       expect(mockWm.commitLayout).not.toHaveBeenCalled();
     });
   });
@@ -543,12 +387,12 @@ describe("CommandHandler", () => {
   });
 
   describe("WindowSwapLastActive command", () => {
-    it("should swap with last active window", () => {
+    it("falls back to swapPairs when Forest ids miss", () => {
       const lastActiveWindow = createMockWindow({ title: "Last Active" });
       const lastActiveNode = { nodeValue: lastActiveWindow };
 
       ctx.display.get_tab_next.mockReturnValue(lastActiveWindow);
-      mockTree.findNode.mockReturnValue(lastActiveNode);
+      mockWm.findNodeWindow.mockReturnValueOnce(mockNodeWindow).mockReturnValueOnce(lastActiveNode);
 
       commandHandler.execute({ name: "WindowSwapLastActive" });
 
@@ -819,7 +663,6 @@ describe("CommandHandler", () => {
   // AP4: remaining StructureChanged / SizeOnly → one commitLayout Cf each.
   describe("AP4 structure handlers use commitLayout", () => {
     it.each([
-      ["Split", { name: "Split", orientation: "horizontal" }, "split"],
       ["WindowResetSizes", { name: "WindowResetSizes" }, "window-reset-sizes"],
       ["WorkspaceActiveTileToggle", { name: "WorkspaceActiveTileToggle" }, "workspace-toggle"],
     ])("%s commits once with force", (_label, action, reason) => {
@@ -855,22 +698,17 @@ describe("CommandHandler", () => {
       expect(mockTree.focusSibling).toHaveBeenCalledWith(mockNodeWindow, -1);
     });
 
-    it("SwapNext swaps forward and one-commits when a swap happened", () => {
+    it("SwapNext does not call tree.swapSibling", () => {
       commandHandler.execute({ name: "SwapNext" });
-      expect(mockTree.swapSibling).toHaveBeenCalledWith(mockNodeWindow, 1);
-      expect(mockWm.commitLayout).toHaveBeenCalledWith("swap-sibling", { force: true });
-      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
-      expect(mockWm.renderTree).toHaveBeenCalledWith("swap-sibling", true);
-      expect(mockWm.settleTabFocus).toHaveBeenCalledWith(mockNodeWindow);
-      expect(mockWm.movePointerWith).toHaveBeenCalledWith(mockNodeWindow);
+      expect(mockTree.swapSibling).not.toHaveBeenCalled();
     });
 
-    it("SwapPrev swaps backward", () => {
+    it("SwapPrev does not call tree.swapSibling", () => {
       commandHandler.execute({ name: "SwapPrev" });
-      expect(mockTree.swapSibling).toHaveBeenCalledWith(mockNodeWindow, -1);
+      expect(mockTree.swapSibling).not.toHaveBeenCalled();
     });
 
-    it("SwapNext does not commit when no swap target exists", () => {
+    it("SwapNext does not commit on a mock tree (OpSet project fails)", () => {
       mockTree.swapSibling.mockReturnValue(null);
       commandHandler.execute({ name: "SwapNext" });
       expect(mockWm.commitLayout).not.toHaveBeenCalled();
@@ -878,7 +716,7 @@ describe("CommandHandler", () => {
     });
   });
 
-  describe("P6a dotted ids and aliases", () => {
+  describe("P6a dotted ids and aliases (dispatch guard)", () => {
     it("move.left does not call tree.move", () => {
       commandHandler.execute({ name: "move.left" });
       expect(mockTree.move).not.toHaveBeenCalled();
@@ -905,6 +743,11 @@ describe("CommandHandler", () => {
     it("LayoutToggle aliases toggleSplit without throwing", () => {
       expect(() => commandHandler.execute({ name: "LayoutToggle" })).not.toThrow();
       expect(() => commandHandler.execute({ name: "toggleSplit" })).not.toThrow();
+    });
+
+    it("Split aliases toggleSplit without tree.split", () => {
+      commandHandler.execute({ name: "Split", orientation: "horizontal" });
+      expect(mockTree.split).not.toHaveBeenCalled();
     });
   });
 });
@@ -983,6 +826,120 @@ describe("CommandHandler Mark 2 move/join on a live tree", () => {
     expect(wrap.childNodes).toEqual([nodeA, nodeB]);
   });
 
+  it("Split alias flips the wrap like toggleSplit", () => {
+    const { monitor, nodeA, nodeB } = hsplitPair();
+    ctx.windowManager.command({ name: "Split", orientation: "vertical" });
+    expect(monitor.childNodes).toHaveLength(1);
+    const wrap = monitor.childNodes[0];
+    expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(wrap.childNodes).toEqual([nodeA, nodeB]);
+  });
+
+  it("LayoutTabbedToggle alias turns the wrap TABBED", () => {
+    const { monitor, nodeA, nodeB } = hsplitPair();
+    ctx.windowManager.command({ name: "LayoutTabbedToggle" });
+    expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(monitor.childNodes[0].childNodes).toEqual([nodeA, nodeB]);
+  });
+
+  it("LayoutStackedToggle alias is toggleTabStack (H→TAB, TAB→STACK)", () => {
+    const { monitor, nodeA, nodeB } = hsplitPair();
+    ctx.windowManager.command({ name: "LayoutStackedToggle" });
+    expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.TABBED);
+    ctx.windowManager.command({ name: "LayoutStackedToggle" });
+    expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.STACKED);
+    expect(monitor.childNodes[0].childNodes).toEqual([nodeA, nodeB]);
+  });
+
+  it("WindowSwapLastActive swaps last-active siblings Forest-first", () => {
+    const { monitor, nodeA, nodeB } = hsplitPair();
+    expect(monitor.childNodes).toEqual([nodeA, nodeB]);
+    ctx.display.get_tab_next = vi.fn(() => nodeB.nodeValue);
+    seedLiveForest(ctx.windowManager);
+    const forest = ctx.windowManager.forest;
+    const swapSpy = vi.spyOn(ctx.tree, "swapPairs");
+
+    ctx.windowManager.command({ name: "WindowSwapLastActive" });
+
+    expect(monitor.childNodes).toEqual([nodeB, nodeA]);
+    expect(swapSpy).not.toHaveBeenCalled();
+    const wm = ctx.windowManager;
+    expect(wm.forest).toBe(forest);
+    expect(wm._liveForestSeeded).toBe(true);
+    const idA = wm.hostBag.idFromMeta(nodeA.nodeValue);
+    const idB = wm.hostBag.idFromMeta(nodeB.nodeValue);
+    const parentId = wm.forest.nodes[idA].parentId;
+    expect(wm.forest.nodes[parentId].childIds).toEqual([idB, idA]);
+  });
+
+  it("WindowMergeGroup joins toward the sibling", () => {
+    const { monitor, nodeA, nodeB } = hsplitPair();
+    ctx.windowManager.command({ name: "WindowMergeGroup" });
+    expect(monitor.childNodes).toHaveLength(1);
+    const wrap = monitor.childNodes[0];
+    expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(wrap.childNodes).toEqual([nodeA, nodeB]);
+  });
+
+  it("WindowMoveIn joins into an adjacent sibling CON", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const wrap = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    wrap.layout = LAYOUT_TYPES.HSPLIT;
+    const winA = createMockWindow({ id: 1, wm_class: "AppA" });
+    const nodeA = ctx.tree.createNode(wrap.nodeValue, NODE_TYPES.WINDOW, winA);
+    nodeA.mode = WINDOW_MODES.TILE;
+    const tab = ctx.tree.createNode(wrap.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const winB = createMockWindow({ id: 2, wm_class: "AppB" });
+    const winC = createMockWindow({ id: 3, wm_class: "AppC" });
+    const nodeB = ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, winB);
+    const nodeC = ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, winC);
+    nodeB.mode = WINDOW_MODES.TILE;
+    nodeC.mode = WINDOW_MODES.TILE;
+    ctx.display.get_focus_window.mockReturnValue(winA);
+    ctx.windowManager.renderTree = vi.fn();
+    ctx.windowManager.movePointerWith = vi.fn();
+
+    ctx.windowManager.command({ name: "WindowMoveIn" });
+
+    expect(nodeA.parentNode).toBe(tab);
+    expect(tab.childNodes).toEqual([nodeA, nodeB, nodeC]);
+  });
+
+  it("WindowMoveOut breakouts via Move", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const outer = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    outer.layout = LAYOUT_TYPES.HSPLIT;
+    const inner = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.CON, new Bin());
+    inner.layout = LAYOUT_TYPES.VSPLIT;
+    const winA = createMockWindow({ id: 1, wm_class: "AppA" });
+    const winB = createMockWindow({ id: 2, wm_class: "AppB" });
+    const winC = createMockWindow({ id: 3, wm_class: "AppC" });
+    const nodeA = ctx.tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, winA);
+    const nodeB = ctx.tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, winB);
+    const nodeC = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, winC);
+    nodeA.mode = WINDOW_MODES.TILE;
+    nodeB.mode = WINDOW_MODES.TILE;
+    nodeC.mode = WINDOW_MODES.TILE;
+    ctx.display.get_focus_window.mockReturnValue(winA);
+    ctx.windowManager.renderTree = vi.fn();
+    ctx.windowManager.movePointerWith = vi.fn();
+
+    ctx.windowManager.command({ name: "WindowMoveOut" });
+
+    expect(outer.childNodes).toEqual([nodeB, nodeA, nodeC]);
+    expect(nodeA.parentNode).toBe(outer);
+  });
+
+  it("SwapNext is in-axis Move", () => {
+    const { monitor, nodeA, nodeB } = hsplitPair();
+    ctx.windowManager.command({ name: "SwapNext" });
+    expect(monitor.childNodes).toHaveLength(1);
+    expect(monitor.childNodes[0].childNodes).toEqual([nodeB, nodeA]);
+  });
+
   it("execute promote dissolves a nested CON", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     monitor.layout = LAYOUT_TYPES.HSPLIT;
@@ -1020,5 +977,92 @@ describe("CommandHandler Mark 2 move/join on a live tree", () => {
     const target = wrap.childNodes[0] === nodeA ? nodeA : wrap.childNodes.find((n) => n === nodeA);
     expect(target.userSized).toBe(true);
     expect(target.percent).toBeCloseTo(0.55, 5);
+  });
+});
+
+describe("CommandHandler Mark 2 Move across monitors (product TILES)", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      globals: { display: { monitorCount: 2 } },
+      settings: {
+        "tiling-mode-enabled": true,
+        "stacked-tiling-mode-enabled": true,
+        "tabbed-tiling-mode-enabled": true,
+      },
+    });
+    ctx.windowManager.renderTree = vi.fn();
+    ctx.windowManager.movePointerWith = vi.fn();
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
+    vi.restoreAllMocks();
+  });
+
+  function tiledOn(mon, id, monIdx) {
+    const win = createMockWindow({
+      id,
+      monitor: monIdx,
+      workspace: ctx.workspaces[0],
+      wm_class: `App${id}`,
+    });
+    const node = ctx.tree.createNode(mon.nodeValue, NODE_TYPES.WINDOW, win);
+    node.mode = WINDOW_MODES.TILE;
+    return { win, node };
+  }
+
+  it("wrap beats cross-monitor: in-axis edge rotates on the origin mon", () => {
+    const monA = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const monB = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
+    monA.layout = LAYOUT_TYPES.HSPLIT;
+    monB.layout = LAYOUT_TYPES.HSPLIT;
+    const a = tiledOn(monA, 1, 0);
+    const b = tiledOn(monA, 2, 0);
+    const c = tiledOn(monB, 3, 1);
+    ctx.display.get_focus_window.mockReturnValue(b.win);
+
+    ctx.windowManager.command({ name: "Move", direction: "right" });
+
+    expect(monA.contains(b.node)).toBe(true);
+    expect(monB.contains(b.node)).toBe(false);
+    expect(monB.contains(c.node)).toBe(true);
+    expect(monA.childNodes).toHaveLength(1);
+    expect(monA.childNodes[0].childNodes).toEqual([b.node, a.node]);
+  });
+
+  it("sole tiled window at MONITOR edge transfers to the neighbor", () => {
+    const monA = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const monB = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
+    monA.layout = LAYOUT_TYPES.HSPLIT;
+    monB.layout = LAYOUT_TYPES.HSPLIT;
+    const a = tiledOn(monA, 1, 0);
+    const b = tiledOn(monB, 2, 1);
+    ctx.display.get_focus_window.mockReturnValue(a.win);
+
+    ctx.windowManager.command({ name: "Move", direction: "right" });
+
+    expect(monB.contains(a.node)).toBe(true);
+    expect(monA.contains(a.node)).toBe(false);
+    expect(monB.contains(b.node)).toBe(true);
+  });
+
+  it("TABBED last member in-axis Move wrap-rotates (does not peel+cross)", () => {
+    const monA = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+    const monB = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
+    monA.layout = LAYOUT_TYPES.HSPLIT;
+    monB.layout = LAYOUT_TYPES.HSPLIT;
+    const tab = ctx.tree.createNode(monA.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const wins = [1, 2, 3].map((id) => tiledOn(tab, id, 0));
+    tiledOn(monB, 9, 1);
+    ctx.display.get_focus_window.mockReturnValue(wins[2].win);
+
+    ctx.windowManager.command({ name: "Move", direction: "right" });
+
+    expect(tab.childNodes).toEqual([wins[2].node, wins[0].node, wins[1].node]);
+    expect(monA.contains(wins[2].node)).toBe(true);
+    expect(monB.contains(wins[2].node)).toBe(false);
   });
 });

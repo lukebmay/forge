@@ -87,6 +87,15 @@ Developer/agent nest + live matrix live in a **separate** CLI
 (`./scripts/forge/forge-test`). Normal `./install` does not put it on PATH.
 Opt-in: `./install --with-test-cli` or `make install-test-cli`.
 
+Mark 2 action ids (no Super+key; **not** product `forge Move`):
+
+```bash
+./scripts/forge/forge-test nested invoke join.right --hint leftmost --activate
+./scripts/forge/forge-test nested run -- python3 ./scripts/forge/nest_mark2_smoke.py
+./install --dev && ./scripts/forge/forge-test nested run --monitors=2 -- \
+  python3 ./scripts/forge/nest_layout_ws_campaign.py
+```
+
 `launch` resolves short names via XDG `.desktop` files, infers `wm_class`, and
 waits for the new window. Default placement: LFT attach (see product docs).
 `--path` / `--monitor` set PlaceNext. Path ids are mon×ws keys (`mo0ws0`).

@@ -17,11 +17,10 @@ import { Bin } from "../../mocks/gnome/St.js";
 import { MotionDirection } from "../../mocks/gnome/Meta.js";
 
 /**
- * Tree manipulation operations tests
- *
- * Tests for move, swap, split, and navigation operations
+ * Host/helper: Tree.split / Tree.move / Tree.group / swap* / next.
+ * Product TILES user verbs go through wm.command / CommandHandler.
  */
-describe("Tree Operations", () => {
+describe("Tree Operations (Host/helper)", () => {
   let ctx;
 
   beforeEach(() => {
@@ -121,7 +120,7 @@ describe("Tree Operations", () => {
     });
   });
 
-  describe("split", () => {
+  describe("split (Host/helper)", () => {
     it("should create horizontal split container", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const window = createMockWindow();
@@ -530,7 +529,7 @@ describe("Tree Operations", () => {
       expect(mon1.contains(dest)).toBe(true);
     });
 
-    it("TABBED last member mon-move peels that leaf only (LX3)", () => {
+    it("Host/helper tree.move: TABBED last member mon-move peels that leaf only", () => {
       const mon0 = getWorkspaceAndMonitor(dual, 0, 0).monitor;
       const mon1 = getWorkspaceAndMonitor(dual, 0, 1).monitor;
       mon0.layout = LAYOUT_TYPES.HSPLIT;
@@ -562,7 +561,7 @@ describe("Tree Operations", () => {
     });
   });
 
-  describe("swapPairs", () => {
+  describe("swapPairs (Host/helper)", () => {
     it("should swap two windows in same parent", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
 
@@ -776,7 +775,7 @@ describe("Tree Operations", () => {
     });
   });
 
-  describe("swap", () => {
+  describe("swap (Host/helper)", () => {
     it("should swap with next window to the right", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
@@ -902,7 +901,7 @@ describe("Tree Operations", () => {
     });
   });
 
-  describe("move", () => {
+  describe("move (Host/helper)", () => {
     it("should move window to the right", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
@@ -1238,7 +1237,7 @@ describe("Tree Operations", () => {
   });
 
   // forge-zrl: cyclic, non-directional focus/swap among tiled siblings.
-  describe("cyclic focus/swap siblings", () => {
+  describe("cyclic focus/swap siblings (Host/helper)", () => {
     let monitor, n1, n2, n3;
 
     beforeEach(() => {

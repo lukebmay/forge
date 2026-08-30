@@ -6,8 +6,10 @@ import { Bin } from "../../mocks/gnome/St.js";
 import {
   createMockWindow,
   createTreeFixture,
+  createWindowNode,
   getWorkspaceAndMonitor,
 } from "../../mocks/helpers/index.js";
+import { createHostBag } from "../../../lib/host/index.js";
 
 /**
  * Tree class tests
@@ -63,6 +65,34 @@ describe("Tree", () => {
       const found = ctx.tree.findNode(containerBin);
 
       expect(found).toBe(container);
+    });
+
+    it("finds Meta WINDOW via host bag before walking", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { metaWindow } = createWindowNode(ctx.tree, monitor);
+      const decoy = { decoy: true, nodeValue: metaWindow };
+      const wm = ctx.tree.extWm;
+      wm._liveForestSeeded = true;
+      wm.hostBag = createHostBag();
+      wm.liveById = new Map();
+      wm.hostBag.set("nid-tree", { meta: metaWindow, windowId: "1" });
+      wm.liveById.set("nid-tree", decoy);
+      const walk = vi.spyOn(ctx.tree, "getNodeByValue");
+
+      expect(ctx.tree.findNode(metaWindow)).toBe(decoy);
+      expect(walk).not.toHaveBeenCalled();
+    });
+
+    it("finds workspace string ids without bag", () => {
+      const wm = ctx.tree.extWm;
+      wm._liveForestSeeded = true;
+      wm.hostBag = createHostBag();
+      const idFromMeta = vi.spyOn(wm.hostBag, "idFromMeta");
+      const found = ctx.tree.findNode("ws0");
+
+      expect(found).toBeTruthy();
+      expect(found.nodeValue).toBe("ws0");
+      expect(idFromMeta).not.toHaveBeenCalled();
     });
   });
 

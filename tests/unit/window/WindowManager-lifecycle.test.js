@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
-import { NODE_TYPES } from "../../../lib/extension/tree.js";
+import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../../mocks/helpers/index.js";
-import { Workspace, WindowType } from "../../mocks/gnome/Meta.js";
+import { MotionDirection, Workspace, WindowType } from "../../mocks/gnome/Meta.js";
+import { agree } from "../../../lib/agree/index.js";
+import { observeReality } from "../../../lib/extension/observe-reality.js";
+import { ancestorMonitor } from "../../../lib/tom/index.js";
+import { Logger } from "../../../lib/shared/logger.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import { metricsSnapshot, resetMetrics } from "../../../lib/extension/metrics.js";
 
 /**
  * WindowManager lifecycle tests
@@ -26,6 +32,8 @@ describe("WindowManager - Window Lifecycle", () => {
 
   afterEach(() => {
     ctx.cleanup();
+    vi.restoreAllMocks();
+    resetMetrics();
   });
 
   // Convenience accessor for tests
@@ -155,12 +163,13 @@ describe("WindowManager - Window Lifecycle", () => {
         title: "Dialog Window",
       });
 
-      const initialNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
-
       wm().trackWindow(null, metaWindow);
 
-      const finalNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
-      expect(finalNodeCount).toBe(initialNodeCount + 1);
+      const nodeWindow = wm().findNodeWindow(metaWindow);
+      expect(nodeWindow).not.toBeNull();
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      expect(wm().forest?.nodes?.[nid]?.kind).toBe("WINDOW");
+      expect(wm().hostBag.get(nid)?.floating).toBe(true);
     });
 
     it("should track valid MODAL_DIALOG windows", () => {
@@ -169,12 +178,13 @@ describe("WindowManager - Window Lifecycle", () => {
         title: "Modal Dialog",
       });
 
-      const initialNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
-
       wm().trackWindow(null, metaWindow);
 
-      const finalNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
-      expect(finalNodeCount).toBe(initialNodeCount + 1);
+      const nodeWindow = wm().findNodeWindow(metaWindow);
+      expect(nodeWindow).not.toBeNull();
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      expect(wm().forest?.nodes?.[nid]?.kind).toBe("WINDOW");
+      expect(wm().hostBag.get(nid)?.floating).toBe(true);
     });
 
     it("should create window in FLOAT mode by default", () => {
@@ -318,6 +328,185 @@ describe("WindowManager - Window Lifecycle", () => {
       // Window should be removed from tree
       nodeWindow = wm().findNodeWindow(metaWindow);
       expect(nodeWindow).toBeNull();
+    });
+
+    it("C3.5 trackWindow inserts Forest WINDOW; destroy clears hostBag", () => {
+      const metaWindow = createMockWindow({ title: "Forest Win" });
+      wm().trackWindow(null, metaWindow);
+
+      const nodeWindow = wm().findNodeWindow(metaWindow);
+      expect(nodeWindow).not.toBeNull();
+      expect(wm().hostBag).toBeTruthy();
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      expect(nid).toBeTruthy();
+      expect(wm().forest?.nodes?.[nid]?.kind).toBe("WINDOW");
+      expect(wm().liveById?.get(nid)).toBe(nodeWindow);
+
+      const actor = metaWindow.get_compositor_private();
+      vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(nodeWindow);
+      wm().windowDestroy(actor);
+
+      expect(wm().hostBag.has(nid)).toBe(false);
+      expect(wm().forest?.nodes?.[nid]).toBeUndefined();
+      expect(wm().liveById?.has(nid)).toBe(false);
+    });
+
+    it("R6 windowDestroy does not rebuild Forest from GObject", () => {
+      const metaWindow = createMockWindow({ title: "Forest Win" });
+      wm().trackWindow(null, metaWindow);
+      const nodeWindow = wm().findNodeWindow(metaWindow);
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      const forest = wm().forest;
+      expect(forest).toBeTruthy();
+
+      const actor = metaWindow.get_compositor_private();
+      vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(nodeWindow);
+      wm().windowDestroy(actor);
+
+      expect(wm().forest).toBe(forest);
+      expect(wm().forest.nodes[nid]).toBeUndefined();
+    });
+
+    it("R6 trackCurrentWindows does not rebuild Forest when seeded", () => {
+      const metaWindow = createMockWindow({ title: "Retrack" });
+      wm().trackWindow(null, metaWindow);
+      const forest = wm().forest;
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      expect(forest).toBeTruthy();
+      expect(nid).toBeTruthy();
+
+      Object.defineProperty(wm(), "windowsAllWorkspaces", {
+        get: () => [metaWindow],
+        configurable: true,
+      });
+      wm().trackCurrentWindows();
+
+      expect(wm().forest).toBe(forest);
+      expect(wm().forest.nodes[nid]?.kind).toBe("WINDOW");
+    });
+
+    it("R6 swapPairs Forest-first does not rebuild Forest from GObject", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const winA = createMockWindow({ id: 1, title: "A" });
+      const winB = createMockWindow({ id: 2, title: "B" });
+      const nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
+      const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
+      nodeA.mode = WINDOW_MODES.TILE;
+      nodeB.mode = WINDOW_MODES.TILE;
+      seedLiveForest(wm());
+      const forest = wm().forest;
+      const idA = wm().hostBag.idFromMeta(winA);
+      const idB = wm().hostBag.idFromMeta(winB);
+      const parentId = forest.nodes[idA].parentId;
+
+      ctx.tree.swapPairs(nodeA, nodeB, false);
+
+      expect(wm().forest).toBe(forest);
+      expect(forest.nodes[parentId].childIds).toEqual([idB, idA]);
+    });
+
+    it("R6 swapPairs id-miss copies GObject and records metric fallback", () => {
+      resetMetrics();
+      vi.spyOn(Logger, "info").mockImplementation(() => {});
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const winA = createMockWindow({ id: 1, title: "A" });
+      const winB = createMockWindow({ id: 2, title: "B" });
+      const nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
+      const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
+      nodeA.mode = WINDOW_MODES.TILE;
+      nodeB.mode = WINDOW_MODES.TILE;
+      seedLiveForest(wm());
+      const idA = wm().hostBag.idFromMeta(winA);
+      delete wm().forest.nodes[idA];
+      const forest = wm().forest;
+
+      ctx.tree.swapPairs(nodeA, nodeB, false);
+
+      expect(wm().forest).not.toBe(forest);
+      expect(metricsSnapshot().fallbacks).toBeGreaterThan(0);
+      const texts = Logger.info.mock.calls.map((c) => String(c[0] ?? ""));
+      expect(texts.some((t) => t.includes("metric fallback op=swapPairs reason=ids-miss"))).toBe(
+        true
+      );
+    });
+
+    it("R6 tree.move sibling swap does not rebuild Forest after Forest-first swapPairs", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const winA = createMockWindow({ id: 1, title: "A" });
+      const winB = createMockWindow({ id: 2, title: "B" });
+      const nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
+      const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
+      nodeA.mode = WINDOW_MODES.TILE;
+      nodeB.mode = WINDOW_MODES.TILE;
+      seedLiveForest(wm());
+      const forest = wm().forest;
+      const idA = wm().hostBag.idFromMeta(winA);
+      const idB = wm().hostBag.idFromMeta(winB);
+      const parentId = forest.nodes[idA].parentId;
+
+      const moved = ctx.tree.move(nodeA, MotionDirection.RIGHT);
+      expect(moved).toBe(true);
+      expect(wm().forest).toBe(forest);
+      expect(forest.nodes[parentId].childIds).toEqual([idB, idA]);
+    });
+
+    it("R3 trackWindow admits Forest WINDOW then RESYNC AGREEs", () => {
+      vi.spyOn(Logger, "info").mockImplementation(() => {});
+      const metaWindow = createMockWindow({ title: "Map Win" });
+      wm().trackWindow(null, metaWindow);
+
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      expect(nid).toBeTruthy();
+      expect(wm().forest?.nodes?.[nid]?.kind).toBe("WINDOW");
+      expect(wm().hostBag.get(nid)?.floating).toBe(false);
+      expect(agree(wm().forest, observeReality(wm())).ok).toBe(true);
+      const resyncCall = Logger.info.mock.calls.find((c) => String(c[0]) === "metric resync");
+      expect(resyncCall?.[1]?.fields?.reason).toBe("window-map");
+    });
+
+    it("R3 dock open uses dock-open RESYNC reason", () => {
+      vi.spyOn(Logger, "info").mockImplementation(() => {});
+      const metaWindow = createMockWindow({ title: "Dock Win" });
+      metaWindow._forgeDockMonitor = 0;
+      wm().trackWindow(null, metaWindow);
+
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      expect(nid).toBeTruthy();
+      expect(wm().forest?.nodes?.[nid]?.kind).toBe("WINDOW");
+      const resyncCall = Logger.info.mock.calls.find((c) => String(c[0]) === "metric resync");
+      expect(resyncCall?.[1]?.fields?.reason).toBe("dock-open");
+    });
+
+    it("R3 entered-monitor rehomes Forest WINDOW onto dest MONITOR", () => {
+      ctx.cleanup();
+      ctx = createWindowManagerFixture({ globals: { display: { monitorCount: 2 } } });
+      vi.spyOn(Logger, "info").mockImplementation(() => {});
+
+      const metaWindow = createMockWindow({
+        title: "Rehome Win",
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+      });
+      wm().trackWindow(null, metaWindow);
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      expect(nid).toBeTruthy();
+
+      metaWindow._forgeDockStickyUntil = 0;
+      metaWindow._forgeDockStickyMon = undefined;
+      metaWindow._monitor = 1;
+      wm().updateMetaWorkspaceMonitor("window-entered-monitor", 1, metaWindow);
+
+      const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+      const node = wm().findNodeWindow(metaWindow);
+      expect(mon1.contains(node)).toBe(true);
+      expect(ancestorMonitor(wm().forest, wm().forest.nodes[nid])?.id).toBe(mon1.nodeValue);
+      const reasons = Logger.info.mock.calls
+        .filter((c) => String(c[0]) === "metric resync")
+        .map((c) => c[1]?.fields?.reason);
+      expect(reasons).toContain("entered-monitor");
     });
 
     it("should handle window minimize state throughout lifecycle", () => {

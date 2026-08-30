@@ -286,18 +286,8 @@
       }
     ],
     "safe": false,
-    "structureMatch": false,
-    "structureMismatches": [
-      {
-        "detail": "mon0 mon-child roles share mon-direct index (nested mon collapse): mo0ws0/0",
-        "got": {
-          "mo0ws0/0": ["left-tab", "term"]
-        },
-        "kind": "mon-child",
-        "slot": "mon0",
-        "want": ["left-tab", "term"]
-      }
-    ],
+    "structureMatch": true,
+    "structureMismatches": [],
     "thrashRisk": {
       "crossMonMoves": 0,
       "monEnsures": 0,

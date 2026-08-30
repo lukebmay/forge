@@ -10,10 +10,9 @@ import { Bin } from "../../mocks/gnome/St.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 
 /**
- * FCC C2 / invariant I2: flatten/ungroup is explicit only.
- * ungroup dissolves one CON and preserves child identity + order.
+ * Host/helper: Tree.ungroup / Tree.group. Product ungroup/merge use command().
  */
-describe("ungroup I2 — explicit dissolve", () => {
+describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
   let ctx;
 
   beforeEach(() => {

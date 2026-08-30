@@ -1436,6 +1436,33 @@ def cmd_nested(_backend: Any, args: Any) -> int:
             return _cli_exec(args, name)
         if action == "run":
             return _cli_run(args, name)
+        if action == "invoke":
+            from nest_invoke import cmd_invoke
+
+            return cmd_invoke(args, name)
+        if action == "dnd-drop":
+            from nest_invoke import cmd_dnd_drop
+
+            return cmd_dnd_drop(args, name)
+        if action == "smoke-mark2":
+            from nest_invoke import smoke_script_argv
+
+            args.nested_cmd = smoke_script_argv()
+            return _cli_run(args, name)
+        if action == "smoke-layout-dnd":
+            from nest_layout_dnd_smoke import smoke_script_argv as layout_dnd_argv
+
+            if getattr(args, "monitors", None) is None:
+                args.monitors = 2
+            args.nested_cmd = layout_dnd_argv()
+            return _cli_run(args, name)
+        if action == "smoke-layout-ws":
+            from nest_layout_ws_campaign import smoke_script_argv as layout_ws_argv
+
+            if getattr(args, "monitors", None) is None:
+                args.monitors = 2
+            args.nested_cmd = layout_ws_argv()
+            return _cli_run(args, name)
         if action == "enable-forge":
             return _cli_enable_forge(name)
         if action == "logs":

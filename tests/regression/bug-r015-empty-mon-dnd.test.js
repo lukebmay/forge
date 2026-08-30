@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { resolveEmptyMonitorDrop } from "../../lib/extension/drag-drop.js";
+import { Logger } from "../../lib/shared/logger.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -61,6 +62,17 @@ describe("R015: empty-monitor drag-drop rehome", () => {
       ).toBeNull();
     });
 
+    it("tree src miss + Meta source mon + pointer on another mon → dest", () => {
+      expect(
+        resolveEmptyMonitorDrop({
+          hasWindowTarget: false,
+          pointerMonIndex: 1,
+          sourceTreeMonIndex: -1,
+          sourceMetaMonIndex: 0,
+        })
+      ).toEqual({ destMonIndex: 1 });
+    });
+
     it("returns dest mon when pointer mon differs and no window target", () => {
       expect(
         resolveEmptyMonitorDrop({
@@ -105,6 +117,32 @@ describe("R015: empty-monitor drag-drop rehome", () => {
       const ok = wm().dragDrop._commitEmptyMonitorDrop(node);
       expect(ok).toBe(false);
       expect(node.parentNode).toBe(monitor);
+    });
+
+    it("no-decision TRACE includes src dest pointerMon hasWindowTarget reason", () => {
+      const debugSpy = vi.spyOn(Logger, "debug").mockImplementation(() => {});
+      const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+      const meta = createMockWindow({
+        id: "same-mon-trace",
+        rect: new Rectangle({ x: 10, y: 10, width: 400, height: 300 }),
+        workspace: ctx.workspaces[0],
+      });
+      const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta);
+      node.mode = WINDOW_MODES.GRAB_TILE;
+      setPointer(100, 100);
+      meta.get_monitor = vi.fn(() => 0);
+      meta.monitor = 0;
+
+      expect(wm().dragDrop._commitEmptyMonitorDrop(node)).toBe(false);
+      const line = debugSpy.mock.calls
+        .map((c) => String(c[0] ?? ""))
+        .find((t) => t.includes("dnd empty-mon no-decision"));
+      expect(line).toBeTruthy();
+      expect(line).toMatch(/src=0/);
+      expect(line).toMatch(/dest=0|pointerMon=0/);
+      expect(line).toMatch(/hasWindowTarget=false/);
+      expect(line).toMatch(/reason=same-mon/);
+      debugSpy.mockRestore();
     });
   });
 
@@ -263,6 +301,79 @@ describe("R015: empty-monitor drag-drop rehome", () => {
 
       expect(mon0.contains(nodeA)).toBe(true);
       expect(mon1.contains(nodeA)).toBe(false);
+    });
+
+    it("src ancestor miss + Meta mon + occupied dest still rehomes", () => {
+      const { mon0, mon1, metaA, nodeA } = twoOnLeftEmptyRight();
+      const destMeta = createMockWindow({
+        id: "right-occupied",
+        rect: new Rectangle({ x: 1920, y: 0, width: 1920, height: 1080 }),
+        workspace: workspace0(),
+        monitor: 1,
+      });
+      const destTile = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, destMeta);
+      destTile.mode = WINDOW_MODES.TILE;
+
+      nodeA.mode = WINDOW_MODES.GRAB_TILE;
+      wm()._draggedNodeWindow = nodeA;
+      mon0.removeChild(nodeA);
+      expect(nodeA.parentNode).toBeNull();
+      metaA.get_monitor = vi.fn(() => 0);
+      metaA.monitor = 0;
+      metaA.get_work_area_for_monitor = vi.fn((idx) => {
+        if (idx === 1) return { x: 1920, y: 0, width: 1920, height: 1080 };
+        return { x: 0, y: 0, width: 1920, height: 1080 };
+      });
+      metaA.move_to_monitor = vi.fn((idx) => {
+        metaA.monitor = idx;
+      });
+
+      setPointer(2400, 500);
+      wm().nodeWinAtPointer = null;
+      wm().moveWindowToPointer(nodeA, false);
+
+      expect(mon1.contains(nodeA)).toBe(true);
+      expect(mon1.contains(destTile)).toBe(true);
+      expect(mon0.contains(nodeA)).toBe(false);
+      expect(nodeA.parentNode).not.toBeNull();
+      expect(ctx.tree.findAncestorMonitor(nodeA)).toBe(mon1);
+    });
+
+    it("pointer-miss TRACE when pointer mon is invalid", () => {
+      const debugSpy = vi.spyOn(Logger, "debug").mockImplementation(() => {});
+      const { nodeA } = twoOnLeftEmptyRight();
+      nodeA.mode = WINDOW_MODES.GRAB_TILE;
+      wm()._draggedNodeWindow = nodeA;
+      vi.spyOn(wm(), "getDragPointer").mockReturnValue(null);
+
+      expect(wm().dragDrop._commitEmptyMonitorDrop(nodeA)).toBe(false);
+      const line = debugSpy.mock.calls
+        .map((c) => String(c[0] ?? ""))
+        .find((t) => t.includes("dnd empty-mon no-decision"));
+      expect(line).toMatch(/reason=pointer-miss/);
+      expect(line).toMatch(/hasWindowTarget=false/);
+      debugSpy.mockRestore();
+    });
+
+    it("src-miss TRACE when tree and Meta source are both unknown", () => {
+      const debugSpy = vi.spyOn(Logger, "debug").mockImplementation(() => {});
+      const { mon0, nodeA, metaA } = twoOnLeftEmptyRight();
+      nodeA.mode = WINDOW_MODES.GRAB_TILE;
+      wm()._draggedNodeWindow = nodeA;
+      mon0.removeChild(nodeA);
+      metaA.get_monitor = vi.fn(() => -1);
+      metaA.monitor = -1;
+      setPointer(2400, 500);
+      wm().nodeWinAtPointer = null;
+
+      expect(wm().dragDrop._commitEmptyMonitorDrop(nodeA)).toBe(false);
+      const line = debugSpy.mock.calls
+        .map((c) => String(c[0] ?? ""))
+        .find((t) => t.includes("dnd empty-mon no-decision"));
+      expect(line).toMatch(/dnd empty-mon no-decision/);
+      expect(line).toMatch(/reason=src-miss/);
+      expect(line).toMatch(/hasWindowTarget=false/);
+      debugSpy.mockRestore();
     });
 
     it("entered-monitor during GRAB_TILE leaves source forest unchanged", () => {

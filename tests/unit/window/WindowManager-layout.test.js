@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -8,6 +9,7 @@ import {
   setPointer,
 } from "../../mocks/helpers/index.js";
 import { Rectangle, WindowType } from "../../mocks/gnome/Meta.js";
+import { createHostBag } from "../../../lib/host/index.js";
 
 /**
  * WindowManager layout and mode behavior tests
@@ -159,70 +161,83 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
   });
 
   describe("Layout Container Management", () => {
-    it("should create container when splitting", () => {
+    it("Split command wraps an HSPLIT pair and flips to VSPLIT", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
-        windowOverrides: {
-          rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
-          workspace: ctx.workspaces[0],
-        },
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const a = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1, workspace: ctx.workspaces[0] },
       });
+      const b = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, wm_class: "Other", workspace: ctx.workspaces[0] },
+      });
+      a.nodeWindow.mode = WINDOW_MODES.TILE;
+      b.nodeWindow.mode = WINDOW_MODES.TILE;
+      ctx.display.get_focus_window.mockReturnValue(a.metaWindow);
 
-      // Perform split
-      ctx.tree.split(nodeWindow, 0, true); // HORIZONTAL
+      wm().command({ name: "Split" });
 
-      // Node should now be inside a container
-      expect(nodeWindow.parentNode.nodeType).toBe(NODE_TYPES.CON);
+      expect(monitor.childNodes).toHaveLength(1);
+      expect(monitor.childNodes[0].nodeType).toBe(NODE_TYPES.CON);
+      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(monitor.childNodes[0].childNodes).toEqual([a.nodeWindow, b.nodeWindow]);
     });
 
-    it("should change container layout on toggleSplit", () => {
+    it("toggleSplit flips the wrap HSPLIT ↔ VSPLIT", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
-        windowOverrides: {
-          rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
-          workspace: ctx.workspaces[0],
-        },
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const a = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1, workspace: ctx.workspaces[0] },
       });
+      createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, wm_class: "Other", workspace: ctx.workspaces[0] },
+      }).nodeWindow.mode = WINDOW_MODES.TILE;
+      a.nodeWindow.mode = WINDOW_MODES.TILE;
+      ctx.display.get_focus_window.mockReturnValue(a.metaWindow);
 
-      // Create HSPLIT container
-      ctx.tree.split(nodeWindow, 0, true);
-      const container = nodeWindow.parentNode;
-      container.layout = LAYOUT_TYPES.HSPLIT;
+      wm().command({ name: "toggleSplit" });
+      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
 
-      // Toggle to VSPLIT
-      ctx.tree.split(nodeWindow, 1, false); // VERTICAL, no force
-
-      expect(container.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      wm().command({ name: "toggleSplit" });
+      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
-    it("should set STACKED via the real LayoutStackedToggle command", () => {
+    it("should set STACKED via two LayoutStackedToggle commands (toggleTabStack)", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, monitor, {
-        windowOverrides: { workspace: ctx.workspaces[0] },
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const a = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1, workspace: ctx.workspaces[0] },
       });
-      ctx.display.get_focus_window.mockReturnValue(metaWindow);
+      const b = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, wm_class: "Other", workspace: ctx.workspaces[0] },
+      });
+      a.nodeWindow.mode = WINDOW_MODES.TILE;
+      b.nodeWindow.mode = WINDOW_MODES.TILE;
+      ctx.display.get_focus_window.mockReturnValue(a.metaWindow);
 
       wm().command({ name: "LayoutStackedToggle" });
+      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.TABBED);
 
-      expect(nodeWindow.parentNode.nodeType).toBe(NODE_TYPES.CON);
-      expect(nodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.STACKED);
-
-      // Toggling again restores a split layout.
       wm().command({ name: "LayoutStackedToggle" });
-      expect(nodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(monitor.childNodes[0].nodeType).toBe(NODE_TYPES.CON);
+      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.STACKED);
     });
 
     it("should set TABBED via the real LayoutTabbedToggle command", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, monitor, {
-        windowOverrides: { workspace: ctx.workspaces[0] },
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const a = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1, workspace: ctx.workspaces[0] },
       });
-      ctx.display.get_focus_window.mockReturnValue(metaWindow);
+      createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, wm_class: "Other", workspace: ctx.workspaces[0] },
+      }).nodeWindow.mode = WINDOW_MODES.TILE;
+      a.nodeWindow.mode = WINDOW_MODES.TILE;
+      ctx.display.get_focus_window.mockReturnValue(a.metaWindow);
 
       wm().command({ name: "LayoutTabbedToggle" });
 
-      expect(nodeWindow.parentNode.nodeType).toBe(NODE_TYPES.CON);
-      expect(nodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(monitor.childNodes[0].nodeType).toBe(NODE_TYPES.CON);
+      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.TABBED);
     });
   });
 
@@ -260,6 +275,41 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       const found = wm().findNodeWindow(metaWindow2);
 
       expect(found).toBe(node2);
+    });
+
+    it("uses host bag reverse index when Forest is seeded", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { metaWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { workspace: ctx.workspaces[0] },
+      });
+      const decoy = { decoy: true, nodeValue: metaWindow };
+      wm()._liveForestSeeded = true;
+      wm().hostBag = createHostBag();
+      wm().liveById = new Map();
+      wm().hostBag.set("nid-bag", { meta: metaWindow, windowId: "1" });
+      wm().liveById.set("nid-bag", decoy);
+      const walk = vi.spyOn(ctx.tree, "getNodeByValue");
+
+      const found = wm().findNodeWindow(metaWindow);
+
+      expect(found).toBe(decoy);
+      expect(walk).not.toHaveBeenCalled();
+    });
+
+    it("falls back to tree walk when Forest is unseeded", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { workspace: ctx.workspaces[0] },
+      });
+      wm()._liveForestSeeded = false;
+      wm().hostBag = createHostBag();
+      wm().liveById = new Map();
+      wm().hostBag.set("nid-unseeded", { meta: metaWindow, windowId: "1" });
+      wm().liveById.set("nid-unseeded", { decoy: true });
+
+      const found = wm().findNodeWindow(metaWindow);
+
+      expect(found).toBe(nodeWindow);
     });
   });
 });

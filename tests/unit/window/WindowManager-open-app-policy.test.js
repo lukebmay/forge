@@ -1503,6 +1503,7 @@ describe("OP1 open-app placement policy", () => {
         size_hints: { min_width: 100, min_height: 100 },
       });
       // Roomy TABBED neighbor — a bad adopt BFS would dump into this bag.
+      // Two tabs so map RESYNC does not unary-collapse the group.
       const roomyBag = ctx.tree.createNode(mon.nodeValue, NODE_TYPES.CON, {});
       roomyBag.layout = LAYOUT_TYPES.TABBED;
       const roomy = createWindowNode(ctx.tree, roomyBag, {
@@ -1511,6 +1512,16 @@ describe("OP1 open-app placement policy", () => {
           workspace: ctx.workspaces[0],
           monitor: 0,
           id: "roomy-chrome",
+          rect: { x: 960, y: 0, width: 960, height: 1080 },
+          size_hints: { min_width: 50, min_height: 50 },
+        },
+      });
+      createWindowNode(ctx.tree, roomyBag, {
+        mode: "TILE",
+        windowOverrides: {
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          id: "roomy-chrome-2",
           rect: { x: 960, y: 0, width: 960, height: 1080 },
           size_hints: { min_width: 50, min_height: 50 },
         },

@@ -4272,6 +4272,50 @@ def _mon_child_loc(path: Any) -> Optional[tuple[str, int]]:
         return None
 
 
+def _is_max1_split_wrap(mon: Any) -> bool:
+    if not isinstance(mon, dict):
+        return False
+    kids = mon.get("children") or []
+    if not isinstance(kids, list) or len(kids) != 1:
+        return False
+    c = kids[0]
+    if not isinstance(c, dict):
+        return False
+    ntype = c.get("nodeType") or c.get("type")
+    if ntype != "CON":
+        return False
+    lay = str(c.get("layout") or "").strip().upper()
+    return lay in ("HSPLIT", "VSPLIT")
+
+
+def _forest_mon_by_key(forest: Any, mon_key: str) -> Optional[dict[str, Any]]:
+    want = str(mon_key or "")
+    if not want:
+        return None
+    for m in _iter_forest_monitors(forest):
+        if not isinstance(m, dict):
+            continue
+        idx = _monitor_node_index(m)
+        if idx is not None and f"mon{idx}" == want:
+            return m
+    return None
+
+
+def _peeled_mon_child_loc(
+        path: Any, mon: Optional[dict[str, Any]]) -> Optional[tuple[str, int]]:
+    loc = _mon_child_loc(path)
+    if loc is None or not _is_max1_split_wrap(mon):
+        return loc
+    parts = str(path).split("/")
+    if len(parts) < 3:
+        return loc
+    try:
+        gidx = int(parts[2])
+    except ValueError:
+        return loc
+    return loc[0], gidx
+
+
 def _first_role_ids_in_layout_node(node: dict[str, Any]) -> list[str]:
     """Depth-first first non-empty roles[] under a mon layout child."""
     if not isinstance(node, dict):
@@ -5050,10 +5094,45 @@ def _slot_parent_has_foreign_mon_child(
     return False
 
 
+def _bag_con_child_mismatches(forest: Any) -> list[dict[str, Any]]:
+    mismatches: list[dict[str, Any]] = []
+
+    def walk(n: Any, mon_key: Optional[str]) -> None:
+        if not isinstance(n, dict):
+            return
+        ntype = n.get("nodeType") or n.get("type")
+        lay = str(n.get("layout") or "").strip().upper()
+        next_mon = mon_key
+        if ntype == "MONITOR":
+            idx = _monitor_node_index(n)
+            next_mon = f"mon{idx}" if idx is not None else mon_key
+        if ntype == "CON" and lay in ("TABBED", "STACKED"):
+            for c in n.get("children") or []:
+                if not isinstance(c, dict):
+                    continue
+                ct = c.get("nodeType") or c.get("type")
+                if ct == "CON":
+                    mismatches.append({
+                        "kind": "bag-con-child",
+                        "slot": next_mon or "mon",
+                        "want": "WINDOW",
+                        "got": str(c.get("layout") or "CON"),
+                        "detail": f"{lay} bag has CON child",
+                    })
+        for c in n.get("children") or []:
+            walk(c, next_mon)
+
+    if isinstance(forest, dict):
+        for m in forest.get("monitors") or []:
+            walk(m, None)
+    return mismatches
+
+
 def _mon_child_topology_mismatches(
     role_results: list[dict[str, Any]],
     parent_info: dict[str, dict[str, Any]],
     prof: dict[str, Any],
+    forest: Any = None,
 ) -> list[dict[str, Any]]:
     """
     Claimed roles for different mon-layout children share the same parent CON
@@ -5085,6 +5164,7 @@ def _mon_child_topology_mismatches(
             by_child.setdefault(child_id, []).append(r)
         if len(by_child) < 2:
             continue
+        live_mon = _forest_mon_by_key(forest, mon_key)
         path_to_children: dict[str, set[str]] = {}
         mon_direct_to_children: dict[str, set[str]] = {}
         for child_id, roles in by_child.items():
@@ -5092,7 +5172,7 @@ def _mon_child_topology_mismatches(
                 wid = r.get("windowId")
                 info = parent_info.get(str(wid)) if wid is not None else None
                 path = (info or {}).get("path") or r.get("path")
-                loc = _mon_child_loc(path)
+                loc = _peeled_mon_child_loc(path, live_mon)
                 if loc is not None:
                     mon_direct_key = f"{loc[0]}/{loc[1]}"
                     mon_direct_to_children.setdefault(mon_direct_key,
@@ -5390,8 +5470,9 @@ def compare_layout_structure(
             })
 
     # Mon-child topology: different profile mon children under one CON path.
-    mismatches.extend(_mon_child_topology_mismatches(role_results, pinfo,
-                                                     prof))
+    mismatches.extend(
+        _mon_child_topology_mismatches(role_results, pinfo, prof, forest))
+    mismatches.extend(_bag_con_child_mismatches(forest))
 
     return {
         "match": len(mismatches) == 0,

@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES } from "../../../lib/extension/tree.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import { createHostBag } from "../../../lib/host/index.js";
+import { floatsOf, isUnderFloats } from "../../../lib/tom/index.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -639,6 +642,29 @@ describe("WindowManager - Floating Mode", () => {
       wm().toggleFloatingMode(action, metaWindow);
 
       expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
+    });
+
+    it("should move Forest membership into FLOATS when live forest present", () => {
+      const w = wm();
+      if (!w.hostBag) w.hostBag = createHostBag();
+      seedLiveForest(w, {
+        windowIdOf: (n) => {
+          const v = n?.nodeValue;
+          if (v?.id != null) return String(v.id);
+          if (typeof v?.get_id === "function") return String(v.get_id());
+          return null;
+        },
+        createCon: () => ({ nodeType: NODE_TYPES.CON, childNodes: [], appendChild() {} }),
+      });
+      expect(w._liveForestSeeded).toBe(true);
+      const action = { name: "FloatToggle", mode: WINDOW_MODES.FLOAT };
+      w.toggleFloatingMode(action, metaWindow);
+      expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
+      const nid = w.hostBag.idFromMeta(metaWindow);
+      expect(nid).toBeTruthy();
+      expect(floatsOf(w.forest).childIds).toContain(nid);
+      expect(isUnderFloats(w.forest, w.forest.nodes[nid])).toBe(true);
+      expect(w.hostBag.get(nid)?.floating).toBe(true);
     });
 
     it("should add float override when toggling to float", () => {

@@ -9,6 +9,9 @@ import {
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { isPlaceholderNode } from "../../../lib/extension/layout-placeholder.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import { moveWindowToFloats } from "../../../lib/tom/membership.js";
 
 /**
  * Phase 1 RunSteps parity: layout-cycle, merge-group (session-api ops).
@@ -152,6 +155,26 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(nGhost.userSized).toBe(true);
   });
 
+  it("_sizeOp soft-skips duplicate mon-directs instead of aborting apply", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const wrap = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    wrap.layout = LAYOUT_TYPES.HSPLIT;
+    const chrome = createMockWindow({ id: 51, wm_class: "google-chrome" });
+    const grok = createMockWindow({ id: 52, wm_class: "Grok" });
+    const nChrome = wm().tree.createNode(wrap.nodeValue, NODE_TYPES.WINDOW, chrome);
+    const inner = wm().tree.createNode(wrap.nodeValue, NODE_TYPES.CON, new Bin());
+    inner.layout = LAYOUT_TYPES.VSPLIT;
+    const nGrok = wm().tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, grok);
+    nChrome.mode = WINDOW_MODES.TILE;
+    nGrok.mode = WINDOW_MODES.TILE;
+    const sized = api()._sizeOp(["id:51", "id:52"], [0.687, 0.313], { quiet: true });
+    expect(sized.ok).toBe(true);
+    expect(sized.sized).toBe(false);
+    expect(sized.reason).toBe("duplicate mon-direct for size targets");
+    expect(sized.error).toBeUndefined();
+  });
+
   it("_sizeOp soft-skips when mon-directs lack a common parent", () => {
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
@@ -195,6 +218,14 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(tabParent).toBeTruthy();
     expect(tabParent.isMonitor?.() || tabParent.nodeType === NODE_TYPES.MONITOR).toBe(false);
     expect(tabParent.layout).toBe(LAYOUT_TYPES.TABBED);
+    const nid = wm().hostBag?.idFromMeta?.(chrome);
+    expect(nid).toBeTruthy();
+    const tabId = wm().forest.nodes[nid].parentId;
+    expect(wm().forest.nodes[tabId].layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(wm().forest.nodes[tabId].childIds).toEqual([nid]);
+    expect(wm().forest.nodes[tabId].kind).toBe("CON");
+    expect(nGrok.parentNode).toBe(inner);
+    expect(inner.parentNode).toBe(bag);
   });
 
   it("layout TABBED re-affirm preserves valid lastTabFocus (belt anchor ≠ active)", () => {
@@ -382,6 +413,45 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(nChrome.parentNode).toBe(tab);
     expect(nGrok.parentNode).toBe(tab);
     expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
+  });
+
+  it("skeleton invents layoutRole PH on Forest then paint", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const out = api()._skeletonOp(
+      [{ mon: 0, split: "hsplit", children: [{ slot: "s1", roles: ["term"] }] }],
+      { workspace: 0, quiet: true }
+    );
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+    expect(api()._monHasLayoutSkeleton(monitor)).toBe(true);
+    const ph = (monitor.childNodes || []).find((n) => isPlaceholderNode(n));
+    expect(ph).toBeTruthy();
+    expect(ph.layoutRole).toBe("term");
+    expect(ph.layoutSlot).toBe("s1");
+    const pid = wm().hostBag?.idFromMeta?.(ph.nodeValue);
+    expect(pid).toBeTruthy();
+    expect(wm().forest.nodes[pid]?.kind).toBe("WINDOW");
+    expect(wm().forest.nodes[pid]?.parentId).toBe(monitor.nodeValue);
+    expect(wm().forest.nodes[pid]?.wmClass).toBe("forge-placeholder");
+  });
+
+  it("bind replaces a layout PH with the real window (Forest then paint)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const ph = wm().tree.createPlaceholderLeaf(monitor, {
+      layoutSlot: "s1",
+      layoutRole: "term",
+    });
+    expect(ph).toBeTruthy();
+    const w = createMockWindow({ id: 401, wm_class: "ghostty" });
+    const n = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, w);
+    n.mode = WINDOW_MODES.TILE;
+    const out = api()._bindOp("id:401", { layoutRole: "term", layoutSlot: "s1", quiet: true });
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+    expect(n.parentNode).toBe(monitor);
+    expect(monitor.childNodes).toContain(n);
+    expect(monitor.childNodes).not.toContain(ph);
+    expect(ph.parentNode).toBeNull();
   });
 });
 
@@ -686,16 +756,114 @@ describe("SessionApi workspace orphan isolation", () => {
     n1.mode = WINDOW_MODES.TILE;
 
     const forest = api()._snapshotForestForApply({ workspace: 1 });
-    const orphanIds = (forest.orphanWindows || []).map((w) => String(w.windowId));
-    expect(orphanIds).not.toContain("101");
-    const collected = collectWindows(forest, { workspace: 1 }).map((w) => String(w.windowId));
-    expect(collected).toContain("202");
-    expect(collected).not.toContain("101");
+    const orphanMeta = (forest.orphanWindows || []).map((w) =>
+      String(w.metaWindowId ?? w.windowId)
+    );
+    expect(orphanMeta).not.toContain("101");
+    const collected = collectWindows(forest, { workspace: 1 });
+    const collectedMeta = collected.map((w) => String(w.metaWindowId ?? w.windowId));
+    const collectedIds = collected.map((w) => String(w.windowId));
+    expect(collectedMeta).toContain("202");
+    expect(collectedMeta).not.toContain("101");
+    // Apply IR keys are Forest nanoids when live Forest is seeded (C6).
+    expect(collectedIds).not.toContain("101");
+    expect(
+      collected.some((w) => String(w.metaWindowId) === "202" && String(w.windowId) !== "202")
+    ).toBe(true);
 
     const raw = api().GetTree(JSON.stringify({ workspace: 1 }));
     const out = JSON.parse(raw);
     expect(out.error).toBeUndefined();
+    // GetTree remains Surface dump (Meta windowId).
     const getIds = (out.orphanWindows || []).map((w) => String(w.windowId));
     expect(getIds).not.toContain("101");
+  });
+});
+
+describe("SessionApi Apply snapshot Forest authority", () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      globals: { display: { monitorCount: 1 } },
+      settings: { "tiling-mode-enabled": true },
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    ctx.cleanup();
+  });
+
+  const wm = () => ctx.windowManager;
+
+  function api() {
+    return new SessionApi({
+      extWm: ctx.windowManager,
+      settings: ctx.settings,
+    });
+  }
+
+  it("cold snapshot seeds Forest and projects TOM IR (C6.6)", () => {
+    expect(wm()._liveForestSeeded).toBe(false);
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const wA = createMockWindow({ id: 101, wm_class: "DeskA", workspace: ctx.workspaces[0] });
+    const nA = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wA);
+    nA.mode = WINDOW_MODES.TILE;
+
+    const forest = api()._snapshotForestForApply({ workspace: 0 });
+    expect(wm()._liveForestSeeded).toBe(true);
+    const nidA = wm().hostBag.idFromMeta(wA);
+    expect(nidA).toBeTruthy();
+    const collected = collectWindows(forest, { workspace: 0 });
+    expect(collected.some((w) => w.windowId === nidA && String(w.metaWindowId) === "101")).toBe(
+      true
+    );
+    expect(collected.every((w) => String(w.windowId) !== "101")).toBe(true);
+
+    const raw = api().GetTree(JSON.stringify({ workspace: 0 }));
+    const out = JSON.parse(raw);
+    expect(out.error).toBeUndefined();
+    const getIds = collectWindows(out, { workspace: 0 }).map((w) => String(w.windowId));
+    expect(getIds).toContain("101");
+  });
+
+  it("does not pick up GObject-only windows after Forest is seeded", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const wA = createMockWindow({ id: 101, wm_class: "DeskA", workspace: ctx.workspaces[0] });
+    const nA = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wA);
+    nA.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
+    const nidA = wm().hostBag.idFromMeta(wA);
+    expect(nidA).toBeTruthy();
+
+    const wB = createMockWindow({ id: 202, wm_class: "DeskB", workspace: ctx.workspaces[0] });
+    const nB = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wB);
+    nB.mode = WINDOW_MODES.TILE;
+
+    const forest = api()._snapshotForestForApply({ workspace: 0 });
+    const collected = collectWindows(forest, { workspace: 0 });
+    const collectedMeta = collected.map((w) => String(w.metaWindowId ?? w.windowId));
+    expect(collectedMeta).toContain("101");
+    expect(collectedMeta).not.toContain("202");
+    expect(collected.some((w) => w.windowId === nidA)).toBe(true);
+  });
+
+  it("follows Forest FLOATS over a GObject TILE parent", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const wA = createMockWindow({ id: 101, wm_class: "DeskA", workspace: ctx.workspaces[0] });
+    const nA = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wA);
+    nA.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
+    const nidA = wm().hostBag.idFromMeta(wA);
+    const tom = nidA ? wm().forest.nodes[nidA] : null;
+    expect(tom?.kind).toBe("WINDOW");
+    moveWindowToFloats(wm().forest, tom);
+
+    const forest = api()._snapshotForestForApply({ workspace: 0 });
+    const orphans = forest.orphanWindows || [];
+    expect(orphans.some((w) => w.windowId === nidA && w.mode === "FLOAT")).toBe(true);
+    const collected = collectWindows(forest, { workspace: 0 });
+    expect(collected.some((w) => w.windowId === nidA)).toBe(false);
   });
 });

@@ -9,18 +9,10 @@ import {
 import { MotionDirection } from "../mocks/gnome/Meta.js";
 
 /**
- * forge-e3k1: Tree.move()'s cross-monitor branch reparented the node onto the
- * target monitor (insertBefore/appendChild) BEFORE running extWm.move(), whose
- * get_work_area_for_monitor/move_resize_frame can throw on a finalized
- * MetaWindow (window closed mid-move after sleep/resume). The trailing
- * resetSiblingPercent calls sit outside any try/finally, so a throw left the
- * node reparented onto the neighbor monitor with stale percents on both
- * monitors until the next reload.
- *
- * Fix: resolve the work-area and perform the actual window move BEFORE mutating
- * the tree, so a throw leaves the node on its original monitor untouched.
+ * Host/helper: tree.move must geometry-move before reparent (throw-safe).
+ * Product TILES Move is command() → Mark 2 transfer.
  */
-describe("forge-e3k1: cross-monitor move does not reparent before the window move can throw", () => {
+describe("forge-e3k1: tree.move does not reparent before the window move can throw (Host/helper)", () => {
   let ctx;
   let monA; // mo0ws0
   let monB; // mo1ws0 (focused window lives here)

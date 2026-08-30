@@ -135,6 +135,10 @@ geometry; host remains authority for physical dual-mon sign-off. Design:
 | --- | --- | --- |
 | **`./scripts/forge/forge-test nested run -- <cmd…>`** | **Prefer** for one-shot campaigns | Starts if needed → cmd → **always stops** (unless `--keep`) |
 | **`./scripts/forge/forge-test nested exec -- <cmd…>`** | Nest already up; multi-step interactive | No auto-stop — **stop** when done |
+| **`./scripts/forge/forge-test nested invoke <id>`** | Mark 2 `command({name})` via Shell.Eval (e2e dbus; no Super+key) | Nest must already be up |
+| **`./scripts/forge/forge-test nested dnd-drop …`** | Synthetic tile drop via session `_dndDropOp` → `_commitResolvedDrop` (empty-mon: `--dest-monitor` → `_commitEmptyMonitorDrop`) | Nest must already be up |
+| **`./scripts/forge/forge-test nested smoke-mark2`** | Two clients → invoke `join.right` → `forge tree` | Same as `nested run` (always stops) |
+| **`./scripts/forge/forge-test nested smoke-layout-ws`** | WS1 layout A → WS2 B → back → nautilus/ghostty → join tab → close → re-run A; CTS after each step | Same as `nested run` (always stops; defaults `--monitors=2`) |
 | **`./scripts/forge/forge-test nested restart` / `start`** | Long interactive retest loop | **stop** when campaign ends |
 
 ```bash
@@ -175,6 +179,8 @@ and gsettings are intentional.
 | `can_retest` | `can_hup` **or** `can_nested` — agent can iterate without fantasy reboot |
 
 On **X11:** use HUP; `./scripts/forge/forge-test nested start` **exits 2** with HUP guidance (not a crash).
+
+Nest **shares host dconf**. `org.gnome.shell disable-user-extensions=true` (host crash recovery) keeps nest Forge in ExtensionState INITIALIZED — no Forge DBus, campaigns fail `Forge DBus not ready`. Do not treat that as a missing `./install`. Clearing the key is a **host-session** choice (also loads host extensions); nest cannot isolate it today.
 
 ### Extensive Wayland smoke loop (default agent campaign)
 
@@ -229,6 +235,21 @@ exports before host `forge tree` / `forge layout` / `./scripts/forge/forge-test 
 ```bash
 # One-shot nest campaign (Wayland; auto cleanup) — --dev for TRACE hunts
 ./install --dev && ./scripts/forge/forge-test nested run -- forge ping
+
+# Mark 2 action ids without Super+key (e2e dbus path: extWm.command)
+./scripts/forge/forge-test nested invoke join.right --hint leftmost --activate
+./scripts/forge/forge-test nested invoke move.left --window-id 42
+./scripts/forge/forge-test nested invoke toggleSplit --selector 'class:org.gnome.Nautilus'
+./scripts/forge/forge-test nested dnd-drop leftmost rightmost --zone center
+./scripts/forge/forge-test nested dnd-drop leftmost --dest-monitor 1
+# Not product `forge Move` (dest-reparent). Nest must be running for invoke /
+# dnd-drop;
+# smoke-mark2 / nested run start+stop the nest.
+./scripts/forge/forge-test nested run -- python3 ./scripts/forge/nest_mark2_smoke.py
+./scripts/forge/forge-test nested smoke-mark2       # same campaign; always stops
+./install --dev && ./scripts/forge/forge-test nested run --monitors=2 -- \
+  python3 ./scripts/forge/nest_layout_ws_campaign.py
+./scripts/forge/forge-test nested smoke-layout-ws   # same 8-step WS/layout CTS; always stops
 
 # Multi-step retest loop (stop yourself)
 ./install --dev && ./scripts/forge/forge-test nested restart

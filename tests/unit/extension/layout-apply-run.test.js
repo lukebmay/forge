@@ -395,10 +395,8 @@ describe("LayoutApplyRunBag structure (AL5)", () => {
       workspace: 0,
     });
     flushAll();
-    // Order steps ran; mocked runSteps do not rewrite the forest, so Done is hard-failed.
-    expect(bag.lastTerminal.terminal.ok).toBe(false);
-    expect(bag.lastTerminal.terminal.code).toBe("hard-failed");
-    expect(bag.lastTerminal.terminal.result.hardFailed).toContain("mon0");
+    // Max-1 HSPLIT wrap is settled TILES; order still runs for reversed panes.
+    expect(bag.lastTerminal.terminal.ok).toBe(true);
     expect(bag.lastTerminal.terminal.result.structure).toBe(true);
     const orderBatch = executed.find((e) => e.phase === "order");
     expect(orderBatch).toBeTruthy();

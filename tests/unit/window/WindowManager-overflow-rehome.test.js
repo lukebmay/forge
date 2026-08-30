@@ -10,6 +10,7 @@ import {
 
 /**
  * D049 M3: mid-session TILE overflow → tab / float + vacated gap gone.
+ * tree.split below is Host helper setup, not product Split.
  */
 describe("D049 overflow rehome", () => {
   let ctx;

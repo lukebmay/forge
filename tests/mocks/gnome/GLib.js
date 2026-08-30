@@ -70,6 +70,10 @@ export function timeout_add(priority, interval, callback) {
   return Math.random();
 }
 
+export function get_monotonic_time() {
+  return Date.now() * 1000;
+}
+
 export function idle_add(priority, callback) {
   // Mock idle_add - execute callback immediately in tests
   if (typeof callback === "function") {
@@ -113,6 +117,7 @@ export default {
   SOURCE_REMOVE,
   timeout_add,
   idle_add,
+  get_monotonic_time,
   source_remove,
   Source,
   mkdir_with_parents,

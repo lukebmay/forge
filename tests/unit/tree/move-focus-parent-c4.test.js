@@ -10,9 +10,11 @@ import { Bin } from "../../mocks/gnome/St.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 
 /**
- * FCC C4: focusParent/focusChild + moveIn/moveOut.
+ * Host/helper: Tree.moveIn/moveOut + focusParent/Child.
+ * Product WindowMoveIn/Out is CommandHandler → Mark 2.
+ * Session RunSteps uses Forest move-in/out then paint (C7.2).
  */
-describe("C4 move-in/out + focus parent/child", () => {
+describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
   let ctx;
 
   beforeEach(() => {
@@ -148,7 +150,7 @@ describe("C4 move-in/out + focus parent/child", () => {
     });
   });
 
-  describe("moveIn / moveOut", () => {
+  describe("moveIn / moveOut (Host/helper)", () => {
     it("moveIn reparents layout unit into sibling CON and keeps identity", () => {
       const { h, leaf, tab, w1, w2 } = splitWithTabSibling();
 

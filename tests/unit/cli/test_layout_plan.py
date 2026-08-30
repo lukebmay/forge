@@ -6226,24 +6226,20 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
 
     def test_mon0_nested_hsplit_collapse_mismatch_and_order(self):
         """
-        mon0 nested HSPLIT[VSPLIT(ghostty)|TABBED(chrome,Grok)] vs tab|ghostty:
-        structureMatch false (mon-direct collapse); ensure_order only — no peel
+        MONITOR max-1 HSPLIT wrap of VSPLIT(ghostty)|TABBED is settled TILES.
+        Structure matches; reversed pane order still ensure_order. No hsplit
         demote that would smash the tab bag.
         """
         forest = _load("tree-mon0-nested-hsplit-collapse.json")
         profile = _load("profile-dev-v2.json")
         cmp = compare_layout_structure(forest, profile)
-        self.assertFalse(cmp["match"], cmp["mismatches"])
+        self.assertTrue(cmp["match"], cmp["mismatches"])
         mon_child = [m for m in cmp["mismatches"] if m["kind"] == "mon-child"]
-        self.assertTrue(any(m.get("slot") == "mon0" for m in mon_child),
-                        mon_child)
-        detail = " ".join(str(m.get("detail") or "") for m in mon_child)
-        self.assertIn("mon-direct", detail)
+        self.assertEqual(mon_child, [])
 
         plan = plan_reconcile(forest, profile)
-        self.assertFalse(plan.get("structureMatch"))
+        self.assertTrue(plan.get("structureMatch"))
         self.assertFalse(plan["nothingToDo"])
-        # No peel demote ensure mon0 hsplit — would demote the chrome tab bag.
         mon0_layout = [
             a for a in plan["actions"]
             if a.get("op") == "ensure_layout" and a.get("slot") == "mon0"
@@ -6254,7 +6250,6 @@ class TestResidualMonEnsureCL11(unittest.TestCase):
             if a.get("op") == "ensure_order" and a.get("slot") == "mon0"
         ]
         self.assertEqual(len(orders), 1, plan["actions"])
-        # Profile mon children: left-tab (chrome) then term (ghostty)
         self.assertEqual(
             [str(x) for x in (orders[0].get("windowIds") or [])],
             ["101", "100"],

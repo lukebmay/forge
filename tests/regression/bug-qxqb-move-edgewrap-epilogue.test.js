@@ -10,16 +10,10 @@ import { MotionDirection } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
 
 /**
- * Bug forge-qxqb: tree.move's `next === -1` edge-wrap branch reparents the node to
- * its monitor and returns true EARLY, skipping the shared epilogue every other
- * structural-move path runs (resetSiblingPercent on both the old parent and the
- * target, plus resetLayoutSingleChild on the old parent). So the old container's
- * survivors keep percents summing < 1 (Bug #330 fold then dumps the slack on one
- * child) and a stacked/tabbed old parent reduced to one child keeps its layout.
- *
- * Fix: run the epilogue (via _finishMove) before the edge-wrap early return.
+ * Host/helper: tree.move edge-wrap epilogue (DnD / leftover Host path).
+ * Product TILES Move is command() → Mark 2.
  */
-describe("Bug forge-qxqb: edge-wrap move runs the sibling-reset epilogue", () => {
+describe("Bug forge-qxqb: edge-wrap move runs the sibling-reset epilogue (Host/helper)", () => {
   let ctx;
 
   beforeEach(() => {

@@ -8,6 +8,28 @@ import {
   createContainerNode,
 } from "../../mocks/helpers/index.js";
 import St from "../../mocks/gnome/St.js";
+import { Logger } from "../../../lib/shared/logger.js";
+
+function disposeStActor(actor) {
+  const boom = () => {
+    throw new Error("Object St.BoxLayout has been already disposed — impossible to access it.");
+  };
+  for (const key of [
+    "hide",
+    "show",
+    "get_parent",
+    "add_child",
+    "remove_child",
+    "destroy",
+    "destroy_all_children",
+    "get_children",
+    "set_size",
+    "set_position",
+    "contains",
+  ]) {
+    actor[key] = boom;
+  }
+}
 
 /**
  * Dedicated unit suite for lib/extension/decoration.js (DecorationManager).
@@ -206,6 +228,92 @@ describe("DecorationManager.updateDecorationLayout", () => {
   });
 });
 
+describe("DecorationManager disposed chrome (apply/renderTree)", () => {
+  let ctx;
+  let warnSpy;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      settings: { "tiling-mode-enabled": true, "showtab-decoration-enabled": true },
+    });
+    warnSpy = vi.spyOn(Logger, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
+    vi.restoreAllMocks();
+  });
+
+  function buildTabbed() {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const con = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
+    createWindowNode(ctx.tree, con, { windowOverrides: { id: "tab-a" } });
+    createWindowNode(ctx.tree, con, { windowOverrides: { id: "tab-b" } });
+    return con;
+  }
+
+  it("destroy signal nulls CON.decoration without a later walk", () => {
+    const con = buildTabbed();
+    const deco = con.decoration;
+    expect(deco).toBeTruthy();
+    deco.destroy();
+    expect(con.decoration).toBeNull();
+    expect(deco._forgeDisposed).toBe(true);
+  });
+
+  it("skips _forgeDisposed chrome, clears the pointer, and does not throw", () => {
+    const con = buildTabbed();
+    const deco = con.decoration;
+    deco._forgeDisposed = true;
+    disposeStActor(deco);
+
+    expect(() => ctx.windowManager.updateDecorationLayout()).not.toThrow();
+    expect(con.decoration).toBeNull();
+    const texts = warnSpy.mock.calls.map((c) => String(c[0] ?? ""));
+    expect(texts.some((t) => t.includes("metric warn deco-disposed"))).toBe(true);
+  });
+
+  it("attachTabDecoration on a GObject-dead actor does not throw or rethrow", () => {
+    const con = buildTabbed();
+    disposeStActor(con.decoration);
+    const dm = ctx.windowManager.decorationManager;
+    expect(() => dm.attachTabDecoration(con)).not.toThrow();
+    expect(con.decoration).toBeNull();
+    const texts = warnSpy.mock.calls.map((c) => String(c[0] ?? ""));
+    expect(texts.some((t) => t.includes("metric warn deco-disposed"))).toBe(true);
+  });
+
+  it("sibling TABBED still shows after a disposed peer is skipped", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const dead = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
+    createWindowNode(ctx.tree, dead, { windowOverrides: { id: "dead-a" } });
+    createWindowNode(ctx.tree, dead, { windowOverrides: { id: "dead-b" } });
+    const live = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
+    createWindowNode(ctx.tree, live, { windowOverrides: { id: "live-a" } });
+    createWindowNode(ctx.tree, live, { windowOverrides: { id: "live-b" } });
+    const showLive = vi.spyOn(live.decoration, "show");
+    dead.decoration._forgeDisposed = true;
+    disposeStActor(dead.decoration);
+
+    expect(() => ctx.windowManager.updateDecorationLayout()).not.toThrow();
+    expect(dead.decoration).toBeNull();
+    expect(showLive).toHaveBeenCalled();
+    expect(live.decoration).toBeTruthy();
+  });
+
+  it("removeChild of a TABBED CON with disposed decoration nulls and does not throw", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const con = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
+    createWindowNode(ctx.tree, con, { windowOverrides: { id: "a" } });
+    createWindowNode(ctx.tree, con, { windowOverrides: { id: "b" } });
+    con.decoration._forgeDisposed = true;
+    disposeStActor(con.decoration);
+    expect(() => monitor.removeChild(con)).not.toThrow();
+    expect(con.decoration).toBeNull();
+    expect(con.parentNode).toBeNull();
+  });
+});
+
 describe("DecorationManager border lifecycle", () => {
   let ctx;
 
@@ -307,6 +415,16 @@ describe("DecorationManager border lifecycle", () => {
       wm().showWindowBorders();
 
       expect(border.show).not.toHaveBeenCalled();
+    });
+
+    it("does not throw when FLOATS paint has nulled parentNode", () => {
+      const { border, metaWindow } = buildTwoTiled();
+      metaWindow.appears_focused = true;
+      metaWindow.minimized = false;
+      const node = wm().findNodeWindow(metaWindow);
+      node.parentNode = null;
+      expect(() => wm().showWindowBorders()).not.toThrow();
+      expect(border.set_style_class_name).toHaveBeenCalled();
     });
   });
 

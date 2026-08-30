@@ -10,14 +10,10 @@ import { MotionDirection } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
 
 /**
- * LX2: peel one window out of a multi-member TABBED (or STACKED) group into a
- * two-child parent of [group | extracted]. Parent split orientation must follow
- * determineSplitLayoutForRect(pre-peel group rect):
- *   width < height → VSPLIT (horizontal bands)
- *   else           → HSPLIT (side-by-side)
- * so peel does not force thin vertical slivers on portrait tab groups.
+ * Host/helper: tree.move peel orientation (DnD / leftover Host path).
+ * Product WindowMoveOut is command() → Mark 2 breakout.
  */
-describe("LX2: tab extract split orientation", () => {
+describe("LX2: tree.move tab extract split orientation (Host/helper)", () => {
   let ctx;
 
   beforeEach(() => {

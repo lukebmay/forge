@@ -94,7 +94,9 @@ TreeOp `Delete` does not settle; Mark 2 `Remove` does.
 1. Each MONITOR has 0 or 1 child.
 2. A CON is never empty and never has exactly one child (unary collapse).
 3. A CON is never nested in a CON of the same layout. Same-type H/H or V/V
-   becomes TABBED. Do not flip H↔V to “fix” that — flipping undoes invent.
+   of **window-only** children becomes TABBED. If the inner H/V has a CON
+   child, unwrap it instead (TABBED/STACKED children must be WINDOW). Do
+   not flip H↔V to “fix” that — flipping undoes invent.
 4. v1 Move and Join act on a **WINDOW leaf**. Launch uses the selected
    WINDOW or CON as the slot; after Launch, focus is the new WINDOW.
 5. You cannot breakout/promote a node so it becomes a sibling of MONITOR,
