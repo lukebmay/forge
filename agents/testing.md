@@ -140,7 +140,16 @@ geometry; host remains authority for physical dual-mon sign-off. Design:
 | **`./scripts/forge/forge-test nested smoke-mark2`** | Two clients → invoke `join.right` → `forge tree` | Same as `nested run` (always stops) |
 | **`./scripts/forge/forge-test nested smoke-layout-ws`** | WS1 layout A → WS2 B → back → nautilus/ghostty → join tab → close → re-run A; CTS after each step | Same as `nested run` (always stops; defaults `--monitors=2`) |
 | **`./scripts/forge/forge-test nested smoke-layout-occupied`** | WS2 occupied 2-slot: seed dest-mon second role, `forge layout _forge-test-occupied-2slot`, no open-miss / PlaceNext mon-root | Same as `nested run` (always stops; defaults `--monitors=2`) |
+| **`./scripts/forge/forge-test nested smoke-nest-apps`** | Nautilus / Ghostty / TextEditor / Chrome map **in-nest** (proves client isolation) | Same as `nested run` (always stops) |
+| **`./scripts/forge/forge-test nested smoke-geom-epsilon`** | D095 sent↔observed ε campaign (nest tapes) | Same as `nested run` (always stops; defaults `--monitors=2`) |
 | **`./scripts/forge/forge-test nested restart` / `start`** | Long interactive retest loop | **stop** when campaign ends |
+
+**Nest client isolation (FIRM):** `client_env` sets a private `XDG_RUNTIME_DIR`
+under the nest state (Wayland socket symlinked), nest-scoped XDG config/cache/data
++ `HOME`, nest D-Bus, `GTK_USE_PORTAL=0`, `GIO_USE_VFS=local`, and Chrome
+`--user-data-dir=<nest>/chrome-profile`. Without that, GApplication/Chrome attach
+to the **host** desk. Prefer `nested exec` / `nested run` over
+`eval $(nested env --export)` in a long-lived agent shell.
 
 ```bash
 # One-shot campaign (default mon=1; auto cleanup) — --dev → TRACE (D068)

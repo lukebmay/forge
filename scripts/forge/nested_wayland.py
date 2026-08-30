@@ -413,29 +413,158 @@ def ensure_nest_cli_dirs(cfg: NestedConfig) -> Path:
     return root
 
 
+def nest_runtime_dir(cfg: NestedConfig) -> Path:
+    """Private XDG_RUNTIME_DIR for nest *clients* (not the nest Shell process)."""
+    return Path(cfg.state_dir) / "runtime"
+
+
+def nest_client_home(cfg: NestedConfig) -> Path:
+    return Path(cfg.state_dir) / "home"
+
+
+def nest_chrome_profile_dir(cfg: NestedConfig) -> Path:
+    return Path(cfg.state_dir) / "chrome-profile"
+
+
+def ensure_nest_client_isolation(cfg: NestedConfig) -> Path:
+    """Private runtime/config so GApplication / Chrome do not attach to host.
+
+    Nest Shell still uses the host ``XDG_RUNTIME_DIR`` (it embeds as a host
+    Wayland client). Apps + forge CLI talking to the nest get:
+
+    - ``XDG_RUNTIME_DIR=<state>/runtime`` with the nest Wayland socket symlinked
+      from the host runtime dir
+    - nest-scoped ``XDG_{CONFIG,CACHE,DATA}_HOME`` + ``HOME``
+    - nest D-Bus (already on ``cfg.bus_address``)
+
+    Without this, Nautilus/Chrome/Inkscape often map on the **host** desk.
+    """
+    ensure_nest_cli_dirs(cfg)
+    rt = nest_runtime_dir(cfg)
+    rt.mkdir(parents=True, exist_ok=True)
+    for sub in ("config-home", "cache", "data", "home", "chrome-profile"):
+        (Path(cfg.state_dir) / sub).mkdir(parents=True, exist_ok=True)
+    # Quiet Nautilus bookmark warnings on a fresh nest HOME.
+    bookmarks = nest_client_home(cfg) / ".gtk-bookmarks"
+    if not bookmarks.exists():
+        try:
+            bookmarks.write_text("", encoding="utf-8")
+        except OSError:
+            pass
+    # Symlink nest Wayland socket into private runtime (absolute host path).
+    host_sock = nest_socket_path(cfg.display)
+    link = rt / cfg.display
+    if link.exists() or link.is_symlink():
+        try:
+            if link.is_symlink() or link.is_file():
+                link.unlink()
+        except OSError:
+            pass
+    if host_sock.exists() or host_sock.is_socket():
+        try:
+            link.symlink_to(host_sock)
+        except OSError:
+            pass
+    host_lock = Path(str(host_sock) + ".lock")
+    link_lock = rt / f"{cfg.display}.lock"
+    if link_lock.exists() or link_lock.is_symlink():
+        try:
+            link_lock.unlink()
+        except OSError:
+            pass
+    if host_lock.exists():
+        try:
+            link_lock.symlink_to(host_lock)
+        except OSError:
+            pass
+    return rt
+
+
 def client_env(cfg: NestedConfig) -> dict[str, str]:
     """Environment for clients of the nested compositor (apps, forge CLI).
 
-    Isolation (N1/N2):
+    Isolation (N1/N2 + app singleton fix):
       FORGE_HOST=<hostname>-sub-<nestname>
-      FORGE_CONFIG_HOME=<state_dir>/forge-config  # settle-heuristics, windows.json
+      FORGE_CONFIG_HOME=<state_dir>/forge-config
+      XDG_RUNTIME_DIR=<state_dir>/runtime  (wayland socket symlinked)
+      nest-scoped XDG_CONFIG/CACHE/DATA_HOME + HOME
+      GTK_USE_PORTAL=0
 
-    Layout *profiles* stay shared via ``layout/`` / ``FORGE_LAYOUT_DIR``
-    (not redirected). Nest Shell gets the same FORGE_* via shell_start_env.
+    Layout *profiles* stay shared via ``layout/`` / ``FORGE_LAYOUT_DIR``.
+    Nest **Shell** process must NOT use this runtime dir — see shell_start_env.
     """
-    ensure_nest_cli_dirs(cfg)
+    ensure_nest_client_isolation(cfg)
+    state = Path(cfg.state_dir)
     return {
         "DBUS_SESSION_BUS_ADDRESS": cfg.bus_address,
         "WAYLAND_DISPLAY": cfg.display,
         "GDK_BACKEND": "wayland",
         "XDG_SESSION_TYPE": "wayland",
+        "XDG_RUNTIME_DIR": str(nest_runtime_dir(cfg)),
+        "XDG_CONFIG_HOME": str(state / "config-home"),
+        "XDG_CACHE_HOME": str(state / "cache"),
+        "XDG_DATA_HOME": str(state / "data"),
+        "HOME": str(nest_client_home(cfg)),
         # GTK4 GL on nested Mutter often never maps (ghostty hangs after
         # xdg_wm_base bind). Cairo + software GL keep nest open/map reliable.
         "GSK_RENDERER": "cairo",
         "LIBGL_ALWAYS_SOFTWARE": "1",
+        "GTK_USE_PORTAL": "0",
+        # Avoid GVFS/portal stalls that delay Nautilus map on nest D-Bus.
+        "GIO_USE_VFS": "local",
         "FORGE_HOST": nest_forge_host(cfg.name),
         "FORGE_CONFIG_HOME": str(nest_forge_config_home(cfg)),
     }
+
+
+def nest_launch_argv(
+    cfg: NestedConfig,
+    argv: Sequence[str],
+) -> list[str]:
+    """Rewrite argv for nest-safe launch (Chrome profile, Ghostty multi-instance)."""
+    return nest_launch_argv_for_state(Path(cfg.state_dir), argv)
+
+
+def nest_launch_argv_for_state(
+    state_dir: Path | str,
+    argv: Sequence[str],
+) -> list[str]:
+    """Like nest_launch_argv but keyed by nest state dir (for env-only callers)."""
+    if not argv:
+        return []
+    state = Path(state_dir)
+    out = [str(a) for a in argv]
+    base = Path(out[0]).name.lower()
+    if base == "ghostty":
+        filtered = [out[0]]
+        for a in out[1:]:
+            if str(a).startswith("--gtk-single-instance="):
+                continue
+            filtered.append(a)
+        filtered.append("--gtk-single-instance=false")
+        return filtered
+    if "chrome" in base or base == "chromium" or base.startswith("chromium"):
+        profile = str(state / "chrome-profile")
+        Path(profile).mkdir(parents=True, exist_ok=True)
+        has_ud = any(str(a).startswith("--user-data-dir=") for a in out[1:])
+        extra: list[str] = []
+        if not has_ud:
+            extra.append(f"--user-data-dir={profile}")
+        if not any(str(a) == "--no-first-run" for a in out):
+            extra.append("--no-first-run")
+        if not any(str(a).startswith("--ozone-platform=") for a in out):
+            extra.append("--ozone-platform=wayland")
+        return [out[0], *extra, *out[1:]]
+    return out
+
+
+def nest_state_dir_from_env(env: Optional[Mapping[str, str]] = None) -> Optional[Path]:
+    """Resolve nest state dir from client env (FORGE_CONFIG_HOME sibling)."""
+    e = env if env is not None else os.environ
+    raw = str(e.get("FORGE_CONFIG_HOME") or "").strip()
+    if not raw:
+        return None
+    return Path(raw).parent
 
 
 def resolve_host_xauthority(env: Optional[Mapping[str, str]] = None) -> Optional[str]:
@@ -1311,9 +1440,10 @@ def exec_in(
     if not argv:
         raise NestedError("exec requires a command")
     env = merge_client_env(cfg)
-    proc = subprocess.run(list(argv), check=False, env=env)
+    launch = nest_launch_argv(cfg, argv)
+    proc = subprocess.run(list(launch), check=False, env=env)
     if check and proc.returncode != 0:
-        raise NestedError(f"command failed ({proc.returncode}): {argv[0]}")
+        raise NestedError(f"command failed ({proc.returncode}): {launch[0]}")
     return int(proc.returncode)
 
 
@@ -1489,6 +1619,13 @@ def cmd_nested(_backend: Any, args: Any) -> int:
             if getattr(args, "monitors", None) is None:
                 args.monitors = 2
             args.nested_cmd = geom_epsilon_argv()
+            return _cli_run(args, name)
+        if action == "smoke-nest-apps":
+            from nest_apps_smoke import smoke_script_argv as nest_apps_argv
+
+            if getattr(args, "monitors", None) is None:
+                args.monitors = 1
+            args.nested_cmd = nest_apps_argv()
             return _cli_run(args, name)
         if action == "enable-forge":
             return _cli_enable_forge(name)

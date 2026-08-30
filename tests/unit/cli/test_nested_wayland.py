@@ -167,6 +167,12 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
     assert (tmp_path / "forge-config" / "config").is_dir()
     assert nest_forge_config_home(cfg) == tmp_path / "forge-config"
     assert ensure_nest_cli_dirs(cfg) == tmp_path / "forge-config"
+    # App singleton isolation: private runtime + nest HOME/config
+    assert env["XDG_RUNTIME_DIR"] == str(tmp_path / "runtime")
+    assert (tmp_path / "runtime").is_dir()
+    assert env["XDG_CONFIG_HOME"] == str(tmp_path / "config-home")
+    assert env["HOME"] == str(tmp_path / "home")
+    assert env["GTK_USE_PORTAL"] == "0"
 
     # Nested shell process uses host display, not nest display
     senv = shell_start_env(cfg)
@@ -177,9 +183,10 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
     assert senv["MUTTER_DEBUG_DUMMY_MONITOR_SCALES"] == "1,1"
     assert senv["GSK_RENDERER"] == "cairo"
     assert senv["LIBGL_ALWAYS_SOFTWARE"] == "1"
-    # N2: Shell inherits same forge isolation as client_env (no full XDG rewrite)
+    # Shell keeps host XDG_RUNTIME_DIR (embeds on host Wayland); forge roots only
     assert senv["FORGE_CONFIG_HOME"] == str(tmp_path / "forge-config")
     assert senv["FORGE_HOST"] == nest_forge_host("forge")
+    assert senv.get("XDG_RUNTIME_DIR") != env["XDG_RUNTIME_DIR"]
     assert "XDG_CONFIG_HOME" not in senv or senv.get("XDG_CONFIG_HOME") == os.environ.get(
         "XDG_CONFIG_HOME"
     )
@@ -258,6 +265,8 @@ def test_merge_client_env_isolation(tmp_path: Path) -> None:
     assert merged["FORGE_HOST"] != "parent-host"
     assert merged["FORGE_CONFIG_HOME"] == str(tmp_path / "forge-config")
     assert merged["WAYLAND_DISPLAY"] == "wayland-forge"
+    assert merged["XDG_RUNTIME_DIR"] == str(tmp_path / "runtime")
+    assert merged["HOME"] == str(tmp_path / "home")
     # Path helpers: nest heuristics ≠ parent
     parent_h = heuristics_path(env={
         "FORGE_CONFIG_HOME": str(tmp_path / "parent-config"),

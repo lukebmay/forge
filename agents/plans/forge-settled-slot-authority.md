@@ -22,7 +22,7 @@
 | **Untestable ⇒ remove or make testable** | Fallbacks / zoom reasserts / heal waves that cannot be fault-injected under a named `--dev=` mode are dead code. |
 | **Primary path first** | `strict-geometry` / nest smokes run **without** fallbacks. Fix the primary present; do not paper over with reasserts. |
 | **Nest logs are separate** | Nest campaigns query **nest** `forge.log` / `forge.jsonl` via `nest_log_query` / `FORGE_CONFIG_HOME` sibling — **never** the host tape. |
-| **No host-singleton launches from nest** | Never launch Chrome / Nautilus / Inkscape from nest campaigns — they attach to the host desk. Nest-safe = ghostty (`--gtk-single-instance=false`). Always close nest TILE windows on campaign exit. |
+| **Nest client isolation** | Nest `client_env` uses private `XDG_RUNTIME_DIR` (+ Wayland socket symlink), nest-scoped XDG config/cache/data/`HOME`, nest D-Bus, `GTK_USE_PORTAL=0`, and Chrome `--user-data-dir=<nest>/chrome-profile`. Without this, GApplication/Chrome attach to the **host**. Prove with `forge-test nested smoke-nest-apps`. Always close nest windows (and kill nest chrome profile procs) on campaign exit. |
 
 If a change violates a row above, **stop** — it is out of scope for this plan.
 
@@ -150,8 +150,9 @@ Env vars are **not** required for v1; add later only if needed. Fallbacks may re
 | **Every D095 slice** | Add / extend a **nest** smoke or campaign that exercises the new behavior (and can opt into `--dev=` modes). |
 | **Nest tape** | `~/.local/state/forge/nested/<name>/forge.log` + `.jsonl` (sibling of `FORGE_CONFIG_HOME`). Query with `nest_log_query` / `forge log` under nest `env`. |
 | **Never** | Scrape host `~/.local/state/forge/forge.log` for nest campaigns; never launch host-singleton apps from nest. |
-| **Cleanup** | Campaigns must close nest TILE windows they opened before exit. |
-| **Entry** | `forge-test nested smoke-geom-epsilon` (S1); further smokes named per slice. |
+| **Cleanup** | Campaigns must close nest Meta windows they opened; kill nest `chrome-profile` processes if still alive after nest stop. |
+| **Entry** | `forge-test nested smoke-nest-apps` (map proof) · `smoke-geom-epsilon` (ε) · further smokes per slice. |
+| **Do not** | `eval $(forge-test nested env --export)` in an agent shell that later needs host Wayland without unsetting — it pollutes `WAYLAND_DISPLAY` / `XDG_RUNTIME_DIR`. Prefer `forge-test nested exec --` / `nested run --`. |
 
 ### L9 — Amend D069 / D071 heal posture
 

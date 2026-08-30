@@ -3,7 +3,7 @@
 **Updated:** 2026-08-30 — **D095** Accepted; S1 landed; **ε₀ = 4** locked.
 **P0 next:** S2 host-bag window model → S3 visible-first → S4 `--dev=` modes.
 Then heal demotion / toggleTabStack nest. **Do not resave loadouts. Do not
-delete heal waves until S3. Do not launch Chrome/Nautilus/Inkscape from nest.**
+delete heal waves until S3.** Nest multi-app: `smoke-nest-apps` (isolation).
 **Plan:**
 [forge-settled-slot-authority](./plans/forge-settled-slot-authority.md)
 ·

@@ -62,18 +62,11 @@ DEFAULT_PROFILE = "_forge-test-ghosttys"
 ENTRY = (
     "./install --dev && ./scripts/forge/forge-test nested smoke-geom-epsilon"
 )
-# Nest-safe clients only. Chrome / Nautilus / Inkscape are GApplication or
-# single-instance and often map on the **host** desk even when WAYLAND_DISPLAY
-# is the nest — never launch them from this campaign (host leak).
+# Multi-app churn uses nest client isolation (private XDG_RUNTIME_DIR).
+# Prefer smoke-nest-apps for map proofs; this campaign stays ghostty-heavy
+# for ε samples (fast, reliable) and may add apps later.
 APP_LAUNCHERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("ghostty", ("ghostty",)),
-)
-HOST_SINGLETON_SKIP = (
-    "chrome",
-    "nautilus",
-    "inkscape",
-    "google-chrome",
-    "google-chrome-stable",
 )
 
 
@@ -254,9 +247,7 @@ def exercise_desk(
 
     ensure_test_profiles(env=env, profile_a=profile)
     launches: list[dict[str, Any]] = []
-    actions: list[str] = [
-        f"skip-host-singleton:{','.join(HOST_SINGLETON_SKIP)}"
-    ]
+    actions: list[str] = []
 
     # 3 ghosttys → layout/move/size churn (nest-safe only).
     try:

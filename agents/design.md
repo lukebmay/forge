@@ -415,8 +415,9 @@ restores placement.
 **ε₀ = 4 px** (Meta): `max(4, ceil(worst_settle_in_band_dMax × 1.2))`;
 nest ghostty settle residual was 0 (2026-08-30). Progressive bumps are
 **per wm-class**. Install modes: `./install --dev=strict-geometry,…`.
-Nest smokes use **nest** logs only; never launch Chrome/Nautilus/Inkscape
-from nest (host leak).
+Nest smokes use **nest** logs only. Nest **client_env** isolates
+`XDG_RUNTIME_DIR` / config / Chrome profile so Nautilus/Chrome map in-nest
+(`forge-test nested smoke-nest-apps`).
 
 **Finish-before:** do not delete heal waves until visible-first lives on
 primary present (S3). Plan:

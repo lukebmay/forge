@@ -4,8 +4,8 @@
 S1 `geom-epsilon` + nest `smoke-geom-epsilon` landed; **ε₀ = 4** locked.
 **P0 next:** S2 host-bag window model → S3 `Tree.apply` visible-first →
 S4 `--dev=` modes. **Do not** delete heal waves until S3. Parallel:
-toggleTabStack nest. **Do not resave loadouts.** **Do not** launch
-Chrome/Nautilus/Inkscape from nest (host leak). **Plan:**
+toggleTabStack nest. **Do not resave loadouts.** Nest apps work via client
+isolation (`smoke-nest-apps`). **Plan:**
 [forge-settled-slot-authority](./plans/forge-settled-slot-authority.md)
 · [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
 **Architecture:** [architecture-verdict-2026-08-29.md](./plans/forge-live-layout-dnd-proof/architecture-verdict-2026-08-29.md)
@@ -28,7 +28,7 @@ evidence-only writes; no geometry-force; ε₀=4; nest logs separate.
 | ε₀ | **4** px Meta; formula `max(4, ceil(worst_settle_in_band×1.2))` |
 | Progressive bump | **Per wm-class** (S6 + fault-inject) |
 | `--dev=` | Comma modes: `strict-geometry`, `geom-epsilon-measure`, `fault-inject-geometry`, `geom-trace` |
-| Nest | Separate tapes; ghostty-only launches; close nest tiles on exit |
+| Nest | Separate tapes; **private XDG_RUNTIME_DIR** client isolation; `smoke-nest-apps`; close nest windows on exit |
 
 ## Next session (start here)
 
@@ -44,12 +44,12 @@ evidence-only writes; no geometry-force; ε₀=4; nest logs separate.
 
 | Do | Do not |
 | --- | --- |
-| Nest first for JS (`./install --dev` + `forge-test nested …`) | Launch Chrome/Nautilus/Inkscape from nest |
-| Close nest TILE windows campaigns open | Leave nest-style ghostty on **host** |
-| Hunt `forge log` / nest jsonl | `cat`/`rg` tape files |
+| Nest first for JS (`./install --dev` + `forge-test nested …`) | Pollute agent shell with `eval $(nested env --export)` then expect host Wayland |
+| Use `nested exec/run` so clients get isolated `XDG_RUNTIME_DIR` | Launch nest apps with host runtime (GApplication → host desk) |
+| Close nest windows; kill leftover nest `chrome-profile` procs | Leave nest Chrome/ghostty attached after stop |
+| Hunt nest `forge log` / jsonl | `cat`/`rg` tape files |
 | | Delete heal waves before S3 |
 | | Resave personal loadouts |
-| | Commit/push unless asked |
 
 ## Brake
 

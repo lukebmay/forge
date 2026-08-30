@@ -33,6 +33,7 @@ _NESTED_ACTIONS = frozenset(
         "smoke-layout-occupied",
         "smoke-layout-tabbed-edge",
         "smoke-geom-epsilon",
+        "smoke-nest-apps",
         "enable-forge",
         "logs",
         "wait",
@@ -254,6 +255,7 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             f"  {NESTED_CLI} smoke-layout-occupied # WS2 occupied 2-slot apply (no open-miss)\n"
             f"  {NESTED_CLI} smoke-layout-tabbed-edge # TABBED × edge zones (H5)\n"
             f"  {NESTED_CLI} smoke-geom-epsilon   # D095 S1 sent↔observed ε campaign\n"
+            f"  {NESTED_CLI} smoke-nest-apps      # nautilus/chrome/editor map in-nest\n"
             f"  {NESTED_CLI} restart               # reload shell/extension\n"
             f"  {NESTED_CLI} stop\n"
             "\n"
@@ -281,7 +283,7 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             "start | stop | restart | status | env | exec | run | invoke | "
             "dnd-drop | smoke-mark2 | smoke-layout-dnd | smoke-layout-ws | "
             "smoke-layout-occupied | smoke-layout-tabbed-edge | "
-            "smoke-geom-epsilon | enable-forge | "
+            "smoke-geom-epsilon | smoke-nest-apps | enable-forge | "
             "logs | wait | doctor  (default: status)"
         ),
     )

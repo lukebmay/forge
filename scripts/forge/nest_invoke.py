@@ -746,6 +746,20 @@ def _window_count(
         return 0
 
 
+def _nest_rewrite_client(
+    env: Mapping[str, str], client: Sequence[str]
+) -> list[str]:
+    """Apply nest Chrome/Ghostty argv rewrites when FORGE_CONFIG_HOME is set."""
+    try:
+        from nested_wayland import nest_launch_argv_for_state, nest_state_dir_from_env
+    except Exception:
+        return [str(a) for a in client]
+    state = nest_state_dir_from_env(env)
+    if state is None:
+        return [str(a) for a in client]
+    return nest_launch_argv_for_state(state, client)
+
+
 def _launch_one(
     env: Mapping[str, str],
     client: Sequence[str],
@@ -754,9 +768,18 @@ def _launch_one(
     workspace: Optional[int] = None,
 ) -> None:
     before = _window_count(bus_address, workspace=workspace)
+    launch = _nest_rewrite_client(env, client)
+    try:
+        from nested_wayland import nest_state_dir_from_env as _nest_state
+
+        nest_isolated = _nest_state(env) is not None
+    except Exception:
+        nest_isolated = bool(str(env.get("FORGE_CONFIG_HOME") or "").strip())
     forge = shutil.which("forge", path=env.get("PATH"))
-    if forge:
-        app = "nautilus" if "nautilus" in client[0] else os.path.basename(client[0])
+    # forge launch / DesktopAppInfo often re-attaches host GApplication
+    # singletons. Under nest client isolation, always Popen directly.
+    if forge and not nest_isolated:
+        app = "nautilus" if "nautilus" in launch[0] else os.path.basename(launch[0])
         subprocess.run(
             [forge, "launch", app, "--timeout", "20"],
             check=False,
@@ -769,7 +792,7 @@ def _launch_one(
     if _window_count(bus_address, workspace=workspace) > before:
         return
     subprocess.Popen(
-        list(client),
+        list(launch),
         env=dict(env),
         start_new_session=True,
         stdout=subprocess.DEVNULL,
