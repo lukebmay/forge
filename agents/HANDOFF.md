@@ -1,16 +1,16 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-30 — **S8 landed** (vinyl open-miss + CENTER
-nested TABBED). Nest occupied **ilGIo** + dnd green. Host Shell still
-on the previous tip until logout. **P0:** H5 TABBED TOP/BOTTOM. **Do
-not resave loadouts.** **Plan:**
+**Updated:** 2026-08-30 — Host eyes-on: `dev` + `vinyl` + Nautilus tab
+joins OK; RIGHT edge on TAB group felt thrashy (nest matrix now green);
+`dev` apply ~10s from soft-heuristic poison (**fixed**). **P0 leftover:**
+toggleTabStack nest; host logout for soft+edge tip; inkscape vs indigo
+slot size. **Do not resave loadouts.** **Plan:**
 [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
 **Architecture:** [architecture-verdict-2026-08-29.md](./plans/forge-live-layout-dnd-proof/architecture-verdict-2026-08-29.md)
 **Branch:** **`master`**. **Push:** only if asked.
 
 Cutover C7 + agree-resync R0–R4+R6 are in the tree. Archive those plans
-when the operator wants. Proof plan still owns nest TABBED TOP/BOTTOM
-(H5) and toggleTabStack.
+when the operator wants. Proof plan still owns nest toggleTabStack.
 
 ## Pain
 
@@ -40,7 +40,7 @@ KeybindAdapterWebView.
 [`forge-tom-agree-resync.md`](./plans/forge-tom-agree-resync.md).
 **Active remainder:**
 [`forge-live-layout-dnd-proof.md`](./plans/forge-live-layout-dnd-proof.md)
-(H5 nest TABBED slotSplit; toggleTabStack). S8 is in the
+(H5 nest edge matrix landed; toggleTabStack nest). S8 is in the
 tree (identity-only skeleton take; CENTER wrap dest, not parent→TABBED).
 
 Product Move **is** Mark 2 Move. Glossary =
@@ -49,68 +49,45 @@ Product Move **is** Mark 2 Move. Glossary =
 **Size** (D090) = **percent** or **`share`**. Action ids **`size.share*`**
 (D091). **FLOAT window** = FLOATS bag. Do not say float for leftover size.
 
-## Host eyes-on (2026-08-29)
+## Host eyes-on (2026-08-30, session `9m9Kw`)
 
-Human: `forge layout dev` **works** after this tip. **DnD with Nautilus
-works.** Right-mon double TAB chrome (EZmFr) is gone on this tip. Do
-**not** resave `dev` / `t1` loadouts (v2 `roles` +
-`layout.mon*.children` / `layout: tabbed` unchanged).
+Human: `forge layout dev` **works**; `vinyl` **works** (Inkscape content
+smaller than indigo slot outline — soft size leftover). Nautilus DnD
+**CENTER** join / create TAB groups **works**. RIGHT horizontal DnD onto
+a TAB group (`dnd surface=slotSplit stackedOrTabbed=true`) **felt like
+tab thrash** on host; nest synthetic edge matrix is green (see below).
 
-Earlier host crash (session ScLRi, ~18:39): `float-mismatch` →
-`moveWindowToFloats` → `render-throw parentNode is null`; later
-`attachTabDecoration` on disposed St.BoxLayout logged out Shell. Those
-paths are patched (H1 Forest-wins, deco lifecycle). Hunt `forge log`
-only.
+`dev` apply `ok=true ms=10046` with
+`settle-soft-fail … soft focus wall timeout after 9000ms`. Cause:
+quiet-expiry corrections were recorded as residual latencies (~3002ms at
+soft clamp) → softTimeout→clamp → wall=`soft×3`=9000. **Fix:** do not
+record quiet-expiry as residual; do not learn when `softSettled=false`.
+Host heuristics trimmed (backup
+`~/.config/forge/config/settle-heuristics.json.bak-20260830`). After
+scrub, focus soft≈1261 wall≈3783 (still ≥2s when open-leaf pin floor
+applies). Host needs **logout** to load soft+edge tip.
 
-## Fixes in this tip (nest + host)
+Do **not** resave `dev` / `t1` / `vinyl` loadouts.
+
+## Fixes in this tip (nest + soft)
 
 | Area | What |
 | --- | --- |
-| **D092** | Live Forest sole topology; `lib/host` bag; nanoid |
-| **D093** | `lib/agree` present → observe → AGREE or RESYNC |
-| **D094** | Same-type coerce unwraps mixed H/H; wrapMonitorMax1 absorb; ensure_layout bag-join; forest-match max-1 peel |
-| **H1 observe** | Forest TILES wins; stale `bag.floating` repaired; `metric warn float-promote-denied` |
-| **align FLOATS→TILES** | `hostBag.set`; `align-floats-to-tiles` |
-| **Decoration** | destroy clears `con.decoration`; attach does not rethrow; `metric warn deco-disposed` |
-| **Borders** | `showWindowBorders` null-safe on FLOATS detach |
-| **Hunt** | `metric warn settle-jitter` / `settle-soft-fail`; `bag-con-child` invariant scan |
-| **Nest** | `smoke-layout-dnd` · `smoke-layout-ws` · `smoke-layout-occupied` + `nest_log_query.py` |
-| **S8 skeleton** | Identity-only take; Guake/float-class stays FLOATS (`skeleton skip-float`); unmatched leftover does not fill a role |
-| **S8 CENTER** | H/V CON dest CENTER → wrap dest+source (`shouldCreateCon`); insert no longer converts H/V parent to TABBED |
+| **Soft poison** | `runSoftFocusBarrierOnSignals`: quiet-expiry corrections skip residual push; `recordSoftFocusHeuristics` no-op unless `softSettled` |
+| **H5 nest matrix** | `smoke-layout-tabbed-edge`: seed 3 ghosttys → CENTER bag → LEFT/RIGHT/TOP/BOTTOM; bag WINDOW-only; dragged is H/V sibling of bag |
+| **H5 units** | RIGHT multi-tab + RIGHT peel keep bag WINDOW peers (`WindowManager-drag-drop-comprehensive`) |
+| **S8** (prior) | Identity-only skeleton; CENTER wrap dest beside TABBED |
 
-**Nest green:** `smoke-layout-dnd` · `smoke-layout-occupied` (**ilGIo**,
-2026-08-30). Expected WARN: `float-promote-denied` on entered-monitor.
-Proto brake **154**.
+**Nest green:** `smoke-layout-dnd` · `smoke-layout-occupied` ·
+`smoke-layout-tabbed-edge` (LEFT,RIGHT,TOP,BOTTOM). Proto brake **154**.
 
 ## Nest vs host logout (FIRM)
 
 | Question | Answer |
 | --- | --- |
 | Does nest need host Wayland logout to pick up JS? | **No.** `./install --dev` then `forge-test nested restart\|run` loads tip into nest Shell. |
-| When is host logout needed? | Host Shell never loaded this tip this boot **and** you need host dual-mon / personal `dev` eyes-on. |
+| When is host logout needed? | Host Shell never loaded this tip this boot **and** you need host dual-mon / personal `dev` eyes-on / soft-quiet speed. |
 | After crash | Re-enable user extensions (`gsettings set org.gnome.shell disable-user-extensions false` + `gnome-extensions enable forge@jmmaranan.com`). Nest shared that dconf key. |
-
-## Host vinyl + nested TABBED (session jwuvx, 2026-08-30)
-
-`forge layout vinyl` on WS2: `ApplyLayout start name=vinyl ws=1`
-`orphans=3`. `skeleton take role=inkscape` then
-`open PlaceNext dest failed role=inkscape` (ghostty/YouTube PlaceNext
-ok). `metric apply ok=false ms=76 phase=open` `reason=open-miss`
-roles `inkscape,ghostty,YouTube`. Hunt: `forge log --session jwuvx`.
-
-Cause: `align-floats-to-tiles` pulled Guake (FLOATS) onto empty
-`mo0ws1`; leftover FIFO filled that window as inkscape so there was no
-PH. **S8:** skip float-class align; take identity only; float-class →
-FLOATS (`skeleton skip-float`).
-
-Same session DnD: dock Nautilus then `dnd commit zone=CENTER`
-`surface=insert layout=TABBED stackedOrTabbed=false`. Right head became
-TABBED(Ghostty, TABBED(YT,Gmail,Voice), Nautilus). Cause: CENTER insert
-set the dest H/V CON to TABBED and swallowed the tab bag. **S8:**
-CENTER on H/V CON/MONITOR wraps dest+source only.
-
-Do **not** resave `vinyl.json` / `dev`. Host needs **logout** to load
-this tip; then eyes-on `forge layout vinyl` on WS2. Agents: nest only.
 
 ## Next session
 
@@ -118,15 +95,15 @@ this tip; then eyes-on `forge layout vinyl` on WS2. Agents: nest only.
 
 | Slice | Disk |
 | --- | --- |
-| **H5 nest** | `dnd-drop` TOP/BOTTOM onto a TABBED **slot** must not nest H/V CON inside the bag |
 | **toggleTabStack nest** | CENTER drop groups; TABBED bag still soft in WS campaign (Mark 2 toggle may no-op) |
-| **S8 host eyes-on** | After logout: `forge layout vinyl` on WS2; CENTER Nautilus onto dest TILE beside a TABBED bag. Not from agents. |
+| **Host RIGHT thrash eyes-on** | After logout: rebuild TAB group, RIGHT-drop Nautilus; if still weird, hunt deco/geometry (nest structure path is green) |
+| **Vinyl inkscape slot** | Content smaller than indigo outline — size/slot leftover, not H5 |
 | **Archive (optional)** | cutover + agree-resync when operator wants |
 
 ### Do
 
 1. Nest first for JS reload (`./install --dev` + `forge-test nested …`).
-2. Hunt `forge log` only (`float-promote-denied`, `deco-disposed`, `settle-jitter`, `render-throw`, `forest-match`, `skeleton skip-float`, `PlaceNext dest`).
+2. Hunt `forge log` only (`float-promote-denied`, `deco-disposed`, `settle-jitter`, `render-throw`, `forest-match`, `skeleton skip-float`, `PlaceNext dest`, `settle-soft-fail`, `soft quiet`).
 3. Use `_forge-test-*` in nest, never personal `dev`.
 
 ### Do not
@@ -135,6 +112,7 @@ this tip; then eyes-on `forge layout vinyl` on WS2. Agents: nest only.
 - Treat host logout as the ordinary reload loop
 - Resave personal loadouts
 - Commit or push unless asked
+- Re-learn soft residuals from wall timeouts
 
 ## Architecture verdict (do not rediscover)
 
@@ -147,4 +125,4 @@ live-proof gate for that verdict.
 
 `cd prototypes/container-motion && npm test` → **154**.
 `./scripts/forge/forge-test nested smoke-layout-ws` · `smoke-layout-dnd`
-· `smoke-layout-occupied`.
+· `smoke-layout-occupied` · `smoke-layout-tabbed-edge`.

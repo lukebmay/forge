@@ -675,6 +675,100 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       expect(wrap.childNodes.indexOf(dragged)).toBeLessThan(wrap.childNodes.indexOf(tabCon));
     });
 
+    it("RIGHT on multi-tab TABBED bag HSPLITs bag|dragged (tabs stay WINDOW peers)", () => {
+      // Host 9m9Kw: RIGHT onto a joined TAB group thrashed tab membership.
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const tabCon = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const tabs = [];
+      for (let i = 0; i < 3; i++) {
+        const meta = createMockWindow({
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        });
+        const w = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, meta);
+        w.mode = WINDOW_MODES.TILE;
+        tabs.push(w);
+      }
+      const { nodeWindow: sibling } = createWindowWithRect(monitor, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 400, y: 400, width: 400, height: 300 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      seedLiveForest(wm());
+      // Right-center of the left tab slot (avoid corner nearest-edge TOP/BOTTOM).
+      setPointer(900, 540);
+      wm().nodeWinAtPointer = tabs[1];
+      wm().moveWindowToPointer(dragged, false);
+
+      const wrap = dragged.parentNode;
+      expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(wrap.parentNode).toBe(monitor);
+      expect(tabCon.parentNode).toBe(wrap);
+      expect(tabCon.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(tabCon.childNodes).toHaveLength(3);
+      expect(tabCon.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
+      for (const t of tabs) expect(tabCon.childNodes).toContain(t);
+      expect(tabCon.childNodes).not.toContain(dragged);
+      expect(wrap.childNodes).toContain(tabCon);
+      expect(wrap.childNodes).toContain(dragged);
+      expect(wrap.childNodes.indexOf(tabCon)).toBeLessThan(wrap.childNodes.indexOf(dragged));
+      expect(sibling.parentNode).toBe(monitor);
+    });
+
+    it("RIGHT peel of a tab member keeps remaining tabs in the bag", () => {
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const tabCon = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+      const tabs = [];
+      for (let i = 0; i < 3; i++) {
+        const meta = createMockWindow({
+          rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
+          workspace: workspace0(),
+        });
+        const w = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, meta);
+        w.mode = WINDOW_MODES.TILE;
+        tabs.push(w);
+      }
+      const dragged = tabs[2];
+      dragged.mode = WINDOW_MODES.GRAB_TILE;
+
+      seedLiveForest(wm());
+      setPointer(1800, 540);
+      wm().nodeWinAtPointer = tabs[0];
+      wm().moveWindowToPointer(dragged, false);
+
+      const wrap = dragged.parentNode;
+      expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(tabCon.parentNode).toBe(wrap);
+      expect(tabCon.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(tabCon.childNodes).toEqual(expect.arrayContaining([tabs[0], tabs[1]]));
+      expect(tabCon.childNodes).not.toContain(dragged);
+      expect(tabCon.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
+      expect(wrap.childNodes).toContain(tabCon);
+      expect(wrap.childNodes).toContain(dragged);
+      expect(wrap.childNodes.indexOf(tabCon)).toBeLessThan(wrap.childNodes.indexOf(dragged));
+    });
+
     it("no-op when already bottom of VSPLIT and drop BOTTOM on top sibling", () => {
       const monitor = getMonitor();
       monitor.layout = LAYOUT_TYPES.HSPLIT;

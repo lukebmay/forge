@@ -31,6 +31,7 @@ _NESTED_ACTIONS = frozenset(
         "smoke-layout-dnd",
         "smoke-layout-ws",
         "smoke-layout-occupied",
+        "smoke-layout-tabbed-edge",
         "enable-forge",
         "logs",
         "wait",
@@ -194,6 +195,8 @@ def print_forge_test_help(*, stream: TextIO | None = None) -> None:
                      "scripts/forge/nest_layout_occupied_smoke.py", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} smoke-layout-occupied", **kw), " ",
          dim("# WS2 occupied 2-slot apply; no open-miss", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-layout-tabbed-edge", **kw), "",
+         dim("# TABBED × LEFT/RIGHT/TOP/BOTTOM edge drops", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} restart", **kw), "                 ",
          dim("# interactive loop; stop when done", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} status", **kw), "                  ",
@@ -248,6 +251,7 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             f"  {NESTED_CLI} smoke-layout-dnd      # dual-mon ghosttys + occupied dest dnd\n"
             f"  {NESTED_CLI} smoke-layout-ws       # WS1 A → WS2 B → nautilus/join/close → A\n"
             f"  {NESTED_CLI} smoke-layout-occupied # WS2 occupied 2-slot apply (no open-miss)\n"
+            f"  {NESTED_CLI} smoke-layout-tabbed-edge # TABBED × edge zones (H5)\n"
             f"  {NESTED_CLI} restart               # reload shell/extension\n"
             f"  {NESTED_CLI} stop\n"
             "\n"
@@ -273,7 +277,7 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
         help=(
             "start | stop | restart | status | env | exec | run | invoke | "
             "dnd-drop | smoke-mark2 | smoke-layout-dnd | smoke-layout-ws | "
-            "smoke-layout-occupied | "
+            "smoke-layout-occupied | smoke-layout-tabbed-edge | "
             "enable-forge | "
             "logs | wait | doctor  (default: status)"
         ),

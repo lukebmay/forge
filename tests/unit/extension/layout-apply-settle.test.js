@@ -495,6 +495,25 @@ describe("heuristics file shape + soft timeout", () => {
     expect(written).toContain("h|term|focus-phase|focus");
     expect(written).toContain("250");
   });
+
+  it("does not learn residuals when soft did not settle", () => {
+    let written = null;
+    const session = new HeuristicsMemorySession({
+      read: () => null,
+      write: (text) => {
+        written = text;
+      },
+    });
+    recordSoftFocusHeuristics(session, {
+      host: "h",
+      wmClasses: ["Term"],
+      residuals: [{ latencyMs: 3002 }],
+      softSettled: false,
+    });
+    expect(session.dirty).toBe(false);
+    expect(session.flush().persist).toBe("skipped");
+    expect(written).toBeNull();
+  });
 });
 
 describe("waitHardReadyOnSignals", () => {
@@ -671,6 +690,41 @@ describe("runSoftFocusBarrierOnSignals", () => {
     t.fireMs(80);
     expect(done[0].corrections).toBe(1);
     expect(done[0].softSettled).toBe(true);
+  });
+
+  it("quiet-expiry correction does not record softMs as residual latency", () => {
+    let pending = false;
+    let corrects = 0;
+    const done = [];
+    const t = timerBag();
+    let now = 0;
+    runSoftFocusBarrierOnSignals(
+      {
+        checkNeeded: () => (pending ? [{ op: "focus", selector: "id:9" }] : []),
+        applyCorrect: () => {
+          corrects += 1;
+          pending = false;
+        },
+        schedule: t.schedule,
+        cancel: t.cancel,
+        nowMs: () => now,
+        softTimeoutMs: 3000,
+        maxWallMs: 9000,
+      },
+      (out) => done.push(out)
+    );
+    expect(done).toHaveLength(0);
+    expect(corrects).toBe(0);
+    pending = true;
+    now = 3000;
+    t.fireMs(3000);
+    expect(corrects).toBe(1);
+    now = 6000;
+    t.fireMs(3000);
+    expect(done[0].ok).toBe(true);
+    expect(done[0].softSettled).toBe(true);
+    expect(done[0].corrections).toBe(1);
+    expect(done[0].residuals).toEqual([]);
   });
 
   it("sync reentry from applyCorrect does not burn max corrections", () => {

@@ -1,10 +1,11 @@
 # forge-live-layout-dnd-proof — Live layout + DnD after TOM cutover
 
-**Status:** in progress — host `dev` + Nautilus TILE DnD **PASS** on
-the prior tip. **S8 landed** (vinyl unmatched/float-class skeleton;
-CENTER wrap dest beside a TABBED bag). **P0 now:** H5 TABBED
-TOP/BOTTOM; toggleTabStack nest. Host `vinyl` eyes-on after logout
-(not from agents).
+**Status:** in progress — host `dev`/`vinyl` + Nautilus CENTER DnD
+**PASS** (`9m9Kw`). **S8 landed.** **H5 nest edge matrix green**
+(`smoke-layout-tabbed-edge` LEFT/RIGHT/TOP/BOTTOM). Soft-heuristic
+poison fixed (quiet-expiry no longer trains 9s walls). **P0 now:**
+toggleTabStack nest; host logout for soft+edge tip; RIGHT thrash
+eyes-on if still weird after logout (nest structure path green).
 **Branch:** master
 **Blocker:** (none) — not a redesign meeting. Twin child-list atomics
 still forbidden.
@@ -30,11 +31,11 @@ gate — unit green is not sign-off.
       TILE before it is the default.
 - [x] Nest `dnd-drop TILE --dest-monitor 1` while dest **has** tiles
       (occupied; not L1.r015 empty-mon) — same campaign, TILE rehomed.
-- [ ] Nest `dnd-drop` TOP/BOTTOM onto a TABBED **slot** does not nest
-      an H/V CON inside the bag
+- [x] Nest `dnd-drop` LEFT/RIGHT/TOP/BOTTOM onto a TABBED **slot** does
+      not nest an H/V CON inside the bag (`smoke-layout-tabbed-edge`)
 - [x] Host `forge layout dev` after logout on **this** tip (human
-      eyes-on 2026-08-29): desk good; Nautilus TILE DnD works. Do not
-      resave loadouts.
+      eyes-on 2026-08-29 + 2026-08-30): desk good; Nautilus CENTER DnD
+      works. Do not resave loadouts.
 - [x] Proto brake `cd prototypes/container-motion && npm test` → **154**
 - [x] Occupied skeleton: unmatched / float-class live WINDOW does not
       fill a TILE role; PlaceNext dest stays PH (S8 units + nest
@@ -155,10 +156,12 @@ bag), not a nested split inside the bag.
 | **S2** | Paint: TABBED/STACKED replaceChildren = Forest kids only; leftover CON → lift to MONITOR or destroy if empty; never extras-under-bag. Render must not throw on detached FLOAT | `lib/extension/tom-live.js` `paintLiveForest` | landed (units) |
 | **S3** | Occupied-mon skeleton: do not stack PH beside live; lift live WINDOWs into spec slots or skip skeleton when `_monHasLayoutSkeleton` / live already present and plan bind can proceed | `tom-live.js` `forestApplySkeletonMon` | landed (units) |
 | **S4** | Apply forest-match: after S1–S3, `mon0`/`mon1` structureMismatches gone on `_forge-test-nest-dual`. If still failing, hunt `compareLayoutStructure` vs `projectForestFromTom` | `layout-apply-run.js` / `layout-plan.js` only if snapshot IR is wrong | nest + host `dev` **PASS** |
-| **S5** | DnD: no-decision TRACE; source mon Meta fallback; dest-with-tiles rehome; TABBED slotSplit uses bag slot | `drag-drop.js`; `forestSlotSplit`/`forestSplit` in `tom-live.js` (S2 owner if same PR) | occupied dest nest + host Nautilus **PASS**; H5 TABBED TOP/BOTTOM still open |
+| **S5** | DnD: no-decision TRACE; source mon Meta fallback; dest-with-tiles rehome; TABBED slotSplit uses bag slot | `drag-drop.js`; `forestSlotSplit`/`forestSplit` in `tom-live.js` (S2 owner if same PR) | occupied dest nest + host Nautilus **PASS**; H5 edge nest **green** |
 | **S6** | Nest campaign `--monitors=2` + dnd-drop dest-monitor; stop nest after | `scripts/forge/nest_layout_dnd_smoke.py` | **green** (`smoke-layout-dnd` + `smoke-layout-ws`) |
 | **S7** | WS2 occupied 2-slot apply: skeleton must not greedy-fill a live WINDOW into the **wrong** role; missing role keeps a PH so PlaceNext is slot not mon-root; apply does not `open-miss` | `tom-live.js` `takeSkeletonLiveWin` / `forestSkeletonPlaceWin`; nest `_forge-test-*` 2-class HSPLIT on WS2 | **landed** (units + nest `smoke-layout-occupied`) |
 | **S8** | Vinyl empty dest + Guake FLOAT leftover: no FIFO fill, no FLOATS→TILES align for float-class; CENTER onto TILE sibling of TABBED wraps dest only (not parent→TABBED insert) | `tom-live.js` `takeSkeletonLiveWin` / `alignForestToLiveConParent`; `drag-drop.js` `_buildDropOperation` CENTER; `drop-intent` wrap | **landed** (units + nest occupied **ilGIo** + `smoke-layout-dnd`; host vinyl after logout) |
+| **S9** | Soft quiet poison: quiet-expiry must not train residual latencies; fail soft must not persist | `layout-apply-settle.js` | **landed** (units); host heuristics scrubbed 2026-08-30 |
+| **S10** | Nest TABBED × LEFT/RIGHT/TOP/BOTTOM edge matrix | `nest_layout_tabbed_edge_smoke.py` · `smoke-layout-tabbed-edge` | **green** |
 
 ### S0 oracles (write before the patch)
 

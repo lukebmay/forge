@@ -1,7 +1,7 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-08-30 — **S8 landed** (vinyl open-miss + CENTER wrap).
-**P0** H5 TABBED TOP/BOTTOM. Host needs logout for this tip. **Do not
+**Updated:** 2026-08-30 — H5 nest edge matrix green; soft-heuristic poison
+fixed. **P0** toggleTabStack nest; host logout for soft+edge tip. **Do not
 resave loadouts.**
 **Plan:**
 [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
@@ -20,9 +20,10 @@ Design = [`design.md`](./design.md) · D092 · D093 · D094 · layers =
 ## Active next (ordered)
 
 1. **[forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
-   #H5** — TABBED TOP/BOTTOM nest; then toggleTabStack nest. Optional:
-   archive cutover + agree-resync. Host `vinyl` / CENTER eyes-on after
-   logout (not from agents).
+   toggleTabStack nest** — H5 TABBED edge nest
+   (`smoke-layout-tabbed-edge`) landed. Optional: archive cutover +
+   agree-resync. Host logout for soft quiet + RIGHT-edge eyes-on (not
+   from agents). Vinyl inkscape-vs-indigo size is soft leftover.
 2. Do **not** start pinned-slots / resize-autotile until those meetings.
    Do **not** revive hybrid dual-run as steady state.
 
@@ -35,7 +36,7 @@ slice → **4.6** (+ high/`xhigh` reasoning when reshaping TILES/live Forest).
 
 | Item | Path |
 | --- | --- |
-| Live layout + DnD proof (P0; host PASS; H5 nest leftover) | [forge-live-layout-dnd-proof.md](./plans/forge-live-layout-dnd-proof.md) |
+| Live layout + DnD proof (P0; H5 nest edge green; toggleTabStack leftover) | [forge-live-layout-dnd-proof.md](./plans/forge-live-layout-dnd-proof.md) |
 | Live TOM cutover (C7 code; archive when operator wants) | [forge-live-tom-cutover.md](./plans/forge-live-tom-cutover.md) |
 | Agree/resync (R0–R4+R6; live proof PASS; archive with cutover) | [forge-tom-agree-resync.md](./plans/forge-tom-agree-resync.md) |
 | AI live matrix | [forge-ai-live-test-matrix.md](./plans/forge-ai-live-test-matrix.md) |
