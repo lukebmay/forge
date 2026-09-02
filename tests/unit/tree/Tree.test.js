@@ -1,13 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import St from "gi://St";
-import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { NODE_TYPES, LAYOUT_TYPES, ORIENTATION_TYPES } from "../../../lib/extension/tree-types.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { Bin } from "../../mocks/gnome/St.js";
 import {
   createMockWindow,
   createTreeFixture,
   createWindowNode,
   getWorkspaceAndMonitor,
+  parentOf,
 } from "../../mocks/helpers/index.js";
 import { createHostBag } from "../../../lib/host/index.js";
 
@@ -110,11 +111,11 @@ describe("Tree", () => {
 
     it("should add node to parent children", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const initialChildCount = monitor.childNodes.length;
+      const before = monitor.childNodes.length;
 
       ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
 
-      expect(monitor.childNodes.length).toBe(initialChildCount + 1);
+      expect(monitor.childNodes).toHaveLength(before + 1);
     });
 
     it("should set node settings from tree", () => {
@@ -138,6 +139,46 @@ describe("Tree", () => {
       expect(newNode).toBeUndefined();
     });
 
+    it("fails closed without _allowGObjectCreateNode (D096 G8a)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const before = Array.isArray(monitor.childNodes) ? monitor.childNodes.length : 0;
+      ctx.extWm._allowGObjectCreateNode = false;
+
+      const denied = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
+
+      expect(denied).toBeNull();
+      expect(Array.isArray(monitor.childNodes) ? monitor.childNodes.length : 0).toBe(before);
+
+      ctx.extWm._allowGObjectCreateNode = true;
+    });
+
+    it("G8j: seeded TILES appendChild fail-closed without fixture allow", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const child = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
+      expect(monitor.childNodes).toContain(child);
+      monitor.removeChild(child);
+      expect(child.parentNode).toBeNull();
+
+      ctx.extWm._liveForestSeeded = true;
+      ctx.extWm._allowGObjectCreateNode = false;
+      const before = monitor.childNodes.length;
+      expect(monitor.appendChild(child)).toBeNull();
+      expect(monitor.childNodes.length).toBe(before);
+      expect(child.parentNode).toBeNull();
+
+      ctx.extWm._allowGObjectCreateNode = true;
+    });
+
+    it("G8k: seeded split delegates fail-closed without Forest ids", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const win = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      ctx.extWm._liveForestSeeded = true;
+      ctx.extWm._allowGObjectCreateNode = false;
+      ctx.extWm.forest = ctx.extWm.forest || { nodes: {}, monitors: [] };
+      expect(ctx.tree.split(win, ORIENTATION_TYPES.HORIZONTAL, true)).toBeNull();
+      ctx.extWm._allowGObjectCreateNode = true;
+    });
+
     it("should handle inserting after window parent", () => {
       // This tests the special case where parent is a window
       // Window's parent becomes the actual parent for the new node
@@ -147,7 +188,6 @@ describe("Tree", () => {
       const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
       const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
 
-      // Both should be children of monitor
       expect(monitor.childNodes).toContain(node1);
       expect(monitor.childNodes).toContain(node2);
     });
@@ -280,7 +320,7 @@ describe("Tree", () => {
       const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
 
       monitors.forEach((monitor) => {
-        expect(monitor.parentNode).toBe(workspace);
+        expect(parentOf(ctx.extWm, monitor)).toBe(workspace);
       });
     });
 
@@ -290,11 +330,11 @@ describe("Tree", () => {
 
       const workspaces = ctx.tree.getNodeByType(NODE_TYPES.WORKSPACE);
       workspaces.forEach((ws) => {
-        expect(ws.parentNode).toBe(ctx.tree);
+        expect(parentOf(ctx.extWm, ws)).toBe(ctx.tree);
 
         const monitors = ws.getNodeByType(NODE_TYPES.MONITOR);
         monitors.forEach((mon) => {
-          expect(mon.parentNode).toBe(ws);
+          expect(parentOf(ctx.extWm, mon)).toBe(ws);
         });
       });
     });
@@ -341,28 +381,28 @@ describe("Tree", () => {
       expect(ph1.layoutRole).toBe("chrome-luke");
       expect(ph2.layoutSlot).toBe("mon0.left-tab");
       expect(termPh.layoutRole).toBe("ghostty-left");
-      expect(tabCon.childNodes.length).toBe(2);
+      expect(tabCon.childNodes).toHaveLength(2);
       expect(monitor.childNodes.length).toBeGreaterThanOrEqual(2);
 
       // cleanTree must not strip slot-tagged PH leaves (non-empty CONs)
       ctx.tree.cleanTree();
-      expect(tabCon.childNodes.length).toBe(2);
-      expect(isPlaceholderAlive(ph1)).toBe(true);
-      expect(isPlaceholderAlive(ph2)).toBe(true);
-      expect(isPlaceholderAlive(termPh)).toBe(true);
+      expect(tabCon.childNodes).toHaveLength(2);
+      expect(isPlaceholderAlive(ctx.extWm, ph1)).toBe(true);
+      expect(isPlaceholderAlive(ctx.extWm, ph2)).toBe(true);
+      expect(isPlaceholderAlive(ctx.extWm, termPh)).toBe(true);
 
       // Bind-style replace: insert real window, drop PH (parent.removeChild path)
       const meta = createMockWindow({ id: 101, wm_class: "Google-chrome" });
       const real = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, meta);
       tabCon.insertBefore(real, ph1);
       tabCon.removeChild(ph1);
-      expect(tabCon.childNodes.includes(real)).toBe(true);
-      expect(tabCon.childNodes.includes(ph1)).toBe(false);
-      expect(tabCon.childNodes.includes(ph2)).toBe(true);
+      expect(tabCon.childNodes).toContain(real);
+      expect(tabCon.childNodes).not.toContain(ph1);
+      expect(tabCon.childNodes).toContain(ph2);
     });
   });
 });
 
-function isPlaceholderAlive(node) {
-  return !!(node && node.parentNode && node.placeholder);
+function isPlaceholderAlive(wm, node) {
+  return !!(node && parentOf(wm, node) && node.placeholder);
 }

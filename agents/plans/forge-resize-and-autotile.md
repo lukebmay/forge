@@ -1,6 +1,7 @@
 # Discussion plan: Resize sugar keys + auto-tiling
 
-**Status:** Discussion / draft (no implement until product lock)  
+**Status:** Discussion / draft — **parked** (D100). No implement until
+product lock **and** adapter core holds.  
 **Updated:** 2026-07-31  
 **Branch:** (none yet — discussion only)  
 **Kind:** Product discussion → later tasks  

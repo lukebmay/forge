@@ -23,6 +23,7 @@ import {
   error,
   resolveDefaultLogFile,
   siblingJsonlPath,
+  previousSessionPath,
   resolveJsonlFile,
   peelTrailingFields,
   formatFieldsSuffix,
@@ -57,11 +58,14 @@ describe("plog-adapter", () => {
     if (prevJsonlEnv === undefined) delete process.env.FORGE_LOG_JSONL;
     else process.env.FORGE_LOG_JSONL = prevJsonlEnv;
     if (tmpFile) {
-      for (const p of [tmpFile, siblingJsonlPath(tmpFile)]) {
-        try {
-          fs.unlinkSync(p);
-        } catch {
-          /* ignore */
+      const tapes = [tmpFile, siblingJsonlPath(tmpFile)];
+      for (const p of tapes) {
+        for (const q of [p, previousSessionPath(p), `${previousSessionPath(p)}.tmp`]) {
+          try {
+            fs.unlinkSync(q);
+          } catch {
+            /* ignore */
+          }
         }
       }
       tmpFile = null;
@@ -176,9 +180,10 @@ describe("plog-adapter", () => {
     expect(text).toMatch(/hard-fail/);
   });
 
-  it("truncateFile:true empties the hunt file on init (session start)", () => {
+  it("truncateFile:true rotates prior tape then empties on init (session start)", () => {
     tmpFile = path.join(os.tmpdir(), `forge-plog-trunc-${process.pid}-${Date.now()}.log`);
     fs.writeFileSync(tmpFile, "STALE SESSION\n", "utf8");
+    const prevPath = previousSessionPath(tmpFile);
     init(
       {
         get_boolean: () => true,
@@ -190,6 +195,7 @@ describe("plog-adapter", () => {
     const text = fs.readFileSync(tmpFile, "utf8");
     expect(text).not.toMatch(/STALE SESSION/);
     expect(text).toMatch(/fresh-enable/);
+    expect(fs.readFileSync(prevPath, "utf8")).toMatch(/STALE SESSION/);
   });
 
   it("truncateFile omitted leaves prior file contents (CLI share)", () => {
@@ -368,7 +374,7 @@ describe("plog-adapter", () => {
     expect(formatFieldsSuffix({ a: 1, b: "x" })).toBe("a=1 b=x");
   });
 
-  it("truncateFile:true empties both .log and .jsonl", () => {
+  it("truncateFile:true empties both .log and .jsonl after rotate", () => {
     tmpFile = path.join(os.tmpdir(), `forge-plog-both-${process.pid}-${Date.now()}.log`);
     const jsonlPath = siblingJsonlPath(tmpFile);
     fs.writeFileSync(tmpFile, "STALE LOG\n", "utf8");
@@ -385,5 +391,27 @@ describe("plog-adapter", () => {
     expect(fs.readFileSync(tmpFile, "utf8")).not.toMatch(/STALE LOG/);
     expect(fs.readFileSync(jsonlPath, "utf8")).not.toMatch(/STALE JSONL/);
     expect(fs.readFileSync(jsonlPath, "utf8")).toMatch(/fresh/);
+    expect(fs.readFileSync(previousSessionPath(tmpFile), "utf8")).toMatch(/STALE LOG/);
+    expect(fs.readFileSync(previousSessionPath(jsonlPath), "utf8")).toMatch(/STALE JSONL/);
+  });
+
+  it("previousSessionPath inserts .prev before extension", () => {
+    expect(previousSessionPath("/tmp/forge.log")).toBe("/tmp/forge.prev.log");
+    expect(previousSessionPath("/tmp/forge.jsonl")).toBe("/tmp/forge.prev.jsonl");
+  });
+
+  it("truncate of empty current does not clobber existing previous tape", () => {
+    tmpFile = path.join(os.tmpdir(), `forge-plog-empty-${process.pid}-${Date.now()}.log`);
+    const prevPath = previousSessionPath(tmpFile);
+    fs.writeFileSync(tmpFile, "", "utf8");
+    fs.writeFileSync(prevPath, "KEEP PREV\n", "utf8");
+    init(
+      {
+        get_boolean: () => true,
+        get_uint: () => LOG_LEVELS.DEBUG,
+      },
+      { sink, file: tmpFile, truncateFile: true }
+    );
+    expect(fs.readFileSync(prevPath, "utf8")).toMatch(/KEEP PREV/);
   });
 });

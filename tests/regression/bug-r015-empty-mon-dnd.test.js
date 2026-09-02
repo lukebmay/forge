@@ -1,13 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { resolveEmptyMonitorDrop } from "../../lib/extension/drag-drop.js";
+import {
+  liveChildrenForPresent,
+  liveParentForPresent,
+  seedLiveForest,
+} from "../../lib/extension/tom-live.js";
 import { Logger } from "../../lib/shared/logger.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   setPointer,
+  parentOf,
 } from "../mocks/helpers/index.js";
 import { Rectangle, GrabOp } from "../mocks/gnome/Meta.js";
 
@@ -116,7 +122,7 @@ describe("R015: empty-monitor drag-drop rehome", () => {
 
       const ok = wm().dragDrop._commitEmptyMonitorDrop(node);
       expect(ok).toBe(false);
-      expect(node.parentNode).toBe(monitor);
+      expect(parentOf(wm(), node)).toBe(monitor);
     });
 
     it("no-decision TRACE includes src dest pointerMon hasWindowTarget reason", () => {
@@ -214,6 +220,7 @@ describe("R015: empty-monitor drag-drop rehome", () => {
 
     it("null target + pointer on empty mon1 rehomes dragged tile onto mon1", () => {
       const { mon0, mon1, metaA, nodeA, nodeB } = twoOnLeftEmptyRight();
+      seedLiveForest(wm());
       nodeA.mode = WINDOW_MODES.GRAB_TILE;
       wm()._draggedNodeWindow = nodeA;
       // Meta may already report mon1 mid-drag (visual); tree still mon0.
@@ -224,9 +231,10 @@ describe("R015: empty-monitor drag-drop rehome", () => {
       wm().nodeWinAtPointer = null;
       wm().moveWindowToPointer(nodeA, false);
 
-      expect(mon1.contains(nodeA)).toBe(true);
-      expect(mon0.contains(nodeA)).toBe(false);
-      expect(mon0.contains(nodeB)).toBe(true);
+      expect(liveParentForPresent(wm(), nodeA)).toBe(mon1);
+      expect(liveChildrenForPresent(wm(), mon1)).toContain(nodeA);
+      expect(liveChildrenForPresent(wm(), mon0)).not.toContain(nodeA);
+      expect(liveChildrenForPresent(wm(), mon0)).toContain(nodeB);
     });
 
     it("nested VSPLIT leaf drag to empty mon1 moves only that leaf (R022)", () => {
@@ -278,16 +286,20 @@ describe("R015: empty-monitor drag-drop rehome", () => {
       metaB.get_monitor = vi.fn(() => 1);
       metaB.monitor = 1;
 
+      seedLiveForest(wm());
       setPointer(2400, 500);
       wm().nodeWinAtPointer = null;
       wm().moveWindowToPointer(nodeC, false);
 
-      expect(mon1.contains(nodeC)).toBe(true);
-      expect(mon1.contains(nodeB)).toBe(false);
-      expect(mon0.contains(nodeA)).toBe(true);
-      expect(mon0.contains(nodeB)).toBe(true);
-      expect(mon0.contains(nodeC)).toBe(false);
-      expect(mon1.getNodeByType(NODE_TYPES.WINDOW).length).toBe(1);
+      expect(liveParentForPresent(wm(), nodeC)).toBe(mon1);
+      expect(liveChildrenForPresent(wm(), mon1)).toContain(nodeC);
+      expect(liveChildrenForPresent(wm(), mon1)).not.toContain(nodeB);
+      expect(liveChildrenForPresent(wm(), mon0)).toContain(nodeA);
+      expect(liveParentForPresent(wm(), nodeB)).not.toBe(mon1);
+      expect(liveChildrenForPresent(wm(), mon0)).not.toContain(nodeC);
+      expect(liveChildrenForPresent(wm(), mon1).filter((n) => n.nodeType === NODE_TYPES.WINDOW)).toHaveLength(
+        1
+      );
     });
 
     it("null target + pointer still on source mon does not rehome", () => {
@@ -314,6 +326,8 @@ describe("R015: empty-monitor drag-drop rehome", () => {
       const destTile = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, destMeta);
       destTile.mode = WINDOW_MODES.TILE;
 
+      // Seed while still attached so Forest keeps the WINDOW after GObject detach.
+      seedLiveForest(wm());
       nodeA.mode = WINDOW_MODES.GRAB_TILE;
       wm()._draggedNodeWindow = nodeA;
       mon0.removeChild(nodeA);
@@ -332,11 +346,10 @@ describe("R015: empty-monitor drag-drop rehome", () => {
       wm().nodeWinAtPointer = null;
       wm().moveWindowToPointer(nodeA, false);
 
-      expect(mon1.contains(nodeA)).toBe(true);
-      expect(mon1.contains(destTile)).toBe(true);
-      expect(mon0.contains(nodeA)).toBe(false);
-      expect(nodeA.parentNode).not.toBeNull();
-      expect(ctx.tree.findAncestorMonitor(nodeA)).toBe(mon1);
+      expect(liveChildrenForPresent(wm(), mon1)).toContain(nodeA);
+      expect(liveChildrenForPresent(wm(), mon1)).toContain(destTile);
+      expect(liveChildrenForPresent(wm(), mon0)).not.toContain(nodeA);
+      expect(liveParentForPresent(wm(), nodeA)).toBe(mon1);
     });
 
     it("pointer-miss TRACE when pointer mon is invalid", () => {
@@ -385,8 +398,8 @@ describe("R015: empty-monitor drag-drop rehome", () => {
 
       wm().updateMetaWorkspaceMonitor("window-entered-monitor", 1, metaA);
 
-      expect(nodeA.parentNode).toBe(mon0);
-      expect(nodeB.parentNode).toBe(mon0);
+      expect(parentOf(wm(), nodeA)).toBe(mon0);
+      expect(parentOf(wm(), nodeB)).toBe(mon0);
       expect(mon0.contains(nodeA)).toBe(true);
       expect(mon1.contains(nodeA)).toBe(false);
       expect(nodeA.mode).toBe(WINDOW_MODES.GRAB_TILE);
@@ -395,6 +408,7 @@ describe("R015: empty-monitor drag-drop rehome", () => {
 
     it("grab-end re-resolves then empty-mon commits via moveWindowToPointer", () => {
       const { mon1, metaA, nodeA } = twoOnLeftEmptyRight();
+      seedLiveForest(wm());
       nodeA.mode = WINDOW_MODES.GRAB_TILE;
       wm()._draggedNodeWindow = nodeA;
       ctx.display.get_focus_window.mockReturnValue(metaA);
@@ -416,7 +430,8 @@ describe("R015: empty-monitor drag-drop rehome", () => {
 
       wm()._handleGrabOpEnd(ctx.display, metaA, GrabOp.MOVING);
 
-      expect(mon1.contains(nodeA)).toBe(true);
+      expect(liveParentForPresent(wm(), nodeA)).toBe(mon1);
+      expect(liveChildrenForPresent(wm(), mon1)).toContain(nodeA);
       expect(nodeA.mode).toBe(WINDOW_MODES.TILE);
     });
   });

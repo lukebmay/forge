@@ -2,15 +2,18 @@ import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { Logger } from "../../../lib/shared/logger.js";
 import {
   metricsSnapshot,
+  notePresentGobjectMutate,
   recordAgree,
   recordApply,
   recordDrift,
   recordFallback,
   recordInvariant,
   recordPaint,
+  recordPresent,
   recordResync,
   resetMetrics,
   recordWarn,
+  recordD100Observe,
   scanForestInvariants,
 } from "../../../lib/extension/metrics.js";
 import { createTomApi } from "../../../lib/tom/index.js";
@@ -21,6 +24,7 @@ describe("metrics", () => {
     vi.spyOn(Logger, "info").mockImplementation(() => {});
     vi.spyOn(Logger, "warn").mockImplementation(() => {});
     vi.spyOn(Logger, "debug").mockImplementation(() => {});
+    vi.spyOn(Logger, "trace").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -60,6 +64,37 @@ describe("metrics", () => {
     expect(metricsSnapshot().paintMs).toBe(30);
     expect(Logger.debug.mock.calls.length).toBe(1);
     expect(String(Logger.debug.mock.calls[0][0])).toContain("metric paint");
+  });
+
+  it("recordPresent emits metric present", () => {
+    recordPresent({ from: "g2", moved: 2, skipped: 1, ms: 3 });
+    expect(metricsSnapshot().presents).toBe(1);
+    const call = Logger.info.mock.calls.find((c) => String(c[0]) === "metric present");
+    expect(call).toBeTruthy();
+    expect(call[1].fields).toMatchObject({ from: "g2", moved: 2, skipped: 1 });
+  });
+
+  it("notePresentGobjectMutate forbids invent outside paint cleanup", () => {
+    const wm = { _inPresent: true, _presentPaintMirror: false };
+    notePresentGobjectMutate(wm, "appendChild", "tiles");
+    expect(metricsSnapshot().invariants).toBe(1);
+    expect(String(Logger.warn.mock.calls[0][0])).toContain("gobject-topology-forbidden");
+  });
+
+  it("notePresentGobjectMutate allows paint FLOAT/orphan cleanup ops", () => {
+    const wm = { _inPresent: true, _presentPaintMirror: true };
+    notePresentGobjectMutate(wm, "removeChild", "float-detach");
+    expect(metricsSnapshot().invariants).toBe(0);
+    expect(
+      Logger.debug.mock.calls.some((c) => String(c[0]).includes("gobject-paint-cleanup"))
+    ).toBe(true);
+  });
+
+  it("notePresentGobjectMutate forbids replaceChildren even during paint", () => {
+    const wm = { _inPresent: true, _presentPaintMirror: true };
+    notePresentGobjectMutate(wm, "replaceChildren", "mirror");
+    expect(metricsSnapshot().invariants).toBe(1);
+    expect(String(Logger.warn.mock.calls[0][0])).toContain("gobject-topology-forbidden");
   });
 
   it("recordAgree / recordDrift / recordResync emit hunt tokens", () => {
@@ -132,6 +167,13 @@ describe("metrics", () => {
     expect(scanForestInvariants(f)).toBeGreaterThanOrEqual(1);
     const texts = Logger.warn.mock.calls.map((c) => String(c[0] ?? ""));
     expect(texts.some((t) => t.includes("metric invariant bag-con-child"))).toBe(true);
+  });
+
+  it("recordD100Observe emits greppable token", () => {
+    recordD100Observe("entered-monitor", { dest: 1 });
+    expect(Logger.debug.mock.calls.some((c) => String(c[0]) === "metric d100-observe")).toBe(true);
+    recordD100Observe("title");
+    expect(Logger.trace.mock.calls.some((c) => String(c[0]) === "metric d100-observe")).toBe(true);
   });
 
   it("recordWarn emits greppable metric warn token", () => {

@@ -15,13 +15,15 @@ import {
   findForeignTabStripAtPointer,
   findTabStripIntersectingChip,
 } from "../../../lib/extension/drag-drop.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   setPointer,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 import { Bin } from "../../mocks/gnome/St.js";
@@ -830,10 +832,10 @@ describe("DragDropManager strip reorder", () => {
     return { group, nodes };
   }
 
-  it("drag along strip reorders via replaceChildren; layout and percents stay", () => {
+  it("drag along strip reorders via Forest; layout and percents stay", () => {
     const { group, nodes } = makeTabbedTrio();
     const [a, b, c] = nodes;
-    expect(group.childNodes.map((n) => n)).toEqual([a.node, b.node, c.node]);
+    expect(kidsOf(wm(), group)).toEqual([a.node, b.node, c.node]);
 
     ctx.display.get_focus_window = vi.fn(() => b.meta);
     const commit = vi.spyOn(wm(), "commitLayout").mockImplementation(() => {});
@@ -856,7 +858,7 @@ describe("DragDropManager strip reorder", () => {
     dd().finishTabDragRelease();
 
     expect(group.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(group.childNodes.map((n) => n)).toEqual([a.node, c.node, b.node]);
+    expect(kidsOf(wm(), group)).toEqual([a.node, c.node, b.node]);
     expect(a.node.percent).toBeCloseTo(0.2);
     expect(b.node.percent).toBeCloseTo(0.3);
     expect(c.node.percent).toBeCloseTo(0.4);
@@ -868,12 +870,12 @@ describe("DragDropManager strip reorder", () => {
 
   it("short click on strip does not reorder or grab", () => {
     const { group, nodes } = makeTabbedTrio();
-    const order = [...group.childNodes];
+    const order = [...kidsOf(wm(), group)];
     dd().armTabDrag(nodes[0].meta, makePressEvent(20, 15));
     expect(nodes[0].node.tab.style_class).toContain("window-tabbed-tab-pressed");
     expect(dd().noteTabDragMotion(24, 15)).toBe("armed");
     dd().finishTabDragRelease();
-    expect(group.childNodes).toEqual(order);
+    expect(kidsOf(wm(), group)).toEqual(order);
     expect(nodes[0].node.mode).toBe(WINDOW_MODES.TILE);
     expect(dd()._tabDrag).toBeNull();
     expect(nodes[0].node.tab.style_class).not.toContain("window-tabbed-tab-pressed");
@@ -1004,9 +1006,9 @@ describe("DragDropManager strip reorder", () => {
 
     dd().finishTabDragRelease();
 
-    expect(group.childNodes).not.toContain(b.node);
-    expect(group.childNodes.length).toBe(2);
-    expect(b.node.parentNode).not.toBe(group);
+    expect(kidsOf(wm(), group)).not.toContain(b.node);
+    expect(kidsOf(wm(), group)).toHaveLength(2);
+    expect(parentOf(wm(), b.node)).not.toBe(group);
     expect(b.node.mode).toBe(WINDOW_MODES.TILE);
     expect(dd()._tabDrag).toBeNull();
   });
@@ -1046,10 +1048,11 @@ describe("DragDropManager strip reorder", () => {
     expect(dd().noteTabDragMotion(1350, 300)).toBe("active");
     dd().finishTabDragRelease();
 
-    expect(group.childNodes).not.toContain(b.node);
+    expect(kidsOf(wm(), group)).not.toContain(b.node);
     // Joined with target into a TABBED/STACKED group.
-    expect(b.node.parentNode).toBe(target.parentNode);
-    expect(b.node.parentNode?.isStackedOrTabbed?.() || b.node.parentNode?.isTabbed?.()).toBe(true);
+    const joinedParent = parentOf(wm(), b.node);
+    expect(joinedParent).toBe(parentOf(wm(), target));
+    expect(joinedParent?.isStackedOrTabbed?.() || joinedParent?.isTabbed?.()).toBe(true);
     expect(b.node.mode).toBe(WINDOW_MODES.TILE);
     expect(dd()._tabDrag).toBeNull();
   });
@@ -1153,9 +1156,9 @@ describe("DragDropManager strip reorder", () => {
     expect(wm().nodeWinAtPointer).toBe(target);
     dd().finishTabDragRelease();
 
-    expect(group.childNodes).not.toContain(b.node);
-    expect(group.childNodes.length).toBe(2);
-    expect(b.node.parentNode).not.toBe(group);
+    expect(kidsOf(wm(), group)).not.toContain(b.node);
+    expect(kidsOf(wm(), group)).toHaveLength(2);
+    expect(parentOf(wm(), b.node)).not.toBe(group);
     expect(b.node.mode).toBe(WINDOW_MODES.TILE);
     expect(dd()._tabDrag).toBeNull();
     expect(dd()._syntheticDragPointer).toBeNull();
@@ -1217,7 +1220,7 @@ describe("DragDropManager strip reorder", () => {
     dd().finishTabDragRelease();
 
     expect(group.layout).toBe(LAYOUT_TYPES.STACKED);
-    expect(group.childNodes.map((n) => n)).toEqual([b.node, c.node, a.node]);
+    expect(kidsOf(wm(), group)).toEqual([b.node, c.node, a.node]);
   });
 
   it("CON-rep tab reorders the CON unit, not an inner leaf", () => {
@@ -1268,8 +1271,8 @@ describe("DragDropManager strip reorder", () => {
     expect(dd().noteTabDragMotion(280, 15)).toBe("reorder");
     dd().finishTabDragRelease();
 
-    expect(group.childNodes.map((n) => n)).toEqual([winA, winC, conB]);
-    expect(conB.childNodes[0]).toBe(winB);
+    expect(kidsOf(wm(), group)).toEqual([winA, winC, conB]);
+    expect(kidsOf(wm(), conB)[0]).toBe(winB);
   });
 
   it("peel onto foreign strip paints gap and joins at index (not append)", () => {
@@ -1342,9 +1345,9 @@ describe("DragDropManager strip reorder", () => {
 
     dd().finishTabDragRelease();
 
-    expect(groupB.childNodes).toContain(dragged.node);
-    expect(groupB.childNodes.indexOf(dragged.node)).toBe(gap);
-    expect(groupA.childNodes).not.toContain(dragged.node);
+    expect(kidsOf(wm(), groupB)).toContain(dragged.node);
+    expect(kidsOf(wm(), groupB).indexOf(dragged.node)).toBe(gap);
+    expect(kidsOf(wm(), groupA)).not.toContain(dragged.node);
     expect(groupA.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(groupB.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(dd()._tabDrag).toBeNull();
@@ -1393,7 +1396,7 @@ describe("DragDropManager strip reorder", () => {
         ? dragged.node.tab.get_parent()
         : dragged.node.tab._parent;
     expect(parentAfter).toBe(parentBefore);
-    expect(groupA.childNodes).toContain(dragged.node);
+    expect(kidsOf(wm(), groupA)).toContain(dragged.node);
 
     dd()._clearForeignStripPreview();
     dragged.node.mode = WINDOW_MODES.TILE;
@@ -1547,7 +1550,7 @@ describe("DragDropManager strip reorder", () => {
     dd().noteTabDragMotion(150, 15);
     dd().finishTabDragRelease();
 
-    expect(group.childNodes.map((n) => n)).toEqual([a.node, b.node, c.node]);
+    expect(kidsOf(wm(), group)).toEqual([a.node, b.node, c.node]);
     expect(a.node.tab.x_expand).toBe(true);
     expect(b.node.tab.x_expand).toBe(true);
     expect(c.node.tab.x_expand).toBe(true);
@@ -1580,7 +1583,7 @@ describe("DragDropManager strip reorder", () => {
     dd().finishTabDragRelease();
     expect(dd()._tabDrag).toBeNull();
     expect(dd()._originStripCommit).toBeNull();
-    expect(b.node.parentNode).toBe(group);
+    expect(parentOf(wm(), b.node)).toBe(group);
   });
 
   it("PR15: chip∩foreign strip shows gap when pointer is off the band", () => {
@@ -1704,7 +1707,7 @@ describe("DragDropManager strip reorder", () => {
     expect(dd()._tabDrag?.insertIndex).toBe(0);
 
     dd().finishTabDragRelease();
-    expect(group.childNodes.map((n) => n)).toEqual([b.node, a.node, c.node]);
+    expect(kidsOf(wm(), group)).toEqual([b.node, a.node, c.node]);
   });
 
   it("abort restore: cancelTabDrag restores expand/widths and re-layouts", () => {

@@ -5,6 +5,7 @@ import {
   getWorkspaceAndMonitor,
   createWindowNode,
   createContainerNode,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 
 /**
@@ -80,8 +81,8 @@ describe("Bug #5: flatten of a nested STACKED con keeps surviving windows' tabs 
     ctx.tree.cleanTree();
 
     // Both windows survive, reparented up to outerCon.
-    expect(outerCon.childNodes).toContain(w1);
-    expect(outerCon.childNodes).toContain(w2);
+    expect(kidsOf(ctx.extWm, outerCon)).toContain(w1);
+    expect(kidsOf(ctx.extWm, outerCon)).toContain(w2);
 
     // Their original (now-destroyed) tab references must be cleared so the next
     // render rebuilds fresh tabs instead of touching deallocated actors.

@@ -299,7 +299,7 @@ Level control:
   forge log debug|info|warn|error|off
   forge log reset           Clear session → durable
   forge log trace --persist Write gsettings (multi-session)
-  forge log --truncate      Empty forge.log + forge.jsonl now
+  forge log --truncate      Rotate to *.prev.* then empty current tapes
 
 Query (forwards to vendored plog-query; defaults to forge JSONL tape):
   forge log query                     Last 30 records (color reprint)
@@ -307,13 +307,15 @@ Query (forwards to vendored plog-query; defaults to forge JSONL tape):
   forge log --level warn+ --since 2h
   forge log --json --last 10
   forge log show --session Ab3xK
+  forge log PATH/forge.prev.jsonl --last 80   Prior session after login
 
 Session wins when set. CLI FORGE_LOG_LEVEL is process-only (never Shell).
 JSONL is on by default beside the hunt file (FORGE_LOG_JSONL=0 to disable).
+Enable / --truncate copies non-empty current → forge.prev.{log,jsonl} first.
 
 Options (level):
   --persist       Write logging-enabled + log-level via gsettings
-  --truncate      Truncate hunt tapes (alone or with a level change)
+  --truncate      Rotate then truncate hunt tapes (alone or with a level change)
   -h, --help      Show this help
 
 plog-query flags: --session --level --since --until --last --grep --json
@@ -328,6 +330,8 @@ plog-query flags: --session --level --since --until --last --grep --json
  *   effective: { level: number, levelName: string },
  *   file: string | null,
  *   jsonl?: string | null,
+ *   prevFile?: string | null,
+ *   prevJsonl?: string | null,
  * }} status
  * @param {{ write: (s: string) => void }} out
  */
@@ -346,6 +350,8 @@ export function formatLogStatus(status, out) {
   if (status.file) out.write(`file:      ${status.file}\n`);
   if (status.jsonl) out.write(`jsonl:     ${status.jsonl}\n`);
   else if (status.file) out.write(`jsonl:     (off)\n`);
+  if (status.prevFile) out.write(`prev:      ${status.prevFile}\n`);
+  if (status.prevJsonl) out.write(`prevJsonl: ${status.prevJsonl}\n`);
 }
 
 /**
@@ -550,6 +556,8 @@ export function run(argv, deps = {}) {
       effective: /** @type {*} */ (data.effective),
       file: data.file ?? null,
       jsonl: data.jsonl ?? null,
+      prevFile: data.prevFile ?? null,
+      prevJsonl: data.prevJsonl ?? null,
     },
     stdout
   );

@@ -19,18 +19,25 @@ import {
   executeRemovePlaceholder,
   layoutPlaceholderTitle,
   parseLayoutPlaceholderTitle,
+  findSiblingLayoutPlaceholder,
+  layoutPlaceholderMatchesWant,
+  pickLayoutPlaceholder,
   _resetPlaceholderStubSeqForTests,
 } from "../../../lib/extension/layout-placeholder.js";
 import { projectNode } from "../../../lib/extension/tree-query.js";
 import { collectTileVerifyInputs } from "../../../lib/extension/layout-verify.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { NODE_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
   createTreeFixture,
   createWindowManagerFixture,
+  createWindowNode,
   getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 
 describe("layout-placeholder pure helpers", () => {
   beforeEach(() => {
@@ -81,6 +88,125 @@ describe("layout-placeholder pure helpers", () => {
     const stub = createPlaceholderStub();
     expect(isPlaceholderNode({ nodeValue: stub })).toBe(true);
     expect(isPlaceholderNode({ nodeValue: { wm_class: "ghostty" } })).toBe(false);
+  });
+
+  it("R045: findSiblingLayoutPlaceholder finds PH beside a real window", () => {
+    const parent = { childNodes: [] };
+    const win = { placeholder: false, nodeValue: { wm_class: "inkscape" }, parentNode: parent };
+    const ph = {
+      placeholder: true,
+      layoutRole: "inkscape",
+      layoutSlot: "mon0.inkscape",
+      nodeValue: createPlaceholderStub({
+        layoutSlot: "mon0.inkscape",
+        layoutRole: "inkscape",
+      }),
+      parentNode: parent,
+    };
+    parent.childNodes.push(win, ph);
+    expect(findSiblingLayoutPlaceholder(win)).toBe(ph);
+    expect(findSiblingLayoutPlaceholder(ph)).toBeNull();
+    expect(findSiblingLayoutPlaceholder(win)).not.toBe(win);
+  });
+
+  it("R045: findSiblingLayoutPlaceholder refuses foreign-role PH", () => {
+    const parent = { childNodes: [] };
+    const win = { placeholder: false, nodeValue: { wm_class: "Grok" }, parentNode: parent };
+    const ghostPh = {
+      placeholder: true,
+      layoutRole: "ghostty",
+      layoutSlot: "mon0.ghostty",
+      nodeValue: createPlaceholderStub({
+        layoutSlot: "mon0.ghostty",
+        layoutRole: "ghostty",
+      }),
+      parentNode: parent,
+    };
+    parent.childNodes.push(win, ghostPh);
+    expect(
+      findSiblingLayoutPlaceholder(win, { layoutRole: "Grok", wmClass: "chrome-ggjo-Default" })
+    ).toBeNull();
+    expect(layoutPlaceholderMatchesWant(ghostPh, { layoutRole: "Grok" })).toBe(false);
+    expect(layoutPlaceholderMatchesWant(ghostPh, { layoutRole: "ghostty" })).toBe(true);
+  });
+
+  it("Forest-only PH sibling (parentNode null) is found when wm is passed", () => {
+    const ctx = createWindowManagerFixture({
+      globals: { display: { monitorCount: 1 } },
+    });
+    try {
+      const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+      monitor.layout = "HSPLIT";
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "ink",
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          wm_class: "inkscape",
+          rect: { x: 0, y: 0, width: 800, height: 600 },
+        },
+      });
+      const ph = ctx.tree.createPlaceholderLeaf(monitor, {
+        layoutSlot: "mon0.inkscape",
+        layoutRole: "inkscape",
+        reason: "layout-skeleton",
+      });
+      seedLiveForest(ctx.windowManager);
+      try {
+        monitor.removeChild(ph);
+      } catch (_e) {
+        /* */
+      }
+      nodeWindow.parentNode = null;
+      ph.parentNode = null;
+      expect(nodeWindow.parentNode).toBeNull();
+      expect(ph.parentNode).toBeNull();
+      expect(findSiblingLayoutPlaceholder(nodeWindow, { layoutRole: "inkscape" })).toBeNull();
+      expect(
+        findSiblingLayoutPlaceholder(
+          nodeWindow,
+          { layoutRole: "inkscape" },
+          ctx.windowManager
+        )
+      ).toBe(ph);
+    } finally {
+      ctx.cleanup();
+    }
+  });
+
+  it("R045: pickLayoutPlaceholder prefers role when slot mismatches", () => {
+    const ph = {
+      placeholder: true,
+      layoutRole: "inkscape",
+      layoutSlot: "mon0.inkscape",
+      nodeValue: createPlaceholderStub({
+        layoutSlot: "mon0.inkscape",
+        layoutRole: "inkscape",
+      }),
+    };
+    const other = {
+      placeholder: true,
+      layoutRole: "ghostty",
+      layoutSlot: "mon1.ghostty",
+      nodeValue: createPlaceholderStub({
+        layoutSlot: "mon1.ghostty",
+        layoutRole: "ghostty",
+      }),
+    };
+    expect(
+      pickLayoutPlaceholder([ph, other], {
+        layoutRole: "inkscape",
+        layoutSlot: "mon0",
+      })
+    ).toBe(ph);
+    expect(
+      pickLayoutPlaceholder([ph, other], {
+        layoutRole: "inkscape",
+        layoutSlot: "mon0.inkscape",
+      })
+    ).toBe(ph);
+    expect(pickLayoutPlaceholder([ph, other], { layoutRole: "missing" })).toBeNull();
   });
 
   it("shouldSkipThrashIsolate prevents placeholder thrash loop", () => {
@@ -328,7 +454,7 @@ describe("layout-placeholder tree leaf", () => {
     expect(ph.mode).toBe(WINDOW_MODES.TILE);
     expect(ph.percent).toBe(0.4);
 
-    const tiled = ctx.tree.getTiledChildren(monitor.childNodes);
+    const tiled = ctx.tree.getTiledChildren(kidsOf(ctx.extWm, monitor));
     expect(tiled).toContain(real);
     expect(tiled).toContain(ph);
   });
@@ -396,9 +522,10 @@ describe("layout-placeholder WM isolate/remove", () => {
     expect(out.placeholder.percent).toBe(0.55);
     expect(out.placeholder.userSized).toBe(true);
     expect(layouts).toEqual([PLACEHOLDER_ISOLATE_LAYOUT_REASON]);
-    const kids = monitor.childNodes;
+    const wm = ctx.windowManager;
+    const kids = kidsOf(wm, monitor);
     expect(kids.indexOf(out.placeholder)).toBeLessThan(kids.indexOf(bad));
-    const tiled = ctx.tree.getTiledChildren(monitor.childNodes);
+    const tiled = ctx.tree.getTiledChildren(kidsOf(wm, monitor));
     expect(tiled).toContain(good);
     expect(tiled).toContain(out.placeholder);
     expect(tiled).not.toContain(bad);
@@ -418,14 +545,15 @@ describe("layout-placeholder WM isolate/remove", () => {
   it("removePlaceholder drops leaf and requestLayout once", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const ph = ctx.tree.createPlaceholderLeaf(monitor, { percent: 0.3 });
-    expect(monitor.childNodes).toContain(ph);
+    const wm = ctx.windowManager;
+    expect(kidsOf(wm, monitor)).toContain(ph);
 
     const layouts = [];
     ctx.windowManager.requestLayout = (r) => layouts.push(r);
     const out = ctx.windowManager.removePlaceholder(ph);
     expect(out.ok).toBe(true);
-    expect(monitor.childNodes).not.toContain(ph);
-    expect(ph.parentNode).toBeNull();
+    expect(kidsOf(wm, monitor)).not.toContain(ph);
+    expect(parentOf(wm, ph)).toBeNull();
     expect(layouts).toEqual([PLACEHOLDER_REMOVE_LAYOUT_REASON]);
   });
 });

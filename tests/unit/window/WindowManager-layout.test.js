@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
   setPointer,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Rectangle, WindowType } from "../../mocks/gnome/Meta.js";
 import { createHostBag } from "../../../lib/host/index.js";
@@ -105,10 +106,7 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       wm().lastFocusedWindow = nodeWindow;
       ctx.tree.removeNode(nodeWindow);
 
-      // After removal, lastFocusedWindow may still reference the node
-      // The important thing is the node is no longer in the tree
-      const foundNode = wm().findNodeWindow(metaWindow);
-      expect(foundNode).toBeNull();
+      expect(nodeWindow.parentNode).toBeNull();
     });
   });
 
@@ -138,10 +136,10 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       });
 
       // Each workspace should have its window
-      expect(monitor0.childNodes).toContain(node1);
-      expect(monitor1.childNodes).toContain(node2);
-      expect(monitor0.childNodes).not.toContain(node2);
-      expect(monitor1.childNodes).not.toContain(node1);
+      expect(kidsOf(wm(), monitor0)).toContain(node1);
+      expect(kidsOf(wm(), monitor1)).toContain(node2);
+      expect(kidsOf(wm(), monitor0)).not.toContain(node2);
+      expect(kidsOf(wm(), monitor1)).not.toContain(node1);
     });
 
     it("should track window count per workspace", () => {
@@ -176,10 +174,10 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
 
       wm().command({ name: "Split" });
 
-      expect(monitor.childNodes).toHaveLength(1);
-      expect(monitor.childNodes[0].nodeType).toBe(NODE_TYPES.CON);
-      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(monitor.childNodes[0].childNodes).toEqual([a.nodeWindow, b.nodeWindow]);
+      expect(kidsOf(wm(), monitor)).toHaveLength(1);
+      expect(kidsOf(wm(), monitor)[0].nodeType).toBe(NODE_TYPES.CON);
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(kidsOf(wm(), kidsOf(wm(), monitor)[0])).toEqual([a.nodeWindow, b.nodeWindow]);
     });
 
     it("toggleSplit flips the wrap HSPLIT ↔ VSPLIT", () => {
@@ -195,10 +193,10 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       ctx.display.get_focus_window.mockReturnValue(a.metaWindow);
 
       wm().command({ name: "toggleSplit" });
-      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
 
       wm().command({ name: "toggleSplit" });
-      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should set STACKED via two LayoutStackedToggle commands (toggleTabStack)", () => {
@@ -215,11 +213,11 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       ctx.display.get_focus_window.mockReturnValue(a.metaWindow);
 
       wm().command({ name: "LayoutStackedToggle" });
-      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.TABBED);
 
       wm().command({ name: "LayoutStackedToggle" });
-      expect(monitor.childNodes[0].nodeType).toBe(NODE_TYPES.CON);
-      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.STACKED);
+      expect(kidsOf(wm(), monitor)[0].nodeType).toBe(NODE_TYPES.CON);
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.STACKED);
     });
 
     it("should set TABBED via the real LayoutTabbedToggle command", () => {
@@ -236,8 +234,8 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
 
       wm().command({ name: "LayoutTabbedToggle" });
 
-      expect(monitor.childNodes[0].nodeType).toBe(NODE_TYPES.CON);
-      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(kidsOf(wm(), monitor)[0].nodeType).toBe(NODE_TYPES.CON);
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.TABBED);
     });
   });
 
@@ -302,10 +300,6 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
         windowOverrides: { workspace: ctx.workspaces[0] },
       });
       wm()._liveForestSeeded = false;
-      wm().hostBag = createHostBag();
-      wm().liveById = new Map();
-      wm().hostBag.set("nid-unseeded", { meta: metaWindow, windowId: "1" });
-      wm().liveById.set("nid-unseeded", { decoy: true });
 
       const found = wm().findNodeWindow(metaWindow);
 

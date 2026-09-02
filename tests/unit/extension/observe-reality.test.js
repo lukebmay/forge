@@ -183,7 +183,7 @@ describe("observeReality / resyncWmToReality", () => {
 
   it("entered-monitor bag-miss FLOAT mode with TILES forest parent does not moveWindowToFloats", () => {
     const { f, byLabel } = buildGiven("Mon1(A)");
-    const liveA = { mode: "FLOAT", isFloat: () => true, parentNode: null };
+    const liveA = { mode: "FLOAT", isFloat: () => true, parentNode: null, float: true };
     const wm = {
       forest: f,
       _liveForestSeeded: true,
@@ -202,8 +202,11 @@ describe("observeReality / resyncWmToReality", () => {
     expect(r.steps.filter((s) => String(s).startsWith("moveWindowToFloats"))).toEqual([]);
     expect(windowIsFloating(f, byLabel.A)).toBe(false);
     expect(floatsOf(f).childIds).not.toContain(byLabel.A.id);
+    // Stuck live.mode FLOAT under TILES is repaired (GetTree must not lie FLOAT).
+    expect(liveA.mode).toBe("TILE");
+    expect(liveA.float).toBe(false);
     const warnTexts = Logger.warn.mock.calls.map((c) => String(c[0] ?? ""));
-    expect(warnTexts.some((t) => t.includes("metric warn float-promote-denied"))).toBe(false);
+    expect(warnTexts.some((t) => t.includes("metric warn float-promote-denied"))).toBe(true);
   });
 
   it("denies injected floating:true for TILES Forest without bag.floating", () => {
@@ -272,6 +275,35 @@ describe("observeReality / resyncWmToReality", () => {
     expect(windowIsFloating(f, byLabel.A)).toBe(false);
     expect(floatsOf(f).childIds).not.toContain(byLabel.A.id);
     expect(bags[byLabel.A.id].floating).toBe(false);
+    expect(liveA.mode).toBe("TILE");
+    const warnTexts = Logger.warn.mock.calls.map((c) => String(c[0] ?? ""));
+    expect(warnTexts.some((t) => t.includes("metric warn float-promote-denied"))).toBe(true);
+  });
+
+  it("repairs live.mode FLOAT stuck under TILES when bag already false", () => {
+    const { f, byLabel } = buildGiven("Mon1(A)");
+    const liveA = { mode: "FLOAT", isFloat: () => true, parentNode: null, float: true };
+    const bags = {
+      [byLabel.A.id]: { floating: false },
+    };
+    const wm = {
+      forest: f,
+      _liveForestSeeded: true,
+      hostBag: {
+        get(id) {
+          return bags[id];
+        },
+        set(id, partial) {
+          bags[id] = { ...(bags[id] || {}), ...partial };
+          return bags[id];
+        },
+      },
+      liveById: new Map([[byLabel.A.id, liveA]]),
+    };
+    const r = resyncWmToReality(wm, "entered-monitor");
+    expect(r?.ok).toBe(true);
+    expect(liveA.mode).toBe("TILE");
+    expect(liveA.float).toBe(false);
     const warnTexts = Logger.warn.mock.calls.map((c) => String(c[0] ?? ""));
     expect(warnTexts.some((t) => t.includes("metric warn float-promote-denied"))).toBe(true);
   });

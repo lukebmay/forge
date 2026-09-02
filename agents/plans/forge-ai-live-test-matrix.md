@@ -1,9 +1,12 @@
 # Plan: AI live test matrix (capability + selective run)
 
 **Status:** active — harness shipped (probe/plan/run); expand cases as regressions land  
-**Priority:** **P0 first** (unblocks intelligent live sign-off for all other work)  
+**Priority:** living — **gated behind D100b** (thin adapter core). Not
+the topology P0. Do not run the matrix expecting idle restore /
+entered-monitor rehome / title→`renderTree`.
 **Branch:** `master`  
-**Related:** [HANDOFF](../HANDOFF.md); [REGRESSIONS](../REGRESSIONS.md); settle SE8b; clean CE1
+**Related:** [HANDOFF](../HANDOFF.md); [D100](../design/CHANGELOG.md);
+[retire GObject](./forge-retire-gobject-topology.md)
 
 ---
 

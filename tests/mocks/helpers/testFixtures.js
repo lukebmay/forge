@@ -1,14 +1,14 @@
 /**
  * Test fixtures for Forge extension tests
  *
- * Complete fixture factories for setting up WindowManager, Tree, and related
+ * Complete fixture factories for setting up ForgeAdapterGnome, Tree, and related
  * objects with all necessary mocks. These reduce boilerplate from ~65 lines
  * to ~4 lines per test file.
  */
 
 import { vi } from "vitest";
 import { installGnomeGlobals } from "./globalSetup.js";
-import { WindowManager } from "../../../lib/extension/window.js";
+import { ForgeAdapterGnome } from "../../../lib/extension/adapter-gnome.js";
 import { Tree, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { DecorationManager } from "../../../lib/extension/decoration.js";
 
@@ -167,16 +167,18 @@ export function createMockExtension(options = {}) {
 }
 
 /**
- * Create a complete WindowManager test fixture
+ * Create a complete ForgeAdapterGnome test fixture
  *
- * This is the main fixture for WindowManager tests. It sets up all GNOME globals,
- * creates mock extension/settings, and instantiates a WindowManager.
+ * This is the main fixture for ForgeAdapterGnome tests. It sets up all GNOME globals,
+ * creates mock extension/settings, and instantiates a ForgeAdapterGnome.
+ * Keeps helper name `createWindowManagerFixture` and returned key `windowManager`
+ * for test churn control; `adapter` is the same object.
  *
  * @param {Object} options - Configuration options
  * @param {Object} [options.globals] - Options for installGnomeGlobals
  * @param {Object} [options.extension] - Options for createMockExtension
  * @param {Object} [options.settings] - Settings overrides (shortcut for extension.settings)
- * @returns {Object} Fixture context with windowManager, tree, mocks, and cleanup
+ * @returns {Object} Fixture context with windowManager/adapter, tree, mocks, and cleanup
  *
  * @example
  * // Basic usage
@@ -211,13 +213,16 @@ export function createWindowManagerFixture(options = {}) {
   // Create extension mock
   const mockExtension = createMockExtension(extOptions);
 
-  // Create WindowManager
-  const windowManager = new WindowManager(mockExtension);
+  // Create ForgeAdapterGnome
+  const windowManager = new ForgeAdapterGnome(mockExtension);
+  // Unit fixtures may still invent via Tree.createNode (D096 G8a allowlist).
+  windowManager._allowGObjectCreateNode = true;
 
   // Return context
   return {
     // Primary objects
     windowManager,
+    adapter: windowManager,
     tree: windowManager.tree,
 
     // Extension mocks
@@ -270,6 +275,8 @@ export function createTreeFixture(options = {}) {
     ext: {
       settings: mockSettings,
     },
+    // Unit fixtures may still invent via Tree.createNode (D096 G8a allowlist).
+    _allowGObjectCreateNode: true,
     determineSplitLayout: vi.fn(() => LAYOUT_TYPES[defaultLayout] || LAYOUT_TYPES.HSPLIT),
     // Bug #311: rect-aware variant used by MonitorManager.addMonitor. Mirrors the
     // real helper (portrait -> VSPLIT), falling back to the default when no rect.
@@ -298,8 +305,9 @@ export function createTreeFixture(options = {}) {
 
   // Create Tree
   const tree = new Tree(mockWindowManager);
+  mockWindowManager.tree = tree;
 
-  // Tab chrome attach needs DecorationManager (layer + trackChrome).
+  // Tab chrome attach needs DecurationsManager (layer + trackChrome).
   if (fullExtWm) {
     mockWindowManager.decorationManager = new DecorationManager(tree, mockWindowManager);
   }

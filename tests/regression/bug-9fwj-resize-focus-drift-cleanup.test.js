@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import GLib from "gi://GLib";
-import { GRAB_TYPES } from "../../lib/extension/window.js";
+import { GRAB_TYPES } from "../../lib/extension/window-modes.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,

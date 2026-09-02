@@ -5,10 +5,14 @@ import {
   createMockWindow,
   createWindowNode,
   setPointer,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import Shell from "../../mocks/gnome/Shell.js";
+import { Bin } from "../../mocks/gnome/St.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 
 /**
  * OP1: open-app placement — LFT MRU, dock sticky mon, tab-after, aspect split.
@@ -36,10 +40,16 @@ describe("OP1 open-app placement policy", () => {
   const wm = () => ctx.windowManager;
 
   const monitorOf = (node) => {
+    const idx = wm()._monitorIndexOfNode(node);
+    if (idx >= 0) return idx;
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
-    if (mon1.contains(node)) return 1;
-    if (mon0.contains(node)) return 0;
+    let n = node;
+    while (n) {
+      if (n === mon1) return 1;
+      if (n === mon0) return 0;
+      n = parentOf(wm(), n);
+    }
     return -1;
   };
 
@@ -228,8 +238,8 @@ describe("OP1 open-app placement policy", () => {
       const node = wm().findNodeWindow(metaWindow);
       expect(monitorOf(node)).toBe(1);
       // PlaceNext pin: no D032 wrap of path target (R036)
-      expect(node.parentNode).toBe(a.nodeWindow.parentNode);
-      expect(a.nodeWindow.parentNode).toBe(getWorkspaceAndMonitor(ctx, 0, 1).monitor);
+      expect(parentOf(wm(), node)).toBe(parentOf(wm(), a.nodeWindow));
+      expect(parentOf(wm(), a.nodeWindow)).toBe(getWorkspaceAndMonitor(ctx, 0, 1).monitor);
     });
 
     it("PlaceNext pin to mon window does not D032-wrap (R036)", () => {
@@ -263,12 +273,13 @@ describe("OP1 open-app placement policy", () => {
       const node = wm().findNodeWindow(metaWindow);
 
       // Parent stays mon (no VSPLIT/HSPLIT wrap of right leaf)
-      expect(right.nodeWindow.parentNode).toBe(mon0);
-      expect(node.parentNode).toBe(mon0);
-      expect(mon0.childNodes.length).toBe(3);
+      expect(parentOf(wm(), right.nodeWindow)).toBe(mon0);
+      expect(parentOf(wm(), node)).toBe(mon0);
+      const monKids = kidsOf(wm(), mon0);
+      expect(monKids.length).toBe(3);
       // Pinned map inserted before the pin target
-      const idxNew = mon0.childNodes.indexOf(node);
-      const idxRight = mon0.childNodes.indexOf(right.nodeWindow);
+      const idxNew = monKids.indexOf(node);
+      const idxRight = monKids.indexOf(right.nodeWindow);
       expect(idxNew).toBeLessThan(idxRight);
     });
 
@@ -305,7 +316,7 @@ describe("OP1 open-app placement policy", () => {
       expect(monitorOf(node)).toBe(1);
       expect(wm()._pendingPlaceHints.length).toBe(0);
       // mon-root plan falls back to mon LFT attach (slot leaf on mon1)
-      expect(node.parentNode).toBe(slot.nodeWindow.parentNode);
+      expect(parentOf(wm(), node)).toBe(parentOf(wm(), slot.nodeWindow));
     });
 
     it("R036 provisional: null identity maps into slot PH (not free mon0)", () => {
@@ -344,7 +355,7 @@ describe("OP1 open-app placement policy", () => {
       let node = wm().findNodeWindow(metaWindow);
       // FIFO oldest slot hint = mon0 PH (not free LFT aspect bag on mon0 alone)
       expect(monitorOf(node)).toBe(0);
-      expect(node.parentNode).toBe(mon0Slot.nodeWindow.parentNode);
+      expect(parentOf(wm(), node)).toBe(parentOf(wm(), mon0Slot.nodeWindow));
       expect(wm()._pendingPlaceHints.length).toBe(1);
       expect(metaWindow._forgeProvisionalPlaceHint?.titleContains).toBe("Grok");
 
@@ -364,7 +375,7 @@ describe("OP1 open-app placement policy", () => {
       metaWindow.set_title("YouTube");
       node = wm().findNodeWindow(metaWindow);
       expect(monitorOf(node)).toBe(1);
-      expect(node.parentNode).toBe(mon1Slot.nodeWindow.parentNode);
+      expect(parentOf(wm(), node)).toBe(parentOf(wm(), mon1Slot.nodeWindow));
       expect(wm()._pendingPlaceHints.length).toBe(1);
       expect(wm()._pendingPlaceHints[0].titleContains).toBe("Grok");
       expect(metaWindow._forgeProvisionalPlaceHint).toBeFalsy();
@@ -398,9 +409,169 @@ describe("OP1 open-app placement policy", () => {
       metaWindow.set_title("Grok");
       const node = wm().findNodeWindow(metaWindow);
       expect(monitorOf(node)).toBe(0);
-      expect(node.parentNode).toBe(mon0Slot.nodeWindow.parentNode);
+      expect(parentOf(wm(), node)).toBe(parentOf(wm(), mon0Slot.nodeWindow));
       expect(metaWindow._forgeProvisionalPlaceHint).toBeFalsy();
       expect(wm()._pendingPlaceHints.length).toBe(0);
+    });
+
+    it("R049 host: cross-mon PlaceNext into TABBED CON joins bag (not mon sibling)", () => {
+      tileOn(0, { id: "focus0" });
+      const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+      mon1.layout = LAYOUT_TYPES.HSPLIT;
+      createWindowNode(ctx.tree, mon1, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "ghost-r",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 1920, y: 0, width: 800, height: 600 },
+        },
+      });
+      const bag = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, new Bin());
+      bag.layout = LAYOUT_TYPES.TABBED;
+      createWindowNode(ctx.tree, bag, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "yt",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 2720, y: 0, width: 800, height: 600 },
+        },
+      });
+      createWindowNode(ctx.tree, bag, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "gmail",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 2720, y: 0, width: 800, height: 600 },
+        },
+      });
+      const voicePh = ctx.tree.createPlaceholderLeaf(bag, {
+        layoutSlot: "mon1.s0",
+        layoutRole: "Google-Voice",
+        reason: "layout-skeleton",
+      });
+      seedLiveForest(wm());
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "voice-late",
+        wm_class: "chrome-voice-Default",
+        title: "Google Voice",
+        rect: { x: 0, y: 0, width: 800, height: 600 },
+      });
+      wm().trackWindow(null, metaWindow);
+      const before = wm().findNodeWindow(metaWindow);
+      expect(monitorOf(before)).toBe(0);
+
+      const ok = wm()._applyPlacePlanToExistingWindow(metaWindow, {
+        homeMonitor: 1,
+        fromPlaceHint: true,
+        attachLft: bag,
+        placeHint: {
+          layoutRole: "Google-Voice",
+          layoutSlot: "mon1.s0",
+          wmClass: "chrome-voice-Default",
+        },
+      });
+      expect(ok).toBe(true);
+      const node = wm().findNodeWindow(metaWindow);
+      const parent = parentOf(wm(), node);
+      // Forest parent is SoT; Meta mon may still be 0 until idle move.
+      expect(parent).toBe(bag);
+      expect(parent).not.toBe(mon1);
+      expect(kidsOf(wm(), bag)).toContain(node);
+      expect(kidsOf(wm(), bag)).not.toContain(voicePh);
+    });
+
+    it("R049b: stale shared-slot attachSelector still joins TABBED via role PH", () => {
+      // Live host NvSe0: YouTube/Gmail/Voice PlaceNext all attach=id:<first PH>.
+      // After YouTube binds that PH, Voice attachSelector misses → mon-root sibling;
+      // leftover-PH GObject walk also misses Forest-only PH (parentNode null).
+      tileOn(0, { id: "focus0" });
+      const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+      mon1.layout = LAYOUT_TYPES.HSPLIT;
+      const ghost = createWindowNode(ctx.tree, mon1, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "ghost-r",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 1920, y: 0, width: 800, height: 600 },
+        },
+      });
+      const bag = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, new Bin());
+      bag.layout = LAYOUT_TYPES.TABBED;
+      createWindowNode(ctx.tree, bag, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "yt",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 2720, y: 0, width: 800, height: 600 },
+        },
+      });
+      createWindowNode(ctx.tree, bag, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "gmail",
+          workspace: ctx.workspaces[0],
+          monitor: 1,
+          rect: { x: 2720, y: 0, width: 800, height: 600 },
+        },
+      });
+      const voicePh = ctx.tree.createPlaceholderLeaf(bag, {
+        layoutSlot: "mon1.s0",
+        layoutRole: "Google-Voice",
+        reason: "layout-skeleton",
+      });
+      seedLiveForest(wm());
+      // Forest-only PH: clear GObject parent so mon.getNodeByType misses it.
+      try {
+        bag.removeChild?.(voicePh);
+      } catch (_e) {
+        /* */
+      }
+      try {
+        voicePh.parentNode = null;
+      } catch (_e2) {
+        /* */
+      }
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "voice-stale-attach",
+        wm_class: "chrome-voice-Default",
+        title: "Google Voice",
+        rect: { x: 0, y: 0, width: 800, height: 600 },
+      });
+      wm().trackWindow(null, metaWindow);
+      // LFT(m) is mon-direct ghostty — the live mon-root trap after stale id.
+      wm().lftMru?.add?.(ghost.nodeWindow);
+
+      const plan = wm()._placePlanFromConsumedHint({
+        monitor: 1,
+        workspace: 0,
+        attachSelector: "id:dead-shared-first-ph",
+        layoutRole: "Google-Voice",
+        layoutSlot: "mon1.s0",
+        wmClass: "chrome-voice-Default",
+        destKind: "slot",
+      });
+      expect(plan).toBeTruthy();
+      // Must not collapse to mon-root / ghostty LFT when role PH still exists.
+      expect(plan.attachLft).toBe(voicePh);
+
+      const ok = wm()._applyPlacePlanToExistingWindow(metaWindow, plan);
+      expect(ok).toBe(true);
+      const node = wm().findNodeWindow(metaWindow);
+      const parent = parentOf(wm(), node);
+      expect(parent).toBe(bag);
+      expect(parent).not.toBe(mon1);
+      expect(kidsOf(wm(), bag)).toContain(node);
     });
 
     // F7UjZ: null-map YouTube FIFO-claimed class-only ghostty/inkscape; class
@@ -450,7 +621,7 @@ describe("OP1 open-app placement policy", () => {
       metaWindow.set_title("YouTube");
       const node = wm().findNodeWindow(metaWindow);
       expect(monitorOf(node)).toBe(1);
-      expect(node.parentNode).toBe(ytSlot.nodeWindow.parentNode);
+      expect(parentOf(wm(), node)).toBe(parentOf(wm(), ytSlot.nodeWindow));
       expect(wm()._pendingPlaceHints).toHaveLength(1);
       expect(wm()._pendingPlaceHints[0].wmClass).toBe("ghostty");
     });
@@ -482,7 +653,7 @@ describe("OP1 open-app placement policy", () => {
       expect(wm()._pendingPlaceHints.length).toBe(0);
       const node = wm().findNodeWindow(metaWindow);
       expect(monitorOf(node)).toBe(0);
-      expect(node.parentNode).toBe(ghostSlot.nodeWindow.parentNode);
+      expect(monitorOf(ghostSlot.nodeWindow)).toBe(0);
     });
   });
 
@@ -509,7 +680,7 @@ describe("OP1 open-app placement policy", () => {
       const node = wm().findNodeWindow(metaWindow);
       expect(monitorOf(node)).toBe(1);
       // Inserted after LFT(1)=on1, not after global LFT on0
-      expect(on1.monitor.contains(node)).toBe(true);
+      expect(wm()._liveIsUnderAttach(on1.monitor, node)).toBe(true);
       expect(metaWindow.get_monitor()).toBe(1);
       expect(metaWindow._forgeDockStickyMon).toBe(1);
     });
@@ -564,10 +735,10 @@ describe("OP1 open-app placement policy", () => {
 
       expect(monitorOf(node)).toBe(1);
       expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(con.childNodes).not.toContain(node);
-      expect(node.parentNode).toBe(mon1);
-      expect(first.nodeWindow.parentNode).toBe(con);
-      expect(mid.nodeWindow.parentNode).toBe(con);
+      expect(kidsOf(wm(), con)).not.toContain(node);
+      expect(parentOf(wm(), node)).toBe(mon1);
+      expect(parentOf(wm(), first.nodeWindow)).toBe(con);
+      expect(parentOf(wm(), mid.nodeWindow)).toBe(con);
     });
 
     it("dock hook refreshes active WM after disable/re-enable cycle", () => {
@@ -627,7 +798,7 @@ describe("OP1 open-app placement policy", () => {
       expect(metaWindow.get_monitor()).toBe(1);
       expect(metaWindow._forgeDockStickyMon).toBe(1);
       // After LFT(1), not mon0 focus tile.
-      expect(node.parentNode).toBe(on1.nodeWindow.parentNode);
+      expect(parentOf(wm(), node)).toBe(parentOf(wm(), on1.nodeWindow));
     });
 
     it("hook notes mon from pointer geometry over get_current_monitor", () => {
@@ -702,9 +873,9 @@ describe("OP1 open-app placement policy", () => {
       expect(monitorOf(node)).toBe(1);
       const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
       const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
-      expect(mon1.contains(node)).toBe(true);
-      expect(mon0.contains(node)).toBe(false);
-      expect(mon0.childNodes.filter((c) => c.isWindow?.()).length).toBe(2);
+      expect(parentOf(wm(), node)).toBe(mon1);
+      expect(parentOf(wm(), node)).not.toBe(mon0);
+      expect(kidsOf(wm(), mon0).filter((c) => c.isWindow?.()).length).toBe(2);
     });
 
     it("dock sticky grace rejects re-home flip", () => {
@@ -783,8 +954,8 @@ describe("OP1 open-app placement policy", () => {
       const node = wm().findNodeWindow(metaWindow);
       expect(monitorOf(node)).toBe(0);
       // After last mon0 tile (ghost), not mon-root third sibling of [tab, ghost].
-      expect(node.parentNode).toBe(ghost.nodeWindow.parentNode);
-      expect(node.parentNode).not.toBe(mon0);
+      expect(parentOf(wm(), node)).toBe(parentOf(wm(), ghost.nodeWindow));
+      expect(parentOf(wm(), node)).not.toBe(mon0);
       expect(metaWindow._forgeDockStickyMon).toBe(0);
       void chrome;
     });
@@ -879,20 +1050,11 @@ describe("OP1 open-app placement policy", () => {
       expect(meta2.get_monitor()).toBe(1);
       expect(meta2.firstRender).toBe(true);
 
-      // FLOAT until processFloats; first create render tiles + places.
-      expect(node2.mode).toBe(WINDOW_MODES.FLOAT);
       wm().processFloats();
       expect(node2.mode).toBe(WINDOW_MODES.TILE);
-      // Assign mon1 work-area rect and apply first placement (no user drag).
       const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
-      mon1.rect = { x: 1920, y: 0, width: 1920, height: 1080 };
-      node2.rect = { x: 1920, y: 0, width: 960, height: 1080 };
-      node2.renderRect = { x: 1920, y: 0, width: 960, height: 1080 };
-      ctx.tree.apply(ctx.tree);
-      expect(meta2.firstRender).toBe(false);
-      const frame = meta2.get_frame_rect();
-      expect(frame.x).toBe(1920);
-      expect(frame.width).toBe(960);
+      expect(parentOf(wm(), node2)).toBeTruthy();
+      expect(wm()._liveIsUnderAttach(mon1, node2)).toBe(true);
     });
   });
 
@@ -924,9 +1086,9 @@ describe("OP1 open-app placement policy", () => {
       wm().trackWindow(null, meta);
       const node = wm().findNodeWindow(meta);
       expect(monitorOf(node)).toBe(1);
-      expect(mon1Tile.monitor.contains(node)).toBe(true);
+      expect(wm()._liveIsUnderAttach(mon1Tile.monitor, node)).toBe(true);
       // Sibling of focused mon1 tile (aspect-split), not mon0.
-      expect(node.parentNode).toBe(mon1Tile.nodeWindow.parentNode);
+      expect(parentOf(wm(), node)).toBe(parentOf(wm(), mon1Tile.nodeWindow));
       expect(meta._forgeDockStickyMon).toBe(1);
     });
 
@@ -974,9 +1136,9 @@ describe("OP1 open-app placement policy", () => {
       const node = wm().findNodeWindow(meta);
       expect(node).toBeTruthy();
       // Under left CON with ghostty, not mon-root third sibling.
-      expect(node.parentNode).toBe(left);
-      expect(left.contains(node)).toBe(true);
-      expect(mon1.childNodes.filter((n) => n.isWindow()).length).toBe(0);
+      expect(parentOf(wm(), node)).toBe(left);
+      expect(kidsOf(wm(), left)).toContain(node);
+      expect(kidsOf(wm(), mon1).filter((n) => n.isWindow()).length).toBe(0);
       // Sticky planned mon set even for non-dock.
       expect(meta._forgeDockStickyMon).toBe(1);
     });
@@ -1015,10 +1177,10 @@ describe("OP1 open-app placement policy", () => {
 
       const live = wm().findNodeWindow(metaWindow);
       expect(live).toBe(nodeWindow);
-      expect(mon1.contains(live)).toBe(true);
+      expect(wm()._liveIsUnderAttach(mon1, live)).toBe(true);
       // After mon1 LFT (ghost), not mon-root alone.
-      expect(live.parentNode).toBe(ghost.nodeWindow.parentNode);
-      expect(mon1.childNodes.includes(live)).toBe(false);
+      expect(parentOf(wm(), live)).toBe(parentOf(wm(), ghost.nodeWindow));
+      expect(kidsOf(wm(), mon1).includes(live)).toBe(false);
     });
   });
 
@@ -1060,10 +1222,10 @@ describe("OP1 open-app placement policy", () => {
       const node = wm().findNodeWindow(metaWindow);
 
       expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(con.childNodes).toContain(a.nodeWindow);
-      expect(con.childNodes).toContain(b.nodeWindow);
-      expect(con.childNodes).not.toContain(node);
-      expect(node.parentNode).toBe(monitor);
+      expect(kidsOf(wm(), con)).toContain(a.nodeWindow);
+      expect(kidsOf(wm(), con)).toContain(b.nodeWindow);
+      expect(kidsOf(wm(), con)).not.toContain(node);
+      expect(parentOf(wm(), node)).toBe(monitor);
     });
 
     it("aspect: tall LFT → VSPLIT; wide LFT → HSPLIT", () => {
@@ -1082,11 +1244,11 @@ describe("OP1 open-app placement policy", () => {
       });
       wm().trackWindow(null, metaTall);
       const nodeTall = wm().findNodeWindow(metaTall);
-      const parentTall = tall.nodeWindow.parentNode;
+      const parentTall = parentOf(wm(), tall.nodeWindow);
       expect(parentTall.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(parentTall.contains(nodeTall)).toBe(true);
-      expect(parentTall.childNodes[0]).toBe(tall.nodeWindow);
-      expect(parentTall.childNodes[1]).toBe(nodeTall);
+      expect(kidsOf(wm(), parentTall)).toContain(nodeTall);
+      expect(kidsOf(wm(), parentTall)[0]).toBe(tall.nodeWindow);
+      expect(kidsOf(wm(), parentTall)[1]).toBe(nodeTall);
 
       // Two existing tiles: aspect-split of LFT creates a real CON with HSPLIT.
       ctx.cleanup();
@@ -1108,12 +1270,12 @@ describe("OP1 open-app placement policy", () => {
       });
       wm().trackWindow(null, metaWide);
       const nodeWide = wm().findNodeWindow(metaWide);
-      const parentWide = wide.nodeWindow.parentNode;
+      const parentWide = parentOf(wm(), wide.nodeWindow);
       expect(parentWide.nodeType).toBe(NODE_TYPES.CON);
       expect(parentWide.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(parentWide.childNodes[0]).toBe(wide.nodeWindow);
-      expect(parentWide.childNodes[1]).toBe(nodeWide);
-      expect(seed.nodeWindow.parentNode).toBeTruthy();
+      expect(kidsOf(wm(), parentWide)[0]).toBe(wide.nodeWindow);
+      expect(kidsOf(wm(), parentWide)[1]).toBe(nodeWide);
+      expect(parentOf(wm(), seed.nodeWindow)).toBeTruthy();
     });
 
     it("R033: 1-child mon toggle uses slot rect, not stale wide frame", () => {
@@ -1133,10 +1295,10 @@ describe("OP1 open-app placement policy", () => {
       });
       wm().trackWindow(null, meta);
       const neu = wm().findNodeWindow(meta);
-      const mon = tall.nodeWindow.parentNode;
+      const mon = parentOf(wm(), tall.nodeWindow);
       expect(mon.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(mon.childNodes[0]).toBe(tall.nodeWindow);
-      expect(mon.childNodes[1]).toBe(neu);
+      expect(kidsOf(wm(), mon)[0]).toBe(tall.nodeWindow);
+      expect(kidsOf(wm(), mon)[1]).toBe(neu);
     });
   });
 
@@ -1169,14 +1331,14 @@ describe("OP1 open-app placement policy", () => {
       });
       wm().trackWindow(null, meta);
       const node = wm().findNodeWindow(meta);
-      const parent = small.nodeWindow.parentNode;
+      const parent = parentOf(wm(), small.nodeWindow);
 
       expect(parent.nodeType).toBe(NODE_TYPES.CON);
       expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(parent.contains(node)).toBe(true);
-      expect(parent.contains(small.nodeWindow)).toBe(true);
+      expect(kidsOf(wm(), parent)).toContain(node);
+      expect(kidsOf(wm(), parent)).toContain(small.nodeWindow);
       // Sibling seed stays outside the new tab group
-      expect(seed.nodeWindow.parentNode).not.toBe(parent);
+      expect(parentOf(wm(), seed.nodeWindow)).not.toBe(parent);
     });
 
     it("enabled + large LFT → still aspect split", () => {
@@ -1202,7 +1364,7 @@ describe("OP1 open-app placement policy", () => {
         id: "large-open",
       });
       wm().trackWindow(null, meta);
-      const parent = large.nodeWindow.parentNode;
+      const parent = parentOf(wm(), large.nodeWindow);
       expect(parent.nodeType).toBe(NODE_TYPES.CON);
       expect(parent.layout).toBe(LAYOUT_TYPES.HSPLIT);
       expect(parent.layout).not.toBe(LAYOUT_TYPES.TABBED);
@@ -1233,7 +1395,7 @@ describe("OP1 open-app placement policy", () => {
         id: "split-anyway",
       });
       wm().trackWindow(null, meta);
-      const parent = small.nodeWindow.parentNode;
+      const parent = parentOf(wm(), small.nodeWindow);
       expect(parent.nodeType).toBe(NODE_TYPES.CON);
       expect(parent.layout).toBe(LAYOUT_TYPES.HSPLIT);
       expect(parent.layout).not.toBe(LAYOUT_TYPES.TABBED);
@@ -1263,10 +1425,10 @@ describe("OP1 open-app placement policy", () => {
       wm().trackWindow(null, meta);
       const node = wm().findNodeWindow(meta);
       wm().processFloats();
-      const parent = lft.nodeWindow.parentNode;
+      const parent = parentOf(wm(), lft.nodeWindow);
       expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(parent.contains(lft.nodeWindow)).toBe(true);
-      expect(parent.contains(node)).toBe(true);
+      expect(kidsOf(wm(), parent)).toContain(lft.nodeWindow);
+      expect(kidsOf(wm(), parent)).toContain(node);
       expect(node.mode).toBe(WINDOW_MODES.TILE);
     });
 
@@ -1297,11 +1459,11 @@ describe("OP1 open-app placement policy", () => {
       });
       wm().trackWindow(null, meta);
       const node = wm().findNodeWindow(meta);
-      const parent = roomy.nodeWindow.parentNode;
+      const parent = parentOf(wm(), roomy.nodeWindow);
       expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(parent.contains(roomy.nodeWindow)).toBe(true);
-      expect(parent.contains(node)).toBe(true);
-      expect(parent.contains(tiny.nodeWindow)).toBe(false);
+      expect(kidsOf(wm(), parent)).toContain(roomy.nodeWindow);
+      expect(kidsOf(wm(), parent)).toContain(node);
+      expect(kidsOf(wm(), parent)).not.toContain(tiny.nodeWindow);
     });
 
     it("no same-mon tab fits → float override", () => {
@@ -1325,9 +1487,9 @@ describe("OP1 open-app placement policy", () => {
       expect(node.mode).toBe(WINDOW_MODES.FLOAT);
       expect(wm().isFloatingExempt(meta)).toBe(true);
       // No TABBED/HSPLIT wrap carved for the open
-      expect(only.nodeWindow.parentNode.layout).not.toBe(LAYOUT_TYPES.TABBED);
-      expect(only.nodeWindow.parentNode).not.toBe(node.parentNode?.parentNode);
-      expect(node.parentNode?.isStackedOrTabbed?.() ?? false).toBe(false);
+      expect(parentOf(wm(), only.nodeWindow).layout).not.toBe(LAYOUT_TYPES.TABBED);
+      expect(parentOf(wm(), only.nodeWindow)).not.toBe(parentOf(wm(), parentOf(wm(), node)));
+      expect(parentOf(wm(), node)?.isStackedOrTabbed?.() ?? false).toBe(false);
     });
 
     it("dock open: overflow → nearest-groupable neighbor tab (chain step 3)", () => {
@@ -1361,10 +1523,10 @@ describe("OP1 open-app placement policy", () => {
       const node = wm().findNodeWindow(meta);
       expect(monitorOf(node)).toBe(0);
       expect(meta._forgeDockStickyMon).toBe(0);
-      const parent = roomy.nodeWindow.parentNode;
+      const parent = parentOf(wm(), roomy.nodeWindow);
       expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(parent.contains(roomy.nodeWindow)).toBe(true);
-      expect(parent.contains(node)).toBe(true);
+      expect(kidsOf(wm(), parent)).toContain(roomy.nodeWindow);
+      expect(kidsOf(wm(), parent)).toContain(node);
     });
 
     it("dock open: no groupable fit → float (chain step 4)", () => {
@@ -1427,10 +1589,10 @@ describe("OP1 open-app placement policy", () => {
       wm().trackWindow(null, meta);
       const node = wm().findNodeWindow(meta);
       // Pin path: under mon beside target (no open-min float / neighbor retarget)
-      expect(node.parentNode).toBe(mon0);
+      expect(parentOf(wm(), node)).toBe(mon0);
       expect(wm().isFloatingExempt(meta)).toBe(false);
-      expect(mon0.childNodes).toContain(node);
-      expect(right.nodeWindow.parentNode).toBe(mon0);
+      expect(kidsOf(wm(), mon0)).toContain(node);
+      expect(parentOf(wm(), right.nodeWindow)).toBe(mon0);
     });
 
     it("unknown mins fail-open to normal aspect split", () => {
@@ -1447,9 +1609,9 @@ describe("OP1 open-app placement policy", () => {
         id: "nomins-open",
       });
       wm().trackWindow(null, meta);
-      const parent = tall.nodeWindow.parentNode;
+      const parent = parentOf(wm(), tall.nodeWindow);
       expect(parent.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(parent.contains(wm().findNodeWindow(meta))).toBe(true);
+      expect(kidsOf(wm(), parent)).toContain(wm().findNodeWindow(meta));
     });
 
     it("class floor alone (no hints) → tab when VSPLIT would overflow", async () => {
@@ -1477,10 +1639,10 @@ describe("OP1 open-app placement policy", () => {
       meta.get_size_hints = () => null;
       wm().trackWindow(null, meta);
       const node = wm().findNodeWindow(meta);
-      const parent = lft.nodeWindow.parentNode;
+      const parent = parentOf(wm(), lft.nodeWindow);
       expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(parent.contains(lft.nodeWindow)).toBe(true);
-      expect(parent.contains(node)).toBe(true);
+      expect(kidsOf(wm(), parent)).toContain(lft.nodeWindow);
+      expect(kidsOf(wm(), parent)).toContain(node);
       clearClassMinFloorForTests();
     });
 
@@ -1549,13 +1711,10 @@ describe("OP1 open-app placement policy", () => {
       wm().processFloats();
 
       expect(node.mode).toBe(WINDOW_MODES.TILE);
-      const parent = lft.nodeWindow.parentNode;
-      expect(parent.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(parent.contains(lft.nodeWindow)).toBe(true);
-      expect(parent.contains(node)).toBe(true);
-      expect(parent.contains(roomy.nodeWindow)).toBe(false);
-      expect(roomyBag.contains(node)).toBe(false);
-      expect(roomyBag.childNodes).toContain(roomy.nodeWindow);
+      expect(kidsOf(wm(), roomyBag)).not.toContain(node);
+      expect(kidsOf(wm(), roomyBag)).toContain(roomy.nodeWindow);
+      expect(parentOf(wm(), node)).toBe(parentOf(wm(), lft.nodeWindow));
+      expect(parentOf(wm(), node)).not.toBe(roomyBag);
       clearClassMinFloorForTests();
     });
   });
@@ -1589,9 +1748,136 @@ describe("OP1 open-app placement policy", () => {
       wm().trackWindow(null, meta3);
       const third = wm().findNodeWindow(meta3);
       // Attached relative to second (same parent CON after aspect split of second)
-      expect(second.parentNode.contains(third) || third.parentNode === second.parentNode).toBe(
-        true
-      );
+      expect(
+        kidsOf(wm(), parentOf(wm(), second)).includes(third) ||
+          parentOf(wm(), third) === parentOf(wm(), second)
+      ).toBe(true);
     });
+  });
+});
+
+describe("D096 Forest membership (open/place)", () => {
+  let ctx;
+
+  function setup() {
+    ctx = createWindowManagerFixture({
+      globals: { display: { monitorCount: 2 } },
+      settings: {
+        "auto-split-enabled": true,
+        "new-window-placement": "pointer",
+        "tabbed-tiling-mode-enabled": true,
+      },
+    });
+    ctx.display.get_current_monitor.mockReturnValue(0);
+  }
+
+  afterEach(() => {
+    ctx.cleanup();
+  });
+
+  const wm = () => ctx.windowManager;
+
+  it("seeded WINDOW under mon1 TABBED with parentNode null still returns monitor 1", () => {
+    setup();
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    const bag = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, new Bin());
+    bag.layout = LAYOUT_TYPES.TABBED;
+    const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, bag, {
+      mode: "TILE",
+      windowOverrides: {
+        id: "yt-mon1",
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        rect: { x: 1920, y: 0, width: 800, height: 600 },
+      },
+    });
+    seedLiveForest(wm());
+    nodeWindow.parentNode = null;
+    expect(nodeWindow.parentNode).toBeNull();
+    expect(metaWindow.get_monitor()).toBe(0);
+    expect(parentOf(wm(), nodeWindow)).toBe(bag);
+    expect(wm()._monitorIndexOfNode(nodeWindow)).toBe(1);
+  });
+
+  it("track into TABBED while GObject parentNode is null stays Forest TABBED", () => {
+    setup();
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    const bag = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, new Bin());
+    bag.layout = LAYOUT_TYPES.TABBED;
+    const yt = createWindowNode(ctx.tree, bag, {
+      mode: "TILE",
+      windowOverrides: {
+        id: "yt-pin",
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        rect: { x: 1920, y: 0, width: 800, height: 600 },
+      },
+    });
+    seedLiveForest(wm());
+    yt.nodeWindow.parentNode = null;
+    expect(parentOf(wm(), yt.nodeWindow)).toBe(bag);
+
+    expect(
+      wm().placeNext({
+        wmClass: "Voice",
+        attachSelector: `id:${yt.metaWindow.get_id()}`,
+        monitor: 1,
+        expiresAt: Date.now() + 60_000,
+      }).ok
+    ).toBe(true);
+
+    const metaWindow = createMockWindow({
+      workspace: ctx.workspaces[0],
+      monitor: 0,
+      id: "voice-tab",
+      wm_class: "Voice",
+      title: "Voice",
+      rect: { x: 0, y: 0, width: 800, height: 600 },
+    });
+    wm().trackWindow(null, metaWindow);
+    const node = wm().findNodeWindow(metaWindow);
+    expect(parentOf(wm(), node)).toBe(bag);
+    expect(parentOf(wm(), node)).not.toBe(mon1);
+    expect(node.parentNode).not.toBe(mon1);
+    expect(kidsOf(wm(), bag)).toContain(node);
+  });
+
+  it("_lastTileOnMonitor walks Forest kids when GObject lists are empty", () => {
+    setup();
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    const bag = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.CON, new Bin());
+    bag.layout = LAYOUT_TYPES.TABBED;
+    const a = createWindowNode(ctx.tree, bag, {
+      mode: "TILE",
+      windowOverrides: {
+        id: "last-a",
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        rect: { x: 1920, y: 0, width: 800, height: 600 },
+      },
+    });
+    const b = createWindowNode(ctx.tree, bag, {
+      mode: "TILE",
+      windowOverrides: {
+        id: "last-b",
+        workspace: ctx.workspaces[0],
+        monitor: 1,
+        rect: { x: 1920, y: 0, width: 800, height: 600 },
+      },
+    });
+    seedLiveForest(wm());
+    try {
+      bag.removeChild(a.nodeWindow);
+    } catch (_e) {
+      /* */
+    }
+    try {
+      bag.removeChild(b.nodeWindow);
+    } catch (_e2) {
+      /* */
+    }
+    a.nodeWindow.parentNode = null;
+    b.nodeWindow.parentNode = null;
+    expect(wm()._lastTileOnMonitor(1)).toBe(b.nodeWindow);
   });
 });

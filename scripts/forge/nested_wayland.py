@@ -22,6 +22,7 @@ Client env (apps / ``forge`` against the nest)::
     WAYLAND_DISPLAY=<nest display e.g. wayland-forge>
     GDK_BACKEND=wayland
     XDG_SESSION_TYPE=wayland
+    DISPLAY=                               # empty — kill GTK X11 fallback
     FORGE_HOST=<hostname>-sub-<nestname>   # logical host (CLI + Shell)
     FORGE_CONFIG_HOME=<state>/forge-config # forge config root (CLI + nest Shell)
 
@@ -597,6 +598,32 @@ def resolve_host_xauthority(env: Optional[Mapping[str, str]] = None) -> Optional
     return cur or None
 
 
+def resolve_host_display(env: Optional[Mapping[str, str]] = None) -> Optional[str]:
+    """Host X11 DISPLAY for nested mutter embed (needed even on Wayland login).
+
+    Agent shells often export empty ``DISPLAY=``; mutter then fails with
+    ``Unable to open display, DISPLAY not set``. Prefer a non-empty env value,
+    else the first live ``/tmp/.X11-unix/X*`` socket (``:0``, ``:1``, …).
+    """
+    e = dict(env) if env is not None else dict(os.environ)
+    cur = str(e.get("DISPLAY") or "").strip()
+    if cur:
+        return cur
+    xdir = Path("/tmp/.X11-unix")
+    if not xdir.is_dir():
+        return None
+    try:
+        socks = sorted(
+            (p for p in xdir.iterdir() if p.name.startswith("X") and p.name[1:].isdigit()),
+            key=lambda p: int(p.name[1:]),
+        )
+    except OSError:
+        return None
+    for p in socks:
+        return f":{p.name[1:]}"
+    return None
+
+
 def shell_start_env(cfg: NestedConfig) -> dict[str, str]:
     """Environment for the nested gnome-shell process itself."""
     env = os.environ.copy()
@@ -605,6 +632,12 @@ def shell_start_env(cfg: NestedConfig) -> dict[str, str]:
     env["WAYLAND_DISPLAY"] = cfg.host_wayland
     env["GDK_BACKEND"] = "wayland"
     env["XDG_SESSION_TYPE"] = "wayland"
+    # Nested mutter still opens an X11 DISPLAY for the embed window.
+    disp = resolve_host_display(env)
+    if disp:
+        env["DISPLAY"] = disp
+    else:
+        env.pop("DISPLAY", None)
     # Inherit to GJS DesktopAppInfo / Subprocess launches: nest GL path
     # often leaves ghostty alive with zero Meta windows (open-miss).
     env["GSK_RENDERER"] = "cairo"
@@ -619,6 +652,10 @@ def shell_start_env(cfg: NestedConfig) -> dict[str, str]:
     ensure_nest_cli_dirs(cfg)
     env["FORGE_HOST"] = nest_forge_host(cfg.name)
     env["FORGE_CONFIG_HOME"] = str(nest_forge_config_home(cfg))
+    # ApplyLayout DesktopAppInfo / Subprocess children need the nest compositor
+    # display (shell itself stays on host WAYLAND_DISPLAY).
+    env["FORGE_NEST_WAYLAND_DISPLAY"] = cfg.display
+    env["FORGE_NEST_STATE_DIR"] = str(Path(cfg.state_dir))
     nmon = int(
         getattr(cfg, "num_monitors", DEFAULT_MONITORS) or DEFAULT_MONITORS)
     if nmon < 1:
@@ -955,6 +992,8 @@ def wait_nest_client_ready(
 
 def _start_dbus(cfg: NestedConfig) -> int:
     d = Path(cfg.state_dir)
+    ensure_nest_client_isolation(cfg)
+    ensure_nest_cli_dirs(cfg)
     bus_path = d / "bus"
     if bus_path.exists():
         try:
@@ -962,6 +1001,29 @@ def _start_dbus(cfg: NestedConfig) -> int:
         except OSError:
             pass
     log = open(d / "dbus.log", "w", encoding="utf-8")  # noqa: SIM115
+    # DBus-activated apps (Nautilus) inherit this env, not Popen client_env.
+    dbus_env = dict(os.environ)
+    dbus_env.update({
+        "WAYLAND_DISPLAY": cfg.display,
+        "GDK_BACKEND": "wayland",
+        "XDG_SESSION_TYPE": "wayland",
+        "GTK_USE_PORTAL": "0",
+        "GIO_USE_VFS": "local",
+        "GSK_RENDERER": "cairo",
+        "LIBGL_ALWAYS_SOFTWARE": "1",
+        "FORGE_NEST_WAYLAND_DISPLAY": cfg.display,
+        "FORGE_NEST_STATE_DIR": str(d),
+        "FORGE_HOST": nest_forge_host(cfg.name),
+        "FORGE_CONFIG_HOME": str(nest_forge_config_home(cfg)),
+        "XDG_RUNTIME_DIR": str(nest_runtime_dir(cfg)),
+        "XDG_CONFIG_HOME": str(d / "config-home"),
+        "XDG_CACHE_HOME": str(d / "cache"),
+        "XDG_DATA_HOME": str(d / "data"),
+        "HOME": str(nest_client_home(cfg)),
+    })
+    dbus_env.pop("DISPLAY", None)
+    dbus_env.pop("DBUS_STARTER_ADDRESS", None)
+    dbus_env.pop("DBUS_STARTER_BUS_TYPE", None)
     proc = subprocess.Popen(
         [
             "dbus-daemon",
@@ -973,6 +1035,7 @@ def _start_dbus(cfg: NestedConfig) -> int:
         ],
         stdout=log,
         stderr=subprocess.STDOUT,
+        env=dbus_env,
         start_new_session=True,
     )
     _write_pid(d / "dbus.pid", proc.pid)
@@ -1108,6 +1171,8 @@ def start(
         raise NestedError(
             f"nested Wayland socket not ready: {nest_socket_path(cfg.display)}; "
             f"see {d / 'shell.log'}")
+    # save_config → client_env ran before the nest socket existed.
+    ensure_nest_client_isolation(cfg)
     if not wait_shell_ready(cfg.bus_address):
         stop(name=name, force=True)
         raise NestedError(
@@ -1148,6 +1213,47 @@ def _pids_with_cmdline_needle(needle: str) -> list[int]:
     return found
 
 
+def _pids_with_nest_client_env(
+    *,
+    display: str,
+    state_dir: Path | str,
+    exclude: Optional[Sequence[int]] = None,
+) -> list[int]:
+    """PIDs whose environ still points at this nest (spill / leftover clients).
+
+    Matches WAYLAND_DISPLAY=<nest display>, XDG_RUNTIME_DIR=<state>/runtime,
+    or FORGE_CONFIG_HOME=<state>/forge-config. Used on stop so nest clients
+    cannot outlive the nest compositor and attach elsewhere.
+    """
+    skip = {int(p) for p in (exclude or []) if p is not None}
+    skip.add(os.getpid())
+    state = Path(state_dir)
+    markers = [
+        f"WAYLAND_DISPLAY={display}",
+        f"XDG_RUNTIME_DIR={state / 'runtime'}",
+        f"FORGE_CONFIG_HOME={state / 'forge-config'}",
+    ]
+    found: list[int] = []
+    try:
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit():
+                continue
+            pid = int(entry.name)
+            if pid in skip:
+                continue
+            try:
+                raw = (entry / "environ").read_bytes()
+            except OSError:
+                continue
+            # Environ is NUL-separated; decode lossy for marker search.
+            blob = raw.replace(b"\0", b"\n").decode("utf-8", "replace")
+            if any(m in blob for m in markers):
+                found.append(pid)
+    except OSError:
+        return found
+    return found
+
+
 def _kill_graceful(pid: Optional[int], *, grace_s: float) -> None:
     if pid is None or not _pid_alive(pid):
         return
@@ -1175,16 +1281,27 @@ def stop(*, name: str = DEFAULT_NAME, force: bool = False) -> bool:
             p
             for p in _pids_with_cmdline_needle(str(nest_socket_path(display)))
             if p not in orphan_pids)
+    # Nest clients (ghostty/chrome/…) that still carry nest client_env — kill
+    # before/with shell so they cannot fall back onto the host compositor.
+    client_orphans = _pids_with_nest_client_env(
+        display=display or DEFAULT_DISPLAY,
+        state_dir=d,
+        exclude=[shell_pid, dbus_pid, os.getpid()],
+    )
+    for p in client_orphans:
+        if p not in orphan_pids:
+            orphan_pids.append(p)
     was = bool((shell_pid and _pid_alive(shell_pid))
                or (dbus_pid and _pid_alive(dbus_pid))
                or any(_pid_alive(p) for p in orphan_pids))
 
-    _kill_graceful(shell_pid, grace_s=STOP_GRACE_S)
-    _kill_graceful(dbus_pid, grace_s=1.5)
+    # Clients first (while nest socket may still exist), then shell/dbus.
     for opid in orphan_pids:
         if opid in (shell_pid, dbus_pid, os.getpid()):
             continue
-        _kill_graceful(opid, grace_s=1.0)
+        _kill_graceful(opid, grace_s=0.8)
+    _kill_graceful(shell_pid, grace_s=STOP_GRACE_S)
+    _kill_graceful(dbus_pid, grace_s=1.5)
 
     sock = nest_socket_path(display)
     for stale in (sock, Path(str(sock) + ".lock")):
@@ -1299,6 +1416,9 @@ def status_dict(name: str = DEFAULT_NAME) -> dict[str, Any]:
             "shell_log":
             str(d / "shell.log"),
         })
+    out["shell_log"] = str(d / "shell.log")
+    out["forge_log"] = str(d / "forge.log")
+    out["forge_jsonl"] = str(d / "forge.jsonl")
     return out
 
 
@@ -1428,6 +1548,10 @@ def merge_client_env(
 ) -> dict[str, str]:
     env = dict(base or os.environ)
     env.update(client_env(cfg))
+    # Empty DISPLAY is X11 :0 (host). Unset so GDK_BACKEND=wayland is the only path.
+    env.pop("DISPLAY", None)
+    env.pop("DBUS_STARTER_ADDRESS", None)
+    env.pop("DBUS_STARTER_BUS_TYPE", None)
     return env
 
 
@@ -1505,6 +1629,10 @@ def run_campaign(
             except Exception:
                 # Never mask the campaign return / primary error with stop noise.
                 pass
+        print(
+            f"forge-test nested: hunt {session_dir(name) / 'forge.jsonl'}",
+            file=sys.stderr,
+        )
 
 
 def format_env_export(cfg: NestedConfig) -> str:
@@ -1531,6 +1659,8 @@ def format_status_text(st: Mapping[str, Any]) -> str:
         f"state_dir:    {st.get('state_dir')}",
         f"env:          {st.get('env_sh', '—')}",
         f"log:          {st.get('shell_log', '—')}",
+        f"forge.log:    {st.get('forge_log', '—')}",
+        f"forge.jsonl:  {st.get('forge_jsonl', '—')}",
     ]
     return "\n".join(lines) + "\n"
 
@@ -1577,6 +1707,13 @@ def cmd_nested(_backend: Any, args: Any) -> int:
         if action == "smoke-mark2":
             from nest_invoke import smoke_script_argv
 
+            args.nested_cmd = smoke_script_argv()
+            return _cli_run(args, name)
+        if action == "smoke-toggle-tab":
+            from nest_invoke import smoke_script_argv
+
+            # Mark 2 toggleTabStack cycle (H/V → TABBED ↔ STACKED).
+            os.environ["FORGE_NEST_SMOKE_ACTION"] = "toggleTabStack"
             args.nested_cmd = smoke_script_argv()
             return _cli_run(args, name)
         if action == "smoke-layout-dnd":
@@ -1631,6 +1768,8 @@ def cmd_nested(_backend: Any, args: Any) -> int:
             return _cli_enable_forge(name)
         if action == "logs":
             return _cli_logs(args, name)
+        if action == "log":
+            return _cli_log(args, name)
         if action == "wait":
             return _cli_wait(args, name)
         if action == "doctor":
@@ -1800,6 +1939,7 @@ def _cli_enable_forge(name: str) -> int:
 
 
 def _cli_logs(args: Any, name: str) -> int:
+    """Dump nested gnome-shell stderr (shell.log). Hunt JSONL is ``nested log``."""
     d = session_dir(name)
     log = d / "shell.log"
     if not log.is_file():
@@ -1812,6 +1952,34 @@ def _cli_logs(args: Any, name: str) -> int:
         return int(proc.returncode)
     sys.stdout.write(log.read_text(encoding="utf-8", errors="replace"))
     return 0
+
+
+def _cli_log(args: Any, name: str) -> int:
+    """Query nest forge.jsonl via plog-query (nest need not be running)."""
+    from nest_log_query import LogQueryError, nest_forge_log_paths, run_cli_query
+
+    d = session_dir(name)
+    _log, jsonl = nest_forge_log_paths(str(d / "forge-config"))
+    if jsonl is None:
+        print("forge-test nested log: could not resolve nest JSONL", file=sys.stderr)
+        return 1
+    last = getattr(args, "last", None)
+    if last is None:
+        last = 80
+    level = str(getattr(args, "level", None) or "").strip() or "info+"
+    grep = getattr(args, "grep", None)
+    json_out = bool(getattr(args, "json", False))
+    try:
+        return run_cli_query(
+            jsonl,
+            grep=str(grep) if grep else None,
+            last=int(last),
+            level=level,
+            json_out=json_out,
+        )
+    except LogQueryError as e:
+        print(f"forge-test nested log: {e}", file=sys.stderr)
+        return int(getattr(e, "exit_code", 1) or 1)
 
 
 def _cli_wait(args: Any, name: str) -> int:

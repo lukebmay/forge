@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { MonitorManager } from "../../../lib/extension/monitor.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { createHostBag } from "../../../lib/host/index.js";
+import { createEnvelope, makeIdFactory } from "../../../lib/tom/index.js";
 import { installGnomeGlobals } from "../../mocks/helpers/index.js";
 
 /**
@@ -23,32 +25,51 @@ describe("MonitorManager", () => {
       display: { monitorCount: 2 },
     });
 
-    // Create mock tree
     mockTree = {
-      _nodes: new Map(),
-      createNode: vi.fn((parentValue, type, nodeValue) => {
-        const node = {
-          nodeValue,
-          nodeType: type,
-          layout: null,
-          actorBin: null,
+      nodeValue: "ROOT",
+      nodeType: NODE_TYPES.ROOT,
+      childNodes: [],
+      parentNode: null,
+      settings: {},
+      createNode: vi.fn(),
+      appendChild(child) {
+        if (child?.parentNode?.removeChild) child.parentNode.removeChild(child);
+        this.childNodes.push(child);
+        child.parentNode = this;
+        return child;
+      },
+      removeChild(child) {
+        const i = this.childNodes.indexOf(child);
+        if (i >= 0) this.childNodes.splice(i, 1);
+        if (child) child.parentNode = null;
+        return [child];
+      },
+      findNode(nodeValue) {
+        const walk = (n) => {
+          if (n.nodeValue === nodeValue) return n;
+          for (const c of n.childNodes || []) {
+            const hit = walk(c);
+            if (hit) return hit;
+          }
+          return null;
         };
-        mockTree._nodes.set(nodeValue, node);
-        return node;
-      }),
-      findNode: vi.fn((nodeValue) => mockTree._nodes.get(nodeValue) || null),
+        return walk(this);
+      },
     };
 
-    // Create mock WindowManager
     mockExtWm = {
       determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
-      // Mirrors the real helper: portrait (height > width) -> VSPLIT.
       determineSplitLayoutForRect: vi.fn((rect) =>
         rect && rect.width < rect.height ? LAYOUT_TYPES.VSPLIT : LAYOUT_TYPES.HSPLIT
       ),
+      forest: createEnvelope(() => makeIdFactory().nid()),
+      hostBag: createHostBag(),
+      liveById: new Map(),
+      _liveForestSeeded: false,
+      _tree: mockTree,
+      tree: mockTree,
     };
 
-    // Create MonitorManager instance
     monitorManager = new MonitorManager(mockTree, mockExtWm);
   });
 
@@ -76,12 +97,16 @@ describe("MonitorManager", () => {
   });
 
   describe("addMonitor()", () => {
-    it("should create monitor node for single monitor", () => {
+    it("invents Forest MONITOR without createNode", () => {
       global.display.get_n_monitors.mockReturnValue(1);
 
       monitorManager.addMonitor(0);
 
-      expect(mockTree.createNode).toHaveBeenCalledWith("ws0", NODE_TYPES.MONITOR, "mo0ws0");
+      expect(mockTree.createNode).not.toHaveBeenCalled();
+      expect(mockExtWm.forest.nodes.mo0ws0?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.ws0?.kind).toBe("WORKSPACE");
+      expect(mockExtWm.liveById.get("mo0ws0")?.nodeValue).toBe("mo0ws0");
+      expect(mockExtWm.hostBag.get("mo0ws0")?.actor).toBeTruthy();
     });
 
     it("should create monitor nodes for all monitors", () => {
@@ -89,9 +114,9 @@ describe("MonitorManager", () => {
 
       monitorManager.addMonitor(0);
 
-      expect(mockTree.createNode).toHaveBeenCalledTimes(2);
-      expect(mockTree.createNode).toHaveBeenCalledWith("ws0", NODE_TYPES.MONITOR, "mo0ws0");
-      expect(mockTree.createNode).toHaveBeenCalledWith("ws0", NODE_TYPES.MONITOR, "mo1ws0");
+      expect(mockExtWm.forest.nodes.mo0ws0?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo1ws0?.kind).toBe("MONITOR");
+      expect(mockTree.createNode).not.toHaveBeenCalled();
     });
 
     it("should set layout on monitor nodes", () => {
@@ -99,8 +124,7 @@ describe("MonitorManager", () => {
 
       monitorManager.addMonitor(0);
 
-      const monitorNode = mockTree._nodes.get("mo0ws0");
-      expect(monitorNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(mockExtWm.liveById.get("mo0ws0").layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should create actorBin for each monitor node", () => {
@@ -108,8 +132,7 @@ describe("MonitorManager", () => {
 
       monitorManager.addMonitor(0);
 
-      const monitorNode = mockTree._nodes.get("mo0ws0");
-      expect(monitorNode.actorBin).toBeDefined();
+      expect(mockExtWm.liveById.get("mo0ws0").actorBin).toBeDefined();
     });
 
     it("should add actorBin to window_group", () => {
@@ -122,17 +145,10 @@ describe("MonitorManager", () => {
 
     it("should not add duplicate actorBin to window_group", () => {
       global.display.get_n_monitors.mockReturnValue(1);
-
-      // Simulate actorBin already in window_group
-      const existingBin = {};
-      global.window_group._children.push(existingBin);
       global.window_group.contains.mockReturnValue(true);
 
       monitorManager.addMonitor(0);
 
-      // contains() reports the bin already present, so the dedup guard at
-      // monitor.js:69 must skip add_child — otherwise duplicate actors / a
-      // Clutter "actor already has a parent" error.
       expect(global.window_group.add_child).not.toHaveBeenCalled();
     });
 
@@ -141,9 +157,9 @@ describe("MonitorManager", () => {
 
       monitorManager.addMonitor(2);
 
-      expect(mockTree.createNode).toHaveBeenCalledWith("ws2", NODE_TYPES.MONITOR, "mo0ws2");
-      expect(mockTree.createNode).toHaveBeenCalledWith("ws2", NODE_TYPES.MONITOR, "mo1ws2");
-      expect(mockTree.createNode).toHaveBeenCalledWith("ws2", NODE_TYPES.MONITOR, "mo2ws2");
+      expect(mockExtWm.forest.nodes.mo0ws2?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo1ws2?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo2ws2?.kind).toBe("MONITOR");
     });
 
     it("should determine split layout per monitor using each monitor's geometry", () => {
@@ -151,7 +167,6 @@ describe("MonitorManager", () => {
 
       monitorManager.addMonitor(0);
 
-      // Bug #311: the per-monitor (rect-aware) helper is used, once per monitor.
       expect(mockExtWm.determineSplitLayoutForRect).toHaveBeenCalledTimes(2);
       expect(global.display.get_monitor_geometry).toHaveBeenCalledWith(0);
       expect(global.display.get_monitor_geometry).toHaveBeenCalledWith(1);
@@ -160,7 +175,6 @@ describe("MonitorManager", () => {
 
   describe("getMonitorNode()", () => {
     beforeEach(() => {
-      // Set up some monitor nodes
       global.display.get_n_monitors.mockReturnValue(2);
       monitorManager.addMonitor(0);
       monitorManager.addMonitor(1);
@@ -169,7 +183,6 @@ describe("MonitorManager", () => {
     it("should find monitor node by workspace and monitor index", () => {
       const node = monitorManager.getMonitorNode(0, 0);
 
-      expect(mockTree.findNode).toHaveBeenCalledWith("mo0ws0");
       expect(node).toBeDefined();
       expect(node.nodeValue).toBe("mo0ws0");
     });
@@ -177,28 +190,24 @@ describe("MonitorManager", () => {
     it("should find monitor node on different workspace", () => {
       const node = monitorManager.getMonitorNode(1, 0);
 
-      expect(mockTree.findNode).toHaveBeenCalledWith("mo0ws1");
       expect(node.nodeValue).toBe("mo0ws1");
     });
 
     it("should find second monitor on workspace", () => {
       const node = monitorManager.getMonitorNode(0, 1);
 
-      expect(mockTree.findNode).toHaveBeenCalledWith("mo1ws0");
       expect(node.nodeValue).toBe("mo1ws0");
     });
 
     it("should return null for non-existent monitor node", () => {
       const node = monitorManager.getMonitorNode(99, 0);
 
-      expect(mockTree.findNode).toHaveBeenCalledWith("mo0ws99");
       expect(node).toBeNull();
     });
 
     it("should return null for non-existent monitor index", () => {
       const node = monitorManager.getMonitorNode(0, 99);
 
-      expect(mockTree.findNode).toHaveBeenCalledWith("mo99ws0");
       expect(node).toBeNull();
     });
   });
@@ -209,8 +218,7 @@ describe("MonitorManager", () => {
 
       monitorManager.addMonitor(0);
 
-      expect(mockTree._nodes.size).toBe(1);
-      expect(mockTree._nodes.has("mo0ws0")).toBe(true);
+      expect(mockExtWm.forest.nodes.mo0ws0?.kind).toBe("MONITOR");
     });
 
     it("should handle dual monitor setup", () => {
@@ -218,9 +226,8 @@ describe("MonitorManager", () => {
 
       monitorManager.addMonitor(0);
 
-      expect(mockTree._nodes.size).toBe(2);
-      expect(mockTree._nodes.has("mo0ws0")).toBe(true);
-      expect(mockTree._nodes.has("mo1ws0")).toBe(true);
+      expect(mockExtWm.forest.nodes.mo0ws0?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo1ws0?.kind).toBe("MONITOR");
     });
 
     it("should handle triple monitor setup", () => {
@@ -228,10 +235,9 @@ describe("MonitorManager", () => {
 
       monitorManager.addMonitor(0);
 
-      expect(mockTree._nodes.size).toBe(3);
-      expect(mockTree._nodes.has("mo0ws0")).toBe(true);
-      expect(mockTree._nodes.has("mo1ws0")).toBe(true);
-      expect(mockTree._nodes.has("mo2ws0")).toBe(true);
+      expect(mockExtWm.forest.nodes.mo0ws0?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo1ws0?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo2ws0?.kind).toBe("MONITOR");
     });
 
     it("should create monitors for multiple workspaces", () => {
@@ -241,16 +247,12 @@ describe("MonitorManager", () => {
       monitorManager.addMonitor(1);
       monitorManager.addMonitor(2);
 
-      expect(mockTree._nodes.size).toBe(6);
-      // Workspace 0
-      expect(mockTree._nodes.has("mo0ws0")).toBe(true);
-      expect(mockTree._nodes.has("mo1ws0")).toBe(true);
-      // Workspace 1
-      expect(mockTree._nodes.has("mo0ws1")).toBe(true);
-      expect(mockTree._nodes.has("mo1ws1")).toBe(true);
-      // Workspace 2
-      expect(mockTree._nodes.has("mo0ws2")).toBe(true);
-      expect(mockTree._nodes.has("mo1ws2")).toBe(true);
+      expect(mockExtWm.forest.nodes.mo0ws0?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo1ws0?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo0ws1?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo1ws1?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo0ws2?.kind).toBe("MONITOR");
+      expect(mockExtWm.forest.nodes.mo1ws2?.kind).toBe("MONITOR");
     });
   });
 });

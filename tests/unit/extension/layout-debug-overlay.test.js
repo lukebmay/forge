@@ -4,7 +4,7 @@ import {
   layoutDebugInfoFromNode,
 } from "../../../lib/extension/layout-debug-overlay.js";
 import { LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,

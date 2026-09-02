@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES, Node } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
 
@@ -69,11 +71,12 @@ describe("normalizeGroupToHomeMonitor (D044)", () => {
     expect(changed).toBe(true);
     expect(metaB.get_monitor()).toBe(0);
     expect(metaA.get_monitor()).toBe(0);
-    expect(a.parentNode).toBe(tab);
-    expect(b.parentNode).toBe(tab);
+    const wm = ctx.windowManager;
+    expect(parentOf(wm, a)).toBe(tab);
+    expect(parentOf(wm, b)).toBe(tab);
     expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(tab.lastTabFocus).toBe(metaA);
-    expect(tab.childNodes.length).toBe(2);
+    expect(kidsOf(wm, tab)).toHaveLength(2);
   });
 
   it("merge-group across mons then normalize keeps one TABBED on dest", () => {
@@ -104,9 +107,10 @@ describe("normalizeGroupToHomeMonitor (D044)", () => {
     expect(ctx.tree.groupHomeMonitor(group)).toBe(0);
     expect(metaP.get_monitor()).toBe(0);
     expect(metaF.get_monitor()).toBe(0);
-    expect(mon1.contains(partner)).toBe(false);
-    expect(focus.parentNode).toBe(group);
-    expect(partner.parentNode).toBe(group);
+    const wm = ctx.windowManager;
+    expect(kidsOf(wm, mon1)).not.toContain(partner);
+    expect(parentOf(wm, focus)).toBe(group);
+    expect(parentOf(wm, partner)).toBe(group);
   });
 
   it("insert-at-index join across mons rehomes Meta to dest (D044)", () => {
@@ -133,10 +137,11 @@ describe("normalizeGroupToHomeMonitor (D044)", () => {
     });
 
     expect(group).toBe(dest);
-    expect(dest.childNodes).toEqual([a, src, b]);
+    const wm = ctx.windowManager;
+    expect(kidsOf(wm, dest)).toEqual([a, src, b]);
     expect(ctx.tree.groupHomeMonitor(dest)).toBe(1);
     expect(metaSrc.get_monitor()).toBe(1);
-    expect(mon0.contains(src)).toBe(false);
+    expect(kidsOf(wm, mon0)).not.toContain(src);
   });
 
   it("no-op when Meta already on home", () => {

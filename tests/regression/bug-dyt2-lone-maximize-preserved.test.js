@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
@@ -100,7 +100,7 @@ describe("forge-dyt2: tree.apply preserves a lone tiled window's maximize", () =
       });
     });
 
-    it("treats sole Meta-max as restore (D026), not lone exemption", () => {
+    it("helper still wants restore; idle size-changed does not (D100)", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
@@ -112,10 +112,7 @@ describe("forge-dyt2: tree.apply preserves a lone tiled window's maximize", () =
       expect(ctx.windowManager._shouldRestoreTileSlot(node, metaWindow)).toBe(true);
 
       ctx.windowManager.updateMetaPositionSize(metaWindow, "size-changed");
-      expect(metaWindow.is_maximized()).toBe(false);
-
-      ctx.tree.apply(ctx.tree);
-      expect(metaWindow.is_maximized()).toBe(false);
+      expect(metaWindow.is_maximized()).toBe(true);
     });
 
     it("D051: processFloats keeps TILE while Meta max reports no-resize", () => {
@@ -132,7 +129,7 @@ describe("forge-dyt2: tree.apply preserves a lone tiled window's maximize", () =
       expect(ctx.windowManager._shouldRestoreTileSlot(node, metaWindow)).toBe(true);
 
       ctx.windowManager.updateMetaPositionSize(metaWindow, "size-changed");
-      expect(metaWindow.is_maximized()).toBe(false);
+      expect(metaWindow.is_maximized()).toBe(true);
       expect(node.mode).toBe(WINDOW_MODES.TILE);
     });
   });

@@ -48,7 +48,8 @@ not under a monitor; TILES size is a **percent** or **`share`**).
 **Live topology is the POJO Forest** (D092): nanoid per node; host
 Meta/St in adapter maps. **D093:** present → observe → AGREE or
 RESYNC (TOM toward REALITY; FLOAT terminator). No twin presenter
-atomics.
+atomics. **D100:** old-architecture Meta handlers are disconnected
+(observe/chrome only).
 **ForgeAdapterGnome** / **ForgeAdapterWebView**
 bind and extend a host. **KeybindAdapterGnome** /
 **KeybindAdapterWebView** map the kernel table plus a host overlay

@@ -109,8 +109,11 @@ shellrc agents-catalog). **Newest DECISIONS row wins** (D050/D053/D054/D067/D068
 | **Hunt file + JSONL** | `~/.local/state/forge/forge.log` + sibling `forge.jsonl` (or `$FORGE_LOG_FILE` / `$FORGE_LOG_JSONL`) | Everything at/above **effective** level. JSONL **on by default** (`FORGE_LOG_JSONL=0` to disable) — forge opts in (D054); library default elsewhere is opt-in (D066) |
 | **journald** | `journalctl` / GNOME Shell journal | **WARN / ERROR / fatal only** — never INFO/DEBUG/TRACE (D050) |
 
-Enable truncates the hunt tapes (fresh session). Production does **not** force
-logging OFF; `--prod` sets level **WARN** and keeps dual-sink.
+Enable rotates non-empty hunt tapes to `forge.prev.log` /
+`forge.prev.jsonl`, then truncates current (fresh session). Empty current
+leaves any existing previous tapes alone. `forge log --truncate` same
+rotate. Production does **not** force logging OFF; `--prod` sets level
+**WARN** and keeps dual-sink.
 
 ### Levels (D068)
 
@@ -136,7 +139,8 @@ forge log --session F7UjZ --level info+ --last 80
 forge log --grep 'place-hint|verify mismatch' --level debug+ --since 15m
 forge log --level warn+ --last 50
 forge log query --session F7UjZ --grep slot --last 40
-forge log --truncate              # empty tapes when starting a clean hunt
+forge log --truncate              # rotate to *.prev.* then empty current
+forge log ~/.local/state/forge/forge.prev.jsonl --last 80  # prior session
 ```
 
 | Do | Do not |
@@ -145,6 +149,7 @@ forge log --truncate              # empty tapes when starting a clean hunt
 | `--level info+` / `warn+` then tighten | `tail -f ~/.local/state/forge/forge.log` as the hunt |
 | `--grep` for place-hint / verify / slot / ApplyLayout / `metric ` | Expect `forge log --last 80` alone to be readable at TRACE |
 | `--json` for machine follow-ups | Assume journal has INFO hunts (it does not) |
+| Prior session: `forge.prev.jsonl` after login rotate | Assume crash-session tape survived without `*.prev.*` |
 | **Only** `forge log` / `plog-query` to hunt tapes | **Read tapes as files** (`read_file`, `cat`, `python open()`, `rg` on `forge.log` / `forge.jsonl`) |
 
 Pretty/hilight are **view-time** (D067). WARN/ERROR: values in the message
@@ -431,8 +436,9 @@ When agents run live tests that need install + Shell reload (`./install`,
    forge log trace                    # session TRACE (or debug/info/…)
    forge log trace --persist          # also write gsettings
    forge log reset                    # clear session → durable
-   forge log --truncate               # empty forge.log + forge.jsonl
+   forge log --truncate               # rotate to *.prev.* then empty current
    forge log --grep PAT --level info+ --last 80
+   forge log ~/.local/state/forge/forge.prev.jsonl --last 80
    ```
 
    gsettings still works (`logging-enabled`, `log-level` 3–6) and triggers

@@ -6,7 +6,7 @@ import {
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 
 /**
  * forge-n0s7: two stale-state leaks.

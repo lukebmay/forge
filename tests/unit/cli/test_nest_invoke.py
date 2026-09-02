@@ -24,6 +24,7 @@ from nest_invoke import (  # noqa: E402
     parse_dnd_drop_argv,
     parse_invoke_argv,
     parse_invoke_result,
+    require_nest_client_env,
     resolve_window_id,
     spec_from_args,
     tiled_windows,
@@ -43,6 +44,60 @@ def test_validate_action_rejects_product_move() -> None:
     assert validate_action_name("move.left") == "move.left"
     assert validate_action_name("join.right") == "join.right"
     assert validate_action_name("toggleSplit") == "toggleSplit"
+
+
+def test_require_nest_client_env_refuses_host() -> None:
+    with pytest.raises(InvokeError, match="FORGE_CONFIG_HOME") as ei:
+        require_nest_client_env(
+            {
+                "WAYLAND_DISPLAY": "wayland-0",
+                "XDG_RUNTIME_DIR": "/run/user/1000",
+            },
+            what="t",
+        )
+    assert ei.value.exit_code == 2
+
+    with pytest.raises(InvokeError, match="host desk") as ei2:
+        require_nest_client_env(
+            {
+                "FORGE_CONFIG_HOME": "/tmp/x/forge-config",
+                "WAYLAND_DISPLAY": "wayland-0",
+                "XDG_RUNTIME_DIR": "/tmp/nested/forge/runtime",
+            },
+            what="t",
+        )
+    assert ei2.value.exit_code == 2
+
+    with pytest.raises(InvokeError, match="empty WAYLAND_DISPLAY") as ei3:
+        require_nest_client_env(
+            {
+                "FORGE_CONFIG_HOME": "/tmp/nested/forge/forge-config",
+                "WAYLAND_DISPLAY": "",
+                "XDG_RUNTIME_DIR": "/tmp/nested/forge/runtime",
+            },
+            what="t",
+        )
+    assert ei3.value.exit_code == 2
+
+    with pytest.raises(InvokeError, match="XDG_RUNTIME_DIR") as ei4:
+        require_nest_client_env(
+            {
+                "FORGE_CONFIG_HOME": "/tmp/x/forge-config",
+                "WAYLAND_DISPLAY": "wayland-forge",
+                "XDG_RUNTIME_DIR": "/run/user/1000/forge-something",
+            },
+            what="t",
+        )
+    assert ei4.value.exit_code == 2
+
+    require_nest_client_env(
+        {
+            "FORGE_CONFIG_HOME": "/tmp/nested/forge/forge-config",
+            "WAYLAND_DISPLAY": "wayland-forge",
+            "XDG_RUNTIME_DIR": "/tmp/nested/forge/runtime",
+        },
+        what="t",
+    )
 
 
 def test_mark2_ids_include_plan_surface() -> None:

@@ -139,4 +139,60 @@ describe("createHostBag", () => {
     expect(merged.healTrail).toBeNull();
     expect(bag.idFromMeta(meta)).toBe("n1");
   });
+
+  it("border field shallow-merges and can be cleared", () => {
+    const bag = createHostBag();
+    const meta = { id: 8 };
+    const border1 = { name: "b1" };
+    const border2 = { name: "b2" };
+    bag.set("n1", { meta, windowId: "8", actor: { name: "a" } });
+    const withBorder = bag.set("n1", { border: border1 });
+    expect(withBorder.meta).toBe(meta);
+    expect(withBorder.actor).toEqual({ name: "a" });
+    expect(withBorder.border).toBe(border1);
+    expect(bag.set("n1", { border: border2 }).border).toBe(border2);
+    expect(bag.set("n1", { border: undefined }).border).toBeUndefined();
+    expect(bag.get("n1")?.meta).toBe(meta);
+    expect(bag.idFromMeta(meta)).toBe("n1");
+  });
+
+  it("delete drops border with the entry", () => {
+    const bag = createHostBag();
+    const border = { name: "gone" };
+    bag.set("n1", { windowId: "9", border });
+    expect(bag.delete("n1")).toBe(true);
+    expect(bag.get("n1")).toBeUndefined();
+  });
+
+  it("decoration/tabStrip shallow-merge and clear (D096 G5c)", () => {
+    const bag = createHostBag();
+    const actor = { name: "con-actor" };
+    const strip1 = { name: "strip1" };
+    const strip2 = { name: "strip2" };
+    bag.set("con-1", { actor });
+    const withStrip = bag.set("con-1", { decoration: strip1, tabStrip: strip1 });
+    expect(withStrip.actor).toBe(actor);
+    expect(withStrip.decoration).toBe(strip1);
+    expect(withStrip.tabStrip).toBe(strip1);
+    expect(bag.set("con-1", { decoration: strip2, tabStrip: strip2 }).decoration).toBe(strip2);
+    expect(bag.set("con-1", { decoration: undefined, tabStrip: undefined }).decoration).toBeUndefined();
+    expect(bag.get("con-1")?.tabStrip).toBeUndefined();
+    expect(bag.get("con-1")?.actor).toBe(actor);
+  });
+
+  it("tab/tabChip shallow-merge and clear (D096 G8b)", () => {
+    const bag = createHostBag();
+    const meta = { id: 11 };
+    const chip1 = { name: "chip1" };
+    const chip2 = { name: "chip2" };
+    bag.set("win-1", { meta, windowId: "11" });
+    const withTab = bag.set("win-1", { tab: chip1, tabChip: chip1 });
+    expect(withTab.meta).toBe(meta);
+    expect(withTab.tab).toBe(chip1);
+    expect(withTab.tabChip).toBe(chip1);
+    expect(bag.set("win-1", { tab: chip2, tabChip: chip2 }).tab).toBe(chip2);
+    expect(bag.set("win-1", { tab: undefined, tabChip: undefined }).tab).toBeUndefined();
+    expect(bag.get("win-1")?.tabChip).toBeUndefined();
+    expect(bag.get("win-1")?.meta).toBe(meta);
+  });
 });

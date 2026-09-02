@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createTreeFixture,
   getWorkspaceAndMonitor,
-  createHorizontalLayout,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import * as Utils from "../../lib/extension/utils.js";
 
@@ -31,6 +32,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
   let tree;
   let monitor0Ws0; // Monitor 0 on workspace 0
   let monitor0Ws1; // Monitor 0 on workspace 1
+  const wm = () => ctx.extWm;
 
   beforeEach(() => {
     // Create fixture with 2 workspaces
@@ -90,16 +92,16 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       nodeC.percent = 0.25;
 
       // Verify initial state: 3 children on workspace 0's monitor
-      expect(monitor0Ws0.childNodes.length).toBe(3);
-      expect(monitor0Ws0.childNodes).toContain(nodeA);
-      expect(monitor0Ws0.childNodes).toContain(nodeB);
-      expect(monitor0Ws0.childNodes).toContain(nodeC);
+      expect(kidsOf(wm(), monitor0Ws0)).toHaveLength(3);
+      expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeA);
+      expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeB);
+      expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeC);
 
       // Process tree to calculate initial sizes
       tree.processNode(tree);
 
       // Verify initial sizes based on percentages
-      const initialTiledChildren = tree.getTiledChildren(monitor0Ws0.childNodes);
+      const initialTiledChildren = tree.getTiledChildren(kidsOf(wm(), monitor0Ws0));
       expect(initialTiledChildren.length).toBe(3);
       const initialSizes = tree.computeSizes(monitor0Ws0, initialTiledChildren);
       expect(initialSizes.length).toBe(3);
@@ -113,16 +115,16 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       windowA._workspace = ctx.workspaces[1];
 
       // 2. Store parent reference, move node, then redistribute (this is what updateMetaWorkspaceMonitor does)
-      const existParent = nodeA.parentNode;
+      const existParent = parentOf(wm(), nodeA);
       monitor0Ws1.appendChild(nodeA);
       tree.redistributeSiblingPercent(existParent);
 
       // Verify window was moved
-      expect(monitor0Ws0.childNodes.length).toBe(2);
-      expect(monitor0Ws0.childNodes).not.toContain(nodeA);
-      expect(monitor0Ws0.childNodes).toContain(nodeB);
-      expect(monitor0Ws0.childNodes).toContain(nodeC);
-      expect(monitor0Ws1.childNodes).toContain(nodeA);
+      expect(kidsOf(wm(), monitor0Ws0)).toHaveLength(2);
+      expect(kidsOf(wm(), monitor0Ws0)).not.toContain(nodeA);
+      expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeB);
+      expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeC);
+      expect(kidsOf(wm(), monitor0Ws1)).toContain(nodeA);
 
       // KEY ASSERTION: Percentages should be scaled proportionally
       // Before: B=50%, C=25% (total=75%)
@@ -134,7 +136,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       tree.processNode(tree);
 
       // Verify computed sizes reflect proportional distribution
-      const afterTiledChildren = tree.getTiledChildren(monitor0Ws0.childNodes);
+      const afterTiledChildren = tree.getTiledChildren(kidsOf(wm(), monitor0Ws0));
       expect(afterTiledChildren.length).toBe(2);
       const afterSizes = tree.computeSizes(monitor0Ws0, afterTiledChildren);
       expect(afterSizes.length).toBe(2);
@@ -172,7 +174,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       // Move windows A and B to workspace 1
       // Move A first
       windowA._workspace = ctx.workspaces[1];
-      const existParentA = nodeA.parentNode;
+      const existParentA = parentOf(wm(), nodeA);
       monitor0Ws1.appendChild(nodeA);
       tree.redistributeSiblingPercent(existParentA);
 
@@ -182,7 +184,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
 
       // Move B second
       windowB._workspace = ctx.workspaces[1];
-      const existParentB = nodeB.parentNode;
+      const existParentB = parentOf(wm(), nodeB);
       monitor0Ws1.appendChild(nodeB);
       tree.redistributeSiblingPercent(existParentB);
 
@@ -190,14 +192,14 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       expect(nodeC.percent).toBeCloseTo(1.0, 3);
 
       // Verify only C remains on workspace 0
-      expect(monitor0Ws0.childNodes.length).toBe(1);
-      expect(monitor0Ws0.childNodes).toContain(nodeC);
+      expect(kidsOf(wm(), monitor0Ws0)).toHaveLength(1);
+      expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeC);
 
       // Process tree
       tree.processNode(tree);
 
       // C should get 100% of width (1920px)
-      const tiledChildren = tree.getTiledChildren(monitor0Ws0.childNodes);
+      const tiledChildren = tree.getTiledChildren(kidsOf(wm(), monitor0Ws0));
       expect(tiledChildren.length).toBe(1);
       const sizes = tree.computeSizes(monitor0Ws0, tiledChildren);
       expect(sizes.length).toBe(1);
@@ -235,7 +237,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       tree.processNode(tree);
       const initialSizes = tree.computeSizes(
         monitor0Ws0,
-        tree.getTiledChildren(monitor0Ws0.childNodes)
+        tree.getTiledChildren(kidsOf(wm(), monitor0Ws0))
       );
       // A=216px (20%), B=648px (60%), C=216px (20%)
       expect(initialSizes[0]).toBe(216); // A
@@ -244,7 +246,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
 
       // Move window A to workspace 1
       windowA._workspace = ctx.workspaces[1];
-      const existParent = nodeA.parentNode;
+      const existParent = parentOf(wm(), nodeA);
       monitor0Ws1.appendChild(nodeA);
       tree.redistributeSiblingPercent(existParent);
 
@@ -259,7 +261,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       // B=75% of 1080=810px, C=25% of 1080=270px
       const afterSizes = tree.computeSizes(
         monitor0Ws0,
-        tree.getTiledChildren(monitor0Ws0.childNodes)
+        tree.getTiledChildren(kidsOf(wm(), monitor0Ws0))
       );
       expect(afterSizes.length).toBe(2);
       expect(afterSizes[0]).toBe(810); // B
@@ -291,7 +293,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
 
       // Move window A to workspace 1
       windowA._workspace = ctx.workspaces[1];
-      const existParent = nodeA.parentNode;
+      const existParent = parentOf(wm(), nodeA);
       monitor0Ws1.appendChild(nodeA);
       tree.redistributeSiblingPercent(existParent);
 
@@ -305,7 +307,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       // Each window should get 50% of width (960px)
       const afterSizes = tree.computeSizes(
         monitor0Ws0,
-        tree.getTiledChildren(monitor0Ws0.childNodes)
+        tree.getTiledChildren(kidsOf(wm(), monitor0Ws0))
       );
       expect(afterSizes.length).toBe(2);
       expect(afterSizes[0]).toBe(960);

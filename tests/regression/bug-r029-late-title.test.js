@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
@@ -51,7 +51,7 @@ describe("R029: late title re-tiles", () => {
     expect(node.isTile()).toBe(true);
   });
 
-  it("wires notify::title in trackWindow so a late title re-renders", () => {
+  it("wires notify::title for chrome label only (D100; no renderTree)", () => {
     const tracked = createMockWindow({
       wm_class: "Google-chrome",
       id: 3002,
@@ -61,9 +61,11 @@ describe("R029: late title re-tiles", () => {
     ctx.windowManager.trackWindow(null, tracked);
 
     const renderSpy = vi.spyOn(ctx.windowManager, "renderTree");
+    const labelSpy = vi.spyOn(ctx.windowManager, "_paintTitleChromeLabel");
     tracked.set_title("Grok");
 
-    expect(renderSpy).toHaveBeenCalledWith("title-changed");
+    expect(renderSpy).not.toHaveBeenCalled();
+    expect(labelSpy).toHaveBeenCalled();
   });
 
   it("skips full renderTree on non-empty title churn (spinner)", () => {

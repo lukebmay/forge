@@ -252,13 +252,15 @@ forge log trace           # session-only bump until reset or disable/enable
 forge log debug           # session DEBUG
 forge log reset           # clear session → durable gsettings
 forge log trace --persist # write gsettings (survives new enable)
-forge log --truncate      # empty forge.log + forge.jsonl now
+forge log --truncate      # rotate to *.prev.* then empty current tapes
 
 # Searchable query (forwards to vendored plog-query; defaults forge tapes)
 forge log query                     # last 30 (color reprint)
 forge log --last 50 --grep slot
 forge log --level warn+ --since 2h
 forge log --json --last 10          # raw JSONL for jq
+# Prior Shell session (after login / enable rotate):
+forge log ~/.local/state/forge/forge.prev.jsonl --last 80 --grep 'metric warn'
 ```
 
 Or write prefs directly (also live — extension reconfigures on change):
@@ -283,9 +285,11 @@ Install defaults (**D068**): regular → **INFO**; `--dev` → **TRACE**; `--pro
 → **WARN**. Dual-sink stays on in all modes — quiet prod is a **level**, not a
 missing file tape (so `forge log trace` can still write searchable JSONL).
 Below the selected level, lines are not emitted anywhere; INFO/DEBUG/TRACE
-never go to the journal. On each extension **enable**, both hunt tapes are
-**truncated** (fresh session); CLI appends and does not wipe
-(`forge log --truncate` empties mid-session). Session override from
+never go to the journal. On each extension **enable**, non-empty hunt tapes
+are **copied** to `forge.prev.log` / `forge.prev.jsonl`, then the current
+tapes are truncated (fresh session). CLI appends and does not wipe;
+`forge log --truncate` does the same rotate-then-empty mid-session. Empty
+current tapes leave any existing previous tapes alone. Session override from
 `forge log LEVEL` wins over durable until `forge log reset` or disable/enable.
 `./install --prod` still builds `production=true` (assert policy) but keeps
 logging enabled at WARN.

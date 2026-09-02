@@ -100,6 +100,7 @@ def build_plog_query_argv(
     grep: Optional[str] = None,
     last: int = 0,
     json_out: bool = True,
+    level: Optional[str] = None,
 ) -> list[str]:
     argv = [str(plog_query_bin()), str(jsonl), "--last", str(int(last))]
     if json_out:
@@ -107,7 +108,34 @@ def build_plog_query_argv(
         argv.extend(["--color", "never"])
     if grep:
         argv.extend(["--grep", str(grep)])
+    if level:
+        argv.extend(["--level", str(level)])
     return argv
+
+
+def run_cli_query(
+    jsonl: Path,
+    *,
+    grep: Optional[str] = None,
+    last: int = 80,
+    level: Optional[str] = None,
+    json_out: bool = False,
+) -> int:
+    """Subprocess plog-query onto stdout. Missing tape → LogQueryError (exit 1)."""
+    if not jsonl.is_file():
+        raise LogQueryError(f"no nest hunt JSONL at {jsonl}", exit_code=1)
+    argv = build_plog_query_argv(
+        jsonl,
+        grep=grep,
+        last=last,
+        json_out=json_out,
+        level=level,
+    )
+    try:
+        proc = subprocess.run(argv, check=False)
+    except OSError as e:
+        raise LogQueryError(f"plog-query spawn failed: {e}", exit_code=127) from e
+    return int(proc.returncode)
 
 
 def _payload(rec: Mapping[str, Any]) -> dict[str, Any]:

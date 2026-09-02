@@ -2,7 +2,8 @@
 
 **Status:** **locked** (operator 2026-08-14) — implement CN0–CN6 after
 TD1; **do not** port layout here  
-**Priority:** after tab-strip TD1 + live residuals  
+**Priority:** parked — after D100 adapter core (CN14/CN15 later; no
+layout port)  
 **Branch:** `master`  
 **Decision:** [D036](../../docs/DECISIONS.md) · layout apply [D037](../../docs/DECISIONS.md)  
 **D0 notes:** [completed D0](./forge-cli-node/completed/forge-cli-node_d0-discussion.md)  

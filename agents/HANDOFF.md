@@ -1,81 +1,80 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-08-30 — **D095 S8 closeout.** S1–S6 shipped; S7 skipped
-(no zoom repro); opportunistic heals deleted; progressive ε + fault-inject
-green. **P0 next:** toggleTabStack nest / live-layout leftover. **Do not
-resave loadouts.** Nest apps via client isolation (`smoke-nest-apps`).
-**Plan:** [forge-live-layout-dnd-proof](./plans/forge-live-layout-dnd-proof.md)
-· D095 archive:
-[forge-settled-slot-authority](./plans/archived/completed/forge-settled-slot-authority.md)
-**Architecture:** [architecture-verdict-2026-08-29.md](./plans/forge-live-layout-dnd-proof/architecture-verdict-2026-08-29.md)
-**Branch:** **`master`**. **Push:** only if asked.
+**Updated:** 2026-09-02 — **R054/R055** open-leaf writers landed (L0 +
+nest green). Awaiting **host** `layout dev` + DnD-into-TAB verify.
+G8n stub paused. **Branch:** `master`. **Push / commit:** only if asked.
 
-## Pain / architecture
+**Handoff to:** human host verify, then G8n if desk is good. Do **not**
+dual-write child-lists. Do **not** reconnect old handlers. Do **not**
+grow `live-handle.js`.
 
-Kernel generic; adapters extend (D085/D087/D088/**D092**). Live topology =
-POJO Forest. **D093** present → observe → AGREE/RESYNC. **D095** geometry:
-presenter = reality feedback; Forge always owns projected/commanded/observed;
-evidence-only writes; no geometry-force; ε₀=4; near-band `max(2ε,ε+8)`;
-session per-wm-class ε bump on near-miss; nest logs separate. Opportunistic
-blanket heals **deleted** (S5).
+## Human host load
 
-## D095 locks agents must not rediscover
+Tip is installed `--dev` on this clone; **Wayland needs re-login** for
+host Shell to load JS. Nest already proved toggle-tab + tabbed-edge.
 
-| Lock | Value |
-| --- | --- |
-| Reality | Presenter frame when queryable |
-| Forge store | Always (not optional cache) |
-| Writes | Evidence only; **no** `force: true` geometry |
-| ε₀ | **4** px Meta; formula `max(4, ceil(worst_settle_in_band×1.2))` |
-| Near-band | **`max(2×ε, ε+8)`** (ε₀ → 12) |
-| Progressive bump | **Per wm-class** (session); thin class → window mirror; after 3 near fails |
-| `--dev=` | Comma modes: `strict-geometry`, `geom-epsilon-measure`, `fault-inject-geometry`, `geom-trace` |
-| Opportunistic heals | **Deleted** (S5); production ≈ strict for those waves |
-| Nest | Separate tapes; **private XDG_RUNTIME_DIR** client isolation; `smoke-nest-apps`; close nest windows on exit |
-| S7 zoom | **Skipped** until zoom regress — do not invent fixes |
-| Leftover force | D026 `_restoreTileToSlot` / `_schedulePostEchoSlotReassert` still `{ force: true }` (not opportunistic heal; thin follow-up) |
-
-## Enable run modes
-
-```bash
-./install --dev=strict-geometry
-./install --dev=fault-inject-geometry
-./install --dev   # TRACE + production=false; modes=[]
-# gsettings: org.gnome.shell.extensions.forge dev-modes
-# (use --schemadir=<ext>/schemas if host gsettings misses the key)
+```sh
+cd ~/dev/me/forge && ./install --dev
+# Wayland: log out of GNOME, log back in (HUP does not reload JS)
 ```
 
-## Next session (start here)
+Install from this durable clone only (not a Grok worktree). `--dev` →
+TRACE so hunts work.
 
-1. **P0:** [`forge-live-layout-dnd-proof.md`](./plans/forge-live-layout-dnd-proof.md)
-   **toggleTabStack nest** (+ host logout for soft+edge tip if needed).
-2. D095 is **closed** (archived). Reopen S7 only if zoom regresses.
-3. Hunt nest logs only. Do not resave loadouts.
-
-### S8 session note (closeout)
-
-| Item | Detail |
+| Expect to work | Expect incomplete / parked |
 | --- | --- |
-| Shipped | S1 ε measure → S2 host-bag model → S3 visible-first → S4 `--dev=` → S5 heals deleted → S6 progressive ε + fault-inject |
-| S7 | **Skipped** — no zoom primary-path repro after `_reassertZoomedTiles` delete |
-| Leftover | D026 restore/post-echo still `{ force: true }` — PRIORITY one-liner; not “done” |
-| Archive | `agents/plans/archived/completed/forge-settled-slot-authority.md` |
-| Blocker | `agents/blockers/settled-slot-authority-design.md` **closed** |
+| Extension enables; windows map; TILE; Mark 2 join/move on one mon | Host DnD maze / cross-mon Ctrl+hjkl reconnect |
+| Unary TAB/STACK no strip (R053); move leaves no hollow spacer (R052) | Host visual: layout `active` + DnD raise (**R054/R055** — L0/nest green) |
+| `forge tree` Forest-backed | `class Tree` still in tree.js (G8n stub) |
+| Adapter ROOT is `createLiveTree` | |
 
-### Do / do not
+**Do not** save loadouts / session-layout if the desk looks wrong.
+
+Hunt (host session after re-login):
+
+```sh
+forge log
+forge log --session <id> --grep 'lastTabFocus|revealGroupChild source=dnd-join|settleTabFocus' --level info+ --last 80
+```
+
+Never `tail` the tape. Nest hunts stay `forge-test nested log`.
+
+## Logging — previous session retain
+
+On extension **enable** and `forge log --truncate`, non-empty
+`forge.log` / `forge.jsonl` are copied to `forge.prev.log` /
+`forge.prev.jsonl`, then current tapes are emptied.
+
+## FIRM — nest vs host
 
 | Do | Do not |
 | --- | --- |
-| Nest first for JS (`./install --dev` + `forge-test nested …`) | Pollute agent shell with `eval $(nested env --export)` then expect host Wayland |
-| Use `nested exec/run` so clients get isolated `XDG_RUNTIME_DIR` | Launch nest apps with host runtime (GApplication → host desk) |
-| Close nest windows; kill leftover nest `chrome-profile` procs | Leave nest Chrome/ghostty attached after stop |
-| Hunt nest `forge log` / jsonl | `cat`/`rg` tape files |
-| | Resave personal loadouts |
-| | Add geometry `force: true` |
-| | Reintroduce opportunistic heals |
-| | Invent S7 zoom fixes without a repro |
+| `./scripts/forge/forge-test nested smoke-*` **one** CLI | Bare `forge launch` / host GUI from **agent** |
+| Hunt nest: `./scripts/forge/forge-test nested log --grep PAT --level info+ --last 40` | `nested logs` (shell stderr) |
+
+Nest is **stopped**. Agent still does **not** host `layout`.
+
+## Landed this breath — R054 / R055
+
+Plan: `agents/plans/forge-tab-open-leaf-visibility.md`.
+
+- `setOpenLeaf` Forest-first (`setLastTabFocus` + duck)
+- Join `markOpenLeaf` on wrap/enter-con
+- DnD CENTER `revealGroupChild(..., source: "dnd-join")`
+- L0 `bug-r054-r055-open-leaf` (failed then green)
+- Nest `smoke-toggle-tab` + `smoke-layout-tabbed-edge` PASS
+- Proto 155 ok
+
+Host: after logout, `layout dev` open leaves + DnD into TAB
+raise/focus.
 
 ## Brake
 
-`cd prototypes/container-motion && npm test` → **154**.
-`forge-test nested smoke-geom-epsilon` · `smoke-layout-dnd` · `smoke-layout-tabbed-edge`.
+```text
+cd prototypes/container-motion && npm test
+```
+
+## Do not port
+
+Belt, Mode B, title→`renderTree`, entered-monitor maze, WindowManager
+façade. H1/session-restore stay parked.

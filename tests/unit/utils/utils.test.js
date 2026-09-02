@@ -23,7 +23,7 @@ import {
   isBeforeZone,
 } from "../../../lib/extension/utils.js";
 import { ORIENTATION_TYPES, POSITION } from "../../../lib/extension/tree.js";
-import { GRAB_TYPES } from "../../../lib/extension/window.js";
+import { GRAB_TYPES } from "../../../lib/extension/window-modes.js";
 import { GrabOp, MotionDirection } from "../../mocks/gnome/Meta.js";
 
 describe("Utility Functions", () => {

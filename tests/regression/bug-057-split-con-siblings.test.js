@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { Bin } from "../mocks/gnome/St.js";
 
@@ -82,10 +83,10 @@ describe("Bug #57: nested split-con siblings in tabbed/stacked containers", () =
 
       expect(parentCon.layout).toBe(LAYOUT_TYPES.TABBED);
       // 2 direct children (W + nestedCon), NOT 3 flattened (W, A, B)
-      expect(parentCon.childNodes.length).toBe(2);
+      expect(kidsOf(wm(), parentCon)).toHaveLength(2);
       expect(nestedCon.nodeType).toBe(NODE_TYPES.CON);
       expect(nestedCon.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(nestedCon.childNodes.length).toBe(2);
+      expect(kidsOf(wm(), nestedCon)).toHaveLength(2);
     });
 
     it("keeps the nested container intact when toggling parent to STACKED", () => {
@@ -97,8 +98,8 @@ describe("Bug #57: nested split-con siblings in tabbed/stacked containers", () =
       wm().command({ name: "toggleTabStack" });
 
       expect(parentCon.layout).toBe(LAYOUT_TYPES.STACKED);
-      expect(parentCon.childNodes.length).toBe(2);
-      expect(nestedCon.childNodes.length).toBe(2);
+      expect(kidsOf(wm(), parentCon)).toHaveLength(2);
+      expect(kidsOf(wm(), nestedCon)).toHaveLength(2);
     });
   });
 

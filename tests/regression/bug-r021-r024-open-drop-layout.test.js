@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { SessionApi } from "../../lib/extension/session-api.js";
 import {
@@ -7,6 +7,8 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   setPointer,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
 
@@ -61,9 +63,23 @@ describe("R021–R024: empty-head open, leaf empty-mon drag, nest drop, first la
   function monitorOf(node) {
     const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
     const mon1 = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
-    if (mon1.contains(node)) return 1;
-    if (mon0.contains(node)) return 0;
+    let n = node;
+    while (n) {
+      if (n === mon1) return 1;
+      if (n === mon0) return 0;
+      n = parentOf(wm(), n);
+    }
     return -1;
+  }
+
+  function windowLeaves(root) {
+    const out = [];
+    const walk = (n) => {
+      if (n?.isWindow?.()) out.push(n);
+      for (const k of kidsOf(wm(), n)) walk(k);
+    };
+    walk(root);
+    return out;
   }
 
   describe("R021 empty-head open", () => {
@@ -95,8 +111,8 @@ describe("R021–R024: empty-head open, leaf empty-mon drag, nest drop, first la
 
       const node = wm().findNodeWindow(opened);
       expect(monitorOf(node)).toBe(1);
-      expect(mon0.contains(node)).toBe(false);
-      expect(mon0.getNodeByType(NODE_TYPES.WINDOW).length).toBe(2);
+      expect(kidsOf(wm(), mon0)).not.toContain(node);
+      expect(windowLeaves(mon0)).toHaveLength(2);
     });
   });
 
@@ -144,8 +160,8 @@ describe("R021–R024: empty-head open, leaf empty-mon drag, nest drop, first la
       expect(monitorOf(c.node)).toBe(1);
       expect(monitorOf(a.node)).toBe(0);
       expect(monitorOf(b.node)).toBe(0);
-      expect(mon1.getNodeByType(NODE_TYPES.WINDOW).map((n) => n.nodeValue.id)).toEqual(["C"]);
-      expect(mon0.contains(b.node)).toBe(true);
+      expect(windowLeaves(mon1).map((n) => n.nodeValue.id)).toEqual(["C"]);
+      expect(windowLeaves(mon0).map((n) => n.nodeValue.id).sort()).toEqual(["A", "B"]);
     });
   });
 
@@ -176,14 +192,14 @@ describe("R021–R024: empty-head open, leaf empty-mon drag, nest drop, first la
       wm().moveWindowToPointer(dragged.node, false);
 
       expect(mon0.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(mon0.childNodes.length).toBe(2);
-      expect(right.node.parentNode).toBe(mon0);
-      const nest = dragged.node.parentNode;
+      expect(kidsOf(wm(), mon0)).toHaveLength(2);
+      expect(parentOf(wm(), right.node)).toBe(mon0);
+      const nest = parentOf(wm(), dragged.node);
       expect(nest.nodeType).toBe(NODE_TYPES.CON);
       expect(nest.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(nest.parentNode).toBe(mon0);
-      expect(nest.childNodes).toEqual(expect.arrayContaining([left.node, dragged.node]));
-      expect(nest.childNodes).not.toContain(right.node);
+      expect(parentOf(wm(), nest)).toBe(mon0);
+      expect(kidsOf(wm(), nest)).toEqual(expect.arrayContaining([left.node, dragged.node]));
+      expect(kidsOf(wm(), nest)).not.toContain(right.node);
     });
   });
 

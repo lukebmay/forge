@@ -40,8 +40,8 @@ desync; leave it at 0 for daily use. Cancelled on extension disable / set to 0.
 | `_suppressGeometrySignalRetile` (Forge `move` / `tree.apply`) | Chrome only; **no** markUnsettled / layout (in-stack) |
 | Active command echo epoch for that window (`layout-epoch.js`, 350ms residual) | Chrome only after stack returns (client snap) |
 | TILE frame ≈ slot (ε) | Chrome only; skip full layout |
-| Unsolicited TILE max / Meta-fs / size (IC3 / D026) | Dedicated restore via `reassertNodeToSlot` — **not** verify-driven |
-| Other external drift (FLOAT / leftover, epoch expired) | `onExternalGeometry` → unsettled + diagnostic verify (**no** forest apply) |
+| Unsolicited TILE max / Meta-fs / size (IC3 / D026) | **D100:** observe only — no idle `reassertNodeToSlot` / `renderTree` |
+| Other external drift (FLOAT / leftover, epoch expired) | **D100:** observe only — idle size-changed does not call `onExternalGeometry` |
 
 Forge apply must not double-fire a layout storm: stack suppress covers
 `move()` / `tree.apply` re-entrancy; per-window **command echo epoch** covers

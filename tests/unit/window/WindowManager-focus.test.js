@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { WindowManager, WINDOW_MODES } from "../../../lib/extension/window.js";
+import { ForgeAdapterGnome } from "../../../lib/extension/adapter-gnome.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { Tree, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
@@ -12,6 +13,7 @@ import { Workspace, WindowType, Rectangle } from "../../mocks/gnome/Meta.js";
 import { Bin } from "../../mocks/gnome/St.js";
 import * as Utils from "../../../lib/extension/utils.js";
 import { mockSeat } from "../../mocks/gnome/Clutter.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 
 /**
  * WindowManager pointer & focus management tests
@@ -711,7 +713,7 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(renderSpy).not.toHaveBeenCalled();
   });
 
-  it("still queues raise-float render for focused floats (not focus reason)", () => {
+  it("queues raise-float without renderTree (D100)", () => {
     const metaWindow = createMockWindow({ wm_class: "FloatApp", workspace: ctx.workspaces[0] });
     wm().trackWindow(null, metaWindow);
     const node = wm().tree.findNode(metaWindow);
@@ -724,7 +726,7 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     const raise = captured.find((e) => e.name === "raise-float");
     expect(raise).toBeDefined();
     raise.callback();
-    expect(renderSpy).toHaveBeenCalledWith("raise-float-queue");
+    expect(renderSpy).not.toHaveBeenCalled();
   });
 
   it("tab focus reasserts only open leaf when off-slot; buried siblings skip move", () => {
@@ -1112,6 +1114,36 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     expect(tab.lastTabFocus).toBe(wOpen);
     expect(wOpen.raise).toHaveBeenCalled();
     expect(wm().restoreOpenLeafIfWorkspaceFocusSteal(nOpen)).toBe(false);
+  });
+
+  it("G8o: open-leaf / focus-restore use Forest parent when GObject parentNode is null", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab.layout = LAYOUT_TYPES.TABBED;
+    const wOpen = createMockWindow({ id: "g8o-open", workspace: ctx.workspaces[0] });
+    const wSteal = createMockWindow({ id: "g8o-steal", workspace: ctx.workspaces[0] });
+    const nOpen = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wOpen);
+    const nSteal = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wSteal);
+    nOpen.mode = WINDOW_MODES.TILE;
+    nSteal.mode = WINDOW_MODES.TILE;
+    wOpen.raise = vi.fn();
+    wSteal.raise = vi.fn();
+    tab.lastTabFocus = wOpen;
+    seedLiveForest(wm());
+    // D096 residue: Forest membership only.
+    nOpen.parentNode = null;
+    nSteal.parentNode = null;
+
+    expect(wm().setOpenLeaf(nSteal)).toBe(true);
+    expect(tab.lastTabFocus).toBe(wSteal);
+    tab.lastTabFocus = wOpen;
+    expect(wm().restoreOpenLeafIfWorkspaceFocusSteal(nSteal)).toBe(true);
+    expect(tab.lastTabFocus).toBe(wOpen);
+    expect(wOpen.raise).toHaveBeenCalled();
+
+    const snap = wm()._captureFocusRestore(nSteal);
+    expect(snap.siblingIds).toEqual(expect.arrayContaining([wm()._metaWindowId(wOpen)]));
+    expect(snap.preCloseChildIds.length).toBe(2);
   });
 
   it("reassertOpenLeavesOnActiveWs raises each group open leaf", () => {

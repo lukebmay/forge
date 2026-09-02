@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
@@ -59,9 +59,7 @@ describe("Bug #482: late wm_class re-tiles", () => {
     expect(node.isTile()).toBe(true);
   });
 
-  it("wires notify::wm-class in trackWindow so a late class re-renders", () => {
-    // End-to-end: trackWindow must connect the signal itself. Before the fix
-    // there is no notify::wm-class handler, so the late class is never noticed.
+  it("wires notify::wm-class without renderTree (D100)", () => {
     const tracked = createMockWindow({
       wm_class: null,
       id: 2002,
@@ -73,6 +71,6 @@ describe("Bug #482: late wm_class re-tiles", () => {
     const renderSpy = vi.spyOn(ctx.windowManager, "renderTree");
     tracked.set_wm_class("Opera");
 
-    expect(renderSpy).toHaveBeenCalledWith("wm-class-changed");
+    expect(renderSpy).not.toHaveBeenCalled();
   });
 });

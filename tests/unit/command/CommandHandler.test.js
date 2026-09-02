@@ -1,17 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { CommandHandler } from "../../../lib/extension/command.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   installGnomeGlobals,
   createMockSettings,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { GrabOp } from "../../mocks/gnome/Meta.js";
 import { Bin } from "../../mocks/gnome/St.js";
-import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import { forestIdFromLive, seedLiveForest } from "../../../lib/extension/tom-live.js";
 
 /**
  * CommandHandler unit tests
@@ -387,7 +388,7 @@ describe("CommandHandler", () => {
   });
 
   describe("WindowSwapLastActive command", () => {
-    it("falls back to swapPairs when Forest ids miss", () => {
+    it("fails closed when Forest ids miss (no swapPairs twin)", () => {
       const lastActiveWindow = createMockWindow({ title: "Last Active" });
       const lastActiveNode = { nodeValue: lastActiveWindow };
 
@@ -396,21 +397,45 @@ describe("CommandHandler", () => {
 
       commandHandler.execute({ name: "WindowSwapLastActive" });
 
-      expect(mockTree.swapPairs).toHaveBeenCalledWith(lastActiveNode, mockNodeWindow);
+      expect(mockTree.swapPairs).not.toHaveBeenCalled();
+      expect(mockWm.commitLayout).not.toHaveBeenCalled();
     });
 
-    it("should move pointer after swap", () => {
-      commandHandler.execute({ name: "WindowSwapLastActive" });
+    it("should move pointer and commit after Forest swap", () => {
+      ctx.cleanup();
+      ctx = createWindowManagerFixture({
+        settings: { "tiling-mode-enabled": true },
+      });
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const winA = createMockWindow({ id: 101, title: "Focus" });
+      const winB = createMockWindow({ id: 102, title: "Last" });
+      const nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
+      const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
+      nodeA.mode = WINDOW_MODES.TILE;
+      nodeB.mode = WINDOW_MODES.TILE;
+      seedLiveForest(ctx.windowManager);
+      ctx.display.get_tab_next = vi.fn(() => winB);
+      const liveWm = ctx.windowManager;
+      liveWm.findNodeWindow = vi.fn((meta) => {
+        if (meta === winA) return nodeA;
+        if (meta === winB) return nodeB;
+        return null;
+      });
+      ctx.display.get_focus_window = vi.fn(() => winA);
+      liveWm.commitLayout = vi.fn(function (reason, opts) {
+        this.renderTree?.(reason, !!(opts && opts.force));
+      });
+      liveWm.settleTabFocus = vi.fn();
+      liveWm.movePointerWith = vi.fn();
+      liveWm.renderTree = vi.fn();
+      const liveHandler = new CommandHandler(liveWm);
 
-      expect(mockWm.movePointerWith).toHaveBeenCalledWith(mockNodeWindow);
-    });
+      liveHandler.execute({ name: "WindowSwapLastActive" });
 
-    it("should commit layout once after swap", () => {
-      commandHandler.execute({ name: "WindowSwapLastActive" });
-
-      expect(mockWm.commitLayout).toHaveBeenCalledWith("swap-last-active", { force: true });
-      expect(mockWm.renderTree).toHaveBeenCalledTimes(1);
-      expect(mockWm.renderTree).toHaveBeenCalledWith("swap-last-active", true);
+      expect(liveWm.movePointerWith).toHaveBeenCalledWith(nodeA);
+      expect(liveWm.commitLayout).toHaveBeenCalledWith("swap-last-active", { force: true });
+      expect(liveWm.renderTree).toHaveBeenCalledTimes(1);
+      expect(liveWm.renderTree).toHaveBeenCalledWith("swap-last-active", true);
     });
 
     it("should not swap if no focus window", () => {
@@ -770,6 +795,11 @@ describe("CommandHandler Mark 2 move/join on a live tree", () => {
     vi.restoreAllMocks();
   });
 
+  function forestLayout(live) {
+    const id = forestIdFromLive(ctx.windowManager, live);
+    return id ? ctx.windowManager.forest?.nodes?.[id]?.layout : live?.layout;
+  }
+
   function hsplitPair() {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     monitor.layout = LAYOUT_TYPES.HSPLIT;
@@ -782,6 +812,7 @@ describe("CommandHandler Mark 2 move/join on a live tree", () => {
     ctx.display.get_focus_window.mockReturnValue(winA);
     ctx.windowManager.renderTree = vi.fn();
     ctx.windowManager.movePointerWith = vi.fn();
+    seedLiveForest(ctx.windowManager);
     return { monitor, nodeA, nodeB };
   }
 
@@ -789,79 +820,85 @@ describe("CommandHandler Mark 2 move/join on a live tree", () => {
     const { monitor, nodeA, nodeB } = hsplitPair();
     ctx.windowManager.command({ name: "move.left" });
     // Focus A is already leftmost; wrap-rotate to end: H(B,A)
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].childNodes).toEqual([nodeB, nodeA]);
+    const monKids = kidsOf(ctx.windowManager, monitor);
+    expect(monKids).toHaveLength(1);
+    expect(kidsOf(ctx.windowManager, monKids[0])).toEqual([nodeB, nodeA]);
   });
 
   it("execute join.left wraps the pair", () => {
     const { monitor, nodeA, nodeB } = hsplitPair();
     ctx.windowManager.command({ name: "join.left" });
-    expect(monitor.childNodes).toHaveLength(1);
-    const wrap = monitor.childNodes[0];
-    expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
-    expect(wrap.childNodes).toEqual([nodeA, nodeB]);
+    const monKids = kidsOf(ctx.windowManager, monitor);
+    expect(monKids).toHaveLength(1);
+    const wrap = monKids[0];
+    expect(forestLayout(wrap)).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(kidsOf(ctx.windowManager, wrap)).toEqual([nodeA, nodeB]);
   });
 
   it("execute toggleSplit flips HSPLIT wrap to VSPLIT", () => {
     const { monitor, nodeA, nodeB } = hsplitPair();
     ctx.windowManager.command({ name: "toggleSplit" });
-    expect(monitor.childNodes).toHaveLength(1);
-    const wrap = monitor.childNodes[0];
-    expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
-    expect(wrap.childNodes).toEqual([nodeA, nodeB]);
+    const monKids = kidsOf(ctx.windowManager, monitor);
+    expect(monKids).toHaveLength(1);
+    const wrap = monKids[0];
+    expect(forestLayout(wrap)).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(kidsOf(ctx.windowManager, wrap)).toEqual([nodeA, nodeB]);
   });
 
   it("LayoutToggle alias also flips the wrap", () => {
     const { monitor } = hsplitPair();
     ctx.windowManager.command({ name: "LayoutToggle" });
-    expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(forestLayout(kidsOf(ctx.windowManager, monitor)[0])).toBe(LAYOUT_TYPES.VSPLIT);
   });
 
   it("execute toggleTabStack turns the wrap TABBED", () => {
     const { monitor, nodeA, nodeB } = hsplitPair();
     ctx.windowManager.command({ name: "toggleTabStack" });
-    expect(monitor.childNodes).toHaveLength(1);
-    const wrap = monitor.childNodes[0];
-    expect(wrap.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(wrap.childNodes).toEqual([nodeA, nodeB]);
+    const monKids = kidsOf(ctx.windowManager, monitor);
+    expect(monKids).toHaveLength(1);
+    const wrap = monKids[0];
+    expect(forestLayout(wrap)).toBe(LAYOUT_TYPES.TABBED);
+    expect(kidsOf(ctx.windowManager, wrap)).toEqual([nodeA, nodeB]);
   });
 
   it("Split alias flips the wrap like toggleSplit", () => {
     const { monitor, nodeA, nodeB } = hsplitPair();
     ctx.windowManager.command({ name: "Split", orientation: "vertical" });
-    expect(monitor.childNodes).toHaveLength(1);
-    const wrap = monitor.childNodes[0];
-    expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
-    expect(wrap.childNodes).toEqual([nodeA, nodeB]);
+    const monKids = kidsOf(ctx.windowManager, monitor);
+    expect(monKids).toHaveLength(1);
+    const wrap = monKids[0];
+    expect(forestLayout(wrap)).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(kidsOf(ctx.windowManager, wrap)).toEqual([nodeA, nodeB]);
   });
 
   it("LayoutTabbedToggle alias turns the wrap TABBED", () => {
     const { monitor, nodeA, nodeB } = hsplitPair();
     ctx.windowManager.command({ name: "LayoutTabbedToggle" });
-    expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(monitor.childNodes[0].childNodes).toEqual([nodeA, nodeB]);
+    const wrap = kidsOf(ctx.windowManager, monitor)[0];
+    expect(forestLayout(wrap)).toBe(LAYOUT_TYPES.TABBED);
+    expect(kidsOf(ctx.windowManager, wrap)).toEqual([nodeA, nodeB]);
   });
 
   it("LayoutStackedToggle alias is toggleTabStack (H→TAB, TAB→STACK)", () => {
     const { monitor, nodeA, nodeB } = hsplitPair();
     ctx.windowManager.command({ name: "LayoutStackedToggle" });
-    expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(forestLayout(kidsOf(ctx.windowManager, monitor)[0])).toBe(LAYOUT_TYPES.TABBED);
     ctx.windowManager.command({ name: "LayoutStackedToggle" });
-    expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.STACKED);
-    expect(monitor.childNodes[0].childNodes).toEqual([nodeA, nodeB]);
+    const wrap = kidsOf(ctx.windowManager, monitor)[0];
+    expect(forestLayout(wrap)).toBe(LAYOUT_TYPES.STACKED);
+    expect(kidsOf(ctx.windowManager, wrap)).toEqual([nodeA, nodeB]);
   });
 
   it("WindowSwapLastActive swaps last-active siblings Forest-first", () => {
     const { monitor, nodeA, nodeB } = hsplitPair();
-    expect(monitor.childNodes).toEqual([nodeA, nodeB]);
+    expect(kidsOf(ctx.windowManager, monitor)).toEqual([nodeA, nodeB]);
     ctx.display.get_tab_next = vi.fn(() => nodeB.nodeValue);
-    seedLiveForest(ctx.windowManager);
     const forest = ctx.windowManager.forest;
     const swapSpy = vi.spyOn(ctx.tree, "swapPairs");
 
     ctx.windowManager.command({ name: "WindowSwapLastActive" });
 
-    expect(monitor.childNodes).toEqual([nodeB, nodeA]);
+    expect(kidsOf(ctx.windowManager, monitor)).toEqual([nodeB, nodeA]);
     expect(swapSpy).not.toHaveBeenCalled();
     const wm = ctx.windowManager;
     expect(wm.forest).toBe(forest);
@@ -875,10 +912,11 @@ describe("CommandHandler Mark 2 move/join on a live tree", () => {
   it("WindowMergeGroup joins toward the sibling", () => {
     const { monitor, nodeA, nodeB } = hsplitPair();
     ctx.windowManager.command({ name: "WindowMergeGroup" });
-    expect(monitor.childNodes).toHaveLength(1);
-    const wrap = monitor.childNodes[0];
-    expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
-    expect(wrap.childNodes).toEqual([nodeA, nodeB]);
+    const monKids = kidsOf(ctx.windowManager, monitor);
+    expect(monKids).toHaveLength(1);
+    const wrap = monKids[0];
+    expect(forestLayout(wrap)).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(kidsOf(ctx.windowManager, wrap)).toEqual([nodeA, nodeB]);
   });
 
   it("WindowMoveIn joins into an adjacent sibling CON", () => {
@@ -900,11 +938,11 @@ describe("CommandHandler Mark 2 move/join on a live tree", () => {
     ctx.display.get_focus_window.mockReturnValue(winA);
     ctx.windowManager.renderTree = vi.fn();
     ctx.windowManager.movePointerWith = vi.fn();
+    seedLiveForest(ctx.windowManager);
 
     ctx.windowManager.command({ name: "WindowMoveIn" });
 
-    expect(nodeA.parentNode).toBe(tab);
-    expect(tab.childNodes).toEqual([nodeA, nodeB, nodeC]);
+    expect(kidsOf(ctx.windowManager, tab)).toEqual([nodeA, nodeB, nodeC]);
   });
 
   it("WindowMoveOut breakouts via Move", () => {
@@ -926,18 +964,19 @@ describe("CommandHandler Mark 2 move/join on a live tree", () => {
     ctx.display.get_focus_window.mockReturnValue(winA);
     ctx.windowManager.renderTree = vi.fn();
     ctx.windowManager.movePointerWith = vi.fn();
+    seedLiveForest(ctx.windowManager);
 
     ctx.windowManager.command({ name: "WindowMoveOut" });
 
-    expect(outer.childNodes).toEqual([nodeB, nodeA, nodeC]);
-    expect(nodeA.parentNode).toBe(outer);
+    expect(kidsOf(ctx.windowManager, outer)).toEqual([nodeB, nodeA, nodeC]);
   });
 
   it("SwapNext is in-axis Move", () => {
     const { monitor, nodeA, nodeB } = hsplitPair();
     ctx.windowManager.command({ name: "SwapNext" });
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].childNodes).toEqual([nodeB, nodeA]);
+    const monKids = kidsOf(ctx.windowManager, monitor);
+    expect(monKids).toHaveLength(1);
+    expect(kidsOf(ctx.windowManager, monKids[0])).toEqual([nodeB, nodeA]);
   });
 
   it("execute promote dissolves a nested CON", () => {
@@ -959,11 +998,12 @@ describe("CommandHandler Mark 2 move/join on a live tree", () => {
     ctx.display.get_focus_window.mockReturnValue(winA);
     ctx.windowManager.renderTree = vi.fn();
     ctx.windowManager.movePointerWith = vi.fn();
+    seedLiveForest(ctx.windowManager);
 
     ctx.windowManager.command({ name: "promote" });
 
-    expect(outer.childNodes).toEqual([nodeA, nodeB, nodeC]);
-    expect(outer.layout).toBe(LAYOUT_TYPES.HSPLIT);
+    expect(kidsOf(ctx.windowManager, outer)).toEqual([nodeA, nodeB, nodeC]);
+    expect(forestLayout(outer)).toBe(LAYOUT_TYPES.HSPLIT);
   });
 
   it("execute size.nudge.x+ grows the in-axis share", () => {
@@ -972,9 +1012,11 @@ describe("CommandHandler Mark 2 move/join on a live tree", () => {
     nodeA.userSized = true;
     nodeB.percent = 0.5;
     nodeB.userSized = true;
+    seedLiveForest(ctx.windowManager);
     ctx.windowManager.command({ name: "size.nudge.x+" });
-    const wrap = monitor.childNodes[0];
-    const target = wrap.childNodes[0] === nodeA ? nodeA : wrap.childNodes.find((n) => n === nodeA);
+    const wrap = kidsOf(ctx.windowManager, monitor)[0];
+    const wrapKids = kidsOf(ctx.windowManager, wrap);
+    const target = wrapKids[0] === nodeA ? nodeA : wrapKids.find((n) => n === nodeA);
     expect(target.userSized).toBe(true);
     expect(target.percent).toBeCloseTo(0.55, 5);
   });
@@ -1013,6 +1055,12 @@ describe("CommandHandler Mark 2 Move across monitors (product TILES)", () => {
     return { win, node };
   }
 
+  function forestUnder(liveParent, liveWin) {
+    const kidsNow = kidsOf(ctx.windowManager, liveParent);
+    if (kidsNow.includes(liveWin)) return true;
+    return kidsNow.some((k) => forestUnder(k, liveWin));
+  }
+
   it("wrap beats cross-monitor: in-axis edge rotates on the origin mon", () => {
     const monA = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
     const monB = getWorkspaceAndMonitor(ctx, 0, 1).monitor;
@@ -1021,15 +1069,17 @@ describe("CommandHandler Mark 2 Move across monitors (product TILES)", () => {
     const a = tiledOn(monA, 1, 0);
     const b = tiledOn(monA, 2, 0);
     const c = tiledOn(monB, 3, 1);
+    seedLiveForest(ctx.windowManager);
     ctx.display.get_focus_window.mockReturnValue(b.win);
 
     ctx.windowManager.command({ name: "Move", direction: "right" });
 
-    expect(monA.contains(b.node)).toBe(true);
-    expect(monB.contains(b.node)).toBe(false);
-    expect(monB.contains(c.node)).toBe(true);
-    expect(monA.childNodes).toHaveLength(1);
-    expect(monA.childNodes[0].childNodes).toEqual([b.node, a.node]);
+    expect(forestUnder(monA, b.node)).toBe(true);
+    expect(forestUnder(monB, b.node)).toBe(false);
+    expect(forestUnder(monB, c.node)).toBe(true);
+    const monKids = kidsOf(ctx.windowManager, monA);
+    expect(monKids).toHaveLength(1);
+    expect(kidsOf(ctx.windowManager, monKids[0])).toEqual([b.node, a.node]);
   });
 
   it("sole tiled window at MONITOR edge transfers to the neighbor", () => {
@@ -1039,13 +1089,14 @@ describe("CommandHandler Mark 2 Move across monitors (product TILES)", () => {
     monB.layout = LAYOUT_TYPES.HSPLIT;
     const a = tiledOn(monA, 1, 0);
     const b = tiledOn(monB, 2, 1);
+    seedLiveForest(ctx.windowManager);
     ctx.display.get_focus_window.mockReturnValue(a.win);
 
     ctx.windowManager.command({ name: "Move", direction: "right" });
 
-    expect(monB.contains(a.node)).toBe(true);
-    expect(monA.contains(a.node)).toBe(false);
-    expect(monB.contains(b.node)).toBe(true);
+    expect(forestUnder(monB, a.node)).toBe(true);
+    expect(forestUnder(monA, a.node)).toBe(false);
+    expect(forestUnder(monB, b.node)).toBe(true);
   });
 
   it("TABBED last member in-axis Move wrap-rotates (does not peel+cross)", () => {
@@ -1057,12 +1108,13 @@ describe("CommandHandler Mark 2 Move across monitors (product TILES)", () => {
     tab.layout = LAYOUT_TYPES.TABBED;
     const wins = [1, 2, 3].map((id) => tiledOn(tab, id, 0));
     tiledOn(monB, 9, 1);
+    seedLiveForest(ctx.windowManager);
     ctx.display.get_focus_window.mockReturnValue(wins[2].win);
 
     ctx.windowManager.command({ name: "Move", direction: "right" });
 
-    expect(tab.childNodes).toEqual([wins[2].node, wins[0].node, wins[1].node]);
-    expect(monA.contains(wins[2].node)).toBe(true);
-    expect(monB.contains(wins[2].node)).toBe(false);
+    expect(kidsOf(ctx.windowManager, tab)).toEqual([wins[2].node, wins[0].node, wins[1].node]);
+    expect(forestUnder(monA, wins[2].node)).toBe(true);
+    expect(forestUnder(monB, wins[2].node)).toBe(false);
   });
 });

@@ -1,6 +1,8 @@
 # Wayland RC test suite (duplicable)
 
-**Status:** active procedure — **last black run green 2026-08-10** (R013/R014 cleared)  
+**Status:** active procedure — **gated behind D100b**. Last black run
+green 2026-08-10 (R013/R014) was **pre-D100** (old handlers on). Do not
+treat that run as a sign-off of the disconnected-handler desk.  
 **Purpose:** Repeatable dual-mon Wayland smoke for a **release candidate**, with
 metrics comparable across machines (e.g. older host).  
 **Session:** Wayland login (daily driver). Extension retest via **`forge nested`**,

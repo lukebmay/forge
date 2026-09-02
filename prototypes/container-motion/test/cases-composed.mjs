@@ -125,6 +125,20 @@ export const COMPOSED_CASES = [
     expect: "Mon1(H(A,B))",
   },
   {
+    id: "cmp-prune-dangling-childids",
+    layer: "composed",
+    given: "Mon1(H(A,B))",
+    run(t) {
+      const host = t.parent(t.win("A"));
+      const empty = t.api.makeCon("HSPLIT", []);
+      t.api._registerTree(t.f, empty);
+      t.api.appendChild(t.f, host, empty);
+      empty.childIds.push("dead-id");
+      t.api.pruneEmptyCons(t.f, t.f.monitors[0]);
+    },
+    expect: "Mon1(H(A,B))",
+  },
+  {
     id: "cmp-cleanup-unary-and-empty",
     layer: "composed",
     given: "Mon1(H(V(A)))",

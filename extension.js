@@ -41,7 +41,7 @@ setPlogRuntime(createGjsRuntime);
 // Application imports
 import { Cheatsheet } from "./lib/extension/cheatsheet.js";
 import { Keybindings } from "./lib/extension/keybindings.js";
-import { WindowManager } from "./lib/extension/window.js";
+import { ForgeAdapterGnome } from "./lib/extension/adapter-gnome.js";
 import { FeatureIndicator, FeatureMenuToggle } from "./lib/extension/indicator.js";
 import { ExtensionThemeManager } from "./lib/extension/extension-theme-manager.js";
 import { SessionApi } from "./lib/extension/session-api.js";
@@ -107,7 +107,7 @@ export default class ForgeExtension extends Extension {
     this.configSync.init();
 
     this.theme = new ExtensionThemeManager(this);
-    this.extWm = new WindowManager(this);
+    this.extWm = new ForgeAdapterGnome(this);
     this.keybindings = new Keybindings(this);
     this.cheatsheet = new Cheatsheet(this);
     this.keybindings.cheatsheet = this.cheatsheet;

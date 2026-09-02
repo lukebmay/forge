@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import GLib from "gi://GLib";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 
 /**
@@ -62,7 +63,8 @@ describe("forge-ne1 (#324): Move has no delayed stale-node callback", () => {
 
     expect(commitSpy).toHaveBeenCalledTimes(1);
     expect(commitSpy).toHaveBeenCalledWith("move-window", { force: true });
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].childNodes).toEqual([nodeB, nodeA]);
+    const monKids = kidsOf(ctx.windowManager, monitor);
+    expect(monKids).toHaveLength(1);
+    expect(kidsOf(ctx.windowManager, monKids[0])).toEqual([nodeB, nodeA]);
   });
 });

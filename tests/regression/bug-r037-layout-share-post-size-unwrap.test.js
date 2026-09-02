@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
 import { SessionApi } from "../../lib/extension/session-api.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   normalizeProfile,
   planReconcile,
@@ -13,6 +13,10 @@ import {
   createMockWindow,
 } from "../mocks/helpers/index.js";
 import { Bin } from "../mocks/gnome/St.js";
+import {
+  liveChildrenForPresent,
+  liveParentForPresent,
+} from "../../lib/extension/tom-live.js";
 
 /**
  * R037: saved layout `share` must survive ApplyLayout size → post-size mon unwrap.
@@ -218,7 +222,10 @@ describe("R037 layout share survives post-size mon unwrap", () => {
 
     const unwrap = api()._unwrapMonDirectSingleChildSplits();
     expect(unwrap.unwrapped).toBe(1);
-    expect(nGhost.parentNode).toBe(monitor);
+    expect(liveParentForPresent(wm(), nGhost)).toBe(monitor);
+    expect(liveChildrenForPresent(wm(), monitor)).toEqual(
+      expect.arrayContaining([bag, nGhost])
+    );
     expect(bag.percent).toBeCloseTo(0.687, 3);
     expect(bag.userSized).toBe(true);
     expect(nGhost.percent).toBeCloseTo(0.313, 3);

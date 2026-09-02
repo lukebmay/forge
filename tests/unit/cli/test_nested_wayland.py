@@ -25,6 +25,7 @@ from nested_wayland import (  # noqa: E402
     dummy_mode_specs,
     dummy_monitor_scales,
     ensure_nest_cli_dirs,
+    ensure_nest_client_isolation,
     format_env_export,
     format_status_text,
     has_stale_residue,
@@ -40,6 +41,7 @@ from nested_wayland import (  # noqa: E402
     parse_size,
     reap_stale,
     require_wayland_host,
+    resolve_host_display,
     resolve_host_xauthority,
     session_dir,
     shell_start_env,
@@ -157,6 +159,7 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
     assert env["DBUS_SESSION_BUS_ADDRESS"] == cfg.bus_address
     assert env["GDK_BACKEND"] == "wayland"
     assert env["XDG_SESSION_TYPE"] == "wayland"
+    assert "DISPLAY" not in env
     assert env["GSK_RENDERER"] == "cairo"
     assert env["LIBGL_ALWAYS_SOFTWARE"] == "1"
     # N1: logical host + nest-scoped CLI config root
@@ -177,6 +180,7 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
     # Nested shell process uses host display, not nest display
     senv = shell_start_env(cfg)
     assert senv["WAYLAND_DISPLAY"] == "wayland-0"
+    assert senv.get("DISPLAY")  # mutter embed needs a real X11 DISPLAY
     assert senv["DBUS_SESSION_BUS_ADDRESS"] == cfg.bus_address
     assert senv["MUTTER_DEBUG_DUMMY_MODE_SPECS"] == "1280x800"
     assert senv["MUTTER_DEBUG_NUM_DUMMY_MONITORS"] == "2"
@@ -193,9 +197,40 @@ def test_bus_and_client_env(tmp_path: Path) -> None:
 
     export = format_env_export(cfg)
     assert "export WAYLAND_DISPLAY='wayland-forge'" in export
+    assert "export DISPLAY=" not in export
     assert "DBUS_SESSION_BUS_ADDRESS=" in export
     assert "FORGE_HOST=" in export
     assert "FORGE_CONFIG_HOME=" in export
+
+
+def test_isolation_reapplied_when_socket_appears_after_client_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """First client_env often runs before the nest socket exists; re-apply after."""
+    host_rt = tmp_path / "host-runtime"
+    host_rt.mkdir()
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(host_rt))
+    state = tmp_path / "nested" / "forge"
+    cfg = NestedConfig(
+        name="forge",
+        display="wayland-forge",
+        size="1920x1080",
+        scale="1",
+        host_wayland="wayland-0",
+        unsafe_mode=True,
+        state_dir=str(state),
+        bus_address=bus_address_for(state),
+        created_at=0.0,
+        num_monitors=1,
+    )
+    env = client_env(cfg)
+    link = Path(env["XDG_RUNTIME_DIR"]) / "wayland-forge"
+    assert not link.exists()
+    sock = host_rt / "wayland-forge"
+    sock.write_text("")
+    ensure_nest_client_isolation(cfg)
+    assert link.is_symlink()
+    assert link.resolve() == sock.resolve()
 
 
 def test_resolve_host_xauthority_prefers_live_cookie(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -256,11 +291,14 @@ def test_merge_client_env_isolation(tmp_path: Path) -> None:
     base = {
         "PATH": "/usr/bin",
         "HOME": str(tmp_path),
+        "DISPLAY": ":0",
         "FORGE_HOST": "parent-host",
         "FORGE_CONFIG_HOME": str(tmp_path / "parent-config"),
     }
     merged = merge_client_env(cfg, base)
     assert merged["PATH"] == "/usr/bin"
+    assert "DISPLAY" not in merged
+    assert merged["XDG_SESSION_TYPE"] == "wayland"
     assert merged["FORGE_HOST"] == nest_forge_host("forge")
     assert merged["FORGE_HOST"] != "parent-host"
     assert merged["FORGE_CONFIG_HOME"] == str(tmp_path / "forge-config")
@@ -299,9 +337,25 @@ def test_format_status_text() -> None:
         "state_dir": "/tmp/s",
         "env_sh": "/tmp/s/env.sh",
         "shell_log": "/tmp/s/shell.log",
+        "forge_log": "/tmp/s/forge.log",
+        "forge_jsonl": "/tmp/s/forge.jsonl",
     })
     assert "running:      True" in text
     assert "wayland-forge" in text
+    assert "forge.log:    /tmp/s/forge.log" in text
+    assert "forge.jsonl:  /tmp/s/forge.jsonl" in text
+
+
+def test_status_dict_includes_hunt_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nested_wayland import status_dict
+
+    monkeypatch.setenv("FORGE_NESTED_ROOT", str(tmp_path / "nests"))
+    st = status_dict("forge")
+    assert st["forge_log"].endswith("/forge.log")
+    assert st["forge_jsonl"].endswith("/forge.jsonl")
+    assert str(tmp_path / "nests" / "forge") in st["forge_jsonl"]
 
 
 def test_looks_like_nest_display() -> None:

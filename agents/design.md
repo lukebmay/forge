@@ -50,45 +50,56 @@ JS under `lib/tom/`, `lib/rulesets/`, `lib/opsets/`, `lib/keybinds/` is the
 kernel can be rewritten in another language; Forge still tiles if
 someone writes an adapter for that host.
 
-**Live sole-source (D092):** The POJO Forest **is** the live topology.
-Every node has a nanoid for its lifetime. Adapter `Map<id, bag>` holds
-Meta/St and other volatile host facts (refresh after re-HUP). FLOATS is
-a live bag — never park floats under TILES ROOT. GObject `Node`/`Tree`
-are not the document. **Big bang** cutover; no dual-run steady state; no
-back-compat obligation. Apply's desired state is TOM (ex-P5c in-scope).
+**Reality vs belief (D096, amends D092):** **Meta/Mutter is reality**
+(existence, monitor, workspace, frame, host float). **TOM Forest is
+Forge’s belief and intent** — the only tiling document we mutate — not
+ground truth. On map: observe Meta → admit into TOM at Meta’s place →
+decide TOM moves → present → observe within ε → AGREE or heal. GObject
+`Node`/`Tree` child-lists are **forbidden** as topology (delete pass:
+plan `forge-retire-gobject-topology`). Adapter `Map<id, bag>` holds
+Meta/St/chrome. FLOATS is a live bag — never under TILES ROOT.
 
-**TOM ↔ reality (D092, D093):** One topology — the POJO Forest.
-The presenter is **paint + host verbs** (`present` / `observe`), not a
-second child-list. Mark 2 mutates TOM only. After a SurfaceOp **or** a
-host event: `present` → `observe` → **AGREE** or **DRIFT**. **RESYNC**
-applies **TOM-only** atomics + RuleSet **toward REALITY** (host will not
-grow a tiling tree), then `present` again. **FLOAT is the terminator.**
-Mark 2 / Launch retry only after AGREE. Close, map, dock, Meta rehome
-are DRIFT into RESYNC — not GObject-first topology writes.
+**TOM ↔ reality (D092, D093, D096):** One **model** topology (TOM Forest).
+Presenter = `present` / `observe` host verbs, not a second child-list.
+Mark 2 mutates TOM only. After a SurfaceOp **or** host event: present →
+observe → **AGREE** or **DRIFT**. **RESYNC** = TOM-only atomics + RuleSet
+**toward REALITY**, then present; **FLOAT terminator**. Mark 2 / Launch
+only after AGREE.
 
-C5 (slot vs mins → share / tab / FLOAT) is the constraint loop **inside**
-RESYNC, not a second architecture. WebView `renderDesk` is already
-`present`. Gnome `paintWmForest` is `present` while GObject `childNodes`
-is still a leftover tree — retire that as topology (D092 leftover), do
-not wrap it as `AtomicsGnome`.
+**Chrome Z (D096):** Window border inseparable from that window in Z (no
+other window — tracked or not — between them). TABBED/STACKED strips as
+close as possible in Z to the visible app(s).
+
+**Title spam (D099):** `notify::title` is a **chrome** event, not a tiling
+event. Instant: update the tab/stack **label** only (no tab width, no
+window slot). Debounce until the title is stable, then **one** chrome-size
+pass (width / wrap). Heuristics may set that wait; tab-width need not be
+snappy. Do not send title ticks through observe→RESYNC or `renderTree`.
+PlaceNext “wait for role title” is apply identity, not this path.
+
+**D100 (lock — supersedes executing the old handlers):** the live-bug
+Meta catalog is **disconnected**. Signal default is observe (D098). Nest
+must show whether Forest+ε holds **without** entered-monitor rehome,
+idle TILE restore-to-slot, title/class→`renderTree`, workspace
+follow-the-window rehome, or fullscreen→`renderTree`. Grab, map/admit,
+destroy, workspace **spine**, settings, overview, and PlaceNext identity
+stay. H1 / session-restore remain on disk, parked — not v1. Next: thin
+named ForgeAdapterGnome modules, then **delete** `window.js` (no façade).
+Do **not** port belt, Mode B, title→`renderTree`, or the entered-monitor
+maze into the new adapter.
 
 ```text
-Mark 2 + RuleSet  →  TOM Forest
-                       │
-                  present(forest)    Gnome: bags + frames; WebView: renderDesk
-                       │
-                  observe(host)      existence, float, mon, mins
-                       │
-                  AGREE? ── yes → next SurfaceOp allowed
-                       │
-                      no → RESYNC (TOM atomics + settle) → present → loop
-                           terminator: FLOAT
+Meta map / host event → observe(reality)
+        → admit/RESYNC TOM (belief toward reality)
+        → Mark 2 / layout intent (mutate Forest)
+        → present(forest, bags)   Meta verbs + St by nanoid
+        → observe → AGREE? else heal
 ```
 
-**Forbidden:** twin child-list atomics (Gnome/WebApp `appendChild` as a
-second TOM); Mark 2 on the presenter while TOM still disagrees; hybrid
-project→mutate→apply-back. If AGREE/RESYNC cannot keep host honest,
-**redesign meeting** — do not add a second tiling tree without it.
+**Forbidden:** twin child-list atomics; GObject `parentNode`/`childNodes`
+as tiling membership; Mark 2 on the presenter while TOM disagrees;
+hybrid project→mutate→apply-back. If AGREE/RESYNC cannot keep host
+honest → **redesign meeting**.
 
 **Kernel vs adapter (the law):** every layer is a **core** that works
 the same in every environment, plus an **adapter** that binds and
@@ -114,7 +125,7 @@ DOM into `lib/tom`, or grow a second Mark 2 table.
 | Role | Names | Owns |
 | --- | --- | --- |
 | **Kernel** | TOM + atomics + RuleSet + OpSet + action-id table | Forest envelope, settle, Move/Join/Launch, **shared** chords as ids. No Meta, no DOM, no GNOME accels |
-| **Host adapter** | **ForgeAdapterGnome** (today `WindowManager` + St). **ForgeAdapterWebView** (proto HTML desk) | WINDOW ↔ native window, signals, workarea feed, `present`/`observe` (`move_resize_frame` vs CSS flex), FLOATS paint. Not a second child-list (D093) |
+| **Host adapter** | **ForgeAdapterGnome** (today still `WindowManager` + St — **delete as god object**, D097). **ForgeAdapterWebView** (proto HTML desk) | WINDOW ↔ native window, **signal subscribe**, workarea feed, `present`/`observe`. Not a second child-list. Not Mark 2 |
 | **Keybind adapter** | **KeybindAdapterGnome**. **KeybindAdapterWebView** | Kernel table **plus** a host overlay. Same kernel ids; overlay ids may be host-only |
 | **Slot math** | `lib/presenter/` `paneRect` | Percent → AABB. Both adapters may call it. Not topology |
 
@@ -123,22 +134,48 @@ WM) is in scope **when someone writes ForgeAdapterX + KeybindAdapterX**.
 Do not special-case GNOME inside the kernel "because that is where we
 run today."
 
-GJS class name `WindowManager` **may** stay as a façade for spies
-(D085). Its **role** is ForgeAdapterGnome. Do not grow tiling policy
-there.
+GJS class name `WindowManager` was allowed as a façade (D085). **D097 /
+D098 supersede that:** delete `window.js` / `class WindowManager`. Role
+= **ForgeAdapterGnome** in named modules. Spies import that. No stub
+left to grow handlers.
 
-**Finish-before-redesign:** Cutover C7 is shipped. **D093** AGREE/RESYNC
-is the next coding path. If it cannot keep TOM and host honest →
-**redesign meeting** (no twin tiling trees without that meeting).
-Pinned-slots and resize-autotile stay parked. Optional nest N4 is not a
-gate. Plan:
-[`forge-tom-agree-resync.md`](plans/forge-tom-agree-resync.md).
+**Meta signals, not poll (D097):** Mutter already emits GObject signals
+(`window-created`, per-window `size-changed` / `unmanaged` / …). The
+**adapter** `connect`s those and records handler ids in the **host bag**.
+A TOM WINDOW leaf is a POJO — it does **not** subscribe. Not every
+`Meta.Window` is a TILE leaf (FLOAT, `ignore`, dialogs).
+
+**Host event vs Mark 2 (D097, D098):** Signal default is **no-op**.
+Observe; act only when Meta **challenges TOM** outside ε. In-ε jitter
+does nothing. **Title** ticks are not a TOM challenge — they go to
+**chrome** (D099): instant label, debounced one size pass. After a real
+disagreement, **wait** (settle-heuristics, per host+class) so the app
+can finish, then RESYNC with
+**Mark 2 RuleSet** toward reality (FLOAT terminator). The handler may
+be written *to* Mark 2 (legal forest, unary, max-1) but **must not be**
+Mark 2 (not OpSet Move/Join/Launch). User chords / DnD / layout apply
+are the OpSet.
+
+**Delete `WindowManager` (D098):** not a façade, not a re-export file.
+Extracts are named modules with one job. Spies import the adapter.
+Cancer test: if a leftover still attracts “just one more handler,”
+the split is wrong.
+
+**Small core first (D097, D100):** nest-prove map → admit → present → ε
+AGREE on a few TILE windows **with the old handlers off**. Do **not**
+port the live-bug handler catalog into the new adapter. H1 /
+session-restore remain on disk, parked, until the core loop holds —
+they are a different failure class (overnight workareas), not v1.
+
+**Finish-before-redesign:** D096–D100 **are** the redesign that was
+gated. Pinned-slots and resize-autotile stay parked. If AGREE/RESYNC
+cannot keep host honest → **redesign meeting**.
 
 Layers (allowed/forbidden):
-[`plans/forge-firm-abstractions/layers.md`](plans/forge-firm-abstractions/layers.md).
-Import: [`import-map.md`](plans/forge-firm-abstractions/import-map.md).
-Notes: [`explore/`](plans/forge-firm-abstractions/explore/) — do not rescan
-`tree.js` / `window.js`.
+[`plans/archived/completed/forge-firm-abstractions/layers.md`](plans/archived/completed/forge-firm-abstractions/layers.md).
+Import: [`import-map.md`](plans/archived/completed/forge-firm-abstractions/import-map.md).
+Notes: [`explore/`](plans/archived/completed/forge-firm-abstractions/explore/) —
+do not rescan `tree.js` / `window.js`.
 
 | Layer | Owns |
 | --- | --- |
@@ -155,8 +192,8 @@ Notes: [`explore/`](plans/forge-firm-abstractions/explore/) — do not rescan
 
 DnD commit (`_commitResolvedDrop`) is not a second OpSet. Product Move **is** Mark 2 Move
 (D080). RuleSet + keybinds:
-[`ruleset.md`](plans/forge-firm-abstractions/ruleset.md),
-[`keybinds.md`](plans/forge-firm-abstractions/keybinds.md).
+[`ruleset.md`](plans/archived/completed/forge-firm-abstractions/ruleset.md),
+[`keybinds.md`](plans/archived/completed/forge-firm-abstractions/keybinds.md).
 
 ## Tiling Object Model (TOM)
 
@@ -252,7 +289,7 @@ D083; **host adapter fills**). Slot AABB (`paneRect`) is
 Proto `src/tom/` and `src/opsets/` re-export the kernel. Green abstract
 tests + a wrong desk = **adapter paint**, not the TOM.
 
-Plan: [forge-firm-abstractions](plans/forge-firm-abstractions.md).
+Plan: [forge-firm-abstractions](plans/archived/completed/forge-firm-abstractions.md).
 Glossary: [`mark2.md`](../prototypes/container-motion/src/opsets/mark2.md).
 
 ## CLI job runner (durable mutators)
@@ -289,6 +326,11 @@ heal path after hard kill/OOM.
 like one “windows all piled on primary” bug. They are not. Each layer below
 catches a **different** failure mode. Stacking another debounce or second
 snapshot “just in case” is how `window.js` grew safety nets without a map.
+
+**D100:** H1 / session-restore stay on disk, **parked** — not v1 of the
+thin adapter. `window-entered-monitor` does **not** rehome (observe
+only). Do not port that maze. Overnight lock/wake proof waits until
+the Forest loop holds without the old handlers.
 
 **Rule for agents:** document and extract (see codebase audit plan). Do **not**
 delete shield / hold / richness, and do **not** merge the two monitor-resolve
@@ -1420,7 +1462,8 @@ not under a monitor; TILES size is a **percent** or **`share`**).
 **Live topology is the POJO Forest** (D092): nanoid per node; host
 Meta/St in adapter maps. **D093:** present → observe → AGREE or
 RESYNC (TOM toward REALITY; FLOAT terminator). No twin presenter
-atomics.
+atomics. **D100:** old-architecture Meta handlers are disconnected
+(observe/chrome only).
 **ForgeAdapterGnome** / **ForgeAdapterWebView**
 bind and extend a host. **KeybindAdapterGnome** /
 **KeybindAdapterWebView** map the kernel table plus a host overlay

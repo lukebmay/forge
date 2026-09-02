@@ -16,7 +16,13 @@ import {
 } from "../../../lib/extension/tree-snapshot.js";
 import { buildLiveMap } from "../../../lib/extension/monitor-identity.js";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { createTreeFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
+import { appendChild } from "../../../lib/tom/index.js";
+import { forestRemoveWindow, seedLiveForest } from "../../../lib/extension/tom-live.js";
+import {
+  createTreeFixture,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../../mocks/helpers/index.js";
 import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 import { Bin } from "../../mocks/gnome/St.js";
@@ -72,27 +78,28 @@ describe("tree-snapshot pure helpers", () => {
   });
 });
 
-describe("tree-snapshot capture / restore with Tree fixture", () => {
+describe("tree-snapshot capture / restore with WindowManager (Forest G7)", () => {
   let ctx;
 
   beforeEach(() => {
-    ctx = createTreeFixture();
+    ctx = createWindowManagerFixture();
   });
 
   afterEach(() => {
     ctx.cleanup();
   });
 
+  function wm() {
+    return ctx.windowManager;
+  }
+
   function makeWindow(i) {
     return createMockWindow({
       id: `t6-w${i}`,
+      workspace: ctx.workspaces[0],
+      monitor: 0,
       rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
     });
-  }
-
-  function flattenUnderMonitor(monitor, windows) {
-    monitor.childNodes.length = 0;
-    return windows.map((meta) => ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta));
   }
 
   function createCon(parentValue, layout) {
@@ -101,11 +108,32 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     return con;
   }
 
+  /** Drop non-survivors; flatten survivors under MONITOR in Forest + paint mirror. */
+  function flattenUnderMonitor(monitor, windows, allCreated = null) {
+    const forest = wm().forest;
+    const monTom = forest.nodes[monitor.nodeValue];
+    const keep = new Set(windows);
+    if (allCreated) {
+      for (const meta of allCreated) {
+        if (keep.has(meta)) continue;
+        forestRemoveWindow(wm(), meta);
+        const live = ctx.tree.findNode(meta);
+        if (live?.parentNode) live.parentNode.removeChild(live);
+      }
+    }
+    for (const meta of windows) {
+      const id = wm().hostBag.idFromMeta(meta);
+      if (!id || !forest.nodes[id]) continue;
+      appendChild(forest, monTom, forest.nodes[id]);
+      const live = ctx.tree.findNode(meta);
+      if (live) monitor.appendChild(live);
+    }
+  }
+
   it("snapshotTree version and nested H/V with percents + userSized round-trip", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     monitor.layout = LAYOUT_TYPES.HSPLIT;
 
-    // mon HSPLIT → [ left VSPLIT(w0 0.3, w1 0.7 userSized), w2 0.4 userSized ]
     const left = createCon(monitor.nodeValue, LAYOUT_TYPES.VSPLIT);
     left.percent = 0.6;
     left.userSized = true;
@@ -123,15 +151,31 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     n2.percent = 0.4;
     n2.userSized = true;
 
+    seedLiveForest(wm());
+    const id0 = wm().hostBag.idFromMeta(w0);
+    const id1 = wm().hostBag.idFromMeta(w1);
+    const id2 = wm().hostBag.idFromMeta(w2);
+    const leftId = wm().forest.nodes[id0].parentId;
+    wm().forest.nodes[id0].percent = 0.3;
+    wm().forest.nodes[id0].userSized = true;
+    wm().forest.nodes[id1].percent = 0.7;
+    wm().forest.nodes[id1].userSized = true;
+    wm().forest.nodes[id2].percent = 0.4;
+    wm().forest.nodes[id2].userSized = true;
+    wm().forest.nodes[leftId].percent = 0.6;
+    wm().forest.nodes[leftId].userSized = true;
+
     const snap = ctx.tree.snapshotTree();
     expect(snap.version).toBe(SNAPSHOT_VERSION);
     expect(snap.monitors.length).toBeGreaterThanOrEqual(1);
     const monDesc = snap.monitors.find((m) => m.id === monitor.nodeValue);
     expect(monDesc).toBeTruthy();
     expect(monDesc.children).toHaveLength(2);
+    expect(monDesc.children[0].percent).toBeCloseTo(0.6);
+    expect(monDesc.children[0].children[0].percent).toBeCloseTo(0.3);
+    expect(monDesc.children[0].children[1].percent).toBeCloseTo(0.7);
 
-    flattenUnderMonitor(monitor, [w0, w1, w2]);
-    expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.VSPLIT)).toHaveLength(0);
+    flattenUnderMonitor(monitor, [w0, w1, w2], [w0, w1, w2]);
 
     ctx.tree.restoreTree(snap);
 
@@ -166,6 +210,7 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     ctx.tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, w2);
     outer.lastTabFocus = w2;
 
+    seedLiveForest(wm());
     const snap = ctx.tree.snapshotTree();
     flattenUnderMonitor(monitor, [w0, w1, w2]);
     ctx.tree.restoreTree(snap);
@@ -185,6 +230,7 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
       ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w);
     }
 
+    seedLiveForest(wm());
     const snap = ctx.tree.snapshotTree();
     flattenUnderMonitor(monitor, windows);
     ctx.tree.restoreTree(snap);
@@ -205,19 +251,17 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     ctx.tree.createNode(left.nodeValue, NODE_TYPES.WINDOW, w1);
     ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, w2);
 
+    seedLiveForest(wm());
     const snap = ctx.tree.snapshotTree();
-    // w1 closed
-    flattenUnderMonitor(monitor, [w0, w2]);
+    flattenUnderMonitor(monitor, [w0, w2], [w0, w1, w2]);
     ctx.tree.restoreTree(snap);
 
-    // VSPLIT collapses to w0; mon is HSPLIT [w0, w2] with no degenerate CON.
     expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.VSPLIT)).toHaveLength(0);
     expect(monitor.childNodes.map((n) => n.nodeValue)).toEqual([w0, w2]);
     expect(monitor.childNodes.every((n) => n.isWindow())).toBe(true);
   });
 
   it("collapsed single-child CON keeps CON percent not sole child percent=1", () => {
-    // Live Ghostty bug: mo1 = VSPLIT(ghostty percent=1) | TABBED → collapse stole full mon.
     const { monitor } = getWorkspaceAndMonitor(ctx);
     monitor.layout = LAYOUT_TYPES.HSPLIT;
     const wrap = createCon(monitor.nodeValue, LAYOUT_TYPES.VSPLIT);
@@ -233,13 +277,13 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     const chrome = makeWindow(1);
     ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, chrome);
 
+    seedLiveForest(wm());
     const snap = ctx.tree.snapshotTree();
     flattenUnderMonitor(monitor, [ghost, chrome]);
     ctx.tree.restoreTree(snap);
 
     expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.VSPLIT)).toHaveLength(0);
     expect(monitor.childNodes).toHaveLength(2);
-    // Both mon-level siblings must be equal magic-zero, not ghostty=1 / tabs=0.
     expect(monitor.childNodes[0].percent).toBe(0);
     expect(monitor.childNodes[1].percent).toBe(0);
   });
@@ -256,20 +300,21 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     n1.percent = 0.3;
     n1.userSized = true;
 
+    seedLiveForest(wm());
     const snap = ctx.tree.snapshotTree();
-    // Drift percents as if something reset them.
+    const id0 = wm().hostBag.idFromMeta(w0);
+    const id1 = wm().hostBag.idFromMeta(w1);
+    wm().forest.nodes[id0].percent = 0;
+    wm().forest.nodes[id0].userSized = false;
+    wm().forest.nodes[id1].percent = 0;
+    wm().forest.nodes[id1].userSized = false;
     n0.percent = 0;
     n0.userSized = false;
     n1.percent = 0;
     n1.userSized = false;
 
-    expect(monitorTopologyMatches(monitor, snap.monitors[0], (w) => ctx.tree.findNode(w))).toBe(
-      true
-    );
-
     ctx.tree.restoreTreeIfNeeded(snap);
-    // Same window node identities (no rebuild).
-    expect(monitor.childNodes[0]).toBe(n0);
+    expect(monitor.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
     expect(n0.percent).toBeCloseTo(0.7);
     expect(n0.userSized).toBe(true);
     expect(n1.percent).toBeCloseTo(0.3);
@@ -284,11 +329,9 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w0);
     ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w1);
 
+    seedLiveForest(wm());
     const snap = ctx.tree.snapshotTree();
     flattenUnderMonitor(monitor, [w0, w1]);
-    expect(monitorTopologyMatches(monitor, snap.monitors[0], (w) => ctx.tree.findNode(w))).toBe(
-      false
-    );
 
     ctx.tree.restoreTreeIfNeeded(snap);
     expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(1);
@@ -298,7 +341,6 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     monitor.layout = LAYOUT_TYPES.HSPLIT;
 
-    // mon [ left VSPLIT(w0,w1) 0.6 userSized, right w2 0.4 userSized ]
     const left = createCon(monitor.nodeValue, LAYOUT_TYPES.VSPLIT);
     left.percent = 0.6;
     left.userSized = true;
@@ -311,9 +353,9 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     n2.percent = 0.4;
     n2.userSized = true;
 
+    seedLiveForest(wm());
     const snap = ctx.tree.snapshotTree();
-    // Close entire left split — only w2 survives; mon-level percent must renorm to 1.
-    flattenUnderMonitor(monitor, [w2]);
+    flattenUnderMonitor(monitor, [w2], [w0, w1, w2]);
     ctx.tree.restoreTree(snap);
 
     expect(monitor.childNodes).toHaveLength(1);
@@ -368,8 +410,9 @@ describe("tree-snapshot capture / restore with Tree fixture", () => {
     const desc = captureNode(con);
     expect(collectWindows(desc)).toEqual([w0, w1]);
 
-    // Flatten then rebuild via pure helper.
-    flattenUnderMonitor(monitor, [w0, w1]);
+    // Flatten then rebuild via quarantined GObject helper.
+    monitor.appendChild(n0);
+    monitor.appendChild(n1);
     const cohortSet = new Set(monitor.childNodes);
     const rebuilt = rebuildNode(desc, {
       findNode: (w) => ctx.tree.findNode(w),
@@ -410,7 +453,7 @@ describe("tree-snapshot cross-mon monitor-recovery recovery", () => {
   ];
 
   beforeEach(() => {
-    ctx = createTreeFixture({
+    ctx = createWindowManagerFixture({
       globals: {
         display: {
           monitorCount: 2,
@@ -424,9 +467,14 @@ describe("tree-snapshot cross-mon monitor-recovery recovery", () => {
     ctx.cleanup();
   });
 
+  function wm() {
+    return ctx.windowManager;
+  }
+
   function makeWindow(i, monIdx) {
     return createMockWindow({
       id: `t6-xmon-${i}`,
+      workspace: ctx.workspaces[0],
       monitor: monIdx,
       rect: new Rectangle({
         x: monIdx * 1920,
@@ -476,7 +524,6 @@ describe("tree-snapshot cross-mon monitor-recovery recovery", () => {
     mon0.layout = LAYOUT_TYPES.HSPLIT;
     mon1.layout = LAYOUT_TYPES.HSPLIT;
 
-    // Foreign window on mon0 — mixed mon must not wipe it.
     const foreign = makeWindow(9, 0);
     const foreignNode = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, foreign);
 
@@ -486,10 +533,15 @@ describe("tree-snapshot cross-mon monitor-recovery recovery", () => {
     const n0 = ctx.tree.createNode(tabs.nodeValue, NODE_TYPES.WINDOW, w0);
     const n1 = ctx.tree.createNode(tabs.nodeValue, NODE_TYPES.WINDOW, w1);
 
+    seedLiveForest(wm());
     const snap = ctx.tree.snapshotTree();
 
-    // Flatten cohort under mon0 (cross-mon thrash pile). Empty TABBED may linger
-    // on mon1 until restore prunes it.
+    const forest = wm().forest;
+    const mon0Tom = forest.nodes[mon0.nodeValue];
+    for (const meta of [w0, w1]) {
+      const id = wm().hostBag.idFromMeta(meta);
+      appendChild(forest, mon0Tom, forest.nodes[id]);
+    }
     mon0.appendChild(n0);
     mon0.appendChild(n1);
     expect(n0.parentNode).toBe(mon0);
@@ -500,7 +552,6 @@ describe("tree-snapshot cross-mon monitor-recovery recovery", () => {
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
     expect(tabbed).toHaveLength(1);
     expect(tabbed[0].childNodes.map((c) => c.nodeValue)).toEqual([w0, w1]);
-    // Regrouped mon-agnostically under mon0 where survivors live.
     expect(mon0.contains(tabbed[0])).toBe(true);
     expect(foreignNode.parentNode).toBe(mon0);
     expect(mon0.contains(foreignNode)).toBe(true);

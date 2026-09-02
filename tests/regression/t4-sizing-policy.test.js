@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import * as TreeLayout from "../../lib/extension/tree-layout.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createTreeFixture,

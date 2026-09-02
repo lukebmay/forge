@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 import { DROP_ZONES } from "../../../lib/extension/drop-zones.js";
@@ -9,6 +9,8 @@ import {
   getWorkspaceAndMonitor,
   createContainerNode,
   setPointer,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 
@@ -102,11 +104,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(100, 540);
       wm().nodeWinAtPointer = target;
 
-      const initialParent = dragged.parentNode;
+      const initialParent = parentOf(wm(), dragged);
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).toBe(initialParent);
+      expect(parentOf(wm(), dragged)).toBe(initialParent);
     });
 
     it("should do nothing when nodeWinAtPointer is null", () => {
@@ -121,11 +123,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(100, 540);
       wm().nodeWinAtPointer = null;
 
-      const initialParent = dragged.parentNode;
+      const initialParent = parentOf(wm(), dragged);
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).toBe(initialParent);
+      expect(parentOf(wm(), dragged)).toBe(initialParent);
     });
 
     it("should return early when nodeWinAtPointer has invalid structure", () => {
@@ -143,11 +145,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(100, 540);
       wm().nodeWinAtPointer = invalidNode;
 
-      const initialParent = dragged.parentNode;
+      const initialParent = parentOf(wm(), dragged);
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).toBe(initialParent);
+      expect(parentOf(wm(), dragged)).toBe(initialParent);
     });
   });
 
@@ -178,8 +180,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const parent = dragged.parentNode;
-      const children = parent.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      const parent = parentOf(wm(), dragged);
+      const children = kidsOf(wm(), parent).filter((c) => c.nodeType === NODE_TYPES.WINDOW);
       const idxTarget = children.indexOf(target);
       const idxDragged = children.indexOf(dragged);
 
@@ -208,8 +210,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const parent = dragged.parentNode;
-      const children = parent.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      const parent = parentOf(wm(), dragged);
+      const children = kidsOf(wm(), parent).filter((c) => c.nodeType === NODE_TYPES.WINDOW);
       const idxTarget = children.indexOf(target);
       const idxDragged = children.indexOf(dragged);
 
@@ -238,8 +240,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const parent = dragged.parentNode;
-      const children = parent.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      const parent = parentOf(wm(), dragged);
+      const children = kidsOf(wm(), parent).filter((c) => c.nodeType === NODE_TYPES.WINDOW);
       const idxTarget = children.indexOf(target);
       const idxDragged = children.indexOf(dragged);
 
@@ -268,8 +270,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const parent = dragged.parentNode;
-      const children = parent.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      const parent = parentOf(wm(), dragged);
+      const children = kidsOf(wm(), parent).filter((c) => c.nodeType === NODE_TYPES.WINDOW);
       const idxTarget = children.indexOf(target);
       const idxDragged = children.indexOf(dragged);
 
@@ -310,19 +312,23 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       // Peel: remaining tabs stay on the TABBED mon; dragged is left of them.
-      expect(target.parentNode).toBe(monitor);
-      expect(other.parentNode).toBe(monitor);
-      expect(monitor.childNodes).toContain(target);
-      expect(monitor.childNodes).toContain(other);
-      expect(monitor.childNodes).not.toContain(dragged);
-      const peeled = dragged.parentNode;
+      expect(parentOf(wm(), target)).toBe(monitor);
+      expect(parentOf(wm(), other)).toBe(monitor);
+      expect(kidsOf(wm(), monitor)).toContain(target);
+      expect(kidsOf(wm(), monitor)).toContain(other);
+      expect(kidsOf(wm(), monitor)).not.toContain(dragged);
+      const peeled = parentOf(wm(), dragged);
       expect(peeled).not.toBe(monitor);
       expect(peeled.nodeType).toBe(NODE_TYPES.CON);
       expect(peeled.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(peeled.childNodes).toContain(dragged);
-      expect(monitor.childNodes).toContain(peeled);
-      expect(monitor.childNodes.indexOf(peeled)).toBeLessThan(monitor.childNodes.indexOf(target));
-      expect(monitor.childNodes.indexOf(peeled)).toBeLessThan(monitor.childNodes.indexOf(other));
+      expect(kidsOf(wm(), peeled)).toContain(dragged);
+      expect(kidsOf(wm(), monitor)).toContain(peeled);
+      expect(kidsOf(wm(), monitor).indexOf(peeled)).toBeLessThan(
+        kidsOf(wm(), monitor).indexOf(target)
+      );
+      expect(kidsOf(wm(), monitor).indexOf(peeled)).toBeLessThan(
+        kidsOf(wm(), monitor).indexOf(other)
+      );
     });
 
     it("should detach window from tabbed container when dropping on RIGHT edge", () => {
@@ -352,11 +358,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).not.toBe(monitor);
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(monitor.childNodes).toContain(dragged.parentNode);
-      expect(monitor.childNodes.indexOf(dragged.parentNode)).toBeGreaterThan(
-        monitor.childNodes.indexOf(target)
+      expect(parentOf(wm(), dragged)).not.toBe(monitor);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(kidsOf(wm(), monitor)).toContain(parentOf(wm(), dragged));
+      expect(kidsOf(wm(), monitor).indexOf(parentOf(wm(), dragged))).toBeGreaterThan(
+        kidsOf(wm(), monitor).indexOf(target)
       );
     });
 
@@ -387,11 +393,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).not.toBe(monitor);
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(monitor.childNodes).toContain(dragged.parentNode);
-      expect(monitor.childNodes.indexOf(dragged.parentNode)).toBeLessThan(
-        monitor.childNodes.indexOf(target)
+      expect(parentOf(wm(), dragged)).not.toBe(monitor);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(kidsOf(wm(), monitor)).toContain(parentOf(wm(), dragged));
+      expect(kidsOf(wm(), monitor).indexOf(parentOf(wm(), dragged))).toBeLessThan(
+        kidsOf(wm(), monitor).indexOf(target)
       );
     });
 
@@ -422,11 +428,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).not.toBe(monitor);
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(monitor.childNodes).toContain(dragged.parentNode);
-      expect(monitor.childNodes.indexOf(dragged.parentNode)).toBeGreaterThan(
-        monitor.childNodes.indexOf(target)
+      expect(parentOf(wm(), dragged)).not.toBe(monitor);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(kidsOf(wm(), monitor)).toContain(parentOf(wm(), dragged));
+      expect(kidsOf(wm(), monitor).indexOf(parentOf(wm(), dragged))).toBeGreaterThan(
+        kidsOf(wm(), monitor).indexOf(target)
       );
     });
 
@@ -458,8 +464,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       // Should stay in same tabbed container
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(dragged.parentNode).toBe(target.parentNode);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parentOf(wm(), dragged)).toBe(parentOf(wm(), target));
     });
 
     it("BOTTOM edge on nested TABBED CON under mon HSPLIT wraps into VSPLIT (not mon sibling HSPLIT)", () => {
@@ -505,20 +511,20 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const wrap = dragged.parentNode;
+      const wrap = parentOf(wm(), dragged);
       expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(wrap.parentNode).toBe(monitor);
-      expect(tabCon.parentNode).toBe(wrap);
+      expect(parentOf(wm(), wrap)).toBe(monitor);
+      expect(parentOf(wm(), tabCon)).toBe(wrap);
       expect(tabCon.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(tabCon.childNodes).toContain(target);
-      expect(tabCon.childNodes).toContain(otherTab);
-      expect(wrap.childNodes).toContain(tabCon);
-      expect(wrap.childNodes).toContain(dragged);
-      expect(wrap.childNodes.indexOf(tabCon)).toBeLessThan(wrap.childNodes.indexOf(dragged));
+      expect(kidsOf(wm(), tabCon)).toContain(target);
+      expect(kidsOf(wm(), tabCon)).toContain(otherTab);
+      expect(kidsOf(wm(), wrap)).toContain(tabCon);
+      expect(kidsOf(wm(), wrap)).toContain(dragged);
+      expect(kidsOf(wm(), wrap).indexOf(tabCon)).toBeLessThan(kidsOf(wm(), wrap).indexOf(dragged));
       // Right sibling stays a mon-level peer of the new wrap, not of dragged alone.
-      expect(sibling.parentNode).toBe(monitor);
-      expect(monitor.childNodes).toContain(wrap);
-      expect(monitor.childNodes).toContain(sibling);
+      expect(parentOf(wm(), sibling)).toBe(monitor);
+      expect(kidsOf(wm(), monitor)).toContain(wrap);
+      expect(kidsOf(wm(), monitor)).toContain(sibling);
     });
 
     it("TOP on a tab uses the TABBED bag as the slot (not a wrap inside the bag)", () => {
@@ -561,19 +567,19 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().nodeWinAtPointer = target;
       wm().moveWindowToPointer(dragged, false);
 
-      const wrap = dragged.parentNode;
+      const wrap = parentOf(wm(), dragged);
       expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(wrap.parentNode).toBe(monitor);
-      expect(tabCon.parentNode).toBe(wrap);
+      expect(parentOf(wm(), wrap)).toBe(monitor);
+      expect(parentOf(wm(), tabCon)).toBe(wrap);
       expect(tabCon.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(tabCon.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
-      expect(tabCon.childNodes).toContain(target);
-      expect(tabCon.childNodes).toContain(otherTab);
-      expect(tabCon.childNodes).not.toContain(dragged);
-      expect(wrap.childNodes).toContain(tabCon);
-      expect(wrap.childNodes).toContain(dragged);
-      expect(wrap.childNodes.indexOf(dragged)).toBeLessThan(wrap.childNodes.indexOf(tabCon));
-      expect(sibling.parentNode).toBe(monitor);
+      expect(kidsOf(wm(), tabCon).every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
+      expect(kidsOf(wm(), tabCon)).toContain(target);
+      expect(kidsOf(wm(), tabCon)).toContain(otherTab);
+      expect(kidsOf(wm(), tabCon)).not.toContain(dragged);
+      expect(kidsOf(wm(), wrap)).toContain(tabCon);
+      expect(kidsOf(wm(), wrap)).toContain(dragged);
+      expect(kidsOf(wm(), wrap).indexOf(dragged)).toBeLessThan(kidsOf(wm(), wrap).indexOf(tabCon));
+      expect(parentOf(wm(), sibling)).toBe(monitor);
     });
 
     it("commit TOP targeting a tab WINDOW still splits vs the TABBED bag", () => {
@@ -630,15 +636,147 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       expect(wm().dragDrop._commitResolvedDrop(dragged, target, operation, ctxDrop)).toBe(true);
 
-      const wrap = dragged.parentNode;
+      const wrap = parentOf(wm(), dragged);
       expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(wrap.parentNode).toBe(monitor);
-      expect(tabCon.parentNode).toBe(wrap);
-      expect(tabCon.childNodes).toEqual(expect.arrayContaining([target, otherTab]));
-      expect(tabCon.childNodes).not.toContain(dragged);
-      expect(tabCon.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
-      expect(wrap.childNodes).toContain(tabCon);
-      expect(wrap.childNodes).toContain(dragged);
+      expect(parentOf(wm(), wrap)).toBe(monitor);
+      expect(parentOf(wm(), tabCon)).toBe(wrap);
+      expect(kidsOf(wm(), tabCon)).toEqual(expect.arrayContaining([target, otherTab]));
+      expect(kidsOf(wm(), tabCon)).not.toContain(dragged);
+      expect(kidsOf(wm(), tabCon).every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
+      expect(kidsOf(wm(), wrap)).toContain(tabCon);
+      expect(kidsOf(wm(), wrap)).toContain(dragged);
+    });
+
+    // Nest smoke-layout-tabbed-edge (MmxAP): GObject parentNode is stale after
+    // Forest seed; edge onto a tab must still slotSplit bag|C (TOP→VSPLIT).
+    it("TABBED edge TOP→VSPLIT when GObject parentNode is stale (Forest SoT)", () => {
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const tabCon = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const target = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+      target.mode = WINDOW_MODES.TILE;
+      const otherTab = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaB);
+      otherTab.mode = WINDOW_MODES.TILE;
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 960, y: 0, width: 960, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      seedLiveForest(wm());
+      // Nest D096: bag/tab GObject parents go stale; dragged may still show mon.
+      tabCon.parentNode = null;
+      target.parentNode = null;
+      otherTab.parentNode = null;
+
+      const parentNodeTarget = parentOf(wm(), target);
+      expect(parentNodeTarget).toBe(tabCon);
+      expect(tabCon.parentNode).toBeNull();
+
+      const ctxDrop = {
+        wm: wm(),
+        nodeWinAtPointer: target,
+        parentNodeTarget,
+        focusNodeWindow: dragged,
+        horizontal: true,
+        isMonParent: false,
+        isConParent: true,
+        stacked: false,
+        stackedOrTabbed: true,
+        centerLayout: "TABBED",
+        dropZones: null,
+        targetRect: { x: 0, y: 0, width: 960, height: 1080 },
+      };
+      const operation = wm().dragDrop._buildDropOperation(DROP_ZONES.TOP, ctxDrop);
+      expect(operation?.shouldWrapTargetCon).toBe(true);
+      // Stale bag.parentNode must not poison containerNode / fail-closed no-op.
+      expect(operation.containerNode).toBe(monitor);
+      wm().dragDrop._commitResolvedDrop(dragged, target, operation, ctxDrop);
+
+      const wrap = parentOf(wm(), dragged);
+      expect(wrap).toBeTruthy();
+      expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(wm(), tabCon)).toBe(wrap);
+      expect(kidsOf(wm(), tabCon)).toEqual(expect.arrayContaining([target, otherTab]));
+      expect(kidsOf(wm(), tabCon)).not.toContain(dragged);
+      expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([tabCon, dragged]));
+      expect(parentOf(wm(), wrap)).toBe(monitor);
+      expect(wrap).not.toBe(monitor);
+    });
+
+    it("TABBED edge LEFT→HSPLIT when GObject parentNode is stale (Forest SoT)", () => {
+      const monitor = getMonitor();
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const tabCon = createContainer(monitor, LAYOUT_TYPES.TABBED, {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+      const metaA = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaB = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const target = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaA);
+      target.mode = WINDOW_MODES.TILE;
+      const otherTab = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaB);
+      otherTab.mode = WINDOW_MODES.TILE;
+      const { nodeWindow: dragged } = createWindowWithRect(
+        monitor,
+        { x: 960, y: 0, width: 960, height: 1080 },
+        WINDOW_MODES.GRAB_TILE
+      );
+
+      seedLiveForest(wm());
+      tabCon.parentNode = null;
+      target.parentNode = null;
+      otherTab.parentNode = null;
+
+      const parentNodeTarget = parentOf(wm(), target);
+      const ctxDrop = {
+        wm: wm(),
+        nodeWinAtPointer: target,
+        parentNodeTarget,
+        focusNodeWindow: dragged,
+        horizontal: true,
+        isMonParent: false,
+        isConParent: true,
+        stacked: false,
+        stackedOrTabbed: true,
+        centerLayout: "TABBED",
+        dropZones: null,
+        targetRect: { x: 0, y: 0, width: 960, height: 1080 },
+      };
+      const operation = wm().dragDrop._buildDropOperation(DROP_ZONES.LEFT, ctxDrop);
+      expect(operation?.shouldWrapTargetCon).toBe(true);
+      expect(operation.containerNode).toBe(monitor);
+      wm().dragDrop._commitResolvedDrop(dragged, target, operation, ctxDrop);
+
+      const wrap = parentOf(wm(), dragged);
+      expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), tabCon)).toBe(wrap);
+      expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([tabCon, dragged]));
+      // Fail-closed no-op would leave dragged under mon HSPLIT — wrap must be new.
+      expect(wrap).not.toBe(monitor);
     });
 
     it("LEFT edge on nested TABBED CON under mon HSPLIT wraps into HSPLIT", () => {
@@ -669,10 +807,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const wrap = dragged.parentNode;
+      const wrap = parentOf(wm(), dragged);
       expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(tabCon.parentNode).toBe(wrap);
-      expect(wrap.childNodes.indexOf(dragged)).toBeLessThan(wrap.childNodes.indexOf(tabCon));
+      expect(parentOf(wm(), tabCon)).toBe(wrap);
+      expect(kidsOf(wm(), wrap).indexOf(dragged)).toBeLessThan(kidsOf(wm(), wrap).indexOf(tabCon));
     });
 
     it("RIGHT on multi-tab TABBED bag HSPLITs bag|dragged (tabs stay WINDOW peers)", () => {
@@ -714,19 +852,19 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().nodeWinAtPointer = tabs[1];
       wm().moveWindowToPointer(dragged, false);
 
-      const wrap = dragged.parentNode;
+      const wrap = parentOf(wm(), dragged);
       expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(wrap.parentNode).toBe(monitor);
-      expect(tabCon.parentNode).toBe(wrap);
+      expect(parentOf(wm(), wrap)).toBe(monitor);
+      expect(parentOf(wm(), tabCon)).toBe(wrap);
       expect(tabCon.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(tabCon.childNodes).toHaveLength(3);
-      expect(tabCon.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
-      for (const t of tabs) expect(tabCon.childNodes).toContain(t);
-      expect(tabCon.childNodes).not.toContain(dragged);
-      expect(wrap.childNodes).toContain(tabCon);
-      expect(wrap.childNodes).toContain(dragged);
-      expect(wrap.childNodes.indexOf(tabCon)).toBeLessThan(wrap.childNodes.indexOf(dragged));
-      expect(sibling.parentNode).toBe(monitor);
+      expect(kidsOf(wm(), tabCon)).toHaveLength(3);
+      expect(kidsOf(wm(), tabCon).every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
+      for (const t of tabs) expect(kidsOf(wm(), tabCon)).toContain(t);
+      expect(kidsOf(wm(), tabCon)).not.toContain(dragged);
+      expect(kidsOf(wm(), wrap)).toContain(tabCon);
+      expect(kidsOf(wm(), wrap)).toContain(dragged);
+      expect(kidsOf(wm(), wrap).indexOf(tabCon)).toBeLessThan(kidsOf(wm(), wrap).indexOf(dragged));
+      expect(parentOf(wm(), sibling)).toBe(monitor);
     });
 
     it("RIGHT peel of a tab member keeps remaining tabs in the bag", () => {
@@ -757,16 +895,16 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().nodeWinAtPointer = tabs[0];
       wm().moveWindowToPointer(dragged, false);
 
-      const wrap = dragged.parentNode;
+      const wrap = parentOf(wm(), dragged);
       expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(tabCon.parentNode).toBe(wrap);
+      expect(parentOf(wm(), tabCon)).toBe(wrap);
       expect(tabCon.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(tabCon.childNodes).toEqual(expect.arrayContaining([tabs[0], tabs[1]]));
-      expect(tabCon.childNodes).not.toContain(dragged);
-      expect(tabCon.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
-      expect(wrap.childNodes).toContain(tabCon);
-      expect(wrap.childNodes).toContain(dragged);
-      expect(wrap.childNodes.indexOf(tabCon)).toBeLessThan(wrap.childNodes.indexOf(dragged));
+      expect(kidsOf(wm(), tabCon)).toEqual(expect.arrayContaining([tabs[0], tabs[1]]));
+      expect(kidsOf(wm(), tabCon)).not.toContain(dragged);
+      expect(kidsOf(wm(), tabCon).every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
+      expect(kidsOf(wm(), wrap)).toContain(tabCon);
+      expect(kidsOf(wm(), wrap)).toContain(dragged);
+      expect(kidsOf(wm(), wrap).indexOf(tabCon)).toBeLessThan(kidsOf(wm(), wrap).indexOf(dragged));
     });
 
     it("no-op when already bottom of VSPLIT and drop BOTTOM on top sibling", () => {
@@ -794,13 +932,13 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       // Bottom-center of the top sibling (same relative place).
       setPointer(480, 500);
       wm().nodeWinAtPointer = top;
-      const orderBefore = split.childNodes.slice();
+      const orderBefore = kidsOf(wm(), split).slice();
 
       wm().moveWindowToPointer(bot, false);
 
       expect(split.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(split.childNodes).toEqual(orderBefore);
-      expect(bot.parentNode).toBe(split);
+      expect(kidsOf(wm(), split)).toEqual(orderBefore);
+      expect(parentOf(wm(), bot)).toBe(split);
     });
   });
 
@@ -845,10 +983,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(bot, false);
 
       expect(split.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(top.parentNode).toBe(split);
-      expect(bot.parentNode).toBe(split);
-      expect(split.childNodes).toEqual(expect.arrayContaining([top, bot]));
-      expect(split.childNodes).toHaveLength(2);
+      expect(parentOf(wm(), top)).toBe(split);
+      expect(parentOf(wm(), bot)).toBe(split);
+      expect(kidsOf(wm(), split)).toEqual(expect.arrayContaining([top, bot]));
+      expect(kidsOf(wm(), split)).toHaveLength(2);
     });
 
     it("CENTER A onto B becomes TABBED (same parent, both children)", () => {
@@ -859,10 +997,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(top, false);
 
       expect(split.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(top.parentNode).toBe(split);
-      expect(bot.parentNode).toBe(split);
-      expect(split.childNodes).toEqual(expect.arrayContaining([top, bot]));
-      expect(split.childNodes).toHaveLength(2);
+      expect(parentOf(wm(), top)).toBe(split);
+      expect(parentOf(wm(), bot)).toBe(split);
+      expect(kidsOf(wm(), split)).toEqual(expect.arrayContaining([top, bot]));
+      expect(kidsOf(wm(), split)).toHaveLength(2);
     });
   });
 
@@ -926,14 +1064,14 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       dual.windowManager.nodeWinAtPointer = dst;
       dual.windowManager.moveWindowToPointer(src, false);
 
-      expect(src.parentNode).toBe(dst.parentNode);
-      const group = src.parentNode;
+      const dwm = dual.windowManager;
+      expect(parentOf(dwm, src)).toBe(parentOf(dwm, dst));
+      const group = parentOf(dwm, src);
       expect(group.isTabbed?.() || group.layout === LAYOUT_TYPES.TABBED).toBe(true);
-      expect(mon1.contains(group)).toBe(true);
-      expect(mon0.contains(src)).toBe(false);
-      expect(dual.tree.groupHomeMonitor(group)).toBe(1);
-      expect(dual.tree.groupHomeMonitor(src)).toBe(1);
-      expect(dual.tree.groupHomeMonitor(dst)).toBe(1);
+      expect(parentOf(dwm, group)).toBe(mon1);
+      expect(kidsOf(dwm, mon1)).toContain(group);
+      expect(kidsOf(dwm, group)).toEqual(expect.arrayContaining([src, dst]));
+      expect(kidsOf(dwm, mon0)).not.toContain(src);
     });
   });
 
@@ -1033,10 +1171,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().nodeWinAtPointer = d1;
       wm().moveWindowToPointer(src, false);
 
-      expect(src.parentNode).toBe(dest);
-      expect(dest.childNodes).toContain(src);
-      expect(dest.childNodes.indexOf(src)).toBeLessThan(3);
-      expect(dest.childNodes[dest.childNodes.length - 1]).not.toBe(src);
+      expect(parentOf(wm(), src)).toBe(dest);
+      const destKids = kidsOf(wm(), dest);
+      expect(destKids).toContain(src);
+      expect(destKids.indexOf(src)).toBeLessThan(3);
+      expect(destKids[destKids.length - 1]).not.toBe(src);
     });
 
     it("tile CENTER (not strip) still existing join/append", () => {
@@ -1088,8 +1227,9 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().nodeWinAtPointer = d0;
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).toBe(dest);
-      expect(dest.childNodes[dest.childNodes.length - 1]).toBe(dragged);
+      expect(parentOf(wm(), dragged)).toBe(dest);
+      const destKids = kidsOf(wm(), dest);
+      expect(destKids[destKids.length - 1]).toBe(dragged);
     });
 
     it("PR9: foreign strip preview during GRAB_TILE is spacer-only (no live reparent)", () => {
@@ -1157,7 +1297,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       // Commit still joins at index when pointer on strip.
       wm().moveWindowToPointer(src, false);
-      expect(src.parentNode).toBe(dest);
+      expect(parentOf(wm(), src)).toBe(dest);
     });
 
     it("PR10: peel from tab group then cross-mon CENTER joins on dest mon", () => {
@@ -1256,12 +1396,15 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
         dual.windowManager.nodeWinAtPointer = dst;
         ddm.finishTabDragRelease();
 
-        expect(b.parentNode).toBe(dst.parentNode);
-        const joined = b.parentNode;
+        const dwm = dual.windowManager;
+        expect(parentOf(dwm, b)).toBe(parentOf(dwm, dst));
+        const joined = parentOf(dwm, b);
         expect(joined.isTabbed?.() || joined.layout === LAYOUT_TYPES.TABBED).toBe(true);
-        expect(mon1.contains(joined)).toBe(true);
-        expect(mon0.contains(b)).toBe(false);
-        expect(groupCon.childNodes).not.toContain(b);
+        expect(parentOf(dwm, joined)).toBe(mon1);
+        expect(kidsOf(dwm, mon1)).toContain(joined);
+        expect(kidsOf(dwm, joined)).toEqual(expect.arrayContaining([b, dst]));
+        expect(kidsOf(dwm, mon0)).not.toContain(b);
+        expect(kidsOf(dwm, groupCon)).not.toContain(b);
         expect(b.mode).toBe(WINDOW_MODES.TILE);
         expect(ddm._tabDrag).toBeNull();
       } finally {
@@ -1315,7 +1458,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       // Should create a new container with HSPLIT containing target and dragged
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should create VSPLIT when dropping TOP in CON with HSPLIT layout", () => {
@@ -1358,7 +1501,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       // Should create a new container with VSPLIT
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("BOTTOM on MONITOR HSPLIT nests VSPLIT — does not flatten to 3-wide (R023)", () => {
@@ -1387,16 +1530,16 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().nodeWinAtPointer = left;
       wm().moveWindowToPointer(dragged, false);
 
-      expect(monitor.childNodes.length).toBe(2);
+      expect(kidsOf(wm(), monitor).length).toBe(2);
       expect(monitor.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(right.parentNode).toBe(monitor);
-      const nest = dragged.parentNode;
+      expect(parentOf(wm(), right)).toBe(monitor);
+      const nest = parentOf(wm(), dragged);
       expect(nest).not.toBe(monitor);
       expect(nest.nodeType).toBe(NODE_TYPES.CON);
       expect(nest.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(nest.childNodes).toContain(left);
-      expect(nest.childNodes).toContain(dragged);
-      expect(nest.childNodes).not.toContain(right);
+      expect(kidsOf(wm(), nest)).toContain(left);
+      expect(kidsOf(wm(), nest)).toContain(dragged);
+      expect(kidsOf(wm(), nest)).not.toContain(right);
     });
 
     it("should reuse existing CON when only one window remains", () => {
@@ -1429,13 +1572,13 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       setPointer(50, 540);
       wm().nodeWinAtPointer = target;
 
-      const childCountBefore = container.childNodes.length;
+      const childCountBefore = kidsOf(wm(), container).length;
 
       wm().moveWindowToPointer(dragged, false);
 
       // Container should be reused, not nested further
-      expect(dragged.parentNode).toBe(container);
-      expect(target.parentNode).toBe(container);
+      expect(parentOf(wm(), dragged)).toBe(container);
+      expect(parentOf(wm(), target)).toBe(container);
     });
   });
 
@@ -1471,10 +1614,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const leftMonitor = target.parentNode;
-      expect(dragged.parentNode).not.toBe(monitor);
-      expect(leftMonitor.childNodes.indexOf(dragged.parentNode)).toBeLessThan(
-        leftMonitor.childNodes.indexOf(target)
+      const leftMonitor = parentOf(wm(), target);
+      expect(parentOf(wm(), dragged)).not.toBe(monitor);
+      expect(kidsOf(wm(), leftMonitor).indexOf(parentOf(wm(), dragged))).toBeLessThan(
+        kidsOf(wm(), leftMonitor).indexOf(target)
       );
     });
 
@@ -1505,10 +1648,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const rightMonitor = target.parentNode;
-      expect(dragged.parentNode).not.toBe(monitor);
-      expect(rightMonitor.childNodes.indexOf(dragged.parentNode)).toBeGreaterThan(
-        rightMonitor.childNodes.indexOf(target)
+      const rightMonitor = parentOf(wm(), target);
+      expect(parentOf(wm(), dragged)).not.toBe(monitor);
+      expect(kidsOf(wm(), rightMonitor).indexOf(parentOf(wm(), dragged))).toBeGreaterThan(
+        kidsOf(wm(), rightMonitor).indexOf(target)
       );
     });
 
@@ -1539,10 +1682,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const topMonitor = target.parentNode;
-      expect(dragged.parentNode).not.toBe(monitor);
-      expect(topMonitor.childNodes.indexOf(dragged.parentNode)).toBeLessThan(
-        topMonitor.childNodes.indexOf(target)
+      const topMonitor = parentOf(wm(), target);
+      expect(parentOf(wm(), dragged)).not.toBe(monitor);
+      expect(kidsOf(wm(), topMonitor).indexOf(parentOf(wm(), dragged))).toBeLessThan(
+        kidsOf(wm(), topMonitor).indexOf(target)
       );
     });
 
@@ -1573,10 +1716,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const bottomMonitor = target.parentNode;
-      expect(dragged.parentNode).not.toBe(monitor);
-      expect(bottomMonitor.childNodes.indexOf(dragged.parentNode)).toBeGreaterThan(
-        bottomMonitor.childNodes.indexOf(target)
+      const bottomMonitor = parentOf(wm(), target);
+      expect(parentOf(wm(), dragged)).not.toBe(monitor);
+      expect(kidsOf(wm(), bottomMonitor).indexOf(parentOf(wm(), dragged))).toBeGreaterThan(
+        kidsOf(wm(), bottomMonitor).indexOf(target)
       );
     });
   });
@@ -1630,8 +1773,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       // Should be added to existing stacked container
-      expect(dragged.parentNode).toBe(container);
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.STACKED);
+      expect(parentOf(wm(), dragged)).toBe(container);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.STACKED);
     });
 
     it("should add window to existing tabbed container on center drop", () => {
@@ -1672,8 +1815,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       // Should be added to existing tabbed container
-      expect(dragged.parentNode).toBe(container);
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parentOf(wm(), dragged)).toBe(container);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.TABBED);
     });
 
     it("stack mode off + dnd-center-layout stacked: center drop creates TABBED never STACKED", () => {
@@ -1704,8 +1847,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().nodeWinAtPointer = target;
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(dragged.parentNode.layout).not.toBe(LAYOUT_TYPES.STACKED);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parentOf(wm(), dragged).layout).not.toBe(LAYOUT_TYPES.STACKED);
     });
 
     it("stack mode off: center drop onto STACKED parent converts to TABBED and joins", () => {
@@ -1752,10 +1895,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().nodeWinAtPointer = target;
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).toBe(container);
+      expect(parentOf(wm(), dragged)).toBe(container);
       expect(container.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(container.childNodes).toEqual(expect.arrayContaining([target, sibling, dragged]));
-      expect(container.childNodes).toHaveLength(3);
+      expect(kidsOf(wm(), container)).toEqual(expect.arrayContaining([target, sibling, dragged]));
+      expect(kidsOf(wm(), container)).toHaveLength(3);
     });
 
     it("stack mode off + dnd-center-layout tabbed: center drop is TABBED", () => {
@@ -1786,7 +1929,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().nodeWinAtPointer = target;
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.TABBED);
     });
   });
 
@@ -1831,8 +1974,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       // Should create new HSPLIT container for win2 and dragged
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(dragged.parentNode.nodeType).toBe(NODE_TYPES.CON);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), dragged).nodeType).toBe(NODE_TYPES.CON);
     });
 
     it("should create new container when dropping TOP in HSPLIT with 2+ windows", () => {
@@ -1871,8 +2014,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       // Should create new VSPLIT container for win2 and dragged
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(dragged.parentNode.nodeType).toBe(NODE_TYPES.CON);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(wm(), dragged).nodeType).toBe(NODE_TYPES.CON);
     });
 
     it("TOP on a 2-wide MONITOR HSPLIT wraps a VSPLIT (R023, no MONITOR reuse)", () => {
@@ -1895,12 +2038,12 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().nodeWinAtPointer = target;
       wm().moveWindowToPointer(dragged, false);
 
-      const nest = dragged.parentNode;
+      const nest = parentOf(wm(), dragged);
       expect(nest).not.toBe(monitor);
       expect(nest.nodeType).toBe(NODE_TYPES.CON);
       expect(nest.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(nest.childNodes).toContain(target);
-      expect(nest.childNodes).toContain(dragged);
+      expect(kidsOf(wm(), nest)).toContain(target);
+      expect(kidsOf(wm(), nest)).toContain(dragged);
     });
   });
 
@@ -1944,7 +2087,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       // Should still have 4 windows total in tree
-      const allWindows = monitor.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      const allWindows = kidsOf(wm(), monitor).filter((c) => c.nodeType === NODE_TYPES.WINDOW);
       expect(allWindows.length).toBe(4);
       expect(monitor.layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
@@ -1985,9 +2128,9 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       // Dropping TOP on the middle window inserts the dragged node ahead of win2
       // within a VSPLIT parent (mirror of the LEFT/TOP ordering tests above).
-      const parent = dragged.parentNode;
+      const parent = parentOf(wm(), dragged);
       expect(parent.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      const children = parent.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      const children = kidsOf(wm(), parent).filter((c) => c.nodeType === NODE_TYPES.WINDOW);
       expect(children.indexOf(dragged)).toBeLessThan(children.indexOf(win2));
     });
   });
@@ -2065,10 +2208,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       // The drop still completed: dragged dropped LEFT on target, so it is parented
       // in an HSPLIT and ordered before target.
-      const parent = dragged.parentNode;
+      const parent = parentOf(wm(), dragged);
       expect(parent).toBeTruthy();
       expect(parent.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      const children = parent.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      const children = kidsOf(wm(), parent).filter((c) => c.nodeType === NODE_TYPES.WINDOW);
       expect(children.indexOf(dragged)).toBeLessThan(children.indexOf(target));
     });
 
@@ -2520,9 +2663,9 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).toBe(container1);
-      expect(target.parentNode).toBe(container1);
-      expect(container1.childNodes).toEqual(expect.arrayContaining([target, dragged]));
+      expect(parentOf(wm(), dragged)).toBe(container1);
+      expect(parentOf(wm(), target)).toBe(container1);
+      expect(kidsOf(wm(), container1)).toEqual(expect.arrayContaining([target, dragged]));
     });
   });
 
@@ -2569,12 +2712,14 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const wrap = dragged.parentNode;
+      const wrap = parentOf(wm(), dragged);
       expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(stackedCon.parentNode).toBe(wrap);
-      expect(wrap.childNodes.indexOf(dragged)).toBeLessThan(wrap.childNodes.indexOf(stackedCon));
-      expect(stackedCon.childNodes).toContain(target);
-      expect(stackedCon.childNodes).toContain(other);
+      expect(parentOf(wm(), stackedCon)).toBe(wrap);
+      expect(kidsOf(wm(), wrap).indexOf(dragged)).toBeLessThan(
+        kidsOf(wm(), wrap).indexOf(stackedCon)
+      );
+      expect(kidsOf(wm(), stackedCon)).toContain(target);
+      expect(kidsOf(wm(), stackedCon)).toContain(other);
     });
 
     it("TOP edge on nested STACKED CON wraps into VSPLIT with dragged first", () => {
@@ -2615,10 +2760,12 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      const wrap = dragged.parentNode;
+      const wrap = parentOf(wm(), dragged);
       expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(stackedCon.parentNode).toBe(wrap);
-      expect(wrap.childNodes.indexOf(dragged)).toBeLessThan(wrap.childNodes.indexOf(stackedCon));
+      expect(parentOf(wm(), stackedCon)).toBe(wrap);
+      expect(kidsOf(wm(), wrap).indexOf(dragged)).toBeLessThan(
+        kidsOf(wm(), wrap).indexOf(stackedCon)
+      );
     });
   });
 
@@ -2655,9 +2802,9 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(target.parentNode).toBe(monitor);
-      expect(dragged.parentNode).toBe(monitor);
-      expect(monitor.childNodes).toEqual([dragged, target]);
+      expect(parentOf(wm(), target)).toBe(monitor);
+      expect(parentOf(wm(), dragged)).toBe(monitor);
+      expect(kidsOf(wm(), monitor)).toEqual([dragged, target]);
     });
 
     it("should swap windows when center drop with SWAP mode in VSPLIT", () => {
@@ -2681,9 +2828,9 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(target.parentNode).toBe(monitor);
-      expect(dragged.parentNode).toBe(monitor);
-      expect(monitor.childNodes).toEqual([dragged, target]);
+      expect(parentOf(wm(), target)).toBe(monitor);
+      expect(parentOf(wm(), dragged)).toBe(monitor);
+      expect(kidsOf(wm(), monitor)).toEqual([dragged, target]);
     });
 
     it("should swap windows in nested containers", () => {
@@ -2722,10 +2869,10 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(target.parentNode).toBe(container2);
-      expect(dragged.parentNode).toBe(container1);
-      expect(container1.childNodes).toContain(dragged);
-      expect(container2.childNodes).toContain(target);
+      expect(parentOf(wm(), target)).toBe(container2);
+      expect(parentOf(wm(), dragged)).toBe(container1);
+      expect(kidsOf(wm(), container1)).toContain(dragged);
+      expect(kidsOf(wm(), container2)).toContain(target);
     });
   });
 
@@ -2756,7 +2903,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should detect center region at 31% (just past left boundary)", () => {
@@ -2786,9 +2933,9 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(target.parentNode).toBe(monitor);
-      expect(dragged.parentNode).toBe(monitor);
-      expect(monitor.childNodes).toEqual([dragged, target]);
+      expect(parentOf(wm(), target)).toBe(monitor);
+      expect(parentOf(wm(), dragged)).toBe(monitor);
+      expect(kidsOf(wm(), monitor)).toEqual([dragged, target]);
     });
 
     it("top-left fan: above UL→cUL diagonal is TOP (VSPLIT), not left-band HSPLIT", () => {
@@ -2812,7 +2959,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("top-left fan: below UL→cUL diagonal is LEFT (HSPLIT)", () => {
@@ -2836,7 +2983,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), dragged).layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
   });
 

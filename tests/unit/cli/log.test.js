@@ -125,6 +125,24 @@ describe("cli/log formatLogStatus", () => {
     expect(c.out).toMatch(/file:\s+\/tmp\/forge\.log/);
     expect(c.out).toMatch(/jsonl:\s+\/tmp\/forge\.jsonl/);
   });
+
+  it("prints previous-session tape paths when present", () => {
+    const c = capture();
+    formatLogStatus(
+      {
+        durable: { enabled: true, level: 5, levelName: "DEBUG" },
+        session: null,
+        effective: { level: 5, levelName: "DEBUG" },
+        file: "/tmp/forge.log",
+        jsonl: "/tmp/forge.jsonl",
+        prevFile: "/tmp/forge.prev.log",
+        prevJsonl: "/tmp/forge.prev.jsonl",
+      },
+      c.stdout
+    );
+    expect(c.out).toMatch(/prev:\s+\/tmp\/forge\.prev\.log/);
+    expect(c.out).toMatch(/prevJsonl:\s+\/tmp\/forge\.prev\.jsonl/);
+  });
 });
 
 describe("cli/log run", () => {

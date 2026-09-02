@@ -7,7 +7,7 @@ import { Logger } from "../../../lib/shared/logger.js";
 import { revealGroupChild } from "../../../lib/extension/action-pipeline.js";
 import { syncLastTabFocusFromFocus } from "../../../lib/extension/session-layout.js";
 import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,

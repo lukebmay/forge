@@ -265,6 +265,16 @@ describe("normalizePlaceHint", () => {
     expect(r.hint.monitor).toBe(1);
     expect(r.hint.wmClass).toBe("X");
     expect(r.hint.expiresAt).toBe(now + PLACE_HINT_TTL_MS);
+    expect(r.hint.workspace).toBeNull();
+  });
+
+  it("keeps ApplyLayout target workspace on the hint", () => {
+    const r = normalizePlaceHint({ attachSelector: "id:ph", workspace: 1 }, now);
+    expect(r.ok).toBe(true);
+    expect(r.hint.workspace).toBe(1);
+    expect(formatPlaceHint(r.hint)).toMatch(/ws=1/);
+    const bad = normalizePlaceHint({ monitor: 0, workspace: -1 }, now);
+    expect(bad.ok).toBe(false);
   });
 
   it("strips path: prefix on treePath", () => {

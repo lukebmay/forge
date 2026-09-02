@@ -2,10 +2,12 @@
 
 # forge-layout-chaos-nest-queue — AI nest TODOs for layout chaos cocktails
 
-**Status:** ready (living queue)
+**Status:** ready (living queue) — **gated behind D100b** (Forest loop
+with old handlers off). Do not treat cocktail fails as a reason to
+reconnect D026/title/`entered-monitor` paper.
 **Plan:** (none)
 **Branch:** master
-**Updated:** 2026-08-26
+**Updated:** 2026-09-01
 
 ## Goal
 

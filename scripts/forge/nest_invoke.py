@@ -193,6 +193,19 @@ _INVOKE_JS = r"""
         targetWin = picked.w;
         focusMethod = "selector_meta";
       }
+    } else if (spec.id) {
+      // GetTree windowId is Forest nanoid (metaWindowId = Meta); resolve via tile-select.
+      const via = fromSessionApi("id:" + String(spec.id));
+      if (via && via.error) return JSON.stringify({ ok: false, error: via.error });
+      if (via && via.w) {
+        targetWin = via.w;
+        focusMethod = "id_selector";
+      } else {
+        const picked = pickMeta();
+        if (!picked) return JSON.stringify({ ok: false, error: "no matching tiled window" });
+        targetWin = picked.w;
+        focusMethod = "id_meta";
+      }
     } else if (wantSel) {
       const picked = pickMeta();
       if (!picked) return JSON.stringify({ ok: false, error: "no matching tiled window" });
@@ -280,6 +293,10 @@ class InvokeError(RuntimeError):
     """User-facing invoke failure (exit 1)."""
 
     exit_code: int = 1
+
+    def __init__(self, message: str, *, exit_code: int = 1) -> None:
+        super().__init__(message)
+        self.exit_code = int(exit_code)
 
 
 def smoke_script_path() -> Path:
@@ -646,8 +663,12 @@ def tiled_windows(forest: Mapping[str, Any]) -> list[dict[str, Any]]:
     for m in roots:
         for n in iter_nodes(m):
             nt = str(n.get("nodeType") or n.get("type") or "")
-            if nt == "WINDOW":
-                out.append(n)
+            if nt != "WINDOW":
+                continue
+            mode = str(n.get("mode") or "").upper()
+            if mode in ("FLOAT", "GRAB_TILE"):
+                continue
+            out.append(n)
     return out
 
 
@@ -667,6 +688,46 @@ def forest_fingerprint(forest: Mapping[str, Any]) -> list[tuple[str, str, str]]:
             elif nt in ("CON", "MONITOR"):
                 rows.append((nt, str(n.get("layout") or ""), ""))
     return rows
+
+
+def find_bag_groups(forest: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """TABBED or STACKED bag CONs (Mark 2 tab/stack group)."""
+    bags: list[dict[str, Any]] = []
+    bag_layouts = frozenset({"TABBED", "STACKED"})
+
+    def walk(node: Any) -> None:
+        if not isinstance(node, dict):
+            return
+        lay = str(node.get("layout") or "").upper()
+        nt = str(node.get("nodeType") or node.get("type") or "").upper()
+        if lay in bag_layouts and nt in ("CON", "MONITOR"):
+            bags.append(node)
+        kids = node.get("children") or node.get("childNodes") or []
+        if isinstance(kids, list):
+            for c in kids:
+                walk(c)
+
+    roots = forest.get("monitors") or []
+    if isinstance(roots, list):
+        for mon in roots:
+            walk(mon)
+    return bags
+
+
+def assert_bag_window_kids_only(bag: Mapping[str, Any], *, stage: str) -> None:
+    kids = bag.get("children") or bag.get("childNodes") or []
+    if not isinstance(kids, list) or len(kids) < 2:
+        raise InvokeError(f"{stage}: bag needs ≥2 kids (have {len(kids) if isinstance(kids, list) else 0})")
+    bad = []
+    for c in kids:
+        if not isinstance(c, dict):
+            bad.append(type(c).__name__)
+            continue
+        nt = str(c.get("nodeType") or c.get("type") or "").upper()
+        if nt != "WINDOW":
+            bad.append(nt or "?")
+    if bad:
+        raise InvokeError(f"{stage}: bag kids must be WINDOW only; got {bad}")
 
 
 def window_rect_x(win: Mapping[str, Any]) -> float:
@@ -725,6 +786,42 @@ def _gui_env(base: Optional[Mapping[str, str]] = None) -> dict[str, str]:
     if not term or term == "dumb":
         env["TERM"] = "xterm-256color"
     return env
+
+
+def require_nest_client_env(
+    env: Optional[Mapping[str, str]] = None,
+    *,
+    what: str = "campaign",
+) -> None:
+    """Refuse host desk — nest smokes must run under nest client_env only.
+
+    Raises InvokeError (exit_code=2) when FORGE_CONFIG_HOME is missing, the
+    Wayland display is empty / not nest-named (``forge`` in WAYLAND_DISPLAY),
+    or XDG_RUNTIME_DIR is not nest-scoped (``nested`` in the path).
+    """
+    e = env if env is not None else os.environ
+    if not str(e.get("FORGE_CONFIG_HOME") or "").strip():
+        raise InvokeError(
+            f"{what}: missing FORGE_CONFIG_HOME (not in nest client_env)",
+            exit_code=2,
+        )
+    wd = str(e.get("WAYLAND_DISPLAY") or "").strip()
+    if not wd:
+        raise InvokeError(
+            f"{what}: empty WAYLAND_DISPLAY (not in nest client_env)",
+            exit_code=2,
+        )
+    if "forge" not in wd:
+        raise InvokeError(
+            f"{what}: refusing host desk WAYLAND_DISPLAY={wd!r}",
+            exit_code=2,
+        )
+    rt = str(e.get("XDG_RUNTIME_DIR") or "")
+    if "nested" not in rt:
+        raise InvokeError(
+            f"{what}: XDG_RUNTIME_DIR={rt!r} is not nest-isolated",
+            exit_code=2,
+        )
 
 
 def pick_client_argv() -> list[str]:
@@ -801,20 +898,52 @@ def _launch_one(
 
 
 def close_window_id(bus_address: str, window_id: str) -> None:
+    """Close by GetTree windowId (Forest nanoid) or Meta id.
+
+    GetTree `windowId` is Forest nanoid (`metaWindowId` = Meta). Matching
+    Meta `get_id()` alone misses Forest ids and leaves ghosts in the tree.
+    Prefer sessionApi `_closeOp('id:…')` (eager Forest remove); Meta id scan
+    is fallback only when sessionApi is unavailable.
+    """
     from nested_wayland import shell_eval
 
     wid = json.dumps(str(window_id))
+    uuid = json.dumps(FORGE_UUID)
     js = (
-        "(function(){ const want = String(%s); "
+        "(function(){ try { "
+        "const want = String(%s); "
+        "const rec = Main.extensionManager.lookup(%s); "
+        "const ext = rec && rec.stateObj; "
+        "const api = ext && ext.sessionApi; "
+        "if (api && typeof api._closeOp === 'function') { "
+        "const r = api._closeOp('id:' + want, { force: true }) || {}; "
+        "if (r.error) return JSON.stringify({ok:false,error:String(r.error)}); "
+        "return JSON.stringify({ok:true,closed:!!r.closed,"
+        "alreadyGone:!!r.alreadyGone,forestRemoved:!!r.forestRemoved,"
+        "via:'session-api'}); "
+        "} "
         "const wm = global.workspace_manager; "
         "for (let i = 0; i < wm.get_n_workspaces(); i++) { "
         "const wins = wm.get_workspace_by_index(i).list_windows(); "
         "for (let j = 0; j < wins.length; j++) { "
         "if (String(wins[j].get_id()) === want) { "
         "wins[j].delete(global.display.get_current_time_roundtrip()); "
-        "return 'ok'; } } } return 'miss'; })()"
-    ) % wid
-    shell_eval(bus_address, js, timeout=5.0)
+        "return JSON.stringify({ok:true,closed:true,via:'meta-id'}); "
+        "} } } "
+        "return JSON.stringify({ok:true,closed:false,alreadyGone:true,via:'miss'}); "
+        "} catch (e) { return JSON.stringify({ok:false,error:String(e && e.message || e)}); } })()"
+    ) % (wid, uuid)
+    ok, payload = shell_eval(bus_address, js, timeout=5.0)
+    if not ok:
+        raise InvokeError(f"close id:{window_id}: shell_eval failed: {payload}")
+    data = parse_invoke_result(payload)
+    if data.get("error"):
+        raise InvokeError(f"close id:{window_id}: {data.get('error')}")
+    # Meta-id-only miss against a Forest nanoid never closed anything.
+    if data.get("via") == "miss":
+        raise InvokeError(
+            f"close id:{window_id}: no sessionApi/_closeOp and Meta id miss"
+        )
 
 
 def build_activate_workspace_js(index: int) -> str:
@@ -877,13 +1006,10 @@ def wait_window_count(
     )
 
 
-def smoke_mark2_on_bus(
-    bus_address: str,
-    *,
-    env: Optional[Mapping[str, str]] = None,
-    action: str = "join.right",
-) -> dict[str, Any]:
-    """Open two clients, invoke a Mark 2 id, assert forge tree changed."""
+def _smoke_seed_two_tiles(
+    bus_address: str, *, env: Optional[Mapping[str, str]] = None
+) -> tuple[str, int, list[tuple[str, str, str]]]:
+    """Launch two clients; return (left_window_id, n_windows, fingerprint)."""
     from nested_wayland import wait_forge_ready
 
     if not wait_forge_ready(bus_address, timeout_s=12.0):
@@ -915,6 +1041,77 @@ def smoke_mark2_on_bus(
         raise InvokeError(f"need two tiled windows before invoke (have {n_before})")
     left = min(wins, key=lambda w: (window_rect_x(w), str(w.get("windowId") or "")))
     left_id = str(left.get("windowId") or "")
+    return left_id, n_before, fp_before
+
+
+def smoke_toggle_tab_stack_on_bus(
+    bus_address: str,
+    *,
+    env: Optional[Mapping[str, str]] = None,
+) -> dict[str, Any]:
+    """H/V pair → TABBED → STACKED → TABBED; bag kids stay WINDOW-only."""
+    left_id, n_before, fp_before = _smoke_seed_two_tiles(bus_address, env=env)
+    layouts: list[str] = []
+    last_invoke: Any = None
+    expect = ("TABBED", "STACKED", "TABBED")
+    for i, want in enumerate(expect):
+        stage = f"toggleTabStack[{i}→{want}]"
+        last_invoke = invoke_on_bus(
+            bus_address,
+            "toggleTabStack",
+            spec={"id": left_id, "activate": True},
+            timeout=8.0,
+        )
+        time.sleep(1.0)
+        after = get_tree(bus_address)
+        n_after = len(tiled_windows(after))
+        if n_after < 2:
+            raise InvokeError(f"{stage}: windows dropped (have {n_after}) invoke={last_invoke}")
+        bags = find_bag_groups(after)
+        if not bags:
+            raise InvokeError(
+                f"{stage}: no TABBED/STACKED bag invoke={last_invoke} "
+                f"fp={forest_fingerprint(after)!r}"
+            )
+        bag = bags[0]
+        lay = str(bag.get("layout") or "").upper()
+        if lay != want:
+            raise InvokeError(
+                f"{stage}: bag layout={lay!r} want={want!r} invoke={last_invoke}"
+            )
+        assert_bag_window_kids_only(bag, stage=stage)
+        layouts.append(lay)
+    after = get_tree(bus_address)
+    return {
+        "ok": True,
+        "action": "toggleTabStack",
+        "cycle": layouts,
+        "invoke": last_invoke,
+        "focusWindowId": left_id,
+        "windowsBefore": n_before,
+        "windowsAfter": len(tiled_windows(after)),
+        "fingerprintBefore": fp_before,
+        "fingerprintAfter": forest_fingerprint(after),
+    }
+
+
+def smoke_mark2_on_bus(
+    bus_address: str,
+    *,
+    env: Optional[Mapping[str, str]] = None,
+    action: str = "join.right",
+) -> dict[str, Any]:
+    """Open two clients, invoke a Mark 2 id, assert forge tree changed."""
+    action = str(
+        (env or {}).get("FORGE_NEST_SMOKE_ACTION")
+        or os.environ.get("FORGE_NEST_SMOKE_ACTION")
+        or action
+        or "join.right"
+    ).strip()
+    if action == "toggleTabStack":
+        return smoke_toggle_tab_stack_on_bus(bus_address, env=env)
+
+    left_id, n_before, fp_before = _smoke_seed_two_tiles(bus_address, env=env)
     result = invoke_on_bus(
         bus_address,
         action,
@@ -1069,14 +1266,21 @@ def cmd_dnd_drop(args: Any, name: str) -> int:
 
 
 def cmd_smoke_from_env() -> int:
-    bus = str(os.environ.get("DBUS_SESSION_BUS_ADDRESS") or "").strip()
-    display = str(os.environ.get("WAYLAND_DISPLAY") or "").strip()
-    if not bus or not display:
+    try:
+        require_nest_client_env(os.environ, what="nest smoke")
+    except InvokeError as e:
+        print(f"forge-test nest smoke: {e}", file=sys.stderr)
         print(
-            "forge-test nest smoke: run inside nest env:\n"
             "  ./scripts/forge/forge-test nested run -- "
             "python3 ./scripts/forge/nest_mark2_smoke.py\n"
             "  ./scripts/forge/forge-test nested smoke-mark2",
+            file=sys.stderr,
+        )
+        return int(getattr(e, "exit_code", 2) or 2)
+    bus = str(os.environ.get("DBUS_SESSION_BUS_ADDRESS") or "").strip()
+    if not bus:
+        print(
+            "forge-test nest smoke: missing DBUS_SESSION_BUS_ADDRESS",
             file=sys.stderr,
         )
         return 2

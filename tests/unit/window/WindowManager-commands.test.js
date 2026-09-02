@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { MotionDirection } from "../../mocks/gnome/Meta.js";
 
@@ -121,14 +123,14 @@ describe("WindowManager - Command System", () => {
 
       wm().command({ name: "Move", direction: "right" });
 
-      expect(monitor.childNodes).toHaveLength(1);
-      const wrap = monitor.childNodes[0];
-      expect(wrap.childNodes.map((n) => n.nodeValue)).toEqual([
+      expect(kidsOf(wm(), monitor)).toHaveLength(1);
+      const wrap = kidsOf(wm(), monitor)[0];
+      expect(kidsOf(wm(), wrap).map((n) => n.nodeValue)).toEqual([
         nodeWindow2.nodeValue,
         nodeWindow.nodeValue,
       ]);
-      expect(wrap.childNodes[0]).toBe(nodeWindow2);
-      expect(wrap.childNodes[1]).toBe(nodeWindow);
+      expect(kidsOf(wm(), wrap)[0]).toBe(nodeWindow2);
+      expect(kidsOf(wm(), wrap)[1]).toBe(nodeWindow);
     });
 
     it("should call unfreezeRender before move", () => {
@@ -202,10 +204,10 @@ describe("WindowManager - Command System", () => {
 
       wm().command({ name: "Swap", direction: "right" });
 
-      expect(monitor.childNodes).toHaveLength(1);
-      const wrap = monitor.childNodes[0];
+      expect(kidsOf(wm(), monitor)).toHaveLength(1);
+      const wrap = kidsOf(wm(), monitor)[0];
       expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(wrap.childNodes).toEqual([nodeWindow, nodeWindow2]);
+      expect(kidsOf(wm(), wrap)).toEqual([nodeWindow, nodeWindow2]);
     });
 
     it("should call unfreezeRender before join", () => {
@@ -242,11 +244,11 @@ describe("WindowManager - Command System", () => {
     it("should not join if no focus window", () => {
       global.display.get_focus_window.mockReturnValue(null);
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const before = [...monitor.childNodes];
+      const before = [...kidsOf(wm(), monitor)];
 
       wm().command({ name: "Swap", direction: "right" });
 
-      expect(monitor.childNodes).toEqual(before);
+      expect(kidsOf(wm(), monitor)).toEqual(before);
     });
   });
 
@@ -266,14 +268,14 @@ describe("WindowManager - Command System", () => {
 
       wm().command({ name: "Split", orientation: "vertical" });
 
-      expect(monitor.childNodes).toHaveLength(1);
-      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(kidsOf(wm(), monitor)).toHaveLength(1);
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("ignores orientation (same as toggleSplit)", () => {
       const { monitor } = pairOnMonitor();
       wm().command({ name: "Split", orientation: "horizontal" });
-      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("commits as toggleSplit", () => {
@@ -286,10 +288,10 @@ describe("WindowManager - Command System", () => {
 
     it("should not split if no focus window", () => {
       const { monitor } = pairOnMonitor();
-      const before = [...monitor.childNodes];
+      const before = [...kidsOf(wm(), monitor)];
       global.display.get_focus_window.mockReturnValue(null);
       wm().command({ name: "Split", orientation: "horizontal" });
-      expect(monitor.childNodes).toEqual(before);
+      expect(kidsOf(wm(), monitor)).toEqual(before);
     });
   });
 
@@ -310,8 +312,8 @@ describe("WindowManager - Command System", () => {
 
       wm().command(action);
 
-      expect(monitor.childNodes).toHaveLength(1);
-      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(kidsOf(wm(), monitor)).toHaveLength(1);
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("should toggle from VSPLIT to HSPLIT", () => {
@@ -321,7 +323,7 @@ describe("WindowManager - Command System", () => {
 
       wm().command(action);
 
-      expect(monitor.childNodes[0].layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should commit layout after toggle", () => {
@@ -338,11 +340,11 @@ describe("WindowManager - Command System", () => {
     it("should not toggle if no focus window", () => {
       global.display.get_focus_window.mockReturnValue(null);
       const action = { name: "LayoutToggle" };
-      const layoutBefore = nodeWindow.parentNode.layout;
+      const layoutBefore = parentOf(wm(), nodeWindow).layout;
 
       wm().command(action);
 
-      expect(nodeWindow.parentNode.layout).toBe(layoutBefore);
+      expect(parentOf(wm(), nodeWindow).layout).toBe(layoutBefore);
     });
   });
 

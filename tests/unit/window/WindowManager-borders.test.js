@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
@@ -117,6 +117,36 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       wm().hideWindowBorders();
 
       expect(mockTab.remove_style_class_name).toHaveBeenCalledWith("window-tabbed-tab-active");
+    });
+  });
+
+  describe("restackBorderForMeta (D096 G5d)", () => {
+    it("pairs border above compositor via insert_child_above", () => {
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      const compositor = metaWindow.get_compositor_private();
+      compositor.border = mockBorder;
+      global.window_group.add_child(compositor);
+      global.window_group.add_child(mockBorder);
+      wm().hostBag.set("nid-border", {
+        meta: metaWindow,
+        windowId: "1",
+        border: mockBorder,
+      });
+
+      expect(wm().restackBorderForMeta(metaWindow)).toBe(true);
+      expect(global.window_group.insert_child_above).toHaveBeenCalledWith(mockBorder, compositor);
     });
   });
 

@@ -6,6 +6,7 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createMockWindow,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { Bin } from "../mocks/gnome/St.js";
 
@@ -88,16 +89,16 @@ describe("tab click activates associated window", () => {
     wA.raise = vi.fn();
     wA.focus = vi.fn();
     wA.activate = vi.fn();
-    const orderBefore = stack.childNodes.slice();
-    expect(stack.lastChild).not.toBe(nA);
+    const orderBefore = kidsOf(wm(), stack);
+    expect(orderBefore[orderBefore.length - 1]).not.toBe(nA);
 
     nA._activateFromTab(wA);
 
     // Chrome order stays [A,B,C]; focus is lastTabFocus + raise only.
-    expect(stack.childNodes).toEqual(orderBefore);
-    expect(stack.childNodes[0]).toBe(nA);
-    expect(stack.childNodes[1]).toBe(nB);
-    expect(stack.childNodes[2]).toBe(nC);
+    expect(kidsOf(wm(), stack)).toEqual(orderBefore);
+    expect(kidsOf(wm(), stack)[0]).toBe(nA);
+    expect(kidsOf(wm(), stack)[1]).toBe(nB);
+    expect(kidsOf(wm(), stack)[2]).toBe(nC);
     expect(stack.lastTabFocus).toBe(wA);
     expect(wA.raise).toHaveBeenCalled();
     expect(wA.focus).toHaveBeenCalled();
@@ -142,7 +143,7 @@ describe("tab click activates associated window", () => {
 
     // Real decoration attach (not a no-op spy).
     vi.spyOn(wm(), "updateDecorationLayout").mockImplementation(() => {
-      const tiled = wm().tree.getTiledChildren(tab.childNodes);
+      const tiled = wm().tree.getTiledChildren(kidsOf(wm(), tab));
       wm().decorationManager._restackDecorationAboveGroup(tab, tiled);
     });
     vi.spyOn(wm(), "updateBorderLayout").mockImplementation(() => {});
@@ -294,7 +295,7 @@ describe("decoration restack above group (not global focus)", () => {
     });
     // Scope settle to this CON (avoid whole-tree decoration hide).
     vi.spyOn(ctx.windowManager, "updateDecorationLayout").mockImplementation(() => {
-      const tiled = ctx.windowManager.tree.getTiledChildren(con.childNodes);
+      const tiled = ctx.windowManager.tree.getTiledChildren(kidsOf(ctx.windowManager, con));
       ctx.windowManager.decorationManager._restackDecorationAboveGroup(con, tiled);
     });
     vi.spyOn(ctx.windowManager, "updateBorderLayout").mockImplementation(() => {});
@@ -379,7 +380,7 @@ describe("decoration restack above group (not global focus)", () => {
       settings: ctx.settings,
     });
     vi.spyOn(ctx.windowManager, "updateDecorationLayout").mockImplementation(() => {
-      const tiled = ctx.windowManager.tree.getTiledChildren(con.childNodes);
+      const tiled = ctx.windowManager.tree.getTiledChildren(kidsOf(ctx.windowManager, con));
       ctx.windowManager.decorationManager._restackDecorationAboveGroup(con, tiled);
     });
     vi.spyOn(ctx.windowManager, "updateBorderLayout").mockImplementation(() => {});

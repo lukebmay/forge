@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { WINDOW_MODES, GRAB_TYPES } from "../../lib/extension/window.js";
+import { WINDOW_MODES, GRAB_TYPES } from "../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,

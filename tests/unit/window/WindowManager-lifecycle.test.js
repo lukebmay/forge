@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
+  createWindowNode,
   getWorkspaceAndMonitor,
 } from "../../mocks/helpers/index.js";
 import { MotionDirection, Workspace, WindowType } from "../../mocks/gnome/Meta.js";
@@ -38,6 +39,25 @@ describe("WindowManager - Window Lifecycle", () => {
 
   // Convenience accessor for tests
   const wm = () => ctx.windowManager;
+
+  describe("live tree root (G8n)", () => {
+    it("adapter tree is LiveHandle ROOT with managers, not GObject Tree", () => {
+      const tree = wm().tree;
+      expect(tree.nodeType).toBe(NODE_TYPES.ROOT);
+      expect(tree.isRoot()).toBe(true);
+      expect(tree.monitorManager).toBeTruthy();
+      expect(tree.workspaceManager).toBeTruthy();
+      expect(tree.extWm).toBe(wm());
+      expect(wm().liveById.get("ROOT")).toBe(tree);
+      expect(Object.getPrototypeOf(tree)).toBe(Object.prototype);
+    });
+
+    it("finds workspace spine via liveById", () => {
+      const ws = wm().tree.findNode("ws0");
+      expect(ws).toBeTruthy();
+      expect(ws.nodeType).toBe(NODE_TYPES.WORKSPACE);
+    });
+  });
 
   describe("minimizedWindow", () => {
     it("should return false for non-minimized window", () => {
@@ -149,12 +169,14 @@ describe("WindowManager - Window Lifecycle", () => {
         title: "Test Window",
       });
 
-      const initialNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
-
       wm().trackWindow(null, metaWindow);
 
-      const finalNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
-      expect(finalNodeCount).toBe(initialNodeCount + 1);
+      const nodeWindow = wm().findNodeWindow(metaWindow);
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      expect(nodeWindow).not.toBeNull();
+      expect(nid).toBeTruthy();
+      expect(wm().forest?.nodes?.[nid]?.kind).toBe("WINDOW");
+      expect(wm().liveById?.has(nid)).toBe(true);
     });
 
     it("should track valid DIALOG windows", () => {
@@ -187,14 +209,16 @@ describe("WindowManager - Window Lifecycle", () => {
       expect(wm().hostBag.get(nid)?.floating).toBe(true);
     });
 
-    it("should create window in FLOAT mode by default", () => {
+    it("should TILE after map RESYNC for normal opens", () => {
       const metaWindow = createMockWindow();
 
       wm().trackWindow(null, metaWindow);
 
       const nodeWindow = wm().findNodeWindow(metaWindow);
+      const nid = wm().hostBag.idFromMeta(metaWindow);
       expect(nodeWindow).not.toBeNull();
-      expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
+      expect(nodeWindow.mode).toBe(WINDOW_MODES.TILE);
+      expect(wm().hostBag.get(nid)?.floating).toBe(false);
     });
 
     it("should attach window to current monitor/workspace", () => {
@@ -205,9 +229,9 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = wm().findNodeWindow(metaWindow);
       expect(nodeWindow).not.toBeNull();
 
-      // Should be attached to workspace 0, monitor 0
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      expect(monitor.contains(nodeWindow)).toBe(true);
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      expect(ancestorMonitor(wm().forest, wm().forest.nodes[nid])?.id).toBe(monitor.nodeValue);
     });
 
     it("should mark window for first render", () => {
@@ -223,39 +247,36 @@ describe("WindowManager - Window Lifecycle", () => {
     it("should remove borders from actor", () => {
       const metaWindow = createMockWindow();
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       const actor = metaWindow.get_compositor_private();
-      actor.border = { hide: vi.fn() };
-      actor.splitBorder = { hide: vi.fn() };
+      const border = { hide: vi.fn(), destroy: vi.fn() };
+      const splitBorder = { hide: vi.fn(), destroy: vi.fn() };
+      actor.border = border;
+      actor.splitBorder = splitBorder;
+      ctx.windowGroup.add_child(border);
+      ctx.windowGroup.add_child(splitBorder);
 
       const removeChildSpy = vi.spyOn(ctx.windowGroup, "remove_child");
 
       wm().windowDestroy(actor);
 
-      expect(removeChildSpy).toHaveBeenCalledWith(actor.border);
-      expect(removeChildSpy).toHaveBeenCalledWith(actor.splitBorder);
-      expect(actor.border.hide).toHaveBeenCalled();
-      expect(actor.splitBorder.hide).toHaveBeenCalled();
+      expect(removeChildSpy).toHaveBeenCalledWith(border);
+      expect(removeChildSpy).toHaveBeenCalledWith(splitBorder);
+      expect(border.hide).toHaveBeenCalled();
+      expect(splitBorder.hide).toHaveBeenCalled();
     });
 
     it("should remove window node from tree", () => {
       const metaWindow = createMockWindow();
-      const { monitor } = getWorkspaceAndMonitor(ctx);
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      wm().trackWindow(null, metaWindow);
+      expect(wm().findNodeWindow(metaWindow)).toBeTruthy();
 
       const actor = metaWindow.get_compositor_private();
-      actor.nodeWindow = nodeWindow;
-
-      // Mock findNodeByActor to return our node
-      vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(nodeWindow);
-
-      const initialNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
-
       wm().windowDestroy(actor);
 
-      const finalNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
-      expect(finalNodeCount).toBe(initialNodeCount - 1);
+      expect(wm().findNodeWindow(metaWindow)).toBeFalsy();
+      expect(wm().hostBag.idFromMeta(metaWindow)).toBeFalsy();
     });
 
     it("should not remove non-window nodes", () => {
@@ -318,7 +339,7 @@ describe("WindowManager - Window Lifecycle", () => {
 
       let nodeWindow = wm().findNodeWindow(metaWindow);
       expect(nodeWindow).not.toBeNull();
-      expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
+      expect(nodeWindow.mode).toBe(WINDOW_MODES.TILE);
 
       // Destroy window
       const actor = metaWindow.get_compositor_private();
@@ -344,6 +365,27 @@ describe("WindowManager - Window Lifecycle", () => {
 
       const actor = metaWindow.get_compositor_private();
       vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(nodeWindow);
+      wm().windowDestroy(actor);
+
+      expect(wm().hostBag.has(nid)).toBe(false);
+      expect(wm().forest?.nodes?.[nid]).toBeUndefined();
+      expect(wm().liveById?.has(nid)).toBe(false);
+    });
+
+    it("D096 windowDestroy clears Forest when GObject walk misses (detached live)", () => {
+      const metaWindow = createMockWindow({ title: "Detached Win" });
+      wm().trackWindow(null, metaWindow);
+      const nodeWindow = wm().findNodeWindow(metaWindow);
+      const nid = wm().hostBag.idFromMeta(metaWindow);
+      expect(nid).toBeTruthy();
+      expect(nodeWindow).toBeTruthy();
+
+      // Simulate Forest-only join: live leaves GObject child-list.
+      nodeWindow.parentNode = null;
+      const actor = metaWindow.get_compositor_private();
+      actor.meta_window = metaWindow;
+      vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(undefined);
+
       wm().windowDestroy(actor);
 
       expect(wm().hostBag.has(nid)).toBe(false);
@@ -388,13 +430,12 @@ describe("WindowManager - Window Lifecycle", () => {
     it("R6 swapPairs Forest-first does not rebuild Forest from GObject", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
-      const winA = createMockWindow({ id: 1, title: "A" });
-      const winB = createMockWindow({ id: 2, title: "B" });
-      const nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
-      const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
-      nodeA.mode = WINDOW_MODES.TILE;
-      nodeB.mode = WINDOW_MODES.TILE;
-      seedLiveForest(wm());
+      const { nodeWindow: nodeA, metaWindow: winA } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1, title: "A" },
+      });
+      const { nodeWindow: nodeB, metaWindow: winB } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, title: "B" },
+      });
       const forest = wm().forest;
       const idA = wm().hostBag.idFromMeta(winA);
       const idB = wm().hostBag.idFromMeta(winB);
@@ -406,42 +447,43 @@ describe("WindowManager - Window Lifecycle", () => {
       expect(forest.nodes[parentId].childIds).toEqual([idB, idA]);
     });
 
-    it("R6 swapPairs id-miss copies GObject and records metric fallback", () => {
+    it("R6 swapPairs id-miss fails closed (no GObject twin / no Forest rebuild)", () => {
       resetMetrics();
-      vi.spyOn(Logger, "info").mockImplementation(() => {});
+      vi.spyOn(Logger, "warn").mockImplementation(() => {});
       const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
-      const winA = createMockWindow({ id: 1, title: "A" });
-      const winB = createMockWindow({ id: 2, title: "B" });
-      const nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
-      const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
-      nodeA.mode = WINDOW_MODES.TILE;
-      nodeB.mode = WINDOW_MODES.TILE;
-      seedLiveForest(wm());
+      const { nodeWindow: nodeA, metaWindow: winA } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1, title: "A" },
+      });
+      const { nodeWindow: nodeB, metaWindow: winB } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, title: "B" },
+      });
       const idA = wm().hostBag.idFromMeta(winA);
+      const idB = wm().hostBag.idFromMeta(winB);
+      const parentId = wm().forest.nodes[idA].parentId;
+      const before = [...wm().forest.nodes[parentId].childIds];
       delete wm().forest.nodes[idA];
       const forest = wm().forest;
 
-      ctx.tree.swapPairs(nodeA, nodeB, false);
+      const ok = ctx.tree.swapPairs(nodeA, nodeB, false);
 
-      expect(wm().forest).not.toBe(forest);
-      expect(metricsSnapshot().fallbacks).toBeGreaterThan(0);
-      const texts = Logger.info.mock.calls.map((c) => String(c[0] ?? ""));
-      expect(texts.some((t) => t.includes("metric fallback op=swapPairs reason=ids-miss"))).toBe(
-        true
-      );
+      expect(ok).toBe(false);
+      expect(wm().forest).toBe(forest);
+      expect(metricsSnapshot().fallbacks).toBe(0);
+      expect(forest.nodes[parentId].childIds).toEqual(before);
+      expect(forest.nodes[idB]).toBeTruthy();
+      expect(forest.nodes[idA]).toBeUndefined();
     });
 
     it("R6 tree.move sibling swap does not rebuild Forest after Forest-first swapPairs", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
-      const winA = createMockWindow({ id: 1, title: "A" });
-      const winB = createMockWindow({ id: 2, title: "B" });
-      const nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
-      const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
-      nodeA.mode = WINDOW_MODES.TILE;
-      nodeB.mode = WINDOW_MODES.TILE;
-      seedLiveForest(wm());
+      const { nodeWindow: nodeA, metaWindow: winA } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1, title: "A" },
+      });
+      const { nodeWindow: nodeB, metaWindow: winB } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, title: "B" },
+      });
       const forest = wm().forest;
       const idA = wm().hostBag.idFromMeta(winA);
       const idB = wm().hostBag.idFromMeta(winB);
@@ -480,10 +522,9 @@ describe("WindowManager - Window Lifecycle", () => {
       expect(resyncCall?.[1]?.fields?.reason).toBe("dock-open");
     });
 
-    it("R3 entered-monitor rehomes Forest WINDOW onto dest MONITOR", () => {
+    it("R3 entered-monitor does not rehome (D100 observe-only)", () => {
       ctx.cleanup();
       ctx = createWindowManagerFixture({ globals: { display: { monitorCount: 2 } } });
-      vi.spyOn(Logger, "info").mockImplementation(() => {});
 
       const metaWindow = createMockWindow({
         title: "Rehome Win",
@@ -493,20 +534,18 @@ describe("WindowManager - Window Lifecycle", () => {
       wm().trackWindow(null, metaWindow);
       const nid = wm().hostBag.idFromMeta(metaWindow);
       expect(nid).toBeTruthy();
+      const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+      const homeBefore = ancestorMonitor(wm().forest, wm().forest.nodes[nid])?.id;
+      expect(homeBefore).toBe(mon0.nodeValue);
 
+      const updateSpy = vi.spyOn(wm(), "updateMetaWorkspaceMonitor");
       metaWindow._forgeDockStickyUntil = 0;
       metaWindow._forgeDockStickyMon = undefined;
       metaWindow._monitor = 1;
-      wm().updateMetaWorkspaceMonitor("window-entered-monitor", 1, metaWindow);
+      wm()._onWindowEnteredMonitor(ctx.display, 1, metaWindow);
 
-      const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
-      const node = wm().findNodeWindow(metaWindow);
-      expect(mon1.contains(node)).toBe(true);
-      expect(ancestorMonitor(wm().forest, wm().forest.nodes[nid])?.id).toBe(mon1.nodeValue);
-      const reasons = Logger.info.mock.calls
-        .filter((c) => String(c[0]) === "metric resync")
-        .map((c) => c[1]?.fields?.reason);
-      expect(reasons).toContain("entered-monitor");
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(ancestorMonitor(wm().forest, wm().forest.nodes[nid])?.id).toBe(homeBefore);
     });
 
     it("should handle window minimize state throughout lifecycle", () => {

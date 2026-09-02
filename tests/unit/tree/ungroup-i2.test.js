@@ -1,13 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree.js";
+import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree-types.js";
 import { SessionApi } from "../../../lib/extension/session-api.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createMockWindow,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 
 /**
  * Host/helper: Tree.ungroup / Tree.group. Product ungroup/merge use command().
@@ -34,6 +37,7 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
   });
 
   const tree = () => ctx.windowManager.tree;
+  const wm = () => ctx.windowManager;
 
   function twoWindowTabbed() {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
@@ -80,10 +84,10 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
     const parent = tree().ungroup(con);
 
     expect(parent).toBe(monitor);
-    expect(con.parentNode).toBeNull();
-    expect(monitor.childNodes).toEqual([n1, n2, sibling]);
-    expect(n1.parentNode).toBe(monitor);
-    expect(n2.parentNode).toBe(monitor);
+    expect(parentOf(wm(), con)).toBeNull();
+    expect(kidsOf(wm(), monitor)).toEqual([n1, n2, sibling]);
+    expect(parentOf(wm(), n1)).toBe(monitor);
+    expect(parentOf(wm(), n2)).toBe(monitor);
     expect(n1.percent).toBeCloseTo(0.3, 5);
     expect(n2.percent).toBeCloseTo(0.3, 5);
     expect(n1.userSized).toBe(true);
@@ -94,31 +98,31 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
     const { monitor, con, n1, n2 } = twoWindowTabbed();
 
     expect(tree().ungroup(n1)).toBe(monitor);
-    expect(con.parentNode).toBeNull();
-    expect(monitor.childNodes).toEqual([n1, n2]);
+    expect(parentOf(wm(), con)).toBeNull();
+    expect(kidsOf(wm(), monitor)).toEqual([n1, n2]);
   });
 
   it("does not recursively flatten nested CON children", () => {
     const { monitor, con, inner, n1, n2, n3, n4 } = nestedGroup();
 
     expect(tree().ungroup(con)).toBe(monitor);
-    expect(monitor.childNodes).toEqual([n1, inner, n4]);
-    expect(inner.parentNode).toBe(monitor);
+    expect(kidsOf(wm(), monitor)).toEqual([n1, inner, n4]);
+    expect(parentOf(wm(), inner)).toBe(monitor);
     expect(inner.layout).toBe(LAYOUT_TYPES.VSPLIT);
-    expect(inner.childNodes).toEqual([n2, n3]);
-    expect(n2.parentNode).toBe(inner);
-    expect(n3.parentNode).toBe(inner);
+    expect(kidsOf(wm(), inner)).toEqual([n2, n3]);
+    expect(parentOf(wm(), n2)).toBe(inner);
+    expect(parentOf(wm(), n3)).toBe(inner);
   });
 
   it("no-ops MONITOR and ROOT (does not peel windows off mon)", () => {
     const { monitor, con, n1, n2 } = twoWindowTabbed();
-    const before = [...monitor.childNodes];
+    const before = kidsOf(wm(), monitor);
 
     expect(tree().ungroup(monitor)).toBeNull();
     expect(tree().ungroup(tree())).toBeNull();
-    expect(monitor.childNodes).toEqual(before);
-    expect(n1.parentNode).toBe(con);
-    expect(n2.parentNode).toBe(con);
+    expect(kidsOf(wm(), monitor)).toEqual(before);
+    expect(parentOf(wm(), n1)).toBe(con);
+    expect(parentOf(wm(), n2)).toBe(con);
   });
 
   it("WINDOW on MONITOR is a no-op (no CON to dissolve)", () => {
@@ -131,20 +135,20 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
     leaf.mode = WINDOW_MODES.TILE;
 
     expect(tree().ungroup(leaf)).toBeNull();
-    expect(leaf.parentNode).toBe(monitor);
-    expect(monitor.childNodes).toContain(leaf);
+    expect(parentOf(wm(), leaf)).toBe(monitor);
+    expect(kidsOf(wm(), monitor)).toContain(leaf);
   });
 
   it("mode-only setLayout still does not flatten (I1)", () => {
     const { con, inner, n1, n4 } = nestedGroup();
-    const before = [...con.childNodes];
+    const before = kidsOf(wm(), con);
 
     expect(tree().setLayout(con, LAYOUT_TYPES.HSPLIT)).toBe(true);
     expect(con.layout).toBe(LAYOUT_TYPES.HSPLIT);
-    expect(con.childNodes).toEqual(before);
-    expect(inner.parentNode).toBe(con);
-    expect(n1.parentNode).toBe(con);
-    expect(n4.parentNode).toBe(con);
+    expect(kidsOf(wm(), con)).toEqual(before);
+    expect(parentOf(wm(), inner)).toBe(con);
+    expect(parentOf(wm(), n1)).toBe(con);
+    expect(parentOf(wm(), n4)).toBe(con);
   });
 
   it("auto-exit-tabbed is single-child chrome exit, not multi-child ungroup", () => {
@@ -152,12 +156,12 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
 
     tree().removeNode(n2);
 
-    expect(con.parentNode).toBe(monitor);
-    expect(con.childNodes).toEqual([n1]);
-    expect(n1.parentNode).toBe(con);
+    expect(parentOf(wm(), con)).toBe(monitor);
+    expect(kidsOf(wm(), con)).toEqual([n1]);
+    expect(parentOf(wm(), n1)).toBe(con);
     expect(con.layout).not.toBe(LAYOUT_TYPES.TABBED);
-    expect(monitor.childNodes).toContain(con);
-    expect(monitor.childNodes).not.toContain(n1);
+    expect(kidsOf(wm(), monitor)).toContain(con);
+    expect(kidsOf(wm(), monitor)).not.toContain(n1);
   });
 
   it("group() wraps via mergeWindowsIntoGroup (default TABBED)", () => {
@@ -172,7 +176,7 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
     const group = tree().group(n1, n2);
     expect(group).toBe(wrap);
     expect(wrap.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(wrap.childNodes).toEqual([n1, n2]);
+    expect(kidsOf(wm(), wrap)).toEqual([n1, n2]);
   });
 
   it("group() uses STACKED when stacked mode + dnd-center-layout stacked", () => {
@@ -199,13 +203,14 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
     const cycled = api._layoutCycleOp("group", "id:201", { quiet: true });
     expect(cycled.ok).toBe(true);
     expect(con.layout).toBe(LAYOUT_TYPES.STACKED);
-    expect(inner.parentNode).toBe(con);
+    expect(parentOf(wm(), inner)).toBe(con);
 
     const out = api._ungroupOp("id:201", { quiet: true });
+    seedLiveForest(wm()); // Host/helper ungroup; reproject for Forest asserts
     expect(out.ok).toBe(true);
     expect(out.changed).toBe(true);
-    expect(n1.parentNode).not.toBe(con);
-    expect(inner.parentNode).toBe(n1.parentNode);
-    expect(inner.childNodes.length).toBe(2);
+    expect(parentOf(wm(), n1)).not.toBe(con);
+    expect(parentOf(wm(), inner)).toBe(parentOf(wm(), n1));
+    expect(kidsOf(wm(), inner)).toHaveLength(2);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Queue } from "../../../lib/extension/tree.js";
+import { Queue } from "../../../lib/extension/queue.js";
 
 describe("Queue", () => {
   let queue;

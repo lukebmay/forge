@@ -38,7 +38,7 @@ describe("forge-7c7o: window-added debounce survives a finalized window", () => 
     ctx.cleanup();
   });
 
-  it("clears the debounce slot even when the captured window throws", () => {
+  it("D100: window-added observe does not wedge or rehome", () => {
     workspaceManager.bindWorkspaceSignals(workspace);
 
     const deadWindow = createMockWindow({ wm_class: "ShortLived" });
@@ -46,26 +46,13 @@ describe("forge-7c7o: window-added debounce survives a finalized window", () => 
       throw new Error("Object 0xdead has been already deallocated");
     });
 
-    workspace.emit("window-added", workspace, deadWindow);
-    expect(extWm._wmSources.has("wsWindowAdd")).toBe(true);
-
-    // The debounce fires after the window was finalized: the per-window guard
-    // swallows the throw (forge-wqlx) and the bag slot is cleared on fire.
-    expect(() => timeouts[0]()).not.toThrow();
+    expect(() => workspace.emit("window-added", workspace, deadWindow)).not.toThrow();
     expect(extWm._wmSources.has("wsWindowAdd")).toBe(false);
 
-    // A later window-added must schedule a fresh debounce and reach the
-    // reconcile — this is what the wedge silently suppressed.
     const liveWindow = createMockWindow({ wm_class: "App" });
-    workspace.emit("window-added", workspace, liveWindow);
-    expect(extWm._wmSources.has("wsWindowAdd")).toBe(true);
-
-    timeouts[1]();
-    expect(extWm.updateMetaWorkspaceMonitor).toHaveBeenCalledWith(
-      "window-added",
-      liveWindow.get_monitor(),
-      liveWindow
-    );
+    expect(() => workspace.emit("window-added", workspace, liveWindow)).not.toThrow();
+    expect(extWm.updateMetaWorkspaceMonitor).not.toHaveBeenCalled();
     expect(extWm._wmSources.has("wsWindowAdd")).toBe(false);
+    expect(timeouts.length).toBe(0);
   });
 });

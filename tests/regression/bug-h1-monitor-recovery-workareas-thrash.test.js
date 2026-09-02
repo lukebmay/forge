@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import GLib from "gi://GLib";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import * as Utils from "../../lib/extension/utils.js";
 import { toPortableForest, makeEnvelope } from "../../lib/extension/session-layout.js";
 import { seedLiveForest } from "../../lib/extension/tom-live.js";
@@ -126,9 +126,8 @@ describe("H1 monitor-recovery on workareas thrash", () => {
 
     wm()._workareasThrashPending = false;
     wm()._onWindowEnteredMonitor(ctx.display, 0, win);
-    // R017: rehome is deferred; flush timeout_add callbacks.
     fireSettle();
-    expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
   it("suppresses window-entered-monitor rehome during session layout restore", () => {
@@ -142,7 +141,7 @@ describe("H1 monitor-recovery on workareas thrash", () => {
     wm()._sessionLayoutRestoring = false;
     wm()._onWindowEnteredMonitor(ctx.display, 0, win);
     fireSettle();
-    expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
   it("R036/SM1: beginApplyEpoch suppresses rehome; end drops pending", () => {
@@ -165,7 +164,7 @@ describe("H1 monitor-recovery on workareas thrash", () => {
 
     wm()._onWindowEnteredMonitor(ctx.display, 0, win);
     fireSettle();
-    expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
   it("SM1: workareas during ApplyEpoch cancel apply and skip H1", () => {
@@ -401,7 +400,7 @@ describe("H1 monitor-recovery on workareas thrash", () => {
     wm()._sessionLayoutShield = null;
     wm()._onWindowEnteredMonitor(ctx.display, 0, win);
     fireSettle();
-    expect(updateSpy).toHaveBeenCalled();
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
   it("falls back to reloadTree when destination monitor node is missing", () => {

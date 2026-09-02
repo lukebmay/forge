@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createTreeFixture,
   getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { MotionDirection } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
@@ -15,6 +17,7 @@ import { Bin } from "../mocks/gnome/St.js";
  */
 describe("LX2: tree.move tab extract split orientation (Host/helper)", () => {
   let ctx;
+  const wm = () => ctx.extWm;
 
   beforeEach(() => {
     ctx = createTreeFixture({ fullExtWm: true });
@@ -58,14 +61,14 @@ describe("LX2: tree.move tab extract split orientation (Host/helper)", () => {
     const ok = ctx.tree.move(extracted, MotionDirection.UP);
 
     expect(ok).toBe(true);
-    expect(extracted.parentNode).toBe(monitor);
-    expect(con.parentNode).toBe(monitor);
-    expect(monitor.childNodes.length).toBe(2);
-    expect(monitor.childNodes).toContain(con);
-    expect(monitor.childNodes).toContain(extracted);
+    expect(parentOf(wm(), extracted)).toBe(monitor);
+    expect(parentOf(wm(), con)).toBe(monitor);
+    expect(kidsOf(wm(), monitor)).toHaveLength(2);
+    expect(kidsOf(wm(), monitor)).toContain(con);
+    expect(kidsOf(wm(), monitor)).toContain(extracted);
     // Remaining multi-member bag
     expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(con.childNodes).toEqual(rest);
+    expect(kidsOf(wm(), con)).toEqual(rest);
     expect(monitor.layout).toBe(LAYOUT_TYPES.VSPLIT);
     expect(ctx.extWm.determineSplitLayoutForRect).toHaveBeenCalled();
   });
@@ -86,7 +89,7 @@ describe("LX2: tree.move tab extract split orientation (Host/helper)", () => {
 
     expect(ok).toBe(true);
     expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(con.childNodes.length).toBe(2);
+    expect(kidsOf(wm(), con)).toHaveLength(2);
     expect(monitor.layout).toBe(LAYOUT_TYPES.HSPLIT);
   });
 
@@ -102,7 +105,7 @@ describe("LX2: tree.move tab extract split orientation (Host/helper)", () => {
     ctx.tree.move(extracted, MotionDirection.LEFT);
 
     expect(con.layout).toBe(LAYOUT_TYPES.STACKED);
-    expect(con.childNodes.length).toBe(2);
+    expect(kidsOf(wm(), con)).toHaveLength(2);
     expect(monitor.layout).toBe(LAYOUT_TYPES.VSPLIT);
   });
 
@@ -120,13 +123,13 @@ describe("LX2: tree.move tab extract split orientation (Host/helper)", () => {
     const ok = ctx.tree.move(a, MotionDirection.RIGHT);
 
     expect(ok).toBe(true);
-    expect(a.parentNode).toBe(con);
-    expect(b.parentNode).toBe(con);
+    expect(parentOf(wm(), a)).toBe(con);
+    expect(parentOf(wm(), b)).toBe(con);
     expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
     // Parent of the bag must stay as set; swap never peels
     expect(monitor.layout).toBe(LAYOUT_TYPES.HSPLIT);
-    expect(monitor.childNodes.length).toBe(1);
-    expect(monitor.childNodes[0]).toBe(con);
+    expect(kidsOf(wm(), monitor)).toHaveLength(1);
+    expect(kidsOf(wm(), monitor)[0]).toBe(con);
   });
 
   it("peel when mon already has another sibling does not reorient mon", () => {
@@ -144,14 +147,14 @@ describe("LX2: tree.move tab extract split orientation (Host/helper)", () => {
     );
     other.mode = WINDOW_MODES.TILE;
     // mon: [TABBED, other]
-    expect(monitor.childNodes.length).toBe(2);
+    expect(kidsOf(wm(), monitor)).toHaveLength(2);
 
     const [extracted] = wins;
     vi.spyOn(ctx.tree, "next").mockReturnValue(-1);
     ctx.tree.move(extracted, MotionDirection.UP);
 
     // Three mon children — layout left alone (not a pure [group|extracted] pair)
-    expect(monitor.childNodes.length).toBe(3);
+    expect(kidsOf(wm(), monitor)).toHaveLength(3);
     expect(monitor.layout).toBe(LAYOUT_TYPES.HSPLIT);
   });
 });

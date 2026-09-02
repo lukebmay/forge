@@ -8,10 +8,16 @@ import {
   createMockWindow,
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
+import {
+  forestAdmitMetaWindow,
+  forestSetLayout,
+  liveChildrenForPresent,
+  liveParentForPresent,
+  seedLiveForest,
+} from "../../../lib/extension/tom-live.js";
 import { isPlaceholderNode } from "../../../lib/extension/layout-placeholder.js";
-import { seedLiveForest } from "../../../lib/extension/tom-live.js";
-import { moveWindowToFloats } from "../../../lib/tom/membership.js";
+import { isUnderFloats, moveWindowToFloats } from "../../../lib/tom/index.js";
 
 /**
  * Phase 1 RunSteps parity: layout-cycle, merge-group (session-api ops).
@@ -78,6 +84,7 @@ describe("SessionApi layout-cycle / merge-group", () => {
     nGhost.mode = WINDOW_MODES.TILE;
     bag.percent = 0.5;
     nGhost.percent = 0.5;
+    seedLiveForest(wm());
 
     const sized = api()._sizeOp(["id:11", "id:12"], [0.687, 0.313], { quiet: true });
     expect(sized.ok).toBe(true);
@@ -111,6 +118,7 @@ describe("SessionApi layout-cycle / merge-group", () => {
     nChrome.mode = WINDOW_MODES.TILE;
     nGrok.mode = WINDOW_MODES.TILE;
     nGhost.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
 
     const sized = api()._sizeOp(["id:20", "id:22"], [0.687, 0.313], { quiet: true });
     expect(sized.ok).toBe(true);
@@ -145,10 +153,12 @@ describe("SessionApi layout-cycle / merge-group", () => {
     nGhost.mode = WINDOW_MODES.TILE;
     nGhost.percent = 0;
     nGhost.userSized = false;
+    seedLiveForest(wm());
 
     const out = api()._unwrapMonDirectSingleChildSplits();
     expect(out.unwrapped).toBe(1);
-    expect(nGhost.parentNode).toBe(monitor);
+    expect(liveParentForPresent(wm(), nGhost)).toBe(monitor);
+    expect(liveChildrenForPresent(wm(), monitor)).toEqual(expect.arrayContaining([bag, nGhost]));
     expect(bag.percent).toBeCloseTo(0.687, 3);
     expect(bag.userSized).toBe(true);
     expect(nGhost.percent).toBeCloseTo(0.313, 3);
@@ -168,6 +178,7 @@ describe("SessionApi layout-cycle / merge-group", () => {
     const nGrok = wm().tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, grok);
     nChrome.mode = WINDOW_MODES.TILE;
     nGrok.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
     const sized = api()._sizeOp(["id:51", "id:52"], [0.687, 0.313], { quiet: true });
     expect(sized.ok).toBe(true);
     expect(sized.sized).toBe(false);
@@ -184,6 +195,7 @@ describe("SessionApi layout-cycle / merge-group", () => {
     const n1 = wm().tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w1);
     n0.mode = WINDOW_MODES.TILE;
     n1.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
     const sized = api()._sizeOp(["id:41", "id:42"], [0.5, 0.5], { quiet: true });
     expect(sized.ok).toBe(true);
     expect(sized.sized).toBe(false);
@@ -208,24 +220,24 @@ describe("SessionApi layout-cycle / merge-group", () => {
     const nGrok = wm().tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, grok);
     nChrome.mode = WINDOW_MODES.TILE;
     nGrok.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
 
     // Old refuse: parent bag has nested CON → ensure-flatten-refused
     const out = api()._setLayoutStructureOp("tabbed", "id:101", { quiet: true });
     expect(out.ok).toBe(true);
     expect(out.error).toBeUndefined();
-    const liveChrome = wm().tree.findNode(chrome);
-    const tabParent = liveChrome?.parentNode;
-    expect(tabParent).toBeTruthy();
-    expect(tabParent.isMonitor?.() || tabParent.nodeType === NODE_TYPES.MONITOR).toBe(false);
-    expect(tabParent.layout).toBe(LAYOUT_TYPES.TABBED);
     const nid = wm().hostBag?.idFromMeta?.(chrome);
     expect(nid).toBeTruthy();
     const tabId = wm().forest.nodes[nid].parentId;
+    const tabParent = wm().liveById.get(tabId);
+    expect(tabParent).toBeTruthy();
+    expect(tabParent.isMonitor?.() || tabParent.nodeType === NODE_TYPES.MONITOR).toBe(false);
+    expect(tabParent.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(wm().forest.nodes[tabId].layout).toBe(LAYOUT_TYPES.TABBED);
     expect(wm().forest.nodes[tabId].childIds).toEqual([nid]);
     expect(wm().forest.nodes[tabId].kind).toBe("CON");
-    expect(nGrok.parentNode).toBe(inner);
-    expect(inner.parentNode).toBe(bag);
+    expect(liveChildrenForPresent(wm(), inner)).toContain(nGrok);
+    expect(liveChildrenForPresent(wm(), bag)).toContain(inner);
   });
 
   it("layout TABBED re-affirm preserves valid lastTabFocus (belt anchor ≠ active)", () => {
@@ -306,6 +318,7 @@ describe("SessionApi layout-cycle / merge-group", () => {
     const n2 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w2);
     n1.mode = WINDOW_MODES.TILE;
     n2.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
 
     const out = api()._mergeGroupOp("id:41", "id:42", { quiet: true });
     expect(out.ok).toBe(true);
@@ -313,6 +326,35 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(n1.parentNode).toBe(con);
     expect(n2.parentNode).toBe(con);
+  });
+
+  it("merge-group uses Forest parent when GObject parentNode is null", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const con = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.HSPLIT;
+    const w1 = createMockWindow({ id: 441, wm_class: "L" });
+    const w2 = createMockWindow({ id: 442, wm_class: "R" });
+    const n1 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w1);
+    const n2 = wm().tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, w2);
+    n1.mode = WINDOW_MODES.TILE;
+    n2.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
+    n1.parentNode = null;
+    n2.parentNode = null;
+    expect(liveParentForPresent(wm(), n1)).toBe(con);
+    expect(liveParentForPresent(wm(), n2)).toBe(con);
+
+    const out = api()._mergeGroupOp("id:441", "id:442", { quiet: true });
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+    expect(out.mode).toBe(LAYOUT_TYPES.TABBED);
+    expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(liveParentForPresent(wm(), n1)).toBe(con);
+    expect(liveParentForPresent(wm(), n2)).toBe(con);
+    const id1 = wm().hostBag?.idFromMeta?.(w1);
+    const id2 = wm().hostBag?.idFromMeta?.(w2);
+    expect(wm().forest.nodes[id1].parentId).toBe(wm().forest.nodes[id2].parentId);
+    expect(wm().forest.nodes[wm().forest.nodes[id1].parentId].layout).toBe("TABBED");
   });
 
   it("ungroup dissolves TABBED CON and keeps child order", () => {
@@ -332,7 +374,7 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(n1.parentNode).toBe(monitor);
     expect(n2.parentNode).toBe(monitor);
     expect(monitor.childNodes).toEqual([n1, n2]);
-    expect(con.parentNode).toBeNull();
+    expect(con.parentNode).toBeFalsy();
   });
 
   it("ungroup no-ops a mon-direct window", () => {
@@ -401,17 +443,18 @@ describe("SessionApi layout-cycle / merge-group", () => {
     nGhost.mode = WINDOW_MODES.TILE;
     nChrome.mode = WINDOW_MODES.TILE;
     nGrok.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
 
     // Profile order: chrome tab left, ghostty right
     const out = api()._orderMonChildrenOp(["id:302", "id:301"], { quiet: true });
     expect(out.error).toBeUndefined();
     expect(out).toMatchObject({ ok: true, reordered: true, scope: "mon" });
     // Wrapper gone; mon-direct = tab then ghostty leaf (VSPLIT unwrapped)
-    expect(mon.childNodes.length).toBe(2);
-    expect(mon.childNodes[0]).toBe(tab);
-    expect(mon.childNodes[1]).toBe(nGhost);
-    expect(nChrome.parentNode).toBe(tab);
-    expect(nGrok.parentNode).toBe(tab);
+    const monKids = liveChildrenForPresent(wm(), mon);
+    expect(monKids.length).toBe(2);
+    expect(monKids[0]).toBe(tab);
+    expect(monKids[1]).toBe(nGhost);
+    expect(liveChildrenForPresent(wm(), tab)).toEqual(expect.arrayContaining([nChrome, nGrok]));
     expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
   });
 
@@ -424,7 +467,7 @@ describe("SessionApi layout-cycle / merge-group", () => {
     expect(out.error).toBeUndefined();
     expect(out.ok).toBe(true);
     expect(api()._monHasLayoutSkeleton(monitor)).toBe(true);
-    const ph = (monitor.childNodes || []).find((n) => isPlaceholderNode(n));
+    const ph = liveChildrenForPresent(wm(), monitor).find((n) => isPlaceholderNode(n));
     expect(ph).toBeTruthy();
     expect(ph.layoutRole).toBe("term");
     expect(ph.layoutSlot).toBe("s1");
@@ -445,13 +488,283 @@ describe("SessionApi layout-cycle / merge-group", () => {
     const w = createMockWindow({ id: 401, wm_class: "ghostty" });
     const n = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, w);
     n.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
     const out = api()._bindOp("id:401", { layoutRole: "term", layoutSlot: "s1", quiet: true });
     expect(out.error).toBeUndefined();
     expect(out.ok).toBe(true);
-    expect(n.parentNode).toBe(monitor);
-    expect(monitor.childNodes).toContain(n);
-    expect(monitor.childNodes).not.toContain(ph);
-    expect(ph.parentNode).toBeNull();
+    const winId = wm().hostBag?.idFromMeta?.(w);
+    expect(winId).toBeTruthy();
+    expect(wm().forest.nodes[winId]?.parentId).toBe(monitor.nodeValue);
+    expect(liveParentForPresent(wm(), n)).toBe(monitor);
+    expect(liveChildrenForPresent(wm(), monitor)).toContain(n);
+    expect(liveChildrenForPresent(wm(), monitor)).not.toContain(ph);
+    expect(liveChildrenForPresent(wm(), monitor).some(isPlaceholderNode)).toBe(false);
+  });
+
+  it("R048: bind consumes Forest PH when GObject parentNode is null", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const skel = api()._skeletonOp(
+      [{ mon: 0, split: "hsplit", children: [{ slot: "s1", roles: ["term"] }] }],
+      { workspace: 0, quiet: true }
+    );
+    expect(skel.error).toBeUndefined();
+    expect(skel.ok).toBe(true);
+    const ph = liveChildrenForPresent(wm(), monitor).find((n) => isPlaceholderNode(n));
+    expect(ph).toBeTruthy();
+    expect(ph.parentNode).toBeFalsy();
+    const phId = wm().hostBag?.idFromMeta?.(ph.nodeValue);
+    expect(phId).toBeTruthy();
+    expect(wm().forest.nodes[phId]?.parentId).toBe(monitor.nodeValue);
+
+    const w = createMockWindow({ id: 501, wm_class: "ghostty" });
+    const admitted = forestAdmitMetaWindow(wm(), w, {
+      parentId: monitor.nodeValue,
+      underFloats: false,
+      mode: WINDOW_MODES.TILE,
+    });
+    expect(admitted?.id).toBeTruthy();
+    expect(admitted.live.parentNode).toBeFalsy();
+
+    const out = api()._bindOp("id:501", { layoutRole: "term", layoutSlot: "s1", quiet: true });
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+    expect(out.skipped).not.toBe("no-placeholder");
+    expect(wm().forest.nodes[phId]).toBeUndefined();
+    expect(wm().forest.nodes[admitted.id]?.parentId).toBe(monitor.nodeValue);
+    expect(liveChildrenForPresent(wm(), monitor)).toContain(admitted.live);
+    expect(liveChildrenForPresent(wm(), monitor).some(isPlaceholderNode)).toBe(false);
+  });
+
+  it("R048: bind by placeholder id does not require GObject parentNode", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const skel = api()._skeletonOp(
+      [{ mon: 0, split: "hsplit", children: [{ slot: "s1", roles: ["term"] }] }],
+      { workspace: 0, quiet: true }
+    );
+    expect(skel.ok).toBe(true);
+    const ph = liveChildrenForPresent(wm(), monitor).find((n) => isPlaceholderNode(n));
+    expect(ph).toBeTruthy();
+    expect(ph.parentNode).toBeFalsy();
+    const phId = wm().hostBag?.idFromMeta?.(ph.nodeValue);
+    expect(phId).toBeTruthy();
+
+    const w = createMockWindow({ id: 502, wm_class: "ghostty" });
+    const admitted = forestAdmitMetaWindow(wm(), w, {
+      parentId: monitor.nodeValue,
+      underFloats: false,
+      mode: WINDOW_MODES.TILE,
+    });
+    expect(admitted?.id).toBeTruthy();
+
+    const out = api()._bindOp("id:502", {
+      layoutRole: "term",
+      layoutSlot: "s1",
+      placeholder: `id:${phId}`,
+      quiet: true,
+    });
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+    expect(out.error).not.toBe("placeholder has no parent");
+    expect(wm().forest.nodes[phId]).toBeUndefined();
+    expect(wm().forest.nodes[admitted.id]?.parentId).toBe(monitor.nodeValue);
+    expect(liveChildrenForPresent(wm(), monitor)).toContain(admitted.live);
+    expect(liveChildrenForPresent(wm(), monitor).some(isPlaceholderNode)).toBe(false);
+  });
+
+  it("R048: bind FLOATS window onto Forest TILES PH", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const skel = api()._skeletonOp(
+      [{ mon: 0, split: "hsplit", children: [{ slot: "s1", roles: ["term"] }] }],
+      { workspace: 0, quiet: true }
+    );
+    expect(skel.error).toBeUndefined();
+    expect(skel.ok).toBe(true);
+    const ph = liveChildrenForPresent(wm(), monitor).find((n) => isPlaceholderNode(n));
+    expect(ph).toBeTruthy();
+    expect(ph.parentNode).toBeFalsy();
+    const phId = wm().hostBag?.idFromMeta?.(ph.nodeValue);
+    expect(phId).toBeTruthy();
+
+    const w = createMockWindow({ id: 601, wm_class: "google-chrome" });
+    const admitted = forestAdmitMetaWindow(wm(), w, {
+      underFloats: true,
+      mode: WINDOW_MODES.FLOAT,
+    });
+    expect(admitted?.id).toBeTruthy();
+    expect(isUnderFloats(wm().forest, wm().forest.nodes[admitted.id])).toBe(true);
+
+    const out = api()._bindOp("id:601", { layoutRole: "term", layoutSlot: "s1", quiet: true });
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+    expect(out.skipped).not.toBe("no-placeholder");
+    expect(wm().forest.nodes[phId]).toBeUndefined();
+    const winTom = wm().forest.nodes[admitted.id];
+    expect(winTom?.parentId).toBe(monitor.nodeValue);
+    expect(isUnderFloats(wm().forest, winTom)).toBe(false);
+    expect(wm().hostBag.get(admitted.id)?.floating).not.toBe(true);
+    expect(admitted.live.mode).toBe(WINDOW_MODES.TILE);
+    expect(liveChildrenForPresent(wm(), monitor)).toContain(admitted.live);
+    expect(liveChildrenForPresent(wm(), monitor).some(isPlaceholderNode)).toBe(false);
+    forestSetLayout(wm(), monitor, "HSPLIT");
+    expect(isUnderFloats(wm().forest, wm().forest.nodes[admitted.id])).toBe(false);
+    expect(liveChildrenForPresent(wm(), monitor)).toContain(admitted.live);
+  });
+
+  it("R049: 3rd tab role move joins existing TABBED, not MONITOR", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const bag = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    bag.layout = LAYOUT_TYPES.TABBED;
+    const youtube = createMockWindow({ id: 811, wm_class: "youtube" });
+    const gmail = createMockWindow({ id: 812, wm_class: "gmail" });
+    const voice = createMockWindow({ id: 813, wm_class: "voice" });
+    const nY = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, youtube);
+    const nG = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, gmail);
+    const nV = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, voice);
+    for (const n of [nY, nG, nV]) n.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
+    const out = api()._moveOp("id:813", "id:811", { quiet: true });
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+    const idV = wm().hostBag?.idFromMeta?.(voice);
+    const idY = wm().hostBag?.idFromMeta?.(youtube);
+    expect(idV).toBeTruthy();
+    expect(wm().forest.nodes[idV].parentId).toBe(wm().forest.nodes[idY].parentId);
+    expect(wm().forest.nodes[idV].parentId).not.toBe(monitor.nodeValue);
+    expect(liveParentForPresent(wm(), nV)).toBe(bag);
+    expect(liveChildrenForPresent(wm(), bag)).toEqual(expect.arrayContaining([nY, nG, nV]));
+  });
+
+  it("R049: TABBED layout on MONITOR sibling joins slot bag", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const bag = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    bag.layout = LAYOUT_TYPES.TABBED;
+    const youtube = createMockWindow({ id: 821, wm_class: "youtube" });
+    const gmail = createMockWindow({ id: 822, wm_class: "gmail" });
+    const voice = createMockWindow({ id: 823, wm_class: "voice" });
+    const nY = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, youtube);
+    const nG = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, gmail);
+    const nV = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, voice);
+    for (const n of [nY, nG, nV]) n.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
+    const out = api()._setLayoutStructureOp("tabbed", "id:823", { quiet: true });
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+    const idV = wm().hostBag?.idFromMeta?.(voice);
+    const idY = wm().hostBag?.idFromMeta?.(youtube);
+    expect(wm().forest.nodes[idV].parentId).toBe(wm().forest.nodes[idY].parentId);
+    expect(wm().forest.nodes[idV].parentId).not.toBe(monitor.nodeValue);
+    expect(liveParentForPresent(wm(), nV)).toBe(bag);
+  });
+
+  it("G8o: layout structure does not abort when GObject parentNode is null", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const w = createMockWindow({ id: 701, wm_class: "ghostty" });
+    const admitted = forestAdmitMetaWindow(wm(), w, {
+      parentId: monitor.nodeValue,
+      underFloats: false,
+      mode: WINDOW_MODES.TILE,
+    });
+    expect(admitted?.live?.parentNode).toBeFalsy();
+    const out = api()._setLayoutStructureOp("hsplit", "id:701", { quiet: true });
+    expect(out.error).not.toBe("window has no parent container");
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+  });
+
+  it("G8o: layout op does not abort when GObject parentNode is null", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const w = createMockWindow({ id: 702, wm_class: "ghostty" });
+    const admitted = forestAdmitMetaWindow(wm(), w, {
+      parentId: monitor.nodeValue,
+      underFloats: false,
+      mode: WINDOW_MODES.TILE,
+    });
+    expect(admitted?.live?.parentNode).toBeFalsy();
+    const out = api()._layoutOp(LAYOUT_TYPES.HSPLIT, "id:702", { quiet: true });
+    expect(out.error).not.toBe("window has no parent container");
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+  });
+
+  it("G8o: mon-direct ancestor / monitor index via Forest when parentNode null", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    const wa = createMockWindow({ id: 911, wm_class: "ghostty" });
+    const wb = createMockWindow({ id: 912, wm_class: "org.gnome.Nautilus" });
+    const a = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wa);
+    const b = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wb);
+    a.mode = WINDOW_MODES.TILE;
+    b.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
+    a.parentNode = null;
+    b.parentNode = null;
+    expect(liveParentForPresent(wm(), a)).toBe(monitor);
+    const apiInst = api();
+    expect(apiInst._monDirectAncestor(a)).toBe(a);
+    expect(apiInst._monitorIndexOfNode(a)).toBe(0);
+    const out = apiInst._orderMonChildrenOp(["id:911", "id:912"], { quiet: true });
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+  });
+
+  it("nest join-tab: CENTER groups when GObject parentNode is null", () => {
+    ctx.settings.get_string.mockImplementation((key) => {
+      if (key === "dnd-center-layout") return "TABBED";
+      return "";
+    });
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const split = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    split.layout = LAYOUT_TYPES.HSPLIT;
+    const wa = createMockWindow({ id: 901, wm_class: "ghostty" });
+    const wb = createMockWindow({ id: 902, wm_class: "org.gnome.Nautilus" });
+    const a = wm().tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, wa);
+    const b = wm().tree.createNode(split.nodeValue, NODE_TYPES.WINDOW, wb);
+    a.mode = WINDOW_MODES.TILE;
+    b.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
+    // D096 residue: seeded TILES membership is Forest-only.
+    a.parentNode = null;
+    b.parentNode = null;
+    expect(liveParentForPresent(wm(), a)).toBe(split);
+    expect(liveParentForPresent(wm(), b)).toBe(split);
+
+    const out = api()._dndDropOp("id:901", "id:902", "CENTER", {
+      quiet: true,
+      simulateEnteredMonitor: false,
+    });
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+    expect(out.parentLayout).toBe(LAYOUT_TYPES.TABBED);
+    const idA = wm().hostBag?.idFromMeta?.(wa);
+    const idB = wm().hostBag?.idFromMeta?.(wb);
+    expect(idA).toBeTruthy();
+    expect(wm().forest.nodes[idA].parentId).toBe(wm().forest.nodes[idB].parentId);
+    const parentTom = wm().forest.nodes[wm().forest.nodes[idA].parentId];
+    expect(parentTom.layout).toBe("TABBED");
+    expect(parentTom.childIds).toEqual(expect.arrayContaining([idA, idB]));
+  });
+
+  it("D096 close drops Forest when GObject parentNode is null", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const w = createMockWindow({ id: 903, wm_class: "org.gnome.Nautilus" });
+    const admitted = forestAdmitMetaWindow(wm(), w, {
+      parentId: monitor.nodeValue,
+      underFloats: false,
+      mode: WINDOW_MODES.TILE,
+    });
+    expect(admitted?.id).toBeTruthy();
+    expect(admitted.live.parentNode).toBeFalsy();
+    const nid = admitted.id;
+
+    const out = api()._closeOp(`id:${nid}`, { force: true });
+    expect(out.error).toBeUndefined();
+    expect(out.ok).toBe(true);
+    expect(out.closed).toBe(true);
+    expect(out.forestRemoved).toBe(true);
+    expect(wm().forest.nodes[nid]).toBeUndefined();
+    expect(wm().hostBag.has(nid)).toBe(false);
   });
 });
 
@@ -587,7 +900,7 @@ describe("SessionApi LayoutBatch (CL5)", () => {
     const out = JSON.parse(a.LayoutBatch("admit"));
     expect(out.ok).toBe(true);
     expect(out.admitted).toBeGreaterThanOrEqual(1);
-    expect(wm.tree.findNode(stray)).toBeTruthy();
+    expect(wm.findNodeWindow(stray)).toBeTruthy();
   });
 
   it("Ping reports apiVersion ≥ 9", () => {
@@ -754,6 +1067,7 @@ describe("SessionApi workspace orphan isolation", () => {
     const n1 = wm().tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w1);
     n0.mode = WINDOW_MODES.TILE;
     n1.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
 
     const forest = api()._snapshotForestForApply({ workspace: 1 });
     const orphanMeta = (forest.orphanWindows || []).map((w) =>
@@ -774,9 +1088,12 @@ describe("SessionApi workspace orphan isolation", () => {
     const raw = api().GetTree(JSON.stringify({ workspace: 1 }));
     const out = JSON.parse(raw);
     expect(out.error).toBeUndefined();
-    // GetTree remains Surface dump (Meta windowId).
-    const getIds = (out.orphanWindows || []).map((w) => String(w.windowId));
-    expect(getIds).not.toContain("101");
+    // GetTree = Forest+bag (nanoid windowId); Meta id in metaWindowId.
+    const getMeta = (out.orphanWindows || []).map((w) => String(w.metaWindowId ?? w.windowId));
+    expect(getMeta).not.toContain("101");
+    const getCollected = collectWindows(out, { workspace: 1 });
+    expect(getCollected.map((w) => String(w.metaWindowId ?? w.windowId))).toContain("202");
+    expect(getCollected.map((w) => String(w.metaWindowId ?? w.windowId))).not.toContain("101");
   });
 });
 
@@ -805,11 +1122,12 @@ describe("SessionApi Apply snapshot Forest authority", () => {
   }
 
   it("cold snapshot seeds Forest and projects TOM IR (C6.6)", () => {
-    expect(wm()._liveForestSeeded).toBe(false);
+    expect(wm()._liveForestSeeded).toBe(true);
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const wA = createMockWindow({ id: 101, wm_class: "DeskA", workspace: ctx.workspaces[0] });
     const nA = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wA);
     nA.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
 
     const forest = api()._snapshotForestForApply({ workspace: 0 });
     expect(wm()._liveForestSeeded).toBe(true);
@@ -824,8 +1142,9 @@ describe("SessionApi Apply snapshot Forest authority", () => {
     const raw = api().GetTree(JSON.stringify({ workspace: 0 }));
     const out = JSON.parse(raw);
     expect(out.error).toBeUndefined();
-    const getIds = collectWindows(out, { workspace: 0 }).map((w) => String(w.windowId));
-    expect(getIds).toContain("101");
+    const getWins = collectWindows(out, { workspace: 0 });
+    expect(getWins.some((w) => w.windowId === nidA && String(w.metaWindowId) === "101")).toBe(true);
+    expect(getWins.every((w) => String(w.windowId) !== "101")).toBe(true);
   });
 
   it("does not pick up GObject-only windows after Forest is seeded", () => {

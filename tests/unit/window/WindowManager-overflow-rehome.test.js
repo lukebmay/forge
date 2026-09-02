@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { LAYOUT_TYPES, ORIENTATION_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { clearClassMinFloorForTests } from "../../../lib/extension/tree-layout.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 
 /**
@@ -85,15 +87,17 @@ describe("D049 overflow rehome", () => {
 
     expect(wm().rehomeIfSlotTooSmall(overflow.node)).toBe(true);
 
-    const tab = roomy.node.parentNode;
+    const tab = parentOf(wm(), roomy.node);
     expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(tab.contains(roomy.node)).toBe(true);
-    expect(tab.contains(overflow.node)).toBe(true);
+    expect(kidsOf(wm(), tab)).toEqual(expect.arrayContaining([roomy.node, overflow.node]));
     expect(overflow.node.mode).toBe(WINDOW_MODES.TILE);
-    expect(vsplit.parentNode).toBeNull();
-    expect(sibling.node.parentNode).toBe(mon);
-    expect(tab.parentNode).toBe(mon);
-    expect(mon.contains(vsplit)).toBe(false);
+    expect(parentOf(wm(), vsplit)).toBeNull();
+    expect(kidsOf(wm(), mon)).not.toContain(vsplit);
+    const wrap = parentOf(wm(), sibling.node);
+    expect(wrap).not.toBe(vsplit);
+    expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([sibling.node, tab]));
+    expect(parentOf(wm(), wrap)).toBe(mon);
+    expect(parentOf(wm(), tab)).toBe(wrap);
   });
 
   it("oversized settled frame learns mins then tabs (no clamp request)", () => {
@@ -115,14 +119,16 @@ describe("D049 overflow rehome", () => {
     expect(overflow.meta._forgeKnownMinH).toBe(380);
     expect(overflow.meta._forgeKnownMinW).toBeFalsy();
 
-    const tab = roomy.node.parentNode;
+    const tab = parentOf(wm(), roomy.node);
     expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(tab.contains(roomy.node)).toBe(true);
-    expect(tab.contains(overflow.node)).toBe(true);
+    expect(kidsOf(wm(), tab)).toEqual(expect.arrayContaining([roomy.node, overflow.node]));
     expect(overflow.node.mode).toBe(WINDOW_MODES.TILE);
-    expect(vsplit.parentNode).toBeNull();
-    expect(sibling.node.parentNode).toBe(mon);
-    expect(mon.contains(vsplit)).toBe(false);
+    expect(parentOf(wm(), vsplit)).toBeNull();
+    expect(kidsOf(wm(), mon)).not.toContain(vsplit);
+    const wrap = parentOf(wm(), sibling.node);
+    expect(wrap).not.toBe(vsplit);
+    expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([sibling.node, tab]));
+    expect(parentOf(wm(), wrap)).toBe(mon);
   });
 
   it("oversized settled frame floats when no same-mon tab fits", () => {
@@ -148,8 +154,8 @@ describe("D049 overflow rehome", () => {
     expect(overflow.meta._forgeKnownMinH).toBe(380);
     expect(overflow.node.mode).toBe(WINDOW_MODES.FLOAT);
     expect(wm().isFloatingExempt(overflow.meta)).toBe(true);
-    expect(vsplit.parentNode).toBeNull();
-    expect(sibling.node.parentNode).toBe(mon);
+    expect(parentOf(wm(), vsplit)).toBeNull();
+    expect(parentOf(wm(), sibling.node)).toBe(mon);
   });
 
   it("floats when no same-mon tab fits and collapses the vacated split", () => {
@@ -174,9 +180,9 @@ describe("D049 overflow rehome", () => {
 
     expect(overflow.node.mode).toBe(WINDOW_MODES.FLOAT);
     expect(wm().isFloatingExempt(overflow.meta)).toBe(true);
-    expect(overflow.node.parentNode).toBe(mon);
-    expect(sibling.node.parentNode).toBe(mon);
-    expect(vsplit.parentNode).toBeNull();
+    expect(parentOf(wm(), overflow.node)).toBe(mon);
+    expect(parentOf(wm(), sibling.node)).toBe(mon);
+    expect(parentOf(wm(), vsplit)).toBeNull();
     expect(sibling.node.mode).toBe(WINDOW_MODES.TILE);
   });
 
@@ -184,7 +190,7 @@ describe("D049 overflow rehome", () => {
     const { overflow } = vsplitPairPlusRoomy();
     wm().beginApplyEpoch({ id: "m3-test" });
     expect(wm().rehomeIfSlotTooSmall(overflow.node)).toBe(false);
-    expect(overflow.node.parentNode?.isStackedOrTabbed?.()).toBeFalsy();
+    expect(parentOf(wm(), overflow.node)?.isStackedOrTabbed?.()).toBeFalsy();
     expect(overflow.node.mode).toBe(WINDOW_MODES.TILE);
     wm().endApplyEpoch({ id: "m3-test" });
   });
@@ -201,12 +207,12 @@ describe("D049 overflow rehome", () => {
     overflow.meta._size_hints = null;
     overflow.meta._forgeKnownMinW = 50;
     overflow.meta._forgeKnownMinH = 400;
-    const parent = overflow.node.parentNode;
+    const parent = parentOf(wm(), overflow.node);
 
     expect(wm()._slotTooSmallForTile(overflow.node, overflow.meta)).toBe(true);
     expect(wm().rehomeIfSlotTooSmall(overflow.node)).toBe(false);
     expect(overflow.node.mode).toBe(WINDOW_MODES.TILE);
-    expect(overflow.node.parentNode).toBe(parent);
+    expect(parentOf(wm(), overflow.node)).toBe(parent);
     expect(overflow.meta._forgeKnownMinH).toBe(200);
     expect(wm()._slotTooSmallForTile(overflow.node, overflow.meta)).toBe(false);
   });
@@ -244,9 +250,9 @@ describe("D049 overflow rehome", () => {
       rect: { x: 0, y: 0, width: 800, height: 600 },
       size_hints: { min_width: 100, min_height: 100 },
     });
-    const parent = legal.node.parentNode;
+    const parent = parentOf(wm(), legal.node);
     expect(wm().rehomeIfSlotTooSmall(legal.node)).toBe(false);
-    expect(legal.node.parentNode).toBe(parent);
+    expect(parentOf(wm(), legal.node)).toBe(parent);
     expect(legal.node.mode).toBe(WINDOW_MODES.TILE);
   });
 

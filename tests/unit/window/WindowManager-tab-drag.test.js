@@ -3,7 +3,7 @@ import {
   TAB_DRAG_THRESHOLD_PX,
   tabDragExceededThreshold,
 } from "../../../lib/extension/drag-drop.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { NODE_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,

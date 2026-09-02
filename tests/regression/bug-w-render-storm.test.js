@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import { LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
@@ -88,7 +88,7 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     expect(second.nodeWindow).toBeTruthy();
   });
 
-  it("TILE external drift restores the slot (no layout storm)", () => {
+  it("TILE external drift is observe-only (D100)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
     const slot = { x: 0, y: 0, width: 800, height: 600 };
@@ -106,17 +106,17 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
 
     wm().updateMetaPositionSize(first.metaWindow, "size-changed");
 
-    expect(reassertSpy).toHaveBeenCalledWith(first.nodeWindow, { force: true });
+    expect(reassertSpy).not.toHaveBeenCalled();
     expect(onExt).not.toHaveBeenCalled();
     expect(markSpy).not.toHaveBeenCalled();
     expect(layoutSpy).not.toHaveBeenCalled();
     expect(renderSpy).not.toHaveBeenCalled();
     const frame = first.metaWindow.get_frame_rect();
-    expect(frame.width).toBe(slot.width);
-    expect(frame.height).toBe(slot.height);
+    expect(frame.width).toBe(400);
+    expect(frame.height).toBe(300);
   });
 
-  it("after SETTLED, TILE size-changed restores the slot without verify reassert", () => {
+  it("after SETTLED, TILE size-changed does not restore (D100)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
     const slot = { x: 0, y: 0, width: 800, height: 600 };
@@ -137,7 +137,7 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     expect(onExt).not.toHaveBeenCalled();
     expect(layoutSpy).not.toHaveBeenCalled();
     expect(lc.settled).toBe(true);
-    expect(first.metaWindow.get_frame_rect().width).toBe(slot.width);
+    expect(first.metaWindow.get_frame_rect().width).toBe(400);
   });
 
   it("tree.apply sets geometry suppress so nested size-changed does not retile", () => {
@@ -234,13 +234,10 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     expect(onExt).not.toHaveBeenCalled();
     expect(markSpy).not.toHaveBeenCalled();
     expect(layoutSpy).not.toHaveBeenCalled();
-    expect(meta.get_frame_rect().width).toBe(slot.width);
+    expect(meta.get_frame_rect().width).toBe(400);
   });
 
-  it("D026: mid-echo unmaximize snapback is healed by post-echo slot reassert", () => {
-    let now = 40_000;
-    wm().layoutEpoch.setNow(() => now);
-    const residual = wm().layoutEpoch.residualMs;
+  it("D100: idle maximize does not schedule post-echo slot reassert", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
     const meta = first.metaWindow;
@@ -254,24 +251,10 @@ describe("W-render-storm / CL2: geometry feedback attribution", () => {
     meta.maximize();
     meta.move_resize_frame(true, 0, 0, 1920, 1080);
     wm().updateMetaPositionSize(meta, "size-changed");
-    expect(meta.is_maximized()).toBe(false);
+    expect(meta.is_maximized()).toBe(true);
 
     const post = setSpy.mock.calls.find((c) => String(c[0]).startsWith("postEchoSlot:"));
-    expect(post).toBeTruthy();
-    expect(post[1]).toBeGreaterThanOrEqual(residual);
-    const postCb = post[2];
-
-    // Client applies unmaximize restore-size during echo (chrome-only).
-    meta.move_resize_frame(true, 40, 40, 640, 480);
-    wm().updateMetaPositionSize(meta, "size-changed");
-    expect(meta.get_frame_rect().width).toBe(640);
-    expect(wm().layoutEpoch.isEchoActive(meta)).toBe(true);
-
-    now += post[1];
-    expect(wm().layoutEpoch.isEchoActive(meta)).toBe(false);
-    postCb();
-    expect(meta.get_frame_rect().width).toBe(slot.width);
-    expect(meta.get_frame_rect().height).toBe(slot.height);
+    expect(post).toBeFalsy();
   });
 
   it("AC2: LayoutBatch begin advances wave id", () => {

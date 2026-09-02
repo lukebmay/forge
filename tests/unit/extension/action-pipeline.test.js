@@ -37,11 +37,15 @@ describe("action-pipeline afterFocus", () => {
     return wm().tree.findNode(meta);
   }
 
-  it("runs F → Dfocus → B → P → A in order and never renderTree", () => {
+  it("runs F → borderZ → Dfocus → B → P → A in order and never renderTree", () => {
     const node = trackOne();
     const order = [];
     vi.spyOn(wm(), "updateStackedFocus").mockImplementation(() => order.push("Fstack"));
     vi.spyOn(wm(), "updateTabbedFocus").mockImplementation(() => order.push("Ftab"));
+    vi.spyOn(wm(), "restackBorderForMeta").mockImplementation(() => {
+      order.push("borderZ");
+      return true;
+    });
     vi.spyOn(wm(), "updateDecorationLayout").mockImplementation(() => order.push("Dfocus"));
     vi.spyOn(wm(), "updateBorderLayout").mockImplementation(() => order.push("B"));
     vi.spyOn(wm(), "movePointerWith").mockImplementation(() => order.push("P"));
@@ -49,7 +53,8 @@ describe("action-pipeline afterFocus", () => {
 
     afterFocus(wm(), node, { source: "test" });
 
-    expect(order).toEqual(["Fstack", "Ftab", "Dfocus", "B", "P"]);
+    expect(order).toEqual(["Fstack", "Ftab", "borderZ", "Dfocus", "B", "P"]);
+    expect(wm().restackBorderForMeta).toHaveBeenCalledWith(node.nodeValue);
     expect(wm().updateDecorationLayout).toHaveBeenCalledWith({
       scope: "focus",
       focusNode: node,
@@ -303,11 +308,13 @@ describe("action-pipeline revealGroupChild", () => {
     const { tab, wB, nB } = tabbedPair();
     const settle = vi.spyOn(wm(), "settleTabFocus");
     const after = vi.spyOn(wm(), "afterFocus");
+    const borderZ = vi.spyOn(wm(), "restackBorderForMeta").mockReturnValue(true);
 
     revealGroupChild(wm(), nB, { keyboard: false });
 
     expect(tab.lastTabFocus).toBe(wB);
     expect(wB.raise).toHaveBeenCalled();
+    expect(borderZ).toHaveBeenCalledWith(wB);
     expect(settle).toHaveBeenCalledWith(nB);
     expect(wB.activate).not.toHaveBeenCalled();
     expect(wB.focus).not.toHaveBeenCalled();

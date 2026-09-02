@@ -89,6 +89,20 @@ export class Widget extends withSignals() {
     return this.children.includes(child);
   }
 
+  set_child_above_sibling(child, sibling) {
+    if (!child || !this.children.includes(child)) return;
+    this.children.splice(this.children.indexOf(child), 1);
+    const index = sibling == null ? -1 : this.children.indexOf(sibling);
+    this.children.splice(index === -1 ? this.children.length : index + 1, 0, child);
+  }
+
+  set_child_below_sibling(child, sibling) {
+    if (!child || !this.children.includes(child)) return;
+    this.children.splice(this.children.indexOf(child), 1);
+    const index = sibling == null ? -1 : this.children.indexOf(sibling);
+    this.children.splice(index === -1 ? 0 : index, 0, child);
+  }
+
   // St.Widget theme-node accessor. Tests don't compute real CSS, so return a stub
   // whose metrics are all zero (the decoration code reads border widths off it).
   get_theme_node() {

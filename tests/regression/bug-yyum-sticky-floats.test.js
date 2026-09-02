@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 
 /**
@@ -49,12 +50,12 @@ describe("forge-yyum: sticky windows float instead of churning tiles", () => {
     // Sanity: a normal tiled window stays tiled and counts toward the layout.
     wm().processFloats();
     expect(node.isFloat()).toBe(false);
-    expect(ctx.tree.getTiledChildren(monitor.childNodes)).toContain(node);
+    expect(ctx.tree.getTiledChildren(kidsOf(wm(), monitor))).toContain(node);
 
     // User pins "Always on Visible Workspace": it floats out of the tile grid.
     metaWindow.stick();
     wm().processFloats();
     expect(node.isFloat()).toBe(true);
-    expect(ctx.tree.getTiledChildren(monitor.childNodes)).not.toContain(node);
+    expect(ctx.tree.getTiledChildren(kidsOf(wm(), monitor))).not.toContain(node);
   });
 });

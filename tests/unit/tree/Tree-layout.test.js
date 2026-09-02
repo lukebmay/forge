@@ -3,6 +3,7 @@ import St, { __setScaleFactor, __resetScaleFactor } from "gi://St";
 import Clutter from "gi://Clutter";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import * as PresentChrome from "../../../lib/extension/present-chrome.js";
 import {
   applyMargins,
   minTabWidthFromChars,
@@ -30,7 +31,8 @@ import {
  * Guards pure slot math so wrong geometry is a correctness bug, not thrash:
  * mon workareas → root slots, H/V percent distribution, nested splits,
  * gaps / outer margins, tab chrome / stack insets on leaf rects.
- * Prefer Tree.processNode + pure tree-layout helpers (no live HUP).
+ * Slot walk SoT = PresentChrome.processNode (Tree.processNode is a thin
+ * delegate). Pure helpers stay on tree-layout.js (no live HUP).
  *
  * Core algorithms: processSplit, processStacked, processTabbed, computeSizes,
  * processGap, applyMargins.
@@ -560,23 +562,21 @@ describe("Tree Layout Algorithms", () => {
   });
 
   describe("processStacked", () => {
-    it("should place a single stacked window below its title bar", () => {
+    it("should give a unary stacked child the full pane (no chrome)", () => {
       const container = new Node(NODE_TYPES.CON, new St.Bin());
       container.layout = LAYOUT_TYPES.STACKED;
       container.rect = { x: 0, y: 0, width: 1000, height: 800 };
       const child = new Node(NODE_TYPES.CON, new St.Bin());
-      container.childNodes = [child];
 
       const stackHeight = 35;
       const params = { stackedHeight: stackHeight, tiledChildren: [child] };
 
       ctx.tree.processStacked(container, child, params, 0);
 
-      // One title bar at the top; window fills the rest.
       expect(child.rect.x).toBe(0);
-      expect(child.rect.y).toBe(stackHeight);
+      expect(child.rect.y).toBe(0);
       expect(child.rect.width).toBe(1000);
-      expect(child.rect.height).toBe(800 - stackHeight);
+      expect(child.rect.height).toBe(800);
     });
 
     it("should place every stacked window below the full title-bar column", () => {
@@ -587,7 +587,6 @@ describe("Tree Layout Algorithms", () => {
       const child1 = new Node(NODE_TYPES.CON, new St.Bin());
       const child2 = new Node(NODE_TYPES.CON, new St.Bin());
       const child3 = new Node(NODE_TYPES.CON, new St.Bin());
-      container.childNodes = [child1, child2, child3];
 
       const stackHeight = 35;
       const params = {
@@ -628,7 +627,6 @@ describe("Tree Layout Algorithms", () => {
       container.rect = { x: 100, y: 50, width: 800, height: 600 };
       const child = new Node(NODE_TYPES.CON, new St.Bin());
       const sibling = new Node(NODE_TYPES.CON, new St.Bin());
-      container.childNodes = [child, sibling];
 
       const stackHeight = 35;
       const params = { stackedHeight: stackHeight, tiledChildren: [child, sibling] };
@@ -653,7 +651,6 @@ describe("Tree Layout Algorithms", () => {
         new Node(NODE_TYPES.CON, new St.Bin()),
         new Node(NODE_TYPES.CON, new St.Bin()),
       ];
-      container.childNodes = children;
 
       // 5 bars * 35 = 175 > container height 100 (overflow regime).
       const params = { stackedHeight: 35, tiledChildren: children };
@@ -674,7 +671,6 @@ describe("Tree Layout Algorithms", () => {
 
       const child = new Node(NODE_TYPES.CON, new St.Bin());
       const sibling = new Node(NODE_TYPES.CON, new St.Bin());
-      container.childNodes = [child, sibling];
 
       const params = { stackedHeight: 35, tiledChildren: [child, sibling] };
 
@@ -691,10 +687,9 @@ describe("Tree Layout Algorithms", () => {
       const container = new Node(NODE_TYPES.CON, new St.Bin());
       container.layout = LAYOUT_TYPES.TABBED;
       container.rect = { x: 0, y: 0, width: 1000, height: 800 };
-      container.childNodes = [new Node(NODE_TYPES.CON, new St.Bin())];
 
       const child = new Node(NODE_TYPES.CON, new St.Bin());
-      const params = { stackedHeight: 0 };
+      const params = { stackedHeight: 0, tiledChildren: [child] };
 
       ctx.tree.processTabbed(container, child, params, 0);
 
@@ -712,7 +707,6 @@ describe("Tree Layout Algorithms", () => {
 
       const child = new Node(NODE_TYPES.CON, new St.Bin());
       const sibling = new Node(NODE_TYPES.CON, new St.Bin());
-      container.childNodes = [child, sibling];
 
       const params = { stackedHeight: 35, tiledChildren: [child, sibling] };
 
@@ -725,14 +719,13 @@ describe("Tree Layout Algorithms", () => {
       const container = new Node(NODE_TYPES.CON, new St.Bin());
       container.layout = LAYOUT_TYPES.TABBED;
       container.rect = { x: 0, y: 0, width: 1000, height: 800 };
-      container.childNodes = [
-        new Node(NODE_TYPES.CON, new St.Bin()),
-        new Node(NODE_TYPES.CON, new St.Bin()),
-      ];
 
       const child = new Node(NODE_TYPES.CON, new St.Bin());
       const stackedHeight = 35; // Tab bar height
-      const params = { stackedHeight };
+      const params = {
+        stackedHeight,
+        tiledChildren: [child, new Node(NODE_TYPES.CON, new St.Bin())],
+      };
 
       ctx.tree.processTabbed(container, child, params, 0);
 
@@ -750,13 +743,17 @@ describe("Tree Layout Algorithms", () => {
       const container = new Node(NODE_TYPES.CON, new St.Bin());
       container.layout = LAYOUT_TYPES.TABBED;
       container.rect = { x: 0, y: 0, width: 1000, height: 20 };
-      container.childNodes = [
-        new Node(NODE_TYPES.CON, new St.Bin()),
-        new Node(NODE_TYPES.CON, new St.Bin()),
-      ];
 
       const child = new Node(NODE_TYPES.CON, new St.Bin());
-      ctx.tree.processTabbed(container, child, { stackedHeight: 35 }, 0);
+      ctx.tree.processTabbed(
+        container,
+        child,
+        {
+          stackedHeight: 35,
+          tiledChildren: [child, new Node(NODE_TYPES.CON, new St.Bin())],
+        },
+        0
+      );
 
       expect(child.rect.height).toBeGreaterThanOrEqual(1);
     });
@@ -770,10 +767,8 @@ describe("Tree Layout Algorithms", () => {
       const child2 = new Node(NODE_TYPES.CON, new St.Bin());
       const child3 = new Node(NODE_TYPES.CON, new St.Bin());
 
-      container.childNodes = [child1, child2, child3];
-
       const stackedHeight = 35;
-      const params = { stackedHeight };
+      const params = { stackedHeight, tiledChildren: [child1, child2, child3] };
 
       ctx.tree.processTabbed(container, child1, params, 0);
       ctx.tree.processTabbed(container, child2, params, 1);
@@ -792,10 +787,9 @@ describe("Tree Layout Algorithms", () => {
       const container = new Node(NODE_TYPES.CON, new St.Bin());
       container.layout = LAYOUT_TYPES.TABBED;
       container.rect = { x: 200, y: 100, width: 800, height: 600 };
-      container.childNodes = [new Node(NODE_TYPES.CON, new St.Bin())];
 
       const child = new Node(NODE_TYPES.CON, new St.Bin());
-      const params = { stackedHeight: 0 };
+      const params = { stackedHeight: 0, tiledChildren: [child] };
 
       ctx.tree.processTabbed(container, child, params, 0);
 
@@ -815,7 +809,6 @@ describe("Tree Layout Algorithms", () => {
         c._createWindowTab = vi.fn();
         c._ensureConTab = vi.fn();
       });
-      container.childNodes = kids;
 
       const stackedHeight = 35;
       const params = {
@@ -855,7 +848,6 @@ describe("Tree Layout Algorithms", () => {
         c._createWindowTab = vi.fn();
         c._ensureConTab = vi.fn();
       });
-      container.childNodes = kids;
 
       const stackedHeight = 35;
       const params = {
@@ -889,7 +881,6 @@ describe("Tree Layout Algorithms", () => {
         c._createWindowTab = vi.fn();
         c._ensureConTab = vi.fn();
       });
-      container.childNodes = kids;
 
       const stackedHeight = 35;
       const params = {
@@ -925,7 +916,6 @@ describe("Tree Layout Algorithms", () => {
         c._createWindowTab = vi.fn();
         c._ensureConTab = vi.fn();
       });
-      container.childNodes = kids;
 
       const stackedHeight = 35;
       const params = {
@@ -959,7 +949,6 @@ describe("Tree Layout Algorithms", () => {
         c._createWindowTab = vi.fn();
         c._ensureConTab = vi.fn();
       });
-      container.childNodes = kids;
 
       const stackedHeight = 35;
       // 900/180 = 5 fit → 6 tabs → 2 rows (perRow 5)
@@ -1001,7 +990,6 @@ describe("Tree Layout Algorithms", () => {
         c._createWindowTab = vi.fn();
         c._ensureConTab = vi.fn();
       });
-      container.childNodes = kids;
 
       const stackedHeight = 35;
       // minW 180 on 200px → fit=1 → 6 rows unbounded; maxRows=2 → perRow=3
@@ -1036,7 +1024,6 @@ describe("Tree Layout Algorithms", () => {
         c._createWindowTab = vi.fn();
         c._ensureConTab = vi.fn();
       });
-      container.childNodes = kids;
 
       const stackedHeight = 35;
       const params = {
@@ -1078,7 +1065,6 @@ describe("Tree Layout Algorithms", () => {
       const child1 = new Node(NODE_TYPES.CON, new St.Bin());
       const child2 = new Node(NODE_TYPES.CON, new St.Bin());
       const child3 = new Node(NODE_TYPES.CON, new St.Bin());
-      container.childNodes = [child1, child2, child3];
 
       const stackHeight = 35;
       const params = {
@@ -1109,14 +1095,13 @@ describe("Tree Layout Algorithms", () => {
       const container = new Node(NODE_TYPES.CON, new St.Bin());
       container.layout = LAYOUT_TYPES.TABBED;
       container.rect = { x: 0, y: 0, width: 1000, height: 800 };
-      container.childNodes = [
-        new Node(NODE_TYPES.CON, new St.Bin()),
-        new Node(NODE_TYPES.CON, new St.Bin()),
-      ];
 
       const child = new Node(NODE_TYPES.CON, new St.Bin());
       const stackedHeight = 35;
-      const params = { stackedHeight, tiledChildren: container.childNodes };
+      const params = {
+        stackedHeight,
+        tiledChildren: [child, new Node(NODE_TYPES.CON, new St.Bin())],
+      };
 
       bottomCtx.tree.processTabbed(container, child, params, 0);
 
@@ -1142,7 +1127,6 @@ describe("Tree Layout Algorithms", () => {
         new Node(NODE_TYPES.CON, new St.Bin()),
         new Node(NODE_TYPES.CON, new St.Bin()),
       ];
-      container.childNodes = children;
 
       const params = { stackedHeight: 35, tiledChildren: children };
 
@@ -1158,13 +1142,17 @@ describe("Tree Layout Algorithms", () => {
       const container = new Node(NODE_TYPES.CON, new St.Bin());
       container.layout = LAYOUT_TYPES.TABBED;
       container.rect = { x: 0, y: 0, width: 1000, height: 20 };
-      container.childNodes = [
-        new Node(NODE_TYPES.CON, new St.Bin()),
-        new Node(NODE_TYPES.CON, new St.Bin()),
-      ];
 
       const child = new Node(NODE_TYPES.CON, new St.Bin());
-      bottomCtx.tree.processTabbed(container, child, { stackedHeight: 35 }, 0);
+      bottomCtx.tree.processTabbed(
+        container,
+        child,
+        {
+          stackedHeight: 35,
+          tiledChildren: [child, new Node(NODE_TYPES.CON, new St.Bin())],
+        },
+        0
+      );
 
       expect(child.rect.height).toBeGreaterThanOrEqual(1);
     });
@@ -1260,7 +1248,7 @@ describe("Tree Layout Algorithms", () => {
   });
 
   /**
-   * processNode end-to-end slot math (apply-contract O8).
+   * PresentChrome.processNode end-to-end slot math (apply-contract O8 / G8h).
    * Workarea → mon.rect (margins + gap) → nested splits/percents → leaf
    * renderRect (gap) and tab/stack chrome insets. No live Shell HUP.
    */
@@ -1298,7 +1286,7 @@ describe("Tree Layout Algorithms", () => {
       const [w0a, w0b] = createHorizontalLayout(ctx.tree, monitors[0], 2);
       const [w1a] = createHorizontalLayout(ctx.tree, monitors[1], 1);
 
-      ctx.tree.processNode(ctx.tree);
+      PresentChrome.processNode(ctx.tree, ctx.tree);
 
       expect(monitors[0].rect).toEqual({ x: 0, y: 0, width: 1920, height: 1040 });
       expect(monitors[1].rect).toEqual({ x: 1920, y: 0, width: 2560, height: 1400 });
@@ -1331,7 +1319,7 @@ describe("Tree Layout Algorithms", () => {
       const br = createWindowNode(ctx.tree, right, { mode: "TILE" });
       // equal V on right
 
-      ctx.tree.processNode(monitor);
+      PresentChrome.processNode(ctx.tree, monitor);
 
       // mon workarea 1920×1080; left 40% → 768, right 60% → 1152
       expect(left.rect).toEqual({ x: 0, y: 0, width: 768, height: 1080 });
@@ -1362,7 +1350,7 @@ describe("Tree Layout Algorithms", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const [left, right] = createHorizontalLayout(ctx.tree, monitor, 2);
 
-      ctx.tree.processNode(monitor);
+      PresentChrome.processNode(ctx.tree, monitor);
 
       // 1920×1080 − margins → x20 y40 w1880 h1030
       expect(monitor.rect).toEqual({ x: 20, y: 40, width: 1880, height: 1030 });
@@ -1379,7 +1367,7 @@ describe("Tree Layout Algorithms", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const [left, right] = createHorizontalLayout(ctx.tree, monitor, 2);
 
-      ctx.tree.processNode(monitor);
+      PresentChrome.processNode(ctx.tree, monitor);
 
       // mon workarea gapped once: 10,10,1900,1060
       expect(monitor.rect).toEqual({ x: 10, y: 10, width: 1900, height: 1060 });
@@ -1408,7 +1396,7 @@ describe("Tree Layout Algorithms", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       createWindowNode(ctx.tree, monitor, { mode: "TILE" });
 
-      ctx.tree.processNode(monitor);
+      PresentChrome.processNode(ctx.tree, monitor);
 
       // margins → {10,20,1900,1040}; then gap → {15,25,1890,1030}
       expect(monitor.rect).toEqual({ x: 15, y: 25, width: 1890, height: 1030 });
@@ -1427,7 +1415,7 @@ describe("Tree Layout Algorithms", () => {
       const a = createWindowNode(ctx.tree, monitor, { mode: "TILE" });
       const b = createWindowNode(ctx.tree, monitor, { mode: "TILE" });
 
-      ctx.tree.processNode(monitor);
+      PresentChrome.processNode(ctx.tree, monitor);
 
       // Both leaves share the full mon rect inset by one tab bar (top)
       const expected = { x: 0, y: 35, width: 1920, height: 1080 - 35 };
@@ -1452,7 +1440,7 @@ describe("Tree Layout Algorithms", () => {
         createWindowNode(ctx.tree, monitor, { mode: "TILE" }),
       ];
 
-      ctx.tree.processNode(monitor);
+      PresentChrome.processNode(ctx.tree, monitor);
 
       const bars = 40 * 3;
       const expected = { x: 0, y: bars, width: 1920, height: 1080 - bars };
@@ -1482,7 +1470,7 @@ describe("Tree Layout Algorithms", () => {
       const t0 = createWindowNode(ctx.tree, tabCon, { mode: "TILE" });
       const t1 = createWindowNode(ctx.tree, tabCon, { mode: "TILE" });
 
-      ctx.tree.processNode(monitor);
+      PresentChrome.processNode(ctx.tree, monitor);
 
       // mon after gap: 8,8,1904,1064; half widths 952
       expect(tabCon.rect.width).toBe(952);

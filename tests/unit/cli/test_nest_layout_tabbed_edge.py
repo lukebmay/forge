@@ -112,6 +112,49 @@ def test_assert_edge_rejects_dragged_still_in_bag():
         )
 
 
+def test_assert_edge_rejects_monitor_hsplit_false_green():
+    """Fail-closed slotSplit leaves MONITOR HSPLIT — must not pass L/R."""
+    forest = {
+        "apiVersion": 2,
+        "monitors": [
+            {
+                "nodeType": "MONITOR",
+                "layout": "HSPLIT",
+                "children": [
+                    {
+                        "nodeType": "CON",
+                        "layout": "TABBED",
+                        "children": [
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": "1",
+                                "mode": "TILE",
+                                "wmClass": "com.mitchellh.ghostty",
+                            },
+                            {
+                                "nodeType": "WINDOW",
+                                "windowId": "2",
+                                "mode": "TILE",
+                                "wmClass": "com.mitchellh.ghostty",
+                            },
+                        ],
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": "3",
+                        "mode": "TILE",
+                        "wmClass": "com.mitchellh.ghostty",
+                    },
+                ],
+            }
+        ],
+    }
+    with pytest.raises(CampaignError, match="MONITOR"):
+        assert_edge_after_drop(
+            forest, zone="RIGHT", bag_ids=["1", "2"], dragged_id="3"
+        )
+
+
 def test_dry_run_plan():
     args = parse_argv(["--dry-run", "--zones", "TOP,BOTTOM"])
     plan = campaign_plan(args)

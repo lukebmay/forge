@@ -1,11 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Logger } from "../../../lib/shared/logger.js";
 import {
   childrenOf,
   ensureLiveForest,
+  forestAdmitMetaWindow,
+  forestAdmitMonitor,
+  forestAdmitWorkspace,
   forestApplyLayoutStructure,
   forestApplySkeletonMon,
+  forestBindWindow,
   forestEnsureSpineNode,
+  forestRemoveSpine,
+  forestRekeySpine,
   forestInsertWindow,
   forestLiftToMonitor,
   forestMergeWindowsIntoGroup,
@@ -22,14 +28,22 @@ import {
   forestWrapForTabStack,
   forestWrapInsert,
   liveKind,
+  liveWindowFromActor,
   liveWindowFromMeta,
+  liveChildrenForPresent,
+  liveStackedOrTabbedConsForPresent,
+  liveTabOpenLeafForPresent,
   paintLiveForest,
+  presentWmSlots,
   projectLiveForest,
   rebuildLiveById,
   resolveForestFocusId,
   seedLiveForest,
   syncForestFromTree,
 } from "../../../lib/extension/tom-live.js";
+import { forestSlotRect } from "../../../lib/extension/reconcile.js";
+import { resetMetrics, metricsSnapshot } from "../../../lib/extension/metrics.js";
+import { attachWorld } from "../../../lib/world/index.js";
 import { projectForestFromTom } from "../../../lib/extension/forest-apply-snapshot.js";
 import { createHostBag } from "../../../lib/host/index.js";
 import { getOpSet, runOpAbstract } from "../../../lib/opsets/index.js";
@@ -157,10 +171,6 @@ function occupiedOneWinTree(meta) {
   return { root, ws, mon, con, win, meta };
 }
 
-function idsOf(parent) {
-  return childrenOf(parent).map((n) => windowIdOf(n) || n.nodeValue?.id || liveKind(n));
-}
-
 function makeWm(root) {
   return {
     tree: root,
@@ -170,6 +180,11 @@ function makeWm(root) {
     liveById: null,
     _liveForestSeeded: false,
   };
+}
+
+function forestHasLive(wm, live) {
+  const id = [...(wm.liveById || [])].find(([, n]) => n === live)?.[0];
+  return !!(id && wm.forest?.nodes?.[id]);
 }
 
 /** Mutate durable seeded forest then paint live chrome (C3.6). */
@@ -188,7 +203,9 @@ function runOpLive(wm, op, dir, focusNode) {
     const draftRoot = draft.nodes[draft.rootId];
     if (draftRoot) wrapMonitorMax1(draft, draftRoot);
     api.hydrateSeq(draft);
-    return set.ops[op](draft, api, dir);
+    const result = set.ops[op](draft, api, dir);
+    if (result?.ok && typeof set.settle === "function") set.settle(draft);
+    return result;
   });
   if (r?.ok) {
     const liveById = rebuildLiveById(wm, forest);
@@ -226,7 +243,7 @@ describe("tom-live seed + mutate live forest", () => {
     expect(wm._liveForestSeeded).toBe(true);
   });
 
-  it("in-axis Mark 2 Move mutates Forest then paint mirrors sibling order", () => {
+  it("in-axis Mark 2 Move mutates Forest sibling order (paint does not mirror GObject)", () => {
     const { root, con, winA, winB, metaA } = twoSplitTree();
     const wm = makeWm(root);
     const { r, forest } = runOpLive(wm, "move", "right", winA);
@@ -235,7 +252,8 @@ describe("tom-live seed + mutate live forest", () => {
     const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
     expect(conId).toBeTruthy();
     expect(forest.nodes[conId].childIds).toEqual([wm.hostBag.idFromMeta(winB.nodeValue), nid]);
-    expect(con.childNodes).toEqual([winB, winA]);
+    expect(liveChildrenForPresent(wm, con)).toEqual([winB, winA]);
+    expect(wm.liveById.get(nid)).toBe(winA);
     expect(wm.forest.nodes[nid]).toBeTruthy();
     expect(wm.forest.focusId).toBe(nid);
   });
@@ -249,7 +267,7 @@ describe("tom-live seed + mutate live forest", () => {
     const { r } = runOpLive(wm, "move", "right", winB);
     expect(r?.ok).toBe(true);
     expect(wm.forest).toBe(forestRef);
-    expect(con.childNodes).toEqual([winA, winB]);
+    expect(liveChildrenForPresent(wm, con)).toEqual([winA, winB]);
   });
 
   it("Join wraps the pair when the two windows were the split", () => {
@@ -257,16 +275,68 @@ describe("tom-live seed + mutate live forest", () => {
     const wm = makeWm(root);
     const { r } = runOpLive(wm, "join", "right", winA);
     expect(r?.ok).toBe(true);
-    expect(mon.childNodes).toHaveLength(1);
-    const wrap = mon.childNodes[0];
+    const monKids = liveChildrenForPresent(wm, mon);
+    expect(monKids).toHaveLength(1);
+    const wrap = monKids[0];
     expect(liveKind(wrap)).toBe("CON");
     expect(wrap.layout).toBe("VSPLIT");
-    expect(wrap.childNodes).toEqual([winA, winB]);
-    expect(con.parentNode).toBeNull();
-    expect(idsOf(wrap)).toEqual(["A", "B"]);
+    expect(liveChildrenForPresent(wm, wrap)).toEqual([winA, winB]);
     const wrapId = [...wm.liveById.entries()].find(([, live]) => live === wrap)?.[0];
     expect(wrapId).toBeTruthy();
     expect(wm.hostBag.has(wrapId)).toBe(true);
+    expect(wm.forest.nodes.mo0ws0.childIds).toEqual([wrapId]);
+    const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
+    expect(conId).toBeUndefined();
+  });
+
+  it("empty Forest CON does not present GObject leftover kids", () => {
+    const { root, con, winA, winB } = twoSplitTree();
+    const wm = makeWm(root);
+    ensureLiveForest(wm, { windowIdOf, createCon });
+    const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
+    expect(conId).toBeTruthy();
+    wm.forest.nodes[conId].childIds = [];
+    con.childNodes = [winA, winB];
+    expect(liveChildrenForPresent(wm, con)).toEqual([]);
+  });
+
+  it("empty Forest MONITOR does not present GObject leftover kids", () => {
+    const { root, mon, winA } = occupiedOneWinTree({ id: "A", title: "A" });
+    const wm = makeWm(root);
+    ensureLiveForest(wm, { windowIdOf, createCon });
+    const monId = [...wm.liveById.entries()].find(([, live]) => live === mon)?.[0];
+    expect(monId).toBeTruthy();
+    wm.forest.nodes[monId].childIds = [];
+    mon.childNodes = [winA];
+    expect(liveChildrenForPresent(wm, mon)).toEqual([]);
+  });
+
+  it("paintLiveForest drops empty CON chrome and does not invent it", () => {
+    const { root, con } = twoSplitTree();
+    const wm = makeWm(root);
+    const forest = ensureLiveForest(wm, { windowIdOf, createCon });
+    const empty = {
+      id: "empty-con",
+      kind: "CON",
+      layout: "HSPLIT",
+      parentId: forest.monitors[0].id,
+      childIds: [],
+      percent: 0.5,
+      userSized: false,
+    };
+    forest.nodes[empty.id] = empty;
+    forest.monitors[0].childIds.push(empty.id);
+    const ghost = createCon();
+    wm.liveById.set(empty.id, ghost);
+    paintLiveForest(forest, wm.liveById, {
+      windowIdOf,
+      createCon,
+      hostBag: wm.hostBag,
+    });
+    expect(wm.liveById.has(empty.id)).toBe(false);
+    expect([...wm.liveById.values()]).not.toContain(ghost);
+    const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
+    expect(conId).toBeTruthy();
   });
 
   it("resolveForestFocusId uses hostBag only (no Meta-as-forest-id)", () => {
@@ -320,6 +390,104 @@ describe("tom-live seed + mutate live forest", () => {
     expect(forestInsertWindow(wm, winC)).toBe(nid);
   });
 
+  it("forestAdmitMetaWindow invents Forest WINDOW + bag without prior createNode attach", () => {
+    const prevDisplay = global.display;
+    global.display = { get_focus_window: () => null };
+    try {
+      const { root, mon, con } = twoSplitTree();
+      const wm = makeWm(root);
+      seedLiveForest(wm, { windowIdOf, createCon });
+      const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
+      expect(conId).toBeTruthy();
+      const metaN = { id: "N1", title: "admit-n", wm_class: "admit" };
+      expect(mon.childNodes.some((c) => c.nodeValue === metaN)).toBe(false);
+      expect(con.childNodes.some((c) => c.nodeValue === metaN)).toBe(false);
+
+      const admitted = forestAdmitMetaWindow(wm, metaN, {
+        parentId: conId,
+        underFloats: false,
+        mode: "FLOAT",
+      });
+      expect(admitted?.id).toBeTruthy();
+      expect(admitted.live).toBeTruthy();
+      expect(admitted.live.nodeValue).toBe(metaN);
+      expect(wm.forest.nodes[admitted.id]?.kind).toBe("WINDOW");
+      expect(wm.forest.nodes[admitted.id]?.parentId).toBe(conId);
+      expect(wm.hostBag.idFromMeta(metaN)).toBe(admitted.id);
+      expect(wm.hostBag.get(admitted.id)?.windowId).toBe("N1");
+      expect(wm.hostBag.get(admitted.id)?.floating).toBe(false);
+      expect(wm.liveById.get(admitted.id)).toBe(admitted.live);
+      expect(liveChildrenForPresent(wm, con)).toContain(admitted.live);
+      expect(admitted.live.appendChild).toBeUndefined();
+      expect(admitted.live.parentNode).toBeUndefined();
+    } finally {
+      global.display = prevDisplay;
+    }
+  });
+
+  it("forestAdmitMetaWindow is idempotent on second admit of same meta", () => {
+    const prevDisplay = global.display;
+    global.display = { get_focus_window: () => null };
+    try {
+      const { root, con } = twoSplitTree();
+      const wm = makeWm(root);
+      seedLiveForest(wm, { windowIdOf, createCon });
+      const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
+      const metaN = { id: "N2", title: "admit-2", wm_class: "admit" };
+      const first = forestAdmitMetaWindow(wm, metaN, { parentId: conId });
+      const second = forestAdmitMetaWindow(wm, metaN, { parentId: conId, underFloats: true });
+      expect(first?.id).toBeTruthy();
+      expect(second?.id).toBe(first.id);
+      expect(wm.hostBag.idFromMeta(metaN)).toBe(first.id);
+      expect(
+        Object.values(wm.forest.nodes).filter((n) => n.kind === "WINDOW" && n.label === "admit-2")
+      ).toHaveLength(1);
+      expect(floatsOf(wm.forest).childIds).toContain(first.id);
+      expect(wm.hostBag.get(first.id)?.floating).toBe(true);
+    } finally {
+      global.display = prevDisplay;
+    }
+  });
+
+  it("forestAdmitMetaWindow beforeId inserts before PH sibling in Forest", () => {
+    const prevDisplay = global.display;
+    global.display = { get_focus_window: () => null };
+    try {
+      const root = makeLive("ROOT", "ROOT");
+      const ws = makeLive("WORKSPACE", "ws0");
+      const mon = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+      root.appendChild(ws);
+      ws.appendChild(mon);
+      const wm = makeWm(root);
+      seedLiveForest(wm, { windowIdOf, createCon });
+      const out = forestApplySkeletonMon(wm, mon, {
+        split: "hsplit",
+        children: [{ slot: "s1", roles: ["term"] }],
+      });
+      expect(out.ok).toBe(true);
+      const phTom = Object.values(wm.forest.nodes).find(
+        (n) => n.kind === "WINDOW" && n.wmClass === "forge-placeholder"
+      );
+      expect(phTom).toBeTruthy();
+      const parentId = phTom.parentId;
+      const metaW = { id: "W-ph", title: "real", wm_class: "term" };
+      const admitted = forestAdmitMetaWindow(wm, metaW, {
+        parentId,
+        beforeId: phTom.id,
+        underFloats: false,
+      });
+      expect(admitted?.id).toBeTruthy();
+      const kids = wm.forest.nodes[parentId].childIds;
+      const iWin = kids.indexOf(admitted.id);
+      const iPh = kids.indexOf(phTom.id);
+      expect(iWin).toBeGreaterThanOrEqual(0);
+      expect(iPh).toBeGreaterThanOrEqual(0);
+      expect(iWin).toBeLessThan(iPh);
+    } finally {
+      global.display = prevDisplay;
+    }
+  });
+
   it("forestInsertWindow underFloats:false keeps FLOAT-mode live on TILES", () => {
     const { root, mon } = twoSplitTree();
     const wm = makeWm(root);
@@ -363,8 +531,9 @@ describe("tom-live seed + mutate live forest", () => {
       windowIdOf,
       createCon,
       hostBag: wm.hostBag,
+      wm,
     });
-    expect(winA.parentNode).toBeNull();
+    expect(isUnderFloats(wm.forest, wm.forest.nodes[nid])).toBe(true);
     expect(winA.mode).toBe("FLOAT");
 
     expect(forestSetWindowFloating(wm, winA, false)).toBe(true);
@@ -388,7 +557,7 @@ describe("tom-live seed + mutate live forest", () => {
     expect(wm.hostBag.get(nid)?.floating).toBe(true);
   });
 
-  it("alignForestFloatsToLiveTiles repairs bag.floating when live is TILES-parented", () => {
+  it("alignForestFloatsToLiveTiles keeps FLOATS when GObject is chrome-parked under mon", () => {
     const infoSpy = vi.spyOn(Logger, "info").mockImplementation(() => {});
     const { root, mon, winA, metaA } = twoSplitTree();
     const wm = makeWm(root);
@@ -398,11 +567,30 @@ describe("tom-live seed + mutate live forest", () => {
     expect(wm.hostBag.get(nid)?.floating).toBe(true);
     mon.appendChild(winA);
     expect(forestSetLayout(wm, mon, "HSPLIT")).toBe(true);
-    expect(isUnderTiles(wm.forest, wm.forest.nodes[nid])).toBe(true);
-    expect(isUnderFloats(wm.forest, wm.forest.nodes[nid])).toBe(false);
-    expect(wm.hostBag.get(nid)?.floating).toBe(false);
+    expect(isUnderFloats(wm.forest, wm.forest.nodes[nid])).toBe(true);
+    expect(isUnderTiles(wm.forest, wm.forest.nodes[nid])).toBe(false);
+    expect(wm.hostBag.get(nid)?.floating).toBe(true);
     const texts = infoSpy.mock.calls.map((c) => String(c[0] ?? ""));
-    expect(texts.some((t) => t.includes("align-floats-to-tiles"))).toBe(true);
+    expect(texts.some((t) => t.includes("align-floats-to-tiles"))).toBe(false);
+    infoSpy.mockRestore();
+  });
+
+  it("alignForestFloatsToLiveTiles heals bag.floating WINDOW stuck under TILES", () => {
+    const infoSpy = vi.spyOn(Logger, "info").mockImplementation(() => {});
+    const { root, mon, winA, metaA } = twoSplitTree();
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const nid = wm.hostBag.idFromMeta(metaA);
+    // Simulate thrash: TILES parent + bag.floating (old align / park residue).
+    wm.hostBag.set(nid, { floating: true });
+    expect(isUnderTiles(wm.forest, wm.forest.nodes[nid])).toBe(true);
+    mon.appendChild(winA);
+    expect(forestSetLayout(wm, mon, "HSPLIT")).toBe(true);
+    expect(isUnderFloats(wm.forest, wm.forest.nodes[nid])).toBe(true);
+    expect(isUnderTiles(wm.forest, wm.forest.nodes[nid])).toBe(false);
+    expect(wm.hostBag.get(nid)?.floating).toBe(true);
+    const texts = infoSpy.mock.calls.map((c) => String(c[0] ?? ""));
+    expect(texts.some((t) => t.includes("heal-float-in-tiles"))).toBe(true);
     infoSpy.mockRestore();
   });
 
@@ -416,6 +604,27 @@ describe("tom-live seed + mutate live forest", () => {
     expect(wm.hostBag.has(nid)).toBe(false);
     expect(wm.liveById.has(nid)).toBe(false);
     expect(wm.hostBag.idFromMeta(metaA)).toBeUndefined();
+  });
+
+  it("forestRemoveWindow accepts Forest nanoid string", () => {
+    const { root, metaA } = twoSplitTree();
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const nid = wm.hostBag.idFromMeta(metaA);
+    expect(forestRemoveWindow(wm, nid)).toBe(true);
+    expect(wm.forest.nodes[nid]).toBeUndefined();
+    expect(wm.hostBag.has(nid)).toBe(false);
+  });
+
+  it("liveWindowFromActor finds detached live via bag meta", () => {
+    const { root, winA, metaA } = twoSplitTree();
+    const actor = { id: "actor-a" };
+    metaA.get_compositor_private = () => actor;
+    winA.parentNode = null;
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    expect(liveWindowFromActor(wm, actor)).toBe(winA);
+    expect(liveWindowFromMeta(wm, metaA)).toBe(winA);
   });
 
   it("syncForestFromTree preserves WINDOW nanoids", () => {
@@ -455,6 +664,62 @@ describe("tom-live seed + mutate live forest", () => {
     expect(wm.liveById.get("mo0ws1")).toBe(mon1);
   });
 
+  it("forestAdmitWorkspace invents Forest WS + bag without createNode", () => {
+    const root = makeLive("ROOT", "ROOT");
+    const wm = makeWm(root);
+    const first = forestAdmitWorkspace(wm, 0, { layout: "HSPLIT", tree: root });
+    expect(first?.id).toBe("ws0");
+    expect(first.created).toBe(true);
+    expect(wm.forest.nodes.ws0?.kind).toBe("WORKSPACE");
+    expect(wm.hostBag.get("ws0")?.actor).toBeTruthy();
+    expect(wm.liveById.get("ws0")).toBe(first.live);
+    expect(first.live.nodeValue).toBe("ws0");
+    expect(wm.forest.nodes.ws0.parentId).toBe(wm.forest.rootId);
+    expect(wm.forest.nodes[wm.forest.rootId].childIds).toContain("ws0");
+
+    const second = forestAdmitWorkspace(wm, 0, { tree: root });
+    expect(second?.id).toBe("ws0");
+    expect(second.live).toBe(first.live);
+    expect(second.created).toBe(false);
+  });
+
+  it("forestAdmitMonitor invents parent WS + MONITOR; idempotent", () => {
+    const root = makeLive("ROOT", "ROOT");
+    const wm = makeWm(root);
+    const first = forestAdmitMonitor(wm, 1, 0, { layout: "VSPLIT", tree: root });
+    expect(first?.id).toBe("mo0ws1");
+    expect(wm.forest.nodes.ws1?.kind).toBe("WORKSPACE");
+    expect(wm.forest.nodes.mo0ws1?.kind).toBe("MONITOR");
+    expect(wm.forest.nodes.mo0ws1.layout).toBe("VSPLIT");
+    expect(wm.forest.monitors.some((m) => m.id === "mo0ws1")).toBe(true);
+    expect(wm.hostBag.get("mo0ws1")?.actor).toBeTruthy();
+    expect(wm.forest.nodes.mo0ws1.parentId).toBe("ws1");
+    expect(wm.forest.nodes.ws1.childIds).toContain("mo0ws1");
+
+    const second = forestAdmitMonitor(wm, 1, 0, { layout: "VSPLIT", tree: root });
+    expect(second?.id).toBe(first.id);
+    expect(second.live).toBe(first.live);
+    expect(second.created).toBe(false);
+  });
+
+  it("forestRemoveSpine + forestRekeySpine keep Forest/bag/liveById coherent", () => {
+    const root = makeLive("ROOT", "ROOT");
+    const wm = makeWm(root);
+    forestAdmitMonitor(wm, 2, 0, { layout: "HSPLIT", tree: root });
+    expect(forestRekeySpine(wm, "ws2", "ws1")).toBe(true);
+    expect(wm.forest.nodes.ws2).toBeUndefined();
+    expect(wm.forest.nodes.ws1?.kind).toBe("WORKSPACE");
+    expect(wm.liveById.get("ws1")?.nodeValue).toBe("ws1");
+    expect(forestRekeySpine(wm, "mo0ws2", "mo0ws1")).toBe(true);
+    expect(wm.forest.nodes.mo0ws1?.kind).toBe("MONITOR");
+    expect(wm.forest.nodes.mo0ws1.parentId).toBe("ws1");
+    expect(forestRemoveSpine(wm, "ws1")).toBe(true);
+    expect(wm.forest.nodes.ws1).toBeUndefined();
+    expect(wm.forest.nodes.mo0ws1).toBeUndefined();
+    expect(wm.liveById.has("ws1")).toBe(false);
+    expect(wm.liveById.has("mo0ws1")).toBe(false);
+  });
+
   it("forestReparent moves a WINDOW after dest then paints", () => {
     const { root, con, winA, winB, metaA, metaB } = twoSplitTree();
     const wm = makeWm(root);
@@ -464,7 +729,7 @@ describe("tom-live seed + mutate live forest", () => {
     const idB = wm.hostBag.idFromMeta(metaB);
     const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
     expect(wm.forest.nodes[conId].childIds).toEqual([idB, idA]);
-    expect(con.childNodes).toEqual([winB, winA]);
+    expect(liveChildrenForPresent(wm, con)).toEqual([winB, winA]);
   });
 
   it("forestSwapWindows swaps sibling WINDOW ids", () => {
@@ -476,7 +741,7 @@ describe("tom-live seed + mutate live forest", () => {
     const idB = wm.hostBag.idFromMeta(metaB);
     const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
     expect(wm.forest.nodes[conId].childIds).toEqual([idB, idA]);
-    expect(con.childNodes).toEqual([winB, winA]);
+    expect(liveChildrenForPresent(wm, con)).toEqual([winB, winA]);
   });
 
   it("forestOrderWindows reorders same-parent siblings", () => {
@@ -485,7 +750,11 @@ describe("tom-live seed + mutate live forest", () => {
     seedLiveForest(wm, { windowIdOf, createCon });
     const out = forestOrderWindows(wm, [winB, winA]);
     expect(out).toMatchObject({ ok: true, reordered: true, scope: "siblings" });
-    expect(con.childNodes).toEqual([winB, winA]);
+    const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
+    const idA = wm.hostBag.idFromMeta(winA.nodeValue);
+    const idB = wm.hostBag.idFromMeta(winB.nodeValue);
+    expect(wm.forest.nodes[conId].childIds).toEqual([idB, idA]);
+    expect(liveChildrenForPresent(wm, con)).toEqual([winB, winA]);
   });
 
   it("forestSizeWindows sets sibling percents then paint", () => {
@@ -548,7 +817,7 @@ describe("tom-live seed + mutate live forest", () => {
     const group = forestMergeWindowsIntoGroup(wm, winA, winB, "TABBED");
     expect(group).toBe(con);
     expect(con.layout).toBe("TABBED");
-    expect(con.childNodes).toEqual(expect.arrayContaining([winA, winB]));
+    expect(liveChildrenForPresent(wm, con)).toEqual(expect.arrayContaining([winA, winB]));
     const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
     expect(wm.forest.nodes[conId].layout).toBe("TABBED");
     expect(wm.forest.nodes[conId].childIds).toEqual(
@@ -568,17 +837,18 @@ describe("tom-live seed + mutate live forest", () => {
     seedLiveForest(wm, { windowIdOf, createCon });
     expect(forestWrapInsert(wm, winA, winB, "TABBED")).toBe(true);
     expect(con.layout).toBe("HSPLIT");
-    const wrap = winA.parentNode;
-    expect(wrap.layout).toBe("TABBED");
-    expect(wrap.childNodes.every((c) => liveKind(c) === "WINDOW")).toBe(true);
-    expect(wrap.childNodes).toEqual(expect.arrayContaining([winA, winB]));
-    expect(tab.parentNode).toBe(con);
-    expect(tab.childNodes).toEqual([winC]);
-    expect(con.childNodes).toEqual(expect.arrayContaining([wrap, tab]));
     const idA = wm.hostBag.idFromMeta(metaA);
     const idB = wm.hostBag.idFromMeta(metaB);
     const wrapId = wm.forest.nodes[idA].parentId;
+    const wrap = wm.liveById.get(wrapId);
+    expect(wrap.layout).toBe("TABBED");
+    expect(liveChildrenForPresent(wm, wrap).every((c) => liveKind(c) === "WINDOW")).toBe(true);
+    expect(liveChildrenForPresent(wm, wrap)).toEqual(expect.arrayContaining([winA, winB]));
     const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
+    const tabId = [...wm.liveById.entries()].find(([, live]) => live === tab)?.[0];
+    expect(wm.forest.nodes[tabId].parentId).toBe(conId);
+    expect(wm.forest.nodes[tabId].childIds).toEqual([wm.hostBag.idFromMeta(winC.nodeValue)]);
+    expect(liveChildrenForPresent(wm, con)).toEqual(expect.arrayContaining([wrap, tab]));
     expect(wm.forest.nodes[wrapId].layout).toBe("TABBED");
     expect(wm.forest.nodes[wrapId].childIds).toEqual(expect.arrayContaining([idA, idB]));
     expect(wm.forest.nodes[conId].layout).toBe("HSPLIT");
@@ -595,13 +865,13 @@ describe("tom-live seed + mutate live forest", () => {
     const wm = makeWm(root);
     seedLiveForest(wm, { windowIdOf, createCon });
     expect(forestWrapInsert(wm, winB, winA, "VSPLIT", { before: true })).toBe(true);
-    const wrap = winB.parentNode;
-    expect(wrap).not.toBe(con);
-    expect(wrap.layout).toBe("VSPLIT");
-    expect(wrap.childNodes).toEqual([winA, winB]);
     const idA = wm.hostBag.idFromMeta(metaA);
     const idB = wm.hostBag.idFromMeta(metaB);
     const wrapId = wm.forest.nodes[idB].parentId;
+    const wrap = wm.liveById.get(wrapId);
+    expect(wrap).not.toBe(con);
+    expect(wrap.layout).toBe("VSPLIT");
+    expect(liveChildrenForPresent(wm, wrap)).toEqual([winA, winB]);
     expect(wm.forest.nodes[wrapId].layout).toBe("VSPLIT");
     expect(wm.forest.nodes[wrapId].childIds).toEqual([idA, idB]);
   });
@@ -611,12 +881,13 @@ describe("tom-live seed + mutate live forest", () => {
     const wm = makeWm(root);
     seedLiveForest(wm, { windowIdOf, createCon });
     expect(forestSlotSplit(wm, winB, "HORIZONTAL", { insertLive: winA, before: true })).toBe(true);
-    const wrap = winB.parentNode;
-    expect(wrap.layout).toBe("HSPLIT");
-    expect(wrap.childNodes).toEqual([winA, winB]);
-    expect(con.childNodes).toContain(wrap);
     const idA = wm.hostBag.idFromMeta(metaA);
     const idB = wm.hostBag.idFromMeta(metaB);
+    const wrapId = wm.forest.nodes[idB].parentId;
+    const wrap = wm.liveById.get(wrapId);
+    expect(wrap.layout).toBe("HSPLIT");
+    expect(liveChildrenForPresent(wm, wrap)).toEqual([winA, winB]);
+    expect(liveChildrenForPresent(wm, con)).toContain(wrap);
     expect(wm.forest.nodes[idA].parentId).toBe(wm.forest.nodes[idB].parentId);
   });
 
@@ -625,18 +896,22 @@ describe("tom-live seed + mutate live forest", () => {
     const wm = makeWm(root);
     seedLiveForest(wm, { windowIdOf, createCon });
     expect(forestSplit(wm, winA, "VERTICAL", { moveToLive: mon, moveBeforeLive: con })).toBe(true);
-    expect(winA.parentNode.layout).toBe("VSPLIT");
-    expect(winA.parentNode.parentNode).toBe(mon);
-    expect(mon.childNodes.indexOf(winA.parentNode)).toBeLessThan(mon.childNodes.indexOf(con));
-    expect(con.childNodes).toContain(winB);
+    const idA = wm.hostBag.idFromMeta(winA.nodeValue);
+    const wrapId = wm.forest.nodes[idA].parentId;
+    const wrap = wm.liveById.get(wrapId);
+    expect(wrap.layout).toBe("VSPLIT");
+    expect(wm.forest.nodes[wrapId].parentId).toBe("mo0ws0");
+    const monKids = liveChildrenForPresent(wm, mon);
+    expect(monKids.indexOf(wrap)).toBeLessThan(monKids.indexOf(con));
+    expect(liveChildrenForPresent(wm, con)).toContain(winB);
   });
 
-  it("forestOrderLiveChildren reorders CON kids then paint mirrors", () => {
+  it("forestOrderLiveChildren reorders CON kids in Forest (no GObject mirror)", () => {
     const { root, con, winA, winB } = twoSplitTree();
     const wm = makeWm(root);
     seedLiveForest(wm, { windowIdOf, createCon });
     expect(forestOrderLiveChildren(wm, con, [winB, winA])).toBe(true);
-    expect(con.childNodes).toEqual([winB, winA]);
+    expect(liveChildrenForPresent(wm, con)).toEqual([winB, winA]);
     const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
     const idA = wm.hostBag.idFromMeta(winA.nodeValue);
     const idB = wm.hostBag.idFromMeta(winB.nodeValue);
@@ -655,9 +930,9 @@ describe("tom-live seed + mutate live forest", () => {
     expect(wm.forest.nodes[parentId].layout).toBe("TABBED");
     expect(wm.forest.nodes[parentId].childIds).toEqual([idA]);
     expect(wm.forest.nodes[parentId].lastTabFocusId).toBe(idA);
-    expect(con.childNodes).toContain(wrap);
-    expect(wrap.childNodes).toContain(winA);
-    expect(mon.childNodes).toContain(con);
+    expect(liveChildrenForPresent(wm, con)).toContain(wrap);
+    expect(liveChildrenForPresent(wm, wrap)).toContain(winA);
+    expect(liveChildrenForPresent(wm, mon)).toContain(con);
   });
 
   it("forestApplyLayoutStructure TABBED joins bag sibling; wrap stays HSPLIT", () => {
@@ -694,8 +969,127 @@ describe("tom-live seed + mutate live forest", () => {
     const wrapTom = wm.forest.nodes[parentY.parentId];
     expect(wrapTom.layout).toBe("HSPLIT");
     expect(wrap.layout).toBe("HSPLIT");
-    expect(winG.parentNode).toBe(wrap);
-    expect(winY.parentNode).toBe(tab);
+    expect(liveChildrenForPresent(wm, wrap)).toContain(winG);
+    expect(liveChildrenForPresent(wm, tab)).toContain(winY);
+  });
+
+  it("R049: TABBED layout joins MONITOR sibling into existing TABBED", () => {
+    const root = makeLive("ROOT", "ROOT");
+    const ws = makeLive("WORKSPACE", "ws0");
+    const mon = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+    const ghost = makeLive("WINDOW", { id: "G", title: "ghostty" });
+    const tab = makeLive("CON", { id: "tab" }, { layout: "TABBED" });
+    const winY = makeLive("WINDOW", { id: "Y", title: "YouTube" });
+    const winM = makeLive("WINDOW", { id: "M", title: "Gmail" });
+    const winV = makeLive("WINDOW", { id: "V", title: "Voice" });
+    root.appendChild(ws);
+    ws.appendChild(mon);
+    mon.appendChild(ghost);
+    mon.appendChild(tab);
+    tab.appendChild(winY);
+    tab.appendChild(winM);
+    mon.appendChild(winV);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const out = forestApplyLayoutStructure(wm, winV, "TABBED", { structure: true });
+    expect(out.ok).toBe(true);
+    const idY = wm.hostBag.idFromMeta(winY.nodeValue);
+    const idM = wm.hostBag.idFromMeta(winM.nodeValue);
+    const idV = wm.hostBag.idFromMeta(winV.nodeValue);
+    const parentV = wm.forest.nodes[wm.forest.nodes[idV].parentId];
+    expect(parentV.kind).toBe("CON");
+    expect(parentV.layout).toBe("TABBED");
+    expect(parentV.childIds).toEqual(expect.arrayContaining([idY, idM, idV]));
+    expect(parentV.parentId).toBe("mo0ws0");
+    expect(wm.forest.nodes[idV].parentId).not.toBe("mo0ws0");
+    expect(liveChildrenForPresent(wm, tab)).toContain(winV);
+  });
+
+  it("R049: forestReparent onto TABBED leaf keeps bag when GObject parent is MONITOR", () => {
+    const root = makeLive("ROOT", "ROOT");
+    const ws = makeLive("WORKSPACE", "ws0");
+    const mon = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+    const tab = makeLive("CON", { id: "tab" }, { layout: "TABBED" });
+    const winY = makeLive("WINDOW", { id: "Y", title: "YouTube" });
+    const winM = makeLive("WINDOW", { id: "M", title: "Gmail" });
+    const winV = makeLive("WINDOW", { id: "V", title: "Voice" });
+    root.appendChild(ws);
+    ws.appendChild(mon);
+    mon.appendChild(tab);
+    tab.appendChild(winY);
+    tab.appendChild(winM);
+    mon.appendChild(winV);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    winY.parentNode = mon;
+    winM.parentNode = mon;
+    winV.parentNode = mon;
+    tab.parentNode = null;
+    expect(forestReparent(wm, winV, winY, { destIsWindow: true })).toBe(true);
+    const idY = wm.hostBag.idFromMeta(winY.nodeValue);
+    const idV = wm.hostBag.idFromMeta(winV.nodeValue);
+    const parentV = wm.forest.nodes[wm.forest.nodes[idV].parentId];
+    expect(parentV.layout).toBe("TABBED");
+    expect(parentV.childIds).toEqual(expect.arrayContaining([idY, idV]));
+    expect(wm.forest.nodes[idV].parentId).toBe(wm.forest.nodes[idY].parentId);
+    expect(wm.forest.nodes[idV].parentId).not.toBe("mo0ws0");
+  });
+
+  it("R049: forestMergeWindowsIntoGroup { group } joins MONITOR sibling", () => {
+    const root = makeLive("ROOT", "ROOT");
+    const ws = makeLive("WORKSPACE", "ws0");
+    const mon = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+    const tab = makeLive("CON", { id: "tab" }, { layout: "TABBED" });
+    const winY = makeLive("WINDOW", { id: "Y", title: "YouTube" });
+    const winM = makeLive("WINDOW", { id: "M", title: "Gmail" });
+    const winV = makeLive("WINDOW", { id: "V", title: "Voice" });
+    root.appendChild(ws);
+    ws.appendChild(mon);
+    mon.appendChild(tab);
+    tab.appendChild(winY);
+    tab.appendChild(winM);
+    mon.appendChild(winV);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const group = forestMergeWindowsIntoGroup(wm, winY, winV, "TABBED", { group: tab });
+    expect(group).toBe(tab);
+    const idV = wm.hostBag.idFromMeta(winV.nodeValue);
+    expect(wm.forest.nodes[idV].parentId).toBe(
+      wm.forest.nodes[wm.hostBag.idFromMeta(winY.nodeValue)].parentId
+    );
+    expect(wm.forest.nodes[idV].parentId).not.toBe("mo0ws0");
+    expect(liveChildrenForPresent(wm, tab)).toContain(winV);
+  });
+
+  it("R050: liveStackedOrTabbedConsForPresent uses Forest when GObject CON walk is empty", () => {
+    const root = makeLive("ROOT", "ROOT");
+    const ws = makeLive("WORKSPACE", "ws0");
+    const mon = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+    const tab0 = makeLive("CON", { id: "t0" }, { layout: "TABBED" });
+    const tab1 = makeLive("CON", { id: "t1" }, { layout: "TABBED" });
+    const winA = makeLive("WINDOW", { id: "A", title: "A" });
+    const winB = makeLive("WINDOW", { id: "B", title: "B" });
+    const winC = makeLive("WINDOW", { id: "C", title: "C" });
+    const winD = makeLive("WINDOW", { id: "D", title: "D" });
+    root.appendChild(ws);
+    ws.appendChild(mon);
+    mon.appendChild(tab0);
+    mon.appendChild(tab1);
+    tab0.appendChild(winA);
+    tab0.appendChild(winB);
+    tab1.appendChild(winC);
+    tab1.appendChild(winD);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    root.getNodeByType = () => [];
+    wm.tree.getNodeByType = () => [];
+    wm.currentWsNode = ws;
+    ws.getNodeByType = () => [];
+    const cons = liveStackedOrTabbedConsForPresent(wm, { root: ws });
+    expect(cons).toHaveLength(2);
+    expect(cons).toEqual(expect.arrayContaining([tab0, tab1]));
+    expect(liveTabOpenLeafForPresent(wm, tab0)).toBe(winA);
+    expect(liveTabOpenLeafForPresent(wm, tab1)).toBe(winC);
   });
 
   it("forestApplyLayoutStructure lifts nested WINDOW then TABBED-wraps", () => {
@@ -717,9 +1111,9 @@ describe("tom-live seed + mutate live forest", () => {
     expect(wm.forest.nodes[innerId].parentId).toBe(
       [...wm.liveById.entries()].find(([, live]) => live === con)?.[0]
     );
-    expect(winB.parentNode).toBe(inner);
-    expect(inner.parentNode).toBe(con);
-    expect(mon.childNodes).toContain(con);
+    expect(liveChildrenForPresent(wm, inner)).toContain(winB);
+    expect(liveChildrenForPresent(wm, con)).toContain(inner);
+    expect(liveChildrenForPresent(wm, mon)).toContain(con);
   });
 
   it("forestLiftToMonitor moves a nested WINDOW onto MONITOR", () => {
@@ -729,7 +1123,7 @@ describe("tom-live seed + mutate live forest", () => {
     expect(forestLiftToMonitor(wm, winA)).toBe(true);
     const idA = wm.hostBag.idFromMeta(metaA);
     expect(wm.forest.nodes[idA].parentId).toBe("mo0ws0");
-    expect(mon.childNodes).toContain(winA);
+    expect(liveChildrenForPresent(wm, mon)).toContain(winA);
   });
 
   it("forestApplySkeletonMon invents PH WINDOW under MONITOR", () => {
@@ -753,19 +1147,106 @@ describe("tom-live seed + mutate live forest", () => {
     expect(phIds.length).toBeGreaterThanOrEqual(1);
     expect(phIds[0].parentId).toBe("mo0ws0");
   });
+
+  it("R048: forestBindWindow consumes Forest PH when GObject parentNode is null", () => {
+    const prevDisplay = global.display;
+    global.display = { get_focus_window: () => null };
+    try {
+      const root = makeLive("ROOT", "ROOT");
+      const ws = makeLive("WORKSPACE", "ws0");
+      const mon = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+      root.appendChild(ws);
+      ws.appendChild(mon);
+      const wm = makeWm(root);
+      seedLiveForest(wm, { windowIdOf, createCon });
+      const skel = forestApplySkeletonMon(wm, mon, {
+        split: "hsplit",
+        children: [{ slot: "s1", roles: ["term"] }],
+      });
+      expect(skel.ok).toBe(true);
+      const phTom = Object.values(wm.forest.nodes).find(
+        (n) => n.kind === "WINDOW" && n.wmClass === "forge-placeholder"
+      );
+      expect(phTom).toBeTruthy();
+      const phLive = wm.liveById.get(phTom.id);
+      expect(phLive).toBeTruthy();
+      expect(phLive.parentNode).toBeFalsy();
+
+      const meta = { id: "bind-real", title: "ghostty", wm_class: "ghostty" };
+      const admitted = forestAdmitMetaWindow(wm, meta, {
+        parentId: "mo0ws0",
+        underFloats: false,
+        mode: "TILE",
+      });
+      expect(admitted?.id).toBeTruthy();
+      expect(forestBindWindow(wm, admitted.live, phLive)).toBe(true);
+      expect(wm.forest.nodes[phTom.id]).toBeUndefined();
+      expect(wm.forest.nodes[admitted.id]?.parentId).toBe("mo0ws0");
+      expect(liveChildrenForPresent(wm, mon)).toContain(admitted.live);
+      expect(liveChildrenForPresent(wm, mon).some((n) => n === phLive)).toBe(false);
+    } finally {
+      global.display = prevDisplay;
+    }
+  });
+
+  it("R048: forestBindWindow moves FLOATS window onto TILES PH", () => {
+    const prevDisplay = global.display;
+    global.display = { get_focus_window: () => null };
+    try {
+      const root = makeLive("ROOT", "ROOT");
+      const ws = makeLive("WORKSPACE", "ws0");
+      const mon = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+      root.appendChild(ws);
+      ws.appendChild(mon);
+      const wm = makeWm(root);
+      seedLiveForest(wm, { windowIdOf, createCon });
+      const skel = forestApplySkeletonMon(wm, mon, {
+        split: "hsplit",
+        children: [{ slot: "s1", roles: ["term"] }],
+      });
+      expect(skel.ok).toBe(true);
+      const phTom = Object.values(wm.forest.nodes).find(
+        (n) => n.kind === "WINDOW" && n.wmClass === "forge-placeholder"
+      );
+      const phLive = wm.liveById.get(phTom.id);
+      expect(phLive.parentNode).toBeFalsy();
+
+      const meta = { id: "bind-float", title: "chrome", wm_class: "google-chrome" };
+      const admitted = forestAdmitMetaWindow(wm, meta, {
+        underFloats: true,
+        mode: "FLOAT",
+      });
+      expect(admitted?.id).toBeTruthy();
+      expect(isUnderFloats(wm.forest, wm.forest.nodes[admitted.id])).toBe(true);
+      expect(forestBindWindow(wm, admitted.live, phLive)).toBe(true);
+      expect(wm.forest.nodes[phTom.id]).toBeUndefined();
+      expect(isUnderFloats(wm.forest, wm.forest.nodes[admitted.id])).toBe(false);
+      expect(wm.hostBag.get(admitted.id)?.floating).not.toBe(true);
+      expect(admitted.live.mode).toBe("TILE");
+      expect(wm.forest.nodes[admitted.id]?.parentId).toBe("mo0ws0");
+      expect(liveChildrenForPresent(wm, mon)).toContain(admitted.live);
+      expect(forestSetLayout(wm, mon, "HSPLIT")).toBe(true);
+      expect(isUnderFloats(wm.forest, wm.forest.nodes[admitted.id])).toBe(false);
+    } finally {
+      global.display = prevDisplay;
+    }
+  });
 });
 
 describe("tom-live paint contract (Forest SoT)", () => {
-  it("paint mirrors TILES sibling order without inventing topology", () => {
+  it("paint keeps liveById presence without mirroring TILES via replaceChildren", () => {
     const { root, con, winA, winB } = twoSplitTree();
     const hooks = { windowIdOf, createCon, focusId: "A", hostBag: createHostBag() };
     const projected = projectLiveForest(root, hooks);
     expect(projected.forest.focusId).toBe("A");
     expect(projected.liveById.get("A")).toBe(winA);
     expect(projected.liveById.get("B")).toBe(winB);
-
+    const spy = vi.spyOn(con, "replaceChildren");
     paintLiveForest(projected.forest, projected.liveById, hooks);
-    expect(con.childNodes).toEqual([winA, winB]);
+    expect(spy).not.toHaveBeenCalled();
+    expect(projected.liveById.get("A")).toBe(winA);
+    expect(projected.liveById.get("B")).toBe(winB);
+    spy.mockRestore();
   });
 
   it("paint writes layout/percent from Forest onto existing live nodes", () => {
@@ -795,16 +1276,23 @@ describe("tom-live paint contract (Forest SoT)", () => {
     seedLiveForest(wm, { windowIdOf, createCon });
     const { r } = runOpLive(wm, "join", "right", winA);
     expect(r?.ok).toBe(true);
-    const wrap = mon.childNodes[0];
+    const wrap = liveChildrenForPresent(wm, mon)[0];
     expect(liveKind(wrap)).toBe("CON");
     const wrapId = [...wm.liveById.entries()].find(([, live]) => live === wrap)?.[0];
     expect(wrapId).toBeTruthy();
-    expect(wm.hostBag.get(wrapId)?.actor).toBe(wrap.nodeValue);
+    const actor = wrap.nodeValue;
+    expect(wm.hostBag.get(wrapId)?.actor).toBe(actor);
     wm.liveById.delete(wrapId);
     const map = rebuildLiveById(wm, wm.forest);
-    paintLiveForest(wm.forest, map, { windowIdOf, createCon, hostBag: wm.hostBag });
-    expect(map.get(wrapId)).toBe(wrap);
-    expect(wrap.childNodes).toEqual([winA, winB]);
+    paintLiveForest(wm.forest, map, {
+      windowIdOf,
+      createCon,
+      hostBag: wm.hostBag,
+      createConFromActor: (a) => makeLive("CON", a, { layout: "VSPLIT" }),
+    });
+    expect(map.get(wrapId)?.nodeValue).toBe(actor);
+    wm.liveById = map;
+    expect(liveChildrenForPresent(wm, map.get(wrapId))).toEqual([winA, winB]);
   });
 
   it("projects FLOAT windows into FLOATS, not TILES", () => {
@@ -836,11 +1324,11 @@ describe("tom-live paint contract (Forest SoT)", () => {
     const { r, forest } = runOpLive(wm, "join", "right", winA);
     expect(r?.ok).toBe(true);
     expect(winF.isFloat()).toBe(true);
-    const wrap = mon.childNodes.find((n) => liveKind(n) === "CON" && n !== winF);
+    const wrap = liveChildrenForPresent(wm, mon).find((n) => liveKind(n) === "CON");
     expect(wrap).toBeTruthy();
-    expect(wrap.childNodes).toEqual([winA, winB]);
-    expect(wrap.childNodes).not.toContain(winF);
-    expect(mon.childNodes).not.toContain(winF);
+    expect(liveChildrenForPresent(wm, wrap)).toEqual([winA, winB]);
+    expect(liveChildrenForPresent(wm, wrap)).not.toContain(winF);
+    expect(liveChildrenForPresent(wm, mon)).not.toContain(winF);
     expect(winF.parentNode).not.toBe(root);
     expect(childrenOf(root)).not.toContain(winF);
     const fid = wm.hostBag.idFromWindowId("F");
@@ -849,7 +1337,6 @@ describe("tom-live paint contract (Forest SoT)", () => {
     expect(isUnderFloats(forest, forest.nodes[fid])).toBe(true);
     expect(wm.hostBag.get(fid)?.floating).toBe(true);
     expect(winF.mode).toBe("FLOAT");
-    expect(winF.parentNode).toBeNull();
   });
 
   it("GRAB_TILE projects into FLOATS", () => {
@@ -904,7 +1391,7 @@ describe("tom-live paint contract (Forest SoT)", () => {
     expect(floatsOf(projected.forest).childIds).not.toContain("A");
   });
 
-  it("paint does not put a leftover HSPLIT CON under TABBED", () => {
+  it("paint does not mirror leftover GObject kids; Forest chrome kids stay WINDOW-only", () => {
     const { root, con, winA, winB } = twoSplitTree();
     const wm = makeWm(root);
     seedLiveForest(wm, { windowIdOf, createCon });
@@ -912,17 +1399,23 @@ describe("tom-live paint contract (Forest SoT)", () => {
     const extra = makeLive("CON", { id: "extra-hsplit" }, { layout: "HSPLIT" });
     con.appendChild(extra);
     expect(con.childNodes).toContain(extra);
+    const spy = vi.spyOn(con, "replaceChildren");
     paintLiveForest(wm.forest, rebuildLiveById(wm, wm.forest), {
       windowIdOf,
       createCon,
       hostBag: wm.hostBag,
     });
-    expect(con.childNodes).toEqual([winA, winB]);
-    expect(con.childNodes.every((c) => liveKind(c) === "WINDOW")).toBe(true);
-    expect(extra.parentNode).not.toBe(con);
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+    expect(liveChildrenForPresent(wm, con)).toEqual([winA, winB]);
+    expect(liveChildrenForPresent(wm, con).every((c) => liveKind(c) === "WINDOW")).toBe(true);
+    const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
+    expect(
+      wm.forest.nodes[conId].childIds.every((id) => wm.forest.nodes[id].kind === "WINDOW")
+    ).toBe(true);
   });
 
-  it("paint lifts leftover WINDOW in a TABBED extra CON onto MONITOR", () => {
+  it("paint does not rehome leftover WINDOW via replaceChildren mirror", () => {
     const { root, mon, con, winA, winB } = twoSplitTree();
     const wm = makeWm(root);
     seedLiveForest(wm, { windowIdOf, createCon });
@@ -931,15 +1424,17 @@ describe("tom-live paint contract (Forest SoT)", () => {
     const winZ = makeLive("WINDOW", { id: "Z", title: "Z" });
     extra.appendChild(winZ);
     con.appendChild(extra);
+    const spy = vi.spyOn(con, "replaceChildren");
     paintLiveForest(wm.forest, rebuildLiveById(wm, wm.forest), {
       windowIdOf,
       createCon,
       hostBag: wm.hostBag,
     });
-    expect(con.childNodes).toEqual([winA, winB]);
-    expect(con.childNodes.every((c) => liveKind(c) === "WINDOW")).toBe(true);
-    expect(winZ.parentNode).toBe(mon);
-    expect(extra.parentNode).not.toBe(con);
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+    expect(liveChildrenForPresent(wm, con)).toEqual([winA, winB]);
+    expect(liveChildrenForPresent(wm, con).every((c) => liveKind(c) === "WINDOW")).toBe(true);
+    expect(liveChildrenForPresent(wm, mon)).not.toContain(winZ);
   });
 
   it("paint keeps a FLOAT-mode TILES window parented", () => {
@@ -960,9 +1455,8 @@ describe("tom-live paint contract (Forest SoT)", () => {
     expect(floatsOf(wm.forest).childIds).not.toContain(idA);
   });
 
-  it("paint does not detach TILES-parented FLOATS window without bag.floating", () => {
-    const warnSpy = vi.spyOn(Logger, "warn").mockImplementation(() => {});
-    const { root, con, winA, metaA } = twoSplitTree();
+  it("paint FLOATS membership is Forest; bag.floating follows paint bridge", () => {
+    const { root, winA, metaA } = twoSplitTree();
     const wm = makeWm(root);
     seedLiveForest(wm, { windowIdOf, createCon });
     const idA = wm.hostBag.idFromMeta(metaA);
@@ -974,12 +1468,12 @@ describe("tom-live paint contract (Forest SoT)", () => {
       windowIdOf,
       createCon,
       hostBag: wm.hostBag,
+      wm,
     });
-    expect(winA.parentNode).toBe(con);
     expect(floatsOf(wm.forest).childIds).toContain(idA);
-    const warnTexts = warnSpy.mock.calls.map((c) => String(c[0] ?? ""));
-    expect(warnTexts.some((t) => t.includes("metric invariant paint-detach-tiles"))).toBe(true);
-    warnSpy.mockRestore();
+    expect(isUnderFloats(wm.forest, wm.forest.nodes[idA])).toBe(true);
+    expect(wm.hostBag.get(idA)?.floating).toBe(true);
+    expect(winA.mode).toBe("FLOAT");
   });
 });
 
@@ -1005,9 +1499,9 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     const idB = wm.hostBag.idFromMeta(metaB);
     expect(monTom.childIds).toEqual(expect.arrayContaining([idA, idB]));
     expect(monTom.childIds).toHaveLength(2);
-    expect(con.parentNode).toBeNull();
-    expect(mon.childNodes).toEqual([winA, winB]);
-    expect(mon.childNodes.every((n) => liveKind(n) === "WINDOW")).toBe(true);
+    expect(forestHasLive(wm, con)).toBe(false);
+    expect(liveChildrenForPresent(wm, mon)).toEqual(expect.arrayContaining([winA, winB]));
+    expect(liveChildrenForPresent(wm, mon).every((n) => liveKind(n) === "WINDOW")).toBe(true);
   });
 
   it("occupied nest-dual-like TABBED|TILE lifts live windows into spec", () => {
@@ -1034,11 +1528,13 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     const idB = wm.hostBag.idFromMeta(metaB);
     expect(kids[0].childIds.every((id) => wm.forest.nodes[id].kind === "WINDOW")).toBe(true);
     expect(kids[0].childIds).toEqual(expect.arrayContaining([idA, idB]));
-    expect(con.parentNode).toBeNull();
-    const tabLive = mon.childNodes.find((n) => liveKind(n) === "CON" && n.layout === "TABBED");
+    expect(forestHasLive(wm, con)).toBe(false);
+    const tabLive = liveChildrenForPresent(wm, mon).find(
+      (n) => liveKind(n) === "CON" && n.layout === "TABBED"
+    );
     expect(tabLive).toBeTruthy();
-    expect(tabLive.childNodes.every((c) => liveKind(c) === "WINDOW")).toBe(true);
-    expect(tabLive.childNodes).toEqual(expect.arrayContaining([winA, winB]));
+    expect(liveChildrenForPresent(wm, tabLive).every((c) => liveKind(c) === "WINDOW")).toBe(true);
+    expect(liveChildrenForPresent(wm, tabLive)).toEqual(expect.arrayContaining([winA, winB]));
   });
 
   it("unmatched float-class live WINDOW does not fill a TILE role; PlaceNext dest is PH", () => {
@@ -1061,8 +1557,8 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     expect(isUnderFloats(wm.forest, wm.forest.nodes[idG])).toBe(true);
     expect(isUnderTiles(wm.forest, wm.forest.nodes[idG])).toBe(false);
     expect(wm.hostBag.get(idG)?.floating).toBe(true);
-    expect(con.parentNode).toBeNull();
-    expect(mon.childNodes).not.toContain(win);
+    expect(forestHasLive(wm, con)).toBe(false);
+    expect(liveChildrenForPresent(wm, mon)).not.toContain(win);
     const json = projectForestFromTom(wm.forest, wm.hostBag, { liveById: wm.liveById });
     const placed = applyPlaceNextOptions(
       { op: "open", role: "inkscape", slot: "mon0.inkscape", open: { app: "inkscape" } },
@@ -1091,7 +1587,7 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     expect(ph).toBeTruthy();
     expect(wm.liveById.get(ph.id)?.layoutRole).toBe("inkscape");
     expect(monTom.childIds).toContain(idN);
-    expect(con.parentNode).toBeNull();
+    expect(forestHasLive(wm, con)).toBe(false);
     const json = projectForestFromTom(wm.forest, wm.hostBag, { liveById: wm.liveById });
     const placed = applyPlaceNextOptions(
       { op: "open", role: "inkscape", slot: "mon0.inkscape", open: { app: "inkscape" } },
@@ -1119,7 +1615,7 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     const kids = monTom.childIds.map((id) => wm.forest.nodes[id]);
     expect(kids.map((k) => k.kind)).toEqual(["WINDOW", "WINDOW"]);
     expect(kids).toHaveLength(2);
-    expect(con.parentNode).toBeNull();
+    expect(forestHasLive(wm, con)).toBe(false);
     const idY = wm.hostBag.idFromMeta(meta);
     expect(monTom.childIds[1]).toBe(idY);
     const ph = kids[0];
@@ -1128,9 +1624,10 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     expect(phLive?.layoutRole).toBe("ghostty");
     expect(wm.hostBag.get(ph.id)?.layoutRole).toBe("ghostty");
     expect(wm.hostBag.get(idY)?.layoutRole).toBe("YouTube");
-    expect(mon.childNodes.every((n) => liveKind(n) === "WINDOW")).toBe(true);
-    expect(mon.childNodes).toHaveLength(2);
-    expect(mon.childNodes[1]).toBe(win);
+    const monKids = liveChildrenForPresent(wm, mon);
+    expect(monKids.every((n) => liveKind(n) === "WINDOW")).toBe(true);
+    expect(monKids).toHaveLength(2);
+    expect(monKids[1]).toBe(win);
 
     const json = projectForestFromTom(wm.forest, wm.hostBag, { liveById: wm.liveById });
     const dest = findLayoutSlotDest(json, { role: "ghostty", slot: "mon1.ghostty" });
@@ -1170,8 +1667,8 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     expect(monTom.childIds[1]).toBe(idE);
     expect(kids[0].wmClass).toBe("forge-placeholder");
     expect(wm.liveById.get(kids[0].id)?.layoutRole).toBe("ghostty-2");
-    expect(con.parentNode).toBeNull();
-    expect(mon.childNodes[1]).toBe(win);
+    expect(forestHasLive(wm, con)).toBe(false);
+    expect(liveChildrenForPresent(wm, mon)[1]).toBe(win);
     const json = projectForestFromTom(wm.forest, wm.hostBag, { liveById: wm.liveById });
     const placed = applyPlaceNextOptions(
       { op: "open", role: "ghostty-2", slot: "mon1.ghostty-2", open: { app: "ghostty" } },
@@ -1189,14 +1686,14 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     expect(forestSetLayout(wm, con, "TABBED")).toBe(true);
     forestSlotSplit(wm, winA, "VERTICAL", { force: true });
     expect(con.layout).toBe("TABBED");
-    expect(con.childNodes.every((c) => liveKind(c) === "WINDOW")).toBe(true);
-    expect(con.childNodes).toEqual(expect.arrayContaining([winA, winB]));
+    expect(liveChildrenForPresent(wm, con).every((c) => liveKind(c) === "WINDOW")).toBe(true);
+    expect(liveChildrenForPresent(wm, con)).toEqual(expect.arrayContaining([winA, winB]));
     const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
     expect(conId).toBeTruthy();
     expect(
       wm.forest.nodes[conId].childIds.every((id) => wm.forest.nodes[id].kind === "WINDOW")
     ).toBe(true);
-    expect(mon.childNodes).not.toContain(winA);
+    expect(liveChildrenForPresent(wm, mon)).not.toContain(winA);
   });
 
   it("forestSlotSplit on a TABBED leaf splits the bag vs siblings", () => {
@@ -1207,19 +1704,20 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     seedLiveForest(wm, { windowIdOf, createCon });
     expect(forestSetLayout(wm, con, "TABBED")).toBe(true);
     expect(forestSlotSplit(wm, winA, "VERTICAL", { insertLive: winC, before: false })).toBe(true);
-    expect(con.childNodes.every((c) => liveKind(c) === "WINDOW")).toBe(true);
-    expect(con.childNodes).toEqual(expect.arrayContaining([winA, winB]));
-    expect(con.parentNode).not.toBe(mon);
-    expect(con.parentNode.layout).toBe("VSPLIT");
-    expect(con.parentNode.childNodes).toEqual(expect.arrayContaining([con, winC]));
-    expect(mon.childNodes).toContain(con.parentNode);
+    expect(liveChildrenForPresent(wm, con).every((c) => liveKind(c) === "WINDOW")).toBe(true);
+    expect(liveChildrenForPresent(wm, con)).toEqual(expect.arrayContaining([winA, winB]));
     const idA = wm.hostBag.idFromMeta(metaA);
     const tabId = wm.forest.nodes[idA].parentId;
+    const wrapId = wm.forest.nodes[tabId].parentId;
+    const wrap = wm.liveById.get(wrapId);
+    expect(wrap).not.toBe(mon);
+    expect(wrap.layout).toBe("VSPLIT");
+    expect(liveChildrenForPresent(wm, wrap)).toEqual(expect.arrayContaining([con, winC]));
+    expect(liveChildrenForPresent(wm, mon)).toContain(wrap);
     expect(wm.forest.nodes[tabId].layout).toBe("TABBED");
     expect(
       wm.forest.nodes[tabId].childIds.every((id) => wm.forest.nodes[id].kind === "WINDOW")
     ).toBe(true);
-    const wrapId = wm.forest.nodes[tabId].parentId;
     expect(wm.forest.nodes[wrapId].layout).toBe("VSPLIT");
     const idB = wm.hostBag.idFromMeta(metaB);
     expect(wm.forest.nodes[tabId].childIds).toEqual(expect.arrayContaining([idA, idB]));
@@ -1231,11 +1729,98 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     seedLiveForest(wm, { windowIdOf, createCon });
     expect(forestSetLayout(wm, con, "TABBED")).toBe(true);
     forestSplit(wm, winA, "HORIZONTAL", { force: true });
-    expect(con.childNodes.every((c) => liveKind(c) === "WINDOW")).toBe(true);
-    expect(con.childNodes).toEqual(expect.arrayContaining([winA, winB]));
+    expect(liveChildrenForPresent(wm, con).every((c) => liveKind(c) === "WINDOW")).toBe(true);
+    expect(liveChildrenForPresent(wm, con)).toEqual(expect.arrayContaining([winA, winB]));
     const conId = [...wm.liveById.entries()].find(([, live]) => live === con)?.[0];
     expect(
       wm.forest.nodes[conId].childIds.every((id) => wm.forest.nodes[id].kind === "WINDOW")
     ).toBe(true);
+  });
+});
+
+describe("presentWmSlots (D096 G2)", () => {
+  beforeEach(() => {
+    resetMetrics();
+    vi.spyOn(Logger, "info").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    resetMetrics();
+  });
+
+  it("moves Meta from Forest paneRect and emits metric present", () => {
+    const { root, winA, metaA, metaB } = twoSplitTree();
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    attachWorld(wm.forest, {
+      geoms: {
+        mo0ws0: { id: "mo0ws0", x: 0, y: 0, width: 1000, height: 500, primary: true },
+      },
+    });
+    const idA = wm.hostBag.idFromMeta(metaA);
+    const idB = wm.hostBag.idFromMeta(metaB);
+    const conId = wm.forest.nodes[idA].parentId;
+    wm.forest.nodes[idA].percent = 0.5;
+    wm.forest.nodes[idB].percent = 0.5;
+    expect(conId).toBeTruthy();
+    wm.calculateGaps = () => 0;
+    const moved = [];
+    wm.move = (meta, dest) => {
+      moved.push({ id: meta.id, dest: { ...dest } });
+    };
+
+    const slotA = forestSlotRect(wm.forest, idA);
+    const slotB = forestSlotRect(wm.forest, idB);
+    expect(slotA?.width).toBeGreaterThan(0);
+    expect(slotB?.width).toBeGreaterThan(0);
+
+    const out = presentWmSlots(wm, "unit-present");
+    expect(out.ok).toBe(true);
+    expect(out.moved).toBe(2);
+    expect(moved).toHaveLength(2);
+    expect(moved.find((m) => m.id === "A")?.dest).toMatchObject({
+      x: slotA.x,
+      y: slotA.y,
+      width: slotA.width,
+      height: slotA.height,
+    });
+    expect(moved.find((m) => m.id === "B")?.dest).toMatchObject({
+      x: slotB.x,
+      y: slotB.y,
+      width: slotB.width,
+      height: slotB.height,
+    });
+    expect(winA.renderRect).toMatchObject({
+      x: slotA.x,
+      y: slotA.y,
+      width: slotA.width,
+      height: slotA.height,
+    });
+    expect(metricsSnapshot().presents).toBe(1);
+    const texts = Logger.info.mock.calls.map((c) => String(c[0] ?? ""));
+    expect(texts).toContain("metric present");
+  });
+
+  it("does not invent GObject membership (no appendChild on TILES parents)", () => {
+    const { root, con, mon, metaA, metaB } = twoSplitTree();
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    attachWorld(wm.forest, {
+      geoms: {
+        mo0ws0: { id: "mo0ws0", x: 0, y: 0, width: 800, height: 600, primary: true },
+      },
+    });
+    wm.calculateGaps = () => 0;
+    wm.move = () => {};
+    const appendSpy = vi.spyOn(con, "appendChild");
+    const monAppendSpy = vi.spyOn(mon, "appendChild");
+
+    presentWmSlots(wm, "no-invent");
+
+    expect(appendSpy).not.toHaveBeenCalled();
+    expect(monAppendSpy).not.toHaveBeenCalled();
+    expect(wm.hostBag.idFromMeta(metaA)).toBeTruthy();
+    expect(wm.hostBag.idFromMeta(metaB)).toBeTruthy();
   });
 });

@@ -4,7 +4,8 @@
 promote to PRIORITY or drop after a real need appears. Do **not** treat this
 file as a work queue.
 
-**Updated:** 2026-08-22 (multi-ws pinned slots design parked)
+**Updated:** 2026-09-01 (D100: pinned-slots / yuiop stay parked behind
+thin adapter core)
 
 ---
 

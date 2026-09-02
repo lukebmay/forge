@@ -29,6 +29,7 @@ from nest_invoke import (  # noqa: E402
     InvokeError,
     _gui_env,
     _launch_one,
+    require_nest_client_env,
     activate_workspace,
     close_window_id,
     get_tree,
@@ -780,16 +781,9 @@ def run_campaign_on_bus(
         if bags and window_mon_index(forest, extra_id) == 1:
             return
         m1_now = tiled_on_mon(forest, 1)
-        if window_mon_index(forest, extra_id) == 1 and len(m1_now) >= 2:
-            print(
-                "nest layout WS campaign: 6-join-tab: mon1 co-located after "
-                "CENTER drop (no TABBED/STACKED yet)",
-                file=sys.stderr,
-            )
-            return
         raise CampaignError(
-            f"6-join-tab: extra {extra_id} not in a mon1 group "
-            f"(bags={len(bags)} mon1={len(m1_now)})"
+            "6-join-tab: CENTER drop did not create TABBED/STACKED "
+            f"(extra={extra_id} bags={len(bags)} mon1={len(m1_now)})"
         )
 
     cts6, log_keys = _cts(
@@ -876,6 +870,7 @@ def cmd_from_env(args: Optional[argparse.Namespace] = None) -> int:
         )
         return 2
     try:
+        require_nest_client_env(os.environ, what="layout WS campaign")
         payload = run_campaign_on_bus(bus, parsed, env=os.environ)
     except CampaignError as e:
         print(f"nest layout WS campaign: {e}", file=sys.stderr)

@@ -6,6 +6,7 @@ import {
   getMonitors,
   createWindowNode,
   createContainerNode,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 
 /**
@@ -88,9 +89,9 @@ describe("Bug forge-6asv: reparenting a tabbed CON does not leave its children w
     destNode.appendChild(tabbedCon);
 
     // The whole CON moved; its windows survived inside it under destNode.
-    expect(destNode.childNodes).toContain(tabbedCon);
-    expect(tabbedCon.childNodes).toContain(w1);
-    expect(tabbedCon.childNodes).toContain(w2);
+    expect(kidsOf(ctx.extWm, destNode)).toContain(tabbedCon);
+    expect(kidsOf(ctx.extWm, tabbedCon)).toContain(w1);
+    expect(kidsOf(ctx.extWm, tabbedCon)).toContain(w2);
 
     // Their original (now-destroyed) tab refs must be replaced with fresh actors.
     expect(w1.tab).toBeTruthy();

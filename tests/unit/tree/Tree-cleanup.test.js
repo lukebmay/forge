@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createTreeFixture,
   getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
 
@@ -19,6 +21,7 @@ import { Bin } from "../../mocks/gnome/St.js";
  */
 describe("Tree Cleanup and Container Management", () => {
   let ctx;
+  const wm = () => ctx.extWm;
 
   beforeEach(() => {
     ctx = createTreeFixture({
@@ -38,7 +41,7 @@ describe("Tree Cleanup and Container Management", () => {
 
       ctx.tree.removeNode(node);
 
-      expect(monitor.childNodes).not.toContain(node);
+      expect(kidsOf(wm(), monitor)).not.toContain(node);
     });
 
     it("should return true on successful removal", () => {
@@ -102,7 +105,7 @@ describe("Tree Cleanup and Container Management", () => {
       // When container has only one child, removeNode removes the container too
       ctx.tree.removeNode(node);
 
-      expect(monitor.childNodes).not.toContain(container);
+      expect(kidsOf(wm(), monitor)).not.toContain(container);
     });
 
     it("should keep container when multiple children remain", () => {
@@ -116,8 +119,8 @@ describe("Tree Cleanup and Container Management", () => {
 
       ctx.tree.removeNode(node1);
 
-      expect(monitor.childNodes).toContain(container);
-      expect(container.childNodes).toHaveLength(1);
+      expect(kidsOf(wm(), monitor)).toContain(container);
+      expect(kidsOf(wm(), container)).toHaveLength(1);
     });
 
     it("should not remove monitor even when it has only one child", () => {
@@ -186,7 +189,7 @@ describe("Tree Cleanup and Container Management", () => {
 
       // Stacked layout should remain (not auto-exit like tabbed)
       expect(container.layout).toBe(LAYOUT_TYPES.STACKED);
-      expect(container.childNodes).toHaveLength(2);
+      expect(kidsOf(wm(), container)).toHaveLength(2);
     });
 
     // Bug #3 (forge): a STACKED CON now owns node.decoration (an St.BoxLayout in
@@ -280,7 +283,7 @@ describe("Tree Cleanup and Container Management", () => {
 
       ctx.tree.removeNode(node1);
 
-      expect(monitor.childNodes).toContain(node2);
+      expect(kidsOf(wm(), monitor)).toContain(node2);
       expect(node2.percent).toBe(1);
       expect(node2.userSized).toBe(true);
     });
@@ -334,7 +337,7 @@ describe("Tree Cleanup and Container Management", () => {
       ding.percent = 1 / 3;
 
       expect(ctx.tree.cleanTree()).toBe(true);
-      expect(monitor.childNodes).toEqual([ghostty]);
+      expect(kidsOf(wm(), monitor)).toEqual([ghostty]);
       expect(ghostty.percent).toBeCloseTo(1, 6);
     });
 
@@ -347,7 +350,7 @@ describe("Tree Cleanup and Container Management", () => {
       );
       extWin.percent = 1;
       expect(ctx.tree.cleanTree()).toBe(false);
-      expect(monitor.childNodes).toContain(extWin);
+      expect(kidsOf(wm(), monitor)).toContain(extWin);
     });
   });
 
@@ -360,13 +363,13 @@ describe("Tree Cleanup and Container Management", () => {
       // Don't add any children
 
       // Manually remove all children to make it empty
-      while (container.childNodes.length > 0) {
-        container.removeChild(container.firstChild);
+      for (const kid of [...kidsOf(wm(), container)]) {
+        container.removeChild(kid);
       }
 
       ctx.tree.cleanTree();
 
-      expect(monitor.childNodes).not.toContain(container);
+      expect(kidsOf(wm(), monitor)).not.toContain(container);
     });
 
     it("should not remove containers with children", () => {
@@ -378,7 +381,7 @@ describe("Tree Cleanup and Container Management", () => {
 
       ctx.tree.cleanTree();
 
-      expect(monitor.childNodes).toContain(container);
+      expect(kidsOf(wm(), monitor)).toContain(container);
     });
   });
 
@@ -419,10 +422,8 @@ describe("Tree Cleanup and Container Management", () => {
       ctx.tree.cleanTree();
 
       // After flattening, the remaining container should have VSPLIT layout
-      if (
-        container1.childNodes.length > 0 &&
-        container1.childNodes[0].nodeType === NODE_TYPES.WINDOW
-      ) {
+      const flattenedKids = kidsOf(wm(), container1);
+      if (flattenedKids.length > 0 && flattenedKids[0].nodeType === NODE_TYPES.WINDOW) {
         expect(container1.layout).toBe(LAYOUT_TYPES.VSPLIT);
       }
     });
@@ -444,9 +445,10 @@ describe("Tree Cleanup and Container Management", () => {
       const allCons = ctx.tree.getNodeByType(NODE_TYPES.CON);
       // Should have fewer nested containers
       expect(
-        allCons.filter(
-          (c) => c.childNodes.length === 1 && c.childNodes[0].nodeType === NODE_TYPES.CON
-        ).length
+        allCons.filter((c) => {
+          const kids = kidsOf(wm(), c);
+          return kids.length === 1 && kids[0].nodeType === NODE_TYPES.CON;
+        }).length
       ).toBe(0);
     });
 
@@ -468,11 +470,11 @@ describe("Tree Cleanup and Container Management", () => {
       const allWindows = ctx.tree.getNodeByType(NODE_TYPES.WINDOW);
       expect(allWindows).toHaveLength(2);
       // Both windows should have the same parent
-      expect(allWindows[0].parentNode).toBe(allWindows[1].parentNode);
+      expect(parentOf(wm(), allWindows[0])).toBe(parentOf(wm(), allWindows[1]));
     });
   });
 
-  describe("cleanTree - mutation return value + render re-apply (forge-tdap)", () => {
+  describe("cleanTree - mutation return value (legacy helper)", () => {
     it("returns true when it flattens a nested single-child container", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
 
@@ -494,31 +496,35 @@ describe("Tree Cleanup and Container Management", () => {
       ctx.tree.cleanTree();
       expect(ctx.tree.cleanTree()).toBe(false);
     });
+  });
 
-    // render()'s control flow: re-layout exactly once iff cleanTree() reports a
-    // mutation. Stub the layout passes so this exercises the gate in isolation
-    // (a hand-built nested tree isn't fully renderable). apply() is non-recursive,
-    // so its call count equals the number of layout passes render() performed.
-    it("render() re-applies layout when cleanTree reports a mutation", () => {
+  describe("render present — no cleanTree (D096 G2)", () => {
+    it("render() does not call cleanTree", () => {
       vi.spyOn(ctx.tree, "processNode").mockImplementation(() => {});
-      const applySpy = vi.spyOn(ctx.tree, "apply").mockImplementation(() => {});
-      vi.spyOn(ctx.tree, "cleanTree").mockReturnValue(true);
+      vi.spyOn(ctx.tree, "apply").mockImplementation(() => {});
+      const cleanSpy = vi.spyOn(ctx.tree, "cleanTree");
 
-      ctx.tree.render();
+      ctx.tree.render("g2-present");
 
-      // Initial pass + one re-layout because cleanTree() reported a mutation
-      // (the flatten-only case previously skipped this, leaving stale renderRects).
-      expect(applySpy).toHaveBeenCalledTimes(2);
+      expect(cleanSpy).not.toHaveBeenCalled();
     });
 
-    it("render() applies layout once when cleanTree reports no mutation", () => {
+    it("render() applies layout once (no cleanTree re-apply loop)", () => {
       vi.spyOn(ctx.tree, "processNode").mockImplementation(() => {});
       const applySpy = vi.spyOn(ctx.tree, "apply").mockImplementation(() => {});
-      vi.spyOn(ctx.tree, "cleanTree").mockReturnValue(false);
 
       ctx.tree.render();
 
       expect(applySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("render({ skipApply: true }) skips Meta apply", () => {
+      vi.spyOn(ctx.tree, "processNode").mockImplementation(() => {});
+      const applySpy = vi.spyOn(ctx.tree, "apply").mockImplementation(() => {});
+
+      ctx.tree.render("chrome-only", { skipApply: true });
+
+      expect(applySpy).not.toHaveBeenCalled();
     });
   });
 
@@ -535,8 +541,8 @@ describe("Tree Cleanup and Container Management", () => {
 
       // Tree should still be valid
       expect(ctx.tree.nodeWorkpaces[0]).toBeDefined();
-      expect(monitor.childNodes).toContain(node2);
-      expect(node2.parentNode).toBe(monitor);
+      expect(kidsOf(wm(), monitor)).toContain(node2);
+      expect(parentOf(wm(), node2)).toBe(monitor);
     });
 
     it("should update parent child count after removal", () => {
@@ -547,10 +553,10 @@ describe("Tree Cleanup and Container Management", () => {
       ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
       ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
 
-      const countBefore = monitor.childNodes.length;
-      ctx.tree.removeNode(monitor.firstChild);
+      const countBefore = kidsOf(wm(), monitor).length;
+      ctx.tree.removeNode(kidsOf(wm(), monitor)[0]);
 
-      expect(monitor.childNodes.length).toBe(countBefore - 1);
+      expect(kidsOf(wm(), monitor).length).toBe(countBefore - 1);
     });
 
     it("should handle removal of all windows gracefully", () => {
@@ -565,7 +571,7 @@ describe("Tree Cleanup and Container Management", () => {
       ctx.tree.removeNode(node2);
 
       // Monitor should be empty but still valid
-      expect(monitor.childNodes).toHaveLength(0);
+      expect(kidsOf(wm(), monitor)).toHaveLength(0);
       expect(ctx.tree.nodeWorkpaces[0]).toBeDefined();
     });
   });

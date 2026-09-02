@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WorkspaceManager } from "../../../lib/extension/workspace.js";
-import { Tree, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { createHostBag } from "../../../lib/host/index.js";
+import { createEnvelope, makeIdFactory } from "../../../lib/tom/index.js";
 import { installGnomeGlobals } from "../../mocks/helpers/index.js";
 
 /**
@@ -31,40 +33,62 @@ describe("WorkspaceManager", () => {
     workspace0 = ctx.workspaces[0];
     workspace1 = ctx.workspaces[1];
 
-    // Create a mock tree with minimal implementation
+    // Duck tree root: Forest admit appends live WS mirrors here (no createNode).
     mockTree = {
-      nodeValue: "root",
-      _nodes: new Map(),
-      createNode: vi.fn((parentValue, type, nodeValue) => {
-        const node = {
-          nodeValue,
-          nodeType: type,
-          layout: null,
-          actorBin: null,
-          childNodes: [],
-          // addMonitor is mocked here, so a workspace node has no MONITOR
-          // children — match the real Node.getNodeByType shape with an empty set.
-          getNodeByType: () => [],
+      nodeValue: "ROOT",
+      nodeType: NODE_TYPES.ROOT,
+      childNodes: [],
+      parentNode: null,
+      settings: {},
+      createNode: vi.fn(),
+      appendChild(child) {
+        if (child?.parentNode?.removeChild) child.parentNode.removeChild(child);
+        this.childNodes.push(child);
+        child.parentNode = this;
+        return child;
+      },
+      removeChild(child) {
+        const i = this.childNodes.indexOf(child);
+        if (i >= 0) this.childNodes.splice(i, 1);
+        if (child) child.parentNode = null;
+        return [child];
+      },
+      findNode(nodeValue) {
+        const walk = (n) => {
+          if (n.nodeValue === nodeValue) return n;
+          for (const c of n.childNodes || []) {
+            const hit = walk(c);
+            if (hit) return hit;
+          }
+          return null;
         };
-        mockTree._nodes.set(nodeValue, node);
-        return node;
-      }),
-      findNode: vi.fn((nodeValue) => mockTree._nodes.get(nodeValue) || null),
-      removeChild: vi.fn((node) => {
-        mockTree._nodes.delete(node.nodeValue);
-      }),
+        return walk(this);
+      },
+      getNodeByType(type) {
+        const out = [];
+        const walk = (n) => {
+          if (n !== this && n.nodeType === type) out.push(n);
+          for (const c of n.childNodes || []) walk(c);
+        };
+        walk(this);
+        return out;
+      },
       addMonitor: vi.fn(),
     };
 
-    // Create a mock WindowManager (wsWindowAdd uses SourceBag when signals fire)
     mockExtWm = {
       determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
       updateMetaWorkspaceMonitor: vi.fn(),
       _wsWindowAddQueue: null,
       _wmSources: { has: () => false, set: () => null, cancel: () => false },
+      forest: createEnvelope(() => makeIdFactory().nid()),
+      hostBag: createHostBag(),
+      liveById: new Map(),
+      _liveForestSeeded: false,
+      _tree: mockTree,
+      tree: mockTree,
     };
 
-    // Create WorkspaceManager instance
     workspaceManager = new WorkspaceManager(mockTree, mockExtWm);
   });
 
@@ -73,24 +97,26 @@ describe("WorkspaceManager", () => {
   });
 
   describe("addWorkspace()", () => {
-    it("should create a workspace node in the tree", () => {
+    it("invents Forest WORKSPACE without createNode", () => {
       const result = workspaceManager.addWorkspace(0);
 
       expect(result).toBe(true);
-      expect(mockTree.createNode).toHaveBeenCalledWith("root", NODE_TYPES.WORKSPACE, "ws0");
+      expect(mockTree.createNode).not.toHaveBeenCalled();
+      expect(mockExtWm.forest.nodes.ws0?.kind).toBe("WORKSPACE");
+      expect(mockExtWm.liveById.get("ws0")?.nodeValue).toBe("ws0");
+      expect(mockExtWm.hostBag.get("ws0")?.actor).toBeTruthy();
     });
 
     it("should set workspace node layout to HSPLIT", () => {
       workspaceManager.addWorkspace(0);
 
-      const wsNode = mockTree._nodes.get("ws0");
-      expect(wsNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(mockExtWm.liveById.get("ws0").layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should create an actorBin for the workspace", () => {
       workspaceManager.addWorkspace(0);
 
-      const wsNode = mockTree._nodes.get("ws0");
+      const wsNode = mockExtWm.liveById.get("ws0");
       expect(wsNode.actorBin).toBeDefined();
       expect(wsNode.actorBin.style_class).toBe("workspace-actor-bg");
     });
@@ -108,10 +134,7 @@ describe("WorkspaceManager", () => {
     });
 
     it("should return false if workspace already exists", () => {
-      // First add
       workspaceManager.addWorkspace(0);
-
-      // Second add should return false
       const result = workspaceManager.addWorkspace(0);
       expect(result).toBe(false);
     });
@@ -126,8 +149,8 @@ describe("WorkspaceManager", () => {
       workspaceManager.addWorkspace(0);
       workspaceManager.addWorkspace(1);
 
-      expect(mockTree._nodes.has("ws0")).toBe(true);
-      expect(mockTree._nodes.has("ws1")).toBe(true);
+      expect(mockExtWm.forest.nodes.ws0?.kind).toBe("WORKSPACE");
+      expect(mockExtWm.forest.nodes.ws1?.kind).toBe("WORKSPACE");
       expect(workspaceManager._workspaceSignals.size).toBe(2);
     });
   });
@@ -138,16 +161,18 @@ describe("WorkspaceManager", () => {
       workspaceManager.addWorkspace(0);
     });
 
-    it("should remove the workspace node from tree", () => {
+    it("should remove the workspace node from tree and Forest", () => {
+      const ws = mockExtWm.liveById.get("ws0");
       const result = workspaceManager.removeWorkspace(0);
 
       expect(result).toBe(true);
-      expect(mockTree.removeChild).toHaveBeenCalled();
+      expect(mockExtWm.forest.nodes.ws0).toBeUndefined();
+      expect(mockExtWm.liveById.has("ws0")).toBe(false);
+      expect(ws.parentNode).toBeNull();
     });
 
     it("should remove actorBin from window_group", () => {
-      // Need to set up contains to return true
-      const wsNode = mockTree._nodes.get("ws0");
+      const wsNode = mockExtWm.liveById.get("ws0");
       global.window_group._children.push(wsNode.actorBin);
       global.window_group.contains.mockReturnValue(true);
 
@@ -264,7 +289,7 @@ describe("WorkspaceManager", () => {
     it("should handle workspace lifecycle: add -> bind -> unbind -> remove", () => {
       // Add workspace
       workspaceManager.addWorkspace(0);
-      expect(mockTree._nodes.has("ws0")).toBe(true);
+      expect(mockExtWm.forest.nodes.ws0?.kind).toBe("WORKSPACE");
       expect(workspaceManager._workspaceSignals.has(0)).toBe(true);
 
       // Remove workspace

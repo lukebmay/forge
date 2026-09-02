@@ -11,6 +11,7 @@ import {
   listRoots,
   TILE_SELECT_API_VERSION,
 } from "../../../lib/extension/tile-select.js";
+import { kidsOf } from "../../mocks/helpers/index.js";
 
 function mockWin({ title = "T", wmClass = "App", id = 1 } = {}) {
   return {
@@ -238,9 +239,30 @@ describe("tile-select matchWindows", () => {
     expect(matchWindows(forest, "id:999").matches).toHaveLength(0);
   });
 
+  it("matches nanoid via hostBag when WINDOW is paint-detached", () => {
+    const meta = mockWin({ title: "Grok", wmClass: "Google-chrome", id: 99 });
+    const live = node({ nodeType: "WINDOW", mode: "FLOAT", nodeValue: meta });
+    const emptyMons = { monitors: [] };
+    const nid = "orphanNanoid1";
+    const bag = {
+      get: (id) => (String(id) === nid ? { meta, floating: true } : undefined),
+      idFromWindowId: () => undefined,
+    };
+    const liveById = new Map([[nid, live]]);
+    const m = matchWindows(emptyMons, `id:${nid}`, {
+      hostBag: bag,
+      liveById,
+      findNode: (v) => (v === meta ? live : null),
+    }).matches;
+    expect(m).toHaveLength(1);
+    expect(m[0].node).toBe(live);
+    expect(m[0].path).toBe("FLOATS");
+  });
+
   it("matches focus and lft via ctx", () => {
     const { forest, w1, mon0 } = sampleForest();
-    const focusNode = mon0.childNodes[0].childNodes[0];
+    const split = kidsOf(null, mon0)[0];
+    const focusNode = kidsOf(null, split)[0];
     const mFocus = matchWindows(forest, "focus", {
       getFocusWindow: () => w1,
       findNode: (v) => (v === w1 ? focusNode : null),
@@ -276,19 +298,20 @@ describe("tile-select matchWindows", () => {
       windowId: 9,
       nodeValue: mockWin({ id: 9, title: "Grok", wmClass: "Google-chrome" }),
     });
-    const ph = node({
-      nodeType: "WINDOW",
-      windowId: "forge-ph-1",
-      childNodes: [nested],
-    });
-    nested.parentNode = ph;
-    const mon = node({
-      nodeType: "MONITOR",
-      id: "mo0ws0",
-      nodeValue: "mo0ws0",
-      childNodes: [ph],
-    });
-    ph.parentNode = mon;
+    const mon = link(
+      node({
+        nodeType: "MONITOR",
+        id: "mo0ws0",
+        nodeValue: "mo0ws0",
+        childNodes: [
+          node({
+            nodeType: "WINDOW",
+            windowId: "forge-ph-1",
+            childNodes: [nested],
+          }),
+        ],
+      })
+    );
     const ids = collectWindows([mon]).map((c) => c.windowId);
     expect(ids).toContain(9);
   });

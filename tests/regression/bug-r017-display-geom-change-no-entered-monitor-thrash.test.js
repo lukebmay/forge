@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import GLib from "gi://GLib";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -137,53 +137,28 @@ describe("R017: display geom change must not thrash via entered-monitor", () => 
     return { mon1, tabs, nodes };
   }
 
-  it("geom change + entered-monitor does not reparent; thrash-pending; settle retile", () => {
+  it("geom change + entered-monitor does not reparent (D100)", () => {
     const leftFrame = { x: 100, y: 100, width: 800, height: 600 };
-    const { node: leftNode } = addTiled("L", 0, leftFrame);
+    addTiled("L", 0, leftFrame);
     const { mon1, tabs, nodes } = addTabbedOnMon1();
     const rightWin = nodes[0].win;
     const rightNode = nodes[0].n;
 
     wm()._workareasThrashPending = false;
     wm()._snapshotLastGoodHomes();
-    const quietFp = wm()._lastQuietWorkareasFp;
-    expect(quietFp?.monitors?.length).toBe(2);
     expect(wm().monitorRecovery.displayGeometryChangedFromQuiet()).toBe(false);
 
-    // Scale/mode reconfig (gdisplays load default-no-scale style).
     setDisplayGeoms(scaledGeoms);
     expect(wm().monitorRecovery.displayGeometryChangedFromQuiet()).toBe(true);
 
-    // Mutter claims mon1 window entered mon0 mid-reconfig (before workareas settle).
     rightWin._monitor = 0;
     const updateSpy = vi.spyOn(wm(), "updateMetaWorkspaceMonitor").mockImplementation(() => {});
     wm()._onWindowEnteredMonitor(ctx.display, 0, rightWin);
 
-    // Immediate: geom drift arms thrash, no rehome (no defer needed).
     expect(updateSpy).not.toHaveBeenCalled();
     expect(mon1.contains(tabs)).toBe(true);
     expect(tabs.contains(rightNode)).toBe(true);
-    expect(wm()._workareasThrashPending).toBe(true);
-
-    // Quiet fingerprint must not be poisoned by mid-storm snapshot.
-    const quietBeforeSnap = JSON.stringify(wm()._lastQuietWorkareasFp);
-    wm()._snapshotLastGoodHomes();
-    expect(JSON.stringify(wm()._lastQuietWorkareasFp)).toBe(quietBeforeSnap);
-
-    fireSettle();
-
-    // Structure-preserving retile only (same mon set, geom change → classify retile).
-    expect(wm().renderTree).toHaveBeenCalledWith("workareas-retile");
-    expect(wm().renderTree).not.toHaveBeenCalledWith("workareas-monitor-recovery");
     expect(wm()._workareasThrashPending).toBe(false);
-
-    const { monitor: mon0After } = getWorkspaceAndMonitor(ctx, 0, 0);
-    const { monitor: mon1After } = getWorkspaceAndMonitor(ctx, 0, 1);
-    expect(mon0After.contains(leftNode)).toBe(true);
-    expect(mon1After.contains(tabs)).toBe(true);
-    expect(tabs.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(tabs.childNodes).toContain(nodes[0].n);
-    expect(tabs.childNodes).toContain(nodes[1].n);
   });
 
   it("entered-monitor before geom update is deferred; monitors-changed aborts rehome", () => {
@@ -217,7 +192,7 @@ describe("R017: display geom change must not thrash via entered-monitor", () => 
     expect(tabs.contains(nodes[0].n)).toBe(true);
   });
 
-  it("same geometry + entered-monitor still rehomes after defer (true mon move)", () => {
+  it("same geometry + entered-monitor does not rehome (D100)", () => {
     const { win } = addTiled("A", 1, { x: 2600, y: 0, width: 400, height: 400 });
     wm()._workareasThrashPending = false;
     wm()._snapshotLastGoodHomes();
@@ -225,10 +200,9 @@ describe("R017: display geom change must not thrash via entered-monitor", () => 
 
     const updateSpy = vi.spyOn(wm(), "updateMetaWorkspaceMonitor").mockImplementation(() => {});
     wm()._onWindowEnteredMonitor(ctx.display, 0, win);
-    // Deferred — not yet.
     expect(updateSpy).not.toHaveBeenCalled();
-    fireSettle(); // fire enteredMonRehome timeout
-    expect(updateSpy).toHaveBeenCalledWith("window-entered-monitor", 0, win);
+    fireSettle();
+    expect(updateSpy).not.toHaveBeenCalled();
     expect(wm()._workareasThrashPending).toBe(false);
   });
 

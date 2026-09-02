@@ -4,6 +4,7 @@ import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { Bin } from "../mocks/gnome/St.js";
 
@@ -63,8 +64,8 @@ describe("forge-at72: _handleLayoutModeToggle disable/enable round-trip", () => 
       expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
       expect(con.prevLayout).toBe(layoutType);
       expect(ctx.tree.getNodeByLayout(layoutType)).toHaveLength(0);
-      expect(con.childNodes).toHaveLength(3);
-      expect(con.childNodes.map((n) => n.nodeValue)).toEqual(windows);
+      expect(kidsOf(wm(), con)).toHaveLength(3);
+      expect(kidsOf(wm(), con).map((n) => n.nodeValue)).toEqual(windows);
     });
 
     it("restores the STACKED container when the mode is re-enabled", () => {
@@ -78,7 +79,7 @@ describe("forge-at72: _handleLayoutModeToggle disable/enable round-trip", () => 
       wm()._handleLayoutModeToggle(settingName, layoutType);
 
       expect(con.layout).toBe(layoutType);
-      expect(con.childNodes).toHaveLength(2);
+      expect(kidsOf(wm(), con)).toHaveLength(2);
     });
   });
 
@@ -96,8 +97,8 @@ describe("forge-at72: _handleLayoutModeToggle disable/enable round-trip", () => 
       expect([LAYOUT_TYPES.HSPLIT, LAYOUT_TYPES.VSPLIT]).toContain(con.layout);
       expect(con.prevLayout).toBe(layoutType);
       expect(ctx.tree.getNodeByLayout(layoutType)).toHaveLength(0);
-      expect(con.childNodes).toHaveLength(3);
-      expect(con.childNodes.map((n) => n.nodeValue)).toEqual(windows);
+      expect(kidsOf(wm(), con)).toHaveLength(3);
+      expect(kidsOf(wm(), con).map((n) => n.nodeValue)).toEqual(windows);
     });
 
     it("restores the TABBED container when the mode is re-enabled", () => {
@@ -111,7 +112,7 @@ describe("forge-at72: _handleLayoutModeToggle disable/enable round-trip", () => 
       wm()._handleLayoutModeToggle(settingName, layoutType);
 
       expect(con.layout).toBe(layoutType);
-      expect(con.childNodes).toHaveLength(2);
+      expect(kidsOf(wm(), con)).toHaveLength(2);
     });
   });
 });

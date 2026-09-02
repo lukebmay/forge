@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 
 /**
@@ -67,8 +69,17 @@ describe("Bug forge-ojew: workspace-removed re-homes windows instead of strandin
 
     // ws0 (surviving) currently has no windows.
     const mo0ws0 = tree.findNode("mo0ws0");
-    expect(mo0ws0.getNodeByType(NODE_TYPES.WINDOW).length).toBe(0);
-    expect(tree.getNodeByType(NODE_TYPES.WINDOW).length).toBe(2);
+    const leaves = (root) => {
+      const out = [];
+      const walk = (n) => {
+        if (n?.isWindow?.()) out.push(n);
+        for (const k of kidsOf(wm, n)) walk(k);
+      };
+      walk(root);
+      return out;
+    };
+    expect(leaves(mo0ws0)).toHaveLength(0);
+    expect(leaves(tree)).toHaveLength(2);
 
     // Simulate Mutter: 'workspace-changed' has already moved both windows' live
     // workspace to the surviving ws0 before 'workspace-removed' fires.
@@ -80,15 +91,9 @@ describe("Bug forge-ojew: workspace-removed re-homes windows instead of strandin
     tree.removeWorkspace(1);
     tree.workspaceManager.renumberWorkspacesAfterRemoval(1);
 
-    // Windows are NOT lost: both still tracked in the tree...
-    const remaining = tree.getNodeByType(NODE_TYPES.WINDOW);
-    expect(remaining).toContain(nodeA);
-    expect(remaining).toContain(nodeB);
-    expect(remaining.length).toBe(2);
-
-    // ...and now live under the surviving workspace's monitor node, not detached.
-    expect(nodeA.parentNode).toBe(mo0ws0);
-    expect(nodeB.parentNode).toBe(mo0ws0);
-    expect(mo0ws0.getNodeByType(NODE_TYPES.WINDOW)).toEqual(expect.arrayContaining([nodeA, nodeB]));
+    // Windows are NOT lost: both still tracked under the surviving monitor.
+    expect(parentOf(wm, nodeA)?.nodeValue).toBe("mo0ws0");
+    expect(parentOf(wm, nodeB)?.nodeValue).toBe("mo0ws0");
+    expect(kidsOf(wm, parentOf(wm, nodeA))).toEqual(expect.arrayContaining([nodeA, nodeB]));
   });
 });

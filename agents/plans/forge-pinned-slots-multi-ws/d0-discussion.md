@@ -33,8 +33,8 @@ desks) would make multi-ws usable for daily drivers.
 **Not this:** Cross-**monitor** TABBED (forbidden by D044). This feature
 is cross-**workspace** sharing of selected slots.
 
-**Priority:** P2 mid — do not jump ahead of P0 logging/preflight/slot-id
-queue. Promote only when operator schedules the meeting.
+**Priority:** P2 mid — **parked behind D100**. Do not jump ahead of the
+thin adapter core. Promote only when operator schedules the meeting.
 
 ## Session note
 

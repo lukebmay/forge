@@ -1,17 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import St from "gi://St";
-import {
-  Tree,
-  Node,
-  NODE_TYPES,
-  LAYOUT_TYPES,
-  ORIENTATION_TYPES,
-} from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { Node } from "../../../lib/extension/tree.js";
+import { NODE_TYPES, LAYOUT_TYPES, ORIENTATION_TYPES } from "../../../lib/extension/tree-types.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createTreeFixture,
   getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
 import { MotionDirection } from "../../mocks/gnome/Meta.js";
@@ -128,9 +125,8 @@ describe("Tree Operations (Host/helper)", () => {
 
       ctx.tree.split(node, ORIENTATION_TYPES.HORIZONTAL, true);
 
-      // Node should now be inside a container
-      expect(node.parentNode.nodeType).toBe(NODE_TYPES.CON);
-      expect(node.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(ctx.extWm, node).nodeType).toBe(NODE_TYPES.CON);
+      expect(parentOf(ctx.extWm, node).layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should create vertical split container", () => {
@@ -140,9 +136,8 @@ describe("Tree Operations (Host/helper)", () => {
 
       ctx.tree.split(node, ORIENTATION_TYPES.VERTICAL, true);
 
-      // Node should now be inside a container
-      expect(node.parentNode.nodeType).toBe(NODE_TYPES.CON);
-      expect(node.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(ctx.extWm, node).nodeType).toBe(NODE_TYPES.CON);
+      expect(parentOf(ctx.extWm, node).layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("should toggle split direction if single child", () => {
@@ -169,9 +164,8 @@ describe("Tree Operations (Host/helper)", () => {
 
       ctx.tree.split(node, ORIENTATION_TYPES.VERTICAL, true);
 
-      // Should create new container instead of toggling
-      expect(node.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(node.parentNode.parentNode).toBe(container);
+      expect(parentOf(ctx.extWm, node).layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(ctx.extWm, parentOf(ctx.extWm, node))).toBe(container);
     });
 
     it("should ignore floating windows", () => {
@@ -180,11 +174,10 @@ describe("Tree Operations (Host/helper)", () => {
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
       node.mode = WINDOW_MODES.FLOAT;
 
-      const parentBefore = node.parentNode;
+      const parentBefore = parentOf(ctx.extWm, node);
       ctx.tree.split(node, ORIENTATION_TYPES.HORIZONTAL);
 
-      // Should not have changed
-      expect(node.parentNode).toBe(parentBefore);
+      expect(parentOf(ctx.extWm, node)).toBe(parentBefore);
     });
 
     it("should preserve node rect and percent", () => {
@@ -196,7 +189,7 @@ describe("Tree Operations (Host/helper)", () => {
 
       ctx.tree.split(node, ORIENTATION_TYPES.HORIZONTAL, true);
 
-      const container = node.parentNode;
+      const container = parentOf(ctx.extWm, node);
       expect(container.rect).toEqual({ x: 100, y: 100, width: 500, height: 500 });
       expect(container.percent).toBe(0.6);
     });
@@ -208,7 +201,7 @@ describe("Tree Operations (Host/helper)", () => {
 
       ctx.tree.split(node, ORIENTATION_TYPES.HORIZONTAL, true);
 
-      expect(ctx.tree.attachNode).toBe(node.parentNode);
+      expect(ctx.tree.attachNode).toBe(parentOf(ctx.extWm, node));
     });
 
     it("wraps the same window node (no value-twin)", () => {
@@ -218,8 +211,8 @@ describe("Tree Operations (Host/helper)", () => {
 
       ctx.tree.split(node, ORIENTATION_TYPES.HORIZONTAL, true);
 
-      const con = node.parentNode;
-      expect(con.childNodes).toEqual([node]);
+      const con = parentOf(ctx.extWm, node);
+      expect(kidsOf(ctx.extWm, con)).toEqual([node]);
       expect(
         ctx.tree.getNodeByType(NODE_TYPES.WINDOW).filter((n) => n.nodeValue === window)
       ).toHaveLength(1);
@@ -243,17 +236,17 @@ describe("Tree Operations (Host/helper)", () => {
       expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
       expect(wrap.percent).toBe(0.5);
       expect(wrap.userSized).toBe(true);
-      expect(wrap.childNodes).toEqual([b]);
-      expect(monitor.childNodes).toEqual([a, wrap]);
+      expect(kidsOf(ctx.extWm, wrap)).toEqual([b]);
+      expect(kidsOf(ctx.extWm, monitor)).toEqual([a, wrap]);
     });
 
     it("no-ops when the parent has a single child", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const only = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
-      const parent = only.parentNode;
+      const parent = parentOf(ctx.extWm, only);
 
       expect(ctx.tree.slotSplitUnit(only, ORIENTATION_TYPES.HORIZONTAL)).toBeNull();
-      expect(only.parentNode).toBe(parent);
+      expect(parentOf(ctx.extWm, only)).toBe(parent);
     });
 
     it("no-ops when the parent is TABBED", () => {
@@ -264,7 +257,7 @@ describe("Tree Operations (Host/helper)", () => {
       ctx.tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
 
       expect(ctx.tree.slotSplitUnit(a, ORIENTATION_TYPES.HORIZONTAL)).toBeNull();
-      expect(a.parentNode).toBe(bag);
+      expect(parentOf(ctx.extWm, a)).toBe(bag);
     });
   });
 
@@ -286,8 +279,8 @@ describe("Tree Operations (Host/helper)", () => {
       expect(group).toBe(con);
       expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
       expect(con.lastTabFocus).toBe(window1);
-      expect(node1.parentNode).toBe(con);
-      expect(node2.parentNode).toBe(con);
+      expect(parentOf(ctx.extWm, node1)).toBe(con);
+      expect(parentOf(ctx.extWm, node2)).toBe(con);
     });
 
     it("should wrap two of three split siblings into a new TABBED CON", () => {
@@ -309,10 +302,10 @@ describe("Tree Operations (Host/helper)", () => {
 
       expect(group).not.toBe(con);
       expect(group.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(node1.parentNode).toBe(group);
-      expect(node2.parentNode).toBe(group);
-      expect(node3.parentNode).toBe(con);
-      expect(group.parentNode).toBe(con);
+      expect(parentOf(ctx.extWm, node1)).toBe(group);
+      expect(parentOf(ctx.extWm, node2)).toBe(group);
+      expect(parentOf(ctx.extWm, node3)).toBe(con);
+      expect(parentOf(ctx.extWm, group)).toBe(con);
     });
 
     it("should merge windows from different parents", () => {
@@ -332,9 +325,9 @@ describe("Tree Operations (Host/helper)", () => {
       const group = ctx.tree.mergeWindowsIntoGroup(node1, node2, LAYOUT_TYPES.TABBED);
 
       expect(group.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(node1.parentNode).toBe(group);
-      expect(node2.parentNode).toBe(group);
-      expect(group.parentNode).toBe(left);
+      expect(parentOf(ctx.extWm, node1)).toBe(group);
+      expect(parentOf(ctx.extWm, node2)).toBe(group);
+      expect(parentOf(ctx.extWm, group)).toBe(left);
     });
 
     it("should convert in place when one sibling is GRAB_TILE (DnD CENTER)", () => {
@@ -353,9 +346,9 @@ describe("Tree Operations (Host/helper)", () => {
 
       expect(group).toBe(con);
       expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(node1.parentNode).toBe(con);
-      expect(node2.parentNode).toBe(con);
-      expect(con.childNodes).toEqual([node1, node2]);
+      expect(parentOf(ctx.extWm, node1)).toBe(con);
+      expect(parentOf(ctx.extWm, node2)).toBe(con);
+      expect(kidsOf(ctx.extWm, con)).toEqual([node1, node2]);
     });
 
     it("should no-op when already co-grouped", () => {
@@ -371,7 +364,7 @@ describe("Tree Operations (Host/helper)", () => {
       const group = ctx.tree.mergeWindowsIntoGroup(node1, node2, LAYOUT_TYPES.TABBED);
 
       expect(group).toBe(con);
-      expect(con.childNodes.length).toBe(2);
+      expect(kidsOf(ctx.extWm, con)).toHaveLength(2);
     });
 
     it("joins partner into existing TABBED at insertIndex (not always append)", () => {
@@ -393,9 +386,9 @@ describe("Tree Operations (Host/helper)", () => {
       });
 
       expect(group).toBe(dest);
-      expect(dest.childNodes).toEqual([d0, dragged, d1, d2]);
-      expect(dragged.parentNode).toBe(dest);
-      expect(src.contains(dragged)).toBe(false);
+      expect(kidsOf(ctx.extWm, dest)).toEqual([d0, dragged, d1, d2]);
+      expect(parentOf(ctx.extWm, dragged)).toBe(dest);
+      expect(kidsOf(ctx.extWm, src)).not.toContain(dragged);
     });
 
     it("insertWindowIntoGroup appends when index omitted", () => {
@@ -409,7 +402,7 @@ describe("Tree Operations (Host/helper)", () => {
       for (const n of [a, b, extra]) n.mode = WINDOW_MODES.TILE;
 
       expect(ctx.tree.insertWindowIntoGroup(dest, extra)).toBe(dest);
-      expect(dest.childNodes).toEqual([a, b, extra]);
+      expect(kidsOf(ctx.extWm, dest)).toEqual([a, b, extra]);
     });
 
     it("insertWindowIntoGroup inserts at 0 and mid", () => {
@@ -424,9 +417,9 @@ describe("Tree Operations (Host/helper)", () => {
       for (const n of [a, b, first, mid]) n.mode = WINDOW_MODES.TILE;
 
       ctx.tree.insertWindowIntoGroup(dest, first, 0);
-      expect(dest.childNodes).toEqual([first, a, b]);
+      expect(kidsOf(ctx.extWm, dest)).toEqual([first, a, b]);
       ctx.tree.insertWindowIntoGroup(dest, mid, 2);
-      expect(dest.childNodes).toEqual([first, a, mid, b]);
+      expect(kidsOf(ctx.extWm, dest)).toEqual([first, a, mid, b]);
     });
 
     it("merge without insertIndex still wraps at focus (append partner)", () => {
@@ -441,7 +434,7 @@ describe("Tree Operations (Host/helper)", () => {
       node2.mode = WINDOW_MODES.TILE;
 
       const group = ctx.tree.mergeWindowsIntoGroup(node1, node2, LAYOUT_TYPES.TABBED);
-      expect(group.childNodes).toEqual([node1, node2]);
+      expect(kidsOf(ctx.extWm, group)).toEqual([node1, node2]);
     });
   });
 
@@ -494,13 +487,13 @@ describe("Tree Operations (Host/helper)", () => {
 
       expect(group).toBeTruthy();
       expect(group.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(group.parentNode === mon0 || mon0.contains(group)).toBe(true);
-      expect(focus.parentNode).toBe(group);
-      expect(partner.parentNode).toBe(group);
+      expect(parentOf(dual.extWm, group)).toBe(mon0);
+      expect(parentOf(dual.extWm, focus)).toBe(group);
+      expect(parentOf(dual.extWm, partner)).toBe(group);
       expect(dual.tree.groupHomeMonitor(group)).toBe(0);
       expect(dual.tree.groupHomeMonitor(partner)).toBe(0);
-      expect(mon1.contains(partner)).toBe(false);
-      expect(mon1.contains(group)).toBe(false);
+      expect(kidsOf(dual.extWm, mon1)).not.toContain(partner);
+      expect(kidsOf(dual.extWm, mon1)).not.toContain(group);
     });
 
     it("join-at-index across mons lands on dest group (D044, no span)", () => {
@@ -522,11 +515,11 @@ describe("Tree Operations (Host/helper)", () => {
       });
 
       expect(group).toBe(dest);
-      expect(dest.childNodes).toEqual([a, src, b]);
+      expect(kidsOf(dual.extWm, dest)).toEqual([a, src, b]);
       expect(dual.tree.groupHomeMonitor(dest)).toBe(1);
       expect(dual.tree.groupHomeMonitor(src)).toBe(1);
-      expect(mon0.contains(src)).toBe(false);
-      expect(mon1.contains(dest)).toBe(true);
+      expect(kidsOf(dual.extWm, mon0)).not.toContain(src);
+      expect(parentOf(dual.extWm, dest)).toBe(mon1);
     });
 
     it("Host/helper tree.move: TABBED last member mon-move peels that leaf only", () => {
@@ -553,10 +546,10 @@ describe("Tree Operations (Host/helper)", () => {
 
       const moved = dual.tree.move(node, MotionDirection.RIGHT);
       expect(moved).toBe(true);
-      expect(mon1.contains(node)).toBe(true);
-      expect(node.parentNode).toBe(mon1);
-      expect(tab.parentNode === mon0 || mon0.contains(tab)).toBe(true);
-      expect(tab.childNodes.length).toBe(2);
+      expect(parentOf(dual.extWm, node)).toBe(mon1);
+      expect(kidsOf(dual.extWm, mon1)).toContain(node);
+      expect(parentOf(dual.extWm, tab)).toBe(mon0);
+      expect(kidsOf(dual.extWm, tab)).toHaveLength(2);
       expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
     });
   });
@@ -573,15 +566,9 @@ describe("Tree Operations (Host/helper)", () => {
       node1.mode = WINDOW_MODES.TILE;
       node2.mode = WINDOW_MODES.TILE;
 
-      // Store original indexes
-      const index1Before = node1.index;
-      const index2Before = node2.index;
-
       ctx.tree.swapPairs(node1, node2, false);
 
-      // Indexes should be swapped
-      expect(node1.index).toBe(index2Before);
-      expect(node2.index).toBe(index1Before);
+      expect(kidsOf(ctx.extWm, monitor)).toEqual([node2, node1]);
     });
 
     it("should swap windows in different parents", () => {
@@ -597,9 +584,8 @@ describe("Tree Operations (Host/helper)", () => {
 
       ctx.tree.swapPairs(node1, node2, false);
 
-      // Parents should be swapped
-      expect(node1.parentNode).toBe(container2);
-      expect(node2.parentNode).toBe(container1);
+      expect(parentOf(ctx.extWm, node1)).toBe(container2);
+      expect(parentOf(ctx.extWm, node2)).toBe(container1);
     });
 
     it("should exchange modes", () => {
@@ -674,11 +660,10 @@ describe("Tree Operations (Host/helper)", () => {
       const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
       const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
 
-      const parentBefore = node1.parentNode;
+      const parentBefore = parentOf(ctx.extWm, node1);
       ctx.tree.swapPairs(node1, node2, false);
 
-      // Should not have swapped
-      expect(node1.parentNode).toBe(parentBefore);
+      expect(parentOf(ctx.extWm, node1)).toBe(parentBefore);
     });
 
     it("should not swap if second node not swappable", () => {
@@ -689,11 +674,10 @@ describe("Tree Operations (Host/helper)", () => {
       const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
       const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
 
-      const parentBefore = node1.parentNode;
+      const parentBefore = parentOf(ctx.extWm, node1);
       ctx.tree.swapPairs(node1, node2, false);
 
-      // Should not have swapped
-      expect(node1.parentNode).toBe(parentBefore);
+      expect(parentOf(ctx.extWm, node1)).toBe(parentBefore);
     });
 
     // forge-u7q6: destructive-op guard branches.
@@ -706,17 +690,17 @@ describe("Tree Operations (Host/helper)", () => {
       node1.mode = WINDOW_MODES.TILE;
       node2.mode = WINDOW_MODES.TILE;
 
-      const childrenBefore = [...monitor.childNodes];
-      const indexBefore = node1.index;
+      const childrenBefore = kidsOf(ctx.extWm, monitor);
+      const indexBefore = childrenBefore.indexOf(node1);
 
       // Same node as both args: the swap writes node1 back into its own slot,
       // so the parent's child array must keep its identity/order (no duplicated
       // or dropped reference) and node1 keeps its index.
       ctx.tree.swapPairs(node1, node1, false);
 
-      expect(node1.index).toBe(indexBefore);
-      expect(node1.parentNode).toBe(monitor);
-      expect(monitor.childNodes).toEqual(childrenBefore);
+      expect(kidsOf(ctx.extWm, monitor).indexOf(node1)).toBe(indexBefore);
+      expect(parentOf(ctx.extWm, node1)).toBe(monitor);
+      expect(kidsOf(ctx.extWm, monitor)).toEqual(childrenBefore);
     });
 
     it("skips the swap when the fromNode window is dead (isWindowAlive guard)", () => {
@@ -736,15 +720,14 @@ describe("Tree Operations (Host/helper)", () => {
         throw new Error("Object Meta.Window has been already deallocated");
       };
 
-      const parent1Before = node1.parentNode;
-      const parent2Before = node2.parentNode;
+      const parent1Before = parentOf(ctx.extWm, node1);
+      const parent2Before = parentOf(ctx.extWm, node2);
       ctx.extWm.move.mockClear();
 
       ctx.tree.swapPairs(node1, node2, false);
 
-      // Guard returns before any structural change or move().
-      expect(node1.parentNode).toBe(parent1Before);
-      expect(node2.parentNode).toBe(parent2Before);
+      expect(parentOf(ctx.extWm, node1)).toBe(parent1Before);
+      expect(parentOf(ctx.extWm, node2)).toBe(parent2Before);
       expect(ctx.extWm.move).not.toHaveBeenCalled();
     });
 
@@ -763,14 +746,14 @@ describe("Tree Operations (Host/helper)", () => {
         throw new Error("Object Meta.Window has been already deallocated");
       };
 
-      const parent1Before = node1.parentNode;
-      const parent2Before = node2.parentNode;
+      const parent1Before = parentOf(ctx.extWm, node1);
+      const parent2Before = parentOf(ctx.extWm, node2);
       ctx.extWm.move.mockClear();
 
       ctx.tree.swapPairs(node1, node2, false);
 
-      expect(node1.parentNode).toBe(parent1Before);
-      expect(node2.parentNode).toBe(parent2Before);
+      expect(parentOf(ctx.extWm, node1)).toBe(parent1Before);
+      expect(parentOf(ctx.extWm, node2)).toBe(parent2Before);
       expect(ctx.extWm.move).not.toHaveBeenCalled();
     });
   });
@@ -917,12 +900,10 @@ describe("Tree Operations (Host/helper)", () => {
       node2.mode = WINDOW_MODES.TILE;
       node3.mode = WINDOW_MODES.TILE;
 
-      // Move node1 to the right (should swap with node2)
       const result = ctx.tree.move(node1, MotionDirection.RIGHT);
 
       expect(result).toBe(true);
-      // node1 should now be at index 1 (swapped with node2)
-      expect(node1.index).toBe(1);
+      expect(kidsOf(ctx.extWm, monitor)).toEqual([node2, node1, node3]);
     });
 
     it("should move window to the left", () => {
@@ -937,11 +918,10 @@ describe("Tree Operations (Host/helper)", () => {
       node1.mode = WINDOW_MODES.TILE;
       node2.mode = WINDOW_MODES.TILE;
 
-      // Move node2 to the left (should swap with node1)
       const result = ctx.tree.move(node2, MotionDirection.LEFT);
 
       expect(result).toBe(true);
-      expect(node2.index).toBe(0);
+      expect(kidsOf(ctx.extWm, monitor)).toEqual([node2, node1]);
     });
 
     it("should swap sibling positions when moving into occupied space", () => {
@@ -956,17 +936,11 @@ describe("Tree Operations (Host/helper)", () => {
       node1.mode = WINDOW_MODES.TILE;
       node2.mode = WINDOW_MODES.TILE;
 
-      // Verify initial indices
-      const initialIndex1 = node1.index;
-      const initialIndex2 = node2.index;
-      expect(initialIndex1).toBe(0);
-      expect(initialIndex2).toBe(1);
+      expect(kidsOf(ctx.extWm, monitor)).toEqual([node1, node2]);
 
       ctx.tree.move(node1, MotionDirection.RIGHT);
 
-      // After move, indices should be swapped
-      expect(node1.index).toBe(initialIndex2);
-      expect(node2.index).toBe(initialIndex1);
+      expect(kidsOf(ctx.extWm, monitor)).toEqual([node2, node1]);
     });
 
     it("should move window into container", () => {
@@ -986,8 +960,7 @@ describe("Tree Operations (Host/helper)", () => {
 
       ctx.tree.move(node1, MotionDirection.RIGHT);
 
-      // node1 should now be inside container
-      expect(node1.parentNode).toBe(container);
+      expect(parentOf(ctx.extWm, node1)).toBe(container);
     });
 
     it("should swap window percentages when swapping adjacent siblings", () => {
@@ -1045,9 +1018,8 @@ describe("Tree Operations (Host/helper)", () => {
 
       ctx.tree.move(node1, MotionDirection.RIGHT);
 
-      // Should be appended to stacked container
-      expect(node1.parentNode).toBe(container);
-      expect(node1).toBe(container.lastChild);
+      expect(parentOf(ctx.extWm, node1)).toBe(container);
+      expect(kidsOf(ctx.extWm, container).at(-1)).toBe(node1);
     });
   });
 
@@ -1186,9 +1158,9 @@ describe("Tree Operations (Host/helper)", () => {
 
       // Navigate right from window in container1 - returns the sibling container
       const next = ctx.tree.next(node1, MotionDirection.RIGHT);
-      // The next() function returns the container or its first window depending on layout
+      const nextParent = parentOf(ctx.extWm, next);
       expect(next).toBeDefined();
-      expect(next.parentNode === monitor || next.parentNode.parentNode === monitor).toBe(true);
+      expect(nextParent === monitor || parentOf(ctx.extWm, nextParent) === monitor).toBe(true);
     });
 
     it("should navigate into container and find appropriate node", () => {
@@ -1231,8 +1203,7 @@ describe("Tree Operations (Host/helper)", () => {
       // Navigate right from window1 should enter the stacked container
       const next = ctx.tree.next(node1, MotionDirection.RIGHT);
       expect(next).toBeDefined();
-      // Either we get the container or a window inside it
-      expect(next === container || next.parentNode === container).toBe(true);
+      expect(next === container || parentOf(ctx.extWm, next) === container).toBe(true);
     });
   });
 
@@ -1275,11 +1246,8 @@ describe("Tree Operations (Host/helper)", () => {
     });
 
     it("swaps with the next sibling and returns the moved node", () => {
-      const before = monitor.childNodes.indexOf(n1);
       expect(ctx.tree.swapSibling(n1, 1)).toBe(n1);
-      // n1 and n2 exchanged positions in the parent.
-      expect(monitor.childNodes.indexOf(n1)).toBe(before + 1);
-      expect(monitor.childNodes[before]).toBe(n2);
+      expect(kidsOf(ctx.extWm, monitor)).toEqual([n2, n1, n3]);
     });
 
     it("returns null from swapSibling when there is no valid target", () => {

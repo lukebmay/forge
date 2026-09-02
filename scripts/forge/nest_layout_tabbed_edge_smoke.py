@@ -25,6 +25,7 @@ from nest_invoke import (  # noqa: E402
     dnd_token_to_selector,
     get_tree,
     parse_invoke_result,
+    require_nest_client_env,
     tiled_windows,
     wait_window_count,
 )
@@ -315,6 +316,15 @@ def assert_edge_after_drop(
         raise CampaignError(
             f"{zone}: expected parent layout {want_lay}, got {lay or '-'}"
         )
+    # False-green guard: pre-drop MONITOR HSPLIT also looks like L/R success
+    # when slotSplit fail-closed. Require a fresh split CON that holds both
+    # the TABBED bag and the dragged leaf (not the bare MONITOR).
+    parent_nt = str(drag_parent.get("nodeType") or drag_parent.get("type") or "").upper()
+    if parent_nt == "MONITOR":
+        raise CampaignError(
+            f"{zone}: dragged still under MONITOR {lay} "
+            "(edge slotSplit likely fail-closed; want split CON)"
+        )
     bag_as_child = False
     dragged_as_child = False
     for child in kids if isinstance(kids, list) else []:
@@ -426,8 +436,12 @@ def cmd_from_env(args: Optional[argparse.Namespace] = None) -> int:
         )
         return 2
     try:
+        require_nest_client_env(os.environ, what="tabbed-edge")
         out = run_campaign_on_bus(bus, parsed, env=os.environ)
     except CampaignError as e:
+        print(f"nest tabbed-edge: {e}", file=sys.stderr)
+        return int(getattr(e, "exit_code", 1) or 1)
+    except InvokeError as e:
         print(f"nest tabbed-edge: {e}", file=sys.stderr)
         return int(getattr(e, "exit_code", 1) or 1)
     if getattr(parsed, "json_out", False):

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
@@ -88,7 +88,7 @@ describe("D030 zoom paint vs slot reassert", () => {
     expect(wm()._tiledWindowAtTreeSlot(nodeWindow, metaWindow)).toBe(true);
   });
 
-  it("D026 restores zoomed Chrome that snapped back to the layout slot", () => {
+  it("idle size-changed does not restore zoomed Chrome (D100)", () => {
     const { nodeWindow, metaWindow, slot } = tabbedChromeWithSiblingSlot();
     nodeWindow.zoomMode = "full";
     // Client snap: frame at slot, zoomMode still full (magenta border path).
@@ -99,7 +99,7 @@ describe("D030 zoom paint vs slot reassert", () => {
 
     const reassertSpy = vi.spyOn(wm(), "reassertNodeToSlot");
     wm().updateMetaPositionSize(metaWindow, "size-changed");
-    expect(reassertSpy).toHaveBeenCalledWith(nodeWindow, { force: true });
+    expect(reassertSpy).not.toHaveBeenCalled();
   });
 
   it("D095 S5: opportunistic zoom reassert path is removed", () => {

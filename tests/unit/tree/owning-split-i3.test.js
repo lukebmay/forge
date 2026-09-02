@@ -5,10 +5,12 @@ import {
   getWorkspaceAndMonitor,
   createMockWindow,
   createContainerNode,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
 import { Rectangle, GrabOp, MotionDirection } from "../../mocks/gnome/Meta.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 
 /**
  * FCC R1 / invariant I3: resize mutates percent of the owning split unit.
@@ -119,8 +121,8 @@ describe("owning-split I3 — resolve + apply", () => {
     expect(hit.target).toBe(top);
     expect(hit.pair).toBe(c);
     expect(hit.parent).toBe(monitor);
-    expect(a.parentNode).toBe(top);
-    expect(b.parentNode).toBe(top);
+    expect(parentOf(wm(), a)).toBe(top);
+    expect(parentOf(wm(), b)).toBe(top);
   });
 
   it("same-axis still hits the inner parent when nested", () => {
@@ -150,11 +152,11 @@ describe("owning-split I3 — resolve + apply", () => {
 
   it("apply leaves child identity unchanged and percents sum to 1", () => {
     const { a, b, monitor } = twoPaneHsplit();
-    const kids = [...monitor.childNodes];
+    const kids = [...kidsOf(wm(), monitor)];
     expect(wm().applyOwningSplit(a, ORIENTATION_TYPES.HORIZONTAL, 192)).toBe(true);
-    expect(monitor.childNodes).toEqual(kids);
-    expect(a.parentNode).toBe(monitor);
-    expect(b.parentNode).toBe(monitor);
+    expect(kidsOf(wm(), monitor)).toEqual(kids);
+    expect(parentOf(wm(), a)).toBe(monitor);
+    expect(parentOf(wm(), b)).toBe(monitor);
     expect(a.percent).toBeGreaterThan(0.5);
     expect(b.percent).toBeLessThan(0.5);
     expect(a.percent + b.percent).toBeCloseTo(1, 5);
@@ -164,9 +166,9 @@ describe("owning-split I3 — resolve + apply", () => {
 
   it("apply on nested off-axis changes the ancestor CON, not the inner pair", () => {
     const { a, b, c, top } = nestedOffAxis();
-    const innerKids = [...top.childNodes];
+    const innerKids = [...kidsOf(wm(), top)];
     expect(wm().applyOwningSplit(a, ORIENTATION_TYPES.VERTICAL, 54)).toBe(true);
-    expect(top.childNodes).toEqual(innerKids);
+    expect(kidsOf(wm(), top)).toEqual(innerKids);
     expect(a.percent).toBeCloseTo(0.5, 5);
     expect(b.percent).toBeCloseTo(0.5, 5);
     expect(top.percent).toBeGreaterThan(0.5);
@@ -227,6 +229,6 @@ describe("owning-split I3 — resolve + apply", () => {
     expect(top.percent).toBeGreaterThan(0.5);
     expect(c.percent).toBeLessThan(0.5);
     expect(top.percent + c.percent).toBeCloseTo(1, 5);
-    expect(a.parentNode).toBe(top);
+    expect(parentOf(wm(), a)).toBe(top);
   });
 });

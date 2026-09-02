@@ -29,7 +29,7 @@ leave handoffs using the old words.
 | Spine kinds, atomics | TOM (`lib/tom/`, design.md § TOM). Envelope META + FLOATS + TILES (D087) |
 | FLOAT windows | **FLOATS** bag — not under a MONITOR (D087) |
 | Size | TILES in-axis: **percent** or **`share`** (D090). `share` splits leftover. Not FLOAT |
-| Settle order, unary collapse, MONITOR max-1 after settle | **RuleSet** (`lib/rulesets/`, [ruleset.md](plans/forge-firm-abstractions/ruleset.md)); Mark 2 lists invariants in `mark2.md` |
+| Settle order, unary collapse, MONITOR max-1 after settle | **RuleSet** (`lib/rulesets/`, [ruleset.md](plans/archived/completed/forge-firm-abstractions/ruleset.md)); Mark 2 lists invariants in `mark2.md` |
 | Move / Join / Launch / words | OpSet doc (`mark2.md`) |
 | Move / Join / Launch implementation | **OpSet** (`lib/opsets/`, D084) |
 | Session prefs (`edgeMove`, tags, peelModel) | **Session bag** (`lib/session/`, D082) — not Forest fields |
@@ -37,7 +37,7 @@ leave handoffs using the old words.
 | MONITOR workarea | **World bag** (`lib/world/`, D083) — not Node.geom |
 | Cross-mon neighbor / edge / sibling-axis | **World** (`lib/world/neighbors.js`, D084) — tie-break string |
 | Slot AABB (`paneRect` / wrap min) | **Presenter** (`lib/presenter/`, D083) — not TOM sizing |
-| Shared chords (action ids) | [keybinds.md](plans/forge-firm-abstractions/keybinds.md) — **kernel** table |
+| Shared chords (action ids) | [keybinds.md](plans/archived/completed/forge-firm-abstractions/keybinds.md) — **kernel** table |
 | Adapter key overlays | **KeybindAdapterGnome** / **KeybindAdapterWebView** (D088). WebView `Super+a`/`q`; Gnome `Super+q` = quit |
 | Platform chords | Those adapters map kernel ∪ overlay (D085) |
 | Native window / paint | **ForgeAdapterGnome** / **ForgeAdapterWebView** (D085) — `present`/`observe`, not TOM |

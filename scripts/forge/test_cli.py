@@ -28,6 +28,7 @@ _NESTED_ACTIONS = frozenset(
         "invoke",
         "dnd-drop",
         "smoke-mark2",
+        "smoke-toggle-tab",
         "smoke-layout-dnd",
         "smoke-layout-ws",
         "smoke-layout-occupied",
@@ -36,6 +37,7 @@ _NESTED_ACTIONS = frozenset(
         "smoke-nest-apps",
         "enable-forge",
         "logs",
+        "log",
         "wait",
         "doctor",
     }
@@ -48,6 +50,9 @@ _NESTED_VALUE_FLAGS = frozenset(
         "--monitors",
         "--scale",
         "--timeout",
+        "--grep",
+        "--last",
+        "--level",
     }
 )
 _NESTED_BOOL_FLAGS = frozenset(
@@ -203,6 +208,10 @@ def print_forge_test_help(*, stream: TextIO | None = None) -> None:
          dim("# interactive loop; stop when done", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} status", **kw), "                  ",
          dim("# want running: False after campaigns", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} log --grep PAT --level info+ --last 40", **kw),
+         "  ", dim("# nest forge.jsonl (plog-query; nest need not be up)", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} logs", **kw), "                    ",
+         dim("# gnome-shell stderr (shell.log)", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} doctor", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} --help", **kw))
     _blank(s)
@@ -250,15 +259,20 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             f"  {NESTED_CLI} dnd-drop leftmost rightmost --zone center\n"
             f"  {NESTED_CLI} dnd-drop leftmost --dest-monitor 1\n"
             f"  {NESTED_CLI} smoke-mark2           # two clients → invoke → forge tree\n"
+            f"  {NESTED_CLI} smoke-toggle-tab      # toggleTabStack TABBED↔STACKED cycle\n"
             f"  {NESTED_CLI} smoke-layout-dnd      # dual-mon ghosttys + occupied dest dnd\n"
             f"  {NESTED_CLI} smoke-layout-ws       # WS1 A → WS2 B → nautilus/join/close → A\n"
             f"  {NESTED_CLI} smoke-layout-occupied # WS2 occupied 2-slot apply (no open-miss)\n"
             f"  {NESTED_CLI} smoke-layout-tabbed-edge # TABBED × edge zones (H5)\n"
             f"  {NESTED_CLI} smoke-geom-epsilon   # D095 S1 sent↔observed ε campaign\n"
             f"  {NESTED_CLI} smoke-nest-apps      # nautilus/chrome/editor map in-nest\n"
+            f"  {NESTED_CLI} log --grep PAT --level info+ --last 40\n"
+            f"  {NESTED_CLI} logs                  # gnome-shell stderr (shell.log)\n"
             f"  {NESTED_CLI} restart               # reload shell/extension\n"
             f"  {NESTED_CLI} stop\n"
             "\n"
+            "nested log queries nest forge.jsonl via plog-query (tapes survive stop).\n"
+            "nested logs dumps gnome-shell stderr (shell.log) — not the hunt tape.\n"
             "Mark 2 invoke uses Shell.Eval → extWm.command (e2e dbus path), not Super+key.\n"
             "dnd-drop is sessionApi._dndDropOp → _commitResolvedDrop (empty-mon:\n"
             "_commitEmptyMonitorDrop). Occupied dest-monitor drop is smoke-layout-dnd\n"
@@ -281,10 +295,10 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
         default="status",
         help=(
             "start | stop | restart | status | env | exec | run | invoke | "
-            "dnd-drop | smoke-mark2 | smoke-layout-dnd | smoke-layout-ws | "
-            "smoke-layout-occupied | smoke-layout-tabbed-edge | "
+            "dnd-drop | smoke-mark2 | smoke-toggle-tab | smoke-layout-dnd | "
+            "smoke-layout-ws | smoke-layout-occupied | smoke-layout-tabbed-edge | "
             "smoke-geom-epsilon | smoke-nest-apps | enable-forge | "
-            "logs | wait | doctor  (default: status)"
+            "log | logs | wait | doctor  (default: status)"
         ),
     )
     nested_p.add_argument(
@@ -359,13 +373,29 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
     nested_p.add_argument(
         "--json",
         action="store_true",
-        help="With status/env: JSON",
+        help="With status/env/log: JSON",
     )
     nested_p.add_argument(
         "-f",
         "--follow",
         action="store_true",
-        help="With logs: tail -F",
+        help="With logs: tail -F gnome-shell stderr (shell.log)",
+    )
+    nested_p.add_argument(
+        "--grep",
+        default=None,
+        help="With log: regex on nest forge.jsonl text",
+    )
+    nested_p.add_argument(
+        "--last",
+        type=int,
+        default=None,
+        help="With log: last N matching records (default 80; 0 = all)",
+    )
+    nested_p.add_argument(
+        "--level",
+        default=None,
+        help="With log: plog-query level spec (default info+)",
     )
     nested_p.add_argument(
         "--forge",

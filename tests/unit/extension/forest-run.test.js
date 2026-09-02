@@ -3,7 +3,7 @@ import { Logger } from "../../../lib/shared/logger.js";
 import { resetMetrics } from "../../../lib/extension/metrics.js";
 import { createHostBag } from "../../../lib/host/index.js";
 import { runLiveForest } from "../../../lib/extension/forest-run.js";
-import { children, serializeForest } from "../../../lib/tom/index.js";
+import { ancestorMonitor, children, serializeForest } from "../../../lib/tom/index.js";
 import { buildGiven } from "../../../lib/tom/shorthand.js";
 
 describe("runLiveForest AGREE gate (D093 R4)", () => {
@@ -49,6 +49,30 @@ describe("runLiveForest AGREE gate (D093 R4)", () => {
     expect(mutate).toHaveBeenCalledTimes(1);
     expect(wm.commitLayout).toHaveBeenCalled();
     expect(serializeForest(f, { children })).toBe("Mon1(A)");
+  });
+
+  it("settles empty CON after mutate so it cannot occupy a slot", () => {
+    const { wm, focus, f, byLabel } = seededFocusWm();
+    const traceSpy = vi.spyOn(Logger, "trace").mockImplementation(() => {});
+    const ok = runLiveForest(
+      wm,
+      focus,
+      (draft, api) => {
+        const win = draft.nodes[byLabel.A.id];
+        const mon = ancestorMonitor(draft, win);
+        const r = api.inventConUnder(draft, mon, "HSPLIT");
+        expect(r?.ok).toBe(true);
+        return { ok: true, op: "test-empty-con" };
+      },
+      "move-window",
+      { getMins: () => ({ width: 1, height: 1 }) }
+    );
+    expect(ok).toBe(true);
+    expect(serializeForest(f, { children })).toBe("Mon1(A)");
+    const cons = Object.values(f.nodes).filter((n) => n.kind === "CON");
+    expect(cons).toHaveLength(0);
+    const texts = traceSpy.mock.calls.map((c) => String(c[0] ?? ""));
+    expect(texts.some((t) => t.includes("settle mark2-post"))).toBe(true);
   });
 });
 

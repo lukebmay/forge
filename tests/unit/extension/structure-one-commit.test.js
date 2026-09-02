@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import GLib from "gi://GLib";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
 import { GrabOp } from "../../mocks/gnome/Meta.js";
@@ -85,7 +87,7 @@ describe("AP2 StructureChanged one-commit", () => {
     expect(commitSpy).toHaveBeenCalledWith("move-window", { force: true });
     expect(renderSpy).toHaveBeenCalledTimes(1);
     expect(renderSpy).toHaveBeenCalledWith("move-window", true);
-    expect(nodeA.parentNode.childNodes).toEqual([nodeB, nodeA]);
+    expect(kidsOf(wm(), parentOf(wm(), nodeA))).toEqual([nodeB, nodeA]);
     expect(renderSpy.mock.calls.some((c) => String(c[0]).includes("move-tabbed-queue"))).toBe(
       false
     );
@@ -105,7 +107,7 @@ describe("AP2 StructureChanged one-commit", () => {
     flushTimeouts();
 
     expect(con.lastTabFocus).toBe(winA);
-    expect(con.childNodes).toEqual([nodeB, nodeA]);
+    expect(kidsOf(wm(), con)).toEqual([nodeB, nodeA]);
     expect(wm().renderTree).toHaveBeenCalledTimes(1);
   });
 
@@ -120,8 +122,8 @@ describe("AP2 StructureChanged one-commit", () => {
 
     expect(renderSpy).toHaveBeenCalledTimes(1);
     expect(renderSpy).toHaveBeenCalledWith("join", true);
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].childNodes).toEqual([nodeA, nodeB]);
+    expect(kidsOf(wm(), monitor)).toHaveLength(1);
+    expect(kidsOf(wm(), kidsOf(wm(), monitor)[0])).toEqual([nodeA, nodeB]);
     void winA;
   });
 
@@ -135,8 +137,8 @@ describe("AP2 StructureChanged one-commit", () => {
 
     expect(renderSpy).toHaveBeenCalledTimes(1);
     expect(renderSpy).toHaveBeenCalledWith("move-window", true);
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].childNodes).toEqual([nodeB, nodeA]);
+    expect(kidsOf(wm(), monitor)).toHaveLength(1);
+    expect(kidsOf(wm(), kidsOf(wm(), monitor)[0])).toEqual([nodeB, nodeA]);
   });
 
   it("drag drop swap path: ≤1 renderTree for full grab-end gesture", () => {

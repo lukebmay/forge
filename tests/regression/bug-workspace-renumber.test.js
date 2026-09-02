@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Tree, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createTreeFixture,
   getWorkspaceAndMonitor,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import * as Utils from "../../lib/extension/utils.js";
 
@@ -27,6 +28,7 @@ import * as Utils from "../../lib/extension/utils.js";
 describe("Bug: Workspace index renumbering on add/remove", () => {
   let ctx;
   let tree;
+  const wm = () => ctx.extWm;
 
   beforeEach(() => {
     ctx = createTreeFixture({
@@ -97,7 +99,7 @@ describe("Bug: Workspace index renumbering on add/remove", () => {
       // Window B should be findable via the renumbered monitor node
       const renumberedMon = tree.findNode("mo0ws1");
       expect(renumberedMon).not.toBeNull();
-      expect(renumberedMon.childNodes).toContain(nodeB);
+      expect(kidsOf(wm(), renumberedMon)).toContain(nodeB);
     });
 
     it("should preserve window layout after renumbering", () => {
@@ -130,9 +132,10 @@ describe("Bug: Workspace index renumbering on add/remove", () => {
 
       // The monitor node should still contain both windows
       const renumberedMon = tree.findNode("mo0ws1");
-      expect(renumberedMon.childNodes.length).toBe(2);
-      expect(renumberedMon.childNodes).toContain(nodeB);
-      expect(renumberedMon.childNodes).toContain(nodeC);
+      const monKids = kidsOf(wm(), renumberedMon);
+      expect(monKids).toHaveLength(2);
+      expect(monKids).toContain(nodeB);
+      expect(monKids).toContain(nodeC);
     });
   });
 

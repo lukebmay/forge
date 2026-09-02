@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { SessionApi } from "../../../lib/extension/session-api.js";
 import {
@@ -8,6 +8,8 @@ import {
   getWorkspaceAndMonitor,
   createContainerNode,
   setPointer,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 
@@ -64,11 +66,11 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm().moveWindowToPointer(nodeWindow2, false);
 
       // After drop, the parent should be HSPLIT
-      expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), nodeWindow2).layout).toBe(LAYOUT_TYPES.HSPLIT);
       // A LEFT drop also dictates order: the dragged window lands BEFORE the
       // target. Without this a RIGHT drop (same HSPLIT result) would pass too,
       // mirroring the dedicated "...after target when dropping right" test.
-      const leftChildren = nodeWindow2.parentNode.childNodes.filter(
+      const leftChildren = kidsOf(wm(), parentOf(wm(), nodeWindow2)).filter(
         (c) => c.nodeType === NODE_TYPES.WINDOW
       );
       expect(leftChildren.indexOf(nodeWindow2)).toBeLessThan(leftChildren.indexOf(nodeWindow1));
@@ -107,18 +109,18 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow3, false);
 
-      const nest = nodeWindow3.parentNode;
+      const nest = parentOf(wm(), nodeWindow3);
       expect(nest.layout).toBe(LAYOUT_TYPES.HSPLIT);
       expect(nest.nodeType).toBe(NODE_TYPES.CON);
-      expect(nest.childNodes).toEqual(expect.arrayContaining([nodeWindow1, nodeWindow3]));
-      expect(nest.childNodes).not.toContain(nodeWindow2);
-      expect(nest.childNodes.indexOf(nodeWindow3)).toBeLessThan(
-        nest.childNodes.indexOf(nodeWindow1)
+      expect(kidsOf(wm(), nest)).toEqual(expect.arrayContaining([nodeWindow1, nodeWindow3]));
+      expect(kidsOf(wm(), nest)).not.toContain(nodeWindow2);
+      expect(kidsOf(wm(), nest).indexOf(nodeWindow3)).toBeLessThan(
+        kidsOf(wm(), nest).indexOf(nodeWindow1)
       );
-      expect(nodeWindow2.parentNode).toBe(monitor);
+      expect(parentOf(wm(), nodeWindow2)).toBe(monitor);
       expect(monitor.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(monitor.childNodes).toContain(nest);
-      expect(monitor.childNodes).toContain(nodeWindow2);
+      expect(kidsOf(wm(), monitor)).toContain(nest);
+      expect(kidsOf(wm(), monitor)).toContain(nodeWindow2);
     });
   });
 
@@ -148,7 +150,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), nodeWindow2).layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should place dragged window after target when dropping right", () => {
@@ -176,8 +178,8 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm().moveWindowToPointer(nodeWindow2, false);
 
       // Window 2 should come after window 1 in the tree
-      const parent = nodeWindow2.parentNode;
-      const children = parent.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      const parent = parentOf(wm(), nodeWindow2);
+      const children = kidsOf(wm(), parent).filter((c) => c.nodeType === NODE_TYPES.WINDOW);
       const idx1 = children.indexOf(nodeWindow1);
       const idx2 = children.indexOf(nodeWindow2);
       expect(idx2).toBeGreaterThan(idx1);
@@ -211,7 +213,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm().moveWindowToPointer(nodeWindow2, false);
 
       // Should create vertical split
-      expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(wm(), nodeWindow2).layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("should create vertical split container when dropping top in horizontal layout", () => {
@@ -248,7 +250,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm().moveWindowToPointer(nodeWindow3, false);
 
       // A new container should have been created with VSPLIT
-      expect(nodeWindow3.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(wm(), nodeWindow3).layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
   });
 
@@ -278,7 +280,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(wm(), nodeWindow2).layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("should place dragged window after target when dropping bottom", () => {
@@ -305,8 +307,8 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      const parent = nodeWindow2.parentNode;
-      const children = parent.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      const parent = parentOf(wm(), nodeWindow2);
+      const children = kidsOf(wm(), parent).filter((c) => c.nodeType === NODE_TYPES.WINDOW);
       const idx1 = children.indexOf(nodeWindow1);
       const idx2 = children.indexOf(nodeWindow2);
       expect(idx2).toBeGreaterThan(idx1);
@@ -345,9 +347,9 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      expect(monitor.childNodes).toEqual([nodeWindow2, nodeWindow1]);
-      expect(nodeWindow1.parentNode).toBe(monitor);
-      expect(nodeWindow2.parentNode).toBe(monitor);
+      expect(kidsOf(wm(), monitor)).toEqual([nodeWindow2, nodeWindow1]);
+      expect(parentOf(wm(), nodeWindow1)).toBe(monitor);
+      expect(parentOf(wm(), nodeWindow2)).toBe(monitor);
     });
   });
 
@@ -388,7 +390,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm().moveWindowToPointer(nodeWindow2, false);
 
       // Windows should now share a STACKED container
-      expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.STACKED);
+      expect(parentOf(wm(), nodeWindow2).layout).toBe(LAYOUT_TYPES.STACKED);
     });
   });
 
@@ -422,7 +424,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parentOf(wm(), nodeWindow2).layout).toBe(LAYOUT_TYPES.TABBED);
     });
   });
 
@@ -461,8 +463,8 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm().nodeWinAtPointer = nodeWindow1;
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(nodeWindow2.parentNode.layout).not.toBe(LAYOUT_TYPES.STACKED);
+      expect(parentOf(wm(), nodeWindow2).layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(parentOf(wm(), nodeWindow2).layout).not.toBe(LAYOUT_TYPES.STACKED);
     });
 
     it("converts existing STACKED parent to TABBED on center join when stack mode is off", () => {
@@ -502,10 +504,10 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm().nodeWinAtPointer = target;
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).toBe(stackCon);
+      expect(parentOf(wm(), dragged)).toBe(stackCon);
       expect(stackCon.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(stackCon.childNodes).toEqual(expect.arrayContaining([target, sibling, dragged]));
-      expect(stackCon.childNodes).toHaveLength(3);
+      expect(kidsOf(wm(), stackCon)).toEqual(expect.arrayContaining([target, sibling, dragged]));
+      expect(kidsOf(wm(), stackCon)).toHaveLength(3);
     });
   });
 
@@ -540,9 +542,9 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       const surface = vi.spyOn(wm().dragDrop, "_commitDropSurface");
       wm().moveWindowToPointer(a, false);
 
-      expect(split.childNodes).toEqual([b, a]);
-      expect(a.parentNode).toBe(split);
-      expect(b.parentNode).toBe(split);
+      expect(kidsOf(wm(), split)).toEqual([b, a]);
+      expect(parentOf(wm(), a)).toBe(split);
+      expect(parentOf(wm(), b)).toBe(split);
       expect(commitMark2).toHaveBeenCalled();
       expect(surface).not.toHaveBeenCalled();
     });
@@ -586,9 +588,9 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       const surface = vi.spyOn(wm().dragDrop, "_commitDropSurface");
       wm().moveWindowToPointer(dragged, false);
 
-      expect(dragged.parentNode).toBe(tabCon);
-      expect(tabCon.childNodes).toContain(target);
-      expect(tabCon.childNodes).toContain(dragged);
+      expect(parentOf(wm(), dragged)).toBe(tabCon);
+      expect(kidsOf(wm(), tabCon)).toContain(target);
+      expect(kidsOf(wm(), tabCon)).toContain(dragged);
       expect(commitMark2).toHaveBeenCalled();
       expect(surface).not.toHaveBeenCalled();
     });
@@ -636,9 +638,9 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       });
 
       expect(out.ok).toBe(true);
-      expect(split.childNodes).toEqual([b, a]);
-      expect(a.parentNode).toBe(split);
-      expect(b.parentNode).toBe(split);
+      expect(kidsOf(wm(), split)).toEqual([b, a]);
+      expect(parentOf(wm(), a)).toBe(split);
+      expect(parentOf(wm(), b)).toBe(split);
       expect(commitMark2).toHaveBeenCalledWith(
         a,
         expect.anything(),
@@ -690,9 +692,9 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       });
 
       expect(out.ok).toBe(true);
-      expect(dragged.parentNode).toBe(tabCon);
-      expect(tabCon.childNodes).toContain(target);
-      expect(tabCon.childNodes).toContain(dragged);
+      expect(parentOf(wm(), dragged)).toBe(tabCon);
+      expect(kidsOf(wm(), tabCon)).toContain(target);
+      expect(kidsOf(wm(), tabCon)).toContain(dragged);
       expect(commitMark2).toHaveBeenCalledWith(
         dragged,
         expect.anything(),
@@ -738,7 +740,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       });
 
       expect(out.ok).toBe(true);
-      expect(split.childNodes).toEqual([b, a]);
+      expect(kidsOf(wm(), split)).toEqual([b, a]);
       expect(commitMark2).toHaveBeenCalledWith(
         a,
         expect.anything(),
@@ -785,9 +787,9 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       expect(out.ok).toBe(true);
       expect(split.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(split.childNodes).toEqual(expect.arrayContaining([a, b]));
-      expect(a.parentNode).toBe(split);
-      expect(b.parentNode).toBe(split);
+      expect(kidsOf(wm(), split)).toEqual(expect.arrayContaining([a, b]));
+      expect(parentOf(wm(), a)).toBe(split);
+      expect(parentOf(wm(), b)).toBe(split);
       expect(commitMark2).not.toHaveBeenCalled();
       expect(surface).toHaveBeenCalledWith(
         a,
@@ -861,12 +863,12 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().nodeWinAtPointer = nodeWindow1;
 
-      const childCountBefore = monitor.childNodes.length;
+      const childCountBefore = kidsOf(wm(), monitor).length;
 
       wm().moveWindowToPointer(nodeWindow2, true);
 
       // Tree should not be modified in preview mode
-      const childCountAfter = monitor.childNodes.length;
+      const childCountAfter = kidsOf(wm(), monitor).length;
       expect(childCountAfter).toBe(childCountBefore);
     });
 
@@ -947,12 +949,12 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow3, false);
 
-      expect(nodeWindow3.parentNode).not.toBe(monitor);
-      expect(nodeWindow3.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(monitor.childNodes).toContain(nodeWindow3.parentNode);
-      expect(monitor.childNodes.indexOf(nodeWindow3.parentNode)).toBeLessThan(
-        monitor.childNodes.indexOf(nodeWindow1)
-      );
+      const nest = parentOf(wm(), nodeWindow3);
+      expect(nest).not.toBe(monitor);
+      expect(nest.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      const monKids = kidsOf(wm(), monitor);
+      expect(monKids).toContain(nest);
+      expect(monKids.indexOf(nest)).toBeLessThan(monKids.indexOf(nodeWindow1));
     });
 
     it("should keep stacked container valid after window detachment", () => {
@@ -993,13 +995,13 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       // monitor (the drop re-creates the node, so locate it by metaWindow).
       const draggedNode = ctx.tree.findNode(metaWindow3);
       expect(draggedNode).not.toBeNull();
-      expect(draggedNode.parentNode.nodeType).toBe(NODE_TYPES.CON);
-      expect(draggedNode.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), draggedNode).nodeType).toBe(NODE_TYPES.CON);
+      expect(parentOf(wm(), draggedNode).layout).toBe(LAYOUT_TYPES.HSPLIT);
 
       // The stacked container keeps exactly the two non-dragged windows and stays
       // a direct-child parent of both (not collapsed into a 1-child invalid state).
       expect(monitor.layout).toBe(LAYOUT_TYPES.STACKED);
-      const stackedWindows = monitor.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      const stackedWindows = kidsOf(wm(), monitor).filter((c) => c.nodeType === NODE_TYPES.WINDOW);
       expect(stackedWindows).toEqual([nodeWindow1, nodeWindow2]);
     });
   });
@@ -1021,14 +1023,14 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       // Window pointing to itself
       wm().nodeWinAtPointer = nodeWindow1;
 
-      const initialParent = nodeWindow1.parentNode;
-      const initialChildCount = initialParent.childNodes.length;
+      const initialParent = parentOf(wm(), nodeWindow1);
+      const initialChildCount = kidsOf(wm(), initialParent).length;
 
       wm().moveWindowToPointer(nodeWindow1, false);
 
       // Nothing should change
-      expect(nodeWindow1.parentNode).toBe(initialParent);
-      expect(initialParent.childNodes.length).toBe(initialChildCount);
+      expect(parentOf(wm(), nodeWindow1)).toBe(initialParent);
+      expect(kidsOf(wm(), initialParent).length).toBe(initialChildCount);
     });
   });
 
@@ -1058,7 +1060,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), nodeWindow2).layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should detect right region correctly (70-100% of width)", () => {
@@ -1086,7 +1088,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), nodeWindow2).layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
     it("should detect center region correctly (30-70% of both dimensions)", () => {
@@ -1120,11 +1122,10 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow2, false);
 
-      expect(nodeWindow1.parentNode).toBe(nodeWindow2.parentNode);
-      expect(nodeWindow1.parentNode.childNodes).toEqual(
-        expect.arrayContaining([nodeWindow1, nodeWindow2])
-      );
-      expect(nodeWindow1.parentNode.childNodes).toEqual([nodeWindow2, nodeWindow1]);
+      const parent = parentOf(wm(), nodeWindow1);
+      expect(parent).toBe(parentOf(wm(), nodeWindow2));
+      expect(kidsOf(wm(), parent)).toEqual(expect.arrayContaining([nodeWindow1, nodeWindow2]));
+      expect(kidsOf(wm(), parent)).toEqual([nodeWindow2, nodeWindow1]);
     });
   });
 
@@ -1219,10 +1220,10 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       expect(leftCalls.every((c) => c !== "window-tilepreview-invalid")).toBe(true);
       expect(centerCalls.every((c) => c !== "window-tilepreview-invalid")).toBe(true);
 
-      const parentBefore = dragged.parentNode;
+      const parentBefore = parentOf(wm(), dragged);
       wm().moveWindowToPointer(dragged, false);
-      expect(dragged.parentNode).toBe(parentBefore);
-      expect(dragged.parentNode.layout).not.toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(wm(), dragged)).toBe(parentBefore);
+      expect(parentOf(wm(), dragged).layout).not.toBe(LAYOUT_TYPES.VSPLIT);
     });
   });
 
@@ -1527,9 +1528,9 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       wm().nodeWinAtPointer = c;
       wm().moveWindowToPointer(b, false);
 
-      expect(b.parentNode).not.toBe(tabCon);
-      expect(tabCon.childNodes.includes(b)).toBe(false);
-      expect(b.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), b)).not.toBe(tabCon);
+      expect(kidsOf(wm(), tabCon)).not.toContain(b);
+      expect(parentOf(wm(), b).layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
   });
 });

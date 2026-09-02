@@ -17,7 +17,7 @@ import {
   LayoutController,
   LAYOUT_REQUEST_DEBOUNCE_MS,
 } from "../../../lib/extension/layout-controller.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import GLib from "gi://GLib";
 
 /**
@@ -279,7 +279,7 @@ describe("WindowManager open commit (CL4)", () => {
     const renderSpy = vi.spyOn(wm(), "renderTree");
     const lcSpy = vi.spyOn(wm().layoutController, "requestLayout");
     const commitSpy = vi.spyOn(wm(), "commitLayout");
-    const insertSpy = vi.spyOn(wm().tree, "insertChildPercent");
+    const insertSpy = vi.spyOn(wm(), "_insertChildPercent");
     const scheduleSpy = vi.spyOn(wm(), "_scheduleOpenCommit");
 
     expect(wm().beginOpenLayoutBatch()).toMatchObject({ ok: true, depth: 1 });
@@ -310,9 +310,10 @@ describe("WindowManager open commit (CL4)", () => {
     for (const m of metas) {
       const actor = m.get_compositor_private();
       expect(actor.opacity).toBe(0);
-      const node = wm().tree.findNode(m);
+      const node = wm().findNodeWindow(m) || wm().tree.findNode(m);
       expect(node).toBeTruthy();
-      expect(node.mode).toBe(WINDOW_MODES.FLOAT);
+      // Map RESYNC under TILES may TILE the live; CL8 contract is deferred+hidden.
+      expect(wm()._isDeferredOpen(m)).toBe(true);
     }
 
     expect(requestSpy).not.toHaveBeenCalled();
@@ -496,7 +497,7 @@ describe("WindowManager open commit (CL4)", () => {
 
   it("CL8 N=1 without LayoutBatch still schedules open commit", () => {
     const scheduleSpy = vi.spyOn(wm(), "_scheduleOpenCommit");
-    const insertSpy = vi.spyOn(wm().tree, "insertChildPercent");
+    const insertSpy = vi.spyOn(wm(), "_insertChildPercent");
     wm().appThrashCatalog.recordOpen("org.example.Solo");
     const meta = trackNew({ id: "solo", wm_class: "org.example.Solo" });
     expect(wm().openLayoutBatchActive).toBe(false);

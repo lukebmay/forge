@@ -21,8 +21,10 @@ from layout_lib import layout_tree_root, resolve_profile  # noqa: E402
 from nest_invoke import (  # noqa: E402
     InvokeError,
     _gui_env,
+    _launch_one,
     close_window_id,
     get_tree,
+    require_nest_client_env,
 )
 from nest_layout_dnd_smoke import (  # noqa: E402
     CampaignError,
@@ -509,16 +511,6 @@ def session_ids_from(recs: Sequence[Mapping[str, Any]]) -> list[str]:
     return out
 
 
-def _popen_gui(env: Mapping[str, str], argv: Sequence[str]) -> None:
-    subprocess.Popen(
-        list(argv),
-        env=dict(env),
-        start_new_session=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-
 def _find_matching_tile(
     bus_address: str,
     workspace: int,
@@ -549,7 +541,7 @@ def seed_second_role(
             continue
         found = _find_matching_tile(bus_address, workspace, match)
         if found is None:
-            _popen_gui(gui, argv)
+            _launch_one(gui, argv, bus_address, workspace=workspace)
             deadline = time.monotonic() + 12.0
             while time.monotonic() < deadline:
                 found = _find_matching_tile(bus_address, workspace, match)
@@ -685,6 +677,7 @@ def cmd_from_env(args: Optional[argparse.Namespace] = None) -> int:
         )
         return 2
     try:
+        require_nest_client_env(os.environ, what="occupied 2-slot")
         payload = run_campaign_on_bus(bus, parsed, env=os.environ)
     except CampaignError as e:
         print(f"nest occupied 2-slot: {e}", file=sys.stderr)

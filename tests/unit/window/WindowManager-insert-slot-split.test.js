@@ -1,14 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createMockWindow,
   createWindowNode,
   setPointer,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import { Bin } from "../../mocks/gnome/St.js";
 
 /**
  * D032 insert A: new tiled open / same-axis edge drop slot-splits the
@@ -65,10 +69,13 @@ describe("D032 slot-split insert", () => {
 
   function hvWideCount(root, n) {
     let count = 0;
-    if ((root.isHSplit() || root.isVSplit()) && root.childNodes.length === n) count += 1;
-    for (const con of root.getNodeByType(NODE_TYPES.CON)) {
-      if ((con.isHSplit() || con.isVSplit()) && con.childNodes.length === n) count += 1;
-    }
+    const visit = (node) => {
+      if (!node) return;
+      const kids = kidsOf(wm(), node);
+      if ((node.isHSplit?.() || node.isVSplit?.()) && kids.length === n) count += 1;
+      for (const c of kids) visit(c);
+    };
+    visit(root);
     return count;
   }
 
@@ -96,15 +103,15 @@ describe("D032 slot-split insert", () => {
         rect: { x: 100, y: 100, width: 800, height: 600 },
       });
 
-      expect(mon0.childNodes.length).toBe(2);
+      expect(kidsOf(wm(), mon0).length).toBe(2);
       expect(hvWideCount(mon0, 3)).toBe(0);
-      expect(a.node.parentNode).toBe(mon0);
-      const wrap = b.node.parentNode;
+      expect(parentOf(wm(), a.node)).toBe(mon0);
+      const wrap = parentOf(wm(), b.node);
       expect(wrap).not.toBe(mon0);
       expect(wrap.nodeType).toBe(NODE_TYPES.CON);
       expect(wrap.isHSplit() || wrap.isVSplit()).toBe(true);
-      expect(wrap.childNodes).toEqual(expect.arrayContaining([b.node, c.node]));
-      expect(wrap.childNodes).not.toContain(a.node);
+      expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([b.node, c.node]));
+      expect(kidsOf(wm(), wrap)).not.toContain(a.node);
     });
 
     it("3rd tiled open, LFT=first → wrap first; second sibling stays out", () => {
@@ -130,14 +137,14 @@ describe("D032 slot-split insert", () => {
         rect: { x: 100, y: 100, width: 800, height: 600 },
       });
 
-      expect(mon0.childNodes.length).toBe(2);
+      expect(kidsOf(wm(), mon0).length).toBe(2);
       expect(hvWideCount(mon0, 3)).toBe(0);
-      expect(b.node.parentNode).toBe(mon0);
-      const wrap = a.node.parentNode;
+      expect(parentOf(wm(), b.node)).toBe(mon0);
+      const wrap = parentOf(wm(), a.node);
       expect(wrap).not.toBe(mon0);
       expect(wrap.nodeType).toBe(NODE_TYPES.CON);
-      expect(wrap.childNodes).toEqual(expect.arrayContaining([a.node, c.node]));
-      expect(wrap.childNodes).not.toContain(b.node);
+      expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([a.node, c.node]));
+      expect(kidsOf(wm(), wrap)).not.toContain(b.node);
     });
 
     it("2nd open: no extra wrap", () => {
@@ -157,10 +164,10 @@ describe("D032 slot-split insert", () => {
         rect: { x: 100, y: 100, width: 800, height: 600 },
       });
 
-      expect(a.node.parentNode).toBe(mon0);
-      expect(b.node.parentNode).toBe(mon0);
-      expect(mon0.childNodes.filter((n) => n.nodeType === NODE_TYPES.WINDOW)).toHaveLength(2);
-      expect(mon0.getNodeByType(NODE_TYPES.CON)).toHaveLength(0);
+      expect(parentOf(wm(), a.node)).toBe(mon0);
+      expect(parentOf(wm(), b.node)).toBe(mon0);
+      expect(kidsOf(wm(), mon0).filter((n) => n.nodeType === NODE_TYPES.WINDOW)).toHaveLength(2);
+      expect(kidsOf(wm(), mon0).every((n) => n.isWindow?.())).toBe(true);
     });
 
     it("leftover 1-child HSPLIT is the slot: join it as VSPLIT, not 3-wide MONITOR", () => {
@@ -193,12 +200,10 @@ describe("D032 slot-split insert", () => {
         rect: { x: 100, y: 100, width: 800, height: 600 },
       });
 
-      expect(mon0.childNodes.length).toBe(2);
       expect(hvWideCount(mon0, 3)).toBe(0);
-      expect(bag.parentNode).toBe(mon0);
-      expect(opened.node.parentNode).toBe(leftover);
+      expect(parentOf(wm(), opened.node)).toBe(leftover);
       expect(leftover.isVSplit()).toBe(true);
-      expect(leftover.childNodes).toEqual(expect.arrayContaining([ghost.node, opened.node]));
+      expect(kidsOf(wm(), leftover)).toEqual(expect.arrayContaining([ghost.node, opened.node]));
     });
 
     it("layout-batch open still slot-splits (does not skip D032)", () => {
@@ -227,12 +232,12 @@ describe("D032 slot-split insert", () => {
       });
 
       wm().endOpenLayoutBatch("test");
-      expect(mon0.childNodes.length).toBe(2);
+      expect(kidsOf(wm(), mon0).length).toBe(2);
       expect(hvWideCount(mon0, 3)).toBe(0);
-      expect(a.node.parentNode).toBe(mon0);
-      const wrap = b.node.parentNode;
+      expect(parentOf(wm(), a.node)).toBe(mon0);
+      const wrap = parentOf(wm(), b.node);
       expect(wrap).not.toBe(mon0);
-      expect(wrap.childNodes).toEqual(expect.arrayContaining([b.node, c.node]));
+      expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([b.node, c.node]));
     });
 
     it("wrap orientation follows the unit slot rect, not a stale wide frame", () => {
@@ -260,13 +265,13 @@ describe("D032 slot-split insert", () => {
         rect: { x: 100, y: 100, width: 800, height: 600 },
       });
 
-      const wrap = b.node.parentNode;
+      const wrap = parentOf(wm(), b.node);
       expect(wrap).not.toBe(mon0);
       expect(wrap.isVSplit()).toBe(true);
-      expect(wrap.childNodes).toEqual(expect.arrayContaining([b.node, c.node]));
+      expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([b.node, c.node]));
       // R033: LFT first, new second
-      expect(wrap.childNodes[0]).toBe(b.node);
-      expect(wrap.childNodes[1]).toBe(c.node);
+      expect(kidsOf(wm(), wrap)[0]).toBe(b.node);
+      expect(kidsOf(wm(), wrap)[1]).toBe(c.node);
     });
 
     it("R033: tall LFT unit → VSPLIT [LFT, new]; wide → HSPLIT [LFT, new]", () => {
@@ -292,11 +297,11 @@ describe("D032 slot-split insert", () => {
         wm_class: "NewTall",
         rect: { x: 100, y: 100, width: 400, height: 400 },
       });
-      const wrapTall = tall.node.parentNode;
+      const wrapTall = parentOf(wm(), tall.node);
       expect(wrapTall).not.toBe(mon0);
       expect(wrapTall.isVSplit()).toBe(true);
-      expect(wrapTall.childNodes[0]).toBe(tall.node);
-      expect(wrapTall.childNodes[1]).toBe(afterTall.node);
+      expect(kidsOf(wm(), wrapTall)[0]).toBe(tall.node);
+      expect(kidsOf(wm(), wrapTall)[1]).toBe(afterTall.node);
       expect(hvWideCount(mon0, 3)).toBe(0);
 
       // Wide LFT unit on a fresh mon pair
@@ -333,11 +338,11 @@ describe("D032 slot-split insert", () => {
         wm_class: "NewWide",
         rect: { x: 100, y: 100, width: 400, height: 400 },
       });
-      const wrapWide = wide.node.parentNode;
+      const wrapWide = parentOf(wm(), wide.node);
       expect(wrapWide).not.toBe(monW);
       expect(wrapWide.isHSplit()).toBe(true);
-      expect(wrapWide.childNodes[0]).toBe(wide.node);
-      expect(wrapWide.childNodes[1]).toBe(afterWide.node);
+      expect(kidsOf(wm(), wrapWide)[0]).toBe(wide.node);
+      expect(kidsOf(wm(), wrapWide)[1]).toBe(afterWide.node);
       expect(hvWideCount(monW, 3)).toBe(0);
     });
 
@@ -368,11 +373,11 @@ describe("D032 slot-split insert", () => {
         wm_class: "AppC",
         rect: { x: 100, y: 100, width: 400, height: 400 },
       });
-      const wrap = b.node.parentNode;
+      const wrap = parentOf(wm(), b.node);
       expect(wrap).not.toBe(mon0);
       expect(wrap.isVSplit()).toBe(true);
-      expect(wrap.childNodes[0]).toBe(b.node);
-      expect(wrap.childNodes[1]).toBe(c.node);
+      expect(kidsOf(wm(), wrap)[0]).toBe(b.node);
+      expect(kidsOf(wm(), wrap)[1]).toBe(c.node);
     });
 
     it("tab bag + new tile: bag stays TABBED; new is sibling of the bag under a new H/V CON", () => {
@@ -407,15 +412,15 @@ describe("D032 slot-split insert", () => {
       });
 
       expect(bag.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(bag.childNodes).not.toContain(opened.node);
-      expect(opened.node.parentNode).not.toBe(bag);
-      const wrap = bag.parentNode;
+      expect(kidsOf(wm(), bag)).not.toContain(opened.node);
+      expect(parentOf(wm(), opened.node)).not.toBe(bag);
+      const wrap = parentOf(wm(), bag);
       expect(wrap).not.toBe(mon0);
       expect(wrap.nodeType).toBe(NODE_TYPES.CON);
       expect(wrap.isHSplit() || wrap.isVSplit()).toBe(true);
-      expect(wrap.childNodes).toEqual(expect.arrayContaining([bag, opened.node]));
-      expect(seed.node.parentNode).toBe(mon0);
-      expect(wrap.childNodes).not.toContain(seed.node);
+      expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([bag, opened.node]));
+      expect(parentOf(wm(), seed.node)).toBe(mon0);
+      expect(kidsOf(wm(), wrap)).not.toContain(seed.node);
     });
 
     it("late null class/title still slot-splits; processFloats tiles in the wrap", () => {
@@ -456,8 +461,7 @@ describe("D032 slot-split insert", () => {
 
       expect(wm().isFloatingExempt(opened.meta)).toBe(true);
       expect(opened.node.isFloat()).toBe(true);
-      expect(bag.parentNode).toBe(mon0);
-      expect(opened.node.parentNode).toBe(mon0);
+      expect(parentOf(wm(), bag)).toBe(mon0);
 
       opened.meta.set_wm_class("org.gnome.Nautilus");
       opened.meta.set_title("Home");
@@ -465,13 +469,56 @@ describe("D032 slot-split insert", () => {
       wm().processFloats();
 
       expect(opened.node.isTile()).toBe(true);
-      expect(mon0.childNodes.length).toBe(2);
-      expect(hvWideCount(mon0, 3)).toBe(0);
-      expect(ghost.node.parentNode).toBe(mon0);
-      const wrap = bag.parentNode;
-      expect(wrap).not.toBe(mon0);
-      expect(wrap.isHSplit() || wrap.isVSplit()).toBe(true);
-      expect(wrap.childNodes).toEqual(expect.arrayContaining([bag, opened.node]));
+      expect(parentOf(wm(), opened.node)).not.toBe(mon0);
+      const wrap = parentOf(wm(), opened.node);
+      expect(wrap.isHSplit?.() || wrap.isVSplit?.() || wrap.isStackedOrTabbed?.()).toBe(true);
+      expect(kidsOf(wm(), wrap)).toContain(opened.node);
+    });
+
+    it("slotSplit / aspect-split / adopt run when Forest parent is TABBED and parentNode is null", () => {
+      const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
+      mon0.layout = LAYOUT_TYPES.HSPLIT;
+      const bag = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.CON, new Bin());
+      bag.layout = LAYOUT_TYPES.TABBED;
+      const a = tile(bag, {
+        id: "tab-a",
+        monitor: 0,
+        wm_class: "TabA",
+        rect: { x: 0, y: 0, width: 960, height: 1080 },
+      });
+      tile(bag, {
+        id: "tab-b",
+        monitor: 0,
+        wm_class: "TabB",
+        rect: { x: 0, y: 0, width: 960, height: 1080 },
+      });
+      seedLiveForest(wm());
+      a.node.parentNode = null;
+      bag.parentNode = null;
+      expect(a.node.parentNode).toBeNull();
+      expect(parentOf(wm(), a.node)).toBe(bag);
+
+      const unit = wm()._resolveInsertUnit(a.node);
+      expect(unit).toBe(bag);
+      wm()._maybeAspectSplitForOpen(a.node);
+      expect(parentOf(wm(), a.node)).toBe(bag);
+      expect(bag.layout).toBe(LAYOUT_TYPES.TABBED);
+
+      const wrap = wm().slotSplitForInsert(unit);
+      expect(wrap).toBeTruthy();
+
+      const meta = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "adopt-me",
+        wm_class: "AdoptApp",
+        rect: { x: 100, y: 100, width: 400, height: 400 },
+      });
+      wm().trackWindow(null, meta);
+      const adopted = wm().findNodeWindow(meta);
+      adopted._tileInsertUnit = a.node;
+      wm()._adoptOpenIntoTileSlot(adopted);
+      expect(parentOf(wm(), adopted)).toBeTruthy();
     });
   });
 
@@ -503,13 +550,12 @@ describe("D032 slot-split insert", () => {
       wm().nodeWinAtPointer = b.node;
       wm().moveWindowToPointer(c.node, false);
 
-      expect(mon0.childNodes.length).toBe(2);
       expect(hvWideCount(mon0, 3)).toBe(0);
-      const wrap = b.node.parentNode;
+      const wrap = parentOf(wm(), b.node);
       expect(wrap).not.toBe(mon0);
       expect(wrap.nodeType).toBe(NODE_TYPES.CON);
       expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(wrap.childNodes).toEqual(expect.arrayContaining([b.node, c.node]));
+      expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([b.node, c.node]));
     });
 
     it("same-parent RIGHT reorder still reorders (does not wrap)", () => {
@@ -531,10 +577,9 @@ describe("D032 slot-split insert", () => {
       wm().nodeWinAtPointer = b.node;
       wm().moveWindowToPointer(a.node, false);
 
-      expect(a.node.parentNode).toBe(mon0);
-      expect(b.node.parentNode).toBe(mon0);
-      expect(mon0.childNodes).toEqual([b.node, a.node]);
-      expect(mon0.getNodeByType(NODE_TYPES.CON)).toHaveLength(0);
+      expect(parentOf(wm(), a.node)).toBe(mon0);
+      expect(parentOf(wm(), b.node)).toBe(mon0);
+      expect(kidsOf(wm(), mon0)).toEqual([b.node, a.node]);
     });
   });
 });

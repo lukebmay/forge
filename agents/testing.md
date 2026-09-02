@@ -267,6 +267,9 @@ exports before host `forge tree` / `forge layout` / `./scripts/forge/forge-test 
 ./scripts/forge/forge-test nested exec -- forge tree
 ./scripts/forge/forge-test nested stop
 ./scripts/forge/forge-test nested status            # running: False
+# Nest hunt JSONL (not shell.log; tapes survive stop)
+./scripts/forge/forge-test nested log --grep 'place-hint|forest-match' --level info+ --last 40
+./scripts/forge/forge-test nested logs              # gnome-shell stderr only
 
 # Host live (dual-mon) — host env only
 ./scripts/forge/forge-test live probe

@@ -1,13 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree.js";
+import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree-types.js";
 import { SessionApi } from "../../../lib/extension/session-api.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createMockWindow,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 
 /**
  * Host/helper: Tree.moveIn/moveOut + focusParent/Child.
@@ -36,6 +39,7 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
   });
 
   const tree = () => ctx.windowManager.tree;
+  const wm = () => ctx.windowManager;
 
   /** MONITOR → HSPLIT[ A | VSPLIT[ B, C ] ] */
   function nestedSplit() {
@@ -60,6 +64,7 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
       createMockWindow({ id: 503, wm_class: "C" })
     );
     for (const n of [a, b, c]) n.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
     return { monitor, h, v, a, b, c };
   }
 
@@ -87,6 +92,7 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
     );
     for (const n of [leaf, w1, w2]) n.mode = WINDOW_MODES.TILE;
     tab.lastTabFocus = w1.nodeValue;
+    seedLiveForest(wm());
     return { monitor, h, leaf, tab, w1, w2 };
   }
 
@@ -99,8 +105,8 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
       expect(tree().focusUnit).toBe(v);
       expect(win).toBe(b);
       expect(win.nodeValue.get_id()).toBe(502);
-      expect(h.childNodes).toContain(v);
-      expect(v.childNodes).toEqual([b, c]);
+      expect(kidsOf(wm(), h)).toContain(v);
+      expect(kidsOf(wm(), v)).toEqual([b, c]);
     });
 
     it("climbs again to grandparent CON", () => {
@@ -111,7 +117,7 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
       expect(tree().focusUnit).toBe(h);
       expect(win).toBeTruthy();
       expect([501, 502, 503]).toContain(win.nodeValue.get_id());
-      expect(v.parentNode).toBe(h);
+      expect(parentOf(wm(), v)).toBe(h);
     });
 
     it("focusChild descends back toward the focused leaf", () => {
@@ -136,11 +142,12 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
         createMockWindow({ id: 599 })
       );
       solo.mode = WINDOW_MODES.TILE;
+      seedLiveForest(wm());
 
       expect(tree().focusParent(solo)).toBeNull();
       expect(tree().focusUnit).toBeNull();
       expect(tree().focusParent(monitor)).toBeNull();
-      expect(b.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(parentOf(wm(), b).layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("focusChild no-ops on a WINDOW with no elevation", () => {
@@ -155,11 +162,12 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
       const { h, leaf, tab, w1, w2 } = splitWithTabSibling();
 
       const dest = tree().moveIn(leaf);
+      seedLiveForest(wm()); // Host/helper mutates GObject; reproject for Forest asserts
 
       expect(dest).toBe(tab);
-      expect(leaf.parentNode).toBe(tab);
-      expect(tab.childNodes).toEqual([w1, w2, leaf]);
-      expect(h.childNodes).toEqual([tab]);
+      expect(parentOf(wm(), leaf)).toBe(tab);
+      expect(kidsOf(wm(), tab)).toEqual([w1, w2, leaf]);
+      expect(kidsOf(wm(), h)).toEqual([tab]);
       expect(leaf.nodeValue.get_id()).toBe(601);
     });
 
@@ -167,27 +175,29 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
       const { monitor, h, v, a, b, c } = nestedSplit();
 
       const unit = tree().moveOut(b);
+      seedLiveForest(wm());
 
       expect(unit).toBe(b);
-      expect(b.parentNode).toBe(h);
-      expect(h.childNodes).toEqual([a, v, b]);
-      expect(v.childNodes).toEqual([c]);
+      expect(parentOf(wm(), b)).toBe(h);
+      expect(kidsOf(wm(), h)).toEqual([a, v, b]);
+      expect(kidsOf(wm(), v)).toEqual([c]);
       expect(b.nodeValue.get_id()).toBe(502);
-      expect(monitor.childNodes).toContain(h);
+      expect(kidsOf(wm(), monitor)).toContain(h);
     });
 
     it("moveOut of tab bag (layoutUnit) reparents the CON, not a single leaf", () => {
       const { monitor, h, leaf, tab, w1, w2 } = splitWithTabSibling();
 
       const unit = tree().moveOut(w2);
+      seedLiveForest(wm());
 
       expect(unit).toBe(tab);
-      expect(tab.parentNode).toBe(monitor);
-      expect(w1.parentNode).toBe(tab);
-      expect(w2.parentNode).toBe(tab);
-      expect(tab.childNodes).toEqual([w1, w2]);
-      expect(h.childNodes).toEqual([leaf]);
-      expect(monitor.childNodes).toEqual([h, tab]);
+      expect(parentOf(wm(), tab)).toBe(monitor);
+      expect(parentOf(wm(), w1)).toBe(tab);
+      expect(parentOf(wm(), w2)).toBe(tab);
+      expect(kidsOf(wm(), tab)).toEqual([w1, w2]);
+      expect(kidsOf(wm(), h)).toEqual([leaf]);
+      expect(kidsOf(wm(), monitor)).toEqual([h, tab]);
     });
 
     it("moveOut no-ops when parent is MONITOR", () => {
@@ -198,16 +208,17 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
         createMockWindow({ id: 701 })
       );
       leaf.mode = WINDOW_MODES.TILE;
+      seedLiveForest(wm());
 
       expect(tree().moveOut(leaf)).toBeNull();
-      expect(leaf.parentNode).toBe(monitor);
+      expect(parentOf(wm(), leaf)).toBe(monitor);
     });
 
     it("moveIn no-ops without a sibling CON", () => {
       const { v, b, c } = nestedSplit();
       expect(tree().moveIn(b)).toBeNull();
-      expect(b.parentNode).toBe(v);
-      expect(v.childNodes).toEqual([b, c]);
+      expect(parentOf(wm(), b)).toBe(v);
+      expect(kidsOf(wm(), v)).toEqual([b, c]);
     });
 
     it("session move-in joins sibling TABBED", () => {
@@ -219,7 +230,8 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
       const moved = api._moveInOp("id:601", { quiet: true });
       expect(moved.ok).toBe(true);
       expect(moved.changed).toBe(true);
-      expect(leaf.parentNode).toBe(tab);
+      // Forest SoT after paint (G8e — GObject parentNode may stay stale).
+      expect(kidsOf(wm(), tab)).toContain(leaf);
     });
 
     it("session focus-parent elevates unit", () => {
@@ -232,7 +244,7 @@ describe("C4 move-in/out + focus parent/child (Host/helper)", () => {
       expect(fp.ok).toBe(true);
       expect(fp.changed).toBe(true);
       expect(tree().focusUnit).toBe(v);
-      expect(b.parentNode).toBe(v);
+      expect(parentOf(wm(), b)).toBe(v);
     });
   });
 });

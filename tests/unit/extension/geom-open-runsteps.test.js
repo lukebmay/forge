@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { SessionApi } from "../../../lib/extension/session-api.js";
+import { Logger } from "../../../lib/shared/logger.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -75,7 +77,7 @@ describe("AP3 ExternalGeometry B-only / Cq", () => {
     expect(wm().updateBorderLayout).toHaveBeenCalled();
   });
 
-  it("external maximize restores the slot once (not commitLayout / float)", () => {
+  it("idle maximize does not restore the slot (D100)", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first] = createHorizontalLayout(ctx.tree, monitor, 2);
     const slot = { x: 0, y: 0, width: 960, height: 1080 };
@@ -92,8 +94,7 @@ describe("AP3 ExternalGeometry B-only / Cq", () => {
 
     wm().updateMetaPositionSize(maxed, "size-changed");
 
-    expect(reassertSpy).toHaveBeenCalledTimes(1);
-    expect(reassertSpy).toHaveBeenCalledWith(first.nodeWindow, { force: true });
+    expect(reassertSpy).not.toHaveBeenCalled();
     expect(commitSpy).not.toHaveBeenCalled();
     expect(renderSpy).not.toHaveBeenCalled();
     expect(first.nodeWindow.mode).toBe(WINDOW_MODES.TILE);
@@ -319,5 +320,53 @@ describe("AP3 RunSteps one Cf + settleTabFocus", () => {
 
     expect(settleSpy).toHaveBeenCalledWith(nB);
     expect(ctx.windowManager._freezeRender).toBe(true);
+  });
+
+  it("R050: restack counts Forest TABBED when GObject getNodeByType(CON) misses them", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const tab0 = ctx.windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab0.layout = LAYOUT_TYPES.TABBED;
+    const tab1 = ctx.windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    tab1.layout = LAYOUT_TYPES.TABBED;
+    const w0 = createMockWindow({ id: "r050-a" });
+    const w1 = createMockWindow({ id: "r050-b" });
+    const n0 = ctx.windowManager.tree.createNode(tab0.nodeValue, NODE_TYPES.WINDOW, w0);
+    const n1 = ctx.windowManager.tree.createNode(tab1.nodeValue, NODE_TYPES.WINDOW, w1);
+    n0.mode = WINDOW_MODES.TILE;
+    n1.mode = WINDOW_MODES.TILE;
+    tab0.lastTabFocus = w0;
+    tab1.lastTabFocus = w1;
+    seedLiveForest(ctx.windowManager);
+
+    const ws = ctx.windowManager.currentWsNode;
+    const origWs = ws.getNodeByType.bind(ws);
+    vi.spyOn(ws, "getNodeByType").mockImplementation((type) => {
+      if (type === NODE_TYPES.CON) return [];
+      return origWs(type);
+    });
+    const origTree = ctx.windowManager.tree.getNodeByType.bind(ctx.windowManager.tree);
+    vi.spyOn(ctx.windowManager.tree, "getNodeByType").mockImplementation((type) => {
+      if (type === NODE_TYPES.CON) return [];
+      return origTree(type);
+    });
+
+    const api = new SessionApi({
+      extWm: ctx.windowManager,
+      settings: ctx.settings,
+    });
+    const decoSpy = vi
+      .spyOn(ctx.windowManager, "updateDecorationLayout")
+      .mockImplementation(() => {});
+    const borderSpy = vi.spyOn(ctx.windowManager, "updateBorderLayout").mockImplementation(() => {});
+    const logSpy = vi.spyOn(Logger, "info").mockImplementation(() => {});
+
+    api._restackTabDecorations(ctx.windowManager);
+
+    expect(logSpy.mock.calls.some((c) => String(c[0] ?? "").includes("tab strip restack groups=2")))
+      .toBe(true);
+    expect(decoSpy).toHaveBeenCalledTimes(2);
+    expect(decoSpy).toHaveBeenNthCalledWith(1, { scope: "focus", focusNode: expect.anything() });
+    expect(decoSpy).toHaveBeenNthCalledWith(2, { scope: "focus", focusNode: expect.anything() });
+    expect(borderSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { WindowManager, WINDOW_MODES } from "../../lib/extension/window.js";
+import { ForgeAdapterGnome } from "../../lib/extension/adapter-gnome.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
 import { WindowType, Workspace, Rectangle } from "../mocks/gnome/Meta.js";

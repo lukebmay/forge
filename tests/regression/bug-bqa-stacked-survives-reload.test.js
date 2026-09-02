@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { createTreeFixture, getWorkspaceAndMonitor } from "../mocks/helpers/index.js";
+import {
+  createTreeFixture,
+  getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
+} from "../mocks/helpers/index.js";
 import { createMockWindow } from "../mocks/helpers/mockWindow.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
@@ -20,6 +25,7 @@ import { Bin } from "../mocks/gnome/St.js";
  */
 describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
   let ctx;
+  const wm = () => ctx.extWm;
 
   beforeEach(() => {
     ctx = createTreeFixture();
@@ -55,7 +61,7 @@ describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
   function flattenUnderMonitor(monitor, windows) {
     // Drop every existing child of the monitor (the old CON), then re-add the
     // windows directly — mirroring a from-scratch rebuild.
-    monitor.childNodes.length = 0;
+    monitor.replaceChildren([]);
     return windows.map((meta) => ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta));
   }
 
@@ -74,8 +80,8 @@ describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
     const stacked = ctx.tree.getNodeByLayout(LAYOUT_TYPES.STACKED);
     expect(stacked).toHaveLength(1);
     const con = stacked[0];
-    expect(con.parentNode).toBe(monitor);
-    expect(con.childNodes.map((n) => n.nodeValue)).toEqual(windows);
+    expect(parentOf(wm(), con)).toBe(monitor);
+    expect(kidsOf(wm(), con).map((n) => n.nodeValue)).toEqual(windows);
   });
 
   it("restoreLayoutGroups keeps an extra sibling before the rebuilt group", () => {
@@ -84,13 +90,14 @@ describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
     const snapshot = ctx.tree.snapshotLayoutGroups();
     flattenUnderMonitor(monitor, windows);
     const extraNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, extraMeta);
-    monitor.insertBefore(extraNode, monitor.firstChild);
+    monitor.insertBefore(extraNode, kidsOf(wm(), monitor)[0]);
 
     ctx.tree.restoreLayoutGroups(snapshot);
 
-    expect(monitor.childNodes[0].nodeValue).toBe(extraMeta);
-    expect(monitor.childNodes[1].layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(monitor.childNodes[1].childNodes.map((n) => n.nodeValue)).toEqual(windows);
+    const monKids = kidsOf(wm(), monitor);
+    expect(monKids[0].nodeValue).toBe(extraMeta);
+    expect(monKids[1].layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(kidsOf(wm(), monKids[1]).map((n) => n.nodeValue)).toEqual(windows);
   });
 
   it("restores a TABBED group and its lastTabFocus", () => {
@@ -131,7 +138,7 @@ describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
 
     const stacked = ctx.tree.getNodeByLayout(LAYOUT_TYPES.STACKED);
     expect(stacked).toHaveLength(1);
-    expect(stacked[0].childNodes.map((n) => n.nodeValue)).toEqual([windows[0], windows[2]]);
+    expect(kidsOf(wm(), stacked[0]).map((n) => n.nodeValue)).toEqual([windows[0], windows[2]]);
   });
 
   it("does not create a CON when only one window of the group survives", () => {
@@ -142,8 +149,8 @@ describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
     ctx.tree.restoreLayoutGroups(snapshot);
 
     expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.STACKED)).toHaveLength(0);
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].isWindow()).toBe(true);
+    expect(kidsOf(wm(), monitor)).toHaveLength(1);
+    expect(kidsOf(wm(), monitor)[0].isWindow()).toBe(true);
   });
 
   // forge-4y80: a STACKED/TABBED group containing a nested sub-split CON (the
@@ -175,14 +182,14 @@ describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
     expect(tabbed).toHaveLength(1);
     const outerRebuilt = tabbed[0];
-    expect(outerRebuilt.parentNode).toBe(monitor);
-    expect(outerRebuilt.childNodes).toHaveLength(2);
+    expect(parentOf(wm(), outerRebuilt)).toBe(monitor);
+    expect(kidsOf(wm(), outerRebuilt)).toHaveLength(2);
 
     // First child is the inner HSPLIT CON wrapping w0, w1; second is w2.
-    const [firstChild, secondChild] = outerRebuilt.childNodes;
+    const [firstChild, secondChild] = kidsOf(wm(), outerRebuilt);
     expect(firstChild.isCon()).toBe(true);
     expect(firstChild.layout).toBe(LAYOUT_TYPES.HSPLIT);
-    expect(firstChild.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
+    expect(kidsOf(wm(), firstChild).map((n) => n.nodeValue)).toEqual([w0, w1]);
     expect(secondChild.isWindow()).toBe(true);
     expect(secondChild.nodeValue).toBe(w2);
   });
@@ -209,8 +216,8 @@ describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
     // w0 and w2 directly as windows, with no empty/degenerate inner container.
     const stacked = ctx.tree.getNodeByLayout(LAYOUT_TYPES.STACKED);
     expect(stacked).toHaveLength(1);
-    expect(stacked[0].childNodes.every((n) => n.isWindow())).toBe(true);
-    expect(stacked[0].childNodes.map((n) => n.nodeValue)).toEqual([w0, w2]);
+    expect(kidsOf(wm(), stacked[0]).every((n) => n.isWindow())).toBe(true);
+    expect(kidsOf(wm(), stacked[0]).map((n) => n.nodeValue)).toEqual([w0, w2]);
   });
 
   it("leaves a plain HSPLIT split untouched (nothing to snapshot)", () => {

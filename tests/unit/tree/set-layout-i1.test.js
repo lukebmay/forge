@@ -5,9 +5,11 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createMockWindow,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 
 /**
  * Host/helper: Tree.setLayout (I1). Product layout toggles use command().
@@ -32,6 +34,7 @@ describe("setLayout I1 — child identity stable (Host/helper)", () => {
   });
 
   const tree = () => ctx.windowManager.tree;
+  const wm = () => ctx.windowManager;
 
   function nestedGroup() {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
@@ -48,7 +51,7 @@ describe("setLayout I1 — child identity stable (Host/helper)", () => {
     n3.mode = WINDOW_MODES.TILE;
     const w2n = tree().createNode(con.nodeValue, NODE_TYPES.WINDOW, w2);
     w2n.mode = WINDOW_MODES.TILE;
-    return { con, inner, n1, n3, w2n, kids: () => [...con.childNodes] };
+    return { con, inner, n1, n3, w2n, kids: () => [...kidsOf(wm(), con)] };
   }
 
   it("Node.setLayout only writes layout (+ optional lastTabFocus)", () => {
@@ -57,8 +60,8 @@ describe("setLayout I1 — child identity stable (Host/helper)", () => {
     expect(con.setLayout(LAYOUT_TYPES.TABBED, { lastTabFocus: before[0].nodeValue })).toBe(true);
     expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(con.lastTabFocus).toBe(before[0].nodeValue);
-    expect(con.childNodes).toEqual(before);
-    expect(con.childNodes[1].nodeType).toBe(NODE_TYPES.CON);
+    expect(kidsOf(wm(), con)).toEqual(before);
+    expect(kidsOf(wm(), con)[1].nodeType).toBe(NODE_TYPES.CON);
   });
 
   it("Tree.setLayout H → TABBED → H keeps nested CON child", () => {
@@ -68,14 +71,14 @@ describe("setLayout I1 — child identity stable (Host/helper)", () => {
 
     expect(tree().setLayout(con, LAYOUT_TYPES.TABBED)).toBe(true);
     expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(con.childNodes).toEqual(beforeIds);
-    expect(inner.parentNode).toBe(con);
+    expect(kidsOf(wm(), con)).toEqual(beforeIds);
+    expect(parentOf(wm(), inner)).toBe(con);
 
     expect(tree().setLayout(con, LAYOUT_TYPES.HSPLIT, { resetPercents: true })).toBe(true);
     expect(con.layout).toBe(LAYOUT_TYPES.HSPLIT);
-    expect(con.childNodes).toEqual(beforeIds);
-    expect(inner.parentNode).toBe(con);
-    expect(inner.childNodes).toHaveLength(1);
+    expect(kidsOf(wm(), con)).toEqual(beforeIds);
+    expect(parentOf(wm(), inner)).toBe(con);
+    expect(kidsOf(wm(), inner)).toHaveLength(1);
   });
 
   it("Tree.setLayout into TABBED/STACKED clears stale sibling percents", () => {
@@ -89,7 +92,7 @@ describe("setLayout I1 — child identity stable (Host/helper)", () => {
     before[2].userSized = true;
 
     expect(tree().setLayout(con, LAYOUT_TYPES.TABBED)).toBe(true);
-    for (const c of con.childNodes) {
+    for (const c of kidsOf(wm(), con)) {
       expect(c.percent).toBe(0);
       expect(c.userSized).toBe(false);
     }
@@ -97,7 +100,7 @@ describe("setLayout I1 — child identity stable (Host/helper)", () => {
     before[0].percent = 0.7;
     before[0].userSized = true;
     expect(tree().setLayout(con, LAYOUT_TYPES.STACKED, { lastTabFocus: null })).toBe(true);
-    for (const c of con.childNodes) {
+    for (const c of kidsOf(wm(), con)) {
       expect(c.percent).toBe(0);
       expect(c.userSized).toBe(false);
     }
@@ -111,8 +114,8 @@ describe("setLayout I1 — child identity stable (Host/helper)", () => {
     expect(tree().setLayout(con, LAYOUT_TYPES.STACKED, { lastTabFocus: null })).toBe(true);
     expect(con.layout).toBe(LAYOUT_TYPES.STACKED);
     expect(con.lastTabFocus).toBeNull();
-    expect(con.childNodes).toEqual(before);
-    expect(inner.parentNode).toBe(con);
+    expect(kidsOf(wm(), con)).toEqual(before);
+    expect(parentOf(wm(), inner)).toBe(con);
   });
 
   it("rejects WINDOW nodes and unknown layouts", () => {
@@ -126,7 +129,7 @@ describe("setLayout I1 — child identity stable (Host/helper)", () => {
   it("layout-cycle group does not flatten nested CONs", () => {
     const { con, inner } = nestedGroup();
     tree().setLayout(con, LAYOUT_TYPES.TABBED);
-    const before = [...con.childNodes];
+    const before = [...kidsOf(wm(), con)];
 
     const api = new SessionApi({
       extWm: ctx.windowManager,
@@ -136,7 +139,7 @@ describe("setLayout I1 — child identity stable (Host/helper)", () => {
     expect(out.ok).toBe(true);
     expect(out.changed).toBe(true);
     expect(con.layout).toBe(LAYOUT_TYPES.STACKED);
-    expect(con.childNodes).toEqual(before);
-    expect(inner.parentNode).toBe(con);
+    expect(kidsOf(wm(), con)).toEqual(before);
+    expect(parentOf(wm(), inner)).toBe(con);
   });
 });

@@ -24,10 +24,14 @@ import {
   resolveFocusMetaForSessionSave,
 } from "../../../lib/extension/session-layout.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import { appendChild } from "../../../lib/tom/index.js";
+import { forestRemoveWindow, seedLiveForest } from "../../../lib/extension/tom-live.js";
+import {
+  rehomeWmForestWindows,
+  restoreWmForestStrict,
+} from "../../../lib/extension/forest-restore.js";
 import * as Utils from "../../../lib/extension/utils.js";
 import {
-  createTreeFixture,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../../mocks/helpers/index.js";
@@ -140,7 +144,7 @@ describe("session-layout portable round-trip", () => {
   ];
 
   beforeEach(() => {
-    ctx = createTreeFixture({
+    ctx = createWindowManagerFixture({
       globals: {
         display: {
           monitorCount: 2,
@@ -154,13 +158,37 @@ describe("session-layout portable round-trip", () => {
     ctx.cleanup();
   });
 
+  function wm() {
+    return ctx.windowManager;
+  }
+
   function createCon(parentValue, layout) {
     const con = ctx.tree.createNode(parentValue, NODE_TYPES.CON, new Bin());
     con.layout = layout;
     return con;
   }
 
-  function flattenUnderMonitor(monitor, windows) {
+  function flattenUnderMonitor(monitor, windows, allCreated = null) {
+    const forest = wm().forest;
+    if (forest?.nodes?.[monitor.nodeValue]) {
+      const monTom = forest.nodes[monitor.nodeValue];
+      const keep = new Set(windows);
+      if (allCreated) {
+        for (const meta of allCreated) {
+          if (keep.has(meta)) continue;
+          forestRemoveWindow(wm(), meta);
+          const live = ctx.tree.findNode(meta);
+          if (live?.parentNode) live.parentNode.removeChild(live);
+        }
+      }
+      for (const meta of windows) {
+        const id = wm().hostBag?.idFromMeta?.(meta);
+        if (id && forest.nodes[id]) appendChild(forest, monTom, forest.nodes[id]);
+        const live = ctx.tree.findNode(meta);
+        if (live) monitor.appendChild(live);
+      }
+      return windows.map((meta) => ctx.tree.findNode(meta)).filter(Boolean);
+    }
     monitor.childNodes.length = 0;
     return windows.map((meta) => ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, meta));
   }
@@ -294,24 +322,28 @@ describe("session-layout portable round-trip", () => {
     mon0.layout = LAYOUT_TYPES.HSPLIT;
     const w0 = createMockWindow({
       id: 100,
+      workspace: ctx.workspaces[0],
+      monitor: 0,
       rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
     });
     const w1 = createMockWindow({
       id: 101,
+      workspace: ctx.workspaces[0],
+      monitor: 0,
       rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
     });
     ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, w0);
     ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, w1);
 
     const tab = createCon(mon1.nodeValue, LAYOUT_TYPES.TABBED);
-    const w2 = createMockWindow({ id: 200 });
-    const w3 = createMockWindow({ id: 201 });
+    const w2 = createMockWindow({ id: 200, workspace: ctx.workspaces[0], monitor: 1 });
+    const w3 = createMockWindow({ id: 201, workspace: ctx.workspaces[0], monitor: 1 });
     ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, w2);
     ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, w3);
     tab.lastTabFocus = w3;
 
-    const snap = ctx.tree.snapshotTree();
-    const portable = toPortableForest(snap);
+    // Capture portable Meta ids before Forest seed (on-disk identity).
+    const portable = toPortableForest(ctx.tree.snapshotTree());
     expect(portable).toBeTruthy();
     expect(portable.monitors.length).toBe(2);
 
@@ -328,10 +360,9 @@ describe("session-layout portable round-trip", () => {
     expect(stats).toEqual({ total: 4, matched: 4 });
     expect(isMatchGoodEnough(stats)).toBe(true);
 
-    // Simulate disable→enable: flat re-track, then restore portable→live
+    seedLiveForest(wm());
     flattenUnderMonitor(mon0, [w0, w1]);
     flattenUnderMonitor(mon1, [w2, w3]);
-    expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(0);
 
     const liveForest = toLiveForest(portable, idMap);
     ctx.tree.restoreTree(liveForest);
@@ -341,7 +372,6 @@ describe("session-layout portable round-trip", () => {
     expect(tabbed.lastTabFocus).toBe(w3);
     expect(tabbed.childNodes.map((n) => n.nodeValue)).toEqual([w2, w3]);
 
-    // mon0 stays HSPLIT with both windows (not piled elsewhere)
     expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
     expect(
       mon1.childNodes.some((n) => n.isStackedOrTabbed?.() || n.layout === LAYOUT_TYPES.TABBED)
@@ -427,24 +457,23 @@ describe("session-layout portable round-trip", () => {
   it("drops closed windows and still restores survivors", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     const tab = createCon(monitor.nodeValue, LAYOUT_TYPES.TABBED);
-    const w0 = createMockWindow({ id: 10 });
-    const w1 = createMockWindow({ id: 11 });
-    const w2 = createMockWindow({ id: 12 });
+    const w0 = createMockWindow({ id: 10, workspace: ctx.workspaces[0], monitor: 0 });
+    const w1 = createMockWindow({ id: 11, workspace: ctx.workspaces[0], monitor: 0 });
+    const w2 = createMockWindow({ id: 12, workspace: ctx.workspaces[0], monitor: 0 });
     ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, w0);
     ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, w1);
     ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, w2);
 
     const portable = toPortableForest(ctx.tree.snapshotTree());
-    // w2 closed during install
     const idMap = indexWindowsById([w0, w1]);
     const stats = matchStats(portable, idMap);
     expect(stats).toEqual({ total: 3, matched: 2 });
     expect(isMatchGoodEnough(stats)).toBe(true);
 
-    flattenUnderMonitor(monitor, [w0, w1]);
+    seedLiveForest(wm());
+    flattenUnderMonitor(monitor, [w0, w1], [w0, w1, w2]);
     ctx.tree.restoreTree(toLiveForest(portable, idMap));
 
-    // Two survivors in a tab group still form TABBED
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
     expect(tabbed).toHaveLength(1);
     expect(tabbed[0].childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
@@ -1225,16 +1254,13 @@ describe("session-layout portable round-trip", () => {
     for (const w of [leftGhost, rightGhost]) {
       ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w);
     }
+    seedLiveForest(wm());
 
-    // Mirror window.js _rehomeWindowsForSessionForest
     const homes = planWindowMonitorHomes(liveForest);
-    const snapCtx = ctx.tree._treeSnapshotCtx();
-    for (const { window: metaWin, monIndex, monId } of homes) {
+    for (const { window: metaWin, monIndex } of homes) {
       if (metaWin.get_monitor() !== monIndex) metaWin.move_to_monitor(monIndex);
-      const node = ctx.tree.findNode(metaWin);
-      const mon = resolveStrictMonitor({ id: monId }, snapCtx);
-      if (mon && node && !mon.childNodes.includes(node)) mon.appendChild(node);
     }
+    rehomeWmForestWindows(wm(), homes, liveForest);
 
     expect(leftGhost.get_monitor()).toBe(0);
     expect(rightGhost.get_monitor()).toBe(1);
@@ -1301,13 +1327,13 @@ describe("session-layout portable round-trip", () => {
     mon0.childNodes.length = 0;
     mon1.childNodes.length = 0;
     for (const w of [a, b]) ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w);
+    seedLiveForest(wm());
 
-    for (const { window: metaWin, monIndex, monId } of planWindowMonitorHomes(liveForest)) {
+    const homes = planWindowMonitorHomes(liveForest);
+    for (const { window: metaWin, monIndex } of homes) {
       if (metaWin.get_monitor() !== monIndex) metaWin.move_to_monitor(monIndex);
-      const node = ctx.tree.findNode(metaWin);
-      const mon = resolveStrictMonitor({ id: monId }, ctx.tree._treeSnapshotCtx());
-      if (mon && node && !mon.childNodes.includes(node)) mon.appendChild(node);
     }
+    rehomeWmForestWindows(wm(), homes, liveForest);
 
     expect(w0.get_monitor()).toBe(0);
     expect(w1.get_monitor()).toBe(1);
@@ -1356,14 +1382,14 @@ describe("session-layout portable round-trip", () => {
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
 
     mon0.layout = LAYOUT_TYPES.HSPLIT;
-    const w0 = createMockWindow({ id: 100, monitor: 0 });
-    const w1 = createMockWindow({ id: 101, monitor: 0 });
+    const w0 = createMockWindow({ id: 100, workspace: ctx.workspaces[0], monitor: 0 });
+    const w1 = createMockWindow({ id: 101, workspace: ctx.workspaces[0], monitor: 0 });
     ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, w0);
     ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, w1);
 
     const tab = createCon(mon1.nodeValue, LAYOUT_TYPES.TABBED);
-    const w2 = createMockWindow({ id: 200, monitor: 1 });
-    const w3 = createMockWindow({ id: 201, monitor: 1 });
+    const w2 = createMockWindow({ id: 200, workspace: ctx.workspaces[0], monitor: 1 });
+    const w3 = createMockWindow({ id: 201, workspace: ctx.workspaces[0], monitor: 1 });
     ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, w2);
     ctx.tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, w3);
 
@@ -1371,32 +1397,21 @@ describe("session-layout portable round-trip", () => {
     const idMap = indexWindowsById([w0, w1, w2, w3]);
     const liveForest = toLiveForest(portable, idMap);
 
-    // Simulate post-HUP pile: all windows flat under mon1 (right).
-    mon0.childNodes.length = 0;
-    mon1.childNodes.length = 0;
-    for (const w of [w0, w1, w2, w3]) {
-      ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, w);
-      w._monitor = 1;
+    seedLiveForest(wm());
+    const pile = wm().forest.nodes[mon1.nodeValue];
+    for (const meta of [w0, w1, w2, w3]) {
+      const id = wm().hostBag.idFromMeta(meta);
+      appendChild(wm().forest, pile, wm().forest.nodes[id]);
+      mon1.appendChild(ctx.tree.findNode(meta));
+      meta._monitor = 1;
     }
-    expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(0);
 
-    // Rehome like window.js: move to planned mons then strict apply
     const homes = planWindowMonitorHomes(liveForest);
-    const snapCtx = ctx.tree._treeSnapshotCtx();
-    for (const { window: metaWin, monId } of homes) {
-      const mon = resolveStrictMonitor({ id: monId }, snapCtx);
-      const node = ctx.tree.findNode(metaWin);
-      if (mon && node && !mon.childNodes.includes(node)) {
-        mon.appendChild(node);
-      }
+    for (const { window: metaWin, monIndex } of homes) {
+      if (metaWin.get_monitor() !== monIndex) metaWin.move_to_monitor(monIndex);
     }
-    for (const monDesc of liveForest.monitors) {
-      const mon = resolveStrictMonitor(monDesc, snapCtx);
-      if (!mon) continue;
-      // use tree.restoreTree one mon at a time via full restore after rehome
-    }
-    // After rehome windows sit under correct mons; restoreTree majority works
-    ctx.tree.restoreTree(liveForest);
+    rehomeWmForestWindows(wm(), homes, liveForest);
+    restoreWmForestStrict(wm(), liveForest);
 
     expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(1);
     expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);

@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  parentOf,
 } from "../mocks/helpers/index.js";
 import { Bin } from "../mocks/gnome/St.js";
 import { GrabOp } from "../mocks/gnome/Meta.js";
@@ -85,7 +86,7 @@ describe("forge-ue92: _grabCleanup clears the pre-reparent container snapshot", 
     // The drag reparents nodeA OUT of the container (what moveWindowToPointer does
     // at grab end, before _grabCleanup runs).
     monitor.appendChild(nodeA);
-    expect(nodeA.parentNode).toBe(monitor);
+    expect(parentOf(ctx.windowManager, nodeA)).toBe(monitor);
 
     ctx.windowManager._grabCleanup(nodeA);
 

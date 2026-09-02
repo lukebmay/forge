@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { WINDOW_MODES, GRAB_TYPES } from "../../lib/extension/window.js";
+import { WINDOW_MODES, GRAB_TYPES } from "../../lib/extension/window-modes.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
@@ -7,12 +7,9 @@ import {
 } from "../mocks/helpers/index.js";
 
 /**
- * Bug #461 / D026 IC3: unsolicited TILE geom restores to slot.
- *
- * Native maximize / edge-snap / Meta-fullscreen / bare size-changed on a TILE
- * (no live grab, no forge echo) unmaximize + unfullscreen + reassertNodeToSlot.
- * Multi-tile full max no longer floats. Lone-tile maximize-on-single is left
- * alone. Live grab RESIZING still updates percents.
+ * Bug #461 / D026 IC3, amended D100: idle TILE geom is observe-only.
+ * Grab RESIZING still updates percents. Helpers `_shouldRestoreTileSlot`
+ * remain for grab-time reject.
  */
 describe("Bug #461 / D026: TILE slot authority", () => {
   let ctx;
@@ -46,8 +43,8 @@ describe("Bug #461 / D026: TILE slot authority", () => {
     return { first, second, slot };
   }
 
-  it("keeps a fully-maximized tiled window TILE and restores the slot", () => {
-    const { first, slot } = twoTiles();
+  it("idle maximize does not restore the slot (D100 observe)", () => {
+    const { first } = twoTiles();
     const maxed = first.metaWindow;
     maxed.maximize();
     maxed.move_resize_frame(false, 0, 0, 1920, 1080);
@@ -60,15 +57,15 @@ describe("Bug #461 / D026: TILE slot authority", () => {
 
     expect(floatSpy).not.toHaveBeenCalled();
     expect(first.nodeWindow.mode).toBe(WINDOW_MODES.TILE);
-    expect(maxed.is_maximized()).toBe(false);
-    expect(reassertSpy).toHaveBeenCalledWith(first.nodeWindow, { force: true });
+    expect(maxed.is_maximized()).toBe(true);
+    expect(reassertSpy).not.toHaveBeenCalled();
     const frame = maxed.get_frame_rect();
-    expect(frame.width).toBe(slot.width);
-    expect(frame.height).toBe(slot.height);
+    expect(frame.width).toBe(1920);
+    expect(frame.height).toBe(1080);
   });
 
-  it("unmaximizes an edge-snapped (single-axis) tiled window that has tiled siblings", () => {
-    const { first, slot } = twoTiles();
+  it("idle edge-snap does not unmaximize (D100)", () => {
+    const { first } = twoTiles();
     const snapped = first.metaWindow;
     snapped.maximized_vertically = true;
     snapped.move_resize_frame(false, 0, 0, 1920, 1080);
@@ -76,10 +73,8 @@ describe("Bug #461 / D026: TILE slot authority", () => {
 
     wm().updateMetaPositionSize(snapped, "size-changed");
 
-    expect(snapped.maximized_vertically).toBe(false);
+    expect(snapped.maximized_vertically).toBe(true);
     expect(first.nodeWindow.mode).toBe(WINDOW_MODES.TILE);
-    const frame = snapped.get_frame_rect();
-    expect(frame.width).toBe(slot.width);
   });
 
   it("does NOT unmaximize the sole tiled window on a monitor (maximize-on-single)", () => {
@@ -113,12 +108,12 @@ describe("Bug #461 / D026: TILE slot authority", () => {
     const reassertSpy = vi.spyOn(wm(), "reassertNodeToSlot");
     wm().updateMetaPositionSize(maxed, "size-changed");
 
-    expect(maxed.is_maximized()).toBe(false);
-    expect(reassertSpy).toHaveBeenCalledWith(only.nodeWindow, { force: true });
+    expect(maxed.is_maximized()).toBe(true);
+    expect(reassertSpy).not.toHaveBeenCalled();
   });
 
-  it("unfullscreens a tiled window and restores the slot (size-changed)", () => {
-    const { first, slot } = twoTiles();
+  it("idle fullscreen does not restore (D100)", () => {
+    const { first } = twoTiles();
     const fs = first.metaWindow;
     fs.make_fullscreen();
     fs.maximize();
@@ -128,15 +123,13 @@ describe("Bug #461 / D026: TILE slot authority", () => {
     const reassertSpy = vi.spyOn(wm(), "reassertNodeToSlot");
     wm().updateMetaPositionSize(fs, "size-changed");
 
-    expect(fs.is_fullscreen()).toBe(false);
-    expect(fs.is_maximized()).toBe(false);
+    expect(fs.is_fullscreen()).toBe(true);
     expect(first.nodeWindow.mode).toBe(WINDOW_MODES.TILE);
-    expect(reassertSpy).toHaveBeenCalledWith(first.nodeWindow, { force: true });
-    expect(fs.get_frame_rect().width).toBe(slot.width);
+    expect(reassertSpy).not.toHaveBeenCalled();
   });
 
-  it("notify::fullscreen uses the same restore path", () => {
-    const { first, slot } = twoTiles();
+  it("notify::fullscreen is observe-only (D100)", () => {
+    const { first } = twoTiles();
     const fs = first.metaWindow;
     fs.make_fullscreen();
     fs.move_resize_frame(false, 0, 0, 1920, 1080);
@@ -144,9 +137,8 @@ describe("Bug #461 / D026: TILE slot authority", () => {
 
     wm().updateMetaPositionSize(fs, "notify::fullscreen");
 
-    expect(fs.is_fullscreen()).toBe(false);
+    expect(fs.is_fullscreen()).toBe(true);
     expect(first.nodeWindow.mode).toBe(WINDOW_MODES.TILE);
-    expect(fs.get_frame_rect().width).toBe(slot.width);
   });
 
   it("binds notify::fullscreen next to size/position", () => {
@@ -186,7 +178,7 @@ describe("Bug #461 / D026: TILE slot authority", () => {
     const onExt = vi.spyOn(wm().layoutController, "onExternalGeometry");
     wm().updateMetaPositionSize(first.metaWindow, "size-changed");
 
-    expect(onExt).toHaveBeenCalled();
+    expect(onExt).not.toHaveBeenCalled();
     expect(reassertSpy).not.toHaveBeenCalled();
   });
 });

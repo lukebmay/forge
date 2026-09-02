@@ -38,7 +38,7 @@ describe("forge-wqlx: window-added debounce re-homes every window in a burst", (
     ctx.cleanup();
   });
 
-  it("flushes all windows added within a single 200ms debounce", () => {
+  it("D100: window-added does not rehome (no debounce)", () => {
     workspaceManager.bindWorkspaceSignals(workspace);
 
     const winA = createMockWindow({ wm_class: "AppA" });
@@ -47,26 +47,12 @@ describe("forge-wqlx: window-added debounce re-homes every window in a burst", (
     workspace.emit("window-added", workspace, winA);
     workspace.emit("window-added", workspace, winB);
 
-    // A single shared debounce timer coalesces the burst.
-    expect(timeouts.length).toBe(1);
-
-    timeouts[0]();
-
-    // BOTH windows must be re-homed, not just the first.
-    expect(extWm.updateMetaWorkspaceMonitor).toHaveBeenCalledWith(
-      "window-added",
-      winA.get_monitor(),
-      winA
-    );
-    expect(extWm.updateMetaWorkspaceMonitor).toHaveBeenCalledWith(
-      "window-added",
-      winB.get_monitor(),
-      winB
-    );
+    expect(timeouts.length).toBe(0);
+    expect(extWm.updateMetaWorkspaceMonitor).not.toHaveBeenCalled();
     expect(extWm._wmSources.has("wsWindowAdd")).toBe(false);
   });
 
-  it("still flushes live windows when one queued window was finalized", () => {
+  it("still does not rehome when a window-added Meta is finalized", () => {
     workspaceManager.bindWorkspaceSignals(workspace);
 
     const dead = createMockWindow({ wm_class: "Dead" });
@@ -75,18 +61,12 @@ describe("forge-wqlx: window-added debounce re-homes every window in a burst", (
     });
     const live = createMockWindow({ wm_class: "Live" });
 
-    workspace.emit("window-added", workspace, dead);
-    workspace.emit("window-added", workspace, live);
-    expect(timeouts.length).toBe(1);
-
-    // The finalized window must neither throw out of the callback nor strand
-    // the live one, and the bag slot must still clear.
-    expect(() => timeouts[0]()).not.toThrow();
-    expect(extWm.updateMetaWorkspaceMonitor).toHaveBeenCalledWith(
-      "window-added",
-      live.get_monitor(),
-      live
-    );
+    expect(() => {
+      workspace.emit("window-added", workspace, dead);
+      workspace.emit("window-added", workspace, live);
+    }).not.toThrow();
+    expect(timeouts.length).toBe(0);
+    expect(extWm.updateMetaWorkspaceMonitor).not.toHaveBeenCalled();
     expect(extWm._wmSources.has("wsWindowAdd")).toBe(false);
   });
 });

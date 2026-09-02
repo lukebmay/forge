@@ -6,7 +6,7 @@ import {
   setPointer,
 } from "../mocks/helpers/index.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 
 /**
  * forge-tnth (gh #299/#427/#388/#353): new windows open on the "wrong" monitor.

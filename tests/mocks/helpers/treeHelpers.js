@@ -7,10 +7,52 @@
  */
 
 import { vi } from "vitest";
-import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { Node } from "../../../lib/extension/tree.js";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree-types.js";
+import {
+  forestInsertWindow,
+  liveChildrenForPresent,
+  liveParentForPresent,
+  seedLiveForest,
+} from "../../../lib/extension/tom-live.js";
 import { Bin } from "../gnome/St.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { createMockWindow } from "./mockWindow.js";
+
+/**
+ * Forest-aware parent (G8n). Falls back to GObject when unseeded.
+ * @param {any} wm
+ * @param {any} node
+ * @returns {any|null}
+ */
+export function parentOf(wm, node) {
+  return wm?._membershipParentLive?.(node) || liveParentForPresent(wm, node);
+}
+
+/**
+ * Forest-aware children (G8n). Falls back to GObject when unseeded.
+ * @param {any} wm
+ * @param {any} node
+ * @returns {any[]}
+ */
+export function kidsOf(wm, node) {
+  return liveChildrenForPresent(wm, node);
+}
+
+/** Reseed only when Forest already expected — skip invent-lock / Tree-only fixtures. */
+function reseedIfForestExpected(wm) {
+  if (!wm?._liveForestSeeded || !wm.tree) return;
+  seedLiveForest(wm);
+}
+
+function wmFromTreeOrParent(treeOrParent) {
+  if (!treeOrParent) return null;
+  if (treeOrParent.extWm) return treeOrParent.extWm;
+  if (typeof treeOrParent._resolveExtWm === "function") return treeOrParent._resolveExtWm();
+  let n = treeOrParent;
+  while (n?.parentNode) n = n.parentNode;
+  return n?.extWm || n?._extWm || null;
+}
 
 /**
  * Get workspace and monitor nodes from a tree or WindowManager
@@ -29,17 +71,32 @@ import { createMockWindow } from "./mockWindow.js";
  * const { workspace, monitor } = getWorkspaceAndMonitor(ctx.tree);
  * const { workspace, monitor } = getWorkspaceAndMonitor(ctx); // fixture context
  */
+function wmFromSource(source) {
+  return (
+    source?.windowManager ||
+    source?.extWm ||
+    source?.tree?.extWm ||
+    wmFromTreeOrParent(source?.tree || source)
+  );
+}
+
 export function getWorkspaceAndMonitor(source, wsIndex = 0, monIndex = 0) {
   // Extract tree from various source types
   const tree = source.tree || source;
+  const wm = wmFromSource(source);
+  const wsId = `ws${wsIndex}`;
+  const monId = `mo${monIndex}ws${wsIndex}`;
 
-  const workspace = tree.nodeWorkpaces[wsIndex];
+  const workspace = wm?.liveById?.get?.(wsId) || tree.nodeWorkpaces[wsIndex];
   if (!workspace) {
     throw new Error(`Workspace at index ${wsIndex} not found`);
   }
 
-  const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
-  const monitor = monitors[monIndex];
+  const fromType =
+    typeof workspace.getNodeByType === "function"
+      ? workspace.getNodeByType(NODE_TYPES.MONITOR)
+      : [];
+  const monitor = wm?.liveById?.get?.(monId) || fromType[monIndex];
   if (!monitor) {
     throw new Error(`Monitor at index ${monIndex} not found in workspace ${wsIndex}`);
   }
@@ -56,11 +113,22 @@ export function getWorkspaceAndMonitor(source, wsIndex = 0, monIndex = 0) {
  */
 export function getMonitors(source, wsIndex = 0) {
   const tree = source.tree || source;
-  const workspace = tree.nodeWorkpaces[wsIndex];
+  const wm = wmFromSource(source);
+  const wsId = `ws${wsIndex}`;
+  const workspace = wm?.liveById?.get?.(wsId) || tree.nodeWorkpaces[wsIndex];
   if (!workspace) {
     throw new Error(`Workspace at index ${wsIndex} not found`);
   }
-  return workspace.getNodeByType(NODE_TYPES.MONITOR);
+  if (wm?.liveById instanceof Map) {
+    const mons = [];
+    for (const [id, live] of wm.liveById) {
+      if (live?.nodeType === NODE_TYPES.MONITOR && id.endsWith(wsId)) mons.push(live);
+    }
+    if (mons.length) return mons;
+  }
+  return typeof workspace.getNodeByType === "function"
+    ? workspace.getNodeByType(NODE_TYPES.MONITOR)
+    : [];
 }
 
 /**
@@ -98,6 +166,14 @@ export function createWindowNode(tree, parent, options = {}) {
   // Set mode
   if (nodeWindow && WINDOW_MODES[mode]) {
     nodeWindow.mode = WINDOW_MODES[mode];
+  }
+
+  const wm = wmFromTreeOrParent(tree);
+  const liveRoot = tree && Object.getPrototypeOf(tree) === Object.prototype;
+  if (liveRoot && wm?._liveForestSeeded && nodeWindow) {
+    forestInsertWindow(wm, nodeWindow);
+  } else {
+    reseedIfForestExpected(wm);
   }
 
   return { nodeWindow, metaWindow };
@@ -242,6 +318,7 @@ export function createContainerNode(parent, layout, rect = null) {
   container.layout = layout;
   if (rect) container.rect = rect;
   parent.appendChild(container);
+  reseedIfForestExpected(wmFromTreeOrParent(parent));
   return container;
 }
 
@@ -267,6 +344,8 @@ export function setPointer(x, y, mods = 0) {
 export default {
   getWorkspaceAndMonitor,
   getMonitors,
+  parentOf,
+  kidsOf,
   createWindowNode,
   createTiledWindow,
   createHorizontalLayout,

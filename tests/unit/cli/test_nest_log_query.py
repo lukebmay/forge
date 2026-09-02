@@ -25,6 +25,7 @@ from nest_log_query import (  # noqa: E402
     query_records,
     record_key,
     records_since,
+    run_cli_query,
     snapshot_keys,
 )
 
@@ -66,6 +67,13 @@ def test_build_plog_query_argv_json_and_grep() -> None:
     assert "--grep" in argv
     assert CTS_GREP in argv
     assert "--color" in argv
+    with_level = build_plog_query_argv(
+        jsonl, grep="slot", last=40, json_out=False, level="info+"
+    )
+    assert "--level" in with_level
+    assert "info+" in with_level
+    assert "--json" not in with_level
+    assert "40" in with_level
 
 
 def test_classify_fail_render_throw() -> None:
@@ -174,3 +182,110 @@ def test_query_records_via_plog_query(tmp_path: Path) -> None:
     assert not any("title-changed" in t for t in texts)
     with pytest.raises(LogQueryError, match="log fail"):
         assert_cts_logs([], stage="unit", jsonl=jsonl)
+
+
+def test_run_cli_query_missing_jsonl(tmp_path: Path) -> None:
+    missing = tmp_path / "forge.jsonl"
+    with pytest.raises(LogQueryError, match="JSONL") as ei:
+        run_cli_query(missing)
+    assert ei.value.exit_code == 1
+
+
+def test_cli_log_missing_jsonl_exits_1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import argparse
+
+    from nested_wayland import _cli_log
+
+    monkeypatch.setenv("FORGE_NESTED_ROOT", str(tmp_path / "nests"))
+    args = argparse.Namespace(grep="slot", last=40, level="info+", json=False)
+    rc = _cli_log(args, "forge")
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "JSONL" in err or "jsonl" in err
+    assert "Traceback" not in err
+
+
+def test_cli_log_resolves_state_jsonl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import argparse
+
+    from nested_wayland import _cli_log, session_dir
+
+    monkeypatch.setenv("FORGE_NESTED_ROOT", str(tmp_path / "nests"))
+    d = session_dir("forge")
+    d.mkdir(parents=True, exist_ok=True)
+    jsonl = d / "forge.jsonl"
+    rec = {
+        "ts": "2026-09-01T00:00:00Z",
+        "level": "info",
+        "text": "forest-match ok",
+        "id": "n:1:1",
+    }
+    jsonl.write_text(json.dumps(rec) + "\n", encoding="utf-8")
+    calls: list[list[str]] = []
+
+    def fake_run(argv, check=False):  # noqa: ANN001
+        calls.append(list(argv))
+
+        class _P:
+            returncode = 0
+
+        return _P()
+
+    monkeypatch.setattr("nest_log_query.subprocess.run", fake_run)
+    args = argparse.Namespace(grep="forest-match", last=12, level="info+", json=True)
+    rc = _cli_log(args, "forge")
+    assert rc == 0
+    assert calls
+    argv = calls[0]
+    assert str(jsonl) in argv
+    assert "--grep" in argv
+    assert "forest-match" in argv
+    assert "--level" in argv
+    assert "info+" in argv
+    assert "--last" in argv
+    assert "12" in argv
+
+
+def test_nested_log_in_actions_and_help() -> None:
+    import io
+
+    import cli_ansi
+    import test_cli
+
+    assert "log" in test_cli._NESTED_ACTIONS
+    assert "logs" in test_cli._NESTED_ACTIONS
+    cli_ansi.set_color_mode("never")
+    buf = io.StringIO()
+    test_cli.print_forge_test_help(stream=buf)
+    text = buf.getvalue()
+    assert "nested log" in text or " log --grep" in text
+    assert "shell.log" in text or "stderr" in text
+
+
+def test_hoist_nested_log_flags() -> None:
+    from test_cli import hoist_nested_action_flags as hoist
+
+    argv = [
+        "nested",
+        "log",
+        "--grep",
+        "slot",
+        "--last",
+        "40",
+        "--level",
+        "info+",
+    ]
+    hoisted = hoist(argv)
+    assert hoisted[0] == "nested"
+    assert "log" in hoisted
+    assert "--grep" in hoisted
+    assert "slot" in hoisted
+    assert "--last" in hoisted
+    assert "40" in hoisted
+    assert "--level" in hoisted
+    assert "info+" in hoisted
+    assert hoisted.index("--grep") < hoisted.index("log")

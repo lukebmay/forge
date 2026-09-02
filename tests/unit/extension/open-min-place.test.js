@@ -267,7 +267,7 @@ describe("tabJoinUnit / bfsOpenMinTabCandidates", () => {
       isGrabTile: () => false,
       parentNode: group,
     };
-    group.childNodes = [leaf];
+    group.childNodes.push(leaf);
     expect(tabJoinUnit(leaf, { TABBED: "TABBED", STACKED: "STACKED" })).toBe(group);
   });
 
@@ -288,11 +288,12 @@ describe("tabJoinUnit / bfsOpenMinTabCandidates", () => {
       isWindow: () => false,
       isMonitor: () => false,
       parentNode: mon,
-      childNodes: [left, right],
+      childNodes: [],
     };
+    split.childNodes.push(left, right);
     left.parentNode = split;
     right.parentNode = split;
-    mon.childNodes = [split];
+    mon.childNodes.push(split);
 
     const order = bfsOpenMinTabCandidates(left, mon, { TABBED: "TABBED", STACKED: "STACKED" });
     expect(order[0]).toBe(left);
@@ -311,8 +312,69 @@ describe("tabJoinUnit / bfsOpenMinTabCandidates", () => {
     const b = unit("b", 0, 0, rect(1400, 900));
     a.parentNode = mon;
     b.parentNode = mon;
-    mon.childNodes = [a, b];
+    mon.childNodes.push(a, b);
     const order = bfsOpenMinTabCandidates(a, mon, { TABBED: "TABBED", STACKED: "STACKED" });
     expect(order).toEqual([a, b]);
+  });
+
+  it("tabJoinUnit / BFS use Forest parent when wm is passed and parentNode is null", () => {
+    const group = {
+      layout: "TABBED",
+      isStackedOrTabbed: () => true,
+      isWindow: () => false,
+      isCon: () => true,
+      isMonitor: () => false,
+      childNodes: [],
+      parentNode: null,
+    };
+    const leaf = {
+      nodeType: "WINDOW",
+      isWindow: () => true,
+      isFloat: () => false,
+      isGrabTile: () => false,
+      parentNode: null,
+    };
+    const uncle = {
+      nodeType: "WINDOW",
+      isWindow: () => true,
+      isFloat: () => false,
+      isGrabTile: () => false,
+      parentNode: null,
+    };
+    const mon = {
+      nodeType: "MONITOR",
+      isMonitor: () => true,
+      isCon: () => false,
+      isWindow: () => false,
+      childNodes: [],
+      parentNode: null,
+    };
+    const wm = {
+      _liveForestSeeded: true,
+      forest: {
+        nodes: {
+          mon: { id: "mon", kind: "MONITOR", childIds: ["group", "uncle"] },
+          group: { id: "group", kind: "CON", layout: "TABBED", childIds: ["leaf"], parentId: "mon" },
+          leaf: { id: "leaf", kind: "WINDOW", parentId: "group" },
+          uncle: { id: "uncle", kind: "WINDOW", parentId: "mon" },
+        },
+      },
+      liveById: new Map([
+        ["mon", mon],
+        ["group", group],
+        ["leaf", leaf],
+        ["uncle", uncle],
+      ]),
+    };
+    expect(tabJoinUnit(leaf, { TABBED: "TABBED", STACKED: "STACKED" })).toBe(leaf);
+    expect(tabJoinUnit(leaf, { TABBED: "TABBED", STACKED: "STACKED" }, wm)).toBe(group);
+    const order = bfsOpenMinTabCandidates(
+      leaf,
+      mon,
+      { TABBED: "TABBED", STACKED: "STACKED" },
+      wm
+    );
+    expect(order[0]).toBe(group);
+    expect(order).toContain(uncle);
   });
 });

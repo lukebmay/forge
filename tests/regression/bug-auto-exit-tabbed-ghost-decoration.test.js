@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import * as PresentChrome from "../../lib/extension/present-chrome.js";
 import {
   createTreeFixture,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
   createContainerNode,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 
 /**
@@ -19,7 +21,8 @@ import {
  * Fix (defense in depth):
  *   A) updateDecorationLayout only re-shows when con.isStackedOrTabbed()
  *   B) removeNode auto-exit tears down decoration + remaining child tabs
- *   C) processNode hides/zero-sizes leftover decoration on non-tab/stack layouts
+ *   C) PresentChrome.processNode hides/zero-sizes leftover decoration on
+ *      non-tab/stack layouts (Tree.processNode is a thin delegate)
  */
 describe("Bug auto-exit-tabbed ghost decoration over native CSD", () => {
   describe("A — updateDecorationLayout isStackedOrTabbed gate", () => {
@@ -57,7 +60,7 @@ describe("Bug auto-exit-tabbed ghost decoration over native CSD", () => {
       // Simulate auto-exit / layout toggle leaving a leftover decoration actor.
       con.layout = LAYOUT_TYPES.HSPLIT;
       // Drop to one tiled child as after closing the other tab.
-      ctx.tree.removeNode(con.childNodes[1]);
+      ctx.tree.removeNode(kidsOf(ctx.windowManager, con)[1]);
       // removeNode with auto-exit may null decoration; re-attach a leftover to
       // isolate the gate (auto-exit off path / incomplete teardown).
       if (!con.decoration) {
@@ -67,7 +70,7 @@ describe("Bug auto-exit-tabbed ghost decoration over native CSD", () => {
         con.decoration.hide = vi.fn();
       }
       expect(con.isStackedOrTabbed()).toBe(false);
-      expect(con.childNodes.length).toBe(1);
+      expect(kidsOf(ctx.windowManager, con)).toHaveLength(1);
 
       ctx.windowManager.updateDecorationLayout();
 
@@ -132,8 +135,8 @@ describe("Bug auto-exit-tabbed ghost decoration over native CSD", () => {
       ctx.tree.removeNode(w1);
 
       expect(con.layout).toBe(LAYOUT_TYPES.HSPLIT); // landscape mock default
-      expect(con.childNodes.length).toBe(1);
-      expect(con.childNodes[0]).toBe(w0);
+      expect(kidsOf(ctx.extWm, con)).toHaveLength(1);
+      expect(kidsOf(ctx.extWm, con)[0]).toBe(w0);
       expect(con.decoration).toBe(null);
       expect(decoDestroyed).toBe(1);
       // Remaining child's Forge tab is gone (native CSD only; no rebuild).
@@ -192,7 +195,7 @@ describe("Bug auto-exit-tabbed ghost decoration over native CSD", () => {
       con.decoration.set_size(800, 36);
       con.decoration.show();
 
-      ctx.tree.processNode(monitor);
+      PresentChrome.processNode(ctx.tree, monitor);
 
       expect(con.decoration.visible).toBe(false);
       expect(con.decoration.width).toBe(0);
@@ -210,11 +213,11 @@ describe("Bug auto-exit-tabbed ghost decoration over native CSD", () => {
       });
       createWindowNode(ctx.tree, con);
       createWindowNode(ctx.tree, con);
-      ctx.tree.processNode(monitor);
+      PresentChrome.processNode(ctx.tree, monitor);
       expect(con.decoration.reactive).toBe(false);
 
       con.layout = LAYOUT_TYPES.TABBED;
-      ctx.tree.processNode(monitor);
+      PresentChrome.processNode(ctx.tree, monitor);
 
       expect(con.decoration.reactive).toBe(true);
     });

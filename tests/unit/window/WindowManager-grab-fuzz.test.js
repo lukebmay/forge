@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
   setPointer,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { GrabOp } from "../../mocks/gnome/Meta.js";
 
@@ -121,14 +123,13 @@ describe("WindowManager - grab-sequence fuzzer", () => {
       const withPreview = wm.allNodeWindows.filter((n) => n.previewHint);
       expect(withPreview, `${where}: orphaned previewHint`).toEqual([]);
 
-      // Tree parent-links stay consistent: every reachable window node has a
-      // parent whose childNodes contains it (no orphans / dangling links).
+      // Forest parent-links stay consistent (no orphans / dangling links).
       for (const node of wm.allNodeWindows) {
-        expect(node.parentNode, `${where}: window without parent`).toBeTruthy();
-        expect(
-          node.parentNode.childNodes.includes(node),
-          `${where}: parent does not list child`
-        ).toBe(true);
+        const parent = parentOf(wm, node);
+        expect(parent, `${where}: window without parent`).toBeTruthy();
+        expect(kidsOf(wm, parent).includes(node), `${where}: parent does not list child`).toBe(
+          true
+        );
       }
 
       // The dragged node, if closed, must be gone from the tree.

@@ -1,12 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
-  createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  createWindowNode,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { Workspace } from "../mocks/gnome/Meta.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * Bug forge-6pe: Overview drag-to-insert-workspace scrambles tiling on shifted
@@ -45,15 +48,14 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
 
   afterEach(() => ctx.cleanup());
 
-  /** Build a window node under `parentValue` on workspace `wsObj`. */
-  function addWindow(id, parentValue, wsObj, percent) {
-    const win = createMockWindow({ id });
-    win._workspace = wsObj;
-    win._monitor = 0;
-    const node = tree.createNode(parentValue, NODE_TYPES.WINDOW, win);
-    node.mode = WINDOW_MODES.TILE;
-    if (percent != null) node.percent = percent;
-    return { win, node };
+  /** Build a window node under `parent` on workspace `wsObj`. */
+  function addWindow(id, parent, wsObj, percent) {
+    const { nodeWindow, metaWindow } = createWindowNode(tree, parent, {
+      mode: "TILE",
+      windowOverrides: { id, workspace: wsObj, monitor: 0 },
+    });
+    if (percent != null) nodeWindow.percent = percent;
+    return { win: metaWindow, node: nodeWindow };
   }
 
   /**
@@ -64,6 +66,8 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
   function simulateInsertShift(wins, newWsObj) {
     ctx.workspaces.push(newWsObj);
     tree.addWorkspace(newWsObj.index());
+    // Spine admit marks Forest seeded without WINDOW nodes; reseed so rehome can Forest-write.
+    if (wm._liveForestSeeded) seedLiveForest(wm);
     wins.forEach((w) => (w._workspace = newWsObj));
     wm._reconcileWindowHomes();
   }
@@ -74,10 +78,10 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
     // Nested VSPLIT container on ws2 holding two windows with custom proportions.
     const con = tree.createNode(mon0ws2.nodeValue, NODE_TYPES.CON, "con-ws2");
     con.layout = LAYOUT_TYPES.VSPLIT;
-    const { win: winD, node: nodeD } = addWindow("D", con.nodeValue, ctx.workspaces[2], 0.7);
-    const { win: winE, node: nodeE } = addWindow("E", con.nodeValue, ctx.workspaces[2], 0.3);
+    const { win: winD, node: nodeD } = addWindow("D", con, ctx.workspaces[2], 0.7);
+    const { win: winE, node: nodeE } = addWindow("E", con, ctx.workspaces[2], 0.3);
 
-    expect(nodeD.parentNode).toBe(con);
+    expect(parentOf(wm, nodeD)).toBe(con);
 
     simulateInsertShift([winD, winE], new Workspace({ index: 3 }));
 
@@ -85,25 +89,26 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
     expect(mo0ws3).not.toBeNull();
     // The sub-split is preserved: D and E remain siblings under a VSPLIT CON that
     // now lives under the destination monitor node, with proportions intact.
-    expect(nodeD.parentNode.nodeType).toBe(NODE_TYPES.CON);
-    expect(nodeD.parentNode).toBe(nodeE.parentNode);
-    expect(nodeD.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
-    expect(nodeD.parentNode.parentNode).toBe(mo0ws3);
+    const split = parentOf(wm, nodeD);
+    expect(split.nodeType).toBe(NODE_TYPES.CON);
+    expect(split).toBe(parentOf(wm, nodeE));
+    expect(split.layout).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(parentOf(wm, split)?.nodeValue).toBe("mo0ws3");
     expect(nodeD.percent).toBe(0.7);
     expect(nodeE.percent).toBe(0.3);
-    expect(mo0ws3.childNodes).not.toContain(nodeD);
+    expect(kidsOf(wm, parentOf(wm, split))).not.toContain(nodeD);
   });
 
   it("preserves flat proportions when the whole workspace shifts", () => {
     const { monitor: mon0ws2 } = getWorkspaceAndMonitor(ctx, 2, 0);
-    const { win: winA, node: nodeA } = addWindow("A", mon0ws2.nodeValue, ctx.workspaces[2], 0.6);
-    const { win: winB, node: nodeB } = addWindow("B", mon0ws2.nodeValue, ctx.workspaces[2], 0.4);
+    const { win: winA, node: nodeA } = addWindow("A", mon0ws2, ctx.workspaces[2], 0.6);
+    const { win: winB, node: nodeB } = addWindow("B", mon0ws2, ctx.workspaces[2], 0.4);
 
     simulateInsertShift([winA, winB], new Workspace({ index: 3 }));
 
-    const mo0ws3 = tree.findNode("mo0ws3");
-    expect(mo0ws3.childNodes).toContain(nodeA);
-    expect(mo0ws3.childNodes).toContain(nodeB);
+    expect(parentOf(wm, nodeA)?.nodeValue).toBe("mo0ws3");
+    expect(parentOf(wm, nodeB)?.nodeValue).toBe("mo0ws3");
+    expect(kidsOf(wm, parentOf(wm, nodeA))).toEqual(expect.arrayContaining([nodeA, nodeB]));
     expect(nodeA.percent).toBe(0.6);
     expect(nodeB.percent).toBe(0.4);
   });
@@ -112,18 +117,18 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
     const { monitor: mon0ws2 } = getWorkspaceAndMonitor(ctx, 2, 0);
     const con = tree.createNode(mon0ws2.nodeValue, NODE_TYPES.CON, "con-ws2");
     con.layout = LAYOUT_TYPES.VSPLIT;
-    const { win: winD, node: nodeD } = addWindow("D", con.nodeValue, ctx.workspaces[2]);
-    const { node: nodeE } = addWindow("E", con.nodeValue, ctx.workspaces[2]);
+    const { win: winD, node: nodeD } = addWindow("D", con, ctx.workspaces[2]);
+    const { node: nodeE } = addWindow("E", con, ctx.workspaces[2]);
 
     // Only winD moves to the new workspace; winE stays on ws2.
     const wsNew = new Workspace({ index: 3 });
     ctx.workspaces.push(wsNew);
     tree.addWorkspace(3);
+    if (wm._liveForestSeeded) seedLiveForest(wm);
     winD._workspace = wsNew;
     wm._reconcileWindowHomes();
 
-    const mo0ws3 = tree.findNode("mo0ws3");
-    expect(mo0ws3.childNodes).toContain(nodeD); // flattened onto destination monitor
-    expect(nodeE.parentNode).toBe(con); // winE stays nested on the source
+    expect(parentOf(wm, nodeD)?.nodeValue).toBe("mo0ws3"); // flattened onto destination monitor
+    expect(parentOf(wm, nodeE)).toBe(con); // winE stays nested on the source
   });
 });

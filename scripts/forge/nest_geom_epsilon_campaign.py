@@ -32,6 +32,7 @@ from nest_invoke import (  # noqa: E402
     close_window_id,
     get_tree,
     invoke_on_bus,
+    require_nest_client_env,
     tiled_windows,
     wait_window_count,
 )
@@ -110,12 +111,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _require_nest_env(env: Mapping[str, str]) -> None:
-    if not str(env.get("FORGE_CONFIG_HOME") or "").strip():
-        raise CampaignError(
-            "not in nest env (missing FORGE_CONFIG_HOME). "
-            "Use: forge-test nested smoke-geom-epsilon",
-            exit_code=2,
-        )
+    try:
+        require_nest_client_env(env, what="geom-epsilon")
+    except InvokeError as e:
+        raise CampaignError(str(e), exit_code=int(getattr(e, "exit_code", 2) or 2)) from e
     bus = str(env.get("DBUS_SESSION_BUS_ADDRESS") or "").strip()
     if not bus:
         raise CampaignError("missing DBUS_SESSION_BUS_ADDRESS", exit_code=2)

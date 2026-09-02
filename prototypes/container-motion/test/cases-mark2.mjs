@@ -215,6 +215,10 @@ export const MARK2_CASES = [
     expect: "Mon1(TAB(A,B,C))",
     expectMode: /enter-con/,
     note: "enter at near edge of TAB (start), then unary H collapses",
+    check(t) {
+      const tab = t.parent(t.win("A"));
+      if (tab.lastTabFocusId !== t.win("A").id) return "open leaf not joiner A";
+    },
   },
   {
     id: "join-tab-into-left-tab",
@@ -224,6 +228,10 @@ export const MARK2_CASES = [
     expect: "Mon1(H(TAB(A,B,C),D))",
     expectMode: /breakout-enter-con/,
     note: "C joins TAB(A,B) at the near (right) edge; D stays after unary",
+    check(t) {
+      const tab = t.parent(t.win("C"));
+      if (tab.lastTabFocusId !== t.win("C").id) return "open leaf not joiner C";
+    },
   },
   {
     id: "joinmove-tab-into-left-tab",

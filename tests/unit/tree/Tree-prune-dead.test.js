@@ -4,6 +4,7 @@ import {
   createTreeFixture,
   getWorkspaceAndMonitor,
   createHorizontalLayout,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 
 /**
@@ -33,6 +34,7 @@ function makeDeadWindow() {
 
 describe("Tree - pruneDeadWindows", () => {
   let ctx;
+  const wm = () => ctx.extWm;
 
   beforeEach(() => {
     ctx = createTreeFixture({ fullExtWm: true });
@@ -49,10 +51,10 @@ describe("Tree - pruneDeadWindows", () => {
 
     ctx.tree.pruneDeadWindows();
 
-    expect(monitor.childNodes).toHaveLength(2);
-    expect(monitor.childNodes).not.toContain(wins[1].nodeWindow);
-    expect(monitor.childNodes).toContain(wins[0].nodeWindow);
-    expect(monitor.childNodes).toContain(wins[2].nodeWindow);
+    expect(kidsOf(wm(), monitor)).toHaveLength(2);
+    expect(kidsOf(wm(), monitor)).not.toContain(wins[1].nodeWindow);
+    expect(kidsOf(wm(), monitor)).toContain(wins[0].nodeWindow);
+    expect(kidsOf(wm(), monitor)).toContain(wins[2].nodeWindow);
   });
 
   it("is a no-op when all windows are alive", () => {
@@ -61,9 +63,9 @@ describe("Tree - pruneDeadWindows", () => {
 
     ctx.tree.pruneDeadWindows();
 
-    expect(monitor.childNodes).toHaveLength(2);
-    expect(monitor.childNodes).toContain(wins[0].nodeWindow);
-    expect(monitor.childNodes).toContain(wins[1].nodeWindow);
+    expect(kidsOf(wm(), monitor)).toHaveLength(2);
+    expect(kidsOf(wm(), monitor)).toContain(wins[0].nodeWindow);
+    expect(kidsOf(wm(), monitor)).toContain(wins[1].nodeWindow);
   });
 
   it("does not throw with multiple dead siblings", () => {
@@ -77,8 +79,8 @@ describe("Tree - pruneDeadWindows", () => {
 
     expect(() => ctx.tree.pruneDeadWindows()).not.toThrow();
 
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes).toContain(wins[1].nodeWindow);
+    expect(kidsOf(wm(), monitor)).toHaveLength(1);
+    expect(kidsOf(wm(), monitor)).toContain(wins[1].nodeWindow);
   });
 
   it("excludes dead windows from tiled children and split space", () => {
@@ -88,12 +90,12 @@ describe("Tree - pruneDeadWindows", () => {
     wins[2].nodeWindow.nodeValue = makeDeadWindow();
 
     // Dead node is not a tiled child even before the prune runs.
-    expect(ctx.tree.getTiledChildren(monitor.childNodes)).toHaveLength(2);
+    expect(ctx.tree.getTiledChildren(kidsOf(wm(), monitor))).toHaveLength(2);
 
     ctx.tree.pruneDeadWindows();
 
     // Space divides among live windows only (removeNode re-equalizes percents).
-    const tiled = ctx.tree.getTiledChildren(monitor.childNodes);
+    const tiled = ctx.tree.getTiledChildren(kidsOf(wm(), monitor));
     const sizes = ctx.tree.computeSizes(monitor, tiled);
     expect(sizes).toEqual([450, 450]);
   });
@@ -112,9 +114,9 @@ describe("Tree - pruneDeadWindows", () => {
 
     ctx.tree.pruneDeadWindows();
 
-    expect(monitorWs0.childNodes).toContain(ws0Wins[0].nodeWindow);
-    expect(monitorWs1.childNodes).toHaveLength(1);
-    expect(monitorWs1.childNodes).toContain(ws1Wins[1].nodeWindow);
+    expect(kidsOf(wm(), monitorWs0)).toContain(ws0Wins[0].nodeWindow);
+    expect(kidsOf(wm(), monitorWs1)).toHaveLength(1);
+    expect(kidsOf(wm(), monitorWs1)).toContain(ws1Wins[1].nodeWindow);
     expect(ctx.tree.getNodeByType(NODE_TYPES.WINDOW)).toHaveLength(2);
   });
 });

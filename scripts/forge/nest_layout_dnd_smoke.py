@@ -26,6 +26,7 @@ from nest_invoke import (  # noqa: E402
     get_tree,
     iter_nodes,
     parse_invoke_result,
+    require_nest_client_env,
     wait_window_count,
 )
 
@@ -529,6 +530,7 @@ def cmd_from_env(args: Optional[argparse.Namespace] = None) -> int:
         )
         return 2
     try:
+        require_nest_client_env(os.environ, what="layout+dnd")
         payload = run_campaign_on_bus(bus, parsed, env=os.environ)
     except CampaignError as e:
         print(f"nest layout+dnd: {e}", file=sys.stderr)

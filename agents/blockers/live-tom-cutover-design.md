@@ -4,12 +4,12 @@
 **Severity:** hard
 **Owner:** human
 **Kind:** design
-**Plan:** [agents/plans/forge-live-tom-cutover.md](../plans/forge-live-tom-cutover.md)
-**Unblocks:** forge-live-tom-cutover#C0+ (C1–C7)
+**Plan:** [agents/plans/archived/completed/forge-live-tom-cutover.md](../plans/archived/completed/forge-live-tom-cutover.md)
+**Unblocks:** (done) cutover C0–C7; GObject deletion → D096
 **Priority:** —
 **Created:** 2026-08-29
-**Updated:** 2026-08-29
-**Closed:** 2026-08-29 — operator lock → **D092**
+**Updated:** 2026-08-31 — point leftovers at forge-retire-gobject-topology
+**Closed:** 2026-08-29 — operator lock → **D092**; amended **D096**
 
 ## Why this was human-only
 

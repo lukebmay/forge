@@ -1,14 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createMockWindow,
   createWindowNode,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
 import * as Utils from "../../lib/extension/utils.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * R031: always-float open (Kooha) must not reserve a blank TILE slot.
@@ -90,7 +93,17 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
   }
 
   function tiledCount(root) {
-    return ctx.tree.getTiledChildren(root.childNodes).length;
+    return ctx.tree.getTiledChildren(kidsOf(wm(), root)).length;
+  }
+
+  function windowLeaves(root) {
+    const out = [];
+    const walk = (n) => {
+      if (n?.isWindow?.()) out.push(n);
+      for (const k of kidsOf(wm(), n)) walk(k);
+    };
+    walk(root);
+    return out;
   }
 
   it("known always-float open does not wrap a TILE slot", () => {
@@ -115,16 +128,17 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
 
     expect(node).toBeTruthy();
     expect(node.isFloat()).toBe(true);
-    expect(bag.parentNode).toBe(mon0);
-    expect(node.parentNode).toBe(mon0);
+    expect(parentOf(wm(), bag)).toBe(mon0);
+    expect(kidsOf(wm(), mon0)).not.toContain(node);
     expect(tiledCount(mon0)).toBe(2);
     expect(
-      mon0.getNodeByType(NODE_TYPES.WINDOW).filter((w) => w.isTile() && !w.isPlaceholder?.())
+      windowLeaves(mon0).filter((w) => w.isTile() && !w.isPlaceholder?.())
     ).toHaveLength(3);
 
     wm().processFloats();
     expect(node.isFloat()).toBe(true);
-    expect(bag.parentNode).toBe(mon0);
+    expect(parentOf(wm(), bag)).toBe(mon0);
+    expect(kidsOf(wm(), mon0)).not.toContain(node);
     expect(tiledCount(mon0)).toBe(2);
   });
 
@@ -145,8 +159,8 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
     const node = wm().findNodeWindow(meta);
 
     expect(node.isFloat()).toBe(true);
-    expect(bag.parentNode).toBe(mon0);
-    expect(node.parentNode).toBe(mon0);
+    expect(parentOf(wm(), bag)).toBe(mon0);
+    expect(kidsOf(wm(), mon0)).not.toContain(node);
 
     meta.set_wm_class("io.github.seadve.Kooha");
     meta.set_title("Kooha");
@@ -154,8 +168,8 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
     wm().processFloats();
 
     expect(node.isFloat()).toBe(true);
-    expect(bag.parentNode).toBe(mon0);
-    expect(node.parentNode).toBe(mon0);
+    expect(parentOf(wm(), bag)).toBe(mon0);
+    expect(kidsOf(wm(), mon0)).not.toContain(node);
     expect(tiledCount(mon0)).toBe(2);
     expect(node.mode).toBe(WINDOW_MODES.FLOAT);
   });
@@ -212,15 +226,17 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
     wm().processFloats();
     // D032: open beside focused tab bag wraps the bag (split-or-tab on the CON).
     expect(node.isTile()).toBe(true);
-    expect(bag.parentNode).not.toBe(mon0);
+    expect(parentOf(wm(), bag)).not.toBe(mon0);
 
     meta.is_above = () => true;
     expect(wm().isFloatingExempt(meta)).toBe(true);
     wm().processFloats();
+    // Spine/float Forest writes can omit CON kids; reseed when Forest is already expected.
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
 
     expect(node.isFloat()).toBe(true);
-    expect(bag.parentNode).toBe(mon0);
-    expect(node.parentNode).toBe(mon0);
+    expect(parentOf(wm(), bag)).toBe(mon0);
+    expect(kidsOf(wm(), mon0)).not.toContain(node);
     expect(tiledCount(mon0)).toBe(2);
   });
 });

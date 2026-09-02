@@ -23,8 +23,13 @@ import {
   CLASS_MIN_ABSURD_W,
   CLASS_MIN_ABSURD_H,
 } from "../../../lib/extension/tree-layout.js";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import {
+  liveChildrenForPresent,
+  liveParentForPresent,
+  seedLiveForest,
+} from "../../../lib/extension/tom-live.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -176,6 +181,8 @@ describe("dropChangesStructure", () => {
         })
       );
       top.mode = WINDOW_MODES.TILE;
+      bot.mode = WINDOW_MODES.TILE;
+      seedLiveForest(wm);
       bot.mode = WINDOW_MODES.GRAB_TILE;
 
       setPointer(480, 270);
@@ -245,6 +252,8 @@ describe("dropChangesStructure", () => {
       );
       ghostty.mode = WINDOW_MODES.TILE;
       yt.mode = WINDOW_MODES.TILE;
+      nautilus.mode = WINDOW_MODES.TILE;
+      seedLiveForest(wm);
       nautilus.mode = WINDOW_MODES.GRAB_TILE;
 
       setPointer(480, 540);
@@ -252,14 +261,18 @@ describe("dropChangesStructure", () => {
       wm.moveWindowToPointer(nautilus, false);
 
       expect(split.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      const wrap = ghostty.parentNode;
+      const wrap = liveParentForPresent(wm, ghostty);
       expect(wrap).not.toBe(split);
       expect(wrap.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(wrap.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
-      expect(wrap.childNodes).toEqual(expect.arrayContaining([ghostty, nautilus]));
-      expect(tabs.parentNode).toBe(split);
-      expect(tabs.childNodes).toEqual([yt]);
-      expect(split.childNodes).toEqual(expect.arrayContaining([wrap, tabs]));
+      expect(liveChildrenForPresent(wm, wrap).every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(
+        true
+      );
+      expect(liveChildrenForPresent(wm, wrap)).toEqual(
+        expect.arrayContaining([ghostty, nautilus])
+      );
+      expect(liveParentForPresent(wm, tabs)).toBe(split);
+      expect(liveChildrenForPresent(wm, tabs)).toEqual([yt]);
+      expect(liveChildrenForPresent(wm, split)).toEqual(expect.arrayContaining([wrap, tabs]));
     } finally {
       ctx.cleanup();
     }

@@ -331,7 +331,229 @@ describe("startOpenPhase", () => {
     expect(placed).toHaveLength(1);
     expect(placed[0].attachSelector).toBe("id:forge-ph-term");
     expect(placed[0].monitor).toBe(0);
+    expect(placed[0].workspace).toBe(0);
     expect(placed[0].treePath).toBeUndefined();
+  });
+
+  it("PlaceNext carries ApplyLayout workspace for WS2 opens", () => {
+    const placed = [];
+    const phForest = {
+      monitors: [
+        {
+          nodeType: "MONITOR",
+          id: "mo0ws1",
+          children: [
+            {
+              nodeType: "WINDOW",
+              windowId: "forge-ph-ink",
+              wmClass: "forge-placeholder",
+              placeholder: true,
+              layoutRole: "inkscape",
+              layoutSlot: "mon0.inkscape",
+            },
+          ],
+        },
+      ],
+    };
+    startOpenPhase({
+      openActions: [
+        {
+          op: "open",
+          role: "inkscape",
+          slot: "mon0.inkscape",
+          open: { app: "inkscape", wmClass: "inkscape" },
+        },
+      ],
+      workspace: 1,
+      profile: { version: 2, roles: [] },
+      flags: { clean: true },
+      deps: {
+        spawn: () => ({ ok: true, waitClasses: ["inkscape"] }),
+        placeNext: (opts) => {
+          placed.push(opts);
+          return { ok: true };
+        },
+        beginBatch: () => ({ ok: true }),
+        releaseDeferred: () => ({ ok: true }),
+        endBatch: () => ({ ok: true }),
+        snapshotForest: () => phForest,
+        waitPins: (_p, _o, done) =>
+          done({ ok: true, rolePins: { inkscape: 300 }, missing: [] }),
+      },
+      onComplete: () => {},
+    });
+    expect(placed).toHaveLength(1);
+    expect(placed[0].workspace).toBe(1);
+    expect(placed[0].attachSelector).toBe("id:forge-ph-ink");
+  });
+
+  it("does not stillOpen-miss roles that already have pins (wrong-ws residual)", () => {
+    const done = [];
+    // Vinyl-shaped: pin inkscape, but residual forest has inkscape under WS0
+    // while ApplyLayout targets WS1 — planReconcile would re-open it.
+    const vinylProfile = {
+      version: 2,
+      mode: "reconcile",
+      roles: [
+        {
+          id: "inkscape",
+          match: { class: "inkscape" },
+          open: { app: "inkscape", wmClass: "inkscape" },
+          slot: "mon0.inkscape",
+        },
+        {
+          id: "ghostty",
+          match: { class: "ghostty" },
+          open: { app: "ghostty", wmClass: "ghostty" },
+          slot: "mon1.ghostty",
+        },
+        {
+          id: "YouTube",
+          match: {
+            class: "chrome-agimnkijcaahngcdmfeangaknmldooml-Default",
+            "title~=": "YouTube",
+          },
+          open: { app: "YouTube" },
+          slot: "mon1.YouTube",
+        },
+      ],
+      layout: {
+        mon0: { children: [{ id: "inkscape", roles: ["inkscape"] }] },
+        mon1: {
+          split: "hsplit",
+          children: [
+            { id: "ghostty", roles: ["ghostty"] },
+            { id: "YouTube", roles: ["YouTube"] },
+          ],
+        },
+      },
+      overflow: { slot: "mon0.overflow", layout: "tabbed" },
+      marginal: { mode: "coexist", roleOrder: "first", residual: "leave" },
+    };
+    const phForest = {
+      monitors: [
+        {
+          nodeType: "MONITOR",
+          id: "mo0ws1",
+          children: [
+            {
+              nodeType: "WINDOW",
+              windowId: "forge-ph-ink",
+              wmClass: "forge-placeholder",
+              placeholder: true,
+              layoutRole: "inkscape",
+              layoutSlot: "mon0.inkscape",
+            },
+          ],
+        },
+        {
+          nodeType: "MONITOR",
+          id: "mo1ws1",
+          children: [
+            {
+              nodeType: "WINDOW",
+              windowId: "100",
+              wmClass: "com.mitchellh.ghostty",
+              title: "Ghostty",
+              mode: "TILE",
+            },
+            {
+              nodeType: "WINDOW",
+              windowId: "200",
+              wmClass: "chrome-agimnkijcaahngcdmfeangaknmldooml-Default",
+              title: "YouTube",
+              mode: "TILE",
+            },
+          ],
+        },
+      ],
+    };
+    const wrongWsForest = {
+      monitors: [
+        {
+          nodeType: "MONITOR",
+          id: "mo0ws0",
+          children: [
+            {
+              nodeType: "WINDOW",
+              windowId: "300",
+              wmClass: "org.inkscape.Inkscape",
+              title: "Inkscape",
+              mode: "TILE",
+            },
+          ],
+        },
+        {
+          nodeType: "MONITOR",
+          id: "mo0ws1",
+          children: [
+            {
+              nodeType: "WINDOW",
+              windowId: "forge-ph-ink",
+              wmClass: "forge-placeholder",
+              placeholder: true,
+              layoutRole: "inkscape",
+              layoutSlot: "mon0.inkscape",
+            },
+          ],
+        },
+        {
+          nodeType: "MONITOR",
+          id: "mo1ws1",
+          children: [
+            {
+              nodeType: "WINDOW",
+              windowId: "100",
+              wmClass: "com.mitchellh.ghostty",
+              title: "Ghostty",
+              mode: "TILE",
+            },
+            {
+              nodeType: "WINDOW",
+              windowId: "200",
+              wmClass: "chrome-agimnkijcaahngcdmfeangaknmldooml-Default",
+              title: "YouTube",
+              mode: "TILE",
+            },
+          ],
+        },
+      ],
+    };
+    let snapN = 0;
+    startOpenPhase({
+      openActions: [
+        {
+          op: "open",
+          role: "inkscape",
+          slot: "mon0.inkscape",
+          open: { app: "inkscape", wmClass: "inkscape" },
+          match: { class: "inkscape" },
+        },
+      ],
+      workspace: 1,
+      profile: vinylProfile,
+      flags: { clean: true },
+      deps: {
+        spawn: () => ({ ok: true, waitClasses: ["inkscape"] }),
+        placeNext: () => ({ ok: true }),
+        beginBatch: () => ({ ok: true }),
+        releaseDeferred: () => ({ ok: true }),
+        endBatch: () => ({ ok: true }),
+        snapshotForest: () => {
+          snapN += 1;
+          // First call: PH lookup; later: residual (inkscape on wrong ws).
+          return snapN === 1 ? phForest : wrongWsForest;
+        },
+        waitPins: (_p, _o, d) =>
+          d({ ok: true, rolePins: { inkscape: "300" }, missing: [] }),
+      },
+      onComplete: (o) => done.push(o),
+    });
+    expect(done).toHaveLength(1);
+    expect(done[0].rolePins.inkscape).toBe("300");
+    // Residual would re-open inkscape (wrong ws), but pin must win.
+    expect(done[0].stillOpenRoles || []).not.toContain("inkscape");
+    expect(done[0].stillOpenRoles || []).toHaveLength(0);
   });
 
   it("fails the unit when dest is mon-root-only (no slot PH)", () => {

@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { MotionDirection } from "../mocks/gnome/Meta.js";
 
@@ -53,8 +54,9 @@ describe("Bug #213: keyboard Move (product TILES)", () => {
 
     wm().command({ name: "Move", direction: "right" });
 
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].childNodes).toEqual([b.node, a.node]);
+    const wrapRight = kidsOf(wm(), monitor);
+    expect(wrapRight).toHaveLength(1);
+    expect(kidsOf(wm(), wrapRight[0])).toEqual([b.node, a.node]);
   });
 
   it("in-axis Move left wrap-rotates the leftmost leaf", () => {
@@ -64,8 +66,9 @@ describe("Bug #213: keyboard Move (product TILES)", () => {
 
     wm().command({ name: "Move", direction: "left" });
 
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].childNodes).toEqual([b.node, a.node]);
+    const wrapLeft = kidsOf(wm(), monitor);
+    expect(wrapLeft).toHaveLength(1);
+    expect(kidsOf(wm(), wrapLeft[0])).toEqual([b.node, a.node]);
   });
 
   it("in-axis Move swaps the middle of three", () => {
@@ -75,8 +78,9 @@ describe("Bug #213: keyboard Move (product TILES)", () => {
 
     wm().command({ name: "Move", direction: "right" });
 
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].childNodes).toEqual([a.node, c.node, b.node]);
+    const wrapMid = kidsOf(wm(), monitor);
+    expect(wrapMid).toHaveLength(1);
+    expect(kidsOf(wm(), wrapMid[0])).toEqual([a.node, c.node, b.node]);
   });
 
   it("in-axis edge wrap-rotates last→first (does not pairwise-swap)", () => {
@@ -86,8 +90,9 @@ describe("Bug #213: keyboard Move (product TILES)", () => {
 
     wm().command({ name: "Move", direction: "right" });
 
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].childNodes).toEqual([c.node, a.node, b.node]);
+    const wrapEdge = kidsOf(wm(), monitor);
+    expect(wrapEdge).toHaveLength(1);
+    expect(kidsOf(wm(), wrapEdge[0])).toEqual([c.node, a.node, b.node]);
   });
 
   it("does not Move a FLOAT window", () => {
@@ -98,7 +103,7 @@ describe("Bug #213: keyboard Move (product TILES)", () => {
 
     wm().command({ name: "Move", direction: "right" });
 
-    expect(monitor.childNodes).toEqual([a.node, b.node]);
+    expect(kidsOf(wm(), monitor)).toEqual([a.node, b.node]);
   });
 
   it("does not Move a minimized window", () => {
@@ -109,18 +114,18 @@ describe("Bug #213: keyboard Move (product TILES)", () => {
 
     wm().command({ name: "Move", direction: "right" });
 
-    expect(monitor.childNodes).toEqual([a.node, b.node]);
+    expect(kidsOf(wm(), monitor)).toEqual([a.node, b.node]);
   });
 
   it("no-ops without focus", () => {
     const { monitor, nodes } = tiledOnMonitor(["A", "B"]);
     ctx.display.get_focus_window.mockReturnValue(null);
-    const before = [...monitor.childNodes];
+    const before = [...kidsOf(wm(), monitor)];
 
     wm().command({ name: "Move", direction: "right" });
 
-    expect(monitor.childNodes).toEqual(before);
-    expect(monitor.childNodes).toEqual([nodes[0].node, nodes[1].node]);
+    expect(kidsOf(wm(), monitor)).toEqual(before);
+    expect(kidsOf(wm(), monitor)).toEqual([nodes[0].node, nodes[1].node]);
   });
 });
 

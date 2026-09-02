@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES, Node } from "../../lib/extension/tree.js";
-import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createTreeFixture,
   getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { MotionDirection } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
@@ -17,6 +19,7 @@ describe("LX3: tree.move cross-monitor (Host/helper)", () => {
   let ctx;
   let monA;
   let monB;
+  const wm = () => ctx.extWm;
 
   beforeEach(() => {
     ctx = createTreeFixture({
@@ -56,8 +59,8 @@ describe("LX3: tree.move cross-monitor (Host/helper)", () => {
     ctx.extWm.move.mockImplementation(() => {
       order.push("move");
       // e3k1: still on origin mon when geometry runs
-      expect(monA.contains(node)).toBe(true);
-      expect(monB.contains(node)).toBe(false);
+      expect(parentOf(wm(), node)).toBe(monA);
+      expect(parentOf(wm(), node)).not.toBe(monB);
     });
     const origInsert = monB.insertBefore.bind(monB);
     monB.insertBefore = (n, ref) => {
@@ -68,8 +71,7 @@ describe("LX3: tree.move cross-monitor (Host/helper)", () => {
     const moved = ctx.tree.move(node, MotionDirection.RIGHT);
 
     expect(moved).toBe(true);
-    expect(monB.contains(node)).toBe(true);
-    expect(node.parentNode).toBe(monB);
+    expect(parentOf(wm(), node)).toBe(monB);
     expect(ctx.extWm.rectForMonitor).toHaveBeenCalled();
     expect(ctx.extWm.move).toHaveBeenCalled();
     expect(order.indexOf("move")).toBeLessThan(order.indexOf("reparent"));
@@ -78,8 +80,7 @@ describe("LX3: tree.move cross-monitor (Host/helper)", () => {
   it("mon-level only child crosses to neighbor", () => {
     const node = tiledOn(monA, 0, "solo");
     expect(ctx.tree.move(node, MotionDirection.RIGHT)).toBe(true);
-    expect(monB.contains(node)).toBe(true);
-    expect(node.parentNode).toBe(monB);
+    expect(parentOf(wm(), node)).toBe(monB);
   });
 
   it("nested under mon CON at edge crosses in one gesture (not peel-only)", () => {
@@ -105,12 +106,12 @@ describe("LX3: tree.move cross-monitor (Host/helper)", () => {
     con.appendChild(node);
 
     // Nested: not mon first/last — old gate fell into same-mon peel only.
-    expect(node === monA.firstChild || node === monA.lastChild).toBe(false);
+    const monAKids = kidsOf(wm(), monA);
+    expect(node === monAKids[0] || node === monAKids[monAKids.length - 1]).toBe(false);
 
     const moved = ctx.tree.move(node, MotionDirection.RIGHT);
     expect(moved).toBe(true);
-    expect(monB.contains(node)).toBe(true);
-    expect(node.parentNode).toBe(monB);
+    expect(parentOf(wm(), node)).toBe(monB);
     expect(ctx.extWm.move).toHaveBeenCalled();
   });
 
@@ -125,15 +126,15 @@ describe("LX3: tree.move cross-monitor (Host/helper)", () => {
       n.rect = { x: 0, y: 0, width: 400, height: 1080 };
       tab.appendChild(n);
     }
-    const node = tab.lastChild;
+    const tabKids = kidsOf(wm(), tab);
+    const node = tabKids[tabKids.length - 1];
 
     const moved = ctx.tree.move(node, MotionDirection.RIGHT);
     expect(moved).toBe(true);
-    expect(monB.contains(node)).toBe(true);
-    expect(node.parentNode).toBe(monB);
+    expect(parentOf(wm(), node)).toBe(monB);
     // Remaining tabs still under monA
-    expect(tab.parentNode === monA || monA.contains(tab)).toBe(true);
-    expect(tab.childNodes.length).toBe(2);
+    expect(parentOf(wm(), tab)).toBe(monA);
+    expect(kidsOf(wm(), tab)).toHaveLength(2);
   });
 
   it("VSPLIT mon middle child can cross horizontally (not stuck as mon edge shuffle)", () => {
@@ -142,12 +143,13 @@ describe("LX3: tree.move cross-monitor (Host/helper)", () => {
     const mid = tiledOn(monA, 0, "mid", { x: 0, y: 360, width: 1920, height: 360 });
     const bot = tiledOn(monA, 0, "bot", { x: 0, y: 720, width: 1920, height: 360 });
 
-    expect(mid === monA.firstChild || mid === monA.lastChild).toBe(false);
+    const vKids = kidsOf(wm(), monA);
+    expect(mid === vKids[0] || mid === vKids[vKids.length - 1]).toBe(false);
     const moved = ctx.tree.move(mid, MotionDirection.RIGHT);
     expect(moved).toBe(true);
-    expect(monB.contains(mid)).toBe(true);
-    expect(monA.contains(top)).toBe(true);
-    expect(monA.contains(bot)).toBe(true);
+    expect(parentOf(wm(), mid)).toBe(monB);
+    expect(parentOf(wm(), top)).toBe(monA);
+    expect(parentOf(wm(), bot)).toBe(monA);
   });
 
   it("e3k1: throw from extWm.move does not reparent (nested path)", () => {
@@ -174,9 +176,9 @@ describe("LX3: tree.move cross-monitor (Host/helper)", () => {
     });
 
     expect(() => ctx.tree.move(node, MotionDirection.RIGHT)).toThrow();
-    expect(monA.contains(node)).toBe(true);
-    expect(monB.contains(node)).toBe(false);
-    expect(node.parentNode).toBe(tab);
+    expect(parentOf(wm(), node)).toBe(tab);
+    expect(parentOf(wm(), tab)).toBe(monA);
+    expect(kidsOf(wm(), monB)).not.toContain(node);
   });
 
   it("display edge with no neighbor still wraps on own mon (s7ri)", () => {
@@ -184,8 +186,8 @@ describe("LX3: tree.move cross-monitor (Host/helper)", () => {
     ctx.extWm.currentMonWsNode = monA; // pointer on other mon
     const moved = ctx.tree.move(node, MotionDirection.RIGHT);
     expect(moved).toBe(true);
-    expect(monB.contains(node)).toBe(true);
-    expect(monA.contains(node)).toBe(false);
+    expect(parentOf(wm(), node)).toBe(monB);
+    expect(parentOf(wm(), node)).not.toBe(monA);
   });
 
   it("rectForMonitor null aborts without reparent", () => {
@@ -193,8 +195,8 @@ describe("LX3: tree.move cross-monitor (Host/helper)", () => {
     ctx.extWm.rectForMonitor.mockReturnValue(null);
     const moved = ctx.tree.move(node, MotionDirection.RIGHT);
     expect(moved).toBe(false);
-    expect(monA.contains(node)).toBe(true);
-    expect(monB.contains(node)).toBe(false);
+    expect(parentOf(wm(), node)).toBe(monA);
+    expect(parentOf(wm(), node)).not.toBe(monB);
   });
 });
 

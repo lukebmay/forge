@@ -104,6 +104,50 @@ describe("projectForestFromTom (C6 Apply IR)", () => {
     expect(tiled).toHaveLength(1);
   });
 
+  it("filters by monitor / workspace / onlyWithChildren / maxDepth (G6)", () => {
+    const ids = makeIdFactory(1);
+    const forest = createForest(
+      [
+        { id: "mo0ws0", x: 0, y: 0, width: 960, height: 1080, primary: true },
+        { id: "mo1ws0", x: 960, y: 0, width: 960, height: 1080, primary: false },
+        { id: "mo0ws1", x: 0, y: 0, width: 960, height: 1080, primary: true },
+      ],
+      () => ids.nid()
+    );
+    attachWorld(forest, {
+      geoms: {
+        mo0ws0: { id: "mo0ws0", x: 0, y: 0, width: 960, height: 1080, primary: true },
+        mo1ws0: { id: "mo1ws0", x: 960, y: 0, width: 960, height: 1080, primary: false },
+        mo0ws1: { id: "mo0ws1", x: 0, y: 0, width: 960, height: 1080, primary: true },
+      },
+    });
+    const a = makeWindow(() => ids.nid(), "A", "AppA");
+    registerTree(forest, a);
+    const split = makeCon(() => ids.nid(), "HSPLIT", []);
+    registerTree(forest, split);
+    appendChild(forest, split, a);
+    appendChild(forest, forest.monitors[0], split);
+
+    const bag = createHostBag();
+    bag.set(a.id, { windowId: "1" });
+
+    expect(
+      projectForestFromTom(forest, bag, { monitor: 1, workspace: 0 }).monitors.map((m) => m.id)
+    ).toEqual(["mo1ws0"]);
+    expect(
+      projectForestFromTom(forest, bag, { workspace: 1 }).monitors.map((m) => m.id)
+    ).toEqual(["mo0ws1"]);
+    expect(
+      projectForestFromTom(forest, bag, { onlyWithChildren: true, workspace: 0 }).monitors.map(
+        (m) => m.id
+      )
+    ).toEqual(["mo0ws0"]);
+
+    const capped = projectForestFromTom(forest, bag, { workspace: 0, monitor: 0, maxDepth: 0 });
+    expect(capped.monitors).toHaveLength(1);
+    expect(capped.monitors[0].children).toEqual([]);
+  });
+
   it("planReconcile accepts Forest→IR snapshot (adapter boundary)", () => {
     const { forest, a } = seededForest();
     const bag = createHostBag();
