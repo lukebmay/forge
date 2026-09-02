@@ -1,11 +1,14 @@
 # 08 — TOM as sole live tree (audit)
 
-**As of:** 2026-08-29
+**Historical.** Action queue is
+[forge-retire-gobject-topology](../../../forge-retire-gobject-topology.md)
+(**D096**). C3–C7 writers landed; GObject child-list residue until G8.
+**As of:** 2026-08-29 (evidence); **superseded for action** 2026-08-31
 **Stale (DnD):** D4 deleted `_executeDropOperation`. Pointer + synthetic
 mutate is `_commitResolvedDrop`. Rows below that still name execute as a
 live mutator are historical.
-**Audience:** operator + next firm-abstractions agent
-**Verdict:** live Forge is **hybrid dual-run**. TOM is not the live
+**Audience:** archaeology
+**Verdict (then):** live Forge is **hybrid dual-run**. TOM is not the live
 tree. Keyboard TILES mutate **projects** GObject → TOM, runs Mark 2,
 **apply-backs** onto GObject. The old tree is still the in-memory
 forest. Design/HANDOFF already describe this; they do **not** claim

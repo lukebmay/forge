@@ -1,7 +1,7 @@
 # 11 — C6 Apply desired state = TOM (ex-P5c)
 
 **As of:** 2026-08-29
-**Lock:** D092 · plan `forge-live-tom-cutover.md`
+**Lock:** D092 · plan `archived/completed/forge-live-tom-cutover.md`
 **Depends:** C5 done. Implement after C5.
 **Status:** C6.1–C6.6 implemented (2026-08-29); C6.7 optional brake.
 C7.7 Forest-first restore/H1 landed same day.

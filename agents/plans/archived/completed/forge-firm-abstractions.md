@@ -1,22 +1,22 @@
 # forge-firm-abstractions — Firm kernel, then import
 
-**Status:** accepted — **P7 done** (D087/D088); **P6 remainder done**
-(DnD `_commitResolvedDrop`; execute name gone). Post-P7 sole-source
-work moved to thin sibling plans (see below).
+**Status:** archived completed — **P7 done**; post-P7 sole-source archived
+**Active deletion pass:** [forge-retire-gobject-topology](../../forge-retire-gobject-topology.md) (**D096**).
 **Branch:** master
-**Blocker:** (none) — cutover design closed; D093 if AGREE/RESYNC fails live
-**Updated:** 2026-08-29
+**Blocker:** (none)
+**Updated:** 2026-08-31 — moved to `archived/completed/`; do not extend P\*
 
-### Post-P7 thin plans (PRIORITY owns order)
+### Post-P7 thin plans (archived / superseded)
 
 | Plan | Role |
 | --- | --- |
-| [forge-mark2-one-tiles-path.md](./forge-mark2-one-tiles-path.md) | **done** T1–T5 — leftover `tree.*` is DnD / RunSteps / open |
-| [forge-dnd-mark2-complete.md](./archived/completed/forge-dnd-mark2-complete.md) | **done** D1–D4 — `_executeDropOperation` removed |
-| [forge-nest-mark2-invoke.md](./forge-nest-mark2-invoke.md) | Nest/e2e call Mark 2 ids without keys |
-| [forge-live-tom-cutover.md](./forge-live-tom-cutover.md) | Sole-source live Forest — C7 done; leftover → D093 |
-| [forge-tom-agree-resync.md](./forge-tom-agree-resync.md) | **D093** AGREE/DRIFT/RESYNC — **R1 next** |
-| [explore/08-tom-sole-source-audit.md](./forge-firm-abstractions/explore/08-tom-sole-source-audit.md) | Hybrid dual-run evidence |
+| [forge-mark2-one-tiles-path](./forge-mark2-one-tiles-path.md) | **archived** T1–T5 |
+| [forge-dnd-mark2-complete](./forge-dnd-mark2-complete.md) | **archived** D1–D4 |
+| [forge-nest-mark2-invoke](./forge-nest-mark2-invoke.md) | **archived** N1–N3 |
+| [forge-live-tom-cutover](./forge-live-tom-cutover.md) | **archived** C0–C7; GObject delete → D096 |
+| [forge-tom-agree-resync](./forge-tom-agree-resync.md) | **archived** D093 R0–R6 |
+| [forge-retire-gobject-topology](../../forge-retire-gobject-topology.md) | **active P0** — delete GObject topology (G0–G8) |
+| [explore/08-tom-sole-source-audit.md](./forge-firm-abstractions/explore/08-tom-sole-source-audit.md) | Historical hybrid evidence (stale vs D096) |
 
 ## Goal
 

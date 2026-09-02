@@ -1,15 +1,13 @@
 # forge-live-tom-cutover — Live Forest as sole topology
 
-**Status:** accepted
+**Status:** archived completed — C0–C7 landed; **GObject deletion unfinished**
+**Superseded for leftovers by:** [forge-retire-gobject-topology](../../forge-retire-gobject-topology.md) (**D096**, 2026-08-31)
 **Branch:** master
-**Lock:** **D092** (2026-08-29 design meeting)
-**Blocker:** [blockers/live-tom-cutover-design.md](../blockers/live-tom-cutover-design.md) — **closed**
-**Updated:** 2026-08-29 — **C6.1–C6.6** + **C7.1–C7.7** landed. Size
-Forest-first. Polish of close/apply settle + GObject-as-topology leftover
-owned by **[forge-tom-agree-resync](./forge-tom-agree-resync.md)** (**D093**).
-Host `dev` + Nautilus DnD eyes-on **PASS** 2026-08-29. Archive this
-plan when operator wants.
-**Audit:** [forge-firm-abstractions/explore/08-tom-sole-source-audit.md](./forge-firm-abstractions/explore/08-tom-sole-source-audit.md)
+**Lock:** **D092** (2026-08-29); wording amended by **D096**
+**Blocker:** [blockers/live-tom-cutover-design.md](../../../blockers/live-tom-cutover-design.md) — **closed**
+**Updated:** 2026-08-31 — archived. Do **not** extend C7 “Host/helper”
+residue here; all dual child-list work is G1–G8 on the retire plan.
+**Audit:** [forge-firm-abstractions/explore/08-tom-sole-source-audit.md](..../forge-firm-abstractions/explore/08-tom-sole-source-audit.md)
 
 ## Goal
 
@@ -185,7 +183,7 @@ C3 complete — C4–C6 may edit `tom-live` / `forest-run` / WM forest.
 ## C4–C5 detail — FLOATS + reconcile
 
 Longer note:
-[forge-firm-abstractions/explore/10-c4-c5-floats-reconcile.md](./forge-firm-abstractions/explore/10-c4-c5-floats-reconcile.md).
+[forge-firm-abstractions/explore/10-c4-c5-floats-reconcile.md](.../forge-firm-abstractions/explore/10-c4-c5-floats-reconcile.md).
 
 **Gate:** C3.6 landed (paint-only; ROOT-park removed). C4 owns FLOATS
 paint + membership. C3.3 WINDOW ids + C3.5 Forest-first open/destroy

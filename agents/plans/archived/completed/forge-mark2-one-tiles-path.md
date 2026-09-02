@@ -1,11 +1,12 @@
 # forge-mark2-one-tiles-path — One TILES mutate surface
 
-**Status:** completed — T1–T5 done
+**Status:** archived completed — T1–T5 done
+**Leftover `tree.*` (DnD/RunSteps/open) → [forge-retire-gobject-topology](../../forge-retire-gobject-topology.md) G1/G4
 **Branch:** master
 **Blocker:** (none)
-**Updated:** 2026-08-29
+**Updated:** 2026-08-31 — archived
 **Depends on:** firm-abstractions P6/P7 done
-**Audit:** [forge-firm-abstractions/explore/08-tom-sole-source-audit.md](./forge-firm-abstractions/explore/08-tom-sole-source-audit.md)
+**Audit:** [forge-firm-abstractions/explore/08-tom-sole-source-audit.md](..../forge-firm-abstractions/explore/08-tom-sole-source-audit.md)
 
 ## Goal
 
@@ -14,7 +15,8 @@ Every **TILES** user verb that today still calls `tree.split` /
 from `CommandHandler` goes through **kernel action ids → `runLiveForest`
 / OpSet** (same path as Move/Join/toggle/promote/size). Delete the twin
 CommandHandler `tree.*` bodies in the same slices. Do **not** pare
-`Node` / peel Meta (that is [forge-live-tom-cutover](./forge-live-tom-cutover.md)).
+`Node` / peel Meta (that was cutover; deletion is now
+[forge-retire-gobject-topology](../../forge-retire-gobject-topology.md)).
 
 ## Acceptance
 

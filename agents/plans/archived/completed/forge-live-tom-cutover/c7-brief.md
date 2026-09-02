@@ -10,7 +10,9 @@ identity nanoid + post-restore sync; restore/H1 still GObject-ahead).
 
 **Locks:** D092 — POJO Forest is sole live topology. Big bang. No dual-run steady state. No BC for Meta-as-topology-id.
 
-**Read first:** `agents/HANDOFF.md`, `agents/PRIORITY.md`, `agents/plans/forge-live-tom-cutover.md` (C7 detail), `agents/design.md`, explore notes under `agents/plans/forge-firm-abstractions/explore/` (esp. 08–11). Guidelines: general, testing, comments, javascript.
+**Historical C7 brief.** Active work:
+`agents/plans/forge-retire-gobject-topology.md` (D096). Archived plan:
+`agents/plans/archived/completed/forge-live-tom-cutover.md`.
 
 ## Goal
 

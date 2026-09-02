@@ -1,14 +1,13 @@
 # forge-tom-agree-resync — AGREE / DRIFT / RESYNC
 
-**Status:** units + **host live proof PASS** 2026-08-29
-(`forge layout dev` + Nautilus TILE DnD). Archive with cutover when
-the operator wants. R5 still optional skip. Remaining nest H5 lives
-on [forge-live-layout-dnd-proof](./forge-live-layout-dnd-proof.md).
+**Status:** archived completed — R0–R4+R6 shipped; host proof PASS
+**Superseded for dual child-list / present leftovers by:**
+[forge-retire-gobject-topology](../../forge-retire-gobject-topology.md) (**D096**)
+**Optional R5** (PresenterOps types) may land under retire G2/G5 if needed.
 **Branch:** master
-**Lock:** **D093** (amends D092 TOM↔reality; live Forest sole-source stands)
-**Blocker:** (none) — if live proof fails, **redesign meeting** (do not add
-twin child-list atomics without it)
-**Updated:** 2026-08-29
+**Lock:** **D093** (stands; D096 clarifies Meta=reality vs TOM=belief)
+**Blocker:** (none)
+**Updated:** 2026-08-31 — archived with cutover
 
 ## Goal
 

@@ -1,12 +1,12 @@
 # forge-nest-mark2-invoke — Nest/e2e Mark 2 action invoke
 
-**Status:** accepted — **N1–N3 done** (N4 optional)
+**Status:** archived completed — **N1–N3 done** (N4 optional unused)
 **Branch:** master
 **Blocker:** (none)
-**Updated:** 2026-08-29
+**Updated:** 2026-08-31 — archived; nest invoke path stands
 **Depends on:** none for MVP (calls existing `CommandHandler` /
-`extWm.command`); grows with sibling Mark 2 wiring plans
-**Audit:** [forge-firm-abstractions/explore/08-tom-sole-source-audit.md](./forge-firm-abstractions/explore/08-tom-sole-source-audit.md)
+`extWm.command`)
+**Audit:** [forge-firm-abstractions/explore/08-tom-sole-source-audit.md](..../forge-firm-abstractions/explore/08-tom-sole-source-audit.md)
 
 ## Goal
 

@@ -1,17 +1,13 @@
 # forge-live-layout-dnd-proof — Live layout + DnD after TOM cutover
 
-**Status:** in progress — host `dev`/`vinyl` + Nautilus CENTER DnD
-**PASS** (`9m9Kw`). **S8 landed.** **H5 nest edge matrix green**
-(`smoke-layout-tabbed-edge` LEFT/RIGHT/TOP/BOTTOM). Soft-heuristic
-poison fixed (quiet-expiry no longer trains 9s walls). **P0 now:**
-toggleTabStack nest; host logout for soft+edge tip; RIGHT thrash
-eyes-on if still weird after logout (nest structure path green).
+**Status:** archived completed — S0–S10 nest/host proof green; **vinyl/WS
+thrash leftover** owned by
+[forge-retire-gobject-topology](../../forge-retire-gobject-topology.md) (**D096**).
+Re-verify host `1:dev`→`2:vinyl` after **G1**.
 **Branch:** master
-**Blocker:** (none) — not a redesign meeting. Twin child-list atomics
-still forbidden.
-**Updated:** 2026-08-30
-**Depends on:** D092 live Forest · D093 AGREE/RESYNC (cutover C7 +
-agree-resync R0–R4+R6 **on the desk**)
+**Blocker:** (none)
+**Updated:** 2026-08-31 — archived; not an independent P0
+**Depends on:** D092 · D093 · **D096** G1+ before vinyl sign-off
 
 ## Goal
 
@@ -20,6 +16,10 @@ produces the desired dual-mon forest (no nested TABBED→CON chrome),
 `Done.ok` / forest-match succeeds, and **DnD can move a TILE onto
 another monitor** (occupied or empty). Nested Wayland is the reload
 gate — unit green is not sign-off.
+
+**Translation (D096):** “forest” here means **TOM Forest belief** after
+observe/present AGREE with Meta — not GObject `Node` child-lists. Open
+path must admit from Meta, then present (retire plan G1).
 
 ## Acceptance
 
@@ -216,7 +216,7 @@ WINDOW. `forge layout` ok. Then `dnd-drop` leftmost `--dest-monitor 1`.
 - **Brake:** proto 154. **Git:** no commit/push unless asked.
 - **Overlap:** S1–S3 + H1 bag-miss/`parentNode` null patch + S5 units +
   S6 nest ghosttys occupied dest **landed**. Host `dev` + Nautilus DnD
-  **PASS**. Open: nest H5 TABBED TOP/BOTTOM; toggleTabStack nest.
+  **PASS**. Nest H5 + toggleTabStack **green**; open: host logout tip.
 
 ## Session note
 
@@ -257,11 +257,16 @@ ghostty-2,ghostty-3 on `_forge-test-ws-b` (not H1). Nest **stopped**.
 
 No commit/push. No host `forge layout dev`.
 
-**Still open**
-- Nest TOP/BOTTOM onto a TABBED bag (H5)
-- Nest toggleTabStack / CENTER TABBED bag
-- Host `vinyl` eyes-on (agents must not `forge layout vinyl`)
-- forest-match `mon1` not-in-slot after occupied 2-slot (MONITOR wraps H/V CON; dest is slot)
+**Still open (owned by D096 / retire plan — not this plan’s P0)**
+- Host `1:dev`→`2:vinyl` after **G1** (no leftover `forge-ph`; Meta mon AGREE)
+- Optional: nest YouTube PWA identity for full vinyl green
+- forest-match occupied 2-slot wrap (re-check after G1/G2 present)
+
+**Closed on this plan:** S0–S10 nest matrix, host `dev`+Nautilus DnD eyes-on
+
+**Closed (nest)**
+- H5 TABBED × LEFT/RIGHT/TOP/BOTTOM (`smoke-layout-tabbed-edge`)
+- toggleTabStack cycle (`smoke-toggle-tab`)
 
 **Host eyes-on PASS (2026-08-29):** `forge layout dev` + Nautilus TILE
 DnD. Do not resave loadouts.

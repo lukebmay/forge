@@ -1,8 +1,10 @@
 # Architecture verdict — live layout / DnD proof (2026-08-29)
 
-**Plan:** [forge-live-layout-dnd-proof.md](../forge-live-layout-dnd-proof.md)
-**Locks:** D092 live POJO Forest · D093 present → observe → AGREE or
-RESYNC (TOM toward REALITY; FLOAT terminator)
+**Superseded for action:** dual child-list deletion is
+[forge-retire-gobject-topology](../../forge-retire-gobject-topology.md)
+(**D096**, 2026-08-31). Keep this note as evidence, not the work queue.
+**Plan:** [forge-live-layout-dnd-proof.md](../forge-live-layout-dnd-proof.md) (parked)
+**Locks:** D092 · D093 · **D096** (Meta=reality; TOM=belief; delete GObject topology)
 **Sessions:** `jSEYa` (forest-match / empty-mon) · `ScLRi` (enable
 float-mismatch + `layout dev` St dispose crash)
 **Verdict date:** 2026-08-29
