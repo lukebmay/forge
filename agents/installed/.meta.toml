@@ -3,7 +3,7 @@ tool_version = "0.5.0"
 catalog_version = "0.5.2"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-08-26T14:34:56+00:00"
+updated_at = "2026-09-02T20:24:15+00:00"
 
 [[files]]
 id = "always"
@@ -32,16 +32,16 @@ read_when = "Adding or editing source comments"
 [[files]]
 id = "documentation"
 path = "documentation.md"
-version = "3.1.0"
-sha256 = "3e970478a0c64b5ffee70c796ef55077ec0abe3c5803c0253bf3fbcb5e9acb8e"
+version = "3.2.0"
+sha256 = "b949b395c04a21361449afabb7a5786c8c9aa7bdf996fe0aaa1d68178a1f32a7"
 title = "Documentation"
-read_when = "Writing design docs, design CHANGELOG, user docs, or choosing where “why” lives"
+read_when = "Writing design docs, design CHANGELOG, user docs, human-facing checklists/blockers, or choosing where “why” lives"
 
 [[files]]
 id = "general"
 path = "general.md"
-version = "3.2.0"
-sha256 = "7f135a759363968189ed5fe094b2eedfd562f840f087e6a3af0bdb51a330f742"
+version = "3.3.0"
+sha256 = "6ea4e353757d83b93d0192c76f3d3f08115996904ec4587d55f86c39195ecb3c"
 title = "General process"
 read_when = "Always for multi-step work — plans, slices, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs"
 

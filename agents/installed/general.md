@@ -2,7 +2,7 @@
 title: General process
 read_when: Always for multi-step work — plans, slices, blockers, handoffs, taskforces, orchestrator, subagents, architecture vs patches, canonical APIs
 order: 10
-version: 3.2.0
+version: 3.3.0
 ---
 
 # General Agent Guidelines
@@ -188,25 +188,34 @@ names a hunt. Prefer archive over delete; delete only stubs/dupes/junk.
 
 **Real** human work only — not agent laziness.
 
-| Severity | Behavior |
+Blocker files are **human-facing**. Write them for a human reading top→bottom
+and answering inline (checkboxes). Full audience rules: catalog
+**`documentation.md`** § Audience. Agent prep, hunts, and “done when”
+restatements live in HANDOFF / plan notes — **not** in the blocker body.
+
+| Difficulty | Behavior |
 | --- | --- |
 | **hard** (default if omitted) | Required path stopped; plan/slice `blocked`; taskforces skip |
 | **soft** | Optional reminder; does not stop unrelated work |
 
+(`**Severity:**` on older blockers = same field; prefer **Difficulty** on new ones.)
+
 | Rule | Kind |
 | --- | --- |
 | Hard only when agent must not proceed alone | **FIRM** |
-| Make human work easy (exact checklist/commands) | **FIRM** |
-| Prep first (install/config/branch if you can) | **FIRM** |
+| Make human work easy (short steps + `- [ ]` checklist) | **FIRM** |
+| Prep first (install/config/branch if you can) — record in HANDOFF | **FIRM** |
 | Never mark human steps done yourself | **FIRM** |
 | Fake blockers forbidden | **FIRM** |
+| One-line “why human-only”; no agent-prep section in the blocker | **FIRM** |
 
-Kinds: design · permission · credentials · physical · expensive-test · verify · data-only-human.
+Kinds: design · permission · credentials · expensive-test · verify · data-only-human.
+(Do not pile redundant kind tags like `verify · physical`.)
 
 ```markdown
 # B-short-id — Title
 **Status:** open
-**Severity:** hard | soft
+**Difficulty:** hard | soft
 **Owner:** human
 **Kind:** design | …
 **Plan:** …
@@ -216,9 +225,12 @@ Kinds: design · permission · credentials · physical · expensive-test · veri
 **Updated:** YYYY-MM-DD
 
 ## Why this is human-only
-## Agent prep already done
+(one short sentence)
+
 ## What the human must do
-## Done when
+1. …
+1. …
+   - [ ] …
 ```
 
 ## Handoffs (FIRM)

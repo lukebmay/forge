@@ -1,10 +1,28 @@
 ---
 title: Documentation
-read_when: Writing design docs, design CHANGELOG, user docs, or choosing where “why” lives
+read_when: Writing design docs, design CHANGELOG, user docs, human-facing checklists/blockers, or choosing where “why” lives
 order: 60
 ---
 
 # Documentation
+
+## Audience (FIRM)
+
+Match the reader. **Human-facing** files (`agents/blockers/`, `docs/user/*`,
+and any checklist a human must complete) are written for how humans process
+text: top→bottom, acting and answering **inline as they read**.
+
+| Rule | Detail |
+| --- | --- |
+| Process-as-you-read | Order steps so the human can do each item and respond beside it while reading |
+| Checkboxes over protocols | Prefer `- [ ]` / `- [x]` the human ticks; do not end with a post-read “report PASS/FAIL per item” ritual |
+| No agent noise | Omit agent prep dumps, hunt recipes, internal IDs, and restated “done when” lists the human cannot use |
+| One reason line | “Why human-only” (or similar) is one short sentence when possible |
+| Actions only | Warnings and agent-only procedure belong in HANDOFF / plan notes — not the human checklist |
+
+**Agent-facing** files (`HANDOFF.md`, `PRIORITY.md`, plan session notes) stay
+functionally detailed for the next agent. That density is wrong on a human
+checklist.
 
 ## Where “why” lives
 
