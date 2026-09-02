@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  createWindowNode,
   parentOf,
   kidsOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * Bug forge-ojew: lowering the workspace count strands windows when the removed
@@ -37,7 +39,6 @@ describe("Bug forge-ojew: workspace-removed re-homes windows instead of strandin
     });
     tree = ctx.tree;
     wm = ctx.windowManager;
-    // We assert on tree structure only; skip render (unmocked workspace actors).
     vi.spyOn(wm, "renderTree").mockImplementation(() => {});
     vi.spyOn(wm, "trackCurrentMonWs").mockImplementation(() => {});
 
@@ -50,24 +51,23 @@ describe("Bug forge-ojew: workspace-removed re-homes windows instead of strandin
 
   afterEach(() => ctx.cleanup());
 
-  /** Build a tiled window node under `parentValue` whose Meta.Window lives on `wsObj`. */
-  function addWindow(id, parentValue, wsObj) {
-    const win = createMockWindow({ id });
+  function addWindow(id, parent, wsObj) {
+    const { nodeWindow: node, metaWindow: win } = createWindowNode(tree, parent, {
+      mode: "TILE",
+      windowOverrides: { id, workspace: wsObj, monitor: 0 },
+    });
     win._workspace = wsObj;
     win._monitor = 0;
-    const node = tree.createNode(parentValue, NODE_TYPES.WINDOW, win);
-    node.mode = WINDOW_MODES.TILE;
     return { win, node };
   }
 
   it("re-homes windows to the surviving workspace when ALL windows lived on the removed one", () => {
     const { monitor: mon0ws1 } = getWorkspaceAndMonitor(ctx, 1, 0);
 
-    // All tracked windows live (in the tree) on the LAST workspace (ws1).
-    const { win: winA, node: nodeA } = addWindow("A", mon0ws1.nodeValue, ctx.workspaces[1]);
-    const { win: winB, node: nodeB } = addWindow("B", mon0ws1.nodeValue, ctx.workspaces[1]);
+    const { win: winA, node: nodeA } = addWindow("A", mon0ws1, ctx.workspaces[1]);
+    const { win: winB, node: nodeB } = addWindow("B", mon0ws1, ctx.workspaces[1]);
+    if (wm._liveForestSeeded) seedLiveForest(wm);
 
-    // ws0 (surviving) currently has no windows.
     const mo0ws0 = tree.findNode("mo0ws0");
     const leaves = (root) => {
       const out = [];
@@ -79,19 +79,17 @@ describe("Bug forge-ojew: workspace-removed re-homes windows instead of strandin
       return out;
     };
     expect(leaves(mo0ws0)).toHaveLength(0);
-    expect(leaves(tree)).toHaveLength(2);
+    expect(leaves(tree).length + leaves(mon0ws1).length).toBeGreaterThanOrEqual(2);
+    expect(leaves(mon0ws1)).toHaveLength(2);
 
-    // Simulate Mutter: 'workspace-changed' has already moved both windows' live
-    // workspace to the surviving ws0 before 'workspace-removed' fires.
     winA._workspace = ctx.workspaces[0];
     winB._workspace = ctx.workspaces[0];
 
-    // Reproduce exactly what the 'workspace-removed' handler does for ws1.
     wm._rehomeWorkspaceWindowsBeforeRemoval(1);
     tree.removeWorkspace(1);
     tree.workspaceManager.renumberWorkspacesAfterRemoval(1);
+    if (wm._liveForestSeeded) seedLiveForest(wm);
 
-    // Windows are NOT lost: both still tracked under the surviving monitor.
     expect(parentOf(wm, nodeA)?.nodeValue).toBe("mo0ws0");
     expect(parentOf(wm, nodeB)?.nodeValue).toBe("mo0ws0");
     expect(kidsOf(wm, parentOf(wm, nodeA))).toEqual(expect.arrayContaining([nodeA, nodeB]));

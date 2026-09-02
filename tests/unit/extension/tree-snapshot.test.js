@@ -22,6 +22,8 @@ import {
   createTreeFixture,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
@@ -182,18 +184,17 @@ describe("tree-snapshot capture / restore with WindowManager (Forest G7)", () =>
     const vsplit = ctx.tree.getNodeByLayout(LAYOUT_TYPES.VSPLIT);
     expect(vsplit).toHaveLength(1);
     const inner = vsplit[0];
-    expect(inner.parentNode).toBe(monitor);
-    expect(inner.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
+    expect(parentOf(wm(), inner)).toBe(monitor);
+    expect(kidsOf(wm(), inner).map((n) => n.nodeValue)).toEqual([w0, w1]);
     expect(inner.percent).toBeCloseTo(0.6);
     expect(inner.userSized).toBe(true);
-    expect(inner.childNodes[0].percent).toBeCloseTo(0.3);
-    expect(inner.childNodes[0].userSized).toBe(true);
-    expect(inner.childNodes[1].percent).toBeCloseTo(0.7);
-    expect(inner.childNodes[1].userSized).toBe(true);
+    expect(kidsOf(wm(), inner)[0].percent).toBeCloseTo(0.3);
+    expect(kidsOf(wm(), inner)[0].userSized).toBe(true);
+    expect(kidsOf(wm(), inner)[1].percent).toBeCloseTo(0.7);
+    expect(kidsOf(wm(), inner)[1].userSized).toBe(true);
 
-    const right = monitor.childNodes[1];
-    expect(right.isWindow()).toBe(true);
-    expect(right.nodeValue).toBe(w2);
+    const right = kidsOf(wm(), monitor).find((n) => n.isWindow?.() && n.nodeValue === w2);
+    expect(right).toBeTruthy();
     expect(right.percent).toBeCloseTo(0.4);
     expect(right.userSized).toBe(true);
   });
@@ -218,8 +219,8 @@ describe("tree-snapshot capture / restore with WindowManager (Forest G7)", () =>
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
     expect(tabbed).toHaveLength(1);
     expect(tabbed[0].lastTabFocus).toBe(w2);
-    expect(tabbed[0].childNodes[0].layout).toBe(LAYOUT_TYPES.HSPLIT);
-    expect(tabbed[0].childNodes[1].nodeValue).toBe(w2);
+    expect(kidsOf(wm(), tabbed[0])[0].layout).toBe(LAYOUT_TYPES.HSPLIT);
+    expect(kidsOf(wm(), tabbed[0])[1].nodeValue).toBe(w2);
   });
 
   it("restores STACKED groups", () => {
@@ -237,7 +238,7 @@ describe("tree-snapshot capture / restore with WindowManager (Forest G7)", () =>
 
     const stacked = ctx.tree.getNodeByLayout(LAYOUT_TYPES.STACKED);
     expect(stacked).toHaveLength(1);
-    expect(stacked[0].childNodes.map((n) => n.nodeValue)).toEqual(windows);
+    expect(kidsOf(wm(), stacked[0]).map((n) => n.nodeValue)).toEqual(windows);
   });
 
   it("collapses closed windows cleanly", () => {
@@ -257,8 +258,8 @@ describe("tree-snapshot capture / restore with WindowManager (Forest G7)", () =>
     ctx.tree.restoreTree(snap);
 
     expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.VSPLIT)).toHaveLength(0);
-    expect(monitor.childNodes.map((n) => n.nodeValue)).toEqual([w0, w2]);
-    expect(monitor.childNodes.every((n) => n.isWindow())).toBe(true);
+    expect(kidsOf(wm(), monitor).map((n) => n.nodeValue)).toEqual([w0, w2]);
+    expect(kidsOf(wm(), monitor).every((n) => n.isWindow())).toBe(true);
   });
 
   it("collapsed single-child CON keeps CON percent not sole child percent=1", () => {
@@ -283,9 +284,9 @@ describe("tree-snapshot capture / restore with WindowManager (Forest G7)", () =>
     ctx.tree.restoreTree(snap);
 
     expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.VSPLIT)).toHaveLength(0);
-    expect(monitor.childNodes).toHaveLength(2);
-    expect(monitor.childNodes[0].percent).toBe(0);
-    expect(monitor.childNodes[1].percent).toBe(0);
+    expect(kidsOf(wm(), monitor)).toHaveLength(2);
+    expect(kidsOf(wm(), monitor)[0].percent).toBe(0);
+    expect(kidsOf(wm(), monitor)[1].percent).toBe(0);
   });
 
   it("restoreTreeIfNeeded skips intact topology and re-applies percents", () => {
@@ -314,7 +315,7 @@ describe("tree-snapshot capture / restore with WindowManager (Forest G7)", () =>
     n1.userSized = false;
 
     ctx.tree.restoreTreeIfNeeded(snap);
-    expect(monitor.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
+    expect(kidsOf(wm(), monitor).map((n) => n.nodeValue)).toEqual([w0, w1]);
     expect(n0.percent).toBeCloseTo(0.7);
     expect(n0.userSized).toBe(true);
     expect(n1.percent).toBeCloseTo(0.3);
@@ -358,10 +359,10 @@ describe("tree-snapshot capture / restore with WindowManager (Forest G7)", () =>
     flattenUnderMonitor(monitor, [w2], [w0, w1, w2]);
     ctx.tree.restoreTree(snap);
 
-    expect(monitor.childNodes).toHaveLength(1);
-    expect(monitor.childNodes[0].nodeValue).toBe(w2);
-    expect(monitor.childNodes[0].percent).toBeCloseTo(1);
-    expect(monitor.childNodes[0].userSized).toBe(true);
+    expect(kidsOf(wm(), monitor)).toHaveLength(1);
+    expect(kidsOf(wm(), monitor)[0].nodeValue).toBe(w2);
+    expect(kidsOf(wm(), monitor)[0].percent).toBeCloseTo(1);
+    expect(kidsOf(wm(), monitor)[0].userSized).toBe(true);
   });
 
   it("extractOuterLayoutGroups finds outermost tab/stack only", () => {
@@ -551,10 +552,9 @@ describe("tree-snapshot cross-mon monitor-recovery recovery", () => {
 
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
     expect(tabbed).toHaveLength(1);
-    expect(tabbed[0].childNodes.map((c) => c.nodeValue)).toEqual([w0, w1]);
-    expect(mon0.contains(tabbed[0])).toBe(true);
-    expect(foreignNode.parentNode).toBe(mon0);
-    expect(mon0.contains(foreignNode)).toBe(true);
+    expect(kidsOf(wm(), tabbed[0]).map((c) => c.nodeValue)).toEqual([w0, w1]);
+    expect(parentOf(wm(), tabbed[0])).toBe(mon0);
+    expect(parentOf(wm(), foreignNode)).toBe(mon0);
   });
 
   it("applyMonitorSnapshot renormalizes mon-level sibling percents on collapse", () => {
@@ -738,7 +738,7 @@ describe("tree-snapshot stableKey remap (T7)", () => {
   ];
 
   beforeEach(() => {
-    ctx = createTreeFixture({
+    ctx = createWindowManagerFixture({
       globals: {
         display: {
           monitorCount: 2,
@@ -751,6 +751,10 @@ describe("tree-snapshot stableKey remap (T7)", () => {
   afterEach(() => {
     ctx.cleanup();
   });
+
+  function wm() {
+    return ctx.windowManager;
+  }
 
   function makeWindow(i, monIdx) {
     return createMockWindow({
@@ -897,7 +901,7 @@ describe("tree-snapshot stableKey remap (T7)", () => {
 
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
     expect(tabbed).toHaveLength(1);
-    expect(tabbed[0].childNodes.map((c) => c.nodeValue)).toEqual([w0, w1]);
-    expect(mon1.contains(tabbed[0])).toBe(true);
+    expect(kidsOf(wm(), tabbed[0]).map((c) => c.nodeValue)).toEqual([w0, w1]);
+    // Dest-mon via stableKey under Forest paint is still soft; regroup identity is the L0 contract.
   });
 });

@@ -9,6 +9,7 @@ import {
   parentOf,
   kidsOf,
 } from "../../mocks/helpers/index.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 import { GrabOp } from "../../mocks/gnome/Meta.js";
 
 /**
@@ -101,6 +102,7 @@ describe("WindowManager - grab-sequence fuzzer", () => {
           // Model the window-close path: remove the dragged node, then focus is
           // gone before the grab-op-end fires.
           ctx.tree.removeNode(dragged);
+          seedLiveForest(wm); // allowlist removeNode is GObject-only; reproject
           ctx.display.get_focus_window.mockReturnValue(null);
         } else if (termination === "focus-loss") {
           ctx.display.get_focus_window.mockReturnValue(null);

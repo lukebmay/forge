@@ -4,7 +4,10 @@ import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * R030: Grok/Ghostty can exist as Meta windows but miss the tree (dest attach
@@ -22,19 +25,21 @@ describe("R030: untracked maps are admitted", () => {
     ctx.cleanup();
   });
 
+  const wm = () => ctx.windowManager;
+
   it("admits a valid Meta window that is not in the tree", () => {
     const grok = createMockWindow({
       id: 4401,
       wm_class: "Google-chrome",
       title: "Grok",
     });
-    Object.defineProperty(ctx.windowManager, "windowsAllWorkspaces", {
+    Object.defineProperty(wm(), "windowsAllWorkspaces", {
       configurable: true,
       get: () => [grok],
     });
 
     expect(ctx.tree.findNode(grok)).toBeFalsy();
-    const out = ctx.windowManager.admitUntrackedWindows();
+    const out = wm().admitUntrackedWindows();
     expect(out.ok).toBe(true);
     expect(out.admitted).toBeGreaterThanOrEqual(1);
     expect(ctx.tree.findNode(grok)?.isWindow?.()).toBe(true);
@@ -48,7 +53,7 @@ describe("R030: untracked maps are admitted", () => {
       title: "Ghostty",
       monitor: 0,
     });
-    ctx.windowManager._planOpenAppPlacement = () => ({
+    wm()._planOpenAppPlacement = () => ({
       homeMonitor: 99,
       isDock: false,
       isEmptyHead: false,
@@ -56,10 +61,13 @@ describe("R030: untracked maps are admitted", () => {
       attachMode: "mon-root",
     });
 
-    const before = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
-    ctx.windowManager.trackWindow(null, ghost);
-    expect(ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length).toBe(before + 1);
-    expect(monitor.contains(ctx.tree.findNode(ghost))).toBe(true);
+    const before = kidsOf(wm(), monitor).filter((n) => n?.isWindow?.()).length;
+    wm().trackWindow(null, ghost);
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
+    const node = ctx.tree.findNode(ghost);
+    expect(node?.isWindow?.()).toBe(true);
+    expect(parentOf(wm(), node)).toBe(monitor);
+    expect(kidsOf(wm(), monitor).filter((n) => n?.isWindow?.()).length).toBe(before + 1);
   });
 
   it("census lists untracked Meta windows separately from tree windows", () => {
@@ -67,12 +75,13 @@ describe("R030: untracked maps are admitted", () => {
     const stray = createMockWindow({ id: 2, wm_class: "B", title: "stray" });
     const { monitor } = getWorkspaceAndMonitor(ctx);
     ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, tracked);
-    Object.defineProperty(ctx.windowManager, "windowsAllWorkspaces", {
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
+    Object.defineProperty(wm(), "windowsAllWorkspaces", {
       configurable: true,
       get: () => [tracked, stray],
     });
 
-    const rows = ctx.windowManager.censusMetaWindows();
+    const rows = wm().censusMetaWindows();
     const byId = Object.fromEntries(rows.map((r) => [String(r.windowId), r]));
     expect(byId["1"].tracked).toBe(true);
     expect(byId["2"].tracked).toBe(false);

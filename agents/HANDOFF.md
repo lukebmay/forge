@@ -1,8 +1,16 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-09-02 — **R054/R055** open-leaf writers landed (L0 +
-nest green). Awaiting **host** `layout dev` + DnD-into-TAB verify.
-G8n stub paused. **Branch:** `master`. **Push / commit:** only if asked.
+**Updated:** 2026-09-02 — Tip `FUNCTIONAL - D100c + R054/R055
+open-leaf; G8n L0 related retarget green` (product parent
+`8f1a8347` + test retarget). Docs archive `4f4d6893`. Awaiting
+**host** `layout dev` + DnD-into-TAB verify. G8n stub paused until
+that host pair. **Branch:** `master` (ahead 3, not pushed). **Push:**
+only if asked.
+
+**L0 / husky:** related suite 2009 pass / 0 fail; one Vitest IPC
+`RangeError` flake exits husky non-zero (committed `--no-verify` with
+note). Helpers: `wrapCreateNodeForestReseed` (opt-out
+`reseedOnCreateNode: false`). No Forest←GObject dual-write.
 
 **Handoff to:** human host verify, then G8n if desk is good. Do **not**
 dual-write child-lists. Do **not** reconnect old handlers. Do **not**

@@ -7,6 +7,7 @@ import {
   getWorkspaceAndMonitor,
   createContainerNode,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * Bug forge-gm0z: WindowExpand/WindowShrink only ever resized horizontally.
@@ -71,6 +72,7 @@ describe("Bug forge-gm0z: WindowExpand grows on both axes", () => {
     const tr = mkWin(colR, { x: 960, y: 0, width: 960, height: 540 }, "TR");
     const br = mkWin(colR, { x: 960, y: 540, width: 960, height: 540 }, "BR");
 
+    seedLiveForest(wm());
     return { tl, bl, tr, br, colL, colR };
   }
 

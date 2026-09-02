@@ -375,7 +375,8 @@ describe("WindowManager open commit (CL4)", () => {
     };
     try {
       const lcSpy = vi.spyOn(wm().layoutController, "requestLayout");
-      const treeRenderSpy = vi.spyOn(wm().tree, "render");
+      // D100/G8n: seeded present uses presentSeededForest; processFloats is the shared body probe.
+      const presentSpy = vi.spyOn(wm(), "processFloats");
 
       wm().beginOpenLayoutBatch();
       wm()._openLayoutBatchNeedsCommit = true;
@@ -384,7 +385,7 @@ describe("WindowManager open commit (CL4)", () => {
       wm().renderTree("run-steps", true);
       expect(wm()._wmSources.has("renderTree")).toBe(true);
       expect(wm()._openLayoutBatchNeedsCommit).toBe(false);
-      expect(treeRenderSpy).not.toHaveBeenCalled();
+      expect(presentSpy).not.toHaveBeenCalled();
 
       const origRemove = GLib.Source.remove;
       GLib.Source.remove = (id) => {
@@ -393,18 +394,22 @@ describe("WindowManager open commit (CL4)", () => {
       };
       try {
         // End still force-paints after releasing deferred (R024).
+        // endOpenLayoutBatch also calls processFloats sync before scheduling Cf.
         const end = wm().endOpenLayoutBatch("open-batch");
         expect(end.committed).toBe(true);
         expect(lcSpy).not.toHaveBeenCalled();
+        expect(presentSpy).toHaveBeenCalledTimes(1);
       } finally {
         GLib.Source.remove = origRemove;
       }
 
+      presentSpy.mockClear();
       while (pending.length) {
         const cb = pending.shift();
         if (cb) cb();
       }
-      expect(treeRenderSpy).toHaveBeenCalledTimes(1);
+      // Idle present body runs once (not a second layout-controller fire).
+      expect(presentSpy).toHaveBeenCalledTimes(1);
       expect(lcSpy).not.toHaveBeenCalled();
     } finally {
       GLib.idle_add = realIdle;

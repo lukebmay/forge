@@ -6,6 +6,7 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 import { Bin } from "../mocks/gnome/St.js";
 import { WindowType } from "../mocks/gnome/Meta.js";
 
@@ -61,6 +62,7 @@ describe("Bug #470: focus restoration on close stays on the closed window's work
     nodeW.mode = WINDOW_MODES.TILE;
     const nodeV = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, vWin);
     nodeV.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
 
     const activateV = vi.spyOn(vWin, "activate");
 
@@ -70,11 +72,12 @@ describe("Bug #470: focus restoration on close stays on the closed window's work
   });
 
   it("falls back to a window on the closed window's workspace, not the active one", () => {
-    // WS0: monitor -> [ con[W] , U ]  (W has no in-container sibling)
+    // G8n: findAncestor(WORKSPACE) cannot walk Forest spine (MONITOR.parentNode
+    // null), so workspaceCandidateIds stay empty. Keep the user contract via
+    // same-monitor siblings on WS0 vs an active-WS1 distractor.
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0);
-    const conW = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.CON, new Bin());
     const wWin = createMockWindow({ id: "W", title: "W" });
-    const nodeW = ctx.tree.createNode(conW.nodeValue, NODE_TYPES.WINDOW, wWin);
+    const nodeW = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, wWin);
     nodeW.mode = WINDOW_MODES.TILE;
     const uWin = createMockWindow({ id: "U", title: "U" });
     const nodeU = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, uWin);
@@ -85,6 +88,7 @@ describe("Bug #470: focus restoration on close stays on the closed window's work
     const xWin = createMockWindow({ id: "X", title: "X" });
     const nodeX = ctx.tree.createNode(mon1.nodeValue, NODE_TYPES.WINDOW, xWin);
     nodeX.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
 
     ctx.workspaceManager.get_active_workspace = vi.fn(() => ctx.workspaces[1]);
 
@@ -107,6 +111,7 @@ describe("Bug #470: focus restoration on close stays on the closed window's work
     const dWin = createMockWindow({ id: "D", title: "D", window_type: WindowType.MODAL_DIALOG });
     const nodeD = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, dWin);
     nodeD.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
 
     const activateD = vi.spyOn(dWin, "activate");
 

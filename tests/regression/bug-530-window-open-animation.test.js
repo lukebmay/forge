@@ -78,17 +78,17 @@ describe("Bug #530: first placement preserves the window-open animation", () => 
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it("render path: first render preserves transitions, a real re-placement strips", () => {
-    const { meta } = newTrackedWindow();
+  // D100/G8n: seeded present no longer drives tree.render→apply for transition
+  // stripping; move() cases above cover the user-visible contract.
+  it("first present from the monitor does not strip while firstRender is set", () => {
+    const { meta, node } = newTrackedWindow();
     const spy = vi.spyOn(meta.get_compositor_private(), "remove_all_transitions");
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+    node.rect = { ...rect };
 
     meta.firstRender = true;
-    ctx.tree.render("test-first");
+    ctx.tree.processNode(monitor);
     expect(spy).not.toHaveBeenCalled();
-
-    // Drift the frame (e.g. an external move) so the next render re-places it.
-    meta.move_resize_frame(false, 5, 5, 300, 300);
-    ctx.tree.render("test-second");
-    expect(spy).toHaveBeenCalled();
   });
 });

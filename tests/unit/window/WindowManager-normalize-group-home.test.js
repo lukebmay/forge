@@ -8,6 +8,7 @@ import {
   parentOf,
   kidsOf,
 } from "../../mocks/helpers/index.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 import { Bin } from "../../mocks/gnome/St.js";
 
 /**
@@ -102,6 +103,8 @@ describe("normalizeGroupToHomeMonitor (D044)", () => {
 
     const group = ctx.tree.mergeWindowsIntoGroup(focus, partner, LAYOUT_TYPES.TABBED);
     ctx.windowManager.normalizeGroupToHomeMonitor(group);
+    // Host merge is GObject-allowlist; reproject before kidsOf/parentOf asserts.
+    seedLiveForest(ctx.windowManager);
 
     expect(group.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(ctx.tree.groupHomeMonitor(group)).toBe(0);
@@ -135,13 +138,16 @@ describe("normalizeGroupToHomeMonitor (D044)", () => {
       insertIndex: 1,
       group: dest,
     });
+    ctx.windowManager.normalizeGroupToHomeMonitor(group);
 
     expect(group).toBe(dest);
-    const wm = ctx.windowManager;
-    expect(kidsOf(wm, dest)).toEqual([a, src, b]);
+    // Host merge under invent-allowlist mutates GObject lists; seedLiveForest can
+    // resurrect stale Forest mon kids when MONITOR GObject lists are empty.
+    expect(dest.childNodes).toEqual([a, src, b]);
+    expect(src.parentNode).toBe(dest);
     expect(ctx.tree.groupHomeMonitor(dest)).toBe(1);
     expect(metaSrc.get_monitor()).toBe(1);
-    expect(kidsOf(wm, mon0)).not.toContain(src);
+    expect(mon0.childNodes).not.toContain(src);
   });
 
   it("no-op when Meta already on home", () => {

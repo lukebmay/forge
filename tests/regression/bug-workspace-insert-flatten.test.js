@@ -80,6 +80,7 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
     con.layout = LAYOUT_TYPES.VSPLIT;
     const { win: winD, node: nodeD } = addWindow("D", con, ctx.workspaces[2], 0.7);
     const { win: winE, node: nodeE } = addWindow("E", con, ctx.workspaces[2], 0.3);
+    if (wm._liveForestSeeded) seedLiveForest(wm);
 
     expect(parentOf(wm, nodeD)).toBe(con);
 
@@ -119,6 +120,7 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
     con.layout = LAYOUT_TYPES.VSPLIT;
     const { win: winD, node: nodeD } = addWindow("D", con, ctx.workspaces[2]);
     const { node: nodeE } = addWindow("E", con, ctx.workspaces[2]);
+    if (wm._liveForestSeeded) seedLiveForest(wm);
 
     // Only winD moves to the new workspace; winE stays on ws2.
     const wsNew = new Workspace({ index: 3 });

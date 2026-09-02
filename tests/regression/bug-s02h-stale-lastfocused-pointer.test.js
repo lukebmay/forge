@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
-import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
-  createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  createWindowNode,
 } from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * forge-s02h: this.lastFocusedWindow stores a tree Node and is dereferenced
@@ -37,20 +36,20 @@ describe("forge-s02h: stale lastFocusedWindow in deferred pointer warp", () => {
 
   function tiledNode(opts = {}) {
     const { monitor } = getWorkspaceAndMonitor(ctx);
-    const win = createMockWindow({
-      rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
-      workspace: workspace0(),
-      ...opts,
+    const { nodeWindow: node, metaWindow: win } = createWindowNode(ctx.tree, monitor, {
+      mode: "TILE",
+      windowOverrides: {
+        rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
+        workspace: workspace0(),
+        ...opts,
+      },
     });
-    const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win);
-    node.mode = WINDOW_MODES.TILE;
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
     return { win, node };
   }
 
   it("storePointerLastPosition bails on a disposed window instead of throwing", () => {
     const { win, node } = tiledNode();
-    // Disposed GJS wrapper: every method throws, but the Node wrapper still
-    // has _data set, mimicking a closed window's lingering lastFocusedWindow.
     const disposed = () => {
       throw new Error("Object Meta.Window (0xdead), has been already deallocated");
     };
@@ -58,7 +57,6 @@ describe("forge-s02h: stale lastFocusedWindow in deferred pointer warp", () => {
     win.get_frame_rect = disposed;
 
     expect(() => wm().storePointerLastPosition(node)).not.toThrow();
-    // The dead window must not get a stored pointer.
     expect(node.pointer).toBeNull();
   });
 

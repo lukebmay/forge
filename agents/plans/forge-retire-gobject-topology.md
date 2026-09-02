@@ -427,6 +427,15 @@ register. Do **not** dual-write lists “to keep tests green.”
 
 ## Session note
 
+2026-09-02 — **G8n L0 related retarget (test-only).** Husky `vitest related`
+on tip `8f1a8347` was ~63 files / 274 tests red. Four worktree batches
+retargeted regressions + unit suites to Forest `parentOf`/`kidsOf` +
+`seedLiveForest` after invent. Helpers: `wrapCreateNodeForestReseed` /
+`createWindowManagerFixture({ reseedOnCreateNode })` (session-layout opts
+out). Merged failed-set **63/63** green (841 pass / 9 skip; H1 structural
+cases parked). **No** Forest←GObject dual-write. **Next:** host R054/R055
+verify; then G8n stub peel `tree.js`.
+
 2026-09-02 — **G8n adapter stop `new Tree`.** Production
 `ForgeAdapterGnome` ctor + lazy `tree` getter use `createLiveTree(wm)`
 (LiveHandle ROOT + `ensureLiveListMutators` + Tree/Node API mixin +

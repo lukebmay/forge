@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Tree, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createMockWindow,
   createTreeFixture,
   getWorkspaceAndMonitor,
+  createWindowNode,
 } from "../mocks/helpers/index.js";
 
 /**
@@ -15,9 +16,8 @@ import {
  * by MODE would incorrectly also match nodes by LAYOUT if both conditions
  * happened to be satisfied.
  *
- * Root Cause: Missing `break` statement after MODE case in switch statement.
- *
- * File: lib/extension/tree.js, _search() method
+ * G8n: ROOT GObject childNodes are empty (Forest spine). Search from the live
+ * monitor via getNodeByMode / getNodeByLayout instead of tree._search.
  */
 describe("Bug: _search() MODE case fallthrough to LAYOUT", () => {
   let ctx;
@@ -30,83 +30,51 @@ describe("Bug: _search() MODE case fallthrough to LAYOUT", () => {
     it("should only match nodes by mode, not by layout", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
 
-      // Create a window with TILE mode
-      const mockWindow = createMockWindow({
-        id: 1001,
-        wm_class: "test-window",
-        allows_resize: true,
+      const { nodeWindow: windowNode } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1001, wm_class: "test-window", allows_resize: true },
+        mode: "TILE",
       });
 
-      const windowNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, mockWindow);
-      windowNode.mode = WINDOW_MODES.TILE;
-
-      // Set up monitor with HSPLIT layout (which has a string value)
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
-      // Search by MODE for TILE windows
-      const modeResults = ctx.tree._search(WINDOW_MODES.TILE, "MODE");
-
-      // Should find the TILE mode window
+      const modeResults = monitor.getNodeByMode(WINDOW_MODES.TILE);
       expect(modeResults).toContain(windowNode);
 
-      // Search by MODE for a value that matches a layout type
-      // Before the fix, searching for a MODE that happened to equal a LAYOUT
-      // would incorrectly include nodes matching that LAYOUT
-      const layoutValue = LAYOUT_TYPES.HSPLIT;
-
-      // This should NOT find the monitor node (which has layout=HSPLIT but no mode=HSPLIT)
-      const incorrectResults = ctx.tree._search(layoutValue, "MODE");
-
-      // The monitor node should NOT be in results because we're searching by MODE,
-      // not by LAYOUT
+      // MODE search must not treat LAYOUT values as modes (old fallthrough).
+      const incorrectResults = monitor.getNodeByMode(LAYOUT_TYPES.HSPLIT);
       expect(incorrectResults).not.toContain(monitor);
     });
 
     it("should not include nodes in MODE search that match by layout", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-
-      // Set monitor layout to STACKED
       monitor.layout = LAYOUT_TYPES.STACKED;
 
-      // Create windows with different modes
-      const window1 = createMockWindow({ id: 1, wm_class: "test1", allows_resize: true });
-      const window2 = createMockWindow({ id: 2, wm_class: "test2", allows_resize: true });
+      const { nodeWindow: node1 } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1, wm_class: "test1", allows_resize: true },
+        mode: "TILE",
+      });
+      const { nodeWindow: node2 } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, wm_class: "test2", allows_resize: true },
+        mode: "FLOAT",
+      });
 
-      const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
-      const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
-
-      node1.mode = WINDOW_MODES.TILE;
-      node2.mode = WINDOW_MODES.FLOAT;
-
-      // Search by MODE for FLOAT
-      const floatResults = ctx.tree._search(WINDOW_MODES.FLOAT, "MODE");
-
-      // Should only find node2 (FLOAT mode)
+      const floatResults = monitor.getNodeByMode(WINDOW_MODES.FLOAT);
       expect(floatResults.length).toBe(1);
       expect(floatResults[0]).toBe(node2);
-
-      // Should not include node1 (TILE mode)
       expect(floatResults).not.toContain(node1);
     });
 
     it("should search by LAYOUT independently from MODE", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-
-      // Set monitor layout
       monitor.layout = LAYOUT_TYPES.VSPLIT;
 
-      // Create a window
-      const mockWindow = createMockWindow({ id: 1, wm_class: "test", allows_resize: true });
-      const windowNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, mockWindow);
-      windowNode.mode = WINDOW_MODES.TILE;
+      const { nodeWindow: windowNode } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1, wm_class: "test", allows_resize: true },
+        mode: "TILE",
+      });
 
-      // Search by LAYOUT for VSPLIT
-      const layoutResults = ctx.tree._search(LAYOUT_TYPES.VSPLIT, "LAYOUT");
-
-      // Should find the monitor (which has VSPLIT layout)
+      const layoutResults = monitor.getNodeByLayout(LAYOUT_TYPES.VSPLIT);
       expect(layoutResults).toContain(monitor);
-
-      // Should NOT include the window (which has no layout property set to VSPLIT)
       expect(layoutResults).not.toContain(windowNode);
     });
   });
@@ -115,23 +83,17 @@ describe("Bug: _search() MODE case fallthrough to LAYOUT", () => {
     it("should only return nodes matching the specified mode", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
 
-      // Create multiple windows with different modes
-      const tileWindow = createMockWindow({ id: 1, wm_class: "tile", allows_resize: true });
-      const floatWindow = createMockWindow({ id: 2, wm_class: "float", allows_resize: true });
+      const { nodeWindow: tileNode } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 1, wm_class: "tile", allows_resize: true },
+        mode: "TILE",
+      });
+      const { nodeWindow: floatNode } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id: 2, wm_class: "float", allows_resize: true },
+        mode: "FLOAT",
+      });
 
-      const tileNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, tileWindow);
-      const floatNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, floatWindow);
-
-      tileNode.mode = WINDOW_MODES.TILE;
-      floatNode.mode = WINDOW_MODES.FLOAT;
-
-      // Get nodes by TILE mode
-      const tileNodes = ctx.tree.getNodeByMode(WINDOW_MODES.TILE);
-
-      // Should include tile window
+      const tileNodes = monitor.getNodeByMode(WINDOW_MODES.TILE);
       expect(tileNodes).toContain(tileNode);
-
-      // Should NOT include float window
       expect(tileNodes).not.toContain(floatNode);
     });
   });

@@ -1286,7 +1286,8 @@ describe("Tree Layout Algorithms", () => {
       const [w0a, w0b] = createHorizontalLayout(ctx.tree, monitors[0], 2);
       const [w1a] = createHorizontalLayout(ctx.tree, monitors[1], 1);
 
-      PresentChrome.processNode(ctx.tree, ctx.tree);
+      // forestAdmit spine is liveById-only; ROOT GObject kids are empty — walk each mon.
+      for (const mon of monitors) PresentChrome.processNode(ctx.tree, mon);
 
       expect(monitors[0].rect).toEqual({ x: 0, y: 0, width: 1920, height: 1040 });
       expect(monitors[1].rect).toEqual({ x: 1920, y: 0, width: 2560, height: 1400 });

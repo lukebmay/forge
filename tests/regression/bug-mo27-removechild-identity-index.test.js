@@ -8,16 +8,14 @@ import {
 
 /**
  * Bug forge-mo27: removeChild resolved the child to splice by node.index, but
- * gated on contains() — and those use different bases. contains() matches by
- * nodeValue (value), while index matches by identity (===). split() pushes a
- * Meta.Window into a new CON by creating a *fresh* Node with the same nodeValue
- * and leaving the original node reparented-but-not-inserted, so a stale original
- * reference yields contains()===true but index===null. splice(null, 1) coerces
- * to splice(0, 1) and silently evicted the WRONG sibling, returning a truthy
- * array so the `NodeNotFound` guard never fired.
+ * gated on contains() — and those use different bases. Classic Node.contains()
+ * matched by nodeValue; index matches by identity. A stale value-twin could
+ * make contains() true while index was null → splice(null,1) → splice(0,1)
+ * evicted the wrong sibling.
  *
- * Fix: resolve by identity (the index getter) and never pass a null index to
- * splice; throw NodeNotFound when the node is not a direct child.
+ * G8n: LiveHandle.contains is identity-based; removeChild returns null (no
+ * throw) when the node is not a direct child. Assert no eviction + identity
+ * detach via childNodes (list mutator), not Forest kidsOf.
  */
 describe("Bug forge-mo27: removeChild resolves the child by identity, not value", () => {
   let ctx;
@@ -33,16 +31,13 @@ describe("Bug forge-mo27: removeChild resolves the child by identity, not value"
     const b = createWindowNode(ctx.tree, monitor).nodeWindow;
     expect(monitor.childNodes).toEqual([a, b]);
 
-    // Reproduce split()'s aftermath: a stale Node holding the SAME nodeValue as a
-    // live sibling, parented to the monitor but never inserted into childNodes.
-    // contains() (value-match) finds the live twin -> true; index (identity) -> null.
     const stale = new Node(NODE_TYPES.WINDOW, b.nodeValue);
     stale.parentNode = monitor;
-    expect(monitor.contains(stale)).toBe(true);
+    expect(monitor.contains(stale)).toBe(false);
     expect(stale.index).toBe(null);
 
-    // Before the fix, splice(null, 1) collapsed to splice(0, 1) and removed `a`.
-    expect(() => monitor.removeChild(stale)).toThrow();
+    // LiveHandle: missing child → null (no throw); siblings untouched.
+    expect(monitor.removeChild(stale)).toBeNull();
     expect(monitor.childNodes).toEqual([a, b]);
   });
 

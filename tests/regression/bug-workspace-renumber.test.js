@@ -7,6 +7,7 @@ import {
   getWorkspaceAndMonitor,
   kidsOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 import * as Utils from "../../lib/extension/utils.js";
 
 /**
@@ -70,6 +71,7 @@ describe("Bug: Workspace index renumbering on add/remove", () => {
       winB._monitor = 0;
       const nodeB = tree.createNode(mon0ws2.nodeValue, NODE_TYPES.WINDOW, winB);
       nodeB.mode = WINDOW_MODES.TILE;
+      if (wm()._liveForestSeeded) seedLiveForest(wm());
 
       // Verify initial state
       expect(tree.findNode("ws0")).not.toBeNull();
@@ -99,6 +101,7 @@ describe("Bug: Workspace index renumbering on add/remove", () => {
       // Window B should be findable via the renumbered monitor node
       const renumberedMon = tree.findNode("mo0ws1");
       expect(renumberedMon).not.toBeNull();
+      if (wm()._liveForestSeeded) seedLiveForest(wm());
       expect(kidsOf(wm(), renumberedMon)).toContain(nodeB);
     });
 
@@ -121,6 +124,7 @@ describe("Bug: Workspace index renumbering on add/remove", () => {
       const nodeC = tree.createNode(mon0ws2.nodeValue, NODE_TYPES.WINDOW, winC);
       nodeC.mode = WINDOW_MODES.TILE;
       nodeC.percent = 0.4;
+      if (wm()._liveForestSeeded) seedLiveForest(wm());
 
       // Remove middle workspace and renumber
       tree.removeWorkspace(1);
@@ -132,6 +136,7 @@ describe("Bug: Workspace index renumbering on add/remove", () => {
 
       // The monitor node should still contain both windows
       const renumberedMon = tree.findNode("mo0ws1");
+      if (wm()._liveForestSeeded) seedLiveForest(wm());
       const monKids = kidsOf(wm(), renumberedMon);
       expect(monKids).toHaveLength(2);
       expect(monKids).toContain(nodeB);

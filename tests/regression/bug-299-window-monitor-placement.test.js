@@ -1,10 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createMockWindow,
   createWindowNode,
+  parentOf,
 } from "../mocks/helpers/index.js";
+
+/** Walk Forest/GObject parents to the MONITOR ancestor. */
+function monitorOf(wm, node) {
+  let n = node;
+  while (n) {
+    if (n.nodeType === NODE_TYPES.MONITOR) return n;
+    n = parentOf(wm, n);
+  }
+  return null;
+}
 
 /**
  * Bug #299 / OP1: new-window monitor placement.
@@ -39,8 +51,8 @@ describe("Bug #299: Window monitor placement", () => {
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
 
-    expect(mon0.contains(node)).toBe(true);
-    expect(mon1.contains(node)).toBe(false);
+    expect(monitorOf(wm(), node)).toBe(mon0);
+    expect(monitorOf(wm(), node)).not.toBe(mon1);
   });
 
   it("with LFT on mon 1: places next window on LFT mon (not pointer mon 0)", () => {
@@ -63,7 +75,7 @@ describe("Bug #299: Window monitor placement", () => {
     const node = wm().findNodeWindow(metaWindow);
     expect(node).not.toBeNull();
 
-    expect(mon1.contains(node)).toBe(true);
-    expect(mon0.contains(node)).toBe(false);
+    expect(monitorOf(wm(), node)).toBe(mon1);
+    expect(monitorOf(wm(), node)).not.toBe(mon0);
   });
 });

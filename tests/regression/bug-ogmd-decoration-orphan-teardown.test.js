@@ -1,21 +1,19 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import {
   createTreeFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
   createContainerNode,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
- * Bug forge-ogmd: the processStacked/processTabbed self-heal catch blocks set
- * node.decoration = null on a render-time throw to force recreation, but never
- * destroyed the existing St.BoxLayout first. After PR1 strips live on the
- * tab-chrome layer; without teardown the old header stayed parented forever.
+ * Bug forge-ogmd: processStacked/processTabbed self-heal nulled decoration on
+ * throw without destroying the St.BoxLayout first (orphan strip).
  *
- * Fix: _destroyDecoration() untracks + tears the orphan down (in its own
- * try/catch so a second throw on a finalized actor can't escape the render
- * loop) before nulling.
+ * Fix: destroyDecoration tears down before nulling; processNode may recreate.
+ * Assert orphan destroy ran; do not require decoration===null after recreate.
  */
 describe("Bug forge-ogmd: a decoration that throws mid-update is destroyed before recreation", () => {
   let ctx;
@@ -25,21 +23,22 @@ describe("Bug forge-ogmd: a decoration that throws mid-update is destroyed befor
       fullExtWm: true,
       settings: { "tiling-mode-enabled": true, "showtab-decoration-enabled": true },
     });
-    ctx.extWm.currentMonWsNode = ctx.tree.nodeWorkpaces[0].getNodeByType(NODE_TYPES.MONITOR)[0];
+    ctx.extWm.currentMonWsNode = getWorkspaceAndMonitor(ctx).monitor;
+    ctx.extWm.currentWsNode = getWorkspaceAndMonitor(ctx).workspace;
   });
 
   const drives = (layout) => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     monitor.layout = LAYOUT_TYPES.HSPLIT;
     const con = createContainerNode(monitor, layout, { x: 0, y: 0, width: 800, height: 600 });
-    createWindowNode(ctx.tree, con); // single tiled child keeps the CON unflattened here
+    createWindowNode(ctx.tree, con);
+    createWindowNode(ctx.tree, con);
+    if (ctx.extWm._liveForestSeeded) seedLiveForest(ctx.extWm);
 
-    // First render lays out the decoration cleanly and creates the actor.
     ctx.tree.processNode(monitor);
     const deco = con.decoration;
     expect(deco).toBeTruthy();
 
-    // Make the next decoration update throw, and watch the orphan teardown.
     let destroyed = 0;
     const realDestroy = deco.destroy.bind(deco);
     deco.destroy = () => {
@@ -51,18 +50,19 @@ describe("Bug forge-ogmd: a decoration that throws mid-update is destroyed befor
     };
 
     expect(() => ctx.tree.processNode(monitor)).not.toThrow();
-    return { con, destroyed: () => destroyed };
+    return { con, deco, destroyed: () => destroyed };
   };
 
   it("destroys the orphaned STACKED decoration on a render-time throw", () => {
-    const { con, destroyed } = drives(LAYOUT_TYPES.STACKED);
+    const { deco, destroyed } = drives(LAYOUT_TYPES.STACKED);
     expect(destroyed()).toBe(1);
-    expect(con.decoration).toBe(null);
+    // Heal may recreate a fresh strip; the orphan must have been destroyed.
+    expect(deco._forgeDisposed || destroyed() === 1).toBeTruthy();
   });
 
   it("destroys the orphaned TABBED decoration on a render-time throw", () => {
-    const { con, destroyed } = drives(LAYOUT_TYPES.TABBED);
+    const { deco, destroyed } = drives(LAYOUT_TYPES.TABBED);
     expect(destroyed()).toBe(1);
-    expect(con.decoration).toBe(null);
+    expect(deco._forgeDisposed || destroyed() === 1).toBeTruthy();
   });
 });

@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createMockWindow,
   createWindowNode,
+  createContainerNode,
   parentOf,
   kidsOf,
 } from "../mocks/helpers/index.js";
@@ -67,9 +68,12 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
   function deskTwoTiles() {
     const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
     mon0.layout = LAYOUT_TYPES.HSPLIT;
-    const bag = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.CON, {});
-    bag.layout = LAYOUT_TYPES.TABBED;
-    bag._rect = { x: 0, y: 0, width: 960, height: 1080 };
+    const bag = createContainerNode(mon0, LAYOUT_TYPES.TABBED, {
+      x: 0,
+      y: 0,
+      width: 960,
+      height: 1080,
+    });
     const tabA = tile(bag, {
       id: "tab-a",
       monitor: 0,
@@ -88,6 +92,7 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
       wm_class: "com.mitchellh.ghostty",
       rect: { x: 960, y: 0, width: 960, height: 1080 },
     });
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
     focusTile(tabA);
     return { mon0, bag, tabA, ghost };
   }
@@ -123,6 +128,7 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
       rect: { x: 200, y: 180, width: 640, height: 420 },
     });
     expect(wm().isFloatingExempt(meta)).toBe(true);
+    // Do not seedLiveForest after float admit — reseeding from GObject drops FLOATS.
     wm().trackWindow(null, meta);
     const node = wm().findNodeWindow(meta);
 
@@ -225,6 +231,7 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
     const node = wm().findNodeWindow(meta);
     wm().processFloats();
     // D032: open beside focused tab bag wraps the bag (split-or-tab on the CON).
+    expect(node).toBeTruthy();
     expect(node.isTile()).toBe(true);
     expect(parentOf(wm(), bag)).not.toBe(mon0);
 

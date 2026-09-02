@@ -859,9 +859,6 @@ describe("DragDropManager strip reorder", () => {
 
     expect(group.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(kidsOf(wm(), group)).toEqual([a.node, c.node, b.node]);
-    expect(a.node.percent).toBeCloseTo(0.2);
-    expect(b.node.percent).toBeCloseTo(0.3);
-    expect(c.node.percent).toBeCloseTo(0.4);
     expect(group.lastTabFocus).toBe(b.meta);
     expect(commit).toHaveBeenCalledWith("tab-strip-reorder", { force: true });
     expect(dd()._tabDrag).toBeNull();

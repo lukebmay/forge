@@ -10,7 +10,6 @@ import { vi } from "vitest";
 import { Node } from "../../../lib/extension/tree.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree-types.js";
 import {
-  forestInsertWindow,
   liveChildrenForPresent,
   liveParentForPresent,
   seedLiveForest,
@@ -43,6 +42,57 @@ export function kidsOf(wm, node) {
 function reseedIfForestExpected(wm) {
   if (!wm?._liveForestSeeded || !wm.tree) return;
   seedLiveForest(wm);
+}
+
+/**
+ * G8n: wrap tree.createNode so GObject invent stays projected into Forest.
+ * Spine-ready fixtures otherwise leave MONITOR childIds empty (kidsOf SoT).
+ * @param {any} tree
+ * @param {any} wm
+ */
+export function wrapCreateNodeForestReseed(tree, wm) {
+  if (!tree || typeof tree.createNode !== "function" || tree._forgeCreateNodeReseedWrapped) {
+    return tree;
+  }
+  const orig = tree.createNode.bind(tree);
+  tree.createNode = (...args) => {
+    const node = orig(...args);
+    reseedIfForestExpected(wm);
+    return node;
+  };
+  tree._forgeCreateNodeReseedWrapped = true;
+  return tree;
+}
+
+/**
+ * G8n: Host/helper Tree mutators still patch GObject under allowlist;
+ * reproject so parentOf/kidsOf see the post-op structure.
+ * @param {any} tree
+ * @param {any} wm
+ */
+export function wrapTreeHostMutatorsForestReseed(tree, wm) {
+  if (!tree || tree._forgeHostMutatorReseedWrapped) return tree;
+  const methods = [
+    "removeNode",
+    "cleanTree",
+    "move",
+    "ungroup",
+    "group",
+    "swapPairs",
+    "slotSplitUnit",
+    "split",
+  ];
+  for (const name of methods) {
+    if (typeof tree[name] !== "function") continue;
+    const orig = tree[name].bind(tree);
+    tree[name] = (...args) => {
+      const result = orig(...args);
+      reseedIfForestExpected(wm);
+      return result;
+    };
+  }
+  tree._forgeHostMutatorReseedWrapped = true;
+  return tree;
 }
 
 function wmFromTreeOrParent(treeOrParent) {
@@ -168,13 +218,9 @@ export function createWindowNode(tree, parent, options = {}) {
     nodeWindow.mode = WINDOW_MODES[mode];
   }
 
-  const wm = wmFromTreeOrParent(tree);
-  const liveRoot = tree && Object.getPrototypeOf(tree) === Object.prototype;
-  if (liveRoot && wm?._liveForestSeeded && nodeWindow) {
-    forestInsertWindow(wm, nodeWindow);
-  } else {
-    reseedIfForestExpected(wm);
-  }
+  // Invent may leave Forest childIds empty (GObject lists still mutate under
+  // _allowGObjectCreateNode). Reseed so kidsOf/parentOf see membership.
+  reseedIfForestExpected(wmFromTreeOrParent(tree));
 
   return { nodeWindow, metaWindow };
 }
@@ -354,4 +400,6 @@ export default {
   createTabbedLayout,
   createContainerNode,
   setPointer,
+  wrapCreateNodeForestReseed,
+  wrapTreeHostMutatorsForestReseed,
 };

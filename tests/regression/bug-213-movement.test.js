@@ -7,6 +7,7 @@ import {
   getWorkspaceAndMonitor,
   kidsOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 import { MotionDirection } from "../mocks/gnome/Meta.js";
 
 /**
@@ -44,6 +45,7 @@ describe("Bug #213: keyboard Move (product TILES)", () => {
       node.mode = WINDOW_MODES.TILE;
       return { win, node };
     });
+    seedLiveForest(wm());
     return { monitor, nodes };
   }
 

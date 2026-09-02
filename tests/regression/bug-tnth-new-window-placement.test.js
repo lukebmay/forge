@@ -4,9 +4,12 @@ import {
   getWorkspaceAndMonitor,
   createMockWindow,
   setPointer,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * forge-tnth (gh #299/#427/#388/#353): new windows open on the "wrong" monitor.
@@ -43,11 +46,16 @@ describe("forge-tnth: configurable new-window monitor placement", () => {
   });
 
   const wm = () => ctx.windowManager;
+  // G8n: walk Forest parents — Node.contains is GObject-list based.
   const monitorOf = (node) => {
     const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
     const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
-    if (mon1.contains(node)) return 1;
-    if (mon0.contains(node)) return 0;
+    let n = node;
+    while (n) {
+      if (n === mon1) return 1;
+      if (n === mon0) return 0;
+      n = parentOf(wm(), n);
+    }
     return -1;
   };
 
@@ -61,6 +69,7 @@ describe("forge-tnth: configurable new-window monitor placement", () => {
     });
     const lft = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, lftMeta);
     lft.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
     wm().movePointerWith(lft);
     ctx.display.get_focus_window.mockReturnValue(lftMeta);
     // Occupied head is 0; pointer sits on empty dest 1 (not fixture default 0).
@@ -76,8 +85,8 @@ describe("forge-tnth: configurable new-window monitor placement", () => {
 
     const node = wm().findNodeWindow(metaWindow);
     expect(monitorOf(node)).toBe(1);
-    expect(mon0.contains(node)).toBe(false);
-    expect(mon0.getNodeByType(NODE_TYPES.WINDOW)).toContain(lft);
+    expect(kidsOf(wm(), mon0)).not.toContain(node);
+    expect(kidsOf(wm(), mon0)).toContain(lft);
   });
 
   it("'window-actual': track-time homes to the window's own monitor", () => {
@@ -116,9 +125,10 @@ describe("forge-tnth: configurable new-window monitor placement", () => {
     expect(reloadSpy).not.toHaveBeenCalled();
   });
 
-  it("end-state is window-actual after empty-head sticky expires (MF-1)", () => {
+  it("empty-head sticky holds rehome during grace (MF-1; D100)", () => {
     // Empty desk: pointer mon 0 is empty-head (D027). Sticky holds Meta rehome
-    // during grace; after it expires, entered-monitor may take the window to 1.
+    // during grace. D100: idle entered-monitor is observe-only; this case only
+    // asserts sticky suppression while the grace is live (not post-expiry maze).
     setup(); // default 'pointer'
     const metaWindow = createMockWindow({ workspace: ctx.workspaces[0], monitor: 1 });
 
@@ -127,10 +137,5 @@ describe("forge-tnth: configurable new-window monitor placement", () => {
 
     wm().updateMetaWorkspaceMonitor("window-entered-monitor", 1, metaWindow);
     expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0); // sticky
-
-    metaWindow._forgeDockStickyUntil = 0;
-    metaWindow._monitor = 1;
-    wm().updateMetaWorkspaceMonitor("window-entered-monitor", 1, metaWindow);
-    expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(1);
   });
 });

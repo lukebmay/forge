@@ -1,10 +1,11 @@
 # forge (lukebmay) — active priorities
 
-**Updated:** 2026-09-02 — **R054/R055** L0+nest green; **host**
-`layout dev` + DnD-into-TAB still needed
+**Updated:** 2026-09-02 — Tip FUNCTIONAL (D100c + R054/R055 nest
+green + G8n L0 related retarget). **Host** `layout dev` +
+DnD-into-TAB still needed
 ([forge-tab-open-leaf-visibility.md](./plans/forge-tab-open-leaf-visibility.md)).
-G8n stub paused until that host pair. **Do not resave loadouts.**
-**Branch:** `master`. **Push:** only when asked.
+G8n **stub** paused until host pair. **Do not resave loadouts.**
+**Branch:** `master` (ahead 3). **Push:** only when asked.
 
 ---
 

@@ -4,7 +4,9 @@ import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  parentOf,
 } from "../../mocks/helpers/index.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 import { Bin } from "../../mocks/gnome/St.js";
 
@@ -50,54 +52,60 @@ describe("WindowManager - minimize/unminimize (_onMinimizeChange)", () => {
 
   it("minimize resets the parent percents, hides borders, and renders with 'minimize'", () => {
     const { parent, windows } = buildParentWithWindows(2);
+    seedLiveForest(wm());
     // Minimize the focused window; a tiled sibling remains under the parent.
     windows[0].nodeValue.minimized = true;
     focusOn(windows[0].nodeValue);
 
-    const resetSpy = vi.spyOn(ctx.tree, "resetSiblingPercent");
+    // Adapter equalizes via _resetSiblingPercent (Forest), not tree.resetSiblingPercent.
+    const resetSpy = vi.spyOn(wm(), "_resetSiblingPercent");
     const hideSpy = vi.spyOn(wm(), "hideWindowBorders");
     const renderSpy = vi.spyOn(wm(), "_renderWithFreezeState").mockImplementation(() => {});
 
     wm()._onMinimizeChange("minimize", { hideBorders: true, resetGrandparentIfEmpty: true });
 
     expect(hideSpy).toHaveBeenCalled();
-    expect(resetSpy).toHaveBeenCalledWith(parent);
+    expect(resetSpy).toHaveBeenCalledWith(parentOf(wm(), windows[0]) || parent);
     expect(renderSpy).toHaveBeenCalledWith("minimize");
   });
 
   it("minimize resets the grandparent when the parent has no tiled children left", () => {
     const { grandparent, parent, windows } = buildParentWithWindows(1);
+    seedLiveForest(wm());
     // The only window is now minimized -> getTiledChildren(parent) is empty.
     windows[0].nodeValue.minimized = true;
     focusOn(windows[0].nodeValue);
 
-    const resetSpy = vi.spyOn(ctx.tree, "resetSiblingPercent");
+    const resetSpy = vi.spyOn(wm(), "_resetSiblingPercent");
 
     wm()._onMinimizeChange("minimize", { hideBorders: true, resetGrandparentIfEmpty: true });
 
-    expect(resetSpy).toHaveBeenCalledWith(grandparent);
-    expect(resetSpy).toHaveBeenCalledWith(parent);
+    const liveParent = parentOf(wm(), windows[0]) || parent;
+    expect(resetSpy).toHaveBeenCalledWith(parentOf(wm(), liveParent) || grandparent);
+    expect(resetSpy).toHaveBeenCalledWith(liveParent);
   });
 
   it("unminimize resets the parent percents and renders without hiding borders", () => {
     const { parent, windows } = buildParentWithWindows(2);
+    seedLiveForest(wm());
     focusOn(windows[0].nodeValue);
 
-    const resetSpy = vi.spyOn(ctx.tree, "resetSiblingPercent");
+    const resetSpy = vi.spyOn(wm(), "_resetSiblingPercent");
     const hideSpy = vi.spyOn(wm(), "hideWindowBorders");
     const renderSpy = vi.spyOn(wm(), "_renderWithFreezeState").mockImplementation(() => {});
 
     wm()._onMinimizeChange("unminimize");
 
+    const liveParent = parentOf(wm(), windows[0]) || parent;
     expect(hideSpy).not.toHaveBeenCalled();
-    expect(resetSpy).toHaveBeenCalledWith(parent);
-    expect(resetSpy).not.toHaveBeenCalledWith(parent.parentNode);
+    expect(resetSpy).toHaveBeenCalledWith(liveParent);
+    expect(resetSpy).not.toHaveBeenCalledWith(parentOf(wm(), liveParent));
     expect(renderSpy).toHaveBeenCalledWith("unminimize");
   });
 
   it("is a no-op (only renders) when there is no focused node", () => {
     focusOn(null);
-    const resetSpy = vi.spyOn(ctx.tree, "resetSiblingPercent");
+    const resetSpy = vi.spyOn(wm(), "_resetSiblingPercent");
     const renderSpy = vi.spyOn(wm(), "_renderWithFreezeState").mockImplementation(() => {});
 
     wm()._onMinimizeChange("minimize", { hideBorders: true, resetGrandparentIfEmpty: true });

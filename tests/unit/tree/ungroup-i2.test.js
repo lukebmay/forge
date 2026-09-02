@@ -82,6 +82,7 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
     sibling.mode = WINDOW_MODES.TILE;
 
     const parent = tree().ungroup(con);
+    seedLiveForest(wm()); // Host/helper ungroup; reproject for Forest asserts
 
     expect(parent).toBe(monitor);
     expect(parentOf(wm(), con)).toBeNull();
@@ -98,6 +99,7 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
     const { monitor, con, n1, n2 } = twoWindowTabbed();
 
     expect(tree().ungroup(n1)).toBe(monitor);
+    seedLiveForest(wm());
     expect(parentOf(wm(), con)).toBeNull();
     expect(kidsOf(wm(), monitor)).toEqual([n1, n2]);
   });
@@ -106,6 +108,7 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
     const { monitor, con, inner, n1, n2, n3, n4 } = nestedGroup();
 
     expect(tree().ungroup(con)).toBe(monitor);
+    seedLiveForest(wm());
     expect(kidsOf(wm(), monitor)).toEqual([n1, inner, n4]);
     expect(parentOf(wm(), inner)).toBe(monitor);
     expect(inner.layout).toBe(LAYOUT_TYPES.VSPLIT);
@@ -155,6 +158,7 @@ describe("ungroup I2 — explicit dissolve (Host/helper)", () => {
     const { monitor, con, n1, n2 } = twoWindowTabbed();
 
     tree().removeNode(n2);
+    seedLiveForest(wm());
 
     expect(parentOf(wm(), con)).toBe(monitor);
     expect(kidsOf(wm(), con)).toEqual([n1]);

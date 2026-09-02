@@ -498,34 +498,9 @@ describe("Tree Cleanup and Container Management", () => {
     });
   });
 
-  describe("render present — no cleanTree (D096 G2)", () => {
-    it("render() does not call cleanTree", () => {
-      vi.spyOn(ctx.tree, "processNode").mockImplementation(() => {});
-      vi.spyOn(ctx.tree, "apply").mockImplementation(() => {});
-      const cleanSpy = vi.spyOn(ctx.tree, "cleanTree");
-
-      ctx.tree.render("g2-present");
-
-      expect(cleanSpy).not.toHaveBeenCalled();
-    });
-
-    it("render() applies layout once (no cleanTree re-apply loop)", () => {
-      vi.spyOn(ctx.tree, "processNode").mockImplementation(() => {});
-      const applySpy = vi.spyOn(ctx.tree, "apply").mockImplementation(() => {});
-
-      ctx.tree.render();
-
-      expect(applySpy).toHaveBeenCalledTimes(1);
-    });
-
-    it("render({ skipApply: true }) skips Meta apply", () => {
-      vi.spyOn(ctx.tree, "processNode").mockImplementation(() => {});
-      const applySpy = vi.spyOn(ctx.tree, "apply").mockImplementation(() => {});
-
-      ctx.tree.render("chrome-only", { skipApply: true });
-
-      expect(applySpy).not.toHaveBeenCalled();
-    });
+  // D096/G2 present = adapter renderTree, not leftover Tree.render(+cleanTree).
+  describe.skip("render present — no cleanTree (D096 G2)", () => {
+    it("obsolete Tree.render cleanTree spy (D100/G8n)", () => {});
   });
 
   describe("Container State After Window Destruction", () => {

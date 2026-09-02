@@ -7,6 +7,7 @@ import {
   kidsOf,
 } from "../mocks/helpers/index.js";
 import { Bin } from "../mocks/gnome/St.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * forge-at72 / daily-driver T0: layout mode toggles rewrite live containers.
@@ -47,6 +48,7 @@ describe("forge-at72: _handleLayoutModeToggle disable/enable round-trip", () => 
       ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, meta);
       windows.push(meta);
     }
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
     return { con, windows };
   }
 

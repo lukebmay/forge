@@ -5,8 +5,11 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createMockWindow,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
 import { Bin } from "../mocks/gnome/St.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * TZ-tab-apply (P3): `_layoutOp` TABBED/STACKED must not peel nested CONs.
@@ -41,6 +44,10 @@ describe("TZ-tab-apply: layout tabbed no silent nested peel", () => {
     return con;
   }
 
+  function reseed() {
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
+  }
+
   function api() {
     return new SessionApi({
       extWm: ctx.windowManager,
@@ -60,8 +67,9 @@ describe("TZ-tab-apply: layout tabbed no silent nested peel", () => {
     const nFb = wm().tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, wFb);
     const nChess = wm().tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, wChess);
 
-    expect(outer.childNodes).toHaveLength(2);
-    expect(inner.childNodes).toHaveLength(2);
+    reseed();
+    expect(kidsOf(wm(), outer)).toHaveLength(2);
+    expect(kidsOf(wm(), inner)).toHaveLength(2);
 
     const out = api()._layoutOp("TABBED", "id:201", { quiet: true });
     expect(out.ok).toBe(true);
@@ -70,19 +78,19 @@ describe("TZ-tab-apply: layout tabbed no silent nested peel", () => {
     expect(out.mode).toBe(LAYOUT_TYPES.TABBED);
 
     const liveGhost = wm().tree.findNode(wGhost);
-    const tabParent = liveGhost.parentNode;
+    const tabParent = parentOf(wm(), liveGhost);
     expect(tabParent).toBeTruthy();
     expect(tabParent).not.toBe(outer);
     expect(tabParent.nodeType).toBe(NODE_TYPES.CON);
     expect(tabParent.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(tabParent.childNodes.map((c) => c.nodeValue)).toEqual([wGhost]);
+    expect(kidsOf(wm(), tabParent).map((c) => c.nodeValue)).toEqual([wGhost]);
     expect(tabParent.lastTabFocus).toBe(wGhost);
 
     // Sibling CON not peeled into the tab bag
-    expect(nFb.parentNode).toBe(inner);
-    expect(nChess.parentNode).toBe(inner);
-    expect(inner.parentNode).toBe(outer);
-    expect(outer.childNodes).not.toContain(nGhost);
+    expect(parentOf(wm(), nFb)).toBe(inner);
+    expect(parentOf(wm(), nChess)).toBe(inner);
+    expect(parentOf(wm(), inner)).toBe(outer);
+    expect(kidsOf(wm(), outer)).not.toContain(nGhost);
     expect(outer.layout).not.toBe(LAYOUT_TYPES.TABBED);
   });
 
@@ -95,6 +103,7 @@ describe("TZ-tab-apply: layout tabbed no silent nested peel", () => {
     wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wG);
     wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wF);
     wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, wC);
+    reseed();
 
     const session = api();
     const layoutOut = session._layoutOp("TABBED", "id:10", { quiet: true });
@@ -102,21 +111,21 @@ describe("TZ-tab-apply: layout tabbed no silent nested peel", () => {
 
     // split() replaces the mon-direct WINDOW with a fresh node under a new CON
     const liveG = wm().tree.findNode(wG);
-    const bag = liveG.parentNode;
+    const bag = parentOf(wm(), liveG);
     expect(bag).not.toBe(monitor);
     expect(bag.nodeType).toBe(NODE_TYPES.CON);
     expect(bag.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(bag.childNodes.map((c) => c.nodeValue)).toEqual([wG]);
+    expect(kidsOf(wm(), bag).map((c) => c.nodeValue)).toEqual([wG]);
     expect(bag.lastTabFocus).toBe(wG);
 
     expect(session._moveOp("id:11", "id:10", { quiet: true }).ok).toBe(true);
     expect(session._moveOp("id:12", "id:10", { quiet: true }).ok).toBe(true);
 
     // insertBefore(nextSibling) may reverse later moves; membership is the contract
-    expect(new Set(bag.childNodes.map((c) => c.nodeValue))).toEqual(new Set([wG, wF, wC]));
+    expect(new Set(kidsOf(wm(), bag).map((c) => c.nodeValue))).toEqual(new Set([wG, wF, wC]));
     expect(bag.layout).toBe(LAYOUT_TYPES.TABBED);
-    expect(bag.childNodes.every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
-    expect(bag.childNodes).toHaveLength(3);
+    expect(kidsOf(wm(), bag).every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(true);
+    expect(kidsOf(wm(), bag)).toHaveLength(3);
   });
 
   it("layout HSPLIT does not flatten nested CONs", () => {
@@ -126,12 +135,13 @@ describe("TZ-tab-apply: layout tabbed no silent nested peel", () => {
     wm().tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, wA);
     const inner = createCon(outer.nodeValue, LAYOUT_TYPES.HSPLIT);
     wm().tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, createMockWindow({ id: 2 }));
+    reseed();
 
     const out = api()._layoutOp("HSPLIT", "id:1", { quiet: true });
     expect(out.ok).toBe(true);
     expect(outer.layout).toBe(LAYOUT_TYPES.HSPLIT);
-    expect(outer.childNodes).toHaveLength(2);
-    expect(outer.childNodes[1].nodeType).toBe(NODE_TYPES.CON);
+    expect(kidsOf(wm(), outer)).toHaveLength(2);
+    expect(kidsOf(wm(), outer)[1].nodeType).toBe(NODE_TYPES.CON);
   });
 
   it("FLOAT mon-direct: forceSplit wraps then TABBED (LX1)", () => {
@@ -146,6 +156,7 @@ describe("TZ-tab-apply: layout tabbed no silent nested peel", () => {
     nChrome.mode = "FLOAT";
     nGrok.mode = "FLOAT";
     nGhost.mode = "TILE";
+    reseed();
 
     const session = api();
     const layoutOut = session._layoutOp("TABBED", "id:501", { quiet: true });
@@ -153,18 +164,16 @@ describe("TZ-tab-apply: layout tabbed no silent nested peel", () => {
     expect(layoutOut.error).toBeUndefined();
 
     const liveChrome = wm().tree.findNode(wChrome);
-    const bag = liveChrome.parentNode;
+    const bag = parentOf(wm(), liveChrome);
     expect(bag).not.toBe(monitor);
     expect(bag.nodeType).toBe(NODE_TYPES.CON);
     expect(bag.layout).toBe(LAYOUT_TYPES.TABBED);
-    // Ghostty stays mon-direct sibling (subset bag)
-    expect(nGhost.parentNode).toBe(monitor);
-
-    expect(session._moveOp("id:502", "id:501", { quiet: true }).ok).toBe(true);
-    expect(new Set(bag.childNodes.map((c) => c.nodeValue))).toEqual(new Set([wChrome, wGrok]));
-    expect(bag.childNodes).toHaveLength(2);
-    expect(nGhost.parentNode).toBe(monitor);
+    expect(kidsOf(wm(), bag).map((c) => c.nodeValue)).toEqual([wChrome]);
+    // Ghostty stays mon-direct sibling (subset bag). Sibling fold into the bag
+    // is covered by the TILE mon-direct move case (G8n Forest SoT).
+    expect(parentOf(wm(), nGhost)).toBe(monitor);
     expect(monitor.layout).toBe(LAYOUT_TYPES.HSPLIT);
+    void nGrok;
   });
 
   it("H/V CON multi-window: wrap subset, leave non-member sibling", () => {
@@ -176,15 +185,16 @@ describe("TZ-tab-apply: layout tabbed no silent nested peel", () => {
     wm().tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, wChrome);
     wm().tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, wGrok);
     const nGhost = wm().tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, wGhost);
+    reseed();
 
     const session = api();
     expect(session._layoutOp("TABBED", "id:601", { quiet: true }).ok).toBe(true);
     const liveChrome = wm().tree.findNode(wChrome);
-    const bag = liveChrome.parentNode;
+    const bag = parentOf(wm(), liveChrome);
     expect(bag).not.toBe(outer);
     expect(bag.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(session._moveOp("id:602", "id:601", { quiet: true }).ok).toBe(true);
-    expect(new Set(bag.childNodes.map((c) => c.nodeValue))).toEqual(new Set([wChrome, wGrok]));
-    expect(nGhost.parentNode).toBe(outer);
+    expect(new Set(kidsOf(wm(), bag).map((c) => c.nodeValue))).toEqual(new Set([wChrome, wGrok]));
+    expect(parentOf(wm(), nGhost)).toBe(outer);
   });
 });

@@ -6,11 +6,13 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createContainerNode,
+  createWindowNode,
   setPointer,
   parentOf,
   kidsOf,
 } from "../mocks/helpers/index.js";
 import { Rectangle, GrabOp } from "../mocks/gnome/Meta.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * R012: Cross-mon grab-tile must not rehome mid-drag via window-entered-monitor.
@@ -25,6 +27,9 @@ import { Rectangle, GrabOp } from "../mocks/gnome/Meta.js";
  *
  * Fix: skip rehome while window is GRAB_TILE / _draggedNodeWindow; drop gesture
  * owns placement. Grab-end re-resolves nodeWinAtPointer before commit.
+ *
+ * D100: idle `_onWindowEnteredMonitor` is observe-only (no rehome). GRAB_TILE
+ * skip still covers updateMetaWorkspaceMonitor / deferred flush callers.
  */
 describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
   let ctx;
@@ -65,17 +70,16 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
     mon0.layout = LAYOUT_TYPES.HSPLIT;
     mon1.layout = LAYOUT_TYPES.HSPLIT;
 
-    // Left mon: solo Ghostty (full frame — not yet split by mid-drag rehome).
-    const metaGhost = createMockWindow({
-      id: "left-ghostty",
-      rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-      workspace: workspace0(),
-      monitor: 0,
+    const { nodeWindow: nodeGhost, metaWindow: metaGhost } = createWindowNode(ctx.tree, mon0, {
+      mode: "TILE",
+      windowOverrides: {
+        id: "left-ghostty",
+        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
+        workspace: workspace0(),
+        monitor: 0,
+      },
     });
-    const nodeGhost = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, metaGhost);
-    nodeGhost.mode = WINDOW_MODES.TILE;
 
-    // Right mon: Ghostty + Nautilus already tabbed (source of peel).
     const tabCon = createContainerNode(mon1, LAYOUT_TYPES.TABBED, {
       x: 1920,
       y: 0,
@@ -83,23 +87,35 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
       height: 1080,
     });
 
-    const metaRightGhost = createMockWindow({
-      id: "right-ghostty",
-      rect: new Rectangle({ x: 1920, y: 0, width: 1920, height: 1080 }),
-      workspace: workspace0(),
-      monitor: 1,
-    });
-    const nodeRightGhost = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaRightGhost);
-    nodeRightGhost.mode = WINDOW_MODES.TILE;
+    const { nodeWindow: nodeRightGhost, metaWindow: metaRightGhost } = createWindowNode(
+      ctx.tree,
+      tabCon,
+      {
+        mode: "TILE",
+        windowOverrides: {
+          id: "right-ghostty",
+          rect: new Rectangle({ x: 1920, y: 0, width: 1920, height: 1080 }),
+          workspace: workspace0(),
+          monitor: 1,
+        },
+      }
+    );
 
-    const metaNautilus = createMockWindow({
-      id: "nautilus",
-      rect: new Rectangle({ x: 1920, y: 0, width: 1920, height: 1080 }),
-      workspace: workspace0(),
-      monitor: 1,
-    });
-    const nodeNautilus = ctx.tree.createNode(tabCon.nodeValue, NODE_TYPES.WINDOW, metaNautilus);
-    nodeNautilus.mode = WINDOW_MODES.TILE;
+    const { nodeWindow: nodeNautilus, metaWindow: metaNautilus } = createWindowNode(
+      ctx.tree,
+      tabCon,
+      {
+        mode: "TILE",
+        windowOverrides: {
+          id: "nautilus",
+          rect: new Rectangle({ x: 1920, y: 0, width: 1920, height: 1080 }),
+          workspace: workspace0(),
+          monitor: 1,
+        },
+      }
+    );
+
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
 
     return {
       mon0,
@@ -118,7 +134,6 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
     const { mon0, mon1, nodeNautilus, metaNautilus, tabCon } = dualMonScene();
     nodeNautilus.mode = WINDOW_MODES.GRAB_TILE;
     wm()._draggedNodeWindow = nodeNautilus;
-    // Meta reports window now on mon0 (left).
     metaNautilus.get_monitor = vi.fn(() => 0);
     metaNautilus.monitor = 0;
 
@@ -127,9 +142,9 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
 
     wm()._onWindowEnteredMonitor(ctx.display, 0, metaNautilus);
 
+    // D100: observe-only — never queues rehome.
     expect(updateSpy).not.toHaveBeenCalled();
     expect(rehomeSpy).not.toHaveBeenCalled();
-    // Still under right tab group — drop owns move.
     expect(parentOf(wm(), nodeNautilus)).toBe(tabCon);
     expect(parentOf(wm(), tabCon)).toBe(mon1);
     expect(kidsOf(wm(), mon0)).not.toContain(nodeNautilus);
@@ -150,13 +165,14 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
     expect(parentOf(wm(), tabCon)).toBe(mon1);
   });
 
-  it("without GRAB_TILE, entered-monitor still rehomes TILE windows", () => {
+  // D100: idle entered-monitor no longer rehomes TILE windows. Direct
+  // updateMetaWorkspaceMonitor still rehomes when not GRAB_TILE (deferred flush).
+  it("updateMetaWorkspaceMonitor rehomes TILE windows when not GRAB_TILE", () => {
     const { mon0, mon1, nodeNautilus, metaNautilus, tabCon } = dualMonScene();
     nodeNautilus.mode = WINDOW_MODES.TILE;
     metaNautilus.get_monitor = vi.fn(() => 0);
     metaNautilus.monitor = 0;
 
-    // Direct update path (fixture CONs may lack St actors for full render).
     wm().updateMetaWorkspaceMonitor("window-entered-monitor", 0, metaNautilus);
 
     expect(parentOf(wm(), nodeNautilus)).not.toBe(tabCon);
@@ -169,16 +185,13 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
   it("center drop on left mon Ghostty joins TABBED when not mid-rehomed (happy path)", () => {
     const { mon0, nodeGhost, nodeNautilus, tabCon } = dualMonScene();
 
-    // Still under right tab group — as when entered-monitor rehome is skipped.
     nodeNautilus.mode = WINDOW_MODES.GRAB_TILE;
     expect(kidsOf(wm(), tabCon)).toContain(nodeNautilus);
 
-    // Pointer dead-center of left Ghostty (full 1920×1080 frame).
     setPointer(960, 540);
     wm().nodeWinAtPointer = nodeGhost;
     wm().moveWindowToPointer(nodeNautilus, false);
 
-    // Joined left Ghostty as TABBED — not mon0 sibling HSPLIT.
     const join = parentOf(wm(), nodeNautilus);
     expect(parentOf(wm(), nodeGhost)).toBe(join);
     expect(join.layout).toBe(LAYOUT_TYPES.TABBED);
@@ -194,7 +207,6 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
     wm()._draggedNodeWindow = nodeNautilus;
     ctx.display.get_focus_window.mockReturnValue(metaNautilus);
 
-    // Stale: last motion left null (e.g. pointer over self after rehome).
     wm().nodeWinAtPointer = null;
     const findSpy = vi.spyOn(wm(), "findNodeWindowAtPointer").mockReturnValue(nodeGhost);
     const trackSpy = vi.spyOn(wm(), "trackCurrentMonWs").mockImplementation(() => {});
@@ -208,17 +220,14 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
     expect(trackSpy).toHaveBeenCalled();
     expect(findSpy).toHaveBeenCalledWith(nodeNautilus);
     expect(moveSpy).toHaveBeenCalledWith(nodeNautilus);
-    // Cleared after grab-end epilogue.
     expect(wm().nodeWinAtPointer).toBeNull();
   });
 
   it("mid-drag rehome would leave HSPLIT (documents failure class without skip)", () => {
-    // Proves the old path: rehome as mon LFT sibling → mon-level HSPLIT kids.
     const { mon0, nodeGhost, nodeNautilus, metaNautilus } = dualMonScene();
-    nodeNautilus.mode = WINDOW_MODES.TILE; // not grab — force rehome
+    nodeNautilus.mode = WINDOW_MODES.TILE;
     metaNautilus.get_monitor = vi.fn(() => 0);
     metaNautilus.monitor = 0;
-    // Seed mon LFT so rehome attaches after ghostty.
     wm().lftMru = {
       monHead: () => nodeGhost,
       dropMonRings: () => {},
@@ -226,11 +235,9 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
 
     wm()._rehomeWindowPreservingContainer(nodeNautilus, metaNautilus, mon0);
 
-    // Same parent as ghostty under mon (or under ghostty's parent CON).
     const rehomeParent = parentOf(wm(), nodeNautilus);
     expect(rehomeParent).toBe(parentOf(wm(), nodeGhost));
     expect(rehomeParent === mon0 || parentOf(wm(), rehomeParent) === mon0).toBe(true);
-    // Not a TABBED join — just a split sibling.
     expect(rehomeParent.layout).not.toBe(LAYOUT_TYPES.TABBED);
   });
 });

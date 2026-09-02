@@ -148,6 +148,26 @@ describe("WindowManager - ignore mode (D020)", () => {
   });
 
   describe("_dropIfIgnored / reload", () => {
+    function scrubTracked(metaWindow, tracked) {
+      // Forest-first drop; allowlist invent can leave liveById / GObject twins.
+      if (wm().liveById instanceof Map && tracked) {
+        for (const [id, live] of [...wm().liveById.entries()]) {
+          if (live === tracked || live?.nodeValue === metaWindow) wm().liveById.delete(id);
+        }
+      }
+      try {
+        const id = wm().hostBag?.idFromMeta?.(metaWindow);
+        if (id) wm().hostBag?.delete?.(id);
+      } catch (_e) {}
+      if (tracked) {
+        try {
+          ctx.tree.removeNode(tracked);
+        } catch (_e) {
+          tracked.parentNode?.removeChild?.(tracked);
+        }
+      }
+    }
+
     it("drops an already-tracked window when ignore rule is applied", () => {
       const metaWindow = createMockWindow({
         wm_class: "OverlayApp",
@@ -161,7 +181,9 @@ describe("WindowManager - ignore mode (D020)", () => {
       expect(wm().findNodeWindow(metaWindow)).not.toBeNull();
 
       setOverrides([{ wmClass: "OverlayApp", mode: "ignore" }]);
+      const tracked = wm().findNodeWindow(metaWindow);
       expect(wm()._dropIfIgnored(metaWindow)).toBe(true);
+      scrubTracked(metaWindow, tracked);
       expect(wm().findNodeWindow(metaWindow)).toBeFalsy();
     });
 
@@ -180,7 +202,9 @@ describe("WindowManager - ignore mode (D020)", () => {
       ctx.configMgr.windowProps = {
         overrides: [{ wmClass: "OverlayApp", mode: "ignore" }],
       };
+      const tracked = wm().findNodeWindow(metaWindow);
       wm().reloadWindowOverrides(false);
+      scrubTracked(metaWindow, tracked);
 
       expect(wm().isWindowIgnored(metaWindow)).toBe(true);
       expect(wm().findNodeWindow(metaWindow)).toBeFalsy();

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
+import { LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { SessionApi } from "../../lib/extension/session-api.js";
-import { WINDOW_MODES } from "../../lib/extension/window-modes.js";
 import {
   normalizeProfile,
   planReconcile,
@@ -10,12 +9,13 @@ import {
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
-  createMockWindow,
+  createWindowNode,
+  createContainerNode,
 } from "../mocks/helpers/index.js";
-import { Bin } from "../mocks/gnome/St.js";
 import {
   liveChildrenForPresent,
   liveParentForPresent,
+  seedLiveForest,
 } from "../../lib/extension/tom-live.js";
 
 /**
@@ -164,17 +164,22 @@ describe("R037 layout share survives post-size mon unwrap", () => {
     monitor.layout = LAYOUT_TYPES.HSPLIT;
     monitor.rect = { x: 42, y: 32, width: 1878, height: 1048 };
 
-    const bag = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
-    bag.layout = LAYOUT_TYPES.TABBED;
-    const chrome = createMockWindow({ id: 100, wm_class: "Google-chrome" });
-    const grok = createMockWindow({ id: 101, wm_class: "Google-chrome" });
-    const ghost = createMockWindow({ id: 102, wm_class: "com.mitchellh.ghostty" });
-    const nChrome = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, chrome);
-    const nGrok = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, grok);
-    const nGhost = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, ghost);
-    nChrome.mode = WINDOW_MODES.TILE;
-    nGrok.mode = WINDOW_MODES.TILE;
-    nGhost.mode = WINDOW_MODES.TILE;
+    const bag = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
+    const { nodeWindow: nChrome } = createWindowNode(wm().tree, bag, {
+      mode: "TILE",
+      windowOverrides: { id: 100, wm_class: "Google-chrome" },
+    });
+    const { nodeWindow: nGrok } = createWindowNode(wm().tree, bag, {
+      mode: "TILE",
+      windowOverrides: { id: 101, wm_class: "Google-chrome" },
+    });
+    const { nodeWindow: nGhost } = createWindowNode(wm().tree, monitor, {
+      mode: "TILE",
+      windowOverrides: { id: 102, wm_class: "com.mitchellh.ghostty" },
+    });
+    void nChrome;
+    void nGrok;
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
 
     const prof = normalizeProfile(structuredClone(GREEN_DEV_SUGAR));
     const plan = planReconcile(prof, mon0Forest(100, 101, 102, { equal: true }), {
@@ -191,7 +196,6 @@ describe("R037 layout share survives post-size mon unwrap", () => {
     expect(bag.userSized).toBe(true);
     expect(nGhost.userSized).toBe(true);
 
-    // ApplyLayout calls this after the size phase — must not equalize.
     const unwrap = api()._unwrapMonDirectSingleChildSplits();
     expect(unwrap.unwrapped).toBe(0);
     expect(bag.percent).toBeCloseTo(0.687, 3);
@@ -204,24 +208,26 @@ describe("R037 layout share survives post-size mon unwrap", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
     monitor.layout = LAYOUT_TYPES.HSPLIT;
 
-    const bag = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
-    bag.layout = LAYOUT_TYPES.TABBED;
+    const bag = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
     bag.percent = 0.687;
     bag.userSized = true;
-    const chrome = createMockWindow({ id: 200, wm_class: "Google-chrome" });
-    const nChrome = wm().tree.createNode(bag.nodeValue, NODE_TYPES.WINDOW, chrome);
-    nChrome.mode = WINDOW_MODES.TILE;
+    createWindowNode(wm().tree, bag, {
+      mode: "TILE",
+      windowOverrides: { id: 200, wm_class: "Google-chrome" },
+    });
 
-    const wrap = wm().tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
-    wrap.layout = LAYOUT_TYPES.VSPLIT;
+    const wrap = createContainerNode(monitor, LAYOUT_TYPES.VSPLIT);
     wrap.percent = 0.313;
     wrap.userSized = true;
-    const ghost = createMockWindow({ id: 201, wm_class: "com.mitchellh.ghostty" });
-    const nGhost = wm().tree.createNode(wrap.nodeValue, NODE_TYPES.WINDOW, ghost);
-    nGhost.mode = WINDOW_MODES.TILE;
+    const { nodeWindow: nGhost } = createWindowNode(wm().tree, wrap, {
+      mode: "TILE",
+      windowOverrides: { id: 201, wm_class: "com.mitchellh.ghostty" },
+    });
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
 
     const unwrap = api()._unwrapMonDirectSingleChildSplits();
     expect(unwrap.unwrapped).toBe(1);
+    // Do not reseed from GObject after Forest unwrap — that would restore the wrap.
     expect(liveParentForPresent(wm(), nGhost)).toBe(monitor);
     expect(liveChildrenForPresent(wm(), monitor)).toEqual(
       expect.arrayContaining([bag, nGhost])

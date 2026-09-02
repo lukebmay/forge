@@ -103,6 +103,7 @@ describe("Tab close button works for last window in group", () => {
   });
 
   it("primary press on tab body still activates (not close)", () => {
+    // G8n: in-module activateFromTab — assert STOP + active style + no delete.
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const tabbed = createContainerNode(monitor, LAYOUT_TYPES.TABBED, {
       x: 0,
@@ -112,13 +113,17 @@ describe("Tab close button works for last window in group", () => {
     });
     const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, tabbed);
     const deleteSpy = vi.spyOn(metaWindow, "delete");
-    const activateSpy = vi.spyOn(nodeWindow, "_activateFromTab");
+    const raiseSpy = vi.spyOn(metaWindow, "raise").mockImplementation(() => {});
 
     const ret = emitPress(nodeWindow.tab, makeButtonEvent(Clutter.BUTTON_PRIMARY, nodeWindow.tab));
 
     expect(ret).toBe(Clutter.EVENT_STOP);
-    expect(activateSpy).toHaveBeenCalled();
     expect(deleteSpy).not.toHaveBeenCalled();
+    expect(raiseSpy).toHaveBeenCalled();
+    expect(
+      nodeWindow.tab.style_class?.includes?.("window-tabbed-tab-active") ||
+        nodeWindow.tab.has_style_class_name?.("window-tabbed-tab-active")
+    ).toBeTruthy();
   });
 
   it("middle-click press on close deletes", () => {

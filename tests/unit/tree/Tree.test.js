@@ -316,6 +316,8 @@ describe("Tree", () => {
 
   describe("Tree Structure Integrity", () => {
     it("should maintain parent-child relationships", () => {
+      // forestAdmit spine is liveById/Forest; fixture forces GObject SoT off.
+      ctx.extWm._liveForestSeeded = true;
       const workspace = ctx.tree.nodeWorkpaces[0];
       const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
 
@@ -326,6 +328,7 @@ describe("Tree", () => {
 
     it("should have proper node hierarchy", () => {
       // Root -> Workspace -> Monitor -> (Containers/Windows)
+      ctx.extWm._liveForestSeeded = true;
       expect(ctx.tree.nodeType).toBe(NODE_TYPES.ROOT);
 
       const workspaces = ctx.tree.getNodeByType(NODE_TYPES.WORKSPACE);

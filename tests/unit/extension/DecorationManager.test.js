@@ -12,6 +12,7 @@ import {
 } from "../../mocks/helpers/index.js";
 import St from "../../mocks/gnome/St.js";
 import { Logger } from "../../../lib/shared/logger.js";
+import { liveBagId, seedLiveForest } from "../../../lib/extension/tom-live.js";
 
 function disposeStActor(actor) {
   const boom = () => {
@@ -640,10 +641,11 @@ describe("DecorationManager.attachTabDecoration (I-TabPickable)", () => {
 describe("DecorationManager hostBag strip prefer (D096 G5c)", () => {
   let ctx;
 
-  function seedConBag(con, id = "con-bag") {
+  function seedConBag(con) {
     const wm = ctx.windowManager;
-    if (!wm.forest) wm.forest = { nodes: {}, rootId: "ROOT" };
-    wm.forest.nodes[id] = { id, kind: "CON", layout: "TABBED" };
+    if (wm._liveForestSeeded) seedLiveForest(wm);
+    const id = liveBagId(wm, con);
+    expect(id).toBeTruthy();
     if (!(wm.liveById instanceof Map)) wm.liveById = new Map();
     wm.liveById.set(id, con);
     return id;
@@ -753,8 +755,8 @@ describe("DecorationManager hostBag strip prefer (D096 G5c)", () => {
     const deco = new St.BoxLayout();
     deco.type = "forge-deco";
     con.decoration = deco;
-    seedConBag(con);
-    ctx.windowManager.hostBag.set("con-bag", {
+    const bagId = seedConBag(con);
+    ctx.windowManager.hostBag.set(bagId, {
       actor: con.nodeValue,
       decoration: deco,
       tabStrip: deco,

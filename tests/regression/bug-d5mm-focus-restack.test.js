@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
-  getWorkspaceAndMonitor,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * forge-d5mm: the metaWindow "focus" handler queued a "focus-update" callback
@@ -63,19 +65,20 @@ describe("forge-d5mm: focus handler re-stacks the focused window", () => {
     wm().trackWindow(null, winB);
     wm().trackWindow(null, winC);
 
-    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
-    monitor.layout = LAYOUT_TYPES.STACKED;
-    const nodeA = wm().tree.findNode(winA);
-    expect(nodeA.parentNode).toBe(monitor);
-    const orderBefore = monitor.childNodes.slice();
-    expect(monitor.lastChild).not.toBe(nodeA);
+    const nodeA = wm().findNodeWindow(winA);
+    const group = parentOf(wm(), nodeA);
+    expect(group).toBeTruthy();
+    group.layout = LAYOUT_TYPES.STACKED;
+    seedLiveForest(wm());
+    const orderBefore = kidsOf(wm(), group).slice();
+    expect(orderBefore[orderBefore.length - 1]).not.toBe(nodeA);
 
     winA.raise = vi.fn();
     fireFocusAndGetUpdate(winA)();
 
     // Labels stay put; focus is lastTabFocus + raise only.
-    expect(monitor.childNodes).toEqual(orderBefore);
-    expect(monitor.lastTabFocus).toBe(winA);
+    expect(kidsOf(wm(), group)).toEqual(orderBefore);
+    expect(group.lastTabFocus).toBe(winA);
     expect(winA.raise).toHaveBeenCalled();
   });
 
@@ -85,16 +88,19 @@ describe("forge-d5mm: focus handler re-stacks the focused window", () => {
     wm().trackWindow(null, winA);
     wm().trackWindow(null, winB);
 
-    const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
-    monitor.layout = LAYOUT_TYPES.TABBED;
-    monitor.lastTabFocus = winA;
-    const orderBefore = monitor.childNodes.slice();
+    const nodeA = wm().findNodeWindow(winA);
+    const group = parentOf(wm(), nodeA);
+    expect(group).toBeTruthy();
+    group.layout = LAYOUT_TYPES.TABBED;
+    group.lastTabFocus = winA;
+    seedLiveForest(wm());
+    const orderBefore = kidsOf(wm(), group).slice();
 
     winB.raise = vi.fn();
     fireFocusAndGetUpdate(winB)();
 
-    expect(monitor.childNodes).toEqual(orderBefore);
-    expect(monitor.lastTabFocus).toBe(winB);
+    expect(kidsOf(wm(), group)).toEqual(orderBefore);
+    expect(group.lastTabFocus).toBe(winB);
     expect(winB.raise).toHaveBeenCalled();
   });
 });

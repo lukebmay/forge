@@ -5,7 +5,9 @@ import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  parentOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 import { Bin } from "../mocks/gnome/St.js";
 
 /**
@@ -45,11 +47,13 @@ describe("Bug forge-43zk: minimize resets the signal window's container", () => 
   it("resets the minimized window's parent, not the focused container", () => {
     const conA = buildCon();
     const conB = buildCon();
+    seedLiveForest(wm());
     // Focus stays on conA; a background window in conB is minimized.
     global.display.get_focus_window.mockReturnValue(conA.a.nodeValue);
     conB.a.nodeValue.minimized = true;
 
-    const resetSpy = vi.spyOn(ctx.tree, "resetSiblingPercent");
+    // Adapter equalizes via _resetSiblingPercent (Forest), not tree.resetSiblingPercent.
+    const resetSpy = vi.spyOn(wm(), "_resetSiblingPercent");
 
     wm()._onMinimizeChange("minimize", {
       hideBorders: true,
@@ -57,7 +61,7 @@ describe("Bug forge-43zk: minimize resets the signal window's container", () => 
       metaWindow: conB.a.nodeValue,
     });
 
-    expect(resetSpy).toHaveBeenCalledWith(conB.con);
-    expect(resetSpy).not.toHaveBeenCalledWith(conA.con);
+    expect(resetSpy).toHaveBeenCalledWith(parentOf(wm(), conB.a));
+    expect(resetSpy).not.toHaveBeenCalledWith(parentOf(wm(), conA.a));
   });
 });

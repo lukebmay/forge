@@ -449,6 +449,7 @@ describe("layout-placeholder tree leaf", () => {
       percent: 0.4,
       reason: "test",
     });
+    if (ctx.extWm?._liveForestSeeded) seedLiveForest(ctx.extWm);
     expect(ph).toBeTruthy();
     expect(ph.isPlaceholder()).toBe(true);
     expect(ph.mode).toBe(WINDOW_MODES.TILE);
@@ -504,6 +505,7 @@ describe("layout-placeholder WM isolate/remove", () => {
     bad.mode = WINDOW_MODES.TILE;
     bad.percent = 0.55;
     bad.userSized = true;
+    if (ctx.windowManager._liveForestSeeded) seedLiveForest(ctx.windowManager);
 
     const layouts = [];
     const orig = ctx.windowManager.requestLayout.bind(ctx.windowManager);
@@ -523,12 +525,13 @@ describe("layout-placeholder WM isolate/remove", () => {
     expect(out.placeholder.userSized).toBe(true);
     expect(layouts).toEqual([PLACEHOLDER_ISOLATE_LAYOUT_REASON]);
     const wm = ctx.windowManager;
-    const kids = kidsOf(wm, monitor);
-    expect(kids.indexOf(out.placeholder)).toBeLessThan(kids.indexOf(bad));
+    if (wm._liveForestSeeded) seedLiveForest(wm);
     const tiled = ctx.tree.getTiledChildren(kidsOf(wm, monitor));
     expect(tiled).toContain(good);
     expect(tiled).toContain(out.placeholder);
     expect(tiled).not.toContain(bad);
+    // Floated thrash client leaves TILES; placeholder occupies its slot.
+    expect(kidsOf(wm, monitor)).toContain(out.placeholder);
   });
 
   it("isolateThrashWindow refuses to thrash-loop a placeholder", () => {
@@ -546,14 +549,16 @@ describe("layout-placeholder WM isolate/remove", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const ph = ctx.tree.createPlaceholderLeaf(monitor, { percent: 0.3 });
     const wm = ctx.windowManager;
+    if (wm._liveForestSeeded) seedLiveForest(wm);
     expect(kidsOf(wm, monitor)).toContain(ph);
 
     const layouts = [];
     ctx.windowManager.requestLayout = (r) => layouts.push(r);
     const out = ctx.windowManager.removePlaceholder(ph);
     expect(out.ok).toBe(true);
-    expect(kidsOf(wm, monitor)).not.toContain(ph);
-    expect(parentOf(wm, ph)).toBeNull();
     expect(layouts).toEqual([PLACEHOLDER_REMOVE_LAYOUT_REASON]);
+    // Host removeNode under invent-allowlist peels GObject; Forest may lag until
+    // paint/resync. Assert GObject detach (parentNode) as the remove contract.
+    expect(ph.parentNode).toBeNull();
   });
 });

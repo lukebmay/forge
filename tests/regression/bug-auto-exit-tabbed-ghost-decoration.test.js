@@ -9,6 +9,7 @@ import {
   createContainerNode,
   kidsOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * Bug: auto-exit-tabbed (last window in a TABBED group) flipped layout to
@@ -61,6 +62,8 @@ describe("Bug auto-exit-tabbed ghost decoration over native CSD", () => {
       con.layout = LAYOUT_TYPES.HSPLIT;
       // Drop to one tiled child as after closing the other tab.
       ctx.tree.removeNode(kidsOf(ctx.windowManager, con)[1]);
+      // Invent-path removeNode updates GObject only; reproject for kidsOf (G8n).
+      seedLiveForest(ctx.windowManager);
       // removeNode with auto-exit may null decoration; re-attach a leftover to
       // isolate the gate (auto-exit off path / incomplete teardown).
       if (!con.decoration) {
@@ -133,6 +136,7 @@ describe("Bug auto-exit-tabbed ghost decoration over native CSD", () => {
       };
 
       ctx.tree.removeNode(w1);
+      seedLiveForest(ctx.extWm);
 
       expect(con.layout).toBe(LAYOUT_TYPES.HSPLIT); // landscape mock default
       expect(kidsOf(ctx.extWm, con)).toHaveLength(1);

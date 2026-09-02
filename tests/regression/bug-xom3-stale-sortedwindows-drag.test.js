@@ -8,6 +8,7 @@ import {
   setPointer,
 } from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * forge-xom3: this.sortedWindows is snapshotted at grab start (trackCurrentMonWs)
@@ -67,6 +68,7 @@ describe("forge-xom3: stale sortedWindows entry during a tile drag", () => {
 
     // What trackCurrentMonWs left behind: the dead window precedes the live one.
     wm().sortedWindows = [deadWin, liveWin];
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
 
     return { liveWin, liveNode, draggedNode };
   }
@@ -85,6 +87,7 @@ describe("forge-xom3: stale sortedWindows entry during a tile drag", () => {
     }).not.toThrow();
 
     expect(result).toBe(liveNode);
-    expect(result).toBe(ctx.tree.getNodeByValue(liveWin));
+    // G8n: prefer findNodeWindow over GObject getNodeByValue.
+    expect(wm().findNodeWindow(liveWin)).toBe(liveNode);
   });
 });

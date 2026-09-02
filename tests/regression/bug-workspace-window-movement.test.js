@@ -8,6 +8,7 @@ import {
   parentOf,
   kidsOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 import * as Utils from "../../lib/extension/utils.js";
 
 /**
@@ -33,6 +34,9 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
   let monitor0Ws0; // Monitor 0 on workspace 0
   let monitor0Ws1; // Monitor 0 on workspace 1
   const wm = () => ctx.extWm;
+  const reseed = () => {
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
+  };
 
   beforeEach(() => {
     // Create fixture with 2 workspaces
@@ -92,9 +96,11 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       nodeC.percent = 0.25;
 
       // Verify initial state: 3 children on workspace 0's monitor
+      reseed();
       expect(kidsOf(wm(), monitor0Ws0)).toHaveLength(3);
       expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeA);
       expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeB);
+      reseed();
       expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeC);
 
       // Process tree to calculate initial sizes
@@ -115,14 +121,18 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       windowA._workspace = ctx.workspaces[1];
 
       // 2. Store parent reference, move node, then redistribute (this is what updateMetaWorkspaceMonitor does)
+      reseed();
       const existParent = parentOf(wm(), nodeA);
       monitor0Ws1.appendChild(nodeA);
       tree.redistributeSiblingPercent(existParent);
+      reseed();
 
       // Verify window was moved
+      reseed();
       expect(kidsOf(wm(), monitor0Ws0)).toHaveLength(2);
       expect(kidsOf(wm(), monitor0Ws0)).not.toContain(nodeA);
       expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeB);
+      reseed();
       expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeC);
       expect(kidsOf(wm(), monitor0Ws1)).toContain(nodeA);
 
@@ -136,6 +146,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       tree.processNode(tree);
 
       // Verify computed sizes reflect proportional distribution
+      reseed();
       const afterTiledChildren = tree.getTiledChildren(kidsOf(wm(), monitor0Ws0));
       expect(afterTiledChildren.length).toBe(2);
       const afterSizes = tree.computeSizes(monitor0Ws0, afterTiledChildren);
@@ -192,6 +203,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       expect(nodeC.percent).toBeCloseTo(1.0, 3);
 
       // Verify only C remains on workspace 0
+      reseed();
       expect(kidsOf(wm(), monitor0Ws0)).toHaveLength(1);
       expect(kidsOf(wm(), monitor0Ws0)).toContain(nodeC);
 
@@ -232,6 +244,7 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       nodeA.percent = 0.2;
       nodeB.percent = 0.6;
       nodeC.percent = 0.2;
+      reseed();
 
       // Process to get initial sizes (based on height: 1080)
       tree.processNode(tree);
@@ -246,9 +259,11 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
 
       // Move window A to workspace 1
       windowA._workspace = ctx.workspaces[1];
+      reseed();
       const existParent = parentOf(wm(), nodeA);
       monitor0Ws1.appendChild(nodeA);
       tree.redistributeSiblingPercent(existParent);
+      reseed();
 
       // After moving A: B=60%/80%=75%, C=20%/80%=25%
       expect(nodeB.percent).toBeCloseTo(0.75, 3);
@@ -287,15 +302,18 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
       nodeA.mode = WINDOW_MODES.TILE;
       nodeB.mode = WINDOW_MODES.TILE;
       nodeC.mode = WINDOW_MODES.TILE;
+      reseed();
 
       // Leave percentages at default (0.0 or undefined)
       // This simulates windows that have never been manually resized
 
       // Move window A to workspace 1
       windowA._workspace = ctx.workspaces[1];
+      reseed();
       const existParent = parentOf(wm(), nodeA);
       monitor0Ws1.appendChild(nodeA);
       tree.redistributeSiblingPercent(existParent);
+      reseed();
 
       // With no percentages set, should fallback to equal distribution
       expect(nodeB.percent).toBeCloseTo(0.5, 3);

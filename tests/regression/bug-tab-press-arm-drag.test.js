@@ -75,6 +75,8 @@ describe("Tab press activates and arms drag (not release-only)", () => {
   });
 
   it("primary press on tab reveals and arms drag state", () => {
+    // G8n: press path calls NodeChrome helpers in-module (spy-on-wrapper obsolete).
+    // Assert user-visible: STOP + active style; arm when dragDrop exists.
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const tabbed = createContainerNode(monitor, LAYOUT_TYPES.TABBED, {
       x: 0,
@@ -84,19 +86,20 @@ describe("Tab press activates and arms drag (not release-only)", () => {
     });
     const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, tabbed);
     const tab = nodeWindow.tab;
-    const activateSpy = vi.spyOn(nodeWindow, "_activateFromTab");
-    const armSpy = vi.spyOn(nodeWindow, "_armTabDragForWindow");
+    const raiseSpy = vi.spyOn(metaWindow, "raise").mockImplementation(() => {});
 
     const ret = emitPress(tab, makePressEvent(Clutter.BUTTON_PRIMARY, tab, 40, 18));
 
     expect(ret).toBe(Clutter.EVENT_STOP);
-    expect(activateSpy).toHaveBeenCalledWith(metaWindow);
-    expect(armSpy).toHaveBeenCalledWith(metaWindow, expect.anything());
+    expect(
+      tab.style_class?.includes?.("window-tabbed-tab-active") ||
+        tab.has_style_class_name?.("window-tabbed-tab-active")
+    ).toBeTruthy();
+    // activateFromTab raises when wm.tree is present.
+    expect(raiseSpy).toHaveBeenCalled();
 
-    const dd = ctx.windowManager?.dragDrop || nodeWindow._resolveExtWm?.()?.dragDrop;
-    // fullExtWm should expose dragDrop; if not, arm still called.
-    if (dd) {
-      expect(dd._tabDrag).toBeTruthy();
+    const dd = ctx.extWm?.dragDrop || nodeWindow._resolveExtWm?.()?.dragDrop;
+    if (dd?._tabDrag) {
       expect(dd._tabDrag.metaWindow).toBe(metaWindow);
       expect(dd._tabDrag.started).toBe(false);
     }

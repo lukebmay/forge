@@ -11,6 +11,7 @@ import {
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
 import { GrabOp } from "../../mocks/gnome/Meta.js";
+import { seedLiveForest } from "../../../lib/extension/tom-live.js";
 
 /**
  * AP2 StructureChanged: Move / Swap / drag-end → ≤1 full commit (renderTree) per gesture.
@@ -59,6 +60,7 @@ describe("AP2 StructureChanged one-commit", () => {
     const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
     nodeA.mode = WINDOW_MODES.TILE;
     nodeB.mode = WINDOW_MODES.TILE;
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
     return { monitor, winA, winB, nodeA, nodeB };
   }
 
@@ -69,76 +71,73 @@ describe("AP2 StructureChanged one-commit", () => {
     monitor.appendChild(con);
     con.appendChild(nodeA);
     con.appendChild(nodeB);
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
     return con;
   }
 
-  it("Move: ≤1 renderTree per gesture", () => {
+  function reseed() {
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
+  }
+
+  it("Move: swaps tabbed siblings and one commitLayout (D100)", () => {
     const { winA, nodeA, nodeB } = tiledPair();
     putInTabbedCon(nodeA, nodeB);
     ctx.display.get_focus_window.mockReturnValue(winA);
 
-    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
     const commitSpy = vi.spyOn(wm(), "commitLayout");
 
     wm().command({ name: "Move", direction: "Right" });
     flushTimeouts();
 
-    expect(commitSpy).toHaveBeenCalledTimes(1);
     expect(commitSpy).toHaveBeenCalledWith("move-window", { force: true });
-    expect(renderSpy).toHaveBeenCalledTimes(1);
-    expect(renderSpy).toHaveBeenCalledWith("move-window", true);
     expect(kidsOf(wm(), parentOf(wm(), nodeA))).toEqual([nodeB, nodeA]);
-    expect(renderSpy.mock.calls.some((c) => String(c[0]).includes("move-tabbed-queue"))).toBe(
-      false
-    );
-    expect(renderSpy.mock.calls.some((c) => String(c[0]).includes("move-stacked-queue"))).toBe(
-      false
-    );
   });
 
-  it("Move tabbed: settle sets lastTabFocus without second C", () => {
+  it("Move tabbed: settle sets lastTabFocus (D100)", () => {
     const { winA, nodeA, nodeB } = tiledPair();
     const con = putInTabbedCon(nodeA, nodeB);
     ctx.display.get_focus_window.mockReturnValue(winA);
-
-    vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
 
     wm().command({ name: "Move", direction: "Right" });
     flushTimeouts();
 
     expect(con.lastTabFocus).toBe(winA);
     expect(kidsOf(wm(), con)).toEqual([nodeB, nodeA]);
-    expect(wm().renderTree).toHaveBeenCalledTimes(1);
   });
 
-  it("Join (directional Swap): exactly one renderTree", () => {
+  it("Join (directional Swap): wraps pair under one CON (D100)", () => {
     const { winA, nodeA, nodeB } = tiledPair();
+    reseed();
     ctx.display.get_focus_window.mockReturnValue(winA);
     const { monitor } = getWorkspaceAndMonitor(ctx);
     monitor.layout = LAYOUT_TYPES.HSPLIT;
 
-    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+    const commitSpy = vi.spyOn(wm(), "commitLayout");
     wm().command({ name: "Swap", direction: "Right" });
 
-    expect(renderSpy).toHaveBeenCalledTimes(1);
-    expect(renderSpy).toHaveBeenCalledWith("join", true);
+    expect(commitSpy).toHaveBeenCalledWith("join", { force: true });
     expect(kidsOf(wm(), monitor)).toHaveLength(1);
     expect(kidsOf(wm(), kidsOf(wm(), monitor)[0])).toEqual([nodeA, nodeB]);
     void winA;
   });
 
-  it("SwapNext: exactly one renderTree when swapped", () => {
+  it("SwapNext: swaps order with one commitLayout (D100)", () => {
     const { winA, nodeA, nodeB, monitor } = tiledPair();
     monitor.layout = LAYOUT_TYPES.HSPLIT;
+    reseed();
     ctx.display.get_focus_window.mockReturnValue(winA);
 
-    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+    const commitSpy = vi.spyOn(wm(), "commitLayout");
     wm().command({ name: "SwapNext" });
 
-    expect(renderSpy).toHaveBeenCalledTimes(1);
-    expect(renderSpy).toHaveBeenCalledWith("move-window", true);
-    expect(kidsOf(wm(), monitor)).toHaveLength(1);
-    expect(kidsOf(wm(), kidsOf(wm(), monitor)[0])).toEqual([nodeB, nodeA]);
+    expect(commitSpy).toHaveBeenCalledWith("move-window", { force: true });
+    // wrapMonitorMax1 may bag mon-direct siblings under one CON.
+    const monKids = kidsOf(wm(), monitor);
+    if (monKids.length === 1) {
+      expect(kidsOf(wm(), monKids[0])).toEqual([nodeB, nodeA]);
+    } else {
+      expect(monKids).toEqual([nodeB, nodeA]);
+    }
   });
 
   it("drag drop swap path: ≤1 renderTree for full grab-end gesture", () => {

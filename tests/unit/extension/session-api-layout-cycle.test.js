@@ -27,6 +27,8 @@ describe("SessionApi layout-cycle / merge-group", () => {
 
   beforeEach(() => {
     ctx = createWindowManagerFixture({
+      // Forest-careful: explicit seedLiveForest; avoid invent reseed picking up GObject-only.
+      reseedOnCreateNode: false,
       globals: { display: { monitorCount: 2 } },
       settings: {
         "tiling-mode-enabled": true,
@@ -773,6 +775,7 @@ describe("SessionApi LayoutBatch (CL5)", () => {
 
   beforeEach(() => {
     ctx = createWindowManagerFixture({
+      reseedOnCreateNode: false,
       settings: { "tiling-mode-enabled": true },
     });
   });
@@ -1102,6 +1105,8 @@ describe("SessionApi Apply snapshot Forest authority", () => {
 
   beforeEach(() => {
     ctx = createWindowManagerFixture({
+      // GObject-only pickup asserts need invent without blanket Forest reseed.
+      reseedOnCreateNode: false,
       globals: { display: { monitorCount: 1 } },
       settings: { "tiling-mode-enabled": true },
     });

@@ -6,6 +6,7 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 import { WindowType } from "../mocks/gnome/Meta.js";
 
 /**
@@ -50,6 +51,8 @@ describe("Bug forge-3hsv: a dialog does not claim a tiled share", () => {
     const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
     nodeB.mode = WINDOW_MODES.TILE;
     nodeB.percent = 0.4;
+    // Percents set after invent — reproject so Forest paint cannot wipe 60/40.
+    seedLiveForest(wm());
 
     // The dialog opens from window A — it attaches as a sibling in the same split.
     ctx.tree.attachNode = nodeA;

@@ -9,6 +9,8 @@ import {
   parentOf,
   kidsOf,
 } from "../../mocks/helpers/index.js";
+import { seedLiveForest, forestIdFromLive } from "../../../lib/extension/tom-live.js";
+import { isUnderFloats } from "../../../lib/tom/index.js";
 
 /**
  * D049 M3: mid-session TILE overflow → tab / float + vacated gap gone.
@@ -79,7 +81,16 @@ describe("D049 overflow rehome", () => {
     setSlot(overflow, { x: 0, y: 0, width: 800, height: 200 });
     setSlot(sibling, { x: 0, y: 200, width: 800, height: 200 });
     setSlot(roomy, { x: 800, y: 0, width: 1120, height: 1080 });
+    // Host split/appendChild is GObject-allowlist; reproject for Forest SoT.
+    seedLiveForest(wm());
     return { mon, overflow, sibling, roomy, vsplit };
+  }
+
+  /** Vacated CON may linger on GObject parentNode; Forest membership is SoT. */
+  function expectVacatedFromForest(node, mon) {
+    const id = forestIdFromLive(wm(), node);
+    expect(!id || !wm().forest?.nodes?.[id]).toBe(true);
+    expect(kidsOf(wm(), mon)).not.toContain(node);
   }
 
   it("tabs onto a same-mon neighbor that fits and removes the vacated VSPLIT", () => {
@@ -91,8 +102,7 @@ describe("D049 overflow rehome", () => {
     expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(kidsOf(wm(), tab)).toEqual(expect.arrayContaining([roomy.node, overflow.node]));
     expect(overflow.node.mode).toBe(WINDOW_MODES.TILE);
-    expect(parentOf(wm(), vsplit)).toBeNull();
-    expect(kidsOf(wm(), mon)).not.toContain(vsplit);
+    expectVacatedFromForest(vsplit, mon);
     const wrap = parentOf(wm(), sibling.node);
     expect(wrap).not.toBe(vsplit);
     expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([sibling.node, tab]));
@@ -123,8 +133,7 @@ describe("D049 overflow rehome", () => {
     expect(tab.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(kidsOf(wm(), tab)).toEqual(expect.arrayContaining([roomy.node, overflow.node]));
     expect(overflow.node.mode).toBe(WINDOW_MODES.TILE);
-    expect(parentOf(wm(), vsplit)).toBeNull();
-    expect(kidsOf(wm(), mon)).not.toContain(vsplit);
+    expectVacatedFromForest(vsplit, mon);
     const wrap = parentOf(wm(), sibling.node);
     expect(wrap).not.toBe(vsplit);
     expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([sibling.node, tab]));
@@ -149,12 +158,13 @@ describe("D049 overflow rehome", () => {
     overflow.meta._size_hints = null;
     delete overflow.meta._forgeLastResizeRequest;
     overflow.meta.move_resize_frame(true, 0, 0, 800, 380);
+    seedLiveForest(wm());
 
     expect(wm().rehomeIfSlotTooSmall(overflow.node)).toBe(true);
     expect(overflow.meta._forgeKnownMinH).toBe(380);
     expect(overflow.node.mode).toBe(WINDOW_MODES.FLOAT);
     expect(wm().isFloatingExempt(overflow.meta)).toBe(true);
-    expect(parentOf(wm(), vsplit)).toBeNull();
+    expectVacatedFromForest(vsplit, mon);
     expect(parentOf(wm(), sibling.node)).toBe(mon);
   });
 
@@ -175,14 +185,17 @@ describe("D049 overflow rehome", () => {
     vsplit.appendChild(sibling.node);
     setSlot(overflow, { x: 0, y: 0, width: 800, height: 200 });
     setSlot(sibling, { x: 0, y: 200, width: 800, height: 200 });
+    seedLiveForest(wm());
 
     expect(wm().rehomeIfSlotTooSmall(overflow.node)).toBe(true);
 
     expect(overflow.node.mode).toBe(WINDOW_MODES.FLOAT);
     expect(wm().isFloatingExempt(overflow.meta)).toBe(true);
-    expect(parentOf(wm(), overflow.node)).toBe(mon);
+    // Forest float path parks under FLOATS (not MONITOR appendChild).
+    const ovId = forestIdFromLive(wm(), overflow.node);
+    expect(ovId && isUnderFloats(wm().forest, wm().forest.nodes[ovId])).toBe(true);
     expect(parentOf(wm(), sibling.node)).toBe(mon);
-    expect(parentOf(wm(), vsplit)).toBeNull();
+    expectVacatedFromForest(vsplit, mon);
     expect(sibling.node.mode).toBe(WINDOW_MODES.TILE);
   });
 

@@ -6,6 +6,7 @@ import {
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * Feature forge-zlg: golden-ratio resize command.
@@ -48,6 +49,7 @@ describe("Feature forge-zlg: golden-ratio resize", () => {
       node.rect = { x: i * width, y: 0, width, height: 600 };
       nodes.push(node);
     }
+    if (ctx.windowManager._liveForestSeeded) seedLiveForest(ctx.windowManager);
     return { monitor, nodes };
   }
 
@@ -120,30 +122,31 @@ describe("Feature forge-zlg: golden-ratio resize", () => {
   });
 
   describe("applyGoldenRatio (focus + render wiring)", () => {
-    it("renders the tree after resizing the focused tiled window", () => {
+    it("commits layout after resizing the focused tiled window", () => {
       const { nodes } = buildHorizontalSplit(2);
       ctx.display.get_focus_window.mockReturnValue(nodes[0].nodeValue);
-      let rendered = false;
-      ctx.windowManager.renderTree = () => {
-        rendered = true;
+      let committed = false;
+      // D100/G8n: applyGoldenRatio uses commitLayout, not renderTree.
+      ctx.windowManager.commitLayout = () => {
+        committed = true;
       };
 
       ctx.windowManager.applyGoldenRatio();
 
-      expect(rendered).toBe(true);
+      expect(committed).toBe(true);
       expect(nodes[0].percent).toBeCloseTo(GOLDEN, 3);
     });
 
     it("is a no-op when there is no focused window", () => {
       buildHorizontalSplit(2);
       ctx.display.get_focus_window.mockReturnValue(null);
-      let rendered = false;
-      ctx.windowManager.renderTree = () => {
-        rendered = true;
+      let committed = false;
+      ctx.windowManager.commitLayout = () => {
+        committed = true;
       };
 
       expect(() => ctx.windowManager.applyGoldenRatio()).not.toThrow();
-      expect(rendered).toBe(false);
+      expect(committed).toBe(false);
     });
   });
 });

@@ -10,6 +10,7 @@ import {
 } from "../mocks/helpers/index.js";
 import { MotionDirection } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * Host/helper: tree.move peel orientation (DnD / leftover Host path).
@@ -44,6 +45,7 @@ describe("LX2: tree.move tab extract split orientation (Host/helper)", () => {
       w.mode = WINDOW_MODES.TILE;
       wins.push(w);
     }
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
     return { monitor, con, wins };
   }
 
@@ -146,6 +148,7 @@ describe("LX2: tree.move tab extract split orientation (Host/helper)", () => {
       createMockWindow({ id: 99 })
     );
     other.mode = WINDOW_MODES.TILE;
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
     // mon: [TABBED, other]
     expect(kidsOf(wm(), monitor)).toHaveLength(2);
 

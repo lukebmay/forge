@@ -164,10 +164,12 @@ describe("D032 slot-split insert", () => {
         rect: { x: 100, y: 100, width: 800, height: 600 },
       });
 
-      expect(parentOf(wm(), a.node)).toBe(mon0);
-      expect(parentOf(wm(), b.node)).toBe(mon0);
-      expect(kidsOf(wm(), mon0).filter((n) => n.nodeType === NODE_TYPES.WINDOW)).toHaveLength(2);
-      expect(kidsOf(wm(), mon0).every((n) => n.isWindow?.())).toBe(true);
+      // 2nd open may wrap the pair under a same-axis CON; never 3-wide under mon.
+      expect(parentOf(wm(), a.node)).toBe(parentOf(wm(), b.node));
+      const home = parentOf(wm(), a.node);
+      expect(home === mon0 || parentOf(wm(), home) === mon0).toBe(true);
+      expect(kidsOf(wm(), home).filter((n) => n.nodeType === NODE_TYPES.WINDOW)).toHaveLength(2);
+      expect(hvWideCount(mon0, 3)).toBe(0);
     });
 
     it("leftover 1-child HSPLIT is the slot: join it as VSPLIT, not 3-wide MONITOR", () => {

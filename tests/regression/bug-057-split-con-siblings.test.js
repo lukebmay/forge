@@ -7,6 +7,7 @@ import {
   getWorkspaceAndMonitor,
   kidsOf,
 } from "../mocks/helpers/index.js";
+import { forestIdFromLive, seedLiveForest } from "../../lib/extension/tom-live.js";
 import { Bin } from "../mocks/gnome/St.js";
 
 /**
@@ -48,6 +49,11 @@ describe("Bug #57: nested split-con siblings in tabbed/stacked containers", () =
 
   const wm = () => ctx.windowManager;
 
+  function forestLayout(live) {
+    const id = forestIdFromLive(wm(), live);
+    return id ? wm().forest?.nodes?.[id]?.layout : live?.layout;
+  }
+
   // Build monitor -> parentCon [ W, nestedCon[ A, B ] ] and return the nodes.
   function buildNestedTree() {
     const { monitor } = getWorkspaceAndMonitor(ctx);
@@ -70,6 +76,7 @@ describe("Bug #57: nested split-con siblings in tabbed/stacked containers", () =
     const nodeB = tree.createNode(nestedCon.nodeValue, NODE_TYPES.WINDOW, bWin);
     nodeB.mode = WINDOW_MODES.TILE;
 
+    seedLiveForest(wm());
     return { monitor, parentCon, nodeW, nestedCon, nodeA, nodeB };
   }
 
@@ -81,11 +88,11 @@ describe("Bug #57: nested split-con siblings in tabbed/stacked containers", () =
 
       wm().command({ name: "LayoutTabbedToggle" });
 
-      expect(parentCon.layout).toBe(LAYOUT_TYPES.TABBED);
+      expect(forestLayout(parentCon)).toBe(LAYOUT_TYPES.TABBED);
       // 2 direct children (W + nestedCon), NOT 3 flattened (W, A, B)
       expect(kidsOf(wm(), parentCon)).toHaveLength(2);
       expect(nestedCon.nodeType).toBe(NODE_TYPES.CON);
-      expect(nestedCon.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(forestLayout(nestedCon)).toBe(LAYOUT_TYPES.VSPLIT);
       expect(kidsOf(wm(), nestedCon)).toHaveLength(2);
     });
 
@@ -97,7 +104,7 @@ describe("Bug #57: nested split-con siblings in tabbed/stacked containers", () =
       wm().command({ name: "toggleTabStack" });
       wm().command({ name: "toggleTabStack" });
 
-      expect(parentCon.layout).toBe(LAYOUT_TYPES.STACKED);
+      expect(forestLayout(parentCon)).toBe(LAYOUT_TYPES.STACKED);
       expect(kidsOf(wm(), parentCon)).toHaveLength(2);
       expect(kidsOf(wm(), nestedCon)).toHaveLength(2);
     });
@@ -127,6 +134,7 @@ describe("Bug #57: nested split-con siblings in tabbed/stacked containers", () =
 
       // Remove A so B becomes the representative window
       ctx.tree.removeNode(nodeA);
+      seedLiveForest(wm());
       nestedCon._ensureConTab();
 
       expect(nestedCon.tab).not.toBe(firstTab);

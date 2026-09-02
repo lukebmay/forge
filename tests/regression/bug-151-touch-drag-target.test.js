@@ -6,7 +6,10 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   setPointer,
+  parentOf,
+  kidsOf,
 } from "../mocks/helpers/index.js";
+import { forestIdFromLive, seedLiveForest } from "../../lib/extension/tom-live.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
 
 /**
@@ -63,7 +66,13 @@ describe("Bug #151: touch/stylus drag target resolution", () => {
     // excluding the dragged one.
     wm().sortedWindows = [metaA, metaC];
 
+    seedLiveForest(wm());
     return { nodeA, nodeB, nodeC };
+  }
+
+  function forestLayout(live) {
+    const id = forestIdFromLive(wm(), live);
+    return id ? wm().forest?.nodes?.[id]?.layout : live?.layout;
   }
 
   it("touch drag (pointer static since grab start) resolves the window under the dragged frame", () => {
@@ -108,7 +117,9 @@ describe("Bug #151: touch/stylus drag target resolution", () => {
     // drop is silently ignored.
     wm().moveWindowToPointer(nodeB, false);
 
-    expect(nodeB.parentNode.layout).toBe(LAYOUT_TYPES.VSPLIT);
-    expect(nodeB.parentNode).toBe(nodeA.parentNode);
+    const parent = parentOf(wm(), nodeB);
+    expect(forestLayout(parent)).toBe(LAYOUT_TYPES.VSPLIT);
+    expect(parentOf(wm(), nodeA)).toBe(parent);
+    expect(kidsOf(wm(), parent)).toEqual(expect.arrayContaining([nodeA, nodeB]));
   });
 });

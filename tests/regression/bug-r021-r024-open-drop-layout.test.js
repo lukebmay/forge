@@ -6,11 +6,14 @@ import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  createWindowNode,
+  createContainerNode,
   setPointer,
   parentOf,
   kidsOf,
 } from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * R021–R024: live dual-mon nautilus / first layout apply.
@@ -51,12 +54,14 @@ describe("R021–R024: empty-head open, leaf empty-mon drag, nest drop, first la
   const workspace0 = () => ctx.workspaces[0];
 
   function tile(parent, spec) {
-    const meta = createMockWindow({
-      workspace: workspace0(),
-      ...spec,
+    const { nodeWindow: node, metaWindow: meta } = createWindowNode(ctx.tree, parent, {
+      mode: "TILE",
+      windowOverrides: {
+        workspace: workspace0(),
+        ...spec,
+      },
     });
-    const node = ctx.tree.createNode(parent.nodeValue, NODE_TYPES.WINDOW, meta);
-    node.mode = WINDOW_MODES.TILE;
+    if (wm()._liveForestSeeded) seedLiveForest(wm());
     return { meta, node };
   }
 
@@ -128,8 +133,12 @@ describe("R021–R024: empty-head open, leaf empty-mon drag, nest drop, first la
         monitor: 0,
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
       });
-      const vsplit = ctx.tree.createNode(mon0.nodeValue, NODE_TYPES.CON, {});
-      vsplit.layout = LAYOUT_TYPES.VSPLIT;
+      const vsplit = createContainerNode(mon0, LAYOUT_TYPES.VSPLIT, {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
       const b = tile(vsplit, {
         id: "B",
         monitor: 0,

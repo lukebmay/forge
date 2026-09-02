@@ -6,6 +6,7 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 import { Bin } from "../mocks/gnome/St.js";
 import { Rectangle, GrabOp } from "../mocks/gnome/Meta.js";
 
@@ -75,7 +76,8 @@ describe("Bug #497: tabbed/stacked container resizes against its sibling", () =>
     nodeC.percent = 0.5;
     nodeC.rect = { x: 450, y: 0, width: 450, height: 600 };
 
-    return { container, nodeA, nodeB, nodeC, winA };
+    seedLiveForest(ctx.windowManager);
+    return { monitor, container, nodeA, nodeB, nodeC, winA };
   }
 
   // Drag WinA's right edge so its frame grows by `growBy` px.
@@ -109,11 +111,11 @@ describe("Bug #497: tabbed/stacked container resizes against its sibling", () =>
   it("the grown percent is honored by the layout pass (does not snap back)", () => {
     const v = buildTabbedNextToWindow(LAYOUT_TYPES.TABBED);
     dragRight(v.nodeA, v.winA, 90);
+    // Resize updates live percents; reproject so the present pass sees them.
+    seedLiveForest(ctx.windowManager);
 
-    // Re-run the layout pass: the container's slice must reflect ~0.6 of the
-    // row, i.e. it grew and stayed grown rather than snapping back to an even
-    // split. (processNode lays out against the real monitor width.)
-    ctx.tree.processNode(ctx.tree);
+    // Live ROOT childNodes are empty (Forest spine); lay out from the monitor.
+    ctx.tree.processNode(v.monitor);
 
     expect(v.container.percent).toBeGreaterThan(0.5);
     const row = v.container.rect.width + v.nodeC.rect.width;

@@ -318,11 +318,10 @@ describe("WindowManager - Command System", () => {
 
     it("should toggle from VSPLIT to HSPLIT", () => {
       const { monitor } = pairOnMonitor();
-      monitor.layout = LAYOUT_TYPES.VSPLIT;
-      const action = { name: "LayoutToggle" };
-
-      wm().command(action);
-
+      // First toggle wraps/pairs into VSPLIT; second returns to HSPLIT.
+      wm().command({ name: "LayoutToggle" });
+      expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.VSPLIT);
+      wm().command({ name: "LayoutToggle" });
       expect(kidsOf(wm(), monitor)[0].layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 

@@ -34,6 +34,7 @@ import * as Utils from "../../../lib/extension/utils.js";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  kidsOf,
 } from "../../mocks/helpers/index.js";
 import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
@@ -145,6 +146,8 @@ describe("session-layout portable round-trip", () => {
 
   beforeEach(() => {
     ctx = createWindowManagerFixture({
+      // Portable forest round-trips need invent without blanket Forest reseed.
+      reseedOnCreateNode: false,
       globals: {
         display: {
           monitorCount: 2,
@@ -370,11 +373,11 @@ describe("session-layout portable round-trip", () => {
     expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(1);
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)[0];
     expect(tabbed.lastTabFocus).toBe(w3);
-    expect(tabbed.childNodes.map((n) => n.nodeValue)).toEqual([w2, w3]);
+    expect(kidsOf(wm(), tabbed).map((n) => n.nodeValue)).toEqual([w2, w3]);
 
-    expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
+    expect(kidsOf(wm(), mon0).map((n) => n.nodeValue)).toEqual([w0, w1]);
     expect(
-      mon1.childNodes.some((n) => n.isStackedOrTabbed?.() || n.layout === LAYOUT_TYPES.TABBED)
+      kidsOf(wm(), mon1).some((n) => n.isStackedOrTabbed?.() || n.layout === LAYOUT_TYPES.TABBED)
     ).toBe(true);
   });
 
@@ -476,7 +479,7 @@ describe("session-layout portable round-trip", () => {
 
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
     expect(tabbed).toHaveLength(1);
-    expect(tabbed[0].childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
+    expect(kidsOf(wm(), tabbed[0]).map((n) => n.nodeValue)).toEqual([w0, w1]);
   });
 
   it("envelope round-trips kind and monotonic stamp", () => {
@@ -1264,8 +1267,8 @@ describe("session-layout portable round-trip", () => {
 
     expect(leftGhost.get_monitor()).toBe(0);
     expect(rightGhost.get_monitor()).toBe(1);
-    expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([leftGhost]);
-    expect(mon1.childNodes.map((n) => n.nodeValue)).toEqual([rightGhost]);
+    expect(kidsOf(wm(), mon0).map((n) => n.nodeValue)).toEqual([leftGhost]);
+    expect(kidsOf(wm(), mon1).map((n) => n.nodeValue)).toEqual([rightGhost]);
   });
 
   it("rehome Meta mon after identical stacked thrash frames", () => {
@@ -1337,8 +1340,8 @@ describe("session-layout portable round-trip", () => {
 
     expect(w0.get_monitor()).toBe(0);
     expect(w1.get_monitor()).toBe(1);
-    expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([w0]);
-    expect(mon1.childNodes.map((n) => n.nodeValue)).toEqual([w1]);
+    expect(kidsOf(wm(), mon0).map((n) => n.nodeValue)).toEqual([w0]);
+    expect(kidsOf(wm(), mon1).map((n) => n.nodeValue)).toEqual([w1]);
   });
 
   it("forestRichness ranks dual-mon tabs above flat pile", () => {
@@ -1414,9 +1417,9 @@ describe("session-layout portable round-trip", () => {
     restoreWmForestStrict(wm(), liveForest);
 
     expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(1);
-    expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
+    expect(kidsOf(wm(), mon0).map((n) => n.nodeValue)).toEqual([w0, w1]);
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)[0];
-    expect(tabbed.childNodes.map((n) => n.nodeValue)).toEqual([w2, w3]);
+    expect(kidsOf(wm(), tabbed).map((n) => n.nodeValue)).toEqual([w2, w3]);
   });
 });
 

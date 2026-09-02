@@ -60,7 +60,8 @@ describe("Bug #531: render/queue wedge after a throwing callback", () => {
     vi.spyOn(wm, "processFloats").mockImplementationOnce(() => {
       throw new Error("boom");
     });
-    const renderSpy = vi.spyOn(wm.tree, "render");
+    // D100/G8n: seeded present uses presentSeededForest, not tree.render.
+    const presentSpy = vi.spyOn(wm, "processFloats");
 
     wm.renderTree("t1");
     expect(wm._wmSources.has("renderTree")).toBe(true);
@@ -71,7 +72,9 @@ describe("Bug #531: render/queue wedge after a throwing callback", () => {
 
     wm.renderTree("t2");
     flush();
-    expect(renderSpy).toHaveBeenCalled();
+    // Second schedule ran the idle body (processFloats again after the throw).
+    expect(presentSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(wm._wmSources.has("renderTree")).toBe(false);
   });
 
   it("a throwing queued event must not kill the event queue", () => {

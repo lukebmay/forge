@@ -10,6 +10,7 @@ import {
 } from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * T4 sizing policy: equal until user resize; min-size write-back; userSized flag.
@@ -198,6 +199,7 @@ describe("T4 sizing policy", () => {
       b.percent = 0.5;
       a.rect = { x: 0, y: 0, width: 500, height: 800 };
       b.rect = { x: 500, y: 0, width: 500, height: 800 };
+      if (ctx.windowManager._liveForestSeeded) seedLiveForest(ctx.windowManager);
 
       const changed = ctx.windowManager._goldenRatioAgainstPair(a);
       expect(changed).toBe(true);

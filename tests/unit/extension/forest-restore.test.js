@@ -14,7 +14,11 @@ import {
   toLiveForest,
   planWindowMonitorHomes,
 } from "../../../lib/extension/session-layout.js";
-import { createWindowManagerFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
+import {
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+  kidsOf,
+} from "../../mocks/helpers/index.js";
 import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
 import { Bin } from "../../mocks/gnome/St.js";
 
@@ -88,7 +92,7 @@ describe("forest-restore (C7.7)", () => {
     expect(wm.forest.nodes[p0].layout).toBe("TABBED");
     const liveTab = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
     expect(liveTab).toHaveLength(1);
-    expect(liveTab[0].childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
+    expect(kidsOf(wm, liveTab[0]).map((n) => n.nodeValue)).toEqual([w0, w1]);
   });
 
   it("strict restore + rehome recovers dual-mon tabs from a Forest pile", () => {
@@ -140,9 +144,9 @@ describe("forest-restore (C7.7)", () => {
     expect(p2).toBe(p3);
     expect(wm.forest.nodes[p2].layout).toBe("TABBED");
     expect(wm.forest.nodes[p2].parentId).toBe(mon1.nodeValue);
-    expect(mon0.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
+    expect(kidsOf(wm, mon0).map((n) => n.nodeValue)).toEqual([w0, w1]);
     const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
     expect(tabbed).toHaveLength(1);
-    expect(tabbed[0].childNodes.map((n) => n.nodeValue)).toEqual([w2, w3]);
+    expect(kidsOf(wm, tabbed[0]).map((n) => n.nodeValue)).toEqual([w2, w3]);
   });
 });

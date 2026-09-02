@@ -5,7 +5,9 @@ import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  parentOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * Bug forge-c2yp: the 'workspace-removed' handler calls
@@ -64,6 +66,7 @@ describe("Bug forge-c2yp: workspace-removed survives a finalized window wrapper"
     dead.get_wm_class = boom;
     dead.get_workspace = boom;
     dead.get_monitor = boom;
+    seedLiveForest(wm);
 
     // The rehome preamble must not throw despite the dead node...
     expect(() => wm._rehomeWorkspaceWindowsBeforeRemoval(1)).not.toThrow();
@@ -72,9 +75,9 @@ describe("Bug forge-c2yp: workspace-removed survives a finalized window wrapper"
     tree.workspaceManager.renumberWorkspacesAfterRemoval(1);
 
     // Scaffold is gone: ws1 removed, and the live window rehomed to ws0 (not stranded).
-    expect(tree.findNode("ws1")).toBeNull();
-    const mo0ws0 = tree.findNode("mo0ws0");
-    expect(liveNode.parentNode).toBe(mo0ws0);
+    expect(wm.liveById?.get?.("ws1") || tree.findNode("ws1")).toBeFalsy();
+    const mo0ws0 = wm.liveById?.get?.("mo0ws0") || tree.findNode("mo0ws0");
+    expect(parentOf(wm, liveNode)).toBe(mo0ws0);
   });
 
   it("_containerFullyMigrates tolerates a finalized sibling", () => {
@@ -89,6 +92,7 @@ describe("Bug forge-c2yp: workspace-removed survives a finalized window wrapper"
     deadSibling.get_workspace = boom;
     deadSibling.get_monitor = boom;
     deadSibling.get_id = boom;
+    seedLiveForest(wm);
 
     expect(() => wm._containerFullyMigrates(mon, mover)).not.toThrow();
   });

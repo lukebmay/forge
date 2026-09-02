@@ -11,6 +11,7 @@ import { installGnomeGlobals } from "./globalSetup.js";
 import { ForgeAdapterGnome } from "../../../lib/extension/adapter-gnome.js";
 import { Tree, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { DecorationManager } from "../../../lib/extension/decoration.js";
+import { wrapCreateNodeForestReseed } from "./treeHelpers.js";
 
 /**
  * Default settings values used across tests
@@ -178,6 +179,9 @@ export function createMockExtension(options = {}) {
  * @param {Object} [options.globals] - Options for installGnomeGlobals
  * @param {Object} [options.extension] - Options for createMockExtension
  * @param {Object} [options.settings] - Settings overrides (shortcut for extension.settings)
+ * @param {boolean} [options.reseedOnCreateNode=true] - Wrap tree.createNode to
+ *   seedLiveForest after GObject invent (kidsOf/parentOf SoT). Set false for
+ *   Forest-careful suites (portable session-layout round-trips).
  * @returns {Object} Fixture context with windowManager/adapter, tree, mocks, and cleanup
  *
  * @example
@@ -199,7 +203,12 @@ export function createMockExtension(options = {}) {
  * });
  */
 export function createWindowManagerFixture(options = {}) {
-  const { globals = {}, extension = {}, settings = {} } = options;
+  const {
+    globals = {},
+    extension = {},
+    settings = {},
+    reseedOnCreateNode = true,
+  } = options;
 
   // Merge settings into extension options
   const extOptions = {
@@ -217,6 +226,9 @@ export function createWindowManagerFixture(options = {}) {
   const windowManager = new ForgeAdapterGnome(mockExtension);
   // Unit fixtures may still invent via Tree.createNode (D096 G8a allowlist).
   windowManager._allowGObjectCreateNode = true;
+  if (reseedOnCreateNode) {
+    wrapCreateNodeForestReseed(windowManager.tree, windowManager);
+  }
 
   // Return context
   return {
@@ -306,6 +318,8 @@ export function createTreeFixture(options = {}) {
   // Create Tree
   const tree = new Tree(mockWindowManager);
   mockWindowManager.tree = tree;
+  // kidsOf/parentOf: treat as GObject SoT for Host/helper Tree units.
+  mockWindowManager._liveForestSeeded = false;
 
   // Tab chrome attach needs DecurationsManager (layer + trackChrome).
   if (fullExtWm) {

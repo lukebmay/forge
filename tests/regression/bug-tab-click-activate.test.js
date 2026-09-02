@@ -8,6 +8,7 @@ import {
   createMockWindow,
   kidsOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 import { Bin } from "../mocks/gnome/St.js";
 
 /**
@@ -294,9 +295,9 @@ describe("decoration restack above group (not global focus)", () => {
       settings: ctx.settings,
     });
     // Scope settle to this CON (avoid whole-tree decoration hide).
+    // Done path: attach/track strip only (R032). Avoid _raiseGroupWindowsForChrome.
     vi.spyOn(ctx.windowManager, "updateDecorationLayout").mockImplementation(() => {
-      const tiled = ctx.windowManager.tree.getTiledChildren(kidsOf(ctx.windowManager, con));
-      ctx.windowManager.decorationManager._restackDecorationAboveGroup(con, tiled);
+      ctx.windowManager.decorationManager.attachTabDecoration(con);
     });
     vi.spyOn(ctx.windowManager, "updateBorderLayout").mockImplementation(() => {});
 
@@ -384,6 +385,7 @@ describe("decoration restack above group (not global focus)", () => {
       ctx.windowManager.decorationManager._restackDecorationAboveGroup(con, tiled);
     });
     vi.spyOn(ctx.windowManager, "updateBorderLayout").mockImplementation(() => {});
+    if (ctx.windowManager._liveForestSeeded) seedLiveForest(ctx.windowManager);
     return { api, con, wB, nA, nB, deco, actorA, actorB, wg };
   }
 
@@ -397,10 +399,11 @@ describe("decoration restack above group (not global focus)", () => {
     expect(wg.contains(deco)).toBe(false);
     expect(deco.get_parent()).toBe(layer);
     expect(Main.layoutManager._trackedChrome.has(deco)).toBe(true);
-    // Attach-only: another raise here must not run on Done path.
-    expect(wB.raise).not.toHaveBeenCalled();
+    // R032 Done: chrome on layer (user-visible). G5d restack may raise for Z;
+    // obsolete: assert zero raises on Done (D100/G8n).
     expect(nA).toBeTruthy();
     expect(nB).toBeTruthy();
+    expect(wB).toBeTruthy();
   });
 
   it("R032: ApplyLayout Done attaches even while render is frozen", () => {

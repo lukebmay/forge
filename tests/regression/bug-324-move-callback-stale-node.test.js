@@ -8,6 +8,7 @@ import {
   getWorkspaceAndMonitor,
   kidsOf,
 } from "../mocks/helpers/index.js";
+import { seedLiveForest } from "../../lib/extension/tom-live.js";
 
 /**
  * P6a: Move is Mark 2 OpSet + one commitLayout. The 220ms queueEvent callback
@@ -42,6 +43,7 @@ describe("forge-ne1 (#324): Move has no delayed stale-node callback", () => {
     const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, b);
     nodeA.mode = WINDOW_MODES.TILE;
     nodeB.mode = WINDOW_MODES.TILE;
+    seedLiveForest(ctx.windowManager);
     return { monitor, winA: a, nodeA, nodeB };
   }
 
