@@ -61,7 +61,7 @@ Meta/St/chrome. FLOATS is a live bag — never under TILES ROOT.
 
 **TOM ↔ reality (D092, D093, D096):** One **model** topology (TOM Forest).
 Presenter = `present` / `observe` host verbs, not a second child-list.
-Mark 2 mutates TOM only. After a SurfaceOp **or** host event: present →
+Mark 2 mutates TOM only. After an OpSet op **or** host event: present →
 observe → **AGREE** or **DRIFT**. **RESYNC** = TOM-only atomics + RuleSet
 **toward REALITY**, then present; **FLOAT terminator**. Mark 2 / Launch
 only after AGREE.
@@ -69,6 +69,15 @@ only after AGREE.
 **Chrome Z (D096):** Window border inseparable from that window in Z (no
 other window — tracked or not — between them). TABBED/STACKED strips as
 close as possible in Z to the visible app(s).
+
+**Chrome identity (D109):** TILE strips/borders key off Forest MONITOR
+`moNwsW` (workspace **and** monitor), never monitor index alone; wrap
+rows inset the window slot by another `stacked-tab-bar-height`.
+
+**Shortcuts overlay (D113):** In-shell cheatsheet fits the current
+monitor (aspect columns + scroll + collapsible headings). Float
+toggle stays in the list when bound. Settings stay GTK until a
+design meeting.
 
 **Title spam (D099):** `notify::title` is a **chrome** event, not a tiling
 event. Instant: update the tab/stack **label** only (no tab width, no
@@ -124,7 +133,7 @@ DOM into `lib/tom`, or grow a second Mark 2 table.
 
 | Role | Names | Owns |
 | --- | --- | --- |
-| **Kernel** | TOM + atomics + RuleSet + OpSet + action-id table | Forest envelope, settle, Move/Join/Launch, **shared** chords as ids. No Meta, no DOM, no GNOME accels |
+| **Kernel** | TOM + atomics + RuleSet + OpSet + action-id table | Forest envelope, settle, named Ops (Move/Join/Group/Launch), pointer event *shape*, **shared** chords as ids. No Meta, no DOM, no GNOME accels |
 | **Host adapter** | **ForgeAdapterGnome** (today still `WindowManager` + St — **delete as god object**, D097). **ForgeAdapterWebView** (proto HTML desk) | WINDOW ↔ native window, **signal subscribe**, workarea feed, `present`/`observe`. Not a second child-list. Not Mark 2 |
 | **Keybind adapter** | **KeybindAdapterGnome**. **KeybindAdapterWebView** | Kernel table **plus** a host overlay. Same kernel ids; overlay ids may be host-only |
 | **Slot math** | `lib/presenter/` `paneRect` | Percent → AABB. Both adapters may call it. Not topology |
@@ -153,8 +162,8 @@ disagreement, **wait** (settle-heuristics, per host+class) so the app
 can finish, then RESYNC with
 **Mark 2 RuleSet** toward reality (FLOAT terminator). The handler may
 be written *to* Mark 2 (legal forest, unary, max-1) but **must not be**
-Mark 2 (not OpSet Move/Join/Launch). User chords / DnD / layout apply
-are the OpSet.
+Mark 2 (not OpSet Move/Join/Group/Launch). User chords / pointer / layout
+apply are the OpSet (D101).
 
 **Delete `WindowManager` (D098):** not a façade, not a re-export file.
 Extracts are named modules with one job. Spies import the adapter.
@@ -188,10 +197,14 @@ do not rescan `tree.js` / `window.js`.
 | **Presenter math** | Slots → AABB (`lib/presenter/` paneRect). D069/D046/D030 are **Gnome adapter** paint policy |
 | **Host adapter** | Native window ↔ WINDOW, signals, `present`/`observe`, bags, FLOATS paint. **D093** AGREE/RESYNC toward REALITY (TOM atomics only). Not a second child-list |
 | **Epochs** | Apply, session restore, H1 — three forest writers (product; Meta wait is Gnome adapter) |
-| **Surfaces** | DnD *gesture*, CLI, DBus, adapter key overlays |
+| **Surfaces** | Pointer *gesture* (host grab/hit/paint), CLI, DBus, adapter key overlays |
 
-DnD commit (`_commitResolvedDrop`) is not a second OpSet. Product Move **is** Mark 2 Move
-(D080). RuleSet + keybinds:
+Pointer commit is `OpSet.pointer.release` → named **Ops** (D101). Host
+`_commitPointerOp` / `runMark2` is plumbing, not a second OpSet and not a
+user path. Product Move **is** Mark 2 Move (D080). **TAB bag child index
+(D108):** CENTER Group always last child (`place: "end"`); strip uses
+`insertIndex`; keyboard Join/Group `left`/`up` append, `right`/`down`
+prepend. RuleSet + keybinds:
 [`ruleset.md`](plans/archived/completed/forge-firm-abstractions/ruleset.md),
 [`keybinds.md`](plans/archived/completed/forge-firm-abstractions/keybinds.md).
 
@@ -243,7 +256,8 @@ ROOT and WORKSPACE (under TILES) are spine nodes, not Forge containers.
 MONITOR may be empty; **after Mark 2 RuleSet settle** it has at most one
 child (atomics may violate that mid-op). **Atomics + composed**
 (breakout, wrap) do not settle. **RuleSet** settle restores invariants.
-**OpSets** bind a RuleSet and name SurfaceOps. After an OpSet mutates
+**OpSets** bind a RuleSet and name **Ops** (user-facing). Host SurfaceOps
+are adapter internals, not a parallel user path (D101). After an OpSet mutates
 the TOM, a presenter paints.
 
 **Breakout** and **Promote** are the same operation: a node becomes a sibling
@@ -379,7 +393,11 @@ layout, T6, T7). This section is the **map** so those pieces stay complementary.
          │              seed last-good + shield (fromLock while locked; ~3s after unlock)
          │                    │
          └──── while shield: monitor-recovery REAPPLIES forest
+               unless quiet geom + last-good homes already match
                (does not snapshot thrash topology)
+
+  lock/unlock ── hostPresentHold: freeze present/chrome/ε until first
+                 post-unlock workareas settle (D102)
 ```
 
 | Layer | Trigger | Policy | Why it stays |
@@ -392,7 +410,8 @@ layout, T6, T7). This section is the **map** so those pieces stay complementary.
 | Session-layout disk | disable / install flush | portable match + **strict** mon | HUP wipes memory; different failure than thrash |
 | Richness guard | save / flush | refuse thrash-flat overwrite | prevents last-good file becoming “all columns” |
 | 12s save hold | post-enable | suppress auto-save | thrash after enable must not clobber disk |
-| Session shield | post-restore **and** restore-while-locked | monitor-recovery **reapplies** forest | empty last-good + Meta peel; enable-while-locked must not get a 3s shield that expires overnight (D079 / `fromLock`) |
+| Session shield | post-restore **and** restore-while-locked | monitor-recovery **reapplies** forest **only when** quiet geom or last-good homes disagree | empty last-good + Meta peel; enable-while-locked must not get a 3s shield that expires overnight (D079 / `fromLock`) |
+| Present-hold (D102) | lock + post-unlock until first settle | skip `renderTree` / chrome / ε; all `move_to_monitor` via `safeMoveToMonitor` | Unlock desk often already looks correct; raw rehome/present SEGVs Wayland |
 | entered-monitor suppress | thrash pending / restore / shield | ignore Meta rehomes | Meta shoves windows; tree must not follow mid-flight |
 
 ### Two monitor resolve policies (do not merge)
@@ -429,7 +448,8 @@ substitute overnight hybrid-GPU thrash. Removing any of the three without
 | workareas settle | **300ms** — hybrid thrash often &gt;200ms |
 | session-layout save debounce | 1500ms |
 | session-layout save hold | **12s** mono after enable |
-| session shield | while-locked `fromLock` long TTL; ~3s / 8s after unlock; monitor-recovery reapplies forest |
+| session shield | while-locked `fromLock` long TTL; ~3s / 8s after unlock; reapply only if quiet/homes disagree |
+| present-hold | lock until first unlock settle (~900ms boost) — no present/chrome/ε |
 | entered-monitor / home reconcile | idle coalesce during thrash/restore/shield |
 | renderTree / reloadTree | idle coalesce / low |
 
@@ -441,32 +461,72 @@ extracting monitor-recovery / session-restore modules.
 
 ### Settled slot authority (D095 — FIRM)
 
-**Presenter** (Meta/Mutter, WebView renderer, …) is reality for on-screen
-geometry when queryable. **Forge always** owns a presenter-specific window
-model: projected desired, commands sent, observed frames, heal trail. Writes
-only with **evidence** (observed disagree after desired recompute). **No**
-blanket reassert. **No** geometry `force: true` (ε-bypass sledgehammer) —
-failed acceptance enters data-backed heal phases. ε is **measured from
-sent↔observed logs**, then locked; progressive near-miss forgiveness is
-**per wm-class** with mandatory fault-inject (S6). Untestable
-fallbacks/zoom-reasserts are off or removed. Reveal/select (tab click
-**and** keybind) = raise → verify → correct if needed → WARN. Zoom: ≤1
-per monitor; TABBED zooms the leaf not the group slot; chrome stays under
-the zoomed window; unzoom restores placement.
+**Context (2026-08-30 meeting):** Forge kept calling Mutter
+`move_resize_frame` on every paint “just in case.” Extra heal waves and
+`force: true` (skip the size-check and write anyway) **thrashed** the
+desk, burned CPU, and **hid bugs** in the first present. D095 is that
+meeting’s lock. It does **not** mean “never fix a window that missed
+its slot.”
+
+**Words (do not mix):**
+
+| Word | Who | What |
+| --- | --- | --- |
+| **Desired** | Forge, from **TOM Forest** | Slot AABB (`paneRect` / `forestSlotPaintRect`) — where the TILE *should* be |
+| **Commanded** | Forge → **Meta** | The last `move_resize_frame` (or WebView paint) we sent |
+| **Observed** | **Meta/Mutter** (or the WebView renderer) | The window’s actual frame after settle |
+| **ε (epsilon)** | Forge acceptance | Max \|commanded − observed\| on x/y/width/height we treat as “close enough.” Meta **ε₀ = 4 px** |
+| **Write a resize** | Forge → Meta | Issue `move_resize_frame` (not `commitLayout({ force })`, which is a render knob) |
+| **Recompute desired** | Forge, from **TOM** | Recalculate the slot AABB after structure/workarea/chrome-height change. Not a Meta recompute |
+
+**The point of ε:** measure when the window **landed outside** what we
+commanded, so we can decide how to heal. Both a 5 px miss and a 1178 px
+miss are **outside ε**. ε does **not** mean “ignore far misses.”
+
+| Outside ε | Meaning | What we do |
+| --- | --- | --- |
+| **Near miss** | Outside ε but inside the **near-band** (`max(2×ε, ε+8)` → 12 px at ε₀) | May retry; after 3 near fails, **forgive** by bumping ε for that **wm-class** (jitter, not a broken slot) |
+| **Far miss** | Outside the near-band (Inkscape 700×651 vs commanded ~1878×1048) | **Still a miss.** Retry the **same desired dest** with evidence (logged). Do **not** bump ε (that would call 1178 px “acceptable”). Do **not** `force: true` (bypass the check and shove). If Meta still refuses: mins path, or D093 **FLOAT** terminator — not a geometry sledgehammer |
+
+**“Write a resize only if observed still disagrees after desired is
+recomputed”** means: after TOM says the slot changed (or we just
+commanded), look at Meta’s frame. If it already matches desired within
+ε, **do not** call `move_resize_frame` again. If it does not match,
+**do** write — that is the heal. Forbidden is the old habit: resize on
+every render with no compare.
+
+**Rejected:** blanket reassert; `force: true` on move/reassert (debt to
+delete, not copy); bumping ε on far/min-known/ambiguous samples;
+untestable fallbacks.
+
+Reveal/select (tab click **and** keybind) = raise → verify → correct if
+needed → WARN. Zoom: ≤1 per monitor; TABBED zooms the leaf not the
+group slot; chrome stays under the zoomed window; unzoom restores
+placement.
 
 **ε₀ = 4 px** (Meta): `max(4, ceil(worst_settle_in_band_dMax × 1.2))`;
-nest ghostty settle residual was 0 (2026-08-30). **Near-band** =
-`max(2×ε, ε+8)` (ε₀ → 12). Progressive bumps are **per wm-class**
-(session; after 3 near-miss retries; cap at ε₀ near-band). Install modes:
-`./install --dev=strict-geometry,fault-inject-geometry,…`. Nest smokes use
-**nest** logs only. Nest **client_env** isolates `XDG_RUNTIME_DIR` /
-config / Chrome profile so Nautilus/Chrome map in-nest
+nest ghostty settle residual was 0 (2026-08-30). Progressive near-miss
+bumps are **per wm-class** (session; after 3 near-miss retries; cap at
+ε₀ near-band). Install modes:
+`./install --dev=strict-geometry,fault-inject-geometry,…`. Nest smokes
+use **nest** logs only. Nest **client_env** isolates `XDG_RUNTIME_DIR`
+/ config / Chrome profile so Nautilus/Chrome map in-nest
 (`forge-test nested smoke-nest-apps`).
 
 Plan (archived):
 [`plans/archived/completed/forge-settled-slot-authority.md`](plans/archived/completed/forge-settled-slot-authority.md)
 — **S1–S6 shipped**; **S7 deferred** until zoom regress; S8 closeout done.
 Amends D069 heal posture + chrome D071 epoch-leave force-heal note.
+
+### Visible settle (D105 — FIRM)
+
+In-slot (D040) still means TILE + right monitor + right parent + ε rect.
+**What the user waits on** is the **visible group** on the active
+workspace (open leaf they can see). Buried tab peers, hidden maps, and
+other monitors **may finish in the background**. Do not hold overlay /
+“desk ready” / the next user act on an invisible slot. Do not fail E2E
+because an off-screen window is still settling if the current view is
+already correct. Do fail if the visible pane is wrong.
 
 ### Tab / stack peer geometry (D069 — FIRM)
 
