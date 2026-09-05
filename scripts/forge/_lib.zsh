@@ -849,6 +849,24 @@ JS
   ) || forge_die "invalid --dev modes${raw:+: $raw}"
 }
 
+# --dev operator tools (overlay). TRACE is separate (D068). Test CLI is install.zsh.
+# --prod turns overlay off. Regular leaves the user's toggle alone.
+forge_apply_dev_operator_tools() {
+  if ! command -v gsettings >/dev/null 2>&1; then
+    return 0
+  fi
+  local mode="${1:-}"
+  if [[ "$mode" == "dev" ]]; then
+    if gsettings set "$FORGE_SCHEMA_MAIN" layout-debug-overlay-enabled true 2>/dev/null; then
+      forge_ok "layout debug overlay on (--dev)"
+    else
+      forge_warn "could not enable layout-debug-overlay"
+    fi
+  elif [[ "$mode" == "prod" ]]; then
+    gsettings set "$FORGE_SCHEMA_MAIN" layout-debug-overlay-enabled false 2>/dev/null || true
+  fi
+}
+
 # Persist / clear org.gnome.shell.extensions.forge dev-modes after install.
 # MODE=dev → set FORGE_DEV_MODES_GSETTINGS (default @as []); else clear.
 forge_apply_dev_modes_gsettings() {

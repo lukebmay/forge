@@ -4345,6 +4345,53 @@ class TestMarginalCoexist(unittest.TestCase):
         self.assertEqual(parks[0]["windowId"], 502)
         self.assertEqual(parks[0].get("destWindowId"), 501)
 
+    def test_profile_residual_park_without_clean_parks_extra(self):
+        """Keep-extras: residual=park + clean=False parks the third ghostty."""
+        forest = {
+            "monitors": [{
+                "id": "mo0ws0",
+                "nodeType": "MONITOR",
+                "layout": "HSPLIT",
+                "children": [
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 1,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "A",
+                        "mode": "TILE",
+                        "monitor": 0,
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 2,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "B",
+                        "mode": "TILE",
+                        "monitor": 0,
+                    },
+                    {
+                        "nodeType": "WINDOW",
+                        "windowId": 3,
+                        "wmClass": "com.mitchellh.ghostty",
+                        "title": "D",
+                        "mode": "TILE",
+                        "monitor": 0,
+                    },
+                ],
+            }]
+        }
+        profile = {
+            "tiles": {"mon0": ["ghostty", "ghostty"]},
+            "marginal": {"residual": "park"},
+        }
+        plan = plan_reconcile(forest, profile, clean=False)
+        self.assertFalse(plan.get("clean"))
+        closed = [a for a in plan["actions"] if a["op"] == "close"]
+        self.assertEqual(closed, [])
+        parks = [a for a in plan["actions"] if a["op"] == "park"]
+        self.assertEqual(len(parks), 1)
+        self.assertEqual(parks[0]["windowId"], 3)
+
 
 class TestCleanResiduals(unittest.TestCase):
     """WR15: --clean closes residuals that would otherwise park."""

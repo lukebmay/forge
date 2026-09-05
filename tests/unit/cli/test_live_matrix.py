@@ -327,6 +327,7 @@ class TestSelect(unittest.TestCase):
         self.assertIn("L1.r015-empty-mon-dnd", ids)
         self.assertIn("L1.r022-nested-empty-mon-dnd", ids)
         self.assertIn("L1.r023-bottom-nest-hsplit", ids)
+        self.assertIn("L1.r055-dnd-center-join-raise", ids)
 
     def test_catalog_has_r021_r024(self):
         by_id = {c.id: c for c in LIVE_CASES}
@@ -350,6 +351,25 @@ class TestSelect(unittest.TestCase):
         self.assertIn("vlc-end-of-video.webm", by_id["L1.r020-vlc-end-of-video"].notes)
         self.assertIn("Kooha", by_id["L1.r031-float-border-follows"].notes)
 
+    def test_catalog_has_r054_r055(self):
+        by_id = {c.id: c for c in LIVE_CASES}
+        for case_id in (
+            "L1.ghosttys-only",
+            "L1.left-chrome",
+            "L1.right-ghostty",
+            "L2.true-cold-dev",
+            "L1.settled-rerun",
+        ):
+            self.assertIn("R054", by_id[case_id].regressions, case_id)
+            self.assertIn("mon0-open-leaf-grok", by_id[case_id].checks)
+            self.assertIn("mon1-open-leaf-youtube", by_id[case_id].checks)
+        r055 = by_id["L1.r055-dnd-center-join-raise"]
+        self.assertIn("R055", r055.regressions)
+        self.assertIn("cross-mon-dnd", r055.behaviors)
+        self.assertIn("r055-dnd-center-join-raise-note", r055.actions)
+        self.assertIn("smoke-layout-tabbed-edge", r055.notes)
+        self.assertIn("bug-r054-r055-open-leaf", r055.notes)
+
     def test_tags_r021_r024(self):
         forest = _add_guake(_load("tree-perfect.json"))
         cap = capability_from_forest(forest, env={"XDG_SESSION_TYPE": "x11"})
@@ -365,6 +385,8 @@ class TestSelect(unittest.TestCase):
             ("R030", "L1.r029-reuse-no-double"),
             ("R020", "L1.r020-vlc-end-of-video"),
             ("R031", "L1.r031-float-border-follows"),
+            ("R054", "L1.ghosttys-only"),
+            ("R055", "L1.r055-dnd-center-join-raise"),
         ):
             sel = select_cases(suite="regression", capability=cap, tags={tag})
             ids = {c.id for c in sel.cases}

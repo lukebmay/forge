@@ -1,0 +1,13 @@
+{
+  "tiles": [
+    ["inkscape"],
+    [
+      "ghostty",
+      {
+        "tab": ["org.gnome.TextEditor", "ghostty"]
+      }
+    ]
+  ],
+  "focus": ["ghostty", 0],
+  "description": "FORGE TEST vinyl-shaped WS2: Mon0(Inkscape) | Mon1(H(Ghostty, TAB(TextEditor, Ghostty))). YouTube/Chrome PWA stand-in is TextEditor (nest cannot map YouTube). Not a personal layout."
+}

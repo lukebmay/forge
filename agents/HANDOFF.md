@@ -1,88 +1,69 @@
 # Handoff — forge (lukebmay)
 
-**Updated:** 2026-09-02 — Tip `FUNCTIONAL - D100c + R054/R055
-open-leaf; G8n L0 related retarget green` (product parent
-`8f1a8347` + test retarget). Docs archive `4f4d6893`. Awaiting
-**host** `layout dev` + DnD-into-TAB verify. G8n stub paused until
-that host pair. **Branch:** `master` (ahead 3, not pushed). **Push:**
-only if asked.
+**Updated:** 2026-09-04 — **D117 V0 docs + V1–V6 code landed**.
+D115/D116 stay. Nest **stopped**.
+**Branch:** `master`. **Push / commit:** only if asked.
 
-**L0 / husky:** related suite 2009 pass / 0 fail; one Vitest IPC
-`RangeError` flake exits husky non-zero (committed `--no-verify` with
-note). Helpers: `wrapCreateNodeForestReseed` (opt-out
-`reseedOnCreateNode: false`). No Forest←GObject dual-write.
+**Hard blocker:** (none)
+**Soft blocker:** [settings-overlay-design.md](./blockers/settings-overlay-design.md)
+(design meeting for in-shell settings overlay; does not stop code)
 
-**Handoff to:** human host verify, then G8n if desk is good. Do **not**
-dual-write child-lists. Do **not** reconnect old handlers. Do **not**
-grow `live-handle.js`.
+**Next agent (ordered):**
 
-## Human host load
+1. **Host eyes** (human): logout for D108/D109/D113 + R059/R060.
+   D117 V1–V6 is **code-landed** (see plan session note). Do not invert
+   D115/D041.
+1. Do **not** invert D115. Locks: `design.md` § Geometry loop + D116.
 
-Tip is installed `--dev` on this clone; **Wayland needs re-login** for
-host Shell to load JS. Nest already proved toggle-tab + tabbed-edge.
+Do **not** dual-write. Do **not** grow `live-handle.js`. Do **not**
+invent `Mark2Drop*`. Do **not** reintroduce raw `move_to_monitor`.
+Do **not** patch-only `computeSizes`. Do **not** ship whole-forest
+`MON_MISMATCH` RESYNC. Agent does **not** host `layout`. Test
+profiles `_forge-test-*` only.
 
-```sh
-cd ~/dev/me/forge && ./install --dev
-# Wayland: log out of GNOME, log back in (HUP does not reload JS)
-```
+**Landed this session:**
 
-Install from this durable clone only (not a Grok worktree). `--dev` →
-TRACE so hunts work.
+| Id | Lock | Result |
+| --- | --- | --- |
+| D115 H1–H6 | observe→heal | After present `move` settle: agree or ladder. Owner `lib/extension/heal-ladder.js`. D111 jitter = rung 1 (`geomUndersizeRetry`). Then `noteWindowMinFromHealUndersize`, Mark 2 Group enter/wrap same mon (`place:end`), else FLOAT = Agree. Nest inkscape-ws2 **PASS** (FLOAT after jitter×3). |
+| D116 C0–C3 | design clarity | One story: D095 near / D115 far / D093 FLOAT after ladder / D105 visible wait / D100 handlers off / D049 overflow ≠ undersize. D026 superseded. No JS. |
+| D117 V0 | visible-open docs | `design.md` § Visible-open + CHANGELOG D117. D071 chrome overlay lifetime **superseded**. Overlay = visible-hard; focus = all required mapped; hide-place-show. |
+| D117 V1–V6 | visible-open code | Hide-place-show (`layout-deferred-open.js` + `adapter-map-admit.js`). Spawn `orderOpenActionsVisibleFirst`. Per-WINDOW slot wait. Raise `revealGroupChild` on map. Focus before hard-ready. Overlay hunt `visible-hard overlay clear`. Nest `leaf.settle.visible-first-open` **PASS**; nest stopped. |
 
-| Expect to work | Expect incomplete / parked |
-| --- | --- |
-| Extension enables; windows map; TILE; Mark 2 join/move on one mon | Host DnD maze / cross-mon Ctrl+hjkl reconnect |
-| Unary TAB/STACK no strip (R053); move leaves no hollow spacer (R052) | Host visual: layout `active` + DnD raise (**R054/R055** — L0/nest green) |
-| `forge tree` Forest-backed | `class Tree` still in tree.js (G8n stub) |
-| Adapter ROOT is `createLiveTree` | |
+**Nest soak (this session, nest stopped):**
 
-**Do not** save loadouts / session-layout if the desk looks wrong.
+PASS: `leaf.layout.apply-inkscape-ws2` (honest FLOAT after jitter+learn-min);
+`leaf.settle.jitter-same-dest` (H(A,B) TILE, no TAB/FLOAT);
+`leaf.settle.visible-first-open` (TAB strip = first kid / active).
 
-Hunt (host session after re-login):
+Hunt: `forge-test nested log --grep heal-ladder --level info+` —
+Inkscape `rung=jitter` ×3 dest 1878×1048 → `learn-min` 700×651 →
+`rung=float reason=no-legal-tile-slot`. Ghostty `rung=agree` is debug.
 
-```sh
-forge log
-forge log --session <id> --grep 'lastTabFocus|revealGroupChild source=dnd-join|settleTabFocus' --level info+ --last 80
-```
+**Still open:**
 
-Never `tail` the tape. Nest hunts stay `forge-test nested log`.
+- Host logout eyes (D108/D109/D113 + R059/R060)
+- Dock Nautilus ½-col (`Kf7DR`)
+- G8n `bindClassApi` leftover Node copies
+- Residual chrome dispose after pile-recovery present
 
-## Logging — previous session retain
-
-On extension **enable** and `forge log --truncate`, non-empty
-`forge.log` / `forge.jsonl` are copied to `forge.prev.log` /
-`forge.prev.jsonl`, then current tapes are emptied.
+**Confirm:** no `Mark2Drop*`, no Forest←GObject dual-write, no
+`live-handle.js` growth, no commit/push unless asked.
 
 ## FIRM — nest vs host
 
 | Do | Do not |
 | --- | --- |
-| `./scripts/forge/forge-test nested smoke-*` **one** CLI | Bare `forge launch` / host GUI from **agent** |
-| Hunt nest: `./scripts/forge/forge-test nested log --grep PAT --level info+ --last 40` | `nested logs` (shell stderr) |
-
-Nest is **stopped**. Agent still does **not** host `layout`.
-
-## Landed this breath — R054 / R055
-
-Plan: `agents/plans/forge-tab-open-leaf-visibility.md`.
-
-- `setOpenLeaf` Forest-first (`setLastTabFocus` + duck)
-- Join `markOpenLeaf` on wrap/enter-con
-- DnD CENTER `revealGroupChild(..., source: "dnd-join")`
-- L0 `bug-r054-r055-open-leaf` (failed then green)
-- Nest `smoke-toggle-tab` + `smoke-layout-tabbed-edge` PASS
-- Proto 155 ok
-
-Host: after logout, `layout dev` open leaves + DnD into TAB
-raise/focus.
-
-## Brake
+| `./scripts/forge/forge-test nested --trunk <id>` **one** CLI | Bare `forge launch` / host GUI from **agent** |
+| Hunt nest: `forge-test nested log --grep PAT --level info+` | `nested logs` (shell stderr) |
+| Always stop nest before handoff | Host `forge layout vinyl` / `dev` from agent |
 
 ```text
+cd ~/dev/me/forge && ./install --dev
 cd prototypes/container-motion && npm test
 ```
 
 ## Do not port
 
-Belt, Mode B, title→`renderTree`, entered-monitor maze, WindowManager
-façade. H1/session-restore stay parked.
+Belt, Mode B, title→`renderTree`, entered-monitor maze,
+WindowManager façade. H1/session-restore stay parked.

@@ -1449,6 +1449,40 @@ def _layout_profile_for_apply(data: Any) -> Any:
     return data
 
 
+def _layout_profile_residual(data: Any) -> str:
+    """Profile residual hint: leave|park. Missing/invalid → leave."""
+    if not isinstance(data, dict):
+        return "leave"
+    marginal = data.get("marginal")
+    if not isinstance(marginal, dict):
+        return "leave"
+    raw = marginal.get("residual")
+    if raw is None or str(raw).strip() == "":
+        return "leave"
+    residual = str(raw).strip().lower()
+    if residual in ("leave", "park"):
+        return residual
+    return "leave"
+
+
+def _layout_effective_clean(
+    *,
+    keep_others: bool,
+    clean_flag: bool,
+    profile: Any,
+) -> bool:
+    """CLI close-residuals: default on; --keep-others or residual=park off.
+
+    Explicit --clean wins over residual=park. Product default still closes
+    when the profile does not ask to park extras.
+    """
+    if keep_others:
+        return False
+    if not clean_flag and _layout_profile_residual(profile) == "park":
+        return False
+    return True
+
+
 def _layout_run_reconcile_apply_layout(
     backend: str,
     resolved: dict[str, Any],
@@ -2429,7 +2463,7 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         run_tokens,
         dry_run,
         force_launch,
-        _clean_flag,
+        clean_flag,
         force_close,
     ) = _layout_parse_tokens(tokens, args)
     tree_file = getattr(args, "tree_file", None)
@@ -2438,20 +2472,14 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
     keep_others = bool(
         getattr(args, "keep_others", False) or getattr(args, "keep", False)
     )
-    # Product default: close non-layout windows. --keep-others parks instead.
-    # --clean remains accepted (explicit close; same as default).
-    if keep_others:
-        clean = False
-    else:
-        clean = True
+    # Product default close is per-profile in `_layout_effective_clean`.
+    # `clean_flag` is explicit `--clean` only (argparse default False).
+    # residual=park parks extras unless `--clean`. --keep-others still parks.
     wait_tree_stable = layout_wait_tree_stable_enabled(
         flag=bool(getattr(args, "wait_tree_stable", False)),
     )
     if force_close and keep_others:
         _eprint("forge layout: --force only applies when closing residuals (ignored with --keep-others)")
-        force_close = False
-    elif force_close and not clean:
-        _eprint("forge layout: --force only applies when closing residuals (ignored)")
         force_close = False
 
     if action == "help":
@@ -2585,7 +2613,7 @@ def cmd_layout(backend: Optional[str], args: argparse.Namespace) -> int:
         run_tokens,
         dry_run=dry_run,
         tree_file=tree_file,
-        clean=clean,
+        clean=clean_flag,
         keep_others=keep_others,
         force_close=force_close,
         safe=safe,
@@ -2745,13 +2773,18 @@ def _layout_run_multi(
                     f"{len(targets)} (applied: {', '.join(applied)})"
                 )
                 return 1
+        run_clean = _layout_effective_clean(
+            keep_others=keep_others,
+            clean_flag=clean,
+            profile=data,
+        )
         rc = _layout_run_reconcile(
             backend,
             resolved,
             data,
             dry_run=dry_run,
             tree_file=tree_file,
-            clean=clean,
+            clean=run_clean,
             keep_others=keep_others,
             force_close=force_close,
             safe=safe,

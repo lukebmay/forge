@@ -13,7 +13,7 @@ import { Workspace, WindowType, Rectangle } from "../../mocks/gnome/Meta.js";
 import { Bin } from "../../mocks/gnome/St.js";
 import * as Utils from "../../../lib/extension/utils.js";
 import { mockSeat } from "../../mocks/gnome/Clutter.js";
-import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import { forestSlotPaintRect, seedLiveForest } from "../../../lib/extension/tom-live.js";
 
 /**
  * WindowManager pointer & focus management tests
@@ -874,12 +874,18 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
 
     const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
     const groups = wm().reassertAllTabStackSlots({ force: false });
+    const dest = forestSlotPaintRect(wm(), nChrome) || slot;
 
     expect(groups).toBe(1);
     expect(moveSpy).toHaveBeenCalledTimes(1);
     expect(moveSpy).toHaveBeenCalledWith(
       wChrome,
-      expect.objectContaining(slot),
+      expect.objectContaining({
+        x: dest.x,
+        y: dest.y,
+        width: dest.width,
+        height: dest.height,
+      }),
       null,
       expect.objectContaining({ force: false })
     );
@@ -1031,9 +1037,15 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
 
     expect(order[0]).toBe("raise");
     expect(order).toContain("move");
+    const dest = forestSlotPaintRect(wm(), nB) || slot;
     expect(moveSpy).toHaveBeenCalledWith(
       wB,
-      expect.objectContaining(slot),
+      expect.objectContaining({
+        x: dest.x,
+        y: dest.y,
+        width: dest.width,
+        height: dest.height,
+      }),
       null,
       expect.objectContaining({ force: false })
     );
@@ -1055,10 +1067,13 @@ describe("WindowManager - Meta focus signal (no reflow)", () => {
     const nB = wm().tree.createNode(tab.nodeValue, NODE_TYPES.WINDOW, wB);
     nA.mode = WINDOW_MODES.TILE;
     nB.mode = WINDOW_MODES.TILE;
-    nA.rect = { ...slot };
-    nA.renderRect = { ...slot };
-    nB.rect = { ...slot };
-    nB.renderRect = { ...slot };
+    const dest = forestSlotPaintRect(wm(), nB) || slot;
+    wA.move_resize_frame(true, dest.x, dest.y, dest.width, dest.height);
+    wB.move_resize_frame(true, dest.x, dest.y, dest.width, dest.height);
+    nA.rect = { ...dest };
+    nA.renderRect = { ...dest };
+    nB.rect = { ...dest };
+    nB.renderRect = { ...dest };
 
     const moveSpy = vi.spyOn(wm(), "move").mockImplementation(() => {});
     wB.raise = vi.fn();

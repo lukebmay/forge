@@ -47,9 +47,13 @@ language-portable; JS `lib/` is the reference impl). Forest document =
 not under a monitor; TILES size is a **percent** or **`share`**).
 **Live topology is the POJO Forest** (D092): nanoid per node; host
 Meta/St in adapter maps. **D093:** present → observe → AGREE or
-RESYNC (TOM toward REALITY; FLOAT terminator). No twin presenter
-atomics. **D100:** old-architecture Meta handlers are disconnected
-(observe/chrome only).
+RESYNC (TOM toward REALITY). **D115:** after present `move` settle,
+heal until Agree (jitter → min → TAB → FLOAT); FLOAT terminator is
+**after** that ladder. **D105:** user wait is the visible group.
+**D117:** overlay hides at visible-hard; hide-place-show; independent
+settle; focus when all required mapped.
+**D109:** chrome keys `moNwsW`. No twin presenter atomics. **D100:**
+old-architecture Meta handlers are disconnected (observe/chrome only).
 **ForgeAdapterGnome** / **ForgeAdapterWebView**
 bind and extend a host. **KeybindAdapterGnome** /
 **KeybindAdapterWebView** map the kernel table plus a host overlay

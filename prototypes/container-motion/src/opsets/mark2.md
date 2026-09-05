@@ -1,9 +1,10 @@
 # Mark 2 OpSet
 
-**Status:** prototype lock (not Shell yet)
+**Status:** product OpSet (D080). Shell via ForgeAdapterGnome; proto via
+ForgeAdapterWebView. Not a prototype-only experiment.
 **Code:** `lib/opsets/mark2.js` (proto `src/opsets/mark2.mjs` re-exports)
 **Tests:** `test/cases-mark2.mjs`, `test/cases-workflows.mjs`
-**Updated:** 2026-08-28
+**Updated:** 2026-09-04
 
 This file is the source of truth for Mark 2. Implementation lives at
 `lib/opsets/`. Changing a rule here **requires the same effort** to
@@ -74,6 +75,17 @@ and their current parent.”
 **Parent container:** the CON (or MONITOR) that currently contains the
 node. Do not say “host.”
 
+**Ops** (this file): Mark 2’s named user operations — Move, Join, Group,
+Launch, … Keyboard, pointer, commands, and run-steps resolve **only**
+to these. **Host SurfaceOps** are adapter internals (`swapPairs`,
+`slotSplit`, …) that Mark 2 may call; they are **not** a parallel user
+path and must not be named like Mark 2 Ops (D101).
+
+**Group** vs **Join:** Group is **tab intent** (always TAB/STACK;
+never split invent; never promote-join flatten). Join invents or enters
+toward `dir` and **does** promote-join flatten of cross-axis **split**
+CONs.
+
 **Size** (in-axis, D090): a **percent** or **`share`**. Percent children
 take that fraction. `share` children split leftover unused space equally
 with every sibling also set to `share`. Unused = 100% minus sum of
@@ -97,8 +109,9 @@ TreeOp `Delete` does not settle; Mark 2 `Remove` does.
    of **window-only** children becomes TABBED. If the inner H/V has a CON
    child, unwrap it instead (TABBED/STACKED children must be WINDOW). Do
    not flip H↔V to “fix” that — flipping undoes invent.
-4. v1 Move and Join act on a **WINDOW leaf**. Launch uses the selected
-   WINDOW or CON as the slot; after Launch, focus is the new WINDOW.
+4. v1 Move, Join, and Group act on a **WINDOW leaf**. Launch uses the
+   selected WINDOW or CON as the slot; after Launch, focus is the new
+   WINDOW.
 5. You cannot breakout/promote a node so it becomes a sibling of MONITOR,
    WORKSPACE, or ROOT. The only way a MONITOR’s single child CON disappears
    is unary collapse when that CON is down to one child.
@@ -126,10 +139,26 @@ container that remains.
 
 ---
 
-## SurfaceOps
+## Layers (kernel / Mark 2 / host)
 
-v1 Move/Join act on a WINDOW leaf. Launch inserts a WINDOW next to the
-selected WINDOW or CON.
+| Layer | Owns | Must not own |
+| --- | --- | --- |
+| Kernel | Pointer event *shape* + tagged hit payload; `paneRect` math | Zone names (`center`); Mutter/DOM; grab lifecycle |
+| Mark 2 | Zone/chrome policy; `pointer.hover` → descriptor; `pointer.release` → `{op,args}`; named **Ops** | St actors; `_commitDropSurface` as a user path |
+| Host adapter | Grab, coords, hit query, paint preview, present/observe | Tiling policy; `resolveDropSurface` fallthrough; `Mark2Drop*` commands |
+
+```text
+Host → OpSet.pointer.hover|release(ev)
+     → OpSet policy (zones/chrome)
+     → OpSet.ops.group|move|join|…
+```
+
+## Ops
+
+v1 Move/Join/Group act on a WINDOW leaf. Launch inserts a WINDOW next to
+the selected WINDOW or CON. Pointer `hover`/`release` resolve onto these
+same named Ops (D101). `lib/opsets/mark2.js` grows `pointer` in plan U2
+— until then Gnome DnD is a stale dual path, not a second glossary.
 
 ### Move(dir)
 
@@ -144,6 +173,12 @@ Does not invent structure.
 
 Wrap beats cross-monitor: `H(A,B)|H(C,D)` B→ stays on mon1 as `H(B,A)`.
 
+Pointer in-axis adjacent edge and same-strip reorder resolve to Move
+(`args.onto` names the sibling; one hop, not repeated neighbor swaps).
+Empty-monitor and cross-mon onto an empty dest resolve to Move with
+`onto` = MONITOR id (`transferLeafToMonitor`; pointer may skip the
+inner-edge gate keyboard Move still uses).
+
 ### Join(dir)
 
 Invent or enter structure toward `dir`.
@@ -153,12 +188,20 @@ Invent or enter structure toward `dir`.
    wrap those two, any dir (this is the MONITOR’s sole child CON).
 3. In-axis sibling WINDOW → wrap the pair.
 4. In-axis sibling CON, CON is in-axis for `dir` → **enter** that CON at
-   the near edge (arrive from the right → append; from the left → prepend).
+   the near edge (see **Enter a TAB/STACK bag — child index**).
 5. In-axis sibling CON, CON is cross-axis for `dir` → flatten that CON’s
    children into the parent container and insert the leaf at the boundary
    (promote-join).
 6. Otherwise breakout/promote in `dir`, settle, then Join again against the
    new sibling in `dir`.
+
+Pointer tile-edge hits that are not in-axis adjacent Move resolve to
+Join (`args.onto` = the hit WINDOW). Do not use Join for CENTER or
+strip-enter — those are Group.
+
+Pointer edge onto a WINDOW whose parent is a **sibling** TAB/STACK:
+**slot-split** — flip/wrap grab with that bag on the zone axis
+(LEFT/RIGHT → HSPLIT, TOP/BOTTOM → VSPLIT). Do **not** enter the bag.
 
 Worked:
 
@@ -172,6 +215,16 @@ C has no left sibling in its TAB, so it breakouts onto the HSPLIT, unary
 collapse leaves D, then C enters TAB(A,B) at the near (right) edge.
 
 ```text
+Given:   Mon1(H(TAB(A,B),TAB(D,C)))
+Join(C, left)
+Expect:  Mon1(H(TAB(A,B),V(C,D)))
+```
+
+C’s in-tab left sibling is D, so in-axis wrap-pair (emptied TAB under H
+invents V). Not breakout-enter. Nest Given must present `TAB(C,D)` with
+C first — CENTER Group appends the joiner last.
+
+```text
 Given:   Mon1(H(V(A,B),V(C,D)))
 Join(C, left)
 Expect:  Mon1(H(A,B,C,D))
@@ -179,6 +232,90 @@ Expect:  Mon1(H(A,B,C,D))
 
 Breakout then flatten the cross-axis V on the left — not wrap-pair
 `TAB(C,D)`.
+
+### Group(dir)
+
+**Tab intent.** Keyboard optional; pointer CENTER and foreign-strip
+enter. Always TAB/STACK — never split invent, never promote-join flatten
+of a tab.
+
+1. Sibling WINDOW under H/V → flip parent to TABBED when those two are the
+   only children; else wrap the pair as TABBED.
+2. Sibling TABBED/STACKED CON → **enter** that CON (**any** approach dir —
+   U/D into a tab still enters). Child index: see table below.
+3. Pointer `onto` WINDOW that is **not** a sibling (same MONITOR after
+   transfer): wrap-tab **at onto's slot** (peel grab; dest pane becomes
+   the bag). If onto's parent is already TABBED/STACKED, peel grab next
+   to that bag and enter. Bag as the MONITOR's only child → enter the
+   bag in place (cannot sibling a MONITOR).
+4. Pointer `onto` a foreign TAB/STACK CON (strip): enter that bag even
+   when grab is not yet a sibling (peel next to the bag; MONITOR-only
+   bag → enter in place). Cross-mon: enter the dest bag **directly**
+   (do not insert grab as a dest MONITOR/H sibling first).
+5. Else fail closed (do **not** silently Join).
+
+Pointer may pass `args.onto` (WINDOW or TAB/STACK CON). If `onto` is
+already the in-dir sibling, run the same steps. If `onto` is on another
+MONITOR, peel grab **at onto's slot** (steps 3–4). Do **not** prelude
+with `transferLeafToMonitor` into dest's sole CON or as a third
+MONITOR child — that reflows dest (R060). `transferLeafToMonitor` is
+Move onto a MONITOR / empty dest. If `onto` is not a legal Group
+target, noop — never Join, never host `mergeWindowsIntoGroup`.
+
+### Enter a TAB/STACK bag — child index
+
+Keyboard Join/Group and pointer Group share this table. Geometry `dir`
+(grab → onto) is **not** the CENTER index.
+
+| Gesture | Child list |
+| --- | --- |
+| Keyboard Join/Group `dir=left` or `up` | **append** (end) |
+| Keyboard Join/Group `dir=right` or `down` | **prepend** (index 0) |
+| Pointer **CENTER** (five-zone Group) | **append** (end). `place: "end"`. No `insertIndex`. Ignore grab→onto dir for index |
+| Pointer **strip** `insertIndex` | insert-before that gap |
+
+CENTER must not guess a strip gap from pointer coords. Strip is the only
+`insertIndex` source.
+
+Worked:
+
+```text
+Given:   Mon1(H(A,B))
+Group(A, right)
+Expect:  Mon1(TAB(A,B))
+```
+
+```text
+Given:   Mon1(TAB(A,B),C) | Mon2(TAB(D,E))
+Actions: Select(E); Group onto TAB(A,B)
+Expect:  Mon1(TAB(A,B,E),C) | Mon2(D)
+         not Mon1(H(TAB(A,B),C,E)) / wrap-all-three dest
+```
+
+```text
+Given:   Mon1(H(A, TAB(B,C)))
+Actions: Pointer release grab=A hit=window B center
+Expect:  Mon1(TAB(B,C,A))
+         not TAB(A,B,C) unless A was already first
+```
+
+```text
+Given:   Mon1(H(A, TAB(B,C)))
+Actions: Select(A); Join(right)
+Expect:  Mon1(TAB(A,B,C))
+```
+
+```text
+Given:   Mon1(H(TAB(A,B), C))
+Actions: Select(C); Join(left)
+Expect:  Mon1(TAB(A,B,C))
+```
+
+```text
+Given:   Mon1(TAB(A,B,C))
+Actions: Pointer strip grab=D insertIndex=1
+Expect:  Mon1(TAB(A,D,B,C))
+```
 
 ### ToggleSplit (m)
 
@@ -340,6 +477,150 @@ Expect:  Mon1(H(V(A,B,D),C))
 ```
 
 Wrap V around V would same-type; insert as last child of V.
+
+---
+
+## Pointer
+
+D101. User-facing pointer API is abstract input — **not** host commands
+named after zones (`Mark2DropCenter`, …). Keyboard and pointer for the
+same intent share the same named Ops. Zone geometry and drop-chrome
+policy are **Mark 2 data**. Host captures grab/coords, hit-tests, paints
+descriptors, presents.
+
+### Event shape (kernel; host fills)
+
+```text
+ev = {
+  world: { x, y },                    // desktop/world px
+  grab:  { id, kind: "window", mins? },
+  hit:   TaggedHit
+}
+
+TaggedHit =
+  { tag: "window",         id, paneRect }
+  { tag: "empty-monitor",  id, workArea }
+  { tag: "strip",          id, axis: "x"|"y", insertIndex }
+  { tag: "none" }
+```
+
+- `id` is the TOM nanoid (WINDOW, MONITOR, or TAB/STACK CON).
+- `paneRect` / `workArea` are AABBs from kernel `paneRect` / world bag.
+- `insertIndex` is the host chrome gap (chip geometry is paint; the gap
+  is a hit fact).
+- `mins` on grab are optional Meta min-size facts for refuse.
+- Host **must not** put a zone name on `ev`. FLOAT / non-TILES grab →
+  treat as miss (`hit.tag = "none"`).
+
+### hover(ev) — no TOM write
+
+Returns a chrome/preview **descriptor** only:
+
+```text
+{
+  paint:   "tile-zones" | "empty-monitor" | "strip" | "none",
+  zone:    "center" | "left" | "right" | "top" | "bottom" | null,
+  preview: { rect, style: "tabbed" | "stacked" | "tiled" | "invalid" | "none" },
+  refuse:  boolean,
+  would:   { op, args } | null    // same payload release would return
+}
+```
+
+Host paints `preview` (maps `style` to CSS). Host **never** executes
+`would` on hover. `refuse` (mins overflow / illegal) → `style: "invalid"`.
+
+### release(ev) — one named op or noop
+
+Returns `{ op, args }` or `{ op: null }` (noop). Caller then runs
+`ops[op](forest, api, args.dir)` with pointer `onto` when present.
+
+```text
+args = { dir: "left"|"right"|"up"|"down", onto?: nodeId, insertIndex?: number, place?: "end" }
+```
+
+Keyboard omits `onto` (target = sibling-in-dir / neighbor monitor).
+Pointer `onto` is the hit WINDOW, TAB/STACK CON, or MONITOR. If the
+named op fails or `hit.tag = "none"` or `refuse` → `{ op: null }`.
+One release → at most one `{op,args}`. Do not invent `Mark2Drop*`.
+
+### Five-zone tile (Mark 2 data)
+
+On a `window` hit, zones are built from `hit.paneRect` U:
+
+- Center C: half width/height of U, centered
+  (`C.w = U.w/2`, `C.h = U.h/2`, `C.x = U.x+U.w/4`, `C.y = U.y+U.h/4`).
+- Edges: trapezoids joining corresponding corners of C and U.
+- Hit: outside U → not this tile; inside C → `center`; else the
+  containing trapezoid (residual inside U → nearest outer edge).
+- Independent of grab origin. Zone ids are Mark 2 (`center` / `left` /
+  `right` / `top` / `bottom`) — never host command names.
+
+`dnd-center-layout=SWAP` is **not** a live mapping. CENTER is always
+Group.
+
+### Zone → named op
+
+**`window` hit** (five-zone of `onto` = that WINDOW):
+
+| Zone | Op | `dir` | Notes |
+| --- | --- | --- | --- |
+| `center` | `group` | grab → onto (peel/transfer only) | Child index is **end** (`place: "end"`). No `insertIndex`. Fail closed if Group would fail. Never Join, never host merge. |
+| `left` / `right` / `top` / `bottom` | `move` | zone dir | Only if grab and onto are **in-axis adjacent siblings** of the same H/V parent and the zone axis matches that split (swap / reorder). |
+| `left` / `right` / `top` / `bottom` | `join` | zone dir | Every other tile edge (invent / enter / breakout-retry; includes monitor transfer as Join step 1 when `onto` is off-monitor). |
+
+**`empty-monitor` hit:** `{ op: "move", args: { dir, onto: monitorId } }`.
+`dir` = world direction from grab’s MONITOR toward the hit MONITOR.
+Runs `transferLeafToMonitor` (same helper keyboard Move step 3 uses).
+Pointer **may** transfer even when the leaf is not at the inner MONITOR
+edge — the empty-monitor hit *is* the aim. Dest occupancy is a host
+tagging fact (gap on an occupied head may still be `empty-monitor`).
+Same-monitor empty hit → noop.
+
+**`strip` hit:** `onto` = the TAB/STACK CON; `dir` from grab toward that
+CON (or along `axis` from insertIndex). Pass `insertIndex` (insert-before
+gap). Same CON as grab’s parent → `{ op: "move", args: { dir, onto,
+insertIndex } }` (one hop). Foreign CON → `{ op: "group", args: { dir,
+onto, insertIndex } }` (Group enter at that gap; off-monitor → enter
+dest bag, do not dump as dest sibling).
+
+**`none`:** hover paints nothing; release noop.
+
+**Cross-mon `window` / `strip`:** same tables; `onto` names the dest
+node. Off-monitor → the named op transfers (`transferLeafToMonitor`)
+then runs its usual steps against `onto`. No host insert/wrap catalog.
+
+**Mins:** if grab+dest would overflow slot/workarea mins, hover
+`refuse: true` + `style: "invalid"`; release `{ op: null }`. OpSet
+decides; host may supply `grab.mins`.
+
+Worked:
+
+```text
+Given:   Mon1(H(A,B))
+Actions: Pointer release grab=A hit=window B center
+Expect:  Mon1(TAB(A,B))
+```
+
+```text
+Given:   Mon1(H(TAB(B,C),A))
+Actions: Pointer release grab=A hit=window B center
+Expect:  Mon1(TAB(B,C,A))
+```
+
+```text
+Given:   Mon1(H(A,B)) | Mon2()
+Actions: Pointer release grab=A hit=empty-monitor Mon2
+Expect:  Mon1(B) | Mon2(A)
+```
+
+```text
+Given:   Mon1() | Mon2(H(A,B))
+Actions: Pointer release grab=A hit=empty-monitor Mon1
+Expect:  Mon1(A) | Mon2(B)
+```
+
+Join empty dest (keyboard, MONITOR edge) is the same transfer, not a
+no-op. Keyboard Move at an in-axis H/V edge still wraps.
 
 ---
 

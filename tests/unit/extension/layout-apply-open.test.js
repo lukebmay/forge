@@ -12,6 +12,7 @@ import {
   startOpenPhase,
   waitPinsOnSignals,
 } from "../../../lib/extension/layout-apply-open.js";
+import { ensureMetaOnWorkspace } from "../../../lib/extension/adapter-open-place.js";
 import { assignOpenRolePins } from "../../../lib/shared/layout-open.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -377,8 +378,7 @@ describe("startOpenPhase", () => {
         releaseDeferred: () => ({ ok: true }),
         endBatch: () => ({ ok: true }),
         snapshotForest: () => phForest,
-        waitPins: (_p, _o, done) =>
-          done({ ok: true, rolePins: { inkscape: 300 }, missing: [] }),
+        waitPins: (_p, _o, done) => done({ ok: true, rolePins: { inkscape: 300 }, missing: [] }),
       },
       onComplete: () => {},
     });
@@ -544,8 +544,7 @@ describe("startOpenPhase", () => {
           // First call: PH lookup; later: residual (inkscape on wrong ws).
           return snapN === 1 ? phForest : wrongWsForest;
         },
-        waitPins: (_p, _o, d) =>
-          d({ ok: true, rolePins: { inkscape: "300" }, missing: [] }),
+        waitPins: (_p, _o, d) => d({ ok: true, rolePins: { inkscape: "300" }, missing: [] }),
       },
       onComplete: (o) => done.push(o),
     });
@@ -780,6 +779,58 @@ describe("startOpenPhase", () => {
     expect(done[0].failures).toContain("bad");
     expect(done[0].rolePins["ghostty-left"]).toBe(5);
   });
+
+  it("spawn order: open leaf A before TILE C before buried B", () => {
+    const spawned = [];
+    const phForest = {
+      monitors: [
+        {
+          nodeType: "MONITOR",
+          id: "mo0ws0",
+          children: [
+            phWin("ph-a", "A", "mon0.tab"),
+            phWin("ph-b", "B", "mon0.tab"),
+            phWin("ph-c", "C", "mon0.tile"),
+          ],
+        },
+      ],
+    };
+    startOpenPhase({
+      openActions: [
+        { op: "open", role: "B", slot: "mon0.tab", open: { app: "b" } },
+        { op: "open", role: "C", slot: "mon0.tile", open: { app: "c" } },
+        { op: "open", role: "A", slot: "mon0.tab", open: { app: "a" } },
+      ],
+      profile: {
+        layout: {
+          mon0: {
+            children: [{ layout: "tabbed", roles: ["A", "B"], active: "A" }, { roles: ["C"] }],
+          },
+        },
+        roles: [
+          { id: "A", slot: "mon0.tab" },
+          { id: "B", slot: "mon0.tab" },
+          { id: "C", slot: "mon0.tile" },
+        ],
+      },
+      flags: { clean: true },
+      deps: {
+        spawn: (_f, action) => {
+          spawned.push(action.role);
+          return { ok: true, waitClasses: ["x"] };
+        },
+        placeNext: () => ({ ok: true }),
+        beginBatch: () => ({ ok: true }),
+        releaseDeferred: () => ({ ok: true }),
+        endBatch: () => ({ ok: true }),
+        snapshotForest: () => phForest,
+        desiredForest: () => phForest,
+        waitPins: (_p, _o, d) => d({ ok: true, rolePins: { A: 1, B: 2, C: 3 }, missing: [] }),
+      },
+      onComplete: () => {},
+    });
+    expect(spawned).toEqual(["A", "C", "B"]);
+  });
 });
 
 describe("buildResidualPlan rolePins", () => {
@@ -939,5 +990,19 @@ describe("applyOpenResultToRun", () => {
     expect(run.openRan).toBe(true);
     expect(run.structureBuilt.openCount).toBe(0);
     expect(run.structureBuckets).toBeTruthy();
+  });
+});
+
+describe("ensureMetaOnWorkspace", () => {
+  it("re-pins even when get_workspace already reports the target", () => {
+    const calls = [];
+    const meta = {
+      get_workspace: () => ({ index: () => 1 }),
+      change_workspace_by_index: (ws, _onEnd) => {
+        calls.push(ws);
+      },
+    };
+    expect(ensureMetaOnWorkspace({}, meta, 1)).toBe(false);
+    expect(calls).toEqual([1]);
   });
 });

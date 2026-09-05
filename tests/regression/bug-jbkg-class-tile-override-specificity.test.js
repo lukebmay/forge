@@ -28,10 +28,12 @@ describe("Bug forge-jbkg: class-only tile override does not force-tile type-floa
 
   it("floats a DIALOG of a class that has a bare class-only tile override", () => {
     setOverrides([{ wmClass: "evolution", mode: "tile" }]);
+    const parent = createMockWindow({ wm_class: "evolution", title: "Inbox" });
     const dialog = createMockWindow({
       wm_class: "evolution",
       title: "Send / Receive",
       window_type: WindowType.DIALOG,
+      transient_for: parent,
     });
     expect(wm().isFloatingExempt(dialog)).toBe(true);
   });

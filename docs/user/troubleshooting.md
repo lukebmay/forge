@@ -121,9 +121,10 @@ exception and stays above. If a tab still ignores clicks:
    `journalctl -e -u gnome-shell`.
 
 Do **not** confuse a leftover **layout apply dim** (full-screen scrim while
-`forge layout` runs — see below) with a missing tab strip. Apply overlay
-sits above the tab-chrome layer on purpose; stuck dim is an overlay bug,
-not a `trackChrome` / restack issue.
+`forge layout` runs) with a missing tab strip. Apply overlay sits above
+the tab-chrome layer on purpose; stuck dim is an overlay bug, not a
+`trackChrome` / restack issue. The dim should drop once **visible** panes
+are placed; hidden tabs may still finish — see [layout.md](layout.md).
 
 ## Tab stays pressed / floating chip or drop zones stick
 

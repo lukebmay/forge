@@ -26,10 +26,13 @@ Preferred install path: `./install` / `forge install`. Low-level helpers:
 positional DnD no-op, no restore when a TILE Meta-fullscreens). The failure
 class is “bypass the named API.”
 
-**Choice (D023–D026):** one catalog — [docs/dev/contracts.md](dev/contracts.md).
-New behavior extends that API first. Drop CENTER on H/V siblings is a group
-op (`mergeWindowsIntoGroup`). Live show-in-group is one reveal helper. TILE
-slot is geometry authority; unsolicited Meta fullscreen/size snaps back.
+**Choice (D023–D026, translated):** one catalog — [docs/dev/contracts.md](dev/contracts.md).
+New behavior extends that API first. **D023** still means “use the named
+child-list API, do not hand-roll splice” — that API is now **TOM Forest
+atomics** (D092/D096), not GObject `Node`. Drop CENTER on H/V siblings is
+a group op (Mark 2 Group, D101; leftover name `mergeWindowsIntoGroup`).
+Live show-in-group is one reveal helper. TILE slot is geometry authority
+via **present + D095/D115**, not idle restore-to-slot (**D026 superseded**).
 
 Catalog: [docs/dev/contracts.md](../docs/dev/contracts.md). Plan archived
 (absorbed into firm-abstractions).
@@ -59,20 +62,38 @@ decide TOM moves → present → observe within ε → AGREE or heal. GObject
 plan `forge-retire-gobject-topology`). Adapter `Map<id, bag>` holds
 Meta/St/chrome. FLOATS is a live bag — never under TILES ROOT.
 
-**TOM ↔ reality (D092, D093, D096):** One **model** topology (TOM Forest).
-Presenter = `present` / `observe` host verbs, not a second child-list.
-Mark 2 mutates TOM only. After an OpSet op **or** host event: present →
-observe → **AGREE** or **DRIFT**. **RESYNC** = TOM-only atomics + RuleSet
-**toward REALITY**, then present; **FLOAT terminator**. Mark 2 / Launch
-only after AGREE.
+**TOM ↔ reality (D092, D093, D096, D115):** One **model** topology (TOM
+Forest). Presenter = `present` / `observe` host verbs, not a second
+child-list. Mark 2 mutates TOM only. Two disagreement **directions** —
+do not mix them:
+
+| When | Actor | Value | Then |
+| --- | --- | --- | --- |
+| **Host event** challenges TOM (map, destroy, user float, workspace **spine**) | Adapter `observe` | Meta = REALITY | **AGREE**, or **RESYNC** = TOM-only atomics + RuleSet **toward REALITY**, then present. FLOAT terminator if TILE cannot represent that reality |
+| After Forge **presents** a TILE dest | `heal-ladder.js` via `_scheduleGeomEpsilonObserve` | TOM **desired** slot AABB vs Meta **observed** frame | Wait settle → observe → **AGREE**, or **D115 ladder** until Agree. FLOAT **after** the ladder **is** Agree (D093 timing) |
+
+Mark 2 / Launch only after AGREE. D100 disconnected handlers are
+**not** this loop (no idle restore-to-slot, no entered-monitor rehome).
 
 **Chrome Z (D096):** Window border inseparable from that window in Z (no
 other window — tracked or not — between them). TABBED/STACKED strips as
 close as possible in Z to the visible app(s).
 
-**Chrome identity (D109):** TILE strips/borders key off Forest MONITOR
-`moNwsW` (workspace **and** monitor), never monitor index alone; wrap
-rows inset the window slot by another `stacked-tab-bar-height`.
+**Chrome identity (D109 — FIRM):**
+
+**Problem:** WS2 + Guake still showed WS1 TILE borders/strips. Chrome
+keyed on workspace index, or default-showed when a Forest MONITOR id
+existed. Wrap-row tab bars covered app chrome.
+
+| Word | Who | What |
+| --- | --- | --- |
+| **`moNwsW`** | Forest MONITOR id | Pair **monitor N + workspace W**. A strip or TILE border is visible only when that pair is **live** (Shell active workspace **and** that output) |
+| **FLOAT chrome** | FLOATS bag | Guake / floats use FLOATS chrome (Meta frame) only — not TILE strips |
+| **Wrap inset** | Presenter `forestSlotPaintRect` / `presentWmSlots` | TABBED wrap rows inset Meta/content by `rowCount × stacked-tab-bar-height`. Wrap 1↔2 must rewrite those rects |
+
+**Rejected:** default-show when the Forest MONITOR id exists;
+ws-index-only gate (D103). **Does not** put FLOAT under a MONITOR
+(D087) or reconnect D100 handlers.
 
 **Shortcuts overlay (D113):** In-shell cheatsheet fits the current
 monitor (aspect columns + scroll + collapsible headings). Float
@@ -88,21 +109,32 @@ PlaceNext “wait for role title” is apply identity, not this path.
 
 **D100 (lock — supersedes executing the old handlers):** the live-bug
 Meta catalog is **disconnected**. Signal default is observe (D098). Nest
-must show whether Forest+ε holds **without** entered-monitor rehome,
-idle TILE restore-to-slot, title/class→`renderTree`, workspace
-follow-the-window rehome, or fullscreen→`renderTree`. Grab, map/admit,
-destroy, workspace **spine**, settings, overview, and PlaceNext identity
-stay. H1 / session-restore remain on disk, parked — not v1. Next: thin
+must show whether Forest+ε+**D115** holds **without** those handlers.
+Heal after present is `heal-ladder.js`, **not** reconnecting this list.
+
+| Keep (still connected) | Disconnect (observe / chrome / log only) |
+| --- | --- |
+| `window-created` / admit, destroy/unmanaged | `window-entered-monitor` **rehome** |
+| grab begin/end | per-window `workspace-changed` home reconcile |
+| workspace **spine** add/remove/reorder | workspace `window-added` rehome |
+| settings, overview | idle `size-changed` / `position-changed` / `notify::fullscreen` **restore-to-slot** / overflow-rehome / `renderTree` / `onExternalGeometry` |
+| apply / PlaceNext identity | idle `notify::title`→`renderTree` / float-reason (label paint only — D099) |
+| user always-on-top | idle `notify::wm-class`→`renderTree`; `in-fullscreen-changed`→`renderTree`; raise-float `renderTree` |
+
+H1 / session-restore remain on disk, **parked** — not v1. Next: thin
 named ForgeAdapterGnome modules, then **delete** `window.js` (no façade).
 Do **not** port belt, Mode B, title→`renderTree`, or the entered-monitor
-maze into the new adapter.
+maze into the new adapter. Do **not** reconnect the disconnect column
+to “help” D115.
 
 ```text
 Meta map / host event → observe(reality)
-        → admit/RESYNC TOM (belief toward reality)
+        → admit/RESYNC TOM (belief toward reality)     D093; D100 observe-only for disconnected catalog
         → Mark 2 / layout intent (mutate Forest)
         → present(forest, bags)   Meta verbs + St by nanoid
-        → observe → AGREE? else heal
+        → wait settle (heuristics; D105 = visible group, not other-mon desk)
+        → observe Meta vs TOM desired
+        → AGREE? else D115 heal ladder (FLOAT after ladder = Agree)
 ```
 
 **Forbidden:** twin child-list atomics; GObject `parentNode`/`childNodes`
@@ -154,16 +186,27 @@ left to grow handlers.
 A TOM WINDOW leaf is a POJO — it does **not** subscribe. Not every
 `Meta.Window` is a TILE leaf (FLOAT, `ignore`, dialogs).
 
-**Host event vs Mark 2 (D097, D098):** Signal default is **no-op**.
-Observe; act only when Meta **challenges TOM** outside ε. In-ε jitter
-does nothing. **Title** ticks are not a TOM challenge — they go to
-**chrome** (D099): instant label, debounced one size pass. After a real
-disagreement, **wait** (settle-heuristics, per host+class) so the app
-can finish, then RESYNC with
-**Mark 2 RuleSet** toward reality (FLOAT terminator). The handler may
-be written *to* Mark 2 (legal forest, unary, max-1) but **must not be**
-Mark 2 (not OpSet Move/Join/Group/Launch). User chords / pointer / layout
-apply are the OpSet (D101).
+**Host event vs Mark 2 (D097, D098, D115):** Signal default is **no-op**.
+Observe; act only when Meta **challenges TOM** outside ε (existence,
+mon/ws, host float, frame that we did **not** just command). In-ε
+jitter does nothing. **Title** ticks are not a TOM challenge — they go
+to **chrome** (D099): instant label, debounced one size pass.
+
+After a **host-event** disagreement: **wait** (settle-heuristics, per
+host+class) so the app can finish, then **RESYNC TOM toward REALITY**
+with Mark 2 **RuleSet** (legal forest, unary, max-1). FLOAT terminator
+if TILE cannot represent reality.
+
+After a **present** disagreement (we commanded a slot; Meta missed):
+that is **not** “TOM was wrong.” Do **not** RESYNC the slot away.
+Walk **D115** (jitter → learn min → TAB → FLOAT). FLOAT then **is**
+Agree.
+
+The handler may be written *to* Mark 2 (invariants) but **must not be**
+Mark 2 (not OpSet Move/Join/Group/Launch). User chords / pointer /
+layout apply are the OpSet (D101). D115 Group enter/wrap **is** Mark 2
+Group (`place: "end"`) on the present-heal path — same Ops, not a
+second table.
 
 **Delete `WindowManager` (D098):** not a façade, not a re-export file.
 Extracts are named modules with one job. Spies import the adapter.
@@ -195,16 +238,27 @@ do not rescan `tree.js` / `window.js`.
 | **Keybind overlay** | Per-adapter extra chords (D088). WebView `Super+a`/`Super+q`; Gnome `Super+q` = quit |
 | **World** | MONITOR workarea (`lib/world/` WeakMap; not Node.geom); neighbor queries. **Host adapter fills** the bag |
 | **Presenter math** | Slots → AABB (`lib/presenter/` paneRect). D069/D046/D030 are **Gnome adapter** paint policy |
-| **Host adapter** | Native window ↔ WINDOW, signals, `present`/`observe`, bags, FLOATS paint. **D093** AGREE/RESYNC toward REALITY (TOM atomics only). Not a second child-list |
-| **Epochs** | Apply, session restore, H1 — three forest writers (product; Meta wait is Gnome adapter) |
+| **Host adapter** | Native window ↔ WINDOW, signals, `present`/`observe`, bags, FLOATS paint. **D093** host-event RESYNC toward REALITY (TOM atomics only). **D115** present-path heal (`heal-ladder.js`). Not a second child-list |
+| **Epochs** | Apply is a live forest writer. Session restore + H1 are **parked** (D100) — on disk, not v1. Meta wait is Gnome adapter |
 | **Surfaces** | Pointer *gesture* (host grab/hit/paint), CLI, DBus, adapter key overlays |
 
 Pointer commit is `OpSet.pointer.release` → named **Ops** (D101). Host
 `_commitPointerOp` / `runMark2` is plumbing, not a second OpSet and not a
-user path. Product Move **is** Mark 2 Move (D080). **TAB bag child index
-(D108):** CENTER Group always last child (`place: "end"`); strip uses
-`insertIndex`; keyboard Join/Group `left`/`up` append, `right`/`down`
-prepend. RuleSet + keybinds:
+user path. Product Move **is** Mark 2 Move (D080). Glossary lives in
+`mark2.md` — not in handoff paraphrases.
+
+| Word | Meaning | Rejected |
+| --- | --- | --- |
+| **Ops** | Mark 2 user operations (Move, Join, Group, Launch, …) | Host SurfaceOps (`swapPairs`, `slotSplit`) as a user path |
+| **Move** | Reorder / transfer; empty dest MONITOR = `onto` that MONITOR (`transferLeafToMonitor`, D112) | `move_to_monitor` as tiling policy; belt |
+| **Join** | Invent or enter toward `dir` (includes promote-join flatten of cross-axis **split** CONs) | Calling Join “group” |
+| **Group** | Tab intent only (TAB/STACK wrap/enter; never split invent) | `Mark2Drop*`; CENTER as swap |
+| **place: "end"** (D108) | Pointer CENTER Group **appends**. Keyboard Join/Group `left`/`up` append, `right`/`down` prepend. Strip uses `insertIndex` | Guessing a CENTER strip gap from pointer coords |
+| **onto** | Pointer target id (WINDOW, TAB/STACK CON, or MONITOR). Keyboard omits `onto` | Zone-named host commands |
+
+**TAB bag child index (D108):** CENTER Group always last child
+(`place: "end"`). D115 Group enter/wrap uses that same index. RuleSet +
+keybinds:
 [`ruleset.md`](plans/archived/completed/forge-firm-abstractions/ruleset.md),
 [`keybinds.md`](plans/archived/completed/forge-firm-abstractions/keybinds.md).
 
@@ -341,10 +395,14 @@ like one “windows all piled on primary” bug. They are not. Each layer below
 catches a **different** failure mode. Stacking another debounce or second
 snapshot “just in case” is how `window.js` grew safety nets without a map.
 
-**D100:** H1 / session-restore stay on disk, **parked** — not v1 of the
-thin adapter. `window-entered-monitor` does **not** rehome (observe
-only). Do not port that maze. Overnight lock/wake proof waits until
-the Forest loop holds without the old handlers.
+**D100 (FIRM — live vs parked):** H1 monitor-recovery, entered-monitor
+rehome, idle restore-to-slot, and title/class→`renderTree` are
+**disconnected / parked**. The map below is the **maze on disk** so
+nobody re-ports it as v1. Daily-driver geometry is present → D095/D115.
+**D102 present-hold** and `safeMoveToMonitor` **stay** (unlock SEGV).
+Do not reconnect the D100 disconnect list to “help” heal. Overnight
+lock/wake **proof** waits until the Forest loop holds without those
+handlers.
 
 **Rule for agents:** document and extract (see codebase audit plan). Do **not**
 delete shield / hold / richness, and do **not** merge the two monitor-resolve
@@ -459,6 +517,27 @@ Full inventory (queue, workspace, Wayland stack, keyboard resize, …) and
 No orphan recovery timers found at audit time; keep teardown lists in sync when
 extracting monitor-recovery / session-restore modules.
 
+### Geometry loop: ε then heal (D095 + D115 — FIRM)
+
+**Product:** i3/sway-style TILE on GNOME. After Forge places a window,
+it must sit in its Forest slot **or** honestly FLOAT. ε exists to
+**detect** misses (Ghostty character cells, Inkscape min size), not to
+ignore them and not to `force: true` shove.
+
+**One story (do not pick a lock and skip the rest):**
+
+| Lock | Job | Does not |
+| --- | --- | --- |
+| **D095** | Words + ε. Near miss may bump ε for that wm-class. Evidence-only writes. **No** `force: true` | Ignore far misses; treat ε as “close enough, stop caring” |
+| **D111** | Heal **rung 1**: re-issue the **same** Forest slot AABB (`geomUndersizeRetry`) | Learn map-size as min before jitter is exhausted; class-name branches |
+| **D115** | After present `move` settle: Agree **or** walk the ladder until Agree. Owner `lib/extension/heal-ladder.js` | Whole-desk wait on another monitor (D105); reconnect D026 idle restore |
+| **D093** | Host-event RESYNC is TOM **toward REALITY**. FLOAT terminator | FLOAT *instead of* jitter/TAB after **present** |
+| **D105** | User wait / overlay / E2E = **visible group** on the active workspace | Hold “desk ready” on an off-screen slot |
+| **D117** | Overlay hide = **visible-hard**. Spawn visible-first. Independent WINDOW settle. Hide-place-show. Focus when all required **mapped** | Overlay until Done.ok (D071 lifetime); SM5 focus-after-all-hard ε; show-then-move; wait band N ε before spawn N+1 |
+| **D100** | Old idle restore / entered-monitor stay **disconnected** | Heal by turning those handlers back on |
+| **D049** | Overflow: **frame > slot** → same-mon tab BFS / FLOAT (`rehomeIfSlotTooSmall`) | D115 **undersize** (frame **<** commanded dest) |
+| **D069** | TAB/STACK peers share one content rect; **visible-first** on primary present | `force: true` epoch-end reassert; “heal until sure” waves |
+
 ### Settled slot authority (D095 — FIRM)
 
 **Context (2026-08-30 meeting):** Forge kept calling Mutter
@@ -466,7 +545,8 @@ extracting monitor-recovery / session-restore modules.
 `force: true` (skip the size-check and write anyway) **thrashed** the
 desk, burned CPU, and **hid bugs** in the first present. D095 is that
 meeting’s lock. It does **not** mean “never fix a window that missed
-its slot.”
+its slot.” D114 restated the words after “far miss” was misread as
+“do not fix.” D115 is the far-miss **action**.
 
 **Words (do not mix):**
 
@@ -485,8 +565,8 @@ miss are **outside ε**. ε does **not** mean “ignore far misses.”
 
 | Outside ε | Meaning | What we do |
 | --- | --- | --- |
-| **Near miss** | Outside ε but inside the **near-band** (`max(2×ε, ε+8)` → 12 px at ε₀) | May retry; after 3 near fails, **forgive** by bumping ε for that **wm-class** (jitter, not a broken slot) |
-| **Far miss** | Outside the near-band (Inkscape 700×651 vs commanded ~1878×1048) | **Still a miss.** Retry the **same desired dest** with evidence (logged). Do **not** bump ε (that would call 1178 px “acceptable”). Do **not** `force: true` (bypass the check and shove). If Meta still refuses: mins path, or D093 **FLOAT** terminator — not a geometry sledgehammer |
+| **Near miss** | Outside ε but inside the **near-band** (`max(2×ε, ε+8)` → 12 px at ε₀) | Tiny leftover vs commanded. May retry; after 3 near fails, **forgive** by bumping ε for that **wm-class**. This is **not** D115 app jitter (Ghostty cells / Inkscape min — those are far or a self-resize we command again) |
+| **Far miss** | Outside the near-band (Inkscape 700×651 vs commanded ~1878×1048) | **Still a miss.** Walk the **D115 heal ladder** (jitter same-dest → learn min → TAB enter → TAB wrap → FLOAT). Do **not** bump ε. Do **not** `force: true` |
 
 **“Write a resize only if observed still disagrees after desired is
 recomputed”** means: after TOM says the slot changed (or we just
@@ -518,6 +598,60 @@ Plan (archived):
 — **S1–S6 shipped**; **S7 deferred** until zoom regress; S8 closeout done.
 Amends D069 heal posture + chrome D071 epoch-leave force-heal note.
 
+### After-act observe + heal ladder (D115 — FIRM)
+
+**Context (2026-09-04):** ε was written so densely that “far miss / no
+`force: true`” was read as “leave Inkscape at 700×651.” The 2026-08-30
+meeting’s point still holds: do not shove frames blindly. The **product**
+point of ε is: **apps jitter** (Ghostty character cells, Inkscape min
+size). We notice, we correct, we only give up TILE when no legal slot
+exists. FLOAT is then **Agree** (escape hatch). Implement:
+[forge-observe-agree-heal.md](plans/forge-observe-agree-heal.md).
+Code: `lib/extension/heal-ladder.js`
+(`observeHealAfterSettle` / `decideHealStep`). Hook:
+`_scheduleGeomEpsilonObserve` after present `move` settle — **not** a
+second OpSet table and **not** D100 idle `size-changed`.
+
+**After every tiling act** (OpSet, layout present, DnD commit):
+
+1. **Wait** for Meta to settle (settle-heuristics — not a product
+   `sleep(N)` as the only contract). **D105:** this wait is per
+   **visible group**. Other monitors may finish in the background.
+1. **Observe** Meta’s frame vs TOM **desired** slot.
+1. If \|desired − observed\| ≤ ε → **Agree**. Stop.
+1. **Near miss** (outside ε, inside near-band) → D095 (retry; maybe
+   bump ε). **Not** this ladder.
+1. **Far miss** → walk the ladder. After **each** Mutter directive,
+   wait and observe again.
+
+**Ladder (same monitor; no workspace hop):**
+
+1. **Jitter** (D111) — command the same desired dest again (bounded;
+   `geomUndersizeRetry`). Ghostty-class self-resize often Agrees here.
+1. **Learn min** — if still undersized, `noteWindowMinFromHealUndersize`
+   for that wm-class (R062 skip-learn until jitter is exhausted).
+   Future dests honor it.
+1. **Enter TAB** — nearest TABBED neighbor **on that MONITOR** whose
+   group slot ≥ min. Mark 2 Group enter, `place: "end"` (D108).
+1. **Create TAB** — wrap with nearest TILE neighbor on that MONITOR if
+   that bag slot would be ≥ min. Mark 2 Group wrap, `place: "end"`.
+1. **FLOAT** — no legal TILE slot. `forestSetWindowFloating` → FLOATS
+   bag. That **is** Agree (D093 terminator **after** this ladder).
+
+**Proven (nest, `_forge-test-*` only):** `leaf.layout.apply-inkscape-ws2`
+**PASS** as honest FLOAT (Inkscape alone on mon0, 700×651 after
+jitter×3 → learn-min → `rung=float reason=no-legal-tile-slot`). Not
+stuck TILE in a full slot. `leaf.settle.jitter-same-dest` Agrees TILE
+without TAB/FLOAT.
+
+**Rejected:** `force: true`; `wm_class=Inkscape` (or any class-name)
+product branch; whole-forest `MON_MISMATCH` RESYNC; hopping workspace
+or stealing another head’s slot; treating D049 overflow as this
+undersize path.
+
+**Does not:** restore D095 `force: true`; wait the whole desk on
+another monitor (D105); reconnect D026 idle restore-to-slot.
+
 ### Visible settle (D105 — FIRM)
 
 In-slot (D040) still means TILE + right monitor + right parent + ε rect.
@@ -528,11 +662,132 @@ other monitors **may finish in the background**. Do not hold overlay /
 because an off-screen window is still settling if the current view is
 already correct. Do fail if the visible pane is wrong.
 
+The **D115 ladder may keep walking** for the window that just presented.
+That is not a whole-desk wait. Do not block monitor B because monitor A
+is still on jitter×2.
+
+**D117** is the overlay / spawn / focus **execution** of this wait.
+D071 overlay-until-Done is superseded for overlay **lifetime**.
+
+### Visible-open (D117 — FIRM)
+
+**User-visible problem:** Cold or partial `forge layout` (and ordinary
+TILE launch) maps a window at Mutter’s default rect, then jumps it into
+the Forest slot (fly-in). A TABBED/STACKED group often shows a buried
+member first. The apply overlay stayed up while hidden tab members
+finished ε-hard because **D071** cleared overlay only at forest-match
+Done. D105 already said the user wait is the **visible group**; D071
+later won overlay lifetime. This lock **executes D105** for overlay,
+spawn order, open-leaf raise, and keyboard focus.
+
+**Who:** Apply (`ApplyLayout` / PlaceNext) owns spawn bands, overlay,
+raise, and focus gates. The adapter owns hide-place-show and each
+WINDOW’s wait+observe+D115 ladder. Slot machines stay the
+**forest-match unit** (a TAB/STACK CON is one slot). They must **not**
+serialize sibling WINDOW settle or hold overlay/focus on buried members.
+
+**Words (do not mix):**
+
+| Word | Who | What |
+| --- | --- | --- |
+| **Mapped** | Meta | The app has a `Meta.Window` Forge admitted into the Forest slot. Not ε. Not TILE-settled |
+| **Visible TILE** | Apply | A WINDOW the user can see on the **apply workspace**: a lone TILE child of a MONITOR, **or** the **open leaf** of a TABBED/STACKED group (`lastTabFocus` / profile `active`). Both heads of that workspace count. Buried TAB members are not visible TILE |
+| **Buried TAB member** | Apply | A WINDOW in a TABBED/STACKED group that is **not** the open leaf |
+| **Hide-place-show** | Adapter | Actor opacity 0 (or equivalent hide) from map until Forest dest is commanded (`forestSlotPaintRect`); then show. One visual placement |
+| **Independent settle** | Adapter | Each WINDOW’s wait+observe+D115 ladder runs without blocking another WINDOW’s ladder |
+| **Group has a window** | Apply | That TABBED/STACKED CON has ≥1 admitted WINDOW (mapped). Does **not** require buried peers or ε |
+| **Visible-hard** | Apply | Every **visible TILE** on the apply workspace is in-slot (D040) or honest FLOAT (D115 Agree) |
+| **Overlay** | Apply chrome | Modal scrim. Hide at **visible-hard**. Buried may still settle. Overlay ≠ Done.ok |
+| **Done.ok** | Apply | Unchanged D041: forest-match every **required** TILE slot |
+
+**Launch order (spawn start, not settle):** start PlaceNext / spawn in
+this order. Within a band, launches **run in parallel** (independent
+settle). Do **not** wait for band N to ε-settle before starting band
+N+1 — only prefer **starting** earlier bands first so maps tend to
+appear visible-first.
+
+1. Open leaves of TABBED/STACKED groups on the apply workspace
+   (profile `active` / `lastTabFocusId`)
+1. Other visible TILE (MONITOR children that are WINDOW, not buried
+   tab peers). Includes empty-head first TILE
+1. Buried TAB/STACK members
+
+Chrome same-process serialize (`chromeSerialWaitPins`) is a **host
+constraint** when two Chrome/PWA opens would steal one process. It is
+not the product order and must not reorder a Ghostty open leaf behind
+a buried Chrome tab. Chaos shuffle (`applyLayoutChaosCocktail`) is
+**test-only**. Product apply must not shuffle away visible-first.
+
+**Clock (one ApplyLayout).** Overlay hide and keyboard focus are
+**independent gates** — either may fire first. The list is typical
+interleaving, not “focus then overlay.”
+
+```text
+ApplyEpoch + overlay on
+  → materialize skeleton + bind existing
+  → spawn band 1, then 2, then 3
+        (parallel inside band; settles independent)
+  → per WINDOW: hide → admit into slot (D042) → present dest → show
+  → when a TAB/STACK group has ≥1 mapped WINDOW:
+        raise + lastTabFocus the intended open leaf
+        (not that leaf’s ε; not buried maps; not keyboard focus)
+  → when every required WINDOW is mapped (admitted):
+        profile keyboard focus once (pin still applies)
+  → when visible-hard:
+        drop overlay
+  → buried peers finish in background (D105)
+  → Done.ok = forest-match required slots (D041)
+```
+
+| Event | Overlay | Done.ok |
+| --- | --- | --- |
+| Apply start | show | — |
+| Visible-hard | **hide** | not yet if buried required slots pending |
+| Forest-match / cancel / error | hide if still up (`_finish`) | D041 / fail |
+
+Soft residual may continue after overlay is gone (pin still catches
+steal).
+
+**Hide-place-show (general launch and layout):** for will-TILE maps
+(layout PlaceNext **and** ordinary Launch / open-into-slot) the
+adapter hides the actor at map, admits + commands Forest dest, then
+shows. Unhide after dest command, not at LayoutBatch end if the window
+is already placed. Extend `layout-deferred-open.js` (today
+LayoutBatch-only) so PlaceNext / general TILE launch uses it.
+
+**Rejected (why):**
+
+| Rejected | Why |
+| --- | --- |
+| Overlay until Done.ok / all-hard (D071 lifetime, D043) | Holds the scrim on buried ε after the desk the user can see is already placed |
+| Wait for band N to ε-settle before starting N+1 | Serializes independent apps; visible maps wait on buried peers |
+| Keyboard focus after every required slot is ε-hard (SM5) | Buried ε gates keys after maps exist |
+| Focus during first open/place | Late-activate apps rewrite open leaf / Meta focus |
+| Minimize-as-hide; FLOAT-as-hide | Tree/mode lie; FLOAT is unmanaged (D087), not a hide bit |
+| Show-then-move | Fly-in from Mutter’s default rect |
+| Map-time raw `move_to_monitor` as the product place | Dock sticky last-resort stays; dest is Forest slot |
+| Slot machine serializing sibling WINDOW settle | Match unit ≠ settle barrier |
+| Chaos shuffle of product launch order | Test-only; would undo visible-first |
+
+**Does:** independent per-WINDOW settle; visible-first spawn **start**;
+raise open leaf when the group has a mapped window; keyboard focus
+once all required apps are mapped; overlay hide at visible-hard;
+hide-place-show for will-TILE maps.
+
+**Does not:** invert D115 heal; invert D041 Done.ok; invert D042
+open-into-slot; invert D039 ApplyEpoch; reconnect D100 handlers;
+change D040 in-slot; hold overlay / focus / next-act on buried or
+off-workspace ε.
+
+Plan: [forge-layout-visible-open](plans/forge-layout-visible-open.md).
+
 ### Tab / stack peer geometry (D069 — FIRM)
 
-TABBED/STACKED children share **one** content rect. That rect is assigned on
-`tree.render`; Meta frames must match after commit. **Do not** treat tab click
-as the first size of a peer.
+TABBED/STACKED children share **one** content rect. The **presenter**
+assigns that rect on **primary present** (Forest `paneRect` /
+`forestSlotPaintRect`, D103/D095). Meta frames must match after
+commit, else D095/D115 — not a `force: true` epoch-end shove.
+**Do not** treat tab click as the first size of a peer.
 
 | Rule | Detail |
 | --- | --- |
@@ -1105,7 +1360,17 @@ ApplyLayout slot pins are excluded (desired forest owns dest).
 **Mid-session:** When a TILE slot is too small for effective mins,
 `wm.rehomeIfSlotTooSmall` learns, then same-mon tab BFS / float, and removes the
 vacated gap (`resolveTileOverflowPlacement` / Node child join). Skips ApplyEpoch,
-GRAB_TILE, max/fs/zoom. Mins overflow is **instead of** D026 restore-to-slot.
+GRAB_TILE, max/fs/zoom. Mins overflow is **instead of** D026 restore-to-slot
+(D026 idle path is **disconnected** — D100).
+
+**Overflow vs D115 undersize (do not mix):**
+
+| Path | Predicate | Actor | Then |
+| --- | --- | --- | --- |
+| **D049 overflow** | **Frame > slot** (app cannot fit the pane) | `rehomeIfSlotTooSmall` | Same-mon tab BFS / FLOAT; remove vacated gap |
+| **D115 undersize** | **Frame < commanded dest** (we asked larger; app stayed small) | `heal-ladder.js` | Jitter → learn min → TAB enter/wrap → FLOAT |
+
+Inkscape 700×651 vs commanded 1878×1048 is **undersize**, not overflow.
 
 **DnD:** Per-zone red + refuse via `dropWouldOverflowMins` using the same
 effective mins (never “unknown → allow”). Tiny-pane above stays a separate
@@ -1214,15 +1479,31 @@ the numbered belt + one-shot hard-ready list is **not** the product
 contract. Residual move + belt were a safety net; they hid empty-mon
 false-ok (R036).
 
-**Apply contract (locked SM0, D039–D043):** **ApplyEpoch → materialize
-forest → slot machines → forest-match `Done.ok` → focus/soft**. A slot
-is a TILE window **or** a TABBED/STACKED CON (not N independent apps).
-Hard means **in the desired slot**; timeout retries place (N=2).
-Required hard-fail → `Done.ok` false; other machines still finish. Open
-binds into the slot; belt is deleted (SM6), not evolved. Group chrome
-option A is tab/FCC work, not the apply executor. Soft heuristics file
-still applies **after** all-hard focus. Plan:
-[forge-layout-slot-machines](../agents/plans/forge-layout-slot-machines.md).
+**Apply spine (locked SM0, D039–D043, D105, D117):**
+
+| Step | Actor | Value |
+| --- | --- | --- |
+| **ApplyEpoch** | Extension | Desired Forest is the only writer of mon membership + TILE home while live |
+| **Materialize** | Apply | Skeleton / bind **into the slot** (D042). No Mode B. No belt |
+| **Spawn** | Apply | Start bands: (1) TAB/STACK open leaves (2) other visible TILE (3) buried TAB members. Parallel inside a band. Do **not** wait for band N to ε-settle before starting N+1. Independent WINDOW settle. Chrome-serial is host constraint, not product order |
+| **Hide-place-show** | Adapter | Will-TILE map: hide actor → admit + command Forest dest → show. Layout PlaceNext **and** ordinary Launch. Not minimize. Not show-then-move |
+| **Present** | Adapter | Forest slot AABB (`paneRect` / `forestSlotPaintRect`) |
+| **Raise open leaf** | Apply | When a TAB/STACK group has ≥1 mapped WINDOW: raise + lastTabFocus the intended open leaf (profile `active`). Not ε. Not keyboard focus. Do not wait for buried maps |
+| **Wait + observe** | Adapter | Per WINDOW, independent. Settle-heuristics; **D105** = visible group, not other-mon desk |
+| **Heal** | `heal-ladder.js` | D095 near / D115 far until Agree (FLOAT = Agree). Does not serialize siblings |
+| **Keyboard focus** | Apply | Once **all required apps have mapped windows** (D117). Not during first open/place. Not gated on buried ε. Pin still applies |
+| **Overlay** | Apply chrome | Hide at **visible-hard** (D117). Overlay ≠ Done.ok. `_finish` still hides leftover (cancel / error / Done) |
+| **Done.ok** | Apply | Forest-match for every **required** TILE slot (D041). Visible pane wrong → fail. Off-screen still settling → do not fail (D105) |
+
+A slot is a TILE window **or** a TABBED/STACKED CON (not N independent
+apps). Hard means **in the desired slot**; timeout retries place (N=2).
+Required hard-fail → `Done.ok` false; other machines still finish. Belt
+is deleted (SM6), not evolved. Group chrome option A is tab/FCC work,
+not the apply executor. Soft heuristics file still applies **after**
+keyboard focus (D117); overlay may already be gone. Overlay hide and
+focus are independent gates. Plan:
+[forge-layout-slot-machines](../agents/plans/forge-layout-slot-machines.md)
+· [forge-layout-visible-open](../agents/plans/forge-layout-visible-open.md).
 
 **Agent-facing contract (why + anti-patches + code map):**
 [agents/project.md](../agents/project.md) § Layout apply architecture.
@@ -1521,9 +1802,13 @@ language-portable; JS `lib/` is the reference impl). Forest document =
 not under a monitor; TILES size is a **percent** or **`share`**).
 **Live topology is the POJO Forest** (D092): nanoid per node; host
 Meta/St in adapter maps. **D093:** present → observe → AGREE or
-RESYNC (TOM toward REALITY; FLOAT terminator). No twin presenter
-atomics. **D100:** old-architecture Meta handlers are disconnected
-(observe/chrome only).
+RESYNC (TOM toward REALITY). **D115:** after present `move` settle,
+heal until Agree (jitter → min → TAB → FLOAT); FLOAT terminator is
+**after** that ladder. **D105:** user wait is the visible group.
+**D117:** overlay hides at visible-hard; hide-place-show; independent
+settle; focus when all required mapped.
+**D109:** chrome keys `moNwsW`. No twin presenter atomics. **D100:**
+old-architecture Meta handlers are disconnected (observe/chrome only).
 **ForgeAdapterGnome** / **ForgeAdapterWebView**
 bind and extend a host. **KeybindAdapterGnome** /
 **KeybindAdapterWebView** map the kernel table plus a host overlay

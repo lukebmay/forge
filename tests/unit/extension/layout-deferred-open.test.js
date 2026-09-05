@@ -7,6 +7,8 @@ import {
   needsDeferredHideReapply,
   rehideDeferredIfNeeded,
   shouldDeferHiddenOpen,
+  shouldMapTimeStickyMove,
+  shouldShowDeferredAfterDest,
   shouldStickyMoveHomeMonitor,
   showDeferredActor,
   takeAllDeferredOpens,
@@ -14,11 +16,30 @@ import {
 } from "../../../lib/extension/layout-deferred-open.js";
 
 describe("shouldDeferHiddenOpen", () => {
-  it("true only when LayoutBatch active and will tile", () => {
+  it("true for will-TILE maps including ordinary Launch", () => {
+    expect(shouldDeferHiddenOpen({ willTile: true })).toBe(true);
+    expect(shouldDeferHiddenOpen({ openLayoutBatchActive: false, willTile: true })).toBe(true);
     expect(shouldDeferHiddenOpen({ openLayoutBatchActive: true, willTile: true })).toBe(true);
-    expect(shouldDeferHiddenOpen({ openLayoutBatchActive: true, willTile: false })).toBe(false);
-    expect(shouldDeferHiddenOpen({ openLayoutBatchActive: false, willTile: true })).toBe(false);
+    expect(shouldDeferHiddenOpen({ willTile: false })).toBe(false);
+    expect(shouldDeferHiddenOpen({ willTile: true, openMinFloat: true })).toBe(false);
     expect(shouldDeferHiddenOpen({})).toBe(false);
+  });
+});
+
+describe("shouldShowDeferredAfterDest", () => {
+  it("shows after dest; LayoutBatch dest-miss stays hidden", () => {
+    expect(shouldShowDeferredAfterDest({ destCommanded: true, openLayoutBatchActive: true })).toBe(
+      true
+    );
+    expect(shouldShowDeferredAfterDest({ destCommanded: true, openLayoutBatchActive: false })).toBe(
+      true
+    );
+    expect(
+      shouldShowDeferredAfterDest({ destCommanded: false, openLayoutBatchActive: false })
+    ).toBe(true);
+    expect(shouldShowDeferredAfterDest({ destCommanded: false, openLayoutBatchActive: true })).toBe(
+      false
+    );
   });
 });
 
@@ -34,6 +55,23 @@ describe("shouldStickyMoveHomeMonitor", () => {
     expect(shouldStickyMoveHomeMonitor(undefined)).toBe(false);
     expect(shouldStickyMoveHomeMonitor("0")).toBe(false);
     expect(shouldStickyMoveHomeMonitor(NaN)).toBe(false);
+  });
+});
+
+describe("shouldMapTimeStickyMove", () => {
+  it("dock still map-time moves", () => {
+    expect(shouldMapTimeStickyMove({ isDock: true, homeMonitor: 1 }, false)).toBe(true);
+  });
+
+  it("empty-head free-open is sticky-grace only (R036)", () => {
+    expect(
+      shouldMapTimeStickyMove({ isDock: false, isEmptyHead: true, homeMonitor: 1 }, false)
+    ).toBe(false);
+  });
+
+  it("hide-place-show is not map-time sticky (Forest dest is place)", () => {
+    expect(shouldMapTimeStickyMove({ isDock: false, homeMonitor: 1 }, true)).toBe(false);
+    expect(shouldMapTimeStickyMove({ isDock: false, homeMonitor: -1 }, true)).toBe(false);
   });
 });
 
@@ -96,6 +134,24 @@ describe("hideDeferredActor / showDeferredActor", () => {
     showDeferredActor(actor, snap);
     expect(actor.opacity).toBe(200);
     expect(actor.border.hidden).toBe(false);
+  });
+
+  it("hide-place-show: hide before dest write, show after; not minimize", () => {
+    const actor = makeActor({ opacity: 255 });
+    actor.minimize = () => {
+      actor.minimized = true;
+    };
+    const order = [];
+    const snap = hideDeferredActor(actor);
+    order.push("hide");
+    expect(actor.opacity).toBe(0);
+    expect(actor.minimized).toBeUndefined();
+    order.push("dest");
+    showDeferredActor(actor, snap);
+    order.push("show");
+    expect(actor.opacity).toBe(255);
+    expect(order).toEqual(["hide", "dest", "show"]);
+    expect(actor.minimized).toBeUndefined();
   });
 
   it("handles missing actor and borderless actor", () => {
@@ -177,12 +233,10 @@ describe("needsDeferredHideReapply / rehideDeferredIfNeeded", () => {
 });
 
 describe("CL8 no mid-batch percent carve (pure gate)", () => {
-  it("shouldDefer implies no insert / no open commit path", () => {
-    // Integration tests assert insertChildPercent / _scheduleOpenCommit are not
-    // called; pure gate documents the decision predicate for trackWindow.
+  it("will-TILE hide is independent of LayoutBatch", () => {
     const batch = shouldDeferHiddenOpen({ openLayoutBatchActive: true, willTile: true });
     expect(batch).toBe(true);
     const n1 = shouldDeferHiddenOpen({ openLayoutBatchActive: false, willTile: true });
-    expect(n1).toBe(false);
+    expect(n1).toBe(true);
   });
 });

@@ -62,6 +62,7 @@ describe("Bug forge-3hsv: a dialog does not claim a tiled share", () => {
       workspace: ctx.workspaces[0],
       monitor: 0,
       window_type: WindowType.DIALOG,
+      transient_for: winA,
     });
 
     wm().trackWindow(null, dialog);

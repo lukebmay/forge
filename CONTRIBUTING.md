@@ -58,8 +58,9 @@ testing anything.
 ## Code style
 
 - **Prettier**, 2-space indent, 100-char width. Run `npm run format`; `npm run lint`
-  checks. A pre-commit hook formats staged files and runs the related unit tests, so
-  commits are gated automatically.
+  checks. A pre-commit hook formats staged files (and lints staged e2e JS/Python).
+  It does **not** run unit tests — the suite is not a commit gate yet; run `npm test`
+  yourself when the change needs it.
 - Match the surrounding code's naming and idioms.
 - Core classes are `GObject`s registered with the
   `static { GObject.registerClass(this); }` pattern; track signal IDs and disconnect

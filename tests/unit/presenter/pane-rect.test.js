@@ -5,6 +5,17 @@ import { containingSplit } from "../../../lib/tom/sizing.js";
 import { buildGiven } from "../../../lib/tom/shorthand.js";
 
 describe("presenter paneRect", () => {
+  it("leftover 0.33,0.33 renormalizes to 1/2 (not remainder-to-last)", () => {
+    const { f, byLabel } = buildGiven("Mon1(H(A,B))");
+    byLabel.A.percent = 0.33;
+    byLabel.B.percent = 0.33;
+    const a = paneRect(f, byLabel.A);
+    const b = paneRect(f, byLabel.B);
+    expect(a.w).toBeCloseTo(960);
+    expect(b.w).toBeCloseTo(960);
+    expect(b.x).toBeCloseTo(960);
+  });
+
   it("Mon1(H(A,B)) default 1920×1080 world: A is ~960×1080 without node.geom", () => {
     const { f, byLabel } = buildGiven("Mon1(H(A,B))");
     for (const n of Object.values(f.nodes)) {
@@ -72,6 +83,26 @@ describe("presenter paneRect", () => {
     expect(a.x).toBeCloseTo(0);
     expect(b.x).toBeCloseTo(960);
     expect(b.w).toBeCloseTo(960);
+  });
+
+  it("TAB filling MONITOR is full width", () => {
+    const { f, byLabel } = buildGiven("Mon1(TAB(A,B))");
+    const a = paneRect(f, byLabel.A);
+    const b = paneRect(f, byLabel.B);
+    expect(a.w).toBeCloseTo(1920);
+    expect(a.h).toBeCloseTo(1080);
+    expect(b.w).toBeCloseTo(1920);
+    expect(b.x).toBeCloseTo(0);
+  });
+
+  it("unary H(TAB) with leftover TAB percent 0.5 still fills (no sibling share)", () => {
+    const { f, byLabel } = buildGiven("Mon1(H(TAB(A,B)))");
+    const host = children(f, f.monitors[0])[0];
+    const tab = children(f, host)[0];
+    tab.percent = 0.5;
+    const a = paneRect(f, byLabel.A);
+    expect(a.w).toBeCloseTo(1920);
+    expect(a.h).toBeCloseTo(1080);
   });
 
   it("wrapWouldViolateMin is true when a 50/50 wrap is under 10% of the monitor", () => {

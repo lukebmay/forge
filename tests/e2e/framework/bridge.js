@@ -792,10 +792,10 @@
       }
     },
 
-    // Synthetic tile drop (forge-cnrc): sessionApi._dndDropOp → _commitResolvedDrop
-    // (same mutate as RunSteps dnd-drop / nest dnd-drop). Empty-mon: destMonitor
-    // without tgt → _commitEmptyMonitorDrop. Fallback: grab + moveWindowToPointer
-    // (also _commitResolvedDrop). opts: {src, tgt, zone, destMonitor}.
+    // Synthetic tile drop (forge-cnrc): sessionApi._dndDropOp → OpSet.pointer.release
+    // → named Mark 2 Ops (same as RunSteps / nest dnd-drop). Empty-mon: destMonitor
+    // without tgt → move (host Meta transfer last-resort). Fallback: grab +
+    // moveWindowToPointer. opts: {src, tgt, zone, destMonitor}.
     fuzzDrag(opts) {
       const o = opts || {};
       const ext = forgeExt();
@@ -920,11 +920,11 @@
     },
 
     // Like fuzzDrag, but drives the REAL grab LOOP across multiple waypoints instead of just
-    // the two endpoints (forge-v9o7). fuzzDrag uses session _dndDropOp → _commitResolvedDrop;
+    // the two endpoints (forge-v9o7). fuzzDrag uses session _dndDropOp → OpSet.pointer.release;
     // this one walks src-center -> via-centers -> a zone of TGT, invoking _handleMoving at each
     // point so the preview-hint St.Bin lifecycle, the debounce path, and the live-preview branch
-    // (moveWindowToPointer(...,true) → _commitResolvedDrop on grab-end) all run. opts:
-    // {src, tgt, zone, vias:[hint,...]}.
+    // (moveWindowToPointer preview → pointer.hover; grab-end commit → pointer.release) all run.
+    // opts: {src, tgt, zone, vias:[hint,...]}.
     //
     // Monkeypatches, all restored in finally (mirrors fuzzDrag's gate-bypass philosophy):
     //  - get_focus_window -> SRC (grab handlers act on focusMetaWindow; src.focus() is async).

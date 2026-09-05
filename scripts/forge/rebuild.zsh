@@ -23,7 +23,7 @@ Usage:
 Options:
   --repo=PATH         Repo root (default: $FORGE_REPO_ROOT)
   --prod              Release-style build (production=true) + log-level=WARN
-  --dev               Debug build + log-level=TRACE (hunts). Default: INFO
+  --dev               Debug build + TRACE + layout overlay. Default: INFO
   --dev=MODES         Same as --dev plus comma modes (strict-geometry, …)
   --save              Backup extension + dconf + config before replace
   --restart-shell     X11 HUP after install (default)

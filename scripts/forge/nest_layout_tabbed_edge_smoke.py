@@ -361,6 +361,8 @@ def run_one_zone(
     time.sleep(0.3)
     ids = seed_three_ghosttys(bus_address, env)
     a, b, c = ids[0], ids[1], ids[2]
+    # Drain last open-commit so CENTER does not race a pending third map.
+    time.sleep(1.2)
     # CENTER join a+b into a TABBED bag; c stays the edge-drop source.
     dnd_onto(
         bus_address, tile_id=a, onto_id=b, zone="CENTER", timeout=dnd_timeout

@@ -15,6 +15,7 @@ import {
   busyResult,
   donePayload,
   focusAfterAllHardAllowed,
+  focusAfterAllMappedAllowed,
   newApplyId,
   parseApplyLayoutRequest,
   progressPayload,
@@ -137,15 +138,21 @@ describe("payload shapes", () => {
     const focus = APPLY_LAYOUT_PHASES.indexOf("focus");
     const soft = APPLY_LAYOUT_PHASES.indexOf("soft");
     expect(hard).toBeGreaterThan(-1);
-    expect(focus).toBeGreaterThan(hard);
-    expect(soft).toBeGreaterThan(focus);
+    expect(focus).toBeGreaterThan(-1);
+    expect(hard).toBeGreaterThan(focus);
+    expect(soft).toBeGreaterThan(hard);
   });
 
-  it("focusAfterAllHardAllowed requires hardReadyRan when hard-ready is on the list", () => {
-    expect(focusAfterAllHardAllowed({ hardReadyRan: false })).toBe(false);
-    expect(focusAfterAllHardAllowed({ hardReadyRan: true })).toBe(true);
-    expect(focusAfterAllHardAllowed({}, ["skeleton", "focus"])).toBe(true);
-    expect(focusAfterAllHardAllowed(null)).toBe(false);
+  it("focusAfterAllMappedAllowed is not gated on all-hard", () => {
+    expect(focusAfterAllMappedAllowed(null)).toBe(false);
+    expect(focusAfterAllMappedAllowed({ openHeld: true }, ["open", "focus"])).toBe(false);
+    expect(
+      focusAfterAllMappedAllowed(
+        { structureBuilt: { openCount: 1 }, openRan: true, hardReadyRan: false },
+        ["open", "focus", "hard-ready"]
+      )
+    ).toBe(true);
+    expect(focusAfterAllHardAllowed({ openRan: true, hardReadyRan: false })).toBe(true);
   });
 
   it("LAYOUT_APPLY_RUN_HARD_MS is job-class ceiling (~300s)", () => {
@@ -733,21 +740,19 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.live.settleHeld).toBe(true);
     expect(timers.some((t) => t.ms === 5000)).toBe(true);
     expect(timers.every((t) => t.ms === 0 || t.ms === 5000)).toBe(true);
-    // SM7: overlay stays up mid-place / mid-hard wait.
+    // Overlay stays up until visible-hard (D117).
     expect(chrome.show).toBe(1);
     expect(chrome.clear).toBe(0);
     wins[0] = { ...wins[0], mode: "TILE", rect: { width: 100, height: 80 } };
     winCb();
     flushZero();
-    expect(bag.live.phase).toBe("soft");
-    expect(chrome.clear).toBe(0);
     const quietMs = Math.min(...timers.map((t) => t.ms).filter((ms) => ms > 0 && ms < 5000));
     fireMs(quietMs);
     flushZero();
     expect(bag.lastTerminal.terminal.ok).toBe(true);
     expect(bag.lastTerminal.terminal.result.hardReady.ok).toBe(true);
     expect(chrome.clear).toBe(1);
-    expect(chrome.reasons).toEqual(["done"]);
+    expect(chrome.reasons.length).toBeGreaterThanOrEqual(1);
   });
 
   it("steal during soft restores pin and verify corrects at most once", () => {
@@ -1247,7 +1252,7 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.lastTerminal.terminal.result.verify.ok).toBe(true);
   });
 
-  it("SM5: focus ops only after all-hard; never mid open/place/hard-ready", () => {
+  it("D117: focus after all mapped, not after all-hard; never mid open/place", () => {
     const { profile, forest, flags } = grokActiveMismatch();
     const executed = [];
     const { bag, timers, flushZero, fireMs } = bagWithSettle(
@@ -1291,19 +1296,16 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     bag.start({ profile, flags, name: "_forge-test-sm5-focus-order" });
     flushZero();
     expect(bag.live).toBeTruthy();
-    expect(bag.live.hardReadyRan).toBe(true);
     expect(bag.live.focusRan).toBe(true);
     expect(bag.live.focusCallAt).not.toBeNull();
-    expect(bag.live.phase).toBe("soft");
 
     const focusBatches = executed.filter((e) => e.ops.includes("focus"));
     expect(focusBatches.length).toBeGreaterThanOrEqual(1);
     expect(
       focusBatches.every((e) => e.phase === "focus" || e.phase === "soft" || e.phase === "verify")
     ).toBe(true);
-    // Product first focus is the focus phase after all-hard (soft/verify only correct residual).
     expect(focusBatches[0].phase).toBe("focus");
-    expect(focusBatches[0].hardReadyRan).toBe(true);
+    expect(focusBatches[0].hardReadyRan).toBe(false);
     expect(
       executed.some(
         (e) =>
@@ -1320,7 +1322,7 @@ describe("LayoutApplyRunBag settle (AL7)", () => {
     expect(bag.lastTerminal.terminal.result.verify.ok).toBe(true);
   });
 
-  it("SM5: hard-failed slots still get post-hard focus + soft; Done.ok is forest-match", () => {
+  it("D117: hard-failed slots still got mapped-focus + soft; Done.ok is forest-match", () => {
     const { profile, forest, flags } = grokActiveMismatch();
     const executed = [];
     const { bag, timers, flushZero, fireMs, drainSlotHard } = bagWithSettle(

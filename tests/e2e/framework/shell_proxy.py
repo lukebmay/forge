@@ -852,7 +852,7 @@ class ShellProxy:
         zone: str = "center",
         dest_monitor: int = None,
     ) -> dict:
-        """Synthetic tile drop via session _dndDropOp → _commitResolvedDrop.
+        """Synthetic tile drop via session _dndDropOp → OpSet.pointer.release.
         src/tgt are positional hints (leftmost/...). dest_monitor without tgt is
         empty-mon (_commitEmptyMonitorDrop). See bridge.fuzzDrag. Returns {'ok',...}.
         """

@@ -9,6 +9,7 @@ import {
   forestApplyLayoutStructure,
   forestApplySkeletonMon,
   forestBindWindow,
+  forestEnsureOnPlaceWorkspace,
   forestEnsureSpineNode,
   forestRemoveSpine,
   forestRekeySpine,
@@ -22,11 +23,14 @@ import {
   forestReparent,
   forestSetLayout,
   forestSetWindowFloating,
+  forestSlotPaintRect,
   forestSlotSplit,
   forestSplit,
   forestSwapWindows,
+  forestUngroup,
   forestWrapForTabStack,
   forestWrapInsert,
+  liveAncestorMonitorId,
   liveKind,
   liveWindowFromActor,
   liveWindowFromMeta,
@@ -34,6 +38,7 @@ import {
   liveStackedOrTabbedConsForPresent,
   liveTabOpenLeafForPresent,
   paintLiveForest,
+  placeDeskMatches,
   presentWmSlots,
   projectLiveForest,
   rebuildLiveById,
@@ -49,12 +54,14 @@ import { createHostBag } from "../../../lib/host/index.js";
 import { getOpSet, runOpAbstract } from "../../../lib/opsets/index.js";
 import { wrapMonitorMax1 } from "../../../lib/rulesets/mark2.js";
 import { applyPlaceNextOptions, findLayoutSlotDest } from "../../../lib/shared/layout-open.js";
+import { resolvePlaceSlotAttachFromHint } from "../../../lib/extension/adapter-open-place.js";
 import {
   createTomApi,
   floatsOf,
   isUnderFloats,
   isUnderTiles,
   moveWindowToFloats,
+  parent as tomParent,
 } from "../../../lib/tom/index.js";
 
 function makeLive(type, value, extra = {}) {
@@ -518,6 +525,192 @@ describe("tom-live seed + mutate live forest", () => {
     expect(wm.hostBag.get(nid)?.floating).toBe(true);
   });
 
+  it("forestSetWindowFloating retile uses Meta moNwsW not other-ws focus", () => {
+    const prevDisplay = global.display;
+    global.display = {
+      get_focus_window: () => null,
+      get_n_monitors: () => 1,
+      get_workspace_manager: () => ({
+        get_active_workspace_index: () => 1,
+      }),
+    };
+    try {
+      const root = makeLive("ROOT", "ROOT");
+      const ws0 = makeLive("WORKSPACE", "ws0");
+      const mon0 = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+      const metaFocus = {
+        id: "F",
+        title: "focus",
+        get_monitor: () => 0,
+        get_workspace: () => ({ index: () => 0 }),
+      };
+      const winFocus = makeLive("WINDOW", metaFocus);
+      root.appendChild(ws0);
+      ws0.appendChild(mon0);
+      mon0.appendChild(winFocus);
+      const wm = makeWm(root);
+      seedLiveForest(wm, { windowIdOf, createCon });
+      forestAdmitMonitor(wm, 1, 0, { layout: "HSPLIT", tree: root });
+      expect(wm.forest.nodes.mo0ws1?.kind).toBe("MONITOR");
+
+      const metaNew = {
+        id: "N",
+        title: "new",
+        get_monitor: () => 0,
+        get_workspace: () => ({ index: () => 1 }),
+      };
+      const admitted = forestAdmitMetaWindow(wm, metaNew, {
+        underFloats: true,
+        mode: "FLOAT",
+      });
+      expect(admitted?.id).toBeTruthy();
+      expect(isUnderFloats(wm.forest, wm.forest.nodes[admitted.id])).toBe(true);
+      wm.forest.focusId = wm.hostBag.idFromMeta(metaFocus);
+      expect(forestSetWindowFloating(wm, admitted.live, false)).toBe(true);
+      expect(wm.forest.nodes[admitted.id].parentId).toBe("mo0ws1");
+    } finally {
+      global.display = prevDisplay;
+    }
+  });
+
+  it("forestSetWindowFloating retile honors empty-head sticky mon over Meta", () => {
+    const prevDisplay = global.display;
+    global.display = {
+      get_focus_window: () => null,
+      get_n_monitors: () => 2,
+      get_workspace_manager: () => ({
+        get_active_workspace_index: () => 0,
+      }),
+    };
+    try {
+      const root = makeLive("ROOT", "ROOT");
+      const ws0 = makeLive("WORKSPACE", "ws0");
+      const mon0 = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+      const metaA = {
+        id: "A",
+        title: "a",
+        get_monitor: () => 0,
+        get_workspace: () => ({ index: () => 0 }),
+      };
+      const winA = makeLive("WINDOW", metaA);
+      root.appendChild(ws0);
+      ws0.appendChild(mon0);
+      mon0.appendChild(winA);
+      const wm = makeWm(root);
+      seedLiveForest(wm, { windowIdOf, createCon });
+      forestAdmitMonitor(wm, 0, 1, { layout: "HSPLIT", tree: root });
+      expect(wm.forest.nodes.mo1ws0?.kind).toBe("MONITOR");
+
+      const metaNew = {
+        id: "C",
+        title: "nautilus",
+        get_monitor: () => 0,
+        get_workspace: () => ({ index: () => 0 }),
+        _forgeDockStickyMon: 1,
+        _forgeDockStickyUntil: Date.now() + 4000,
+      };
+      const admitted = forestAdmitMetaWindow(wm, metaNew, {
+        underFloats: true,
+        mode: "FLOAT",
+      });
+      expect(admitted?.id).toBeTruthy();
+      expect(isUnderFloats(wm.forest, wm.forest.nodes[admitted.id])).toBe(true);
+      expect(forestSetWindowFloating(wm, admitted.live, false)).toBe(true);
+      expect(wm.forest.nodes[admitted.id].parentId).toBe("mo1ws0");
+    } finally {
+      global.display = prevDisplay;
+    }
+  });
+
+  it("forestSetWindowFloating sticky occupied dest does not mon-root dump", () => {
+    const prevDisplay = global.display;
+    global.display = {
+      get_focus_window: () => null,
+      get_n_monitors: () => 2,
+      get_workspace_manager: () => ({
+        get_active_workspace_index: () => 0,
+      }),
+    };
+    try {
+      const root = makeLive("ROOT", "ROOT");
+      const ws0 = makeLive("WORKSPACE", "ws0");
+      const mon0 = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+      const metaA = {
+        id: "A",
+        title: "a",
+        get_monitor: () => 0,
+        get_workspace: () => ({ index: () => 0 }),
+      };
+      const winA = makeLive("WINDOW", metaA);
+      root.appendChild(ws0);
+      ws0.appendChild(mon0);
+      mon0.appendChild(winA);
+      const wm = makeWm(root);
+      seedLiveForest(wm, { windowIdOf, createCon });
+      forestAdmitMonitor(wm, 0, 1, { layout: "HSPLIT", tree: root });
+      const metaSlot = {
+        id: "S",
+        title: "slot",
+        get_monitor: () => 1,
+        get_workspace: () => ({ index: () => 0 }),
+      };
+      const admittedSlot = forestAdmitMetaWindow(wm, metaSlot, {
+        parentId: "mo1ws0",
+        mode: "TILE",
+      });
+      expect(admittedSlot?.id).toBeTruthy();
+      expect(wm.forest.nodes[admittedSlot.id].parentId).toBe("mo1ws0");
+
+      const metaNew = {
+        id: "C",
+        title: "late",
+        get_monitor: () => 0,
+        get_workspace: () => ({ index: () => 0 }),
+        _forgeDockStickyMon: 1,
+        _forgeDockStickyUntil: Date.now() + 4000,
+      };
+      const admitted = forestAdmitMetaWindow(wm, metaNew, {
+        underFloats: true,
+        mode: "FLOAT",
+      });
+      expect(forestSetWindowFloating(wm, admitted.live, false)).toBe(true);
+      expect(wm.forest.nodes[admitted.id].parentId).not.toBe("mo1ws0");
+    } finally {
+      global.display = prevDisplay;
+    }
+  });
+
+  it("forestSetWindowFloating unfloat slot-splits occupied H not even-thirds", () => {
+    const { root, winA, metaA, metaB } = twoSplitTree();
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    wm.lastFocusedWindow = winA;
+    wm.forest.focusId = wm.hostBag.idFromMeta(metaA);
+    const metaC = {
+      id: "C",
+      title: "c",
+      get_monitor: () => 0,
+      get_workspace: () => ({ index: () => 0 }),
+    };
+    const admitted = forestAdmitMetaWindow(wm, metaC, {
+      underFloats: true,
+      mode: "FLOAT",
+    });
+    expect(admitted?.id).toBeTruthy();
+    expect(forestSetWindowFloating(wm, admitted.live, false)).toBe(true);
+    const idA = wm.hostBag.idFromMeta(metaA);
+    const idB = wm.hostBag.idFromMeta(metaB);
+    const idC = admitted.id;
+    const parentA = tomParent(wm.forest, wm.forest.nodes[idA]);
+    const parentB = tomParent(wm.forest, wm.forest.nodes[idB]);
+    const parentC = tomParent(wm.forest, wm.forest.nodes[idC]);
+    expect(parentC.id).toBe(parentA.id);
+    expect(parentC.id).not.toBe(parentB.id);
+    expect(parentA.childIds).toEqual(expect.arrayContaining([idA, idC]));
+    expect(parentA.childIds).not.toContain(idB);
+    expect(wm.forest.nodes[idB].percent).toBeCloseTo(0.5);
+  });
+
   it("forestSetWindowFloating moves TILES↔FLOATS and mirrors bag.floating", () => {
     const { root, winA, metaA } = twoSplitTree();
     const wm = makeWm(root);
@@ -810,6 +1003,33 @@ describe("tom-live seed + mutate live forest", () => {
     expect(con.layout).toBe("VSPLIT");
   });
 
+  it("forestMergeWindowsIntoGroup of MONITOR pair TAB fills the host slot", () => {
+    const root = makeLive("ROOT", "ROOT");
+    const ws = makeLive("WORKSPACE", "ws0");
+    const mon = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+    const metaA = { id: "A", title: "A" };
+    const metaB = { id: "B", title: "B" };
+    const winA = makeLive("WINDOW", metaA);
+    const winB = makeLive("WINDOW", metaB);
+    root.appendChild(ws);
+    ws.appendChild(mon);
+    mon.appendChild(winA);
+    mon.appendChild(winB);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const idA = wm.hostBag.idFromMeta(metaA);
+    const idB = wm.hostBag.idFromMeta(metaB);
+    wm.forest.nodes[idA].percent = 0.5;
+    wm.forest.nodes[idB].percent = 0.5;
+    const group = forestMergeWindowsIntoGroup(wm, winA, winB, "TABBED");
+    expect(group).toBeTruthy();
+    const wrapId = wm.forest.nodes[idA].parentId;
+    expect(wm.forest.nodes[idB].parentId).toBe(wrapId);
+    expect(wm.forest.nodes[wrapId].layout).toBe("TABBED");
+    expect(wm.forest.nodes[wrapId].percent).toBeCloseTo(1);
+    expect(wm.forest.nodes[wrapId].parentId).toBe("mo0ws0");
+  });
+
   it("forestMergeWindowsIntoGroup flips a 2-child HSPLIT CON to TABBED", () => {
     const { root, con, winA, winB, metaA, metaB } = twoSplitTree();
     const wm = makeWm(root);
@@ -889,6 +1109,29 @@ describe("tom-live seed + mutate live forest", () => {
     expect(liveChildrenForPresent(wm, wrap)).toEqual([winA, winB]);
     expect(liveChildrenForPresent(wm, con)).toContain(wrap);
     expect(wm.forest.nodes[idA].parentId).toBe(wm.forest.nodes[idB].parentId);
+  });
+
+  it("forestUngroup promotes CON children onto MONITOR", () => {
+    const { root, mon, con, winA, winB, metaA, metaB } = twoSplitTree();
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const grand = forestUngroup(wm, con);
+    expect(grand).toBe(mon);
+    expect(liveChildrenForPresent(wm, mon)).toEqual(expect.arrayContaining([winA, winB]));
+    expect(liveChildrenForPresent(wm, mon)).not.toContain(con);
+    const idA = wm.hostBag.idFromMeta(metaA);
+    const idB = wm.hostBag.idFromMeta(metaB);
+    expect(wm.forest.nodes[idA].parentId).toBe("mo0ws0");
+    expect(wm.forest.nodes[idB].parentId).toBe("mo0ws0");
+  });
+
+  it("forestUngroup WINDOW argument dissolves the parent CON", () => {
+    const { root, mon, con, winA, winB } = twoSplitTree();
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    expect(forestUngroup(wm, winA)).toBe(mon);
+    expect(liveChildrenForPresent(wm, mon)).toEqual(expect.arrayContaining([winA, winB]));
+    expect(liveChildrenForPresent(wm, mon)).not.toContain(con);
   });
 
   it("forestSplit wraps a WINDOW then moves the wrap before dest", () => {
@@ -1146,6 +1389,89 @@ describe("tom-live seed + mutate live forest", () => {
     );
     expect(phIds.length).toBeGreaterThanOrEqual(1);
     expect(phIds[0].parentId).toBe("mo0ws0");
+  });
+
+  it("PlaceNext role-ph does not steal other-workspace same-slot PH", () => {
+    const root = makeLive("ROOT", "ROOT");
+    const ws0 = makeLive("WORKSPACE", "ws0");
+    const ws1 = makeLive("WORKSPACE", "ws1");
+    const mon0 = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+    const mon1 = makeLive("MONITOR", "mo0ws1", { layout: "HSPLIT" });
+    root.appendChild(ws0);
+    root.appendChild(ws1);
+    ws0.appendChild(mon0);
+    ws1.appendChild(mon1);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const spec = {
+      split: "hsplit",
+      children: [
+        { slot: "mon0.ghostty", roles: ["ghostty"] },
+        { slot: "mon0.ghostty-2", roles: ["ghostty-2"] },
+      ],
+    };
+    expect(forestApplySkeletonMon(wm, mon0, spec).ok).toBe(true);
+    expect(forestApplySkeletonMon(wm, mon1, spec).ok).toBe(true);
+
+    const phToms = Object.values(wm.forest.nodes).filter(
+      (n) => n.kind === "WINDOW" && n.wmClass === "forge-placeholder"
+    );
+    const live0 = phToms
+      .map((n) => wm.liveById.get(n.id))
+      .find(
+        (live) => live?.layoutRole === "ghostty" && liveAncestorMonitorId(wm, live) === "mo0ws0"
+      );
+    const live1 = phToms
+      .map((n) => wm.liveById.get(n.id))
+      .find(
+        (live) => live?.layoutRole === "ghostty" && liveAncestorMonitorId(wm, live) === "mo0ws1"
+      );
+    expect(live0).toBeTruthy();
+    expect(live1).toBeTruthy();
+    expect(liveAncestorMonitorId(wm, live0)).toBe("mo0ws0");
+    expect(liveAncestorMonitorId(wm, live1)).toBe("mo0ws1");
+    expect(placeDeskMatches(wm, live0, 0, 1)).toBe(false);
+    expect(placeDeskMatches(wm, live1, 0, 1)).toBe(true);
+
+    const hit = resolvePlaceSlotAttachFromHint(
+      wm,
+      { layoutRole: "ghostty", layoutSlot: "mon0.ghostty", workspace: 1 },
+      0
+    );
+    expect(hit?.via).toBe("role-ph");
+    expect(hit.attachLft).toBe(live1);
+    expect(liveAncestorMonitorId(wm, hit.attachLft)).toBe("mo0ws1");
+  });
+
+  it("forestEnsureOnPlaceWorkspace reparents a mapped window onto PlaceNext desk", () => {
+    const root = makeLive("ROOT", "ROOT");
+    const ws0 = makeLive("WORKSPACE", "ws0");
+    const ws1 = makeLive("WORKSPACE", "ws1");
+    const mon0 = makeLive("MONITOR", "mo0ws0", { layout: "HSPLIT" });
+    const mon1 = makeLive("MONITOR", "mo0ws1", { layout: "HSPLIT" });
+    root.appendChild(ws0);
+    root.appendChild(ws1);
+    ws0.appendChild(mon0);
+    ws1.appendChild(mon1);
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    expect(
+      forestApplySkeletonMon(wm, mon1, {
+        split: "hsplit",
+        children: [{ slot: "mon0.ghostty", roles: ["ghostty"] }],
+      }).ok
+    ).toBe(true);
+    const meta = { id: 42, title: "Ghostty", get_wm_class: () => "com.mitchellh.ghostty" };
+    const admitted = forestAdmitMetaWindow(wm, meta, { parentId: "mo0ws0", monitorId: "mo0ws0" });
+    expect(admitted?.id).toBeTruthy();
+    expect(wm.forest.nodes[admitted.id].parentId).toBe("mo0ws0");
+    const moved = forestEnsureOnPlaceWorkspace(wm, admitted.live, {
+      homeMonitor: 0,
+      workspace: 1,
+    });
+    expect(moved).toBe(true);
+    expect(liveAncestorMonitorId(wm, admitted.live)).toBe("mo0ws1");
+    expect(wm.forest.nodes[admitted.id].parentId).toBe("mo0ws1");
   });
 
   it("R048: forestBindWindow consumes Forest PH when GObject parentNode is null", () => {
@@ -1774,6 +2100,12 @@ describe("presentWmSlots (D096 G2)", () => {
     const slotB = forestSlotRect(wm.forest, idB);
     expect(slotA?.width).toBeGreaterThan(0);
     expect(slotB?.width).toBeGreaterThan(0);
+    expect(forestSlotPaintRect(wm, winA)).toMatchObject({
+      x: slotA.x,
+      y: slotA.y,
+      width: slotA.width,
+      height: slotA.height,
+    });
 
     const out = presentWmSlots(wm, "unit-present");
     expect(out.ok).toBe(true);

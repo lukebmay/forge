@@ -47,6 +47,10 @@ faster than true cold. Switching workspace too soon after a cold apply can
 flash-and-snap back — that is GNOME urgency/busy settle, not Forge; see
 [troubleshooting.md](troubleshooting.md#workspace-switch-supern-flashes-then-snaps-back).
 
+While apply runs, a dim overlay covers the desk until **what you can see**
+is placed. Hidden tabs in a group finish in the background. New windows
+should appear already in their slot — not fly in from the wrong rectangle.
+
 Tree root for `hosts/` + `common/` is `FORGE_LAYOUT_DIR` when set, else
 `~/.config/forge/layout` (same root `layout save` uses). Apply/show still
 resolve common/flat after host (see search order below). **`list` is host-only.**
@@ -371,16 +375,25 @@ Kept companions and claimed role windows are never closed.
 
 On a **cold empty** desk (no claimed role windows), one `forge layout <name>`:
 
-1. **Skeleton** — mon splits + tab/stack groups + slot-tagged placeholders  
-2. **Open** missing roles **into those slots** (chrome-family apps launch one
-   at a time so they do not crash each other)  
-3. **Place + hard-ready** each tiled slot (window, or a whole tab group):
-   TILE on the intended monitor in the intended pane. If Meta is slow, Forge
-   retries that slot a few times. A required slot that never lands fails the
-   command (`ok` is false) even if other slots succeeded  
-4. **Focus once** (profile `active` / open leaf + keyboard `focus`) after
-   every required slot has finished or failed  
-5. **Soft residual** — brief learned quiet for late focus steal; correct and
+1. **Skeleton** — mon splits + tab/stack groups + slot-tagged placeholders
+1. **Open** missing roles **into those slots.** Forge starts the tab you
+   should see first, then other visible panes, then hidden tab members.
+   Apps settle on their own (not one-after-another wait). Chrome-family
+   apps still launch one at a time so they do not crash each other.
+   New windows stay hidden until Forge has commanded their slot, then
+   appear there — they should not fly in from the wrong rectangle
+1. **Place** each tiled slot (window, or a whole tab group): TILE on the
+   intended monitor in the intended pane. If Meta is slow, Forge retries
+   that slot a few times. A required slot that never lands fails the
+   command (`ok` is false) even if other slots succeeded
+1. As soon as a tab/stack group has any window, the intended open tab is
+   raised (you do not wait for hidden members)
+1. The dim overlay drops when every **visible** pane is in place (or
+   honestly floating). Hidden tabs may still finish in the background
+1. **Focus once** (profile `active` / keyboard `focus`) after every
+   required app has a mapped window — not while the first window is still
+   opening, and not after hidden tabs finish resizing
+1. **Soft residual** — brief learned quiet for late focus steal; correct and
    reset quiet. Heuristics:
    `~/.config/forge/config/settle-heuristics.json`. Operator wipe:
    `forge thrash reset-heuristics` (or `… --unlink`); status:

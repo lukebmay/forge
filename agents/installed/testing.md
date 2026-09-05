@@ -12,6 +12,21 @@ Rule vocabulary: **FIRM** / **GUIDELINE** / **MAY** (see `general.md`).
 
 Catch real bugs without making change expensive. Tests serve the product.
 
+## When to run tests (FIRM)
+
+Run tests **after a change that can break that contract**. A green
+result is evidence until the next such change. Re-running the same
+passing suite “to be sure” wastes time and tokens.
+
+| Do | Do not |
+| --- | --- |
+| After you change behavior, run the **lightest** tests whose contract that change can break | Re-run a pack that already passed this session with **no** relevant code/harness change |
+| If a test **fails**, fix the product (or the design, in the same effort), then re-run **that** test and the blast radius | Weaken the test so today’s code goes green |
+| Use a fail to **improve** the feature you just added | Soak the full tree after every green |
+
+E2E still follows the **story tree** below (trunk first). This section
+is when to spend the run, not a license to skip tests after a real edit.
+
 ## Optional features in dev (FIRM)
 
 When implementing/debugging an optional feature: **turn it on** in local/dev for that work. Record the enable command in task/handoff. Prefer tests that force the optional path explicitly.

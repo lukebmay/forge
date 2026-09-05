@@ -309,6 +309,41 @@ describe("late adopt remaps slot machine window id", () => {
     expect(done2[0].settled).toEqual(["308"]);
     expect(winCb).toBeTruthy();
   });
+
+  it("TAB peer hard-waits run in parallel (A done does not wait on B)", () => {
+    const settled = [];
+    const timers = timerBag();
+    const wins = {
+      a: tileWin("1"),
+      b: tileWin("2", { mode: "FLOAT", rect: { width: 10, height: 10 } }),
+    };
+    const machine = {
+      id: "mon0.tab",
+      key: "mon0.tab",
+      kind: "TABBED",
+      roles: ["A", "B"],
+      windowIds: ["1", "2"],
+      slots: {
+        1: { windowId: "1", role: "A", monitor: 0 },
+        2: { windowId: "2", role: "B", monitor: 0 },
+      },
+    };
+    const session = startSlotMachines(
+      [machine],
+      {
+        placeSlot: () => {},
+        loadWindows: () => [wins.a, wins.b],
+        schedule: (ms, cb) => timers.schedule(ms, cb),
+        cancel: (id) => timers.cancel(id),
+        onWindowSettled: (_m, id) => settled.push(id),
+      },
+      () => {}
+    );
+    expect(settled).toEqual(["1"]);
+    expect(session.machines[0].windowSettle["1"]).toBe(SLOT_STATE.HARD_DONE);
+    expect(session.machines[0].windowSettle["2"]).not.toBe(SLOT_STATE.HARD_DONE);
+    expect(session.machines[0].state).not.toBe(SLOT_STATE.HARD_DONE);
+  });
 });
 
 describe("placeSlotWindows (SM5: no mid-place focus)", () => {

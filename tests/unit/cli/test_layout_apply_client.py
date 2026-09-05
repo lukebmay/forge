@@ -88,6 +88,113 @@ class TestBuildRequest(unittest.TestCase):
         self.assertFalse(req["flags"]["clean"])
 
 
+class TestProfileResidualHint(unittest.TestCase):
+    def _forge(self):
+        from importlib.machinery import SourceFileLoader
+
+        return SourceFileLoader(
+            "forge_cli_residual_hint",
+            str(_FORGE_CLI / "forge"),
+        ).load_module()
+
+    def test_missing_and_invalid_are_leave(self):
+        forge = self._forge()
+        self.assertEqual(forge._layout_profile_residual(None), "leave")
+        self.assertEqual(forge._layout_profile_residual({}), "leave")
+        self.assertEqual(forge._layout_profile_residual({"marginal": {}}), "leave")
+        self.assertEqual(
+            forge._layout_profile_residual({"marginal": {"residual": "close"}}),
+            "leave",
+        )
+
+    def test_park_from_profile_file(self):
+        forge = self._forge()
+        self.assertEqual(
+            forge._layout_profile_residual({"marginal": {"residual": "park"}}),
+            "park",
+        )
+        self.assertEqual(
+            forge._layout_profile_residual({"marginal": {"residual": "LEAVE"}}),
+            "leave",
+        )
+
+    def test_effective_clean_honors_residual_park_unless_explicit_clean(self):
+        forge = self._forge()
+        park = {"marginal": {"residual": "park"}}
+        leave = {"tiles": {"mon0": ["ghostty"]}}
+        self.assertTrue(
+            forge._layout_effective_clean(
+                keep_others=False, clean_flag=False, profile=leave
+            )
+        )
+        self.assertFalse(
+            forge._layout_effective_clean(
+                keep_others=False, clean_flag=False, profile=park
+            )
+        )
+        self.assertTrue(
+            forge._layout_effective_clean(
+                keep_others=False, clean_flag=True, profile=park
+            )
+        )
+        self.assertFalse(
+            forge._layout_effective_clean(
+                keep_others=True, clean_flag=False, profile=leave
+            )
+        )
+
+    def test_run_multi_passes_param_clean_into_effective_clean(self):
+        """`clean_flag` is not in `_layout_run_multi` scope (NameError → layout exit 1)."""
+        import inspect
+
+        forge = self._forge()
+        src = inspect.getsource(forge._layout_run_multi)
+        self.assertIn("clean_flag=clean,", src)
+        self.assertNotIn("clean_flag=clean_flag", src)
+
+    def test_cmd_layout_passes_explicit_clean_not_forced_true(self):
+        forge = self._forge()
+        args = mock.Mock()
+        args.layout_tokens = ["ghosttys"]
+        args.keep_others = False
+        args.keep = False
+        args.clean = False
+        args.force = False
+        args.dry_run = False
+        args.safe = False
+        args.wait_tree_stable = False
+        args.tree_file = None
+        args.focus = None
+        args.force_launch = False
+        args.verbose = False
+        with mock.patch.object(forge, "_layout_run_multi", return_value=0) as run:
+            rc = forge.cmd_layout("dbus", args)
+        self.assertEqual(rc, 0)
+        self.assertFalse(run.call_args.kwargs["clean"])
+        self.assertFalse(run.call_args.kwargs["keep_others"])
+
+    def test_cmd_layout_explicit_clean_still_true(self):
+        forge = self._forge()
+        args = mock.Mock()
+        args.layout_tokens = ["ghosttys"]
+        args.keep_others = False
+        args.keep = False
+        args.clean = True
+        args.force = True
+        args.dry_run = False
+        args.safe = False
+        args.wait_tree_stable = False
+        args.tree_file = None
+        args.focus = None
+        args.force_launch = False
+        args.verbose = False
+        with mock.patch.object(forge, "_layout_run_multi", return_value=0) as run:
+            rc = forge.cmd_layout("dbus", args)
+        self.assertEqual(rc, 0)
+        self.assertTrue(run.call_args.kwargs["clean"])
+        self.assertTrue(run.call_args.kwargs["force_close"])
+
+
 class TestProgressAndDone(unittest.TestCase):
     def test_format_message(self):
         line = format_progress_line(

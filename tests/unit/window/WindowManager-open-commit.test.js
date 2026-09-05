@@ -297,11 +297,9 @@ describe("WindowManager open commit (CL4)", () => {
       );
     }
 
-    // CL8: no open quiet commit / no percent carve while batch active.
+    // D117: no open quiet / no percent carve while batch active; dest then show.
     expect(metas.every((m) => !wm()._openCommitPending.has(m))).toBe(true);
-    expect(metas.every((m) => wm()._isDeferredOpen(m))).toBe(true);
     expect(scheduleSpy).not.toHaveBeenCalled();
-    // insertChildPercent only for non-deferred paths; none of these should carve.
     const deferredInserts = insertSpy.mock.calls.filter(([parent, child]) =>
       metas.some((m) => child?.nodeValue === m || child === m)
     );
@@ -309,11 +307,10 @@ describe("WindowManager open commit (CL4)", () => {
 
     for (const m of metas) {
       const actor = m.get_compositor_private();
-      expect(actor.opacity).toBe(0);
+      expect(actor.opacity).toBe(255);
       const node = wm().findNodeWindow(m) || wm().tree.findNode(m);
       expect(node).toBeTruthy();
-      // Map RESYNC under TILES may TILE the live; CL8 contract is deferred+hidden.
-      expect(wm()._isDeferredOpen(m)).toBe(true);
+      expect(wm()._isDeferredOpen(m)).toBe(false);
     }
 
     expect(requestSpy).not.toHaveBeenCalled();
@@ -349,8 +346,6 @@ describe("WindowManager open commit (CL4)", () => {
     wm().beginOpenLayoutBatch();
     wm().appThrashCatalog.recordOpen("org.example.Residual");
     const meta = trackNew({ id: "residual", wm_class: "org.example.Residual" });
-    // CL8: deferred admit latches need immediately (no open quiet).
-    expect(wm()._isDeferredOpen(meta)).toBe(true);
     expect(wm()._openLayoutBatchNeedsCommit).toBe(true);
 
     // Residual RunSteps: real renderTree path (sync idle mock runs body).
@@ -452,9 +447,7 @@ describe("WindowManager open commit (CL4)", () => {
 
     wm().appThrashCatalog.recordOpen("org.example.ExtMid");
     const meta = trackNew({ id: "ext-mid", wm_class: "org.example.ExtMid" });
-    // CL8: deferred admit — no open quiet; need-commit latched; still FLOAT.
     expect(wm()._openCommitPending.has(meta)).toBe(false);
-    expect(wm()._isDeferredOpen(meta)).toBe(true);
     expect(wm()._openLayoutBatchNeedsCommit).toBe(true);
 
     // External geom is sensor-only (no requestLayout); need-commit stays latched
@@ -512,9 +505,8 @@ describe("WindowManager open commit (CL4)", () => {
     expect(insertSpy).toHaveBeenCalled();
   });
 
-  it("CL8 PlaceNext deferred open moves to home monitor", () => {
+  it("CL8 PlaceNext hide-place-show is Forest dest, not map-time sticky", () => {
     expect(wm().beginOpenLayoutBatch()).toMatchObject({ ok: true, depth: 1 });
-    // Dual mon not required: home 0 still exercises sticky path when mon differs.
     const place = wm().placeNext({ monitor: 0, wmClass: "org.example.PlaceDef" });
     expect(place.ok).toBe(true);
 
@@ -525,14 +517,11 @@ describe("WindowManager open commit (CL4)", () => {
       monitor: 0,
       rect: { x: 10, y: 10, width: 400, height: 300 },
     });
-    const moveSpy = vi.spyOn(meta, "move_to_monitor");
-    // Force get_monitor !== home so safeMoveToMonitor actually calls move.
     meta._monitor = 1;
     wm().trackWindow(null, meta);
 
-    expect(wm()._isDeferredOpen(meta)).toBe(true);
-    expect(moveSpy).toHaveBeenCalledWith(0);
     expect(wm()._openCommitPending.has(meta)).toBe(false);
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
 
     wm().endOpenLayoutBatch("open-batch");
     expect(wm()._isDeferredOpen(meta)).toBe(false);
@@ -542,8 +531,7 @@ describe("WindowManager open commit (CL4)", () => {
     wm().beginOpenLayoutBatch();
     wm().appThrashCatalog.recordOpen("org.example.DisableDef");
     const meta = trackNew({ id: "disable-def", wm_class: "org.example.DisableDef" });
-    expect(wm()._isDeferredOpen(meta)).toBe(true);
-    expect(meta.get_compositor_private().opacity).toBe(0);
+    expect(meta.get_compositor_private().opacity).toBe(255);
 
     wm().disable();
     expect(wm()._isDeferredOpen(meta)).toBe(false);
@@ -554,12 +542,11 @@ describe("WindowManager open commit (CL4)", () => {
     wm().beginOpenLayoutBatch();
     wm().appThrashCatalog.recordOpen("org.example.RelDef");
     const meta = trackNew({ id: "rel-def", wm_class: "org.example.RelDef" });
-    expect(wm()._isDeferredOpen(meta)).toBe(true);
-    expect(meta.get_compositor_private().opacity).toBe(0);
     expect(wm().openLayoutBatchActive).toBe(true);
+    expect(meta.get_compositor_private().opacity).toBe(255);
 
     const out = wm().releaseDeferredOpens();
-    expect(out).toMatchObject({ ok: true, released: 1, depth: 1 });
+    expect(out).toMatchObject({ ok: true, released: 0, depth: 1 });
     expect(wm()._isDeferredOpen(meta)).toBe(false);
     expect(meta.get_compositor_private().opacity).toBe(255);
     expect(wm().openLayoutBatchActive).toBe(true);
@@ -580,17 +567,19 @@ describe("WindowManager open commit (CL4)", () => {
     wm().beginOpenLayoutBatch();
     wm().appThrashCatalog.recordOpen("org.example.SettleDef");
     const meta = trackNew({ id: "settle-def", wm_class: "org.example.SettleDef" });
-    expect(wm()._isDeferredOpen(meta)).toBe(true);
-    expect(wm().layoutController._settlePending.has(meta)).toBe(false);
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
+    const st0 = wm().layoutController._settlePending.get(meta);
+    expect(st0).toBeTruthy();
+    expect(st0.openedAt).toBe(tMap);
 
     clock.setNow(tMap + 200);
     const out = wm().releaseDeferredOpens();
-    expect(out.released).toBe(1);
+    expect(out.released).toBe(0);
     expect(wm()._isDeferredOpen(meta)).toBe(false);
 
     const st = wm().layoutController._settlePending.get(meta);
     expect(st).toBeTruthy();
-    expect(st.openedAt).toBe(tMap); // map time, not release time
+    expect(st.openedAt).toBe(tMap);
     expect(st.mismatches).toBe(0);
 
     // end batch without re-noting a second pending entry
@@ -605,7 +594,7 @@ describe("WindowManager open commit (CL4)", () => {
     wm().beginOpenLayoutBatch();
     wm().appThrashCatalog.recordOpen("org.example.SettleEnd");
     const meta = trackNew({ id: "settle-end", wm_class: "org.example.SettleEnd" });
-    expect(wm()._isDeferredOpen(meta)).toBe(true);
+    expect(wm()._isDeferredOpen(meta)).toBe(false);
 
     clock.setNow(tMap + 50);
     wm().endOpenLayoutBatch("open-batch");

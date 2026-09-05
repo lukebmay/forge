@@ -21,10 +21,16 @@ describe("lib/opsets mark2", () => {
   });
 
   it("lib/opsets source does not import proto or plog", () => {
-    for (const name of ["mark2.js", "transact.js", "transfer.js", "index.js"]) {
+    for (const name of ["mark2.js", "mark2-pointer.js", "transact.js", "transfer.js", "index.js"]) {
       const src = readFileSync(join(LIB_OPSETS, name), "utf8");
       expect(src, name).not.toMatch(/prototypes\/container-motion/);
       expect(src, name).not.toMatch(/plog\.mjs/);
     }
+  });
+
+  it("MARK2_OPSET.pointer is wired", () => {
+    const set = getOpSet("mark2");
+    expect(typeof set.pointer?.hover).toBe("function");
+    expect(typeof set.pointer?.release).toBe("function");
   });
 });

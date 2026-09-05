@@ -17,8 +17,11 @@ from nested_wayland import (  # noqa: E402
     NestedConfig,
     NestedError,
     NestedUnsupported,
+    _env_has_marker,
     _looks_like_nest_display,
     _safe_name,
+    _token_hit,
+    default_display_for_name,
     bus_address_for,
     can_nested_on_host,
     client_env,
@@ -27,15 +30,18 @@ from nested_wayland import (  # noqa: E402
     ensure_nest_cli_dirs,
     ensure_nest_client_isolation,
     format_env_export,
+    format_nest_not_ready,
     format_status_text,
     has_stale_residue,
     host_primary_logical_size,
     host_session_type,
     host_wayland_display,
     is_running,
+    is_socket_not_ready_error,
     merge_client_env,
     nest_forge_config_home,
     nest_forge_host,
+    nest_ready_missing,
     parent_short_hostname,
     parse_num_monitors,
     parse_size,
@@ -43,11 +49,14 @@ from nested_wayland import (  # noqa: E402
     require_wayland_host,
     resolve_host_display,
     resolve_host_xauthority,
+    run_with_socket_retry,
     session_dir,
     shell_start_env,
+    should_retry_nest_start,
     should_stop_on_exit,
     state_root,
     wait_nest_client_ready,
+    wait_nest_session_ready,
     x11_refuse_message,
 )
 
@@ -365,6 +374,22 @@ def test_looks_like_nest_display() -> None:
     assert not _looks_like_nest_display("wayland-0")
 
 
+def test_default_display_for_name() -> None:
+    assert default_display_for_name("forge") == "wayland-forge"
+    assert default_display_for_name("forge-tabbed") == "wayland-forge-tabbed"
+
+
+def test_token_hit_does_not_prefix_match_sibling_nests() -> None:
+    assert _token_hit("/run/user/1000/wayland-forge", "wayland-forge")
+    assert not _token_hit("/run/user/1000/wayland-forge-tabbed", "wayland-forge")
+    assert _token_hit("/run/user/1000/wayland-forge-tabbed", "wayland-forge-tabbed")
+    blob = "WAYLAND_DISPLAY=wayland-forge\nHOME=/home/luke\n"
+    other = "WAYLAND_DISPLAY=wayland-forge-tabbed\nHOME=/home/luke\n"
+    assert _env_has_marker(blob, "WAYLAND_DISPLAY=wayland-forge")
+    assert not _env_has_marker(other, "WAYLAND_DISPLAY=wayland-forge")
+    assert _env_has_marker(other, "WAYLAND_DISPLAY=wayland-forge-tabbed")
+
+
 def test_host_wayland_ignores_nest_env(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     rt = tmp_path / "run"
@@ -609,6 +634,7 @@ def test_run_campaign_always_stops(
     monkeypatch.setattr(nw, "is_running", lambda _n="forge": True)
     monkeypatch.setattr(nw, "load_config", lambda _n="forge": cfg)
     monkeypatch.setattr(nw, "exec_in", lambda _c, _a: 0)
+    monkeypatch.setattr(nw, "wait_nest_session_ready", lambda *a, **k: None)
     monkeypatch.setattr(
         nw, "stop",
         lambda **kw: stops.append(kw.get("name", "forge")) or True)
@@ -637,6 +663,7 @@ def test_run_campaign_keep_skips_stop(
     monkeypatch.setattr(nw, "is_running", lambda _n="forge": True)
     monkeypatch.setattr(nw, "load_config", lambda _n="forge": cfg)
     monkeypatch.setattr(nw, "exec_in", lambda _c, _a: 7)
+    monkeypatch.setattr(nw, "wait_nest_session_ready", lambda *a, **k: None)
     monkeypatch.setattr(
         nw, "stop",
         lambda **kw: stops.append(kw.get("name", "forge")) or True)
@@ -665,9 +692,175 @@ def test_run_campaign_stops_even_on_cmd_error(
     monkeypatch.setattr(nw, "is_running", lambda _n="forge": True)
     monkeypatch.setattr(nw, "load_config", lambda _n="forge": cfg)
     monkeypatch.setattr(nw, "exec_in", lambda _c, _a: 42)
+    monkeypatch.setattr(nw, "wait_nest_session_ready", lambda *a, **k: None)
     monkeypatch.setattr(
         nw, "stop",
         lambda **kw: stops.append(kw.get("name", "forge")) or True)
 
     assert nw.run_campaign(["false"], name="forge") == 42
     assert stops == ["forge"]
+
+
+def test_is_socket_not_ready_error() -> None:
+    assert is_socket_not_ready_error(
+        NestedError("nested Wayland socket not ready: /run/user/1000/wayland-forge")
+    )
+    assert is_socket_not_ready_error("socket not ready after 20s")
+    assert not is_socket_not_ready_error(NestedError("missing required tools: gdbus"))
+
+
+def test_should_retry_nest_start_once() -> None:
+    err = NestedError("nested Wayland socket not ready: /tmp/wayland-forge")
+    assert should_retry_nest_start(err, attempt=0, retries=1) is True
+    assert should_retry_nest_start(err, attempt=1, retries=1) is False
+    assert should_retry_nest_start("missing required tools", attempt=0) is False
+
+
+def test_nest_ready_missing_gates() -> None:
+    assert nest_ready_missing(
+        socket_ok=False, shell_ok=False, forge_ok=False, want_forge=True
+    ) == "wayland-socket"
+    assert nest_ready_missing(
+        socket_ok=True, shell_ok=False, forge_ok=False, want_forge=True
+    ) == "gnome-shell"
+    assert nest_ready_missing(
+        socket_ok=True, shell_ok=True, forge_ok=False, want_forge=True
+    ) == "forge-dbus"
+    assert nest_ready_missing(
+        socket_ok=True, shell_ok=True, forge_ok=False, want_forge=False
+    ) is None
+    assert nest_ready_missing(
+        socket_ok=True, shell_ok=True, forge_ok=True, want_forge=True
+    ) is None
+
+
+def test_format_nest_not_ready_socket_and_forge() -> None:
+    sock = format_nest_not_ready(
+        "wayland-socket",
+        socket_path="/run/user/1000/wayland-forge",
+        log_path="/tmp/shell.log",
+        timeout_s=20,
+        retried=True,
+    )
+    assert "nested Wayland socket not ready after 20s (retried start once)" in sock
+    assert "/run/user/1000/wayland-forge" in sock
+    assert "/tmp/shell.log" in sock
+    forge = format_nest_not_ready(
+        "forge-dbus",
+        bus_address="unix:path=/tmp/bus",
+        log_path="/tmp/shell.log",
+        timeout_s=20,
+    )
+    assert "Forge DBus not ready after 20s" in forge
+    assert "unix:path=/tmp/bus" in forge
+    assert "disable-user-extensions" in forge
+
+
+def test_run_with_socket_retry_retries_once() -> None:
+    n = {"c": 0}
+    retried: list[int] = []
+
+    def launch() -> str:
+        n["c"] += 1
+        if n["c"] == 1:
+            raise NestedError("nested Wayland socket not ready: /tmp/w")
+        return "ok"
+
+    assert run_with_socket_retry(
+        launch,
+        on_retry=lambda: retried.append(1),
+        sleep=lambda _s: None,
+    ) == "ok"
+    assert n["c"] == 2
+    assert retried == [1]
+
+
+def test_run_with_socket_retry_does_not_retry_other_errors() -> None:
+    def launch() -> str:
+        raise NestedError("missing required tools: gnome-shell")
+
+    with pytest.raises(NestedError, match="missing required tools"):
+        run_with_socket_retry(launch, sleep=lambda _s: None)
+
+
+def test_run_with_socket_retry_gives_up_after_one() -> None:
+    n = {"c": 0}
+
+    def launch() -> str:
+        n["c"] += 1
+        raise NestedError("nested Wayland socket not ready: /tmp/w")
+
+    with pytest.raises(NestedError, match="retried start once"):
+        run_with_socket_retry(launch, sleep=lambda _s: None)
+    assert n["c"] == 2
+
+
+def test_wait_nest_session_ready_reports_socket(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import nested_wayland as nw
+
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setattr(nw.time, "sleep", lambda _s: None)
+    assert wait_nest_session_ready(
+        "wayland-missing",
+        "unix:path=/tmp/bus",
+        timeout_s=0,
+    ) == "wayland-socket"
+
+
+def test_wait_nest_session_ready_reports_forge(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import socket as socklib
+    import nested_wayland as nw
+
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setattr(nw.time, "sleep", lambda _s: None)
+    path = tmp_path / "wayland-x"
+    srv = socklib.socket(socklib.AF_UNIX, socklib.SOCK_STREAM)
+    srv.bind(str(path))
+    try:
+        monkeypatch.setattr(
+            nw, "name_has_owner",
+            lambda _bus, name, timeout=5.0: name == "org.gnome.Shell")
+        monkeypatch.setattr(nw, "shell_eval", lambda *_a, **_k: (True, "(true, '1')"))
+        assert wait_nest_session_ready(
+            "wayland-x",
+            "unix:path=/tmp/bus",
+            timeout_s=0,
+        ) == "forge-dbus"
+        monkeypatch.setattr(nw, "name_has_owner", lambda *_a, **_k: True)
+        assert wait_nest_session_ready(
+            "wayland-x",
+            "unix:path=/tmp/bus",
+            timeout_s=0,
+        ) is None
+    finally:
+        srv.close()
+
+
+def test_run_campaign_does_not_exec_until_ready(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import nested_wayland as nw
+
+    execs: list[int] = []
+    cfg = NestedConfig(
+        name="forge",
+        display="wayland-forge-unit",
+        size="1280x800",
+        scale="1",
+        host_wayland="wayland-0",
+        unsafe_mode=True,
+        state_dir=str(tmp_path),
+        bus_address=bus_address_for(tmp_path),
+        created_at=0.0,
+        num_monitors=1,
+    )
+    monkeypatch.setattr(nw, "is_running", lambda _n="forge": True)
+    monkeypatch.setattr(nw, "load_config", lambda _n="forge": cfg)
+    monkeypatch.setattr(nw, "exec_in", lambda _c, _a: execs.append(1) or 0)
+    monkeypatch.setattr(nw, "wait_nest_session_ready", lambda *a, **k: "forge-dbus")
+    monkeypatch.setattr(nw, "stop", lambda **kw: True)
+
+    with pytest.raises(NestedError, match="Forge DBus not ready"):
+        nw.run_campaign(["true"], name="forge")
+    assert execs == []

@@ -7,9 +7,64 @@ order: 70
 # Testing (forge extension)
 
 **Base:** follow [`agents/installed/testing.md`](./installed/testing.md) for the
-portable pyramid, lifecycle, plog log-contract pointer, CI, and Grok leader /
-reattach rules. This file **extends** that base with forge-only practice. On
-conflict, **this extension wins**.
+portable pyramid, **design-sourced / black-box E2E**, story tree, in-progress
+expected-fail, visible-contract, lifecycle, plog log-contract pointer, CI, and
+Grok leader / reattach rules. This file **extends** that base with forge-only
+practice. On conflict, **this extension wins**.
+
+## Commits are not a test gate (FIRM)
+
+Husky / lint-staged format and lint staged files. They **must not** run
+Vitest, pytest, nest, or live matrix. The suite is not yet high-quality
+and stable enough to block `git commit`. Run tests in the session when
+the change can break a contract; do not re-add `vitest related` (or
+equivalent) to `package.json` `lint-staged`.
+
+## Nest is the E2E (FIRM)
+
+Nested Wayland (`forge-test nested`) is Forge’s **end-to-end** harness for
+extension JS. It is **not** a helper-unit dump. Host dual-4K / real Chrome
+PWA identity remain host authority only for what nest physically cannot
+prove ([D022](./design/CHANGELOG.md)).
+
+Catalog rules that apply here without restating: design is the spec; code
+is a **black box**; story **tree** (trunk → branch → leaf); RC = **full
+tree**; partial features may fail **expected** stories only.
+
+**Forge-specific**
+
+| Do | Do not |
+| --- | --- |
+| Author nest stories from `design.md`, OpSet docs (`mark2.md`), layout architecture in `project.md`, and named user sequences | Author nest stories by reading `adapter-*.js` / `layout-apply-*.js` and asserting those helpers |
+| Assert after the gesture: Forest/GetTree **who sits where**, TILE/FLOAT, **this** window’s identity, **visible** geometry | Assert PlaceNext internals, call order, or “the fixture already did this” |
+| Trunk after a tiling/open/layout change (lightest net that would catch an obvious desk break) | Treat a compat `smoke-*` PASS as proof of a different story |
+| RC: full nest tree (`--rc` / `proof-loop --suite rc`) before calling a tip release-ready | Ship on unit green + one unrelated nest smoke |
+
+**Visible settle (D105):** nest must not fail a story because a **buried**
+tab, hidden map, or **other monitor/workspace** is still settling, if the
+user’s current view already matches the contract. It **must** fail if the
+visible pane/group is wrong (1/3\|2/3 of the focused split, wrong open
+leaf, fly-in of a window the user can see).
+
+**In-progress:** a partial layout/open slice may leave its nest story red
+**if the plan names that expected fail** (`expected_fail=True` → print
+`XFAIL` / `expected-fail`; `--rc` / `--suite rc` is not hard red from
+that id alone). Unrelated trunk red is a regression. Unimplemented
+bodies are **not** expected-fail — they stay non-zero. Do not rewrite
+the story to match half-built code.
+
+**Not expected-fail:** `trunk.tabs.open-leaf-one-slot` and
+`trunk.mark2.join-enter` can flake vs T3 PASS (`H(TAB,V) !=
+H(TAB,WINDOW)`; TAB peers not one slot). That is a harness/product
+flake — do not mark those ids expected-fail and do not weaken Expect.
+
+| When | Run |
+| --- | --- |
+| After tiling / open / layout JS | **`--trunk <id>`** for that area (lightest net) |
+| That trunk fails | **`--branch <id>`** → leaf down the same tree |
+| Release candidate / “prove this tip” | **`--rc`** / `proof-loop --suite rc` (full tree except `leaf.float.fail-safe-terminator` unless fixture). Unimplemented = not release-ready |
+
+Story catalog + rebuild: [forge-design-e2e.md](./plans/forge-design-e2e.md).
 
 ## Real regression tests (FIRM)
 
@@ -97,7 +152,7 @@ treat primary logout/login as the ordinary way to load a dirty tip mid-campaign.
 | Rule | Detail |
 | --- | --- |
 | **Nest first** | After `./install --dev` for JS changes: `./scripts/forge/forge-test nested run` / `restart` + retest |
-| **Nest install = `--dev` (FIRM)** | Agent nest / live-with-traces campaigns install with **`./install --dev`** (or `forge update --dev` from the durable clone). That sets **TRACE (6)** (D068) so `forge log` hunts work. Plain `./install` is INFO-only — insufficient when the campaign needs traces. Host tip after nest green may stay `--dev` until you intentionally switch. |
+| **Nest install = `--dev` (FIRM)** | Agent nest / live-with-traces campaigns install with **`./install --dev`** (or `forge update --dev` from the durable clone). That sets **TRACE (6)** (D068), layout debug overlay, and `forge-test` on PATH (D104) so hunts work. Plain `./install` is INFO-only — insufficient when the campaign needs traces. Host tip after nest green may stay `--dev` until you intentionally switch. |
 | **Host logout** | Only when nest cannot prove the behavior (true host dual-4K cold / chrome open-leaf RC) **or** occasional tip load after nest already green |
 | **Never** | Invent logout loops for mid-campaign retests when nest works |
 
@@ -131,17 +186,25 @@ geometry; host remains authority for physical dual-mon sign-off. Design:
 
 ### Nest entrypoints (N3 — FIRM)
 
+Story catalog is `--trunk` / `--branch` / `--rc` (ids from
+[stories.md](./plans/forge-design-e2e/stories.md)). `smoke-*` tiling
+names are **T4 compat aliases**, not the catalog. Tools stay tools.
+
 | Entry | When | Cleanup |
 | --- | --- | --- |
-| **`./scripts/forge/forge-test nested run -- <cmd…>`** | **Prefer** for one-shot campaigns | Starts if needed → cmd → **always stops** (unless `--keep`) |
+| **`./scripts/forge/forge-test nested --trunk <id>`** | Day-to-day: lightest trunk for the blast radius (`trunk.open` prefix ok if unique) | Same as `nested run` (always stops unless `--keep` / `--keep-on-fail`) |
+| **`./scripts/forge/forge-test nested --branch <id>`** | Trunk failed, or the change is that subsystem: branch + descendant leaves | Same as `nested run` (always stops unless `--keep` / `--keep-on-fail`) |
+| **`./scripts/forge/forge-test nested --rc`** | Full stories.md tree (skip `leaf.float.fail-safe-terminator` unless fixture). Unimplemented → non-zero. Plan-named expected-fail → `XFAIL`, not hard red | Same as `nested run` (always-stop per ready story unless `--keep` / `--keep-on-fail`) |
+| **`./scripts/forge/forge-test nested proof-loop --suite core`** | Seven trunks (alias `--suite smoke`). `--iterations N` / `--hours H` | Nested `run` per case (always stops unless `--keep` / `--keep-on-fail`) |
+| **`./scripts/forge/forge-test nested proof-loop --suite rc`** | Same tree as `--rc`. Unimplemented → non-zero (not release-ready) | Nested `run` per case (always stops unless `--keep` / `--keep-on-fail`) |
+| **`./scripts/forge/forge-test nested run -- <cmd…>`** | One-shot non-story campaign | Starts if needed → cmd → **always stops** (unless `--keep`) |
 | **`./scripts/forge/forge-test nested exec -- <cmd…>`** | Nest already up; multi-step interactive | No auto-stop — **stop** when done |
 | **`./scripts/forge/forge-test nested invoke <id>`** | Mark 2 `command({name})` via Shell.Eval (e2e dbus; no Super+key) | Nest must already be up |
-| **`./scripts/forge/forge-test nested dnd-drop …`** | Synthetic tile drop via session `_dndDropOp` → `_commitResolvedDrop` (empty-mon: `--dest-monitor` → `_commitEmptyMonitorDrop`) | Nest must already be up |
-| **`./scripts/forge/forge-test nested smoke-mark2`** | Two clients → invoke `join.right` → `forge tree` | Same as `nested run` (always stops) |
-| **`./scripts/forge/forge-test nested smoke-layout-ws`** | WS1 layout A → WS2 B → back → nautilus/ghostty → join tab → close → re-run A; CTS after each step | Same as `nested run` (always stops; defaults `--monitors=2`) |
-| **`./scripts/forge/forge-test nested smoke-layout-occupied`** | WS2 occupied 2-slot: seed dest-mon second role, `forge layout _forge-test-occupied-2slot`, no open-miss / PlaceNext mon-root | Same as `nested run` (always stops; defaults `--monitors=2`) |
-| **`./scripts/forge/forge-test nested smoke-nest-apps`** | Nautilus / Ghostty / TextEditor / Chrome map **in-nest** (proves client isolation) | Same as `nested run` (always stops) |
-| **`./scripts/forge/forge-test nested smoke-geom-epsilon`** | D095 sent↔observed ε campaign (nest tapes) | Same as `nested run` (always stops; defaults `--monitors=2`) |
+| **`./scripts/forge/forge-test nested dnd-drop …`** | Synthetic tile drop via session `_dndDropOp` → `OpSet.pointer.release` → named Ops (empty-mon: `--dest-monitor` → `move`; host Meta transfer last-resort) | Nest must already be up |
+| **`smoke-close-reflow` / `smoke-mark2` / `smoke-toggle-tab` / `smoke-layout-ws` / `smoke-layout-occupied` / `smoke-layout-dnd`** | Compat aliases → `--trunk` / `--branch` (T4). `smoke-mark2` is `trunk.mark2.join-enter` (tree oracles), **not** fingerprint Join | Same as `nested run` (always stops) |
+| **`./scripts/forge/forge-test nested smoke-nest-apps`** | Nautilus / Ghostty / TextEditor / Chrome map **in-nest** (isolation **tool**, not `--rc`) | Same as `nested run` (always stops) |
+| **`./scripts/forge/forge-test nested smoke-geom-epsilon`** | D095 sent↔observed ε campaign (measure **tool**, not `--rc`) | Same as `nested run` (always stops; defaults `--monitors=2`) |
+| **`./scripts/forge/forge-test nested smoke-layout-tabbed-edge`** | TABBED edge-drop **tool** (not `--rc`) | Same as `nested run` (always stops; defaults `--monitors=2`) |
 | **`./scripts/forge/forge-test nested restart` / `start`** | Long interactive retest loop | **stop** when campaign ends |
 
 **Nest client isolation (FIRM):** `client_env` sets a private `XDG_RUNTIME_DIR`
@@ -246,21 +309,35 @@ exports before host `forge tree` / `forge layout` / `./scripts/forge/forge-test 
 # One-shot nest campaign (Wayland; auto cleanup) — --dev for TRACE hunts
 ./install --dev && ./scripts/forge/forge-test nested run -- forge ping
 
-# Mark 2 action ids without Super+key (e2e dbus path: extWm.command)
+# Story catalog (design tree). Day-to-day --trunk; fail → walk down;
+# RC = full tree except leaf.float.fail-safe-terminator unless fixture.
+# Unimplemented = not release-ready. Plan-named expected-fail → XFAIL.
+./scripts/forge/forge-test nested --trunk trunk.open.launch-into-2slot
+./scripts/forge/forge-test nested --trunk trunk.open --dry-run
+./scripts/forge/forge-test nested proof-loop --suite core --iterations 1
+./scripts/forge/forge-test nested --rc --dry-run
+./scripts/forge/forge-test nested proof-loop --suite rc --dry-run
+./scripts/forge/forge-test nested proof-loop --suite core --iterations 1 --monitors=2
+./scripts/forge/forge-test nested proof-loop --dry-run --suite regression
+
+# Compat aliases (T4) — map to stories; not the catalog names.
+# smoke-mark2 is trunk.mark2.join-enter (tree oracles), not fingerprint Join.
+./scripts/forge/forge-test nested smoke-close-reflow
+./scripts/forge/forge-test nested smoke-mark2
+./scripts/forge/forge-test nested smoke-layout-ws
+./scripts/forge/forge-test nested smoke-layout-occupied
+
+# Tools (not --rc): isolation / D095 measure / tabbed-edge
+./scripts/forge/forge-test nested smoke-nest-apps
+./scripts/forge/forge-test nested smoke-geom-epsilon
+./scripts/forge/forge-test nested smoke-layout-tabbed-edge
+
+# Mark 2 injectors (nest must already be up; not product `forge Move`)
 ./scripts/forge/forge-test nested invoke join.right --hint leftmost --activate
 ./scripts/forge/forge-test nested invoke move.left --window-id 42
 ./scripts/forge/forge-test nested invoke toggleSplit --selector 'class:org.gnome.Nautilus'
 ./scripts/forge/forge-test nested dnd-drop leftmost rightmost --zone center
 ./scripts/forge/forge-test nested dnd-drop leftmost --dest-monitor 1
-# Not product `forge Move` (dest-reparent). Nest must be running for invoke /
-# dnd-drop;
-# smoke-mark2 / nested run start+stop the nest.
-./scripts/forge/forge-test nested run -- python3 ./scripts/forge/nest_mark2_smoke.py
-./scripts/forge/forge-test nested smoke-mark2       # same campaign; always stops
-./install --dev && ./scripts/forge/forge-test nested run --monitors=2 -- \
-  python3 ./scripts/forge/nest_layout_ws_campaign.py
-./scripts/forge/forge-test nested smoke-layout-ws   # same 8-step WS/layout CTS; always stops
-./scripts/forge/forge-test nested smoke-layout-occupied  # WS2 occupied 2-slot; always stops
 
 # Multi-step retest loop (stop yourself)
 ./install --dev && ./scripts/forge/forge-test nested restart
@@ -301,7 +378,7 @@ make nested-start | nested-restart | nested-stop | nested-status
 | --- | --- |
 | Nest module / CLI | `scripts/forge/nested_wayland.py`, `./scripts/forge/forge-test nested …` |
 | Units | `tests/unit/cli/test_nested_wayland.py`, live_matrix probe fields |
-| Plan | `agents/plans/forge-ai-live-test-matrix.md` (AT-W1) |
+| Plan | `agents/plans/forge-ai-live-test-matrix.md` (AT-W1); **E2E rebuild** [forge-design-e2e.md](./plans/forge-design-e2e.md) |
 | CT2 host cold | `agents/tasks/forge-layout-cold-topology_ct2-wayland-live.md` |
 | shellrc twin (optional) | `nested-gnome` — not a forge dependency |
 

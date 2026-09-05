@@ -4,9 +4,67 @@
  * previously regressed.
  */
 
-import { MARK2_OPSET } from "../src/opsets/index.mjs";
+import {
+  MARK2_OPSET,
+  mark2Group,
+  mark2Move,
+  mark2PointerRelease,
+  worldPointInMark2Zone,
+} from "../src/opsets/index.mjs";
 
 /** @typedef {import('./harness.mjs').Case} Case */
+/** @typedef {import('./harness.mjs').Ctx} Ctx */
+
+/**
+ * Pointer CENTER → Group; joiner must be last (place=end, no insertIndex).
+ * @param {Ctx} t
+ * @param {string} grabLabel
+ * @param {string} ontoLabel
+ * @param {{ x: number, y: number, width: number, height: number }} pane
+ */
+function runPointerCenterGroup(t, grabLabel, ontoLabel, pane) {
+  const grab = t.byLabel[grabLabel];
+  const onto = t.byLabel[ontoLabel];
+  if (!grab || !onto) return `missing ${grabLabel}/${ontoLabel}`;
+  t.api.setFocus(t.f, grab.id);
+  const world = worldPointInMark2Zone(pane, "center");
+  const rel = mark2PointerRelease(t.f, {
+    world,
+    grab: { id: grab.id, kind: "window" },
+    hit: { tag: "window", id: onto.id, paneRect: pane },
+  });
+  if (rel.op !== "group") return `would ${rel.op}`;
+  if (rel.args?.insertIndex != null) return "CENTER must not pass insertIndex";
+  if (rel.args?.place !== "end") return "CENTER must place end";
+  const r = mark2Group(t.f, t.api, rel.args.dir, rel.args);
+  if (!r.ok) return r.reason || "group failed";
+}
+
+/**
+ * Pointer empty-monitor → Move onto that MONITOR.
+ * @param {Ctx} t
+ * @param {string} grabLabel
+ * @param {string} destMonName
+ * @param {{ x: number, y: number, width: number, height: number }} workArea
+ */
+function runPointerEmptyMonitor(t, grabLabel, destMonName, workArea) {
+  const grab = t.byLabel[grabLabel];
+  const dest = t.f.nodes[destMonName];
+  if (!grab || !dest) return `missing ${grabLabel}/${destMonName}`;
+  t.api.setFocus(t.f, grab.id);
+  const rel = mark2PointerRelease(t.f, {
+    world: {
+      x: workArea.x + workArea.width / 2,
+      y: workArea.y + workArea.height / 2,
+    },
+    grab: { id: grab.id, kind: "window" },
+    hit: { tag: "empty-monitor", id: dest.id, workArea },
+  });
+  if (rel.op !== "move") return `would ${rel.op}`;
+  if (rel.args?.onto !== dest.id) return `onto ${rel.args?.onto}`;
+  const r = mark2Move(t.f, t.api, rel.args.dir, rel.args);
+  if (!r.ok) return r.reason || "empty-mon move failed";
+}
 
 /** @type {Case[]} */
 export const MARK2_CASES = [
@@ -221,6 +279,74 @@ export const MARK2_CASES = [
     },
   },
   {
+    id: "join-enter-tab-from-right",
+    layer: "opset",
+    given: "Mon1(H(TAB(A,B),C))",
+    actions: ["Select(C)", "Join(left)"],
+    expect: "Mon1(TAB(A,B,C))",
+    expectMode: /enter-con/,
+    note: "arrive from the right → append, then unary H collapses",
+    check(t) {
+      const tab = t.parent(t.win("C"));
+      if (tab.lastTabFocusId !== t.win("C").id) return "open leaf not joiner C";
+    },
+  },
+  {
+    id: "pointer-center-group-from-left-end",
+    layer: "opset",
+    given: "Mon1(H(A,TAB(B,C)))",
+    expect: "Mon1(TAB(B,C,A))",
+    note: "CENTER Group always last child; grab-from-left must not prepend",
+    run(t) {
+      return runPointerCenterGroup(t, "A", "B", {
+        x: 960,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+    },
+  },
+  {
+    id: "pointer-center-group-from-right-end",
+    layer: "opset",
+    given: "Mon1(H(TAB(B,C),A))",
+    expect: "Mon1(TAB(B,C,A))",
+    note: "CENTER Group always last child; grab-from-right still last",
+    run(t) {
+      return runPointerCenterGroup(t, "A", "B", {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 1080,
+      });
+    },
+  },
+  {
+    id: "pointer-strip-group-insert-index",
+    layer: "opset",
+    given: "Mon1(H(D,TAB(A,B,C)))",
+    expect: "Mon1(TAB(A,D,B,C))",
+    note: "strip insertIndex is insert-before that gap",
+    run(t) {
+      t.api.setFocus(t.f, t.byLabel.D.id);
+      const tab = t.parent(t.win("A"));
+      const r = mark2Group(t.f, t.api, "right", {
+        onto: tab.id,
+        insertIndex: 1,
+      });
+      if (!r.ok) return r.reason || "group strip failed";
+    },
+  },
+  {
+    id: "join-tab-peer-left-wrap-pair",
+    layer: "opset",
+    given: "Mon1(H(TAB(A,B),TAB(D,C)))",
+    actions: ["Select(C)", "Join(left)"],
+    expect: "Mon1(H(TAB(A,B),V(C,D)))",
+    expectMode: "wrap-pair",
+    note: "C has in-tab left sibling D — wrap-pair, not breakout-enter",
+  },
+  {
     id: "join-tab-into-left-tab",
     layer: "opset",
     given: "Mon1(H(TAB(A,B),TAB(C,D)))",
@@ -285,6 +411,77 @@ export const MARK2_CASES = [
     actions: ["Select(A)", "Move(right)"],
     expect: "Mon1() Mon2(V(A,B))",
     expectMode: "cross-mon",
+  },
+  {
+    id: "pointer-empty-monitor-right",
+    layer: "opset",
+    given: "Mon1(H(A,B)) Mon2()",
+    expect: "Mon1(B) Mon2(A)",
+    note: "empty-monitor hit → Move onto dest; both dirs",
+    run(t) {
+      return runPointerEmptyMonitor(t, "A", "Mon2", {
+        x: 1920,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+    },
+  },
+  {
+    id: "pointer-empty-monitor-left",
+    layer: "opset",
+    given: "Mon1() Mon2(H(A,B))",
+    expect: "Mon1(A) Mon2(B)",
+    run(t) {
+      return runPointerEmptyMonitor(t, "A", "Mon1", {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      });
+    },
+  },
+  {
+    id: "join-empty-monitor-right",
+    layer: "opset",
+    given: "Mon1(H(A,B)) Mon2()",
+    actions: ["Select(B)", "Join(right)"],
+    expect: "Mon1(A) Mon2(B)",
+    expectMode: "cross-mon",
+    note: "Join empty dest is transfer, not a no-op",
+  },
+  {
+    id: "join-empty-monitor-left",
+    layer: "opset",
+    given: "Mon1() Mon2(H(A,B))",
+    actions: ["Select(A)", "Join(left)"],
+    expect: "Mon1(A) Mon2(B)",
+    expectMode: "cross-mon",
+  },
+  {
+    id: "move-empty-monitor-nested-leaf-only",
+    layer: "opset",
+    given: "Mon1(H(A,V(B,C))) Mon2()",
+    expect: "Mon1(H(A,B)) Mon2(C)",
+    note: "R022 leaf-only: nested V child, not whole V",
+    run(t) {
+      t.api.setFocus(t.f, t.byLabel.C.id);
+      const dest = t.f.nodes.Mon2;
+      const r = mark2Move(t.f, t.api, "right", { onto: dest.id });
+      if (!r.ok) return r.reason || "nested empty-mon move failed";
+    },
+  },
+  {
+    id: "move-empty-monitor-nested-leaf-only-reverse",
+    layer: "opset",
+    given: "Mon1() Mon2(H(A,V(B,C)))",
+    expect: "Mon1(C) Mon2(H(A,B))",
+    run(t) {
+      t.api.setFocus(t.f, t.byLabel.C.id);
+      const dest = t.f.nodes.Mon1;
+      const r = mark2Move(t.f, t.api, "left", { onto: dest.id });
+      if (!r.ok) return r.reason || "nested empty-mon reverse failed";
+    },
   },
 
   // --- toggle / promote ---

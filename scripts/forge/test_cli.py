@@ -35,6 +35,8 @@ _NESTED_ACTIONS = frozenset(
         "smoke-layout-tabbed-edge",
         "smoke-geom-epsilon",
         "smoke-nest-apps",
+        "smoke-close-reflow",
+        "proof-loop",
         "enable-forge",
         "logs",
         "log",
@@ -53,6 +55,15 @@ _NESTED_VALUE_FLAGS = frozenset(
         "--grep",
         "--last",
         "--level",
+        "--hours",
+        "--iterations",
+        "--seed",
+        "--until",
+        "--suite",
+        "--cases",
+        "--record-queue",
+        "--trunk",
+        "--branch",
     }
 )
 _NESTED_BOOL_FLAGS = frozenset(
@@ -63,10 +74,15 @@ _NESTED_BOOL_FLAGS = frozenset(
         "--allow-x11",
         "--force",
         "--keep",
+        "--keep-on-fail",
+        "--fail-fast",
         "--export",
         "--json",
         "--forge",
         "--follow",
+        "--chaos",
+        "--dry-run",
+        "--rc",
         "-f",
         "-h",
         "--help",
@@ -179,6 +195,15 @@ def print_forge_test_help(*, stream: TextIO | None = None) -> None:
     _blank(s)
 
     _out(s, heading("Nested", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} --trunk trunk.open.launch-into-2slot", **kw),
+         "  ", dim("# lightest open trunk (T3 body)", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} --trunk trunk.open --dry-run", **kw),
+         "  ", dim("# print resolved story ids", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} --branch branch.layout.ws2-no-mutate-ws1", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} --rc --dry-run", **kw),
+         "  ", dim("# full story tree; unimplemented listed", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} proof-loop --suite rc --dry-run", **kw),
+         "  ", dim("# same tree; expected-fail is XFAIL", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} run -- forge ping", **kw), "  ",
          dim("# one-shot; always stops", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} run --monitors=2 -- forge tree", **kw))
@@ -189,21 +214,17 @@ def print_forge_test_help(*, stream: TextIO | None = None) -> None:
     _out(s, "  ", cmd(f"{NESTED_CLI} run -- python3 scripts/forge/nest_mark2_smoke.py",
                      **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} smoke-mark2", **kw), "            ",
-         dim("# same campaign; always stops", **kw))
-    _out(s, "  ", cmd(f"{NESTED_CLI} run --monitors=2 -- python3 "
-                     "scripts/forge/nest_layout_dnd_smoke.py", **kw))
-    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-layout-dnd", **kw), "      ",
-         dim("# dual-mon layout + occupied dest-monitor dnd; always stops", **kw))
-    _out(s, "  ", cmd(f"{NESTED_CLI} run --monitors=2 -- python3 "
-                     "scripts/forge/nest_layout_ws_campaign.py", **kw))
-    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-layout-ws", **kw), "       ",
-         dim("# WS1 A → WS2 B → back → nautilus/ghostty → join tab → close → A", **kw))
-    _out(s, "  ", cmd(f"{NESTED_CLI} run --monitors=2 -- python3 "
-                     "scripts/forge/nest_layout_occupied_smoke.py", **kw))
-    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-layout-occupied", **kw), " ",
-         dim("# WS2 occupied 2-slot apply; no open-miss", **kw))
+         dim("# alias --trunk trunk.mark2.join-enter", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-close-reflow", **kw), "  ",
+         dim("# alias --trunk trunk.close.three-equal-one-gone", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-nest-apps", **kw), "        ",
+         dim("# isolation tool (not a story)", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} smoke-geom-epsilon", **kw), "     ",
+         dim("# D095 measure tool (not a story)", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} smoke-layout-tabbed-edge", **kw), "",
-         dim("# TABBED × LEFT/RIGHT/TOP/BOTTOM edge drops", **kw))
+         dim("# Join-invent tool (not RC trunk)", **kw))
+    _out(s, "  ", cmd(f"{NESTED_CLI} proof-loop --suite core --iterations 1", **kw),
+         "  ", dim("# seven trunks; always-stop per case", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} restart", **kw), "                 ",
          dim("# interactive loop; stop when done", **kw))
     _out(s, "  ", cmd(f"{NESTED_CLI} status", **kw), "                  ",
@@ -246,6 +267,16 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             "Nested Wayland GNOME Shell retest harness (developer / agent).\n"
             f"Entry: {NESTED_CLI} <action> …\n"
             "\n"
+            "Story tree (design catalog; not legacy smoke-* names):\n"
+            f"  {NESTED_CLI} --trunk trunk.open.launch-into-2slot\n"
+            f"  {NESTED_CLI} --trunk trunk.open --dry-run\n"
+            f"  {NESTED_CLI} --branch branch.layout.ws2-no-mutate-ws1\n"
+            f"  {NESTED_CLI} --rc\n"
+            f"  {NESTED_CLI} proof-loop --trunk trunk.open --dry-run\n"
+            "  Day-to-day: pass --trunk (or --branch / --rc). No implicit story.\n"
+            "  proof-loop --suite core = seven trunks; --suite rc = full tree.\n"
+            "  regression/chaos loop the core trunk tree.\n"
+            "\n"
             f"  {NESTED_CLI} start                 # start nest + enable Forge\n"
             f"  {NESTED_CLI} start --monitors=2    # dual virtual mon (dummy)\n"
             f"  {NESTED_CLI} status\n"
@@ -258,14 +289,18 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             f"  {NESTED_CLI} invoke toggleSplit --selector 'class:org.gnome.Nautilus'\n"
             f"  {NESTED_CLI} dnd-drop leftmost rightmost --zone center\n"
             f"  {NESTED_CLI} dnd-drop leftmost --dest-monitor 1\n"
-            f"  {NESTED_CLI} smoke-mark2           # two clients → invoke → forge tree\n"
-            f"  {NESTED_CLI} smoke-toggle-tab      # toggleTabStack TABBED↔STACKED cycle\n"
-            f"  {NESTED_CLI} smoke-layout-dnd      # dual-mon ghosttys + occupied dest dnd\n"
-            f"  {NESTED_CLI} smoke-layout-ws       # WS1 A → WS2 B → nautilus/join/close → A\n"
-            f"  {NESTED_CLI} smoke-layout-occupied # WS2 occupied 2-slot apply (no open-miss)\n"
-            f"  {NESTED_CLI} smoke-layout-tabbed-edge # TABBED × edge zones (H5)\n"
-            f"  {NESTED_CLI} smoke-geom-epsilon   # D095 S1 sent↔observed ε campaign\n"
-            f"  {NESTED_CLI} smoke-nest-apps      # nautilus/chrome/editor map in-nest\n"
+            f"  {NESTED_CLI} smoke-mark2           # alias --trunk trunk.mark2.join-enter\n"
+            f"  {NESTED_CLI} smoke-toggle-tab      # alias --branch branch.tabs.stacked-same-slot\n"
+            f"  {NESTED_CLI} smoke-layout-dnd      # alias --branch leaf.mark2.move-empty-monitor\n"
+            f"  {NESTED_CLI} smoke-layout-ws       # alias --branch branch.layout.ws2-no-mutate-ws1\n"
+            f"  {NESTED_CLI} smoke-layout-occupied # alias --branch branch.layout.missing-roles-open\n"
+            f"  {NESTED_CLI} smoke-close-reflow   # alias --trunk trunk.close.three-equal-one-gone\n"
+            f"  {NESTED_CLI} smoke-layout-tabbed-edge # tool (Join-invent); not RC trunk\n"
+            f"  {NESTED_CLI} smoke-geom-epsilon   # tool (D095 measure); not a story\n"
+            f"  {NESTED_CLI} smoke-nest-apps      # tool (isolation); not a story\n"
+            f"  {NESTED_CLI} proof-loop --suite core --iterations 1\n"
+            f"  {NESTED_CLI} proof-loop --suite rc --dry-run\n"
+            f"  {NESTED_CLI} proof-loop --suite regression --hours 8\n"
             f"  {NESTED_CLI} log --grep PAT --level info+ --last 40\n"
             f"  {NESTED_CLI} logs                  # gnome-shell stderr (shell.log)\n"
             f"  {NESTED_CLI} restart               # reload shell/extension\n"
@@ -275,12 +310,14 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             "nested logs dumps gnome-shell stderr (shell.log) — not the hunt tape.\n"
             "Mark 2 invoke uses Shell.Eval → extWm.command (e2e dbus path), not Super+key.\n"
             "dnd-drop is sessionApi._dndDropOp → _commitResolvedDrop (empty-mon:\n"
-            "_commitEmptyMonitorDrop). Occupied dest-monitor drop is smoke-layout-dnd\n"
-            "(dest already has a tile — not L1.r015 empty-mon). Not a Mark 2 action id.\n"
-            "smoke-layout-ws is the 8-step WS/layout campaign (CTS after each step).\n"
-            "smoke-layout-occupied is WS2 occupied 2-slot apply (seed second role,\n"
-            "assert no open-miss / PlaceNext mon-root).\n"
-            "smoke-geom-epsilon measures Meta sent↔observed drift (nest logs only).\n"
+            "_commitEmptyMonitorDrop). smoke-* tiling aliases wrap --trunk/--branch.\n"
+            "smoke-nest-apps / smoke-geom-epsilon / smoke-layout-tabbed-edge stay tools.\n"
+            "proof-loop --suite core = all trunks (always-stop per case).\n"
+            "--suite rc / --rc = full stories.md tree (unimplemented is non-zero).\n"
+            "Plan-named expected-fail prints XFAIL and is not hard red.\n"
+            "regression/chaos loop the core trunk tree. wake-approx / host unchanged.\n"
+            "On fail: JSONL queue + repro; stop unless --until keep-going.\n"
+            "--keep-on-fail leaves the nest up.\n"
             "Do not use product `forge Move` (dest-reparent) as move.left.\n"
             f"Campaign entry: prefer `{NESTED_CLI} run` (always stops on exit).\n"
             "Multi-monitor: MUTTER_DEBUG_NUM_DUMMY_MONITORS (not host desks).\n"
@@ -297,8 +334,9 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
             "start | stop | restart | status | env | exec | run | invoke | "
             "dnd-drop | smoke-mark2 | smoke-toggle-tab | smoke-layout-dnd | "
             "smoke-layout-ws | smoke-layout-occupied | smoke-layout-tabbed-edge | "
-            "smoke-geom-epsilon | smoke-nest-apps | enable-forge | "
-            "log | logs | wait | doctor  (default: status)"
+            "smoke-geom-epsilon | smoke-nest-apps | smoke-close-reflow | "
+            "proof-loop | enable-forge | log | logs | wait | doctor  "
+            "(default: status)"
         ),
     )
     nested_p.add_argument(
@@ -373,7 +411,7 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
     nested_p.add_argument(
         "--json",
         action="store_true",
-        help="With status/env/log: JSON",
+        help="With status/env/log/proof-loop: JSON",
     )
     nested_p.add_argument(
         "-f",
@@ -408,6 +446,98 @@ def add_nested_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParse
         type=float,
         default=None,
         help="With wait: seconds (default 30)",
+    )
+    nested_p.add_argument(
+        "--suite",
+        default=None,
+        help="With proof-loop: core (alias: smoke) = trunks; rc = full tree; "
+        "regression|chaos loop core; wake-approx | host. "
+        "Plan-named expected-fail is XFAIL, not hard red.",
+    )
+    story_g = nested_p.add_mutually_exclusive_group()
+    story_g.add_argument(
+        "--trunk",
+        dest="story_trunk",
+        default=None,
+        metavar="ID",
+        help=(
+            "Story trunk only (prefix ok if unique: trunk.open). "
+            "Lightest net. No implicit default story."
+        ),
+    )
+    story_g.add_argument(
+        "--branch",
+        dest="story_branch",
+        default=None,
+        metavar="ID",
+        help="Story branch and descendant leaves (not sibling trunks)",
+    )
+    story_g.add_argument(
+        "--rc",
+        dest="story_rc",
+        action="store_true",
+        help=(
+            "Full story tree from stories.md (skip fail-safe leaf unless "
+            "fixture). Unimplemented is non-zero. Plan-named expected-fail "
+            "is XFAIL, not hard red."
+        ),
+    )
+    nested_p.add_argument(
+        "--hours",
+        type=float,
+        default=None,
+        help="With proof-loop: wall-clock stop (hours)",
+    )
+    nested_p.add_argument(
+        "--iterations",
+        type=int,
+        default=None,
+        help="With proof-loop: full suite passes (default 1 if no --hours)",
+    )
+    nested_p.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="With proof-loop: integer seed (chaos + JSONL)",
+    )
+    nested_p.add_argument(
+        "--until",
+        default=None,
+        help="With proof-loop: fail (default) | keep-going",
+    )
+    nested_p.add_argument(
+        "--fail-fast",
+        dest="fail_fast",
+        action="store_true",
+        help="With proof-loop: alias for --until fail",
+    )
+    nested_p.add_argument(
+        "--keep-on-fail",
+        dest="keep_on_fail",
+        action="store_true",
+        help="With proof-loop: stop after first fail and leave nest running",
+    )
+    nested_p.add_argument(
+        "--cases",
+        default=None,
+        help="With proof-loop: comma-separated case ids / smoke names",
+    )
+    nested_p.add_argument(
+        "--chaos",
+        action="store_true",
+        help="With proof-loop: FORGE_LAYOUT_CHAOS=1 on layout cases",
+    )
+    nested_p.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        help="With proof-loop / --trunk / --branch / --rc: print resolved ids; no nest",
+    )
+    nested_p.add_argument(
+        "--record-queue",
+        dest="record_queue",
+        default=None,
+        help="With proof-loop: failures JSONL path (default nest state)",
     )
     nested_p.add_argument(
         "nested_cmd",

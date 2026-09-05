@@ -61,7 +61,7 @@ Usage:
 Options:
   --repo=PATH         Override repo root (default: this tree)
   --prod              Production build (production=true) + log-level=WARN
-  --dev               Debug build + log-level=TRACE (hunts). Default: DEBUG build + INFO
+  --dev               Debug build + TRACE + layout overlay + forge-test on PATH
   --dev=MODES         Same as --dev plus comma modes (strict-geometry, geom-epsilon-measure,
                       fault-inject-geometry, geom-trace). Legacy --dev leaves modes empty.
   --save              Backup before replace (always on for EGO migrate)
@@ -74,7 +74,7 @@ Options:
   --no-host-defaults  Skip apply-host-defaults.zsh
   --kit=vim|safe|i3   Load that built-in keybind kit into live gsettings
   --no-kit            Do not load a kit (default). Still warns if live is custom
-  --with-test-cli     Also symlink ~/.local/bin/forge-test (dev/agent; off by default)
+  --with-test-cli     Symlink ~/.local/bin/forge-test (implied by --dev; still opt-in for regular)
   --force             Non-interactive (default for this script; kept for CI flags)
   --verbose, -v       Detailed logs (make/npm/gsettings chatter)
   --color=auto|always|never
@@ -123,11 +123,13 @@ while (( $# )); do
     --prod) MODE="prod"; FORGE_DEV_MODES_CSV=""; FORGE_DEV_MODES_GSETTINGS="@as []"; shift ;;
     --dev)
       MODE="dev"
+      WITH_TEST_CLI=1
       forge_parse_dev_modes_csv ""
       shift
       ;;
     --dev=*)
       MODE="dev"
+      WITH_TEST_CLI=1
       forge_parse_dev_modes_csv "${1#--dev=}"
       shift
       ;;

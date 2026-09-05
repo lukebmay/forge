@@ -64,6 +64,31 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       expect(hideActorBorderSpy).toHaveBeenCalled();
     });
 
+    it("hides hostBag borders even when tree walk would miss them (D096)", () => {
+      const bagBorder = {
+        hide: vi.fn(),
+        show: vi.fn(),
+        set_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+      };
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "BagOnly",
+      });
+      // Border only in hostBag — no tree WINDOW node (stale ring case).
+      wm().hostBag.set("nid-orphan-border", {
+        meta: metaWindow,
+        windowId: "99",
+        border: bagBorder,
+      });
+
+      wm().hideWindowBorders();
+
+      expect(bagBorder.hide).toHaveBeenCalled();
+    });
+
     it("should remove tab active class from tabbed windows", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
@@ -147,6 +172,59 @@ describe("WindowManager - Borders and Focus Indicators", () => {
 
       expect(wm().restackBorderForMeta(metaWindow)).toBe(true);
       expect(global.window_group.insert_child_above).toHaveBeenCalledWith(mockBorder, compositor);
+    });
+
+    it("restackAllWindowBorders re-pairs after a float inserts between tile and border", () => {
+      const tiledMeta = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TileApp",
+      });
+      const floatMeta = createMockWindow({
+        rect: new Rectangle({ x: 100, y: 100, width: 400, height: 300 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "FloatApp",
+      });
+      const tiledBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      const floatBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      const tiledComp = tiledMeta.get_compositor_private();
+      const floatComp = floatMeta.get_compositor_private();
+      tiledComp.border = tiledBorder;
+      floatComp.border = floatBorder;
+      // Simulate float raised between tile compositor and its border.
+      global.window_group.add_child(tiledComp);
+      global.window_group.add_child(floatComp);
+      global.window_group.add_child(tiledBorder);
+      global.window_group.add_child(floatBorder);
+      wm().hostBag.set("nid-tile", {
+        meta: tiledMeta,
+        windowId: "1",
+        border: tiledBorder,
+      });
+      wm().hostBag.set("nid-float", {
+        meta: floatMeta,
+        windowId: "2",
+        border: floatBorder,
+      });
+
+      const n = wm().restackAllWindowBorders();
+      expect(n).toBe(2);
+      expect(global.window_group.insert_child_above).toHaveBeenCalledWith(tiledBorder, tiledComp);
+      expect(global.window_group.insert_child_above).toHaveBeenCalledWith(floatBorder, floatComp);
     });
   });
 
@@ -354,6 +432,44 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       });
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
+
+      wm().showWindowBorders();
+
+      expect(mockBorder.set_style_class_name).toHaveBeenCalledWith("window-tabbed-border");
+    });
+
+    it("applies green tabbed border from parent.layout when isTabbed is missing", () => {
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TabApp",
+      });
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      metaWindow.get_compositor_private().border = mockBorder;
+      global.display.get_focus_window.mockReturnValue(metaWindow);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
+      con.layout = LAYOUT_TYPES.TABBED;
+      delete con.isTabbed;
+      delete con.isStacked;
+      delete con.isStackedOrTabbed;
+
+      const nodeWindow = ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+      // Sibling so single-window skip does not apply.
+      const meta2 = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
+        workspace: ctx.workspaces[0],
+      });
+      ctx.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, meta2).mode = WINDOW_MODES.TILE;
 
       wm().showWindowBorders();
 

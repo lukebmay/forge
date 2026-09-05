@@ -3,6 +3,7 @@ import { Logger } from "../../../lib/shared/logger.js";
 import { resetMetrics } from "../../../lib/extension/metrics.js";
 import { createHostBag } from "../../../lib/host/index.js";
 import { runLiveForest } from "../../../lib/extension/forest-run.js";
+import { ensureMark2Decisions, mark2Group } from "../../../lib/opsets/mark2.js";
 import { ancestorMonitor, children, serializeForest } from "../../../lib/tom/index.js";
 import { buildGiven } from "../../../lib/tom/shorthand.js";
 
@@ -73,6 +74,53 @@ describe("runLiveForest AGREE gate (D093 R4)", () => {
     expect(cons).toHaveLength(0);
     const texts = traceSpy.mock.calls.map((c) => String(c[0] ?? ""));
     expect(texts.some((t) => t.includes("settle mark2-post"))).toBe(true);
+  });
+
+  it("group two tiles presents full-slot Meta dest before idle commitLayout", () => {
+    const { f, byLabel } = buildGiven("Mon1(H(A,B))");
+    ensureMark2Decisions(f);
+    const metaA = { id: "A", get_id: () => "A" };
+    const metaB = { id: "B", get_id: () => "B" };
+    const liveA = { nodeValue: metaA, isFloat: () => false };
+    const liveB = { nodeValue: metaB, isFloat: () => false };
+    const hostBag = createHostBag();
+    hostBag.set(byLabel.A.id, { meta: metaA, floating: false, windowId: "A" });
+    hostBag.set(byLabel.B.id, { meta: metaB, floating: false, windowId: "B" });
+    const dests = [];
+    const wm = {
+      tree: { getNodeByType: () => [], settings: { get_uint: () => 0 } },
+      forest: f,
+      _liveForestSeeded: true,
+      hostBag,
+      liveById: new Map([
+        [byLabel.A.id, liveA],
+        [byLabel.B.id, liveB],
+      ]),
+      unfreezeRender: vi.fn(),
+      commitLayout: vi.fn(),
+      settleTabFocus: vi.fn(),
+      movePointerWith: vi.fn(),
+      calculateGaps: () => 0,
+      move: (meta, dest) => dests.push({ id: meta.id, dest }),
+    };
+    const ok = runLiveForest(
+      wm,
+      liveA,
+      (draft, api) => mark2Group(draft, api, "right", { onto: byLabel.B.id }),
+      "dnd-drop",
+      {
+        getMins: () => ({ width: 1, height: 1 }),
+        facts: {
+          windows: {
+            [byLabel.A.id]: { exists: true },
+            [byLabel.B.id]: { exists: true },
+          },
+        },
+      }
+    );
+    expect(ok).toBe(true);
+    expect(dests.length).toBeGreaterThan(0);
+    expect(dests.every((d) => d.dest && d.dest.width > 1800)).toBe(true);
   });
 });
 

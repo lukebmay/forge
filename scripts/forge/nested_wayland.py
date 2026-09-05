@@ -43,7 +43,7 @@ import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Callable, Mapping, Optional, Sequence, TypeVar
 
 FORGE_UUID = "forge@jmmaranan.com"
 DEFAULT_NAME = "forge"
@@ -54,7 +54,11 @@ DEFAULT_MONITORS = 1
 MAX_DUMMY_MONITORS = 4  # Mutter clamps higher counts
 SHELL_READY_TIMEOUT_S = 30.0
 SOCKET_READY_TIMEOUT_S = 20.0
+NEST_READY_TIMEOUT_S = 20.0
+NEST_START_SOCKET_RETRIES = 1
+NEST_START_RETRY_PAUSE_S = 0.4
 STOP_GRACE_S = 3.0
+_T = TypeVar("_T")
 
 _REQUIRED_BINS = ("dbus-daemon", "gnome-shell", "gdbus")
 
@@ -114,6 +118,43 @@ def _safe_name(name: str) -> str:
     if not all(c.isalnum() or c in "-_." for c in n):
         raise NestedError(f"invalid session name (use alnum/_/-/.): {name!r}")
     return n
+
+
+def default_display_for_name(name: str) -> str:
+    """WAYLAND_DISPLAY for a nest. Default session keeps wayland-forge."""
+    safe = _safe_name(name)
+    if safe == DEFAULT_NAME:
+        return DEFAULT_DISPLAY
+    return f"wayland-{safe}"
+
+
+def _token_hit(text: str, needle: str) -> bool:
+    """True when needle occurs as a whole token (not a prefix of a longer name).
+
+    Stops ``wayland-forge`` from matching ``wayland-forge-tabbed`` on stop.
+    """
+    if not needle or not text:
+        return False
+    idx = 0
+    n = len(needle)
+    while True:
+        i = text.find(needle, idx)
+        if i < 0:
+            return False
+        after = text[i + n : i + n + 1]
+        if after == "" or not (after.isalnum() or after in "-_."):
+            return True
+        idx = i + 1
+
+
+def _env_has_marker(blob: str, marker: str) -> bool:
+    """Exact env assignment match (NUL/newline separated)."""
+    if not marker:
+        return False
+    for line in blob.split("\n"):
+        if line == marker:
+            return True
+    return False
 
 
 def parse_size(spec: str) -> str:
@@ -919,6 +960,101 @@ def wait_socket(display: str,
     return path.is_socket()
 
 
+def is_socket_not_ready_error(exc: BaseException | str) -> bool:
+    return "socket not ready" in str(exc).lower()
+
+
+def should_retry_nest_start(
+    exc: BaseException | str,
+    *,
+    attempt: int,
+    retries: int = NEST_START_SOCKET_RETRIES,
+) -> bool:
+    """Retry start once when gnome-shell did not export the nest socket.
+
+    *attempt* is 0-based for the launch that just failed.
+    """
+    if int(attempt) >= max(0, int(retries)):
+        return False
+    return is_socket_not_ready_error(exc)
+
+
+def nest_ready_missing(
+    *,
+    socket_ok: bool,
+    shell_ok: bool,
+    forge_ok: bool,
+    want_forge: bool,
+) -> Optional[str]:
+    """First missing campaign gate, or None when the nest can take clients."""
+    if not socket_ok:
+        return "wayland-socket"
+    if not shell_ok:
+        return "gnome-shell"
+    if want_forge and not forge_ok:
+        return "forge-dbus"
+    return None
+
+
+def format_nest_not_ready(
+    missing: str,
+    *,
+    socket_path: str = "",
+    bus_address: str = "",
+    log_path: str = "",
+    timeout_s: Optional[float] = None,
+    retried: bool = False,
+) -> str:
+    retry_bit = " (retried start once)" if retried else ""
+    tbit = f" after {timeout_s:g}s" if timeout_s is not None else ""
+    if missing == "wayland-socket":
+        where = socket_path or "nest Wayland socket"
+        msg = f"nested Wayland socket not ready{tbit}{retry_bit}: {where}"
+    elif missing == "gnome-shell":
+        msg = (f"nested gnome-shell not ready{tbit}{retry_bit} on bus "
+               f"{bus_address or '—'}")
+    elif missing == "forge-dbus":
+        msg = (
+            f"Forge DBus not ready{tbit}{retry_bit}: "
+            f"org.gnome.Shell.Extensions.Forge on {bus_address or 'nest bus'}"
+        )
+    else:
+        msg = f"nested session not ready ({missing}){tbit}{retry_bit}"
+    if log_path:
+        msg += f"; see {log_path}"
+    if missing == "forge-dbus":
+        msg += (" (extension did not claim the nest bus; host "
+                "disable-user-extensions=true also blocks this)")
+    return msg
+
+
+def run_with_socket_retry(
+    launch: Callable[[], _T],
+    *,
+    on_retry: Optional[Callable[[], None]] = None,
+    retries: int = NEST_START_SOCKET_RETRIES,
+    pause_s: float = NEST_START_RETRY_PAUSE_S,
+    sleep: Callable[[float], None] = time.sleep,
+) -> _T:
+    """Run *launch*; on socket-not-ready, *on_retry* then launch once more."""
+    last_err: Optional[NestedError] = None
+    attempts = 1 + max(0, int(retries))
+    for attempt in range(attempts):
+        try:
+            return launch()
+        except NestedError as e:
+            last_err = e
+            if not should_retry_nest_start(e, attempt=attempt, retries=retries):
+                break
+            if on_retry is not None:
+                on_retry()
+            sleep(float(pause_s))
+    assert last_err is not None
+    if is_socket_not_ready_error(last_err) and int(retries) > 0:
+        raise NestedError(f"{last_err} (retried start once)") from last_err
+    raise last_err
+
+
 def wait_shell_ready(
     bus_address: str,
     timeout_s: float = SHELL_READY_TIMEOUT_S,
@@ -944,6 +1080,43 @@ def wait_forge_ready(
             return True
         time.sleep(0.25)
     return False
+
+
+def wait_nest_session_ready(
+    display: str,
+    bus_address: str,
+    *,
+    want_forge: bool = True,
+    timeout_s: float = NEST_READY_TIMEOUT_S,
+) -> Optional[str]:
+    """Poll nest socket + Shell (+ Forge DBus). None when ready, else gate id."""
+    last = "wayland-socket"
+    deadline = time.monotonic() + float(timeout_s)
+    while True:
+        socket_ok = nest_socket_path(display).is_socket()
+        shell_ok = False
+        forge_ok = False
+        if socket_ok:
+            if name_has_owner(bus_address, "org.gnome.Shell", timeout=2.0):
+                ok, _ = shell_eval(bus_address, "1+1", timeout=2.0)
+                shell_ok = bool(ok)
+            if want_forge:
+                forge_ok = name_has_owner(
+                    bus_address,
+                    "org.gnome.Shell.Extensions.Forge",
+                    timeout=2.0,
+                )
+        last = nest_ready_missing(
+            socket_ok=socket_ok,
+            shell_ok=shell_ok,
+            forge_ok=forge_ok,
+            want_forge=want_forge,
+        )
+        if last is None:
+            return None
+        if time.monotonic() >= deadline:
+            return last
+        time.sleep(0.2)
 
 
 def wait_nest_client_ready(
@@ -1099,6 +1272,7 @@ def start(
     host_wayland: Optional[str] = None,
     replace: bool = False,
     allow_x11: bool = False,
+    socket_retries: int = NEST_START_SOCKET_RETRIES,
 ) -> NestedConfig:
     missing = check_deps()
     if missing:
@@ -1138,7 +1312,7 @@ def start(
         raise NestedError(f"host Wayland socket not found: {host_sock} "
                           f"(are you in a Wayland session?)")
 
-    disp = (display or DEFAULT_DISPLAY).strip()
+    disp = (display or default_display_for_name(name)).strip()
     if not disp.startswith("wayland-"):
         # Allow short names → wayland-<name>
         disp = f"wayland-{disp}" if not disp.startswith("wayland") else disp
@@ -1159,24 +1333,49 @@ def start(
     )
     save_config(cfg)
 
+    def _launch() -> NestedConfig:
+        return _launch_nested_session(cfg)
+
+    def _on_retry() -> None:
+        stop(name=name, force=True)
+
+    return run_with_socket_retry(
+        _launch,
+        on_retry=_on_retry,
+        retries=socket_retries,
+    )
+
+
+def _launch_nested_session(cfg: NestedConfig) -> NestedConfig:
+    """Start dbus+shell and wait until the nest Wayland socket is live."""
+    d = Path(cfg.state_dir)
     try:
         _start_dbus(cfg)
         _start_shell(cfg)
     except Exception:
-        stop(name=name, force=True)
+        stop(name=cfg.name, force=True)
         raise
 
     if not wait_socket(cfg.display):
-        stop(name=name, force=True)
+        stop(name=cfg.name, force=True)
         raise NestedError(
-            f"nested Wayland socket not ready: {nest_socket_path(cfg.display)}; "
-            f"see {d / 'shell.log'}")
+            format_nest_not_ready(
+                "wayland-socket",
+                socket_path=str(nest_socket_path(cfg.display)),
+                log_path=str(d / "shell.log"),
+                timeout_s=SOCKET_READY_TIMEOUT_S,
+            ))
     # save_config → client_env ran before the nest socket existed.
     ensure_nest_client_isolation(cfg)
     if not wait_shell_ready(cfg.bus_address):
-        stop(name=name, force=True)
+        stop(name=cfg.name, force=True)
         raise NestedError(
-            f"nested gnome-shell not ready on bus; see {d / 'shell.log'}")
+            format_nest_not_ready(
+                "gnome-shell",
+                bus_address=cfg.bus_address,
+                log_path=str(d / "shell.log"),
+                timeout_s=SHELL_READY_TIMEOUT_S,
+            ))
 
     _write_status(cfg, phase="running")
     return cfg
@@ -1206,7 +1405,7 @@ def _pids_with_cmdline_needle(needle: str) -> list[int]:
             except OSError:
                 continue
             cmd = raw.replace(b"\0", b" ").decode("utf-8", "replace")
-            if needle in cmd:
+            if _token_hit(cmd, needle):
                 found.append(int(entry.name))
     except OSError:
         return found
@@ -1245,9 +1444,9 @@ def _pids_with_nest_client_env(
                 raw = (entry / "environ").read_bytes()
             except OSError:
                 continue
-            # Environ is NUL-separated; decode lossy for marker search.
+            # Environ is NUL-separated; decode lossy for exact assignment match.
             blob = raw.replace(b"\0", b"\n").decode("utf-8", "replace")
-            if any(m in blob for m in markers):
+            if any(_env_has_marker(blob, m) for m in markers):
                 found.append(pid)
     except OSError:
         return found
@@ -1621,6 +1820,20 @@ def run_campaign(
         if not cfg or not is_running(name):
             raise NestedError(
                 f"nested session {name!r} not running after ensure-start")
+        missing = wait_nest_session_ready(
+            cfg.display,
+            cfg.bus_address,
+            want_forge=enable_forge,
+        )
+        if missing:
+            raise NestedError(
+                format_nest_not_ready(
+                    missing,
+                    socket_path=str(nest_socket_path(cfg.display)),
+                    bus_address=cfg.bus_address,
+                    log_path=str(Path(cfg.state_dir) / "shell.log"),
+                    timeout_s=NEST_READY_TIMEOUT_S,
+                ))
         return exec_in(cfg, argv)
     finally:
         if do_stop:
@@ -1673,6 +1886,17 @@ def cmd_nested(_backend: Any, args: Any) -> int:
     action = getattr(args, "nested_action", None) or "status"
     name = getattr(args, "nested_name", None) or DEFAULT_NAME
     try:
+        from nest_stories import cmd_story_campaign, story_flags_set
+
+        if story_flags_set(args):
+            if action not in ("status", "proof-loop"):
+                print(
+                    "forge-test nested: --trunk / --branch / --rc cannot combine "
+                    f"with action {action!r}",
+                    file=sys.stderr,
+                )
+                return 2
+            return cmd_story_campaign(args, name)
         if action == "start":
             return _cli_start(args, name)
         if action == "stop":
@@ -1704,41 +1928,27 @@ def cmd_nested(_backend: Any, args: Any) -> int:
             from nest_invoke import cmd_dnd_drop
 
             return cmd_dnd_drop(args, name)
-        if action == "smoke-mark2":
-            from nest_invoke import smoke_script_argv
-
-            args.nested_cmd = smoke_script_argv()
-            return _cli_run(args, name)
-        if action == "smoke-toggle-tab":
-            from nest_invoke import smoke_script_argv
-
-            # Mark 2 toggleTabStack cycle (H/V → TABBED ↔ STACKED).
-            os.environ["FORGE_NEST_SMOKE_ACTION"] = "toggleTabStack"
-            args.nested_cmd = smoke_script_argv()
-            return _cli_run(args, name)
-        if action == "smoke-layout-dnd":
-            from nest_layout_dnd_smoke import smoke_script_argv as layout_dnd_argv
-
-            if getattr(args, "monitors", None) is None:
-                args.monitors = 2
-            args.nested_cmd = layout_dnd_argv()
-            return _cli_run(args, name)
-        if action == "smoke-layout-ws":
-            from nest_layout_ws_campaign import smoke_script_argv as layout_ws_argv
-
-            if getattr(args, "monitors", None) is None:
-                args.monitors = 2
-            args.nested_cmd = layout_ws_argv()
-            return _cli_run(args, name)
-        if action == "smoke-layout-occupied":
-            from nest_layout_occupied_smoke import (
-                smoke_script_argv as layout_occupied_argv,
+        smoke_story = {
+            "smoke-mark2": ("story_trunk", "trunk.mark2.join-enter"),
+            "smoke-close-reflow": ("story_trunk", "trunk.close.three-equal-one-gone"),
+            "smoke-toggle-tab": ("story_branch", "branch.tabs.stacked-same-slot"),
+            "smoke-layout-ws": ("story_branch", "branch.layout.ws2-no-mutate-ws1"),
+            "smoke-layout-occupied": (
+                "story_branch",
+                "branch.layout.missing-roles-open",
+            ),
+            "smoke-layout-dnd": ("story_branch", "leaf.mark2.move-empty-monitor"),
+        }.get(action)
+        if smoke_story:
+            attr, sid = smoke_story
+            setattr(args, attr, sid)
+            flag = "--trunk" if attr == "story_trunk" else "--branch"
+            print(
+                f"forge-test nested: {action} is a compat alias for "
+                f"{flag} {sid}",
+                file=sys.stderr,
             )
-
-            if getattr(args, "monitors", None) is None:
-                args.monitors = 2
-            args.nested_cmd = layout_occupied_argv()
-            return _cli_run(args, name)
+            return cmd_story_campaign(args, name)
         if action == "smoke-layout-tabbed-edge":
             from nest_layout_tabbed_edge_smoke import (
                 smoke_script_argv as layout_tabbed_edge_argv,
@@ -1764,6 +1974,10 @@ def cmd_nested(_backend: Any, args: Any) -> int:
                 args.monitors = 1
             args.nested_cmd = nest_apps_argv()
             return _cli_run(args, name)
+        if action == "proof-loop":
+            from nest_proof import cmd_proof_loop
+
+            return cmd_proof_loop(args, name)
         if action == "enable-forge":
             return _cli_enable_forge(name)
         if action == "logs":
@@ -1989,11 +2203,23 @@ def _cli_wait(args: Any, name: str) -> int:
         return 1
     want_forge = bool(getattr(args, "wait_forge", False))
     timeout = float(getattr(args, "timeout", None) or SHELL_READY_TIMEOUT_S)
-    if not wait_shell_ready(cfg.bus_address, timeout_s=timeout):
-        print("forge-test nested: shell not ready", file=sys.stderr)
-        return 1
-    if want_forge and not wait_forge_ready(cfg.bus_address, timeout_s=timeout):
-        print("forge-test nested: forge DBus not ready", file=sys.stderr)
+    missing = wait_nest_session_ready(
+        cfg.display,
+        cfg.bus_address,
+        want_forge=want_forge,
+        timeout_s=timeout,
+    )
+    if missing:
+        print(
+            "forge-test nested: " + format_nest_not_ready(
+                missing,
+                socket_path=str(nest_socket_path(cfg.display)),
+                bus_address=cfg.bus_address,
+                log_path=str(Path(cfg.state_dir) / "shell.log"),
+                timeout_s=timeout,
+            ),
+            file=sys.stderr,
+        )
         return 1
     print("ready")
     return 0

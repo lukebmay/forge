@@ -28,16 +28,36 @@ describe("WindowManager - Floating Mode", () => {
   const configMgr = () => ctx.configMgr;
 
   describe("isFloatingExempt - Type-based", () => {
-    it("should float DIALOG windows", () => {
-      const window = createMockWindow({ window_type: WindowType.DIALOG });
+    it("should float transient DIALOG windows", () => {
+      const parent = createMockWindow();
+      const window = createMockWindow({
+        window_type: WindowType.DIALOG,
+        transient_for: parent,
+      });
 
       expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
-    it("should float MODAL_DIALOG windows", () => {
-      const window = createMockWindow({ window_type: WindowType.MODAL_DIALOG });
+    it("should float transient MODAL_DIALOG windows", () => {
+      const parent = createMockWindow();
+      const window = createMockWindow({
+        window_type: WindowType.MODAL_DIALOG,
+        transient_for: parent,
+      });
 
       expect(wm().isFloatingExempt(window)).toBe(true);
+    });
+
+    it("R061: non-transient MODAL_DIALOG is not exempt even if no-resize", () => {
+      const window = createMockWindow({
+        window_type: WindowType.MODAL_DIALOG,
+        wm_class: "org.example.App",
+        title: "App",
+        allows_resize: false,
+        transient_for: null,
+      });
+
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should NOT float NORMAL windows by type alone", () => {

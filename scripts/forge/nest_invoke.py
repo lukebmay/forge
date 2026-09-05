@@ -628,21 +628,32 @@ def get_tree(
     timeout: float = 8.0,
     workspace: Optional[int] = None,
 ) -> dict[str, Any]:
-    raw = forge_dbus_call(
-        bus_address,
-        "GetTree",
-        [get_tree_options_json(workspace=workspace)],
-        timeout=timeout,
-    )
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as e:
-        raise InvokeError(f"GetTree not JSON: {raw[:240]}") from e
-    if not isinstance(data, dict):
-        raise InvokeError("GetTree returned non-object")
-    if data.get("error"):
-        raise InvokeError(f"GetTree: {data['error']}")
-    return data
+    last_err: Optional[BaseException] = None
+    for attempt in range(3):
+        try:
+            raw = forge_dbus_call(
+                bus_address,
+                "GetTree",
+                [get_tree_options_json(workspace=workspace)],
+                timeout=timeout,
+            )
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError as e:
+                raise InvokeError(f"GetTree not JSON: {raw[:240]}") from e
+            if not isinstance(data, dict):
+                raise InvokeError("GetTree returned non-object")
+            if data.get("error"):
+                raise InvokeError(f"GetTree: {data['error']}")
+            return data
+        except InvokeError as e:
+            last_err = e
+            msg = str(e)
+            transient = "NoReply" in msg or "timeout" in msg.lower()
+            if not transient or attempt >= 2:
+                raise
+            time.sleep(0.35)
+    raise InvokeError(str(last_err or "GetTree failed"))
 
 
 def iter_nodes(node: Any):
@@ -982,6 +993,33 @@ def activate_workspace(
     return result
 
 
+def _meta_ws_window_count(bus_address: str, workspace: Optional[int]) -> Optional[int]:
+    """Meta list_windows count for a workspace (diagnostic; not GetTree)."""
+    from nested_wayland import shell_eval
+
+    want = "null" if workspace is None else json.dumps(int(workspace))
+    js = (
+        "(function(){ try { const wm = global.workspace_manager; "
+        "const want = %s; "
+        "const ws = want == null ? wm.get_active_workspace() "
+        ": wm.get_workspace_by_index(want); "
+        "if (!ws) return JSON.stringify({ok:true,n:0}); "
+        "const wins = ws.list_windows() || []; "
+        "return JSON.stringify({ok:true,n:wins.length}); "
+        "} catch (e) { return JSON.stringify({ok:false,n:0}); } })()"
+    ) % want
+    ok, payload = shell_eval(bus_address, js, timeout=3.0)
+    if not ok:
+        return None
+    data = parse_invoke_result(payload)
+    if not data.get("ok"):
+        return None
+    try:
+        return int(data.get("n"))
+    except (TypeError, ValueError):
+        return None
+
+
 def wait_window_count(
     bus_address: str,
     want: int,
@@ -1001,8 +1039,17 @@ def wait_window_count(
             pass
         time.sleep(0.4)
     where = f" on ws={workspace}" if workspace is not None else ""
+    extra = ""
+    try:
+        extra += f" forestAll={len(tiled_windows(get_tree(bus_address)))}"
+    except InvokeError:
+        pass
+    if workspace is not None:
+        meta_n = _meta_ws_window_count(bus_address, int(workspace))
+        if meta_n is not None:
+            extra += f" metaWs={meta_n}"
     raise InvokeError(
-        f"timed out waiting for {want} windows{where} (have {len(last)})"
+        f"timed out waiting for {want} windows{where} (have {len(last)}{extra})"
     )
 
 

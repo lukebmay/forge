@@ -19,7 +19,7 @@ Usage:
 Options:
   --repo=PATH      Repo root (default: $FORGE_REPO_ROOT)
   --prod           Release-style build (production=true) + log-level=WARN
-  --dev            Debug build + log-level=TRACE (hunts); clears extra modes
+  --dev            Debug build + TRACE + layout overlay; clears extra modes
   --dev=MODES      Same as --dev plus comma modes (strict-geometry, …)
   (default)        Debug build (production=false) + log-level=INFO; clears modes
   --build-only     npm/make build (+ debug) into repo temp/; do NOT install
@@ -229,6 +229,7 @@ forge_do_install() {
       forge_warn "could not set log-level via gsettings (schemas may need reload)"
     fi
     forge_apply_dev_modes_gsettings "$MODE"
+    forge_apply_dev_operator_tools "$MODE"
     unset _log_n _log_name
   fi
 

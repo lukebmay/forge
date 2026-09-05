@@ -20,12 +20,17 @@ handlers disconnected**. GObject `Node`/`Tree` child-lists remain
 verify until after G1
 **Depends on:** D092 · D093 · D095 (locks stand; this plan deletes residue)
 **Blocker:** (none) — do **not** invent twin `AtomicsGnome`
-**Updated:** 2026-09-02 — **G8n** production adapter stopped `new Tree`
-(`createLiveTree` LiveHandle ROOT). `class Tree`/`Node` remain for
-tests + API mixin. Host: do **not** `layout dev` until nest chrome
-green on this tip.
-**Priority:** P0 topology — D100a+D100b+D100c done; **G8n in progress**
-(next: stub `tree.js` / peel Tree API off the class; G8l after)
+**Updated:** 2026-09-04 — **G8n-s3** Forest-first topology peel landed
+except GObject invent (`ungroup` / `createNode`). `swap` walker peeled
+onto already-peeled `swapPairs`. **Next:** G8n-s4 nav. Pause if
+dual-path grows. **G8n-s1 landed.** ROOT spine
+(`extWm` / managers / `_initWorkspaces` / add-remove workspace /
+`addMonitor` / `nodeWorkpaces` / `nodeWindows`) lives in
+`lib/extension/tree-api-root.js`. createLiveTree attaches it without
+`Tree.prototype` copy (`ROOT_SPINE_NAMES` skip). **Next:** G8n-s2.
+Do **not** host `layout` from agents.
+**Priority:** P0 topology — D100a+D100b+D100c done; **G8n-s4** then
+G8l `zero this.tree`
 
 ## Goal
 
@@ -179,7 +184,7 @@ Shell-touching → update this plan status. **Do not** leave
 | **D100b** ✅ extract | **Thin ForgeAdapterGnome core** in named modules. Map → admit → present → ε. Handler **may depend on** Mark 2 RuleSet, **is not** Mark 2 OpSet. | Modules land; `smoke-nest-apps` PASS; hunt agree/resync/present + `d100-observe` |
 | **D100b** ✅ residual | **Late identity FLOAT→TILE** without maze reconnect. `onLateIdentity` in `adapter-map-admit.js`; wm-class / title empty↔nonempty → `_applyProcessFloatDecision` (no `fromPresent`) + `commitLayout(*-identity)`. Re-assert TILE after adopt slotSplit (paintFloatModeBridge clobber). | L0 `bug-d100b-late-identity-tile`; D100 disconnect green; nest `smoke-mark2` PASS (2× TILE + join.right); `smoke-nest-apps` PASS |
 | **D100c** ✅ | **Delete `window.js` / `class WindowManager`.** Spies import ForgeAdapterGnome. No re-export tumor. Micro-slices: **c0** ✅ modes → **c1** ✅ open-place → **c2** ✅ present-idle → **c3** ✅ float → **c4** ✅ destroy → **c5** ✅ window-signals → **c6** ✅ grab-resize → **c7** ✅ settings → **c8** ✅ lifecycle → **c9** ✅ promote `ForgeAdapterGnome` + delete file. H1/session **park**. | File gone; tests import adapter |
-| **G8n** | `tree.js` gone or stub; full Node list gut | After D100c + desk holds **without** old handlers — **partial** (adapter `new Tree` stopped; `createLiveTree`; classes remain for tests + mixin) |
+| **G8n** | `tree.js` gone or stub; full Node list gut | After D100c + desk holds **without** old handlers — **partial** (`createLiveTree` + **G8n-s0 ✅** + **G8n-s1 ✅** spine peel; classes remain for tests + mixin) |
 | **G9** | **Delete STACKED** (no BC). TABBED remains. | After overlays + D100b |
 | **G10** | Policy/options in **session/host bags** | Opportunistic |
 
@@ -234,14 +239,17 @@ Add/keep greppable lines (forge log only):
   `ForgeAdapterGnome`; `window.js` / `WindowManager` gone; spies import
   adapter barrel. Tip `--dev`; `smoke-nest-apps` + `smoke-mark2` PASS.
   No façade rename.
-- **Next:** **G8n stub** — peel Tree API off `class Tree` (methods
-  already mixed onto `createLiveTree` ROOT). Then G8l (`zero this.tree`).
-  Live invent is `makeLiveHandle`. Test membership SoT is
+- **Next:** **G8n-s2** (peel query/walk off `class Tree`;
+  createLiveTree binds queries from a plain module). Then s3…s6
+  (`bindClassApi` gone) → G8l (`zero this.tree` — ~195
+  `this.tree`/`wm.tree` in `lib/extension`). Live
+  invent is `makeLiveHandle`. Test membership SoT is
   `parentOf`/`kidsOf` / `liveParentForPresent` /
   `liveChildrenForPresent`. **Not next:** invent-lock / H1 / detach
   wash, G8o cosmetics, G9 STACKED, host DnD / cross-mon Ctrl+hjkl
   reconnect, nest GUI. Do **not** reconnect the maze / belt / Mode B.
-  Do **not** dual-write Forest + GObject lists.
+  Do **not** dual-write Forest + GObject lists. Do **not** grow
+  `live-handle.js`.
 - **FIRM nest:** only `./scripts/forge/forge-test nested smoke-*` /
   `nested run|exec`. Hunt: `forge-test nested log --grep PAT --level
   info+ --last 40`. **Do not** host `forge layout`.
@@ -427,6 +435,213 @@ register. Do **not** dual-write lists “to keep tests green.”
 
 ## Session note
 
+2026-09-04 ~10:43 EDT — **G8n ROOT `move*` attached.** `create-live-tree.js`
+`attachRootMoveApi` thin-delegates `move` / `moveIn` / `moveOut` to
+`Tree.prototype` (dual-write stays on class Tree). `bindClassApi` skips
+those 3. Do not skip on ROOT. Do not relocate dual-write into
+`tree-api-nav`. `bindClassApi` remains for leftover Node copies. `live-handle.js`
+unchanged. Lifecycle 43. extension+tree **1581/2/1**. Proto **155**.
+
+2026-09-04 — **G8n invent peel started.** `lib/extension/tree-api-invent.js`
+injects `Node` (no circular import). Peeled: `createPlaceholderLeaf` /
+`_createNodeGObject` / `_snapshotCreateCon`. createLiveTree
+`INVENT_NAMES` + `attachRootInventApi`. leftover bindClassApi **3**
+(dual-write `move*`). `tree.js` zero `new Node`. Do not skip `move*`
+on ROOT. `live-handle.js` unchanged.
+
+2026-09-04 — **G8n-s4 `_finishMove` + `_activateWindowNode` peeled.**
+Percent/LX2 epilogue and Wayland stacking live in `tree-api-nav.js`.
+Class Tree wrappers. G8n-s6 NODE_ONLY skip `windowActor`/`float`/`tile`
+onto ROOT; `live-compat` `windowActor` getter. Unit
+`tree-api-nav.test.js` (5). `live-handle.js` unchanged. No dual-write.
+bindClassApi leftover **12** (invent + `move*`). tree.js **2184**.
+extension+tree **1576/2/1**. Proto **155**. `./install --dev` overlay
+(Wayland tip deferred). Nest default no.
+
+2026-09-04 — **G8n leftover thin peels.** `debugNode`/`debugParentNodes`
+→ query. `insertWindowIntoGroup` + Forest-first `mergeWindowsIntoGroup`
+dispatcher → topo (`_mergeWindowsIntoGroupGObject` invent stays).
+`_treeSnapshotCtx` lookup → present; `createCon` stays
+`_snapshotCreateCon`. `restoreLayoutGroups*` + `_rebuildGroup` peeled.
+`_syncForestIfSeeded` peeled (no dual-write growth). G8n-s6
+`NODE_ONLY_NAMES` skip list mutators + index/level/siblings/actor;
+`live-compat` `level`. bindClassApi leftover ~14 (invent + `move*`).
+Do not skip `_splitGObject`/`_removeNodeGObject` on ROOT. live-handle.js
+unchanged. extension+tree **1570/2/1**. tom-live **84**. Proto **155**.
+Nest default no.
+
+2026-09-04 — **G8n chrome peel + s6 start.** `tree-api-chrome.js`
+NodeChrome one-liners. createLiveTree skips `CHROME_NAMES` onto ROOT
+(no attach). Do not skip `_splitGObject`/`_removeNodeGObject` on ROOT
+(ungroup-i2). live-handle.js unchanged. Proto **155**.
+
+2026-09-04 — **G8n reload/destroy + groupHomeMonitor peel.**
+`rootReload` / `rootDestroy` / `removeScaffoldBins` in
+`tree-api-root.js`. `treeGroupHomeMonitor` in `tree-api-query.js`.
+Class Tree wrappers. L0 h6jc+lifecycle+Tree **78**; Tree-operations
+**70**. Proto **155**. `live-handle.js` unchanged. No dual-write.
+Nest default no.
+
+2026-09-04 — **Mark 2 `presentWmSlots` in `runLiveForest`** after paint
+(before idle `commitLayout`). GetTree WINDOW rect is Meta frame; group
+otherwise stayed ~1/2 until idle. forest-run unit dest width >1800.
+No dual-write. Nest default no.
+
+2026-09-04 — **G8n-s5 snapshotLayoutGroups peeled.** tree-snapshot
+was red because G8e does not mirror TILES onto GObject lists;
+`getNodeByLayout` now merges `liveById`. Forest restore re-applies
+renormalized percents after MONITOR `repairShares`. tree-snapshot
+**25 PASS**. **Left:** `_treeSnapshotCtx` (`new Node` createCon —
+invent). createLiveTree skips `PRESENT_NAMES` + `attachRootPresentApi`.
+`live-handle.js` unchanged. No dual-write. Nest default no.
+
+2026-09-04 — **G8n-s5 started.** `tree-api-present.js` `render` /
+`apply` / `paintRectForWindow` / `pruneDeadWindows`. createLiveTree
+skips `PRESENT_NAMES` + `attachRootPresentApi`. `processNode` already
+PresentChrome. `live-handle.js` unchanged. No dual-write. Nest default
+no.
+
+2026-09-04 — **G8n-s4 started.** `tree-api-nav.js` sibling cycle +
+`next` / `nextVisible` / `_nextMoveCandidate`. `createLiveTree` skips
+`NAV_NAMES` + `attachRootNavApi`. `move()` **not** peeled (GObject
+`appendChild` + `_syncForestIfSeeded`). `live-handle.js` unchanged. No
+dual-write growth. Nest default no.
+
+2026-09-04 — **G8n-s3 Forest-first peel landed** (invent leftover).
+Seeded `split` / `slotSplitUnit` / `group` / `_resolveGroupLayout` /
+`removeNode` / `cleanTree` / `swap` / `swapPairs` live in
+`lib/extension/tree-api-topo.js`. `createLiveTree` skips `TOPO_NAMES`
+and `attachRootTopoApi`. GObject `new Node` stays `_splitGObject` /
+`_removeNodeGObject` / `_cleanTreeGObject` / `_swapPairsGObject` on
+class Tree. `ungroup` / `createNode` **not** peeled (invent).
+`live-handle.js` unchanged. No dual-write growth. **Next:** G8n-s4.
+Nest default no.
+
+L0: Tree + operations + cleanup + prune-dead + lifecycle + tom-live +
+core-slot-geometry **446 pass**. Proto **155 PASS**.
+
+2026-09-04 — **G8n-s2 landed.** Query/walk lives in
+`lib/extension/tree-api-query.js`. `createLiveTree` skips `QUERY_NAMES`
+in `bindClassApi` and `attachRootQueryApi`. `class Node`/`Tree` thin
+wrappers. `live-handle.js` unchanged. No dual-write. **Next G8n:**
+**G8n-s3**. Nest default no.
+
+L0: Tree + Tree-operations + tom-live + lifecycle + core-slot-geometry
+**460 pass**. Proto **155 PASS**.
+
+2026-09-03 — **G8n-s1 landed.** ROOT spine API is plain functions in
+`lib/extension/tree-api-root.js`. createLiveTree
+`attachRootSpineApi` + `attachRootManagers` (skips
+`ROOT_SPINE_NAMES` in `bindClassApi`). `class Tree` thin wrappers to
+the same functions (`new Tree` fixtures). `live-handle.js` unchanged.
+No dual-write. G8n-s2 done 2026-09-04.
+
+L0: `WindowManager-lifecycle` + `live-handle` + `MonitorManager` +
+`WorkspaceManager` + `Tree.test` **131 pass**. Proto `npm test`
+**155 pass**. **Next G8n:** **G8n-s2**. **Not this queue:** G8l,
+invent-lock / H1 / detach wash, G8o, G9, host DnD maze.
+
+**Code reality (tip):**
+
+- Production: `ForgeAdapterGnome` ctor + lazy `tree` →
+  `createLiveTree(wm)` from `lib/extension/create-live-tree.js`. Zero
+  production `new Tree(` (only `tests/mocks/helpers/testFixtures.js`).
+  `tree.js` re-exports `createLiveTree`.
+- `createLiveTree`: `makeLiveHandle(ROOT)` →
+  `ensureLiveListMutators` → `bindClassApi(live, Node)` +
+  `bindClassApi(live, Tree)` (skips `LIVE_OWNED` + `ROOT_SPINE_NAMES`;
+  overwrites `getNodeByType`/`setLayout`/`render`) →
+  `attachRootSpineApi` → `attachRootManagers` → `liveById.set("ROOT")`
+  → `_initWorkspaces()`. Spine names are **not** copied from
+  `Tree.prototype`.
+- Spine bodies: `tree-api-root.js` (`rootExtWm`, managers,
+  `initWorkspaces`, `addWorkspace` / `removeWorkspace` / `addMonitor`,
+  `nodeWorkpaces` / `nodeWindows`). Preserve `nodeWorkpaces` spelling.
+- `class Tree` / `class Node` still GObject in `tree.js` (~3400 lines)
+  for **tests + remaining mixin**. Tree spine methods = wrappers.
+- Production invent: `makeLiveHandle` in `tom-live.js` (no
+  `import { Node }`). Residual `new Node` only inside `tree.js`
+  (`createNode` / `split` / `group` / placeholder — fixture /
+  `_allowGObjectCreateNode` / unseeded).
+- List shims: `live-compat.js` (do not grow `live-handle.js`).
+- ~195 `this.tree` / `wm.tree` in `lib/extension` → **G8l after stub**.
+
+### G8n stub micro-slices (implement after host PASS)
+
+Pattern: bodies → plain module / exports; `class Tree` thin
+delegates for `new Tree` fixtures; `createLiveTree` attaches peeled
+API **without** `Ctor.prototype` copy. One slice per session when
+possible. Proto every slice. Nest only if Shell-touching (default:
+**no nest**).
+
+| Slice | Files | What | Exit | L0 | Proto | Nest |
+| --- | --- | --- | --- | --- | --- | --- |
+| **G8n-s0** ✅ | `create-live-tree.js`, `tree.js` re-export, adapter import | Move `createLiveTree` + `bindClassApi` + `LIVE_OWNED` / `LIVE_OVERWRITE` out of class file. Adapter imports `createLiveTree` from new module. **Still** binds from prototypes this slice. | Production entry for ROOT invent is not buried under `class Tree`; lifecycle LiveHandle ROOT contract unchanged (`Object.getPrototypeOf(tree) === Object.prototype`, managers, `liveById.ROOT`) | `WindowManager-lifecycle` (live tree root), `live-handle`, Tree/Node smoke | yes | no |
+| **G8n-s1** ✅ | new `tree-api-root.js` (name flexible), `tree.js`, createLiveTree | Peel ROOT spine API off class: `extWm`, `monitorManager` / `workspaceManager`, `_initWorkspaces`, `addWorkspace` / `removeWorkspace` / `addMonitor`, `nodeWorkpaces` / `nodeWindows`. Class Tree = thin wrappers. createLiveTree attaches plain API (**stop** prototype copy for these names). | createLiveTree does not need `Tree.prototype` for managers/spine init | lifecycle, MonitorManager, WorkspaceManager, Tree | yes | no |
+| **G8n-s2** ✅ | `tree-api-query.js`, `tree.js`, `create-live-tree.js` | Peel query/walk: `findNode`, `findNodeByActor`, `getNodeByType` (Forest+lists), `getNodeByValue` / `ByLayout` / `ByMode`, `findParent`, `findAncestor*`, `contains` / `_search` / walks used by ROOT. **Follow-up:** `getNodeByLayout` / `getNodeByMode` merge `liveById` (G8e does not mirror TILES onto GObject lists). Class Tree `getNodeByType` uses `treeGetNodeByType`. | createLiveTree binds queries from plain module; no `bindClassApi` for these | Tree, Tree-operations, tom-live, lifecycle find-ws, tree-snapshot | yes | no |
+| **G8n-s3** ✅ | `tree-api-topo.js`, `tree.js`, `create-live-tree.js` | Peel Forest-first topology already on Tree: `createNode`, `split`, `slotSplitUnit`, `group` / `ungroup`, `removeNode`, `cleanTree`, `swap` / `swapPairs`, merge/insert-group helpers. Keep GObject `new Node` body behind `_allowGObjectCreateNode` / unseeded for invent-lock fixtures. **Landed:** `split` / `slotSplitUnit` / `group` / `_resolveGroupLayout` / `removeNode` / `cleanTree` / `swap` / `swapPairs` / `insertWindowIntoGroup` / Forest-first `mergeWindowsIntoGroup` dispatcher / `_syncForestIfSeeded` / `createNode` dispatcher (invent `_createNodeGObject`) / Forest-first `ungroup` (`forestUngroup`). **Left (invent):** `_createNodeGObject`, `_ungroupGObject`, `_mergeWindowsIntoGroupGObject`. | Seeded path bodies live outside `class Tree`; fixtures still `new Tree` + allow flag | Tree, Tree-operations, Tree-cleanup, prune-dead, Node invent-lock (`Tree.test` G8a/j) | yes | no |
+| **G8n-s4** 🚧 | `tree-api-nav.js`, `tree.js`, `create-live-tree.js` | Peel focus/move/nav: `focus*`, `move` / `moveIn` / `moveOut`, `next*`, `swapSibling`, owning-split helpers, `getTiledChildren` thin. **Landed:** `_cyclicSiblingWindow` / `focusSibling` / `swapSibling` / `_nextMoveCandidate` / `next` / `nextVisible` / `nextMonitor` / `_neighborMonitorByGeometry` / `layoutUnit` / `resolveOwningSplit` (+ owning-split helpers) / `stackedFocusWindow` / `_tiledWindowsIn` / `_selectFocusWindow` / `_isFocusMoveCeiling` / `focus` walker / `focusParent` / `focusChild` / `_moveUnit` / `_siblingConForMoveIn` / `_finishMove` / `_activateWindowNode`. **Left:** `move` (GObject appendChild + `_syncForestIfSeeded` — do not grow dual-write), `moveIn`/`moveOut` (Host/helper; product uses `forestMoveIn`/`forestMoveOut`. Tree keeps opts.dest + tabbed insert — do not dual-write). | Same bind pattern; class wrappers remain | Tree-operations, focus/command-adjacent unit, WindowManager-focus if related | yes | no |
+| **G8n-s5** 🚧 | `tree-api-present.js` (or deepen PresentChrome), `tree.js`, `create-live-tree.js` | Peel leftover present/render thin wrappers: `render` / `apply`, `processNode`+family, `pruneDeadWindows`, snapshot/restore delegates, percent helpers, chrome measure caches. **Landed:** `render` / `apply` / `paintRectForWindow` / `pruneDeadWindows` / `resetSiblingPercent` / `insertChildPercent` / `redistributeSiblingPercent` / `snapshotTree` / `restoreTree` / `restoreTreeIfNeeded` / `snapshotLayoutGroups` / `_snapshotNode` / `_hasStackedOrTabbedAncestor` / `setLayout` / `resetLayoutSingleChild` / `singleOrNoChild` / `_descriptorWindows` / `_reorientOnClose` / `_treeSnapshotCtx` lookup / `_rebuildGroup` / `restoreLayoutGroups` / `restoreLayoutGroupsIfUnwrapped`. `processNode`/`processGap` already PresentChrome. **Left:** `_snapshotCreateCon` (`new Node` invent). Chrome measure attached on ROOT via PRESENT_NAMES. | Bodies not inlined on `class Tree`; PresentChrome remains SoT for chrome | Tree-layout, Tree-cleanup, tree-snapshot, present/deco regressions touched | yes | no |
+| **G8n-s6** 🚧 | createLiveTree, `tree.js` | **Delete `bindClassApi(live, Node\|Tree)`.** ROOT only gets peeled plain API + `ensureLiveListMutators` + makeLiveHandle fields. Drop unused Node proto dump onto ROOT. **Started:** `CHROME_NAMES` + `NODE_ONLY_NAMES` (list mutators, `index`/`level`/siblings/`actor`/`rect`/`windowActor`/`float`/`tile`) skip onto ROOT; `live-compat` supplies list walk + `windowActor`. bindClassApi still copies **9** invent/dual-write Tree names. `tree-api-invent.js` peels `createPlaceholderLeaf` / `_createNodeGObject` / `_snapshotCreateCon` (Node injected). Do not skip `_splitGObject`/`_removeNodeGObject` on ROOT. | `rg bindClassApi lib/extension` → 0; LiveHandle ROOT contract green; no GObject prototype mixin | lifecycle live-root + Tree/Node/tom-live/Monitor/Workspace + d100 smoke set | yes | no unless Shell-touched |
+| **G8n-s7** | `tree.js`, fixtures only if needed | **Stub criterion:** production no longer requires `GObject.registerClass` Tree/Node for ROOT. Classes may remain **test-only** invent-lock (`new Tree` fixture) **or** shrink toward re-export/`tree-types` stub. Do **not** retarget invent-lock this slice unless trivial. | Grep targets below green for “stub peel done”; `tree.js` shrinking; G8l still open (`this.tree` ok) | full named Tree/Node/adapter set from s6 + invent-lock suites | yes | nest `smoke-mark2` **only if** adapter/tree ROOT path changed in a Shell-visible way; else no |
+
+**Next implement slice:** bindClassApi leftover **3** (`move` / `moveIn` /
+`moveOut` dual-write). Do not skip on ROOT. Do not relocate dual-write
+into tree-api-nav. `tree.js` zero `new Node`. Then s6 delete `bindClassApi`.
+
+### G8n stub — explicit do not
+
+- Dual-write Forest ← GObject child-lists (no “heal desk” mirrors)
+- Grow `live-handle.js` (identity duck only; lists → `live-compat`;
+  API peel → `tree-api*.js` / plain exports in `tree.js`)
+- Reconnect old Meta handlers / entered-monitor / idle restore /
+  title→`renderTree` / belt / Mode B
+- Host `forge layout` / nest GUI from agent (human host verify;
+  nest only via `forge-test nested smoke-*` when a slice marks nest)
+- Resave loadouts / session-layout
+- Start **G8l** (`zero this.tree`) before stub peel s6/s7
+- Wash invent-lock / H1 / `parentNode` detach tests (parked)
+- G8o cosmetics / G9 STACKED / host DnD maze
+
+### Grep acceptance — “stub peel done” (G8n intermediate)
+
+Run from repo root (adjust if files move). Full G8 acceptance
+(`this.tree` / `wm.tree` zero) is **G8l**, not stub.
+
+```sh
+# Production ROOT invent must not copy GObject prototypes
+rg -n 'bindClassApi' lib/extension   # expect 0 after G8n-s6
+
+# Production must not construct GObject Tree
+rg -n 'new Tree\(' lib               # expect 0 (tests/ may still)
+
+# Mixin source gone: createLiveTree must not read Tree/Node.prototype
+rg -n 'Tree\.prototype|Node\.prototype|bindClassApi\(live,' lib/extension
+
+# Optional health: classes may remain for fixtures — not a fail by itself
+rg -n 'export class (Tree|Node)' lib/extension/tree.js
+
+# Still deferred to G8l (do NOT require zero yet):
+# rg -n '\b(this|wm)\.tree\b' lib/extension
+```
+
+End-state G8n (file gut) remains: `tree.js` ≤ thin constants /
+re-exports (`tree-types`) — may land as follow-on after s7 when
+fixtures stop needing `class Tree`.
+
+### Risks / serialize
+
+| Risk | Note |
+| --- | --- |
+| Shared file | Serialize editors on `tree.js` (~3.5k) and `forge-adapter-gnome.js`; prefer extract-out modules to shrink conflict surface |
+| Invent-lock | `Tree.test` G8a/j + `Node.test` + `_allowGObjectCreateNode` fixtures **keep** `new Tree` / list mutators until an explicit later wash — do not “fix” by dual-write |
+| bindClassApi blind copy | ROOT today receives many WINDOW/CON Node methods it never uses; s6 must not drop a ROOT-needed name — extend lifecycle LiveHandle contract tests when peeling |
+| `getNodeByType` / `setLayout` / `render` | In `LIVE_OVERWRITE` — Forest-aware versions must stay on duck when stopping proto copy |
+| G8l confusion | Leaving `this.tree` is correct until G8l; stub ≠ rename every call site |
+| Nest false urgency | Stub peels are JS-module moves; default **no nest**; host layout never from agent |
+
+---
+
 2026-09-02 — **G8n L0 related retarget (test-only).** Husky `vitest related`
 on tip `8f1a8347` was ~63 files / 274 tests red. Four worktree batches
 retargeted regressions + unit suites to Forest `parentOf`/`kidsOf` +
@@ -434,7 +649,7 @@ retargeted regressions + unit suites to Forest `parentOf`/`kidsOf` +
 `createWindowManagerFixture({ reseedOnCreateNode })` (session-layout opts
 out). Merged failed-set **63/63** green (841 pass / 9 skip; H1 structural
 cases parked). **No** Forest←GObject dual-write. **Next:** host R054/R055
-verify; then G8n stub peel `tree.js`.
+verify; then G8n stub peel per **G8n-s0…** (orchestrator-prep above).
 
 2026-09-02 — **G8n adapter stop `new Tree`.** Production
 `ForgeAdapterGnome` ctor + lazy `tree` getter use `createLiveTree(wm)`
@@ -452,7 +667,7 @@ Tree-operations/prune-dead `kidsOf` vs createNode (Forest empty SoT).
 Proto 154. Named L0: adapter lifecycle/workspace/layout/batch-float +
 Tree/Node/Tree-layout/Monitor/Workspace/tom-live/live-handle + d100 +
 r051 green. Nest not run. Do **not** dual-write. Do **not** host
-`layout`. **Next G8n:** stub/peel `tree.js` methods off the class.
+`layout`. **Next G8n:** **G8n-s0…** after host PASS (see prep note).
 
 2026-09-02 — **R051 chrome-lifetime on present (not G8n continue).**
 Wayland `forge layout dev` SIGSEGV: `applyDecorationRect` `add_child`
@@ -902,7 +1117,7 @@ three. Unwrap tests assert `liveParentForPresent`.
 | **G8k** | **Narrow:** `Tree.split`/`group`/`removeNode`/`cleanTree`/`slotSplitUnit` Forest-first when seeded. Do not delete class. | Seeded topology API = Forest | ✅ **narrow** (tip 2026-09-01; was doc-only) |
 | **G8l** | Acceptance greps green | **Not this queue** — `this.tree` remains until managers move | **deferred** |
 | **G8m** | Nest matrix sign-off | Nest tape green | **deferred** (desk calm) |
-| **G8n** | `tree.js` gone or stub; full Node list gut | File ≤ constants | **in progress** (adapter `new Tree` stopped; classes remain) |
+| **G8n** | `tree.js` gone or stub; full Node list gut | File ≤ constants | **in progress** — adapter `new Tree` stopped; **G8n-s0 ✅**; **G8n-s1 ✅**; next **G8n-s2** |
 
 ### G8i micro-slices (4.6 — 2026-08-31)
 
@@ -985,14 +1200,19 @@ stale after Forest ops — do **not** “fix” by Forest-only kids.
 
 ### Remains / implement-now
 
-1. **G8n stub** — peel Tree API off `class Tree`; production ROOT is
-   `createLiveTree`. Then G8l (`zero this.tree`). No dual-write.
-2. **Park:** G8o cosmetics, G9 STACKED, human logout R049b. No host
-   layout from agents without ask. Do not resave loadouts.
+1. **G8n stub** — **G8n-s0 ✅**; **G8n-s1 ✅**; next **G8n-s2** in
+   Session note. Production ROOT is `createLiveTree`; spine API is
+   `tree-api-root.js`. Then **G8l** (`zero this.tree`). No dual-write.
+1. **Park:** invent-lock / H1 / detach wash; G8o cosmetics; G9
+   STACKED; host DnD maze reconnect. No host layout from agents
+   without ask. Do not resave loadouts.
 
-**Pitfalls / do-nots (G8i):** Do not Forest-only kids. Do not
+**Pitfalls / do-nots (G8i + G8n):** Do not Forest-only kids. Do not
 `replaceChildren`/`appendChild` as TILES fallback after forest* fails —
 fail-closed + metric. Do not skip `paintWmForest` after Forest mutate.
 Do not equalize on tab-strip reorder (D023). Do not touch FLOAT park /
-paint FLOAT removeChild. Do not dual-write lists “to heal desk.” No
-nest/host GUI/loadout. Proto every micro-slice. Serialize window.js.
+paint FLOAT removeChild. Do not dual-write lists “to heal desk.” Do
+not grow `live-handle.js` (list shims stay in `live-compat.js`; API
+peel → new `tree-api*.js` or keep in `tree.js` as plain exports). No
+nest/host GUI/loadout unless a slice is Shell-touching. Proto every
+micro-slice. Serialize `tree.js` / `forge-adapter-gnome.js` editors.

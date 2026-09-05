@@ -431,6 +431,25 @@ describe("Tree Layout Algorithms", () => {
       expect(sizes[1]).toBe(800);
       expect(sizes.reduce((a, b) => a + b, 0)).toBe(1000);
     });
+
+    it("seeded leftover 0.33,0.33 renormalizes to 50/50 (not remainder-to-last)", () => {
+      ctx.extWm._liveForestSeeded = true;
+      ctx.extWm.forest = { nodes: {} };
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.HSPLIT;
+      container.rect = { x: 0, y: 0, width: 1000, height: 500 };
+
+      const child1 = new Node(NODE_TYPES.CON, new St.Bin());
+      child1.percent = 0.33;
+      const child2 = new Node(NODE_TYPES.CON, new St.Bin());
+      child2.percent = 0.33;
+
+      const sizes = ctx.tree.computeSizes(container, [child1, child2]);
+      expect(sizes[0]).toBe(500);
+      expect(sizes[1]).toBe(500);
+      expect(child1.percent).toBe(0.33);
+      expect(child2.percent).toBe(0.33);
+    });
   });
 
   describe("processSplit - Horizontal", () => {
@@ -1423,6 +1442,38 @@ describe("Tree Layout Algorithms", () => {
       expect(a.nodeWindow.rect).toEqual(expected);
       expect(b.nodeWindow.rect).toEqual(expected);
       expect(a.nodeWindow.renderRect).toEqual(expected);
+    });
+
+    it("TABBED wrap 1→2 insets another bar; 2→1 grows the slot back", () => {
+      ctx.cleanup();
+      ctx = createTreeFixture({
+        fullExtWm: true,
+        settings: {
+          "stacked-tab-bar-height": 35,
+          "showtab-decoration-enabled": true,
+          "max-tabs-per-line": 2,
+        },
+      });
+      ctx.extWm.calculateGaps = vi.fn(() => 0);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.TABBED;
+      const a = createWindowNode(ctx.tree, monitor, { mode: "TILE" });
+      const b = createWindowNode(ctx.tree, monitor, { mode: "TILE" });
+      PresentChrome.processNode(ctx.tree, monitor);
+      const oneRow = { x: 0, y: 35, width: 1920, height: 1080 - 35 };
+      expect(a.nodeWindow.rect).toEqual(oneRow);
+
+      const c = createWindowNode(ctx.tree, monitor, { mode: "TILE" });
+      PresentChrome.processNode(ctx.tree, monitor);
+      const twoRows = { x: 0, y: 70, width: 1920, height: 1080 - 70 };
+      expect(a.nodeWindow.rect).toEqual(twoRows);
+      expect(c.nodeWindow.rect).toEqual(twoRows);
+
+      monitor.removeChild(c.nodeWindow);
+      PresentChrome.processNode(ctx.tree, monitor);
+      expect(a.nodeWindow.rect).toEqual(oneRow);
+      expect(b.nodeWindow.rect).toEqual(oneRow);
     });
 
     it("STACKED processNode insets leaf content by N× bar height", () => {

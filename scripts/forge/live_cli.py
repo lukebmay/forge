@@ -915,6 +915,17 @@ def cmd_test(backend: Optional[str], args: argparse.Namespace) -> int:
                             ),
                         }
                     )
+                elif act == "r055-dnd-center-join-raise-note":
+                    entry["actions"].append(
+                        {
+                            "step": act,
+                            "ok": True,
+                            "detail": (
+                                "host/agent: DnD TILE onto TAB CENTER; "
+                                "joiner raise+focus (nest smoke-layout-tabbed-edge)"
+                            ),
+                        }
+                    )
                 else:
                     entry["actions"].append({"step": act, "unknown": True})
                     action_ok = False

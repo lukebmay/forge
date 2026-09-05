@@ -3,6 +3,7 @@ import {
   fallbackMonitorNode,
   resolveTrackDestId,
   summarizeCensus,
+  summarizeCensusEntry,
   untrackedSkipReason,
 } from "../../../lib/extension/window-census.js";
 
@@ -12,6 +13,17 @@ describe("window-census", () => {
     expect(untrackedSkipReason({ valid: false })).toBe("invalid-type");
     expect(untrackedSkipReason({ ignored: true })).toBe("ignored");
     expect(untrackedSkipReason({ tracked: false, valid: true, ignored: false })).toBeNull();
+  });
+
+  it("summarizeCensusEntry keeps workspace for apply pin isolation", () => {
+    expect(
+      summarizeCensusEntry({
+        windowId: 11,
+        wmClass: "com.mitchellh.ghostty",
+        workspace: 1,
+        tracked: true,
+      })
+    ).toMatchObject({ windowId: 11, workspace: 1, tracked: true });
   });
 
   it("counts tracked vs untracked", () => {

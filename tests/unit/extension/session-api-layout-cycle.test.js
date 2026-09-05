@@ -1098,6 +1098,22 @@ describe("SessionApi workspace orphan isolation", () => {
     expect(getCollected.map((w) => String(w.metaWindowId ?? w.windowId))).toContain("202");
     expect(getCollected.map((w) => String(w.metaWindowId ?? w.windowId))).not.toContain("101");
   });
+
+  it("open pin loadWindows does not pin other-workspace same-class windows", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const w0 = createMockWindow({
+      id: 101,
+      wm_class: "com.mitchellh.ghostty",
+      workspace: ctx.workspaces[0],
+    });
+    const n0 = wm().tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, w0);
+    n0.mode = WINDOW_MODES.TILE;
+    seedLiveForest(wm());
+
+    const rows = api()._loadApplyPinWindows({ workspace: 1 });
+    const ids = rows.map((w) => String(w.metaWindowId ?? w.windowId));
+    expect(ids).not.toContain("101");
+  });
 });
 
 describe("SessionApi Apply snapshot Forest authority", () => {

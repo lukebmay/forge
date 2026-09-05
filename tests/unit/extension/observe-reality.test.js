@@ -108,6 +108,51 @@ describe("observeReality / resyncWmToReality", () => {
     };
   }
 
+  it("observeMonitorId uses Meta workspace not first moN chrome parent", () => {
+    const { f, byLabel } = buildGiven("Mon1(A)");
+    const old = f.monitors[0];
+    old.id = "mo0ws0";
+    f.nodes["mo0ws0"] = old;
+    const empty = {
+      id: "mo0ws1",
+      kind: "MONITOR",
+      layout: "HSPLIT",
+      parentId: old.parentId,
+      childIds: [],
+      percent: 1,
+    };
+    f.nodes["mo0ws1"] = empty;
+    f.monitors = [old, empty];
+    const parent = {
+      nodeType: "MONITOR",
+      kind: "MONITOR",
+      nodeValue: "mo0ws0",
+      isMonitor: () => true,
+    };
+    const metaA = {
+      id: "A",
+      get_id: () => "A",
+      get_monitor: () => 0,
+      get_workspace: () => ({ index: () => 1 }),
+    };
+    const liveA = { parentNode: parent, mode: "TILE" };
+    const wm = {
+      forest: f,
+      _liveForestSeeded: true,
+      hostBag: {
+        get(id) {
+          return id === byLabel.A.id ? { meta: metaA, floating: false } : undefined;
+        },
+      },
+      liveById: new Map([
+        [byLabel.A.id, liveA],
+        ["mo0ws0", parent],
+      ]),
+    };
+    const facts = observeReality(wm);
+    expect(facts.windows[byLabel.A.id].monitorId).toBe("mo0ws1");
+  });
+
   it("entered-monitor FLOAT mode with bag.floating false stays on TILES", () => {
     const { f, byLabel } = buildGiven("Mon1(A)");
     const metaA = { id: "A", get_id: () => "A", get_monitor: () => 0 };
@@ -406,5 +451,47 @@ describe("observeReality / resyncWmToReality", () => {
     const texts = Logger.info.mock.calls.map((c) => String(c[0] ?? ""));
     expect(texts).toContain("metric drift");
     expect(f.nodes.ghost).toBeUndefined();
+  });
+
+  it("GRAB_TILE pins Forest monitor so mark2-gate ignores Meta head", () => {
+    const { f, byLabel } = buildGiven("Mon1(A) Mon2(B)");
+    const mon1 = f.monitors[0];
+    const liveA = { mode: "GRAB_TILE", nodeType: "WINDOW" };
+    const metaA = {
+      id: "A",
+      get_id: () => "A",
+      get_monitor: () => 1,
+      get_workspace: () => ({ index: () => 0 }),
+    };
+    const wm = {
+      forest: f,
+      _liveForestSeeded: true,
+      _draggedNodeWindow: liveA,
+      hostBag: {
+        get(id) {
+          if (id === byLabel.A.id) return { meta: metaA, floating: false };
+          if (id === byLabel.B.id) {
+            return {
+              meta: {
+                id: "B",
+                get_id: () => "B",
+                get_monitor: () => 1,
+                get_workspace: () => ({ index: () => 0 }),
+              },
+              floating: false,
+            };
+          }
+          return undefined;
+        },
+      },
+      liveById: new Map([
+        [byLabel.A.id, liveA],
+        [byLabel.B.id, { mode: "TILE", nodeType: "WINDOW" }],
+      ]),
+    };
+    const facts = observeReality(wm);
+    expect(facts.windows[byLabel.A.id].monitorId).toBe(mon1.id);
+    const r = resyncWmToReality(wm, "mark2-gate", { skipSingletonSettle: true });
+    expect(r?.ok).toBe(true);
   });
 });

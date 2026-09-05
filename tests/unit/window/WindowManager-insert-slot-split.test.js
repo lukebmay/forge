@@ -382,7 +382,7 @@ describe("D032 slot-split insert", () => {
       expect(kidsOf(wm(), wrap)[1]).toBe(c.node);
     });
 
-    it("tab bag + new tile: bag stays TABBED; new is sibling of the bag under a new H/V CON", () => {
+    it("tab bag + new tile: Launch next to a tab WINDOW joins the bag", () => {
       const mon0 = getWorkspaceAndMonitor(ctx, 0, 0).monitor;
       mon0.layout = LAYOUT_TYPES.HSPLIT;
       const seed = tile(mon0, {
@@ -414,15 +414,12 @@ describe("D032 slot-split insert", () => {
       });
 
       expect(bag.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(kidsOf(wm(), bag)).not.toContain(opened.node);
-      expect(parentOf(wm(), opened.node)).not.toBe(bag);
-      const wrap = parentOf(wm(), bag);
-      expect(wrap).not.toBe(mon0);
-      expect(wrap.nodeType).toBe(NODE_TYPES.CON);
-      expect(wrap.isHSplit() || wrap.isVSplit()).toBe(true);
-      expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([bag, opened.node]));
+      expect(parentOf(wm(), opened.node)).toBe(bag);
+      expect(kidsOf(wm(), bag)).toContain(tabA.node);
+      expect(kidsOf(wm(), bag)).toContain(opened.node);
+      expect(parentOf(wm(), bag)).toBe(mon0);
       expect(parentOf(wm(), seed.node)).toBe(mon0);
-      expect(kidsOf(wm(), wrap)).not.toContain(seed.node);
+      expect(kidsOf(wm(), mon0)).toEqual(expect.arrayContaining([seed.node, bag]));
     });
 
     it("late null class/title still slot-splits; processFloats tiles in the wrap", () => {
@@ -501,12 +498,13 @@ describe("D032 slot-split insert", () => {
       expect(parentOf(wm(), a.node)).toBe(bag);
 
       const unit = wm()._resolveInsertUnit(a.node);
-      expect(unit).toBe(bag);
+      expect(unit).toBe(a.node);
       wm()._maybeAspectSplitForOpen(a.node);
       expect(parentOf(wm(), a.node)).toBe(bag);
       expect(bag.layout).toBe(LAYOUT_TYPES.TABBED);
 
-      const wrap = wm().slotSplitForInsert(unit);
+      expect(wm().slotSplitForInsert(unit)).toBe(bag);
+      const wrap = wm().slotSplitForInsert(bag);
       expect(wrap).toBeTruthy();
 
       const meta = createMockWindow({

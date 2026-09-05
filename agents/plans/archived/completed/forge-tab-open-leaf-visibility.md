@@ -1,8 +1,9 @@
 # forge-tab-open-leaf-visibility — Open leaf after layout + DnD join
 
-**Status:** awaiting host verify  
+**Status:** complete (host verify PASS 2026-09-02)  
 **Branch:** master  
-**Blocker:** (none)  
+**Blocker:** (none — was
+[B-r054-r055-host-verify](../../blockers/completed/B-r054-r055-host-verify.md))  
 **Updated:** 2026-09-02  
 **Regs:** **R054** (layout `active` / wrong visible tab after `layout
 dev`) · **R055** (DnD into TAB does not raise/focus joiner)
@@ -18,12 +19,12 @@ intent after:
 
 ## Acceptance
 
-- [ ] After layout apply, each TABBED/STACKED group’s visible Meta +
+- [x] After layout apply, each TABBED/STACKED group’s visible Meta +
   strip CSS track profile `active` (Forest `lastTabFocusId`), not a
-  stale sibling / first child. *(L0 green; host `layout dev` pending)*
-- [ ] DnD join into a tab group: joiner is open leaf, raised, and
+  stale sibling / first child. *(L0 + nest + host PASS)*
+- [x] DnD join into a tab group: joiner is open leaf, raised, and
   focused (`revealGroupChild` / keyboard path as product requires).
-  *(L0 + nest tabbed-edge green; host DnD pending)*
+  *(L0 + nest + host PASS — Mark 2 Group)*
 - [x] `setOpenLeaf` (canonical writer) updates **Forest**
   `lastTabFocusId` then duck `lastTabFocus` — paint must not stomp.
 - [x] L0 regression(s) fail before the patch for the user sequence.
@@ -91,8 +92,11 @@ Canonical contracts: `docs/dev/contracts.md` § Open leaf;
 
 ## Session note
 
-**OL1–OL5 landed** on dirty `master` (not committed). Human still
-must verify on host after `./install --dev` + Wayland re-login.
+**OL1–OL5 landed** and tip is on `origin/master` at `626cafc5`. Hard
+blocker created:
+[B-r054-r055-host-verify.md](../blockers/B-r054-r055-host-verify.md).
+Host still on `b5c38b76` until Wayland logout (install prep in
+flight / done; ping stays stale until re-login).
 
 ### What changed
 

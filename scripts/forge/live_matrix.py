@@ -125,7 +125,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "settle-soft",
             "structure-bind",
         ),
-        regressions=("R005", "R007", "R008", "R011", "R013", "R014"),
+        regressions=("R005", "R007", "R008", "R011", "R013", "R014", "R054"),
         profile="_forge-test-dual",
         setup=("close-chrome", "keep-agent", "keep-ghostty-tiles"),
         checks=(
@@ -151,7 +151,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "structure-bind",
             "mon-claim",
         ),
-        regressions=("R005", "R007"),
+        regressions=("R005", "R007", "R054"),
         profile="_forge-test-dual",
         setup=("close-mon1-chrome", "keep-agent"),
         checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube",
@@ -169,7 +169,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "mon-claim",
             "structure-bind",
         ),
-        regressions=("R001", "R005", "R011", "R013", "R014"),
+        regressions=("R001", "R005", "R011", "R013", "R014", "R054"),
         profile="_forge-test-dual",
         setup=("close-mon0-chrome", "keep-agent", "keep-mon1"),
         checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube",
@@ -202,7 +202,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "settle-soft",
             "structure-bind",
         ),
-        regressions=("R005", "R007", "R008"),
+        regressions=("R005", "R007", "R008", "R054"),
         requires_true_cold=True,
         profile="_forge-test-dual",
         setup=("close-all-tiles", "keep-agent"),
@@ -235,7 +235,7 @@ LIVE_CASES: tuple[LiveCase, ...] = (
         title="Settled desk → layout _forge-test-dual no thrash (focus soft)",
         behaviors=("layout-apply", "profile-focus", "open-leaf",
                    "settle-soft"),
-        regressions=("R007", ),
+        regressions=("R007", "R054"),
         profile="_forge-test-dual",
         setup=("ensure-dev-shape", "keep-agent"),
         checks=("ok", "mon0-open-leaf-grok", "mon1-open-leaf-youtube",
@@ -653,6 +653,33 @@ LIVE_CASES: tuple[LiveCase, ...] = (
             "reserved wrap, floated red border tracks the Meta frame (not a "
             "ghost slot). L0 bug-r031-float-border-ghost-tile. Optional "
             "alternate: any always-float rule."
+        ),
+    ),
+    LiveCase(
+        id="L1.r055-dnd-center-join-raise",
+        layer=LAYER_L1,
+        title="DnD CENTER into TAB raises joiner + keyboard focus (R055)",
+        behaviors=(
+            "cross-mon-dnd",
+            "open-leaf",
+            "structure-bind",
+        ),
+        regressions=("R055", ),
+        profile="_forge-test-dual",
+        setup=("ensure-dev-shape", "keep-agent"),
+        actions=("r055-dnd-center-join-raise-note", ),
+        run_layout=True,
+        checks=(
+            "ok",
+            "agent-survives",
+        ),
+        notes=(
+            "R055: after dual desk, host/agent Super-drag a TILE onto an "
+            "existing TAB CENTER — joiner must be visible open leaf, strip "
+            "highlight, and keyboard focus. No scripted raise/focus assert "
+            "yet (R012 dnd-drop covers structure only). L0: "
+            "bug-r054-r055-open-leaf CENTER join. Nest: smoke-toggle-tab + "
+            "smoke-layout-tabbed-edge. Hunt: revealGroupChild source=dnd-join."
         ),
     ),
 )

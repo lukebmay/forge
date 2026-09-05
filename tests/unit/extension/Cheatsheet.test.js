@@ -186,12 +186,14 @@ describe("Cheatsheet", () => {
 
       // Prefix "window-focus" -> "Focus" category; description from schema summary.
       expect(groups.get("Focus")).toEqual([
-        { shortcut: "Super+x", description: "Focus window left" },
+        { key: "window-focus-left", shortcut: "Super+x", description: "Focus window left" },
       ]);
-      expect(groups.get("Snap")).toEqual([{ shortcut: "Super+x", description: "Snap center" }]);
-      // Unknown prefix -> "Other"; empty summary -> _keyToDescription fallback.
+      expect(groups.get("Snap")).toEqual([
+        { key: "window-snap-center", shortcut: "Super+x", description: "Snap center" },
+      ]);
+      // Unknown prefix -> "Other"; empty summary -> key-derived text.
       expect(groups.get("Other")).toEqual([
-        { shortcut: "Super+x", description: "Totally Made Up Key" },
+        { key: "totally-made-up-key", shortcut: "Super+x", description: "Totally Made Up Key" },
       ]);
     });
 
@@ -212,12 +214,18 @@ describe("Cheatsheet", () => {
       // ...and it does not appear in any rendered group.
       const allShortcuts = [...groups.values()].flat();
       expect(allShortcuts).toEqual([
-        { shortcut: "Super+x", description: "summary:window-focus-left" },
+        { key: "window-focus-left", shortcut: "Super+x", description: "summary:window-focus-left" },
       ]);
     });
   });
 
   describe("re-center on monitors-changed (forge-k5m6)", () => {
+    function setMonitorAabb(rect) {
+      global.display.get_monitor_geometry.mockReturnValue(rect);
+      const ws = global.workspace_manager.get_active_workspace();
+      ws.get_work_area_for_monitor = () => rect;
+    }
+
     it("connects monitors-changed on show and re-centers when geometry changes", () => {
       cheatsheet.show();
       expect(Main.layoutManager.hasHandlers("monitors-changed")).toBe(true);
@@ -229,7 +237,7 @@ describe("Cheatsheet", () => {
       const beforeX = overlay.x;
 
       // Simulate a resolution/monitor change to a different geometry.
-      global.display.get_monitor_geometry.mockReturnValue({
+      setMonitorAabb({
         x: 0,
         y: 0,
         width: 800,
@@ -243,6 +251,19 @@ describe("Cheatsheet", () => {
       expect(overlay.x).toBe(200);
       expect(overlay.y).toBe(150);
       expect(overlay.x).not.toBe(beforeX);
+    });
+
+    it("clamps overlay size to 90% of the monitor AABB", () => {
+      cheatsheet.show();
+      const overlay = cheatsheet._overlay;
+      overlay.get_preferred_width = () => [0, 5000];
+      overlay.get_preferred_height = () => [0, 4000];
+      setMonitorAabb({ x: 0, y: 0, width: 1000, height: 800 });
+      Main.layoutManager.emit("monitors-changed");
+      expect(overlay.width).toBe(900);
+      expect(overlay.height).toBe(720);
+      expect(overlay.x).toBe(50);
+      expect(overlay.y).toBe(40);
     });
 
     it("disconnects monitors-changed on hide", () => {
@@ -261,6 +282,27 @@ describe("Cheatsheet", () => {
       cheatsheet.destroy();
       expect(disconnectSpy).toHaveBeenCalled();
       expect(Main.layoutManager.hasHandlers("monitors-changed")).toBe(false);
+    });
+  });
+
+  describe("collapsible headings", () => {
+    it("hides then shows section rows when the category heading is clicked", () => {
+      mockExt.kbdSettings.list_keys = vi.fn(() => ["window-focus-left"]);
+      mockExt.kbdSettings.get_strv = vi.fn(() => ["<Super>h"]);
+      cheatsheet.show();
+
+      const scroll = cheatsheet._overlay.get_children()[1];
+      const content = scroll.get_children()[0];
+      const column = content.get_children()[0];
+      const section = column.get_children()[0];
+      const heading = section.get_children()[0];
+      const rows = section.get_children()[1];
+
+      expect(rows.visible).toBe(true);
+      heading.emit("clicked");
+      expect(rows.visible).toBe(false);
+      heading.emit("clicked");
+      expect(rows.visible).toBe(true);
     });
   });
 });

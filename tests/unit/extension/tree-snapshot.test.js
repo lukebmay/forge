@@ -16,6 +16,7 @@ import {
 } from "../../../lib/extension/tree-snapshot.js";
 import { buildLiveMap } from "../../../lib/extension/monitor-identity.js";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { treeSnapshotCtx } from "../../../lib/extension/tree-api-present.js";
 import { appendChild } from "../../../lib/tom/index.js";
 import { forestRemoveWindow, seedLiveForest } from "../../../lib/extension/tom-live.js";
 import {
@@ -903,5 +904,28 @@ describe("tree-snapshot stableKey remap (T7)", () => {
     expect(tabbed).toHaveLength(1);
     expect(kidsOf(wm(), tabbed[0]).map((c) => c.nodeValue)).toEqual([w0, w1]);
     // Dest-mon via stableKey under Forest paint is still soft; regroup identity is the L0 contract.
+  });
+});
+
+describe("treeSnapshotCtx lookup (createCon stays invent)", () => {
+  it("findNode prefers direct then hostBag meta then WINDOW id scan", () => {
+    const meta = { id: "w1" };
+    const win = { nodeType: "WINDOW", nodeValue: meta };
+    const tree = {
+      findNode: (key) => (key === meta ? win : key === "direct" ? win : null),
+      getNodeByType: () => [win],
+      extWm: {
+        hostBag: {
+          get: (k) => (k === "bag" ? { meta } : null),
+          idFromWindowId: () => null,
+          idFromMeta: () => null,
+        },
+      },
+    };
+    const ctx = treeSnapshotCtx(tree, () => ({ invented: true }));
+    expect(ctx.findNode("direct")).toBe(win);
+    expect(ctx.findNode("bag")).toBe(win);
+    expect(ctx.createCon()).toEqual({ invented: true });
+    expect(ctx.tabbedLayout).toBe(LAYOUT_TYPES.TABBED);
   });
 });

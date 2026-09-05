@@ -4,7 +4,9 @@
 
 Forge keeps a **live cheatsheet** of *your* current chords (Safe default:
 **`Ctrl+Super+/`**; Vim kit: **`Super+Shift+/`**). Prefer that overlay over any
-static table when you have customized binds.
+static table when you have customized binds. The sheet fits the current
+monitor (scroll if the list is long). Click a category heading to collapse
+or expand it. Escape, click outside, or the close button dismisses it.
 
 Live state is **GSettings / dconf** (`org.gnome.shell.extensions.forge.keybindings`).
 It survives reboot. Named kits and portable JSON are optional backups (below).

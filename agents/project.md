@@ -228,7 +228,7 @@ abandon query discipline. Queued dig work: [PRIORITY.md](./PRIORITY.md).
 | **Layout settle / cold spine (agents)** | **This file** § Layout apply architecture |
 | Unit / e2e tests | [tests/README.md](../tests/README.md), [tests/e2e/README.md](../tests/e2e/README.md) |
 | User behavior | [docs/user/](../docs/user/) (`layout.md` cold apply steps) |
-| Durable “why” + decisions | [design.md](./design.md), [design/CHANGELOG.md](./design/CHANGELOG.md) (D039–D044 apply/tabs; D008–D009 forest-first) |
+| Durable “why” + decisions | [design.md](./design.md), [design/CHANGELOG.md](./design/CHANGELOG.md) (D039–D044 apply/tabs; D105/D117 visible-open; D008–D009 forest-first) |
 | Priorities / plans / live matrix | [PRIORITY.md](./PRIORITY.md), [HANDOFF.md](./HANDOFF.md), `agents/plans/` |
 
 ---
@@ -280,8 +280,11 @@ races as event-driven thrash with learned timeouts). Goals:
 Decisions: **D008–D009** (forest before machines; no Mode B cold), **D014
 superseded** (belt is not product), **D016** (lastTabFocus preserve),
 **D018** (pin), **D019** (hard/soft *ideas*; execution → **D040/D041**),
-**D039–D043** (ApplyEpoch, slot machines, forest-match `ok`, open-into-slot,
-overlay), **D044** (TABBED/STACKED mon-local).
+**D039–D043** (ApplyEpoch, slot machines, forest-match `ok`, open-into-slot;
+overlay lifetime **D043 superseded → D071 → D117**), **D044**
+(TABBED/STACKED mon-local), **D105** (visible wait), **D117**
+(visible-open: hide-place-show, spawn bands, overlay at visible-hard,
+focus when all required mapped).
 Plans: [forge-layout-cold-topology](./plans/forge-layout-cold-topology.md),
 [forge-layout-settle-contract](./plans/forge-layout-settle-contract.md),
 [forge-layout-slot-machines](./plans/forge-layout-slot-machines.md).
@@ -290,9 +293,11 @@ Plans: [forge-layout-cold-topology](./plans/forge-layout-cold-topology.md),
 a TILE window **or** a TABBED/STACKED CON), not per-window. ApplyEpoch is the
 only home writer during apply. Hard = **in-slot** (retry N=2). `Done.ok` =
 required forest match (hard-failed → `ok: false`; peers still finish). Open
-into slot; belt deleted (SM6/D042). Overlay dies at all-hard (D043). Group
+into slot; belt deleted (SM6/D042). Overlay hides at **visible-hard**
+(D117; D071 overlay-until-Done superseded for lifetime). Group
 chrome A is the existing CON strip. TABBED/STACKED is mon-local (D044).
-SM1–SM7 + D044 same-mon groups **done**.
+SM1–SM7 + D044 same-mon groups **done**. D117 amends SM5
+focus-after-all-hard.
 
 ### Problems this architecture solves
 
@@ -300,7 +305,8 @@ Concrete failure classes (how they looked, what phase owned them):
 
 | What went wrong (observable) | Wrong fix (do not reintroduce) | Architecture answer |
 | --- | --- | --- |
-| After cold or partial `layout dev`, a **TABBED group shows the wrong window**: e.g. plain Chrome “New Tab” **visible over** the profile’s intended open leaf (Grok), or mon1 shows Voice content while the YouTube tab is lit (or the reverse). Profile wanted `active: Grok` / `active: YouTube`. | Mid-open focus; sleep 250 ms and re-focus forever; belt re-`ensure_layout` that rewrites the group | **Focus after all required slots are terminal.** Pin the intended open leaf (~15s); restore on meta-focus steal; tab strip follows **lastTabFocus**, not keyboard-only. |
+| After cold or partial `layout dev`, a **TABBED group shows the wrong window**: e.g. plain Chrome “New Tab” **visible over** the profile’s intended open leaf (Grok), or mon1 shows Voice content while the YouTube tab is lit (or the reverse). Profile wanted `active: Grok` / `active: YouTube`. | Mid-open focus; sleep 250 ms and re-focus forever; belt re-`ensure_layout` that rewrites the group | **Raise the intended open leaf as soon as the group has ≥1 mapped window** (D117). Keyboard focus once **all required apps are mapped** (not during first open/place; not buried ε). Pin the intended open leaf (~15s); restore on meta-focus steal; tab strip follows **lastTabFocus**, not keyboard-only. |
+| New TILE maps at Mutter’s default rect then **jumps** into the slot; overlay stays up while hidden tab members ε-settle | Show-then-move; minimize-as-hide; overlay until Done.ok (D071) | **Hide-place-show** (hide at map, command Forest dest, show). Spawn open-leaf → other visible TILE → buried. Overlay hides at **visible-hard** (D117). Overlay ≠ Done.ok |
 | Operator must run `forge layout` **two or three times** before the desk sticks | Accept multi-CLI as success; Mode B second pass on cold | **One spine per command.** Soft residual + verify-once catch late Meta *inside* that run. |
 | After thrash, mon children **swap order** (e.g. mon1 becomes `term \| tab` instead of `tab \| term`) | “Just run layout again” / ensure_order as the design | **Order is part of construction**, not a cleanup pass after chaos. No happy-path structure rewrite after bind. |
 | Post-open “belt” **rewrites topology** and stomps open leaf / mon order | More ensure_layout after residual; keep belt as the design | **Open into the slot** (D042). Belt is **deleted** (SM6), not the happy path |
@@ -313,11 +319,17 @@ Concrete failure classes (how they looked, what phase owned them):
 Happy path for one reconcile apply (especially when roles need open):
 
 ```text
-ApplyEpoch
-  → materialize forest (skeleton + bind existing + open INTO slots)
-  → slot machines (parallel independent slots; hard = in-slot retry)
-  → forest match (Done.ok)
-  → focus once + soft residual + verify once
+ApplyEpoch + overlay on
+  → materialize forest (skeleton + bind existing)
+  → spawn bands: open leaves → other visible TILE → buried TAB
+        (parallel inside band; independent WINDOW settle; D117)
+  → per WINDOW: hide → admit INTO slot (D042) → present dest → show
+  → TAB/STACK has ≥1 mapped WINDOW → raise intended open leaf
+  → all required mapped → profile keyboard focus once (pin still applies)
+  → visible-hard → drop overlay (independent of focus)
+  → slot machines / buried peers finish in background (D105)
+  → forest match (Done.ok D041)
+  → soft residual + verify once
   → release epoch
 ```
 
@@ -328,9 +340,9 @@ Product `ok` is forest match (D041), not “hard warned and focus passed.”
 | --- | --- | --- |
 | **ApplyEpoch** | Desired forest is the only writer of mon / TILE home (D039) | Entered-monitor rehome; interleave H1; D026 restore mid-apply |
 | **Materialize forest** | Skeleton + bind existing + open **into slots** (PH / slot id) | Mon-root-only PlaceNext; invent a fourth PH kind |
-| **Slot machines** | Per **slot** (window **or** tab/stack CON): place → in-slot hard → retry N=2 | Per-window machines for tab peers; TILE-anywhere as ready |
-| **Forest match** | `Done.ok` iff every required TILE slot is in-slot (D041) | Focus-only verify as success; best-effort `ok` on hard-fail |
-| **Focus once** | After all required slots terminal: open leaves + profile kbd | Focus during open/place |
+| **Slot machines** | Per **slot** (window **or** tab/stack CON): place → in-slot hard → retry N=2. Forest-match unit. Independent slots run in parallel. Must **not** serialize sibling WINDOW settle (D117). | Per-window machines for tab peers; TILE-anywhere as ready; **blocking the visible group on an off-screen slot** (D105); holding overlay/focus on buried members |
+| **Forest match** | `Done.ok` iff every required TILE slot is in-slot (D041). Overlay ≠ Done.ok (D117) | Focus-only verify as success; best-effort `ok` on hard-fail; overlay-clear as success |
+| **Show / overlay / focus** | **Hide-place-show** at map (D117). Raise open leaf when the TAB/STACK group has ≥1 mapped WINDOW. Overlay hides at **visible-hard** (all visible TILE in-slot or honest FLOAT). Keyboard focus once **all required apps are mapped**. Buried peers may finish after overlay is gone (D105). Overlay hide and focus are independent gates. | Hold overlay / next act on an invisible slot; overlay until Done (D071 lifetime); focus during open/place; focus gated on buried ε / all-hard |
 | **Soft barrier** | Learned quiet; steal → pin restore + reset quiet | Soft-fix wrong mon / flat tabs |
 | **Belt** | **Deleted** (SM6/D042) | `ensure_layout` after bind; belt-as-success |
 
@@ -419,10 +431,11 @@ Child membership and order go through `Node` (`lib/extension/tree.js`):
 When agents run live tests that need install + Shell reload (`./install`,
 `forge save-session-layout`, dual-mon thrash):
 
-1. **Use a debug install** — `./install` / `./install --dev` / `make dev` set
-   `production=false`. Levels: regular **INFO**; `--dev` **TRACE**; `--prod`
-   **WARN** (D068). Dual-sink + query-first: **§ Logging** above — **never**
-   hunt with `tail -f` at TRACE.
+1. **Use a debug install** — `./install --dev` / `make dev` set
+   `production=false`, **TRACE**, layout debug overlay, and `forge-test` on
+   PATH (D104). Regular `./install` is INFO and does not arm overlay/test-cli.
+   `--prod` is WARN and turns overlay off. Dual-sink + query-first: **§ Logging**
+   above — **never** hunt with `tail -f` at TRACE.
 2. **Nest / agent live-with-traces (FIRM)** — install with **`./install --dev`**
    (or `forge update --dev` from `~/dev/me/forge`) before
    `./scripts/forge/forge-test nested …` campaigns that need hunts. Nest without

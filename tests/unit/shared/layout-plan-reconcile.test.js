@@ -207,6 +207,37 @@ describe("planActionsToSteps pure mapping", () => {
     expect(Array.isArray(steps)).toBe(true);
     expect(steps.every((s) => s.op)).toBe(true);
   });
+
+  it("residual park + clean false parks extra TILE (keep extras)", () => {
+    const profile = {
+      tiles: { mon0: ["ghostty", "ghostty"] },
+      marginal: { residual: "park" },
+    };
+    const win = (windowId, title) => ({
+      nodeType: "WINDOW",
+      windowId,
+      wmClass: "com.mitchellh.ghostty",
+      title,
+      mode: "TILE",
+      monitor: 0,
+      children: [],
+    });
+    const forest = {
+      monitors: [
+        {
+          id: "mo0ws0",
+          nodeType: "MONITOR",
+          layout: "HSPLIT",
+          children: [win(1, "A"), win(2, "B"), win(3, "D")],
+        },
+      ],
+    };
+    const plan = planReconcile(profile, forest, { clean: false, workspace: 0 });
+    expect(plan.actions.filter((a) => a.op === "close")).toEqual([]);
+    const parks = plan.actions.filter((a) => a.op === "park");
+    expect(parks).toHaveLength(1);
+    expect(parks[0].windowId).toBe(3);
+  });
 });
 
 /** R039: profile split without share still restores equal sibling sizes. */

@@ -3,7 +3,7 @@ tool_version = "0.5.0"
 catalog_version = "0.5.3"
 composer_path = "agents.py"
 installed_at = "2026-07-18T00:41:08+00:00"
-updated_at = "2026-09-04T20:45:09+00:00"
+updated_at = "2026-09-04T21:10:30+00:00"
 
 [[files]]
 id = "always"
@@ -176,8 +176,8 @@ read_when = "Before SSH, secrets, sudo/root, credentials, or any important live-
 [[files]]
 id = "testing"
 path = "testing.md"
-version = "2.4.0"
-sha256 = "2438618ba45a3dd047bf2413d1240c388d4add827c49636c5e209cca9e357e9c"
+version = "2.5.0"
+sha256 = "d39ba0231449e6776aaedbea1759ba7f046194e09294c8b940fa912ab088672a"
 title = "Testing"
 read_when = "Adding tests, changing test strategy, enabling optional features, checking Grok durable --leader mode, or reattaching headless Grok for the human"
 

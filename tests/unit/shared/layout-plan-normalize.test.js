@@ -63,6 +63,20 @@ describe("layout-plan normalize/validate (Python parity)", () => {
   }
 });
 
+describe("_forge-test-inkscape-ws2 profile load", () => {
+  it("normalizes vinyl-shaped dual-mon tiles with monCount 2", () => {
+    const raw = loadJson(join(FIXTURES, "_forge-test-inkscape-ws2.json"));
+    const got = normalizeProfile(structuredClone(raw), { monCount: 2 });
+    expect(got.version).toBe(2);
+    expect(got.layout.mon0).toBeTruthy();
+    expect(got.layout.mon1).toBeTruthy();
+    const ids = (got.roles || []).map((r) => String(r.id || ""));
+    expect(ids).toContain("inkscape");
+    const mon1Kids = got.layout.mon1.children || [];
+    expect(mon1Kids.some((c) => String(c.layout || "").toLowerCase() === "tabbed")).toBe(true);
+  });
+});
+
 describe("layout-plan exports", () => {
   it("exports constants", () => {
     expect(PROFILE_VERSION).toBe(2);

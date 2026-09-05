@@ -59,6 +59,7 @@ describe("tree-query projectRect / windowMetaFields", () => {
       pid: null,
       monitor: null,
     });
+    expect(f.workspace).toBeUndefined();
     expect(JSON.stringify(f)).toContain("Foo");
   });
 
@@ -81,6 +82,16 @@ describe("tree-query projectRect / windowMetaFields", () => {
       pid: null,
       monitor: null,
     });
+  });
+
+  it("windowMetaFields includes Meta workspace index", () => {
+    const win = {
+      get_wm_class: () => "com.mitchellh.ghostty",
+      get_title: () => "Ghostty",
+      get_id: () => 9,
+      get_workspace: () => ({ index: () => 1 }),
+    };
+    expect(windowMetaFields(win).workspace).toBe(1);
   });
 });
 

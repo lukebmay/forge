@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { normalizeProfile, planReconcile } from "../../../lib/shared/layout-plan.js";
 import {
   HARD_TIMEOUT_MS,
   HEURISTICS_SCHEMA_VERSION,
@@ -987,6 +988,48 @@ describe("matchRequiredTileSlots forest-match (wrong mon / flat mon1)", () => {
     });
     expect(match.ok).toBe(false);
     expect(match.failed.length).toBeGreaterThan(0);
+  });
+
+  it("residual park extra TILE on 2-role HSPLIT does not fail forest-match", () => {
+    const profile = normalizeProfile({
+      tiles: { mon0: ["ghostty", "ghostty"] },
+      marginal: { residual: "park" },
+      description: "test keep extras",
+    });
+    const win = (id, pct) => ({
+      nodeType: "WINDOW",
+      windowId: id,
+      wmClass: "com.mitchellh.ghostty",
+      title: "Ghostty",
+      mode: "TILE",
+      monitor: 0,
+      percent: pct,
+      userSized: false,
+      children: [],
+      rect: { x: 0, y: 0, width: 600, height: 1000 },
+    });
+    const forest = {
+      apiVersion: 2,
+      monitors: [
+        {
+          id: "mo0ws0",
+          nodeType: "MONITOR",
+          layout: "HSPLIT",
+          children: [win("a", 0.33), win("b", 0.33), win("c", 0.34)],
+        },
+      ],
+    };
+    const plan = planReconcile(profile, forest, { workspace: 0 });
+    const match = matchRequiredTileSlots({
+      profile,
+      forest,
+      flags: { workspace: 0 },
+    });
+    expect(
+      match.ok,
+      JSON.stringify({ failed: match.failed, mismatches: plan.structureMismatches })
+    ).toBe(true);
+    expect(match.failed).toEqual([]);
   });
 });
 

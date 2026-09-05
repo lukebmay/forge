@@ -9,6 +9,7 @@ import {
   monIndexFromId,
   workspaceFromId,
   createMonWsId,
+  monWsIdFromMeta,
 } from "../../../lib/extension/monitor-identity.js";
 
 describe("monitor-identity fingerprint", () => {
@@ -180,6 +181,17 @@ describe("monitor-identity mon-ws helpers", () => {
     expect(workspaceFromId("mo1ws2")).toBe(2);
     expect(createMonWsId(1, 2)).toBe("mo1ws2");
     expect(monIndexFromId("bad")).toBe(-1);
+  });
+
+  it("monWsIdFromMeta reads monitor + workspace index", () => {
+    expect(
+      monWsIdFromMeta({
+        get_monitor: () => 1,
+        get_workspace: () => ({ index: () => 2 }),
+      })
+    ).toBe("mo1ws2");
+    expect(monWsIdFromMeta({ get_monitor: () => 0 })).toBeNull();
+    expect(monWsIdFromMeta(null)).toBeNull();
   });
 
   it("resolveMonWsIdByStableKey rewrites mon index for workspace", () => {

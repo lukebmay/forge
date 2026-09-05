@@ -71,6 +71,41 @@ describe("filterForestWorkspace / collectWindows workspace isolation", () => {
     expect(scoped.metaWindows.map((w) => w.windowId)).toEqual([20]);
   });
 
+  it("collectWindows census does not duplicate Forest windows by Meta id", () => {
+    const forest = {
+      monitors: [
+        mon("mo0ws0", [
+          win({
+            windowId: "nano-a",
+            metaWindowId: 10,
+            wmClass: "com.mitchellh.ghostty",
+          }),
+        ]),
+      ],
+      metaWindows: [
+        { windowId: 10, wmClass: "com.mitchellh.ghostty", workspace: 0, tracked: true },
+      ],
+    };
+    const rows = collectWindows(forest, { workspace: 0 });
+    expect(rows.map((w) => String(w.windowId))).toEqual(["nano-a"]);
+  });
+
+  it("collectWindows with workspace skips other-ws census metaWindows", () => {
+    const forest = {
+      monitors: [mon("mo0ws1", [])],
+      metaWindows: [
+        { windowId: 10, wmClass: "com.mitchellh.ghostty", workspace: 0, tracked: true },
+        { windowId: 11, wmClass: "com.mitchellh.ghostty", workspace: 1, tracked: true },
+      ],
+    };
+    expect(collectWindows(forest, { workspace: 1 }).map((w) => w.windowId)).toEqual([11]);
+    expect(
+      collectWindows(forest)
+        .map((w) => w.windowId)
+        .sort()
+    ).toEqual([10, 11]);
+  });
+
   it("collectWindows with workspace skips other-ws extras and keeps workspace field", () => {
     const forest = {
       monitors: [mon("mo0ws0", [win({ windowId: 1, wmClass: "A" })])],

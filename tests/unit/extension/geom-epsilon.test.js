@@ -6,6 +6,8 @@ import {
   buildGeomEpsilonFields,
   decideGeomWrite,
   decideNearMissForgiveness,
+  decideUndersizeDestRetry,
+  TILE_DEST_UNDERSIZE_RETRIES,
   createClassEpsilonStore,
   defaultNearBand,
   faultInjectObserved,
@@ -68,6 +70,42 @@ describe("geom-epsilon", () => {
         dh: 0,
       })
     ).toBe("ambiguous");
+  });
+
+  describe("undersize dest retry (R062)", () => {
+    const sent = { x: 42, y: 32, width: 1878, height: 1048 };
+    const observed = { x: 0, y: 0, width: 700, height: 651 };
+
+    it("retries the same slot dest on far/ambiguous undersize", () => {
+      const r = decideUndersizeDestRetry({
+        tag: "ambiguous",
+        sent,
+        observed,
+        retryCount: 0,
+      });
+      expect(r.retry).toBe(true);
+      expect(r.dest).toEqual(sent);
+      expect(decideUndersizeDestRetry({ tag: "far", sent, observed, retryCount: 0 }).retry).toBe(
+        true
+      );
+    });
+
+    it("does not retry near/agree or after the cap", () => {
+      expect(decideUndersizeDestRetry({ tag: "near", sent, observed, retryCount: 0 }).retry).toBe(
+        false
+      );
+      expect(decideUndersizeDestRetry({ tag: "agree", sent, observed, retryCount: 0 }).retry).toBe(
+        false
+      );
+      expect(
+        decideUndersizeDestRetry({
+          tag: "ambiguous",
+          sent,
+          observed,
+          retryCount: TILE_DEST_UNDERSIZE_RETRIES,
+        }).retry
+      ).toBe(false);
+    });
   });
 
   it("buildGeomEpsilonFields includes greppable tag and edges", () => {

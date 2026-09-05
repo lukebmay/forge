@@ -1,12 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  dropChangesStructure,
   dropWouldOverflowMins,
-  resolveDropMark2,
-  resolveDropSurface,
-  shouldMergeCenterGroup,
   swapWouldOverflowMins,
-  unitMins,
 } from "../../../lib/extension/drop-intent.js";
 import {
   MIN_CLAMP_LEARN_DELAY_MS,
@@ -23,64 +18,6 @@ import {
   CLASS_MIN_ABSURD_W,
   CLASS_MIN_ABSURD_H,
 } from "../../../lib/extension/tree-layout.js";
-import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
-import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import {
-  liveChildrenForPresent,
-  liveParentForPresent,
-  seedLiveForest,
-} from "../../../lib/extension/tom-live.js";
-import {
-  createMockWindow,
-  createWindowManagerFixture,
-  getWorkspaceAndMonitor,
-  createContainerNode,
-  setPointer,
-} from "../../mocks/helpers/index.js";
-import { Rectangle } from "../../mocks/gnome/Meta.js";
-
-function attach(parent, child) {
-  child.parentNode = parent;
-  parent.childNodes.push(child);
-  Object.defineProperty(child, "nextSibling", {
-    configurable: true,
-    get() {
-      const i = parent.childNodes.indexOf(child);
-      return i >= 0 ? parent.childNodes[i + 1] || null : null;
-    },
-  });
-  return child;
-}
-
-function makeParent(layout, nodeType = "CON") {
-  return {
-    layout,
-    nodeType,
-    childNodes: [],
-    isHSplit() {
-      return this.layout === "HSPLIT";
-    },
-    isVSplit() {
-      return this.layout === "VSPLIT";
-    },
-    isTabbed() {
-      return this.layout === "TABBED";
-    },
-    isStacked() {
-      return this.layout === "STACKED";
-    },
-    isStackedOrTabbed() {
-      return this.isTabbed() || this.isStacked();
-    },
-  };
-}
-
-function vsplitPair() {
-  const parent = makeParent("VSPLIT");
-  const a = attach(parent, { id: "A" });
-  const b = attach(parent, { id: "B" });
-  return { parent, a, b };
-}
 
 function centerOp(overrides = {}) {
   return {
@@ -103,437 +40,6 @@ function edgeOp(overrides = {}) {
     ...overrides,
   };
 }
-
-describe("dropChangesStructure", () => {
-  it("missing nodes or operation → no change", () => {
-    const { a, b } = vsplitPair();
-    expect(dropChangesStructure(null, b, centerOp())).toBe(false);
-    expect(dropChangesStructure(a, null, centerOp())).toBe(false);
-    expect(dropChangesStructure(a, b, null)).toBe(false);
-  });
-
-  it("self drop → no change", () => {
-    const { a } = vsplitPair();
-    expect(dropChangesStructure(a, a, centerOp())).toBe(false);
-  });
-
-  it("different parent → change", () => {
-    const { a } = vsplitPair();
-    const other = makeParent("HSPLIT");
-    const c = attach(other, { id: "C" });
-    expect(dropChangesStructure(a, c, centerOp())).toBe(true);
-    expect(dropChangesStructure(a, c, edgeOp({ isBefore: true }))).toBe(true);
-  });
-
-  it("CENTER into already TABBED same parent → no change", () => {
-    const parent = makeParent("TABBED");
-    const a = attach(parent, { id: "A" });
-    const b = attach(parent, { id: "B" });
-    const op = centerOp({ containerNode: parent });
-    expect(dropChangesStructure(b, a, op, { stackedOrTabbed: true })).toBe(false);
-    expect(dropChangesStructure(a, b, op, { stackedOrTabbed: true })).toBe(false);
-  });
-
-  it("CENTER into already STACKED same parent → no change", () => {
-    const parent = makeParent("STACKED");
-    const a = attach(parent, { id: "A" });
-    const b = attach(parent, { id: "B" });
-    expect(
-      dropChangesStructure(b, a, centerOp({ containerNode: parent }), {
-        stackedOrTabbed: true,
-      })
-    ).toBe(false);
-  });
-
-  it("CENTER on VSPLIT siblings → change (both directions)", () => {
-    const ctx = createWindowManagerFixture({
-      settings: {
-        "dnd-center-layout": "TABBED",
-        "tiling-mode-enabled": true,
-      },
-    });
-    try {
-      const wm = ctx.windowManager;
-      const { monitor } = getWorkspaceAndMonitor(ctx);
-      monitor.layout = LAYOUT_TYPES.HSPLIT;
-      const split = createContainerNode(monitor, LAYOUT_TYPES.VSPLIT, {
-        x: 0,
-        y: 0,
-        width: 960,
-        height: 1080,
-      });
-      const top = ctx.tree.createNode(
-        split.nodeValue,
-        NODE_TYPES.WINDOW,
-        createMockWindow({
-          id: "A",
-          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 540 }),
-          workspace: ctx.workspaces[0],
-        })
-      );
-      const bot = ctx.tree.createNode(
-        split.nodeValue,
-        NODE_TYPES.WINDOW,
-        createMockWindow({
-          id: "B",
-          rect: new Rectangle({ x: 0, y: 540, width: 960, height: 540 }),
-          workspace: ctx.workspaces[0],
-        })
-      );
-      top.mode = WINDOW_MODES.TILE;
-      bot.mode = WINDOW_MODES.TILE;
-      seedLiveForest(wm);
-      bot.mode = WINDOW_MODES.GRAB_TILE;
-
-      setPointer(480, 270);
-      wm.nodeWinAtPointer = top;
-      wm.moveWindowToPointer(bot, false);
-
-      expect(split.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(split.childNodes).toHaveLength(2);
-      expect(split.childNodes).toEqual(expect.arrayContaining([top, bot]));
-      expect(top.parentNode).toBe(split);
-      expect(bot.parentNode).toBe(split);
-      expect(monitor.childNodes).toContain(split);
-    } finally {
-      ctx.cleanup();
-    }
-  });
-
-  it("CENTER onto TILE sibling of TABBED does not convert parent to TABBED", () => {
-    const ctx = createWindowManagerFixture({
-      settings: {
-        "dnd-center-layout": "TABBED",
-        "tiling-mode-enabled": true,
-      },
-    });
-    try {
-      const wm = ctx.windowManager;
-      const { monitor } = getWorkspaceAndMonitor(ctx);
-      monitor.layout = LAYOUT_TYPES.HSPLIT;
-      const split = createContainerNode(monitor, LAYOUT_TYPES.HSPLIT, {
-        x: 0,
-        y: 0,
-        width: 1920,
-        height: 1080,
-      });
-      const ghostty = ctx.tree.createNode(
-        split.nodeValue,
-        NODE_TYPES.WINDOW,
-        createMockWindow({
-          id: "g",
-          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-          workspace: ctx.workspaces[0],
-        })
-      );
-      const tabs = createContainerNode(split, LAYOUT_TYPES.TABBED, {
-        x: 960,
-        y: 0,
-        width: 960,
-        height: 1080,
-      });
-      const yt = ctx.tree.createNode(
-        tabs.nodeValue,
-        NODE_TYPES.WINDOW,
-        createMockWindow({
-          id: "yt",
-          rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
-          workspace: ctx.workspaces[0],
-        })
-      );
-      const nautilus = ctx.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        createMockWindow({
-          id: "n",
-          rect: new Rectangle({ x: 0, y: 0, width: 400, height: 400 }),
-          workspace: ctx.workspaces[0],
-        })
-      );
-      ghostty.mode = WINDOW_MODES.TILE;
-      yt.mode = WINDOW_MODES.TILE;
-      nautilus.mode = WINDOW_MODES.TILE;
-      seedLiveForest(wm);
-      nautilus.mode = WINDOW_MODES.GRAB_TILE;
-
-      setPointer(480, 540);
-      wm.nodeWinAtPointer = ghostty;
-      wm.moveWindowToPointer(nautilus, false);
-
-      expect(split.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      const wrap = liveParentForPresent(wm, ghostty);
-      expect(wrap).not.toBe(split);
-      expect(wrap.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(liveChildrenForPresent(wm, wrap).every((c) => c.nodeType === NODE_TYPES.WINDOW)).toBe(
-        true
-      );
-      expect(liveChildrenForPresent(wm, wrap)).toEqual(
-        expect.arrayContaining([ghostty, nautilus])
-      );
-      expect(liveParentForPresent(wm, tabs)).toBe(split);
-      expect(liveChildrenForPresent(wm, tabs)).toEqual([yt]);
-      expect(liveChildrenForPresent(wm, split)).toEqual(expect.arrayContaining([wrap, tabs]));
-    } finally {
-      ctx.cleanup();
-    }
-  });
-
-  it("CENTER on HSPLIT siblings → change", () => {
-    const parent = makeParent("HSPLIT");
-    const a = attach(parent, { id: "A" });
-    const b = attach(parent, { id: "B" });
-    expect(dropChangesStructure(b, a, centerOp({ containerNode: parent }))).toBe(true);
-  });
-
-  it("CENTER SWAP on siblings → change", () => {
-    const { a, b } = vsplitPair();
-    expect(dropChangesStructure(b, a, centerOp({ isSwap: true }))).toBe(true);
-  });
-
-  it("D3: already bottom, drop BOTTOM on top sibling → no change", () => {
-    const { a, b } = vsplitPair();
-    const op = edgeOp({ isBefore: false, isHorizontal: false });
-    expect(dropChangesStructure(b, a, op)).toBe(false);
-  });
-
-  it("already top, drop TOP on bottom sibling → no change", () => {
-    const { a, b } = vsplitPair();
-    expect(dropChangesStructure(a, b, edgeOp({ isBefore: true }))).toBe(false);
-  });
-
-  it("BOTTOM that would reorder (top onto bottom) → change", () => {
-    const { a, b } = vsplitPair();
-    expect(dropChangesStructure(a, b, edgeOp({ isBefore: false }))).toBe(true);
-  });
-
-  it("LEFT on VSPLIT (would flip H) → change", () => {
-    const { a, b } = vsplitPair();
-    const op = edgeOp({
-      isBefore: true,
-      isHorizontal: true,
-      shouldCreateCon: true,
-    });
-    expect(dropChangesStructure(b, a, op)).toBe(true);
-  });
-
-  it("already right of HSPLIT, drop RIGHT → no change", () => {
-    const parent = makeParent("HSPLIT");
-    const a = attach(parent, { id: "A" });
-    const b = attach(parent, { id: "B" });
-    const op = edgeOp({ isBefore: false, isHorizontal: true });
-    expect(dropChangesStructure(b, a, op)).toBe(false);
-  });
-
-  it("RIGHT on VSPLIT (would flip H) → change", () => {
-    const { a, b } = vsplitPair();
-    const op = edgeOp({
-      isBefore: false,
-      isHorizontal: true,
-      shouldCreateCon: true,
-    });
-    expect(dropChangesStructure(b, a, op)).toBe(true);
-  });
-});
-
-describe("resolveDropMark2", () => {
-  function hsplitPair() {
-    const parent = makeParent("HSPLIT");
-    const a = attach(parent, { id: "A", nodeType: "WINDOW" });
-    const b = attach(parent, { id: "B", nodeType: "WINDOW" });
-    return { parent, a, b };
-  }
-
-  function tabGroupSibling() {
-    const outer = makeParent("HSPLIT");
-    const src = attach(outer, { id: "S", nodeType: "WINDOW" });
-    const group = attach(outer, makeParent("TABBED"));
-    const t1 = attach(group, { id: "T1", nodeType: "WINDOW" });
-    const t2 = attach(group, { id: "T2", nodeType: "WINDOW" });
-    return { outer, src, group, t1, t2 };
-  }
-
-  it("CENTER sibling of TABBED CON → join toward the group", () => {
-    const { src, t1, t2, outer } = tabGroupSibling();
-    expect(resolveDropMark2(src, t1, centerOp())).toEqual({ op: "join", dir: "right" });
-    expect(resolveDropMark2(src, t2, centerOp())).toEqual({ op: "join", dir: "right" });
-    const flipped = attach(outer, { id: "R", nodeType: "WINDOW" });
-    expect(resolveDropMark2(flipped, t1, centerOp())).toEqual({ op: "join", dir: "left" });
-  });
-
-  it("CENTER into TABBED under MONITOR parent → null", () => {
-    const mon = makeParent("HSPLIT", "MONITOR");
-    const src = attach(mon, { id: "S", nodeType: "WINDOW" });
-    const group = attach(mon, makeParent("TABBED"));
-    const t1 = attach(group, { id: "T1", nodeType: "WINDOW" });
-    expect(resolveDropMark2(src, t1, centerOp())).toBeNull();
-  });
-
-  it("CENTER H/V sibling merge-group → null (Join would wrap-split)", () => {
-    const { a, b } = hsplitPair();
-    expect(shouldMergeCenterGroup(b, a, centerOp())).toBe(true);
-    expect(resolveDropMark2(b, a, centerOp())).toBeNull();
-    expect(resolveDropMark2(a, b, centerOp())).toBeNull();
-  });
-
-  it("adjacent HSPLIT SWAP → move (in-axis neighbor)", () => {
-    const { a, b } = hsplitPair();
-    expect(resolveDropMark2(b, a, centerOp({ isSwap: true }))).toEqual({
-      op: "move",
-      dir: "left",
-    });
-    expect(resolveDropMark2(a, b, centerOp({ isSwap: true }))).toEqual({
-      op: "move",
-      dir: "right",
-    });
-  });
-
-  it("SWAP MONITOR / TABBED / non-adjacent → null", () => {
-    const mon = makeParent("HSPLIT", "MONITOR");
-    const m1 = attach(mon, { id: "M1", nodeType: "WINDOW" });
-    const m2 = attach(mon, { id: "M2", nodeType: "WINDOW" });
-    expect(resolveDropMark2(m1, m2, centerOp({ isSwap: true }))).toBeNull();
-
-    const tab = makeParent("TABBED");
-    const t1 = attach(tab, { id: "T1", nodeType: "WINDOW" });
-    const t2 = attach(tab, { id: "T2", nodeType: "WINDOW" });
-    expect(resolveDropMark2(t2, t1, centerOp({ isSwap: true }))).toBeNull();
-
-    const parent = makeParent("HSPLIT");
-    const a = attach(parent, { id: "A", nodeType: "WINDOW" });
-    attach(parent, { id: "B", nodeType: "WINDOW" });
-    const c = attach(parent, { id: "C", nodeType: "WINDOW" });
-    expect(resolveDropMark2(a, c, centerOp({ isSwap: true }))).toBeNull();
-  });
-
-  it("wrap / detach / createCon → null", () => {
-    const { a, b } = hsplitPair();
-    expect(
-      resolveDropMark2(a, b, edgeOp({ shouldWrapTargetCon: true, isHorizontal: true }))
-    ).toBeNull();
-    expect(resolveDropMark2(a, b, edgeOp({ shouldDetachWindow: true }))).toBeNull();
-    expect(
-      resolveDropMark2(a, b, edgeOp({ shouldCreateCon: true, isHorizontal: true, isBefore: true }))
-    ).toBeNull();
-  });
-
-  it("same-parent HSPLIT adjacent RIGHT → move right", () => {
-    const { a, b } = hsplitPair();
-    expect(resolveDropMark2(a, b, edgeOp({ isBefore: false, isHorizontal: true }))).toEqual({
-      op: "move",
-      dir: "right",
-    });
-    expect(resolveDropMark2(b, a, edgeOp({ isBefore: true, isHorizontal: true }))).toEqual({
-      op: "move",
-      dir: "left",
-    });
-  });
-
-  it("non-adjacent reorder / MONITOR parent / empty-mon → null", () => {
-    const parent = makeParent("HSPLIT");
-    const a = attach(parent, { id: "A", nodeType: "WINDOW" });
-    const b = attach(parent, { id: "B", nodeType: "WINDOW" });
-    const c = attach(parent, { id: "C", nodeType: "WINDOW" });
-    expect(resolveDropMark2(a, c, edgeOp({ isBefore: false, isHorizontal: true }))).toBeNull();
-
-    const mon = makeParent("HSPLIT", "MONITOR");
-    const m1 = attach(mon, { id: "M1", nodeType: "WINDOW" });
-    const m2 = attach(mon, { id: "M2", nodeType: "WINDOW" });
-    expect(resolveDropMark2(m1, m2, edgeOp({ isBefore: false, isHorizontal: true }))).toBeNull();
-
-    expect(
-      resolveDropMark2(a, b, edgeOp({ isHorizontal: true }), { emptyMonitor: true })
-    ).toBeNull();
-  });
-});
-
-describe("resolveDropSurface", () => {
-  function hsplitPair() {
-    const parent = makeParent("HSPLIT");
-    const a = attach(parent, { id: "A", nodeType: "WINDOW" });
-    const b = attach(parent, { id: "B", nodeType: "WINDOW" });
-    return { parent, a, b };
-  }
-
-  it("SWAP → swapPairs (Mark 2 may still take adjacent H/V CON first)", () => {
-    const { a, b } = hsplitPair();
-    expect(resolveDropSurface(b, a, centerOp({ isSwap: true }))).toEqual({ op: "swapPairs" });
-  });
-
-  it("CENTER H/V siblings → group", () => {
-    const { a, b } = hsplitPair();
-    expect(shouldMergeCenterGroup(b, a, centerOp())).toBe(true);
-    expect(resolveDropSurface(b, a, centerOp())).toEqual({ op: "group" });
-  });
-
-  it("CENTER invent on MONITOR → wrap (dest CON, not source-parent group)", () => {
-    const mon = makeParent("HSPLIT", "MONITOR");
-    const a = attach(mon, { id: "A", nodeType: "WINDOW" });
-    const b = attach(mon, { id: "B", nodeType: "WINDOW" });
-    expect(
-      resolveDropSurface(a, b, centerOp({ shouldCreateCon: true, containerNode: mon }))
-    ).toEqual({ op: "wrap" });
-  });
-
-  it("CENTER different-parent dest H/V CON with shouldCreateCon → wrap", () => {
-    const { a } = hsplitPair();
-    const other = makeParent("HSPLIT");
-    const c = attach(other, { id: "C", nodeType: "WINDOW" });
-    expect(shouldMergeCenterGroup(c, a, centerOp())).toBe(false);
-    expect(
-      resolveDropSurface(c, a, centerOp({ shouldCreateCon: true, containerNode: a.parentNode }))
-    ).toEqual({ op: "wrap" });
-  });
-
-  it("edge wrap-target / detach / invent / insert / empty-mon", () => {
-    const { a, b } = hsplitPair();
-    expect(
-      resolveDropSurface(a, b, edgeOp({ shouldWrapTargetCon: true, isHorizontal: true }))
-    ).toEqual({ op: "slotSplit" });
-    expect(resolveDropSurface(a, b, edgeOp({ shouldDetachWindow: true }))).toEqual({
-      op: "split",
-    });
-    expect(
-      resolveDropSurface(
-        a,
-        b,
-        edgeOp({ shouldCreateCon: true, isHorizontal: true, isBefore: true })
-      )
-    ).toEqual({ op: "wrap" });
-    expect(resolveDropSurface(a, b, edgeOp({ isBefore: false, isHorizontal: true }))).toEqual({
-      op: "insert",
-    });
-    expect(
-      resolveDropSurface(a, b, edgeOp({ isHorizontal: true }), { emptyMonitor: true })
-    ).toEqual({ op: "emptyMonitorDrop" });
-  });
-});
-
-describe("shouldMergeCenterGroup", () => {
-  it("true for CENTER on H/V CON siblings", () => {
-    const { a, b } = vsplitPair();
-    expect(shouldMergeCenterGroup(b, a, centerOp())).toBe(true);
-    expect(shouldMergeCenterGroup(a, b, centerOp())).toBe(true);
-  });
-
-  it("false for TABBED parent, SWAP, different parents, monitor parent", () => {
-    const tab = makeParent("TABBED");
-    const t1 = attach(tab, { id: "T1" });
-    const t2 = attach(tab, { id: "T2" });
-    expect(shouldMergeCenterGroup(t2, t1, centerOp())).toBe(false);
-
-    const { a, b } = vsplitPair();
-    expect(shouldMergeCenterGroup(b, a, centerOp({ isSwap: true }))).toBe(false);
-
-    const other = makeParent("HSPLIT");
-    const c = attach(other, { id: "C" });
-    expect(shouldMergeCenterGroup(a, c, centerOp())).toBe(false);
-
-    const mon = makeParent("VSPLIT", "MONITOR");
-    const m1 = attach(mon, { id: "M1" });
-    const m2 = attach(mon, { id: "M2" });
-    expect(shouldMergeCenterGroup(m2, m1, centerOp())).toBe(false);
-  });
-});
 
 describe("dropWouldOverflowMins", () => {
   function win(id, minW, minH) {
@@ -720,6 +226,35 @@ describe("readWindowMinSize / noteWindowMinFromClamp", () => {
       width: 256,
       height: 340,
     });
+  });
+
+  it("R062: does not learn map-size as min when commanded dest is much larger", () => {
+    clearClassMinFloorForTests();
+    const meta = {};
+    const req = {
+      width: 1878,
+      height: 1048,
+      at: 1000,
+      priorW: 700,
+      priorH: 651,
+    };
+    noteWindowMinFromClamp(
+      meta,
+      req,
+      { width: 700, height: 651 },
+      4,
+      1000 + MIN_CLAMP_LEARN_DELAY_MS + 1
+    );
+    expect(meta._forgeKnownMinW).toBeFalsy();
+    expect(meta._forgeKnownMinH).toBeFalsy();
+    expect(
+      noteWindowMinFromOversizedFrame(
+        meta,
+        { width: 700, height: 651 },
+        { width: 1878, height: 1048 },
+        4
+      )
+    ).toBe(false);
   });
 
   it("ignores immediate race; does not learn while still at prior", () => {

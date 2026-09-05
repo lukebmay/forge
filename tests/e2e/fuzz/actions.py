@@ -148,7 +148,7 @@ WINSTATE_OPS = ["minimize", "unminimize", "fullscreen", "unfullscreen", "maximiz
 WINSTATE_WEIGHT = 4
 
 # Drag-drop tile class (forge-cnrc): drag one window onto a ZONE of another, exercising Forge's
-# drop/reparent logic (_dndDropOp → _commitResolvedDrop) — the one feature real keybindings
+# drop/reparent logic (_dndDropOp → OpSet.pointer → named Ops) — same as real keybindings
 # can't reach. Needs >=2 windows. Zones: center=stack/tab into target, edges=split. See
 # bridge.fuzzDrag.
 DRAG_ZONES = ["center", "left", "right", "top", "bottom"]

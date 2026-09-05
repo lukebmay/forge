@@ -296,13 +296,14 @@ def run_layout(
     *,
     timeout_s: float,
     workspace_1based: Optional[int] = None,
+    extra_argv: Optional[Sequence[str]] = None,
 ) -> str:
     token = (
         f"{int(workspace_1based)}:{profile}"
         if workspace_1based is not None
         else profile
     )
-    argv = [*_forge_argv(env), "layout", token]
+    argv = [*_forge_argv(env), "layout", token, *(extra_argv or ())]
     try:
         proc = subprocess.run(
             argv,

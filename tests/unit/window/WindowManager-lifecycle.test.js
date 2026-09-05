@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
-import { LAYOUT_TYPES, NODE_TYPES } from "../../../lib/extension/tree.js";
+import { LAYOUT_TYPES, NODE_TYPES, Node, Tree } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -50,6 +50,25 @@ describe("WindowManager - Window Lifecycle", () => {
       expect(tree.extWm).toBe(wm());
       expect(wm().liveById.get("ROOT")).toBe(tree);
       expect(Object.getPrototypeOf(tree)).toBe(Object.prototype);
+      expect(tree.addWorkspace).not.toBe(Tree.prototype.addWorkspace);
+      expect(tree._initWorkspaces).not.toBe(Tree.prototype._initWorkspaces);
+      expect(Object.getOwnPropertyDescriptor(tree, "monitorManager")?.get).not.toBe(
+        Object.getOwnPropertyDescriptor(Tree.prototype, "monitorManager")?.get
+      );
+      expect(tree.appendChild).not.toBe(Node.prototype.appendChild);
+      expect(tree.insertBefore).not.toBe(Node.prototype.insertBefore);
+      expect(Object.getOwnPropertyDescriptor(tree, "index")?.get).not.toBe(
+        Object.getOwnPropertyDescriptor(Node.prototype, "index")?.get
+      );
+      expect(Object.getOwnPropertyDescriptor(tree, "level")?.get).not.toBe(
+        Object.getOwnPropertyDescriptor(Node.prototype, "level")?.get
+      );
+      expect(typeof tree.move).toBe("function");
+      expect(typeof tree.moveIn).toBe("function");
+      expect(typeof tree.moveOut).toBe("function");
+      expect(tree.move).not.toBe(Tree.prototype.move);
+      expect(tree.moveIn).not.toBe(Tree.prototype.moveIn);
+      expect(tree.moveOut).not.toBe(Tree.prototype.moveOut);
     });
 
     it("finds workspace spine via liveById", () => {
@@ -180,9 +199,11 @@ describe("WindowManager - Window Lifecycle", () => {
     });
 
     it("should track valid DIALOG windows", () => {
+      const parent = createMockWindow({ title: "Parent" });
       const metaWindow = createMockWindow({
         window_type: WindowType.DIALOG,
         title: "Dialog Window",
+        transient_for: parent,
       });
 
       wm().trackWindow(null, metaWindow);
@@ -195,9 +216,11 @@ describe("WindowManager - Window Lifecycle", () => {
     });
 
     it("should track valid MODAL_DIALOG windows", () => {
+      const parent = createMockWindow({ title: "Parent" });
       const metaWindow = createMockWindow({
         window_type: WindowType.MODAL_DIALOG,
         title: "Modal Dialog",
+        transient_for: parent,
       });
 
       wm().trackWindow(null, metaWindow);
@@ -234,12 +257,14 @@ describe("WindowManager - Window Lifecycle", () => {
       expect(ancestorMonitor(wm().forest, wm().forest.nodes[nid])?.id).toBe(monitor.nodeValue);
     });
 
-    it("should mark window for first render", () => {
+    it("willTile map places to Forest slot and consumes firstRender", () => {
       const metaWindow = createMockWindow();
+      const moveSpy = vi.spyOn(wm(), "move");
 
       wm().trackWindow(null, metaWindow);
 
-      expect(metaWindow.firstRender).toBe(true);
+      expect(moveSpy).toHaveBeenCalled();
+      expect(metaWindow.firstRender).toBe(false);
     });
   });
 

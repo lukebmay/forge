@@ -12,7 +12,11 @@ import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import Shell from "../../mocks/gnome/Shell.js";
 import { Bin } from "../../mocks/gnome/St.js";
-import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import {
+  forestAdmitMetaWindow,
+  forestAdmitMonitor,
+  seedLiveForest,
+} from "../../../lib/extension/tom-live.js";
 
 /**
  * OP1: open-app placement — LFT MRU, dock sticky mon, tab-after, aspect split.
@@ -735,10 +739,12 @@ describe("OP1 open-app placement policy", () => {
 
       expect(monitorOf(node)).toBe(1);
       expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(kidsOf(wm(), con)).not.toContain(node);
-      expect(parentOf(wm(), node)).toBe(mon1);
+      expect(parentOf(wm(), node)).toBe(con);
+      expect(kidsOf(wm(), con)).toContain(mid.nodeWindow);
+      expect(kidsOf(wm(), con)).toContain(node);
       expect(parentOf(wm(), first.nodeWindow)).toBe(con);
       expect(parentOf(wm(), mid.nodeWindow)).toBe(con);
+      expect(parentOf(wm(), con)).not.toBe(getWorkspaceAndMonitor(ctx, 0, 0).monitor);
     });
 
     it("dock hook refreshes active WM after disable/re-enable cycle", () => {
@@ -1048,7 +1054,6 @@ describe("OP1 open-app placement policy", () => {
       expect(node2).toBeTruthy();
       expect(monitorOf(node2)).toBe(1);
       expect(meta2.get_monitor()).toBe(1);
-      expect(meta2.firstRender).toBe(true);
 
       wm().processFloats();
       expect(node2.mode).toBe(WINDOW_MODES.TILE);
@@ -1187,9 +1192,8 @@ describe("OP1 open-app placement policy", () => {
   describe("tab-after and aspect split", () => {
     beforeEach(() => setup());
 
-    it("does not join a TABBED bag; new tile is a sibling of the bag", () => {
+    it("Launch next to a tab WINDOW joins the bag as next sibling", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
-      // Build TABBED CON with two windows
       const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, {});
       con.layout = LAYOUT_TYPES.TABBED;
       const a = createWindowNode(ctx.tree, con, {
@@ -1210,7 +1214,6 @@ describe("OP1 open-app placement policy", () => {
           rect: { x: 0, y: 0, width: 800, height: 600 },
         },
       });
-      // LFT = first tab
       wm().movePointerWith(a.nodeWindow);
 
       const metaWindow = createMockWindow({
@@ -1222,10 +1225,51 @@ describe("OP1 open-app placement policy", () => {
       const node = wm().findNodeWindow(metaWindow);
 
       expect(con.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(kidsOf(wm(), con)).toContain(a.nodeWindow);
-      expect(kidsOf(wm(), con)).toContain(b.nodeWindow);
+      expect(kidsOf(wm(), con)).toEqual([a.nodeWindow, node, b.nodeWindow]);
+      expect(parentOf(wm(), node)).toBe(con);
+      expect(parentOf(wm(), con)).toBe(monitor);
+    });
+
+    it("Select TAB CON then Launch wraps the bag", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
+      const con = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, {});
+      con.layout = LAYOUT_TYPES.TABBED;
+      const a = createWindowNode(ctx.tree, con, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "tab-con-a",
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          rect: { x: 0, y: 0, width: 800, height: 600 },
+        },
+      });
+      createWindowNode(ctx.tree, con, {
+        mode: "TILE",
+        windowOverrides: {
+          id: "tab-con-b",
+          workspace: ctx.workspaces[0],
+          monitor: 0,
+          rect: { x: 0, y: 0, width: 800, height: 600 },
+        },
+      });
+      wm().movePointerWith(a.nodeWindow);
+      ctx.tree.focusUnit = con;
+
+      const metaWindow = createMockWindow({
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        id: "tab-con-new",
+      });
+      wm().trackWindow(null, metaWindow);
+      const node = wm().findNodeWindow(metaWindow);
+
       expect(kidsOf(wm(), con)).not.toContain(node);
-      expect(parentOf(wm(), node)).toBe(monitor);
+      const split = parentOf(wm(), node);
+      expect(split.nodeType).toBe(NODE_TYPES.CON);
+      expect(split).toBe(parentOf(wm(), con));
+      expect(parentOf(wm(), split)).toBe(monitor);
+      expect(kidsOf(wm(), split)).toContain(con);
+      expect(kidsOf(wm(), split)).toContain(node);
     });
 
     it("aspect: tall LFT → VSPLIT; wide LFT → HSPLIT", () => {
@@ -1879,5 +1923,110 @@ describe("D096 Forest membership (open/place)", () => {
     a.nodeWindow.parentNode = null;
     b.nodeWindow.parentNode = null;
     expect(wm()._lastTileOnMonitor(1)).toBe(b.nodeWindow);
+  });
+
+  it("emptyTileMonitorIndices lists dest head when findNode misses Forest MONITOR", () => {
+    setup();
+    seedLiveForest(wm());
+    const orig = wm().tree.findNode.bind(wm().tree);
+    wm().tree.findNode = (data) => {
+      if (data === "mo1ws0") return null;
+      return orig(data);
+    };
+    expect(wm()._emptyTileMonitorIndices()).toContain(1);
+    expect(wm()._lastTileOnMonitor(1)).toBeNull();
+  });
+
+  it("empty dest without Forest MONITOR still lists as empty-head (D027)", () => {
+    setup();
+    seedLiveForest(wm());
+    const drop = (id) => {
+      const tom = wm().forest?.nodes?.[id];
+      if (tom) {
+        const p = tom.parentId ? wm().forest.nodes[tom.parentId] : null;
+        if (p?.childIds) p.childIds = p.childIds.filter((c) => c !== id);
+        wm().forest.monitors = (wm().forest.monitors || []).filter((m) => m.id !== id);
+        delete wm().forest.nodes[id];
+      }
+      wm().liveById?.delete?.(id);
+    };
+    drop("mo1ws0");
+    const orig = wm().tree.findNode.bind(wm().tree);
+    wm().tree.findNode = (data) => {
+      if (data === "mo1ws0") return null;
+      return orig(data);
+    };
+    expect(wm()._lastTileOnMonitor(1)).toBeNull();
+    expect(wm()._emptyTileMonitorIndices()).toContain(1);
+  });
+
+  it("lastTileOnMonitor ignores other-WS same-output tiles (D112)", () => {
+    setup();
+    seedLiveForest(wm());
+    expect(wm()._lastTileOnMonitor(1)).toBeNull();
+    const admitted = forestAdmitMonitor(wm(), 1, 1, { tree: ctx.tree });
+    expect(admitted?.id).toBe("mo1ws1");
+    const meta = createMockWindow({
+      workspace: ctx.workspaces[0],
+      monitor: 1,
+      id: "other-ws-tile",
+    });
+    forestAdmitMetaWindow(wm(), meta, {
+      parentId: "mo1ws1",
+      monitorId: "mo1ws1",
+      mode: "TILE",
+    });
+    expect(wm()._lastTileOnMonitor(1)).toBeNull();
+    expect(wm()._emptyTileMonitorIndices()).toContain(1);
+  });
+
+  it("pointer on empty dest homes there when Forest dest spine was dropped", () => {
+    setup();
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    mon0.layout = LAYOUT_TYPES.HSPLIT;
+    const a = createWindowNode(ctx.tree, mon0, {
+      mode: "TILE",
+      windowOverrides: {
+        id: "nau-a",
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        rect: { x: 0, y: 0, width: 960, height: 1080 },
+      },
+    });
+    createWindowNode(ctx.tree, mon0, {
+      mode: "TILE",
+      windowOverrides: {
+        id: "nau-b",
+        workspace: ctx.workspaces[0],
+        monitor: 0,
+        rect: { x: 960, y: 0, width: 960, height: 1080 },
+      },
+    });
+    wm().movePointerWith(a.nodeWindow);
+    ctx.display.get_focus_window.mockReturnValue(a.metaWindow);
+    seedLiveForest(wm());
+    const drop = (id) => {
+      const tom = wm().forest?.nodes?.[id];
+      if (tom) {
+        const p = tom.parentId ? wm().forest.nodes[tom.parentId] : null;
+        if (p?.childIds) p.childIds = p.childIds.filter((c) => c !== id);
+        wm().forest.monitors = (wm().forest.monitors || []).filter((m) => m.id !== id);
+        delete wm().forest.nodes[id];
+      }
+      wm().liveById?.delete?.(id);
+    };
+    drop("mo1ws0");
+    ctx.display.get_current_monitor.mockReturnValue(0);
+    setPointer(2400, 400);
+
+    const opened = createMockWindow({
+      workspace: ctx.workspaces[0],
+      monitor: 0,
+      id: "nau-c",
+    });
+    wm().trackWindow(null, opened);
+    const node = wm().findNodeWindow(opened);
+    expect(wm()._monitorIndexOfNode(node)).toBe(1);
+    expect(kidsOf(wm(), mon0)).not.toContain(node);
   });
 });

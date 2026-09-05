@@ -12,7 +12,8 @@ On conflict, **this extension wins**.
 ## OpSet design docs (FIRM)
 
 Each tiling OpSet has one design document. That file is the source of
-truth for the OpSet’s words, tree shape, invariants, and SurfaceOps.
+truth for the OpSet’s words, tree shape, invariants, and **Ops**
+(user-facing; not host SurfaceOps — D101).
 
 | OpSet | Design doc | Code |
 | --- | --- | --- |
@@ -30,8 +31,10 @@ leave handoffs using the old words.
 | FLOAT windows | **FLOATS** bag — not under a MONITOR (D087) |
 | Size | TILES in-axis: **percent** or **`share`** (D090). `share` splits leftover. Not FLOAT |
 | Settle order, unary collapse, MONITOR max-1 after settle | **RuleSet** (`lib/rulesets/`, [ruleset.md](plans/archived/completed/forge-firm-abstractions/ruleset.md)); Mark 2 lists invariants in `mark2.md` |
-| Move / Join / Launch / words | OpSet doc (`mark2.md`) |
-| Move / Join / Launch implementation | **OpSet** (`lib/opsets/`, D084) |
+| Move / Join / Group / Launch / words | OpSet doc (`mark2.md`) **Ops** |
+| Pointer hover/release | OpSet `pointer` (D101); zone policy in that OpSet’s doc |
+| Host SurfaceOps | Adapter internals the OpSet may call — not a user path (D101) |
+| Move / Join / Group / Launch implementation | **OpSet** (`lib/opsets/`, D084) |
 | Session prefs (`edgeMove`, tags, peelModel) | **Session bag** (`lib/session/`, D082) — not Forest fields |
 | Meta/St / volatile host facts | **Host bag** (`lib/host/`, D092) — `Map<nanoid, bag>`; not on TOM nodes |
 | MONITOR workarea | **World bag** (`lib/world/`, D083) — not Node.geom |
@@ -41,7 +44,7 @@ leave handoffs using the old words.
 | Adapter key overlays | **KeybindAdapterGnome** / **KeybindAdapterWebView** (D088). WebView `Super+a`/`q`; Gnome `Super+q` = quit |
 | Platform chords | Those adapters map kernel ∪ overlay (D085) |
 | Native window / paint | **ForgeAdapterGnome** / **ForgeAdapterWebView** (D085) — `present`/`observe`, not TOM |
-| AGREE / DRIFT / RESYNC | D093 — TOM toward REALITY; FLOAT terminator; no twin child-list atomics |
+| AGREE / DRIFT / RESYNC | D093 — host-event: TOM toward REALITY. Present-path: D115 heal then FLOAT terminator (FLOAT **is** Agree). No twin child-list atomics |
 | T6 snapshot / H1 majority resolve | **Epochs** (`lib/epochs/`, D086) — `windowId`; not Meta |
 
 Do not invent a second glossary in PRIORITY or session notes. Unary

@@ -271,6 +271,44 @@ export class Button extends Widget {
   constructor(params = {}) {
     super(params);
     this.label = params.label || "";
+    this.child = params.child || null;
+    if (this.child) this.add_child(this.child);
+  }
+}
+
+export const PolicyType = {
+  ALWAYS: 0,
+  AUTOMATIC: 1,
+  NEVER: 2,
+  EXTERNAL: 3,
+};
+
+export class ScrollView extends Widget {
+  constructor(params = {}) {
+    super(params);
+    this.overlay_scrollbars = !!params.overlay_scrollbars;
+    this.hscrollbar_policy = params.hscrollbar_policy ?? PolicyType.AUTOMATIC;
+    this.vscrollbar_policy = params.vscrollbar_policy ?? PolicyType.AUTOMATIC;
+    this.child = params.child || null;
+    this.vadjustment = {
+      lower: 0,
+      upper: 1000,
+      page_size: 200,
+      step_increment: 40,
+      page_increment: 200,
+      value: 0,
+    };
+    if (this.child) this.add_child(this.child);
+  }
+
+  set_policy(hscroll, vscroll) {
+    this.hscrollbar_policy = hscroll;
+    this.vscrollbar_policy = vscroll;
+  }
+
+  set_child(child) {
+    this.child = child;
+    this.add_child(child);
   }
 }
 
@@ -318,6 +356,8 @@ export default {
   BoxLayout,
   Label,
   Button,
+  ScrollView,
+  PolicyType,
   ThemeContext,
   Icon,
   Side,

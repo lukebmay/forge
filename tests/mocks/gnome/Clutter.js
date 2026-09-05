@@ -76,6 +76,14 @@ export const AnimationMode = {
 
 // Clutter key symbol + event-handler return constants used by the cheatsheet.
 export const KEY_Escape = 0xff1b;
+export const KEY_Home = 0xff50;
+export const KEY_Left = 0xff51;
+export const KEY_Up = 0xff52;
+export const KEY_Right = 0xff53;
+export const KEY_Down = 0xff54;
+export const KEY_Page_Up = 0xff55;
+export const KEY_Page_Down = 0xff56;
+export const KEY_End = 0xff57;
 export const EVENT_STOP = true;
 export const EVENT_PROPAGATE = false;
 // Pointer button constants (tab middle-click close, primary activate).
@@ -141,6 +149,14 @@ export default {
   Orientation,
   AnimationMode,
   KEY_Escape,
+  KEY_Home,
+  KEY_Left,
+  KEY_Up,
+  KEY_Right,
+  KEY_Down,
+  KEY_Page_Up,
+  KEY_Page_Down,
+  KEY_End,
   EVENT_STOP,
   EVENT_PROPAGATE,
   BUTTON_PRIMARY,

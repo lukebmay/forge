@@ -26,7 +26,9 @@ describe("float-reason", () => {
   });
 
   it("floatExemptReasonFromFlags tags dialog / null-class / no-resize", () => {
-    expect(floatExemptReasonFromFlags({ windowType: "dialog" })).toBe("type-dialog");
+    expect(floatExemptReasonFromFlags({ windowType: "dialog", transient: true })).toBe(
+      "type-dialog"
+    );
     expect(floatExemptReasonFromFlags({ wmClassNull: true })).toBe("null-class");
     expect(
       floatExemptReasonFromFlags({
@@ -60,6 +62,43 @@ describe("float-reason", () => {
       floatExemptReasonFromFlags({
         windowType: "dialog",
         hasClassOnlyTile: true,
+        transient: true,
+      })
+    ).toBe("type-dialog");
+  });
+
+  it("R061: non-transient modal-dialog tiles even when Meta reports no-resize", () => {
+    expect(
+      floatExemptReasonFromFlags({
+        windowType: "modal-dialog",
+        allowsResize: false,
+        transient: false,
+      })
+    ).toBeNull();
+    expect(
+      processFloatDecisionFromFlags({
+        windowType: "modal-dialog",
+        allowsResize: false,
+        transient: false,
+        wsTiled: true,
+        monTiled: true,
+      })
+    ).toEqual({ action: "tile", reason: "tile" });
+  });
+
+  it("R061: transient dialog types still float", () => {
+    expect(
+      floatExemptReasonFromFlags({
+        windowType: "modal-dialog",
+        allowsResize: true,
+        transient: true,
+      })
+    ).toBe("type-modal-dialog");
+    expect(
+      floatExemptReasonFromFlags({
+        windowType: "dialog",
+        allowsResize: false,
+        transient: true,
       })
     ).toBe("type-dialog");
   });
