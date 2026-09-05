@@ -60,13 +60,15 @@ describe("Bug #151: touch/stylus drag target resolution", () => {
       workspace: workspace0(),
     });
     const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaB);
-    nodeB.mode = WINDOW_MODES.GRAB_TILE;
+    nodeB.mode = WINDOW_MODES.TILE;
 
     // What trackCurrentMonWs builds at grab begin: stack-sorted tiled windows
     // excluding the dragged one.
     wm().sortedWindows = [metaA, metaC];
 
+    // Seed while TILE (live grab only flips mode; Forest stays on TILES).
     seedLiveForest(wm());
+    nodeB.mode = WINDOW_MODES.GRAB_TILE;
     return { nodeA, nodeB, nodeC };
   }
 
@@ -112,9 +114,7 @@ describe("Bug #151: touch/stylus drag target resolution", () => {
     wm()._grabStartPointer = [1400, 540];
     wm().nodeWinAtPointer = nodeA;
 
-    // Frame-derived reference is B's frame top-center (300, 108): the TOP zone
-    // of A. The stale pointer (1400, 540) is outside A entirely, so today the
-    // drop is silently ignored.
+    // Frame-derived reference is B's frame top-center (300, 108): TOP of A.
     wm().moveWindowToPointer(nodeB, false);
 
     const parent = parentOf(wm(), nodeB);

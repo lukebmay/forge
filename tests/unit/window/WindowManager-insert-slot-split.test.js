@@ -554,7 +554,8 @@ describe("D032 slot-split insert", () => {
       const wrap = parentOf(wm(), b.node);
       expect(wrap).not.toBe(mon0);
       expect(wrap.nodeType).toBe(NODE_TYPES.CON);
-      expect(wrap.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      // Join wrap invents opposite of dest H (H→V). Same-axis H wrap would flatten to 3-wide.
+      expect(wrap.layout).toBe(LAYOUT_TYPES.VSPLIT);
       expect(kidsOf(wm(), wrap)).toEqual(expect.arrayContaining([b.node, c.node]));
     });
 
@@ -577,9 +578,14 @@ describe("D032 slot-split insert", () => {
       wm().nodeWinAtPointer = b.node;
       wm().moveWindowToPointer(a.node, false);
 
-      expect(parentOf(wm(), a.node)).toBe(mon0);
-      expect(parentOf(wm(), b.node)).toBe(mon0);
-      expect(kidsOf(wm(), mon0)).toEqual([b.node, a.node]);
+      // In-axis adjacent → Move. MONITOR max-1: Mon(H(B,A)), not a Join wrap.
+      const row = parentOf(wm(), a.node);
+      expect(row).toBe(parentOf(wm(), b.node));
+      expect(row.nodeType).toBe(NODE_TYPES.CON);
+      expect(row.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), row)).toBe(mon0);
+      expect(kidsOf(wm(), mon0)).toEqual([row]);
+      expect(kidsOf(wm(), row)).toEqual([b.node, a.node]);
     });
   });
 });

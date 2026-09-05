@@ -230,20 +230,20 @@ describe("R031 always-float open: no ghost TILE; border follows frame", () => {
     wm().trackWindow(null, meta);
     const node = wm().findNodeWindow(meta);
     wm().processFloats();
-    // D032: open beside focused tab bag wraps the bag (split-or-tab on the CON).
     expect(node).toBeTruthy();
     expect(node.isTile()).toBe(true);
-    expect(parentOf(wm(), bag)).not.toBe(mon0);
+    expect(parentOf(wm(), bag)).toBe(mon0);
 
     meta.is_above = () => true;
     expect(wm().isFloatingExempt(meta)).toBe(true);
     wm().processFloats();
-    // Spine/float Forest writes can omit CON kids; reseed when Forest is already expected.
-    if (wm()._liveForestSeeded) seedLiveForest(wm());
 
     expect(node.isFloat()).toBe(true);
     expect(parentOf(wm(), bag)).toBe(mon0);
     expect(kidsOf(wm(), mon0)).not.toContain(node);
     expect(tiledCount(mon0)).toBe(2);
+    expect(
+      windowLeaves(mon0).filter((w) => w.isTile() && !w.isPlaceholder?.())
+    ).toHaveLength(3);
   });
 });

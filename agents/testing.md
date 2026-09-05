@@ -12,13 +12,14 @@ expected-fail, visible-contract, lifecycle, plog log-contract pointer, CI, and
 Grok leader / reattach rules. This file **extends** that base with forge-only
 practice. On conflict, **this extension wins**.
 
-## Commits are not a test gate (FIRM)
+## Commits are not a test or format gate (FIRM)
 
-Husky / lint-staged format and lint staged files. They **must not** run
-Vitest, pytest, nest, or live matrix. The suite is not yet high-quality
-and stable enough to block `git commit`. Run tests in the session when
-the change can break a contract; do not re-add `vitest related` (or
-equivalent) to `package.json` `lint-staged`.
+There is **no** husky / lint-staged / pre-commit hook. `git commit` must
+not run Prettier, ESLint, ruff, Vitest, pytest, nest, or live matrix.
+The suite is not yet high-quality and stable enough to block commits.
+Run tests in the session when the change can break a contract; format
+with `npm run format` when you want it. Do not re-add husky, lint-staged,
+or `prepare: husky install`.
 
 ## Nest is the E2E (FIRM)
 

@@ -200,15 +200,22 @@ describe("R021–R024: empty-head open, leaf empty-mon drag, nest drop, first la
       wm().nodeWinAtPointer = left.node;
       wm().moveWindowToPointer(dragged.node, false);
 
+      // Join BOTTOM under H invents V around the hit slot. MONITOR max-1:
+      // Mon(H(V(left, dragged), right)) — not 3-wide, not a 2-child MONITOR.
       expect(mon0.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(kidsOf(wm(), mon0)).toHaveLength(2);
-      expect(parentOf(wm(), right.node)).toBe(mon0);
+      expect(kidsOf(wm(), mon0)).toHaveLength(1);
+      const row = kidsOf(wm(), mon0)[0];
+      expect(row.nodeType).toBe(NODE_TYPES.CON);
+      expect(row.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      expect(parentOf(wm(), right.node)).toBe(row);
       const nest = parentOf(wm(), dragged.node);
       expect(nest.nodeType).toBe(NODE_TYPES.CON);
       expect(nest.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(parentOf(wm(), nest)).toBe(mon0);
+      expect(parentOf(wm(), nest)).toBe(row);
+      expect(parentOf(wm(), left.node)).toBe(nest);
       expect(kidsOf(wm(), nest)).toEqual(expect.arrayContaining([left.node, dragged.node]));
       expect(kidsOf(wm(), nest)).not.toContain(right.node);
+      expect(kidsOf(wm(), row)).toEqual(expect.arrayContaining([nest, right.node]));
     });
   });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { safeMoveToMonitor } from "../../lib/extension/soft-rehome.js";
+import { safeMoveToMonitor } from "../../lib/extension/monitor-recovery.js";
 import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
 
 /**

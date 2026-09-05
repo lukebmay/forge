@@ -110,8 +110,11 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
     expect(parentOf(wm, nodeA)?.nodeValue).toBe("mo0ws3");
     expect(parentOf(wm, nodeB)?.nodeValue).toBe("mo0ws3");
     expect(kidsOf(wm, parentOf(wm, nodeA))).toEqual(expect.arrayContaining([nodeA, nodeB]));
-    expect(nodeA.percent).toBe(0.6);
-    expect(nodeB.percent).toBe(0.4);
+    // D090: percent without userSized is share — dest MONITOR leftover equalizes.
+    expect(nodeA.userSized).toBe(false);
+    expect(nodeB.userSized).toBe(false);
+    expect(nodeA.percent).toBe(0.5);
+    expect(nodeB.percent).toBe(0.5);
   });
 
   it("still flattens a single window sent to another workspace (partial migration)", () => {

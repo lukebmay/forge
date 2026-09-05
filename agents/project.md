@@ -46,7 +46,7 @@ Agent source of truth is **`agents/`** → `AGENTS.md` only. Do not reintroduce
 - GNOME Shell extension (GJS / ES modules), GNOME 45+
 - GTK4 / Adwaita preferences
 - Vitest unit tests + Dockerized E2E
-- Prettier (2-space, 100 cols); husky pre-commit
+- Prettier (2-space, 100 cols); no pre-commit hook
 - Build: **Node.js 20+**, gettext (`make check-deps`)
 
 ## Branches

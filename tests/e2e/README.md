@@ -243,10 +243,7 @@ ruff format tests/e2e   # apply formatting
 ruff check tests/e2e    # lint (add --fix to auto-fix)
 ```
 
-Both run automatically: the husky pre-commit hook formats + lints staged
-`tests/e2e/**/*.py`, and the `python-lint` CI job gates every push/PR. (Because
-the hook shells out to `ruff`, committing Python changes requires ruff on your
-`PATH` — install it as above. Contributors touching only JS are unaffected.)
+The `python-lint` CI job gates every push/PR. There is no pre-commit hook.
 
 ## Known Issues / Deferred
 

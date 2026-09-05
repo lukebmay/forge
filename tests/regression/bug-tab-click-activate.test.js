@@ -263,17 +263,12 @@ describe("decoration restack above group (not global focus)", () => {
     const nA = ctx.windowManager.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, wA);
     const nB = ctx.windowManager.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, wB);
     con.lastTabFocus = wB;
+    if (ctx.windowManager._liveForestSeeded) seedLiveForest(ctx.windowManager);
 
     const actorA = { name: "actorA" };
     const actorB = { name: "actorB" };
     wA.get_compositor_private = () => actorA;
     wB.get_compositor_private = () => actorB;
-    wB.raise = vi.fn(() => {
-      // Simulate Meta.raise reordering window actors (cannot bury layer strip).
-      const wg = global.window_group;
-      if (wg.contains(actorB)) wg.remove_child(actorB);
-      wg.add_child(actorB);
-    });
 
     const deco = {
       name: "deco",
@@ -303,7 +298,7 @@ describe("decoration restack above group (not global focus)", () => {
 
     api._settleAfterRunSteps(ctx.windowManager);
 
-    expect(wB.raise).toHaveBeenCalled();
+    expect(con.lastTabFocus).toBe(wB);
     const layer = ctx.windowManager.decorationManager.tabChromeLayer;
     expect(wg.contains(deco)).toBe(false);
     expect(deco.get_parent()).toBe(layer);

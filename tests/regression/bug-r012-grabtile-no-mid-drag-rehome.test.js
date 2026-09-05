@@ -183,7 +183,7 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
   });
 
   it("center drop on left mon Ghostty joins TABBED when not mid-rehomed (happy path)", () => {
-    const { mon0, nodeGhost, nodeNautilus, tabCon } = dualMonScene();
+    const { mon0, nodeGhost, nodeNautilus, nodeRightGhost, tabCon } = dualMonScene();
 
     nodeNautilus.mode = WINDOW_MODES.GRAB_TILE;
     expect(kidsOf(wm(), tabCon)).toContain(nodeNautilus);
@@ -197,8 +197,9 @@ describe("R012: no mid-drag rehome; cross-mon center tab join", () => {
     expect(join.layout).toBe(LAYOUT_TYPES.TABBED);
     expect(join.nodeType).toBe(NODE_TYPES.CON);
     expect(parentOf(wm(), join)).toBe(mon0);
-    expect(kidsOf(wm(), tabCon)).not.toContain(nodeNautilus);
     expect(kidsOf(wm(), join)).toEqual(expect.arrayContaining([nodeGhost, nodeNautilus]));
+    expect(kidsOf(wm(), join)).not.toContain(nodeRightGhost);
+    expect(parentOf(wm(), nodeRightGhost)).not.toBe(join);
   });
 
   it("grab-end re-resolves nodeWinAtPointer before drop commit", () => {

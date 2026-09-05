@@ -3,7 +3,7 @@ import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../../lib/extension/window-modes.js";
 import { SessionApi } from "../../../lib/extension/session-api.js";
 import { Logger } from "../../../lib/shared/logger.js";
-import { seedLiveForest } from "../../../lib/extension/tom-live.js";
+import { liveTabOpenLeafForPresent, seedLiveForest } from "../../../lib/extension/tom-live.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
@@ -278,25 +278,28 @@ describe("AP3 RunSteps one Cf + settleTabFocus", () => {
     ctx.windowManager.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, wA);
     const nB = ctx.windowManager.tree.createNode(con.nodeValue, NODE_TYPES.WINDOW, wB);
     con.lastTabFocus = wB;
+    if (ctx.windowManager._liveForestSeeded) seedLiveForest(ctx.windowManager);
 
     const api = new SessionApi({
       extWm: ctx.windowManager,
       settings: ctx.settings,
     });
 
-    const settleSpy = vi.spyOn(ctx.windowManager, "settleTabFocus").mockImplementation(() => {});
+    const commitSpy = vi.spyOn(ctx.windowManager, "commitLayout");
     const renderSpy = vi.spyOn(ctx.windowManager, "renderTree").mockImplementation(() => {});
-    // Naked Dfull would call updateDecorationLayout() with no scope args.
     const decoSpy = vi
       .spyOn(ctx.windowManager, "updateDecorationLayout")
       .mockImplementation(() => {});
 
     api._settleAfterRunSteps(ctx.windowManager);
 
-    expect(settleSpy).toHaveBeenCalledWith(nB);
+    expect(liveTabOpenLeafForPresent(ctx.windowManager, con)).toBe(nB);
+    expect(con.lastTabFocus).toBe(wB);
     expect(renderSpy).not.toHaveBeenCalled();
-    // settleTabFocus owns Dfocus; settle path must not also do unscoped Dfull.
-    expect(decoSpy).not.toHaveBeenCalled();
+    expect(commitSpy).not.toHaveBeenCalled();
+    // Dfocus on the open leaf; no unscoped Dfull / second structure C.
+    expect(decoSpy).not.toHaveBeenCalledWith();
+    expect(decoSpy).toHaveBeenCalledWith({ scope: "focus", focusNode: nB });
   });
 
   it("R032: _settleAfterRunSteps still runs when render is frozen", () => {

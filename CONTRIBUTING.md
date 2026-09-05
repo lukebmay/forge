@@ -12,7 +12,7 @@ fork of upstream [Forge](https://github.com/forge-ext/forge).
 ## Set up & build
 
 ```bash
-npm install        # dependencies + git hooks
+npm install        # JS dependencies
 
 make dev           # compile schemas + install to ~/.local/share/gnome-shell/extensions/
 make prod          # like dev, then enable + restart shell
@@ -58,9 +58,7 @@ testing anything.
 ## Code style
 
 - **Prettier**, 2-space indent, 100-char width. Run `npm run format`; `npm run lint`
-  checks. A pre-commit hook formats staged files (and lints staged e2e JS/Python).
-  It does **not** run unit tests — the suite is not a commit gate yet; run `npm test`
-  yourself when the change needs it.
+  checks. There is no pre-commit hook. Run `npm test` when the change needs it.
 - Match the surrounding code's naming and idioms.
 - Core classes are `GObject`s registered with the
   `static { GObject.registerClass(this); }` pattern; track signal IDs and disconnect
