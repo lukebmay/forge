@@ -3622,6 +3622,65 @@ class TestColdSkeletonCt1(unittest.TestCase):
         self.assertEqual(ops[0], "ensure_skeleton")
         self.assertIn("open", ops)
 
+    def test_occupied_tabbed_missing_ghostty2_still_ensure_skeleton(self):
+        """TAB groups already on desk + missing TILE role still need PH dest."""
+        forest = {
+            "apiVersion": 2,
+            "monitors": [
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo0ws0",
+                    "children": [
+                        {
+                            "nodeType": "CON",
+                            "layout": "TABBED",
+                            "lastTabFocusId": "201",
+                            "children": [{
+                                "nodeType": "WINDOW",
+                                "windowId": 201,
+                                "wmClass": "Google-chrome",
+                                "title": "Grok",
+                                "mode": "TILE",
+                                "children": [],
+                            }],
+                        },
+                        {
+                            "nodeType": "WINDOW",
+                            "windowId": 101,
+                            "wmClass": "com.mitchellh.ghostty",
+                            "title": "Ghostty",
+                            "mode": "TILE",
+                            "children": [],
+                        },
+                    ],
+                },
+                {
+                    "nodeType": "MONITOR",
+                    "layout": "HSPLIT",
+                    "id": "mo1ws0",
+                    "children": [{
+                        "nodeType": "CON",
+                        "layout": "TABBED",
+                        "lastTabFocusId": "301",
+                        "children": [{
+                            "nodeType": "WINDOW",
+                            "windowId": 301,
+                            "wmClass": "Google-chrome",
+                            "title": "YouTube",
+                            "mode": "TILE",
+                            "children": [],
+                        }],
+                    }],
+                },
+            ],
+        }
+        plan = plan_reconcile(forest, _load("profile-dev-v2.json"))
+        self.assertFalse(plan.get("coldEmpty"))
+        ops = [a["op"] for a in plan["actions"]]
+        self.assertEqual(ops[0], "ensure_skeleton")
+        self.assertIn("open", ops)
+
     def test_mid_session_thrash_still_mode_b_park(self):
         plan = plan_reconcile(
             _load("tree-thrash-mode-b-companions.json"),

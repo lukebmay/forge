@@ -2005,6 +2005,35 @@ describe("tom-live occupied skeleton + TABBED slot", () => {
     expect(placed.destKind).toBe("slot");
   });
 
+  it("two live ghostty WINDOWs fill ghostty and ghostty-2 (R063)", () => {
+    const { root, mon, con, winA, winB, metaA, metaB } = twoSplitTree();
+    metaA.wm_class = "com.mitchellh.ghostty";
+    metaA.title = "one";
+    metaB.wm_class = "com.mitchellh.ghostty";
+    metaB.title = "two";
+    const wm = makeWm(root);
+    seedLiveForest(wm, { windowIdOf, createCon });
+    const out = forestApplySkeletonMon(wm, mon, {
+      split: "hsplit",
+      children: [
+        { slot: "mon0.ghostty", roles: ["ghostty"] },
+        { slot: "mon0.ghostty-2", roles: ["ghostty-2"] },
+      ],
+    });
+    expect(out.ok).toBe(true);
+    const monTom = wm.forest.nodes.mo0ws0;
+    const kids = monTom.childIds.map((id) => wm.forest.nodes[id]);
+    expect(kids.map((k) => k.kind)).toEqual(["WINDOW", "WINDOW"]);
+    expect(kids.every((k) => k.wmClass !== "forge-placeholder")).toBe(true);
+    const idA = wm.hostBag.idFromMeta(metaA);
+    const idB = wm.hostBag.idFromMeta(metaB);
+    expect(monTom.childIds).toEqual(expect.arrayContaining([idA, idB]));
+    expect(monTom.childIds).toHaveLength(2);
+    expect(forestHasLive(wm, con)).toBe(false);
+    expect(wm.hostBag.get(idA)?.layoutRole).toBe("ghostty");
+    expect(wm.hostBag.get(idB)?.layoutRole).toBe("ghostty-2");
+  });
+
   it("forestSlotSplit on a TABBED leaf does not wrap a CON inside the bag", () => {
     const { root, mon, con, winA, winB } = twoSplitTree();
     const wm = makeWm(root);

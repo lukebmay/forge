@@ -2440,11 +2440,10 @@ def plan_reconcile(
                              and not suppress_thrash_park)) and not safe
     # Slot-tagged layout PHs (from ensure_skeleton): residual prefers bind.
     has_layout_ph = bool(layout_placeholders)
-    # Partial flat desk (e.g. one Ghostty after enable): still need PH for PlaceNext.
-    # Skip when tab/stack groups already exist — those use ensure_layout (extra-copy).
+    # Partial desk still needs PH for PlaceNext (tab groups too — missing TILE
+    # siblings must not dest mon-root). Not for Mode B thrash.
     need_open_skeleton = (not safe and any_role_open and not has_layout_ph
-                          and not thrashed
-                          and not _forest_has_tab_or_stack_group(forest))
+                          and not thrashed)
 
     # floating[]: claim matching windows so clean/park residuals leave them alone.
     _claim_floating_windows(prof.get("floating") or [], windows, claimed)
@@ -3342,28 +3341,6 @@ def _iter_forest_monitors(forest: Any) -> list[Any]:
     if isinstance(forest, list):
         return _order_monitors(forest)
     return []
-
-
-def _forest_has_tab_or_stack_group(forest: Any) -> bool:
-    """True when forest already has a TABBED/STACKED group."""
-    found = False
-
-    def walk(n: Any) -> None:
-        nonlocal found
-        if found or not isinstance(n, dict):
-            return
-        lay = str(n.get("layout") or "").strip().upper()
-        if lay in ("TABBED", "STACKED"):
-            found = True
-            return
-        kids = n.get("children") or n.get("childNodes")
-        if isinstance(kids, list):
-            for c in kids:
-                walk(c)
-
-    for m in _iter_forest_monitors(forest):
-        walk(m)
-    return found
 
 
 def _monitor_node_index(m: dict[str, Any]) -> Optional[int]:

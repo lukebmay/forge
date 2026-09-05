@@ -136,4 +136,39 @@ describe("visible-hard overlay", () => {
     ).toBe(true);
     expect(isVisibleHard([], ["10"])).toBe(false);
   });
+
+  it("D117 both heads of the apply workspace are visible", () => {
+    const dual = {
+      monitors: [
+        { id: "mo0ws0", children: [{ nodeType: "WINDOW", windowId: "a" }] },
+        { id: "mo1ws0", children: [{ nodeType: "WINDOW", windowId: "b" }] },
+      ],
+    };
+    expect(collectVisibleTileWindowIds(dual, { workspace: 0 })).toEqual(["a"]);
+    expect(
+      collectVisibleTileWindowIds(dual, { workspace: 0, includeOtherMonitors: true })
+    ).toEqual(["a", "b"]);
+  });
+
+  it("visible PH slot is not hard (maps still coming)", () => {
+    const forest = {
+      monitors: [
+        {
+          id: "mo0ws0",
+          children: [
+            { nodeType: "WINDOW", windowId: "a", mode: "TILE" },
+            { nodeType: "WINDOW", id: "ph1", placeholder: true },
+          ],
+        },
+      ],
+    };
+    const ids = collectVisibleTileWindowIds(forest, {
+      workspace: 0,
+      includeOtherMonitors: true,
+    });
+    expect(ids).toEqual(expect.arrayContaining(["a", "ph1"]));
+    expect(
+      isVisibleHard([{ windowId: "a", mode: "TILE", rect: { width: 80, height: 40 } }], ids)
+    ).toBe(false);
+  });
 });

@@ -257,25 +257,44 @@
         "mode": "tabbed",
         "op": "ensure_layout",
         "slot": "mon0.left-tab",
-        "windowIds": [101, 102]
+        "windowIds": [
+          101,
+          102
+        ]
       },
       {
         "mode": "tabbed",
         "op": "ensure_layout",
         "slot": "mon1.comms",
-        "windowIds": [202, 203, 204]
+        "windowIds": [
+          202,
+          203,
+          204
+        ]
       },
       {
         "op": "ensure_sizes",
-        "shares": [0.5, 0.5],
+        "shares": [
+          0.5,
+          0.5
+        ],
         "slot": "mon0",
-        "windowIds": [101, 103]
+        "windowIds": [
+          101,
+          103
+        ]
       },
       {
         "op": "ensure_sizes",
-        "shares": [0.5, 0.5],
+        "shares": [
+          0.5,
+          0.5
+        ],
         "slot": "mon1",
-        "windowIds": [201, 202]
+        "windowIds": [
+          201,
+          202
+        ]
       }
     ],
     "clean": true,
@@ -372,7 +391,12 @@
       "crossMonMoves": 0,
       "monEnsures": 0,
       "parks": 0,
-      "reasons": ["structure:mon0.left-tab", "structure:mon1.comms", "size:mon0", "size:mon1"],
+      "reasons": [
+        "structure:mon0.left-tab",
+        "structure:mon1.comms",
+        "size:mon0",
+        "size:mon1"
+      ],
       "score": 4,
       "structureGroups": 2
     },
@@ -392,11 +416,16 @@
           {
             "id": "left-tab",
             "layout": "tabbed",
-            "roles": ["chrome-luke", "grok"]
+            "roles": [
+              "chrome-luke",
+              "grok"
+            ]
           },
           {
             "id": "term",
-            "roles": ["ghostty-left"]
+            "roles": [
+              "ghostty-left"
+            ]
           }
         ],
         "split": "hsplit"
@@ -405,12 +434,18 @@
         "children": [
           {
             "id": "term",
-            "roles": ["ghostty-right"]
+            "roles": [
+              "ghostty-right"
+            ]
           },
           {
             "id": "comms",
             "layout": "tabbed",
-            "roles": ["youtube", "gmail", "voice"]
+            "roles": [
+              "youtube",
+              "gmail",
+              "voice"
+            ]
           }
         ],
         "split": "hsplit"

@@ -254,12 +254,18 @@
       "crossMonMoves": 2,
       "monEnsures": 0,
       "parks": 0,
-      "reasons": ["move:ghostty-right", "move:youtube"],
+      "reasons": [
+        "move:ghostty-right",
+        "move:youtube"
+      ],
       "score": 6,
       "structureGroups": 0
     },
     "thrashState": {
-      "reasons": ["roles-wrong-mon:2", "tabbed-roles-not-grouped:mon1.comms"],
+      "reasons": [
+        "roles-wrong-mon:2",
+        "tabbed-roles-not-grouped:mon1.comms"
+      ],
       "score": 7,
       "thrashed": true
     },
@@ -274,11 +280,16 @@
           {
             "id": "left-tab",
             "layout": "tabbed",
-            "roles": ["chrome-luke", "grok"]
+            "roles": [
+              "chrome-luke",
+              "grok"
+            ]
           },
           {
             "id": "term",
-            "roles": ["ghostty-left"]
+            "roles": [
+              "ghostty-left"
+            ]
           }
         ],
         "split": "hsplit"
@@ -287,12 +298,18 @@
         "children": [
           {
             "id": "term",
-            "roles": ["ghostty-right"]
+            "roles": [
+              "ghostty-right"
+            ]
           },
           {
             "id": "comms",
             "layout": "tabbed",
-            "roles": ["youtube", "gmail", "voice"]
+            "roles": [
+              "youtube",
+              "gmail",
+              "voice"
+            ]
           }
         ],
         "split": "hsplit"

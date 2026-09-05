@@ -131,6 +131,73 @@ describe("planActionsToSteps pure mapping", () => {
     expect(steps.some((s) => s.op === "skeleton")).toBe(true);
   });
 
+  it("occupied TABBED + missing ghostty-2 still emits ensure_skeleton (R063)", () => {
+    const profile = loadJson(join(__dirname, "../cli/fixtures/layout/profile-dev-v2.json"));
+    const forest = {
+      apiVersion: 2,
+      monitors: [
+        {
+          nodeType: "MONITOR",
+          layout: "HSPLIT",
+          id: "mo0ws0",
+          children: [
+            {
+              nodeType: "CON",
+              layout: "TABBED",
+              lastTabFocusId: "201",
+              children: [
+                {
+                  nodeType: "WINDOW",
+                  windowId: 201,
+                  wmClass: "Google-chrome",
+                  title: "Grok",
+                  mode: "TILE",
+                  children: [],
+                },
+              ],
+            },
+            {
+              nodeType: "WINDOW",
+              windowId: 101,
+              wmClass: "com.mitchellh.ghostty",
+              title: "Ghostty",
+              mode: "TILE",
+              children: [],
+            },
+          ],
+        },
+        {
+          nodeType: "MONITOR",
+          layout: "HSPLIT",
+          id: "mo1ws0",
+          children: [
+            {
+              nodeType: "CON",
+              layout: "TABBED",
+              lastTabFocusId: "301",
+              children: [
+                {
+                  nodeType: "WINDOW",
+                  windowId: 301,
+                  wmClass: "Google-chrome",
+                  title: "YouTube",
+                  mode: "TILE",
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const plan = planReconcile(structuredClone(profile), forest, { workspace: 0 });
+    expect(plan.ok).toBe(true);
+    expect(plan.coldEmpty).toBe(false);
+    const ops = (plan.actions || []).map((a) => a.op);
+    expect(ops[0]).toBe("ensure_skeleton");
+    expect(ops).toContain("open");
+  });
+
   it("maps move/park/close/ensure_layout/order/size/focus", () => {
     const steps = planActionsToSteps(
       [

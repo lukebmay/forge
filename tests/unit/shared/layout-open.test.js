@@ -17,6 +17,7 @@ import {
   ghosttyMultiInstanceArgv,
   isGhosttyLaunchTarget,
   isPathLikeLaunchApp,
+  argvForApplyLaunch,
   openActionIsChromeFamily,
   openActionToLaunchFields,
   pendingPinsWithoutTitle,
@@ -32,6 +33,7 @@ import {
 import {
   classEq,
   isChromeFamilyClass,
+  roleTokenBase,
   windowMatchesRoleToken,
 } from "../../../lib/shared/layout-plan.js";
 
@@ -126,6 +128,17 @@ describe("ghostty multi-instance rewrite", () => {
   it("rewrites app string only for ghostty", () => {
     expect(rewriteGhosttyLaunchApp("ghostty")).toBe(`ghostty ${GHOSTTY_MULTI_INSTANCE_FLAG}`);
     expect(rewriteGhosttyLaunchApp("firefox")).toBe("firefox");
+    expect(argvForApplyLaunch("ghostty")).toEqual(["ghostty", GHOSTTY_MULTI_INSTANCE_FLAG]);
+    expect(argvForApplyLaunch(`ghostty ${GHOSTTY_MULTI_INSTANCE_FLAG}`)).toEqual([
+      "ghostty",
+      GHOSTTY_MULTI_INSTANCE_FLAG,
+    ]);
+    expect(argvForApplyLaunch("/usr/bin/ghostty")).toEqual([
+      "/usr/bin/ghostty",
+      GHOSTTY_MULTI_INSTANCE_FLAG,
+    ]);
+    expect(argvForApplyLaunch("firefox")).toBeNull();
+    expect(argvForApplyLaunch("/usr/bin/inkscape")).toEqual(["/usr/bin/inkscape"]);
   });
 });
 
@@ -192,6 +205,29 @@ describe("openActionToLaunchFields", () => {
     expect(parts[0]).toBe("ghostty");
     expect(parts[1]).toBe(GHOSTTY_MULTI_INSTANCE_FLAG);
     expect(fields.app).not.toContain("--gtk-single-instance=true");
+  });
+
+  it("ghostty-2 without wmClass still PlaceNext-matches ghostty class", () => {
+    const fields = openActionToLaunchFields({
+      op: "open",
+      role: "ghostty-2",
+      slot: "mon1.ghostty-2",
+      match: { class: "ghostty" },
+      open: { app: "ghostty" },
+    });
+    expect(fields.wm_class).toBe("ghostty");
+    expect(argvForApplyLaunch(fields.app)).toEqual(["ghostty", GHOSTTY_MULTI_INSTANCE_FLAG]);
+    const place = placeNextOptionsFromLaunchFields(fields);
+    expect(place.wmClass).toBe("ghostty");
+  });
+
+  it("ghostty sugar without match still sets wm_class", () => {
+    const fields = openActionToLaunchFields({
+      op: "open",
+      slot: "mon0.ghostty",
+      open: { app: "ghostty" },
+    });
+    expect(fields.wm_class).toBe("com.mitchellh.ghostty");
   });
 
   it("copies title identity and attach selector", () => {
@@ -539,7 +575,12 @@ describe("assignOpenRolePins / title then class leftover (D034)", () => {
     expect(
       windowMatchesRoleToken({ wmClass: "org.gnome.TextEditor" }, "org-gnome-TextEditor")
     ).toBe(true);
-    expect(windowMatchesRoleToken(term, "ghostty-2")).toBe(false);
+    expect(windowMatchesRoleToken(term, "ghostty-2")).toBe(true);
+    expect(windowMatchesRoleToken(term, "ghostty-3")).toBe(true);
+    expect(windowMatchesRoleToken(yt, "ghostty-2")).toBe(false);
+    expect(windowMatchesRoleToken(yt, "YouTube-2")).toBe(true);
+    expect(roleTokenBase("ghostty-2")).toBe("ghostty");
+    expect(roleTokenBase("org-gnome-TextEditor")).toBe("org-gnome-TextEditor");
   });
 });
 

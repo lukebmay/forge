@@ -183,19 +183,34 @@
         "mode": "hsplit",
         "op": "ensure_order",
         "slot": "mon0",
-        "windowIds": [101, 100]
+        "windowIds": [
+          101,
+          100
+        ]
       },
       {
         "op": "ensure_sizes",
-        "shares": [0.5, 0.5],
+        "shares": [
+          0.5,
+          0.5
+        ],
         "slot": "mon0",
-        "windowIds": [101, 100]
+        "windowIds": [
+          101,
+          100
+        ]
       },
       {
         "op": "ensure_sizes",
-        "shares": [0.5, 0.5],
+        "shares": [
+          0.5,
+          0.5
+        ],
         "slot": "mon1",
-        "windowIds": [200, 201]
+        "windowIds": [
+          200,
+          201
+        ]
       }
     ],
     "clean": true,
@@ -292,12 +307,18 @@
       "crossMonMoves": 0,
       "monEnsures": 0,
       "parks": 0,
-      "reasons": ["order:mon0", "size:mon0", "size:mon1"],
+      "reasons": [
+        "order:mon0",
+        "size:mon0",
+        "size:mon1"
+      ],
       "score": 1,
       "structureGroups": 0
     },
     "thrashState": {
-      "reasons": ["nested-split-view:mon0.left-tab"],
+      "reasons": [
+        "nested-split-view:mon0.left-tab"
+      ],
       "score": 4,
       "thrashed": true
     },
@@ -312,11 +333,16 @@
           {
             "id": "left-tab",
             "layout": "tabbed",
-            "roles": ["chrome-luke", "grok"]
+            "roles": [
+              "chrome-luke",
+              "grok"
+            ]
           },
           {
             "id": "term",
-            "roles": ["ghostty-left"]
+            "roles": [
+              "ghostty-left"
+            ]
           }
         ],
         "split": "hsplit"
@@ -325,12 +351,18 @@
         "children": [
           {
             "id": "term",
-            "roles": ["ghostty-right"]
+            "roles": [
+              "ghostty-right"
+            ]
           },
           {
             "id": "comms",
             "layout": "tabbed",
-            "roles": ["youtube", "gmail", "voice"]
+            "roles": [
+              "youtube",
+              "gmail",
+              "voice"
+            ]
           }
         ],
         "split": "hsplit"

@@ -51,12 +51,17 @@
               {
                 "id": "left-tab",
                 "mode": "tabbed",
-                "roles": ["chrome-luke", "grok"],
+                "roles": [
+                  "chrome-luke",
+                  "grok"
+                ],
                 "slot": "mon0.left-tab"
               },
               {
                 "id": "term",
-                "roles": ["ghostty-left"],
+                "roles": [
+                  "ghostty-left"
+                ],
                 "slot": "mon0.term"
               }
             ],
@@ -68,13 +73,19 @@
             "children": [
               {
                 "id": "term",
-                "roles": ["ghostty-right"],
+                "roles": [
+                  "ghostty-right"
+                ],
                 "slot": "mon1.term"
               },
               {
                 "id": "comms",
                 "mode": "tabbed",
-                "roles": ["youtube", "gmail", "voice"],
+                "roles": [
+                  "youtube",
+                  "gmail",
+                  "voice"
+                ],
                 "slot": "mon1.comms"
               }
             ],
@@ -274,11 +285,16 @@
           {
             "id": "left-tab",
             "layout": "tabbed",
-            "roles": ["chrome-luke", "grok"]
+            "roles": [
+              "chrome-luke",
+              "grok"
+            ]
           },
           {
             "id": "term",
-            "roles": ["ghostty-left"]
+            "roles": [
+              "ghostty-left"
+            ]
           }
         ],
         "split": "hsplit"
@@ -287,12 +303,18 @@
         "children": [
           {
             "id": "term",
-            "roles": ["ghostty-right"]
+            "roles": [
+              "ghostty-right"
+            ]
           },
           {
             "id": "comms",
             "layout": "tabbed",
-            "roles": ["youtube", "gmail", "voice"]
+            "roles": [
+              "youtube",
+              "gmail",
+              "voice"
+            ]
           }
         ],
         "split": "hsplit"

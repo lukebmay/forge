@@ -58,10 +58,57 @@
   "plan": {
     "actions": [
       {
-        "mode": "tabbed",
-        "op": "ensure_layout",
-        "slot": "mon1.comms",
-        "windowIds": [703]
+        "mons": [
+          {
+            "children": [
+              {
+                "id": "left-tab",
+                "mode": "tabbed",
+                "roles": [
+                  "chrome-luke",
+                  "grok"
+                ],
+                "slot": "mon0.left-tab"
+              },
+              {
+                "id": "term",
+                "roles": [
+                  "ghostty-left"
+                ],
+                "slot": "mon0.term"
+              }
+            ],
+            "mon": 0,
+            "slot": "mon0",
+            "split": "hsplit"
+          },
+          {
+            "children": [
+              {
+                "id": "term",
+                "roles": [
+                  "ghostty-right"
+                ],
+                "slot": "mon1.term"
+              },
+              {
+                "id": "comms",
+                "mode": "tabbed",
+                "roles": [
+                  "youtube",
+                  "gmail",
+                  "voice"
+                ],
+                "slot": "mon1.comms"
+              }
+            ],
+            "mon": 1,
+            "slot": "mon1",
+            "split": "hsplit"
+          }
+        ],
+        "op": "ensure_skeleton",
+        "workspace": 0
       },
       {
         "op": "open",
@@ -143,7 +190,7 @@
       "parked": 0,
       "reused": 2,
       "sized": 0,
-      "skeleton": 0,
+      "skeleton": 1,
       "structure": 0
     },
     "keepOthers": true,
@@ -216,7 +263,7 @@
       "monEnsures": 0,
       "parks": 0,
       "reasons": [
-        "structure:mon1.comms",
+        "skeleton",
         "open:ghostty-left",
         "open:ghostty-right",
         "move:youtube",
@@ -242,11 +289,16 @@
           {
             "id": "left-tab",
             "layout": "tabbed",
-            "roles": ["chrome-luke", "grok"]
+            "roles": [
+              "chrome-luke",
+              "grok"
+            ]
           },
           {
             "id": "term",
-            "roles": ["ghostty-left"]
+            "roles": [
+              "ghostty-left"
+            ]
           }
         ],
         "split": "hsplit"
@@ -255,12 +307,18 @@
         "children": [
           {
             "id": "term",
-            "roles": ["ghostty-right"]
+            "roles": [
+              "ghostty-right"
+            ]
           },
           {
             "id": "comms",
             "layout": "tabbed",
-            "roles": ["youtube", "gmail", "voice"]
+            "roles": [
+              "youtube",
+              "gmail",
+              "voice"
+            ]
           }
         ],
         "split": "hsplit"

@@ -16,6 +16,7 @@ import {
   findProvisionalPlaceHintIndex,
   consumePlaceHint,
   consumeProvisionalPlaceHint,
+  clearPlaceHintQueue,
   enqueuePlaceHint,
   resolvePlaceMonitorIndex,
   isMonRootTreePath,
@@ -216,6 +217,16 @@ describe("matchesPlaceHint", () => {
       expiresAt: now + 1000,
     };
     expect(matchesPlaceHint({ wm_class: "Google-chrome" }, hint, now)).toBe(false);
+  });
+});
+
+describe("clearPlaceHintQueue", () => {
+  it("empties leftover PlaceNext hints (R063)", () => {
+    const queue = [{ wmClass: "ghostty" }, { wmClass: "ghostty-2" }];
+    expect(clearPlaceHintQueue(queue)).toBe(2);
+    expect(queue).toEqual([]);
+    expect(clearPlaceHintQueue(queue)).toBe(0);
+    expect(clearPlaceHintQueue(null)).toBe(0);
   });
 });
 

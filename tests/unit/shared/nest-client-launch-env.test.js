@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  APPLY_LAUNCH_COLOR_UNSET_KEYS,
   NEST_CLIENT_UNSET_KEYS,
+  applyLaunchUnsetEnvKeys,
   nestClientLaunchEnvVars,
 } from "../../../lib/shared/nest-client-launch-env.js";
 
@@ -50,5 +52,12 @@ describe("nestClientLaunchEnvVars", () => {
 
   it("unsets DISPLAY rather than emptying it (empty is host X11 :0)", () => {
     expect(NEST_CLIENT_UNSET_KEYS).toContain("DISPLAY");
+  });
+
+  it("host argv spawn keeps DISPLAY; nest unsets it (R063)", () => {
+    expect(APPLY_LAUNCH_COLOR_UNSET_KEYS).toContain("NO_COLOR");
+    expect(applyLaunchUnsetEnvKeys(false)).not.toContain("DISPLAY");
+    expect(applyLaunchUnsetEnvKeys(true)).toContain("DISPLAY");
+    expect(applyLaunchUnsetEnvKeys(true)).toContain("NO_COLOR");
   });
 });
